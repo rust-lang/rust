@@ -9,6 +9,7 @@ import std::map::hashmap;
 import std::option;
 import std::option::none;
 import std::option::some;
+import std::smallintmap;
 
 import driver::session;
 import front::ast;
@@ -88,9 +89,7 @@ type raw_t = rec(sty struct,
                  option::t[str] cname,
                  uint hash,
                  bool has_params,
-                 bool has_bound_params,
-                 bool has_vars,
-                 bool has_locals);
+                 bool has_vars);
 
 type t = uint;
 
@@ -118,22 +117,14 @@ tag sty {
     ty_fn(ast::proto, vec[arg], t, controlflow);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
-    ty_var(int);                                    // ephemeral type var
-    ty_local(ast::def_id);                           // type of a local var
+    ty_var(int);                                    // type variable
     ty_param(uint);                                 // fn/tag type param
-    ty_bound_param(uint);                           // bound param, only paths
     ty_type;
     ty_native;
     // TODO: ty_fn_arg(t), for a possibly-aliased function argument
 }
 
 // Data structures used in type unification
-
-type unify_handler = obj {
-    fn resolve_local(ast::def_id id) -> option::t[t];
-    fn record_local(ast::def_id id, t ty);  // TODO: -> unify::result
-    fn record_param(uint index, t binding) -> unify::result;
-};
 
 tag type_err {
     terr_mismatch;
@@ -259,132 +250,101 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
     auto h = hash_type_info(st, cname);
 
     let bool has_params = false;
-    let bool has_bound_params = false;
     let bool has_vars = false;
-    let bool has_locals = false;
 
     fn derive_flags_t(&ctxt cx,
                       &mutable bool has_params,
-                      &mutable bool has_bound_params,
                       &mutable bool has_vars,
-                      &mutable bool has_locals,
                       &t tt) {
         auto rt = interner::get[raw_t](*cx.ts, tt);
         has_params = has_params || rt.has_params;
-        has_bound_params = has_bound_params || rt.has_bound_params;
         has_vars = has_vars || rt.has_vars;
-        has_locals = has_locals || rt.has_locals;
     }
 
     fn derive_flags_mt(&ctxt cx,
                        &mutable bool has_params,
-                       &mutable bool has_bound_params,
                        &mutable bool has_vars,
-                       &mutable bool has_locals,
                        &mt m) {
-        derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, m.ty);
+        derive_flags_t(cx, has_params, has_vars, m.ty);
     }
 
 
     fn derive_flags_arg(&ctxt cx,
                         &mutable bool has_params,
-                        &mutable bool has_bound_params,
                         &mutable bool has_vars,
-                        &mutable bool has_locals,
                         &arg a) {
-        derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, a.ty);
+        derive_flags_t(cx, has_params, has_vars, a.ty);
     }
 
     fn derive_flags_sig(&ctxt cx,
                         &mutable bool has_params,
-                        &mutable bool has_bound_params,
                         &mutable bool has_vars,
-                        &mutable bool has_locals,
                         &vec[arg] args,
                         &t tt) {
         for (arg a in args) {
-            derive_flags_arg(cx, has_params, has_bound_params,
-                             has_vars, has_locals, a);
+            derive_flags_arg(cx, has_params, has_vars, a);
         }
-        derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, tt);
+        derive_flags_t(cx, has_params, has_vars, tt);
     }
 
     alt (st) {
         case (ty_param(_)) {
             has_params = true;
         }
-        case (ty_bound_param(_)) {
-            has_bound_params = true;
-        }
         case (ty_var(_)) { has_vars = true; }
-        case (ty_local(_)) { has_locals = true; }
         case (ty_tag(_, ?tys)) {
             for (t tt in tys) {
-                derive_flags_t(cx, has_params, has_bound_params,
-                               has_vars, has_locals, tt);
+                derive_flags_t(cx, has_params, has_vars, tt);
             }
         }
         case (ty_box(?m)) {
-            derive_flags_mt(cx, has_params, has_bound_params,
-                            has_vars, has_locals, m);
+            derive_flags_mt(cx, has_params, has_vars, m);
         }
 
         case (ty_vec(?m)) {
-            derive_flags_mt(cx, has_params, has_bound_params,
-                            has_vars, has_locals, m);
+            derive_flags_mt(cx, has_params, has_vars, m);
         }
 
         case (ty_port(?tt)) {
-            derive_flags_t(cx, has_params, has_bound_params,
-                           has_vars, has_locals, tt);
+            derive_flags_t(cx, has_params, has_vars, tt);
         }
 
         case (ty_chan(?tt)) {
-            derive_flags_t(cx, has_params, has_bound_params,
-                           has_vars, has_locals, tt);
+            derive_flags_t(cx, has_params, has_vars, tt);
         }
 
         case (ty_tup(?mts)) {
             for (mt m in mts) {
-                derive_flags_mt(cx, has_params, has_bound_params,
-                                has_vars, has_locals, m);
+                derive_flags_mt(cx, has_params, has_vars, m);
             }
         }
 
         case (ty_rec(?flds)) {
             for (field f in flds) {
-                derive_flags_mt(cx, has_params, has_bound_params,
-                                has_vars, has_locals, f.mt);
+                derive_flags_mt(cx, has_params, has_vars, f.mt);
             }
         }
 
         case (ty_fn(_, ?args, ?tt, _)) {
-            derive_flags_sig(cx, has_params, has_bound_params,
-                             has_vars, has_locals, args, tt);
+            derive_flags_sig(cx, has_params, has_vars, args, tt);
         }
 
         case (ty_native_fn(_, ?args, ?tt)) {
-            derive_flags_sig(cx, has_params, has_bound_params,
-                             has_vars, has_locals, args, tt);
+            derive_flags_sig(cx, has_params, has_vars, args, tt);
         }
 
         case (ty_obj(?meths)) {
             for (method m in meths) {
-                derive_flags_sig(cx, has_params, has_bound_params,
-                                 has_vars, has_locals, m.inputs, m.output);
+                derive_flags_sig(cx, has_params, has_vars, m.inputs,
+                                 m.output);
             }
         }
         case (_) { }
     }
 
     ret rec(struct=st, cname=cname, hash=h,
-            has_params = has_params,
-            has_bound_params = has_bound_params,
-            has_vars = has_vars,
-            has_locals = has_locals);
+            has_params=has_params,
+            has_vars=has_vars);
 }
 
 fn intern(&ctxt cx, &sty st, &option::t[str] cname) {
@@ -485,16 +445,8 @@ fn mk_var(&ctxt cx, int v) -> t {
     ret gen_ty(cx, ty_var(v));
 }
 
-fn mk_local(&ctxt cx, ast::def_id did) -> t {
-    ret gen_ty(cx, ty_local(did));
-}
-
 fn mk_param(&ctxt cx, uint n) -> t {
     ret gen_ty(cx, ty_param(n));
-}
-
-fn mk_bound_param(&ctxt cx, uint n) -> t {
-    ret gen_ty(cx, ty_bound_param(n));
 }
 
 fn mk_type(&ctxt cx) -> t    { ret idx_type; }
@@ -594,12 +546,12 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         ret mstr + ty_to_str(cx, m.ty);
     }
 
-    alt (cname(cx, typ)) {
+    /*alt (cname(cx, typ)) {
         case (some(?cs)) {
             ret cs;
         }
         case (_) { }
-    }
+    }*/
 
     auto s = "";
 
@@ -664,18 +616,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             s += "<T" + util::common::istr(v) + ">";
         }
 
-        case (ty_local(?id)) {
-            s += "<L" + util::common::istr(id._0) + ":" +
-                util::common::istr(id._1) + ">";
-        }
-
         case (ty_param(?id)) {
             s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
-        }
-
-        case (ty_bound_param(?id)) {
-            s += "''" + str::unsafe_from_bytes([('a' as u8) +
-                                                    (id as u8)]);
         }
 
         case (_) {
@@ -753,9 +695,7 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
             }
         }
         case (ty_var(_))         { /* no-op */ }
-        case (ty_local(_))       { /* no-op */ }
         case (ty_param(_))       { /* no-op */ }
-        case (ty_bound_param(_)) { /* no-op */ }
     }
 
     walker(ty);
@@ -853,9 +793,7 @@ fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
         case (ty_var(_))         { /* no-op */ }
-        case (ty_local(_))       { /* no-op */ }
         case (ty_param(_))       { /* no-op */ }
-        case (ty_bound_param(_)) { /* no-op */ }
     }
 
     ret fld(ty);
@@ -1018,7 +956,6 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
             for (variant_info variant in variants) {
                 auto tup_ty = mk_imm_tup(cx, variant.args);
                 // Perform any type parameter substitutions.
-                tup_ty = bind_params_in_type(cx, tup_ty);
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
                 if (type_has_pointers(cx, tup_ty)) { ret true; }
             }
@@ -1228,13 +1165,11 @@ fn hash_type_structure(&sty st) -> uint {
             ret h;
         }
         case (ty_var(?v)) { ret hash_uint(28u, v as uint); }
-        case (ty_local(?did)) { ret hash_def(29u, did); }
-        case (ty_param(?pid)) { ret hash_uint(30u, pid); }
-        case (ty_bound_param(?pid)) { ret hash_uint(31u, pid); }
-        case (ty_type) { ret 32u; }
-        case (ty_native) { ret 33u; }
-        case (ty_bot) { ret 34u; }
-        case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
+        case (ty_param(?pid)) { ret hash_uint(29u, pid); }
+        case (ty_type) { ret 30u; }
+        case (ty_native) { ret 31u; }
+        case (ty_bot) { ret 32u; }
+        case (ty_ptr(?mt)) { ret hash_subty(33u, mt.ty); }
     }
 }
 
@@ -1470,21 +1405,9 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 case (_) { ret false; }
             }
         }
-        case (ty_local(?did_a)) {
-            alt (b) {
-                case (ty_local(?did_b)) { ret equal_def(did_a, did_b); }
-                case (_) { ret false; }
-            }
-        }
         case (ty_param(?pid_a)) {
             alt (b) {
                 case (ty_param(?pid_b)) { ret pid_a == pid_b; }
-                case (_) { ret false; }
-            }
-        }
-        case (ty_bound_param(?pid_a)) {
-            alt (b) {
-                case (ty_bound_param(?pid_b)) { ret pid_a == pid_b; }
                 case (_) { ret false; }
             }
         }
@@ -1575,16 +1498,21 @@ fn ann_has_type_params(&ctxt cx, &ast::ann ann) -> bool {
 }
 
 
+// Returns a type with type parameter substitutions performed if applicable.
+fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
+                                          &ty_param_substs_opt_and_ty tpot)
+        -> t {
+    alt (tpot._0) {
+        case (none) { ret tpot._1; }
+        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot._1); }
+    }
+}
+
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
 fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
     auto tpot = ann_to_ty_param_substs_opt_and_ty(cx, a);
-    alt (tpot._0) {
-        case (none) { ret tpot._1; }
-        case (some(?tps)) {
-            ret substitute_type_params(cx, tps, tpot._1);
-        }
-    }
+    ret ty_param_substs_opt_and_ty_to_monotype(cx, tpot);
 }
 
 
@@ -1618,16 +1546,8 @@ fn type_contains_vars(&ctxt cx, &t typ) -> bool {
     ret interner::get[raw_t](*cx.ts, typ).has_vars;
 }
 
-fn type_contains_locals(&ctxt cx, &t typ) -> bool {
-    ret interner::get[raw_t](*cx.ts, typ).has_locals;
-}
-
 fn type_contains_params(&ctxt cx, &t typ) -> bool {
     ret interner::get[raw_t](*cx.ts, typ).has_params;
-}
-
-fn type_contains_bound_params(&ctxt cx, &t typ) -> bool {
-    ret interner::get[raw_t](*cx.ts, typ).has_bound_params;
 }
 
 // Type accessors for substructures of types
@@ -1667,6 +1587,13 @@ fn is_fn_ty(&ctxt cx, &t fty) -> bool {
         case (ty::ty_fn(_, _, _, _)) { ret true; }
         case (ty::ty_native_fn(_, _, _)) { ret true; }
         case (_) { ret false; }
+    }
+}
+
+fn ty_var_id(&ctxt cx, t typ) -> int {
+    alt (struct(cx, typ)) {
+        case (ty::ty_var(?vid)) { ret vid; }
+        case (_) { log_err "ty_var_id called on non-var ty"; fail; }
     }
 }
 
@@ -1882,54 +1809,87 @@ fn is_lval(&@ast::expr expr) -> bool {
 mod unify {
     tag result {
         ures_ok(t);
-        ures_err(type_err, t, t);
+        ures_err(type_err);
     }
 
-    tag set_result {
-        usr_ok(vec[t]);
-        usr_err(type_err, t, t);
+    tag union_result {
+        unres_ok;
+        unres_err(type_err);
     }
 
-    type bindings[T] = rec(ufind::ufind sets,
-                           hashmap[T,uint] ids,
-                           mutable vec[mutable option::t[t]] types);
-
-    fn mk_bindings[T](map::hashfn[T] hasher, map::eqfn[T] eqer)
-            -> @bindings[T] {
-        let vec[mutable option::t[t]] types = [mutable];
-        ret @rec(sets=ufind::make(),
-                 ids=map::mk_hashmap[T,uint](hasher, eqer),
-                 mutable types=types);
+    tag fixup_result {
+        fix_ok(t);      // fixup succeeded
+        fix_err(int);   // fixup failed because a type variable was unresolved
     }
 
-    fn record_binding[T](&@ctxt cx, &@bindings[T] bindings, &T key, t typ)
-            -> result {
-        auto n = get_or_create_set[T](bindings, key);
+    type var_bindings = rec(ufind::ufind sets,
+                            smallintmap::smallintmap[t] types);
 
-        auto result_type = typ;
-        if (n < vec::len[option::t[t]](bindings.types)) {
-            alt (bindings.types.(n)) {
-                case (some(?old_type)) {
-                    alt (unify_step(cx, old_type, typ)) {
-                        case (ures_ok(?unified_type)) {
-                            result_type = unified_type;
-                        }
-                        case (?res) { ret res; }
+    type ctxt = rec(@var_bindings vb, ty_ctxt tcx);
+
+    fn mk_var_bindings() -> @var_bindings {
+        ret @rec(sets=ufind::make(), types=smallintmap::mk[t]());
+    }
+
+    // Unifies two sets.
+    fn union(&@ctxt cx, uint set_a, uint set_b) -> union_result {
+        ufind::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
+
+        auto root_a = ufind::find(cx.vb.sets, set_a);
+        auto root_b = ufind::find(cx.vb.sets, set_b);
+        ufind::union(cx.vb.sets, set_a, set_b);
+        auto root_c = ufind::find(cx.vb.sets, set_a);
+
+        alt (smallintmap::find[t](cx.vb.types, root_a)) {
+            case (none[t]) {
+                alt (smallintmap::find[t](cx.vb.types, root_b)) {
+                    case (none[t]) { ret unres_ok; }
+                    case (some[t](?t_b)) {
+                        smallintmap::insert[t](cx.vb.types, root_c, t_b);
+                        ret unres_ok;
                     }
                 }
-                case (none) { /* fall through */ }
+            }
+            case (some[t](?t_a)) {
+                alt (smallintmap::find[t](cx.vb.types, root_b)) {
+                    case (none[t]) {
+                        smallintmap::insert[t](cx.vb.types, root_c, t_a);
+                        ret unres_ok;
+                    }
+                    case (some[t](?t_b)) {
+                        alt (unify_step(cx, t_a, t_b)) {
+                            case (ures_ok(?t_c)) {
+                                smallintmap::insert[t](cx.vb.types, root_c,
+                                                       t_c);
+                                ret unres_ok;
+                            }
+                            case (ures_err(?terr)) { ret unres_err(terr); }
+                        }
+                    }
+                }
             }
         }
-
-        vec::grow_set[option::t[t]](bindings.types, n, none[t],
-                                    some[t](result_type));
-
-        ret ures_ok(typ);
     }
 
-    type ctxt = rec(@bindings[int] bindings,
-                    unify_handler handler,
-                    ty_ctxt tcx);
+    fn record_var_binding(&@ctxt cx, int key, t typ) -> result {
+        ufind::grow(cx.vb.sets, (key as uint) + 1u);
+
+        auto result_type = typ;
+        alt (smallintmap::find[t](cx.vb.types, key as uint)) {
+            case (some(?old_type)) {
+                alt (unify_step(cx, old_type, typ)) {
+                    case (ures_ok(?unified_type)) {
+                        result_type = unified_type;
+                    }
+                    case (?res) { ret res; }
+                }
+            }
+            case (none) { /* fall through */ }
+        }
+
+        smallintmap::insert[t](cx.vb.types, key as uint, result_type);
+        ret ures_ok(typ);
+    }
 
     // Wraps the given type in an appropriate cname.
     //
@@ -1944,7 +1904,7 @@ mod unify {
             ret ures_ok(expected);
         }
 
-        ret ures_err(terr_mismatch, expected, actual);
+        ret ures_err(terr_mismatch);
     }
 
     // Unifies two mutability flags.
@@ -1976,8 +1936,7 @@ mod unify {
         auto expected_len = vec::len[arg](expected_inputs);
         auto actual_len = vec::len[arg](actual_inputs);
         if (expected_len != actual_len) {
-            ret fn_common_res_err(ures_err(terr_arg_count,
-                                           expected, actual));
+            ret fn_common_res_err(ures_err(terr_arg_count));
         }
 
         // TODO: as above, we should have an iter2 iterator.
@@ -1995,8 +1954,7 @@ mod unify {
                 result_mode = expected_input.mode;
             } else if (expected_input.mode != actual_input.mode) {
                 // FIXME this is the wrong error
-                ret fn_common_res_err(ures_err(terr_arg_count,
-                                               expected, actual));
+                ret fn_common_res_err(ures_err(terr_arg_count));
             } else {
                 result_mode = expected_input.mode;
             }
@@ -2040,7 +1998,7 @@ mod unify {
         -> result {
 
         if (e_proto != a_proto) {
-            ret ures_err(terr_mismatch, expected, actual);
+            ret ures_err(terr_mismatch);
         }
         alt (expected_cf) {
             case (ast::return) { } // ok
@@ -2055,8 +2013,7 @@ mod unify {
                            this check is necessary to ensure that the
                            annotation in an object method matches the
                            declared object type */
-                        ret ures_err(terr_controlflow_mismatch,
-                                     expected, actual);
+                        ret ures_err(terr_controlflow_mismatch);
                     }
                 }
             }
@@ -2084,9 +2041,7 @@ mod unify {
                        &vec[arg] expected_inputs, &t expected_output,
                        &vec[arg] actual_inputs, &t actual_output)
         -> result {
-        if (e_abi != a_abi) {
-            ret ures_err(terr_mismatch, expected, actual);
-        }
+        if (e_abi != a_abi) { ret ures_err(terr_mismatch); }
 
         auto t = unify_fn_common(cx, expected, actual,
                                  expected_inputs, expected_output,
@@ -2113,16 +2068,13 @@ mod unify {
       let uint expected_len = vec::len[method](expected_meths);
       let uint actual_len = vec::len[method](actual_meths);
 
-      if (expected_len != actual_len) {
-        ret ures_err(terr_meth_count, expected, actual);
-      }
+      if (expected_len != actual_len) { ret ures_err(terr_meth_count); }
 
       while (i < expected_len) {
         auto e_meth = expected_meths.(i);
         auto a_meth = actual_meths.(i);
         if (! str::eq(e_meth.ident, a_meth.ident)) {
-          ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident),
-                       expected, actual);
+          ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident));
         }
         auto r = unify_fn(cx,
                           e_meth.proto, a_meth.proto,
@@ -2151,16 +2103,42 @@ mod unify {
       ret ures_ok(t);
     }
 
-    fn get_or_create_set[T](&@bindings[T] bindings, &T key) -> uint {
-        auto set_num;
-        alt (bindings.ids.find(key)) {
-            case (none) {
-                set_num = ufind::make_set(bindings.sets);
-                bindings.ids.insert(key, set_num);
+    // FIXME: This function should not be necessary, but it is for now until
+    // we eliminate pushdown. The typechecker should never rely on early
+    // resolution of type variables.
+    fn resolve_all_vars(&ty_ctxt tcx, &@var_bindings vb, t typ) -> t {
+        fn folder(ty_ctxt tcx, @var_bindings vb, @bool success, t typ) -> t {
+            alt (struct(tcx, typ)) {
+                case (ty_var(?vid)) {
+                    // It's possible that we haven't even created the var set.
+                    // Handle this case gracefully.
+                    if ((vid as uint) >= ufind::set_count(vb.sets)) {
+                        *success = false; ret typ;
+                    }
+
+                    auto root_id = ufind::find(vb.sets, vid as uint);
+                    alt (smallintmap::find[t](vb.types, root_id)) {
+                        case (some[t](?typ2)) {
+                            ret fold_ty(tcx, bind folder(tcx, vb, success, _),
+                                        typ2);
+                        }
+                        case (none[t]) { *success = false; ret typ; }
+                    }
+                    log ""; // fixes ambiguity
+                    *success = false; ret typ;
+                }
+
+                case (_) { ret typ; }
             }
-            case (some(?n)) { set_num = n; }
         }
-        ret set_num;
+
+        auto success = @true;
+        auto rty = fold_ty(tcx, bind folder(tcx, vb, success, _), typ);
+        /*if (*success) { ret rty; }
+        log_err "*** failed! type " + ty::ty_to_str(tcx, typ) + " => " +
+            ty::ty_to_str(tcx, rty);
+        ret typ;*/
+        ret rty;
     }
 
     fn unify_step(&@ctxt cx, &t expected, &t actual) -> result {
@@ -2173,72 +2151,57 @@ mod unify {
         // Fast path.
         if (eq_ty(expected, actual)) { ret ures_ok(expected); }
 
-        alt (struct(cx.tcx, actual)) {
+        // Stage 1: Handle the cases in which one side or another is a type
+        // variable.
 
-            // a _|_ type can be used anywhere
-            case (ty::ty_bot) {
-                ret ures_ok(expected);
-            }
-       
+        alt (struct(cx.tcx, actual)) {
             // If the RHS is a variable type, then just do the appropriate
             // binding.
             case (ty::ty_var(?actual_id)) {
-                auto actual_n = get_or_create_set[int](cx.bindings,
-                                                       actual_id);
+                auto actual_n = actual_id as uint;
                 alt (struct(cx.tcx, expected)) {
                     case (ty::ty_var(?expected_id)) {
-                        auto expected_n = get_or_create_set[int](cx.bindings,
-                                                                 expected_id);
-                        ufind::union(cx.bindings.sets, expected_n, actual_n);
+                        auto expected_n = expected_id as uint;
+                        union(cx, expected_n, actual_n);
                     }
-
                     case (_) {
                         // Just bind the type variable to the expected type.
-                        alt (record_binding[int](cx, cx.bindings, actual_id,
-                                                 expected)) {
+                        alt (record_var_binding(cx, actual_id, expected)) {
                             case (ures_ok(_)) { /* fall through */ }
                             case (?res) { ret res; }
                         }
                     }
                 }
-                ret ures_ok(actual);
+                ret ures_ok(mk_var(cx.tcx, actual_id));
             }
-            case (ty::ty_local(?actual_id)) {
-                auto result_ty;
-                alt (cx.handler.resolve_local(actual_id)) {
-                    case (none) { result_ty = expected; }
-                    case (some(?actual_ty)) {
-                        auto result = unify_step(cx, expected, actual_ty);
-                        alt (result) {
-                            case (ures_ok(?rty)) { result_ty = rty; }
-                            case (_) { ret result; }
-                        }
-                    }
-                }
 
-                cx.handler.record_local(actual_id, result_ty);
-                ret ures_ok(result_ty);
-            }
-            case (ty::ty_bound_param(?actual_id)) {
-                alt (struct(cx.tcx, expected)) {
-                    case (ty::ty_local(_)) {
-                        // TODO: bound param unifying with local
-                        cx.tcx.sess.unimpl("TODO: bound param unifying with "
-                                           + "local");
-                    }
-
-                    case (_) {
-                        ret cx.handler.record_param(actual_id, expected);
-                    }
-                }
-            }
             case (_) { /* empty */ }
+        }
+
+        alt (struct(cx.tcx, expected)) {
+            case (ty::ty_var(?expected_id)) {
+                // Add a binding. (`actual` can't actually be a var here.)
+                alt (record_var_binding(cx, expected_id, actual)) {
+                    case (ures_ok(_)) { /* fall through */ }
+                    case (?res) { ret res; }
+                }
+                ret ures_ok(mk_var(cx.tcx, expected_id));
+            }
+
+            case (_) { /* fall through */ }
+        }
+
+        // Stage 2: Handle all other cases.
+
+        alt (struct(cx.tcx, actual)) {
+            case (ty::ty_bot)        { ret ures_ok(expected);                }
+            case (_)                 { /* fall through */                    }
         }
 
         alt (struct(cx.tcx, expected)) {
             case (ty::ty_nil)        { ret struct_cmp(cx, expected, actual); }
             // _|_ unifies with anything
-            case (ty::ty_bot)        { ret ures_ok(expected);                }
+            case (ty::ty_bot)        { ret ures_ok(actual);                  }
             case (ty::ty_bool)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_int)        { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_uint)       { ret struct_cmp(cx, expected, actual); }
@@ -2255,7 +2218,7 @@ mod unify {
                     case (ty::ty_tag(?actual_id, ?actual_tps)) {
                         if (expected_id._0 != actual_id._0 ||
                                 expected_id._1 != actual_id._1) {
-                            ret ures_err(terr_mismatch, expected, actual);
+                            ret ures_err(terr_mismatch);
                         }
 
                         // TODO: factor this cruft out, see the TODO in the
@@ -2288,7 +2251,7 @@ mod unify {
                     case (_) { /* fall through */ }
                 }
 
-                ret ures_err(terr_mismatch, expected, actual);
+                ret ures_err(terr_mismatch);
             }
 
             case (ty::ty_box(?expected_mt)) {
@@ -2296,10 +2259,7 @@ mod unify {
                     case (ty::ty_box(?actual_mt)) {
                         auto mut;
                         alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
-                            case (none) {
-                                ret ures_err(terr_box_mutability, expected,
-                                             actual);
-                            }
+                            case (none) { ret ures_err(terr_box_mutability); }
                             case (some(?m)) { mut = m; }
                         }
 
@@ -2317,9 +2277,7 @@ mod unify {
                         }
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2328,10 +2286,7 @@ mod unify {
                     case (ty::ty_vec(?actual_mt)) {
                         auto mut;
                         alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
-                            case (none) {
-                                ret ures_err(terr_vec_mutability, expected,
-                                             actual);
-                            }
+                            case (none) { ret ures_err(terr_vec_mutability); }
                             case (some(?m)) { mut = m; }
                         }
 
@@ -2349,9 +2304,7 @@ mod unify {
                         }
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                   }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2371,9 +2324,7 @@ mod unify {
                         }
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2393,9 +2344,7 @@ mod unify {
                         }
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2407,7 +2356,7 @@ mod unify {
                         if (expected_len != actual_len) {
                             auto err = terr_tuple_size(expected_len,
                                                        actual_len);
-                            ret ures_err(err, expected, actual);
+                            ret ures_err(err);
                         }
 
                         // TODO: implement an iterator that can iterate over
@@ -2423,7 +2372,7 @@ mod unify {
                                            actual_elem.mut)) {
                                 case (none) {
                                     auto err = terr_tuple_mutability;
-                                    ret ures_err(err, expected, actual);
+                                    ret ures_err(err);
                                 }
                                 case (some(?m)) { mut = m; }
                             }
@@ -2447,9 +2396,7 @@ mod unify {
                         ret ures_ok(mk_tup(cx.tcx, result_elems));
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2461,7 +2408,7 @@ mod unify {
                         if (expected_len != actual_len) {
                             auto err = terr_record_size(expected_len,
                                                         actual_len);
-                            ret ures_err(err, expected, actual);
+                            ret ures_err(err);
                         }
 
                         // TODO: implement an iterator that can iterate over
@@ -2476,8 +2423,7 @@ mod unify {
                             alt (unify_mut(expected_field.mt.mut,
                                            actual_field.mt.mut)) {
                                 case (none) {
-                                    ret ures_err(terr_record_mutability,
-                                                 expected, actual);
+                                    ret ures_err(terr_record_mutability);
                                 }
                                 case (some(?m)) { mut = m; }
                             }
@@ -2487,7 +2433,7 @@ mod unify {
                                 auto err =
                                     terr_record_fields(expected_field.ident,
                                                        actual_field.ident);
-                                ret ures_err(err, expected, actual);
+                                ret ures_err(err);
                             }
 
                             auto result = unify_step(cx,
@@ -2511,9 +2457,7 @@ mod unify {
                         ret ures_ok(mk_rec(cx.tcx, result_fields));
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2529,9 +2473,7 @@ mod unify {
                                      expected_cf, actual_cf);
                     }
 
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2545,9 +2487,7 @@ mod unify {
                                             expected_inputs, expected_output,
                                             actual_inputs, actual_output);
                     }
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
             }
 
@@ -2557,147 +2497,82 @@ mod unify {
                         ret unify_obj(cx, expected, actual,
                                       expected_meths, actual_meths);
                     }
-                    case (_) {
-                        ret ures_err(terr_mismatch, expected, actual);
-                    }
+                    case (_) { ret ures_err(terr_mismatch); }
                 }
-            }
-
-            case (ty::ty_var(?expected_id)) {
-                // Add a binding. (`actual` can't actually be a var here.)
-                alt (record_binding[int](cx, cx.bindings, expected_id,
-                                         actual)) {
-                    case (ures_ok(_)) { /* fall through */ }
-                    case (?res) { ret res; }
-                }
-                ret ures_ok(expected);
-            }
-
-            case (ty::ty_local(?expected_id)) {
-                auto result_ty;
-                alt (cx.handler.resolve_local(expected_id)) {
-                    case (none) { result_ty = actual; }
-                    case (some(?expected_ty)) {
-                        auto result = unify_step(cx, expected_ty, actual);
-                        alt (result) {
-                            case (ures_ok(?rty)) { result_ty = rty; }
-                            case (_) { ret result; }
-                        }
-                    }
-                }
-
-                cx.handler.record_local(expected_id, result_ty);
-                ret ures_ok(result_ty);
-            }
-
-            case (ty::ty_bound_param(?expected_id)) {
-                ret cx.handler.record_param(expected_id, actual);
             }
         }
     }
 
-    // Performs type binding substitution.
-    fn substitute(&ty_ctxt tcx,
-                  &@bindings[int] bindings,
-                  &vec[t] set_types,
-                  &t typ) -> t {
-        if (!type_contains_vars(tcx, typ)) {
-            ret typ;
-        }
+    fn unify(&t expected,
+             &t actual,
+             &@var_bindings vb,
+             &ty_ctxt tcx) -> result {
+        auto cx = @rec(vb=vb, tcx=tcx);
+        ret unify_step(cx, expected, actual);
+    }
 
-        fn substituter(ty_ctxt tcx,
-                       @bindings[int] bindings,
-                       vec[t] types,
-                       t typ) -> t {
+    fn dump_var_bindings(ty_ctxt tcx, @var_bindings vb) {
+        auto i = 0u;
+        while (i < vec::len[ufind::node](vb.sets.nodes)) {
+            auto sets = "";
+            auto j = 0u;
+            while (j < vec::len[option::t[uint]](vb.sets.nodes)) {
+                if (ufind::find(vb.sets, j) == i) { sets += #fmt(" %u", j); }
+                j += 1u;
+            }
+
+            auto typespec;
+            alt (smallintmap::find[t](vb.types, i)) {
+                case (none[t]) { typespec = ""; }
+                case (some[t](?typ)) {
+                    typespec = " =" + ty_to_str(tcx, typ);
+                }
+            }
+
+            log_err #fmt("set %u:%s%s", i, typespec, sets);
+            i += 1u;
+        }
+    }
+
+    // Fixups and substitutions
+
+    fn fixup_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> fixup_result {
+        fn subst_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> t {
             alt (struct(tcx, typ)) {
-                case (ty_var(?id)) {
-                    alt (bindings.ids.find(id)) {
-                        case (some(?n)) {
-                            auto root = ufind::find(bindings.sets, n);
-                            ret types.(root);
+                case (ty::ty_var(?vid)) {
+                    auto root_id = ufind::find(vb.sets, vid as uint);
+                    alt (smallintmap::find[t](vb.types, root_id)) {
+                        case (none[t]) {
+                            log_err "unresolved type variable";
+                            fail;
                         }
-                        case (none) { ret typ; }
+                        case (some[t](?rt)) {
+                            ret fold_ty(tcx, bind subst_vars(tcx, vb, _), rt);
+                        }
                     }
                 }
                 case (_) { ret typ; }
             }
         }
 
-        auto f = bind substituter(tcx, bindings, set_types, _);
-        ret fold_ty(tcx, f, typ);
+        // FIXME: Report errors better.
+        ret fix_ok(fold_ty(tcx, bind subst_vars(tcx, vb, _), typ));
     }
 
-    fn unify_sets[T](&ty_ctxt tcx, &@bindings[T] bindings) -> set_result {
-        obj handler(ty_ctxt tcx) {
-            fn resolve_local(ast::def_id id) -> option::t[t] {
-                tcx.sess.bug("resolve_local in unify_sets");
-            }
-            fn record_local(ast::def_id id, t ty) {
-                tcx.sess.bug("record_local in unify_sets");
-            }
-            fn record_param(uint index, t binding) -> unify::result {
-                tcx.sess.bug("record_param in unify_sets");
-            }
-        }
-
-        auto node_count = vec::len[option::t[t]](bindings.types);
-
-        let vec[option::t[t]] results =
-            vec::init_elt[option::t[t]](none[t], node_count);
-
-        auto i = 0u;
-        while (i < node_count) {
-            auto root = ufind::find(bindings.sets, i);
-            alt (bindings.types.(i)) {
-                case (none) { /* nothing to do */ }
-                case (some(?actual)) {
-                    alt (results.(root)) {
-                        case (none) { results.(root) = some[t](actual); }
-                        case (some(?expected)) {
-                            // FIXME: Is this right?
-                            auto bindings = mk_bindings[int](int::hash,
-                                                             int::eq_alias);
-                            alt (unify(expected, actual, handler(tcx), 
-                                       bindings, tcx)) {
-                                case (ures_ok(?result_ty)) {
-                                    results.(i) = some[t](result_ty);
-                                }
-                                case (ures_err(?e, ?t_a, ?t_b)) {
-                                    ret usr_err(e, t_a, t_b);
-                                }
-                            }
-                        }
+    fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid) -> t {
+        auto root_id = ufind::find(vb.sets, vid as uint);
+        alt (smallintmap::find[t](vb.types, root_id)) {
+            case (none[t]) { ret mk_var(tcx, vid); }
+            case (some[t](?rt)) {
+                alt (fixup_vars(tcx, vb, rt)) {
+                    case (fix_ok(?rty)) { ret rty; }
+                    case (fix_err(_)) {
+                        // TODO: antisocial
+                        log_err "failed to resolve type var";
+                        fail;
                     }
                 }
             }
-            i += 1u;
-        }
-
-        // FIXME: This is equivalent to map(option::get, results) but it
-        // causes an assertion in typeck at the moment.
-        let vec[t] real_results = [];
-        for (option::t[t] typ in results) {
-            real_results += [option::get[t](typ)];
-        }
-
-        ret usr_ok(real_results);
-    }
-
-    fn unify(&t expected,
-             &t actual,
-             &unify_handler handler,
-             &@bindings[int] bindings,
-             &ty_ctxt tcx) -> result {
-        auto cx = @rec(bindings=bindings, handler=handler, tcx=tcx);
-        ret unify_step(cx, expected, actual);
-    }
-
-    fn fixup(&ty_ctxt tcx, &@bindings[int] bindings, t typ) -> result {
-        alt (unify_sets[int](tcx, bindings)) {
-            case (usr_ok(?set_types)) {
-                ret ures_ok(substitute(tcx, bindings, set_types, typ));
-            }
-            case (usr_err(?terr, ?t0, ?t1)) { ret ures_err(terr, t0, t1); }
         }
     }
 }
@@ -2752,45 +2627,45 @@ fn type_err_to_str(&ty::type_err err) -> str {
     }
 }
 
-// Performs bound type parameter replacement using the supplied mapping from
-// parameter IDs to types.
-fn substitute_type_params(&ctxt cx, &vec[t] bindings, &t typ) -> t {
-    if (!type_contains_bound_params(cx, typ)) {
-        ret typ;
+// Converts type parameters in a type to type variables and returns the
+// resulting type along with a list of type variable IDs.
+fn bind_params_in_type(&ctxt cx, fn()->int next_ty_var, t typ,
+                       uint ty_param_count)
+        -> tup(vec[int], t) {
+    let vec[int] param_var_ids = [];
+    auto i = 0u;
+    while (i < ty_param_count) {
+        param_var_ids += [next_ty_var()];
+        i += 1u;
     }
-    fn replacer(&ctxt cx, vec[t] bindings, t typ) -> t {
+
+    fn binder(ctxt cx, vec[int] param_var_ids, fn()->int next_ty_var, t typ)
+            -> t {
         alt (struct(cx, typ)) {
-            case (ty_bound_param(?param_index)) {
-                ret bindings.(param_index);
-            }
+            case (ty_param(?index)) { ret mk_var(cx, param_var_ids.(index)); }
             case (_) { ret typ; }
         }
     }
 
-    auto f = bind replacer(cx, bindings, _);
-    ret fold_ty(cx, f, typ);
+    auto f = bind binder(cx, param_var_ids, next_ty_var, _);
+    auto new_typ = fold_ty(cx, f, typ);
+    ret tup(param_var_ids, new_typ);
 }
 
-// Converts type parameters in a type to bound type parameters.
-fn bind_params_in_type(&ctxt cx, &t typ) -> t {
-    if (!type_contains_params(cx, typ)) {
-        ret typ;
-    }
-    fn binder(&ctxt cx, t typ) -> t {
+// Replaces type parameters in the given type using the given list of
+// substitions.
+fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
+    if (!type_contains_params(cx, typ)) { ret typ; }
+
+    fn substituter(ctxt cx, vec[ty::t] substs, t typ) -> t {
         alt (struct(cx, typ)) {
-            case (ty_bound_param(?index)) {
-                cx.sess.bug("bind_params_in_type() called on type that "
-                            + "already has bound params in it");
-            }
-            case (ty_param(?index)) { ret mk_bound_param(cx, index); }
+            case (ty_param(?idx)) { ret substs.(idx); }
             case (_) { ret typ; }
         }
     }
 
-    auto f = bind binder(cx, _);
-    ret fold_ty(cx, f, typ);
+    ret fold_ty(cx, bind substituter(cx, substs, _), typ);
 }
-
 
 fn def_has_ty_params(&ast::def def) -> bool {
     alt (def) {

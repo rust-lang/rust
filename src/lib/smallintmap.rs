@@ -38,3 +38,7 @@ fn truncate[T](&smallintmap[T] m, uint len) {
     m.v = vec::slice_mut[option::t[T]](m.v, 0u, len);
 }
 
+fn max_key[T](&smallintmap[T] m) -> uint {
+    ret vec::len[option::t[T]](m.v);
+}
+

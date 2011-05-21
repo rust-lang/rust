@@ -904,10 +904,6 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_param(_)) {
             llty = T_i8();
         }
-        case (ty::ty_bound_param(_)) {
-            cx.tcx.sess.span_err(sp, 
-                                 "trans::type_of called on ty_bound_param");
-        }
         case (ty::ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
     }
 
@@ -1299,7 +1295,6 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
         auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, variant.args));
 
         // Perform any type parameter substitutions.
-        tup_ty = ty::bind_params_in_type(cx.tcx, tup_ty);
         tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
 
         // Here we possibly do a recursive call.
@@ -1373,10 +1368,8 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
                 let vec[ty::t] raw_tys = variant.args;
                 let vec[ty::t] tys = [];
                 for (ty::t raw_ty in raw_tys) {
-                    auto t = ty::bind_params_in_type(cx.fcx.lcx.ccx.tcx,
-                                                    raw_ty);
-                    t = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx, tps,
-                                                   t);
+                    auto t = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
+                                                        tps, raw_ty);
                     tys += [t];
                 }
 
@@ -1553,9 +1546,8 @@ fn GEP_tag(@block_ctxt cx,
     auto i = 0;
     let vec[ty::t] true_arg_tys = [];
     for (ty::t aty in arg_tys) {
-        auto arg_ty = ty::bind_params_in_type(cx.fcx.lcx.ccx.tcx, aty);
-        arg_ty = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx, ty_substs,
-                                           arg_ty);
+        auto arg_ty = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
+                                                 ty_substs, aty);
         true_arg_tys += [arg_ty];
         if (i == ix) {
             elem_ty = arg_ty;
@@ -2745,10 +2737,8 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                                 auto llfldp_b = rslt.val;
                                 variant_cx = rslt.bcx;
 
-                                auto ty_subst = ty::bind_params_in_type(
-                                    cx.fcx.lcx.ccx.tcx, a.ty);
-                                ty_subst = ty::substitute_type_params(
-                                    cx.fcx.lcx.ccx.tcx, tps, ty_subst);
+                                auto ty_subst = ty::substitute_type_params(
+                                    cx.fcx.lcx.ccx.tcx, tps, a.ty);
 
                                 auto llfld_a =
                                     load_if_immediate(variant_cx,
@@ -5308,6 +5298,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f,
     }
 
     auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
                                f_res.generic,
@@ -7552,6 +7543,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
 
     // Declare the wrapper.
     auto t = node_ann_type(ccx, ann);
+
     auto wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
     let str s = mangle_internal_name_by_path(ccx, path);
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(ccx.llmod, s,
