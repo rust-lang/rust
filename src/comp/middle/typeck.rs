@@ -502,13 +502,13 @@ mod collect {
         ret tpt;
     }
 
-    fn ty_of_arg(@ctxt cx, &ast::arg a) -> arg {
+    fn ty_of_arg(@ctxt cx, &ast::arg a) -> ty::arg {
         auto ty_mode = ast_mode_to_mode(a.mode);
         auto f = bind getter(cx, _);
         ret rec(mode=ty_mode, ty=ast_ty_to_ty(cx.tcx, f, a.ty));
     }
 
-    fn ty_of_method(@ctxt cx, &@ast::method m) -> method {
+    fn ty_of_method(@ctxt cx, &@ast::method m) -> ty::method {
         auto get = bind getter(cx, _);
         auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
         auto f = bind ty_of_arg(cx, _);
@@ -694,10 +694,10 @@ mod collect {
 
         ret result;
     }
-
-    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> vec[method] {
+    
+    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> vec[ty::method] {
         ret vec::map[@ast::method,method](bind ty_of_method(cx, _),
-                                           object.methods);
+                                          object.methods);
     }
 
     fn collect(ty::item_table id_to_ty_item, &@ast::item i) {
@@ -1485,6 +1485,14 @@ mod Pushdown {
                 write::ty_only_fixup(scx, ann.id, t);
             }
 
+            case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid, ?ann)) {
+                // NB: Not sure if this is correct, but not worrying too much
+                // about it since pushdown is going away anyway.
+                auto t = Demand::autoderef(scx, e.span, expected,
+                    ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
+                write::ty_only_fixup(scx, ann.id, t);
+            }
+
             case (_) {
                 scx.fcx.ccx.tcx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
@@ -1771,14 +1779,13 @@ fn require_pure_function(@crate_ctxt ccx, &ast::def_id d_id, &span sp) -> () {
 }
 
 fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
-    //fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
-    //                       util::common::expr_to_str(expr));
+    // scx.fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
+    //                                util::common::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(&@stmt_ctxt scx, &@ast::expr f,
                           &vec[option::t[@ast::expr]] args) {
-
         // Check the function.
         check_expr(scx, f);
 
@@ -2297,10 +2304,20 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             auto t = ty::mk_nil(scx.fcx.ccx.tcx);
             let ty::t this_obj_ty;
 
-            auto oinfo_opt = get_obj_info(scx.fcx.ccx);
-            auto this_obj_id = option::get[obj_info](oinfo_opt).this_obj;
-            this_obj_ty = ty::lookup_item_type(scx.fcx.ccx.tcx,
-                                               this_obj_id)._1;
+            let option::t[obj_info] this_obj_info = get_obj_info(scx.fcx.ccx);
+
+            alt (this_obj_info) {
+                // If we're inside a current object, grab its type.
+                case (some[obj_info](?obj_info)) {
+                    // FIXME: In the case of anonymous objects with methods
+                    // containing self-calls, this lookup fails because
+                    // obj_info.this_obj is not in the type cache
+                    this_obj_ty = ty::lookup_item_type(scx.fcx.ccx.tcx, 
+                                                       obj_info.this_obj)._1;
+                }
+
+                case (none[obj_info]) { fail; }
+            }
 
             // Grab this method's type out of the current object type.
             alt (struct(scx.fcx.ccx.tcx, this_obj_ty)) {
@@ -2474,7 +2491,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 case (ty::ty_rec(?fields)) {
                     let uint ix = ty::field_idx(scx.fcx.ccx.tcx.sess,
                                                 expr.span, field, fields);
-                    if (ix >= vec::len[typeck::field](fields)) {
+                    if (ix >= vec::len[ty::field](fields)) {
                         scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                               "bad index on record");
                     }
@@ -2484,7 +2501,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 case (ty::ty_obj(?methods)) {
                     let uint ix = ty::method_idx(scx.fcx.ccx.tcx.sess,
                                                  expr.span, field, methods);
-                    if (ix >= vec::len[typeck::method](methods)) {
+
+                    if (ix >= vec::len[ty::method](methods)) {
                         scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on obj");
                     }
@@ -2558,6 +2576,75 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                         ty_to_str(scx.fcx.ccx.tcx, port_t));
                 }
             }
+        }
+
+        case (ast::expr_anon_obj(?anon_obj, ?tps, ?obj_def_ids, ?a)) {
+            // TODO: We probably need to do more work here to be able to
+            // handle additional methods that use 'self'
+
+            // We're entering an object, so gather up the info we need.
+            let vec[ast::obj_field] fields = [];
+            alt (anon_obj.fields) {
+                case (none[vec[ast::obj_field]]) { }
+                case (some[vec[ast::obj_field]](?v)) { fields = v; }
+            }
+            let ast::def_id di = obj_def_ids.ty;
+
+            vec::push[obj_info](scx.fcx.ccx.obj_infos,
+                                rec(obj_fields=fields, this_obj=di));
+
+            // Typecheck 'with_obj', if it exists.
+            let option::t[@ast::expr] with_obj = none[@ast::expr];
+            alt (anon_obj.with_obj) {
+                case (none[@ast::expr]) { }
+                case (some[@ast::expr](?e)) {
+                    // This had better have object type.  TOOD: report an
+                    // error if the user is trying to extend a non-object
+                    // with_obj.
+                    check_expr(scx, e);
+                }
+            }
+
+            // Typecheck the methods.
+            for (@ast::method method in anon_obj.methods) {
+                check_method(scx.fcx.ccx, method);
+            }
+
+            auto t = next_ty_var(scx);
+
+
+            // FIXME: These next three functions are largely ripped off from
+            // similar ones in collect::.  Is there a better way to do this?
+
+            fn ty_of_arg(@crate_ctxt ccx, &ast::arg a) -> ty::arg {
+                auto ty_mode = ast_mode_to_mode(a.mode);
+                ret rec(mode=ty_mode, ty=ast_ty_to_ty_crate(ccx, a.ty));
+            }
+
+            fn ty_of_method(@crate_ctxt ccx, &@ast::method m) -> ty::method {
+                auto convert = bind ast_ty_to_ty_crate(ccx, _);
+                auto f = bind ty_of_arg(ccx, _);
+                auto inputs = vec::map[ast::arg,arg](f,
+                                                     m.node.meth.decl.inputs);
+                auto output = convert(m.node.meth.decl.output);
+                ret rec(proto=m.node.meth.proto, ident=m.node.ident,
+                        inputs=inputs, output=output, cf=m.node.meth.decl.cf);
+            }
+
+            fn get_anon_obj_method_types(@crate_ctxt ccx,
+                                         &ast::anon_obj anon_obj)
+                -> vec[ty::method] {
+                ret vec::map[@ast::method,method](bind ty_of_method(ccx, _),
+                                                  anon_obj.methods);
+            }
+
+            auto methods = get_anon_obj_method_types(scx.fcx.ccx, anon_obj);
+            auto ot = ty::mk_obj(scx.fcx.ccx.tcx,
+                                 ty::sort_methods(methods));
+            write::ty_only_fixup(scx, a.id, ot);
+
+            // Now remove the info from the stack.
+            vec::pop[obj_info](scx.fcx.ccx.obj_infos);
         }
 
         case (_) {
@@ -2756,7 +2843,6 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
         case (_) { /* nothing to do */ }
     }
 }
-
 
 // Utilities for the unification cache
 

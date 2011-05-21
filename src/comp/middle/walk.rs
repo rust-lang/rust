@@ -444,7 +444,39 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_expr(v, x);
         }
 
-        case (ast::expr_anon_obj(_,_,_,_)) { }
+        case (ast::expr_anon_obj(?anon_obj,_,_,_)) { 
+
+            // Fields
+            let option::t[vec[ast::obj_field]] fields 
+                = none[vec[ast::obj_field]];
+
+            alt (anon_obj.fields) {
+                case (none[vec[ast::obj_field]]) { }
+                case (some[vec[ast::obj_field]](?fields)) {
+                    for (ast::obj_field f in fields) {
+                        walk_ty(v, f.ty);
+                    }
+                }
+            }
+
+            // with_obj
+            let option::t[@ast::expr] with_obj = none[@ast::expr];
+            alt (anon_obj.with_obj) {
+                case (none[@ast::expr]) { }
+                case (some[@ast::expr](?e)) {
+                    walk_expr(v, e);
+                }
+            }
+
+            // Methods
+            for (@ast::method m in anon_obj.methods) {
+                v.visit_method_pre(m);
+                walk_fn(v, m.node.meth, m.node.ident, 
+                        m.node.id, m.node.ann);
+                v.visit_method_post(m);
+
+            }
+        }
     }
     v.visit_expr_post(e);
 }

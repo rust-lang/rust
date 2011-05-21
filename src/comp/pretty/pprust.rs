@@ -712,8 +712,8 @@ fn print_expr(ps s, &@ast::expr expr) {
         }
 
         case (ast::expr_anon_obj(_,_,_,_)) {
-            wrd(s.s, "obj");
-            // TODO
+            wrd(s.s, "anon obj");
+            // TODO: nicer pretty-printing of anon objs
         }
     }
 
