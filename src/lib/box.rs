@@ -1,4 +1,4 @@
-export rustrt;
+export ptr_eq;
 
 native "rust" mod rustrt {
     fn rust_ptr_eq[T](@T a, @T b) -> int;
