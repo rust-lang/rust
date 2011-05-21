@@ -336,7 +336,7 @@ type ast_fold[ENV] =
      (fn(&ENV e,
          &option::t[vec[ast::obj_field]] fields,
          &vec[@ast::method] methods,
-         &option::t[ident] with_obj) 
+         &option::t[@ast::expr] with_obj) 
       -> ast::anon_obj)                           fold_anon_obj,
 
      // Env updates.
@@ -1001,11 +1001,11 @@ fn fold_anon_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::anon_obj ob)
     }
 
     // with_obj
-    let option::t[ast::ident] with_obj = none[ast::ident];
+    let option::t[@ast::expr] with_obj = none[@ast::expr];
     alt (ob.with_obj) {
-        case (none[ast::ident]) { }
-        case (some[ast::ident](?i)) {
-            with_obj = some[ast::ident](i);
+        case (none[@ast::expr]) { }
+        case (some[@ast::expr](?e)) {
+            with_obj = some[@ast::expr](fold_expr(env, fld, e));
         }
     }
 
@@ -1665,7 +1665,8 @@ fn identity_fold_obj[ENV](&ENV e,
 fn identity_fold_anon_obj[ENV](&ENV e,
                                &option::t[vec[ast::obj_field]] fields,
                                &vec[@ast::method] methods,
-                               &option::t[ident] with_obj) -> ast::anon_obj {
+                               &option::t[@ast::expr] with_obj) 
+    -> ast::anon_obj {
     ret rec(fields=fields, methods=methods, with_obj=with_obj);
 }
 
