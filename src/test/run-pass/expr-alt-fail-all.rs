@@ -6,7 +6,7 @@ fn main() {
     case (true) {
       10
     }
-    case (true) {
+    case (false) {
       alt (true) {
         case (true) {
           fail
