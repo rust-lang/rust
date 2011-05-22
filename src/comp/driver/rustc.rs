@@ -44,17 +44,15 @@ fn default_environment(session::session sess,
         case (session::os_linux) { libc = "libc.so.6"; }
     }
 
-    ret
-        [
-            // Target bindings.
-            tup("target_os", eval::val_str(std::os::target_os())),
-            tup("target_arch", eval::val_str("x86")),
-            tup("target_libc", eval::val_str(libc)),
+    ret [// Target bindings.
+         tup("target_os", eval::val_str(std::os::target_os())),
+         tup("target_arch", eval::val_str("x86")),
+         tup("target_libc", eval::val_str(libc)),
 
-            // Build bindings.
-            tup("build_compiler", eval::val_str(argv0)),
-            tup("build_input", eval::val_str(input))
-            ];
+         // Build bindings.
+         tup("build_compiler", eval::val_str(argv0)),
+         tup("build_input", eval::val_str(input))
+         ];
 }
 
 fn parse_input(session::session sess,
@@ -286,8 +284,7 @@ fn main(vec[str] args) {
     if (opt_present(match, "O")) {
         optLevel = 2u;
         if (opt_present(match, "OptLevel")) {
-            log
-                ("error: -O and --OptLevel both provided");
+            log_err "error: -O and --OptLevel both provided";
             fail;
         }
     }
@@ -302,14 +299,13 @@ fn main(vec[str] args) {
                     case ("2") { optLevel = 2u; }
                     case ("3") { optLevel = 3u; }
                     case (_) {
-                        log
-                        ("error: optimization level needs to be between 0-3");
+                        log_err "error: optimization level needs to be between 0-3";
                         fail;
                     }
                 }
             }
             case (none[str]) {
-                log("error: expected optimization level after --OptLevel=");
+                log_err "error: expected optimization level after --OptLevel=";
                 fail;
             }
         }
