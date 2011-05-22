@@ -8,34 +8,32 @@ tag t[T] {
 type operator[T, U] = fn(&T) -> U;
 
 fn get[T](&t[T] opt) -> T {
-    alt (opt) {
+    ret alt (opt) {
         case (some[T](?x)) {
-            ret x;
+            x
         }
         case (none[T]) {
-            fail;
+            fail
         }
-    }
-    fail;   // FIXME: remove me when exhaustiveness checking works
+    };
 }
 
 fn map[T, U](&operator[T, U] f, &t[T] opt) -> t[U] {
-    alt (opt) {
+    ret alt (opt) {
         case (some[T](?x)) {
-            ret some[U](f(x));
+            some[U](f(x))
         }
         case (none[T]) {
-            ret none[U];
+            none[U]
         }
-    }
-    fail;   // FIXME: remove me when exhaustiveness checking works
+    };
 }
 
 fn is_none[T](&t[T] opt) -> bool {
-    alt (opt) {
-        case (none[T])      { ret true; }
-        case (some[T](_))   { ret false; }
-    }
+    ret alt (opt) {
+        case (none[T])      { true }
+        case (some[T](_))   { false }
+    };
 }
 
 fn from_maybe[T](&T def, &t[T] opt) -> T {
@@ -44,10 +42,10 @@ fn from_maybe[T](&T def, &t[T] opt) -> T {
 }
 
 fn maybe[T, U](&U def, fn(&T) -> U f, &t[T] opt) -> U {
-    alt (opt) {
-        case (none[T]) { ret def; }
-        case (some[T](?t)) { ret f(t); }
-    }
+    ret alt (opt) {
+        case (none[T]) { def }
+        case (some[T](?t)) { f(t) }
+    };
 }
 
 // Can be defined in terms of the above when/if we have const bind.
