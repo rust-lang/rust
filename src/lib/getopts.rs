@@ -38,8 +38,11 @@ tag occur { req; optional; multi; }
 type opt = rec(name name, hasarg hasarg, occur occur);
 
 fn mkname(str nm) -> name {
-    if (str::char_len(nm) == 1u) { ret short(str::char_at(nm, 0u)); }
-    else { ret long(nm); }
+    ret if (str::char_len(nm) == 1u) {
+        short(str::char_at(nm, 0u))
+    } else {
+        long(nm)
+    };
 }
 fn reqopt(str name) -> opt {
     ret rec(name=mkname(name), hasarg=yes, occur=req);
@@ -65,23 +68,23 @@ fn is_arg(str arg) -> bool {
     ret str::byte_len(arg) > 1u && arg.(0) == '-' as u8;
 }
 fn name_str(name nm) -> str {
-    alt (nm) {
-        case (short(?ch)) {ret str::from_char(ch);}
-        case (long(?s)) {ret s;}
-    }
+    ret alt (nm) {
+        case (short(?ch)) {str::from_char(ch)}
+        case (long(?s)) {s}
+    };
 }
 
 // FIXME rustboot workaround
 fn name_eq(name a, name b) -> bool {
-    alt (a) {
+    ret alt (a) {
         case (long(?a)) {
             alt (b) {
-                case (long(?b)) { ret str::eq(a, b); }
-                case (_) { ret false; }
+                case (long(?b)) { str::eq(a, b) }
+                case (_) { false }
             }
         }
-        case (_) { if (a == b) { ret true; } else {ret false; } }
-    }
+        case (_) { if (a == b) { true } else { false } }
+    };
 }
 fn find_opt(vec[opt] opts, name nm) -> option::t[uint] {
     auto i = 0u;
@@ -102,23 +105,23 @@ tag fail_ {
 }
 
 fn fail_str(fail_ f) -> str {
-    alt (f) {
+    ret alt (f) {
         case (argument_missing(?nm)) {
-            ret "Argument to option '" + nm + "' missing.";
+            "Argument to option '" + nm + "' missing."
         }
         case (unrecognized_option(?nm)) {
-            ret "Unrecognized option: '" + nm + "'.";
+            "Unrecognized option: '" + nm + "'."
         }
         case (option_missing(?nm)) {
-            ret "Required option '" + nm + "' missing.";
+            "Required option '" + nm + "' missing."
         }
         case (option_duplicated(?nm)) {
-            ret "option '" + nm + "' given more than once.";
+            "option '" + nm + "' given more than once."
         }
         case (unexpected_argument(?nm)) {
-            ret "Option " + nm + " does not take an argument.";
+            "Option " + nm + " does not take an argument."
         }
-    }
+    };
 }
 
 tag result {
@@ -228,13 +231,13 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
 }
 
 fn opt_vals(match m, str nm) -> vec[optval] {
-    alt (find_opt(m.opts, mkname(nm))) {
-        case (some[uint](?id)) { ret m.vals.(id); }
+    ret alt (find_opt(m.opts, mkname(nm))) {
+        case (some[uint](?id)) { m.vals.(id) }
         case (none[uint]) {
             log_err "No option '" + nm + "' defined.";
-            fail;
+            fail
         }
-    }
+    };
 }
 fn opt_val(match m, str nm) -> optval {
     ret opt_vals(m, nm).(0);
@@ -243,10 +246,10 @@ fn opt_present(match m, str nm) -> bool {
     ret vec::len[optval](opt_vals(m, nm)) > 0u;
 }
 fn opt_str(match m, str nm) -> str {
-    alt (opt_val(m, nm)) {
-        case (val(?s)) { ret s; }
-        case (_) { fail; }
-    }
+    ret alt (opt_val(m, nm)) {
+        case (val(?s)) { s }
+        case (_) { fail }
+    };
 }
 fn opt_strs(match m, str nm) -> vec[str] {
     let vec[str] acc = [];
@@ -261,10 +264,10 @@ fn opt_strs(match m, str nm) -> vec[str] {
 fn opt_maybe_str(match m, str nm) -> option::t[str] {
     auto vals = opt_vals(m, nm);
     if (vec::len[optval](vals) == 0u) { ret none[str]; }
-    alt (vals.(0)) {
-        case (val(?s)) { ret some[str](s); }
-        case (_) { ret none[str]; }
-    }
+    ret alt (vals.(0)) {
+        case (val(?s)) { some[str](s) }
+        case (_) { none[str] }
+    };
 }
 
 // Local Variables:
