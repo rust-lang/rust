@@ -9,6 +9,7 @@ tag fail_type {
   unrecognized_option;
   option_missing;
   option_duplicated;
+  unexpected_argument;
 }
 
 fn check_fail_type(opt::fail_ f, fail_type ft) {
@@ -24,6 +25,9 @@ fn check_fail_type(opt::fail_ f, fail_type ft) {
     }
     case (opt::option_duplicated(_)) {
       assert (ft == option_duplicated);
+    }
+    case (opt::unexpected_argument(_)) {
+      assert (ft == unexpected_argument);
     }
     case (_) { fail; }
   }
@@ -262,7 +266,10 @@ fn test_optflag_long_arg() {
   auto opts = [opt::optflag("test")];
   auto res = opt::getopts(args, opts);
   alt (res) {
-    case (opt::failure(?f)) { log_err opt::fail_str(f); }
+    case (opt::failure(?f)) {
+      log_err opt::fail_str(f);
+      check_fail_type(f, unexpected_argument);
+    }
     case (_) { fail; }
   }
 }
@@ -511,9 +518,7 @@ fn main() {
 
   test_optflag_long();
   test_optflag_long_missing();
-  // FIXME: Currently long flags will silently accept arguments
-  // when it should probably report an error
-  //test_optflag_long_arg();
+  test_optflag_long_arg();
   test_optflag_long_multi();
 
   test_optflag_short();

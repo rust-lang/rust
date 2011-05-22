@@ -98,6 +98,7 @@ tag fail_ {
     unrecognized_option(str);
     option_missing(str);
     option_duplicated(str);
+    unexpected_argument(str);
 }
 
 fn fail_str(fail_ f) -> str {
@@ -113,6 +114,9 @@ fn fail_str(fail_ f) -> str {
         }
         case (option_duplicated(?nm)) {
             ret "option '" + nm + "' given more than once.";
+        }
+        case (unexpected_argument(?nm)) {
+            ret "Option " + nm + " does not take an argument.";
         }
     }
 }
@@ -173,6 +177,9 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
                 }
                 alt (opts.(optid).hasarg) {
                     case (no) {
+                        if (!option::is_none[str](i_arg)) {
+                            ret failure(unexpected_argument(name_str(nm)));
+                        }
                         vec::push[optval](vals.(optid), given);
                     }
                     case (maybe) {
