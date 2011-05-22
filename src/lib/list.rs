@@ -11,49 +11,49 @@ tag list[T] {
 }
 
 fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
-  alt(ls) {
-    case (cons[T](?hd, ?tl)) {
-      auto u_ = f(hd, u);
-      // FIXME: should use 'be' here, not 'ret'. But parametric
-      // tail calls currently don't work.
-      ret foldl[T,U](*tl, u_, f);
+    alt(ls) {
+        case (cons[T](?hd, ?tl)) {
+            auto u_ = f(hd, u);
+            // FIXME: should use 'be' here, not 'ret'. But parametric
+            // tail calls currently don't work.
+            ret foldl[T,U](*tl, u_, f);
+        }
+        case (nil[T]) {
+            ret u;
+        }
     }
-    case (nil[T]) {
-      ret u;
-    }
-  }
 
-  fail; // TODO: remove me when exhaustiveness checking works
+    fail; // TODO: remove me when exhaustiveness checking works
 }
 
 fn find[T,U](&list[T] ls,
              (fn(&T) -> option::t[U]) f) -> option::t[U] {
-  alt(ls) {
-    case (cons[T](?hd, ?tl)) {
-        alt (f(hd)) {
-            case (none[U]) {
-                // FIXME: should use 'be' here, not 'ret'. But parametric tail
-                // calls currently don't work.
-                ret find[T,U](*tl, f);
-            }
-            case (some[U](?res)) {
-                ret some[U](res);
+    alt(ls) {
+        case (cons[T](?hd, ?tl)) {
+            alt (f(hd)) {
+                case (none[U]) {
+                    // FIXME: should use 'be' here, not 'ret'. But parametric
+                    // tail calls currently don't work.
+                    ret find[T,U](*tl, f);
+                }
+                case (some[U](?res)) {
+                    ret some[U](res);
+                }
             }
         }
+        case (nil[T]) {
+            ret none[U];
+        }
     }
-    case (nil[T]) {
-        ret none[U];
-    }
-  }
 
-  fail; // TODO: remove me when exhaustiveness checking works
+    fail; // TODO: remove me when exhaustiveness checking works
 }
 
 fn length[T](&list[T] ls) -> uint {
-  fn count[T](&T t, &uint u) -> uint {
-    ret u + 1u;
-  }
-  ret foldl[T,uint](ls, 0u, bind count[T](_, _));
+    fn count[T](&T t, &uint u) -> uint {
+        ret u + 1u;
+    }
+    ret foldl[T,uint](ls, 0u, bind count[T](_, _));
 }
 
 fn cdr[T](&list[T] ls) -> list[T] {
