@@ -180,9 +180,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             }
 
             fn find(&K key) -> option::t[V] {
-                // FIXME: should be 'be' but parametric tail-calls don't
-                // work at the moment.
-                ret find_common[K, V](hasher, eqer, bkts, nbkts, key);
+                be find_common[K, V](hasher, eqer, bkts, nbkts, key);
             }
 
             fn remove(&K key) -> option::t[V] {
