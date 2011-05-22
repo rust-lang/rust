@@ -23,6 +23,8 @@ export result;
 export success;
 export failure;
 
+export match;
+
 export fail_;
 export fail_str;
 
