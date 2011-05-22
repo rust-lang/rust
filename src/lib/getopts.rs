@@ -116,7 +116,7 @@ fn fail_str(fail_ f) -> str {
             "Required option '" + nm + "' missing."
         }
         case (option_duplicated(?nm)) {
-            "option '" + nm + "' given more than once."
+            "Option '" + nm + "' given more than once."
         }
         case (unexpected_argument(?nm)) {
             "Option " + nm + " does not take an argument."
