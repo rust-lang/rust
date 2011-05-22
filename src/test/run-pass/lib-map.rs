@@ -342,8 +342,26 @@ fn test_removal() {
   log "*** finished test_removal";
 }
 
+fn test_contains_key() {
+  auto key = "k";
+  auto map = map::mk_hashmap[str, str](str::hash, str::eq);
+  assert (!map.contains_key(key));
+  map.insert(key, "val");
+  assert (map.contains_key(key));
+}
+
+fn test_find() {
+  auto key = "k";
+  auto map = map::mk_hashmap[str, str](str::hash, str::eq);
+  assert (std::option::is_none(map.find(key)));
+  map.insert(key, "val");
+  assert (std::option::get(map.find(key)) == "val");
+}
+
 fn main() {
   test_simple();
   test_growth();
   test_removal();
+  test_contains_key();
+  test_find();
 }
