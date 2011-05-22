@@ -37,12 +37,12 @@ fn default_environment(session::session sess,
                        str argv0,
                        str input) -> eval::env {
 
-    auto libc = "libc.so";
-    alt (sess.get_targ_cfg().os) {
-        case (session::os_win32) { libc = "msvcrt.dll"; }
-        case (session::os_macos) { libc = "libc.dylib"; }
-        case (session::os_linux) { libc = "libc.so.6"; }
-    }
+    auto libc = alt (sess.get_targ_cfg().os) {
+        case (session::os_win32) { "msvcrt.dll" }
+        case (session::os_macos) { "libc.dylib" }
+        case (session::os_linux) { "libc.so.6" }
+        case (_) { "libc.so" }
+    };
 
     ret [// Target bindings.
          tup("target_os", eval::val_str(std::os::target_os())),
@@ -58,13 +58,14 @@ fn default_environment(session::session sess,
 fn parse_input(session::session sess,
                parser::parser p,
                str input) -> @ast::crate {
-    if (str::ends_with(input, ".rc")) {
-        ret parser::parse_crate_from_crate_file(p);
+    ret if (str::ends_with(input, ".rc")) {
+        parser::parse_crate_from_crate_file(p)
     } else if (str::ends_with(input, ".rs")) {
-        ret parser::parse_crate_from_source_file(p);
-    }
-    sess.err("unknown input file type: " + input);
-    fail;
+       parser::parse_crate_from_source_file(p)
+    } else {
+        sess.err("unknown input file type: " + input);
+        fail
+    };
 }
 
 fn time[T](bool do_it, str what, fn()->T thunk) -> T {
@@ -174,31 +175,36 @@ options:
 }
 
 fn get_os(str triple) -> session::os {
-    if (str::find(triple, "win32") >= 0 ||
-        str::find(triple, "mingw32") >= 0 ) {
-        ret session::os_win32;
-    } else if (str::find(triple, "darwin") >= 0) { ret session::os_macos; }
-    else if (str::find(triple, "linux") >= 0) { ret session::os_linux; }
-    else { log_err "Unknown operating system!"; fail; }
+    ret if (str::find(triple, "win32") >= 0 ||
+            str::find(triple, "mingw32") >= 0 ) {
+        session::os_win32
+    } else if (str::find(triple, "darwin") >= 0) {
+        session::os_macos
+    } else if (str::find(triple, "linux") >= 0) {
+        session::os_linux
+    } else {
+        log_err "Unknown operating system!";
+        fail
+    };
 }
 
 fn get_arch(str triple) -> session::arch {
-    if (str::find(triple, "i386") >= 0 ||
-        str::find(triple, "i486") >= 0 ||
-        str::find(triple, "i586") >= 0 ||
-        str::find(triple, "i686") >= 0 ||
-        str::find(triple, "i786") >= 0 ) {
-        ret session::arch_x86;
+    ret if (str::find(triple, "i386") >= 0 ||
+            str::find(triple, "i486") >= 0 ||
+            str::find(triple, "i586") >= 0 ||
+            str::find(triple, "i686") >= 0 ||
+            str::find(triple, "i786") >= 0 ) {
+        session::arch_x86
     } else if (str::find(triple, "x86_64") >= 0) {
-        ret session::arch_x64;
+        session::arch_x64
     } else if (str::find(triple, "arm") >= 0 ||
         str::find(triple, "xscale") >= 0 ) {
-        ret session::arch_arm;
+        session::arch_arm
     }
     else {
         log_err ("Unknown architecture! " + triple);
-        fail;
-    }
+        fail
+    };
 }
 
 fn get_default_sysroot(str binary) -> str {
@@ -226,16 +232,17 @@ fn build_session_options(str binary, getopts::match match)
     auto shared = opt_present(match, "shared");
     auto library_search_paths = getopts::opt_strs(match, "L");
 
-    auto output_type = link::output_type_exe;
-    if (opt_present(match, "parse-only")) {
-        output_type = link::output_type_none;
+    auto output_type = if (opt_present(match, "parse-only")) {
+        link::output_type_none
     } else if (opt_present(match, "S")) {
-        output_type = link::output_type_assembly;
+        link::output_type_assembly
     } else if (opt_present(match, "c")) {
-        output_type = link::output_type_object;
+        link::output_type_object
     } else if (opt_present(match, "emit-llvm")) {
-        output_type = link::output_type_bitcode;
-    }
+        link::output_type_bitcode
+    } else {
+        link::output_type_exe
+    };
 
     auto verify = !opt_present(match, "noverify");
     auto save_temps = opt_present(match, "save-temps");
@@ -246,46 +253,35 @@ fn build_session_options(str binary, getopts::match match)
     auto run_typestate = !opt_present(match, "no-typestate");
     auto sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
 
-    let uint optLevel = 0u;
-    if (opt_present(match, "O")) {
-        optLevel = 2u;
+    let uint opt_level = if (opt_present(match, "O")) {
         if (opt_present(match, "OptLevel")) {
             log_err "error: -O and --OptLevel both provided";
             fail;
         }
-    }
-
-    if (opt_present(match, "OptLevel")) {
-        auto opt = getopts::opt_maybe_str(match, "OptLevel");
-        alt (opt) {
-            case (some[str](?s)) {
-                alt (s) {
-                    case ("0") { optLevel = 0u; }
-                    case ("1") { optLevel = 1u; }
-                    case ("2") { optLevel = 2u; }
-                    case ("3") { optLevel = 3u; }
-                    case (_) {
-                        log_err "error: optimization level needs to be between 0-3";
-                        fail;
-                    }
-                }
-            }
-            case (none[str]) {
-                log_err "error: expected optimization level after --OptLevel=";
-                fail;
+        2u
+    } else if (opt_present(match, "OptLevel")) {
+        alt (getopts::opt_str(match, "OptLevel")) {
+            case ("0") { 0u }
+            case ("1") { 1u }
+            case ("2") { 2u }
+            case ("3") { 3u }
+            case (_) {
+                log_err "error: optimization level needs to be between 0-3";
+                fail
             }
         }
-    }
+    } else {
+        0u
+    };
 
-    auto sysroot;
-    alt (sysroot_opt) {
-        case (none[str]) { sysroot = get_default_sysroot(binary); }
-        case (some[str](?s)) { sysroot = s; }
-    }
+    auto sysroot = alt (sysroot_opt) {
+        case (none[str]) { get_default_sysroot(binary) }
+        case (some[str](?s)) { s }
+    };
 
     let @session::options sopts =
         @rec(shared = shared,
-             optimize = optLevel,
+             optimize = opt_level,
              debuginfo = debuginfo,
              verify = verify,
              run_typestate = run_typestate,
