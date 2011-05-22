@@ -10,6 +10,17 @@ tag list[T] {
     nil;
 }
 
+fn from_vec[T](vec[T] v) -> list[T] {
+    auto l = nil[T];
+    // FIXME: This would be faster and more space efficient if it looped over
+    // a reverse vector iterator. Unfortunately generic iterators seem not to
+    // work yet.
+    for (T item in vec::reversed(v)) {
+        l = cons[T](item, @l);
+    }
+    ret l;
+}
+
 fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
     alt(ls) {
         case (cons[T](?hd, ?tl)) {
