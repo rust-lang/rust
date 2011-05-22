@@ -1,7 +1,3 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-
 // Regression test for issue #374
 
 use std;
