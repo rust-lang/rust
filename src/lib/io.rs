@@ -48,11 +48,11 @@ type reader =
     };
 
 fn convert_whence(seek_style whence) -> int {
-    alt (whence) {
-        case (seek_set) {ret 0;}
-        case (seek_cur) {ret 1;}
-        case (seek_end) {ret 2;}
-    }
+    ret alt (whence) {
+        case (seek_set) {0}
+        case (seek_cur) {1}
+        case (seek_end) {2}
+    };
 }
 
 state obj FILE_buf_reader(os::libc::FILE f, bool must_close) {
