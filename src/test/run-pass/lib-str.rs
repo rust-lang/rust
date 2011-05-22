@@ -131,6 +131,14 @@ fn test_slice() {
                            500000u)));
 }
 
+fn test_ends_with() {
+  assert (str::ends_with("", ""));
+  assert (str::ends_with("abc", ""));
+  assert (str::ends_with("abc", "c"));
+  assert (!str::ends_with("a", "abc"));
+  assert (!str::ends_with("", "abc"));
+}
+
 fn main() {
   test_bytes_len();
   test_index_and_rindex();
@@ -141,4 +149,5 @@ fn main() {
   test_connect();
   test_to_upper();
   test_slice();
+  test_ends_with();
 }
