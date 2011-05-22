@@ -32,19 +32,19 @@ iter range(int lo, int hi) -> int {
 fn to_str(int n, uint radix) -> str
 {
     assert (0u < radix && radix <= 16u);
-    if (n < 0) {
-        ret "-" + uint::to_str((-n) as uint, radix);
+    ret if (n < 0) {
+        "-" + uint::to_str((-n) as uint, radix)
     } else {
-        ret uint::to_str(n as uint, radix);
-    }
+        uint::to_str(n as uint, radix)
+    };
 }
 
 fn pow(int base, uint exponent) -> int {
 
-    if (exponent == 0u) {
-        ret 1;
+    ret if (exponent == 0u) {
+        1
     } else if (base == 0) {
-        ret 0;
+        0
     } else {
         auto accum = base;
         auto count = exponent;
@@ -52,8 +52,8 @@ fn pow(int base, uint exponent) -> int {
             accum *= base;
             count -= 1u;
         }
-        ret accum;
-    }
+        accum
+    };
 }
 
 // Local Variables:
