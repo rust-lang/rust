@@ -25,15 +25,12 @@ fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
     alt(ls) {
         case (cons[T](?hd, ?tl)) {
             auto u_ = f(hd, u);
-            // FIXME: should use 'be' here, not 'ret'. But parametric
-            // tail calls currently don't work.
-            ret foldl[T,U](*tl, u_, f);
+            be foldl[T,U](*tl, u_, f);
         }
         case (nil[T]) {
             ret u;
         }
     }
-
     fail; // TODO: remove me when exhaustiveness checking works
 }
 
@@ -43,9 +40,7 @@ fn find[T,U](&list[T] ls,
         case (cons[T](?hd, ?tl)) {
             alt (f(hd)) {
                 case (none[U]) {
-                    // FIXME: should use 'be' here, not 'ret'. But parametric
-                    // tail calls currently don't work.
-                    ret find[T,U](*tl, f);
+                    be find[T,U](*tl, f);
                 }
                 case (some[U](?res)) {
                     ret some[U](res);
