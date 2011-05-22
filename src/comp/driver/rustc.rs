@@ -56,8 +56,8 @@ fn default_environment(session::session sess,
 }
 
 fn parse_input(session::session sess,
-                      parser::parser p,
-                      str input) -> @ast::crate {
+               parser::parser p,
+               str input) -> @ast::crate {
     if (str::ends_with(input, ".rc")) {
         ret parser::parse_crate_from_crate_file(p);
     } else if (str::ends_with(input, ".rs")) {
@@ -207,8 +207,7 @@ fn get_default_sysroot(str binary) -> str {
     ret dirname;
 }
 
-fn main(vec[str] args) {
-
+fn build_target_config() -> @session::config {
     let str triple =
         std::str::rustrt::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
 
@@ -219,45 +218,12 @@ fn main(vec[str] args) {
              uint_type = common::ty_u32,
              float_type = common::ty_f64);
 
-    auto opts = [optflag("h"), optflag("help"),
-                    optflag("v"), optflag("version"),
-                    optflag("glue"), optflag("emit-llvm"),
-                    optflag("pretty"), optflag("typed-pretty"),
-                    optflag("ls"), optflag("parse-only"),
-                    optflag("O"), optopt("OptLevel"),
-                    optflag("shared"), optmulti("L"),
-                    optflag("S"), optflag("c"), optopt("o"), optflag("g"),
-                    optflag("save-temps"), optopt("sysroot"),
-                    optflag("stats"),
-                    optflag("time-passes"), optflag("time-llvm-passes"),
-                    optflag("no-typestate"), optflag("noverify")];
-    auto binary = vec::shift[str](args);
-    auto match;
-    alt (getopts::getopts(args, opts)) {
-        case (getopts::failure(?f)) {
-            log_err #fmt("error: %s", getopts::fail_str(f));
-            fail;
-        }
-        case (getopts::success(?m)) { match = m; }
-    }
-    if (opt_present(match, "h") ||
-        opt_present(match, "help")) {
-        usage(binary);
-        ret;
-    }
+    ret target_cfg;
+}
 
-    if (opt_present(match, "v") ||
-        opt_present(match, "version")) {
-        version(binary);
-        ret;
-    }
-
-    auto pretty = opt_present(match, "pretty");
-    auto typed_pretty = opt_present(match, "typed-pretty");
-    auto ls = opt_present(match, "ls");
-    auto glue = opt_present(match, "glue");
+fn build_session_options(str binary, getopts::match match)
+    -> @session::options {
     auto shared = opt_present(match, "shared");
-    auto output_file = getopts::opt_maybe_str(match, "o");
     auto library_search_paths = getopts::opt_strs(match, "L");
 
     auto output_type = link::output_type_exe;
@@ -331,15 +297,63 @@ fn main(vec[str] args) {
              library_search_paths = library_search_paths,
              sysroot = sysroot);
 
+    ret sopts;
+}
+
+fn build_session(@session::options sopts) -> session::session {
+    auto target_cfg = build_target_config();
     auto crate_cache = common::new_int_hash[session::crate_metadata]();
     auto target_crate_num = 0;
     let vec[@ast::meta_item] md = [];
     auto sess =
         session::session(target_crate_num, target_cfg, sopts,
-                        crate_cache, md, front::codemap::new_codemap());
+                         crate_cache, md, front::codemap::new_codemap());
+    ret sess;
+}
+
+fn main(vec[str] args) {
+
+    auto opts = [optflag("h"), optflag("help"),
+                 optflag("v"), optflag("version"),
+                 optflag("glue"), optflag("emit-llvm"),
+                 optflag("pretty"), optflag("typed-pretty"),
+                 optflag("ls"), optflag("parse-only"),
+                 optflag("O"), optopt("OptLevel"),
+                 optflag("shared"), optmulti("L"),
+                 optflag("S"), optflag("c"), optopt("o"), optflag("g"),
+                 optflag("save-temps"), optopt("sysroot"),
+                 optflag("stats"),
+                 optflag("time-passes"), optflag("time-llvm-passes"),
+                 optflag("no-typestate"), optflag("noverify")];
+
+    auto binary = vec::shift[str](args);
+    auto match = alt (getopts::getopts(args, opts)) {
+        case (getopts::success(?m)) { m }
+        case (getopts::failure(?f)) {
+            log_err #fmt("error: %s", getopts::fail_str(f));
+            fail
+        }
+    };
+
+    if (opt_present(match, "h") ||
+        opt_present(match, "help")) {
+        usage(binary);
+        ret;
+    }
+
+    if (opt_present(match, "v") ||
+        opt_present(match, "version")) {
+        version(binary);
+        ret;
+    }
+
+    auto sopts = build_session_options(binary, match);
+    auto sess = build_session(sopts);
 
     auto n_inputs = vec::len[str](match.free);
 
+    auto output_file = getopts::opt_maybe_str(match, "o");
+    auto glue = opt_present(match, "glue");
     if (glue) {
         if (n_inputs > 0u) {
             sess.err("No input files allowed with --glue.");
@@ -357,7 +371,10 @@ fn main(vec[str] args) {
 
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
-    auto env = default_environment(sess, args.(0), ifile);
+    auto env = default_environment(sess, binary, ifile);
+    auto pretty = opt_present(match, "pretty");
+    auto typed_pretty = opt_present(match, "typed-pretty");
+    auto ls = opt_present(match, "ls");
     if (pretty || typed_pretty) {
         pretty_print_input(sess, env, ifile, typed_pretty);
     } else if (ls) {
@@ -368,7 +385,7 @@ fn main(vec[str] args) {
                 let vec[str] parts = str::split(ifile, '.' as u8);
                 vec::pop[str](parts);
                 saved_out_filename = parts.(0);
-                alt (output_type) {
+                alt (sopts.output_type) {
                     case (link::output_type_none) { parts += ["pp"]; }
                     case (link::output_type_bitcode) { parts += ["bc"]; }
                     case (link::output_type_assembly) { parts += ["s"]; }
@@ -389,7 +406,7 @@ fn main(vec[str] args) {
 
     // If the user wants an exe generated we need to invoke
     // gcc to link the object file with some libs
-    if (output_type == link::output_type_exe) {
+    if (sopts.output_type == link::output_type_exe) {
 
         //FIXME: Should we make the 'stage3's variable here?
         let str glu = "stage3/glue.o";
@@ -438,7 +455,7 @@ fn main(vec[str] args) {
         }
 
         // Remove the temporary object file if we aren't saving temps
-        if (!save_temps) {
+        if (!sopts.save_temps) {
             run::run_program("rm", [saved_out_filename + ".o"]);
         }
     }
