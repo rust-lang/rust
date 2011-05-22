@@ -368,16 +368,16 @@ fn starts_with(str haystack, str needle) -> bool {
 fn ends_with(str haystack, str needle) -> bool {
     let uint haystack_len = byte_len(haystack);
     let uint needle_len = byte_len(needle);
-    if (needle_len == 0u) {
-        ret true;
-    }
-    if (needle_len > haystack_len) {
-        ret false;
-    }
-    ret eq(substr(haystack,
+    ret if (needle_len == 0u) {
+        true
+    } else if (needle_len > haystack_len) {
+        false
+    } else {
+        eq(substr(haystack,
                   haystack_len - needle_len,
                   needle_len),
-           needle);
+           needle)
+    };
 }
 
 fn substr(str s, uint begin, uint len) -> str {
