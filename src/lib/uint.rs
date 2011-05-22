@@ -58,25 +58,25 @@ fn to_str(uint num, uint radix) -> str
 
     assert (0u < radix && radix <= 16u);
     fn digit(uint n) -> char {
-        alt (n) {
-            case (0u) { ret '0'; }
-            case (1u) { ret '1'; }
-            case (2u) { ret '2'; }
-            case (3u) { ret '3'; }
-            case (4u) { ret '4'; }
-            case (5u) { ret '5'; }
-            case (6u) { ret '6'; }
-            case (7u) { ret '7'; }
-            case (8u) { ret '8'; }
-            case (9u) { ret '9'; }
-            case (10u) { ret 'a'; }
-            case (11u) { ret 'b'; }
-            case (12u) { ret 'c'; }
-            case (13u) { ret 'd'; }
-            case (14u) { ret 'e'; }
-            case (15u) { ret 'f'; }
-        }
-        fail;
+        ret alt (n) {
+            case (0u) { '0' }
+            case (1u) { '1' }
+            case (2u) { '2' }
+            case (3u) { '3' }
+            case (4u) { '4' }
+            case (5u) { '5' }
+            case (6u) { '6' }
+            case (7u) { '7' }
+            case (8u) { '8' }
+            case (9u) { '9' }
+            case (10u) { 'a' }
+            case (11u) { 'b' }
+            case (12u) { 'c' }
+            case (13u) { 'd' }
+            case (14u) { 'e' }
+            case (15u) { 'f' }
+            case (_) { fail }
+        };
     }
 
     if (n == 0u) { ret "0"; }
