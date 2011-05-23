@@ -72,9 +72,9 @@ fn check_states_expr(&fn_ctxt fcx, @expr e) -> () {
         auto s = "";
         s += ("Unsatisfied precondition constraint for expression:\n");
         s += util::common::expr_to_str(e);
-        s += ("Precondition: ");
+        s += ("\nPrecondition:\n");
         s += bitv_to_str(fcx.enclosing, prec);
-        s += ("Prestate: ");
+        s += ("\nPrestate:\n");
         s += bitv_to_str(fcx.enclosing, pres);
         fcx.ccx.tcx.sess.span_err(e.span, s);
     }
@@ -98,9 +98,9 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
         auto ss = "";
         ss += ("Unsatisfied precondition constraint for statement:\n");
         ss += util::common::stmt_to_str(s);
-        ss += ("Precondition: ");
+        ss += ("\nPrecondition:\n");
         ss += bitv_to_str(fcx.enclosing, prec);
-        ss += ("Prestate: ");
+        ss += ("\nPrestate: \n");
         ss += bitv_to_str(fcx.enclosing, pres);
         fcx.ccx.tcx.sess.span_err(s.span, ss);
     }
