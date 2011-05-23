@@ -1800,8 +1800,9 @@ the value has the corresponding @emph{function type}, and can be used
 otherwise exactly as a function item (with a minor additional cost of calling
 the function, as such a call is indirect). @xref{Ref.Type.Fn}.
 
-Every control path in a function ends with either a @code{ret} or @code{be}
-expression. If a control path lacks a @code{ret} expression in source code, an
+Every control path in a function ends with a @code{ret} or @code{be}
+expression or with a diverging expression (described later in this
+section). If a control path lacks a @code{ret} expression in source code, an
 implicit @code{ret} expression is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
 
@@ -1812,6 +1813,44 @@ fn add(int x, int y) -> int @{
 @}
 @end example
 
+A special kind of function can be declared with a @code{!} character where the
+output slot type would normally be. For example:
+@example
+fn my_err(str s) -> ! @{
+    log s;
+    fail;
+@}
+@end example
+
+We call such functions ``diverging'' because they never return a value to the
+caller. Every control path in a diverging function must end with a @code{fail}
+or a call to another diverging function on every control path. The @code{!}
+annotation does @emph{not} denote a type. Rather, the result type
+of a diverging function is a special type called @math{\bot} (``bottom'') that
+unifies with any type. Rust has no syntax for @math{\bot}.
+
+It might be necessary to declare a diverging function because as mentioned
+previously, the typechecker checks that every control path in a function ends
+with a @code{ret}, @code{be}, or diverging expression. So, if @code{my_err}
+were declared without the @code{!} annotation, the following code would not
+typecheck:
+@example
+fn f(int i) -> int @{
+   if (i == 42) {
+     ret 42;
+   }
+   else {
+     my_err("Bad number!");
+   }
+@}
+@end example
+
+The typechecker would complain that @code{f} doesn't return a value in the
+@code{else} branch. Adding the @code{!} annotation on @code{my_err} would
+express that @code{f} requires no explicit @code{ret}, as if it returns
+control to the caller, it returns a value (true because it never returns
+control).
+ 
 @node       Ref.Item.Pred
 @subsection Ref.Item.Pred
 @c * Ref.Item.Pred::            Items defining predicates.
