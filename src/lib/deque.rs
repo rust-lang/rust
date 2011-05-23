@@ -30,8 +30,10 @@ fn create[T]() -> t[T] {
     fn grow[T](uint nelts, uint lo, vec[cell[T]] elts) -> vec[cell[T]] {
         assert (nelts == vec::len[cell[T]](elts));
 
+        // FIXME: Making the vector argument an alias is a workaround for
+        // issue #375
         fn fill[T](uint i, uint nelts, uint lo,
-                   vec[cell[T]] old) -> cell[T] {
+                   &vec[cell[T]] old) -> cell[T] {
             ret if (i < nelts) {
                 old.((lo + i) % nelts)
             } else {
