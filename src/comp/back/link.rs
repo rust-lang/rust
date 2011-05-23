@@ -115,6 +115,10 @@ mod write {
             }
         }
 
+        if (opts.verify) {
+            llvm::LLVMAddVerifierPass(pm.llpm);
+        }
+
         // FIXME: This is mostly a copy of the bits of opt's -O2 that are
         // available in the C api.
         // FIXME2: We might want to add optimization levels like -O1, -O2,
