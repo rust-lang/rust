@@ -410,37 +410,18 @@ fn scan_number(char c, &reader rdr) -> token::token {
     }
 }
 
-fn scan_numeric_escape(&reader rdr) -> char {
-
-    auto n_hex_digits = 0;
-
-    assert (rdr.curr() == '\\');
-
-    alt (rdr.next()) {
-        case ('x') { n_hex_digits = 2; }
-        case ('u') { n_hex_digits = 4; }
-        case ('U') { n_hex_digits = 8; }
-        case (?c) {
-            rdr.err(#fmt("unknown numeric character escape: %d", c as int));
-            fail;
-        }
-    }
-
-    rdr.bump(); // advance curr past \
-
-    auto n = rdr.next();
+fn scan_numeric_escape(&reader rdr, uint n_hex_digits) -> char {
     auto accum_int = 0;
-
-    while (n_hex_digits != 0) {
+    while (n_hex_digits != 0u) {
+        auto n = rdr.curr();
+        rdr.bump();
         if (!is_hex_digit(n)) {
             rdr.err(#fmt("illegal numeric character escape: %d", n as int));
             fail;
         }
         accum_int *= 16;
         accum_int += hex_digit_val(n);
-        rdr.bump();
-        n = rdr.next();
-        n_hex_digits -= 1;
+        n_hex_digits -= 1u;
     }
     ret accum_int as char;
 }
@@ -583,17 +564,20 @@ fn next_token(&reader rdr) -> token::token {
         case ('\'') {
             rdr.bump();
             auto c2 = rdr.curr();
+            rdr.bump();
             if (c2 == '\\') {
-                alt (rdr.next()) {
+                auto escaped = rdr.curr();
+                rdr.bump();
+                alt (escaped) {
                     case ('n') { c2 = '\n'; }
                     case ('r') { c2 = '\r'; }
                     case ('t') { c2 = '\t'; }
                     case ('\\') { c2 = '\\'; }
                     case ('\'') { c2 = '\''; }
 
-                    case ('x') { c2 = scan_numeric_escape(rdr); }
-                    case ('u') { c2 = scan_numeric_escape(rdr); }
-                    case ('U') { c2 = scan_numeric_escape(rdr); }
+                    case ('x') { c2 = scan_numeric_escape(rdr, 2u); }
+                    case ('u') { c2 = scan_numeric_escape(rdr, 4u); }
+                    case ('U') { c2 = scan_numeric_escape(rdr, 8u); }
 
                     case (?c2) {
                         rdr.err(#fmt("unknown character escape: %d",
@@ -601,14 +585,12 @@ fn next_token(&reader rdr) -> token::token {
                         fail;
                     }
                 }
-                rdr.bump();
             }
 
-            if (rdr.next() != '\'') {
+            if (rdr.curr() != '\'') {
                 rdr.err("unterminated character constant");
                 fail;
             }
-            rdr.bump(); // advance curr to closing '
             rdr.bump(); // advance curr past token
             ret token::LIT_CHAR(c2);
         }
@@ -616,43 +598,42 @@ fn next_token(&reader rdr) -> token::token {
         case ('"') {
             rdr.bump();
             while (rdr.curr() != '"') {
-                alt (rdr.curr()) {
+                auto ch = rdr.curr();
+                rdr.bump();
+                alt (ch) {
                     case ('\\') {
-                        alt (rdr.next()) {
+                        auto escaped = rdr.curr();
+                        rdr.bump();
+                        alt (escaped) {
                             case ('n') {
-                                rdr.bump();
                                 str::push_byte(accum_str, '\n' as u8);
                             }
                             case ('r') {
-                                rdr.bump();
                                 str::push_byte(accum_str, '\r' as u8);
                             }
                             case ('t') {
-                                rdr.bump();
                                 str::push_byte(accum_str, '\t' as u8);
                             }
                             case ('\\') {
-                                rdr.bump();
                                 str::push_byte(accum_str, '\\' as u8);
                             }
                             case ('"') {
-                                rdr.bump();
                                 str::push_byte(accum_str, '"' as u8);
                             }
 
                             case ('x') {
                                 str::push_char(accum_str,
-                                               scan_numeric_escape(rdr));
+                                               scan_numeric_escape(rdr, 2u));
                             }
 
                             case ('u') {
                                 str::push_char(accum_str,
-                                               scan_numeric_escape(rdr));
+                                               scan_numeric_escape(rdr, 4u));
                             }
 
                             case ('U') {
                                 str::push_char(accum_str,
-                                               scan_numeric_escape(rdr));
+                                               scan_numeric_escape(rdr, 8u));
                             }
 
                             case (?c2) {
@@ -663,10 +644,9 @@ fn next_token(&reader rdr) -> token::token {
                         }
                     }
                     case (_) {
-                        str::push_char(accum_str, rdr.curr());
+                        str::push_char(accum_str, ch);
                     }
                 }
-                rdr.bump();
             }
             rdr.bump();
             ret token::LIT_STR(interner::intern[str](*rdr.get_interner(),
