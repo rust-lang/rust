@@ -1836,12 +1836,12 @@ were declared without the @code{!} annotation, the following code would not
 typecheck:
 @example
 fn f(int i) -> int @{
-   if (i == 42) {
+   if (i == 42) @{
      ret 42;
-   }
-   else {
+   @}
+   else @{
      my_err("Bad number!");
-   }
+   @}
 @}
 @end example
 
