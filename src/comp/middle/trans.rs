@@ -5867,7 +5867,9 @@ fn trans_spawn(&@block_ctxt cx,
     
     // Translate the arguments, remembering their types and where the values
     // ended up.
-    let vec[ty::t] arg_tys = [];
+
+    // There are 3 integers, for magic.
+    let vec[ty::t] arg_tys = [ty::idx_int, ty::idx_int, ty::idx_int];
     let vec[ValueRef] arg_vals = [];
     for(@ast::expr e in args) {
         auto arg = trans_expr(bcx, e);
@@ -5881,14 +5883,15 @@ fn trans_spawn(&@block_ctxt cx,
     }
 
     // Make the tuple. We have to reverse the types first though.
-    vec::reverse[ty::t](arg_tys);
-    vec::reverse[ValueRef](arg_vals);
+    //vec::reverse[ty::t](arg_tys);
+    //vec::reverse[ValueRef](arg_vals);
     auto args_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
     
     // Allocate and fill the tuple.
     auto llargs = alloc_ty(bcx, args_ty);
 
-    auto i = vec::len[ValueRef](arg_vals) - 1u;
+    // 3 to skip all the magic
+    auto i = 3u;
     for(ValueRef v in arg_vals) {
         // log_err #fmt("ty(llargs) = %s", 
         //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
@@ -5900,7 +5903,7 @@ fn trans_spawn(&@block_ctxt cx,
 
         bcx.build.Store(v, target);
 
-        i -= 1u;
+        i += 1u;
     }
 
     // Now we're ready to do the upcall.
@@ -5927,8 +5930,6 @@ fn trans_spawn(&@block_ctxt cx,
     auto fnptr = trans_lval(bcx, func).res;
     bcx = fnptr.bcx;
     
-    auto num_args = vec::len[@ast::expr](args);
-
     auto llfnptr = bcx.build.GEP(fnptr.val,
                                  [C_int(0), C_int(0)]);
     log_err "Casting llfnptr";
@@ -5941,6 +5942,8 @@ fn trans_spawn(&@block_ctxt cx,
     log_err "Cassting llargs";
     auto llargs_i = bcx.build.PointerCast(llargs.val,
                                    T_int());
+
+    auto args_size = size_of(bcx, args_ty).val;
 
     log_err "Building call to start_task";
     log_err #fmt("ty(start_task) = %s", 
@@ -5958,12 +5961,12 @@ fn trans_spawn(&@block_ctxt cx,
     log_err #fmt("ty(llargs) = %s", 
                  val_str(bcx.fcx.lcx.ccx.tn,
                          llargs_i));
-    log_err #fmt("ty(num_args) = %s", 
+    log_err #fmt("ty(args_size) = %s", 
                  val_str(bcx.fcx.lcx.ccx.tn,
-                         C_int(num_args as int)));
+                         args_size));
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task,
-                    llfnptr_i, llargs_i, C_int(num_args as int)]);
+                    llfnptr_i, llargs_i, args_size]);
     log_err "Done";
 
     /*

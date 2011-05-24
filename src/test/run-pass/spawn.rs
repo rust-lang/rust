@@ -8,6 +8,6 @@ fn main() {
 }
 
 fn child(int i) {
-   log i;
+   log_err i;
 }
 
