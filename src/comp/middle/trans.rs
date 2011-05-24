@@ -503,7 +503,7 @@ fn T_crate(&type_names tn) -> TypeRef {
                           T_int(),      // size_t activate_glue
                           T_int(),      // size_t yield_glue
                           T_int(),      // size_t unwind_glue
-                          T_int(),      // size_t gc_glue
+                          T_int(),      // size_t pad
                           T_int(),      // size_t pad
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
@@ -7668,10 +7668,10 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      C_null(T_int()),     // ptrdiff_t debug_info_off
                      C_null(T_int()),     // size_t debug_info_sz
                      C_null(T_int()),     // size_t pad
-                     C_null(T_int()),     // size_t pad
                      C_null(T_int()),     // size_t pad2
-                     C_null(T_int()),     // size_t gc_glue_off
                      C_null(T_int()),     // size_t pad3
+                     C_null(T_int()),     // size_t pad4
+                     C_null(T_int()),     // size_t pad5
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int())      // int n_libs

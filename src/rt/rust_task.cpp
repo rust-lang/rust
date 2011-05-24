@@ -380,7 +380,7 @@ rust_task::gc(size_t nargs)
 {
     DLOG(dom, task,
              "task %s @0x%" PRIxPTR " garbage collecting", name, this);
-    run_after_return(nargs, dom->root_crate->get_gc_glue());
+    // run_after_return(nargs, rust_gc_glue);
 }
 
 void
