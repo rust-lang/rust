@@ -62,7 +62,6 @@ upcall_new_thread
 upcall_new_vec
 upcall_recv
 upcall_require_c_sym
-upcall_require_rust_sym
 upcall_send
 upcall_sleep
 upcall_start_task
