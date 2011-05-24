@@ -1,6 +1,3 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 iter x() -> int {
 }
 
