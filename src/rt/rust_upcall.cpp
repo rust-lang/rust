@@ -436,48 +436,6 @@ upcall_vec_grow(rust_task *task,
     return v;
 }
 
-static rust_crate_cache::c_sym *
-fetch_c_sym(rust_task *task,
-            rust_crate const *curr_crate,
-            size_t lib_num,
-            size_t c_sym_num,
-            char const *library,
-            char const *symbol) {
-    rust_crate_cache *cache = task->get_crate_cache(curr_crate);
-    rust_crate_cache::lib *l = cache->get_lib(lib_num, library);
-    return cache->get_c_sym(c_sym_num, l, symbol);
-}
-
-extern "C" CDECL uintptr_t
-upcall_require_c_sym(rust_task *task,
-                     rust_crate const *curr_crate,
-                     size_t lib_num, // # of lib
-                     size_t c_sym_num, // # of C sym
-                     char const *library,
-                     char const *symbol) {
-    LOG_UPCALL_ENTRY(task);
-
-    LOG(task, cache, "upcall require c sym: lib #%" PRIdPTR
-        " = %s, c_sym #%" PRIdPTR
-        " = %s"
-        ", curr_crate = 0x%" PRIxPTR, lib_num, library, c_sym_num,
-        symbol, curr_crate);
-
-    rust_crate_cache::c_sym *c = fetch_c_sym(task, curr_crate, lib_num,
-                                             c_sym_num, library, symbol);
-
-    uintptr_t addr = c->get_val();
-    if (addr) {
-        LOG(task, cache,
-                  "found-or-cached addr: 0x%" PRIxPTR, addr);
-    } else {
-        LOG_ERR(task, cache, "failed to resolve symbol %s in %s",
-                symbol, library);
-        task->fail(6);
-    }
-    return addr;
-}
-
 extern "C" CDECL type_desc *
 upcall_get_type_desc(rust_task *task,
                      rust_crate const *curr_crate,

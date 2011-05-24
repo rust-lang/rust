@@ -34,7 +34,6 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
 {
@@ -49,7 +48,6 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
 {
@@ -64,7 +62,6 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
 {
@@ -80,7 +77,6 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
 {
@@ -97,7 +93,6 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
 {
@@ -114,6 +109,5 @@
    fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
    fun:_ZN16rust_crate_cache7get_libEmPKc
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
-   fun:upcall_require_c_sym
 }
 
