@@ -153,7 +153,6 @@ mod write {
                                               True,  // unit-at-a-time
                                               True,  // unroll loops
                                               True,  // simplify lib calls
-                                              True,  // have exceptions
                                               threshold); // inline threshold
         }
 

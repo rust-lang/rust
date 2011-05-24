@@ -88,6 +88,7 @@ const uint LLVMNoImplicitFloatAttribute = 8388608u;
 const uint LLVMNakedAttribute = 16777216u;
 const uint LLVMInlineHintAttribute = 33554432u;
 const uint LLVMStackAttribute = 469762048u;     // 7 << 26
+const uint LLVMUWTableAttribute = 1073741824u; // 1 << 30
 
 
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
@@ -813,7 +814,6 @@ native mod llvm = llvm_lib {
                                    Bool UnitAtATime,
                                    Bool UnrollLoops,
                                    Bool SimplifyLibCalls,
-                                   Bool HaveExceptions,
                                    uint InliningThreshold);
 
     /** Destroys a memory buffer. */

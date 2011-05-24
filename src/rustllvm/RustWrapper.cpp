@@ -47,7 +47,7 @@ extern "C" const char *LLVMRustGetLastError(void) {
 extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
 extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
     unsigned int OptimizationLevel, bool OptimizeSize, bool UnitAtATime,
-    bool UnrollLoops, bool SimplifyLibCalls, bool HaveExceptions,
+    bool UnrollLoops, bool SimplifyLibCalls,
     unsigned int InliningThreshold);
 
 int *RustHackToFetchPassesO = (int*)LLVMAddBasicAliasAnalysisPass;
@@ -80,7 +80,6 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                                         LLVMCodeGenFileType FileType) {
 
   // Set compilation options.
-  llvm::UnwindTablesMandatory = true;
   llvm::NoFramePointerElim = true;
 
   InitializeAllTargets();
