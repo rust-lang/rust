@@ -5882,9 +5882,7 @@ fn trans_spawn(&@block_ctxt cx,
                                      e));
     }
 
-    // Make the tuple. We have to reverse the types first though.
-    //vec::reverse[ty::t](arg_tys);
-    //vec::reverse[ValueRef](arg_vals);
+    // Make the tuple.
     auto args_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
     
     // Allocate and fill the tuple.
