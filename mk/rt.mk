@@ -33,7 +33,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
 
 RUNTIME_LL := rt/new_exit.ll
 
-RUNTIME_S := rt/activate_glue.s
+RUNTIME_S := rt/activate_glue.s rt/yield_glue.s
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \

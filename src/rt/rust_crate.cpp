@@ -16,11 +16,6 @@ rust_crate::get_gc_glue() const {
   return ((uintptr_t)this + gc_glue_off);
 }
 
-uintptr_t
-rust_crate::get_yield_glue() const {
-  return ((uintptr_t)this + yield_glue_off);
-}
-
 rust_crate::mem_area::mem_area(rust_dom *dom, uintptr_t pos, size_t sz)
   : dom(dom),
     base(pos),

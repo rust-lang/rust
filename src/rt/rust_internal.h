@@ -232,10 +232,10 @@ class rust_crate {
     size_t debug_info_sz;         // Size of .debug_info.
 
     ptrdiff_t activate_glue_off;
-    ptrdiff_t yield_glue_off;
     ptrdiff_t pad;
-    ptrdiff_t gc_glue_off;
     ptrdiff_t pad2;
+    ptrdiff_t gc_glue_off;
+    ptrdiff_t pad3;
 
 public:
 
@@ -247,7 +247,6 @@ public:
 
     uintptr_t get_image_base() const;
     ptrdiff_t get_relocation_diff() const;
-    uintptr_t get_yield_glue() const;
     uintptr_t get_gc_glue() const;
 
     struct mem_area

@@ -86,43 +86,6 @@ fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
     ret ["movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%edx)"];
 }
 
-
-/* More glue code, this time the 'bottom half' of yielding.
- *
- * We arrived here because an native call decided to deschedule the
- * running task. So the native call's return address got patched to the
- * first instruction of this glue code.
- *
- * When the native call does 'ret' it will come here, and its esp will be
- * pointing to the last argument pushed on the C stack before making
- * the native call: the 0th argument to the native call, which is always
- * the task ptr performing the native call. That's where we take over.
- *
- * Our goal is to complete the descheduling
- *
- *   - Switch over to the task stack temporarily.
- *
- *   - Save the task's callee-saves onto the task stack.
- *     (the task is now 'descheduled', safe to set aside)
- *
- *   - Switch *back* to the C stack.
- *
- *   - Restore the C-stack callee-saves.
- *
- *   - Return to the caller on the C stack that activated the task.
- *
- */
-
-fn rust_yield_glue() -> vec[str] {
-    ret ["movl  0(%esp), %ecx    # ecx = rust_task"]
-        + load_esp_from_rust_sp_first_arg()
-        + save_callee_saves()
-        + store_esp_to_rust_sp_first_arg()
-        + load_esp_from_runtime_sp_first_arg()
-        + restore_callee_saves()
-        + ["ret"];
-}
-
 fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
 
     let bool pass_task;
@@ -218,11 +181,8 @@ fn get_module_asm() -> str {
 
     auto prefix = get_symbol_prefix();
 
-    auto glues =
-        [decl_glue(align, prefix,
-                   abi::yield_glue_name(),
-                   rust_yield_glue())]
-
+    let vec[str] glues =
+        []
         + vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_rust, _), (abi::n_native_glues + 1) as uint)
         + vec::init_fn[str](bind decl_native_glue(align, prefix,

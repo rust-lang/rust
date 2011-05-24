@@ -7660,9 +7660,6 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
 
     let ValueRef crate_addr = p2i(crate_ptr);
 
-    let ValueRef yield_glue_off =
-        llvm::LLVMConstSub(p2i(glues.yield_glue), crate_addr);
-
     let ValueRef crate_val =
         C_struct([C_null(T_int()),     // ptrdiff_t image_base_off
                      p2i(crate_ptr),      // uintptr_t self_addr
@@ -7671,10 +7668,10 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      C_null(T_int()),     // ptrdiff_t debug_info_off
                      C_null(T_int()),     // size_t debug_info_sz
                      C_null(T_int()),     // size_t pad
-                     yield_glue_off,      // size_t yield_glue_off
                      C_null(T_int()),     // size_t pad
-                     C_null(T_int()),     // size_t gc_glue_off
                      C_null(T_int()),     // size_t pad2
+                     C_null(T_int()),     // size_t gc_glue_off
+                     C_null(T_int()),     // size_t pad3
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int())      // int n_libs

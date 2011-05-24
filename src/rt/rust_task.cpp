@@ -317,12 +317,14 @@ rust_task::yield(size_t nargs) {
     yield(nargs, 0);
 }
 
+extern "C" void new_rust_yield_glue(void) asm("new_rust_yield_glue");
+
 void
 rust_task::yield(size_t nargs, size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
     yield_timer.reset(time_in_us);
-    run_after_return(nargs, dom->root_crate->get_yield_glue());
+    run_after_return(nargs, (uintptr_t) new_rust_yield_glue);
 }
 
 static inline uintptr_t
