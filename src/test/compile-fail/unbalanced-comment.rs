@@ -1,9 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
 
-// error-pattern: token
+// error-pattern: unterminated block comment
 
 /*
  * This is an un-balanced /* multi-line comment.

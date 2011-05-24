@@ -1,7 +1,4 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// error-pattern: unresolved identifier
+// error-pattern: unresolved name
 obj oT() {
   fn get() -> int {
     ret 3;
