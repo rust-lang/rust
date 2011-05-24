@@ -220,12 +220,24 @@ fn grow_init_fn_set[T](&array[T] v, uint index, fn()->T init_fn, &T val) {
     v.(index) = val;
 }
 
-fn map[T, U](&option::operator[T,U] f, &array[T] v) -> vec[U] {
-    let vec[U] u = alloc[U](len[T](v));
+
+fn map[T, U](&fn(&T) -> U f, &array[T] v) -> vec[U] {
+    let vec[U] res = alloc[U](len[T](v));
     for (T ve in v) {
-        u += [f(ve)];
+        res += [f(ve)];
     }
-    ret u;
+    ret res;
+}
+
+fn filter_map[T, U](&fn(&T) -> option::t[U] f, &array[T] v) -> vec[U] {
+    let vec[U] res = []; //TODO does this work these days?
+    for(T ve in v) {
+        alt(f(ve)) {
+            case (some[U](?elt)) { res += [elt]; }
+            case (none[U]) {}
+        }
+    }
+    ret res;
 }
 
 fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
