@@ -4,6 +4,7 @@ import vec::slice;
 export lteq;
 export merge_sort;
 export quick_sort;
+export quick_sort3;
 
 type lteq[T] = fn(&T a, &T b) -> bool;
 
@@ -52,18 +53,12 @@ fn swap[T](vec[mutable T] arr, uint x, uint y) {
 fn part[T](lteq[T] compare_func, vec[mutable T] arr, uint left,
         uint right, uint pivot) -> uint {
 
-    fn compare[T](lteq[T] compare_func, vec[mutable T]arr,
-           uint arr_idx, &T arr_value) -> bool {
-
-        ret compare_func(arr.(arr_idx),arr_value);
-    }
-
     auto pivot_value = arr.(pivot);
     swap[T](arr, pivot, right);
     let uint storage_index = left;
     let uint i = left;
     while (i<right) {
-        if (compare[T](compare_func, arr, i, pivot_value)) {
+        if (compare_func(arr.(i), pivot_value)) {
            swap[T](arr, i, storage_index);
            storage_index += 1u;
         }
@@ -93,6 +88,86 @@ fn quick_sort[T](lteq[T] compare_func, vec[mutable T] arr) {
         ret;
     }
     qsort[T](compare_func, arr, 0u, (len[T](arr)) - 1u);
+}
+
+
+// Based on algorithm presented by Sedgewick and Bentley here:
+// http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
+// According to these slides this is the algorithm of choice for
+// 'randomly ordered keys, abstract compare' & 'small number of key values'
+
+fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
+        vec[mutable T] arr, int left, int right) {
+
+    if (right <= left) {
+        ret;
+    }
+
+    let T v = arr.(right);
+    let int i = left - 1;
+    let int j = right;
+    let int p = i;
+    let int q = j;
+
+    while (true) {
+        i += 1;
+        while (compare_func_lt(arr.(i), v)) {
+            i += 1;
+        }
+        j -= 1;
+        while (compare_func_lt(v, arr.(j))) {
+            if (j == left) {
+                break;
+            }
+            j -= 1;
+        }
+        if (i >= j) {
+            break;
+        }
+        swap[T](arr, i as uint, j as uint);
+        if (compare_func_eq(arr.(i), v)) {
+            p += 1;
+            swap[T](arr, p as uint, i as uint);
+        }
+        if (compare_func_eq(v, arr.(j))) {
+            q -= 1;
+            swap[T](arr, j as uint, q as uint);
+        }
+   }
+    swap[T](arr, i as uint, right as uint);
+    j = i - 1;
+    i += 1;
+
+    let int k = left;
+    while (k < p) {
+        swap[T](arr, k as uint, j as uint);
+        k += 1;
+        j -= 1;
+        if (k == vec::len[T](arr) as int) {
+            break;
+        }
+    }
+    k = right - 1;
+    while (k > q) {
+        swap[T](arr, i as uint, k as uint);
+        k -= 1;
+        i += 1;
+        if (k == 0) {
+            break;
+        }
+    }
+
+    qsort3[T](compare_func_lt, compare_func_eq, arr, left, j);
+    qsort3[T](compare_func_lt, compare_func_eq, arr, i, right);
+}
+
+fn quick_sort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
+        vec[mutable T] arr) {
+    if (vec::len[T](arr) == 0u) {
+        ret;
+    }
+    qsort3[T](compare_func_lt, compare_func_eq, arr, 0,
+              (vec::len[T](arr) as int) - 1);
 }
 
 // Local Variables:
