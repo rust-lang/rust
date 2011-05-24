@@ -56,11 +56,35 @@ fn test_map2() {
   }
 }
 
+fn test_filter_map() {
+  fn halve(&int i) -> std::option::t[int] { 
+    if(i % 2 == 0) { 
+      ret std::option::some[int](i / 2);
+    } else {
+      ret std::option::none[int];
+    }
+  }
+  fn halve_for_sure(&int i) -> int { ret i/2; }
+  
+  let vec[int] all_even = [0, 2, 8, 6];
+  let vec[int] all_odd1 = [1, 7, 3];
+  let vec[int] all_odd2 = [];
+  let vec[int] mix = [9, 2, 6, 7, 1, 0, 0, 3];
+  let vec[int] mix_dest = [1, 3, 0, 0];
+  
+  assert(std::vec::filter_map(halve, all_even) ==
+         std::vec::map(halve_for_sure, all_even));
+  assert(std::vec::filter_map(halve, all_odd1) == std::vec::empty[int]());
+  assert(std::vec::filter_map(halve, all_odd2) == std::vec::empty[int]());
+  assert(std::vec::filter_map(halve, mix) == mix_dest);
+}
+
 fn main() {
   test_init_elt();
   test_init_fn();
   test_slice();
   test_map();
   test_map2();
+  test_filter_map();
 }
 
