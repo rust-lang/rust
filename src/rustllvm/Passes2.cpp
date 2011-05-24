@@ -1,5 +1,5 @@
 #include "llvm/Analysis/Passes.h"
-#include "llvm/Support/StandardPasses.h"
+#include "llvm/Support/PassManagerBuilder.h"
 #include "llvm/PassManager.h"
 #include "llvm-c/Core.h"
 #include <cstdlib>
@@ -8,22 +8,29 @@ using namespace llvm;
 
 extern "C" void LLVMAddStandardFunctionPasses(LLVMPassManagerRef PM,
     unsigned int OptimizationLevel) {
-  createStandardFunctionPasses(unwrap(PM), OptimizationLevel);
+  PassManagerBuilder PMBuilder;
+  PMBuilder.OptLevel = OptimizationLevel;
+  FunctionPassManager *FPM = (FunctionPassManager*) unwrap(PM);
+  PMBuilder.populateFunctionPassManager(*FPM);
 }
 
 extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
     unsigned int OptimizationLevel, LLVMBool OptimizeSize,
     LLVMBool UnitAtATime, LLVMBool UnrollLoops, LLVMBool SimplifyLibCalls,
-    LLVMBool HaveExceptions, unsigned int InliningThreshold) {
-  Pass *InliningPass;
+    unsigned int InliningThreshold) {
+
+  PassManagerBuilder PMBuilder;
+  PMBuilder.OptLevel = OptimizationLevel;
+  PMBuilder.SizeLevel = OptimizeSize;
+  PMBuilder.DisableUnitAtATime = !UnitAtATime;
+  PMBuilder.DisableUnrollLoops = !UnrollLoops;
+
+  PMBuilder.DisableSimplifyLibCalls = !SimplifyLibCalls;
+
   if (InliningThreshold)
-    InliningPass = createFunctionInliningPass(InliningThreshold);
-  else
-    InliningPass = NULL;
+    PMBuilder.Inliner = createFunctionInliningPass(InliningThreshold);
 
-  createStandardModulePasses(unwrap(PM), OptimizationLevel, OptimizeSize,
-                             UnitAtATime, UnrollLoops, SimplifyLibCalls,
-                             HaveExceptions, InliningPass);
+  PassManager *MPM = (PassManager*) unwrap(PM);
+  PMBuilder.populateModulePassManager(*MPM);
 }
-
 
