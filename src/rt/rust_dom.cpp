@@ -4,9 +4,8 @@
 
 rust_dom::rust_dom(rust_kernel *kernel,
     rust_message_queue *message_queue, rust_srv *srv,
-    rust_crate const *root_crate, const char *name) :
+    const char *name) :
     interrupt_flag(0),
-    root_crate(root_crate),
     _log(srv, this),
     log_lvl(log_note),
     srv(srv),

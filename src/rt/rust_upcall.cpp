@@ -573,7 +573,7 @@ upcall_new_thread(rust_task *task, const char *name) {
     rust_dom *parent_dom = task->dom;
     rust_kernel *kernel = parent_dom->kernel;
     rust_handle<rust_dom> *child_dom_handle =
-        kernel->create_domain(parent_dom->root_crate, name);
+        kernel->create_domain(name);
     rust_handle<rust_task> *child_task_handle =
         kernel->get_task_handle(child_dom_handle->referent()->root_task);
     LOG(task, mem, "child name: %s, child_dom_handle: " PTR

@@ -85,8 +85,7 @@ public:
 
     rust_kernel(rust_srv *srv);
 
-    rust_handle<rust_dom> *create_domain(rust_crate const *root_crate,
-                                         const char *name);
+    rust_handle<rust_dom> *create_domain(const char *name);
     void destroy_domain(rust_dom *dom);
 
     bool is_deadlocked();

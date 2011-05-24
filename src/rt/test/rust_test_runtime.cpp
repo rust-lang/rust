@@ -13,7 +13,7 @@ rust_test_runtime::~rust_test_runtime() {
 
 void
 rust_domain_test::worker::run() {
-    rust_handle<rust_dom> *handle = kernel->create_domain(NULL, "test");
+    rust_handle<rust_dom> *handle = kernel->create_domain("test");
     for (int i = 0; i < TASKS; i++) {
         handle->referent()->create_task(NULL, "child");
     }
@@ -49,9 +49,8 @@ void task_entry() {
 
 void
 rust_task_test::worker::run() {
-    rust_crate *crate = parent->suite->crate;
     rust_handle<rust_dom> *handle =
-        kernel->create_domain(crate, "test");
+        kernel->create_domain("test");
     rust_dom *domain = handle->referent();
     domain->root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL, 0);
     domain->start_main_loop();

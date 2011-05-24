@@ -84,7 +84,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
-    rust_handle<rust_dom> *handle = kernel->create_domain(crate, "main");
+    rust_handle<rust_dom> *handle = kernel->create_domain("main");
     rust_dom *dom = handle->referent();
     command_line_args *args = new (dom) command_line_args(dom, argc, argv);
 

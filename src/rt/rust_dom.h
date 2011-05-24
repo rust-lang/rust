@@ -7,12 +7,6 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     uintptr_t interrupt_flag;
 
     // Fields known only by the runtime:
-
-    // NB: the root crate must remain in memory until the root of the
-    // tree of domains exits. All domains within this tree have a
-    // copy of this root_crate value and use it for finding utility
-    // glue.
-    rust_crate const *root_crate;
     rust_log _log;
     uint32_t log_lvl;
     rust_srv *srv;
@@ -49,7 +43,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     // domain.
     rust_dom(rust_kernel *kernel,
              rust_message_queue *message_queue, rust_srv *srv,
-             rust_crate const *root_crate, const char *name);
+             const char *name);
     ~rust_dom();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);

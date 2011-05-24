@@ -16,13 +16,13 @@ rust_kernel::rust_kernel(rust_srv *srv) :
 }
 
 rust_handle<rust_dom> *
-rust_kernel::create_domain(const rust_crate *crate, const char *name) {
+rust_kernel::create_domain(const char *name) {
     _kernel_lock.lock();
     rust_message_queue *message_queue =
         new (this) rust_message_queue(_srv, this);
     rust_srv *srv = _srv->clone();
     rust_dom *dom =
-        new (this) rust_dom(this, message_queue, srv, crate, name);
+        new (this) rust_dom(this, message_queue, srv, name);
     rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
     message_queue->associate(handle);
     domains.append(dom);
