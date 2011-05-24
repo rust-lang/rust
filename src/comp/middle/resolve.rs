@@ -724,7 +724,7 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
             ret lookup_import(e, defid, ns);
         }
         case (resolving(?sp)) {
-            e.sess.span_err(sp, "cyclic import");
+            e.sess.span_err(sp, "cyclic import or nonexistent module");
         }
         case (resolved(?val, ?typ, ?md)) {
             ret alt (ns) { case (ns_value) { val }
