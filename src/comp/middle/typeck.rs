@@ -1570,6 +1570,11 @@ mod writeback {
             }
         }
 
+        if (ty::type_contains_vars(fcx.ccx.tcx, local_ty)) {
+            fcx.ccx.tcx.sess.span_err(sp,
+              "Ambiguous type " + ty_to_str(fcx.ccx.tcx, local_ty)
+             + "\n(Try adding more type annotations.)");
+        }
         write::ty_only(fcx.ccx.tcx, local.ann.id, local_ty);
     }
 
