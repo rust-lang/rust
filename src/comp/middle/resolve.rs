@@ -323,10 +323,11 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
     auto end_id = ids.(n_idents - 1u);
 
     if (n_idents == 1u) {
+        auto next_sc = std::list::cdr(sc);
         register(e, defid, it.span, end_id,
-                 lookup_in_scope(e, sc, it.span, end_id, ns_value),
-                 lookup_in_scope(e, sc, it.span, end_id, ns_type),
-                 lookup_in_scope(e, sc, it.span, end_id, ns_module));
+                 lookup_in_scope(e, next_sc, it.span, end_id, ns_value),
+                 lookup_in_scope(e, next_sc, it.span, end_id, ns_type),
+                 lookup_in_scope(e, next_sc, it.span, end_id, ns_module));
     } else {
         auto dcur = lookup_in_scope_strict(e, sc, it.span, ids.(0),
                                            ns_module);
@@ -724,7 +725,7 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
             ret lookup_import(e, defid, ns);
         }
         case (resolving(?sp)) {
-            e.sess.span_err(sp, "cyclic import or nonexistent module");
+            e.sess.span_err(sp, "cyclic import");
         }
         case (resolved(?val, ?typ, ?md)) {
             ret alt (ns) { case (ns_value) { val }

@@ -1,7 +1,10 @@
-// error-pattern:cyclic import
+// error-pattern: cyclic import
 
-import x;
+import y::x;
+
+mod y {
+    import x;
+}
 
 fn main() {
-  auto y = x;
 }
