@@ -760,6 +760,9 @@ fn type_of_inner(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
         case (ty::ty_chan(?t)) {
             llty = T_ptr(T_chan(type_of_inner(cx, sp, t)));
         }
+        case (ty::ty_task) {
+            llty = T_taskptr(cx.tn);
+        }
         case (ty::ty_tup(?elts)) {
             let vec[TypeRef] tys = [];
             for (ty::mt elt in elts) {
@@ -2014,6 +2017,11 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             rslt = res(cx, C_int(0));
         }
 
+        case (ty::ty_task) {
+            // TODO: call upcall_kill
+            rslt = res(cx, C_nil());
+        }
+
         case (ty::ty_obj(_)) {
 
             auto box_cell =
@@ -2104,6 +2112,10 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
         }
 
         case (ty::ty_chan(_)) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_task) {
             rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
         }
 
@@ -5983,6 +5995,10 @@ fn trans_spawn(&@block_ctxt cx,
         }
     }
     */
+
+    auto task_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto dropref = clean(bind drop_ty(_, new_task, task_ty));
+    find_scope_cx(bcx).cleanups += [dropref];
 
     ret res(bcx, new_task);
 }
