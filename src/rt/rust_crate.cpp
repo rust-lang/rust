@@ -12,11 +12,6 @@ rust_crate::get_relocation_diff() const {
 }
 
 uintptr_t
-rust_crate::get_unwind_glue() const {
-  return ((uintptr_t)this + unwind_glue_off);
-}
-
-uintptr_t
 rust_crate::get_gc_glue() const {
   return ((uintptr_t)this + gc_glue_off);
 }

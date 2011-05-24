@@ -233,9 +233,9 @@ class rust_crate {
 
     ptrdiff_t activate_glue_off;
     ptrdiff_t yield_glue_off;
-    ptrdiff_t unwind_glue_off;
-    ptrdiff_t gc_glue_off;
     ptrdiff_t pad;
+    ptrdiff_t gc_glue_off;
+    ptrdiff_t pad2;
 
 public:
 
@@ -248,7 +248,6 @@ public:
     uintptr_t get_image_base() const;
     ptrdiff_t get_relocation_diff() const;
     uintptr_t get_yield_glue() const;
-    uintptr_t get_unwind_glue() const;
     uintptr_t get_gc_glue() const;
 
     struct mem_area

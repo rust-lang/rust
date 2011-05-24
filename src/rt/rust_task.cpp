@@ -349,7 +349,7 @@ rust_task::kill() {
         dom->fail();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
-    run_on_resume(dom->root_crate->get_unwind_glue());
+    // run_on_resume(rust_unwind_glue);
 }
 
 void
@@ -361,7 +361,7 @@ rust_task::fail(size_t nargs) {
     unblock();
     if (this == dom->root_task)
         dom->fail();
-    run_after_return(nargs, dom->root_crate->get_unwind_glue());
+    // run_after_return(nargs, rust_unwind_glue);
     if (supervisor) {
         DLOG(dom, task,
              "task %s @0x%" PRIxPTR

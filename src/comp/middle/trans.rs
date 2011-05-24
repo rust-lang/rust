@@ -7672,9 +7672,9 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      C_null(T_int()),     // size_t debug_info_sz
                      C_null(T_int()),     // size_t pad
                      yield_glue_off,      // size_t yield_glue_off
-                     C_null(T_int()),     // size_t unwind_glue_off
-                     C_null(T_int()),     // size_t gc_glue_off
                      C_null(T_int()),     // size_t pad
+                     C_null(T_int()),     // size_t gc_glue_off
+                     C_null(T_int()),     // size_t pad2
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int())      // int n_libs
