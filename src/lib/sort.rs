@@ -90,7 +90,13 @@ fn quick_sort[T](lteq[T] compare_func, vec[mutable T] arr) {
     qsort[T](compare_func, arr, 0u, (len[T](arr)) - 1u);
 }
 
-fn qsort3[T](lteq[T] compareFuncLT, lteq[T] compareFuncEQ,
+
+// Based on algorithm presented by Sedgewick and Bentley here:
+// http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
+// According to these slides this is the algorithm of choice for 
+// 'randomly ordered keys, abstract compare' & 'small number of key values'
+
+fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
         vec[mutable T] arr, int left, int right) {
 
     if (right <= left) {
@@ -105,11 +111,11 @@ fn qsort3[T](lteq[T] compareFuncLT, lteq[T] compareFuncEQ,
 
     while (true) {
         i += 1;
-        while (compareFuncLT(arr.(i), v)) {
+        while (compare_func_lt(arr.(i), v)) {
             i += 1;
         }
         j -= 1;
-        while (compareFuncLT(v, arr.(j))) {
+        while (compare_func_lt(v, arr.(j))) {
             if (j == left) {
                 break;
             }
@@ -119,11 +125,11 @@ fn qsort3[T](lteq[T] compareFuncLT, lteq[T] compareFuncEQ,
             break;
         }
         swap[T](arr, i as uint, j as uint);
-        if (compareFuncEQ(arr.(i), v)) {
+        if (compare_func_eq(arr.(i), v)) {
             p += 1;
             swap[T](arr, p as uint, i as uint);
         }
-        if (compareFuncEQ(v, arr.(j))) {
+        if (compare_func_eq(v, arr.(j))) {
             q -= 1;
             swap[T](arr, j as uint, q as uint);
         }
@@ -151,16 +157,16 @@ fn qsort3[T](lteq[T] compareFuncLT, lteq[T] compareFuncEQ,
         }
     }
 
-    qsort3[T](compareFuncLT, compareFuncEQ, arr, left, j);
-    qsort3[T](compareFuncLT, compareFuncEQ, arr, i, right);
+    qsort3[T](compare_func_lt, compare_func_eq, arr, left, j);
+    qsort3[T](compare_func_lt, compare_func_eq, arr, i, right);
 }
 
-fn quick_sort3[T](lteq[T] compareFuncLT, lteq[T] compareFuncEQ,
+fn quick_sort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
         vec[mutable T] arr) {
     if (vec::len[T](arr) == 0u) {
         ret;
     }
-    qsort3[T](compareFuncLT, compareFuncEQ, arr, 0,
+    qsort3[T](compare_func_lt, compare_func_eq, arr, 0,
               (vec::len[T](arr) as int) - 1);
 }
 
