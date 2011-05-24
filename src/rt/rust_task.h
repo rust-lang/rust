@@ -55,8 +55,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     ~rust_task();
 
-    void start(uintptr_t exit_task_glue,
-               uintptr_t spawnee_fn,
+    void start(uintptr_t spawnee_fn,
                uintptr_t args,
                size_t callsz);
     void grow(size_t n_frame_bytes);

@@ -135,13 +135,13 @@ rust_task::~rust_task()
         cache->deref();
 }
 
+extern "C" void rust_new_exit_task_glue();
+
 void
-rust_task::start(uintptr_t exit_task_glue,
-                 uintptr_t spawnee_fn,
+rust_task::start(uintptr_t spawnee_fn,
                  uintptr_t args,
                  size_t callsz)
 {
-    LOGPTR(dom, "exit-task glue", exit_task_glue);
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
     // Set sp to last uintptr_t-sized cell of segment
@@ -184,7 +184,7 @@ rust_task::start(uintptr_t exit_task_glue,
 
     *spp-- = (uintptr_t) 0x0;        // retp
 
-    *spp-- = (uintptr_t) exit_task_glue;
+    *spp-- = (uintptr_t) rust_new_exit_task_glue;
 
     for (size_t j = 0; j < n_callee_saves; ++j) {
         *spp-- = (uintptr_t)NULL;

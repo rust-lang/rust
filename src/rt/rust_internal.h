@@ -357,8 +357,6 @@ public:
     void flush();
 };
 
-extern "C" void rust_new_exit_task_glue();
-
 #include "rust_dwarf.h"
 
 class
