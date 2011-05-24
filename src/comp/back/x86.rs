@@ -87,92 +87,6 @@ fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
 }
 
 
-/*
- * This is a bit of glue-code. It should be emitted once per
- * compilation unit.
- *
- *   - save regs on C stack
- *   - align sp on a 16-byte boundary
- *   - save sp to task.runtime_sp (runtime_sp is thus always aligned)
- *   - load saved task sp (switch stack)
- *   - restore saved task regs
- *   - return to saved task pc
- *
- * Our incoming stack looks like this:
- *
- *   *esp+4        = [arg1   ] = task ptr
- *   *esp          = [retpc  ]
- */
-
-fn rust_activate_glue() -> vec[str] {
-    ret ["movl  4(%esp), %ecx    # ecx = rust_task"]
-        + save_callee_saves()
-        + store_esp_to_runtime_sp_first_arg()
-        + load_esp_from_rust_sp_first_arg()
-
-        /*
-         * There are two paths we can arrive at this code from:
-         *
-         *
-         *   1. We are activating a task for the first time. When we switch
-         *      into the task stack and 'ret' to its first instruction, we'll
-         *      start doing whatever the first instruction says. Probably
-         *      saving registers and starting to establish a frame. Harmless
-         *      stuff, doesn't look at task->rust_sp again except when it
-         *      clobbers it during a later native call.
-         *
-         *
-         *   2. We are resuming a task that was descheduled by the yield glue
-         *      below.  When we switch into the task stack and 'ret', we'll be
-         *      ret'ing to a very particular instruction:
-         *
-         *              "esp <- task->rust_sp"
-         *
-         *      this is the first instruction we 'ret' to after this glue,
-         *      because it is the first instruction following *any* native
-         *      call, and the task we are activating was descheduled
-         *      mid-native-call.
-         *
-         *      Unfortunately for us, we have already restored esp from
-         *      task->rust_sp and are about to eat the 5 words off the top of
-         *      it.
-         *
-         *
-         *      | ...    | <-- where esp will be once we restore + ret, below,
-         *      | retpc  |     and where we'd *like* task->rust_sp to wind up.
-         *      | ebp    |
-         *      | edi    |
-         *      | esi    |
-         *      | ebx    | <-- current task->rust_sp == current esp
-         *
-         *
-         *      This is a problem. If we return to "esp <- task->rust_sp" it
-         *      will push esp back down by 5 words. This manifests as a rust
-         *      stack that grows by 5 words on each yield/reactivate. Not
-         *      good.
-         *
-         *      So what we do here is just adjust task->rust_sp up 5 words as
-         *      well, to mirror the movement in esp we're about to
-         *      perform. That way the "esp <- task->rust_sp" we 'ret' to below
-         *      will be a no-op. Esp won't move, and the task's stack won't
-         *      grow.
-         */
-        + ["addl  $20, " + wstr(abi::task_field_rust_sp) + "(%ecx)"]
-
-
-        /*
-         * In most cases, the function we're returning to (activating)
-         * will have saved any caller-saves before it yielded via native call,
-         * so no work to do here. With one exception: when we're initially
-         * activating, the task needs to be in the fastcall 2nd parameter
-         * expected by the rust main function. That's edx.
-         */
-        + ["mov  %ecx, %edx"]
-
-        + restore_callee_saves()
-        + ["ret"];
-}
-
 /* More glue code, this time the 'bottom half' of yielding.
  *
  * We arrived here because an native call decided to deschedule the
@@ -306,12 +220,8 @@ fn get_module_asm() -> str {
 
     auto glues =
         [decl_glue(align, prefix,
-                      abi::activate_glue_name(),
-                      rust_activate_glue()),
-
-            decl_glue(align, prefix,
-                      abi::yield_glue_name(),
-                      rust_yield_glue())]
+                   abi::yield_glue_name(),
+                   rust_yield_glue())]
 
         + vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_rust, _), (abi::n_native_glues + 1) as uint)

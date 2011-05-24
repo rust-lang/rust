@@ -55,8 +55,7 @@ state obj namegen(mutable int i) {
 
 type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
 
-type glue_fns = rec(ValueRef activate_glue,
-                    ValueRef yield_glue,
+type glue_fns = rec(ValueRef yield_glue,
                     vec[ValueRef] native_glues_rust,
                     vec[ValueRef] native_glues_pure_rust,
                     vec[ValueRef] native_glues_cdecl,
@@ -7661,9 +7660,6 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
 
     let ValueRef crate_addr = p2i(crate_ptr);
 
-    let ValueRef activate_glue_off =
-        llvm::LLVMConstSub(p2i(glues.activate_glue), crate_addr);
-
     let ValueRef yield_glue_off =
         llvm::LLVMConstSub(p2i(glues.yield_glue), crate_addr);
 
@@ -7674,7 +7670,7 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      C_null(T_int()),     // size_t debug_abbrev_sz
                      C_null(T_int()),     // ptrdiff_t debug_info_off
                      C_null(T_int()),     // size_t debug_info_sz
-                     activate_glue_off,   // size_t activate_glue_off
+                     C_null(T_int()),     // size_t pad
                      yield_glue_off,      // size_t yield_glue_off
                      C_null(T_int()),     // size_t unwind_glue_off
                      C_null(T_int()),     // size_t gc_glue_off
@@ -8030,8 +8026,7 @@ fn trans_vec_append_glue(@local_ctxt cx, &ast::span sp) {
 
 
 fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
-    ret @rec(activate_glue = decl_glue(llmod, tn, abi::activate_glue_name()),
-             yield_glue = decl_glue(llmod, tn, abi::yield_glue_name()),
+    ret @rec(yield_glue = decl_glue(llmod, tn, abi::yield_glue_name()),
 
              native_glues_rust =
                  vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,

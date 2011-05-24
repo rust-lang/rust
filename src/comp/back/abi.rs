@@ -99,10 +99,6 @@ fn native_glue_name(int n, native_glue_type ngt) -> str {
     ret prefix + util::common::istr(n);
 }
 
-fn activate_glue_name() -> str {
-    ret "rust_activate_glue";
-}
-
 fn yield_glue_name() -> str {
     ret "rust_yield_glue";
 }

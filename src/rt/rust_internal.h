@@ -247,7 +247,6 @@ public:
 
     uintptr_t get_image_base() const;
     ptrdiff_t get_relocation_diff() const;
-    activate_glue_ty get_activate_glue() const;
     uintptr_t get_yield_glue() const;
     uintptr_t get_unwind_glue() const;
     uintptr_t get_gc_glue() const;

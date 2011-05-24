@@ -33,6 +33,8 @@ RUNTIME_CS := rt/sync/timer.cpp \
 
 RUNTIME_LL := rt/new_exit.ll
 
+RUNTIME_S := rt/activate_glue.s
+
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
                rt/rust_dwarf.h \
@@ -65,11 +67,15 @@ RUNTIME_HDR := rt/globals.h \
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
-RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o)
+RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
 RUNTIME_LIBS := $(CFG_GCCISH_POST_LIB_FLAGS)
 
 
 rt/%.o: rt/%.cpp $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
+
+rt/%.o: rt/%.s $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 

@@ -48,10 +48,13 @@ rust_dom::~rust_dom() {
     }
 }
 
+extern "C" void new_rust_activate_glue(rust_task *)
+    asm("new_rust_activate_glue");
+
 void
 rust_dom::activate(rust_task *task) {
     curr_task = task;
-    root_crate->get_activate_glue()(task);
+    new_rust_activate_glue(task);
     curr_task = NULL;
 }
 
@@ -262,7 +265,6 @@ rust_dom::start_main_loop() {
     rust_timer timer(this);
 
     DLOG(this, dom, "started domain loop");
-    DLOG(this, dom, "activate glue: " PTR, root_crate->get_activate_glue());
 
     while (number_of_live_tasks() > 0) {
         A(this, kernel->is_deadlocked() == false, "deadlock");

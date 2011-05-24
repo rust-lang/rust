@@ -11,11 +11,6 @@ rust_crate::get_relocation_diff() const {
   return ((uintptr_t)this - self_addr);
 }
 
-activate_glue_ty
-rust_crate::get_activate_glue() const {
-  return (activate_glue_ty) ((uintptr_t)this + activate_glue_off);
-}
-
 uintptr_t
 rust_crate::get_unwind_glue() const {
   return ((uintptr_t)this + unwind_glue_off);
