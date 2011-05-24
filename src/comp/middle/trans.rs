@@ -5855,11 +5855,6 @@ fn trans_spawn(&@block_ctxt cx,
         }
     };
 
-    // dump a bunch of information
-    log_err "Translating Spawn " +
-        "(The compiled program is not actually running yet, don't worry!";
-    log_err #fmt("task name: %s", tname);
-
     // Generate code
     //
     // This is a several step process. The following things need to happen
@@ -5920,20 +5915,8 @@ fn trans_spawn(&@block_ctxt cx,
 
     // But first, we'll create a task.
     let ValueRef lltname = C_str(bcx.fcx.lcx.ccx, tname);
-    log_err #fmt("ty(new_task) = %s",
-                 val_str(bcx.fcx.lcx.ccx.tn, 
-                         bcx.fcx.lcx.ccx.upcalls.new_task));
-    log_err #fmt("ty(lltaskptr) = %s",
-                 val_str(bcx.fcx.lcx.ccx.tn, 
-                         bcx.fcx.lltaskptr));
-    log_err #fmt("ty(lltname) = %s",
-                 val_str(bcx.fcx.lcx.ccx.tn, 
-                         lltname));
-
-    log_err "Building upcall_new_task";
     auto new_task = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_task,
                               [bcx.fcx.lltaskptr, lltname]);
-    log_err "Done";
 
     // Okay, start the task.
     // First we find the function
@@ -5955,29 +5938,9 @@ fn trans_spawn(&@block_ctxt cx,
 
     auto args_size = size_of(bcx, args_ty).val;
 
-    log_err "Building call to start_task";
-    log_err #fmt("ty(start_task) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         bcx.fcx.lcx.ccx.upcalls.start_task));
-    log_err #fmt("ty(lltaskptr) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         bcx.fcx.lltaskptr));
-    log_err #fmt("ty(new_task) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         new_task));
-    log_err #fmt("ty(llfnptr) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         llfnptr_i));
-    log_err #fmt("ty(llargs) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         llargs_i));
-    log_err #fmt("ty(args_size) = %s", 
-                 val_str(bcx.fcx.lcx.ccx.tn,
-                         args_size));
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task,
                     llfnptr_i, llargs_i, args_size]);
-    log_err "Done";
 
     /*
     alt(dom) {
