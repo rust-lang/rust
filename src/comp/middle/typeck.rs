@@ -1317,6 +1317,31 @@ mod Pushdown {
                 auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
                 write::ty_only_fixup(scx, ann.id, t);
+
+                /* The following is a bit special-cased, but takes care of
+                   the case where we say let @vec[whatever] v = @[]; */
+                auto inner_ty = t;
+                alt (uop) {
+                    case (ast::box(?mut)) {
+                        alt (struct(scx.fcx.ccx.tcx, t)) {
+                            case (ty::ty_box(?inner)) { inner_ty = inner.ty; }
+                            case (_) { 
+                                scx.fcx.ccx.tcx.sess.span_err(e.span,
+                                  "Expecting an application of box"
+                                   + " to have a box type");
+                            }
+                        }
+                    }
+                    case (ast::deref) {
+                        inner_ty = ty::mk_box(scx.fcx.ccx.tcx,
+                        // maybe_mut should work because it'll unify with
+                        // the existing type?
+                                   rec(ty=t, mut=ast::maybe_mut));
+                    }
+                    case (_) { inner_ty = strip_boxes(scx.fcx.ccx.tcx, t); }
+                }
+
+                pushdown_expr(scx, inner_ty, sube);
             }
             case (ast::expr_lit(?lit, ?ann)) {
                 auto t = Demand::simple(scx, e.span, expected,
