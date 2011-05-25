@@ -5648,6 +5648,14 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
             log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_double,
                                [log_bcx.fcx.lltaskptr, C_int(lvl), tmp]);
         }
+    } else if (ty::type_is_integral(cx.fcx.lcx.ccx.tcx, e_ty) ||
+               ty::type_is_bool(cx.fcx.lcx.ccx.tcx, e_ty)) {
+        // FIXME: Handle signedness properly.
+        auto llintval = int_cast(log_bcx, T_int(), val_ty(sub.val),
+                                 sub.val, false);
+        log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_int,
+                           [log_bcx.fcx.lltaskptr, C_int(lvl),
+                            llintval]);
     } else {
         alt (ty::struct(cx.fcx.lcx.ccx.tcx, e_ty)) {
             case (ty::ty_str) {
@@ -5656,12 +5664,11 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
                                        sub.val]);
             }
             case (_) {
-                // FIXME: Handle signedness properly.
-                auto llintval = int_cast(log_bcx, T_int(), val_ty(sub.val),
-                                         sub.val, false);
-                log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_int,
-                                   [log_bcx.fcx.lltaskptr, C_int(lvl),
-                                       llintval]);
+                // FIXME: Support these types.
+                cx.fcx.lcx.ccx.sess.span_err(e.span,
+                                 "log called on unsupported type " +
+                                  ty::ty_to_str(cx.fcx.lcx.ccx.tcx, e_ty));
+                fail;
             }
         }
     }
