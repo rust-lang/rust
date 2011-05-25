@@ -52,6 +52,19 @@ fn find[T,U](&list[T] ls,
     }
 }
 
+fn has[T](&list[T] ls, &T elt) -> bool {
+    alt(ls) {
+        case (cons[T](?hd, ?tl)) {
+            if (elt == hd) {
+                ret true;
+            } else {
+                be has(*tl, elt);
+            }
+        }
+        case (nil[T]) { ret false; }
+    }
+}
+
 fn length[T](&list[T] ls) -> uint {
     fn count[T](&T t, &uint u) -> uint {
         ret u + 1u;
