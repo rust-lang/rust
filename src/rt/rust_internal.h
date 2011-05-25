@@ -312,60 +312,6 @@ public:
 class
 rust_crate_reader
 {
-    struct mem_reader
-    {
-        rust_crate::mem_area &mem;
-        bool ok;
-        uintptr_t pos;
-
-        bool is_ok();
-        bool at_end();
-        void fail();
-        void reset();
-        mem_reader(rust_crate::mem_area &m);
-        size_t tell_abs();
-        size_t tell_off();
-        void seek_abs(uintptr_t p);
-        void seek_off(uintptr_t p);
-
-        template<typename T>
-        void get(T &out) {
-            if (pos < mem.base
-                || pos >= mem.lim
-                || pos + sizeof(T) > mem.lim)
-                ok = false;
-            if (!ok)
-                return;
-            out = *((T*)(pos));
-            pos += sizeof(T);
-            ok &= !at_end();
-            I(mem.dom, at_end() || (mem.base <= pos && pos < mem.lim));
-        }
-
-        template<typename T>
-        void get_uleb(T &out) {
-            out = T(0);
-            for (size_t i = 0; i < sizeof(T) && ok; ++i) {
-                uint8_t byte = 0;
-                get(byte);
-                out <<= 7;
-                out |= byte & 0x7f;
-                if (!(byte & 0x80))
-                    break;
-            }
-            I(mem.dom, at_end() || (mem.base <= pos && pos < mem.lim));
-        }
-
-        template<typename T>
-        void adv_sizeof(T &) {
-            adv(sizeof(T));
-        }
-
-        bool adv_zstr(size_t sz);
-        bool get_zstr(char const *&c, size_t &sz);
-        void adv(size_t amt);
-    };
-
     struct
     abbrev : dom_owned<abbrev>
     {
@@ -379,24 +325,9 @@ rust_crate_reader
                uintptr_t tag, uint8_t has_children);
     };
 
-    class
-    abbrev_reader : public mem_reader
-    {
-        ptr_vec<abbrev> abbrevs;
-    public:
-        abbrev_reader(rust_crate::mem_area &abbrev_mem);
-        abbrev *get_abbrev(size_t i);
-        bool step_attr_form_pair(uintptr_t &attr, uintptr_t &form);
-        ~abbrev_reader();
-    };
-
     rust_dom *dom;
     size_t idx;
 
-    rust_crate::mem_area abbrev_mem;
-    abbrev_reader abbrevs;
-
-    rust_crate::mem_area die_mem;
 
 public:
 
