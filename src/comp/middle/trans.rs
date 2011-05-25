@@ -7706,7 +7706,7 @@ fn find_main_fn(&@crate_ctxt cx) -> ValueRef {
 
 fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     auto T_main_args = [T_int(), T_int()];
-    auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int(), T_int()];
+    auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int()];
 
     auto main_name;
     if (str::eq(std::os::target_os(), "win32")) {
@@ -7718,7 +7718,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     auto llmain =
         decl_cdecl_fn(cx.ccx.llmod, main_name, T_fn(T_main_args, T_int()));
 
-    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "rust_start",
+    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "new_rust_start",
                                       T_fn(T_rust_start_args, T_int()));
 
     auto llargc = llvm::LLVMGetParam(llmain, 0u);
@@ -7737,8 +7737,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
         llvm::LLVMAppendBasicBlock(llmain, str::buf(""));
     auto b = new_builder(llbb);
 
-    auto start_args = [p2i(llrust_main), p2i(llcrate), llargc, llargv,
-                          p2i(crate_map)];
+    auto start_args = [p2i(llrust_main), llargc, llargv, p2i(crate_map)];
 
     b.Ret(b.Call(llrust_start, start_args));
 }

@@ -77,8 +77,7 @@ command_line_args : public dom_owned<command_line_args>
  */
 
 extern "C" CDECL int
-rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
-           char **argv, void* crate_map) {
+new_rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     update_log_settings(crate_map, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
@@ -116,6 +115,12 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
         pthread_exit(NULL);
 #endif
     return ret;
+}
+
+extern "C" CDECL int
+rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
+           char **argv, void* crate_map) {
+    return new_rust_start(main_fn, argc, argv, crate_map);
 }
 
 //
