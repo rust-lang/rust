@@ -2386,23 +2386,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         case (ast::expr_spawn(_, _, ?f, ?args, ?a)) {
             check_call(scx, f, args);
 
-            // Check the return type
             auto fty = expr_ty(scx.fcx.ccx.tcx, f);
-            alt (struct(scx.fcx.ccx.tcx, fty)) {
-                case (ty::ty_fn(_,_,?rt,_)) {
-                    alt (struct(scx.fcx.ccx.tcx, rt)) {
-                        case (ty::ty_nil) {
-                            // This is acceptable
-                        }
-                        case (_) {
-                            auto err = "non-nil return type in "
-                                + "spawned function";
-                            scx.fcx.ccx.tcx.sess.span_err(expr.span, err);
-                            fail;
-                        }
-                    }
-                }
-            }
+            Demand::simple(scx, f.span, ty::mk_nil(scx.fcx.ccx.tcx), fty);
 
             // FIXME: Other typechecks needed
 
