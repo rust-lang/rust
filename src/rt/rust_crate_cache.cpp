@@ -31,40 +31,6 @@ rust_crate_cache::lib::get_handle() {
     return handle;
 }
 
-
-
-rust_crate_cache::c_sym::c_sym(rust_dom *dom, lib *library, char const *name)
-    : val(0),
-      library(library),
-      dom(dom)
-{
-    library->ref();
-    uintptr_t handle = library->get_handle();
-    if (handle) {
-#if defined(__WIN32__)
-        val = (uintptr_t)GetProcAddress((HMODULE)handle, _T(name));
-#else
-        val = (uintptr_t)dlsym((void*)handle, name);
-#endif
-        DLOG(dom, cache, "resolved symbol '%s' to 0x%"  PRIxPTR,
-                 name, val);
-    } else {
-        DLOG_ERR(dom, cache, "unresolved symbol '%s', null lib handle\n"
-                             "(did you omit a -L flag?)", name);
-    }
-}
-
-rust_crate_cache::c_sym::~c_sym() {
-    DLOG(dom, cache,
-            "~rust_crate_cache::c_sym(0x%" PRIxPTR ")", val);
-    library->deref();
-}
-
-uintptr_t
-rust_crate_cache::c_sym::get_val() {
-    return val;
-}
-
 static inline void
 adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
 {
@@ -113,31 +79,18 @@ rust_crate_cache::get_type_desc(size_t size,
 
 rust_crate_cache::rust_crate_cache(rust_dom *dom,
                                    rust_crate const *crate)
-    : c_syms((c_sym**) dom->calloc(sizeof(c_sym*) * crate->n_c_syms)),
-      libs((lib**) dom->calloc(sizeof(lib*) * crate->n_libs)),
+    : libs((lib**) dom->calloc(sizeof(lib*) * crate->n_libs)),
       type_descs(NULL),
       crate(crate),
       dom(dom),
       idx(0)
 {
-    I(dom, c_syms);
     I(dom, libs);
 }
 
 void
 rust_crate_cache::flush() {
     DLOG(dom, cache, "rust_crate_cache::flush()");
-
-    for (size_t i = 0; i < crate->n_c_syms; ++i) {
-        c_sym *s = c_syms[i];
-        if (s) {
-            DLOG(dom, cache,
-                     "rust_crate_cache::flush() deref c_sym %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->ref_count);
-            s->deref();
-        }
-        c_syms[i] = NULL;
-    }
 
     for (size_t i = 0; i < crate->n_libs; ++i) {
         lib *l = libs[i];
@@ -160,7 +113,6 @@ rust_crate_cache::flush() {
 rust_crate_cache::~rust_crate_cache()
 {
     flush();
-    dom->free(c_syms);
     dom->free(libs);
 }
 

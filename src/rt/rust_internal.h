@@ -240,7 +240,7 @@ class rust_crate {
 public:
 
     size_t pad6;
-    size_t n_c_syms;
+    size_t pad7;
     size_t n_libs;
 
     // Crates are immutable, constructed by the compiler.
@@ -297,18 +297,6 @@ public:
         ~lib();
     };
 
-    class c_sym :
-        public rc_base<c_sym>, public dom_owned<c_sym>
-    {
-        uintptr_t val;
-        lib *library;
-    public:
-        rust_dom *dom;
-        c_sym(rust_dom *dom, lib *library, char const *name);
-        uintptr_t get_val();
-        ~c_sym();
-    };
-
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
@@ -316,7 +304,6 @@ public:
 
 private:
 
-    c_sym **c_syms;
     lib **libs;
     type_desc *type_descs;
 
