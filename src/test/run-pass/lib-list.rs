@@ -43,6 +43,17 @@ fn test_find_fail() {
   assert (res == option::none[int]);
 }
 
+fn test_has() {
+  auto l = from_vec([5, 8 ,6]);
+  auto empty = list::nil[int];
+  
+  assert (list::has(l, 5));
+  assert (!list::has(l, 7));
+  assert (list::has(l, 8));
+
+  assert (!list::has(empty, 5));
+}
+
 fn test_length() {
   auto l = from_vec([0, 1, 2]);
   assert (list::length(l) == 3u);
@@ -54,4 +65,5 @@ fn main() {
   test_find_success();
   test_find_fail();
   test_length();
+  test_has();
 }
