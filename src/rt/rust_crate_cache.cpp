@@ -132,18 +132,6 @@ rust_crate_cache::rust_sym::get_val() {
 
 
 
-rust_crate_cache::lib *
-rust_crate_cache::get_lib(size_t n, char const *name)
-{
-    I(dom, n < crate->n_libs);
-    lib *library = libs[n];
-    if (!library) {
-        library = new (dom) lib(dom, name);
-        libs[n] = library;
-    }
-    return library;
-}
-
 static inline void
 adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
 {

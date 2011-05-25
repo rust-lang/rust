@@ -322,7 +322,6 @@ public:
         ~rust_sym();
     };
 
-    lib *get_lib(size_t n, char const *name);
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
