@@ -144,35 +144,6 @@ rust_crate_cache::get_lib(size_t n, char const *name)
     return library;
 }
 
-rust_crate_cache::c_sym *
-rust_crate_cache::get_c_sym(size_t n, lib *library, char const *name)
-{
-    I(dom, n < crate->n_c_syms);
-    c_sym *sym = c_syms[n];
-    DLOG(dom, cache, "cached C symbol %s = 0x%" PRIxPTR, name, sym);
-    if (!sym) {
-        sym = new (dom) c_sym(dom, library, name);
-        c_syms[n] = sym;
-    }
-    return sym;
-}
-
-rust_crate_cache::rust_sym *
-rust_crate_cache::get_rust_sym(size_t n,
-                               rust_dom *dom,
-                               rust_crate const *curr_crate,
-                               c_sym *crate_sym,
-                               char const **path)
-{
-    I(dom, n < crate->n_rust_syms);
-    rust_sym *sym = rust_syms[n];
-    if (!sym) {
-        sym = new (dom) rust_sym(dom, curr_crate, crate_sym, path);
-        rust_syms[n] = sym;
-    }
-    return sym;
-}
-
 static inline void
 adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
 {

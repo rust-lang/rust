@@ -323,12 +323,6 @@ public:
     };
 
     lib *get_lib(size_t n, char const *name);
-    c_sym *get_c_sym(size_t n, lib *library, char const *name);
-    rust_sym *get_rust_sym(size_t n,
-                           rust_dom *dom,
-                           rust_crate const *curr_crate,
-                           c_sym *crate_sym,
-                           char const **path);
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
