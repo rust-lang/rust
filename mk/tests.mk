@@ -91,9 +91,9 @@ TEST_RFAIL_EXES_STAGE2 = \
 TEST_RFAIL_OUTS_STAGE0 = \
   $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
 TEST_RFAIL_OUTS_STAGE1 = \
-  $(TEST_RFAIL_EXES_STAGE0:.stage1$(X)=.stage1.out)
+  $(TEST_RFAIL_EXES_STAGE1:.stage1$(X)=.stage1.out)
 TEST_RFAIL_OUTS_STAGE2 = \
-  $(TEST_RFAIL_EXES_STAGE0:.stage2$(X)=.stage2.out)
+  $(TEST_RFAIL_EXES_STAGE2:.stage2$(X)=.stage2.out)
 
 
 TEST_CFAIL_CRATES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RC))
