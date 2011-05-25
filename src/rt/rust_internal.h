@@ -392,7 +392,6 @@ rust_crate_reader
 
     rust_dom *dom;
     size_t idx;
-    rust_crate const *crate;
 
     rust_crate::mem_area abbrev_mem;
     abbrev_reader abbrevs;

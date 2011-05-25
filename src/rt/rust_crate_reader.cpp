@@ -570,7 +570,6 @@ rust_crate_reader::die_reader::~die_reader() {
 rust_crate_reader::rust_crate_reader(rust_dom *dom,
                                      rust_crate const *crate)
   : dom(dom),
-    crate(crate),
     abbrev_mem(crate->get_debug_abbrev(dom)),
     abbrevs(abbrev_mem),
     die_mem(crate->get_debug_info(dom)),
