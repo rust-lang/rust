@@ -2387,7 +2387,9 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             check_call(scx, f, args);
 
             auto fty = expr_ty(scx.fcx.ccx.tcx, f);
-            demand::simple(scx, f.span, ty::mk_nil(scx.fcx.ccx.tcx), fty);
+            auto ret_ty = ty::ret_ty_of_fn_ty(scx.fcx.ccx.tcx, fty);
+
+            demand::simple(scx, f.span, ty::mk_nil(scx.fcx.ccx.tcx), ret_ty);
 
             // FIXME: Other typechecks needed
 
