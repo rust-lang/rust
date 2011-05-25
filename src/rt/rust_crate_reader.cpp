@@ -61,8 +61,7 @@ rust_crate_reader::attr::is_unknown() const {
   return !(is_numeric() || is_string());
 }
 
-rust_crate_reader::rust_crate_reader(rust_dom *dom,
-                                     rust_crate const *crate)
+rust_crate_reader::rust_crate_reader(rust_dom *dom)
   : dom(dom)
 {
   DLOG(dom, mem, "crate_reader on crate: 0x%" PRIxPTR, this);

@@ -95,7 +95,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     }
 
     if (log_rt_dwarf) {
-        rust_crate_reader create_reader(dom, crate);
+        rust_crate_reader create_reader(dom);
     }
 
     uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};

@@ -352,7 +352,7 @@ public:
         bool is_unknown() const;
     };
 
-    rust_crate_reader(rust_dom *dom, rust_crate const *crate);
+    rust_crate_reader(rust_dom *dom);
 };
 
 // An alarm can be put into a wait queue and the task will be notified
