@@ -241,7 +241,7 @@ public:
 
     size_t pad6;
     size_t pad7;
-    size_t n_libs;
+    size_t pad8;
 
     // Crates are immutable, constructed by the compiler.
 
@@ -286,17 +286,6 @@ rust_crate_cache : public dom_owned<rust_crate_cache>,
                    public rc_base<rust_crate_cache>
 {
 public:
-    class lib :
-        public rc_base<lib>, public dom_owned<lib>
-    {
-        uintptr_t handle;
-    public:
-        rust_dom *dom;
-        lib(rust_dom *dom, char const *name);
-        uintptr_t get_handle();
-        ~lib();
-    };
-
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
@@ -304,7 +293,6 @@ public:
 
 private:
 
-    lib **libs;
     type_desc *type_descs;
 
 public:

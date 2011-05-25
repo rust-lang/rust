@@ -1,36 +1,6 @@
 
 #include "rust_internal.h"
 
-rust_crate_cache::lib::lib(rust_dom *dom, char const *name)
-    : handle(0),
-      dom(dom)
-{
-#if defined(__WIN32__)
-    handle = (uintptr_t)LoadLibrary(_T(name));
-#else
-    handle = (uintptr_t)dlopen(name, RTLD_GLOBAL|RTLD_LAZY);
-#endif
-    DLOG(dom, cache, "loaded library '%s' as 0x%"  PRIxPTR,
-             name, handle);
-}
-
-rust_crate_cache::lib::~lib() {
-    DLOG(dom, cache, "~rust_crate_cache::lib(0x%" PRIxPTR ")",
-             handle);
-    if (handle) {
-#if defined(__WIN32__)
-        FreeLibrary((HMODULE)handle);
-#else
-        dlclose((void*)handle);
-#endif
-    }
-}
-
-uintptr_t
-rust_crate_cache::lib::get_handle() {
-    return handle;
-}
-
 static inline void
 adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
 {
@@ -79,28 +49,16 @@ rust_crate_cache::get_type_desc(size_t size,
 
 rust_crate_cache::rust_crate_cache(rust_dom *dom,
                                    rust_crate const *crate)
-    : libs((lib**) dom->calloc(sizeof(lib*) * crate->n_libs)),
-      type_descs(NULL),
+    : type_descs(NULL),
       crate(crate),
       dom(dom),
       idx(0)
 {
-    I(dom, libs);
 }
 
 void
 rust_crate_cache::flush() {
     DLOG(dom, cache, "rust_crate_cache::flush()");
-
-    for (size_t i = 0; i < crate->n_libs; ++i) {
-        lib *l = libs[i];
-        if (l) {
-            DLOG(dom, cache, "rust_crate_cache::flush() deref lib %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, l->ref_count);
-            l->deref();
-        }
-        libs[i] = NULL;
-    }
 
     while (type_descs) {
         type_desc *d = type_descs;
@@ -113,7 +71,6 @@ rust_crate_cache::flush() {
 rust_crate_cache::~rust_crate_cache()
 {
     flush();
-    dom->free(libs);
 }
 
 //
