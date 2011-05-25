@@ -1,5 +1,12 @@
+// error-pattern: unresolved name
+
+import module_of_many_things::*;
+
 mod module_of_many_things {
-  export f1, f2, f4;
+  export f1;
+  export f2;
+  export f4;
+
   fn f1() {
     log "f1";
   }
@@ -14,11 +21,10 @@ mod module_of_many_things {
   }
 }
 
-import module_of_many_things::*;
 
 fn main() {
   f1();
   f2();
-  f3();
+  f999(); // 'export' currently doesn't work?
   f4();
 }

@@ -12,6 +12,7 @@ import util::common::new_str_hash;
 import util::common::span;
 import middle::tstate::ann::ts_ann;
 import std::map::hashmap;
+import std::list;
 import std::list::list;
 import std::list::nil;
 import std::list::cons;
@@ -168,40 +169,43 @@ fn map_crate(&@env e, &ast::crate c) {
     }
 
     // Next, assemble the links for globbed imports.
-    
-    let @indexed_mod cur_mod = e.mod_map.get(-1);
-
     cell = @mutable nil[scope];
-    auto link_globs = 
+    auto link_globs =
         rec(visit_crate_pre = bind push_env_for_crate(cell, _),
             visit_crate_post = bind pop_env_for_crate(cell, _),
-            visit_view_item_pre = bind link_glob(e, cell, cur_mod, _),
-            visit_item_pre = bind enter_i(e, cell, cur_mod, _),
+            visit_view_item_pre = bind link_glob(e, cell, _),
+            visit_item_pre = bind push_env_for_item(cell, _),
             visit_item_post = bind pop_env_for_item(cell, _)
             with walk::default_visitor());
     walk::walk_crate(link_globs, c);
-    
-    fn enter_i(@env e, @mutable list[scope] sc, @indexed_mod cur_mod, 
-               &@ast::item i) {
-        push_env_for_item(sc,i);
-        alt(i.node) {
-            case (ast::item_mod(_, _, ?defid)) {
-                cur_mod = e.mod_map.get(defid._1);
+            
+    fn link_glob(@env e, @mutable list[scope] sc, &@ast::view_item vi) {
+        fn find_mod(@env e, list[scope] sc) -> @indexed_mod {
+            alt (sc) {
+                case (cons[scope](scope_item(?i), ?tl)) {
+                    alt(i.node) {
+                        case (ast::item_mod(_, _, ?defid)) {
+                            ret e.mod_map.get(defid._1);
+                        }
+                        case (ast::item_native_mod(_, _, ?defid)) {
+                            ret e.mod_map.get(defid._1);
+                        }
+                        case (_) {
+                            be find_mod(e, *tl);
+                        }
+                    }
+                }
+                case (_) {
+                    ret e.mod_map.get(-1); //top-level
+                }
             }
-            case (ast::item_native_mod(_, _, ?defid)) {
-                cur_mod = e.mod_map.get(defid._1);
-            }
-            case (_) {}
         }
-    }
-        
-    fn link_glob(@env e, @mutable list[scope] sc, @indexed_mod cur_mod,
-                 &@ast::view_item vi) {
+
         alt (vi.node) {
             //if it really is a glob import, that is
             case (ast::view_item_import_glob(?path, _)) {
-                cur_mod.glob_imports += 
-                    [follow_import(*e, *sc, path, vi.span)];
+                find_mod(e, *sc).glob_imports 
+                    += [follow_import(*e, *sc, path, vi.span)];
             }
             case (_) {}
         }
@@ -518,10 +522,13 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
     -> option::t[def] {
     fn in_scope(&env e, &span sp, &ident id, &scope s, namespace ns)
         -> option::t[def] {
+        //not recursing through globs
+        let list[def] no_m = nil[def];
+
         alt (s) {
             case (scope_crate(?c)) {
                 auto defid = tup(ast::local_crate, -1);
-                ret lookup_in_local_mod(e, defid, sp, id, ns, inside);
+                ret lookup_in_local_mod(e, defid, no_m, sp, id, ns, inside);
             }
             case (scope_item(?it)) {
                 alt (it.node) {
@@ -537,10 +544,12 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
                         }
                     }
                     case (ast::item_mod(_, _, ?defid)) {
-                        ret lookup_in_local_mod(e, defid, sp, id, ns, inside);
+                        ret lookup_in_local_mod(e, defid, no_m, sp, 
+                                                id, ns, inside);
                     }
                     case (ast::item_native_mod(_, ?m, ?defid)) {
-                        ret lookup_in_local_native_mod(e, defid, sp, id, ns);
+                        ret lookup_in_local_native_mod(e, defid, no_m, 
+                                                       sp, id, ns);
                     }
                     case (ast::item_ty(_, _, ?ty_params, _, _)) {
                         if (ns == ns_type) {
@@ -768,26 +777,44 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id,
 
 fn lookup_in_mod(&env e, def m, &span sp, &ident id, namespace ns, dir dr)
     -> option::t[def] {
-    auto defid = ast::def_id_of_def(m);
-    if (defid._0 != ast::local_crate) { // examining a mod. in an ext. crate
-        auto cached = e.ext_cache.find(tup(defid,id,ns));
-        if (!option::is_none(cached)) { ret cached; }
-        auto path = [id];
-        if (defid._1 != -1) {
-            path = e.ext_map.get(defid) + path;
-        }
-        auto fnd = lookup_external(e, defid._0, path, ns);
-        if (!option::is_none(fnd)) {
-            e.ext_cache.insert(tup(defid,id,ns), option::get(fnd));
-        }
-        ret fnd;
-    }
+    be lookup_in_mod_recursively(e, cons[def](m, @nil[def]), sp, id, ns, dr);
+}
+
+// this list is simply the stack of glob imports we have passed through
+// (preventing cyclic glob imports from diverging)
+fn lookup_in_mod_recursively(&env e, list[def] m, &span sp, &ident id, 
+                             namespace ns, dir dr) -> option::t[def] {
     alt (m) {
-        case (ast::def_mod(?defid)) {
-            ret lookup_in_local_mod(e, defid, sp, id, ns, dr);
+        case (cons[def](?mod_def, ?tl)) {
+            if (list::has(*tl, mod_def)) {
+                ret none[def]; // import glob cycle detected; we're done
+            }
+            auto defid = ast::def_id_of_def(mod_def);
+            if (defid._0 != ast::local_crate) {
+                // examining a module in an external crate
+                auto cached = e.ext_cache.find(tup(defid,id,ns));
+                if (!option::is_none(cached)) { ret cached; }
+                auto path = [id];
+                if (defid._1 != -1) {
+                    path = e.ext_map.get(defid) + path;
+                }
+                auto fnd = lookup_external(e, defid._0, path, ns);
+                if (!option::is_none(fnd)) {
+                    e.ext_cache.insert(tup(defid,id,ns), option::get(fnd));
+                }
+                ret fnd;
+            }
+            alt (mod_def) {
+                case (ast::def_mod(?defid)) {
+                    ret lookup_in_local_mod(e, defid, m, sp, id, ns, dr);
+                }
+                case (ast::def_native_mod(?defid)) {
+                    ret lookup_in_local_native_mod(e, defid, m, sp, id, ns);
+                }
+            }
         }
-        case (ast::def_native_mod(?defid)) {
-            ret lookup_in_local_native_mod(e, defid, sp, id, ns);
+        case (_) { 
+            e.sess.bug("lookup_in_mod_recursively needs a module"); fail;
         }
     }
 }
@@ -825,8 +852,14 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
     fail;
 }
 
-fn lookup_in_local_mod(&env e, def_id defid, &span sp, &ident id, 
-                       namespace ns, dir dr) -> option::t[def] {
+
+fn lookup_in_local_native_mod(&env e, def_id defid, list[def] m, &span sp,
+                              &ident id, namespace ns) -> option::t[def] {
+    ret lookup_in_local_mod(e, defid, m, sp, id, ns, inside);
+}
+
+fn lookup_in_local_mod(&env e, def_id defid, list[def] m, &span sp, 
+                       &ident id, namespace ns, dir dr) -> option::t[def] {
     auto info = e.mod_map.get(defid._1);
     if (dr == outside && !ast::is_exported(id, option::get(info.m))) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
@@ -848,26 +881,24 @@ fn lookup_in_local_mod(&env e, def_id defid, &span sp, &ident id,
         }
     }
     // not local or explicitly imported; try globs:
-    ret lookup_glob_in_mod(e, info, sp, id, ns, dr);
+    ret lookup_glob_in_mod(e, info, m, sp, id, ns, dr);
 }
 
-fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id, 
-                      namespace ns, dir dr) -> option::t[def] {
-    fn l_i_m(&env e, &def d, &span sp, &ident id, namespace ns, dir dr)
-        -> option::t[def] {
-        ret lookup_in_mod(e, d, sp, id, ns, dr);
+fn lookup_glob_in_mod(&env e, @indexed_mod info, list[def] m, &span sp, 
+                      &ident id, namespace ns, dir dr) -> option::t[def] {
+    fn l_i_m_r(&env e, list[def] prev_ms, &def m, &span sp, &ident id, 
+               namespace ns, dir dr) -> option::t[def] {
+        be lookup_in_mod_recursively(e, cons[def](m, @prev_ms), 
+                                     sp, id, ns, dr);
     }
-    auto matches = vec::filter_map
-        (bind l_i_m(e, _, sp, id, ns, dr), info.glob_imports);
+    auto matches = vec::filter_map[def, def]
+        (bind l_i_m_r(e, m, _, sp, id, ns, dr), 
+         info.glob_imports);
     if (vec::len(matches) == 0u) {
         ret none[def];
     } else if (vec::len(matches) == 1u){
         ret some[def](matches.(0));
     } else {
-        for (def d in matches) {
-            e.sess.span_note(sp, "'" + id + "' is defined at " + 
-                             util::common::istr(ast::def_id_of_def(d)._1));
-        }
         e.sess.span_err(sp, "'" + id + "' is glob-imported from" +
                         " multiple different modules.");
         fail;
@@ -914,10 +945,6 @@ fn lookup_in_mie(&env e, &mod_index_entry mie, namespace ns)
     ret none[def];
 }
 
-fn lookup_in_local_native_mod(&env e, def_id defid, &span sp, &ident id, 
-                              namespace ns) -> option::t[def] {
-    ret lookup_in_local_mod(e, defid, sp, id, ns, inside);
-}
 
 
 // Module indexing
@@ -945,9 +972,8 @@ fn index_mod(&ast::_mod md) -> mod_index {
             case(ast::view_item_import(?def_ident,_,_)) {
                 add_to_index(index, def_ident, mie_view_item(it));
             }
-            case(ast::view_item_import_glob(?path,_)) {
-                //globbed imports have to be resolved lazily.
-            }
+            //globbed imports have to be resolved lazily.
+            case(ast::view_item_import_glob(_,_)) {}
             case(ast::view_item_export(_)) {}
         }
     }
@@ -995,6 +1021,7 @@ fn index_nmod(&ast::native_mod md) -> mod_index {
             case(ast::view_item_import(?def_ident,_,_)) {
                 add_to_index(index, def_ident, mie_view_item(it));
             }
+            case(ast::view_item_import_glob(_,_)) {}
             case(ast::view_item_export(_)) {}
         }
     }
