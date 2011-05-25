@@ -65,73 +65,6 @@ rust_crate_cache::c_sym::get_val() {
     return val;
 }
 
-
-
-rust_crate_cache::rust_sym::rust_sym(rust_dom *dom,
-                                     rust_crate const *curr_crate,
-                                     c_sym *crate_sym,
-                                     char const **path)
-    : val(0),
-      crate_sym(crate_sym),
-      dom(dom)
-{
-    crate_sym->ref();
-    typedef rust_crate_reader::die die;
-    rust_crate const *crate = (rust_crate*)crate_sym->get_val();
-    if (!crate) {
-        DLOG_ERR(dom, cache, "failed to resolve symbol, null crate symbol");
-        return;
-    }
-    rust_crate_reader rdr(dom, crate);
-    bool found_root = false;
-    bool found_leaf = false;
-    for (die d = rdr.dies.first_die();
-         !(found_root || d.is_null());
-         d = d.next_sibling()) {
-
-        die t1 = d;
-        die t2 = d;
-        for (char const **c = crate_rel(curr_crate, path);
-             (*c
-              && !t1.is_null()
-              && t1.find_child_by_name(crate_rel(curr_crate, *c), t2));
-             ++c, t1=t2) {
-            DLOG(dom, dwarf, "matched die <0x%"  PRIxPTR
-                    ">, child '%s' = die<0x%" PRIxPTR ">",
-                    t1.off, crate_rel(curr_crate, *c), t2.off);
-            found_root = found_root || true;
-            if (!*(c+1) && t2.find_num_attr(DW_AT_low_pc, val)) {
-                DLOG(dom, dwarf, "found relative address: 0x%"  PRIxPTR, val);
-                DLOG(dom, dwarf, "plus image-base 0x%"  PRIxPTR,
-                     crate->get_image_base());
-                val += crate->get_image_base();
-                found_leaf = true;
-                break;
-            }
-        }
-        if (found_root || found_leaf)
-            break;
-    }
-    if (found_leaf) {
-        DLOG(dom, cache, "resolved symbol to 0x%"  PRIxPTR, val);
-    } else {
-        DLOG_ERR(dom, cache, "failed to resolve symbol");
-    }
-}
-
-rust_crate_cache::rust_sym::~rust_sym() {
-    DLOG(dom, cache,
-             "~rust_crate_cache::rust_sym(0x%" PRIxPTR ")", val);
-    crate_sym->deref();
-}
-
-uintptr_t
-rust_crate_cache::rust_sym::get_val() {
-    return val;
-}
-
-
-
 static inline void
 adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
 {
@@ -180,16 +113,13 @@ rust_crate_cache::get_type_desc(size_t size,
 
 rust_crate_cache::rust_crate_cache(rust_dom *dom,
                                    rust_crate const *crate)
-    : rust_syms((rust_sym**)
-                dom->calloc(sizeof(rust_sym*) * crate->n_rust_syms)),
-      c_syms((c_sym**) dom->calloc(sizeof(c_sym*) * crate->n_c_syms)),
+    : c_syms((c_sym**) dom->calloc(sizeof(c_sym*) * crate->n_c_syms)),
       libs((lib**) dom->calloc(sizeof(lib*) * crate->n_libs)),
       type_descs(NULL),
       crate(crate),
       dom(dom),
       idx(0)
 {
-    I(dom, rust_syms);
     I(dom, c_syms);
     I(dom, libs);
 }
@@ -197,16 +127,6 @@ rust_crate_cache::rust_crate_cache(rust_dom *dom,
 void
 rust_crate_cache::flush() {
     DLOG(dom, cache, "rust_crate_cache::flush()");
-    for (size_t i = 0; i < crate->n_rust_syms; ++i) {
-        rust_sym *s = rust_syms[i];
-        if (s) {
-            DLOG(dom, cache,
-                     "rust_crate_cache::flush() deref rust_sym %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->ref_count);
-            s->deref();
-        }
-        rust_syms[i] = NULL;
-    }
 
     for (size_t i = 0; i < crate->n_c_syms; ++i) {
         c_sym *s = c_syms[i];
@@ -240,7 +160,6 @@ rust_crate_cache::flush() {
 rust_crate_cache::~rust_crate_cache()
 {
     flush();
-    dom->free(rust_syms);
     dom->free(c_syms);
     dom->free(libs);
 }

@@ -239,7 +239,7 @@ class rust_crate {
 
 public:
 
-    size_t n_rust_syms;
+    size_t pad6;
     size_t n_c_syms;
     size_t n_libs;
 
@@ -309,19 +309,6 @@ public:
         ~c_sym();
     };
 
-    class rust_sym :
-        public rc_base<rust_sym>, public dom_owned<rust_sym>
-    {
-        uintptr_t val;
-        c_sym *crate_sym;
-    public:
-        rust_dom *dom;
-        rust_sym(rust_dom *dom, rust_crate const *curr_crate,
-                 c_sym *crate_sym, char const **path);
-        uintptr_t get_val();
-        ~rust_sym();
-    };
-
     type_desc *get_type_desc(size_t size,
                              size_t align,
                              size_t n_descs,
@@ -329,7 +316,6 @@ public:
 
 private:
 
-    rust_sym **rust_syms;
     c_sym **c_syms;
     lib **libs;
     type_desc *type_descs;
