@@ -88,6 +88,7 @@ type def_map = hashmap[uint,def];
 
 type env = rec(crate_map crate_map,
                def_map def_map,
+               hashmap[def_id,@ast::item] ast_map,
                hashmap[ast::def_num,import_state] imports,
                hashmap[ast::def_num,@indexed_mod] mod_map,
                hashmap[def_id,vec[ident]] ext_map,
@@ -107,6 +108,7 @@ tag namespace {
 fn resolve_crate(session sess, @ast::crate crate) -> def_map {
     auto e = @rec(crate_map = new_uint_hash[ast::crate_num](),
                   def_map = new_uint_hash[def](),
+                  ast_map = new_def_hash[@ast::item](),
                   imports = new_int_hash[import_state](),
                   mod_map = new_int_hash[@indexed_mod](),
                   ext_map = new_def_hash[vec[ident]](),
@@ -157,14 +159,31 @@ fn map_crate(&@env e, &ast::crate c) {
                 e.mod_map.insert(defid._1, 
                                  @rec(m=some(md), index=index_mod(md),
                                       glob_imports=vec::empty[def]()));
+                e.ast_map.insert(defid, i);
             }
             case (ast::item_native_mod(_, ?nmd, ?defid)) {
                 e.mod_map.insert(defid._1, 
                                  @rec(m=none[ast::_mod], 
                                       index=index_nmod(nmd),
                                       glob_imports=vec::empty[def]()));
+                e.ast_map.insert(defid, i);
             }
-            case (_) {}
+            case (ast::item_const(_, _, _, ?defid, _)) {
+                e.ast_map.insert(defid, i);
+            }
+            case (ast::item_fn(_, _, _, ?defid, _)) { 
+                e.ast_map.insert(defid, i);
+            }
+            case (ast::item_ty(_, _, _, ?defid, _)) {
+                e.ast_map.insert(defid, i);
+            }
+            case (ast::item_tag(_, _, _, ?defid, _)) {
+                e.ast_map.insert(defid, i);
+            }
+            case (ast::item_obj(_, _, _, ?obj_def_ids, _)) { 
+                e.ast_map.insert(obj_def_ids.ty, i);
+                e.ast_map.insert(obj_def_ids.ctor, i);
+            }
         }
     }
 
@@ -899,6 +918,10 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, list[def] m, &span sp,
     } else if (vec::len(matches) == 1u){
         ret some[def](matches.(0));
     } else {
+        for (def match in matches) {
+            e.sess.span_note(e.ast_map.get(ast::def_id_of_def(match)).span,
+                             "'" + id + "' is defined here.");
+        }
         e.sess.span_err(sp, "'" + id + "' is glob-imported from" +
                         " multiple different modules.");
         fail;
