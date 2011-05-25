@@ -31,7 +31,6 @@ mod dug {
             fn also_redstone() {
               log "Whatever.";
             }
-            fn f1() {}
           }
         }
       }
