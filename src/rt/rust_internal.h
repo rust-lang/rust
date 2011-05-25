@@ -421,58 +421,6 @@ public:
         bool is_unknown() const;
     };
 
-    struct die_reader;
-
-    struct
-    die
-    {
-        die_reader *rdr;
-        uintptr_t off;
-        abbrev *ab;
-        bool using_rdr;
-
-        die(die_reader *rdr, uintptr_t off);
-        bool is_null() const;
-        bool has_children() const;
-        dw_tag tag() const;
-        bool start_attrs() const;
-        bool step_attr(attr &a) const;
-        bool find_str_attr(dw_at at, char const *&c);
-        bool find_num_attr(dw_at at, uintptr_t &n);
-        bool is_transparent();
-        bool find_child_by_name(char const *c, die &child,
-                                bool exact=false);
-        bool find_child_by_tag(dw_tag tag, die &child);
-        die next() const;
-        die next_sibling() const;
-    };
-
-    struct
-    rdr_sess
-    {
-        die_reader *rdr;
-        rdr_sess(die_reader *rdr);
-        ~rdr_sess();
-    };
-
-    struct
-    die_reader : public mem_reader
-    {
-        abbrev_reader &abbrevs;
-        uint32_t cu_unit_length;
-        uintptr_t cu_base;
-        uint16_t dwarf_vers;
-        uint32_t cu_abbrev_off;
-        uint8_t sizeof_addr;
-        bool in_use;
-
-        die first_die();
-        void dump();
-        die_reader(rust_crate::mem_area &die_mem,
-                   abbrev_reader &abbrevs);
-        ~die_reader();
-    };
-    die_reader dies;
     rust_crate_reader(rust_dom *dom, rust_crate const *crate);
 };
 
