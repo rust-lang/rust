@@ -904,7 +904,7 @@ fn print_view_item(ps s, @ast::view_item item) {
             auto first = true;
             for (str elt in ids) {
                 if (first) {first = false;}
-                else {wrd(s.s, ":");}
+                else {wrd(s.s, "::");}
                 wrd(s.s, elt);
             }
         }
