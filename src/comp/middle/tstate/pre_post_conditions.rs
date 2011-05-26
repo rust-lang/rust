@@ -151,6 +151,8 @@ import util::common::log_expr_err;
 import util::common::log_block_err;
 import util::common::log_block;
 
+import front::ast::span;
+
 fn find_pre_post_mod(&_mod m) -> _mod {
     log("implement find_pre_post_mod!");
     fail;
@@ -238,7 +240,7 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, ann a) {
     auto pps = vec::map[@expr, pre_and_post](g, args);
     auto h = get_post;
 
-    set_pre_and_post(fcx.ccx, a, seq_preconds(enclosing, pps),
+    set_pre_and_post(fcx.ccx, a, seq_preconds(fcx, pps),
         union_postconds
           (nv, (vec::map[pre_and_post, postcond](h, pps))));
 }
@@ -249,8 +251,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
     find_pre_post_block(fcx, body);
     log("222");
     auto loop_precond = declare_var(fcx.enclosing, decl_lhs(d),
-      seq_preconds(fcx.enclosing, [expr_pp(fcx.ccx, index),
-                                   block_pp(fcx.ccx, body)]));
+      seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]));
     auto loop_postcond = intersect_postconds
         ([expr_postcond(fcx.ccx, index), block_postcond(fcx.ccx, body)]);
     set_pre_and_post(fcx.ccx, a, loop_precond, loop_postcond);
@@ -259,13 +260,18 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
 fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs,
                 &ann larger_ann, &ann new_var) -> () {
   alt (ann_to_def(fcx.ccx, new_var)) {
-    case (some[def](def_local(?d_id))) {
-      find_pre_post_expr(fcx, rhs);
-      auto p = expr_pp(fcx.ccx, rhs);
-      set_pre_and_post(fcx.ccx, larger_ann,
-                       p.precondition, p.postcondition);
-      gen(fcx, larger_ann, d_id);
-    }
+      case (some[def](?d)) {
+          alt (d) {
+              case (def_local(?d_id)) {
+                  find_pre_post_expr(fcx, rhs);
+                  auto p = expr_pp(fcx.ccx, rhs);
+                  set_pre_and_post(fcx.ccx, larger_ann,
+                                   p.precondition, p.postcondition);
+                  gen(fcx, larger_ann, d_id);
+              }
+              case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_ann); }
+          }
+      }
     case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_ann); }
   }
 }
@@ -401,7 +407,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             alt (maybe_alt) {
                 case (none[@expr]) {
                     log "333";
-                    auto precond_res = seq_preconds(enclosing,
+                    auto precond_res = seq_preconds(fcx,
                                          [expr_pp(fcx.ccx, antec),
                                           block_pp(fcx.ccx, conseq)]);
                     set_pre_and_post(fcx.ccx, a, precond_res,
@@ -411,17 +417,16 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                     find_pre_post_expr(fcx, altern);
                     log "444";
                     auto precond_true_case =
-                        seq_preconds(enclosing,
-                                     [expr_pp(fcx.ccx, antec),
-                                      block_pp(fcx.ccx, conseq)]);
+                        seq_preconds(fcx, [expr_pp(fcx.ccx, antec),
+                                           block_pp(fcx.ccx, conseq)]);
                     auto postcond_true_case = union_postconds
                         (num_local_vars,
                          [expr_postcond(fcx.ccx, antec),
                           block_postcond(fcx.ccx, conseq)]);
                     log "555";
                     auto precond_false_case = seq_preconds
-                        (enclosing,
-                         [expr_pp(fcx.ccx, antec), expr_pp(fcx.ccx, altern)]);
+                        (fcx, [expr_pp(fcx.ccx, antec),
+                               expr_pp(fcx.ccx, altern)]);
                     auto postcond_false_case = union_postconds
                         (num_local_vars,
                          [expr_postcond(fcx.ccx, antec),
@@ -456,7 +461,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_block(fcx, body);
             log "666";
             set_pre_and_post(fcx.ccx, a,
-                    seq_preconds(enclosing,
+                             seq_preconds(fcx,
                                [expr_pp(fcx.ccx, test), 
                                    block_pp(fcx.ccx, body)]),
                     intersect_postconds([expr_postcond(fcx.ccx, test),
@@ -476,8 +481,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             }
 
             log "777";
-            set_pre_and_post(fcx.ccx, a, 
-              seq_preconds(enclosing,
+            set_pre_and_post(fcx.ccx, a, seq_preconds(fcx,
                            [block_pp(fcx.ccx, body),
                             expr_pp(fcx.ccx, test)]),
               loop_postcond);
@@ -499,19 +503,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             }
             auto f = bind do_an_alt(fcx, _);
             auto alt_pps = vec::map[arm, pre_and_post](f, alts);
-            fn combine_pp(pre_and_post antec, 
-                          fn_info enclosing, &pre_and_post pp,
+            fn combine_pp(pre_and_post antec, fn_ctxt fcx, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
                 log "777";
-                union(pp.precondition, seq_preconds(enclosing,
-                                                    [antec, next]));
+                union(pp.precondition, seq_preconds(fcx, [antec, next]));
                 intersect(pp.postcondition, next.postcondition);
                 ret pp;
             }
             auto antec_pp = pp_clone(expr_pp(fcx.ccx, e)); 
             auto e_pp  = @rec(precondition=empty_prestate(num_local_vars),
                              postcondition=false_postcond(num_local_vars));
-            auto g = bind combine_pp(antec_pp, fcx.enclosing, _, _);
+            auto g = bind combine_pp(antec_pp, fcx, _, _);
 
             auto alts_overall_pp = vec::foldl[pre_and_post, pre_and_post]
                                     (g, e_pp, alt_pps);
@@ -668,7 +670,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
     plus_option[pre_and_post](pps,
        option::map[@expr, pre_and_post](g, b.node.expr));
 
-    auto block_precond  = seq_preconds(fcx.enclosing, pps);
+    auto block_precond  = seq_preconds(fcx, pps);
     auto h = get_post;
     auto postconds =  vec::map[pre_and_post, postcond](h, pps);
     /* A block may be empty, so this next line ensures that the postconds
@@ -687,7 +689,8 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) -> () {
     find_pre_post_block(fcx, f.body);
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &span sp, &ident i, &def_id id,
+               &ann a) -> () {
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id),
                    id=id, name=i, ccx=ccx);
@@ -704,4 +707,3 @@ fn fn_pre_post(crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
 // compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
-

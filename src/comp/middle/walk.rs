@@ -4,6 +4,8 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
+import front::ast::span;
+
 // FIXME: Should visit patterns as well.
 type ast_visitor =
     rec(fn () -> bool                  keep_going,
@@ -32,9 +34,9 @@ type ast_visitor =
         fn (&@ast::expr e)              visit_expr_post,
         fn (&@ast::ty t)                visit_ty_pre,
         fn (&@ast::ty t)                visit_ty_post,
-        fn (&ast::_fn f, &ast::ident name, 
+        fn (&ast::_fn f, &span sp, &ast::ident name, 
             &ast::def_id d_id, &ast::ann a)  visit_fn_pre,
-        fn (&ast::_fn f, &ast::ident name,
+        fn (&ast::_fn f, &span sp, &ast::ident name,
             &ast::def_id d_id, &ast::ann a)  visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
@@ -95,8 +97,8 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             walk_ty(v, t);
             walk_expr(v, e);
         }
-        case (ast::item_fn(?i, ?f, _, ?d, ?a)) {
-            walk_fn(v, f, i, d, a);
+        case (ast::item_fn(?nm, ?f, _, ?d, ?a)) {
+            walk_fn(v, f, i.span, nm, d, a);
         }
         case (ast::item_mod(_, ?m, _)) {
             walk_mod(v, m);
@@ -120,13 +122,14 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             }
             for (@ast::method m in ob.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, m.node.ident, m.node.id, m.node.ann);
+                walk_fn(v, m.node.meth, m.span,
+                        m.node.ident, m.node.id, m.node.ann);
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none[@ast::method]) {}
                 case (some[@ast::method](?m)) {
-                    walk_fn(v, m.node.meth, m.node.ident, m.node.id,
+                    walk_fn(v, m.node.meth, m.span, m.node.ident, m.node.id,
                             m.node.ann);
                 }
             }
@@ -232,13 +235,13 @@ fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     walk_ty(v, fd.output);
 }
 
-fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::ident i, &ast::def_id d,
-           &ast::ann a) {
+fn walk_fn(&ast_visitor v, &ast::_fn f, &span sp, &ast::ident i,
+           &ast::def_id d, &ast::ann a) {
     if (!v.keep_going()) { ret; }
-    v.visit_fn_pre(f, i, d, a);
+    v.visit_fn_pre(f, sp, i, d, a);
     walk_fn_decl(v, f.decl);
     walk_block(v, f.body);
-    v.visit_fn_post(f, i, d, a);
+    v.visit_fn_post(f, sp, i, d, a);
 }
 
 fn walk_block(&ast_visitor v, &ast::block b) {
@@ -471,7 +474,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             // Methods
             for (@ast::method m in anon_obj.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, m.node.ident, 
+                walk_fn(v, m.node.meth, m.span, m.node.ident, 
                         m.node.id, m.node.ann);
                 v.visit_method_post(m);
 
@@ -495,7 +498,8 @@ fn def_visit_arm(&ast::arm a) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
-fn def_visit_fn(&ast::_fn f, &ast::ident i, &ast::def_id d, &ast::ann a) { }
+fn def_visit_fn(&ast::_fn f, &span sp, &ast::ident i, &ast::def_id d,
+                &ast::ann a) { }
 
 fn default_visitor() -> ast_visitor {
 

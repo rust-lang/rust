@@ -91,14 +91,15 @@ fn collect_ids_decl(&@decl d, @vec[uint] res) -> () {
     }
 }
 
-fn node_ids_in_fn(&_fn f, &ident i, &def_id d, &ann a, @vec[uint] res) -> () {
+fn node_ids_in_fn(&_fn f, &span sp, &ident i, &def_id d, &ann a,
+                  @vec[uint] res) -> () {
     auto collect_ids = walk::default_visitor();
     collect_ids = rec(visit_expr_pre  = bind collect_ids_expr(_,res),
                       visit_block_pre = bind collect_ids_block(_,res),
                       visit_stmt_pre  = bind collect_ids_stmt(_,res),
                       visit_decl_pre  = bind collect_ids_decl(_,res)
                       with collect_ids);
-    walk::walk_fn(collect_ids, f, i, d, a);
+    walk::walk_fn(collect_ids, f, sp, i, d, a);
 }
 
 fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
@@ -108,23 +109,24 @@ fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
     }
 }
 
-fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f, &ident i,
-            &def_id d, &ann a) -> () {
+fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f,
+            &span sp, &ident i, &def_id d, &ann a) -> () {
     let vec[uint] node_ids_ = [];
     let @vec[uint] node_ids = @node_ids_;
-    node_ids_in_fn(f, i, d, a, node_ids);
+    node_ids_in_fn(f, sp, i, d, a, node_ids);
     init_vecs(ccx, node_ids, num_locals);
 }
 
-fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &ident i, &def_id f_id, &ann a)
+fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &span sp, &ident i,
+                  &def_id f_id, &ann a)
     -> () {
     auto f_info = get_fn_info(ccx, f_id);
-    visit_fn(ccx, num_locals(f_info), f, i, f_id, a);
+    visit_fn(ccx, num_locals(f_info), f, sp, i, f_id, a);
 }
 
 fn annotate_crate(&crate_ctxt ccx, &crate crate) -> () {
     auto do_ann = walk::default_visitor();
-    do_ann = rec(visit_fn_pre = bind annotate_in_fn(ccx,_,_,_,_)
+    do_ann = rec(visit_fn_pre = bind annotate_in_fn(ccx,_,_,_,_,_)
                  with do_ann);
     walk::walk_crate(do_ann, crate);
 }

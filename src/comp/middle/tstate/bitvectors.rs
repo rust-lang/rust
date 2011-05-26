@@ -33,7 +33,7 @@ import tstate::ann::clear_in_poststate;
              
 fn bit_num(def_id v, fn_info m) -> uint {
   assert (m.vars.contains_key(v));
-  ret m.vars.get(v)._0;
+  ret m.vars.get(v).bit_num;
 }
 
 fn promises(&poststate p, def_id v, fn_info m) -> bool {
@@ -44,14 +44,14 @@ fn promises(&poststate p, def_id v, fn_info m) -> bool {
 // return the precondition for evaluating each expr in order.
 // So, if e0's post is {x} and e1's pre is {x, y, z}, the entire
 // precondition shouldn't include x.
-fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
+fn seq_preconds(fn_ctxt fcx, vec[pre_and_post] pps) -> precond {
   let uint sz = len[pre_and_post](pps);
-  let uint num_vars = num_locals(enclosing);
+  let uint num_vars = num_locals(fcx.enclosing);
 
   if (sz >= 1u) {
     auto first = pps.(0);
     assert (pps_len(first) == num_vars);
-    let precond rest = seq_preconds(enclosing,
+    let precond rest = seq_preconds(fcx,
                          slice[pre_and_post](pps, 1u, sz));
     difference(rest, first.postcondition);
     auto res = clone(first.precondition);
@@ -59,11 +59,11 @@ fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
 
     log("seq_preconds:");
     log("first.postcondition =");
-    log_bitv(enclosing, first.postcondition);
+    log_bitv(fcx, first.postcondition);
     log("rest =");
-    log_bitv(enclosing, rest);
+    log_bitv(fcx, rest);
     log("returning");
-    log_bitv(enclosing, res);
+    log_bitv(fcx, res);
 
     ret res;
   }
@@ -118,14 +118,14 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
 fn gen(&fn_ctxt fcx, &ann a, def_id id) -> bool {
   log "gen";
   assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id))._0;
+  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
   ret set_in_postcond(i, (ann_to_ts_ann(fcx.ccx, a)).conditions);
 }
 
 fn declare_var(&fn_info enclosing, def_id id, prestate pre)
    -> prestate {
     assert (enclosing.vars.contains_key(id));
-    let uint i = (enclosing.vars.get(id))._0;
+    let uint i = (enclosing.vars.get(id)).bit_num;
     auto res = clone(pre);
     relax_prestate(i, res);
     ret res;
@@ -134,14 +134,14 @@ fn declare_var(&fn_info enclosing, def_id id, prestate pre)
 fn gen_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
   log "gen_poststate";
   assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id))._0;
+  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
   ret set_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
 fn kill_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
   log "kill_poststate";
   assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id))._0;
+  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
   ret clear_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 

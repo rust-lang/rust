@@ -204,8 +204,10 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@decl d,
 
 fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a) -> bool {
   alt (ann_to_def(fcx.ccx, a_new_var)) {
-    case (some[def](def_local(?d))) { ret gen_poststate(fcx, a, d); }
-    case (_) { ret false; }
+      case (some[def](def_local(?loc))) {
+          ret gen_poststate(fcx, a, loc);
+      }
+      case (_) { ret false; }
   }
 }
 
@@ -420,9 +422,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         log("if:");
         log_expr(*e);
         log("new prestate:");
-        log_bitv(fcx.enclosing, pres);
+        log_bitv(fcx, pres);
         log("new poststate:");
-        log_bitv(fcx.enclosing, expr_poststate(fcx.ccx, e));
+        log_bitv(fcx, expr_poststate(fcx.ccx, e));
 
         ret changed;
     }
@@ -637,10 +639,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                             log_stmt(*s);
                             log("prestate = ");
                             log(bitv::to_str(stmt_ann.states.prestate));
-                            log_bitv(fcx.enclosing, stmt_ann.states.prestate);
+                            log_bitv(fcx, stmt_ann.states.prestate);
                             log("poststate =");
-                            log_bitv(fcx.enclosing,
-                                     stmt_ann.states.poststate);
+                            log_bitv(fcx, stmt_ann.states.poststate);
                             log("changed =");
                             log(changed);
   
@@ -740,9 +741,9 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
   log("poststate = ");
   log_states(block_states(fcx.ccx, b));
   log("pres0:");
-  log_bitv(fcx.enclosing, pres0);
+  log_bitv(fcx, pres0);
   log("post:");
-  log_bitv(fcx.enclosing, post);
+  log_bitv(fcx, post);
 
   ret changed;
 }

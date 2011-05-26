@@ -53,6 +53,7 @@ import aux::stmt_to_ann;
 import aux::num_locals;
 import aux::fixed_point_states;
 import aux::bitv_to_str;
+import aux::first_difference_string;
 
 import util::common::ty_to_str;
 import util::common::log_stmt_err;
@@ -70,12 +71,14 @@ fn check_states_expr(&fn_ctxt fcx, @expr e) -> () {
 
     if (!implies(pres, prec)) {
         auto s = "";
-        s += ("Unsatisfied precondition constraint for expression:\n");
+        auto diff = first_difference_string(fcx, prec, pres);
+        s += ("Unsatisfied precondition constraint (for example, "
+              + diff + ") for expression:\n");
         s += util::common::expr_to_str(e);
         s += ("\nPrecondition:\n");
-        s += bitv_to_str(fcx.enclosing, prec);
+        s += bitv_to_str(fcx, prec);
         s += ("\nPrestate:\n");
-        s += bitv_to_str(fcx.enclosing, pres);
+        s += bitv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_err(e.span, s);
     }
 }
@@ -96,12 +99,14 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
 
     if (!implies(pres, prec)) {
         auto ss = "";
-        ss += ("Unsatisfied precondition constraint for statement:\n");
+        auto diff = first_difference_string(fcx, prec, pres);
+        ss += ("Unsatisfied precondition constraint (for example, "
+              + diff + ") for statement:\n");
         ss += util::common::stmt_to_str(s);
         ss += ("\nPrecondition:\n");
-        ss += bitv_to_str(fcx.enclosing, prec);
+        ss += bitv_to_str(fcx, prec);
         ss += ("\nPrestate: \n");
-        ss += bitv_to_str(fcx.enclosing, pres);
+        ss += bitv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_err(s.span, ss);
     }
 }
@@ -162,7 +167,8 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     check_states_against_conditions(fcx, f, a);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
+fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i,
+             &def_id id, &ann a) -> () {
     /* Look up the var-to-bit-num map for this function */
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
@@ -170,6 +176,8 @@ fn fn_states(&crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
     auto fcx = rec(enclosing=f_info, id=id, name=i, ccx=ccx);
     check_fn_states(fcx, f, a);
 }
+
+
 
 fn check_crate(ty::ctxt cx, @crate crate) -> () {
     let crate_ctxt ccx = new_crate_ctxt(cx);
@@ -182,14 +190,14 @@ fn check_crate(ty::ctxt cx, @crate crate) -> () {
 
     /* Compute the pre and postcondition for every subexpression */
     auto do_pre_post = walk::default_visitor();
-    do_pre_post = rec(visit_fn_pre = bind fn_pre_post(ccx,_,_,_,_)
+    do_pre_post = rec(visit_fn_pre = bind fn_pre_post(ccx,_,_,_,_,_)
                       with do_pre_post);
     walk::walk_crate(do_pre_post, *crate);
     
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
     auto do_states = walk::default_visitor();
-    do_states = rec(visit_fn_pre = bind fn_states(ccx,_,_,_,_)
+    do_states = rec(visit_fn_pre = bind fn_states(ccx,_,_,_,_,_)
                     with do_states);
     walk::walk_crate(do_states, *crate);
 }

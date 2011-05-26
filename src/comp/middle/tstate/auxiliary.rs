@@ -18,7 +18,6 @@ import front::ast::expr_path;
 import front::ast::ident;
 import front::ast::controlflow;
 import front::ast::ann;
-import front::ast::ts_ann;
 import front::ast::stmt;
 import front::ast::expr;
 import front::ast::block;
@@ -54,26 +53,60 @@ import tstate::ann::extend_prestate;
 import tstate::ann::extend_poststate;
 import tstate::ann::set_precondition;
 import tstate::ann::set_postcondition;
+import tstate::ann::ts_ann;
+
+import util::common::istr;
 
 /* logging funs */
 
-fn bitv_to_str(fn_info enclosing, bitv::t v) -> str {
-  auto s = "";
+fn def_id_to_str(def_id d) -> str {
+   ret (istr(d._0) + "," + istr(d._1));
+}
 
-  for each (@tup(def_id, tup(uint, ident)) p in enclosing.vars.items()) {
-    if (bitv::get(v, p._1._0)) {
-      s += " " + p._1._1 + " ";
-    }
+fn bitv_to_str(fn_ctxt fcx, bitv::t v) -> str {
+  auto s = "";
+  auto comma = false;
+
+  for each (@tup(def_id, var_info) p in fcx.enclosing.vars.items()) {
+      if (bitv::get(v, p._1.bit_num)) {
+          s += (if (comma) { ", " } else { comma = true; "" })
+               + p._1.name + " [" + fcx.ccx.tcx.sess.span_str(p._1.sp) + "]";
+      }
   }
   ret s;
 }
 
-fn log_bitv(fn_info enclosing, bitv::t v) {
-    log(bitv_to_str(enclosing, v));
+fn log_bitv(fn_ctxt fcx, bitv::t v) {
+    log(bitv_to_str(fcx, v));
 }
 
-fn log_bitv_err(fn_info enclosing, bitv::t v) {
-    log_err(bitv_to_str(enclosing, v));
+fn first_difference_string(&fn_ctxt fcx, &bitv::t expected,
+                           &bitv::t actual) -> str {
+    let str s = "";
+    auto done = false;
+    for each (@tup(def_id, var_info) p in fcx.enclosing.vars.items()) {
+        if (!done) {
+            if (bitv::get(expected, p._1.bit_num) &&
+                !bitv::get(actual, p._1.bit_num)) {
+                
+            /*
+              for fun, try either:
+              * "ret s" after the assignment to s
+              or
+              * using break here
+              */
+            s = (p._1.name + " ["
+                 + fcx.ccx.tcx.sess.span_str(p._1.sp) + "]");
+            
+            done = true;
+            }
+        }
+    }
+    ret s;
+}
+
+fn log_bitv_err(fn_ctxt fcx, bitv::t v) {
+    log_err(bitv_to_str(fcx, v));
 }
 
 fn tos (vec[uint] v) -> str {
@@ -152,8 +185,10 @@ fn print_idents(vec[ident] idents) -> () {
 /**********************************************************************/
 /* mapping from variable name (def_id is assumed to be for a local
    variable in a given function) to bit number 
-   (also remembers the ident for error-logging purposes) */
-type var_info     = tup(uint, ident);
+   (also remembers the ident and span for error-logging purposes) */
+type var_info     = rec(uint bit_num,
+                        ident name,
+                        span sp);
 type fn_info      = rec(@std::map::hashmap[def_id, var_info] vars,
                         controlflow cf);
 
