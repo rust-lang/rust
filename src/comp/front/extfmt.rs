@@ -74,11 +74,12 @@ fn expr_to_str(@ast::expr expr) -> str {
                 case (ast::lit_str(?s)) {
                     ret s;
                 }
+                case (_) { /* fallthrough */ }
             }
         }
+        case (_) { /* fallthrough */ }
     }
-    // FIXME: Handle error correctly.
-    log_err "malformed #fmt call";
+    log_err "first argument to #fmt must be a string literal";
     fail;
 }
 
