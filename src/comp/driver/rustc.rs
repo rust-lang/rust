@@ -373,8 +373,10 @@ fn main(vec[str] args) {
     auto ls = opt_present(match, "ls");
     if (pretty || typed_pretty) {
         pretty_print_input(sess, env, ifile, typed_pretty);
+        ret;
     } else if (ls) {
         front::creader::list_file_metadata(ifile, std::io::stdout());
+        ret;
     } else {
         alt (output_file) {
             case (none[str]) {
