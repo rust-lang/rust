@@ -33,7 +33,6 @@ import util::common::ty_f64;
 
 import util::common::new_def_hash;
 import util::common::span;
-import middle::tstate::ann::ts_ann;
 
 import util::data::interner;
 

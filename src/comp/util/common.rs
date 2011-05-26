@@ -9,7 +9,6 @@ import front::ast;
 import front::ast::ty;
 import front::ast::pat;
 import middle::walk;
-import middle::tstate::ann::ts_ann;
 
 import std::io::stdout;
 import std::io::str_writer;

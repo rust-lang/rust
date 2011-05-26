@@ -6,7 +6,6 @@ import util::common::span;
 import util::common::spanned;
 import util::common::ty_mach;
 import util::common::filename;
-import middle::tstate::ann::ts_ann;
 
 type ident = str;
 
@@ -95,7 +94,7 @@ type meta_item_ = rec(ident name, str value);
 type block = spanned[block_];
 type block_ = rec(vec[@stmt] stmts,
                   option::t[@expr] expr,
-                  ann a); /* ann is only meaningful for the ts_ann field */
+                  ann a);
 
 type pat = spanned[pat_];
 tag pat_ {
@@ -201,8 +200,6 @@ tag mode {
 
 type stmt = spanned[stmt_];
 tag stmt_ {
-/* Only the ts_ann field is meaningful for statements,
-   but we make it an ann to make traversals simpler */
     stmt_decl(@decl, ann); 
     stmt_expr(@expr, ann);
     // These only exist in crate-level blocks.
