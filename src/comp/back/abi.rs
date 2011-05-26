@@ -69,14 +69,6 @@ const int closure_elt_ty_params = 3;
 
 const int worst_case_glue_call_args = 7;
 
-const int n_native_glues = 8;
-
-tag native_glue_type {
-    ngt_rust;
-    ngt_pure_rust;
-    ngt_cdecl;
-}
-
 fn memcpy_glue_name() -> str {
     ret "rust_memcpy_glue";
 }
@@ -87,16 +79,6 @@ fn bzero_glue_name() -> str {
 
 fn vec_append_glue_name() -> str {
     ret "rust_vec_append_glue";
-}
-
-fn native_glue_name(int n, native_glue_type ngt) -> str {
-    auto prefix;
-    alt (ngt) {
-        case (ngt_rust)         { prefix = "rust_native_rust_"; }
-        case (ngt_pure_rust)    { prefix = "rust_native_pure_rust_"; }
-        case (ngt_cdecl)        { prefix = "rust_native_cdecl_"; }
-    }
-    ret prefix + util::common::istr(n);
 }
 
 fn yield_glue_name() -> str {
