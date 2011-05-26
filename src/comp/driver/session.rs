@@ -41,12 +41,16 @@ type options = rec(bool shared,
 type crate_metadata = rec(str name,
                           vec[u8] data);
 
-fn emit_diagnostic(span sp, str msg, str kind, u8 color,
-                   codemap::codemap cm) {
+fn span_to_str(span sp, codemap::codemap cm) -> str {
     auto lo = codemap::lookup_pos(cm, sp.lo);
     auto hi = codemap::lookup_pos(cm, sp.hi);
-    io::stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
-                               lo.col, hi.line, hi.col));
+    ret (#fmt("%s:%u:%u:%u:%u", lo.filename, lo.line,
+              lo.col, hi.line, hi.col));
+}
+
+fn emit_diagnostic(span sp, str msg, str kind, u8 color,
+                   codemap::codemap cm) {
+    io::stdout().write_str(span_to_str(sp, cm) + ": ");
 
     if (term::color_supported()) {
         term::fg(io::stdout().get_buf_writer(), color);
@@ -142,6 +146,10 @@ state obj session(ast::crate_num cnum,
 
     fn lookup_pos(uint pos) -> codemap::loc {
         ret codemap::lookup_pos(cm, pos);
+    }
+
+    fn span_str(span sp) -> str {
+        ret span_to_str(sp, self.get_codemap());
     }
 }
 
