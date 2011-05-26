@@ -35,7 +35,7 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
     auto membuf =
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(str::buf(path));
     if ((membuf as uint) == 0u) {
-        llvm_err(sess, "installation problem: couldn't open intrinstics.bc");
+        llvm_err(sess, "installation problem: couldn't open " + path);
         fail;
     }
 
@@ -43,7 +43,7 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
     llvm::LLVMDisposeMemoryBuffer(membuf);
 
     if ((llintrinsicsmod as uint) == 0u) {
-        llvm_err(sess, "installation problem: couldn't parse intrinstics.bc");
+        llvm_err(sess, "installation problem: couldn't parse intrinsics.bc");
         fail;
     }
 
