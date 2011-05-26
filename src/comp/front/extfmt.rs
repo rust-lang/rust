@@ -499,6 +499,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
     auto sp = args.(0).span;
     auto n = 0u;
     auto tmp_expr = make_new_str(p, sp, "");
+    auto nargs = vec::len[@ast::expr](args);
 
     for (piece pc in pieces) {
         alt (pc) {
@@ -507,7 +508,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                 tmp_expr = make_add_expr(p, sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
-                if (n >= vec::len[@ast::expr](args)) {
+                if (n >= nargs) {
                     log_err "too many conversions in #fmt string";
                     fail;
                 }
@@ -522,6 +523,13 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                 tmp_expr = make_add_expr(p, sp, tmp_expr, c_expr);
             }
         }
+    }
+
+    auto expected_nargs = n + 1u; // n conversions + the fmt string
+    if (expected_nargs < nargs) {
+        log_err #fmt("too many arguments to #fmt. found %u, expected %u",
+                     nargs, expected_nargs);
+        fail;
     }
 
     // TODO: Remove this debug logging
