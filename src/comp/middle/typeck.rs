@@ -1341,17 +1341,13 @@ mod pushdown {
                     ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
 
                 auto then_t = ty::block_ty(scx.fcx.ccx.tcx, then_0);
-                if (!ty::type_is_bot(scx.fcx.ccx.tcx, then_t)) {
-                    pushdown_block(scx, expected, then_0);
-                }
+                pushdown_block(scx, expected, then_0);
 
                 alt (else_0) {
                     case (none[@ast::expr]) { /* no-op */ }
                     case (some[@ast::expr](?e_0)) {
                         auto else_t = ty::expr_ty(scx.fcx.ccx.tcx, e_0);
-                        if (!ty::type_is_bot(scx.fcx.ccx.tcx, else_t)) {
-                            pushdown_expr(scx, expected, e_0);
-                        }
+                        pushdown_expr(scx, expected, e_0);
                     }
                 }
                 write::ty_only_fixup(scx, ann.id, t);
@@ -1472,10 +1468,7 @@ mod pushdown {
                 for (ast::arm arm_0 in arms_0) {
                     pushdown_block(scx, expected, arm_0.block);
                     auto bty = block_ty(scx.fcx.ccx.tcx, arm_0.block);
-                    // Failing alt arms don't need to have a matching type
-                    if (!ty::type_is_bot(scx.fcx.ccx.tcx, bty)) {
-                        t = demand::simple(scx, e.span, t, bty);
-                    }
+                    t = demand::simple(scx, e.span, t, bty);
                 }
                 write::ty_only_fixup(scx, ann.id, t);
             }
@@ -2245,8 +2238,6 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             pushdown::pushdown_expr(scx, pattern_ty, expr);
 
-            // FIXME: If all the the arms were ty_bot then the result should
-            // also be ty_bot. At the moment this doesn't seem to matter
             write::ty_only_fixup(scx, a.id, result_ty);
         }
 

@@ -2209,6 +2209,12 @@ mod unify {
         if (eq_ty(expected, actual)) { ret ures_ok(expected); }
 
         alt (struct(cx.tcx, actual)) {
+
+            // a _|_ type can be used anywhere
+            case (ty::ty_bot) {
+                ret ures_ok(expected);
+            }
+       
             // If the RHS is a variable type, then just do the appropriate
             // binding.
             case (ty::ty_var(?actual_id)) {
