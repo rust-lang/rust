@@ -2181,7 +2181,7 @@ fn parse_use(&parser p) -> @ast::view_item {
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
     auto use_decl = ast::view_item_use(ident, metadata, p.next_def_id(),
-                                      none[int]);
+                                       p.get_ann());
     ret @spanned(lo, hi, use_decl);
 }
 

@@ -78,10 +78,12 @@ type indexed_mod = rec(option::t[ast::_mod] m, mod_index index);
 /* native modules can't contain tags, and we don't store their ASTs because we
    only need to look at them to determine exports, which they can't control.*/
 
+type crate_map = hashmap[uint,ast::crate_num];
 
 type def_map = hashmap[uint,def];
 
-type env = rec(def_map def_map,
+type env = rec(crate_map crate_map,
+               def_map def_map,
                hashmap[ast::def_num,import_state] imports,
                hashmap[ast::def_num,@indexed_mod] mod_map,
                hashmap[def_id,vec[ident]] ext_map,
@@ -99,12 +101,14 @@ tag namespace {
 }
 
 fn resolve_crate(session sess, @ast::crate crate) -> def_map {
-    auto e = @rec(def_map = new_uint_hash[def](),
+    auto e = @rec(crate_map = new_uint_hash[ast::crate_num](),
+                  def_map = new_uint_hash[def](),
                   imports = new_int_hash[import_state](),
                   mod_map = new_int_hash[@indexed_mod](),
                   ext_map = new_def_hash[vec[ident]](),
                   ext_cache = new_ext_hash(),
                   sess = sess);
+    creader::read_crates(sess, e.crate_map, *crate);
     map_crate(e, *crate);
     resolve_imports(*e);
     check_for_collisions(e, *crate);
@@ -709,8 +713,8 @@ fn lookup_in_mod(&env e, def m, &ident id, namespace ns, dir dr)
 fn found_view_item(&env e, @ast::view_item vi, namespace ns)
     -> option::t[def] {
     alt (vi.node) {
-        case (ast::view_item_use(_, _, _, ?cnum)) {
-            ret some(ast::def_mod(tup(option::get(cnum), -1)));
+        case (ast::view_item_use(_, _, _, ?ann)) {
+            ret some(ast::def_mod(tup(e.crate_map.get(ann.id), -1)));
         }
         case (ast::view_item_import(_, _, ?defid)) {
             ret lookup_import(e, defid, ns);

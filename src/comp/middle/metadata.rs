@@ -9,7 +9,6 @@ import std::option::some;
 import std::option::none;
 
 import front::ast;
-import middle::fold;
 import middle::trans;
 import middle::ty;
 import back::x86;

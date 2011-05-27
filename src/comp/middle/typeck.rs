@@ -2,7 +2,6 @@ import front::ast;
 import front::ast::ann;
 import front::ast::mutability;
 import front::creader;
-import middle::fold;
 import driver::session;
 import util::common;
 import util::common::span;
@@ -688,7 +687,7 @@ mod collect {
                 with variant.node
             );
             write::ty_only(cx.tcx, variant.node.ann.id, result_ty);
-            result += [fold::respan(variant.span, variant_t)];
+            result += [common::respan(variant.span, variant_t)];
         }
 
         ret result;
@@ -1632,7 +1631,6 @@ mod writeback {
         }
         fn keep_going(@mutable bool ignore) -> bool { ret !*ignore; }
 
-        auto fld = fold::new_identity_fold[option::t[@fn_ctxt]]();
         auto visit = rec(keep_going=bind keep_going(ignore),
                          visit_item_pre=bind visit_item_pre(ignore, _),
                          visit_item_post=bind visit_item_post(ignore, _),

@@ -90,8 +90,6 @@ fn compile_input(session::session sess,
                       bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) {ret;}
 
-    crate = time(time_passes, "external crate reading",
-                 bind creader::read_crates(sess, crate));
     auto def_map = time(time_passes, "resolution",
                         bind resolve::resolve_crate(sess, crate));
 
@@ -121,7 +119,6 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
 
     auto mode;
     if (typed) {
-        crate = creader::read_crates(sess, crate);
         auto def_map = resolve::resolve_crate(sess, crate);
         auto ty_cx = ty::mk_ctxt(sess, def_map);
         typeck::check_crate(ty_cx, crate);

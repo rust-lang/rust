@@ -6,7 +6,8 @@ import lib::llvm::False;
 import lib::llvm::llvm;
 import lib::llvm::mk_object_file;
 import lib::llvm::mk_section_iter;
-import middle::fold;
+import middle::resolve;
+import middle::walk;
 import middle::metadata;
 import middle::trans;
 import middle::ty;
@@ -28,13 +29,6 @@ import std::option::some;
 import std::os;
 import std::map::hashmap;
 
-// TODO: map to a real type here.
-type env = @rec(
-    session::session sess,
-    @hashmap[str, int] crate_cache,
-    vec[str] library_search_paths,
-    mutable int next_crate_num
-);
 
 // Type decoding
 
@@ -453,38 +447,49 @@ fn load_crate(session::session sess,
     fail;
 }
 
-fn fold_view_item_use(&env e, &span sp, &ast::ident ident,
-                      &vec[@ast::meta_item] meta_items,
-                      &ast::def_id id, &option::t[int] cnum_opt)
-    -> @ast::view_item {
-    auto cnum;
-    if (!e.crate_cache.contains_key(ident)) {
-        cnum = e.next_crate_num;
-        load_crate(e.sess, cnum, ident, e.library_search_paths);
-        e.crate_cache.insert(ident, e.next_crate_num);
-        e.next_crate_num += 1;
-    } else {
-        cnum = e.crate_cache.get(ident);
-    }
+type env = @rec(
+    session::session sess,
+    resolve::crate_map crate_map,
+    @hashmap[str, int] crate_cache,
+    vec[str] library_search_paths,
+    mutable int next_crate_num
+);
 
-    auto viu = ast::view_item_use(ident, meta_items, id, some[int](cnum));
-    ret @fold::respan[ast::view_item_](sp, viu);
+fn visit_view_item(env e, &@ast::view_item i) {
+    alt (i.node) {
+        case (ast::view_item_use(?ident, ?meta_items, ?id, ?ann)) {
+            auto cnum;
+            if (!e.crate_cache.contains_key(ident)) {
+                cnum = e.next_crate_num;
+                load_crate(e.sess, cnum, ident,
+                           e.library_search_paths);
+                e.crate_cache.insert(ident, e.next_crate_num);
+                e.next_crate_num += 1;
+            } else {
+                cnum = e.crate_cache.get(ident);
+            }
+            e.crate_map.insert(ann.id, cnum);
+        }
+        case (_) { }
+    }
 }
+
 
 // Reads external crates referenced by "use" directives.
 fn read_crates(session::session sess,
-               @ast::crate crate) -> @ast::crate {
+               resolve::crate_map crate_map,
+               &ast::crate crate) {
     auto e = @rec(
         sess=sess,
+        crate_map=crate_map,
         crate_cache=@common::new_str_hash[int](),
         library_search_paths=sess.get_opts().library_search_paths,
         mutable next_crate_num=1
     );
 
-    auto f = fold_view_item_use;
-    auto fld = @rec(fold_view_item_use=f
-                    with *fold::new_identity_fold[env]());
-    ret fold::fold_crate[env](e, fld, crate);
+    auto v = rec(visit_view_item_pre=bind visit_view_item(e, _)
+                 with walk::default_visitor());
+    walk::walk_crate(v, crate);
 }
 
 

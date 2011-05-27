@@ -8,10 +8,8 @@ import std::option::some;
 import front::ast;
 import front::ast::ty;
 import front::ast::pat;
+import middle::walk;
 import middle::tstate::ann::ts_ann;
-
-import middle::fold;
-import middle::fold::respan;
 
 import std::io::stdout;
 import std::io::str_writer;
@@ -277,35 +275,25 @@ fn decl_lhs(@ast::decl d) -> ast::def_id {
                     ret d.ctor; /* This doesn't really make sense */
                 }
             }
-        } 
+        }
     }
 }
 
 fn has_nonlocal_exits(&ast::block b) -> bool {
-    /* overkill, but just passing around a mutable bool doesn't seem
-       to work in rustboot */
-    auto has_exits = new_str_hash[()]();
+   auto has_exits = @mutable false;
 
-   fn set_break(&flag f, &span sp, &ast::ann a) -> @ast::expr {
-        f.insert("foo", ());
-        ret @respan(sp, ast::expr_break(a));
-    }
-    fn set_cont(&flag f, &span sp, &ast::ann a) -> @ast::expr {
-        f.insert("foo", ());
-        ret @respan(sp, ast::expr_cont(a));
-    }
-    fn check_b(&flag f) -> bool {
-        ret (f.size() == 0u);
-    }
+   fn visit_expr(@mutable bool flag, &@ast::expr e) {
+       alt (e.node) {
+           case (ast::expr_break(_)) { *flag = true; }
+           case (ast::expr_cont(_)) { *flag = true; }
+           case (_) { }
+       }
+   }
 
-    auto fld0 = fold::new_identity_fold[flag]();
-
-    fld0 = @rec(fold_expr_break = bind set_break(_,_,_),
-                fold_expr_cont  = bind set_cont(_,_,_),
-                keep_going      = bind check_b(_) with *fld0);
-    fold::fold_block[flag](has_exits, fld0, b);
-
-    ret (has_exits.size() > 0u);
+    auto v = rec(visit_expr_pre=bind visit_expr(has_exits, _)
+                 with walk::default_visitor());
+    walk::walk_block(v, b);
+    ret *has_exits;
 }
 
 fn local_rhs_span(&@ast::local l, &ast::span def) -> ast::span {
@@ -313,6 +301,10 @@ fn local_rhs_span(&@ast::local l, &ast::span def) -> ast::span {
         case (some[ast::initializer](?i)) { ret i.expr.span; }
         case (_) { ret def; }
     }
+}
+
+fn respan[T](&span sp, &T t) -> spanned[T] {
+    ret rec(node=t, span=sp);
 }
 
 //

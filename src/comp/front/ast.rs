@@ -402,7 +402,7 @@ type variant = spanned[variant_];
 
 type view_item = spanned[view_item_];
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item], def_id, option::t[int]);
+    view_item_use(ident, vec[@meta_item], def_id, ann);
     view_item_import(ident, vec[ident], def_id);
     view_item_export(ident);
 }
