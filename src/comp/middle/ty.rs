@@ -1716,10 +1716,7 @@ fn stmt_ty(&ctxt cx, &@ast::stmt s) -> t {
 }
 
 fn block_ty(&ctxt cx, &ast::block b) -> t {
-    alt (b.node.expr) {
-        case (some[@ast::expr](?e)) { ret expr_ty(cx, e); }
-        case (none[@ast::expr])     { ret mk_nil(cx); }
-    }
+    ret ann_to_type(cx.node_types, b.node.a);
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function

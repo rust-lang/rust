@@ -1376,6 +1376,7 @@ mod pushdown {
                 auto t = demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
                 write::ty_only_fixup(scx, ann.id, t);
+                pushdown_block(scx, t, bloc);
             }
             case (ast::expr_assign(?lhs_0, ?rhs_0, ?ann)) {
                 auto t = demand::autoderef(scx, e.span, expected,
@@ -1517,14 +1518,13 @@ mod pushdown {
         alt (bloc.node.expr) {
             case (some[@ast::expr](?e_0)) {
                 pushdown_expr(scx, expected, e_0);
-                write::nil_ty(scx.fcx.ccx.tcx, bloc.node.a.id);
             }
             case (none[@ast::expr]) {
-                demand::simple(scx, bloc.span, expected,
-                               ty::mk_nil(scx.fcx.ccx.tcx));
-                write::nil_ty(scx.fcx.ccx.tcx, bloc.node.a.id);
+                /* empty */
             }
         }
+        demand::simple(scx, bloc.span, expected,
+          ann_to_type(scx.fcx.ccx.tcx.node_types, bloc.node.a));
     }
 }
 
@@ -2746,15 +2746,17 @@ fn check_block(&@stmt_ctxt scx, &ast::block block) {
     for (@ast::stmt s in block.node.stmts) { check_stmt(scx.fcx, s); }
 
     alt (block.node.expr) {
-        case (none[@ast::expr]) { /* empty */ }
+        case (none[@ast::expr]) {
+            write::nil_ty(scx.fcx.ccx.tcx, block.node.a.id);
+        }
         case (some[@ast::expr](?e)) {
             check_expr(scx, e);
             auto ety = expr_ty(scx.fcx.ccx.tcx, e);
             pushdown::pushdown_expr(scx, ety, e);
+            write::ty_only_fixup(scx, block.node.a.id, ety);
         }
     }
 
-    write::nil_ty(scx.fcx.ccx.tcx, block.node.a.id);
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::ann ann) {
