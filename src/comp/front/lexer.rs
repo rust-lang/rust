@@ -674,12 +674,19 @@ fn next_token(&reader rdr) -> token::token {
         }
 
         case ('|') {
-            if (rdr.next() == '|') {
-                rdr.bump();
-                rdr.bump();
-                ret token::OROR;
-            } else {
-                ret binop(rdr, token::OR);
+            alt (rdr.next()) {
+                case ('|') {
+                    rdr.bump();
+                    rdr.bump();
+                    ret token::OROR;
+                }
+                case ('>') {
+                    rdr.bump();
+                    ret token::RECV;
+                }
+                case (_) {
+                    ret binop(rdr, token::OR);
+                }
             }
         }
 

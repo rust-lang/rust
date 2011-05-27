@@ -49,6 +49,7 @@ tag token {
     QUES;
     RARROW;
     SEND;
+    RECV;
     LARROW;
     LPAREN;
     RPAREN;
