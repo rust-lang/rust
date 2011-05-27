@@ -9,7 +9,7 @@ fn sub(chan[int] parent, int id) {
   } else {
     let port[int] p = port();
     auto child = spawn sub(chan(p), id-1);
-    let int y <- p;
+    let int y; y <- p;
     parent <| y + 1;
   }
 }

@@ -9,5 +9,5 @@ fn start(chan[chan[str]] c) {
 fn main() {
     let port[chan[str]] p = port();
     auto child = spawn "child" start(chan(p));
-    auto c <- p;
+    auto c; c <- p;
 }

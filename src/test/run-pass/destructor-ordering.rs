@@ -24,7 +24,8 @@ type order_info = rec(int order, str msg);
 io fn check_order(port[order_info] expected_p) {
   chan(expected_p) <| rec(order=-1, msg="");
   let mutable int actual = 0;
-  auto expected <- expected_p;  // FIXME #121: Workaround for while(true) bug.
+  // FIXME #121: Workaround for while(true) bug.
+  auto expected; expected <- expected_p;
   auto done = -1;  // FIXME: Workaround for typechecking bug.
   while(expected.order != done) {
     if (expected.order != actual) {

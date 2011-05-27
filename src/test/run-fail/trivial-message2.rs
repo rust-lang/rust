@@ -9,7 +9,7 @@ fn main() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
 
-    auto r <- po;
+    auto r; r <- po;
 
     ch <| 42;
 

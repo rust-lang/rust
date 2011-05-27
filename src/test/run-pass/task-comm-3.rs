@@ -47,7 +47,7 @@ fn test00(bool is_multithreaded) {
     for (task t in tasks) {
         i = 0;
         while (i < number_of_messages) {
-            let int value <- po;
+            let int value; value <- po;
             sum += value;
             i = i + 1;
         }

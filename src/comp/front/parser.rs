@@ -1442,11 +1442,13 @@ fn parse_initializer(&parser p) -> option::t[ast::initializer] {
             ret some(rec(op = ast::init_assign,
                          expr = parse_expr(p)));
         }
-        case (token::LARROW) {
-            p.bump();
-            ret some(rec(op = ast::init_recv,
-                         expr = parse_expr(p)));
-        }
+        // Now that the the channel is the first argument to receive,
+        // combining it with an initializer doesn't really make sense.
+        // case (token::RECV) {
+        //     p.bump();
+        //     ret some(rec(op = ast::init_recv,
+        //                  expr = parse_expr(p)));
+        // }
         case (_) {
             ret none[ast::initializer];
         }
