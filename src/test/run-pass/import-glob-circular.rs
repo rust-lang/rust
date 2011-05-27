@@ -3,39 +3,47 @@ import test2::*;
 
 mod circ1 {
   import circ1::*;
-  fn f1() {
-    log "f1";
-  }
-  fn common() -> uint {
-    ret 0u;
-  }
-}
-
-mod circ2 {
-  import circ2::*;
-  fn f2() {
-    log "f2";
+  fn f1() -> uint {
+    ret 1u
   }
   fn common() -> uint {
     ret 1u;
   }
 }
 
+mod circ2 {
+  import circ2::*;
+  fn f2() -> uint {
+    ret 2u;
+  }
+  fn common() -> uint {
+    ret 2u;
+  }
+}
+
 mod test1 {
   import circ1::*;
   fn test1() {
-    f1();
-    f2();
-    assert(common() == 0u);
+    assert(f1() == 1u);
+    //make sure that cached lookups work...
+    assert(f1() == 1u);
+    assert(f2() == 2u);
+    assert(f2() == 2u);
+    assert(common() == 1u);
+    assert(common() == 1u);
   }
 }
 
 mod test2 {
   import circ2::*;
   fn test2() {
-    f1();
-    f2();
-    assert(common() == 1u);
+    assert(f1() == 1u);
+    //make sure that cached lookups work...
+    assert(f1() == 1u);
+    assert(f2() == 2u);
+    assert(f2() == 2u);
+    assert(common() == 2u);    
+    assert(common() == 2u);
   }
 }
 
