@@ -682,6 +682,7 @@ fn next_token(&reader rdr) -> token::token {
                 }
                 case ('>') {
                     rdr.bump();
+                    rdr.bump();
                     ret token::RECV;
                 }
                 case (_) {
