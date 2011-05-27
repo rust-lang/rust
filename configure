@@ -220,7 +220,7 @@ fi
 # Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
 # on the Mac the dynamic linker causes Valgrind to emit a huge stream of
 # errors.
-if [ $CFG_OSTYPE != Linux ]
+if [ $CFG_OSTYPE != Linux ] && [ $CFG_OSTYPE != Darwin ]
 then
     CFG_BAD_VALGRIND=1
     putvar CFG_BAD_VALGRIND
