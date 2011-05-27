@@ -480,7 +480,7 @@ upcall_start_task(rust_task *spawner,
     // here.
     uintptr_t start_args[] = {0, 0, 0, args};
     
-    task->start(spawnee_fn, (uintptr_t)&start_args, sizeof(start_args));
+    task->start(spawnee_fn, (uintptr_t)start_args, sizeof(start_args));
     return task;
 }
 

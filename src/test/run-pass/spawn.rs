@@ -2,11 +2,11 @@
 // -*- rust -*-
 
 fn main() {
-  auto t = spawn child(10);
+    auto t = spawn child(10);
 }
 
 fn child(int i) {
-   log_err i;
+    log_err i;
 }
 
 // Local Variables:

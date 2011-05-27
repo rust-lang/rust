@@ -5949,7 +5949,6 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
                     &ty::t args_ty) -> result {
     auto llmod = cx.fcx.lcx.ccx.llmod;
     let TypeRef args_ty_tref = type_of(cx.fcx.lcx.ccx, cx.sp, args_ty);
-    //let TypeRef wrapper_fn_type = T_fn([args_ty_tref], T_void());
 
     let TypeRef wrapper_fn_type =
         type_of_fn(cx.fcx.lcx.ccx, cx.sp, ast::proto_fn,
@@ -5963,8 +5962,8 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
                  ty_str(cx.fcx.lcx.ccx.tn, wrapper_fn_type));
 
     // TODO: construct a name based on tname
-    auto llfndecl = decl_cdecl_fn(llmod, "spawn_wrap",
-                                  wrapper_fn_type);
+    auto llfndecl = decl_fastcall_fn(llmod, "spawn_wrap",
+                                     wrapper_fn_type);
 
     log_err #fmt("spawn wrapper decl type: %s", 
                  val_str(cx.fcx.lcx.ccx.tn, llfndecl));
@@ -6028,10 +6027,10 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
         i += 1;
     }
 
-    fbcx.build.Call(llfn,
-                    child_args);
+    fbcx.build.FastCall(llfn,
+                        child_args);
     fbcx.build.RetVoid();
-
+    
     finish_fn(fcx, fbcx.llbb);
 
     // TODO: make sure we clean up everything we need to.
