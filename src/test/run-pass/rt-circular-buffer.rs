@@ -44,7 +44,7 @@ fn test_shrink1() {
     auto mychan = chan(myport);
 
     mychan <| 0i8;
-    auto x; x <- myport;
+    auto x; myport |> x;
 }
 
 fn test_shrink2() {
@@ -58,7 +58,7 @@ fn test_shrink2() {
     }
 
     for each (uint i in uint::range(0u, 100u)) {
-        auto x; x <- myport;
+        auto x; myport |> x;
     }
 }
 
@@ -73,7 +73,7 @@ fn test_rotate() {
                        val3=i as u32);
         mychan <| val;
 
-        auto x; x <- myport;
+        auto x; myport |> x;
         assert (x.val1 == i as u32);
         assert (x.val2 == i as u32);
         assert (x.val3 == i as u32);
@@ -95,7 +95,7 @@ fn test_rotate_grow() {
         }
 
         for each (uint i in uint::range(0u, 10u)) {
-            auto x; x <- myport;
+            auto x; myport |> x;
             assert (x.val1 == i as u32);
             assert (x.val2 == i as u32);
             assert (x.val3 == i as u32);

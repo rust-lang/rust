@@ -48,7 +48,7 @@ fn test00(bool is_multithreaded) {
     for (task t in tasks) {
         i = 0;
         while (i < number_of_messages) {
-            let int value; value <- po;
+            let int value; po |> value;
             sum += value;
             i = i + 1;
         }
@@ -66,7 +66,7 @@ fn test00(bool is_multithreaded) {
 fn test01() {
     let port[int] p = port();
     log "Reading from a port that is never written to.";
-    let int value; value <- p;
+    let int value; p |> value;
     log value;
 }
 
@@ -76,7 +76,7 @@ fn test02() {
     log "Writing to a local task channel.";
     c <| 42;
     log "Reading from a local task port.";
-    let int value; value <- p;
+    let int value; p |> value;
     log value;
 }
 
@@ -126,9 +126,9 @@ fn test05() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
     spawn thread test05_start(ch);
-    let int value; value <- po;
-    value <- po;
-    value <- po;
+    let int value; po |> value;
+    po |> value;
+    po |> value;
     log value;
 }
 

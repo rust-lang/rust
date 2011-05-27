@@ -19,7 +19,7 @@ fn main() {
   let task s = spawn starve_main(chan(alive));
   let int i;
   log "main waiting for alive signal";
-  i <- alive;
+  alive |> i;
   log "main got alive signal";
   while (i < 50) {
     log "main iterated";

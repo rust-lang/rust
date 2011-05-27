@@ -29,7 +29,7 @@ fn main() {
   auto w = spawn do_work(chan(p));
   let int i;
   log "parent waiting for shutdown";
-  i <- p;
+  p |> i;
   log "received int";
   assert (i == 10);
   log "int is OK, child-dtor ran as expected";

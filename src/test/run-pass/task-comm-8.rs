@@ -30,10 +30,10 @@ fn test00() {
     
     let int i = 0;
     while (i < number_of_messages) {
-        r <- p; sum += r;
-        r <- p; sum += r;
-        r <- p; sum += r;
-        r <- p; sum += r;
+        p |> r; sum += r;
+        p |> r; sum += r;
+        p |> r; sum += r;
+        p |> r; sum += r;
         i += 1;
     }
             

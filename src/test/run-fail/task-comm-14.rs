@@ -19,7 +19,7 @@ io fn main() {
     let int value = 0;
     while (i > 0) {
         log i;
-        value <- po;
+        po |> value;
         i = i - 1;
     }
   

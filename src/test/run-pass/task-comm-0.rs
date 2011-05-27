@@ -15,8 +15,8 @@ fn test05() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
     spawn test05_start(chan(po));
-    let int value; value <- po;
-    value <- po;
-    value <- po;
+    let int value; po |> value;
+    po |> value;
+    po |> value;
     assert (value == 30);
 }

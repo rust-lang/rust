@@ -9,7 +9,7 @@ fn sub(chan[int] parent, int id) {
   } else {
     let port[int] p = port();
     auto child = spawn sub(chan(p), id-1);
-    let int y; y <- p;
+    let int y; p |> y;
     parent <| y + 1;
   }
 }
@@ -17,7 +17,7 @@ fn sub(chan[int] parent, int id) {
 fn main() {
   let port[int] p = port();
   auto child = spawn sub(chan(p), 500);
-  let int y <- p;
+  let int p |> y;
   log "transmission complete";
   log y;
   assert (y == 500);

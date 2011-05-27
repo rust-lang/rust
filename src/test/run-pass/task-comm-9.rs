@@ -24,7 +24,7 @@ fn test00() {
     
     let int i = 0;
     while (i < number_of_messages) {
-        r <- p; sum += r; log (r);
+        p |> r; sum += r; log (r);
         i += 1;
     }
             

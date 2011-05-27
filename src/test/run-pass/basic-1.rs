@@ -12,8 +12,8 @@ fn main() {
     spawn a(chan(p));
     spawn b(chan(p));
     let int n = 0;
-    n <- p;
-    n <- p;
+    p |> n;
+    p |> n;
 //    log "Finished.";
 }
 

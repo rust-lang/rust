@@ -2,14 +2,14 @@
 // xfail-stage1
 // xfail-stage2
 /*
-  This program should hang on the r <- po line.
+  This program should hang on the po |> r line.
  */
 
 fn main() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
 
-    auto r; r <- po;
+    auto r; po |> r;
 
     ch <| 42;
 

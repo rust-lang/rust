@@ -9,7 +9,7 @@ fn main() {
 
     ch <| 42;
 
-    auto r; r <- po;
+    auto r; po |> r;
 
     log_err r;
 }

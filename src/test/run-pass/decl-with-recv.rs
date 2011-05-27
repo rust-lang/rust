@@ -5,10 +5,10 @@ fn main() {
   let chan[int] ch = chan(po);
 
   ch <| 10;
-  let int i; i <- po;
+  let int i; po |> i;
   assert (i == 10);
 
   ch <| 11;
-  auto j; j <- po;
+  auto j; po |> j;
   assert (j == 11);
 }
