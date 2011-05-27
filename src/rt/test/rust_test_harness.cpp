@@ -10,7 +10,7 @@ rust_test::name() {
     return "untitled";
 }
 
-rust_test_suite::rust_test_suite(rust_crate *crate) : crate(crate) {
+rust_test_suite::rust_test_suite() {
     tests.append(new rust_domain_test());
     tests.append(new rust_task_test(this));
     tests.append(new rust_array_list_test());

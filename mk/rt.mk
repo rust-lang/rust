@@ -8,9 +8,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
-              rt/rust_crate.cpp \
               rt/rust_crate_cache.cpp \
-              rt/rust_crate_reader.cpp \
               rt/rust_comm.cpp \
               rt/rust_dom.cpp \
               rt/rust_task.cpp \
@@ -37,7 +35,6 @@ RUNTIME_S := rt/activate_glue.s rt/yield_glue.s
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
-               rt/rust_dwarf.h \
                rt/rust_internal.h \
                rt/rust_util.h \
                rt/rust_chan.h \

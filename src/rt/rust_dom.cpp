@@ -16,7 +16,7 @@ rust_dom::rust_dom(rust_kernel *kernel,
     running_tasks(this, "running"),
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
-    caches(this),
+    cache(this),
     root_task(NULL),
     curr_task(NULL),
     rval(0),
@@ -42,9 +42,6 @@ rust_dom::~rust_dom() {
 #ifndef __WIN32__
     pthread_attr_destroy(&attr);
 #endif
-    while (caches.length()) {
-        delete caches.pop();
-    }
 }
 
 extern "C" void new_rust_activate_glue(rust_task *)
@@ -341,24 +338,8 @@ rust_dom::start_main_loop() {
 
 
 rust_crate_cache *
-rust_dom::get_cache(rust_crate const *crate) {
-    DLOG(this, cache, "looking for crate-cache for crate 0x%" PRIxPTR, crate);
-    rust_crate_cache *cache = NULL;
-    for (size_t i = 0; i < caches.length(); ++i) {
-        rust_crate_cache *c = caches[i];
-        if (c->crate == crate) {
-            cache = c;
-            break;
-        }
-    }
-    if (!cache) {
-        DLOG(this, cache,
-            "making new crate-cache for crate 0x%" PRIxPTR, crate);
-        cache = new (this) rust_crate_cache(this, crate);
-        caches.push(cache);
-    }
-    cache->ref();
-    return cache;
+rust_dom::get_cache() {
+    return &cache;
 }
 
 rust_task *

@@ -209,7 +209,6 @@ size_t log_rt_comm;
 size_t log_rt_task;
 size_t log_rt_dom;
 size_t log_rt_trace;
-size_t log_rt_dwarf;
 size_t log_rt_cache;
 size_t log_rt_upcall;
 size_t log_rt_timer;
@@ -224,7 +223,6 @@ static const mod_entry _rt_module_map[] =
      {"rt.task", &log_rt_task},
      {"rt.dom", &log_rt_dom},
      {"rt.trace", &log_rt_trace},
-     {"rt.dwarf", &log_rt_dwarf},
      {"rt.cache", &log_rt_cache},
      {"rt.upcall", &log_rt_upcall},
      {"rt.timer", &log_rt_timer},

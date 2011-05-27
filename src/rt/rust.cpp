@@ -93,10 +93,6 @@ new_rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    if (log_rt_dwarf) {
-        rust_crate_reader create_reader(dom);
-    }
-
     uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};
     dom->root_task->start(main_fn,
                           (uintptr_t)&main_args, sizeof(main_args));
@@ -118,8 +114,7 @@ new_rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 }
 
 extern "C" CDECL int
-rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
-           char **argv, void* crate_map) {
+rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     return new_rust_start(main_fn, argc, argv, crate_map);
 }
 

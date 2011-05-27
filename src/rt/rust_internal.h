@@ -54,7 +54,6 @@ class rust_port;
 class rust_chan;
 struct rust_token;
 class rust_kernel;
-class rust_crate;
 class rust_crate_cache;
 
 struct stk_seg;
@@ -204,62 +203,7 @@ struct rust_timer {
 
 #include "rust_util.h"
 
-// Crates.
-
-template<typename T> T*
-crate_rel(rust_crate const *crate, T *t) {
-    return (T*)(((uintptr_t)crate) + ((ptrdiff_t)t));
-}
-
-template<typename T> T const*
-crate_rel(rust_crate const *crate, T const *t) {
-    return (T const*)(((uintptr_t)crate) + ((ptrdiff_t)t));
-}
-
 typedef void CDECL (*activate_glue_ty)(rust_task *);
-
-class rust_crate {
-    // The following fields are emitted by the compiler for the static
-    // rust_crate object inside each compiled crate.
-
-    ptrdiff_t image_base_off;     // (Loaded image base) - this.
-    uintptr_t self_addr;          // Un-relocated addres of 'this'.
-
-    ptrdiff_t debug_abbrev_off;   // Offset from this to .debug_abbrev.
-    size_t debug_abbrev_sz;       // Size of .debug_abbrev.
-
-    ptrdiff_t debug_info_off;     // Offset from this to .debug_info.
-    size_t debug_info_sz;         // Size of .debug_info.
-
-    ptrdiff_t pad;
-    ptrdiff_t pad2;
-    ptrdiff_t pad3;
-    ptrdiff_t pad4;
-    ptrdiff_t pad5;
-
-public:
-
-    size_t pad6;
-    size_t pad7;
-    size_t pad8;
-
-    // Crates are immutable, constructed by the compiler.
-
-    uintptr_t get_image_base() const;
-    ptrdiff_t get_relocation_diff() const;
-
-    struct mem_area
-    {
-      rust_dom *dom;
-      uintptr_t base;
-      uintptr_t lim;
-      mem_area(rust_dom *dom, uintptr_t pos, size_t sz);
-    };
-
-    mem_area get_debug_info(rust_dom *dom) const;
-    mem_area get_debug_abbrev(rust_dom *dom) const;
-};
-
 
 struct type_desc {
     // First part of type_desc is known to compiler.
@@ -279,80 +223,6 @@ struct type_desc {
     UT_hash_handle hh;
     size_t n_descs;
     const type_desc *descs[];
-};
-
-class
-rust_crate_cache : public dom_owned<rust_crate_cache>,
-                   public rc_base<rust_crate_cache>
-{
-public:
-    type_desc *get_type_desc(size_t size,
-                             size_t align,
-                             size_t n_descs,
-                             type_desc const **descs);
-
-private:
-
-    type_desc *type_descs;
-
-public:
-
-    rust_crate const *crate;
-    rust_dom *dom;
-    size_t idx;
-
-    rust_crate_cache(rust_dom *dom,
-                     rust_crate const *crate);
-    ~rust_crate_cache();
-    void flush();
-};
-
-#include "rust_dwarf.h"
-
-class
-rust_crate_reader
-{
-    struct
-    abbrev : dom_owned<abbrev>
-    {
-        rust_dom *dom;
-        uintptr_t body_off;
-        size_t body_sz;
-        uintptr_t tag;
-        uint8_t has_children;
-        size_t idx;
-        abbrev(rust_dom *dom, uintptr_t body_off, size_t body_sz,
-               uintptr_t tag, uint8_t has_children);
-    };
-
-    rust_dom *dom;
-    size_t idx;
-
-
-public:
-
-    struct
-    attr
-    {
-        dw_form form;
-        dw_at at;
-        union {
-            struct {
-                char const *s;
-                size_t sz;
-            } str;
-            uintptr_t num;
-        } val;
-
-        bool is_numeric() const;
-        bool is_string() const;
-        size_t get_ssz(rust_dom *dom) const;
-        char const *get_str(rust_dom *dom) const;
-        uintptr_t get_num(rust_dom *dom) const;
-        bool is_unknown() const;
-    };
-
-    rust_crate_reader(rust_dom *dom);
 };
 
 // An alarm can be put into a wait queue and the task will be notified

@@ -117,7 +117,7 @@ rust_task : public maybe_proxy<rust_task>,
     uintptr_t get_fp();
     uintptr_t get_previous_fp(uintptr_t fp);
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
-    rust_crate_cache * get_crate_cache(rust_crate const *curr_crate);
+    rust_crate_cache * get_crate_cache();
 };
 
 //

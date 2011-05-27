@@ -95,7 +95,6 @@ state type crate_ctxt = rec(session::session sess,
                             ModuleRef llmod,
                             target_data td,
                             type_names tn,
-                            ValueRef crate_ptr,
                             hashmap[str, ValueRef] externs,
                             hashmap[str, ValueRef] intrinsics,
                             hashmap[ast::def_id, ValueRef] item_ids,
@@ -480,31 +479,6 @@ fn T_port(TypeRef t) -> TypeRef {
 
 fn T_chan(TypeRef t) -> TypeRef {
     ret T_struct([T_int()]); // Refcount
-}
-
-fn T_crate(&type_names tn) -> TypeRef {
-    auto s = "crate";
-    if (tn.name_has_type(s)) {
-        ret tn.get_type(s);
-    }
-
-    auto t = T_struct([T_int(),      // ptrdiff_t image_base_off
-                          T_int(),      // uintptr_t self_addr
-                          T_int(),      // ptrdiff_t debug_abbrev_off
-                          T_int(),      // size_t debug_abbrev_sz
-                          T_int(),      // ptrdiff_t debug_info_off
-                          T_int(),      // size_t debug_info_sz
-                          T_int(),      // size_t activate_glue
-                          T_int(),      // size_t yield_glue
-                          T_int(),      // size_t unwind_glue
-                          T_int(),      // size_t pad
-                          T_int(),      // size_t pad
-                          T_int(),      // int n_rust_syms
-                          T_int(),      // int n_c_syms
-                          T_int()       // int n_libs
-                          ]);
-    tn.associate(s, t);
-    ret t;
 }
 
 fn T_taskptr(&type_names tn) -> TypeRef {
@@ -1670,11 +1644,11 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
             T_ptr(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn))));
         auto td_val = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.get_type_desc,
             [bcx.fcx.lltaskptr,
-                bcx.fcx.lcx.ccx.crate_ptr,
-                sz.val,
-                align.val,
-                C_int((1u + n_params) as int),
-                lltydescsptr]);
+             C_null(T_ptr(T_nil())),
+             sz.val,
+             align.val,
+             C_int((1u + n_params) as int),
+             lltydescsptr]);
         v = td_val;
     } else {
         auto llparamtydescs = alloca(bcx,
@@ -7615,33 +7589,8 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
 }
 
 fn create_typedefs(&@crate_ctxt cx) {
-    llvm::LLVMAddTypeName(cx.llmod, str::buf("crate"), T_crate(cx.tn));
     llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), T_task(cx.tn));
     llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), T_tydesc(cx.tn));
-}
-
-fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
-
-    let ValueRef crate_addr = p2i(crate_ptr);
-
-    let ValueRef crate_val =
-        C_struct([C_null(T_int()),     // ptrdiff_t image_base_off
-                     p2i(crate_ptr),      // uintptr_t self_addr
-                     C_null(T_int()),     // ptrdiff_t debug_abbrev_off
-                     C_null(T_int()),     // size_t debug_abbrev_sz
-                     C_null(T_int()),     // ptrdiff_t debug_info_off
-                     C_null(T_int()),     // size_t debug_info_sz
-                     C_null(T_int()),     // size_t pad
-                     C_null(T_int()),     // size_t pad2
-                     C_null(T_int()),     // size_t pad3
-                     C_null(T_int()),     // size_t pad4
-                     C_null(T_int()),     // size_t pad5
-                     C_null(T_int()),     // int n_rust_syms
-                     C_null(T_int()),     // int n_c_syms
-                     C_null(T_int())      // int n_libs
-                     ]);
-
-    llvm::LLVMSetInitializer(crate_ptr, crate_val);
 }
 
 fn find_main_fn(&@crate_ctxt cx) -> ValueRef {
@@ -7668,7 +7617,7 @@ fn find_main_fn(&@crate_ctxt cx) -> ValueRef {
     fail;
 }
 
-fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
+fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
     auto T_main_args = [T_int(), T_int()];
     auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int()];
 
@@ -7693,7 +7642,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     // Emit the moral equivalent of:
     //
     // main(int argc, char **argv) {
-    //     rust_start(&_rust.main, &crate, argc, argv);
+    //     rust_start(&_rust.main, argc, argv);
     // }
     //
 
@@ -8002,15 +7951,12 @@ fn make_common_glue(&session::session sess, &str output) {
     llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
-    let ValueRef crate_ptr =
-        llvm::LLVMAddGlobal(llmod, T_crate(tn), str::buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 
     llvm::LLVMSetModuleInlineAsm(llmod, str::buf(x86::get_module_asm()));
 
     auto glues = make_glues(llmod, tn);
-    create_crate_constant(crate_ptr, glues);
 
     link::write::run_passes(sess, llmod, output);
 }
@@ -8076,8 +8022,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
-    let ValueRef crate_ptr =
-        llvm::LLVMAddGlobal(llmod, T_crate(tn), str::buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 
@@ -8095,7 +8039,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
                     llmod = llmod,
                     td = td,
                     tn = tn,
-                    crate_ptr = crate_ptr,
                     externs = new_str_hash[ValueRef](),
                     intrinsics = intrinsics,
                     item_ids = new_def_hash[ValueRef](),
@@ -8135,7 +8078,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     trans_vec_append_glue(cx, crate.span);
     auto crate_map = create_crate_map(ccx);
     if (!sess.get_opts().shared) {
-        trans_main_fn(cx, crate_ptr, crate_map);
+        trans_main_fn(cx, crate_map);
     }
 
     emit_tydescs(ccx);

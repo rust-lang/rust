@@ -131,8 +131,6 @@ rust_task::~rust_task()
       (ref_count == 1 && this == dom->root_task));
 
     del_stk(dom, stk);
-    if (cache)
-        cache->deref();
 }
 
 extern "C" void rust_new_exit_task_glue();
@@ -597,18 +595,11 @@ rust_task::unblock() {
 }
 
 rust_crate_cache *
-rust_task::get_crate_cache(rust_crate const *curr_crate)
+rust_task::get_crate_cache()
 {
-    if (cache && cache->crate != curr_crate) {
-        DLOG(dom, task, "switching task crate-cache to crate 0x%"
-             PRIxPTR, curr_crate);
-        cache->deref();
-        cache = NULL;
-    }
-
     if (!cache) {
         DLOG(dom, task, "fetching cache for current crate");
-        cache = dom->get_cache(curr_crate);
+        cache = dom->get_cache();
     }
     return cache;
 }

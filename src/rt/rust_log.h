@@ -66,7 +66,6 @@ extern size_t log_rt_comm;
 extern size_t log_rt_task;
 extern size_t log_rt_dom;
 extern size_t log_rt_trace;
-extern size_t log_rt_dwarf;
 extern size_t log_rt_cache;
 extern size_t log_rt_upcall;
 extern size_t log_rt_timer;

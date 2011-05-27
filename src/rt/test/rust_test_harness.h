@@ -13,9 +13,8 @@ public:
 
 class rust_test_suite : public rust_test {
 public:
-    rust_crate *crate;
     array_list<rust_test*> tests;
-    rust_test_suite(rust_crate *crate);
+    rust_test_suite();
     virtual ~rust_test_suite();
     bool run();
 };

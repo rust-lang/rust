@@ -1,6 +1,31 @@
 #ifndef RUST_DOM_H
 #define RUST_DOM_H
 
+struct rust_dom;
+
+class
+rust_crate_cache
+{
+public:
+    type_desc *get_type_desc(size_t size,
+                             size_t align,
+                             size_t n_descs,
+                             type_desc const **descs);
+
+private:
+
+    type_desc *type_descs;
+
+public:
+
+    rust_dom *dom;
+    size_t idx;
+
+    rust_crate_cache(rust_dom *dom);
+    ~rust_crate_cache();
+    void flush();
+};
+
 struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 {
     // Fields known to the compiler:
@@ -19,7 +44,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     rust_task_list blocked_tasks;
     rust_task_list dead_tasks;
 
-    ptr_vec<rust_crate_cache> caches;
+    rust_crate_cache cache;
 
     randctx rctx;
     rust_task *root_task;
@@ -65,7 +90,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
 
-    rust_crate_cache *get_cache(rust_crate const *crate);
+    rust_crate_cache *get_cache();
     size_t number_of_live_tasks();
 
     void reap_dead_tasks();

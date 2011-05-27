@@ -1,15 +1,6 @@
 
 #include "rust_internal.h"
 
-static inline void
-adjust_disp(uintptr_t &disp, const void *oldp, const void *newp)
-{
-    if (disp) {
-        disp += (uintptr_t)oldp;
-        disp -= (uintptr_t)newp;
-    }
-}
-
 type_desc *
 rust_crate_cache::get_type_desc(size_t size,
                                 size_t align,
@@ -47,10 +38,8 @@ rust_crate_cache::get_type_desc(size_t size,
     return td;
 }
 
-rust_crate_cache::rust_crate_cache(rust_dom *dom,
-                                   rust_crate const *crate)
+rust_crate_cache::rust_crate_cache(rust_dom *dom)
     : type_descs(NULL),
-      crate(crate),
       dom(dom),
       idx(0)
 {

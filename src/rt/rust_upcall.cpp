@@ -438,7 +438,7 @@ upcall_vec_grow(rust_task *task,
 
 extern "C" CDECL type_desc *
 upcall_get_type_desc(rust_task *task,
-                     rust_crate const *curr_crate,
+                     void *curr_crate, // ignored, legacy compat.
                      size_t size,
                      size_t align,
                      size_t n_descs,
@@ -447,7 +447,7 @@ upcall_get_type_desc(rust_task *task,
     LOG(task, cache, "upcall get_type_desc with size=%" PRIdPTR
         ", align=%" PRIdPTR ", %" PRIdPTR " descs", size, align,
         n_descs);
-    rust_crate_cache *cache = task->get_crate_cache(curr_crate);
+    rust_crate_cache *cache = task->get_crate_cache();
     type_desc *td = cache->get_type_desc(size, align, n_descs, descs);
     LOG(task, cache, "returning tydesc 0x%" PRIxPTR, td);
     return td;
