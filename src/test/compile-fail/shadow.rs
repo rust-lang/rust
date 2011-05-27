@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: a \[./src/test/compile-fail/shadow.rs:11:8:11:20
+// error-pattern:src/test/compile-fail/shadow.rs
 fn foo(vec[int] c) {
   let int a = 5;
   let vec[int] b = [];
