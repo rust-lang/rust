@@ -70,6 +70,20 @@ fn car[T](&list[T] ls) -> T {
     }
 }
 
+
+fn append[T](&list[T] l, &list[T] m) -> list[T] {
+    alt (l) {
+        case (nil[T]) {
+            ret m;
+        }
+        case (cons[T](?x, ?xs)) {
+            let list[T] rest = append[T](*xs, m);
+            ret cons[T](x, @rest);
+        }
+    }
+}
+
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
