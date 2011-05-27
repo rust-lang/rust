@@ -134,11 +134,6 @@ ALL_TEST_SOURCES =  $(TEST_CFAIL_SOURCES_STAGE0) \
                     $(TEST_RFAIL_SOURCES_STAGE2) \
                     $(TEST_RPASS_SOURCES_STAGE2)
 
-# The test suite currently relies on logging to validate results so
-# make sure that logging uses the default configuration
-unexport RUST_LOG
-
-
 check-nocompile: $(TEST_CFAIL_OUTS_STAGE0) \
                  $(TEST_CFAIL_OUTS_STAGE1) \
                  $(TEST_CFAIL_OUTS_STAGE2)
