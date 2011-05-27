@@ -5925,7 +5925,7 @@ fn trans_spawn(&@block_ctxt cx,
                                           T_int());
 
     // Generate the wrapper function
-    auto wrapper = mk_spawn_wrapper(bcx, tname, func, args_ty);
+    auto wrapper = mk_spawn_wrapper(bcx, func, args_ty);
     bcx = wrapper.bcx;
     auto llfnptr_i = bcx.build.PointerCast(wrapper.val, T_int());
     // TODO: this next line might be necessary...
@@ -5944,7 +5944,6 @@ fn trans_spawn(&@block_ctxt cx,
 }
 
 fn mk_spawn_wrapper(&@block_ctxt cx, 
-                    &str tname, 
                     &@ast::expr func, 
                     &ty::t args_ty) -> result {
     auto llmod = cx.fcx.lcx.ccx.llmod;
@@ -5956,29 +5955,19 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
                    ty::idx_nil,
                    0u);
 
-    log_err #fmt("wrapper args type: %s",
-                 ty_str(cx.fcx.lcx.ccx.tn, args_ty_tref));
-    log_err #fmt("wrapper fn desired type: %s",
-                 ty_str(cx.fcx.lcx.ccx.tn, wrapper_fn_type));
-
     // TODO: construct a name based on tname
-    auto llfndecl = decl_fastcall_fn(llmod, "spawn_wrap",
+    let str wrap_name = mangle_name_by_seq(cx.fcx.lcx.ccx,
+                                           [""],
+                                           "spawn_wrapper");
+    auto llfndecl = decl_fastcall_fn(llmod, wrap_name,
                                      wrapper_fn_type);
-
-    log_err #fmt("spawn wrapper decl type: %s", 
-                 val_str(cx.fcx.lcx.ccx.tn, llfndecl));
 
     auto fcx = new_fn_ctxt(cx.fcx.lcx, cx.sp, llfndecl);
 
     auto fbcx = new_top_block_ctxt(fcx);
 
-    log_err #fmt("spawn wrapper type: %s", val_str(fcx.lcx.ccx.tn, 
-                                                  fcx.llfn));
-
     // 3u to skip the three implicit args
     let ValueRef arg = llvm::LLVMGetParam(fcx.llfn, 3u);
-
-    log_err #fmt("arg type: %s", val_str(fbcx.fcx.lcx.ccx.tn, arg));
 
     let vec[ValueRef] child_args = 
         [llvm::LLVMGetParam(fcx.llfn, 0u),
@@ -5990,13 +5979,8 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
         case(ty::ty_tup(?elements)) {
             auto i = 0;
             for(ty::mt m in elements) {
-                log_err #fmt("GEP arg %d", i);
                 auto src = fbcx.build.GEP(arg, [C_int(0), C_int(i)]);
                 i += 1;
-
-                log_err #fmt("generating load of type %s",
-                             val_str(fbcx.fcx.lcx.ccx.tn,
-                                     src));
 
                 auto child_arg = fbcx.build.Load(src);
 
@@ -6009,24 +5993,10 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
     auto fnptr = trans_lval(fbcx, func).res;
     fbcx = fnptr.bcx;
     
-    log_err "SPAWN 1";
     auto llfnptr = fbcx.build.GEP(fnptr.val,
                                   [C_int(0), C_int(0)]);
     auto llfn = fbcx.build.Load(llfnptr);
     
-    log_err #fmt("Generating call to child function: %s",
-                 val_str(fbcx.fcx.lcx.ccx.tn,
-                         llfn));
-
-    auto i = 0;
-    for(ValueRef v in child_args) {
-        log_err #fmt("Arg %d: %s",
-                     i,
-                     val_str(fbcx.fcx.lcx.ccx.tn,
-                             v));
-        i += 1;
-    }
-
     fbcx.build.FastCall(llfn,
                         child_args);
     fbcx.build.RetVoid();
