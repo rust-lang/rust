@@ -146,10 +146,7 @@ fn new_parser(session::session sess,
             fn get_chpos() -> uint {ret rdr.get_chpos();}
 
             fn get_ann() -> ast::ann {
-                // TODO: Remove ty and tps, which should be unused
-                // by now.
-                auto rv = rec(id=next_ann_var, ty=0u,
-                              tps=none[vec[middle::ty::t]]);
+                auto rv = rec(id=next_ann_var);
                 next_ann_var += 1u;
                 ret rv;
             }

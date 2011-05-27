@@ -1572,28 +1572,6 @@ fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
 }
 
 
-// Turns a type and optional type parameters into an annotation, using
-// defaults for other fields.
-fn mk_ann_type(uint node_id, t typ, option::t[vec[t]] tps) -> ast::ann {
-    ret rec(id=node_id, ty=typ, tps=tps);
-}
-
-// Turns a type into an annotation, using defaults for other fields.
-fn triv_ann(uint node_id, t typ) -> ast::ann {
-    ret mk_ann_type(node_id, typ, none[vec[t]]);
-}
-
-// Creates a nil type annotation.
-fn plain_ann(uint node_id, ctxt tcx) -> ast::ann {
-    ret triv_ann(node_id, mk_nil(tcx));
-}
-
-// Creates a _|_ type annotation.
-fn bot_ann(uint node_id, ctxt tcx) -> ast::ann {
-    ret triv_ann(node_id, mk_bot(tcx));
-}
-
-
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(&ctxt cx, t ty) -> uint {
     fn counter(&ctxt cx, @mutable vec[uint] param_indices, t ty) {

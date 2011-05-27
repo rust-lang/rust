@@ -20,10 +20,7 @@ type def_id = tup(crate_num, def_num);
 
 type ty_param = ident;
 
-// Annotations added during successive passes.
-type ann = rec(uint id,
-               middle::ty::t ty,
-               option::t[vec[middle::ty::t]] tps);
+type ann = rec(uint id);
 
 tag def {
     def_fn(def_id);

@@ -16,17 +16,13 @@ import middle::ty::block_ty;
 import middle::ty::expr_ty;
 import middle::ty::field;
 import middle::ty::method;
-import middle::ty::mk_ann_type;
 import middle::ty::mo_val;
 import middle::ty::mo_alias;
 import middle::ty::mo_either;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
-import middle::ty::plain_ann;
-import middle::ty::bot_ann;
 import middle::ty::struct;
-import middle::ty::triv_ann;
 import middle::ty::ty_param_substs_opt_and_ty;
 import middle::ty::ty_to_str;
 import middle::ty::type_is_integral;
@@ -645,9 +641,7 @@ mod collect {
 
     fn get_tag_variant_types(&@ctxt cx, &ast::def_id tag_id,
                              &vec[ast::variant] variants,
-                             &vec[ast::ty_param] ty_params)
-            -> vec[ast::variant] {
-        let vec[ast::variant] result = [];
+                             &vec[ast::ty_param] ty_params) {
 
         // Create a set of parameter types shared among all the variants.
         let vec[ty::t] ty_param_tys = [];
@@ -682,17 +676,10 @@ mod collect {
 
             auto tpt = tup(ty_param_count, result_ty);
             cx.tcx.tcache.insert(variant.node.id, tpt);
-            auto variant_t = rec(
-                ann=triv_ann(variant.node.ann.id, result_ty)
-                with variant.node
-            );
             write::ty_only(cx.tcx, variant.node.ann.id, result_ty);
-            result += [common::respan(variant.span, variant_t)];
         }
-
-        ret result;
     }
-    
+
     fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> vec[ty::method] {
         ret vec::map[@ast::method,method](bind ty_of_method(cx, _),
                                           object.methods);
@@ -1184,13 +1171,10 @@ mod pushdown {
                 let ty_param_substs_and_ty res_t = demand::full(scx, pat.span,
                       expected, tt, tps, NO_AUTODEREF);
 
-                auto a_1 = mk_ann_type(ann.id, res_t._1,
-                                       some[vec[ty::t]](res_t._0));
-
                 // TODO: push down type from "expected".
                 write::ty_fixup(scx, ann.id,
                     ty::ann_to_ty_param_substs_opt_and_ty
-                        (scx.fcx.ccx.tcx.node_types, a_1));
+                        (scx.fcx.ccx.tcx.node_types, ann));
             }
         }
     }
@@ -1691,8 +1675,7 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
         }
         case (ast::pat_bind(?id, ?def_id, ?a)) {
             auto typ = next_ty_var(scx);
-            auto ann = triv_ann(a.id, typ);
-            write::ty_only_fixup(scx, ann.id, typ);
+            write::ty_only_fixup(scx, a.id, typ);
         }
         case (ast::pat_tag(?p, ?subpats, ?old_ann)) {
             auto vdef = ast::variant_def_ids
@@ -1882,7 +1865,6 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         pushdown::pushdown_expr(scx, lhs_t1, rhs);
         auto rhs_t1 = expr_ty(scx.fcx.ccx.tcx, rhs);
 
-        auto ann = triv_ann(a.id, rhs_t1);
         write::ty_only_fixup(scx, a.id, rhs_t1);
     }
 
