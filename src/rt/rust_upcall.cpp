@@ -466,17 +466,21 @@ extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
                   uintptr_t spawnee_fn,
-                  uintptr_t args,
-                  size_t callsz) {
+                  uintptr_t args) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
     DLOG(dom, task,
-             "upcall start_task(task %s @0x%" PRIxPTR
-             ", spawnee 0x%" PRIxPTR
-             ", callsz %" PRIdPTR ")", task->name, task,
-             spawnee_fn, callsz);
-    task->start(spawnee_fn, args, callsz);
+         "upcall start_task(task %s @0x%" PRIxPTR
+         ", spawnee 0x%" PRIxPTR ")", 
+         task->name, task,
+         spawnee_fn);
+
+    // we used to be generating this tuple in rustc, but it's easier to do it
+    // here.
+    uintptr_t start_args[] = {0, 0, 0, args};
+    
+    task->start(spawnee_fn, (uintptr_t)&start_args, sizeof(start_args));
     return task;
 }
 

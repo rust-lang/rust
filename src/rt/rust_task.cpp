@@ -171,12 +171,7 @@ rust_task::start(uintptr_t spawnee_fn,
     src += 1;                  // spawn-call task slot
     src += 1;                  // spawn-call closure-or-obj slot
 
-    spp -= (args_size / sizeof(uintptr_t)) - 1;
-    memmove(spp, src, args_size);
-    spp--;
-
-    //*spp-- = (uintptr_t) *src;       // vec
-    
+    *spp-- = (uintptr_t) *src;       // vec
     *spp-- = (uintptr_t) 0x0;        // closure-or-obj
     *spp-- = (uintptr_t) this;       // task
     *spp-- = (uintptr_t) dummy_ret;  // output address

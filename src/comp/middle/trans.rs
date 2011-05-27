@@ -601,7 +601,7 @@ fn type_of_explicit_args(&@crate_ctxt cx, &ast::span sp,
             assert (arg.mode == ty::mo_alias);
             atys += [T_typaram_ptr(cx.tn)];
         } else {
-            let TypeRef t;
+           let TypeRef t;
             alt (arg.mode) {
                 case (ty::mo_alias) {
                     t = T_ptr(type_of_inner(cx, sp, arg.ty));
@@ -5867,22 +5867,24 @@ fn trans_spawn(&@block_ctxt cx,
     //
     // 3. Fill the tuple with the arguments we evaluated.
     // 
-    // 4. Pass a pointer to the spawnee function and the argument tuple to
-    // upcall_start_task.
+    // 3.5. Generate a wrapper function that takes the tuple and unpacks it to
+    // call the real task.
+    //
+    // 4. Pass a pointer to the wrapper function and the argument tuple to
+    // upcall_start_task. In order to do this, we need to allocate another
+    // tuple that matches the arguments expected by rust_task::start.
     //
     // 5. Oh yeah, we have to create the task before we start it...
     
     // Translate the arguments, remembering their types and where the values
     // ended up.
 
-    // There are 3 integers, for magic.
-    let vec[ty::t] arg_tys = [ty::idx_int, ty::idx_int, ty::idx_int];
+    let vec[ty::t] arg_tys = [];
     let vec[ValueRef] arg_vals = [];
     for(@ast::expr e in args) {
         auto arg = trans_expr(bcx, e);
         
         bcx = arg.bcx;
-
         vec::push[ValueRef](arg_vals, arg.val);
         vec::push[ty::t](arg_tys,
                          ty::expr_ty(cx.fcx.lcx.ccx.tcx,
@@ -5895,8 +5897,7 @@ fn trans_spawn(&@block_ctxt cx,
     // Allocate and fill the tuple.
     auto llargs = alloc_ty(bcx, args_ty);
 
-    // 3 to skip all the magic
-    auto i = 3u;
+    auto i = 0u;
     for(ValueRef v in arg_vals) {
         // log_err #fmt("ty(llargs) = %s", 
         //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
@@ -5919,51 +5920,122 @@ fn trans_spawn(&@block_ctxt cx,
                               [bcx.fcx.lltaskptr, lltname]);
 
     // Okay, start the task.
-    // First we find the function
-    auto fnptr = trans_lval(bcx, func).res;
-    bcx = fnptr.bcx;
-    
-    auto llfnptr = bcx.build.GEP(fnptr.val,
-                                 [C_int(0), C_int(0)]);
-    log_err "Casting llfnptr";
-    auto llfnptrptr_i = bcx.build.PointerCast(llfnptr,
-                                              T_ptr(T_int()));
-    // We'd better dereference this one more time, since that one points into
-    // the symbol table or something.
-    auto llfnptr_i = bcx.build.Load(llfnptrptr_i);
 
-    log_err "Cassting llargs";
     auto llargs_i = bcx.build.PointerCast(llargs.val,
-                                   T_int());
+                                          T_int());
 
-    auto args_size = size_of(bcx, args_ty).val;
+    // Generate the wrapper function
+    auto wrapper = mk_spawn_wrapper(bcx, tname, func, args_ty);
+    bcx = wrapper.bcx;
+    auto llfnptr_i = bcx.build.PointerCast(wrapper.val, T_int());
+    // TODO: this next line might be necessary...
+    //llfnptr_i = bcx.build.Load(llfnptr_i);
 
+    // And start the task
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task,
-                    llfnptr_i, llargs_i, args_size]);
-
-    /*
-    alt(dom) {
-        case(ast::dom_implicit) {
-            // TODO
-            log_err "Spawning implicit domain tasks is not implemented.";
-            //fail;
-        }
-
-        case(ast::dom_thread) {
-            // TODO
-            log_err "Spawining new thread tasks is not implemented.";
-            // TODO: for now use the normal unimpl thing.
-            fail;
-        }
-    }
-    */
+                    llfnptr_i, llargs_i]);
 
     auto task_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
     auto dropref = clean(bind drop_ty(_, new_task, task_ty));
     find_scope_cx(bcx).cleanups += [dropref];
 
     ret res(bcx, new_task);
+}
+
+fn mk_spawn_wrapper(&@block_ctxt cx, 
+                    &str tname, 
+                    &@ast::expr func, 
+                    &ty::t args_ty) -> result {
+    auto llmod = cx.fcx.lcx.ccx.llmod;
+    let TypeRef args_ty_tref = type_of(cx.fcx.lcx.ccx, cx.sp, args_ty);
+    //let TypeRef wrapper_fn_type = T_fn([args_ty_tref], T_void());
+
+    let TypeRef wrapper_fn_type =
+        type_of_fn(cx.fcx.lcx.ccx, cx.sp, ast::proto_fn,
+                   [rec(mode = ty::mo_alias, ty = args_ty)],
+                   ty::idx_nil,
+                   0u);
+
+    log_err #fmt("wrapper args type: %s",
+                 ty_str(cx.fcx.lcx.ccx.tn, args_ty_tref));
+    log_err #fmt("wrapper fn desired type: %s",
+                 ty_str(cx.fcx.lcx.ccx.tn, wrapper_fn_type));
+
+    // TODO: construct a name based on tname
+    auto llfndecl = decl_cdecl_fn(llmod, "spawn_wrap",
+                                  wrapper_fn_type);
+
+    log_err #fmt("spawn wrapper decl type: %s", 
+                 val_str(cx.fcx.lcx.ccx.tn, llfndecl));
+
+    auto fcx = new_fn_ctxt(cx.fcx.lcx, cx.sp, llfndecl);
+
+    auto fbcx = new_top_block_ctxt(fcx);
+
+    log_err #fmt("spawn wrapper type: %s", val_str(fcx.lcx.ccx.tn, 
+                                                  fcx.llfn));
+
+    // 3u to skip the three implicit args
+    let ValueRef arg = llvm::LLVMGetParam(fcx.llfn, 3u);
+
+    log_err #fmt("arg type: %s", val_str(fbcx.fcx.lcx.ccx.tn, arg));
+
+    let vec[ValueRef] child_args = 
+        [llvm::LLVMGetParam(fcx.llfn, 0u),
+         llvm::LLVMGetParam(fcx.llfn, 1u),
+         llvm::LLVMGetParam(fcx.llfn, 2u)];
+
+    // unpack the arguments
+    alt(ty::struct(fcx.lcx.ccx.tcx, args_ty)) {
+        case(ty::ty_tup(?elements)) {
+            auto i = 0;
+            for(ty::mt m in elements) {
+                log_err #fmt("GEP arg %d", i);
+                auto src = fbcx.build.GEP(arg, [C_int(0), C_int(i)]);
+                i += 1;
+
+                log_err #fmt("generating load of type %s",
+                             val_str(fbcx.fcx.lcx.ccx.tn,
+                                     src));
+
+                auto child_arg = fbcx.build.Load(src);
+
+                child_args += [child_arg];
+            }
+        }
+    }
+    
+    // Find the function
+    auto fnptr = trans_lval(fbcx, func).res;
+    fbcx = fnptr.bcx;
+    
+    log_err "SPAWN 1";
+    auto llfnptr = fbcx.build.GEP(fnptr.val,
+                                  [C_int(0), C_int(0)]);
+    auto llfn = fbcx.build.Load(llfnptr);
+    
+    log_err #fmt("Generating call to child function: %s",
+                 val_str(fbcx.fcx.lcx.ccx.tn,
+                         llfn));
+
+    auto i = 0;
+    for(ValueRef v in child_args) {
+        log_err #fmt("Arg %d: %s",
+                     i,
+                     val_str(fbcx.fcx.lcx.ccx.tn,
+                             v));
+        i += 1;
+    }
+
+    fbcx.build.Call(llfn,
+                    child_args);
+    fbcx.build.RetVoid();
+
+    finish_fn(fcx, fbcx.llbb);
+
+    // TODO: make sure we clean up everything we need to.
+    ret res(cx, llfndecl);
 }
 
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
