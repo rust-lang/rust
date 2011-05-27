@@ -12,7 +12,7 @@ fn test_rec() {
   ch <| r0;
 
   let r r1;
-  r1 <- po;
+  po |> r1;
 
   assert (r1.val0 == 0);
   assert (r1.val1 == 1u8);
@@ -27,7 +27,7 @@ fn test_vec() {
   ch <| v0;
 
   let vec[int] v1;
-  v1 <- po;
+  po |> v1;
 
   assert (v1.(0) == 0);
   assert (v1.(1) == 1);
@@ -42,7 +42,7 @@ fn test_str() {
   ch <| s0;
 
   let str s1;
-  s1 <- po;
+  po |> s1;
 
   assert (s1.(0) as u8 == 't' as u8);
   assert (s1.(1) as u8 == 'e' as u8);
@@ -60,7 +60,7 @@ fn test_tup() {
   ch <| t0;
 
   let t t1;
-  t1 <- po;
+  po |> t1;
 
   assert (t0._0 == 0);
   assert (t0._1 == 1u8);
@@ -83,11 +83,11 @@ fn test_tag() {
 
   let t t1;
 
-  t1 <- po;
+  po |> t1;
   assert (t1 == tag1);
-  t1 <- po;
+  po |> t1;
   assert (t1 == tag2(10));
-  t1 <- po;
+  po |> t1;
   assert (t1 == tag3(10, 11u8, 'A'));
 }
 
@@ -101,13 +101,13 @@ fn test_chan() {
   ch <| ch0;
 
   let chan[int] ch1;
-  ch1 <- po;
+  po |> ch1;
 
   // Does the transmitted channel still work?
   ch1 <| 10;
 
   let int i;
-  i <- po0;
+  po0 |> i;
 
   assert (i == 10);
 }

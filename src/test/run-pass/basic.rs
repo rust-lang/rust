@@ -34,8 +34,8 @@ fn main() {
     let int x = 10;
     x = g(n,s);
     log x;
-    n <- p;
-    n <- p;
+    p |> n;
+    p |> n;
     // FIXME: use signal-channel for this.
     log "children finished, root finishing";
 }

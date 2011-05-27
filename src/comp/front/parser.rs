@@ -1256,11 +1256,11 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
             ret @spanned(lo, rhs.span.hi,
                          ast::expr_send(lhs, rhs, p.get_ann()));
         }
-        case (token::LARROW) {
+        case (token::RECV) {
             p.bump();
             auto rhs = parse_expr(p);
             ret @spanned(lo, rhs.span.hi,
-                         ast::expr_recv(lhs, rhs, p.get_ann()));
+                         ast::expr_recv(rhs, lhs, p.get_ann()));
         }
         case (_) { /* fall through */ }
     }
@@ -1442,11 +1442,13 @@ fn parse_initializer(&parser p) -> option::t[ast::initializer] {
             ret some(rec(op = ast::init_assign,
                          expr = parse_expr(p)));
         }
-        case (token::LARROW) {
-            p.bump();
-            ret some(rec(op = ast::init_recv,
-                         expr = parse_expr(p)));
-        }
+        // Now that the the channel is the first argument to receive,
+        // combining it with an initializer doesn't really make sense.
+        // case (token::RECV) {
+        //     p.bump();
+        //     ret some(rec(op = ast::init_recv,
+        //                  expr = parse_expr(p)));
+        // }
         case (_) {
             ret none[ast::initializer];
         }

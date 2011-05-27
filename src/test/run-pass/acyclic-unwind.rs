@@ -32,7 +32,7 @@ fn main() {
   let int i;
 
   // synchronize on event from child.
-  i <- p;
+  p |> i;
 
   log "parent exiting, killing child";
 }

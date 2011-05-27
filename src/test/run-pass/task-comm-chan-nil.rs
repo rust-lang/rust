@@ -11,7 +11,7 @@ fn main() {
   ch <| ();
 
   let () n;
-  n <- po;
+  po |> n;
 
   assert (n == ());
 }

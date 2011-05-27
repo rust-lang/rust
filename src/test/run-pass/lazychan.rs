@@ -9,13 +9,13 @@ fn main() {
   let int y;
 
   spawn child(c);
-  y <- p;
+  p |> y;
   log "received 1";
   log y;
   assert (y == 10);
 
   spawn child(c);
-  y <- p;
+  p |> y;
   log "received 2";
   log y;
   assert (y == 10);

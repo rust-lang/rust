@@ -49,6 +49,7 @@ tag token {
     QUES;
     RARROW;
     SEND;
+    RECV;
     LARROW;
     LPAREN;
     RPAREN;
@@ -122,6 +123,7 @@ fn to_str(lexer::reader r, token t) -> str {
         case (QUES) { ret "?"; }
         case (RARROW) { ret "->"; }
         case (SEND) { ret "<|"; }
+        case (RECV) { ret "<|"; }
         case (LARROW) { ret "<-"; }
         case (LPAREN) { ret "("; }
         case (RPAREN) { ret ")"; }

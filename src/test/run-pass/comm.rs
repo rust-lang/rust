@@ -7,7 +7,7 @@ fn main() {
   let port[int] p = port();
   spawn child(chan(p));
   let int y;
-  y <- p;
+  p |> y;
   log "received";
   log y;
   assert (y == 10);
