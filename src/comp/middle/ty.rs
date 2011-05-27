@@ -951,6 +951,7 @@ fn type_is_boxed(&ctxt cx, &t ty) -> bool {
         case (ty_box(_)) { ret true; }
         case (ty_port(_)) { ret true; }
         case (ty_chan(_)) { ret true; }
+        case (ty_task) { ret true; }
         case (_) { ret false; }
     }
     fail;

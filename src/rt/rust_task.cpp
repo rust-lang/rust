@@ -179,7 +179,6 @@ rust_task::start(uintptr_t spawnee_fn,
     I(dom, spp == align_down(spp));
     *spp-- = (uintptr_t) (uintptr_t) spawnee_fn;
 
-
     *spp-- = (uintptr_t) 0x0;        // retp
 
     *spp-- = (uintptr_t) rust_new_exit_task_glue;
