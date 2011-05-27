@@ -1,4 +1,4 @@
-// error-pattern: common2
+// error-pattern:common2
 
 import mod1::*;
 import mod2::*;
