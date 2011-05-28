@@ -215,10 +215,10 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
   auto changed = false;
   auto num_local_vars = num_locals(fcx.enclosing);
 
-  /*
+  /*  
   log_err("states:");
   log_expr_err(*e);
-  log_err(middle::ty::expr_ann(e).id);
+  aux::log_bitv_err(fcx, expr_poststate(fcx.ccx, e));
   */
 
   /* FIXME could get rid of some of the copy/paste */
@@ -236,10 +236,12 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
       /* rands go left-to-right */
       changed = find_pre_post_state_exprs(fcx,
                   expr_poststate(fcx.ccx, operator), a, operands) || changed;
-      /* if this is a failing call, it sets the return value */
+      /* if this is a failing call, it sets everything as initialized */
        alt (controlflow_expr(fcx.ccx, operator)) {
           case (noreturn) {
-            changed = gen_poststate(fcx, a, fcx.id) || changed;
+              changed = set_poststate_ann(fcx.ccx, a,
+                                          false_postcond(num_local_vars))
+                  || changed;
           }
           case (_) { }
       }
@@ -525,16 +527,17 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             for (arm an_alt in alts) {
                 changed = find_pre_post_state_block(fcx, e_post,
                                                     an_alt.block) || changed;
-                changed = intersect(a_post,
-                            block_poststate(fcx.ccx,
-                                            an_alt.block)) || changed; 
+                intersect(a_post, block_poststate(fcx.ccx, an_alt.block));
+                // We deliberately do *not* update changed here, because we'd
+                // go into an infinite loop that way, and the change gets made
+                // after the if expression.
             }
         }
         else {
             // No alts; poststate is the poststate of the test
             a_post = e_post;
         }
-        changed = extend_poststate_ann(fcx.ccx, a, a_post);
+        changed = extend_poststate_ann(fcx.ccx, a, a_post) || changed;
         ret changed;
     }
     case (expr_field(?e, _, ?a)) {
