@@ -39,6 +39,7 @@ import aux::ann_to_def;
 import aux::ann_to_def_strict;
 import aux::ann_to_ts_ann;
 import aux::set_postcond_false;
+import aux::controlflow_expr;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -78,6 +79,7 @@ import front::ast::def;
 import front::ast::lit;
 import front::ast::init_op;
 import front::ast::controlflow;
+import front::ast::noreturn;
 import front::ast::return;
 import front::ast::_fn;
 import front::ast::_obj;
@@ -294,6 +296,13 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto args = vec::clone[@expr](operands);
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
+            /* if this is a failing call, its postcondition sets everything */
+            alt (controlflow_expr(fcx.ccx, operator)) {
+                case (noreturn) {
+                    set_postcond_false(fcx.ccx, a);
+                }
+                case (_) { }
+            }
         }
         case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
             auto args = vec::clone[@expr](operands);
@@ -495,8 +504,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         case (expr_index(?e, ?sub, ?a)) {
             find_pre_post_exprs(fcx, [e, sub], a);
         }
-        case (expr_alt(?e, ?alts, ?a)) {
-            find_pre_post_expr(fcx, e);
+        case (expr_alt(?ex, ?alts, ?a)) {
+            find_pre_post_expr(fcx, ex);
             fn do_an_alt(&fn_ctxt fcx, &arm an_alt) -> pre_and_post {
                 find_pre_post_block(fcx, an_alt.block);
                 ret block_pp(fcx.ccx, an_alt.block);
@@ -510,7 +519,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                 intersect(pp.postcondition, next.postcondition);
                 ret pp;
             }
-            auto antec_pp = pp_clone(expr_pp(fcx.ccx, e)); 
+            auto antec_pp = pp_clone(expr_pp(fcx.ccx, ex)); 
             auto e_pp  = @rec(precondition=empty_prestate(num_local_vars),
                              postcondition=false_postcond(num_local_vars));
             auto g = bind combine_pp(antec_pp, fcx, _, _);
