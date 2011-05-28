@@ -2178,9 +2178,9 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             alt (struct (scx.fcx.ccx.tcx,
                          expr_ty(scx.fcx.ccx.tcx, seq))) {
                 // FIXME: I include the check_for_or_each call in 
-                // each case because of a bug in typestate;
-                // once that bug is fixed, the call can be moved
-                // out of the alt expression
+                // each case because of a bug in typestate.
+                // The bug is fixed; once there's a new snapshot,
+                // the call can be moved out of the alt expression
                 case (ty::ty_vec(?vec_elt_ty)) {
                     auto elt_ty = vec_elt_ty.ty;
                     check_for_or_for_each(scx, decl, elt_ty, body, a.id);
