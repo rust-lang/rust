@@ -1872,6 +1872,22 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         check_call_or_bind(scx, f, args_opt_0);
     }
 
+    // A generic function for checking for or for-each loops
+    fn check_for_or_for_each(&@stmt_ctxt scx, &@ast::decl decl,
+                             &ty::t element_ty, &ast::block body,
+                             uint node_id) {
+        check_decl_local(scx.fcx, decl);
+        check_block(scx, body);
+
+        // Unify type of decl with element type of the seq
+        demand::simple(scx, decl.span, ty::decl_local_ty(scx.fcx.ccx.tcx,
+                                                         decl),
+                       element_ty);
+        
+        auto typ = ty::mk_nil(scx.fcx.ccx.tcx);
+        write::ty_only_fixup(scx, node_id, typ);
+    }
+
     alt (expr.node) {
         case (ast::expr_lit(?lit, ?a)) {
             auto typ = check_lit(scx.fcx.ccx, lit);
@@ -2000,8 +2016,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
-                        // TODO: span_err
-                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
+                         scx.fcx.ccx.tcx.sess.span_err(expr.span,
                             "put; in iterator yielding non-nil");
                     }
 
@@ -2159,24 +2174,33 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         }
 
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {
-            check_decl_local(scx.fcx, decl);
             check_expr(scx, seq);
-            check_block(scx, body);
-
-            // FIXME: enforce that the type of the decl is the element type
-            // of the seq.
-
-            auto typ = ty::mk_nil(scx.fcx.ccx.tcx);
-            write::ty_only_fixup(scx, a.id, typ);
+            alt (struct (scx.fcx.ccx.tcx,
+                         expr_ty(scx.fcx.ccx.tcx, seq))) {
+                // FIXME: I include the check_for_or_each call in 
+                // each case because of a bug in typestate;
+                // once that bug is fixed, the call can be moved
+                // out of the alt expression
+                case (ty::ty_vec(?vec_elt_ty)) {
+                    auto elt_ty = vec_elt_ty.ty;
+                    check_for_or_for_each(scx, decl, elt_ty, body, a.id);
+                }
+                case (ty::ty_str) {
+                    auto elt_ty = ty::mk_mach(scx.fcx.ccx.tcx, 
+                                         util::common::ty_u8);
+                    check_for_or_for_each(scx, decl, elt_ty, body, a.id);
+                }
+                case (_) {
+                    scx.fcx.ccx.tcx.sess.span_err(expr.span,
+                      "type of for loop iterator is not a vector or string");
+                }
+            }
         }
 
         case (ast::expr_for_each(?decl, ?seq, ?body, ?a)) {
-            check_decl_local(scx.fcx, decl);
             check_expr(scx, seq);
-            check_block(scx, body);
-
-            auto typ = ty::mk_nil(scx.fcx.ccx.tcx);
-            write::ty_only_fixup(scx, a.id, typ);
+            check_for_or_for_each(scx, decl, expr_ty(scx.fcx.ccx.tcx, seq),
+                                  body, a.id);
         }
 
         case (ast::expr_while(?cond, ?body, ?a)) {
