@@ -1811,6 +1811,17 @@ fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
     ret ann_has_type_params(ntt, expr_ann(expr));
 }
 
+fn decl_local_ty(&ctxt cx, &@ast::decl d) -> t {
+    alt (d.node) {
+        case (ast::decl_local(?l)) {
+            ret ann_to_type(cx.node_types, l.ann);
+        }
+        case (_) {
+            cx.sess.bug("decl_local_ty called on an item decl");
+        }
+    }
+}
+
 fn stmt_ann(&@ast::stmt s) -> ast::ann {
     alt (s.node) {
         case (ast::stmt_decl(_, ?a)) { ret a; }
