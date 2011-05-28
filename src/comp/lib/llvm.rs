@@ -886,7 +886,13 @@ native mod llvm = llvm_lib {
 native mod rustllvm = llvm_lib {
 }
 
-/* Slightly more terse object-interface to LLVM's 'builder' functions. */
+/* Slightly more terse object-interface to LLVM's 'builder' functions. For the
+ * most part, build.Foo() wraps LLVMBuildFoo(), threading the correct
+ * BuilderRef B into place.  A BuilderRef is a cursor-like LLVM value that
+ * inserts instructions for a particular BasicBlockRef at a particular
+ * position; for our purposes, it always inserts at the end of the basic block
+ * it's attached to.  
+ */
 
 // FIXME: Do we want to support mutable object fields?
 obj builder(BuilderRef B, @mutable bool terminated) {

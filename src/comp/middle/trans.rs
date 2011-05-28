@@ -129,44 +129,155 @@ type local_ctxt = rec(vec[str] path,
                       @crate_ctxt ccx);
 
 
+// The type used for llself.
 type self_vt = rec(ValueRef v, ty::t t);
 
-state type fn_ctxt = rec(ValueRef llfn,
-                         ValueRef lltaskptr,
-                         ValueRef llenv,
-                         ValueRef llretptr,
-                         mutable BasicBlockRef llallocas,
-                         mutable BasicBlockRef llcopyargs,
-                         mutable BasicBlockRef llderivedtydescs,
-                         mutable option::t[self_vt] llself,
-                         mutable option::t[ValueRef] lliterbody,
-                         hashmap[ast::def_id, ValueRef] llargs,
-                         hashmap[ast::def_id, ValueRef] llobjfields,
-                         hashmap[ast::def_id, ValueRef] lllocals,
-                         hashmap[ast::def_id, ValueRef] llupvars,
-                         mutable vec[ValueRef] lltydescs,
-                         hashmap[ty::t, derived_tydesc_info] derived_tydescs,
-                         ast::span sp,
-                         @local_ctxt lcx);
+// Function context.  Every LLVM function we create will have one of these.
+state type fn_ctxt = rec(
+    // The ValueRef returned from a call to llvm::LLVMAddFunction; the address
+    // of the first instruction in the sequence of instructions for this
+    // function that will go in the .text section of the executable we're
+    // generating.
+    ValueRef llfn,
+
+    // The three implicit arguments that arrive in the function we're
+    // creating.  For instance, foo(int, int) is really foo(ret*, task*, env*,
+    // int, int).  These are also available via llvm::LLVMGetParam(llfn, uint)
+    // where uint = 2, 0, 1 respectively, but we unpack them here for
+    // convenience.
+    ValueRef lltaskptr,
+    ValueRef llenv,
+    ValueRef llretptr,
+    
+    // The next three elements: "hoisted basic blocks" containing
+    // administrative activities that have to happen in only one place in the
+    // function, due to LLVM's quirks.
+
+    // A block for all the function's allocas, so that LLVM will coalesce them
+    // into a single alloca.
+    mutable BasicBlockRef llallocas, 
+
+    // A block containing code that copies incoming arguments to space already
+    // allocated by code in the llallocas block.  (LLVM requires that
+    // arguments be copied to local allocas before allowing most any operation
+    // to be performed on them.)
+    mutable BasicBlockRef llcopyargs,
+
+    // A block containing derived tydescs received from the runtime.  See
+    // description of derived_tydescs, below.
+    mutable BasicBlockRef llderivedtydescs,
+
+    // FIXME: Is llcopyargs actually the block containing the allocas for
+    // incoming function arguments?  Or is it merely the block containing code
+    // that copies incoming args to space already alloca'd by code in
+    // llallocas?
+
+    // The 'self' object currently in use in this function, if there is one.
+    mutable option::t[self_vt] llself,
+
+    // If this function is actually a iter, a block containing the code called
+    // whenever the iter calls 'put'.
+    mutable option::t[ValueRef] lliterbody,
+
+    // The next four items: hash tables mapping from AST def_ids to
+    // LLVM-stuff-in-the-frame.
+
+    // Maps arguments to allocas created for them in llallocas.
+    hashmap[ast::def_id, ValueRef] llargs,
+
+    // Maps fields in objects to pointers into the interior of llself's body.
+    hashmap[ast::def_id, ValueRef] llobjfields,
+
+    // Maps the def_ids for local variables to the allocas created for them in
+    // llallocas.
+    hashmap[ast::def_id, ValueRef] lllocals,
+
+    // The same as above, but for variables accessed via the frame pointer we
+    // pass into an iter, for access to the static environment of the
+    // iter-calling frame.
+    hashmap[ast::def_id, ValueRef] llupvars,
+
+    // For convenience, a vector of the incoming tydescs for each of this
+    // functions type parameters, fetched via llvm::LLVMGetParam.  For
+    // example, for a function foo[A, B, C](), lltydescs contains the
+    // ValueRefs for the tydescs for A, B, and C.
+    mutable vec[ValueRef] lltydescs,
+
+    // Derived tydescs are tydescs created at runtime, for types that involve
+    // type parameters inside type constructors.  For example, suppose a
+    // function parameterized by T creates a vector of type vec[T].  The
+    // function doesn't know what T is until runtime, and the function's
+    // caller knows T but doesn't know that a vector is involved.  So a tydesc
+    // for vec[T] can't be created until runtime, when information about both
+    // "vec" and "T" are available.  When such a tydesc is created, we cache
+    // it in the derived_tydescs table for the next time that such a tydesc is
+    // needed.
+    hashmap[ty::t, derived_tydesc_info] derived_tydescs,
+
+    // The source span where this function comes from, for error reporting.
+    ast::span sp,
+
+    // This function's enclosing local context.
+    @local_ctxt lcx
+    );
 
 tag cleanup {
     clean(fn(&@block_ctxt cx) -> result);
 }
 
-
 tag block_kind {
+    // A scope block is a basic block created by translating a block { ... }
+    // the the source language.  Since these blocks create variable scope, any
+    // variables created in them that are still live at the end of the block
+    // must be dropped and cleaned up when the block ends.
     SCOPE_BLOCK;
+
+    // A basic block created from the body of a loop.  Contains pointers to
+    // which block to jump to in the case of "continue" or "break", with the
+    // "continue" block optional, because "while" and "do while" don't support
+    // "continue" (TODO: is this intentional?)
     LOOP_SCOPE_BLOCK(option::t[@block_ctxt], @block_ctxt);
+
+    // A non-scope block is a basic block created as a translation artifact
+    // from translating code that expresses conditional logic rather than by
+    // explicit { ... } block structure in the source language.  It's called a
+    // non-scope block because it doesn't introduce a new variable scope.
     NON_SCOPE_BLOCK;
 }
 
-state type block_ctxt = rec(BasicBlockRef llbb,
-                            builder build,
-                            block_parent parent,
-                            block_kind kind,
-                            mutable vec[cleanup] cleanups,
-                            ast::span sp,
-                            @fn_ctxt fcx);
+// Basic block context.  We create a block context for each basic block
+// (single-entry, single-exit sequence of instructions) we generate from Rust
+// code.  Each basic block we generate is attached to a function, typically
+// with many basic blocks per function.  All the basic blocks attached to a
+// function are organized as a directed graph.
+state type block_ctxt = rec(
+    // The BasicBlockRef returned from a call to
+    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic block to the
+    // function pointed to by llfn.  We insert instructions into that block by
+    // way of this block context.
+    BasicBlockRef llbb,
+
+    // The llvm::builder object serving as an interface to LLVM's LLVMBuild*
+    // functions.
+    builder build,
+
+    // The block pointing to this one in the function's digraph.
+    block_parent parent,
+
+    // The 'kind' of basic block this is.
+    block_kind kind,
+
+    // A list of functions that run at the end of translating this block,
+    // cleaning up any variables that were introduced in the block and need to
+    // go out of scope at the end of it.
+    mutable vec[cleanup] cleanups,
+
+    // The source span where this block comes from, for error reporting.
+    ast::span sp,
+
+    // The function context for the function to which this block is attached.
+    @fn_ctxt fcx
+    );
 
 // FIXME: we should be able to use option::t[@block_parent] here but
 // the infinite-tag check in rustboot gets upset.
@@ -3115,7 +3226,7 @@ tag copy_action {
     DROP_EXISTING;
 }
 
-fn copy_ty(&@block_ctxt cx,
+fn copy_val(&@block_ctxt cx,
            copy_action action,
            ValueRef dst,
            ValueRef src,
@@ -3143,7 +3254,7 @@ fn copy_ty(&@block_ctxt cx,
         ret memmove_ty(r.bcx, dst, src, t);
     }
 
-    cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::copy_ty: " +
+    cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::copy_val: " +
                         ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
     fail;
 }
@@ -3263,7 +3374,7 @@ fn trans_unary(&@block_ctxt cx, ast::unop op,
                 body = sub.bcx.build.PointerCast(body, llety);
             }
 
-            sub = copy_ty(sub.bcx, INIT, body, e_val, e_ty);
+            sub = copy_val(sub.bcx, INIT, body, e_val, e_ty);
             ret res(sub.bcx, box);
         }
         case (ast::deref) {
@@ -3353,7 +3464,7 @@ fn trans_vec_add(&@block_ctxt cx, &ty::t t,
                  ValueRef lhs, ValueRef rhs) -> result {
     auto r = alloc_ty(cx, t);
     auto tmp = r.val;
-    r = copy_ty(r.bcx, INIT, tmp, lhs, t);
+    r = copy_val(r.bcx, INIT, tmp, lhs, t);
     auto bcx = trans_vec_append(r.bcx, t, tmp, rhs).bcx;
     tmp = load_if_immediate(bcx, tmp, t);
     find_scope_cx(cx).cleanups +=
@@ -3681,7 +3792,7 @@ fn trans_for(&@block_ctxt cx,
 
         cx.build.Br(scope_cx.llbb);
         auto local_res = alloc_local(scope_cx, local);
-        auto bcx = copy_ty(local_res.bcx, INIT, local_res.val, curr, t).bcx;
+        auto bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t).bcx;
         scope_cx.cleanups +=
             [clean(bind drop_slot(_, local_res.val, t))];
         bcx = trans_block(bcx, body).bcx;
@@ -4113,7 +4224,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
                 bcx.fcx.lllocals.insert(def_id, dst);
                 bcx.cleanups +=
                     [clean(bind drop_slot(_, dst, t))];
-                ret copy_ty(bcx, INIT, dst, llval, t);
+                ret copy_val(bcx, INIT, dst, llval, t);
             }
         }
         case (ast::pat_tag(_, ?subpats, ?ann)) {
@@ -4846,7 +4957,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             for (ValueRef v in bound_vals) {
                 auto bound = bcx.build.GEP(bindings,
                                            [C_int(0), C_int(i as int)]);
-                bcx = copy_ty(bcx, INIT, bound, v, bound_tys.(i)).bcx;
+                bcx = copy_val(bcx, INIT, bound, v, bound_tys.(i)).bcx;
                 i += 1u;
             }
 
@@ -5180,7 +5291,7 @@ fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts,
         bcx = src_res.bcx;
         auto dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
         bcx = dst_res.bcx;
-        bcx = copy_ty(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
+        bcx = copy_val(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
     ret res(bcx, tup_val);
@@ -5250,7 +5361,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args,
             dst_val = dst_res.val;
         }
 
-        bcx = copy_ty(bcx, INIT, dst_val, src_res.val, unit_ty).bcx;
+        bcx = copy_val(bcx, INIT, dst_val, src_res.val, unit_ty).bcx;
         i += 1;
     }
     auto fill = bcx.build.GEP(vec_val,
@@ -5310,7 +5421,7 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
         }
 
         bcx = src_res.bcx;
-        bcx = copy_ty(bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
+        bcx = copy_val(bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
     ret res(bcx, rec_val);
@@ -5376,7 +5487,7 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
+            ret copy_val(rhs_res.bcx, DROP_EXISTING,
                         lhs_res.res.val, rhs_res.val, t);
         }
 
@@ -5401,7 +5512,7 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             auto v = trans_eager_binop(rhs_res.bcx, op, t,
                                        lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(v.bcx, DROP_EXISTING,
+            ret copy_val(v.bcx, DROP_EXISTING,
                         lhs_res.res.val, v.val, t);
         }
 
@@ -5752,7 +5863,7 @@ fn trans_ret(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
             auto r = trans_expr(cx, x);
             bcx = r.bcx;
             val = r.val;
-            bcx = copy_ty(bcx, INIT, cx.fcx.llretptr, val, t).bcx;
+            bcx = copy_val(bcx, INIT, cx.fcx.llretptr, val, t).bcx;
         }
         case (_) {
             auto t = llvm::LLVMGetElementType(val_ty(cx.fcx.llretptr));
@@ -6029,7 +6140,7 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
 
     auto data_alloc = alloc_ty(bcx, unit_ty);
     bcx = data_alloc.bcx;
-    auto data_tmp = copy_ty(bcx, INIT, data_alloc.val, data.val, unit_ty);
+    auto data_tmp = copy_val(bcx, INIT, data_alloc.val, data.val, unit_ty);
     bcx = data_tmp.bcx;
 
     find_scope_cx(bcx).cleanups +=
@@ -6069,7 +6180,7 @@ fn recv_val(&@block_ctxt cx, ValueRef lhs, &@ast::expr rhs,
                    [bcx.fcx.lltaskptr, lldataptr, llportptr]);
 
     auto data_load = load_if_immediate(bcx, lhs, unit_ty);
-    auto cp = copy_ty(bcx, action, lhs, data_load, unit_ty);
+    auto cp = copy_val(bcx, action, lhs, data_load, unit_ty);
     bcx = cp.bcx;
 
     // TODO: Any cleanup need to be done here?
@@ -6119,9 +6230,9 @@ fn trans_anon_obj(&@block_ctxt cx, &ast::span sp,
     alt (anon_obj.with_obj) {
         case (none[@ast::expr]) { }
         case (some[@ast::expr](?e)) {
-            // Translating with_obj returns a pointer to a 2-word value.  We
-            // want to allocate space for this value in our outer object, then
-            // copy it into the outer object.
+            // Translating with_obj returns a ValueRef (pointer to a 2-word
+            // value) wrapped in a result.  We want to allocate space for this
+            // value in our outer object, then copy it into the outer object.
             with_obj_val = some[result](trans_expr(cx, e));
         }
     }
@@ -6164,7 +6275,7 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
             alt (init.op) {
                 case (ast::init_assign) {
                     auto sub = trans_expr(bcx, init.expr);
-                    bcx = copy_ty(sub.bcx, INIT, llptr, sub.val, ty).bcx;
+                    bcx = copy_val(sub.bcx, INIT, llptr, sub.val, ty).bcx;
                 }
                 case (ast::init_recv) {
                     bcx = recv_val(bcx, llptr, init.expr, ty, INIT).bcx;
@@ -6273,7 +6384,13 @@ fn new_raw_block_ctxt(&@fn_ctxt fcx, BasicBlockRef llbb) -> @block_ctxt {
              fcx=fcx);
 }
 
-
+// trans_block_cleanups: Go through all the cleanups attached to this
+// block_ctxt and execute them.  
+//
+// When translating a block that introdces new variables during its scope, we
+// need to make sure those variables go out of scope when the block ends.  We
+// do that by running a 'cleanup' function for each variable.
+// trans_block_cleanups runs all the cleanup functions for the block.
 fn trans_block_cleanups(&@block_ctxt cx,
                         &@block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
@@ -6407,7 +6524,7 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
                     zero_alloca(llbcx, res_alloca.val, r_ty);
 
                     // Now we're working in our own block context again
-                    auto res_copy = copy_ty(bcx, INIT,
+                    auto res_copy = copy_val(bcx, INIT,
                                             res_alloca.val, r.val, r_ty);
                     bcx = res_copy.bcx;
 
@@ -6713,6 +6830,8 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
     new_builder(fcx.llderivedtydescs).Br(lltop);
 }
 
+// trans_fn: creates an LLVM function corresponding to a source language
+// function.
 fn trans_fn(@local_ctxt cx, &ast::span sp, &ast::_fn f, ast::def_id fid,
             option::t[tup(TypeRef, ty::t)] ty_self,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
@@ -6751,7 +6870,7 @@ fn trans_fn(@local_ctxt cx, &ast::span sp, &ast::_fn f, ast::def_id fid,
     finish_fn(fcx, lltop);
 }
 
-fn trans_vtbl(@local_ctxt cx,
+fn create_vtbl(@local_ctxt cx,
               TypeRef llself_ty,
               ty::t self_ty,
               &ast::_obj ob,
@@ -6828,10 +6947,20 @@ fn trans_dtor(@local_ctxt cx,
     ret llfn;
 }
 
+// trans_obj: creates an LLVM function that is the object constructor for the
+// object being translated.
 fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
              &vec[ast::ty_param] ty_params, &ast::ann ann) {
+    // To make a function, we have to create a function context and, inside
+    // that, a number of block contexts for which code is generated.
+
     auto ccx = cx.ccx;
+
     auto llctor_decl = ccx.item_ids.get(oid);
+
+    // Much like trans_fn, we must create an LLVM function, but since we're
+    // starting with an ast::_obj rather than an ast::_fn, we have some setup
+    // work to do.
 
     // Translate obj ctor args to function arguments.
     let vec[ast::arg] fn_args = [];
@@ -6848,6 +6977,8 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
     let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ann);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
 
+    //  Make the first block context in the function and keep a handle on it
+    //  to pass to finish_fn later.
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
@@ -6855,7 +6986,8 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
     auto llself_ty = type_of(ccx, sp, self_ty);
     auto pair = bcx.fcx.llretptr;
 
-    auto vtbl = trans_vtbl(cx, llself_ty, self_ty, ob, ty_params);
+    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params);
+
     auto pair_vtbl = bcx.build.GEP(pair,
                                    [C_int(0),
                                        C_int(abi::obj_field_vtbl)]);
@@ -6874,6 +7006,7 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
         // Malloc a box for the body and copy args in.
+
         let vec[ty::t] obj_fields = [];
         for (ty::arg a in arg_tys) {
             vec::push[ty::t](obj_fields, a.ty);
@@ -6886,12 +7019,19 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
             vec::push[ty::t](tps, tydesc_ty);
         }
 
+        // typarams_ty = [typaram_ty, ...]
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
-        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields);
+
+        // fields_ty = [field_ty, ...]
+        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields); 
+
+        // body_ty = [tydesc_ty, [typaram_ty, ...], [field_ty, ...]]
         let ty::t body_ty = ty::mk_imm_tup(ccx.tcx,
                                           [tydesc_ty,
-                                              typarams_ty,
-                                              fields_ty]);
+                                           typarams_ty,
+                                           fields_ty]);
+
+        // boxed_body_ty = [[tydesc_ty, [typaram_ty, ...], [field_ty, ...]]]
         let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
 
         // Malloc a box for the body.
@@ -6900,12 +7040,19 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
         auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                [0, abi::box_rc_field_refcnt]);
         bcx = rc.bcx;
+
+        // We've now created a structure that looks like:
+        // [refcount, [tydesc_ty, [typaram_ty, ...], [field_ty, ...]]]
+
         auto body = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                  [0, abi::box_rc_field_body]);
         bcx = body.bcx;
+
+
         bcx.build.Store(C_int(1), rc.val);
 
-        // Store body tydesc.
+        // Put together a tydesc for the body, so that the object can later be
+        // freed by calling through its tydesc.
         auto body_tydesc =
             GEP_tup_like(bcx, body_ty, body.val,
                          [0, abi::obj_body_elt_tydesc]);
@@ -6938,7 +7085,7 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
             auto capture = GEP_tup_like(bcx, typarams_ty, body_typarams.val,
                                         [0, i]);
             bcx = capture.bcx;
-            bcx = copy_ty(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
+            bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
             i += 1;
         }
 
@@ -6955,7 +7102,7 @@ fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
             auto field = GEP_tup_like(bcx, fields_ty, body_fields.val,
                                       [0, i]);
             bcx = field.bcx;
-            bcx = copy_ty(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
+            bcx = copy_val(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
             i += 1;
         }
         // Store box ptr in outer pair.
@@ -7040,7 +7187,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
             llargval = bcx.build.Load(llargptr);
         }
 
-        rslt = copy_ty(bcx, INIT, lldestptr, llargval, arg_ty);
+        rslt = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);
         bcx = rslt.bcx;
 
         i += 1u;
