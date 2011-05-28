@@ -1388,6 +1388,13 @@ mod pushdown {
                 write::ty_only_fixup(scx, ann.id, t);
                 pushdown_block(scx, t, bloc);
             }
+            case (ast::expr_move(?lhs_0, ?rhs_0, ?ann)) {
+                auto t = demand::autoderef(scx, e.span, expected,
+                    ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
+                pushdown_expr(scx, expected, lhs_0);
+                pushdown_expr(scx, expected, rhs_0);
+                write::ty_only_fixup(scx, ann.id, t);
+            }
             case (ast::expr_assign(?lhs_0, ?rhs_0, ?ann)) {
                 auto t = demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
@@ -2104,6 +2111,11 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             demand::simple(scx, expr.span, ty::mk_bool(scx.fcx.ccx.tcx), ety);
 
             write::nil_ty(scx.fcx.ccx.tcx, a.id);
+        }
+
+        case (ast::expr_move(?lhs, ?rhs, ?a)) {
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
+            check_assignment(scx, lhs, rhs, a);
         }
 
         case (ast::expr_assign(?lhs, ?rhs, ?a)) {

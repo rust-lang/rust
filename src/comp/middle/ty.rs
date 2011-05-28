@@ -1767,6 +1767,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_do_while(_,_,?a)) { ret a; }
         case (ast::expr_alt(_,_,?a)) { ret a; }
         case (ast::expr_block(_,?a)) { ret a; }
+        case (ast::expr_move(_,_,?a)) { ret a; }
         case (ast::expr_assign(_,_,?a)) { ret a; }
         case (ast::expr_assign_op(_,_,_,?a)) { ret a; }
         case (ast::expr_send(_,_,?a)) { ret a; }

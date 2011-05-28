@@ -257,6 +257,7 @@ tag expr_ {
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
+    expr_move(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);

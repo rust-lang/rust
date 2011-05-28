@@ -1251,6 +1251,12 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
             ret @spanned(lo, rhs.span.hi,
                          ast::expr_assign_op(aop, lhs, rhs, p.get_ann()));
         }
+        case (token::LARROW) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            ret @spanned(lo, rhs.span.hi,
+                         ast::expr_move(lhs, rhs, p.get_ann()));
+        }
         case (token::SEND) {
             p.bump();
             auto rhs = parse_expr(p);

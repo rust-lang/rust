@@ -690,6 +690,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             ibox(s.s, 0u);
             print_block(s, block);
         }
+        case (ast::expr_move(?lhs,?rhs,_)) {
+            print_expr(s, lhs);
+            space(s.s);
+            wrd1(s, "<-");
+            print_expr(s, rhs);
+        }
         case (ast::expr_assign(?lhs,?rhs,_)) {
             print_expr(s, lhs);
             space(s.s);

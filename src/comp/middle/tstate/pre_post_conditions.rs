@@ -109,6 +109,7 @@ import front::ast::expr_rec;
 import front::ast::expr_if;
 import front::ast::expr_binary;
 import front::ast::expr_unary;
+import front::ast::expr_move;
 import front::ast::expr_assign;
 import front::ast::expr_assign_op;
 import front::ast::expr_while;
@@ -361,6 +362,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto es = field_exprs(fields);
             vec::plus_option[@expr](es, maybe_base);
             find_pre_post_exprs(fcx, es, a);
+        }
+        case (expr_move(?lhs, ?rhs, ?a)) {
+            // FIXME: this needs to deinitialize the rhs
+            alt (lhs.node) {
+                case (expr_path(?p, ?a_lhs)) {
+                  gen_if_local(fcx, lhs, rhs, a, a_lhs);
+                }
+                case (_) {
+                    find_pre_post_exprs(fcx, [lhs, rhs], a);
+                }
+            }
         }
         case (expr_assign(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {

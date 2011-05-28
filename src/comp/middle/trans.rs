@@ -5500,6 +5500,18 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             ret res(next_cx, sub.val);
         }
 
+        case (ast::expr_move(?dst, ?src, ?ann)) {
+            auto lhs_res = trans_lval(cx, dst);
+            assert (lhs_res.is_mem);
+            *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
+            auto rhs_res = trans_expr(lhs_res.res.bcx, src);
+            auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+            // FIXME: calculate copy init-ness in typestate.
+            // FIXME: do all of the special move stuff
+            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
+                        lhs_res.res.val, rhs_res.val, t);
+        }
+
         case (ast::expr_assign(?dst, ?src, ?ann)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);

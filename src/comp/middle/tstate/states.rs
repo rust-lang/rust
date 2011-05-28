@@ -119,6 +119,7 @@ import front::ast::expr_rec;
 import front::ast::expr_if;
 import front::ast::expr_binary;
 import front::ast::expr_unary;
+import front::ast::expr_move;
 import front::ast::expr_assign;
 import front::ast::expr_assign_op;
 import front::ast::expr_while;
@@ -325,6 +326,32 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, base)) || changed;
+            }
+        }
+        ret changed;
+    }
+    case (expr_move(?lhs, ?rhs, ?a)) {
+        // FIXME: this needs to deinitialize the rhs
+        extend_prestate_ann(fcx.ccx, a, pres);
+
+        alt (lhs.node) {
+            case (expr_path(?p, ?a_lhs)) {
+                // assignment to local var
+                changed = pure_exp(fcx.ccx, a_lhs, pres) || changed;
+                changed = find_pre_post_state_expr(fcx, pres, rhs)
+                    || changed;
+                changed = extend_poststate_ann(fcx.ccx, a,
+                            expr_poststate(fcx.ccx, rhs)) || changed;
+                changed = gen_if_local(fcx, a_lhs, a)|| changed;
+            }
+            case (_) {
+                // assignment to something that must already have been init'd
+                changed = find_pre_post_state_expr(fcx, pres, lhs)
+                    || changed;
+                changed = find_pre_post_state_expr(fcx,
+                     expr_poststate(fcx.ccx, lhs), rhs) || changed;
+                changed = extend_poststate_ann(fcx.ccx, a,
+                            expr_poststate(fcx.ccx, rhs)) || changed;
             }
         }
         ret changed;
