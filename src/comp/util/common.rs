@@ -20,7 +20,7 @@ import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
 import pretty::pprust::print_type;
 import pretty::pprust::mo_untyped;
-import pretty::pp::mkstate;
+import pretty::pp::mk_printer;
 
 type filename = str;
 type span = rec(uint lo, uint hi);
@@ -127,7 +127,7 @@ fn field_exprs(vec[ast::field] fields) -> vec [@ast::expr] {
 
 fn expr_to_str(&@ast::expr e) -> str {
   let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
@@ -138,7 +138,7 @@ fn expr_to_str(&@ast::expr e) -> str {
 
 fn ty_to_str(&ty t) -> str {
   let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
@@ -165,7 +165,7 @@ fn log_pat_err(&@pat p) -> () {
 
 fn block_to_str(&ast::block b) -> str {
   let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
@@ -177,7 +177,7 @@ fn block_to_str(&ast::block b) -> str {
 
 fn item_to_str(&@ast::item i) -> str {
   let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
@@ -200,7 +200,7 @@ fn log_item_err(&@ast::item i) -> () {
 
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
  let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
@@ -220,7 +220,7 @@ fn log_fn_err(&ast::_fn f, str name, vec[ast::ty_param] params) -> () {
 
 fn stmt_to_str(&ast::stmt st) -> str {
   let str_writer s = string_writer();
-  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
