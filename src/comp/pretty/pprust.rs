@@ -11,11 +11,15 @@ import pp;
 
 import pp::printer;
 import pp::break_offset;
+import pp::box;
 import pp::cbox;
 import pp::ibox;
 import pp::wrd;
 import pp::space;
 import pp::hardbreak;
+import pp::breaks;
+import pp::consistent;
+import pp::inconsistent;
 import pp::end;
 import pp::eof;
 
@@ -117,8 +121,8 @@ fn bclose(ps s, common::span span) {
     end(s.s); // close the outer-box
 }
 
-fn commasep[IN](ps s, vec[IN] elts, fn(ps, &IN) op) {
-    ibox(s.s, 0u);
+fn commasep[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op) {
+    box(s.s, 0u, b);
     auto first = true;
     for (IN elt in elts) {
         if (first) {first = false;}
@@ -128,9 +132,9 @@ fn commasep[IN](ps s, vec[IN] elts, fn(ps, &IN) op) {
     end(s.s);
 }
 
-fn commasep_cmnt[IN](ps s, vec[IN] elts, fn(ps, &IN) op,
+fn commasep_cmnt[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op,
                      fn(&IN) -> common::span get_span) {
-    ibox(s.s, 0u);
+    box(s.s, 0u, b);
     auto len = vec::len[IN](elts);
     auto i = 0u;
     for (IN elt in elts) {
@@ -144,11 +148,11 @@ fn commasep_cmnt[IN](ps s, vec[IN] elts, fn(ps, &IN) op,
     end(s.s);
 }
 
-fn commasep_exprs(ps s, vec[@ast::expr] exprs) {
+fn commasep_exprs(ps s, breaks b, vec[@ast::expr] exprs) {
     fn expr_span(&@ast::expr expr) -> common::span {ret expr.span;}
     auto f = print_expr;
     auto gs = expr_span;
-    commasep_cmnt[@ast::expr](s, exprs, f, gs);
+    commasep_cmnt[@ast::expr](s, b, exprs, f, gs);
 }
 
 fn print_mod(ps s, ast::_mod _mod) {
@@ -192,7 +196,7 @@ fn print_type(ps s, &@ast::ty ty) {
             wrd(s.s, "tup");
             popen(s);
             auto f = print_mt;
-            commasep[ast::mt](s, elts, f);
+            commasep[ast::mt](s, inconsistent, elts, f);
             pclose(s);
         }
         case (ast::ty_rec(?fields)) {
@@ -213,7 +217,7 @@ fn print_type(ps s, &@ast::ty ty) {
             }
             auto f = print_field;
             auto gs = get_span;
-            commasep_cmnt[ast::ty_field](s, fields, f, gs);
+            commasep_cmnt[ast::ty_field](s, consistent, fields, f, gs);
             pclose(s);
         }
         case (ast::ty_obj(?methods)) {
@@ -332,7 +336,7 @@ fn print_item(ps s, @ast::item item) {
                         print_type(s, arg.ty);
                     }
                     auto f = print_variant_arg;
-                    commasep[ast::variant_arg](s, v.node.args, f);
+                    commasep[ast::variant_arg](s, consistent, v.node.args, f);
                     pclose(s);
                 }
                 wrd(s.s, ";");
@@ -355,7 +359,7 @@ fn print_item(ps s, @ast::item item) {
             fn get_span(&ast::obj_field f) -> common::span {ret f.ty.span;}
             auto f = print_field;
             auto gs = get_span;
-            commasep_cmnt[ast::obj_field](s, _obj.fields, f, gs);
+            commasep_cmnt[ast::obj_field](s, consistent, _obj.fields, f, gs);
             pclose(s);
             space(s.s);
             bopen(s);
@@ -457,7 +461,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             }
             ibox(s.s, indent_unit);
             wrd(s.s, "[");
-            commasep_exprs(s, exprs);
+            commasep_exprs(s, inconsistent, exprs);
             wrd(s.s, "]");
             end(s.s);
         }
@@ -473,7 +477,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             popen(s);
             auto f = printElt;
             auto gs = get_span;
-            commasep_cmnt[ast::elt](s, exprs, f, gs);
+            commasep_cmnt[ast::elt](s, inconsistent, exprs, f, gs);
             pclose(s);
         }
         case (ast::expr_rec(?fields,?wth,_)) {
@@ -492,7 +496,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             popen(s);
             auto f = print_field;
             auto gs = get_span;
-            commasep_cmnt[ast::field](s, fields, f, gs);
+            commasep_cmnt[ast::field](s, consistent, fields, f, gs);
             alt (wth) {
                 case (option::some[@ast::expr](?expr)) {
                     if (vec::len[ast::field](fields) > 0u) {space(s.s);}
@@ -508,7 +512,7 @@ fn print_expr(ps s, &@ast::expr expr) {
         case (ast::expr_call(?func,?args,_)) {
             print_expr(s, func);
             popen(s);
-            commasep_exprs(s, args);
+            commasep_exprs(s, inconsistent, args);
             pclose(s);
         }
         case (ast::expr_self_method(?ident,_)) {
@@ -528,14 +532,14 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_expr(s, func);
             popen(s);
             auto f = print_opt;
-            commasep[option::t[@ast::expr]](s, args, f);
+            commasep[option::t[@ast::expr]](s, inconsistent, args, f);
             pclose(s);
         }
     case (ast::expr_spawn(_,_,?e,?es,_)) {
           word_nbsp(s, "spawn");
           print_expr(s, e);
           popen(s);
-          commasep_exprs(s, es);
+          commasep_exprs(s, inconsistent, es);
           pclose(s);
         }
         case (ast::expr_binary(?op,?lhs,?rhs,_)) {
@@ -742,7 +746,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_path(s, path);
             if (vec::len[@ast::expr](args) > 0u) {
                 popen(s);
-                commasep_exprs(s, args);
+                commasep_exprs(s, inconsistent, args);
                 pclose(s);
             }
             // FIXME: extension 'body'
@@ -855,7 +859,7 @@ fn print_path(ps s, ast::path path) {
     if (vec::len[@ast::ty](path.node.types) > 0u) {
         wrd(s.s, "[");
         auto f = print_type;
-        commasep[@ast::ty](s, path.node.types, f);
+        commasep[@ast::ty](s, inconsistent, path.node.types, f);
         wrd(s.s, "]");
     }
 }
@@ -871,7 +875,7 @@ fn print_pat(ps s, &@ast::pat pat) {
             if (vec::len[@ast::pat](args) > 0u) {
                 popen(s);
                 auto f = print_pat;
-                commasep[@ast::pat](s, args, f);
+                commasep[@ast::pat](s, inconsistent, args, f);
                 pclose(s);
             }
         }
@@ -900,7 +904,7 @@ fn print_fn(ps s, ast::fn_decl decl, str name,
         end(s.s);
     }
     auto f = print_arg;
-    commasep[ast::arg](s, decl.inputs, f);
+    commasep[ast::arg](s, inconsistent, decl.inputs, f);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
@@ -917,7 +921,7 @@ fn print_type_params(ps s, vec[ast::ty_param] params) {
             wrd(s.s, param);
         }
         auto f = printParam;
-        commasep[ast::ty_param](s, params, f);
+        commasep[ast::ty_param](s, inconsistent, params, f);
         wrd(s.s, "]");
     }
 }
@@ -939,7 +943,7 @@ fn print_view_item(ps s, @ast::view_item item) {
                     end(s.s);
                 }
                 auto f = print_meta;
-                commasep[@ast::meta_item](s, mta, f);
+                commasep[@ast::meta_item](s, consistent, mta, f);
                 pclose(s);
             }
         }
@@ -1042,7 +1046,7 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
         print_type(s, input.ty);
     }
     auto f = print_arg;
-    commasep[ast::ty_arg](s, inputs, f);
+    commasep[ast::ty_arg](s, inconsistent, inputs, f);
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {

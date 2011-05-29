@@ -505,14 +505,18 @@ obj printer(io::writer out,
 
 // Convenience functions to talk to the printer.
 
-fn ibox(printer p, uint indent) {
+fn box(printer p, uint indent, breaks b) {
     p.pretty_print(BEGIN(rec(offset = indent as int,
-                             breaks = inconsistent)));
+                             breaks = b)));
+}
+
+
+fn ibox(printer p, uint indent) {
+    box(p, indent, inconsistent);
 }
 
 fn cbox(printer p, uint indent) {
-    p.pretty_print(BEGIN(rec(offset = indent as int,
-                             breaks = consistent)));
+    box(p, indent, consistent);
 }
 
 
