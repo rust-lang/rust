@@ -34,6 +34,25 @@ import std::str;
  * I also inverted the indentation arithmetic used in the print stack, since
  * the Mesa implementation (somewhat randomly) stores the offset on the print
  * stack in terms of margin-col rather than col itself. I store col.
+ *
+ * I also implemented a small change in the STRING token, in that I store an
+ * explicit length for the string. For most tokens this is just the length of
+ * the accompanying string. But it's necessary to permit it to differ, for
+ * encoding things that are supposed to "go on their own line" -- certain
+ * classes of comment and blank-line -- where relying on adjacent
+ * hardbreak-like BREAK tokens with long blankness indication doesn't actually
+ * work. To see why, consider when there is a "thing that should be on its own
+ * line" between two long blocks, say functions. If you put a hardbreak after
+ * each function (or before each) and the breaking algorithm decides to break
+ * there anyways (because the functions themselves are long) you wind up with
+ * extra blank lines. If you don't put hardbreaks you can wind up with the
+ * "thing which should be on its own line" not getting its own line in the
+ * rare case of "really small functions" or such. This re-occurs with comments
+ * and explicit blank lines. So in those cases we use a string with a payload
+ * we want isolated to a line and an explicit length that's huge, surrounded
+ * by two zero-length breaks. The algorithm will try its best to fit it on a
+ * line (which it can't) and so naturally place the content on its own line to
+ * avoid combining it with other lines and making matters even worse.
  */
 
 tag breaks { consistent; inconsistent; }
@@ -41,7 +60,7 @@ type break_t = rec(int offset, int blank_space);
 type begin_t = rec(int offset, breaks breaks);
 
 tag token {
-    STRING(str);
+    STRING(str,int);
     BREAK(break_t);
     BEGIN(begin_t);
     END;
@@ -51,7 +70,7 @@ tag token {
 
 fn tok_str(token t) -> str {
     alt (t) {
-        case (STRING(?s)) { ret "STR(" + s + ")"; }
+        case (STRING(?s, ?len)) { ret #fmt("STR(%s,%d)", s, len); }
         case (BREAK(_)) { ret "BREAK"; }
         case (BEGIN(_)) { ret "BEGIN"; }
         case (END) { ret "END"; }
@@ -279,8 +298,7 @@ obj printer(io::writer out,
                 right_total += b.blank_space;
             }
 
-            case (STRING(?s)) {
-                auto len = str::char_len(s) as int;
+            case (STRING(?s, ?len)) {
                 if (scan_stack_empty) {
                     log #fmt("pp STRING/print [%u,%u]", left, right);
                     self.print(t, len);
@@ -370,10 +388,9 @@ obj printer(io::writer out,
                 case (BREAK(?b)) {
                     left_total += b.blank_space;
                 }
-                case (STRING(?s)) {
-                    // I think? paper says '1' here but 1 and L look same in
-                    // it.
-                    left_total += L;
+                case (STRING(_, ?len)) {
+                    assert len == L;
+                    left_total += len;
                 }
                 case (_) {}
             }
@@ -486,11 +503,11 @@ obj printer(io::writer out,
                 }
             }
 
-            case (STRING(?s)) {
+            case (STRING(?s, ?len)) {
                 log "print STRING";
-                assert L as uint == str::char_len(s);
+                assert L == len;
                 // assert L <= space;
-                space -= L;
+                space -= len;
                 out.write_str(s);
             }
 
@@ -527,8 +544,14 @@ fn break_offset(printer p, uint n, int off) {
 
 fn end(printer p) { p.pretty_print(END); }
 fn eof(printer p) { p.pretty_print(EOF); }
-fn wrd(printer p, str wrd) { p.pretty_print(STRING(wrd)); }
+fn word(printer p, str wrd) {
+    p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
+}
+fn word_and_eol(printer p, str wrd) {
+    p.pretty_print(STRING(wrd, 0xffff));
+}
 fn spaces(printer p, uint n) { break_offset(p, n, 0); }
+fn zerobreak(printer p) { spaces(p, 0u); }
 fn space(printer p) { spaces(p, 1u); }
 fn hardbreak(printer p) { spaces(p, 0xffffu); }
 

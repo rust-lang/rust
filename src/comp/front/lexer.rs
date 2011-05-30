@@ -22,6 +22,7 @@ state type reader = state obj {
     fn get_mark_chpos() -> uint;
     fn get_interner() -> @interner::interner[str];
     fn get_chpos() -> uint;
+    fn get_col() -> uint;
     fn get_filemap() -> codemap::filemap;
     fn err(str m);
 };
@@ -33,6 +34,7 @@ fn new_reader(session sess, io::reader rdr,
     state obj reader(session sess,
                      str file,
                      uint len,
+                     mutable uint col,
                      mutable uint pos,
                      mutable char ch,
                      mutable uint mark_chpos,
@@ -68,9 +70,11 @@ fn new_reader(session sess, io::reader rdr,
 
         fn bump() {
             if (pos < len) {
+                col += 1u;
                 chpos += 1u;
                 if (ch == '\n') {
                     codemap::next_line(fm, chpos);
+                    col = 0u;
                 }
                 auto next = str::char_range_at(file, pos);
                 pos = next._1;
@@ -82,6 +86,10 @@ fn new_reader(session sess, io::reader rdr,
 
         fn get_interner() -> @interner::interner[str] { ret itr; }
 
+        fn get_col() -> uint {
+            ret col;
+        }
+
         fn get_filemap() -> codemap::filemap {
             ret fm;
         }
@@ -92,7 +100,8 @@ fn new_reader(session sess, io::reader rdr,
     }
     auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
-    auto rd = reader(sess, file, str::byte_len(file), 0u, -1 as char,
+    auto rd = reader(sess, file, str::byte_len(file), 0u, 0u,
+                     -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      strs, filemap, itr);
     rd.init();
@@ -155,7 +164,7 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-fn consume_any_whitespace(&reader rdr) {
+fn consume_whitespace_and_comments(&reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
@@ -170,7 +179,7 @@ fn consume_any_line_comment(&reader rdr) {
                     rdr.bump();
                 }
                 // Restart whitespace munch.
-                be consume_any_whitespace(rdr);
+                be consume_whitespace_and_comments(rdr);
             }
             case ('*') {
                 rdr.bump();
@@ -207,7 +216,7 @@ fn consume_block_comment(&reader rdr) {
         }
     }
     // restart whitespace munch.
-    be consume_any_whitespace(rdr);
+    be consume_whitespace_and_comments(rdr);
 }
 
 fn digits_to_string(str s) -> int {
@@ -430,7 +439,7 @@ fn scan_numeric_escape(&reader rdr, uint n_hex_digits) -> char {
 fn next_token(&reader rdr) -> token::token {
     auto accum_str = "";
 
-    consume_any_whitespace(rdr);
+    consume_whitespace_and_comments(rdr);
 
     if (rdr.is_eof()) { ret token::EOF; }
 
@@ -720,70 +729,161 @@ fn next_token(&reader rdr) -> token::token {
     fail;
 }
 
-tag cmnt_ {
-    cmnt_line(str);
-    cmnt_block(vec[str]);
+
+tag cmnt_style {
+    isolated;  // No code on either side of each line of the comment
+    trailing;  // Code exists to the left of the comment
+    mixed;     // Code before /* foo */ and after the comment
 }
 
-type cmnt = rec(cmnt_ val, uint pos, bool space_after);
+type cmnt = rec(cmnt_style style, vec[str] lines, uint pos);
 
-fn consume_whitespace(&reader rdr) -> uint {
-    auto lines = 0u;
-    while (is_whitespace(rdr.curr())) {
-        if (rdr.curr() == '\n') {lines += 1u;}
-        rdr.bump();
-    }
-    ret lines;
-}
-
-fn read_line_comment(&reader rdr) -> cmnt {
-    auto p = rdr.get_chpos();
-    rdr.bump(); rdr.bump();
-    while (rdr.curr() == ' ') {rdr.bump();}
+fn read_to_eol(&reader rdr) -> str {
     auto val = "";
     while (rdr.curr() != '\n' && !rdr.is_eof()) {
         str::push_char(val, rdr.curr());
         rdr.bump();
     }
-    ret rec(val=cmnt_line(val),
-            pos=p,
-            space_after=consume_whitespace(rdr) > 1u);
+    if (rdr.curr() == '\n') {
+        rdr.bump();
+    } else {
+        assert rdr.is_eof();
+    }
+    ret val;
 }
 
-fn read_block_comment(&reader rdr) -> cmnt {
+fn read_one_line_comment(&reader rdr) -> str {
+    auto val = read_to_eol(rdr);
+    assert val.(0) == ('/' as u8) && val.(1) == ('/' as u8);
+    ret val;
+}
+
+fn consume_whitespace(&reader rdr) {
+    while (is_whitespace(rdr.curr()) && !rdr.is_eof()) {
+        rdr.bump();
+    }
+}
+
+
+fn consume_non_eol_whitespace(&reader rdr) {
+    while (is_whitespace(rdr.curr()) &&
+           rdr.curr() != '\n' && !rdr.is_eof()) {
+        rdr.bump();
+    }
+}
+
+
+fn read_line_comments(&reader rdr, bool code_to_the_left) -> cmnt {
+    log ">>> line comments";
     auto p = rdr.get_chpos();
-    rdr.bump(); rdr.bump();
-    while (rdr.curr() == ' ') {rdr.bump();}
     let vec[str] lines = [];
-    auto val = "";
-    auto level = 1;
-    while (true) {
-        if (rdr.curr() == '\n') {
-            vec::push[str](lines, val);
-            val = "";
-            consume_whitespace(rdr);
-        } else {
-            if (rdr.curr() == '*' && rdr.next() == '/') {
-                level -= 1;
-                if (level == 0) {
-                    rdr.bump(); rdr.bump();
-                    vec::push[str](lines, val);
-                    break;
-                }
-            } else if (rdr.curr() == '/' && rdr.next() == '*') {
-                level += 1;
-            }
-            str::push_char(val, rdr.curr());
-            rdr.bump();
+    while (rdr.curr() == '/' && rdr.next() == '/') {
+        lines += [read_one_line_comment(rdr)];
+        consume_non_eol_whitespace(rdr);
+    }
+    log "<<< line comments";
+    ret rec(style = if (code_to_the_left) { trailing } else { isolated },
+            lines = lines,
+            pos=p);
+}
+
+fn all_whitespace(&str s, uint begin, uint end) -> bool {
+    let uint i = begin;
+    while (i != end) {
+        if (!is_whitespace(s.(i) as char)) {
+            ret false;
         }
+        i += 1u;
+    }
+    ret true;
+}
+
+fn trim_whitespace_prefix_and_push_line(&mutable vec[str] lines,
+                                        &str s, uint col) {
+    auto s1;
+    if (all_whitespace(s, 0u, col)) {
+        if (col < str::byte_len(s)) {
+            s1 = str::slice(s, col, str::byte_len(s));
+        } else {
+            s1 = "";
+        }
+    } else {
+        s1 = s;
+    }
+    log "pushing line: " + s1;
+    lines += [s1];
+}
+
+fn read_block_comment(&reader rdr,
+                      bool code_to_the_left) -> cmnt {
+    log ">>> block comment";
+    auto p = rdr.get_chpos();
+    let vec[str] lines = [];
+    let uint col = rdr.get_col();
+    rdr.bump();
+    rdr.bump();
+    auto curr_line = "/*";
+    let int level = 1;
+    while (level > 0) {
+        log #fmt("=== block comment level %d", level);
         if (rdr.is_eof()) {
-            rdr.err("Unexpected end of file in block comment");
+            rdr.err("unterminated block comment");
             fail;
         }
+        if (rdr.curr() == '\n') {
+            trim_whitespace_prefix_and_push_line(lines, curr_line, col);
+            curr_line = "";
+            rdr.bump();
+        } else {
+            str::push_char(curr_line, rdr.curr());
+            if (rdr.curr() == '/' && rdr.next() == '*') {
+                rdr.bump();
+                rdr.bump();
+                curr_line += "*";
+                level += 1;
+            } else {
+                if (rdr.curr() == '*' && rdr.next() == '/') {
+                    rdr.bump();
+                    rdr.bump();
+                    curr_line += "/";
+                    level -= 1;
+                } else {
+                    rdr.bump();
+                }
+            }
+        }
     }
-    ret rec(val=cmnt_block(lines),
-            pos=p,
-            space_after=consume_whitespace(rdr) > 1u);
+    if (str::byte_len(curr_line) != 0u) {
+        trim_whitespace_prefix_and_push_line(lines, curr_line, col);
+    }
+
+    auto style = if (code_to_the_left) { trailing } else { isolated };
+    consume_non_eol_whitespace(rdr);
+    if (!rdr.is_eof() &&
+        rdr.curr() != '\n' &&
+        vec::len(lines) == 1u) {
+        style = mixed;
+    }
+    log "<<< block comment";
+    ret rec(style = style, lines = lines, pos=p);
+}
+
+fn peeking_at_comment(&reader rdr) -> bool {
+    ret (rdr.curr() == '/' && rdr.next() == '/') ||
+        (rdr.curr() == '/' && rdr.next() == '*');
+}
+
+fn consume_comment(&reader rdr, bool code_to_the_left,
+                   &mutable vec[cmnt] comments) {
+    log ">>> consume comment";
+    if (rdr.curr() == '/' && rdr.next() == '/') {
+        vec::push[cmnt](comments,
+                        read_line_comments(rdr, code_to_the_left));
+    } else if (rdr.curr() == '/' && rdr.next() == '*') {
+        vec::push[cmnt](comments,
+                        read_block_comment(rdr, code_to_the_left));
+    } else { fail; }
+    log "<<< consume comment";
 }
 
 fn gather_comments(session sess, str path) -> vec[cmnt] {
@@ -793,17 +893,22 @@ fn gather_comments(session sess, str path) -> vec[cmnt] {
     let vec[cmnt] comments = [];
     while (!rdr.is_eof()) {
         while (true) {
-            consume_whitespace(rdr);
-            if (rdr.curr() == '/' && rdr.next() == '/') {
-                vec::push[cmnt](comments, read_line_comment(rdr));
-            } else if (rdr.curr() == '/' && rdr.next() == '*') {
-                vec::push[cmnt](comments, read_block_comment(rdr));
-            } else { break; }
+            auto code_to_the_left = true;
+            consume_non_eol_whitespace(rdr);
+            if (rdr.next() == '\n') {
+                code_to_the_left = false;
+                consume_whitespace(rdr);
+            }
+            while (peeking_at_comment(rdr)) {
+                consume_comment(rdr, code_to_the_left, comments);
+                consume_whitespace(rdr);
+            }
+            break;
         }
         next_token(rdr);
     }
     ret comments;
-}
+ }
 
 
 //

@@ -164,7 +164,7 @@ fn new_parser(session::session sess,
     auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = lexer::new_reader(sess, srdr, filemap, itr);
     // Make sure npos points at first actual token:
-    lexer::consume_any_whitespace(rdr);
+    lexer::consume_whitespace_and_comments(rdr);
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, env, ftype, lexer::next_token(rdr),
                      npos, npos, npos, initial_def._1, UNRESTRICTED,
