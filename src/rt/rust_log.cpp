@@ -218,18 +218,18 @@ size_t log_rt_kern;
 size_t log_rt_backtrace;
 
 static const mod_entry _rt_module_map[] =
-    {{"rt.mem", &log_rt_mem},
-     {"rt.comm", &log_rt_comm},
-     {"rt.task", &log_rt_task},
-     {"rt.dom", &log_rt_dom},
-     {"rt.trace", &log_rt_trace},
-     {"rt.cache", &log_rt_cache},
-     {"rt.upcall", &log_rt_upcall},
-     {"rt.timer", &log_rt_timer},
-     {"rt.gc", &log_rt_gc},
-     {"rt.stdlib", &log_rt_stdlib},
-     {"rt.kern", &log_rt_kern},
-     {"rt.backtrace", &log_rt_backtrace},
+    {{"rt::mem", &log_rt_mem},
+     {"rt::comm", &log_rt_comm},
+     {"rt::task", &log_rt_task},
+     {"rt::dom", &log_rt_dom},
+     {"rt::trace", &log_rt_trace},
+     {"rt::cache", &log_rt_cache},
+     {"rt::upcall", &log_rt_upcall},
+     {"rt::timer", &log_rt_timer},
+     {"rt::gc", &log_rt_gc},
+     {"rt::stdlib", &log_rt_stdlib},
+     {"rt::kern", &log_rt_kern},
+     {"rt::backtrace", &log_rt_backtrace},
      {NULL, NULL}};
 
 void update_log_settings(void* crate_map, char* settings) {
