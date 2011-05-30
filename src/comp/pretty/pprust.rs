@@ -5,6 +5,8 @@ import std::option;
 import driver::session::session;
 import front::ast;
 import front::lexer;
+import front::codemap;
+import front::codemap::codemap;
 import middle::ty;
 import util::common;
 import pp;
@@ -34,6 +36,7 @@ tag mode {
 }
 
 type ps = @rec(pp::printer s,
+               option::t[codemap] cm,
                option::t[vec[lexer::cmnt]] comments,
                mutable uint cur_cmnt,
                mode mode);
@@ -42,6 +45,7 @@ fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
               mode mode) {
     auto cmnts = lexer::gather_comments(sess, filename);
     auto s = @rec(s=pp::mk_printer(out, default_columns),
+                  cm=option::some[codemap](sess.get_codemap()),
                   comments=option::some[vec[lexer::cmnt]](cmnts),
                   mutable cur_cmnt=0u,
                   mode=mode);
@@ -52,6 +56,7 @@ fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
 fn ty_to_str(&@ast::ty ty) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
+                  cm=option::none[codemap],
                   comments=option::none[vec[lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -63,6 +68,7 @@ fn ty_to_str(&@ast::ty ty) -> str {
 fn block_to_str(&ast::block blk) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
+                  cm=option::none[codemap],
                   comments=option::none[vec[lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -76,6 +82,7 @@ fn block_to_str(&ast::block blk) -> str {
 fn pat_to_str(&@ast::pat p) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
+                  cm=option::none[codemap],
                   comments=option::none[vec[lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -1099,9 +1106,22 @@ fn maybe_print_comment(ps s, uint pos) {
 }
 
 fn maybe_print_line_comment(ps s, common::span span) -> bool {
+    auto cm;
+    alt (s.cm) {
+        case (option::some[codemap](?ccm)) {
+            cm = ccm;
+        }
+        case (_) {
+            ret false;
+        }
+    }
     alt (next_comment(s)) {
         case (option::some[lexer::cmnt](?cmnt)) {
-            if (span.hi + 4u >= cmnt.pos) {
+            if (cmnt.style != lexer::trailing) { ret false; }
+
+            auto span_line = codemap::lookup_pos(cm, span.hi);
+            auto comment_line = codemap::lookup_pos(cm, cmnt.pos);
+            if (span_line.line == comment_line.line) {
                 word(s.s, " ");
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
@@ -1128,12 +1148,11 @@ fn print_remaining_comments(ps s) {
 fn print_comment(ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
         case (lexer::isolated) {
-            cbox(s.s, 0u);
+            zerobreak(s.s);
             for (str line in cmnt.lines) {
-                zerobreak(s.s);
                 word_and_eol(s.s, line);
+                zerobreak(s.s);
             }
-            end(s.s);
             zerobreak(s.s);
         }
         case (lexer::trailing) {

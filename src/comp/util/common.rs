@@ -8,6 +8,7 @@ import std::option::some;
 import front::ast;
 import front::ast::ty;
 import front::ast::pat;
+import front::codemap::codemap;
 import middle::walk;
 
 import std::io::stdout;
@@ -129,6 +130,7 @@ fn expr_to_str(&@ast::expr e) -> str {
   let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -140,6 +142,7 @@ fn ty_to_str(&ty t) -> str {
   let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -167,6 +170,7 @@ fn block_to_str(&ast::block b) -> str {
   let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -179,6 +183,7 @@ fn item_to_str(&@ast::item i) -> str {
   let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -202,6 +207,7 @@ fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
  let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
@@ -222,6 +228,7 @@ fn stmt_to_str(&ast::stmt st) -> str {
   let str_writer s = string_writer();
   auto out_ = mk_printer(s.get_writer(), 80u);
   auto out = @rec(s=out_,
+                  cm=none[codemap],
                   comments=none[vec[front::lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
