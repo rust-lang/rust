@@ -5423,9 +5423,9 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
         auto src_res = res(bcx, C_nil());
 
         for (ast::field f in fields) {
-            if (str::eq(f.ident, tf.ident)) {
+            if (str::eq(f.node.ident, tf.ident)) {
                 expr_provided = true;
-                src_res = trans_expr(bcx, f.expr);
+                src_res = trans_expr(bcx, f.node.expr);
             }
         }
         if (!expr_provided) {

@@ -229,7 +229,8 @@ tag decl_ {
 type arm = rec(@pat pat, block block);
 
 type elt = rec(mutability mut, @expr expr);
-type field = rec(mutability mut, ident ident, @expr expr);
+type field_ = rec(mutability mut, ident ident, @expr expr);
+type field = spanned[field_];
 
 tag spawn_dom {
     dom_implicit;

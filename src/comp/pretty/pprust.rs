@@ -140,6 +140,7 @@ fn commasep_cmnt[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op,
     auto len = vec::len[IN](elts);
     auto i = 0u;
     for (IN elt in elts) {
+        maybe_print_comment(s, get_span(elt).hi);
         op(s, elt);
         i += 1u;
         if (i < len) {
@@ -485,14 +486,14 @@ fn print_expr(ps s, &@ast::expr expr) {
         case (ast::expr_rec(?fields,?wth,_)) {
             fn print_field(ps s, &ast::field field) {
                 ibox(s.s, indent_unit);
-                if (field.mut == ast::mut) {word_nbsp(s, "mutable");}
-                word(s.s, field.ident);
+                if (field.node.mut == ast::mut) {word_nbsp(s, "mutable");}
+                word(s.s, field.node.ident);
                 word(s.s, "=");
-                print_expr(s, field.expr);
+                print_expr(s, field.node.expr);
                 end(s.s);
             }
             fn get_span(&ast::field field) -> common::span {
-                ret field.expr.span;
+                ret field.span;
             }
             word(s.s, "rec");
             popen(s);
@@ -1132,8 +1133,8 @@ fn print_comment(ps s, lexer::cmnt cmnt) {
                 zerobreak(s.s);
                 word_and_eol(s.s, line);
             }
-            zerobreak(s.s);
             end(s.s);
+            zerobreak(s.s);
         }
         case (lexer::trailing) {
             cbox(s.s, 0u);
@@ -1142,6 +1143,7 @@ fn print_comment(ps s, lexer::cmnt cmnt) {
                 zerobreak(s.s);
             }
             end(s.s);
+            zerobreak(s.s);
         }
         case (lexer::mixed) {
             assert vec::len(cmnt.lines) == 1u;

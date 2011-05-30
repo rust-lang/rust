@@ -323,7 +323,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         }
         case (ast::expr_rec(?flds, ?base, _)) {
             for (ast::field f in flds) {
-                walk_expr(v, f.expr);
+                walk_expr(v, f.node.expr);
             }
             walk_expr_opt(v, base);
         }

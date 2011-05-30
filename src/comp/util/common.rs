@@ -118,7 +118,7 @@ fn elt_exprs(&vec[ast::elt] elts) -> vec[@ast::expr] {
     ret vec::map[ast::elt, @ast::expr](f, elts);
 }
 
-fn field_expr(&ast::field f) -> @ast::expr { ret f.expr; }
+fn field_expr(&ast::field f) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(vec[ast::field] fields) -> vec [@ast::expr] {
     auto f = field_expr;

@@ -1248,11 +1248,11 @@ mod pushdown {
                             case (none) {
                                 auto i = 0u;
                                 for (ast::field field_0 in fields_0) {
-                                    assert (str::eq(field_0.ident,
+                                    assert (str::eq(field_0.node.ident,
                                                     field_mts.(i).ident));
                                     pushdown_expr(scx,
                                                   field_mts.(i).mt.ty,
-                                                  field_0.expr);
+                                                  field_0.node.expr);
                                     i += 1u;
                                 }
                             }
@@ -1263,10 +1263,10 @@ mod pushdown {
                                 for (ast::field field_0 in fields_0) {
 
                                     for (ty::field ft in field_mts) {
-                                        if (str::eq(field_0.ident,
+                                        if (str::eq(field_0.node.ident,
                                                     ft.ident)) {
                                             pushdown_expr(scx, ft.mt.ty,
-                                                          field_0.expr);
+                                                          field_0.node.expr);
                                         }
                                     }
                                 }
@@ -2461,11 +2461,12 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             let vec[field] fields_t = [];
 
             for (ast::field f in fields) {
-                check_expr(scx, f.expr);
-                auto expr_t = expr_ty(scx.fcx.ccx.tcx, f.expr);
+                check_expr(scx, f.node.expr);
+                auto expr_t = expr_ty(scx.fcx.ccx.tcx, f.node.expr);
 
-                auto expr_mt = rec(ty=expr_t, mut=f.mut);
-                vec::push[field](fields_t, rec(ident=f.ident, mt=expr_mt));
+                auto expr_mt = rec(ty=expr_t, mut=f.node.mut);
+                vec::push[field](fields_t, rec(ident=f.node.ident,
+                                               mt=expr_mt));
             }
 
             alt (base) {

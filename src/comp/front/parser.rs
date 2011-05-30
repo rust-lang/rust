@@ -737,11 +737,12 @@ fn parse_mutability(&parser p) -> ast::mutability {
 }
 
 fn parse_field(&parser p) -> ast::field {
+    auto lo = p.get_lo_pos();
     auto m = parse_mutability(p);
     auto i = parse_ident(p);
     expect(p, token::EQ);
     auto e = parse_expr(p);
-    ret rec(mut=m, ident=i, expr=e);
+    ret spanned(lo, e.span.hi, rec(mut=m, ident=i, expr=e));
 }
 
 fn parse_bottom_expr(&parser p) -> @ast::expr {

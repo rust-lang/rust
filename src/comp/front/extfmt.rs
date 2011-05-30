@@ -148,9 +148,9 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         for (tup(ast::ident, @ast::expr) field in fields) {
             auto ident = field._0;
             auto val = field._1;
-            auto astfield = rec(mut = ast::imm,
-                                ident = ident,
-                                expr = val);
+            auto astfield = rec(node=rec(mut = ast::imm,
+                                         ident = ident,
+                                         expr = val), span=sp);
             astfields += [astfield];
         }
 
