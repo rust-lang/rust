@@ -135,6 +135,7 @@ fn expr_to_str(&@ast::expr e) -> str {
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
   print_expr(out, e);
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
@@ -147,6 +148,7 @@ fn ty_to_str(&ty t) -> str {
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
   print_type(out, @t);
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
@@ -176,6 +178,7 @@ fn block_to_str(&ast::block b) -> str {
                   mode=mo_untyped);
 
   print_block(out, b);
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
@@ -188,6 +191,7 @@ fn item_to_str(&@ast::item i) -> str {
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
   print_item(out, i);
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
@@ -213,6 +217,7 @@ fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
                   mode=mo_untyped);
 
   print_fn(out, f.decl, name, params);
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
@@ -241,6 +246,7 @@ fn stmt_to_str(&ast::stmt st) -> str {
     }
     case (_) { /* do nothing */ }
   }
+  pretty::pp::eof(out_);
   ret s.get_str();
 }
 
