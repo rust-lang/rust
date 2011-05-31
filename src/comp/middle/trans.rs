@@ -3712,14 +3712,28 @@ fn join_results(&@block_ctxt parent_cx,
     ret res(join_cx, phi);
 }
 
+fn join_branches(&@block_ctxt parent_cx, &vec[result] ins) -> @block_ctxt {
+    auto out = new_sub_block_ctxt(parent_cx, "join");
+    for (result r in ins) {
+        if (!is_terminated(r.bcx)) {
+            r.bcx.build.Br(out.llbb);
+        }
+    }
+    ret out;
+}
+
+tag out_method {
+    return;
+    save_in(ValueRef);
+}
+
 fn trans_if(&@block_ctxt cx, &@ast::expr cond,
             &ast::block thn, &option::t[@ast::expr] els,
-            &ast::ann ann) -> result {
-
+            &ast::ann ann, &out_method output) -> result {
     auto cond_res = trans_expr(cx, cond);
 
     auto then_cx = new_scope_block_ctxt(cx, "then");
-    auto then_res = trans_block(then_cx, thn);
+    auto then_res = trans_block(then_cx, thn, output);
 
     auto else_cx = new_scope_block_ctxt(cx, "else");
 
@@ -3739,14 +3753,14 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
                               a = ann);
                     auto elseif_blk = rec(node = elseif_blk_,
                                           span = elexpr.span);
-                    else_res = trans_block(else_cx, elseif_blk);
+                    else_res = trans_block(else_cx, elseif_blk, output);
                 }
                 case (ast::expr_block(?blk, _)) {
                     // Calling trans_block directly instead of trans_expr
                     // because trans_expr will create another scope block
                     // context for the block, but we've already got the
                     // 'else' context
-                    else_res = trans_block(else_cx, blk);
+                    else_res = trans_block(else_cx, blk, output);
                 }
             }
 
@@ -3771,9 +3785,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
     cond_res.bcx.build.CondBr(cond_res.val,
                               then_cx.llbb,
                               else_cx.llbb);
-
-    ret join_results(cx, expr_llty,
-                     [then_res, else_res]);
+    ret res(join_branches(cx, [then_res, else_res]), C_nil());
 }
 
 fn trans_for(&@block_ctxt cx,
@@ -3795,7 +3807,7 @@ fn trans_for(&@block_ctxt cx,
         auto bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t).bcx;
         scope_cx.cleanups +=
             [clean(bind drop_slot(_, local_res.val, t))];
-        bcx = trans_block(bcx, body).bcx;
+        bcx = trans_block(bcx, body, return).bcx;
         bcx.build.Br(next_cx.llbb);
         ret res(next_cx, C_nil());
     }
@@ -4053,7 +4065,7 @@ fn trans_for_each(&@block_ctxt cx,
 
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
-    auto r = trans_block(bcx, body);
+    auto r = trans_block(bcx, body, return);
 
     finish_fn(fcx, lltop);
 
@@ -4099,7 +4111,7 @@ fn trans_while(&@block_ctxt cx, &@ast::expr cond,
     auto body_cx = new_loop_scope_block_ctxt(cx, option::none[@block_ctxt],
                                              next_cx, "while loop body");
 
-    auto body_res = trans_block(body_cx, body);
+    auto body_res = trans_block(body_cx, body, return);
     auto cond_res = trans_expr(cond_cx, cond);
 
     body_res.bcx.build.Br(cond_cx.llbb);
@@ -4118,7 +4130,7 @@ fn trans_do_while(&@block_ctxt cx, &ast::block body,
     auto body_cx = new_loop_scope_block_ctxt(cx, option::none[@block_ctxt],
                                              next_cx, "do-while loop body");
 
-    auto body_res = trans_block(body_cx, body);
+    auto body_res = trans_block(body_cx, body, return);
     auto cond_res = trans_expr(body_res.bcx, cond);
 
     cond_res.bcx.build.CondBr(cond_res.val,
@@ -4259,7 +4271,8 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
 }
 
 fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
-             &vec[ast::arm] arms, &ast::ann ann) -> result {
+             &vec[ast::arm] arms, &ast::ann ann,
+             &out_method output) -> result {
     auto expr_res = trans_expr(cx, expr);
 
     auto this_cx = expr_res.bcx;
@@ -4275,11 +4288,12 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
         auto binding_res = trans_pat_binding(binding_cx, arm.pat,
                                              expr_res.val, false);
 
-        auto block_res = trans_block(binding_res.bcx, arm.block);
+        auto block_res = trans_block(binding_res.bcx, arm.block, output);
         arm_results += [block_res];
 
         this_cx = next_cx;
     }
+
 
     auto default_cx = this_cx;
     auto default_res = trans_fail(default_cx, some[common::span](expr.span),
@@ -4297,7 +4311,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
         }
     }
 
-    ret join_results(cx, expr_llty, arm_results);
+    ret res(join_branches(cx, arm_results), C_nil());
 }
 
 type generic_info = rec(ty::t item_type,
@@ -4454,7 +4468,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
 
                     auto lltagty;
                     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx,
-                                                 tag_ty)) {
+                                                  tag_ty)) {
                         lltagty = T_opaque_tag(cx.fcx.lcx.ccx.tn);
                     } else {
                         lltagty = type_of(cx.fcx.lcx.ccx, p.span, tag_ty);
@@ -5428,6 +5442,11 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
 }
 
 fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
+    be trans_expr_out(cx, e, return);
+}
+
+fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
+    -> result {
     *cx = rec(sp=e.span with *cx);
     alt (e.node) {
         case (ast::expr_lit(?lit, ?ann)) {
@@ -5445,7 +5464,8 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
         }
 
         case (ast::expr_if(?cond, ?thn, ?els, ?ann)) {
-            ret trans_if(cx, cond, thn, els, ann);
+            ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _),
+                                cx, ann, output);
         }
 
         case (ast::expr_for(?decl, ?seq, ?body, _)) {
@@ -5465,18 +5485,18 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
         }
 
         case (ast::expr_alt(?expr, ?arms, ?ann)) {
-            ret trans_alt(cx, expr, arms, ann);
+            ret with_out_method(bind trans_alt(cx, expr, arms, ann, _),
+                                cx, ann, output);
         }
 
-        case (ast::expr_block(?blk, _)) {
+        case (ast::expr_block(?blk, ?ann)) {
             *cx = rec(sp=blk.span with *cx);
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
             auto next_cx = new_sub_block_ctxt(cx, "next");
-            auto sub = trans_block(sub_cx, blk);
-
+            auto sub = with_out_method(bind trans_block(sub_cx, blk, _),
+                                       cx, ann, output);
             cx.build.Br(sub_cx.llbb);
             sub.bcx.build.Br(next_cx.llbb);
-
             ret res(next_cx, sub.val);
         }
 
@@ -5615,6 +5635,34 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
     auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     auto sub = trans_lval(cx, e);
     ret res(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
+}
+
+fn with_out_method(fn(&out_method) -> result work, &@block_ctxt cx,
+                   &ast::ann ann, &out_method outer_output) -> result {
+    auto ccx = cx.fcx.lcx.ccx;
+    if (outer_output != return) {
+        ret work(outer_output);
+    } else {
+        auto tp = node_ann_type(ccx, ann);
+        if (ty::type_is_nil(ccx.tcx, tp)) {
+            ret work(return);
+        }
+        auto res_alloca = alloc_ty(cx, tp);
+        cx = zero_alloca(res_alloca.bcx, res_alloca.val, tp).bcx;
+
+        fn drop_hoisted_ty(&@block_ctxt cx,
+                           ValueRef target,
+                           ty::t t) -> result {
+            auto reg_val = load_if_immediate(cx, target, t);
+            ret drop_ty(cx, reg_val, t);
+        }
+        auto cleanup = bind drop_hoisted_ty(_, res_alloca.val, tp);
+        find_scope_cx(cx).cleanups += [clean(cleanup)];
+
+        auto done = work(save_in(res_alloca.val));
+        done.val = load_if_immediate(done.bcx, res_alloca.val, tp);
+        ret done;
+    }
 }
 
 // We pass structural values around the compiler "by pointer" and
@@ -6472,9 +6520,8 @@ fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
     ret r;
 }
 
-fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
+fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
     auto bcx = cx;
-
     for each (@ast::local local in block_locals(b)) {
         *bcx = rec(sp=local_rhs_span(local, cx.sp) with *bcx);
         bcx = alloc_local(bcx, local).bcx;
@@ -6491,58 +6538,43 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
         }
     }
 
+    fn accept_out_method(&@ast::expr expr) -> bool {
+        ret alt (expr.node) {
+            case (ast::expr_if(_, _, _, _)) { true }
+            case (ast::expr_alt(_, _, _)) { true }
+            case (ast::expr_block(_, _)) { true }
+            case (_) { false }
+        };
+    }
+
     alt (b.node.expr) {
         case (some(?e)) {
-            // Hold onto the context for this scope since we'll need it to
-            // find the outer scope
-            auto scope_bcx = bcx;
-            r = trans_expr(bcx, e);
+            auto pass = output != return && accept_out_method(e);
+            if (pass) {
+                r = trans_expr_out(bcx, e, output);
+            } else {
+                r = trans_expr(bcx, e);
+            }
             bcx = r.bcx;
 
-            if (is_terminated(bcx)) {
+            auto ccx = cx.fcx.lcx.ccx;
+            auto r_ty = ty::expr_ty(ccx.tcx, e);
+            if (is_terminated(bcx) ||
+                ty::type_is_bot(ccx.tcx, r_ty)) {
                 ret r;
-            } else {
-                auto r_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
-                if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, r_ty)
-                    && !ty::type_is_bot(cx.fcx.lcx.ccx.tcx, r_ty)) {
-                    // The value resulting from the block gets copied into an
-                    // alloca created in an outer scope and its refcount
-                    // bumped so that it can escape this block. This means
-                    // that it will definitely live until the end of the
-                    // enclosing scope, even if nobody uses it, which may be
-                    // something of a surprise.
-
-                    // It's possible we never hit this block, so the alloca
-                    // must be initialized to null, then when the potential
-                    // value finally goes out of scope the drop glue will see
-                    // that it was never used and ignore it.
-
-                    // NB: Here we're building and initalizing the alloca in
-                    // the alloca context, not this block's context.
-                    auto res_alloca = alloc_ty(bcx, r_ty);
-                    auto llbcx = llallocas_block_ctxt(bcx.fcx);
-                    zero_alloca(llbcx, res_alloca.val, r_ty);
-
-                    // Now we're working in our own block context again
-                    auto res_copy = copy_val(bcx, INIT,
-                                            res_alloca.val, r.val, r_ty);
-                    bcx = res_copy.bcx;
-
-                    fn drop_hoisted_ty(&@block_ctxt cx,
-                                       ValueRef alloca_val,
-                                       ty::t t) -> result {
-                        auto reg_val = load_if_immediate(cx,
-                                                            alloca_val, t);
-                        ret drop_ty(cx, reg_val, t);
+            } else if (!pass) {
+                alt (output) {
+                    case (save_in(?target)) {
+                        // The output method is to save the value at target,
+                        // and we didn't pass it to the recursive trans_expr
+                        // call.
+                        // FIXME Use move semantics!
+                        auto res_copy = copy_val(bcx, INIT, target,
+                                                 r.val, r_ty);
+                        bcx = res_copy.bcx;
+                        r = res(bcx, C_nil());
                     }
-
-                    auto cleanup = bind drop_hoisted_ty(_, res_alloca.val,
-                                                        r_ty);
-                    auto outer_scope_cx = find_outer_scope_cx(scope_bcx);
-                    outer_scope_cx.cleanups += [clean(cleanup)];
-
-                    r = res(bcx, load_if_immediate(bcx,
-                                                   res_alloca.val, r_ty));
+                    case (return) {}
                 }
             }
         }
@@ -6860,7 +6892,7 @@ fn trans_fn(@local_ctxt cx, &ast::span sp, &ast::_fn f, ast::def_id fid,
 
     auto lltop = bcx.llbb;
 
-    auto res = trans_block(bcx, f.body);
+    auto res = trans_block(bcx, f.body, return);
     if (!is_terminated(res.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
