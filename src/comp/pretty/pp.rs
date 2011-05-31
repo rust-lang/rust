@@ -443,13 +443,15 @@ obj printer(io::writer out,
     }
 
     fn print(token x, int L) {
-        log #fmt("print %s %d (remaining line space=%d)", tok_str(x), L, space);
+        log #fmt("print %s %d (remaining line space=%d)",
+                 tok_str(x), L, space);
         log buf_str(token, size, left, right, 6u);
         alt (x) {
             case (BEGIN(?b)) {
                 if (L > space) {
                     auto col = (margin - space) + b.offset;
-                    log #fmt("print BEGIN -> push broken block at col %d", col);
+                    log #fmt("print BEGIN -> push broken block at col %d",
+                             col);
                     vec::push(print_stack,
                               rec(offset = col,
                                   pbreak = broken(b.breaks)));
@@ -491,11 +493,11 @@ obj printer(io::writer out,
 
                     case (broken(inconsistent)) {
                         if (L > space) {
-                            log "print BREAK w/ newline in inconsistent block";
+                            log "print BREAK w/ newline in inconsistent";
                             self.print_newline(top.offset + b.offset);
                             space = margin - (top.offset + b.offset);
                         } else {
-                            log "print BREAK w/o newline in inconsistent block";
+                            log "print BREAK w/o newline in inconsistent";
                             self.indent(b.blank_space);
                             space -= b.blank_space;
                         }

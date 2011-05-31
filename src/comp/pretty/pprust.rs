@@ -72,8 +72,11 @@ fn block_to_str(&ast::block blk) -> str {
                   comments=option::none[vec[lexer::cmnt]],
                   mutable cur_cmnt=0u,
                   mode=mo_untyped);
-    cbox(s.s, indent_unit); // containing cbox, will be closed by print-block at }
-    ibox(s.s, 0u); // head-ibox, will be closed by print-block after {
+    // containing cbox, will be closed by print-block at }
+    cbox(s.s, indent_unit);
+
+    // head-ibox, will be closed by print-block after {
+    ibox(s.s, 0u);
     print_block(s, blk);
     eof(s.s);
     ret writer.get_str();
@@ -657,8 +660,11 @@ fn print_expr(ps s, &@ast::expr expr) {
             bclose(s, expr.span);
         }
         case (ast::expr_block(?block,_)) {
-            cbox(s.s, indent_unit); // containing cbox, will be closed by print-block at }
-            ibox(s.s, 0u); // head-box, will be closed by print-block after {
+            // containing cbox, will be closed by print-block at }
+            cbox(s.s, indent_unit);
+
+            // head-box, will be closed by print-block after {
+            ibox(s.s, 0u);
             print_block(s, block);
         }
         case (ast::expr_assign(?lhs,?rhs,_)) {
