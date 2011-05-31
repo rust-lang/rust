@@ -865,8 +865,11 @@ fn print_decl(&ps s, &@ast::decl decl) {
                         case (ast::init_assign) {
                             word_space(s, "=");
                         }
-                        case (ast::init_recv) {
+                        case (ast::init_move) {
                             word_space(s, "<-");
+                        }
+                        case (ast::init_recv) {
+                            word_space(s, "|>");
                         }
                     }
                     print_expr(s, init.expr);
