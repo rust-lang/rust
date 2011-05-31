@@ -126,136 +126,48 @@ fn field_exprs(vec[ast::field] fields) -> vec [@ast::expr] {
     ret vec::map[ast::field, @ast::expr](f, fields);
 }
 
-fn expr_to_str(&@ast::expr e) -> str {
-  let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-  print_expr(out, e);
-  pretty::pp::eof(out_);
-  ret s.get_str();
-}
-
-fn ty_to_str(&ty t) -> str {
-  let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-  print_type(out, @t);
-  pretty::pp::eof(out_);
-  ret s.get_str();
-}
-
 fn log_expr(&ast::expr e) -> () {
-    log(expr_to_str(@e));
+    log(pretty::pprust::expr_to_str(@e));
 }
 
 fn log_expr_err(&ast::expr e) -> () {
-    log_err(expr_to_str(@e));
+    log_err(pretty::pprust::expr_to_str(@e));
 }
 
 fn log_ty_err(&ty t) -> () {
-    log_err(ty_to_str(t));
+    log_err(pretty::pprust::ty_to_str(t));
 }
 
 fn log_pat_err(&@pat p) -> () {
     log_err(pretty::pprust::pat_to_str(p));
 }
 
-fn block_to_str(&ast::block b) -> str {
-  let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-
-  print_block(out, b);
-  pretty::pp::eof(out_);
-  ret s.get_str();
-}
-
-fn item_to_str(&@ast::item i) -> str {
-  let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-  print_item(out, i);
-  pretty::pp::eof(out_);
-  ret s.get_str();
-}
-
 fn log_block(&ast::block b) -> () {
-    log(block_to_str(b));
+    log(pretty::pprust::block_to_str(b));
 }
 
 fn log_block_err(&ast::block b) -> () {
-    log_err(block_to_str(b));
+    log_err(pretty::pprust::block_to_str(b));
 }
 
 fn log_item_err(&@ast::item i) -> () {
-    log_err(item_to_str(i));
-}
-
-fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
- let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-
-  print_fn(out, f.decl, name, params);
-  pretty::pp::eof(out_);
-  ret s.get_str();
+    log_err(pretty::pprust::item_to_str(i));
 }
 
 fn log_fn(&ast::_fn f, str name, vec[ast::ty_param] params) -> () {
-    log(fun_to_str(f, name, params));
+    log(pretty::pprust::fun_to_str(f, name, params));
 }
 
 fn log_fn_err(&ast::_fn f, str name, vec[ast::ty_param] params) -> () {
-    log_err(fun_to_str(f, name, params));
-}
-
-fn stmt_to_str(&ast::stmt st) -> str {
-  let str_writer s = string_writer();
-  auto out_ = mk_printer(s.get_writer(), 80u);
-  auto out = @rec(s=out_,
-                  cm=none[codemap],
-                  comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-  alt (st.node) {
-    case (ast::stmt_decl(?decl,_)) {
-      print_decl(out, decl);
-    }
-    case (ast::stmt_expr(?ex,_)) {
-      print_expr(out, ex);
-    }
-    case (_) { /* do nothing */ }
-  }
-  pretty::pp::eof(out_);
-  ret s.get_str();
+    log_err(pretty::pprust::fun_to_str(f, name, params));
 }
 
 fn log_stmt(&ast::stmt st) -> () {
-    log(stmt_to_str(st));
+    log(pretty::pprust::stmt_to_str(st));
 }
 
 fn log_stmt_err(&ast::stmt st) -> () {
-    log_err(stmt_to_str(st));
+    log_err(pretty::pprust::stmt_to_str(st));
 }
 
 fn decl_lhs(@ast::decl d) -> ast::def_id {

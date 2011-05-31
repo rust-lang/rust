@@ -4642,8 +4642,8 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         }
         case (_) {
             cx.fcx.lcx.ccx.sess.span_unimpl(e.span,
-                                            "expr variant in trans_lval: " 
-                                            + util::common::expr_to_str(e));
+                                            "expr variant in trans_lval: "
+                                            + pretty::pprust::expr_to_str(e));
         }
     }
     fail;
@@ -5784,7 +5784,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
 fn trans_check_expr(&@block_ctxt cx, &@ast::expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    auto expr_str = util::common::expr_to_str(e);
+    auto expr_str = pretty::pprust::expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, some[common::span](e.span), expr_str);
 
@@ -6004,9 +6004,9 @@ fn trans_spawn(&@block_ctxt cx,
     // Make the task name
     auto tname = alt(name) {
         case(none) {
-            auto argss = vec::map(common::expr_to_str, args);
+            auto argss = vec::map(pretty::pprust::expr_to_str, args);
             #fmt("%s(%s)",
-                 common::expr_to_str(func),
+                 pretty::pprust::expr_to_str(func),
                  str::connect(argss, ", "))
         }
         case(some(?n)) {

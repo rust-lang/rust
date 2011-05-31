@@ -1597,7 +1597,7 @@ fn stmt_to_expr(@ast::stmt stmt) -> option::t[@ast::expr] {
     ret none[@ast::expr];
 }
 
-fn stmt_ends_with_semi(@ast::stmt stmt) -> bool {
+fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
     alt (stmt.node) {
         case (ast::stmt_decl(?d,_)) {
             alt (d.node) {
@@ -1675,7 +1675,7 @@ fn parse_block(&parser p) -> ast::block {
                             }
                             case (token::RBRACE) { expr = some(e); }
                             case (?t) {
-                                if (stmt_ends_with_semi(stmt)) {
+                                if (stmt_ends_with_semi(*stmt)) {
                                     p.err("expected ';' or '}' after " +
                                           "expression but found " +
                                           token::to_str(p.get_reader(), t));
@@ -1692,7 +1692,7 @@ fn parse_block(&parser p) -> ast::block {
                         // used in branches and binary expressions in rustboot
                         // means we cannot use && here. I know, right?
                         if (p.get_file_type() == SOURCE_FILE) {
-                            if (stmt_ends_with_semi(stmt)) {
+                            if (stmt_ends_with_semi(*stmt)) {
                                 expect(p, token::SEMI);
                             }
                         }

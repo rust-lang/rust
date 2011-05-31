@@ -55,7 +55,7 @@ import aux::fixed_point_states;
 import aux::bitv_to_str;
 import aux::first_difference_string;
 
-import util::common::ty_to_str;
+import pretty::pprust::ty_to_str;
 import util::common::log_stmt_err;
 import aux::log_bitv_err;
 import bitvectors::promises;
@@ -74,7 +74,7 @@ fn check_states_expr(&fn_ctxt fcx, @expr e) -> () {
         auto diff = first_difference_string(fcx, prec, pres);
         s += ("Unsatisfied precondition constraint (for example, "
               + diff + ") for expression:\n");
-        s += util::common::expr_to_str(e);
+        s += pretty::pprust::expr_to_str(e);
         s += ("\nPrecondition:\n");
         s += bitv_to_str(fcx, prec);
         s += ("\nPrestate:\n");
@@ -102,7 +102,7 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
         auto diff = first_difference_string(fcx, prec, pres);
         ss += ("Unsatisfied precondition constraint (for example, "
               + diff + ") for statement:\n");
-        ss += util::common::stmt_to_str(s);
+        ss += pretty::pprust::stmt_to_str(s);
         ss += ("\nPrecondition:\n");
         ss += bitv_to_str(fcx, prec);
         ss += ("\nPrestate: \n");

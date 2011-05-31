@@ -1517,7 +1517,7 @@ mod pushdown {
             case (_) {
                 scx.fcx.ccx.tcx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
-                         util::common::expr_to_str(e)));
+                         pretty::pprust::expr_to_str(e)));
                 fail;
             }
         }
@@ -1803,7 +1803,7 @@ fn require_pure_function(@crate_ctxt ccx, &ast::def_id d_id, &span sp) -> () {
 
 fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
     // scx.fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
-    //                                util::common::expr_to_str(expr));
+    //                                pretty::pprust::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.

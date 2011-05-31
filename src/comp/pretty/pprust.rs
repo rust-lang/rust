@@ -41,6 +41,22 @@ type ps = @rec(pp::printer s,
                mutable uint cur_cmnt,
                mode mode);
 
+fn rust_printer(io::writer writer) -> ps {
+    ret @rec(s=pp::mk_printer(writer, default_columns),
+             cm=option::none[codemap],
+             comments=option::none[vec[lexer::cmnt]],
+             mutable cur_cmnt=0u,
+             mode=mo_untyped);
+}
+
+fn to_str[T](&T t, fn(&ps s, &T s) f) -> str {
+    auto writer = io::string_writer();
+    auto s = rust_printer(writer.get_writer());
+    f(s, t);
+    eof(s.s);
+    ret writer.get_str();
+}
+
 fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
               mode mode) {
     auto cmnts = lexer::gather_comments(sess, filename);
@@ -53,25 +69,24 @@ fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
     eof(s.s);
 }
 
-fn ty_to_str(&@ast::ty ty) -> str {
+fn ty_to_str(&ast::ty ty) -> str { be to_str(ty, print_type); }
+fn pat_to_str(&@ast::pat ty) -> str { be to_str(ty, print_pat); }
+fn expr_to_str(&@ast::expr ty) -> str { be to_str(ty, print_expr); }
+fn stmt_to_str(&ast::stmt ty) -> str { be to_str(ty, print_stmt); }
+fn item_to_str(&@ast::item ty) -> str { be to_str(ty, print_item); }
+
+fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
     auto writer = io::string_writer();
-    auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
-                  cm=option::none[codemap],
-                  comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-    print_type(s, ty);
+    auto s = rust_printer(writer.get_writer());
+    print_fn(s, f.decl, name, params);
     eof(s.s);
     ret writer.get_str();
 }
 
 fn block_to_str(&ast::block blk) -> str {
     auto writer = io::string_writer();
-    auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
-                  cm=option::none[codemap],
-                  comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
+    auto s = rust_printer(writer.get_writer());
+
     // containing cbox, will be closed by print-block at }
     cbox(s.s, indent_unit);
 
@@ -82,37 +97,25 @@ fn block_to_str(&ast::block blk) -> str {
     ret writer.get_str();
 }
 
-fn pat_to_str(&@ast::pat p) -> str {
-    auto writer = io::string_writer();
-    auto s = @rec(s=pp::mk_printer(writer.get_writer(), default_columns),
-                  cm=option::none[codemap],
-                  comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u,
-                  mode=mo_untyped);
-    print_pat(s, p);
-    eof(s.s);
-    ret writer.get_str();
-}
-
-fn word_nbsp(ps s, str w) {
+fn word_nbsp(&ps s, str w) {
     word(s.s, w);
     word(s.s, " ");
 }
 
-fn word_space(ps s, str w) {
+fn word_space(&ps s, str w) {
     word(s.s, w);
     space(s.s);
 }
 
-fn popen(ps s) {
+fn popen(&ps s) {
     word(s.s, "(");
 }
 
-fn pclose(ps s) {
+fn pclose(&ps s) {
     word(s.s, ")");
 }
 
-fn head(ps s, str w) {
+fn head(&ps s, str w) {
     // outer-box is consistent
     cbox(s.s, indent_unit);
     // head-box is inconsistent
@@ -121,19 +124,19 @@ fn head(ps s, str w) {
     word_nbsp(s, w);
 }
 
-fn bopen(ps s) {
+fn bopen(&ps s) {
     word(s.s, "{");
     end(s.s); // close the head-box
 }
 
-fn bclose(ps s, common::span span) {
+fn bclose(&ps s, common::span span) {
     maybe_print_comment(s, span.hi);
     break_offset(s.s, 1u, -(indent_unit as int));
     word(s.s, "}");
     end(s.s); // close the outer-box
 }
 
-fn commasep[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op) {
+fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op) {
     box(s.s, 0u, b);
     auto first = true;
     for (IN elt in elts) {
@@ -144,7 +147,7 @@ fn commasep[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op) {
     end(s.s);
 }
 
-fn commasep_cmnt[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op,
+fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op,
                      fn(&IN) -> common::span get_span) {
     box(s.s, 0u, b);
     auto len = vec::len[IN](elts);
@@ -162,14 +165,14 @@ fn commasep_cmnt[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op,
     end(s.s);
 }
 
-fn commasep_exprs(ps s, breaks b, vec[@ast::expr] exprs) {
+fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     fn expr_span(&@ast::expr expr) -> common::span {ret expr.span;}
     auto f = print_expr;
     auto gs = expr_span;
     commasep_cmnt[@ast::expr](s, b, exprs, f, gs);
 }
 
-fn print_mod(ps s, ast::_mod _mod) {
+fn print_mod(&ps s, ast::_mod _mod) {
     for (@ast::view_item vitem in _mod.view_items) {
         print_view_item(s, vitem);
     }
@@ -181,7 +184,8 @@ fn print_mod(ps s, ast::_mod _mod) {
     print_remaining_comments(s);
 }
 
-fn print_type(ps s, &@ast::ty ty) {
+fn print_boxed_type(&ps s, &@ast::ty ty) { print_type(s, *ty); }
+fn print_type(&ps s, &ast::ty ty) {
 
     maybe_print_comment(s, ty.span.lo);
     ibox(s.s, 0u);
@@ -200,10 +204,10 @@ fn print_type(ps s, &@ast::ty ty) {
             word(s.s, "vec["); print_mt(s, mt); word(s.s, "]");
         }
         case (ast::ty_port(?t)) {
-            word(s.s, "port["); print_type(s, t); word(s.s, "]");
+            word(s.s, "port["); print_type(s, *t); word(s.s, "]");
         }
         case (ast::ty_chan(?t)) {
-            word(s.s, "chan["); print_type(s, t); word(s.s, "]");
+            word(s.s, "chan["); print_type(s, *t); word(s.s, "]");
         }
         case (ast::ty_type) {word(s.s, "type");}
         case (ast::ty_tup(?elts)) {
@@ -216,7 +220,7 @@ fn print_type(ps s, &@ast::ty ty) {
         case (ast::ty_rec(?fields)) {
             word(s.s, "rec");
             popen(s);
-            fn print_field(ps s, &ast::ty_field f) {
+            fn print_field(&ps s, &ast::ty_field f) {
                 cbox(s.s, indent_unit);
                 print_mt(s, f.mt);
                 space(s.s);
@@ -257,14 +261,14 @@ fn print_type(ps s, &@ast::ty ty) {
     end(s.s);
 }
 
-fn print_item(ps s, @ast::item item) {
+fn print_item(&ps s, &@ast::item item) {
 
     hardbreak(s.s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
         case (ast::item_const(?id, ?ty, ?expr, _, _)) {
             head(s, "const");
-            print_type(s, ty);
+            print_type(s, *ty);
             space(s.s);
             word_space(s, id);
             end(s.s); // end the head-ibox
@@ -330,7 +334,7 @@ fn print_item(ps s, @ast::item item) {
             end(s.s); // end the inner ibox
             space(s.s);
             word_space(s, "=");
-            print_type(s, ty);
+            print_type(s, *ty);
             word(s.s, ";");
             end(s.s); // end the outer ibox
             break_offset(s.s, 0u, 0);
@@ -347,8 +351,8 @@ fn print_item(ps s, @ast::item item) {
                 word(s.s, v.node.name);
                 if (vec::len[ast::variant_arg](v.node.args) > 0u) {
                     popen(s);
-                    fn print_variant_arg(ps s, &ast::variant_arg arg) {
-                        print_type(s, arg.ty);
+                    fn print_variant_arg(&ps s, &ast::variant_arg arg) {
+                        print_type(s, *arg.ty);
                     }
                     auto f = print_variant_arg;
                     commasep[ast::variant_arg](s, consistent, v.node.args, f);
@@ -364,9 +368,9 @@ fn print_item(ps s, @ast::item item) {
             word(s.s, id);
             print_type_params(s, params);
             popen(s);
-            fn print_field(ps s, &ast::obj_field field) {
+            fn print_field(&ps s, &ast::obj_field field) {
                 ibox(s.s, indent_unit);
-                print_type(s, field.ty);
+                print_type(s, *field.ty);
                 space(s.s);
                 word(s.s, field.ident);
                 end(s.s);
@@ -398,23 +402,28 @@ fn print_item(ps s, @ast::item item) {
     }
 }
 
-fn print_block(ps s, ast::block blk) {
+fn print_stmt(&ps s, &ast::stmt st) {
+    maybe_print_comment(s, st.span.lo);
+    alt (st.node) {
+        case (ast::stmt_decl(?decl,_)) {
+            print_decl(s, decl);
+        }
+        case (ast::stmt_expr(?expr,_)) {
+            space(s.s);
+            print_expr(s, expr);
+        }
+    }
+    if (front::parser::stmt_ends_with_semi(st)) {word(s.s, ";");}
+    maybe_print_trailing_comment(s, st.span);
+}
+
+fn print_block(&ps s, ast::block blk) {
     maybe_print_comment(s, blk.span.lo);
     bopen(s);
     auto first = true;
     for (@ast::stmt st in blk.node.stmts) {
-        maybe_print_comment(s, st.span.lo);
-        alt (st.node) {
-          case (ast::stmt_decl(?decl,_)) {
-              print_decl(s, decl);
-          }
-          case (ast::stmt_expr(?expr,_)) {
-              space(s.s);
-              print_expr(s, expr);
-          }
-        }
-        if (front::parser::stmt_ends_with_semi(st)) {word(s.s, ";");}
-        maybe_print_trailing_comment(s, st.span);
+        print_stmt(s, *st)
+
     }
     alt (blk.node.expr) {
         case (option::some[@ast::expr](?expr)) {
@@ -427,7 +436,7 @@ fn print_block(ps s, ast::block blk) {
     bclose(s, blk.span);
 }
 
-fn print_literal(ps s, @ast::lit lit) {
+fn print_literal(&ps s, &@ast::lit lit) {
     maybe_print_comment(s, lit.span.lo);
     alt (lit.node) {
         case (ast::lit_str(?st)) {print_string(s, st);}
@@ -460,7 +469,7 @@ fn print_literal(ps s, @ast::lit lit) {
     }
 }
 
-fn print_expr(ps s, &@ast::expr expr) {
+fn print_expr(&ps s, &@ast::expr expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s.s, indent_unit);
 
@@ -481,7 +490,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             end(s.s);
         }
         case (ast::expr_tup(?exprs,_)) {
-            fn printElt(ps s, &ast::elt elt) {
+            fn printElt(&ps s, &ast::elt elt) {
                 ibox(s.s, indent_unit);
                 if (elt.mut == ast::mut) {word_nbsp(s, "mutable");}
                 print_expr(s, elt.expr);
@@ -496,7 +505,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             pclose(s);
         }
         case (ast::expr_rec(?fields,?wth,_)) {
-            fn print_field(ps s, &ast::field field) {
+            fn print_field(&ps s, &ast::field field) {
                 ibox(s.s, indent_unit);
                 if (field.node.mut == ast::mut) {word_nbsp(s, "mutable");}
                 word(s.s, field.node.ident);
@@ -535,7 +544,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_ident(s, ident);
         }
         case (ast::expr_bind(?func,?args,_)) {
-            fn print_opt(ps s, &option::t[@ast::expr] expr) {
+            fn print_opt(&ps s, &option::t[@ast::expr] expr) {
                 alt (expr) {
                     case (option::some[@ast::expr](?expr)) {
                         print_expr(s, expr);
@@ -575,7 +584,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_maybe_parens(s, expr, front::parser::as_prec);
             space(s.s);
             word_space(s, "as");
-            print_type(s, ty);
+            print_type(s, *ty);
         }
         case (ast::expr_if(?test,?block,?elseopt,_)) {
             head(s, "if");
@@ -802,7 +811,7 @@ fn print_expr(ps s, &@ast::expr expr) {
     end(s.s);
 }
 
-fn print_decl(ps s, @ast::decl decl) {
+fn print_decl(&ps s, &@ast::decl decl) {
     maybe_print_comment(s, decl.span.lo);
     alt (decl.node) {
         case (ast::decl_local(?loc)) {
@@ -811,7 +820,7 @@ fn print_decl(ps s, @ast::decl decl) {
             alt (loc.ty) {
                 case (option::some[@ast::ty](?ty)) {
                     word_nbsp(s, "let");
-                    print_type(s, ty);
+                    print_type(s, *ty);
                     space(s.s);
                 }
                 case (_) {
@@ -852,21 +861,21 @@ fn print_decl(ps s, @ast::decl decl) {
     }
 }
 
-fn print_ident(ps s, ast::ident ident) {
+fn print_ident(&ps s, &ast::ident ident) {
     word(s.s, ident);
 }
 
-fn print_for_decl(ps s, @ast::decl decl) {
+fn print_for_decl(&ps s, @ast::decl decl) {
     alt (decl.node) {
         case (ast::decl_local(?loc)) {
-            print_type(s, option::get[@ast::ty](loc.ty));
+            print_type(s, *option::get[@ast::ty](loc.ty));
             space(s.s);
             word(s.s, loc.ident);
         }
     }
 }
 
-fn print_path(ps s, ast::path path) {
+fn print_path(&ps s, &ast::path path) {
     maybe_print_comment(s, path.span.lo);
     auto first = true;
     for (str id in path.node.idents) {
@@ -876,13 +885,13 @@ fn print_path(ps s, ast::path path) {
     }
     if (vec::len[@ast::ty](path.node.types) > 0u) {
         word(s.s, "[");
-        auto f = print_type;
+        auto f = print_boxed_type;
         commasep[@ast::ty](s, inconsistent, path.node.types, f);
         word(s.s, "]");
     }
 }
 
-fn print_pat(ps s, &@ast::pat pat) {
+fn print_pat(&ps s, &@ast::pat pat) {
     maybe_print_comment(s, pat.span.lo);
     alt (pat.node) {
         case (ast::pat_wild(_)) {word(s.s, "_");}
@@ -900,8 +909,8 @@ fn print_pat(ps s, &@ast::pat pat) {
     }
 }
 
-fn print_fn(ps s, ast::fn_decl decl, str name,
-                   vec[ast::ty_param] typarams) {
+fn print_fn(&ps s, ast::fn_decl decl, str name,
+            vec[ast::ty_param] typarams) {
     alt (decl.purity) {
         case (ast::impure_fn) {
             head(s, "fn");
@@ -913,10 +922,10 @@ fn print_fn(ps s, ast::fn_decl decl, str name,
     word(s.s, name);
     print_type_params(s, typarams);
     popen(s);
-    fn print_arg(ps s, &ast::arg x) {
+    fn print_arg(&ps s, &ast::arg x) {
         ibox(s.s, indent_unit);
         if (x.mode == ast::alias) {word(s.s, "&");}
-        print_type(s, x.ty);
+        print_type(s, *x.ty);
         space(s.s);
         word(s.s, x.ident);
         end(s.s);
@@ -928,14 +937,14 @@ fn print_fn(ps s, ast::fn_decl decl, str name,
     if (decl.output.node != ast::ty_nil) {
         space(s.s);
         word_space(s, "->");
-        print_type(s, decl.output);
+        print_type(s, *decl.output);
     }
 }
 
-fn print_type_params(ps s, vec[ast::ty_param] params) {
+fn print_type_params(&ps s, &vec[ast::ty_param] params) {
     if (vec::len[ast::ty_param](params) > 0u) {
         word(s.s, "[");
-        fn printParam(ps s, &ast::ty_param param) {
+        fn printParam(&ps s, &ast::ty_param param) {
             word(s.s, param);
         }
         auto f = printParam;
@@ -944,7 +953,7 @@ fn print_type_params(ps s, vec[ast::ty_param] params) {
     }
 }
 
-fn print_view_item(ps s, @ast::view_item item) {
+fn print_view_item(&ps s, &@ast::view_item item) {
     hardbreak(s.s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
@@ -953,7 +962,7 @@ fn print_view_item(ps s, @ast::view_item item) {
             word(s.s, id);
             if (vec::len[@ast::meta_item](mta) > 0u) {
                 popen(s);
-                fn print_meta(ps s, &@ast::meta_item item) {
+                fn print_meta(&ps s, &@ast::meta_item item) {
                     ibox(s.s, indent_unit);
                     word_space(s, item.node.name);
                     word_space(s, "=");
@@ -997,7 +1006,7 @@ fn operator_prec(ast::binop op) -> int {
     fail;
 }
 
-fn print_maybe_parens(ps s, @ast::expr expr, int outer_prec) {
+fn print_maybe_parens(&ps s, &@ast::expr expr, int outer_prec) {
     auto add_them;
     alt (expr.node) {
         case (ast::expr_binary(?op,_,_,_)) {
@@ -1036,22 +1045,22 @@ fn escape_str(str st, char to_escape) -> str {
     ret out;
 }
 
-fn print_mt(ps s, &ast::mt mt) {
+fn print_mt(&ps s, &ast::mt mt) {
     alt (mt.mut) {
         case (ast::mut)       { word_nbsp(s, "mutable");  }
         case (ast::maybe_mut) { word_nbsp(s, "mutable?"); }
         case (ast::imm)       { /* nothing */        }
     }
-    print_type(s, mt.ty);
+    print_type(s, *mt.ty);
 }
 
-fn print_string(ps s, str st) {
+fn print_string(&ps s, &str st) {
     word(s.s, "\""); word(s.s, escape_str(st, '"')); word(s.s, "\"");
 }
 
-fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
-               vec[ast::ty_arg] inputs, @ast::ty output,
-               ast::controlflow cf) {
+fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
+               &vec[ast::ty_arg] inputs, &@ast::ty output,
+               &ast::controlflow cf) {
     ibox(s.s, indent_unit);
     if (proto == ast::proto_fn) {word(s.s, "fn");}
     else {word(s.s, "iter");}
@@ -1060,9 +1069,9 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
         case (_) {}
     }
     popen(s);
-    fn print_arg(ps s, &ast::ty_arg input) {
+    fn print_arg(&ps s, &ast::ty_arg input) {
         if (input.mode == ast::alias) {word(s.s, "&");}
-        print_type(s, input.ty);
+        print_type(s, *input.ty);
     }
     auto f = print_arg;
     commasep[ast::ty_arg](s, inconsistent, inputs, f);
@@ -1074,7 +1083,7 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
         word_space(s, "->");
         alt (cf) {
             case (ast::return) {
-                print_type(s, output);
+                print_type(s, *output);
             }
             case (ast::noreturn) {
                 word_nbsp(s, "!");
@@ -1085,7 +1094,7 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
     end(s.s);
 }
 
-fn next_comment(ps s) -> option::t[lexer::cmnt] {
+fn next_comment(&ps s) -> option::t[lexer::cmnt] {
     alt (s.comments) {
         case (option::some[vec[lexer::cmnt]](?cmnts)) {
             if (s.cur_cmnt < vec::len[lexer::cmnt](cmnts)) {
@@ -1096,7 +1105,7 @@ fn next_comment(ps s) -> option::t[lexer::cmnt] {
     }
 }
 
-fn maybe_print_comment(ps s, uint pos) {
+fn maybe_print_comment(&ps s, uint pos) {
     auto first = true;
     while (true) {
         alt (next_comment(s)) {
@@ -1115,7 +1124,7 @@ fn maybe_print_comment(ps s, uint pos) {
     }
 }
 
-fn maybe_print_trailing_comment(ps s, common::span span) {
+fn maybe_print_trailing_comment(&ps s, common::span span) {
     auto cm;
     alt (s.cm) {
         case (option::some[codemap](?ccm)) {
@@ -1139,7 +1148,7 @@ fn maybe_print_trailing_comment(ps s, common::span span) {
     }
 }
 
-fn print_remaining_comments(ps s) {
+fn print_remaining_comments(&ps s) {
     while (true) {
         alt (next_comment(s)) {
             case (option::some[lexer::cmnt](?cmnt)) {
@@ -1151,7 +1160,7 @@ fn print_remaining_comments(ps s) {
     }
 }
 
-fn print_comment(ps s, lexer::cmnt cmnt) {
+fn print_comment(&ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
         case (lexer::isolated) {
             hardbreak(s.s);

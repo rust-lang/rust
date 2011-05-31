@@ -513,7 +513,9 @@ fn cname(&ctxt cx, &t typ) -> option::t[str] {
 fn path_to_str(&ast::path pth) -> str {
     auto result = str::connect(pth.node.idents,  "::");
     if (vec::len[@ast::ty](pth.node.types) > 0u) {
-        auto f = pretty::pprust::ty_to_str;
+        fn f(&@ast::ty t) -> str {
+            ret pretty::pprust::ty_to_str(*t);
+        }
         result += "[";
         result += str::connect(vec::map(f, pth.node.types), ",");
         result += "]";
