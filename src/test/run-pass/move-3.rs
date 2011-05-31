@@ -1,3 +1,6 @@
+use std;
+import std::uint;
+
 fn test(bool x, @tup(int, int, int) foo) -> int {
     auto bar = foo;
     let @tup(int,int,int) y;
@@ -11,8 +14,8 @@ fn test(bool x, @tup(int, int, int) foo) -> int {
 
 fn main() {
     auto x = @tup(1,2,3);
-    assert (test(true, x) == 2);
-    assert (test(true, x) == 2);
-    assert (test(true, x) == 2);
+    for each (uint i in uint::range(0u, 10000u)) {
+        assert (test(true, x) == 2);
+    }
     assert (test(false, x) == 5);
 }
