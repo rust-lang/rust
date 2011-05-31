@@ -235,6 +235,7 @@ fn print_type(ps s, &@ast::ty ty) {
             head(s, "obj");
             bopen(s);
             for (ast::ty_method m in methods) {
+                hardbreak(s.s);
                 cbox(s.s, indent_unit);
                 print_ty_fn(s, m.proto, option::some[str](m.ident),
                             m.inputs, m.output, m.cf);
@@ -1045,6 +1046,7 @@ fn print_string(ps s, str st) {
 fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
                vec[ast::ty_arg] inputs, @ast::ty output,
                ast::controlflow cf) {
+    ibox(s.s, indent_unit);
     if (proto == ast::proto_fn) {word(s.s, "fn");}
     else {word(s.s, "iter");}
     alt (id) {
@@ -1074,6 +1076,7 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
         }
         end(s.s);
     }
+    end(s.s);
 }
 
 fn next_comment(ps s) -> option::t[lexer::cmnt] {
