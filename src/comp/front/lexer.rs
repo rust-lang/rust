@@ -778,7 +778,9 @@ fn read_line_comments(&reader rdr, bool code_to_the_left) -> cmnt {
     auto p = rdr.get_chpos();
     let vec[str] lines = [];
     while (rdr.curr() == '/' && rdr.next() == '/') {
-        lines += [read_one_line_comment(rdr)];
+        auto line =  read_one_line_comment(rdr);
+        log line;
+        lines += [line];
         consume_non_eol_whitespace(rdr);
     }
     log "<<< line comments";
@@ -895,7 +897,7 @@ fn gather_comments(session sess, str path) -> vec[cmnt] {
         while (true) {
             auto code_to_the_left = true;
             consume_non_eol_whitespace(rdr);
-            if (rdr.next() == '\n') {
+            if (rdr.curr() == '\n') {
                 code_to_the_left = false;
                 consume_whitespace(rdr);
             }
