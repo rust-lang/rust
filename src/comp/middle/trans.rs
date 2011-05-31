@@ -7835,7 +7835,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
     auto llmain =
         decl_cdecl_fn(cx.ccx.llmod, main_name, T_fn(T_main_args, T_int()));
 
-    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "new_rust_start",
+    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "rust_start",
                                       T_fn(T_rust_start_args, T_int()));
 
     auto llargc = llvm::LLVMGetParam(llmain, 0u);
