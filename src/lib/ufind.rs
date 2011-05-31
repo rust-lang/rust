@@ -22,8 +22,8 @@ fn make_set(&ufind ufnd) -> uint {
 
 fn find(&ufind ufnd, uint n) -> uint {
     alt (ufnd.nodes.(n)) {
-        case (none[uint]) { ret n; }
-        case (some[uint](?m)) { be find(ufnd, m); }
+        case (none) { ret n; }
+        case (some(?m)) { be find(ufnd, m); }
     }
 }
 

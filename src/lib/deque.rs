@@ -48,7 +48,7 @@ fn create[T]() -> t[T] {
 
     fn get[T](vec[cell[T]] elts, uint i) -> T {
         ret alt (elts.(i)) {
-            case (option::some[T](?t)) { t }
+            case (option::some(?t)) { t }
             case (_) { fail }
         };
     }

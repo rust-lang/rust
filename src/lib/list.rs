@@ -23,11 +23,11 @@ fn from_vec[T](vec[T] v) -> list[T] {
 
 fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
     alt(ls) {
-        case (cons[T](?hd, ?tl)) {
+        case (cons(?hd, ?tl)) {
             auto u_ = f(hd, u);
             be foldl[T,U](*tl, u_, f);
         }
-        case (nil[T]) {
+        case (nil) {
             ret u;
         }
     }
@@ -36,17 +36,17 @@ fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
 fn find[T,U](&list[T] ls,
              (fn(&T) -> option::t[U]) f) -> option::t[U] {
     alt(ls) {
-        case (cons[T](?hd, ?tl)) {
+        case (cons(?hd, ?tl)) {
             alt (f(hd)) {
-                case (none[U]) {
+                case (none) {
                     be find[T,U](*tl, f);
                 }
-                case (some[U](?res)) {
+                case (some(?res)) {
                     ret some[U](res);
                 }
             }
         }
-        case (nil[T]) {
+        case (nil) {
             ret none[U];
         }
     }
@@ -54,14 +54,14 @@ fn find[T,U](&list[T] ls,
 
 fn has[T](&list[T] ls, &T elt) -> bool {
     alt(ls) {
-        case (cons[T](?hd, ?tl)) {
+        case (cons(?hd, ?tl)) {
             if (elt == hd) {
                 ret true;
             } else {
                 be has(*tl, elt);
             }
         }
-        case (nil[T]) { ret false; }
+        case (nil) { ret false; }
     }
 }
 
@@ -74,22 +74,22 @@ fn length[T](&list[T] ls) -> uint {
 
 fn cdr[T](&list[T] ls) -> list[T] {
     alt (ls) {
-        case (cons[T](_, ?tl)) {ret *tl;}
+        case (cons(_, ?tl)) {ret *tl;}
     }
 }
 fn car[T](&list[T] ls) -> T {
     alt (ls) {
-        case (cons[T](?hd, _)) {ret hd;}
+        case (cons(?hd, _)) {ret hd;}
     }
 }
 
 
 fn append[T](&list[T] l, &list[T] m) -> list[T] {
     alt (l) {
-        case (nil[T]) {
+        case (nil) {
             ret m;
         }
-        case (cons[T](?x, ?xs)) {
+        case (cons(?x, ?xs)) {
             let list[T] rest = append[T](*xs, m);
             ret cons[T](x, @rest);
         }

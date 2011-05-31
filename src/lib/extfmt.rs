@@ -130,10 +130,10 @@ mod ct {
 
         auto n = (c - ('0' as u8)) as uint;
         ret alt (peek_num(s, i + 1u, lim)) {
-            case (none[tup(uint, uint)]) {
+            case (none) {
                 some[tup(uint, uint)](tup(n, i + 1u))
             }
-            case (some[tup(uint, uint)](?next)) {
+            case (some(?next)) {
                 auto m = next._0;
                 auto j = next._1;
                 some[tup(uint, uint)](tup(n * 10u + m, j))
@@ -162,10 +162,10 @@ mod ct {
 
         auto num = peek_num(s, i, lim);
         ret alt (num) {
-            case (none[tup(uint, uint)]) {
+            case (none) {
                 tup(none[int], i)
             }
-            case (some[tup(uint, uint)](?t)) {
+            case (some(?t)) {
                 auto n = t._0;
                 auto j = t._1;
                 if (j < lim && s.(j) == '$' as u8) {
@@ -218,20 +218,20 @@ mod ct {
             auto param = parse_parameter(s, i + 1u, lim);
             auto j = param._1;
             alt (param._0) {
-                case (none[int]) {
+                case (none) {
                     tup(count_is_next_param, j)
                 }
-                case (some[int](?n)) {
+                case (some(?n)) {
                     tup(count_is_param(n), j)
                 }
             }
         } else {
             auto num = peek_num(s, i, lim);
             alt (num) {
-                case (none[tup(uint, uint)]) {
+                case (none) {
                     tup(count_implied, i)
                 }
-                case (some[tup(uint, uint)](?num)) {
+                case (some(?num)) {
                     tup(count_is(num._0 as int), num._1)
                 }
             }

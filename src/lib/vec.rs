@@ -233,8 +233,8 @@ fn filter_map[T, U](&fn(&T) -> option::t[U] f, &array[T] v) -> vec[U] {
     let vec[U] res = []; //TODO does this work these days?
     for(T ve in v) {
         alt(f(ve)) {
-            case (some[U](?elt)) { res += [elt]; }
-            case (none[U]) {}
+            case (some(?elt)) { res += [elt]; }
+            case (none) {}
         }
     }
     ret res;
@@ -305,8 +305,8 @@ fn clone[T](&vec[T] v) -> vec[T] {
 
 fn plus_option[T](&vec[T] v, &option::t[T] o) -> () {
     alt (o) {
-        case (none[T]) {}
-        case (some[T](?x)) { v += [x]; }
+        case (none) {}
+        case (some(?x)) { v += [x]; }
     }
 }
 
@@ -315,8 +315,8 @@ fn cat_options[T](&vec[option::t[T]] v) -> vec[T] {
 
     for (option::t[T] o in v) {
         alt (o) {
-            case (none[T]) { }
-            case (some[T](?t)) {
+            case (none) { }
+            case (some(?t)) {
                 res += [t];
             }
         }

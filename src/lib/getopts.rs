@@ -175,8 +175,8 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
                 name_pos += 1u;
                 auto optid;
                 alt (find_opt(opts, nm)) {
-                    case (some[uint](?id)) {optid = id;}
-                    case (none[uint]) {
+                    case (some(?id)) {optid = id;}
+                    case (none) {
                         ret failure(unrecognized_option(name_str(nm)));
                     }
                 }
@@ -234,8 +234,8 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
 
 fn opt_vals(match m, str nm) -> vec[optval] {
     ret alt (find_opt(m.opts, mkname(nm))) {
-        case (some[uint](?id)) { m.vals.(id) }
-        case (none[uint]) {
+        case (some(?id)) { m.vals.(id) }
+        case (none) {
             log_err "No option '" + nm + "' defined.";
             fail
         }

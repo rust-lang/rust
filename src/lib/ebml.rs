@@ -63,8 +63,8 @@ fn maybe_get_doc(doc d, uint tg) -> option::t[doc] {
 
 fn get_doc(doc d, uint tg) -> doc {
     alt (maybe_get_doc(d, tg)) {
-        case (some[doc](?d)) {ret d;}
-        case (none[doc]) {
+        case (some(?d)) {ret d;}
+        case (none) {
             log_err "failed to find block with tag " + uint::to_str(tg, 10u);
             fail;
         }
