@@ -106,6 +106,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('p') { ret ty::mk_param(st.tcx, parse_int(st) as uint); }
         case ('@') { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
         case ('V') { ret ty::mk_vec(st.tcx, parse_mt(st, sd)); }
+        case ('a') { ret ty::mk_task(st.tcx); }
         case ('P') { ret ty::mk_port(st.tcx, parse_ty(st, sd)); }
         case ('C') { ret ty::mk_chan(st.tcx, parse_ty(st, sd)); }
         case ('T') {

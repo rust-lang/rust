@@ -321,6 +321,7 @@ tag ty_ {
     ty_str;
     ty_box(mt);
     ty_vec(mt);
+    ty_task;
     ty_port(@ty);
     ty_chan(@ty);
     ty_tup(vec[mt]);

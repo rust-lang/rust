@@ -772,6 +772,7 @@ fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
         case (ty_str)           { /* no-op */ }
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
+        case (ty_task)          { /* no-op */ }
         case (ty_box(?tm)) {
             ty = copy_cname(cx, mk_box(cx, rec(ty=fold_ty(cx, fld, tm.ty),
                                                mut=tm.mut)), ty);

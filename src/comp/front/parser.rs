@@ -208,7 +208,6 @@ fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
     words.insert("const", ());
     words.insert("log", ());
     words.insert("log_err", ());
-    words.insert("yield", ());
     words.insert("tag", ());
     words.insert("obj", ());
     ret words;
@@ -482,6 +481,7 @@ fn parse_ty(&parser p) -> @ast::ty {
     else if (eat_word(p, "float")) { t = ast::ty_float; }
     else if (eat_word(p, "str")) { t = ast::ty_str; }
     else if (eat_word(p, "char")) { t = ast::ty_char; }
+    else if (eat_word(p, "task")) { t = ast::ty_task; }
     else if (eat_word(p, "i8")) { t = ast::ty_machine(common::ty_i8); }
     else if (eat_word(p, "i16")) { t = ast::ty_machine(common::ty_i16); }
     else if (eat_word(p, "i32")) { t = ast::ty_machine(common::ty_i32); }

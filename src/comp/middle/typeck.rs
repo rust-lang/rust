@@ -284,7 +284,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_vec(?mt)) {
             typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
         }
-
+        case (ast::ty_task) { typ = ty::mk_task(tcx); }
         case (ast::ty_port(?t)) {
             typ = ty::mk_port(tcx, ast_ty_to_ty(tcx, getter, t));
         }
