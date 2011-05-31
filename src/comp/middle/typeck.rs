@@ -1171,10 +1171,20 @@ mod pushdown {
                 let ty_param_substs_and_ty res_t = demand::full(scx, pat.span,
                       expected, tt, tps, NO_AUTODEREF);
 
-                // TODO: push down type from "expected".
-                write::ty_fixup(scx, ann.id,
-                    ty::ann_to_ty_param_substs_opt_and_ty
-                        (scx.fcx.ccx.tcx.node_types, ann));
+                auto ty_params_subst = ty::ann_to_ty_param_substs_opt_and_ty
+                    (scx.fcx.ccx.tcx.node_types, ann);
+
+                auto ty_params_opt;
+                alt (ty_params_subst._0) {
+                    case (none[vec[ty::t]]) {
+                        ty_params_opt = none[vec[ty::t]];
+                    }
+                    case (some[vec[ty::t]](?tps)) {
+                        ty_params_opt = some[vec[ty::t]](tag_tps);
+                    }
+                }
+
+                write::ty_fixup(scx, ann.id, tup(ty_params_opt, tt));
             }
         }
     }
