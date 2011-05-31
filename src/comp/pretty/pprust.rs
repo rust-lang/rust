@@ -693,7 +693,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_move(?lhs,?rhs,_)) {
             print_expr(s, lhs);
             space(s.s);
-            wrd1(s, "<-");
+            word_space(s, "<-");
             print_expr(s, rhs);
         }
         case (ast::expr_assign(?lhs,?rhs,_)) {
