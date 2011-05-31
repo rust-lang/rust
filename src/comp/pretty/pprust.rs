@@ -17,7 +17,7 @@ import pp::box;
 import pp::cbox;
 import pp::ibox;
 import pp::word;
-import pp::word_and_eol;
+import pp::huge_word;
 import pp::space;
 import pp::zerobreak;
 import pp::hardbreak;
@@ -152,7 +152,8 @@ fn commasep_cmnt[IN](ps s, breaks b, vec[IN] elts, fn(ps, &IN) op,
         i += 1u;
         if (i < len) {
             word(s.s, ",");
-            if (!maybe_print_line_comment(s, get_span(elt))) {space(s.s);}
+            maybe_print_trailing_comment(s, get_span(elt));
+            space(s.s);
         }
     }
     end(s.s);
@@ -350,7 +351,7 @@ fn print_item(ps s, @ast::item item) {
                     pclose(s);
                 }
                 word(s.s, ";");
-                maybe_print_line_comment(s, v.span);
+                maybe_print_trailing_comment(s, v.span);
             }
             bclose(s, item.span);
         }
@@ -409,13 +410,13 @@ fn print_block(ps s, ast::block blk) {
           }
         }
         if (front::parser::stmt_ends_with_semi(st)) {word(s.s, ";");}
-        maybe_print_line_comment(s, st.span);
+        maybe_print_trailing_comment(s, st.span);
     }
     alt (blk.node.expr) {
         case (option::some[@ast::expr](?expr)) {
             space(s.s);
             print_expr(s, expr);
-            maybe_print_line_comment(s, expr.span);
+            maybe_print_trailing_comment(s, expr.span);
         }
         case (_) {}
     }
@@ -1105,19 +1106,17 @@ fn maybe_print_comment(ps s, uint pos) {
     }
 }
 
-fn maybe_print_line_comment(ps s, common::span span) -> bool {
+fn maybe_print_trailing_comment(ps s, common::span span) {
     auto cm;
     alt (s.cm) {
         case (option::some[codemap](?ccm)) {
             cm = ccm;
         }
-        case (_) {
-            ret false;
-        }
+        case (_) { ret; }
     }
     alt (next_comment(s)) {
         case (option::some[lexer::cmnt](?cmnt)) {
-            if (cmnt.style != lexer::trailing) { ret false; }
+            if (cmnt.style != lexer::trailing) { ret; }
 
             auto span_line = codemap::lookup_pos(cm, span.hi);
             auto comment_line = codemap::lookup_pos(cm, cmnt.pos);
@@ -1125,12 +1124,10 @@ fn maybe_print_line_comment(ps s, common::span span) -> bool {
                 word(s.s, " ");
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
-                ret true;
             }
         }
         case (_) {}
     }
-    ret false;
 }
 
 fn print_remaining_comments(ps s) {
@@ -1148,21 +1145,24 @@ fn print_remaining_comments(ps s) {
 fn print_comment(ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
         case (lexer::isolated) {
-            zerobreak(s.s);
+            hardbreak(s.s);
             for (str line in cmnt.lines) {
-                word_and_eol(s.s, line);
+                huge_word(s.s, line);
                 zerobreak(s.s);
             }
-            zerobreak(s.s);
         }
         case (lexer::trailing) {
-            cbox(s.s, 0u);
-            for (str line in cmnt.lines) {
-                word_and_eol(s.s, line);
-                zerobreak(s.s);
+            if (vec::len(cmnt.lines) == 1u) {
+                word(s.s, cmnt.lines.(0));
+                hardbreak(s.s);
+            } else {
+                cbox(s.s, 0u);
+                for (str line in cmnt.lines) {
+                    huge_word(s.s, line);
+                    zerobreak(s.s);
+                }
+                end(s.s);
             }
-            end(s.s);
-            zerobreak(s.s);
         }
         case (lexer::mixed) {
             assert vec::len(cmnt.lines) == 1u;

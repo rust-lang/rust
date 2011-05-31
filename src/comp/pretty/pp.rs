@@ -547,7 +547,7 @@ fn eof(printer p) { p.pretty_print(EOF); }
 fn word(printer p, str wrd) {
     p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
 }
-fn word_and_eol(printer p, str wrd) {
+fn huge_word(printer p, str wrd) {
     p.pretty_print(STRING(wrd, 0xffff));
 }
 fn spaces(printer p, uint n) { break_offset(p, n, 0); }
