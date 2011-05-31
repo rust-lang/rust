@@ -352,10 +352,10 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
         p.bump();
         auto tmp = parse_ty_or_bang(p);
         alt (tmp) {
-            case (a_ty[@ast::ty](?t)) {
+            case (a_ty(?t)) {
                 output = t;
             }
-            case (a_bang[@ast::ty]) {
+            case (a_bang) {
                 output = @spanned(lo, inputs.span.hi, ast::ty_bot);
                 cf = ast::noreturn;
             }
@@ -602,7 +602,7 @@ fn parse_seq_to_end[T](token::token ket,
     let vec[T] v = [];
     while (p.peek() != ket) {
         alt(sep) {
-            case (some[token::token](?t)) {
+            case (some(?t)) {
                 if (first) {
                     first = false;
                 } else {
@@ -1666,7 +1666,7 @@ fn parse_block(&parser p) -> ast::block {
             case (_) {
                 auto stmt = parse_stmt(p);
                 alt (stmt_to_expr(stmt)) {
-                    case (some[@ast::expr](?e)) {
+                    case (some(?e)) {
                         alt (p.peek()) {
                             case (token::SEMI) {
                                 p.bump();
@@ -1684,7 +1684,7 @@ fn parse_block(&parser p) -> ast::block {
                             }
                         }
                     }
-                    case (none[@ast::expr]) {
+                    case (none) {
                         // Not an expression statement.
                         stmts += [stmt];
                         // FIXME: crazy differentiation between conditions
@@ -1748,11 +1748,11 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
     }
 
     alt (res) {
-        case (a_ty[@ast::ty](?t)) {
+        case (a_ty(?t)) {
             ret rec(inputs=inputs.node, output=t,
               purity=purity, cf=ast::return);
         }
-        case (a_bang[@ast::ty]) {
+        case (a_bang) {
             ret rec(inputs=inputs.node,
                     output=@spanned(p.get_lo_pos(),
                                     p.get_hi_pos(), ast::ty_bot),
@@ -2218,7 +2218,7 @@ fn parse_rest_import_name(&parser p, ast::ident first,
     auto hi = p.get_hi_pos();
     auto import_decl;
     alt (def_ident) {
-        case(some[ast::ident](?i)) {
+        case(some(?i)) {
             if (glob) {
                 p.err("globbed imports can't be renamed");
             }

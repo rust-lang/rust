@@ -27,8 +27,8 @@ mod interner {
 
     fn intern[T](&interner[T] itr, &T val) -> uint {
         alt (itr.map.find(val)) {
-            case (some[uint](?idx)) { ret idx; }
-            case (none[uint]) {
+            case (some(?idx)) { ret idx; }
+            case (none) {
                 auto new_idx = vec::len[T](itr.vect);
                 itr.map.insert(val, new_idx);
                 itr.vect += [val];

@@ -83,8 +83,8 @@ mod Encode {
             case (ac_no_abbrevs) {
                 auto result_str;
                 alt (cx.tcx.short_names_cache.find(t)) {
-                    case (some[str](?s)) { result_str = s; }
-                    case (none[str]) {
+                    case (some(?s)) { result_str = s; }
+                    case (none) {
                         auto sw = io::string_writer();
                         enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
                         result_str = sw.get_str();
@@ -95,11 +95,11 @@ mod Encode {
             }
             case (ac_use_abbrevs(?abbrevs)) {
                 alt (abbrevs.find(t)) {
-                    case (some[ty_abbrev](?a)) {
+                    case (some(?a)) {
                         w.write_str(a.s);
                         ret;
                     }
-                    case (none[ty_abbrev]) {
+                    case (none) {
                         auto pos = w.get_buf_writer().tell();
                         auto ss = enc_sty(w, cx, ty::struct(cx.tcx, t));
                         auto end = w.get_buf_writer().tell();

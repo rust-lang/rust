@@ -551,7 +551,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             }
 
             alt (ident) {
-                case (some[ast::ident](?i)) {
+                case (some(?i)) {
                     s += " ";
                     s += i;
                 }
@@ -589,7 +589,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     }
 
     alt (cname(cx, typ)) {
-        case (some[str](?cs)) {
+        case (some(?cs)) {
             ret cs;
         }
         case (_) { }
@@ -1232,8 +1232,8 @@ fn hash_type_structure(&sty st) -> uint {
 fn hash_type_info(&sty st, &option::t[str] cname_opt) -> uint {
     auto h = hash_type_structure(st);
     alt (cname_opt) {
-        case (none[str]) { /* no-op */ }
-        case (some[str](?s)) { h += h << 5u + str::hash(s); }
+        case (none) { /* no-op */ }
+        case (some(?s)) { h += h << 5u + str::hash(s); }
     }
     ret h;
 }
@@ -1500,15 +1500,15 @@ fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
 
     // Check canonical names.
     alt (a.cname) {
-        case (none[str]) {
+        case (none) {
             alt (b.cname) {
                 case (none[str]) { /* ok */ }
                 case (_) { ret false; }
             }
         }
-        case (some[str](?s_a)) {
+        case (some(?s_a)) {
             alt (b.cname) {
-                case (some[str](?s_b)) {
+                case (some(?s_b)) {
                     if (!str::eq(s_a, s_b)) { ret false; }
                 }
                 case (_) { ret false; }
@@ -1530,12 +1530,12 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
         -> ty_param_substs_opt_and_ty {
     alt (ntt.(ann.id)) {
-        case (none[ty::ty_param_substs_opt_and_ty]) {
+        case (none) {
             log_err "ann_to_ty_param_substs_opt_and_ty() called on an " +
                 "untyped node";
             fail;
         }
-        case (some[ty::ty_param_substs_opt_and_ty](?tpot)) { ret tpot; }
+        case (some(?tpot)) { ret tpot; }
     }
 }
 
@@ -1545,11 +1545,11 @@ fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
 
 fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
     alt (ann_to_ty_param_substs_opt_and_ty(ntt, ann)._0) {
-        case (none[vec[t]]) {
+        case (none) {
             let vec[t] result = [];
             ret result;
         }
-        case (some[vec[t]](?tps)) { ret tps; }
+        case (some(?tps)) { ret tps; }
     }
 }
 
@@ -1564,8 +1564,8 @@ fn ann_has_type_params(&node_type_table ntt, &ast::ann ann) -> bool {
 fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
     auto tpot = ann_to_ty_param_substs_opt_and_ty(cx.node_types, a);
     alt (tpot._0) {
-        case (none[vec[t]]) { ret tpot._1; }
-        case (some[vec[t]](?tps)) {
+        case (none) { ret tpot._1; }
+        case (some(?tps)) {
             ret substitute_type_params(cx, tps, tpot._1);
         }
     }
@@ -1953,7 +1953,7 @@ mod unify {
         auto result_type = typ;
         if (n < vec::len[option::t[t]](bindings.types)) {
             alt (bindings.types.(n)) {
-                case (some[t](?old_type)) {
+                case (some(?old_type)) {
                     alt (unify_step(cx, old_type, typ)) {
                         case (ures_ok(?unified_type)) {
                             result_type = unified_type;
@@ -1961,7 +1961,7 @@ mod unify {
                         case (?res) { ret res; }
                     }
                 }
-                case (none[t]) { /* fall through */ }
+                case (none) { /* fall through */ }
             }
         }
 
@@ -2198,11 +2198,11 @@ mod unify {
     fn get_or_create_set[T](&@bindings[T] bindings, &T key) -> uint {
         auto set_num;
         alt (bindings.ids.find(key)) {
-            case (none[uint]) {
+            case (none) {
                 set_num = ufind::make_set(bindings.sets);
                 bindings.ids.insert(key, set_num);
             }
-            case (some[uint](?n)) { set_num = n; }
+            case (some(?n)) { set_num = n; }
         }
         ret set_num;
     }
@@ -2250,8 +2250,8 @@ mod unify {
             case (ty::ty_local(?actual_id)) {
                 auto result_ty;
                 alt (cx.handler.resolve_local(actual_id)) {
-                    case (none[t]) { result_ty = expected; }
-                    case (some[t](?actual_ty)) {
+                    case (none) { result_ty = expected; }
+                    case (some(?actual_ty)) {
                         auto result = unify_step(cx, expected, actual_ty);
                         alt (result) {
                             case (ures_ok(?rty)) { result_ty = rty; }
@@ -2339,11 +2339,11 @@ mod unify {
                     case (ty::ty_box(?actual_mt)) {
                         auto mut;
                         alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
-                            case (none[ast::mutability]) {
+                            case (none) {
                                 ret ures_err(terr_box_mutability, expected,
                                              actual);
                             }
-                            case (some[ast::mutability](?m)) { mut = m; }
+                            case (some(?m)) { mut = m; }
                         }
 
                         auto result = unify_step(cx,
@@ -2371,11 +2371,11 @@ mod unify {
                     case (ty::ty_vec(?actual_mt)) {
                         auto mut;
                         alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
-                            case (none[ast::mutability]) {
+                            case (none) {
                                 ret ures_err(terr_vec_mutability, expected,
                                              actual);
                             }
-                            case (some[ast::mutability](?m)) { mut = m; }
+                            case (some(?m)) { mut = m; }
                         }
 
                         auto result = unify_step(cx,
@@ -2464,11 +2464,11 @@ mod unify {
                             auto mut;
                             alt (unify_mut(expected_elem.mut,
                                            actual_elem.mut)) {
-                                case (none[ast::mutability]) {
+                                case (none) {
                                     auto err = terr_tuple_mutability;
                                     ret ures_err(err, expected, actual);
                                 }
-                                case (some[ast::mutability](?m)) { mut = m; }
+                                case (some(?m)) { mut = m; }
                             }
 
                             auto result = unify_step(cx,
@@ -2518,11 +2518,11 @@ mod unify {
                             auto mut;
                             alt (unify_mut(expected_field.mt.mut,
                                            actual_field.mt.mut)) {
-                                case (none[ast::mutability]) {
+                                case (none) {
                                     ret ures_err(terr_record_mutability,
                                                  expected, actual);
                                 }
-                                case (some[ast::mutability](?m)) { mut = m; }
+                                case (some(?m)) { mut = m; }
                             }
 
                             if (!str::eq(expected_field.ident,
@@ -2619,8 +2619,8 @@ mod unify {
             case (ty::ty_local(?expected_id)) {
                 auto result_ty;
                 alt (cx.handler.resolve_local(expected_id)) {
-                    case (none[t]) { result_ty = actual; }
-                    case (some[t](?expected_ty)) {
+                    case (none) { result_ty = actual; }
+                    case (some(?expected_ty)) {
                         auto result = unify_step(cx, expected_ty, actual);
                         alt (result) {
                             case (ures_ok(?rty)) { result_ty = rty; }
@@ -2658,11 +2658,11 @@ mod unify {
             alt (struct(tcx, typ)) {
                 case (ty_var(?id)) {
                     alt (bindings.ids.find(id)) {
-                        case (some[uint](?n)) {
+                        case (some(?n)) {
                             auto root = ufind::find(bindings.sets, n);
                             ret types.(root);
                         }
-                        case (none[uint]) { ret typ; }
+                        case (none) { ret typ; }
                     }
                 }
                 case (_) { ret typ; }
@@ -2698,11 +2698,11 @@ mod unify {
         while (i < node_count) {
             auto root = ufind::find(bindings.sets, i);
             alt (bindings.types.(i)) {
-                case (none[t]) { /* nothing to do */ }
-                case (some[t](?actual)) {
+                case (none) { /* nothing to do */ }
+                case (some(?actual)) {
                     alt (results.(root)) {
-                        case (none[t]) { results.(root) = some[t](actual); }
-                        case (some[t](?expected)) {
+                        case (none) { results.(root) = some[t](actual); }
+                        case (some(?expected)) {
                             // FIXME: Is this right?
                             auto bindings = mk_bindings[int](int::hash,
                                                              int::eq_alias);
@@ -2928,8 +2928,8 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
     }
 
     alt (cx.tcache.find(did)) {
-        case (some[ty_param_count_and_ty](?tpt)) { ret tpt; }
-        case (none[ty_param_count_and_ty]) {
+        case (some(?tpt)) { ret tpt; }
+        case (none) {
             auto tyt = creader::get_type(cx, did);
             cx.tcache.insert(did, tyt);
             ret tyt;

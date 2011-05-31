@@ -300,7 +300,7 @@ fn eval_crate_directive_expr(ctx cx,
             }
 
             alt (elopt) {
-                case (some[@ast::expr](?els)) {
+                case (some(?els)) {
                     ret eval_crate_directive_expr(cx, e, els, prefix,
                                                   view_items, items);
                 }
@@ -370,10 +370,10 @@ fn eval_crate_directive(ctx cx,
 
             auto file_path = id + ".rs";
             alt (file_opt) {
-                case (some[filename](?f)) {
+                case (some(?f)) {
                     file_path = f;
                 }
-                case (none[filename]) {}
+                case (none) {}
             }
 
             auto full_path = prefix + std::fs::path_sep() + file_path;
@@ -401,10 +401,10 @@ fn eval_crate_directive(ctx cx,
 
             auto path = id;
             alt (dir_opt) {
-                case (some[filename](?d)) {
+                case (some(?d)) {
                     path = d;
                 }
-                case (none[filename]) {}
+                case (none) {}
             }
 
             auto full_path = prefix + std::fs::path_sep() + path;

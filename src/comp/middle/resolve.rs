@@ -208,7 +208,7 @@ fn map_crate(&@env e, &ast::crate c) {
     fn link_glob(@env e, @mutable list[scope] sc, &@ast::view_item vi) {
         fn find_mod(@env e, list[scope] sc) -> @indexed_mod {
             alt (sc) {
-                case (cons[scope](scope_item(?i), ?tl)) {
+                case (cons(scope_item(?i), ?tl)) {
                     alt(i.node) {
                         case (ast::item_mod(_, _, ?defid)) {
                             ret e.mod_map.get(defid._1);
@@ -506,11 +506,11 @@ fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
 fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
                         namespace ns) -> def {
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
-        case (none[def]) {
+        case (none) {
             unresolved(e, sp, id, ns_name(ns));
             fail;
         }
-        case (some[def](?d)) {
+        case (some(?d)) {
             ret d;
         }
     }
@@ -617,10 +617,10 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
     auto left_fn_level2 = false;
     while (true) {
         alt (sc) {
-            case (nil[scope]) {
+            case (nil) {
                 ret none[def];
             }
-            case (cons[scope](?hd, ?tl)) {
+            case (cons(?hd, ?tl)) {
                 auto fnd = in_scope(e, sp, id, hd, ns);
                 if (!option::is_none(fnd)) {
                     auto df = option::get(fnd);
@@ -788,11 +788,11 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
 fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id,
                         namespace ns, dir dr) -> def {
     alt (lookup_in_mod(e, m, sp, id, ns, dr)) {
-        case (none[def]) {
+        case (none) {
             unresolved(e, sp, id, ns_name(ns));
             fail;
         }
-        case (some[def](?d)) {
+        case (some(?d)) {
             ret d;
         }
     }
@@ -872,12 +872,12 @@ fn lookup_in_local_mod(&env e, def_id defid, &span sp,
          ret none[def]; // name is not visible
      }
     alt(info.index.find(id)) {
-        case (none[list[mod_index_entry]]) { }
-        case (some[list[mod_index_entry]](?lst)) {
+        case (none) { }
+        case (some(?lst)) {
             while (true) {
                 alt (lst) {
-                    case (nil[mod_index_entry]) { break; }
-                    case (cons[mod_index_entry](?hd, ?tl)) {
+                    case (nil) { break; }
+                    case (cons(?hd, ?tl)) {
                         auto found = lookup_in_mie(e, hd, ns);
                         if (!option::is_none(found)) { ret found; }
                         lst = *tl;
@@ -987,10 +987,10 @@ fn lookup_in_mie(&env e, &mod_index_entry mie, namespace ns)
 fn add_to_index(&hashmap[ident,list[mod_index_entry]] index, &ident id, 
                 &mod_index_entry ent) {
     alt (index.find(id)) {
-        case (none[list[mod_index_entry]]) {
+        case (none) {
             index.insert(id, cons(ent, @nil[mod_index_entry]));
         }
-        case (some[list[mod_index_entry]](?prev)) {
+        case (some(?prev)) {
             index.insert(id, cons(ent, @prev));
         }
     }
@@ -1134,7 +1134,7 @@ fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
 
     while (true) {
         alt (entries) {
-            case (cons[mod_index_entry](?entry, ?rest)) {
+            case (cons(?entry, ?rest)) {
                 if (!option::is_none(lookup_in_mie(e, entry, ns_value))) {
                     if (saw_value) { dup(e, mie_span(entry), "", name); }
                     else { saw_value = true; }
@@ -1149,7 +1149,7 @@ fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
                 }
                 entries = *rest;
             }
-            case (nil[mod_index_entry]) { break; }
+            case (nil) { break; }
         }
     }
 }

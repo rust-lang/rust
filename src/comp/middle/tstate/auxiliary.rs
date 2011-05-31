@@ -232,12 +232,12 @@ fn get_ts_ann(&crate_ctxt ccx, uint i) -> option::t[ts_ann] {
 
 fn ann_to_ts_ann(&crate_ctxt ccx, &ann a) -> ts_ann {
     alt (get_ts_ann(ccx, a.id)) {
-        case (none[ts_ann])         { 
+        case (none)         { 
             log_err ("ann_to_ts_ann: no ts_ann for node_id "
                      + uistr(a.id));
             fail;
         }
-        case (some[ts_ann](?t))     { ret t; }
+        case (some(?t))     { ret t; }
     }
 }
 
@@ -429,8 +429,8 @@ fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
 
 fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
     alt (ccx.fm.find(d)) {
-        case (some[fn_info](?fi)) { ret fi.cf; }
-        case (none[fn_info])      { ret return; } 
+        case (some(?fi)) { ret fi.cf; }
+        case (none)      { ret return; } 
     }
 }
 
@@ -451,11 +451,11 @@ fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
 
 fn ann_to_def_strict(&crate_ctxt ccx, &ann a) -> def {
     alt (ccx.tcx.def_map.find(a.id)) {
-        case (none[def]) { 
+        case (none) { 
             log_err("ann_to_def: node_id " + uistr(a.id) + " has no def");
             fail;
         }
-        case (some[def](?d)) { ret d; }
+        case (some(?d)) { ret d; }
     }
 }
 

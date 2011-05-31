@@ -272,8 +272,8 @@ fn build_session_options(str binary, getopts::match match)
     };
 
     auto sysroot = alt (sysroot_opt) {
-        case (none[str]) { get_default_sysroot(binary) }
-        case (some[str](?s)) { s }
+        case (none) { get_default_sysroot(binary) }
+        case (some(?s)) { s }
     };
 
     let @session::options sopts =
@@ -376,7 +376,7 @@ fn main(vec[str] args) {
         ret;
     } else {
         alt (output_file) {
-            case (none[str]) {
+            case (none) {
                 let vec[str] parts = str::split(ifile, '.' as u8);
                 vec::pop[str](parts);
                 saved_out_filename = parts.(0);
@@ -392,7 +392,7 @@ fn main(vec[str] args) {
                 auto ofile = str::connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
             }
-            case (some[str](?ofile)) {
+            case (some(?ofile)) {
                 saved_out_filename = ofile;
                 compile_input(sess, env, ifile, ofile);
             }

@@ -127,8 +127,8 @@ fn walk_item(&ast_visitor v, @ast::item i) {
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
-                case (none[@ast::method]) {}
-                case (some[@ast::method](?m)) {
+                case (none) {}
+                case (some(?m)) {
                     walk_fn(v, m.node.meth, m.span, m.node.ident, m.node.id,
                             m.node.ann);
                 }
@@ -277,12 +277,12 @@ fn walk_decl(&ast_visitor v, @ast::decl d) {
     alt (d.node) {
         case (ast::decl_local(?loc)) {
             alt (loc.ty) {
-                case (none[@ast::ty]) {}
-                case (some[@ast::ty](?t)) { walk_ty(v, t); }
+                case (none) {}
+                case (some(?t)) { walk_ty(v, t); }
             }
             alt (loc.init) {
-                case (none[ast::initializer]) {}
-                case (some[ast::initializer](?i)) {
+                case (none) {}
+                case (some(?i)) {
                     walk_expr(v, i.expr);
                 }
             }
@@ -296,8 +296,8 @@ fn walk_decl(&ast_visitor v, @ast::decl d) {
 
 fn walk_expr_opt(&ast_visitor v, option::t[@ast::expr] eo) {
     alt (eo) {
-        case (none[@ast::expr]) {}
-        case (some[@ast::expr](?e)) {
+        case (none) {}
+        case (some(?e)) {
             walk_expr(v, e);
         }
     }
@@ -454,8 +454,8 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
                 = none[vec[ast::obj_field]];
 
             alt (anon_obj.fields) {
-                case (none[vec[ast::obj_field]]) { }
-                case (some[vec[ast::obj_field]](?fields)) {
+                case (none) { }
+                case (some(?fields)) {
                     for (ast::obj_field f in fields) {
                         walk_ty(v, f.ty);
                     }
@@ -465,8 +465,8 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             // with_obj
             let option::t[@ast::expr] with_obj = none[@ast::expr];
             alt (anon_obj.with_obj) {
-                case (none[@ast::expr]) { }
-                case (some[@ast::expr](?e)) {
+                case (none) { }
+                case (some(?e)) {
                     walk_expr(v, e);
                 }
             }

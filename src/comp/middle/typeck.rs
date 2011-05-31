@@ -125,8 +125,8 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
         case (ast::def_local(?id)) {
             auto t;
             alt (fcx.locals.find(id)) {
-                case (some[ty::t](?t1)) { t = t1; }
-                case (none[ty::t]) { t = ty::mk_local(fcx.ccx.tcx, id); }
+                case (some(?t1)) { t = t1; }
+                case (none) { t = ty::mk_local(fcx.ccx.tcx, id); }
             }
             ret tup(0u, t);
         }
@@ -355,8 +355,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     }
 
     alt (cname) {
-        case (none[str]) { /* no-op */ }
-        case (some[str](?cname_str)) {
+        case (none) { /* no-op */ }
+        case (some(?cname_str)) {
             typ = ty::rename(tcx, typ, cname_str);
         }
     }
@@ -574,10 +574,10 @@ mod collect {
 
             case (ast::item_ty(?ident, ?t, ?tps, ?def_id, _)) {
                 alt (cx.tcx.tcache.find(def_id)) {
-                    case (some[ty::ty_param_count_and_ty](?tpt)) {
+                    case (some(?tpt)) {
                         ret tpt;
                     }
-                    case (none[ty::ty_param_count_and_ty]) {}
+                    case (none) {}
                 }
 
                 // Tell ast_ty_to_ty() that we want to perform a recursive
@@ -625,10 +625,10 @@ mod collect {
             }
             case (ast::native_item_ty(_, ?def_id)) {
                 alt (cx.tcx.tcache.find(def_id)) {
-                    case (some[ty::ty_param_count_and_ty](?tpt)) {
+                    case (some(?tpt)) {
                         ret tpt;
                     }
-                    case (none[ty::ty_param_count_and_ty]) {}
+                    case (none) {}
                 }
 
                 auto t = ty::mk_native(cx.tcx);
@@ -766,8 +766,8 @@ mod collect {
 
                 // Finally, write in the type of the destructor.
                 alt (object.dtor) {
-                    case (none[@ast::method]) { /* nothing to do */ }
-                    case (some[@ast::method](?m)) {
+                    case (none) { /* nothing to do */ }
+                    case (some(?m)) {
                         // TODO: typechecker botch
                         let vec[arg] no_args = [];
                         auto t = ty::mk_fn(cx.tcx, ast::proto_fn, no_args,
@@ -848,11 +848,11 @@ mod unify {
                    &vec[mutable ty::t] param_substs) -> ty::unify::result {
         auto cache_key = tup(expected, actual, param_substs);
         alt (scx.fcx.ccx.unify_cache.find(cache_key)) {
-            case (some[ty::unify::result](?r)) {
+            case (some(?r)) {
                 scx.fcx.ccx.cache_hits += 1u;
                 ret r;
             }
-            case (none[ty::unify::result]) {
+            case (none) {
                 scx.fcx.ccx.cache_misses += 1u;
             }
         }
@@ -860,8 +860,8 @@ mod unify {
         obj unify_handler(@stmt_ctxt scx, vec[mutable ty::t] param_substs) {
             fn resolve_local(ast::def_id id) -> option::t[ty::t] {
                 alt (scx.fcx.locals.find(id)) {
-                    case (none[ty::t]) { ret none[ty::t]; }
-                    case (some[ty::t](?existing_type)) {
+                    case (none) { ret none[ty::t]; }
+                    case (some(?existing_type)) {
                         if (ty::type_contains_vars(scx.fcx.ccx.tcx,
                                                    existing_type)) {
                             // Not fully resolved yet. The writeback phase
@@ -875,8 +875,8 @@ mod unify {
             fn record_local(ast::def_id id, ty::t new_type) {
                 auto unified_type;
                 alt (scx.fcx.locals.find(id)) {
-                    case (none[ty::t]) { unified_type = new_type; }
-                    case (some[ty::t](?old_type)) {
+                    case (none) { unified_type = new_type; }
+                    case (some(?old_type)) {
                         alt (with_params(scx, old_type, new_type,
                                          param_substs)) {
                             case (ures_ok(?ut)) { unified_type = ut; }
@@ -1176,10 +1176,10 @@ mod pushdown {
 
                 auto ty_params_opt;
                 alt (ty_params_subst._0) {
-                    case (none[vec[ty::t]]) {
+                    case (none) {
                         ty_params_opt = none[vec[ty::t]];
                     }
-                    case (some[vec[ty::t]](?tps)) {
+                    case (some(?tps)) {
                         ty_params_opt = some[vec[ty::t]](tag_tps);
                     }
                 }
@@ -1245,7 +1245,7 @@ mod pushdown {
                 alt (struct(scx.fcx.ccx.tcx, t)) {
                     case (ty::ty_rec(?field_mts)) {
                         alt (base_0) {
-                            case (none[@ast::expr]) {
+                            case (none) {
                                 auto i = 0u;
                                 for (ast::field field_0 in fields_0) {
                                     assert (str::eq(field_0.ident,
@@ -1256,7 +1256,7 @@ mod pushdown {
                                     i += 1u;
                                 }
                             }
-                            case (some[@ast::expr](?bx)) {
+                            case (some(?bx)) {
 
                                 let vec[field] base_fields = [];
 
@@ -1354,8 +1354,8 @@ mod pushdown {
                 pushdown_block(scx, expected, then_0);
 
                 alt (else_0) {
-                    case (none[@ast::expr]) { /* no-op */ }
-                    case (some[@ast::expr](?e_0)) {
+                    case (none) { /* no-op */ }
+                    case (some(?e_0)) {
                         auto else_t = ty::expr_ty(scx.fcx.ccx.tcx, e_0);
                         pushdown_expr(scx, expected, e_0);
                     }
@@ -1426,10 +1426,10 @@ mod pushdown {
                 auto ty_params_opt;
                 alt (ty::ann_to_ty_param_substs_opt_and_ty
                         (scx.fcx.ccx.tcx.node_types, ann)._0) {
-                    case (none[vec[ty::t]]) {
+                    case (none) {
                         ty_params_opt = none[vec[ty::t]];
                     }
-                    case (some[vec[ty::t]](?tps)) {
+                    case (some(?tps)) {
                         ty_params_opt = some[vec[ty::t]](tps);
                     }
                 }
@@ -1526,10 +1526,10 @@ mod pushdown {
     // Push-down over typed blocks.
     fn pushdown_block(&@stmt_ctxt scx, &ty::t expected, &ast::block bloc) {
         alt (bloc.node.expr) {
-            case (some[@ast::expr](?e_0)) {
+            case (some(?e_0)) {
                 pushdown_expr(scx, expected, e_0);
             }
-            case (none[@ast::expr]) {
+            case (none) {
                 /* empty */
             }
         }
@@ -1546,12 +1546,12 @@ mod writeback {
     fn wb_local(&@fn_ctxt fcx, &span sp, &@ast::local local) {
         auto local_ty;
         alt (fcx.locals.find(local.id)) {
-            case (none[ty::t]) {
+            case (none) {
                 fcx.ccx.tcx.sess.span_err(sp,
                     "unable to determine type of local: " + local.ident);
                 fail;
             }
-            case (some[ty::t](?lt)) {
+            case (some(?lt)) {
                 local_ty = lt;
             }
         }
@@ -1817,12 +1817,12 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         let vec[arg] arg_tys_0 = [];
         for (option::t[@ast::expr] a_opt in args) {
             alt (a_opt) {
-                case (some[@ast::expr](?a)) {
+                case (some(?a)) {
                     check_expr(scx, a);
                     auto typ = expr_ty(scx.fcx.ccx.tcx, a);
                     vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
                 }
-                case (none[@ast::expr]) {
+                case (none) {
                     auto typ = next_ty_var(scx);
                     vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
                 }
@@ -1999,7 +1999,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
         case (ast::expr_ret(?expr_opt, ?a)) {
             alt (expr_opt) {
-                case (none[@ast::expr]) {
+                case (none) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                         // TODO: span_err
@@ -2010,7 +2010,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     write::bot_ty(scx.fcx.ccx.tcx, a.id);
                 }
 
-                case (some[@ast::expr](?e)) {
+                case (some(?e)) {
                     check_expr(scx, e);
                     pushdown::pushdown_expr(scx, scx.fcx.ret_ty, e);
 
@@ -2023,7 +2023,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
 
             alt (expr_opt) {
-                case (none[@ast::expr]) {
+                case (none) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                          scx.fcx.ccx.tcx.sess.span_err(expr.span,
@@ -2033,7 +2033,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     write::nil_ty(scx.fcx.ccx.tcx, a.id);
                 }
 
-                case (some[@ast::expr](?e)) {
+                case (some(?e)) {
                     check_expr(scx, e);
                     pushdown::pushdown_expr(scx, scx.fcx.ret_ty, e);
 
@@ -2164,7 +2164,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             check_block(scx, thn);
 
             auto if_t = alt (elsopt) {
-                case (some[@ast::expr](?els)) {
+                case (some(?els)) {
                     check_expr(scx, els);
 
                     auto thn_t = block_ty(scx.fcx.ccx.tcx, thn);
@@ -2175,7 +2175,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                         thn_t
                     }
                 }
-                case (none[@ast::expr]) {
+                case (none) {
                     ty::mk_nil(scx.fcx.ccx.tcx)
                 }
             };
@@ -2278,11 +2278,11 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         case (ast::expr_block(?b, ?a)) {
             check_block(scx, b);
             alt (b.node.expr) {
-                case (some[@ast::expr](?expr)) {
+                case (some(?expr)) {
                     auto typ = expr_ty(scx.fcx.ccx.tcx, expr);
                     write::ty_only_fixup(scx, a.id, typ);
                 }
-                case (none[@ast::expr]) {
+                case (none) {
                     auto typ = ty::mk_nil(scx.fcx.ccx.tcx);
                     write::ty_only_fixup(scx, a.id, typ);
                 }
@@ -2309,8 +2309,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     auto i = 0u;
                     while (i < vec::len[option::t[@ast::expr]](args)) {
                         alt (args.(i)) {
-                            case (some[@ast::expr](_)) { /* no-op */ }
-                            case (none[@ast::expr]) {
+                            case (some(_)) { /* no-op */ }
+                            case (none) {
                                 arg_tys_1 += [arg_tys.(i)];
                             }
                         }
@@ -2359,7 +2359,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             alt (this_obj_info) {
                 // If we're inside a current object, grab its type.
-                case (some[obj_info](?obj_info)) {
+                case (some(?obj_info)) {
                     // FIXME: In the case of anonymous objects with methods
                     // containing self-calls, this lookup fails because
                     // obj_info.this_obj is not in the type cache
@@ -2367,7 +2367,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                                                        obj_info.this_obj)._1;
                 }
 
-                case (none[obj_info]) { fail; }
+                case (none) { fail; }
             }
 
             // Grab this method's type out of the current object type.
@@ -2454,8 +2454,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         case (ast::expr_rec(?fields, ?base, ?a)) {
 
             alt (base) {
-                case (none[@ast::expr]) { /* no-op */}
-                case (some[@ast::expr](?b_0)) { check_expr(scx, b_0); }
+                case (none) { /* no-op */}
+                case (some(?b_0)) { check_expr(scx, b_0); }
             }
 
             let vec[field] fields_t = [];
@@ -2469,12 +2469,12 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             }
 
             alt (base) {
-                case (none[@ast::expr]) {
+                case (none) {
                     auto typ = ty::mk_rec(scx.fcx.ccx.tcx, fields_t);
                     write::ty_only_fixup(scx, a.id, typ);
                 }
 
-                case (some[@ast::expr](?bexpr)) {
+                case (some(?bexpr)) {
                     check_expr(scx, bexpr);
                     auto bexpr_t = expr_ty(scx.fcx.ccx.tcx, bexpr);
 
@@ -2623,8 +2623,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             // We're entering an object, so gather up the info we need.
             let vec[ast::obj_field] fields = [];
             alt (anon_obj.fields) {
-                case (none[vec[ast::obj_field]]) { }
-                case (some[vec[ast::obj_field]](?v)) { fields = v; }
+                case (none) { }
+                case (some(?v)) { fields = v; }
             }
             let ast::def_id di = obj_def_ids.ty;
 
@@ -2634,8 +2634,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             // Typecheck 'with_obj', if it exists.
             let option::t[@ast::expr] with_obj = none[@ast::expr];
             alt (anon_obj.with_obj) {
-                case (none[@ast::expr]) { }
-                case (some[@ast::expr](?e)) {
+                case (none) { }
+                case (some(?e)) {
                     // This had better have object type.  TOOD: report an
                     // error if the user is trying to extend a non-object
                     // with_obj.
@@ -2723,11 +2723,11 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
             auto t = ty::mk_nil(fcx.ccx.tcx);
 
             alt (local.ty) {
-                case (none[@ast::ty]) {
+                case (none) {
                     // Auto slot. Do nothing for now.
                 }
 
-                case (some[@ast::ty](?ast_ty)) {
+                case (some(?ast_ty)) {
                     auto local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
                     fcx.locals.insert(local.id, local_ty);
                     t = local_ty;
@@ -2739,7 +2739,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
 
             auto initopt = local.init;
             alt (local.init) {
-                case (some[ast::initializer](?init)) {
+                case (some(?init)) {
                     with_stmt_ctxt(fcx,
                         bind check_decl_initializer(_, local.id, init));
                 }
@@ -2780,10 +2780,10 @@ fn check_block(&@stmt_ctxt scx, &ast::block block) {
     for (@ast::stmt s in block.node.stmts) { check_stmt(scx.fcx, s); }
 
     alt (block.node.expr) {
-        case (none[@ast::expr]) {
+        case (none) {
             write::nil_ty(scx.fcx.ccx.tcx, block.node.a.id);
         }
-        case (some[@ast::expr](?e)) {
+        case (some(?e)) {
             check_expr(scx, e);
             auto ety = expr_ty(scx.fcx.ccx.tcx, e);
             pushdown::pushdown_expr(scx, ety, e);
@@ -2814,13 +2814,13 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
     // again here, we can extract them.
 
     alt (get_obj_info(ccx)) {
-        case (option::some[obj_info](?oinfo)) {
+        case (option::some(?oinfo)) {
             for (ast::obj_field f in oinfo.obj_fields) {
                 auto field_ty = ty::ann_to_type(ccx.tcx.node_types, f.ann);
                 local_ty_table.insert(f.id, field_ty);
             }
         }
-        case (option::none[obj_info]) { /* no fields */ }
+        case (option::none) { /* no fields */ }
     }
 
     // Store the type of each argument in the table.

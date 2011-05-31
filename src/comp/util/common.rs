@@ -297,7 +297,7 @@ fn has_nonlocal_exits(&ast::block b) -> bool {
 
 fn local_rhs_span(&@ast::local l, &ast::span def) -> ast::span {
     alt (l.init) {
-        case (some[ast::initializer](?i)) { ret i.expr.span; }
+        case (some(?i)) { ret i.expr.span; }
         case (_) { ret def; }
     }
 }

@@ -313,7 +313,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         auto unsupported = "conversion not supported in #fmt string";
 
         alt (cnv.param) {
-            case (option::none[int]) {
+            case (option::none) {
             }
             case (_) {
                 log_err unsupported;
@@ -407,7 +407,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
 
     fn log_conv(conv c) {
         alt (c.param) {
-            case (some[int](?p)) {
+            case (some(?p)) {
                 log "param: " + std::int::to_str(p, 10u);
             }
             case (_) {

@@ -182,8 +182,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             auto len = parse_hex(st);
             assert (next(st) as char == '#');
             alt (st.tcx.rcache.find(tup(st.crate,pos,len))) {
-                case (some[ty::t](?tt)) { ret tt; }
-                case (none[ty::t]) {
+                case (some(?tt)) { ret tt; }
+                case (none) {
                     auto ps = @rec(pos=pos, len=len with *st);
                     auto tt = parse_ty(ps, sd);
                     st.tcx.rcache.insert(tup(st.crate,pos,len), tt);
@@ -262,10 +262,10 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t,
     st.pos = st.pos + 1u;
     auto res = parse_ty_or_bang(st, sd);
     alt (res) {
-        case (a_bang[ty::t]) {
+        case (a_bang) {
             ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn);
         }
-        case (a_ty[ty::t](?t)) {
+        case (a_ty(?t)) {
             ret tup(inputs, t, ast::return);
         }
     }
@@ -434,7 +434,7 @@ fn load_crate(session::session sess,
     for (str library_search_path in library_search_paths) {
         auto path = fs::connect(library_search_path, filename);
         alt (get_metadata_section(path)) {
-            case (option::some[vec[u8]](?cvec)) {
+            case (option::some(?cvec)) {
                 sess.set_external_crate(cnum, rec(name=ident, data=cvec));
                 ret;
             }
@@ -594,10 +594,10 @@ fn get_tag_variants(ty::ctxt tcx, ast::def_id def)
 
 fn list_file_metadata(str path, io::writer out) {
     alt (get_metadata_section(path)) {
-        case (option::some[vec[u8]](?bytes)) {
+        case (option::some(?bytes)) {
             list_crate_metadata(bytes, out);
         }
-        case (option::none[vec[u8]]) {
+        case (option::none) {
             out.write_str("Could not find metadata in " + path + ".\n");
         }
     }

@@ -262,7 +262,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
 fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs,
                 &ann larger_ann, &ann new_var) -> () {
   alt (ann_to_def(fcx.ccx, new_var)) {
-      case (some[def](?d)) {
+      case (some(?d)) {
           alt (d) {
               case (def_local(?d_id)) {
                   find_pre_post_expr(fcx, rhs);
@@ -341,11 +341,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         }
         case(expr_put(?opt, ?a)) {
             alt (opt) {
-                case (some[@expr](?arg)) {
+                case (some(?arg)) {
                     find_pre_post_expr(fcx, arg);
                     copy_pre_post(fcx.ccx, a, arg);
                 }
-                case (none[@expr]) {
+                case (none) {
                     clear_pp(expr_pp(fcx.ccx, e));
                 }
             }
@@ -392,11 +392,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         }
         case (expr_ret(?maybe_val, ?a)) {
             alt (maybe_val) {
-                case (none[@expr]) {
+                case (none) {
                     clear_precond(fcx.ccx, a);
                     set_postcond_false(fcx.ccx, a);
                 }
-                case (some[@expr](?ret_val)) {
+                case (some(?ret_val)) {
                     find_pre_post_expr(fcx, ret_val);
                     set_precondition(ann_to_ts_ann(fcx.ccx, a),
                                      expr_precond(fcx.ccx, ret_val));
@@ -414,7 +414,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_expr(fcx, antec);
             find_pre_post_block(fcx, conseq);
             alt (maybe_alt) {
-                case (none[@expr]) {
+                case (none) {
                     log "333";
                     auto precond_res = seq_preconds(fcx,
                                          [expr_pp(fcx.ccx, antec),
@@ -422,7 +422,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                     set_pre_and_post(fcx.ccx, a, precond_res,
                                      expr_poststate(fcx.ccx, antec));
                 }
-                case (some[@expr](?altern)) {
+                case (some(?altern)) {
                     find_pre_post_expr(fcx, altern);
                     log "444";
                     auto precond_true_case =
@@ -570,11 +570,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         }
         case (expr_anon_obj(?anon_obj, _, _, ?a)) {
             alt (anon_obj.with_obj) {
-                case (some[@expr](?ex)) {
+                case (some(?ex)) {
                     find_pre_post_expr(fcx, ex);
                     copy_pre_post(fcx.ccx, a, ex);
                 }
-                case (none[@expr]) {
+                case (none) {
                     clear_pp(expr_pp(fcx.ccx, e));
                 }
             }
@@ -595,7 +595,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
             alt(adecl.node) {
                 case(decl_local(?alocal)) {
                     alt(alocal.init) {
-                        case(some[initializer](?an_init)) {
+                        case(some(?an_init)) {
                             find_pre_post_expr(fcx, an_init.expr);
                             copy_pre_post(fcx.ccx, alocal.ann, an_init.expr);
 
@@ -610,7 +610,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
                                                    log_err("pp = ");
                                                    log_pp(stmt_pp(s)); */
                         }
-                        case(none[initializer]) {
+                        case(none) {
                             clear_pp(ann_to_ts_ann(fcx.ccx,
                                                    alocal.ann).conditions);
                             clear_pp(ann_to_ts_ann(fcx.ccx, a).conditions);

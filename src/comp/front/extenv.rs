@@ -28,10 +28,10 @@ fn expand_syntax_ext(parser::parser p,
 
     auto var = expr_to_str(p, args.(0));
     alt (generic_os::getenv(var)) {
-        case (option::none[str]) {
+        case (option::none) {
             ret make_new_str(p, sp, "");
         }
-        case (option::some[str](?s)) {
+        case (option::some(?s)) {
             ret make_new_str(p, sp, s);
         }
     }

@@ -204,7 +204,7 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@decl d,
 
 fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a) -> bool {
   alt (ann_to_def(fcx.ccx, a_new_var)) {
-      case (some[def](def_local(?loc))) {
+      case (some(def_local(?loc))) {
           ret gen_poststate(fcx, a, loc);
       }
       case (_) { ret false; }
@@ -287,14 +287,14 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     }
     case (expr_put(?maybe_e, ?a)) {
         alt (maybe_e) {
-            case (some[@expr](?arg)) {
+            case (some(?arg)) {
                 changed = find_pre_post_state_expr(fcx, pres, arg);
                 changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, arg)) || changed;
                 ret changed;
             }
-            case (none[@expr]) {
+            case (none) {
                 ret pure_exp(fcx.ccx, a, pres);
             }
         }
@@ -314,8 +314,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         changed = find_pre_post_state_exprs(fcx, pres, a,
                                             field_exprs(fields)) || changed;
         alt (maybe_base) {
-            case (none[@expr]) { /* do nothing */ }
-            case (some[@expr](?base)) {
+            case (none) { /* do nothing */ }
+            case (some(?base)) {
                 changed = find_pre_post_state_expr(fcx, pres, base)
                     || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
@@ -386,8 +386,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             case (_) {}
         }
         alt(maybe_ret_val) {
-            case (none[@expr]) { /* do nothing */ }
-            case (some[@expr](?ret_val)) {
+            case (none) { /* do nothing */ }
+            case (some(?ret_val)) {
                 changed = find_pre_post_state_expr(fcx,
                              pres, ret_val) || changed;
             }
@@ -407,11 +407,11 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         changed = find_pre_post_state_block(fcx,
           expr_poststate(fcx.ccx, antec), conseq) || changed;
         alt (maybe_alt) {
-            case (none[@expr]) {
+            case (none) {
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, antec)) || changed;
             }
-            case (some[@expr](?altern)) {
+            case (some(?altern)) {
                 changed = find_pre_post_state_expr(fcx,
                    expr_poststate(fcx.ccx, antec), altern) || changed;
                 auto poststate_res = intersect_postconds
@@ -594,14 +594,14 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     }
     case (expr_anon_obj(?anon_obj, _, _,?a)) {
         alt (anon_obj.with_obj) {
-            case (some[@expr](?e)) {
+            case (some(?e)) {
                 changed = find_pre_post_state_expr(fcx, pres, e);
                 changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, e)) || changed;
                 ret changed;
             }
-            case (none[@expr]) {
+            case (none) {
                 ret pure_exp(fcx.ccx, a, pres);
             }
         }
@@ -627,7 +627,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
             alt (adecl.node) {
                 case (decl_local(?alocal)) {
                     alt (alocal.init) {
-                        case (some[initializer](?an_init)) {
+                        case (some(?an_init)) {
                             changed = extend_prestate
                                 (stmt_ann.states.prestate, pres) || changed;
                             changed = find_pre_post_state_expr
@@ -650,7 +650,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
   
                             ret changed;
                         }
-                        case (none[initializer]) {
+                        case (none) {
                             changed = extend_prestate
                                 (stmt_ann.states.prestate, pres) || changed;
                             changed = extend_poststate
@@ -716,8 +716,8 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
   auto post = pres;
 
   alt (b.node.expr) {
-    case (none[@expr]) {}
-    case (some[@expr](?e)) {
+    case (none) {}
+    case (some(?e)) {
       changed = find_pre_post_state_expr(fcx, pres, e) || changed;
       post = expr_poststate(fcx.ccx, e);
     }

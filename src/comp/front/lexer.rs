@@ -367,10 +367,10 @@ fn scan_number(char c, &reader rdr) -> token::token {
         c = rdr.curr();
         auto exponent_str = scan_exponent(rdr);
         alt (exponent_str) {
-            case (some[str](?s)) {
+            case (some(?s)) {
                 float_str += s;
             }
-            case (none[str]) {
+            case (none) {
             }
         }
 
@@ -400,11 +400,11 @@ fn scan_number(char c, &reader rdr) -> token::token {
 
     auto maybe_exponent = scan_exponent(rdr);
     alt(maybe_exponent) {
-        case(some[str](?s)) {
+        case(some(?s)) {
             ret token::LIT_FLOAT(interner::intern[str](*rdr.get_interner(),
                                                        dec_str + s));
         }
-        case(none[str]) {
+        case(none) {
             ret token::LIT_INT(accum_int);
         }
     }
