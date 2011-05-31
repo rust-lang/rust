@@ -29,7 +29,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/test/rust_test_runtime.cpp \
               rt/test/rust_test_util.cpp
 
-RUNTIME_LL := rt/new_exit.ll
+RUNTIME_LL := rt/new_exit.ll rt/vec_append.ll
 
 RUNTIME_S := rt/activate_glue.s rt/yield_glue.s
 

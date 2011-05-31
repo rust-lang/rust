@@ -23,6 +23,7 @@ rust_process_wait
 rust_ptr_eq
 rust_run_program
 rust_start
+rust_vec_append_glue
 size_of
 squareroot
 str_alloc
