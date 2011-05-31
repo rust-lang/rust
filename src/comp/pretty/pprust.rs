@@ -587,28 +587,42 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_type(s, *ty);
         }
         case (ast::expr_if(?test,?block,?elseopt,_)) {
+
             head(s, "if");
             popen(s);
             print_expr(s, test);
             pclose(s);
             space(s.s);
             print_block(s, block);
-            alt (elseopt) {
-                case (option::some[@ast::expr](?_else)) {
-                    // NB: we can't use 'head' here since
-                    // it builds a block that starts in the
-                    // wrong column.
-                    cbox(s.s, indent_unit-1u);
-                    ibox(s.s, 0u);
-                    word(s.s, " else ");
-                    alt (_else.node) {
-                        case (ast::expr_block(?b, _)) {
-                            print_block(s, block);
+            fn do_else(&ps s, option::t[@ast::expr] els) {
+                alt (els) {
+                    case (option::some[@ast::expr](?_else)) {
+                        alt (_else.node) {
+                            // "another else-if"
+                            case (ast::expr_if(?i,?t,?e,_)) {
+                                cbox(s.s, indent_unit-1u);
+                                ibox(s.s, 0u);
+                                word(s.s, " else if ");
+                                popen(s);
+                                print_expr(s, i);
+                                pclose(s);
+                                space(s.s);
+                                print_block(s, t);
+                                do_else(s, e);
+                            }
+                            // "final else"
+                            case (ast::expr_block(?b, _)) {
+                                cbox(s.s, indent_unit-1u);
+                                ibox(s.s, 0u);
+                                word(s.s, " else ");
+                                print_block(s, b);
+                            }
                         }
                     }
+                    case (_) { /* fall through */ }
                 }
-                case (_) { /* fall through */ }
             }
+            do_else(s, elseopt);
         }
         case (ast::expr_while(?test,?block,_)) {
             head(s, "while");
