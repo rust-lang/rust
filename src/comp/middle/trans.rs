@@ -3259,6 +3259,45 @@ fn copy_val(&@block_ctxt cx,
     fail;
 }
 
+// This works like copy_val, except that it deinitializes the source.
+// Since it needs to zero out the source, src also needs to be an lval.
+// FIXME: We always zero out the source. Ideally we would detect the
+// case where a variable is always deinitialized by block exit and thus
+// doesn't need to be dropped.
+fn move_val(&@block_ctxt cx,
+           copy_action action,
+           ValueRef dst,
+           ValueRef src,
+           &ty::t t) -> result {
+    if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
+            ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
+        ret res(cx, cx.build.Store(src, dst));
+    } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
+               ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
+        ret res(cx, C_nil());
+
+    } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
+        if (action == DROP_EXISTING) {
+            cx = drop_ty(cx, cx.build.Load(dst), t).bcx;
+        }
+        auto r = res(cx, cx.build.Store(cx.build.Load(src), dst));
+        ret zero_alloca(r.bcx, src, t);
+
+    } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
+               ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
+        if (action == DROP_EXISTING) {
+            cx = drop_ty(cx, dst, t).bcx;
+        }
+        auto r = memmove_ty(cx, dst, cx.build.Load(src), t);
+        ret zero_alloca(r.bcx, src, t);
+    }
+
+    cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::move_val: " +
+                        ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+    fail;
+}
+
+
 fn trans_lit(&@crate_ctxt cx, &ast::lit lit, &ast::ann ann) -> ValueRef {
     alt (lit.node) {
         case (ast::lit_int(?i)) {
@@ -5504,12 +5543,11 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
-            auto rhs_res = trans_expr(lhs_res.res.bcx, src);
+            auto rhs_res = trans_lval(lhs_res.res.bcx, src);
             auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
-            // FIXME: do all of the special move stuff
-            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
-                        lhs_res.res.val, rhs_res.val, t);
+            ret move_val(rhs_res.res.bcx, DROP_EXISTING,
+                         lhs_res.res.val, rhs_res.res.val, t);
         }
 
         case (ast::expr_assign(?dst, ?src, ?ann)) {
