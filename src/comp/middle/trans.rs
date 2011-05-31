@@ -6892,7 +6892,14 @@ fn trans_fn(@local_ctxt cx, &ast::span sp, &ast::_fn f, ast::def_id fid,
 
     auto lltop = bcx.llbb;
 
-    auto res = trans_block(bcx, f.body, return);
+    auto block_ty = node_ann_type(cx.ccx, f.body.node.a);
+    auto res = if (!ty::type_is_nil(cx.ccx.tcx, block_ty)
+                   && !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
+        trans_block(bcx, f.body, save_in(fcx.llretptr))
+    } else {
+        trans_block(bcx, f.body, return)
+    };
+
     if (!is_terminated(res.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.

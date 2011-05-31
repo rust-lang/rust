@@ -150,6 +150,11 @@ import front::ast::stmt_expr;
 import front::ast::block;
 import front::ast::block_;
 
+import middle::ty::expr_ann;
+import middle::ty::expr_ty;
+import middle::ty::type_is_nil;
+import middle::ty::type_is_bot;
+
 import util::common::new_def_hash;
 import util::common::decl_lhs;
 import util::common::uistr;
@@ -753,8 +758,36 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
 
 fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
     auto num_local_vars = num_locals(fcx.enclosing);
-    ret find_pre_post_state_block(fcx,
-          empty_prestate(num_local_vars), f.body);
+    auto changed = find_pre_post_state_block(fcx,
+                     empty_prestate(num_local_vars), f.body);
+
+    // Treat the tail expression as a return statement
+    alt (f.body.node.expr) {
+        case (some(?tailexpr)) {
+            auto tailann = expr_ann(tailexpr);
+            auto tailty = expr_ty(fcx.ccx.tcx, tailexpr);
+
+            // Since blocks and alts and ifs that don't have results
+            // implicitly result in nil, we have to be careful to not
+            // interpret nil-typed block results as the result of a
+            // function with some other return type
+            if (!type_is_nil(fcx.ccx.tcx, tailty)
+                && !type_is_bot(fcx.ccx.tcx, tailty)) {
+
+                set_poststate_ann(fcx.ccx, tailann,
+                                  false_postcond(num_local_vars));
+                alt (fcx.enclosing.cf) {
+                    case (noreturn) {
+                        kill_poststate(fcx, tailann, fcx.id);
+                    }
+                    case (_) { }
+                }
+            }
+        }
+        case (none) { /* fallthrough */ }
+    }
+
+    ret changed;
 }
 
 //

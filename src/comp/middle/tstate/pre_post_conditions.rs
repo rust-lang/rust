@@ -140,6 +140,8 @@ import front::ast::stmt_expr;
 import front::ast::block;
 import front::ast::block_;
 
+import middle::ty::expr_ann;
+
 import util::common::new_def_hash;
 import util::common::decl_lhs;
 import util::common::uistr;
@@ -696,6 +698,15 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
 
 fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) -> () {
     find_pre_post_block(fcx, f.body);
+
+    // Treat the tail expression as a return statement
+    alt (f.body.node.expr) {
+        case (some(?tailexpr)) {
+            auto tailann = expr_ann(tailexpr);
+            set_postcond_false(fcx.ccx, tailann);
+        }
+        case (none) { /* fallthrough */ }
+    }
 }
 
 fn fn_pre_post(crate_ctxt ccx, &_fn f, &span sp, &ident i, &def_id id,
