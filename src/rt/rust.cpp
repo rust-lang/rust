@@ -113,11 +113,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     return ret;
 }
 
-extern "C" CDECL int
-new_rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
-    return rust_start(main_fn, argc, argv, crate_map);
-}
-
 //
 // Local Variables:
 // mode: C++
