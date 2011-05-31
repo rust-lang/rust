@@ -208,6 +208,7 @@ tag stmt_ {
 tag init_op {
     init_assign;
     init_recv;
+    init_move;
 }
 
 type initializer = rec(init_op op,

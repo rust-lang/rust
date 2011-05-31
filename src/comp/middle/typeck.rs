@@ -2723,6 +2723,9 @@ fn check_decl_initializer(&@stmt_ctxt scx, &ast::def_id lid,
         case (ast::init_assign) {
             pushdown::pushdown_expr(scx, lty, init.expr);
         }
+        case (ast::init_move) {
+            pushdown::pushdown_expr(scx, lty, init.expr);
+        }
         case (ast::init_recv) {
             auto port_ty = ty::mk_port(scx.fcx.ccx.tcx, lty);
             pushdown::pushdown_expr(scx, port_ty, init.expr);

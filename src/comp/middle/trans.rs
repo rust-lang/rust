@@ -6375,6 +6375,11 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
                     auto sub = trans_expr(bcx, init.expr);
                     bcx = copy_val(sub.bcx, INIT, llptr, sub.val, ty).bcx;
                 }
+                case (ast::init_move) {
+                    auto sub = trans_lval(bcx, init.expr);
+                    bcx = move_val(sub.res.bcx, INIT, llptr,
+                                   sub.res.val, ty).bcx;
+                }
                 case (ast::init_recv) {
                     bcx = recv_val(bcx, llptr, init.expr, ty, INIT).bcx;
                 }
