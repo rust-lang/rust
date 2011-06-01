@@ -1011,6 +1011,16 @@ fn print_view_item(&ps s, &@ast::view_item item) {
                 word(s.s, elt);
             }
         }
+        case (ast::view_item_import_glob(?ids,_)) {
+            head(s, "import");
+            auto first = true;
+            for (str elt in ids) {
+                if (first) {first = false;}
+                else {word(s.s, "::");}
+                word(s.s, elt);
+            }
+            word(s.s, "::*");
+        }
         case (ast::view_item_export(?id)) {
             head(s, "export");
             word(s.s, id);
