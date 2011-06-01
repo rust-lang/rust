@@ -13,9 +13,6 @@ import pp;
 
 import pp::printer;
 import pp::break_offset;
-import pp::box;
-import pp::cbox;
-import pp::ibox;
 import pp::word;
 import pp::huge_word;
 import pp::zero_word;
@@ -25,7 +22,6 @@ import pp::hardbreak;
 import pp::breaks;
 import pp::consistent;
 import pp::inconsistent;
-import pp::end;
 import pp::eof;
 
 const uint indent_unit = 4u;
@@ -40,13 +36,16 @@ type ps = @rec(pp::printer s,
                option::t[codemap] cm,
                option::t[vec[lexer::cmnt]] comments,
                mutable uint cur_cmnt,
+               mutable vec[pp::breaks] boxes,
                mode mode);
 
 fn rust_printer(io::writer writer) -> ps {
+    let vec[pp::breaks] boxes = [];
     ret @rec(s=pp::mk_printer(writer, default_columns),
              cm=option::none[codemap],
              comments=option::none[vec[lexer::cmnt]],
              mutable cur_cmnt=0u,
+             mutable boxes = boxes,
              mode=mo_untyped);
 }
 
@@ -60,11 +59,13 @@ fn to_str[T](&T t, fn(&ps s, &T s) f) -> str {
 
 fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
               mode mode) {
+    let vec[pp::breaks] boxes = [];
     auto cmnts = lexer::gather_comments(sess, filename);
     auto s = @rec(s=pp::mk_printer(out, default_columns),
                   cm=option::some[codemap](sess.get_codemap()),
                   comments=option::some[vec[lexer::cmnt]](cmnts),
                   mutable cur_cmnt=0u,
+                  mutable boxes = boxes,
                   mode=mode);
     print_mod(s, _mod);
     eof(s.s);
@@ -89,14 +90,35 @@ fn block_to_str(&ast::block blk) -> str {
     auto s = rust_printer(writer.get_writer());
 
     // containing cbox, will be closed by print-block at }
-    cbox(s.s, indent_unit);
+    cbox(s, indent_unit);
 
     // head-ibox, will be closed by print-block after {
-    ibox(s.s, 0u);
+    ibox(s, 0u);
     print_block(s, blk);
     eof(s.s);
     ret writer.get_str();
 }
+
+fn ibox(&ps s, uint u) {
+    vec::push(s.boxes, pp::inconsistent);
+    pp::ibox(s.s, u);
+}
+
+fn cbox(&ps s, uint u) {
+    vec::push(s.boxes, pp::consistent);
+    pp::cbox(s.s, u);
+}
+
+fn box(&ps s, uint u, pp::breaks b) {
+    vec::push(s.boxes, b);
+    pp::box(s.s, u, b);
+}
+
+fn end(&ps s) {
+    vec::pop(s.boxes);
+    pp::end(s.s);
+}
+
 
 fn word_nbsp(&ps s, str w) {
     word(s.s, w);
@@ -118,39 +140,39 @@ fn pclose(&ps s) {
 
 fn head(&ps s, str w) {
     // outer-box is consistent
-    cbox(s.s, indent_unit);
+    cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s.s, str::char_len(w) + 1u);
+    ibox(s, str::char_len(w) + 1u);
     // keyword that starts the head
     word_nbsp(s, w);
 }
 
 fn bopen(&ps s) {
     word(s.s, "{");
-    end(s.s); // close the head-box
+    end(s); // close the head-box
 }
 
 fn bclose(&ps s, common::span span) {
     maybe_print_comment(s, span.hi);
     break_offset(s.s, 1u, -(indent_unit as int));
     word(s.s, "}");
-    end(s.s); // close the outer-box
+    end(s); // close the outer-box
 }
 
 fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op) {
-    box(s.s, 0u, b);
+    box(s, 0u, b);
     auto first = true;
     for (IN elt in elts) {
         if (first) {first = false;}
         else {word_space(s, ",");}
         op(s, elt);
     }
-    end(s.s);
+    end(s);
 }
 
 fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op,
                      fn(&IN) -> common::span get_span) {
-    box(s.s, 0u, b);
+    box(s, 0u, b);
     auto len = vec::len[IN](elts);
     auto i = 0u;
     for (IN elt in elts) {
@@ -163,7 +185,7 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op,
             space(s.s);
         }
     }
-    end(s.s);
+    end(s);
 }
 
 fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
@@ -189,7 +211,7 @@ fn print_boxed_type(&ps s, &@ast::ty ty) { print_type(s, *ty); }
 fn print_type(&ps s, &ast::ty ty) {
 
     maybe_print_comment(s, ty.span.lo);
-    ibox(s.s, 0u);
+    ibox(s, 0u);
     alt (ty.node) {
         case (ast::ty_nil) {word(s.s, "()");}
         case (ast::ty_bool) {word(s.s, "bool");}
@@ -222,11 +244,11 @@ fn print_type(&ps s, &ast::ty ty) {
             word(s.s, "rec");
             popen(s);
             fn print_field(&ps s, &ast::ty_field f) {
-                cbox(s.s, indent_unit);
+                cbox(s, indent_unit);
                 print_mt(s, f.mt);
                 space(s.s);
                 word(s.s, f.ident);
-                end(s.s);
+                end(s);
             }
             fn get_span(&ast::ty_field f) -> common::span {
               // Try to reconstruct the span for this field
@@ -244,11 +266,11 @@ fn print_type(&ps s, &ast::ty ty) {
             bopen(s);
             for (ast::ty_method m in methods) {
                 hardbreak(s.s);
-                cbox(s.s, indent_unit);
+                cbox(s, indent_unit);
                 print_ty_fn(s, m.proto, option::some[str](m.ident),
                             m.inputs, m.output, m.cf);
                 word(s.s, ";");
-                end(s.s);
+                end(s);
             }
             bclose(s, ty.span);
         }
@@ -259,7 +281,7 @@ fn print_type(&ps s, &ast::ty ty) {
             print_path(s, path);
         }
     }
-    end(s.s);
+    end(s);
 }
 
 fn print_item(&ps s, &@ast::item item) {
@@ -272,11 +294,11 @@ fn print_item(&ps s, &@ast::item item) {
             print_type(s, *ty);
             space(s.s);
             word_space(s, id);
-            end(s.s); // end the head-ibox
+            end(s); // end the head-ibox
             word_space(s, "=");
             print_expr(s, expr);
             word(s.s, ";");
-            end(s.s); // end the outer cbox
+            end(s); // end the outer cbox
         }
         case (ast::item_fn(?name,?_fn,?typarams,_,_)) {
             print_fn(s, _fn.decl, _fn.proto, name, typarams);
@@ -303,7 +325,7 @@ fn print_item(&ps s, &@ast::item item) {
             word_nbsp(s, id);
             bopen(s);
             for (@ast::native_item item in nmod.items) {
-                ibox(s.s, indent_unit);
+                ibox(s, indent_unit);
                 maybe_print_comment(s, item.span.lo);
                 alt (item.node) {
                     case (ast::native_item_ty(?id,_)) {
@@ -313,7 +335,7 @@ fn print_item(&ps s, &@ast::item item) {
                     case (ast::native_item_fn(?id,?lname,?decl,
                                              ?typarams,_,_)) {
                         print_fn(s, decl, ast::proto_fn, id, typarams);
-                        end(s.s); // end head-ibox
+                        end(s); // end head-ibox
                         alt (lname) {
                             case (option::none[str]) {}
                             case (option::some[str](?ss)) {
@@ -323,22 +345,22 @@ fn print_item(&ps s, &@ast::item item) {
                     }
                 }
                 word(s.s, ";");
-                end(s.s);
+                end(s);
             }
             bclose(s, item.span);
         }
         case (ast::item_ty(?id,?ty,?params,_,_)) {
-            ibox(s.s, indent_unit);
-            ibox(s.s, 0u);
+            ibox(s, indent_unit);
+            ibox(s, 0u);
             word_nbsp(s, "type");
             word(s.s, id);
             print_type_params(s, params);
-            end(s.s); // end the inner ibox
+            end(s); // end the inner ibox
             space(s.s);
             word_space(s, "=");
             print_type(s, *ty);
             word(s.s, ";");
-            end(s.s); // end the outer ibox
+            end(s); // end the outer ibox
             break_offset(s.s, 0u, 0);
         }
         case (ast::item_tag(?id,?variants,?params,_,_)) {
@@ -371,11 +393,11 @@ fn print_item(&ps s, &@ast::item item) {
             print_type_params(s, params);
             popen(s);
             fn print_field(&ps s, &ast::obj_field field) {
-                ibox(s.s, indent_unit);
+                ibox(s, indent_unit);
                 print_type(s, *field.ty);
                 space(s.s);
                 word(s.s, field.ident);
-                end(s.s);
+                end(s);
             }
             fn get_span(&ast::obj_field f) -> common::span {ret f.ty.span;}
             auto f = print_field;
@@ -474,7 +496,7 @@ fn print_literal(&ps s, &@ast::lit lit) {
 
 fn print_expr(&ps s, &@ast::expr expr) {
     maybe_print_comment(s, expr.span.lo);
-    ibox(s.s, indent_unit);
+    ibox(s, indent_unit);
 
     alt (s.mode) {
         case (mo_untyped) { /* no-op */ }
@@ -483,21 +505,21 @@ fn print_expr(&ps s, &@ast::expr expr) {
 
     alt (expr.node) {
         case (ast::expr_vec(?exprs,?mut,_)) {
-            ibox(s.s, indent_unit);
+            ibox(s, indent_unit);
             word(s.s, "[");
             if (mut == ast::mut) {
                 word_nbsp(s, "mutable");
             }
             commasep_exprs(s, inconsistent, exprs);
             word(s.s, "]");
-            end(s.s);
+            end(s);
         }
         case (ast::expr_tup(?exprs,_)) {
             fn printElt(&ps s, &ast::elt elt) {
-                ibox(s.s, indent_unit);
+                ibox(s, indent_unit);
                 if (elt.mut == ast::mut) {word_nbsp(s, "mutable");}
                 print_expr(s, elt.expr);
-                end(s.s);
+                end(s);
             }
             fn get_span(&ast::elt elt) -> common::span {ret elt.expr.span;}
             word(s.s, "tup");
@@ -509,12 +531,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_rec(?fields,?wth,_)) {
             fn print_field(&ps s, &ast::field field) {
-                ibox(s.s, indent_unit);
+                ibox(s, indent_unit);
                 if (field.node.mut == ast::mut) {word_nbsp(s, "mutable");}
                 word(s.s, field.node.ident);
                 word(s.s, "=");
                 print_expr(s, field.node.expr);
-                end(s.s);
+                end(s);
             }
             fn get_span(&ast::field field) -> common::span {
                 ret field.span;
@@ -527,10 +549,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             alt (wth) {
                 case (option::some[@ast::expr](?expr)) {
                     if (vec::len[ast::field](fields) > 0u) {space(s.s);}
-                    ibox(s.s, indent_unit);
+                    ibox(s, indent_unit);
                     word_space(s, "with");
                     print_expr(s, expr);
-                    end(s.s);
+                    end(s);
                 }
                 case (_) {}
             }
@@ -603,8 +625,8 @@ fn print_expr(&ps s, &@ast::expr expr) {
                         alt (_else.node) {
                             // "another else-if"
                             case (ast::expr_if(?i,?t,?e,_)) {
-                                cbox(s.s, indent_unit-1u);
-                                ibox(s.s, 0u);
+                                cbox(s, indent_unit-1u);
+                                ibox(s, 0u);
                                 word(s.s, " else if ");
                                 popen(s);
                                 print_expr(s, i);
@@ -615,8 +637,8 @@ fn print_expr(&ps s, &@ast::expr expr) {
                             }
                             // "final else"
                             case (ast::expr_block(?b, _)) {
-                                cbox(s.s, indent_unit-1u);
-                                ibox(s.s, 0u);
+                                cbox(s, indent_unit-1u);
+                                ibox(s, 0u);
                                 word(s.s, " else ");
                                 print_block(s, b);
                             }
@@ -687,10 +709,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_block(?block,_)) {
             // containing cbox, will be closed by print-block at }
-            cbox(s.s, indent_unit);
+            cbox(s, indent_unit);
 
             // head-box, will be closed by print-block after {
-            ibox(s.s, 0u);
+            ibox(s, 0u);
             print_block(s, block);
         }
         case (ast::expr_move(?lhs,?rhs,_)) {
@@ -831,7 +853,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
     }
 
-    end(s.s);
+    end(s);
 }
 
 fn print_decl(&ps s, &@ast::decl decl) {
@@ -839,7 +861,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
     alt (decl.node) {
         case (ast::decl_local(?loc)) {
             space(s.s);
-            ibox(s.s, indent_unit);
+            ibox(s, indent_unit);
             alt (loc.ty) {
                 case (option::some[@ast::ty](?ty)) {
                     word_nbsp(s, "let");
@@ -879,7 +901,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                 }
                 case (_) {}
             }
-            end(s.s);
+            end(s);
         }
         case (ast::decl_item(?item)) {
             print_item(s, item);
@@ -953,12 +975,12 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
     print_type_params(s, typarams);
     popen(s);
     fn print_arg(&ps s, &ast::arg x) {
-        ibox(s.s, indent_unit);
+        ibox(s, indent_unit);
         if (x.mode == ast::alias) {word(s.s, "&");}
         print_type(s, *x.ty);
         space(s.s);
         word(s.s, x.ident);
-        end(s.s);
+        end(s);
     }
     auto f = print_arg;
     commasep[ast::arg](s, inconsistent, decl.inputs, f);
@@ -993,11 +1015,11 @@ fn print_view_item(&ps s, &@ast::view_item item) {
             if (vec::len[@ast::meta_item](mta) > 0u) {
                 popen(s);
                 fn print_meta(&ps s, &@ast::meta_item item) {
-                    ibox(s.s, indent_unit);
+                    ibox(s, indent_unit);
                     word_space(s, item.node.name);
                     word_space(s, "=");
                     print_string(s, item.node.value);
-                    end(s.s);
+                    end(s);
                 }
                 auto f = print_meta;
                 commasep[@ast::meta_item](s, consistent, mta, f);
@@ -1033,8 +1055,8 @@ fn print_view_item(&ps s, &@ast::view_item item) {
         }
     }
     word(s.s, ";");
-    end(s.s); // end inner head-block
-    end(s.s); // end outer head-block
+    end(s); // end inner head-block
+    end(s); // end outer head-block
 }
 
 // FIXME: The fact that this builds up the table anew for every call is
@@ -1101,7 +1123,7 @@ fn print_string(&ps s, &str st) {
 fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
                &vec[ast::ty_arg] inputs, &@ast::ty output,
                &ast::controlflow cf) {
-    ibox(s.s, indent_unit);
+    ibox(s, indent_unit);
     if (proto == ast::proto_fn) {word(s.s, "fn");}
     else {word(s.s, "iter");}
     alt (id) {
@@ -1119,7 +1141,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {
         space(s.s);
-        ibox(s.s, indent_unit);
+        ibox(s, indent_unit);
         word_space(s, "->");
         alt (cf) {
             case (ast::return) {
@@ -1129,9 +1151,9 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
                 word_nbsp(s, "!");
             }
         }
-        end(s.s);
+        end(s);
     }
-    end(s.s);
+    end(s);
 }
 
 fn next_comment(&ps s) -> option::t[lexer::cmnt] {
@@ -1146,15 +1168,10 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
 }
 
 fn maybe_print_comment(&ps s, uint pos) {
-    auto first = true;
     while (true) {
         alt (next_comment(s)) {
             case (option::some[lexer::cmnt](?cmnt)) {
                 if (cmnt.pos < pos) {
-                    if (first) {
-                        first = false;
-                        break_offset(s.s, 0u, 0);
-                    }
                     print_comment(s, cmnt);
                     s.cur_cmnt += 1u;
                 } else { break; }
@@ -1178,7 +1195,8 @@ fn maybe_print_trailing_comment(&ps s, common::span span) {
 
             auto span_line = codemap::lookup_pos(cm, span.hi);
             auto comment_line = codemap::lookup_pos(cm, cmnt.pos);
-            if (span_line.line == comment_line.line) {
+            if (span.hi < cmnt.pos &&
+                span_line.line == comment_line.line) {
                 word(s.s, " ");
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
@@ -1200,6 +1218,12 @@ fn print_remaining_comments(&ps s) {
     }
 }
 
+fn in_cbox(&ps s) -> bool {
+    auto len = vec::len(s.boxes);
+    if (len == 0u) { ret false; }
+    ret s.boxes.(len-1u) == pp::consistent;
+}
+
 fn print_comment(&ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
         case (lexer::mixed) {
@@ -1208,24 +1232,28 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
             word(s.s, cmnt.lines.(0));
             zerobreak(s.s);
         }
+
         case (lexer::isolated) {
             hardbreak(s.s);
+            ibox(s, 0u);
             for (str line in cmnt.lines) {
-                zero_word(s.s, line);
+                word(s.s, line);
                 hardbreak(s.s);
             }
+            end(s);
         }
+
         case (lexer::trailing) {
             if (vec::len(cmnt.lines) == 1u) {
-                zero_word(s.s, cmnt.lines.(0));
+                word(s.s, cmnt.lines.(0));
                 hardbreak(s.s);
             } else {
-                ibox(s.s, 0u);
+                ibox(s, 0u);
                 for (str line in cmnt.lines) {
-                    zero_word(s.s, line);
+                    word(s.s, line);
                     hardbreak(s.s);
                 }
-                end(s.s);
+                end(s);
             }
         }
     }
