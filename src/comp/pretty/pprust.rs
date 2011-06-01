@@ -285,6 +285,7 @@ fn print_item(&ps s, &@ast::item item) {
         }
         case (ast::item_mod(?id,?_mod,_)) {
             head(s, "mod");
+            word_nbsp(s, id);
             bopen(s);
             for (@ast::item itm in _mod.items) {print_item(s, itm);}
             bclose(s, item.span);
@@ -481,11 +482,11 @@ fn print_expr(&ps s, &@ast::expr expr) {
 
     alt (expr.node) {
         case (ast::expr_vec(?exprs,?mut,_)) {
+            ibox(s.s, indent_unit);
+            word(s.s, "[");
             if (mut == ast::mut) {
                 word_nbsp(s, "mutable");
             }
-            ibox(s.s, indent_unit);
-            word(s.s, "[");
             commasep_exprs(s, inconsistent, exprs);
             word(s.s, "]");
             end(s.s);
