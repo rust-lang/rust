@@ -4,6 +4,14 @@
 // the result of the translation to LLVM -- while others, such as trans_fn,
 // trans_obj, and trans_item, are called only for the side effect of adding a
 // particular definition to the LLVM IR output we're producing.
+//
+// Hopefully useful general knowledge about trans:
+// 
+//   * There's no way to find out the ty::t type of a ValueRef.  Doing so
+//     would be "trying to get the eggs out of an omelette" (credit:
+//     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
+//     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
+//     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
 import std::int;
 import std::str;
