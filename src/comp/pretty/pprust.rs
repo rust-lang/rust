@@ -79,7 +79,7 @@ fn item_to_str(&@ast::item ty) -> str { be to_str(ty, print_item); }
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
     auto writer = io::string_writer();
     auto s = rust_printer(writer.get_writer());
-    print_fn(s, f.decl, name, params);
+    print_fn(s, f.decl, f.proto, name, params);
     eof(s.s);
     ret writer.get_str();
 }
@@ -279,7 +279,7 @@ fn print_item(&ps s, &@ast::item item) {
             end(s.s); // end the outer cbox
         }
         case (ast::item_fn(?name,?_fn,?typarams,_,_)) {
-            print_fn(s, _fn.decl, name, typarams);
+            print_fn(s, _fn.decl, _fn.proto, name, typarams);
             word(s.s, " ");
             print_block(s, _fn.body);
         }
@@ -312,7 +312,7 @@ fn print_item(&ps s, &@ast::item item) {
                     }
                     case (ast::native_item_fn(?id,?lname,?decl,
                                              ?typarams,_,_)) {
-                        print_fn(s, decl, id, typarams);
+                        print_fn(s, decl, ast::proto_fn, id, typarams);
                         end(s.s); // end head-ibox
                         alt (lname) {
                             case (option::none[str]) {}
@@ -388,7 +388,8 @@ fn print_item(&ps s, &@ast::item item) {
                 let vec[ast::ty_param] typarams = [];
                 hardbreak(s.s);
                 maybe_print_comment(s, meth.span.lo);
-                print_fn(s, meth.node.meth.decl, meth.node.ident, typarams);
+                print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
+                         meth.node.ident, typarams);
                 word(s.s, " ");
                 print_block(s, meth.node.meth.body);
             }
@@ -934,11 +935,15 @@ fn print_pat(&ps s, &@ast::pat pat) {
     }
 }
 
-fn print_fn(&ps s, ast::fn_decl decl, str name,
+fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
             vec[ast::ty_param] typarams) {
     alt (decl.purity) {
         case (ast::impure_fn) {
-            head(s, "fn");
+            if (proto == ast::proto_iter) {
+                head(s, "iter");
+            } else {
+                head(s, "fn");
+            }
         }
         case (_) {
             head(s, "pred");
