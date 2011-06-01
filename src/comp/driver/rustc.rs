@@ -103,9 +103,9 @@ fn compile_input(session::session sess,
     }
 
     auto llmod =
-        time[llvm::ModuleRef](time_passes, "translation",
-                              bind trans::trans_crate(sess, crate,
-                                                      ty_cx, output));
+        time[llvm::llvm::ModuleRef](time_passes, "translation",
+                                    bind trans::trans_crate(sess, crate,
+                                                            ty_cx, output));
 
     time[()](time_passes, "LLVM passes",
              bind link::write::run_passes(sess, llmod, output));

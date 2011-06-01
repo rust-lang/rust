@@ -1,10 +1,6 @@
 import middle::trans;
 
 import trans::decl_cdecl_fn;
-import trans::type_names;
-import trans::ModuleRef;
-import trans::TypeRef;
-import trans::ValueRef;
 
 import trans::T_f32;
 import trans::T_f64;
@@ -22,6 +18,11 @@ import trans::T_str;
 import trans::T_taskptr;
 import trans::T_tydesc;
 import trans::T_void;
+
+import lib::llvm::type_names;
+import lib::llvm::llvm::ModuleRef;
+import lib::llvm::llvm::ValueRef;
+import lib::llvm::llvm::TypeRef;
 
 type upcalls = rec(
     ValueRef grow_task,

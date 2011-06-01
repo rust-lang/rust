@@ -9,6 +9,7 @@ mod foo {
 }
 mod bar {
   import zed::baz;
+  export baz;
   mod foo {
     mod zed {
     }

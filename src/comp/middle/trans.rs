@@ -26,6 +26,7 @@ import util::common::istr;
 import util::common::new_def_hash;
 import util::common::new_str_hash;
 import util::common::local_rhs_span;
+import util::common::span;
 
 import lib::llvm::llvm;
 import lib::llvm::builder;
@@ -215,7 +216,7 @@ state type fn_ctxt = rec(
     hashmap[ty::t, derived_tydesc_info] derived_tydescs,
 
     // The source span where this function comes from, for error reporting.
-    ast::span sp,
+    span sp,
 
     // This function's enclosing local context.
     @local_ctxt lcx
@@ -273,7 +274,7 @@ state type block_ctxt = rec(
     mutable vec[cleanup] cleanups,
 
     // The source span where this block comes from, for error reporting.
-    ast::span sp,
+    span sp,
 
     // The function context for the function to which this block is attached.
     @fn_ctxt fcx
@@ -502,7 +503,7 @@ fn T_glue_fn(&type_names tn) -> TypeRef {
     ret t;
 }
 
-fn T_dtor(&@crate_ctxt ccx, &ast::span sp, TypeRef llself_ty) -> TypeRef {
+fn T_dtor(&@crate_ctxt ccx, &span sp, TypeRef llself_ty) -> TypeRef {
     ret type_of_fn_full(ccx, sp, ast::proto_fn, some[TypeRef](llself_ty),
                         vec::empty[ty::arg](), ty::mk_nil(ccx.tcx), 0u);
 }
@@ -693,7 +694,7 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 // return value was always meaningless in that case anyhow). Beware!
 //
 // TODO: Enforce via a predicate.
-fn type_of(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
+fn type_of(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
         cx.sess.span_err (sp,
           "type_of() called on a type with dynamic size: " +
@@ -704,7 +705,7 @@ fn type_of(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
     ret type_of_inner(cx, sp, t);
 }
 
-fn type_of_explicit_args(&@crate_ctxt cx, &ast::span sp,
+fn type_of_explicit_args(&@crate_ctxt cx, &span sp,
                          &vec[ty::arg] inputs) -> vec[TypeRef] {
     let vec[TypeRef] atys = [];
     for (ty::arg arg in inputs) {
@@ -735,7 +736,7 @@ fn type_of_explicit_args(&@crate_ctxt cx, &ast::span sp,
 //  - trans_args
 
 fn type_of_fn_full(&@crate_ctxt cx,
-                   &ast::span sp,
+                   &span sp,
                    ast::proto proto,
                    &option::t[TypeRef] obj_self,
                    &vec[ty::arg] inputs,
@@ -792,7 +793,7 @@ fn type_of_fn_full(&@crate_ctxt cx,
 }
 
 fn type_of_fn(&@crate_ctxt cx,
-              &ast::span sp,
+              &span sp,
               ast::proto proto,
               &vec[ty::arg] inputs,
               &ty::t output,
@@ -801,7 +802,7 @@ fn type_of_fn(&@crate_ctxt cx,
                         ty_param_count);
 }
 
-fn type_of_native_fn(&@crate_ctxt cx, &ast::span sp, ast::native_abi abi,
+fn type_of_native_fn(&@crate_ctxt cx, &span sp, ast::native_abi abi,
                      &vec[ty::arg] inputs,
                      &ty::t output,
                      uint ty_param_count) -> TypeRef {
@@ -819,7 +820,7 @@ fn type_of_native_fn(&@crate_ctxt cx, &ast::span sp, ast::native_abi abi,
     ret T_fn(atys, type_of_inner(cx, sp, output));
 }
 
-fn type_of_inner(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
+fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     // Check the cache.
     if (cx.lltypes.contains_key(t)) {
         ret cx.lltypes.get(t);
@@ -939,7 +940,7 @@ fn type_of_inner(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
     ret llty;
 }
 
-fn type_of_arg(@local_ctxt cx, &ast::span sp, &ty::arg arg) -> TypeRef {
+fn type_of_arg(@local_ctxt cx, &span sp, &ty::arg arg) -> TypeRef {
     alt (ty::struct(cx.ccx.tcx, arg.ty)) {
         case (ty::ty_param(_)) {
             if (arg.mode == ty::mo_alias) {
@@ -960,7 +961,7 @@ fn type_of_arg(@local_ctxt cx, &ast::span sp, &ty::arg arg) -> TypeRef {
     ret typ;
 }
 
-fn type_of_ty_param_count_and_ty(@local_ctxt lcx, &ast::span sp,
+fn type_of_ty_param_count_and_ty(@local_ctxt lcx, &span sp,
                                  &ty::ty_param_count_and_ty tpt) -> TypeRef {
     alt (ty::struct(lcx.ccx.tcx, tpt._1)) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
@@ -1284,7 +1285,7 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
 }
 
 // Computes the size of the data part of a non-dynamically-sized tag.
-fn static_size_of_tag(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> uint {
+fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
         log_err "dynamically sized type passed to static_size_of_tag()";
         fail;
@@ -1841,7 +1842,7 @@ fn set_glue_inlining(&@local_ctxt cx, ValueRef f, &ty::t t) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-fn declare_tydesc(&@local_ctxt cx, &ast::span sp, &ty::t t,
+fn declare_tydesc(&@local_ctxt cx, &span sp, &ty::t t,
                   vec[uint] ty_params) -> @tydesc_info {
     log "+++ declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
     auto ccx = cx.ccx;
@@ -1905,7 +1906,7 @@ fn declare_generic_glue(&@local_ctxt cx,
     ret llfn;
 }
 
-fn make_generic_glue(&@local_ctxt cx, &ast::span sp,
+fn make_generic_glue(&@local_ctxt cx, &span sp,
                      &ty::t t,
                      ValueRef llfn,
                      &make_generic_glue_helper_fn helper,
@@ -3356,7 +3357,7 @@ fn node_ann_type(&@crate_ctxt cx, &ast::ann a) -> ty::t {
     ret ty::ann_to_monotype(cx.tcx, a);
 }
 
-fn node_type(&@crate_ctxt cx, &ast::span sp, &ast::ann a) -> TypeRef {
+fn node_type(&@crate_ctxt cx, &span sp, &ast::ann a) -> TypeRef {
     ret type_of(cx, sp, node_ann_type(cx, a));
 }
 
@@ -4539,7 +4540,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
     }
 }
 
-fn trans_field(&@block_ctxt cx, &ast::span sp, ValueRef v, &ty::t t0,
+fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
                &ast::ident field, &ast::ann ann) -> lval_result {
 
     auto r = autoderef(cx, v, t0);
@@ -4580,7 +4581,7 @@ fn trans_field(&@block_ctxt cx, &ast::span sp, ValueRef v, &ty::t t0,
     fail;
 }
 
-fn trans_index(&@block_ctxt cx, &ast::span sp, &@ast::expr base,
+fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
                &@ast::expr idx, &ast::ann ann) -> lval_result {
 
     auto lv = trans_expr(cx, base);
@@ -4727,7 +4728,7 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
 }
 
 fn trans_bind_thunk(&@local_ctxt cx,
-                    &ast::span sp,
+                    &span sp,
                     &ty::t incoming_fty,
                     &ty::t outgoing_fty,
                     &vec[option::t[@ast::expr]] args,
@@ -6318,7 +6319,7 @@ fn recv_val(&@block_ctxt cx, ValueRef lhs, &@ast::expr rhs,
   wrapped inner object.
 
 */
-fn trans_anon_obj(&@block_ctxt cx, &ast::span sp,
+fn trans_anon_obj(&@block_ctxt cx, &span sp,
                   &ast::anon_obj anon_obj, 
                   &vec[ast::ty_param] ty_params,
                   &ast::obj_def_ids oid,
@@ -6669,7 +6670,7 @@ fn mk_standard_basic_blocks(ValueRef llfn) ->
 //  - new_fn_ctxt
 //  - trans_args
 
-fn new_fn_ctxt(@local_ctxt cx, &ast::span sp,
+fn new_fn_ctxt(@local_ctxt cx, &span sp,
                ValueRef llfndecl) -> @fn_ctxt {
 
     let ValueRef llretptr = llvm::LLVMGetParam(llfndecl, 0u);
@@ -6919,7 +6920,7 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(@local_ctxt cx, &ast::span sp, &ast::_fn f, ast::def_id fid,
+fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
             option::t[tup(TypeRef, ty::t)] ty_self,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
     auto llfndecl = cx.ccx.item_ids.get(fid);
@@ -7043,7 +7044,7 @@ fn trans_dtor(@local_ctxt cx,
 
 // trans_obj: creates an LLVM function that is the object constructor for the
 // object being translated.
-fn trans_obj(@local_ctxt cx, &ast::span sp, &ast::_obj ob, ast::def_id oid,
+fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
              &vec[ast::ty_param] ty_params, &ast::ann ann) {
     // To make a function, we have to create a function context and, inside
     // that, a number of block contexts for which code is generated.
@@ -7368,7 +7369,7 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
     ret llvm::LLVMGetElementType(pair_tys.(0));
 }
 
-fn decl_fn_and_pair(&@crate_ctxt ccx, &ast::span sp,
+fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
                     vec[str] path,
                     str flav,
                     vec[ast::ty_param] ty_params,
@@ -7434,7 +7435,7 @@ fn native_fn_ty_param_count(&@crate_ctxt cx, &ast::def_id id) -> uint {
     ret count;
 }
 
-fn native_fn_wrapper_type(&@crate_ctxt cx, &ast::span sp, uint ty_param_count,
+fn native_fn_wrapper_type(&@crate_ctxt cx, &span sp, uint ty_param_count,
                           ty::t x) -> TypeRef {
     alt (ty::struct(cx.tcx, x)) {
         case (ty::ty_native_fn(?abi, ?args, ?out)) {
@@ -7445,7 +7446,7 @@ fn native_fn_wrapper_type(&@crate_ctxt cx, &ast::span sp, uint ty_param_count,
 }
 
 fn decl_native_fn_and_pair(&@crate_ctxt ccx,
-                           &ast::span sp,
+                           &span sp,
                            vec[str] path,
                            str name,
                            &ast::ann ann,

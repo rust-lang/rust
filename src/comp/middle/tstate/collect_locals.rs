@@ -23,7 +23,6 @@ import front::ast::ident;
 import middle::walk::walk_crate;
 import middle::walk::walk_fn;
 import middle::walk::ast_visitor;
-import front::ast::span;
 
 import aux::fn_info;
 import aux::var_info;
@@ -31,6 +30,7 @@ import aux::crate_ctxt;
 
 import util::common::new_def_hash;
 import util::common::uistr;
+import util::common::span;
 
 type identifier = rec(ident name, def_id id, span sp);
 

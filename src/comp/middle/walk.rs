@@ -4,7 +4,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
-import front::ast::span;
+import util::common::span;
 
 // FIXME: Should visit patterns as well.
 type ast_visitor =
