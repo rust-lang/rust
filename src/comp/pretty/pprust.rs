@@ -18,6 +18,7 @@ import pp::cbox;
 import pp::ibox;
 import pp::word;
 import pp::huge_word;
+import pp::zero_word;
 import pp::space;
 import pp::zerobreak;
 import pp::hardbreak;
@@ -1191,14 +1192,21 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
             word(s.s, cmnt.lines.(0));
             zerobreak(s.s);
         }
-        case (_) {
+        case (lexer::isolated) {
+            hardbreak(s.s);
+            for (str line in cmnt.lines) {
+                zero_word(s.s, line);
+                hardbreak(s.s);
+            }
+        }
+        case (lexer::trailing) {
             if (vec::len(cmnt.lines) == 1u) {
-                word(s.s, cmnt.lines.(0));
+                zero_word(s.s, cmnt.lines.(0));
                 hardbreak(s.s);
             } else {
                 ibox(s.s, 0u);
                 for (str line in cmnt.lines) {
-                    word(s.s, line);
+                    zero_word(s.s, line);
                     hardbreak(s.s);
                 }
                 end(s.s);

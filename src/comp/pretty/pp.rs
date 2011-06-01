@@ -442,6 +442,16 @@ obj printer(io::writer out,
         }
     }
 
+    fn top() -> print_stack_elt {
+        auto n = vec::len(print_stack);
+        let print_stack_elt top =
+            rec(offset=0, pbreak=broken(inconsistent));;
+        if (n != 0u) {
+            top = print_stack.(n - 1u);
+        }
+        ret top;
+    }
+
     fn print(token x, int L) {
         log #fmt("print %s %d (remaining line space=%d)",
                  tok_str(x), L, space);
@@ -471,12 +481,7 @@ obj printer(io::writer out,
 
             case (BREAK(?b)) {
 
-                auto n = vec::len(print_stack);
-                let print_stack_elt top =
-                    rec(offset=0, pbreak=broken(inconsistent));;
-                if (n != 0u) {
-                    top = print_stack.(n - 1u);
-                }
+                auto top = self.top();
 
                 alt (top.pbreak) {
                     case (fits) {
@@ -551,6 +556,9 @@ fn word(printer p, str wrd) {
 }
 fn huge_word(printer p, str wrd) {
     p.pretty_print(STRING(wrd, 0xffff));
+}
+fn zero_word(printer p, str wrd) {
+    p.pretty_print(STRING(wrd, 0));
 }
 fn spaces(printer p, uint n) { break_offset(p, n, 0); }
 fn zerobreak(printer p) { spaces(p, 0u); }
