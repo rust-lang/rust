@@ -176,11 +176,11 @@ fi
 step_msg "making directories"
 for i in \
     doc \
-    rt rt/isaac rt/bigint rt/sync rt/test \
+    rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
     test/run-pass test/run-fail test/compile-fail \
-    test/bench/99-bottles test/bench/shootout
+    test/bench/99-bottles test/bench/shootout     
 do
     make_dir $i
 done

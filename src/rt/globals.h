@@ -1,9 +1,12 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#ifndef RUST_INTERNAL_H
+// these are defined in two files and GCC complains
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_CONSTANT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
+#endif
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -31,5 +34,17 @@ extern "C" {
 #else
 #error "Platform not supported."
 #endif
+
+#define CHECKED(call)                                               \
+    {                                                               \
+    int res = (call);                                               \
+        if(0 != res) {                                              \
+            fprintf(stderr,                                         \
+                    #call " failed in %s at line %d, result = %d "  \
+                    "(%s) \n",                                      \
+                    __FILE__, __LINE__, res, strerror(res));        \
+            abort();                                                \
+        }                                                           \
+    }                                                               
 
 #endif /* GLOBALS_H */

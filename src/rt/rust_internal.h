@@ -1,9 +1,12 @@
 #ifndef RUST_INTERNAL_H
 #define RUST_INTERNAL_H
 
+#ifndef GLOBALS_H
+// these are defined in two files, and GCC complains.
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_CONSTANT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
+#endif
 
 #define ERROR 0
 
@@ -202,8 +205,6 @@ struct rust_timer {
 };
 
 #include "rust_util.h"
-
-typedef void CDECL (*activate_glue_ty)(rust_task *);
 
 struct type_desc {
     // First part of type_desc is known to compiler.

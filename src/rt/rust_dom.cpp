@@ -1,6 +1,7 @@
 
 #include <stdarg.h>
 #include "rust_internal.h"
+#include "globals.h"
 
 rust_dom::rust_dom(rust_kernel *kernel,
     rust_message_queue *message_queue, rust_srv *srv,
@@ -44,13 +45,17 @@ rust_dom::~rust_dom() {
 #endif
 }
 
-extern "C" void new_rust_activate_glue(rust_task *)
-    asm("new_rust_activate_glue");
-
 void
 rust_dom::activate(rust_task *task) {
     curr_task = task;
-    new_rust_activate_glue(task);
+
+    context ctx;
+
+    task->ctx.next = &ctx;
+    DLOG(this, task, "descheduling...");
+    task->ctx.swap(ctx);
+    DLOG(this, task, "task has returned");
+
     curr_task = NULL;
 }
 
@@ -308,10 +313,14 @@ rust_dom::start_main_loop() {
                  scheduled_task->state->name,
                  scheduled_task->rust_sp);
 
+        /*
+          // These invariants are no longer valid, as rust_sp is not
+          // updated.
         I(this, scheduled_task->rust_sp >=
           (uintptr_t) &scheduled_task->stk->data[0]);
         I(this, scheduled_task->rust_sp < scheduled_task->stk->limit);
-
+        */
+        
         reap_dead_tasks();
     }
 

@@ -18,7 +18,7 @@ mod str;
 
 mod io;
 mod sys;
-mod _task;
+mod task;
 
 // Utility modules.
 
@@ -33,7 +33,7 @@ auth os_fs = unsafe;
 auth run = unsafe;
 auth str = unsafe;
 auth vec = unsafe;
-auth _task = unsafe;
+auth task = unsafe;
 
 auth dbg = unsafe;
 

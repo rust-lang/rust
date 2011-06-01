@@ -36,6 +36,8 @@ str_push_byte
 str_slice
 str_vec
 task_sleep
+task_yield
+task_join
 unsafe_vec_to_mut
 unsupervise
 upcall_clone_chan

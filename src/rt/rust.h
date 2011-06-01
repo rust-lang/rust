@@ -10,11 +10,14 @@
 // 'cdecl' ABI only means anything on i386
 #ifdef __WIN32__
 #define CDECL __cdecl
+#define FASTCALL __fastcall
 #else
 #define CDECL __attribute__((cdecl))
+#define FASTCALL __attribute__((fastcall))
 #endif
 #else
 #define CDECL
+#define FASTCALL
 #endif
 
 /*

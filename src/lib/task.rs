@@ -1,5 +1,6 @@
 native "rust" mod rustrt {
     fn task_sleep(uint time_in_us);
+    fn task_yield();
 }
 
 /**
@@ -9,6 +10,15 @@ native "rust" mod rustrt {
  */
 fn sleep(uint time_in_us) {
     ret rustrt::task_sleep(time_in_us);
+}
+
+fn yield() {
+    ret rustrt::task_yield();
+}
+
+fn join(task t) {
+    // TODO: figure out how to pass tasks to the runtime and call the builtin
+    // join.
 }
 
 // Local Variables:

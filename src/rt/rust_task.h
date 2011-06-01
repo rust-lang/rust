@@ -7,6 +7,8 @@
 
 #include "util/array_list.h"
 
+#include "context.h"
+
 struct
 rust_task : public maybe_proxy<rust_task>,
             public dom_owned<rust_task>
@@ -47,6 +49,8 @@ rust_task : public maybe_proxy<rust_task>,
 
     rust_handle<rust_task> *handle;
 
+    context ctx;
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
               rust_task_list *state,
@@ -83,14 +87,6 @@ rust_task : public maybe_proxy<rust_task>,
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
 
-    // Swap in some glue code to run when we have returned to the
-    // task's context (assuming we're the active task).
-    void run_after_return(size_t nargs, uintptr_t glue);
-
-    // Swap in some glue code to run when we're next activated
-    // (assuming we're the suspended task).
-    void run_on_resume(uintptr_t glue);
-
     // Save callee-saved registers and return to the main loop.
     void yield(size_t nargs);
 
@@ -114,8 +110,6 @@ rust_task : public maybe_proxy<rust_task>,
 
     rust_handle<rust_task> * get_handle();
 
-    uintptr_t get_fp();
-    uintptr_t get_previous_fp(uintptr_t fp);
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();
 };

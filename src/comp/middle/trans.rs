@@ -85,8 +85,7 @@ state obj namegen(mutable int i) {
 
 type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
 
-type glue_fns = rec(ValueRef yield_glue,
-                    ValueRef no_op_type_glue,
+type glue_fns = rec(ValueRef no_op_type_glue,
                     ValueRef vec_append_glue);
 
 type tydesc_info = rec(ty::t ty,
@@ -6454,13 +6453,12 @@ fn trans_spawn(&@block_ctxt cx,
     auto wrapper = mk_spawn_wrapper(bcx, func, args_ty);
     bcx = wrapper.bcx;
     auto llfnptr_i = bcx.build.PointerCast(wrapper.val, T_int());
-    // TODO: this next line might be necessary...
-    //llfnptr_i = bcx.build.Load(llfnptr_i);
 
     // And start the task
+    auto args_size = size_of(bcx, args_ty).val;
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task,
-                    llfnptr_i, llargs_i]);
+                    llfnptr_i, llargs_i, args_size]);
 
     auto task_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
     auto dropref = clean(bind drop_ty(_, new_task, task_ty));
@@ -8545,8 +8543,7 @@ fn vec_p0(&@block_ctxt bcx, ValueRef v) -> ValueRef {
 }
 
 fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
-    ret @rec(yield_glue = decl_glue(llmod, tn, abi::yield_glue_name()),
-             no_op_type_glue = decl_no_op_type_glue(llmod, tn),
+    ret @rec(no_op_type_glue = decl_no_op_type_glue(llmod, tn),
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
