@@ -22,6 +22,7 @@ Lindsey Kuper <lkuper@mozilla.com>
 Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
+Michael Sullivan <sully@msully.net>
 Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
 Paul Stansifer <paul.stansifer@gmail.com>
