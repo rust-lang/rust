@@ -131,7 +131,8 @@ fn mk_printer(io::writer out, uint linewidth) -> printer {
                 true,             // scan_stack_empty
                 0u,               // top
                 0u,               // bottom
-                print_stack);
+                print_stack,
+                0);
 }
 
 /*
@@ -236,7 +237,10 @@ obj printer(io::writer out,
             mutable uint bottom,           // index of bottom of scan_stack
 
             // stack of blocks-in-progress being flushed by print
-            mutable vec[print_stack_elt] print_stack
+            mutable vec[print_stack_elt] print_stack,
+
+            // buffered indentation to avoid writing trailing whitespace
+            mutable int pending_indentation
             ) {
 
 
@@ -430,16 +434,13 @@ obj printer(io::writer out,
     fn print_newline(int amount) {
         log #fmt("NEWLINE %d", amount);
         out.write_str("\n");
+        pending_indentation = 0;
         self.indent(amount);
     }
 
     fn indent(int amount) {
         log #fmt("INDENT %d", amount);
-        auto u = 0;
-        while (u < amount) {
-            out.write_str(" ");
-            u += 1;
-        }
+        pending_indentation += amount;
     }
 
     fn top() -> print_stack_elt {
@@ -450,6 +451,14 @@ obj printer(io::writer out,
             top = print_stack.(n - 1u);
         }
         ret top;
+    }
+
+    fn write_str(str s) {
+        while (pending_indentation > 0) {
+            out.write_str(" ");
+            pending_indentation -= 1;
+        }
+        out.write_str(s);
     }
 
     fn print(token x, int L) {
@@ -515,7 +524,7 @@ obj printer(io::writer out,
                 assert L == len;
                 // assert L <= space;
                 space -= len;
-                out.write_str(s);
+                self.write_str(s);
             }
 
             case (EOF) {
