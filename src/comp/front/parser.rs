@@ -771,6 +771,24 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         hi = p.get_hi_pos();
         expect(p, token::RPAREN);
         ret @spanned(lo, hi, e.node);
+
+    } else if  (p.peek() == token::LBRACE) {
+        auto blk = parse_block(p);
+        ret @spanned(blk.span.lo, blk.span.hi,
+                     ast::expr_block(blk, p.get_ann()));
+    } else if (eat_word(p, "if")) {
+        ret parse_if_expr(p);
+    } else if (eat_word(p, "for")) {
+        ret parse_for_expr(p);
+    } else if (eat_word(p, "while")) {
+        ret parse_while_expr(p);
+    } else if (eat_word(p, "do")) {
+        ret parse_do_while_expr(p);
+    } else if (eat_word(p, "alt")) {
+        ret parse_alt_expr(p);
+    } else if (eat_word(p, "spawn")) {
+        ret parse_spawn_expr(p);
+
     } else if (eat_word(p, "tup")) {
         fn parse_elt(&parser p) -> ast::elt {
             auto m = parse_mutability(p);
@@ -1415,31 +1433,9 @@ fn parse_expr(&parser p) -> @ast::expr {
 fn parse_expr_res(&parser p, restriction r) -> @ast::expr {
     auto old = p.get_restriction();
     p.restrict(r);
-    auto e = parse_expr_inner(p);
+    auto e = parse_assign_expr(p);
     p.restrict(old);
     ret e;
-}
-
-fn parse_expr_inner(&parser p) -> @ast::expr {
-    if (p.peek() == token::LBRACE) {
-        auto blk = parse_block(p);
-        ret @spanned(blk.span.lo, blk.span.hi,
-                     ast::expr_block(blk, p.get_ann()));
-    } else if (eat_word(p, "if")) {
-        ret parse_if_expr(p);
-    } else if (eat_word(p, "for")) {
-        ret parse_for_expr(p);
-    } else if (eat_word(p, "while")) {
-        ret parse_while_expr(p);
-    } else if (eat_word(p, "do")) {
-        ret parse_do_while_expr(p);
-    } else if (eat_word(p, "alt")) {
-        ret parse_alt_expr(p);
-    } else if (eat_word(p, "spawn")) {
-        ret parse_spawn_expr(p);
-    } else {
-        ret parse_assign_expr(p);
-    }
 }
 
 fn parse_initializer(&parser p) -> option::t[ast::initializer] {
