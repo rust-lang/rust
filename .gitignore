@@ -57,3 +57,5 @@ src/.DS_Store
 /dl/
 /stage1/
 *.bz2
+/doc/html
+/doc/latex
