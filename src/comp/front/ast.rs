@@ -182,7 +182,7 @@ tag unop {
 fn unop_to_str(unop op) -> str {
     alt (op) {
         case (box(?mt)) {
-            if (mt == mut) { ret "@mutable"; }
+            if (mt == mut) { ret "@mutable "; }
             ret "@";
         }
         case (deref) {ret "*";}
