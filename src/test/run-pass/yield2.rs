@@ -1,13 +1,13 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
+
+use std;
 
 fn main() {
   let int i = 0;
   while (i < 100) {
     i = i + 1;
-    log i;
-    yield;
+    log_err i;
+    std::task::yield();
   }
 }

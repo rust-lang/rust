@@ -187,8 +187,11 @@ rust_kernel::~rust_kernel() {
     KLOG("freeing handles");
 
     free_handles(_task_handles);
+    KLOG("..task handles freed");
     free_handles(_port_handles);
+    KLOG("..port handles freed");
     free_handles(_dom_handles);
+    KLOG("..dom handles freed");
 
     KLOG("freeing queues");
 
@@ -214,6 +217,7 @@ rust_kernel::free_handles(hash_map<T*, rust_handle<T>* > &map) {
     T* key;
     rust_handle<T> *value;
     while (map.pop(&key, &value)) {
+        KLOG("...freeing " PTR, value);
         delete value;
     }
 }

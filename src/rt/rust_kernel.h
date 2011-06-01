@@ -1,3 +1,4 @@
+// -*- c++ -*-
 #ifndef RUST_KERNEL_H
 #define RUST_KERNEL_H
 

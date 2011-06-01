@@ -27,11 +27,12 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \
-              rt/test/rust_test_util.cpp
+              rt/test/rust_test_util.cpp \
+              rt/arch/i386/context.cpp \
 
-RUNTIME_LL := rt/new_exit.ll rt/vec_append.ll
+RUNTIME_LL := rt/vec_append.ll
 
-RUNTIME_S := rt/activate_glue.s rt/yield_glue.s
+RUNTIME_S := rt/arch/i386/_context.s
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
@@ -60,10 +61,12 @@ RUNTIME_HDR := rt/globals.h \
                rt/memory.h \
                rt/test/rust_test_harness.h \
                rt/test/rust_test_runtime.h \
-               rt/test/rust_test_util.h
+               rt/test/rust_test_util.h \
+               rt/arch/i386/context.h \
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
-RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
+RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
+                -I $(S)src/rt/arch/i386
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
 RUNTIME_LIBS := $(CFG_GCCISH_POST_LIB_FLAGS)
 

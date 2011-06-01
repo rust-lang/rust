@@ -93,9 +93,13 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
+    /*
     uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};
     dom->root_task->start(main_fn,
                           (uintptr_t)&main_args, sizeof(main_args));
+    */
+    dom->root_task->start(main_fn,
+                          (uintptr_t)args->args, sizeof(args->args));
 
     int ret = dom->start_main_loop();
     delete args;

@@ -22,8 +22,8 @@ lock_and_signal::lock_and_signal() {
 
 #else
 lock_and_signal::lock_and_signal() {
-    pthread_cond_init(&_cond, NULL);
-    pthread_mutex_init(&_mutex, NULL);
+    CHECKED(pthread_cond_init(&_cond, NULL));
+    CHECKED(pthread_mutex_init(&_mutex, NULL));
 }
 #endif
 
@@ -31,8 +31,8 @@ lock_and_signal::~lock_and_signal() {
 #if defined(__WIN32__)
     CloseHandle(_event);
 #else
-    pthread_cond_destroy(&_cond);
-    pthread_mutex_destroy(&_mutex);
+    CHECKED(pthread_cond_destroy(&_cond));
+    CHECKED(pthread_mutex_destroy(&_mutex));
 #endif
 }
 
@@ -40,7 +40,7 @@ void lock_and_signal::lock() {
 #if defined(__WIN32__)
     EnterCriticalSection(&_cs);
 #else
-    pthread_mutex_lock(&_mutex);
+    CHECKED(pthread_mutex_lock(&_mutex));
 #endif
 }
 
@@ -48,7 +48,7 @@ void lock_and_signal::unlock() {
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
 #else
-    pthread_mutex_unlock(&_mutex);
+    CHECKED(pthread_mutex_unlock(&_mutex));
 #endif
 }
 
@@ -66,14 +66,14 @@ void lock_and_signal::timed_wait(size_t timeout_in_ns) {
     EnterCriticalSection(&_cs);
 #else
     if (timeout_in_ns == 0) {
-        pthread_cond_wait(&_cond, &_mutex);
+        CHECKED(pthread_cond_wait(&_cond, &_mutex));
     } else {
         timeval time_val;
         gettimeofday(&time_val, NULL);
         timespec time_spec;
         time_spec.tv_sec = time_val.tv_sec + 0;
         time_spec.tv_nsec = time_val.tv_usec * 1000 + timeout_in_ns;
-        pthread_cond_timedwait(&_cond, &_mutex, &time_spec);
+        CHECKED(pthread_cond_timedwait(&_cond, &_mutex, &time_spec));
     }
 #endif
 }
@@ -85,7 +85,7 @@ void lock_and_signal::signal() {
 #if defined(__WIN32__)
     SetEvent(_event);
 #else
-    pthread_cond_signal(&_cond);
+    CHECKED(pthread_cond_signal(&_cond));
 #endif
 }
 
@@ -96,7 +96,7 @@ void lock_and_signal::signal_all() {
 #if defined(__WIN32__)
     SetEvent(_event);
 #else
-    pthread_cond_broadcast(&_cond);
+    CHECKED(pthread_cond_broadcast(&_cond));
 #endif
 }
 

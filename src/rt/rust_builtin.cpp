@@ -354,6 +354,16 @@ task_sleep(rust_task *task, size_t time_in_us) {
     upcall_sleep(task, time_in_us);
 }
 
+extern "C" CDECL void
+task_yield(rust_task *task) {
+    task->yield(1);
+}
+
+extern "C" CDECL void
+task_join(rust_task *task, rust_task *join_task) {
+    // TODO
+}
+
 /* Debug builtins for std.dbg. */
 
 static void

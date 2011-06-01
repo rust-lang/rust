@@ -462,11 +462,22 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     return task;
 }
 
+// TODO: This is copied from rust_task.cpp. Both copies should be moved to a
+// common location.
+static uintptr_t
+align_down(uintptr_t sp)
+{
+    // There is no platform we care about that needs more than a
+    // 16-byte alignment.
+    return sp & ~(16 - 1);
+}
+
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
                   uintptr_t spawnee_fn,
-                  uintptr_t args) {
+                  uintptr_t args,
+                  size_t args_sz) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
@@ -478,7 +489,14 @@ upcall_start_task(rust_task *spawner,
 
     // we used to be generating this tuple in rustc, but it's easier to do it
     // here.
-    uintptr_t start_args[] = {0, 0, 0, args};
+    //
+    // The args tuple is stack-allocated. We need to move it over to the new
+    // stack.
+    task->rust_sp -= args_sz;
+    memcpy((void*)task->rust_sp, (void*)args, args_sz);
+    uintptr_t start_args[] = {0, 0, 0, task->rust_sp};
+    
+    task->rust_sp = align_down(task->rust_sp);
     
     task->start(spawnee_fn, (uintptr_t)start_args, sizeof(start_args));
     return task;

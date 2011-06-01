@@ -8,6 +8,8 @@
 #include <execinfo.h>
 #endif
 
+#include "globals.h"
+
 // Stacks
 
 // FIXME (issue #151): This should be 0x300; the change here is for
@@ -50,30 +52,6 @@ del_stk(rust_dom *dom, stk_seg *stk)
 size_t const n_callee_saves = 4;
 size_t const callee_save_fp = 0;
 
-static uintptr_t
-align_down(uintptr_t sp)
-{
-    // There is no platform we care about that needs more than a
-    // 16-byte alignment.
-    return sp & ~(16 - 1);
-}
-
-static uintptr_t*
-align_down(uintptr_t* sp)
-{
-    return (uintptr_t*) align_down((uintptr_t)sp);
-}
-
-
-static void
-make_aligned_room_for_bytes(uintptr_t*& sp, size_t n)
-{
-    uintptr_t tmp = (uintptr_t) sp;
-    tmp = align_down(tmp - n) + n;
-    sp = (uintptr_t*) tmp;
-}
-
-
 rust_task::rust_task(rust_dom *dom, rust_task_list *state,
                      rust_task *spawner, const char *name) :
     maybe_proxy<rust_task>(this),
@@ -94,6 +72,7 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     handle(NULL)
 {
     LOGPTR(dom, "new task", (uintptr_t)this);
+    DLOG(dom, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
     if (spawner == NULL) {
         ref_count = 0;
@@ -135,6 +114,42 @@ rust_task::~rust_task()
 
 extern "C" void rust_new_exit_task_glue();
 
+struct spawn_args {
+    rust_task *task;
+    uintptr_t a3;
+    uintptr_t a4;
+    void (*FASTCALL f)(int *, rust_task *, 
+                       uintptr_t, uintptr_t);
+};
+
+// TODO: rewrite this in LLVM assembly so we can be sure the calling
+// conventions will match.
+extern "C" CDECL
+void task_start_wrapper(spawn_args *a)
+{
+    rust_task *task = a->task;
+    int rval = 42;
+    
+    // This is used by the context switching code. LLVM generates fastcall
+    // functions, but ucontext needs cdecl functions. This massages the
+    // calling conventions into the right form.
+    a->f(&rval, task, a->a3, a->a4);
+
+    LOG(task, task, "task exited with value %d", rval);
+
+    // TODO: the old exit glue does some magical argument copying stuff. This
+    // is probably still needed.
+
+    // This is duplicated from upcall_exit, which is probably dead code by
+    // now.
+    LOG(task, task, "task ref_count: %d", task->ref_count);
+    A(task->dom, task->ref_count >= 0,
+      "Task ref_count should not be negative on exit!");
+    task->die();
+    task->notify_tasks_waiting_to_join();
+    task->yield(1);
+}
+
 void
 rust_task::start(uintptr_t spawnee_fn,
                  uintptr_t args,
@@ -142,54 +157,23 @@ rust_task::start(uintptr_t spawnee_fn,
 {
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
-    // Set sp to last uintptr_t-sized cell of segment
-    rust_sp -= sizeof(uintptr_t);
+    I(dom, stk->data != NULL);
 
-    // Begin synthesizing the exit_task_glue frame. We will return to
-    // exit_task_glue and it is responsible for calling the user code
-    // and passing the value returned by the user to the system
-    // exit routine.
-    uintptr_t *spp = (uintptr_t *)rust_sp;
+    char *sp = (char *)stk->limit;
 
-    uintptr_t dummy_ret = (uintptr_t) spp--;
+    sp -= sizeof(spawn_args);
 
-    uintptr_t args_size = callsz - 3*sizeof(uintptr_t);
-    uintptr_t frame_size = args_size + 4*sizeof(uintptr_t);
+    spawn_args *a = (spawn_args *)sp;
 
+    a->task = this;
+    a->a3 = 0xca11ab1e;
+    a->a4 = args;
+    void **f = (void **)&a->f;
+    *f = (void *)spawnee_fn;
 
-    // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
-    // instruction in the caller*. This means that the address at which the
-    // word before retpc is pushed must always be 16-byte aligned.
-    //
-    // see: "Mac OS X ABI Function Call Guide"
+    ctx.call((void *)task_start_wrapper, a, sp);
 
-    make_aligned_room_for_bytes(spp, frame_size - sizeof(uintptr_t));
-
-    // Copy args from spawner to spawnee.
-    uintptr_t *src = (uintptr_t *)args;
-    src += 1;                  // spawn-call output slot
-    src += 1;                  // spawn-call task slot
-    src += 1;                  // spawn-call closure-or-obj slot
-
-    *spp-- = (uintptr_t) *src;       // vec
-    *spp-- = (uintptr_t) 0x0;        // closure-or-obj
-    *spp-- = (uintptr_t) this;       // task
-    *spp-- = (uintptr_t) dummy_ret;  // output address
-
-    I(dom, spp == align_down(spp));
-    *spp-- = (uintptr_t) (uintptr_t) spawnee_fn;
-
-    *spp-- = (uintptr_t) 0x0;        // retp
-
-    *spp-- = (uintptr_t) rust_new_exit_task_glue;
-
-    for (size_t j = 0; j < n_callee_saves; ++j) {
-        *spp-- = (uintptr_t)NULL;
-    }
-
-    // Back up one, we overshot where sp should be.
-    rust_sp = (uintptr_t) (spp+1);
-
+    yield_timer.reset(0);
     transition(&dom->newborn_tasks, &dom->running_tasks);
 }
 
@@ -201,112 +185,6 @@ rust_task::grow(size_t n_frame_bytes)
     // the presence of non-word-aligned pointers.
     abort();
 
-#if 0
-    stk_seg *old_stk = this->stk;
-    uintptr_t old_top = (uintptr_t) old_stk->limit;
-    uintptr_t old_bottom = (uintptr_t) &old_stk->data[0];
-    uintptr_t rust_sp_disp = old_top - this->rust_sp;
-    size_t ssz = old_top - old_bottom;
-    DLOG(dom, task, "upcall_grow_task(%" PRIdPTR
-         "), old size %" PRIdPTR " bytes (old lim: 0x%" PRIxPTR ")",
-         n_frame_bytes, ssz, old_top);
-    ssz *= 2;
-    if (ssz < n_frame_bytes)
-        ssz = n_frame_bytes;
-    ssz = next_power_of_two(ssz);
-
-    DLOG(dom, task, "upcall_grow_task growing stk 0x%"
-         PRIxPTR " to %d bytes", old_stk, ssz);
-
-    stk_seg *nstk = new_stk(dom, ssz);
-    uintptr_t new_top = (uintptr_t) &nstk->data[ssz];
-    size_t n_copy = old_top - old_bottom;
-    DLOG(dom, task,
-         "copying %d bytes of stack from [0x%" PRIxPTR ", 0x%" PRIxPTR "]"
-         " to [0x%" PRIxPTR ", 0x%" PRIxPTR "]",
-         n_copy,
-         old_bottom, old_bottom + n_copy,
-         new_top - n_copy, new_top);
-
-    VALGRIND_MAKE_MEM_DEFINED((void*)old_bottom, n_copy);
-    memcpy((void*)(new_top - n_copy), (void*)old_bottom, n_copy);
-
-    nstk->limit = new_top;
-    this->stk = nstk;
-    this->rust_sp = new_top - rust_sp_disp;
-
-    DLOG(dom, task, "processing relocations");
-
-    // FIXME (issue #32): this is the most ridiculously crude
-    // relocation scheme ever. Try actually, you know, writing out
-    // reloc descriptors?
-    size_t n_relocs = 0;
-    for (uintptr_t* p = (uintptr_t*)(new_top - n_copy);
-         p < (uintptr_t*)new_top; ++p) {
-        if (old_bottom <= *p && *p < old_top) {
-            //DLOG(dom, mem, "relocating pointer 0x%" PRIxPTR
-            //        " by %d bytes", *p, (new_top - old_top));
-            n_relocs++;
-            *p += (new_top - old_top);
-        }
-    }
-    DLOG(dom, task, "processed %d relocations", n_relocs);
-    del_stk(dom, old_stk);
-    LOGPTR(dom, "grown stk limit", new_top);
-#endif
-}
-
-void
-push_onto_thread_stack(uintptr_t &sp, uintptr_t value)
-{
-    asm("xchgl %0, %%esp\n"
-        "push %2\n"
-        "xchgl %0, %%esp\n"
-        : "=r" (sp)
-        : "0" (sp), "r" (value)
-        : "eax");
-}
-
-void
-rust_task::run_after_return(size_t nargs, uintptr_t glue)
-{
-    // This is only safe to call if we're the currently-running task.
-    check_active();
-
-    uintptr_t sp = runtime_sp;
-
-    // The compiler reserves nargs + 1 word for oldsp on the stack and
-    // then aligns it.
-    sp = align_down(sp - nargs * sizeof(uintptr_t));
-
-    uintptr_t *retpc = ((uintptr_t *) sp) - 1;
-    DLOG(dom, task,
-         "run_after_return: overwriting retpc=0x%" PRIxPTR
-         " @ runtime_sp=0x%" PRIxPTR
-         " with glue=0x%" PRIxPTR,
-         *retpc, sp, glue);
-
-    // Move the current return address (which points into rust code)
-    // onto the rust stack and pretend we just called into the glue.
-    push_onto_thread_stack(rust_sp, *retpc);
-    *retpc = glue;
-}
-
-void
-rust_task::run_on_resume(uintptr_t glue)
-{
-    // This is only safe to call if we're suspended.
-    check_suspended();
-
-    // Inject glue as resume address in the suspended frame.
-    uintptr_t* rsp = (uintptr_t*) rust_sp;
-    rsp += n_callee_saves;
-    DLOG(dom, task,
-             "run_on_resume: overwriting retpc=0x%" PRIxPTR
-             " @ rust_sp=0x%" PRIxPTR
-             " with glue=0x%" PRIxPTR,
-             *rsp, rsp, glue);
-    *rsp = glue;
 }
 
 void
@@ -314,20 +192,17 @@ rust_task::yield(size_t nargs) {
     yield(nargs, 0);
 }
 
-extern "C" void new_rust_yield_glue(void) asm("new_rust_yield_glue");
-
 void
 rust_task::yield(size_t nargs, size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
-    yield_timer.reset(time_in_us);
-    run_after_return(nargs, (uintptr_t) new_rust_yield_glue);
-}
 
-static inline uintptr_t
-get_callee_save_fp(uintptr_t *top_of_callee_saves)
-{
-    return top_of_callee_saves[n_callee_saves - (callee_save_fp + 1)];
+    // TODO: what is nargs for, and is it safe to ignore?
+
+    yield_timer.reset(time_in_us);
+
+    // Return to the scheduler.
+    ctx.next->swap(ctx);
 }
 
 void
@@ -408,20 +283,6 @@ rust_task::notify_tasks_waiting_to_join() {
             }
         }
     }
-}
-
-uintptr_t
-rust_task::get_fp() {
-    // sp in any suspended task points to the last callee-saved reg on
-    // the task stack.
-    return get_callee_save_fp((uintptr_t*)rust_sp);
-}
-
-uintptr_t
-rust_task::get_previous_fp(uintptr_t fp) {
-    // FIXME: terribly X86-specific.
-    // *fp == previous_fp.
-    return *((uintptr_t*)fp);
 }
 
 frame_glue_fns*
@@ -548,10 +409,10 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(dom, state == src);
     DLOG(dom, task,
-             "task %s " PTR " state change '%s' -> '%s'",
-             name, (uintptr_t)this, src->name, dst->name);
+         "task %s " PTR " state change '%s' -> '%s' while in '%s'",
+         name, (uintptr_t)this, src->name, dst->name, state->name);
+    I(dom, state == src);
     src->remove(this);
     dst->append(this);
     state = dst;
