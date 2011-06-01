@@ -28,6 +28,8 @@ type ast_visitor =
         fn (&@ast::stmt s)              visit_stmt_post,
         fn (&ast::arm a)                visit_arm_pre,
         fn (&ast::arm a)                visit_arm_post,
+        fn (&@ast::pat p)               visit_pat_pre,
+        fn (&@ast::pat p)               visit_pat_post,
         fn (&@ast::decl d)              visit_decl_pre,
         fn (&@ast::decl d)              visit_decl_post,
         fn (&@ast::expr e)              visit_expr_pre,
@@ -193,6 +195,7 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
 }
 
 fn walk_pat(&ast_visitor v, &@ast::pat p) {
+    v.visit_pat_pre(p);
     alt (p.node) {
         case (ast::pat_tag(?path, ?children, _)) {
             for (@ast::ty tp in path.node.types) {
@@ -204,6 +207,7 @@ fn walk_pat(&ast_visitor v, &@ast::pat p) {
         }
         case (_) {}
     }
+    v.visit_pat_post(p);
 }
 
 fn walk_native_mod(&ast_visitor v, &ast::native_mod nm) {
@@ -500,6 +504,7 @@ fn def_visit_method(&@ast::method m) { }
 fn def_visit_block(&ast::block b) { }
 fn def_visit_stmt(&@ast::stmt s) { }
 fn def_visit_arm(&ast::arm a) { }
+fn def_visit_pat(&@ast::pat p) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
@@ -519,6 +524,7 @@ fn default_visitor() -> ast_visitor {
     auto d_visit_block = def_visit_block;
     auto d_visit_stmt = def_visit_stmt;
     auto d_visit_arm = def_visit_arm;
+    auto d_visit_pat = def_visit_pat;
     auto d_visit_decl = def_visit_decl;
     auto d_visit_expr = def_visit_expr;
     auto d_visit_ty = def_visit_ty;
@@ -544,6 +550,8 @@ fn default_visitor() -> ast_visitor {
             visit_stmt_post = d_visit_stmt,
             visit_arm_pre = d_visit_arm,
             visit_arm_post = d_visit_arm,
+            visit_pat_pre = d_visit_pat,
+            visit_pat_post = d_visit_pat,
             visit_decl_pre = d_visit_decl,
             visit_decl_post = d_visit_decl,
             visit_expr_pre = d_visit_expr,
