@@ -560,6 +560,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_call(?func,?args,_)) {
             print_expr(s, func);
+            zerobreak(s.s);
             popen(s);
             commasep_exprs(s, inconsistent, args);
             pclose(s);
