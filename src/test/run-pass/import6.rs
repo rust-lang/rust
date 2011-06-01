@@ -9,6 +9,7 @@ mod foo {
 }
 mod bar {
   import zed::baz;
+  export baz;
 }
 fn main(vec[str] args) {
   baz();

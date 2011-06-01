@@ -438,20 +438,40 @@ tag native_item_ {
 }
 
 fn is_exported(ident i, _mod m) -> bool {
-    auto count = 0;
+    auto nonlocal = true;
+    for (@ast::item it in m.items) {
+        if (item_ident(it) == i) {
+            nonlocal = false;
+        }
+        alt (it.node) {
+            case (item_tag(_, ?variants, _, _, _)) {
+                for (variant v in variants) {
+                    if (v.node.name == i) {
+                        nonlocal = false;
+                    }
+                }
+            }
+            case (_) {}
+        }
+    }
+
+
+    auto count = 0u;
     for (@ast::view_item vi in m.view_items) {
         alt (vi.node) {
             case (ast::view_item_export(?id)) {
                 if (str::eq(i, id)) {
+                    // even if it's nonlocal (since it's explicit)
                     ret true;
                 }
-                count += 1;
+                count += 1u;
             }
             case (_) { /* fall through */ }
         }
     }
-    // If there are no declared exports then everything is exported
-    if (count == 0) {
+    // If there are no declared exports then 
+    // everything not imported is exported
+    if (count == 0u && !nonlocal) {
         ret true;
     } else {
         ret false;

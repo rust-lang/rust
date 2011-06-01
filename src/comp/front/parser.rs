@@ -231,7 +231,7 @@ fn expect(&parser p, token::token t) {
     }
 }
 
-fn spanned[T](uint lo, uint hi, &T node) -> ast::spanned[T] {
+fn spanned[T](uint lo, uint hi, &T node) -> common::spanned[T] {
     ret rec(node=node, span=rec(lo=lo, hi=hi));
 }
 
@@ -1008,7 +1008,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
  * loading rust crates to process extensions.
  */
 
-fn expand_syntax_ext(&parser p, ast::span sp,
+fn expand_syntax_ext(&parser p, common::span sp,
                      &ast::path path, vec[@ast::expr] args,
                      option::t[str] body) -> ast::expr_ {
 

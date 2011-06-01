@@ -2,6 +2,9 @@
 // error-pattern: unresolved name
 mod circ1 {
   import circ1::*;
+  export f1;
+  export f2;
+  export common;
   fn f1() {
     log "f1";
   }
@@ -12,6 +15,9 @@ mod circ1 {
 
 mod circ2 {
   import circ2::*;
+  export f1;
+  export f2;
+  export common;
   fn f2() {
     log "f2";
   }

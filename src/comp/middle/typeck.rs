@@ -115,7 +115,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
 
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
+fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast::def_arg(?id)) {

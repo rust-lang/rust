@@ -3,6 +3,9 @@ import test2::*;
 
 mod circ1 {
   import circ1::*;
+  export f1;
+  export f2;
+  export common;
   fn f1() -> uint {
     ret 1u
   }
@@ -13,6 +16,9 @@ mod circ1 {
 
 mod circ2 {
   import circ2::*;
+  export f1;
+  export f2;
+  export common;
   fn f2() -> uint {
     ret 2u;
   }
