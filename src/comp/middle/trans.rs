@@ -1,3 +1,10 @@
+// trans.rs: Translate the completed AST to the LLVM IR.
+//
+// Some functions here, such as trans_block and trans_expr, return a value --
+// the result of the translation to LLVM -- while others, such as trans_fn,
+// trans_obj, and trans_item, are called only for the side effect of adding a
+// particular definition to the LLVM IR output we're producing.
+
 import std::int;
 import std::str;
 import std::uint;
@@ -130,8 +137,9 @@ type local_ctxt = rec(vec[str] path,
                       @crate_ctxt ccx);
 
 
-// The type used for llself.
-type self_vt = rec(ValueRef v, ty::t t);
+// Types used for llself.
+type val_self_pair = rec(ValueRef v, ty::t t);
+type ty_self_pair = tup(TypeRef, ty::t);
 
 // Function context.  Every LLVM function we create will have one of these.
 state type fn_ctxt = rec(
@@ -155,7 +163,7 @@ state type fn_ctxt = rec(
     // function, due to LLVM's quirks.
 
     // A block for all the function's allocas, so that LLVM will coalesce them
-    // into a single alloca.
+    // into a single alloca call.
     mutable BasicBlockRef llallocas, 
 
     // A block containing code that copies incoming arguments to space already
@@ -174,7 +182,7 @@ state type fn_ctxt = rec(
     // llallocas?
 
     // The 'self' object currently in use in this function, if there is one.
-    mutable option::t[self_vt] llself,
+    mutable option::t[val_self_pair] llself,
 
     // If this function is actually a iter, a block containing the code called
     // whenever the iter calls 'put'.
@@ -4668,9 +4676,9 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         }
         case (ast::expr_self_method(?ident, ?ann)) {
             alt (cx.fcx.llself) {
-                case (some(?s_vt)) {
-                    auto r =  s_vt.v;
-                    auto t =  s_vt.t;
+                case (some(?pair)) {
+                    auto r =  pair.v;
+                    auto t =  pair.t;
                     ret trans_field(cx, e.span, r, t, ident, ann);
                 }
                 case (_) {
@@ -6694,7 +6702,7 @@ fn new_fn_ctxt(@local_ctxt cx, &span sp,
              mutable llallocas=llbbs._0,
              mutable llcopyargs=llbbs._1,
              mutable llderivedtydescs=llbbs._2,
-             mutable llself=none[self_vt],
+             mutable llself=none[val_self_pair],
              mutable lliterbody=none[ValueRef],
              llargs=llargs,
              llobjfields=llobjfields,
@@ -6713,18 +6721,28 @@ fn new_fn_ctxt(@local_ctxt cx, &span sp,
 //  - new_fn_ctxt
 //  - trans_args
 
+// create_llargs_for_fn_args: Creates a mapping from incoming arguments to
+// allocas created for them.
+//
+// When we translate a function, we need to map its incoming arguments to the
+// spaces that have been created for them (by code in the llallocas field of
+// the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
+// field of the fn_ctxt with
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
                              ast::proto proto,
-                             option::t[tup(TypeRef, ty::t)] ty_self,
+                             option::t[ty_self_pair] ty_self,
                              ty::t ret_ty,
                              &vec[ast::arg] args,
                              &vec[ast::ty_param] ty_params) {
 
+    // Skip the implicit arguments 0, 1, and 2.  TODO: Pull out 3u and define
+    // it as a constant, since we're using it in several places in trans this
+    // way.
     auto arg_n = 3u;
 
     alt (ty_self) {
         case (some(?tt)) {
-            cx.llself = some[self_vt](rec(v = cx.llenv, t = tt._1));
+            cx.llself = some[val_self_pair](rec(v = cx.llenv, t = tt._1));
         }
         case (none) {
             auto i = 0u;
@@ -6738,6 +6756,9 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
         }
     }
 
+    // If the function is actually an iter, populate the lliterbody field of
+    // the function context with the ValueRef that we get from
+    // llvm::LLVMGetParam for the iter's body.
     if (proto == ast::proto_iter) {
         auto llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
         assert (llarg as int != 0);
@@ -6745,6 +6766,8 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
         arg_n += 1u;
     }
 
+    // Populate the llargs field of the function context with the ValueRefs
+    // that we get from llvm::LLVMGetParam for each argument.
     for (ast::arg arg in args) {
         auto llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
         assert (llarg as int != 0);
@@ -6758,17 +6781,17 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
 // were passed and whatnot. Apparently mem2reg will mop up.
 
 fn copy_any_self_to_alloca(@fn_ctxt fcx,
-                           option::t[tup(TypeRef, ty::t)] ty_self) {
+                           option::t[ty_self_pair] ty_self) {
 
     auto bcx = llallocas_block_ctxt(fcx);
 
     alt (fcx.llself) {
-        case (some(?s_vt)) {
+        case (some(?pair)) {
             alt (ty_self) {
-                case (some[tup(TypeRef, ty::t)](?tt)) {
+                case (some[ty_self_pair](?tt)) {
                     auto a = alloca(bcx, tt._0);
-                    bcx.build.Store(s_vt.v, a);
-                    fcx.llself = some[self_vt](rec(v = a, t = s_vt.t));
+                    bcx.build.Store(pair.v, a);
+                    fcx.llself = some[val_self_pair](rec(v = a, t = pair.t));
                 }
             }
         }
@@ -6842,7 +6865,7 @@ fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
     ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx.node_types, ann));
 }
 
-fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
+fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     auto bcx = llallocas_block_ctxt(fcx);
 
     let vec[ty::t] field_tys = [];
@@ -6921,7 +6944,7 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
-            option::t[tup(TypeRef, ty::t)] ty_self,
+            option::t[ty_self_pair] ty_self,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
     auto llfndecl = cx.ccx.item_ids.get(fid);
 
@@ -6949,6 +6972,10 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
     auto lltop = bcx.llbb;
 
     auto block_ty = node_ann_type(cx.ccx, f.body.node.a);
+    // This call to trans_block is the place where we bridge between
+    // translation calls that don't have a return value (trans_crate,
+    // trans_mod, trans_item, trans_obj, et cetera) and those that do
+    // (trans_block, trans_expr, et cetera).
     auto res = if (!ty::type_is_nil(cx.ccx.tcx, block_ty)
                    && !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
         trans_block(bcx, f.body, save_in(fcx.llretptr))
@@ -7007,7 +7034,7 @@ fn create_vtbl(@local_ctxt cx,
         cx.ccx.item_symbols.insert(m.node.id, s);
 
         trans_fn(mcx, m.span, m.node.meth, m.node.id,
-                 some[tup(TypeRef, ty::t)](tup(llself_ty, self_ty)),
+                 some[ty_self_pair](tup(llself_ty, self_ty)),
                  ty_params, m.node.ann);
         methods += [llfn];
     }
@@ -7036,7 +7063,7 @@ fn trans_dtor(@local_ctxt cx,
     cx.ccx.item_symbols.insert(dtor.node.id, s);
 
     trans_fn(dcx, dtor.span, dtor.node.meth, dtor.node.id,
-             some[tup(TypeRef, ty::t)](tup(llself_ty, self_ty)),
+             some[ty_self_pair](tup(llself_ty, self_ty)),
              ty_params, dtor.node.ann);
 
     ret llfn;
@@ -7065,7 +7092,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
 
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
     create_llargs_for_fn_args(fcx, ast::proto_fn,
-                              none[tup(TypeRef, ty::t)],
+                              none[ty_self_pair],
                               ret_ty_of_fn(ccx, ann),
                               fn_args, ty_params);
 
@@ -7232,7 +7259,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     auto fcx = new_fn_ctxt(cx, variant.span, llfndecl);
 
     create_llargs_for_fn_args(fcx, ast::proto_fn,
-                              none[tup(TypeRef, ty::t)],
+                              none[ty_self_pair],
                               ret_ty_of_fn(cx.ccx, variant.node.ann),
                               fn_args, ty_params);
 
@@ -7325,7 +7352,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
     alt (item.node) {
         case (ast::item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             auto sub_cx = extend_path(cx, name);
-            trans_fn(sub_cx, item.span, f, fid, none[tup(TypeRef, ty::t)],
+            trans_fn(sub_cx, item.span, f, fid, none[ty_self_pair],
                      tps, ann);
         }
         case (ast::item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
