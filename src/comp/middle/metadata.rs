@@ -716,11 +716,11 @@ fn encode_metadata(&@trans::crate_ctxt cx, &@ast::crate crate)
 }
 
 fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
-    auto llmeta = C_postr("");
-    if (cx.sess.get_opts().shared) {
-        llmeta = encode_metadata(cx, crate);
+    if (!cx.sess.get_opts().shared) {
+        ret;
     }
 
+    auto llmeta = encode_metadata(cx, crate);
     auto llconst = trans::C_struct([llmeta]);
     auto llglobal = llvm::LLVMAddGlobal(cx.llmod, trans::val_ty(llconst),
                                        str::buf("rust_metadata"));
