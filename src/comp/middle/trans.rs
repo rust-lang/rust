@@ -7436,9 +7436,12 @@ fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
 
     llvm::LLVMSetInitializer(gvar, pair);
     llvm::LLVMSetGlobalConstant(gvar, True);
-    llvm::LLVMSetVisibility(gvar,
-                           lib::llvm::LLVMProtectedVisibility
-                           as llvm::Visibility);
+
+    // FIXME: We should also hide the unexported pairs in crates.
+    if (!cx.sess.get_opts().shared) {
+        llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMInternalLinkage
+                             as llvm::Linkage);
+    }
 
     cx.item_ids.insert(id, llfn);
     cx.item_symbols.insert(id, ps);
