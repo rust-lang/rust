@@ -1185,31 +1185,24 @@ fn print_remaining_comments(&ps s) {
 
 fn print_comment(&ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
-        case (lexer::isolated) {
-            hardbreak(s.s);
-            for (str line in cmnt.lines) {
-                huge_word(s.s, line);
-                zerobreak(s.s);
-            }
-        }
-        case (lexer::trailing) {
-            if (vec::len(cmnt.lines) == 1u) {
-                word(s.s, cmnt.lines.(0));
-                hardbreak(s.s);
-            } else {
-                cbox(s.s, 0u);
-                for (str line in cmnt.lines) {
-                    huge_word(s.s, line);
-                    zerobreak(s.s);
-                }
-                end(s.s);
-            }
-        }
         case (lexer::mixed) {
             assert vec::len(cmnt.lines) == 1u;
             zerobreak(s.s);
             word(s.s, cmnt.lines.(0));
             zerobreak(s.s);
+        }
+        case (_) {
+            if (vec::len(cmnt.lines) == 1u) {
+                word(s.s, cmnt.lines.(0));
+                hardbreak(s.s);
+            } else {
+                ibox(s.s, 0u);
+                for (str line in cmnt.lines) {
+                    word(s.s, line);
+                    hardbreak(s.s);
+                }
+                end(s.s);
+            }
         }
     }
 }
