@@ -193,7 +193,7 @@ fn print_type(&ps s, &ast::ty ty) {
     alt (ty.node) {
         case (ast::ty_nil) {word(s.s, "()");}
         case (ast::ty_bool) {word(s.s, "bool");}
-        case (ast::ty_bot) {word(s.s, "_|_");}
+        case (ast::ty_bot) {word(s.s, "!");}
         case (ast::ty_int) {word(s.s, "int");}
         case (ast::ty_uint) {word(s.s, "uint");}
         case (ast::ty_float) {word(s.s, "float");}
