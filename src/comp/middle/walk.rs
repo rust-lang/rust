@@ -512,54 +512,36 @@ fn def_visit_fn(&ast::_fn f, &span sp, &ast::ident i, &ast::def_id d,
                 &ast::ann a) { }
 
 fn default_visitor() -> ast_visitor {
-
-    auto d_keep_going = def_keep_going;
-    auto d_want_crate_directives = def_want_crate_directives;
-    auto d_visit_crate = def_visit_crate;
-    auto d_visit_crate_directive = def_visit_crate_directive;
-    auto d_visit_view_item = def_visit_view_item;
-    auto d_visit_native_item = def_visit_native_item;
-    auto d_visit_item = def_visit_item;
-    auto d_visit_method = def_visit_method;
-    auto d_visit_block = def_visit_block;
-    auto d_visit_stmt = def_visit_stmt;
-    auto d_visit_arm = def_visit_arm;
-    auto d_visit_pat = def_visit_pat;
-    auto d_visit_decl = def_visit_decl;
-    auto d_visit_expr = def_visit_expr;
-    auto d_visit_ty = def_visit_ty;
-    auto d_visit_fn = def_visit_fn;
-
-    ret rec(keep_going = d_keep_going,
-            want_crate_directives = d_want_crate_directives,
-            visit_crate_pre = d_visit_crate,
-            visit_crate_post = d_visit_crate,
-            visit_crate_directive_pre = d_visit_crate_directive,
-            visit_crate_directive_post = d_visit_crate_directive,
-            visit_view_item_pre = d_visit_view_item,
-            visit_view_item_post = d_visit_view_item,
-            visit_native_item_pre = d_visit_native_item,
-            visit_native_item_post = d_visit_native_item,
-            visit_item_pre = d_visit_item,
-            visit_item_post = d_visit_item,
-            visit_method_pre = d_visit_method,
-            visit_method_post = d_visit_method,
-            visit_block_pre = d_visit_block,
-            visit_block_post = d_visit_block,
-            visit_stmt_pre = d_visit_stmt,
-            visit_stmt_post = d_visit_stmt,
-            visit_arm_pre = d_visit_arm,
-            visit_arm_post = d_visit_arm,
-            visit_pat_pre = d_visit_pat,
-            visit_pat_post = d_visit_pat,
-            visit_decl_pre = d_visit_decl,
-            visit_decl_post = d_visit_decl,
-            visit_expr_pre = d_visit_expr,
-            visit_expr_post = d_visit_expr,
-            visit_ty_pre = d_visit_ty,
-            visit_ty_post = d_visit_ty,
-            visit_fn_pre = d_visit_fn,
-            visit_fn_post = d_visit_fn);
+    ret rec(keep_going=def_keep_going,
+            want_crate_directives=def_want_crate_directives,
+            visit_crate_pre=def_visit_crate,
+            visit_crate_post=def_visit_crate,
+            visit_crate_directive_pre=def_visit_crate_directive,
+            visit_crate_directive_post=def_visit_crate_directive,
+            visit_view_item_pre=def_visit_view_item,
+            visit_view_item_post=def_visit_view_item,
+            visit_native_item_pre=def_visit_native_item,
+            visit_native_item_post=def_visit_native_item,
+            visit_item_pre=def_visit_item,
+            visit_item_post=def_visit_item,
+            visit_method_pre=def_visit_method,
+            visit_method_post=def_visit_method,
+            visit_block_pre=def_visit_block,
+            visit_block_post=def_visit_block,
+            visit_stmt_pre=def_visit_stmt,
+            visit_stmt_post=def_visit_stmt,
+            visit_arm_pre=def_visit_arm,
+            visit_arm_post=def_visit_arm,
+            visit_pat_pre=def_visit_pat,
+            visit_pat_post=def_visit_pat,
+            visit_decl_pre=def_visit_decl,
+            visit_decl_post=def_visit_decl,
+            visit_expr_pre=def_visit_expr,
+            visit_expr_post=def_visit_expr,
+            visit_ty_pre=def_visit_ty,
+            visit_ty_post=def_visit_ty,
+            visit_fn_pre=def_visit_fn,
+            visit_fn_post=def_visit_fn);
 }
 
 //
