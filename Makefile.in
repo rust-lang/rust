@@ -240,3 +240,4 @@ include $(CFG_SRC_DIR)/mk/snap.mk
 include $(CFG_SRC_DIR)/mk/clean.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
 include $(CFG_SRC_DIR)/mk/fuzzer.mk
+include $(CFG_SRC_DIR)/mk/pp.mk
