@@ -439,6 +439,15 @@ fn print_item(&ps s, &@ast::item item) {
             bclose(s, item.span);
         }
     }
+
+    // Print the node ID if necessary. TODO: type as well.
+    alt (s.mode) {
+        case (mo_identified) {
+            space(s.s);
+            synth_comment(s, uint::to_str(ty::item_ann(item).id, 10u));
+        }
+        case (_) { /* no-op */ }
+    }
 }
 
 fn print_stmt(&ps s, &ast::stmt st) {
@@ -473,6 +482,15 @@ fn print_block(&ps s, ast::block blk) {
         case (_) {}
     }
     bclose(s, blk.span);
+
+    // Print the node ID if necessary: TODO: type as well.
+    alt (s.mode) {
+        case (mo_identified) {
+            space(s.s);
+            synth_comment(s, "block " + uint::to_str(blk.node.a.id, 10u));
+        }
+        case (_) { /* no-op */ }
+    }
 }
 
 fn print_literal(&ps s, &@ast::lit lit) {
@@ -976,6 +994,15 @@ fn print_pat(&ps s, &@ast::pat pat) {
                 pclose(s);
             }
         }
+    }
+
+    // Print the node ID if necessary. TODO: type as well.
+    alt (s.mode) {
+        case (mo_identified) {
+            space(s.s);
+            synth_comment(s, uint::to_str(ty::pat_ann(pat).id, 10u));
+        }
+        case (_) { /* no-op */ }
     }
 }
 
