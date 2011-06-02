@@ -227,6 +227,16 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
+    alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
+        case (some[ty::cached_ty](ty::done(?ty))) { ret ty; } 
+        case (some[ty::cached_ty](ty::in_progress)) {
+            tcx.sess.span_err(ast_ty.span, "illegal recursive type "
+                + "(insert a tag in the cycle, if this is desired)");
+        }
+        case (none[ty::cached_ty]) { } /* go on */
+    }
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::in_progress);
+    
     fn ast_arg_to_arg(&ty::ctxt tcx,
                       &ty_getter getter,
                       &rec(ast::mode mode, @ast::ty ty) arg)
@@ -329,7 +339,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                 case (_)                   {
                     tcx.sess.span_err(ast_ty.span,
                        "found type name used as a variable");
-                    fail; }
+                }
             }
 
             cname = some(path_to_str(path));
@@ -360,6 +370,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::rename(tcx, typ, cname_str);
         }
     }
+
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::done(typ));
     ret typ;
 }
 

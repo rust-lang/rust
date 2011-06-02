@@ -61,6 +61,11 @@ type item_table = hashmap[ast::def_id,any_item];
 
 type mt = rec(t ty, ast::mutability mut);
 
+tag cached_ty {
+    in_progress;
+    done(t);
+}
+
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 type creader_cache = hashmap[tup(int,uint,uint),ty::t];
@@ -71,7 +76,8 @@ type ctxt = rec(@type_store ts,
                 item_table items,
                 type_cache tcache,
                 creader_cache rcache,
-                hashmap[t,str] short_names_cache);
+                hashmap[t,str] short_names_cache,
+                hashmap[@ast::ty,cached_ty] ast_ty_to_ty_cache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from unify::ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
@@ -245,7 +251,9 @@ fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
             tcache = tcache,
             rcache = mk_rcache(),
             short_names_cache =
-            map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty));
+            map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty),
+            ast_ty_to_ty_cache = 
+            map::mk_hashmap[@ast::ty,cached_ty](ast::hash_ty, ast::eq_ty));
 
     populate_type_store(cx);
     ret cx;
