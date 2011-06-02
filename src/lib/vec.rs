@@ -50,8 +50,9 @@ fn refcount[T](array[T] v) -> uint {
     if (r == dbg::const_refcount) {
         ret r;
     } else {
-        // -1 because calling this function incremented the refcount.
-        ret  r - 1u;
+        // -2 because calling this function and the native function both
+        // incremented the refcount.
+        ret  r - 2u;
     }
 }
 

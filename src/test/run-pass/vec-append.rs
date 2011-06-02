@@ -1,6 +1,3 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
 
 use std;
@@ -51,13 +48,13 @@ fn slow_growth2_helper(str s) {   // ref up: s
      * mumble, the existing str in the originally- shared vec.
      */
     let vec[str] v = [mumble]; // ref up: v, mumble
+    log vec::refcount[str](v);
     let acc a = acc(v);           // ref up: a, v
 
     log vec::refcount[str](v);
     assert (vec::refcount[str](v) == 2u);
 
     a.add(s);                     // ref up: mumble, s.  ref down: v
-
     log vec::refcount[str](v);
     log str::refcount(s);
     log str::refcount(mumble);
