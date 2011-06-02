@@ -394,28 +394,28 @@ fn main(vec[str] args) {
     if (ls) {
         front::creader::list_file_metadata(ifile, std::io::stdout());
         ret;
-    } else {
-        alt (output_file) {
-            case (none) {
-                let vec[str] parts = str::split(ifile, '.' as u8);
-                vec::pop[str](parts);
-                saved_out_filename = parts.(0);
-                alt (sopts.output_type) {
-                    case (link::output_type_none) { parts += ["pp"]; }
-                    case (link::output_type_bitcode) { parts += ["bc"]; }
-                    case (link::output_type_assembly) { parts += ["s"]; }
+    }
 
-                    // Object and exe output both use the '.o' extension here
-                    case (link::output_type_object) { parts += ["o"]; }
-                    case (link::output_type_exe) { parts += ["o"]; }
-                }
-                auto ofile = str::connect(parts, ".");
-                compile_input(sess, env, ifile, ofile);
+    alt (output_file) {
+        case (none) {
+            let vec[str] parts = str::split(ifile, '.' as u8);
+            vec::pop[str](parts);
+            saved_out_filename = parts.(0);
+            alt (sopts.output_type) {
+                case (link::output_type_none) { parts += ["pp"]; }
+                case (link::output_type_bitcode) { parts += ["bc"]; }
+                case (link::output_type_assembly) { parts += ["s"]; }
+
+                // Object and exe output both use the '.o' extension here
+                case (link::output_type_object) { parts += ["o"]; }
+                case (link::output_type_exe) { parts += ["o"]; }
             }
-            case (some(?ofile)) {
-                saved_out_filename = ofile;
-                compile_input(sess, env, ifile, ofile);
-            }
+            auto ofile = str::connect(parts, ".");
+            compile_input(sess, env, ifile, ofile);
+        }
+        case (some(?ofile)) {
+            saved_out_filename = ofile;
+            compile_input(sess, env, ifile, ofile);
         }
     }
 
