@@ -228,14 +228,14 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
 // corresponding to a definition ID:
 fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
-        case (some[ty::cached_ty](ty::done(?ty))) { ret ty; } 
-        case (some[ty::cached_ty](ty::in_progress)) {
+        case (some[option::t[ty::t]](some[ty::t](?ty))) { ret ty; } 
+        case (some[option::t[ty::t]](none)) {
             tcx.sess.span_err(ast_ty.span, "illegal recursive type "
                 + "(insert a tag in the cycle, if this is desired)");
         }
-        case (none[ty::cached_ty]) { } /* go on */
+        case (none[option::t[ty::t]]) { } /* go on */
     }
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::in_progress);
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, none[ty::t]);
     
     fn ast_arg_to_arg(&ty::ctxt tcx,
                       &ty_getter getter,
@@ -371,7 +371,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         }
     }
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::done(typ));
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
 }
 

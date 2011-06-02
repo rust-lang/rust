@@ -504,7 +504,7 @@ fn is_constraint_arg(@expr e) -> bool {
 }
 
 fn eq_ty(&@ty a, &@ty b) -> bool {
-    ret a == b;
+    ret std::box::ptr_eq(a,b);
 }
 
 fn hash_ty(&@ty t) -> uint {
