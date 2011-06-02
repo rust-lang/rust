@@ -338,6 +338,7 @@ tag ty_ {
 tag constr_arg_ {
     carg_base;
     carg_ident(ident);
+    carg_lit(@lit);
 }
 type constr_arg = spanned[constr_arg_];
 type constr_ = rec(path path, vec[@constr_arg] args);
