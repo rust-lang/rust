@@ -1,7 +1,3 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-
 obj foo(@mutable int x) {
   drop {
     log "running dtor";
