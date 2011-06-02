@@ -72,10 +72,12 @@ fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
 }
 
 fn ty_to_str(&ast::ty ty) -> str { be to_str(ty, print_type); }
-fn pat_to_str(&@ast::pat ty) -> str { be to_str(ty, print_pat); }
-fn expr_to_str(&@ast::expr ty) -> str { be to_str(ty, print_expr); }
-fn stmt_to_str(&ast::stmt ty) -> str { be to_str(ty, print_stmt); }
-fn item_to_str(&@ast::item ty) -> str { be to_str(ty, print_item); }
+fn pat_to_str(&@ast::pat pat) -> str { be to_str(pat, print_pat); }
+fn expr_to_str(&@ast::expr e) -> str { be to_str(e, print_expr); }
+fn stmt_to_str(&ast::stmt s) -> str { be to_str(s, print_stmt); }
+fn item_to_str(&@ast::item i) -> str { be to_str(i, print_item); }
+fn path_to_str(&ast::path p) -> str { be to_str(p, print_path); }
+fn lit_to_str(&@ast::lit l) -> str { be to_str(l, print_literal); }
 
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
     auto writer = io::string_writer();
