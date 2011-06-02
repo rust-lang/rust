@@ -2009,9 +2009,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 case (none) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
-                        // TODO: span_err
-                        scx.fcx.ccx.tcx.sess.err("ret; in function " +
-                            "returning non-nil");
+                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
+                          "ret; in function returning non-nil");
                     }
 
                     write::bot_ty(scx.fcx.ccx.tcx, a.id);
