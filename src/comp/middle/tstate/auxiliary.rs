@@ -8,35 +8,21 @@ import std::option::none;
 import std::option::some;
 import std::option::maybe;
 
-import front::ast;
-import front::ast::def;
-import front::ast::def_fn;
-import front::ast::_fn;
-import front::ast::def_obj_field;
-import front::ast::def_id;
-import front::ast::expr_path;
-import front::ast::ident;
-import front::ast::controlflow;
-import front::ast::ann;
-import front::ast::stmt;
-import front::ast::expr;
-import front::ast::block;
-import front::ast::block_;
-import front::ast::stmt_decl;
-import front::ast::stmt_expr;
-import front::ast::stmt_crate_directive;
-import front::ast::return;
-import front::ast::expr_field;
+import front::ast::*;
 
 import middle::ty::expr_ann;
 
 import util::common;
 import util::common::span;
+import util::common::respan;
 import util::common::log_block;
 import util::common::new_def_hash;
 import util::common::new_uint_hash;
 import util::common::log_expr_err;
 import util::common::uistr;
+import util::common::lit_eq;
+import pretty::pprust::path_to_str;
+import pretty::pprust::lit_to_str;
 
 import tstate::ann::pre_and_post;
 import tstate::ann::pre_and_post_state;
@@ -63,14 +49,51 @@ fn def_id_to_str(def_id d) -> str {
    ret (istr(d._0) + "," + istr(d._1));
 }
 
+fn comma_str(vec[@constr_arg] args) -> str {
+    auto res = "";
+    auto comma = false;
+    for (@constr_arg a in args) {
+        if (comma) {
+            res += ", ";
+        }
+        else {
+            comma = true;
+        }
+        alt (a.node) {
+            case (carg_base) {
+                res += "*";
+            }
+            case (carg_ident(?i)) {
+                res += i;
+            }
+            case (carg_lit(?l)) {
+                res += lit_to_str(l);
+            }
+        }
+    }
+    ret res;
+}
+
+fn constraint_to_str(ty::ctxt tcx, constr c) -> str {
+    alt (c.node) {
+        case (ninit(?i)) {
+            ret "init(" + i + " [" + tcx.sess.span_str(c.span) + "])";
+        }
+        case (npred(?p, ?args)) {
+            ret path_to_str(p) + "(" + comma_str(args) + ")"
+                + "[" + tcx.sess.span_str(c.span) + "]";
+        }
+    }
+}
+
 fn bitv_to_str(fn_ctxt fcx, bitv::t v) -> str {
   auto s = "";
   auto comma = false;
 
-  for each (@tup(def_id, var_info) p in fcx.enclosing.vars.items()) {
-      if (bitv::get(v, p._1.bit_num)) {
+  for (norm_constraint p in constraints(fcx)) {
+      if (bitv::get(v, p.bit_num)) {
           s += (if (comma) { ", " } else { comma = true; "" })
-               + p._1.name + " [" + fcx.ccx.tcx.sess.span_str(p._1.sp) + "]";
+              + aux::constraint_to_str(fcx.ccx.tcx, p.c);
       }
   }
   ret s;
@@ -84,19 +107,19 @@ fn first_difference_string(&fn_ctxt fcx, &bitv::t expected,
                            &bitv::t actual) -> str {
     let str s = "";
     auto done = false;
-    for each (@tup(def_id, var_info) p in fcx.enclosing.vars.items()) {
+    for (norm_constraint c in constraints(fcx)) {
         if (!done) {
-            if (bitv::get(expected, p._1.bit_num) &&
-                !bitv::get(actual, p._1.bit_num)) {
+            if (bitv::get(expected, c.bit_num) &&
+                !bitv::get(actual, c.bit_num)) {
                 
             /*
+              FIXME
               for fun, try either:
               * "ret s" after the assignment to s
               or
               * using break here
               */
-            s = (p._1.name + " ["
-                 + fcx.ccx.tcx.sess.span_str(p._1.sp) + "]");
+                s = constraint_to_str(fcx.ccx.tcx, c.c);
             
             done = true;
             }
@@ -183,14 +206,35 @@ fn print_idents(vec[ident] idents) -> () {
 /* data structures */
 
 /**********************************************************************/
-/* mapping from variable name (def_id is assumed to be for a local
-   variable in a given function) to bit number 
-   (also remembers the ident and span for error-logging purposes) */
-type var_info     = rec(uint bit_num,
-                        ident name,
-                        span sp);
-type fn_info      = rec(@std::map::hashmap[def_id, var_info] vars,
-                        controlflow cf);
+/* mapping from def_id to bit number and other data
+   (ident/path/span are there for error-logging purposes) */
+
+type pred_desc_ = rec(vec[@constr_arg] args,
+                      uint bit_num);
+type pred_desc = spanned[pred_desc_];
+tag constraint {
+    cinit(uint, span, ident);
+    cpred(path, vec[pred_desc]);
+}
+tag constr_ {
+    ninit(ident);
+    npred(path, vec[@constr_arg]);
+}
+type constr = spanned[constr_];
+type norm_constraint = rec(uint bit_num,
+                           constr c);
+/* "constraint occurrence" to disambiguate
+   between constraints. either "this is an
+   init constraint", or the list of args for
+   a pred. */
+tag constr_occ {
+    occ_init;
+    occ_args(vec[@constr_arg]);
+}
+   
+type constr_map = @std::map::hashmap[def_id, constraint];
+
+type fn_info  = rec(constr_map constrs, uint num_constraints, controlflow cf);
 
 /* mapping from node ID to typestate annotation */
 type node_ann_table = @vec[ts_ann];
@@ -418,8 +462,8 @@ fn fixed_point_states(&fn_ctxt fcx,
   }
 }
 
-fn num_locals(fn_info m) -> uint {
-  ret m.vars.size();
+fn num_constraints(fn_info m) -> uint {
+    ret m.num_constraints;
 }
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
@@ -461,6 +505,89 @@ fn ann_to_def_strict(&crate_ctxt ccx, &ann a) -> def {
 
 fn ann_to_def(&crate_ctxt ccx, &ann a) -> option::t[def] {
     ret ccx.tcx.def_map.find(a.id);
+}
+
+fn norm_a_constraint(&constraint c) -> vec[norm_constraint] {
+    alt (c) {
+        case (cinit(?n, ?sp, ?i)) {
+            ret [rec(bit_num=n, c=respan(sp, ninit(i)))];
+        }
+        case (cpred(?p, ?descs)) {
+            let vec[norm_constraint] res = [];
+            for (pred_desc pd in descs) {
+                vec::push(res, rec(bit_num=pd.node.bit_num,
+                  c=respan(pd.span, npred(p, pd.node.args))));
+            }
+            ret res;
+        }
+    }
+}
+
+// Tried to write this as an iterator, but I got a
+// non-exhaustive match in trans.
+fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
+    let vec[norm_constraint] res = [];
+    for each (@tup(def_id, constraint) p in
+              fcx.enclosing.constrs.items()) {
+        res += norm_a_constraint(p._1);
+    }
+    ret res;
+}
+
+fn arg_eq(@constr_arg a, @constr_arg b) -> bool {
+    alt (a.node) {
+        case (carg_base) {
+            alt (b.node) {
+                case (carg_base) {
+                    ret true;
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+        case (carg_ident(?s)) {
+            alt (b.node) {
+                case (carg_ident(?t)) {
+                    ret (s == t);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+        case (carg_lit(?l)) {
+            alt (b.node) {
+                case (carg_lit(?m)) {
+                    ret lit_eq(l, m);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+    }
+}
+
+fn args_eq(vec[@constr_arg] a, vec[@constr_arg] b) -> bool {
+    let uint i = 0u;
+    for (@constr_arg arg in a) {
+        if (!arg_eq(arg, b.(i))) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+fn match_args(&fn_ctxt fcx, vec[pred_desc] occs,
+              vec[@constr_arg] occ) -> uint {
+    for (pred_desc pd in occs) {
+        if (args_eq(pd.node.args, occ)) {
+            ret pd.node.bit_num;
+        }
+    }
+    fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");  
 }
 
 //

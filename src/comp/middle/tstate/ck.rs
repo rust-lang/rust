@@ -50,7 +50,7 @@ import aux::expr_prestate;
 import aux::expr_poststate;
 import aux::stmt_poststate;
 import aux::stmt_to_ann;
-import aux::num_locals;
+import aux::num_constraints;
 import aux::fixed_point_states;
 import aux::bitv_to_str;
 import aux::first_difference_string;
@@ -113,7 +113,7 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
 
 fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto enclosing = fcx.enclosing;
-    auto nv   = num_locals(enclosing);
+    auto nv   = num_constraints(enclosing);
     auto post = @empty_poststate(nv);
 
     fn do_one_(fn_ctxt fcx, &@stmt s, @poststate post) -> () {
@@ -134,7 +134,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto cf = fcx.enclosing.cf;
     /* Finally, check that the return value is initialized */
     if (f.proto == ast::proto_fn
-        && ! promises(*post, fcx.id, enclosing)
+        && ! promises(fcx, *post, fcx.id, aux::occ_init)
         && ! type_is_nil(fcx.ccx.tcx,
                          ret_ty_of_fn(fcx.ccx.tcx, a))
         && cf == return) {
@@ -147,8 +147,8 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     else if (cf == noreturn) {
         // check that this really always fails
         // the fcx.id bit means "returns" for a returning fn,
-        // "diverges" for a non-returning fn (I need to use the word
-        if (! promises(*post, fcx.id, enclosing)) {
+        // "diverges" for a non-returning fn
+        if (! promises(fcx, *post, fcx.id, aux::occ_init)) {
             fcx.ccx.tcx.sess.span_err(f.body.span,
               "In non-returning function " + fcx.name +
               ", some control paths may return to the caller");

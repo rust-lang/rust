@@ -9,6 +9,8 @@ import front::ast;
 import front::ast::ty;
 import front::ast::pat;
 import front::codemap::codemap;
+import front::ast::lit;
+import front::ast::path;
 import middle::walk;
 
 import std::io::stdout;
@@ -17,9 +19,11 @@ import std::io::string_writer;
 import pretty::pprust::print_block;
 import pretty::pprust::print_item;
 import pretty::pprust::print_expr;
+import pretty::pprust::print_path;
 import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
 import pretty::pprust::print_type;
+import pretty::pprust::print_literal;
 import pretty::pprust::mo_untyped;
 import pretty::pp::mk_printer;
 
@@ -224,6 +228,65 @@ fn local_rhs_span(&@ast::local l, &span def) -> span {
     alt (l.init) {
         case (some(?i)) { ret i.expr.span; }
         case (_) { ret def; }
+    }
+}
+
+fn lit_eq(&@ast::lit l, &@ast::lit m) -> bool {
+    alt (l.node) {
+        case (ast::lit_str(?s)) {
+            alt (m.node) {
+                case (ast::lit_str(?t)) { ret s == t; }
+                case (_)           { ret false; }
+            }
+        }
+        case (ast::lit_char(?c)) {
+            alt (m.node) {
+                case (ast::lit_char(?d)) { ret c == d; }
+                case (_)           { ret false; }
+            }
+        }
+        case (ast::lit_int(?i)) {
+            alt (m.node) {
+                case (ast::lit_int(?j)) { ret i == j; }
+                case (_)           { ret false; }
+            }
+        }
+        case (ast::lit_uint(?i)) {
+            alt (m.node) {
+                case (ast::lit_uint(?j)) { ret i == j; }
+                case (_)            { ret false; }
+            }
+        }
+        case (ast::lit_mach_int(_, ?i)) {
+            alt (m.node) {
+                case (ast::lit_mach_int(_, ?j)) { ret i == j; }
+                case (_)                    { ret false; }
+            }
+        }
+        case (ast::lit_float(?s)) {
+            alt (m.node) {
+                case (ast::lit_float(?t)) { ret s == t; }
+                case (_)             { ret false; }
+            }
+        }
+        case (ast::lit_mach_float(_,?s)) {
+            alt (m.node) {
+                case (ast::lit_mach_float(_,?t)) { ret s == t; }
+                case (_)               { ret false; }
+            }
+        }
+        case (ast::lit_nil) {
+            alt (m.node) {
+                case (ast::lit_nil) { ret true; }
+                case (_)       { ret false; }
+            }
+        }
+        case (ast::lit_bool(?b)) {
+            alt (m.node) {
+                case (ast::lit_bool(?c)) { ret b == c; }
+                case (_)            { ret false; }
+            }
+        }
     }
 }
 

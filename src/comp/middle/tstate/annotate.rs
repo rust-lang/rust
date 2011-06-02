@@ -51,7 +51,7 @@ import util::common::log_stmt;
 
 import aux::fn_info;
 import aux::fn_info_map;
-import aux::num_locals;
+import aux::num_constraints;
 import aux::get_fn_info;
 import aux::crate_ctxt;
 import aux::add_node;
@@ -109,19 +109,19 @@ fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
     }
 }
 
-fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f,
+fn visit_fn(&crate_ctxt ccx, uint num_constraints, &_fn f,
             &span sp, &ident i, &def_id d, &ann a) -> () {
     let vec[uint] node_ids_ = [];
     let @vec[uint] node_ids = @node_ids_;
     node_ids_in_fn(f, sp, i, d, a, node_ids);
-    init_vecs(ccx, node_ids, num_locals);
+    init_vecs(ccx, node_ids, num_constraints);
 }
 
 fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &span sp, &ident i,
                   &def_id f_id, &ann a)
     -> () {
     auto f_info = get_fn_info(ccx, f_id);
-    visit_fn(ccx, num_locals(f_info), f, sp, i, f_id, a);
+    visit_fn(ccx, num_constraints(f_info), f, sp, i, f_id, a);
 }
 
 fn annotate_crate(&crate_ctxt ccx, &crate crate) -> () {

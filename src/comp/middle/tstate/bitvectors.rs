@@ -3,15 +3,19 @@ import std::vec;
 import std::vec::len;
 import std::vec::slice;
 
-import front::ast;
-import front::ast::def_id;
-import front::ast::expr;
-import front::ast::ann;
+import front::ast::*;
 
 import aux::fn_ctxt;
 import aux::fn_info;
 import aux::log_bitv;
-import aux::num_locals;
+import aux::num_constraints;
+import aux::constr_occ;
+import aux::occ_init;
+import aux::occ_args;
+import aux::cinit;
+import aux::cpred;
+import aux::pred_desc;
+import aux::match_args;
 
 import tstate::aux::ann_to_ts_ann;
 import tstate::ann::pre_and_post;
@@ -30,14 +34,38 @@ import tstate::ann::clone;
 import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
 import tstate::ann::clear_in_poststate;
-             
-fn bit_num(def_id v, fn_info m) -> uint {
-  assert (m.vars.contains_key(v));
-  ret m.vars.get(v).bit_num;
+           
+fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
+    assert (fcx.enclosing.constrs.contains_key(v));
+    auto res = fcx.enclosing.constrs.get(v);
+    alt (o) {
+        case (occ_init) {
+            alt (res) {
+                case (cinit(?n,_,_)) {
+                    ret n;
+                }
+                case (_) {
+                    fcx.ccx.tcx.sess.bug("bit_num: asked for init constraint,"
+                                         + " found a pred constraint");
+                }
+            }
+        }
+        case (occ_args(?args)) {
+            alt (res) {
+                case (cpred(_, ?descs)) {
+                    ret match_args(fcx, descs, args);
+                }
+                case (_) {
+                    fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"
+                                         + " found an init constraint");
+                }
+            }
+        }
+    }
 }
 
-fn promises(&poststate p, def_id v, fn_info m) -> bool {
-    ret bitv::get(p, bit_num(v, m));
+fn promises(&fn_ctxt fcx, &poststate p, &def_id v, &constr_occ o) -> bool {
+    ret bitv::get(p, bit_num(fcx, v, o));
 }
 
 // Given a list of pres and posts for exprs e0 ... en,
@@ -46,7 +74,7 @@ fn promises(&poststate p, def_id v, fn_info m) -> bool {
 // precondition shouldn't include x.
 fn seq_preconds(fn_ctxt fcx, vec[pre_and_post] pps) -> precond {
   let uint sz = len[pre_and_post](pps);
-  let uint num_vars = num_locals(fcx.enclosing);
+  let uint num_vars = num_constraints(fcx.enclosing);
 
   if (sz >= 1u) {
     auto first = pps.(0);
@@ -115,33 +143,38 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
   ret intersect_postconds_go(bitv::clone(pcs.(0)), pcs);
 }
 
-fn gen(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+fn gen(&fn_ctxt fcx, &ann a, &def_id id, &constr_occ o) -> bool {
   log "gen";
-  assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
-  ret set_in_postcond(i, (ann_to_ts_ann(fcx.ccx, a)).conditions);
+  ret set_in_postcond(bit_num(fcx, id, o),
+                      (ann_to_ts_ann(fcx.ccx, a)).conditions);
 }
 
-fn declare_var(&fn_info enclosing, def_id id, prestate pre)
+fn declare_var(&fn_ctxt fcx, def_id id, prestate pre)
    -> prestate {
-    assert (enclosing.vars.contains_key(id));
-    let uint i = (enclosing.vars.get(id)).bit_num;
     auto res = clone(pre);
-    relax_prestate(i, res);
+    relax_prestate(bit_num(fcx, id, occ_init), res);
     ret res;
 }
 
-fn gen_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+fn gen_poststate(&fn_ctxt fcx, &ann a, &def_id id, &constr_occ o) -> bool {
   log "gen_poststate";
-  assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
-  ret set_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
+  ret set_in_poststate(bit_num(fcx, id, o),
+                       (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
-fn kill_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+fn kill_poststate(&fn_ctxt fcx, &ann a, def_id id, &constr_occ o) -> bool {
   log "kill_poststate";
-  assert (fcx.enclosing.vars.contains_key(id));
-  let uint i = (fcx.enclosing.vars.get(id)).bit_num;
-  ret clear_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
+  ret clear_in_poststate(bit_num(fcx, id, o),
+                         (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

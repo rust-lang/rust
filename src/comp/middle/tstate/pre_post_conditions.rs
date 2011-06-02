@@ -17,10 +17,11 @@ import tstate::ann::pp_clone;
 import tstate::ann::empty_prestate;
 import tstate::ann::set_precondition;
 import tstate::ann::set_postcondition;
-import aux::var_info;
 import aux::crate_ctxt;
 import aux::fn_ctxt;
-import aux::num_locals;
+import aux::occ_init;
+import aux::num_constraints;
+import aux::constraint;
 import aux::expr_pp;
 import aux::stmt_pp;
 import aux::block_pp;
@@ -93,8 +94,10 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
     alt (i.node) {
         case (item_const(?id, ?t, ?e, ?di, ?a)) {
             // make a fake fcx
-            auto fake_fcx = rec(enclosing=rec(vars=@new_def_hash[var_info](),
-                                              cf=return),
+            auto fake_fcx = rec(enclosing=
+                rec(constrs=@new_def_hash[constraint](),
+                    num_constraints=0u,
+                    cf=return),
                                 id=tup(0,0),
                                 name="",
                                 ccx=ccx);
@@ -136,7 +139,7 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, ann a) {
 
     auto enclosing = fcx.enclosing;
     auto fm        = fcx.ccx.fm;
-    auto nv        = num_locals(enclosing);
+    auto nv        = num_constraints(enclosing);
 
     fn do_one(fn_ctxt fcx, &@expr e) -> () {
         find_pre_post_expr(fcx, e);
@@ -163,7 +166,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
     log("222");
-    auto loop_precond = declare_var(fcx.enclosing, decl_lhs(d),
+    auto loop_precond = declare_var(fcx, decl_lhs(d),
       seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]));
     auto loop_postcond = intersect_postconds
         ([expr_postcond(fcx.ccx, index), block_postcond(fcx.ccx, body)]);
@@ -180,7 +183,7 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs,
                   auto p = expr_pp(fcx.ccx, rhs);
                   set_pre_and_post(fcx.ccx, larger_ann,
                                    p.precondition, p.postcondition);
-                  gen(fcx, larger_ann, d_id);
+                  gen(fcx, larger_ann, d_id, aux::occ_init);
               }
               case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_ann); }
           }
@@ -192,13 +195,13 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs,
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
     auto enclosing      = fcx.enclosing;
-    auto num_local_vars = num_locals(enclosing);
+    auto num_local_vars = num_constraints(enclosing);
 
     fn do_rand_(fn_ctxt fcx, &@expr e) -> () {
         find_pre_post_expr(fcx, e);
     }
     
-    log("find_pre_post_expr (num_locals =" +
+    log("find_pre_post_expr (num_constraints =" +
         uistr(num_local_vars) + "):");
     log_expr(*e);
 
@@ -233,7 +236,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto df = ann_to_def_strict(fcx.ccx, a);
             alt (df) {
                 case (def_local(?d_id)) {
-                    auto i = bit_num(d_id, enclosing);
+                    auto i = bit_num(fcx, d_id, occ_init);
                     require_and_preserve(i, res);
                 }
                 case (_) { /* nothing to check */ }
@@ -511,7 +514,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
     log_stmt(s);
 
     auto enclosing      = fcx.enclosing;
-    auto num_local_vars = num_locals(enclosing);
+    auto num_local_vars = num_constraints(enclosing);
     alt(s.node) {
         case(stmt_decl(?adecl, ?a)) {
             alt(adecl.node) {
@@ -526,11 +529,11 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
                             copy_pre_post(fcx.ccx, a, an_init.expr);
                             /*  log("gen (decl):");
                                 log_stmt(s); */
-                            gen(fcx, a, alocal.id); 
-                            /*                     log_err("for stmt");
-                                                   log_stmt(s);
-                                                   log_err("pp = ");
-                                                   log_pp(stmt_pp(s)); */
+                            gen(fcx, a, alocal.id, occ_init); 
+                            /*  log_err("for stmt");
+                                log_stmt(s);
+                                log_err("pp = ");
+                                log_pp(stmt_pp(s)); */
                         }
                         case(none) {
                             clear_pp(ann_to_ts_ann(fcx.ccx,
@@ -569,7 +572,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
 
      won't have a postcondition that says x is initialized, but that's ok.
      */
-    auto nv = num_locals(fcx.enclosing);
+    auto nv = num_constraints(fcx.enclosing);
 
     fn do_one_(fn_ctxt fcx, &@stmt s) -> () {
         find_pre_post_stmt(fcx, *s);

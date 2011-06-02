@@ -24,10 +24,9 @@ import tstate::ann::false_postcond;
 import tstate::ann::ts_ann;
 import tstate::ann::extend_prestate;
 import tstate::ann::extend_poststate;
-import aux::var_info;
 import aux::crate_ctxt;
 import aux::fn_ctxt;
-import aux::num_locals;
+import aux::num_constraints;
 import aux::expr_pp;
 import aux::stmt_pp;
 import aux::block_pp;
@@ -49,6 +48,7 @@ import aux::log_states;
 import aux::block_states;
 import aux::controlflow_expr;
 import aux::ann_to_def;
+import aux::occ_init;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -121,7 +121,7 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@decl d,
 fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a) -> bool {
   alt (ann_to_def(fcx.ccx, a_new_var)) {
       case (some(def_local(?loc))) {
-          ret gen_poststate(fcx, a, loc);
+          ret gen_poststate(fcx, a, loc, occ_init);
       }
       case (_) { ret false; }
   }
@@ -129,7 +129,7 @@ fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a) -> bool {
 
 fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
   auto changed = false;
-  auto num_local_vars = num_locals(fcx.enclosing);
+  auto num_local_vars = num_constraints(fcx.enclosing);
 
   /*  
   log_err("states:");
@@ -319,11 +319,14 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
     case (expr_ret(?maybe_ret_val, ?a)) {
         changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+        /* normally, everything is true if execution continues after
+           a ret expression (since execution never continues locally
+           after a ret expression */
         set_poststate_ann(fcx.ccx, a, false_postcond(num_local_vars));
         /* return from an always-failing function clears the return bit */
         alt (fcx.enclosing.cf) {
             case (noreturn) {
-                kill_poststate(fcx, a, fcx.id);
+                kill_poststate(fcx, a, fcx.id, occ_init);
             }
             case (_) {}
         }
@@ -578,7 +581,8 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                 (stmt_ann.states.poststate,
                                  expr_poststate(fcx.ccx, an_init.expr))
                                 || changed;
-                            changed = gen_poststate(fcx, a, alocal.id)
+                            changed = gen_poststate(fcx, a,
+                                                    alocal.id, occ_init)
                                 || changed;
                             log("Summary: stmt = ");
                             log_stmt(*s);
@@ -642,7 +646,7 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
   -> bool {
     
   auto changed = false;
-  auto num_local_vars = num_locals(fcx.enclosing);
+  auto num_local_vars = num_constraints(fcx.enclosing);
 
   /* First, set the pre-states and post-states for every expression */
   auto pres = pres0;
@@ -694,7 +698,7 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
 }
 
 fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
-    auto num_local_vars = num_locals(fcx.enclosing);
+    auto num_local_vars = num_constraints(fcx.enclosing);
     auto changed = find_pre_post_state_block(fcx,
                      empty_prestate(num_local_vars), f.body);
 
@@ -715,7 +719,7 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
                                   false_postcond(num_local_vars));
                 alt (fcx.enclosing.cf) {
                     case (noreturn) {
-                        kill_poststate(fcx, tailann, fcx.id);
+                        kill_poststate(fcx, tailann, fcx.id, occ_init);
                     }
                     case (_) { }
                 }
