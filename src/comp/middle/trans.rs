@@ -2396,11 +2396,11 @@ fn make_cmp_glue(&@block_ctxt cx,
 
             // If we hit == all the way through the minimum-shared-length
             // section, default to judging the relative sequence lengths.
-            r = compare_integral_values(scx,
-                                        vec_fill(scx, lhs),
-                                        vec_fill(scx, rhs),
-                                        false,
-                                        llop);
+            r = compare_numerical_values(scx,
+                                         vec_fill(scx, lhs),
+                                         vec_fill(scx, rhs),
+                                         unsigned_int,
+                                         llop);
             r.bcx.build.Store(r.val, flag);
 
         } else {
@@ -2486,88 +2486,111 @@ fn make_cmp_glue(&@block_ctxt cx,
     }
 }
 
+// Used only for creating scalar comparsion glue.
+tag numerical_type {
+    signed_int;
+    unsigned_int;
+    floating_point;
+}
+
 // A helper function to create scalar comparison glue.
 fn make_scalar_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
                         &ty::t t, ValueRef llop) {
-    if (ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
-        make_fp_cmp_glue(cx, lhs, rhs, t, llop);
-        ret;
-    }
+    // assert ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t);
 
-    if (ty::type_is_integral(cx.fcx.lcx.ccx.tcx, t) ||
-            ty::type_is_bool(cx.fcx.lcx.ccx.tcx, t)) {
-        make_integral_cmp_glue(cx, lhs, rhs, t, llop);
-        ret;
-    }
+    // In most cases, we need to know whether to do signed, unsigned, or float
+    // comparison.
+    auto f = bind make_numerical_cmp_glue(cx, lhs, rhs, _, llop);
 
-    if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t)) {
-        cx.build.Store(C_bool(true), cx.fcx.llretptr);
-        cx.build.RetVoid();
-        ret;
+    // FIXME: this could be a lot shorter if we could combine multiple cases
+    // of alt expressions (issue #449).
+    alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+        case (ty::ty_nil) { 
+            cx.build.Store(C_bool(true), cx.fcx.llretptr);
+            cx.build.RetVoid();
+        }
+        case (ty::ty_bool) { f(unsigned_int); }
+        case (ty::ty_int) { f(signed_int); }
+        case (ty::ty_float) { f(floating_point); }
+        case (ty::ty_uint) { f(unsigned_int); }
+        case (ty::ty_machine(_)) {
+            // Floating point machine types
+            if (ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
+                f(floating_point);
+            } 
+            // Signed, integral machine types
+            else if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)) {
+                f(signed_int);
+            }
+            // Unsigned, integral machine types
+            else { f(unsigned_int); }
+        }
+        case (ty::ty_char)  { f(unsigned_int); }
+        case (ty::ty_type)  {
+            trans_fail(cx, none[common::span],
+                       "attempt to compare values of type type");
+        }
+        case (ty::ty_native) {
+            trans_fail(cx, none[common::span],
+                       "attempt to compare values of type native");
+        }
+        case (_) {
+            // Should never get here, because t is scalar.
+            fail;
+        }
     }
-
-    trans_fail(cx, none[common::span],
-               "attempt to compare values of type " +
-               ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
 }
 
-// A helper function to create floating point comparison glue.
-fn make_fp_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
-                    &ty::t fptype, ValueRef llop) {
+// A helper function to compare numerical values.
+fn compare_numerical_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
+                            numerical_type nt, ValueRef llop) -> result {
+    auto eq_cmp; auto lt_cmp; auto le_cmp;
+    alt (nt) {
+        case (floating_point) {
+            eq_cmp = lib::llvm::LLVMRealUEQ;
+            lt_cmp = lib::llvm::LLVMRealULT;
+            le_cmp = lib::llvm::LLVMRealULE;
+        }
+        case (signed_int) {
+            eq_cmp = lib::llvm::LLVMIntEQ;
+            lt_cmp = lib::llvm::LLVMIntSLT;
+            le_cmp = lib::llvm::LLVMIntSLE;
+        }
+        case (unsigned_int) {
+            eq_cmp = lib::llvm::LLVMIntEQ;
+            lt_cmp = lib::llvm::LLVMIntULT;
+            le_cmp = lib::llvm::LLVMIntULE;
+        }
+    }
+    
+    // FIXME: This wouldn't be necessary if we could bind methods off of
+    // objects and therefore abstract over FCmp and ICmp (issue #435).  Then
+    // we could just write, e.g., "cmp_fn = bind cx.build.FCmp(_, _, _);" in
+    // the above, and "auto eq_result = cmp_fn(eq_cmp, lhs, rhs);" in the
+    // below.
+    fn generic_cmp(&@block_ctxt cx, numerical_type nt,
+                   uint op, ValueRef lhs, ValueRef rhs) -> ValueRef {
+        let ValueRef r;
+        if (nt == floating_point) {
+            r = cx.build.FCmp(op, lhs, rhs);
+        } else {
+            r = cx.build.ICmp(op, lhs, rhs);
+        }
+        ret r;
+    }
+
     auto last_cx = new_sub_block_ctxt(cx, "last");
 
     auto eq_cx = new_sub_block_ctxt(cx, "eq");
-    auto eq_result = eq_cx.build.FCmp(lib::llvm::LLVMRealUEQ, lhs, rhs);
+    auto eq_result = generic_cmp(eq_cx, nt, eq_cmp, lhs, rhs);
     eq_cx.build.Br(last_cx.llbb);
 
     auto lt_cx = new_sub_block_ctxt(cx, "lt");
-    auto lt_result = lt_cx.build.FCmp(lib::llvm::LLVMRealULT, lhs, rhs);
+    auto lt_result = generic_cmp(lt_cx, nt, lt_cmp, lhs, rhs);
     lt_cx.build.Br(last_cx.llbb);
 
     auto le_cx = new_sub_block_ctxt(cx, "le");
-    auto le_result = le_cx.build.FCmp(lib::llvm::LLVMRealULE, lhs, rhs);
-    le_cx.build.Br(last_cx.llbb);
-
-    auto unreach_cx = new_sub_block_ctxt(cx, "unreach");
-    unreach_cx.build.Unreachable();
-
-    auto llswitch = cx.build.Switch(llop, unreach_cx.llbb, 3u);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_eq), eq_cx.llbb);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_lt), lt_cx.llbb);
-    llvm::LLVMAddCase(llswitch, C_u8(abi::cmp_glue_op_le), le_cx.llbb);
-
-    auto last_result =
-        last_cx.build.Phi(T_i1(), [eq_result, lt_result, le_result],
-                          [eq_cx.llbb, lt_cx.llbb, le_cx.llbb]);
-    last_cx.build.Store(last_result, cx.fcx.llretptr);
-    last_cx.build.RetVoid();
-}
-
-// A helper function to compare integral values. This is used by both
-// `make_integral_cmp_glue` and `make_cmp_glue`.
-fn compare_integral_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
-                           bool signed, ValueRef llop) -> result {
-    auto lt_cmp; auto le_cmp;
-    if (signed) {
-        lt_cmp = lib::llvm::LLVMIntSLT;
-        le_cmp = lib::llvm::LLVMIntSLE;
-    } else {
-        lt_cmp = lib::llvm::LLVMIntULT;
-        le_cmp = lib::llvm::LLVMIntULE;
-    }
-
-    auto last_cx = new_sub_block_ctxt(cx, "last");
-
-    auto eq_cx = new_sub_block_ctxt(cx, "eq");
-    auto eq_result = eq_cx.build.ICmp(lib::llvm::LLVMIntEQ, lhs, rhs);
-    eq_cx.build.Br(last_cx.llbb);
-
-    auto lt_cx = new_sub_block_ctxt(cx, "lt");
-    auto lt_result = lt_cx.build.ICmp(lt_cmp, lhs, rhs);
-    lt_cx.build.Br(last_cx.llbb);
-
-    auto le_cx = new_sub_block_ctxt(cx, "le");
-    auto le_result = le_cx.build.ICmp(le_cmp, lhs, rhs);
+    auto le_result = generic_cmp(le_cx, nt, le_cmp, lhs, rhs);
     le_cx.build.Br(last_cx.llbb);
 
     auto unreach_cx = new_sub_block_ctxt(cx, "unreach");
@@ -2584,11 +2607,10 @@ fn compare_integral_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     ret res(last_cx, last_result);
 }
 
-// A helper function to create integral comparison glue.
-fn make_integral_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
-                          &ty::t intype, ValueRef llop) {
-    auto r = compare_integral_values(cx, lhs, rhs,
-        ty::type_is_signed(cx.fcx.lcx.ccx.tcx, intype), llop);
+// A helper function to create numerical comparison glue.
+fn make_numerical_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
+                          numerical_type nt, ValueRef llop) {
+    auto r = compare_numerical_values(cx, lhs, rhs, nt, llop);
     r.bcx.build.Store(r.val, r.bcx.fcx.llretptr);
     r.bcx.build.RetVoid();
 }
