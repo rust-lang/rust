@@ -15,6 +15,7 @@ export opt;
 export reqopt;
 export optopt;
 export optflag;
+export optflagopt;
 export optmulti;
 
 export getopts;
@@ -32,6 +33,7 @@ export opt_present;
 export opt_str;
 export opt_strs;
 export opt_maybe_str;
+export opt_default;
 
 tag name { long(str); short(char); }
 tag hasarg { yes; no; maybe; }
@@ -54,6 +56,9 @@ fn optopt(str name) -> opt {
 }
 fn optflag(str name) -> opt {
     ret rec(name=mkname(name), hasarg=no, occur=optional);
+}
+fn optflagopt(str name) -> opt {
+    ret rec(name=mkname(name), hasarg=maybe, occur=optional);
 }
 fn optmulti(str name) -> opt {
     ret rec(name=mkname(name), hasarg=yes, occur=multi);
@@ -270,6 +275,18 @@ fn opt_maybe_str(match m, str nm) -> option::t[str] {
         case (val(?s)) { some[str](s) }
         case (_) { none[str] }
     };
+}
+
+/// Returns none if the option was not present, `def` if the option was
+/// present but no argument was provided, and the argument if the option was
+/// present and an argument was provided.
+fn opt_default(match m, str nm, str def) -> option::t[str] {
+    auto vals = opt_vals(m, nm);
+    if (vec::len[optval](vals) == 0u) { ret none[str]; }
+    ret alt (vals.(0)) {
+        case (val(?s)) { some[str](s) }
+        case (_) { some[str](def) }
+    }
 }
 
 // Local Variables:
