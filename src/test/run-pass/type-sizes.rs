@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 
-import size_of = std::sys.rustrt.size_of;
+import size_of = std::sys::rustrt::size_of;
 
 use std;
 
