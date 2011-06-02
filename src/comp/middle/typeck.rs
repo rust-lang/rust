@@ -1128,8 +1128,8 @@ mod pushdown {
                 alt (struct(scx.fcx.ccx.tcx, expected)) {
                     case (ty::ty_tag(_, ?tps)) { tag_tps = tps; }
                     case (_) {
-                        log_err "tag pattern type not actually a tag?!";
-                        fail;
+                        scx.fcx.ccx.tcx.sess.span_err(pat.span,
+                          "Non-constructor used in a pattern");
                     }
                 }
 
