@@ -29,9 +29,15 @@ import std::getopts;
 import std::getopts::optopt;
 import std::getopts::optmulti;
 import std::getopts::optflag;
+import std::getopts::optflagopt;
 import std::getopts::opt_present;
 
 import back::link::output_type;
+
+tag pp_mode {
+    ppm_normal;
+    ppm_typed;
+}
 
 fn default_environment(session::session sess,
                        str argv0,
@@ -112,19 +118,20 @@ fn compile_input(session::session sess,
 }
 
 fn pretty_print_input(session::session sess, eval::env env, str input,
-                      bool typed) {
+                      pp_mode ppm) {
     auto def = tup(ast::local_crate, 0);
     auto p = front::parser::new_parser(sess, env, def, input, 0u, 0u);
     auto crate = front::parser::parse_crate_from_source_file(p);
 
     auto mode;
-    if (typed) {
-        auto def_map = resolve::resolve_crate(sess, crate);
-        auto ty_cx = ty::mk_ctxt(sess, def_map);
-        typeck::check_crate(ty_cx, crate);
-        mode = pprust::mo_typed(ty_cx);
-    } else {
-        mode = pprust::mo_untyped;
+    alt (ppm) {
+        case (ppm_typed) {
+            auto def_map = resolve::resolve_crate(sess, crate);
+            auto ty_cx = ty::mk_ctxt(sess, def_map);
+            typeck::check_crate(ty_cx, crate);
+            mode = pprust::mo_typed(ty_cx);
+        }
+        case (ppm_normal) { mode = pprust::mo_untyped; }
     }
 
     pprust::print_file(sess, crate.node.module, input, std::io::stdout(),
@@ -150,8 +157,7 @@ options:
     -o <filename>      write output to <filename>
     --glue             generate glue.bc file
     --shared           compile a shared-library crate
-    --pretty           pretty-print the input instead of compiling
-    --typed-pretty     pretty-print the input with types instead of compiling
+    --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
@@ -304,12 +310,20 @@ fn build_session(@session::options sopts) -> session::session {
     ret sess;
 }
 
+fn parse_pretty(session::session sess, &str name) -> pp_mode {
+    if (str::eq(name, "normal")) { ret ppm_normal; }
+    else if (str::eq(name, "typed")) { ret ppm_typed; }
+    else {
+        sess.err("argument to `pretty` must be either `normal` or `typed`");
+    }
+}
+
 fn main(vec[str] args) {
 
     auto opts = [optflag("h"), optflag("help"),
                  optflag("v"), optflag("version"),
                  optflag("glue"), optflag("emit-llvm"),
-                 optflag("pretty"), optflag("typed-pretty"),
+                 optflagopt("pretty"),
                  optflag("ls"), optflag("parse-only"),
                  optflag("O"), optopt("OptLevel"),
                  optflag("shared"), optmulti("L"),
@@ -365,13 +379,19 @@ fn main(vec[str] args) {
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
     auto env = default_environment(sess, binary, ifile);
-    auto pretty = opt_present(match, "pretty");
-    auto typed_pretty = opt_present(match, "typed-pretty");
+    auto pretty = option::map[str,pp_mode](bind parse_pretty(sess, _),
+        getopts::opt_default(match, "pretty", "normal"));
     auto ls = opt_present(match, "ls");
-    if (pretty || typed_pretty) {
-        pretty_print_input(sess, env, ifile, typed_pretty);
-        ret;
-    } else if (ls) {
+
+    alt (pretty) {
+        case (some[pp_mode](?ppm)) {
+            pretty_print_input(sess, env, ifile, ppm);
+            ret;
+        }
+        case (none[pp_mode]) { /* continue */ }
+    }
+
+    if (ls) {
         front::creader::list_file_metadata(ifile, std::io::stdout());
         ret;
     } else {
@@ -401,6 +421,8 @@ fn main(vec[str] args) {
 
     // If the user wants an exe generated we need to invoke
     // gcc to link the object file with some libs
+    //
+    // TODO: Factor this out of main.
     if (sopts.output_type == link::output_type_exe) {
 
         //FIXME: Should we make the 'stage3's variable here?
