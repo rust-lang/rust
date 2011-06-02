@@ -47,7 +47,7 @@ fn rust_printer(io::writer writer) -> ps {
              cm=option::none[codemap],
              comments=option::none[vec[lexer::cmnt]],
              mutable cur_cmnt=0u,
-             mutable boxes = boxes,
+             mutable boxes=boxes,
              mode=mo_untyped);
 }
 
