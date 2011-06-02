@@ -1,3 +1,4 @@
+import std::uint;
 import std::vec;
 import std::str;
 import std::io;
@@ -30,6 +31,7 @@ const uint default_columns = 78u;
 tag mode {
     mo_untyped;
     mo_typed(ty::ctxt);
+    mo_identified;
 }
 
 type ps = @rec(pp::printer s,
@@ -159,6 +161,16 @@ fn bclose(&ps s, common::span span) {
     break_offset(s.s, 1u, -(indent_unit as int));
     word(s.s, "}");
     end(s); // close the outer-box
+}
+
+// Synthesizes a comment that was not textually present in the original source
+// file.
+fn synth_comment(&ps s, str text) {
+    word(s.s, "/*");
+    space(s.s);
+    word(s.s, text);
+    space(s.s);
+    word(s.s, "*/");
 }
 
 fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op) {
@@ -503,6 +515,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
     alt (s.mode) {
         case (mo_untyped) { /* no-op */ }
         case (mo_typed(_)) { popen(s); }
+        case (mo_identified) { popen(s); }
     }
 
     alt (expr.node) {
@@ -844,7 +857,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
     }
 
-    // Print the type if necessary.
+    // Print the type or node ID if necessary.
     alt (s.mode) {
         case (mo_untyped) { /* no-op */ }
         case (mo_typed(?tcx)) {
@@ -852,6 +865,11 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word(s.s, "as");
             space(s.s);
             word(s.s, ty::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+            pclose(s);
+        }
+        case (mo_identified) {
+            space(s.s);
+            synth_comment(s, uint::to_str(ty::expr_ann(expr).id, 10u));
             pclose(s);
         }
     }
@@ -874,7 +892,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                 case (_) {
                     word_nbsp(s, "auto");
 
-                    // Print the type if necessary.
+                    // Print the type or node ID if necessary.
                     alt (s.mode) {
                         case (mo_untyped) { /* no-op */ }
                         case (mo_typed(?tcx)) {
@@ -882,6 +900,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                                 ty::ann_to_type(tcx.node_types, loc.ann);
                             word_space(s, ty::ty_to_str(tcx, lty));
                         }
+                        case (mo_identified) { /* no-op */ }
                     }
                 }
             }

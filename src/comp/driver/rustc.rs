@@ -37,6 +37,7 @@ import back::link::output_type;
 tag pp_mode {
     ppm_normal;
     ppm_typed;
+    ppm_identified;
 }
 
 fn default_environment(session::session sess,
@@ -132,6 +133,7 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
             mode = pprust::mo_typed(ty_cx);
         }
         case (ppm_normal) { mode = pprust::mo_untyped; }
+        case (ppm_identified) { mode = pprust::mo_identified; }
     }
 
     pprust::print_file(sess, crate.node.module, input, std::io::stdout(),
@@ -313,9 +315,10 @@ fn build_session(@session::options sopts) -> session::session {
 fn parse_pretty(session::session sess, &str name) -> pp_mode {
     if (str::eq(name, "normal")) { ret ppm_normal; }
     else if (str::eq(name, "typed")) { ret ppm_typed; }
-    else {
-        sess.err("argument to `pretty` must be either `normal` or `typed`");
-    }
+    else if (str::eq(name, "identified")) { ret ppm_identified; }
+
+    sess.err("argument to `pretty` must be one of `normal`, `typed`, or " +
+             "`identified`");
 }
 
 fn main(vec[str] args) {
