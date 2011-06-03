@@ -5121,8 +5121,6 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             ret res(bcx, pair_v);
         }
     }
-
-    fail; // sadly needed b/c the compiler doesn't know yet that unimpl fails
 }
 
 fn trans_arg_expr(&@block_ctxt cx,
@@ -5168,8 +5166,15 @@ fn trans_arg_expr(&@block_ctxt cx,
     if (arg.mode != ty::mo_alias) {
         bcx = take_ty(bcx, val, e_ty).bcx;
     }
-
-    if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
+    
+    if (ty::type_is_bot(cx.fcx.lcx.ccx.tcx, e_ty)) {
+        // For values of type _|_, we generate an
+        // "undef" value, as such a value should never
+        // be inspected. It's important for the value
+        // to have type lldestty0 (the callee's expected type).
+        val = llvm::LLVMGetUndef(lldestty0);
+    }
+    else if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
         if (arg.mode == ty::mo_val) {
             // FIXME: we'd prefer to use &&, but rustboot doesn't like it
