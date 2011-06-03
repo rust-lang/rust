@@ -1293,6 +1293,20 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
             case (ty::ty_vec(_)) {
                 ret ty::mk_imm_vec(ccx.tcx, ty::mk_nil(ccx.tcx));
             }
+            case (ty::ty_fn(_,_,_,_)) {
+                ret ty::mk_imm_tup(ccx.tcx, 
+                                   [ty::mk_imm_box(ccx.tcx, 
+                                                   ty::mk_nil(ccx.tcx)),
+                                    ty::mk_imm_box(ccx.tcx, 
+                                                   ty::mk_nil(ccx.tcx))]);
+            }
+            case (ty::ty_obj(_)) {
+                ret ty::mk_imm_tup(ccx.tcx, 
+                                   [ty::mk_imm_box(ccx.tcx, 
+                                                   ty::mk_nil(ccx.tcx)),
+                                    ty::mk_imm_box(ccx.tcx, 
+                                                   ty::mk_nil(ccx.tcx))]);
+            }
             case (_) { ret typ; }
         }
     }
