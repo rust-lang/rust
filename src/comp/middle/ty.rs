@@ -423,7 +423,6 @@ fn mk_mach(&ctxt cx, &util::common::ty_mach tm) -> t {
         case (ty_f32) { ret idx_f32; }
         case (ty_f64) { ret idx_f64; }
     }
-    fail;
 }
 
 fn mk_char(&ctxt cx) -> t    { ret idx_char; }
@@ -895,7 +894,6 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
         case (ty_obj(_))    { ret true; }
         case (_)            { ret false; }
     }
-    fail;
 }
 
 fn type_is_sequence(&ctxt cx, &t ty) -> bool {
@@ -904,14 +902,17 @@ fn type_is_sequence(&ctxt cx, &t ty) -> bool {
         case (ty_vec(_))    { ret true; }
         case (_)            { ret false; }
     }
-    fail;
 }
 
 fn sequence_element_type(&ctxt cx, &t ty) -> t {
     alt (struct(cx, ty)) {
         case (ty_str)      { ret mk_mach(cx, common::ty_u8); }
         case (ty_vec(?mt)) { ret mt.ty; }
+        // NB: This is not exhaustive.
     }
+
+    // FIXME: add sess.err or sess.span_err explaining failure (issue
+    // #444)
     fail;
 }
 
@@ -923,7 +924,6 @@ fn type_is_tup_like(&ctxt cx, &t ty) -> bool {
         case (ty_tag(_,_))  { ret true; }
         case (_)            { ret false; }
     }
-    fail;
 }
 
 fn get_element_type(&ctxt cx, &t ty, uint i) -> t {
@@ -935,7 +935,11 @@ fn get_element_type(&ctxt cx, &t ty, uint i) -> t {
         case (ty_rec(?flds)) {
             ret flds.(i).mt.ty;
         }
+        // NB: This is not exhaustive -- struct(cx, ty) could be a box or a
+        // tag.
     }
+
+    // FIXME: add sess.err or sess.span_err explaining failure (issue #444)
     fail;
 }
 
@@ -944,7 +948,6 @@ fn type_is_box(&ctxt cx, &t ty) -> bool {
         case (ty_box(_)) { ret true; }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_is_boxed(&ctxt cx, &t ty) -> bool {
@@ -957,7 +960,6 @@ fn type_is_boxed(&ctxt cx, &t ty) -> bool {
         case (ty_task) { ret true; }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_is_scalar(&ctxt cx, &t ty) -> bool {
@@ -973,9 +975,7 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
         case (ty_native) { ret true; }
         case (_) { ret false; }
     }
-    fail;
 }
-
 
 fn type_has_pointers(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
@@ -1017,7 +1017,6 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
         }
         case (_) { ret true; }
     }
-    fail;
 }
 
 
@@ -1028,7 +1027,6 @@ fn type_is_native(&ctxt cx, &t ty) -> bool {
         case (ty_native) { ret true; }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
@@ -1083,7 +1081,6 @@ fn type_is_integral(&ctxt cx, &t ty) -> bool {
         case (ty_char) { ret true; }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_is_fp(&ctxt cx, &t ty) -> bool {
@@ -1100,7 +1097,6 @@ fn type_is_fp(&ctxt cx, &t ty) -> bool {
         }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_is_signed(&ctxt cx, &t ty) -> bool {
@@ -1117,7 +1113,6 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
         }
         case (_) { ret false; }
     }
-    fail;
 }
 
 fn type_param(&ctxt cx, &t ty) -> option::t[uint] {
@@ -1656,7 +1651,6 @@ fn is_fn_ty(&ctxt cx, &t fty) -> bool {
         case (ty::ty_native_fn(_, _, _)) { ret true; }
         case (_) { ret false; }
     }
-    ret false;
 }
 
 
@@ -2642,9 +2636,6 @@ mod unify {
                 ret cx.handler.record_param(expected_id, actual);
             }
         }
-
-        // TODO: remove me once match-exhaustiveness checking works
-        fail;
     }
 
     // Performs type binding substitution.

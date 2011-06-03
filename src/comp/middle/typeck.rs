@@ -1578,8 +1578,6 @@ fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
         case (ast::lit_nil)                 { ret ty::mk_nil(ccx.tcx);  }
         case (ast::lit_bool(_))             { ret ty::mk_bool(ccx.tcx); }
     }
-
-    fail; // not reached
 }
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
