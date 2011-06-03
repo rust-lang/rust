@@ -1098,97 +1098,6 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
 // directly inside check_expr(). This results in a quadratic algorithm.
 
 mod pushdown {
-    // Push-down over typed patterns. Note that the pattern that you pass to
-    // this function must have been passed to check_pat() first.
-    //
-    // TODO: enforce this via a predicate.
-
-    fn pushdown_pat(&@stmt_ctxt scx, &ty::t expected, &@ast::pat pat) {
-        alt (pat.node) {
-            case (ast::pat_wild(?ann)) {
-                auto t = demand::simple(scx, pat.span, expected,
-                    ann_to_type(scx.fcx.ccx.tcx.node_types, ann));
-                write::ty_only_fixup(scx, ann.id, t);
-            }
-            case (ast::pat_lit(?lit, ?ann)) {
-                auto t = demand::simple(scx, pat.span, expected,
-                    ann_to_type(scx.fcx.ccx.tcx.node_types, ann));
-                write::ty_only_fixup(scx, ann.id, t);
-            }
-            case (ast::pat_bind(?id, ?did, ?ann)) {
-                auto t = demand::simple(scx, pat.span, expected,
-                    ann_to_type(scx.fcx.ccx.tcx.node_types, ann));
-                scx.fcx.locals.insert(did, t);
-                write::ty_only_fixup(scx, ann.id, t);
-            }
-            case (ast::pat_tag(?id, ?subpats, ?ann)) {
-                // Take the variant's type parameters out of the expected
-                // type.
-                auto tag_tps;
-                alt (struct(scx.fcx.ccx.tcx, expected)) {
-                    case (ty::ty_tag(_, ?tps)) { tag_tps = tps; }
-                    case (_) {
-                        scx.fcx.ccx.tcx.sess.span_err(pat.span,
-                          "Non-constructor used in a pattern");
-                    }
-                }
-
-                // Get the types of the arguments of the variant.
-
-                let vec[ty::t] tparams = [];
-                auto j = 0u;
-                auto actual_ty_params =
-                  ty::ann_to_type_params(scx.fcx.ccx.tcx.node_types, ann);
-
-                for (ty::t some_ty in tag_tps) {
-                    let ty::t t1 = some_ty;
-                    let ty::t t2 = actual_ty_params.(j);
-
-                    let ty::t res = demand::simple(scx, pat.span, t1, t2);
-
-                    vec::push(tparams, res);
-                    j += 1u;
-                }
-
-                auto arg_tys;
-                alt (scx.fcx.ccx.tcx.def_map.get(ann.id)) {
-                    case (ast::def_variant(_, ?vdefid)) {
-                        arg_tys = variant_arg_types(scx.fcx.ccx, pat.span,
-                                                    vdefid, tparams);
-                    }
-                }
-
-                auto i = 0u;
-                for (@ast::pat subpat in subpats) {
-                    pushdown_pat(scx, arg_tys.(i), subpat);
-                    i += 1u;
-                }
-
-                auto tps =
-                    ty::ann_to_type_params(scx.fcx.ccx.tcx.node_types, ann);
-                auto tt = ann_to_type(scx.fcx.ccx.tcx.node_types, ann);
-
-                let ty_param_substs_and_ty res_t = demand::full(scx, pat.span,
-                      expected, tt, tps, NO_AUTODEREF);
-
-                auto ty_params_subst = ty::ann_to_ty_param_substs_opt_and_ty
-                    (scx.fcx.ccx.tcx.node_types, ann);
-
-                auto ty_params_opt;
-                alt (ty_params_subst._0) {
-                    case (none) {
-                        ty_params_opt = none[vec[ty::t]];
-                    }
-                    case (some(?tps)) {
-                        ty_params_opt = some[vec[ty::t]](tag_tps);
-                    }
-                }
-
-                write::ty_fixup(scx, ann.id, tup(ty_params_opt, tt));
-            }
-        }
-    }
-
     // Push-down over typed expressions. Note that the expression that you
     // pass to this function must have been passed to check_expr() first.
     //
@@ -1673,75 +1582,88 @@ fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
     fail; // not reached
 }
 
-fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
+// Pattern checking is top-down rather than bottom-up so that bindings get
+// their types immediately.
+fn check_pat(&@stmt_ctxt scx, &@ast::pat pat, ty::t expected) {
     alt (pat.node) {
         case (ast::pat_wild(?ann)) {
-            auto typ = next_ty_var(scx);
-            write::ty_only_fixup(scx, ann.id, typ);
+            write::ty_only_fixup(scx, ann.id, expected);
         }
         case (ast::pat_lit(?lt, ?ann)) {
             auto typ = check_lit(scx.fcx.ccx, lt);
+            typ = demand::simple(scx, pat.span, expected, typ);
             write::ty_only_fixup(scx, ann.id, typ);
         }
-        case (ast::pat_bind(?id, ?def_id, ?a)) {
-            auto typ = next_ty_var(scx);
-            write::ty_only_fixup(scx, a.id, typ);
+        case (ast::pat_bind(?id, ?def_id, ?ann)) {
+            scx.fcx.locals.insert(def_id, expected);
+            write::ty_only_fixup(scx, ann.id, expected);
         }
-        case (ast::pat_tag(?p, ?subpats, ?old_ann)) {
-            auto vdef = ast::variant_def_ids
-                (scx.fcx.ccx.tcx.def_map.get(old_ann.id));
-            auto t = ty::lookup_item_type(scx.fcx.ccx.tcx,
-                                          vdef._1)._1;
-            auto len = vec::len[ast::ident](p.node.idents);
-            auto last_id = p.node.idents.(len - 1u);
+        case (ast::pat_tag(?path, ?subpats, ?ann)) {
+            // Typecheck the path.
+            auto v_def = scx.fcx.ccx.tcx.def_map.get(ann.id);
+            auto v_def_ids = ast::variant_def_ids(v_def);
 
-            auto tpt = ty::lookup_item_type(scx.fcx.ccx.tcx,
-                                            vdef._0);
+            auto tag_tpt = ty::lookup_item_type(scx.fcx.ccx.tcx,
+                                                v_def_ids._0);
+            auto path_tpot = instantiate_path(scx, path, tag_tpt, pat.span);
 
-            auto path_tpot = instantiate_path(scx, p, tpt, pat.span);
-
-            alt (struct(scx.fcx.ccx.tcx, t)) {
-                // N-ary variants have function types.
-                case (ty::ty_fn(_, ?args, ?tag_ty, _)) {
-                    auto arg_len = vec::len[arg](args);
-                    auto subpats_len = vec::len[@ast::pat](subpats);
-                    if (arg_len != subpats_len) {
-                        // TODO: pluralize properly
-                        auto err_msg = "tag type " + last_id + " has " +
-                                       uint::to_str(arg_len, 10u) +
-                                       " field(s), but this pattern has " +
-                                       uint::to_str(subpats_len, 10u) +
-                                       " field(s)";
-
-                        scx.fcx.ccx.tcx.sess.span_err(pat.span, err_msg);
-                        fail;   // TODO: recover
-                    }
-
-                    for (@ast::pat subpat in subpats) {
-                        check_pat(scx, subpat);
-                    }
-
-                    write::ty_fixup(scx, old_ann.id, path_tpot);
-                }
-
-                // Nullary variants have tag types.
-                case (ty::ty_tag(?tid, _)) {
-                    auto subpats_len = vec::len[@ast::pat](subpats);
-                    if (subpats_len > 0u) {
-                        // TODO: pluralize properly
-                        auto err_msg = "tag type " + last_id +
-                                       " has no field(s)," +
-                                       " but this pattern has " +
-                                       uint::to_str(subpats_len, 10u) +
-                                       " field(s)";
-
-                        scx.fcx.ccx.tcx.sess.span_err(pat.span, err_msg);
-                        fail;   // TODO: recover
-                    }
-
-                    write::ty_fixup(scx, old_ann.id, path_tpot);
+            // Take the tag type params out of `expected`.
+            auto expected_tps;
+            alt (struct(scx.fcx.ccx.tcx, expected)) {
+                case (ty::ty_tag(_, ?tps)) { expected_tps = tps; }
+                case (_) {
+                    // FIXME: Switch expected and actual in this message? I
+                    // can never tell.
+                    scx.fcx.ccx.tcx.sess.span_err(pat.span,
+                        #fmt("mismatched types: expected tag but found %s",
+                             ty::ty_to_str(scx.fcx.ccx.tcx, expected)));
                 }
             }
+
+            // Unify with the expected tag type.
+            auto path_tpt = demand::full(scx, pat.span, expected,
+                                         path_tpot._1, expected_tps,
+                                         NO_AUTODEREF);
+            path_tpot = tup(some[vec[ty::t]](path_tpt._0), path_tpt._1);
+
+            // Get the number of arguments in this tag variant.
+            auto arg_types = variant_arg_types(scx.fcx.ccx, pat.span,
+                                               v_def_ids._1, expected_tps);
+
+            auto subpats_len = vec::len[@ast::pat](subpats);
+
+            if (vec::len[ty::t](arg_types) > 0u) {
+                // N-ary variant.
+                auto arg_len = vec::len[ty::t](arg_types);
+                if (arg_len != subpats_len) {
+                    // TODO: note definition of tag variant
+                    // TODO (issue #448): Wrap a #fmt string over multiple
+                    // lines...
+                    scx.fcx.ccx.tcx.sess.span_err(pat.span, #fmt(
+  "this pattern has %u field%s, but the corresponding variant has %u field%s",
+                        subpats_len,
+                        if (subpats_len == 0u) { "" } else { "s" },
+                        arg_len,
+                        if (arg_len == 0u) { "" } else { "s" }));
+                }
+
+                // TODO: vec::iter2
+                auto i = 0u;
+                for (@ast::pat subpat in subpats) {
+                    check_pat(scx, subpat, arg_types.(i));
+                    i += 1u;
+                }
+            } else if (subpats_len > 0u) {
+                // TODO: note definition of tag variant
+                // TODO (issue #448): Wrap a #fmt string over multiple
+                // lines...
+                scx.fcx.ccx.tcx.sess.span_err(pat.span, #fmt(
+"this pattern has %u field%s, but the corresponding variant has no fields",
+                    subpats_len,
+                    if (subpats_len == 0u) { "" } else { "s" }));
+            }
+
+            write::ty_fixup(scx, ann.id, path_tpot);
         }
     }
 }
@@ -2247,18 +2169,12 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             // Typecheck the patterns first, so that we get types for all the
             // bindings.
-            auto pattern_ty = expr_ty(scx.fcx.ccx.tcx, expr);
+            auto pattern_ty = ty::expr_ty(scx.fcx.ccx.tcx, expr);
 
             let vec[@ast::pat] pats = [];
             for (ast::arm arm in arms) {
-                check_pat(scx, arm.pat);
-                pattern_ty = demand::simple(scx, arm.pat.span, pattern_ty,
-                    pat_ty(scx.fcx.ccx.tcx, arm.pat));
+                check_pat(scx, arm.pat, pattern_ty);
                 pats += [arm.pat];
-            }
-
-            for (@ast::pat pat in pats) {
-                pushdown::pushdown_pat(scx, pattern_ty, pat);
             }
 
             // Now typecheck the blocks.
