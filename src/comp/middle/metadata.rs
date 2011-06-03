@@ -174,6 +174,7 @@ mod Encode {
                 w.write_char(']');
             }
             case (ty::ty_box(?mt)) {w.write_char('@'); enc_mt(w, cx, mt); }
+            case (ty::ty_ptr(?mt)) {w.write_char('*'); enc_mt(w, cx, mt); }
             case (ty::ty_vec(?mt)) {w.write_char('V'); enc_mt(w, cx, mt); }
             case (ty::ty_port(?t)) {w.write_char('P'); enc_ty(w, cx, t); }
             case (ty::ty_chan(?t)) {w.write_char('C'); enc_ty(w, cx, t); }

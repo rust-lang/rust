@@ -156,6 +156,7 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
         case (ast::ty_str) {}
         case (ast::ty_box(?mt)) { walk_ty(v, mt.ty); }
         case (ast::ty_vec(?mt)) { walk_ty(v, mt.ty); }
+        case (ast::ty_ptr(?mt)) { walk_ty(v, mt.ty); }
         case (ast::ty_task) {}
         case (ast::ty_port(?t)) { walk_ty(v, t); }
         case (ast::ty_chan(?t)) { walk_ty(v, t); }
