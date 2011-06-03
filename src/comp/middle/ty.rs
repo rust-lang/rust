@@ -981,6 +981,7 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         // scalar types
         case (ty_nil) { ret false; }
+        case (ty_bot) { ret false; }
         case (ty_bool) { ret false; }
         case (ty_int) { ret false; }
         case (ty_float) { ret false; }
@@ -2049,7 +2050,7 @@ mod unify {
                 result_mode = expected_input.mode;
             }
 
-            auto result = unify_step(cx, actual_input.ty, expected_input.ty);
+            auto result = unify_step(cx, expected_input.ty, actual_input.ty);
 
             alt (result) {
                 case (ures_ok(?rty)) {
