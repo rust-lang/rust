@@ -163,6 +163,19 @@ fn slice[T](array[T] v, uint start, uint end) -> vec[T] {
     ret result;
 }
 
+// FIXME: Should go away eventually.
+fn slice_mut[T](array[T] v, uint start, uint end) -> vec[mutable T] {
+    assert (start <= end);
+    assert (end <= len[T](v));
+    auto result = alloc_mut[T](end - start);
+    let uint i = start;
+    while (i < end) {
+        result += [mutable v.(i)];
+        i += 1u;
+    }
+    ret result;
+}
+
 fn shift[T](&mutable array[T] v) -> T {
     auto ln = len[T](v);
     assert (ln > 0u);
