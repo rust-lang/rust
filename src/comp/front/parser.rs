@@ -287,7 +287,6 @@ fn eat_word(&parser p, &str word) -> bool {
                 p.bump();
                 ret true;
             } else { ret false; }
-            
         }
         case (_) { ret false; }
     }
@@ -312,7 +311,8 @@ fn check_bad_word(&parser p) {
 
 fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
     -> ast::ty_ {
-    fn parse_fn_input_ty(&parser p) -> rec(ast::mode mode, @ast::ty ty) {
+    fn parse_fn_input_ty(&parser p) -> ast::ty_arg {
+        auto lo = p.get_lo_pos();
         auto mode;
         if (p.peek() == token::BINOP(token::AND)) {
             p.bump();
@@ -332,14 +332,12 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
             case (_) { /* no param name present */ }
         }
 
-        ret rec(mode=mode, ty=t);
+        ret spanned(lo, t.span.hi, rec(mode=mode, ty=t));
     }
 
     auto lo = p.get_lo_pos();
-
-    auto f = parse_fn_input_ty; // FIXME: trans_const_lval bug
-    auto inputs = parse_seq[rec(ast::mode mode, @ast::ty ty)](token::LPAREN,
-        token::RPAREN, some(token::COMMA), f, p);
+    auto inputs = parse_seq(token::LPAREN, token::RPAREN,
+                            some(token::COMMA), parse_fn_input_ty, p);
 
     // FIXME: dropping constrs on the floor at the moment.
     // pick them up when they're used by typestate pass.
@@ -383,8 +381,9 @@ fn parse_ty_obj(&parser p, &mutable uint hi) -> ast::ty_ {
         expect(p, token::SEMI);
         alt (f) {
             case (ast::ty_fn(?proto, ?inputs, ?output, ?cf)) {
-                ret rec(proto=proto, ident=ident,
-                        inputs=inputs, output=output, cf=cf);
+                ret spanned(flo, output.span.hi,
+                            rec(proto=proto, ident=ident,
+                                inputs=inputs, output=output, cf=cf));
             }
         }
         fail;
@@ -405,9 +404,10 @@ fn parse_mt(&parser p) -> ast::mt {
 }
 
 fn parse_ty_field(&parser p) -> ast::ty_field {
+    auto lo = p.get_lo_pos();
     auto mt = parse_mt(p);
     auto id = parse_ident(p);
-    ret rec(ident=id, mt=mt);
+    ret spanned(lo, mt.ty.span.hi, rec(ident=id, mt=mt));
 }
 
 fn parse_constr_arg(&parser p) -> @ast::constr_arg {

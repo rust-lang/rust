@@ -300,11 +300,15 @@ tag lit_ {
 // type structure in middle/ty.rs as well.
 
 type mt = rec(@ty ty, mutability mut);
-type ty_field = rec(ident ident, mt mt);
-type ty_arg = rec(mode mode, @ty ty);
-type ty_method = rec(proto proto, ident ident,
+type ty_field_ = rec(ident ident, mt mt);
+type ty_arg_ = rec(mode mode, @ty ty);
+type ty_method_ = rec(proto proto, ident ident,
                      vec[ty_arg] inputs, @ty output,
                      controlflow cf);
+type ty_field = spanned[ty_field_];
+type ty_arg = spanned[ty_arg_];
+type ty_method = spanned[ty_method_];
+
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
