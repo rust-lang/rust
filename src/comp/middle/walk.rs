@@ -167,21 +167,21 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
         }
         case (ast::ty_rec(?flds)) {
             for (ast::ty_field f in flds) {
-                walk_ty(v, f.mt.ty);
+                walk_ty(v, f.node.mt.ty);
             }
         }
         case (ast::ty_fn(_, ?args, ?out, _)) {
             for (ast::ty_arg a in args) {
-                walk_ty(v, a.ty);
+                walk_ty(v, a.node.ty);
             }
             walk_ty(v, out);
         }
         case (ast::ty_obj(?tmeths)) {
             for (ast::ty_method m in tmeths) {
-                for (ast::ty_arg a in m.inputs) {
-                    walk_ty(v, a.ty);
+                for (ast::ty_arg a in m.node.inputs) {
+                    walk_ty(v, a.node.ty);
                 }
-                walk_ty(v, m.output);
+                walk_ty(v, m.node.output);
             }
         }
         case (ast::ty_path(?p, _)) {

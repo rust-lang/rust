@@ -268,16 +268,13 @@ fn print_type(&ps s, &ast::ty ty) {
             popen(s);
             fn print_field(&ps s, &ast::ty_field f) {
                 cbox(s, indent_unit);
-                print_mt(s, f.mt);
+                print_mt(s, f.node.mt);
                 space(s.s);
-                word(s.s, f.ident);
+                word(s.s, f.node.ident);
                 end(s);
             }
             fn get_span(&ast::ty_field f) -> common::span {
-              // Try to reconstruct the span for this field
-              auto sp = f.mt.ty.span;
-              auto hi = sp.hi + str::char_len(f.ident) + 1u;
-              ret rec(hi=hi with sp);
+                ret f.span;
             }
             auto f = print_field;
             auto gs = get_span;
@@ -290,8 +287,9 @@ fn print_type(&ps s, &ast::ty ty) {
             for (ast::ty_method m in methods) {
                 hardbreak(s.s);
                 cbox(s, indent_unit);
-                print_ty_fn(s, m.proto, some(m.ident),
-                            m.inputs, m.output, m.cf);
+                maybe_print_comment(s, m.span.lo);
+                print_ty_fn(s, m.node.proto, some(m.node.ident),
+                            m.node.inputs, m.node.output, m.node.cf);
                 word(s.s, ";");
                 end(s);
             }
@@ -1217,8 +1215,8 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     zerobreak(s.s);
     popen(s);
     fn print_arg(&ps s, &ast::ty_arg input) {
-        if (input.mode == ast::alias) {word(s.s, "&");}
-        print_type(s, *input.ty);
+        if (input.node.mode == ast::alias) {word(s.s, "&");}
+        print_type(s, *input.node.ty);
     }
     auto f = print_arg;
     commasep[ast::ty_arg](s, inconsistent, inputs, f);

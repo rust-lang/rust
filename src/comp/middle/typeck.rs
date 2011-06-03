@@ -229,10 +229,10 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
 fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     fn ast_arg_to_arg(&ty::ctxt tcx,
                       &ty_getter getter,
-                      &rec(ast::mode mode, @ast::ty ty) arg)
+                      &ast::ty_arg arg)
             -> rec(ty::mode mode, ty::t ty) {
-        auto ty_mode = ast_mode_to_mode(arg.mode);
-        ret rec(mode=ty_mode, ty=ast_ty_to_ty(tcx, getter, arg.ty));
+        auto ty_mode = ast_mode_to_mode(arg.node.mode);
+        ret rec(mode=ty_mode, ty=ast_ty_to_ty(tcx, getter, arg.node.ty));
     }
 
     fn ast_mt_to_mt(&ty::ctxt tcx,
@@ -306,8 +306,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_rec(?fields)) {
             let vec[field] flds = [];
             for (ast::ty_field f in fields) {
-                auto tm = ast_mt_to_mt(tcx, getter, f.mt);
-                vec::push[field](flds, rec(ident=f.ident, mt=tm));
+                auto tm = ast_mt_to_mt(tcx, getter, f.node.mt);
+                vec::push[field](flds, rec(ident=f.node.ident, mt=tm));
             }
             typ = ty::mk_rec(tcx, flds);
         }
@@ -342,14 +342,14 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             let vec[ty::method] tmeths = [];
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast::ty_method m in meths) {
-                auto ins = vec::map[ast::ty_arg, arg](f, m.inputs);
-                auto out = ast_ty_to_ty(tcx, getter, m.output);
+                auto ins = vec::map[ast::ty_arg, arg](f, m.node.inputs);
+                auto out = ast_ty_to_ty(tcx, getter, m.node.output);
                 let ty::method new_m =
-                                  rec(proto=m.proto,
-                                      ident=m.ident,
+                                  rec(proto=m.node.proto,
+                                      ident=m.node.ident,
                                       inputs=ins,
                                       output=out,
-                                      cf=m.cf);
+                                      cf=m.node.cf);
                 vec::push[ty::method](tmeths, new_m);
             }
 
