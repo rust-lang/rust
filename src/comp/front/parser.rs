@@ -511,6 +511,11 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto mt = parse_mt(p);
         hi = mt.ty.span.hi;
         t = ast::ty_box(mt);
+    } else if (p.peek() == token::BINOP(token::STAR)) {
+        p.bump();
+        auto mt = parse_mt(p);
+        hi = mt.ty.span.hi;
+        t = ast::ty_ptr(mt);
     } else if (eat_word(p, "vec")) {
         expect(p, token::LBRACKET);
         t = ast::ty_vec(parse_mt(p));

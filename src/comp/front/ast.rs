@@ -323,6 +323,7 @@ tag ty_ {
     ty_str;
     ty_box(mt);
     ty_vec(mt);
+    ty_ptr(mt);
     ty_task;
     ty_port(@ty);
     ty_chan(@ty);
