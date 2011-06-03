@@ -76,6 +76,7 @@ mod box;
 mod getopts;
 mod term;
 mod time;
+mod smallintmap;
 
 // Local Variables:
 // mode: rust;
