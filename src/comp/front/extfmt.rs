@@ -13,41 +13,12 @@ import std::option;
 import std::option::none;
 import std::option::some;
 
-import std::extfmt::ct::signedness;
-import std::extfmt::ct::signed;
-import std::extfmt::ct::unsigned;
-import std::extfmt::ct::caseness;
-import std::extfmt::ct::case_upper;
-import std::extfmt::ct::case_lower;
-import std::extfmt::ct::ty;
-import std::extfmt::ct::ty_bool;
-import std::extfmt::ct::ty_str;
-import std::extfmt::ct::ty_char;
-import std::extfmt::ct::ty_int;
-import std::extfmt::ct::ty_bits;
-import std::extfmt::ct::ty_hex;
-import std::extfmt::ct::ty_octal;
-import std::extfmt::ct::flag;
-import std::extfmt::ct::flag_left_justify;
-import std::extfmt::ct::flag_left_zero_pad;
-import std::extfmt::ct::flag_space_for_sign;
-import std::extfmt::ct::flag_sign_always;
-import std::extfmt::ct::flag_alternate;
-import std::extfmt::ct::count;
-import std::extfmt::ct::count_is;
-import std::extfmt::ct::count_is_param;
-import std::extfmt::ct::count_is_next_param;
-import std::extfmt::ct::count_implied;
-import std::extfmt::ct::conv;
-import std::extfmt::ct::piece;
-import std::extfmt::ct::piece_string;
-import std::extfmt::ct::piece_conv;
-import std::extfmt::ct::parse_fmt_string;
+import std::extfmt::ct::*;
 
 export expand_syntax_ext;
 
-fn expand_syntax_ext(parser p,
-                     vec[@ast::expr] args,
+fn expand_syntax_ext(&parser p, common::span sp, 
+                     &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
     if (vec::len[@ast::expr](args) == 0u) {

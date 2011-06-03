@@ -27,31 +27,40 @@ tag file_type {
 
 type ty_or_bang = util::common::ty_or_bang[@ast::ty];
 
+// Temporary: to introduce a tag in order to make a recursive type work
+tag xmacro {
+    x(macro);
+}
+
 state type parser =
     state obj {
-          fn peek() -> token::token;
-          fn bump();
-          fn err(str s) -> !;
-          fn restrict(restriction r);
-          fn get_restriction() -> restriction;
-          fn get_file_type() -> file_type;
-          fn get_env() -> eval::env;
-          fn get_session() -> session::session;
-          fn get_span() -> common::span;
-          fn get_lo_pos() -> uint;
-          fn get_hi_pos() -> uint;
-          fn get_last_lo_pos() -> uint;
-          fn next_def_id() -> ast::def_id;
-          fn set_def(ast::def_num);
-          fn get_prec_table() -> vec[op_spec];
-          fn get_str(token::str_num) -> str;
-          fn get_reader() -> lexer::reader;
-          fn get_filemap() -> codemap::filemap;
-          fn get_bad_expr_words() -> std::map::hashmap[str, ()];
-          fn get_chpos() -> uint;
-          fn get_ann() -> ast::ann;
-          fn next_ann_num() -> uint;
+        fn peek() -> token::token;
+        fn bump();
+        fn err(str s) -> !;
+        fn restrict(restriction r);
+        fn get_restriction() -> restriction;
+        fn get_file_type() -> file_type;
+        fn get_env() -> eval::env;
+        fn get_session() -> session::session;
+        fn get_span() -> common::span;
+        fn get_lo_pos() -> uint;
+        fn get_hi_pos() -> uint;
+        fn get_last_lo_pos() -> uint;
+        fn next_def_id() -> ast::def_id;
+        fn set_def(ast::def_num);
+        fn get_prec_table() -> vec[op_spec];
+        fn get_str(token::str_num) -> str;
+        fn get_reader() -> lexer::reader;
+        fn get_filemap() -> codemap::filemap;
+        fn get_bad_expr_words() -> std::map::hashmap[str, ()];
+        fn get_macros() -> std::map::hashmap[str, xmacro];
+        fn get_chpos() -> uint;
+        fn get_ann() -> ast::ann;
+        fn next_ann_num() -> uint;
     };
+
+type macro = fn(&parser, common::span, &vec[@ast::expr], option::t[str]) 
+    -> @ast::expr;
 
 fn new_parser(session::session sess,
                      eval::env env,
@@ -70,7 +79,8 @@ fn new_parser(session::session sess,
                            lexer::reader rdr,
                            vec[op_spec] precs,
                            mutable uint next_ann_var,
-                           std::map::hashmap[str, ()] bad_words)
+                           std::map::hashmap[str, ()] bad_words,
+                           std::map::hashmap[str, xmacro] macros)
         {
             fn peek() -> token::token {
                 ret tok;
@@ -143,6 +153,10 @@ fn new_parser(session::session sess,
                 ret bad_words;
             }
 
+            fn get_macros() -> std::map::hashmap[str, xmacro] {
+                ret macros;
+            }
+
             fn get_chpos() -> uint {ret rdr.get_chpos();}
 
             fn get_ann() -> ast::ann {
@@ -169,7 +183,7 @@ fn new_parser(session::session sess,
     ret stdio_parser(sess, env, ftype, lexer::next_token(rdr),
                      npos, npos, npos, initial_def._1, UNRESTRICTED,
                      initial_def._0, rdr, prec_table(), next_ann,
-                     bad_expr_word_table());
+                     bad_expr_word_table(), macro_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
@@ -211,6 +225,13 @@ fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
     words.insert("tag", ());
     words.insert("obj", ());
     ret words;
+}
+
+fn macro_table() -> std::map::hashmap[str, xmacro] {
+    auto macros = new_str_hash[xmacro]();
+    macros.insert("fmt", x(extfmt::expand_syntax_ext));
+    macros.insert("env", x(extenv::expand_syntax_ext));
+    ret macros;
 }
 
 fn unexpected(&parser p, token::token t) -> ! {
@@ -1037,23 +1058,15 @@ fn expand_syntax_ext(&parser p, common::span sp,
 
     assert (vec::len[ast::ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
-    if (str::eq(extname, "fmt")) {
-        auto expanded = extfmt::expand_syntax_ext(p, args, body);
-        auto newexpr = ast::expr_ext(path, args, body,
-                                    expanded,
-                                    p.get_ann());
 
-        ret newexpr;
-    } else if (str::eq(extname, "env")) {
-        auto expanded = extenv::expand_syntax_ext(p, sp, args, body);
-        auto newexpr = ast::expr_ext(path, args, body,
-                                    expanded,
-                                    p.get_ann());
-
-        ret newexpr;
-    } else {
-        p.err("unknown syntax extension");
-        fail;
+    alt (p.get_macros().find(extname)) {
+        case (none[xmacro]) {
+            p.err("unknown macro: '" + extname + "'");
+        }
+        case (some[xmacro](x(?ext))) {
+            ret ast::expr_ext(path, args, body, ext(p, sp, args, body), 
+                              p.get_ann());
+        }
     }
 }
 

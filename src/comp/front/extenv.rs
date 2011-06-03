@@ -14,9 +14,9 @@ import std::generic_os;
 export expand_syntax_ext;
 
 // FIXME: Need to thread parser through here to handle errors correctly
-fn expand_syntax_ext(parser::parser p,
+fn expand_syntax_ext(&parser::parser p,
                      common::span sp,
-                     vec[@ast::expr] args,
+                     &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
     if (vec::len[@ast::expr](args) != 1u) {
