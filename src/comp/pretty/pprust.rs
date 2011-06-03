@@ -12,6 +12,9 @@ import middle::ty;
 import util::common;
 import pp;
 
+import option::some;
+import option::none;
+
 import pp::printer;
 import pp::break_offset;
 import pp::word;
@@ -37,16 +40,20 @@ tag mode {
 type ps = @rec(pp::printer s,
                option::t[codemap] cm,
                option::t[vec[lexer::cmnt]] comments,
+               option::t[vec[lexer::lit]] literals,
                mutable uint cur_cmnt,
+               mutable uint cur_lit,
                mutable vec[pp::breaks] boxes,
                mode mode);
 
 fn rust_printer(io::writer writer) -> ps {
     let vec[pp::breaks] boxes = [];
     ret @rec(s=pp::mk_printer(writer, default_columns),
-             cm=option::none[codemap],
-             comments=option::none[vec[lexer::cmnt]],
+             cm=none[codemap],
+             comments=none[vec[lexer::cmnt]],
+             literals=none[vec[lexer::lit]],
              mutable cur_cmnt=0u,
+             mutable cur_lit=0u,
              mutable boxes=boxes,
              mode=mo_untyped);
 }
@@ -62,11 +69,13 @@ fn to_str[T](&T t, fn(&ps s, &T s) f) -> str {
 fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
               mode mode) {
     let vec[pp::breaks] boxes = [];
-    auto cmnts = lexer::gather_comments(sess, filename);
+    auto r = lexer::gather_comments_and_literals(sess, filename);
     auto s = @rec(s=pp::mk_printer(out, default_columns),
-                  cm=option::some[codemap](sess.get_codemap()),
-                  comments=option::some[vec[lexer::cmnt]](cmnts),
+                  cm=some(sess.get_codemap()),
+                  comments=some(r.cmnts),
+                  literals=some(r.lits),
                   mutable cur_cmnt=0u,
+                  mutable cur_lit=0u,
                   mutable boxes = boxes,
                   mode=mode);
     print_mod(s, _mod);
@@ -281,7 +290,7 @@ fn print_type(&ps s, &ast::ty ty) {
             for (ast::ty_method m in methods) {
                 hardbreak(s.s);
                 cbox(s, indent_unit);
-                print_ty_fn(s, m.proto, option::some[str](m.ident),
+                print_ty_fn(s, m.proto, some(m.ident),
                             m.inputs, m.output, m.cf);
                 word(s.s, ";");
                 end(s);
@@ -289,7 +298,7 @@ fn print_type(&ps s, &ast::ty ty) {
             bclose(s, ty.span);
         }
         case (ast::ty_fn(?proto,?inputs,?output,?cf)) {
-            print_ty_fn(s, proto, option::none[str], inputs, output, cf);
+            print_ty_fn(s, proto, none[str], inputs, output, cf);
         }
         case (ast::ty_path(?path,_)) {
             print_path(s, path);
@@ -351,8 +360,8 @@ fn print_item(&ps s, &@ast::item item) {
                         print_fn(s, decl, ast::proto_fn, id, typarams);
                         end(s); // end head-ibox
                         alt (lname) {
-                            case (option::none[str]) {}
-                            case (option::some[str](?ss)) {
+                            case (none) {}
+                            case (some(?ss)) {
                                 print_string(s, ss);
                             }
                         }
@@ -430,7 +439,7 @@ fn print_item(&ps s, &@ast::item item) {
                 print_block(s, meth.node.meth.body);
             }
             alt (_obj.dtor) {
-                case (option::some[@ast::method](?dtor)) {
+                case (some(?dtor)) {
                     head(s, "drop");
                     print_block(s, dtor.node.meth.body);
                 }
@@ -474,7 +483,7 @@ fn print_block(&ps s, ast::block blk) {
 
     }
     alt (blk.node.expr) {
-        case (option::some[@ast::expr](?expr)) {
+        case (some(?expr)) {
             space(s.s);
             print_expr(s, expr);
             maybe_print_trailing_comment(s, expr.span);
@@ -493,8 +502,31 @@ fn print_block(&ps s, ast::block blk) {
     }
 }
 
+fn next_lit(&ps s) -> option::t[lexer::lit] {
+    alt (s.literals) {
+        case (some(?lits)) {
+            if (s.cur_lit < vec::len(lits)) {
+                ret some(lits.(s.cur_lit));
+            } else {ret none[lexer::lit];}
+        }
+        case (_) {ret none[lexer::lit];}
+    }
+}
+
 fn print_literal(&ps s, &@ast::lit lit) {
     maybe_print_comment(s, lit.span.lo);
+
+    alt (next_lit(s)) {
+        case (some(?lt)) {
+            if (lt.pos == lit.span.lo) {
+                word(s.s, lt.lit);
+                s.cur_lit += 1u;
+                ret;
+            }
+        }
+        case (_) {}
+    }
+
     alt (lit.node) {
         case (ast::lit_str(?st)) {print_string(s, st);}
         case (ast::lit_char(?ch)) {
@@ -504,8 +536,8 @@ fn print_literal(&ps s, &@ast::lit lit) {
         case (ast::lit_int(?val)) {
             word(s.s, common::istr(val));
         }
-        case (ast::lit_uint(?val)) { // FIXME clipping? uistr?
-            word(s.s, common::istr(val as int) + "u");
+        case (ast::lit_uint(?val)) {
+            word(s.s, common::uistr(val) + "u");
         }
         case (ast::lit_float(?fstr)) {
             word(s.s, fstr);
@@ -580,7 +612,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             auto gs = get_span;
             commasep_cmnt[ast::field](s, consistent, fields, f, gs);
             alt (wth) {
-                case (option::some[@ast::expr](?expr)) {
+                case (some(?expr)) {
                     if (vec::len[ast::field](fields) > 0u) {space(s.s);}
                     ibox(s, indent_unit);
                     word_space(s, "with");
@@ -605,7 +637,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_bind(?func,?args,_)) {
             fn print_opt(&ps s, &option::t[@ast::expr] expr) {
                 alt (expr) {
-                    case (option::some[@ast::expr](?expr)) {
+                    case (some(?expr)) {
                         print_expr(s, expr);
                     }
                     case (_) {word(s.s, "_");}
@@ -655,7 +687,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_block(s, block);
             fn do_else(&ps s, option::t[@ast::expr] els) {
                 alt (els) {
-                    case (option::some[@ast::expr](?_else)) {
+                    case (some(?_else)) {
                         alt (_else.node) {
                             // "another else-if"
                             case (ast::expr_if(?i,?t,?e,_)) {
@@ -807,7 +839,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_ret(?result,_)) {
             word(s.s, "ret");
             alt (result) {
-                case (option::some[@ast::expr](?expr)) {
+                case (some(?expr)) {
                     word(s.s, " ");
                     print_expr(s, expr);
                 }
@@ -817,7 +849,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_put(?result,_)) {
             word(s.s, "put");
             alt (result) {
-                case (option::some[@ast::expr](?expr)) {
+                case (some(?expr)) {
                     word(s.s, " ");
                     print_expr(s, expr);
                 }
@@ -902,7 +934,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
             space(s.s);
             ibox(s, indent_unit);
             alt (loc.ty) {
-                case (option::some[@ast::ty](?ty)) {
+                case (some(?ty)) {
                     word_nbsp(s, "let");
                     print_type(s, *ty);
                     space(s.s);
@@ -924,7 +956,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
             }
             word(s.s, loc.ident);
             alt (loc.init) {
-                case (option::some[ast::initializer](?init)) {
+                case (some(?init)) {
                     space(s.s);
                     alt (init.op) {
                         case (ast::init_assign) {
@@ -1176,7 +1208,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     if (proto == ast::proto_fn) {word(s.s, "fn");}
     else {word(s.s, "iter");}
     alt (id) {
-        case (option::some[str](?id)) {space(s.s); word(s.s, id);}
+        case (some(?id)) {space(s.s); word(s.s, id);}
         case (_) {}
     }
     popen(s);
@@ -1207,19 +1239,19 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
 
 fn next_comment(&ps s) -> option::t[lexer::cmnt] {
     alt (s.comments) {
-        case (option::some[vec[lexer::cmnt]](?cmnts)) {
-            if (s.cur_cmnt < vec::len[lexer::cmnt](cmnts)) {
-                ret option::some[lexer::cmnt](cmnts.(s.cur_cmnt));
-            } else {ret option::none[lexer::cmnt];}
+        case (some(?cmnts)) {
+            if (s.cur_cmnt < vec::len(cmnts)) {
+                ret some(cmnts.(s.cur_cmnt));
+            } else {ret none[lexer::cmnt];}
         }
-        case (_) {ret option::none[lexer::cmnt];}
+        case (_) {ret none[lexer::cmnt];}
     }
 }
 
 fn maybe_print_comment(&ps s, uint pos) {
     while (true) {
         alt (next_comment(s)) {
-            case (option::some[lexer::cmnt](?cmnt)) {
+            case (some(?cmnt)) {
                 if (cmnt.pos < pos) {
                     print_comment(s, cmnt);
                     s.cur_cmnt += 1u;
@@ -1233,13 +1265,13 @@ fn maybe_print_comment(&ps s, uint pos) {
 fn maybe_print_trailing_comment(&ps s, common::span span) {
     auto cm;
     alt (s.cm) {
-        case (option::some[codemap](?ccm)) {
+        case (some(?ccm)) {
             cm = ccm;
         }
         case (_) { ret; }
     }
     alt (next_comment(s)) {
-        case (option::some[lexer::cmnt](?cmnt)) {
+        case (some(?cmnt)) {
             if (cmnt.style != lexer::trailing) { ret; }
 
             auto span_line = codemap::lookup_pos(cm, span.hi);
@@ -1258,7 +1290,7 @@ fn maybe_print_trailing_comment(&ps s, common::span span) {
 fn print_remaining_comments(&ps s) {
     while (true) {
         alt (next_comment(s)) {
-            case (option::some[lexer::cmnt](?cmnt)) {
+            case (some(?cmnt)) {
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
             }

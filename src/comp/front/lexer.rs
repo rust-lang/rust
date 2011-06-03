@@ -20,6 +20,7 @@ state type reader = state obj {
     fn bump();
     fn mark();
     fn get_mark_chpos() -> uint;
+    fn get_mark_str() -> str;
     fn get_interner() -> @interner::interner[str];
     fn get_chpos() -> uint;
     fn get_col() -> uint;
@@ -48,6 +49,9 @@ fn new_reader(session sess, io::reader rdr,
         }
 
         fn mark() { mark_chpos = chpos; }
+        fn get_mark_str() -> str {
+            ret str::slice(file, mark_chpos, chpos);
+        }
         fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
 
@@ -101,8 +105,7 @@ fn new_reader(session sess, io::reader rdr,
     auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
     auto rd = reader(sess, file, str::byte_len(file), 0u, 0u,
-                     -1 as char,
-                     filemap.start_pos, filemap.start_pos,
+                     -1 as char, filemap.start_pos, filemap.start_pos,
                      strs, filemap, itr);
     rd.init();
     ret rd;
@@ -888,11 +891,29 @@ fn consume_comment(&reader rdr, bool code_to_the_left,
     log "<<< consume comment";
 }
 
-fn gather_comments(session sess, str path) -> vec[cmnt] {
+fn is_lit(&token::token t) -> bool {
+    ret alt (t) {
+        case (token::LIT_INT(_)) { true }
+        case (token::LIT_UINT(_)) { true }
+        case (token::LIT_MACH_INT(_,_)) { true }
+        case (token::LIT_FLOAT(_)) { true }
+        case (token::LIT_MACH_FLOAT(_,_)) { true }
+        case (token::LIT_STR(_)) { true }
+        case (token::LIT_CHAR(_)) { true }
+        case (token::LIT_BOOL(_)) { true }
+        case (_) { false }
+    }
+}
+
+type lit = rec(str lit, uint pos);
+
+fn gather_comments_and_literals(session sess, str path)
+    -> rec(vec[cmnt] cmnts, vec[lit] lits) {
     auto srdr = io::file_reader(path);
     auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
+    let vec[lit] literals = [];
     while (!rdr.is_eof()) {
         while (true) {
             auto code_to_the_left = true;
@@ -907,9 +928,12 @@ fn gather_comments(session sess, str path) -> vec[cmnt] {
             }
             break;
         }
-        next_token(rdr);
+        if (is_lit(next_token(rdr))) {
+            vec::push[lit](literals, rec(lit=rdr.get_mark_str(),
+                                         pos=rdr.get_mark_chpos()));
+        }
     }
-    ret comments;
+    ret rec(cmnts=comments, lits=literals);
  }
 
 
