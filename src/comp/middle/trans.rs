@@ -882,6 +882,9 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_vec(?mt)) {
             llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty)));
         }
+        case (ty::ty_ptr(?mt)) {
+            llty = T_ptr(type_of_inner(cx, sp, mt.ty));
+        }
         case (ty::ty_port(?t)) {
             llty = T_ptr(T_port(type_of_inner(cx, sp, t)));
         }

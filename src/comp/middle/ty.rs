@@ -109,6 +109,7 @@ tag sty {
     ty_tag(ast::def_id, vec[t]);
     ty_box(mt);
     ty_vec(mt);
+    ty_ptr(mt);
     ty_port(t);
     ty_chan(t);
     ty_task;
@@ -434,6 +435,10 @@ fn mk_tag(&ctxt cx, &ast::def_id did, &vec[t] tys) -> t {
 
 fn mk_box(&ctxt cx, &mt tm) -> t {
     ret gen_ty(cx, ty_box(tm));
+}
+
+fn mk_ptr(&ctxt cx, &mt tm) -> t {
+    ret gen_ty(cx, ty_ptr(tm));
 }
 
 fn mk_imm_box(&ctxt cx, &t ty) -> t {
@@ -1225,6 +1230,7 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_type) { ret 32u; }
         case (ty_native) { ret 33u; }
         case (ty_bot) { ret 34u; }
+        case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
     }
 }
 
@@ -1353,6 +1359,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_vec(?mt_a)) {
             alt (b) {
                 case (ty_vec(?mt_b)) { ret equal_mt(mt_a, mt_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_ptr(?mt_a)) {
+            alt (b) {
+                case (ty_ptr(?mt_b)) { ret equal_mt(mt_a, mt_b); }
                 case (_) { ret false; }
             }
         }
