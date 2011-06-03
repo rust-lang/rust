@@ -1,7 +1,4 @@
-//xfail-stage0
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
+// xfail-stage0
 fn int_id(int x) -> int {
   ret x;
 }
