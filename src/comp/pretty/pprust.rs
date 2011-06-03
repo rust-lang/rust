@@ -1208,9 +1208,13 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     if (proto == ast::proto_fn) {word(s.s, "fn");}
     else {word(s.s, "iter");}
     alt (id) {
-        case (some(?id)) {space(s.s); word(s.s, id);}
+        case (some(?id)) {
+            word(s.s, " ");
+            word(s.s, id);
+        }
         case (_) {}
     }
+    zerobreak(s.s);
     popen(s);
     fn print_arg(&ps s, &ast::ty_arg input) {
         if (input.mode == ast::alias) {word(s.s, "&");}
