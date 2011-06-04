@@ -78,7 +78,9 @@ mod ct {
         piece_conv(conv);
     }
 
-    fn parse_fmt_string(str s) -> vec[piece] {
+    type error_fn = fn (str) -> !;
+
+    fn parse_fmt_string(str s, error_fn error) -> vec[piece] {
         let vec[piece] pieces = [];
         auto lim = str::byte_len(s);
         auto buf = "";
@@ -97,15 +99,14 @@ mod ct {
             if (str::eq(curr, "%")) {
                 i += 1u;
                 if (i >= lim) {
-                    log_err "unterminated conversion at end of string";
-                    fail;
+                    error("unterminated conversion at end of string");
                 }
                 auto curr2 = str::substr(s, i, 1u);
                 if (str::eq(curr2, "%")) {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
-                    auto res = parse_conversion(s, i, lim);
+                    auto res = parse_conversion(s, i, lim, error);
                     pieces += [res._0];
                     i = res._1;
                 }
@@ -141,12 +142,13 @@ mod ct {
         };
     }
 
-    fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
+    fn parse_conversion(str s, uint i, uint lim,
+                        error_fn error) -> tup(piece, uint) {
         auto parm = parse_parameter(s, i, lim);
         auto flags = parse_flags(s, parm._1, lim);
         auto width = parse_count(s, flags._1, lim);
         auto prec = parse_precision(s, width._1, lim);
-        auto ty = parse_type(s, prec._1, lim);
+        auto ty = parse_type(s, prec._1, lim, error);
         ret tup(piece_conv(rec(param = parm._0,
                                flags = flags._0,
                                width = width._0,
@@ -258,10 +260,9 @@ mod ct {
         };
     }
 
-    fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
+    fn parse_type(str s, uint i, uint lim, error_fn error) -> tup(ty, uint) {
         if (i >= lim) {
-            log_err "missing type in conversion";
-            fail;
+            error("missing type in conversion");
         }
 
         auto tstr = str::substr(s, i, 1u);
@@ -287,7 +288,8 @@ mod ct {
         } else if (str::eq(tstr, "o")) {
             ty_octal
         } else {
-            log_err "unknown type in conversion";
+            // FIXME: Shouldn't need explicit fail here. Issue #542
+            error("unknown type in conversion: " + tstr);
             fail
         };
 
