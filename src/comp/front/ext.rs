@@ -23,18 +23,26 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
     ret syntax_expanders;
 }
 
-type span_err_fn = fn (span sp, str msg) -> !;
+type span_msg_fn = fn (span sp, str msg) -> !;
 
 // Provides a limited set of services necessary for syntax extensions
 // to do their thing
-type ext_ctxt = rec(span_err_fn span_err);
+type ext_ctxt = rec(span_msg_fn span_err,
+                    span_msg_fn span_unimpl);
 
 fn mk_ctxt(session sess) -> ext_ctxt {
-    fn ext_span_err_(session sess, span sp, str err) -> ! {
-        sess.span_err(sp, err);
+    fn ext_span_err_(session sess, span sp, str msg) -> ! {
+        sess.span_err(sp, msg);
     }
     auto ext_span_err = bind ext_span_err_(sess, _, _);
-    ret rec(span_err = ext_span_err);
+
+    fn ext_span_unimpl_(session sess, span sp, str msg) -> ! {
+        sess.span_unimpl(sp, msg);
+    }
+    auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+
+    ret rec(span_err = ext_span_err,
+            span_unimpl = ext_span_unimpl);
 }
 
 //
