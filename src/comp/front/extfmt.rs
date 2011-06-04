@@ -4,7 +4,6 @@
  * compiler syntax extension plugin interface.
  */
 
-import front::parser::parser;
 import util::common;
 
 import std::str;
@@ -20,7 +19,7 @@ import ext::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(&ext_ctxt cx,
-                     &parser p, common::span sp, 
+                     common::span sp, 
                      &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
@@ -36,7 +35,7 @@ fn expand_syntax_ext(&ext_ctxt cx,
     auto pieces = parse_fmt_string(fmt);
     auto args_len = vec::len[@ast::expr](args);
     auto fmt_args = vec::slice[@ast::expr](args, 1u, args_len - 1u);
-    ret pieces_to_expr(cx, p, sp, pieces, args);
+    ret pieces_to_expr(cx, sp, pieces, args);
 }
 
 fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
@@ -60,9 +59,8 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
 
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
-// FIXME: Probably should be using the parser's span functions
 // FIXME: Cleanup the naming of these functions
-fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
+fn pieces_to_expr(&ext_ctxt cx, common::span sp,
                   vec[piece] pieces, vec[@ast::expr] args) -> @ast::expr {
 
     fn make_new_lit(&ext_ctxt cx,
