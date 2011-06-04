@@ -149,7 +149,8 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
 
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
-    fn make_rt_conv_expr(parser p, common::span sp, &conv cnv) -> @ast::expr {
+    fn make_rt_conv_expr(&ext_ctxt cx,
+                         parser p, common::span sp, &conv cnv) -> @ast::expr {
 
         fn make_flags(parser p, common::span sp, vec[flag] flags)
                 -> @ast::expr {
@@ -186,7 +187,8 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
             ret make_vec_expr(p, sp, flagexprs);
         }
 
-        fn make_count(parser p, common::span sp, &count cnt) -> @ast::expr {
+        fn make_count(&ext_ctxt cx,
+                      parser p, common::span sp, &count cnt) -> @ast::expr {
             alt (cnt) {
                 case (count_implied) {
                     ret make_rt_path_expr(p, sp, "count_implied");
@@ -198,8 +200,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                     ret make_call(p, sp, count_is_path, count_is_args);
                 }
                 case (_) {
-                    log_err "not implemented";
-                    fail;
+                    cx.span_unimpl(sp, "unimplemented #fmt conversion");
                 }
             }
         }
@@ -244,8 +245,8 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
         }
 
         auto rt_conv_flags = make_flags(p, sp, cnv.flags);
-        auto rt_conv_width = make_count(p, sp, cnv.width);
-        auto rt_conv_precision = make_count(p, sp, cnv.precision);
+        auto rt_conv_width = make_count(cx, p, sp, cnv.width);
+        auto rt_conv_precision = make_count(cx, p, sp, cnv.precision);
         auto rt_conv_ty = make_ty(p, sp, cnv.ty);
         ret make_conv_rec(p,
                           sp,
@@ -255,11 +256,11 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                           rt_conv_ty);
     }
 
-    fn make_conv_call(parser p, common::span sp, str conv_type,
+    fn make_conv_call(&ext_ctxt cx, parser p, common::span sp, str conv_type,
                       &conv cnv, @ast::expr arg) -> @ast::expr {
         auto fname = "conv_" + conv_type;
         auto path = make_path_vec(fname);
-        auto cnv_expr = make_rt_conv_expr(p, sp, cnv);
+        auto cnv_expr = make_rt_conv_expr(cx, p, sp, cnv);
         auto args = [cnv_expr, arg];
         ret make_call(p, arg.span, path, args);
     }
@@ -292,8 +293,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
             case (option::none) {
             }
             case (_) {
-                log_err unsupported;
-                fail;
+                cx.span_unimpl(sp, unsupported);
             }
         }
 
@@ -316,8 +316,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                 case (flag_left_zero_pad) {
                 }
                 case (_) {
-                    log_err unsupported;
-                    fail;
+                    cx.span_unimpl(sp, unsupported);
                 }
             }
         }
@@ -328,8 +327,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
             case (count_is(_)) {
             }
             case (_) {
-                log_err unsupported;
-                fail;
+                cx.span_unimpl(sp, unsupported);
             }
         }
 
@@ -339,43 +337,41 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
             case (count_is(_)) {
             }
             case (_) {
-                log_err unsupported;
-                fail;
+                cx.span_unimpl(sp, unsupported);
             }
         }
 
         alt (cnv.ty) {
             case (ty_str) {
-                ret make_conv_call(p, arg.span, "str", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "str", cnv, arg);
             }
             case (ty_int(?sign)) {
                 alt (sign) {
                     case (signed) {
-                        ret make_conv_call(p, arg.span, "int", cnv, arg);
+                        ret make_conv_call(cx, p, arg.span, "int", cnv, arg);
                     }
                     case (unsigned) {
-                        ret make_conv_call(p, arg.span, "uint", cnv, arg);
+                        ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
                     }
                 }
             }
             case (ty_bool) {
-                ret make_conv_call(p, arg.span, "bool", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "bool", cnv, arg);
             }
             case (ty_char) {
-                ret make_conv_call(p, arg.span, "char", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "char", cnv, arg);
             }
             case (ty_hex(_)) {
-                ret make_conv_call(p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
             }
             case (ty_bits) {
-                ret make_conv_call(p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
             }
             case (ty_octal) {
-                ret make_conv_call(p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
             }
             case (_) {
-                log_err unsupported;
-                fail;
+                cx.span_unimpl(sp, unsupported);
             }
         }
     }
