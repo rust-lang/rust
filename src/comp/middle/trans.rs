@@ -160,8 +160,8 @@ state type fn_ctxt = rec(
     // The three implicit arguments that arrive in the function we're
     // creating.  For instance, foo(int, int) is really foo(ret*, task*, env*,
     // int, int).  These are also available via llvm::LLVMGetParam(llfn, uint)
-    // where uint = 2, 0, 1 respectively, but we unpack them here for
-    // convenience.
+    // where uint = 1, 2, 0 respectively, but we unpack them into these fields
+    // for convenience.
     ValueRef lltaskptr,
     ValueRef llenv,
     ValueRef llretptr,
@@ -7000,6 +7000,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
     auto llfndecl = cx.ccx.item_ids.get(fid);
 
+    // Set up arguments to the function.
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto,
                               ty_self, ret_ty_of_fn(cx.ccx, ann),
@@ -7018,9 +7019,10 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
     auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, ann);
     copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
+    // Create the first basic block in the function and keep a handle on it to
+    //  pass to finish_fn later.
     auto bcx = new_top_block_ctxt(fcx);
     add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
-
     auto lltop = bcx.llbb;
 
     auto block_ty = node_ann_type(cx.ccx, f.body.node.a);
@@ -7041,9 +7043,12 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
         res.bcx.build.RetVoid();
     }
 
+    // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 }
 
+// Create a vtable for an object being translated.  Returns a pointer into
+// read-only memory.
 fn create_vtbl(@local_ctxt cx,
               TypeRef llself_ty,
               ty::t self_ty,
@@ -7136,13 +7141,15 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // starting with an ast::_obj rather than an ast::_fn, we have some setup
     // work to do.
 
-    // Translate obj ctor args to function arguments.
+    // The fields of our object will become the arguments to the function
+    // we're creating.
     let vec[ast::arg] fn_args = [];
     for (ast::obj_field f in ob.fields) {
         fn_args += [rec(mode=ast::alias, ty=f.ty, ident=f.ident, id=f.id)];
     }
-
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
+
+    // Both regular arguments and type parameters are handled here.
     create_llargs_for_fn_args(fcx, ast::proto_fn,
                               none[ty_self_pair],
                               ret_ty_of_fn(ccx, ann),
@@ -7151,77 +7158,102 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ann);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
 
-    //  Make the first block context in the function and keep a handle on it
+    //  Create the first block context in the function and keep a handle on it
     //  to pass to finish_fn later.
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
+    // Pick up the type of this object by looking at our own output type, that
+    // is, the output type of the object constructor we're building.
     auto self_ty = ret_ty_of_fn(ccx, ann);
     auto llself_ty = type_of(ccx, sp, self_ty);
+
+    // Set up the two-word pair that we're going to return from the object
+    // constructor we're building.  The two elements of this pair will be a
+    // vtable pointer and a body pointer.  (llretptr already points to the
+    // place where this two-word pair should go; it was pre-allocated by the
+    // caller of the function.)
     auto pair = bcx.fcx.llretptr;
 
-    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params);
-
+    // Grab onto the first and second elements of the pair.
+    // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
+    // of 'pair'.
     auto pair_vtbl = bcx.build.GEP(pair,
                                    [C_int(0),
-                                       C_int(abi::obj_field_vtbl)]);
+                                    C_int(abi::obj_field_vtbl)]);
     auto pair_box = bcx.build.GEP(pair,
                                   [C_int(0),
-                                      C_int(abi::obj_field_box)]);
+                                   C_int(abi::obj_field_box)]);
+
+    // Make a vtable for this object: a static array of pointers to functions.
+    // It will be located in the read-only memory of the executable we're
+    // creating and will contain ValueRefs for all of this object's methods.
+    // create_vtbl returns a pointer to the vtable, which we store.
+    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params);
     bcx.build.Store(vtbl, pair_vtbl);
 
-    let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
+    // Next we have to take care of the other half of the pair we're
+    // returning: a boxed (reference-counted) tuple containing a tydesc,
+    // typarams, and fields.
 
-    // FIXME we should probably also allocate a box for empty objs that have a
-    // dtor, since otherwise they are never dropped, and the dtor never runs
+    // FIXME: What about with_obj?  Do we have to think about it here?
+    // (Pertains to issue #417.)
+
+    let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
+    
+    // FIXME: we should probably also allocate a box for empty objs that have
+    // a dtor, since otherwise they are never dropped, and the dtor never
+    // runs.
     if (vec::len[ast::ty_param](ty_params) == 0u &&
         vec::len[ty::arg](arg_tys) == 0u) {
+        // If the object we're translating has no fields or type parameters,
+        // there's not much to do.
+
         // Store null into pair, if no args or typarams.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
-        // Malloc a box for the body and copy args in.
+        // Otherwise, we have to synthesize a big structural type for the
+        // object body.
 
         let vec[ty::t] obj_fields = [];
         for (ty::arg a in arg_tys) {
             vec::push[ty::t](obj_fields, a.ty);
         }
 
-        // Synthesize an obj body type.
+        // Tuple type for fields: [field, ...]
+        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields);
+
+        // Tuple type for typarams: [typaram, ...]
         auto tydesc_ty = ty::mk_type(ccx.tcx);
         let vec[ty::t] tps = [];
         for (ast::ty_param tp in ty_params) {
             vec::push[ty::t](tps, tydesc_ty);
         }
-
-        // typarams_ty = [typaram_ty, ...]
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
-
-        // fields_ty = [field_ty, ...]
-        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields); 
-
-        // body_ty = [tydesc_ty, [typaram_ty, ...], [field_ty, ...]]
+ 
+        // Tuple type for body: [tydesc_ty, [typaram, ...], [field, ...]]
         let ty::t body_ty = ty::mk_imm_tup(ccx.tcx,
                                           [tydesc_ty,
                                            typarams_ty,
                                            fields_ty]);
 
-        // boxed_body_ty = [[tydesc_ty, [typaram_ty, ...], [field_ty, ...]]]
-        let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
-
-        // Malloc a box for the body.
+        // Hand this thing we've constructed off to trans_malloc_boxed, which
+        // makes space for the refcount.
         auto box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
-        auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
-                               [0, abi::box_rc_field_refcnt]);
-        bcx = rc.bcx;
 
-        // We've now created a structure that looks like:
-        // [refcount, [tydesc_ty, [typaram_ty, ...], [field_ty, ...]]]
+        // And mk_imm_box throws a refcount into the type we're synthesizing:
+        // [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
+        let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
+
+        auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
+                               [0, 
+                                abi::box_rc_field_refcnt]);
+        bcx = rc.bcx;
 
         auto body = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                  [0, abi::box_rc_field_body]);
         bcx = body.bcx;
-
 
         bcx.build.Store(C_int(1), rc.val);
 
@@ -7285,6 +7317,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     }
     bcx.build.RetVoid();
 
+    // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 }
 
