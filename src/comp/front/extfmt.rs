@@ -65,59 +65,60 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
 fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                   vec[piece] pieces, vec[@ast::expr] args) -> @ast::expr {
 
-    fn make_new_lit(parser p, common::span sp, ast::lit_ lit) -> @ast::expr {
+    fn make_new_lit(&ext_ctxt cx,
+                    common::span sp, ast::lit_ lit) -> @ast::expr {
         auto sp_lit = @rec(node=lit, span=sp);
-        auto expr = ast::expr_lit(sp_lit, p.get_ann());
+        auto expr = ast::expr_lit(sp_lit, cx.next_ann());
         ret @rec(node=expr, span=sp);
     }
 
-    fn make_new_str(parser p, common::span sp, str s) -> @ast::expr {
+    fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
         auto lit = ast::lit_str(s);
-        ret make_new_lit(p, sp, lit);
+        ret make_new_lit(cx, sp, lit);
     }
 
-    fn make_new_int(parser p, common::span sp, int i) -> @ast::expr {
+    fn make_new_int(&ext_ctxt cx, common::span sp, int i) -> @ast::expr {
         auto lit = ast::lit_int(i);
-        ret make_new_lit(p, sp, lit);
+        ret make_new_lit(cx, sp, lit);
     }
 
-    fn make_new_uint(parser p, common::span sp, uint u) -> @ast::expr {
+    fn make_new_uint(&ext_ctxt cx, common::span sp, uint u) -> @ast::expr {
         auto lit = ast::lit_uint(u);
-        ret make_new_lit(p, sp, lit);
+        ret make_new_lit(cx, sp, lit);
     }
 
-    fn make_add_expr(parser p, common::span sp,
+    fn make_add_expr(&ext_ctxt cx, common::span sp,
                      @ast::expr lhs, @ast::expr rhs) -> @ast::expr {
-        auto binexpr = ast::expr_binary(ast::add, lhs, rhs, p.get_ann());
+        auto binexpr = ast::expr_binary(ast::add, lhs, rhs, cx.next_ann());
         ret @rec(node=binexpr, span=sp);
     }
 
-    fn make_path_expr(parser p, common::span sp, vec[ast::ident] idents)
+    fn make_path_expr(&ext_ctxt cx, common::span sp, vec[ast::ident] idents)
             -> @ast::expr {
         let vec[@ast::ty] types = [];
         auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
-        auto pathexpr = ast::expr_path(sp_path, p.get_ann());
+        auto pathexpr = ast::expr_path(sp_path, cx.next_ann());
         auto sp_pathexpr = @rec(node=pathexpr, span=sp);
         ret sp_pathexpr;
     }
 
-    fn make_vec_expr(parser p, common::span sp, vec[@ast::expr] exprs)
+    fn make_vec_expr(&ext_ctxt cx, common::span sp, vec[@ast::expr] exprs)
             -> @ast::expr {
-        auto vecexpr = ast::expr_vec(exprs, ast::imm, p.get_ann());
+        auto vecexpr = ast::expr_vec(exprs, ast::imm, cx.next_ann());
         auto sp_vecexpr = @rec(node=vecexpr, span=sp);
         ret sp_vecexpr;
     }
 
-    fn make_call(parser p, common::span sp, vec[ast::ident] fn_path,
+    fn make_call(&ext_ctxt cx, common::span sp, vec[ast::ident] fn_path,
                  vec[@ast::expr] args) -> @ast::expr {
-        auto pathexpr = make_path_expr(p, sp, fn_path);
-        auto callexpr = ast::expr_call(pathexpr, args, p.get_ann());
+        auto pathexpr = make_path_expr(cx, sp, fn_path);
+        auto callexpr = ast::expr_call(pathexpr, args, cx.next_ann());
         auto sp_callexpr = @rec(node=callexpr, span=sp);
         ret sp_callexpr;
     }
 
-    fn make_rec_expr(parser p, common::span sp,
+    fn make_rec_expr(&ext_ctxt cx, common::span sp,
                      vec[tup(ast::ident, @ast::expr)] fields) -> @ast::expr {
         let vec[ast::field] astfields = [];
         for (tup(ast::ident, @ast::expr) field in fields) {
@@ -131,7 +132,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
 
         auto recexpr = ast::expr_rec(astfields,
                                     option::none[@ast::expr],
-                                    p.get_ann());
+                                    cx.next_ann());
         auto sp_recexpr = @rec(node=recexpr, span=sp);
         ret sp_recexpr;
     }
@@ -142,17 +143,18 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
         ret ["std", "extfmt", "rt", ident];
     }
 
-    fn make_rt_path_expr(parser p, common::span sp, str ident) -> @ast::expr {
+    fn make_rt_path_expr(&ext_ctxt cx,
+                         common::span sp, str ident) -> @ast::expr {
         auto path = make_path_vec(ident);
-        ret make_path_expr(p, sp, path);
+        ret make_path_expr(cx, sp, path);
     }
 
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
     fn make_rt_conv_expr(&ext_ctxt cx,
-                         parser p, common::span sp, &conv cnv) -> @ast::expr {
+                         common::span sp, &conv cnv) -> @ast::expr {
 
-        fn make_flags(parser p, common::span sp, vec[flag] flags)
+        fn make_flags(&ext_ctxt cx, common::span sp, vec[flag] flags)
                 -> @ast::expr {
             let vec[@ast::expr] flagexprs = [];
             for (flag f in flags) {
@@ -174,30 +176,30 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                         fstr = "flag_alternate";
                     }
                 }
-                flagexprs += [make_rt_path_expr(p, sp, fstr)];
+                flagexprs += [make_rt_path_expr(cx, sp, fstr)];
             }
 
             // FIXME: 0-length vectors can't have their type inferred
             // through the rec that these flags are a member of, so
             // this is a hack placeholder flag
             if (vec::len[@ast::expr](flagexprs) == 0u) {
-                flagexprs += [make_rt_path_expr(p, sp, "flag_none")];
+                flagexprs += [make_rt_path_expr(cx, sp, "flag_none")];
             }
 
-            ret make_vec_expr(p, sp, flagexprs);
+            ret make_vec_expr(cx, sp, flagexprs);
         }
 
         fn make_count(&ext_ctxt cx,
-                      parser p, common::span sp, &count cnt) -> @ast::expr {
+                      common::span sp, &count cnt) -> @ast::expr {
             alt (cnt) {
                 case (count_implied) {
-                    ret make_rt_path_expr(p, sp, "count_implied");
+                    ret make_rt_path_expr(cx, sp, "count_implied");
                 }
                 case (count_is(?c)) {
-                    auto count_lit = make_new_int(p, sp, c);
+                    auto count_lit = make_new_int(cx, sp, c);
                     auto count_is_path = make_path_vec("count_is");
                     auto count_is_args = [count_lit];
-                    ret make_call(p, sp, count_is_path, count_is_args);
+                    ret make_call(cx, sp, count_is_path, count_is_args);
                 }
                 case (_) {
                     cx.span_unimpl(sp, "unimplemented #fmt conversion");
@@ -205,7 +207,7 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
             }
         }
 
-        fn make_ty(parser p, common::span sp, &ty t) -> @ast::expr {
+        fn make_ty(&ext_ctxt cx, common::span sp, &ty t) -> @ast::expr {
             auto rt_type;
             alt (t) {
                 case (ty_hex(?c)) {
@@ -229,26 +231,26 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                 }
             }
 
-            ret make_rt_path_expr(p, sp, rt_type);
+            ret make_rt_path_expr(cx, sp, rt_type);
         }
 
-        fn make_conv_rec(parser p,
+        fn make_conv_rec(&ext_ctxt cx,
                          common::span sp,
                          @ast::expr flags_expr,
                          @ast::expr width_expr,
                          @ast::expr precision_expr,
                          @ast::expr ty_expr) -> @ast::expr {
-            ret make_rec_expr(p, sp, [tup("flags", flags_expr),
+            ret make_rec_expr(cx, sp, [tup("flags", flags_expr),
                                          tup("width", width_expr),
                                          tup("precision", precision_expr),
                                          tup("ty", ty_expr)]);
         }
 
-        auto rt_conv_flags = make_flags(p, sp, cnv.flags);
-        auto rt_conv_width = make_count(cx, p, sp, cnv.width);
-        auto rt_conv_precision = make_count(cx, p, sp, cnv.precision);
-        auto rt_conv_ty = make_ty(p, sp, cnv.ty);
-        ret make_conv_rec(p,
+        auto rt_conv_flags = make_flags(cx, sp, cnv.flags);
+        auto rt_conv_width = make_count(cx, sp, cnv.width);
+        auto rt_conv_precision = make_count(cx, sp, cnv.precision);
+        auto rt_conv_ty = make_ty(cx, sp, cnv.ty);
+        ret make_conv_rec(cx,
                           sp,
                           rt_conv_flags,
                           rt_conv_width,
@@ -256,16 +258,16 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                           rt_conv_ty);
     }
 
-    fn make_conv_call(&ext_ctxt cx, parser p, common::span sp, str conv_type,
+    fn make_conv_call(&ext_ctxt cx, common::span sp, str conv_type,
                       &conv cnv, @ast::expr arg) -> @ast::expr {
         auto fname = "conv_" + conv_type;
         auto path = make_path_vec(fname);
-        auto cnv_expr = make_rt_conv_expr(cx, p, sp, cnv);
+        auto cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         auto args = [cnv_expr, arg];
-        ret make_call(p, arg.span, path, args);
+        ret make_call(cx, arg.span, path, args);
     }
 
-    fn make_new_conv(&ext_ctxt cx, parser p, common::span sp,
+    fn make_new_conv(&ext_ctxt cx, common::span sp,
                      conv cnv, @ast::expr arg) -> @ast::expr {
 
         // FIXME: Extract all this validation into extfmt::ct
@@ -343,32 +345,32 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
 
         alt (cnv.ty) {
             case (ty_str) {
-                ret make_conv_call(cx, p, arg.span, "str", cnv, arg);
+                ret make_conv_call(cx, arg.span, "str", cnv, arg);
             }
             case (ty_int(?sign)) {
                 alt (sign) {
                     case (signed) {
-                        ret make_conv_call(cx, p, arg.span, "int", cnv, arg);
+                        ret make_conv_call(cx, arg.span, "int", cnv, arg);
                     }
                     case (unsigned) {
-                        ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
+                        ret make_conv_call(cx, arg.span, "uint", cnv, arg);
                     }
                 }
             }
             case (ty_bool) {
-                ret make_conv_call(cx, p, arg.span, "bool", cnv, arg);
+                ret make_conv_call(cx, arg.span, "bool", cnv, arg);
             }
             case (ty_char) {
-                ret make_conv_call(cx, p, arg.span, "char", cnv, arg);
+                ret make_conv_call(cx, arg.span, "char", cnv, arg);
             }
             case (ty_hex(_)) {
-                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, arg.span, "uint", cnv, arg);
             }
             case (ty_bits) {
-                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, arg.span, "uint", cnv, arg);
             }
             case (ty_octal) {
-                ret make_conv_call(cx, p, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, arg.span, "uint", cnv, arg);
             }
             case (_) {
                 cx.span_unimpl(sp, unsupported);
@@ -470,14 +472,14 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
 
     auto fmt_sp = args.(0).span;
     auto n = 0u;
-    auto tmp_expr = make_new_str(p, sp, "");
+    auto tmp_expr = make_new_str(cx, sp, "");
     auto nargs = vec::len[@ast::expr](args);
 
     for (piece pc in pieces) {
         alt (pc) {
             case (piece_string(?s)) {
-                auto s_expr = make_new_str(p, fmt_sp, s);
-                tmp_expr = make_add_expr(p, fmt_sp, tmp_expr, s_expr);
+                auto s_expr = make_new_str(cx, fmt_sp, s);
+                tmp_expr = make_add_expr(cx, fmt_sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
                 n += 1u;
@@ -492,8 +494,8 @@ fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
                 //log_conv(conv);
 
                 auto arg_expr = args.(n);
-                auto c_expr = make_new_conv(cx, p, fmt_sp, conv, arg_expr);
-                tmp_expr = make_add_expr(p, fmt_sp, tmp_expr, c_expr);
+                auto c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
+                tmp_expr = make_add_expr(cx, fmt_sp, tmp_expr, c_expr);
             }
         }
     }
