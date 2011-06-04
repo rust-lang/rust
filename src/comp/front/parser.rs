@@ -27,11 +27,6 @@ tag file_type {
 
 type ty_or_bang = util::common::ty_or_bang[@ast::ty];
 
-// Temporary: to introduce a tag in order to make a recursive type work
-tag syntax_extension {
-    x(syntax_expander);
-}
-
 state type parser =
     state obj {
         fn peek() -> token::token;
@@ -53,14 +48,11 @@ state type parser =
         fn get_reader() -> lexer::reader;
         fn get_filemap() -> codemap::filemap;
         fn get_bad_expr_words() -> hashmap[str, ()];
-        fn get_syntax_expanders() -> hashmap[str, syntax_extension];
+        fn get_syntax_expanders() -> hashmap[str, ext::syntax_extension];
         fn get_chpos() -> uint;
         fn get_ann() -> ast::ann;
         fn next_ann_num() -> uint;
     };
-
-type syntax_expander = fn(&parser, common::span, &vec[@ast::expr], 
-                          option::t[str]) -> @ast::expr;
 
 fn new_parser(session::session sess,
                      eval::env env,
@@ -80,7 +72,8 @@ fn new_parser(session::session sess,
                            vec[op_spec] precs,
                            mutable uint next_ann_var,
                            hashmap[str, ()] bad_words,
-                           hashmap[str, syntax_extension] syntax_expanders)
+                           hashmap[str, ext::syntax_extension]
+                               syntax_expanders)
         {
             fn peek() -> token::token {
                 ret tok;
@@ -153,7 +146,7 @@ fn new_parser(session::session sess,
                 ret bad_words;
             }
 
-            fn get_syntax_expanders() -> hashmap[str, syntax_extension] {
+            fn get_syntax_expanders() -> hashmap[str, ext::syntax_extension] {
                 ret syntax_expanders;
             }
 
@@ -183,7 +176,7 @@ fn new_parser(session::session sess,
     ret stdio_parser(sess, env, ftype, lexer::next_token(rdr),
                      npos, npos, npos, initial_def._1, UNRESTRICTED,
                      initial_def._0, rdr, prec_table(), next_ann,
-                     bad_expr_word_table(), syntax_expander_table());
+                     bad_expr_word_table(), ext::syntax_expander_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
@@ -225,13 +218,6 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("tag", ());
     words.insert("obj", ());
     ret words;
-}
-
-fn syntax_expander_table() -> hashmap[str, syntax_extension] {
-    auto syntax_expanders = new_str_hash[syntax_extension]();
-    syntax_expanders.insert("fmt", x(extfmt::expand_syntax_ext));
-    syntax_expanders.insert("env", x(extenv::expand_syntax_ext));
-    ret syntax_expanders;
 }
 
 fn unexpected(&parser p, token::token t) -> ! {
@@ -1060,11 +1046,13 @@ fn expand_syntax_ext(&parser p, common::span sp,
     auto extname = path.node.idents.(0);
 
     alt (p.get_syntax_expanders().find(extname)) {
-        case (none[syntax_extension]) {
+        case (none) {
             p.err("unknown syntax expander: '" + extname + "'");
         }
-        case (some[syntax_extension](x(?ext))) {
-            ret ast::expr_ext(path, args, body, ext(p, sp, args, body), 
+        case (some(ext::x(?ext))) {
+            auto ext_cx = ext::mk_ctxt(p.get_session());
+            ret ast::expr_ext(path, args, body,
+                              ext(ext_cx, p, sp, args, body), 
                               p.get_ann());
         }
     }

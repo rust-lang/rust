@@ -38,6 +38,7 @@ mod pretty {
 mod front {
     mod ast;
     mod creader;
+    mod ext;
     mod extfmt;
     mod extenv;
     mod codemap;
