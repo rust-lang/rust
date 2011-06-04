@@ -933,7 +933,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                                         some(token::COMMA),
                                         pf, p);
         hi = es.span.hi;
-        ex = expand_syntax_ext(p, es.span, pth, es.node,
+        auto ext_span = rec(lo=lo, hi=hi);
+        ex = expand_syntax_ext(p, ext_span, pth, es.node,
                                none[str]);
     } else if (eat_word(p, "fail")) {
         ex = ast::expr_fail(p.get_ann());
