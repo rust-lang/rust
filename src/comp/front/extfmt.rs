@@ -15,9 +15,12 @@ import std::option::some;
 
 import std::extfmt::ct::*;
 
+import ext::*;
+
 export expand_syntax_ext;
 
-fn expand_syntax_ext(&parser p, common::span sp, 
+fn expand_syntax_ext(&ext_ctxt cx,
+                     &parser p, common::span sp, 
                      &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
