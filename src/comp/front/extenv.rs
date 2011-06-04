@@ -23,13 +23,13 @@ fn expand_syntax_ext(&ext_ctxt cx,
                      option::t[str] body) -> @ast::expr {
 
     if (vec::len[@ast::expr](args) != 1u) {
-        p.err("malformed #env call");
+        cx.span_err(sp, "malformed #env call");
     }
 
     // FIXME: if this was more thorough it would manufacture an
     // option::t[str] rather than just an maybe-empty string.
 
-    auto var = expr_to_str(p, args.(0));
+    auto var = expr_to_str(cx, p, args.(0));
     alt (generic_os::getenv(var)) {
         case (option::none) {
             ret make_new_str(p, sp, "");
@@ -42,7 +42,7 @@ fn expand_syntax_ext(&ext_ctxt cx,
 
 // FIXME: duplicate code copied from extfmt:
 
-fn expr_to_str(parser::parser p,
+fn expr_to_str(&ext_ctxt cx, parser::parser p,
                @ast::expr expr) -> str {
     alt (expr.node) {
         case (ast::expr_lit(?l, _)) {
@@ -50,11 +50,15 @@ fn expr_to_str(parser::parser p,
                 case (ast::lit_str(?s)) {
                     ret s;
                 }
+                case (_) {
+                    cx.span_err(l.span, "malformed #env call");
+                }
             }
         }
+        case (_) {
+            cx.span_err(expr.span, "malformed #env call");
+        }
     }
-    p.err("malformed #env call");
-    fail;
 }
 
 fn make_new_lit(parser::parser p, common::span sp, ast::lit_ lit)
