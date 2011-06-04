@@ -25,12 +25,10 @@ fn expand_syntax_ext(&ext_ctxt cx,
                      option::t[str] body) -> @ast::expr {
 
     if (vec::len[@ast::expr](args) == 0u) {
-        // FIXME: Handle error correctly.
-        log_err "malformed #fmt call";
-        fail;
+        cx.span_err(sp, "#fmt requires a format string");
     }
 
-    auto fmt = expr_to_str(args.(0));
+    auto fmt = expr_to_str(cx, args.(0));
 
     // log "Format string:";
     // log fmt;
@@ -38,31 +36,34 @@ fn expand_syntax_ext(&ext_ctxt cx,
     auto pieces = parse_fmt_string(fmt);
     auto args_len = vec::len[@ast::expr](args);
     auto fmt_args = vec::slice[@ast::expr](args, 1u, args_len - 1u);
-    ret pieces_to_expr(p, pieces, args);
+    ret pieces_to_expr(cx, p, sp, pieces, args);
 }
 
-fn expr_to_str(@ast::expr expr) -> str {
+fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
+    auto err_msg = "first argument to #fmt must be a string literal";
     alt (expr.node) {
         case (ast::expr_lit(?l, _)) {
             alt (l.node) {
                 case (ast::lit_str(?s)) {
                     ret s;
                 }
-                case (_) { /* fallthrough */ }
+                case (_) {
+                    cx.span_err(l.span, err_msg);
+                }
             }
         }
-        case (_) { /* fallthrough */ }
+        case (_) {
+            cx.span_err(expr.span, err_msg);
+        }
     }
-    log_err "first argument to #fmt must be a string literal";
-    fail;
 }
 
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
 // FIXME: Probably should be using the parser's span functions
 // FIXME: Cleanup the naming of these functions
-fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
-        -> @ast::expr {
+fn pieces_to_expr(&ext_ctxt cx, parser p, common::span sp,
+                  vec[piece] pieces, vec[@ast::expr] args) -> @ast::expr {
 
     fn make_new_lit(parser p, common::span sp, ast::lit_ lit) -> @ast::expr {
         auto sp_lit = @rec(node=lit, span=sp);
@@ -263,7 +264,8 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         ret make_call(p, arg.span, path, args);
     }
 
-    fn make_new_conv(parser p, conv cnv, @ast::expr arg) -> @ast::expr {
+    fn make_new_conv(&ext_ctxt cx, parser p, common::span sp,
+                     conv cnv, @ast::expr arg) -> @ast::expr {
 
         // FIXME: Extract all this validation into extfmt::ct
         fn is_signed_type(conv cnv) -> bool {
@@ -301,15 +303,14 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                 }
                 case (flag_sign_always) {
                     if (!is_signed_type(cnv)) {
-                        log_err "+ flag only valid in signed #fmt conversion";
-                        fail;
+                        cx.span_err(sp, "+ flag only valid in "
+                                    + "signed #fmt conversion");
                     }
                 }
                 case (flag_space_for_sign) {
                     if (!is_signed_type(cnv)) {
-                        log_err "space flag only valid in "
-                            + "signed #fmt conversions";
-                        fail;
+                        cx.span_err(sp, "space flag only valid in "
+                                    + "signed #fmt conversions");
                     }
                 }
                 case (flag_left_zero_pad) {
@@ -471,7 +472,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         }
     }
 
-    auto sp = args.(0).span;
+    auto fmt_sp = args.(0).span;
     auto n = 0u;
     auto tmp_expr = make_new_str(p, sp, "");
     auto nargs = vec::len[@ast::expr](args);
@@ -479,32 +480,33 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
     for (piece pc in pieces) {
         alt (pc) {
             case (piece_string(?s)) {
-                auto s_expr = make_new_str(p, sp, s);
-                tmp_expr = make_add_expr(p, sp, tmp_expr, s_expr);
+                auto s_expr = make_new_str(p, fmt_sp, s);
+                tmp_expr = make_add_expr(p, fmt_sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
+                n += 1u;
+
                 if (n >= nargs) {
-                    log_err "too many conversions in #fmt string";
-                    fail;
+                    cx.span_err(sp, "not enough arguments to #fmt "
+                                + "for the given format string");
                 }
 
                 // TODO: Remove debug logging
                 //log "Building conversion:";
                 //log_conv(conv);
 
-                n += 1u;
                 auto arg_expr = args.(n);
-                auto c_expr = make_new_conv(p, conv, arg_expr);
-                tmp_expr = make_add_expr(p, sp, tmp_expr, c_expr);
+                auto c_expr = make_new_conv(cx, p, fmt_sp, conv, arg_expr);
+                tmp_expr = make_add_expr(p, fmt_sp, tmp_expr, c_expr);
             }
         }
     }
 
     auto expected_nargs = n + 1u; // n conversions + the fmt string
     if (expected_nargs < nargs) {
-        log_err #fmt("too many arguments to #fmt. found %u, expected %u",
-                     nargs, expected_nargs);
-        fail;
+        cx.span_err(sp,
+                    #fmt("too many arguments to #fmt. found %u, expected %u",
+                         nargs, expected_nargs));
     }
 
     // TODO: Remove this debug logging
