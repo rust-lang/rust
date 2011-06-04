@@ -204,7 +204,8 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op,
         i += 1u;
         if (i < len) {
             word(s.s, ",");
-            maybe_print_trailing_comment(s, get_span(elt));
+            maybe_print_trailing_comment(s, get_span(elt),
+                                         some(get_span(elts.(i)).hi));
             space(s.s);
         }
     }
@@ -404,7 +405,7 @@ fn print_item(&ps s, &@ast::item item) {
                     pclose(s);
                 }
                 word(s.s, ";");
-                maybe_print_trailing_comment(s, v.span);
+                maybe_print_trailing_comment(s, v.span, none[uint]);
             }
             bclose(s, item.span);
         }
@@ -469,13 +470,12 @@ fn print_stmt(&ps s, &ast::stmt st) {
         }
     }
     if (front::parser::stmt_ends_with_semi(st)) {word(s.s, ";");}
-    maybe_print_trailing_comment(s, st.span);
+    maybe_print_trailing_comment(s, st.span, none[uint]);
 }
 
 fn print_block(&ps s, ast::block blk) {
     maybe_print_comment(s, blk.span.lo);
     bopen(s);
-    auto first = true;
     for (@ast::stmt st in blk.node.stmts) {
         print_stmt(s, *st)
 
@@ -484,7 +484,8 @@ fn print_block(&ps s, ast::block blk) {
         case (some(?expr)) {
             space(s.s);
             print_expr(s, expr);
-            maybe_print_trailing_comment(s, expr.span);
+            maybe_print_trailing_comment(s, expr.span,
+                                         some(blk.span.hi));
         }
         case (_) {}
     }
@@ -1264,7 +1265,8 @@ fn maybe_print_comment(&ps s, uint pos) {
     }
 }
 
-fn maybe_print_trailing_comment(&ps s, common::span span) {
+fn maybe_print_trailing_comment(&ps s, common::span span,
+                                option::t[uint] next_pos) {
     auto cm;
     alt (s.cm) {
         case (some(?ccm)) {
@@ -1278,9 +1280,14 @@ fn maybe_print_trailing_comment(&ps s, common::span span) {
 
             auto span_line = codemap::lookup_pos(cm, span.hi);
             auto comment_line = codemap::lookup_pos(cm, cmnt.pos);
+            auto next = cmnt.pos + 1u;
+            alt (next_pos) {
+                case (none) { }
+                case (some(?p)) { next = p; }
+            }
             if (span.hi < cmnt.pos &&
+                cmnt.pos < next &&
                 span_line.line == comment_line.line) {
-                word(s.s, " ");
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
             }
@@ -1327,6 +1334,7 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
         }
 
         case (lexer::trailing) {
+            word(s.s, " ");
             if (vec::len(cmnt.lines) == 1u) {
                 word(s.s, cmnt.lines.(0));
                 hardbreak(s.s);
