@@ -1641,6 +1641,8 @@ fn GEP_tag(@block_ctxt cx,
 }
 
 
+// trans_raw_malloc: expects a type indicating which pointer type we want and
+// a size indicating how much space we want malloc'd.
 fn trans_raw_malloc(&@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
         -> result {
     // FIXME: need a table to collect tydesc globals.
@@ -1650,14 +1652,29 @@ fn trans_raw_malloc(&@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
     ret res(cx, cx.build.PointerCast(rval, llptr_ty));
 }
 
+
+// trans_malloc_boxed: expects an unboxed type and returns a pointer to enough
+// space for something of that type, along with space for a reference count;
+// in other words, it allocates a box for something of that type.
 fn trans_malloc_boxed(&@block_ctxt cx, ty::t t) -> result {
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
+
+    // We synthesize two types here because we want both the type of the
+    // pointer and the pointee.  boxed_body is the type that we measure the
+    // size of; box_ptr is the type that's converted to a TypeRef and used as
+    // the pointer cast target in trans_raw_malloc.
     auto boxed_body = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx,
+                                     // The mk_int here is the space being
+                                     // reserved for the refcount.
                                     [ty::mk_int(cx.fcx.lcx.ccx.tcx), t]);
     auto box_ptr = ty::mk_imm_box(cx.fcx.lcx.ccx.tcx, t);
     auto sz = size_of(cx, boxed_body);
+    
+    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
+    // wants.
     auto llty = type_of(cx.fcx.lcx.ccx, cx.sp, box_ptr);
+
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
 }
 
