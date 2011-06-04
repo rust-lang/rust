@@ -15,7 +15,7 @@ import ext::*;
 
 export expand_syntax_ext;
 
-// FIXME: Need to thread parser through here to handle errors correctly
+
 fn expand_syntax_ext(&ext_ctxt cx,
                      &parser::parser p,
                      common::span sp,
@@ -29,20 +29,20 @@ fn expand_syntax_ext(&ext_ctxt cx,
     // FIXME: if this was more thorough it would manufacture an
     // option::t[str] rather than just an maybe-empty string.
 
-    auto var = expr_to_str(cx, p, args.(0));
+    auto var = expr_to_str(cx, args.(0));
     alt (generic_os::getenv(var)) {
         case (option::none) {
-            ret make_new_str(p, sp, "");
+            ret make_new_str(cx, sp, "");
         }
         case (option::some(?s)) {
-            ret make_new_str(p, sp, s);
+            ret make_new_str(cx, sp, s);
         }
     }
 }
 
 // FIXME: duplicate code copied from extfmt:
 
-fn expr_to_str(&ext_ctxt cx, parser::parser p,
+fn expr_to_str(&ext_ctxt cx,
                @ast::expr expr) -> str {
     alt (expr.node) {
         case (ast::expr_lit(?l, _)) {
@@ -61,16 +61,16 @@ fn expr_to_str(&ext_ctxt cx, parser::parser p,
     }
 }
 
-fn make_new_lit(parser::parser p, common::span sp, ast::lit_ lit)
+fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit)
     -> @ast::expr {
     auto sp_lit = @rec(node=lit, span=sp);
-    auto expr = ast::expr_lit(sp_lit, p.get_ann());
+    auto expr = ast::expr_lit(sp_lit, cx.next_ann());
     ret @rec(node=expr, span=sp);
 }
 
-fn make_new_str(parser::parser p, common::span sp, str s) -> @ast::expr {
+fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
     auto lit = ast::lit_str(s);
-    ret make_new_lit(p, sp, lit);
+    ret make_new_lit(cx, sp, lit);
 }
 
 //
