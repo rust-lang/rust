@@ -6,7 +6,7 @@ import front::parser::parser;
 import util::common::span;
 import util::common::new_str_hash;
 
-type syntax_expander = fn(&ext_ctxt, &parser::parser, span,
+type syntax_expander = fn(&ext_ctxt, span,
                           &vec[@ast::expr],
                           option::t[str]) -> @ast::expr;
 

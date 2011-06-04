@@ -1050,7 +1050,7 @@ fn expand_syntax_ext(&parser p, common::span sp,
         case (some(ext::x(?ext))) {
             auto ext_cx = ext::mk_ctxt(p);
             ret ast::expr_ext(path, args, body,
-                              ext(ext_cx, p, sp, args, body), 
+                              ext(ext_cx, sp, args, body), 
                               p.get_ann());
         }
     }

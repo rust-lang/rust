@@ -15,9 +15,7 @@ import ext::*;
 
 export expand_syntax_ext;
 
-
 fn expand_syntax_ext(&ext_ctxt cx,
-                     &parser::parser p,
                      common::span sp,
                      &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
