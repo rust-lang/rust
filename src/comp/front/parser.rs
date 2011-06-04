@@ -28,8 +28,8 @@ tag file_type {
 type ty_or_bang = util::common::ty_or_bang[@ast::ty];
 
 // Temporary: to introduce a tag in order to make a recursive type work
-tag xmacro {
-    x(macro);
+tag syntax_extension {
+    x(syntax_expander);
 }
 
 state type parser =
@@ -52,15 +52,15 @@ state type parser =
         fn get_str(token::str_num) -> str;
         fn get_reader() -> lexer::reader;
         fn get_filemap() -> codemap::filemap;
-        fn get_bad_expr_words() -> std::map::hashmap[str, ()];
-        fn get_macros() -> std::map::hashmap[str, xmacro];
+        fn get_bad_expr_words() -> hashmap[str, ()];
+        fn get_syntax_expanders() -> hashmap[str, syntax_extension];
         fn get_chpos() -> uint;
         fn get_ann() -> ast::ann;
         fn next_ann_num() -> uint;
     };
 
-type macro = fn(&parser, common::span, &vec[@ast::expr], option::t[str]) 
-    -> @ast::expr;
+type syntax_expander = fn(&parser, common::span, &vec[@ast::expr], 
+                          option::t[str]) -> @ast::expr;
 
 fn new_parser(session::session sess,
                      eval::env env,
@@ -79,8 +79,8 @@ fn new_parser(session::session sess,
                            lexer::reader rdr,
                            vec[op_spec] precs,
                            mutable uint next_ann_var,
-                           std::map::hashmap[str, ()] bad_words,
-                           std::map::hashmap[str, xmacro] macros)
+                           hashmap[str, ()] bad_words,
+                           hashmap[str, syntax_extension] syntax_expanders)
         {
             fn peek() -> token::token {
                 ret tok;
@@ -149,12 +149,12 @@ fn new_parser(session::session sess,
                 ret rdr.get_filemap();
             }
 
-            fn get_bad_expr_words() -> std::map::hashmap[str, ()] {
+            fn get_bad_expr_words() -> hashmap[str, ()] {
                 ret bad_words;
             }
 
-            fn get_macros() -> std::map::hashmap[str, xmacro] {
-                ret macros;
+            fn get_syntax_expanders() -> hashmap[str, syntax_extension] {
+                ret syntax_expanders;
             }
 
             fn get_chpos() -> uint {ret rdr.get_chpos();}
@@ -183,13 +183,13 @@ fn new_parser(session::session sess,
     ret stdio_parser(sess, env, ftype, lexer::next_token(rdr),
                      npos, npos, npos, initial_def._1, UNRESTRICTED,
                      initial_def._0, rdr, prec_table(), next_ann,
-                     bad_expr_word_table(), macro_table());
+                     bad_expr_word_table(), syntax_expander_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
 // because, if used at the start of a line, they will cause the line to be
 // interpreted as a specific kind of statement, which would be confusing.
-fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
+fn bad_expr_word_table() -> hashmap[str, ()] {
     auto words = new_str_hash[()]();
     words.insert("mod", ());
     words.insert("if", ());
@@ -227,11 +227,11 @@ fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
     ret words;
 }
 
-fn macro_table() -> std::map::hashmap[str, xmacro] {
-    auto macros = new_str_hash[xmacro]();
-    macros.insert("fmt", x(extfmt::expand_syntax_ext));
-    macros.insert("env", x(extenv::expand_syntax_ext));
-    ret macros;
+fn syntax_expander_table() -> hashmap[str, syntax_extension] {
+    auto syntax_expanders = new_str_hash[syntax_extension]();
+    syntax_expanders.insert("fmt", x(extfmt::expand_syntax_ext));
+    syntax_expanders.insert("env", x(extenv::expand_syntax_ext));
+    ret syntax_expanders;
 }
 
 fn unexpected(&parser p, token::token t) -> ! {
@@ -1059,11 +1059,11 @@ fn expand_syntax_ext(&parser p, common::span sp,
     assert (vec::len[ast::ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
 
-    alt (p.get_macros().find(extname)) {
-        case (none[xmacro]) {
-            p.err("unknown macro: '" + extname + "'");
+    alt (p.get_syntax_expanders().find(extname)) {
+        case (none[syntax_extension]) {
+            p.err("unknown syntax expander: '" + extname + "'");
         }
-        case (some[xmacro](x(?ext))) {
+        case (some[syntax_extension](x(?ext))) {
             ret ast::expr_ext(path, args, body, ext(p, sp, args, body), 
                               p.get_ann());
         }
