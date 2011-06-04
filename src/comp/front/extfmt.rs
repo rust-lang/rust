@@ -29,8 +29,8 @@ fn expand_syntax_ext(&ext_ctxt cx,
 
     auto fmt = expr_to_str(cx, args.(0));
 
-    // log "Format string:";
-    // log fmt;
+    log "Format string:";
+    log fmt;
 
     auto pieces = parse_fmt_string(fmt);
     auto args_len = vec::len[@ast::expr](args);
@@ -465,6 +465,9 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp,
                     }
                 }
             }
+            case (ty_octal) {
+                log "type: octal";
+            }
         }
     }
 
@@ -487,9 +490,8 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp,
                                 + "for the given format string");
                 }
 
-                // TODO: Remove debug logging
-                //log "Building conversion:";
-                //log_conv(conv);
+                log "Building conversion:";
+                log_conv(conv);
 
                 auto arg_expr = args.(n);
                 auto c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
@@ -505,9 +507,6 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp,
                          nargs, expected_nargs));
     }
 
-    // TODO: Remove this debug logging
-    // log "dumping expanded ast:";
-    // log pretty::print_expr(tmp_expr);
     ret tmp_expr;
 }
 
