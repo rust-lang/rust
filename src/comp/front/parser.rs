@@ -608,7 +608,6 @@ fn parse_arg(&parser p) -> ast::arg {
 fn parse_seq_to_end[T](token::token ket,
                        option::t[token::token] sep,
                        (fn(&parser) -> T) f,
-                       uint hi,
                        &parser p) -> vec[T] {
     let bool first = true;
     let vec[T] v = [];
@@ -628,7 +627,6 @@ fn parse_seq_to_end[T](token::token ket,
         let T t = f(p);
         v += [t];
     }
-    hi = p.get_hi_pos();
     expect(p, ket);
     ret v;
 }
@@ -639,9 +637,9 @@ fn parse_seq[T](token::token bra,
                 (fn(&parser) -> T) f,
                 &parser p) -> util::common::spanned[vec[T]] {
     auto lo = p.get_lo_pos();
-    auto hi = p.get_hi_pos();
     expect(p, bra);
-    auto result = parse_seq_to_end[T](ket, sep, f, hi, p);
+    auto result = parse_seq_to_end[T](ket, sep, f, p);
+    auto hi = p.get_hi_pos();
     ret spanned(lo, hi, result);
 }
 
@@ -823,7 +821,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
 
         auto es = parse_seq_to_end[@ast::expr](token::RBRACKET,
                                                some(token::COMMA),
-                                               pf, hi, p);
+                                               pf, p);
         ex = ast::expr_vec(es, mut, p.get_ann());
     } else if (eat_word(p, "obj")) {
         // Anonymous object
@@ -836,7 +834,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             none[vec[ast::obj_field]];
         if (p.peek() == token::LPAREN) {
             auto pf = parse_obj_field;
-            hi = p.get_hi_pos();
             expect(p, token::LPAREN);
 
 
@@ -844,7 +841,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 (parse_seq_to_end[ast::obj_field] 
                  (token::RPAREN,
                   some(token::COMMA),
-                  pf, hi, p));
+                  pf, p));
         }
 
         let vec[@ast::method] meths = [];
