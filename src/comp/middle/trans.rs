@@ -7231,15 +7231,16 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
                                            typarams_ty,
                                            fields_ty]);
 
-        // Hand this thing we've constructed off to trans_malloc_boxed, which
-        // makes space for the refcount.
+        // Hand this type we've synthesized off to trans_malloc_boxed, which
+        // allocates a box, including space for a refcount.
         auto box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
 
-        // And mk_imm_box throws a refcount into the type we're synthesizing:
-        // [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
+        // mk_imm_box throws a refcount into the type we're synthesizing, so
+        // that it looks like: [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
         let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
 
+        // Grab onto the refcount and body parts of the box we allocated.
         auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                [0, 
                                 abi::box_rc_field_refcnt]);
@@ -7253,6 +7254,12 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
 
         // Put together a tydesc for the body, so that the object can later be
         // freed by calling through its tydesc.
+
+        // Every object (not just those with type parameters) needs to have a
+        // tydesc to describe its body, since all objects have unknown type to
+        // the user of the object.  So the tydesc is needed to keep track of
+        // the types of the object's fields, so that the fields can be freed
+        // later.
         auto body_tydesc =
             GEP_tup_like(bcx, body_ty, body.val,
                          [0, abi::obj_body_elt_tydesc]);
@@ -7263,16 +7270,15 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
 
-        auto dtor = C_null(T_ptr(T_glue_fn(ccx.tn)));
-        alt (ob.dtor) {
-            case (some(?d)) {
-                dtor = trans_dtor(cx, llself_ty, self_ty, ty_params, d);
-            }
-            case (none) {}
-        }
-
         bcx = body_td.bcx;
         bcx.build.Store(body_td.val, body_tydesc.val);
+
+        // Copy the object's type parameters and fields into the space we
+        // allocated for the object body.  (This is something like saving the
+        // lexical environment of a function in its closure: the "captured
+        // typarams" are any type parameters that are passed to the object
+        // constructor and are then available to the object's methods.
+        // Likewise for the object's fields.)
 
         // Copy typarams into captured typarams.
         auto body_typarams =
