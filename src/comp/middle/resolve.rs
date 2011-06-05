@@ -481,7 +481,7 @@ fn ns_name(namespace ns) -> str {
     }
 }
 
-fn unresolved(&env e, &span sp, &ident id, &str kind) {
+fn unresolved(&env e, &span sp, &ident id, &str kind) -> ! {
     e.sess.span_err(sp, "unresolved " + kind + ": " + id);
 }
 
@@ -511,8 +511,6 @@ fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
             ret d;
         }
     }
-
-    fail; // fools the return-checker
 }
 
 fn scope_is_fn(&scope sc) -> bool {
@@ -793,8 +791,6 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id,
             ret d;
         }
     }
-
-    fail; // fools the return-checker
 }
 
 fn lookup_in_mod(&env e, def m, &span sp, &ident id, namespace ns, dir dr)
@@ -854,7 +850,6 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
                            case (ns_module) { md } };
         }
     }
-    fail; // fools the return-checker
 }
 
 

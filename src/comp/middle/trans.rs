@@ -1215,8 +1215,6 @@ fn find_scope_cx(&@block_ctxt cx) -> @block_ctxt {
                                     + "called on parentless block_ctxt");
         }
     }
-
-    fail; // fools the return-checker
 }
 
 fn umax(&@block_ctxt cx, ValueRef a, ValueRef b) -> ValueRef {
