@@ -102,7 +102,6 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                           uint::to_str(ty_param_count, 10u) +
                           " type parameter(s) but found " +
                           uint::to_str(supplied_len, 10u) + " parameter(s)");
-        fail;
     }
 
     if (!ty::type_contains_bound_params(ccx.tcx, typ)) {
@@ -162,13 +161,11 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn)
 
         case (ast::def_ty(_)) {
             fcx.ccx.tcx.sess.span_err(sp, "expected value but found type");
-            fail;
         }
 
         case (_) {
             // FIXME: handle other names.
             fcx.ccx.tcx.sess.unimpl("definition variant");
-            fail;
         }
     }
 }
@@ -332,7 +329,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                 case (_)                   {
                     tcx.sess.span_err(ast_ty.span,
                        "found type name used as a variable");
-                    fail; }
+                }
             }
 
             cname = some(path_to_str(path));
@@ -1041,7 +1038,6 @@ mod demand {
 
                 // TODO: In the future, try returning "expected", reporting
                 // the error, and continue.
-                fail;
             }
         }
     }
@@ -1437,7 +1433,6 @@ mod pushdown {
                 scx.fcx.ccx.tcx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
                          pretty::pprust::expr_to_str(e)));
-                fail;
             }
         }
     }
@@ -1468,7 +1463,6 @@ mod writeback {
             case (none) {
                 fcx.ccx.tcx.sess.span_err(sp,
                     "unable to determine type of local: " + local.ident);
-                fail;
             }
             case (some(?lt)) {
                 local_ty = lt;
@@ -1774,7 +1768,6 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     + " instead having: " +
                     ty_to_str(scx.fcx.ccx.tcx,
                               expr_ty(scx.fcx.ccx.tcx, f)));
-                fail;
             }
         }
 
@@ -1903,7 +1896,6 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             if (vec::len[@ast::ty](pth.node.types) > 0u) {
                 scx.fcx.ccx.tcx.sess.span_err(expr.span,
                     "this kind of value does not take type parameters");
-                fail;
             }
 
             write::ty_only_fixup(scx, old_ann.id, tpt._1);
