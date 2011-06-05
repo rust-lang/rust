@@ -1895,7 +1895,6 @@ fn field_idx(&session::session sess, &span sp,
         i += 1u;
     }
     sess.span_err(sp, "unknown field '" + id + "' of record");
-    fail;
 }
 
 fn method_idx(&session::session sess, &span sp,
@@ -1908,7 +1907,6 @@ fn method_idx(&session::session sess, &span sp,
         i += 1u;
     }
     sess.span_err(sp, "unknown method '" + id + "' of obj");
-    fail;
 }
 
 fn sort_methods(&vec[method] meths) -> vec[method] {
@@ -2904,7 +2902,6 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
             }
         }
     }
-    fail;   // not reached
 }
 
 // Returns information about the tag variant with the given ID:

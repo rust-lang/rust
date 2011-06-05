@@ -308,7 +308,6 @@ fn resolve_names(&@env e, &ast::crate c) {
                     case (_) {
                         e.sess.span_err(p.span, "not a tag variant: " +
                                         str::connect(p.node.idents, "::"));
-                        fail;
                     }
                 }
                 for (@ast::pat child in children) {
@@ -412,7 +411,6 @@ fn follow_import(&env e, &list[scope] sc, vec[ident] path, &span sp)
         case (_) {
             e.sess.span_err(sp, str::connect(path, "::") 
                             + " does not name a module.");
-            fail;
         }
     }
 }
@@ -508,12 +506,13 @@ fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
         case (none) {
             unresolved(e, sp, id, ns_name(ns));
-            fail;
         }
         case (some(?d)) {
             ret d;
         }
     }
+
+    fail; // fools the return-checker
 }
 
 fn scope_is_fn(&scope sc) -> bool {
@@ -640,7 +639,6 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
         }
     }
     e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
-    fail;
 }
 
 fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params)
@@ -790,12 +788,13 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id,
     alt (lookup_in_mod(e, m, sp, id, ns, dr)) {
         case (none) {
             unresolved(e, sp, id, ns_name(ns));
-            fail;
         }
         case (some(?d)) {
             ret d;
         }
     }
+
+    fail; // fools the return-checker
 }
 
 fn lookup_in_mod(&env e, def m, &span sp, &ident id, namespace ns, dir dr)
@@ -855,7 +854,7 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
                            case (ns_module) { md } };
         }
     }
-    fail;
+    fail; // fools the return-checker
 }
 
 
@@ -915,7 +914,6 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp,
             }
             e.sess.span_err(sp, "'" + id + "' is glob-imported from" +
                             " multiple different modules.");
-            fail;
         }
     }
     // since we don't know what names we have in advance,
