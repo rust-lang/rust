@@ -118,6 +118,7 @@ state type crate_ctxt = rec(session::session sess,
                             hashmap[ast::def_id,
                                     @ast::native_item] native_items,
                             hashmap[ast::def_id, str] item_symbols,
+                            mutable option::t[ValueRef] main_fn,
                             // TODO: hashmap[tup(tag_id,subtys), @tag_info]
                             hashmap[ty::t, uint] tag_sizes,
                             hashmap[ast::def_id, ValueRef] discrims,
@@ -308,18 +309,9 @@ tag block_parent {
 state type result = rec(@block_ctxt bcx,
                         ValueRef val);
 
-fn sep() -> str {
-    ret "_";
-}
-
 fn extend_path(@local_ctxt cx, &str name) -> @local_ctxt {
   ret @rec(path = cx.path + [name] with *cx);
 }
-
-fn path_name(&vec[str] path) -> str {
-    ret str::connect(path, sep());
-}
-
 
 fn get_type_sha1(&@crate_ctxt ccx, &ty::t t) -> str {
     auto hash = "";
@@ -336,15 +328,31 @@ fn get_type_sha1(&@crate_ctxt ccx, &ty::t t) -> str {
 
             ccx.sha.input_str(metadata::Encode::ty_str(cx, t));
             hash = str::substr(ccx.sha.result_str(), 0u, 16u);
+            // Prefix with _ so that it never blends into adjacent digits
+            hash = "_" + hash;
             ccx.type_sha1s.insert(t, hash);
         }
     }
     ret hash;
 }
 
+fn mangle(&vec[str] ss) -> str {
+
+    // Follow C++ namespace-mangling style
+
+    auto n = "_ZN"; // Begin name-sequence.
+
+    for (str s in ss) {
+        n += #fmt("%u%s", str::byte_len(s), s);
+    }
+
+    n += "E"; // End name-sequence.
+    ret n;
+}
+
 fn mangle_name_by_type(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
     auto hash = get_type_sha1(ccx, t);
-    ret sep() + "rust" + sep() + hash + sep() + path_name(path);
+    ret mangle(path + [hash]);
 }
 
 fn mangle_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) -> str {
@@ -353,14 +361,20 @@ fn mangle_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) -> str {
     auto s = ty::ty_to_short_str(ccx.tcx, t);
 
     auto hash = get_type_sha1(ccx, t);
-    ret sep() + "rust" + sep() + hash + sep() + name + "_" + s;
+    ret mangle([name, s, hash]);
 }
 
-fn mangle_name_by_seq(&@crate_ctxt ccx, &vec[str] path,
-                      &str flav) -> str {
-    ret sep() + "rust" + sep()
-        + ccx.names.next(flav) + sep()
-        + path_name(path);
+fn mangle_name_by_path_and_seq(&@crate_ctxt ccx, &vec[str] path,
+                               &str flav) -> str {
+    ret mangle(path + [ccx.names.next(flav)]);
+}
+
+fn mangle_name_by_path(&@crate_ctxt ccx, &vec[str] path) -> str {
+    ret mangle(path);
+}
+
+fn mangle_name_by_seq(&@crate_ctxt ccx, &str flav) -> str {
+    ret ccx.names.next(flav);
 }
 
 fn res(@block_ctxt bcx, ValueRef val) -> result {
@@ -1903,7 +1917,7 @@ fn declare_tydesc(&@local_ctxt cx, &span sp, &ty::t t,
         name = mangle_name_by_type_only(cx.ccx, t, "tydesc");
         name = sanitize(name);
     } else {
-        name = mangle_name_by_seq(cx.ccx, cx.path, "tydesc");
+        name = mangle_name_by_seq(cx.ccx, "tydesc");
     }
 
     auto gvar = llvm::LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
@@ -1937,7 +1951,7 @@ fn declare_generic_glue(&@local_ctxt cx,
         fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
         fn_nm = sanitize(fn_nm);
     } else {
-        fn_nm = mangle_name_by_seq(cx.ccx, cx.path,  "glue_" + name);
+        fn_nm = mangle_name_by_seq(cx.ccx,  "glue_" + name);
     }
     auto llfn = decl_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(cx, llfn, t);
@@ -4093,7 +4107,7 @@ fn trans_for_each(&@block_ctxt cx,
 
     // Step 2: Declare foreach body function.
 
-    let str s = mangle_name_by_seq(lcx.ccx, lcx.path, "foreach");
+    let str s = mangle_name_by_path_and_seq(lcx.ccx, lcx.path, "foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
@@ -4792,7 +4806,7 @@ fn trans_bind_thunk(&@local_ctxt cx,
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty:
 
-    let str s = mangle_name_by_seq(cx.ccx, cx.path, "thunk");
+    let str s = mangle_name_by_path_and_seq(cx.ccx, cx.path, "thunk");
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx.ccx, sp,
                                                     incoming_fty));
     let ValueRef llthunk = decl_internal_fastcall_fn(cx.ccx.llmod,
@@ -6225,9 +6239,10 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
                    0u);
 
     // TODO: construct a name based on tname
-    let str wrap_name = mangle_name_by_seq(cx.fcx.lcx.ccx,
-                                           [""],
-                                           "spawn_wrapper");
+    let str wrap_name =
+        mangle_name_by_path_and_seq(cx.fcx.lcx.ccx,
+                                    cx.fcx.lcx.path,
+                                    "spawn_wrapper");
     auto llfndecl = decl_fastcall_fn(llmod, wrap_name,
                                      wrapper_fn_type);
 
@@ -7078,8 +7093,9 @@ fn create_vtbl(@local_ctxt cx,
             }
         }
 
-        let @local_ctxt mcx = extend_path(cx, m.node.ident);
-        let str s = mangle_name_by_seq(mcx.ccx, mcx.path, "method");
+        let @local_ctxt mcx = @rec(path = cx.path + ["method",
+                                                     m.node.ident] with *cx);
+        let str s = mangle_name_by_path(mcx.ccx, mcx.path);
         let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s,
                                                       llfnty);
         cx.ccx.item_ids.insert(m.node.id, llfn);
@@ -7091,7 +7107,7 @@ fn create_vtbl(@local_ctxt cx,
         methods += [llfn];
     }
     auto vtbl = C_struct(methods);
-    auto vtbl_name = mangle_name_by_seq(cx.ccx, cx.path, "vtbl");
+    auto vtbl_name = mangle_name_by_path(cx.ccx, cx.path + ["vtbl"]);
     auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl),
                                    str::buf(vtbl_name));
     llvm::LLVMSetInitializer(gvar, vtbl);
@@ -7108,13 +7124,12 @@ fn trans_dtor(@local_ctxt cx,
               &@ast::method dtor) -> ValueRef {
 
     auto llfnty = T_dtor(cx.ccx, dtor.span, llself_ty);
-    let @local_ctxt dcx = extend_path(cx, "drop");
-    let str s = mangle_name_by_seq(dcx.ccx, dcx.path, "drop");
+    let str s = mangle_name_by_path(cx.ccx, cx.path + ["drop"]);
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
 
-    trans_fn(dcx, dtor.span, dtor.node.meth, dtor.node.id,
+    trans_fn(cx, dtor.span, dtor.node.meth, dtor.node.id,
              some[ty_self_pair](tup(llself_ty, self_ty)),
              ty_params, dtor.node.ann);
 
@@ -7503,13 +7518,22 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
     }
 
     // Declare the function itself.
-    let str s = mangle_name_by_seq(ccx, path, flav);
+    let str s = mangle_name_by_path(ccx, path);
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
     let str ps = mangle_name_by_type(ccx, path, node_ann_type(ccx, ann));
 
     register_fn_pair(ccx, ps, llpairty, llfn, id);
+
+    if (str::eq(vec::top(path), "main") &&
+        !ccx.sess.get_opts().shared) {
+        if (ccx.main_fn != none[ValueRef]) {
+            ccx.sess.span_err(sp, "multiple 'main' functions");
+        }
+        log #fmt("registering %s as main function for crate", ps);
+        ccx.main_fn = some(llfn);
+    }
 }
 
 fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
@@ -7569,7 +7593,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
     // Declare the wrapper.
     auto t = node_ann_type(ccx, ann);
     auto wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let str s = mangle_name_by_seq(ccx, path, "wrapper");
+    let str s = mangle_name_by_path(ccx, path);
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(ccx.llmod, s,
                                                         wrapper_type);
 
@@ -7912,9 +7936,8 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
 
                 auto discrim_val = C_int(i as int);
 
-                auto s = mangle_name_by_seq(ccx, wcx.path,
-                                            #fmt("_rust_tag_discrim_%s_%u",
-                                                 ident, i));
+                auto p = wcx.path + [ident, variant.node.name, "discrim"];
+                auto s = mangle_name_by_type(ccx, p, ty::mk_int(ccx.tcx));
                 auto discrim_gvar = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
                                                        str::buf(s));
 
@@ -7973,29 +7996,6 @@ fn create_typedefs(&@crate_ctxt cx) {
     llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), T_tydesc(cx.tn));
 }
 
-fn find_main_fn(&@crate_ctxt cx) -> ValueRef {
-    auto e = sep() + "main";
-    let ValueRef v = C_nil();
-    let uint n = 0u;
-    for each (@tup(ast::def_id, str) i in cx.item_symbols.items()) {
-        if (str::ends_with(i._1, e)) {
-            n += 1u;
-            v = cx.item_ids.get(i._0);
-        }
-    }
-    alt (n) {
-        case (0u) {
-            cx.sess.err("main fn not found");
-        }
-        case (1u) {
-            ret v;
-        }
-        case (_) {
-            cx.sess.err("multiple main fns found");
-        }
-    }
-}
-
 fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
     auto T_main_args = [T_int(), T_int()];
     auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int()];
@@ -8015,7 +8015,14 @@ fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
 
     auto llargc = llvm::LLVMGetParam(llmain, 0u);
     auto llargv = llvm::LLVMGetParam(llmain, 1u);
-    auto llrust_main = find_main_fn(cx.ccx);
+    auto llrust_main = alt (cx.ccx.main_fn) {
+        case (none) {
+            cx.ccx.sess.err("missing 'main' function");
+            // FIXME: shouldn't sess.err's ! result unify with f?
+            C_nil()
+        }
+        case (some(?f)) { f }
+    };
 
     //
     // Emit the moral equivalent of:
@@ -8283,6 +8290,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
                     items = new_def_hash[@ast::item](),
                     native_items = new_def_hash[@ast::native_item](),
                     item_symbols = new_def_hash[str](),
+                    mutable main_fn = none[ValueRef],
                     tag_sizes = tag_sizes,
                     discrims = new_def_hash[ValueRef](),
                     discrim_symbols = new_def_hash[str](),
