@@ -379,11 +379,13 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
 mod write {
     fn inner(&node_type_table ntt, uint node_id,
              &ty_param_substs_opt_and_ty tpot) {
+        auto ntt_ = *ntt;
         vec::grow_set[option::t[ty::ty_param_substs_opt_and_ty]]
-            (*ntt,
+            (ntt_,
              node_id,
              none[ty_param_substs_opt_and_ty],
              some[ty_param_substs_opt_and_ty](tpot));
+        *ntt = ntt_;
     }
 
     // Writes a type parameter count and type pair into the node type table.
@@ -792,7 +794,7 @@ mod collect {
         // type of the native item. We simply write it into the node type
         // table.
         auto tpt = ty_of_native_item(cx, i,
-                                     option::get[ast::native_abi](*abi));
+                                     option::get[ast::native_abi]({*abi}));
 
         alt (i.node) {
             case (ast::native_item_ty(_,_)) {
@@ -921,7 +923,7 @@ mod unify {
         auto result = ty::unify::unify(expected, actual, handler, bindings,
                                        scx.fcx.ccx.tcx);
 
-        alt (result) {
+        alt ({result}) {
             case (ures_ok(?rty)) {
                 if (ty::type_contains_vars(scx.fcx.ccx.tcx, rty)) {
                     result = ty::unify::fixup(scx.fcx.ccx.tcx, bindings, rty);

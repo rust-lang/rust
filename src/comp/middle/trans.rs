@@ -150,7 +150,7 @@ type val_self_pair = rec(ValueRef v, ty::t t);
 type ty_self_pair = tup(TypeRef, ty::t);
 
 // Function context.  Every LLVM function we create will have one of these.
-state type fn_ctxt = rec(
+type fn_ctxt = rec(
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the address
     // of the first instruction in the sequence of instructions for this
     // function that will go in the .text section of the executable we're
@@ -305,8 +305,8 @@ tag block_parent {
 }
 
 
-state type result = rec(mutable @block_ctxt bcx,
-                        mutable ValueRef val);
+state type result = rec(@block_ctxt bcx,
+                        ValueRef val);
 
 fn sep() -> str {
     ret "_";
@@ -364,8 +364,8 @@ fn mangle_name_by_seq(&@crate_ctxt ccx, &vec[str] path,
 }
 
 fn res(@block_ctxt bcx, ValueRef val) -> result {
-    ret rec(mutable bcx = bcx,
-            mutable val = val);
+    ret rec(bcx = bcx,
+            val = val);
 }
 
 fn ty_str(type_names tn, TypeRef t) -> str {
@@ -2019,7 +2019,7 @@ fn emit_tydescs(&@crate_ctxt ccx) {
 
         auto ti = pair._1;
 
-        auto take_glue = alt (ti.take_glue) {
+        auto take_glue = alt ({ti.take_glue}) {
             case (none) {
                 ccx.stats.n_null_glues += 1u;
                 C_null(glue_fn_ty)
@@ -2030,7 +2030,7 @@ fn emit_tydescs(&@crate_ctxt ccx) {
             }
         };
 
-        auto drop_glue = alt (ti.drop_glue) {
+        auto drop_glue = alt ({ti.drop_glue}) {
             case (none) {
                 ccx.stats.n_null_glues += 1u;
                 C_null(glue_fn_ty)
@@ -2041,7 +2041,7 @@ fn emit_tydescs(&@crate_ctxt ccx) {
             }
         };
 
-        auto free_glue = alt (ti.free_glue) {
+        auto free_glue = alt ({ti.free_glue}) {
             case (none) {
                 ccx.stats.n_null_glues += 1u;
                 C_null(glue_fn_ty)
@@ -2052,7 +2052,7 @@ fn emit_tydescs(&@crate_ctxt ccx) {
             }
         };
 
-        auto cmp_glue = alt (ti.cmp_glue) {
+        auto cmp_glue = alt ({ti.cmp_glue}) {
             case (none) {
                 ccx.stats.n_null_glues += 1u;
                 C_null(cmp_fn_ty)
@@ -2998,7 +2998,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
         case (some(?ti)) {
 
             if(field == abi::tydesc_field_take_glue) {
-                alt (ti.take_glue) {
+                alt ({ti.take_glue}) {
                     case (some(_)) {}
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue TAKE %s",
@@ -3019,7 +3019,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                     }
                 }
             } else if (field == abi::tydesc_field_drop_glue)  {
-                alt (ti.drop_glue) {
+                alt ({ti.drop_glue}) {
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue DROP %s",
@@ -3039,7 +3039,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                 }
 
             } else if (field == abi::tydesc_field_free_glue)  {
-                alt (ti.free_glue) {
+                alt ({ti.free_glue}) {
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue FREE %s",
@@ -3060,7 +3060,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                 }
 
             } else if (field == abi::tydesc_field_cmp_glue) {
-                alt (ti.cmp_glue) {
+                alt ({ti.cmp_glue}) {
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue CMP %s",
@@ -3931,7 +3931,7 @@ fn trans_for(&@block_ctxt cx,
 fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
                   &ast::def_id initial_decl) -> vec[ast::def_id] {
     type env = @rec(
-        mutable vec[ast::def_id] refs,
+        vec[ast::def_id] refs,
         hashmap[ast::def_id,()] decls,
         resolve::def_map def_map
     );
@@ -3965,7 +3965,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     let vec[ast::def_id] refs = [];
     let hashmap[ast::def_id,()] decls = new_def_hash[()]();
     decls.insert(initial_decl, ());
-    let env e = @rec(mutable refs=refs,
+    let env e = @rec(refs=refs,
                      decls=decls,
                      def_map=cx.fcx.lcx.ccx.tcx.def_map);
 
@@ -4717,7 +4717,7 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
             ret lval_mem(sub.bcx, val);
         }
         case (ast::expr_self_method(?ident, ?ann)) {
-            alt (cx.fcx.llself) {
+            alt ({cx.fcx.llself}) {
                 case (some(?pair)) {
                     auto r =  pair.v;
                     auto t =  pair.t;
@@ -4765,12 +4765,15 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
         // TODO: native-to-native casts
         if (ty::type_is_native(cx.fcx.lcx.ccx.tcx,
                               ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
-            e_res.val = e_res.bcx.build.PtrToInt(e_res.val, lldsttype);
+            e_res = res(e_res.bcx,
+                        e_res.bcx.build.PtrToInt(e_res.val, lldsttype));
         } else if (ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
-            e_res.val = e_res.bcx.build.IntToPtr(e_res.val, lldsttype);
+            e_res = res(e_res.bcx,
+                        e_res.bcx.build.IntToPtr(e_res.val, lldsttype));
         } else {
-            e_res.val = int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
-                ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t));
+            e_res = res(e_res.bcx,
+                        int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
+                                 ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)));
         }
     } else {
         cx.fcx.lcx.ccx.sess.unimpl("fp cast");
@@ -5767,7 +5770,7 @@ fn with_out_method(fn(&out_method) -> result work, &@block_ctxt cx,
         find_scope_cx(cx).cleanups += [clean(cleanup)];
 
         auto done = work(save_in(res_alloca.val));
-        done.val = load_if_immediate(done.bcx, res_alloca.val, tp);
+        done = res(done.bcx, load_if_immediate(done.bcx, res_alloca.val, tp));
         ret done;
     }
 }
@@ -5932,7 +5935,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
     auto llcallee = C_nil();
     auto llenv = C_nil();
 
-    alt (cx.fcx.lliterbody) {
+    alt ({cx.fcx.lliterbody}) {
         case (some(?lli)) {
             auto slot = alloca(cx, val_ty(lli));
             cx.build.Store(lli, slot);
@@ -5971,7 +5974,7 @@ fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
     auto cleanup_cx = cx;
     while (true) {
         bcx = trans_block_cleanups(bcx, cleanup_cx);
-        alt (cleanup_cx.kind) {
+        alt ({cleanup_cx.kind}) {
             case (LOOP_SCOPE_BLOCK(?_cont, ?_break)) {
                 if (to_end) {
                     bcx.build.Br(_break.llbb);
@@ -5989,7 +5992,7 @@ fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
                         C_nil());
             }
             case (_) {
-                alt (cleanup_cx.parent) {
+                alt ({cleanup_cx.parent}) {
                     case (parent_some(?cx)) { cleanup_cx = cx; }
                 }
             }
@@ -6033,7 +6036,7 @@ fn trans_ret(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
     auto cleanup_cx = cx;
     while (more_cleanups) {
         bcx = trans_block_cleanups(bcx, cleanup_cx);
-        alt (cleanup_cx.parent) {
+        alt ({cleanup_cx.parent}) {
             case (parent_some(?b)) {
                 cleanup_cx = b;
             }
@@ -6831,7 +6834,7 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx,
 
     auto bcx = llallocas_block_ctxt(fcx);
 
-    alt (fcx.llself) {
+    alt ({fcx.llself}) {
         case (some(?pair)) {
             alt (ty_self) {
                 case (some[ty_self_pair](?tt)) {
@@ -7000,7 +7003,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
 
     copy_any_self_to_alloca(fcx, ty_self);
 
-    alt (fcx.llself) {
+    alt ({fcx.llself}) {
         case (some(?llself)) {
             populate_fn_ctxt_from_llself(fcx, llself);
         }
