@@ -193,6 +193,12 @@ fn pop[T](&mutable array[T] v) -> T {
     ret e;
 }
 
+fn top[T](&array[T] v) -> T {
+    auto ln = len[T](v);
+    assert (ln > 0u);
+    ret v.(ln-1u);
+}
+
 fn push[T](&mutable array[T] v, &T t) {
     v += [t];
 }
