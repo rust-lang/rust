@@ -615,6 +615,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_char)         { s += "char";                           }
         case (ty_str)          { s += "str";                            }
         case (ty_box(?tm))     { s += "@" + mt_to_str(cx, tm);          }
+        case (ty_ptr(?tm))     { s += "*" + mt_to_str(cx, tm);          }
         case (ty_vec(?tm))     { s += "vec[" + mt_to_str(cx, tm) + "]"; }
         case (ty_port(?t))     { s += "port[" + ty_to_str(cx, t) + "]"; }
         case (ty_chan(?t))     { s += "chan[" + ty_to_str(cx, t) + "]"; }
@@ -779,6 +780,10 @@ fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
         case (ty_task)          { /* no-op */ }
         case (ty_box(?tm)) {
             ty = copy_cname(cx, mk_box(cx, rec(ty=fold_ty(cx, fld, tm.ty),
+                                               mut=tm.mut)), ty);
+        }
+        case (ty_ptr(?tm)) {
+            ty = copy_cname(cx, mk_ptr(cx, rec(ty=fold_ty(cx, fld, tm.ty),
                                                mut=tm.mut)), ty);
         }
         case (ty_vec(?tm)) {
@@ -978,6 +983,7 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
         case (ty_char) { ret true; }
         case (ty_type) { ret true; }
         case (ty_native) { ret true; }
+        case (ty_ptr(_)) { ret true; }
         case (_) { ret false; }
     }
 }
