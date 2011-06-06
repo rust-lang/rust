@@ -150,7 +150,7 @@ fn map_crate(&@env e, &ast::crate c) {
     fn index_vi(@env e, @mutable list[scope] sc, &@ast::view_item i) {
         alt (i.node) {
             case (ast::view_item_import(_, ?ids, ?defid)) {
-                e.imports.insert(defid._1, todo(i, *sc));
+                e.imports.insert(defid._1, todo(i, {*sc}));
             }
             case (_) {}
         }
@@ -231,7 +231,7 @@ fn map_crate(&@env e, &ast::crate c) {
             //if it really is a glob import, that is
             case (ast::view_item_import_glob(?path, _)) {
                 find_mod(e, *sc).glob_imports 
-                    += [follow_import(*e, *sc, path, vi.span)];
+                    += [follow_import(*e, {*sc}, path, vi.span)];
             }
             case (_) {}
         }
@@ -275,8 +275,8 @@ fn resolve_names(&@env e, &ast::crate c) {
         push_env_for_expr(sc, exp);
         alt (exp.node) {
             case (ast::expr_path(?p, ?a)) {
-                auto df = lookup_path_strict(*e, *sc, exp.span, p.node.idents,
-                                             ns_value);
+                auto df = lookup_path_strict(*e, {*sc}, exp.span,
+                                             p.node.idents, ns_value);
                 e.def_map.insert(a.id, df);
             }
             case (_) {}
@@ -285,7 +285,7 @@ fn resolve_names(&@env e, &ast::crate c) {
     fn walk_ty(@env e, @mutable list[scope] sc, &@ast::ty t) {
         alt (t.node) {
             case (ast::ty_path(?p, ?a)) {
-                auto new_def = lookup_path_strict(*e, *sc, t.span,
+                auto new_def = lookup_path_strict(*e, {*sc}, t.span,
                                                   p.node.idents, ns_type);
                 e.def_map.insert(a.id, new_def);
             }
@@ -293,7 +293,7 @@ fn resolve_names(&@env e, &ast::crate c) {
         }
     }
     fn walk_arm(@env e, @mutable list[scope] sc, &ast::arm a) {
-        walk_pat(*e, *sc, a.pat);
+        walk_pat(*e, {*sc}, a.pat);
         push_env_for_arm(sc, a);
     }
     fn walk_pat(&env e, &list[scope] sc, &@ast::pat pat) {
@@ -325,14 +325,14 @@ fn push_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
     *sc = cons[scope](scope_crate(@c), @*sc);
 }
 fn pop_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn push_env_for_item(@mutable list[scope] sc, &@ast::item i) {
     *sc = cons[scope](scope_item(i), @*sc);
 }
 fn pop_env_for_item(@mutable list[scope] sc, &@ast::item i) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn push_env_for_method(@mutable list[scope] sc, &@ast::method m) {
@@ -346,21 +346,21 @@ fn push_env_for_method(@mutable list[scope] sc, &@ast::method m) {
     *sc = cons[scope](scope_item(i), @*sc);
 }
 fn pop_env_for_method(@mutable list[scope] sc, &@ast::method m) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn push_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
     *sc = cons[scope](scope_native_item(i), @*sc);
 }
 fn pop_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn push_env_for_block(@mutable list[scope] sc, &ast::block b) {
     *sc = cons[scope](scope_block(b), @*sc);
 }
 fn pop_env_for_block(@mutable list[scope] sc, &ast::block b) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn push_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
@@ -377,10 +377,10 @@ fn push_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
 fn pop_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
     alt (x.node) {
         case (ast::expr_for(?d, _, _, _)) {
-            *sc = std::list::cdr(*sc);
+            *sc = std::list::cdr({*sc});
         }
         case (ast::expr_for_each(?d, _, _, _)) {
-            *sc = std::list::cdr(*sc);
+            *sc = std::list::cdr({*sc});
         }
         case (_) {}
     }
@@ -390,7 +390,7 @@ fn push_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
     *sc = cons[scope](scope_arm(p), @*sc);
 }
 fn pop_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
-    *sc = std::list::cdr(*sc);
+    *sc = std::list::cdr({*sc});
 }
 
 fn follow_import(&env e, &list[scope] sc, vec[ident] path, &span sp) 
@@ -613,7 +613,7 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
     // Used to determine whether obj fields are in scope
     auto left_fn_level2 = false;
     while (true) {
-        alt (sc) {
+        alt ({sc}) {
             case (nil) {
                 ret none[def];
             }
@@ -869,7 +869,7 @@ fn lookup_in_local_mod(&env e, def_id defid, &span sp,
         case (none) { }
         case (some(?lst)) {
             while (true) {
-                alt (lst) {
+                alt ({lst}) {
                     case (nil) { break; }
                     case (cons(?hd, ?tl)) {
                         auto found = lookup_in_mie(e, hd, ns);
@@ -1126,7 +1126,7 @@ fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
     }
 
     while (true) {
-        alt (entries) {
+        alt ({entries}) {
             case (cons(?entry, ?rest)) {
                 if (!option::is_none(lookup_in_mie(e, entry, ns_value))) {
                     if (saw_value) { dup(e, mie_span(entry), "", name); }

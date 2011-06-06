@@ -1540,7 +1540,7 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
         -> ty_param_substs_opt_and_ty {
-    alt (ntt.(ann.id)) {
+    alt ({ntt.(ann.id)}) {
         case (none) {
             log_err "ann_to_ty_param_substs_opt_and_ty() called on an " +
                 "untyped node";
