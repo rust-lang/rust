@@ -338,6 +338,9 @@ fn get_type_sha1(&@crate_ctxt ccx, &ty::t t) -> str {
 
 fn mangle(&vec[str] ss) -> str {
 
+    if (vec::len(ss) > 0u && str::eq(vec::top(ss), "main")) {
+        ret "_rust_main";
+    }
     // Follow C++ namespace-mangling style
 
     auto n = "_ZN"; // Begin name-sequence.
@@ -369,7 +372,7 @@ fn mangle_name_by_path_and_seq(&@crate_ctxt ccx, &vec[str] path,
     ret mangle(path + [ccx.names.next(flav)]);
 }
 
-fn mangle_name_by_path(&@crate_ctxt ccx, &vec[str] path) -> str {
+fn mangle_name_by_path(&vec[str] path) -> str {
     ret mangle(path);
 }
 
@@ -7095,7 +7098,7 @@ fn create_vtbl(@local_ctxt cx,
 
         let @local_ctxt mcx = @rec(path = cx.path + ["method",
                                                      m.node.ident] with *cx);
-        let str s = mangle_name_by_path(mcx.ccx, mcx.path);
+        let str s = mangle_name_by_path(mcx.path);
         let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s,
                                                       llfnty);
         cx.ccx.item_ids.insert(m.node.id, llfn);
@@ -7107,7 +7110,7 @@ fn create_vtbl(@local_ctxt cx,
         methods += [llfn];
     }
     auto vtbl = C_struct(methods);
-    auto vtbl_name = mangle_name_by_path(cx.ccx, cx.path + ["vtbl"]);
+    auto vtbl_name = mangle_name_by_path(cx.path + ["vtbl"]);
     auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl),
                                    str::buf(vtbl_name));
     llvm::LLVMSetInitializer(gvar, vtbl);
@@ -7124,7 +7127,7 @@ fn trans_dtor(@local_ctxt cx,
               &@ast::method dtor) -> ValueRef {
 
     auto llfnty = T_dtor(cx.ccx, dtor.span, llself_ty);
-    let str s = mangle_name_by_path(cx.ccx, cx.path + ["drop"]);
+    let str s = mangle_name_by_path(cx.path + ["drop"]);
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
@@ -7518,7 +7521,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
     }
 
     // Declare the function itself.
-    let str s = mangle_name_by_path(ccx, path);
+    let str s = mangle_name_by_path(path);
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
@@ -7532,6 +7535,8 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
             ccx.sess.span_err(sp, "multiple 'main' functions");
         }
         log #fmt("registering %s as main function for crate", ps);
+        llvm::LLVMSetLinkage(llfn, lib::llvm::LLVMExternalLinkage
+                             as llvm::Linkage);
         ccx.main_fn = some(llfn);
     }
 }
@@ -7593,7 +7598,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
     // Declare the wrapper.
     auto t = node_ann_type(ccx, ann);
     auto wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let str s = mangle_name_by_path(ccx, path);
+    let str s = mangle_name_by_path(path);
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(ccx.llmod, s,
                                                         wrapper_type);
 
@@ -7996,51 +8001,6 @@ fn create_typedefs(&@crate_ctxt cx) {
     llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), T_tydesc(cx.tn));
 }
 
-fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
-    auto T_main_args = [T_int(), T_int()];
-    auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int()];
-
-    auto main_name;
-    if (str::eq(std::os::target_os(), "win32")) {
-        main_name = "WinMain@16";
-    } else {
-        main_name = "main";
-    }
-
-    auto llmain =
-        decl_cdecl_fn(cx.ccx.llmod, main_name, T_fn(T_main_args, T_int()));
-
-    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "rust_start",
-                                      T_fn(T_rust_start_args, T_int()));
-
-    auto llargc = llvm::LLVMGetParam(llmain, 0u);
-    auto llargv = llvm::LLVMGetParam(llmain, 1u);
-    auto llrust_main = alt (cx.ccx.main_fn) {
-        case (none) {
-            cx.ccx.sess.err("missing 'main' function");
-            // FIXME: shouldn't sess.err's ! result unify with f?
-            C_nil()
-        }
-        case (some(?f)) { f }
-    };
-
-    //
-    // Emit the moral equivalent of:
-    //
-    // main(int argc, char **argv) {
-    //     rust_start(&_rust.main, argc, argv);
-    // }
-    //
-
-    let BasicBlockRef llbb =
-        llvm::LLVMAppendBasicBlock(llmain, str::buf(""));
-    auto b = new_builder(llbb);
-
-    auto start_args = [p2i(llrust_main), llargc, llargv, p2i(crate_map)];
-
-    b.Ret(b.Call(llrust_start, start_args));
-}
-
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
     let vec[TypeRef] T_memmove32_args = [T_ptr(T_i8()), T_ptr(T_i8()),
@@ -8211,8 +8171,6 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
     auto maptype = T_array(elttype, ccx.module_data.size() + 1u);
     auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype,
                                   str::buf("_rust_mod_map"));
-    llvm::LLVMSetLinkage(map, lib::llvm::LLVMInternalLinkage
-                         as llvm::Linkage);
     let vec[ValueRef] elts = [];
     for each (@tup(str, ValueRef) item in ccx.module_data.items()) {
         auto elt = C_struct([p2i(C_cstr(ccx, item._0)), p2i(item._1)]);
@@ -8245,7 +8203,14 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
         i += 1;
     }
     vec::push[ValueRef](subcrates, C_int(0));
-    auto sym_name = "_rust_crate_map_" + crate_name(ccx, "__none__");
+    auto cname = crate_name(ccx, "__none__");
+    auto mapname;
+    if (ccx.sess.get_opts().shared) {
+        mapname = cname;
+    } else {
+        mapname = "toplevel";
+    }
+    auto sym_name = "_rust_crate_map_" + mapname;
     auto arrtype = T_array(T_int(), vec::len[ValueRef](subcrates));
     auto maptype = T_struct([T_int(), arrtype]);
     auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype, str::buf(sym_name));
@@ -8322,9 +8287,17 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
     auto crate_map = create_crate_map(ccx);
+
     if (!sess.get_opts().shared) {
-        trans_main_fn(cx, crate_map);
-    }
+      auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_int()),
+                                    str::buf("_rust_fetch_this_object_hack"));
+
+      auto gvar2 = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_ptr(T_int())),
+                                   str::buf("_rust_fetch_this_object_hack2"));
+     llvm::LLVMSetInitializer(gvar2, gvar);
+     llvm::LLVMSetGlobalConstant(gvar, True);
+     llvm::LLVMSetGlobalConstant(gvar2, True);
+   }
 
     emit_tydescs(ccx);
 
