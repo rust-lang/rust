@@ -1,4 +1,4 @@
-// error-pattern:x is being aliased
+// error-pattern:invalidate alias i
 
 tag foo {
     left(int);
@@ -10,6 +10,7 @@ fn main() {
     alt (x) {
         case (left(?i)) {
             x = right(false);
+            log i;
         }
         case (_) {}
     }
