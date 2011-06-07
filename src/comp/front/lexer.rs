@@ -632,6 +632,9 @@ fn next_token(&reader rdr) -> token::token {
                             case ('"') {
                                 str::push_byte(accum_str, '"' as u8);
                             }
+                            case ('\n') {
+                                consume_whitespace(rdr);
+                            }
 
                             case ('x') {
                                 str::push_char(accum_str,
