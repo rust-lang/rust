@@ -3687,13 +3687,11 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
 
                 v1 = load_if_immediate(cx, v1, t1);
             }
-            case (_) {
-                ret res(cx, v1);
-            }
+            case (_) { break; }
         }
     }
 
-    fail; // fools the return-checker
+    ret res(cx, v1);
 }
 
 fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
@@ -3704,13 +3702,11 @@ fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
             case (ty::ty_box(?mt)) {
                 t1 = mt.ty;
             }
-            case (_) {
-                ret t1;
-            }
+            case (_) { break; }
         }
     }
 
-    fail; // fools the return-checker
+    ret t1;
 }
 
 fn trans_binary(&@block_ctxt cx, ast::binop op,
@@ -3876,7 +3872,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
             }
 
             // FIXME: This isn't quite right, particularly re: dynamic types
-            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types,
+            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx,
                                            ann);
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4260,7 +4256,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 
         case (ast::pat_lit(?lt, ?ann)) {
             auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, ann);
-            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
 
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
@@ -4298,7 +4294,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
             auto ty_params =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
 
             if (vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
@@ -4359,7 +4355,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
             auto llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
 
             auto ty_param_substs =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
 
             auto this_cx = cx;
             auto i = 0;
@@ -4408,7 +4404,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
                                   "non-exhaustive match failure");
 
     // FIXME: This isn't quite right, particularly re: dynamic types
-    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
     auto expr_llty;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
         expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4473,8 +4469,8 @@ fn lval_generic_fn(&@block_ctxt cx,
         lv = trans_external_path(cx, fn_id, tpt);
     }
 
-    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
-    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
+    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
 
     if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
@@ -5361,7 +5357,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f,
 
     }
 
-    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
                                f_res.generic,
@@ -6910,7 +6906,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
 }
 
 fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types, ann))) {
+    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, ann))) {
         case (ty::ty_fn(_, ?arg_tys, _, _)) {
             ret arg_tys;
         }
@@ -6927,7 +6923,7 @@ fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
 
 
 fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
-    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx.node_types, ann));
+    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx, ann));
 }
 
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
