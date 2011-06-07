@@ -28,6 +28,8 @@ clean:
 	$(Q)rm -f stage3/rustc$(X) stage3/$(CFG_STDLIB) stage3/glue*
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
+	$(Q)rm -f rt/main.o
+	$(Q)rm -f rt/main.a
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext,out out.tmp                      \

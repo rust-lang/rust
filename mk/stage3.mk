@@ -23,7 +23,7 @@ stage3/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	$(STAGE2) -c -o $@ $<
 
 stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
-                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
+               rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -c -o $@ --glue
 
@@ -44,7 +44,7 @@ stage3/%.o: stage3/%.s
 stage3/%$(X): stage3/%.o  $(SREQ2)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o -o $@ $< \
-      -Lstage3 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
+      -Lstage3 -Lrustllvm -Lrt rt/main.a -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
