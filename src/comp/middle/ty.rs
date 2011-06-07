@@ -921,9 +921,7 @@ fn sequence_element_type(&ctxt cx, &t ty) -> t {
         // NB: This is not exhaustive.
     }
 
-    // FIXME: add sess.err or sess.span_err explaining failure (issue
-    // #444)
-    fail;
+    cx.sess.bug("sequence_element_type called on non-sequence value");
 }
 
 fn type_is_tup_like(&ctxt cx, &t ty) -> bool {
@@ -949,8 +947,8 @@ fn get_element_type(&ctxt cx, &t ty, uint i) -> t {
         // tag.
     }
 
-    // FIXME: add sess.err or sess.span_err explaining failure (issue #444)
-    fail;
+    cx.sess.bug("get_element_type called on a value other than a "
+                + "tuple or record");
 }
 
 fn type_is_box(&ctxt cx, &t ty) -> bool {
@@ -1544,24 +1542,25 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 // Type lookups
 
-fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
-        -> ty_param_substs_opt_and_ty {
-    alt ({ntt.(ann.id)}) {
+fn ann_to_ty_param_substs_opt_and_ty(&ty_ctxt tcx, &ast::ann ann)
+    -> ty_param_substs_opt_and_ty {
+
+    // Pull out the node type table.
+    alt ({tcx.node_types.(ann.id)}) {
         case (none) {
-            log_err "ann_to_ty_param_substs_opt_and_ty() called on an " +
-                "untyped node";
-            fail;
+            tcx.sess.bug("ann_to_ty_param_substs_opt_and_ty() called on an " +
+                         "untyped node");
         }
         case (some(?tpot)) { ret tpot; }
     }
 }
 
-fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
-    ret ann_to_ty_param_substs_opt_and_ty(ntt, ann)._1;
+fn ann_to_type(&ty_ctxt tcx, &ast::ann ann) -> t {
+    ret ann_to_ty_param_substs_opt_and_ty(tcx, ann)._1;
 }
 
-fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
-    alt (ann_to_ty_param_substs_opt_and_ty(ntt, ann)._0) {
+fn ann_to_type_params(&ty_ctxt tcx, &ast::ann ann) -> vec[t] {
+    alt (ann_to_ty_param_substs_opt_and_ty(tcx, ann)._0) {
         case (none) {
             let vec[t] result = [];
             ret result;
@@ -1570,8 +1569,8 @@ fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
     }
 }
 
-fn ann_has_type_params(&node_type_table ntt, &ast::ann ann) -> bool {
-    auto tpt = ann_to_ty_param_substs_opt_and_ty(ntt, ann);
+fn ann_has_type_params(&ty_ctxt tcx, &ast::ann ann) -> bool {
+    auto tpt = ann_to_ty_param_substs_opt_and_ty(tcx, ann);
     ret !option::is_none[vec[t]](tpt._0);
 }
 
@@ -1579,7 +1578,7 @@ fn ann_has_type_params(&node_type_table ntt, &ast::ann ann) -> bool {
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
 fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
-    auto tpot = ann_to_ty_param_substs_opt_and_ty(cx.node_types, a);
+    auto tpot = ann_to_ty_param_substs_opt_and_ty(cx, a);
     alt (tpot._0) {
         case (none) { ret tpot._1; }
         case (some(?tps)) {
@@ -1638,21 +1637,21 @@ fn ty_fn_args(&ctxt cx, &t fty) -> vec[arg] {
         case (ty::ty_fn(_, ?a, _, _)) { ret a; }
         case (ty::ty_native_fn(_, ?a, _)) { ret a; }
     }
-    fail;
+    cx.sess.bug("ty_fn_args() called on non-fn type");
 }
 
 fn ty_fn_proto(&ctxt cx, &t fty) -> ast::proto {
     alt (struct(cx, fty)) {
         case (ty::ty_fn(?p, _, _, _)) { ret p; }
     }
-    fail;
+    cx.sess.bug("ty_fn_proto() called on non-fn type");
 }
 
 fn ty_fn_abi(&ctxt cx, &t fty) -> ast::native_abi {
     alt (struct(cx, fty)) {
         case (ty::ty_native_fn(?a, _, _)) { ret a; }
     }
-    fail;
+    cx.sess.bug("ty_fn_abi() called on non-native-fn type");
 }
 
 fn ty_fn_ret(&ctxt cx, &t fty) -> t {
@@ -1660,7 +1659,7 @@ fn ty_fn_ret(&ctxt cx, &t fty) -> t {
         case (ty::ty_fn(_, _, ?r, _)) { ret r; }
         case (ty::ty_native_fn(_, _, ?r)) { ret r; }
     }
-    fail;
+    cx.sess.bug("ty_fn_ret() called on non-fn type");
 }
 
 fn is_fn_ty(&ctxt cx, &t fty) -> bool {
@@ -1674,66 +1673,8 @@ fn is_fn_ty(&ctxt cx, &t fty) -> bool {
 
 // Type accessors for AST nodes
 
-// Given an item, returns the associated type as well as the number of type
-// parameters it has.
-fn native_item_ty(&node_type_table ntt, &@ast::native_item it)
-        -> ty_param_count_and_ty {
-    auto ty_param_count;
-    auto result_ty;
-    alt (it.node) {
-        case (ast::native_item_fn(_, _, _, ?tps, _, ?ann)) {
-            ty_param_count = vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ntt, ann);
-        }
-    }
-    ret tup(ty_param_count, result_ty);
-}
-
-fn item_ty(&node_type_table ntt, &@ast::item it) -> ty_param_count_and_ty {
-    auto ty_param_count;
-    auto result_ty;
-    alt (it.node) {
-        case (ast::item_const(_, _, _, _, ?ann)) {
-            ty_param_count = 0u;
-            result_ty = ann_to_type(ntt, ann);
-        }
-        case (ast::item_fn(_, _, ?tps, _, ?ann)) {
-            ty_param_count = vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ntt, ann);
-        }
-        case (ast::item_mod(_, _, _)) {
-            fail;   // modules are typeless
-        }
-        case (ast::item_ty(_, _, ?tps, _, ?ann)) {
-            ty_param_count = vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ntt, ann);
-        }
-        case (ast::item_tag(_, _, ?tps, ?did, ?ann)) {
-            ty_param_count = vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ntt, ann);
-        }
-        case (ast::item_obj(_, _, ?tps, _, ?ann)) {
-            ty_param_count = vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ntt, ann);
-        }
-    }
-
-    ret tup(ty_param_count, result_ty);
-}
-
-fn stmt_ty(&ctxt cx, &@ast::stmt s) -> t {
-    alt (s.node) {
-        case (ast::stmt_expr(?e,_)) {
-            ret expr_ty(cx, e);
-        }
-        case (_) {
-            ret mk_nil(cx);
-        }
-    }
-}
-
 fn block_ty(&ctxt cx, &ast::block b) -> t {
-    ret ann_to_type(cx.node_types, b.node.a);
+    ret ann_to_type(cx, b.node.a);
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -1820,18 +1761,18 @@ fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr)
         -> tup(vec[t], t) {
     auto a = expr_ann(expr);
 
-    ret tup(ann_to_type_params(cx.node_types, a),
-            ann_to_type(cx.node_types, a));
+    ret tup(ann_to_type_params(cx, a),
+            ann_to_type(cx, a));
 }
 
-fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
-    ret ann_has_type_params(ntt, expr_ann(expr));
+fn expr_has_ty_params(&ty_ctxt tcx, &@ast::expr expr) -> bool {
+    ret ann_has_type_params(tcx, expr_ann(expr));
 }
 
 fn decl_local_ty(&ctxt cx, &@ast::decl d) -> t {
     alt (d.node) {
         case (ast::decl_local(?l)) {
-            ret ann_to_type(cx.node_types, l.ann);
+            ret ann_to_type(cx, l.ann);
         }
         case (_) {
             cx.sess.bug("decl_local_ty called on an item decl");
@@ -2281,8 +2222,9 @@ mod unify {
             case (ty::ty_bound_param(?actual_id)) {
                 alt (struct(cx.tcx, expected)) {
                     case (ty::ty_local(_)) {
-                        log_err "TODO: bound param unifying with local";
-                        fail;
+                        // TODO: bound param unifying with local
+                        cx.tcx.sess.unimpl("TODO: bound param unifying with "
+                                           + "local");
                     }
 
                     case (_) {
@@ -2686,18 +2628,15 @@ mod unify {
     }
 
     fn unify_sets[T](&ty_ctxt tcx, &@bindings[T] bindings) -> set_result {
-        obj handler() {
+        obj handler(ty_ctxt tcx) {
             fn resolve_local(ast::def_id id) -> option::t[t] {
-                log_err "resolve_local in unify_sets";
-                fail;
+                tcx.sess.bug("resolve_local in unify_sets");
             }
             fn record_local(ast::def_id id, t ty) {
-                log_err "record_local in unify_sets";
-                fail;
+                tcx.sess.bug("record_local in unify_sets");
             }
             fn record_param(uint index, t binding) -> unify::result {
-                log_err "record_param in unify_sets";
-                fail;
+                tcx.sess.bug("record_param in unify_sets");
             }
         }
 
@@ -2718,8 +2657,8 @@ mod unify {
                             // FIXME: Is this right?
                             auto bindings = mk_bindings[int](int::hash,
                                                              int::eq_alias);
-                            alt (unify(expected, actual, handler(), bindings,
-                                    tcx)) {
+                            alt (unify(expected, actual, handler(tcx), 
+                                       bindings, tcx)) {
                                 case (ures_ok(?result_ty)) {
                                     results.(i) = some[t](result_ty);
                                 }
@@ -2840,9 +2779,8 @@ fn bind_params_in_type(&ctxt cx, &t typ) -> t {
     fn binder(&ctxt cx, t typ) -> t {
         alt (struct(cx, typ)) {
             case (ty_bound_param(?index)) {
-                log_err "bind_params_in_type() called on type that already " +
-                    "has bound params in it";
-                fail;
+                cx.sess.bug("bind_params_in_type() called on type that "
+                            + "already has bound params in it");
             }
             case (ty_param(?index)) { ret mk_bound_param(cx, index); }
             case (_) { ret typ; }
@@ -2924,9 +2862,9 @@ fn tag_variant_with_id(&ctxt cx,
         }
         i += 1u;
     }
+            
+    cx.sess.bug("tag_variant_with_id(): no variant exists with that ID");
 
-    log_err "tag_variant_with_id(): no variant exists with that ID";
-    fail;
 }
 
 // If the given item is in an external crate, looks up its type and adds it to
@@ -2954,13 +2892,13 @@ fn ret_ty_of_fn_ty(ty_ctxt tcx, t a_ty) -> t {
             ret ret_ty;
         }
         case (_) {
-            fail;
+            tcx.sess.bug("ret_ty_of_fn_ty() called on non-function type");
         }
     }
 }
 
 fn ret_ty_of_fn(ty_ctxt tcx, ast::ann ann) -> t {
-    ret ret_ty_of_fn_ty(tcx, ann_to_type(tcx.node_types, ann));
+    ret ret_ty_of_fn_ty(tcx, ann_to_type(tcx, ann));
 }
 
 // Local Variables:
