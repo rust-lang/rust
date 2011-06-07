@@ -307,7 +307,7 @@ fn resolve_names(&@env e, &ast::crate c) {
                     }
                     case (_) {
                         e.sess.span_err(p.span, "not a tag variant: " +
-                                        str::connect(p.node.idents, "::"));
+                                        ast::path_name(p));
                     }
                 }
                 for (@ast::pat child in children) {
