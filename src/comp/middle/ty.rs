@@ -1542,25 +1542,25 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 // Type lookups
 
-fn ann_to_ty_param_substs_opt_and_ty(&ty_ctxt tcx, &ast::ann ann)
+fn ann_to_ty_param_substs_opt_and_ty(&ctxt cx, &ast::ann ann)
     -> ty_param_substs_opt_and_ty {
 
     // Pull out the node type table.
-    alt ({tcx.node_types.(ann.id)}) {
+    alt ({cx.node_types.(ann.id)}) {
         case (none) {
-            tcx.sess.bug("ann_to_ty_param_substs_opt_and_ty() called on an " +
-                         "untyped node");
+            cx.sess.bug("ann_to_ty_param_substs_opt_and_ty() called on an " +
+                        "untyped node");
         }
         case (some(?tpot)) { ret tpot; }
     }
 }
 
-fn ann_to_type(&ty_ctxt tcx, &ast::ann ann) -> t {
-    ret ann_to_ty_param_substs_opt_and_ty(tcx, ann)._1;
+fn ann_to_type(&ctxt cx, &ast::ann ann) -> t {
+    ret ann_to_ty_param_substs_opt_and_ty(cx, ann)._1;
 }
 
-fn ann_to_type_params(&ty_ctxt tcx, &ast::ann ann) -> vec[t] {
-    alt (ann_to_ty_param_substs_opt_and_ty(tcx, ann)._0) {
+fn ann_to_type_params(&ctxt cx, &ast::ann ann) -> vec[t] {
+    alt (ann_to_ty_param_substs_opt_and_ty(cx, ann)._0) {
         case (none) {
             let vec[t] result = [];
             ret result;
@@ -1569,8 +1569,8 @@ fn ann_to_type_params(&ty_ctxt tcx, &ast::ann ann) -> vec[t] {
     }
 }
 
-fn ann_has_type_params(&ty_ctxt tcx, &ast::ann ann) -> bool {
-    auto tpt = ann_to_ty_param_substs_opt_and_ty(tcx, ann);
+fn ann_has_type_params(&ctxt cx, &ast::ann ann) -> bool {
+    auto tpt = ann_to_ty_param_substs_opt_and_ty(cx, ann);
     ret !option::is_none[vec[t]](tpt._0);
 }
 
@@ -1765,8 +1765,8 @@ fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr)
             ann_to_type(cx, a));
 }
 
-fn expr_has_ty_params(&ty_ctxt tcx, &@ast::expr expr) -> bool {
-    ret ann_has_type_params(tcx, expr_ann(expr));
+fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
+    ret ann_has_type_params(cx, expr_ann(expr));
 }
 
 fn decl_local_ty(&ctxt cx, &@ast::decl d) -> t {
@@ -2886,19 +2886,19 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
     }
 }
 
-fn ret_ty_of_fn_ty(ty_ctxt tcx, t a_ty) -> t {
-    alt (ty::struct(tcx, a_ty)) {
+fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
+    alt (ty::struct(cx, a_ty)) {
         case (ty::ty_fn(_, _, ?ret_ty, _)) {
             ret ret_ty;
         }
         case (_) {
-            tcx.sess.bug("ret_ty_of_fn_ty() called on non-function type");
+            cx.sess.bug("ret_ty_of_fn_ty() called on non-function type");
         }
     }
 }
 
-fn ret_ty_of_fn(ty_ctxt tcx, ast::ann ann) -> t {
-    ret ret_ty_of_fn_ty(tcx, ann_to_type(tcx, ann));
+fn ret_ty_of_fn(ctxt cx, ast::ann ann) -> t {
+    ret ret_ty_of_fn_ty(cx, ann_to_type(cx, ann));
 }
 
 // Local Variables:
