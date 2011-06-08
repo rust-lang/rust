@@ -256,7 +256,6 @@ fn parse_value_ident(&parser p) -> ast::ident {
     ret parse_ident(p);
 }
 
-
 /* FIXME: gross hack copied from rustboot to make certain configuration-based
  * decisions work at build-time.  We should probably change it to use a
  * lexical sytnax-extension or something similar. For now we just imitate
@@ -934,7 +933,17 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = expand_syntax_ext(p, ext_span, pth, es.node,
                                none[str]);
     } else if (eat_word(p, "fail")) {
-        ex = ast::expr_fail(p.get_ann());
+        auto msg;
+        alt (p.peek()) {
+           case (token::LIT_STR(?s)) {
+               msg = some[str](p.get_str(s));
+               p.bump();
+           }
+           case (_) {
+               msg = none[str];
+           }
+        }
+        ex = ast::expr_fail(p.get_ann(), msg);
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
         auto hi = e.span.hi;
@@ -1643,7 +1652,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_field(_,_,_))    { ret true; }
                 case (ast::expr_index(_,_,_))    { ret true; }
                 case (ast::expr_path(_,_))       { ret true; }
-                case (ast::expr_fail(_))         { ret true; }
+                case (ast::expr_fail(_,_))       { ret true; }
                 case (ast::expr_break(_))        { ret true; }
                 case (ast::expr_cont(_))         { ret true; }
                 case (ast::expr_ret(_,_))        { ret true; }

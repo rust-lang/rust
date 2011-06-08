@@ -508,7 +508,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     expr_poststate(fcx.ccx, operand)) || changed;
         ret changed;
     }
-    case (expr_fail(?a)) {
+    case (expr_fail(?a, _)) {
         changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
         /* if execution continues after fail, then everything is true! woo! */
         changed = set_poststate_ann(fcx.ccx, a,

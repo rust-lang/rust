@@ -5628,8 +5628,17 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             ret trans_expr(cx, expanded);
         }
 
-        case (ast::expr_fail(_)) {
-            ret trans_fail(cx, some(e.span), "explicit failure");
+        case (ast::expr_fail(_, ?str)) {
+            auto failmsg;
+            alt (str) {
+                case (some(?msg)) {
+                    failmsg = msg;
+                }
+                case (_) {
+                    failmsg = "explicit failure";
+                }
+            }
+            ret trans_fail(cx, some(e.span), failmsg);
         }
 
         case (ast::expr_log(?lvl, ?a, _)) {
