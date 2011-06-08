@@ -8238,17 +8238,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     trans_mod(cx, crate.node.module);
     auto crate_map = create_crate_map(ccx);
 
-    if (!sess.get_opts().shared) {
-      auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_int()),
-                                    str::buf("_rust_fetch_this_object_hack"));
-
-      auto gvar2 = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_ptr(T_int())),
-                                   str::buf("_rust_fetch_this_object_hack2"));
-     llvm::LLVMSetInitializer(gvar2, gvar);
-     llvm::LLVMSetGlobalConstant(gvar, True);
-     llvm::LLVMSetGlobalConstant(gvar2, True);
-   }
-
     emit_tydescs(ccx);
 
     // Translate the metadata:
