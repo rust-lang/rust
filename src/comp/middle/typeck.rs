@@ -52,16 +52,10 @@ import middle::tstate::ann::ts_ann;
 type ty_table = hashmap[ast::def_id, ty::t];
 type fn_purity_table = hashmap[ast::def_id, ast::purity];
 
-type unify_cache_entry = tup(ty::t,ty::t,vec[mutable ty::t]);
-type unify_cache = hashmap[unify_cache_entry,ty::unify::result];
-
 type obj_info = rec(vec[ast::obj_field] obj_fields, ast::def_id this_obj);
 
 type crate_ctxt = rec(mutable vec[obj_info] obj_infos,
                       @fn_purity_table fn_purity_table,
-                      unify_cache unify_cache,
-                      mutable uint cache_hits,
-                      mutable uint cache_misses,
                       ty::ctxt tcx);
 
 type fn_ctxt = rec(ty::t ret_ty,
@@ -820,21 +814,8 @@ mod collect {
 mod unify {
     fn simple(&@fn_ctxt fcx, &ty::t expected, &ty::t actual)
             -> ty::unify::result {
-        /*auto cache_key = tup(expected, actual, param_substs);
-        alt (fcx.ccx.unify_cache.find(cache_key)) {
-            case (some(?r)) {
-                fcx.ccx.cache_hits += 1u;
-                ret r;
-            }
-            case (none) {
-                fcx.ccx.cache_misses += 1u;
-            }
-        }*/
-
         auto result = ty::unify::unify(expected, actual, fcx.var_bindings,
                                        fcx.ccx.tcx);
-
-        //fcx.ccx.unify_cache.insert(cache_key, result);
 
         // FIXME: Shouldn't be necessary, but is until we remove pushdown.
         alt (result) {
@@ -2856,37 +2837,6 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
     }
 }
 
-// Utilities for the unification cache
-
-fn hash_unify_cache_entry(&unify_cache_entry uce) -> uint {
-    auto h = ty::hash_ty(uce._0);
-    h += h << 5u + ty::hash_ty(uce._1);
-
-    auto i = 0u;
-    auto tys_len = vec::len(uce._2);
-    while (i < tys_len) {
-        h += h << 5u + ty::hash_ty(uce._2.(i));
-        i += 1u;
-    }
-
-    ret h;
-}
-
-fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
-    if (!ty::eq_ty(a._0, b._0) || !ty::eq_ty(a._1, b._1)) { ret false; }
-
-    auto i = 0u;
-    auto tys_len = vec::len(a._2);
-    if (vec::len(b._2) != tys_len) { ret false; }
-
-    while (i < tys_len) {
-        if (!ty::eq_ty(a._2.(i), b._2.(i))) { ret false; }
-        i += 1u;
-    }
-
-    ret true;
-}
-
 fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
     auto res = @new_def_hash[ast::purity]();
 
@@ -2914,26 +2864,16 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
 
     let vec[obj_info] obj_infos = [];
 
-    auto hasher = hash_unify_cache_entry;
-    auto eqer = eq_unify_cache_entry;
-    auto unify_cache =
-        map::mk_hashmap[unify_cache_entry,ty::unify::result](hasher, eqer);
     auto fpt = mk_fn_purity_table(crate); // use a variation on collect
 
     auto ccx = @rec(mutable obj_infos=obj_infos,
                     fn_purity_table=fpt,
-                    unify_cache=unify_cache,
-                    mutable cache_hits=0u,
-                    mutable cache_misses=0u,
                     tcx=tcx);
 
     auto visit = rec(visit_item_pre = bind check_item(ccx, _)
                      with walk::default_visitor());
 
     walk::walk_crate(visit, *crate);
-
-    log #fmt("cache hit rate: %u/%u", ccx.cache_hits,
-             ccx.cache_hits + ccx.cache_misses);
 }
 
 //
