@@ -546,12 +546,10 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         ret mstr + ty_to_str(cx, m.ty);
     }
 
-    /*alt (cname(cx, typ)) {
-        case (some(?cs)) {
-            ret cs;
-        }
-        case (_) { }
-    }*/
+    alt (cname(cx, typ)) {
+        case (some(?cs)) { ret cs; }
+        case (_) { /* fall through */ }
+    }
 
     auto s = "";
 
