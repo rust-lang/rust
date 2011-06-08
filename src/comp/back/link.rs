@@ -1,8 +1,18 @@
 import driver::session;
 import lib::llvm::llvm;
 import middle::trans;
+import middle::metadata;
+import middle::ty;
 import std::str;
 import std::fs;
+import std::vec;
+import std::option;
+import option::some;
+import option::none;
+import std::sha1::sha1;
+import std::sort;
+import trans::crate_ctxt;
+import front::ast;
 
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
@@ -49,7 +59,7 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
 
     auto linkres = llvm::LLVMLinkModules(llmod, llintrinsicsmod);
     llvm::LLVMDisposeModule(llintrinsicsmod);
-    
+
     if (linkres == False) {
         llvm_err(sess, "couldn't link the module with the intrinsics");
         fail;
@@ -58,7 +68,7 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
 
 mod write {
     fn is_object_or_assembly_or_exe(output_type ot) -> bool {
-        if ( (ot == output_type_assembly) || 
+        if ( (ot == output_type_assembly) ||
              (ot == output_type_object) ||
              (ot == output_type_exe) ) {
             ret true;
@@ -218,3 +228,235 @@ mod write {
     }
 }
 
+/*
+ * Name mangling and its relationship to metadata. This is complex. Read
+ * carefully.
+ *
+ * The semantic model of Rust linkage is, broadly, that "there's no global
+ * namespace" between crates. Our aim is to preserve the illusion of this
+ * model despite the fact that it's not *quite* possible to implement on
+ * modern linkers. We initially didn't use system linkers at all, but have
+ * been convinced of their utility.
+ *
+ * There are a few issues to handle:
+ *
+ *  - Linkers operate on a flat namespace, so we have to flatten names.
+ *    We do this using the C++ namespace-mangling technique. Foo::bar
+ *    symbols and such.
+ *
+ *  - Symbols with the same name but different types need to get different
+ *    linkage-names. We do this by hashing a string-encoding of the type into
+ *    a fixed-size (currently 16-byte hex) cryptographic hash function (CHF:
+ *    we use SHA1) to "prevent collisions". This is not airtight but 16 hex
+ *    digits on uniform probability means you're going to need 2**32 same-name
+ *    symbols in the same process before you're even hitting birthday-paradox
+ *    collision probability.
+ *
+ *  - Symbols in dirrerent crates but with same names "within" the crate need
+ *    to get different linkage-names.
+ *
+ * So here is what we do:
+ *
+ *  - Separate the meta tags into two sets: exported and local. Only work with
+ *    the exported ones when considering linkage.
+ *
+ *  - Consider two exported tags as special (and madatory): name and vers.
+ *    Every crate gets them; if it doesn't name them explicitly we infer them
+ *    as basename(crate) and "0.1", respectively. Call these CNAME, CVERS.
+ *
+ *  - Define CMETA as all the non-name, non-vers exported meta tags in the
+ *    crate (in sorted order).
+ *
+ *  - Define CMH as hash(CMETA).
+ *
+ *  - Compile our crate to lib CNAME-CMH-CVERS.so
+ *
+ *  - Define STH(sym) as hash(CNAME, CMH, type_str(sym))
+ *
+ *  - Suffix a mangled sym with ::STH@CVERS, so that it is unique in the
+ *    name, non-name metadata, and type sense, and versioned in the way
+ *    system linkers understand.
+ *
+ */
+
+
+iter crate_export_metas(ast::crate c) -> @ast::meta_item {
+    for (@ast::crate_directive cdir in c.node.directives) {
+        alt (cdir.node) {
+            case (ast::cdir_meta(?v, ?mis)) {
+                if (v == ast::export_meta) {
+                    for (@ast::meta_item mi in mis) {
+                        put mi;
+                    }
+                }
+            }
+            case (_) {}
+        }
+    }
+}
+fn get_crate_meta(&session::session sess,
+                  &ast::crate c, str k, str default,
+                  bool warn_default) -> str {
+    let vec[@ast::meta_item] v = [];
+    for each (@ast::meta_item mi in crate_export_metas(c)) {
+        if (mi.node.name == k) {
+            v += [mi];
+        }
+    }
+    alt (vec::len(v)) {
+        case (0u) {
+            if (warn_default) {
+                sess.warn(#fmt("missing meta '%s', using '%s' as default",
+                               k, default));
+            }
+            ret default;
+        }
+        case (1u) {
+            ret v.(0).node.value;
+        }
+        case (_) {
+            sess.span_err(v.(1).span, #fmt("duplicate meta '%s'", k));
+        }
+    }
+}
+
+// This calculates CMH as defined above
+fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
+    fn lteq(&@ast::meta_item ma,
+            &@ast::meta_item mb) -> bool {
+        ret ma.node.name <= mb.node.name;
+    }
+
+    fn len_and_str(&str s) -> str {
+        ret #fmt("%u_%s", str::byte_len(s), s);
+    }
+
+    let vec[mutable @ast::meta_item] v = [mutable];
+    for each (@ast::meta_item mi in crate_export_metas(crate)) {
+        if (mi.node.name != "name" &&
+            mi.node.name != "vers") {
+            v += [mutable mi];
+        }
+    }
+    sort::quick_sort(lteq, v);
+    sha.reset();
+    for (@ast::meta_item m in v) {
+        sha.input_str(len_and_str(m.node.name));
+        sha.input_str(len_and_str(m.node.value));
+    }
+    ret truncated_sha1_result(sha);
+}
+
+fn crate_meta_name(&session::session sess, &ast::crate crate,
+                       &str output) -> str {
+    auto os = str::split(fs::basename(output), '.' as u8);
+    assert vec::len(os) >= 2u;
+    vec::pop(os);
+    ret get_crate_meta(sess, crate, "name", str::connect(os, "."),
+                       sess.get_opts().shared);
+}
+
+fn crate_meta_vers(&session::session sess, &ast::crate crate) -> str {
+    ret get_crate_meta(sess, crate, "vers", "0.0",
+                       sess.get_opts().shared);
+}
+
+fn truncated_sha1_result(sha1 sha) -> str {
+    ret str::substr(sha.result_str(), 0u, 16u);
+}
+
+
+
+// This calculates STH for a symbol, as defined above
+fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
+               str crate_meta_name,
+               str crate_meta_extras_hash) -> str {
+    // NB: do *not* use abbrevs here as we want the symbol names
+    // to be independent of one another in the crate.
+    auto cx = @rec(ds=metadata::def_to_str, tcx=tcx,
+                   abbrevs=metadata::ac_no_abbrevs);
+    sha.reset();
+    sha.input_str(crate_meta_name);
+    sha.input_str("-");
+    sha.input_str(crate_meta_name);
+    sha.input_str("-");
+    sha.input_str(metadata::Encode::ty_str(cx, t));
+    auto hash = truncated_sha1_result(sha);
+    // Prefix with _ so that it never blends into adjacent digits
+    ret "_" + hash;
+}
+
+fn get_symbol_hash(&@crate_ctxt ccx, &ty::t t) -> str {
+    auto hash = "";
+    alt (ccx.type_sha1s.find(t)) {
+        case (some(?h)) { hash = h; }
+        case (none) {
+            hash = symbol_hash(ccx.tcx, ccx.sha, t,
+                               ccx.crate_meta_name,
+                               ccx.crate_meta_extras_hash);
+            ccx.type_sha1s.insert(t, hash);
+        }
+    }
+    ret hash;
+}
+
+
+fn mangle(&vec[str] ss) -> str {
+
+    // Follow C++ namespace-mangling style
+
+    auto n = "_ZN"; // Begin name-sequence.
+
+    for (str s in ss) {
+        n += #fmt("%u%s", str::byte_len(s), s);
+    }
+
+    n += "E"; // End name-sequence.
+    ret n;
+}
+
+
+fn exported_name(&vec[str] path, &str hash, &str vers) -> str {
+    // FIXME: versioning isn't working yet
+    ret mangle(path + [hash]); //  + "@" + vers;
+}
+
+fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path,
+                        &ty::t t) -> str {
+    auto hash = get_symbol_hash(ccx, t);
+    ret exported_name(path, hash, ccx.crate_meta_vers);
+}
+
+fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t,
+                                     &str name) -> str {
+    auto f = metadata::def_to_str;
+    auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata::ac_no_abbrevs);
+    auto s = ty::ty_to_short_str(ccx.tcx, t);
+
+    auto hash = get_symbol_hash(ccx, t);
+    ret mangle([name, s, hash]);
+}
+
+fn mangle_internal_name_by_path_and_seq(&@crate_ctxt ccx, &vec[str] path,
+                                       &str flav) -> str {
+    ret mangle(path + [ccx.names.next(flav)]);
+}
+
+fn mangle_internal_name_by_path(&@crate_ctxt ccx, &vec[str] path) -> str {
+    ret mangle(path);
+}
+
+fn mangle_internal_name_by_seq(&@crate_ctxt ccx, &str flav) -> str {
+    ret ccx.names.next(flav);
+}
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

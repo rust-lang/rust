@@ -210,7 +210,7 @@ fn unshift[T](&mutable array[T] v, &T t) {
     v = res;
 }
 
-fn grow[T](&array[T] v, uint n, &T initval) {
+fn grow[T](&mutable array[T] v, uint n, &T initval) {
     let uint i = n;
     while (i > 0u) {
         i -= 1u;
@@ -218,7 +218,7 @@ fn grow[T](&array[T] v, uint n, &T initval) {
     }
 }
 
-fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
+fn grow_set[T](&mutable vec[mutable T] v, uint index, &T initval, &T val) {
     auto length = vec::len(v);
     if (index >= length) {
         grow(v, index - length + 1u, initval);
@@ -391,6 +391,12 @@ fn reversed[T](vec[T] v) -> vec[T] {
     push[T](res, v.(0));
 
     ret res;
+}
+
+/// Truncates the vector to length `new_len`.
+/// FIXME: This relies on a typechecker bug (covariance vs. invariance).
+fn truncate[T](&mutable vec[mutable? T] v, uint new_len) {
+    v = slice[T](v, 0u, new_len);
 }
 
 // Local Variables:

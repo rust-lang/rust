@@ -12,6 +12,11 @@ fn ne(uint x, uint y) -> bool { ret x != y; }
 fn ge(uint x, uint y) -> bool { ret x >= y; }
 fn gt(uint x, uint y) -> bool { ret x > y; }
 
+fn max(uint x, uint y) -> uint {
+    if (x > y) { ret x; }
+    ret y;
+}
+
 iter range(uint lo, uint hi) -> uint {
     auto lo_ = lo;
     while (lo_ < hi) {

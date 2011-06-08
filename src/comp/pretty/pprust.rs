@@ -945,7 +945,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                         case (mo_untyped) { /* no-op */ }
                         case (mo_typed(?tcx)) {
                             auto lty =
-                                ty::ann_to_type(tcx.node_types, loc.ann);
+                                ty::ann_to_type(tcx, loc.ann);
                             word_space(s, ty::ty_to_str(tcx, lty));
                         }
                         case (mo_identified) { /* no-op */ }

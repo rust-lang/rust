@@ -482,7 +482,7 @@ fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
  If it has a function type with a ! annotation,
 the answer is noreturn. */
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types,
+    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx,
                                              expr_ann(e)))) {
         case (ty::ty_fn(_,_,_,?cf)) {
             ret cf;

@@ -6,7 +6,7 @@
 // particular definition to the LLVM IR output we're producing.
 //
 // Hopefully useful general knowledge about trans:
-// 
+//
 //   * There's no way to find out the ty::t type of a ValueRef.  Doing so
 //     would be "trying to get the eggs out of an omelette" (credit:
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
@@ -24,6 +24,7 @@ import std::map::hashmap;
 import std::option;
 import std::option::some;
 import std::option::none;
+import std::fs;
 
 import front::ast;
 import front::creader;
@@ -61,6 +62,15 @@ import lib::llvm::llvm::BasicBlockRef;
 import lib::llvm::False;
 import lib::llvm::True;
 import lib::llvm::Bool;
+
+import link::mangle_internal_name_by_type_only;
+import link::mangle_internal_name_by_seq;
+import link::mangle_internal_name_by_path;
+import link::mangle_internal_name_by_path_and_seq;
+import link::mangle_exported_name;
+import link::crate_meta_name;
+import link::crate_meta_vers;
+import link::crate_meta_extras_hash;
 
 state obj namegen(mutable int i) {
     fn next(str prefix) -> str {
@@ -119,6 +129,9 @@ state type crate_ctxt = rec(session::session sess,
                                     @ast::native_item] native_items,
                             hashmap[ast::def_id, str] item_symbols,
                             mutable option::t[ValueRef] main_fn,
+                            str crate_meta_name,
+                            str crate_meta_vers,
+                            str crate_meta_extras_hash,
                             // TODO: hashmap[tup(tag_id,subtys), @tag_info]
                             hashmap[ty::t, uint] tag_sizes,
                             hashmap[ast::def_id, ValueRef] discrims,
@@ -166,14 +179,14 @@ type fn_ctxt = rec(
     ValueRef lltaskptr,
     ValueRef llenv,
     ValueRef llretptr,
-    
+
     // The next three elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in the
     // function, due to LLVM's quirks.
 
     // A block for all the function's allocas, so that LLVM will coalesce them
     // into a single alloca call.
-    mutable BasicBlockRef llallocas, 
+    mutable BasicBlockRef llallocas,
 
     // A block containing code that copies incoming arguments to space already
     // allocated by code in the llallocas block.  (LLVM requires that
@@ -311,70 +324,6 @@ state type result = rec(@block_ctxt bcx,
 
 fn extend_path(@local_ctxt cx, &str name) -> @local_ctxt {
   ret @rec(path = cx.path + [name] with *cx);
-}
-
-fn get_type_sha1(&@crate_ctxt ccx, &ty::t t) -> str {
-    auto hash = "";
-    alt (ccx.type_sha1s.find(t)) {
-        case (some(?h)) { hash = h; }
-        case (none) {
-            ccx.sha.reset();
-            auto f = metadata::def_to_str;
-            // NB: do *not* use abbrevs here as we want the symbol names
-            // to be independent of one another in the crate.
-            auto cx = @rec(ds=f,
-                           tcx=ccx.tcx,
-                           abbrevs=metadata::ac_no_abbrevs);
-
-            ccx.sha.input_str(metadata::Encode::ty_str(cx, t));
-            hash = str::substr(ccx.sha.result_str(), 0u, 16u);
-            // Prefix with _ so that it never blends into adjacent digits
-            hash = "_" + hash;
-            ccx.type_sha1s.insert(t, hash);
-        }
-    }
-    ret hash;
-}
-
-fn mangle(&vec[str] ss) -> str {
-
-    // Follow C++ namespace-mangling style
-
-    auto n = "_ZN"; // Begin name-sequence.
-
-    for (str s in ss) {
-        n += #fmt("%u%s", str::byte_len(s), s);
-    }
-
-    n += "E"; // End name-sequence.
-    ret n;
-}
-
-fn mangle_name_by_type(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
-    auto hash = get_type_sha1(ccx, t);
-    ret mangle(path + [hash]);
-}
-
-fn mangle_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) -> str {
-    auto f = metadata::def_to_str;
-    auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata::ac_no_abbrevs);
-    auto s = ty::ty_to_short_str(ccx.tcx, t);
-
-    auto hash = get_type_sha1(ccx, t);
-    ret mangle([name, s, hash]);
-}
-
-fn mangle_name_by_path_and_seq(&@crate_ctxt ccx, &vec[str] path,
-                               &str flav) -> str {
-    ret mangle(path + [ccx.names.next(flav)]);
-}
-
-fn mangle_name_by_path(&@crate_ctxt ccx, &vec[str] path) -> str {
-    ret mangle(path);
-}
-
-fn mangle_name_by_seq(&@crate_ctxt ccx, &str flav) -> str {
-    ret ccx.names.next(flav);
 }
 
 fn res(@block_ctxt bcx, ValueRef val) -> result {
@@ -955,10 +904,6 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_param(_)) {
             llty = T_i8();
         }
-        case (ty::ty_bound_param(_)) {
-            cx.tcx.sess.span_err(sp, 
-                                 "trans::type_of called on ty_bound_param");
-        }
         case (ty::ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
     }
 
@@ -1350,7 +1295,6 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
         auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, variant.args));
 
         // Perform any type parameter substitutions.
-        tup_ty = ty::bind_params_in_type(cx.tcx, tup_ty);
         tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
 
         // Here we possibly do a recursive call.
@@ -1424,10 +1368,8 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
                 let vec[ty::t] raw_tys = variant.args;
                 let vec[ty::t] tys = [];
                 for (ty::t raw_ty in raw_tys) {
-                    auto t = ty::bind_params_in_type(cx.fcx.lcx.ccx.tcx,
-                                                    raw_ty);
-                    t = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx, tps,
-                                                   t);
+                    auto t = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
+                                                        tps, raw_ty);
                     tys += [t];
                 }
 
@@ -1604,9 +1546,8 @@ fn GEP_tag(@block_ctxt cx,
     auto i = 0;
     let vec[ty::t] true_arg_tys = [];
     for (ty::t aty in arg_tys) {
-        auto arg_ty = ty::bind_params_in_type(cx.fcx.lcx.ccx.tcx, aty);
-        arg_ty = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx, ty_substs,
-                                           arg_ty);
+        auto arg_ty = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
+                                                 ty_substs, aty);
         true_arg_tys += [arg_ty];
         if (i == ix) {
             elem_ty = arg_ty;
@@ -1914,10 +1855,10 @@ fn declare_tydesc(&@local_ctxt cx, &span sp, &ty::t t,
 
     auto name;
     if (cx.ccx.sess.get_opts().debuginfo) {
-        name = mangle_name_by_type_only(cx.ccx, t, "tydesc");
+        name = mangle_internal_name_by_type_only(cx.ccx, t, "tydesc");
         name = sanitize(name);
     } else {
-        name = mangle_name_by_seq(cx.ccx, "tydesc");
+        name = mangle_internal_name_by_seq(cx.ccx, "tydesc");
     }
 
     auto gvar = llvm::LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
@@ -1948,10 +1889,12 @@ fn declare_generic_glue(&@local_ctxt cx,
                         &str name) -> ValueRef {
     auto fn_nm;
     if (cx.ccx.sess.get_opts().debuginfo) {
-        fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
+        fn_nm = mangle_internal_name_by_type_only(cx.ccx, t,
+                                                  "glue_" + name);
         fn_nm = sanitize(fn_nm);
     } else {
-        fn_nm = mangle_name_by_seq(cx.ccx,  "glue_" + name);
+        fn_nm = mangle_internal_name_by_seq(cx.ccx,
+                                            "glue_" + name);
     }
     auto llfn = decl_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(cx, llfn, t);
@@ -2794,10 +2737,8 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                                 auto llfldp_b = rslt.val;
                                 variant_cx = rslt.bcx;
 
-                                auto ty_subst = ty::bind_params_in_type(
-                                    cx.fcx.lcx.ccx.tcx, a.ty);
-                                ty_subst = ty::substitute_type_params(
-                                    cx.fcx.lcx.ccx.tcx, tps, ty_subst);
+                                auto ty_subst = ty::substitute_type_params(
+                                    cx.fcx.lcx.ccx.tcx, tps, a.ty);
 
                                 auto llfld_a =
                                     load_if_immediate(variant_cx,
@@ -3684,13 +3625,11 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
 
                 v1 = load_if_immediate(cx, v1, t1);
             }
-            case (_) {
-                ret res(cx, v1);
-            }
+            case (_) { break; }
         }
     }
 
-    fail; // fools the return-checker
+    ret res(cx, v1);
 }
 
 fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
@@ -3701,13 +3640,11 @@ fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
             case (ty::ty_box(?mt)) {
                 t1 = mt.ty;
             }
-            case (_) {
-                ret t1;
-            }
+            case (_) { break; }
         }
     }
 
-    fail; // fools the return-checker
+    ret t1;
 }
 
 fn trans_binary(&@block_ctxt cx, ast::binop op,
@@ -3873,7 +3810,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
             }
 
             // FIXME: This isn't quite right, particularly re: dynamic types
-            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types,
+            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx,
                                            ann);
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4107,7 +4044,8 @@ fn trans_for_each(&@block_ctxt cx,
 
     // Step 2: Declare foreach body function.
 
-    let str s = mangle_name_by_path_and_seq(lcx.ccx, lcx.path, "foreach");
+    let str s = mangle_internal_name_by_path_and_seq(lcx.ccx, lcx.path,
+                                                     "foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
@@ -4257,7 +4195,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 
         case (ast::pat_lit(?lt, ?ann)) {
             auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, ann);
-            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
 
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
@@ -4295,7 +4233,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
             auto ty_params =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
 
             if (vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
@@ -4356,7 +4294,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
             auto llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
 
             auto ty_param_substs =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
 
             auto this_cx = cx;
             auto i = 0;
@@ -4405,7 +4343,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
                                   "non-exhaustive match failure");
 
     // FIXME: This isn't quite right, particularly re: dynamic types
-    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
     auto expr_llty;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
         expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4470,8 +4408,8 @@ fn lval_generic_fn(&@block_ctxt cx,
         lv = trans_external_path(cx, fn_id, tpt);
     }
 
-    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
-    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
+    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
 
     if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
@@ -4806,7 +4744,8 @@ fn trans_bind_thunk(&@local_ctxt cx,
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty:
 
-    let str s = mangle_name_by_path_and_seq(cx.ccx, cx.path, "thunk");
+    let str s = mangle_internal_name_by_path_and_seq(cx.ccx, cx.path,
+                                                     "thunk");
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx.ccx, sp,
                                                     incoming_fty));
     let ValueRef llthunk = decl_internal_fastcall_fn(cx.ccx.llmod,
@@ -5358,7 +5297,8 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f,
 
     }
 
-    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
                                f_res.generic,
@@ -5824,13 +5764,17 @@ fn load_if_immediate(&@block_ctxt cx, ValueRef v, &ty::t t) -> ValueRef {
 
 fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     auto lcx = cx.fcx.lcx;
-    auto modname = str::connect(lcx.module_path, "::");
+    auto modname = link::mangle_internal_name_by_path(lcx.ccx,
+                                                      lcx.module_path);
     auto global;
     if (lcx.ccx.module_data.contains_key(modname)) {
         global = lcx.ccx.module_data.get(modname);
     } else {
-        global = llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(),
-                                    str::buf("_rust_mod_log_" + modname));
+        auto s =
+            link::mangle_internal_name_by_path_and_seq(lcx.ccx,
+                                                       lcx.module_path,
+                                                       "loglevel");
+        global = llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), str::buf(s));
         llvm::LLVMSetGlobalConstant(global, False);
         llvm::LLVMSetInitializer(global, C_null(T_int()));
         llvm::LLVMSetLinkage(global, lib::llvm::LLVMInternalLinkage
@@ -6226,8 +6170,8 @@ fn trans_spawn(&@block_ctxt cx,
     ret res(bcx, new_task);
 }
 
-fn mk_spawn_wrapper(&@block_ctxt cx, 
-                    &@ast::expr func, 
+fn mk_spawn_wrapper(&@block_ctxt cx,
+                    &@ast::expr func,
                     &ty::t args_ty) -> result {
     auto llmod = cx.fcx.lcx.ccx.llmod;
     let TypeRef args_ty_tref = type_of(cx.fcx.lcx.ccx, cx.sp, args_ty);
@@ -6240,9 +6184,9 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
 
     // TODO: construct a name based on tname
     let str wrap_name =
-        mangle_name_by_path_and_seq(cx.fcx.lcx.ccx,
-                                    cx.fcx.lcx.path,
-                                    "spawn_wrapper");
+        mangle_internal_name_by_path_and_seq(cx.fcx.lcx.ccx,
+                                             cx.fcx.lcx.path,
+                                             "spawn_wrapper");
     auto llfndecl = decl_fastcall_fn(llmod, wrap_name,
                                      wrapper_fn_type);
 
@@ -6253,7 +6197,7 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
     // 3u to skip the three implicit args
     let ValueRef arg = llvm::LLVMGetParam(fcx.llfn, 3u);
 
-    let vec[ValueRef] child_args = 
+    let vec[ValueRef] child_args =
         [llvm::LLVMGetParam(fcx.llfn, 0u),
          llvm::LLVMGetParam(fcx.llfn, 1u),
          llvm::LLVMGetParam(fcx.llfn, 2u)];
@@ -6272,19 +6216,19 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
             }
         }
     }
-    
+
     // Find the function
     auto fnptr = trans_lval(fbcx, func).res;
     fbcx = fnptr.bcx;
-    
+
     auto llfnptr = fbcx.build.GEP(fnptr.val,
                                   [C_int(0), C_int(0)]);
     auto llfn = fbcx.build.Load(llfnptr);
-    
+
     fbcx.build.FastCall(llfn,
                         child_args);
     fbcx.build.RetVoid();
-    
+
     finish_fn(fcx, fbcx.llbb);
 
     // TODO: make sure we clean up everything we need to.
@@ -6720,7 +6664,7 @@ fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
     let vec[ast::ty_param] obj_typarams = [];
     let vec[ast::obj_field] obj_fields = [];
     ret @rec(path=pth,
-             module_path=[crate_name(ccx, "main")],
+             module_path=[ccx.crate_meta_name],
              obj_typarams = obj_typarams,
              obj_fields = obj_fields,
              ccx = ccx);
@@ -6907,7 +6851,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
 }
 
 fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types, ann))) {
+    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, ann))) {
         case (ty::ty_fn(_, ?arg_tys, _, _)) {
             ret arg_tys;
         }
@@ -6924,7 +6868,7 @@ fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
 
 
 fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
-    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx.node_types, ann));
+    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx, ann));
 }
 
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
@@ -7095,7 +7039,7 @@ fn create_vtbl(@local_ctxt cx,
 
         let @local_ctxt mcx = @rec(path = cx.path + ["method",
                                                      m.node.ident] with *cx);
-        let str s = mangle_name_by_path(mcx.ccx, mcx.path);
+        let str s = mangle_internal_name_by_path(mcx.ccx, mcx.path);
         let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s,
                                                       llfnty);
         cx.ccx.item_ids.insert(m.node.id, llfn);
@@ -7107,7 +7051,8 @@ fn create_vtbl(@local_ctxt cx,
         methods += [llfn];
     }
     auto vtbl = C_struct(methods);
-    auto vtbl_name = mangle_name_by_path(cx.ccx, cx.path + ["vtbl"]);
+    auto vtbl_name = mangle_internal_name_by_path(cx.ccx,
+                                                  cx.path + ["vtbl"]);
     auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl),
                                    str::buf(vtbl_name));
     llvm::LLVMSetInitializer(gvar, vtbl);
@@ -7124,7 +7069,7 @@ fn trans_dtor(@local_ctxt cx,
               &@ast::method dtor) -> ValueRef {
 
     auto llfnty = T_dtor(cx.ccx, dtor.span, llself_ty);
-    let str s = mangle_name_by_path(cx.ccx, cx.path + ["drop"]);
+    let str s = mangle_internal_name_by_path(cx.ccx, cx.path + ["drop"]);
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
@@ -7517,23 +7462,29 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
         }
     }
 
+    let bool is_main = (str::eq(vec::top(path), "main") &&
+                        !ccx.sess.get_opts().shared);
+
     // Declare the function itself.
-    let str s = mangle_name_by_path(ccx, path);
+    let str s =
+        if (is_main) { "_rust_main" }
+        else { mangle_internal_name_by_path(ccx, path) };
+
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
-    let str ps = mangle_name_by_type(ccx, path, node_ann_type(ccx, ann));
-
+    let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
     register_fn_pair(ccx, ps, llpairty, llfn, id);
 
-    if (str::eq(vec::top(path), "main") &&
-        !ccx.sess.get_opts().shared) {
+    if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
             ccx.sess.span_err(sp, "multiple 'main' functions");
         }
-        log #fmt("registering %s as main function for crate", ps);
+        llvm::LLVMSetLinkage(llfn, lib::llvm::LLVMExternalLinkage
+                             as llvm::Linkage);
         ccx.main_fn = some(llfn);
     }
+
 }
 
 fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
@@ -7564,7 +7515,7 @@ fn native_fn_ty_param_count(&@crate_ctxt cx, &ast::def_id id) -> uint {
     alt (native_item.node) {
         case (ast::native_item_ty(_,_)) {
             cx.sess.bug("decl_native_fn_and_pair(): native fn isn't " +
-                        "actually a fn?!");
+                        "actually a fn");
         }
         case (ast::native_item_fn(_, _, _, ?tps, _, _)) {
             count = vec::len[ast::ty_param](tps);
@@ -7592,14 +7543,15 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
 
     // Declare the wrapper.
     auto t = node_ann_type(ccx, ann);
+
     auto wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
-    let str s = mangle_name_by_path(ccx, path);
+    let str s = mangle_internal_name_by_path(ccx, path);
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(ccx.llmod, s,
                                                         wrapper_type);
 
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(ccx.tn, wrapper_type);
-    let str ps = mangle_name_by_type(ccx, path, node_ann_type(ccx, ann));
+    let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
 
     register_fn_pair(ccx, ps, wrapper_pair_type, wrapper_fn, id);
 
@@ -7937,7 +7889,7 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
                 auto discrim_val = C_int(i as int);
 
                 auto p = wcx.path + [ident, variant.node.name, "discrim"];
-                auto s = mangle_name_by_type(ccx, p, ty::mk_int(ccx.tcx));
+                auto s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
                 auto discrim_gvar = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
                                                        str::buf(s));
 
@@ -7956,8 +7908,8 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
             // with consts.
             auto v = C_int(1);
             ccx.item_ids.insert(cid, v);
-            auto s = mangle_name_by_type(ccx, wcx.path + [name],
-                                         node_ann_type(ccx, ann));
+            auto s = mangle_exported_name(ccx, wcx.path + [name],
+                                          node_ann_type(ccx, ann));
             ccx.item_symbols.insert(cid, s);
         }
 
@@ -7994,51 +7946,6 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
 fn create_typedefs(&@crate_ctxt cx) {
     llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), T_task(cx.tn));
     llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), T_tydesc(cx.tn));
-}
-
-fn trans_main_fn(@local_ctxt cx, ValueRef crate_map) {
-    auto T_main_args = [T_int(), T_int()];
-    auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int()];
-
-    auto main_name;
-    if (str::eq(std::os::target_os(), "win32")) {
-        main_name = "WinMain@16";
-    } else {
-        main_name = "main";
-    }
-
-    auto llmain =
-        decl_cdecl_fn(cx.ccx.llmod, main_name, T_fn(T_main_args, T_int()));
-
-    auto llrust_start = decl_cdecl_fn(cx.ccx.llmod, "rust_start",
-                                      T_fn(T_rust_start_args, T_int()));
-
-    auto llargc = llvm::LLVMGetParam(llmain, 0u);
-    auto llargv = llvm::LLVMGetParam(llmain, 1u);
-    auto llrust_main = alt (cx.ccx.main_fn) {
-        case (none) {
-            cx.ccx.sess.err("missing 'main' function");
-            // FIXME: shouldn't sess.err's ! result unify with f?
-            C_nil()
-        }
-        case (some(?f)) { f }
-    };
-
-    //
-    // Emit the moral equivalent of:
-    //
-    // main(int argc, char **argv) {
-    //     rust_start(&_rust.main, argc, argv);
-    // }
-    //
-
-    let BasicBlockRef llbb =
-        llvm::LLVMAppendBasicBlock(llmain, str::buf(""));
-    auto b = new_builder(llbb);
-
-    auto start_args = [p2i(llrust_main), llargc, llargv, p2i(crate_map)];
-
-    b.Ret(b.Call(llrust_start, start_args));
 }
 
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
@@ -8211,8 +8118,6 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
     auto maptype = T_array(elttype, ccx.module_data.size() + 1u);
     auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype,
                                   str::buf("_rust_mod_map"));
-    llvm::LLVMSetLinkage(map, lib::llvm::LLVMInternalLinkage
-                         as llvm::Linkage);
     let vec[ValueRef] elts = [];
     for each (@tup(str, ValueRef) item in ccx.module_data.items()) {
         auto elt = C_struct([p2i(C_cstr(ccx, item._0)), p2i(item._1)]);
@@ -8222,15 +8127,6 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
     vec::push[ValueRef](elts, term);
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     ret map;
-}
-
-fn crate_name(&@crate_ctxt ccx, &str deflt) -> str {
-    for (@ast::meta_item item in ccx.sess.get_metadata()) {
-        if (str::eq(item.node.name, "name")) {
-            ret item.node.value;
-        }
-    }
-    ret deflt;
 }
 
 // FIXME use hashed metadata instead of crate names once we have that
@@ -8245,7 +8141,13 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
         i += 1;
     }
     vec::push[ValueRef](subcrates, C_int(0));
-    auto sym_name = "_rust_crate_map_" + crate_name(ccx, "__none__");
+    auto mapname;
+    if (ccx.sess.get_opts().shared) {
+        mapname = ccx.crate_meta_name;
+    } else {
+        mapname = "toplevel";
+    }
+    auto sym_name = "_rust_crate_map_" + mapname;
     auto arrtype = T_array(T_int(), vec::len[ValueRef](subcrates));
     auto maptype = T_struct([T_int(), arrtype]);
     auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype, str::buf(sym_name));
@@ -8279,7 +8181,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     auto sha1s = map::mk_hashmap[ty::t,str](hasher, eqer);
     auto abbrevs = map::mk_hashmap[ty::t,metadata::ty_abbrev](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t,str](hasher, eqer);
-
+    auto sha = std::sha1::mk_sha1();
     auto ccx = @rec(sess = sess,
                     llmod = llmod,
                     td = td,
@@ -8291,6 +8193,10 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
                     native_items = new_def_hash[@ast::native_item](),
                     item_symbols = new_def_hash[str](),
                     mutable main_fn = none[ValueRef],
+                    crate_meta_name = crate_meta_name(sess, *crate, output),
+                    crate_meta_vers = crate_meta_vers(sess, *crate),
+                    crate_meta_extras_hash =
+                    crate_meta_extras_hash(sha, *crate),
                     tag_sizes = tag_sizes,
                     discrims = new_def_hash[ValueRef](),
                     discrim_symbols = new_def_hash[str](),
@@ -8302,7 +8208,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
                     lltypes = lltypes,
                     glues = glues,
                     names = namegen(0),
-                    sha = std::sha1::mk_sha1(),
+                    sha = sha,
                     type_sha1s = sha1s,
                     type_abbrevs = abbrevs,
                     type_short_names = short_names,
@@ -8322,9 +8228,17 @@ fn trans_crate(&session::session sess, &@ast::crate crate,
     trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
     auto crate_map = create_crate_map(ccx);
+
     if (!sess.get_opts().shared) {
-        trans_main_fn(cx, crate_map);
-    }
+      auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_int()),
+                                    str::buf("_rust_fetch_this_object_hack"));
+
+      auto gvar2 = llvm::LLVMAddGlobal(cx.ccx.llmod, T_ptr(T_ptr(T_int())),
+                                   str::buf("_rust_fetch_this_object_hack2"));
+     llvm::LLVMSetInitializer(gvar2, gvar);
+     llvm::LLVMSetGlobalConstant(gvar, True);
+     llvm::LLVMSetGlobalConstant(gvar2, True);
+   }
 
     emit_tydescs(ccx);
 

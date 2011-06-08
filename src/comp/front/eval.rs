@@ -418,8 +418,13 @@ fn eval_crate_directive(ctx cx,
             vec::push[@ast::view_item](view_items, vi);
         }
 
-        case (ast::cdir_meta(?mi)) {
-            cx.sess.add_metadata(mi);
+        case (ast::cdir_meta(?vi, ?mi)) {
+            // FIXME: we should actually record, for documentation-sake,
+            // the metadata that's not exported. It would be nice to have
+            // compiled-in to the target crate, not just in theh AST.
+            if (vi == ast::export_meta) {
+                cx.sess.add_metadata(mi);
+            }
         }
 
         case (ast::cdir_syntax(?pth)) {}

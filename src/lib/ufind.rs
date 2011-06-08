@@ -20,6 +20,12 @@ fn make_set(&ufind ufnd) -> uint {
     ret idx;
 }
 
+/// Creates sets as necessary to ensure that least `n` sets are present in the
+/// data structure.
+fn grow(&ufind ufnd, uint n) {
+    while (set_count(ufnd) < n) { make_set(ufnd); }
+}
+
 fn find(&ufind ufnd, uint n) -> uint {
     alt (ufnd.nodes.(n)) {
         case (none) { ret n; }
@@ -37,12 +43,17 @@ fn union(&ufind ufnd, uint m, uint n) {
     }
 }
 
+fn set_count(&ufind ufnd) -> uint {
+    ret vec::len[node](ufnd.nodes);
+}
+
 // Removes all sets with IDs greater than or equal to the given value.
 fn prune(&ufind ufnd, uint n) {
     // TODO: Use "slice" once we get rid of "mutable?"
-    while (n != 0u) {
+    auto len = vec::len[node](ufnd.nodes);
+    while (len != n) {
         vec::pop[node](ufnd.nodes);
-        n -= 1u;
+        len -= 1u;
     }
 }
 

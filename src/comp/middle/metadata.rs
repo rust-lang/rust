@@ -230,17 +230,6 @@ mod Encode {
             }
             case (ty::ty_type) {w.write_char('Y');}
             case (ty::ty_task) {w.write_char('a');}
-
-            // These two don't appear in crate metadata, but are here because
-            // `hash_ty()` uses this function.
-            case (ty::ty_bound_param(?id)) {
-                w.write_char('o');
-                w.write_str(common::uistr(id));
-            }
-            case (ty::ty_local(?def)) {
-                w.write_char('L');
-                w.write_str(cx.ds(def));
-            }
         }
     }
 
