@@ -185,7 +185,7 @@ compile-check: tidy \
 %.stage0$(X): %.stage0.o  $(SREQ0)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o -o $@ $< \
-      -Lstage1 -Lrt rt/main.a -lrustrt -lstd -lm
+      -Lstage1 -Lrt rt/main.o -lrustrt -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -194,7 +194,7 @@ compile-check: tidy \
 %.stage1$(X): %.stage1.o $(SREQ1)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o -o $@ $< \
-      -Lstage2 -Lrt rt/main.a -lrustrt -lstd -lm
+      -Lstage2 -Lrt rt/main.o -lrustrt -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -203,7 +203,7 @@ compile-check: tidy \
 %.stage2$(X): %.stage2.o $(SREQ2)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o -o $@ $< \
-      -Lstage3 -Lrt rt/main.a -lrustrt -lstd -lm
+      -Lstage3 -Lrt rt/main.o -lrustrt -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.

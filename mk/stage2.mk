@@ -44,7 +44,7 @@ stage2/%.o: stage2/%.s
 stage2/%$(X): stage2/%.o  $(SREQ1)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o -o $@ $< \
-      -Lstage2 -Lrustllvm -Lrt rt/main.a -lrustrt -lrustllvm -lstd -lm
+      -Lstage2 -Lrustllvm -Lrt rt/main.o -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
