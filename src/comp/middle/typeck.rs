@@ -1628,6 +1628,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             assert (ast::is_call_expr(e));
 
             check_expr(fcx, e);
+            demand::simple(fcx, e.span, fcx.ret_ty, expr_ty(fcx.ccx.tcx, e));
+
             write::nil_ty(fcx.ccx.tcx, a.id);
         }
 
@@ -1713,7 +1715,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
             alt (struct(fcx.ccx.tcx, lhs_t)) {
                 case (ty::ty_chan(?it)) { item_t = it; }
-                case (_) { fail; }
+                case (_) {
+                    fcx.ccx.tcx.sess.span_err(expr.span,
+                        #fmt("mismatched types: expected chan but found %s",
+                             ty_to_str(fcx.ccx.tcx, lhs_t)));
+                }
             }
 
             write::ty_only_fixup(fcx, a.id, chan_t);
@@ -1742,6 +1748,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
                     auto thn_t = block_ty(fcx.ccx.tcx, thn);
                     auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
+
+                    demand::simple(fcx, expr.span, thn_t, elsopt_t);
+
                     if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
                         elsopt_t
                     } else {
@@ -1789,6 +1798,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_while(?cond, ?body, ?a)) {
             check_expr(fcx, cond);
             check_block(fcx, body);
+
+            demand::simple(fcx, cond.span, ty::mk_bool(fcx.ccx.tcx),
+                           expr_ty(fcx.ccx.tcx, cond));
 
             auto typ = ty::mk_nil(fcx.ccx.tcx);
             write::ty_only_fixup(fcx, a.id, typ);
