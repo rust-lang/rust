@@ -16,6 +16,7 @@ mod middle {
     mod trans;
     mod ty;
     mod walk;
+    mod visit;
     mod metadata;
     mod resolve;
     mod typeck;
