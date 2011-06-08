@@ -1276,7 +1276,7 @@ mod pushdown {
                 write::ty_only_fixup(fcx, ann.id, t);
             }
             /* FIXME: should this check the type annotations? */
-            case (ast::expr_fail(_))  { /* no-op */ }
+            case (ast::expr_fail(_,_))  { /* no-op */ }
             case (ast::expr_log(_,_,_)) { /* no-op */ }
             case (ast::expr_break(_)) { /* no-op */ }
             case (ast::expr_cont(_))  { /* no-op */ }
@@ -1972,7 +1972,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::ty_only_fixup(fcx, a.id, t);
         }
 
-        case (ast::expr_fail(?a)) {
+        case (ast::expr_fail(?a, _)) {
             write::bot_ty(fcx.ccx.tcx, a.id);
         }
 
