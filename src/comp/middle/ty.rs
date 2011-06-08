@@ -2574,9 +2574,11 @@ mod unify {
 
     fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid)
             -> fixup_result {
+        if ((vid as uint) >= ufind::set_count(vb.sets)) { ret fix_err(vid); }
+
         auto root_id = ufind::find(vb.sets, vid as uint);
         alt (smallintmap::find[t](vb.types, root_id)) {
-            case (none[t]) { ret fix_ok(mk_var(tcx, vid)); }
+            case (none[t]) { ret fix_err(vid); }
             case (some[t](?rt)) { ret fixup_vars(tcx, vb, rt); }
         }
     }
