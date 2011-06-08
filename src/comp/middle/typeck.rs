@@ -1387,11 +1387,8 @@ mod writeback {
         alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
             case (fix_ok(?new_type)) { ret new_type; }
             case (fix_err(?vid)) {
-                // TODO: We should try to do a variable ID -> local lookup if
-                // we can and display this in terms of the local that had an
-                // incomplete type.
-                fcx.ccx.tcx.sess.span_err(sp, #fmt(
-                    "cannot determine type of variable ID `%d`", vid));
+                fcx.ccx.tcx.sess.span_err(sp,
+                    "cannot determine a type for this expression");
             }
         }
     }
@@ -1434,11 +1431,19 @@ mod writeback {
     fn visit_decl_pre(@fn_ctxt fcx, &@ast::decl d) {
         alt (d.node) {
             case (ast::decl_local(?l)) {
-                // FIXME: Report errors better.
                 auto var_id = fcx.locals.get(l.id);
-                auto lty = ty::unify::resolve_type_var(fcx.ccx.tcx,
+                auto fix_rslt = ty::unify::resolve_type_var(fcx.ccx.tcx,
                     fcx.var_bindings, var_id);
-                write::ty_only(fcx.ccx.tcx, l.ann.id, lty);
+                alt (fix_rslt) {
+                    case (fix_ok(?lty)) {
+                        write::ty_only(fcx.ccx.tcx, l.ann.id, lty);
+                    }
+                    case (fix_err(_)) {
+                        fcx.ccx.tcx.sess.span_err(d.span,
+                            "cannot determine a type for this local " +
+                            "variable");
+                    }
+                }
             }
             case (_) { /* no-op */ }
         }
