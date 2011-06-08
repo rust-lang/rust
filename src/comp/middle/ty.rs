@@ -1657,7 +1657,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_index(_,_,?a)) { ret a; }
         case (ast::expr_path(_,?a)) { ret a; }
         case (ast::expr_ext(_,_,_,_,?a)) { ret a; }
-        case (ast::expr_fail(?a)) { ret a; }
+        case (ast::expr_fail(?a,_)) { ret a; }
         case (ast::expr_ret(_,?a)) { ret a; }
         case (ast::expr_put(_,?a)) { ret a; }
         case (ast::expr_be(_,?a)) { ret a; }

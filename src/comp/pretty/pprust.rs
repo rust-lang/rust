@@ -825,8 +825,13 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_path(?path,_)) {
             print_path(s, path);
         }
-        case (ast::expr_fail(_)) {
+        case (ast::expr_fail(_, ?str)) {
             word(s.s, "fail");
+            alt (str) {
+                case (some(?msg)) {
+                    word(s.s, #fmt("\"%s\"", msg));
+                }
+            }
         }
         case (ast::expr_break(_)) {
             word(s.s, "break");
