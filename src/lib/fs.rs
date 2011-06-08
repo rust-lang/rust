@@ -19,6 +19,20 @@ fn dirname(path p) -> path {
     ret str::substr(p, 0u, i as uint);
 }
 
+fn basename(path p) -> path {
+    let int i = str::rindex(p, os_fs::path_sep as u8);
+    if (i == -1) {
+        i = str::rindex(p, os_fs::alt_path_sep as u8);
+        if (i == -1) {
+            ret p;
+        }
+    }
+    auto len = str::byte_len(p);
+    if ((i+1) as uint >= len) { ret p; }
+
+    ret str::slice(p, i+1 as uint, len);
+}
+
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 fn connect(path pre, path post) -> path {
     auto len = str::byte_len(pre);

@@ -68,7 +68,7 @@ fn walk_crate_directive(&ast_visitor v, @ast::crate_directive cd) {
         case (ast::cdir_view_item(?vi)) {
             walk_view_item(v, vi);
         }
-        case (ast::cdir_meta(_)) {}
+        case (ast::cdir_meta(_,_)) {}
         case (ast::cdir_syntax(_)) {}
         case (ast::cdir_auth(_, _)) {}
     }
