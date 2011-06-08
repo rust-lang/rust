@@ -6,6 +6,9 @@ import std::uint;
 import std::term;
 import std::io;
 import std::map;
+import std::option;
+import std::option::some;
+import std::option::none;
 
 tag os {
     os_win32;
@@ -48,9 +51,16 @@ fn span_to_str(span sp, codemap::codemap cm) -> str {
               lo.col, hi.line, hi.col));
 }
 
-fn emit_diagnostic(span sp, str msg, str kind, u8 color,
+fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
                    codemap::codemap cm) {
-    io::stdout().write_str(span_to_str(sp, cm) + ": ");
+    auto ss = "<input>:0:0:0:0";
+    alt (sp) {
+        case (some(?ssp)) {
+            ss = span_to_str(ssp, cm);
+        }
+        case (none) {}
+    }
+    io::stdout().write_str(ss + ": ");
 
     if (term::color_supported()) {
         term::fg(io::stdout().get_buf_writer(), color);
@@ -85,12 +95,12 @@ state obj session(ast::crate_num cnum,
 
     fn span_err(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        emit_diagnostic(sp, msg, "error", 9u8, cm);
+        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
         fail;
     }
 
     fn err(str msg) -> ! {
-        log_err #fmt("error: %s", msg);
+        emit_diagnostic(none[span], msg, "error", 9u8, cm);
         fail;
     }
 
@@ -103,29 +113,32 @@ state obj session(ast::crate_num cnum,
 
     fn span_warn(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        emit_diagnostic(sp, msg, "warning", 11u8, cm);
+        emit_diagnostic(some(sp), msg, "warning", 11u8, cm);
+    }
+
+    fn warn(str msg) {
+        emit_diagnostic(none[span], msg, "warning", 11u8, cm);
     }
 
     fn span_note(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        emit_diagnostic(sp, msg, "note", 10u8, cm);
+        emit_diagnostic(some(sp), msg, "note", 10u8, cm);
+    }
+
+    fn span_bug(span sp, str msg) -> ! {
+        self.span_err(sp, #fmt("internal compiler error %s", msg));
     }
 
     fn bug(str msg) -> ! {
-        log_err #fmt("error: internal compiler error %s", msg);
-        fail;
+        self.err(#fmt("internal compiler error %s", msg));
     }
 
     fn span_unimpl(span sp, str msg) -> ! {
-        // FIXME: Use constants, but rustboot doesn't know how to export them.
-        emit_diagnostic(sp, "internal compiler error: unimplemented " + msg,
-                        "error", 9u8, cm);
-        fail;
+        self.span_bug(sp, "unimplemented " + msg);
     }
-    
+
     fn unimpl(str msg) -> ! {
-        log_err #fmt("error: unimplemented %s", msg);
-        fail;
+        self.bug("unimplemented " + msg);
     }
 
     fn get_external_crate(int num) -> crate_metadata {
