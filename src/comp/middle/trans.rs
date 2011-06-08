@@ -1820,6 +1820,11 @@ fn set_no_inline(ValueRef f) {
                               lib::llvm::llvm::Attribute);
 }
 
+fn set_uwtable(ValueRef f) {
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::LLVMUWTableAttribute as
+                              lib::llvm::llvm::Attribute);
+}
+
 fn set_always_inline(ValueRef f) {
     llvm::LLVMAddFunctionAttr(f, lib::llvm::LLVMAlwaysInlineAttribute as
                               lib::llvm::llvm::Attribute);
@@ -6962,6 +6967,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
             option::t[ty_self_pair] ty_self,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
     auto llfndecl = cx.ccx.item_ids.get(fid);
+    set_uwtable(llfndecl);
 
     // Set up arguments to the function.
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
