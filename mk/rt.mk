@@ -84,10 +84,6 @@ rt/main.ll: rt/main.ll.in
 	sed 's/MAIN/main/' < $^ > $@
 endif
 
-rt/main.a: rt/main.o
-	rm -f $@
-	ar crs $@ $^
-
 rt/%.o: rt/%.ll $(MKFILES)
 	@$(call E, llc: $@)
 	$(Q)$(LLC) -filetype=obj -relocation-model=pic -march=x86 -o $@ $<
