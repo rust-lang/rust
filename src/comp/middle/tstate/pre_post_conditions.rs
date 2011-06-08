@@ -459,7 +459,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_expr(fcx, operator);
             copy_pre_post(fcx.ccx, a, operator);
         }
-        case (expr_fail(?a)) {
+        case (expr_fail(?a, _)) {
             set_pre_and_post(fcx.ccx, a,
                              /* if execution continues after fail,
                                 then everything is true! */

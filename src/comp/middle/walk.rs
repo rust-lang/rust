@@ -431,7 +431,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             // Only walk expansion, not args/body.
             walk_expr(v, expansion);
         }
-        case (ast::expr_fail(_)) { }
+        case (ast::expr_fail(_, _)) { }
         case (ast::expr_break(_)) { }
         case (ast::expr_cont(_)) { }
         case (ast::expr_ret(?eo, _)) {
