@@ -2537,17 +2537,24 @@ mod unify {
     // Fixups and substitutions
 
     fn fixup_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> fixup_result {
-        fn subst_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> t {
+        fn subst_vars(ty_ctxt tcx, @var_bindings vb,
+                      @mutable option::t[int] unresolved, t typ) -> t {
             alt (struct(tcx, typ)) {
                 case (ty::ty_var(?vid)) {
+                    if ((vid as uint) >= ufind::set_count(vb.sets)) {
+                        *unresolved = some[int](vid);
+                        ret typ;
+                    }
+
                     auto root_id = ufind::find(vb.sets, vid as uint);
                     alt (smallintmap::find[t](vb.types, root_id)) {
                         case (none[t]) {
-                            log_err "unresolved type variable";
-                            fail;
+                            *unresolved = some[int](vid);
+                            ret typ;
                         }
                         case (some[t](?rt)) {
-                            ret fold_ty(tcx, bind subst_vars(tcx, vb, _), rt);
+                            ret fold_ty(tcx,
+                                bind subst_vars(tcx, vb, unresolved, _), rt);
                         }
                     }
                 }
@@ -2555,24 +2562,22 @@ mod unify {
             }
         }
 
-        // FIXME: Report errors better.
-        ret fix_ok(fold_ty(tcx, bind subst_vars(tcx, vb, _), typ));
+        auto unresolved = @mutable none[int];
+        auto rty = fold_ty(tcx, bind subst_vars(tcx, vb, unresolved, _), typ);
+
+        auto ur = *unresolved;
+        alt (ur) {
+            case (none[int]) { ret fix_ok(rty); }
+            case (some[int](?var_id)) { ret fix_err(var_id); }
+        }
     }
 
-    fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid) -> t {
+    fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid)
+            -> fixup_result {
         auto root_id = ufind::find(vb.sets, vid as uint);
         alt (smallintmap::find[t](vb.types, root_id)) {
-            case (none[t]) { ret mk_var(tcx, vid); }
-            case (some[t](?rt)) {
-                alt (fixup_vars(tcx, vb, rt)) {
-                    case (fix_ok(?rty)) { ret rty; }
-                    case (fix_err(_)) {
-                        // TODO: antisocial
-                        log_err "failed to resolve type var";
-                        fail;
-                    }
-                }
-            }
+            case (none[t]) { ret fix_ok(mk_var(tcx, vid)); }
+            case (some[t](?rt)) { ret fixup_vars(tcx, vb, rt); }
         }
     }
 }
