@@ -42,7 +42,6 @@ import util::data::interner;
 tag mode {
     mo_val;
     mo_alias;
-    mo_either;
 }
 
 type arg = rec(mode mode, t ty);
@@ -486,7 +485,6 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         alt (input.mode) {
             case (mo_val) { s = ""; }
             case (mo_alias) { s = "&"; }
-            case (mo_either) { s = "?"; }
         }
 
         ret s + ty_to_str(cx, input.ty);
@@ -1944,13 +1942,9 @@ mod unify {
             auto expected_input = expected_inputs.(i);
             auto actual_input = actual_inputs.(i);
 
-            // Unify the result modes. "mo_either" unifies with both modes.
+            // Unify the result modes.
             auto result_mode;
-            if (expected_input.mode == mo_either) {
-                result_mode = actual_input.mode;
-            } else if (actual_input.mode == mo_either) {
-                result_mode = expected_input.mode;
-            } else if (expected_input.mode != actual_input.mode) {
+            if (expected_input.mode != actual_input.mode) {
                 // FIXME this is the wrong error
                 ret fn_common_res_err(ures_err(terr_arg_count));
             } else {

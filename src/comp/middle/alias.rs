@@ -73,7 +73,6 @@ fn check_expr(ctx cx, &@ast::expr ex) {
             auto i = 0u;
             let vec[def_id] listed = [];
             for (ty::arg argty in argtys) {
-                // FIXME Treat mo_either specially here?
                 if (argty.mode != ty::mo_val) {
                     alt (check_rooted(cx, args.(i), false)) {
                         case (some(?did)) {
