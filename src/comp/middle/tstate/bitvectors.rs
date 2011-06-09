@@ -144,7 +144,6 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
 }
 
 fn gen(&fn_ctxt fcx, &ann a, &def_id id, &constr_occ o) -> bool {
-  log "gen";
   ret set_in_postcond(bit_num(fcx, id, o),
                       (ann_to_ts_ann(fcx.ccx, a)).conditions);
 }

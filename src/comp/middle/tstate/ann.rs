@@ -89,6 +89,11 @@ fn pps_len(&pre_and_post p) -> uint {
   ret p.precondition.nbits;
 }
 
+fn require(uint i, &pre_and_post p) -> () {
+  // sets the ith bit in p's pre
+  bitv::set(p.precondition, i, true);
+}
+
 fn require_and_preserve(uint i, &pre_and_post p) -> () {
   // sets the ith bit in p's pre and post
   bitv::set(p.precondition, i, true);

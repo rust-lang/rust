@@ -4,12 +4,15 @@ import std::option;
 import std::option::none;
 import std::option::some;
 
+// FIXME: needs to be tstate::ann because ann is also a type name...
+// that's probably a bug.
 import tstate::ann::pre_and_post;
 import tstate::ann::get_post;
 import tstate::ann::postcond;
 import tstate::ann::true_precond;
 import tstate::ann::false_postcond;
 import tstate::ann::empty_poststate;
+import tstate::ann::require;
 import tstate::ann::require_and_preserve;
 import tstate::ann::union;
 import tstate::ann::intersect;
@@ -22,6 +25,7 @@ import aux::fn_ctxt;
 import aux::occ_init;
 import aux::num_constraints;
 import aux::constraint;
+import aux::constr_occ;
 import aux::expr_pp;
 import aux::stmt_pp;
 import aux::block_pp;
@@ -41,6 +45,11 @@ import aux::ann_to_def_strict;
 import aux::ann_to_ts_ann;
 import aux::set_postcond_false;
 import aux::controlflow_expr;
+import aux::expr_to_constr;
+import aux::constraint_info;
+import aux::constr_to_constr_occ;
+import aux::constraints_expr;
+import aux::substitute_constr_args;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -52,6 +61,7 @@ import bitvectors::gen;
 import front::ast::*;
 
 import middle::ty::expr_ann;
+import middle::ty::lookup_fn_decl;
 
 import util::common::new_def_hash;
 import util::common::decl_lhs;
@@ -210,6 +220,38 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto args = vec::clone[@expr](operands);
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
+            
+            /* see if the call has any constraints on its in type */
+            let option::t[tup(fn_decl, def_id)] decl_and_id =
+                lookup_fn_decl(fcx.ccx.tcx, expr_ann(operator));
+            alt (decl_and_id) {
+                case (some(?p)) {
+                    log("known function: " );
+                    log_expr(*operator);
+                    let def_id f_id = p._1;
+                    let fn_decl f_decl = p._0;
+                    auto pp = expr_pp(fcx.ccx, e);
+                    for (@constr c in constraints_expr(fcx.ccx, operator)) {
+                        auto i = bit_num(fcx, f_id,
+                           substitute_constr_args(fcx.ccx.tcx, operands,
+                                                  f_decl.inputs, c));
+                        require(i, pp);
+                    }
+                }
+                // FIXME: Soundness? If a function is constrained...
+                // shouldn't be able to pass it as an argument
+                // But typechecking guarantees that. However, we could
+                // have an unknown function w/ a constrained type =>
+                // no decl... but need to know the argument names.
+                // Fix that and then make a test w/ a higher-order
+                // constrained function.
+                case (_) { 
+                    log("unknown function: " );
+                    log_expr(*operator);
+                    /* unknown function -- do nothing */ }
+            }
+            // FIXME: constraints on result type
+            
             /* if this is a failing call, its postcondition sets everything */
             alt (controlflow_expr(fcx.ccx, operator)) {
                 case (noreturn) {
@@ -471,9 +513,14 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             copy_pre_post(fcx.ccx, a, p);
         }
         case (expr_check(?p, ?a)) {
-            /* will need to change when we support arbitrary predicates... */
+            /* FIXME: Can we bypass this by having a
+             node-id-to-constr_occ table? */
             find_pre_post_expr(fcx, p);
             copy_pre_post(fcx.ccx, a, p);
+            /* predicate p holds after this expression executes */
+            let constraint_info c = expr_to_constr(fcx.ccx.tcx, p);
+            let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.c.node);
+            gen(fcx, a, c.id, o);
         }
         case(expr_bind(?operator, ?maybe_args, ?a)) {
             auto args = vec::cat_options[@expr](maybe_args);
