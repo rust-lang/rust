@@ -38,7 +38,7 @@ fn union(&ufind ufnd, uint m, uint n) {
     auto n_root = find(ufnd, n);
     if (m_root < n_root) {
         ufnd.nodes.(n_root) = some[uint](m_root);
-    } else {
+    } else if (m_root > n_root) {
         ufnd.nodes.(m_root) = some[uint](n_root);
     }
 }
