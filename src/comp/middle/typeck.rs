@@ -45,8 +45,6 @@ import std::option::from_maybe;
 
 import middle::tstate::ann::ts_ann;
 
-import pretty::ppaux::ty_to_str;
-
 type ty_table = hashmap[ast::def_id, ty::t];
 type fn_purity_table = hashmap[ast::def_id, ast::purity];
 
