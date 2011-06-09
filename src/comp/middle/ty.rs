@@ -1810,9 +1810,10 @@ mod unify {
 
     fn record_var_binding(&@ctxt cx, int key, t typ) -> result {
         ufind::grow(cx.vb.sets, (key as uint) + 1u);
+        auto root = ufind::find(cx.vb.sets, key as uint);
 
         auto result_type = typ;
-        alt (smallintmap::find[t](cx.vb.types, key as uint)) {
+        alt (smallintmap::find[t](cx.vb.types, root)) {
             case (some(?old_type)) {
                 alt (unify_step(cx, old_type, typ)) {
                     case (ures_ok(?unified_type)) {
@@ -1824,7 +1825,7 @@ mod unify {
             case (none) { /* fall through */ }
         }
 
-        smallintmap::insert[t](cx.vb.types, key as uint, result_type);
+        smallintmap::insert[t](cx.vb.types, root, result_type);
         ret ures_ok(typ);
     }
 
