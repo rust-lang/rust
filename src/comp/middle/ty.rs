@@ -2099,38 +2099,31 @@ mod unify {
     // we eliminate pushdown. The typechecker should never rely on early
     // resolution of type variables.
     fn resolve_all_vars(&ty_ctxt tcx, &@var_bindings vb, t typ) -> t {
-        fn folder(ty_ctxt tcx, @var_bindings vb, @bool success, t typ) -> t {
+        if (!type_contains_vars(tcx, typ)) { ret typ; }
+
+        fn folder(ty_ctxt tcx, @var_bindings vb, t typ) -> t {
             alt (struct(tcx, typ)) {
                 case (ty_var(?vid)) {
                     // It's possible that we haven't even created the var set.
                     // Handle this case gracefully.
                     if ((vid as uint) >= ufind::set_count(vb.sets)) {
-                        *success = false; ret typ;
+                        ret typ;
                     }
 
                     auto root_id = ufind::find(vb.sets, vid as uint);
                     alt (smallintmap::find[t](vb.types, root_id)) {
                         case (some[t](?typ2)) {
-                            ret fold_ty(tcx, bind folder(tcx, vb, success, _),
-                                        typ2);
+                            ret fold_ty(tcx, bind folder(tcx, vb, _), typ2);
                         }
-                        case (none[t]) { *success = false; ret typ; }
+                        case (none[t]) { ret typ; }
                     }
-                    log ""; // fixes ambiguity
-                    *success = false; ret typ;
                 }
 
                 case (_) { ret typ; }
             }
         }
 
-        auto success = @true;
-        auto rty = fold_ty(tcx, bind folder(tcx, vb, success, _), typ);
-        /*if (*success) { ret rty; }
-        log_err "*** failed! type " + ty::ty_to_str(tcx, typ) + " => " +
-            ty::ty_to_str(tcx, rty);
-        ret typ;*/
-        ret rty;
+        ret fold_ty(tcx, bind folder(tcx, vb, _), typ);
     }
 
     fn unify_step(&@ctxt cx, &t expected, &t actual) -> result {
