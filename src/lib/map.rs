@@ -76,8 +76,10 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 let uint j = hash(h, nbkts, i);
                 alt (bkts.(j)) {
                     case (some(?k, _)) {
-                        if (eqer(key, k)) {
-                            bkts.(j) = some[K, V](k, val);
+                        // Copy key to please alias analysis.
+                        auto k_ = k;
+                        if (eqer(key, k_)) {
+                            bkts.(j) = some[K, V](k_, val);
                             ret false;
                         }
                         i += 1u;
@@ -104,8 +106,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 let uint j = (hash(h, nbkts, i));
                 alt (bkts.(j)) {
                     case (some(?k, ?v)) {
-                        if (eqer(key, k)) {
-                            ret option::some[V](v);
+                        // Copy to please alias analysis.
+                        auto k_ = k;
+                        auto v_ = v;
+                        if (eqer(key, k_)) {
+                            ret option::some[V](v_);
                         }
                     }
                     case (nil) {
@@ -190,10 +195,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     let uint j = (hash(h, nbkts, i));
                     alt (bkts.(j)) {
                         case (some(?k, ?v)) {
-                            if (eqer(key, k)) {
+                            auto k_ = k; auto vo = option::some(v);
+                            if (eqer(key, k_)) {
                                 bkts.(j) = deleted[K, V];
                                 nelts -= 1u;
-                                ret option::some[V](v);
+                                ret vo;
                             }
                         }
                         case (deleted) { }

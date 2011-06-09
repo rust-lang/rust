@@ -241,7 +241,7 @@ fn grow_init_fn_set[T](&array[T] v, uint index, fn()->T init_fn, &T val) {
 }
 
 
-fn map[T, U](&fn(&T) -> U f, &array[T] v) -> vec[U] {
+fn map[T, U](&fn(&T) -> U f, &vec[T] v) -> vec[U] {
     let vec[U] res = alloc[U](len[T](v));
     for (T ve in v) {
         res += [f(ve)];
@@ -249,8 +249,8 @@ fn map[T, U](&fn(&T) -> U f, &array[T] v) -> vec[U] {
     ret res;
 }
 
-fn filter_map[T, U](&fn(&T) -> option::t[U] f, &array[T] v) -> vec[U] {
-    let vec[U] res = []; //TODO does this work these days?
+fn filter_map[T, U](&fn(&T) -> option::t[U] f, &vec[T] v) -> vec[U] {
+    let vec[U] res = [];
     for(T ve in v) {
         alt(f(ve)) {
             case (some(?elt)) { res += [elt]; }
@@ -260,7 +260,7 @@ fn filter_map[T, U](&fn(&T) -> option::t[U] f, &array[T] v) -> vec[U] {
     ret res;
 }
 
-fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
+fn map2[T,U,V](&operator2[T,U,V] f, &vec[T] v0, &vec[U] v1) -> vec[V] {
     auto v0_len = len[T](v0);
     if (v0_len != len[U](v1)) {
         fail;
@@ -269,14 +269,14 @@ fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
     let vec[V] u = alloc[V](v0_len);
     auto i = 0u;
     while (i < v0_len) {
-        u += [f(v0.(i), v1.(i))];
+        u += [f({v0.(i)}, {v1.(i)})];
         i += 1u;
     }
 
     ret u;
 }
 
-fn find[T](fn (&T) -> bool f, &array[T] v) -> option::t[T] {
+fn find[T](fn (&T) -> bool f, &vec[T] v) -> option::t[T] {
     for (T elt in v) {
         if (f(elt)) {
             ret some[T](elt);

@@ -29,7 +29,7 @@ fn grow(&ufind ufnd, uint n) {
 fn find(&ufind ufnd, uint n) -> uint {
     alt (ufnd.nodes.(n)) {
         case (none) { ret n; }
-        case (some(?m)) { be find(ufnd, m); }
+        case (some(?m)) { auto m_ = m; be find(ufnd, m_); }
     }
 }
 

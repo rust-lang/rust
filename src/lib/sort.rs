@@ -58,7 +58,7 @@ fn part[T](lteq[T] compare_func, vec[mutable T] arr, uint left,
     let uint storage_index = left;
     let uint i = left;
     while (i<right) {
-        if (compare_func(arr.(i), pivot_value)) {
+        if (compare_func({arr.(i)}, pivot_value)) {
            swap[T](arr, i, storage_index);
            storage_index += 1u;
         }
@@ -97,7 +97,7 @@ fn quick_sort[T](lteq[T] compare_func, vec[mutable T] arr) {
 // 'randomly ordered keys, abstract compare' & 'small number of key values'
 
 fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
-        vec[mutable T] arr, int left, int right) {
+             vec[mutable T] arr, int left, int right) {
 
     if (right <= left) {
         ret;
@@ -111,11 +111,11 @@ fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
 
     while (true) {
         i += 1;
-        while (compare_func_lt(arr.(i), v)) {
+        while (compare_func_lt({arr.(i)}, v)) {
             i += 1;
         }
         j -= 1;
-        while (compare_func_lt(v, arr.(j))) {
+        while (compare_func_lt(v, {arr.(j)})) {
             if (j == left) {
                 break;
             }
@@ -125,11 +125,11 @@ fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
             break;
         }
         swap[T](arr, i as uint, j as uint);
-        if (compare_func_eq(arr.(i), v)) {
+        if (compare_func_eq({arr.(i)}, v)) {
             p += 1;
             swap[T](arr, p as uint, i as uint);
         }
-        if (compare_func_eq(v, arr.(j))) {
+        if (compare_func_eq(v, {arr.(j)})) {
             q -= 1;
             swap[T](arr, j as uint, q as uint);
         }
