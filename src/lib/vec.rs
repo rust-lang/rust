@@ -286,6 +286,13 @@ fn find[T](fn (&T) -> bool f, &vec[T] v) -> option::t[T] {
     ret none[T];
 }
 
+fn member[T](&T x, &array[T] v) -> bool {
+    for (T elt in v) {
+        if (x == elt) { ret true; }
+    }
+    ret false;
+}
+
 fn foldl[T, U](fn (&U, &T) -> U p, &U z, &vec[T] v) -> U {
     auto sz = len[T](v);
 
