@@ -334,8 +334,10 @@ tag ty_ {
     ty_machine(util::common::ty_mach);
     ty_char;
     ty_str;
+    ty_istr;        // interior string
     ty_box(mt);
     ty_vec(mt);
+    ty_ivec(mt);    // interior vector
     ty_ptr(mt);
     ty_task;
     ty_port(@ty);
@@ -346,8 +348,6 @@ tag ty_ {
     ty_obj(vec[ty_method]);
     ty_path(path, ann);
     ty_type;
-    ty_ivec(@ty);   // interior vector
-    ty_istr;        // interior string
     ty_constr(@ty, vec[@constr]);
 }
 

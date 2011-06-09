@@ -573,7 +573,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "ivec")) {
         expect(p, token::LBRACKET);
-        t = ast::ty_ivec(parse_ty(p));
+        t = ast::ty_ivec(parse_mt(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {

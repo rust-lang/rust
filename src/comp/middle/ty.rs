@@ -105,9 +105,11 @@ tag sty {
     ty_machine(util::common::ty_mach);
     ty_char;
     ty_str;
+    ty_istr;
     ty_tag(ast::def_id, vec[t]);
     ty_box(mt);
     ty_vec(mt);
+    ty_ivec(mt);
     ty_ptr(mt);
     ty_port(t);
     ty_chan(t);
@@ -162,11 +164,12 @@ const uint idx_f32      = 13u;
 const uint idx_f64      = 14u;
 const uint idx_char     = 15u;
 const uint idx_str      = 16u;
-const uint idx_task     = 17u;
-const uint idx_native   = 18u;
-const uint idx_type     = 19u;
-const uint idx_bot      = 20u;
-const uint idx_first_others = 21u;
+const uint idx_istr     = 17u;
+const uint idx_task     = 18u;
+const uint idx_native   = 19u;
+const uint idx_type     = 20u;
+const uint idx_bot      = 21u;
+const uint idx_first_others = 22u;
 
 type type_store = interner::interner[raw_t];
 
@@ -193,6 +196,7 @@ fn populate_type_store(&ctxt cx) {
     intern(cx, ty_machine(ty_f64), none[str]);
     intern(cx, ty_char, none[str]);
     intern(cx, ty_str, none[str]);
+    intern(cx, ty_istr, none[str]);
     intern(cx, ty_task, none[str]);
     intern(cx, ty_native, none[str]);
     intern(cx, ty_type, none[str]);
@@ -388,6 +392,7 @@ fn mk_mach(&ctxt cx, &util::common::ty_mach tm) -> t {
 
 fn mk_char(&ctxt cx) -> t    { ret idx_char; }
 fn mk_str(&ctxt cx) -> t     { ret idx_str; }
+fn mk_istr(&ctxt cx) -> t    { ret idx_istr; }
 
 fn mk_tag(&ctxt cx, &ast::def_id did, &vec[t] tys) -> t {
     ret gen_ty(cx, ty_tag(did, tys));
@@ -406,6 +411,8 @@ fn mk_imm_box(&ctxt cx, &t ty) -> t {
 }
 
 fn mk_vec(&ctxt cx, &mt tm) -> t  { ret gen_ty(cx, ty_vec(tm)); }
+
+fn mk_ivec(&ctxt cx, &mt tm) -> t { ret gen_ty(cx, ty_ivec(tm)); }
 
 fn mk_imm_vec(&ctxt cx, &t typ) -> t {
     ret gen_ty(cx, ty_vec(rec(ty=typ, mut=ast::imm)));
@@ -494,10 +501,12 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
         case (ty_machine(_))    { /* no-op */ }
         case (ty_char)          { /* no-op */ }
         case (ty_str)           { /* no-op */ }
+        case (ty_istr)          { /* no-op */ }
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
         case (ty_box(?tm))      { walk_ty(cx, walker, tm.ty); }
         case (ty_vec(?tm))      { walk_ty(cx, walker, tm.ty); }
+        case (ty_ivec(?tm))     { walk_ty(cx, walker, tm.ty); }
         case (ty_port(?subty))  { walk_ty(cx, walker, subty); }
         case (ty_chan(?subty))  { walk_ty(cx, walker, subty); }
         case (ty_tag(?tid, ?subtys)) {
@@ -998,48 +1007,50 @@ fn hash_type_structure(&sty st) -> uint {
         }
         case (ty_char) { ret 15u; }
         case (ty_str) { ret 16u; }
+        case (ty_istr) { ret 17u; }
         case (ty_tag(?did, ?tys)) {
-            auto h = hash_def(17u, did);
+            auto h = hash_def(18u, did);
             for (t typ in tys) {
                 h += h << 5u + hash_ty(typ);
             }
             ret h;
         }
-        case (ty_box(?mt)) { ret hash_subty(18u, mt.ty); }
-        case (ty_vec(?mt)) { ret hash_subty(19u, mt.ty); }
-        case (ty_port(?typ)) { ret hash_subty(20u, typ); }
-        case (ty_chan(?typ)) { ret hash_subty(21u, typ); }
-        case (ty_task) { ret 22u; }
+        case (ty_box(?mt)) { ret hash_subty(19u, mt.ty); }
+        case (ty_vec(?mt)) { ret hash_subty(20u, mt.ty); }
+        case (ty_ivec(?mt)) { ret hash_subty(21u, mt.ty); }
+        case (ty_port(?typ)) { ret hash_subty(22u, typ); }
+        case (ty_chan(?typ)) { ret hash_subty(23u, typ); }
+        case (ty_task) { ret 24u; }
         case (ty_tup(?mts)) {
-            auto h = 23u;
+            auto h = 25u;
             for (mt tm in mts) {
                 h += h << 5u + hash_ty(tm.ty);
             }
             ret h;
         }
         case (ty_rec(?fields)) {
-            auto h = 24u;
+            auto h = 26u;
             for (field f in fields) {
                 h += h << 5u + hash_ty(f.mt.ty);
             }
             ret h;
         }
         // ???
-        case (ty_fn(_, ?args, ?rty, _, _)) { ret hash_fn(25u, args, rty); } 
-        case (ty_native_fn(_, ?args, ?rty)) { ret hash_fn(26u, args, rty); }
+        case (ty_fn(_, ?args, ?rty, _, _)) { ret hash_fn(27u, args, rty); } 
+        case (ty_native_fn(_, ?args, ?rty)) { ret hash_fn(28u, args, rty); }
         case (ty_obj(?methods)) {
-            auto h = 27u;
+            auto h = 29u;
             for (method m in methods) {
                 h += h << 5u + str::hash(m.ident);
             }
             ret h;
         }
-        case (ty_var(?v)) { ret hash_uint(28u, v as uint); }
-        case (ty_param(?pid)) { ret hash_uint(29u, pid); }
-        case (ty_type) { ret 30u; }
-        case (ty_native) { ret 31u; }
-        case (ty_bot) { ret 32u; }
-        case (ty_ptr(?mt)) { ret hash_subty(33u, mt.ty); }
+        case (ty_var(?v)) { ret hash_uint(30u, v as uint); }
+        case (ty_param(?pid)) { ret hash_uint(31u, pid); }
+        case (ty_type) { ret 32u; }
+        case (ty_native) { ret 33u; }
+        case (ty_bot) { ret 34u; }
+        case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
     }
 }
 

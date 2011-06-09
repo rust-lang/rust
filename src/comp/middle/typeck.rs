@@ -277,11 +277,15 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_machine(?tm)) { typ = ty::mk_mach(tcx, tm); }
         case (ast::ty_char)         { typ = ty::mk_char(tcx); }
         case (ast::ty_str)          { typ = ty::mk_str(tcx); }
+        case (ast::ty_istr)         { typ = ty::mk_istr(tcx); }
         case (ast::ty_box(?mt)) {
             typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
         }
         case (ast::ty_vec(?mt)) {
             typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
+        }
+        case (ast::ty_ivec(?mt)) {
+            typ = ty::mk_ivec(tcx, ast_mt_to_mt(tcx, getter, mt));
         }
         case (ast::ty_ptr(?mt)) {
             typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
