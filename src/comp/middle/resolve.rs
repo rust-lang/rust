@@ -11,6 +11,7 @@ import util::common::new_uint_hash;
 import util::common::new_str_hash;
 import util::common::span;
 import middle::tstate::ann::ts_ann;
+import visit::vt;
 import std::map::hashmap;
 import std::list;
 import std::list::list;
@@ -36,14 +37,16 @@ import std::vec;
 tag scope {
     scope_crate(@ast::crate);
     scope_item(@ast::item);
+    scope_fn(ast::fn_decl, vec[ast::ty_param]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::decl); // there's only 1 decl per loop.
     scope_block(ast::block);
     scope_arm(ast::arm);
 }
+type scopes = list[scope];
 
 tag import_state {
-    todo(@ast::view_item, list[scope]); // only used for explicit imports
+    todo(@ast::view_item, scopes); // only used for explicit imports
     resolving(span);
     resolved(option::t[def] /* value */,
              option::t[def] /* type */,
@@ -116,10 +119,10 @@ fn resolve_crate(session sess, @ast::crate crate) -> def_map {
                   ext_cache = new_ext_hash(),
                   sess = sess);
     creader::read_crates(sess, e.crate_map, *crate);
-    map_crate(e, *crate);
+    map_crate(e, crate);
     resolve_imports(*e);
     check_for_collisions(e, *crate);
-    resolve_names(e, *crate);
+    resolve_names(e, crate);
     ret e.def_map;
 }
 
@@ -127,36 +130,32 @@ fn resolve_crate(session sess, @ast::crate crate) -> def_map {
 // Locate all modules and imports and index them, so that the next passes can
 // resolve through them.
 
-fn map_crate(&@env e, &ast::crate c) {
-
+fn map_crate(&@env e, &@ast::crate c) {
     // First, find all the modules, and index the names that they contain
-
-    auto cell = @mutable nil[scope];
-    auto index_names = 
-        rec(visit_crate_pre = bind push_env_for_crate(cell, _),
-            visit_crate_post = bind pop_env_for_crate(cell, _),
-            visit_view_item_pre = bind index_vi(e, cell, _),
-            visit_item_pre = bind index_i(e, cell, _),
-            visit_item_post = bind pop_env_for_item(cell, _)
-            with walk::default_visitor());
-    // Register the top-level mod
+    auto v_map_mod =
+        @rec(visit_view_item = bind index_vi(e, _, _, _),
+             visit_item = bind index_i(e, _, _, _)
+             with *visit::default_visitor[scopes]());
+    visit::visit_crate(*c, cons(scope_crate(c), @nil),
+                       visit::vtor(v_map_mod));
+    // Register the top-level mod 
     e.mod_map.insert(-1, @rec(m=some(c.node.module),
                               index=index_mod(c.node.module),
                               glob_imports=vec::empty[def](),
                               glob_imported_names
                               =new_str_hash[import_state]()));
-    walk::walk_crate(index_names, c);
 
-    fn index_vi(@env e, @mutable list[scope] sc, &@ast::view_item i) {
+    fn index_vi(@env e, &@ast::view_item i, &scopes sc, &vt[scopes] v) {
         alt (i.node) {
             case (ast::view_item_import(_, ?ids, ?defid)) {
-                e.imports.insert(defid._1, todo(i, {*sc}));
+                e.imports.insert(defid._1, todo(i, sc));
             }
             case (_) {}
         }
     }
-    fn index_i(@env e, @mutable list[scope] sc, &@ast::item i) {
-        push_env_for_item(sc, i);
+
+    fn index_i(@env e, &@ast::item i, &scopes sc, &vt[scopes] v) {
+        visit_item_with_scope(i, sc, v);
         alt (i.node) {
             case (ast::item_mod(_, ?md, ?defid)) {
                 e.mod_map.insert(defid._1, 
@@ -195,18 +194,15 @@ fn map_crate(&@env e, &ast::crate c) {
     }
 
     // Next, assemble the links for globbed imports.
-    cell = @mutable nil[scope];
-    auto link_globs =
-        rec(visit_crate_pre = bind push_env_for_crate(cell, _),
-            visit_crate_post = bind pop_env_for_crate(cell, _),
-            visit_view_item_pre = bind link_glob(e, cell, _),
-            visit_item_pre = bind push_env_for_item(cell, _),
-            visit_item_post = bind pop_env_for_item(cell, _)
-            with walk::default_visitor());
-    walk::walk_crate(link_globs, c);
+    auto v_link_glob =
+        @rec(visit_view_item = bind link_glob(e, _, _, _),
+             visit_item = visit_item_with_scope
+             with *visit::default_visitor[scopes]());
+    visit::visit_crate(*c, cons(scope_crate(c), @nil),
+                       visit::vtor(v_link_glob));
             
-    fn link_glob(@env e, @mutable list[scope] sc, &@ast::view_item vi) {
-        fn find_mod(@env e, list[scope] sc) -> @indexed_mod {
+    fn link_glob(@env e, &@ast::view_item vi, &scopes sc, &vt[scopes] v) {
+        fn find_mod(@env e, scopes sc) -> @indexed_mod {
             alt (sc) {
                 case (cons(scope_item(?i), ?tl)) {
                     alt(i.node) {
@@ -230,8 +226,8 @@ fn map_crate(&@env e, &ast::crate c) {
         alt (vi.node) {
             //if it really is a glob import, that is
             case (ast::view_item_import_glob(?path, _)) {
-                find_mod(e, *sc).glob_imports 
-                    += [follow_import(*e, {*sc}, path, vi.span)];
+                find_mod(e, sc).glob_imports 
+                    += [follow_import(*e, sc, path, vi.span)];
             }
             case (_) {}
         }
@@ -251,52 +247,45 @@ fn resolve_imports(&env e) {
     }
 }
 
-fn resolve_names(&@env e, &ast::crate c) {
-    auto cell = @mutable nil[scope];
-    auto v = rec(visit_crate_pre = bind push_env_for_crate(cell, _),
-                 visit_crate_post = bind pop_env_for_crate(cell, _),
-                 visit_item_pre = bind push_env_for_item(cell, _),
-                 visit_item_post = bind pop_env_for_item(cell, _),
-                 visit_method_pre = bind push_env_for_method(cell, _),
-                 visit_method_post = bind pop_env_for_method(cell, _),
-                 visit_native_item_pre = bind push_env_for_n_item(cell, _),
-                 visit_native_item_post = bind pop_env_for_n_item(cell, _),
-                 visit_block_pre = bind push_env_for_block(cell, _),
-                 visit_block_post = bind pop_env_for_block(cell, _),
-                 visit_arm_pre = bind walk_arm(e, cell, _),
-                 visit_arm_post = bind pop_env_for_arm(cell, _),
-                 visit_expr_pre = bind walk_expr(e, cell, _),
-                 visit_expr_post = bind pop_env_for_expr(cell, _),
-                 visit_ty_pre = bind walk_ty(e, cell, _)
-                 with walk::default_visitor());
-    walk::walk_crate(v, c);
+fn resolve_names(&@env e, &@ast::crate c) {
+    auto v = @rec(visit_native_item = visit_native_item_with_scope,
+                  visit_item = visit_item_with_scope,
+                  visit_block = visit_block_with_scope,
+                  visit_arm = bind walk_arm(e, _, _, _),
+                  visit_expr = bind walk_expr(e, _, _, _),
+                  visit_ty = bind walk_ty(e, _, _, _),
+                  visit_fn = visit_fn_with_scope
+                  with *visit::default_visitor());
+    visit::visit_crate(*c, cons(scope_crate(c), @nil),
+                       visit::vtor(v));
 
-    fn walk_expr(@env e, @mutable list[scope] sc, &@ast::expr exp) {
-        push_env_for_expr(sc, exp);
+    fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
+        visit_expr_with_scope(exp, sc, v);
         alt (exp.node) {
             case (ast::expr_path(?p, ?a)) {
-                auto df = lookup_path_strict(*e, {*sc}, exp.span,
+                auto df = lookup_path_strict(*e, sc, exp.span,
                                              p.node.idents, ns_value);
                 e.def_map.insert(a.id, df);
             }
             case (_) {}
         }
     }
-    fn walk_ty(@env e, @mutable list[scope] sc, &@ast::ty t) {
+    fn walk_ty(@env e, &@ast::ty t, &scopes sc, &vt[scopes] v) {
+        visit::visit_ty(t, sc, v);
         alt (t.node) {
             case (ast::ty_path(?p, ?a)) {
-                auto new_def = lookup_path_strict(*e, {*sc}, t.span,
+                auto new_def = lookup_path_strict(*e, sc, t.span,
                                                   p.node.idents, ns_type);
                 e.def_map.insert(a.id, new_def);
             }
             case (_) {}
         }
     }
-    fn walk_arm(@env e, @mutable list[scope] sc, &ast::arm a) {
-        walk_pat(*e, {*sc}, a.pat);
-        push_env_for_arm(sc, a);
+    fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
+        walk_pat(*e, sc, a.pat);
+        visit_arm_with_scope(a, sc, v);
     }
-    fn walk_pat(&env e, &list[scope] sc, &@ast::pat pat) {
+    fn walk_pat(&env e, &scopes sc, &@ast::pat pat) {
         alt (pat.node) {
             case (ast::pat_tag(?p, ?children, ?a)) {
                 auto fnd = lookup_path_strict(e, sc, p.span, p.node.idents,
@@ -319,81 +308,42 @@ fn resolve_names(&@env e, &ast::crate c) {
     }
 }
 
-// Helpers for tracking scope during a walk
+// Visit helper functions
 
-fn push_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
-    *sc = cons[scope](scope_crate(@c), @*sc);
+fn visit_item_with_scope(&@ast::item i, &scopes sc, &vt[scopes] v) {
+    visit::visit_item(i, cons(scope_item(i), @sc), v);
 }
-fn pop_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
-    *sc = std::list::cdr({*sc});
+fn visit_native_item_with_scope(&@ast::native_item ni,
+                                &scopes sc, &vt[scopes] v) {
+    visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
-
-fn push_env_for_item(@mutable list[scope] sc, &@ast::item i) {
-    *sc = cons[scope](scope_item(i), @*sc);
+fn visit_fn_with_scope(&ast::_fn f, &vec[ast::ty_param] tp, &span sp,
+                       &ident name, &def_id d_id, &ann a,
+                       &scopes sc, &vt[scopes] v) {
+    visit::visit_fn(f, tp, sp, name, d_id, a,
+                    cons(scope_fn(f.decl, tp), @sc), v);
 }
-fn pop_env_for_item(@mutable list[scope] sc, &@ast::item i) {
-    *sc = std::list::cdr({*sc});
+fn visit_block_with_scope(&ast::block b, &scopes sc, &vt[scopes] v) {
+    visit::visit_block(b, cons(scope_block(b), @sc), v);
 }
-
-fn push_env_for_method(@mutable list[scope] sc, &@ast::method m) {
-    let vec[ast::ty_param] tp = [];
-    let @ast::item i = @rec(node=ast::item_fn(m.node.ident,
-                                              m.node.meth,
-                                              tp,
-                                              m.node.id,
-                                              m.node.ann),
-                            span=m.span);
-    *sc = cons[scope](scope_item(i), @*sc);
+fn visit_arm_with_scope(&ast::arm a, &scopes sc, &vt[scopes] v) {
+    visit::visit_arm(a, cons(scope_arm(a), @sc), v);
 }
-fn pop_env_for_method(@mutable list[scope] sc, &@ast::method m) {
-    *sc = std::list::cdr({*sc});
-}
-
-fn push_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
-    *sc = cons[scope](scope_native_item(i), @*sc);
-}
-fn pop_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
-    *sc = std::list::cdr({*sc});
-}
-
-fn push_env_for_block(@mutable list[scope] sc, &ast::block b) {
-    *sc = cons[scope](scope_block(b), @*sc);
-}
-fn pop_env_for_block(@mutable list[scope] sc, &ast::block b) {
-    *sc = std::list::cdr({*sc});
-}
-
-fn push_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
-    alt (x.node) {
+fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
+    auto new_sc = alt (x.node) {
         case (ast::expr_for(?d, _, _, _)) {
-            *sc = cons[scope](scope_loop(d), @*sc);
+            cons[scope](scope_loop(d), @sc)
         }
         case (ast::expr_for_each(?d, _, _, _)) {
-            *sc = cons[scope](scope_loop(d), @*sc);
+            cons[scope](scope_loop(d), @sc)
         }
-        case (_) {}
-    }
-}
-fn pop_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
-    alt (x.node) {
-        case (ast::expr_for(?d, _, _, _)) {
-            *sc = std::list::cdr({*sc});
-        }
-        case (ast::expr_for_each(?d, _, _, _)) {
-            *sc = std::list::cdr({*sc});
-        }
-        case (_) {}
-    }
+        case (_) { sc }
+    };
+    visit::visit_expr(x, new_sc, v);
 }
 
-fn push_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
-    *sc = cons[scope](scope_arm(p), @*sc);
-}
-fn pop_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
-    *sc = std::list::cdr({*sc});
-}
 
-fn follow_import(&env e, &list[scope] sc, vec[ident] path, &span sp) 
+fn follow_import(&env e, &scopes sc, vec[ident] path, &span sp) 
     -> def {
     auto path_len = vec::len(path);
     auto dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
@@ -420,7 +370,7 @@ fn follow_import(&env e, &list[scope] sc, vec[ident] path, &span sp)
 
 // Import resolution
 
-fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
+fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
     auto defid; auto ids;
     alt (it.node) {
         case (ast::view_item_import(_, ?_ids, ?_defid)) {
@@ -487,7 +437,7 @@ fn unresolved(&env e, &span sp, &ident id, &str kind) -> ! {
 
 // Lookup helpers
 
-fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
+fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
                       namespace ns) -> def {
     auto n_idents = vec::len(idents);
     auto headns = if (n_idents == 1u) { ns } else { ns_module };
@@ -501,7 +451,7 @@ fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
     ret dcur;
 }
                       
-fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
+fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident id,
                         namespace ns) -> def {
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
         case (none) {
@@ -515,12 +465,7 @@ fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
 
 fn scope_is_fn(&scope sc) -> bool {
     ret alt (sc) {
-        case (scope_item(?it)) {
-            alt (it.node) {
-                case (ast::item_fn(_, _, _, _, _)) { true }
-                case (_) { false }
-            }
-        }
+        case (scope_fn(_, _)) { true }
         case (scope_native_item(_)) { true }
         case (_) { false }
     };
@@ -541,7 +486,7 @@ fn def_is_obj_field(&def d) -> bool {
     };
 }
 
-fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
+fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns)
     -> option::t[def] {
     fn in_scope(&env e, &span sp, &ident id, &scope s, namespace ns)
         -> option::t[def] {
@@ -554,9 +499,6 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
             }
             case (scope_item(?it)) {
                 alt (it.node) {
-                    case (ast::item_fn(_, ?f, ?ty_params, _, _)) {
-                        ret lookup_in_fn(id, f.decl, ty_params, ns);
-                    }
                     case (ast::item_obj(_, ?ob, ?ty_params, _, _)) {
                         ret lookup_in_obj(id, ob, ty_params, ns);
                     }
@@ -585,6 +527,9 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
                         ret lookup_in_fn(id, decl, ty_params, ns);
                     }
                 }
+            }
+            case (scope_fn(?decl, ?ty_params)) {
+                ret lookup_in_fn(id, decl, ty_params, ns);
             }
             case (scope_loop(?d)) {
                 if (ns == ns_value) {
@@ -1118,11 +1063,11 @@ fn check_for_collisions(&@env e, &ast::crate c) {
     }
 
     // Other scopes have to be checked the hard way.
-    auto v = rec(visit_item_pre = bind check_item(e, _),
-                 visit_block_pre = bind check_block(e, _),
-                 visit_arm_pre = bind check_arm(e, _)
-                 with walk::default_visitor());
-    walk::walk_crate(v, c);
+    auto v = @rec(visit_item = bind check_item(e, _, _, _),
+                  visit_block = bind check_block(e, _, _, _),
+                  visit_arm = bind check_arm(e, _, _, _)
+                  with *visit::default_visitor());
+    visit::visit_crate(c, (), visit::vtor(v));
 }
 
 fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
@@ -1164,7 +1109,8 @@ fn mie_span(&mod_index_entry mie) -> span {
 }
 
 
-fn check_item(@env e, &@ast::item i) {
+fn check_item(@env e, &@ast::item i, &() x, &vt[()] v) {
+    visit::visit_item(i, x, v);
     alt (i.node) {
         case (ast::item_fn(_, ?f, ?ty_params, _, _)) {
             check_fn(*e, i.span, f);
@@ -1187,7 +1133,8 @@ fn check_item(@env e, &@ast::item i) {
     }
 }
 
-fn check_arm(@env e, &ast::arm a) {
+fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
+    visit::visit_arm(a, x, v);
     fn walk_pat(checker ch, &@ast::pat p) {
         alt (p.node) {
             case (ast::pat_bind(?name, _, _)) {
@@ -1204,7 +1151,9 @@ fn check_arm(@env e, &ast::arm a) {
     walk_pat(checker(*e, "binding"), a.pat);
 }
 
-fn check_block(@env e, &ast::block b) {
+fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
+    visit::visit_block(b, x, v);
+
     auto values = checker(*e, "value");
     auto types = checker(*e, "type");
     auto mods = checker(*e, "module");
