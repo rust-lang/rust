@@ -1,4 +1,4 @@
-// error-pattern: mismatched types
+// error-pattern: parameters were supplied
 
 fn f(int x) {
 }
