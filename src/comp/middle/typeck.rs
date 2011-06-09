@@ -1932,7 +1932,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_call(fcx, expr.span, f, args);
 
             // Pull the return type out of the type of the function.
-            auto rt_1; // = ty::mk_nil(fcx.ccx.tcx); // FIXME: typestate botch
+            auto rt_1;
             auto fty = ty::expr_ty(fcx.ccx.tcx, f);
             alt (structure_of(fcx, expr.span, fty)) {
                 case (ty::ty_fn(_,_,?rt,_, _))         { rt_1 = rt; }
