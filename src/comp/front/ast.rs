@@ -346,6 +346,8 @@ tag ty_ {
     ty_obj(vec[ty_method]);
     ty_path(path, ann);
     ty_type;
+    ty_ivec(@ty);   // interior vector
+    ty_istr;        // interior string
     ty_constr(@ty, vec[@constr]);
 }
 

@@ -485,6 +485,7 @@ fn parse_ty(&parser p) -> @ast::ty {
     else if (eat_word(p, "uint")) { t = ast::ty_uint; }
     else if (eat_word(p, "float")) { t = ast::ty_float; }
     else if (eat_word(p, "str")) { t = ast::ty_str; }
+    else if (eat_word(p, "istr")) { t = ast::ty_istr; }
     else if (eat_word(p, "char")) { t = ast::ty_char; }
     else if (eat_word(p, "task")) { t = ast::ty_task; }
     else if (eat_word(p, "i8")) { t = ast::ty_machine(common::ty_i8); }
@@ -568,6 +569,11 @@ fn parse_ty(&parser p) -> @ast::ty {
     } else if (eat_word(p, "chan")) {
         expect(p, token::LBRACKET);
         t = ast::ty_chan(parse_ty(p));
+        hi = p.get_hi_pos();
+        expect(p, token::RBRACKET);
+    } else if (eat_word(p, "ivec")) {
+        expect(p, token::LBRACKET);
+        t = ast::ty_ivec(parse_ty(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {
