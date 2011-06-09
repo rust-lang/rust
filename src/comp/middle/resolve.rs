@@ -903,9 +903,16 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp,
             ret some[def](matches.(0));
         } else {
             for (def match in matches) {
-                e.sess.span_note(e.ast_map.get
-                                 (ast::def_id_of_def(match)).span,
-                                 "'" + id + "' is defined here.");
+                alt (e.ast_map.find(ast::def_id_of_def(match))) {
+                    case (some(?it)) {
+                        e.sess.span_note(it.span,
+                           "'" + id + "' is defined here.");
+                    }
+                    case (_) {
+                        e.sess.bug("Internal error: imports and matches "
+                                   + "don't agree");
+                    }
+                }
             }
             e.sess.span_err(sp, "'" + id + "' is glob-imported from" +
                             " multiple different modules.");
