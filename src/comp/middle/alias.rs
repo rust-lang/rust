@@ -20,6 +20,7 @@ type restrict = @rec(vec[def_num] root_vars,
                      def_num block_defnum,
                      vec[def_num] bindings,
                      vec[ty::t] tys,
+                     vec[uint] depends_on,
                      mutable valid ok);
 
 type scope = vec[restrict];
@@ -182,6 +183,7 @@ fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms,
                                    block_defnum=dnums.(0),
                                    bindings=dnums,
                                    tys=forbidden_tp,
+                                   depends_on=deps(sc, roots),
                                    mutable ok=valid));
         }
         visit::visit_arm(a, new_sc, v);
@@ -221,6 +223,7 @@ fn check_for_each(&ctx cx, &@ast::decl decl, &@ast::expr call,
                                block_defnum=defnum,
                                bindings=[defnum],
                                tys=data.unsafe_ts,
+                               depends_on=deps(sc, data.root_vars),
                                mutable ok=valid);
             visit::visit_block(block, sc + [new_sc], v);
         }
@@ -256,6 +259,7 @@ fn check_for(&ctx cx, &@ast::decl decl, &@ast::expr seq,
                        block_defnum=defnum,
                        bindings=[defnum],
                        tys=unsafe,
+                       depends_on=deps(sc, root_def),
                        mutable ok=valid);
     visit::visit_block(block, sc + [new_sc], v);
 }
@@ -274,24 +278,8 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
                     r.ok = val_taken(ex.span, p);
                 }
             }
-        } else if (r.ok != valid && vec::member(my_defnum, r.bindings)) {
-            fail_alias(cx, r.ok, p);
-        }
-    }
-}
-
-fn fail_alias(&ctx cx, valid issue, &ast::path pt) {
-    auto base = " will invalidate alias " + ast::path_name(pt) +
-        ", which is still used";
-    alt (issue) {
-        case (overwritten(?sp, ?wpt)) {
-            cx.tcx.sess.span_err
-                (sp, "overwriting " + ast::path_name(wpt) + base);
-        }
-        case (val_taken(?sp, ?vpt)) {
-            cx.tcx.sess.span_err
-                (sp, "taking the value of " + ast::path_name(vpt) +
-                 base);
+        } else if (vec::member(my_defnum, r.bindings)) {
+            test_scope(cx, sc, r, p);
         }
     }
 }
@@ -314,6 +302,41 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
             visit_expr(cx, dest, sc, v);
         }
     }
+}
+
+fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
+    auto prob = r.ok;
+    for (uint dep in r.depends_on) {
+        if (prob != valid) { break; }
+        prob = sc.(dep).ok;
+    }
+    if (prob != valid) {
+        auto msg = alt (prob) {
+            case (overwritten(?sp, ?wpt)) {
+                tup(sp, "overwriting " + ast::path_name(wpt))
+            }
+            case (val_taken(?sp, ?vpt)) {
+                tup(sp, "taking the value of " + ast::path_name(vpt))
+            }
+        };
+        cx.tcx.sess.span_err
+            (msg._0, msg._1 + " will invalidate alias " +
+             ast::path_name(p) + ", which is still used");
+    }
+}
+
+fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
+    auto i = 0u;
+    auto result = [];
+    for (restrict r in sc) {
+        for (def_num dn in roots) {
+            if (vec::member(dn, r.bindings)) {
+                vec::push(result, i);
+            }
+        }
+        i += 1u;
+    }
+    ret result;
 }
 
 fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)

@@ -131,7 +131,8 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
         {
             for (bucket[K, V] b in oldbkts) {
                 alt (b) {
-                    case (some(?k, ?v)) {
+                    case (some(?k_, ?v_)) {
+                        auto k = k_; auto v = v_;
                         insert_common[K, V](hasher, eqer, newbkts,
                                             nnewbkts, k, v);
                     }
