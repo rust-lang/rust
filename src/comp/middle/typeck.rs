@@ -23,8 +23,6 @@ import middle::ty::pat_ty;
 import middle::ty::path_to_str;
 import middle::ty::ty_param_substs_opt_and_ty;
 import middle::ty::ty_to_str;
-import middle::ty::type_is_integral;
-import middle::ty::type_is_scalar;
 import middle::ty::ty_param_count_and_ty;
 import middle::ty::ty_nil;
 import middle::ty::unify::ures_ok;
@@ -76,22 +74,16 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn)
         case (ast::def_arg(?id)) {
             assert (fcx.locals.contains_key(id));
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id));
-            typ = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings,
-                                              typ);
             ret tup(0u, typ);
         }
         case (ast::def_local(?id)) {
             assert (fcx.locals.contains_key(id));
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id));
-            typ = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings,
-                                              typ);
             ret tup(0u, typ);
         }
         case (ast::def_obj_field(?id)) {
             assert (fcx.locals.contains_key(id));
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id));
-            typ = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings,
-                                              typ);
             ret tup(0u, typ);
         }
         case (ast::def_fn(?id)) {
@@ -109,8 +101,6 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn)
         case (ast::def_binding(?id)) {
             assert (fcx.locals.contains_key(id));
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id));
-            typ = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings,
-                                              typ);
             ret tup(0u, typ);
         }
         case (ast::def_obj(?id)) {
@@ -194,18 +184,36 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
     ret ty_mode;
 }
 
-// Returns the one-level-deep structure of the given type.
-fn structure_of(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::sty {
+
+// Type tests
+
+fn structurally_resolved_type(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::t {
     auto r = ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings,
                                                typ);
     alt (r) {
-        case (fix_ok(?typ_s)) { ret ty::struct(fcx.ccx.tcx, typ_s); }
+        case (fix_ok(?typ_s)) { ret typ_s; }
         case (fix_err(_)) {
             fcx.ccx.tcx.sess.span_err(sp, "the type of this value must be " +
                 "known in this context");
         }
     }
 }
+
+// Returns the one-level-deep structure of the given type.
+fn structure_of(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::sty {
+    ret ty::struct(fcx.ccx.tcx, structurally_resolved_type(fcx, sp, typ));
+}
+
+fn type_is_integral(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
+    auto typ_s = structurally_resolved_type(fcx, sp, typ);
+    ret ty::type_is_integral(fcx.ccx.tcx, typ_s);
+}
+
+fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
+    auto typ_s = structurally_resolved_type(fcx, sp, typ);
+    ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
+}
+
 
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
@@ -1984,9 +1992,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_expr(fcx, e);
             auto t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
             // FIXME: there are more forms of cast to support, eventually.
-            if (! (type_is_scalar(fcx.ccx.tcx,
-                    expr_ty(fcx.ccx.tcx, e)) &&
-                    type_is_scalar(fcx.ccx.tcx, t_1))) {
+            if (! (type_is_scalar(fcx, expr.span, expr_ty(fcx.ccx.tcx, e)) &&
+                   type_is_scalar(fcx, expr.span, t_1))) {
                 fcx.ccx.tcx.sess.span_err(expr.span,
                     "non-scalar cast: " +
                     ty_to_str(fcx.ccx.tcx,
@@ -2148,7 +2155,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto idx_t = expr_ty(fcx.ccx.tcx, idx);
             alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_vec(?mt)) {
-                    if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
+                    if (! type_is_integral(fcx, idx.span, idx_t)) {
                         fcx.ccx.tcx.sess.span_err
                             (idx.span,
                              "non-integral type of vec index: "
@@ -2157,7 +2164,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, a.id, mt.ty);
                 }
                 case (ty::ty_str) {
-                    if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
+                    if (! type_is_integral(fcx, idx.span, idx_t)) {
                         fcx.ccx.tcx.sess.span_err
                             (idx.span,
                              "non-integral type of str index: "
