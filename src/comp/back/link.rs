@@ -339,7 +339,8 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     }
     sort::quick_sort(lteq, v);
     sha.reset();
-    for (@ast::meta_item m in v) {
+    for (@ast::meta_item m_ in v) {
+        auto m = m_;
         sha.input_str(len_and_str(m.node.name));
         sha.input_str(len_and_str(m.node.value));
     }
