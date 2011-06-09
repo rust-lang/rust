@@ -2041,31 +2041,6 @@ mod unify {
       ret ures_ok(t);
     }
 
-    // FIXME: This function should not be necessary, but it is for now until
-    // we eliminate pushdown. The typechecker should never rely on early
-    // resolution of type variables.
-    fn resolve_all_vars(&ty_ctxt tcx, &@var_bindings vb, t typ) -> t {
-        if (!type_contains_vars(tcx, typ)) { ret typ; }
-
-        fn folder(ty_ctxt tcx, @var_bindings vb, int vid) -> t {
-            // It's possible that we haven't even created the var set.
-            // Handle this case gracefully.
-            if ((vid as uint) >= ufind::set_count(vb.sets)) {
-                ret ty::mk_var(tcx, vid);
-            }
-
-            auto root_id = ufind::find(vb.sets, vid as uint);
-            alt (smallintmap::find[t](vb.types, root_id)) {
-                case (some[t](?typ2)) {
-                    ret fold_ty(tcx, fm_var(bind folder(tcx, vb, _)), typ2);
-                }
-                case (none[t]) { ret ty::mk_var(tcx, vid); }
-            }
-        }
-
-        ret fold_ty(tcx, fm_var(bind folder(tcx, vb, _)), typ);
-    }
-
     // If the given type is a variable, returns the structure of that type.
     fn resolve_type_structure(&ty_ctxt tcx, &@var_bindings vb, t typ)
             -> fixup_result {

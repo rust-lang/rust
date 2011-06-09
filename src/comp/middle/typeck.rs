@@ -935,8 +935,7 @@ mod demand {
             case (ures_ok(?t)) {
                 let vec[ty::t] result_ty_param_substs = [];
                 for (int var_id in ty_param_subst_var_ids) {
-                    auto tp_subst = ty::unify::resolve_all_vars(fcx.ccx.tcx,
-                        fcx.var_bindings, ty::mk_var(fcx.ccx.tcx, var_id));
+                    auto tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
                     result_ty_param_substs += [tp_subst];
                 }
 
