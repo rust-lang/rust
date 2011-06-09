@@ -35,8 +35,8 @@ fn check_crate(@ty::ctxt tcx, resolve::def_map dm, &@ast::crate crate) {
     visit::visit_crate(*crate, [], visit::vtor(v));
 }
 
-fn visit_fn(&ast::_fn f, &span sp, &ident name, &ast::def_id d_id,
-            &ast::ann a, &scope sc, &vt[scope] v) {
+fn visit_fn(&ast::_fn f, &vec[ast::ty_param] tp, &span sp, &ident name,
+            &ast::def_id d_id, &ast::ann a, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
     vt(v).visit_block(f.body, [], v);
 }
