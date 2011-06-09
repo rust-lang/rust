@@ -21,7 +21,6 @@ import middle::ty::mo_alias;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
-import middle::ty::struct;
 import middle::ty::ty_param_substs_opt_and_ty;
 import middle::ty::ty_to_str;
 import middle::ty::type_is_integral;
@@ -193,6 +192,19 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
         case (ast::alias) { ty_mode = mo_alias; }
     }
     ret ty_mode;
+}
+
+// Returns the one-level-deep structure of the given type.
+fn structure_of(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::sty {
+    auto r = ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings,
+                                               typ);
+    alt (r) {
+        case (fix_ok(?typ_s)) { ret ty::struct(fcx.ccx.tcx, typ_s); }
+        case (fix_err(_)) {
+            fcx.ccx.tcx.sess.span_err(sp, "the type of this value must be " +
+                "known in this context");
+        }
+    }
 }
 
 // Parses the programmer's textual representation of a type into our internal
@@ -810,20 +822,11 @@ mod collect {
 
 // Type unification
 
+// TODO: rename to just "unify"
 mod unify {
     fn simple(&@fn_ctxt fcx, &ty::t expected, &ty::t actual)
             -> ty::unify::result {
-        auto result = ty::unify::unify(expected, actual, fcx.var_bindings,
-                                       fcx.ccx.tcx);
-
-        // FIXME: Shouldn't be necessary, but is until we remove pushdown.
-        alt (result) {
-            case (ures_ok(?typ)) {
-                ret ures_ok(ty::unify::resolve_all_vars(fcx.ccx.tcx,
-                    fcx.var_bindings, typ));
-            }
-            case (_) { ret result; }
-        }
+        ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
     }
 }
 
@@ -833,10 +836,10 @@ tag autoderef_kind {
     NO_AUTODEREF;
 }
 
-fn strip_boxes(&ty::ctxt tcx, &ty::t t) -> ty::t {
+fn strip_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
     auto t1 = t;
     while (true) {
-        alt (struct(tcx, t1)) {
+        alt (structure_of(fcx, sp, t1)) {
             case (ty::ty_box(?inner)) { t1 = inner.ty; }
             case (_) { ret t1; }
         }
@@ -854,11 +857,11 @@ fn add_boxes(&@crate_ctxt ccx, uint n, &ty::t t) -> ty::t {
 }
 
 
-fn count_boxes(&ty::ctxt tcx, &ty::t t) -> uint {
+fn count_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> uint {
     auto n = 0u;
     auto t1 = t;
     while (true) {
-        alt (struct(tcx, t1)) {
+        alt (structure_of(fcx, sp, t1)) {
             case (ty::ty_box(?inner)) { n += 1u; t1 = inner.ty; }
             case (_) { ret n; }
         }
@@ -897,9 +900,9 @@ mod demand {
         auto implicit_boxes = 0u;
 
         if (adk == AUTODEREF_OK) {
-            expected_1 = strip_boxes(fcx.ccx.tcx, expected_1);
-            actual_1 = strip_boxes(fcx.ccx.tcx, actual_1);
-            implicit_boxes = count_boxes(fcx.ccx.tcx, actual);
+            expected_1 = strip_boxes(fcx, sp, expected_1);
+            actual_1 = strip_boxes(fcx, sp, actual_1);
+            implicit_boxes = count_boxes(fcx, sp, actual);
         }
 
         let vec[mutable ty::t] ty_param_substs = [mutable];
@@ -958,7 +961,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
     let vec[ty::t] result = [];
 
     auto tpt = ty::lookup_item_type(ccx.tcx, vid);
-    alt (struct(ccx.tcx, tpt._1)) {
+    alt (ty::struct(ccx.tcx, tpt._1)) {
         case (ty::ty_fn(_, ?ins, _, _)) {
             // N-ary variant.
             for (ty::arg arg in ins) {
@@ -1272,7 +1275,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
 
             // Take the tag type params out of `expected`.
             auto expected_tps;
-            alt (struct(fcx.ccx.tcx, expected)) {
+            alt (structure_of(fcx, pat.span, expected)) {
                 case (ty::ty_tag(_, ?tps)) { expected_tps = tps; }
                 case (_) {
                     // FIXME: Switch expected and actual in this message? I
@@ -1405,14 +1408,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         // Check the function.
         check_expr(fcx, f);
 
-        // Get the function type. We need to have resolved it enough to know
-        // it's a ty_fn or ty_native_fn.
+        // Get the function type.
         auto fty = expr_ty(fcx.ccx.tcx, f);
-        fty = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings, fty);
 
         // Grab the argument types and the return type.
         auto arg_tys;
-        alt (ty::struct(fcx.ccx.tcx, fty)) {
+        alt (structure_of(fcx, sp, fty)) {
             case (ty::ty_fn(_, ?arg_tys_0, _, _)) {
                 arg_tys = arg_tys_0;
             }
@@ -1508,7 +1509,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
 
             // FIXME: Binops have a bit more subtlety than this.
-            auto t = strip_boxes(fcx.ccx.tcx, lhs_t);
+            auto t = strip_boxes(fcx, expr.span, lhs_t);
             alt (binop) {
                 case (ast::eq) { t = ty::mk_bool(fcx.ccx.tcx); }
                 case (ast::lt) { t = ty::mk_bool(fcx.ccx.tcx); }
@@ -1532,7 +1533,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                         rec(ty=oper_t, mut=mut));
                 }
                 case (ast::deref) {
-                    alt (struct(fcx.ccx.tcx, oper_t)) {
+                    alt (structure_of(fcx, expr.span, oper_t)) {
                         case (ty::ty_box(?inner)) { oper_t = inner.ty; }
                         case (_) {
                             fcx.ccx.tcx.sess.span_err
@@ -1542,7 +1543,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         }
                     }
                 }
-                case (_) { oper_t = strip_boxes(fcx.ccx.tcx, oper_t); }
+                case (_) { oper_t = strip_boxes(fcx, expr.span, oper_t); }
             }
 
             write::ty_only_fixup(fcx, a.id, oper_t);
@@ -1721,7 +1722,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             auto item_t;
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
-            alt (struct(fcx.ccx.tcx, lhs_t)) {
+            alt (structure_of(fcx, expr.span, lhs_t)) {
                 case (ty::ty_chan(?it)) { item_t = it; }
                 case (_) {
                     fcx.ccx.tcx.sess.span_err(expr.span,
@@ -1775,8 +1776,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {
             check_expr(fcx, seq);
-            alt (struct (fcx.ccx.tcx,
-                         expr_ty(fcx.ccx.tcx, seq))) {
+            alt (structure_of(fcx, expr.span, expr_ty(fcx.ccx.tcx, seq))) {
                 // FIXME: I include the check_for_or_each call in 
                 // each case because of a bug in typestate.
                 // The bug is fixed; once there's a new snapshot,
@@ -1877,7 +1877,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto rt_1;
             auto fty = expr_ty(fcx.ccx.tcx, f);
             auto t_1;
-            alt (struct(fcx.ccx.tcx, fty)) {
+            alt (structure_of(fcx, expr.span, fty)) {
                 case (ty::ty_fn(?proto, ?arg_tys, ?rt, ?cf)) {
                     proto_1 = proto;
                     rt_1 = rt;
@@ -1917,7 +1917,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // Pull the return type out of the type of the function.
             auto rt_1 = ty::mk_nil(fcx.ccx.tcx); // FIXME: typestate botch
             auto fty = ty::expr_ty(fcx.ccx.tcx, f);
-            alt (struct(fcx.ccx.tcx, fty)) {
+            alt (structure_of(fcx, expr.span, fty)) {
                 case (ty::ty_fn(_,_,?rt,_))         { rt_1 = rt; }
                 case (ty::ty_native_fn(_, _, ?rt))  { rt_1 = rt; }
                 case (_) {
@@ -1949,7 +1949,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
 
             // Grab this method's type out of the current object type.
-            alt (struct(fcx.ccx.tcx, this_obj_ty)) {
+            alt (structure_of(fcx, expr.span, this_obj_ty)) {
                 case (ty::ty_obj(?methods)) {
                     for (ty::method method in methods) {
                         if (method.ident == id) {
@@ -2059,7 +2059,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
                     let vec[field] base_fields = [];
 
-                    alt (struct(fcx.ccx.tcx, bexpr_t)) {
+                    alt (structure_of(fcx, expr.span, bexpr_t)) {
                         case (ty::ty_rec(?flds)) { base_fields = flds; }
                         case (_) {
                             fcx.ccx.tcx.sess.span_err
@@ -2093,10 +2093,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_field(?base, ?field, ?a)) {
             check_expr(fcx, base);
             auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = strip_boxes(fcx.ccx.tcx, base_t);
+            base_t = strip_boxes(fcx, expr.span, base_t);
             base_t = ty::unify::resolve_all_vars(fcx.ccx.tcx,
                 fcx.var_bindings, base_t);
-            alt (struct(fcx.ccx.tcx, base_t)) {
+            alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_tup(?args)) {
                     let uint ix = ty::field_num(fcx.ccx.tcx.sess,
                                                 expr.span, field);
@@ -2142,11 +2142,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_index(?base, ?idx, ?a)) {
             check_expr(fcx, base);
             auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = strip_boxes(fcx.ccx.tcx, base_t);
+            base_t = strip_boxes(fcx, expr.span, base_t);
 
             check_expr(fcx, idx);
             auto idx_t = expr_ty(fcx.ccx.tcx, idx);
-            alt (struct(fcx.ccx.tcx, base_t)) {
+            alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_vec(?mt)) {
                     if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
                         fcx.ccx.tcx.sess.span_err
@@ -2184,7 +2184,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_chan(?x, ?a)) {
             check_expr(fcx, x);
             auto port_t = expr_ty(fcx.ccx.tcx, x);
-            alt (struct(fcx.ccx.tcx, port_t)) {
+            alt (structure_of(fcx, expr.span, port_t)) {
                 case (ty::ty_port(?subtype)) {
                     auto ct = ty::mk_chan(fcx.ccx.tcx, subtype);
                     write::ty_only_fixup(fcx, a.id, ct);

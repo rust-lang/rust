@@ -2126,6 +2126,25 @@ mod unify {
         ret fold_ty(tcx, bind folder(tcx, vb, _), typ);
     }
 
+    // If the given type is a variable, returns the structure of that type.
+    fn resolve_type_structure(&ty_ctxt tcx, &@var_bindings vb, t typ)
+            -> fixup_result {
+        alt (struct(tcx, typ)) {
+            case (ty_var(?vid)) {
+                if ((vid as uint) >= ufind::set_count(vb.sets)) {
+                    ret fix_err(vid);
+                }
+
+                auto root_id = ufind::find(vb.sets, vid as uint);
+                alt (smallintmap::find[t](vb.types, root_id)) {
+                    case (none[t]) { ret fix_err(vid); }
+                    case (some[t](?rt)) { ret fix_ok(rt); }
+                }
+            }
+            case (_) { ret fix_ok(typ); }
+        }
+    }
+
     fn unify_step(&@ctxt cx, &t expected, &t actual) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
