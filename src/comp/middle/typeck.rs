@@ -2111,8 +2111,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_expr(fcx, base);
             auto base_t = expr_ty(fcx.ccx.tcx, base);
             base_t = strip_boxes(fcx, expr.span, base_t);
-            base_t = ty::unify::resolve_all_vars(fcx.ccx.tcx,
-                fcx.var_bindings, base_t);
             alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_tup(?args)) {
                     let uint ix = ty::field_num(fcx.ccx.tcx.sess,
