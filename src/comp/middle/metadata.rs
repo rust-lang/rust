@@ -9,10 +9,13 @@ import std::option::some;
 import std::option::none;
 
 import front::ast;
+import front::ast::*;
 import middle::trans;
 import middle::ty;
+import middle::ty::path_to_str;
 import back::x86;
 import util::common;
+import pretty::ppaux::lit_to_str;
 
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
@@ -194,9 +197,9 @@ mod Encode {
                 }
                 w.write_char(']');
             }
-            case (ty::ty_fn(?proto,?args,?out,?cf)) {
+            case (ty::ty_fn(?proto,?args,?out,?cf,?constrs)) {
                 enc_proto(w, proto);
-                enc_ty_fn(w, cx, args, out, cf);
+                enc_ty_fn(w, cx, args, out, cf, constrs);
             }
             case (ty::ty_native_fn(?abi,?args,?out)) {
                 w.write_char('N');
@@ -208,14 +211,15 @@ mod Encode {
                     case (ast::native_abi_cdecl) { w.write_char('c'); }
                     case (ast::native_abi_llvm) { w.write_char('l'); }
                 }
-                enc_ty_fn(w, cx, args, out, ast::return);
+                let vec[@constr] res_constrs = [];
+                enc_ty_fn(w, cx, args, out, ast::return, res_constrs);
             }
             case (ty::ty_obj(?methods)) {
                 w.write_str("O[");
                 for (ty::method m in methods) {
                     enc_proto(w, m.proto);
                     w.write_str(m.ident);
-                    enc_ty_fn(w, cx, m.inputs, m.output, m.cf);
+                    enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
                 }
                 w.write_char(']');
             }
@@ -241,7 +245,7 @@ mod Encode {
     }
 
     fn enc_ty_fn(&io::writer w, &@ctxt cx, &vec[ty::arg] args, &ty::t out,
-                 &ast::controlflow cf) {
+                 &ast::controlflow cf, &vec[@ast::constr] constrs) {
         w.write_char('[');
         for (ty::arg arg in args) {
             if (arg.mode == ty::mo_alias) { w.write_char('&'); }
@@ -254,6 +258,37 @@ mod Encode {
             }
             case (_) {
                 enc_ty(w, cx, out);
+            }
+        }
+        auto colon = true;
+        for (@ast::constr c in constrs) {
+            if (colon) { w.write_char(':'); colon = false; }
+            else { w.write_char(','); }
+            enc_constr(w, cx, c);
+        }
+    }
+
+    fn enc_constr(&io::writer w, &@ctxt cx, &@ast::constr c) {
+        w.write_str(path_to_str(c.node.path));
+        w.write_char('(');
+        auto comma = false;
+        for (@constr_arg a in c.node.args) {
+            if (comma) {
+                w.write_char(',');
+            }
+            else {
+                comma = true;
+            }
+            alt (a.node) {
+                case (carg_base) {
+                    w.write_char('*');
+                }
+                case (carg_ident(?i)) {
+                    w.write_str(i);
+                }
+                case (carg_lit(?l)) {
+                    w.write_str(lit_to_str(l));
+                }
             }
         }
     }

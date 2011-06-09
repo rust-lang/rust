@@ -50,7 +50,8 @@ type method = rec(ast::proto proto,
                   ast::ident ident,
                   vec[arg] inputs,
                   t output,
-                  controlflow cf);
+                  controlflow cf,
+                  vec[@ast::constr] constrs);
 
 tag any_item {
     any_item_rust(@ast::item);
@@ -77,7 +78,7 @@ type ty_ctxt = ctxt;    // Needed for disambiguation from unify::ctxt.
 // Convert from method type to function type.  Pretty easy; we just drop
 // 'ident'.
 fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
-    ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf);
+    ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf, m.constrs);
 }
 
 // Never construct these manually. These are interned.
@@ -113,7 +114,7 @@ tag sty {
     ty_task;
     ty_tup(vec[mt]);
     ty_rec(vec[field]);
-    ty_fn(ast::proto, vec[arg], t, controlflow);
+    ty_fn(ast::proto, vec[arg], t, controlflow, vec[@ast::constr]);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
     ty_var(int);                                    // type variable
@@ -324,7 +325,7 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
             }
         }
 
-        case (ty_fn(_, ?args, ?tt, _)) {
+        case (ty_fn(_, ?args, ?tt, _, _)) {
             derive_flags_sig(cx, has_params, has_vars, args, tt);
         }
 
@@ -428,8 +429,8 @@ fn mk_imm_tup(&ctxt cx, &vec[t] tys) -> t {
 fn mk_rec(&ctxt cx, &vec[field] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_fn(&ctxt cx, &ast::proto proto, &vec[arg] args, &t ty,
-         &controlflow cf) -> t {
-    ret gen_ty(cx, ty_fn(proto, args, ty, cf));
+         &controlflow cf, &vec[@ast::constr] constrs) -> t {
+    ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
 fn mk_native_fn(&ctxt cx, &ast::native_abi abi, &vec[arg] args, &t ty) -> t {
@@ -478,161 +479,6 @@ fn path_to_str(&ast::path pth) -> str {
     ret result;
 }
 
-fn ty_to_str(&ctxt cx, &t typ) -> str {
-
-    fn fn_input_to_str(&ctxt cx, &rec(mode mode, t ty) input) -> str {
-        auto s;
-        alt (input.mode) {
-            case (mo_val) { s = ""; }
-            case (mo_alias) { s = "&"; }
-        }
-
-        ret s + ty_to_str(cx, input.ty);
-    }
-
-    fn fn_to_str(&ctxt cx,
-                 ast::proto proto,
-                 option::t[ast::ident] ident,
-                 vec[arg] inputs, t output) -> str {
-            auto f = bind fn_input_to_str(cx, _);
-
-            auto s;
-            alt (proto) {
-                case (ast::proto_iter) {
-                    s = "iter";
-                }
-                case (ast::proto_fn) {
-                    s = "fn";
-                }
-            }
-
-            alt (ident) {
-                case (some(?i)) {
-                    s += " ";
-                    s += i;
-                }
-                case (_) { }
-            }
-
-            s += "(";
-            s += str::connect(vec::map[arg,str](f, inputs), ", ");
-            s += ")";
-
-            if (struct(cx, output) != ty_nil) {
-                s += " -> " + ty_to_str(cx, output);
-            }
-            ret s;
-    }
-
-    fn method_to_str(&ctxt cx, &method m) -> str {
-        ret fn_to_str(cx, m.proto, some[ast::ident](m.ident),
-                      m.inputs, m.output) + ";";
-    }
-
-    fn field_to_str(&ctxt cx, &field f) -> str {
-        ret mt_to_str(cx, f.mt) + " " + f.ident;
-    }
-
-    fn mt_to_str(&ctxt cx, &mt m) -> str {
-        auto mstr;
-        alt (m.mut) {
-            case (ast::mut)       { mstr = "mutable "; }
-            case (ast::imm)       { mstr = "";         }
-            case (ast::maybe_mut) { mstr = "mutable? "; }
-        }
-
-        ret mstr + ty_to_str(cx, m.ty);
-    }
-
-    alt (cname(cx, typ)) {
-        case (some(?cs)) { ret cs; }
-        case (_) { /* fall through */ }
-    }
-
-    auto s = "";
-
-    alt (struct(cx, typ)) {
-        case (ty_native)       { s += "native";                         }
-        case (ty_nil)          { s += "()";                             }
-        case (ty_bot)          { s += "_|_";                            }
-        case (ty_bool)         { s += "bool";                           }
-        case (ty_int)          { s += "int";                            }
-        case (ty_float)        { s += "float";                          }
-        case (ty_uint)         { s += "uint";                           }
-        case (ty_machine(?tm)) { s += common::ty_mach_to_str(tm);        }
-        case (ty_char)         { s += "char";                           }
-        case (ty_str)          { s += "str";                            }
-        case (ty_box(?tm))     { s += "@" + mt_to_str(cx, tm);          }
-        case (ty_ptr(?tm))     { s += "*" + mt_to_str(cx, tm);          }
-        case (ty_vec(?tm))     { s += "vec[" + mt_to_str(cx, tm) + "]"; }
-        case (ty_port(?t))     { s += "port[" + ty_to_str(cx, t) + "]"; }
-        case (ty_chan(?t))     { s += "chan[" + ty_to_str(cx, t) + "]"; }
-        case (ty_type)         { s += "type";                           }
-        case (ty_task)         { s += "task";                           }
-
-        case (ty_tup(?elems)) {
-            auto f = bind mt_to_str(cx, _);
-            auto strs = vec::map[mt,str](f, elems);
-            s += "tup(" + str::connect(strs, ",") + ")";
-        }
-
-        case (ty_rec(?elems)) {
-            auto f = bind field_to_str(cx, _);
-            auto strs = vec::map[field,str](f, elems);
-            s += "rec(" + str::connect(strs, ",") + ")";
-        }
-
-        case (ty_tag(?id, ?tps)) {
-            // The user should never see this if the cname is set properly!
-            s += "<tag#" + util::common::istr(id._0) + ":" +
-                util::common::istr(id._1) + ">";
-            if (vec::len[t](tps) > 0u) {
-                auto f = bind ty_to_str(cx, _);
-                auto strs = vec::map[t,str](f, tps);
-                s += "[" + str::connect(strs, ",") + "]";
-            }
-        }
-
-        case (ty_fn(?proto, ?inputs, ?output, _)) {
-            s += fn_to_str(cx, proto, none[ast::ident], inputs, output);
-        }
-
-        case (ty_native_fn(_, ?inputs, ?output)) {
-            s += fn_to_str(cx, ast::proto_fn, none[ast::ident],
-                           inputs, output);
-        }
-
-        case (ty_obj(?meths)) {
-            auto f = bind method_to_str(cx, _);
-            auto m = vec::map[method,str](f, meths);
-            s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
-        }
-
-        case (ty_var(?v)) {
-            s += "<T" + util::common::istr(v) + ">";
-        }
-
-        case (ty_param(?id)) {
-            s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
-        }
-
-        case (_) {
-            s += ty_to_short_str(cx, typ);
-        }
-
-    }
-
-    ret s;
-}
-
-fn ty_to_short_str(&ctxt cx, t typ) -> str {
-    auto f = def_to_str;
-    auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata::ac_no_abbrevs);
-    auto s = metadata::Encode::ty_str(ecx, typ);
-    if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
-    ret s;
-}
-
 // Type folds
 
 type ty_walk = fn(t);
@@ -669,7 +515,7 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
                 walk_ty(cx, walker, fl.mt.ty);
             }
         }
-        case (ty_fn(?proto, ?args, ?ret_ty, _)) {
+        case (ty_fn(?proto, ?args, ?ret_ty, _, _)) {
             for (arg a in args) {
                 walk_ty(cx, walker, a.ty);
             }
@@ -768,14 +614,14 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             }
             ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
         }
-        case (ty_fn(?proto, ?args, ?ret_ty, ?cf)) {
+        case (ty_fn(?proto, ?args, ?ret_ty, ?cf, ?constrs)) {
             let vec[arg] new_args = [];
             for (arg a in args) {
                 auto new_ty = fold_ty(cx, fld, a.ty);
                 new_args += [rec(mode=a.mode, ty=new_ty)];
             }
             ty = copy_cname(cx, mk_fn(cx, proto, new_args,
-                                      fold_ty(cx, fld, ret_ty), cf), ty);
+                                  fold_ty(cx, fld, ret_ty), cf, constrs), ty);
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
             let vec[arg] new_args = [];
@@ -796,7 +642,8 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                 }
                 new_methods += [rec(proto=m.proto, ident=m.ident,
                                inputs=new_args,
-                               output=fold_ty(cx, fld, m.output), cf=m.cf)];
+                               output=fold_ty(cx, fld, m.output),
+                               cf=m.cf, constrs=m.constrs)];
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
@@ -860,7 +707,7 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
         case (ty_tup(_))    { ret true; }
         case (ty_rec(_))    { ret true; }
         case (ty_tag(_,_))  { ret true; }
-        case (ty_fn(_,_,_,_)) { ret true; }
+        case (ty_fn(_,_,_,_,_)) { ret true; }
         case (ty_obj(_))    { ret true; }
         case (_)            { ret false; }
     }
@@ -1177,7 +1024,8 @@ fn hash_type_structure(&sty st) -> uint {
             }
             ret h;
         }
-        case (ty_fn(_, ?args, ?rty, _)) { ret hash_fn(25u, args, rty); }
+        // ???
+        case (ty_fn(_, ?args, ?rty, _, _)) { ret hash_fn(25u, args, rty); } 
         case (ty_native_fn(_, ?args, ?rty)) { ret hash_fn(26u, args, rty); }
         case (ty_obj(?methods)) {
             auto h = 27u;
@@ -1211,6 +1059,72 @@ fn hash_ty(&t typ) -> uint { ret typ; }
 
 // Type equality. This function is private to this module (and slow); external
 // users should use `eq_ty()` instead.
+
+fn arg_eq(@ast::constr_arg a, @ast::constr_arg b) -> bool {
+    alt (a.node) {
+        case (ast::carg_base) {
+            alt (b.node) {
+                case (ast::carg_base) {
+                    ret true;
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+        case (ast::carg_ident(?s)) {
+            alt (b.node) {
+                case (ast::carg_ident(?t)) {
+                    ret (s == t);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+        case (ast::carg_lit(?l)) {
+            alt (b.node) {
+                case (ast::carg_lit(?m)) {
+                    ret util::common::lit_eq(l, m);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+    }
+}
+fn args_eq(vec[@ast::constr_arg] a, vec[@ast::constr_arg] b) -> bool {
+    let uint i = 0u;
+    for (@ast::constr_arg arg in a) {
+        if (!arg_eq(arg, b.(i))) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+
+fn constr_eq(&@ast::constr c, &@ast::constr d) -> bool {
+    ret path_to_str(c.node.path) == path_to_str(d.node.path) // FIXME: hack
+        && args_eq(c.node.args, d.node.args);
+}
+
+fn constrs_eq(&vec[@ast::constr] cs, &vec[@ast::constr] ds) -> bool {
+    if (vec::len(cs) != vec::len(ds)) {
+        ret false;
+    }
+    auto i = 0;
+    for (@ast::constr c in cs) {
+        if (!constr_eq(c, ds.(i))) {
+            ret false;
+        }
+        i += 1;
+    }
+    ret true;
+}
+
 fn equal_type_structures(&sty a, &sty b) -> bool {
     fn equal_mt(&mt a, &mt b) -> bool {
         ret a.mut == b.mut && eq_ty(a.ty, b.ty);
@@ -1381,11 +1295,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 case (_) { ret false; }
             }
         }
-        case (ty_fn(?p_a, ?args_a, ?rty_a, ?cf_a)) {
+        case (ty_fn(?p_a, ?args_a, ?rty_a, ?cf_a, ?constrs_a)) {
             alt (b) {
-                case (ty_fn(?p_b, ?args_b, ?rty_b, ?cf_b)) {
+                case (ty_fn(?p_b, ?args_b, ?rty_b, ?cf_b, ?constrs_b)) {
                     ret p_a == p_b &&
                         cf_a == cf_b &&
+                        constrs_eq(constrs_a, constrs_b) &&
                         equal_fn(args_a, rty_a, args_b, rty_b);
                 }
                 case (_) { ret false; }
@@ -1576,7 +1491,7 @@ fn type_contains_params(&ctxt cx, &t typ) -> bool {
 
 fn ty_fn_args(&ctxt cx, &t fty) -> vec[arg] {
     alt (struct(cx, fty)) {
-        case (ty::ty_fn(_, ?a, _, _)) { ret a; }
+        case (ty::ty_fn(_, ?a, _, _, _)) { ret a; }
         case (ty::ty_native_fn(_, ?a, _)) { ret a; }
     }
     cx.sess.bug("ty_fn_args() called on non-fn type");
@@ -1584,7 +1499,7 @@ fn ty_fn_args(&ctxt cx, &t fty) -> vec[arg] {
 
 fn ty_fn_proto(&ctxt cx, &t fty) -> ast::proto {
     alt (struct(cx, fty)) {
-        case (ty::ty_fn(?p, _, _, _)) { ret p; }
+        case (ty::ty_fn(?p, _, _, _, _)) { ret p; }
     }
     cx.sess.bug("ty_fn_proto() called on non-fn type");
 }
@@ -1598,7 +1513,7 @@ fn ty_fn_abi(&ctxt cx, &t fty) -> ast::native_abi {
 
 fn ty_fn_ret(&ctxt cx, &t fty) -> t {
     alt (struct(cx, fty)) {
-        case (ty::ty_fn(_, _, ?r, _)) { ret r; }
+        case (ty::ty_fn(_, _, ?r, _, _)) { ret r; }
         case (ty::ty_native_fn(_, _, ?r)) { ret r; }
     }
     cx.sess.bug("ty_fn_ret() called on non-fn type");
@@ -1606,7 +1521,7 @@ fn ty_fn_ret(&ctxt cx, &t fty) -> t {
 
 fn is_fn_ty(&ctxt cx, &t fty) -> bool {
     alt (struct(cx, fty)) {
-        case (ty::ty_fn(_, _, _, _)) { ret true; }
+        case (ty::ty_fn(_, _, _, _, _)) { ret true; }
         case (ty::ty_native_fn(_, _, _)) { ret true; }
         case (_) { ret false; }
     }
@@ -2012,7 +1927,9 @@ mod unify {
                 &t actual,
                 &vec[arg] expected_inputs, &t expected_output,
                 &vec[arg] actual_inputs, &t actual_output,
-                &controlflow expected_cf, &controlflow actual_cf)
+                &controlflow expected_cf, &controlflow actual_cf,
+                &vec[@ast::constr] expected_constrs,
+                &vec[@ast::constr] actual_constrs)
         -> result {
 
         if (e_proto != a_proto) {
@@ -2045,7 +1962,7 @@ mod unify {
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
                 auto t2 = mk_fn(cx.tcx, e_proto, result_ins, result_out,
-                                actual_cf);
+                                actual_cf, actual_constrs);
                 ret ures_ok(t2);
             }
         }
@@ -2099,14 +2016,16 @@ mod unify {
                           expected, actual,
                           e_meth.inputs, e_meth.output,
                           a_meth.inputs, a_meth.output,
-                          e_meth.cf, a_meth.cf);
+                          e_meth.cf, a_meth.cf,
+                          e_meth.constrs, a_meth.constrs);
         alt (r) {
             case (ures_ok(?tfn)) {
                 alt (struct(cx.tcx, tfn)) {
-                    case (ty_fn(?proto, ?ins, ?out, ?cf)) {
+                    case (ty_fn(?proto, ?ins, ?out, ?cf, ?constrs)) {
                         result_meths += [rec(inputs = ins,
                                              output = out,
-                                             cf     = cf
+                                             cf     = cf,
+                                             constrs = constrs
                                              with e_meth)];
                     }
                 }
@@ -2486,15 +2405,18 @@ mod unify {
             }
 
             case (ty::ty_fn(?ep, ?expected_inputs,
-                            ?expected_output, ?expected_cf)) {
+                            ?expected_output, ?expected_cf,
+                            ?expected_constrs)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_fn(?ap, ?actual_inputs,
-                                    ?actual_output, ?actual_cf)) {
+                                    ?actual_output, ?actual_cf,
+                                    ?actual_constrs)) {
                         ret unify_fn(cx, ep, ap,
                                      expected, actual,
                                      expected_inputs, expected_output,
                                      actual_inputs, actual_output,
-                                     expected_cf, actual_cf);
+                                     expected_cf, actual_cf,
+                                     expected_constrs, actual_constrs);
                     }
 
                     case (_) { ret ures_err(terr_mismatch); }
@@ -2549,7 +2471,7 @@ mod unify {
             alt (smallintmap::find[t](vb.types, i)) {
                 case (none[t]) { typespec = ""; }
                 case (some[t](?typ)) {
-                    typespec = " =" + ty_to_str(tcx, typ);
+                    typespec = " =" + pretty::ppaux::ty_to_str(tcx, typ);
                 }
             }
 
@@ -2784,7 +2706,7 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
 
 fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
     alt (ty::struct(cx, a_ty)) {
-        case (ty::ty_fn(_, _, ?ret_ty, _)) {
+        case (ty::ty_fn(_, _, ?ret_ty, _, _)) {
             ret ret_ty;
         }
         case (_) {
@@ -2795,6 +2717,27 @@ fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
 
 fn ret_ty_of_fn(ctxt cx, ast::ann ann) -> t {
     ret ret_ty_of_fn_ty(cx, ann_to_type(cx, ann));
+}
+
+fn lookup_fn_decl(ty_ctxt tcx, ast::ann ann)
+    -> option::t[tup(ast::fn_decl, ast::def_id)] {
+    auto nada = none[tup(ast::fn_decl, ast::def_id)];
+    alt (tcx.def_map.find(ann.id)) {
+        case (some(ast::def_fn(?d))) {
+            alt (tcx.items.find(d)) {
+                case (some(any_item_rust(?it))) {
+                    alt (it.node) {
+                        case (ast::item_fn(_,?f,_,_,_)) {
+                            ret some(tup(f.decl, d));
+                        }
+                        case (_) { ret nada; }
+                    }
+                }
+                case (_) { ret nada; }
+            }
+        }
+        case (_) { ret nada; }
+    }
 }
 
 // Local Variables:

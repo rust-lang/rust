@@ -321,6 +321,21 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
     }
 }
 
+// FIXME make the lengths being equal a constraint
+fn zip[T, U](&vec[T] v, &vec[U] u) -> vec[tup(T, U)] {
+    auto sz = len[T](v);
+    assert (sz == len[U](u));
+
+    if (sz == 0u) {
+        ret alloc[tup(T, U)](0u);
+    }
+    else {
+        auto rest = zip[T, U](slice[T](v, 1u, sz), slice[U](u, 1u, sz));
+        vec::push(rest, tup(v.(0), u.(0)));
+        ret rest;
+    }
+}
+
 fn or(&vec[bool] v) -> bool {
     auto f = orb;
     ret vec::foldl[bool, bool](f, false, v);

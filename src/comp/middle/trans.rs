@@ -71,6 +71,9 @@ import link::mangle_exported_name;
 import link::crate_meta_name;
 import link::crate_meta_vers;
 import link::crate_meta_extras_hash;
+import pretty::ppaux::ty_to_str;
+import pretty::ppaux::ty_to_short_str;
+import pretty::pprust::expr_to_str;
 
 state obj namegen(mutable int i) {
     fn next(str prefix) -> str {
@@ -677,7 +680,7 @@ fn type_of(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
         cx.sess.span_err (sp,
           "type_of() called on a type with dynamic size: " +
-                          ty::ty_to_str(cx.tcx, t));
+                          ty_to_str(cx.tcx, t));
     }
 
     ret type_of_inner(cx, sp, t);
@@ -870,7 +873,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             }
             llty = T_struct(tys);
         }
-        case (ty::ty_fn(?proto, ?args, ?out, _)) {
+        case (ty::ty_fn(?proto, ?args, ?out, _, _)) {
             llty = T_fn_pair(cx.tn, type_of_fn(cx, sp, proto, args, out, 0u));
         }
         case (ty::ty_native_fn(?abi, ?args, ?out)) {
@@ -910,7 +913,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     assert (llty as int != 0);
     if (cx.sess.get_opts().save_temps) {
         llvm::LLVMAddTypeName(cx.llmod,
-                             str::buf(ty::ty_to_short_str(cx.tcx, t)),
+                             str::buf(ty_to_short_str(cx.tcx, t)),
                              llty);
     }
     cx.lltypes.insert(t, llty);
@@ -941,7 +944,7 @@ fn type_of_arg(@local_ctxt cx, &span sp, &ty::arg arg) -> TypeRef {
 fn type_of_ty_param_count_and_ty(@local_ctxt lcx, &span sp,
                                  &ty::ty_param_count_and_ty tpt) -> TypeRef {
     alt (ty::struct(lcx.ccx.tcx, tpt._1)) {
-        case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
+        case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             auto llfnty = type_of_fn(lcx.ccx, sp, proto,
                                      inputs, output, tpt._0);
             ret T_fn_pair(lcx.ccx.tn, llfnty);
@@ -1243,7 +1246,7 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
             case (ty::ty_vec(_)) {
                 ret ty::mk_imm_vec(ccx.tcx, ty::mk_nil(ccx.tcx));
             }
-            case (ty::ty_fn(_,_,_,_)) {
+            case (ty::ty_fn(_,_,_,_,_)) {
                 ret ty::mk_imm_tup(ccx.tcx, 
                                    [ty::mk_imm_box(ccx.tcx, 
                                                    ty::mk_nil(ccx.tcx)),
@@ -1841,7 +1844,7 @@ fn set_glue_inlining(&@local_ctxt cx, ValueRef f, &ty::t t) {
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(&@local_ctxt cx, &span sp, &ty::t t,
                   vec[uint] ty_params) -> @tydesc_info {
-    log "+++ declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
+    log "+++ declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     auto ccx = cx.ccx;
 
     auto llsize;
@@ -1878,7 +1881,7 @@ fn declare_tydesc(&@local_ctxt cx, &span sp, &ty::t t,
                      mutable cmp_glue = none[ValueRef],
                      ty_params = ty_params);
 
-    log "--- declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
+    log "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     ret info;
 }
 
@@ -2163,7 +2166,7 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             rslt = trans_non_gc_free(cx_, b);
         }
 
-        case (ty::ty_fn(_,_,_,_)) {
+        case (ty::ty_fn(_,_,_,_,_)) {
 
             auto box_cell =
                 cx.build.GEP(v0,
@@ -2239,7 +2242,7 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
         }
 
-        case (ty::ty_fn(_,_,_,_)) {
+        case (ty::ty_fn(_,_,_,_,_)) {
 
             auto box_cell =
                 cx.build.GEP(v0,
@@ -2465,7 +2468,7 @@ fn make_cmp_glue(&@block_ctxt cx,
         // FIXME: compare obj, fn by pointer?
         trans_fail(cx, none[common::span],
                    "attempt to compare values of type " +
-                   ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+                   ty_to_str(cx.fcx.lcx.ccx.tcx, t));
     }
 }
 
@@ -2726,7 +2729,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                     // N-ary variant.
                     auto fn_ty = variant.ctor_ty;
                     alt (ty::struct(bcx.fcx.lcx.ccx.tcx, fn_ty)) {
-                        case (ty::ty_fn(_, ?args, _, _)) {
+                        case (ty::ty_fn(_, ?args, _, _, _)) {
                             auto j = 0;
                             for (ty::arg a in args) {
                                 auto v = [C_int(0), C_int(j as int)];
@@ -2773,7 +2776,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
 
             ret res(next_cx, C_nil());
         }
-        case (ty::ty_fn(_,_,_,_)) {
+        case (ty::ty_fn(_,_,_,_,_)) {
             auto box_cell_a =
                 cx.build.GEP(av,
                              [C_int(0),
@@ -2930,7 +2933,7 @@ fn iter_sequence(@block_ctxt cx,
 
             cx.fcx.lcx.ccx.sess.bug("unexpected type in " +
                                     "trans::iter_sequence: " +
-                                    ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+                                    ty_to_str(cx.fcx.lcx.ccx.tcx, t));
         }
     }
 }
@@ -2961,7 +2964,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                     case (some(_)) {}
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue TAKE %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
 
                         auto lcx = cx.fcx.lcx;
                         auto glue_fn =
@@ -2974,7 +2977,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                                           mgghf_single(tg), ti.ty_params);
 
                         log #fmt("--- lazily_emit_tydesc_glue TAKE %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
                 }
             } else if (field == abi::tydesc_field_drop_glue)  {
@@ -2982,7 +2985,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue DROP %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                         auto lcx = cx.fcx.lcx;
                         auto glue_fn =
                             declare_generic_glue(lcx, ti.ty,
@@ -2993,7 +2996,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                           mgghf_single(dg), ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue DROP %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
                 }
 
@@ -3002,7 +3005,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue FREE %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                         auto lcx = cx.fcx.lcx;
                         auto glue_fn =
                             declare_generic_glue(lcx, ti.ty,
@@ -3014,7 +3017,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                           mgghf_single(dg), ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue FREE %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
                 }
 
@@ -3023,7 +3026,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                     case (some(_)) { }
                     case (none) {
                         log #fmt("+++ lazily_emit_tydesc_glue CMP %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                         auto lcx = cx.fcx.lcx;
                         auto glue_fn =
                             declare_generic_glue(lcx, ti.ty,
@@ -3033,7 +3036,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                           mgghf_cmp, ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue CMP %s",
-                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
                 }
             }
@@ -3274,7 +3277,7 @@ fn copy_val(&@block_ctxt cx,
     }
 
     cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::copy_val: " +
-                        ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+                        ty_to_str(cx.fcx.lcx.ccx.tcx, t));
 }
 
 // This works like copy_val, except that it deinitializes the source.
@@ -3311,7 +3314,7 @@ fn move_val(&@block_ctxt cx,
     }
 
     cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::move_val: " +
-                        ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+                        ty_to_str(cx.fcx.lcx.ccx.tcx, t));
 }
 
 
@@ -4499,7 +4502,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
         case (ast::def_variant(?tid, ?vid)) {
             auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, vid);
             alt (ty::struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
-                case (ty::ty_fn(_, _, _, _)) {
+                case (ty::ty_fn(_, _, _, _, _)) {
                     // N-ary variant.
                     ret lval_generic_fn(cx, v_tyt, vid, ann);
                 }
@@ -4691,7 +4694,7 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         case (_) {
             cx.fcx.lcx.ccx.sess.span_unimpl(e.span,
                                             "expr variant in trans_lval: "
-                                            + pretty::pprust::expr_to_str(e));
+                                            + expr_to_str(e));
         }
     }
 }
@@ -5850,7 +5853,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
                 // FIXME: Support these types.
                 cx.fcx.lcx.ccx.sess.span_err(e.span,
                                  "log called on unsupported type " +
-                                  ty::ty_to_str(cx.fcx.lcx.ccx.tcx, e_ty));
+                                  ty_to_str(cx.fcx.lcx.ccx.tcx, e_ty));
             }
         }
     }
@@ -5864,7 +5867,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
 fn trans_check_expr(&@block_ctxt cx, &@ast::expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    auto expr_str = pretty::pprust::expr_to_str(e);
+    auto expr_str = expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, some[common::span](e.span), expr_str);
 
@@ -6085,9 +6088,9 @@ fn trans_spawn(&@block_ctxt cx,
     // Make the task name
     auto tname = alt(name) {
         case(none) {
-            auto argss = vec::map(pretty::pprust::expr_to_str, args);
+            auto argss = vec::map(expr_to_str, args);
             #fmt("%s(%s)",
-                 pretty::pprust::expr_to_str(func),
+                 expr_to_str(func),
                  str::connect(argss, ", "))
         }
         case(some(?n)) {
@@ -6865,7 +6868,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
 
 fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
     alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, ann))) {
-        case (ty::ty_fn(_, ?arg_tys, _, _)) {
+        case (ty::ty_fn(_, ?arg_tys, _, _, _)) {
             ret arg_tys;
         }
     }
@@ -6873,7 +6876,7 @@ fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
 
 fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
     alt (ty::struct(ccx.tcx, t)) {
-        case (ty::ty_fn(_, _, ?ret_ty, _)) {
+        case (ty::ty_fn(_, _, ?ret_ty, _, _)) {
             ret ret_ty;
         }
     }
@@ -7043,7 +7046,7 @@ fn create_vtbl(@local_ctxt cx,
 
         auto llfnty = T_nil();
         alt (ty::struct(cx.ccx.tcx, node_ann_type(cx.ccx, m.node.ann))) {
-            case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
+            case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
                 llfnty = type_of_fn_full(cx.ccx, m.span, proto,
                                          some[TypeRef](llself_ty),
                                          inputs, output,
@@ -7466,7 +7469,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
     auto llfty;
     auto llpairty;
     alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
-        case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
+        case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfty = type_of_fn(ccx, sp, proto, inputs, output,
                                vec::len[ast::ty_param](ty_params));
             llpairty = T_fn_pair(ccx.tn, llfty);

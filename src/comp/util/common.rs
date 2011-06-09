@@ -23,8 +23,8 @@ import pretty::pprust::print_path;
 import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
 import pretty::pprust::print_type;
-import pretty::pprust::print_literal;
-import pretty::pprust::mo_untyped;
+import pretty::ppaux::print_literal;
+import pretty::ppaux::mo_untyped;
 import pretty::pp::mk_printer;
 
 type filename = str;
@@ -292,6 +292,37 @@ fn lit_eq(&@ast::lit l, &@ast::lit m) -> bool {
 
 fn respan[T](&span sp, &T t) -> spanned[T] {
     ret rec(node=t, span=sp);
+}
+
+fn may_begin_ident(char c) -> bool {
+    ret (is_alpha(c) || c == '_');
+}
+
+fn in_range(char c, char lo, char hi) -> bool {
+    ret lo <= c && c <= hi;
+}
+
+fn is_alpha(char c) -> bool {
+    ret in_range(c, 'a', 'z') ||
+        in_range(c, 'A', 'Z');
+}
+
+fn is_dec_digit(char c) -> bool {
+    ret in_range(c, '0', '9');
+}
+
+fn is_alnum(char c) -> bool {
+    ret is_alpha(c) || is_dec_digit(c);
+}
+
+fn is_hex_digit(char c) -> bool {
+    ret in_range(c, '0', '9') ||
+        in_range(c, 'a', 'f') ||
+        in_range(c, 'A', 'F');
+}
+
+fn is_bin_digit(char c) -> bool {
+    ret c == '0' || c == '1';
 }
 
 //

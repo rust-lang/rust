@@ -100,7 +100,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
     -> rec(vec[def_num] root_vars, vec[ty::t] unsafe_ts) {
     auto fty = ty::expr_ty(*cx.tcx, f);
     auto arg_ts = alt (ty::struct(*cx.tcx, fty)) {
-        case (ty::ty_fn(_, ?args, _, _)) { args }
+        case (ty::ty_fn(_, ?args, _, _, _)) { args }
         case (ty::ty_native_fn(_, ?args, _)) { args }
     };
 
@@ -490,7 +490,7 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut)
                 ret false;
             }
             // These may contain anything.
-            case (ty::ty_fn(_, _, _, _)) { ret true; }
+            case (ty::ty_fn(_, _, _, _, _)) { ret true; }
             case (ty::ty_obj(_)) { ret true; }
             // A type param may include everything, but can only be treated as
             // opaque downstream, and is thus safe unless we saw mutable

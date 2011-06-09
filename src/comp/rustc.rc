@@ -38,6 +38,7 @@ mod middle {
 mod pretty {
     mod pprust;
     mod pp;
+    mod ppaux;
 }
 
 mod front {

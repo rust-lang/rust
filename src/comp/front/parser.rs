@@ -345,9 +345,7 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
     auto inputs = parse_seq(token::LPAREN, token::RPAREN,
                             some(token::COMMA), parse_fn_input_ty, p);
 
-    // FIXME: dropping constrs on the floor at the moment.
-    // pick them up when they're used by typestate pass.
-    parse_constrs(p);
+    auto constrs = parse_constrs(p);
 
     let @ast::ty output;
     auto cf = ast::return;
@@ -367,7 +365,7 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
         output = @spanned(lo, inputs.span.hi, ast::ty_nil);
     }
 
-    ret ast::ty_fn(proto, inputs.node, output, cf);
+    ret ast::ty_fn(proto, inputs.node, output, cf, constrs.node);
 }
 
 fn parse_proto(&parser p) -> ast::proto {
@@ -386,10 +384,11 @@ fn parse_ty_obj(&parser p, &mutable uint hi) -> ast::ty_ {
         auto f = parse_ty_fn(proto, p, flo);
         expect(p, token::SEMI);
         alt (f) {
-            case (ast::ty_fn(?proto, ?inputs, ?output, ?cf)) {
+            case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
                 ret spanned(flo, output.span.hi,
                             rec(proto=proto, ident=ident,
-                                inputs=inputs, output=output, cf=cf));
+                                inputs=inputs, output=output, cf=cf,
+                                constrs=constrs));
             }
         }
         fail;
@@ -547,7 +546,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_fn, p, flo);
         alt (t) {
-            case (ast::ty_fn(_, _, ?out, _)) {
+            case (ast::ty_fn(_, _, ?out, _, _)) {
                 hi = out.span.hi;
             }
         }
@@ -555,7 +554,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_iter, p, flo);
         alt (t) {
-            case (ast::ty_fn(_, _, ?out, _)) {
+            case (ast::ty_fn(_, _, ?out, _, _)) {
                 hi = out.span.hi;
             }
         }
@@ -1756,9 +1755,7 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
 
     let ty_or_bang res;
 
-    // FIXME: dropping constrs on the floor at the moment.
-    // pick them up when they're used by typestate pass.
-    parse_constrs(p);
+    auto constrs = parse_constrs(p).node;
 
     if (p.peek() == token::RARROW) {
         p.bump();
@@ -1771,13 +1768,13 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
     alt (res) {
         case (a_ty(?t)) {
             ret rec(inputs=inputs.node, output=t,
-              purity=purity, cf=ast::return);
+                    purity=purity, cf=ast::return, constraints=constrs);
         }
         case (a_bang) {
             ret rec(inputs=inputs.node,
                     output=@spanned(p.get_lo_pos(),
                                     p.get_hi_pos(), ast::ty_bot),
-                    purity=purity, cf=ast::noreturn);
+                    purity=purity, cf=ast::noreturn, constraints=constrs);
         }
     }
 }
@@ -1833,7 +1830,9 @@ fn parse_dtor(&parser p) -> @ast::method {
     let ast::fn_decl d = rec(inputs=inputs,
                              output=output,
                              purity=ast::impure_fn,
-                             cf=ast::return); 
+                             cf=ast::return,
+ // I guess dtors can't have constraints? 
+                             constraints=[]);
     let ast::_fn f = rec(decl = d,
                          proto = ast::proto_fn,
                          body = b);

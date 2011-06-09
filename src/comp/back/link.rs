@@ -431,7 +431,7 @@ fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t,
                                      &str name) -> str {
     auto f = metadata::def_to_str;
     auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata::ac_no_abbrevs);
-    auto s = ty::ty_to_short_str(ccx.tcx, t);
+    auto s = pretty::ppaux::ty_to_short_str(ccx.tcx, t);
 
     auto hash = get_symbol_hash(ccx, t);
     ret mangle([name, s, hash]);

@@ -11,6 +11,7 @@ import middle::ty;
 import middle::typeck;
 import middle::tstate::ck;
 import pretty::pprust;
+import pretty::ppaux;
 import back::link;
 import lib::llvm;
 import util::common;
@@ -133,10 +134,10 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
             auto def_map = resolve::resolve_crate(sess, crate);
             auto ty_cx = ty::mk_ctxt(sess, def_map);
             typeck::check_crate(ty_cx, crate);
-            mode = pprust::mo_typed(ty_cx);
+            mode = ppaux::mo_typed(ty_cx);
         }
-        case (ppm_normal) { mode = pprust::mo_untyped; }
-        case (ppm_identified) { mode = pprust::mo_identified; }
+        case (ppm_normal) { mode = ppaux::mo_untyped; }
+        case (ppm_identified) { mode = ppaux::mo_identified; }
     }
 
     pprust::print_file(sess, crate.node.module, input, std::io::stdout(),

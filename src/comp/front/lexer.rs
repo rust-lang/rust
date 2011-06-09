@@ -9,7 +9,7 @@ import std::option::some;
 import std::option::none;
 import driver::session::session;
 import util::common;
-import util::common::new_str_hash;
+import util::common::*;
 import util::data::interner;
 
 state type reader = state obj {
@@ -111,32 +111,6 @@ fn new_reader(session sess, io::reader rdr,
     ret rd;
 }
 
-fn in_range(char c, char lo, char hi) -> bool {
-    ret lo <= c && c <= hi;
-}
-
-fn is_alpha(char c) -> bool {
-    ret in_range(c, 'a', 'z') ||
-        in_range(c, 'A', 'Z');
-}
-
-fn is_dec_digit(char c) -> bool {
-    ret in_range(c, '0', '9');
-}
-
-fn is_alnum(char c) -> bool {
-    ret is_alpha(c) || is_dec_digit(c);
-}
-
-fn is_hex_digit(char c) -> bool {
-    ret in_range(c, '0', '9') ||
-        in_range(c, 'a', 'f') ||
-        in_range(c, 'A', 'F');
-}
-
-fn is_bin_digit(char c) -> bool {
-    ret c == '0' || c == '1';
-}
 
 fn dec_digit_val(char c) -> int {
     ret (c as int) - ('0' as int);

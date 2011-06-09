@@ -17,6 +17,8 @@ import aux::fn_info;
 import aux::crate_ctxt;
 import aux::num_constraints;
 import aux::constr_map;
+import aux::constraint_info;
+import aux::expr_to_constr;
 
 import util::common::new_def_hash;
 import util::common::uistr;
@@ -25,8 +27,6 @@ import util::common::respan;
 
 type ctxt = rec(@vec[constraint_info] cs,
                 ty::ctxt tcx);
-
-type constraint_info = rec(def_id id, aux::constr c);
 
 fn collect_local(&ctxt cx, &@decl d) -> () {
     alt (d.node) {
@@ -38,67 +38,6 @@ fn collect_local(&ctxt cx, &@decl d) -> () {
                                                 ninit(loc.ident))));
       }
       case (_) { ret; }
-    }
-}
-
-fn exprs_to_constr_args(ty::ctxt tcx, vec[@expr] args) -> vec[@constr_arg] {
-    fn one(ty::ctxt tcx, &@expr e) -> @constr_arg {
-        alt (e.node) {
-            case (expr_path(?p, _)) {
-                if (vec::len(p.node.idents) == 1u) {
-                    ret @respan(p.span, carg_ident(p.node.idents.(0)));
-                }
-                else {
-                    tcx.sess.bug("exprs_to_constr_args: non-local variable "
-                                 + "as pred arg");
-                }
-            }
-            case (expr_lit(?l, _)) {
-                ret @respan(e.span, carg_lit(l));
-            }
-            case (_) {
-                tcx.sess.bug("exprs_to_constr_args: ill-formed pred arg");
-            }
-        }
-    }
-    auto f = bind one(tcx, _);
-    ret vec::map(f, args); 
-}
-
-fn def_id_for_constr(ty::ctxt tcx, uint t) -> def_id {
-    alt (tcx.def_map.find(t)) {
-        case (none) {
-            tcx.sess.bug("def_id_for_constr: bad node_id " + uistr(t));
-         }
-        case (some(def_fn(?i))) {
-            ret i;
-        }
-        case (_) {
-            tcx.sess.bug("def_id_for_constr: pred is not a function");
-        }
-    }
-}
-
-fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constraint_info {
-    alt (e.node) {
-        // change the first pattern to expr_path to test a typechecker bug
-        case (expr_call(?operator, ?args, _)) {
-            alt (operator.node) {
-                case (expr_path(?p, ?a)) {
-                    ret rec(id=def_id_for_constr(tcx, a.id),
-                            c=respan(e.span,
-                                npred(p, exprs_to_constr_args(tcx, args)))); 
-                }
-                case (_) {
-                    tcx.sess.span_err(operator.span, "Internal error: " +
-                       " ill-formed operator in predicate");
-                }
-            }
-        }
-        case (_) {
-            tcx.sess.span_err(e.span, "Internal error: " +
-                              " ill-formed predicate");
-        }
     }
 }
 
@@ -140,14 +79,14 @@ fn add_constraint(&ty::ctxt tcx, constraint_info c, uint next, constr_map tbl)
                                          + " as a variable and a pred");
                         }
                         case (cpred(_, ?pds)) {
-                            vec::push(pds, respan(cn.span,
+                             vec::push(*pds, respan(cn.span,
                               rec(args=args, bit_num=next)));
                         }
                     }
                 }
                 case (none[constraint]) {
-                    tbl.insert(c.id, cpred(p,
-                      [respan(cn.span, rec(args=args, bit_num=next))]));
+                     tbl.insert(c.id, cpred(p,
+                      @[respan(cn.span, rec(args=args, bit_num=next))]));
                 }
             }
         }

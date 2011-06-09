@@ -115,7 +115,7 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
                 vt(v).visit_ty(f.node.mt.ty, e, v);
             }
         }
-        case (ty_fn(_, ?args, ?out, _)) {
+        case (ty_fn(_, ?args, ?out, _, _)) {
             for (ty_arg a in args) {
                 vt(v).visit_ty(a.node.ty, e, v);
             }

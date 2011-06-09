@@ -312,8 +312,8 @@ type mt = rec(@ty ty, mutability mut);
 type ty_field_ = rec(ident ident, mt mt);
 type ty_arg_ = rec(mode mode, @ty ty);
 type ty_method_ = rec(proto proto, ident ident,
-                     vec[ty_arg] inputs, @ty output,
-                     controlflow cf);
+                      vec[ty_arg] inputs, @ty output,
+                      controlflow cf, vec[@constr] constrs);
 type ty_field = spanned[ty_field_];
 type ty_arg = spanned[ty_arg_];
 type ty_method = spanned[ty_method_];
@@ -342,7 +342,7 @@ tag ty_ {
     ty_chan(@ty);
     ty_tup(vec[mt]);
     ty_rec(vec[ty_field]);
-    ty_fn(proto, vec[ty_arg], @ty, controlflow);
+    ty_fn(proto, vec[ty_arg], @ty, controlflow, vec[@constr]);
     ty_obj(vec[ty_method]);
     ty_path(path, ann);
     ty_type;
@@ -362,7 +362,8 @@ type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(vec[arg] inputs,
                    @ty output,
                    purity purity,
-                   controlflow cf);
+                   controlflow cf,
+                   vec[@constr] constraints);
 tag purity {
     pure_fn;   // declared with "pred"
     impure_fn; // declared with "fn"

@@ -14,8 +14,10 @@ import middle::ty;
 import back::x86;
 import util::common;
 import util::common::span;
+import util::common::respan;
 import util::common::a_bang;
 import util::common::a_ty;
+import util::common::may_begin_ident;
 
 import std::str;
 import std::uint;
@@ -54,6 +56,14 @@ fn next(@pstate st) -> u8 {
     ret ch;
 }
 
+fn parse_ident(@pstate st, str_def sd, char last) -> ast::ident {
+    auto res = "";
+    while (peek(st) as char != last) {
+        res += str::unsafe_from_byte(next(st));
+    }
+    ret res;
+}
+
 fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len,
                  str_def sd, ty::ctxt tcx) -> ty::t {
     auto st = @rec(data=data, crate=crate_num,
@@ -67,6 +77,62 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
         case ('!') { auto ignore = next(st); ret a_bang[ty::t]; }
         case (_)   { ret a_ty[ty::t](parse_ty(st, sd)); }
     }
+}
+
+fn parse_constrs(@pstate st, str_def sd) -> vec[@ast::constr] {
+    let vec[@ast::constr] res = [];
+    alt (peek(st) as char) {
+        case (':') {
+            do {
+                auto ignore = next(st);
+                vec::push(res, parse_constr(st, sd));
+            } while (peek(st) as char == ',')
+        }
+        case (_) {}
+    }
+    ret res;
+}
+
+fn parse_constr(@pstate st, str_def sd) -> @ast::constr {
+    let vec[@ast::constr_arg] args = [];
+    auto sp = rec(lo=0u,hi=0u); // FIXME
+    let vec[ast::ident] ids = [];
+    let vec[@ast::ty] tys = [];
+    let ast::path pth = respan(sp,
+                               rec(idents=ids, types=tys)); // FIXME
+    let ast::ident p1 = parse_ident(st, sd, '(');
+    log_err("ignore=");
+    log_err(p1);
+    let char ignore = next(st) as char;
+    assert(ignore as char == '(');
+    do {
+        alt (peek(st) as char) {
+            case ('*') {
+                auto ignore = next(st);
+                args += [@respan(sp, ast::carg_base)];
+            }
+            case (?c) {
+                log_err("c =");
+                log_err(str::from_bytes([c as u8]));
+                if (may_begin_ident(c)) {
+                    auto id = parse_ident(st, sd, ',');
+                    args += [@respan(sp, ast::carg_ident(id))];
+                }
+                else {
+                    log_err("Lit args are unimplemented");
+                    fail; // FIXME
+                }
+                /*
+                else {
+                    auto lit = parse_lit(st, sd, ',');
+                    args += [respan(st.span, ast::carg_lit(lit))];
+                }
+                */
+            }
+        }
+    } while (next(st) as char == ',');
+    ignore = next(st) as char;
+    ret @respan(sp, rec(path=pth, args=args));
 }
 
 fn parse_ty(@pstate st, str_def sd) -> ty::t {
@@ -135,11 +201,13 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('F') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_fn, func._0, func._1, func._2);
+            ret ty::mk_fn(st.tcx, ast::proto_fn, func._0,
+                          func._1, func._2, func._3);
         }
         case ('W') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_iter, func._0, func._1, func._2);
+            ret ty::mk_fn(st.tcx, ast::proto_iter, func._0,
+                          func._1, func._2, func._3);
         }
         case ('N') {
             auto abi;
@@ -170,7 +238,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                                 ident=name,
                                 inputs=func._0,
                                 output=func._1,
-                                cf=func._2)];
+                                cf=func._2,
+                                constrs=func._3)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
@@ -250,7 +319,8 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t,
-                                              ast::controlflow) {
+                                              ast::controlflow,
+                                              vec[@ast::constr]) {
     assert (next(st) as char == '[');
     let vec[ty::arg] inputs = [];
     while (peek(st) as char != ']') {
@@ -262,15 +332,17 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t,
         inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
     }
     st.pos = st.pos + 1u;
+    auto cs  = parse_constrs(st, sd);
     auto res = parse_ty_or_bang(st, sd);
     alt (res) {
         case (a_bang) {
-            ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn);
+            ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn, cs);
         }
         case (a_ty(?t)) {
-            ret tup(inputs, t, ast::return);
+            ret tup(inputs, t, ast::return, cs);
         }
     }
+    
 }
 
 
@@ -579,7 +651,7 @@ fn get_tag_variants(ty::ctxt tcx, ast::def_id def)
         auto ctor_ty = item_type(item, external_crate_id, tcx);
         let vec[ty::t] arg_tys = [];
         alt (ty::struct(tcx, ctor_ty)) {
-            case (ty::ty_fn(_, ?args, _, _)) {
+            case (ty::ty_fn(_, ?args, _, _, _)) {
                 for (ty::arg a in args) {
                     arg_tys += [a.ty];
                 }

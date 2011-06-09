@@ -170,7 +170,7 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
                 walk_ty(v, f.node.mt.ty);
             }
         }
-        case (ast::ty_fn(_, ?args, ?out, _)) {
+        case (ast::ty_fn(_, ?args, ?out, _, _)) {
             for (ast::ty_arg a in args) {
                 walk_ty(v, a.node.ty);
             }
