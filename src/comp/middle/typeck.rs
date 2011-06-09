@@ -234,6 +234,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     }
 
     fn instantiate(&ty::ctxt tcx,
+                   &span sp,
                    &ty_getter getter,
                    &ast::def_id id,
                    &vec[@ast::ty] args) -> ty::t {
@@ -246,12 +247,17 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
 
         // The typedef is type-parametric. Do the type substitution.
         //
-        // TODO: Make sure the number of supplied bindings matches the number
-        // of type parameters in the typedef. Emit a friendly error otherwise.
         let vec[ty::t] param_bindings = [];
         for (@ast::ty ast_ty in args) {
             param_bindings += [ast_ty_to_ty(tcx, getter, ast_ty)];
         }
+
+        if (vec::len(param_bindings) !=
+            ty::count_ty_params(tcx, params_opt_and_ty._1)) {
+            tcx.sess.span_err(sp, "Wrong number of type arguments for a"
+                            + " polymorphic tag");
+        }
+
 
         auto typ = ty::substitute_type_params(tcx, param_bindings,
                                        params_opt_and_ty._1);
@@ -315,11 +321,13 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_path(?path, ?ann)) {
             alt (tcx.def_map.get(ann.id)) {
                 case (ast::def_ty(?id)) {
-                    typ = instantiate(tcx, getter, id, path.node.types);
+                    typ = instantiate(tcx, ast_ty.span, getter, id,
+                                      path.node.types);
                 }
                 case (ast::def_native_ty(?id)) { typ = getter(id)._1; }
                 case (ast::def_obj(?id)) {
-                    typ = instantiate(tcx, getter, id, path.node.types);
+                    typ = instantiate(tcx, ast_ty.span, getter, id,
+                                      path.node.types);
                 }
                 case (ast::def_ty_arg(?id)) { typ = ty::mk_param(tcx, id); }
                 case (_)                   {
