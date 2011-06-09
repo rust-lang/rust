@@ -1260,8 +1260,7 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
             case (_) { ret typ; }
         }
     }
-    auto f = bind simplifier(ccx, _);
-    ret ty::fold_ty(ccx.tcx, f, typ);
+    ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
 }
 
 // Computes the size of the data part of a non-dynamically-sized tag.

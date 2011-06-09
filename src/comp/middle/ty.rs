@@ -697,10 +697,22 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
     walker(ty);
 }
 
-type ty_fold = fn(t) -> t;
+tag fold_mode {
+    fm_var(fn(int)->t);
+    fm_param(fn(uint)->t);
+    fm_general(fn(t)->t);
+}
 
-fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
+fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
     auto ty = ty_0;
+
+    // Fast paths.
+    alt (fld) {
+        case (fm_var(_)) { if (!type_contains_vars(cx, ty)) { ret ty; } }
+        case (fm_param(_)) { if (!type_contains_params(cx, ty)) { ret ty; } }
+        case (fm_general(_)) { /* no fast path */ }
+    }
+
     alt (struct(cx, ty)) {
         case (ty_nil)           { /* no-op */ }
         case (ty_bot)           { /* no-op */ }
@@ -788,11 +800,25 @@ fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
-        case (ty_var(_))         { /* no-op */ }
-        case (ty_param(_))       { /* no-op */ }
+        case (ty_var(?id)) {
+            alt (fld) {
+                case (fm_var(?folder)) { ty = folder(id); }
+                case (_) { /* no-op */ }
+            }
+        }
+        case (ty_param(?id)) {
+            alt (fld) {
+                case (fm_param(?folder)) { ty = folder(id); }
+                case (_) { /* no-op */ }
+            }
+        }
     }
 
-    ret fld(ty);
+    // If this is a general type fold, then we need to run it now.
+    alt (fld) {
+        case (fm_general(?folder)) { ret folder(ty); }
+        case (_) { ret ty; }
+    }
 }
 
 // Type utilities
@@ -2101,29 +2127,23 @@ mod unify {
     fn resolve_all_vars(&ty_ctxt tcx, &@var_bindings vb, t typ) -> t {
         if (!type_contains_vars(tcx, typ)) { ret typ; }
 
-        fn folder(ty_ctxt tcx, @var_bindings vb, t typ) -> t {
-            alt (struct(tcx, typ)) {
-                case (ty_var(?vid)) {
-                    // It's possible that we haven't even created the var set.
-                    // Handle this case gracefully.
-                    if ((vid as uint) >= ufind::set_count(vb.sets)) {
-                        ret typ;
-                    }
+        fn folder(ty_ctxt tcx, @var_bindings vb, int vid) -> t {
+            // It's possible that we haven't even created the var set.
+            // Handle this case gracefully.
+            if ((vid as uint) >= ufind::set_count(vb.sets)) {
+                ret ty::mk_var(tcx, vid);
+            }
 
-                    auto root_id = ufind::find(vb.sets, vid as uint);
-                    alt (smallintmap::find[t](vb.types, root_id)) {
-                        case (some[t](?typ2)) {
-                            ret fold_ty(tcx, bind folder(tcx, vb, _), typ2);
-                        }
-                        case (none[t]) { ret typ; }
-                    }
+            auto root_id = ufind::find(vb.sets, vid as uint);
+            alt (smallintmap::find[t](vb.types, root_id)) {
+                case (some[t](?typ2)) {
+                    ret fold_ty(tcx, fm_var(bind folder(tcx, vb, _)), typ2);
                 }
-
-                case (_) { ret typ; }
+                case (none[t]) { ret ty::mk_var(tcx, vid); }
             }
         }
 
-        ret fold_ty(tcx, bind folder(tcx, vb, _), typ);
+        ret fold_ty(tcx, fm_var(bind folder(tcx, vb, _)), typ);
     }
 
     // If the given type is a variable, returns the structure of that type.
@@ -2542,32 +2562,29 @@ mod unify {
 
     fn fixup_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> fixup_result {
         fn subst_vars(ty_ctxt tcx, @var_bindings vb,
-                      @mutable option::t[int] unresolved, t typ) -> t {
-            alt (struct(tcx, typ)) {
-                case (ty::ty_var(?vid)) {
-                    if ((vid as uint) >= ufind::set_count(vb.sets)) {
-                        *unresolved = some[int](vid);
-                        ret typ;
-                    }
+                      @mutable option::t[int] unresolved, int vid) -> t {
+            if ((vid as uint) >= ufind::set_count(vb.sets)) {
+                *unresolved = some[int](vid);
+                ret ty::mk_var(tcx, vid);
+            }
 
-                    auto root_id = ufind::find(vb.sets, vid as uint);
-                    alt (smallintmap::find[t](vb.types, root_id)) {
-                        case (none[t]) {
-                            *unresolved = some[int](vid);
-                            ret typ;
-                        }
-                        case (some[t](?rt)) {
-                            ret fold_ty(tcx,
-                                bind subst_vars(tcx, vb, unresolved, _), rt);
-                        }
-                    }
+            auto root_id = ufind::find(vb.sets, vid as uint);
+            alt (smallintmap::find[t](vb.types, root_id)) {
+                case (none[t]) {
+                    *unresolved = some[int](vid);
+                    ret ty::mk_var(tcx, vid);
                 }
-                case (_) { ret typ; }
+                case (some[t](?rt)) {
+                    ret fold_ty(tcx,
+                        fm_var(bind subst_vars(tcx, vb, unresolved, _)), rt);
+                }
             }
         }
 
         auto unresolved = @mutable none[int];
-        auto rty = fold_ty(tcx, bind subst_vars(tcx, vb, unresolved, _), typ);
+        auto rty = fold_ty(tcx,
+                           fm_var(bind subst_vars(tcx, vb, unresolved, _)),
+                           typ);
 
         auto ur = *unresolved;
         alt (ur) {
@@ -2641,8 +2658,7 @@ fn type_err_to_str(&ty::type_err err) -> str {
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
 fn bind_params_in_type(&ctxt cx, fn()->int next_ty_var, t typ,
-                       uint ty_param_count)
-        -> tup(vec[int], t) {
+                       uint ty_param_count) -> tup(vec[int], t) {
     let vec[int] param_var_ids = [];
     auto i = 0u;
     while (i < ty_param_count) {
@@ -2650,16 +2666,13 @@ fn bind_params_in_type(&ctxt cx, fn()->int next_ty_var, t typ,
         i += 1u;
     }
 
-    fn binder(ctxt cx, vec[int] param_var_ids, fn()->int next_ty_var, t typ)
-            -> t {
-        alt (struct(cx, typ)) {
-            case (ty_param(?index)) { ret mk_var(cx, param_var_ids.(index)); }
-            case (_) { ret typ; }
-        }
+    fn binder(ctxt cx, vec[int] param_var_ids, fn()->int next_ty_var,
+              uint index) -> t {
+        ret mk_var(cx, param_var_ids.(index));
     }
 
-    auto f = bind binder(cx, param_var_ids, next_ty_var, _);
-    auto new_typ = fold_ty(cx, f, typ);
+    auto new_typ = fold_ty(cx,
+        fm_param(bind binder(cx, param_var_ids, next_ty_var, _)), typ);
     ret tup(param_var_ids, new_typ);
 }
 
@@ -2668,14 +2681,11 @@ fn bind_params_in_type(&ctxt cx, fn()->int next_ty_var, t typ,
 fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
     if (!type_contains_params(cx, typ)) { ret typ; }
 
-    fn substituter(ctxt cx, vec[ty::t] substs, t typ) -> t {
-        alt (struct(cx, typ)) {
-            case (ty_param(?idx)) { ret substs.(idx); }
-            case (_) { ret typ; }
-        }
+    fn substituter(ctxt cx, vec[ty::t] substs, uint idx) -> t {
+        ret substs.(idx);
     }
 
-    ret fold_ty(cx, bind substituter(cx, substs, _), typ);
+    ret fold_ty(cx, fm_param(bind substituter(cx, substs, _)), typ);
 }
 
 fn def_has_ty_params(&ast::def def) -> bool {
