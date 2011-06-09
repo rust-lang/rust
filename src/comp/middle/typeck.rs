@@ -18,7 +18,6 @@ import middle::ty::field;
 import middle::ty::method;
 import middle::ty::mo_val;
 import middle::ty::mo_alias;
-import middle::ty::mo_either;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
@@ -1401,52 +1400,60 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(&@fn_ctxt fcx, &@ast::expr f,
+    fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
                           &vec[option::t[@ast::expr]] args) {
         // Check the function.
         check_expr(fcx, f);
 
-        // Check the arguments and generate the argument signature.
-        let vec[option::t[@ast::expr]] args_0 = [];
-        let vec[arg] arg_tys_0 = [];
+        // Get the function type. We need to have resolved it enough to know
+        // it's a ty_fn or ty_native_fn.
+        auto fty = expr_ty(fcx.ccx.tcx, f);
+        fty = ty::unify::resolve_all_vars(fcx.ccx.tcx, fcx.var_bindings, fty);
+
+        // Grab the argument types and the return type.
+        auto arg_tys;
+        alt (ty::struct(fcx.ccx.tcx, fty)) {
+            case (ty::ty_fn(_, ?arg_tys_0, _, _)) {
+                arg_tys = arg_tys_0;
+            }
+            case (ty::ty_native_fn(_, ?arg_tys_0, _)) {
+                arg_tys = arg_tys_0;
+            }
+            case (_) {
+                fcx.ccx.tcx.sess.span_err(f.span, "mismatched types: " +
+                    "expected function or native function but found " +
+                    ty_to_str(fcx.ccx.tcx, fty));
+            }
+        }
+
+        // Check that the correct number of arguments were supplied.
+        auto expected_arg_count = vec::len[ty::arg](arg_tys);
+        auto supplied_arg_count = vec::len[option::t[@ast::expr]](args);
+        if (expected_arg_count != supplied_arg_count) {
+            fcx.ccx.tcx.sess.span_err(sp,
+                #fmt("this function takes %u parameter%s but %u parameter%s \
+                     supplied",
+                     expected_arg_count,
+                     if (expected_arg_count == 1u) { "" } else { "s" },
+                     supplied_arg_count,
+                     if (supplied_arg_count == 1u) { " was" }
+                        else { "s were" }));
+        }
+
+        // Check the arguments.
+        // TODO: iter2
+        auto i = 0u;
         for (option::t[@ast::expr] a_opt in args) {
             alt (a_opt) {
                 case (some(?a)) {
                     check_expr(fcx, a);
-                    auto typ = expr_ty(fcx.ccx.tcx, a);
-                    vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
+                    demand::simple(fcx, a.span, arg_tys.(i).ty,
+                                   expr_ty(fcx.ccx.tcx, a));
                 }
-                case (none) {
-                    auto typ = next_ty_var(fcx);
-                    vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
-                }
+                case (none) { /* no-op */ }
             }
+            i += 1u;
         }
-
-        auto rt_0 = next_ty_var(fcx);
-        auto t_0;
-        alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f))) {
-            case (ty::ty_fn(?proto, _, _, ?cf))   {
-                t_0 = ty::mk_fn(fcx.ccx.tcx, proto, arg_tys_0, rt_0, cf);
-            }
-            case (ty::ty_native_fn(?abi, _, _))   {
-                t_0 = ty::mk_native_fn(fcx.ccx.tcx, abi, arg_tys_0, rt_0);
-            }
-            case (?u) {
-                fcx.ccx.tcx.sess.span_err(f.span,
-                    "check_call_or_bind(): fn expr doesn't have fn type,"
-                    + " instead having: " +
-                    ty_to_str(fcx.ccx.tcx,
-                              expr_ty(fcx.ccx.tcx, f)));
-            }
-        }
-
-        // Unify the callee and arguments.
-        auto f_ty = ty::expr_ty(fcx.ccx.tcx, f);
-        auto f_tps = ty::expr_ty_params_and_ty(fcx.ccx.tcx, f)._0;
-        auto tpt_1 = demand::full(fcx, f.span, f_ty, t_0, f_tps,
-                                  NO_AUTODEREF);
-        //replace_expr_type(fcx, f, tpt_1);
     }
 
     // A generic function for checking assignment expressions
@@ -1461,14 +1468,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     }
 
     // A generic function for checking call expressions
-    fn check_call(&@fn_ctxt fcx, &@ast::expr f, &vec[@ast::expr] args) {
+    fn check_call(&@fn_ctxt fcx, &span sp, &@ast::expr f,
+                  &vec[@ast::expr] args) {
         let vec[option::t[@ast::expr]] args_opt_0 = [];
         for (@ast::expr arg in args) {
             args_opt_0 += [some[@ast::expr](arg)];
         }
 
         // Call the generic checker.
-        check_call_or_bind(fcx, f, args_opt_0);
+        check_call_or_bind(fcx, sp, f, args_opt_0);
     }
 
     // A generic function for checking for or for-each loops
@@ -1861,7 +1869,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         case (ast::expr_bind(?f, ?args, ?a)) {
             // Call the generic checker.
-            check_call_or_bind(fcx, f, args);
+            check_call_or_bind(fcx, expr.span, f, args);
 
             // Pull the argument and return types out.
             auto proto_1;
@@ -1904,7 +1912,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             function name onto purity-designation */
             require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
 
-            check_call(fcx, f, args);
+            check_call(fcx, expr.span, f, args);
 
             // Pull the return type out of the type of the function.
             auto rt_1 = ty::mk_nil(fcx.ccx.tcx); // FIXME: typestate botch
@@ -1959,7 +1967,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
 
         case (ast::expr_spawn(_, _, ?f, ?args, ?a)) {
-            check_call(fcx, f, args);
+            check_call(fcx, expr.span, f, args);
 
             auto fty = expr_ty(fcx.ccx.tcx, f);
             auto ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
