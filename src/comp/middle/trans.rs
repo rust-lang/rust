@@ -5691,11 +5691,11 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
         }
 
         case (ast::expr_break(?a)) {
-            ret trans_break(cx);
+            ret trans_break(e.span, cx);
         }
 
         case (ast::expr_cont(?a)) {
-            ret trans_cont(cx);
+            ret trans_cont(e.span, cx);
         }
 
         case (ast::expr_ret(?e, _)) {
@@ -5972,7 +5972,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
     ret res(bcx, bcx.build.FastCall(llcallee, llargs));
 }
 
-fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
+fn trans_break_cont(&span sp, &@block_ctxt cx, bool to_end) -> result {
     auto bcx = cx;
     // Locate closest loop block, outputting cleanup as we go.
     auto cleanup_cx = cx;
@@ -5998,6 +5998,11 @@ fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
             case (_) {
                 alt ({cleanup_cx.parent}) {
                     case (parent_some(?cx)) { cleanup_cx = cx; }
+                    case (parent_none) {
+                        cx.fcx.lcx.ccx.sess.span_err(sp,
+                         (if (to_end) { "Break" } else { "Cont" })
+                          + " outside a loop");
+                    }
                 }
             }
         }
@@ -6007,12 +6012,12 @@ fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
     cx.fcx.lcx.ccx.sess.bug("in trans::trans_break_cont()");
 }
 
-fn trans_break(&@block_ctxt cx) -> result {
-    ret trans_break_cont(cx, true);
+fn trans_break(&span sp, &@block_ctxt cx) -> result {
+    ret trans_break_cont(sp, cx, true);
 }
 
-fn trans_cont(&@block_ctxt cx) -> result {
-    ret trans_break_cont(cx, false);
+fn trans_cont(&span sp, &@block_ctxt cx) -> result {
+    ret trans_break_cont(sp, cx, false);
 }
 
 
