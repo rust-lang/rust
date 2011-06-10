@@ -486,8 +486,8 @@ rust_str* c_str_to_rust(rust_task *task, char const *str) {
 
 extern "C" CDECL rust_vec*
 rust_list_files(rust_task *task, rust_str *path) {
-#if defined(__WIN32__)
     array_list<rust_str*> strings;
+#if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
     HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
@@ -496,11 +496,17 @@ rust_list_files(rust_task *task, rust_str *path) {
         } while (FindNextFile(hFind, &FindFileData));
         FindClose(hFind);
     }
-    return vec_alloc_with_data(task, strings.size(), strings.size(),
-                               sizeof(rust_str*), strings.data());
 #else
-    return NULL;
+  DIR *dirp = opendir((char*)path->data);
+  if (dirp) {
+      struct dirent *dp;
+      while ((dp = readdir(dirp)))
+          strings.push(c_str_to_rust(task, dp->d_name));
+      closedir(dirp);
+  }
 #endif
+  return vec_alloc_with_data(task, strings.size(), strings.size(),
+                             sizeof(rust_str*), strings.data());
 }
 
 #if defined(__WIN32__)
@@ -562,6 +568,6 @@ get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //

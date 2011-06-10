@@ -1009,7 +1009,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
                 popen(s);
                 fn print_meta(&ps s, &@ast::meta_item item) {
                     ibox(s, indent_unit);
-                    word_space(s, item.node.name);
+                    word_space(s, item.node.key);
                     word_space(s, "=");
                     print_string(s, item.node.value);
                     end(s);

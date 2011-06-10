@@ -14,6 +14,7 @@ import middle::trans;
 import middle::ty;
 import middle::ty::path_to_str;
 import back::x86;
+import back::link;
 import util::common;
 import pretty::ppaux::lit_to_str;
 
@@ -45,6 +46,12 @@ const uint tag_index_buckets = 0x12u;
 const uint tag_index_buckets_bucket = 0x13u;
 const uint tag_index_buckets_bucket_elt = 0x14u;
 const uint tag_index_table = 0x15u;
+
+const uint tag_meta_export = 0x16u;
+const uint tag_meta_local = 0x17u;
+const uint tag_meta_item = 0x18u;
+const uint tag_meta_item_key = 0x19u;
+const uint tag_meta_item_value = 0x20u;
 
 // Type encoding
 
@@ -717,11 +724,40 @@ fn write_int(&io::writer writer, &int n) {
 }
 
 
+fn encode_meta_items(&ebml::writer ebml_w, &ast::crate crate) {
+
+    fn encode_meta_item(&ebml::writer ebml_w, &ast::meta_item mi) {
+        ebml::start_tag(ebml_w, tag_meta_item);
+        ebml::start_tag(ebml_w, tag_meta_item_key);
+        ebml_w.writer.write(str::bytes(mi.node.key));
+        ebml::end_tag(ebml_w);
+        ebml::start_tag(ebml_w, tag_meta_item_value);
+        ebml_w.writer.write(str::bytes(mi.node.value));
+        ebml::end_tag(ebml_w);
+        ebml::end_tag(ebml_w);
+    }
+
+    ebml::start_tag(ebml_w, tag_meta_export);
+    for each (@ast::meta_item mi in link::crate_export_metas(crate)) {
+        encode_meta_item(ebml_w, *mi);
+    }
+    ebml::end_tag(ebml_w);
+
+    ebml::start_tag(ebml_w, tag_meta_local);
+    for each (@ast::meta_item mi in link::crate_local_metas(crate)) {
+        encode_meta_item(ebml_w, *mi);
+    }
+    ebml::end_tag(ebml_w);
+}
+
 fn encode_metadata(&@trans::crate_ctxt cx, &@ast::crate crate)
         -> ValueRef {
     auto string_w = io::string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
     auto ebml_w = ebml::create_writer(buf_w);
+
+    // Encode the meta items
+    encode_meta_items(ebml_w, *crate);
 
     // Encode and index the paths.
     ebml::start_tag(ebml_w, tag_paths);
