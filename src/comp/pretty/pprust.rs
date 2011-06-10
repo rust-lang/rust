@@ -463,9 +463,14 @@ fn print_expr(&ps s, &@ast::expr expr) {
     }
 
     alt (expr.node) {
-        case (ast::expr_vec(?exprs,?mut,_)) {
+        case (ast::expr_vec(?exprs,?mut,?kind,_)) {
             ibox(s, indent_unit);
-            word(s.s, "[");
+
+            alt (kind) {
+                case (ast::sk_rc) { word(s.s, "["); }
+                case (ast::sk_unique) { word(s.s, "~["); }
+            }
+
             if (mut == ast::mut) {
                 word_nbsp(s, "mutable");
             }

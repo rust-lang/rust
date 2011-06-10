@@ -225,7 +225,10 @@ fn print_literal(&ps s, &@ast::lit lit) {
     }
 
     alt (lit.node) {
-        case (ast::lit_str(?st)) {print_string(s, st);}
+        case (ast::lit_str(?st,?kind)) {
+            if (kind == ast::sk_unique) { word(s.s, "~"); }
+            print_string(s, st);
+        }
         case (ast::lit_char(?ch)) {
             word(s.s, "'" + escape_str(str::from_bytes([ch as u8]), '\'')
                 + "'");

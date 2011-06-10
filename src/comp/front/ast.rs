@@ -247,9 +247,15 @@ tag spawn_dom {
     dom_thread;
 }
 
+// FIXME: temporary
+tag seq_kind {
+    sk_unique;
+    sk_rc;
+}
+
 type expr = spanned[expr_];
 tag expr_ {
-    expr_vec(vec[@expr], mutability, ann);
+    expr_vec(vec[@expr], mutability, seq_kind, ann);
     expr_tup(vec[elt], ann);
     expr_rec(vec[field], option::t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
@@ -294,7 +300,7 @@ tag expr_ {
 
 type lit = spanned[lit_];
 tag lit_ {
-    lit_str(str);
+    lit_str(str, seq_kind);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);

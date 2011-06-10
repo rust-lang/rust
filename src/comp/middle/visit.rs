@@ -246,7 +246,7 @@ fn visit_exprs[E](vec[@expr] exprs, &E e, &vt[E] v) {
 
 fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
     alt (ex.node) {
-        case (expr_vec(?es, _, _)) {
+        case (expr_vec(?es, _, _, _)) {
             visit_exprs(es, e, v);
         }
         case (expr_tup(?elts, _)) {

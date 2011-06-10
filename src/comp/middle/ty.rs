@@ -1580,7 +1580,7 @@ fn item_ann(&@ast::item it) -> ast::ann {
 
 fn expr_ann(&@ast::expr e) -> ast::ann {
     alt (e.node) {
-        case (ast::expr_vec(_,_,?a)) { ret a; }
+        case (ast::expr_vec(_,_,_,?a)) { ret a; }
         case (ast::expr_tup(_,?a)) { ret a; }
         case (ast::expr_rec(_,_,?a)) { ret a; }
         case (ast::expr_call(_,_,?a)) { ret a; }
@@ -2139,6 +2139,7 @@ mod unify {
             case (ty::ty_float)      { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_char)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_str)        { ret struct_cmp(cx, expected, actual); }
+            case (ty::ty_istr)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_type)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_native)     { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_param(_))   { ret struct_cmp(cx, expected, actual); }
@@ -2227,6 +2228,33 @@ mod unify {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
                                 ret ures_ok(mk_vec(cx.tcx, mt));
+                            }
+                            case (_) {
+                                ret result;
+                            }
+                        }
+                    }
+
+                    case (_) { ret ures_err(terr_mismatch); }
+                }
+            }
+
+            case (ty::ty_ivec(?expected_mt)) {
+                alt (struct(cx.tcx, actual)) {
+                    case (ty::ty_ivec(?actual_mt)) {
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none) { ret ures_err(terr_vec_mutability); }
+                            case (some(?m)) { mut = m; }
+                        }
+
+                        auto result = unify_step(cx,
+                                                 expected_mt.ty,
+                                                 actual_mt.ty);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                auto mt = rec(ty=result_sub, mut=mut);
+                                ret ures_ok(mk_ivec(cx.tcx, mt));
                             }
                             case (_) {
                                 ret result;

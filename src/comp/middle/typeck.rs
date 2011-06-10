@@ -1259,7 +1259,8 @@ fn replace_node_type_only(&ty::ctxt tcx, uint fixup, ty::t new_t) {
 
 fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
     alt (lit.node) {
-        case (ast::lit_str(_))              { ret ty::mk_str(ccx.tcx); }
+        case (ast::lit_str(_, ast::sk_rc))     { ret ty::mk_str(ccx.tcx); }
+        case (ast::lit_str(_, ast::sk_unique)) { ret ty::mk_istr(ccx.tcx); }
         case (ast::lit_char(_))             { ret ty::mk_char(ccx.tcx); }
         case (ast::lit_int(_))              { ret ty::mk_int(ccx.tcx);  }
         case (ast::lit_float(_))            { ret ty::mk_float(ccx.tcx);  }
@@ -1334,9 +1335,9 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                     fcx.ccx.tcx.sess.span_err(pat.span, #fmt(
   "this pattern has %u field%s, but the corresponding variant has %u field%s",
                         subpats_len,
-                        if (subpats_len == 0u) { "" } else { "s" },
+                        if (subpats_len == 1u) { "" } else { "s" },
                         arg_len,
-                        if (arg_len == 0u) { "" } else { "s" }));
+                        if (arg_len == 1u) { "" } else { "s" }));
                 }
 
                 // TODO: vec::iter2
@@ -1352,7 +1353,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                 fcx.ccx.tcx.sess.span_err(pat.span, #fmt(
 "this pattern has %u field%s, but the corresponding variant has no fields",
                     subpats_len,
-                    if (subpats_len == 0u) { "" } else { "s" }));
+                    if (subpats_len == 1u) { "" } else { "s" }));
             }
 
             write::ty_fixup(fcx, ann.id, path_tpot);
@@ -2025,7 +2026,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::ty_only_fixup(fcx, a.id, t_1);
         }
 
-        case (ast::expr_vec(?args, ?mut, ?a)) {
+        case (ast::expr_vec(?args, ?mut, ?kind, ?a)) {
             let ty::t t;
             if (vec::len[@ast::expr](args) == 0u) {
                 t = next_ty_var(fcx);
@@ -2040,7 +2041,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 demand::simple(fcx, expr.span, t, expr_t);
             }
 
-            auto typ = ty::mk_vec(fcx.ccx.tcx, rec(ty=t, mut=mut));
+            auto typ;
+            alt (kind) {
+                case (ast::sk_rc) {
+                    typ = ty::mk_vec(fcx.ccx.tcx, rec(ty=t, mut=mut));
+                }
+                case (ast::sk_unique) {
+                    typ = ty::mk_ivec(fcx.ccx.tcx, rec(ty=t, mut=mut));
+                }
+            }
+
             write::ty_only_fixup(fcx, a.id, typ);
         }
 

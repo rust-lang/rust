@@ -682,7 +682,7 @@ fn parse_lit(&parser p) -> ast::lit {
             }
             case (token::LIT_STR(?s)) {
                 p.bump();
-                lit = ast::lit_str(p.get_str(s));
+                lit = ast::lit_str(p.get_str(s), ast::sk_rc);
             }
             case (?t) {
                 unexpected(p, t);
@@ -826,7 +826,30 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         auto es = parse_seq_to_end[@ast::expr](token::RBRACKET,
                                                some(token::COMMA),
                                                pf, p);
-        ex = ast::expr_vec(es, mut, p.get_ann());
+        ex = ast::expr_vec(es, mut, ast::sk_rc, p.get_ann());
+    } else if (p.peek() == token::TILDE) {
+        p.bump();
+        alt (p.peek()) {
+            case (token::LBRACKET) {    // unique array (temporary)
+                p.bump();
+                auto mut = parse_mutability(p);
+                auto es = parse_seq_to_end(token::RBRACKET,
+                                           some(token::COMMA), parse_expr, p);
+                ex = ast::expr_vec(es, mut, ast::sk_unique, p.get_ann());
+            }
+            case (token::LIT_STR(?s)) {
+                p.bump();
+                auto lit = @rec(
+                    node=ast::lit_str(p.get_str(s), ast::sk_unique),
+                    span=p.get_span()
+                );
+                ex = ast::expr_lit(lit, p.get_ann());
+            }
+            case (_) {
+                p.get_session().span_unimpl(p.get_span(),
+                    "unique pointer creation");
+            }
+        }
     } else if (eat_word(p, "obj")) {
         // Anonymous object
 
@@ -1632,7 +1655,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
         }
         case (ast::stmt_expr(?e,_)) {
             alt (e.node) {
-                case (ast::expr_vec(_,_,_))      { ret true; }
+                case (ast::expr_vec(_,_,_,_))    { ret true; }
                 case (ast::expr_tup(_,_))        { ret true; }
                 case (ast::expr_rec(_,_,_))      { ret true; }
                 case (ast::expr_call(_,_,_))     { ret true; }

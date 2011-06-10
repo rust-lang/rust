@@ -49,12 +49,8 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
     alt (expr.node) {
         case (ast::expr_lit(?l, _)) {
             alt (l.node) {
-                case (ast::lit_str(?s)) {
-                    ret s;
-                }
-                case (_) {
-                    cx.span_err(l.span, err_msg);
-                }
+                case (ast::lit_str(?s,_)) { ret s; }
+                case (_) { cx.span_err(l.span, err_msg); }
             }
         }
         case (_) {
@@ -77,7 +73,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp,
     }
 
     fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
-        auto lit = ast::lit_str(s);
+        auto lit = ast::lit_str(s, ast::sk_rc);
         ret make_new_lit(cx, sp, lit);
     }
 
@@ -109,7 +105,8 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp,
 
     fn make_vec_expr(&ext_ctxt cx, common::span sp, vec[@ast::expr] exprs)
             -> @ast::expr {
-        auto vecexpr = ast::expr_vec(exprs, ast::imm, cx.next_ann());
+        auto vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_rc,
+                                     cx.next_ann());
         auto sp_vecexpr = @rec(node=vecexpr, span=sp);
         ret sp_vecexpr;
     }

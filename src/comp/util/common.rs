@@ -233,9 +233,11 @@ fn local_rhs_span(&@ast::local l, &span def) -> span {
 
 fn lit_eq(&@ast::lit l, &@ast::lit m) -> bool {
     alt (l.node) {
-        case (ast::lit_str(?s)) {
+        case (ast::lit_str(?s,?kind_s)) {
             alt (m.node) {
-                case (ast::lit_str(?t)) { ret s == t; }
+                case (ast::lit_str(?t,?kind_t)) {
+                    ret s == t && kind_s == kind_t;
+                }
                 case (_)           { ret false; }
             }
         }

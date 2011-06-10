@@ -104,7 +104,7 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
     alt (lit.node) {
         case (ast::lit_bool(?b)) { ret val_bool(b); }
         case (ast::lit_int(?i)) { ret val_int(i); }
-        case (ast::lit_str(?s)) { ret val_str(s); }
+        case (ast::lit_str(?s,_)) { ret val_str(s); }
         case (_) {
             cx.sess.span_err(sp, "evaluating unsupported literal");
         }

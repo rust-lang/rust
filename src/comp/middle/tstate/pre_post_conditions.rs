@@ -265,7 +265,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
         }
-        case (expr_vec(?args, _, ?a)) {
+        case (expr_vec(?args, _, _, ?a)) {
             find_pre_post_exprs(fcx, args, a);
         }
         case (expr_tup(?elts, ?a)) {

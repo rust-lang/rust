@@ -143,7 +143,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
   /* FIXME could get rid of some of the copy/paste */
   alt (e.node) {
-    case (expr_vec(?elts, _, ?a)) {
+    case (expr_vec(?elts, _, _, ?a)) {
         ret find_pre_post_state_exprs(fcx, pres, a, elts); 
     }
     case (expr_tup(?elts, ?a)) {

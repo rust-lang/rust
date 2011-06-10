@@ -321,7 +321,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
     if (!v.keep_going()) { ret; }
     v.visit_expr_pre(e);
     alt (e.node) {
-        case (ast::expr_vec(?es, _, _)) {
+        case (ast::expr_vec(?es, _, _, _)) {
             walk_exprs(v, es);
         }
         case (ast::expr_tup(?elts, _)) {

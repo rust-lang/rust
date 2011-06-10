@@ -3365,7 +3365,7 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit, &ast::ann ann) -> ValueRef {
         case (ast::lit_nil) {
             ret C_nil();
         }
-        case (ast::lit_str(?s)) {
+        case (ast::lit_str(?s, _)) {
             ret C_str(cx, s);
         }
     }
@@ -5619,7 +5619,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             ret trans_cast(cx, e, ann);
         }
 
-        case (ast::expr_vec(?args, _, ?ann)) {
+        case (ast::expr_vec(?args, _, _, ?ann)) {
             ret trans_vec(cx, args, ann);
         }
 
