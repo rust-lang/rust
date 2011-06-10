@@ -330,6 +330,10 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
             derive_flags_mt(cx, has_params, has_vars, m);
         }
 
+        case (ty_ptr(?m)) {
+            derive_flags_mt(cx, has_params, has_vars, m);
+        }
+
         case (ty_port(?tt)) {
             derive_flags_t(cx, has_params, has_vars, tt);
         }
