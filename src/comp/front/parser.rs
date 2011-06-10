@@ -1172,13 +1172,6 @@ fn parse_prefix_expr(&parser p) -> @ast::expr {
             ex = ast::expr_unary(ast::not, e, p.get_ann());
         }
 
-        case (token::TILDE) {
-            p.bump();
-            auto e = parse_prefix_expr(p);
-            hi = e.span.hi;
-            ex = ast::expr_unary(ast::bitnot, e, p.get_ann());
-        }
-
         case (token::BINOP(?b)) {
             alt (b) {
                 case (token::MINUS) {

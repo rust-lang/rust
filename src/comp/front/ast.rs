@@ -183,7 +183,6 @@ fn binop_to_str(binop op) -> str {
 tag unop {
     box(mutability);
     deref;
-    bitnot;
     not;
     neg;
 }
@@ -195,7 +194,6 @@ fn unop_to_str(unop op) -> str {
             ret "@";
         }
         case (deref) {ret "*";}
-        case (bitnot) {ret "~";}
         case (not) {ret "!";}
         case (neg) {ret "-";}
     }

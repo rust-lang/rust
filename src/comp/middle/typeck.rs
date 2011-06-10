@@ -1580,6 +1580,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         }
                     }
                 }
+                case (ast::not) {
+                    if (!type_is_integral(fcx, oper.span, oper_t) &&
+                            structure_of(fcx, oper.span, oper_t)
+                                != ty::ty_bool) {
+                        fcx.ccx.tcx.sess.span_err(expr.span,
+                            #fmt("mismatched types: expected bool or \
+                            integer but found %s",
+                            ty_to_str(fcx.ccx.tcx, oper_t)));
+                    }
+                }
                 case (_) { oper_t = strip_boxes(fcx, expr.span, oper_t); }
             }
 

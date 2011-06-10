@@ -110,7 +110,7 @@ fn mk_sha1() -> sha1 {
         t = 0;
         while (t < 20) {
             temp = circular_shift(5u32, a)
-                + ((b & c) | ((~b) & d)) + e + w.(t) + k0;
+                + ((b & c) | ((!b) & d)) + e + w.(t) + k0;
             e = d;
             d = c;
             c = circular_shift(30u32, b);

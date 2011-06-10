@@ -32,11 +32,7 @@ fn uint_bits() -> uint {
 }
 
 fn create(uint nbits, bool init) -> t {
-    auto elt = if (init) {
-        ~0u
-    } else {
-        0u
-    };
+    auto elt = if (init) { !0u } else { 0u };
 
     auto storage = vec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
     ret rec(storage = storage, nbits = nbits);
@@ -139,7 +135,7 @@ fn set_all(&t v) {
 
 fn invert(&t v) {
     for each (uint i in uint::range(0u, vec::len(v.storage))) {
-        v.storage.(i) = ~v.storage.(i);
+        v.storage.(i) = !v.storage.(i);
     }
 }
 
@@ -163,7 +159,7 @@ fn set(&t v, uint i, bool x) {
     v.storage.(w) = if (x) {
         v.storage.(w) | flag
     } else {
-        v.storage.(w) & ~flag
+        v.storage.(w) & !flag
     };
 }
 

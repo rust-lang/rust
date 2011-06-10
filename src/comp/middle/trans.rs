@@ -3388,11 +3388,6 @@ fn trans_unary(&@block_ctxt cx, ast::unop op,
     auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
 
     alt (op) {
-        case (ast::bitnot) {
-            sub = autoderef(sub.bcx, sub.val,
-                            ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
-            ret res(sub.bcx, sub.bcx.build.Not(sub.val));
-        }
         case (ast::not) {
             sub = autoderef(sub.bcx, sub.val,
                             ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
