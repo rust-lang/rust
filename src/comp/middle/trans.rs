@@ -86,8 +86,7 @@ state obj namegen(mutable int i) {
 type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
 
 type glue_fns = rec(ValueRef yield_glue,
-                    ValueRef no_op_type_glue,
-                    ValueRef vec_append_glue);
+                    ValueRef no_op_type_glue);
 
 type tydesc_info = rec(ty::t ty,
                        ValueRef tydesc,
@@ -3540,7 +3539,7 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t,
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
     auto src = bcx.build.PointerCast(rhs, T_opaque_vec_ptr());
 
-    ret res(bcx, bcx.build.FastCall(cx.fcx.lcx.ccx.glues.vec_append_glue,
+    ret res(bcx, bcx.build.Call(cx.fcx.lcx.ccx.upcalls.vec_append,
                                     [cx.fcx.lltaskptr,
                                         llvec_tydesc.val,
                                         llelt_tydesc.val,
@@ -8252,39 +8251,6 @@ fn make_no_op_type_glue(ValueRef fun) {
     new_builder(llbb).RetVoid();
 }
 
-fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
-    /*
-     * Args to vec_append_glue:
-     *
-     *   0. (Implicit) task ptr
-     *
-     *   1. Pointer to the tydesc of the vec, so that we can tell if it's gc
-     *      mem, and have a tydesc to pass to malloc if we're allocating anew.
-     *
-     *   2. Pointer to the tydesc of the vec's stored element type, so that
-     *      elements can be copied to a newly alloc'ed vec if one must be
-     *      created.
-     *
-     *   3. Dst vec ptr (i.e. ptr to ptr to rust_vec).
-     *
-     *   4. Src vec (i.e. ptr to rust_vec).
-     *
-     *   5. Flag indicating whether to skip trailing null on dst.
-     *
-     */
-
-    auto ty = T_fn([T_taskptr(tn),
-                       T_ptr(T_tydesc(tn)),
-                       T_ptr(T_tydesc(tn)),
-                       T_ptr(T_opaque_vec_ptr()),
-                       T_opaque_vec_ptr(), T_bool()],
-                   T_void());
-
-    auto llfn = decl_fastcall_fn(llmod, abi::vec_append_glue_name(), ty);
-    ret llfn;
-}
-
-
 fn vec_fill(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     ret bcx.build.Load(bcx.build.GEP(v, [C_int(0),
                                             C_int(abi::vec_elt_fill)]));
@@ -8298,8 +8264,7 @@ fn vec_p0(&@block_ctxt bcx, ValueRef v) -> ValueRef {
 
 fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
     ret @rec(yield_glue = decl_glue(llmod, tn, abi::yield_glue_name()),
-             no_op_type_glue = decl_no_op_type_glue(llmod, tn),
-             vec_append_glue = make_vec_append_glue(llmod, tn));
+             no_op_type_glue = decl_no_op_type_glue(llmod, tn));
 }
 
 fn make_common_glue(&session::session sess, &str output) {
