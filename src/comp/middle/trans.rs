@@ -8255,37 +8255,10 @@ fn vec_fill(&@block_ctxt bcx, ValueRef v) -> ValueRef {
                                             C_int(abi::vec_elt_fill)]));
 }
 
-fn put_vec_fill(&@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
-    ret bcx.build.Store(fill,
-                        bcx.build.GEP(v,
-                                      [C_int(0),
-                                          C_int(abi::vec_elt_fill)]));
-}
-
-fn vec_fill_adjusted(&@block_ctxt bcx, ValueRef v,
-                     ValueRef skipnull) -> ValueRef {
-    auto f = bcx.build.Load(bcx.build.GEP(v,
-                                          [C_int(0),
-                                              C_int(abi::vec_elt_fill)]));
-    ret bcx.build.Select(skipnull, bcx.build.Sub(f, C_int(1)), f);
-}
-
 fn vec_p0(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     auto p = bcx.build.GEP(v, [C_int(0),
                                   C_int(abi::vec_elt_data)]);
     ret bcx.build.PointerCast(p, T_ptr(T_i8()));
-}
-
-
-fn vec_p1(&@block_ctxt bcx, ValueRef v) -> ValueRef {
-    auto len = vec_fill(bcx, v);
-    ret bcx.build.GEP(vec_p0(bcx, v), [len]);
-}
-
-fn vec_p1_adjusted(&@block_ctxt bcx, ValueRef v,
-                   ValueRef skipnull) -> ValueRef {
-    auto len = vec_fill_adjusted(bcx, v, skipnull);
-    ret bcx.build.GEP(vec_p0(bcx, v), [len]);
 }
 
 fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
