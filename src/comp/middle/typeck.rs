@@ -219,6 +219,16 @@ fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
+    alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
+        case (some[option::t[ty::t]](some[ty::t](?ty))) { ret ty; } 
+        case (some[option::t[ty::t]](none)) {
+            tcx.sess.span_err(ast_ty.span, "illegal recursive type "
+                + "(insert a tag in the cycle, if this is desired)");
+        }
+        case (none[option::t[ty::t]]) { } /* go on */
+    }
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, none[ty::t]);
+    
     fn ast_arg_to_arg(&ty::ctxt tcx,
                       &ty_getter getter,
                       &ast::ty_arg arg)
@@ -369,6 +379,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::rename(tcx, typ, cname_str);
         }
     }
+
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
 }
 
