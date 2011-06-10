@@ -226,7 +226,7 @@ fn grow_set[T](&mutable vec[mutable T] v, uint index, &T initval, &T val) {
     v.(index) = val;
 }
 
-fn grow_init_fn[T](&array[T] v, uint n, fn()->T init_fn) {
+fn grow_init_fn[T](&mutable array[T] v, uint n, fn()->T init_fn) {
     let uint i = n;
     while (i > 0u) {
         i -= 1u;
@@ -345,7 +345,7 @@ fn clone[T](&vec[T] v) -> vec[T] {
     ret slice[T](v, 0u, len[T](v));
 }
 
-fn plus_option[T](&vec[T] v, &option::t[T] o) -> () {
+fn plus_option[T](&mutable vec[T] v, &option::t[T] o) -> () {
     alt (o) {
         case (none) {}
         case (some(?x)) { v += [x]; }

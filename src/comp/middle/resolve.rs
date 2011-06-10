@@ -806,15 +806,16 @@ fn lookup_in_local_native_mod(&env e, def_id defid, &span sp,
 fn lookup_in_local_mod(&env e, def_id defid, &span sp, 
                        &ident id, namespace ns, dir dr) -> option::t[def] {
     auto info = e.mod_map.get(defid._1);
-     if (dr == outside && !ast::is_exported(id, option::get(info.m))) {
+    if (dr == outside && !ast::is_exported(id, option::get(info.m))) {
          // if we're in a native mod, then dr==inside, so info.m is some _mod
          ret none[def]; // name is not visible
-     }
+    }
     alt(info.index.find(id)) {
         case (none) { }
-        case (some(?lst)) {
+        case (some(?lst_)) {
+            auto lst = lst_;
             while (true) {
-                alt ({lst}) {
+                alt (lst) {
                     case (nil) { break; }
                     case (cons(?hd, ?tl)) {
                         auto found = lookup_in_mie(e, hd, ns);
@@ -1070,7 +1071,7 @@ fn check_for_collisions(&@env e, &ast::crate c) {
     visit::visit_crate(c, (), visit::vtor(v));
 }
 
-fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
+fn check_mod_name(&env e, &ident name, list[mod_index_entry] entries) {
     auto saw_mod = false; auto saw_type = false; auto saw_value = false;
 
     fn dup(&env e, &span sp, &str word, &ident name) {
@@ -1078,7 +1079,7 @@ fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
     }
 
     while (true) {
-        alt ({entries}) {
+        alt (entries) {
             case (cons(?entry, ?rest)) {
                 if (!option::is_none(lookup_in_mie(e, entry, ns_value))) {
                     if (saw_value) { dup(e, mie_span(entry), "", name); }

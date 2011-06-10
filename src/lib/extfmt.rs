@@ -85,7 +85,7 @@ mod ct {
         auto lim = str::byte_len(s);
         auto buf = "";
 
-        fn flush_buf(str buf, &vec[piece] pieces) -> str {
+        fn flush_buf(str buf, &mutable vec[piece] pieces) -> str {
             if (str::byte_len(buf) > 0u) {
                 auto piece = piece_string(buf);
                 pieces += [piece];

@@ -585,15 +585,15 @@ fn lookup_defs(session::session sess, int cnum, vec[ast::ident] path)
     auto data = sess.get_external_crate(cnum).data;
 
     ret vec::map(bind lookup_def(cnum, data, _),
-                  resolve_path(path, data));
+                 resolve_path(path, data));
 }
 
 // FIXME doesn't yet handle re-exported externals
-fn lookup_def(int cnum, vec[u8] data, &ast::def_id did) -> ast::def {
-    auto item = lookup_item(did._1, data);
+fn lookup_def(int cnum, vec[u8] data, &ast::def_id did_) -> ast::def {
+    auto item = lookup_item(did_._1, data);
     auto kind_ch = item_kind(item);
 
-    did = tup(cnum, did._1);
+    auto did = tup(cnum, did_._1);
 
     auto def = alt (kind_ch as char) {
         case ('c') { ast::def_const(did) }

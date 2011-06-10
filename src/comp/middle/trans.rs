@@ -3285,11 +3285,11 @@ fn copy_val(&@block_ctxt cx,
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
 // doesn't need to be dropped.
-fn move_val(&@block_ctxt cx,
-           copy_action action,
-           ValueRef dst,
-           ValueRef src,
-           &ty::t t) -> result {
+fn move_val(@block_ctxt cx,
+            copy_action action,
+            ValueRef dst,
+            ValueRef src,
+            &ty::t t) -> result {
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, cx.build.Store(src, dst));
@@ -5717,7 +5717,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
     ret res(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
 }
 
-fn with_out_method(fn(&out_method) -> result work, &@block_ctxt cx,
+fn with_out_method(fn(&out_method) -> result work, @block_ctxt cx,
                    &ast::ann ann, &out_method outer_output) -> result {
     auto ccx = cx.fcx.lcx.ccx;
     if (outer_output != return) {
