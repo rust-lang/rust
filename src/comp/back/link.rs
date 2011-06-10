@@ -279,7 +279,7 @@ mod write {
  */
 
 
-iter crate_export_metas(ast::crate c) -> @ast::meta_item {
+iter crate_export_metas(&ast::crate c) -> @ast::meta_item {
     for (@ast::crate_directive cdir in c.node.directives) {
         alt (cdir.node) {
             case (ast::cdir_meta(?v, ?mis)) {
@@ -293,12 +293,30 @@ iter crate_export_metas(ast::crate c) -> @ast::meta_item {
         }
     }
 }
-fn get_crate_meta(&session::session sess,
-                  &ast::crate c, str k, str default,
-                  bool warn_default) -> str {
+
+
+iter crate_local_metas(&ast::crate c) -> @ast::meta_item {
+    for (@ast::crate_directive cdir in c.node.directives) {
+        alt (cdir.node) {
+            case (ast::cdir_meta(?v, ?mis)) {
+                if (v == ast::local_meta) {
+                    for (@ast::meta_item mi in mis) {
+                        put mi;
+                    }
+                }
+            }
+            case (_) {}
+        }
+    }
+}
+
+
+fn get_crate_meta_export(&session::session sess,
+                         &ast::crate c, str k, str default,
+                         bool warn_default) -> str {
     let vec[@ast::meta_item] v = [];
     for each (@ast::meta_item mi in crate_export_metas(c)) {
-        if (mi.node.name == k) {
+        if (mi.node.key == k) {
             v += [mi];
         }
     }
@@ -323,7 +341,7 @@ fn get_crate_meta(&session::session sess,
 fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     fn lteq(&@ast::meta_item ma,
             &@ast::meta_item mb) -> bool {
-        ret ma.node.name <= mb.node.name;
+        ret ma.node.key <= mb.node.key;
     }
 
     fn len_and_str(&str s) -> str {
@@ -332,8 +350,8 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
 
     let vec[mutable @ast::meta_item] v = [mutable];
     for each (@ast::meta_item mi in crate_export_metas(crate)) {
-        if (mi.node.name != "name" &&
-            mi.node.name != "vers") {
+        if (mi.node.key != "name" &&
+            mi.node.key != "vers") {
             v += [mutable mi];
         }
     }
@@ -341,7 +359,7 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     sha.reset();
     for (@ast::meta_item m_ in v) {
         auto m = m_;
-        sha.input_str(len_and_str(m.node.name));
+        sha.input_str(len_and_str(m.node.key));
         sha.input_str(len_and_str(m.node.value));
     }
     ret truncated_sha1_result(sha);
@@ -352,13 +370,13 @@ fn crate_meta_name(&session::session sess, &ast::crate crate,
     auto os = str::split(fs::basename(output), '.' as u8);
     assert vec::len(os) >= 2u;
     vec::pop(os);
-    ret get_crate_meta(sess, crate, "name", str::connect(os, "."),
-                       sess.get_opts().shared);
+    ret get_crate_meta_export(sess, crate, "name", str::connect(os, "."),
+                              sess.get_opts().shared);
 }
 
 fn crate_meta_vers(&session::session sess, &ast::crate crate) -> str {
-    ret get_crate_meta(sess, crate, "vers", "0.0",
-                       sess.get_opts().shared);
+    ret get_crate_meta_export(sess, crate, "vers", "0.0",
+                              sess.get_opts().shared);
 }
 
 fn truncated_sha1_result(sha1 sha) -> str {

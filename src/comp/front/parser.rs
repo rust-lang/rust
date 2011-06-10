@@ -1992,18 +1992,24 @@ fn parse_native_mod_items(&parser p, &str native_name,
             items=items);
 }
 
-fn default_native_name(session::session sess, str id) -> str {
+fn default_native_lib_naming(session::session sess)
+    -> rec(str prefix, str suffix) {
     alt (sess.get_targ_cfg().os) {
         case (session::os_win32) {
-            ret id + ".dll";
+            ret rec(prefix="", suffix=".dll");
         }
         case (session::os_macos) {
-            ret "lib" + id + ".dylib";
+            ret rec(prefix="lib", suffix=".dylib");
         }
         case (session::os_linux) {
-            ret "lib" + id + ".so";
+            ret rec(prefix="lib", suffix=".so");
         }
     }
+}
+
+fn default_native_name(session::session sess, str id) -> str {
+    auto n = default_native_lib_naming(sess);
+    ret n.prefix + id + n.suffix;
 }
 
 fn parse_item_native_mod(&parser p) -> @ast::item {
@@ -2194,7 +2200,7 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
         case (token::LIT_STR(?s)) {
             auto hi = p.get_hi_pos();
             p.bump();
-            ret @spanned(lo, hi, rec(name = ident,
+            ret @spanned(lo, hi, rec(key = ident,
                                      value = p.get_str(s)));
         }
         case (_) {
