@@ -159,6 +159,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('c') { ret ty::mk_char(st.tcx); }
         case ('s') { ret ty::mk_str(st.tcx); }
+        case ('S') { ret ty::mk_istr(st.tcx); }
         case ('t') {
             assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
@@ -173,6 +174,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('@') { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
         case ('*') { ret ty::mk_ptr(st.tcx, parse_mt(st, sd)); }
         case ('V') { ret ty::mk_vec(st.tcx, parse_mt(st, sd)); }
+        case ('I') { ret ty::mk_ivec(st.tcx, parse_mt(st, sd)); }
         case ('a') { ret ty::mk_task(st.tcx); }
         case ('P') { ret ty::mk_port(st.tcx, parse_ty(st, sd)); }
         case ('C') { ret ty::mk_chan(st.tcx, parse_ty(st, sd)); }

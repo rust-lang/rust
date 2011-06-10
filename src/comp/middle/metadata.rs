@@ -174,6 +174,7 @@ mod Encode {
             }
             case (ty::ty_char) {w.write_char('c');}
             case (ty::ty_str) {w.write_char('s');}
+            case (ty::ty_istr) {w.write_char('S');}
             case (ty::ty_tag(?def,?tys)) {
                 w.write_str("t[");
                 w.write_str(cx.ds(def));
@@ -186,6 +187,7 @@ mod Encode {
             case (ty::ty_box(?mt)) {w.write_char('@'); enc_mt(w, cx, mt); }
             case (ty::ty_ptr(?mt)) {w.write_char('*'); enc_mt(w, cx, mt); }
             case (ty::ty_vec(?mt)) {w.write_char('V'); enc_mt(w, cx, mt); }
+            case (ty::ty_ivec(?mt)) {w.write_char('I'); enc_mt(w, cx, mt); }
             case (ty::ty_port(?t)) {w.write_char('P'); enc_ty(w, cx, t); }
             case (ty::ty_chan(?t)) {w.write_char('C'); enc_ty(w, cx, t); }
             case (ty::ty_tup(?mts)) {

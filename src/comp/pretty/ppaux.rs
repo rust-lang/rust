@@ -96,22 +96,24 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     auto s = "";
 
     alt (struct(cx, typ)) {
-        case (ty_native)       { s += "native";                         }
-        case (ty_nil)          { s += "()";                             }
-        case (ty_bot)          { s += "_|_";                            }
-        case (ty_bool)         { s += "bool";                           }
-        case (ty_int)          { s += "int";                            }
-        case (ty_float)        { s += "float";                          }
-        case (ty_uint)         { s += "uint";                           }
+        case (ty_native)       { s += "native";                          }
+        case (ty_nil)          { s += "()";                              }
+        case (ty_bot)          { s += "_|_";                             }
+        case (ty_bool)         { s += "bool";                            }
+        case (ty_int)          { s += "int";                             }
+        case (ty_float)        { s += "float";                           }
+        case (ty_uint)         { s += "uint";                            }
         case (ty_machine(?tm)) { s += common::ty_mach_to_str(tm);        }
-        case (ty_char)         { s += "char";                           }
-        case (ty_str)          { s += "str";                            }
-        case (ty_box(?tm))     { s += "@" + mt_to_str(cx, tm);          }
-        case (ty_vec(?tm))     { s += "vec[" + mt_to_str(cx, tm) + "]"; }
-        case (ty_port(?t))     { s += "port[" + ty_to_str(cx, t) + "]"; }
-        case (ty_chan(?t))     { s += "chan[" + ty_to_str(cx, t) + "]"; }
-        case (ty_type)         { s += "type";                           }
-        case (ty_task)         { s += "task";                           }
+        case (ty_char)         { s += "char";                            }
+        case (ty_str)          { s += "str";                             }
+        case (ty_istr)         { s += "istr";                            }
+        case (ty_box(?tm))     { s += "@" + mt_to_str(cx, tm);           }
+        case (ty_vec(?tm))     { s += "vec[" + mt_to_str(cx, tm) + "]";  }
+        case (ty_ivec(?tm))    { s += "ivec[" + mt_to_str(cx, tm) + "]"; }
+        case (ty_port(?t))     { s += "port[" + ty_to_str(cx, t) + "]";  }
+        case (ty_chan(?t))     { s += "chan[" + ty_to_str(cx, t) + "]";  }
+        case (ty_type)         { s += "type";                            }
+        case (ty_task)         { s += "task";                            }
 
         case (ty_tup(?elems)) {
             auto f = bind mt_to_str(cx, _);
