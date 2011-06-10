@@ -460,6 +460,7 @@ extern "C" CDECL void
 upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
                   rust_vec **dst_ptr, rust_vec *src, bool skip_null)
 {
+    LOG_UPCALL_ENTRY(task);
     rust_vec *dst = *dst_ptr;
     uintptr_t need_copy;
     size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
