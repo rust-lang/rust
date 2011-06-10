@@ -560,6 +560,25 @@ fn T_opaque_vec_ptr() -> TypeRef {
     ret T_ptr(T_vec(T_int()));
 }
 
+// Interior vector.
+//
+// TODO: Support user-defined vector sizes.
+fn T_ivec(TypeRef t) -> TypeRef {
+    ret T_struct([T_int(),          // Length ("fill")
+                  T_int(),          // Alloc (if zero, it's heapified)
+                  T_array(t, 16u)   // Body elements
+                  ]);
+}
+
+// Interior vector on the heap. Cast to this when the allocated length (second
+// element of T_ivec above) is zero.
+fn T_ivec_heap(TypeRef t) -> TypeRef {
+    ret T_struct([T_int(),          // Length ("fill")
+                  T_int(),          // Alloc (zero in this case)
+                  T_ptr(T_struct([T_int(),              // Real alloc
+                                  T_array(t, 0u)]))]);  // Body elements
+}
+
 fn T_str() -> TypeRef {
     ret T_vec(T_i8());
 }
@@ -834,6 +853,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         }
         case (ty::ty_char) { llty = T_char(); }
         case (ty::ty_str) { llty = T_ptr(T_str()); }
+        case (ty::ty_istr) { llty = T_ivec(T_i8()); }
         case (ty::ty_tag(_, _)) {
             if (ty::type_has_dynamic_size(cx.tcx, t)) {
                 llty = T_opaque_tag(cx.tn);
@@ -847,6 +867,9 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         }
         case (ty::ty_vec(?mt)) {
             llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty)));
+        }
+        case (ty::ty_ivec(?mt)) {
+            llty = T_ivec(type_of_inner(cx, sp, mt.ty));
         }
         case (ty::ty_ptr(?mt)) {
             llty = T_ptr(type_of_inner(cx, sp, mt.ty));

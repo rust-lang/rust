@@ -295,6 +295,20 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
     }
 
     alt (st) {
+        case (ty_nil) { /* no-op */ }
+        case (ty_bot) { /* no-op */ }
+        case (ty_bool) { /* no-op */ }
+        case (ty_int) { /* no-op */ }
+        case (ty_float) { /* no-op */ }
+        case (ty_uint) { /* no-op */ }
+        case (ty_machine(_)) { /* no-op */ }
+        case (ty_char) { /* no-op */ }
+        case (ty_str) { /* no-op */ }
+        case (ty_istr) { /* no-op */ }
+        case (ty_task) { /* no-op */ }
+        case (ty_type) { /* no-op */ }
+        case (ty_native) { /* no-op */ }
+
         case (ty_param(_)) {
             has_params = true;
         }
@@ -309,6 +323,10 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
         }
 
         case (ty_vec(?m)) {
+            derive_flags_mt(cx, has_params, has_vars, m);
+        }
+
+        case (ty_ivec(?m)) {
             derive_flags_mt(cx, has_params, has_vars, m);
         }
 
@@ -346,7 +364,6 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                                  m.output);
             }
         }
-        case (_) { }
     }
 
     ret rec(struct=st, cname=cname, hash=h,
@@ -581,6 +598,7 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
         case (ty_machine(_))    { /* no-op */ }
         case (ty_char)          { /* no-op */ }
         case (ty_str)           { /* no-op */ }
+        case (ty_istr)          { /* no-op */ }
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
         case (ty_task)          { /* no-op */ }
@@ -595,6 +613,10 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
         case (ty_vec(?tm)) {
             ty = copy_cname(cx, mk_vec(cx, rec(ty=fold_ty(cx, fld, tm.ty),
                                                           mut=tm.mut)), ty);
+        }
+        case (ty_ivec(?tm)) {
+            ty = copy_cname(cx, mk_ivec(cx, rec(ty=fold_ty(cx, fld, tm.ty),
+                                                           mut=tm.mut)), ty);
         }
         case (ty_port(?subty)) {
             ty = copy_cname(cx, mk_port(cx, fold_ty(cx, fld, subty)), ty);
