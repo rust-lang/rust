@@ -3,7 +3,7 @@ fn push[T](&mutable vec[mutable? T] v, &T t) {
 }
 
 fn main() {
-    auto v = @[1, 2, 3];
-    push[int](*v, 1);
+    auto v = [1, 2, 3];
+    push(v, 1);
 }
 

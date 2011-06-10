@@ -53,7 +53,7 @@ fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
         case (occ_args(?args)) {
             alt (res) {
                 case (cpred(_, ?descs)) {
-                    ret match_args(fcx, descs, args);
+                    ret match_args(fcx, *descs, args);
                 }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"

@@ -25,7 +25,7 @@ import util::common::uistr;
 import util::common::span;
 import util::common::respan;
 
-type ctxt = rec(@vec[constraint_info] cs,
+type ctxt = rec(@mutable vec[constraint_info] cs,
                 ty::ctxt tcx);
 
 fn collect_local(&ctxt cx, &@decl d) -> () {
@@ -52,7 +52,7 @@ fn collect_pred(&ctxt cx, &@expr e) -> () {
 
 fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &ident i, &def_id d, &ann a)
     -> ctxt {
-    let ctxt cx = rec(cs=@vec::alloc[constraint_info](0u), tcx=tcx);
+    let ctxt cx = rec(cs=@mutable vec::alloc[constraint_info](0u), tcx=tcx);
     auto visitor = walk::default_visitor();
     visitor = rec(visit_decl_pre=bind collect_local(cx,_),
                   visit_expr_pre=bind collect_pred(cx,_)
@@ -86,7 +86,8 @@ fn add_constraint(&ty::ctxt tcx, constraint_info c, uint next, constr_map tbl)
                 }
                 case (none[constraint]) {
                      tbl.insert(c.id, cpred(p,
-                      @[respan(cn.span, rec(args=args, bit_num=next))]));
+                      @mutable [respan(cn.span, rec(args=args,
+                                                    bit_num=next))]));
                 }
             }
         }
@@ -110,7 +111,7 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp,
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    for (constraint_info c in *cx.cs) {
+    for (constraint_info c in {*cx.cs}) {
         next = add_constraint(cx.tcx, c, next, res_map);
     }
     /* add a pseudo-entry for the function's return value

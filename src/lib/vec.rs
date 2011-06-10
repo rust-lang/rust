@@ -293,6 +293,14 @@ fn member[T](&T x, &array[T] v) -> bool {
     ret false;
 }
 
+fn count[T](&T x, &array[T] v) -> uint {
+    auto cnt = 0u;
+    for (T elt in v) {
+        if (x == elt) { cnt += 1u; }
+    }
+    ret cnt;
+}
+
 fn foldl[T, U](fn (&U, &T) -> U p, &U z, &vec[T] v) -> U {
     auto sz = len[T](v);
 

@@ -3889,7 +3889,7 @@ fn trans_for(&@block_ctxt cx,
 fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
                   &ast::def_id initial_decl) -> vec[ast::def_id] {
     type env = @rec(
-        vec[ast::def_id] refs,
+        mutable vec[ast::def_id] refs,
         hashmap[ast::def_id,()] decls,
         resolve::def_map def_map
     );
@@ -3923,7 +3923,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     let vec[ast::def_id] refs = [];
     let hashmap[ast::def_id,()] decls = new_def_hash[()]();
     decls.insert(initial_decl, ());
-    let env e = @rec(refs=refs,
+    let env e = @rec(mutable refs=refs,
                      decls=decls,
                      def_map=cx.fcx.lcx.ccx.tcx.def_map);
 
@@ -3934,7 +3934,8 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
 
     // Calculate (refs - decls). This is the set of captured upvars.
     let vec[ast::def_id] result = [];
-    for (ast::def_id ref_id in e.refs) {
+    for (ast::def_id ref_id_ in e.refs) {
+        auto ref_id = ref_id_;
         if (!decls.contains_key(ref_id)) {
             result += [ref_id];
         }

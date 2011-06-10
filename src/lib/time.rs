@@ -5,8 +5,8 @@ native "rust" mod rustrt {
 type timeval = rec(u32 sec, u32 usec);
 
 fn get_time() -> timeval {
-    let timeval res = rec(sec=0u32, usec=0u32);
-    rustrt::get_time(res.sec, res.usec);
-    ret res;
+    auto sec = 0u32; auto usec = 0u32;
+    rustrt::get_time(sec, usec);
+    ret rec(sec=sec, usec=usec);
 }
 

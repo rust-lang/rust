@@ -216,7 +216,7 @@ type pred_desc_ = rec(vec[@constr_arg] args,
 type pred_desc = spanned[pred_desc_];
 tag constraint {
     cinit(uint, span, ident);
-    cpred(path, @vec[pred_desc]);
+    cpred(path, @mutable vec[pred_desc]);
 }
 tag constr_ {
     ninit(ident);
@@ -239,7 +239,7 @@ type constr_map = @std::map::hashmap[def_id, constraint];
 type fn_info  = rec(constr_map constrs, uint num_constraints, controlflow cf);
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @vec[ts_ann];
+type node_ann_table = @mutable vec[ts_ann];
 
 /* mapping from function name to fn_info map */
 type fn_info_map = @std::map::hashmap[def_id, fn_info];
@@ -470,7 +470,7 @@ fn num_constraints(fn_info m) -> uint {
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
     let vec[ts_ann] na = [];
-    ret rec(tcx=cx, node_anns=@na, fm=@new_def_hash[fn_info]());
+    ret rec(tcx=cx, node_anns=@mutable na, fm=@new_def_hash[fn_info]());
 }
 
 fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
@@ -551,10 +551,10 @@ fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
 // FIXME:
 // this probably doesn't handle name shadowing well (or at all)
 // variables should really always be id'd by def_id and not ident
-fn match_args(&fn_ctxt fcx, @vec[pred_desc] occs,
+fn match_args(&fn_ctxt fcx, vec[pred_desc] occs,
               vec[@constr_arg] occ) -> uint {
     log ("match_args: looking at " + constr_args_to_str(occ));
-    for (pred_desc pd in *occs) {
+    for (pred_desc pd in occs) {
         log ("match_args: candidate " + pred_desc_to_str(pd));
         if (ty::args_eq(pd.node.args, occ)) {
             ret pd.node.bit_num;
