@@ -3286,6 +3286,7 @@ fn copy_val(&@block_ctxt cx,
            ValueRef dst,
            ValueRef src,
            &ty::t t) -> result {
+
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, cx.build.Store(src, dst));
@@ -6646,6 +6647,11 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
         case (some(?init)) {
             alt (init.op) {
                 case (ast::init_assign) {
+                    // Use the type of the RHS because if it's _|_, the LHS
+                    // type might be something else, but we don't want to copy
+                    // the value.
+                    ty = node_ann_type(cx.fcx.lcx.ccx,
+                                       ty::expr_ann(init.expr));
                     auto sub = trans_expr(bcx, init.expr);
                     bcx = copy_val(sub.bcx, INIT, llptr, sub.val, ty).bcx;
                 }
