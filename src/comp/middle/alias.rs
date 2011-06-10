@@ -113,13 +113,30 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
         case (ty::ty_native_fn(_, ?args, _)) { args }
     };
 
-    auto i = 0u;
     let vec[def_num] roots = [];
+    let vec[tup(uint, def_num)] mut_roots = [];
     let vec[ty::t] unsafe_ts = [];
     let vec[uint] unsafe_t_offsets = [];
+
+    auto i = 0u;
     for (ty::arg arg_t in arg_ts) {
         if (arg_t.mode != ty::mo_val) {
-            auto root = expr_root(cx, args.(i), false);
+            auto arg = args.(i);
+            auto root = expr_root(cx, arg, false);
+            if (arg_t.mode == ty::mo_alias(true)) {
+                alt (path_def_id(cx, arg)) {
+                    case (some(?did)) {
+                        vec::push(mut_roots, tup(i, did._1));
+                    }
+                    case (_) {
+                        if (!root.mut_field) {
+                            cx.tcx.sess.span_err
+                                (arg.span, "passing a temporary value or \
+                                 immutable field by mutable alias");
+                        }
+                    }
+                }
+            }
             alt (path_def_id(cx, root.ex)) {
                 case (some(?did)) { vec::push(roots, did._1); }
                 case (_) {}
@@ -154,9 +171,9 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
         j += 1u;
         auto i = 0u;
         for (ty::arg arg_t in arg_ts) {
+            auto mut_alias = arg_t.mode == ty::mo_alias(true);
             if (i != offset &&
-                // FIXME false should be replace with mutability of alias
-                ty_can_unsafely_include(cx, unsafe, arg_t.ty, false)) {
+                ty_can_unsafely_include(cx, unsafe, arg_t.ty, mut_alias)) {
                 cx.tcx.sess.span_err
                     (args.(i).span, #fmt("argument %u may alias with \
                      argument %u, which is not immutably rooted", i, offset));
@@ -164,9 +181,21 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
             i += 1u;
         }
     }
-    // FIXME when mutable aliases can be distinguished, go over the args again
-    // and ensure that we're not passing a root variable by mutable alias
-    // (using roots and the scope root vars).
+
+    // Ensure we're not passing a root by mutable alias.
+    for (tup(uint, def_num) root in mut_roots) {
+        auto mut_alias_to_root = vec::count(root._1, roots) > 1u;
+        for (restrict r in sc.rs) {
+            if (vec::member(root._1, r.root_vars)) {
+                mut_alias_to_root = true;
+            }
+        }
+        if (mut_alias_to_root) {
+            cx.tcx.sess.span_err
+                (args.(root._0).span, "passing a mutable alias to a \
+                 variable that roots another alias");
+        }
+    }
 
     ret rec(root_vars = roots, unsafe_ts = unsafe_ts);
 }
@@ -300,24 +329,15 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
     alt (dest.node) {
         case (ast::expr_path(?p, ?ann)) {
             auto dnum = ast::def_id_of_def(cx.dm.get(ann.id))._1;
-
-            for (tup(def_num, ast::mode) arg in sc.args) {
-                if (arg._0 == dnum && arg._1 == ast::alias(false)) {
-                    cx.tcx.sess.span_err
-                        (dest.span, "assigning to immutable alias");
-                }
+            if (is_immutable_alias(sc, dnum)) {
+                cx.tcx.sess.span_err
+                    (dest.span, "assigning to immutable alias");
             }
 
             auto var_t = ty::expr_ty(*cx.tcx, dest);
             for (restrict r in sc.rs) {
                 if (vec::member(dnum, r.root_vars)) {
                     r.ok = overwritten(dest.span, p);
-                }
-                for (def_num bnd in r.bindings) {
-                    if (dnum == bnd) {
-                        cx.tcx.sess.span_err
-                            (dest.span, "assigning to immutable alias");
-                    }
                 }
             }
             check_var(*cx, dest, p, ann, true, sc);
@@ -326,6 +346,16 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
             visit_expr(cx, dest, sc, v);
         }
     }
+}
+
+fn is_immutable_alias(&scope sc, def_num dnum) -> bool {
+    for (tup(def_num, ast::mode) arg in sc.args) {
+        if (arg._0 == dnum && arg._1 == ast::alias(false)) { ret true; }
+    }
+    for (restrict r in sc.rs) {
+        if (vec::member(dnum, r.bindings)) { ret true; }
+    }
+    ret false;
 }
 
 fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
@@ -364,13 +394,18 @@ fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
 }
 
 fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
-    -> rec(@ast::expr ex, option::t[ty::t] inner_mut, bool mut_in_box) {
+    -> rec(@ast::expr ex,
+           option::t[ty::t] inner_mut,
+           bool mut_in_box,
+           bool mut_field) {
     let option::t[ty::t] mut = none;
     // This is not currently used but would make it possible to be more
     // liberal -- only stuff in a mutable box needs full type-inclusion
     // checking, things that aren't in a box need only be checked against
     // locally live aliases and their root.
     auto mut_in_box = false;
+    auto mut_fld = false;
+    auto depth = 0;
     while (true) {
         alt ({ex.node}) {
             case (ast::expr_field(?base, ?ident, _)) {
@@ -379,15 +414,19 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_tup(?fields)) {
                         auto fnm = ty::field_num(cx.tcx.sess, ex.span, ident);
-                        if (fields.(fnm).mut != ast::imm && is_none(mut)) {
-                            mut = some(auto_unbox.t);
+                        if (fields.(fnm).mut != ast::imm) {
+                            if (is_none(mut)) { mut = some(auto_unbox.t); }
+                            if (depth == 0) { mut_fld = true; }
                         }
                     }
                     case (ty::ty_rec(?fields)) {
                         for (ty::field fld in fields) {
                             if (str::eq(ident, fld.ident)) {
-                                if (fld.mt.mut != ast::imm && is_none(mut)) {
-                                    mut = some(auto_unbox.t);
+                                if (fld.mt.mut != ast::imm) {
+                                    if (is_none(mut)) {
+                                        mut = some(auto_unbox.t);
+                                    }
+                                    if (depth == 0) { mut_fld = true; }
                                 }
                                 break;
                             }
@@ -406,16 +445,15 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
                 auto auto_unbox = maybe_auto_unbox(cx, base_t);
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_vec(?mt)) {
-                        if (mt.mut != ast::imm && is_none(mut)) {
-                            mut = some(auto_unbox.t);
+                        if (mt.mut != ast::imm) {
+                            if (is_none(mut)) { mut = some(auto_unbox.t); }
+                            if (depth == 0) { mut_fld = true; }
                         }
                     }
                 }
                 if (auto_unbox.done) {
                     if (!is_none(mut)) { mut_in_box = true; }
                     else if (auto_unbox.mut) { mut = some(base_t); }
-                }
-                if (auto_unbox.done && !is_none(mut)) {
                 }
                 ex = base;
             }
@@ -424,8 +462,9 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
                     auto base_t = ty::expr_ty(*cx.tcx, base);
                     alt (ty::struct(*cx.tcx, base_t)) {
                         case (ty::ty_box(?mt)) {
-                            if (mt.mut != ast::imm && is_none(mut)) {
-                                mut = some(base_t);
+                            if (mt.mut != ast::imm) {
+                                if (is_none(mut)) { mut = some(base_t); }
+                                if (depth == 0) { mut_fld = true; }
                             }
                             if (!is_none(mut)) {
                                 mut_in_box = true;
@@ -439,16 +478,23 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
             }
             case (_) { break; }
         }
+        depth += 1;
     }
     if (autoderef) {
         auto ex_t = ty::expr_ty(*cx.tcx, ex);
         auto auto_unbox = maybe_auto_unbox(cx, ex_t);
         if (auto_unbox.done) {
             if (!is_none(mut)) { mut_in_box = true; }
-            else if (auto_unbox.mut) { mut = some(ex_t); }
+            else if (auto_unbox.mut) {
+                mut = some(ex_t);
+                if (depth == 0) { mut_fld = true; }
+            }
         }
     }
-    ret rec(ex = ex, inner_mut = mut, mut_in_box = mut_in_box);
+    ret rec(ex = ex,
+            inner_mut = mut,
+            mut_in_box = mut_in_box,
+            mut_field = mut_fld);
 }
 
 fn maybe_auto_unbox(&ctx cx, &ty::t t)
