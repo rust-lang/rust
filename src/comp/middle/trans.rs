@@ -5810,8 +5810,7 @@ fn load_if_immediate(&@block_ctxt cx, ValueRef v, &ty::t t) -> ValueRef {
 
 fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     auto lcx = cx.fcx.lcx;
-    auto modname = link::mangle_internal_name_by_path(lcx.ccx,
-                                                      lcx.module_path);
+    auto modname = str::connect(lcx.module_path, "::");
     auto global;
     if (lcx.ccx.module_data.contains_key(modname)) {
         global = lcx.ccx.module_data.get(modname);
