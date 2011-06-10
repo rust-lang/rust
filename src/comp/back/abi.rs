@@ -88,8 +88,8 @@ fn bzero_glue_name() -> str {
     ret "rust_bzero_glue";
 }
 
-fn vec_append_glue_name() -> str {
-    ret "rust_vec_append_glue";
+fn yield_glue_name() -> str {
+    ret "rust_yield_glue";
 }
 
 fn no_op_type_glue_name() -> str {
