@@ -502,75 +502,24 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
 }
 
 
-fn metadata_matches(&vec[u8] data,
-                    &vec[@ast::meta_item] metas) -> bool {
-    ret true;
-}
-
-fn find_library_crate(&session::session sess,
-                      &ast::ident ident,
-                      &vec[@ast::meta_item] metas,
-                      &vec[str] library_search_paths)
-    -> option::t[tup(str, vec[u8])] {
-
-    let str crate_name = ident;
-    for (@ast::meta_item mi in metas) {
-        if (mi.node.key == "name") {
-            crate_name = mi.node.value;
-            break;
-        }
-    }
-    auto nn = parser::default_native_lib_naming(sess);
-    let str prefix = nn.prefix + crate_name;
-
-    // FIXME: we could probably use a 'glob' function in std::fs but it will
-    // be much easier to write once the unsafe module knows more about FFI
-    // tricks. Currently the glob(3) interface is a bit more than we can
-    // stomach from here, and writing a C++ wrapper is more work than just
-    // manually filtering fs::list_dir here.
-
+fn load_crate(session::session sess,
+              int cnum,
+              ast::ident ident,
+              vec[str] library_search_paths) {
+    auto filename = parser::default_native_name(sess, ident);
     for (str library_search_path in library_search_paths) {
-
-        for (str path in fs::list_dir(library_search_path)) {
-
-            let str f = fs::basename(path);
-            if (! (str::starts_with(f, prefix) &&
-                   str::ends_with(f, nn.suffix))) {
-                log #fmt("skipping %s, doesn't look like %s*%s",
-                         path, prefix, nn.suffix);
-                cont;
+        auto path = fs::connect(library_search_path, filename);
+        alt (get_metadata_section(path)) {
+            case (option::some(?cvec)) {
+                sess.set_external_crate(cnum, rec(name=ident, data=cvec));
+                ret;
             }
-
-            alt (get_metadata_section(path)) {
-                case (option::some(?cvec)) {
-                    if (!metadata_matches(cvec, metas)) {
-                        log #fmt("skipping %s, metadata doesn't match", path);
-                        cont;
-                    }
-                    log #fmt("found %s with matching metadata", path);
-                    ret some(tup(path, cvec));
-                }
-                case (_) {}
-            }
+            case (_) {}
         }
     }
-    ret none;
-}
 
-fn load_library_crate(&session::session sess,
-                      &int cnum,
-                      &ast::ident ident,
-                      &vec[@ast::meta_item] metas,
-                      &vec[str] library_search_paths) {
-    alt (find_library_crate(sess, ident, metas, library_search_paths)) {
-        case (some(?t)) {
-            sess.set_external_crate(cnum, rec(name=ident,
-                                              data=t._1));
-            ret;
-        }
-        case (_) {}
-    }
-    log_err #fmt("can't find crate for '%s'", ident);
+    log_err #fmt("can't open crate '%s' (looked for '%s' in lib search path)",
+                 ident, filename);
     fail;
 }
 
@@ -588,8 +537,8 @@ fn visit_view_item(env e, &@ast::view_item i) {
             auto cnum;
             if (!e.crate_cache.contains_key(ident)) {
                 cnum = e.next_crate_num;
-                load_library_crate(e.sess, cnum, ident, meta_items,
-                                   e.library_search_paths);
+                load_crate(e.sess, cnum, ident,
+                           e.library_search_paths);
                 e.crate_cache.insert(ident, e.next_crate_num);
                 e.next_crate_num += 1;
             } else {
