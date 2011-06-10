@@ -896,6 +896,14 @@ fn count_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> uint {
 }
 
 
+fn resolve_type_vars_if_possible(&@fn_ctxt fcx, ty::t typ) -> ty::t {
+    alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
+        case (fix_ok(?new_type)) { ret new_type; }
+        case (fix_err(_)) { ret typ; }
+    }
+}
+
+
 // Demands - procedures that require that two types unify and emit an error
 // message if they don't.
 
@@ -956,10 +964,13 @@ mod demand {
             }
 
             case (ures_err(?err)) {
+                auto e_err = resolve_type_vars_if_possible(fcx, expected_1);
+                auto a_err = resolve_type_vars_if_possible(fcx, actual_1);
+
                 fcx.ccx.tcx.sess.span_err
                     (sp, "mismatched types: expected "
-                     + ty_to_str(fcx.ccx.tcx, expected_1) + " but found "
-                     + ty_to_str(fcx.ccx.tcx, actual_1) + " ("
+                     + ty_to_str(fcx.ccx.tcx, e_err) + " but found "
+                     + ty_to_str(fcx.ccx.tcx, a_err) + " ("
                      + ty::type_err_to_str(err) + ")");
 
                 // TODO: In the future, try returning "expected", reporting
