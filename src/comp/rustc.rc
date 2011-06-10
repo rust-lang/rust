@@ -10,7 +10,9 @@ meta (desc = "The Rust compiler",
       license = "BSD");
 
 
-use std;
+use std (name = "std",
+         vers = "0.1",
+         url = "http://rust-lang.org/src/std");
 
 mod middle {
     mod trans;
