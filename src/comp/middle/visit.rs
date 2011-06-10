@@ -4,9 +4,15 @@ import std::option::some;
 import std::option::none;
 import util::common::span;
 
+// Context-passing AST walker. Each overridden visit method has full control
+// over what happens with its node, it can do its own traversal of the node's
+// children (potentially passing in different contexts to each), call
+// visit::visit_* to apply the default traversal algorithm (again, it can
+// override the context), or prevent deeper traversal by doing nothing.
+
 // Lots of redundant indirection and refcounting. Our typesystem doesn't do
 // circular types, so the visitor record can not hold functions that take
-// visitors. A tag breaks the cycle.
+// visitors. A vt tag is used to break the cycle.
 tag vt[E] { vtor(visitor[E]); }
 fn vt[E](&vt[E] x) -> visitor[E] {
     alt (x) { case (vtor(?v)) { ret v; } }
