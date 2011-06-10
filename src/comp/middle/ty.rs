@@ -1222,6 +1222,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 case (_) { ret false; }
             }
         }
+        case (ty_istr) {
+            alt (b) {
+                case (ty_istr) { ret true; }
+                case (_) { ret false; }
+            }
+        }
         case (ty_tag(?id_a, ?tys_a)) {
             alt (b) {
                 case (ty_tag(?id_b, ?tys_b)) {
@@ -1248,6 +1254,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_vec(?mt_a)) {
             alt (b) {
                 case (ty_vec(?mt_b)) { ret equal_mt(mt_a, mt_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_ivec(?mt_a)) {
+            alt (b) {
+                case (ty_ivec(?mt_b)) { ret equal_mt(mt_a, mt_b); }
                 case (_) { ret false; }
             }
         }
