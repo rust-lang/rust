@@ -5,6 +5,7 @@ import trans::decl_cdecl_fn;
 import trans::T_f32;
 import trans::T_f64;
 import trans::T_fn;
+import trans::T_bool;
 import trans::T_i8;
 import trans::T_i32;
 import trans::T_int;
@@ -53,6 +54,7 @@ type upcalls = rec(
     ValueRef new_str,
     ValueRef new_vec,
     ValueRef vec_grow,
+    ValueRef vec_append,
     ValueRef get_type_desc,
     ValueRef new_task,
     ValueRef start_task,
@@ -111,6 +113,9 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
         vec_grow=d("vec_grow", [T_opaque_vec_ptr(), T_size_t(),
                                    T_ptr(T_int()), T_ptr(T_tydesc(tn))],
                    T_opaque_vec_ptr()),
+        vec_append=d("vec_append", [T_ptr(T_tydesc(tn)), T_ptr(T_tydesc(tn)),
+                                    T_ptr(T_opaque_vec_ptr()),
+                                    T_opaque_vec_ptr(), T_bool()], T_void()),
         get_type_desc=d("get_type_desc",
                         [T_ptr(T_nil()), T_size_t(), T_size_t(),
                          T_size_t(), T_ptr(T_ptr(T_tydesc(tn)))],

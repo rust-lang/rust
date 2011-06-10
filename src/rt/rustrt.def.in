@@ -73,6 +73,7 @@ upcall_start_thread
 upcall_trace_str
 upcall_trace_word
 upcall_vec_grow
+upcall_vec_append
 upcall_yield
 vec_alloc
 vec_alloc_mut
