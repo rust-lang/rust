@@ -36,6 +36,7 @@ import back::abi;
 import back::upcall;
 
 import middle::ty::pat_ty;
+import visit::vt;
 
 import util::common;
 import util::common::istr;
@@ -7960,50 +7961,22 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
     finish_fn(fcx, lltop);
 }
 
-type walk_ctxt = rec(mutable vec[str] path);
-fn new_walk_ctxt() -> @walk_ctxt {
-    let vec[str] path = [];
-    ret @rec(mutable path=path);
-}
-
-fn enter_item(@walk_ctxt cx, &@ast::item item) {
+fn item_path(&@ast::item item) -> vec[str] {
     alt (item.node) {
-        case (ast::item_fn(?name, _, _, _, _)) {
-            vec::push[str](cx.path, name);
-        }
-        case (ast::item_obj(?name, _, _, _, _)) {
-            vec::push[str](cx.path, name);
-        }
-        case (ast::item_mod(?name, _, _)) {
-            vec::push[str](cx.path, name);
-        }
-        case (_) { }
+        case (ast::item_fn(?name, _, _, _, _)) { ret [name]; }
+        case (ast::item_obj(?name, _, _, _, _)) { ret [name]; }
+        case (ast::item_mod(?name, _, _)) { ret [name]; }
+        case (_) { ret []; }
     }
 }
 
-fn leave_item(@walk_ctxt cx, &@ast::item item) {
-    alt (item.node) {
-        case (ast::item_fn(_, _, _, _, _)) {
-            vec::pop[str](cx.path);
-        }
-        case (ast::item_obj(_, _, _, _, _)) {
-            vec::pop[str](cx.path);
-        }
-        case (ast::item_mod(_, _, _)) {
-            vec::pop[str](cx.path);
-        }
-        case (_) { }
-    }
-}
-
-fn collect_native_item(&@crate_ctxt ccx, @walk_ctxt wcx,
-                       &@ast::native_item i) {
+fn collect_native_item(@crate_ctxt ccx, &@ast::native_item i,
+                       &vec[str] pt, &vt[vec[str]] v) {
     alt (i.node) {
         case (ast::native_item_fn(?name, _, _, _, ?fid, ?ann)) {
             ccx.native_items.insert(fid, i);
             if (!ccx.obj_methods.contains_key(fid)) {
-                decl_native_fn_and_pair(ccx, i.span, wcx.path,
-                                        name, ann, fid);
+                decl_native_fn_and_pair(ccx, i.span, pt, name, ann, fid);
             }
         }
         case (ast::native_item_ty(_, ?tid)) {
@@ -8012,9 +7985,9 @@ fn collect_native_item(&@crate_ctxt ccx, @walk_ctxt wcx,
     }
 }
 
-fn collect_item_1(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
-    enter_item(wcx, i);
-
+fn collect_item_1(@crate_ctxt ccx, &@ast::item i,
+                  &vec[str] pt, &vt[vec[str]] v) {
+    visit::visit_item(i, pt + item_path(i), v);
     alt (i.node) {
         case (ast::item_const(?name, _, _, ?cid, ?ann)) {
             auto typ = node_ann_type(ccx, ann);
@@ -8041,19 +8014,20 @@ fn collect_item_1(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
     }
 }
 
-fn collect_item_2(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
-    enter_item(wcx, i);
-
+fn collect_item_2(&@crate_ctxt ccx, &@ast::item i,
+                  &vec[str] pt, &vt[vec[str]] v) {
+    auto new_pt = pt + item_path(i);
+    visit::visit_item(i, new_pt, v);
     alt (i.node) {
         case (ast::item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             ccx.items.insert(fid, i);
             if (!ccx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(ccx, i.span, wcx.path, "fn", tps, ann, fid);
+                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, ann, fid);
             }
         }
         case (ast::item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             ccx.items.insert(oid.ctor, i);
-            decl_fn_and_pair(ccx, i.span, wcx.path,
+            decl_fn_and_pair(ccx, i.span, new_pt,
                              "obj_ctor", tps, ann, oid.ctor);
             for (@ast::method m in ob.methods) {
                 ccx.obj_methods.insert(m.node.id, ());
@@ -8064,29 +8038,28 @@ fn collect_item_2(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
 }
 
 fn collect_items(&@crate_ctxt ccx, @ast::crate crate) {
-    auto wcx = new_walk_ctxt();
-    auto visitor0 = walk::default_visitor();
-    auto visitor1 = rec(visit_native_item_pre =
-                          bind collect_native_item(ccx, wcx, _),
-                        visit_item_pre = bind collect_item_1(ccx, wcx, _),
-                        visit_item_post = bind leave_item(wcx, _)
-                        with visitor0);
-    auto visitor2 = rec(visit_item_pre = bind collect_item_2(ccx, wcx, _),
-                        visit_item_post = bind leave_item(wcx, _)
-                        with visitor0);
-    walk::walk_crate(visitor1, *crate);
-    walk::walk_crate(visitor2, *crate);
+    auto visitor0 = visit::default_visitor();
+    auto visitor1 = @rec(visit_native_item =
+                             bind collect_native_item(ccx, _, _, _),
+                         visit_item = bind collect_item_1(ccx, _, _, _)
+                         with *visitor0);
+    auto visitor2 = @rec(visit_item = bind collect_item_2(ccx, _, _, _)
+                         with *visitor0);
+    visit::visit_crate(*crate, [], visit::vtor(visitor1));
+    visit::visit_crate(*crate, [], visit::vtor(visitor2));
 }
 
-fn collect_tag_ctor(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
-    enter_item(wcx, i);
+fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i,
+                    &vec[str] pt, &vt[vec[str]] v) {
+    auto new_pt = pt + item_path(i);
+    visit::visit_item(i, new_pt, v);
 
     alt (i.node) {
         case (ast::item_tag(_, ?variants, ?tps, _, _)) {
             for (ast::variant variant in variants) {
                 if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
-                                     wcx.path + [variant.node.name],
+                                     new_pt + [variant.node.name],
                                      "tag", tps, variant.node.ann,
                                      variant.node.id);
                 }
@@ -8098,17 +8071,17 @@ fn collect_tag_ctor(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
 }
 
 fn collect_tag_ctors(&@crate_ctxt ccx, @ast::crate crate) {
-    auto wcx = new_walk_ctxt();
-    auto visitor = rec(visit_item_pre = bind collect_tag_ctor(ccx, wcx, _),
-                       visit_item_post = bind leave_item(wcx, _)
-                       with walk::default_visitor());
-    walk::walk_crate(visitor, *crate);
+    auto visitor = @rec(visit_item = bind collect_tag_ctor(ccx, _, _, _)
+                        with *visit::default_visitor());
+    visit::visit_crate(*crate, [], visit::vtor(visitor));
 }
 
 // The constant translation pass.
 
-fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
-    enter_item(wcx, it);
+fn trans_constant(@crate_ctxt ccx, &@ast::item it,
+                  &vec[str] pt, &vt[vec[str]] v) {
+    auto new_pt = pt + item_path(it);
+    visit::visit_item(it, new_pt, v);
 
     alt (it.node) {
         case (ast::item_tag(?ident, ?variants, _, ?tag_id, _)) {
@@ -8119,7 +8092,7 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
 
                 auto discrim_val = C_int(i as int);
 
-                auto p = wcx.path + [ident, variant.node.name, "discrim"];
+                auto p = new_pt + [ident, variant.node.name, "discrim"];
                 auto s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
                 auto discrim_gvar = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
                                                        str::buf(s));
@@ -8139,7 +8112,7 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
             // with consts.
             auto v = C_int(1);
             ccx.item_ids.insert(cid, v);
-            auto s = mangle_exported_name(ccx, wcx.path + [name],
+            auto s = mangle_exported_name(ccx, new_pt + [name],
                                           node_ann_type(ccx, ann));
             ccx.item_symbols.insert(cid, s);
         }
@@ -8149,11 +8122,9 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
 }
 
 fn trans_constants(&@crate_ctxt ccx, @ast::crate crate) {
-    auto wcx = new_walk_ctxt();
-    auto visitor = rec(visit_item_pre = bind trans_constant(ccx, wcx, _),
-                       visit_item_post = bind leave_item(wcx, _)
-                       with walk::default_visitor());
-    walk::walk_crate(visitor, *crate);
+    auto visitor = @rec(visit_item = bind trans_constant(ccx, _, _, _)
+                        with *visit::default_visitor());
+    visit::visit_crate(*crate, [], visit::vtor(visitor));
 }
 
 
