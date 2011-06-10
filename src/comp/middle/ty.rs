@@ -41,7 +41,7 @@ import util::data::interner;
 
 tag mode {
     mo_val;
-    mo_alias;
+    mo_alias(bool);
 }
 
 type arg = rec(mode mode, t ty);

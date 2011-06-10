@@ -179,7 +179,7 @@ fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
     auto ty_mode;
     alt (mode) {
         case (ast::val) { ty_mode = mo_val; }
-        case (ast::alias) { ty_mode = mo_alias; }
+        case (ast::alias(?mut)) { ty_mode = mo_alias(mut); }
     }
     ret ty_mode;
 }
@@ -548,7 +548,7 @@ mod collect {
         for (ast::obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            vec::push[arg](t_inputs, rec(mode=ty::mo_alias, ty=t_field));
+            vec::push(t_inputs, rec(mode=ty::mo_alias(false), ty=t_field));
         }
 
         let vec[@ast::constr] constrs = [];
@@ -681,7 +681,7 @@ mod collect {
                 let vec[arg] args = [];
                 for (ast::variant_arg va in variant.node.args) {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += [rec(mode=ty::mo_alias, ty=arg_ty)];
+                    args += [rec(mode=ty::mo_alias(false), ty=arg_ty)];
                 }
                 auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types

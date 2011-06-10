@@ -691,12 +691,12 @@ fn type_of_explicit_args(&@crate_ctxt cx, &span sp,
     let vec[TypeRef] atys = [];
     for (ty::arg arg in inputs) {
         if (ty::type_has_dynamic_size(cx.tcx, arg.ty)) {
-            assert (arg.mode == ty::mo_alias);
+            assert (arg.mode != ty::mo_val);
             atys += [T_typaram_ptr(cx.tn)];
         } else {
            let TypeRef t;
             alt (arg.mode) {
-                case (ty::mo_alias) {
+                case (ty::mo_alias(_)) {
                     t = T_ptr(type_of_inner(cx, sp, arg.ty));
                 }
                 case (_) {
@@ -762,9 +762,9 @@ fn type_of_fn_full(&@crate_ctxt cx,
         atys +=
             [T_fn_pair(cx.tn,
                        type_of_fn_full(cx, sp, ast::proto_fn, none[TypeRef],
-                                          [rec(mode=ty::mo_alias,
-                                                  ty=output)],
-                                          ty::mk_nil(cx.tcx), 0u))];
+                                       [rec(mode=ty::mo_alias(false),
+                                            ty=output)],
+                                       ty::mk_nil(cx.tcx), 0u))];
     }
 
     // ... then explicit args.
@@ -923,7 +923,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
 fn type_of_arg(@local_ctxt cx, &span sp, &ty::arg arg) -> TypeRef {
     alt (ty::struct(cx.ccx.tcx, arg.ty)) {
         case (ty::ty_param(_)) {
-            if (arg.mode == ty::mo_alias) {
+            if (arg.mode != ty::mo_val) {
                 ret T_typaram_ptr(cx.ccx.tn);
             }
         }
@@ -933,7 +933,7 @@ fn type_of_arg(@local_ctxt cx, &span sp, &ty::arg arg) -> TypeRef {
     }
 
     auto typ;
-    if (arg.mode == ty::mo_alias) {
+    if (arg.mode != ty::mo_val) {
         typ = T_ptr(type_of_inner(cx.ccx, sp, arg.ty));
     } else {
         typ = type_of_inner(cx.ccx, sp, arg.ty);
@@ -4063,7 +4063,7 @@ fn trans_for_each(&@block_ctxt cx,
     auto iter_body_llty =
         type_of_fn_full(lcx.ccx, cx.sp, ast::proto_fn,
                         none[TypeRef],
-                        [rec(mode=ty::mo_alias, ty=decl_ty)],
+                        [rec(mode=ty::mo_alias(false), ty=decl_ty)],
                         ty::mk_nil(lcx.ccx.tcx), 0u);
 
     let ValueRef lliterbody = decl_internal_fastcall_fn(lcx.ccx.llmod,
@@ -4840,7 +4840,7 @@ fn trans_bind_thunk(&@local_ctxt cx,
                     }
                 } else if (ty::type_contains_params(cx.ccx.tcx,
                                                    out_arg.ty)) {
-                    assert (out_arg.mode == ty::mo_alias);
+                    assert (out_arg.mode != ty::mo_val);
                     val = bcx.build.PointerCast(val, llout_arg_ty);
                 }
 
@@ -4853,7 +4853,7 @@ fn trans_bind_thunk(&@local_ctxt cx,
                 let ValueRef passed_arg = llvm::LLVMGetParam(llthunk, a);
 
                 if (ty::type_contains_params(cx.ccx.tcx, out_arg.ty)) {
-                    assert (out_arg.mode == ty::mo_alias);
+                    assert (out_arg.mode != ty::mo_val);
                     passed_arg = bcx.build.PointerCast(passed_arg,
                                                        llout_arg_ty);
                 }
@@ -5098,7 +5098,7 @@ fn trans_arg_expr(&@block_ctxt cx,
         auto re = trans_expr(bcx, e);
         val = re.val;
         bcx = re.bcx;
-    } else if (arg.mode == ty::mo_alias) {
+    } else if (arg.mode != ty::mo_val) {
         let lval_result lv;
         if (ty::is_lval(e)) {
             lv = trans_lval(bcx, e);
@@ -5125,7 +5125,7 @@ fn trans_arg_expr(&@block_ctxt cx,
         bcx = re.bcx;
     }
 
-    if (arg.mode != ty::mo_alias) {
+    if (arg.mode == ty::mo_val) {
         bcx = take_ty(bcx, val, e_ty).bcx;
     }
     
@@ -5930,7 +5930,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
         case (none) { }
         case (some(?x)) {
             auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, x);
-            auto arg = rec(mode=ty::mo_alias, ty=e_ty);
+            auto arg = rec(mode=ty::mo_alias(false), ty=e_ty);
             auto arg_tys = type_of_explicit_args(cx.fcx.lcx.ccx,
                                                  x.span, [arg]);
             auto r = trans_arg_expr(bcx, arg, arg_tys.(0), x);
@@ -6194,7 +6194,7 @@ fn mk_spawn_wrapper(&@block_ctxt cx,
 
     let TypeRef wrapper_fn_type =
         type_of_fn(cx.fcx.lcx.ccx, cx.sp, ast::proto_fn,
-                   [rec(mode = ty::mo_alias, ty = args_ty)],
+                   [rec(mode = ty::mo_alias(false), ty = args_ty)],
                    ty::idx_nil,
                    0u);
 
@@ -6401,7 +6401,7 @@ fn trans_anon_obj(@block_ctxt cx, &span sp,
         case (some(?fields)) {
             addtl_fields = fields;
             for (ast::obj_field f in fields) {
-                addtl_fn_args += [rec(mode=ast::alias, ty=f.ty, 
+                addtl_fn_args += [rec(mode=ast::alias(false), ty=f.ty, 
                                       ident=f.ident, id=f.id)];
             }
         }
@@ -7045,7 +7045,7 @@ fn copy_args_to_allocas(@fn_ctxt fcx,
 
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
-        if (aarg.mode != ast::alias) {
+        if (aarg.mode == ast::val) {
             auto arg_t = type_of_arg(bcx.fcx.lcx, fcx.sp, arg_tys.(arg_n));
             auto a = alloca(bcx, arg_t);
             auto argval = bcx.fcx.llargs.get(aarg.id);
@@ -7063,7 +7063,7 @@ fn add_cleanups_for_args(&@block_ctxt bcx,
                          vec[ty::arg] arg_tys) {
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
-        if (aarg.mode != ast::alias) {
+        if (aarg.mode == ast::val) {
             auto argval = bcx.fcx.llargs.get(aarg.id);
             find_scope_cx(bcx).cleanups +=
                 [clean(bind drop_slot(_, argval, arg_tys.(arg_n).ty))];
@@ -7329,7 +7329,8 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // we're creating.
     let vec[ast::arg] fn_args = [];
     for (ast::obj_field f in ob.fields) {
-        fn_args += [rec(mode=ast::alias, ty=f.ty, ident=f.ident, id=f.id)];
+        fn_args += [rec(mode=ast::alias(false),
+                        ty=f.ty, ident=f.ident, id=f.id)];
     }
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
@@ -7522,10 +7523,10 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     let vec[ast::arg] fn_args = [];
     auto i = 0u;
     for (ast::variant_arg varg in variant.node.args) {
-        fn_args += [rec(mode=ast::alias,
-                           ty=varg.ty,
-                           ident="arg" + uint::to_str(i, 10u),
-                           id=varg.id)];
+        fn_args += [rec(mode=ast::alias(false),
+                        ty=varg.ty,
+                        ident="arg" + uint::to_str(i, 10u),
+                        id=varg.id)];
     }
 
     assert (cx.ccx.item_ids.contains_key(variant.node.id));

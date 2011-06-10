@@ -203,7 +203,7 @@ fn unop_to_str(unop op) -> str {
 
 tag mode {
     val;
-    alias;
+    alias(bool);
 }
 
 type stmt = spanned[stmt_];

@@ -319,16 +319,10 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
     -> ast::ty_ {
     fn parse_fn_input_ty(&parser p) -> ast::ty_arg {
         auto lo = p.get_lo_pos();
-        auto mode;
+        auto mode = ast::val;
         if (p.peek() == token::BINOP(token::AND)) {
             p.bump();
-            mode = ast::alias;
-
-            if (eat_word(p, "mutable")) {
-                // TODO: handle mutable alias args
-            }
-        } else {
-            mode = ast::val;
+            mode = ast::alias(eat_word(p, "mutable"));
         }
 
         auto t = parse_ty(p);
@@ -598,11 +592,8 @@ fn parse_ty(&parser p) -> @ast::ty {
 fn parse_arg(&parser p) -> ast::arg {
     let ast::mode m = ast::val;
     if (p.peek() == token::BINOP(token::AND)) {
-        m = ast::alias;
         p.bump();
-
-        // TODO: handle mutable alias args
-        eat_word(p, "mutable");
+        m = ast::alias(eat_word(p, "mutable"));
     }
     let @ast::ty t = parse_ty(p);
     let ast::ident i = parse_value_ident(p);

@@ -23,7 +23,12 @@ type restrict = @rec(vec[def_num] root_vars,
                      vec[uint] depends_on,
                      mutable valid ok);
 
-type scope = vec[restrict];
+type scope = rec(vec[tup(def_num, ast::mode)] args,
+                 vec[restrict] rs);
+fn scope(&scope sc, vec[restrict] add) -> scope {
+    ret rec(args=sc.args, rs=sc.rs + add);
+}
+
 type ctx = rec(@ty::ctxt tcx,
                resolve::def_map dm);
 
@@ -32,13 +37,17 @@ fn check_crate(@ty::ctxt tcx, resolve::def_map dm, &@ast::crate crate) {
     auto v = @rec(visit_fn = visit_fn,
                   visit_expr = bind visit_expr(cx, _, _, _)
                   with *visit::default_visitor[scope]());
-    visit::visit_crate(*crate, [], visit::vtor(v));
+    visit::visit_crate(*crate, rec(args=[], rs=[]), visit::vtor(v));
 }
 
 fn visit_fn(&ast::_fn f, &vec[ast::ty_param] tp, &span sp, &ident name,
             &ast::def_id d_id, &ast::ann a, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
-    vt(v).visit_block(f.body, [], v);
+    auto args = [];
+    for (ast::arg arg in f.decl.inputs) {
+        vec::push(args, tup(arg.id._1, arg.mode));
+    }
+    vt(v).visit_block(f.body, rec(args=args, rs=[]), v);
 }
 
 fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
@@ -179,12 +188,12 @@ fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms,
         auto dnums = arm_defnums(a);
         auto new_sc = sc;
         if (vec::len(dnums) > 0u) {
-            vec::push(new_sc, @rec(root_vars=roots,
-                                   block_defnum=dnums.(0),
-                                   bindings=dnums,
-                                   tys=forbidden_tp,
-                                   depends_on=deps(sc, roots),
-                                   mutable ok=valid));
+            new_sc = scope(sc, [@rec(root_vars=roots,
+                                     block_defnum=dnums.(0),
+                                     bindings=dnums,
+                                     tys=forbidden_tp,
+                                     depends_on=deps(sc, roots),
+                                     mutable ok=valid)]);
         }
         visit::visit_arm(a, new_sc, v);
     }
@@ -225,7 +234,7 @@ fn check_for_each(&ctx cx, &@ast::decl decl, &@ast::expr call,
                                tys=data.unsafe_ts,
                                depends_on=deps(sc, data.root_vars),
                                mutable ok=valid);
-            visit::visit_block(block, sc + [new_sc], v);
+            visit::visit_block(block, scope(sc, [new_sc]), v);
         }
     }
 }
@@ -261,7 +270,7 @@ fn check_for(&ctx cx, &@ast::decl decl, &@ast::expr seq,
                        tys=unsafe,
                        depends_on=deps(sc, root_def),
                        mutable ok=valid);
-    visit::visit_block(block, sc + [new_sc], v);
+    visit::visit_block(block, scope(sc, [new_sc]), v);
 }
 
 fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
@@ -270,7 +279,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
     if (!def_is_local(def)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
-    for (restrict r in sc) {
+    for (restrict r in sc.rs) {
         // excludes variables introduced since the alias was made
         if (my_defnum < r.block_defnum) {
             for (ty::t t in r.tys) {
@@ -287,13 +296,28 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
 fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
                 &scope sc, &vt[scope] v) {
     visit_expr(cx, src, sc, v);
+    
     alt (dest.node) {
         case (ast::expr_path(?p, ?ann)) {
             auto dnum = ast::def_id_of_def(cx.dm.get(ann.id))._1;
+
+            for (tup(def_num, ast::mode) arg in sc.args) {
+                if (arg._0 == dnum && arg._1 == ast::alias(false)) {
+                    cx.tcx.sess.span_err
+                        (dest.span, "assigning to immutable alias");
+                }
+            }
+
             auto var_t = ty::expr_ty(*cx.tcx, dest);
-            for (restrict r in sc) {
+            for (restrict r in sc.rs) {
                 if (vec::member(dnum, r.root_vars)) {
                     r.ok = overwritten(dest.span, p);
+                }
+                for (def_num bnd in r.bindings) {
+                    if (dnum == bnd) {
+                        cx.tcx.sess.span_err
+                            (dest.span, "assigning to immutable alias");
+                    }
                 }
             }
             check_var(*cx, dest, p, ann, true, sc);
@@ -308,7 +332,7 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
     auto prob = r.ok;
     for (uint dep in r.depends_on) {
         if (prob != valid) { break; }
-        prob = sc.(dep).ok;
+        prob = sc.rs.(dep).ok;
     }
     if (prob != valid) {
         auto msg = alt (prob) {
@@ -328,7 +352,7 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
 fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
     auto i = 0u;
     auto result = [];
-    for (restrict r in sc) {
+    for (restrict r in sc.rs) {
         for (def_num dn in roots) {
             if (vec::member(dn, r.bindings)) {
                 vec::push(result, i);

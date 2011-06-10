@@ -960,7 +960,7 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
     popen(s);
     fn print_arg(&ps s, &ast::arg x) {
         ibox(s, indent_unit);
-        if (x.mode == ast::alias) {word(s.s, "&");}
+        print_alias(s, x.mode);
         print_type(s, *x.ty);
         space(s.s);
         word(s.s, x.ident);
@@ -974,6 +974,14 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
         space(s.s);
         word_space(s, "->");
         print_type(s, *decl.output);
+    }
+}
+
+fn print_alias(&ps s, ast::mode m) {
+    alt (m) {
+        case (ast::alias(true)) { word_space(s, "&mutable"); }
+        case (ast::alias(false)) { word(s.s, "&"); }
+        case (ast::val) {}
     }
 }
 
@@ -1095,7 +1103,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     zerobreak(s.s);
     popen(s);
     fn print_arg(&ps s, &ast::ty_arg input) {
-        if (input.node.mode == ast::alias) {word(s.s, "&");}
+        print_alias(s, input.node.mode);
         print_type(s, *input.node.ty);
     }
     auto f = print_arg;

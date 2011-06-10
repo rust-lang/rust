@@ -13,11 +13,11 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
 
   fn fn_input_to_str(&ctxt cx,
                      &rec(middle::ty::mode mode, t ty) input) -> str {
-        auto s;
-        alt (input.mode) {
-            case (mo_val) { s = ""; }
-            case (mo_alias) { s = "&"; }
-        }
+        auto s = alt (input.mode) {
+            case (mo_val) { "" }
+            case (mo_alias(false)) { "&" }
+            case (mo_alias(true)) { "&mutable " }
+        };
 
         ret s + ty_to_str(cx, input.ty);
     }

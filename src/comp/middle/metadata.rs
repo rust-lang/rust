@@ -250,7 +250,13 @@ mod Encode {
                  &ast::controlflow cf, &vec[@ast::constr] constrs) {
         w.write_char('[');
         for (ty::arg arg in args) {
-            if (arg.mode == ty::mo_alias) { w.write_char('&'); }
+            alt (arg.mode) {
+                case (ty::mo_alias(?mut)) {
+                    w.write_char('&');
+                    if (mut) { w.write_char('m'); }
+                }
+                case (ty::mo_val) {}
+            }
             enc_ty(w, cx, arg.ty);
         }
         w.write_char(']');

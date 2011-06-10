@@ -328,8 +328,12 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t,
     while (peek(st) as char != ']') {
         auto mode = ty::mo_val;
         if (peek(st) as char == '&') {
-            mode = ty::mo_alias;
-            st.pos = st.pos + 1u;
+            mode = ty::mo_alias(false);
+            st.pos += 1u;
+            if (peek(st) as char == 'm') {
+                mode = ty::mo_alias(true);
+                st.pos += 1u;
+            }
         }
         inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
     }
