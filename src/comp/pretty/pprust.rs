@@ -731,6 +731,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 case (some(?msg)) {
                     word(s.s, #fmt("\"%s\"", msg));
                 }
+                case (_) {}
             }
         }
         case (ast::expr_break(_)) {
