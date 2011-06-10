@@ -3540,7 +3540,7 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t,
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
     auto src = bcx.build.PointerCast(rhs, T_opaque_vec_ptr());
 
-    ret res(bcx, bcx.build.FastCall(cx.fcx.lcx.ccx.glues.vec_append_glue,
+    ret res(bcx, bcx.build.Call(cx.fcx.lcx.ccx.upcalls.vec_append,
                                     [cx.fcx.lltaskptr,
                                         llvec_tydesc.val,
                                         llelt_tydesc.val,
