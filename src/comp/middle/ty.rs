@@ -72,7 +72,8 @@ type ctxt = rec(@type_store ts,
                 item_table items,
                 type_cache tcache,
                 creader_cache rcache,
-                hashmap[t,str] short_names_cache);
+                hashmap[t,str] short_names_cache,
+                hashmap[@ast::ty,option::t[t]] ast_ty_to_ty_cache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from unify::ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
@@ -241,7 +242,9 @@ fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
             tcache = tcache,
             rcache = mk_rcache(),
             short_names_cache =
-            map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty));
+            map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty),
+            ast_ty_to_ty_cache = 
+            map::mk_hashmap[@ast::ty,option::t[t]](ast::hash_ty, ast::eq_ty));
 
     populate_type_store(cx);
     ret cx;

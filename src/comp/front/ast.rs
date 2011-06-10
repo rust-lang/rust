@@ -525,6 +525,14 @@ fn is_constraint_arg(@expr e) -> bool {
     }
 }
 
+fn eq_ty(&@ty a, &@ty b) -> bool {
+    ret std::box::ptr_eq(a,b);
+}
+
+fn hash_ty(&@ty t) -> uint {
+    ret t.span.lo << 16u + t.span.hi;
+}
+
 //
 // Local Variables:
 // mode: rust
