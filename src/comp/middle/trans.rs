@@ -347,6 +347,15 @@ fn val_str(type_names tn, ValueRef v) -> str {
     ret ty_str(tn, val_ty(v));
 }
 
+// Returns the nth element of the given LLVM structure type.
+fn struct_elt(TypeRef llstructty, uint n) -> TypeRef {
+    auto elt_count = llvm::LLVMCountStructElementTypes(llstructty);
+    assert (n < elt_count);
+    auto elt_tys = vec::init_elt(T_nil(), elt_count);
+    llvm::LLVMGetStructElementTypes(llstructty, vec::buf(elt_tys));
+    ret llvm::LLVMGetElementType(elt_tys.(n));
+}
+
 
 // LLVM type constructors.
 
@@ -7686,10 +7695,7 @@ fn trans_mod(@local_ctxt cx, &ast::_mod m) {
 
 fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
-    let vec[TypeRef] pair_tys = [T_nil(), T_nil()];
-    llvm::LLVMGetStructElementTypes(llpairty,
-                                   vec::buf[TypeRef](pair_tys));
-    ret llvm::LLVMGetElementType(pair_tys.(0));
+    ret struct_elt(llpairty, 0u);
 }
 
 fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
