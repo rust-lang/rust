@@ -1,9 +1,7 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
 
-// error-pattern: Unsatisfied .* lt(a, c)
+// error-pattern: lt(a, c)
 
 fn f(int a, int b) : lt(a,b) {
 }
