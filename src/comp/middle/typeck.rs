@@ -2287,20 +2287,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             alt (anon_obj.with_obj) {
                 case (none) { }
                 case (some(?e)) {
-                    // This had better have object type.  TOOD: report an
+                    // This had better have object type.  TODO: report an
                     // error if the user is trying to extend a non-object
                     // with_obj.
                     check_expr(fcx, e);
                 }
             }
-
-            // Typecheck the methods.
-            for (@ast::method method in anon_obj.methods) {
-                check_method(fcx.ccx, method);
-            }
-
-            auto t = next_ty_var(fcx);
-
 
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?
@@ -2328,10 +2320,27 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                                   anon_obj.methods);
             }
 
-            auto methods = get_anon_obj_method_types(fcx.ccx, anon_obj);
+            auto method_types = get_anon_obj_method_types(fcx.ccx, anon_obj);
             auto ot = ty::mk_obj(fcx.ccx.tcx,
-                                 ty::sort_methods(methods));
+                                 ty::sort_methods(method_types));
             write::ty_only_fixup(fcx, a.id, ot);
+
+            // Write the methods into the node type table.  (This happens in
+            // collect::convert for regular objects.)
+            auto i = 0u;
+            while (i < vec::len[@ast::method](anon_obj.methods)) {
+                write::ty_only(fcx.ccx.tcx, anon_obj.methods.(i).node.ann.id,
+                               ty::method_ty_to_fn_ty(fcx.ccx.tcx,
+                                                      method_types.(i)));
+                i += 1u;
+            }
+
+            // Typecheck the methods.
+            for (@ast::method method in anon_obj.methods) {
+                check_method(fcx.ccx, method);
+            }
+
+            auto t = next_ty_var(fcx);
 
             // Now remove the info from the stack.
             vec::pop[obj_info](fcx.ccx.obj_infos);
