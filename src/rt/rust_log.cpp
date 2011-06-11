@@ -269,7 +269,7 @@ void update_log_settings(void* crate_map, char* settings) {
                      n_dirs, &n_matches);
 
     if (n_matches < n_dirs) {
-        printf("warning: got %d RUST_LOG specs, enabled %d flags.",
+        printf("warning: got %u RUST_LOG specs, enabled %u flags.",
                n_dirs, n_matches);
     }
 
