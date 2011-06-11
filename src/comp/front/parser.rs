@@ -339,7 +339,7 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
     auto inputs = parse_seq(token::LPAREN, token::RPAREN,
                             some(token::COMMA), parse_fn_input_ty, p);
 
-    auto constrs = parse_constrs(p);
+    auto constrs = parse_constrs([], p);
 
     let @ast::ty output;
     auto cf = ast::return;
@@ -409,35 +409,57 @@ fn parse_ty_field(&parser p) -> ast::ty_field {
     ret spanned(lo, mt.ty.span.hi, rec(ident=id, mt=mt));
 }
 
-fn parse_constr_arg(&parser p) -> @ast::constr_arg {
+// if i is the jth ident in args, return j
+// otherwise, fail
+fn ident_index(&parser p, &vec[ast::arg] args, &ast::ident i) -> uint {
+    auto j = 0u;
+    for (ast::arg a in args) {
+        if (a.ident == i) {
+            ret j;
+        }
+        j += 1u;
+    }
+    p.get_session().span_err(p.get_span(),
+      "Unbound variable " + i + " in constraint arg");
+}
+
+fn parse_constr_arg(vec[ast::arg] args, &parser p) -> @ast::constr_arg {
     auto sp = p.get_span();
     auto carg = ast::carg_base;
     if (p.peek() == token::BINOP(token::STAR)) {
         p.bump();
     } else {
-        carg = ast::carg_ident(parse_value_ident(p));
+        let ast::ident i = parse_value_ident(p);
+        carg = ast::carg_ident(ident_index(p, args, i));
     }
     ret @rec(node=carg, span=sp);
 }
 
-fn parse_ty_constr(&parser p) -> @ast::constr {
+fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
     auto lo = p.get_lo_pos();
     auto path = parse_path(p);
-    auto pf = parse_constr_arg;
-    auto args = parse_seq[@ast::constr_arg](token::LPAREN,
+    auto pf = bind parse_constr_arg(fn_args, _);
+    let rec(vec[@ast::constr_arg] node, span span) args =
+         parse_seq[@ast::constr_arg](token::LPAREN,
                                          token::RPAREN,
                                          some(token::COMMA), pf, p);
-    ret @spanned(lo, args.span.hi, rec(path=path, args=args.node));
+    // FIXME fix the def_id
+    ret @spanned(lo, args.span.hi,
+                 rec(path=path, args=args.node, ann=p.get_ann()));
 }
 
-fn parse_constrs(&parser p) -> common::spanned[vec[@ast::constr]] {
+// Use the args list to translate each bound variable 
+// mentioned in a constraint to an arg index.
+// Seems weird to do this in the parser, but I'm not sure how else to.
+fn parse_constrs(&vec[ast::arg] args, 
+                 &parser p) -> common::spanned[vec[@ast::constr]] {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
     let vec[@ast::constr] constrs = [];
     if (p.peek() == token::COLON) {
         p.bump();
         while (true) {
-            auto constr = parse_ty_constr(p);
+            auto constr = parse_ty_constr(args, p);
             hi = constr.span.hi;
             vec::push[@ast::constr](constrs, constr);
             if (p.peek() == token::COMMA) {
@@ -452,7 +474,7 @@ fn parse_constrs(&parser p) -> common::spanned[vec[@ast::constr]] {
 
 fn parse_ty_constrs(@ast::ty t, &parser p) -> @ast::ty {
    if (p.peek() == token::COLON) {
-       auto constrs = parse_constrs(p);
+       auto constrs = parse_constrs([], p);
        ret @spanned(t.span.lo, constrs.span.hi,
                     ast::ty_constr(t, constrs.node));
    }
@@ -1768,7 +1790,7 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
 
     let ty_or_bang res;
 
-    auto constrs = parse_constrs(p).node;
+    auto constrs = parse_constrs(inputs.node, p).node;
 
     if (p.peek() == token::RARROW) {
         p.bump();

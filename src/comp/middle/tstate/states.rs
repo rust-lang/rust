@@ -50,9 +50,9 @@ import aux::controlflow_expr;
 import aux::ann_to_def;
 import aux::occ_init;
 import aux::expr_to_constr;
-import aux::constraint_info;
 import aux::constr_to_constr_occ;
 import aux::constr_occ;
+import aux::constr_id;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -527,9 +527,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         changed = find_pre_post_state_expr(fcx, pres, p) || changed;
         changed = extend_poststate_ann(fcx.ccx, a, pres) || changed;
         /* predicate p holds after this expression executes */
-        let constraint_info c = expr_to_constr(fcx.ccx.tcx, p);
-        let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.c.node);
-        changed = gen_poststate(fcx, a, c.id, o) || changed;
+        let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+        let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.node);
+        changed = gen_poststate(fcx, a, constr_id(c), o) || changed;
         ret changed;
     }
     case (expr_break(?a)) {

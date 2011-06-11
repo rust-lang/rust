@@ -69,7 +69,7 @@ type ctxt = rec(@type_store ts,
                 session::session sess,
                 resolve::def_map def_map,
                 node_type_table node_types,
-                item_table items,
+                item_table items, // Only contains type items
                 type_cache tcache,
                 creader_cache rcache,
                 hashmap[t,str] short_names_cache,
@@ -1100,7 +1100,11 @@ fn hash_ty(&t typ) -> uint { ret typ; }
 // Type equality. This function is private to this module (and slow); external
 // users should use `eq_ty()` instead.
 
-fn arg_eq(@ast::constr_arg a, @ast::constr_arg b) -> bool {
+fn eq_int(&uint x, &uint y) -> bool { ret x == y; }
+
+fn arg_eq[T](&fn (&T, &T) -> bool eq,
+          @ast::constr_arg_general[T] a,
+             @ast::constr_arg_general[T] b) -> bool {
     alt (a.node) {
         case (ast::carg_base) {
             alt (b.node) {
@@ -1115,7 +1119,7 @@ fn arg_eq(@ast::constr_arg a, @ast::constr_arg b) -> bool {
         case (ast::carg_ident(?s)) {
             alt (b.node) {
                 case (ast::carg_ident(?t)) {
-                    ret (s == t);
+                    ret eq(s, t);
                 }
                 case (_) {
                     ret false;
@@ -1134,10 +1138,13 @@ fn arg_eq(@ast::constr_arg a, @ast::constr_arg b) -> bool {
         }
     }
 }
-fn args_eq(vec[@ast::constr_arg] a, vec[@ast::constr_arg] b) -> bool {
+
+fn args_eq[T](fn (&T, &T) -> bool eq,
+           vec[@ast::constr_arg_general[T]] a,
+           vec[@ast::constr_arg_general[T]] b) -> bool {
     let uint i = 0u;
-    for (@ast::constr_arg arg in a) {
-        if (!arg_eq(arg, b.(i))) {
+    for (@ast::constr_arg_general[T] arg in a) {
+        if (!arg_eq(eq, arg, b.(i))) {
             ret false;
         }
         i += 1u;
@@ -1148,7 +1155,7 @@ fn args_eq(vec[@ast::constr_arg] a, vec[@ast::constr_arg] b) -> bool {
 
 fn constr_eq(&@ast::constr c, &@ast::constr d) -> bool {
     ret path_to_str(c.node.path) == path_to_str(d.node.path) // FIXME: hack
-        && args_eq(c.node.args, d.node.args);
+        && args_eq(eq_int, c.node.args, d.node.args);
 }
 
 fn constrs_eq(&vec[@ast::constr] cs, &vec[@ast::constr] ds) -> bool {
@@ -2660,6 +2667,7 @@ fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
     if (!type_contains_params(cx, typ)) { ret typ; }
 
     fn substituter(ctxt cx, vec[ty::t] substs, uint idx) -> t {
+        // FIXME: bounds check can fail
         ret substs.(idx);
     }
 
@@ -2773,27 +2781,6 @@ fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
 
 fn ret_ty_of_fn(ctxt cx, ast::ann ann) -> t {
     ret ret_ty_of_fn_ty(cx, ann_to_type(cx, ann));
-}
-
-fn lookup_fn_decl(ty_ctxt tcx, ast::ann ann)
-    -> option::t[tup(ast::fn_decl, ast::def_id)] {
-    auto nada = none[tup(ast::fn_decl, ast::def_id)];
-    alt (tcx.def_map.find(ann.id)) {
-        case (some(ast::def_fn(?d))) {
-            alt (tcx.items.find(d)) {
-                case (some(any_item_rust(?it))) {
-                    alt (it.node) {
-                        case (ast::item_fn(_,?f,_,_,_)) {
-                            ret some(tup(f.decl, d));
-                        }
-                        case (_) { ret nada; }
-                    }
-                }
-                case (_) { ret nada; }
-            }
-        }
-        case (_) { ret nada; }
-    }
 }
 
 // Local Variables:

@@ -94,6 +94,9 @@ fn parse_constrs(@pstate st, str_def sd) -> vec[@ast::constr] {
 }
 
 fn parse_constr(@pstate st, str_def sd) -> @ast::constr {
+    st.tcx.sess.unimpl("Reading constraints "
+                   + " isn't implemented");
+    /*
     let vec[@ast::constr_arg] args = [];
     auto sp = rec(lo=0u,hi=0u); // FIXME
     let vec[ast::ident] ids = [];
@@ -105,6 +108,7 @@ fn parse_constr(@pstate st, str_def sd) -> @ast::constr {
     log_err(p1);
     let char ignore = next(st) as char;
     assert(ignore as char == '(');
+    auto def = parse_def(st, sd);
     do {
         alt (peek(st) as char) {
             case ('*') {
@@ -132,7 +136,7 @@ fn parse_constr(@pstate st, str_def sd) -> @ast::constr {
         }
     } while (next(st) as char == ',');
     ignore = next(st) as char;
-    ret @respan(sp, rec(path=pth, args=args));
+    */
 }
 
 fn parse_ty(@pstate st, str_def sd) -> ty::t {

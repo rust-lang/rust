@@ -181,7 +181,22 @@ fn ty_to_short_str(&ctxt cx, t typ) -> str {
     ret s;
 }
 
-fn constr_arg_to_str(&ast::constr_arg_ c) -> str {
+fn constr_arg_to_str[T](fn (&T) -> str f,
+                        &ast::constr_arg_general_[T] c) -> str {
+    alt (c) {
+        case (ast::carg_base) {
+            ret "*";
+        }
+        case (ast::carg_ident(?i)) {
+            ret f(i);
+        }
+        case (ast::carg_lit(?l)) {
+            ret lit_to_str(l);
+        }
+    }
+}
+
+fn constr_arg_to_str_1(&ast::constr_arg_general_[str] c) -> str {
     alt (c) {
         case (ast::carg_base) {
             ret "*";
@@ -195,18 +210,34 @@ fn constr_arg_to_str(&ast::constr_arg_ c) -> str {
     }
 }
 
-
-fn constr_args_to_str(&vec[@constr_arg] args) -> str {
+fn constr_args_to_str[T](fn (&T) -> str f, 
+                         &vec[@ast::constr_arg_general[T]] args) -> str {
     auto comma = false;
     auto s   = "(";
-    for (@constr_arg a in args) {
+    for (@ast::constr_arg_general[T] a in args) {
         if (comma) {
             s += ", ";
         }
         else {
             comma = true;
         }
-        s += constr_arg_to_str(a.node);
+        s += constr_arg_to_str[T](f, a.node);
+    }
+    s += ")";
+    ret s;
+}
+
+fn constr_args_to_str_1(&vec[@ast::constr_arg_use] args) -> str {
+    auto comma = false;
+    auto s   = "(";
+    for (@ast::constr_arg_use a in args) {
+        if (comma) {
+            s += ", ";
+        }
+        else {
+            comma = true;
+        }
+        s += constr_arg_to_str_1(a.node);
     }
     s += ")";
     ret s;
@@ -410,9 +441,16 @@ fn rust_printer(io::writer writer) -> ps {
 const uint indent_unit = 4u;
 const uint default_columns = 78u;
 
+// needed b/c constr_args_to_str needs
+// something that takes an alias
+// (argh)
+fn uint_to_str(&uint i) -> str {
+    ret util::common::uistr(i);
+}
+
 fn constr_to_str(&@ast::constr c) -> str {
   ret path_to_str(c.node.path)
-    + constr_args_to_str(c.node.args);
+      + constr_args_to_str(uint_to_str, c.node.args);
 }
 
 fn constrs_str(&vec[@ast::constr] constrs) -> str {

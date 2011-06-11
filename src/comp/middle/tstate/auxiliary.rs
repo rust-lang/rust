@@ -51,10 +51,10 @@ fn def_id_to_str(def_id d) -> str {
    ret (istr(d._0) + "," + istr(d._1));
 }
 
-fn comma_str(vec[@constr_arg] args) -> str {
+fn comma_str(vec[@constr_arg_use] args) -> str {
     auto res = "";
     auto comma = false;
-    for (@constr_arg a in args) {
+    for (@constr_arg_use a in args) {
         if (comma) {
             res += ", ";
         }
@@ -78,10 +78,10 @@ fn comma_str(vec[@constr_arg] args) -> str {
 
 fn constraint_to_str(ty::ctxt tcx, constr c) -> str {
     alt (c.node) {
-        case (ninit(?i)) {
+        case (ninit(?i, _)) {
             ret "init(" + i + " [" + tcx.sess.span_str(c.span) + "])";
         }
-        case (npred(?p, ?args)) {
+        case (npred(?p, _, ?args)) {
             ret path_to_str(p) + "(" + comma_str(args) + ")"
                 + "[" + tcx.sess.span_str(c.span) + "]";
         }
@@ -211,16 +211,18 @@ fn print_idents(vec[ident] idents) -> () {
 /* mapping from def_id to bit number and other data
    (ident/path/span are there for error-logging purposes) */
 
-type pred_desc_ = rec(vec[@constr_arg] args,
+/* FIXME very confused about why we have all these different types. */
+
+type pred_desc_ = rec(vec[@constr_arg_use] args,
                       uint bit_num);
 type pred_desc = spanned[pred_desc_];
 tag constraint {
-    cinit(uint, span, ident);
-    cpred(path, @mutable vec[pred_desc]);
+    cinit(uint, span, def_id, ident);
+    cpred(path, def_id, @mutable vec[pred_desc]);
 }
 tag constr_ {
-    ninit(ident);
-    npred(path, vec[@constr_arg]);
+    ninit(ident, def_id);
+    npred(path, def_id, vec[@constr_arg_use]);
 }
 type constr = spanned[constr_];
 type norm_constraint = rec(uint bit_num,
@@ -231,10 +233,17 @@ type norm_constraint = rec(uint bit_num,
    a pred. */
 tag constr_occ {
     occ_init;
-    occ_args(vec[@constr_arg]);
+    occ_args(vec[@constr_arg_use]);
 }
    
 type constr_map = @std::map::hashmap[def_id, constraint];
+
+fn constr_id(&constr c) -> def_id {
+    ret (alt (c.node) {
+            case (ninit(_, ?i))    { i }
+            case (npred(_, ?i, _)) { i }
+        })
+}
 
 type fn_info  = rec(constr_map constrs, uint num_constraints, controlflow cf);
 
@@ -495,8 +504,8 @@ fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
     }
 }
 
-fn constraints_expr(&crate_ctxt ccx, @expr e) -> vec[@ast::constr] {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, expr_ann(e)))) {
+fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ast::constr] {
+    alt (ty::struct(cx, ty::ann_to_type(cx, expr_ann(e)))) {
         case (ty::ty_fn(_,_,_,_,?cs)) {
             ret cs;
         }
@@ -506,8 +515,8 @@ fn constraints_expr(&crate_ctxt ccx, @expr e) -> vec[@ast::constr] {
     }
 }
 
-fn ann_to_def_strict(&crate_ctxt ccx, &ann a) -> def {
-    alt (ccx.tcx.def_map.find(a.id)) {
+fn ann_to_def_strict(&ty::ctxt cx, &ann a) -> def {
+    alt (cx.def_map.find(a.id)) {
         case (none) { 
             log_err("ann_to_def: node_id " + uistr(a.id) + " has no def");
             fail;
@@ -522,14 +531,14 @@ fn ann_to_def(&crate_ctxt ccx, &ann a) -> option::t[def] {
 
 fn norm_a_constraint(&constraint c) -> vec[norm_constraint] {
     alt (c) {
-        case (cinit(?n, ?sp, ?i)) {
-            ret [rec(bit_num=n, c=respan(sp, ninit(i)))];
+        case (cinit(?n, ?sp, ?id, ?i)) {
+            ret [rec(bit_num=n, c=respan(sp, ninit(i, id)))];
         }
-        case (cpred(?p, ?descs)) {
+        case (cpred(?p, ?id, ?descs)) {
             let vec[norm_constraint] res = [];
             for (pred_desc pd in *descs) {
                 vec::push(res, rec(bit_num=pd.node.bit_num,
-                  c=respan(pd.span, npred(p, pd.node.args))));
+                  c=respan(pd.span, npred(p, id, pd.node.args))));
             }
             ret res;
         }
@@ -547,29 +556,26 @@ fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
     ret res;
 }
 
-
 // FIXME:
 // this probably doesn't handle name shadowing well (or at all)
 // variables should really always be id'd by def_id and not ident
 fn match_args(&fn_ctxt fcx, vec[pred_desc] occs,
-              vec[@constr_arg] occ) -> uint {
-    log ("match_args: looking at " + constr_args_to_str(occ));
+              vec[@constr_arg_use] occ) -> uint {
+    log ("match_args: looking at " +
+             pretty::ppaux::constr_args_to_str_1(occ));
     for (pred_desc pd in occs) {
         log ("match_args: candidate " + pred_desc_to_str(pd));
-        if (ty::args_eq(pd.node.args, occ)) {
+        if (ty::args_eq(str::eq, pd.node.args, occ)) {
             ret pd.node.bit_num;
         }
     }
     fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");  
 }
 
-
-type constraint_info = rec(def_id id, constr c);
-
 fn constr_to_constr_occ(&ty::ctxt tcx, &constr_ c) -> constr_occ {
     alt (c) {
-        case (ninit(_)) { ret occ_init; }
-        case (npred(_, ?args)) { ret occ_args(args); }
+        case (ninit(_, _)) { ret occ_init; }
+        case (npred(_, _, ?args)) { ret occ_args(args); }
     }
 }
 
@@ -587,41 +593,42 @@ fn def_id_for_constr(ty::ctxt tcx, uint t) -> def_id {
     }
 }
 
-
-fn exprs_to_constr_args(ty::ctxt tcx, vec[@expr] args) -> vec[@constr_arg] {
-    fn one(ty::ctxt tcx, &@expr e) -> @constr_arg {
-        alt (e.node) {
-            case (expr_path(?p, _)) {
-                if (vec::len(p.node.idents) == 1u) {
-                    ret @respan(p.span, carg_ident(p.node.idents.(0)));
-                }
-                else {
-                    tcx.sess.bug("exprs_to_constr_args: non-local variable "
-                                 + "as pred arg");
-                }
+fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
+    alt (e.node) {
+        case (expr_path(?p, _)) {
+            if (vec::len(p.node.idents) == 1u) {
+                ret @respan(p.span, carg_ident[ident](p.node.idents.(0)));
             }
-            case (expr_lit(?l, _)) {
-                ret @respan(e.span, carg_lit(l));
-            }
-            case (_) {
-                tcx.sess.bug("exprs_to_constr_args: ill-formed pred arg");
+            else {
+                tcx.sess.bug("exprs_to_constr_args: non-local variable "
+                             + "as pred arg");
             }
         }
+        case (expr_lit(?l, _)) {
+            ret @respan(e.span, carg_lit(l));
+        }
+        case (_) {
+            tcx.sess.bug("exprs_to_constr_args: ill-formed pred arg");
+        }
     }
-    auto f = bind one(tcx, _);
+}
+
+fn exprs_to_constr_args(ty::ctxt tcx, vec[@expr] args)
+    -> vec[@constr_arg_use] {
+    auto f = bind expr_to_constr_arg(tcx, _);
     ret vec::map(f, args); 
 }
 
-fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constraint_info {
+fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
     alt (e.node) {
         // FIXME
         // change the first pattern to expr_path to test a typechecker bug
         case (expr_call(?operator, ?args, _)) {
             alt (operator.node) {
                 case (expr_path(?p, ?a)) {
-                    ret rec(id=def_id_for_constr(tcx, a.id),
-                            c=respan(e.span,
-                                npred(p, exprs_to_constr_args(tcx, args)))); 
+                    ret respan(e.span,
+                               npred(p, def_id_for_constr(tcx, a.id),
+                                     exprs_to_constr_args(tcx, args))); 
                 }
                 case (_) {
                     tcx.sess.span_err(operator.span, "Internal error: " +
@@ -638,55 +645,42 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constraint_info {
 
 fn pred_desc_to_str(&pred_desc p) -> str {
     ret ("<" + uistr(p.node.bit_num) + ", " + 
-         constr_args_to_str(p.node.args) + ">");
+         pretty::ppaux::constr_args_to_str_1(p.node.args) + ">");
+}
+
+fn substitute_constr_args_(&ty::ctxt cx,
+                          &vec[@expr] actuals, &@ast::constr c)
+    -> vec[@constr_arg_use] {
+    let vec[@constr_arg_use] res = [];
+    for (@constr_arg a in c.node.args) {
+        res += [substitute_arg(cx, actuals, a)];
+    }
+    ret res;
+
 }
 
 fn substitute_constr_args(&ty::ctxt cx,
-                          &vec[@expr] actuals,
-                          &vec[arg] formals, &@ast::constr c) -> constr_occ {
-    let vec[@constr_arg] res = [];
-    auto subst = vec::zip(formals, actuals);
-    for (@constr_arg a in c.node.args) {
-        res += [substitute_arg(cx, subst, a)];
-    }
-    ret occ_args(res);
+      &vec[@expr] actuals, &@ast::constr c) -> constr_occ {
+    ret occ_args(substitute_constr_args_(cx, actuals, c));
 }
 
 type subst = vec[tup(arg, @expr)];
 
-fn substitute_arg(&ty::ctxt cx, &subst subst, @ast::constr_arg a)
-     -> @constr_arg {
+fn substitute_arg(&ty::ctxt cx, &vec[@expr] actuals, @ast::constr_arg a)
+     -> @constr_arg_use {
+    auto num_actuals = vec::len(actuals);
     alt (a.node) {
         case (carg_ident(?i)) {
-            ret find_arg(a.span, cx, i, subst);
-        }
-        case (_) { ret a; }
-    }
-
-}
-
-fn find_arg(&span sp, ty::ctxt cx, ident i, subst subst) -> @constr_arg {
-    for (tup(arg, @expr) p in subst) {
-        if (p._0.ident == i) {
-            alt (p._1.node) {
-                case (expr_path(?pt, _)) {
-                    // ??? maybe should check that pt is a local?
-                    let option::t[ident] thing = vec::last(pt.node.idents);
-                    assert (! option::is_none(thing));
-                    ret @respan(p._1.span, carg_ident(option::get(thing)));
-                }
-                case (expr_lit(?l, _)) {
-                    ret @respan(p._1.span, carg_lit(l));
-                }
-                case (_) {
-                    cx.sess.span_err(p._1.span,
-                                     "Unsupported form of argument " +
-                                     "in a call to a constrained function");
-                }
+            if (i < num_actuals) {
+                ret expr_to_constr_arg(cx, actuals.(i));
+            }
+            else {
+                cx.sess.span_err(a.span, "Constraint argument out of bounds");
             }
         }
+        case (carg_base) { ret @respan(a.span, carg_base); }
+        case (carg_lit(?l))  { ret @respan(a.span, carg_lit(l)); }
     }
-    cx.sess.span_err(sp, "Constraint contains an unbound variable " + i);
 }
 
 //

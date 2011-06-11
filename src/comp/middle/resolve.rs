@@ -254,7 +254,8 @@ fn resolve_names(&@env e, &@ast::crate c) {
                   visit_arm = bind walk_arm(e, _, _, _),
                   visit_expr = bind walk_expr(e, _, _, _),
                   visit_ty = bind walk_ty(e, _, _, _),
-                  visit_fn = visit_fn_with_scope
+                  visit_fn = visit_fn_with_scope,
+                  visit_constr = bind walk_constr(e, _, _, _)
                   with *visit::default_visitor());
     visit::visit_crate(*c, cons(scope_crate(c), @nil),
                        visit::vtor(v));
@@ -270,6 +271,14 @@ fn resolve_names(&@env e, &@ast::crate c) {
             case (_) {}
         }
     }
+
+    fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
+        auto new_def = lookup_path_strict(*e, sc, c.span,
+                                          c.node.path.node.idents,
+                                          ns_value);
+        e.def_map.insert(c.node.ann.id, new_def);
+    }
+
     fn walk_ty(@env e, &@ast::ty t, &scopes sc, &vt[scopes] v) {
         visit::visit_ty(t, sc, v);
         alt (t.node) {

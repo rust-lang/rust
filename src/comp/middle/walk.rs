@@ -36,6 +36,7 @@ type ast_visitor =
         fn (&@ast::expr e)              visit_expr_post,
         fn (&@ast::ty t)                visit_ty_pre,
         fn (&@ast::ty t)                visit_ty_post,
+        fn (&@ast::constr c)            visit_constr,
         fn (&ast::_fn f, &span sp, &ast::ident name, 
             &ast::def_id d_id, &ast::ann a)  visit_fn_pre,
         fn (&ast::_fn f, &span sp, &ast::ident name,
@@ -172,9 +173,12 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
                 walk_ty(v, f.node.mt.ty);
             }
         }
-        case (ast::ty_fn(_, ?args, ?out, _, _)) {
+        case (ast::ty_fn(_, ?args, ?out, _, ?constrs)) {
             for (ast::ty_arg a in args) {
                 walk_ty(v, a.node.ty);
+            }
+            for (@ast::constr c in constrs) {
+                v.visit_constr(c);
             }
             walk_ty(v, out);
         }
@@ -239,6 +243,9 @@ fn walk_native_item(&ast_visitor v, @ast::native_item ni) {
 fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     for (ast::arg a in fd.inputs) {
         walk_ty(v, a.ty);
+    }
+    for (@ast::constr c in fd.constraints) {
+        v.visit_constr(c);
     }
     walk_ty(v, fd.output);
 }
@@ -511,6 +518,7 @@ fn def_visit_pat(&@ast::pat p) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
+fn def_visit_constr(&@ast::constr c) { }
 fn def_visit_fn(&ast::_fn f, &span sp, &ast::ident i, &ast::def_id d,
                 &ast::ann a) { }
 
@@ -543,6 +551,7 @@ fn default_visitor() -> ast_visitor {
             visit_expr_post=def_visit_expr,
             visit_ty_pre=def_visit_ty,
             visit_ty_post=def_visit_ty,
+            visit_constr=def_visit_constr,
             visit_fn_pre=def_visit_fn,
             visit_fn_post=def_visit_fn);
 }

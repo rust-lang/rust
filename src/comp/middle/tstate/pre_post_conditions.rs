@@ -46,10 +46,10 @@ import aux::ann_to_ts_ann;
 import aux::set_postcond_false;
 import aux::controlflow_expr;
 import aux::expr_to_constr;
-import aux::constraint_info;
 import aux::constr_to_constr_occ;
 import aux::constraints_expr;
 import aux::substitute_constr_args;
+import aux::constr_id;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -61,7 +61,6 @@ import bitvectors::gen;
 import front::ast::*;
 
 import middle::ty::expr_ann;
-import middle::ty::lookup_fn_decl;
 
 import util::common::new_def_hash;
 import util::common::decl_lhs;
@@ -220,36 +219,29 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto args = vec::clone[@expr](operands);
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
-            
+          
+            /* should test higher-order constrained functions */
+            /* FIXME */
+
             /* see if the call has any constraints on its in type */
-            let option::t[tup(fn_decl, def_id)] decl_and_id =
-                lookup_fn_decl(fcx.ccx.tcx, expr_ann(operator));
-            alt (decl_and_id) {
-                case (some(?p)) {
-                    log("known function: " );
-                    log_expr(*operator);
-                    let def_id f_id = p._1;
-                    let fn_decl f_decl = p._0;
-                    auto pp = expr_pp(fcx.ccx, e);
-                    for (@constr c in constraints_expr(fcx.ccx, operator)) {
-                        auto i = bit_num(fcx, f_id,
-                           substitute_constr_args(fcx.ccx.tcx, operands,
-                                                  f_decl.inputs, c));
+            log("a function: " );
+            log_expr(*operator);
+            auto pp = expr_pp(fcx.ccx, e);
+            for (@constr c in constraints_expr(fcx.ccx.tcx, operator)) {
+                auto id = ann_to_def(fcx.ccx, c.node.ann);
+                alt (id) {
+                    case (some(def_fn(?d_id))) {
+                        auto i = bit_num(fcx, d_id,
+                          substitute_constr_args(fcx.ccx.tcx, operands, c));
                         require(i, pp);
                     }
+                    case (_) {
+                        fcx.ccx.tcx.sess.span_err(c.span, "Unbound pred "
+                          + " or pred that's not bound to a function");
+                    }
                 }
-                // FIXME: Soundness? If a function is constrained...
-                // shouldn't be able to pass it as an argument
-                // But typechecking guarantees that. However, we could
-                // have an unknown function w/ a constrained type =>
-                // no decl... but need to know the argument names.
-                // Fix that and then make a test w/ a higher-order
-                // constrained function.
-                case (_) { 
-                    log("unknown function: " );
-                    log_expr(*operator);
-                    /* unknown function -- do nothing */ }
             }
+             
             // FIXME: constraints on result type
             
             /* if this is a failing call, its postcondition sets everything */
@@ -275,7 +267,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             auto res = expr_pp(fcx.ccx, e);
             clear_pp(res);
 
-            auto df = ann_to_def_strict(fcx.ccx, a);
+            auto df = ann_to_def_strict(fcx.ccx.tcx, a);
             alt (df) {
                 case (def_local(?d_id)) {
                     auto i = bit_num(fcx, d_id, occ_init);
@@ -518,9 +510,9 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_expr(fcx, p);
             copy_pre_post(fcx.ccx, a, p);
             /* predicate p holds after this expression executes */
-            let constraint_info c = expr_to_constr(fcx.ccx.tcx, p);
-            let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.c.node);
-            gen(fcx, a, c.id, o);
+            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+            let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.node);
+            gen(fcx, a, constr_id(c), o);
         }
         case(expr_bind(?operator, ?maybe_args, ?a)) {
             auto args = vec::cat_options[@expr](maybe_args);

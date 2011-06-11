@@ -286,6 +286,8 @@ mod Encode {
     fn enc_constr(&io::writer w, &@ctxt cx, &@ast::constr c) {
         w.write_str(path_to_str(c.node.path));
         w.write_char('(');
+        // FIXME
+        //   w.write_str(cx.ds(c.node.id));
         auto comma = false;
         for (@constr_arg a in c.node.args) {
             if (comma) {
@@ -299,7 +301,7 @@ mod Encode {
                     w.write_char('*');
                 }
                 case (carg_ident(?i)) {
-                    w.write_str(i);
+                    w.write_uint(i);
                 }
                 case (carg_lit(?l)) {
                     w.write_str(lit_to_str(l));

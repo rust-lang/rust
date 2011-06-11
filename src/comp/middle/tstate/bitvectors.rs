@@ -41,7 +41,7 @@ fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
     alt (o) {
         case (occ_init) {
             alt (res) {
-                case (cinit(?n,_,_)) {
+                case (cinit(?n,_,_,_)) {
                     ret n;
                 }
                 case (_) {
@@ -52,7 +52,7 @@ fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
         }
         case (occ_args(?args)) {
             alt (res) {
-                case (cpred(_, ?descs)) {
+                case (cpred(_, _, ?descs)) {
                     ret match_args(fcx, *descs, args);
                 }
                 case (_) {

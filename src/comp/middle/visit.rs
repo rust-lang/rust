@@ -30,6 +30,7 @@ type visitor[E] =
          fn(&@decl d, &E e, &vt[E] v)          visit_decl,
          fn(&@expr ex, &E e, &vt[E] v)         visit_expr,
          fn(&@ty t, &E e, &vt[E] v)            visit_ty,
+         fn(&@constr c, &E e, &vt[E] v)        visit_constr,
          fn(&_fn f, &vec[ty_param] tp, &span sp, &ident name, &def_id d_id,
             &ann a, &E e, &vt[E] v)            visit_fn);
 
@@ -45,6 +46,7 @@ fn default_visitor[E]() -> visitor[E] {
              visit_decl = bind visit_decl[E](_, _, _),
              visit_expr = bind visit_expr[E](_, _, _),
              visit_ty = bind visit_ty[E](_, _, _),
+             visit_constr = bind visit_constr[E](_, _, _),
              visit_fn = bind visit_fn[E](_, _, _, _, _, _, _, _));
 }
 
@@ -153,9 +155,12 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
                 vt(v).visit_ty(f.node.mt.ty, e, v);
             }
         }
-        case (ty_fn(_, ?args, ?out, _, _)) {
+        case (ty_fn(_, ?args, ?out, _, ?constrs)) {
             for (ty_arg a in args) {
                 vt(v).visit_ty(a.node.ty, e, v);
+            }
+            for (@constr c in constrs) {
+                vt(v).visit_constr(c, e, v);
             }
             vt(v).visit_ty(out, e, v);
         }
@@ -175,6 +180,10 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
         case (ty_constr(?t, _)) { vt(v).visit_ty(t, e, v); }
         case (_) {}
     }
+}
+
+fn visit_constr[E](&@constr c, &E e, &vt[E] v) {
+    // default
 }
 
 fn visit_pat[E](&@pat p, &E e, &vt[E] v) {
@@ -199,6 +208,9 @@ fn visit_native_item[E](&@native_item ni, &E e, &vt[E] v) {
 fn visit_fn_decl[E](&fn_decl fd, &E e, &vt[E] v) {
     for (arg a in fd.inputs) {
         vt(v).visit_ty(a.ty, e, v);
+    }
+    for (@constr c in fd.constraints) {
+        vt(v).visit_constr(c, e, v);
     }
     vt(v).visit_ty(fd.output, e, v);
 }

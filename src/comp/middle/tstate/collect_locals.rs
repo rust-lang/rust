@@ -1,6 +1,7 @@
 import std::vec;
 import std::vec::plus_option;
 
+import front::ast;
 import front::ast::*;
 import option::*;
 
@@ -12,30 +13,30 @@ import aux::cinit;
 import aux::ninit;
 import aux::npred;
 import aux::cpred;
+import aux::constr;
 import aux::constraint;
 import aux::fn_info;
 import aux::crate_ctxt;
 import aux::num_constraints;
 import aux::constr_map;
-import aux::constraint_info;
 import aux::expr_to_constr;
+import aux::constraints_expr;
+import aux::ann_to_def_strict;
 
 import util::common::new_def_hash;
 import util::common::uistr;
 import util::common::span;
 import util::common::respan;
 
-type ctxt = rec(@mutable vec[constraint_info] cs,
+type ctxt = rec(@mutable vec[constr] cs,
                 ty::ctxt tcx);
 
 fn collect_local(&ctxt cx, &@decl d) -> () {
     alt (d.node) {
       case (decl_local(?loc)) {
         log("collect_local: pushing " + loc.ident);
-        vec::push[constraint_info](*cx.cs,
-                                   rec(id=loc.id,
-                                       c=respan(d.span,
-                                                ninit(loc.ident))));
+        vec::push[constr](*cx.cs, respan(d.span,
+                                         ninit(loc.ident, loc.id)));
       }
       case (_) { ret; }
     }
@@ -44,7 +45,29 @@ fn collect_local(&ctxt cx, &@decl d) -> () {
 fn collect_pred(&ctxt cx, &@expr e) -> () {
     alt (e.node) {
         case (expr_check(?e, _)) {
-            vec::push[constraint_info](*cx.cs, expr_to_constr(cx.tcx, e));
+            vec::push[constr](*cx.cs, expr_to_constr(cx.tcx, e));
+        }
+        // If it's a call, generate appropriate instances of the
+        // call's constraints.
+        case (expr_call(?operator, ?operands, ?a)) {
+            for (@ast::constr c in constraints_expr(cx.tcx, operator)) {
+                auto d_id = ann_to_def_strict(cx.tcx, c.node.ann);
+                alt (d_id) {
+                    case (def_fn(?an_id)) {
+                        let constr an_occ = respan(c.span,
+                              npred(c.node.path, an_id, 
+                                    aux::substitute_constr_args_(cx.tcx,
+                                                                 operands,
+                                                                 c)));
+                        vec::push[constr](*cx.cs, an_occ);
+                    }
+                    case (_) {
+                        cx.tcx.sess.span_err(c.span,
+                                             "Non-pred in constraint");
+                    }
+                }
+            }
+            // FIXME: constraints on result type
         }
         case (_) { }
     }
@@ -52,7 +75,7 @@ fn collect_pred(&ctxt cx, &@expr e) -> () {
 
 fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &ident i, &def_id d, &ann a)
     -> ctxt {
-    let ctxt cx = rec(cs=@mutable vec::alloc[constraint_info](0u), tcx=tcx);
+    let ctxt cx = rec(cs=@mutable vec::alloc[constr](0u), tcx=tcx);
     auto visitor = walk::default_visitor();
     visitor = rec(visit_decl_pre=bind collect_local(cx,_),
                   visit_expr_pre=bind collect_pred(cx,_)
@@ -61,32 +84,33 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &ident i, &def_id d, &ann a)
     ret cx;
 }
 
-fn add_constraint(&ty::ctxt tcx, constraint_info c, uint next, constr_map tbl)
+fn add_constraint(&ty::ctxt tcx, constr c, uint next, constr_map tbl)
     -> uint {
-    log(aux::constraint_to_str(tcx, c.c) + " |-> "
+    log(aux::constraint_to_str(tcx, c) + " |-> "
         + util::common::uistr(next));
-    let aux::constr cn = c.c;
-    alt (cn.node) {
-        case (ninit(?i)) {
-            tbl.insert(c.id, cinit(next, cn.span, i));
+    alt (c.node) {
+        case (ninit(?i, ?id)) {
+            tbl.insert(id, cinit(next, c.span, id, i));
         }
-        case (npred(?p, ?args)) {
-            alt (tbl.find(c.id)) {
+        case (npred(?p, ?id, ?args)) {
+            alt (tbl.find(id)) {
                 case (some[constraint](?ct)) {
                     alt (ct) {
-                        case (cinit(_,_,_)) {
+                        case (cinit(_,_,_,_)) {
                             tcx.sess.bug("add_constraint: same def_id used"
                                          + " as a variable and a pred");
                         }
-                        case (cpred(_, ?pds)) {
-                             vec::push(*pds, respan(cn.span,
+                        case (cpred(_, _, ?pds)) {
+                             vec::push(*pds, respan(c.span,
                               rec(args=args, bit_num=next)));
                         }
                     }
                 }
+                // FIXME: this suggests a cpred shouldn't really have a
+                // def_id as a field...
                 case (none[constraint]) {
-                     tbl.insert(c.id, cpred(p,
-                      @mutable [respan(cn.span, rec(args=args,
+                    tbl.insert(id, cpred(p, id,
+                      @mutable [respan(c.span, rec(args=args,
                                                     bit_num=next))]));
                 }
             }
@@ -111,13 +135,12 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp,
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    for (constraint_info c in {*cx.cs}) {
+    for (constr c in {*cx.cs}) {
         next = add_constraint(cx.tcx, c, next, res_map);
     }
     /* add a pseudo-entry for the function's return value
        we can safely use the function's name itself for this purpose */
-    add_constraint(cx.tcx, rec(id=f_id,
-                               c=respan(f_sp, ninit(f_name))), next, res_map);
+    add_constraint(cx.tcx, respan(f_sp, ninit(f_name, f_id)), next, res_map);
     
     auto res = rec(constrs=res_map,
                             num_constraints=vec::len(*cx.cs) + 1u,

@@ -355,14 +355,31 @@ tag ty_ {
     ty_constr(@ty, vec[@constr]);
 }
 
-tag constr_arg_ {
+/*
+A constraint arg that's a function argument is referred to by its position
+rather than name.  This is so we could have higher-order functions that have
+constraints (potentially -- right now there's no way to write that), and also
+so that the typestate pass doesn't have to map a function name onto its decl.
+So, the constr_arg type is parameterized: it's instantiated with uint for
+declarations, and ident for uses.
+*/
+tag constr_arg_general_[T] {
     carg_base;
-    carg_ident(ident);
+    carg_ident(T); 
     carg_lit(@lit);
 }
-type constr_arg = spanned[constr_arg_];
-type constr_ = rec(path path, vec[@constr_arg] args);
-type constr = spanned[constr_];
+type constr_arg = constr_arg_general[uint];
+type constr_arg_use = constr_arg_general[ident];
+type constr_arg_general[T] = spanned[constr_arg_general_[T]];
+
+// The ann field is there so that using the def_map in the type
+// context, we can get the def_id for the path.
+type constr_general[T] = rec(path path,
+                             vec[@constr_arg_general[T]] args,
+                             ann ann);
+
+type constr = spanned[constr_general[uint]];
+type constr_use = spanned[constr_general[ident]];
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(vec[arg] inputs,
