@@ -176,7 +176,7 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
 }
 
 void update_module_map(const mod_entry* map, log_directive* dirs,
-                       size_t n_dirs) {
+                       size_t n_dirs, size_t *n_matches) {
     for (const mod_entry* cur = map; cur->name; cur++) {
         size_t level = default_log_level, longest_match = 0;
         for (size_t d = 0; d < n_dirs; d++) {
@@ -187,18 +187,28 @@ void update_module_map(const mod_entry* map, log_directive* dirs,
             }
         }
         *cur->state = level;
+        (*n_matches)++;
     }
 }
 
 void update_crate_map(const cratemap* map, log_directive* dirs,
-                      size_t n_dirs) {
+                      size_t n_dirs, size_t *n_matches) {
     // First update log levels for this crate
-    update_module_map(map->entries, dirs, n_dirs);
+    update_module_map(map->entries, dirs, n_dirs, n_matches);
     // Then recurse on linked crates
     // FIXME this does double work in diamond-shaped deps. could keep
     //   a set of visited addresses, if it turns out to be actually slow
     for (size_t i = 0; map->children[i]; i++) {
-        update_crate_map(map->children[i], dirs, n_dirs);
+        update_crate_map(map->children[i], dirs, n_dirs, n_matches);
+    }
+}
+
+void print_crate_log_map(const cratemap* map) {
+    for (const mod_entry* cur = map->entries; cur->name; cur++) {
+        printf("  %s\n", cur->name);
+    }
+    for (size_t i = 0; map->children[i]; i++) {
+        print_crate_log_map(map->children[i]);
     }
 }
 
@@ -218,33 +228,61 @@ size_t log_rt_kern;
 size_t log_rt_backtrace;
 
 static const mod_entry _rt_module_map[] =
-    {{"rt::mem", &log_rt_mem},
-     {"rt::comm", &log_rt_comm},
-     {"rt::task", &log_rt_task},
-     {"rt::dom", &log_rt_dom},
-     {"rt::trace", &log_rt_trace},
-     {"rt::cache", &log_rt_cache},
-     {"rt::upcall", &log_rt_upcall},
-     {"rt::timer", &log_rt_timer},
-     {"rt::gc", &log_rt_gc},
-     {"rt::stdlib", &log_rt_stdlib},
-     {"rt::kern", &log_rt_kern},
-     {"rt::backtrace", &log_rt_backtrace},
+    {{"::rt::mem", &log_rt_mem},
+     {"::rt::comm", &log_rt_comm},
+     {"::rt::task", &log_rt_task},
+     {"::rt::dom", &log_rt_dom},
+     {"::rt::trace", &log_rt_trace},
+     {"::rt::cache", &log_rt_cache},
+     {"::rt::upcall", &log_rt_upcall},
+     {"::rt::timer", &log_rt_timer},
+     {"::rt::gc", &log_rt_gc},
+     {"::rt::stdlib", &log_rt_stdlib},
+     {"::rt::kern", &log_rt_kern},
+     {"::rt::backtrace", &log_rt_backtrace},
      {NULL, NULL}};
 
 void update_log_settings(void* crate_map, char* settings) {
     char* buffer = NULL;
     log_directive dirs[256];
     size_t n_dirs = 0;
+
     if (settings) {
+
+        if (strcmp(settings, "::help") == 0 ||
+            strcmp(settings, "?") == 0) {
+            printf("\nCrate log map:\n\n");
+            print_crate_log_map((const cratemap*)crate_map);
+            printf("\n");
+            exit(1);
+        }
+
         size_t buflen = strlen(settings) + 1;
         buffer = (char*)malloc(buflen);
         strncpy(buffer, settings, buflen);
         n_dirs = parse_logging_spec(buffer, &dirs[0]);
     }
 
-    update_module_map(_rt_module_map, &dirs[0], n_dirs);
-    update_crate_map((const cratemap*)crate_map, &dirs[0], n_dirs);
+    size_t n_matches = 0;
+    update_module_map(_rt_module_map, &dirs[0], n_dirs, &n_matches);
+    update_crate_map((const cratemap*)crate_map, &dirs[0],
+                     n_dirs, &n_matches);
+
+    if (n_matches < n_dirs) {
+        printf("warning: got %d RUST_LOG specs, enabled %d flags.",
+               n_dirs, n_matches);
+    }
 
     free(buffer);
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
