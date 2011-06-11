@@ -742,31 +742,37 @@ fn type_is_bool(&ctxt cx, &t ty) -> bool {
 
 fn type_is_structural(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
-        case (ty_tup(_))    { ret true; }
-        case (ty_rec(_))    { ret true; }
-        case (ty_tag(_,_))  { ret true; }
+        case (ty_tup(_))        { ret true; }
+        case (ty_rec(_))        { ret true; }
+        case (ty_tag(_,_))      { ret true; }
         case (ty_fn(_,_,_,_,_)) { ret true; }
-        case (ty_obj(_))    { ret true; }
-        case (_)            { ret false; }
+        case (ty_obj(_))        { ret true; }
+        case (ty_ivec(_))       { ret true; }
+        case (ty_istr)          { ret true; }
+        case (_)                { ret false; }
     }
 }
 
 fn type_is_sequence(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
-        case (ty_str)    { ret true; }
+        case (ty_str)       { ret true; }
+        case (ty_istr)      { ret true; }
         case (ty_vec(_))    { ret true; }
+        case (ty_ivec(_))   { ret true; }
         case (_)            { ret false; }
     }
 }
 
 fn sequence_element_type(&ctxt cx, &t ty) -> t {
     alt (struct(cx, ty)) {
-        case (ty_str)      { ret mk_mach(cx, common::ty_u8); }
-        case (ty_vec(?mt)) { ret mt.ty; }
-        // NB: This is not exhaustive.
+        case (ty_str)       { ret mk_mach(cx, common::ty_u8); }
+        case (ty_istr)      { ret mk_mach(cx, common::ty_u8); }
+        case (ty_vec(?mt))  { ret mt.ty; }
+        case (ty_ivec(?mt)) { ret mt.ty; }
+        case (_) {
+            cx.sess.bug("sequence_element_type called on non-sequence value");
+        }
     }
-
-    cx.sess.bug("sequence_element_type called on non-sequence value");
 }
 
 fn type_is_tup_like(&ctxt cx, &t ty) -> bool {

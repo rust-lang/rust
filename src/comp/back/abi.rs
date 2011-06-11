@@ -66,6 +66,17 @@ const int closure_elt_target = 1;
 const int closure_elt_bindings = 2;
 const int closure_elt_ty_params = 3;
 
+const uint ivec_default_size = 16u;
+
+const uint ivec_elt_len = 0u;
+const uint ivec_elt_alen = 1u;
+const uint ivec_elt_elems = 2u;
+const uint ivec_heap_stub_elt_zero = 0u;
+const uint ivec_heap_stub_elt_alen = 1u;
+const uint ivec_heap_stub_elt_ptr = 2u;
+const uint ivec_heap_elt_len = 0u;
+const uint ivec_heap_elt_elems = 1u;
+
 
 const int worst_case_glue_call_args = 7;
 

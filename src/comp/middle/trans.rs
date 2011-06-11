@@ -572,20 +572,26 @@ fn T_opaque_vec_ptr() -> TypeRef {
 // Interior vector.
 //
 // TODO: Support user-defined vector sizes.
-fn T_ivec(TypeRef t) -> TypeRef {
-    ret T_struct([T_int(),          // Length ("fill")
-                  T_int(),          // Alloc (if zero, it's heapified)
-                  T_array(t, 16u)   // Body elements
-                  ]);
+fn T_ivec() -> TypeRef {
+    ret T_struct([T_int(),          // Length ("fill"; if zero, heapified)
+                  T_int(),          // Alloc
+                  T_array(T_i8(), abi::ivec_default_size)]);  // Body elements
 }
 
 // Interior vector on the heap. Cast to this when the allocated length (second
 // element of T_ivec above) is zero.
 fn T_ivec_heap(TypeRef t) -> TypeRef {
-    ret T_struct([T_int(),          // Length ("fill")
-                  T_int(),          // Alloc (zero in this case)
-                  T_ptr(T_struct([T_int(),              // Real alloc
+    ret T_struct([T_int(),          // Length (zero)
+                  T_int(),          // Alloc
+                  T_ptr(T_struct([T_int(),              // Real length
                                   T_array(t, 0u)]))]);  // Body elements
+}
+
+fn T_opaque_ivec_heap() -> TypeRef {
+    ret T_struct([T_int(),          // Length (zero)
+                  T_int(),          // Alloc
+                  T_ptr(T_struct([T_int(),                  // Real length
+                                  T_array(T_i8(), 0u)]))]); // Body elements
 }
 
 fn T_str() -> TypeRef {
@@ -862,7 +868,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         }
         case (ty::ty_char) { llty = T_char(); }
         case (ty::ty_str) { llty = T_ptr(T_str()); }
-        case (ty::ty_istr) { llty = T_ivec(T_i8()); }
+        case (ty::ty_istr) { llty = T_ivec(); }
         case (ty::ty_tag(_, _)) {
             if (ty::type_has_dynamic_size(cx.tcx, t)) {
                 llty = T_opaque_tag(cx.tn);
@@ -878,7 +884,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty)));
         }
         case (ty::ty_ivec(?mt)) {
-            llty = T_ivec(type_of_inner(cx, sp, mt.ty));
+            llty = T_ivec();
         }
         case (ty::ty_ptr(?mt)) {
             llty = T_ptr(type_of_inner(cx, sp, mt.ty));
@@ -989,6 +995,13 @@ fn type_of_ty_param_count_and_ty(@local_ctxt lcx, &span sp,
     ret type_of(lcx.ccx, sp, tpt._1);
 }
 
+fn type_of_or_i8(&@block_ctxt bcx, ty::t typ) -> TypeRef {
+    if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, typ)) {
+        ret T_i8();
+    }
+    ret type_of(bcx.fcx.lcx.ccx, bcx.sp, typ);
+}
+
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
@@ -1056,6 +1069,10 @@ fn C_bool(bool b) -> ValueRef {
 
 fn C_int(int i) -> ValueRef {
     ret C_integral(T_int(), i as uint, True);
+}
+
+fn C_uint(uint i) -> ValueRef {
+    ret C_integral(T_int(), i, False);
 }
 
 fn C_u8(uint i) -> ValueRef {
@@ -2635,6 +2652,64 @@ fn make_numerical_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     r.bcx.build.RetVoid();
 }
 
+// Returns the length of an interior vector and a pointer to its first
+// element, in that order.
+fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
+        tup(ValueRef, ValueRef, @block_ctxt) {
+    auto llunitty = type_of_or_i8(bcx, unit_ty);
+
+    auto stack_len = bcx.build.Load(bcx.build.GEP(v,
+        [C_int(0), C_uint(abi::ivec_elt_len)]));
+    auto stack_elem = bcx.build.GEP(v, [C_int(0),
+                                        C_uint(abi::ivec_elt_elems)]);
+    stack_elem = bcx.build.PointerCast(stack_elem, T_ptr(llunitty));
+
+    auto on_heap = bcx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len, C_int(0));
+
+    auto on_heap_cx = new_sub_block_ctxt(bcx, "on_heap");
+    auto next_cx = new_sub_block_ctxt(bcx, "next");
+    bcx.build.CondBr(on_heap, on_heap_cx.llbb, next_cx.llbb);
+
+    auto heap_stub = on_heap_cx.build.PointerCast(v,
+        T_ptr(T_ivec_heap(llunitty)));
+    auto heap_ptr = on_heap_cx.build.Load(on_heap_cx.build.GEP(
+        heap_stub, [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+
+    // Check whether the heap pointer is null. If it is, the vector length is
+    // truly zero.
+    auto llstubty = T_ivec_heap(llunitty);
+    auto llheapptrty = struct_elt(llstubty, abi::ivec_heap_stub_elt_ptr);
+    auto heap_ptr_is_null = on_heap_cx.build.ICmp(lib::llvm::LLVMIntEQ,
+        heap_ptr, C_null(T_ptr(llheapptrty)));
+
+    auto zero_len_cx = new_sub_block_ctxt(bcx, "zero_len");
+    auto nonzero_len_cx = new_sub_block_ctxt(bcx, "nonzero_len");
+    on_heap_cx.build.CondBr(heap_ptr_is_null, zero_len_cx.llbb,
+                            nonzero_len_cx.llbb);
+
+    // Technically this context is unnecessary, but it makes this function
+    // clearer.
+    auto zero_len = C_int(0);
+    auto zero_elem = C_null(T_ptr(llunitty));
+    zero_len_cx.build.Br(next_cx.llbb);
+
+    // If we're here, then we actually have a heapified vector.
+    auto heap_len = nonzero_len_cx.build.Load(nonzero_len_cx.build.GEP(
+        heap_ptr, [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
+    auto heap_elem = nonzero_len_cx.build.GEP(heap_ptr,
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+    nonzero_len_cx.build.Br(next_cx.llbb);
+
+    // Now we can figure out the length of `v` and get a pointer to its first
+    // element.
+    auto len = next_cx.build.Phi(T_int(), [stack_len, zero_len, heap_len],
+        [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
+    auto elem = next_cx.build.Phi(T_ptr(llunitty),
+        [stack_elem, zero_elem, heap_elem],
+        [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
+    ret tup(len, elem, next_cx);
+}
+
 type val_pair_fn = fn(&@block_ctxt cx, ValueRef dst, ValueRef src) -> result;
 
 type val_and_ty_fn = fn(&@block_ctxt cx, ValueRef v, ty::t t) -> result;
@@ -2666,7 +2741,6 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                            &ty::t t,
                            &val_pair_and_ty_fn f)
     -> result {
-    let result r = res(cx, C_nil());
 
     fn iter_boxpp(@block_ctxt cx,
                   ValueRef box_a_cell,
@@ -2687,6 +2761,45 @@ fn iter_structural_ty_full(&@block_ctxt cx,
         ret res(next_cx, C_nil());
     }
 
+    fn iter_ivec(@block_ctxt bcx,
+                 ValueRef av,
+                 ValueRef bv,
+                 ty::t unit_ty,
+                 &val_pair_and_ty_fn f) -> result {
+        // FIXME: "unimplemented rebinding existing function" workaround
+        fn adapter(&@block_ctxt bcx, ValueRef av, ValueRef bv, ty::t unit_ty,
+                   val_pair_and_ty_fn f) -> result {
+            ret f(bcx, av, bv, unit_ty);
+        }
+
+        auto llunitty = type_of_or_i8(bcx, unit_ty);
+
+        auto rslt = size_of(bcx, unit_ty);
+        auto unit_sz = rslt.val;
+        bcx = rslt.bcx;
+
+        auto a_len_and_data = get_ivec_len_and_data(bcx, av, unit_ty);
+        auto a_len = a_len_and_data._0;
+        auto a_elem = a_len_and_data._1;
+        bcx = a_len_and_data._2;
+
+        auto b_len_and_data = get_ivec_len_and_data(bcx, bv, unit_ty);
+        auto b_len = b_len_and_data._0;
+        auto b_elem = b_len_and_data._1;
+        bcx = b_len_and_data._2;
+
+        // Calculate the last pointer address we want to handle.
+        auto len = umin(bcx, a_len, b_len);
+        auto b_elem_i8 = bcx.build.PointerCast(b_elem, T_ptr(T_i8()));
+        auto b_end_i8 = bcx.build.GEP(b_elem_i8, [len]);
+        auto b_end = bcx.build.PointerCast(b_end_i8, T_ptr(llunitty));
+
+        // Now perform the iteration.
+        auto vpf = bind adapter(_, _, _, unit_ty, f);
+        ret iter_sequence_raw(bcx, a_elem, b_elem, b_end, unit_sz, vpf);
+    }
+
+    let result r = res(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(?args)) {
             let int i = 0;
@@ -2830,6 +2943,13 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                              [C_int(0),
                                  C_int(abi::obj_field_box)]);
             ret iter_boxpp(cx, box_cell_a, box_cell_b, f);
+        }
+        case (ty::ty_ivec(?unit_tm)) {
+            ret iter_ivec(cx, av, bv, unit_tm.ty, f);
+        }
+        case (ty::ty_istr) {
+            auto unit_ty = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
+            ret iter_ivec(cx, av, bv, unit_ty, f);
         }
         case (_) {
             cx.fcx.lcx.ccx.sess.unimpl("type in iter_structural_ty_full");
@@ -5475,6 +5595,93 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args,
     ret res(bcx, vec_val);
 }
 
+fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
+        -> result {
+    auto typ = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto unit_ty;
+    alt (ty::struct(bcx.fcx.lcx.ccx.tcx, typ)) {
+        case (ty::ty_ivec(?mt)) { unit_ty = mt.ty; }
+        case (_) { bcx.fcx.lcx.ccx.sess.bug("non-ivec type in trans_ivec"); }
+    }
+
+    auto rslt = size_of(bcx, unit_ty);
+    auto unit_sz = rslt.val;
+    bcx = rslt.bcx;
+    rslt = align_of(bcx, unit_ty);
+    auto unit_align = rslt.val;
+    bcx = rslt.bcx;
+
+    auto llunitty = type_of_or_i8(bcx, unit_ty);
+    auto llvecptr = alloca(bcx, T_ivec());
+    auto lllen = bcx.build.Mul(C_uint(vec::len(args)), unit_sz);
+
+    // Allocate the vector pieces and store length and allocated length.
+    auto llfirsteltptr;
+    if (vec::len(args) > 0u && vec::len(args) < abi::ivec_default_size) {
+        // Interior case.
+        bcx.build.Store(lllen, bcx.build.GEP(llvecptr,
+            [C_int(0), C_uint(abi::ivec_elt_len)]));
+        bcx.build.Store(C_uint(abi::ivec_elt_alen), bcx.build.GEP(llvecptr,
+            [C_int(0), C_uint(abi::ivec_elt_alen)]));
+        llfirsteltptr = bcx.build.GEP(llvecptr,
+            [C_int(0), C_uint(abi::ivec_elt_elems)]);
+    } else {
+        // Heap case.
+        auto llstubty = T_ivec_heap(llunitty);
+        auto llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
+
+        bcx.build.Store(C_int(0), bcx.build.GEP(llstubptr,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_zero)]));
+        bcx.build.Store(C_uint(abi::ivec_elt_alen), bcx.build.GEP(llstubptr,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)]));
+
+        auto llheapty = struct_elt(llstubty, abi::ivec_heap_stub_elt_ptr);
+
+        if (vec::len(args) == 0u) {
+            // Null heap pointer indicates a zero-length vector.
+            bcx.build.Store(C_null(T_ptr(llheapty)), bcx.build.GEP(llstubptr,
+                [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+            llfirsteltptr = C_null(T_ptr(llunitty));
+        } else {
+            auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
+            rslt = trans_raw_malloc(bcx, llheapty, llheapsz);
+            bcx = rslt.bcx;
+            auto llheapptr = rslt.val;
+
+            bcx.build.Store(llheapptr, bcx.build.GEP(llstubptr,
+                [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+            bcx.build.Store(lllen, bcx.build.GEP(llheapptr,
+                [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
+            llfirsteltptr = bcx.build.GEP(llheapptr,
+                [C_int(0), C_uint(abi::ivec_heap_elt_elems)]);
+        }
+    }
+
+    llfirsteltptr = bcx.build.PointerCast(llfirsteltptr, T_ptr(llunitty));
+
+    // Store the individual elements.
+    auto i = 0u;
+    for (@ast::expr e in args) {
+        rslt = trans_expr(bcx, e);
+        bcx = rslt.bcx;
+        auto llsrc = rslt.val;
+
+        auto lleltptr;
+        if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
+            lleltptr = bcx.build.GEP(llfirsteltptr,
+                [bcx.build.Mul(C_uint(i), unit_align)]);
+        } else {
+            lleltptr = bcx.build.GEP(llfirsteltptr, [C_uint(i)]);
+        }
+
+        bcx = copy_val(bcx, INIT, lleltptr, llsrc, unit_ty).bcx;
+
+        i += 1u;
+    }
+
+    ret res(bcx, llvecptr);
+}
+
 fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
              &option::t[@ast::expr] base, &ast::ann ann) -> result {
 
@@ -5649,8 +5856,12 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             ret trans_cast(cx, e, ann);
         }
 
-        case (ast::expr_vec(?args, _, _, ?ann)) {
+        case (ast::expr_vec(?args, _, ast::sk_rc, ?ann)) {
             ret trans_vec(cx, args, ann);
+        }
+
+        case (ast::expr_vec(?args, _, ast::sk_unique, ?ann)) {
+            ret trans_ivec(cx, args, ann);
         }
 
         case (ast::expr_tup(?args, ?ann)) {
