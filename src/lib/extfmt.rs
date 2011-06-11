@@ -288,9 +288,7 @@ mod ct {
         } else if (str::eq(tstr, "o")) {
             ty_octal
         } else {
-            // FIXME: Shouldn't need explicit fail here. Issue #542
-            error("unknown type in conversion: " + tstr);
-            fail
+            error("unknown type in conversion: " + tstr)
         };
 
         ret tup(t, i + 1u);
