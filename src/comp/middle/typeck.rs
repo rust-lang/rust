@@ -2216,23 +2216,24 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             check_expr(fcx, idx);
             auto idx_t = expr_ty(fcx.ccx.tcx, idx);
+            if (!type_is_integral(fcx, idx.span, idx_t)) {
+                fcx.ccx.tcx.sess.span_err(idx.span,
+                     "mismatched types: expected integer but found " +
+                     ty_to_str(fcx.ccx.tcx, idx_t));
+            }
+
             alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_vec(?mt)) {
-                    if (! type_is_integral(fcx, idx.span, idx_t)) {
-                        fcx.ccx.tcx.sess.span_err
-                            (idx.span,
-                             "non-integral type of vec index: "
-                             + ty_to_str(fcx.ccx.tcx, idx_t));
-                    }
+                    write::ty_only_fixup(fcx, a.id, mt.ty);
+                }
+                case (ty::ty_ivec(?mt)) {
                     write::ty_only_fixup(fcx, a.id, mt.ty);
                 }
                 case (ty::ty_str) {
-                    if (! type_is_integral(fcx, idx.span, idx_t)) {
-                        fcx.ccx.tcx.sess.span_err
-                            (idx.span,
-                             "non-integral type of str index: "
-                             + ty_to_str(fcx.ccx.tcx, idx_t));
-                    }
+                    auto typ = ty::mk_mach(fcx.ccx.tcx, common::ty_u8);
+                    write::ty_only_fixup(fcx, a.id, typ);
+                }
+                case (ty::ty_istr) {
                     auto typ = ty::mk_mach(fcx.ccx.tcx, common::ty_u8);
                     write::ty_only_fixup(fcx, a.id, typ);
                 }
