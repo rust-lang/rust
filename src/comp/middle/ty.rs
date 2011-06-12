@@ -2789,6 +2789,19 @@ fn ret_ty_of_fn(ctxt cx, ast::ann ann) -> t {
     ret ret_ty_of_fn_ty(cx, ann_to_type(cx, ann));
 }
 
+// NB: This function requires that the given type has no variables. So, inside
+// typeck, you should use typeck::strip_boxes() instead.
+fn strip_boxes(&ctxt cx, &ty::t t) -> ty::t {
+    auto t1 = t;
+    while (true) {
+        alt (struct(cx, t1)) {
+            case (ty::ty_box(?inner)) { t1 = inner.ty; }
+            case (_) { ret t1; }
+        }
+    }
+    fail;
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

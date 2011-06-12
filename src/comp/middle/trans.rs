@@ -2662,7 +2662,8 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
         [C_int(0), C_uint(abi::ivec_elt_len)]));
     auto stack_elem = bcx.build.GEP(v, [C_int(0),
                                         C_uint(abi::ivec_elt_elems)]);
-    stack_elem = bcx.build.PointerCast(stack_elem, T_ptr(llunitty));
+    stack_elem = bcx.build.PointerCast(stack_elem,
+                                       T_ptr(T_array(llunitty, 0u)));
 
     auto on_heap = bcx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len, C_int(0));
 
@@ -2690,21 +2691,21 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
     // Technically this context is unnecessary, but it makes this function
     // clearer.
     auto zero_len = C_int(0);
-    auto zero_elem = C_null(T_ptr(llunitty));
+    auto zero_elem = C_null(T_ptr(T_array(llunitty, 0u)));
     zero_len_cx.build.Br(next_cx.llbb);
 
     // If we're here, then we actually have a heapified vector.
     auto heap_len = nonzero_len_cx.build.Load(nonzero_len_cx.build.GEP(
         heap_ptr, [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
     auto heap_elem = nonzero_len_cx.build.GEP(heap_ptr,
-        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems)]);
     nonzero_len_cx.build.Br(next_cx.llbb);
 
     // Now we can figure out the length of `v` and get a pointer to its first
     // element.
     auto len = next_cx.build.Phi(T_int(), [stack_len, zero_len, heap_len],
         [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
-    auto elem = next_cx.build.Phi(T_ptr(llunitty),
+    auto elem = next_cx.build.Phi(T_ptr(T_array(llunitty, 0u)),
         [stack_elem, zero_elem, heap_elem],
         [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
     ret tup(len, elem, next_cx);
@@ -4743,8 +4744,21 @@ fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
 fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
                &@ast::expr idx, &ast::ann ann) -> lval_result {
 
+    // Is this an interior vector?
+    auto base_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
+    auto base_ty_no_boxes = ty::strip_boxes(cx.fcx.lcx.ccx.tcx, base_ty);
+
+    auto is_interior;
+    alt (ty::struct(cx.fcx.lcx.ccx.tcx, base_ty_no_boxes)) {
+        // TODO: Or-patterns
+        case (ty::ty_vec(_))    { is_interior = false; }
+        case (ty::ty_str)       { is_interior = false; }
+        case (ty::ty_ivec(_))   { is_interior = true; }
+        case (ty::ty_istr)      { is_interior = true; }
+    };
+
     auto lv = trans_expr(cx, base);
-    lv = autoderef(lv.bcx, lv.val, ty::expr_ty(cx.fcx.lcx.ccx.tcx, base));
+    lv = autoderef(lv.bcx, lv.val, base_ty);
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
     auto bcx = ix.bcx;
@@ -4769,8 +4783,23 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
     auto scaled_ix = bcx.build.Mul(ix_val, unit_sz.val);
     maybe_name_value(cx.fcx.lcx.ccx, scaled_ix, "scaled_ix");
 
-    auto lim = bcx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_fill)]);
-    lim = bcx.build.Load(lim);
+    auto interior_len_and_data;
+    if (is_interior) {
+        auto rslt = get_ivec_len_and_data(bcx, v, unit_ty);
+        interior_len_and_data = some(tup(rslt._0, rslt._1));
+        bcx = rslt._2;
+    } else {
+        interior_len_and_data = none;
+    }
+
+    auto lim;
+    alt (interior_len_and_data) {
+        case (some(?lad)) { lim = lad._0; }
+        case (none) {
+            lim = bcx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_fill)]);
+            lim = bcx.build.Load(lim);
+        }
+    }
 
     auto bounds_check = bcx.build.ICmp(lib::llvm::LLVMIntULT,
                                        scaled_ix, lim);
@@ -4783,7 +4812,14 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
     auto fail_res = trans_fail(fail_cx, some[common::span](sp),
                                "bounds check");
 
-    auto body = next_cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
+    auto body;
+    alt (interior_len_and_data) {
+        case (some(?lad)) { body = lad._1; }
+        case (none) {
+            body = next_cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
+        }
+    }
+
     auto elt;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
         body = next_cx.build.PointerCast(body, T_ptr(T_array(T_i8(), 0u)));
