@@ -434,6 +434,7 @@ fn main(vec[str] args) {
 
         //FIXME: Should we make the 'stage3's variable here?
         let str glu = "stage3/glue.o";
+        let str main = "rt/main.o";
         let str stage = "-Lstage3";
         let vec[str] gcc_args;
         let str prog = "gcc";
@@ -450,21 +451,21 @@ fn main(vec[str] args) {
                 exe_suffix = ".exe";
                 gcc_args = common_cflags + [
                             "-march=i686", "-O2",
-                            glu, "-o",
+                            glu, main, "-o",
                             saved_out_filename + exe_suffix,
                             saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_macos) {
                 gcc_args = common_cflags + [
                            "-arch i386", "-O0", "-m32",
-                           glu, "-o",
+                           glu, main, "-o",
                            saved_out_filename + exe_suffix,
                            saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_linux) {
                 gcc_args = common_cflags + [
                            "-march=i686", "-O2", "-m32",
-                           glu, "-o",
+                           glu, main, "-o",
                            saved_out_filename + exe_suffix,
                            saved_out_filename + ".o"] + common_libs;
             }
