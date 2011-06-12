@@ -2658,9 +2658,9 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
         tup(ValueRef, ValueRef, @block_ctxt) {
     auto llunitty = type_of_or_i8(bcx, unit_ty);
 
-    auto stack_len = bcx.build.Load(bcx.build.GEP(v,
+    auto stack_len = bcx.build.Load(bcx.build.InBoundsGEP(v,
         [C_int(0), C_uint(abi::ivec_elt_len)]));
-    auto stack_elem = bcx.build.GEP(v, [C_int(0),
+    auto stack_elem = bcx.build.InBoundsGEP(v, [C_int(0),
                                         C_uint(abi::ivec_elt_elems)]);
     stack_elem = bcx.build.PointerCast(stack_elem,
                                        T_ptr(T_array(llunitty, 0u)));
@@ -2673,7 +2673,7 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
 
     auto heap_stub = on_heap_cx.build.PointerCast(v,
         T_ptr(T_ivec_heap(llunitty)));
-    auto heap_ptr = on_heap_cx.build.Load(on_heap_cx.build.GEP(
+    auto heap_ptr = on_heap_cx.build.Load(on_heap_cx.build.InBoundsGEP(
         heap_stub, [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
 
     // Check whether the heap pointer is null. If it is, the vector length is
@@ -2695,9 +2695,10 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
     zero_len_cx.build.Br(next_cx.llbb);
 
     // If we're here, then we actually have a heapified vector.
-    auto heap_len = nonzero_len_cx.build.Load(nonzero_len_cx.build.GEP(
-        heap_ptr, [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
-    auto heap_elem = nonzero_len_cx.build.GEP(heap_ptr,
+    auto heap_len = nonzero_len_cx.build.Load(
+        nonzero_len_cx.build.InBoundsGEP(heap_ptr,
+            [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
+    auto heap_elem = nonzero_len_cx.build.InBoundsGEP(heap_ptr,
         [C_int(0), C_uint(abi::ivec_heap_elt_elems)]);
     nonzero_len_cx.build.Br(next_cx.llbb);
 
