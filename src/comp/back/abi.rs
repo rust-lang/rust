@@ -67,6 +67,7 @@ const int closure_elt_bindings = 2;
 const int closure_elt_ty_params = 3;
 
 const uint ivec_default_size = 64u;
+const uint ivec_default_length = 8u;
 
 const uint ivec_elt_len = 0u;
 const uint ivec_elt_alen = 1u;

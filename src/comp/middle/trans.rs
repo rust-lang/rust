@@ -572,10 +572,17 @@ fn T_opaque_vec_ptr() -> TypeRef {
 // Interior vector.
 //
 // TODO: Support user-defined vector sizes.
-fn T_ivec() -> TypeRef {
+fn T_ivec(TypeRef t) -> TypeRef {
     ret T_struct([T_int(),          // Length ("fill"; if zero, heapified)
                   T_int(),          // Alloc
-                  T_array(T_i8(), abi::ivec_default_size)]);  // Body elements
+                  T_array(t, abi::ivec_default_length)]);   // Body elements
+}
+
+// Note that the size of this one is in bytes.
+fn T_opaque_ivec() -> TypeRef {
+    ret T_struct([T_int(),          // Length ("fill"; if zero, heapified)
+                  T_int(),          // Alloc
+                  T_array(T_i8(), abi::ivec_default_size)]); // Body elements
 }
 
 // Interior vector on the heap. Cast to this when the allocated length (second
@@ -868,7 +875,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         }
         case (ty::ty_char) { llty = T_char(); }
         case (ty::ty_str) { llty = T_ptr(T_str()); }
-        case (ty::ty_istr) { llty = T_ivec(); }
+        case (ty::ty_istr) { llty = T_ivec(T_i8()); }
         case (ty::ty_tag(_, _)) {
             if (ty::type_has_dynamic_size(cx.tcx, t)) {
                 llty = T_opaque_tag(cx.tn);
@@ -884,7 +891,11 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty)));
         }
         case (ty::ty_ivec(?mt)) {
-            llty = T_ivec();
+            if (ty::type_has_dynamic_size(cx.tcx, mt.ty)) {
+                llty = T_opaque_ivec();
+            } else {
+                llty = T_ivec(type_of_inner(cx, sp, mt.ty));
+            }
         }
         case (ty::ty_ptr(?mt)) {
             llty = T_ptr(type_of_inner(cx, sp, mt.ty));
@@ -2661,9 +2672,8 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
     auto stack_len = bcx.build.Load(bcx.build.InBoundsGEP(v,
         [C_int(0), C_uint(abi::ivec_elt_len)]));
     auto stack_elem = bcx.build.InBoundsGEP(v, [C_int(0),
-                                        C_uint(abi::ivec_elt_elems)]);
-    stack_elem = bcx.build.PointerCast(stack_elem,
-                                       T_ptr(T_array(llunitty, 0u)));
+                                        C_uint(abi::ivec_elt_elems),
+                                        C_int(0)]);
 
     auto on_heap = bcx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len, C_int(0));
 
@@ -2691,7 +2701,7 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
     // Technically this context is unnecessary, but it makes this function
     // clearer.
     auto zero_len = C_int(0);
-    auto zero_elem = C_null(T_ptr(T_array(llunitty, 0u)));
+    auto zero_elem = C_null(T_ptr(llunitty));
     zero_len_cx.build.Br(next_cx.llbb);
 
     // If we're here, then we actually have a heapified vector.
@@ -2699,14 +2709,14 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
         nonzero_len_cx.build.InBoundsGEP(heap_ptr,
             [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
     auto heap_elem = nonzero_len_cx.build.InBoundsGEP(heap_ptr,
-        [C_int(0), C_uint(abi::ivec_heap_elt_elems)]);
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
     nonzero_len_cx.build.Br(next_cx.llbb);
 
     // Now we can figure out the length of `v` and get a pointer to its first
     // element.
     auto len = next_cx.build.Phi(T_int(), [stack_len, zero_len, heap_len],
         [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
-    auto elem = next_cx.build.Phi(T_ptr(T_array(llunitty, 0u)),
+    auto elem = next_cx.build.Phi(T_ptr(llunitty),
         [stack_elem, zero_elem, heap_elem],
         [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
     ret tup(len, elem, next_cx);
@@ -2791,6 +2801,8 @@ fn iter_structural_ty_full(&@block_ctxt cx,
         bcx = b_len_and_data._2;
 
         // Calculate the last pointer address we want to handle.
+        // TODO: Optimize this when the size of the unit type is statically
+        // known to not use pointer casts, which tend to confuse LLVM.
         auto len = umin(bcx, a_len, b_len);
         auto b_elem_i8 = bcx.build.PointerCast(b_elem, T_ptr(T_i8()));
         auto b_end_i8 = bcx.build.GEP(b_elem_i8, [len]);
@@ -4817,16 +4829,17 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
     alt (interior_len_and_data) {
         case (some(?lad)) { body = lad._1; }
         case (none) {
-            body = next_cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
+            body = next_cx.build.GEP(v,
+                [C_int(0), C_int(abi::vec_elt_data), C_int(0)]);
         }
     }
 
     auto elt;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
-        body = next_cx.build.PointerCast(body, T_ptr(T_array(T_i8(), 0u)));
-        elt = next_cx.build.GEP(body, [C_int(0), scaled_ix]);
+        body = next_cx.build.PointerCast(body, T_ptr(T_i8()));
+        elt = next_cx.build.GEP(body, [scaled_ix]);
     } else {
-        elt = next_cx.build.GEP(body, [C_int(0), ix_val]);
+        elt = next_cx.build.GEP(body, [ix_val]);
 
         // We're crossing a box boundary here, so we may need to pointer cast.
         auto llunitty = type_of(next_cx.fcx.lcx.ccx, sp, unit_ty);
@@ -5649,7 +5662,13 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
     bcx = rslt.bcx;
 
     auto llunitty = type_of_or_i8(bcx, unit_ty);
-    auto llvecptr = alloca(bcx, T_ivec());
+    auto llvecptr;
+    if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
+        llvecptr = alloca(bcx, T_opaque_ivec());
+    } else {
+        llvecptr = alloca(bcx, T_ivec(llunitty));
+    }
+
     auto lllen = bcx.build.Mul(C_uint(vec::len(args)), unit_sz);
 
     // Allocate the vector pieces and store length and allocated length.
@@ -5661,7 +5680,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
         bcx.build.Store(C_uint(abi::ivec_elt_alen), bcx.build.GEP(llvecptr,
             [C_int(0), C_uint(abi::ivec_elt_alen)]));
         llfirsteltptr = bcx.build.GEP(llvecptr,
-            [C_int(0), C_uint(abi::ivec_elt_elems)]);
+            [C_int(0), C_uint(abi::ivec_elt_elems), C_int(0)]);
     } else {
         // Heap case.
         auto llstubty = T_ivec_heap(llunitty);
@@ -5690,11 +5709,9 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
             bcx.build.Store(lllen, bcx.build.GEP(llheapptr,
                 [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
             llfirsteltptr = bcx.build.GEP(llheapptr,
-                [C_int(0), C_uint(abi::ivec_heap_elt_elems)]);
+                [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
         }
     }
-
-    llfirsteltptr = bcx.build.PointerCast(llfirsteltptr, T_ptr(llunitty));
 
     // Store the individual elements.
     auto i = 0u;
@@ -5705,10 +5722,10 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
 
         auto lleltptr;
         if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
-            lleltptr = bcx.build.GEP(llfirsteltptr,
+            lleltptr = bcx.build.InBoundsGEP(llfirsteltptr,
                 [bcx.build.Mul(C_uint(i), unit_align)]);
         } else {
-            lleltptr = bcx.build.GEP(llfirsteltptr, [C_uint(i)]);
+            lleltptr = bcx.build.InBoundsGEP(llfirsteltptr, [C_uint(i)]);
         }
 
         bcx = copy_val(bcx, INIT, lleltptr, llsrc, unit_ty).bcx;
