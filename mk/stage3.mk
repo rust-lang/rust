@@ -18,10 +18,6 @@ stage3/$(CFG_RUSTCLIB): stage3/librustc.o stage3/glue.o
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o $(CFG_GCCISH_LINK_FLAGS) \
 	-o $@ $< -Lstage3 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd
 
-stage3/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
-	@$(call E, compile: $@)
-	$(STAGE2) -c -o $@ $<
-
 stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
@@ -41,10 +37,9 @@ stage3/%.o: stage3/%.s
 	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) -o $@ -c $<
 
-stage3/%$(X): stage3/%.o  $(SREQ2)
-	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o -o $@ $< \
-      -Lstage3 -Lrustllvm -Lrt rt/main.o -lrustrt -lrustllvm -lstd -lm
+stage3/%$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) -o $@ $<
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
