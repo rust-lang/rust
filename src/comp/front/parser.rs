@@ -1176,6 +1176,12 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
             ret @spanned(lo, rhs.span.hi,
                          ast::expr_recv(rhs, lhs, p.get_ann()));
         }
+        case (token::DARROW) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            ret @spanned(lo, rhs.span.hi,
+                         ast::expr_swap(lhs, rhs, p.get_ann()));
+        }
         case (_) {/* fall through */ }
     }
     ret lhs;
@@ -1536,7 +1542,9 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_alt(_, _, _)) { ret false; }
                 case (ast::expr_fn(_, _)) { ret false; }
                 case (ast::expr_block(_, _)) { ret false; }
+                case (ast::expr_move(_, _, _)) { ret true; }
                 case (ast::expr_assign(_, _, _)) { ret true; }
+                case (ast::expr_swap(_, _, _)) { ret true; }
                 case (ast::expr_assign_op(_, _, _, _)) { ret true; }
                 case (ast::expr_send(_, _, _)) { ret true; }
                 case (ast::expr_recv(_, _, _)) { ret true; }
