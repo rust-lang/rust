@@ -389,8 +389,14 @@ fn next_token(&reader rdr) -> token::token {
             alt (rdr.curr()) {
                 case ('=') { rdr.bump(); ret token::LE; }
                 case ('<') { ret binop(rdr, token::LSL); }
-                case ('-') { rdr.bump(); ret token::LARROW; }
                 case ('|') { rdr.bump(); ret token::SEND; }
+                case ('-') {
+                    rdr.bump();
+                    alt (rdr.curr()) {
+                        case ('>') { rdr.bump(); ret token::DARROW; }
+                        case (_) { ret token::LARROW; }
+                    }
+                }
                 case (_) { ret token::LT; }
             }
         }

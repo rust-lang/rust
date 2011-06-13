@@ -52,6 +52,7 @@ tag token {
     SEND;
     RECV;
     LARROW;
+    DARROW;
     LPAREN;
     RPAREN;
     LBRACKET;
@@ -124,6 +125,7 @@ fn to_str(lexer::reader r, token t) -> str {
         case (SEND) { ret "<|"; }
         case (RECV) { ret "<|"; }
         case (LARROW) { ret "<-"; }
+        case (DARROW) { ret "<->"; }
         case (LPAREN) { ret "("; }
         case (RPAREN) { ret ")"; }
         case (LBRACKET) { ret "["; }
