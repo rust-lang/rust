@@ -3,8 +3,9 @@
 ######################################################################
 
 doc/version.texi: $(MKFILES) rust.texi
-	(cd $(S) && git log -1 \
-      --pretty=format:'@macro gitversion%n%h %ci%n@end macro%n') >$@
+	echo "@macro gitversion" >$@
+	echo $(CFG_VERSION) >>$@
+	echo "@end macro" >>$@
 
 doc/%.pdf: %.texi doc/version.texi
 	texi2pdf --batch -I doc -o $@ --clean $<

@@ -193,11 +193,11 @@ putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 
 step_msg "looking for build programs"
-probe_need CFG_GIT          git
 probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 probe_need CFG_CURL         curl
 
+probe CFG_GIT          git
 probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
