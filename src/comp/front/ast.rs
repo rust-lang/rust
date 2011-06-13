@@ -245,11 +245,13 @@ tag expr_ {
     expr_alt(@expr, vec[arm], ann);
     expr_fn(_fn, ann);
     expr_block(block, ann);
-    expr_move(@expr, /* TODO: @expr|is_lval */@expr, ann);
-    expr_assign(@expr, /* TODO: @expr|is_lval */@expr, ann);
-    expr_assign_op(binop, @expr, /* TODO: @expr|is_lval */@expr, ann);
-    expr_send(@expr, /* TODO: @expr|is_lval */@expr, ann);
-    expr_recv(@expr, /* TODO: @expr|is_lval */@expr, ann);
+    expr_move(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_swap(@expr /* TODO: @expr|is_lval */,
+              @expr /* TODO: @expr|is_lval */, ann);
+    expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, ann);
