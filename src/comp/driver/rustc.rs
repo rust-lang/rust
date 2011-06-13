@@ -421,8 +421,20 @@ fn main(vec[str] args) {
             compile_input(sess, env, ifile, ofile);
         }
         case (some(?ofile)) {
+            // FIXME: what about windows? This will create a foo.exe.o.
             saved_out_filename = ofile;
-            compile_input(sess, env, ifile, ofile);
+            auto temp_filename;
+            alt (sopts.output_type) {
+                case (link::output_type_exe) {
+                    // FIXME: what about shared?
+                    temp_filename = ofile + ".o";
+                }
+                case (_) {
+                    temp_filename = ofile;
+                }
+            }
+
+            compile_input(sess, env, ifile, temp_filename);
         }
     }
 
@@ -431,11 +443,10 @@ fn main(vec[str] args) {
     //
     // TODO: Factor this out of main.
     if (sopts.output_type == link::output_type_exe) {
-
-        //FIXME: Should we make the 'stage3's variable here?
-        let str glu = "stage3/glue.o";
+        auto binary_dir = fs::dirname(binary);
+        let str glu = binary_dir + "/glue.o";
         let str main = "rt/main.o";
-        let str stage = "-Lstage3";
+        let str stage = "-L" + binary_dir;
         let vec[str] gcc_args;
         let str prog = "gcc";
         let str exe_suffix = "";
