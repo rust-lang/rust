@@ -4,7 +4,7 @@
 
 doc/version.texi: $(MKFILES) rust.texi
 	echo "@macro gitversion" >$@
-	echo $(CFG_VERSION) >>$@
+	echo "$(CFG_VERSION)" >>$@
 	echo "@end macro" >>$@
 
 doc/%.pdf: %.texi doc/version.texi
