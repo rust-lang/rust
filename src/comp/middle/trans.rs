@@ -6157,11 +6157,11 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
         }
 
         case (ast::expr_assert(?a, _)) {
-            ret trans_check_expr(cx, a);
+            ret trans_check_expr(cx, a, "Assertion");
         }
 
         case (ast::expr_check(?a, _)) {
-            ret trans_check_expr(cx, a);
+            ret trans_check_expr(cx, a, "Predicate");
         }
 
         case (ast::expr_break(?a)) {
@@ -6367,10 +6367,10 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     ret res(after_cx, C_nil());
 }
 
-fn trans_check_expr(&@block_ctxt cx, &@ast::expr e) -> result {
+fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    auto expr_str = expr_to_str(e);
+    auto expr_str = s + " " + expr_to_str(e) + " failed";
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, some[common::span](e.span), expr_str);
 
