@@ -1,9 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
-
-// error-pattern: mismatched types
+// xfail-stage0
+// error-pattern: unresolved name: lt
 
 fn f(int a, int b) : lt(a,b) {
 }

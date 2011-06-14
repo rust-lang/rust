@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
 // error-pattern: not all control paths return
 
 fn god_exists(int a) -> bool {
