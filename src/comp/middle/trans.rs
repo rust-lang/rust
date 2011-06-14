@@ -5885,7 +5885,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
             llfirsteltptr = C_null(T_ptr(llunitty));
         } else {
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
-            rslt = trans_raw_malloc(bcx, llheapty, llheapsz);
+            rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
             bcx = rslt.bcx;
             auto llheapptr = rslt.val;
 
