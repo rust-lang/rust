@@ -1,8 +1,4 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-
-// error-pattern: is not a mod
+// error-pattern: base type for expr_field
 
 obj x() {
   fn hello() {

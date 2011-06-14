@@ -527,7 +527,17 @@ mod collect {
     fn ty_of_arg(@ctxt cx, &ast::arg a) -> ty::arg {
         auto ty_mode = ast_mode_to_mode(a.mode);
         auto f = bind getter(cx, _);
-        ret rec(mode=ty_mode, ty=ast_ty_to_ty(cx.tcx, f, a.ty));
+        auto tt = ast_ty_to_ty(cx.tcx, f, a.ty);
+        if (ty::type_has_dynamic_size(cx.tcx, tt)) {
+            alt (ty_mode) {
+                case (mo_val) {
+                    cx.tcx.sess.span_err(a.ty.span,
+                      "Dynamically sized arguments must be passed by alias");
+                }
+                case (_) { }
+            }
+        }
+        ret rec(mode=ty_mode, ty=tt);
     }
 
     fn ty_of_method(@ctxt cx, &@ast::method m) -> ty::method {

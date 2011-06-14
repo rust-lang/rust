@@ -2274,6 +2274,31 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     rslt.bcx.build.RetVoid();
 }
 
+fn maybe_free_ivec_heap_part(&@block_ctxt cx, ValueRef v0, ty::t unit_ty)
+        -> result {
+    auto llunitty = type_of_or_i8(cx, unit_ty);
+
+    auto stack_len = cx.build.Load(cx.build.InBoundsGEP(v0, [C_int(0),
+        C_uint(abi::ivec_elt_len)]));
+    auto maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+    auto maybe_on_heap = cx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len,
+                                       C_int(0));
+    cx.build.CondBr(maybe_on_heap, maybe_on_heap_cx.llbb, next_cx.llbb);
+
+    // Might be on the heap. Load the heap pointer and free it. (It's ok to
+    // free a null pointer.)
+    auto stub_ptr = maybe_on_heap_cx.build.PointerCast(v0,
+        T_ptr(T_ivec_heap(llunitty)));
+    auto heap_ptr = maybe_on_heap_cx.build.Load(
+        maybe_on_heap_cx.build.InBoundsGEP(stub_ptr,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+    auto after_free_cx = trans_non_gc_free(maybe_on_heap_cx, heap_ptr).bcx;
+    after_free_cx.build.Br(next_cx.llbb);
+
+    ret res(next_cx, C_nil());
+}
+
 fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     auto rslt;
@@ -2284,6 +2309,11 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
 
         case (ty::ty_vec(_)) {
             rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_ivec(?tm)) {
+            rslt = iter_structural_ty(cx, v0, t, drop_ty);
+            rslt = maybe_free_ivec_heap_part(rslt.bcx, v0, tm.ty);
         }
 
         case (ty::ty_box(_)) {
@@ -5885,7 +5915,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
             llfirsteltptr = C_null(T_ptr(llunitty));
         } else {
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
-            rslt = trans_raw_malloc(bcx, llheapty, llheapsz);
+            rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
             bcx = rslt.bcx;
             auto llheapptr = rslt.val;
 
