@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: unresolved name: a
 
 mod m1 {

@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
 // Tests that a function with a ! annotation always actually fails
 // error-pattern: some control paths may return
 

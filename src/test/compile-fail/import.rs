@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: unresolved import: baz
 import zed::bar;
 import zed::baz;

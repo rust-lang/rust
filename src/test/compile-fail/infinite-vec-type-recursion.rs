@@ -1,9 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
-
-// error-pattern: infinite recursive type definition
+// xfail-stage0
+// error-pattern: illegal recursive type
 
 type x = vec[x];
 

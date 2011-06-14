@@ -1,5 +1,3 @@
-// xfail-stage0
-
 // error-pattern: duplicate value name: x
 
 fn main() {

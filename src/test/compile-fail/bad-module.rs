@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: unresolved import: vec
 import vec;
 

@@ -1,9 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
-
-// error-pattern: name
+// xfail-stage0
+// error-pattern: Dynamically sized arguments must be passed by alias
 
 mod foo {
   fn bar[T](T f) -> int { ret 17; }

@@ -1,6 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
-
 // error-pattern: mismatched types
 
 fn f(&int x) { log_err x; }

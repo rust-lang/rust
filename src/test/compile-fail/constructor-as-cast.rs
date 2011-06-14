@@ -1,7 +1,4 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// error-pattern: non-type context
+// error-pattern: unresolved name: base
 type base =
   obj {
     fn foo();

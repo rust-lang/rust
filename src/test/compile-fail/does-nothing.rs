@@ -1,7 +1,4 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// error-pattern: does nothing
+// error-pattern: unresolved name: this_does_nothing_what_the
 fn main() {
   log "doing";
   this_does_nothing_what_the;
