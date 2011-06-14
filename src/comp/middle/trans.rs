@@ -584,20 +584,29 @@ fn T_opaque_ivec() -> TypeRef {
                   T_array(T_i8(), abi::ivec_default_size)]); // Body elements
 }
 
-// Interior vector on the heap. Cast to this when the allocated length (second
-// element of T_ivec above) is zero.
+fn T_ivec_heap_part(TypeRef t) -> TypeRef {
+    ret T_struct([T_int(),              // Real length
+                  T_array(t, 0u)]);     // Body elements
+}
+
+// Interior vector on the heap, also known as the "stub". Cast to this when
+// the allocated length (second element of T_ivec above) is zero.
 fn T_ivec_heap(TypeRef t) -> TypeRef {
-    ret T_struct([T_int(),          // Length (zero)
-                  T_int(),          // Alloc
-                  T_ptr(T_struct([T_int(),              // Real length
-                                  T_array(t, 0u)]))]);  // Body elements
+    ret T_struct([T_int(),                          // Length (zero)
+                  T_int(),                          // Alloc
+                  T_ptr(T_ivec_heap_part(t))]);     // Pointer
+}
+
+fn T_opaque_ivec_heap_part() -> TypeRef {
+    ret T_struct([T_int(),                  // Real length
+                  T_array(T_i8(), 0u)]);    // Body elements
+
 }
 
 fn T_opaque_ivec_heap() -> TypeRef {
-    ret T_struct([T_int(),          // Length (zero)
-                  T_int(),          // Alloc
-                  T_ptr(T_struct([T_int(),                  // Real length
-                                  T_array(T_i8(), 0u)]))]); // Body elements
+    ret T_struct([T_int(),                              // Length (zero)
+                  T_int(),                              // Alloc
+                  T_ptr(T_opaque_ivec_heap_part())]);   // Pointer
 }
 
 fn T_str() -> TypeRef {
@@ -2670,9 +2679,8 @@ fn get_ivec_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
 
     auto stack_len = bcx.build.Load(bcx.build.InBoundsGEP(v,
         [C_int(0), C_uint(abi::ivec_elt_len)]));
-    auto stack_elem = bcx.build.InBoundsGEP(v, [C_int(0),
-                                        C_uint(abi::ivec_elt_elems),
-                                        C_int(0)]);
+    auto stack_elem = bcx.build.InBoundsGEP(v,
+        [C_int(0), C_uint(abi::ivec_elt_elems), C_int(0)]);
 
     auto on_heap = bcx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len, C_int(0));
 
@@ -3678,6 +3686,201 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t,
                                         llvec_tydesc.val,
                                         llelt_tydesc.val,
                                         dst, src, skip_null]));
+}
+
+// Returns a tuple consisting of a pointer to the length (to be updated), a
+// pointer to the newly-reserved space, and a block context.
+fn reserve_ivec_space(&@block_ctxt cx, TypeRef llunitty, ValueRef v,
+        ValueRef len_needed) -> tup(ValueRef, ValueRef, @block_ctxt) {
+    auto stack_len_ptr = cx.build.InBoundsGEP(v, [C_int(0),
+                                                  C_uint(abi::ivec_elt_len)]);
+    auto stack_len = cx.build.Load(stack_len_ptr);
+    auto alen = cx.build.Load(cx.build.InBoundsGEP(v,
+        [C_int(0), C_uint(abi::ivec_elt_alen)]));
+
+    // There are four cases we have to consider:
+    // (1) On heap, no resize necessary.
+    // (2) On heap, need to resize.
+    // (3) On stack, no resize necessary.
+    // (4) On stack, need to spill to heap.
+
+    auto maybe_on_heap = cx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len,
+                                       C_int(0));
+    auto maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
+    auto on_stack_cx = new_sub_block_ctxt(cx, "on_stack");
+    cx.build.CondBr(maybe_on_heap, maybe_on_heap_cx.llbb, on_stack_cx.llbb);
+
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+
+    // We're possibly on the heap, unless the vector is zero-length.
+    auto stub_ptr = maybe_on_heap_cx.build.PointerCast(v,
+        T_ptr(T_ivec_heap(llunitty)));
+    auto heap_ptr = maybe_on_heap_cx.build.Load(
+        maybe_on_heap_cx.build.InBoundsGEP(stub_ptr,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+    auto on_heap = maybe_on_heap_cx.build.ICmp(lib::llvm::LLVMIntNE, heap_ptr,
+        C_null(val_ty(heap_ptr)));
+    auto on_heap_cx = new_sub_block_ctxt(cx, "on_heap");
+    maybe_on_heap_cx.build.CondBr(on_heap, on_heap_cx.llbb, on_stack_cx.llbb);
+
+    // We're definitely on the heap. Check whether we need to resize.
+    auto heap_len_ptr = on_heap_cx.build.InBoundsGEP(heap_ptr, [C_int(0),
+                                                                C_int(0)]);
+    auto heap_len = on_heap_cx.build.Load(heap_len_ptr);
+    auto new_heap_len = on_heap_cx.build.Add(heap_len, len_needed);
+    auto heap_no_resize_needed = on_heap_cx.build.ICmp(lib::llvm::LLVMIntULT,
+                                                       new_heap_len, alen);
+    auto heap_no_resize_cx = new_sub_block_ctxt(cx, "heap_no_resize");
+    auto heap_resize_cx = new_sub_block_ctxt(cx, "heap_resize");
+    on_heap_cx.build.CondBr(heap_no_resize_needed, heap_no_resize_cx.llbb,
+                            heap_resize_cx.llbb);
+
+    // Case (1): We're on the heap and don't need to resize.
+    auto heap_len_unscaled = heap_no_resize_cx.build.UDiv(heap_len,
+        llsize_of(llunitty));
+    auto heap_data_no_resize = heap_no_resize_cx.build.InBoundsGEP(heap_ptr,
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), heap_len_unscaled]);
+    heap_no_resize_cx.build.Br(next_cx.llbb);
+
+    // Case (2): We're on the heap and need to resize. This path is rare, so
+    // we delegate to cold glue.
+    heap_resize_cx.build.Call(
+        cx.fcx.lcx.ccx.upcalls.ivec_resize, [
+            cx.fcx.lltaskptr,
+            heap_resize_cx.build.PointerCast(v, T_ptr(T_opaque_ivec())),
+            new_heap_len
+        ]);
+    auto heap_ptr_resize = heap_resize_cx.build.Load(
+        heap_resize_cx.build.InBoundsGEP(stub_ptr,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+    auto heap_data_resize = heap_resize_cx.build.InBoundsGEP(heap_ptr_resize,
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+    heap_resize_cx.build.Br(next_cx.llbb);
+
+    // We're on the stack. Check whether we need to spill to the heap.
+    auto new_stack_len = on_stack_cx.build.Add(stack_len, len_needed);
+    auto stack_no_spill_needed = on_stack_cx.build.ICmp(lib::llvm::LLVMIntULT,
+                                                        new_stack_len, alen);
+    auto stack_no_spill_cx = new_sub_block_ctxt(cx, "stack_no_spill");
+    auto stack_spill_cx = new_sub_block_ctxt(cx, "stack_spill");
+    on_stack_cx.build.CondBr(stack_no_spill_needed, stack_no_spill_cx.llbb,
+                             stack_spill_cx.llbb);
+
+    // Case (3): We're on the stack and don't need to spill.
+    auto stack_len_unscaled = stack_no_spill_cx.build.UDiv(stack_len,
+        llsize_of(llunitty));
+    auto stack_data_no_spill = stack_no_spill_cx.build.InBoundsGEP(v,
+        [C_int(0), C_uint(abi::ivec_elt_elems), stack_len_unscaled]);
+    stack_no_spill_cx.build.Br(next_cx.llbb);
+
+    // Case (4): We're on the stack and need to spill. Like case (2), this
+    // path is rare, so we delegate to cold glue.
+    stack_spill_cx.build.Call(
+        cx.fcx.lcx.ccx.upcalls.ivec_spill, [
+            cx.fcx.lltaskptr,
+            stack_spill_cx.build.PointerCast(v, T_ptr(T_opaque_ivec())),
+            new_stack_len
+        ]);
+    auto spill_stub = stack_spill_cx.build.PointerCast(v,
+        T_ptr(T_ivec_heap(llunitty)));
+    auto heap_ptr_spill = stack_spill_cx.build.Load(
+        stack_spill_cx.build.InBoundsGEP(spill_stub,
+            [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+    auto heap_len_ptr_spill = stack_spill_cx.build.InBoundsGEP(heap_ptr_spill,
+        [C_int(0), C_uint(abi::ivec_heap_elt_len)]);
+    auto heap_data_spill = stack_spill_cx.build.InBoundsGEP(heap_ptr_spill,
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+
+    stack_spill_cx.build.Br(next_cx.llbb);
+
+    // Phi together the different data pointers to get the result.
+    auto len_ptr = next_cx.build.Phi(T_ptr(T_int()),
+        [heap_len_ptr, heap_len_ptr, stack_len_ptr, heap_len_ptr_spill],
+        [heap_no_resize_cx.llbb, heap_resize_cx.llbb, stack_no_spill_cx.llbb,
+         stack_spill_cx.llbb]);
+    auto data_ptr = next_cx.build.Phi(T_ptr(llunitty),
+        [heap_data_no_resize, heap_data_resize, stack_data_no_spill,
+         heap_data_spill],
+        [heap_no_resize_cx.llbb, heap_resize_cx.llbb, stack_no_spill_cx.llbb,
+         stack_spill_cx.llbb]);
+    ret tup(len_ptr, data_ptr, next_cx);
+}
+
+fn trans_ivec_append(&@block_ctxt cx, &ty::t t, ValueRef lhs, ValueRef rhs)
+        -> result {
+    auto unit_ty = ty::sequence_element_type(cx.fcx.lcx.ccx.tcx, t);
+    auto llunitty = type_of_or_i8(cx, unit_ty);
+
+    auto skip_null;
+    alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+        case (ty::ty_istr) { skip_null = true; }
+        case (ty::ty_ivec(_)) { skip_null = false; }
+        case (_) {
+            cx.fcx.lcx.ccx.tcx.sess.bug("non-istr/ivec in trans_ivec_append");
+        }
+    }
+
+    // Gather the various type descriptors we'll need.
+    auto rslt = get_tydesc(cx, t, false, none);
+    auto vec_tydesc = rslt.val;
+    auto bcx = rslt.bcx;
+
+    rslt = get_tydesc(bcx, unit_ty, false, none);
+    auto unit_tydesc = rslt.val;
+    bcx = rslt.bcx;
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, none);
+
+    auto rhs_len_and_data = get_ivec_len_and_data(bcx, rhs, unit_ty);
+    auto rhs_len = rhs_len_and_data._0;
+    auto rhs_data = rhs_len_and_data._1;
+    bcx = rhs_len_and_data._2;
+
+    auto lhs_len_ptr_and_data =
+        reserve_ivec_space(bcx, llunitty, lhs, rhs_len);
+    auto lhs_len_ptr = lhs_len_ptr_and_data._0;
+    auto lhs_data = lhs_len_ptr_and_data._1;
+    bcx = lhs_len_ptr_and_data._2;
+
+    // Work out the end pointer.
+    auto lhs_unscaled_idx = bcx.build.UDiv(rhs_len, llsize_of(llunitty));
+    auto lhs_end = bcx.build.InBoundsGEP(lhs_data, [lhs_unscaled_idx]);
+
+    // Now emit the copy loop.
+    auto dest_ptr = alloca(bcx, T_ptr(llunitty));
+    bcx.build.Store(lhs_data, dest_ptr);
+    auto src_ptr = alloca(bcx, T_ptr(llunitty));
+    bcx.build.Store(rhs_data, src_ptr);
+
+    auto copy_loop_header_cx = new_sub_block_ctxt(bcx, "copy_loop_header");
+    bcx.build.Br(copy_loop_header_cx.llbb);
+
+    auto copy_dest_ptr = copy_loop_header_cx.build.Load(dest_ptr);
+    auto not_yet_at_end = copy_loop_header_cx.build.ICmp(lib::llvm::LLVMIntNE,
+        copy_dest_ptr, lhs_end);
+    auto copy_loop_body_cx = new_sub_block_ctxt(bcx, "copy_loop_body");
+    auto next_cx = new_sub_block_ctxt(bcx, "next");
+    copy_loop_header_cx.build.CondBr(not_yet_at_end, copy_loop_body_cx.llbb,
+                                     next_cx.llbb);
+
+    auto copy_src_ptr = copy_loop_body_cx.build.Load(src_ptr);
+    rslt = copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src_ptr, t);
+    auto post_copy_cx = rslt.bcx;
+
+    // Increment both pointers.
+    post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(copy_dest_ptr,
+        [C_int(1)]), dest_ptr);
+    post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(copy_src_ptr,
+        [C_int(1)]), src_ptr);
+    post_copy_cx.build.Br(copy_loop_header_cx.llbb);
+
+    // Write in the new length.
+    auto new_len = next_cx.build.Add(next_cx.build.Load(lhs_len_ptr),
+                                     rhs_len);
+    next_cx.build.Store(new_len, lhs_len_ptr);
+
+    ret res(next_cx, C_nil());
 }
 
 fn trans_vec_add(&@block_ctxt cx, &ty::t t,
@@ -4741,14 +4944,8 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base,
     auto base_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
     auto base_ty_no_boxes = ty::strip_boxes(cx.fcx.lcx.ccx.tcx, base_ty);
 
-    auto is_interior;
-    alt (ty::struct(cx.fcx.lcx.ccx.tcx, base_ty_no_boxes)) {
-        // TODO: Or-patterns
-        case (ty::ty_vec(_))    { is_interior = false; }
-        case (ty::ty_str)       { is_interior = false; }
-        case (ty::ty_ivec(_))   { is_interior = true; }
-        case (ty::ty_istr)      { is_interior = true; }
-    };
+    auto is_interior = ty::sequence_is_interior(cx.fcx.lcx.ccx.tcx,
+        base_ty_no_boxes);
 
     auto lv = trans_expr(cx, base);
     lv = autoderef(lv.bcx, lv.val, base_ty);
@@ -5655,28 +5852,31 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
     auto llfirsteltptr;
     if (vec::len(args) > 0u && vec::len(args) < abi::ivec_default_size) {
         // Interior case.
-        bcx.build.Store(lllen, bcx.build.GEP(llvecptr,
+        bcx.build.Store(lllen, bcx.build.InBoundsGEP(llvecptr,
             [C_int(0), C_uint(abi::ivec_elt_len)]));
-        bcx.build.Store(C_uint(abi::ivec_elt_alen), bcx.build.GEP(llvecptr,
-            [C_int(0), C_uint(abi::ivec_elt_alen)]));
-        llfirsteltptr = bcx.build.GEP(llvecptr,
+        bcx.build.Store(C_uint(abi::ivec_default_size),
+            bcx.build.InBoundsGEP(llvecptr,
+                [C_int(0), C_uint(abi::ivec_elt_alen)]));
+        llfirsteltptr = bcx.build.InBoundsGEP(llvecptr,
             [C_int(0), C_uint(abi::ivec_elt_elems), C_int(0)]);
     } else {
         // Heap case.
         auto llstubty = T_ivec_heap(llunitty);
         auto llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
 
-        bcx.build.Store(C_int(0), bcx.build.GEP(llstubptr,
+        bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr,
             [C_int(0), C_uint(abi::ivec_heap_stub_elt_zero)]));
-        bcx.build.Store(C_uint(abi::ivec_elt_alen), bcx.build.GEP(llstubptr,
-            [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)]));
+        bcx.build.Store(lllen,
+            bcx.build.InBoundsGEP(llstubptr,
+                [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)]));
 
         auto llheapty = struct_elt(llstubty, abi::ivec_heap_stub_elt_ptr);
 
         if (vec::len(args) == 0u) {
             // Null heap pointer indicates a zero-length vector.
-            bcx.build.Store(C_null(T_ptr(llheapty)), bcx.build.GEP(llstubptr,
-                [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
+            bcx.build.Store(C_null(T_ptr(llheapty)),
+                bcx.build.InBoundsGEP(llstubptr,
+                    [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
             llfirsteltptr = C_null(T_ptr(llunitty));
         } else {
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
@@ -5684,11 +5884,11 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
             bcx = rslt.bcx;
             auto llheapptr = rslt.val;
 
-            bcx.build.Store(llheapptr, bcx.build.GEP(llstubptr,
+            bcx.build.Store(llheapptr, bcx.build.InBoundsGEP(llstubptr,
                 [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
-            bcx.build.Store(lllen, bcx.build.GEP(llheapptr,
+            bcx.build.Store(lllen, bcx.build.InBoundsGEP(llheapptr,
                 [C_int(0), C_uint(abi::ivec_heap_elt_len)]));
-            llfirsteltptr = bcx.build.GEP(llheapptr,
+            llfirsteltptr = bcx.build.InBoundsGEP(llheapptr,
                 [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
         }
     }
@@ -5864,6 +6064,11 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             if (ty::type_is_sequence(cx.fcx.lcx.ccx.tcx, t)) {
                 alt (op) {
                     case (ast::add) {
+                        if (ty::sequence_is_interior(cx.fcx.lcx.ccx.tcx, t)) {
+                            ret trans_ivec_append(rhs_res.bcx, t,
+                                                  lhs_res.res.val,
+                                                  rhs_res.val);
+                        }
                         ret trans_vec_append(rhs_res.bcx, t,
                                              lhs_res.res.val,
                                              rhs_res.val);

@@ -574,6 +574,25 @@ upcall_start_thread(rust_task *task,
     return child_task_proxy;
 }
 
+/**
+ * Resizes an interior vector that has been spilled to the heap.
+ */
+extern "C" CDECL void
+upcall_ivec_resize(rust_task *task,
+                   rust_ivec *v,
+                   size_t newsz) {
+    // TODO
+    task->fail(4);
+}
+
+extern "C" CDECL void
+upcall_ivec_spill(rust_task *task,
+                  rust_ivec *v,
+                  size_t newsz) {
+    // TODO
+    task->fail(4);
+}
+
 //
 // Local Variables:
 // mode: C++

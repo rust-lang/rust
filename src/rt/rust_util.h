@@ -185,6 +185,30 @@ rust_vec : public rc_base<rust_vec>
 // Rust types vec and str look identical from our perspective.
 typedef rust_vec rust_str;
 
+// Interior vectors (rust-user-code level).
+
+struct
+rust_ivec_heap
+{
+    size_t fill;
+    uint8_t data[];
+};
+
+union
+rust_ivec_payload
+{
+    uint8_t data[];                 // if on stack
+    struct rust_ivec_heap *ptr;     // if on heap
+};
+
+struct
+rust_ivec
+{
+    size_t fill;    // in bytes; if zero, heapified
+    size_t alloc;   // in bytes
+    rust_ivec_payload payload;
+};
+
 //
 // Local Variables:
 // mode: C++

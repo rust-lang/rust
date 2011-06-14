@@ -763,6 +763,19 @@ fn type_is_sequence(&ctxt cx, &t ty) -> bool {
     }
 }
 
+fn sequence_is_interior(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        // TODO: Or-patterns
+        case (ty::ty_vec(_))    { ret false; }
+        case (ty::ty_str)       { ret false; }
+        case (ty::ty_ivec(_))   { ret true; }
+        case (ty::ty_istr)      { ret true; }
+        case (_) {
+            cx.sess.bug("sequence_is_interior called on non-sequence type");
+        }
+    }
+}
+
 fn sequence_element_type(&ctxt cx, &t ty) -> t {
     alt (struct(cx, ty)) {
         case (ty_str)       { ret mk_mach(cx, common::ty_u8); }

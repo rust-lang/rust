@@ -10,6 +10,7 @@ import trans::T_i32;
 import trans::T_int;
 import trans::T_nil;
 import trans::T_opaque_chan_ptr;
+import trans::T_opaque_ivec;
 import trans::T_opaque_port_ptr;
 import trans::T_opaque_vec_ptr;
 import trans::T_ptr;
@@ -56,7 +57,9 @@ type upcalls = rec(
     ValueRef new_task,
     ValueRef start_task,
     ValueRef new_thread,
-    ValueRef start_thread
+    ValueRef start_thread,
+    ValueRef ivec_resize,
+    ValueRef ivec_spill
 );
 
 fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
@@ -119,7 +122,11 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
         new_thread=d("new_thread", [T_ptr(T_i8())], T_taskptr(tn)),
         start_thread=d("start_thread", [T_taskptr(tn), T_int(), T_int(),
                                            T_int(), T_size_t()],
-                       T_taskptr(tn))
+                       T_taskptr(tn)),
+        ivec_resize=d("ivec_resize", [T_ptr(T_opaque_ivec()), T_int()],
+                      T_void()),
+        ivec_spill=d("ivec_spill", [T_ptr(T_opaque_ivec()), T_int()],
+                     T_void())
     );
 }
 

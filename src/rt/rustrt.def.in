@@ -49,6 +49,8 @@ upcall_flush_chan
 upcall_free
 upcall_get_type_desc
 upcall_grow_task
+upcall_ivec_resize
+upcall_ivec_spill
 upcall_join
 upcall_kill
 upcall_log_double
