@@ -206,11 +206,11 @@ struct rust_timer {
 
 #include "rust_util.h"
 
-typedef void FASTCALL (glue_fn)(void *, rust_task *, void *,
-                                const type_desc **, void *);
-typedef void FASTCALL (cmp_glue_fn)(void *, rust_task *, void *,
-                                    const type_desc **,
-                                    void *, void *, int8_t);
+typedef void CDECL (glue_fn)(void *, rust_task *, void *,
+                             const type_desc **, void *);
+typedef void CDECL (cmp_glue_fn)(void *, rust_task *, void *,
+                                 const type_desc **,
+                                 void *, void *, int8_t);
 
 
 struct type_desc {

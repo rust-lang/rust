@@ -1971,7 +1971,7 @@ fn declare_generic_glue(&@local_ctxt cx,
         fn_nm = mangle_internal_name_by_seq(cx.ccx,
                                             "glue_" + name);
     }
-    auto llfn = decl_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
+    auto llfn = decl_cdecl_fn(cx.ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(cx, llfn, t);
     ret llfn;
 }
@@ -3232,11 +3232,11 @@ fn call_tydesc_glue_full(&@block_ctxt cx, ValueRef v,
     auto llfnptr = cx.build.GEP(tydesc, [C_int(0), C_int(field)]);
     auto llfn = cx.build.Load(llfnptr);
 
-    cx.build.FastCall(llfn, [C_null(T_ptr(T_nil())),
-                                cx.fcx.lltaskptr,
-                                C_null(T_ptr(T_nil())),
-                                lltydescs,
-                                llrawptr]);
+    cx.build.Call(llfn, [C_null(T_ptr(T_nil())),
+                         cx.fcx.lltaskptr,
+                         C_null(T_ptr(T_nil())),
+                         lltydescs,
+                         llrawptr]);
 }
 
 fn call_tydesc_glue(&@block_ctxt cx, ValueRef v,
@@ -3311,7 +3311,7 @@ fn call_cmp_glue(&@block_ctxt cx,
                                    llrawrhsptr,
                                    llop];
 
-    r.bcx.build.FastCall(llfn, llargs);
+    r.bcx.build.Call(llfn, llargs);
 
     ret res(r.bcx, r.bcx.build.Load(llcmpresultptr));
 }
