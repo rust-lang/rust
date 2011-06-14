@@ -449,7 +449,6 @@ fn main(vec[str] args) {
         let str stage = "-L" + binary_dir;
         let vec[str] gcc_args;
         let str prog = "gcc";
-        let str exe_suffix = "";
 
         // The invocations of gcc share some flags across platforms
         let vec[str] common_cflags = ["-fno-strict-aliasing", "-fPIC",
@@ -459,25 +458,24 @@ fn main(vec[str] args) {
 
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
-                exe_suffix = ".exe";
                 gcc_args = common_cflags + [
                             "-march=i686", "-O2",
                             glu, main, "-o",
-                            saved_out_filename + exe_suffix,
+                            saved_out_filename,
                             saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_macos) {
                 gcc_args = common_cflags + [
                            "-arch i386", "-O0", "-m32",
                            glu, main, "-o",
-                           saved_out_filename + exe_suffix,
+                           saved_out_filename,
                            saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_linux) {
                 gcc_args = common_cflags + [
                            "-march=i686", "-O2", "-m32",
                            glu, main, "-o",
-                           saved_out_filename + exe_suffix,
+                           saved_out_filename,
                            saved_out_filename + ".o"] + common_libs;
             }
         }

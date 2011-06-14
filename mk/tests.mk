@@ -200,15 +200,13 @@ compile-check: tidy \
 	@# programs, I\'ll live with the noise.
 	-$(Q)$(CFG_DSYMUTIL) $@
 
-%.stage2$(X): %.stage2.o $(SREQ2)
-	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o -o $@ $< \
-      -Lstage3 -Lrt rt/main.o -lrustrt -lstd -lm
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
+%.stage2$(X): %.rs $(SREQ2)
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) -o $@ $<
 
+%.stage2$(X): %.rc $(SREQ2)
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) -o $@ $<
 
 %.stage0.o: %.rc $(SREQ0)
 	@$(call E, compile [stage0]: $@)
@@ -226,15 +224,6 @@ compile-check: tidy \
 %.stage1.o: %.rs $(SREQ1)
 	@$(call E, compile [stage1]: $@)
 	$(STAGE1) -c -o $@ $<
-
-
-%.stage2.o: %.rc $(SREQ2)
-	@$(call E, compile [stage2]: $@)
-	$(STAGE2) -c -o $@ $<
-
-%.stage2.o: %.rs $(SREQ2)
-	@$(call E, compile [stage2]: $@)
-	$(STAGE2) -c -o $@ $<
 
 # Cancel the implicit .out rule in GNU make.
 %.out: %
