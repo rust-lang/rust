@@ -361,7 +361,12 @@ task_yield(rust_task *task) {
 
 extern "C" CDECL void
 task_join(rust_task *task, rust_task *join_task) {
-    // TODO
+    // If the other task is already dying, we don't have to wait for it.
+    if (join_task->dead() == false) {
+        join_task->tasks_waiting_to_join.push(task);
+        task->block(join_task, "joining local task");
+        task->yield(2);
+    }
 }
 
 /* Debug builtins for std.dbg. */

@@ -509,8 +509,6 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     return task;
 }
 
-// TODO: This is copied from rust_task.cpp. Both copies should be moved to a
-// common location.
 static uintptr_t
 align_down(uintptr_t sp)
 {
