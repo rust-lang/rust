@@ -1624,18 +1624,18 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
         auto hi = p.get_span();
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_ann()));
     } else {
-        if (peeking_at_item(p)) {
-            // Might be a local item decl.
-            auto i = parse_item(p);
-            auto hi = i.span.hi;
-            auto decl = @spanned(lo, hi, ast::decl_item(i));
-            ret @spanned(lo, hi, ast::stmt_decl(decl, p.get_ann()));
-
-        } else {
-            // Remainder are line-expr stmts.
-            auto e = parse_expr(p);
-            auto hi = p.get_span();
-            ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_ann()));
+        alt (parse_item(p)) {
+            case (got_item(?i)) {
+                auto hi = i.span.hi;
+                auto decl = @spanned(lo, hi, ast::decl_item(i));
+                ret @spanned(lo, hi, ast::stmt_decl(decl, p.get_ann()));
+            }
+            case (no_item) {
+                // Remainder are line-expr stmts.
+                auto e = parse_expr(p);
+                auto hi = p.get_span();
+                ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_ann()));
+            }
         }
     }
     p.err("expected statement");
@@ -1918,7 +1918,15 @@ fn parse_mod_items(&parser p, token::token term) -> ast::_mod {
     auto view_items = parse_view(p);
     let vec[@ast::item] items = [];
     while (p.peek() != term) {
-        items += [parse_item(p)];
+        alt (parse_item(p)) {
+            case (got_item(?i)) {
+                vec::push(items, i);
+            }
+            case (_) {
+                p.err("expected item but found " +
+                      token::to_str(p.get_reader(), p.peek()));
+            }
+        }
     }
     ret rec(view_items=view_items, items=items);
 }
@@ -2144,57 +2152,38 @@ fn parse_auth(&parser p) -> ast::_auth {
     fail;
 }
 
-fn peeking_at_item(&parser p) -> bool {
-    alt (p.peek()) {
-        case (token::IDENT(?sid, false)) {
-            auto st = p.get_str(sid);
-            ret str::eq(st, "state") ||
-                str::eq(st, "gc") ||
-                str::eq(st, "const") ||
-                str::eq(st, "fn") ||
-                str::eq(st, "pred") ||
-                str::eq(st, "iter") ||
-                str::eq(st, "mod") ||
-                str::eq(st, "type") ||
-                str::eq(st, "tag") ||
-                str::eq(st, "obj");
-        }
-        case (_) { ret false; }
-    }
+// FIXME will be extended to help parse anon functions
+tag parsed_item {
+    got_item(@ast::item);
+    no_item;
 }
 
-fn parse_item(&parser p) -> @ast::item {
-    let ast::layer lyr = parse_layer(p);
-
+fn parse_item(&parser p) -> parsed_item {
     if (eat_word(p, "const")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_const(p);
+        ret got_item(parse_item_const(p));
     } else if (eat_word(p, "fn")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn);
+        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn));
     } else if (eat_word(p, "pred")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn);
+        ret got_item(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn));
     } else if (eat_word(p, "iter")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter);
+        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn,
+                                           ast::proto_iter));
     } else if (eat_word(p, "mod")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_mod(p);
+        ret got_item(parse_item_mod(p));
     } else if (eat_word(p, "native")) {
-        assert (lyr == ast::layer_value);
-        ret parse_item_native_mod(p);
-    } else if (eat_word(p, "type")) {
-        ret parse_item_type(p);
-    } else if (eat_word(p, "tag")) {
-        ret parse_item_tag(p);
-    } else if (eat_word(p, "obj")) {
-        ret parse_item_obj(p, lyr);
-    } else {
-        p.err("expected item but found " +
-              token::to_str(p.get_reader(), p.peek()));
+        ret got_item(parse_item_native_mod(p));
     }
-    fail;
+
+    auto lyr = parse_layer(p);
+    if (eat_word(p, "type")) {
+        ret got_item(parse_item_type(p));
+    } else if (eat_word(p, "tag")) {
+        ret got_item(parse_item_tag(p));
+    } else if (eat_word(p, "obj")) {
+        ret got_item(parse_item_obj(p, lyr));
+    } else {
+        ret no_item;
+    }
 }
 
 fn parse_meta_item(&parser p) -> @ast::meta_item {
