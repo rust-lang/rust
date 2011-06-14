@@ -347,6 +347,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_expr(v, b);
         }
         case (ast::expr_move(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
+        case (ast::expr_swap(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
         case (ast::expr_assign_op(_, ?a, ?b, _)) {
             walk_expr(v, a);
             walk_expr(v, b);

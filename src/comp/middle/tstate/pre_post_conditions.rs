@@ -292,6 +292,10 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (_) { find_pre_post_exprs(fcx, [lhs, rhs], a); }
             }
         }
+        case (expr_swap(?lhs, ?rhs, ?a)) {
+            // Both sides must already be initialized
+            find_pre_post_exprs(fcx, [lhs, rhs], a);
+        }
         case (expr_assign(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
                 case (expr_path(?p, ?a_lhs)) {

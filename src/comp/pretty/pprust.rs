@@ -704,6 +704,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word_space(s, "=");
             print_expr(s, rhs);
         }
+        case (ast::expr_swap(?lhs, ?rhs, _)) {
+            print_expr(s, lhs);
+            space(s.s);
+            word_space(s, "<->");
+            print_expr(s, rhs);
+        }
         case (ast::expr_assign_op(?op, ?lhs, ?rhs, _)) {
             print_expr(s, lhs);
             space(s.s);

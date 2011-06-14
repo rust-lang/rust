@@ -1637,6 +1637,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
             check_assignment(fcx, expr.span, lhs, rhs, a);
         }
+        case (ast::expr_swap(?lhs, ?rhs, ?a)) {
+            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+            check_assignment(fcx, expr.span, lhs, rhs, a);
+        }
         case (ast::expr_assign_op(?op, ?lhs, ?rhs, ?a)) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
             check_assignment(fcx, expr.span, lhs, rhs, a);
