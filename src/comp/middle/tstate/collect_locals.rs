@@ -31,15 +31,10 @@ import util::common::respan;
 type ctxt = rec(@mutable vec[constr] cs,
                 ty::ctxt tcx);
 
-fn collect_local(&ctxt cx, &@decl d) -> () {
-    alt (d.node) {
-      case (decl_local(?loc)) {
-        log("collect_local: pushing " + loc.ident);
-        vec::push[constr](*cx.cs, respan(d.span,
-                                         ninit(loc.ident, loc.id)));
-      }
-      case (_) { ret; }
-    }
+fn collect_local(&ctxt cx, &@local loc) -> () {
+    log("collect_local: pushing " + loc.node.ident);
+    vec::push[constr](*cx.cs, respan(loc.span,
+                                     ninit(loc.node.ident, loc.node.id)));
 }
 
 fn collect_pred(&ctxt cx, &@expr e) -> () {
@@ -77,7 +72,7 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &ident i, &def_id d, &ann a)
     -> ctxt {
     let ctxt cx = rec(cs=@mutable vec::alloc[constr](0u), tcx=tcx);
     auto visitor = walk::default_visitor();
-    visitor = rec(visit_decl_pre=bind collect_local(cx,_),
+    visitor = rec(visit_local_pre=bind collect_local(cx,_),
                   visit_expr_pre=bind collect_pred(cx,_)
                   with visitor);
     walk_fn(visitor, f, sp, i, d, a);

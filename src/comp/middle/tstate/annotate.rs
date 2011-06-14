@@ -3,39 +3,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
-import front::ast;
-import front::ast::ident;
-import front::ast::def_id;
-import front::ast::ann;
-import front::ast::item;
-import front::ast::_fn;
-import front::ast::_mod;
-import front::ast::crate;
-import front::ast::_obj;
-import front::ast::ty_param;
-import front::ast::item_fn;
-import front::ast::item_obj;
-import front::ast::item_ty;
-import front::ast::item_tag;
-import front::ast::item_const;
-import front::ast::item_mod;
-import front::ast::item_native_mod;
-import front::ast::expr;
-import front::ast::elt;
-import front::ast::field;
-import front::ast::decl;
-import front::ast::decl_local;
-import front::ast::decl_item;
-import front::ast::initializer;
-import front::ast::local;
-import front::ast::arm;
-import front::ast::stmt;
-import front::ast::stmt_decl;
-import front::ast::stmt_expr;
-import front::ast::block;
-import front::ast::block_;
-import front::ast::method;
-
+import front::ast::*;
 import middle::ty::expr_ann;
 
 import util::common::uistr;
@@ -82,13 +50,8 @@ fn collect_ids_stmt(&@stmt s, @mutable vec[uint] res) -> () {
     }
 }
 
-fn collect_ids_decl(&@decl d, @mutable vec[uint] res) -> () {
-    alt (d.node) {
-        case (decl_local(?l)) {
-            vec::push(*res, l.ann.id);
-        }
-        case (_) {}
-    }
+fn collect_ids_local(&@local l, @mutable vec[uint] res) -> () {
+    vec::push(*res, l.node.ann.id);
 }
 
 fn node_ids_in_fn(&_fn f, &span sp, &ident i, &def_id d, &ann a,
@@ -97,7 +60,7 @@ fn node_ids_in_fn(&_fn f, &span sp, &ident i, &def_id d, &ann a,
     collect_ids = rec(visit_expr_pre  = bind collect_ids_expr(_,res),
                       visit_block_pre = bind collect_ids_block(_,res),
                       visit_stmt_pre  = bind collect_ids_stmt(_,res),
-                      visit_decl_pre  = bind collect_ids_decl(_,res)
+                      visit_local_pre  = bind collect_ids_local(_,res)
                       with collect_ids);
     walk::walk_fn(collect_ids, f, sp, i, d, a);
 }

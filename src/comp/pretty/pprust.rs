@@ -889,14 +889,10 @@ fn print_ident(&ps s, &ast::ident ident) {
     word(s.s, ident);
 }
 
-fn print_for_decl(&ps s, @ast::decl decl) {
-    alt (decl.node) {
-        case (ast::decl_local(?loc)) {
-            print_type(s, *option::get[@ast::ty](loc.ty));
-            space(s.s);
-            word(s.s, loc.ident);
-        }
-    }
+fn print_for_decl(&ps s, @ast::local loc) {
+    print_type(s, *option::get[@ast::ty](loc.node.ty));
+    space(s.s);
+    word(s.s, loc.node.ident);
 }
 
 fn print_path(&ps s, &ast::path path) {

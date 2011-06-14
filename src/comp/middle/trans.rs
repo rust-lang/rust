@@ -4004,11 +4004,11 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
 }
 
 fn trans_for(&@block_ctxt cx,
-             &@ast::decl decl,
+             &@ast::local local,
              &@ast::expr seq,
              &ast::block body) -> result {
     fn inner(&@block_ctxt cx,
-             @ast::local local, ValueRef curr,
+             @ast::local_ local, ValueRef curr,
              ty::t t, ast::block body,
              @block_ctxt outer_next_cx) -> result {
 
@@ -4027,19 +4027,11 @@ fn trans_for(&@block_ctxt cx,
         ret res(next_cx, C_nil());
     }
 
-
-    let @ast::local local;
-    alt (decl.node) {
-        case (ast::decl_local(?loc)) {
-            local = loc;
-        }
-    }
-
     auto next_cx = new_sub_block_ctxt(cx, "next");
     auto seq_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, seq);
     auto seq_res = trans_expr(cx, seq);
     auto it = iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
-                            bind inner(_, local, _, _, body, next_cx));
+                            bind inner(_, local.node, _, _, body, next_cx));
     it.bcx.build.Br(next_cx.llbb);
     ret res(next_cx, it.val);
 }
@@ -4074,13 +4066,8 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
         }
     }
 
-    fn walk_decl(env e, &@ast::decl decl) {
-        alt (decl.node) {
-            case (ast::decl_local(?local)) {
-                e.decls.insert(local.id, ());
-            }
-            case (_) {}
-        }
+    fn walk_local(env e, &@ast::local local) {
+        e.decls.insert(local.node.id, ());
     }
 
     let vec[ast::def_id] refs = [];
@@ -4090,7 +4077,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
                      decls=decls,
                      def_map=cx.fcx.lcx.ccx.tcx.def_map);
 
-    auto visitor = @rec(visit_decl_pre = bind walk_decl(e, _),
+    auto visitor = @rec(visit_local_pre = bind walk_local(e, _),
                         visit_expr_pre = bind walk_expr(e, _)
                         with walk::default_visitor());
     walk::walk_block(*visitor, bloc);
@@ -4108,7 +4095,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
 }
 
 fn trans_for_each(&@block_ctxt cx,
-                  &@ast::decl decl,
+                  &@ast::local local,
                   &@ast::expr seq,
                   &ast::block body) -> result {
     /*
@@ -4139,14 +4126,8 @@ fn trans_for_each(&@block_ctxt cx,
 
     auto lcx = cx.fcx.lcx;
     // FIXME: possibly support alias-mode here?
-    auto decl_ty = ty::mk_nil(lcx.ccx.tcx);
-    auto decl_id;
-    alt (decl.node) {
-        case (ast::decl_local(?local)) {
-            decl_ty = node_ann_type(lcx.ccx, local.ann);
-            decl_id = local.id;
-        }
-    }
+    auto decl_ty = node_ann_type(lcx.ccx, local.node.ann);
+    auto decl_id = local.node.id;
 
     auto upvars = collect_upvars(cx, body, decl_id);
     auto upvar_count = vec::len[ast::def_id](upvars);
@@ -6901,7 +6882,7 @@ fn trans_anon_obj(@block_ctxt cx, &span sp,
     ret res(bcx, pair);
 }
 
-fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
+fn init_local(&@block_ctxt cx, &@ast::local_ local) -> result {
 
     // Make a note to drop this slot on the way out.
     assert (cx.fcx.lllocals.contains_key(local.id));
@@ -7064,7 +7045,7 @@ fn trans_block_cleanups(&@block_ctxt cx,
     ret bcx;
 }
 
-iter block_locals(&ast::block b) -> @ast::local {
+iter block_locals(&ast::block b) -> @ast::local_ {
     // FIXME: putting from inside an iter block doesn't work, so we can't
     // use the index here.
     for (@ast::stmt s in b.node.stmts) {
@@ -7117,7 +7098,7 @@ fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
     ret res(cx, val);
 }
 
-fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
+fn alloc_local(&@block_ctxt cx, &@ast::local_ local) -> result {
     auto t = node_ann_type(cx.fcx.lcx.ccx, local.ann);
     auto r = alloc_ty(cx, t);
     r.bcx.fcx.lllocals.insert(local.id, r.val);
@@ -7126,7 +7107,7 @@ fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
 
 fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
     auto bcx = cx;
-    for each (@ast::local local in block_locals(b)) {
+    for each (@ast::local_ local in block_locals(b)) {
         *bcx = rec(sp=local_rhs_span(local, cx.sp) with *bcx);
         bcx = alloc_local(bcx, local).bcx;
     }

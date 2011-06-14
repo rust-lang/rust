@@ -104,11 +104,12 @@ fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres,
     ret changed;
 }
 
-fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@decl d,
+fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
   &@expr index, &block body, &ann a) -> bool {
     auto changed = false;
 
     /* same issues as while */
+    // FIXME: also want to set l as initialized, no?
     changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
     changed = find_pre_post_state_expr(fcx, pres, index) || changed;
     /* in general, would need the intersection of

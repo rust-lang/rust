@@ -170,12 +170,11 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, ann a) {
           (nv, (vec::map[pre_and_post, postcond](h, pps))));
 }
 
-fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
+fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index,
       &block body, &ann a) -> () {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    log("222");
-    auto loop_precond = declare_var(fcx, decl_lhs(d),
+    auto loop_precond = declare_var(fcx, l.node.id,
       seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]));
     auto loop_postcond = intersect_postconds
         ([expr_postcond(fcx.ccx, index), block_postcond(fcx.ccx, body)]);
@@ -448,11 +447,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                 loop_postcond = empty_poststate(num_local_vars);
             }
 
-            log "777";
+
             set_pre_and_post(fcx.ccx, a, seq_preconds(fcx,
-                           [block_pp(fcx.ccx, body),
-                            expr_pp(fcx.ccx, test)]),
-              loop_postcond);
+                                          [block_pp(fcx.ccx, body),
+                                           expr_pp(fcx.ccx, test)]),
+                             loop_postcond);
         }
         case (expr_for(?d, ?index, ?body, ?a)) {
             find_pre_post_loop(fcx, d, index, body, a);

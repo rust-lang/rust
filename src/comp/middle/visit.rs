@@ -3,6 +3,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import util::common::span;
+import util::common::respan;
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's
@@ -23,6 +24,7 @@ type visitor[E] =
          fn(&@view_item v, &E e, &vt[E] v)     visit_view_item,
          fn(&@native_item i, &E e, &vt[E] v)   visit_native_item,
          fn(&@item i, &E e, &vt[E] v)          visit_item,
+         fn(&@local l, &E e, &vt[E] v)        visit_local,
          fn(&block b, &E e, &vt[E] v)          visit_block,
          fn(&@stmt s, &E e, &vt[E] v)          visit_stmt,
          fn(&arm a, &E e, &vt[E] v)            visit_arm,
@@ -39,6 +41,7 @@ fn default_visitor[E]() -> visitor[E] {
              visit_view_item = bind visit_view_item[E](_, _, _),
              visit_native_item = bind visit_native_item[E](_, _, _),
              visit_item = bind visit_item[E](_, _, _),
+             visit_local = bind visit_local[E](_, _, _),
              visit_block = bind visit_block[E](_, _, _),
              visit_stmt = bind visit_stmt[E](_, _, _),
              visit_arm = bind visit_arm[E](_, _, _),
@@ -87,6 +90,17 @@ fn visit_mod[E](&_mod m, &span sp, &E e, &vt[E] v) {
 }
 
 fn visit_view_item[E](&@view_item vi, &E e, &vt[E] v) {}
+
+fn visit_local[E](&@local loc, &E e, &vt[E] v) {
+    alt (loc.node.ty) {
+        case (none) {}
+        case (some(?t)) { vt(v).visit_ty(t, e, v); }
+    }
+    alt (loc.node.init) {
+        case (none) {}
+        case (some(?i)) { vt(v).visit_expr(i.expr, e, v); }
+    }
+}
 
 fn visit_item[E](&@item i, &E e, &vt[E] v) {
     alt (i.node) {
@@ -237,14 +251,7 @@ fn visit_stmt[E](&@stmt s, &E e, &vt[E] v) {
 fn visit_decl[E](&@decl d, &E e, &vt[E] v) {
     alt (d.node) {
         case (decl_local(?loc)) {
-            alt (loc.ty) {
-                case (none) {}
-                case (some(?t)) { vt(v).visit_ty(t, e, v); }
-            }
-            alt (loc.init) {
-                case (none) {}
-                case (some(?i)) { vt(v).visit_expr(i.expr, e, v); }
-            }
+            vt(v).visit_local(@respan(d.span, loc), e, v);
         }
         case (decl_item(?it)) { vt(v).visit_item(it, e, v); }
     }
@@ -309,12 +316,12 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             vt(v).visit_block(b, e, v);
         }
         case (expr_for(?dcl, ?x, ?b, _)) {
-            vt(v).visit_decl(dcl, e, v);
+            vt(v).visit_local(dcl, e, v);
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
         }
         case (expr_for_each(?dcl, ?x, ?b, _)) {
-            vt(v).visit_decl(dcl, e, v);
+            vt(v).visit_local(dcl, e, v);
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
         }

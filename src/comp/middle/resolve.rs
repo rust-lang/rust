@@ -39,7 +39,7 @@ tag scope {
     scope_item(@ast::item);
     scope_fn(ast::fn_decl, vec[ast::ty_param]);
     scope_native_item(@ast::native_item);
-    scope_loop(@ast::decl); // there's only 1 decl per loop.
+    scope_loop(@ast::local_); // there's only 1 decl per loop.
     scope_block(ast::block);
     scope_arm(ast::arm);
 }
@@ -341,10 +341,10 @@ fn visit_arm_with_scope(&ast::arm a, &scopes sc, &vt[scopes] v) {
 fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     auto new_sc = alt (x.node) {
         case (ast::expr_for(?d, _, _, _)) {
-            cons[scope](scope_loop(d), @sc)
+            cons[scope](scope_loop(d.node), @sc)
         }
         case (ast::expr_for_each(?d, _, _, _)) {
-            cons[scope](scope_loop(d), @sc)
+            cons[scope](scope_loop(d.node), @sc)
         }
         case (_) { sc }
     };
@@ -540,14 +540,10 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns)
             case (scope_fn(?decl, ?ty_params)) {
                 ret lookup_in_fn(id, decl, ty_params, ns);
             }
-            case (scope_loop(?d)) {
+            case (scope_loop(?local)) {
                 if (ns == ns_value) {
-                    alt (d.node) {
-                        case (ast::decl_local(?local)) {
-                            if (str::eq(local.ident, id)) {
-                                ret some(ast::def_local(local.id));
-                            }
-                        }
+                    if (str::eq(local.ident, id)) {
+                        ret some(ast::def_local(local.id));
                     }
                 }
             }

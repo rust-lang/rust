@@ -1367,15 +1367,14 @@ fn parse_else_expr(&parser p) -> @ast::expr {
     }
 }
 
-fn parse_head_local(&parser p) -> @ast::decl {
+fn parse_head_local(&parser p) -> @ast::local {
     auto lo = p.get_lo_pos();
-    let @ast::local local;
-    if (is_word(p, "auto")) {
-        local = parse_auto_local(p);
-    } else {
-        local = parse_typed_local(p);
-    }
-    ret @spanned(lo, p.get_hi_pos(), ast::decl_local(local));
+    let @ast::local_ l = if (is_word(p, "auto")) {
+                           parse_auto_local(p)
+                         } else {
+                           parse_typed_local(p)
+                         };
+    ret @spanned(lo, p.get_hi_pos(), l);
 }
 
 
@@ -1567,7 +1566,7 @@ fn parse_pat(&parser p) -> @ast::pat {
 }
 
 fn parse_local_full(&option::t[@ast::ty] tyopt,
-                    &parser p) -> @ast::local {
+                    &parser p) -> @ast::local_ {
     auto ident = parse_value_ident(p);
     auto init = parse_initializer(p);
     ret @rec(ty = tyopt,
@@ -1578,12 +1577,12 @@ fn parse_local_full(&option::t[@ast::ty] tyopt,
              ann = p.get_ann());
 }
 
-fn parse_typed_local(&parser p) -> @ast::local {
+fn parse_typed_local(&parser p) -> @ast::local_ {
     auto ty = parse_ty(p);
     ret parse_local_full(some(ty), p);
 }
 
-fn parse_auto_local(&parser p) -> @ast::local {
+fn parse_auto_local(&parser p) -> @ast::local_ {
     ret parse_local_full(none[@ast::ty], p);
 }
 

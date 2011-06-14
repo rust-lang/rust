@@ -1698,15 +1698,8 @@ fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
     ret ann_has_type_params(cx, expr_ann(expr));
 }
 
-fn decl_local_ty(&ctxt cx, &@ast::decl d) -> t {
-    alt (d.node) {
-        case (ast::decl_local(?l)) {
-            ret ann_to_type(cx, l.ann);
-        }
-        case (_) {
-            cx.sess.bug("decl_local_ty called on an item decl");
-        }
-    }
+fn decl_local_ty(&ctxt cx, &@ast::local_ l) -> t {
+    ret ann_to_type(cx, l.ann);
 }
 
 fn stmt_ann(&@ast::stmt s) -> ast::ann {

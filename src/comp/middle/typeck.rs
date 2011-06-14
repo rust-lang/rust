@@ -1084,24 +1084,19 @@ mod writeback {
         resolve_type_vars_for_node(fcx, p.span, ty::pat_ann(p));
     }
 
-    fn visit_decl_pre(@fn_ctxt fcx, &@ast::decl d) {
-        alt (d.node) {
-            case (ast::decl_local(?l)) {
-                auto var_id = fcx.locals.get(l.id);
-                auto fix_rslt = ty::unify::resolve_type_var(fcx.ccx.tcx,
-                    fcx.var_bindings, var_id);
-                alt (fix_rslt) {
-                    case (fix_ok(?lty)) {
-                        write::ty_only(fcx.ccx.tcx, l.ann.id, lty);
-                    }
-                    case (fix_err(_)) {
-                        fcx.ccx.tcx.sess.span_err(d.span,
-                            "cannot determine a type for this local " +
-                            "variable");
-                    }
-                }
+    fn visit_local_pre(@fn_ctxt fcx, &@ast::local l) {
+        auto var_id = fcx.locals.get(l.node.id);
+        auto fix_rslt = ty::unify::resolve_type_var(fcx.ccx.tcx,
+                                                    fcx.var_bindings, var_id);
+        alt (fix_rslt) {
+            case (fix_ok(?lty)) {
+                write::ty_only(fcx.ccx.tcx, l.node.ann.id, lty);
             }
-            case (_) { /* no-op */ }
+            case (fix_err(_)) {
+                fcx.ccx.tcx.sess.span_err(l.span,
+                   "cannot determine a type for this local " +
+                                          "variable");
+            }
         }
     }
 
@@ -1123,7 +1118,7 @@ mod writeback {
                          visit_expr_pre=bind visit_expr_pre(fcx, _),
                          visit_block_pre=bind visit_block_pre(fcx, _),
                          visit_pat_pre=bind visit_pat_pre(fcx, _),
-                         visit_decl_pre=bind visit_decl_pre(fcx, _)
+                         visit_local_pre=bind visit_local_pre(fcx, _)
                          with walk::default_visitor());
         walk::walk_block(visit, block);
     }
@@ -1196,29 +1191,24 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
     }
 
     // Add explicitly-declared locals.
-    fn visit_decl_pre(@crate_ctxt ccx,
+    fn visit_local_pre(@crate_ctxt ccx,
                       @ty::unify::var_bindings vb,
                       hashmap[ast::def_id,int] locals,
                       hashmap[ast::def_id,ast::ident] local_names,
                       @mutable int nvi,
-                      &@ast::decl d) {
-        alt (d.node) {
-            case (ast::decl_local(?local)) {
-                alt (local.ty) {
-                    case (none) {
-                        // Auto slot.
-                        assign(ccx.tcx, vb, locals, local_names, nvi,
-                               local.id, local.ident, none[ty::t]);
-                    }
-                    case (some(?ast_ty)) {
-                        // Explicitly typed slot.
-                        auto local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
-                        assign(ccx.tcx, vb, locals, local_names, nvi,
-                               local.id, local.ident, some[ty::t](local_ty));
-                    }
-                }
+                      &@ast::local local) {
+        alt (local.node.ty) {
+            case (none) {
+                // Auto slot.
+                assign(ccx.tcx, vb, locals, local_names, nvi,
+                       local.node.id, local.node.ident, none[ty::t]);
             }
-            case (_) { /* no-op */ }
+            case (some(?ast_ty)) {
+                // Explicitly typed slot.
+                auto local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
+                assign(ccx.tcx, vb, locals, local_names, nvi,
+                  local.node.id, local.node.ident, some[ty::t](local_ty));
+            }
         }
     }
 
@@ -1239,7 +1229,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
     }
 
     auto visit =
-        rec(visit_decl_pre=bind visit_decl_pre(ccx, vb, locals, local_names,
+        rec(visit_local_pre=bind visit_local_pre(ccx, vb, locals, local_names,
                                                nvi, _),
             visit_pat_pre=bind visit_pat_pre(ccx, vb, locals, local_names,
                                              nvi, _)
@@ -1530,15 +1520,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     }
 
     // A generic function for checking for or for-each loops
-    fn check_for_or_for_each(&@fn_ctxt fcx, &@ast::decl decl,
+    fn check_for_or_for_each(&@fn_ctxt fcx, &@ast::local local,
                              &ty::t element_ty, &ast::block body,
                              uint node_id) {
-        check_decl_local(fcx, decl);
+        check_decl_local(fcx, local.node);
         check_block(fcx, body);
 
         // Unify type of decl with element type of the seq
-        demand::simple(fcx, decl.span, ty::decl_local_ty(fcx.ccx.tcx,
-                                                         decl),
+        demand::simple(fcx, local.span, ty::decl_local_ty(fcx.ccx.tcx,
+                                                          local.node),
                        element_ty);
         
         auto typ = ty::mk_nil(fcx.ccx.tcx);
@@ -1835,25 +1825,20 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {
             check_expr(fcx, seq);
+            auto elt_ty;
             alt (structure_of(fcx, expr.span, expr_ty(fcx.ccx.tcx, seq))) {
-                // FIXME: I include the check_for_or_each call in 
-                // each case because of a bug in typestate.
-                // The bug is fixed; once there's a new snapshot,
-                // the call can be moved out of the alt expression
                 case (ty::ty_vec(?vec_elt_ty)) {
-                    auto elt_ty = vec_elt_ty.ty;
-                    check_for_or_for_each(fcx, decl, elt_ty, body, a.id);
+                    elt_ty = vec_elt_ty.ty;
                 }
                 case (ty::ty_str) {
-                    auto elt_ty = ty::mk_mach(fcx.ccx.tcx, 
-                                         util::common::ty_u8);
-                    check_for_or_for_each(fcx, decl, elt_ty, body, a.id);
+                    elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
                 }
                 case (_) {
                     fcx.ccx.tcx.sess.span_err(expr.span,
                       "type of for loop iterator is not a vector or string");
                 }
             }
+            check_for_or_for_each(fcx, decl, elt_ty, body, a.id);
         }
 
         case (ast::expr_for_each(?decl, ?seq, ?body, ?a)) {
@@ -2389,11 +2374,15 @@ fn check_decl_initializer(&@fn_ctxt fcx, &ast::def_id lid,
     }
 }
 
-fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
-    alt (decl.node) {
-        case (ast::decl_local(?local)) {
-            auto a_res = local.ann;
-            auto t = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(local.id));
+fn check_decl_local(&@fn_ctxt fcx, &@ast::local_ local) -> @ast::local_ {
+    auto a_res = local.ann;
+    alt (fcx.locals.find(local.id)) {
+        case (none) {
+            fcx.ccx.tcx.sess.bug("check_decl_local: local id not found "
+                                 + local.ident);
+        }
+        case (some(?i)) {
+            auto t = ty::mk_var(fcx.ccx.tcx, i);
             write::ty_only_fixup(fcx, a_res.id, t);
 
             auto initopt = local.init;
@@ -2403,8 +2392,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
                 }
                 case (_) { /* fall through */  }
             }
-            auto local_1 = @rec(init=initopt, ann=a_res with *local);
-            ret @rec(node=ast::decl_local(local_1) with *decl);
+            ret @rec(init=initopt, ann=a_res with *local);
         }
     }
 }
@@ -2415,7 +2403,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
         case (ast::stmt_decl(?decl,?a)) {
             node_id = a.id;
             alt (decl.node) {
-                case (ast::decl_local(_)) { check_decl_local(fcx, decl); }
+                case (ast::decl_local(?l)) { check_decl_local(fcx, l); }
                 case (ast::decl_item(_)) { /* ignore for now */ }
             }
         }

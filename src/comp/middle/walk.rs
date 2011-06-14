@@ -5,6 +5,7 @@ import std::option::some;
 import std::option::none;
 
 import util::common::span;
+import util::common::respan;
 
 // FIXME: Should visit patterns as well.
 type ast_visitor =
@@ -32,6 +33,8 @@ type ast_visitor =
         fn (&@ast::pat p)               visit_pat_post,
         fn (&@ast::decl d)              visit_decl_pre,
         fn (&@ast::decl d)              visit_decl_post,
+        fn (&@ast::local l)            visit_local_pre,
+        fn (&@ast::local l)            visit_local_post,
         fn (&@ast::expr e)              visit_expr_pre,
         fn (&@ast::expr e)              visit_expr_post,
         fn (&@ast::ty t)                visit_ty_pre,
@@ -90,6 +93,21 @@ fn walk_view_item(&ast_visitor v, @ast::view_item vi) {
     if (!v.keep_going()) { ret; }
     v.visit_view_item_pre(vi);
     v.visit_view_item_post(vi);
+}
+
+fn walk_local(&ast_visitor v, @ast::local loc) {
+    v.visit_local_pre(loc);
+    alt (loc.node.ty) {
+        case (none) {}
+        case (some(?t)) { walk_ty(v, t); }
+    }
+    alt (loc.node.init) {
+        case (none) {}
+        case (some(?i)) {
+            walk_expr(v, i.expr);
+        }
+    }
+    v.visit_local_post(loc);
 }
 
 fn walk_item(&ast_visitor v, @ast::item i) {
@@ -291,16 +309,7 @@ fn walk_decl(&ast_visitor v, @ast::decl d) {
     v.visit_decl_pre(d);
     alt (d.node) {
         case (ast::decl_local(?loc)) {
-            alt (loc.ty) {
-                case (none) {}
-                case (some(?t)) { walk_ty(v, t); }
-            }
-            alt (loc.init) {
-                case (none) {}
-                case (some(?i)) {
-                    walk_expr(v, i.expr);
-                }
-            }
+            walk_local(v, @respan(d.span, loc));
         }
         case (ast::decl_item(?it)) {
             walk_item(v, it);
@@ -379,12 +388,12 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_block(v, b);
         }
         case (ast::expr_for(?dcl, ?x, ?b, _)) {
-            walk_decl(v, dcl);
+            walk_local(v, dcl);
             walk_expr(v, x);
             walk_block(v, b);
         }
         case (ast::expr_for_each(?dcl, ?x, ?b, _)) {
-            walk_decl(v, dcl);
+            walk_local(v, dcl);
             walk_expr(v, x);
             walk_block(v, b);
         }
@@ -516,6 +525,7 @@ fn def_visit_stmt(&@ast::stmt s) { }
 fn def_visit_arm(&ast::arm a) { }
 fn def_visit_pat(&@ast::pat p) { }
 fn def_visit_decl(&@ast::decl d) { }
+fn def_visit_local(&@ast::local l) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
 fn def_visit_constr(&@ast::constr c) { }
@@ -547,6 +557,8 @@ fn default_visitor() -> ast_visitor {
             visit_pat_post=def_visit_pat,
             visit_decl_pre=def_visit_decl,
             visit_decl_post=def_visit_decl,
+            visit_local_pre=def_visit_local,
+            visit_local_post=def_visit_local,
             visit_expr_pre=def_visit_expr,
             visit_expr_post=def_visit_expr,
             visit_ty_pre=def_visit_ty,

@@ -247,15 +247,13 @@ fn arm_defnums(&ast::arm arm) -> vec[def_num] {
     ret dnums;
 }
 
-fn check_for_each(&ctx cx, &@ast::decl decl, &@ast::expr call,
+fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
                   &ast::block block, &scope sc, &vt[scope] v) {
     visit::visit_expr(call, sc, v);
     alt (call.node) {
         case (ast::expr_call(?f, ?args, _)) {
             auto data = check_call(cx, f, args, sc);
-            auto defnum = alt (decl.node) {
-                case (ast::decl_local(?l)) { l.id._1 }
-            };
+            auto defnum = local.node.id._1;
             
             auto new_sc = @rec(root_vars=data.root_vars,
                                block_defnum=defnum,
@@ -268,12 +266,10 @@ fn check_for_each(&ctx cx, &@ast::decl decl, &@ast::expr call,
     }
 }
 
-fn check_for(&ctx cx, &@ast::decl decl, &@ast::expr seq,
+fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq,
              &ast::block block, &scope sc, &vt[scope] v) {
     visit::visit_expr(seq, sc, v);
-    auto defnum = alt (decl.node) {
-        case (ast::decl_local(?l)) { l.id._1 }
-    };
+    auto defnum = local.node.id._1;
 
     auto root = expr_root(cx, seq, false);
     auto root_def = alt (path_def_id(cx, root.ex)) {

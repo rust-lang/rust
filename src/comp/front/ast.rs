@@ -221,16 +221,17 @@ tag init_op {
 type initializer = rec(init_op op,
                        @expr expr);
 
-type local = rec(option::t[@ty] ty,
+type local_ = rec(option::t[@ty] ty,
                  bool infer,
                  ident ident,
                  option::t[initializer] init,
                  def_id id,
                  ann ann);
+type local = spanned[@local_];
 
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(@local);
+    decl_local(@local_);
     decl_item(@item);
 }
 
@@ -266,8 +267,8 @@ tag expr_ {
     expr_cast(@expr, @ty, ann);
     expr_if(@expr, block, option::t[@expr], ann);
     expr_while(@expr, block, ann);
-    expr_for(@decl, @expr, block, ann);
-    expr_for_each(@decl, @expr, block, ann);
+    expr_for(@local, @expr, block, ann);
+    expr_for_each(@local, @expr, block, ann);
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
