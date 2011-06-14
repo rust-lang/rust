@@ -5069,9 +5069,11 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
             }
         }
         case (_) {
-            cx.fcx.lcx.ccx.sess.span_unimpl(e.span,
-                                            "expr variant in trans_lval: "
-                                            + expr_to_str(e));
+            ret rec(res=trans_expr(cx, e),
+                    is_mem=false,
+                    generic=none,
+                    llobj=none,
+                    method_ty=none);
         }
     }
 }
