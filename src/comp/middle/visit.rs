@@ -314,6 +314,10 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             vt(v).visit_expr(b, e, v);
             vt(v).visit_expr(a, e, v);
         }
+        case (expr_swap(?a, ?b, _)) {
+            vt(v).visit_expr(a, e, v);
+            vt(v).visit_expr(b, e, v);
+        }
         case (expr_assign_op(_, ?a, ?b, _)) {
             vt(v).visit_expr(b, e, v);
             vt(v).visit_expr(a, e, v);
