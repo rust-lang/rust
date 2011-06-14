@@ -38,56 +38,49 @@ type ctx = @rec(parser p,
                 mutable uint next_ann);
 
 fn mk_env() -> env {
-    let env e = [];
-    ret e;
+    ret [];
 }
 
 fn val_is_bool(val v) -> bool {
     alt (v) {
-        case (val_bool(_)) { ret true; }
-        case (_) { }
+        case (val_bool(_)) { true }
+        case (_) { false }
     }
-    ret false;
 }
 
 fn val_is_int(val v) -> bool {
     alt (v) {
-        case (val_int(_)) { ret true; }
-        case (_) { }
+        case (val_int(_)) { true }
+        case (_) { false }
     }
-    ret false;
 }
 
 fn val_is_str(val v) -> bool {
     alt (v) {
-        case (val_str(_)) { ret true; }
-        case (_) { }
+        case (val_str(_)) { true }
+        case (_) { false }
     }
-    ret false;
 }
 
 fn val_as_bool(val v) -> bool {
     alt (v) {
-        case (val_bool(?b)) { ret b; }
-        case (_) { }
+        case (val_bool(?b)) { b }
+        case (_) { fail }
     }
-    fail;
 }
 
 fn val_as_int(val v) -> int {
     alt (v) {
-        case (val_int(?i)) { ret i; }
-        case (_) { }
+        case (val_int(?i)) { i }
+        case (_) { fail }
     }
-    fail;
 }
 
 fn val_as_str(val v) -> str {
     alt (v) {
-        case (val_str(?s)) { ret s; }
-        case (_) { }
+        case (val_str(?s)) { s }
+        case (_) { fail }
     }
-    fail;
 }
 
 fn lookup(session::session sess, env e, span sp, ident i) -> val {
@@ -96,20 +89,18 @@ fn lookup(session::session sess, env e, span sp, ident i) -> val {
             ret pair._1;
         }
     }
-    sess.span_err(sp, "unknown variable: " + i);
-    fail;
+    sess.span_err(sp, "unknown variable: " + i)
 }
 
 fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
     alt (lit.node) {
-        case (ast::lit_bool(?b)) { ret val_bool(b); }
-        case (ast::lit_int(?i)) { ret val_int(i); }
-        case (ast::lit_str(?s,_)) { ret val_str(s); }
+        case (ast::lit_bool(?b)) { val_bool(b) }
+        case (ast::lit_int(?i)) { val_int(i) }
+        case (ast::lit_str(?s,_)) { val_str(s) }
         case (_) {
-            cx.sess.span_err(sp, "evaluating unsupported literal");
+            cx.sess.span_err(sp, "evaluating unsupported literal")
         }
     }
-    fail;
 }
 
 fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
@@ -219,17 +210,15 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
 
 fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
     if (val_is_bool(av) && val_is_bool(bv)) {
-        ret val_as_bool(av) == val_as_bool(bv);
+        val_as_bool(av) == val_as_bool(bv)
+    } else if (val_is_int(av) && val_is_int(bv)) {
+        val_as_int(av) == val_as_int(bv)
+    } else if (val_is_str(av) && val_is_str(bv)) {
+        str::eq(val_as_str(av),
+                val_as_str(bv))
+    } else {
+        sess.span_err(sp, "bad types in comparison")
     }
-    if (val_is_int(av) && val_is_int(bv)) {
-        ret val_as_int(av) == val_as_int(bv);
-    }
-    if (val_is_str(av) && val_is_str(bv)) {
-        ret str::eq(val_as_str(av),
-                    val_as_str(bv));
-    }
-    sess.span_err(sp, "bad types in comparison");
-    fail;
 }
 
 fn eval_crate_directives(ctx cx,
