@@ -209,7 +209,7 @@ mod write {
  *
  * There are a few issues to handle:
  *
- *  - Linkers operate on a flat namespace, so we have to flatten names.
+ *  - Linnkers operate on a flat namespace, so we have to flatten names.
  *    We do this using the C++ namespace-mangling technique. Foo::bar
  *    symbols and such.
  *
@@ -221,7 +221,7 @@ mod write {
  *    symbols in the same process before you're even hitting birthday-paradox
  *    collision probability.
  *
- *  - Symbols in dirrerent crates but with same names "within" the crate need
+ *  - Symbols in different crates but with same names "within" the crate need
  *    to get different linkage-names.
  *
  * So here is what we do:
@@ -229,7 +229,7 @@ mod write {
  *  - Separate the meta tags into two sets: exported and local. Only work with
  *    the exported ones when considering linkage.
  *
- *  - Consider two exported tags as special (and madatory): name and vers.
+ *  - Consider two exported tags as special (and mandatory): name and vers.
  *    Every crate gets them; if it doesn't name them explicitly we infer them
  *    as basename(crate) and "0.1", respectively. Call these CNAME, CVERS.
  *
