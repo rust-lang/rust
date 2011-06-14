@@ -474,14 +474,18 @@ mod collect {
                      &ast::fn_decl decl,
                      ast::proto proto,
                      &vec[ast::ty_param] ty_params,
-                     &ast::def_id def_id) -> ty::ty_param_count_and_ty {
+                     &option::t[ast::def_id] def_id)
+        -> ty::ty_param_count_and_ty {
         auto input_tys = vec::map[ast::arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
         auto t_fn = ty::mk_fn(cx.tcx, proto, input_tys, output_ty,
                               decl.cf, decl.constraints);
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
-        cx.tcx.tcache.insert(def_id, tpt);
+        alt (def_id) {
+            case (some(?did)) { cx.tcx.tcache.insert(did, tpt); }
+            case (_) {}
+        }
         ret tpt;
     }
 
@@ -589,7 +593,7 @@ mod collect {
             case (ast::item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
-                                  tps, def_id);
+                                  tps, some(def_id));
             }
 
             case (ast::item_obj(?ident, ?obj_info, ?tps, ?odid, _)) {
@@ -1895,6 +1899,17 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
 
             write::ty_only_fixup(fcx, a.id, result_ty);
+        }
+
+        case (ast::expr_fn(?f, ?a)) {
+            auto cx = @rec(tcx = fcx.ccx.tcx);
+            auto convert = bind ast_ty_to_ty
+                (cx.tcx, bind collect::getter(cx, _), _);
+            auto ty_of_arg = bind collect::ty_of_arg(cx, _);
+            auto fty = collect::ty_of_fn_decl(cx, convert, ty_of_arg,
+                                              f.decl, f.proto, [], none)._1;
+            write::ty_only_fixup(fcx, a.id, fty);
+            check_fn(fcx.ccx, f.decl, f.proto, f.body, a);
         }
 
         case (ast::expr_block(?b, ?a)) {

@@ -335,6 +335,10 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
                 vt(v).visit_arm(a, e, v);
             }
         }
+        case (expr_fn(?f, _)) {
+            visit_fn_decl(f.decl, e, v);
+            vt(v).visit_block(f.body, e, v);
+        }
         case (expr_block(?b, _)) {
             vt(v).visit_block(b, e, v);
         }

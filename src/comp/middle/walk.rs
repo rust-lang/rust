@@ -410,6 +410,10 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
                 v.visit_arm_post(a);
             }
         }
+        case (ast::expr_fn(?f, ?a)) {
+            walk_fn_decl(v, f.decl);
+            walk_block(v, f.body);
+        }
         case (ast::expr_block(?b, _)) {
             walk_block(v, b);
         }

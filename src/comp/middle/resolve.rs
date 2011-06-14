@@ -346,6 +346,9 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
         case (ast::expr_for_each(?d, _, _, _)) {
             cons[scope](scope_loop(d.node), @sc)
         }
+        case (ast::expr_fn(?f, _)) {
+            cons(scope_fn(f.decl, []), @sc)
+        }
         case (_) { sc }
     };
     visit::visit_expr(x, new_sc, v);

@@ -271,6 +271,7 @@ tag expr_ {
     expr_for_each(@local, @expr, block, ann);
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
+    expr_fn(_fn, ann);
     expr_block(block, ann);
     expr_move(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);

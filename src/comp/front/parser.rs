@@ -815,7 +815,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ret parse_alt_expr(p);
     } else if (eat_word(p, "spawn")) {
         ret parse_spawn_expr(p);
-
+    } else if (eat_word(p, "fn")) {
+        ret parse_fn_expr(p);
     } else if (eat_word(p, "tup")) {
         fn parse_elt(&parser p) -> ast::elt {
             auto m = parse_mutability(p);
@@ -1114,8 +1115,11 @@ fn parse_self_method(&parser p) -> @ast::expr {
 }
 
 fn parse_dot_or_call_expr(&parser p) -> @ast::expr {
-    auto lo = p.get_lo_pos();
-    auto e = parse_bottom_expr(p);
+    ret parse_dot_or_call_expr_with(p, parse_bottom_expr(p));
+}
+
+fn parse_dot_or_call_expr_with(&parser p, @ast::expr e) -> @ast::expr {
+    auto lo = e.span.lo;
     auto hi = e.span.hi;
     while (true) {
         alt (p.peek()) {
@@ -1355,6 +1359,14 @@ fn parse_if_expr(&parser p) -> @ast::expr {
     }
 
     ret @spanned(lo, hi, ast::expr_if(cond, thn, els, p.get_ann()));
+}
+
+fn parse_fn_expr(&parser p) -> @ast::expr {
+    auto lo = p.get_last_lo_pos();
+    auto decl = parse_fn_decl(p, ast::impure_fn);
+    auto body = parse_block(p);
+    auto _fn = rec(decl=decl, proto=ast::proto_fn, body=body);
+    ret @spanned(lo, body.span.hi, ast::expr_fn(_fn, p.get_ann()));
 }
 
 fn parse_else_expr(&parser p) -> @ast::expr {
@@ -1630,10 +1642,14 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
                 auto decl = @spanned(lo, hi, ast::decl_item(i));
                 ret @spanned(lo, hi, ast::stmt_decl(decl, p.get_ann()));
             }
+            case (fn_no_item) { // parse_item will have already skipped "fn"
+                auto e = parse_fn_expr(p);
+                e = parse_dot_or_call_expr_with(p, e);
+                ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_ann()));
+            }
             case (no_item) {
                 // Remainder are line-expr stmts.
                 auto e = parse_expr(p);
-                auto hi = p.get_span();
                 ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_ann()));
             }
         }
@@ -1676,6 +1692,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_while(_,_,_))    { ret false; }
                 case (ast::expr_do_while(_,_,_)) { ret false; }
                 case (ast::expr_alt(_,_,_))      { ret false; }
+                case (ast::expr_fn(_,_))       { ret false; }
                 case (ast::expr_block(_,_))      { ret false; }
                 case (ast::expr_assign(_,_,_))   { ret true; }
                 case (ast::expr_assign_op(_,_,_,_))
@@ -2152,16 +2169,18 @@ fn parse_auth(&parser p) -> ast::_auth {
     fail;
 }
 
-// FIXME will be extended to help parse anon functions
 tag parsed_item {
     got_item(@ast::item);
     no_item;
+    fn_no_item;
 }
 
 fn parse_item(&parser p) -> parsed_item {
     if (eat_word(p, "const")) {
         ret got_item(parse_item_const(p));
     } else if (eat_word(p, "fn")) {
+        // This is an anonymous function
+        if (p.peek() == token::LPAREN) { ret fn_no_item; }
         ret got_item(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn));
     } else if (eat_word(p, "pred")) {
         ret got_item(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn));

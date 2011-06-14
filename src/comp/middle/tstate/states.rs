@@ -223,6 +223,10 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     case (expr_lit(?l,?a)) {
         ret pure_exp(fcx.ccx, a, pres);
     }
+    // FIXME This was just put in here as a placeholder
+    case (expr_fn(?f,?a)) {
+        ret pure_exp(fcx.ccx, a, pres);
+    }
     case (expr_block(?b,?a)) {
         changed = find_pre_post_state_block(fcx, pres, b)
            || changed;

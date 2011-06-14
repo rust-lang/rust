@@ -6020,6 +6020,22 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
                                 cx, ann, output);
         }
 
+        case (ast::expr_fn(?f, ?ann)) {
+            auto ccx = cx.fcx.lcx.ccx;
+            let TypeRef llfnty = alt (ty::struct(ccx.tcx,
+                                                 node_ann_type(ccx, ann))) {
+                case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
+                    type_of_fn_full(ccx, e.span, proto, none, inputs,
+                                    output, 0u)
+                }
+            };
+            auto sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
+            auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
+            auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
+            trans_fn(sub_cx, e.span, f, llfn, none, [], ann);
+            ret res(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
+        }
+
         case (ast::expr_block(?blk, ?ann)) {
             *cx = rec(sp=blk.span with *cx);
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
@@ -7668,10 +7684,9 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ast::def_id fid,
+fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
             option::t[ty_self_pair] ty_self,
             &vec[ast::ty_param] ty_params, &ast::ann ann) {
-    auto llfndecl = cx.ccx.item_ids.get(fid);
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
@@ -7765,7 +7780,7 @@ fn create_vtbl(@local_ctxt cx,
         cx.ccx.item_ids.insert(m.node.id, llfn);
         cx.ccx.item_symbols.insert(m.node.id, s);
 
-        trans_fn(mcx, m.span, m.node.meth, m.node.id,
+        trans_fn(mcx, m.span, m.node.meth, llfn,
                  some[ty_self_pair](tup(llself_ty, self_ty)),
                  ty_params, m.node.ann);
         methods += [llfn];
@@ -7794,7 +7809,7 @@ fn trans_dtor(@local_ctxt cx,
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
 
-    trans_fn(cx, dtor.span, dtor.node.meth, dtor.node.id,
+    trans_fn(cx, dtor.span, dtor.node.meth, llfn,
              some[ty_self_pair](tup(llself_ty, self_ty)),
              ty_params, dtor.node.ann);
 
@@ -8119,7 +8134,8 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
     alt (item.node) {
         case (ast::item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             auto sub_cx = extend_path(cx, name);
-            trans_fn(sub_cx, item.span, f, fid, none[ty_self_pair],
+            auto llfndecl = cx.ccx.item_ids.get(fid);
+            trans_fn(sub_cx, item.span, f, llfndecl, none[ty_self_pair],
                      tps, ann);
         }
         case (ast::item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
@@ -8168,12 +8184,10 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
                     ast::def_id id) {
 
     auto llfty;
-    auto llpairty;
     alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfty = type_of_fn(ccx, sp, proto, inputs, output,
                                vec::len[ast::ty_param](ty_params));
-            llpairty = T_fn_pair(ccx.tn, llfty);
         }
         case (_) {
             ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!");
@@ -8192,7 +8206,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
 
     // Declare the global constant pair that points to it.
     let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
-    register_fn_pair(ccx, ps, llpairty, llfn, id);
+    register_fn_pair(ccx, ps, llfty, llfn, id);
 
     if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
@@ -8205,22 +8219,25 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp,
 
 }
 
-fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
-                    ast::def_id id) {
-    let ValueRef gvar = llvm::LLVMAddGlobal(cx.llmod, llpairty,
-                                           str::buf(ps));
-    auto pair = C_struct([llfn,
-                             C_null(T_opaque_closure_ptr(cx.tn))]);
-
+fn create_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
+                  bool external) -> ValueRef {
+    auto gvar = llvm::LLVMAddGlobal
+        (cx.llmod, T_fn_pair(cx.tn, llfnty), str::buf(ps));
+    auto pair = C_struct([llfn, C_null(T_opaque_closure_ptr(cx.tn))]);
     llvm::LLVMSetInitializer(gvar, pair);
     llvm::LLVMSetGlobalConstant(gvar, True);
-
-    // FIXME: We should also hide the unexported pairs in crates.
-    if (!cx.sess.get_opts().shared) {
+    if (!external) {
         llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMInternalLinkage
                              as llvm::Linkage);
     }
+    ret gvar;
+}
 
+fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
+                    ast::def_id id) {
+    // FIXME: We should also hide the unexported pairs in crates.
+    auto gvar = create_fn_pair(cx, ps, llfnty, llfn,
+                               cx.sess.get_opts().shared);
     cx.item_ids.insert(id, llfn);
     cx.item_symbols.insert(id, ps);
     cx.fn_pairs.insert(id, gvar);
@@ -8268,10 +8285,9 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
                                                         wrapper_type);
 
     // Declare the global constant pair that points to it.
-    auto wrapper_pair_type = T_fn_pair(ccx.tn, wrapper_type);
     let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
 
-    register_fn_pair(ccx, ps, wrapper_pair_type, wrapper_fn, id);
+    register_fn_pair(ccx, ps, wrapper_type, wrapper_fn, id);
 
     // Build the wrapper.
     auto fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);

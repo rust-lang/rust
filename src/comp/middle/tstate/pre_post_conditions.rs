@@ -301,6 +301,10 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                 }
             }
         }
+        // FIXME this was just put in here as a placeholder
+        case (expr_fn(?f, ?a)) {
+            clear_pp(expr_pp(fcx.ccx, e));
+        }
         case (expr_block(?b, ?a)) {
             find_pre_post_block(fcx, b);
             auto p = block_pp(fcx.ccx, b);

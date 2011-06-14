@@ -671,6 +671,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             bclose(s, expr.span);
         }
+        case (ast::expr_fn(?f, _)) {
+            head(s, "fn");
+            print_fn_args_and_ret(s, f.decl);
+            space(s.s);
+            print_block(s, f.body);
+        }
         case (ast::expr_block(?block,_)) {
             // containing cbox, will be closed by print-block at }
             cbox(s, indent_unit);
@@ -954,6 +960,10 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
     }
     word(s.s, name);
     print_type_params(s, typarams);
+    print_fn_args_and_ret(s, decl);
+}
+
+fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
     popen(s);
     fn print_arg(&ps s, &ast::arg x) {
         ibox(s, indent_unit);
@@ -963,8 +973,7 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
         word(s.s, x.ident);
         end(s);
     }
-    auto f = print_arg;
-    commasep[ast::arg](s, inconsistent, decl.inputs, f);
+    commasep[ast::arg](s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
