@@ -133,8 +133,9 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
   
     auto cf = fcx.enclosing.cf;
     /* Finally, check that the return value is initialized */
+    let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
     if (f.proto == ast::proto_fn
-        && ! promises(fcx, *post, fcx.id, aux::occ_init)
+        && ! promises(fcx, *post, ret_c)
         && ! type_is_nil(fcx.ccx.tcx,
                          ret_ty_of_fn(fcx.ccx.tcx, a))
         && cf == return) {
@@ -148,7 +149,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
         // check that this really always fails
         // the fcx.id bit means "returns" for a returning fn,
         // "diverges" for a non-returning fn
-        if (! promises(fcx, *post, fcx.id, aux::occ_init)) {
+        if (! promises(fcx, *post, ret_c)) {
             fcx.ccx.tcx.sess.span_err(f.body.span,
               "In non-returning function " + fcx.name +
               ", some control paths may return to the caller");

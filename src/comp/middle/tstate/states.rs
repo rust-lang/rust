@@ -48,11 +48,10 @@ import aux::log_states;
 import aux::block_states;
 import aux::controlflow_expr;
 import aux::ann_to_def;
-import aux::occ_init;
 import aux::expr_to_constr;
-import aux::constr_to_constr_occ;
-import aux::constr_occ;
-import aux::constr_id;
+import aux::ninit;
+import aux::npred;
+import aux::path_to_ident;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -123,10 +122,11 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
     ret changed;
 }
 
-fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a) -> bool {
+fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a, &path p) -> bool {
   alt (ann_to_def(fcx.ccx, a_new_var)) {
       case (some(def_local(?loc))) {
-          ret gen_poststate(fcx, a, loc, occ_init);
+          ret gen_poststate(fcx, a, rec(id=loc,
+                c=ninit(path_to_ident(fcx.ccx.tcx, p))));
       }
       case (_) { ret false; }
   }
@@ -257,7 +257,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, rhs)) || changed;
-                changed = gen_if_local(fcx, a_lhs, a)|| changed;
+                changed = gen_if_local(fcx, a_lhs, a, p)|| changed;
             }
             case (_) {
                 // assignment to something that must already have been init'd
@@ -282,7 +282,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, rhs)) || changed;
-                changed = gen_if_local(fcx, a_lhs, a)|| changed;
+                changed = gen_if_local(fcx, a_lhs, a, p)|| changed;
             }
             case (_) {
                 // assignment to something that must already have been init'd
@@ -307,7 +307,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     || changed;
                 changed = extend_poststate_ann(fcx.ccx, a,
                             expr_poststate(fcx.ccx, rhs)) || changed;
-                changed = gen_if_local(fcx, a_lhs, a) || changed;
+                changed = gen_if_local(fcx, a_lhs, a, p) || changed;
             }
             case (_) {
                 // receive to something that must already have been init'd
@@ -331,7 +331,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         /* return from an always-failing function clears the return bit */
         alt (fcx.enclosing.cf) {
             case (noreturn) {
-                kill_poststate(fcx, a, fcx.id, occ_init);
+                kill_poststate(fcx, a, rec(id=fcx.id, c=ninit(fcx.name)));
             }
             case (_) {}
         }
@@ -529,8 +529,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         changed = extend_poststate_ann(fcx.ccx, a, pres) || changed;
         /* predicate p holds after this expression executes */
         let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
-        let constr_occ o = constr_to_constr_occ(fcx.ccx.tcx, c.node);
-        changed = gen_poststate(fcx, a, constr_id(c), o) || changed;
+        changed = gen_poststate(fcx, a, c.node) || changed;
         ret changed;
     }
     case (expr_break(?a)) {
@@ -590,7 +589,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                  expr_poststate(fcx.ccx, an_init.expr))
                                 || changed;
                             changed = gen_poststate(fcx, a,
-                                                    alocal.id, occ_init)
+                              rec(id=alocal.id, c=ninit(alocal.ident)))
                                 || changed;
                             log("Summary: stmt = ");
                             log_stmt(*s);
@@ -727,7 +726,8 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
                                   false_postcond(num_local_vars));
                 alt (fcx.enclosing.cf) {
                     case (noreturn) {
-                        kill_poststate(fcx, tailann, fcx.id, occ_init);
+                        kill_poststate(fcx, tailann,
+                                       rec(id=fcx.id, c=ninit(fcx.name)));
                     }
                     case (_) { }
                 }

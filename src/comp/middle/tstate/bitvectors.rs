@@ -9,13 +9,13 @@ import aux::fn_ctxt;
 import aux::fn_info;
 import aux::log_bitv;
 import aux::num_constraints;
-import aux::constr_occ;
-import aux::occ_init;
-import aux::occ_args;
 import aux::cinit;
 import aux::cpred;
+import aux::ninit;
+import aux::npred;
 import aux::pred_desc;
 import aux::match_args;
+import aux::constr_;
 
 import tstate::aux::ann_to_ts_ann;
 import tstate::ann::pre_and_post;
@@ -35,13 +35,13 @@ import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
 import tstate::ann::clear_in_poststate;
            
-fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
-    assert (fcx.enclosing.constrs.contains_key(v));
-    auto res = fcx.enclosing.constrs.get(v);
-    alt (o) {
-        case (occ_init) {
+fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
+    assert (fcx.enclosing.constrs.contains_key(c.id));
+    auto res = fcx.enclosing.constrs.get(c.id);
+    alt (c.c) {
+        case (ninit(_)) {
             alt (res) {
-                case (cinit(?n,_,_,_)) {
+                case (cinit(?n,_,_)) {
                     ret n;
                 }
                 case (_) {
@@ -50,9 +50,9 @@ fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
                 }
             }
         }
-        case (occ_args(?args)) {
+        case (npred(_, ?args)) {
             alt (res) {
-                case (cpred(_, _, ?descs)) {
+                case (cpred(_, ?descs)) {
                     ret match_args(fcx, *descs, args);
                 }
                 case (_) {
@@ -64,8 +64,8 @@ fn bit_num(&fn_ctxt fcx, &def_id v, &constr_occ o) -> uint {
     }
 }
 
-fn promises(&fn_ctxt fcx, &poststate p, &def_id v, &constr_occ o) -> bool {
-    ret bitv::get(p, bit_num(fcx, v, o));
+fn promises(&fn_ctxt fcx, &poststate p, &constr_ c) -> bool {
+    ret bitv::get(p, bit_num(fcx, c));
 }
 
 // Given a list of pres and posts for exprs e0 ... en,
@@ -143,27 +143,26 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
   ret intersect_postconds_go(bitv::clone(pcs.(0)), pcs);
 }
 
-fn gen(&fn_ctxt fcx, &ann a, &def_id id, &constr_occ o) -> bool {
-  ret set_in_postcond(bit_num(fcx, id, o),
+fn gen(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
+  ret set_in_postcond(bit_num(fcx, c),
                       (ann_to_ts_ann(fcx.ccx, a)).conditions);
 }
 
-fn declare_var(&fn_ctxt fcx, def_id id, prestate pre)
-   -> prestate {
+fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
     auto res = clone(pre);
-    relax_prestate(bit_num(fcx, id, occ_init), res);
+    relax_prestate(bit_num(fcx, c), res);
     ret res;
 }
 
-fn gen_poststate(&fn_ctxt fcx, &ann a, &def_id id, &constr_occ o) -> bool {
+fn gen_poststate(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
   log "gen_poststate";
-  ret set_in_poststate(bit_num(fcx, id, o),
+  ret set_in_poststate(bit_num(fcx, c),
                        (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
-fn kill_poststate(&fn_ctxt fcx, &ann a, def_id id, &constr_occ o) -> bool {
+fn kill_poststate(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
   log "kill_poststate";
-  ret clear_in_poststate(bit_num(fcx, id, o),
+  ret clear_in_poststate(bit_num(fcx, c),
                          (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
