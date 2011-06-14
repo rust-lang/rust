@@ -1504,7 +1504,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         auto typ = demand::simple(fcx, sp,
                                   expr_ty(fcx.ccx.tcx, lhs),
                                   expr_ty(fcx.ccx.tcx, rhs));
-        write::ty_only_fixup(fcx, a.id, typ);
+        write::ty_only_fixup(fcx, a.id, ty::mk_nil(fcx.ccx.tcx));
     }
 
     // A generic function for checking call expressions

@@ -5832,30 +5832,32 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             ret res(next_cx, sub.val);
         }
 
-        case (ast::expr_move(?dst, ?src, ?ann)) {
+        case (ast::expr_move(?dst, ?src, _)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
             auto rhs_res = trans_lval(lhs_res.res.bcx, src);
-            auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             // FIXME: calculate copy init-ness in typestate.
-            ret move_val(rhs_res.res.bcx, DROP_EXISTING,
-                         lhs_res.res.val, rhs_res.res.val, t);
+            auto move_res =  move_val(rhs_res.res.bcx, DROP_EXISTING,
+                                      lhs_res.res.val, rhs_res.res.val, t);
+            ret res(move_res.bcx, C_nil());
         }
 
-        case (ast::expr_assign(?dst, ?src, ?ann)) {
+        case (ast::expr_assign(?dst, ?src, _)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
-            auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_val(rhs_res.bcx, DROP_EXISTING,
-                        lhs_res.res.val, rhs_res.val, t);
+            auto copy_res = copy_val(rhs_res.bcx, DROP_EXISTING,
+                                     lhs_res.res.val, rhs_res.val, t);
+            ret res(copy_res.bcx, C_nil());
         }
 
-        case (ast::expr_assign_op(?op, ?dst, ?src, ?ann)) {
-            auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+        case (ast::expr_assign_op(?op, ?dst, ?src, _)) {
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
@@ -5875,8 +5877,9 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             auto v = trans_eager_binop(rhs_res.bcx, op, t,
                                        lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_val(v.bcx, DROP_EXISTING,
-                        lhs_res.res.val, v.val, t);
+            auto copy_res = copy_val(v.bcx, DROP_EXISTING,
+                                     lhs_res.res.val, v.val, t);
+            ret res(copy_res.bcx, C_nil());
         }
 
         case (ast::expr_bind(?f, ?args, ?ann)) {
