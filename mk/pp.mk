@@ -6,5 +6,5 @@ reformat: $(SREQ1)
 	@$(call E, reformat [stage1]: $@)
 	for i in $(PP_INPUTS);  \
     do $(call CFG_RUN_TARG,stage1, stage1/rustc$(X)) \
-       --pretty $$i >$$i.tmp && mv $$i.tmp $$i; \
+       --pretty normal $$i >$$i.tmp && mv $$i.tmp $$i; \
     done
