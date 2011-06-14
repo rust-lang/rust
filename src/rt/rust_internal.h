@@ -206,19 +206,27 @@ struct rust_timer {
 
 #include "rust_util.h"
 
+typedef void CDECL (glue_fn)(void *, rust_task *, void *,
+                             const type_desc **, void *);
+typedef void CDECL (cmp_glue_fn)(void *, rust_task *, void *,
+                                 const type_desc **,
+                                 void *, void *, int8_t);
+
+
 struct type_desc {
     // First part of type_desc is known to compiler.
     // first_param = &descs[1] if dynamic, null if static.
     const type_desc **first_param;
     size_t size;
     size_t align;
-    uintptr_t copy_glue_off;
-    uintptr_t drop_glue_off;
-    uintptr_t free_glue_off;
-    uintptr_t sever_glue_off;    // For GC.
-    uintptr_t mark_glue_off;     // For GC.
-    uintptr_t obj_drop_glue_off; // For custom destructors.
+    glue_fn *take_glue;
+    glue_fn *drop_glue;
+    glue_fn *free_glue;
+    glue_fn *sever_glue;    // For GC.
+    glue_fn *mark_glue;     // For GC.
+    glue_fn *obj_drop_glue; // For custom destructors.
     uintptr_t is_stateful;
+    cmp_glue_fn *cmp_glue;
 
     // Residual fields past here are known only to runtime.
     UT_hash_handle hh;
