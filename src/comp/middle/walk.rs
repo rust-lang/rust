@@ -121,7 +121,7 @@ fn walk_item(&ast_visitor v, @ast::item i) {
         case (ast::item_fn(?nm, ?f, _, ?d, ?a)) {
             walk_fn(v, f, i.span, nm, d, a);
         }
-        case (ast::item_mod(_, ?m, _)) {
+        case (ast::item_mod(_, ?m, _, _)) {
             walk_mod(v, m);
         }
         case (ast::item_native_mod(_, ?nm, _)) {

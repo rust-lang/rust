@@ -402,7 +402,7 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
                 encode_def_id(ebml_w, did);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_mod(?id, ?_mod, ?did)) {
+            case (ast::item_mod(?id, ?_mod, _, ?did)) {
                 add_to_index(ebml_w, path, index, id);
                 ebml::start_tag(ebml_w, tag_paths_data_mod);
                 encode_name(ebml_w, id);
@@ -560,7 +560,7 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             encode_symbol(cx, ebml_w, did);
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_mod(_, _, ?did)) {
+        case (ast::item_mod(_, _, _, ?did)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'm' as u8);

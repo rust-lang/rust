@@ -1918,7 +1918,7 @@ fn parse_item_mod(&parser p) -> @ast::item {
     auto m = parse_mod_items(p, token::RBRACE);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    auto item = ast::item_mod(id, m, p.next_def_id());
+    auto item = ast::item_mod(id, m, [], p.next_def_id());
     ret @spanned(lo, hi, item);
 }
 

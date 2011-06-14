@@ -273,7 +273,7 @@ fn print_item(&ps s, &@ast::item item) {
             word(s.s, " ");
             print_block(s, _fn.body);
         }
-        case (ast::item_mod(?id,?_mod,_)) {
+        case (ast::item_mod(?id,?_mod,_,_)) {
             head(s, "mod");
             word_nbsp(s, id);
             bopen(s);

@@ -381,7 +381,7 @@ fn eval_crate_directive(ctx cx,
             cx.p.set_def(next_id._1);
             cx.chpos = p0.get_chpos();
             cx.next_ann = p0.next_ann_num();
-            auto im = ast::item_mod(id, m0, next_id);
+            auto im = ast::item_mod(id, m0, [], next_id);
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
             vec::push[@ast::item](items, i);
         }
@@ -398,7 +398,7 @@ fn eval_crate_directive(ctx cx,
 
             auto full_path = prefix + std::fs::path_sep() + path;
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
-            auto im = ast::item_mod(id, m0, cx.p.next_def_id());
+            auto im = ast::item_mod(id, m0, [], cx.p.next_def_id());
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
             vec::push[@ast::item](items, i);
         }

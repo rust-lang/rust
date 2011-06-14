@@ -647,7 +647,7 @@ mod collect {
                 ret tpt;
             }
 
-            case (ast::item_mod(_, _, _)) { fail; }
+            case (ast::item_mod(_, _, _, _)) { fail; }
             case (ast::item_native_mod(_, _, _)) { fail; }
         }
     }
@@ -756,7 +756,7 @@ mod collect {
     fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
                &@ast::item it) {
         alt (it.node) {
-            case (ast::item_mod(_, _, _)) {
+            case (ast::item_mod(_, _, _, _)) {
                 // ignore item_mod, it has no type.
             }
             case (ast::item_native_mod(_, ?native_mod, _)) {

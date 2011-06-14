@@ -187,7 +187,7 @@ fn decl_lhs(@ast::decl d) -> ast::def_id {
                 case (ast::item_fn(_,_,_,?d,_)) {
                     ret d;
                 }
-                case (ast::item_mod(_,_,?d)) {
+                case (ast::item_mod(_,_,_,?d)) {
                     ret d;
                 }
                 case (ast::item_native_mod(_,_,?d)) {

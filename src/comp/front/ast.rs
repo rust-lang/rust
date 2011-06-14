@@ -452,7 +452,7 @@ type item = spanned[item_];
 tag item_ {
     item_const(ident, @ty, @expr, def_id, ann);
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
-    item_mod(ident, _mod, def_id);
+    item_mod(ident, _mod, vec[meta_item], def_id);
     item_native_mod(ident, native_mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id, ann);
@@ -463,7 +463,7 @@ fn item_ident(@item it) -> ident {
     ret alt (it.node) {
         case (item_const(?ident, _, _, _, _)) { ident }
         case (item_fn(?ident, _, _, _, _)) { ident }
-        case (item_mod(?ident, _, _)) { ident }
+        case (item_mod(?ident, _, _, _)) { ident }
         case (item_native_mod(?ident, _, _)) { ident }
         case (item_ty(?ident, _, _, _, _)) { ident }
         case (item_tag(?ident, _, _, _, _)) { ident }

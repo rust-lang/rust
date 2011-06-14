@@ -8165,7 +8165,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
                                *extend_path(cx, name));
             trans_obj(sub_cx, item.span, ob, oid.ctor, tps, ann);
         }
-        case (ast::item_mod(?name, ?m, _)) {
+        case (ast::item_mod(?name, ?m, _, _)) {
             auto sub_cx = @rec(path = cx.path + [name],
                                module_path = cx.module_path + [name]
                                with *cx);
@@ -8488,7 +8488,7 @@ fn item_path(&@ast::item item) -> vec[str] {
     alt (item.node) {
         case (ast::item_fn(?name, _, _, _, _)) { ret [name]; }
         case (ast::item_obj(?name, _, _, _, _)) { ret [name]; }
-        case (ast::item_mod(?name, _, _)) { ret [name]; }
+        case (ast::item_mod(?name, _, _, _)) { ret [name]; }
         case (_) { ret []; }
     }
 }
@@ -8521,7 +8521,7 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i,
             ccx.items.insert(cid, i);
             ccx.consts.insert(cid, g);
         }
-        case (ast::item_mod(?name, ?m, ?mid)) {
+        case (ast::item_mod(?name, ?m, _, ?mid)) {
             ccx.items.insert(mid, i);
         }
         case (ast::item_native_mod(_, _, ?mid)) {

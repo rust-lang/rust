@@ -118,7 +118,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
                            id=di, name=id, ccx=ccx);
             find_pre_post_fn(fcx, f);
         }
-        case (item_mod(?id, ?m, ?di)) {
+        case (item_mod(?id, ?m, _, ?di)) {
             find_pre_post_mod(m);
         }
         case (item_native_mod(?id, ?nm, ?di)) {

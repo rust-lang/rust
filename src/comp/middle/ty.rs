@@ -1629,7 +1629,7 @@ fn item_ann(&@ast::item it) -> ast::ann {
     alt (it.node) {
         case (ast::item_const(_,_,_,_,?a)) { ret a; }
         case (ast::item_fn(_,_,_,_,?a)) { ret a; }
-        case (ast::item_mod(_,_,_)) {
+        case (ast::item_mod(_,_,_, _)) {
             log_err "a module was passed to item_ann(), " +
                 "but modules haven't annotations";
             fail;

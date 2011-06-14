@@ -111,7 +111,7 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
         case (item_fn(?nm, ?f, ?tp, ?d, ?a)) {
             vt(v).visit_fn(f, tp, i.span, nm, d, a, e, v);
         }
-        case (item_mod(_, ?m, _)) {
+        case (item_mod(_, ?m, _, _)) {
             vt(v).visit_mod(m, i.span, e, v);
         }
         case (item_native_mod(_, ?nm, _)) {

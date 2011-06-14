@@ -158,7 +158,7 @@ fn map_crate(&@env e, &@ast::crate c) {
     fn index_i(@env e, &@ast::item i, &scopes sc, &vt[scopes] v) {
         visit_item_with_scope(i, sc, v);
         alt (i.node) {
-            case (ast::item_mod(_, ?md, ?defid)) {
+            case (ast::item_mod(_, ?md, _, ?defid)) {
                 e.mod_map.insert(defid._1, 
                                  @rec(m=some(md), index=index_mod(md),
                                       mutable glob_imports=vec::empty[def](),
@@ -207,7 +207,7 @@ fn map_crate(&@env e, &@ast::crate c) {
             alt (sc) {
                 case (cons(scope_item(?i), ?tl)) {
                     alt(i.node) {
-                        case (ast::item_mod(_, _, ?defid)) {
+                        case (ast::item_mod(_, _, _, ?defid)) {
                             ret e.mod_map.get(defid._1);
                         }
                         case (ast::item_native_mod(_, _, ?defid)) {
@@ -520,7 +520,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns)
                             ret lookup_in_ty_params(id, ty_params);
                         }
                     }
-                    case (ast::item_mod(_, _, ?defid)) {
+                    case (ast::item_mod(_, _, _, ?defid)) {
                         ret lookup_in_local_mod(e, defid, sp, id, ns, inside);
                     }
                     case (ast::item_native_mod(_, ?m, ?defid)) {
@@ -711,7 +711,7 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
         case (ast::item_fn(_, _, _, ?defid, _)) {
             if (ns == ns_value) { ret some(ast::def_fn(defid)); }
         }
-        case (ast::item_mod(_, _, ?defid)) {
+        case (ast::item_mod(_, _, _, ?defid)) {
             if (ns == ns_module) { ret some(ast::def_mod(defid)); }
         }
         case (ast::item_native_mod(_, _, ?defid)) {
@@ -976,7 +976,7 @@ fn index_mod(&ast::_mod md) -> mod_index {
             case (ast::item_fn(?id, _, _, _, _)) {
                 add_to_index(index, id, mie_item(it));
             }
-            case (ast::item_mod(?id, _, _)) {
+            case (ast::item_mod(?id, _, _, _)) {
                 add_to_index(index, id, mie_item(it));
             }
             case (ast::item_native_mod(?id, _, _)) {
@@ -1189,7 +1189,7 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
                             case (ast::item_fn(?name, _, _, _, _)) {
                                 add_name(values, it.span, name);
                             }
-                            case (ast::item_mod(?name, _, _)) {
+                            case (ast::item_mod(?name, _, _, _)) {
                                 add_name(mods, it.span, name);
                             }
                             case (ast::item_native_mod(?name, _, _)) {
