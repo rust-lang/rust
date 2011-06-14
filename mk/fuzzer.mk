@@ -12,7 +12,7 @@ stage2/fuzzer.o: $(FUZZER_CRATE) $(FUZZER_INPUTS) $(SREQ1) \
 
 stage2/fuzzer$(X): stage2/fuzzer.o $(SREQ1)
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< \
+	$(Q)gcc $(CFG_GCC_CFLAGS) rt/main.o stage2/glue.o -o $@ $< \
       -Lstage2 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm -lrustc
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
