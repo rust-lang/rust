@@ -164,9 +164,7 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN) op,
 
 fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     fn expr_span(&@ast::expr expr) -> common::span {ret expr.span;}
-    auto f = print_expr;
-    auto gs = expr_span;
-    commasep_cmnt[@ast::expr](s, b, exprs, f, gs);
+    commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
 fn print_mod(&ps s, ast::_mod _mod) {
@@ -210,8 +208,7 @@ fn print_type(&ps s, &ast::ty ty) {
         case (ast::ty_tup(?elts)) {
             word(s.s, "tup");
             popen(s);
-            auto f = print_mt;
-            commasep[ast::mt](s, inconsistent, elts, f);
+            commasep(s, inconsistent, elts, print_mt);
             pclose(s);
         }
         case (ast::ty_rec(?fields)) {
@@ -227,9 +224,7 @@ fn print_type(&ps s, &ast::ty ty) {
             fn get_span(&ast::ty_field f) -> common::span {
                 ret f.span;
             }
-            auto f = print_field;
-            auto gs = get_span;
-            commasep_cmnt[ast::ty_field](s, consistent, fields, f, gs);
+            commasep_cmnt(s, consistent, fields, print_field, get_span);
             pclose(s);
         }
         case (ast::ty_obj(?methods)) {
@@ -346,13 +341,12 @@ fn print_item(&ps s, &@ast::item item) {
                 space(s.s);
                 maybe_print_comment(s, v.span.lo);
                 word(s.s, v.node.name);
-                if (vec::len[ast::variant_arg](v.node.args) > 0u) {
+                if (vec::len(v.node.args) > 0u) {
                     popen(s);
                     fn print_variant_arg(&ps s, &ast::variant_arg arg) {
                         print_type(s, *arg.ty);
                     }
-                    auto f = print_variant_arg;
-                    commasep[ast::variant_arg](s, consistent, v.node.args, f);
+                    commasep(s, consistent, v.node.args, print_variant_arg);
                     pclose(s);
                 }
                 word(s.s, ";");
@@ -373,9 +367,7 @@ fn print_item(&ps s, &@ast::item item) {
                 end(s);
             }
             fn get_span(&ast::obj_field f) -> common::span {ret f.ty.span;}
-            auto f = print_field;
-            auto gs = get_span;
-            commasep_cmnt[ast::obj_field](s, consistent, _obj.fields, f, gs);
+            commasep_cmnt(s, consistent, _obj.fields, print_field, get_span);
             pclose(s);
             space(s.s);
             bopen(s);
@@ -488,9 +480,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             fn get_span(&ast::elt elt) -> common::span {ret elt.expr.span;}
             word(s.s, "tup");
             popen(s);
-            auto f = printElt;
-            auto gs = get_span;
-            commasep_cmnt[ast::elt](s, inconsistent, exprs, f, gs);
+            commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
             pclose(s);
         }
         case (ast::expr_rec(?fields,?wth,_)) {
@@ -507,12 +497,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             word(s.s, "rec");
             popen(s);
-            auto f = print_field;
-            auto gs = get_span;
-            commasep_cmnt[ast::field](s, consistent, fields, f, gs);
+            commasep_cmnt(s, consistent, fields, print_field, get_span);
             alt (wth) {
                 case (some(?expr)) {
-                    if (vec::len[ast::field](fields) > 0u) {space(s.s);}
+                    if (vec::len(fields) > 0u) {space(s.s);}
                     ibox(s, indent_unit);
                     word_space(s, "with");
                     print_expr(s, expr);
@@ -544,8 +532,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word_nbsp(s, "bind");
             print_expr(s, func);
             popen(s);
-            auto f = print_opt;
-            commasep[option::t[@ast::expr]](s, inconsistent, args, f);
+            commasep(s, inconsistent, args, print_opt);
             pclose(s);
         }
     case (ast::expr_spawn(_,_,?e,?es,_)) {
@@ -792,7 +779,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_ext(?path, ?args, ?body, _, _)) {
             word(s.s, "#");
             print_path(s, path);
-            if (vec::len[@ast::expr](args) > 0u) {
+            if (vec::len(args) > 0u) {
                 popen(s);
                 commasep_exprs(s, inconsistent, args);
                 pclose(s);
@@ -896,7 +883,7 @@ fn print_ident(&ps s, &ast::ident ident) {
 }
 
 fn print_for_decl(&ps s, @ast::local loc) {
-    print_type(s, *option::get[@ast::ty](loc.node.ty));
+    print_type(s, *option::get(loc.node.ty));
     space(s.s);
     word(s.s, loc.node.ident);
 }
@@ -909,10 +896,9 @@ fn print_path(&ps s, &ast::path path) {
         else {word(s.s, "::");}
         word(s.s, id);
     }
-    if (vec::len[@ast::ty](path.node.types) > 0u) {
+    if (vec::len(path.node.types) > 0u) {
         word(s.s, "[");
-        auto f = print_boxed_type;
-        commasep[@ast::ty](s, inconsistent, path.node.types, f);
+        commasep(s, inconsistent, path.node.types, print_boxed_type);
         word(s.s, "]");
     }
 }
@@ -925,10 +911,9 @@ fn print_pat(&ps s, &@ast::pat pat) {
         case (ast::pat_lit(?lit,_)) {print_literal(s, lit);}
         case (ast::pat_tag(?path,?args,_)) {
             print_path(s, path);
-            if (vec::len[@ast::pat](args) > 0u) {
+            if (vec::len(args) > 0u) {
                 popen(s);
-                auto f = print_pat;
-                commasep[@ast::pat](s, inconsistent, args, f);
+                commasep(s, inconsistent, args, print_pat);
                 pclose(s);
             }
         }
@@ -973,7 +958,7 @@ fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
         word(s.s, x.ident);
         end(s);
     }
-    commasep[ast::arg](s, inconsistent, decl.inputs, print_arg);
+    commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
@@ -992,13 +977,12 @@ fn print_alias(&ps s, ast::mode m) {
 }
 
 fn print_type_params(&ps s, &vec[ast::ty_param] params) {
-    if (vec::len[ast::ty_param](params) > 0u) {
+    if (vec::len(params) > 0u) {
         word(s.s, "[");
         fn printParam(&ps s, &ast::ty_param param) {
             word(s.s, param);
         }
-        auto f = printParam;
-        commasep[ast::ty_param](s, inconsistent, params, f);
+        commasep(s, inconsistent, params, printParam);
         word(s.s, "]");
     }
 }
@@ -1010,7 +994,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
         case (ast::view_item_use(?id,?mta,_,_)) {
             head(s, "use");
             word(s.s, id);
-            if (vec::len[@ast::meta_item](mta) > 0u) {
+            if (vec::len(mta) > 0u) {
                 popen(s);
                 fn print_meta(&ps s, &@ast::meta_item item) {
                     ibox(s, indent_unit);
@@ -1019,14 +1003,13 @@ fn print_view_item(&ps s, &@ast::view_item item) {
                     print_string(s, item.node.value);
                     end(s);
                 }
-                auto f = print_meta;
-                commasep[@ast::meta_item](s, consistent, mta, f);
+                commasep(s, consistent, mta, print_meta);
                 pclose(s);
             }
         }
         case (ast::view_item_import(?id,?ids,_)) {
             head(s, "import");
-            if (!str::eq(id, ids.(vec::len[str](ids)-1u))) {
+            if (!str::eq(id, ids.(vec::len(ids)-1u))) {
                 word_space(s, id);
                 word_space(s, "=");
             }
@@ -1112,8 +1095,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
         print_alias(s, input.node.mode);
         print_type(s, *input.node.ty);
     }
-    auto f = print_arg;
-    commasep[ast::ty_arg](s, inconsistent, inputs, f);
+    commasep(s, inconsistent, inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {
