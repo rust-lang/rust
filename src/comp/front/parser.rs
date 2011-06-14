@@ -1595,7 +1595,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
         auto hi = p.get_span();
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_ann()));
     } else {
-        alt (parse_item(p)) {
+        alt (parse_item(p, [])) {
             case (got_item(?i)) {
                 auto hi = i.span.hi;
                 auto decl = @spanned(lo, hi, ast::decl_item(i));
@@ -1886,7 +1886,8 @@ fn parse_mod_items(&parser p, token::token term) -> ast::_mod {
     auto view_items = parse_view(p);
     let vec[@ast::item] items = [];
     while (p.peek() != term) {
-        alt (parse_item(p)) {
+        auto attrs = parse_attributes(p);
+        alt (parse_item(p, attrs)) {
             case (got_item(?i)) {
                 vec::push(items, i);
             }
@@ -1911,14 +1912,14 @@ fn parse_item_const(&parser p) -> @ast::item {
     ret @spanned(lo, hi, item);
 }
 
-fn parse_item_mod(&parser p) -> @ast::item {
+fn parse_item_mod(&parser p, vec[ast::meta_item] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     expect(p, token::LBRACE);
     auto m = parse_mod_items(p, token::RBRACE);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    auto item = ast::item_mod(id, m, [], p.next_def_id());
+    auto item = ast::item_mod(id, m, attrs, p.next_def_id());
     ret @spanned(lo, hi, item);
 }
 
@@ -2124,7 +2125,8 @@ tag parsed_item {
     fn_no_item;
 }
 
-fn parse_item(&parser p) -> parsed_item {
+fn parse_item(&parser p, vec[ast::meta_item] attrs) -> parsed_item {
+
     if (eat_word(p, "const")) {
         ret got_item(parse_item_const(p));
     } else if (eat_word(p, "fn")) {
@@ -2137,7 +2139,7 @@ fn parse_item(&parser p) -> parsed_item {
         ret got_item(parse_item_fn_or_iter(p, ast::impure_fn,
                                            ast::proto_iter));
     } else if (eat_word(p, "mod")) {
-        ret got_item(parse_item_mod(p));
+        ret got_item(parse_item_mod(p, attrs));
     } else if (eat_word(p, "native")) {
         ret got_item(parse_item_native_mod(p));
     }
@@ -2152,6 +2154,19 @@ fn parse_item(&parser p) -> parsed_item {
     } else {
         ret no_item;
     }
+}
+
+fn parse_attributes(&parser p) -> vec[ast::meta_item] {
+    let vec[ast::meta_item] attrs = [];
+
+    while (p.peek() == token::POUND) {
+        p.bump();
+        expect(p, token::LBRACKET);
+        attrs += [*parse_meta_item(p)];
+        expect(p, token::RBRACKET);
+    }
+
+    ret attrs;
 }
 
 fn parse_meta_item(&parser p) -> @ast::meta_item {
