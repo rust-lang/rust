@@ -891,9 +891,10 @@ fn gather_comments_and_literals(session sess, str path)
     auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
     let vec[lit] literals = [];
+    let bool first_read = true;
     while (!rdr.is_eof()) {
         while (true) {
-            auto code_to_the_left = true;
+            auto code_to_the_left = !first_read;
             consume_non_eol_whitespace(rdr);
             if (rdr.curr() == '\n') {
                 code_to_the_left = false;
@@ -909,6 +910,7 @@ fn gather_comments_and_literals(session sess, str path)
             vec::push[lit](literals, rec(lit=rdr.get_mark_str(),
                                          pos=rdr.get_mark_chpos()));
         }
+        first_read = false;
     }
     ret rec(cmnts=comments, lits=literals);
  }
