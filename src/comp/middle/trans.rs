@@ -581,7 +581,7 @@ fn T_ivec(TypeRef t) -> TypeRef {
 fn T_opaque_ivec() -> TypeRef {
     ret T_struct([T_int(),          // Length ("fill"; if zero, heapified)
                   T_int(),          // Alloc
-                  T_array(T_i8(), abi::ivec_default_size)]); // Body elements
+                  T_array(T_i8(), 0u)]);    // Body elements
 }
 
 fn T_ivec_heap_part(TypeRef t) -> TypeRef {
@@ -3728,7 +3728,9 @@ fn reserve_ivec_space(&@block_ctxt cx, TypeRef llunitty, ValueRef v,
                                                                 C_int(0)]);
     auto heap_len = on_heap_cx.build.Load(heap_len_ptr);
     auto new_heap_len = on_heap_cx.build.Add(heap_len, len_needed);
-    auto heap_no_resize_needed = on_heap_cx.build.ICmp(lib::llvm::LLVMIntULT,
+    auto heap_len_unscaled = on_heap_cx.build.UDiv(heap_len,
+                                                   llsize_of(llunitty));
+    auto heap_no_resize_needed = on_heap_cx.build.ICmp(lib::llvm::LLVMIntULE,
                                                        new_heap_len, alen);
     auto heap_no_resize_cx = new_sub_block_ctxt(cx, "heap_no_resize");
     auto heap_resize_cx = new_sub_block_ctxt(cx, "heap_resize");
@@ -3736,8 +3738,6 @@ fn reserve_ivec_space(&@block_ctxt cx, TypeRef llunitty, ValueRef v,
                             heap_resize_cx.llbb);
 
     // Case (1): We're on the heap and don't need to resize.
-    auto heap_len_unscaled = heap_no_resize_cx.build.UDiv(heap_len,
-        llsize_of(llunitty));
     auto heap_data_no_resize = heap_no_resize_cx.build.InBoundsGEP(heap_ptr,
         [C_int(0), C_uint(abi::ivec_heap_elt_elems), heap_len_unscaled]);
     heap_no_resize_cx.build.Br(next_cx.llbb);
@@ -3754,21 +3754,21 @@ fn reserve_ivec_space(&@block_ctxt cx, TypeRef llunitty, ValueRef v,
         heap_resize_cx.build.InBoundsGEP(stub_ptr,
             [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]));
     auto heap_data_resize = heap_resize_cx.build.InBoundsGEP(heap_ptr_resize,
-        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), heap_len_unscaled]);
     heap_resize_cx.build.Br(next_cx.llbb);
 
     // We're on the stack. Check whether we need to spill to the heap.
     auto new_stack_len = on_stack_cx.build.Add(stack_len, len_needed);
-    auto stack_no_spill_needed = on_stack_cx.build.ICmp(lib::llvm::LLVMIntULT,
+    auto stack_no_spill_needed = on_stack_cx.build.ICmp(lib::llvm::LLVMIntULE,
                                                         new_stack_len, alen);
+    auto stack_len_unscaled = on_stack_cx.build.UDiv(stack_len,
+                                                     llsize_of(llunitty));
     auto stack_no_spill_cx = new_sub_block_ctxt(cx, "stack_no_spill");
     auto stack_spill_cx = new_sub_block_ctxt(cx, "stack_spill");
     on_stack_cx.build.CondBr(stack_no_spill_needed, stack_no_spill_cx.llbb,
                              stack_spill_cx.llbb);
 
     // Case (3): We're on the stack and don't need to spill.
-    auto stack_len_unscaled = stack_no_spill_cx.build.UDiv(stack_len,
-        llsize_of(llunitty));
     auto stack_data_no_spill = stack_no_spill_cx.build.InBoundsGEP(v,
         [C_int(0), C_uint(abi::ivec_elt_elems), stack_len_unscaled]);
     stack_no_spill_cx.build.Br(next_cx.llbb);
@@ -3789,7 +3789,7 @@ fn reserve_ivec_space(&@block_ctxt cx, TypeRef llunitty, ValueRef v,
     auto heap_len_ptr_spill = stack_spill_cx.build.InBoundsGEP(heap_ptr_spill,
         [C_int(0), C_uint(abi::ivec_heap_elt_len)]);
     auto heap_data_spill = stack_spill_cx.build.InBoundsGEP(heap_ptr_spill,
-        [C_int(0), C_uint(abi::ivec_heap_elt_elems), C_int(0)]);
+        [C_int(0), C_uint(abi::ivec_heap_elt_elems), stack_len_unscaled]);
 
     stack_spill_cx.build.Br(next_cx.llbb);
 
@@ -5840,10 +5840,14 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
     auto unit_align = rslt.val;
     bcx = rslt.bcx;
 
+    auto llalen = bcx.build.Mul(unit_align, C_uint(abi::ivec_default_length));
+
     auto llunitty = type_of_or_i8(bcx, unit_ty);
     auto llvecptr;
     if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
-        llvecptr = alloca(bcx, T_opaque_ivec());
+        auto array_size = bcx.build.Add(llsize_of(T_opaque_ivec()), llalen);
+        llvecptr = array_alloca(bcx, T_i8(), array_size);
+        llvecptr = bcx.build.PointerCast(llvecptr, T_ptr(T_opaque_ivec()));
     } else {
         llvecptr = alloca(bcx, T_ivec(llunitty));
     }
@@ -5852,12 +5856,11 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann)
 
     // Allocate the vector pieces and store length and allocated length.
     auto llfirsteltptr;
-    if (vec::len(args) > 0u && vec::len(args) < abi::ivec_default_size) {
+    if (vec::len(args) > 0u && vec::len(args) < abi::ivec_default_length) {
         // Interior case.
         bcx.build.Store(lllen, bcx.build.InBoundsGEP(llvecptr,
             [C_int(0), C_uint(abi::ivec_elt_len)]));
-        bcx.build.Store(C_uint(abi::ivec_default_size),
-            bcx.build.InBoundsGEP(llvecptr,
+        bcx.build.Store(llalen, bcx.build.InBoundsGEP(llvecptr,
                 [C_int(0), C_uint(abi::ivec_elt_alen)]));
         llfirsteltptr = bcx.build.InBoundsGEP(llvecptr,
             [C_int(0), C_uint(abi::ivec_elt_elems), C_int(0)]);
