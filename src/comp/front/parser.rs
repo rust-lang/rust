@@ -1265,6 +1265,7 @@ fn parse_binops(&parser p) -> @ast::expr {
     ret parse_more_binops(p, parse_prefix_expr(p), 0);
 }
 
+const int unop_prec = 100;
 const int as_prec = 5;
 
 fn parse_more_binops(&parser p, @ast::expr lhs, int min_prec)

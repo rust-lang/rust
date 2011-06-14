@@ -551,7 +551,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_unary(?op,?expr,_)) {
             word(s.s, ast::unop_to_str(op));
-            print_expr(s, expr);
+            print_maybe_parens(s, expr, front::parser::unop_prec);
         }
         case (ast::expr_lit(?lit,_)) {
             print_literal(s, lit);
