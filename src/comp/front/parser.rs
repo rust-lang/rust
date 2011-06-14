@@ -1912,7 +1912,7 @@ fn parse_item_const(&parser p) -> @ast::item {
     ret @spanned(lo, hi, item);
 }
 
-fn parse_item_mod(&parser p, vec[ast::meta_item] attrs) -> @ast::item {
+fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     expect(p, token::LBRACE);
@@ -2125,7 +2125,7 @@ tag parsed_item {
     fn_no_item;
 }
 
-fn parse_item(&parser p, vec[ast::meta_item] attrs) -> parsed_item {
+fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
 
     if (eat_word(p, "const")) {
         ret got_item(parse_item_const(p));
@@ -2156,17 +2156,25 @@ fn parse_item(&parser p, vec[ast::meta_item] attrs) -> parsed_item {
     }
 }
 
-fn parse_attributes(&parser p) -> vec[ast::meta_item] {
-    let vec[ast::meta_item] attrs = [];
+fn parse_attributes(&parser p) -> vec[ast::attribute] {
+    let vec[ast::attribute] attrs = [];
 
     while (p.peek() == token::POUND) {
-        p.bump();
-        expect(p, token::LBRACKET);
-        attrs += [*parse_meta_item(p)];
-        expect(p, token::RBRACKET);
+        attrs += [parse_attribute(p)];
     }
 
     ret attrs;
+}
+
+fn parse_attribute(&parser p) -> ast::attribute {
+    auto lo = p.get_lo_pos();
+    expect(p, token::POUND);
+    expect(p, token::LBRACKET);
+    auto meta_item = parse_meta_item(p);
+    expect(p, token::RBRACKET);
+    auto hi = p.get_hi_pos();
+    ret spanned(lo, hi, rec(style = ast::attr_outer,
+                            value = *meta_item));
 }
 
 fn parse_meta_item(&parser p) -> @ast::meta_item {

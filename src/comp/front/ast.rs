@@ -448,11 +448,26 @@ tag view_item_ {
 
 type obj_def_ids = rec(def_id ty, def_id ctor);
 
+
+// Meta-data associated with an item
+type attribute = spanned[attribute_];
+
+// Distinguishes between attributes that decorate items and attributes that
+// are contained as statements within items. These two cases need to be
+// distinguished for pretty-printing.
+tag attr_style {
+    attr_outer;
+    attr_inner;
+}
+
+type attribute_ = rec(attr_style style,
+                      meta_item value);
+
 type item = spanned[item_];
 tag item_ {
     item_const(ident, @ty, @expr, def_id, ann);
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
-    item_mod(ident, _mod, vec[meta_item], def_id);
+    item_mod(ident, _mod, vec[attribute], def_id);
     item_native_mod(ident, native_mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id, ann);
