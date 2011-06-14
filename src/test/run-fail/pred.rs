@@ -1,14 +1,11 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
-
-// error-pattern:predicate check
+// xfail-stage0
+// error-pattern:Predicate lt(b, a) failed
 
 fn f(int a, int b) : lt(a,b) {
 }
 
-fn lt(int a, int b) -> bool {
+pred lt(int a, int b) -> bool {
   ret a < b;
 }
 
