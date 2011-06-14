@@ -1,0 +1,5 @@
+This subtree is pulled from:
+2b5707d834a6b85b8e589ac04cb61a6db2dab94b
+
+When pulling in a new version of libuv, please update this file to ensure that
+everyone correctly rebuilds libuv.

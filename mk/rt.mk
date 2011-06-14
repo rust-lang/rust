@@ -65,9 +65,9 @@ RUNTIME_HDR := rt/globals.h \
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
-                -I $(S)src/rt/arch/i386
+                -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
-RUNTIME_LIBS := $(CFG_GCCISH_POST_LIB_FLAGS)
+RUNTIME_LIBS := $(S)src/rt/libuv/uv.a
 
 
 rt/%.o: rt/%.cpp $(MKFILES)
@@ -92,9 +92,14 @@ rt/%.o: rt/%.ll $(MKFILES)
 	@$(call E, llc: $@)
 	$(Q)$(LLC) -filetype=obj -relocation-model=pic -march=x86 -o $@ $<
 
-rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
+rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RUNTIME_LIBS)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
+	$(Q)$(call CFG_LINK_C,$@,$(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
+
+$(S)src/rt/libuv/uv.a: rt/libuv/LIBUV_REVISION
+	$(Q)$(MAKE) -C $(S)src/rt/libuv CFLAGS=\"-m32\" LDFLAGS=\"-m32\"
+	$(Q)mkdir -p rt/libuv
+	$(Q)cp $(S)src/rt/libuv/uv.a rt/libuv/uv.a
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
