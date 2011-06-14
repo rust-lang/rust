@@ -585,12 +585,23 @@ upcall_ivec_resize(rust_task *task,
     task->fail(4);
 }
 
+/**
+ * Spills an interior vector to the heap.
+ */
 extern "C" CDECL void
 upcall_ivec_spill(rust_task *task,
                   rust_ivec *v,
                   size_t newsz) {
-    // TODO
-    task->fail(4);
+    size_t new_alloc = next_power_of_two(newsz);
+
+    rust_ivec_heap *heap_part = (rust_ivec_heap *)
+        task->malloc(new_alloc + sizeof(size_t));
+    heap_part->fill = newsz;
+    memcpy(&heap_part->data, v->payload.data, v->fill);
+
+    v->fill = 0;
+    v->alloc = new_alloc;
+    v->payload.ptr = heap_part;
 }
 
 //
