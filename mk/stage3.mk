@@ -4,19 +4,19 @@ stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 	@$(call E, compile: $@)
 	$(STAGE2) -c --shared -o $@ $<
 
-stage3/$(CFG_STDLIB): stage3/std.o stage3/glue.o
+stage3/$(CFG_STDLIB): stage2/std.o stage2/glue.o
 	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o $(CFG_GCCISH_LINK_FLAGS) -o \
-        $@ $< -Lstage3 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o $(CFG_GCCISH_LINK_FLAGS) -o \
+        $@ $< -Lstage2 -Lrt -lrustrt
 
 stage3/librustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	@$(call E, compile: $@)
 	$(STAGE2) -c --shared -o $@ $<
 
-stage3/$(CFG_RUSTCLIB): stage3/librustc.o stage3/glue.o
+stage3/$(CFG_RUSTCLIB): stage2/librustc.o stage2/glue.o
 	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o $(CFG_GCCISH_LINK_FLAGS) \
-	-o $@ $< -Lstage3 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o $(CFG_GCCISH_LINK_FLAGS) \
+	-o $@ $< -Lstage2 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd
 
 stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
@@ -40,7 +40,3 @@ stage3/%.o: stage3/%.s
 stage3/%$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -o $@ $<
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
