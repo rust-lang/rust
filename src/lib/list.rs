@@ -18,35 +18,52 @@ fn from_vec[T](vec[T] v) -> list[T] {
     ret l;
 }
 
-fn foldl[T, U](&list[T] ls, &U u, fn(&T, &U) -> U  f) -> U {
-    alt (ls) {
-        case (cons(?hd, ?tl)) {
-            auto u_ = f(hd, u);
-            be foldl[T, U](*tl, u_, f);
-        }
-        case (nil) { ret u; }
-    }
-}
-
-fn find[T, U](&list[T] ls, fn(&T) -> option::t[U]  f) -> option::t[U] {
-    alt (ls) {
-        case (cons(?hd, ?tl)) {
-            alt (f(hd)) {
-                case (none) { be find[T, U](*tl, f); }
-                case (some(?res)) { ret some[U](res); }
+fn foldl[T, U](&list[T] ls_, &U u, fn(&T, &U) -> U  f) -> U {
+    let U accum = u;
+    auto ls = ls_;
+    while (true) {
+        alt (ls) {
+            case (cons(?hd, ?tl)) {
+                accum = f(hd, accum);
+                ls = *tl;
             }
+            case (nil) { break; }
         }
-        case (nil) { ret none[U]; }
     }
+    ret accum;
 }
 
-fn has[T](&list[T] ls, &T elt) -> bool {
-    alt (ls) {
-        case (cons(?hd, ?tl)) {
-            if (elt == hd) { ret true; } else { be has(*tl, elt); }
+fn find[T, U](&list[T] ls_, fn(&T) -> option::t[U]  f) -> option::t[U] {
+    auto ls = ls_;
+    while (true) {
+        alt (ls) {
+            case (cons(?hd, ?tl)) {
+                alt (f(hd)) {
+                    case (none) { ls = *tl; }
+                    case (some(?res)) { ret some(res); }
+                }
+            }
+            case (nil) { break; }
         }
-        case (nil) { ret false; }
     }
+    ret none;
+}
+
+fn has[T](&list[T] ls_, &T elt) -> bool {
+    auto ls = ls_;
+    while (true) {
+        alt (ls) {
+            case (cons(?hd, ?tl)) {
+                if (elt == hd) {
+                    ret true;
+                } else {
+                    ls = *tl;
+                }
+            }
+            case (nil) { ret false; }
+        }
+    }
+    ret false; // Typestate checker doesn't understand infinite loops
 }
 
 fn length[T](&list[T] ls) -> uint {

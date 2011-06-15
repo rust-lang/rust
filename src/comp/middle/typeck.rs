@@ -388,7 +388,7 @@ mod write {
     // Writes a type parameter count and type pair into the node type table.
     fn ty(&ty::ctxt tcx, uint node_id, &ty_param_substs_opt_and_ty tpot) {
         assert (!ty::type_contains_vars(tcx, tpot._1));
-        be inner(tcx.node_types, node_id, tpot);
+        ret inner(tcx.node_types, node_id, tpot);
     }
 
     // Writes a type parameter count and type pair into the node type table.
@@ -404,23 +404,23 @@ mod write {
 
     // Writes a type with no type parameters into the node type table.
     fn ty_only(&ty::ctxt tcx, uint node_id, ty::t typ) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], typ));
     }
 
     // Writes a type with no type parameters into the node type table. This
     // function allows for the possibility of type variables.
     fn ty_only_fixup(@fn_ctxt fcx, uint node_id, ty::t typ) {
-        be ty_fixup(fcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty_fixup(fcx, node_id, tup(none[vec[ty::t]], typ));
     }
 
     // Writes a nil type into the node type table.
     fn nil_ty(&ty::ctxt tcx, uint node_id) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
     }
 
     // Writes the bottom type into the node type table.
     fn bot_ty(&ty::ctxt tcx, uint node_id) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
     }
 }
 

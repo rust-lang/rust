@@ -1115,7 +1115,7 @@ fn trans_non_gc_free(&@block_ctxt cx, ValueRef v) -> result {
 fn find_scope_cx(&@block_ctxt cx) -> @block_ctxt {
     if (cx.kind != NON_SCOPE_BLOCK) { ret cx; }
     alt (cx.parent) {
-        case (parent_some(?b)) { be find_scope_cx(b); }
+        case (parent_some(?b)) { ret find_scope_cx(b); }
         case (parent_none) {
             cx.fcx.lcx.ccx.sess.bug("trans::find_scope_cx() " +
                                         "called on parentless block_ctxt");
@@ -2455,7 +2455,7 @@ fn iter_structural_ty(&@block_ctxt cx, ValueRef v, &ty::t t, val_and_ty_fn f)
                   ty::t t) -> result {
         ret f(cx, av, t);
     }
-    be iter_structural_ty_full(cx, v, v, t, bind adaptor_fn(f, _, _, _, _));
+    ret iter_structural_ty_full(cx, v, v, t, bind adaptor_fn(f, _, _, _, _));
 }
 
 fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
@@ -2693,8 +2693,8 @@ fn iter_sequence_inner(&@block_ctxt cx, ValueRef src,
         ret f(cx, load_if_immediate(cx, p, elt_ty), elt_ty);
     }
     auto elt_sz = size_of(cx, elt_ty);
-    be iter_sequence_raw(elt_sz.bcx, src, src, src_lim, elt_sz.val,
-                         bind adaptor_fn(f, elt_ty, _, _, _));
+    ret iter_sequence_raw(elt_sz.bcx, src, src, src_lim, elt_sz.val,
+                          bind adaptor_fn(f, elt_ty, _, _, _));
 }
 
 
