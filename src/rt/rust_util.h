@@ -197,8 +197,8 @@ rust_ivec_heap
 union
 rust_ivec_payload
 {
-    uint8_t data[];                 // if on stack
-    struct rust_ivec_heap *ptr;     // if on heap
+    rust_ivec_heap *ptr;    // if on heap
+    uint8_t data[];         // if on stack
 };
 
 struct

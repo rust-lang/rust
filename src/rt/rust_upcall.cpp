@@ -581,8 +581,15 @@ extern "C" CDECL void
 upcall_ivec_resize(rust_task *task,
                    rust_ivec *v,
                    size_t newsz) {
-    // TODO
-    task->fail(4);
+    I(task->dom, !v->fill);
+
+    size_t new_alloc = next_power_of_two(newsz);
+    rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
+        task->realloc(v->payload.ptr, new_alloc);
+
+    new_heap_part->fill = newsz;
+    v->alloc = new_alloc;
+    v->payload.ptr = new_heap_part;
 }
 
 /**
