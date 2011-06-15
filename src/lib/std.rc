@@ -22,6 +22,7 @@ mod task;
 
 // Utility modules.
 
+mod either;
 mod option;
 mod util;
 
