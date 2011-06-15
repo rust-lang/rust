@@ -415,7 +415,7 @@ upcall_vec_grow(rust_task *task,
          *
          * Step 3 is a bit tricky.  We don't know how to properly copy the
          * elements in the runtime (all we have are bits in a buffer; no
-         * type infromation and no copy glue).  What we do instead is set the
+         * type information and no copy glue).  What we do instead is set the
          * need_copy outparam flag to indicate to our caller (vec-copy glue)
          * that we need the copies performed for us.
          */
@@ -435,6 +435,53 @@ upcall_vec_grow(rust_task *task,
     I(dom, sizeof(rust_vec) + v->fill <= v->alloc);
     return v;
 }
+
+// Copy elements from one vector to another,
+// dealing with reference counts
+static inline void
+copy_elements(rust_task *task, type_desc *elem_t,
+              void *pdst, void *psrc, size_t n)
+{
+    char *dst = (char *)pdst, *src = (char *)psrc;
+
+    // increment the refcount of each element of the vector
+    if (elem_t->take_glue) {
+        glue_fn *take_glue = elem_t->take_glue;
+        size_t elem_size = elem_t->size;
+        const type_desc **tydescs = elem_t->first_param;
+        for (char *p = src; p < src+n; p += elem_size) {
+            take_glue(NULL, task, NULL, tydescs, p);
+        }
+    }
+    memmove(dst, src, n);
+}
+
+extern "C" CDECL void
+upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
+                  rust_vec **dst_ptr, rust_vec *src, bool skip_null)
+{
+    LOG_UPCALL_ENTRY(task);
+    rust_vec *dst = *dst_ptr;
+    uintptr_t need_copy;
+    size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
+    size_t n_dst_bytes = skip_null ? dst->fill - 1 : dst->fill;
+    rust_vec *new_vec = upcall_vec_grow(task, dst, n_src_bytes,
+                                        &need_copy, t);
+
+    if (need_copy) {
+        // Copy any dst elements in, omitting null if doing str.
+        copy_elements(task, elem_t, &new_vec->data, &dst->data, n_dst_bytes);
+    }
+
+    // Copy any src elements in, carrying along null if doing str.
+    void *new_end = (void *)((char *)new_vec->data + n_dst_bytes);
+    copy_elements(task, elem_t, new_end, &src->data, src->fill);
+    new_vec->fill = n_dst_bytes + src->fill;
+
+    // Write new_vec back through the alias we were given.
+    *dst_ptr = new_vec;
+}
+
 
 extern "C" CDECL type_desc *
 upcall_get_type_desc(rust_task *task,
