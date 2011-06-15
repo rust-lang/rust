@@ -48,8 +48,16 @@ fn reset(io::buf_writer writer) {
 }
 
 fn color_supported() -> bool {
-  
-    ret generic_os::getenv("TERM") == option::some[str]("xterm-color");
+    auto supported_terms = ["xterm-color",
+                            "screen-bce"];
+    ret alt (generic_os::getenv("TERM")) {
+        case (option::some(?env)) {
+            vec::member(env, supported_terms)
+        }
+        case (option::none) {
+            false
+        }
+    };
 }
 
 fn set_color(io::buf_writer writer, u8 first_char, u8 color) {
