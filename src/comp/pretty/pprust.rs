@@ -802,7 +802,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_anon_obj(_, _, _, _)) {
             word(s.s, "anon obj");
-            // TODO: nicer pretty-printing of anon objs
+            // FIXME (issue #499): nicer pretty-printing of anon objs
 
         }
     }
