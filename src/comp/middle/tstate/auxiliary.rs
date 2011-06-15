@@ -198,8 +198,9 @@ to represent predicate *arguments* however. This type
 Both types store an ident and span, for error-logging purposes.
 */
 type pred_desc_ = rec(vec[@constr_arg_use] args, uint bit_num);
-
 type pred_desc = spanned[pred_desc_];
+type constr_arg_use = constr_arg_general[ident];
+
 
 tag constraint {
     cinit(uint, span, ident);
@@ -456,7 +457,7 @@ fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
     }
 }
 
-fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ast::constr] {
+fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ty::constr_def] {
     alt (ty::struct(cx, ty::ann_to_type(cx, expr_ann(e)))) {
         case (ty::ty_fn(_, _, _, _, ?cs)) { ret cs; }
         case (_) { ret []; }
@@ -511,9 +512,11 @@ fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
 // FIXME:
 // this probably doesn't handle name shadowing well (or at all)
 // variables should really always be id'd by def_id and not ident
+
 fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
    uint {
-    log "match_args: looking at " + pretty::ppaux::constr_args_to_str_1(occ);
+    log ("match_args: looking at " +
+         pretty::ppaux::constr_args_to_str(std::util::id[str], occ));
     for (pred_desc pd in occs) {
         log "match_args: candidate " + pred_desc_to_str(pd);
         if (ty::args_eq(str::eq, pd.node.args, occ)) { ret pd.node.bit_num; }
@@ -586,11 +589,13 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
 
 fn pred_desc_to_str(&pred_desc p) -> str {
     ret "<" + uistr(p.node.bit_num) + ", " +
-            pretty::ppaux::constr_args_to_str_1(p.node.args) + ">";
+         pretty::ppaux::constr_args_to_str(std::util::id[str], p.node.args)
+         + ">";
 }
 
-fn substitute_constr_args(&ty::ctxt cx, &vec[@expr] actuals, &@ast::constr c)
-   -> constr__ {
+fn substitute_constr_args(&ty::ctxt cx,
+                          &vec[@expr] actuals, &@ty::constr_def c)
+    -> constr__ {
     let vec[@constr_arg_use] res = [];
     for (@constr_arg a in c.node.args) {
         res += [substitute_arg(cx, actuals, a)];

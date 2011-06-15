@@ -221,8 +221,7 @@ mod Encode {
                     case (ast::native_abi_cdecl) { w.write_char('c'); }
                     case (ast::native_abi_llvm) { w.write_char('l'); }
                 }
-                let vec[@constr] res_constrs = [];
-                enc_ty_fn(w, cx, args, out, ast::return, res_constrs);
+                enc_ty_fn(w, cx, args, out, ast::return, []);
             }
             case (ty::ty_obj(?methods)) {
                 w.write_str("O[");
@@ -253,7 +252,7 @@ mod Encode {
         }
     }
     fn enc_ty_fn(&io::writer w, &@ctxt cx, &vec[ty::arg] args, &ty::t out,
-                 &ast::controlflow cf, &vec[@ast::constr] constrs) {
+                 &ast::controlflow cf, &vec[@ty::constr_def] constrs) {
         w.write_char('[');
         for (ty::arg arg in args) {
             alt (arg.mode) {
@@ -271,7 +270,7 @@ mod Encode {
             case (_) { enc_ty(w, cx, out); }
         }
         auto colon = true;
-        for (@ast::constr c in constrs) {
+        for (@ty::constr_def c in constrs) {
             if (colon) {
                 w.write_char(':');
                 colon = false;
@@ -279,7 +278,7 @@ mod Encode {
             enc_constr(w, cx, c);
         }
     }
-    fn enc_constr(&io::writer w, &@ctxt cx, &@ast::constr c) {
+    fn enc_constr(&io::writer w, &@ctxt cx, &@ty::constr_def c) {
         w.write_str(path_to_str(c.node.path));
         w.write_char('(');
         // FIXME

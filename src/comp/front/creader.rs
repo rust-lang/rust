@@ -78,8 +78,8 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     }
 }
 
-fn parse_constrs(@pstate st, str_def sd) -> vec[@ast::constr] {
-    let vec[@ast::constr] res = [];
+fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
+    let vec[@ty::constr_def] res = [];
     alt (peek(st) as char) {
         case (':') {
             do  {
@@ -92,7 +92,7 @@ fn parse_constrs(@pstate st, str_def sd) -> vec[@ast::constr] {
     ret res;
 }
 
-fn parse_constr(@pstate st, str_def sd) -> @ast::constr {
+fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
     st.tcx.sess.unimpl("Reading constraints " + " isn't implemented");
     /*
     let vec[@ast::constr_arg] args = [];
@@ -318,7 +318,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(vec[ty::arg], ty::t, ast::controlflow, vec[@ast::constr]) {
+   tup(vec[ty::arg], ty::t, ast::controlflow, vec[@ty::constr_def]) {
     assert (next(st) as char == '[');
     let vec[ty::arg] inputs = [];
     while (peek(st) as char != ']') {

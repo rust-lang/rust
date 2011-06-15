@@ -1094,7 +1094,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
         }
         end(s);
     }
-    word_space(s, constrs_str(constrs));
+    word_space(s, ast_constrs_str(constrs));
     end(s);
 }
 

@@ -35,14 +35,11 @@ tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
 type ctx =
     rec(@ty::ctxt tcx,
-        resolve::def_map dm,
         std::map::hashmap[def_num, local_info] local_map);
 
-fn check_crate(@ty::ctxt tcx, resolve::def_map dm, &@ast::crate crate) {
+fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
     auto cx =
         @rec(tcx=tcx,
-             dm=dm,
-
              // Stores information about object fields and function
              // arguments that's otherwise not easily available.
              local_map=util::common::new_int_hash());
@@ -173,7 +170,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
     if (vec::len(unsafe_ts) > 0u) {
         alt (f.node) {
             case (ast::expr_path(_, ?ann)) {
-                if (def_is_local(cx.dm.get(ann.id), true)) {
+                if (def_is_local(cx.tcx.def_map.get(ann.id), true)) {
                     cx.tcx.sess.span_err
                         (f.span, #fmt("function may alias with argument \
                          %u, which is not immutably rooted",
@@ -231,7 +228,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
             auto ok = true;
             alt (args.(i).node) {
                 case (ast::expr_path(_, ?ann)) {
-                    auto def = cx.dm.get(ann.id);
+                    auto def = cx.tcx.def_map.get(ann.id);
                     auto dnum = ast::def_id_of_def(def)._1;
                     alt (cx.local_map.find(dnum)) {
                         case (some(arg(ast::alias(?mut)))) {
@@ -353,7 +350,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
 
 fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
              &scope sc) {
-    auto def = cx.dm.get(ann.id);
+    auto def = cx.tcx.def_map.get(ann.id);
     if (!def_is_local(def, true)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
@@ -379,7 +376,7 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
     visit_expr(cx, src, sc, v);
     alt (dest.node) {
         case (ast::expr_path(?p, ?ann)) {
-            auto dnum = ast::def_id_of_def(cx.dm.get(ann.id))._1;
+            auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(ann.id))._1;
             if (is_immutable_alias(cx, sc, dnum)) {
                 cx.tcx.sess.span_err(dest.span,
                                      "assigning to immutable alias");
@@ -566,7 +563,7 @@ fn inner_mut(&vec[deref] ds) -> option::t[ty::t] {
 fn path_def_id(&ctx cx, &@ast::expr ex) -> option::t[ast::def_id] {
     alt (ex.node) {
         case (ast::expr_path(_, ?ann)) {
-            ret some(ast::def_id_of_def(cx.dm.get(ann.id)));
+            ret some(ast::def_id_of_def(cx.tcx.def_map.get(ann.id)));
         }
         case (_) { ret none; }
     }

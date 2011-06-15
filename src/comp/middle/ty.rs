@@ -13,23 +13,14 @@ import std::option::some;
 import std::smallintmap;
 import driver::session;
 import front::ast;
+import front::ast::def_id;
+import front::ast::constr_arg_general;
 import front::ast::mutability;
 import front::ast::controlflow;
 import front::creader;
 import middle::metadata;
-import util::common;
-import util::common::ty_u8;
-import util::common::ty_u16;
-import util::common::ty_u32;
-import util::common::ty_u64;
-import util::common::ty_i8;
-import util::common::ty_i16;
-import util::common::ty_i32;
-import util::common::ty_i64;
-import util::common::ty_f32;
-import util::common::ty_f64;
-import util::common::new_def_hash;
-import util::common::span;
+import util::common::*;
+
 import util::data::interner;
 
 
@@ -46,7 +37,7 @@ type method =
         vec[arg] inputs,
         t output,
         controlflow cf,
-        vec[@ast::constr] constrs);
+        vec[@constr_def] constrs);
 
 tag any_item {
     any_item_rust(@ast::item);
@@ -54,12 +45,14 @@ tag any_item {
 }
 
 type item_table = hashmap[ast::def_id, any_item];
+type constr_table = hashmap[ast::def_id, vec[constr_def]]; 
 
 type mt = rec(t ty, ast::mutability mut);
 
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
+
 type creader_cache = hashmap[tup(int, uint, uint), ty::t];
 
 type ctxt =
@@ -68,7 +61,7 @@ type ctxt =
         resolve::def_map def_map,
         node_type_table node_types,
         item_table items, // Only contains type items
-
+        constr_table fn_constrs,
         type_cache tcache,
         creader_cache rcache,
         hashmap[t, str] short_names_cache,
@@ -82,7 +75,6 @@ type ty_ctxt = ctxt;
  fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
      ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf, m.constrs);
  }
-
 
 // Never construct these manually. These are interned.
 //
@@ -107,11 +99,11 @@ tag sty {
     ty_int;
     ty_float;
     ty_uint;
-    ty_machine(util::common::ty_mach);
+    ty_machine(ty_mach);
     ty_char;
     ty_str;
     ty_istr;
-    ty_tag(ast::def_id, vec[t]);
+    ty_tag(def_id, vec[t]);
     ty_box(mt);
     ty_vec(mt);
     ty_ivec(mt);
@@ -121,7 +113,7 @@ tag sty {
     ty_task;
     ty_tup(vec[mt]);
     ty_rec(vec[field]);
-    ty_fn(ast::proto, vec[arg], t, controlflow, vec[@ast::constr]);
+    ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
     ty_var(int); // type variable
@@ -134,6 +126,10 @@ tag sty {
 
 }
 
+type constr_def = spanned[constr_general[uint]];
+type constr_general[T] =  rec(path path,
+                              vec[@constr_arg_general[T]] args,
+                              def_id id);
 
 // Data structures used in type unification
 tag type_err {
@@ -247,12 +243,13 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap[tup(int, uint, uint), t](h, e);
 }
 
-fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
+fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
+
     let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
         [mutable ];
     let node_type_table ntt = @mutable ntt_sub;
-    auto tcache = common::new_def_hash[ty::ty_param_count_and_ty]();
-    auto items = common::new_def_hash[any_item]();
+    auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
+    auto items = new_def_hash[any_item]();
     auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
     auto cx =
         rec(ts=ts,
@@ -260,6 +257,7 @@ fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
             def_map=dm,
             node_types=ntt,
             items=items,
+            fn_constrs = cs,
             tcache=tcache,
             rcache=mk_rcache(),
             short_names_cache=map::mk_hashmap[ty::t,
@@ -379,7 +377,7 @@ fn mk_float(&ctxt cx) -> t { ret idx_float; }
 
 fn mk_uint(&ctxt cx) -> t { ret idx_uint; }
 
-fn mk_mach(&ctxt cx, &util::common::ty_mach tm) -> t {
+fn mk_mach(&ctxt cx, &ty_mach tm) -> t {
     alt (tm) {
         case (ty_u8) { ret idx_u8; }
         case (ty_u16) { ret idx_u16; }
@@ -439,7 +437,7 @@ fn mk_imm_tup(&ctxt cx, &vec[t] tys) -> t {
 fn mk_rec(&ctxt cx, &vec[field] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_fn(&ctxt cx, &ast::proto proto, &vec[arg] args, &t ty, &controlflow cf,
-         &vec[@ast::constr] constrs) -> t {
+         &vec[@constr_def] constrs) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
@@ -759,8 +757,8 @@ fn sequence_is_interior(&ctxt cx, &t ty) -> bool {
 
 fn sequence_element_type(&ctxt cx, &t ty) -> t {
     alt (struct(cx, ty)) {
-        case (ty_str) { ret mk_mach(cx, common::ty_u8); }
-        case (ty_istr) { ret mk_mach(cx, common::ty_u8); }
+        case (ty_str) { ret mk_mach(cx, ty_u8); }
+        case (ty_istr) { ret mk_mach(cx, ty_u8); }
         case (ty_vec(?mt)) { ret mt.ty; }
         case (ty_ivec(?mt)) { ret mt.ty; }
         case (_) {
@@ -915,14 +913,14 @@ fn type_is_integral(&ctxt cx, &t ty) -> bool {
         case (ty_uint) { ret true; }
         case (ty_machine(?m)) {
             alt (m) {
-                case (common::ty_i8) { ret true; }
-                case (common::ty_i16) { ret true; }
-                case (common::ty_i32) { ret true; }
-                case (common::ty_i64) { ret true; }
-                case (common::ty_u8) { ret true; }
-                case (common::ty_u16) { ret true; }
-                case (common::ty_u32) { ret true; }
-                case (common::ty_u64) { ret true; }
+                case (ty_i8) { ret true; }
+                case (ty_i16) { ret true; }
+                case (ty_i32) { ret true; }
+                case (ty_i64) { ret true; }
+                case (ty_u8) { ret true; }
+                case (ty_u16) { ret true; }
+                case (ty_u32) { ret true; }
+                case (ty_u64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -935,8 +933,8 @@ fn type_is_fp(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (common::ty_f32) { ret true; }
-                case (common::ty_f64) { ret true; }
+                case (ty_f32) { ret true; }
+                case (ty_f64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -950,10 +948,10 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
         case (ty_int) { ret true; }
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (common::ty_i8) { ret true; }
-                case (common::ty_i16) { ret true; }
-                case (common::ty_i32) { ret true; }
-                case (common::ty_i64) { ret true; }
+                case (ty_i8) { ret true; }
+                case (ty_i16) { ret true; }
+                case (ty_i32) { ret true; }
+                case (ty_i64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -1005,16 +1003,16 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_uint) { ret 4u; }
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (common::ty_i8) { ret 5u; }
-                case (common::ty_i16) { ret 6u; }
-                case (common::ty_i32) { ret 7u; }
-                case (common::ty_i64) { ret 8u; }
-                case (common::ty_u8) { ret 9u; }
-                case (common::ty_u16) { ret 10u; }
-                case (common::ty_u32) { ret 11u; }
-                case (common::ty_u64) { ret 12u; }
-                case (common::ty_f32) { ret 13u; }
-                case (common::ty_f64) { ret 14u; }
+                case (ty_i8) { ret 5u; }
+                case (ty_i16) { ret 6u; }
+                case (ty_i32) { ret 7u; }
+                case (ty_i64) { ret 8u; }
+                case (ty_u8) { ret 9u; }
+                case (ty_u16) { ret 10u; }
+                case (ty_u32) { ret 11u; }
+                case (ty_u64) { ret 12u; }
+                case (ty_f32) { ret 13u; }
+                case (ty_f64) { ret 14u; }
             }
         }
         case (ty_char) { ret 15u; }
@@ -1096,7 +1094,7 @@ fn arg_eq[T](&fn(&T, &T) -> bool  eq, @ast::constr_arg_general[T] a,
         }
         case (ast::carg_lit(?l)) {
             alt (b.node) {
-                case (ast::carg_lit(?m)) { ret util::common::lit_eq(l, m); }
+                case (ast::carg_lit(?m)) { ret lit_eq(l, m); }
                 case (_) { ret false; }
             }
         }
@@ -1113,18 +1111,18 @@ fn args_eq[T](fn(&T, &T) -> bool  eq, vec[@ast::constr_arg_general[T]] a,
     ret true;
 }
 
-fn constr_eq(&@ast::constr c, &@ast::constr d) -> bool {
+fn constr_eq(&@constr_def c, &@constr_def d) -> bool {
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
              // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
-fn constrs_eq(&vec[@ast::constr] cs, &vec[@ast::constr] ds) -> bool {
+fn constrs_eq(&vec[@constr_def] cs, &vec[@constr_def] ds) -> bool {
     if (vec::len(cs) != vec::len(ds)) { ret false; }
-    auto i = 0;
-    for (@ast::constr c in cs) {
+    auto i = 0u;
+    for (@constr_def c in cs) {
         if (!constr_eq(c, ds.(i))) { ret false; }
-        i += 1;
+        i += 1u;
     }
     ret true;
 }
@@ -1829,8 +1827,8 @@ mod unify {
                 &t expected, &t actual, &vec[arg] expected_inputs,
                 &t expected_output, &vec[arg] actual_inputs, &t actual_output,
                 &controlflow expected_cf, &controlflow actual_cf,
-                &vec[@ast::constr] expected_constrs,
-                &vec[@ast::constr] actual_constrs) -> result {
+                &vec[@constr_def] expected_constrs,
+                &vec[@constr_def] actual_constrs) -> result {
         if (e_proto != a_proto) { ret ures_err(terr_mismatch); }
         alt (expected_cf) {
             case (ast::return) { }
@@ -2473,7 +2471,7 @@ fn tag_variant_with_id(&ctxt cx, &ast::def_id tag_id, &ast::def_id variant_id)
     auto i = 0u;
     while (i < vec::len[variant_info](variants)) {
         auto variant = variants.(i);
-        if (common::def_eq(variant.id, variant_id)) { ret variant; }
+        if (def_eq(variant.id, variant_id)) { ret variant; }
         i += 1u;
     }
     cx.sess.bug("tag_variant_with_id(): no variant exists with that ID");

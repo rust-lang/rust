@@ -37,30 +37,16 @@ fn collect_pred(&ctxt cx, &@expr e) {
         case (expr_check(?e, _)) {
             vec::push(*cx.cs, expr_to_constr(cx.tcx, e));
         }
-        case (
-             // If it's a call, generate appropriate instances of the
-             // call's constraints.
-             expr_call(?operator, ?operands, ?a)) {
-            for (@ast::constr c in constraints_expr(cx.tcx, operator)) {
-                auto d_id = ann_to_def_strict(cx.tcx, c.node.ann);
-                alt (d_id) {
-                    case (def_fn(?an_id)) {
-                        let aux::constr ct =
-                            respan(c.span,
-                                   rec(id=an_id,
-                                       c=aux::substitute_constr_args(cx.tcx,
-                                                                     operands,
-                                                                     c)));
-                        vec::push(*cx.cs, ct);
-                    }
-                    case (_) {
-                        cx.tcx.sess.span_err(c.span,
-                                             "Non-pred in constraint");
-                    }
-                }
+        // If it's a call, generate appropriate instances of the
+        // call's constraints.
+        case (expr_call(?operator, ?operands, ?a)) {
+            for (@ty::constr_def c in constraints_expr(cx.tcx, operator)) {
+                let aux::constr ct = respan(c.span,
+                      rec(id=c.node.id,
+                          c=aux::substitute_constr_args(cx.tcx,
+                                                        operands, c)));
+                vec::push(*cx.cs, ct);
             }
-            // FIXME: constraints on result type
-
         }
         case (_) { }
     }

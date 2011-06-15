@@ -11,7 +11,8 @@ import util::common::new_int_hash;
 import util::common::new_uint_hash;
 import util::common::new_str_hash;
 import util::common::span;
-import middle::tstate::ann::ts_ann;
+import util::common::respan;
+import middle::ty::constr_table;
 import visit::vt;
 import std::map::hashmap;
 import std::list;
@@ -111,6 +112,7 @@ type def_map = hashmap[uint, def];
 type env =
     rec(crate_map crate_map,
         def_map def_map,
+        constr_table fn_constrs,
         hashmap[def_id, @ast::item] ast_map,
         hashmap[ast::def_num, import_state] imports,
         hashmap[ast::def_num, @indexed_mod] mod_map,
@@ -118,17 +120,18 @@ type env =
         ext_hash ext_cache,
         session sess);
 
-
 // Used to distinguish between lookups from outside and from inside modules,
 // since export restrictions should only be applied for the former.
 tag dir { inside; outside; }
 
 tag namespace { ns_value; ns_type; ns_module; }
 
-fn resolve_crate(session sess, @ast::crate crate) -> def_map {
+fn resolve_crate(session sess, @ast::crate crate)
+    -> tup(def_map, constr_table) {
     auto e =
         @rec(crate_map=new_uint_hash[ast::crate_num](),
              def_map=new_uint_hash[def](),
+             fn_constrs = new_def_hash[vec[ty::constr_def]](),
              ast_map=new_def_hash[@ast::item](),
              imports=new_int_hash[import_state](),
              mod_map=new_int_hash[@indexed_mod](),
@@ -140,7 +143,7 @@ fn resolve_crate(session sess, @ast::crate crate) -> def_map {
     resolve_imports(*e);
     check_for_collisions(e, *crate);
     resolve_names(e, crate);
-    ret e.def_map;
+    ret tup(e.def_map, e.fn_constrs);
 }
 
 
@@ -266,8 +269,9 @@ fn resolve_names(&@env e, &@ast::crate c) {
              visit_arm=bind walk_arm(e, _, _, _),
              visit_expr=bind walk_expr(e, _, _, _),
              visit_ty=bind walk_ty(e, _, _, _),
-             visit_fn=visit_fn_with_scope,
-             visit_constr=bind walk_constr(e, _, _, _)
+             visit_constr = bind walk_constr(e, _, _, _),
+             visit_fn=bind visit_fn_with_scope
+                        (e, _, _, _, _, _, _, _, _)
              with *visit::default_visitor());
     visit::visit_crate(*c, cons(scope_crate(c), @nil), visit::vtor(v));
     fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
@@ -282,12 +286,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
             case (_) { }
         }
     }
-    fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
-        auto new_def =
-            lookup_path_strict(*e, sc, c.span, c.node.path.node.idents,
-                               ns_value);
-        e.def_map.insert(c.node.ann.id, new_def);
-    }
+
     fn walk_ty(@env e, &@ast::ty t, &scopes sc, &vt[scopes] v) {
         visit::visit_ty(t, sc, v);
         alt (t.node) {
@@ -300,6 +299,13 @@ fn resolve_names(&@env e, &@ast::crate c) {
             case (_) { }
         }
     }
+
+    fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
+        auto new_def = lookup_path_strict(*e, sc, c.span,
+                                          c.node.path.node.idents, ns_value);
+        e.def_map.insert(c.node.ann.id, new_def);
+    }
+
     fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
         walk_pat(*e, sc, a.pat);
         visit_arm_with_scope(a, sc, v);
@@ -338,11 +344,16 @@ fn visit_native_item_with_scope(&@ast::native_item ni, &scopes sc,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_with_scope(&ast::_fn f, &vec[ast::ty_param] tp, &span sp,
+fn visit_fn_with_scope(&@env e, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
                        &ident name, &def_id d_id, &ann a, &scopes sc,
                        &vt[scopes] v) {
-    visit::visit_fn(f, tp, sp, name, d_id, a, cons(scope_fn(f.decl, tp), @sc),
-                    v);
+    // here's where we need to set up the mapping
+    // for f's constrs in the table.
+    for (@ast::constr c in f.decl.constraints) {
+        resolve_constr(e, d_id, c, sc, v); 
+    }
+    visit::visit_fn(f, tp, sp, name, d_id, a,
+                    cons(scope_fn(f.decl, tp), @sc), v);
 }
 
 fn visit_block_with_scope(&ast::block b, &scopes sc, &vt[scopes] v) {
@@ -389,6 +400,37 @@ fn follow_import(&env e, &scopes sc, vec[ident] path, &span sp) -> def {
     }
 }
 
+fn resolve_constr(@env e, &def_id d_id, &@ast::constr c, &scopes sc,
+                  &vt[scopes] v) {
+    let def new_def = lookup_path_strict(*e, sc, c.span,
+                                         c.node.path.node.idents,
+                                         ns_value);
+    alt (new_def) {
+        case (ast::def_fn(?pred_id)) {
+            let ty::constr_general[uint] c_ = rec(path=c.node.path,
+                                                  args=c.node.args,
+                                                  id=pred_id);
+            let ty::constr_def new_constr = respan(c.span, c_);
+            add_constr(e, d_id, new_constr);
+        }
+        case (_) {
+            e.sess.span_err(c.span, "Non-predicate in constraint: "
+                            + ty::path_to_str(c.node.path));
+        }
+    }
+}
+
+fn add_constr(&@env e, &def_id d_id, &ty::constr_def c) {
+    e.fn_constrs.insert(d_id,
+       alt (e.fn_constrs.find(d_id)) {
+          case (none) {
+              [c]
+          }
+          case (some(?cs)) {
+              cs + [c]
+          }
+       });
+}
 
 // Import resolution
 fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
