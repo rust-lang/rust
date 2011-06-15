@@ -297,6 +297,7 @@ fn print_item(&ps s, &@ast::item item) {
             word_nbsp(s, id);
             bopen(s);
             for (@ast::native_item item in nmod.items) {
+                hardbreak(s.s);
                 ibox(s, indent_unit);
                 maybe_print_comment(s, item.span.lo);
                 alt (item.node) {
@@ -307,13 +308,14 @@ fn print_item(&ps s, &@ast::item item) {
                     case (ast::native_item_fn(?id,?lname,?decl,
                                              ?typarams,_,_)) {
                         print_fn(s, decl, ast::proto_fn, id, typarams);
-                        end(s); // end head-ibox
                         alt (lname) {
                             case (none) {}
                             case (some(?ss)) {
                                 print_string(s, ss);
                             }
                         }
+                        end(s); // end head-ibox
+                        end(s); // end the outer fn box
                     }
                 }
                 word(s.s, ";");
