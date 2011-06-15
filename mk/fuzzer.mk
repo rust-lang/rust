@@ -5,8 +5,7 @@
 FUZZER_CRATE := $(S)src/fuzzer/fuzzer.rc
 FUZZER_INPUTS := $(wildcard $(addprefix $(S)src/fuzzer/, *.rs))
 
-stage2/fuzzer.o: $(FUZZER_CRATE) $(FUZZER_INPUTS) $(SREQ1) \
-		stage2/$(CFG_RUSTCLIB)
+stage2/fuzzer.o: $(FUZZER_CRATE) $(FUZZER_INPUTS) $(SREQ1)
 	@$(call E, compile: $@)
 	$(STAGE1) -c -o $@ $<
 

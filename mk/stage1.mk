@@ -1,31 +1,13 @@
-stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
-              stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/intrinsics.bc \
+stage1/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+              stage1/rustc$(X) stage0/$(CFG_STDLIB) stage1/intrinsics.bc \
               $(LREQ) $(MKFILES)
-	@$(call E, compile: $@)
-	$(STAGE0) -c --shared -o $@ $<
+	@$(call E, compile_and_link: $@)
+	$(STAGE1)  --shared -o $@ $<
 
-stage1/$(CFG_STDLIB): stage1/std.o stage1/glue.o
-	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o $(CFG_GCCISH_LINK_FLAGS) \
-        -o $@ $< -Lstage1 -Lrt -lrustrt
-
-stage1/librustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
-	@$(call E, compile: $@)
-	$(STAGE0) -c --shared -o $@ $<
-
-stage1/$(CFG_RUSTCLIB): stage1/librustc.o stage1/glue.o
-	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o $(CFG_GCCISH_LINK_FLAGS) \
-	-o $@ $< -Lstage1 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd
-
-stage1/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
-	@$(call E, compile: $@)
-	$(STAGE0) -c -o $@ $<
-
-stage1/glue.o: stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/intrinsics.bc \
+stage1/glue.o: stage1/rustc$(X) stage0/$(CFG_STDLIB) stage0/intrinsics.bc \
                $(LREQ) $(MKFILES)
 	@$(call E, generate: $@)
-	$(STAGE0) -c -o $@ --glue
+	$(STAGE1) -c -o $@ --glue
 
 stage1/intrinsics.bc:	$(INTRINSICS_BC)
 	@$(call E, cp: $@)
@@ -41,11 +23,6 @@ stage1/%.o: stage1/%.s
 	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) -o $@ -c $<
 
-stage1/%$(X): stage1/%.o  $(SREQ0)
-	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o -o $@ $< \
-      -Lstage1 -Lrustllvm -Lrt rt/main.o -lrustrt -lrustllvm -lstd -lm
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
+stage1/%$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
+	@$(call E, compile_and_link: $@)
+	$(STAGE0) -o $@ $<

@@ -44,7 +44,6 @@ endif
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
-CFG_RUSTCLIB :=$(call CFG_LIB_NAME,rustc)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
@@ -107,12 +106,15 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 STAGE0 := $(Q)$(call CFG_RUN_TARG,stage0,\
-                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
-STAGE1 := $(Q)$(call CFG_RUN_TARG,stage1, \
+                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
+STAGE1 := $(Q)$(call CFG_RUN_TARG,stage0, \
                 $(CFG_VALGRIND_COMPILE) stage1/rustc$(X) \
-                $(CFG_RUSTC_FLAGS) -L stage2)
-STAGE2 := $(Q)$(call CFG_RUN_TARG,stage2, \
+                $(CFG_RUSTC_FLAGS) -L stage1)
+STAGE2 := $(Q)$(call CFG_RUN_TARG,stage1, \
                 $(CFG_VALGRIND_COMPILE) stage2/rustc$(X) \
+                $(CFG_RUSTC_FLAGS) -L stage2)
+STAGE3 := $(Q)$(call CFG_RUN_TARG,stage2, \
+                $(CFG_VALGRIND_COMPILE) stage3/rustc$(X) \
                 $(CFG_RUSTC_FLAGS) -L stage3)
 
 # "Source" files we generate in builddir along the way.
@@ -146,9 +148,9 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 ######################################################################
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
-SREQ0 := stage0/rustc$(X) $(LREQ) rt/main.o stage1/glue.o stage1/$(CFG_STDLIB)
-SREQ1 := stage1/rustc$(X) $(LREQ) rt/main.o stage2/glue.o stage2/$(CFG_STDLIB)
-SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage3/glue.o stage3/$(CFG_STDLIB)
+SREQ0 := stage0/rustc$(X) $(LREQ) rt/main.o stage0/glue.o stage0/$(CFG_STDLIB)
+SREQ1 := stage1/rustc$(X) $(LREQ) rt/main.o stage1/glue.o stage1/$(CFG_STDLIB)
+SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage2/glue.o stage2/$(CFG_STDLIB)
 
 
 ######################################################################
