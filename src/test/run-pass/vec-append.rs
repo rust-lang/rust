@@ -30,7 +30,7 @@ fn slow_growth() {
 
 fn slow_growth2_helper(str s) {   // ref up: s
 
-  obj acc(vec[str] v) {
+  obj acc(mutable vec[str] v) {
     fn add(&str s) { v += [s]; }
   }
 

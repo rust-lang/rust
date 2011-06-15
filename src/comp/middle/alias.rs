@@ -30,35 +30,53 @@ type restrict = @rec(vec[def_num] root_vars,
                      vec[ty::t] tys,
                      vec[uint] depends_on,
                      mutable valid ok);
+type scope = vec[restrict];
 
-type scope = rec(vec[tup(def_num, ast::mode)] args,
-                 vec[restrict] rs);
-fn scope(&scope sc, vec[restrict] add) -> scope {
-    ret rec(args=sc.args, rs=sc.rs + add);
+tag local_info {
+    arg(ast::mode);
+    objfield(ast::mutability);
 }
 
 type ctx = rec(@ty::ctxt tcx,
-               resolve::def_map dm);
+               resolve::def_map dm,
+               std::map::hashmap[def_num,local_info] local_map);
 
 fn check_crate(@ty::ctxt tcx, resolve::def_map dm, &@ast::crate crate) {
-    auto cx = @rec(tcx = tcx, dm = dm);
-    auto v = @rec(visit_fn = visit_fn,
+    auto cx = @rec(tcx = tcx,
+                   dm = dm,
+                   // Stores information about object fields and function
+                   // arguments that's otherwise not easily available.
+                   local_map = util::common::new_int_hash());
+    auto v = @rec(visit_fn = bind visit_fn(cx, _, _, _, _, _, _, _, _),
+                  visit_item = bind visit_item(cx, _, _, _),
                   visit_expr = bind visit_expr(cx, _, _, _)
                   with *visit::default_visitor[scope]());
-    visit::visit_crate(*crate, rec(args=[], rs=[]), visit::vtor(v));
+    visit::visit_crate(*crate, [], visit::vtor(v));
 }
 
-fn visit_fn(&ast::_fn f, &vec[ast::ty_param] tp, &span sp, &ident name,
-            &ast::def_id d_id, &ast::ann a, &scope sc, &vt[scope] v) {
+fn visit_fn(@ctx cx, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
+            &ident name, &ast::def_id d_id, &ast::ann a, &scope sc,
+            &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
-    auto args = [];
-    for (ast::arg arg in f.decl.inputs) {
-        vec::push(args, tup(arg.id._1, arg.mode));
+    for (ast::arg arg_ in f.decl.inputs) {
+        cx.local_map.insert(arg_.id._1, arg(arg_.mode));
     }
-    vt(v).visit_block(f.body, rec(args=args, rs=[]), v);
+    vt(v).visit_block(f.body, [], v);
 }
 
-fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
+fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
+    alt (i.node) {
+        case (ast::item_obj(_, ?o, _, _, _)) {
+            for (ast::obj_field f in o.fields) {
+                cx.local_map.insert(f.id._1, objfield(f.mut));
+            }
+        }
+        case (_) {}
+    }
+    visit::visit_item(i, sc, v);
+}
+
+fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
     auto handled = false;
     alt (ex.node) {
         case (ast::expr_call(?f, ?args, _)) {
@@ -193,7 +211,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
     // Ensure we're not passing a root by mutable alias.
     for (tup(uint, def_num) root in mut_roots) {
         auto mut_alias_to_root = vec::count(root._1, roots) > 1u;
-        for (restrict r in sc.rs) {
+        for (restrict r in sc) {
             if (vec::member(root._1, r.root_vars)) {
                 mut_alias_to_root = true;
             }
@@ -225,12 +243,12 @@ fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms,
         auto dnums = arm_defnums(a);
         auto new_sc = sc;
         if (vec::len(dnums) > 0u) {
-            new_sc = scope(sc, [@rec(root_vars=roots,
-                                     block_defnum=dnums.(0),
-                                     bindings=dnums,
-                                     tys=forbidden_tp,
-                                     depends_on=deps(sc, roots),
-                                     mutable ok=valid)]);
+            new_sc = sc + [@rec(root_vars=roots,
+                                block_defnum=dnums.(0),
+                                bindings=dnums,
+                                tys=forbidden_tp,
+                                depends_on=deps(sc, roots),
+                                mutable ok=valid)];
         }
         visit::visit_arm(a, new_sc, v);
     }
@@ -269,7 +287,7 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
                                tys=data.unsafe_ts,
                                depends_on=deps(sc, data.root_vars),
                                mutable ok=valid);
-            visit::visit_block(block, scope(sc, [new_sc]), v);
+            visit::visit_block(block, sc + [new_sc], v);
         }
     }
 }
@@ -303,7 +321,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq,
                        tys=unsafe,
                        depends_on=deps(sc, root_def),
                        mutable ok=valid);
-    visit::visit_block(block, scope(sc, [new_sc]), v);
+    visit::visit_block(block, sc + [new_sc], v);
 }
 
 fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
@@ -312,7 +330,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
     if (!def_is_local(def)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
-    for (restrict r in sc.rs) {
+    for (restrict r in sc) {
         // excludes variables introduced since the alias was made
         if (my_defnum < r.block_defnum) {
             for (ty::t t in r.tys) {
@@ -334,13 +352,16 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
     alt (dest.node) {
         case (ast::expr_path(?p, ?ann)) {
             auto dnum = ast::def_id_of_def(cx.dm.get(ann.id))._1;
-            if (is_immutable_alias(sc, dnum)) {
+            if (is_immutable_alias(cx, sc, dnum)) {
                 cx.tcx.sess.span_err
                     (dest.span, "assigning to immutable alias");
+            } else if (is_immutable_objfield(cx, dnum)) {
+                cx.tcx.sess.span_err
+                    (dest.span, "assigning to immutable obj field");
             }
 
             auto var_t = ty::expr_ty(*cx.tcx, dest);
-            for (restrict r in sc.rs) {
+            for (restrict r in sc) {
                 if (vec::member(dnum, r.root_vars)) {
                     r.ok = overwritten(dest.span, p);
                 }
@@ -365,21 +386,25 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
     }
 }
 
-fn is_immutable_alias(&scope sc, def_num dnum) -> bool {
-    for (tup(def_num, ast::mode) arg in sc.args) {
-        if (arg._0 == dnum && arg._1 == ast::alias(false)) { ret true; }
+fn is_immutable_alias(&@ctx cx, &scope sc, def_num dnum) -> bool {
+    alt (cx.local_map.find(dnum)) {
+        case (some(arg(ast::alias(false)))) { ret true; }
+        case (_) {}
     }
-    for (restrict r in sc.rs) {
+    for (restrict r in sc) {
         if (vec::member(dnum, r.bindings)) { ret true; }
     }
     ret false;
+}
+fn is_immutable_objfield(&@ctx cx, def_num dnum) -> bool {
+    ret cx.local_map.find(dnum) == some(objfield(ast::imm));
 }
 
 fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
     auto prob = r.ok;
     for (uint dep in r.depends_on) {
         if (prob != valid) { break; }
-        prob = sc.rs.(dep).ok;
+        prob = sc.(dep).ok;
     }
     if (prob != valid) {
         auto msg = alt (prob) {
@@ -399,7 +424,7 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
 fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
     auto i = 0u;
     auto result = [];
-    for (restrict r in sc.rs) {
+    for (restrict r in sc) {
         for (def_num dn in roots) {
             if (vec::member(dn, r.bindings)) {
                 vec::push(result, i);

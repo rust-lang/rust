@@ -24,7 +24,7 @@ type visitor[E] =
          fn(&@view_item v, &E e, &vt[E] v)     visit_view_item,
          fn(&@native_item i, &E e, &vt[E] v)   visit_native_item,
          fn(&@item i, &E e, &vt[E] v)          visit_item,
-         fn(&@local l, &E e, &vt[E] v)        visit_local,
+         fn(&@local l, &E e, &vt[E] v)         visit_local,
          fn(&block b, &E e, &vt[E] v)          visit_block,
          fn(&@stmt s, &E e, &vt[E] v)          visit_stmt,
          fn(&arm a, &E e, &vt[E] v)            visit_arm,
