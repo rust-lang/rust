@@ -855,15 +855,9 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         // Only make people type () if they're actually adding new fields
         let option::t[vec[ast::obj_field]] fields = none;
         if (p.peek() == token::LPAREN) {
-            auto pf = parse_obj_field;
-            expect(p, token::LPAREN);
-
-
-            fields = some[vec[ast::obj_field]]
-                (parse_seq_to_end[ast::obj_field] 
-                 (token::RPAREN,
-                  some(token::COMMA),
-                  pf, p));
+            p.bump();
+            fields = some(parse_seq_to_end(token::RPAREN, some(token::COMMA),
+                                           parse_obj_field, p));
         }
 
         let vec[@ast::method] meths = [];
@@ -1815,10 +1809,10 @@ fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto)
 
 
 fn parse_obj_field(&parser p) -> ast::obj_field {
-    auto mut = parse_mutability(p); // TODO: store this, use it in typeck
+    auto mut = parse_mutability(p);
     auto ty = parse_ty(p);
     auto ident = parse_value_ident(p);
-    ret rec(ty=ty, ident=ident, id=p.next_def_id(), ann=p.get_ann());
+    ret rec(mut=mut, ty=ty, ident=ident, id=p.next_def_id(), ann=p.get_ann());
 }
 
 fn parse_method(&parser p) -> @ast::method {

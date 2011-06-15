@@ -407,7 +407,7 @@ type _fn = rec(fn_decl decl,
 type method_ = rec(ident ident, _fn meth, def_id id, ann ann);
 type method = spanned[method_];
 
-type obj_field = rec(@ty ty, ident ident, def_id id, ann ann);
+type obj_field = rec(mutability mut, @ty ty, ident ident, def_id id, ann ann);
 type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods,
                 option::t[@method] dtor);
