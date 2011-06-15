@@ -3,10 +3,10 @@ import str::sbuf;
 import vec::vbuf;
 
 native "cdecl" mod libc {
-    fn open(sbuf s, int flags, uint mode) -> int"_open";
-    fn read(int fd, vbuf buf, uint count) -> int"_read";
-    fn write(int fd, vbuf buf, uint count) -> int"_write";
-    fn close(int fd) -> int"_close";
+    fn open(sbuf s, int flags, uint mode) -> int = "_open";
+    fn read(int fd, vbuf buf, uint count) -> int = "_read";
+    fn write(int fd, vbuf buf, uint count) -> int = "_write";
+    fn close(int fd) -> int = "_close";
     type FILE;
     fn fopen(sbuf path, sbuf mode) -> FILE;
     fn _fdopen(int fd, sbuf mode) -> FILE;

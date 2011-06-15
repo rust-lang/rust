@@ -314,7 +314,11 @@ fn print_item(&ps s, &@ast::item item) {
                         print_fn(s, decl, ast::proto_fn, id, typarams);
                         alt (lname) {
                             case (none) { }
-                            case (some(?ss)) { print_string(s, ss); }
+                            case (some(?ss)) {
+                                space(s.s);
+                                word_space(s, "=");
+                                print_string(s, ss);
+                            }
                         }
                         end(s); // end head-ibox
 
