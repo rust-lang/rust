@@ -1,6 +1,8 @@
 
 PP_INPUTS := $(wildcard $(addprefix $(S)src/lib/,*.rs */*.rs)) \
-             $(wildcard $(addprefix $(S)src/comp/,*.rs */*.rs */*/*.rs))
+             $(wildcard $(addprefix $(S)src/comp/,*.rs */*.rs */*/*.rs)) \
+             $(wildcard $(S)src/test/*/*.rs   \
+                        $(S)src/test/*/*/*.rs)
 
 reformat: $(SREQ1)
 	@$(call E, reformat [stage1]: $@)
