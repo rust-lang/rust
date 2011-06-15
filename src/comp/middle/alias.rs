@@ -64,7 +64,7 @@ fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
             alt (val) {
                 case (some(?ex)) {
                     auto root = expr_root(*cx, ex, false);
-                    if (!is_none(root.inner_mut)) {
+                    if (mut_field(root.ds)) {
                         cx.tcx.sess.span_err
                             (ex.span,
                              "result of put must be immutably rooted");
@@ -129,7 +129,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
                         vec::push(mut_roots, tup(i, did._1));
                     }
                     case (_) {
-                        if (!root.mut_field) {
+                        if (!mut_field(root.ds)) {
                             cx.tcx.sess.span_err
                                 (arg.span, "passing a temporary value or \
                                  immutable field by mutable alias");
@@ -141,7 +141,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc)
                 case (some(?did)) { vec::push(roots, did._1); }
                 case (_) {}
             }
-            alt (root.inner_mut) {
+            alt (inner_mut(root.ds)) {
                 case (some(?t)) {
                     vec::push(unsafe_ts, t);
                     vec::push(unsafe_t_offsets, i);
@@ -208,7 +208,7 @@ fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms,
         case (some(?did)) { [did._1] }
         case (_) { [] }
     };
-    let vec[ty::t] forbidden_tp = alt (root.inner_mut) {
+    let vec[ty::t] forbidden_tp = alt (inner_mut(root.ds)) {
         case (some(?t)) { [t] }
         case (_) { [] }
     };
@@ -276,7 +276,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq,
         case (some(?did)) { [did._1] }
         case (_) { [] }
     };
-    auto unsafe = alt (root.inner_mut) {
+    auto unsafe = alt (inner_mut(root.ds)) {
         case (some(?t)) { [t] }
         case (_) { [] }
     };
@@ -389,68 +389,79 @@ fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
     ret result;
 }
 
+tag deref_t {
+    unbox;
+    field(ident);
+    index;
+}
+type deref = rec(bool mut, deref_t kind, ty::t outer_t);
+
+// Finds the root (the thing that is dereferenced) for the given expr, and a
+// vec of dereferences that were used on this root. Note that, in this vec,
+// the inner derefs come in front, so foo.bar.baz becomes rec(ex=foo,
+// ds=[field(baz),field(bar)])
 fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
-    -> rec(@ast::expr ex,
-           option::t[ty::t] inner_mut,
-           bool mut_in_box,
-           bool mut_field) {
-    let option::t[ty::t] mut = none;
-    // This is not currently used but would make it possible to be more
-    // liberal -- only stuff in a mutable box needs full type-inclusion
-    // checking, things that aren't in a box need only be checked against
-    // locally live aliases and their root.
-    auto mut_in_box = false;
-    auto mut_fld = false;
-    auto depth = 0;
+    -> rec(@ast::expr ex, vec[deref] ds) {
+
+    fn maybe_auto_unbox(&ctx cx, &ty::t t)
+        -> rec(ty::t t, option::t[deref] d) {
+        alt (ty::struct(*cx.tcx, t)) {
+            case (ty::ty_box(?mt)) {
+                ret rec(t=mt.ty, d=some(rec(mut=mt.mut != ast::imm,
+                                            kind=unbox,
+                                            outer_t=t)));
+            }
+            case (_) {
+                ret rec(t=t, d=none);
+            }
+        }
+    }
+    fn maybe_push_auto_unbox(&option::t[deref] d, &mutable vec[deref] ds) {
+        alt (d) {
+            case (some(?d)) { vec::push(ds, d); }
+            case (none) {}
+        }
+    }
+
+    let vec[deref] ds = [];
     while (true) {
         alt ({ex.node}) {
             case (ast::expr_field(?base, ?ident, _)) {
-                auto base_t = ty::expr_ty(*cx.tcx, base);
-                auto auto_unbox = maybe_auto_unbox(cx, base_t);
+                auto auto_unbox = maybe_auto_unbox
+                    (cx, ty::expr_ty(*cx.tcx, base));
+                auto mut = false;
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_tup(?fields)) {
                         auto fnm = ty::field_num(cx.tcx.sess, ex.span, ident);
-                        if (fields.(fnm).mut != ast::imm) {
-                            if (is_none(mut)) { mut = some(auto_unbox.t); }
-                            if (depth == 0) { mut_fld = true; }
-                        }
+                        mut = fields.(fnm).mut != ast::imm;
                     }
                     case (ty::ty_rec(?fields)) {
                         for (ty::field fld in fields) {
                             if (str::eq(ident, fld.ident)) {
-                                if (fld.mt.mut != ast::imm) {
-                                    if (is_none(mut)) {
-                                        mut = some(auto_unbox.t);
-                                    }
-                                    if (depth == 0) { mut_fld = true; }
-                                }
+                                mut = fld.mt.mut != ast::imm;
                                 break;
                             }
                         }
                     }
                     case (ty::ty_obj(_)) {}
                 }
-                if (auto_unbox.done) {
-                    if (!is_none(mut)) { mut_in_box = true; }
-                    else if (auto_unbox.mut) { mut = some(base_t); }
-                }
+                vec::push(ds, rec(mut=mut,
+                                  kind=field(ident),
+                                  outer_t=auto_unbox.t));
+                maybe_push_auto_unbox(auto_unbox.d, ds);
                 ex = base;
             }
             case (ast::expr_index(?base, _, _)) {
-                auto base_t = ty::expr_ty(*cx.tcx, base);
-                auto auto_unbox = maybe_auto_unbox(cx, base_t);
+                auto auto_unbox = maybe_auto_unbox
+                    (cx, ty::expr_ty(*cx.tcx, base));
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_vec(?mt)) {
-                        if (mt.mut != ast::imm) {
-                            if (is_none(mut)) { mut = some(auto_unbox.t); }
-                            if (depth == 0) { mut_fld = true; }
-                        }
+                        vec::push(ds, rec(mut=mt.mut != ast::imm,
+                                          kind=index,
+                                          outer_t=auto_unbox.t));
                     }
                 }
-                if (auto_unbox.done) {
-                    if (!is_none(mut)) { mut_in_box = true; }
-                    else if (auto_unbox.mut) { mut = some(base_t); }
-                }
+                maybe_push_auto_unbox(auto_unbox.d, ds);
                 ex = base;
             }
             case (ast::expr_unary(?op, ?base, _)) {
@@ -458,13 +469,9 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
                     auto base_t = ty::expr_ty(*cx.tcx, base);
                     alt (ty::struct(*cx.tcx, base_t)) {
                         case (ty::ty_box(?mt)) {
-                            if (mt.mut != ast::imm) {
-                                if (is_none(mut)) { mut = some(base_t); }
-                                if (depth == 0) { mut_fld = true; }
-                            }
-                            if (!is_none(mut)) {
-                                mut_in_box = true;
-                            }
+                            vec::push(ds, rec(mut=mt.mut != ast::imm,
+                                              kind=unbox,
+                                              outer_t=base_t));
                         }
                     }
                     ex = base;
@@ -474,35 +481,26 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
             }
             case (_) { break; }
         }
-        depth += 1;
     }
     if (autoderef) {
-        auto ex_t = ty::expr_ty(*cx.tcx, ex);
-        auto auto_unbox = maybe_auto_unbox(cx, ex_t);
-        if (auto_unbox.done) {
-            if (!is_none(mut)) { mut_in_box = true; }
-            else if (auto_unbox.mut) {
-                mut = some(ex_t);
-                if (depth == 0) { mut_fld = true; }
-            }
-        }
+        auto auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, ex));
+        maybe_push_auto_unbox(auto_unbox.d, ds);
     }
-    ret rec(ex = ex,
-            inner_mut = mut,
-            mut_in_box = mut_in_box,
-            mut_field = mut_fld);
+    ret rec(ex=ex, ds=ds);
 }
 
-fn maybe_auto_unbox(&ctx cx, &ty::t t)
-    -> rec(ty::t t, bool done, bool mut) {
-    alt (ty::struct(*cx.tcx, t)) {
-        case (ty::ty_box(?mt)) {
-            ret rec(t=mt.ty, done=true, mut=mt.mut != ast::imm);
-        }
-        case (_) {
-            ret rec(t=t, done=false, mut=false);
-        }
+fn mut_field(&vec[deref] ds) -> bool {
+    for (deref d in ds) {
+        if (d.mut) { ret true; }
     }
+    ret false;
+}
+
+fn inner_mut(&vec[deref] ds) -> option::t[ty::t] {
+    for (deref d in ds) {
+        if (d.mut) { ret some(d.outer_t); }
+    }
+    ret none;
 }
 
 fn path_def_id(&ctx cx, &@ast::expr ex) -> option::t[ast::def_id] {
