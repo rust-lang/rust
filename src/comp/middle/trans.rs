@@ -3043,7 +3043,7 @@ fn move_val(@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, cx.build.Store(src, dst));
     } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
-                   ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
+                    ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, C_nil());
     } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
         if (action == DROP_EXISTING) {
@@ -3054,7 +3054,7 @@ fn move_val(@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         if (action == DROP_EXISTING) { cx = drop_ty(cx, dst, t).bcx; }
-        auto r = memmove_ty(cx, dst, cx.build.Load(src), t);
+        auto r = memmove_ty(cx, dst, src, t);
         ret zero_alloca(r.bcx, src, t);
     }
     cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::move_val: " +
