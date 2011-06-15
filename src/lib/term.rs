@@ -48,6 +48,7 @@ fn reset(io::buf_writer writer) {
 }
 
 fn color_supported() -> bool {
+  
     ret generic_os::getenv("TERM") == option::some[str]("xterm-color");
 }
 
@@ -67,3 +68,11 @@ fn bg(io::buf_writer writer, u8 color) {
 }
 // export fg;
 // export bg;
+
+// Local Variables:
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
