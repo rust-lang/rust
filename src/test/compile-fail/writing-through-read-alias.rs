@@ -1,9 +1,7 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // -*- rust -*-
 
-// error-pattern: writing to immutable type
+// error-pattern:assignment to immutable field
 
 type point = rec(int x, int y, int z);
 

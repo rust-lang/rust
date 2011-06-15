@@ -10,6 +10,14 @@ import std::option::some;
 import std::option::none;
 import std::option::is_none;
 
+// This is not an alias-analyser (though it would merit from becoming one, or
+// at getting input from one, to be more precise). It is a pass that checks
+// whether aliases are used in a safe way. Beyond that, though it doesn't have
+// a lot to do with aliases, it also checks whether assignments are valid
+// (using an lval, which is actually mutable), since it already has all the
+// information needed to do that (and the typechecker, which would be a
+// logical place for such a check, doesn't).
+
 tag valid {
     valid;
     overwritten(span, ast::path);
@@ -318,6 +326,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
     }
 }
 
+// FIXME does not catch assigning to immutable object fields yet
 fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
                 &scope sc, &vt[scope] v) {
     visit_expr(cx, src, sc, v);
@@ -339,6 +348,18 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src,
             check_var(*cx, dest, p, ann, true, sc);
         }
         case (_) {
+            auto root = expr_root(*cx, dest, false);
+            if (vec::len(root.ds) == 0u) {
+                cx.tcx.sess.span_err(dest.span, "assignment to non-lvalue");
+            } else if (!root.ds.(0).mut) {
+                auto name = alt (root.ds.(0).kind) {
+                    case (unbox) { "box" }
+                    case (field) { "field" }
+                    case (index) { "vec content" }
+                };
+                cx.tcx.sess.span_err
+                    (dest.span, "assignment to immutable " + name);
+            }
             visit_expr(cx, dest, sc, v);
         }
     }
@@ -391,7 +412,7 @@ fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
 
 tag deref_t {
     unbox;
-    field(ident);
+    field;
     index;
 }
 type deref = rec(bool mut, deref_t kind, ty::t outer_t);
@@ -446,7 +467,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef)
                     case (ty::ty_obj(_)) {}
                 }
                 vec::push(ds, rec(mut=mut,
-                                  kind=field(ident),
+                                  kind=field,
                                   outer_t=auto_unbox.t));
                 maybe_push_auto_unbox(auto_unbox.d, ds);
                 ex = base;

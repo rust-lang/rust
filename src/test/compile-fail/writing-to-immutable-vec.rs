@@ -1,7 +1,5 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// error-pattern: writing to immutable type
+// error-pattern:assignment to immutable vec content
 fn main() {
   let vec[int] v = [1, 2, 3];
   v.(1) = 4;
