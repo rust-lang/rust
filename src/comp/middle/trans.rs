@@ -5585,6 +5585,24 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                          rhs_res.val, t);
             ret res(copy_res.bcx, C_nil());
         }
+        case (ast::expr_swap(?dst, ?src, _)) {
+            auto lhs_res = trans_lval(cx, dst);
+            assert (lhs_res.is_mem);
+            // FIXME Fill in lhs_res.res.bcx.sp
+
+            auto rhs_res = trans_lval(lhs_res.res.bcx, src);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
+            auto tmp_res = alloc_ty(rhs_res.res.bcx, t);
+
+            // Swap through a temporary.
+            auto move1_res = memmove_ty(tmp_res.bcx, tmp_res.val,
+                                        lhs_res.res.val, t);
+            auto move2_res = memmove_ty(move1_res.bcx, lhs_res.res.val,
+                                        rhs_res.res.val, t);
+            auto move3_res = memmove_ty(move2_res.bcx, rhs_res.res.val,
+                                        tmp_res.val, t);
+            ret res(move3_res.bcx, C_nil());
+        }
         case (ast::expr_assign_op(?op, ?dst, ?src, _)) {
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             auto lhs_res = trans_lval(cx, dst);
