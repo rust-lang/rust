@@ -1424,9 +1424,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         &@ast::expr rhs, &ast::ann a) {
         check_expr(fcx, lhs);
         check_expr(fcx, rhs);
-        auto typ =
-            demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
-                           expr_ty(fcx.ccx.tcx, rhs));
+        demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
+                       expr_ty(fcx.ccx.tcx, rhs));
         write::ty_only_fixup(fcx, a.id, ty::mk_nil(fcx.ccx.tcx));
     }
     // A generic function for checking call expressions
