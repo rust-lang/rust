@@ -12,9 +12,9 @@ fn fannkuch(int n) -> int {
   }
   auto perm1init_ = perm1init; // Rustboot workaround
 
-  auto perm = vec::init_elt(0, n as uint);
-  auto perm1 = vec::init_fn(perm1init_, n as uint);
-  auto count = vec::init_elt(0, n as uint);
+  auto perm = vec::init_elt_mut(0, n as uint);
+  auto perm1 = vec::init_fn_mut(perm1init_, n as uint);
+  auto count = vec::init_elt_mut(0, n as uint);
 
   auto f = 0;
   auto i = 0;

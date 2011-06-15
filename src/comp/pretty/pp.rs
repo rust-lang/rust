@@ -78,7 +78,7 @@ fn tok_str(token t) -> str {
     }
 }
 
-fn buf_str(vec[token] toks, vec[int] szs,
+fn buf_str(vec[mutable token] toks, vec[mutable int] szs,
            uint left, uint right, uint lim) -> str {
     auto n = vec::len(toks);
     assert n == vec::len(szs);
@@ -112,9 +112,9 @@ fn mk_printer(io::writer out, uint linewidth) -> printer {
 
     log #fmt("mk_printer %u", linewidth);
 
-    let vec[token] token = vec::init_elt[token](EOF, n);
-    let vec[int] size = vec::init_elt[int](0, n);
-    let vec[uint] scan_stack = vec::init_elt[uint](0u, n);
+    let vec[mutable token] token = vec::init_elt_mut(EOF, n);
+    let vec[mutable int] size = vec::init_elt_mut(0, n);
+    let vec[mutable uint] scan_stack = vec::init_elt_mut(0u, n);
     let vec[print_stack_elt] print_stack = [];
 
     ret printer(out,
@@ -220,8 +220,8 @@ obj printer(io::writer out,
 
             mutable uint left,         // index of left side of input stream
             mutable uint right,        // index of right side of input stream
-            mutable vec[token] token,  // ring-buffer stream goes through
-            mutable vec[int] size,     // ring-buffer of calculated sizes
+            mutable vec[mutable token] token,// ring-buffr stream goes through
+            mutable vec[mutable int] size,  // ring-buffer of calculated sizes
             mutable int left_total,    // running size of stream "...left"
             mutable int right_total,   // running size of stream "...right"
 
@@ -231,7 +231,7 @@ obj printer(io::writer out,
             // on top of it. Stuff is flushed off the bottom as it becomes
             // irrelevant due to the primary ring-buffer advancing.
 
-            mutable vec[uint] scan_stack,
+            mutable vec[mutable uint] scan_stack,
             mutable bool scan_stack_empty, // top==bottom disambiguator
             mutable uint top,              // index of top of scan_stack
             mutable uint bottom,           // index of bottom of scan_stack

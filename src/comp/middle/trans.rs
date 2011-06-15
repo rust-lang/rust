@@ -5995,12 +5995,12 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
 }
 
 fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
-    be trans_expr_out(cx, e, return);
+    ret trans_expr_out(cx, e, return);
 }
 
 fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
     -> result {
-    *cx = rec(sp=e.span with *cx);
+    // FIXME Fill in cx.sp
     alt (e.node) {
         case (ast::expr_lit(?lit, ?ann)) {
             ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, ann));
@@ -6059,7 +6059,6 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
         }
 
         case (ast::expr_block(?blk, ?ann)) {
-            *cx = rec(sp=blk.span with *cx);
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
             auto next_cx = new_sub_block_ctxt(cx, "next");
             auto sub = with_out_method(bind trans_block(sub_cx, blk, _),
@@ -6072,7 +6071,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
         case (ast::expr_move(?dst, ?src, _)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
-            *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
+            // FIXME Fill in lhs_res.res.bcx.sp
             auto rhs_res = trans_lval(lhs_res.res.bcx, src);
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             // FIXME: calculate copy init-ness in typestate.
@@ -6084,7 +6083,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
         case (ast::expr_assign(?dst, ?src, _)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
-            *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
+            // FIXME Fill in lhs_res.res.bcx.sp
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             // FIXME: calculate copy init-ness in typestate.
@@ -6097,7 +6096,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output)
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
-            *(lhs_res.res.bcx) = rec(sp=src.span with *(lhs_res.res.bcx));
+            // FIXME Fill in lhs_res.res.bcx.sp
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             if (ty::type_is_sequence(cx.fcx.lcx.ccx.tcx, t)) {
                 alt (op) {
@@ -7182,7 +7181,7 @@ fn zero_alloca(&@block_ctxt cx, ValueRef llptr, ty::t t) -> result {
  }
 
 fn trans_stmt(&@block_ctxt cx, &ast::stmt s) -> result {
-    *cx = rec(sp=s.span with *cx);
+    // FIXME Fill in cx.sp
     auto bcx = cx;
     alt (s.node) {
         case (ast::stmt_expr(?e,_)) {
@@ -7352,7 +7351,7 @@ fn alloc_local(&@block_ctxt cx, &@ast::local_ local) -> result {
 fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
     auto bcx = cx;
     for each (@ast::local_ local in block_locals(b)) {
-        *bcx = rec(sp=local_rhs_span(local, cx.sp) with *bcx);
+        // FIXME Update bcx.sp
         bcx = alloc_local(bcx, local).bcx;
     }
     auto r = res(bcx, C_nil());

@@ -672,10 +672,9 @@ fn hash_path(&str s) -> uint {
 
 fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
         -> vec[vec[tup(T, uint)]] {
-    let vec[vec[tup(T, uint)]] buckets = [];
+    let vec[mutable vec[tup(T, uint)]] buckets = vec::empty_mut();
     for each (uint i in uint::range(0u, 256u)) {
-        let vec[tup(T, uint)] bucket = [];
-        buckets += [bucket];
+        buckets += [mutable []];
     }
 
     for (tup(T, uint) elt in index) {
@@ -683,10 +682,11 @@ fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
         buckets.(h % 256u) += [elt];
     }
 
-    ret buckets;
+    ret vec::freeze(buckets);
 }
 
-fn encode_index[T](&ebml::writer ebml_w, &vec[vec[tup(T, uint)]] buckets,
+fn encode_index[T](&ebml::writer ebml_w,
+                   &vec[vec[tup(T, uint)]] buckets,
                    fn(&io::writer, &T) write_fn) {
     auto writer = io::new_writer_(ebml_w.writer);
 

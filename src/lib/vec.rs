@@ -385,14 +385,14 @@ fn freeze[T](vec[mutable T] v) -> vec[T] {
 }
 
 // Swaps two elements in a vector
-fn swap[T](&vec[T] v, uint a, uint b) {
+fn swap[T](&vec[mutable T] v, uint a, uint b) {
     let T t = v.(a);
     v.(a) = v.(b);
     v.(b) = t;
 }
 
 // In place vector reversal
-fn reverse[T](&vec[T] v) -> () {
+fn reverse[T](&vec[mutable T] v) -> () {
     let uint i = 0u;
     auto ln = len[T](v);
 

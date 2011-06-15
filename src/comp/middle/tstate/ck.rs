@@ -114,9 +114,9 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
 fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto enclosing = fcx.enclosing;
     auto nv   = num_constraints(enclosing);
-    auto post = @empty_poststate(nv);
+    auto post = @mutable empty_poststate(nv);
 
-    fn do_one_(fn_ctxt fcx, &@stmt s, @poststate post) -> () {
+    fn do_one_(fn_ctxt fcx, &@stmt s, @mutable poststate post) -> () {
         check_states_stmt(fcx, *s);
         *post = stmt_poststate(fcx.ccx, *s);
     }
@@ -124,7 +124,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto do_one = bind do_one_(fcx, _, post);
  
     vec::map[@stmt, ()](do_one, f.body.node.stmts);
-    fn do_inner_(fn_ctxt fcx, &@expr e, @poststate post) -> () {
+    fn do_inner_(fn_ctxt fcx, &@expr e, @mutable poststate post) -> () {
         check_states_expr(fcx, e);
         *post = expr_poststate(fcx.ccx, e);
     }
@@ -135,7 +135,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     /* Finally, check that the return value is initialized */
     let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
     if (f.proto == ast::proto_fn
-        && ! promises(fcx, *post, ret_c)
+        && ! promises(fcx, {*post}, ret_c)
         && ! type_is_nil(fcx.ccx.tcx,
                          ret_ty_of_fn(fcx.ccx.tcx, a))
         && cf == return) {
@@ -149,7 +149,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
         // check that this really always fails
         // the fcx.id bit means "returns" for a returning fn,
         // "diverges" for a non-returning fn
-        if (! promises(fcx, *post, ret_c)) {
+        if (! promises(fcx, {*post}, ret_c)) {
             fcx.ccx.tcx.sess.span_err(f.body.span,
               "In non-returning function " + fcx.name +
               ", some control paths may return to the caller");

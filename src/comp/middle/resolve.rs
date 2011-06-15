@@ -80,7 +80,8 @@ tag mod_index_entry {
 type mod_index = hashmap[ident,list[mod_index_entry]];
 
 type indexed_mod = rec(option::t[ast::_mod] m, 
-                       mod_index index, vec[def] glob_imports,
+                       mod_index index,
+                       mutable vec[def] glob_imports,
                        hashmap[str,import_state] glob_imported_names);
 /* native modules can't contain tags, and we don't store their ASTs because we
    only need to look at them to determine exports, which they can't control.*/
@@ -141,7 +142,7 @@ fn map_crate(&@env e, &@ast::crate c) {
     // Register the top-level mod 
     e.mod_map.insert(-1, @rec(m=some(c.node.module),
                               index=index_mod(c.node.module),
-                              glob_imports=vec::empty[def](),
+                              mutable glob_imports=vec::empty[def](),
                               glob_imported_names
                               =new_str_hash[import_state]()));
 
@@ -160,7 +161,7 @@ fn map_crate(&@env e, &@ast::crate c) {
             case (ast::item_mod(_, ?md, ?defid)) {
                 e.mod_map.insert(defid._1, 
                                  @rec(m=some(md), index=index_mod(md),
-                                      glob_imports=vec::empty[def](),
+                                      mutable glob_imports=vec::empty[def](),
                                       glob_imported_names
                                       =new_str_hash[import_state]()));
                 e.ast_map.insert(defid, i);
@@ -169,7 +170,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 e.mod_map.insert(defid._1, 
                                  @rec(m=none[ast::_mod], 
                                       index=index_nmod(nmd),
-                                      glob_imports=vec::empty[def](),
+                                      mutable glob_imports=vec::empty[def](),
                                       glob_imported_names
                                       =new_str_hash[import_state]()));
                 e.ast_map.insert(defid, i);
@@ -850,7 +851,7 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp,
 
         auto matches = vec::filter_map[def, def]
             (bind l_i_m_r(e, _, sp, id, ns, dr), 
-             info.glob_imports);
+             {info.glob_imports});
         if (vec::len(matches) == 0u) {
             ret none[def];
         } else if (vec::len(matches) == 1u){

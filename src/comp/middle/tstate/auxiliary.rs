@@ -255,7 +255,7 @@ type constr_map = @std::map::hashmap[def_id, constraint];
 type fn_info  = rec(constr_map constrs, uint num_constraints, controlflow cf);
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @mutable vec[ts_ann];
+type node_ann_table = @mutable vec[mutable ts_ann];
 
 /* mapping from function name to fn_info map */
 type fn_info_map = @std::map::hashmap[def_id, fn_info];
@@ -485,7 +485,7 @@ fn num_constraints(fn_info m) -> uint {
 }
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
-    let vec[ts_ann] na = [];
+    let vec[mutable ts_ann] na = vec::empty_mut();
     ret rec(tcx=cx, node_anns=@mutable na, fm=@new_def_hash[fn_info]());
 }
 

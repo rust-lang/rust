@@ -27,26 +27,27 @@ fn create[T]() -> t[T] {
      * Grow is only called on full elts, so nelts is also len(elts), unlike
      * elsewhere.
      */
-    fn grow[T](uint nelts, uint lo, vec[cell[T]] elts) -> vec[cell[T]] {
-        assert (nelts == vec::len[cell[T]](elts));
+    fn grow[T](uint nelts, uint lo, vec[mutable cell[T]] elts)
+        -> vec[mutable cell[T]] {
+        assert (nelts == vec::len(elts));
 
         // FIXME: Making the vector argument an alias is a workaround for
         // issue #375
         fn fill[T](uint i, uint nelts, uint lo,
-                   &vec[cell[T]] old) -> cell[T] {
+                   &vec[mutable cell[T]] old) -> cell[T] {
             ret if (i < nelts) {
                 old.((lo + i) % nelts)
             } else {
-                option::none[T]
+                option::none
             };
         }
 
         let uint nalloc = uint::next_power_of_two(nelts + 1u);
         let vec::init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
-        ret vec::init_fn[cell[T]](copy_op, nalloc);
+        ret vec::init_fn_mut[cell[T]](copy_op, nalloc);
     }
 
-    fn get[T](vec[cell[T]] elts, uint i) -> T {
+    fn get[T](vec[mutable cell[T]] elts, uint i) -> T {
         ret alt (elts.(i)) {
             case (option::some(?t)) { t }
             case (_) { fail }
@@ -56,7 +57,7 @@ fn create[T]() -> t[T] {
     obj deque[T](mutable uint nelts,
                  mutable uint lo,
                  mutable uint hi,
-                 mutable vec[cell[T]] elts)
+                 mutable vec[mutable cell[T]] elts)
         {
             fn size() -> uint { ret nelts; }
 
@@ -130,8 +131,8 @@ fn create[T]() -> t[T] {
             }
 
         }
-    let vec[cell[T]] v = vec::init_elt[cell[T]](option::none[T],
-                                                initial_capacity);
+    let vec[mutable cell[T]] v = vec::init_elt_mut(option::none,
+                                                   initial_capacity);
 
     ret deque[T](0u, 0u, 0u, v);
 }
