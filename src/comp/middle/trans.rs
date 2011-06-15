@@ -113,6 +113,7 @@ type stats =
         mutable uint n_null_glues,
         mutable uint n_real_glues);
 
+// Crate context.  Every crate we compile has one of these.
 type crate_ctxt =
     rec(session::session sess,
         ModuleRef llmod,
@@ -120,6 +121,10 @@ type crate_ctxt =
         type_names tn,
         hashmap[str, ValueRef] externs,
         hashmap[str, ValueRef] intrinsics,
+
+        // A mapping from the def_id of each item in this crate to the address
+        // of the first instruction of the item's definition in the executable
+        // we're generating.
         hashmap[ast::def_id, ValueRef] item_ids,
         hashmap[ast::def_id, @ast::item] items,
         hashmap[ast::def_id, @ast::native_item] native_items,
@@ -5966,24 +5971,26 @@ fn recv_val(&@block_ctxt cx, ValueRef lhs, &@ast::expr rhs, &ty::t unit_ty,
 
 */
 
-// trans_anon_obj: create (and return!) an LLVM function that is the object
-// constructor for the anonymous object being translated.  
-//
-// This code differs from trans_obj in that, rather than creating an object
-// constructor function and putting it in the generated code as an object
-// item, we are instead "inlining" the construction of the object.
-fn trans_anon_obj(@block_ctxt cx, &span sp, &ast::anon_obj anon_obj,
+// trans_anon_obj: create and return a pointer to an object.  This code
+// differs from trans_obj in that, rather than creating an object constructor
+// function and putting it in the generated code as an object item, we are
+// instead "inlining" the construction of the object and returning the object
+// itself.
+fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
                   &vec[ast::ty_param] ty_params, ast::def_id oid,
                   &ast::ann ann) -> result {
-    auto ccx = cx.fcx.lcx.ccx;
-    // A crate_ctxt has an item_ids hashmap, which has all of the def_ids of
-    // everything in the crate.  By looking up a def_id, you can get the
-    // ValueRef of that item.
 
-    auto llctor_decl = ccx.item_ids.get(oid);
+    // Right now, we're assuming that anon objs don't take ty params, even
+    // though the AST supports it.  It's nonsensical to write an expression
+    // like "obj[T](){ ... with ... }", since T is never instantiated;
+    // nevertheless, such an expression will parse.  FIXME for the future:
+    // support typarams (issue #n).
+    assert vec::len(ty_params) == 0u;
+
+    auto ccx = bcx.fcx.lcx.ccx;
+
     // If with_obj (the object being extended) exists, translate it, producing
     // a result.
-
     let option::t[result] with_obj_val = none[result];
     alt (anon_obj.with_obj) {
         case (none) { }
@@ -5992,81 +5999,44 @@ fn trans_anon_obj(@block_ctxt cx, &span sp, &ast::anon_obj anon_obj,
             // value) wrapped in a result.  We want to allocate space for this
             // value in our outer object, then copy it into the outer object.
 
-            with_obj_val = some[result](trans_expr(cx, e));
+            with_obj_val = some[result](trans_expr(bcx, e));
         }
     }
-    // If the anonymous object we're translating adds any additional fields,
-    // they'll become the arguments to the function we're creating.
 
     // FIXME (part of issue #417): all of the following code is copypasta from
     // trans_obj for translating the anonymous wrapper object.  Eventually we
     // should abstract this code out of trans_anon_obj and trans_obj.
 
-    // For the anon obj's additional fields, if any exist, translate object
-    // constructor arguments to function arguments.
-
-    let vec[ast::obj_field] addtl_fields = [];
-    let vec[ast::arg] addtl_fn_args = [];
-    alt (anon_obj.fields) {
-        case (none) { }
-        case (some(?fields)) {
-            addtl_fields = fields;
-            for (ast::obj_field f in fields) {
-                addtl_fn_args +=
-                    [rec(mode=ast::alias(false),
-                         ty=f.ty,
-                         ident=f.ident,
-                         id=f.id)];
-            }
-        }
-    }
-    auto fcx = new_fn_ctxt(cx.fcx.lcx, sp, llctor_decl);
-    // Both regular arguments and type parameters are handled here.
-
-    create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ret_ty_of_fn(ccx, ann), addtl_fn_args,
-                              ty_params);
-    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ann);
-    copy_args_to_allocas(fcx, addtl_fn_args, arg_tys);
-    //  Create the first block context in the function and keep a handle on it
-    //  to pass to finish_fn later.
-
-    auto bcx = new_top_block_ctxt(fcx);
-    auto lltop = bcx.llbb;
-    // Pick up the type of this object by looking at our own output type, that
-    // is, the output type of the object constructor we're building.
-
-    auto self_ty = ret_ty_of_fn(ccx, ann);
+    auto self_ty = ty::ann_to_type(ccx.tcx, ann);
     auto llself_ty = type_of(ccx, sp, self_ty);
-    // Set up the two-word pair that we're going to return from the object
-    // constructor we're building.  The two elements of this pair will be a
-    // vtable pointer and a body pointer.  (llretptr already points to the
-    // place where this two-word pair should go; it was pre-allocated by the
-    // caller of the function.)
 
-    auto pair = bcx.fcx.llretptr;
+    // Allocate the object that we're going to return.  It's a two-word pair
+    // containing a vtable pointer and a body pointer.
+    auto pair = alloca(bcx, llself_ty);
+
     // Grab onto the first and second elements of the pair.
     // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
     // of 'pair'.
-
     auto pair_vtbl =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     auto pair_box =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_box)]);
-    // Make a vtable for this object: a static array of pointers to functions.
-    // It will be located in the read-only memory of the executable we're
-    // creating and will contain ValueRefs for all of this object's methods.
-    // create_vtbl returns a pointer to the vtable, which we store.
 
-    // create_vtbl() wants an ast::_obj and all we have is an
-    // ast::anon_obj, so we need to roll our own.
+    // Make a vtable for the outer object.  create_vtbl() wants an ast::_obj
+    // and all we have is an ast::anon_obj, so we need to roll our own.
+    let vec[ast::obj_field] addtl_fields = [];
+    alt (anon_obj.fields) {
+        case (none) { }
+        case (some(?fields)) { addtl_fields = fields; }
+    }
+    let ast::_obj wrapper_obj = rec(
+        fields = addtl_fields,
+        methods = anon_obj.methods,
+        dtor = none[@ast::method]);
 
-    let ast::_obj wrapper_obj =
-        rec(fields=addtl_fields,
-            methods=anon_obj.methods,
-            dtor=none[@ast::method]);
-    auto vtbl =
-        create_vtbl(cx.fcx.lcx, llself_ty, self_ty, wrapper_obj, ty_params);
+    auto vtbl = create_vtbl(bcx.fcx.lcx, llself_ty, self_ty, wrapper_obj, 
+                            ty_params);
+
     bcx.build.Store(vtbl, pair_vtbl);
     // FIXME (part of issue #417): This vtable needs to contain "forwarding
     // slots" for the methods that exist in the with_obj, as well.  How do we
@@ -6080,127 +6050,29 @@ fn trans_anon_obj(@block_ctxt cx, &span sp, &ast::anon_obj anon_obj,
     // also have to fill in the with_obj field of this tuple.
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
-    // FIXME: we should probably also allocate a box for empty objs that have
-    // a dtor, since otherwise they are never dropped, and the dtor never
-    // runs.
+    
+    alt (anon_obj.fields) {
+        case (none) { 
+            // If the object we're translating has no fields or type
+            // parameters, there's not much to do.
 
-    if (vec::len[ast::ty_param](ty_params) == 0u &&
-            vec::len[ty::arg](arg_tys) == 0u) {
-        // If the object we're translating has no fields or type parameters,
-        // there's not much to do.
+            // Store null into pair, if no args or typarams.
+            bcx.build.Store(C_null(llbox_ty), pair_box);
 
-        // Store null into pair, if no args or typarams.
-
-        bcx.build.Store(C_null(llbox_ty), pair_box);
-    } else {
-        // Otherwise, we have to synthesize a big structural type for the
-        // object body.
-
-        let vec[ty::t] obj_fields = [];
-        for (ty::arg a in arg_tys) { vec::push[ty::t](obj_fields, a.ty); }
-        // Tuple type for fields: [field, ...]
-
-        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields);
-        // Tuple type for typarams: [typaram, ...]
-
-        auto tydesc_ty = ty::mk_type(ccx.tcx);
-        let vec[ty::t] tps = [];
-        for (ast::ty_param tp in ty_params) {
-            vec::push[ty::t](tps, tydesc_ty);
         }
-        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
-        // Tuple type for body: [tydesc_ty, [typaram, ...], [field, ...]]
 
-        let ty::t body_ty =
-            ty::mk_imm_tup(ccx.tcx, [tydesc_ty, typarams_ty, fields_ty]);
-        // Hand this type we've synthesized off to trans_malloc_boxed, which
-        // allocates a box, including space for a refcount.
+        case (some(?fields)) {
+            // For the moment let's pretend that there are no additional
+            // fields.
+            bcx.fcx.lcx.ccx.sess.unimpl("anon objs don't support "
+                                        + "adding fields yet");
 
-        auto box = trans_malloc_boxed(bcx, body_ty);
-        bcx = box.bcx;
-        // mk_imm_box throws a refcount into the type we're synthesizing, so
-        // that it looks like: [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
-
-        let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
-        // Grab onto the refcount and body parts of the box we allocated.
-
-        auto rc =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         [0, abi::box_rc_field_refcnt]);
-        bcx = rc.bcx;
-        auto body =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         [0, abi::box_rc_field_body]);
-        bcx = body.bcx;
-        bcx.build.Store(C_int(1), rc.val);
-        // Put together a tydesc for the body, so that the object can later be
-        // freed by calling through its tydesc.
-
-        // Every object (not just those with type parameters) needs to have a
-        // tydesc to describe its body, since all objects have unknown type to
-        // the user of the object.  So the tydesc is needed to keep track of
-        // the types of the object's fields, so that the fields can be freed
-        // later.
-
-        auto body_tydesc =
-            GEP_tup_like(bcx, body_ty, body.val,
-                         [0, abi::obj_body_elt_tydesc]);
-        bcx = body_tydesc.bcx;
-        auto ti = none[@tydesc_info];
-        auto body_td = get_tydesc(bcx, body_ty, true, ti);
-        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-        bcx = body_td.bcx;
-        bcx.build.Store(body_td.val, body_tydesc.val);
-        // Copy the object's type parameters and fields into the space we
-        // allocated for the object body.  (This is something like saving the
-        // lexical environment of a function in its closure: the "captured
-        // typarams" are any type parameters that are passed to the object
-        // constructor and are then available to the object's methods.
-        // Likewise for the object's fields.)
-
-        // Copy typarams into captured typarams.
-
-        auto body_typarams =
-            GEP_tup_like(bcx, body_ty, body.val,
-                         [0, abi::obj_body_elt_typarams]);
-        bcx = body_typarams.bcx;
-        let int i = 0;
-        for (ast::ty_param tp in ty_params) {
-            auto typaram = bcx.fcx.lltydescs.(i);
-            auto capture =
-                GEP_tup_like(bcx, typarams_ty, body_typarams.val, [0, i]);
-            bcx = capture.bcx;
-            bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
-            i += 1;
+            // FIXME (issue #417): drop these fields into the newly created
+            // object.
         }
-        // Copy args into body fields.
-
-        auto body_fields =
-            GEP_tup_like(bcx, body_ty, body.val,
-                         [0, abi::obj_body_elt_fields]);
-        bcx = body_fields.bcx;
-        i = 0;
-        for (ast::obj_field f in wrapper_obj.fields) {
-            auto arg = bcx.fcx.llargs.get(f.id);
-            arg = load_if_immediate(bcx, arg, arg_tys.(i).ty);
-            auto field =
-                GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
-            bcx = field.bcx;
-            bcx = copy_val(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
-            i += 1;
-        }
-        // Store box ptr in outer pair.
-
-        auto p = bcx.build.PointerCast(box.val, llbox_ty);
-        bcx.build.Store(p, pair_box);
     }
-    bcx.build.RetVoid();
-    // Insert the mandatory first few basic blocks before lltop.
 
-    finish_fn(fcx, lltop);
     // Return the object we built.
-
     ret res(bcx, pair);
 }
 
@@ -6657,6 +6529,10 @@ fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
 fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
     alt (ty::struct(ccx.tcx, t)) {
         case (ty::ty_fn(_, _, ?ret_ty, _, _)) { ret ret_ty; }
+        case (_) {
+            ccx.sess.bug("ret_ty_of_fn_ty() called on non-function type: "
+                         + ty_to_str(ccx.tcx, t));
+        }
     }
 }
 
@@ -6806,6 +6682,10 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
         let str s = mangle_internal_name_by_path(mcx.ccx, mcx.path);
         let ValueRef llfn =
             decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
+
+        // Every method on an object gets its def_id inserted into the
+        // crate-wide item_ids map, together with the ValueRef that points to
+        // where that method's definition will be in the executable.
         cx.ccx.item_ids.insert(m.node.id, llfn);
         cx.ccx.item_symbols.insert(m.node.id, s);
         trans_fn(mcx, m.span, m.node.meth, llfn,
@@ -7156,6 +7036,11 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
     }
 }
 
+// Translate a module.  Doing this amounts to translating the items in the
+// module; there ends up being no artifact (aside from linkage names) of
+// separate modules in the compiled program.  That's because modules exist
+// only as a convenience for humans working with the code, to organize names
+// and control visibility.
 fn trans_mod(@local_ctxt cx, &ast::_mod m) {
     for (@ast::item item in m.items) { trans_item(cx, *item); }
 }

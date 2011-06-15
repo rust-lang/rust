@@ -1,7 +1,6 @@
 
 
 // xfail-stage0
-// xfail-stage1
 use std;
 
 fn main() {
@@ -11,10 +10,24 @@ fn main() {
     auto my_a = a();
     // Extending an object with a new method
 
-    auto my_b = anon obj;
-    assert (my_a.foo() == 2);
-    // FIXME: these raise a runtime error
-    //assert my_b.foo() == 2;
+    auto my_b = obj { 
+        fn bar() -> int { 
+            ret 3;
+        }
+        with my_a 
+    };
 
+    assert (my_a.foo() == 2);
     assert (my_b.bar() == 3);
+
+    auto my_c = obj {
+        fn baz() -> int {
+            ret 4;
+        }
+        with my_b
+    };
+
+    assert (my_c.baz() == 4);
+
 }
+
