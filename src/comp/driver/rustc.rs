@@ -399,37 +399,34 @@ fn main(vec[str] args) {
         let str prog = "gcc";
         // The invocations of gcc share some flags across platforms
 
-        let vec[str] common_cflags =
-            ["-fno-strict-aliasing", "-fPIC", "-Wall", "-fno-rtti",
-             "-fno-exceptions", "-g"];
-        let vec[str] common_libs =
-            [stage, "-Lrustllvm", "-Lrt", "-lrustrt", "-lrustllvm", "-lstd",
-             "-lm"];
+        let vec[str] common_args = [stage, "-Lrt", "-lrustrt",
+         "-fno-strict-aliasing", "-fPIC", "-Wall",
+         "-fno-rtti", "-fno-exceptions", "-g", glu, "-o",
+         saved_out_filename, saved_out_filename + ".o"];
+
+       auto shared_cmd;
+
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
-                gcc_args =
-                    common_cflags +
-                        ["-march=i686", "-O2", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-shared";
+                gcc_args = common_args + ["-march=i686", "-O2"];
             }
             case (session::os_macos) {
-                gcc_args =
-                    common_cflags +
-                        ["-arch i386", "-O0", "-m32", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-dynamiclib";
+                gcc_args = common_args + ["-arch i386", "-O0", "-m32"];
             }
             case (session::os_linux) {
-                gcc_args =
-                    common_cflags +
-                        ["-march=i686", "-O2", "-m32", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-shared";
+                gcc_args = common_args + ["-march=i686", "-O2", "-m32"];
             }
         }
-        // We run 'gcc' here
+        if (sopts.shared) {
+           gcc_args += [shared_cmd];
+        } else {
+           gcc_args += ["-Lrustllvm", "-lrustllvm", "-lstd", "-lm", main];
+        }
 
+        // We run 'gcc' here
         run::run_program(prog, gcc_args);
         // Clean up on Darwin
 
