@@ -77,8 +77,7 @@ command_line_args : public dom_owned<command_line_args>
  */
 
 extern "C" CDECL int
-rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map,
-           uintptr_t main_fn_cdecl) {
+rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     update_log_settings(crate_map, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
@@ -94,9 +93,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map,
         DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    if(main_fn) { printf("using new cdecl main\n"); }
-    else { printf("using old cdecl main\n"); }
-    dom->root_task->start(main_fn ? main_fn : main_fn_cdecl,
+    dom->root_task->start(main_fn, 
                           (uintptr_t)args->args, sizeof(args->args));
 
     int ret = dom->start_main_loop();
