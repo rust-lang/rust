@@ -114,30 +114,30 @@ fn walk_item(&ast_visitor v, @ast::item i) {
     if (!v.keep_going()) { ret; }
     v.visit_item_pre(i);
     alt (i.node) {
-        case (ast::item_const(_, ?t, ?e, _, _)) {
+        case (ast::item_const(_, ?t, ?e, _, _, _)) {
             walk_ty(v, t);
             walk_expr(v, e);
         }
-        case (ast::item_fn(?nm, ?f, _, ?d, ?a)) {
+        case (ast::item_fn(?nm, ?f, _, _, ?d, ?a)) {
             walk_fn(v, f, i.span, nm, d, a);
         }
         case (ast::item_mod(_, ?m, _, _)) {
             walk_mod(v, m);
         }
-        case (ast::item_native_mod(_, ?nm, _)) {
+        case (ast::item_native_mod(_, ?nm, _, _)) {
             walk_native_mod(v, nm);
         }
-        case (ast::item_ty(_, ?t, _, _, _)) {
+        case (ast::item_ty(_, ?t, _, _, _, _)) {
             walk_ty(v, t);
         }
-        case (ast::item_tag(_, ?variants, _, _, _)) {
+        case (ast::item_tag(_, ?variants, _, _, _, _)) {
             for (ast::variant vr in variants) {
                 for (ast::variant_arg va in vr.node.args) {
                     walk_ty(v, va.ty);
                 }
             }
         }
-        case (ast::item_obj(_, ?ob, _, _, _)) {
+        case (ast::item_obj(_, ?ob, _, _, _, _)) {
             for (ast::obj_field f in ob.fields) {
                 walk_ty(v, f.ty);
             }

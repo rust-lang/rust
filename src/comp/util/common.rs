@@ -181,25 +181,25 @@ fn decl_lhs(@ast::decl d) -> ast::def_id {
         }
         case (ast::decl_item(?an_item)) {
             alt (an_item.node) {
-                case (ast::item_const(_,_,_,?d,_)) {
+                case (ast::item_const(_,_,_,_,?d,_)) {
                     ret d;
                 }
-                case (ast::item_fn(_,_,_,?d,_)) {
+                case (ast::item_fn(_,_,_,_,?d,_)) {
                     ret d;
                 }
                 case (ast::item_mod(_,_,_,?d)) {
                     ret d;
                 }
-                case (ast::item_native_mod(_,_,?d)) {
+                case (ast::item_native_mod(_,_,_,?d)) {
                     ret d;
                 }
-                case (ast::item_ty(_,_,_,?d,_)) {
+                case (ast::item_ty(_,_,_,_,?d,_)) {
                     ret d;
                 }
-                case (ast::item_tag(_,_,_,?d,_)) {
+                case (ast::item_tag(_,_,_,_,?d,_)) {
                     ret d;
                 }
-                case (ast::item_obj(_,_,_,?d,_)) {
+                case (ast::item_obj(_,_,_,_,?d,_)) {
                     ret d.ctor; /* This doesn't really make sense */
                 }
             }

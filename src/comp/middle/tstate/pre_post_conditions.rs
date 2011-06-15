@@ -101,7 +101,7 @@ fn find_pre_post_obj(&crate_ctxt ccx, _obj o) -> () {
 
 fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
     alt (i.node) {
-        case (item_const(?id, ?t, ?e, ?di, ?a)) {
+        case (item_const(?id, ?t, ?e, _, ?di, ?a)) {
             // make a fake fcx
             auto fake_fcx = rec(enclosing=
                 rec(constrs=@new_def_hash[constraint](),
@@ -112,7 +112,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
                                 ccx=ccx);
             find_pre_post_expr(fake_fcx, e);
         }
-        case (item_fn(?id, ?f, ?ps, ?di, ?a)) {
+        case (item_fn(?id, ?f, ?ps, _, ?di, ?a)) {
             assert (ccx.fm.contains_key(di));
             auto fcx = rec(enclosing=ccx.fm.get(di),
                            id=di, name=id, ccx=ccx);
@@ -121,16 +121,16 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
         case (item_mod(?id, ?m, _, ?di)) {
             find_pre_post_mod(m);
         }
-        case (item_native_mod(?id, ?nm, ?di)) {
+        case (item_native_mod(?id, ?nm, _, ?di)) {
             find_pre_post_native_mod(nm);
         }
-        case (item_ty(_,_,_,_,_)) {
+        case (item_ty(_,_,_,_,_,_)) {
             ret;
         }
-        case (item_tag(_,_,_,_,_)) {
+        case (item_tag(_,_,_,_,_,_)) {
             ret;
         }
-        case (item_obj(?id, ?o, ?ps, ?di, ?a)) {
+        case (item_obj(?id, ?o, ?ps, _, ?di, ?a)) {
             find_pre_post_obj(ccx, o);
         }
     }

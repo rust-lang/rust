@@ -465,24 +465,24 @@ type attribute_ = rec(attr_style style,
 
 type item = spanned[item_];
 tag item_ {
-    item_const(ident, @ty, @expr, def_id, ann);
-    item_fn(ident, _fn, vec[ty_param], def_id, ann);
+    item_const(ident, @ty, @expr, vec[attribute], def_id, ann);
+    item_fn(ident, _fn, vec[ty_param], vec[attribute], def_id, ann);
     item_mod(ident, _mod, vec[attribute], def_id);
-    item_native_mod(ident, native_mod, def_id);
-    item_ty(ident, @ty, vec[ty_param], def_id, ann);
-    item_tag(ident, vec[variant], vec[ty_param], def_id, ann);
-    item_obj(ident, _obj, vec[ty_param], obj_def_ids, ann);
+    item_native_mod(ident, native_mod, vec[attribute], def_id);
+    item_ty(ident, @ty, vec[ty_param], vec[attribute], def_id, ann);
+    item_tag(ident, vec[variant], vec[ty_param], vec[attribute], def_id, ann);
+    item_obj(ident, _obj, vec[ty_param], vec[attribute], obj_def_ids, ann);
 }
 
 fn item_ident(@item it) -> ident {
     ret alt (it.node) {
-        case (item_const(?ident, _, _, _, _)) { ident }
-        case (item_fn(?ident, _, _, _, _)) { ident }
+        case (item_const(?ident, _, _, _, _, _)) { ident }
+        case (item_fn(?ident, _, _, _, _, _)) { ident }
         case (item_mod(?ident, _, _, _)) { ident }
-        case (item_native_mod(?ident, _, _)) { ident }
-        case (item_ty(?ident, _, _, _, _)) { ident }
-        case (item_tag(?ident, _, _, _, _)) { ident }
-        case (item_obj(?ident, _, _, _, _)) { ident }
+        case (item_native_mod(?ident, _, _, _)) { ident }
+        case (item_ty(?ident, _, _, _, _, _)) { ident }
+        case (item_tag(?ident, _, _, _, _, _)) { ident }
+        case (item_obj(?ident, _, _, _, _, _)) { ident }
     }
 }
 
@@ -500,7 +500,7 @@ fn is_exported(ident i, _mod m) -> bool {
             nonlocal = false;
         }
         alt (it.node) {
-            case (item_tag(_, ?variants, _, _, _)) {
+            case (item_tag(_, ?variants, _, _, _, _)) {
                 for (variant v in variants) {
                     if (v.node.name == i) {
                         nonlocal = false;

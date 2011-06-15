@@ -8153,13 +8153,13 @@ fn trans_const(&@crate_ctxt cx, @ast::expr e,
 
 fn trans_item(@local_ctxt cx, &ast::item item) {
     alt (item.node) {
-        case (ast::item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
+        case (ast::item_fn(?name, ?f, ?tps, _, ?fid, ?ann)) {
             auto sub_cx = extend_path(cx, name);
             auto llfndecl = cx.ccx.item_ids.get(fid);
             trans_fn(sub_cx, item.span, f, llfndecl, none[ty_self_pair],
                      tps, ann);
         }
-        case (ast::item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
+        case (ast::item_obj(?name, ?ob, ?tps, _, ?oid, ?ann)) {
             auto sub_cx = @rec(obj_typarams=tps,
                                obj_fields=ob.fields with
                                *extend_path(cx, name));
@@ -8171,7 +8171,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
                                with *cx);
             trans_mod(sub_cx, m);
         }
-        case (ast::item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
+        case (ast::item_tag(?name, ?variants, ?tps, _, ?tag_id, _)) {
             auto sub_cx = extend_path(cx, name);
             auto i = 0;
             for (ast::variant variant in variants) {
@@ -8179,7 +8179,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
                 i += 1;
             }
         }
-        case (ast::item_const(?name, _, ?expr, ?cid, ?ann)) {
+        case (ast::item_const(?name, _, ?expr, _, ?cid, ?ann)) {
             trans_const(cx.ccx, expr, cid, ann);
         }
         case (_) { /* fall through */ }
@@ -8486,8 +8486,8 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
 
 fn item_path(&@ast::item item) -> vec[str] {
     alt (item.node) {
-        case (ast::item_fn(?name, _, _, _, _)) { ret [name]; }
-        case (ast::item_obj(?name, _, _, _, _)) { ret [name]; }
+        case (ast::item_fn(?name, _, _, _, _, _)) { ret [name]; }
+        case (ast::item_obj(?name, _, _, _, _, _)) { ret [name]; }
         case (ast::item_mod(?name, _, _, _)) { ret [name]; }
         case (_) { ret []; }
     }
@@ -8512,7 +8512,7 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i,
                   &vec[str] pt, &vt[vec[str]] v) {
     visit::visit_item(i, pt + item_path(i), v);
     alt (i.node) {
-        case (ast::item_const(?name, _, _, ?cid, ?ann)) {
+        case (ast::item_const(?name, _, _, _, ?cid, ?ann)) {
             auto typ = node_ann_type(ccx, ann);
             auto g = llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
                                         str::buf(ccx.names.next(name)));
@@ -8524,13 +8524,13 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i,
         case (ast::item_mod(?name, ?m, _, ?mid)) {
             ccx.items.insert(mid, i);
         }
-        case (ast::item_native_mod(_, _, ?mid)) {
+        case (ast::item_native_mod(_, _, _, ?mid)) {
             ccx.items.insert(mid, i);
         }
-        case (ast::item_ty(_, _, _, ?did, _)) {
+        case (ast::item_ty(_, _, _, _, ?did, _)) {
             ccx.items.insert(did, i);
         }
-        case (ast::item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
+        case (ast::item_tag(?name, ?variants, ?tps, _, ?tag_id, _)) {
             ccx.items.insert(tag_id, i);
         }
         case (_) {}
@@ -8542,13 +8542,13 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i,
     auto new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt (i.node) {
-        case (ast::item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
+        case (ast::item_fn(?name, ?f, ?tps, _, ?fid, ?ann)) {
             ccx.items.insert(fid, i);
             if (!ccx.obj_methods.contains_key(fid)) {
                 decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, ann, fid);
             }
         }
-        case (ast::item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
+        case (ast::item_obj(?name, ?ob, ?tps, _, ?oid, ?ann)) {
             ccx.items.insert(oid.ctor, i);
             decl_fn_and_pair(ccx, i.span, new_pt,
                              "obj_ctor", tps, ann, oid.ctor);
@@ -8578,7 +8578,7 @@ fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i,
     visit::visit_item(i, new_pt, v);
 
     alt (i.node) {
-        case (ast::item_tag(_, ?variants, ?tps, _, _)) {
+        case (ast::item_tag(_, ?variants, ?tps, _, _, _)) {
             for (ast::variant variant in variants) {
                 if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
@@ -8607,7 +8607,7 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it,
     visit::visit_item(it, new_pt, v);
 
     alt (it.node) {
-        case (ast::item_tag(?ident, ?variants, _, ?tag_id, _)) {
+        case (ast::item_tag(?ident, ?variants, _, _, ?tag_id, _)) {
             auto i = 0u;
             auto n_variants = vec::len[ast::variant](variants);
             while (i < n_variants) {
@@ -8630,7 +8630,7 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it,
             }
         }
 
-        case (ast::item_const(?name, _, ?expr, ?cid, ?ann)) {
+        case (ast::item_const(?name, _, ?expr, _, ?cid, ?ann)) {
             // FIXME: The whole expr-translation system needs cloning to deal
             // with consts.
             auto v = C_int(1);

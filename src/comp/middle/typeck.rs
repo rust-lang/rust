@@ -593,26 +593,26 @@ mod collect {
 
         alt (it.node) {
 
-            case (ast::item_const(?ident, ?t, _, ?def_id, _)) {
+            case (ast::item_const(?ident, ?t, _, _, ?def_id, _)) {
                 auto typ = convert(t);
                 auto tpt = tup(0u, typ);
                 cx.tcx.tcache.insert(def_id, tpt);
                 ret tpt;
             }
 
-            case (ast::item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
+            case (ast::item_fn(?ident, ?fn_info, ?tps, _, ?def_id, _)) {
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
                                   tps, some(def_id));
             }
 
-            case (ast::item_obj(?ident, ?obj_info, ?tps, ?odid, _)) {
+            case (ast::item_obj(?ident, ?obj_info, ?tps, _, ?odid, _)) {
                 auto t_obj = ty_of_obj(cx, ident, obj_info, tps);
                 cx.tcx.tcache.insert(odid.ty, t_obj);
                 ret t_obj;
             }
 
-            case (ast::item_ty(?ident, ?t, ?tps, ?def_id, _)) {
+            case (ast::item_ty(?ident, ?t, ?tps, _, ?def_id, _)) {
                 alt (cx.tcx.tcache.find(def_id)) {
                     case (some(?tpt)) {
                         ret tpt;
@@ -629,7 +629,7 @@ mod collect {
                 ret tpt;
             }
 
-            case (ast::item_tag(_, _, ?tps, ?def_id, _)) {
+            case (ast::item_tag(_, _, ?tps, _, ?def_id, _)) {
                 // Create a new generic polytype.
                 let vec[ty::t] subtys = [];
 
@@ -648,7 +648,7 @@ mod collect {
             }
 
             case (ast::item_mod(_, _, _, _)) { fail; }
-            case (ast::item_native_mod(_, _, _)) { fail; }
+            case (ast::item_native_mod(_, _, _, _)) { fail; }
         }
     }
 
@@ -729,13 +729,13 @@ mod collect {
 
     fn collect(ty::item_table id_to_ty_item, &@ast::item i) {
         alt (i.node) {
-            case (ast::item_ty(_, _, _, ?def_id, _)) {
+            case (ast::item_ty(_, _, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, ty::any_item_rust(i));
             }
-            case (ast::item_tag(_, _, _, ?def_id, _)) {
+            case (ast::item_tag(_, _, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, ty::any_item_rust(i));
             }
-            case (ast::item_obj(_, _, _, ?odid, _)) {
+            case (ast::item_obj(_, _, _, _, ?odid, _)) {
                 id_to_ty_item.insert(odid.ty, ty::any_item_rust(i));
             }
             case (_) { /* empty */ }
@@ -759,18 +759,19 @@ mod collect {
             case (ast::item_mod(_, _, _, _)) {
                 // ignore item_mod, it has no type.
             }
-            case (ast::item_native_mod(_, ?native_mod, _)) {
+            case (ast::item_native_mod(_, ?native_mod, _, _)) {
                 // Propagate the native ABI down to convert_native() below,
                 // but otherwise do nothing, as native modules have no types.
                 *abi = some[ast::native_abi](native_mod.abi);
             }
-            case (ast::item_tag(_, ?variants, ?ty_params, ?tag_id, ?ann)) {
+            case (ast::item_tag(_, ?variants, ?ty_params, _, ?tag_id, ?ann)) {
                 auto tpt = ty_of_item(cx, it);
                 write::ty_only(cx.tcx, ann.id, tpt._1);
 
                 get_tag_variant_types(cx, tag_id, variants, ty_params);
             }
-            case (ast::item_obj(?ident, ?object, ?ty_params, ?odid, ?ann)) {
+            case (ast::item_obj(?ident, ?object,
+                                ?ty_params, _, ?odid, ?ann)) {
                 // This calls ty_of_obj().
                 auto t_obj = ty_of_item(cx, it);
 
@@ -2511,13 +2512,13 @@ fn check_method(&@crate_ctxt ccx, &@ast::method method) {
 
 fn check_item(@crate_ctxt ccx, &@ast::item it) {
     alt (it.node) {
-        case (ast::item_const(_, _, ?e, _, ?a)) {
+        case (ast::item_const(_, _, ?e, _, _, ?a)) {
             check_const(ccx, it.span, e, a);
         }
-        case (ast::item_fn(_, ?f, _, _, ?a)) {
+        case (ast::item_fn(_, ?f, _, _, _, ?a)) {
             check_fn(ccx, f.decl, f.proto, f.body, a);
         }
-        case (ast::item_obj(_, ?ob, _, ?obj_def_ids, _)) {
+        case (ast::item_obj(_, ?ob, _, _, ?obj_def_ids, _)) {
             // We're entering an object, so gather up the info we need.
             let ast::def_id di = obj_def_ids.ty;
             vec::push[obj_info](ccx.obj_infos,
@@ -2541,7 +2542,7 @@ fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
 
     fn do_one(@fn_purity_table t, &@ast::item i) -> () {
         alt (i.node) {
-            case (ast::item_fn(_, ?f, _, ?d_id, _)) {
+            case (ast::item_fn(_, ?f, _, _, ?d_id, _)) {
                 t.insert(d_id, f.decl.purity);
             }
             case (_) {}

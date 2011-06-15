@@ -1797,12 +1797,12 @@ fn parse_fn_header(&parser p)
     ret tup(id, ty_params);
 }
 
-fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto)
-    -> @ast::item {
+fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto,
+                         vec[ast::attribute] attrs ) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto f = parse_fn(p, proto, purity);
-    auto item = ast::item_fn(t._0, f, t._1,
+    auto item = ast::item_fn(t._0, f, t._1, attrs,
                             p.next_def_id(), p.get_ann());
     ret @spanned(lo, f.body.span.hi, item);
 }
@@ -1846,7 +1846,8 @@ fn parse_dtor(&parser p) -> @ast::method {
     ret @spanned(lo, f.body.span.hi, m);
 }
 
-fn parse_item_obj(&parser p, ast::layer lyr) -> @ast::item {
+fn parse_item_obj(&parser p, ast::layer lyr,
+                  vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
@@ -1877,7 +1878,7 @@ fn parse_item_obj(&parser p, ast::layer lyr) -> @ast::item {
                           dtor=dtor);
 
     auto odid = rec(ty=p.next_def_id(), ctor=p.next_def_id());
-    auto item = ast::item_obj(ident, ob, ty_params, odid, p.get_ann());
+    auto item = ast::item_obj(ident, ob, ty_params, attrs, odid, p.get_ann());
 
     ret @spanned(lo, hi, item);
 }
@@ -1900,7 +1901,7 @@ fn parse_mod_items(&parser p, token::token term) -> ast::_mod {
     ret rec(view_items=view_items, items=items);
 }
 
-fn parse_item_const(&parser p) -> @ast::item {
+fn parse_item_const(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ty = parse_ty(p);
     auto id = parse_value_ident(p);
@@ -1908,7 +1909,8 @@ fn parse_item_const(&parser p) -> @ast::item {
     auto e = parse_expr(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item = ast::item_const(id, ty, e, p.next_def_id(), p.get_ann());
+    auto item = ast::item_const(id, ty, e, attrs,
+                                p.next_def_id(), p.get_ann());
     ret @spanned(lo, hi, item);
 }
 
@@ -1994,7 +1996,7 @@ fn default_native_name(session::session sess, str id) -> str {
     ret n.prefix + id + n.suffix;
 }
 
-fn parse_item_native_mod(&parser p) -> @ast::item {
+fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto abi = ast::native_abi_cdecl;
     if (!is_word(p, "mod")) {
@@ -2024,7 +2026,7 @@ fn parse_item_native_mod(&parser p) -> @ast::item {
     auto m = parse_native_mod_items(p, native_name, abi);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    auto item = ast::item_native_mod(id, m, p.next_def_id());
+    auto item = ast::item_native_mod(id, m, attrs, p.next_def_id());
     ret @spanned(lo, hi, item);
 }
 
@@ -2034,7 +2036,7 @@ fn parse_type_decl(&parser p) -> tup(uint, ast::ident) {
     ret tup(lo, id);
 }
 
-fn parse_item_type(&parser p) -> @ast::item {
+fn parse_item_type(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto t = parse_type_decl(p);
     auto tps = parse_ty_params(p);
 
@@ -2042,11 +2044,12 @@ fn parse_item_type(&parser p) -> @ast::item {
     auto ty = parse_ty(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item = ast::item_ty(t._1, ty, tps, p.next_def_id(), p.get_ann());
+    auto item = ast::item_ty(t._1, ty, tps, attrs,
+                             p.next_def_id(), p.get_ann());
     ret @spanned(t._0, hi, item);
 }
 
-fn parse_item_tag(&parser p) -> @ast::item {
+fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
@@ -2092,8 +2095,8 @@ fn parse_item_tag(&parser p) -> @ast::item {
     auto hi = p.get_hi_pos();
     p.bump();
 
-    auto item = ast::item_tag(id, variants, ty_params, p.next_def_id(),
-                             p.get_ann());
+    auto item = ast::item_tag(id, variants, ty_params, attrs,
+                              p.next_def_id(), p.get_ann());
     ret @spanned(lo, hi, item);
 }
 
@@ -2128,29 +2131,31 @@ tag parsed_item {
 fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
 
     if (eat_word(p, "const")) {
-        ret got_item(parse_item_const(p));
+        ret got_item(parse_item_const(p, attrs));
     } else if (eat_word(p, "fn")) {
         // This is an anonymous function
         if (p.peek() == token::LPAREN) { ret fn_no_item; }
-        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn));
+        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn,
+                                           ast::proto_fn, attrs));
     } else if (eat_word(p, "pred")) {
-        ret got_item(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn));
+        ret got_item(parse_item_fn_or_iter(p, ast::pure_fn,
+                                           ast::proto_fn, attrs));
     } else if (eat_word(p, "iter")) {
         ret got_item(parse_item_fn_or_iter(p, ast::impure_fn,
-                                           ast::proto_iter));
+                                           ast::proto_iter, attrs));
     } else if (eat_word(p, "mod")) {
         ret got_item(parse_item_mod(p, attrs));
     } else if (eat_word(p, "native")) {
-        ret got_item(parse_item_native_mod(p));
+        ret got_item(parse_item_native_mod(p, attrs));
     }
 
     auto lyr = parse_layer(p);
     if (eat_word(p, "type")) {
-        ret got_item(parse_item_type(p));
+        ret got_item(parse_item_type(p, attrs));
     } else if (eat_word(p, "tag")) {
-        ret got_item(parse_item_tag(p));
+        ret got_item(parse_item_tag(p, attrs));
     } else if (eat_word(p, "obj")) {
-        ret got_item(parse_item_obj(p, lyr));
+        ret got_item(parse_item_obj(p, lyr, attrs));
     } else {
         ret no_item;
     }

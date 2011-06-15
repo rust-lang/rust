@@ -257,7 +257,7 @@ fn print_item(&ps s, &@ast::item item) {
     hardbreak(s.s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
-        case (ast::item_const(?id, ?ty, ?expr, _, _)) {
+        case (ast::item_const(?id, ?ty, ?expr, _, _, _)) {
             head(s, "const");
             print_type(s, *ty);
             space(s.s);
@@ -268,7 +268,7 @@ fn print_item(&ps s, &@ast::item item) {
             word(s.s, ";");
             end(s); // end the outer cbox
         }
-        case (ast::item_fn(?name,?_fn,?typarams,_,_)) {
+        case (ast::item_fn(?name,?_fn,?typarams,_,_,_)) {
             print_fn(s, _fn.decl, _fn.proto, name, typarams);
             word(s.s, " ");
             print_block(s, _fn.body);
@@ -280,7 +280,7 @@ fn print_item(&ps s, &@ast::item item) {
             for (@ast::item itm in _mod.items) {print_item(s, itm);}
             bclose(s, item.span);
         }
-        case (ast::item_native_mod(?id,?nmod,_)) {
+        case (ast::item_native_mod(?id,?nmod,_,_)) {
             head(s, "native");
             alt (nmod.abi) {
                 case (ast::native_abi_rust) {word_nbsp(s, "\"rust\"");}
@@ -317,7 +317,7 @@ fn print_item(&ps s, &@ast::item item) {
             }
             bclose(s, item.span);
         }
-        case (ast::item_ty(?id,?ty,?params,_,_)) {
+        case (ast::item_ty(?id,?ty,?params,_,_,_)) {
             ibox(s, indent_unit);
             ibox(s, 0u);
             word_nbsp(s, "type");
@@ -331,7 +331,7 @@ fn print_item(&ps s, &@ast::item item) {
             end(s); // end the outer ibox
             break_offset(s.s, 0u, 0);
         }
-        case (ast::item_tag(?id,?variants,?params,_,_)) {
+        case (ast::item_tag(?id,?variants,?params,_,_,_)) {
             head(s, "tag");
             word(s.s, id);
             print_type_params(s, params);
@@ -354,7 +354,7 @@ fn print_item(&ps s, &@ast::item item) {
             }
             bclose(s, item.span);
         }
-        case (ast::item_obj(?id,?_obj,?params,_,_)) {
+        case (ast::item_obj(?id,?_obj,?params,_,_,_)) {
             head(s, "obj");
             word(s.s, id);
             print_type_params(s, params);
