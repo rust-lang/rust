@@ -118,7 +118,7 @@ struct spawn_args {
     rust_task *task;
     uintptr_t a3;
     uintptr_t a4;
-    void (*FASTCALL f)(int *, rust_task *, 
+    void (*CDECL f)(int *, rust_task *, 
                        uintptr_t, uintptr_t);
 };
 

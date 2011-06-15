@@ -71,13 +71,24 @@ command_line_args : public dom_owned<command_line_args>
     }
 };
 
+// THIS IS AN UGLY HACK TO MAKE rust_start STILL WORK WITH STAGE0 WHILE WE
+// TRANSITION TO ALL-CDECL TASK STARTUP FUNCTIONS.
+void FASTCALL
+(*real_main)(uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d) = NULL;
+
+void CDECL fake_main(uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d)
+{
+    real_main(a, b, c, d);
+}
+
 /**
  * Main entry point into the Rust runtime. Here we create a Rust service,
  * initialize the kernel, create the root domain and run it.
  */
 
 extern "C" CDECL int
-rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
+rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map,
+           uintptr_t main_fn_cdecl) {
 
     update_log_settings(crate_map, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
@@ -93,12 +104,9 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    /*
-    uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};
-    dom->root_task->start(main_fn,
-                          (uintptr_t)&main_args, sizeof(main_args));
-    */
-    dom->root_task->start(main_fn,
+    real_main = (typeof(real_main))main_fn;
+    if(main_fn) { printf("using fastcall main\n"); }
+    dom->root_task->start(main_fn ? (uintptr_t)fake_main : main_fn_cdecl,
                           (uintptr_t)args->args, sizeof(args->args));
 
     int ret = dom->start_main_loop();

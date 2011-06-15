@@ -5842,7 +5842,8 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     let str wrap_name =
         mangle_internal_name_by_path_and_seq(cx.fcx.lcx.ccx, cx.fcx.lcx.path,
                                              "spawn_wrapper");
-    auto llfndecl = decl_fastcall_fn(llmod, wrap_name, wrapper_fn_type);
+    auto llfndecl = decl_cdecl_fn(llmod, wrap_name, wrapper_fn_type);
+
     auto fcx = new_fn_ctxt(cx.fcx.lcx, cx.sp, llfndecl);
     auto fbcx = new_top_block_ctxt(fcx);
     // 3u to skip the three implicit args
