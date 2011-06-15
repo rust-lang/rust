@@ -2181,13 +2181,7 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
         auto hi = p.get_hi_pos();
         expect(p, token::RBRACE);
         ret spanned(lo, hi, ast::cdir_let(id, x, v));
-    } else if (is_word(p, "use")) {
-        auto vi = parse_view_item(p);
-        ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
-    } else if (is_word(p, "import")) {
-        auto vi = parse_view_item(p);
-        ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
-    } else if (is_word(p, "export")) {
+    } else if (is_view_item(p)) {
         auto vi = parse_view_item(p);
         ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
     } else {
