@@ -1,3 +1,5 @@
+
+
 fn main() {
     let char c = 'x';
     let char d = 'x';
@@ -9,4 +11,3 @@ fn main() {
     assert (d == 'x');
     assert ('x' == d);
 }
-

@@ -1,6 +1,5 @@
+
+
+
 // -*- rust -*-
-
-
-fn main() {
-  let uint x = 10 as uint;
-}
+fn main() { let uint x = 10 as uint; }

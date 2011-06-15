@@ -1,3 +1,4 @@
+
 use std;
 import std::box;
 
@@ -9,4 +10,3 @@ fn main() {
     assert (!box::ptr_eq[int](x, y));
     assert (!box::ptr_eq[int](y, x));
 }
-

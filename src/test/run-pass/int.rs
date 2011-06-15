@@ -1,6 +1,5 @@
+
+
+
 // -*- rust -*-
-
-
-fn main() {
-  let int x = 10;
-}
+fn main() { let int x = 10; }

@@ -1,3 +1,5 @@
+
+
 fn main() {
     auto v = [1];
     v += [2];
@@ -10,4 +12,3 @@ fn main() {
     assert (v.(3) == 4);
     assert (v.(4) == 5);
 }
-

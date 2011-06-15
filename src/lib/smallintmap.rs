@@ -1,13 +1,14 @@
+
+
 /// A simple map based on a vector for small integer keys. Space requirements
 /// are O(highest integer key).
-
 import option::none;
 import option::some;
 
 type smallintmap[T] = rec(mutable vec[mutable option::t[T]] v);
 
 fn mk[T]() -> smallintmap[T] {
-    let vec[mutable option::t[T]] v = [mutable];
+    let vec[mutable option::t[T]] v = [mutable ];
     ret rec(mutable v=v);
 }
 
@@ -38,7 +39,4 @@ fn truncate[T](&smallintmap[T] m, uint len) {
     m.v = vec::slice_mut[option::t[T]](m.v, 0u, len);
 }
 
-fn max_key[T](&smallintmap[T] m) -> uint {
-    ret vec::len[option::t[T]](m.v);
-}
-
+fn max_key[T](&smallintmap[T] m) -> uint { ret vec::len[option::t[T]](m.v); }

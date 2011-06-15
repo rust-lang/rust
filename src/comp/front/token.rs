@@ -1,3 +1,4 @@
+
 import util::common::ty_mach;
 import util::common::ty_mach_to_str;
 import util::common::new_str_hash;
@@ -23,6 +24,7 @@ tag binop {
 }
 
 tag token {
+
     /* Expression-operator symbols. */
     EQ;
     LT;
@@ -35,7 +37,6 @@ tag token {
     OROR;
     NOT;
     TILDE;
-
     BINOP(binop);
     BINOPEQ(binop);
 
@@ -57,7 +58,6 @@ tag token {
     RBRACKET;
     LBRACE;
     RBRACE;
-
     POUND;
 
     /* Literals */
@@ -74,7 +74,6 @@ tag token {
     IDENT(str_num, bool);
     IDX(int);
     UNDERSCORE;
-
     BRACEQUOTE(str_num);
     EOF;
 }
@@ -97,7 +96,6 @@ fn binop_to_str(binop o) -> str {
 
 fn to_str(lexer::reader r, token t) -> str {
     alt (t) {
-
         case (EQ) { ret "="; }
         case (LT) { ret "<"; }
         case (LE) { ret "<="; }
@@ -109,12 +107,13 @@ fn to_str(lexer::reader r, token t) -> str {
         case (TILDE) { ret "~"; }
         case (OROR) { ret "||"; }
         case (ANDAND) { ret "&&"; }
-
         case (BINOP(?op)) { ret binop_to_str(op); }
         case (BINOPEQ(?op)) { ret binop_to_str(op) + "="; }
-
-        /* Structural symbols */
-        case (AT) { ret "@"; }
+        case (
+             /* Structural symbols */
+             AT) {
+            ret "@";
+        }
         case (DOT) { ret "."; }
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
@@ -131,49 +130,46 @@ fn to_str(lexer::reader r, token t) -> str {
         case (RBRACKET) { ret "]"; }
         case (LBRACE) { ret "{"; }
         case (RBRACE) { ret "}"; }
-
         case (POUND) { ret "#"; }
-
-        /* Literals */
-        case (LIT_INT(?i)) { ret int::to_str(i, 10u); }
+        case (
+             /* Literals */
+             LIT_INT(?i)) {
+            ret int::to_str(i, 10u);
+        }
         case (LIT_UINT(?u)) { ret uint::to_str(u, 10u); }
         case (LIT_MACH_INT(?tm, ?i)) {
-            ret  int::to_str(i, 10u)
-                + "_" + ty_mach_to_str(tm);
+            ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
         }
         case (LIT_MACH_FLOAT(?tm, ?s)) {
             ret interner::get[str](*r.get_interner(), s) + "_" +
-                ty_mach_to_str(tm);
+                    ty_mach_to_str(tm);
         }
-
         case (LIT_FLOAT(?s)) { ret interner::get[str](*r.get_interner(), s); }
         case (LIT_STR(?s)) {
             // FIXME: escape.
+
             ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
         }
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
+
             auto tmp = "'";
             str::push_char(tmp, c);
             str::push_byte(tmp, '\'' as u8);
             ret tmp;
         }
-
-        case (LIT_BOOL(?b)) {
-            if (b) { ret "true"; } else { ret "false"; }
+        case (LIT_BOOL(?b)) { if (b) { ret "true"; } else { ret "false"; } }
+        case (
+             /* Name components */
+             IDENT(?s, _)) {
+            ret interner::get[str](*r.get_interner(), s);
         }
-
-        /* Name components */
-        case (IDENT(?s, _)) { ret interner::get[str](*r.get_interner(), s); }
         case (IDX(?i)) { ret "_" + int::to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
-
         case (BRACEQUOTE(_)) { ret "<bracequote>"; }
         case (EOF) { ret "<eof>"; }
     }
 }
-
-
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil

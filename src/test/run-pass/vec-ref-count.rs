@@ -1,3 +1,4 @@
+
 use std;
 import std::vec;
 
@@ -9,4 +10,3 @@ fn main() {
     assert (vec::refcount[int](v) == 1u || vec::refcount[int](v) == 2u);
     assert (vec::refcount[int](v) == 1u || vec::refcount[int](v) == 2u);
 }
-

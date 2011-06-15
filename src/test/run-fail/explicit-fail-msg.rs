@@ -1,5 +1,5 @@
-// error-pattern:woooo
 
-fn main() {
-  fail "woooo";
-}
+
+
+// error-pattern:woooo
+fn main() { fail"woooo"; }

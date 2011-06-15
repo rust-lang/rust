@@ -1,3 +1,4 @@
+
 export ptr_eq;
 
 native "rust" mod rustrt {
@@ -5,4 +6,3 @@ native "rust" mod rustrt {
 }
 
 fn ptr_eq[T](@T a, @T b) -> bool { ret rustrt::rust_ptr_eq[T](a, b) != 0; }
-

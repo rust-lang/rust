@@ -1,8 +1,7 @@
+
+
 mod foo {
-   fn bar(uint offset) {
-   }
+    fn bar(uint offset) { }
 }
 
-fn main(vec[str] args) {
-  foo::bar(0u);
-}
+fn main(vec[str] args) { foo::bar(0u); }

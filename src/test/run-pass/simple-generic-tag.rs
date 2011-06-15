@@ -1,7 +1,5 @@
-tag clam[T] {
-    a(T);
-}
 
-fn main() {
-}
 
+tag clam[T] { a(T); }
+
+fn main() { }

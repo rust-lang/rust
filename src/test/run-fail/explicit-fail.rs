@@ -1,5 +1,5 @@
-// error-pattern:explicit
 
-fn main() {
-  fail;
-}
+
+
+// error-pattern:explicit
+fn main() { fail; }

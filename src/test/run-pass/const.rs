@@ -1,5 +1,5 @@
+
+
 const int i = 10;
 
-fn main() {
-  log i;
-}
+fn main() { log i; }

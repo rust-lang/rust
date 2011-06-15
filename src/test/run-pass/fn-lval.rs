@@ -1,8 +1,9 @@
-// -*- rust -*-
 
-fn foo((fn(int) -> int) f) {}
+
+
+// -*- rust -*-
+fn foo(fn(int) -> int  f) { }
+
 fn id(int x) -> int { ret x; }
 
-fn main() {
-  foo(id);
-}
+fn main() { foo(id); }

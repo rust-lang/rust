@@ -1,7 +1,7 @@
-// error-pattern:explicit failure
 
+
+
+// error-pattern:explicit failure
 fn f() -> ! { fail }
 
-fn main() {
-  f();
-}
+fn main() { f(); }

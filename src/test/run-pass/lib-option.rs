@@ -1,5 +1,4 @@
+
 use std;
 
-fn main() {
-  auto x = std::option::some[int](10);
-}
+fn main() { auto x = std::option::some[int](10); }

@@ -1,3 +1,3 @@
-fn main(vec[str] args) {
-  log args.(0);
-}
+
+
+fn main(vec[str] args) { log args.(0); }

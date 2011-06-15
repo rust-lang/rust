@@ -1,17 +1,14 @@
+
+
+
 // xfail-stage0
 // xfail-stage1
 // xfail-stage2
 // xfail-stage3
 // -*- rust -*-
+fn main() { auto t = spawn child(10); }
 
-fn main() {
-    auto t = spawn child(10);
-}
-
-fn child(int i) {
-    log_err i;
-}
-
+fn child(int i) { log_err i; }
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

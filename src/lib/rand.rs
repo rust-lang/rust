@@ -1,7 +1,9 @@
+
+
+
 /**
  * Bindings the runtime's random number generator (ISAAC).
  */
-
 native "rust" mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
@@ -9,21 +11,19 @@ native "rust" mod rustrt {
     fn rand_free(rctx c);
 }
 
-type rng = obj { fn next() -> u32; };
+type rng =
+    obj {
+        fn next() -> u32 ;
+    };
 
 fn mk_rng() -> rng {
     obj rt_rng(rustrt::rctx c) {
         fn next() -> u32 {
             ret rustrt::rand_next(c);
-        }
-        drop {
-            rustrt::rand_free(c);
-        }
+        }drop { rustrt::rand_free(c); }
     }
-
     ret rt_rng(rustrt::rand_new());
 }
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

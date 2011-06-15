@@ -1,11 +1,13 @@
-// -*- rust -*-
 
+
+
+// -*- rust -*-
 mod foo {
-  fn baz() {}
+    fn baz() { }
 }
 
 mod bar {
-  fn baz() {}
+    fn baz() { }
 }
 
-fn main() {}
+fn main() { }

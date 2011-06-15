@@ -1,5 +1,6 @@
-// -*- rust -*-
 
+
+// -*- rust -*-
 use std;
 import std::str;
 
@@ -11,4 +12,3 @@ fn main() {
     auto s_buf = str::str_from_buf(sb, 5u);
     assert (str::eq(s_buf, s));
 }
-
