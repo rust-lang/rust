@@ -370,6 +370,7 @@ fn print_item(&ps s, &@ast::item item) {
             popen(s);
             fn print_field(&ps s, &ast::obj_field field) {
                 ibox(s, indent_unit);
+                print_mutability(s, field.mut);
                 print_type(s, *field.ty);
                 space(s.s);
                 word(s.s, field.ident);
@@ -1101,12 +1102,16 @@ fn print_maybe_parens(&ps s, &@ast::expr expr, int outer_prec) {
     if (add_them) {pclose(s);}
 }
 
-fn print_mt(&ps s, &ast::mt mt) {
-    alt (mt.mut) {
+fn print_mutability(&ps s, &ast::mutability mut) {
+    alt (mut) {
         case (ast::mut)       { word_nbsp(s, "mutable");  }
         case (ast::maybe_mut) { word_nbsp(s, "mutable?"); }
         case (ast::imm)       { /* nothing */        }
     }
+}
+
+fn print_mt(&ps s, &ast::mt mt) {
+    print_mutability(s, mt.mut);
     print_type(s, *mt.ty);
 }
 
