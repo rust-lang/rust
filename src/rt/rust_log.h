@@ -66,5 +66,6 @@ extern size_t log_rt_gc;
 extern size_t log_rt_stdlib;
 extern size_t log_rt_kern;
 extern size_t log_rt_backtrace;
+extern size_t log_rt_callback;
 
 #endif /* RUST_LOG_H */

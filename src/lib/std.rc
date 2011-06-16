@@ -70,6 +70,8 @@ mod os_fs = "posix_fs.rs";
 
 mod run = "run_program.rs";
 mod fs;
+mod aio;
+mod sio;
 
 // FIXME: parametric
 mod map;
