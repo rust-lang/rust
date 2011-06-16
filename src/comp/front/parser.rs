@@ -1451,7 +1451,19 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
             }
         }
 
-        alt (parse_item(p, item_attrs)) {
+        auto maybe_item = parse_item(p, item_attrs);
+
+        // If we have attributes then we should have an item
+        if (vec::len(item_attrs) > 0u) {
+            alt (maybe_item) {
+                case (got_item(_)) { /* fallthrough */ }
+                case (_) {
+                    ret p.err("expected item");
+                }
+            }
+        }
+
+        alt (maybe_item) {
             case (got_item(?i)) {
                 auto hi = i.span.hi;
                 auto decl = @spanned(lo, hi, ast::decl_item(i));
