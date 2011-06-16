@@ -1443,12 +1443,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     fn check_for_or_for_each(&@fn_ctxt fcx, &@ast::local local,
                              &ty::t element_ty, &ast::block body,
                              uint node_id) {
-        check_decl_local(fcx, local.node);
+        check_decl_local(fcx, local);
         check_block(fcx, body);
         // Unify type of decl with element type of the seq
-
         demand::simple(fcx, local.span,
-                       ty::decl_local_ty(fcx.ccx.tcx, local.node),
+                       ty::decl_local_ty(fcx.ccx.tcx, local),
                        element_ty);
         auto typ = ty::mk_nil(fcx.ccx.tcx);
         write::ty_only_fixup(fcx, node_id, typ);
@@ -2239,24 +2238,26 @@ fn check_decl_initializer(&@fn_ctxt fcx, &ast::def_id lid,
     }
 }
 
-fn check_decl_local(&@fn_ctxt fcx, &@ast::local_ local) -> @ast::local_ {
-    auto a_res = local.ann;
-    alt (fcx.locals.find(local.id)) {
+fn check_decl_local(&@fn_ctxt fcx, &@ast::local local) -> @ast::local {
+    auto a_res = local.node.ann;
+    alt (fcx.locals.find(local.node.id)) {
         case (none) {
+
             fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
-                                     local.ident);
+                                     local.node.ident);
         }
         case (some(?i)) {
             auto t = ty::mk_var(fcx.ccx.tcx, i);
             write::ty_only_fixup(fcx, a_res.id, t);
-            auto initopt = local.init;
-            alt (local.init) {
+            auto initopt = local.node.init;
+            alt (initopt) {
                 case (some(?init)) {
-                    check_decl_initializer(fcx, local.id, init);
+                    check_decl_initializer(fcx, local.node.id, init);
                 }
                 case (_) {/* fall through */ }
             }
-            ret @rec(init=initopt, ann=a_res with *local);
+            auto newlocal = rec(init=initopt, ann=a_res with local.node);
+            ret @rec(node=newlocal, span=local.span);
         }
     }
 }

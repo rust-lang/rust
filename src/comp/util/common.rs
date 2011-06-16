@@ -164,8 +164,8 @@ fn has_nonlocal_exits(&ast::block b) -> bool {
     ret *has_exits;
 }
 
-fn local_rhs_span(&@ast::local_ l, &span def) -> span {
-    alt (l.init) {
+fn local_rhs_span(&@ast::local l, &span def) -> span {
+    alt (l.node.init) {
         case (some(?i)) { ret i.expr.span; }
         case (_) { ret def; }
     }
