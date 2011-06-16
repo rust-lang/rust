@@ -480,6 +480,48 @@ fn print_block(&ps s, ast::block blk) {
     }
 }
 
+fn print_if(&ps s, &@ast::expr test, &ast::block block,
+            &option::t[@ast::expr] elseopt, &str chk) {
+    head(s, "if");
+    word_space(s, chk);
+    popen(s);
+    print_expr(s, test);
+    pclose(s);
+    space(s.s);
+    print_block(s, block);
+    fn do_else(&ps s, option::t[@ast::expr] els) {
+        alt (els) {
+            case (some(?_else)) {
+                alt (_else.node) {
+                    case (
+                          // "another else-if"
+                          ast::expr_if(?i, ?t, ?e, _)) {
+                        cbox(s, indent_unit - 1u);
+                        ibox(s, 0u);
+                        word(s.s, " else if ");
+                        popen(s);
+                        print_expr(s, i);
+                        pclose(s);
+                        space(s.s);
+                        print_block(s, t);
+                        do_else(s, e);
+                    }
+                    case (
+                          // "final else"
+                          ast::expr_block(?b, _)) {
+                        cbox(s, indent_unit - 1u);
+                        ibox(s, 0u);
+                        word(s.s, " else ");
+                        print_block(s, b);
+                    }
+                }
+            }
+            case (_) {/* fall through */ }
+        }
+    }
+    do_else(s, elseopt);
+}
+
 fn print_expr(&ps s, &@ast::expr expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
@@ -587,43 +629,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_type(s, *ty);
         }
         case (ast::expr_if(?test, ?block, ?elseopt, _)) {
-            head(s, "if");
-            popen(s);
-            print_expr(s, test);
-            pclose(s);
-            space(s.s);
-            print_block(s, block);
-            fn do_else(&ps s, option::t[@ast::expr] els) {
-                alt (els) {
-                    case (some(?_else)) {
-                        alt (_else.node) {
-                            case (
-                                 // "another else-if"
-                                 ast::expr_if(?i, ?t, ?e, _)) {
-                                cbox(s, indent_unit - 1u);
-                                ibox(s, 0u);
-                                word(s.s, " else if ");
-                                popen(s);
-                                print_expr(s, i);
-                                pclose(s);
-                                space(s.s);
-                                print_block(s, t);
-                                do_else(s, e);
-                            }
-                            case (
-                                 // "final else"
-                                 ast::expr_block(?b, _)) {
-                                cbox(s, indent_unit - 1u);
-                                ibox(s, 0u);
-                                word(s.s, " else ");
-                                print_block(s, b);
-                            }
-                        }
-                    }
-                    case (_) {/* fall through */ }
-                }
-            }
-            do_else(s, elseopt);
+            print_if(s, test, block, elseopt, "");
+        }
+        case (ast::expr_if_check(?test, ?block, ?elseopt, _)) {
+            print_if(s, test, block, elseopt, "check");
         }
         case (ast::expr_while(?test, ?block, _)) {
             head(s, "while");
