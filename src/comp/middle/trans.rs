@@ -7086,40 +7086,39 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
         // there's not much to do.
 
         // Store null into pair, if no args or typarams.
-
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
         // Otherwise, we have to synthesize a big structural type for the
         // object body.
-
         let vec[ty::t] obj_fields = [];
         for (ty::arg a in arg_tys) { vec::push[ty::t](obj_fields, a.ty); }
-        // Tuple type for fields: [field, ...]
 
+        // Tuple type for fields: [field, ...]
         let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields);
-        // Tuple type for typarams: [typaram, ...]
 
         auto tydesc_ty = ty::mk_type(ccx.tcx);
         let vec[ty::t] tps = [];
         for (ast::ty_param tp in ty_params) {
             vec::push[ty::t](tps, tydesc_ty);
         }
-        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
-        // Tuple type for body: [tydesc_ty, [typaram, ...], [field, ...]]
 
+        // Tuple type for typarams: [typaram, ...]
+        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
+
+        // Tuple type for body: [tydesc_ty, [typaram, ...], [field, ...]]
         let ty::t body_ty =
             ty::mk_imm_tup(ccx.tcx, [tydesc_ty, typarams_ty, fields_ty]);
+
         // Hand this type we've synthesized off to trans_malloc_boxed, which
         // allocates a box, including space for a refcount.
-
         auto box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
+
         // mk_imm_box throws a refcount into the type we're synthesizing, so
         // that it looks like: [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
-
         let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
-        // Grab onto the refcount and body parts of the box we allocated.
 
+        // Grab onto the refcount and body parts of the box we allocated.
         auto rc =
             GEP_tup_like(bcx, boxed_body_ty, box.val,
                          [0, abi::box_rc_field_refcnt]);
@@ -7129,6 +7128,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
                          [0, abi::box_rc_field_body]);
         bcx = body.bcx;
         bcx.build.Store(C_int(1), rc.val);
+
         // Put together a tydesc for the body, so that the object can later be
         // freed by calling through its tydesc.
 
@@ -7148,6 +7148,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = body_td.bcx;
         bcx.build.Store(body_td.val, body_tydesc.val);
+
         // Copy the object's type parameters and fields into the space we
         // allocated for the object body.  (This is something like saving the
         // lexical environment of a function in its closure: the "captured
@@ -7156,7 +7157,6 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
         // Likewise for the object's fields.)
 
         // Copy typarams into captured typarams.
-
         auto body_typarams =
             GEP_tup_like(bcx, body_ty, body.val,
                          [0, abi::obj_body_elt_typarams]);
@@ -7170,8 +7170,8 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
             bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
             i += 1;
         }
-        // Copy args into body fields.
 
+        // Copy args into body fields.
         auto body_fields =
             GEP_tup_like(bcx, body_ty, body.val,
                          [0, abi::obj_body_elt_fields]);
@@ -7186,14 +7186,14 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
             bcx = copy_val(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
             i += 1;
         }
-        // Store box ptr in outer pair.
 
+        // Store box ptr in outer pair.
         auto p = bcx.build.PointerCast(box.val, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
     bcx.build.RetVoid();
-    // Insert the mandatory first few basic blocks before lltop.
 
+    // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 }
 
