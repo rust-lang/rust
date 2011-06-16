@@ -32,4 +32,12 @@ public:
   void call(void *f, void *arg, void *sp);
 };
 
+template<typename T>
+T align_down(T sp)
+{
+    // There is no platform we care about that needs more than a
+    // 16-byte alignment.
+    return (T)((int)sp & ~(16 - 1));
+}
+
 #endif

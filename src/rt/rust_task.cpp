@@ -17,6 +17,7 @@
 static size_t const min_stk_bytes = 0x300000;
 // static size_t const min_stk_bytes = 0x10000;
 
+
 // Task stack segments. Heap allocated and chained together.
 
 static stk_seg*
@@ -152,25 +153,24 @@ void task_start_wrapper(spawn_args *a)
 
 void
 rust_task::start(uintptr_t spawnee_fn,
-                 uintptr_t args,
-                 size_t callsz)
+                 uintptr_t args)
 {
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
     I(dom, stk->data != NULL);
 
-    char *sp = (char *)stk->limit;
+    char *sp = (char *)rust_sp;
 
     sp -= sizeof(spawn_args);
 
     spawn_args *a = (spawn_args *)sp;
 
     a->task = this;
-    a->a3 = 0xca11ab1e;
+    a->a3 = 0;
     a->a4 = args;
     void **f = (void **)&a->f;
     *f = (void *)spawnee_fn;
-
+    
     ctx.call((void *)task_start_wrapper, a, sp);
 
     yield_timer.reset(0);

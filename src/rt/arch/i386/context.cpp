@@ -36,10 +36,14 @@ void context::swap(context &out)
 void context::call(void *f, void *arg, void *stack) {
   // set up the trampoline frame
   uint32_t *sp = (uint32_t *)stack;
+
+  // Shift the stack pointer so the alignment works out right.
+  sp = align_down(sp) - 2;
+
   *--sp = (uint32_t)this;
   *--sp = (uint32_t)arg;
-  *--sp = 0xdeadbeef; //(uint32_t)ctx_trampoline1;
   *--sp = 0xdeadbeef;
+  *--sp = 0xca11ab1e;
 
   regs.esp = (uint32_t)sp;
   regs.eip = (uint32_t)f;

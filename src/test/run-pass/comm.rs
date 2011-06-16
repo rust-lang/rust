@@ -5,12 +5,12 @@
 
 fn main() {
   let port[int] p = port();
-  spawn child(chan(p));
+  let task t = spawn child(chan(p));
   let int y;
   p |> y;
   log_err "received";
   log_err y;
-  //assert (y == 10);
+  assert (y == 10);
 }
 
 fn child(chan[int] c) {
@@ -18,4 +18,3 @@ fn child(chan[int] c) {
   c <| 10;
   log_err "value sent"
 }
-

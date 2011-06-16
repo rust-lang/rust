@@ -1,11 +1,8 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
 // -*- rust -*-
 
 fn main() {
-  spawn child(10, 20, 30, 40, 50, 60, 70, 80, 90);
+    spawn child(10, 20, 30, 40, 50, 60, 70, 80, 90);
 }
 
 fn child(int i1,
@@ -27,6 +24,15 @@ fn child(int i1,
   log_err i7;
   log_err i8;
   log_err i9;
+  assert(i1 == 10);
+  assert(i2 == 20);
+  assert(i3 == 30);
+  assert(i4 == 40);
+  assert(i5 == 50);
+  assert(i6 == 60);
+  assert(i7 == 70);
+  assert(i8 == 80);
+  assert(i9 == 90);
 }
 
 // Local Variables:

@@ -60,8 +60,7 @@ rust_task : public maybe_proxy<rust_task>,
     ~rust_task();
 
     void start(uintptr_t spawnee_fn,
-               uintptr_t args,
-               size_t callsz);
+               uintptr_t args);
     void grow(size_t n_frame_bytes);
     bool running();
     bool blocked();

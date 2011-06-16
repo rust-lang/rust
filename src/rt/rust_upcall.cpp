@@ -509,14 +509,6 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     return task;
 }
 
-static uintptr_t
-align_down(uintptr_t sp)
-{
-    // There is no platform we care about that needs more than a
-    // 16-byte alignment.
-    return sp & ~(16 - 1);
-}
-
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
@@ -538,12 +530,11 @@ upcall_start_task(rust_task *spawner,
     // The args tuple is stack-allocated. We need to move it over to the new
     // stack.
     task->rust_sp -= args_sz;
+    uintptr_t child_arg = (uintptr_t)task->rust_sp;
+
     memcpy((void*)task->rust_sp, (void*)args, args_sz);
-    uintptr_t start_args[] = {0, 0, 0, task->rust_sp};
-    
-    task->rust_sp = align_down(task->rust_sp);
-    
-    task->start(spawnee_fn, (uintptr_t)start_args, sizeof(start_args));
+
+    task->start(spawnee_fn, child_arg);
     return task;
 }
 
@@ -567,6 +558,8 @@ upcall_new_thread(rust_task *task, const char *name) {
     return child_task_proxy;
 }
 
+#if 0 /* TODO: this code will be re-enabled once we have multithreading. */
+
 #if defined(__WIN32__)
 static DWORD WINAPI rust_thread_start(void *ptr)
 #elif defined(__GNUC__)
@@ -587,6 +580,8 @@ static void *rust_thread_start(void *ptr)
     return 0;
 }
 
+#endif
+
 /**
  * Called after a new domain is created. Here we create a new thread and
  * and start the domain main loop.
@@ -597,6 +592,7 @@ upcall_start_thread(rust_task *task,
                     uintptr_t spawnee_fn,
                     size_t callsz) {
     LOG_UPCALL_ENTRY(task);
+#if 0
     rust_dom *parenet_dom = task->dom;
     rust_handle<rust_task> *child_task_handle = child_task_proxy->handle();
     LOG(task, task,
@@ -616,6 +612,7 @@ upcall_start_thread(rust_task *task,
     pthread_create(&thread, &parenet_dom->attr, rust_thread_start,
                    (void *) child_task->dom);
 #endif
+#endif // 0
     return child_task_proxy;
 }
 
