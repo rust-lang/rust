@@ -7058,6 +7058,7 @@ fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
 fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
     alt (ty::struct(ccx.tcx, t)) {
         case (ty::ty_fn(_, _, ?ret_ty, _, _)) { ret ret_ty; }
+        case (ty::ty_native_fn(_, _, ?ret_ty)) { ret ret_ty; }
         case (_) {
             ccx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
                              ty_to_str(ccx.tcx, t));
