@@ -1,3 +1,6 @@
+#[name = "crate-attributes"];
+#[vers = "1.0"];
+
 mod m = "crate-attributes-src" {
   mod foo;
 }

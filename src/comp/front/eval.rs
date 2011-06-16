@@ -10,7 +10,7 @@ import ast::ident;
 import front::parser::parser;
 import front::parser::spanned;
 import front::parser::new_parser;
-import front::parser::parse_inner_attributes;
+import front::parser::parse_inner_attrs_and_next;
 import front::parser::parse_mod_items;
 import util::common;
 import util::common::filename;
@@ -288,7 +288,7 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             auto p0 =
                 new_parser(cx.sess, e, start_id, full_path, cx.chpos,
                            cx.next_ann);
-            auto inner_attrs = parse_inner_attributes(p0);
+            auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto first_item_outer_attrs = inner_attrs._1;
             auto m0 = parse_mod_items(p0, token::EOF,
                                       first_item_outer_attrs);

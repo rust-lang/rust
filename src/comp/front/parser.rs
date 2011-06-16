@@ -1838,7 +1838,7 @@ fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     expect(p, token::LBRACE);
-    auto inner_attrs = parse_inner_attributes(p);
+    auto inner_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = inner_attrs._1;
     auto m = parse_mod_items(p, token::RBRACE,
                              first_item_outer_attrs);
@@ -2095,8 +2095,8 @@ fn parse_attribute_naked(&parser p, ast::attr_style style,
 // next item (since we can't know whether the attribute is an inner attribute
 // of the containing item or an outer attribute of the first contained item
 // until we see the semi).
-fn parse_inner_attributes(&parser p) -> tup(vec[ast::attribute],
-                                            vec[ast::attribute]) {
+fn parse_inner_attrs_and_next(&parser p) -> tup(vec[ast::attribute],
+                                                vec[ast::attribute]) {
     let vec[ast::attribute] inner_attrs = [];
     let vec[ast::attribute] next_outer_attrs = [];
     while (p.peek() == token::POUND) {
@@ -2115,6 +2115,14 @@ fn parse_inner_attributes(&parser p) -> tup(vec[ast::attribute],
         }
     }
     ret tup(inner_attrs, next_outer_attrs);
+}
+
+fn parse_inner_attrs(&parser p) -> vec[ast::attribute] {
+    auto attrs_and_next = parse_inner_attrs_and_next(p);
+    if (vec::len(attrs_and_next._1) > 0u) {
+        // FIXME: Don't drop this dangling attr on the ground
+    }
+    ret attrs_and_next._0;
 }
 
 fn parse_meta_item(&parser p) -> @ast::meta_item {
@@ -2369,6 +2377,8 @@ fn parse_crate_directives(&parser p, token::token term) ->
 fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
+    // FIXME (issue #487): Do something with these attrs
+    auto attrs = parse_inner_attrs(p);
     auto cdirs = parse_crate_directives(p, token::EOF);
     let vec[str] deps = [];
     auto cx =
