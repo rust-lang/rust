@@ -4026,7 +4026,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
 
 fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
              &ast::block body) -> result {
-    fn inner(&@block_ctxt cx, @ast::local_ local, ValueRef curr, ty::t t,
+    fn inner(&@block_ctxt cx, @ast::local local, ValueRef curr, ty::t t,
              ast::block body, @block_ctxt outer_next_cx) -> result {
         auto next_cx = new_sub_block_ctxt(cx, "next");
         auto scope_cx =
@@ -4045,7 +4045,7 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto seq_res = trans_expr(cx, seq);
     auto it =
         iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
-                      bind inner(_, local.node, _, _, body, next_cx));
+                      bind inner(_, local, _, _, body, next_cx));
     it.bcx.build.Br(next_cx.llbb);
     ret res(next_cx, it.val);
 }
@@ -6440,15 +6440,15 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     ret res(bcx, pair);
 }
 
-fn init_local(&@block_ctxt cx, &@ast::local_ local) -> result {
+fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
     // Make a note to drop this slot on the way out.
 
-    assert (cx.fcx.lllocals.contains_key(local.id));
-    auto llptr = cx.fcx.lllocals.get(local.id);
-    auto ty = node_ann_type(cx.fcx.lcx.ccx, local.ann);
+    assert (cx.fcx.lllocals.contains_key(local.node.id));
+    auto llptr = cx.fcx.lllocals.get(local.node.id);
+    auto ty = node_ann_type(cx.fcx.lcx.ccx, local.node.ann);
     auto bcx = cx;
     find_scope_cx(cx).cleanups += [clean(bind drop_slot(_, llptr, ty))];
-    alt (local.init) {
+    alt (local.node.init) {
         case (some(?init)) {
             alt (init.op) {
                 case (ast::init_assign) {
@@ -6595,8 +6595,7 @@ fn trans_block_cleanups(&@block_ctxt cx, &@block_ctxt cleanup_cx) ->
     ret bcx;
 }
 
-iter block_locals(&ast::block b) -> @ast::local_ {
-
+iter block_locals(&ast::block b) -> @ast::local {
     // FIXME: putting from inside an iter block doesn't work, so we can't
     // use the index here.
     for (@ast::stmt s in b.node.stmts) {
@@ -6645,18 +6644,17 @@ fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
     ret res(cx, val);
 }
 
-fn alloc_local(&@block_ctxt cx, &@ast::local_ local) -> result {
-    auto t = node_ann_type(cx.fcx.lcx.ccx, local.ann);
+fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
+    auto t = node_ann_type(cx.fcx.lcx.ccx, local.node.ann);
     auto r = alloc_ty(cx, t);
-    r.bcx.fcx.lllocals.insert(local.id, r.val);
+    r.bcx.fcx.lllocals.insert(local.node.id, r.val);
     ret r;
 }
 
 fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
     auto bcx = cx;
-    for each (@ast::local_ local in block_locals(b)) {
+    for each (@ast::local local in block_locals(b)) {
         // FIXME Update bcx.sp
-
         bcx = alloc_local(bcx, local).bcx;
     }
     auto r = res(bcx, C_nil());

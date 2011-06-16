@@ -41,8 +41,7 @@ tag scope {
     scope_item(@ast::item);
     scope_fn(ast::fn_decl, vec[ast::ty_param]);
     scope_native_item(@ast::native_item);
-    scope_loop(@ast::local_); // there's only 1 decl per loop.
-
+    scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::block);
     scope_arm(ast::arm);
 }
@@ -356,10 +355,10 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     auto new_sc =
         alt (x.node) {
             case (ast::expr_for(?d, _, _, _)) {
-                cons[scope](scope_loop(d.node), @sc)
+                cons[scope](scope_loop(d), @sc)
             }
             case (ast::expr_for_each(?d, _, _, _)) {
-                cons[scope](scope_loop(d.node), @sc)
+                cons[scope](scope_loop(d), @sc)
             }
             case (ast::expr_fn(?f, _)) { cons(scope_fn(f.decl, []), @sc) }
             case (_) { sc }
@@ -575,8 +574,8 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
             }
             case (scope_loop(?local)) {
                 if (ns == ns_value) {
-                    if (str::eq(local.ident, id)) {
-                        ret some(ast::def_local(local.id));
+                    if (str::eq(local.node.ident, id)) {
+                        ret some(ast::def_local(local.node.id));
                     }
                 }
             }
@@ -680,8 +679,8 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns) ->
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
                     case (ast::decl_local(?loc)) {
-                        if (ns == ns_value && str::eq(id, loc.ident)) {
-                            ret some(ast::def_local(loc.id));
+                        if (ns == ns_value && str::eq(id, loc.node.ident)) {
+                            ret some(ast::def_local(loc.node.id));
                         }
                     }
                     case (ast::decl_item(?it)) {
@@ -1169,7 +1168,7 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
                     case (ast::decl_local(?loc)) {
-                        add_name(values, d.span, loc.ident);
+                        add_name(values, d.span, loc.node.ident);
                     }
                     case (ast::decl_item(?it)) {
                         alt (it.node) {

@@ -663,15 +663,15 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
         case (stmt_decl(?adecl, ?a)) {
             alt (adecl.node) {
                 case (decl_local(?alocal)) {
-                    alt (alocal.init) {
+                    alt (alocal.node.init) {
                         case (some(?an_init)) {
                             changed =
                                 extend_prestate(stmt_ann.states.prestate,
                                                 pres) || changed;
                             changed =
                                 find_pre_post_state_expr(fcx, pres,
-                                                         an_init.expr) ||
-                                    changed;
+                                                         an_init.expr)
+                                || changed;
                             changed =
                                 extend_poststate(stmt_ann.states.poststate,
                                                  expr_poststate(fcx.ccx,
@@ -679,9 +679,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                     || changed;
                             changed =
                                 gen_poststate(fcx, a,
-                                              rec(id=alocal.id,
-                                                  c=ninit(alocal.ident))) ||
-                                    changed;
+                                              rec(id=alocal.node.id,
+                                                  c=ninit(alocal.node.ident)))
+                                || changed;
                             log "Summary: stmt = ";
                             log_stmt(*s);
                             log "prestate = ";

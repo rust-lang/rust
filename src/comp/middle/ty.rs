@@ -1577,8 +1577,8 @@ fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
     ret ann_has_type_params(cx, expr_ann(expr));
 }
 
-fn decl_local_ty(&ctxt cx, &@ast::local_ l) -> t {
-    ret ann_to_type(cx, l.ann);
+fn decl_local_ty(&ctxt cx, &@ast::local l) -> t {
+    ret ann_to_type(cx, l.node.ann);
 }
 
 fn stmt_ann(&@ast::stmt s) -> ast::ann {

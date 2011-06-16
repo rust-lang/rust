@@ -236,7 +236,7 @@ fn visit_stmt[E](&@stmt s, &E e, &vt[E] v) {
 fn visit_decl[E](&@decl d, &E e, &vt[E] v) {
     alt (d.node) {
         case (decl_local(?loc)) {
-            vt(v).visit_local(@respan(d.span, loc), e, v);
+            vt(v).visit_local(loc, e, v);
         }
         case (decl_item(?it)) { vt(v).visit_item(it, e, v); }
     }

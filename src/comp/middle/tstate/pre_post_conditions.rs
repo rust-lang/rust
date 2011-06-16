@@ -550,20 +550,23 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
         case (stmt_decl(?adecl, ?a)) {
             alt (adecl.node) {
                 case (decl_local(?alocal)) {
-                    alt (alocal.init) {
+                    alt (alocal.node.init) {
                         case (some(?an_init)) {
                             find_pre_post_expr(fcx, an_init.expr);
-                            copy_pre_post(fcx.ccx, alocal.ann, an_init.expr);
+                            copy_pre_post(fcx.ccx, alocal.node.ann, 
+                                          an_init.expr);
                             /* Inherit ann from initializer, and add var being
                                initialized to the postcondition */
 
                             copy_pre_post(fcx.ccx, a, an_init.expr);
                             gen(fcx, a,
-                                rec(id=alocal.id, c=ninit(alocal.ident)));
+                                rec(id=alocal.node.id, 
+                                    c=ninit(alocal.node.ident)));
                         }
                         case (none) {
                             clear_pp(ann_to_ts_ann(fcx.ccx,
-                                                   alocal.ann).conditions);
+                                                   alocal.node.ann)
+                                     .conditions);
                             clear_pp(ann_to_ts_ann(fcx.ccx, a).conditions);
                         }
                     }

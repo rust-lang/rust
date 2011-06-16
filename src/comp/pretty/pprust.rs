@@ -864,7 +864,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
         case (ast::decl_local(?loc)) {
             space(s.s);
             ibox(s, indent_unit);
-            alt (loc.ty) {
+            alt (loc.node.ty) {
                 case (some(?ty)) {
                     word_nbsp(s, "let");
                     print_type(s, *ty);
@@ -877,15 +877,15 @@ fn print_decl(&ps s, &@ast::decl decl) {
                     alt (s.mode) {
                         case (mo_untyped) {/* no-op */ }
                         case (mo_typed(?tcx)) {
-                            auto lty = ty::ann_to_type(tcx, loc.ann);
+                            auto lty = ty::ann_to_type(tcx, loc.node.ann);
                             word_space(s, ppaux::ty_to_str(tcx, lty));
                         }
                         case (mo_identified) {/* no-op */ }
                     }
                 }
             }
-            word(s.s, loc.ident);
-            alt (loc.init) {
+            word(s.s, loc.node.ident);
+            alt (loc.node.init) {
                 case (some(?init)) {
                     space(s.s);
                     alt (init.op) {

@@ -205,11 +205,11 @@ type local_ =
         def_id id,
         ann ann);
 
-type local = spanned[@local_];
+type local = spanned[local_];
 
 type decl = spanned[decl_];
 
-tag decl_ { decl_local(@local_); decl_item(@item); }
+tag decl_ { decl_local(@local); decl_item(@item); }
 
 type arm = rec(@pat pat, block block);
 

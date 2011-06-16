@@ -256,7 +256,7 @@ fn walk_decl(&ast_visitor v, @ast::decl d) {
     if (!v.keep_going()) { ret; }
     v.visit_decl_pre(d);
     alt (d.node) {
-        case (ast::decl_local(?loc)) { walk_local(v, @respan(d.span, loc)); }
+        case (ast::decl_local(?loc)) { walk_local(v, loc); }
         case (ast::decl_item(?it)) { walk_item(v, it); }
     }
     v.visit_decl_post(d);
