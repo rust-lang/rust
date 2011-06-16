@@ -264,9 +264,9 @@ fn print_type(&ps s, &ast::ty ty) {
 fn print_item(&ps s, &@ast::item item) {
     hardbreak(s.s);
     maybe_print_comment(s, item.span.lo);
+    print_outer_attributes(s, item.attrs);
     alt (item.node) {
         case (ast::item_const(?ty, ?expr)) {
-            print_outer_attributes(s, item.attrs);
             head(s, "const");
             print_type(s, *ty);
             space(s.s);
@@ -280,21 +280,19 @@ fn print_item(&ps s, &@ast::item item) {
 
         }
         case (ast::item_fn(?_fn, ?typarams)) {
-            print_outer_attributes(s, item.attrs);
             print_fn(s, _fn.decl, _fn.proto, item.ident, typarams);
             word(s.s, " ");
             print_block(s, _fn.body);
         }
         case (ast::item_mod(?_mod)) {
-            print_outer_attributes(s, item.attrs);
             head(s, "mod");
             word_nbsp(s, item.ident);
             bopen(s);
+            print_inner_attributes(s, item.attrs);
             for (@ast::item itm in _mod.items) { print_item(s, itm); }
             bclose(s, item.span);
         }
         case (ast::item_native_mod(?nmod)) {
-            print_outer_attributes(s, item.attrs);
             head(s, "native");
             alt (nmod.abi) {
                 case (ast::native_abi_rust) { word_nbsp(s, "\"rust\""); }
@@ -338,7 +336,6 @@ fn print_item(&ps s, &@ast::item item) {
             bclose(s, item.span);
         }
         case (ast::item_ty(?ty, ?params)) {
-            print_outer_attributes(s, item.attrs);
             ibox(s, indent_unit);
             ibox(s, 0u);
             word_nbsp(s, "type");
@@ -355,7 +352,6 @@ fn print_item(&ps s, &@ast::item item) {
             break_offset(s.s, 0u, 0);
         }
         case (ast::item_tag(?variants, ?params)) {
-            print_outer_attributes(s, item.attrs);
             head(s, "tag");
             word(s.s, item.ident);
             print_type_params(s, params);
@@ -379,7 +375,6 @@ fn print_item(&ps s, &@ast::item item) {
             bclose(s, item.span);
         }
         case (ast::item_obj(?_obj, ?params, _)) {
-            print_outer_attributes(s, item.attrs);
             head(s, "obj");
             word(s.s, item.ident);
             print_type_params(s, params);
@@ -433,6 +428,21 @@ fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
         alt (attr.node.style) {
             case (ast::attr_outer) { print_attribute(s, attr); count += 1; }
             case (_) {/* fallthrough */ }
+        }
+    }
+    if (count > 0) { hardbreak(s.s); }
+}
+
+fn print_inner_attributes(&ps s, vec[ast::attribute] attrs) {
+    auto count = 0;
+    for (ast::attribute attr in attrs) {
+        alt (attr.node.style) {
+            case (ast::attr_inner) {
+                print_attribute(s, attr);
+                word(s.s, ";");
+                count += 1;
+            }
+            case (_) { /* fallthrough */ }
         }
     }
     if (count > 0) { hardbreak(s.s); }
