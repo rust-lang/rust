@@ -3635,7 +3635,7 @@ An @code{if check} expression combines a @code{if} expression and a @code{check}
 expression in an indivisible unit that can be used to build more complex
 conditional control-flow than the @code{check} expression affords.
 
-In fact, @code{if check} is a ``more primitive'' expression @code{check};
+In fact, @code{if check} is a ``more primitive'' expression than @code{check};
 instances of the latter can be rewritten as instances of the former. The
 following two examples are equivalent:
 
