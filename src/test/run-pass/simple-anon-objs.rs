@@ -1,30 +1,29 @@
 use std;
 
 fn main() {
-    obj a() {
+    obj normal() {
         fn foo() -> int { ret 2; }
     }
-    auto my_a = a();
-    // Extending an object with a new method
+    auto my_normal_obj = normal();
 
-    auto my_b = obj { 
+    // Extending an object with a new method
+    auto my_anon_obj = obj { 
         fn bar() -> int { 
             ret 3;
         }
-        with my_a 
+        with my_normal_obj
     };
 
-    assert (my_a.foo() == 2);
-    assert (my_b.bar() == 3);
+    assert (my_normal_obj.foo() == 2);
+    assert (my_anon_obj.bar() == 3);
 
-    auto my_c = obj {
+    auto another_anon_obj = obj {
         fn baz() -> int {
             ret 4;
         }
-        with my_b
+        with my_anon_obj
     };
 
-    assert (my_c.baz() == 4);
+    assert (another_anon_obj.baz() == 4);
 
 }
-
