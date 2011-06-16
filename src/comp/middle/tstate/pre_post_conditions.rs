@@ -172,6 +172,52 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
     set_pre_and_post(fcx.ccx, a, loop_precond, loop_postcond);
 }
 
+// Generates a pre/post assuming that a is the 
+// annotation for an if-expression with consequent conseq
+// and alternative maybe_alt
+fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
+                  &option::t[@expr] maybe_alt, &ann a) {
+    auto num_local_vars = num_constraints(fcx.enclosing);
+    find_pre_post_block(fcx, conseq);
+    alt (maybe_alt) {
+        case (none) {
+            auto precond_res =
+                seq_preconds(fcx,
+                             [expr_pp(fcx.ccx, antec),
+                              block_pp(fcx.ccx, conseq)]);
+            set_pre_and_post(fcx.ccx, a, precond_res,
+                             expr_poststate(fcx.ccx, antec));
+        }
+        case (some(?altern)) {
+            find_pre_post_expr(fcx, altern);
+            auto precond_true_case =
+                seq_preconds(fcx,
+                             [expr_pp(fcx.ccx, antec),
+                              block_pp(fcx.ccx, conseq)]);
+            auto postcond_true_case =
+                union_postconds(num_local_vars,
+                                [expr_postcond(fcx.ccx, antec),
+                                 block_postcond(fcx.ccx, conseq)]);
+            auto precond_false_case =
+                seq_preconds(fcx,
+                             [expr_pp(fcx.ccx, antec),
+                              expr_pp(fcx.ccx, altern)]);
+            auto postcond_false_case =
+                union_postconds(num_local_vars,
+                                [expr_postcond(fcx.ccx, antec),
+                                 expr_postcond(fcx.ccx, altern)]);
+            auto precond_res =
+                union_postconds(num_local_vars,
+                                [precond_true_case,
+                                 precond_false_case]);
+            auto postcond_res =
+                intersect_postconds([postcond_true_case,
+                                     postcond_false_case]);
+            set_pre_and_post(fcx.ccx, a, precond_res, postcond_res);
+        }
+    }
+}
+
 fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, &ann larger_ann,
                 &ann new_var, &path pth) {
     alt (ann_to_def(fcx.ccx, new_var)) {
@@ -345,47 +391,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
             find_pre_post_expr(fcx, antec);
-            find_pre_post_block(fcx, conseq);
-            alt (maybe_alt) {
-                case (none) {
-                    log "333";
-                    auto precond_res =
-                        seq_preconds(fcx,
-                                     [expr_pp(fcx.ccx, antec),
-                                      block_pp(fcx.ccx, conseq)]);
-                    set_pre_and_post(fcx.ccx, a, precond_res,
-                                     expr_poststate(fcx.ccx, antec));
-                }
-                case (some(?altern)) {
-                    find_pre_post_expr(fcx, altern);
-                    log "444";
-                    auto precond_true_case =
-                        seq_preconds(fcx,
-                                     [expr_pp(fcx.ccx, antec),
-                                      block_pp(fcx.ccx, conseq)]);
-                    auto postcond_true_case =
-                        union_postconds(num_local_vars,
-                                        [expr_postcond(fcx.ccx, antec),
-                                         block_postcond(fcx.ccx, conseq)]);
-                    log "555";
-                    auto precond_false_case =
-                        seq_preconds(fcx,
-                                     [expr_pp(fcx.ccx, antec),
-                                      expr_pp(fcx.ccx, altern)]);
-                    auto postcond_false_case =
-                        union_postconds(num_local_vars,
-                                        [expr_postcond(fcx.ccx, antec),
-                                         expr_postcond(fcx.ccx, altern)]);
-                    auto precond_res =
-                        union_postconds(num_local_vars,
-                                        [precond_true_case,
-                                         precond_false_case]);
-                    auto postcond_res =
-                        intersect_postconds([postcond_true_case,
-                                             postcond_false_case]);
-                    set_pre_and_post(fcx.ccx, a, precond_res, postcond_res);
-                }
-            }
+            join_then_else(fcx, antec, conseq, maybe_alt, a);
         }
         case (expr_binary(?bop, ?l, ?r, ?a)) {
             /* *unless* bop is lazy (e.g. and, or)? 
@@ -484,9 +490,6 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             copy_pre_post(fcx.ccx, a, p);
         }
         case (expr_check(?p, ?a)) {
-            /* FIXME: Can we bypass this by having a
-             node-id-to-constr_occ table? */
-
             find_pre_post_expr(fcx, p);
             copy_pre_post(fcx.ccx, a, p);
             /* predicate p holds after this expression executes */
@@ -494,6 +497,19 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
             gen(fcx, a, c.node);
         }
+        case (expr_if_check(?p, ?conseq, ?maybe_alt, ?a)) {
+            find_pre_post_expr(fcx, p);
+            copy_pre_post(fcx.ccx, a, p);
+            /* the typestate for the whole expression */
+            join_then_else(fcx, p, conseq, maybe_alt, a);
+
+            /* predicate p holds inside the "thn" expression */
+            /* (so far, the negation of p does *not* hold inside
+             the "elsopt" expression) */
+            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+            gen(fcx, conseq.node.a, c.node);
+        }
+
         case (expr_bind(?operator, ?maybe_args, ?a)) {
             auto args = vec::cat_options[@expr](maybe_args);
             vec::push[@expr](args, operator); /* ??? order of eval? */

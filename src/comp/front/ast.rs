@@ -269,6 +269,9 @@ tag expr_ {
 
     /* preds that typestate is aware of */
     expr_check(@expr, ann);
+   /* FIXME Would be nice if expr_check desugared
+      to expr_if_check. */
+    expr_if_check(@expr, block, option::t[@expr], ann);
     expr_port(ann);
     expr_chan(@expr, ann);
     expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids, ann);

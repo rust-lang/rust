@@ -1453,6 +1453,68 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         auto typ = ty::mk_nil(fcx.ccx.tcx);
         write::ty_only_fixup(fcx, node_id, typ);
     }
+
+    // A generic function for checking the pred in a check
+    // or if-check
+    fn check_pred_expr(&@fn_ctxt fcx, &@ast::expr e) {
+        check_expr(fcx, e);
+        demand::simple(fcx, e.span, ty::mk_bool(fcx.ccx.tcx),
+                       expr_ty(fcx.ccx.tcx, e));
+        
+        /* e must be a call expr where all arguments are either
+           literals or slots */
+            alt (e.node) {
+                case (ast::expr_call(?operator, ?operands, _)) {
+                    alt (operator.node) {
+                        case (ast::expr_path(?oper_name, ?ann)) {
+                            auto d_id;
+                            alt (fcx.ccx.tcx.def_map.get(ann.id)) {
+                                case (ast::def_fn(?_d_id)) { d_id = _d_id; }
+                            }
+                            for (@ast::expr operand in operands) {
+                                if (!ast::is_constraint_arg(operand)) {
+                                    auto s = "Constraint args must be \
+                                              slot variables or literals";
+                                    fcx.ccx.tcx.sess.span_err(e.span, s);
+                                }
+                            }
+                            require_pure_function(fcx.ccx, d_id, e.span);
+                         }
+                        case (_) {
+                            auto s = "In a constraint, expected the \
+                                      constraint name to be an explicit name";
+                            fcx.ccx.tcx.sess.span_err(e.span,s);
+                        }
+                    }
+                }
+                case (_) {
+                    fcx.ccx.tcx.sess.span_err(e.span,
+                                              "check on non-predicate");
+                }
+            }
+    }
+
+    // A generic function for checking the then and else in an if
+    // or if-check
+    fn check_then_else(&@fn_ctxt fcx, &ast::block thn,
+                       &option::t[@ast::expr] elsopt, &ann a, &span sp) {
+        check_block(fcx, thn);
+        auto if_t =
+            alt (elsopt) {
+                    case (some(?els)) {
+                        check_expr(fcx, els);
+                        auto thn_t = block_ty(fcx.ccx.tcx, thn);
+                        auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
+                        demand::simple(fcx, sp, thn_t, elsopt_t);
+                        if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
+                            elsopt_t
+                                } else { thn_t }
+                    }
+                    case (none) { ty::mk_nil(fcx.ccx.tcx) }
+            };
+        write::ty_only_fixup(fcx, a.id, if_t);
+    }
+
     alt (expr.node) {
         case (ast::expr_lit(?lit, ?a)) {
             auto typ = check_lit(fcx.ccx, lit);
@@ -1586,42 +1648,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::nil_ty(fcx.ccx.tcx, a.id);
         }
         case (ast::expr_check(?e, ?a)) {
-            check_expr(fcx, e);
-            demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx),
-                           expr_ty(fcx.ccx.tcx, e));
-
-            /* e must be a call expr where all arguments are either
-             literals or slots */
-            alt (e.node) {
-                case (ast::expr_call(?operator, ?operands, _)) {
-                    alt (operator.node) {
-                        case (ast::expr_path(?oper_name, ?ann)) {
-                            auto d_id;
-                            alt (fcx.ccx.tcx.def_map.get(ann.id)) {
-                                case (ast::def_fn(?_d_id)) { d_id = _d_id; }
-                            }
-                            for (@ast::expr operand in operands) {
-                                if (!ast::is_constraint_arg(operand)) {
-                                    auto s = "Constraint args must be \
-                                              slot variables or literals";
-                                    fcx.ccx.tcx.sess.span_err(expr.span, s);
-                                }
-                            }
-                            require_pure_function(fcx.ccx, d_id, expr.span);
-                            write::nil_ty(fcx.ccx.tcx, a.id);
-                        }
-                        case (_) {
-                            auto s = "In a constraint, expected the \
-                                      constraint name to be an explicit name";
-                            fcx.ccx.tcx.sess.span_err(expr.span,s);
-                        }
-                    }
-                }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_err(expr.span,
-                                              "check on non-predicate");
-                }
-            }
+            check_pred_expr(fcx, e);
+            write::nil_ty(fcx.ccx.tcx, a.id);
+        }
+        case (ast::expr_if_check(?cond, ?thn, ?elsopt, ?a)) {
+            check_pred_expr(fcx, cond);
+            check_then_else(fcx, thn, elsopt, a, expr.span);
         }
         case (ast::expr_assert(?e, ?a)) {
             check_expr(fcx, e);
@@ -1676,21 +1708,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_if(?cond, ?thn, ?elsopt, ?a)) {
             check_expr(fcx, cond);
-            check_block(fcx, thn);
-            auto if_t =
-                alt (elsopt) {
-                    case (some(?els)) {
-                        check_expr(fcx, els);
-                        auto thn_t = block_ty(fcx.ccx.tcx, thn);
-                        auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
-                        demand::simple(fcx, expr.span, thn_t, elsopt_t);
-                        if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
-                            elsopt_t
-                        } else { thn_t }
-                    }
-                    case (none) { ty::mk_nil(fcx.ccx.tcx) }
-                };
-            write::ty_only_fixup(fcx, a.id, if_t);
+            check_then_else(fcx, thn, elsopt, a, expr.span);
         }
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {
             check_expr(fcx, seq);

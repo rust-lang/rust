@@ -1,5 +1,5 @@
 // xfail-stage0
-
+// error-pattern:Number is odd
 pred even(uint x) -> bool {
   if (x < 2) {
     ret false;
@@ -17,10 +17,10 @@ fn foo(uint x) -> () {
       log x;
     }
   else {
-    fail;
+    fail "Number is odd";
   }
 }
 
 fn main() {
-  foo(2u);
+  foo(3u);
 }

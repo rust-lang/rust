@@ -310,6 +310,12 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_block(v, b);
             walk_expr_opt(v, eo);
         }
+        case (ast::expr_if_check(?x, ?b, ?eo, _)) {
+            walk_expr(v, x);
+            walk_block(v, b);
+            walk_expr_opt(v, eo);
+        }
+        
         case (ast::expr_while(?x, ?b, _)) {
             walk_expr(v, x);
             walk_block(v, b);

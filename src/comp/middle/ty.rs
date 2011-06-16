@@ -1519,6 +1519,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_lit(_, ?a)) { ret a; }
         case (ast::expr_cast(_, _, ?a)) { ret a; }
         case (ast::expr_if(_, _, _, ?a)) { ret a; }
+        case (ast::expr_if_check(_, _, _, ?a)) { ret a; }
         case (ast::expr_while(_, _, ?a)) { ret a; }
         case (ast::expr_for(_, _, _, ?a)) { ret a; }
         case (ast::expr_for_each(_, _, _, ?a)) { ret a; }

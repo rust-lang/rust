@@ -37,6 +37,9 @@ fn collect_pred(&ctxt cx, &@expr e) {
         case (expr_check(?e, _)) {
             vec::push(*cx.cs, expr_to_constr(cx.tcx, e));
         }
+        case (expr_if_check(?e, _, _, _)) {
+            vec::push(*cx.cs, expr_to_constr(cx.tcx, e));
+        }
         // If it's a call, generate appropriate instances of the
         // call's constraints.
         case (expr_call(?operator, ?operands, ?a)) {

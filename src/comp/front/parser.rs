@@ -1187,7 +1187,9 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
     ret lhs;
 }
 
-fn parse_if_expr(&parser p) -> @ast::expr {
+fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
+                                     ast::block, option::t[@ast::expr],
+                                     ast::ann, uint, uint) {
     auto lo = p.get_last_lo_pos();
     expect(p, token::LPAREN);
     auto cond = parse_expr(p);
@@ -1200,7 +1202,20 @@ fn parse_if_expr(&parser p) -> @ast::expr {
         els = some(elexpr);
         hi = elexpr.span.hi;
     }
-    ret @spanned(lo, hi, ast::expr_if(cond, thn, els, p.get_ann()));
+    ret tup(cond, thn, els, p.get_ann(), lo, hi);
+}
+
+fn parse_if_expr(&parser p) -> @ast::expr {
+    auto lo = p.get_last_lo_pos();
+    if (eat_word(p, "check")) {
+            auto q = parse_if_expr_1(p);
+            ret @spanned(q._4, q._5,
+                         ast::expr_if_check(q._0, q._1, q._2, q._3));
+    }
+    else {
+        auto q = parse_if_expr_1(p);
+        ret @spanned(q._4, q._5, ast::expr_if(q._0, q._1, q._2, q._3));
+    }
 }
 
 fn parse_fn_expr(&parser p) -> @ast::expr {

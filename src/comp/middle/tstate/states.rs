@@ -129,6 +129,38 @@ fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a, &path p) -> bool {
     }
 }
 
+fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
+                  &option::t[@expr] maybe_alt, &ann a) -> bool {
+    auto changed = false;
+
+    changed =
+        find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
+                                  conseq) || changed;
+    alt (maybe_alt) {
+        case (none) {
+            changed =
+                extend_poststate_ann(fcx.ccx, a,
+                                     expr_poststate(fcx.ccx, antec))
+                || changed;
+        }
+        case (some(?altern)) {
+            changed =
+                find_pre_post_state_expr(fcx,
+                                         expr_poststate(fcx.ccx,
+                                                        antec),
+                                         altern) || changed;
+            auto poststate_res =
+                intersect_postconds([block_poststate(fcx.ccx, conseq),
+                                     expr_poststate(fcx.ccx,
+                                                    altern)]);
+            changed =
+                extend_poststate_ann(fcx.ccx, a, poststate_res) ||
+                changed;
+        }
+    }
+    ret changed;
+}
+
 fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     auto changed = false;
     auto num_local_vars = num_constraints(fcx.enclosing);
@@ -407,37 +439,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
             changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, antec) || changed;
-            changed =
-                find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
-                                          conseq) || changed;
-            alt (maybe_alt) {
-                case (none) {
-                    changed =
-                        extend_poststate_ann(fcx.ccx, a,
-                                             expr_poststate(fcx.ccx, antec))
-                            || changed;
-                }
-                case (some(?altern)) {
-                    changed =
-                        find_pre_post_state_expr(fcx,
-                                                 expr_poststate(fcx.ccx,
-                                                                antec),
-                                                 altern) || changed;
-                    auto poststate_res =
-                        intersect_postconds([block_poststate(fcx.ccx, conseq),
-                                             expr_poststate(fcx.ccx,
-                                                            altern)]);
-                    changed =
-                        extend_poststate_ann(fcx.ccx, a, poststate_res) ||
-                            changed;
-                }
-            }
-            log "if:";
-            log_expr(*e);
-            log "new prestate:";
-            log_bitv(fcx, pres);
-            log "new poststate:";
-            log_bitv(fcx, expr_poststate(fcx.ccx, e));
+            changed = join_then_else(fcx, antec, conseq, maybe_alt, a)
+                || changed;
+
             ret changed;
         }
         case (expr_binary(?bop, ?l, ?r, ?a)) {
@@ -611,6 +615,16 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
             let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
             changed = gen_poststate(fcx, a, c.node) || changed;
+            ret changed;
+        }
+        case (expr_if_check(?p, ?conseq, ?maybe_alt, ?a)) {
+            changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+            changed = find_pre_post_state_expr(fcx, pres, p) || changed;
+            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+            changed = gen_poststate(fcx, expr_ann(p), c.node) || changed;
+            
+            changed = join_then_else(fcx, p, conseq, maybe_alt, a)
+                || changed;
             ret changed;
         }
         case (expr_break(?a)) { ret pure_exp(fcx.ccx, a, pres); }

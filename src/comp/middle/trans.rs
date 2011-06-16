@@ -5516,6 +5516,10 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _), cx,
                                 ann, output);
         }
+        case (ast::expr_if_check(?cond, ?thn, ?els, ?ann)) {
+            ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _), cx,
+                                ann, output);
+        }
         case (ast::expr_for(?decl, ?seq, ?body, _)) {
             ret trans_for(cx, decl, seq, body);
         }
@@ -5689,7 +5693,8 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         }
         case (_) {
             // The expression is an lvalue. Fall through.
-
+            assert (ty::is_lval(e)); // make sure it really is and that we 
+                               // didn't forget to add a case for a new expr!
         }
     }
     // lval cases fall through to trans_lval and then
