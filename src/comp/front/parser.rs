@@ -1806,7 +1806,12 @@ fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
 
 fn parse_mod_items(&parser p, token::token term,
                    vec[ast::attribute] first_item_attrs) -> ast::_mod {
-    auto view_items = parse_view(p);
+    auto view_items = if (vec::len(first_item_attrs) == 0u) {
+        parse_view(p)
+    } else {
+        // Shouldn't be any view items since we've already parsed an item attr
+        []
+    };
     let vec[@ast::item] items = [];
     auto initial_attrs = first_item_attrs;
     while (p.peek() != term) {
