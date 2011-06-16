@@ -142,11 +142,23 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
 
 fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
     alt (t.node) {
-        case (ty_box(?mt)) { vt(v).visit_ty(mt.ty, e, v); }
-        case (ty_vec(?mt)) { vt(v).visit_ty(mt.ty, e, v); }
-        case (ty_ptr(?mt)) { vt(v).visit_ty(mt.ty, e, v); }
-        case (ty_port(?t)) { vt(v).visit_ty(t, e, v); }
-        case (ty_chan(?t)) { vt(v).visit_ty(t, e, v); }
+        case (ty_nil)           { /* no-op */ }
+        case (ty_bot)           { /* no-op */ }
+        case (ty_bool)          { /* no-op */ }
+        case (ty_int)           { /* no-op */ }
+        case (ty_float)         { /* no-op */ }
+        case (ty_uint)          { /* no-op */ }
+        case (ty_machine(_))    { /* no-op */ }
+        case (ty_char)          { /* no-op */ }
+        case (ty_str)           { /* no-op */ }
+        case (ty_istr)          { /* no-op */ }
+        case (ty_box(?mt))      { vt(v).visit_ty(mt.ty, e, v); }
+        case (ty_vec(?mt))      { vt(v).visit_ty(mt.ty, e, v); }
+        case (ty_ivec(?mt))     { vt(v).visit_ty(mt.ty, e, v); }
+        case (ty_ptr(?mt))      { vt(v).visit_ty(mt.ty, e, v); }
+        case (ty_port(?t))      { vt(v).visit_ty(t, e, v); }
+        case (ty_chan(?t))      { vt(v).visit_ty(t, e, v); }
+        case (ty_task)          { /* no-op */ }
         case (ty_tup(?mts)) {
             for (mt mt in mts) { vt(v).visit_ty(mt.ty, e, v); }
         }
@@ -169,8 +181,8 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
         case (ty_path(?p, _)) {
             for (@ty tp in p.node.types) { vt(v).visit_ty(tp, e, v); }
         }
+        case (ty_type)          { /* no-op */ }
         case (ty_constr(?t, _)) { vt(v).visit_ty(t, e, v); }
-        case (_) { }
     }
 }
 
