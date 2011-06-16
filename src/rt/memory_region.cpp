@@ -21,6 +21,7 @@ memory_region::memory_region(memory_region *parent) :
 
 void memory_region::free(void *mem) {
     // printf("free: ptr 0x%" PRIxPTR"\n", (uintptr_t) mem);
+    if (!mem) { return; }
     if (_synchronized) { _lock.lock(); }
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list.replace(mem, NULL) == false) {
