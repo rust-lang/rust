@@ -418,7 +418,12 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
 
         auto mut;
         if (eat_word(p, "mutable")) {
-            mut = ast::mut;
+            if (p.peek() == token::QUES) {
+                p.bump();
+                mut = ast::maybe_mut;
+            } else {
+                mut = ast::mut;
+            }
         } else {
             mut = ast::imm;
         }
