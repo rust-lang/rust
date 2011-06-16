@@ -423,6 +423,26 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
             mut = ast::imm;
         }
 
+        if (mut == ast::imm && p.peek() != token::RBRACKET) {
+            // This is explicit type parameter instantiation.
+            auto seq = parse_seq_to_end(token::RBRACKET, some(token::COMMA),
+                                        parse_ty, p);
+            alt (orig_t.node) {
+                case (ast::ty_path(?pth, ?ann)) {
+                    auto hi = p.get_hi_pos();
+                    ret @spanned(lo, hi,
+                                 ast::ty_path(spanned(lo, hi,
+                                              rec(idents=pth.node.idents,
+                                                  types=seq)),
+                                              ann));
+                }
+                case (_) {
+                    p.err("type parameter instantiation only allowed for " +
+                          "paths");
+                }
+            }
+        }
+
         expect(p, token::RBRACKET);
         auto hi = p.get_hi_pos();
         auto t = ast::ty_ivec(rec(ty=orig_t, mut=mut));
@@ -634,16 +654,6 @@ fn is_ident(token::token t) -> bool {
     ret false;
 }
 
-fn parse_ty_args(&parser p, uint hi) -> util::common::spanned[vec[@ast::ty]] {
-    if (p.peek() == token::LBRACKET) {
-        ret parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
-                      parse_ty, p);
-    }
-    let vec[@ast::ty] v = [];
-    auto pos = p.get_lo_pos();
-    ret spanned(hi, hi, v);
-}
-
 fn parse_path(&parser p) -> ast::path {
     auto lo = p.get_lo_pos();
     auto hi = lo;
@@ -659,8 +669,20 @@ fn parse_path(&parser p) -> ast::path {
             case (_) { break; }
         }
     }
-    auto tys = parse_ty_args(p, hi);
-    ret spanned(lo, tys.span.hi, rec(idents=ids, types=tys.node));
+    hi = p.get_hi_pos();
+    ret spanned(lo, hi, rec(idents=ids, types=[]));
+}
+
+fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
+    auto lo = p.get_lo_pos();
+    auto path = parse_path(p);
+    if (p.peek() == token::LBRACKET) {
+        auto seq = parse_seq(token::LBRACKET, token::RBRACKET,
+                             some(token::COMMA), parse_ty, p);
+        auto hi = p.get_hi_pos();
+        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq.node));
+    }
+    ret path;
 }
 
 fn parse_mutability(&parser p) -> ast::mutability {
@@ -919,7 +941,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (is_ident(p.peek()) && !is_word(p, "true") &&
                    !is_word(p, "false")) {
         check_bad_word(p);
-        auto pth = parse_path(p);
+        auto pth = parse_path_and_ty_param_substs(p);
         hi = pth.span.hi;
         ex = ast::expr_path(pth, p.get_ann());
     } else {
@@ -1396,7 +1418,7 @@ fn parse_pat(&parser p) -> @ast::pat {
                 hi = lit.span.hi;
                 pat = ast::pat_lit(@lit, p.get_ann());
             } else {
-                auto tag_path = parse_path(p);
+                auto tag_path = parse_path_and_ty_param_substs(p);
                 hi = tag_path.span.hi;
                 let vec[@ast::pat] args;
                 alt (p.peek()) {
