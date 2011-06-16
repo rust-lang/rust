@@ -67,11 +67,11 @@ CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
 CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
 CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
  $(if $(findstring stage0,$(1)),         \
-       stage1,                           \
+       stage0,                           \
       $(if $(findstring stage1,$(1)),    \
-           stage2,                       \
+           stage1,                       \
           $(if $(findstring stage2,$(1)),\
-               stage3,                   \
+               stage2,                   \
                ))))
 
 ifdef CFG_WINDOWSY
