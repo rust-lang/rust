@@ -576,6 +576,37 @@ get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
 }
 #endif
 
+/**
+ * Preallocates the exact number of bytes in the given interior vector.
+ */
+extern "C" void
+ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
+{
+    size_t new_alloc = n_elems * ty->size;
+    if (new_alloc <= v->alloc)
+        return;     // Already big enough.
+
+    rust_ivec_heap *heap_part;
+    if (v->fill) {
+        // On stack; spill to heap.
+        heap_part = (rust_ivec_heap *)task->malloc(new_alloc +
+                                                   sizeof(size_t));
+        heap_part->fill = v->fill;
+        memcpy(&heap_part->data, v->payload.data, v->fill);
+
+        v->fill = 0;
+        v->payload.ptr = heap_part;
+    } else {
+        // On heap; resize.
+        heap_part = (rust_ivec_heap *)task->realloc(v->payload.ptr,
+                                                    new_alloc);
+        v->payload.ptr = heap_part;
+    }
+
+    v->alloc = new_alloc;
+}
+
+
 //
 // Local Variables:
 // mode: C++
