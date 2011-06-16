@@ -201,6 +201,12 @@ fn print_type(&ps s, &ast::ty ty) {
             print_mt(s, mt);
             word(s.s, "]");
         }
+        case (ast::ty_ivec(?mt)) {
+            print_type(s, *mt.ty);
+            word(s.s, "[");
+            print_mutability(s, mt.mut);
+            word(s.s, "]");
+        }
         case (ast::ty_port(?t)) {
             word(s.s, "port[");
             print_type(s, *t);
