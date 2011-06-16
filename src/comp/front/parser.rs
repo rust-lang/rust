@@ -411,6 +411,26 @@ fn parse_ty_constrs(@ast::ty t, &parser p) -> @ast::ty {
     ret t;
 }
 
+fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
+    auto lo = p.get_lo_pos();
+    if (p.peek() == token::LBRACKET) {
+        p.bump();
+
+        auto mut;
+        if (eat_word(p, "mutable")) {
+            mut = ast::mut;
+        } else {
+            mut = ast::imm;
+        }
+
+        expect(p, token::RBRACKET);
+        auto hi = p.get_hi_pos();
+        auto t = ast::ty_ivec(rec(ty=orig_t, mut=mut));
+        ret parse_ty_postfix(@spanned(lo, hi, t), p);
+    }
+    ret parse_ty_constrs(orig_t, p);
+}
+
 fn parse_ty_or_bang(&parser p) -> ty_or_bang {
     alt (p.peek()) {
         case (token::NOT) { p.bump(); ret a_bang[@ast::ty]; }
@@ -522,11 +542,6 @@ fn parse_ty(&parser p) -> @ast::ty {
         t = ast::ty_chan(parse_ty(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
-    } else if (eat_word(p, "ivec")) {
-        expect(p, token::LBRACKET);
-        t = ast::ty_ivec(parse_mt(p));
-        hi = p.get_hi_pos();
-        expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {
         p.get_session().span_warn(p.get_span(),
                                   "ignoring deprecated 'mutable'"
@@ -539,7 +554,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         t = ast::ty_path(path, p.get_ann());
         hi = path.span.hi;
     } else { p.err("expecting type"); t = ast::ty_nil; fail; }
-    ret parse_ty_constrs(@spanned(lo, hi, t), p);
+    ret parse_ty_postfix(@spanned(lo, hi, t), p);
 }
 
 fn parse_arg(&parser p) -> ast::arg {
