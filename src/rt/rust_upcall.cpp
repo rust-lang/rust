@@ -195,27 +195,6 @@ upcall_sleep(rust_task *task, size_t time_in_us) {
     task->yield(2, time_in_us);
 }
 
-extern "C" CDECL void
-upcall_join(rust_task *task, maybe_proxy<rust_task> *target) {
-    LOG_UPCALL_ENTRY(task);
-
-    if (target->is_proxy()) {
-        rust_handle<rust_task> *task_handle = target->as_proxy()->handle();
-        notify_message::send(notify_message::JOIN, "join",
-                             task->get_handle(), task_handle);
-        task->block(task_handle, "joining remote task");
-        task->yield(2);
-    } else {
-        rust_task *target_task = target->referent();
-        // If the other task is already dying, we don't have to wait for it.
-        if (target_task->dead() == false) {
-            target_task->tasks_waiting_to_join.push(task);
-            task->block(target_task, "joining local task");
-            task->yield(2);
-        }
-    }
-}
-
 /**
  * Buffers a chunk of data in the specified channel.
  *
