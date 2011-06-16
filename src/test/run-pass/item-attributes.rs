@@ -1,5 +1,11 @@
 // xfail-stage0
 
+// These are are attributes of the following mod
+#[attr1 = "val"]
+#[attr2 = "val"]
+mod test_first_item_in_file_mod {
+}
+
 mod test_single_attr_outer {
 
     #[attr = "val"]
