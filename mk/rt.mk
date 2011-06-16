@@ -30,7 +30,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/test/rust_test_util.cpp \
               rt/arch/i386/context.cpp \
 
-RUNTIME_LL := rt/vec_append.ll
+RUNTIME_LL :=
 
 RUNTIME_S := rt/arch/i386/_context.s
 
