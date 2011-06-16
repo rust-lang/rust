@@ -182,23 +182,21 @@ compile-check: tidy \
 # Testing rules
 ######################################################################
 
-%.stage0$(X): %.stage0.o  $(SREQ0)
-	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o -o $@ $< \
-      -Lstage1 -Lrt rt/main.o -lrustrt -lstd -lm
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
+%.stage0$(X): %.rs $(SREQ0)
+	@$(call E, compile_and_link: $@)
+	$(STAGE0) -o $@ $<
 
-%.stage1$(X): %.stage1.o $(SREQ1)
-	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o -o $@ $< \
-      -Lstage2 -Lrt rt/main.o -lrustrt -lstd -lm
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
+%.stage0$(X): %.rc $(SREQ0)
+	@$(call E, compile_and_link: $@)
+	$(STAGE0) -o $@ $<
+
+%.stage1$(X): %.rs $(SREQ1)
+	@$(call E, compile_and_link: $@)
+	$(STAGE1) -o $@ $<
+
+%.stage1$(X): %.rc $(SREQ1)
+	@$(call E, compile_and_link: $@)
+	$(STAGE1) -o $@ $<
 
 %.stage2$(X): %.rs $(SREQ2)
 	@$(call E, compile_and_link: $@)
@@ -207,23 +205,6 @@ compile-check: tidy \
 %.stage2$(X): %.rc $(SREQ2)
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -o $@ $<
-
-%.stage0.o: %.rc $(SREQ0)
-	@$(call E, compile [stage0]: $@)
-	$(STAGE0) -c -o $@ $<
-
-%.stage0.o: %.rs $(SREQ0)
-	@$(call E, compile [stage0]: $@)
-	$(STAGE0) -c -o $@ $<
-
-
-%.stage1.o: %.rc $(SREQ1)
-	@$(call E, compile [stage1]: $@)
-	$(STAGE1) -c -o $@ $<
-
-%.stage1.o: %.rs $(SREQ1)
-	@$(call E, compile [stage1]: $@)
-	$(STAGE1) -c -o $@ $<
 
 # Cancel the implicit .out rule in GNU make.
 %.out: %
