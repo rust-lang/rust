@@ -2285,13 +2285,14 @@ fn parse_native_view(&parser p) -> vec[@ast::view_item] {
 
 fn parse_crate_from_source_file(&parser p) -> @ast::crate {
     auto lo = p.get_lo_pos();
-    // FIXME (issue #487): Do something with these attrs
     auto crate_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = crate_attrs._1;
     auto m = parse_mod_items(p, token::EOF,
                              first_item_outer_attrs);
     let vec[@ast::crate_directive] cdirs = [];
-    ret @spanned(lo, p.get_lo_pos(), rec(directives=cdirs, module=m));
+    ret @spanned(lo, p.get_lo_pos(), rec(directives=cdirs,
+                                         module=m,
+                                         attrs=crate_attrs._0));
 }
 
 
@@ -2381,8 +2382,7 @@ fn parse_crate_directives(&parser p, token::token term) ->
 fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
-    // FIXME (issue #487): Do something with these attrs
-    auto attrs = parse_inner_attrs(p);
+    auto crate_attrs = parse_inner_attrs(p);
     auto cdirs = parse_crate_directives(p, token::EOF);
     let vec[str] deps = [];
     auto cx =
@@ -2396,7 +2396,9 @@ fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
         eval::eval_crate_directives_to_mod(cx, p.get_env(), cdirs, prefix);
     auto hi = p.get_hi_pos();
     expect(p, token::EOF);
-    ret @spanned(lo, hi, rec(directives=cdirs, module=m));
+    ret @spanned(lo, hi, rec(directives=cdirs,
+                             module=m,
+                             attrs=crate_attrs));
 }
 //
 // Local Variables:

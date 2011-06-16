@@ -27,8 +27,8 @@ import pp::inconsistent;
 import pp::eof;
 import ppaux::*;
 
-fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
-              mode mode) {
+fn print_crate(session sess, @ast::crate crate, str filename,
+               io::writer out, mode mode) {
     let vec[pp::breaks] boxes = [];
     auto r = lexer::gather_comments_and_literals(sess, filename);
     auto s =
@@ -40,7 +40,8 @@ fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
              mutable cur_lit=0u,
              mutable boxes=boxes,
              mode=mode);
-    print_mod(s, _mod);
+    print_inner_attributes(s, crate.node.attrs);
+    print_mod(s, crate.node.module);
     eof(s.s);
 }
 

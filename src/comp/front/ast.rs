@@ -76,7 +76,9 @@ fn def_id_of_def(def d) -> def_id {
 
 type crate = spanned[crate_];
 
-type crate_ = rec(vec[@crate_directive] directives, _mod module);
+type crate_ = rec(vec[@crate_directive] directives,
+                  _mod module,
+                  vec[attribute] attrs);
 
 tag meta_visibility { export_meta; local_meta; }
 

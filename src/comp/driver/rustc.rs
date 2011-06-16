@@ -117,8 +117,8 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
         case (ppm_normal) { mode = ppaux::mo_untyped; }
         case (ppm_identified) { mode = ppaux::mo_identified; }
     }
-    pprust::print_file(sess, crate.node.module, input, std::io::stdout(),
-                       mode);
+    pprust::print_crate(sess, crate, input, std::io::stdout(),
+                        mode);
 }
 
 fn version(str argv0) {
