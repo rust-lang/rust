@@ -1,6 +1,6 @@
 stage3/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage3/rustc$(X) stage2/$(CFG_STDLIB) stage3/intrinsics.bc \
-              $(LREQ) $(MKFILES)
+              stage3/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
 	$(STAGE3)  --shared -o $@ $<
 
