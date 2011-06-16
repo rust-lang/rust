@@ -5,6 +5,9 @@ import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
+import std::either;
+import std::either::left;
+import std::either::right;
 import std::map::hashmap;
 import driver::session;
 import util::common;
@@ -816,14 +819,9 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         hi = es.span.hi;
         ex = ast::expr_bind(e, es.node, p.get_ann());
     } else if (p.peek() == token::POUND) {
-        p.bump();
-        auto pth = parse_path(p);
-        auto es =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_expr, p);
-        hi = es.span.hi;
-        auto ext_span = rec(lo=lo, hi=hi);
-        ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
+        auto ex_ext = parse_syntax_ext(p);
+        lo = ex_ext.span.lo;
+        ex = ex_ext.node;
     } else if (eat_word(p, "fail")) {
         auto msg;
         alt (p.peek()) {
@@ -917,6 +915,21 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     ret @spanned(lo, hi, ex);
 }
 
+fn parse_syntax_ext(&parser p) -> @ast::expr {
+    auto lo = p.get_lo_pos();
+    expect(p, token::POUND);
+    ret parse_syntax_ext_inner(p, lo);
+}
+
+fn parse_syntax_ext_inner(&parser p, uint lo) -> @ast::expr {
+    auto pth = parse_path(p);
+    auto es = parse_seq(token::LPAREN, token::RPAREN,
+                        some(token::COMMA), parse_expr, p);
+    auto hi = es.span.hi;
+    auto ext_span = rec(lo=lo, hi=hi);
+    auto ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
+    ret @spanned(lo, hi, ex);
+}
 
 /*
  * FIXME: This is a crude approximation of the syntax-extension system,
@@ -1423,7 +1436,22 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
         auto hi = p.get_span();
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_ann()));
     } else {
-        alt (parse_item(p, [])) {
+
+        auto item_attrs;
+        alt (parse_attrs_or_ext(p)) {
+            case (none) {
+                item_attrs = [];
+            }
+            case (some(left(?attrs))) {
+                item_attrs = attrs;
+            }
+            case (some(right(?ext))) {
+                ret @spanned(lo, ext.span.hi,
+                             ast::stmt_expr(ext, p.get_ann()));
+            }
+        }
+
+        alt (parse_item(p, item_attrs)) {
             case (got_item(?i)) {
                 auto hi = i.span.hi;
                 auto decl = @spanned(lo, hi, ast::decl_item(i));
@@ -1936,6 +1964,26 @@ fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
     } else { ret no_item; }
 }
 
+// A type to distingush between the parsing of item attributes or syntax
+// extensions, which both begin with token.POUND
+type attr_or_ext = option::t[either::t[vec[ast::attribute],
+                                       @ast::expr]];
+
+fn parse_attrs_or_ext(&parser p) -> attr_or_ext {
+    if (p.peek() == token::POUND) {
+        auto lo = p.get_lo_pos();
+        p.bump();
+        if (p.peek() == token::LBRACKET) {
+            auto first_attr = parse_attribute_inner(p, lo);
+            ret some(left([first_attr] + parse_attributes(p)));
+        } else {
+            ret some(right(parse_syntax_ext_inner(p, lo)));
+        }
+    } else {
+        ret none;
+    }
+}
+
 fn parse_attributes(&parser p) -> vec[ast::attribute] {
     let vec[ast::attribute] attrs = [];
     while (p.peek() == token::POUND) { attrs += [parse_attribute(p)]; }
@@ -1945,6 +1993,10 @@ fn parse_attributes(&parser p) -> vec[ast::attribute] {
 fn parse_attribute(&parser p) -> ast::attribute {
     auto lo = p.get_lo_pos();
     expect(p, token::POUND);
+    ret parse_attribute_inner(p, lo);
+}
+
+fn parse_attribute_inner(&parser p, uint lo) -> ast::attribute {
     expect(p, token::LBRACKET);
     auto meta_item = parse_meta_item(p);
     expect(p, token::RBRACKET);
@@ -2181,13 +2233,7 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
         auto hi = p.get_hi_pos();
         expect(p, token::RBRACE);
         ret spanned(lo, hi, ast::cdir_let(id, x, v));
-    } else if (is_word(p, "use")) {
-        auto vi = parse_view_item(p);
-        ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
-    } else if (is_word(p, "import")) {
-        auto vi = parse_view_item(p);
-        ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
-    } else if (is_word(p, "export")) {
+    } else if (is_view_item(p)) {
         auto vi = parse_view_item(p);
         ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
     } else {

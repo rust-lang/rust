@@ -81,10 +81,10 @@ fn compile_input(session::session sess, eval::env env, str input,
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
-    auto def_map =
+    auto d =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, crate));
-    auto ty_cx = ty::mk_ctxt(sess, def_map);
+    auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
     time[()](time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
     if (sess.get_opts().run_typestate) {
@@ -92,7 +92,7 @@ fn compile_input(session::session sess, eval::env env, str input,
              bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
     time(time_passes, "alias checking",
-         bind middle::alias::check_crate(@ty_cx, def_map, crate));
+         bind middle::alias::check_crate(@ty_cx, crate));
     auto llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
                                     bind trans::trans_crate(sess, crate,
@@ -109,8 +109,8 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
     auto mode;
     alt (ppm) {
         case (ppm_typed) {
-            auto def_map = resolve::resolve_crate(sess, crate);
-            auto ty_cx = ty::mk_ctxt(sess, def_map);
+            auto d = resolve::resolve_crate(sess, crate);
+            auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
             typeck::check_crate(ty_cx, crate);
             mode = ppaux::mo_typed(ty_cx);
         }
@@ -399,37 +399,34 @@ fn main(vec[str] args) {
         let str prog = "gcc";
         // The invocations of gcc share some flags across platforms
 
-        let vec[str] common_cflags =
-            ["-fno-strict-aliasing", "-fPIC", "-Wall", "-fno-rtti",
-             "-fno-exceptions", "-g"];
-        let vec[str] common_libs =
-            [stage, "-Lrustllvm", "-Lrt", "-lrustrt", "-lrustllvm", "-lstd",
-             "-lm"];
+        let vec[str] common_args = [stage, "-Lrt", "-lrustrt",
+         "-fno-strict-aliasing", "-fPIC", "-Wall",
+         "-fno-rtti", "-fno-exceptions", "-g", glu, "-o",
+         saved_out_filename, saved_out_filename + ".o"];
+
+       auto shared_cmd;
+
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
-                gcc_args =
-                    common_cflags +
-                        ["-march=i686", "-O2", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-shared";
+                gcc_args = common_args + ["-march=i686", "-O2"];
             }
             case (session::os_macos) {
-                gcc_args =
-                    common_cflags +
-                        ["-arch i386", "-O0", "-m32", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-dynamiclib";
+                gcc_args = common_args + ["-arch i386", "-O0", "-m32"];
             }
             case (session::os_linux) {
-                gcc_args =
-                    common_cflags +
-                        ["-march=i686", "-O2", "-m32", glu, main, "-o",
-                         saved_out_filename, saved_out_filename + ".o"] +
-                        common_libs;
+                shared_cmd = "-shared";
+                gcc_args = common_args + ["-march=i686", "-O2", "-m32"];
             }
         }
-        // We run 'gcc' here
+        if (sopts.shared) {
+           gcc_args += [shared_cmd];
+        } else {
+           gcc_args += ["-Lrustllvm", "-lrustllvm", "-lstd", "-lm", main];
+        }
 
+        // We run 'gcc' here
         run::run_program(prog, gcc_args);
         // Clean up on Darwin
 

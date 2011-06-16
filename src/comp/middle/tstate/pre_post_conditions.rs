@@ -208,38 +208,16 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             auto args = vec::clone[@expr](operands);
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
-            /* should test higher-order constrained functions */
-
-            /* FIXME */
-
-            /* see if the call has any constraints on its in type */
-
-            log "a function: ";
+            /* see if the call has any constraints on its type */
+            log("a function: " );
             log_expr(*operator);
             auto pp = expr_pp(fcx.ccx, e);
-            for (@constr c in constraints_expr(fcx.ccx.tcx, operator)) {
-                auto id = ann_to_def(fcx.ccx, c.node.ann);
-                alt (id) {
-                    case (some(def_fn(?d_id))) {
-                        auto i =
-                            bit_num(fcx,
-                                    rec(id=d_id,
-                                        c=substitute_constr_args(fcx.ccx.tcx,
-                                                                 operands,
-                                                                 c)));
-                        require(i, pp);
-                    }
-                    case (_) {
-                        fcx.ccx.tcx.sess.span_err(c.span,
-                                                  "Unbound pred " +
-                                                      " or pred that's not \
-                                                        bound to a function");
-                    }
-                }
+            for (@ty::constr_def c in 
+                     constraints_expr(fcx.ccx.tcx, operator)) {
+                auto i = bit_num(fcx, rec(id=c.node.id,
+                  c=substitute_constr_args(fcx.ccx.tcx, operands, c)));
+                require(i, pp);
             }
-
-            // FIXME: constraints on result type
-
             /* if this is a failing call, its postcondition sets everything */
             alt (controlflow_expr(fcx.ccx, operator)) {
                 case (noreturn) { set_postcond_false(fcx.ccx, a); }

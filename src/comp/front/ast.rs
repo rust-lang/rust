@@ -359,19 +359,17 @@ tag constr_arg_general_[T] { carg_base; carg_ident(T); carg_lit(@lit); }
 
 type constr_arg = constr_arg_general[uint];
 
-type constr_arg_use = constr_arg_general[ident];
-
 type constr_arg_general[T] = spanned[constr_arg_general_[T]];
 
+type constr_ = rec(path path,
+                   vec[@constr_arg_general[uint]] args,
+                   ann ann);
 
-// The ann field is there so that using the def_map in the type
-// context, we can get the def_id for the path.
-type constr_general[T] =
-    rec(path path, vec[@constr_arg_general[T]] args, ann ann);
+type constr = spanned[constr_];
 
-type constr = spanned[constr_general[uint]];
-
-type constr_use = spanned[constr_general[ident]];
+/* The parser generates ast::constrs; resolve generates
+ a mapping from each function to a list of ty::constr_defs,
+ corresponding to these. */
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 

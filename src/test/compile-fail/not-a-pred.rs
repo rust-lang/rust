@@ -1,6 +1,6 @@
 // -*- rust -*-
-
-// error-pattern: mismatched types
+// xfail-stage0
+// error-pattern: Non-predicate in constraint: lt
 
 fn f(int a, int b) : lt(a,b) {
 }

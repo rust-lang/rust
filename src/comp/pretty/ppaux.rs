@@ -1,7 +1,6 @@
 
 import std::io;
 import middle::ty::*;
-import front::ast::constr_arg;
 import front::lexer;
 import pp::word;
 import pp::eof;
@@ -21,9 +20,10 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             };
         ret s + ty_to_str(cx, input.ty);
     }
+
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  vec[arg] inputs, t output, ast::controlflow cf,
-                 &vec[@ast::constr] constrs) -> str {
+                 &vec[@constr_def] constrs) -> str {
         auto f = bind fn_input_to_str(cx, _);
         auto s;
         alt (proto) {
@@ -69,7 +69,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_int) { s += "int"; }
         case (ty_float) { s += "float"; }
         case (ty_uint) { s += "uint"; }
-        case (ty_machine(?tm)) { s += common::ty_mach_to_str(tm); }
+        case (ty_machine(?tm)) { s += ty_mach_to_str(tm); }
         case (ty_char) { s += "char"; }
         case (ty_str) { s += "str"; }
         case (ty_istr) { s += "istr"; }
@@ -92,10 +92,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
-
             s +=
-                "<tag#" + util::common::istr(id._0) + ":" +
-                    util::common::istr(id._1) + ">";
+                "<tag#" + istr(id._0) + ":" + istr(id._1) + ">";
             if (vec::len[t](tps) > 0u) {
                 auto f = bind ty_to_str(cx, _);
                 auto strs = vec::map[t, str](f, tps);
@@ -104,21 +102,20 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         case (ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
             s +=
-                fn_to_str(cx, proto, none[ast::ident], inputs, output, cf,
+                fn_to_str(cx, proto, none, inputs, output, cf,
                           constrs);
         }
         case (ty_native_fn(_, ?inputs, ?output)) {
-            let vec[@ast::constr] constrs = [];
             s +=
-                fn_to_str(cx, ast::proto_fn, none[ast::ident], inputs, output,
-                          ast::return, constrs);
+                fn_to_str(cx, ast::proto_fn, none, inputs, output,
+                          ast::return, []);
         }
         case (ty_obj(?meths)) {
             auto f = bind method_to_str(cx, _);
             auto m = vec::map[method, str](f, meths);
             s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
-        case (ty_var(?v)) { s += "<T" + util::common::istr(v) + ">"; }
+        case (ty_var(?v)) { s += "<T" + istr(v) + ">"; }
         case (ty_param(?id)) {
             s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
         }
@@ -144,7 +141,7 @@ fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
     }
 }
 
-fn constr_arg_to_str_1(&ast::constr_arg_general_[str] c) -> str {
+fn constr_arg_to_str_1(&front::ast::constr_arg_general_[str] c) -> str {
     alt (c) {
         case (ast::carg_base) { ret "*"; }
         case (ast::carg_ident(?i)) { ret i; }
@@ -164,18 +161,7 @@ fn constr_args_to_str[T](fn(&T) -> str  f,
     ret s;
 }
 
-fn constr_args_to_str_1(&vec[@ast::constr_arg_use] args) -> str {
-    auto comma = false;
-    auto s = "(";
-    for (@ast::constr_arg_use a in args) {
-        if (comma) { s += ", "; } else { comma = true; }
-        s += constr_arg_to_str_1(a.node);
-    }
-    s += ")";
-    ret s;
-}
-
-fn print_literal(&ps s, &@ast::lit lit) {
+fn print_literal(&ps s, &@front::ast::lit lit) {
     maybe_print_comment(s, lit.span.lo);
     alt (next_lit(s)) {
         case (some(?lt)) {
@@ -196,18 +182,18 @@ fn print_literal(&ps s, &@ast::lit lit) {
             word(s.s,
                  "'" + escape_str(str::from_bytes([ch as u8]), '\'') + "'");
         }
-        case (ast::lit_int(?val)) { word(s.s, common::istr(val)); }
-        case (ast::lit_uint(?val)) { word(s.s, common::uistr(val) + "u"); }
+        case (ast::lit_int(?val)) { word(s.s, istr(val)); }
+        case (ast::lit_uint(?val)) { word(s.s, uistr(val) + "u"); }
         case (ast::lit_float(?fstr)) { word(s.s, fstr); }
         case (ast::lit_mach_int(?mach, ?val)) {
-            word(s.s, common::istr(val as int));
-            word(s.s, common::ty_mach_to_str(mach));
+            word(s.s, istr(val as int));
+            word(s.s, ty_mach_to_str(mach));
         }
         case (ast::lit_mach_float(?mach, ?val)) {
             // val is already a str
 
             word(s.s, val);
-            word(s.s, common::ty_mach_to_str(mach));
+            word(s.s, ty_mach_to_str(mach));
         }
         case (ast::lit_nil) { word(s.s, "()"); }
         case (ast::lit_bool(?val)) {
@@ -216,7 +202,7 @@ fn print_literal(&ps s, &@ast::lit lit) {
     }
 }
 
-fn lit_to_str(&@ast::lit l) -> str { be to_str(l, print_literal); }
+fn lit_to_str(&@front::ast::lit l) -> str { be to_str(l, print_literal); }
 
 fn next_lit(&ps s) -> option::t[lexer::lit] {
     alt (s.literals) {
@@ -360,22 +346,46 @@ const uint default_columns = 78u;
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
-fn uint_to_str(&uint i) -> str { ret util::common::uistr(i); }
 
-fn constr_to_str(&@ast::constr c) -> str {
-    ret path_to_str(c.node.path) +
-            constr_args_to_str(uint_to_str, c.node.args);
+fn uint_to_str(&uint i) -> str { ret uistr(i); }
+
+fn constr_to_str(&@constr_def c) -> str {
+  ret path_to_str(c.node.path)
+      + constr_args_to_str(uint_to_str, c.node.args);
 }
 
-fn constrs_str(&vec[@ast::constr] constrs) -> str {
+
+fn ast_constr_to_str(&@front::ast::constr c) -> str {
+  ret path_to_str(c.node.path)
+      + constr_args_to_str(uint_to_str, c.node.args);
+}
+
+fn constrs_str(&vec[@constr_def] constrs) -> str {
     auto s = "";
     auto colon = true;
-    for (@ast::constr c in constrs) {
+    for (@constr_def c in constrs) {
         if (colon) { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }
     ret s;
 }
+
+fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {
+  auto s = "";
+  auto colon = true;
+  for (@ast::constr c in constrs) {
+    if (colon) {
+      s += " : ";
+      colon = false;
+    }
+    else {
+      s += ", ";
+    }
+    s += ast_constr_to_str(c);
+  }
+  ret s;
+}
+
 //
 // Local Variables:
 // mode: rust

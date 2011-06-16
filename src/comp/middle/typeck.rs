@@ -6,6 +6,7 @@ import front::creader;
 import driver::session;
 import util::common;
 import util::common::span;
+import util::common::respan;
 import util::common::new_def_hash;
 import util::common::log_expr_err;
 import middle::ty;
@@ -312,7 +313,10 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             auto i = vec::map[ast::ty_arg, arg](f, inputs);
             auto out_ty = ast_ty_to_ty(tcx, getter, output);
-            typ = ty::mk_fn(tcx, proto, i, out_ty, cf, constrs);
+            let fn(&@ast::constr) -> @ty::constr_def g =
+                bind ast_constr_to_constr(tcx, _);
+            let vec[@ty::constr_def] out_constrs = vec::map(g, constrs);
+            typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
         }
         case (ast::ty_path(?path, ?ann)) {
             alt (tcx.def_map.get(ann.id)) {
@@ -341,13 +345,17 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             for (ast::ty_method m in meths) {
                 auto ins = vec::map[ast::ty_arg, arg](f, m.node.inputs);
                 auto out = ast_ty_to_ty(tcx, getter, m.node.output);
+                let fn(&@ast::constr) -> @ty::constr_def g =
+                    bind ast_constr_to_constr(tcx, _);
+                let vec[@ty::constr_def] out_constrs =
+                       vec::map(g, m.node.constrs);
                 let ty::method new_m =
                     rec(proto=m.node.proto,
                         ident=m.node.ident,
                         inputs=ins,
                         output=out,
                         cf=m.node.cf,
-                        constrs=m.node.constrs);
+                        constrs=out_constrs);
                 vec::push[ty::method](tmeths, new_m);
             }
             typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
@@ -388,7 +396,7 @@ mod write {
     // Writes a type parameter count and type pair into the node type table.
     fn ty(&ty::ctxt tcx, uint node_id, &ty_param_substs_opt_and_ty tpot) {
         assert (!ty::type_contains_vars(tcx, tpot._1));
-        be inner(tcx.node_types, node_id, tpot);
+        ret inner(tcx.node_types, node_id, tpot);
     }
 
     // Writes a type parameter count and type pair into the node type table.
@@ -404,23 +412,23 @@ mod write {
 
     // Writes a type with no type parameters into the node type table.
     fn ty_only(&ty::ctxt tcx, uint node_id, ty::t typ) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], typ));
     }
 
     // Writes a type with no type parameters into the node type table. This
     // function allows for the possibility of type variables.
     fn ty_only_fixup(@fn_ctxt fcx, uint node_id, ty::t typ) {
-        be ty_fixup(fcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty_fixup(fcx, node_id, tup(none[vec[ty::t]], typ));
     }
 
     // Writes a nil type into the node type table.
     fn nil_ty(&ty::ctxt tcx, uint node_id) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
     }
 
     // Writes the bottom type into the node type table.
     fn bot_ty(&ty::ctxt tcx, uint node_id) {
-        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
+        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
     }
 }
 
@@ -449,9 +457,12 @@ mod collect {
        ty::ty_param_count_and_ty {
         auto input_tys = vec::map[ast::arg, arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
+        let fn(&@ast::constr) -> @ty::constr_def g =
+            bind ast_constr_to_constr(cx.tcx, _);
+        let vec[@ty::constr_def] out_constrs = vec::map(g, decl.constraints);
         auto t_fn =
             ty::mk_fn(cx.tcx, proto, input_tys, output_ty, decl.cf,
-                      decl.constraints);
+                      out_constrs);
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         alt (def_id) {
@@ -512,12 +523,13 @@ mod collect {
         auto f = bind ty_of_arg(cx, _);
         auto inputs = vec::map[ast::arg, arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
-        ret rec(proto=m.node.meth.proto,
-                ident=m.node.ident,
-                inputs=inputs,
-                output=output,
-                cf=m.node.meth.decl.cf,
-                constrs=m.node.meth.decl.constraints);
+        let fn(&@ast::constr) -> @ty::constr_def g =
+            bind ast_constr_to_constr(cx.tcx, _);
+        let vec[@ty::constr_def] out_constrs =
+            vec::map(g, m.node.meth.decl.constraints);
+        ret rec(proto=m.node.meth.proto, ident=m.node.ident,
+                inputs=inputs, output=output, cf=m.node.meth.decl.cf,
+                constrs=out_constrs);
     }
     fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
                  &vec[ast::ty_param] ty_params) -> ty::ty_param_count_and_ty {
@@ -537,10 +549,8 @@ mod collect {
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
             vec::push(t_inputs, rec(mode=ty::mo_alias(false), ty=t_field));
         }
-        let vec[@ast::constr] constrs = [];
-        auto t_fn =
-            ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1, ast::return,
-                      constrs);
+        auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1,
+                              ast::return, []);
         auto tpt = tup(t_obj._0, t_fn);
         cx.tcx.tcache.insert(ctor_id, tpt);
         ret tpt;
@@ -652,11 +662,8 @@ mod collect {
                 }
                 auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
-
-                let vec[@ast::constr] res_constrs = [];
-                result_ty =
-                    ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t, ast::return,
-                              res_constrs);
+                result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
+                                      ast::return, []);
             }
             auto tpt = tup(ty_param_count, result_ty);
             cx.tcx.tcache.insert(variant.node.id, tpt);
@@ -752,12 +759,8 @@ mod collect {
                 alt (object.dtor) {
                     case (none) {/* nothing to do */ }
                     case (some(?m)) {
-                        let vec[@ast::constr] constrs = [];
-                        let vec[arg] res_inputs = [];
-                        auto t =
-                            ty::mk_fn(cx.tcx, ast::proto_fn, res_inputs,
-                                      ty::mk_nil(cx.tcx), ast::return,
-                                      constrs);
+                        auto t = ty::mk_fn(cx.tcx, ast::proto_fn, [],
+                                   ty::mk_nil(cx.tcx), ast::return, []);
                         write::ty_only(cx.tcx, m.node.ann.id, t);
                     }
                 }
@@ -1421,9 +1424,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         &@ast::expr rhs, &ast::ann a) {
         check_expr(fcx, lhs);
         check_expr(fcx, rhs);
-        auto typ =
-            demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
-                           expr_ty(fcx.ccx.tcx, rhs));
+        demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
+                       expr_ty(fcx.ccx.tcx, rhs));
         write::ty_only_fixup(fcx, a.id, ty::mk_nil(fcx.ccx.tcx));
     }
     // A generic function for checking call expressions
@@ -2123,12 +2125,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 auto inputs =
                     vec::map[ast::arg, arg](f, m.node.meth.decl.inputs);
                 auto output = convert(m.node.meth.decl.output);
-                ret rec(proto=m.node.meth.proto,
-                        ident=m.node.ident,
-                        inputs=inputs,
-                        output=output,
-                        cf=m.node.meth.decl.cf,
-                        constrs=m.node.meth.decl.constraints);
+                let fn(&@ast::constr) -> @ty::constr_def g =
+                    bind ast_constr_to_constr(ccx.tcx, _);
+                let vec[@ty::constr_def] out_constrs =
+                    vec::map(g, m.node.meth.decl.constraints);
+                ret rec(proto=m.node.meth.proto, ident=m.node.ident,
+                        inputs=inputs, output=output, cf=m.node.meth.decl.cf,
+                        constrs=out_constrs);
             }
             fn get_anon_obj_method_types(@crate_ctxt ccx,
                                          &ast::anon_obj anon_obj) ->
@@ -2178,6 +2181,21 @@ fn next_ty_var(&@fn_ctxt fcx) -> ty::t {
 
 fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
     ret vec::last[obj_info](ccx.obj_infos);
+}
+
+fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
+    -> @ty::constr_def {
+    alt (tcx.def_map.find(c.node.ann.id)) {
+        case (some(ast::def_fn(?pred_id))) {
+            ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
+                                    id=pred_id));
+        }
+        case (_) {
+            tcx.sess.span_err(c.span, "Predicate "
+                              + path_to_str(c.node.path)
+                              + " is unbound or bound to a non-function");
+        }
+    }
 }
 
 fn check_decl_initializer(&@fn_ctxt fcx, &ast::def_id lid,

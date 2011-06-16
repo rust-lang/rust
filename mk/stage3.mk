@@ -1,13 +1,8 @@
-stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage3/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
               $(LREQ) $(MKFILES)
-	@$(call E, compile: $@)
-	$(STAGE2) -c --shared -o $@ $<
-
-stage3/$(CFG_STDLIB): stage2/std.o stage2/glue.o
-	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage2/glue.o $(CFG_GCCISH_LINK_FLAGS) -o \
-        $@ $< -Lstage2 -Lrt -lrustrt
+	@$(call E, compile_and_link: $@)
+	$(STAGE2)  --shared -o $@ $<
 
 stage3/librustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	@$(call E, compile: $@)
