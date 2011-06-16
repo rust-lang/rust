@@ -606,6 +606,16 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
     v->alloc = new_alloc;
 }
 
+/**
+ * Returns true if the given vector is on the heap and false if it's on the
+ * stack.
+ */
+extern "C" bool
+ivec_on_heap(rust_task *task, type_desc *ty, rust_ivec *v)
+{
+    return !v->fill && v->payload.ptr;
+}
+
 
 //
 // Local Variables:

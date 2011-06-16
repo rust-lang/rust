@@ -9,6 +9,7 @@ debug_trap
 debug_tydesc
 do_gc
 get_time
+ivec_on_heap
 ivec_reserve
 last_os_error
 rand_free

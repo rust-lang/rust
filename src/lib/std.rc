@@ -12,6 +12,7 @@ mod int;
 mod uint;
 mod u8;
 mod vec;
+mod ivec;
 mod str;
 
 // General io and system-services modules.
