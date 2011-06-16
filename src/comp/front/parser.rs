@@ -2050,7 +2050,7 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
         auto lo = p.get_lo_pos();
         p.bump();
         if (p.peek() == token::LBRACKET) {
-            auto first_attr = parse_attribute_naked(p, lo);
+            auto first_attr = parse_attribute_naked(p, ast::attr_outer, lo);
             ret some(left([first_attr] + parse_outer_attributes(p)));
         } else {
             ret some(right(parse_syntax_ext_naked(p, lo)));
@@ -2064,23 +2064,24 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
 fn parse_outer_attributes(&parser p) -> vec[ast::attribute] {
     let vec[ast::attribute] attrs = [];
     while (p.peek() == token::POUND) {
-        attrs += [parse_attribute(p)];
+        attrs += [parse_attribute(p, ast::attr_outer)];
     }
     ret attrs;
 }
 
-fn parse_attribute(&parser p) -> ast::attribute {
+fn parse_attribute(&parser p, ast::attr_style style) -> ast::attribute {
     auto lo = p.get_lo_pos();
     expect(p, token::POUND);
-    ret parse_attribute_naked(p, lo);
+    ret parse_attribute_naked(p, style, lo);
 }
 
-fn parse_attribute_naked(&parser p, uint lo) -> ast::attribute {
+fn parse_attribute_naked(&parser p, ast::attr_style style,
+                         uint lo) -> ast::attribute {
     expect(p, token::LBRACKET);
     auto meta_item = parse_meta_item(p);
     expect(p, token::RBRACKET);
     auto hi = p.get_hi_pos();
-    ret spanned(lo, hi, rec(style=ast::attr_outer, value=*meta_item));
+    ret spanned(lo, hi, rec(style=style, value=*meta_item));
 }
 
 // Parse attributes that appear after the opening of an item, each terminated
@@ -2094,12 +2095,17 @@ fn parse_inner_attributes(&parser p) -> tup(vec[ast::attribute],
     let vec[ast::attribute] inner_attrs = [];
     let vec[ast::attribute] next_outer_attrs = [];
     while (p.peek() == token::POUND) {
-        auto attr = parse_attribute(p);
+        auto attr = parse_attribute(p, ast::attr_inner);
         if (p.peek() == token::SEMI) {
             p.bump();
             inner_attrs += [attr];
         } else {
-            next_outer_attrs += [attr];
+            // It's not really an inner attribute
+            auto outer_attr = spanned(attr.span.lo,
+                                      attr.span.hi,
+                                      rec(style=ast::attr_outer,
+                                          value=attr.node.value));
+            next_outer_attrs += [outer_attr];
             break;
         }
     }
