@@ -49,6 +49,7 @@ fn reset(io::buf_writer writer) {
 
 fn color_supported() -> bool {
     auto supported_terms = ["xterm-color",
+                            "xterm",
                             "screen-bce"];
     ret alt (generic_os::getenv("TERM")) {
         case (option::some(?env)) {
