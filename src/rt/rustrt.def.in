@@ -24,7 +24,6 @@ rust_process_wait
 rust_ptr_eq
 rust_run_program
 rust_start
-rust_vec_append_glue
 size_of
 squareroot
 str_alloc
@@ -73,7 +72,6 @@ upcall_start_task
 upcall_start_thread
 upcall_trace_str
 upcall_trace_word
-upcall_vec_grow
 upcall_vec_append
 upcall_yield
 vec_alloc

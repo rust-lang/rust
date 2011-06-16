@@ -370,17 +370,16 @@ upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     return v;
 }
 
-extern "C" CDECL rust_vec *
-upcall_vec_grow(rust_task *task,
-                rust_vec *v,
-                size_t n_bytes,
-                uintptr_t *need_copy,
-                type_desc *td)
+static rust_vec *
+vec_grow(rust_task *task,
+         rust_vec *v,
+         size_t n_bytes,
+         uintptr_t *need_copy,
+         type_desc *td)
 {
-    LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     LOG(task, mem,
-        "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
+        "vec_grow(0x%" PRIxPTR ", %" PRIdPTR
         "), rc=%" PRIdPTR " alloc=%" PRIdPTR ", fill=%" PRIdPTR
         ", need_copy=0x%" PRIxPTR,
         v, n_bytes, v->ref_count, v->alloc, v->fill, need_copy);
@@ -465,8 +464,7 @@ upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
     uintptr_t need_copy;
     size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
     size_t n_dst_bytes = skip_null ? dst->fill - 1 : dst->fill;
-    rust_vec *new_vec = upcall_vec_grow(task, dst, n_src_bytes,
-                                        &need_copy, t);
+    rust_vec *new_vec = vec_grow(task, dst, n_src_bytes, &need_copy, t);
 
     if (need_copy) {
         // Copy any dst elements in, omitting null if doing str.
