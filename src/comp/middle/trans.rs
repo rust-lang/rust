@@ -2164,10 +2164,26 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
             // If we hit == all the way through the minimum-shared-length
             // section, default to judging the relative sequence lengths.
 
-            r =
-                compare_numerical_values(scx, vec_fill(scx, lhs),
-                                         vec_fill(scx, rhs), unsigned_int,
-                                         llop);
+            auto lhs_fill;
+            auto rhs_fill;
+            auto bcx;
+            if (ty::sequence_is_interior(cx.fcx.lcx.ccx.tcx, t)) {
+                auto lad = ivec::get_len_and_data(scx, lhs,
+                        ty::sequence_element_type(cx.fcx.lcx.ccx.tcx, t));
+                bcx = lad._2;
+                lhs_fill = lad._0;
+                lad = ivec::get_len_and_data(bcx, rhs,
+                        ty::sequence_element_type(cx.fcx.lcx.ccx.tcx, t));
+                bcx = lad._2;
+                rhs_fill = lad._0;
+            } else {
+                lhs_fill = vec_fill(scx, lhs);
+                rhs_fill = vec_fill(scx, rhs);
+                bcx = scx;
+            }
+
+            r = compare_numerical_values(bcx, lhs_fill, rhs_fill,
+                                         unsigned_int, llop);
             r.bcx.build.Store(r.val, flag);
         } else {
             // == and <= default to true if they find == all the way. <
