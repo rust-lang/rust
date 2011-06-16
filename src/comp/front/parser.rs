@@ -2285,7 +2285,11 @@ fn parse_native_view(&parser p) -> vec[@ast::view_item] {
 
 fn parse_crate_from_source_file(&parser p) -> @ast::crate {
     auto lo = p.get_lo_pos();
-    auto m = parse_mod_items(p, token::EOF, []);
+    // FIXME (issue #487): Do something with these attrs
+    auto crate_attrs = parse_inner_attrs_and_next(p);
+    auto first_item_outer_attrs = crate_attrs._1;
+    auto m = parse_mod_items(p, token::EOF,
+                             first_item_outer_attrs);
     let vec[@ast::crate_directive] cdirs = [];
     ret @spanned(lo, p.get_lo_pos(), rec(directives=cdirs, module=m));
 }
