@@ -459,28 +459,21 @@ tag attr_style { attr_outer; attr_inner; }
 
 type attribute_ = rec(attr_style style, meta_item value);
 
-type item = spanned[item_];
+type item = rec(ident ident,
+                vec[attribute] attrs,
+                def_id id, // For objs, this is the type def_id
+                ann ann,
+                item_ node,
+                span span);
 
 tag item_ {
-    item_const(ident, @ty, @expr, vec[attribute], def_id, ann);
-    item_fn(ident, _fn, vec[ty_param], vec[attribute], def_id, ann);
-    item_mod(ident, _mod, vec[attribute], def_id);
-    item_native_mod(ident, native_mod, vec[attribute], def_id);
-    item_ty(ident, @ty, vec[ty_param], vec[attribute], def_id, ann);
-    item_tag(ident, vec[variant], vec[ty_param], vec[attribute], def_id, ann);
-    item_obj(ident, _obj, vec[ty_param], vec[attribute], obj_def_ids, ann);
-}
-
-fn item_ident(@item it) -> ident {
-    ret alt (it.node) {
-            case (item_const(?ident, _, _, _, _, _)) { ident }
-            case (item_fn(?ident, _, _, _, _, _)) { ident }
-            case (item_mod(?ident, _, _, _)) { ident }
-            case (item_native_mod(?ident, _, _, _)) { ident }
-            case (item_ty(?ident, _, _, _, _, _)) { ident }
-            case (item_tag(?ident, _, _, _, _, _)) { ident }
-            case (item_obj(?ident, _, _, _, _, _)) { ident }
-        }
+    item_const(@ty, @expr);
+    item_fn(_fn, vec[ty_param]);
+    item_mod(_mod);
+    item_native_mod(native_mod);
+    item_ty(@ty, vec[ty_param]);
+    item_tag(vec[variant], vec[ty_param]);
+    item_obj(_obj, vec[ty_param], def_id /* constructor id */);
 }
 
 type native_item = spanned[native_item_];
@@ -498,15 +491,16 @@ tag native_item_ {
 fn is_exported(ident i, _mod m) -> bool {
     auto nonlocal = true;
     for (@ast::item it in m.items) {
-        if (item_ident(it) == i) { nonlocal = false; }
+        if (it.ident == i) { nonlocal = false; }
         alt (it.node) {
-            case (item_tag(_, ?variants, _, _, _, _)) {
+            case (item_tag(?variants, _)) {
                 for (variant v in variants) {
                     if (v.node.name == i) { nonlocal = false; }
                 }
             }
             case (_) { }
         }
+        if (!nonlocal) { break; }
     }
     auto count = 0u;
     for (@ast::view_item vi in m.view_items) {
@@ -525,7 +519,7 @@ fn is_exported(ident i, _mod m) -> bool {
 
     // If there are no declared exports then 
     // everything not imported is exported
-    if (count == 0u && !nonlocal) { ret true; } else { ret false; }
+    ret count == 0u && !nonlocal;
 }
 
 fn is_call_expr(@expr e) -> bool {

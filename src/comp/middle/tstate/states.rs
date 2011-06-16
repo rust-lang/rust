@@ -66,7 +66,6 @@ import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;
 import util::common::new_def_hash;
-import util::common::decl_lhs;
 import util::common::uistr;
 import util::common::log_expr;
 import util::common::log_block;

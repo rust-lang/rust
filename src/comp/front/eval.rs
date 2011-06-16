@@ -294,8 +294,8 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             cx.p.set_def(next_id._1);
             cx.chpos = p0.get_chpos();
             cx.next_ann = p0.next_ann_num();
-            auto im = ast::item_mod(id, m0, [], next_id);
-            auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
+            auto i = front::parser::mk_item(cx.p, cdir.span.lo, cdir.span.hi,
+                                            id, ast::item_mod(m0), []);
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {
@@ -303,8 +303,8 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             alt (dir_opt) { case (some(?d)) { path = d; } case (none) { } }
             auto full_path = prefix + std::fs::path_sep() + path;
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
-            auto im = ast::item_mod(id, m0, [], cx.p.next_def_id());
-            auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
+            auto i = front::parser::mk_item
+                (cx.p, cdir.span.lo, cdir.span.hi, id, ast::item_mod(m0), []);
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_view_item(?vi)) {

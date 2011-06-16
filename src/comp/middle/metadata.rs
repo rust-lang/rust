@@ -361,64 +361,65 @@ fn encode_module_item_paths(&ebml::writer ebml_w, &ast::_mod module,
                             &vec[str] path,
                             &mutable vec[tup(str, uint)] index) {
     for (@ast::item it in module.items) {
-        if (!ast::is_exported(ast::item_ident(it), module)) { cont; }
+        if (!ast::is_exported(it.ident, module)) { cont; }
         alt (it.node) {
-            case (ast::item_const(?id, _, ?tps, _, ?did, ?ann)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_const(_, _)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_fn(?id, _, ?tps, _, ?did, ?ann)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_fn(_, ?tps)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_mod(?id, ?_mod, _, ?did)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_mod(?_mod)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_mod);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
-                encode_module_item_paths(ebml_w, _mod, path + [id], index);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
+                encode_module_item_paths(ebml_w, _mod, path + [it.ident],
+                                         index);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_native_mod(?id, ?nmod, _, ?did)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_native_mod(?nmod)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_mod);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
-                encode_native_module_item_paths(ebml_w, nmod, path + [id],
-                                                index);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
+                encode_native_module_item_paths(ebml_w, nmod,
+                                                path + [it.ident], index);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_ty(?id, _, ?tps, _, ?did, ?ann)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_ty(_, ?tps)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
                 ebml::end_tag(ebml_w);
             }
-            case (ast::item_tag(?id, ?variants, ?tps, _, ?did, _)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_tag(?variants, ?tps)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
                 ebml::end_tag(ebml_w);
                 encode_tag_variant_paths(ebml_w, variants, path, index);
             }
-            case (ast::item_obj(?id, _, ?tps, _, ?odid, ?ann)) {
-                add_to_index(ebml_w, path, index, id);
+            case (ast::item_obj(_, ?tps, ?ctor_id)) {
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, odid.ctor);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, ctor_id);
                 ebml::end_tag(ebml_w);
-                add_to_index(ebml_w, path, index, id);
+                add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, id);
-                encode_def_id(ebml_w, odid.ty);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, it.id);
                 ebml::end_tag(ebml_w);
             }
         }
@@ -509,67 +510,68 @@ fn encode_tag_variant_info(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
 fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
                         @ast::item item, &mutable vec[tup(int, uint)] index) {
     alt (item.node) {
-        case (ast::item_const(_, _, _, _, ?did, ?ann)) {
+        case (ast::item_const(_, _)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'c' as u8);
-            encode_type(cx, ebml_w, trans::node_ann_type(cx, ann));
-            encode_symbol(cx, ebml_w, did);
+            encode_type(cx, ebml_w, trans::node_ann_type(cx, item.ann));
+            encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_fn(_, _, ?tps, _, ?did, ?ann)) {
+        case (ast::item_fn(_, ?tps)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'f' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, trans::node_ann_type(cx, ann));
-            encode_symbol(cx, ebml_w, did);
+            encode_type(cx, ebml_w, trans::node_ann_type(cx, item.ann));
+            encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_mod(_, _, _, ?did)) {
+        case (ast::item_mod(_)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'm' as u8);
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_native_mod(?id, _, _, ?did)) {
+        case (ast::item_native_mod(_)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'n' as u8);
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_ty(?id, _, ?tps, _, ?did, ?ann)) {
+        case (ast::item_ty(_, ?tps)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, trans::node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans::node_ann_type(cx, item.ann));
             ebml::end_tag(ebml_w);
         }
-        case (ast::item_tag(?id, ?variants, ?tps, _, ?did, ?ann)) {
+        case (ast::item_tag(?variants, ?tps)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 't' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, trans::node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans::node_ann_type(cx, item.ann));
             for (ast::variant v in variants) {
                 encode_variant_id(ebml_w, v.node.id);
             }
             ebml::end_tag(ebml_w);
-            encode_tag_variant_info(cx, ebml_w, did, variants, index, tps);
+            encode_tag_variant_info(cx, ebml_w, item.id, variants,
+                                    index, tps);
         }
-        case (ast::item_obj(?id, _, ?tps, _, ?odid, ?ann)) {
+        case (ast::item_obj(_, ?tps, ?ctor_id)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, odid.ctor);
+            encode_def_id(ebml_w, ctor_id);
             encode_kind(ebml_w, 'o' as u8);
             encode_type_param_count(ebml_w, tps);
-            auto fn_ty = trans::node_ann_type(cx, ann);
+            auto fn_ty = trans::node_ann_type(cx, item.ann);
             encode_type(cx, ebml_w, fn_ty);
-            encode_symbol(cx, ebml_w, odid.ctor);
+            encode_symbol(cx, ebml_w, ctor_id);
             ebml::end_tag(ebml_w);
-            index += [tup(odid.ty._1, ebml_w.writer.tell())];
+            index += [tup(item.id._1, ebml_w.writer.tell())];
             ebml::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, odid.ty);
+            encode_def_id(ebml_w, item.id);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
             encode_type(cx, ebml_w, ty::ty_fn_ret(cx.tcx, fn_ty));

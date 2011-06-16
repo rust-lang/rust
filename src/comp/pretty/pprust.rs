@@ -259,12 +259,12 @@ fn print_item(&ps s, &@ast::item item) {
     hardbreak(s.s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
-        case (ast::item_const(?id, ?ty, ?expr, ?attrs, _, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_const(?ty, ?expr)) {
+            print_outer_attributes(s, item.attrs);
             head(s, "const");
             print_type(s, *ty);
             space(s.s);
-            word_space(s, id);
+            word_space(s, item.ident);
             end(s); // end the head-ibox
 
             word_space(s, "=");
@@ -273,22 +273,22 @@ fn print_item(&ps s, &@ast::item item) {
             end(s); // end the outer cbox
 
         }
-        case (ast::item_fn(?name, ?_fn, ?typarams, ?attrs, _, _)) {
-            print_outer_attributes(s, attrs);
-            print_fn(s, _fn.decl, _fn.proto, name, typarams);
+        case (ast::item_fn(?_fn, ?typarams)) {
+            print_outer_attributes(s, item.attrs);
+            print_fn(s, _fn.decl, _fn.proto, item.ident, typarams);
             word(s.s, " ");
             print_block(s, _fn.body);
         }
-        case (ast::item_mod(?id, ?_mod, ?attrs, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_mod(?_mod)) {
+            print_outer_attributes(s, item.attrs);
             head(s, "mod");
-            word_nbsp(s, id);
+            word_nbsp(s, item.ident);
             bopen(s);
             for (@ast::item itm in _mod.items) { print_item(s, itm); }
             bclose(s, item.span);
         }
-        case (ast::item_native_mod(?id, ?nmod, ?attrs, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_native_mod(?nmod)) {
+            print_outer_attributes(s, item.attrs);
             head(s, "native");
             alt (nmod.abi) {
                 case (ast::native_abi_rust) { word_nbsp(s, "\"rust\""); }
@@ -298,7 +298,7 @@ fn print_item(&ps s, &@ast::item item) {
                 }
             }
             word_nbsp(s, "mod");
-            word_nbsp(s, id);
+            word_nbsp(s, item.ident);
             bopen(s);
             for (@ast::native_item item in nmod.items) {
                 hardbreak(s.s);
@@ -331,12 +331,12 @@ fn print_item(&ps s, &@ast::item item) {
             }
             bclose(s, item.span);
         }
-        case (ast::item_ty(?id, ?ty, ?params, ?attrs, _, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_ty(?ty, ?params)) {
+            print_outer_attributes(s, item.attrs);
             ibox(s, indent_unit);
             ibox(s, 0u);
             word_nbsp(s, "type");
-            word(s.s, id);
+            word(s.s, item.ident);
             print_type_params(s, params);
             end(s); // end the inner ibox
 
@@ -348,10 +348,10 @@ fn print_item(&ps s, &@ast::item item) {
 
             break_offset(s.s, 0u, 0);
         }
-        case (ast::item_tag(?id, ?variants, ?params, ?attrs, _, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_tag(?variants, ?params)) {
+            print_outer_attributes(s, item.attrs);
             head(s, "tag");
-            word(s.s, id);
+            word(s.s, item.ident);
             print_type_params(s, params);
             space(s.s);
             bopen(s);
@@ -372,10 +372,10 @@ fn print_item(&ps s, &@ast::item item) {
             }
             bclose(s, item.span);
         }
-        case (ast::item_obj(?id, ?_obj, ?params, ?attrs, _, _)) {
-            print_outer_attributes(s, attrs);
+        case (ast::item_obj(?_obj, ?params, _)) {
+            print_outer_attributes(s, item.attrs);
             head(s, "obj");
-            word(s.s, id);
+            word(s.s, item.ident);
             print_type_params(s, params);
             popen(s);
             fn print_field(&ps s, &ast::obj_field field) {
@@ -415,7 +415,7 @@ fn print_item(&ps s, &@ast::item item) {
     alt (s.mode) {
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, uint::to_str(ty::item_ann(item).id, 10u));
+            synth_comment(s, uint::to_str(item.ann.id, 10u));
         }
         case (_) {/* no-op */ }
     }

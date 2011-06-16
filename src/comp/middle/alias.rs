@@ -63,7 +63,7 @@ fn visit_fn(@ctx cx, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
 
 fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
     alt (i.node) {
-        case (ast::item_obj(_, ?o, _, _, _, _)) {
+        case (ast::item_obj(?o, _, _)) {
             for (ast::obj_field f in o.fields) {
                 cx.local_map.insert(f.id._1, objfield(f.mut));
             }

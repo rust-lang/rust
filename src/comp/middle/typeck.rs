@@ -559,24 +559,24 @@ mod collect {
         auto get = bind getter(cx, _);
         auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
         alt (it.node) {
-            case (ast::item_const(?ident, ?t, _, _, ?def_id, _)) {
+            case (ast::item_const(?t, _)) {
                 auto typ = convert(t);
                 auto tpt = tup(0u, typ);
-                cx.tcx.tcache.insert(def_id, tpt);
+                cx.tcx.tcache.insert(it.id, tpt);
                 ret tpt;
             }
-            case (ast::item_fn(?ident, ?fn_info, ?tps, _, ?def_id, _)) {
+            case (ast::item_fn(?fn_info, ?tps)) {
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
-                                  tps, some(def_id));
+                                  tps, some(it.id));
             }
-            case (ast::item_obj(?ident, ?obj_info, ?tps, _, ?odid, _)) {
-                auto t_obj = ty_of_obj(cx, ident, obj_info, tps);
-                cx.tcx.tcache.insert(odid.ty, t_obj);
+            case (ast::item_obj(?obj_info, ?tps, _)) {
+                auto t_obj = ty_of_obj(cx, it.ident, obj_info, tps);
+                cx.tcx.tcache.insert(it.id, t_obj);
                 ret t_obj;
             }
-            case (ast::item_ty(?ident, ?t, ?tps, _, ?def_id, _)) {
-                alt (cx.tcx.tcache.find(def_id)) {
+            case (ast::item_ty(?t, ?tps)) {
+                alt (cx.tcx.tcache.find(it.id)) {
                     case (some(?tpt)) { ret tpt; }
                     case (none) { }
                 }
@@ -586,10 +586,10 @@ mod collect {
                 auto typ = convert(t);
                 auto ty_param_count = vec::len[ast::ty_param](tps);
                 auto tpt = tup(ty_param_count, typ);
-                cx.tcx.tcache.insert(def_id, tpt);
+                cx.tcx.tcache.insert(it.id, tpt);
                 ret tpt;
             }
-            case (ast::item_tag(_, _, ?tps, _, ?def_id, _)) {
+            case (ast::item_tag(_, ?tps)) {
                 // Create a new generic polytype.
 
                 let vec[ty::t] subtys = [];
@@ -598,28 +598,27 @@ mod collect {
                     subtys += [ty::mk_param(cx.tcx, i)];
                     i += 1u;
                 }
-                auto t = ty::mk_tag(cx.tcx, def_id, subtys);
+                auto t = ty::mk_tag(cx.tcx, it.id, subtys);
                 auto ty_param_count = vec::len[ast::ty_param](tps);
                 auto tpt = tup(ty_param_count, t);
-                cx.tcx.tcache.insert(def_id, tpt);
+                cx.tcx.tcache.insert(it.id, tpt);
                 ret tpt;
             }
-            case (ast::item_mod(_, _, _, _)) { fail; }
-            case (ast::item_native_mod(_, _, _, _)) { fail; }
+            case (ast::item_mod(_)) { fail; }
+            case (ast::item_native_mod(_)) { fail; }
         }
     }
     fn ty_of_native_item(&@ctxt cx, &@ast::native_item it,
                          ast::native_abi abi) -> ty::ty_param_count_and_ty {
         alt (it.node) {
-            case (ast::native_item_fn(?ident, ?lname, ?fn_decl, ?params,
-                                      ?def_id, _)) {
+            case (ast::native_item_fn(_, _, ?fn_decl, ?params, ?did, _)) {
                 auto get = bind getter(cx, _);
                 auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
-                                         def_id);
+                                         did);
             }
-            case (ast::native_item_ty(_, ?def_id)) {
+            case (ast::native_item_ty(?tpt, ?def_id)) {
                 alt (cx.tcx.tcache.find(def_id)) {
                     case (some(?tpt)) { ret tpt; }
                     case (none) { }
@@ -676,14 +675,14 @@ mod collect {
     }
     fn collect(ty::item_table id_to_ty_item, &@ast::item i) {
         alt (i.node) {
-            case (ast::item_ty(_, _, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, ty::any_item_rust(i));
+            case (ast::item_ty(_, _)) {
+                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
             }
-            case (ast::item_tag(_, _, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, ty::any_item_rust(i));
+            case (ast::item_tag(_, _)) {
+                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
             }
-            case (ast::item_obj(_, _, _, _, ?odid, _)) {
-                id_to_ty_item.insert(odid.ty, ty::any_item_rust(i));
+            case (ast::item_obj(_, _, _)) {
+                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
             }
             case (_) {/* empty */ }
         }
@@ -702,23 +701,22 @@ mod collect {
     fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
                &@ast::item it) {
         alt (it.node) {
-            case (ast::item_mod(_, _, _, _)) {
+            case (ast::item_mod(_)) {
                 // ignore item_mod, it has no type.
 
             }
-            case (ast::item_native_mod(_, ?native_mod, _, _)) {
+            case (ast::item_native_mod(?native_mod)) {
                 // Propagate the native ABI down to convert_native() below,
                 // but otherwise do nothing, as native modules have no types.
 
                 *abi = some[ast::native_abi](native_mod.abi);
             }
-            case (ast::item_tag(_, ?variants, ?ty_params, _, ?tag_id, ?ann)) {
+            case (ast::item_tag(?variants, ?ty_params)) {
                 auto tpt = ty_of_item(cx, it);
-                write::ty_only(cx.tcx, ann.id, tpt._1);
-                get_tag_variant_types(cx, tag_id, variants, ty_params);
+                write::ty_only(cx.tcx, it.ann.id, tpt._1);
+                get_tag_variant_types(cx, it.id, variants, ty_params);
             }
-            case (ast::item_obj(?ident, ?object, ?ty_params, _, ?odid, ?ann))
-                 {
+            case (ast::item_obj(?object, ?ty_params, ?ctor_id)) {
                 // This calls ty_of_obj().
 
                 auto t_obj = ty_of_item(cx, it);
@@ -726,8 +724,8 @@ mod collect {
                 // we write into the table for this item.
 
                 auto tpt =
-                    ty_of_obj_ctor(cx, ident, object, odid.ctor, ty_params);
-                write::ty_only(cx.tcx, ann.id, tpt._1);
+                    ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
+                write::ty_only(cx.tcx, it.ann.id, tpt._1);
                 // Write the methods into the type table.
                 //
                 // FIXME: Inefficient; this ends up calling
@@ -771,7 +769,7 @@ mod collect {
                 // it into the node type table.
 
                 auto tpt = ty_of_item(cx, it);
-                write::ty_only(cx.tcx, ty::item_ann(it).id, tpt._1);
+                write::ty_only(cx.tcx, it.ann.id, tpt._1);
             }
         }
     }
@@ -788,8 +786,8 @@ mod collect {
                 // FIXME: Native types have no annotation. Should they? --pcw
 
             }
-            case (ast::native_item_fn(_, _, _, _, _, ?a)) {
-                write::ty_only(cx.tcx, a.id, tpt._1);
+            case (ast::native_item_fn(_, _, _, _, _, ?ann)) {
+                write::ty_only(cx.tcx, ann.id, tpt._1);
             }
         }
     }
@@ -2327,18 +2325,17 @@ fn check_method(&@crate_ctxt ccx, &@ast::method method) {
 
 fn check_item(@crate_ctxt ccx, &@ast::item it) {
     alt (it.node) {
-        case (ast::item_const(_, _, ?e, _, _, ?a)) {
-            check_const(ccx, it.span, e, a);
+        case (ast::item_const(_, ?e)) {
+            check_const(ccx, it.span, e, it.ann);
         }
-        case (ast::item_fn(_, ?f, _, _, _, ?a)) {
-            check_fn(ccx, f.decl, f.proto, f.body, a);
+        case (ast::item_fn(?f, _)) {
+            check_fn(ccx, f.decl, f.proto, f.body, it.ann);
         }
-        case (ast::item_obj(_, ?ob, _, _, ?obj_def_ids, _)) {
+        case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.
 
-            let ast::def_id di = obj_def_ids.ty;
             vec::push[obj_info](ccx.obj_infos,
-                                rec(obj_fields=ob.fields, this_obj=di));
+                                rec(obj_fields=ob.fields, this_obj=it.id));
             // Typecheck the methods.
 
             for (@ast::method method in ob.methods) {
@@ -2357,8 +2354,8 @@ fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
     auto res = @new_def_hash[ast::purity]();
     fn do_one(@fn_purity_table t, &@ast::item i) {
         alt (i.node) {
-            case (ast::item_fn(_, ?f, _, _, ?d_id, _)) {
-                t.insert(d_id, f.decl.purity);
+            case (ast::item_fn(?f, _)) {
+                t.insert(i.id, f.decl.purity);
             }
             case (_) { }
         }

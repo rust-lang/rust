@@ -99,15 +99,15 @@ fn visit_local[E](&@local loc, &E e, &vt[E] v) {
 
 fn visit_item[E](&@item i, &E e, &vt[E] v) {
     alt (i.node) {
-        case (item_const(_, ?t, ?ex, _, _, _)) {
+        case (item_const(?t, ?ex)) {
             vt(v).visit_ty(t, e, v);
             vt(v).visit_expr(ex, e, v);
         }
-        case (item_fn(?nm, ?f, ?tp, _, ?d, ?a)) {
-            vt(v).visit_fn(f, tp, i.span, nm, d, a, e, v);
+        case (item_fn(?f, ?tp)) {
+            vt(v).visit_fn(f, tp, i.span, i.ident, i.id, i.ann, e, v);
         }
-        case (item_mod(_, ?m, _, _)) { vt(v).visit_mod(m, i.span, e, v); }
-        case (item_native_mod(_, ?nm, _, _)) {
+        case (item_mod(?m)) { vt(v).visit_mod(m, i.span, e, v); }
+        case (item_native_mod(?nm)) {
             for (@view_item vi in nm.view_items) {
                 vt(v).visit_view_item(vi, e, v);
             }
@@ -115,15 +115,15 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
                 vt(v).visit_native_item(ni, e, v);
             }
         }
-        case (item_ty(_, ?t, _, _, _, _)) { vt(v).visit_ty(t, e, v); }
-        case (item_tag(_, ?variants, _, _, _, _)) {
+        case (item_ty(?t, _)) { vt(v).visit_ty(t, e, v); }
+        case (item_tag(?variants, _)) {
             for (variant vr in variants) {
                 for (variant_arg va in vr.node.args) {
                     vt(v).visit_ty(va.ty, e, v);
                 }
             }
         }
-        case (item_obj(_, ?ob, _, _, _, _)) {
+        case (item_obj(?ob, _, _)) {
             for (obj_field f in ob.fields) { vt(v).visit_ty(f.ty, e, v); }
             for (@method m in ob.methods) {
                 vt(v).visit_fn(m.node.meth, [], m.span, m.node.ident,

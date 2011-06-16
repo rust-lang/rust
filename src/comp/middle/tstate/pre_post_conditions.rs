@@ -61,7 +61,6 @@ import bitvectors::gen;
 import front::ast::*;
 import middle::ty::expr_ann;
 import util::common::new_def_hash;
-import util::common::decl_lhs;
 import util::common::uistr;
 import util::common::log_expr;
 import util::common::log_fn;
@@ -101,9 +100,8 @@ fn find_pre_post_obj(&crate_ctxt ccx, _obj o) {
 
 fn find_pre_post_item(&crate_ctxt ccx, &item i) {
     alt (i.node) {
-        case (item_const(?id, ?t, ?e, _, ?di, ?a)) {
+        case (item_const(_, ?e)) {
             // make a fake fcx
-
             auto fake_fcx =
                 rec(enclosing=rec(constrs=@new_def_hash[constraint](),
                                   num_constraints=0u,
@@ -113,18 +111,19 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
                     ccx=ccx);
             find_pre_post_expr(fake_fcx, e);
         }
-        case (item_fn(?id, ?f, ?ps, _, ?di, ?a)) {
-            assert (ccx.fm.contains_key(di));
-            auto fcx = rec(enclosing=ccx.fm.get(di), id=di, name=id, ccx=ccx);
+        case (item_fn(?f, ?ps)) {
+            assert (ccx.fm.contains_key(i.id));
+            auto fcx = rec(enclosing=ccx.fm.get(i.id), id=i.id,
+                           name=i.ident, ccx=ccx);
             find_pre_post_fn(fcx, f);
         }
-        case (item_mod(?id, ?m, _, ?di)) { find_pre_post_mod(m); }
-        case (item_native_mod(?id, ?nm, _, ?di)) {
+        case (item_mod(?m)) { find_pre_post_mod(m); }
+        case (item_native_mod(?nm)) {
             find_pre_post_native_mod(nm);
         }
-        case (item_ty(_, _, _, _, _, _)) { ret; }
-        case (item_tag(_, _, _, _, _, _)) { ret; }
-        case (item_obj(?id, ?o, ?ps, _, ?di, ?a)) {
+        case (item_ty(_, _)) { ret; }
+        case (item_tag(_, _)) { ret; }
+        case (item_obj(?o, _, _)) {
             find_pre_post_obj(ccx, o);
         }
     }

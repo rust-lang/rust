@@ -7254,34 +7254,34 @@ fn trans_const(&@crate_ctxt cx, @ast::expr e, &ast::def_id cid,
 
 fn trans_item(@local_ctxt cx, &ast::item item) {
     alt (item.node) {
-        case (ast::item_fn(?name, ?f, ?tps, _, ?fid, ?ann)) {
-            auto sub_cx = extend_path(cx, name);
-            auto llfndecl = cx.ccx.item_ids.get(fid);
+        case (ast::item_fn(?f, ?tps)) {
+            auto sub_cx = extend_path(cx, item.ident);
+            auto llfndecl = cx.ccx.item_ids.get(item.id);
             trans_fn(sub_cx, item.span, f, llfndecl, none[ty_self_pair], tps,
-                     ann);
+                     item.ann);
         }
-        case (ast::item_obj(?name, ?ob, ?tps, _, ?oid, ?ann)) {
+        case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
             auto sub_cx =
                 @rec(obj_typarams=tps, obj_fields=ob.fields
-                     with *extend_path(cx, name));
-            trans_obj(sub_cx, item.span, ob, oid.ctor, tps, ann);
+                     with *extend_path(cx, item.ident));
+            trans_obj(sub_cx, item.span, ob, ctor_id, tps, item.ann);
         }
-        case (ast::item_mod(?name, ?m, _, _)) {
+        case (ast::item_mod(?m)) {
             auto sub_cx =
-                @rec(path=cx.path + [name],
-                     module_path=cx.module_path + [name] with *cx);
+                @rec(path=cx.path + [item.ident],
+                     module_path=cx.module_path + [item.ident] with *cx);
             trans_mod(sub_cx, m);
         }
-        case (ast::item_tag(?name, ?variants, ?tps, _, ?tag_id, _)) {
-            auto sub_cx = extend_path(cx, name);
+        case (ast::item_tag(?variants, ?tps)) {
+            auto sub_cx = extend_path(cx, item.ident);
             auto i = 0;
             for (ast::variant variant in variants) {
-                trans_tag_variant(sub_cx, tag_id, variant, i, tps);
+                trans_tag_variant(sub_cx, item.id, variant, i, tps);
                 i += 1;
             }
         }
-        case (ast::item_const(?name, _, ?expr, _, ?cid, ?ann)) {
-            trans_const(cx.ccx, expr, cid, ann);
+        case (ast::item_const(_, ?expr)) {
+            trans_const(cx.ccx, expr, item.id, item.ann);
         }
         case (_) {/* fall through */ }
     }
@@ -7545,12 +7545,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path,
 }
 
 fn item_path(&@ast::item item) -> vec[str] {
-    alt (item.node) {
-        case (ast::item_fn(?name, _, _, _, _, _)) { ret [name]; }
-        case (ast::item_obj(?name, _, _, _, _, _)) { ret [name]; }
-        case (ast::item_mod(?name, _, _, _)) { ret [name]; }
-        case (_) { ret []; }
-    }
+    ret [item.ident];
 }
 
 fn collect_native_item(@crate_ctxt ccx, &@ast::native_item i, &vec[str] pt,
@@ -7572,25 +7567,21 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
                   &vt[vec[str]] v) {
     visit::visit_item(i, pt + item_path(i), v);
     alt (i.node) {
-        case (ast::item_const(?name, _, _, _, ?cid, ?ann)) {
-            auto typ = node_ann_type(ccx, ann);
+        case (ast::item_const(_, _)) {
+            auto typ = node_ann_type(ccx, i.ann);
             auto g =
                 llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
-                                    str::buf(ccx.names.next(name)));
+                                    str::buf(ccx.names.next(i.ident)));
             llvm::LLVMSetLinkage(g,
                                  lib::llvm::LLVMInternalLinkage as
                                      llvm::Linkage);
-            ccx.items.insert(cid, i);
-            ccx.consts.insert(cid, g);
+            ccx.items.insert(i.id, i);
+            ccx.consts.insert(i.id, g);
         }
-        case (ast::item_mod(?name, ?m, _, ?mid)) { ccx.items.insert(mid, i); }
-        case (ast::item_native_mod(_, _, _, ?mid)) {
-            ccx.items.insert(mid, i);
-        }
-        case (ast::item_ty(_, _, _, _, ?did, _)) { ccx.items.insert(did, i); }
-        case (ast::item_tag(?name, ?variants, ?tps, _, ?tag_id, _)) {
-            ccx.items.insert(tag_id, i);
-        }
+        case (ast::item_mod(?m)) { ccx.items.insert(i.id, i); }
+        case (ast::item_native_mod(_)) { ccx.items.insert(i.id, i); }
+        case (ast::item_ty(_, _)) { ccx.items.insert(i.id, i); }
+        case (ast::item_tag(_, _)) { ccx.items.insert(i.id, i); }
         case (_) { }
     }
 }
@@ -7600,16 +7591,16 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     auto new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt (i.node) {
-        case (ast::item_fn(?name, ?f, ?tps, _, ?fid, ?ann)) {
-            ccx.items.insert(fid, i);
-            if (!ccx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, ann, fid);
+        case (ast::item_fn(?f, ?tps)) {
+            ccx.items.insert(i.id, i);
+            if (!ccx.obj_methods.contains_key(i.id)) {
+                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.ann, i.id);
             }
         }
-        case (ast::item_obj(?name, ?ob, ?tps, _, ?oid, ?ann)) {
-            ccx.items.insert(oid.ctor, i);
-            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, ann,
-                             oid.ctor);
+        case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
+            ccx.items.insert(ctor_id, i);
+            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, i.ann,
+                             ctor_id);
             for (@ast::method m in ob.methods) {
                 ccx.obj_methods.insert(m.node.id, ());
             }
@@ -7634,7 +7625,7 @@ fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     auto new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt (i.node) {
-        case (ast::item_tag(_, ?variants, ?tps, _, _, _)) {
+        case (ast::item_tag(?variants, ?tps)) {
             for (ast::variant variant in variants) {
                 if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
@@ -7661,13 +7652,13 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &vec[str] pt,
     auto new_pt = pt + item_path(it);
     visit::visit_item(it, new_pt, v);
     alt (it.node) {
-        case (ast::item_tag(?ident, ?variants, _, _, ?tag_id, _)) {
+        case (ast::item_tag(?variants, _)) {
             auto i = 0u;
             auto n_variants = vec::len[ast::variant](variants);
             while (i < n_variants) {
                 auto variant = variants.(i);
                 auto discrim_val = C_int(i as int);
-                auto p = new_pt + [ident, variant.node.name, "discrim"];
+                auto p = new_pt + [it.ident, variant.node.name, "discrim"];
                 auto s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
                 auto discrim_gvar =
                     llvm::LLVMAddGlobal(ccx.llmod, T_int(), str::buf(s));
@@ -7678,16 +7669,16 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &vec[str] pt,
                 i += 1u;
             }
         }
-        case (ast::item_const(?name, _, ?expr, _, ?cid, ?ann)) {
+        case (ast::item_const(_, ?expr)) {
             // FIXME: The whole expr-translation system needs cloning to deal
             // with consts.
 
             auto v = C_int(1);
-            ccx.item_ids.insert(cid, v);
+            ccx.item_ids.insert(it.id, v);
             auto s =
-                mangle_exported_name(ccx, new_pt + [name],
-                                     node_ann_type(ccx, ann));
-            ccx.item_symbols.insert(cid, s);
+                mangle_exported_name(ccx, new_pt + [it.ident],
+                                     node_ann_type(ccx, it.ann));
+            ccx.item_symbols.insert(it.id, s);
         }
         case (_) { }
     }

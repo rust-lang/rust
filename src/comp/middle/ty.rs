@@ -1507,26 +1507,6 @@ fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
     ret ann_to_monotype(cx, pat_ann(pat));
 }
 
-fn item_ann(&@ast::item it) -> ast::ann {
-    alt (it.node) {
-        case (ast::item_const(_, _, _, _, _, ?a)) { ret a; }
-        case (ast::item_fn(_, _, _, _, _, ?a)) { ret a; }
-        case (ast::item_mod(_, _, _, _)) {
-            log_err "a module was passed to item_ann(), " +
-                        "but modules haven't annotations";
-            fail;
-        }
-        case (ast::item_native_mod(_, _, _, _)) {
-            log_err "a native module was passed to item_ann(), " +
-                        "but native modules haven't annotations";
-            fail;
-        }
-        case (ast::item_ty(_, _, _, _, _, ?a)) { ret a; }
-        case (ast::item_tag(_, _, _, _, _, ?a)) { ret a; }
-        case (ast::item_obj(_, _, _, _, _, ?a)) { ret a; }
-    }
-}
-
 fn expr_ann(&@ast::expr e) -> ast::ann {
     alt (e.node) {
         case (ast::expr_vec(_, _, _, ?a)) { ret a; }
@@ -2441,7 +2421,7 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     alt (cx.items.get(id)) {
         case (any_item_rust(?item)) {
             alt (item.node) {
-                case (ast::item_tag(_, ?variants, _, _, _, _)) {
+                case (ast::item_tag(?variants, _)) {
                     let vec[variant_info] result = [];
                     for (ast::variant variant in variants) {
                         auto ctor_ty = ann_to_monotype(cx, variant.node.ann);

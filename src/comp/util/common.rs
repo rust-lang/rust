@@ -148,26 +148,6 @@ fn log_stmt(&ast::stmt st) { log pretty::pprust::stmt_to_str(st); }
 
 fn log_stmt_err(&ast::stmt st) { log_err pretty::pprust::stmt_to_str(st); }
 
-fn decl_lhs(@ast::decl d) -> ast::def_id {
-    alt (d.node) {
-        case (ast::decl_local(?l)) { ret l.id; }
-        case (ast::decl_item(?an_item)) {
-            alt (an_item.node) {
-                case (ast::item_const(_, _, _, _, ?d, _)) { ret d; }
-                case (ast::item_fn(_, _, _, _, ?d, _)) { ret d; }
-                case (ast::item_mod(_, _, _, ?d)) { ret d; }
-                case (ast::item_native_mod(_, _, _, ?d)) { ret d; }
-                case (ast::item_ty(_, _, _, _, ?d, _)) { ret d; }
-                case (ast::item_tag(_, _, _, _, ?d, _)) { ret d; }
-                case (ast::item_obj(_, _, _, _, ?d, _)) {
-                    ret d.ctor; /* This doesn't really make sense */
-
-                }
-            }
-        }
-    }
-}
-
 fn has_nonlocal_exits(&ast::block b) -> bool {
     auto has_exits = @mutable false;
     fn visit_expr(@mutable bool flag, &@ast::expr e) {

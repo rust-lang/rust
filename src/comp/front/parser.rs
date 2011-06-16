@@ -1662,14 +1662,22 @@ fn parse_fn_header(&parser p) -> tup(ast::ident, vec[ast::ty_param]) {
     ret tup(id, ty_params);
 }
 
+fn mk_item(&parser p, uint lo, uint hi, &ast::ident ident, &ast::item_ node,
+           &vec[ast::attribute] attrs) -> @ast::item {
+    ret @rec(ident=ident,
+             attrs=attrs,
+             id=p.next_def_id(),
+             ann=p.get_ann(),
+             node=node,
+             span=rec(lo=lo, hi=hi));
+}
+
 fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto,
                          vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto f = parse_fn(p, proto, purity);
-    auto item =
-        ast::item_fn(t._0, f, t._1, attrs, p.next_def_id(), p.get_ann());
-    ret @spanned(lo, f.body.span.hi, item);
+    ret mk_item(p, lo, f.body.span.hi, t._0, ast::item_fn(f, t._1), attrs);
 }
 
 fn parse_obj_field(&parser p) -> ast::obj_field {
@@ -1727,9 +1735,8 @@ fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
     let ast::_obj ob = rec(fields=fields.node, methods=meths, dtor=dtor);
-    auto odid = rec(ty=p.next_def_id(), ctor=p.next_def_id());
-    auto item = ast::item_obj(ident, ob, ty_params, attrs, odid, p.get_ann());
-    ret @spanned(lo, hi, item);
+    ret mk_item(p, lo, hi, ident, ast::item_obj(ob, ty_params,
+                                                p.next_def_id()), attrs);
 }
 
 fn parse_mod_items(&parser p, token::token term) -> ast::_mod {
@@ -1756,9 +1763,7 @@ fn parse_item_const(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto e = parse_expr(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item =
-        ast::item_const(id, ty, e, attrs, p.next_def_id(), p.get_ann());
-    ret @spanned(lo, hi, item);
+    ret mk_item(p, lo, hi, id, ast::item_const(ty, e), attrs);
 }
 
 fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
@@ -1768,8 +1773,7 @@ fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto m = parse_mod_items(p, token::RBRACE);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    auto item = ast::item_mod(id, m, attrs, p.next_def_id());
-    ret @spanned(lo, hi, item);
+    ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs);
 }
 
 fn parse_item_native_type(&parser p) -> @ast::native_item {
@@ -1856,8 +1860,7 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto m = parse_native_mod_items(p, native_name, abi);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    auto item = ast::item_native_mod(id, m, attrs, p.next_def_id());
-    ret @spanned(lo, hi, item);
+    ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs);
 }
 
 fn parse_type_decl(&parser p) -> tup(uint, ast::ident) {
@@ -1873,9 +1876,7 @@ fn parse_item_type(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto ty = parse_ty(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item =
-        ast::item_ty(t._1, ty, tps, attrs, p.next_def_id(), p.get_ann());
-    ret @spanned(t._0, hi, item);
+    ret mk_item(p, t._0, hi, t._1, ast::item_ty(ty, tps), attrs);
 }
 
 fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
@@ -1922,10 +1923,7 @@ fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     }
     auto hi = p.get_hi_pos();
     p.bump();
-    auto item =
-        ast::item_tag(id, variants, ty_params, attrs, p.next_def_id(),
-                      p.get_ann());
-    ret @spanned(lo, hi, item);
+    ret mk_item(p, lo, hi, id, ast::item_tag(variants, ty_params), attrs);
 }
 
 fn parse_layer(&parser p) -> ast::layer {
