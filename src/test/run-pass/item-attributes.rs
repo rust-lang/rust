@@ -116,5 +116,49 @@ mod test_stmt_multi_attr_outer {
     }
 }
 
+mod test_attr_inner {
+
+    mod m {
+        // This is an attribute of mod m
+        #[attr = "val"];
+    }
+}
+
+mod test_attr_inner_then_outer {
+
+    mod m {
+        // This is an attribute of mod m
+        #[attr = "val"];
+        // This is an attribute of fn f
+        #[attr = "val"]
+        fn f() {
+        }
+    }
+}
+
+mod test_attr_inner_then_outer_multi {
+    mod m {
+        // This is an attribute of mod m
+        #[attr1 = "val"];
+        #[attr2 = "val"];
+        // This is an attribute of fn f
+        #[attr1 = "val"]
+        #[attr2 = "val"]
+        fn f() {
+        }
+    }
+}
+
 fn main() {
 }
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

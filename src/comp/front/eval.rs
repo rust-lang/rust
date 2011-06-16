@@ -287,7 +287,7 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             auto p0 =
                 new_parser(cx.sess, e, start_id, full_path, cx.chpos,
                            cx.next_ann);
-            auto m0 = parse_mod_items(p0, token::EOF);
+            auto m0 = parse_mod_items(p0, token::EOF, []);
             auto next_id = p0.next_def_id();
             // Thread defids and chpos through the parsers
 
