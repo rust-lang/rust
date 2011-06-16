@@ -20,7 +20,6 @@ import front::ast::controlflow;
 import front::creader;
 import middle::metadata;
 import util::common::*;
-
 import util::data::interner;
 
 
@@ -45,14 +44,14 @@ tag any_item {
 }
 
 type item_table = hashmap[ast::def_id, any_item];
-type constr_table = hashmap[ast::def_id, vec[constr_def]]; 
+
+type constr_table = hashmap[ast::def_id, vec[constr_def]];
 
 type mt = rec(t ty, ast::mutability mut);
 
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-
 type creader_cache = hashmap[tup(int, uint, uint), ty::t];
 
 type ctxt =
@@ -61,6 +60,7 @@ type ctxt =
         resolve::def_map def_map,
         node_type_table node_types,
         item_table items, // Only contains type items
+
         constr_table fn_constrs,
         type_cache tcache,
         creader_cache rcache,
@@ -69,12 +69,14 @@ type ctxt =
 
 type ty_ctxt = ctxt;
 
- // Needed for disambiguation from unify::ctxt.
- // Convert from method type to function type.  Pretty easy; we just drop
- // 'ident'.
- fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
-     ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf, m.constrs);
- }
+
+// Needed for disambiguation from unify::ctxt.
+// Convert from method type to function type.  Pretty easy; we just drop
+// 'ident'.
+fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
+    ret mk_fn(cx, m.proto, m.inputs, m.output, m.cf, m.constrs);
+}
+
 
 // Never construct these manually. These are interned.
 //
@@ -127,9 +129,10 @@ tag sty {
 }
 
 type constr_def = spanned[constr_general[uint]];
-type constr_general[T] =  rec(path path,
-                              vec[@constr_arg_general[T]] args,
-                              def_id id);
+
+type constr_general[T] =
+    rec(path path, vec[@constr_arg_general[T]] args, def_id id);
+
 
 // Data structures used in type unification
 tag type_err {
@@ -244,7 +247,6 @@ fn mk_rcache() -> creader_cache {
 }
 
 fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
-
     let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
         [mutable ];
     let node_type_table ntt = @mutable ntt_sub;
@@ -257,7 +259,7 @@ fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
             def_map=dm,
             node_types=ntt,
             items=items,
-            fn_constrs = cs,
+            fn_constrs=cs,
             tcache=tcache,
             rcache=mk_rcache(),
             short_names_cache=map::mk_hashmap[ty::t,
@@ -1113,7 +1115,7 @@ fn args_eq[T](fn(&T, &T) -> bool  eq, vec[@ast::constr_arg_general[T]] a,
 
 fn constr_eq(&@constr_def c, &@constr_def d) -> bool {
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
-             // FIXME: hack
+            // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
@@ -1529,7 +1531,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_block(_, ?a)) { ret a; }
         case (ast::expr_move(_, _, ?a)) { ret a; }
         case (ast::expr_assign(_, _, ?a)) { ret a; }
-        case (ast::expr_swap(_,_,?a)) { ret a; }
+        case (ast::expr_swap(_, _, ?a)) { ret a; }
         case (ast::expr_assign_op(_, _, _, ?a)) { ret a; }
         case (ast::expr_send(_, _, ?a)) { ret a; }
         case (ast::expr_recv(_, _, ?a)) { ret a; }

@@ -90,9 +90,10 @@ const int obj_body_elt_fields = 2;
 
 const int obj_body_elt_with_obj = 3;
 
- /* The base object to which an anonymous
-  * object is attached */
- const int fn_field_code = 0;
+
+/* The base object to which an anonymous
+ * object is attached */
+const int fn_field_code = 0;
 
 const int fn_field_box = 1;
 

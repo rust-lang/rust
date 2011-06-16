@@ -175,6 +175,7 @@ mod write {
             } else {
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
+
                 auto triple = x86::get_target_triple();
                 llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                               str::buf(triple),

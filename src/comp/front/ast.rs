@@ -245,13 +245,16 @@ tag expr_ {
     expr_alt(@expr, vec[arm], ann);
     expr_fn(_fn, ann);
     expr_block(block, ann);
-    expr_move(@expr /* TODO: @expr|is_lval */, @expr, ann);
-    expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
-    expr_swap(@expr /* TODO: @expr|is_lval */,
-              @expr /* TODO: @expr|is_lval */, ann);
-    expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
-    expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
-    expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    /*
+     * FIXME: many of these @exprs should be constrained with
+     * is_lval once we have constrained types working.
+     */
+    expr_move(@expr, @expr, ann);
+    expr_assign(@expr,@expr, ann);
+    expr_swap(@expr, @expr, ann);
+    expr_assign_op(binop, @expr, @expr, ann);
+    expr_send(@expr, @expr, ann);
+    expr_recv(@expr, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, ann);
@@ -366,16 +369,14 @@ type constr_arg = constr_arg_general[uint];
 
 type constr_arg_general[T] = spanned[constr_arg_general_[T]];
 
-type constr_ = rec(path path,
-                   vec[@constr_arg_general[uint]] args,
-                   ann ann);
+type constr_ = rec(path path, vec[@constr_arg_general[uint]] args, ann ann);
 
 type constr = spanned[constr_];
+
 
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
  corresponding to these. */
-
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 
 type fn_decl =
@@ -464,12 +465,14 @@ tag attr_style { attr_outer; attr_inner; }
 
 type attribute_ = rec(attr_style style, meta_item value);
 
-type item = rec(ident ident,
-                vec[attribute] attrs,
-                def_id id, // For objs, this is the type def_id
-                ann ann,
-                item_ node,
-                span span);
+type item =
+    rec(ident ident,
+        vec[attribute] attrs,
+        def_id id, // For objs, this is the type def_id
+
+        ann ann,
+        item_ node,
+        span span);
 
 tag item_ {
     item_const(@ty, @expr);
@@ -478,7 +481,9 @@ tag item_ {
     item_native_mod(native_mod);
     item_ty(@ty, vec[ty_param]);
     item_tag(vec[variant], vec[ty_param]);
-    item_obj(_obj, vec[ty_param], def_id /* constructor id */);
+    item_obj(_obj, vec[ty_param], def_id);
+    /* constructor id */
+
 }
 
 type native_item = spanned[native_item_];
@@ -521,9 +526,9 @@ fn is_exported(ident i, _mod m) -> bool {
             case (_) {/* fall through */ }
         }
     }
-
     // If there are no declared exports then 
     // everything not imported is exported
+
     ret count == 0u && !nonlocal;
 }
 

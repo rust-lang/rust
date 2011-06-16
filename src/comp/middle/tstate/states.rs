@@ -361,18 +361,17 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_swap(?lhs, ?rhs, ?a)) {
             /* quite similar to binary -- should abstract this */
+
             changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
-            changed = find_pre_post_state_expr(fcx, pres, lhs)
-                || changed;
+            changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
             changed =
-                find_pre_post_state_expr(fcx,
-                                         expr_poststate(fcx.ccx, lhs),
+                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs),
                                          rhs) || changed;
             changed =
-                extend_poststate_ann(fcx.ccx, a,
-                                     expr_poststate(fcx.ccx, rhs)) || changed;
-        ret changed;
-    }
+                extend_poststate_ann(fcx.ccx, a, expr_poststate(fcx.ccx, rhs))
+                    || changed;
+            ret changed;
+        }
         case (expr_recv(?lhs, ?rhs, ?a)) {
             extend_prestate_ann(fcx.ccx, a, pres);
             alt (lhs.node) {
@@ -502,8 +501,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     auto b_post = block_poststate(fcx.ccx, body);
                     extend_poststate_ann(fcx.ccx, a,
                                          intersect_postconds([e_post,
-                                                              b_post]))
-                    || changed
+                                                              b_post])) ||
+                        changed
                 };
             ret changed;
         }

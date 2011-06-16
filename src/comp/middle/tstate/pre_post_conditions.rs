@@ -102,6 +102,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
     alt (i.node) {
         case (item_const(_, ?e)) {
             // make a fake fcx
+
             auto fake_fcx =
                 rec(enclosing=rec(constrs=@new_def_hash[constraint](),
                                   num_constraints=0u,
@@ -113,19 +114,18 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
         }
         case (item_fn(?f, ?ps)) {
             assert (ccx.fm.contains_key(i.id));
-            auto fcx = rec(enclosing=ccx.fm.get(i.id), id=i.id,
-                           name=i.ident, ccx=ccx);
+            auto fcx =
+                rec(enclosing=ccx.fm.get(i.id),
+                    id=i.id,
+                    name=i.ident,
+                    ccx=ccx);
             find_pre_post_fn(fcx, f);
         }
         case (item_mod(?m)) { find_pre_post_mod(m); }
-        case (item_native_mod(?nm)) {
-            find_pre_post_native_mod(nm);
-        }
+        case (item_native_mod(?nm)) { find_pre_post_native_mod(nm); }
         case (item_ty(_, _)) { ret; }
         case (item_tag(_, _)) { ret; }
-        case (item_obj(?o, _, _)) {
-            find_pre_post_obj(ccx, o);
-        }
+        case (item_obj(?o, _, _)) { find_pre_post_obj(ccx, o); }
     }
 }
 
@@ -254,15 +254,20 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             vec::push[@expr](args, operator);
             find_pre_post_exprs(fcx, args, a);
             /* see if the call has any constraints on its type */
-            log("a function: " );
+
+            log "a function: ";
             log_expr(*operator);
             auto pp = expr_pp(fcx.ccx, e);
-            for (@ty::constr_def c in 
-                     constraints_expr(fcx.ccx.tcx, operator)) {
-                auto i = bit_num(fcx, rec(id=c.node.id,
-                  c=substitute_constr_args(fcx.ccx.tcx, operands, c)));
+            for (@ty::constr_def c in constraints_expr(fcx.ccx.tcx, operator))
+                {
+                auto i =
+                    bit_num(fcx,
+                            rec(id=c.node.id,
+                                c=substitute_constr_args(fcx.ccx.tcx,
+                                                         operands, c)));
                 require(i, pp);
             }
+
             /* if this is a failing call, its postcondition sets everything */
             alt (controlflow_expr(fcx.ccx, operator)) {
                 case (noreturn) { set_postcond_false(fcx.ccx, a); }
@@ -340,6 +345,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_swap(?lhs, ?rhs, ?a)) {
             // Both sides must already be initialized
+
             find_pre_post_exprs(fcx, [lhs, rhs], a);
         }
         case (expr_assign(?lhs, ?rhs, ?a)) {

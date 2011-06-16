@@ -145,7 +145,8 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) {
         if (!promises(fcx, { *post }, ret_c)) {
             fcx.ccx.tcx.sess.span_err(f.body.span,
                                       "In non-returning function " + fcx.name
-                                      + ", some control paths may \
+                                          +
+                                          ", some control paths may \
                                            return to the caller");
         }
     }

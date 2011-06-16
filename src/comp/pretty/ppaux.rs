@@ -20,7 +20,6 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             };
         ret s + ty_to_str(cx, input.ty);
     }
-
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  vec[arg] inputs, t output, ast::controlflow cf,
                  &vec[@constr_def] constrs) -> str {
@@ -92,8 +91,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
-            s +=
-                "<tag#" + istr(id._0) + ":" + istr(id._1) + ">";
+
+            s += "<tag#" + istr(id._0) + ":" + istr(id._1) + ">";
             if (vec::len[t](tps) > 0u) {
                 auto f = bind ty_to_str(cx, _);
                 auto strs = vec::map[t, str](f, tps);
@@ -101,9 +100,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             }
         }
         case (ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
-            s +=
-                fn_to_str(cx, proto, none, inputs, output, cf,
-                          constrs);
+            s += fn_to_str(cx, proto, none, inputs, output, cf, constrs);
         }
         case (ty_native_fn(_, ?inputs, ?output)) {
             s +=
@@ -346,18 +343,16 @@ const uint default_columns = 78u;
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
-
 fn uint_to_str(&uint i) -> str { ret uistr(i); }
 
 fn constr_to_str(&@constr_def c) -> str {
-  ret path_to_str(c.node.path)
-      + constr_args_to_str(uint_to_str, c.node.args);
+    ret path_to_str(c.node.path) +
+            constr_args_to_str(uint_to_str, c.node.args);
 }
 
-
 fn ast_constr_to_str(&@front::ast::constr c) -> str {
-  ret path_to_str(c.node.path)
-      + constr_args_to_str(uint_to_str, c.node.args);
+    ret path_to_str(c.node.path) +
+            constr_args_to_str(uint_to_str, c.node.args);
 }
 
 fn constrs_str(&vec[@constr_def] constrs) -> str {
@@ -371,21 +366,14 @@ fn constrs_str(&vec[@constr_def] constrs) -> str {
 }
 
 fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {
-  auto s = "";
-  auto colon = true;
-  for (@ast::constr c in constrs) {
-    if (colon) {
-      s += " : ";
-      colon = false;
+    auto s = "";
+    auto colon = true;
+    for (@ast::constr c in constrs) {
+        if (colon) { s += " : "; colon = false; } else { s += ", "; }
+        s += ast_constr_to_str(c);
     }
-    else {
-      s += ", ";
-    }
-    s += ast_constr_to_str(c);
-  }
-  ret s;
+    ret s;
 }
-
 //
 // Local Variables:
 // mode: rust

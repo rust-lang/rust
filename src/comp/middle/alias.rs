@@ -34,12 +34,12 @@ type scope = vec[restrict];
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
 type ctx =
-    rec(@ty::ctxt tcx,
-        std::map::hashmap[def_num, local_info] local_map);
+    rec(@ty::ctxt tcx, std::map::hashmap[def_num, local_info] local_map);
 
 fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
     auto cx =
         @rec(tcx=tcx,
+
              // Stores information about object fields and function
              // arguments that's otherwise not easily available.
              local_map=util::common::new_int_hash());
@@ -93,8 +93,8 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
                     auto root = expr_root(*cx, ex, false);
                     if (mut_field(root.ds)) {
                         cx.tcx.sess.span_err(ex.span,
-                                             "result of put must be"
-                                             + " immutably rooted");
+                                             "result of put must be" +
+                                                 " immutably rooted");
                     }
                     visit_expr(cx, ex, sc, v);
                 }
@@ -129,7 +129,6 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
    rec(vec[def_num] root_vars, vec[ty::t] unsafe_ts) {
     auto fty = ty::expr_ty(*cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
-
     let vec[def_num] roots = [];
     let vec[tup(uint, def_num)] mut_roots = [];
     let vec[ty::t] unsafe_ts = [];
@@ -146,7 +145,8 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
                     }
                     case (_) {
                         if (!mut_field(root.ds)) {
-                            auto m = "passing a temporary value or \
+                            auto m =
+                                "passing a temporary value or \
                                  immutable field by mutable alias";
                             cx.tcx.sess.span_err(arg.span, m);
                         }
@@ -171,10 +171,10 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
         alt (f.node) {
             case (ast::expr_path(_, ?ann)) {
                 if (def_is_local(cx.tcx.def_map.get(ann.id), true)) {
-                    cx.tcx.sess.span_err
-                        (f.span, #fmt("function may alias with argument \
-                         %u, which is not immutably rooted",
-                         unsafe_t_offsets.(0)));
+                    cx.tcx.sess.span_err(f.span,
+                                         #fmt("function may alias with \
+                         argument %u, which is not immutably rooted",
+                                              unsafe_t_offsets.(0)));
                 }
             }
             case (_) { }
@@ -218,9 +218,10 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
 
 fn check_tail_call(&ctx cx, &@ast::expr call) {
     auto args;
-    auto f = alt (call.node) {
-        case (ast::expr_call(?f, ?args_, _)) { args = args_; f }
-    };
+    auto f =
+        alt (call.node) {
+            case (ast::expr_call(?f, ?args_, _)) { args = args_; f }
+        };
     auto i = 0u;
     for (ty::arg arg_t in fty_args(cx, ty::expr_ty(*cx.tcx, f))) {
         if (arg_t.mode != ty::mo_val) {
@@ -233,30 +234,28 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
                     alt (cx.local_map.find(dnum)) {
                         case (some(arg(ast::alias(?mut)))) {
                             if (mut_a && !mut) {
-                                cx.tcx.sess.span_warn
-                                    (args.(i).span, "passing an immutable \
+                                cx.tcx.sess.span_warn(args.(i).span,
+                                                      "passing an immutable \
                                      alias by mutable alias");
                             }
                         }
-                        case (_) {
-                            ok = !def_is_local(def, false);
-                        }
+                        case (_) { ok = !def_is_local(def, false); }
                     }
                 }
                 case (_) { ok = false; }
             }
             if (!ok) {
-                cx.tcx.sess.span_warn
-                    (args.(i).span, "can not pass a local value by alias to \
-                                     a tail call");
+                cx.tcx.sess.span_warn(args.(i).span,
+                                      "can not pass a local value by \
+                                     alias to a tail call");
             }
         }
         i += 1u;
     }
 }
 
-fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms,
-             &scope sc, &vt[scope] v) {
+fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms, &scope sc,
+             &vt[scope] v) {
     visit::visit_expr(input, sc, v);
     auto root = expr_root(cx, input, true);
     auto roots =
@@ -630,21 +629,20 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
 
 fn def_is_local(&ast::def d, bool objfields_count) -> bool {
     ret alt (d) {
-        case (ast::def_local(_)) { true }
-        case (ast::def_arg(_)) { true }
-        case (ast::def_obj_field(_)) { objfields_count }
-        case (ast::def_binding(_)) { true }
-        case (_) { false }
-    };
+            case (ast::def_local(_)) { true }
+            case (ast::def_arg(_)) { true }
+            case (ast::def_obj_field(_)) { objfields_count }
+            case (ast::def_binding(_)) { true }
+            case (_) { false }
+        };
 }
 
 fn fty_args(&ctx cx, ty::t fty) -> vec[ty::arg] {
     ret alt (ty::struct(*cx.tcx, fty)) {
-        case (ty::ty_fn(_, ?args, _, _, _)) { args }
-        case (ty::ty_native_fn(_, ?args, _)) { args }
-    };
+            case (ty::ty_fn(_, ?args, _, _, _)) { args }
+            case (ty::ty_native_fn(_, ?args, _)) { args }
+        };
 }
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;

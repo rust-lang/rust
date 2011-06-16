@@ -281,7 +281,7 @@ fn scan_number(char c, &reader rdr) -> token::token {
                 rdr.bump();
                 ret token::LIT_MACH_FLOAT(util::common::ty_f64,
                                           intern(*rdr.get_interner(),
-                                                           float_str));
+                                                 float_str));
                 /* FIXME: if this is out of range for either a 32-bit or
                    64-bit float, it won't be noticed till the back-end */
 

@@ -23,10 +23,7 @@ fn foldl[T, U](&list[T] ls_, &U u, fn(&T, &U) -> U  f) -> U {
     auto ls = ls_;
     while (true) {
         alt (ls) {
-            case (cons(?hd, ?tl)) {
-                accum = f(hd, accum);
-                ls = *tl;
-            }
+            case (cons(?hd, ?tl)) { accum = f(hd, accum); ls = *tl; }
             case (nil) { break; }
         }
     }
@@ -54,16 +51,13 @@ fn has[T](&list[T] ls_, &T elt) -> bool {
     while (true) {
         alt (ls) {
             case (cons(?hd, ?tl)) {
-                if (elt == hd) {
-                    ret true;
-                } else {
-                    ls = *tl;
-                }
+                if (elt == hd) { ret true; } else { ls = *tl; }
             }
             case (nil) { ret false; }
         }
     }
     ret false; // Typestate checker doesn't understand infinite loops
+
 }
 
 fn length[T](&list[T] ls) -> uint {

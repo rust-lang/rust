@@ -103,10 +103,7 @@ fn walk_item(&ast_visitor v, @ast::item i) {
     if (!v.keep_going()) { ret; }
     v.visit_item_pre(i);
     alt (i.node) {
-        case (ast::item_const(?t, ?e)) {
-            walk_ty(v, t);
-            walk_expr(v, e);
-        }
+        case (ast::item_const(?t, ?e)) { walk_ty(v, t); walk_expr(v, e); }
         case (ast::item_fn(?f, _)) {
             walk_fn(v, f, i.span, i.ident, i.id, i.ann);
         }

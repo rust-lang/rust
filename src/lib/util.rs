@@ -7,7 +7,8 @@ fn id[T](&T x) -> T { ret x; }
  * the constraint once fixed. */
 type rational = rec(int num, int den);
 
- // : int::positive(*.den);
+
+// : int::positive(*.den);
 fn rational_leq(&rational x, &rational y) -> bool {
     // NB: Uses the fact that rationals have positive denominators WLOG:
 

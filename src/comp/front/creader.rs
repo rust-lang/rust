@@ -478,8 +478,7 @@ fn tag_variant_ids(&ebml::doc item, int this_cnum) -> vec[ast::def_id] {
 
 fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     auto b = str::buf(filename);
-    auto mb =
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(b);
+    auto mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(b);
     if (mb as int == 0) { ret option::none[vec[u8]]; }
     auto of = mk_object_file(mb);
     auto si = mk_section_iter(of.llof);

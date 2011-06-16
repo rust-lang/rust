@@ -208,9 +208,8 @@ obj printer(io::writer out,
 
             mutable uint right, // index of right side of input stream
 
-            mutable vec[mutable token]
-                token, // ring-buffr stream goes through
-
+            mutable vec[mutable token] token,
+             // ring-buffr stream goes through
             mutable vec[mutable int] size, // ring-buffer of calculated sizes
 
             mutable int left_total, // running size of stream "...left"

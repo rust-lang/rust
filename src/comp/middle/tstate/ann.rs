@@ -11,23 +11,28 @@ import std::bitv;
  */
 type precond = bitv::t;
 
- /* 1 means "this variable must be initialized"
-   0 means "don't care about this variable" */
- type postcond = bitv::t;
 
- /* 1 means "this variable is initialized"
-   0 means "don't know about this variable */
- type prestate = bitv::t;
+/* 1 means "this variable must be initialized"
+  0 means "don't care about this variable" */
+type postcond = bitv::t;
 
- /* 1 means "this variable is definitely initialized"
-   0 means "don't know whether this variable is
-   initialized" */
- type poststate = bitv::t;
 
- /* 1 means "this variable is definitely initialized"
-   0 means "don't know whether this variable is
-   initialized" */
-  /* named thus so as not to confuse with prestate and poststate */
+/* 1 means "this variable is initialized"
+  0 means "don't know about this variable */
+type prestate = bitv::t;
+
+
+/* 1 means "this variable is definitely initialized"
+  0 means "don't know whether this variable is
+  initialized" */
+type poststate = bitv::t;
+
+
+/* 1 means "this variable is definitely initialized"
+  0 means "don't know whether this variable is
+  initialized" */
+
+/* named thus so as not to confuse with prestate and poststate */
 type pre_and_post = @rec(precond precondition, postcond postcondition);
 
 

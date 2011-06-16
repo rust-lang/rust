@@ -239,7 +239,7 @@ fn build_session_options(str binary, getopts::match match) ->
                 case ("3") { 3u }
                 case (_) {
                     log_err "error: optimization level needs " +
-                        "to be between 0-3";
+                                "to be between 0-3";
                     fail
                 }
             }
@@ -399,13 +399,11 @@ fn main(vec[str] args) {
         let str prog = "gcc";
         // The invocations of gcc share some flags across platforms
 
-        let vec[str] common_args = [stage, "-Lrt", "-lrustrt",
-         "-fno-strict-aliasing", "-fPIC", "-Wall",
-         "-fno-rtti", "-fno-exceptions", "-g", glu, "-o",
-         saved_out_filename, saved_out_filename + ".o"];
-
-       auto shared_cmd;
-
+        let vec[str] common_args =
+            [stage, "-Lrt", "-lrustrt", "-fno-strict-aliasing", "-fPIC",
+             "-Wall", "-fno-rtti", "-fno-exceptions", "-g", glu, "-o",
+             saved_out_filename, saved_out_filename + ".o"];
+        auto shared_cmd;
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 shared_cmd = "-shared";
@@ -421,12 +419,12 @@ fn main(vec[str] args) {
             }
         }
         if (sopts.shared) {
-           gcc_args += [shared_cmd];
+            gcc_args += [shared_cmd];
         } else {
-           gcc_args += ["-Lrustllvm", "-lrustllvm", "-lstd", "-lm", main];
+            gcc_args += ["-Lrustllvm", "-lrustllvm", "-lstd", "-lm", main];
         }
-
         // We run 'gcc' here
+
         run::run_program(prog, gcc_args);
         // Clean up on Darwin
 

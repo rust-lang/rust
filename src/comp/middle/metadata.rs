@@ -557,8 +557,8 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
                 encode_variant_id(ebml_w, v.node.id);
             }
             ebml::end_tag(ebml_w);
-            encode_tag_variant_info(cx, ebml_w, item.id, variants,
-                                    index, tps);
+            encode_tag_variant_info(cx, ebml_w, item.id, variants, index,
+                                    tps);
         }
         case (ast::item_obj(_, ?tps, ?ctor_id)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
