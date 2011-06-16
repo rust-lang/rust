@@ -10,6 +10,7 @@ import ast::ident;
 import front::parser::parser;
 import front::parser::spanned;
 import front::parser::new_parser;
+import front::parser::parse_inner_attributes;
 import front::parser::parse_mod_items;
 import util::common;
 import util::common::filename;
@@ -287,16 +288,19 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             auto p0 =
                 new_parser(cx.sess, e, start_id, full_path, cx.chpos,
                            cx.next_ann);
-            auto m0 = parse_mod_items(p0, token::EOF, []);
+            auto inner_attrs = parse_inner_attributes(p0);
+            auto first_item_outer_attrs = inner_attrs._1;
+            auto m0 = parse_mod_items(p0, token::EOF,
+                                      first_item_outer_attrs);
             auto next_id = p0.next_def_id();
             // Thread defids and chpos through the parsers
 
             cx.p.set_def(next_id._1);
             cx.chpos = p0.get_chpos();
             cx.next_ann = p0.next_ann_num();
-            auto i =
-                front::parser::mk_item(cx.p, cdir.span.lo, cdir.span.hi, id,
-                                       ast::item_mod(m0), []);
+            auto i = front::parser::mk_item(cx.p, cdir.span.lo, cdir.span.hi,
+                                            id, ast::item_mod(m0),
+                                            inner_attrs._0);
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {

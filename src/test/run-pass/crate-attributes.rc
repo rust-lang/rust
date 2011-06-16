@@ -1,0 +1,3 @@
+mod m = "crate-attributes-src" {
+  mod foo;
+}
