@@ -3456,12 +3456,16 @@ mod ivec {
                 cx.fcx.lcx.ccx.tcx.sess.bug("non-istr/ivec in trans_append");
             }
         }
+
         // Gather the various type descriptors we'll need.
 
-        auto rslt = get_tydesc(cx, t, false, none);
+        // FIXME (issue #511): This is needed to prevent a leak.
+        auto no_tydesc_info = none;
+
+        auto rslt = get_tydesc(cx, t, false, no_tydesc_info);
         auto vec_tydesc = rslt.val;
         auto bcx = rslt.bcx;
-        rslt = get_tydesc(bcx, unit_ty, false, none);
+        rslt = get_tydesc(bcx, unit_ty, false, no_tydesc_info);
         auto unit_tydesc = rslt.val;
         bcx = rslt.bcx;
 

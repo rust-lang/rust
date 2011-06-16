@@ -1,9 +1,4 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-
-// works, but leaks in the compiler :(
 
 import rusti::ivec_len;
 
