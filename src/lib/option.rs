@@ -21,6 +21,10 @@ fn is_none[T](&t[T] opt) -> bool {
     ret alt (opt) { case (none) { true } case (some(_)) { false } };
 }
 
+fn is_some[T](&t[T] opt) -> bool {
+    ret !is_none(opt);
+}
+
 fn from_maybe[T](&T def, &t[T] opt) -> T {
     auto f = bind util::id[T](_);
     ret maybe[T, T](def, f, opt);
