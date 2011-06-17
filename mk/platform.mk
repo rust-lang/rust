@@ -69,9 +69,9 @@ CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
  $(if $(findstring stage0,$(1)),         \
        stage0,                           \
       $(if $(findstring stage1,$(1)),    \
-           stage1,                       \
+           stage1/lib,                       \
           $(if $(findstring stage2,$(1)),\
-               stage2,                   \
+               stage2/lib,                   \
                ))))
 
 ifdef CFG_WINDOWSY
