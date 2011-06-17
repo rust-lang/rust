@@ -270,9 +270,8 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
     auto crate_cache = common::new_int_hash[session::crate_metadata]();
     auto target_crate_num = 0;
-    let vec[@ast::meta_item] md = [];
     auto sess =
-        session::session(target_crate_num, target_cfg, sopts, crate_cache, md,
+        session::session(target_crate_num, target_cfg, sopts, crate_cache,
                          front::codemap::new_codemap());
     ret sess;
 }

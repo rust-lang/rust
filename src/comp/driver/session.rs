@@ -66,7 +66,6 @@ obj session(ast::crate_num cnum,
             @config targ_cfg,
             @options opts,
             map::hashmap[int, crate_metadata] crates,
-            mutable vec[@ast::meta_item] metadata,
             codemap::codemap cm) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
@@ -81,8 +80,6 @@ obj session(ast::crate_num cnum,
         emit_diagnostic(none[span], msg, "error", 9u8, cm);
         fail;
     }
-    fn add_metadata(vec[@ast::meta_item] data) { metadata = metadata + data; }
-    fn get_metadata() -> vec[@ast::meta_item] { ret metadata; }
     fn span_warn(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
 
