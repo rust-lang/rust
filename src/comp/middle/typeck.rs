@@ -1712,6 +1712,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_if(?cond, ?thn, ?elsopt, ?a)) {
             check_expr(fcx, cond);
+            demand::simple(fcx, cond.span,
+                           ty::mk_bool(fcx.ccx.tcx),
+                           expr_ty(fcx.ccx.tcx, cond));
             check_then_else(fcx, thn, elsopt, a, expr.span);
         }
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {
