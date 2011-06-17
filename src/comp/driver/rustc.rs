@@ -205,7 +205,7 @@ fn build_target_config() -> @session::config {
 fn build_session_options(str binary, getopts::match match, str binary_dir) ->
    @session::options {
     auto shared = opt_present(match, "shared");
-    auto library_search_paths = [binary_dir];
+    auto library_search_paths = [binary_dir + "/lib"];
     library_search_paths += getopts::opt_strs(match, "L");
     auto output_type =
         if (opt_present(match, "parse-only")) {
@@ -395,7 +395,7 @@ fn main(vec[str] args) {
     if (sopts.output_type == link::output_type_exe) {
         let str glu = binary_dir + "/glue.o";
         let str main = "rt/main.o";
-        let str stage = "-L" + binary_dir;
+        let str stage = "-L" + binary_dir + "/lib";
         let vec[str] gcc_args;
         let str prog = "gcc";
         // The invocations of gcc share some flags across platforms

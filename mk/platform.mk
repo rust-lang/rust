@@ -82,7 +82,7 @@ ifdef CFG_WINDOWSY
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
-  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH)" $(2)
+  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1):$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH)" $(2)
 
   CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
                            -e 's@\\(\S)@/\1@go;'       \
@@ -98,7 +98,7 @@ ifdef CFG_UNIXY
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
-  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH) $(2)
+  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1):$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
   CFG_RUN_TEST=\
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
@@ -108,7 +108,7 @@ ifdef CFG_UNIXY
     CFG_LIB_NAME=$(1).dll
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-    CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH) $(2)
+    CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1):$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
     CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_TESTLIB,$(1)) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)

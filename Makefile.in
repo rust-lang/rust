@@ -149,8 +149,8 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
 SREQ0 := stage0/rustc$(X) $(LREQ) rt/main.o stage0/glue.o stage0/$(CFG_STDLIB)
-SREQ1 := stage1/rustc$(X) $(LREQ) rt/main.o stage1/glue.o stage1/$(CFG_STDLIB)
-SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage2/glue.o stage2/$(CFG_STDLIB)
+SREQ1 := stage1/rustc$(X) $(LREQ) rt/main.o stage1/glue.o stage1/lib/$(CFG_STDLIB)
+SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage2/glue.o stage2/lib/$(CFG_STDLIB)
 
 
 ######################################################################
@@ -187,7 +187,7 @@ all: rt/$(CFG_RUNTIME)          \
      stage0/rustc$(X)           \
      $(GENERATED)               \
      $(DOCS)                    \
-     stage1/$(CFG_STDLIB)       \
+     stage1/lib/$(CFG_STDLIB)   \
      stage1/intrinsics.bc       \
      stage1/glue.o              \
      stage1/rustc$(X)           \
@@ -201,15 +201,15 @@ all: rt/$(CFG_RUNTIME)          \
      stage0/rustc$(X)           \
      $(GENERATED)               \
      $(DOCS)                    \
-     stage1/$(CFG_STDLIB)       \
+     stage1/lib/$(CFG_STDLIB)   \
      stage1/intrinsics.bc       \
      stage1/glue.o              \
      stage1/rustc$(X)           \
-     stage2/$(CFG_STDLIB)       \
+     stage2/lib/$(CFG_STDLIB)   \
      stage2/intrinsics.bc       \
      stage2/glue.o              \
      stage2/rustc$(X)           \
-     stage3/$(CFG_STDLIB)       \
+     stage3/lib/$(CFG_STDLIB)   \
      stage3/glue.o              \
      stage3/intrinsics.bc       \
      stage3/rustc$(X)

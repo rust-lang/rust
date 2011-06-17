@@ -1,10 +1,11 @@
-stage2/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
-              stage2/rustc$(X) stage1/$(CFG_STDLIB) stage2/intrinsics.bc \
+stage2/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+              stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) stage2/intrinsics.bc \
               stage2/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
+	mkdir -p stage2/lib
 	$(STAGE2)  --shared -o $@ $<
 
-stage2/glue.o: stage2/rustc$(X) stage1/$(CFG_STDLIB) stage2/intrinsics.bc \
+stage2/glue.o: stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) stage2/intrinsics.bc \
                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -c -o $@ --glue

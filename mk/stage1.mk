@@ -1,7 +1,8 @@
-stage1/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage1/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage1/rustc$(X) stage0/$(CFG_STDLIB) stage1/intrinsics.bc \
               stage1/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
+	mkdir -p stage1/lib
 	$(STAGE1)  --shared -o $@ $<
 
 stage1/glue.o: stage1/rustc$(X) stage0/$(CFG_STDLIB) stage1/intrinsics.bc \
