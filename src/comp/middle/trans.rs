@@ -3433,8 +3433,19 @@ mod ivec {
                                stack_no_spill_cx.llbb, stack_spill_cx.llbb]);
         ret res(next_cx, data_ptr);
     }
-    fn trans_append(&@block_ctxt cx, &ty::t t, ValueRef lhs, ValueRef rhs) ->
-       result {
+    fn trans_append(&@block_ctxt cx, &ty::t t, ValueRef orig_lhs,
+                    ValueRef orig_rhs) -> result {
+        // Cast to opaque interior vector types if necessary.
+        auto lhs;
+        auto rhs;
+        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
+            lhs = cx.build.PointerCast(orig_lhs, T_ptr(T_opaque_ivec()));
+            rhs = cx.build.PointerCast(orig_rhs, T_ptr(T_opaque_ivec()));
+        } else {
+            lhs = orig_lhs;
+            rhs = orig_rhs;
+        }
+
         auto unit_ty = ty::sequence_element_type(cx.fcx.lcx.ccx.tcx, t);
         auto llunitty = type_of_or_i8(cx, unit_ty);
         auto skip_null;
