@@ -3538,25 +3538,66 @@ mod ivec {
         post_copy_cx.build.Br(copy_loop_header_cx.llbb);
         ret res(next_cx, C_nil());
     }
-    fn alloc(&@block_ctxt bcx, ty::t unit_ty, ValueRef llalen) -> ValueRef {
-        auto llunitty = type_of_or_i8(bcx, unit_ty);
-        if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
-            auto llarraysz =
-                bcx.build.Add(llsize_of(T_opaque_ivec()), llalen);
-            auto llvecptr = array_alloca(bcx, T_i8(), llarraysz);
-            ret bcx.build.PointerCast(llvecptr, T_ptr(T_opaque_ivec()));
+
+    type alloc_result = rec(@block_ctxt bcx,
+                            ValueRef llptr,
+                            ValueRef llunitsz,
+                            ValueRef llalen);
+
+    fn alloc(&@block_ctxt cx, ty::t unit_ty) -> alloc_result {
+        auto dynamic = ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty);
+
+        auto bcx;
+        if (dynamic) {
+            bcx = llallocas_block_ctxt(cx.fcx);
+        } else {
+            bcx = cx;
         }
-        ret alloca(bcx, T_ivec(llunitty));
+
+        auto llunitsz;
+        auto rslt = size_of(bcx, unit_ty);
+        bcx = rslt.bcx;
+        llunitsz = rslt.val;
+        if (dynamic) { bcx.fcx.llallocas = bcx.llbb; }
+
+        auto llalen = bcx.build.Mul(llunitsz,
+                                    C_uint(abi::ivec_default_length));
+
+        auto llptr;
+        auto llunitty = type_of_or_i8(bcx, unit_ty);
+        if (dynamic) {
+            auto llarraysz = bcx.build.Add(llsize_of(T_opaque_ivec()),
+                                           llalen);
+            auto llvecptr = array_alloca(bcx, T_i8(), llarraysz);
+            llptr = bcx.build.PointerCast(llvecptr, T_ptr(T_opaque_ivec()));
+        } else {
+            llptr = alloca(bcx, T_ivec(llunitty));
+        }
+
+        auto bcx_result;
+        if (dynamic) {
+            bcx_result = cx;
+        } else {
+            bcx_result = bcx;
+        }
+
+        ret rec(bcx=bcx_result,
+                llptr=llptr,
+                llunitsz=llunitsz,
+                llalen=llalen);
     }
-    fn trans_add(&@block_ctxt cx, ty::t vec_ty, ValueRef lhs, ValueRef rhs) ->
-       result {
+
+    fn trans_add(&@block_ctxt cx, ty::t vec_ty, ValueRef lhs, ValueRef rhs)
+            -> result {
         auto bcx = cx;
         auto unit_ty = ty::sequence_element_type(bcx.fcx.lcx.ccx.tcx, vec_ty);
-        auto rslt = size_of(bcx, unit_ty);
-        auto unit_sz = rslt.val;
-        auto llalen =
-            bcx.build.Mul(unit_sz, C_uint(abi::ivec_default_length));
-        auto llvecptr = alloc(bcx, unit_ty, llalen);
+
+        auto ares = alloc(bcx, unit_ty);
+        bcx = ares.bcx;
+        auto llvecptr = ares.llptr;
+        auto unit_sz = ares.llunitsz;
+        auto llalen = ares.llalen;
+
         auto llunitty = type_of_or_i8(bcx, unit_ty);
         auto llheappartty = T_ivec_heap_part(llunitty);
         auto lhs_len_and_data = get_len_and_data(bcx, lhs, unit_ty);
@@ -3631,7 +3672,7 @@ mod ivec {
                             heap_cx.build.InBoundsGEP(stub_ptr_heap,
                                                       stub_a));
         auto heap_sz = heap_cx.build.Add(llsize_of(llheappartty), lllen);
-        rslt = trans_raw_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
+        auto rslt = trans_raw_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
         auto heap_part = rslt.val;
         heap_cx = rslt.bcx;
         heap_cx.build.Store(heap_part,
@@ -5405,12 +5446,14 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
         case (ty::ty_ivec(?mt)) { unit_ty = mt.ty; }
         case (_) { bcx.fcx.lcx.ccx.sess.bug("non-ivec type in trans_ivec"); }
     }
-    auto rslt = size_of(bcx, unit_ty);
-    auto unit_sz = rslt.val;
-    bcx = rslt.bcx;
-    auto llalen = bcx.build.Mul(unit_sz, C_uint(abi::ivec_default_length));
     auto llunitty = type_of_or_i8(bcx, unit_ty);
-    auto llvecptr = ivec::alloc(bcx, unit_ty, llalen);
+
+    auto ares = ivec::alloc(bcx, unit_ty);
+    bcx = ares.bcx;
+    auto llvecptr = ares.llptr;
+    auto unit_sz = ares.llunitsz;
+    auto llalen = ares.llalen;
+
     auto lllen = bcx.build.Mul(C_uint(vec::len(args)), unit_sz);
     // Allocate the vector pieces and store length and allocated length.
 
@@ -5449,7 +5492,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
             llfirsteltptr = C_null(T_ptr(llunitty));
         } else {
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
-            rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
+            auto rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
             bcx = rslt.bcx;
             auto llheapptr = rslt.val;
             bcx.build.Store(llheapptr,
@@ -5467,7 +5510,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
 
     auto i = 0u;
     for (@ast::expr e in args) {
-        rslt = trans_expr(bcx, e);
+        auto rslt = trans_expr(bcx, e);
         bcx = rslt.bcx;
         auto llsrc = rslt.val;
         auto lleltptr;
