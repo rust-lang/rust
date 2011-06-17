@@ -1,5 +1,4 @@
 
-
 native "rust" mod rustrt {
     fn rust_list_files(str path) -> vec[str];
     fn rust_dirent_filename(os::libc::dirent ent) -> str;
@@ -36,6 +35,7 @@ fn list_dir(str path) -> vec[str] {
 const char path_sep = '/';
 
 const char alt_path_sep = '/';
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

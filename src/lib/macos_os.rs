@@ -69,6 +69,14 @@ fn waitpid(int pid) -> int {
     assert (os::libc::waitpid(pid, vec::buf(status), 0) != -1);
     ret status.(0);
 }
+
+native "rust" mod rustrt {
+    fn rust_getcwd() -> str;
+}
+
+fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

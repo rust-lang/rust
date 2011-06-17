@@ -59,9 +59,13 @@ fn fd_FILE(int fd) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
 
 native "rust" mod rustrt {
     fn rust_process_wait(int handle) -> int;
+    fn rust_getcwd() -> str;
 }
 
 fn waitpid(int pid) -> int { ret rustrt::rust_process_wait(pid); }
+
+fn getcwd() -> str { ret rustrt::rust_getcwd(); }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

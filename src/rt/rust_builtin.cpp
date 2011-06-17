@@ -55,6 +55,36 @@ last_os_error(rust_task *task) {
     return st;
 }
 
+extern "C" CDECL rust_str *
+rust_getcwd(rust_task *task) {
+    rust_dom *dom = task->dom;
+    LOG(task, task, "rust_getcwd()");
+
+    char cbuf[BUF_BYTES];
+
+#if defined(__WIN32__)
+    if (!_getcwd(cbuf, sizeof(cbuf))) {
+#else
+        if (!getcwd(cbuf, sizeof(cbuf))) {
+#endif
+        task->fail(1);
+        return NULL;
+    }
+
+    size_t fill = strlen(cbuf) + 1;
+    size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
+    void *mem = dom->malloc(alloc, memory_region::LOCAL);
+    if (!mem) {
+        task->fail(1);
+        return NULL;
+    }
+
+    rust_str *st;
+    st = new (mem) rust_str(dom, alloc, fill, (const uint8_t *)cbuf);
+
+    return st;    
+}
+
 extern "C" CDECL
 void squareroot(rust_task *task, double *input, double *output) {
     *output = sqrt(*input);

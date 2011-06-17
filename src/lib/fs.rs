@@ -1,4 +1,5 @@
 
+import os::getcwd;
 
 native "rust" mod rustrt {
     fn rust_file_is_dir(str path) -> int;
@@ -56,6 +57,23 @@ fn list_dir(path p) -> vec[str] {
     }
     ret full_paths;
 }
+
+// FIXME: Windows absolute paths can start with \ for C:\ or
+// whatever... However, we're under MinGW32 so we have the same rules and
+// posix has.
+fn path_is_absolute(path p) -> bool {
+    ret p.(0) == '/';
+}
+
+fn make_absolute(path p) -> path {
+    if(path_is_absolute(p)) {
+        ret p;
+    }
+    else {
+        ret connect(getcwd(), p);
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

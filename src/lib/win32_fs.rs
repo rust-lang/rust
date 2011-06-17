@@ -7,7 +7,6 @@ native "rust" mod rustrt {
 
 fn list_dir(str path) -> vec[str] { ret rustrt::rust_list_files(path + "*"); }
 
-
 /* FIXME: win32 path handling actually accepts '/' or '\' and has subtly
  * different semantics for each. Since we build on mingw, we are usually
  * dealing with /-separated paths. But the whole interface to splitting and
