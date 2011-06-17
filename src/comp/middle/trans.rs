@@ -1327,8 +1327,7 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             auto bcx = rslt.bcx;
             auto llunitszptr = rslt.val;
             auto llunitsz = bcx.build.Load(llunitszptr);
-            auto llsz = bcx.build.Add(llsize_of(T_opaque_ivec()),
-                bcx.build.Mul(llunitsz, C_uint(abi::ivec_default_length)));
+            auto llsz = bcx.build.Add(llsize_of(T_opaque_ivec()), llunitsz);
             ret res(bcx, llsz);
         }
     }
@@ -2970,21 +2969,9 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
     } else { ret res(cx, cx.build.Store(cx.build.Load(src), dst)); }
 }
 
-// Duplicates the heap-owned memory owned by a value of the given type.
-fn duplicate_heap_parts(&@block_ctxt cx, ValueRef vptr, ty::t typ) -> result {
-    alt (ty::struct(cx.fcx.lcx.ccx.tcx, typ)) {
-        case (ty::ty_ivec(?tm)) {
-            ret ivec::duplicate_heap_part(cx, vptr, tm.ty);
-        }
-        case (ty::ty_str) {
-            ret ivec::duplicate_heap_part(cx, vptr,
-                ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8));
-        }
-    }
-}
-
 tag copy_action { INIT; DROP_EXISTING; }
 
+// FIXME: This should copy the contents of the heap part for ivecs.
 fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
 
@@ -3004,11 +2991,7 @@ fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
                    ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) { r = drop_ty(r.bcx, dst, t); }
-        r = memmove_ty(r.bcx, dst, src, t);
-        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, t)) {
-            r = duplicate_heap_parts(cx, dst, t);
-        }
-        ret r;
+        ret memmove_ty(r.bcx, dst, src, t);
     }
     cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::copy_val: " +
                                 ty_to_str(cx.fcx.lcx.ccx.tcx, t));
@@ -3518,8 +3501,8 @@ mod ivec {
                                          copy_loop_body_cx.llbb,
                                          next_cx.llbb);
         auto copy_src_ptr = copy_loop_body_cx.build.Load(src_ptr);
-        rslt = copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src_ptr,
-                        unit_ty);
+        rslt =
+            copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src_ptr, t);
         auto post_copy_cx = rslt.bcx;
         // Increment both pointers.
 
@@ -3756,66 +3739,6 @@ mod ivec {
         // Finally done!
 
         ret res(next_cx, llvecptr);
-    }
-
-    // NB: This does *not* adjust reference counts. The caller must have done
-    // this via take_ty() beforehand.
-    fn duplicate_heap_part(&@block_ctxt cx, ValueRef orig_vptr,
-                           ty::t unit_ty) -> result {
-        // Cast to an opaque interior vector if we can't trust the pointer
-        // type.
-        auto vptr;
-        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
-            vptr = cx.build.PointerCast(orig_vptr, T_ptr(T_opaque_ivec()));
-        } else {
-            vptr = orig_vptr;
-        }
-
-        auto llunitty = type_of_or_i8(cx, unit_ty);
-        auto llheappartty = T_ivec_heap_part(llunitty);
-
-        // Check to see if the vector is heapified.
-        auto stack_len_ptr = cx.build.InBoundsGEP(vptr, [C_int(0),
-            C_uint(abi::ivec_elt_len)]);
-        auto stack_len = cx.build.Load(stack_len_ptr);
-        auto stack_len_is_zero = cx.build.ICmp(lib::llvm::LLVMIntEQ,
-                                               stack_len, C_int(0));
-        auto maybe_on_heap_cx = new_sub_block_ctxt(cx, "maybe_on_heap");
-        auto next_cx = new_sub_block_ctxt(cx, "next");
-        cx.build.CondBr(stack_len_is_zero, maybe_on_heap_cx.llbb,
-                        next_cx.llbb);
-
-        auto stub_ptr = maybe_on_heap_cx.build.PointerCast(vptr,
-            T_ptr(T_ivec_heap(llunitty)));
-        auto heap_ptr_ptr = maybe_on_heap_cx.build.InBoundsGEP(stub_ptr,
-            [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]);
-        auto heap_ptr = maybe_on_heap_cx.build.Load(heap_ptr_ptr);
-        auto heap_ptr_is_nonnull = maybe_on_heap_cx.build.ICmp(
-            lib::llvm::LLVMIntNE, heap_ptr, C_null(T_ptr(llheappartty)));
-        auto on_heap_cx = new_sub_block_ctxt(cx, "on_heap");
-        maybe_on_heap_cx.build.CondBr(heap_ptr_is_nonnull, on_heap_cx.llbb,
-                                      next_cx.llbb);
-
-        // Ok, the vector is on the heap. Copy the heap part.
-        auto alen_ptr = on_heap_cx.build.InBoundsGEP(stub_ptr,
-            [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)]);
-        auto alen = on_heap_cx.build.Load(alen_ptr);
-
-        auto heap_part_sz = on_heap_cx.build.Add(alen,
-            llsize_of(T_opaque_ivec_heap_part()));
-        auto rslt = trans_raw_malloc(on_heap_cx, T_ptr(llheappartty),
-                                     heap_part_sz);
-        on_heap_cx = rslt.bcx;
-        auto new_heap_ptr = rslt.val;
-
-        rslt = call_memmove(on_heap_cx, new_heap_ptr, heap_ptr, heap_part_sz,
-                            C_int(4));  // FIXME: align
-        on_heap_cx = rslt.bcx;
-
-        on_heap_cx.build.Store(new_heap_ptr, heap_ptr_ptr);
-        on_heap_cx.build.Br(next_cx.llbb);
-
-        ret res(next_cx, C_nil());
     }
 }
 
@@ -5508,8 +5431,6 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
     auto unit_sz = ares.llunitsz;
     auto llalen = ares.llalen;
 
-    find_scope_cx(bcx).cleanups += [clean(bind drop_ty(_, llvecptr, typ))];
-
     auto lllen = bcx.build.Mul(C_uint(vec::len(args)), unit_sz);
     // Allocate the vector pieces and store length and allocated length.
 
@@ -5538,17 +5459,15 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
         auto llstubty = T_ivec_heap(llunitty);
         auto llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
         bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr, stub_z));
+        bcx.build.Store(lllen, bcx.build.InBoundsGEP(llstubptr, stub_a));
         auto llheapty = T_ivec_heap_part(llunitty);
         if (vec::len(args) == 0u) {
             // Null heap pointer indicates a zero-length vector.
 
-            bcx.build.Store(llalen, bcx.build.InBoundsGEP(llstubptr, stub_a));
             bcx.build.Store(C_null(T_ptr(llheapty)),
                             bcx.build.InBoundsGEP(llstubptr, stub_p));
             llfirsteltptr = C_null(T_ptr(llunitty));
         } else {
-            bcx.build.Store(lllen, bcx.build.InBoundsGEP(llstubptr, stub_a));
-
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
             auto rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
             bcx = rslt.bcx;
