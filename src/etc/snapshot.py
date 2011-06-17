@@ -16,6 +16,15 @@ download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
+    "linux": ["rustc", "glue.o", "lib/libstd.so" ],
+    "macos": ["rustc", "glue.o", "lib/libstd.dylib" ],
+    "winnt": ["rustc.exe", "glue.o", "lib/std.dll" ]
+    }
+
+# This is a transitional list of files so that the unpacker knows to
+# use the old directory layout and the snapshotter knows to use the
+# new directory layout
+old_snapshot_files = {
     "linux": ["rustc", "glue.o", "libstd.so" ],
     "macos": ["rustc", "glue.o", "libstd.dylib" ],
     "winnt": ["rustc.exe", "glue.o", "std.dll" ]
