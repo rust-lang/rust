@@ -1522,7 +1522,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_binary(?binop, ?lhs, ?rhs, ?a)) {
             check_expr(fcx, lhs);
             check_expr(fcx, rhs);
+
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
+            auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
+
+            demand::autoderef(fcx, expr.span, lhs_t, rhs_t, AUTODEREF_OK);
+
             // FIXME: Binops have a bit more subtlety than this.
 
             auto t = strip_boxes(fcx, expr.span, lhs_t);
