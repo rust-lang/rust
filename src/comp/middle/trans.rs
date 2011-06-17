@@ -2429,8 +2429,7 @@ type val_pair_and_ty_fn =
 // Iterates through the elements of a structural type.
 fn iter_structural_ty(&@block_ctxt cx, ValueRef v, &ty::t t, val_and_ty_fn f)
    -> result {
-    fn adaptor_fn(val_and_ty_fn f, &@block_ctxt cx, ValueRef av, ValueRef bv,
-                  ty::t t) -> result {
+    fn adaptor_fn(val_and_ty_fn f, &@block_ctxt cx, ValueRef av, ValueRef bv,                  ty::t t) -> result {
         ret f(cx, av, t);
     }
     ret iter_structural_ty_full(cx, v, v, t, bind adaptor_fn(f, _, _, _, _));
@@ -6079,6 +6078,11 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     auto chan_raw_val =
         bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_chan,
                        [bcx.fcx.lltaskptr, prt_val]);
+    ret chan_raw_to_val(bcx, e, ann, chan_raw_val);
+}
+
+fn chan_raw_to_val(&@block_ctxt bcx, &@ast::expr e,  &ast::ann ann,
+                   ValueRef chan_raw_val) -> result {
     auto chan_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
     auto chan_llty = type_of(bcx.fcx.lcx.ccx, e.span, chan_ty);
     auto chan_val = bcx.build.PointerCast(chan_raw_val, chan_llty);
@@ -6122,16 +6126,28 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     //
     // 5. Oh yeah, we have to create the task before we start it...
 
+    // But first, we'll create a task.
+
+    let ValueRef lltname = C_str(bcx.fcx.lcx.ccx, tname);
+    auto new_task =
+        bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_task,
+                       [bcx.fcx.lltaskptr, lltname]);
+
     // Translate the arguments, remembering their types and where the values
     // ended up.
 
     let vec[ty::t] arg_tys = [];
     let vec[ValueRef] arg_vals = [];
     for (@ast::expr e in args) {
+        auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
         auto arg = trans_expr(bcx, e);
+
+        arg = deep_copy(arg.bcx, arg.val, e_ty);
+
         bcx = arg.bcx;
+
         vec::push[ValueRef](arg_vals, arg.val);
-        vec::push[ty::t](arg_tys, ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
+        vec::push[ty::t](arg_tys, e_ty);
     }
     // Make the tuple.
 
@@ -6152,24 +6168,14 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
         bcx.build.Store(v, target);
         i += 1u;
     }
-    // Now we're ready to do the upcall.
 
-    // But first, we'll create a task.
-
-    let ValueRef lltname = C_str(bcx.fcx.lcx.ccx, tname);
-    auto new_task =
-        bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_task,
-                       [bcx.fcx.lltaskptr, lltname]);
-    // Okay, start the task.
-
-    auto llargs_i = bcx.build.PointerCast(llargs.val, T_int());
     // Generate the wrapper function
-
     auto wrapper = mk_spawn_wrapper(bcx, func, args_ty);
     bcx = wrapper.bcx;
     auto llfnptr_i = bcx.build.PointerCast(wrapper.val, T_int());
-    // And start the task
 
+    // And start the task
+    auto llargs_i = bcx.build.PointerCast(llargs.val, T_int());
     auto args_size = size_of(bcx, args_ty).val;
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task, llfnptr_i, llargs_i,
@@ -6227,6 +6233,64 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     // TODO: make sure we clean up everything we need to.
 
     ret res(cx, llfndecl);
+}
+
+// Does a deep copy of a value. This is needed for passing arguments to child
+// tasks, and for sending things through channels. There are probably some
+// uniqueness optimizations and things we can do here for tasks in the same
+// domain.
+fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
+    auto tcx = bcx.fcx.lcx.ccx.tcx;
+    if(ty::type_is_scalar(tcx, t)) {
+        ret res(bcx, v);
+    }
+    /*
+      else if(ty::type_is_chan(tcx, t)) {
+      // If this is a channel, we need to clone it.
+      log_err "Generating clone call for channel argument.";
+      
+      log_err #fmt("ty(clone_chan) = %s", 
+      val_str(bcx.fcx.lcx.ccx.tn,
+      bcx.fcx.lcx.ccx.upcalls.clone_chan));
+      
+      log_err #fmt("ty(lltaskptr) = %s", 
+      val_str(bcx.fcx.lcx.ccx.tn, 
+      bcx.fcx.lltaskptr));
+      
+      log_err #fmt("ty(new_task) = %s", 
+      val_str(bcx.fcx.lcx.ccx.tn, 
+      new_task));
+      
+      log_err #fmt("ty(chan) = %s", 
+      val_str(bcx.fcx.lcx.ccx.tn, 
+      arg.val));
+      
+      auto chan_ptr = bcx.build.PointerCast(arg.val, T_opaque_chan_ptr());
+      
+      auto chan_raw_val = 
+      bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.clone_chan,
+      [bcx.fcx.lltaskptr, new_task, chan_ptr]);
+      
+      arg = chan_raw_to_val(bcx, e, ann, chan_raw_val);
+      
+      log_err "Done";
+      } 
+    */
+    else if(ty::type_is_structural(tcx, t)) {
+        fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
+            auto tcx = bcx.fcx.lcx.ccx.tcx;
+    
+            log_err "Unimplemented type for deep_copy.";
+            fail;
+        }
+
+        ret iter_structural_ty(bcx, v, t, inner_deep_copy);
+    }
+    else {
+        bcx.fcx.lcx.ccx.sess.bug("unexpected type in " +
+                                "trans::deep_copy: " +
+                                ty_to_str(tcx, t));
+    }
 }
 
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,

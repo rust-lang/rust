@@ -719,6 +719,13 @@ fn type_is_bool(&ctxt cx, &t ty) -> bool {
     }
 }
 
+fn type_is_chan(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        case (ty_chan(_)) { ret true; }
+        case (_) { ret false; }
+    }
+}
+
 fn type_is_structural(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_tup(_)) { ret true; }
