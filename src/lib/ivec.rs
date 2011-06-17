@@ -33,6 +33,16 @@ fn len[T](&T[] v) -> uint {
     ret rusti::ivec_len(v);
 }
 
+type init_op[T] = fn(uint) -> T;
+
+fn init_fn[T](&init_op[T] op, uint n_elts) -> T[] {
+    auto v = ~[];
+    reserve(v, n_elts);
+    let uint i = 0u;
+    while (i < n_elts) { v += ~[op(i)]; i += 1u; }
+    ret v;
+}
+
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
         ret rustrt::ivec_copy_from_buf(v, ptr, count);

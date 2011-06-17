@@ -34,8 +34,18 @@ fn test_unsafe_ptrs() {
     assert (d.(4) == 5);
 }
 
+fn test_init_fn() {
+    fn square(uint n) -> uint { ret n * n; }
+    auto v = ivec::init_fn(square, 3u);
+    assert (ivec::len(v) == 3u);
+    assert (v.(0) == 1u);
+    assert (v.(1) == 4u);
+    assert (v.(2) == 9u);
+}
+
 fn main() {
     test_reserve_and_on_heap();
     //test_unsafe_ptrs();
+    //test_init_fn();
 }
 
