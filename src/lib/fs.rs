@@ -1,5 +1,7 @@
 
 import os::getcwd;
+import os_fs;
+import str;
 
 native "rust" mod rustrt {
     fn rust_file_is_dir(str path) -> int;
@@ -58,13 +60,12 @@ fn list_dir(path p) -> vec[str] {
     ret full_paths;
 }
 
-// FIXME: Windows absolute paths can start with \ for C:\ or
-// whatever... However, we're under MinGW32 so we have the same rules and
-// posix has.
 fn path_is_absolute(path p) -> bool {
-    ret p.(0) == '/';
+    ret os_fs::path_is_absolute(p);
 }
 
+// FIXME: under Windows, we should prepend the current drive letter to paths
+// that start with a slash.
 fn make_absolute(path p) -> path {
     if(path_is_absolute(p)) {
         ret p;

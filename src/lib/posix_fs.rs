@@ -32,6 +32,10 @@ fn list_dir(str path) -> vec[str] {
 
 }
 
+fn path_is_absolute(str p) -> bool {
+    ret str::char_at(p, 0u) == '/';
+}
+
 const char path_sep = '/';
 
 const char alt_path_sep = '/';
