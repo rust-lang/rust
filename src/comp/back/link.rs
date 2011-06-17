@@ -249,6 +249,10 @@ mod write {
  *
  */
 iter crate_export_metas(&ast::crate c) -> @ast::meta_item {
+    for (ast::attribute attr in c.node.attrs) {
+        put @attr.node.value;
+    }
+
     for (@ast::crate_directive cdir in c.node.directives) {
         alt (cdir.node) {
             case (ast::cdir_meta(?v, ?mis)) {
