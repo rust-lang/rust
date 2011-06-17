@@ -505,6 +505,7 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
         case (ty_box(?tm)) { walk_ty(cx, walker, tm.ty); }
         case (ty_vec(?tm)) { walk_ty(cx, walker, tm.ty); }
         case (ty_ivec(?tm)) { walk_ty(cx, walker, tm.ty); }
+        case (ty_ptr(?tm)) { walk_ty(cx, walker, tm.ty); }
         case (ty_port(?subty)) { walk_ty(cx, walker, subty); }
         case (ty_chan(?subty)) { walk_ty(cx, walker, subty); }
         case (ty_tag(?tid, ?subtys)) {
@@ -2081,6 +2082,27 @@ mod unify {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
                                 ret ures_ok(mk_ivec(cx.tcx, mt));
+                            }
+                            case (_) { ret result; }
+                        }
+                    }
+                    case (_) { ret ures_err(terr_mismatch); }
+                }
+            }
+            case (ty::ty_ptr(?expected_mt)) {
+                alt (struct(cx.tcx, actual)) {
+                    case (ty::ty_ptr(?actual_mt)) {
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none) { ret ures_err(terr_vec_mutability); }
+                            case (some(?m)) { mut = m; }
+                        }
+                        auto result =
+                            unify_step(cx, expected_mt.ty, actual_mt.ty);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                auto mt = rec(ty=result_sub, mut=mut);
+                                ret ures_ok(mk_ptr(cx.tcx, mt));
                             }
                             case (_) { ret result; }
                         }

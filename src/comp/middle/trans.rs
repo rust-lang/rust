@@ -2314,6 +2314,9 @@ fn make_scalar_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
             trans_fail(cx, none[common::span],
                        "attempt to compare values of type native");
         }
+        case (ty::ty_ptr(_)) {
+            f(unsigned_int);
+        }
         case (_) {
             // Should never get here, because t is scalar.
 
