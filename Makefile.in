@@ -109,13 +109,13 @@ STAGE0 := $(Q)$(call CFG_RUN_TARG,stage0,\
                 stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
 STAGE1 := $(Q)$(call CFG_RUN_TARG,stage0, \
                 $(CFG_VALGRIND_COMPILE) stage1/rustc$(X) \
-                $(CFG_RUSTC_FLAGS) -L stage1)
+                $(CFG_RUSTC_FLAGS))
 STAGE2 := $(Q)$(call CFG_RUN_TARG,stage1, \
                 $(CFG_VALGRIND_COMPILE) stage2/rustc$(X) \
-                $(CFG_RUSTC_FLAGS) -L stage2)
+                $(CFG_RUSTC_FLAGS))
 STAGE3 := $(Q)$(call CFG_RUN_TARG,stage2, \
                 $(CFG_VALGRIND_COMPILE) stage3/rustc$(X) \
-                $(CFG_RUSTC_FLAGS) -L stage3)
+                $(CFG_RUSTC_FLAGS))
 
 # "Source" files we generate in builddir along the way.
 GENERATED :=

@@ -202,10 +202,11 @@ fn build_target_config() -> @session::config {
     ret target_cfg;
 }
 
-fn build_session_options(str binary, getopts::match match) ->
+fn build_session_options(str binary, getopts::match match, str binary_dir) ->
    @session::options {
     auto shared = opt_present(match, "shared");
-    auto library_search_paths = getopts::opt_strs(match, "L");
+    auto library_search_paths = [binary_dir];
+    library_search_paths += getopts::opt_strs(match, "L");
     auto output_type =
         if (opt_present(match, "parse-only")) {
             link::output_type_none
@@ -297,6 +298,7 @@ fn main(vec[str] args) {
          optflag("time-llvm-passes"), optflag("no-typestate"),
          optflag("noverify")];
     auto binary = vec::shift[str](args);
+    auto binary_dir = fs::dirname(binary);
     auto match =
         alt (getopts::getopts(args, opts)) {
             case (getopts::success(?m)) { m }
@@ -313,7 +315,7 @@ fn main(vec[str] args) {
         version(binary);
         ret;
     }
-    auto sopts = build_session_options(binary, match);
+    auto sopts = build_session_options(binary, match, binary_dir);
     auto sess = build_session(sopts);
     auto n_inputs = vec::len[str](match.free);
     auto output_file = getopts::opt_maybe_str(match, "o");
@@ -391,7 +393,6 @@ fn main(vec[str] args) {
     //
     // TODO: Factor this out of main.
     if (sopts.output_type == link::output_type_exe) {
-        auto binary_dir = fs::dirname(binary);
         let str glu = binary_dir + "/glue.o";
         let str main = "rt/main.o";
         let str stage = "-L" + binary_dir;
