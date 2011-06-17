@@ -36,6 +36,6 @@ fn test_unsafe_ptrs() {
 
 fn main() {
     test_reserve_and_on_heap();
-    test_unsafe_ptrs();
+    //test_unsafe_ptrs();
 }
 
