@@ -616,6 +616,43 @@ ivec_on_heap(rust_task *task, type_desc *ty, rust_ivec *v)
     return !v->fill && v->payload.ptr;
 }
 
+/**
+ * Returns an unsafe pointer to the data part of an interior vector.
+ */
+extern "C" void *
+ivec_to_ptr(rust_task *task, type_desc *ty, rust_ivec *v)
+{
+    return v->fill ? v->payload.data : v->payload.ptr->data;
+}
+
+/**
+ * Copies elements in an unsafe buffer to the given interior vector. The
+ * vector must have size zero.
+ */
+extern "C" void
+ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
+                   size_t count)
+{
+    if (v->fill || (v->payload.ptr && v->payload.ptr->fill)) {
+        task->fail(1);
+        return;
+    }
+
+    ivec_reserve(task, ty, v, count);
+
+    size_t new_size = count * ty->size;
+    if (v->fill) {
+        // On stack.
+        memmove(v->payload.data, ptr, new_size);
+        v->fill = new_size;
+        return;
+    }
+
+    // On heap.
+    memmove(v->payload.ptr->data, ptr, new_size);
+    v->payload.ptr->fill = new_size;
+}
+
 
 //
 // Local Variables:
