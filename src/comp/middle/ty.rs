@@ -986,6 +986,39 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
     }
 }
 
+fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        case (ty_ivec(_)) { ret true; }
+        case (ty_istr) { ret true; }
+
+        case (ty_nil) { ret false; }
+        case (ty_bot) { ret false; }
+        case (ty_bool) { ret false; }
+        case (ty_int) { ret false; }
+        case (ty_float) { ret false; }
+        case (ty_uint) { ret false; }
+        case (ty_machine(_)) { ret false; }
+        case (ty_char) { ret false; }
+        case (ty_str) { ret false; }
+        case (ty_tag(_,_)) { ret false; }
+        case (ty_box(_)) { ret false; }
+        case (ty_vec(_)) { ret false; }
+        case (ty_ptr(_)) { ret false; }
+        case (ty_port(_)) { ret false; }
+        case (ty_chan(_)) { ret false; }
+        case (ty_task) { ret false; }
+        case (ty_tup(_)) { ret false; }
+        case (ty_rec(_)) { ret false; }
+        case (ty_fn(_,_,_,_,_)) { ret false; }
+        case (ty_native_fn(_,_,_)) { ret false; }
+        case (ty_obj(_)) { ret false; }
+        case (ty_var(_)) { fail "ty_var in type_owns_heap_mem"; }
+        case (ty_param(_)) { ret false; }
+        case (ty_type) { ret false; }
+        case (ty_native) { ret false; }
+    }
+}
+
 fn type_param(&ctxt cx, &t ty) -> option::t[uint] {
     alt (struct(cx, ty)) {
         case (ty_param(?id)) { ret some[uint](id); }
