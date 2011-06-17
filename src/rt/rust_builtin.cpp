@@ -587,7 +587,7 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
         return;     // Already big enough.
 
     rust_ivec_heap *heap_part;
-    if (v->fill) {
+    if (v->fill || !v->payload.ptr) {
         // On stack; spill to heap.
         heap_part = (rust_ivec_heap *)task->malloc(new_alloc +
                                                    sizeof(size_t));
@@ -625,6 +625,16 @@ ivec_to_ptr(rust_task *task, type_desc *ty, rust_ivec *v)
     return v->fill ? v->payload.data : v->payload.ptr->data;
 }
 
+static size_t
+get_ivec_size(rust_ivec *v)
+{
+    if (v->fill)
+        return v->fill;
+    if (v->payload.ptr)
+        return v->payload.ptr->fill;
+    return 0;
+}
+
 /**
  * Copies elements in an unsafe buffer to the given interior vector. The
  * vector must have size zero.
@@ -633,7 +643,8 @@ extern "C" void
 ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
                    size_t count)
 {
-    if (v->fill || (v->payload.ptr && v->payload.ptr->fill)) {
+    size_t old_size = get_ivec_size(v);
+    if (old_size) {
         task->fail(1);
         return;
     }
