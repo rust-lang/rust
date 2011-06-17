@@ -682,7 +682,7 @@ ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
     ivec_reserve(task, ty, v, count);
 
     size_t new_size = count * ty->size;
-    if (v->fill) {
+    if (v->fill || !v->payload.ptr) {
         // On stack.
         memmove(v->payload.data, ptr, new_size);
         v->fill = new_size;

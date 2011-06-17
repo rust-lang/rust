@@ -36,16 +36,27 @@ fn test_unsafe_ptrs() {
 
 fn test_init_fn() {
     fn square(uint n) -> uint { ret n * n; }
+
+    // Test on-stack init-fn.
     auto v = ivec::init_fn(square, 3u);
     assert (ivec::len(v) == 3u);
-    assert (v.(0) == 1u);
-    assert (v.(1) == 4u);
-    assert (v.(2) == 9u);
+    assert (v.(0) == 0u);
+    assert (v.(1) == 1u);
+    assert (v.(2) == 4u);
+
+    // Test on-heap init-fn.
+    v = ivec::init_fn(square, 5u);
+    assert (ivec::len(v) == 5u);
+    assert (v.(0) == 0u);
+    assert (v.(1) == 1u);
+    assert (v.(2) == 4u);
+    assert (v.(3) == 9u);
+    assert (v.(4) == 16u);
 }
 
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
-    //test_init_fn();
+    test_init_fn();
 }
 
