@@ -1,14 +1,14 @@
 // xfail-stage0
 // error-pattern:Number is odd
 pred even(uint x) -> bool {
-  if (x < 2) {
+  if (x < 2u) {
     ret false;
   }
-  else if (x == 2) {
+  else if (x == 2u) {
     ret true;
   }
   else {
-    ret even(x - 2);
+    ret even(x - 2u);
   }
 }
 
