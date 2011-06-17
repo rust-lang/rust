@@ -264,3 +264,27 @@ test/compile-fail/%.stage2.out.tmp: test/compile-fail/%.rs $(SREQ2)
 	$(STAGE2) -c -o $(@:.o=$(X)) $< >$@ 2>&1; test $$? -ne 0
 	$(Q)grep --text --quiet \
       "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rc $(SREQ0)
+	@$(call E, compile-fail [stage0]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(STAGE0) -c -o $(@:.o=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.stage1.out.tmp: test/compile-fail/%.rc $(SREQ1)
+	@$(call E, compile-fail [stage1]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(STAGE1) -c -o $(@:.o=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.stage2.out.tmp: test/compile-fail/%.rc $(SREQ2)
+	@$(call E, compile-fail [stage2]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(STAGE2) -c -o $(@:.o=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
