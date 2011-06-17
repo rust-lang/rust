@@ -1943,7 +1943,12 @@ mod unify {
                 alt (struct(cx.tcx, expected)) {
                     case (ty::ty_var(?expected_id)) {
                         auto expected_n = expected_id as uint;
-                        union(cx, expected_n, actual_n);
+                        alt(union(cx, expected_n, actual_n)) {
+                            case (unres_ok) { /* fall through */ }
+                            case (unres_err(?t_e)) {
+                                ret ures_err(t_e);
+                            }
+                        }
                     }
                     case (_) {
 
