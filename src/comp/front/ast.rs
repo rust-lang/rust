@@ -409,6 +409,8 @@ type method_ = rec(ident ident, _fn meth, node_id id);
 type method = spanned[method_];
 
 type obj_field = rec(mutability mut, @ty ty, ident ident, node_id id);
+type anon_obj_field = rec(mutability mut, @ty ty, @expr expr, ident ident,
+                          node_id id);
 
 type _obj =
     rec(vec[obj_field] fields, vec[@method] methods, option::t[@method] dtor);
@@ -416,7 +418,7 @@ type _obj =
 type anon_obj =
     rec(
         // New fields and methods, if they exist.
-        option::t[vec[obj_field]] fields,
+        option::t[vec[anon_obj_field]] fields,
         vec[@method] methods,
 
         // with_obj: the original object being extended, if it exists.

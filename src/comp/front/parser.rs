@@ -793,16 +793,15 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         // Anonymous object
 
         // FIXME: Can anonymous objects have ty params?
-
         auto ty_params = parse_ty_params(p);
-        // Only make people type () if they're actually adding new fields
 
-        let option::t[vec[ast::obj_field]] fields = none;
+        // Only make people type () if they're actually adding new fields
+        let option::t[vec[ast::anon_obj_field]] fields = none;
         if (p.peek() == token::LPAREN) {
             p.bump();
             fields =
                 some(parse_seq_to_end(token::RPAREN, some(token::COMMA),
-                                      parse_obj_field, p));
+                                      parse_anon_obj_field, p));
         }
         let vec[@ast::method] meths = [];
         let option::t[@ast::expr] with_obj = none;
@@ -820,7 +819,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
 
         // We don't need to pull ".node" out of fields because it's not a
         // "spanned".
-
         let ast::anon_obj ob =
             rec(fields=fields, methods=meths, with_obj=with_obj);
         auto odid = rec(ty=p.get_id(), ctor=p.get_id());
@@ -1728,6 +1726,16 @@ fn parse_obj_field(&parser p) -> ast::obj_field {
     auto ty = parse_ty(p);
     auto ident = parse_value_ident(p);
     ret rec(mut=mut, ty=ty, ident=ident, id=p.get_id());
+}
+
+fn parse_anon_obj_field(&parser p) -> ast::anon_obj_field {
+    auto mut = parse_mutability(p);
+    auto ty = parse_ty(p);
+    auto ident = parse_value_ident(p);
+    expect(p, token::EQ);
+    auto expr = parse_expr(p);
+    ret rec(mut=mut, ty=ty, expr=expr, ident=ident, id=p.next_def_id(), 
+            ann=p.get_ann());
 }
 
 fn parse_method(&parser p) -> @ast::method {

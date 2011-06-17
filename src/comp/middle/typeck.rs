@@ -2087,16 +2087,27 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             // We're entering an object, so gather up the info we need.
 
-            let vec[ast::obj_field] fields = [];
+            let vec[ast::anon_obj_field] fields = [];
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?v)) { fields = v; }
             }
+
+            // FIXME: this is duplicated between here and trans -- it should
+            // appear in one place
+            fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) 
+                -> ast::obj_field {
+                ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
+            }
+
             let ast::node_id di = obj_def_ids.ty;
             vec::push[obj_info](fcx.ccx.obj_infos,
-                                rec(obj_fields=fields, this_obj=di));
-            // Typecheck 'with_obj', if it exists.
+                                rec(obj_fields=
+                                    vec::map(anon_obj_field_to_obj_field, 
+                                             fields),
+                                    this_obj=di));
 
+            // Typecheck 'with_obj', if it exists.
             let option::t[@ast::expr] with_obj = none[@ast::expr];
             alt (anon_obj.with_obj) {
                 case (none) { }
@@ -2108,9 +2119,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     check_expr(fcx, e);
                 }
             }
+
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?
-
             fn ty_of_arg(@crate_ctxt ccx, &ast::arg a) -> ty::arg {
                 auto ty_mode = ast_mode_to_mode(a.mode);
                 ret rec(mode=ty_mode, ty=ast_ty_to_ty_crate(ccx, a.ty));

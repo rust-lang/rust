@@ -379,12 +379,15 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_anon_obj(?anon_obj, _, _)) {
             // Fields
 
-            let option::t[vec[ast::obj_field]] fields =
-                none[vec[ast::obj_field]];
+            let option::t[vec[ast::anon_obj_field]] fields =
+                none[vec[ast::anon_obj_field]];
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
-                    for (ast::obj_field f in fields) { walk_ty(v, f.ty); }
+                    for (ast::anon_obj_field f in fields) { 
+                        walk_ty(v, f.ty);
+                        walk_expr(v, f.expr);
+                    }
                 }
             }
             // with_obj

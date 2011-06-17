@@ -1,7 +1,5 @@
-
-
-// xfail-stage0
-// xfail-stage1
+//xfail-stage0
+//xfail-stage1
 use std;
 
 fn main() {
@@ -17,7 +15,8 @@ fn main() {
 
     auto my_a = a();
 
-    // Extending an object with a new method
+    // Extending an object with a new method that contains a simple
+    // self-call.  Adding support for this is issue #540.
     auto my_b = obj { 
         fn baz() -> int { 
             ret self.foo(); 
@@ -25,10 +24,6 @@ fn main() {
         with my_a 
     };
 
-    // Extending an object with a new field
-    auto my_c = obj(int quux) { with my_a } ;
+    assert (my_b.baz() == 2);
 
-    // Should this be legal?
-    auto my_d = obj() { with my_a } ;
-    
 }

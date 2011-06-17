@@ -69,6 +69,7 @@ import link::crate_meta_extras_hash;
 import pretty::ppaux::ty_to_str;
 import pretty::ppaux::ty_to_short_str;
 import pretty::pprust::expr_to_str;
+import pretty::pprust::path_to_str;
 
 obj namegen(mutable int i) {
     fn next(str prefix) -> str { i += 1; ret prefix + istr(i); }
@@ -6500,23 +6501,38 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     assert (vec::len(ty_params) == 0u);
     auto ccx = bcx.fcx.lcx.ccx;
+
+    let vec[ast::anon_obj_field] additional_fields = [];
+    let vec[result] additional_field_vals = [];
+    let vec[ty::t] additional_field_tys = [];
+    alt (anon_obj.fields) {
+        case (none) { }
+        case (some(?fields)) {
+            additional_fields = fields;
+            for (ast::anon_obj_field f in fields) {
+                additional_field_tys += [node_ann_type(ccx, f.ann)];
+                additional_field_vals += [trans_expr(bcx, f.expr)];
+            }
+        }
+    }
+
     // If with_obj (the object being extended) exists, translate it, producing
     // a result.
-
-    let option::t[result] with_obj_val = none[result];
+    let option::t[result] with_obj_val = none;
+    let ty::t with_obj_ty = ty::mk_type(ccx.tcx);
     alt (anon_obj.with_obj) {
         case (none) { }
         case (some(?e)) {
             // Translating with_obj returns a ValueRef (pointer to a 2-word
-            // value) wrapped in a result.  We want to allocate space for this
-            // value in our outer object, then copy it into the outer object.
-
-            with_obj_val = some[result](trans_expr(bcx, e));
+            // value) wrapped in a result.
+            with_obj_val  = some[result](trans_expr(bcx, e));
+            with_obj_ty = node_ann_type(ccx, ty::expr_ann(e));
         }
     }
-    // FIXME (part of issue #417): all of the following code is copypasta from
-    // trans_obj for translating the anonymous wrapper object.  Eventually we
-    // should abstract this code out of trans_anon_obj and trans_obj.
+    // FIXME (part of issue #538): much of the following code is copypasta
+    // from trans_obj for translating the anonymous wrapper object.
+    // Eventually we might want to abstract this code out of trans_anon_obj
+    // and trans_obj.
 
     auto self_ty = ty::node_id_to_type(ccx.tcx, id);
     auto llself_ty = type_of(ccx, sp, self_ty);
@@ -6535,52 +6551,168 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // Make a vtable for the outer object.  create_vtbl() wants an ast::_obj
     // and all we have is an ast::anon_obj, so we need to roll our own.
 
-    let vec[ast::obj_field] addtl_fields = [];
-    alt (anon_obj.fields) {
-        case (none) { }
-        case (some(?fields)) { addtl_fields = fields; }
+    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) -> ast::obj_field {
+        ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id, ann=f.ann);
     }
-    let ast::_obj wrapper_obj =
-        rec(fields=addtl_fields,
-            methods=anon_obj.methods,
-            dtor=none[@ast::method]);
-    auto vtbl =
-        create_vtbl(bcx.fcx.lcx, llself_ty, self_ty, wrapper_obj, ty_params);
+    let ast::_obj wrapper_obj = rec(
+        fields = vec::map(anon_obj_field_to_obj_field, additional_fields),
+        methods = anon_obj.methods,
+        dtor = none[@ast::method]);
+    auto vtbl = create_vtbl(bcx.fcx.lcx, llself_ty, self_ty, wrapper_obj, 
+                            ty_params);
+
     bcx.build.Store(vtbl, pair_vtbl);
-    // FIXME (part of issue #417): This vtable needs to contain "forwarding
+    // FIXME (part of issue #538): Where do we fill in the field *values* from
+    // the outer object?
+
+    // FIXME (part of issue #539): This vtable needs to contain "forwarding
     // slots" for the methods that exist in the with_obj, as well.  How do we
     // do that?
 
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
-    // typarams, and fields.
-
-    // FIXME (part of issue #417): Because this is an anonymous object, we
-    // also have to fill in the with_obj field of this tuple.
+    // typarams, fields, and a pointer to our with_obj.
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
-    alt (anon_obj.fields) {
-        case (none) {
-            // If the object we're translating has no fields or type
-            // parameters, there's not much to do.
 
-            // Store null into pair, if no args or typarams.
+    if (vec::len[ast::ty_param](ty_params) == 0u &&
+            vec::len[ast::anon_obj_field](additional_fields) == 0u) {
+        // If the object we're translating has no fields or type parameters,
+        // there's not much to do.
 
-            bcx.build.Store(C_null(llbox_ty), pair_box);
+        // Store null into pair, if no args or typarams.
+        bcx.build.Store(C_null(llbox_ty), pair_box);
+    } else {
+
+        // Synthesize a tuple type for fields: [field, ...]
+        let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, additional_field_tys);
+
+        // Tydescs are run-time instantiations of typarams.  We're not
+        // actually supporting typarams for anon objs yet, but let's
+        // create space for them in case we ever want them.
+        let ty::t tydesc_ty = ty::mk_type(ccx.tcx);
+        let vec[ty::t] tps = [];
+        for (ast::ty_param tp in ty_params) {
+            vec::push[ty::t](tps, tydesc_ty);
         }
-        case (some(?fields)) {
-            // For the moment let's pretend that there are no additional
-            // fields.
+        // Synthesize a tuple type for typarams: [typaram, ...]
+        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
 
-            bcx.fcx.lcx.ccx.sess.unimpl("anon objs don't support " +
-                                            "adding fields yet");
-            // FIXME (issue #417): drop these fields into the newly created
-            // object.
+        // Tuple type for body: 
+        // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
+        let ty::t body_ty =
+            ty::mk_imm_tup(ccx.tcx, [tydesc_ty, typarams_ty, 
+                                     fields_ty, with_obj_ty]);
 
+        // Hand this type we've synthesized off to trans_malloc_boxed, which
+        // allocates a box, including space for a refcount.
+        auto box = trans_malloc_boxed(bcx, body_ty);
+        bcx = box.bcx;
+
+        // mk_imm_box throws a refcount into the type we're synthesizing,
+        // so that it looks like:
+        // [rc, [tydesc_ty, [typaram, ...], [field, ...], with_obj]]
+        let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
+
+        // Grab onto the refcount and body parts of the box we allocated.
+        auto rc =
+            GEP_tup_like(bcx, boxed_body_ty, box.val,
+                         [0, abi::box_rc_field_refcnt]);
+        bcx = rc.bcx;
+        auto body =
+            GEP_tup_like(bcx, boxed_body_ty, box.val,
+                         [0, abi::box_rc_field_body]);
+        bcx = body.bcx;
+        bcx.build.Store(C_int(1), rc.val);
+
+        // Put together a tydesc for the body, so that the object can later be
+        // freed by calling through its tydesc.
+
+        // Every object (not just those with type parameters) needs to have a
+        // tydesc to describe its body, since all objects have unknown type to
+        // the user of the object.  So the tydesc is needed to keep track of
+        // the types of the object's fields, so that the fields can be freed
+        // later.
+
+        auto body_tydesc =
+            GEP_tup_like(bcx, body_ty, body.val,
+                         [0, abi::obj_body_elt_tydesc]);
+        bcx = body_tydesc.bcx;
+        auto ti = none[@tydesc_info];
+        auto body_td = get_tydesc(bcx, body_ty, true, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+        bcx = body_td.bcx;
+        bcx.build.Store(body_td.val, body_tydesc.val);
+
+        // Copy the object's type parameters and fields into the space we
+        // allocated for the object body.  (This is something like saving the
+        // lexical environment of a function in its closure: the "captured
+        // typarams" are any type parameters that are passed to the object
+        // constructor and are then available to the object's methods.
+        // Likewise for the object's fields.)
+
+        // Copy typarams into captured typarams.
+        auto body_typarams =
+            GEP_tup_like(bcx, body_ty, body.val,
+                         [0, abi::obj_body_elt_typarams]);
+        bcx = body_typarams.bcx;
+        let int i = 0;
+        for (ast::ty_param tp in ty_params) {
+            auto typaram = bcx.fcx.lltydescs.(i);
+            auto capture =
+                GEP_tup_like(bcx, typarams_ty, body_typarams.val, [0, i]);
+            bcx = capture.bcx;
+            bcx = copy_val(bcx, INIT, capture.val, typaram, 
+                           tydesc_ty).bcx;
+            i += 1;
         }
+
+        // Copy additional fields into the object's body.
+        auto body_fields =
+            GEP_tup_like(bcx, body_ty, body.val,
+                         [0, abi::obj_body_elt_fields]);
+        bcx = body_fields.bcx;
+        i = 0;
+        for (ast::anon_obj_field f in additional_fields) {
+            // FIXME (part of issue #538): make this work eventually, when we
+            // have additional field exprs in the AST.
+
+            auto field_val = load_if_immediate(
+                bcx,
+                additional_field_vals.(i).val,
+                additional_field_tys.(i));
+
+            // what was the type of arg_tys.(i)?  What's the type of
+            // additional_field_tys.(i) ?
+
+            // arg_tys is a vector of ty::arg, so arg_tys.(i) is a ty::arg,
+            // which is a record of mode and t.  Meanwhile,
+            // additional_field_tys is a vec of ty::t.  So how about I just
+            // don't index into it?
+
+            auto field =
+                GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
+            bcx = field.bcx;
+            bcx = copy_val(bcx, INIT, field.val,
+                           additional_field_vals.(i).val, 
+                           additional_field_tys.(i)).bcx;
+            i += 1;
+        }
+
+        // Copy a pointer to the with_obj into the object's body.  (TODO: Is
+        // it necessary to use GEP_tup_like here?)
+        auto body_with_obj =
+            GEP_tup_like(bcx, body_ty, body.val,
+                         [0, abi::obj_body_elt_with_obj]);
+        bcx = body_with_obj.bcx;
+
+        // Store box ptr in outer pair.
+        auto p = bcx.build.PointerCast(box.val, llbox_ty);
+        bcx.build.Store(p, pair_box);
     }
-    // Return the object we built.
 
+    // Return the object we built.
     ret res(bcx, pair);
 }
 
@@ -7306,7 +7438,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // typarams, and fields.
 
     // FIXME: What about with_obj?  Do we have to think about it here?
-    // (Pertains to issue #417.)
+    // (Pertains to issues #538/#539/#540/#543.)
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
     // FIXME: we should probably also allocate a box for empty objs that have
@@ -7612,6 +7744,9 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
     }
 }
 
+// Create a closure: a pair containing (1) a ValueRef, pointing to where the
+// fn's definition is in the executable we're creating, and (2) a pointer to
+// space for the function's environment.
 fn create_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
                   bool external) -> ValueRef {
     auto gvar =

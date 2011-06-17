@@ -372,8 +372,9 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
-                    for (obj_field f in fields) {
+                    for (anon_obj_field f in fields) {
                         vt(v).visit_ty(f.ty, e, v);
+                        vt(v).visit_expr(f.expr, e, v);
                     }
                 }
             }
