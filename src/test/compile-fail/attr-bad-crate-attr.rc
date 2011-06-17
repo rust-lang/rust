@@ -1,0 +1,5 @@
+// xfail-stage0
+// error-pattern: expected crate directive
+
+#[attr = "val"];
+#[attr = "val"] // Unterminated

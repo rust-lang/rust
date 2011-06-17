@@ -2125,7 +2125,8 @@ fn parse_inner_attrs_and_next(&parser p) -> tup(vec[ast::attribute],
 fn parse_inner_attrs(&parser p) -> vec[ast::attribute] {
     auto attrs_and_next = parse_inner_attrs_and_next(p);
     if (vec::len(attrs_and_next._1) > 0u) {
-        // FIXME: Don't drop this dangling attr on the ground
+        ret p.err("expected crate directive but found " +
+                  token::to_str(p.get_reader(), p.peek()));
     }
     ret attrs_and_next._0;
 }
