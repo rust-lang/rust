@@ -883,38 +883,12 @@ fn type_is_native(&ctxt cx, &t ty) -> bool {
 
 fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
-        case (ty_nil) { ret false; }
-        case (ty_bot) { ret false; }
-        case (ty_bool) { ret false; }
-        case (ty_int) { ret false; }
-        case (ty_float) { ret false; }
-        case (ty_uint) { ret false; }
-        case (ty_machine(_)) { ret false; }
-        case (ty_char) { ret false; }
-        case (ty_str) { ret false; }
-        case (ty_istr) { ret false; }
-        case (ty_tag(_, ?subtys)) {
-            auto i = 0u;
-            while (i < vec::len[t](subtys)) {
-                if (type_has_dynamic_size(cx, subtys.(i))) { ret true; }
-                i += 1u;
-            }
-            ret false;
-        }
-        case (ty_box(_)) { ret false; }
-        case (ty_vec(_)) { ret false; }
-        case (ty_ivec(?mt)) { ret type_has_dynamic_size(cx, mt.ty); }
-        case (ty_ptr(_)) { ret false; }
-        case (ty_port(_)) { ret false; }
-        case (ty_chan(_)) { ret false; }
-        case (ty_task) { ret false; }
         case (ty_tup(?mts)) {
             auto i = 0u;
             while (i < vec::len[mt](mts)) {
                 if (type_has_dynamic_size(cx, mts.(i).ty)) { ret true; }
                 i += 1u;
             }
-            ret false;
         }
         case (ty_rec(?fields)) {
             auto i = 0u;
@@ -922,16 +896,18 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
                 if (type_has_dynamic_size(cx, fields.(i).mt.ty)) { ret true; }
                 i += 1u;
             }
-            ret false;
         }
-        case (ty_fn(_,_,_,_,_)) { ret false; }
-        case (ty_native_fn(_,_,_)) { ret false; }
-        case (ty_obj(_)) { ret false; }
-        case (ty_var(_)) { fail "ty_var in type_has_dynamic_size()"; }
+        case (ty_tag(_, ?subtys)) {
+            auto i = 0u;
+            while (i < vec::len[t](subtys)) {
+                if (type_has_dynamic_size(cx, subtys.(i))) { ret true; }
+                i += 1u;
+            }
+        }
         case (ty_param(_)) { ret true; }
-        case (ty_type) { ret false; }
-        case (ty_native) { ret false; }
+        case (_) {/* fall through */ }
     }
+    ret false;
 }
 
 fn type_is_integral(&ctxt cx, &t ty) -> bool {

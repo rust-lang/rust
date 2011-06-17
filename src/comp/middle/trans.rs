@@ -1321,15 +1321,6 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             auto total_size = bcx.build.Add(max_size_val, llsize_of(T_int()));
             ret res(bcx, total_size);
         }
-        case (ty::ty_ivec(?mt)) {
-            auto rslt = field_of_tydesc(cx, mt.ty, false,
-                                        abi::tydesc_field_size);
-            auto bcx = rslt.bcx;
-            auto llunitszptr = rslt.val;
-            auto llunitsz = bcx.build.Load(llunitszptr);
-            auto llsz = bcx.build.Add(llsize_of(T_opaque_ivec()), llunitsz);
-            ret res(bcx, llsz);
-        }
     }
 }
 
@@ -1362,13 +1353,7 @@ fn dynamic_align_of(&@block_ctxt cx, &ty::t t) -> result {
         }
         case (ty::ty_tag(_, _)) {
             ret res(cx, C_int(1)); // FIXME: stub
-        }
-        case (ty::ty_ivec(?tm)) {
-            auto rslt = align_of(cx, tm.ty);
-            auto bcx = rslt.bcx;
-            auto llunitalign = rslt.val;
-            auto llalign = umax(bcx, llalign_of(T_int()), llunitalign);
-            ret res(bcx, llalign);
+
         }
     }
 }
@@ -2059,15 +2044,8 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
         case (ty::ty_str) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
         case (ty::ty_vec(_)) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
         case (ty::ty_ivec(?tm)) {
-            auto v1;
-            if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, tm.ty)) {
-                v1 = cx.build.PointerCast(v0, T_ptr(T_opaque_ivec()));
-            } else {
-                v1 = v0;
-            }
-
-            rslt = iter_structural_ty(cx, v1, t, drop_ty);
-            rslt = maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty);
+            rslt = iter_structural_ty(cx, v0, t, drop_ty);
+            rslt = maybe_free_ivec_heap_part(rslt.bcx, v0, tm.ty);
         }
         case (ty::ty_box(_)) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
         case (ty::ty_port(_)) {
@@ -2417,6 +2395,74 @@ fn make_numerical_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     r.bcx.build.RetVoid();
 }
 
+
+// Returns the length of an interior vector and a pointer to its first
+// element, in that order.
+fn get_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
+   tup(ValueRef, ValueRef, @block_ctxt) {
+    auto llunitty = type_of_or_i8(bcx, unit_ty);
+    auto stack_len =
+        bcx.build.Load(bcx.build.InBoundsGEP(v,
+                                             [C_int(0),
+                                              C_uint(abi::ivec_elt_len)]));
+    auto stack_elem =
+        bcx.build.InBoundsGEP(v,
+                              [C_int(0), C_uint(abi::ivec_elt_elems),
+                               C_int(0)]);
+    auto on_heap = bcx.build.ICmp(lib::llvm::LLVMIntEQ, stack_len, C_int(0));
+    auto on_heap_cx = new_sub_block_ctxt(bcx, "on_heap");
+    auto next_cx = new_sub_block_ctxt(bcx, "next");
+    bcx.build.CondBr(on_heap, on_heap_cx.llbb, next_cx.llbb);
+    auto heap_stub =
+        on_heap_cx.build.PointerCast(v, T_ptr(T_ivec_heap(llunitty)));
+    auto heap_ptr =
+        {
+            auto v = [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)];
+            on_heap_cx.build.Load(on_heap_cx.build.InBoundsGEP(heap_stub, v))
+        };
+    // Check whether the heap pointer is null. If it is, the vector length is
+    // truly zero.
+
+    auto llstubty = T_ivec_heap(llunitty);
+    auto llheapptrty = struct_elt(llstubty, abi::ivec_heap_stub_elt_ptr);
+    auto heap_ptr_is_null =
+        on_heap_cx.build.ICmp(lib::llvm::LLVMIntEQ, heap_ptr,
+                              C_null(T_ptr(llheapptrty)));
+    auto zero_len_cx = new_sub_block_ctxt(bcx, "zero_len");
+    auto nonzero_len_cx = new_sub_block_ctxt(bcx, "nonzero_len");
+    on_heap_cx.build.CondBr(heap_ptr_is_null, zero_len_cx.llbb,
+                            nonzero_len_cx.llbb);
+    // Technically this context is unnecessary, but it makes this function
+    // clearer.
+
+    auto zero_len = C_int(0);
+    auto zero_elem = C_null(T_ptr(llunitty));
+    zero_len_cx.build.Br(next_cx.llbb);
+    // If we're here, then we actually have a heapified vector.
+
+    auto heap_len =
+        {
+            auto v = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
+            auto m = nonzero_len_cx.build.InBoundsGEP(heap_ptr, v);
+            nonzero_len_cx.build.Load(m)
+        };
+    auto heap_elem =
+        nonzero_len_cx.build.InBoundsGEP(heap_ptr,
+                                         [C_int(0),
+                                          C_uint(abi::ivec_heap_elt_elems),
+                                          C_int(0)]);
+    nonzero_len_cx.build.Br(next_cx.llbb);
+    // Now we can figure out the length of `v` and get a pointer to its first
+    // element.
+
+    auto len =
+        next_cx.build.Phi(T_int(), [stack_len, zero_len, heap_len],
+                          [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
+    auto elem =
+        next_cx.build.Phi(T_ptr(llunitty), [stack_elem, zero_elem, heap_elem],
+                          [bcx.llbb, zero_len_cx.llbb, nonzero_len_cx.llbb]);
+    ret tup(len, elem, next_cx);
+}
 
 type val_pair_fn = fn(&@block_ctxt, ValueRef, ValueRef) -> result ;
 
@@ -2971,10 +3017,8 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
 
 tag copy_action { INIT; DROP_EXISTING; }
 
-// FIXME: This should copy the contents of the heap part for ivecs.
 fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
-
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, cx.build.Store(src, dst));
@@ -3201,18 +3245,8 @@ mod ivec {
 
     // Returns the length of an interior vector and a pointer to its first
     // element, in that order.
-    fn get_len_and_data(&@block_ctxt bcx, ValueRef orig_v, ty::t unit_ty)
-            -> tup(ValueRef, ValueRef, @block_ctxt) {
-        // If this interior vector has dynamic size, we can't assume anything
-        // about the LLVM type of the value passed in, so we cast it to an
-        // opaque vector type.
-        auto v;
-        if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
-            v = bcx.build.PointerCast(orig_v, T_ptr(T_opaque_ivec()));
-        } else {
-            v = orig_v;
-        }
-
+    fn get_len_and_data(&@block_ctxt bcx, ValueRef v, ty::t unit_ty) ->
+       tup(ValueRef, ValueRef, @block_ctxt) {
         auto llunitty = type_of_or_i8(bcx, unit_ty);
         auto stack_len =
             {
@@ -4681,7 +4715,7 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
     maybe_name_value(cx.fcx.lcx.ccx, scaled_ix, "scaled_ix");
     auto interior_len_and_data;
     if (is_interior) {
-        auto rslt = ivec::get_len_and_data(bcx, v, unit_ty);
+        auto rslt = get_len_and_data(bcx, v, unit_ty);
         interior_len_and_data = some(tup(rslt._0, rslt._1));
         bcx = rslt._2;
     } else { interior_len_and_data = none; }
