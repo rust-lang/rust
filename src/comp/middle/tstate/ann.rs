@@ -168,7 +168,6 @@ fn extend_poststate(&poststate p, &poststate new) -> bool {
     ret bitv::union(p, new);
 }
 
-
 // Clears the given bit in p
 fn relax_prestate(uint i, &prestate p) -> bool {
     auto was_set = bitv::get(p, i);
@@ -176,6 +175,15 @@ fn relax_prestate(uint i, &prestate p) -> bool {
     ret was_set;
 }
 
+// Clears the given bit in p
+fn relax_poststate(uint i, &poststate p) -> bool {
+    ret relax_prestate(i, p);
+}
+
+// Clears the given bit in p
+fn relax_precond(uint i, &precond p) {
+    relax_prestate(i, p);
+}
 
 // Clears all the bits in p
 fn clear(&precond p) { bitv::clear(p); }

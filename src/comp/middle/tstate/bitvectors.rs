@@ -15,6 +15,12 @@ import aux::npred;
 import aux::pred_desc;
 import aux::match_args;
 import aux::constr_;
+import aux::block_precond;
+import aux::stmt_precond;
+import aux::expr_precond;
+import aux::block_prestate;
+import aux::expr_prestate;
+import aux::stmt_prestate;
 import tstate::aux::ann_to_ts_ann;
 import tstate::ann::pre_and_post;
 import tstate::ann::precond;
@@ -22,6 +28,8 @@ import tstate::ann::postcond;
 import tstate::ann::prestate;
 import tstate::ann::poststate;
 import tstate::ann::relax_prestate;
+import tstate::ann::relax_precond;
+import tstate::ann::relax_poststate;
 import tstate::ann::pps_len;
 import tstate::ann::true_precond;
 import tstate::ann::empty_prestate;
@@ -136,7 +144,44 @@ fn gen(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
 fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
     auto res = clone(pre);
     relax_prestate(bit_num(fcx, c), res);
+    // idea is this is scoped
+    relax_poststate(bit_num(fcx, c), res);
     ret res;
+}
+
+fn relax_precond_block_non_recursive(&fn_ctxt fcx, uint i, &block b) {
+    relax_precond(i, block_precond(fcx.ccx, b));
+}
+
+fn relax_precond_expr(&fn_ctxt fcx, uint i, &@expr e) {
+    relax_precond(i, expr_precond(fcx.ccx, e));
+}
+
+fn relax_precond_stmt(&fn_ctxt fcx, uint i, &@stmt s) {
+    relax_precond(i, stmt_precond(fcx.ccx, *s));
+}
+
+fn relax_precond_block(&fn_ctxt fcx, uint i, &block b) {
+    relax_precond_block_non_recursive(fcx, i, b);
+    // FIXME: should use visit instead
+    // could at least generalize this pattern 
+    // (also seen in ck::check_states_against_conditions)
+    let @mutable bool keepgoing = @mutable true;
+
+    fn quit(@mutable bool keepgoing, &@item i) {
+        *keepgoing = false;
+    }
+    fn kg(@mutable bool keepgoing) -> bool { ret *keepgoing; }
+
+    auto v = rec(visit_block_pre = bind
+                    relax_precond_block_non_recursive(fcx, i, _),
+                 visit_expr_pre  = bind relax_precond_expr(fcx, i, _),
+                 visit_stmt_pre  = bind relax_precond_stmt(fcx, i, _),
+                  visit_item_pre=bind quit(keepgoing, _),
+                  keep_going=bind kg(keepgoing)
+
+                   with walk::default_visitor());
+    walk::walk_block(v, b);
 }
 
 fn gen_poststate(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {

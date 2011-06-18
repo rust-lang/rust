@@ -61,9 +61,19 @@ import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
 
-fn check_states_expr(&fn_ctxt fcx, @expr e) {
+fn check_states_expr(&fn_ctxt fcx, &@expr e) {
     let precond prec = expr_precond(fcx.ccx, e);
     let prestate pres = expr_prestate(fcx.ccx, e);
+
+    /*
+    log_err("check_states_expr:");
+      util::common::log_expr_err(*e);
+      log_err("prec = ");
+      log_bitv_err(fcx, prec);
+      log_err("pres = ");
+      log_bitv_err(fcx, pres);
+    */
+
     if (!implies(pres, prec)) {
         auto s = "";
         auto diff = first_difference_string(fcx, prec, pres);
@@ -79,26 +89,27 @@ fn check_states_expr(&fn_ctxt fcx, @expr e) {
     }
 }
 
-fn check_states_stmt(&fn_ctxt fcx, &stmt s) {
-    auto a = stmt_to_ann(fcx.ccx, s);
+fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
+    auto a = stmt_to_ann(fcx.ccx, *s);
     let precond prec = ann_precond(a);
     let prestate pres = ann_prestate(a);
 
-    /*    
+    /*
       log_err("check_states_stmt:");
-      log_stmt_err(s);
+      log_stmt_err(*s);
       log_err("prec = ");
-      log_bitv_err(fcx.enclosing, prec);
+      log_bitv_err(fcx, prec);
       log_err("pres = ");
-      log_bitv_err(fcx.enclosing, pres);
+      log_bitv_err(fcx, pres);
     */
+
     if (!implies(pres, prec)) {
         auto ss = "";
         auto diff = first_difference_string(fcx, prec, pres);
         ss +=
             "Unsatisfied precondition constraint (for example, " + diff +
                 ") for statement:\n";
-        ss += pretty::pprust::stmt_to_str(s);
+        ss += pretty::pprust::stmt_to_str(*s);
         ss += "\nPrecondition:\n";
         ss += bitv_to_str(fcx, prec);
         ss += "\nPrestate: \n";
@@ -107,29 +118,37 @@ fn check_states_stmt(&fn_ctxt fcx, &stmt s) {
     }
 }
 
-fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) {
-    auto enclosing = fcx.enclosing;
-    auto nv = num_constraints(enclosing);
-    auto post = @mutable empty_poststate(nv);
-    fn do_one_(fn_ctxt fcx, &@stmt s, @mutable poststate post) {
-        check_states_stmt(fcx, *s);
-        *post = stmt_poststate(fcx.ccx, *s);
-    }
-    auto do_one = bind do_one_(fcx, _, post);
-    vec::map[@stmt, ()](do_one, f.body.node.stmts);
-    fn do_inner_(fn_ctxt fcx, &@expr e, @mutable poststate post) {
-        check_states_expr(fcx, e);
-        *post = expr_poststate(fcx.ccx, e);
-    }
-    auto do_inner = bind do_inner_(fcx, _, post);
-    option::map[@expr, ()](do_inner, f.body.node.expr);
-    auto cf = fcx.enclosing.cf;
-    /* Finally, check that the return value is initialized */
+fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
+                                   &span sp, &ident i, &def_id d) {
+    /* Postorder traversal instead of pre is important
+       because we want the smallest possible erroneous statement
+       or expression. */
 
+    let @mutable bool keepgoing = @mutable true;
+    
+    /* TODO probably should use visit instead */
+
+    fn quit(@mutable bool keepgoing, &@ast::item i) {
+        *keepgoing = false;
+    }
+    fn kg(@mutable bool keepgoing) -> bool { 
+        ret *keepgoing;
+    }
+
+    auto v = rec (visit_stmt_post=bind check_states_stmt(fcx, _),
+                  visit_expr_post=bind check_states_expr(fcx, _),
+                  visit_item_pre=bind quit(keepgoing, _),
+                  keep_going=bind kg(keepgoing)
+                  with walk::default_visitor());
+
+    walk::walk_fn(v, f, sp, i, d, a);
+
+    /* Finally, check that the return value is initialized */
+    auto post = aux::block_poststate(fcx.ccx, f.body);
     let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
-    if (f.proto == ast::proto_fn && !promises(fcx, { *post }, ret_c) &&
+    if (f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
             !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, a)) &&
-            cf == return) {
+            f.decl.cf == return) {
         fcx.ccx.tcx.sess.span_note(f.body.span,
                                    "In function " + fcx.name +
                                        ", not all control paths \
@@ -137,12 +156,12 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) {
         fcx.ccx.tcx.sess.span_err(f.decl.output.span,
                                   "see declared return type of '" +
                                       ty_to_str(*f.decl.output) + "'");
-    } else if (cf == noreturn) {
+    } else if (f.decl.cf == noreturn) {
 
         // check that this really always fails
         // the fcx.id bit means "returns" for a returning fn,
         // "diverges" for a non-returning fn
-        if (!promises(fcx, { *post }, ret_c)) {
+        if (!promises(fcx, post, ret_c)) {
             fcx.ccx.tcx.sess.span_err(f.body.span,
                                       "In non-returning function " + fcx.name
                                           +
@@ -152,7 +171,8 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) {
     }
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a) {
+fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a, &span sp, &ident i,
+                   &def_id d) {
     /* Compute the pre- and post-states for this function */
 
     auto g = find_pre_post_state_fn;
@@ -160,7 +180,7 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a) {
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f, a);
+    check_states_against_conditions(fcx, f, a, sp, i, d);
 }
 
 fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i, &def_id id,
@@ -170,7 +190,7 @@ fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i, &def_id id,
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
     auto fcx = rec(enclosing=f_info, id=id, name=i, ccx=ccx);
-    check_fn_states(fcx, f, a);
+    check_fn_states(fcx, f, a, sp, i, id);
 }
 
 fn check_crate(ty::ctxt cx, @crate crate) {
@@ -185,7 +205,7 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_pre_post = walk::default_visitor();
     do_pre_post =
-        rec(visit_fn_pre=bind fn_pre_post(ccx, _, _, _, _, _)
+        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _, _)
             with do_pre_post);
     walk::walk_crate(do_pre_post, *crate);
     /* Check the pre- and postcondition against the pre- and poststate
@@ -193,7 +213,7 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_states = walk::default_visitor();
     do_states =
-        rec(visit_fn_pre=bind fn_states(ccx, _, _, _, _, _) with do_states);
+        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _, _) with do_states);
     walk::walk_crate(do_states, *crate);
 }
 //

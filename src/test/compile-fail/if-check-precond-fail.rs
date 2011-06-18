@@ -1,4 +1,5 @@
 // xfail-stage0
+// error-pattern:Unsatisfied precondition constraint
 pred even(uint x) -> bool {
   if (x < 2u) {
     ret false;
@@ -11,15 +12,19 @@ pred even(uint x) -> bool {
   }
 }
 
+fn print_even(uint x) : even(x) {
+  log x;
+}
+
 fn foo(uint x) -> () {
   if check(even(x)) { 
-      log x;
+      fail;
     }
   else {
-    fail;
+    print_even(x);
   }
 }
 
 fn main() {
-  foo(2u);
+  foo(3u);
 }

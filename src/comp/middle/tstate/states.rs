@@ -32,19 +32,27 @@ import aux::stmt_pp;
 import aux::block_pp;
 import aux::set_pre_and_post;
 import aux::expr_prestate;
+import aux::expr_precond;
+import aux::expr_postcond;
 import aux::stmt_poststate;
 import aux::expr_poststate;
+import aux::block_prestate;
 import aux::block_poststate;
+import aux::block_precond;
+import aux::block_postcond;
 import aux::fn_info;
 import aux::log_pp;
+import aux::log_pp_err;
 import aux::extend_prestate_ann;
 import aux::extend_poststate_ann;
 import aux::set_prestate_ann;
 import aux::set_poststate_ann;
 import aux::pure_exp;
 import aux::log_bitv;
+import aux::log_bitv_err;
 import aux::stmt_to_ann;
 import aux::log_states;
+import aux::log_states_err;
 import aux::block_states;
 import aux::controlflow_expr;
 import aux::ann_to_def;
@@ -52,6 +60,10 @@ import aux::expr_to_constr;
 import aux::ninit;
 import aux::npred;
 import aux::path_to_ident;
+import aux::if_ty;
+import aux::if_check;
+import aux::plain_if;
+
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
 import bitvectors::intersect_postconds;
@@ -69,11 +81,13 @@ import util::common::new_def_hash;
 import util::common::uistr;
 import util::common::log_expr;
 import util::common::log_block;
+import util::common::log_block_err;
 import util::common::log_fn;
 import util::common::elt_exprs;
 import util::common::field_exprs;
 import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
+import util::common::log_stmt_err;
 import util::common::log_expr_err;
 
 fn seq_states(&fn_ctxt fcx, prestate pres, vec[@expr] exprs) ->
@@ -111,6 +125,11 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
     changed =
         find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, index), body)
             || changed;
+
+    if (has_nonlocal_exits(body)) { 
+        changed = set_poststate_ann(fcx.ccx, a, pres) || changed;
+    }
+
     auto res_p =
         intersect_postconds([expr_poststate(fcx.ccx, index),
                              block_poststate(fcx.ccx, body)]);
@@ -130,14 +149,35 @@ fn gen_if_local(&fn_ctxt fcx, &ann a_new_var, &ann a, &path p) -> bool {
 }
 
 fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
-                  &option::t[@expr] maybe_alt, &ann a) -> bool {
+                  &option::t[@expr] maybe_alt, &ann a, &if_ty chk,
+                  &prestate pres) -> bool {
     auto changed = false;
 
-    changed =
-        find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
-                                  conseq) || changed;
+    changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+    changed = find_pre_post_state_expr(fcx, pres, antec) || changed;
+    
+    /*
+    log_err("join_then_else:");
+    log_expr_err(*antec);
+    log_bitv_err(fcx, expr_prestate(fcx.ccx, antec));
+    log_bitv_err(fcx, expr_poststate(fcx.ccx, antec));
+    log_block_err(conseq);
+    log_bitv_err(fcx, block_prestate(fcx.ccx, conseq));
+    log_bitv_err(fcx, block_poststate(fcx.ccx, conseq));
+    log_err("****");
+    log_bitv_err(fcx, expr_precond(fcx.ccx, antec));
+    log_bitv_err(fcx, expr_postcond(fcx.ccx, antec));
+    log_bitv_err(fcx, block_precond(fcx.ccx, conseq));
+    log_bitv_err(fcx, block_postcond(fcx.ccx, conseq));
+    */
+
     alt (maybe_alt) {
         case (none) {
+
+            changed =
+                find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, antec),
+                                  conseq) || changed;
+   
             changed =
                 extend_poststate_ann(fcx.ccx, a,
                                      expr_poststate(fcx.ccx, antec))
@@ -149,10 +189,35 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                                          expr_poststate(fcx.ccx,
                                                         antec),
                                          altern) || changed;
+
+            auto conseq_prestate = expr_poststate(fcx.ccx, antec);
+            alt (chk) {
+                case (if_check) {
+                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    conseq_prestate = bitv::clone(conseq_prestate);
+                    bitv::set(conseq_prestate, bit_num(fcx, c.node), true);
+                }
+                case (_) {}
+            }
+
+
+            changed =
+                find_pre_post_state_block(fcx, conseq_prestate, conseq)
+                || changed;
+   
             auto poststate_res =
                 intersect_postconds([block_poststate(fcx.ccx, conseq),
                                      expr_poststate(fcx.ccx,
                                                     altern)]);
+            /*   fcx.ccx.tcx.sess.span_note(antec.span,
+               "poststate_res = " + aux::bitv_to_str(fcx, poststate_res));
+            fcx.ccx.tcx.sess.span_note(antec.span,
+               "altern poststate = " +
+                aux::bitv_to_str(fcx, expr_poststate(fcx.ccx, altern)));
+            fcx.ccx.tcx.sess.span_note(antec.span,
+            "conseq poststate = " + aux::bitv_to_str(fcx,
+               block_poststate(fcx.ccx, conseq))); */
+
             changed =
                 extend_poststate_ann(fcx.ccx, a, poststate_res) ||
                 changed;
@@ -164,10 +229,10 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
 fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     auto changed = false;
     auto num_local_vars = num_constraints(fcx.enclosing);
-
-    /*  
+    /*
     log_err("states:");
     log_expr_err(*e);
+    aux::log_bitv_err(fcx, expr_prestate(fcx.ccx, e));
     aux::log_bitv_err(fcx, expr_poststate(fcx.ccx, e));
     */
 
@@ -181,6 +246,10 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_call(?operator, ?operands, ?a)) {
             /* do the prestate for the rator */
+
+            /*            fcx.ccx.tcx.sess.span_note(operator.span, 
+                         "pres = " + aux::bitv_to_str(fcx, pres));
+            */
 
             changed =
                 find_pre_post_state_expr(fcx, pres, operator) || changed;
@@ -201,6 +270,10 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                 }
                 case (_) { }
             }
+
+            /*            fcx.ccx.tcx.sess.span_note(operator.span, 
+               "pres = " + aux::bitv_to_str(fcx, expr_poststate(fcx.ccx, e)));
+            */
             ret changed;
         }
         case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
@@ -436,9 +509,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             ret changed;
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
-            changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
-            changed = find_pre_post_state_expr(fcx, pres, antec) || changed;
-            changed = join_then_else(fcx, antec, conseq, maybe_alt, a)
+            changed = join_then_else(fcx, antec, conseq, maybe_alt, a,
+                                     plain_if, pres)
                 || changed;
 
             ret changed;
@@ -495,6 +567,12 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             changed =
                 find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, test),
                                           body) || changed;
+            /* conservative approximation: if a loop contains a break
+               or cont, we assume nothing about the poststate */
+            if (has_nonlocal_exits(body)) { 
+                changed = set_poststate_ann(fcx.ccx, a, pres) || changed;
+            }
+
             changed =
                 {
                     auto e_post = expr_poststate(fcx.ccx, test);
@@ -508,22 +586,35 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_do_while(?body, ?test, ?a)) {
             changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+            auto changed0 = changed;
             changed = find_pre_post_state_block(fcx, pres, body) || changed;
-            changed =
-                find_pre_post_state_expr(fcx, block_poststate(fcx.ccx, body),
-                                         test) || changed;
             /* conservative approximination: if the body of the loop
                could break or cont, we revert to the prestate
                (TODO: could treat cont differently from break, since
                if there's a cont, the test will execute) */
 
-            if (has_nonlocal_exits(body)) {
-                changed = set_poststate_ann(fcx.ccx, a, pres) || changed;
-            } else {
-                changed =
-                    extend_poststate_ann(fcx.ccx, a,
-                                         expr_poststate(fcx.ccx, test)) ||
-                        changed;
+            auto breaks = has_nonlocal_exits(body);
+            if (breaks) {
+                // this should probably be true_poststate and not pres,
+                // b/c the body could invalidate stuff
+                // FIXME
+                 // This doesn't set "changed", as if the previous state
+                // was different, this might come back true every time
+                set_poststate_ann(fcx.ccx, body.node.a, pres);
+                changed = changed0;
+            }
+
+            changed =
+                find_pre_post_state_expr(fcx, block_poststate(fcx.ccx, body),
+                                         test) || changed;
+
+            if (breaks) {
+                set_poststate_ann(fcx.ccx, a, pres);
+            }
+            else {
+                changed =  extend_poststate_ann(fcx.ccx, a,
+                                            expr_poststate(fcx.ccx, test)) ||
+                    changed;
             }
             ret changed;
         }
@@ -605,7 +696,12 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     || changed;
             ret changed;
         }
-        case (expr_assert(?p, ?a)) { ret pure_exp(fcx.ccx, a, pres); }
+        case (expr_assert(?p, ?a)) {
+            changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+            changed = find_pre_post_state_expr(fcx, pres, p) || changed;
+            changed = extend_poststate_ann(fcx.ccx, a, pres) || changed;
+            ret changed;
+        }
         case (expr_check(?p, ?a)) {
             changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, p) || changed;
@@ -617,13 +713,10 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             ret changed;
         }
         case (expr_if_check(?p, ?conseq, ?maybe_alt, ?a)) {
-            changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
-            changed = find_pre_post_state_expr(fcx, pres, p) || changed;
-            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
-            changed = gen_poststate(fcx, expr_ann(p), c.node) || changed;
-            
-            changed = join_then_else(fcx, p, conseq, maybe_alt, a)
+            changed = join_then_else(fcx, p, conseq, maybe_alt, a, if_check,
+                                     pres)
                 || changed;
+
             ret changed;
         }
         case (expr_break(?a)) { ret pure_exp(fcx.ccx, a, pres); }
@@ -651,14 +744,18 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
     auto changed = false;
     auto stmt_ann = stmt_to_ann(fcx.ccx, *s);
-    log "*At beginning: stmt = ";
-    log_stmt(*s);
-    log "*prestate = ";
-    log bitv::to_str(stmt_ann.states.prestate);
-    log "*poststate =";
-    log bitv::to_str(stmt_ann.states.poststate);
-    log "*changed =";
-    log changed;
+
+    /*
+    log_err "*At beginning: stmt = ";
+    log_stmt_err(*s);
+    log_err "*prestate = ";
+    log_err bitv::to_str(stmt_ann.states.prestate);
+    log_err "*poststate =";
+    log_err bitv::to_str(stmt_ann.states.poststate);
+    log_err "*changed =";
+    log_err changed;
+    */
+
     alt (s.node) {
         case (stmt_decl(?adecl, ?a)) {
             alt (adecl.node) {
@@ -770,27 +867,21 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b) ->
             post = expr_poststate(fcx.ccx, e);
         }
     }
-    /*
-    log_err("block:");
-    log_block_err(b);
-    log_err("has non-local exits?");
-    log_err(has_nonlocal_exits(b));
-    */
 
-    /* conservative approximation: if a block contains a break
-       or cont, we assume nothing about the poststate */
-
-    if (has_nonlocal_exits(b)) { post = pres0; }
     set_prestate_ann(fcx.ccx, b.node.a, pres0);
     set_poststate_ann(fcx.ccx, b.node.a, post);
-    log "For block:";
-    log_block(b);
-    log "poststate = ";
-    log_states(block_states(fcx.ccx, b));
-    log "pres0:";
-    log_bitv(fcx, pres0);
-    log "post:";
-    log_bitv(fcx, post);
+    
+    /*
+    log_err "For block:";
+    log_block_err(b);
+    log_err "poststate = ";
+    log_states_err(block_states(fcx.ccx, b));
+    log_err "pres0:";
+    log_bitv_err(fcx, pres0);
+    log_err "post:";
+    log_bitv_err(fcx, post);
+    */
+
     ret changed;
 }
 
@@ -812,8 +903,10 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
             // function with some other return type
             if (!type_is_nil(fcx.ccx.tcx, tailty) &&
                     !type_is_bot(fcx.ccx.tcx, tailty)) {
-                set_poststate_ann(fcx.ccx, tailann,
-                                  false_postcond(num_local_vars));
+                auto p = false_postcond(num_local_vars);
+                set_poststate_ann(fcx.ccx, tailann, p);
+                // be sure to set the block poststate to the same thing
+                set_poststate_ann(fcx.ccx, f.body.node.a, p);
                 alt (fcx.enclosing.cf) {
                     case (noreturn) {
                         kill_poststate(fcx, tailann,

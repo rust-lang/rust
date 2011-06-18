@@ -32,6 +32,7 @@ import aux::clear_pp;
 import aux::clear_precond;
 import aux::set_pre_and_post;
 import aux::copy_pre_post;
+import aux::copy_pre_post_;
 import aux::expr_precond;
 import aux::expr_postcond;
 import aux::expr_prestate;
@@ -45,8 +46,10 @@ import aux::ann_to_ts_ann;
 import aux::set_postcond_false;
 import aux::controlflow_expr;
 import aux::expr_to_constr;
+import aux::if_ty;
+import aux::if_check;
+import aux::plain_if;
 
-//import aux::constr_to_constr_occ;
 import aux::constraints_expr;
 import aux::substitute_constr_args;
 import aux::ninit;
@@ -55,9 +58,9 @@ import aux::path_to_ident;
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
 import bitvectors::intersect_postconds;
-import bitvectors::declare_var;
 import bitvectors::bit_num;
 import bitvectors::gen;
+import bitvectors::relax_precond_block;
 import front::ast::*;
 import middle::ty::expr_ann;
 import util::common::new_def_hash;
@@ -161,26 +164,37 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
                       &ann a) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
+    auto v_init = rec(id=l.node.id, c=ninit(l.node.ident));
+    relax_precond_block(fcx, bit_num(fcx, v_init), body);
+
     auto loop_precond =
-        declare_var(fcx, rec(id=l.node.id, c=ninit(l.node.ident)),
-                    seq_preconds(fcx,
-                                 [expr_pp(fcx.ccx, index),
-                                  block_pp(fcx.ccx, body)]));
+        seq_preconds(fcx,
+                     [expr_pp(fcx.ccx, index),
+                      block_pp(fcx.ccx, body)]);
     auto loop_postcond =
         intersect_postconds([expr_postcond(fcx.ccx, index),
                              block_postcond(fcx.ccx, body)]);
-    set_pre_and_post(fcx.ccx, a, loop_precond, loop_postcond);
+    copy_pre_post_(fcx.ccx, a, loop_precond, loop_postcond);
 }
 
 // Generates a pre/post assuming that a is the 
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
 fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
-                  &option::t[@expr] maybe_alt, &ann a) {
+                  &option::t[@expr] maybe_alt, &ann a, &if_ty chck) {
     auto num_local_vars = num_constraints(fcx.enclosing);
+    find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     alt (maybe_alt) {
         case (none) {
+            alt (chck) {
+                case (if_check) {
+                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    gen(fcx, expr_ann(antec), c.node);
+                }
+                case (_) {}
+            }
+
             auto precond_res =
                 seq_preconds(fcx,
                              [expr_pp(fcx.ccx, antec),
@@ -189,15 +203,12 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                              expr_poststate(fcx.ccx, antec));
         }
         case (some(?altern)) {
+            /*
+              if check = if_check, then
+              be sure that the predicate implied by antec
+              is *not* true in the alternative
+             */
             find_pre_post_expr(fcx, altern);
-            auto precond_true_case =
-                seq_preconds(fcx,
-                             [expr_pp(fcx.ccx, antec),
-                              block_pp(fcx.ccx, conseq)]);
-            auto postcond_true_case =
-                union_postconds(num_local_vars,
-                                [expr_postcond(fcx.ccx, antec),
-                                 block_postcond(fcx.ccx, conseq)]);
             auto precond_false_case =
                 seq_preconds(fcx,
                              [expr_pp(fcx.ccx, antec),
@@ -206,6 +217,25 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                 union_postconds(num_local_vars,
                                 [expr_postcond(fcx.ccx, antec),
                                  expr_postcond(fcx.ccx, altern)]);
+
+            /* Be sure to set the bit for the check condition here,
+             so that it's *not* set in the alternative. */
+            alt (chck) {
+                case (if_check) {
+                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    gen(fcx, expr_ann(antec), c.node);
+                }
+                case (_) {}
+            }
+            auto precond_true_case =
+                seq_preconds(fcx,
+                             [expr_pp(fcx.ccx, antec),
+                              block_pp(fcx.ccx, conseq)]);
+            auto postcond_true_case =
+                union_postconds(num_local_vars,
+                                [expr_postcond(fcx.ccx, antec),
+                                 block_postcond(fcx.ccx, conseq)]);
+
             auto precond_res =
                 union_postconds(num_local_vars,
                                 [precond_true_case,
@@ -396,8 +426,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                              false_postcond(num_local_vars));
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
-            find_pre_post_expr(fcx, antec);
-            join_then_else(fcx, antec, conseq, maybe_alt, a);
+            join_then_else(fcx, antec, conseq, maybe_alt, a, plain_if);
         }
         case (expr_binary(?bop, ?l, ?r, ?a)) {
             /* *unless* bop is lazy (e.g. and, or)? 
@@ -504,16 +533,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             gen(fcx, a, c.node);
         }
         case (expr_if_check(?p, ?conseq, ?maybe_alt, ?a)) {
-            find_pre_post_expr(fcx, p);
-            copy_pre_post(fcx.ccx, a, p);
-            /* the typestate for the whole expression */
-            join_then_else(fcx, p, conseq, maybe_alt, a);
-
-            /* predicate p holds inside the "thn" expression */
-            /* (so far, the negation of p does *not* hold inside
-             the "elsopt" expression) */
-            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
-            gen(fcx, conseq.node.a, c.node);
+            join_then_else(fcx, p, conseq, maybe_alt, a, if_check);
         }
 
         case (expr_bind(?operator, ?maybe_args, ?a)) {

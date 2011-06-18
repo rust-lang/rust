@@ -358,8 +358,16 @@ fn stmt_poststate(&crate_ctxt ccx, &stmt s) -> poststate {
     ret stmt_states(ccx, s).poststate;
 }
 
+fn block_precond(&crate_ctxt ccx, &block b) -> precond {
+    ret block_pp(ccx, b).precondition;
+}
+
 fn block_postcond(&crate_ctxt ccx, &block b) -> postcond {
     ret block_pp(ccx, b).postcondition;
+}
+
+fn block_prestate(&crate_ctxt ccx, &block b) -> prestate {
+    ret block_states(ccx, b).prestate;
 }
 
 fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
@@ -402,11 +410,15 @@ fn set_pre_and_post(&crate_ctxt ccx, &ann a, &precond pre, &postcond post) {
 fn copy_pre_post(&crate_ctxt ccx, &ann a, &@expr sub) {
     log "set_pre_and_post";
     auto p = expr_pp(ccx, sub);
-    auto t = ann_to_ts_ann(ccx, a);
-    set_precondition(t, p.precondition);
-    set_postcondition(t, p.postcondition);
+    copy_pre_post_(ccx, a, p.precondition, p.postcondition);
 }
 
+fn copy_pre_post_(&crate_ctxt ccx, &ann a, &prestate pre, &poststate post) {
+    log "set_pre_and_post";
+    auto t = ann_to_ts_ann(ccx, a);
+    set_precondition(t, pre);
+    set_postcondition(t, post);
+}
 
 /* sets all bits to *1* */
 fn set_postcond_false(&crate_ctxt ccx, &ann a) {
@@ -548,7 +560,9 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
         }
         case (expr_lit(?l, _)) { ret @respan(e.span, carg_lit(l)); }
         case (_) {
-            tcx.sess.bug("exprs_to_constr_args: ill-formed pred arg");
+            tcx.sess.span_err(e.span,
+                              "Arguments to constrained functions must be "
+                              + "literals or local variables");
         }
     }
 }
@@ -625,6 +639,11 @@ fn path_to_ident(&ty::ctxt cx, &path p) -> ident {
         case (none) { cx.sess.span_err(p.span, "Malformed path"); }
         case (some(?i)) { ret i; }
     }
+}
+
+tag if_ty { 
+    if_check;
+    plain_if;
 }
 //
 // Local Variables:
