@@ -133,6 +133,17 @@ fn test_grow_fn() {
     assert (v.(2) == 4u);
 }
 
+fn test_grow_set() {
+    auto v = ~[ mutable 1, 2, 3 ];
+    ivec::grow_set(v, 4u, 4, 5);
+    assert (ivec::len(v) == 5u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 2);
+    assert (v.(2) == 3);
+    assert (v.(3) == 4);
+    assert (v.(4) == 5);
+}
+
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
@@ -146,5 +157,6 @@ fn main() {
     // Appending
     test_grow();
     test_grow_fn();
+    test_grow_set();
 }
 

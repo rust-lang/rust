@@ -29,7 +29,7 @@ fn to_ptr[T](&T[] v) -> *T {
     ret rustrt::ivec_to_ptr(v);
 }
 
-fn len[T](&T[] v) -> uint {
+fn len[T](&T[mutable?] v) -> uint {
     ret rusti::ivec_len(v);
 }
 
@@ -110,6 +110,7 @@ fn slice_mut[T](&T[mutable?] v, uint start, uint end) -> T[mutable] {
 
 /// Expands the given vector in-place by appending `n` copies of `initval`.
 fn grow[T](&mutable T[] v, uint n, &T initval) {
+    reserve(v, len(v) + n);
     let uint i = 0u;
     while (i < n) {
         v += ~[initval];
@@ -117,9 +118,20 @@ fn grow[T](&mutable T[] v, uint n, &T initval) {
     }
 }
 
+// TODO: Remove me once we have slots.
+fn grow_mut[T](&mutable T[mutable] v, uint n, &T initval) {
+    reserve(v, len(v) + n);
+    let uint i = 0u;
+    while (i < n) {
+        v += ~[mutable initval];
+        i += 1u;
+    }
+}
+
 /// Calls `f` `n` times and appends the results of these calls to the given
 /// vector.
 fn grow_fn[T](&mutable T[] v, uint n, fn(uint)->T init_fn) {
+    reserve(v, len(v) + n);
     let uint i = 0u;
     while (i < n) {
         v += ~[init_fn(i)];
@@ -127,6 +139,13 @@ fn grow_fn[T](&mutable T[] v, uint n, fn(uint)->T init_fn) {
     }
 }
 
+/// Sets the element at position `index` to `val`. If `index` is past the end
+/// of the vector, expands the vector by replicating `initval` to fill the
+/// intervening space.
+fn grow_set[T](&mutable T[mutable] v, uint index, &T initval, &T val) {
+    if (index >= len(v)) { grow_mut(v, index - len(v) + 1u, initval); }
+    v.(index) = val;
+}
 
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
