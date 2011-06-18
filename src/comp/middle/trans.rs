@@ -3473,14 +3473,18 @@ mod ivec {
             }
         }
 
+        auto rslt = size_of(cx, unit_ty);
+        auto bcx = rslt.bcx;
+        auto unit_sz = rslt.val;
+
         // Gather the various type descriptors we'll need.
 
         // FIXME (issue #511): This is needed to prevent a leak.
         auto no_tydesc_info = none;
 
-        auto rslt = get_tydesc(cx, t, false, no_tydesc_info);
+        rslt = get_tydesc(bcx, t, false, no_tydesc_info);
         auto vec_tydesc = rslt.val;
-        auto bcx = rslt.bcx;
+        bcx = rslt.bcx;
         rslt = get_tydesc(bcx, unit_ty, false, no_tydesc_info);
         auto unit_tydesc = rslt.val;
         bcx = rslt.bcx;
@@ -3526,12 +3530,19 @@ mod ivec {
         auto post_copy_cx = rslt.bcx;
         // Increment both pointers.
 
-        post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(copy_dest_ptr,
-                                                                [C_int(1)]),
-                                 dest_ptr);
-        post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(copy_src_ptr,
-                                                                [C_int(1)]),
-                                 src_ptr);
+        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
+            // We have to increment by the dynamically-computed size.
+            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
+                copy_dest_ptr, [unit_sz]), dest_ptr);
+            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
+                copy_src_ptr, [unit_sz]), src_ptr);
+        } else {
+            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
+                copy_dest_ptr, [C_int(1)]), dest_ptr);
+            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
+                copy_src_ptr, [C_int(1)]), src_ptr);
+        }
+
         post_copy_cx.build.Br(copy_loop_header_cx.llbb);
         ret res(next_cx, C_nil());
     }
@@ -6656,7 +6667,8 @@ fn new_block_ctxt(&@fn_ctxt cx, &block_parent parent, block_kind kind,
                   &str name) -> @block_ctxt {
     let vec[cleanup] cleanups = [];
     auto s = str::buf("");
-    if (cx.lcx.ccx.sess.get_opts().save_temps) {
+    if (cx.lcx.ccx.sess.get_opts().save_temps ||
+        cx.lcx.ccx.sess.get_opts().debuginfo) {
         s = str::buf(cx.lcx.ccx.names.next(name));
     }
     let BasicBlockRef llbb = llvm::LLVMAppendBasicBlock(cx.llfn, s);
