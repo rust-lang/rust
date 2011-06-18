@@ -106,6 +106,28 @@ fn slice_mut[T](&T[mutable?] v, uint start, uint end) -> T[mutable] {
 // TODO
 
 
+// Appending
+
+/// Expands the given vector in-place by appending `n` copies of `initval`.
+fn grow[T](&mutable T[] v, uint n, &T initval) {
+    let uint i = 0u;
+    while (i < n) {
+        v += ~[initval];
+        i += 1u;
+    }
+}
+
+/// Calls `f` `n` times and appends the results of these calls to the given
+/// vector.
+fn grow_fn[T](&mutable T[] v, uint n, fn(uint)->T init_fn) {
+    let uint i = 0u;
+    while (i < n) {
+        v += ~[init_fn(i)];
+        i += 1u;
+    }
+}
+
+
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
         ret rustrt::ivec_copy_from_buf(v, ptr, count);

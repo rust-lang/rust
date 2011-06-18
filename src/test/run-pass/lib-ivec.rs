@@ -5,6 +5,8 @@ import std::ivec;
 import std::option::none;
 import std::option::some;
 
+fn square(uint n) -> uint { ret n * n; }
+
 fn test_reserve_and_on_heap() {
     let int[] v = ~[ 1, 2 ];
     assert (!ivec::on_heap(v));
@@ -37,8 +39,6 @@ fn test_unsafe_ptrs() {
 }
 
 fn test_init_fn() {
-    fn square(uint n) -> uint { ret n * n; }
-
     // Test on-stack init_fn.
     auto v = ivec::init_fn(square, 3u);
     assert (ivec::len(v) == 3u);
@@ -106,12 +106,45 @@ fn test_slice() {
     assert (v.(4) == 6);
 }
 
+fn test_grow() {
+    // Test on-stack grow().
+    auto v = ~[];
+    ivec::grow(v, 2u, 1);
+    assert (ivec::len(v) == 2u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 1);
+
+    // Test on-heap grow().
+    ivec::grow(v, 3u, 2);
+    assert (ivec::len(v) == 5u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 1);
+    assert (v.(2) == 2);
+    assert (v.(3) == 2);
+    assert (v.(4) == 2);
+}
+
+fn test_grow_fn() {
+    auto v = ~[];
+    ivec::grow_fn(v, 3u, square);
+    assert (ivec::len(v) == 3u);
+    assert (v.(0) == 0u);
+    assert (v.(1) == 1u);
+    assert (v.(2) == 4u);
+}
+
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
+
+    // Accessors
     test_init_fn();
     test_init_elt();
     test_last();
     test_slice();
+
+    // Appending
+    test_grow();
+    test_grow_fn();
 }
 
