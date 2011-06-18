@@ -249,6 +249,8 @@ mod write {
  *
  */
 iter crate_export_metas(&ast::crate c) -> @ast::meta_item {
+    // FIXME: Need to identify exported attributes as described above,
+    // reevaluate how the above strategy fits in with attributes
     for (ast::attribute attr in c.node.attrs) {
         put @attr.node.value;
     }
