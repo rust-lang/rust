@@ -1,5 +1,6 @@
 stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 	@$(call E, fetch: $@)
+	mkdir -p stage0/lib
 	$(Q)$(S)src/etc/get-snapshot.py
 	$(Q)touch $@
 
@@ -8,7 +9,7 @@ stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 stage0/glue.o: stage0/rustc$(X)
 	$(Q)touch $@
 
-stage0/$(CFG_STDLIB): stage0/rustc$(X)
+stage0/lib/$(CFG_STDLIB): stage0/rustc$(X)
 	$(Q)touch $@
 
 # TODO: Include as part of the snapshot.

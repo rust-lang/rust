@@ -148,7 +148,8 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 ######################################################################
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
-SREQ0 := stage0/rustc$(X) $(LREQ) rt/main.o stage0/glue.o stage0/$(CFG_STDLIB)
+SREQ0 := stage0/rustc$(X) $(LREQ) rt/main.o stage0/glue.o \
+         stage0/lib/$(CFG_STDLIB)
 SREQ1 := stage1/rustc$(X) $(LREQ) rt/main.o stage1/glue.o \
          stage1/lib/$(CFG_STDLIB)
 SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage2/glue.o \
@@ -184,7 +185,7 @@ CFG_INFO := $(info cfg:)
 
 all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
-     stage0/$(CFG_STDLIB)       \
+     stage0/lib/$(CFG_STDLIB)   \
      stage0/intrinsics.bc       \
      stage0/rustc$(X)           \
      $(GENERATED)               \
@@ -198,7 +199,7 @@ else
 
 all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
-     stage0/$(CFG_STDLIB)       \
+     stage0/lib/$(CFG_STDLIB)   \
      stage0/intrinsics.bc       \
      stage0/rustc$(X)           \
      $(GENERATED)               \
