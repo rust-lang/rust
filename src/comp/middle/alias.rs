@@ -521,6 +521,12 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                                       kind=index,
                                       outer_t=auto_unbox.t));
                     }
+                    case (ty::ty_ivec(?mt)) {
+                        vec::push(ds,
+                                  rec(mut=mt.mut != ast::imm,
+                                      kind=index,
+                                      outer_t=auto_unbox.t));
+                    }
                 }
                 maybe_push_auto_unbox(auto_unbox.d, ds);
                 ex = base;
