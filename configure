@@ -179,6 +179,7 @@ for i in \
     rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
+    stage0/lib stage1/lib stage2/lib stage3/lib \
     test/run-pass test/run-fail test/compile-fail \
     test/bench/99-bottles test/bench/shootout     
 do

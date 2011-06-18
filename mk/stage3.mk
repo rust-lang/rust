@@ -2,7 +2,6 @@ stage3/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage3/rustc$(X) stage2/lib/$(CFG_STDLIB) stage3/intrinsics.bc \
               stage3/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
-	mkdir -p stage3/lib
 	$(STAGE3)  --shared -o $@ $<
 
 stage3/glue.o: stage3/rustc$(X) stage2/lib/$(CFG_STDLIB) stage3/intrinsics.bc \
