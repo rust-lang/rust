@@ -2922,9 +2922,12 @@ fn free_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     ret res(cx, C_nil());
 }
 
-fn call_memmove(&@block_ctxt cx, ValueRef dst, ValueRef src, ValueRef n_bytes,
-                ValueRef align_bytes) -> result {
+fn call_memmove(&@block_ctxt cx, ValueRef dst, ValueRef src,
+                ValueRef n_bytes) -> result {
     // FIXME: switch to the 64-bit variant when on such a platform.
+    // TODO: Provide LLVM with better alignment information when the alignment
+    // is statically known (it must be nothing more than a constant int, or
+    // LLVM complains -- not even a constant element of a tydesc works).
 
     auto i = cx.fcx.lcx.ccx.intrinsics;
     assert (i.contains_key("llvm.memmove.p0i8.p0i8.i32"));
@@ -2932,10 +2935,7 @@ fn call_memmove(&@block_ctxt cx, ValueRef dst, ValueRef src, ValueRef n_bytes,
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     auto size = cx.build.IntCast(n_bytes, T_i32());
-    auto align =
-        if (lib::llvm::llvm::LLVMIsConstant(align_bytes) == True) {
-            cx.build.IntCast(align_bytes, T_i32())
-        } else { cx.build.IntCast(C_int(0), T_i32()) };
+    auto align = C_int(0);
     auto volatile = C_bool(false);
     ret res(cx,
             cx.build.Call(memmove,
@@ -2965,8 +2965,7 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
    result {
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto llsz = size_of(cx, t);
-        auto llalign = align_of(llsz.bcx, t);
-        ret call_memmove(llalign.bcx, dst, src, llsz.val, llalign.val);
+        ret call_memmove(llsz.bcx, dst, src, llsz.val);
     } else { ret res(cx, cx.build.Store(cx.build.Load(src), dst)); }
 }
 
@@ -3825,8 +3824,7 @@ mod ivec {
         on_heap_cx = rslt.bcx;
         auto new_heap_ptr = rslt.val;
 
-        rslt = call_memmove(on_heap_cx, new_heap_ptr, heap_ptr, heap_part_sz,
-                            C_int(4));  // FIXME: align
+        rslt = call_memmove(on_heap_cx, new_heap_ptr, heap_ptr, heap_part_sz);
         on_heap_cx = rslt.bcx;
 
         on_heap_cx.build.Store(new_heap_ptr, heap_ptr_ptr);
