@@ -2,6 +2,8 @@
 
 use std;
 import std::ivec;
+import std::option::none;
+import std::option::some;
 
 fn test_reserve_and_on_heap() {
     let int[] v = ~[ 1, 2 ];
@@ -37,14 +39,14 @@ fn test_unsafe_ptrs() {
 fn test_init_fn() {
     fn square(uint n) -> uint { ret n * n; }
 
-    // Test on-stack init-fn.
+    // Test on-stack init_fn.
     auto v = ivec::init_fn(square, 3u);
     assert (ivec::len(v) == 3u);
     assert (v.(0) == 0u);
     assert (v.(1) == 1u);
     assert (v.(2) == 4u);
 
-    // Test on-heap init-fn.
+    // Test on-heap init_fn.
     v = ivec::init_fn(square, 5u);
     assert (ivec::len(v) == 5u);
     assert (v.(0) == 0u);
@@ -54,9 +56,62 @@ fn test_init_fn() {
     assert (v.(4) == 16u);
 }
 
+fn test_init_elt() {
+    // Test on-stack init_elt.
+    auto v = ivec::init_elt(10u, 2u);
+    assert (ivec::len(v) == 2u);
+    assert (v.(0) == 10u);
+    assert (v.(1) == 10u);
+
+    // Test on-heap init_elt.
+    v = ivec::init_elt(20u, 6u);
+    assert (v.(0) == 20u);
+    assert (v.(1) == 20u);
+    assert (v.(2) == 20u);
+    assert (v.(3) == 20u);
+    assert (v.(4) == 20u);
+    assert (v.(5) == 20u);
+}
+
+fn test_last() {
+    auto n = ivec::last(~[]);
+    assert (n == none);
+    n = ivec::last(~[ 1, 2, 3 ]);
+    assert (n == some(3));
+    n = ivec::last(~[ 1, 2, 3, 4, 5 ]);
+    assert (n == some(5));
+}
+
+fn test_slice() {
+    // Test on-stack -> on-stack slice.
+    auto v = ivec::slice(~[ 1, 2, 3 ], 1u, 3u);
+    assert (ivec::len(v) == 2u);
+    assert (v.(0) == 2);
+    assert (v.(1) == 3);
+
+    // Test on-heap -> on-stack slice.
+    v = ivec::slice(~[ 1, 2, 3, 4, 5 ], 0u, 3u);
+    assert (ivec::len(v) == 3u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 2);
+    assert (v.(2) == 3);
+
+    // Test on-heap -> on-heap slice.
+    v = ivec::slice(~[ 1, 2, 3, 4, 5, 6 ], 1u, 6u);
+    assert (ivec::len(v) == 5u);
+    assert (v.(0) == 2);
+    assert (v.(1) == 3);
+    assert (v.(2) == 4);
+    assert (v.(3) == 5);
+    assert (v.(4) == 6);
+}
+
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
     test_init_fn();
+    test_init_elt();
+    test_last();
+    test_slice();
 }
 
