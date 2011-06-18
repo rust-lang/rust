@@ -10,14 +10,14 @@ native "rust-intrinsic" mod rusti {
 }
 
 native "rust" mod rustrt {
-    fn ivec_reserve[T](&mutable T[] v, uint n);
+    fn ivec_reserve[T](&mutable T[mutable?] v, uint n);
     fn ivec_on_heap[T](&T[] v) -> bool;
     fn ivec_to_ptr[T](&T[] v) -> *T;
-    fn ivec_copy_from_buf[T](&mutable T[] v, *T ptr, uint count);
+    fn ivec_copy_from_buf[T](&mutable T[mutable?] v, *T ptr, uint count);
 }
 
 /// Reserves space for `n` elements in the given vector.
-fn reserve[T](&mutable T[] v, uint n) {
+fn reserve[T](&mutable T[mutable?] v, uint n) {
     rustrt::ivec_reserve(v, n);
 }
 
@@ -42,6 +42,69 @@ fn init_fn[T](&init_op[T] op, uint n_elts) -> T[] {
     while (i < n_elts) { v += ~[op(i)]; i += 1u; }
     ret v;
 }
+
+// TODO: Remove me once we have slots.
+fn init_fn_mut[T](&init_op[T] op, uint n_elts) -> T[mutable] {
+    auto v = ~[mutable];
+    reserve(v, n_elts);
+    let uint i = 0u;
+    while (i < n_elts) { v += ~[mutable op(i)]; i += 1u; }
+    ret v;
+}
+
+fn init_elt[T](&T t, uint n_elts) -> T[] {
+    auto v = ~[];
+    reserve(v, n_elts);
+    let uint i = 0u;
+    while (i < n_elts) { v += ~[t]; i += 1u; }
+    ret v;
+}
+
+// TODO: Remove me once we have slots.
+fn init_elt_mut[T](&T t, uint n_elts) -> T[mutable] {
+    auto v = ~[mutable];
+    reserve(v, n_elts);
+    let uint i = 0u;
+    while (i < n_elts) { v += ~[mutable t]; i += 1u; }
+    ret v;
+}
+
+
+// Accessors
+
+/// Returns the last element of `v`.
+fn last[T](&T[mutable?] v) -> option::t[T] {
+    if (len(v) == 0u) { ret none; }
+    ret some(v.(len(v) - 1u));
+}
+
+/// Returns a copy of the elements from [`start`..`end`) from `v`.
+fn slice[T](&T[mutable?] v, uint start, uint end) -> T[] {
+    assert (start <= end);
+    assert (end <= len(v));
+    auto result = ~[];
+    reserve(result, end - start);
+    auto i = start;
+    while (i < end) { result += ~[v.(i)]; i += 1u; }
+    ret result;
+}
+
+// TODO: Remove me once we have slots.
+fn slice_mut[T](&T[mutable?] v, uint start, uint end) -> T[mutable] {
+    assert (start <= end);
+    assert (end <= len(v));
+    auto result = ~[mutable];
+    reserve(result, end - start);
+    auto i = start;
+    while (i < end) { result += ~[mutable v.(i)]; i += 1u; }
+    ret result;
+}
+
+
+// Mutators
+
+// TODO
+
 
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
