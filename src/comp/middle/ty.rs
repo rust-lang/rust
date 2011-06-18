@@ -65,6 +65,7 @@ type ctxt =
         type_cache tcache,
         creader_cache rcache,
         hashmap[t, str] short_names_cache,
+        hashmap[t, bool] has_pointer_cache,
         hashmap[@ast::ty, option::t[t]] ast_ty_to_ty_cache);
 
 type ty_ctxt = ctxt;
@@ -264,6 +265,8 @@ fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
             rcache=mk_rcache(),
             short_names_cache=map::mk_hashmap[ty::t,
                                               str](ty::hash_ty, ty::eq_ty),
+            has_pointer_cache=map::mk_hashmap[ty::t,
+                                              bool](ty::hash_ty, ty::eq_ty),
             ast_ty_to_ty_cache=map::mk_hashmap[@ast::ty,
                                                option::t[t]](ast::hash_ty,
                                                              ast::eq_ty));
@@ -836,32 +839,33 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
 }
 
 fn type_has_pointers(&ctxt cx, &t ty) -> bool {
+    alt (cx.has_pointer_cache.find(ty)) {
+        case (some(?result)) { ret result; }
+        case (none) { /* fall through */ }
+    }
+
+    auto result = false;
     alt (struct(cx, ty)) {
-        case (
-             // scalar types
-             ty_nil) {
-            ret false;
-        }
-        case (ty_bot) { ret false; }
-        case (ty_bool) { ret false; }
-        case (ty_int) { ret false; }
-        case (ty_float) { ret false; }
-        case (ty_uint) { ret false; }
-        case (ty_machine(_)) { ret false; }
-        case (ty_char) { ret false; }
-        case (ty_type) { ret false; }
-        case (ty_native) { ret false; }
+        // scalar types
+        case (ty_nil) { /* no-op */ }
+        case (ty_bot) { /* no-op */ }
+        case (ty_bool) { /* no-op */ }
+        case (ty_int) { /* no-op */ }
+        case (ty_float) { /* no-op */ }
+        case (ty_uint) { /* no-op */ }
+        case (ty_machine(_)) { /* no-op */ }
+        case (ty_char) { /* no-op */ }
+        case (ty_type) { /* no-op */ }
+        case (ty_native) { /* no-op */ }
         case (ty_tup(?elts)) {
             for (mt m in elts) {
-                if (type_has_pointers(cx, m.ty)) { ret true; }
+                if (type_has_pointers(cx, m.ty)) { result = true; }
             }
-            ret false;
         }
         case (ty_rec(?flds)) {
             for (field f in flds) {
-                if (type_has_pointers(cx, f.mt.ty)) { ret true; }
+                if (type_has_pointers(cx, f.mt.ty)) { result = true; }
             }
-            ret false;
         }
         case (ty_tag(?did, ?tps)) {
             auto variants = tag_variants(cx, did);
@@ -870,12 +874,14 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
                 // Perform any type parameter substitutions.
 
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
-                if (type_has_pointers(cx, tup_ty)) { ret true; }
+                if (type_has_pointers(cx, tup_ty)) { result = true; }
             }
-            ret false;
         }
-        case (_) { ret true; }
+        case (_) { result = true; }
     }
+
+    cx.has_pointer_cache.insert(ty, result);
+    ret result;
 }
 
 
