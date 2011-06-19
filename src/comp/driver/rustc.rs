@@ -407,7 +407,7 @@ fn main(vec[str] args) {
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 shared_cmd = "-shared";
-                gcc_args = common_args + ["-march=i686", "-O2"];
+                gcc_args = common_args + ["-march=i686", "-O2", "-lssp"];
             }
             case (session::os_macos) {
                 shared_cmd = "-dynamiclib";
