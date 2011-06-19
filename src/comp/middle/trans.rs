@@ -677,7 +677,7 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 // TODO: Enforce via a predicate.
 fn type_of(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
-        cx.sess.span_fatal(sp,
+        cx.sess.span_err(sp,
                          "type_of() called on a type with dynamic size: " +
                              ty_to_str(cx.tcx, t));
     }
@@ -881,7 +881,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = abs_pair;
         }
         case (ty::ty_var(_)) {
-            cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
+            cx.tcx.sess.span_err(sp, "trans::type_of called on ty_var");
         }
         case (ty::ty_param(_)) { llty = T_i8(); }
         case (ty::ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
@@ -1226,7 +1226,7 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
 // Computes the size of the data part of a non-dynamically-sized tag.
 fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
-        cx.tcx.sess.span_fatal(sp,
+        cx.tcx.sess.span_err(sp,
                              "dynamically sized type passed to " +
                                  "static_size_of_tag()");
     }
@@ -1236,7 +1236,7 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
     alt (ty::struct(cx.tcx, t)) {
         case (ty::ty_tag(?tid_, ?subtys_)) { tid = tid_; subtys = subtys_; }
         case (_) {
-            cx.tcx.sess.span_fatal(sp,
+            cx.tcx.sess.span_err(sp,
                                  "non-tag passed to " +
                                      "static_size_of_tag()");
         }
@@ -5983,7 +5983,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
             case (_) {
                 // FIXME: Support these types.
 
-                cx.fcx.lcx.ccx.sess.span_fatal(e.span,
+                cx.fcx.lcx.ccx.sess.span_err(e.span,
                                              "log called on unsupported type "
                                                  +
                                                  ty_to_str(cx.fcx.lcx.ccx.tcx,
@@ -6088,7 +6088,7 @@ fn trans_break_cont(&span sp, &@block_ctxt cx, bool to_end) -> result {
                 alt ({ cleanup_cx.parent }) {
                     case (parent_some(?cx)) { cleanup_cx = cx; }
                     case (parent_none) {
-                        cx.fcx.lcx.ccx.sess.span_fatal(sp,
+                        cx.fcx.lcx.ccx.sess.span_err(sp,
                                                      if (to_end) {
                                                          "Break"
                                                      } else { "Cont" } +
@@ -7621,7 +7621,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
     register_fn_pair(ccx, ps, llfty, llfn, id);
     if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
-            ccx.sess.span_fatal(sp, "multiple 'main' functions");
+            ccx.sess.span_err(sp, "multiple 'main' functions");
         }
         llvm::LLVMSetLinkage(llfn,
                              lib::llvm::LLVMExternalLinkage as llvm::Linkage);

@@ -18,14 +18,14 @@ export expand_syntax_ext;
 fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
     if (vec::len[@ast::expr](args) == 0u) {
-        cx.span_fatal(sp, "#fmt requires a format string");
+        cx.span_err(sp, "#fmt requires a format string");
     }
     auto fmt = expr_to_str(cx, args.(0));
     auto fmtspan = args.(0).span;
     log "Format string:";
     log fmt;
     fn parse_fmt_err_(&ext_ctxt cx, common::span sp, str msg) -> ! {
-        cx.span_fatal(sp, msg);
+        cx.span_err(sp, msg);
     }
     auto parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
     auto pieces = parse_fmt_string(fmt, parse_fmt_err);
@@ -40,10 +40,10 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
         case (ast::expr_lit(?l, _)) {
             alt (l.node) {
                 case (ast::lit_str(?s, _)) { ret s; }
-                case (_) { cx.span_fatal(l.span, err_msg); }
+                case (_) { cx.span_err(l.span, err_msg); }
             }
         }
-        case (_) { cx.span_fatal(expr.span, err_msg); }
+        case (_) { cx.span_err(expr.span, err_msg); }
     }
 }
 
@@ -236,14 +236,14 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
                 case (flag_left_justify) { }
                 case (flag_sign_always) {
                     if (!is_signed_type(cnv)) {
-                        cx.span_fatal(sp,
+                        cx.span_err(sp,
                                     "+ flag only valid in " +
                                         "signed #fmt conversion");
                     }
                 }
                 case (flag_space_for_sign) {
                     if (!is_signed_type(cnv)) {
-                        cx.span_fatal(sp,
+                        cx.span_err(sp,
                                     "space flag only valid in " +
                                         "signed #fmt conversions");
                     }
@@ -361,7 +361,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
             case (piece_conv(?conv)) {
                 n += 1u;
                 if (n >= nargs) {
-                    cx.span_fatal(sp,
+                    cx.span_err(sp,
                                 "not enough arguments to #fmt " +
                                     "for the given format string");
                 }
@@ -376,7 +376,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
     auto expected_nargs = n + 1u; // n conversions + the fmt string
 
     if (expected_nargs < nargs) {
-        cx.span_fatal(sp,
+        cx.span_err(sp,
                     #fmt("too many arguments to #fmt. found %u, expected %u",
                          nargs, expected_nargs));
     }

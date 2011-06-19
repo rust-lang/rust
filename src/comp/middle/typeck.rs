@@ -114,7 +114,7 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
             ret tup(0u, ty::mk_nil(fcx.ccx.tcx));
         }
         case (ast::def_ty(_)) {
-            fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
+            fcx.ccx.tcx.sess.span_err(sp, "expected value but found type");
         }
         case (_) {
             // FIXME: handle other names.
@@ -152,7 +152,7 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
         }
         ty_substs_opt = some[vec[ty::t]](ty_substs);
         if (ty_param_count == 0u) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
+            fcx.ccx.tcx.sess.span_err(sp,
                                       "this item does not take type " +
                                           "parameters");
             fail;
@@ -188,7 +188,7 @@ fn structurally_resolved_type(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::t {
     alt (r) {
         case (fix_ok(?typ_s)) { ret typ_s; }
         case (fix_err(_)) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
+            fcx.ccx.tcx.sess.span_err(sp,
                                       "the type of this value must be " +
                                           "known in this context");
         }
@@ -219,7 +219,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
         case (some[option::t[ty::t]](some[ty::t](?ty))) { ret ty; }
         case (some[option::t[ty::t]](none)) {
-            tcx.sess.span_fatal(ast_ty.span,
+            tcx.sess.span_err(ast_ty.span,
                               "illegal recursive type " +
                               "(insert a tag in the cycle, " +
                               "if this is desired)");
@@ -252,7 +252,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         }
         if (vec::len(param_bindings) !=
                 ty::count_ty_params(tcx, params_opt_and_ty._1)) {
-            tcx.sess.span_fatal(sp,
+            tcx.sess.span_err(sp,
                               "Wrong number of type arguments for a" +
                                   " polymorphic tag");
         }
@@ -333,7 +333,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                 }
                 case (ast::def_ty_arg(?id)) { typ = ty::mk_param(tcx, id); }
                 case (_) {
-                    tcx.sess.span_fatal(ast_ty.span,
+                    tcx.sess.span_err(ast_ty.span,
                                       "found type name used as a variable");
                 }
             }
@@ -508,7 +508,7 @@ mod collect {
         if (ty::type_has_dynamic_size(cx.tcx, tt)) {
             alt (ty_mode) {
                 case (mo_val) {
-                    cx.tcx.sess.span_fatal(a.ty.span,
+                    cx.tcx.sess.span_err(a.ty.span,
                                          "Dynamically sized arguments \
                                           must be passed by alias");
                 }
@@ -916,7 +916,7 @@ mod demand {
             case (ures_err(?err)) {
                 auto e_err = resolve_type_vars_if_possible(fcx, expected_1);
                 auto a_err = resolve_type_vars_if_possible(fcx, actual_1);
-                fcx.ccx.tcx.sess.span_fatal(sp,
+                fcx.ccx.tcx.sess.span_err(sp,
                                           "mismatched types: expected " +
                                               ty_to_str(fcx.ccx.tcx, e_err) +
                                               " but found " +
@@ -982,7 +982,7 @@ mod writeback {
         alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
             case (fix_ok(?new_type)) { ret new_type; }
             case (fix_err(?vid)) {
-                fcx.ccx.tcx.sess.span_fatal(sp,
+                fcx.ccx.tcx.sess.span_err(sp,
                                           "cannot determine a type \
                                            for this expression");
             }
@@ -1026,7 +1026,7 @@ mod writeback {
                 write::ty_only(fcx.ccx.tcx, l.node.ann.id, lty);
             }
             case (fix_err(_)) {
-                fcx.ccx.tcx.sess.span_fatal(l.span,
+                fcx.ccx.tcx.sess.span_err(l.span,
                                           "cannot determine a type \
                                            for this local variable");
             }
@@ -1232,7 +1232,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                     // FIXME: Switch expected and actual in this message? I
                     // can never tell.
 
-                    fcx.ccx.tcx.sess.span_fatal(pat.span,
+                    fcx.ccx.tcx.sess.span_err(pat.span,
                                               #fmt("mismatched types: \
                                                     expected tag, found %s",
                                                    ty_to_str(fcx.ccx.tcx,
@@ -1271,7 +1271,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                                   if (arg_len == 1u) {
                                       ""
                                   } else { "s" });
-                    fcx.ccx.tcx.sess.span_fatal(pat.span, s);
+                    fcx.ccx.tcx.sess.span_err(pat.span, s);
                 }
                 // TODO: vec::iter2
 
@@ -1285,7 +1285,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                 // TODO (issue #448): Wrap a #fmt string over multiple
                 // lines...
 
-                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                fcx.ccx.tcx.sess.span_err(pat.span,
                                           #fmt("this pattern has %u field%s, \
                                                 but the corresponding \
                                                 variant has no fields",
@@ -1303,7 +1303,7 @@ fn require_impure(&session::session sess, &ast::purity f_purity, &span sp) {
     alt (f_purity) {
         case (ast::impure_fn) { ret; }
         case (ast::pure_fn) {
-            sess.span_fatal(sp,
+            sess.span_err(sp,
                           "Found impure expression in pure function decl");
         }
     }
@@ -1328,14 +1328,14 @@ fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
                     alt (get_function_purity(ccx, d_id)) {
                         case (ast::pure_fn) { ret; }
                         case (_) {
-                            ccx.tcx.sess.span_fatal(sp,
+                            ccx.tcx.sess.span_err(sp,
                                                   "Pure function calls \
                                                    impure function");
                         }
                     }
                 }
                 case (_) {
-                    ccx.tcx.sess.span_fatal(sp,
+                    ccx.tcx.sess.span_err(sp,
                                           "Pure function calls \
                                            unknown function");
                 }
@@ -1347,7 +1347,7 @@ fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
 fn require_pure_function(@crate_ctxt ccx, &ast::def_id d_id, &span sp) {
     alt (get_function_purity(ccx, d_id)) {
         case (ast::impure_fn) {
-            ccx.tcx.sess.span_fatal(sp,
+            ccx.tcx.sess.span_err(sp,
                                   "Found non-predicate in check expression");
         }
         case (_) { ret; }
@@ -1376,7 +1376,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             case (ty::ty_fn(_, ?arg_tys_0, _, _, _)) { arg_tys = arg_tys_0; }
             case (ty::ty_native_fn(_, ?arg_tys_0, _)) { arg_tys = arg_tys_0; }
             case (_) {
-                fcx.ccx.tcx.sess.span_fatal(f.span,
+                fcx.ccx.tcx.sess.span_err(f.span,
                                           "mismatched types: \
                                            expected function or native \
                                            function but found "
@@ -1388,7 +1388,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         auto expected_arg_count = vec::len[ty::arg](arg_tys);
         auto supplied_arg_count = vec::len[option::t[@ast::expr]](args);
         if (expected_arg_count != supplied_arg_count) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
+            fcx.ccx.tcx.sess.span_err(sp,
                                       #fmt("this function takes %u \
                                             parameter%s but %u parameter%s \
                                             supplied",
@@ -1474,7 +1474,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                 if (!ast::is_constraint_arg(operand)) {
                                     auto s = "Constraint args must be \
                                               slot variables or literals";
-                                    fcx.ccx.tcx.sess.span_fatal(e.span, s);
+                                    fcx.ccx.tcx.sess.span_err(e.span, s);
                                 }
                             }
                             require_pure_function(fcx.ccx, d_id, e.span);
@@ -1482,12 +1482,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         case (_) {
                             auto s = "In a constraint, expected the \
                                       constraint name to be an explicit name";
-                            fcx.ccx.tcx.sess.span_fatal(e.span,s);
+                            fcx.ccx.tcx.sess.span_err(e.span,s);
                         }
                     }
                 }
                 case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(e.span,
+                    fcx.ccx.tcx.sess.span_err(e.span,
                                               "check on non-predicate");
                 }
             }
@@ -1555,7 +1555,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         case (_) {
                             auto s = "dereferencing non-box type: " +
                                 ty_to_str(fcx.ccx.tcx, oper_t);
-                            fcx.ccx.tcx.sess.span_fatal(expr.span, s);
+                            fcx.ccx.tcx.sess.span_err(expr.span, s);
                         }
                     }
                 }
@@ -1563,7 +1563,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     if (!type_is_integral(fcx, oper.span, oper_t) &&
                             structure_of(fcx, oper.span, oper_t) !=
                                 ty::ty_bool) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   #fmt("mismatched types: \
                                                         expected bool or \
                                                         integer but found %s",
@@ -1588,7 +1588,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // supplied some, that's an error.
 
             if (vec::len[@ast::ty](pth.node.types) > 0u) {
-                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                fcx.ccx.tcx.sess.span_err(expr.span,
                                           "this kind of value does not \
                                            take type parameters");
             }
@@ -1607,7 +1607,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (none) {
                     auto nil = ty::mk_nil(fcx.ccx.tcx);
                     if (!are_compatible(fcx, fcx.ret_ty, nil)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "ret; in function \
                                                    returning non-nil");
                     }
@@ -1627,7 +1627,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (none) {
                     auto nil = ty::mk_nil(fcx.ccx.tcx);
                     if (!are_compatible(fcx, fcx.ret_ty, nil)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "put; in iterator \
                                                    yielding non-nil");
                     }
@@ -1696,7 +1696,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                    but found %s",
                                   ty_to_str(fcx.ccx.tcx,
                                             lhs_t));
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,s);
+                    fcx.ccx.tcx.sess.span_err(expr.span,s);
                 }
             }
             write::ty_only_fixup(fcx, a.id, chan_t);
@@ -1726,7 +1726,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
                 }
                 case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
+                    fcx.ccx.tcx.sess.span_err(expr.span,
                                               "type of for loop iterator \
                                                is not a vector or string");
                 }
@@ -1916,7 +1916,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             if (!(type_is_scalar(fcx, expr.span, expr_ty(fcx.ccx.tcx, e)) &&
                       type_is_scalar(fcx, expr.span, t_1))) {
-                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                fcx.ccx.tcx.sess.span_err(expr.span,
                                           "non-scalar cast: " +
                                               ty_to_str(fcx.ccx.tcx,
                                                         expr_ty(fcx.ccx.tcx,
@@ -1984,7 +1984,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     alt (structure_of(fcx, expr.span, bexpr_t)) {
                         case (ty::ty_rec(?flds)) { base_fields = flds; }
                         case (_) {
-                            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                            fcx.ccx.tcx.sess.span_err(expr.span,
                                                       "record update \
                                                        non-record base");
                         }
@@ -2000,7 +2000,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                             }
                         }
                         if (!found) {
-                            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                            fcx.ccx.tcx.sess.span_err(expr.span,
                                                       "unknown field in \
                                                        record update: "
                                                       + f.ident);
@@ -2018,7 +2018,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     let uint ix =
                         ty::field_num(fcx.ccx.tcx.sess, expr.span, field);
                     if (ix >= vec::len[ty::mt](args)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on tuple");
                     }
                     write::ty_only_fixup(fcx, a.id, args.(ix).ty);
@@ -2028,7 +2028,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         ty::field_idx(fcx.ccx.tcx.sess, expr.span, field,
                                       fields);
                     if (ix >= vec::len[ty::field](fields)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on record");
                     }
                     write::ty_only_fixup(fcx, a.id, fields.(ix).mt.ty);
@@ -2038,7 +2038,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         ty::method_idx(fcx.ccx.tcx.sess, expr.span, field,
                                        methods);
                     if (ix >= vec::len[ty::method](methods)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
+                        fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on obj");
                     }
                     auto meth = methods.(ix);
@@ -2063,7 +2063,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_expr(fcx, idx);
             auto idx_t = expr_ty(fcx.ccx.tcx, idx);
             if (!type_is_integral(fcx, idx.span, idx_t)) {
-                fcx.ccx.tcx.sess.span_fatal(idx.span,
+                fcx.ccx.tcx.sess.span_err(idx.span,
                                           "mismatched types: expected \
                                            integer but found "
                                           + ty_to_str(fcx.ccx.tcx, idx_t));
@@ -2084,7 +2084,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, a.id, typ);
                 }
                 case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
+                    fcx.ccx.tcx.sess.span_err(expr.span,
                                               "vector-indexing bad type: " +
                                                   ty_to_str(fcx.ccx.tcx,
                                                             base_t));
@@ -2105,7 +2105,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, a.id, ct);
                 }
                 case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
+                    fcx.ccx.tcx.sess.span_err(expr.span,
                                               "bad port type: " +
                                                   ty_to_str(fcx.ccx.tcx,
                                                             port_t));
@@ -2218,7 +2218,7 @@ fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
                                     id=pred_id));
         }
         case (_) {
-            tcx.sess.span_fatal(c.span, "Predicate "
+            tcx.sess.span_err(c.span, "Predicate "
                               + path_to_str(c.node.path)
                               + " is unbound or bound to a non-function");
         }
@@ -2339,7 +2339,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
             // per the previous comment, this just checks that the declared
             // type is bool, and trusts that that's the actual return type.
             if (!ty::type_is_bool(ccx.tcx, fcx.ret_ty)) {
-                ccx.tcx.sess.span_fatal(body.span,
+                ccx.tcx.sess.span_err(body.span,
                                       "Non-boolean return type in pred");
             }
         }

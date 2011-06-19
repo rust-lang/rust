@@ -75,7 +75,7 @@ fn new_reader(session sess, io::reader rdr, codemap::filemap filemap,
         fn get_interner() -> @interner::interner[str] { ret itr; }
         fn get_col() -> uint { ret col; }
         fn get_filemap() -> codemap::filemap { ret fm; }
-        fn err(str m) { sess.span_fatal(rec(lo=chpos, hi=chpos), m); }
+        fn err(str m) { sess.span_err(rec(lo=chpos, hi=chpos), m); }
     }
     auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];

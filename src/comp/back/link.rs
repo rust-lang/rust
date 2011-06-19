@@ -33,8 +33,8 @@ tag output_type {
 fn llvm_err(session::session sess, str msg) {
     auto buf = llvm::LLVMRustGetLastError();
     if (buf as uint == 0u) {
-        sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
+        sess.err(msg);
+    } else { sess.err(msg + ": " + str::str_from_cstr(buf)); }
     fail;
 }
 
@@ -276,7 +276,7 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
         }
         case (1u) { ret v.(0).node.value; }
         case (_) {
-            sess.span_fatal(v.(1).span, #fmt("duplicate meta '%s'", k));
+            sess.span_err(v.(1).span, #fmt("duplicate meta '%s'", k));
         }
     }
 }

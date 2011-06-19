@@ -63,7 +63,7 @@ fn lookup(session::session sess, env e, span sp, ident i) -> val {
     for (tup(ident, val) pair in e) {
         if (str::eq(i, pair._0)) { ret pair._1; }
     }
-    sess.span_fatal(sp, "unknown variable: " + i)
+    sess.span_err(sp, "unknown variable: " + i)
 }
 
 fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
@@ -71,7 +71,7 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
         case (ast::lit_bool(?b)) { val_bool(b) }
         case (ast::lit_int(?i)) { val_int(i) }
         case (ast::lit_str(?s, _)) { val_str(s) }
-        case (_) { cx.sess.span_fatal(sp, "evaluating unsupported literal") }
+        case (_) { cx.sess.span_err(sp, "evaluating unsupported literal") }
     }
 }
 
@@ -82,7 +82,7 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
                     vec::len[@ast::ty](pth.node.types) == 0u) {
                 ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
             }
-            cx.sess.span_fatal(x.span, "evaluating structured path-name");
+            cx.sess.span_err(x.span, "evaluating structured path-name");
         }
         case (ast::expr_lit(?lit, _)) { ret eval_lit(cx, x.span, lit); }
         case (ast::expr_unary(?op, ?a, _)) {
@@ -90,10 +90,10 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
             alt (op) {
                 case (ast::not) {
                     if (val_is_bool(av)) { ret val_bool(!val_as_bool(av)); }
-                    cx.sess.span_fatal(x.span, "bad types in '!' expression");
+                    cx.sess.span_err(x.span, "bad types in '!' expression");
                 }
                 case (_) {
-                    cx.sess.span_fatal(x.span, "evaluating unsupported unop");
+                    cx.sess.span_err(x.span, "evaluating unsupported unop");
                 }
             }
         }
@@ -108,45 +108,43 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
                     if (val_is_str(av) && val_is_str(bv)) {
                         ret val_str(val_as_str(av) + val_as_str(bv));
                     }
-                    cx.sess.span_fatal(x.span, "bad types in '+' expression");
+                    cx.sess.span_err(x.span, "bad types in '+' expression");
                 }
                 case (ast::sub) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) - val_as_int(bv));
                     }
-                    cx.sess.span_fatal(x.span, "bad types in '-' expression");
+                    cx.sess.span_err(x.span, "bad types in '-' expression");
                 }
                 case (ast::mul) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) * val_as_int(bv));
                     }
-                    cx.sess.span_fatal(x.span, "bad types in '*' expression");
+                    cx.sess.span_err(x.span, "bad types in '*' expression");
                 }
                 case (ast::div) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) / val_as_int(bv));
                     }
-                    cx.sess.span_fatal(x.span, "bad types in '/' expression");
+                    cx.sess.span_err(x.span, "bad types in '/' expression");
                 }
                 case (ast::rem) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) % val_as_int(bv));
                     }
-                    cx.sess.span_fatal(x.span, "bad types in '%' expression");
+                    cx.sess.span_err(x.span, "bad types in '%' expression");
                 }
                 case (ast::and) {
                     if (val_is_bool(av) && val_is_bool(bv)) {
                         ret val_bool(val_as_bool(av) && val_as_bool(bv));
                     }
-                    cx.sess.span_fatal(x.span,
-                                       "bad types in '&&' expression");
+                    cx.sess.span_err(x.span, "bad types in '&&' expression");
                 }
                 case (ast::or) {
                     if (val_is_bool(av) && val_is_bool(bv)) {
                         ret val_bool(val_as_bool(av) || val_as_bool(bv));
                     }
-                    cx.sess.span_fatal(x.span,
-                                       "bad types in '||' expression");
+                    cx.sess.span_err(x.span, "bad types in '||' expression");
                 }
                 case (ast::eq) {
                     ret val_bool(val_eq(cx.sess, x.span, av, bv));
@@ -155,13 +153,12 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
                     ret val_bool(!val_eq(cx.sess, x.span, av, bv));
                 }
                 case (_) {
-                    cx.sess.span_fatal(x.span,
-                                       "evaluating unsupported binop");
+                    cx.sess.span_err(x.span, "evaluating unsupported binop");
                 }
             }
         }
         case (_) {
-            cx.sess.span_fatal(x.span, "evaluating unsupported expression");
+            cx.sess.span_err(x.span, "evaluating unsupported expression");
         }
     }
     fail;
@@ -174,7 +171,7 @@ fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
         val_as_int(av) == val_as_int(bv)
     } else if (val_is_str(av) && val_is_str(bv)) {
         str::eq(val_as_str(av), val_as_str(bv))
-    } else { sess.span_fatal(sp, "bad types in comparison") }
+    } else { sess.span_err(sp, "bad types in comparison") }
 }
 
 fn eval_crate_directives(ctx cx, env e, vec[@ast::crate_directive] cdirs,
@@ -203,7 +200,7 @@ fn eval_crate_directive_block(ctx cx, env e, &ast::block blk, str prefix,
                 eval_crate_directive(cx, e, cdir, prefix, view_items, items);
             }
             case (_) {
-                cx.sess.span_fatal(s.span,
+                cx.sess.span_err(s.span,
                                  "unsupported stmt in crate-directive block");
             }
         }
@@ -217,7 +214,7 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
         case (ast::expr_if(?cond, ?thn, ?elopt, _)) {
             auto cv = eval_expr(cx, e, cond);
             if (!val_is_bool(cv)) {
-                cx.sess.span_fatal(x.span, "bad cond type in 'if'");
+                cx.sess.span_err(x.span, "bad cond type in 'if'");
             }
             if (val_as_bool(cv)) {
                 ret eval_crate_directive_block(cx, e, thn, prefix, view_items,
@@ -252,18 +249,18 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
                                                        items);
                     }
                     case (_) {
-                        cx.sess.span_fatal(arm.pat.span,
+                        cx.sess.span_err(arm.pat.span,
                                          "bad pattern type in 'alt'");
                     }
                 }
             }
-            cx.sess.span_fatal(x.span, "no cases matched in 'alt'");
+            cx.sess.span_err(x.span, "no cases matched in 'alt'");
         }
         case (ast::expr_block(?block, _)) {
             ret eval_crate_directive_block(cx, e, block, prefix, view_items,
                                            items);
         }
-        case (_) { cx.sess.span_fatal(x.span, "unsupported expr type"); }
+        case (_) { cx.sess.span_err(x.span, "unsupported expr type"); }
     }
 }
 

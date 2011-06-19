@@ -85,7 +85,7 @@ fn check_states_expr(&fn_ctxt fcx, &@expr e) {
         s += bitv_to_str(fcx, prec);
         s += "\nPrestate:\n";
         s += bitv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(e.span, s);
+        fcx.ccx.tcx.sess.span_err(e.span, s);
     }
 }
 
@@ -114,7 +114,7 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
         ss += bitv_to_str(fcx, prec);
         ss += "\nPrestate: \n";
         ss += bitv_to_str(fcx, pres);
-        fcx.ccx.tcx.sess.span_fatal(s.span, ss);
+        fcx.ccx.tcx.sess.span_err(s.span, ss);
     }
 }
 
@@ -153,7 +153,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
                                    "In function " + fcx.name +
                                        ", not all control paths \
                                         return a value");
-        fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
+        fcx.ccx.tcx.sess.span_err(f.decl.output.span,
                                   "see declared return type of '" +
                                       ty_to_str(*f.decl.output) + "'");
     } else if (f.decl.cf == noreturn) {
@@ -162,7 +162,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
         // the fcx.id bit means "returns" for a returning fn,
         // "diverges" for a non-returning fn
         if (!promises(fcx, post, ret_c)) {
-            fcx.ccx.tcx.sess.span_fatal(f.body.span,
+            fcx.ccx.tcx.sess.span_err(f.body.span,
                                       "In non-returning function " + fcx.name
                                           +
                                           ", some control paths may \
