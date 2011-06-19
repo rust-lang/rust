@@ -22,6 +22,155 @@ import middle::metadata;
 import util::common::*;
 import util::data::interner;
 
+export ann_to_monotype;
+export ann_to_type;
+export ann_to_type_params;
+export ann_to_ty_param_substs_opt_and_ty;
+export any_item_native;
+export any_item_rust;
+export arg;
+export args_eq;
+export bind_params_in_type;
+export block_ty;
+export constr_def;
+export constr_general;
+export constr_table;
+export count_ty_params;
+export ctxt;
+export decl_local_ty;
+export def_has_ty_params;
+export eq_ty;
+export expr_ann;
+export expr_has_ty_params;
+export expr_ty;
+export fold_ty;
+export field;
+export field_idx;
+export field_num;
+export fm_general;
+export get_element_type;
+export hash_ty;
+export idx_nil;
+export is_lval;
+export item_table;
+export lookup_item_type;
+export method;
+export method_idx;
+export method_ty_to_fn_ty;
+export mk_bool;
+export mk_bot;
+export mk_box;
+export mk_chan;
+export mk_char;
+export mk_ctxt;
+export mk_float;
+export mk_fn;
+export mk_imm_box;
+export mk_imm_tup;
+export mk_imm_vec;
+export mk_int;
+export mk_istr;
+export mk_ivec;
+export mk_mach;
+export mk_native;
+export mk_native_fn;
+export mk_nil;
+export mk_obj;
+export mk_param;
+export mk_port;
+export mk_ptr;
+export mk_rec;
+export mk_str;
+export mk_tag;
+export mk_task;
+export mk_tup;
+export mk_type;
+export mk_uint;
+export mk_var;
+export mk_vec;
+export mode;
+export mo_val;
+export mo_alias;
+export mt;
+export node_type_table;
+export pat_ann;
+export pat_ty;
+export path_to_str;
+export rename;
+export ret_ty_of_fn;
+export ret_ty_of_fn_ty;
+export ret_ty_to_fn_ty;
+export sequence_element_type;
+export sequence_is_interior;
+export struct;
+export sort_methods;
+export stmt_ann;
+export strip_boxes;
+export sty;
+export substitute_type_params;
+export t;
+export tag_variants;
+export tag_variant_with_id;
+export ty_param_substs_opt_and_ty;
+export ty_param_count_and_ty;
+export ty_native_fn;
+export ty_bool;
+export ty_bot;
+export ty_box;
+export ty_chan;
+export ty_char;
+export ty_float;
+export ty_fn;
+export ty_fn_abi;
+export ty_fn_proto;
+export ty_fn_ret;
+export ty_int;
+export ty_istr;
+export ty_ivec;
+export ty_machine;
+export ty_native;
+export ty_nil;
+export ty_obj;
+export ty_param;
+export ty_port;
+export ty_ptr;
+export ty_rec;
+export ty_str;
+export ty_tag;
+export ty_task;
+export ty_tup;
+export ty_type;
+export ty_uint;
+export ty_var;
+export ty_var_id;
+export ty_vec;
+export ty_param_substs_opt_and_ty_to_monotype;
+export ty_fn_args;
+export type_contains_params;
+export type_contains_vars;
+export type_err;
+export type_err_to_str;
+export type_has_dynamic_size;
+export type_has_pointers;
+export type_is_bool;
+export type_is_bot;
+export type_is_box;
+export type_is_boxed;
+export type_is_chan;
+export type_is_fp;
+export type_is_integral;
+export type_is_native;
+export type_is_nil;
+export type_is_scalar;
+export type_is_sequence;
+export type_is_signed;
+export type_is_structural;
+export type_is_tup_like;
+export type_owns_heap_mem;
+export type_param;
+export unify;
+export variant_info;
+export walk_ty;
 
 // Data types
 tag mode { mo_val; mo_alias(bool); }
@@ -80,9 +229,6 @@ fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
 
 
 // Never construct these manually. These are interned.
-//
-// TODO: It'd be really nice to be able to hide this definition from the
-// outside world, to enforce the above invariants.
 type raw_t =
     rec(sty struct,
         option::t[str] cname,
@@ -1737,6 +1883,21 @@ fn is_lval(&@ast::expr expr) -> bool {
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 mod unify {
+
+    export fixup_result;
+    export fixup_vars;
+    export fix_ok;
+    export fix_err;
+    export mk_var_bindings;
+    export resolve_type_bindings;
+    export resolve_type_structure;
+    export resolve_type_var;
+    export result;
+    export unify;
+    export ures_ok;
+    export ures_err;
+    export var_bindings;
+
     tag result { ures_ok(t); ures_err(type_err); }
     tag union_result { unres_ok; unres_err(type_err); }
     tag fixup_result {
