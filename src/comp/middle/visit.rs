@@ -73,7 +73,6 @@ fn visit_crate_directive[E](&@crate_directive cd, &E e, &vt[E] v) {
             }
         }
         case (cdir_view_item(?vi)) { vt(v).visit_view_item(vi, e, v); }
-        case (cdir_meta(_, _)) { }
         case (cdir_syntax(_)) { }
         case (cdir_auth(_, _)) { }
     }

@@ -80,8 +80,6 @@ type crate_ = rec(vec[@crate_directive] directives,
                   _mod module,
                   vec[attribute] attrs);
 
-tag meta_visibility { export_meta; local_meta; }
-
 tag crate_directive_ {
     cdir_expr(@expr);
 
@@ -92,7 +90,6 @@ tag crate_directive_ {
     cdir_src_mod(ident, option::t[filename]);
     cdir_dir_mod(ident, option::t[filename], vec[@crate_directive]);
     cdir_view_item(@view_item);
-    cdir_meta(meta_visibility, vec[@meta_item]);
     cdir_syntax(path);
     cdir_auth(path, _auth);
 }

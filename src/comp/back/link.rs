@@ -254,30 +254,10 @@ iter crate_export_metas(&ast::crate c) -> @ast::meta_item {
     for (ast::attribute attr in c.node.attrs) {
         put @attr.node.value;
     }
-
-    for (@ast::crate_directive cdir in c.node.directives) {
-        alt (cdir.node) {
-            case (ast::cdir_meta(?v, ?mis)) {
-                if (v == ast::export_meta) {
-                    for (@ast::meta_item mi in mis) { put mi; }
-                }
-            }
-            case (_) { }
-        }
-    }
 }
 
 iter crate_local_metas(&ast::crate c) -> @ast::meta_item {
-    for (@ast::crate_directive cdir in c.node.directives) {
-        alt (cdir.node) {
-            case (ast::cdir_meta(?v, ?mis)) {
-                if (v == ast::local_meta) {
-                    for (@ast::meta_item mi in mis) { put mi; }
-                }
-            }
-            case (_) { }
-        }
-    }
+    // FIXME: As above
 }
 
 fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,

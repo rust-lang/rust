@@ -316,7 +316,6 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
         case (ast::cdir_view_item(?vi)) {
             vec::push[@ast::view_item](view_items, vi);
         }
-        case (ast::cdir_meta(?vi, ?mi)) { }
         case (ast::cdir_syntax(?pth)) { }
         case (ast::cdir_auth(?pth, ?eff)) { }
     }

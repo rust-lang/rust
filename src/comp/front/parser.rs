@@ -2320,13 +2320,6 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
         auto hi = p.get_hi_pos();
         expect(p, token::SEMI);
         ret spanned(lo, hi, ast::cdir_auth(n, a));
-    } else if (eat_word(p, "meta")) {
-        auto mv = ast::local_meta;
-        if (eat_word(p, "export")) { mv = ast::export_meta; }
-        auto mis = parse_meta(p);
-        auto hi = p.get_hi_pos();
-        expect(p, token::SEMI);
-        ret spanned(lo, hi, ast::cdir_meta(mv, mis));
     } else if (eat_word(p, "mod")) {
         auto id = parse_ident(p);
         auto file_opt =
