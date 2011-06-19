@@ -191,19 +191,27 @@ type fn_ctxt =
         // administrative activities that have to happen in only one place in
         // the function, due to LLVM's quirks.
 
-        // A block for all the function's allocas, so that LLVM will coalesce
-        // them into a single alloca call.
-        mutable BasicBlockRef llallocas,
+        // A block for all the function's static allocas, so that LLVM will
+        // coalesce them into a single alloca call.
+        mutable BasicBlockRef llstaticallocas,
 
         // A block containing code that copies incoming arguments to space
-        // already allocated by code in the llallocas block.  (LLVM requires
-        // that arguments be copied to local allocas before allowing most any
-        // operation to be performed on them.)
+        // already allocated by code in one of the llallocas blocks.  (LLVM
+        // requires that arguments be copied to local allocas before allowing
+        // most any operation to be performed on them.)
         mutable BasicBlockRef llcopyargs,
 
-        // A block containing derived tydescs received from the runtime.  See
-        // description of derived_tydescs, below.
+        // The first block containing derived tydescs received from the
+        // runtime.  See description of derived_tydescs, below.
+        mutable BasicBlockRef llderivedtydescs_first,
+
+        // The last block of the llderivedtydescs group.
         mutable BasicBlockRef llderivedtydescs,
+
+        // A block for all of the dynamically sized allocas.  This must be
+        // after llderivedtydescs, because these sometimes depend on
+        // information computed from derived tydescs.
+        mutable BasicBlockRef lldynamicallocas,
 
         // FIXME: Is llcopyargs actually the block containing the allocas for
         // incoming function arguments?  Or is it merely the block containing
@@ -1173,11 +1181,11 @@ fn align_of(&@block_ctxt cx, &ty::t t) -> result {
 }
 
 fn alloca(&@block_ctxt cx, TypeRef t) -> ValueRef {
-    ret new_builder(cx.fcx.llallocas).Alloca(t);
+    ret new_builder(cx.fcx.llstaticallocas).Alloca(t);
 }
 
 fn array_alloca(&@block_ctxt cx, TypeRef t, ValueRef n) -> ValueRef {
-    ret new_builder(cx.fcx.llallocas).ArrayAlloca(t, n);
+    ret new_builder(cx.fcx.lldynamicallocas).ArrayAlloca(t, n);
 }
 
 
@@ -3556,7 +3564,7 @@ mod ivec {
 
         auto bcx;
         if (dynamic) {
-            bcx = llallocas_block_ctxt(cx.fcx);
+            bcx = llderivedtydescs_block_ctxt(cx.fcx);
         } else {
             bcx = cx;
         }
@@ -3565,26 +3573,25 @@ mod ivec {
         auto rslt = size_of(bcx, unit_ty);
         bcx = rslt.bcx;
         llunitsz = rslt.val;
-        if (dynamic) { bcx.fcx.llallocas = bcx.llbb; }
+
+        if (dynamic) { cx.fcx.llderivedtydescs = bcx.llbb; }
 
         auto llalen = bcx.build.Mul(llunitsz,
                                     C_uint(abi::ivec_default_length));
 
         auto llptr;
         auto llunitty = type_of_or_i8(bcx, unit_ty);
+        auto bcx_result;
         if (dynamic) {
             auto llarraysz = bcx.build.Add(llsize_of(T_opaque_ivec()),
                                            llalen);
             auto llvecptr = array_alloca(bcx, T_i8(), llarraysz);
-            llptr = bcx.build.PointerCast(llvecptr, T_ptr(T_opaque_ivec()));
+
+            bcx_result = cx;
+            llptr = bcx_result.build.PointerCast(llvecptr,
+                                                 T_ptr(T_opaque_ivec()));
         } else {
             llptr = alloca(bcx, T_ivec(llunitty));
-        }
-
-        auto bcx_result;
-        if (dynamic) {
-            bcx_result = cx;
-        } else {
             bcx_result = bcx;
         }
 
@@ -6753,10 +6760,10 @@ iter block_locals(&ast::block b) -> @ast::local {
     }
 }
 
-fn llallocas_block_ctxt(&@fn_ctxt fcx) -> @block_ctxt {
+fn llstaticallocas_block_ctxt(&@fn_ctxt fcx) -> @block_ctxt {
     let vec[cleanup] cleanups = [];
-    ret @rec(llbb=fcx.llallocas,
-             build=new_builder(fcx.llallocas),
+    ret @rec(llbb=fcx.llstaticallocas,
+             build=new_builder(fcx.llstaticallocas),
              parent=parent_none,
              kind=SCOPE_BLOCK,
              mutable cleanups=cleanups,
@@ -6764,16 +6771,40 @@ fn llallocas_block_ctxt(&@fn_ctxt fcx) -> @block_ctxt {
              fcx=fcx);
 }
 
+fn llderivedtydescs_block_ctxt(&@fn_ctxt fcx) -> @block_ctxt {
+    let vec[cleanup] cleanups = [];
+    ret @rec(llbb=fcx.llderivedtydescs,
+             build=new_builder(fcx.llderivedtydescs),
+             parent=parent_none,
+             kind=SCOPE_BLOCK,
+             mutable cleanups=cleanups,
+             sp=fcx.sp,
+             fcx=fcx);
+}
+
+fn lldynamicallocas_block_ctxt(&@fn_ctxt fcx) -> @block_ctxt {
+    let vec[cleanup] cleanups = [];
+    ret @rec(llbb=fcx.lldynamicallocas,
+             build=new_builder(fcx.lldynamicallocas),
+             parent=parent_none,
+             kind=SCOPE_BLOCK,
+             mutable cleanups=cleanups,
+             sp=fcx.sp,
+             fcx=fcx);
+}
+
+
+
 fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
     auto val = C_int(0);
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         // NB: we have to run this particular 'size_of' in a
-        // block_ctxt built on the llallocas block for the fn,
+        // block_ctxt built on the llderivedtydescs block for the fn,
         // so that the size dominates the array_alloca that
         // comes next.
 
-        auto n = size_of(llallocas_block_ctxt(cx.fcx), t);
-        cx.fcx.llallocas = n.bcx.llbb;
+        auto n = size_of(llderivedtydescs_block_ctxt(cx.fcx), t);
+        cx.fcx.llderivedtydescs = n.bcx.llbb;
         val = array_alloca(cx, T_i8(), n.val);
     } else { val = alloca(cx, type_of(cx.fcx.lcx.ccx, cx.sp, t)); }
     // NB: since we've pushed all size calculations in this
@@ -6862,13 +6893,14 @@ fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
 }
 
 
-// Creates the standard trio of basic blocks: allocas, copy-args, and derived
-// tydescs.
+// Creates the standard quartet of basic blocks: static allocas, copy args,
+// derived tydescs, and dynamic allocas.
 fn mk_standard_basic_blocks(ValueRef llfn) ->
-   tup(BasicBlockRef, BasicBlockRef, BasicBlockRef) {
-    ret tup(llvm::LLVMAppendBasicBlock(llfn, str::buf("allocas")),
+   tup(BasicBlockRef, BasicBlockRef, BasicBlockRef, BasicBlockRef) {
+    ret tup(llvm::LLVMAppendBasicBlock(llfn, str::buf("static_allocas")),
             llvm::LLVMAppendBasicBlock(llfn, str::buf("copy_args")),
-            llvm::LLVMAppendBasicBlock(llfn, str::buf("derived_tydescs")));
+            llvm::LLVMAppendBasicBlock(llfn, str::buf("derived_tydescs")),
+            llvm::LLVMAppendBasicBlock(llfn, str::buf("dynamic_allocas")));
 }
 
 
@@ -6893,9 +6925,11 @@ fn new_fn_ctxt(@local_ctxt cx, &span sp, ValueRef llfndecl) -> @fn_ctxt {
              lltaskptr=lltaskptr,
              llenv=llenv,
              llretptr=llretptr,
-             mutable llallocas=llbbs._0,
+             mutable llstaticallocas=llbbs._0,
              mutable llcopyargs=llbbs._1,
+             mutable llderivedtydescs_first=llbbs._2,
              mutable llderivedtydescs=llbbs._2,
+             mutable lldynamicallocas=llbbs._3,
              mutable llself=none[val_self_pair],
              mutable lliterbody=none[ValueRef],
              llargs=llargs,
@@ -6973,7 +7007,7 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx, ast::proto proto,
 // allocas immediately upon entry; this permits us to GEP into structures we
 // were passed and whatnot. Apparently mem2reg will mop up.
 fn copy_any_self_to_alloca(@fn_ctxt fcx, option::t[ty_self_pair] ty_self) {
-    auto bcx = llallocas_block_ctxt(fcx);
+    auto bcx = llstaticallocas_block_ctxt(fcx);
     alt ({ fcx.llself }) {
         case (some(?pair)) {
             alt (ty_self) {
@@ -7045,7 +7079,7 @@ fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
 }
 
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
-    auto bcx = llallocas_block_ctxt(fcx);
+    auto bcx = llstaticallocas_block_ctxt(fcx);
     let vec[ty::t] field_tys = [];
     for (ast::obj_field f in bcx.fcx.lcx.obj_fields) {
         field_tys += [node_ann_type(bcx.fcx.lcx.ccx, f.ann)];
@@ -7088,20 +7122,22 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     i = 0;
     for (ast::obj_field f in fcx.lcx.obj_fields) {
         auto rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, [0, i]);
-        bcx = llallocas_block_ctxt(fcx);
+        bcx = llstaticallocas_block_ctxt(fcx);
         auto llfield = rslt.val;
         fcx.llobjfields.insert(f.id, llfield);
         i += 1;
     }
-    fcx.llallocas = bcx.llbb;
+    fcx.llstaticallocas = bcx.llbb;
 }
 
 
-// Ties up the llallocas -> llcopyargs -> llderivedtydescs -> lltop edges.
+// Ties up the llstaticallocas -> llcopyargs -> llderivedtydescs ->
+// lldynamicallocas -> lltop edges.
 fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
-    new_builder(fcx.llallocas).Br(fcx.llcopyargs);
-    new_builder(fcx.llcopyargs).Br(fcx.llderivedtydescs);
-    new_builder(fcx.llderivedtydescs).Br(lltop);
+    new_builder(fcx.llstaticallocas).Br(fcx.llcopyargs);
+    new_builder(fcx.llcopyargs).Br(fcx.llderivedtydescs_first);
+    new_builder(fcx.llderivedtydescs).Br(fcx.lldynamicallocas);
+    new_builder(fcx.lldynamicallocas).Br(lltop);
 }
 
 
