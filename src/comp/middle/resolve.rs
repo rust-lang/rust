@@ -251,6 +251,7 @@ fn resolve_imports(&env e) {
             case (resolved(_, _, _)) { }
         }
     }
+    e.sess.abort_if_errors();
 }
 
 fn resolve_names(&@env e, &@ast::crate c) {
@@ -437,9 +438,18 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
                  lookup_in_scope(e, next_sc, it.span, end_id, ns_value),
                  lookup_in_scope(e, next_sc, it.span, end_id, ns_type),
                  lookup_in_scope(e, next_sc, it.span, end_id, ns_module));
+        remove_if_unresolved(e.imports, defid._1);
     } else {
-        auto dcur =
-            lookup_in_scope_strict(e, sc, it.span, ids.(0), ns_module);
+        auto dcur = alt(lookup_in_scope(e, sc, it.span, ids.(0), ns_module)) {
+            case (some(?dcur)) {
+                dcur
+            }
+            case (none) {
+                unresolved_err(e, it.span, ids.(0), ns_name(ns_module));
+                remove_if_unresolved(e.imports, defid._1);
+                ret () // FIXME (issue #521)
+            }
+        };
         auto i = 1u;
         while (true) {
             if (i == n_idents - 1u) {
@@ -450,11 +460,21 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
                                        outside),
                          lookup_in_mod(e, dcur, it.span, end_id, ns_module,
                                        outside));
+                remove_if_unresolved(e.imports, defid._1);
                 break;
             } else {
-                dcur =
-                    lookup_in_mod_strict(e, dcur, it.span, ids.(i), ns_module,
-                                         outside);
+                dcur = alt (lookup_in_mod(e, dcur, it.span, ids.(i),
+                                          ns_module, outside)) {
+                    case (some(?dcur)) {
+                        dcur
+                    }
+                    case (none) {
+                        unresolved_err(e, it.span, ids.(i),
+                                       ns_name(ns_module));
+                        remove_if_unresolved(e.imports, defid._1);
+                        ret () // FIXME (issue #521)
+                    }
+                };
                 i += 1u;
             }
         }
@@ -464,9 +484,24 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
                 &option::t[def] md) {
         if (option::is_none(val) && option::is_none(typ) &&
                 option::is_none(md)) {
-            unresolved(e, sp, id, "import");
+            unresolved_err(e, sp, id, "import");
+        } else {
+            e.imports.insert(defid._1, resolved(val, typ, md));
         }
-        e.imports.insert(defid._1, resolved(val, typ, md));
+    }
+    fn remove_if_unresolved(hashmap[ast::def_num, import_state] imports,
+                            ast::def_num def_num) {
+        // If we couldn't resolve the import, don't leave it in a partially
+        // resolved state, to avoid having it reported later as a cyclic
+        // import
+        if (imports.contains_key(def_num)) {
+            alt (imports.get(def_num)) {
+                case (resolving(_)) {
+                    imports.remove(def_num);
+                }
+                case (_) { }
+            }
+        }
     }
 }
 
@@ -480,10 +515,17 @@ fn ns_name(namespace ns) -> str {
     }
 }
 
-fn unresolved(&env e, &span sp, &ident id, &str kind) -> ! {
-    e.sess.span_fatal(sp, "unresolved " + kind + ": " + id);
+fn unresolved_err(&env e, &span sp, &ident id, &str kind) {
+    e.sess.span_err(sp, mk_unresolved_msg(id, kind));
 }
 
+fn unresolved_fatal(&env e, &span sp, &ident id, &str kind) -> ! {
+    e.sess.span_fatal(sp, mk_unresolved_msg(id, kind));
+}
+
+fn mk_unresolved_msg(&ident id, &str kind) -> str {
+    ret #fmt("unresolved %s: %s", kind, id);
+}
 
 // Lookup helpers
 fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
@@ -503,7 +545,7 @@ fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
 fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident id,
                           namespace ns) -> def {
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
-        case (none) { unresolved(e, sp, id, ns_name(ns)); }
+        case (none) { unresolved_fatal(e, sp, id, ns_name(ns)); }
         case (some(?d)) { ret d; }
     }
 }
@@ -756,7 +798,7 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
 fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id, namespace ns,
                         dir dr) -> def {
     alt (lookup_in_mod(e, m, sp, id, ns, dr)) {
-        case (none) { unresolved(e, sp, id, ns_name(ns)); }
+        case (none) { unresolved_fatal(e, sp, id, ns_name(ns)); }
         case (some(?d)) { ret d; }
     }
 }
@@ -809,7 +851,10 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
             resolve_import(e, item, sc);
             ret lookup_import(e, defid, ns);
         }
-        case (resolving(?sp)) { e.sess.span_fatal(sp, "cyclic import"); }
+        case (resolving(?sp)) {
+            e.sess.span_err(sp, "cyclic import");
+            ret none;
+        }
         case (resolved(?val, ?typ, ?md)) {
             ret alt (ns) {
                     case (ns_value) { val }
