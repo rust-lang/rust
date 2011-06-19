@@ -236,8 +236,11 @@ fn map_crate(&@env e, &@ast::crate c) {
             case (
                  //if it really is a glob import, that is
                  ast::view_item_import_glob(?path, _)) {
-                find_mod(e, sc).glob_imports +=
-                    [follow_import(*e, sc, path, vi.span)];
+                auto imp = follow_import(*e, sc, path, vi.span);
+                if (option::is_some(imp)) {
+                    find_mod(e, sc).glob_imports +=
+                        [option::get(imp)];
+                }
             }
             case (_) { }
         }
@@ -266,14 +269,15 @@ fn resolve_names(&@env e, &@ast::crate c) {
              visit_fn=bind visit_fn_with_scope(e, _, _, _, _, _, _, _, _)
              with *visit::default_visitor());
     visit::visit_crate(*c, cons(scope_crate(c), @nil), visit::vtor(v));
+    e.sess.abort_if_errors();
+
     fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
         visit_expr_with_scope(exp, sc, v);
         alt (exp.node) {
             case (ast::expr_path(?p, ?a)) {
-                auto df =
-                    lookup_path_strict(*e, sc, exp.span, p.node.idents,
-                                       ns_value);
-                e.def_map.insert(a.id, df);
+                maybe_insert(e, a.id,
+                             lookup_path_strict(*e, sc, exp.span,
+                                                p.node.idents, ns_value));
             }
             case (_) { }
         }
@@ -282,19 +286,17 @@ fn resolve_names(&@env e, &@ast::crate c) {
         visit::visit_ty(t, sc, v);
         alt (t.node) {
             case (ast::ty_path(?p, ?a)) {
-                auto new_def =
-                    lookup_path_strict(*e, sc, t.span, p.node.idents,
-                                       ns_type);
-                e.def_map.insert(a.id, new_def);
+                maybe_insert(e, a.id,
+                             lookup_path_strict(*e, sc, t.span,
+                                                p.node.idents, ns_type));
             }
             case (_) { }
         }
     }
     fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
-        auto new_def =
-            lookup_path_strict(*e, sc, c.span, c.node.path.node.idents,
-                               ns_value);
-        e.def_map.insert(c.node.ann.id, new_def);
+        maybe_insert(e, c.node.ann.id,
+                     lookup_path_strict(*e, sc, c.span,
+                                        c.node.path.node.idents, ns_value));
     }
     fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
         walk_pat(*e, sc, a.pat);
@@ -306,19 +308,30 @@ fn resolve_names(&@env e, &@ast::crate c) {
                 auto fnd =
                     lookup_path_strict(e, sc, p.span, p.node.idents,
                                        ns_value);
-                alt (fnd) {
-                    case (ast::def_variant(?did, ?vid)) {
-                        e.def_map.insert(a.id, fnd);
-                    }
-                    case (_) {
-                        e.sess.span_fatal(p.span,
-                                        "not a tag variant: " +
+                if (option::is_some(fnd)) {
+                    alt (option::get(fnd)) {
+                        case (ast::def_variant(?did, ?vid)) {
+                            e.def_map.insert(a.id, option::get(fnd));
+                            for (@ast::pat child in children) {
+                                walk_pat(e, sc, child);
+                            }
+                        }
+                        case (_) {
+                            e.sess.span_err(p.span,
+                                            "not a tag variant: " +
                                             ast::path_name(p));
+                        }
                     }
                 }
-                for (@ast::pat child in children) { walk_pat(e, sc, child); }
             }
             case (_) { }
+        }
+    }
+
+    fn maybe_insert(@env e, uint id,
+                    option::t[def] def) {
+        if (option::is_some(def)) {
+            e.def_map.insert(id, option::get(def));
         }
     }
 }
@@ -370,42 +383,51 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     visit::visit_expr(x, new_sc, v);
 }
 
-fn follow_import(&env e, &scopes sc, vec[ident] path, &span sp) -> def {
+fn follow_import(&env e, &scopes sc,
+                 vec[ident] path, &span sp) -> option::t[def] {
     auto path_len = vec::len(path);
     auto dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
     auto i = 1u;
-    while (true) {
+    while (true && option::is_some(dcur)) {
         if (i == path_len) { break; }
         dcur =
-            lookup_in_mod_strict(e, dcur, sp, path.(i), ns_module, outside);
+            lookup_in_mod_strict(e, option::get(dcur),
+                                 sp, path.(i), ns_module, outside);
         i += 1u;
     }
-    alt (dcur) {
-        case (ast::def_mod(?def_id)) { ret dcur; }
-        case (ast::def_native_mod(?def_id)) { ret dcur; }
-        case (_) {
-            e.sess.span_fatal(sp,
-                            str::connect(path, "::") +
+    if (i == path_len) {
+        alt (option::get(dcur)) {
+            case (ast::def_mod(?def_id)) { ret dcur; }
+            case (ast::def_native_mod(?def_id)) { ret dcur; }
+            case (_) {
+                e.sess.span_err(sp,
+                                str::connect(path, "::") +
                                 " does not name a module.");
+                ret none;
+            }
         }
+    } else {
+        ret none;
     }
 }
 
 fn resolve_constr(@env e, &def_id d_id, &@ast::constr c, &scopes sc,
                   &vt[scopes] v) {
-    let def new_def =
+    auto new_def =
         lookup_path_strict(*e, sc, c.span, c.node.path.node.idents, ns_value);
-    alt (new_def) {
-        case (ast::def_fn(?pred_id)) {
-            let ty::constr_general[uint] c_ =
-                rec(path=c.node.path, args=c.node.args, id=pred_id);
-            let ty::constr_def new_constr = respan(c.span, c_);
-            add_constr(e, d_id, new_constr);
-        }
-        case (_) {
-            e.sess.span_fatal(c.span,
-                            "Non-predicate in constraint: " +
+    if (option::is_some(new_def)) {
+        alt (option::get(new_def)) {
+            case (ast::def_fn(?pred_id)) {
+                let ty::constr_general[uint] c_ =
+                    rec(path=c.node.path, args=c.node.args, id=pred_id);
+                let ty::constr_def new_constr = respan(c.span, c_);
+                add_constr(e, d_id, new_constr);
+            }
+            case (_) {
+                e.sess.span_err(c.span,
+                                "Non-predicate in constraint: " +
                                 ty::path_to_str(c.node.path));
+            }
         }
     }
 }
@@ -529,24 +551,28 @@ fn mk_unresolved_msg(&ident id, &str kind) -> str {
 
 // Lookup helpers
 fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
-                      namespace ns) -> def {
+                      namespace ns) -> option::t[def] {
     auto n_idents = vec::len(idents);
     auto headns = if (n_idents == 1u) { ns } else { ns_module };
     auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), headns);
     auto i = 1u;
-    while (i < n_idents) {
+    while (i < n_idents && option::is_some(dcur)) {
         auto curns = if (n_idents == i + 1u) { ns } else { ns_module };
-        dcur = lookup_in_mod_strict(e, dcur, sp, idents.(i), curns, outside);
+        dcur = lookup_in_mod_strict(e, option::get(dcur),
+                                    sp, idents.(i), curns, outside);
         i += 1u;
     }
     ret dcur;
 }
 
 fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident id,
-                          namespace ns) -> def {
+                          namespace ns) -> option::t[def] {
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
-        case (none) { unresolved_fatal(e, sp, id, ns_name(ns)); }
-        case (some(?d)) { ret d; }
+        case (none) {
+            unresolved_err(e, sp, id, ns_name(ns));
+            ret none;
+        }
+        case (some(?d)) { ret some(d); }
     }
 }
 
@@ -796,10 +822,13 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
 }
 
 fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id, namespace ns,
-                        dir dr) -> def {
+                        dir dr) -> option::t[def] {
     alt (lookup_in_mod(e, m, sp, id, ns, dr)) {
-        case (none) { unresolved_fatal(e, sp, id, ns_name(ns)); }
-        case (some(?d)) { ret d; }
+        case (none) {
+            unresolved_err(e, sp, id, ns_name(ns));
+            ret none;
+        }
+        case (some(?d)) { ret some(d); }
     }
 }
 
