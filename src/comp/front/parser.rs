@@ -78,7 +78,7 @@ fn new_parser(session::session sess, eval::env env, ast::def_id initial_def,
             lo = rdr.get_mark_chpos();
             hi = rdr.get_chpos();
         }
-        fn err(str m) -> ! { sess.span_err(rec(lo=lo, hi=hi), m); }
+        fn err(str m) -> ! { sess.span_fatal(rec(lo=lo, hi=hi), m); }
         fn restrict(restriction r) { res = r; }
         fn get_restriction() -> restriction { ret res; }
         fn get_session() -> session::session { ret sess; }
@@ -353,7 +353,7 @@ fn parse_ty_field(&parser p) -> ast::ty_field {
 fn ident_index(&parser p, &vec[ast::arg] args, &ast::ident i) -> uint {
     auto j = 0u;
     for (ast::arg a in args) { if (a.ident == i) { ret j; } j += 1u; }
-    p.get_session().span_err(p.get_span(),
+    p.get_session().span_fatal(p.get_span(),
                              "Unbound variable " + i + " in constraint arg");
 }
 

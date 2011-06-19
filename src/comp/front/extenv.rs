@@ -16,7 +16,7 @@ export expand_syntax_ext;
 fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
     if (vec::len[@ast::expr](args) != 1u) {
-        cx.span_err(sp, "malformed #env call");
+        cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an
     // option::t[str] rather than just an maybe-empty string.
@@ -35,10 +35,10 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
         case (ast::expr_lit(?l, _)) {
             alt (l.node) {
                 case (ast::lit_str(?s, _)) { ret s; }
-                case (_) { cx.span_err(l.span, "malformed #env call"); }
+                case (_) { cx.span_fatal(l.span, "malformed #env call"); }
             }
         }
-        case (_) { cx.span_err(expr.span, "malformed #env call"); }
+        case (_) { cx.span_fatal(expr.span, "malformed #env call"); }
     }
 }
 

@@ -307,7 +307,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
                         e.def_map.insert(a.id, fnd);
                     }
                     case (_) {
-                        e.sess.span_err(p.span,
+                        e.sess.span_fatal(p.span,
                                         "not a tag variant: " +
                                             ast::path_name(p));
                     }
@@ -380,7 +380,7 @@ fn follow_import(&env e, &scopes sc, vec[ident] path, &span sp) -> def {
         case (ast::def_mod(?def_id)) { ret dcur; }
         case (ast::def_native_mod(?def_id)) { ret dcur; }
         case (_) {
-            e.sess.span_err(sp,
+            e.sess.span_fatal(sp,
                             str::connect(path, "::") +
                                 " does not name a module.");
         }
@@ -399,7 +399,7 @@ fn resolve_constr(@env e, &def_id d_id, &@ast::constr c, &scopes sc,
             add_constr(e, d_id, new_constr);
         }
         case (_) {
-            e.sess.span_err(c.span,
+            e.sess.span_fatal(c.span,
                             "Non-predicate in constraint: " +
                                 ty::path_to_str(c.node.path));
         }
@@ -478,7 +478,7 @@ fn ns_name(namespace ns) -> str {
 }
 
 fn unresolved(&env e, &span sp, &ident id, &str kind) -> ! {
-    e.sess.span_err(sp, "unresolved " + kind + ": " + id);
+    e.sess.span_fatal(sp, "unresolved " + kind + ": " + id);
 }
 
 
@@ -599,7 +599,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
                     auto df = option::get(fnd);
                     if (left_fn && def_is_local(df) ||
                             left_fn_level2 && def_is_obj_field(df)) {
-                        e.sess.span_err(sp,
+                        e.sess.span_fatal(sp,
                                         "attempted dynamic \
                                          environment-capture");
                     }
@@ -806,7 +806,7 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
             resolve_import(e, item, sc);
             ret lookup_import(e, defid, ns);
         }
-        case (resolving(?sp)) { e.sess.span_err(sp, "cyclic import"); }
+        case (resolving(?sp)) { e.sess.span_fatal(sp, "cyclic import"); }
         case (resolved(?val, ?typ, ?md)) {
             ret alt (ns) {
                     case (ns_value) { val }
@@ -881,7 +881,7 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
                     }
                 }
             }
-            e.sess.span_err(sp,
+            e.sess.span_fatal(sp,
                             "'" + id + "' is glob-imported from" +
                                 " multiple different modules.");
         }
@@ -1086,7 +1086,7 @@ fn check_mod_name(&env e, &ident name, list[mod_index_entry] entries) {
     auto saw_type = false;
     auto saw_value = false;
     fn dup(&env e, &span sp, &str word, &ident name) {
-        e.sess.span_err(sp, "duplicate definition of " + word + name);
+        e.sess.span_fatal(sp, "duplicate definition of " + word + name);
     }
     while (true) {
         alt (entries) {
@@ -1222,7 +1222,7 @@ fn checker(&env e, str kind) -> checker {
 fn add_name(&checker ch, &span sp, &ident id) {
     for (ident s in ch.seen) {
         if (str::eq(s, id)) {
-            ch.sess.span_err(sp, "duplicate " + ch.kind + " name: " + id);
+            ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + id);
         }
     }
     vec::push(ch.seen, id);

@@ -1679,7 +1679,7 @@ fn field_num(&session::session sess, &span sp, &ast::ident id) -> uint {
     for (u8 c in id) {
         if (i == 0u) {
             if (c != '_' as u8) {
-                sess.span_err(sp,
+                sess.span_fatal(sp,
                               "bad numeric field on tuple: " +
                                   "missing leading underscore");
             }
@@ -1690,7 +1690,7 @@ fn field_num(&session::session sess, &span sp, &ast::ident id) -> uint {
             } else {
                 auto s = "";
                 s += str::unsafe_from_byte(c);
-                sess.span_err(sp,
+                sess.span_fatal(sp,
                               "bad numeric field on tuple: " +
                                   " non-digit character: " + s);
             }
@@ -1704,14 +1704,14 @@ fn field_idx(&session::session sess, &span sp, &ast::ident id,
              &vec[field] fields) -> uint {
     let uint i = 0u;
     for (field f in fields) { if (str::eq(f.ident, id)) { ret i; } i += 1u; }
-    sess.span_err(sp, "unknown field '" + id + "' of record");
+    sess.span_fatal(sp, "unknown field '" + id + "' of record");
 }
 
 fn method_idx(&session::session sess, &span sp, &ast::ident id,
               &vec[method] meths) -> uint {
     let uint i = 0u;
     for (method m in meths) { if (str::eq(m.ident, id)) { ret i; } i += 1u; }
-    sess.span_err(sp, "unknown method '" + id + "' of obj");
+    sess.span_fatal(sp, "unknown method '" + id + "' of obj");
 }
 
 fn sort_methods(&vec[method] meths) -> vec[method] {

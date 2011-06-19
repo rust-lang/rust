@@ -59,7 +59,7 @@ fn parse_input(session::session sess, parser::parser p, str input) ->
             parser::parse_crate_from_crate_file(p)
         } else if (str::ends_with(input, ".rs")) {
             parser::parse_crate_from_source_file(p)
-        } else { sess.err("unknown input file type: " + input); fail };
+        } else { sess.fatal("unknown input file type: " + input); fail };
 }
 
 fn time[T](bool do_it, str what, fn() -> T  thunk) -> T {
@@ -282,7 +282,7 @@ fn parse_pretty(session::session sess, &str name) -> pp_mode {
     } else if (str::eq(name, "typed")) {
         ret ppm_typed;
     } else if (str::eq(name, "identified")) { ret ppm_identified; }
-    sess.err("argument to `pretty` must be one of `normal`, `typed`, or " +
+    sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or " +
                  "`identified`");
 }
 
@@ -321,16 +321,16 @@ fn main(vec[str] args) {
     auto glue = opt_present(match, "glue");
     if (glue) {
         if (n_inputs > 0u) {
-            sess.err("No input files allowed with --glue.");
+            sess.fatal("No input files allowed with --glue.");
         }
         auto out = option::from_maybe[str]("glue.bc", output_file);
         middle::trans::make_common_glue(sess, out);
         ret;
     }
     if (n_inputs == 0u) {
-        sess.err("No input filename given.");
+        sess.fatal("No input filename given.");
     } else if (n_inputs > 1u) {
-        sess.err("Multiple input filenames provided.");
+        sess.fatal("Multiple input filenames provided.");
     }
     auto ifile = match.free.(0);
     let str saved_out_filename = "";

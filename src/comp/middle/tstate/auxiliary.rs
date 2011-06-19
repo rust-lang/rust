@@ -560,7 +560,7 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
         }
         case (expr_lit(?l, _)) { ret @respan(e.span, carg_lit(l)); }
         case (_) {
-            tcx.sess.span_err(e.span,
+            tcx.sess.span_fatal(e.span,
                               "Arguments to constrained functions must be "
                               + "literals or local variables");
         }
@@ -587,7 +587,7 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
                                            exprs_to_constr_args(tcx, args))));
                 }
                 case (_) {
-                    tcx.sess.span_err(operator.span,
+                    tcx.sess.span_fatal(operator.span,
                                       "Internal error: " +
                                           " ill-formed operator \
                                             in predicate");
@@ -595,7 +595,7 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
             }
         }
         case (_) {
-            tcx.sess.span_err(e.span,
+            tcx.sess.span_fatal(e.span,
                               "Internal error: " + " ill-formed predicate");
         }
     }
@@ -626,7 +626,8 @@ fn substitute_arg(&ty::ctxt cx, &vec[@expr] actuals, @ast::constr_arg a) ->
             if (i < num_actuals) {
                 ret expr_to_constr_arg(cx, actuals.(i));
             } else {
-                cx.sess.span_err(a.span, "Constraint argument out of bounds");
+                cx.sess.span_fatal(a.span,
+                                   "Constraint argument out of bounds");
             }
         }
         case (carg_base) { ret @respan(a.span, carg_base); }
@@ -636,7 +637,7 @@ fn substitute_arg(&ty::ctxt cx, &vec[@expr] actuals, @ast::constr_arg a) ->
 
 fn path_to_ident(&ty::ctxt cx, &path p) -> ident {
     alt (vec::last(p.node.idents)) {
-        case (none) { cx.sess.span_err(p.span, "Malformed path"); }
+        case (none) { cx.sess.span_fatal(p.span, "Malformed path"); }
         case (some(?i)) { ret i; }
     }
 }
