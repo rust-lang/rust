@@ -70,13 +70,13 @@ obj session(ast::crate_num cnum,
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_targ_crate_num() -> ast::crate_num { ret cnum; }
-    fn span_err(span sp, str msg) -> ! {
+    fn span_fatal(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
 
         emit_diagnostic(some(sp), msg, "error", 9u8, cm);
         fail;
     }
-    fn err(str msg) -> ! {
+    fn fatal(str msg) -> ! {
         emit_diagnostic(none[span], msg, "error", 9u8, cm);
         fail;
     }
@@ -94,10 +94,10 @@ obj session(ast::crate_num cnum,
         emit_diagnostic(some(sp), msg, "note", 10u8, cm);
     }
     fn span_bug(span sp, str msg) -> ! {
-        self.span_err(sp, #fmt("internal compiler error %s", msg));
+        self.span_fatal(sp, #fmt("internal compiler error %s", msg));
     }
     fn bug(str msg) -> ! {
-        self.err(#fmt("internal compiler error %s", msg));
+        self.fatal(#fmt("internal compiler error %s", msg));
     }
     fn span_unimpl(span sp, str msg) -> ! {
         self.span_bug(sp, "unimplemented " + msg);

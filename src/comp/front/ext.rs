@@ -31,21 +31,23 @@ type next_ann_fn = fn() -> ast::ann ;
 // Provides a limited set of services necessary for syntax extensions
 // to do their thing
 type ext_ctxt =
-    rec(span_msg_fn span_err, span_msg_fn span_unimpl, next_ann_fn next_ann);
+    rec(span_msg_fn span_fatal,
+        span_msg_fn span_unimpl,
+        next_ann_fn next_ann);
 
 fn mk_ctxt(parser parser) -> ext_ctxt {
     auto sess = parser.get_session();
-    fn ext_span_err_(session sess, span sp, str msg) -> ! {
-        sess.span_err(sp, msg);
+    fn ext_span_fatal_(session sess, span sp, str msg) -> ! {
+        sess.span_fatal(sp, msg);
     }
-    auto ext_span_err = bind ext_span_err_(sess, _, _);
+    auto ext_span_fatal = bind ext_span_fatal_(sess, _, _);
     fn ext_span_unimpl_(session sess, span sp, str msg) -> ! {
         sess.span_unimpl(sp, msg);
     }
     auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
     fn ext_next_ann_(parser parser) -> ast::ann { parser.get_ann() }
     auto ext_next_ann = bind ext_next_ann_(parser);
-    ret rec(span_err=ext_span_err,
+    ret rec(span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
             next_ann=ext_next_ann);
 }

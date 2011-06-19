@@ -92,7 +92,7 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
                 case (some(?ex)) {
                     auto root = expr_root(*cx, ex, false);
                     if (mut_field(root.ds)) {
-                        cx.tcx.sess.span_err(ex.span,
+                        cx.tcx.sess.span_fatal(ex.span,
                                              "result of put must be" +
                                                  " immutably rooted");
                     }
@@ -148,7 +148,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
                             auto m =
                                 "passing a temporary value or \
                                  immutable field by mutable alias";
-                            cx.tcx.sess.span_err(arg.span, m);
+                            cx.tcx.sess.span_fatal(arg.span, m);
                         }
                     }
                 }
@@ -171,7 +171,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
         alt (f.node) {
             case (ast::expr_path(_, ?ann)) {
                 if (def_is_local(cx.tcx.def_map.get(ann.id), true)) {
-                    cx.tcx.sess.span_err(f.span,
+                    cx.tcx.sess.span_fatal(f.span,
                                          #fmt("function may alias with \
                          argument %u, which is not immutably rooted",
                                               unsafe_t_offsets.(0)));
@@ -190,7 +190,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
             if (i != offset &&
                     ty_can_unsafely_include(cx, unsafe, arg_t.ty, mut_alias))
                {
-                cx.tcx.sess.span_err(args.(i).span,
+                cx.tcx.sess.span_fatal(args.(i).span,
                                      #fmt("argument %u may alias with \
                      argument %u, which is not immutably rooted",
                                           i, offset));
@@ -208,7 +208,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
             }
         }
         if (mut_alias_to_root) {
-            cx.tcx.sess.span_err(args.(root._0).span,
+            cx.tcx.sess.span_fatal(args.(root._0).span,
                                  "passing a mutable alias to a \
                  variable that roots another alias");
         }
@@ -377,10 +377,10 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
         case (ast::expr_path(?p, ?ann)) {
             auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(ann.id))._1;
             if (is_immutable_alias(cx, sc, dnum)) {
-                cx.tcx.sess.span_err(dest.span,
+                cx.tcx.sess.span_fatal(dest.span,
                                      "assigning to immutable alias");
             } else if (is_immutable_objfield(cx, dnum)) {
-                cx.tcx.sess.span_err(dest.span,
+                cx.tcx.sess.span_fatal(dest.span,
                                      "assigning to immutable obj field");
             }
             auto var_t = ty::expr_ty(*cx.tcx, dest);
@@ -394,7 +394,7 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
         case (_) {
             auto root = expr_root(*cx, dest, false);
             if (vec::len(root.ds) == 0u) {
-                cx.tcx.sess.span_err(dest.span, "assignment to non-lvalue");
+                cx.tcx.sess.span_fatal(dest.span, "assignment to non-lvalue");
             } else if (!root.ds.(0).mut) {
                 auto name =
                     alt (root.ds.(0).kind) {
@@ -402,7 +402,7 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
                         case (field) { "field" }
                         case (index) { "vec content" }
                     };
-                cx.tcx.sess.span_err(dest.span,
+                cx.tcx.sess.span_fatal(dest.span,
                                      "assignment to immutable " + name);
             }
             visit_expr(cx, dest, sc, v);
@@ -441,7 +441,7 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
                     tup(sp, "taking the value of " + ast::path_name(vpt))
                 }
             };
-        cx.tcx.sess.span_err(msg._0,
+        cx.tcx.sess.span_fatal(msg._0,
                              msg._1 + " will invalidate alias " +
                                  ast::path_name(p) + ", which is still used");
     }
