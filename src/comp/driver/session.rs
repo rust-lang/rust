@@ -66,7 +66,8 @@ obj session(ast::crate_num cnum,
             @config targ_cfg,
             @options opts,
             map::hashmap[int, crate_metadata] crates,
-            codemap::codemap cm) {
+            codemap::codemap cm,
+            mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_targ_crate_num() -> ast::crate_num { ret cnum; }
@@ -79,6 +80,19 @@ obj session(ast::crate_num cnum,
     fn fatal(str msg) -> ! {
         emit_diagnostic(none[span], msg, "error", 9u8, cm);
         fail;
+    }
+    fn span_err(span sp, str msg) {
+        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
+        err_count += 1u;
+    }
+    fn err(span sp, str msg) {
+        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
+        err_count += 1u;
+    }
+    fn abort_if_errors() {
+        if (err_count > 0u) {
+            self.fatal("aborting due to previous errors");
+        }
     }
     fn span_warn(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.

@@ -272,7 +272,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_crate_num = 0;
     auto sess =
         session::session(target_crate_num, target_cfg, sopts, crate_cache,
-                         front::codemap::new_codemap());
+                         front::codemap::new_codemap(), 0u);
     ret sess;
 }
 
