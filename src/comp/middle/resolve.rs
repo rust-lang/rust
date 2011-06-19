@@ -25,6 +25,9 @@ import std::option::none;
 import std::str;
 import std::vec;
 
+export resolve_crate;
+export def_map;
+export crate_map;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
