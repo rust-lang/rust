@@ -76,8 +76,7 @@ fn time[T](bool do_it, str what, fn() -> T  thunk) -> T {
 fn compile_input(session::session sess, eval::env env, str input,
                  str output) {
     auto time_passes = sess.get_opts().time_passes;
-    auto def = tup(ast::local_crate, 0);
-    auto p = parser::new_parser(sess, env, def, input, 0u, 0u);
+    auto p = parser::new_parser(sess, env, input, 0u, 0);
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
@@ -103,8 +102,7 @@ fn compile_input(session::session sess, eval::env env, str input,
 
 fn pretty_print_input(session::session sess, eval::env env, str input,
                       pp_mode ppm) {
-    auto def = tup(ast::local_crate, 0);
-    auto p = front::parser::new_parser(sess, env, def, input, 0u, 0u);
+    auto p = front::parser::new_parser(sess, env, input, 0u, 0);
     auto crate = parse_input(sess, p, input);
     auto mode;
     alt (ppm) {

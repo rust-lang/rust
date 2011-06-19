@@ -1,5 +1,6 @@
 
 import std::uint;
+import std::int;
 import std::vec;
 import std::str;
 import std::io;
@@ -323,8 +324,8 @@ fn print_item(&ps s, &@ast::item item) {
                         word_nbsp(s, "type");
                         word(s.s, id);
                     }
-                    case (ast::native_item_fn(?id, ?lname, ?decl, ?typarams,
-                                              _, _)) {
+                    case (ast::native_item_fn(?id, ?lname, ?decl,
+                                              ?typarams, _)) {
                         print_fn(s, decl, ast::proto_fn, id, typarams);
                         alt (lname) {
                             case (none) { }
@@ -426,7 +427,7 @@ fn print_item(&ps s, &@ast::item item) {
     alt (s.mode) {
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, uint::to_str(item.ann.id, 10u));
+            synth_comment(s, int::to_str(item.id, 10u));
         }
         case (_) {/* no-op */ }
     }
@@ -497,7 +498,7 @@ fn print_block(&ps s, ast::block blk) {
     alt (s.mode) {
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, "block " + uint::to_str(blk.node.a.id, 10u));
+            synth_comment(s, "block " + int::to_str(blk.node.id, 10u));
         }
         case (_) {/* no-op */ }
     }
@@ -865,7 +866,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, uint::to_str(ty::expr_ann(expr).id, 10u));
+            synth_comment(s, int::to_str(ty::expr_node_id(expr), 10u));
             pclose(s);
         }
     }
@@ -891,7 +892,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                     alt (s.mode) {
                         case (mo_untyped) {/* no-op */ }
                         case (mo_typed(?tcx)) {
-                            auto lty = ty::ann_to_type(tcx, loc.node.ann);
+                            auto lty = ty::node_id_to_type(tcx, loc.node.id);
                             word_space(s, ppaux::ty_to_str(tcx, lty));
                         }
                         case (mo_identified) {/* no-op */ }
@@ -943,7 +944,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
     maybe_print_comment(s, pat.span.lo);
     alt (pat.node) {
         case (ast::pat_wild(_)) { word(s.s, "_"); }
-        case (ast::pat_bind(?id, _, _)) { word(s.s, "?" + id); }
+        case (ast::pat_bind(?id, _)) { word(s.s, "?" + id); }
         case (ast::pat_lit(?lit, _)) { print_literal(s, lit); }
         case (ast::pat_tag(?path, ?args, _)) {
             print_path(s, path);
@@ -959,7 +960,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
     alt (s.mode) {
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, uint::to_str(ty::pat_ann(pat).id, 10u));
+            synth_comment(s, int::to_str(ty::pat_node_id(pat), 10u));
         }
         case (_) {/* no-op */ }
     }
@@ -1029,7 +1030,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
-        case (ast::view_item_use(?id, ?mta, _, _)) {
+        case (ast::view_item_use(?id, ?mta, _)) {
             head(s, "use");
             word(s.s, id);
             if (vec::len(mta) > 0u) {
@@ -1059,7 +1060,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
             }
             word(s.s, "::*");
         }
-        case (ast::view_item_export(?id)) {
+        case (ast::view_item_export(?id, _)) {
             head(s, "export");
             word(s.s, id);
         }

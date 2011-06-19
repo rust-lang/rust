@@ -31,7 +31,7 @@ type ctx =
          mutable vec[str] deps,
          session::session sess,
          mutable uint chpos,
-         mutable uint next_ann);
+         mutable int next_id);
 
 fn mk_env() -> env { ret []; }
 
@@ -287,23 +287,18 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             }
             auto full_path = prefix + std::fs::path_sep() + file_path;
             if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
-            auto start_id = cx.p.next_def_id();
             auto p0 =
-                new_parser(cx.sess, e, start_id, full_path, cx.chpos,
-                           cx.next_ann);
+                new_parser(cx.sess, e, full_path, cx.chpos,
+                           cx.next_id);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto first_item_outer_attrs = inner_attrs._1;
-            auto m0 = parse_mod_items(p0, token::EOF,
-                                      first_item_outer_attrs);
-            auto next_id = p0.next_def_id();
-            // Thread defids and chpos through the parsers
+            auto m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
 
-            cx.p.set_def(next_id._1);
+            auto i = front::parser::mk_item(p0, cdir.span.lo, cdir.span.hi,
+                                            id, ast::item_mod(m0), []);
+            // Thread defids and chpos through the parsers
             cx.chpos = p0.get_chpos();
-            cx.next_ann = p0.next_ann_num();
-            auto i = front::parser::mk_item(cx.p, cdir.span.lo, cdir.span.hi,
-                                            id, ast::item_mod(m0),
-                                            inner_attrs._0);
+            cx.next_id = p0.next_id();
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {
@@ -311,9 +306,12 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             alt (dir_opt) { case (some(?d)) { path = d; } case (none) { } }
             auto full_path = prefix + std::fs::path_sep() + path;
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
-            auto i =
-                front::parser::mk_item(cx.p, cdir.span.lo, cdir.span.hi, id,
-                                       ast::item_mod(m0), []);
+            auto i = @rec(ident=id,
+                          attrs=[],
+                          id=cx.next_id,
+                          node=ast::item_mod(m0),
+                          span=cdir.span);
+            cx.next_id += 1;
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_view_item(?vi)) {

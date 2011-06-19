@@ -25,7 +25,7 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
 
 type span_msg_fn = fn(span, str) -> !  ;
 
-type next_ann_fn = fn() -> ast::ann ;
+type next_id_fn = fn() -> ast::node_id ;
 
 
 // Provides a limited set of services necessary for syntax extensions
@@ -33,7 +33,7 @@ type next_ann_fn = fn() -> ast::ann ;
 type ext_ctxt =
     rec(span_msg_fn span_fatal,
         span_msg_fn span_unimpl,
-        next_ann_fn next_ann);
+        next_id_fn next_id);
 
 fn mk_ctxt(parser parser) -> ext_ctxt {
     auto sess = parser.get_session();
@@ -45,11 +45,11 @@ fn mk_ctxt(parser parser) -> ext_ctxt {
         sess.span_unimpl(sp, msg);
     }
     auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
-    fn ext_next_ann_(parser parser) -> ast::ann { parser.get_ann() }
-    auto ext_next_ann = bind ext_next_ann_(parser);
+    fn ext_next_id_(parser parser) -> ast::node_id { parser.get_id() }
+    auto ext_next_id = bind ext_next_id_(parser);
     ret rec(span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
-            next_ann=ext_next_ann);
+            next_id=ext_next_id);
 }
 //
 // Local Variables:

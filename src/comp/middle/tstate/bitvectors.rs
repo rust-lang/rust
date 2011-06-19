@@ -21,7 +21,7 @@ import aux::expr_precond;
 import aux::block_prestate;
 import aux::expr_prestate;
 import aux::stmt_prestate;
-import tstate::aux::ann_to_ts_ann;
+import tstate::aux::node_id_to_ts_ann;
 import tstate::ann::pre_and_post;
 import tstate::ann::precond;
 import tstate::ann::postcond;
@@ -136,9 +136,9 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
     ret intersect_postconds_go(bitv::clone(pcs.(0)), pcs);
 }
 
-fn gen(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
+fn gen(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
     ret set_in_postcond(bit_num(fcx, c),
-                        ann_to_ts_ann(fcx.ccx, a).conditions);
+                        node_id_to_ts_ann(fcx.ccx, id).conditions);
 }
 
 fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
@@ -149,19 +149,19 @@ fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
     ret res;
 }
 
-fn relax_precond_block_non_recursive(&fn_ctxt fcx, uint i, &block b) {
-    relax_precond(i, block_precond(fcx.ccx, b));
+fn relax_precond_block_non_recursive(&fn_ctxt fcx, node_id i, &block b) {
+    relax_precond(i as uint, block_precond(fcx.ccx, b));
 }
 
-fn relax_precond_expr(&fn_ctxt fcx, uint i, &@expr e) {
-    relax_precond(i, expr_precond(fcx.ccx, e));
+fn relax_precond_expr(&fn_ctxt fcx, node_id i, &@expr e) {
+    relax_precond(i as uint, expr_precond(fcx.ccx, e));
 }
 
-fn relax_precond_stmt(&fn_ctxt fcx, uint i, &@stmt s) {
-    relax_precond(i, stmt_precond(fcx.ccx, *s));
+fn relax_precond_stmt(&fn_ctxt fcx, node_id i, &@stmt s) {
+    relax_precond(i as uint, stmt_precond(fcx.ccx, *s));
 }
 
-fn relax_precond_block(&fn_ctxt fcx, uint i, &block b) {
+fn relax_precond_block(&fn_ctxt fcx, node_id i, &block b) {
     relax_precond_block_non_recursive(fcx, i, b);
     // FIXME: should use visit instead
     // could at least generalize this pattern 
@@ -184,14 +184,16 @@ fn relax_precond_block(&fn_ctxt fcx, uint i, &block b) {
     walk::walk_block(v, b);
 }
 
-fn gen_poststate(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
+fn gen_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
     log "gen_poststate";
-    ret set_in_poststate(bit_num(fcx, c), ann_to_ts_ann(fcx.ccx, a).states);
+    ret set_in_poststate(bit_num(fcx, c),
+                         node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
-fn kill_poststate(&fn_ctxt fcx, &ann a, &constr_ c) -> bool {
+fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
     log "kill_poststate";
-    ret clear_in_poststate(bit_num(fcx, c), ann_to_ts_ann(fcx.ccx, a).states);
+    ret clear_in_poststate(bit_num(fcx, c),
+                           node_id_to_ts_ann(fcx.ccx, id).states);
 }
 //
 // Local Variables:
