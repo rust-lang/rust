@@ -1705,9 +1705,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
             check_expr(fcx, lhs);
             check_expr(fcx, rhs);
-            auto item_t = expr_ty(fcx.ccx.tcx, lhs);
+            auto item_t = expr_ty(fcx.ccx.tcx, rhs);
             auto port_t = ty::mk_port(fcx.ccx.tcx, item_t);
-            demand::simple(fcx, expr.span, port_t, expr_ty(fcx.ccx.tcx, rhs));
+            demand::simple(fcx, expr.span, port_t, expr_ty(fcx.ccx.tcx, lhs));
             write::ty_only_fixup(fcx, a.id, item_t);
         }
         case (ast::expr_if(?cond, ?thn, ?elsopt, ?a)) {

@@ -387,12 +387,12 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             }
         }
         case (expr_recv(?lhs, ?rhs, ?a)) {
-            alt (lhs.node) {
-                case (expr_path(?p, ?a_lhs)) {
-                    gen_if_local(fcx, lhs, rhs, a, a_lhs, p);
+            alt (rhs.node) {
+                case (expr_path(?p, ?a_rhs)) {
+                    gen_if_local(fcx, rhs, lhs, a, a_rhs, p);
                 }
                 case (_) {
-                    // doesn't check that lhs is an lval, but
+                    // doesn't check that rhs is an lval, but
                     // that's probably ok
 
                     find_pre_post_exprs(fcx, [lhs, rhs], a);

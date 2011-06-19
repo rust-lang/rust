@@ -447,31 +447,31 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_recv(?lhs, ?rhs, ?a)) {
             extend_prestate_ann(fcx.ccx, a, pres);
-            alt (lhs.node) {
-                case (expr_path(?p, ?a_lhs)) {
+            alt (rhs.node) {
+                case (expr_path(?p, ?a_rhs)) {
                     // receive to local var
 
-                    changed = pure_exp(fcx.ccx, a_lhs, pres) || changed;
+                    changed = pure_exp(fcx.ccx, a_rhs, pres) || changed;
                     changed =
-                        find_pre_post_state_expr(fcx, pres, rhs) || changed;
+                        find_pre_post_state_expr(fcx, pres, lhs) || changed;
                     changed =
                         extend_poststate_ann(fcx.ccx, a,
-                                             expr_poststate(fcx.ccx, rhs)) ||
+                                             expr_poststate(fcx.ccx, lhs)) ||
                             changed;
-                    changed = gen_if_local(fcx, a_lhs, a, p) || changed;
+                    changed = gen_if_local(fcx, a_rhs, a, p) || changed;
                 }
                 case (_) {
                     // receive to something that must already have been init'd
 
                     changed =
-                        find_pre_post_state_expr(fcx, pres, lhs) || changed;
+                        find_pre_post_state_expr(fcx, pres, rhs) || changed;
                     changed =
                         find_pre_post_state_expr(fcx,
-                                                 expr_poststate(fcx.ccx, lhs),
-                                                 rhs) || changed;
+                                                 expr_poststate(fcx.ccx, rhs),
+                                                 lhs) || changed;
                     changed =
                         extend_poststate_ann(fcx.ccx, a,
-                                             expr_poststate(fcx.ccx, rhs)) ||
+                                             expr_poststate(fcx.ccx, lhs)) ||
                             changed;
                 }
             }

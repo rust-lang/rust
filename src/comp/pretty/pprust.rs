@@ -750,10 +750,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, rhs);
         }
         case (ast::expr_recv(?lhs, ?rhs, _)) {
-            print_expr(s, rhs);
+            print_expr(s, lhs);
             space(s.s);
             word_space(s, "|>");
-            print_expr(s, lhs);
+            print_expr(s, rhs);
         }
         case (ast::expr_field(?expr, ?id, _)) {
             print_expr(s, expr);
