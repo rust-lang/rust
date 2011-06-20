@@ -120,8 +120,9 @@ fn bclose(&ps s, common::span span) {
 
 }
 
-fn hardbreak_if_not_eof(&ps s) {
-    if (s.s.last_token() != pp::EOF) {
+fn hardbreak_if_not_bol(&ps s) {
+    if (s.s.last_token() != pp::EOF &&
+        s.s.last_token() != pp::hardbreak_tok()) {
         hardbreak(s.s);
     }
 }
@@ -183,7 +184,7 @@ fn print_mod(&ps s, ast::_mod _mod) {
     for (@ast::item item in _mod.items) {
         // Mod-level item printing we're a little more space-y about.
 
-        hardbreak_if_not_eof(s);
+        hardbreak_if_not_bol(s);
         print_item(s, item);
     }
     print_remaining_comments(s);
@@ -271,7 +272,7 @@ fn print_type(&ps s, &ast::ty ty) {
 }
 
 fn print_item(&ps s, &@ast::item item) {
-    hardbreak_if_not_eof(s);
+    hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     alt (item.node) {
@@ -1025,7 +1026,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
 }
 
 fn print_view_item(&ps s, &@ast::view_item item) {
-    hardbreak_if_not_eof(s);
+    hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
         case (ast::view_item_use(?id, ?mta, _, _)) {
