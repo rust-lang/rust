@@ -2,6 +2,7 @@
 
 import option::none;
 import option::some;
+import uint::next_power_of_two;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
@@ -110,7 +111,7 @@ fn slice_mut[T](&T[mutable?] v, uint start, uint end) -> T[mutable] {
 
 /// Expands the given vector in-place by appending `n` copies of `initval`.
 fn grow[T](&mutable T[] v, uint n, &T initval) {
-    reserve(v, len(v) + n);
+    reserve(v, next_power_of_two(len(v) + n));
     let uint i = 0u;
     while (i < n) {
         v += ~[initval];
@@ -120,7 +121,7 @@ fn grow[T](&mutable T[] v, uint n, &T initval) {
 
 // TODO: Remove me once we have slots.
 fn grow_mut[T](&mutable T[mutable] v, uint n, &T initval) {
-    reserve(v, len(v) + n);
+    reserve(v, next_power_of_two(len(v) + n));
     let uint i = 0u;
     while (i < n) {
         v += ~[mutable initval];
@@ -131,7 +132,7 @@ fn grow_mut[T](&mutable T[mutable] v, uint n, &T initval) {
 /// Calls `f` `n` times and appends the results of these calls to the given
 /// vector.
 fn grow_fn[T](&mutable T[] v, uint n, fn(uint)->T init_fn) {
-    reserve(v, len(v) + n);
+    reserve(v, next_power_of_two(len(v) + n));
     let uint i = 0u;
     while (i < n) {
         v += ~[init_fn(i)];

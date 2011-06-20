@@ -5,19 +5,21 @@
 import option::none;
 import option::some;
 
-type smallintmap[T] = rec(mutable vec[mutable option::t[T]] v);
+// FIXME: Should not be @; there's a bug somewhere in rustc that requires this
+// to be.
+type smallintmap[T] = @rec(mutable (option::t[T])[mutable] v);
 
 fn mk[T]() -> smallintmap[T] {
-    let vec[mutable option::t[T]] v = [mutable ];
-    ret rec(mutable v=v);
+    let (option::t[T])[mutable] v = ~[mutable];
+    ret @rec(mutable v=v);
 }
 
 fn insert[T](&smallintmap[T] m, uint key, &T val) {
-    vec::grow_set[option::t[T]](m.v, key, none[T], some[T](val));
+    ivec::grow_set[option::t[T]](m.v, key, none[T], some[T](val));
 }
 
 fn find[T](&smallintmap[T] m, uint key) -> option::t[T] {
-    if (key < vec::len[option::t[T]](m.v)) { ret m.v.(key); }
+    if (key < ivec::len[option::t[T]](m.v)) { ret m.v.(key); }
     ret none[T];
 }
 
@@ -36,7 +38,8 @@ fn contains_key[T](&smallintmap[T] m, uint key) -> bool {
 }
 
 fn truncate[T](&smallintmap[T] m, uint len) {
-    m.v = vec::slice_mut[option::t[T]](m.v, 0u, len);
+    m.v = ivec::slice_mut[option::t[T]](m.v, 0u, len);
 }
 
-fn max_key[T](&smallintmap[T] m) -> uint { ret vec::len[option::t[T]](m.v); }
+fn max_key[T](&smallintmap[T] m) -> uint { ret ivec::len[option::t[T]](m.v); }
+

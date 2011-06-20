@@ -42,6 +42,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::option::from_maybe;
+import std::smallintmap;
 import middle::tstate::ann::ts_ann;
 
 type ty_table = hashmap[ast::def_id, ty::t];
@@ -385,12 +386,7 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
 mod write {
     fn inner(&node_type_table ntt, uint node_id,
              &ty_param_substs_opt_and_ty tpot) {
-        auto ntt_ = *ntt;
-        vec::grow_set(ntt_,
-                      node_id,
-                      none[ty_param_substs_opt_and_ty],
-                      some[ty_param_substs_opt_and_ty](tpot));
-        *ntt = ntt_;
+        smallintmap::insert(*ntt, node_id, tpot);
     }
 
     // Writes a type parameter count and type pair into the node type table.
@@ -1171,13 +1167,6 @@ fn replace_expr_type(&@fn_ctxt fcx, &@ast::expr expr,
         new_tps = some[vec[ty::t]](new_tyt._0);
     } else { new_tps = none[vec[ty::t]]; }
     write::ty_fixup(fcx, ty::expr_ann(expr).id, tup(new_tps, new_tyt._1));
-}
-
-fn replace_node_type_only(&ty::ctxt tcx, uint fixup, ty::t new_t) {
-    auto fixup_opt = tcx.node_types.(fixup);
-    auto tps = option::get[ty::ty_param_substs_opt_and_ty](fixup_opt)._0;
-    tcx.node_types.(fixup) =
-        some[ty::ty_param_substs_opt_and_ty](tup(tps, new_t));
 }
 
 

@@ -352,7 +352,7 @@ type type_store = interner::interner[raw_t];
 type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
 
 type node_type_table =
-    @mutable vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
+    @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
 
 fn populate_type_store(&ctxt cx) {
     intern(cx, ty_nil, none[str]);
@@ -394,9 +394,8 @@ fn mk_rcache() -> creader_cache {
 }
 
 fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
-    let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
-        [mutable ];
-    let node_type_table ntt = @mutable ntt_sub;
+    let node_type_table ntt =
+        @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
     auto items = new_def_hash[any_item]();
     auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
@@ -1597,7 +1596,7 @@ fn ann_to_ty_param_substs_opt_and_ty(&ctxt cx, &ast::ann ann) ->
    ty_param_substs_opt_and_ty {
 
     // Pull out the node type table.
-    alt ({ cx.node_types.(ann.id) }) {
+    alt (smallintmap::find(*cx.node_types, ann.id)) {
         case (none) {
             cx.sess.bug("ann_to_ty_param_substs_opt_and_ty() called on an " +
                             "untyped node");
