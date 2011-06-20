@@ -183,8 +183,8 @@ fn print_mod(&ps s, ast::_mod _mod) {
     }
     for (@ast::item item in _mod.items) {
         // Mod-level item printing we're a little more space-y about.
-
-        hardbreak_if_not_bol(s);
+        hardbreak(s.s);
+        hardbreak(s.s);
         print_item(s, item);
     }
     print_remaining_comments(s);

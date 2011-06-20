@@ -502,7 +502,9 @@ fn word(printer p, str wrd) {
     p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
 }
 
-fn huge_word(printer p, str wrd) { p.pretty_print(STRING(wrd, 0xffff)); }
+fn huge_word(printer p, str wrd) {
+    p.pretty_print(STRING(wrd, size_infinity));
+}
 
 fn zero_word(printer p, str wrd) { p.pretty_print(STRING(wrd, 0)); }
 
@@ -512,10 +514,10 @@ fn zerobreak(printer p) { spaces(p, 0u); }
 
 fn space(printer p) { spaces(p, 1u); }
 
-fn hardbreak(printer p) { spaces(p, 0xffffu); }
+fn hardbreak(printer p) { spaces(p, size_infinity as uint); }
 
 fn hardbreak_tok() -> token {
-    ret BREAK(rec(offset=0, blank_space=0xffff));
+    ret BREAK(rec(offset=0, blank_space=size_infinity));
 }
 
 //
