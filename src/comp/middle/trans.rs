@@ -5249,24 +5249,17 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
         val = llvm::LLVMGetUndef(lldestty0);
     } else if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
-        if (arg.mode == ty::mo_val) {
-
-            // FIXME: we'd prefer to use &&, but rustboot doesn't like it
-            if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
-                lldestty = T_ptr(lldestty);
-            }
+        if (arg.mode == ty::mo_val
+            && ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
+            lldestty = T_ptr(lldestty);
         }
         val = bcx.build.PointerCast(val, lldestty);
     }
-    if (arg.mode == ty::mo_val) {
-
-        // FIXME: we'd prefer to use &&, but rustboot doesn't like it
-        if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
-            // Until here we've been treating structures by pointer;
-            // we are now passing it as an arg, so need to load it.
-
-            val = bcx.build.Load(val);
-        }
+    if (arg.mode == ty::mo_val
+        && ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
+        // Until here we've been treating structures by pointer;
+        // we are now passing it as an arg, so need to load it.
+        val = bcx.build.Load(val);
     }
     ret res(bcx, val);
 }

@@ -78,25 +78,11 @@ fn name_str(name nm) -> str {
         };
 }
 
-
-// FIXME rustboot workaround
-fn name_eq(name a, name b) -> bool {
-    ret alt (a) {
-            case (long(?a)) {
-                alt (b) {
-                    case (long(?b)) { str::eq(a, b) }
-                    case (_) { false }
-                }
-            }
-            case (_) { if (a == b) { true } else { false } }
-        };
-}
-
 fn find_opt(vec[opt] opts, name nm) -> option::t[uint] {
     auto i = 0u;
     auto l = vec::len[opt](opts);
     while (i < l) {
-        if (name_eq(opts.(i).name, nm)) { ret some[uint](i); }
+        if (opts.(i).name == nm) { ret some[uint](i); }
         i += 1u;
     }
     ret none[uint];

@@ -158,11 +158,7 @@ fn mk_sha1() -> sha1 {
         st.msg_block_idx = 0u;
     }
     fn circular_shift(u32 bits, u32 word) -> u32 {
-        // FIXME: This is a workaround for a rustboot
-        // "unrecognized quads" codegen bug
-
-        auto bits_hack = bits;
-        ret word << bits_hack | word >> 32u32 - bits;
+        ret word << bits | word >> 32u32 - bits;
     }
     fn mk_result(&sha1state st) -> vec[u8] {
         if (!st.computed) { pad_msg(st); st.computed = true; }

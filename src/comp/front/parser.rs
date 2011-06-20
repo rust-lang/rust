@@ -1656,13 +1656,9 @@ fn parse_block(&parser p) -> ast::block {
 
                         stmts += [stmt];
 
-                        // FIXME: crazy differentiation between conditions
-                        // used in branches and binary expressions in rustboot
-                        // means we cannot use && here. I know, right?
-                        if (p.get_file_type() == SOURCE_FILE) {
-                            if (stmt_ends_with_semi(*stmt)) {
-                                expect(p, token::SEMI);
-                            }
+                        if (p.get_file_type() == SOURCE_FILE
+                            && stmt_ends_with_semi(*stmt)) {
+                            expect(p, token::SEMI);
                         }
                     }
                 }

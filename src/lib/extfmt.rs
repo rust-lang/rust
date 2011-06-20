@@ -347,10 +347,8 @@ mod rt {
     // FIXME: This might be useful in str: but needs to be utf8 safe first
     fn str_init_elt(char c, uint n_elts) -> str {
         auto svec = vec::init_elt[u8](c as u8, n_elts);
-        // FIXME: Using unsafe_from_bytes because rustboot
-        // can't figure out the is_utf8 predicate on from_bytes?
 
-        ret str::unsafe_from_bytes(svec);
+        ret str::from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(&conv cv, str s, pad_mode mode) -> str {

@@ -302,12 +302,7 @@ fn shift_char(&mutable str s) -> char {
 }
 
 fn unshift_char(&mutable str s, char ch) {
-    // Workaround for rustboot order-of-evaluation issue -- if I put s
-    // directly after the +, the string ends up containing (only) the
-    // character, twice.
-
-    auto x = s;
-    s = from_char(ch) + x;
+    s = from_char(ch) + s;
 }
 
 fn refcount(str s) -> uint {
