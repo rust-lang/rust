@@ -234,6 +234,11 @@ obj printer(io::writer out,
 
             // buffered indentation to avoid writing trailing whitespace
             mutable int pending_indentation) {
+
+    fn last_token() -> token {
+        ret token.(right);
+    }
+
     fn pretty_print(token t) {
         log #fmt("pp [%u,%u]", left, right);
         alt (t) {
@@ -508,6 +513,11 @@ fn zerobreak(printer p) { spaces(p, 0u); }
 fn space(printer p) { spaces(p, 1u); }
 
 fn hardbreak(printer p) { spaces(p, 0xffffu); }
+
+fn hardbreak_tok() -> token {
+    ret BREAK(rec(offset=0, blank_space=0xffff));
+}
+
 //
 // Local Variables:
 // mode: rust

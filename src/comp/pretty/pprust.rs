@@ -99,13 +99,10 @@ fn pclose(&ps s) { word(s.s, ")"); }
 
 fn head(&ps s, str w) {
     // outer-box is consistent
-
     cbox(s, indent_unit);
     // head-box is inconsistent
-
     ibox(s, str::char_len(w) + 1u);
     // keyword that starts the head
-
     word_nbsp(s, w);
 }
 
@@ -123,6 +120,11 @@ fn bclose(&ps s, common::span span) {
 
 }
 
+fn space_if_not_hardbreak(&ps s) {
+    if (s.s.last_token() != pp::hardbreak_tok()) {
+        space(s.s);
+    }
+}
 
 // Synthesizes a comment that was not textually present in the original source
 // file.
@@ -157,7 +159,7 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
             word(s.s, ",");
             maybe_print_trailing_comment(s, get_span(elt),
                                          some(get_span(elts.(i)).hi));
-            space(s.s);
+            space_if_not_hardbreak(s);
         }
     }
     end(s);
@@ -461,7 +463,10 @@ fn print_stmt(&ps s, &ast::stmt st) {
     maybe_print_comment(s, st.span.lo);
     alt (st.node) {
         case (ast::stmt_decl(?decl, _)) { print_decl(s, decl); }
-        case (ast::stmt_expr(?expr, _)) { space(s.s); print_expr(s, expr); }
+        case (ast::stmt_expr(?expr, _)) {
+            space_if_not_hardbreak(s);
+            print_expr(s, expr);
+        }
     }
     if (front::parser::stmt_ends_with_semi(st)) { word(s.s, ";"); }
     maybe_print_trailing_comment(s, st.span, none[uint]);
@@ -473,7 +478,7 @@ fn print_block(&ps s, ast::block blk) {
     for (@ast::stmt st in blk.node.stmts) { print_stmt(s, *st) }
     alt (blk.node.expr) {
         case (some(?expr)) {
-            space(s.s);
+            space_if_not_hardbreak(s);
             print_expr(s, expr);
             maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
         }

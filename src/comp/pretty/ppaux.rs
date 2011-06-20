@@ -236,9 +236,7 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
         }
         case (lexer::isolated) {
             hardbreak(s.s);
-            ibox(s, 0u);
             for (str line in cmnt.lines) { word(s.s, line); hardbreak(s.s); }
-            end(s);
         }
         case (lexer::trailing) {
             word(s.s, " ");
