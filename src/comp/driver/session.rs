@@ -124,8 +124,8 @@ obj session(ast::crate_num cnum,
     }
     fn has_external_crate(int num) -> bool { ret crates.contains_key(num); }
     fn add_used_library(&str lib) {
-        // A program has a small number of libraries, so a vector is probably a
-        // good data structure in here.
+        // A program has a small number of libraries, so a vector is probably
+        // a good data structure in here.
         for (str l in used_libraries) {
             if (l == lib) {
                 ret;
