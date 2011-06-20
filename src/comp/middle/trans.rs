@@ -6340,28 +6340,13 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
     if(ty::type_is_scalar(tcx, t)) {
         ret res(bcx, v);
     }
+    else if(ty::type_is_str(tcx, t)) {
+        ret res(bcx,
+                bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.dup_str,
+                               [bcx.fcx.lltaskptr, v]));
+    }
     else if(ty::type_is_chan(tcx, t)) {
         // If this is a channel, we need to clone it.
-        /*
-        log_err "Generating clone call for channel argument.";
-      
-        log_err #fmt("ty(clone_chan) = %s", 
-                     val_str(bcx.fcx.lcx.ccx.tn,
-                             bcx.fcx.lcx.ccx.upcalls.clone_chan));
-      
-        log_err #fmt("ty(lltaskptr) = %s", 
-                     val_str(bcx.fcx.lcx.ccx.tn, 
-                             bcx.fcx.lltaskptr));
-      
-        log_err #fmt("ty(target_task) = %s", 
-                     val_str(bcx.fcx.lcx.ccx.tn, 
-                             target_task));
-      
-        log_err #fmt("ty(chan) = %s", 
-                     val_str(bcx.fcx.lcx.ccx.tn, 
-                             v));
-        */
-
         auto chan_ptr = bcx.build.PointerCast(v, T_opaque_chan_ptr());
       
         auto chan_raw_val = 
@@ -6386,8 +6371,8 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
     }
     else {
         bcx.fcx.lcx.ccx.sess.bug("unexpected type in " +
-                                "trans::deep_copy: " +
-                                ty_to_str(tcx, t));
+                                 "trans::deep_copy: " +
+                                 ty_to_str(tcx, t));
     }
 }
 

@@ -315,9 +315,7 @@ upcall_mark(rust_task *task, void* ptr) {
     return 0;
 }
 
-extern "C" CDECL rust_str *
-upcall_new_str(rust_task *task, char const *s, size_t fill) {
-    LOG_UPCALL_ENTRY(task);
+rust_str *make_str(rust_task *task, char const *s, size_t fill) {
     rust_dom *dom = task->dom;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc);
@@ -330,6 +328,20 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
         "upcall new_str('%s', %" PRIdPTR ") = 0x%" PRIxPTR,
         s, fill, st);
     return st;
+}
+
+extern "C" CDECL rust_str *
+upcall_new_str(rust_task *task, char const *s, size_t fill) {
+    LOG_UPCALL_ENTRY(task);
+    
+    return make_str(task, s, fill);
+}
+
+extern "C" CDECL rust_str *
+upcall_dup_str(rust_task *task, rust_str *str) {
+    LOG_UPCALL_ENTRY(task);
+
+    return make_str(task, (char const *)str->data, str->fill);
 }
 
 extern "C" CDECL rust_vec *

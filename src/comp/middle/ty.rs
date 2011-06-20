@@ -168,6 +168,7 @@ export type_is_sequence;
 export type_is_signed;
 export type_is_structural;
 export type_is_tup_like;
+export type_is_str;
 export type_owns_heap_mem;
 export type_param;
 export unify;
@@ -895,6 +896,13 @@ fn type_is_sequence(&ctxt cx, &t ty) -> bool {
         case (ty_istr) { ret true; }
         case (ty_vec(_)) { ret true; }
         case (ty_ivec(_)) { ret true; }
+        case (_) { ret false; }
+    }
+}
+
+fn type_is_str(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        case (ty_str) { ret true; }
         case (_) { ret false; }
     }
 }

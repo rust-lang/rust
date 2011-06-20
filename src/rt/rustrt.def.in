@@ -47,6 +47,7 @@ unsupervise
 upcall_clone_chan
 upcall_del_chan
 upcall_del_port
+upcall_dup_str
 upcall_exit
 upcall_fail
 upcall_flush_chan
