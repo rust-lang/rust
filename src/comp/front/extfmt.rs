@@ -56,7 +56,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
     fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit) ->
        @ast::expr {
         auto sp_lit = @rec(node=lit, span=sp);
-        auto expr = ast::expr_lit(sp_lit, cx.next_ann());
+        auto expr = ast::expr_lit(sp_lit, cx.next_id());
         ret @rec(node=expr, span=sp);
     }
     fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
@@ -73,7 +73,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
     }
     fn make_add_expr(&ext_ctxt cx, common::span sp, @ast::expr lhs,
                      @ast::expr rhs) -> @ast::expr {
-        auto binexpr = ast::expr_binary(ast::add, lhs, rhs, cx.next_ann());
+        auto binexpr = ast::expr_binary(ast::add, lhs, rhs, cx.next_id());
         ret @rec(node=binexpr, span=sp);
     }
     fn make_path_expr(&ext_ctxt cx, common::span sp, vec[ast::ident] idents)
@@ -81,21 +81,21 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
         let vec[@ast::ty] types = [];
         auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
-        auto pathexpr = ast::expr_path(sp_path, cx.next_ann());
+        auto pathexpr = ast::expr_path(sp_path, cx.next_id());
         auto sp_pathexpr = @rec(node=pathexpr, span=sp);
         ret sp_pathexpr;
     }
     fn make_vec_expr(&ext_ctxt cx, common::span sp, vec[@ast::expr] exprs) ->
        @ast::expr {
         auto vecexpr =
-            ast::expr_vec(exprs, ast::imm, ast::sk_rc, cx.next_ann());
+            ast::expr_vec(exprs, ast::imm, ast::sk_rc, cx.next_id());
         auto sp_vecexpr = @rec(node=vecexpr, span=sp);
         ret sp_vecexpr;
     }
     fn make_call(&ext_ctxt cx, common::span sp, vec[ast::ident] fn_path,
                  vec[@ast::expr] args) -> @ast::expr {
         auto pathexpr = make_path_expr(cx, sp, fn_path);
-        auto callexpr = ast::expr_call(pathexpr, args, cx.next_ann());
+        auto callexpr = ast::expr_call(pathexpr, args, cx.next_id());
         auto sp_callexpr = @rec(node=callexpr, span=sp);
         ret sp_callexpr;
     }
@@ -110,7 +110,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
             astfields += [astfield];
         }
         auto recexpr =
-            ast::expr_rec(astfields, option::none[@ast::expr], cx.next_ann());
+            ast::expr_rec(astfields, option::none[@ast::expr], cx.next_id());
         auto sp_recexpr = @rec(node=recexpr, span=sp);
         ret sp_recexpr;
     }

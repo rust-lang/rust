@@ -37,6 +37,7 @@ import visit::vt;
 import util::common;
 import util::common::istr;
 import util::common::new_def_hash;
+import util::common::new_int_hash;
 import util::common::new_str_hash;
 import util::common::local_rhs_span;
 import util::common::span;
@@ -124,10 +125,9 @@ type crate_ctxt =
         // A mapping from the def_id of each item in this crate to the address
         // of the first instruction of the item's definition in the executable
         // we're generating.
-        hashmap[ast::def_id, ValueRef] item_ids,
-        hashmap[ast::def_id, @ast::item] items,
-        hashmap[ast::def_id, @ast::native_item] native_items,
-        hashmap[ast::def_id, str] item_symbols,
+        hashmap[ast::node_id, ValueRef] item_ids,
+        ast_map::map ast_map,
+        hashmap[ast::node_id, str] item_symbols,
         mutable option::t[ValueRef] main_fn,
         str crate_meta_name,
         str crate_meta_vers,
@@ -135,11 +135,11 @@ type crate_ctxt =
 
         // TODO: hashmap[tup(tag_id,subtys), @tag_info]
         hashmap[ty::t, uint] tag_sizes,
-        hashmap[ast::def_id, ValueRef] discrims,
-        hashmap[ast::def_id, str] discrim_symbols,
-        hashmap[ast::def_id, ValueRef] fn_pairs,
-        hashmap[ast::def_id, ValueRef] consts,
-        hashmap[ast::def_id, ()] obj_methods,
+        hashmap[ast::node_id, ValueRef] discrims,
+        hashmap[ast::node_id, str] discrim_symbols,
+        hashmap[ast::node_id, ValueRef] fn_pairs,
+        hashmap[ast::node_id, ValueRef] consts,
+        hashmap[ast::node_id, ()] obj_methods,
         hashmap[ty::t, @tydesc_info] tydescs,
         hashmap[str, ValueRef] module_data,
         hashmap[ty::t, TypeRef] lltypes,
@@ -228,20 +228,20 @@ type fn_ctxt =
         // LLVM-stuff-in-the-frame.
 
         // Maps arguments to allocas created for them in llallocas.
-        hashmap[ast::def_id, ValueRef] llargs,
+        hashmap[ast::node_id, ValueRef] llargs,
 
         // Maps fields in objects to pointers into the interior of llself's
         // body.
-        hashmap[ast::def_id, ValueRef] llobjfields,
+        hashmap[ast::node_id, ValueRef] llobjfields,
 
         // Maps the def_ids for local variables to the allocas created for
         // them in llallocas.
-        hashmap[ast::def_id, ValueRef] lllocals,
+        hashmap[ast::node_id, ValueRef] lllocals,
 
         // The same as above, but for variables accessed via the frame pointer
         // we pass into an iter, for access to the static environment of the
         // iter-calling frame.
-        hashmap[ast::def_id, ValueRef] llupvars,
+        hashmap[ast::node_id, ValueRef] llupvars,
 
         // For convenience, a vector of the incoming tydescs for each of this
         // functions type parameters, fetched via llvm::LLVMGetParam.  For
@@ -3048,7 +3048,7 @@ fn move_val(@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
                                 ty_to_str(cx.fcx.lcx.ccx.tcx, t));
 }
 
-fn trans_lit(&@crate_ctxt cx, &ast::lit lit, &ast::ann ann) -> ValueRef {
+fn trans_lit(&@crate_ctxt cx, &ast::lit lit, ast::node_id id) -> ValueRef {
     alt (lit.node) {
         case (ast::lit_int(?i)) { ret C_int(i); }
         case (ast::lit_uint(?u)) { ret C_int(u as int); }
@@ -3091,16 +3091,16 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit, &ast::ann ann) -> ValueRef {
 
 
 // Converts an annotation to a type
-fn node_ann_type(&@crate_ctxt cx, &ast::ann a) -> ty::t {
-    ret ty::ann_to_monotype(cx.tcx, a);
+fn node_id_type(&@crate_ctxt cx, ast::node_id id) -> ty::t {
+    ret ty::node_id_to_monotype(cx.tcx, id);
 }
 
-fn node_type(&@crate_ctxt cx, &span sp, &ast::ann a) -> TypeRef {
-    ret type_of(cx, sp, node_ann_type(cx, a));
+fn node_type(&@crate_ctxt cx, &span sp, ast::node_id id) -> TypeRef {
+    ret type_of(cx, sp, node_id_type(cx, id));
 }
 
-fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e, &ast::ann a) ->
-   result {
+fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e,
+               ast::node_id id) -> result {
     auto sub = trans_expr(cx, e);
     auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     alt (op) {
@@ -3121,7 +3121,7 @@ fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e, &ast::ann a) ->
         case (ast::box(_)) {
             auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
             auto e_val = sub.val;
-            auto box_ty = node_ann_type(sub.bcx.fcx.lcx.ccx, a);
+            auto box_ty = node_id_type(sub.bcx.fcx.lcx.ccx, id);
             sub = trans_malloc_boxed(sub.bcx, e_ty);
             find_scope_cx(cx).cleanups +=
                 [clean(bind drop_ty(_, sub.val, box_ty))];
@@ -4049,8 +4049,8 @@ fn join_branches(&@block_ctxt parent_cx, &vec[result] ins) -> @block_ctxt {
 tag out_method { return; save_in(ValueRef); }
 
 fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
-            &option::t[@ast::expr] els, &ast::ann ann, &out_method output) ->
-   result {
+            &option::t[@ast::expr] els, ast::node_id id, &out_method output)
+    -> result {
     auto cond_res = trans_expr(cx, cond);
     auto then_cx = new_scope_block_ctxt(cx, "then");
     auto then_res = trans_block(then_cx, thn, output);
@@ -4060,14 +4060,14 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
     alt (els) {
         case (some(?elexpr)) {
             alt (elexpr.node) {
-                case (ast::expr_if(_, _, _, ?ann)) {
+                case (ast::expr_if(_, _, _, ?id)) {
                     // Synthesize a block here to act as the else block
                     // containing an if expression. Needed in order for the
                     // else scope to behave like a normal block scope. A tad
                     // ugly.
 
                     let ast::block_ elseif_blk_ =
-                        rec(stmts=[], expr=some[@ast::expr](elexpr), a=ann);
+                        rec(stmts=[], expr=some[@ast::expr](elexpr), id=id);
                     auto elseif_blk = rec(node=elseif_blk_, span=elexpr.span);
                     else_res = trans_block(else_cx, elseif_blk, output);
                 }
@@ -4082,7 +4082,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
             }
             // FIXME: This isn't quite right, particularly re: dynamic types
 
-            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+            auto expr_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
             } else {
@@ -4130,21 +4130,21 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 // Searches through a block for all references to locals or upvars in this
 // frame and returns the list of definition IDs thus found.
 fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
-                  &ast::def_id initial_decl) -> vec[ast::def_id] {
+                  ast::node_id initial_decl) -> vec[ast::node_id] {
     type env =
-        @rec(mutable vec[ast::def_id] refs,
-             hashmap[ast::def_id, ()] decls,
+        @rec(mutable vec[ast::node_id] refs,
+             hashmap[ast::node_id, ()] decls,
              resolve::def_map def_map);
 
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
-            case (ast::expr_path(?path, ?ann)) {
-                alt (e.def_map.get(ann.id)) {
+            case (ast::expr_path(?path, ?id)) {
+                alt (e.def_map.get(id)) {
                     case (ast::def_arg(?did)) {
-                        vec::push[ast::def_id](e.refs, did);
+                        vec::push(e.refs, did._1);
                     }
                     case (ast::def_local(?did)) {
-                        vec::push[ast::def_id](e.refs, did);
+                        vec::push(e.refs, did._1);
                     }
                     case (_) { }
                 }
@@ -4155,11 +4155,10 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     fn walk_local(env e, &@ast::local local) {
         e.decls.insert(local.node.id, ());
     }
-    let vec[ast::def_id] refs = [];
-    let hashmap[ast::def_id, ()] decls = new_def_hash[()]();
+    let hashmap[ast::node_id, ()] decls = new_int_hash[()]();
     decls.insert(initial_decl, ());
     let env e =
-        @rec(mutable refs=refs,
+        @rec(mutable refs=[],
              decls=decls,
              def_map=cx.fcx.lcx.ccx.tcx.def_map);
     auto visitor =
@@ -4169,8 +4168,8 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     walk::walk_block(*visitor, bloc);
     // Calculate (refs - decls). This is the set of captured upvars.
 
-    let vec[ast::def_id] result = [];
-    for (ast::def_id ref_id_ in e.refs) {
+    let vec[ast::node_id] result = [];
+    for (ast::node_id ref_id_ in e.refs) {
         auto ref_id = ref_id_;
         if (!decls.contains_key(ref_id)) { result += [ref_id]; }
     }
@@ -4208,23 +4207,23 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto lcx = cx.fcx.lcx;
     // FIXME: possibly support alias-mode here?
 
-    auto decl_ty = node_ann_type(lcx.ccx, local.node.ann);
+    auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
     auto upvars = collect_upvars(cx, body, decl_id);
-    auto upvar_count = vec::len[ast::def_id](upvars);
+    auto upvar_count = vec::len(upvars);
     auto llbindingsptr;
     if (upvar_count > 0u) {
         // Gather up the upvars.
 
         let vec[ValueRef] llbindings = [];
         let vec[TypeRef] llbindingtys = [];
-        for (ast::def_id did in upvars) {
+        for (ast::node_id nid in upvars) {
             auto llbinding;
-            alt (cx.fcx.lllocals.find(did)) {
+            alt (cx.fcx.lllocals.find(nid)) {
                 case (none) {
-                    alt (cx.fcx.llupvars.find(did)) {
+                    alt (cx.fcx.llupvars.find(nid)) {
                         case (none[ValueRef]) {
-                            llbinding = cx.fcx.llargs.get(did);
+                            llbinding = cx.fcx.llargs.get(nid);
                         }
                         case (some[ValueRef](?llval)) { llbinding = llval; }
                     }
@@ -4338,7 +4337,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt (seq.node) {
-        case (ast::expr_call(?f, ?args, ?ann)) {
+        case (ast::expr_call(?f, ?args, ?id)) {
             auto pair = alloca(cx, T_fn_pair(lcx.ccx.tn, iter_body_llty));
             auto code_cell =
                 cx.build.GEP(pair, [C_int(0), C_int(abi::fn_field_code)]);
@@ -4353,7 +4352,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
             r =
                 trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
-                           ann);
+                           id);
             ret res(r.bcx, C_nil());
         }
     }
@@ -4394,23 +4393,23 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                    &@block_ctxt next_cx) -> result {
     alt (pat.node) {
         case (ast::pat_wild(_)) { ret res(cx, llval); }
-        case (ast::pat_bind(_, _, _)) { ret res(cx, llval); }
-        case (ast::pat_lit(?lt, ?ann)) {
-            auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, ann);
-            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+        case (ast::pat_bind(_, _)) { ret res(cx, llval); }
+        case (ast::pat_lit(?lt, ?id)) {
+            auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, id);
+            auto lltype = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
             lleq.bcx.build.CondBr(lleq.val, matched_cx.llbb, next_cx.llbb);
             ret res(matched_cx, llval);
         }
-        case (ast::pat_tag(?id, ?subpats, ?ann)) {
+        case (ast::pat_tag(?ident, ?subpats, ?id)) {
             auto lltagptr =
                 cx.build.PointerCast(llval,
                                      T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
             auto lldiscrimptr = cx.build.GEP(lltagptr, [C_int(0), C_int(0)]);
             auto lldiscrim = cx.build.Load(lldiscrimptr);
             auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(ann.id));
+                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
             auto variant_tag = 0;
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
             auto i = 0;
@@ -4427,7 +4426,8 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 cx.build.ICmp(lib::llvm::LLVMIntEQ, lldiscrim,
                               C_int(variant_tag));
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
-            auto ty_params = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
+            auto ty_params = ty::node_id_to_type_params
+                (cx.fcx.lcx.ccx.tcx, id);
             if (vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr =
                     matched_cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
@@ -4458,33 +4458,33 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
     alt (pat.node) {
         case (ast::pat_wild(_)) { ret res(cx, llval); }
         case (ast::pat_lit(_, _)) { ret res(cx, llval); }
-        case (ast::pat_bind(?id, ?def_id, ?ann)) {
+        case (ast::pat_bind(?name, ?id)) {
             if (bind_alias) {
-                cx.fcx.lllocals.insert(def_id, llval);
+                cx.fcx.lllocals.insert(id, llval);
                 ret res(cx, llval);
             } else {
-                auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+                auto t = node_id_type(cx.fcx.lcx.ccx, id);
                 auto rslt = alloc_ty(cx, t);
                 auto dst = rslt.val;
                 auto bcx = rslt.bcx;
-                maybe_name_value(cx.fcx.lcx.ccx, dst, id);
-                bcx.fcx.lllocals.insert(def_id, dst);
+                maybe_name_value(cx.fcx.lcx.ccx, dst, name);
+                bcx.fcx.lllocals.insert(id, dst);
                 bcx.cleanups += [clean(bind drop_slot(_, dst, t))];
                 ret copy_val(bcx, INIT, dst, llval, t);
             }
         }
-        case (ast::pat_tag(_, ?subpats, ?ann)) {
+        case (ast::pat_tag(_, ?subpats, ?id)) {
             if (vec::len[@ast::pat](subpats) == 0u) { ret res(cx, llval); }
             // Get the appropriate variant for this tag.
 
             auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(ann.id));
+                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
             auto lltagptr =
                 cx.build.PointerCast(llval,
                                      T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
             auto llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
             auto ty_param_substs =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
+                ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
             auto this_cx = cx;
             auto i = 0;
             for (@ast::pat subpat in subpats) {
@@ -4503,7 +4503,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 }
 
 fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
-             &ast::ann ann, &out_method output) -> result {
+             ast::node_id id, &out_method output) -> result {
     auto expr_res = trans_expr(cx, expr);
     auto this_cx = expr_res.bcx;
     let vec[result] arm_results = [];
@@ -4525,7 +4525,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
                    "non-exhaustive match failure");
     // FIXME: This isn't quite right, particularly re: dynamic types
 
-    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+    auto expr_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
     auto expr_llty;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
         expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4577,20 +4577,20 @@ fn trans_external_path(&@block_ctxt cx, &ast::def_id did,
 }
 
 fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
-                   &ast::def_id fn_id, &ast::ann ann) -> lval_result {
+                   &ast::def_id fn_id, ast::node_id id) -> lval_result {
     auto lv;
     if (cx.fcx.lcx.ccx.sess.get_targ_crate_num() == fn_id._0) {
         // Internal reference.
 
-        assert (cx.fcx.lcx.ccx.fn_pairs.contains_key(fn_id));
-        lv = lval_val(cx, cx.fcx.lcx.ccx.fn_pairs.get(fn_id));
+        assert (cx.fcx.lcx.ccx.fn_pairs.contains_key(fn_id._1));
+        lv = lval_val(cx, cx.fcx.lcx.ccx.fn_pairs.get(fn_id._1));
     } else {
         // External reference.
 
         lv = trans_external_path(cx, fn_id, tpt);
     }
-    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx, ann);
-    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+    auto tys = ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
+    auto monoty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
     if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = [];
@@ -4614,7 +4614,7 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
 
 fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
    -> ValueRef {
-    alt (lcx.ccx.discrims.find(vid)) {
+    alt (lcx.ccx.discrims.find(vid._1)) {
         case (none) {
             // It's an external discriminant that we haven't seen yet.
 
@@ -4626,48 +4626,48 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
                                  lib::llvm::LLVMExternalLinkage as
                                      llvm::Linkage);
             llvm::LLVMSetGlobalConstant(gvar, True);
-            lcx.ccx.discrims.insert(vid, gvar);
+            lcx.ccx.discrims.insert(vid._1, gvar);
             ret gvar;
         }
         case (some(?llval)) { ret llval; }
     }
 }
 
-fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
-    alt (cx.fcx.lcx.ccx.tcx.def_map.get(ann.id)) {
+fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
+    alt (cx.fcx.lcx.ccx.tcx.def_map.get(id)) {
         case (ast::def_arg(?did)) {
-            alt (cx.fcx.llargs.find(did)) {
+            alt (cx.fcx.llargs.find(did._1)) {
                 case (none) {
-                    assert (cx.fcx.llupvars.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.llupvars.get(did));
+                    assert (cx.fcx.llupvars.contains_key(did._1));
+                    ret lval_mem(cx, cx.fcx.llupvars.get(did._1));
                 }
                 case (some(?llval)) { ret lval_mem(cx, llval); }
             }
         }
         case (ast::def_local(?did)) {
-            alt (cx.fcx.lllocals.find(did)) {
+            alt (cx.fcx.lllocals.find(did._1)) {
                 case (none) {
-                    assert (cx.fcx.llupvars.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.llupvars.get(did));
+                    assert (cx.fcx.llupvars.contains_key(did._1));
+                    ret lval_mem(cx, cx.fcx.llupvars.get(did._1));
                 }
                 case (some(?llval)) { ret lval_mem(cx, llval); }
             }
         }
         case (ast::def_binding(?did)) {
-            assert (cx.fcx.lllocals.contains_key(did));
-            ret lval_mem(cx, cx.fcx.lllocals.get(did));
+            assert (cx.fcx.lllocals.contains_key(did._1));
+            ret lval_mem(cx, cx.fcx.lllocals.get(did._1));
         }
         case (ast::def_obj_field(?did)) {
-            assert (cx.fcx.llobjfields.contains_key(did));
-            ret lval_mem(cx, cx.fcx.llobjfields.get(did));
+            assert (cx.fcx.llobjfields.contains_key(did._1));
+            ret lval_mem(cx, cx.fcx.llobjfields.get(did._1));
         }
         case (ast::def_fn(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
-            ret lval_generic_fn(cx, tyt, did, ann);
+            ret lval_generic_fn(cx, tyt, did, id);
         }
         case (ast::def_obj(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
-            ret lval_generic_fn(cx, tyt, did, ann);
+            ret lval_generic_fn(cx, tyt, did, id);
         }
         case (ast::def_variant(?tid, ?vid)) {
             auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, vid);
@@ -4675,12 +4675,12 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
                 case (ty::ty_fn(_, _, _, _, _)) {
                     // N-ary variant.
 
-                    ret lval_generic_fn(cx, v_tyt, vid, ann);
+                    ret lval_generic_fn(cx, v_tyt, vid, id);
                 }
                 case (_) {
                     // Nullary variant.
 
-                    auto tag_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
+                    auto tag_ty = node_id_type(cx.fcx.lcx.ccx, id);
                     auto lldiscrim_gv =
                         lookup_discriminant(cx.fcx.lcx, tid, vid);
                     auto lldiscrim = cx.build.Load(lldiscrim_gv);
@@ -4707,12 +4707,12 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
         case (ast::def_const(?did)) {
             // TODO: externals
 
-            assert (cx.fcx.lcx.ccx.consts.contains_key(did));
-            ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did));
+            assert (cx.fcx.lcx.ccx.consts.contains_key(did._1));
+            ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did._1));
         }
         case (ast::def_native_fn(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
-            ret lval_generic_fn(cx, tyt, did, ann);
+            ret lval_generic_fn(cx, tyt, did, id);
         }
         case (_) {
             cx.fcx.lcx.ccx.sess.span_unimpl(cx.sp, "def variant in trans");
@@ -4721,7 +4721,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
 }
 
 fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
-               &ast::ident field, &ast::ann ann) -> lval_result {
+               &ast::ident field, ast::node_id id) -> lval_result {
     auto r = autoderef(cx, v, t0);
     auto t = autoderefed_ty(cx.fcx.lcx.ccx, t0);
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
@@ -4759,7 +4759,7 @@ fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
 }
 
 fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
-               &ast::ann ann) -> lval_result {
+               ast::node_id id) -> lval_result {
     // Is this an interior vector?
 
     auto base_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
@@ -4781,7 +4781,7 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
     } else if (ix_size > int_size) {
         ix_val = bcx.build.Trunc(ix.val, T_int());
     } else { ix_val = ix.val; }
-    auto unit_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
+    auto unit_ty = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
     maybe_name_value(cx.fcx.lcx.ccx, unit_sz.val, "unit_sz");
@@ -4839,16 +4839,16 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
 // immediate).
 fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
     alt (e.node) {
-        case (ast::expr_path(?p, ?ann)) { ret trans_path(cx, p, ann); }
-        case (ast::expr_field(?base, ?ident, ?ann)) {
+        case (ast::expr_path(?p, ?id)) { ret trans_path(cx, p, id); }
+        case (ast::expr_field(?base, ?ident, ?id)) {
             auto r = trans_expr(cx, base);
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
-            ret trans_field(r.bcx, e.span, r.val, t, ident, ann);
+            ret trans_field(r.bcx, e.span, r.val, t, ident, id);
         }
-        case (ast::expr_index(?base, ?idx, ?ann)) {
-            ret trans_index(cx, e.span, base, idx, ann);
+        case (ast::expr_index(?base, ?idx, ?id)) {
+            ret trans_index(cx, e.span, base, idx, id);
         }
-        case (ast::expr_unary(?unop, ?base, ?ann)) {
+        case (ast::expr_unary(?unop, ?base, ?id)) {
             assert (unop == ast::deref);
             auto sub = trans_expr(cx, base);
             auto val =
@@ -4856,12 +4856,12 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
                                   [C_int(0), C_int(abi::box_rc_field_body)]);
             ret lval_mem(sub.bcx, val);
         }
-        case (ast::expr_self_method(?ident, ?ann)) {
+        case (ast::expr_self_method(?ident, ?id)) {
             alt ({ cx.fcx.llself }) {
                 case (some(?pair)) {
                     auto r = pair.v;
                     auto t = pair.t;
-                    ret trans_field(cx, e.span, r, t, ident, ann);
+                    ret trans_field(cx, e.span, r, t, ident, id);
                 }
                 case (_) {
                     // Shouldn't happen.
@@ -4898,10 +4898,10 @@ fn int_cast(&@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
     ret bcx.build.TruncOrBitCast(llsrc, lldsttype);
 }
 
-fn trans_cast(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
+fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
     auto e_res = trans_expr(cx, e);
     auto llsrctype = val_ty(e_res.val);
-    auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+    auto t = node_id_type(cx.fcx.lcx.ccx, id);
     auto lldsttype = type_of(cx.fcx.lcx.ccx, e.span, t);
     if (!ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
 
@@ -5043,7 +5043,7 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
 }
 
 fn trans_bind(&@block_ctxt cx, &@ast::expr f,
-              &vec[option::t[@ast::expr]] args, &ast::ann ann) -> result {
+              &vec[option::t[@ast::expr]] args, ast::node_id id) -> result {
     auto f_res = trans_lval(cx, f);
     if (f_res.is_mem) {
         cx.fcx.lcx.ccx.sess.unimpl("re-binding existing function");
@@ -5077,7 +5077,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             ret f_res.res;
         } else {
             auto bcx = f_res.res.bcx;
-            auto pair_t = node_type(cx.fcx.lcx.ccx, cx.sp, ann);
+            auto pair_t = node_type(cx.fcx.lcx.ccx, cx.sp, id);
             auto pair_v = alloca(bcx, pair_t);
             // Translate the bound expressions.
 
@@ -5188,7 +5188,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
 
             auto pair_code =
                 bcx.build.GEP(pair_v, [C_int(0), C_int(abi::fn_field_code)]);
-            let ty::t pair_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
+            let ty::t pair_ty = node_id_type(cx.fcx.lcx.ccx, id);
             let ValueRef llthunk =
                 trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
                                  args, closure_ty, bound_tys, ty_param_count);
@@ -5350,7 +5350,7 @@ fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
 }
 
 fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
-              &vec[@ast::expr] args, &ast::ann ann) -> result {
+              &vec[@ast::expr] args, ast::node_id id) -> result {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
@@ -5386,7 +5386,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
         }
         case (_) { fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f); }
     }
-    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx, ann);
+    auto ret_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
     auto args_res =
         trans_args(f_res.res.bcx, llenv, f_res.llobj, f_res.generic,
                    lliterbody, args, fn_ty);
@@ -5425,9 +5425,10 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     ret res(bcx, retval);
 }
 
-fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, &ast::ann ann) -> result {
+fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, ast::node_id id)
+    -> result {
     auto bcx = cx;
-    auto t = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto t = node_id_type(bcx.fcx.lcx.ccx, id);
     auto tup_res = alloc_ty(bcx, t);
     auto tup_val = tup_res.val;
     bcx = tup_res.bcx;
@@ -5445,9 +5446,9 @@ fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, &ast::ann ann) -> result {
     ret res(bcx, tup_val);
 }
 
-fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, &ast::ann ann) ->
+fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
    result {
-    auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+    auto t = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_ty = t;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_vec(?mt)) { unit_ty = mt.ty; }
@@ -5505,9 +5506,9 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, &ast::ann ann) ->
 
 
 // TODO: Move me to ivec::
-fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
-   result {
-    auto typ = node_ann_type(bcx.fcx.lcx.ccx, ann);
+fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
+        result {
+    auto typ = node_id_type(bcx.fcx.lcx.ccx, id);
     auto unit_ty;
     alt (ty::struct(bcx.fcx.lcx.ccx.tcx, typ)) {
         case (ty::ty_ivec(?mt)) { unit_ty = mt.ty; }
@@ -5599,9 +5600,9 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, &ast::ann ann) ->
 }
 
 fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
-             &option::t[@ast::expr] base, &ast::ann ann) -> result {
+             &option::t[@ast::expr] base, ast::node_id id) -> result {
     auto bcx = cx;
-    auto t = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto t = node_id_type(bcx.fcx.lcx.ccx, id);
     auto rec_res = alloc_ty(bcx, t);
     auto rec_val = rec_res.val;
     bcx = rec_res.bcx;
@@ -5653,18 +5654,18 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
     // FIXME Fill in cx.sp
 
     alt (e.node) {
-        case (ast::expr_lit(?lit, ?ann)) {
-            ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, ann));
+        case (ast::expr_lit(?lit, ?id)) {
+            ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, id));
         }
-        case (ast::expr_unary(?op, ?x, ?ann)) {
-            if (op != ast::deref) { ret trans_unary(cx, op, x, ann); }
+        case (ast::expr_unary(?op, ?x, ?id)) {
+            if (op != ast::deref) { ret trans_unary(cx, op, x, id); }
         }
         case (ast::expr_binary(?op, ?x, ?y, _)) {
             ret trans_binary(cx, op, x, y);
         }
-        case (ast::expr_if(?cond, ?thn, ?els, ?ann)) {
-            ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _), cx,
-                                ann, output);
+        case (ast::expr_if(?cond, ?thn, ?els, ?id)) {
+            ret with_out_method(bind trans_if(cx, cond, thn, els, id, _), cx,
+                                id, output);
         }
         case (ast::expr_if_check(?cond, ?thn, ?els, ?ann)) {
             ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _), cx,
@@ -5682,14 +5683,14 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_do_while(?body, ?cond, _)) {
             ret trans_do_while(cx, body, cond);
         }
-        case (ast::expr_alt(?expr, ?arms, ?ann)) {
-            ret with_out_method(bind trans_alt(cx, expr, arms, ann, _), cx,
-                                ann, output);
+        case (ast::expr_alt(?expr, ?arms, ?id)) {
+            ret with_out_method(bind trans_alt(cx, expr, arms, id, _), cx,
+                                id, output);
         }
-        case (ast::expr_fn(?f, ?ann)) {
+        case (ast::expr_fn(?f, ?id)) {
             auto ccx = cx.fcx.lcx.ccx;
             let TypeRef llfnty =
-                alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
+                alt (ty::struct(ccx.tcx, node_id_type(ccx, id))) {
                     case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
                         type_of_fn_full(ccx, e.span, proto, none, inputs,
                                         output, 0u)
@@ -5698,14 +5699,14 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
             auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
             auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
-            trans_fn(sub_cx, e.span, f, llfn, none, [], ann);
+            trans_fn(sub_cx, e.span, f, llfn, none, [], id);
             ret res(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
         }
-        case (ast::expr_block(?blk, ?ann)) {
+        case (ast::expr_block(?blk, ?id)) {
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
             auto next_cx = new_sub_block_ctxt(cx, "next");
             auto sub =
-                with_out_method(bind trans_block(sub_cx, blk, _), cx, ann,
+                with_out_method(bind trans_block(sub_cx, blk, _), cx, id,
                                 output);
             cx.build.Br(sub_cx.llbb);
             sub.bcx.build.Br(next_cx.llbb);
@@ -5788,22 +5789,22 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                 copy_val(v.bcx, DROP_EXISTING, lhs_res.res.val, v.val, t);
             ret res(copy_res.bcx, C_nil());
         }
-        case (ast::expr_bind(?f, ?args, ?ann)) {
-            ret trans_bind(cx, f, args, ann);
+        case (ast::expr_bind(?f, ?args, ?id)) {
+            ret trans_bind(cx, f, args, id);
         }
-        case (ast::expr_call(?f, ?args, ?ann)) {
-            ret trans_call(cx, f, none[ValueRef], args, ann);
+        case (ast::expr_call(?f, ?args, ?id)) {
+            ret trans_call(cx, f, none[ValueRef], args, id);
         }
-        case (ast::expr_cast(?e, _, ?ann)) { ret trans_cast(cx, e, ann); }
-        case (ast::expr_vec(?args, _, ast::sk_rc, ?ann)) {
-            ret trans_vec(cx, args, ann);
+        case (ast::expr_cast(?e, _, ?id)) { ret trans_cast(cx, e, id); }
+        case (ast::expr_vec(?args, _, ast::sk_rc, ?id)) {
+            ret trans_vec(cx, args, id);
         }
-        case (ast::expr_vec(?args, _, ast::sk_unique, ?ann)) {
-            ret trans_ivec(cx, args, ann);
+        case (ast::expr_vec(?args, _, ast::sk_unique, ?id)) {
+            ret trans_ivec(cx, args, id);
         }
-        case (ast::expr_tup(?args, ?ann)) { ret trans_tup(cx, args, ann); }
-        case (ast::expr_rec(?args, ?base, ?ann)) {
-            ret trans_rec(cx, args, base, ann);
+        case (ast::expr_tup(?args, ?id)) { ret trans_tup(cx, args, id); }
+        case (ast::expr_rec(?args, ?base, ?id)) {
+            ret trans_rec(cx, args, base, id);
         }
         case (ast::expr_ext(_, _, _, ?expanded, _)) {
             ret trans_expr(cx, expanded);
@@ -5828,19 +5829,19 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_ret(?e, _)) { ret trans_ret(cx, e); }
         case (ast::expr_put(?e, _)) { ret trans_put(cx, e); }
         case (ast::expr_be(?e, _)) { ret trans_be(cx, e); }
-        case (ast::expr_port(?ann)) { ret trans_port(cx, ann); }
-        case (ast::expr_chan(?e, ?ann)) { ret trans_chan(cx, e, ann); }
-        case (ast::expr_send(?lhs, ?rhs, ?ann)) {
-            ret trans_send(cx, lhs, rhs, ann);
+        case (ast::expr_port(?id)) { ret trans_port(cx, id); }
+        case (ast::expr_chan(?e, ?id)) { ret trans_chan(cx, e, id); }
+        case (ast::expr_send(?lhs, ?rhs, ?id)) {
+            ret trans_send(cx, lhs, rhs, id);
         }
-        case (ast::expr_recv(?lhs, ?rhs, ?ann)) {
-            ret trans_recv(cx, lhs, rhs, ann);
+        case (ast::expr_recv(?lhs, ?rhs, ?id)) {
+            ret trans_recv(cx, lhs, rhs, id);
         }
-        case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
-            ret trans_spawn(cx, dom, name, func, args, ann);
+        case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?id)) {
+            ret trans_spawn(cx, dom, name, func, args, id);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid, ?ann)) {
-            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid.ctor, ann);
+        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid, ?id)) {
+            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid.ctor, id);
         }
         case (_) {
             // The expression is an lvalue. Fall through.
@@ -5857,12 +5858,12 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
 }
 
 fn with_out_method(fn(&out_method) -> result  work, @block_ctxt cx,
-                   &ast::ann ann, &out_method outer_output) -> result {
+                   ast::node_id id, &out_method outer_output) -> result {
     auto ccx = cx.fcx.lcx.ccx;
     if (outer_output != return) {
         ret work(outer_output);
     } else {
-        auto tp = node_ann_type(ccx, ann);
+        auto tp = node_id_type(ccx, id);
         if (ty::type_is_nil(ccx.tcx, tp)) { ret work(return); }
         auto res_alloca = alloc_ty(cx, tp);
         cx = zero_alloca(res_alloca.bcx, res_alloca.val, tp).bcx;
@@ -6144,8 +6145,8 @@ fn trans_be(&@block_ctxt cx, &@ast::expr e) -> result {
     ret trans_ret(cx, some(e));
 }
 
-fn trans_port(&@block_ctxt cx, &ast::ann ann) -> result {
-    auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+fn trans_port(&@block_ctxt cx, ast::node_id id) -> result {
+    auto t = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_ty;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_port(?t)) { unit_ty = t; }
@@ -6165,7 +6166,7 @@ fn trans_port(&@block_ctxt cx, &ast::ann ann) -> result {
     ret res(bcx, port_val);
 }
 
-fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
+fn trans_chan(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
     auto bcx = cx;
     auto prt = trans_expr(bcx, e);
     bcx = prt.bcx;
@@ -6173,7 +6174,7 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     auto chan_raw_val =
         bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_chan,
                        [bcx.fcx.lltaskptr, prt_val]);
-    auto chan_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto chan_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     auto chan_llty = type_of(bcx.fcx.lcx.ccx, e.span, chan_ty);
     auto chan_val = bcx.build.PointerCast(chan_raw_val, chan_llty);
     auto dropref = clean(bind drop_ty(_, chan_val, chan_ty));
@@ -6182,7 +6183,7 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
 }
 
 fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
-               &@ast::expr func, &vec[@ast::expr] args, &ast::ann ann) ->
+               &@ast::expr func, &vec[@ast::expr] args, ast::node_id id) ->
    result {
     auto bcx = cx;
     // Make the task name
@@ -6270,7 +6271,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
                    [bcx.fcx.lltaskptr, new_task, llfnptr_i, llargs_i,
                     args_size]);
-    auto task_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto task_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     auto dropref = clean(bind drop_ty(_, new_task, task_ty));
     find_scope_cx(bcx).cleanups += [dropref];
     ret res(bcx, new_task);
@@ -6377,13 +6378,13 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
 }
 
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
-              &ast::ann ann) -> result {
+              ast::node_id id) -> result {
     auto bcx = cx;
     auto chn = trans_expr(bcx, lhs);
     bcx = chn.bcx;
     auto data = trans_expr(bcx, rhs);
     bcx = data.bcx;
-    auto chan_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
+    auto chan_ty = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_ty;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, chan_ty)) {
         case (ty::ty_chan(?t)) { unit_ty = t; }
@@ -6403,12 +6404,12 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
 }
 
 fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
-              &ast::ann ann) -> result {
+              ast::node_id id) -> result {
     auto bcx = cx;
     auto data = trans_lval(bcx, rhs);
     assert (data.is_mem);
     bcx = data.res.bcx;
-    auto unit_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
+    auto unit_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     // FIXME: calculate copy init-ness in typestate.
 
     ret recv_val(bcx, data.res.val, lhs, unit_ty, DROP_EXISTING);
@@ -6469,9 +6470,10 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
 // function and putting it in the generated code as an object item, we are
 // instead "inlining" the construction of the object and returning the object
 // itself.
-fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
-                  &vec[ast::ty_param] ty_params, ast::def_id oid,
-                  &ast::ann ann) -> result {
+fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
+                  &vec[ast::ty_param] ty_params, ast::node_id oid,
+                  ast::node_id id) -> result {
+
     // Right now, we're assuming that anon objs don't take ty params, even
     // though the AST supports it.  It's nonsensical to write an expression
     // like "obj[T](){ ... with ... }", since T is never instantiated;
@@ -6498,7 +6500,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // trans_obj for translating the anonymous wrapper object.  Eventually we
     // should abstract this code out of trans_anon_obj and trans_obj.
 
-    auto self_ty = ty::ann_to_type(ccx.tcx, ann);
+    auto self_ty = ty::node_id_to_type(ccx.tcx, id);
     auto llself_ty = type_of(ccx, sp, self_ty);
     // Allocate the object that we're going to return.  It's a two-word pair
     // containing a vtable pointer and a body pointer.
@@ -6569,7 +6571,7 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
 
     assert (cx.fcx.lllocals.contains_key(local.node.id));
     auto llptr = cx.fcx.lllocals.get(local.node.id);
-    auto ty = node_ann_type(cx.fcx.lcx.ccx, local.node.ann);
+    auto ty = node_id_type(cx.fcx.lcx.ccx, local.node.id);
     auto bcx = cx;
     find_scope_cx(cx).cleanups += [clean(bind drop_slot(_, llptr, ty))];
     alt (local.node.init) {
@@ -6581,8 +6583,8 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
                     // the value.
 
                     ty =
-                        node_ann_type(cx.fcx.lcx.ccx,
-                                      ty::expr_ann(init.expr));
+                        node_id_type(cx.fcx.lcx.ccx,
+                                      ty::expr_node_id(init.expr));
                     auto sub = trans_expr(bcx, init.expr);
                     bcx = copy_val(sub.bcx, INIT, llptr, sub.val, ty).bcx;
                 }
@@ -6794,7 +6796,7 @@ fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
 }
 
 fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
-    auto t = node_ann_type(cx.fcx.lcx.ccx, local.node.ann);
+    auto t = node_id_type(cx.fcx.lcx.ccx, local.node.id);
     auto r = alloc_ty(cx, t);
     r.bcx.fcx.lllocals.insert(local.node.id, r.val);
     ret r;
@@ -6890,10 +6892,11 @@ fn new_fn_ctxt(@local_ctxt cx, &span sp, ValueRef llfndecl) -> @fn_ctxt {
     let ValueRef llretptr = llvm::LLVMGetParam(llfndecl, 0u);
     let ValueRef lltaskptr = llvm::LLVMGetParam(llfndecl, 1u);
     let ValueRef llenv = llvm::LLVMGetParam(llfndecl, 2u);
-    let hashmap[ast::def_id, ValueRef] llargs = new_def_hash[ValueRef]();
-    let hashmap[ast::def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
-    let hashmap[ast::def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
-    let hashmap[ast::def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
+    let hashmap[ast::node_id, ValueRef] llargs = new_int_hash[ValueRef]();
+    let hashmap[ast::node_id, ValueRef] llobjfields =
+        new_int_hash[ValueRef]();
+    let hashmap[ast::node_id, ValueRef] lllocals = new_int_hash[ValueRef]();
+    let hashmap[ast::node_id, ValueRef] llupvars = new_int_hash[ValueRef]();
     auto derived_tydescs =
         map::mk_hashmap[ty::t, derived_tydesc_info](ty::hash_ty, ty::eq_ty);
     auto llbbs = mk_standard_basic_blocks(llfndecl);
@@ -7034,8 +7037,8 @@ fn is_terminated(&@block_ctxt cx) -> bool {
     ret llvm::LLVMIsATerminatorInst(inst) as int != 0;
 }
 
-fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, ann))) {
+fn arg_tys_of_fn(&@crate_ctxt ccx,ast::node_id id) -> vec[ty::arg] {
+    alt (ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id))) {
         case (ty::ty_fn(_, ?arg_tys, _, _, _)) { ret arg_tys; }
     }
 }
@@ -7044,7 +7047,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     auto bcx = llstaticallocas_block_ctxt(fcx);
     let vec[ty::t] field_tys = [];
     for (ast::obj_field f in bcx.fcx.lcx.obj_fields) {
-        field_tys += [node_ann_type(bcx.fcx.lcx.ccx, f.ann)];
+        field_tys += [node_id_type(bcx.fcx.lcx.ccx, f.id)];
     }
     // Synthesize a tuple type for the fields so that GEP_tup_like() can work
     // its magic.
@@ -7107,20 +7110,20 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 // function.
 fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
             option::t[ty_self_pair] ty_self, &vec[ast::ty_param] ty_params,
-            &ast::ann ann) {
+            ast::node_id id) {
     set_uwtable(llfndecl);
     // Set up arguments to the function.
 
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
-                              ty::ret_ty_of_fn(cx.ccx.tcx, ann), 
+                              ty::ret_ty_of_fn(cx.ccx.tcx, id), 
                               f.decl.inputs, ty_params);
     copy_any_self_to_alloca(fcx, ty_self);
     alt ({ fcx.llself }) {
         case (some(?llself)) { populate_fn_ctxt_from_llself(fcx, llself); }
         case (_) { }
     }
-    auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, ann);
+    auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
     copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -7128,7 +7131,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     auto bcx = new_top_block_ctxt(fcx);
     add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
     auto lltop = bcx.llbb;
-    auto block_ty = node_ann_type(cx.ccx, f.body.node.a);
+    auto block_ty = node_id_type(cx.ccx, f.body.node.id);
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
@@ -7171,7 +7174,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
         std::sort::merge_sort[@ast::method](bind meth_lteq(_, _), ob.methods);
     for (@ast::method m in meths) {
         auto llfnty = T_nil();
-        alt (ty::struct(cx.ccx.tcx, node_ann_type(cx.ccx, m.node.ann))) {
+        alt (ty::struct(cx.ccx.tcx, node_id_type(cx.ccx, m.node.id))) {
             case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
                 llfnty =
                     type_of_fn_full(cx.ccx, m.span, proto,
@@ -7192,7 +7195,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
         cx.ccx.item_symbols.insert(m.node.id, s);
         trans_fn(mcx, m.span, m.node.meth, llfn,
                  some[ty_self_pair](tup(llself_ty, self_ty)), ty_params,
-                 m.node.ann);
+                 m.node.id);
         methods += [llfn];
     }
     auto vtbl = C_struct(methods);
@@ -7215,20 +7218,20 @@ fn trans_dtor(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
     cx.ccx.item_symbols.insert(dtor.node.id, s);
     trans_fn(cx, dtor.span, dtor.node.meth, llfn,
              some[ty_self_pair](tup(llself_ty, self_ty)), ty_params,
-             dtor.node.ann);
+             dtor.node.id);
     ret llfn;
 }
 
 
 // trans_obj: creates an LLVM function that is the object constructor for the
 // object being translated.
-fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
-             &vec[ast::ty_param] ty_params, &ast::ann ann) {
+fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
+             &vec[ast::ty_param] ty_params, ast::node_id type_id) {
     // To make a function, we have to create a function context and, inside
     // that, a number of block contexts for which code is generated.
 
     auto ccx = cx.ccx;
-    auto llctor_decl = ccx.item_ids.get(oid);
+    auto llctor_decl = ccx.item_ids.get(ctor_id);
     // Much like trans_fn, we must create an LLVM function, but since we're
     // starting with an ast::_obj rather than an ast::_fn, we have some setup
     // work to do.
@@ -7245,9 +7248,9 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // Both regular arguments and type parameters are handled here.
 
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ty::ret_ty_of_fn(ccx.tcx, ann),
+                              ty::ret_ty_of_fn(ccx.tcx, type_id),
                               fn_args, ty_params);
-    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ann);
+    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, type_id);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
     //  Create the first block context in the function and keep a handle on it
     //  to pass to finish_fn later.
@@ -7257,7 +7260,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
 
-    auto self_ty = ty::ret_ty_of_fn(ccx.tcx, ann);
+    auto self_ty = ty::ret_ty_of_fn(ccx.tcx, type_id);
     auto llself_ty = type_of(ccx, sp, self_ty);
     // Set up the two-word pair that we're going to return from the object
     // constructor we're building.  The two elements of this pair will be a
@@ -7410,7 +7413,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     finish_fn(fcx, lltop);
 }
 
-fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
+fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
                      &ast::variant variant, int index,
                      &vec[ast::ty_param] ty_params) {
     if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
@@ -7432,16 +7435,15 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     let ValueRef llfndecl = cx.ccx.item_ids.get(variant.node.id);
     auto fcx = new_fn_ctxt(cx, variant.span, llfndecl);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.ann),
-                              fn_args,
-                              ty_params);
+                              ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.id),
+                              fn_args, ty_params);
     let vec[ty::t] ty_param_substs = [];
     i = 0u;
     for (ast::ty_param tp in ty_params) {
         ty_param_substs += [ty::mk_param(cx.ccx.tcx, i)];
         i += 1u;
     }
-    auto arg_tys = arg_tys_of_fn(cx.ccx, variant.node.ann);
+    auto arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
@@ -7455,7 +7457,8 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     i = 0u;
     for (ast::variant_arg va in variant.node.args) {
         auto rslt =
-            GEP_tag(bcx, llblobptr, tag_id, variant.node.id, ty_param_substs,
+            GEP_tag(bcx, llblobptr, ast::local_def(tag_id),
+                    ast::local_def(variant.node.id), ty_param_substs,
                     i as int);
         bcx = rslt.bcx;
         auto lldestptr = rslt.val;
@@ -7486,21 +7489,20 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
 // that does so later on?
 fn trans_const_expr(&@crate_ctxt cx, @ast::expr e) -> ValueRef {
     alt (e.node) {
-        case (ast::expr_lit(?lit, ?ann)) { ret trans_lit(cx, *lit, ann); }
+        case (ast::expr_lit(?lit, ?id)) { ret trans_lit(cx, *lit, id); }
         case (_) {
             cx.sess.span_unimpl(e.span, "consts that's not a plain literal");
         }
     }
 }
 
-fn trans_const(&@crate_ctxt cx, @ast::expr e, &ast::def_id cid,
-               &ast::ann ann) {
-    auto t = node_ann_type(cx, ann);
+fn trans_const(&@crate_ctxt cx, @ast::expr e, ast::node_id id) {
+    auto t = node_id_type(cx, id);
     auto v = trans_const_expr(cx, e);
     // The scalars come back as 1st class LLVM vals
     // which we have to stick into global constants.
 
-    auto g = cx.consts.get(cid);
+    auto g = cx.consts.get(id);
     llvm::LLVMSetInitializer(g, v);
     llvm::LLVMSetGlobalConstant(g, True);
 }
@@ -7511,13 +7513,13 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
             auto sub_cx = extend_path(cx, item.ident);
             auto llfndecl = cx.ccx.item_ids.get(item.id);
             trans_fn(sub_cx, item.span, f, llfndecl, none[ty_self_pair], tps,
-                     item.ann);
+                     item.id);
         }
         case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
             auto sub_cx =
                 @rec(obj_typarams=tps, obj_fields=ob.fields
                      with *extend_path(cx, item.ident));
-            trans_obj(sub_cx, item.span, ob, ctor_id, tps, item.ann);
+            trans_obj(sub_cx, item.span, ob, ctor_id, tps, item.id);
         }
         case (ast::item_mod(?m)) {
             auto sub_cx =
@@ -7534,7 +7536,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
             }
         }
         case (ast::item_const(_, ?expr)) {
-            trans_const(cx.ccx, expr, item.id, item.ann);
+            trans_const(cx.ccx, expr, item.id);
         }
         case (_) {/* fall through */ }
     }
@@ -7557,10 +7559,10 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
 }
 
 fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
-                    vec[ast::ty_param] ty_params, &ast::ann ann,
-                    ast::def_id id) {
+                    vec[ast::ty_param] ty_params, ast::node_id node_id,
+                    ast::node_id def_id) {
     auto llfty;
-    alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
+    alt (ty::struct(ccx.tcx, node_id_type(ccx, node_id))) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfty =
                 type_of_fn(ccx, sp, proto, inputs, output,
@@ -7581,8 +7583,8 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
     // Declare the global constant pair that points to it.
 
-    let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
-    register_fn_pair(ccx, ps, llfty, llfn, id);
+    let str ps = mangle_exported_name(ccx, path, node_id_type(ccx, node_id));
+    register_fn_pair(ccx, ps, llfty, llfn, def_id);
     if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
             ccx.sess.span_fatal(sp, "multiple 'main' functions");
@@ -7608,7 +7610,7 @@ fn create_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
 }
 
 fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
-                    ast::def_id id) {
+                    ast::node_id id) {
     // FIXME: We should also hide the unexported pairs in crates.
 
     auto gvar =
@@ -7620,15 +7622,17 @@ fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
 
 
 // Returns the number of type parameters that the given native function has.
-fn native_fn_ty_param_count(&@crate_ctxt cx, &ast::def_id id) -> uint {
+fn native_fn_ty_param_count(&@crate_ctxt cx, ast::node_id id) -> uint {
     auto count;
-    auto native_item = cx.native_items.get(id);
+    auto native_item = alt (cx.ast_map.get(id)) {
+        case (ast_map::node_native_item(?i)) { i }
+    };
     alt (native_item.node) {
         case (ast::native_item_ty(_, _)) {
             cx.sess.bug("decl_native_fn_and_pair(): native fn isn't " +
                             "actually a fn");
         }
-        case (ast::native_item_fn(_, _, _, ?tps, _, _)) {
+        case (ast::native_item_fn(_, _, _, ?tps, _)) {
             count = vec::len[ast::ty_param](tps);
         }
     }
@@ -7645,18 +7649,18 @@ fn native_fn_wrapper_type(&@crate_ctxt cx, &span sp, uint ty_param_count,
 }
 
 fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path,
-                           str name, &ast::ann ann, ast::def_id id) {
+                           str name, ast::node_id id) {
     auto num_ty_param = native_fn_ty_param_count(ccx, id);
     // Declare the wrapper.
 
-    auto t = node_ann_type(ccx, ann);
+    auto t = node_id_type(ccx, id);
     auto wrapper_type = native_fn_wrapper_type(ccx, sp, num_ty_param, t);
     let str s = mangle_internal_name_by_path(ccx, path);
     let ValueRef wrapper_fn =
         decl_internal_fastcall_fn(ccx.llmod, s, wrapper_type);
     // Declare the global constant pair that points to it.
 
-    let str ps = mangle_exported_name(ccx, path, node_ann_type(ccx, ann));
+    let str ps = mangle_exported_name(ccx, path, node_id_type(ccx, id));
     register_fn_pair(ccx, ps, wrapper_type, wrapper_fn, id);
     // Build the wrapper.
 
@@ -7665,8 +7669,10 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path,
     auto lltop = bcx.llbb;
     // Declare the function itself.
 
-    auto item = ccx.native_items.get(id);
-    auto fn_type = node_ann_type(ccx, ann); // NB: has no type params
+    auto item = alt (ccx.ast_map.get(id)) {
+        case (ast_map::node_native_item(?i)) { i }
+    };
+    auto fn_type = node_id_type(ccx, id); // NB: has no type params
 
     auto abi = ty::ty_fn_abi(ccx.tcx, fn_type);
     auto llfnty =
@@ -7803,15 +7809,12 @@ fn item_path(&@ast::item item) -> vec[str] { ret [item.ident]; }
 fn collect_native_item(@crate_ctxt ccx, &@ast::native_item i, &vec[str] pt,
                        &vt[vec[str]] v) {
     alt (i.node) {
-        case (ast::native_item_fn(?name, _, _, _, ?fid, ?ann)) {
-            ccx.native_items.insert(fid, i);
-            if (!ccx.obj_methods.contains_key(fid)) {
-                decl_native_fn_and_pair(ccx, i.span, pt, name, ann, fid);
+        case (ast::native_item_fn(?name, _, _, _, ?id)) {
+            if (!ccx.obj_methods.contains_key(id)) {
+                decl_native_fn_and_pair(ccx, i.span, pt, name, id);
             }
         }
-        case (ast::native_item_ty(_, ?tid)) {
-            ccx.native_items.insert(tid, i);
-        }
+        case (_) {}
     }
 }
 
@@ -7820,20 +7823,15 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     visit::visit_item(i, pt + item_path(i), v);
     alt (i.node) {
         case (ast::item_const(_, _)) {
-            auto typ = node_ann_type(ccx, i.ann);
+            auto typ = node_id_type(ccx, i.id);
             auto g =
                 llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
                                     str::buf(ccx.names.next(i.ident)));
             llvm::LLVMSetLinkage(g,
                                  lib::llvm::LLVMInternalLinkage as
                                      llvm::Linkage);
-            ccx.items.insert(i.id, i);
             ccx.consts.insert(i.id, g);
         }
-        case (ast::item_mod(?m)) { ccx.items.insert(i.id, i); }
-        case (ast::item_native_mod(_)) { ccx.items.insert(i.id, i); }
-        case (ast::item_ty(_, _)) { ccx.items.insert(i.id, i); }
-        case (ast::item_tag(_, _)) { ccx.items.insert(i.id, i); }
         case (_) { }
     }
 }
@@ -7844,14 +7842,12 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     visit::visit_item(i, new_pt, v);
     alt (i.node) {
         case (ast::item_fn(?f, ?tps)) {
-            ccx.items.insert(i.id, i);
             if (!ccx.obj_methods.contains_key(i.id)) {
-                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.ann, i.id);
+                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id, i.id);
             }
         }
         case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
-            ccx.items.insert(ctor_id, i);
-            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, i.ann,
+            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, i.id,
                              ctor_id);
             for (@ast::method m in ob.methods) {
                 ccx.obj_methods.insert(m.node.id, ());
@@ -7882,7 +7878,7 @@ fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
                 if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
                                      new_pt + [variant.node.name], "tag", tps,
-                                     variant.node.ann, variant.node.id);
+                                     variant.node.id, variant.node.id);
                 }
             }
         }
@@ -7929,7 +7925,7 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &vec[str] pt,
             ccx.item_ids.insert(it.id, v);
             auto s =
                 mangle_exported_name(ccx, new_pt + [it.ident],
-                                     node_ann_type(ccx, it.ann));
+                                     node_id_type(ccx, it.id));
             ccx.item_symbols.insert(it.id, s);
         }
         case (_) { }
@@ -8102,7 +8098,7 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
-               &str output) -> ModuleRef {
+               &str output, &ast_map::map amap) -> ModuleRef {
     auto llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
@@ -8128,20 +8124,19 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              tn=tn,
              externs=new_str_hash[ValueRef](),
              intrinsics=intrinsics,
-             item_ids=new_def_hash[ValueRef](),
-             items=new_def_hash[@ast::item](),
-             native_items=new_def_hash[@ast::native_item](),
-             item_symbols=new_def_hash[str](),
+             item_ids=new_int_hash[ValueRef](),
+             ast_map=amap,
+             item_symbols=new_int_hash[str](),
              mutable main_fn=none[ValueRef],
              crate_meta_name=crate_meta_name(sess, *crate, output),
              crate_meta_vers=crate_meta_vers(sess, *crate),
              crate_meta_extras_hash=crate_meta_extras_hash(sha, *crate),
              tag_sizes=tag_sizes,
-             discrims=new_def_hash[ValueRef](),
-             discrim_symbols=new_def_hash[str](),
-             fn_pairs=new_def_hash[ValueRef](),
-             consts=new_def_hash[ValueRef](),
-             obj_methods=new_def_hash[()](),
+             discrims=new_int_hash[ValueRef](),
+             discrim_symbols=new_int_hash[str](),
+             fn_pairs=new_int_hash[ValueRef](),
+             consts=new_int_hash[ValueRef](),
+             obj_methods=new_int_hash[()](),
              tydescs=tydescs,
              module_data=new_str_hash[ValueRef](),
              lltypes=lltypes,

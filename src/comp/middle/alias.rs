@@ -1,7 +1,8 @@
 
 import front::ast;
 import front::ast::ident;
-import front::ast::def_num;
+import front::ast::node_id;
+import front::ast::def_id;
 import util::common::span;
 import visit::vt;
 import std::vec;
@@ -22,9 +23,9 @@ import std::option::is_none;
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
-    @rec(vec[def_num] root_vars,
-         def_num block_defnum,
-         vec[def_num] bindings,
+    @rec(vec[node_id] root_vars,
+         node_id block_defnum,
+         vec[node_id] bindings,
          vec[ty::t] tys,
          vec[uint] depends_on,
          mutable valid ok);
@@ -33,8 +34,8 @@ type scope = vec[restrict];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
-type ctx =
-    rec(@ty::ctxt tcx, std::map::hashmap[def_num, local_info] local_map);
+type ctx = rec(@ty::ctxt tcx,
+               std::map::hashmap[node_id, local_info] local_map);
 
 fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
     auto cx =
@@ -44,7 +45,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
              // arguments that's otherwise not easily available.
              local_map=util::common::new_int_hash());
     auto v =
-        @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _, _),
+        @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _),
              visit_item=bind visit_item(cx, _, _, _),
              visit_expr=bind visit_expr(cx, _, _, _)
              with *visit::default_visitor[scope]());
@@ -52,11 +53,10 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
 }
 
 fn visit_fn(@ctx cx, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
-            &ident name, &ast::def_id d_id, &ast::ann a, &scope sc,
-            &vt[scope] v) {
+            &ident name, ast::node_id id, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
     for (ast::arg arg_ in f.decl.inputs) {
-        cx.local_map.insert(arg_.id._1, arg(arg_.mode));
+        cx.local_map.insert(arg_.id, arg(arg_.mode));
     }
     vt(v).visit_block(f.body, [], v);
 }
@@ -65,7 +65,7 @@ fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
     alt (i.node) {
         case (ast::item_obj(?o, _, _)) {
             for (ast::obj_field f in o.fields) {
-                cx.local_map.insert(f.id._1, objfield(f.mut));
+                cx.local_map.insert(f.id, objfield(f.mut));
             }
         }
         case (_) { }
@@ -107,8 +107,8 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
         case (ast::expr_for(?decl, ?seq, ?block, _)) {
             check_for(*cx, decl, seq, block, sc, v);
         }
-        case (ast::expr_path(?pt, ?ann)) {
-            check_var(*cx, ex, pt, ann, false, sc);
+        case (ast::expr_path(?pt, ?id)) {
+            check_var(*cx, ex, pt, id, false, sc);
             handled = false;
         }
         case (ast::expr_move(?dest, ?src, _)) {
@@ -126,11 +126,11 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
 }
 
 fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
-   rec(vec[def_num] root_vars, vec[ty::t] unsafe_ts) {
+   rec(vec[node_id] root_vars, vec[ty::t] unsafe_ts) {
     auto fty = ty::expr_ty(*cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
-    let vec[def_num] roots = [];
-    let vec[tup(uint, def_num)] mut_roots = [];
+    let vec[node_id] roots = [];
+    let vec[tup(uint, node_id)] mut_roots = [];
     let vec[ty::t] unsafe_ts = [];
     let vec[uint] unsafe_t_offsets = [];
     auto i = 0u;
@@ -169,8 +169,8 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
     }
     if (vec::len(unsafe_ts) > 0u) {
         alt (f.node) {
-            case (ast::expr_path(_, ?ann)) {
-                if (def_is_local(cx.tcx.def_map.get(ann.id), true)) {
+            case (ast::expr_path(_, ?id)) {
+                if (def_is_local(cx.tcx.def_map.get(id), true)) {
                     cx.tcx.sess.span_fatal(f.span,
                                          #fmt("function may alias with \
                          argument %u, which is not immutably rooted",
@@ -200,7 +200,7 @@ fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
     }
     // Ensure we're not passing a root by mutable alias.
 
-    for (tup(uint, def_num) root in mut_roots) {
+    for (tup(uint, node_id) root in mut_roots) {
         auto mut_alias_to_root = vec::count(root._1, roots) > 1u;
         for (restrict r in sc) {
             if (vec::member(root._1, r.root_vars)) {
@@ -228,13 +228,13 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
             auto mut_a = arg_t.mode == ty::mo_alias(true);
             auto ok = true;
             alt (args.(i).node) {
-                case (ast::expr_path(_, ?ann)) {
-                    auto def = cx.tcx.def_map.get(ann.id);
+                case (ast::expr_path(_, ?id)) {
+                    auto def = cx.tcx.def_map.get(id);
                     auto dnum = ast::def_id_of_def(def)._1;
                     alt (cx.local_map.find(dnum)) {
                         case (some(arg(ast::alias(?mut)))) {
                             if (mut_a && !mut) {
-                                cx.tcx.sess.span_warn(args.(i).span,
+                                cx.tcx.sess.span_fatal(args.(i).span,
                                                       "passing an immutable \
                                      alias by mutable alias");
                             }
@@ -245,7 +245,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
                 case (_) { ok = false; }
             }
             if (!ok) {
-                cx.tcx.sess.span_warn(args.(i).span,
+                cx.tcx.sess.span_fatal(args.(i).span,
                                       "can not pass a local value by \
                                      alias to a tail call");
             }
@@ -282,11 +282,11 @@ fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms, &scope sc,
     }
 }
 
-fn arm_defnums(&ast::arm arm) -> vec[def_num] {
+fn arm_defnums(&ast::arm arm) -> vec[node_id] {
     auto dnums = [];
-    fn walk_pat(&mutable vec[def_num] found, &@ast::pat p) {
+    fn walk_pat(&mutable vec[node_id] found, &@ast::pat p) {
         alt (p.node) {
-            case (ast::pat_bind(_, ?did, _)) { vec::push(found, did._1); }
+            case (ast::pat_bind(_, ?id)) { vec::push(found, id); }
             case (ast::pat_tag(_, ?children, _)) {
                 for (@ast::pat child in children) { walk_pat(found, child); }
             }
@@ -303,7 +303,7 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
     alt (call.node) {
         case (ast::expr_call(?f, ?args, _)) {
             auto data = check_call(cx, f, args, sc);
-            auto defnum = local.node.id._1;
+            auto defnum = local.node.id;
             auto new_sc =
                 @rec(root_vars=data.root_vars,
                      block_defnum=defnum,
@@ -319,7 +319,7 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
 fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
              &scope sc, &vt[scope] v) {
     visit::visit_expr(seq, sc, v);
-    auto defnum = local.node.id._1;
+    auto defnum = local.node.id;
     auto root = expr_root(cx, seq, false);
     auto root_def =
         alt (path_def_id(cx, root.ex)) {
@@ -347,9 +347,9 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
     visit::visit_block(block, sc + [new_sc], v);
 }
 
-fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::ann ann, bool assign,
-             &scope sc) {
-    auto def = cx.tcx.def_map.get(ann.id);
+fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
+             bool assign, &scope sc) {
+    auto def = cx.tcx.def_map.get(id);
     if (!def_is_local(def, true)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
@@ -374,8 +374,8 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
                 &vt[scope] v) {
     visit_expr(cx, src, sc, v);
     alt (dest.node) {
-        case (ast::expr_path(?p, ?ann)) {
-            auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(ann.id))._1;
+        case (ast::expr_path(?p, ?id)) {
+            auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(id))._1;
             if (is_immutable_alias(cx, sc, dnum)) {
                 cx.tcx.sess.span_fatal(dest.span,
                                      "assigning to immutable alias");
@@ -389,7 +389,7 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
                     r.ok = overwritten(dest.span, p);
                 }
             }
-            check_var(*cx, dest, p, ann, true, sc);
+            check_var(*cx, dest, p, id, true, sc);
         }
         case (_) {
             auto root = expr_root(*cx, dest, false);
@@ -410,7 +410,7 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
     }
 }
 
-fn is_immutable_alias(&@ctx cx, &scope sc, def_num dnum) -> bool {
+fn is_immutable_alias(&@ctx cx, &scope sc, node_id dnum) -> bool {
     alt (cx.local_map.find(dnum)) {
         case (some(arg(ast::alias(false)))) { ret true; }
         case (_) { }
@@ -421,7 +421,7 @@ fn is_immutable_alias(&@ctx cx, &scope sc, def_num dnum) -> bool {
     ret false;
 }
 
-fn is_immutable_objfield(&@ctx cx, def_num dnum) -> bool {
+fn is_immutable_objfield(&@ctx cx, node_id dnum) -> bool {
     ret cx.local_map.find(dnum) == some(objfield(ast::imm));
 }
 
@@ -447,11 +447,11 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
     }
 }
 
-fn deps(&scope sc, vec[def_num] roots) -> vec[uint] {
+fn deps(&scope sc, vec[node_id] roots) -> vec[uint] {
     auto i = 0u;
     auto result = [];
     for (restrict r in sc) {
-        for (def_num dn in roots) {
+        for (node_id dn in roots) {
             if (vec::member(dn, r.bindings)) { vec::push(result, i); }
         }
         i += 1u;
@@ -567,8 +567,8 @@ fn inner_mut(&vec[deref] ds) -> option::t[ty::t] {
 
 fn path_def_id(&ctx cx, &@ast::expr ex) -> option::t[ast::def_id] {
     alt (ex.node) {
-        case (ast::expr_path(_, ?ann)) {
-            ret some(ast::def_id_of_def(cx.tcx.def_map.get(ann.id)));
+        case (ast::expr_path(_, ?id)) {
+            ret some(ast::def_id_of_def(cx.tcx.def_map.get(id)));
         }
         case (_) { ret none; }
     }

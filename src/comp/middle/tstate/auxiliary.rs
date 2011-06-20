@@ -10,14 +10,15 @@ import std::option::some;
 import std::option::maybe;
 import front::ast;
 import front::ast::*;
-import middle::ty::expr_ann;
+import middle::ty::expr_node_id;
 import util::common;
 import util::common::span;
 import util::common::respan;
 import util::common::log_block;
-import util::common::new_def_hash;
+import util::common::new_int_hash;
 import util::common::new_uint_hash;
 import util::common::log_expr_err;
+import util::common::istr;
 import util::common::uistr;
 import util::common::lit_eq;
 import pretty::pprust::path_to_str;
@@ -37,7 +38,6 @@ import tstate::ann::extend_poststate;
 import tstate::ann::set_precondition;
 import tstate::ann::set_postcondition;
 import tstate::ann::ts_ann;
-import util::common::istr;
 import pretty::ppaux::constr_args_to_str;
 import pretty::ppaux::lit_to_str;
 
@@ -210,13 +210,13 @@ tag constraint {
 
 tag constr__ { ninit(ident); npred(path, vec[@constr_arg_use]); }
 
-type constr_ = rec(def_id id, constr__ c);
+type constr_ = rec(node_id id, constr__ c);
 
 type constr = spanned[constr_];
 
 type norm_constraint = rec(uint bit_num, constr c);
 
-type constr_map = @std::map::hashmap[def_id, constraint];
+type constr_map = @std::map::hashmap[node_id, constraint];
 
 type fn_info = rec(constr_map constrs, uint num_constraints, controlflow cf);
 
@@ -226,51 +226,53 @@ type node_ann_table = @mutable vec[mutable ts_ann];
 
 
 /* mapping from function name to fn_info map */
-type fn_info_map = @std::map::hashmap[def_id, fn_info];
+type fn_info_map = @std::map::hashmap[node_id, fn_info];
 
-type fn_ctxt = rec(fn_info enclosing, def_id id, ident name, crate_ctxt ccx);
+type fn_ctxt = rec(fn_info enclosing, node_id id, ident name, crate_ctxt ccx);
 
 type crate_ctxt = rec(ty::ctxt tcx, node_ann_table node_anns, fn_info_map fm);
 
-fn get_fn_info(&crate_ctxt ccx, def_id did) -> fn_info {
-    assert (ccx.fm.contains_key(did));
-    ret ccx.fm.get(did);
+fn get_fn_info(&crate_ctxt ccx, node_id id) -> fn_info {
+    assert (ccx.fm.contains_key(id));
+    ret ccx.fm.get(id);
 }
 
-fn add_node(&crate_ctxt ccx, uint i, &ts_ann a) {
+fn add_node(&crate_ctxt ccx, node_id i, &ts_ann a) {
     auto sz = len(*ccx.node_anns);
-    if (sz <= i) { grow(*ccx.node_anns, i - sz + 1u, empty_ann(0u)); }
+    if (sz <= i as uint) {
+        grow(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
+    }
     ccx.node_anns.(i) = a;
 }
 
-fn get_ts_ann(&crate_ctxt ccx, uint i) -> option::t[ts_ann] {
-    if (i < len(*ccx.node_anns)) {
+fn get_ts_ann(&crate_ctxt ccx, node_id i) -> option::t[ts_ann] {
+    if (i as uint < len(*ccx.node_anns)) {
         ret some[ts_ann](ccx.node_anns.(i));
     } else { ret none[ts_ann]; }
 }
 
 
 /********* utils ********/
-fn ann_to_ts_ann(&crate_ctxt ccx, &ann a) -> ts_ann {
-    alt (get_ts_ann(ccx, a.id)) {
+fn node_id_to_ts_ann(&crate_ctxt ccx, node_id id) -> ts_ann {
+    alt (get_ts_ann(ccx, id)) {
         case (none) {
-            log_err "ann_to_ts_ann: no ts_ann for node_id " + uistr(a.id);
+            log_err "node_id_to_ts_ann: no ts_ann for node_id " + istr(id);
             fail;
         }
         case (some(?t)) { ret t; }
     }
 }
 
-fn ann_to_poststate(&crate_ctxt ccx, ann a) -> poststate {
-    log "ann_to_poststate";
-    ret ann_to_ts_ann(ccx, a).states.poststate;
+fn node_id_to_poststate(&crate_ctxt ccx, node_id id) -> poststate {
+    log "node_id_to_poststate";
+    ret node_id_to_ts_ann(ccx, id).states.poststate;
 }
 
 fn stmt_to_ann(&crate_ctxt ccx, &stmt s) -> ts_ann {
     log "stmt_to_ann";
     alt (s.node) {
-        case (stmt_decl(_, ?a)) { ret ann_to_ts_ann(ccx, a); }
-        case (stmt_expr(_, ?a)) { ret ann_to_ts_ann(ccx, a); }
+        case (stmt_decl(_, ?id)) { ret node_id_to_ts_ann(ccx, id); }
+        case (stmt_expr(_, ?id)) { ret node_id_to_ts_ann(ccx, id); }
         case (stmt_crate_directive(_)) {
             log_err "expecting an annotated statement here";
             fail;
@@ -282,14 +284,14 @@ fn stmt_to_ann(&crate_ctxt ccx, &stmt s) -> ts_ann {
 /* fails if e has no annotation */
 fn expr_states(&crate_ctxt ccx, @expr e) -> pre_and_post_state {
     log "expr_states";
-    ret ann_to_ts_ann(ccx, expr_ann(e)).states;
+    ret node_id_to_ts_ann(ccx, expr_node_id(e)).states;
 }
 
 
 /* fails if e has no annotation */
 fn expr_pp(&crate_ctxt ccx, @expr e) -> pre_and_post {
     log "expr_pp";
-    ret ann_to_ts_ann(ccx, expr_ann(e)).conditions;
+    ret node_id_to_ts_ann(ccx, expr_node_id(e)).conditions;
 }
 
 fn stmt_pp(&crate_ctxt ccx, &stmt s) -> pre_and_post {
@@ -300,7 +302,7 @@ fn stmt_pp(&crate_ctxt ccx, &stmt s) -> pre_and_post {
 /* fails if b has no annotation */
 fn block_pp(&crate_ctxt ccx, &block b) -> pre_and_post {
     log "block_pp";
-    ret ann_to_ts_ann(ccx, b.node.a).conditions;
+    ret node_id_to_ts_ann(ccx, b.node.id).conditions;
 }
 
 fn clear_pp(pre_and_post pp) {
@@ -308,14 +310,14 @@ fn clear_pp(pre_and_post pp) {
     ann::clear(pp.postcondition);
 }
 
-fn clear_precond(&crate_ctxt ccx, &ann a) {
-    auto pp = ann_to_ts_ann(ccx, a);
+fn clear_precond(&crate_ctxt ccx, node_id id) {
+    auto pp = node_id_to_ts_ann(ccx, id);
     ann::clear(pp.conditions.precondition);
 }
 
 fn block_states(&crate_ctxt ccx, &block b) -> pre_and_post_state {
     log "block_states";
-    ret ann_to_ts_ann(ccx, b.node.a).states;
+    ret node_id_to_ts_ann(ccx, b.node.id).states;
 }
 
 fn stmt_states(&crate_ctxt ccx, &stmt s) -> pre_and_post_state {
@@ -376,60 +378,63 @@ fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
 
 
 /* sets the pre_and_post for an ann */
-fn with_pp(&crate_ctxt ccx, &ann a, pre_and_post p) {
-    add_node(ccx, a.id, @rec(conditions=p, states=empty_states(pps_len(p))));
+fn with_pp(&crate_ctxt ccx, node_id id, pre_and_post p) {
+    add_node(ccx, id, @rec(conditions=p, states=empty_states(pps_len(p))));
 }
 
-fn set_prestate_ann(&crate_ctxt ccx, &ann a, &prestate pre) -> bool {
+fn set_prestate_ann(&crate_ctxt ccx, node_id id, &prestate pre) -> bool {
     log "set_prestate_ann";
-    ret set_prestate(ann_to_ts_ann(ccx, a), pre);
+    ret set_prestate(node_id_to_ts_ann(ccx, id), pre);
 }
 
-fn extend_prestate_ann(&crate_ctxt ccx, &ann a, &prestate pre) -> bool {
+fn extend_prestate_ann(&crate_ctxt ccx, node_id id, &prestate pre) -> bool {
     log "extend_prestate_ann";
-    ret extend_prestate(ann_to_ts_ann(ccx, a).states.prestate, pre);
+    ret extend_prestate(node_id_to_ts_ann(ccx, id).states.prestate, pre);
 }
 
-fn set_poststate_ann(&crate_ctxt ccx, &ann a, &poststate post) -> bool {
+fn set_poststate_ann(&crate_ctxt ccx, node_id id, &poststate post) -> bool {
     log "set_poststate_ann";
-    ret set_poststate(ann_to_ts_ann(ccx, a), post);
+    ret set_poststate(node_id_to_ts_ann(ccx, id), post);
 }
 
-fn extend_poststate_ann(&crate_ctxt ccx, &ann a, &poststate post) -> bool {
+fn extend_poststate_ann(&crate_ctxt ccx, node_id id, &poststate post)
+    -> bool {
     log "extend_poststate_ann";
-    ret extend_poststate(ann_to_ts_ann(ccx, a).states.poststate, post);
+    ret extend_poststate(node_id_to_ts_ann(ccx, id).states.poststate, post);
 }
 
-fn set_pre_and_post(&crate_ctxt ccx, &ann a, &precond pre, &postcond post) {
+fn set_pre_and_post(&crate_ctxt ccx, node_id id, &precond pre,
+                    &postcond post) {
     log "set_pre_and_post";
-    auto t = ann_to_ts_ann(ccx, a);
+    auto t = node_id_to_ts_ann(ccx, id);
     set_precondition(t, pre);
     set_postcondition(t, post);
 }
 
-fn copy_pre_post(&crate_ctxt ccx, &ann a, &@expr sub) {
+fn copy_pre_post(&crate_ctxt ccx, node_id id, &@expr sub) {
     log "set_pre_and_post";
     auto p = expr_pp(ccx, sub);
-    copy_pre_post_(ccx, a, p.precondition, p.postcondition);
+    copy_pre_post_(ccx, id, p.precondition, p.postcondition);
 }
 
-fn copy_pre_post_(&crate_ctxt ccx, &ann a, &prestate pre, &poststate post) {
+fn copy_pre_post_(&crate_ctxt ccx, node_id id, &prestate pre,
+                  &poststate post) {
     log "set_pre_and_post";
-    auto t = ann_to_ts_ann(ccx, a);
+    auto t = node_id_to_ts_ann(ccx, id);
     set_precondition(t, pre);
     set_postcondition(t, post);
 }
 
 /* sets all bits to *1* */
-fn set_postcond_false(&crate_ctxt ccx, &ann a) {
-    auto p = ann_to_ts_ann(ccx, a);
+fn set_postcond_false(&crate_ctxt ccx, node_id id) {
+    auto p = node_id_to_ts_ann(ccx, id);
     ann::set(p.conditions.postcondition);
 }
 
-fn pure_exp(&crate_ctxt ccx, &ann a, &prestate p) -> bool {
+fn pure_exp(&crate_ctxt ccx, node_id id, &prestate p) -> bool {
     auto changed = false;
-    changed = extend_prestate_ann(ccx, a, p) || changed;
-    changed = extend_poststate_ann(ccx, a, p) || changed;
+    changed = extend_prestate_ann(ccx, id, p) || changed;
+    changed = extend_poststate_ann(ccx, id, p) || changed;
     ret changed;
 }
 
@@ -449,49 +454,41 @@ fn num_constraints(fn_info m) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
     let vec[mutable ts_ann] na = vec::empty_mut();
-    ret rec(tcx=cx, node_anns=@mutable na, fm=@new_def_hash[fn_info]());
+    ret rec(tcx=cx, node_anns=@mutable na, fm=@new_int_hash[fn_info]());
 }
-
-fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
-    alt (ccx.fm.find(d)) {
-        case (some(?fi)) { ret fi.cf; }
-        case (none) { ret return; }
-    }
-}
-
 
 /* Use e's type to determine whether it returns.
  If it has a function type with a ! annotation,
 the answer is noreturn. */
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx, expr_ann(e)))) {
+    alt (ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, expr_node_id(e)))) {
         case (ty::ty_fn(_, _, _, ?cf, _)) { ret cf; }
         case (_) { ret return; }
     }
 }
 
 fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ty::constr_def] {
-    alt (ty::struct(cx, ty::ann_to_type(cx, expr_ann(e)))) {
+    alt (ty::struct(cx, ty::node_id_to_type(cx, expr_node_id(e)))) {
         case (ty::ty_fn(_, _, _, _, ?cs)) { ret cs; }
         case (_) { ret []; }
     }
 }
 
-fn ann_to_def_strict(&ty::ctxt cx, &ann a) -> def {
-    alt (cx.def_map.find(a.id)) {
+fn node_id_to_def_strict(&ty::ctxt cx, node_id id) -> def {
+    alt (cx.def_map.find(id)) {
         case (none) {
-            log_err "ann_to_def: node_id " + uistr(a.id) + " has no def";
+            log_err "node_id_to_def: node_id " + istr(id) + " has no def";
             fail;
         }
         case (some(?d)) { ret d; }
     }
 }
 
-fn ann_to_def(&crate_ctxt ccx, &ann a) -> option::t[def] {
-    ret ccx.tcx.def_map.find(a.id);
+fn node_id_to_def(&crate_ctxt ccx, node_id id) -> option::t[def] {
+    ret ccx.tcx.def_map.find(id);
 }
 
-fn norm_a_constraint(&def_id id, &constraint c) -> vec[norm_constraint] {
+fn norm_a_constraint(node_id id, &constraint c) -> vec[norm_constraint] {
     alt (c) {
         case (cinit(?n, ?sp, ?i)) {
             ret [rec(bit_num=n, c=respan(sp, rec(id=id, c=ninit(i))))];
@@ -515,7 +512,7 @@ fn norm_a_constraint(&def_id id, &constraint c) -> vec[norm_constraint] {
 // non-exhaustive match in trans.
 fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
     let vec[norm_constraint] res = [];
-    for each (@tup(def_id, constraint) p in fcx.enclosing.constrs.items()) {
+    for each (@tup(node_id, constraint) p in fcx.enclosing.constrs.items()) {
         res += norm_a_constraint(p._0, p._1);
     }
     ret res;
@@ -536,14 +533,14 @@ fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
     fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
 }
 
-fn def_id_for_constr(ty::ctxt tcx, uint t) -> def_id {
+fn node_id_for_constr(ty::ctxt tcx, node_id t) -> node_id {
     alt (tcx.def_map.find(t)) {
         case (none) {
-            tcx.sess.bug("def_id_for_constr: bad node_id " + uistr(t));
+            tcx.sess.bug("node_id_for_constr: bad node_id " + istr(t));
         }
-        case (some(def_fn(?i))) { ret i; }
+        case (some(def_fn(?i))) { ret i._1; }
         case (_) {
-            tcx.sess.bug("def_id_for_constr: pred is not a function");
+            tcx.sess.bug("node_id_for_constr: pred is not a function");
         }
     }
 }
@@ -580,9 +577,9 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
              // typechecker bug
              expr_call(?operator, ?args, _)) {
             alt (operator.node) {
-                case (expr_path(?p, ?a)) {
+                case (expr_path(?p, ?id)) {
                     ret respan(e.span,
-                               rec(id=def_id_for_constr(tcx, a.id),
+                               rec(id=node_id_for_constr(tcx, id),
                                    c=npred(p,
                                            exprs_to_constr_args(tcx, args))));
                 }

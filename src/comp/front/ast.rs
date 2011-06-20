@@ -16,16 +16,15 @@ type path = spanned[path_];
 fn path_name(&path p) -> str { ret str::connect(p.node.idents, "::"); }
 
 type crate_num = int;
+type node_id = int;
+type def_id = tup(crate_num, node_id);
 
 const crate_num local_crate = 0;
-
-type def_num = int;
-
-type def_id = tup(crate_num, def_num);
+fn local_def(node_id id) -> def_id {
+    ret tup(local_crate, id);
+}
 
 type ty_param = ident;
-
-type ann = rec(uint id);
 
 tag def {
     def_fn(def_id);
@@ -102,15 +101,15 @@ type meta_item_ = rec(ident key, str value);
 
 type block = spanned[block_];
 
-type block_ = rec(vec[@stmt] stmts, option::t[@expr] expr, ann a);
+type block_ = rec(vec[@stmt] stmts, option::t[@expr] expr, node_id id);
 
 type pat = spanned[pat_];
 
 tag pat_ {
-    pat_wild(ann);
-    pat_bind(ident, def_id, ann);
-    pat_lit(@lit, ann);
-    pat_tag(path, vec[@pat], ann);
+    pat_wild(node_id);
+    pat_bind(ident, node_id);
+    pat_lit(@lit, node_id);
+    pat_tag(path, vec[@pat], node_id);
 }
 
 tag mutability { mut; imm; maybe_mut; }
@@ -183,8 +182,8 @@ tag mode { val; alias(bool); }
 type stmt = spanned[stmt_];
 
 tag stmt_ {
-    stmt_decl(@decl, ann);
-    stmt_expr(@expr, ann);
+    stmt_decl(@decl, node_id);
+    stmt_expr(@expr, node_id);
 
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
@@ -199,8 +198,7 @@ type local_ =
         bool infer,
         ident ident,
         option::t[initializer] init,
-        def_id id,
-        ann ann);
+        node_id id);
 
 type local = spanned[local_];
 
@@ -225,58 +223,58 @@ tag seq_kind { sk_unique; sk_rc; }
 type expr = spanned[expr_];
 
 tag expr_ {
-    expr_vec(vec[@expr], mutability, seq_kind, ann);
-    expr_tup(vec[elt], ann);
-    expr_rec(vec[field], option::t[@expr], ann);
-    expr_call(@expr, vec[@expr], ann);
-    expr_self_method(ident, ann);
-    expr_bind(@expr, vec[option::t[@expr]], ann);
-    expr_spawn(spawn_dom, option::t[str], @expr, vec[@expr], ann);
-    expr_binary(binop, @expr, @expr, ann);
-    expr_unary(unop, @expr, ann);
-    expr_lit(@lit, ann);
-    expr_cast(@expr, @ty, ann);
-    expr_if(@expr, block, option::t[@expr], ann);
-    expr_while(@expr, block, ann);
-    expr_for(@local, @expr, block, ann);
-    expr_for_each(@local, @expr, block, ann);
-    expr_do_while(block, @expr, ann);
-    expr_alt(@expr, vec[arm], ann);
-    expr_fn(_fn, ann);
-    expr_block(block, ann);
+    expr_vec(vec[@expr], mutability, seq_kind, node_id);
+    expr_tup(vec[elt], node_id);
+    expr_rec(vec[field], option::t[@expr], node_id);
+    expr_call(@expr, vec[@expr], node_id);
+    expr_self_method(ident, node_id);
+    expr_bind(@expr, vec[option::t[@expr]], node_id);
+    expr_spawn(spawn_dom, option::t[str], @expr, vec[@expr], node_id);
+    expr_binary(binop, @expr, @expr, node_id);
+    expr_unary(unop, @expr, node_id);
+    expr_lit(@lit, node_id);
+    expr_cast(@expr, @ty, node_id);
+    expr_if(@expr, block, option::t[@expr], node_id);
+    expr_while(@expr, block, node_id);
+    expr_for(@local, @expr, block, node_id);
+    expr_for_each(@local, @expr, block, node_id);
+    expr_do_while(block, @expr, node_id);
+    expr_alt(@expr, vec[arm], node_id);
+    expr_fn(_fn, node_id);
+    expr_block(block, node_id);
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
      */
-    expr_move(@expr, @expr, ann);
-    expr_assign(@expr,@expr, ann);
-    expr_swap(@expr, @expr, ann);
-    expr_assign_op(binop, @expr, @expr, ann);
-    expr_send(@expr, @expr, ann);
-    expr_recv(@expr, @expr, ann);
-    expr_field(@expr, ident, ann);
-    expr_index(@expr, @expr, ann);
-    expr_path(path, ann);
-    expr_ext(path, vec[@expr], option::t[str], @expr, ann);
-    expr_fail(ann, option::t[str]);
-    expr_break(ann);
-    expr_cont(ann);
-    expr_ret(option::t[@expr], ann);
-    expr_put(option::t[@expr], ann);
-    expr_be(@expr, ann);
-    expr_log(int, @expr, ann);
+    expr_move(@expr, @expr, node_id);
+    expr_assign(@expr,@expr, node_id);
+    expr_swap(@expr, @expr, node_id);
+    expr_assign_op(binop, @expr, @expr, node_id);
+    expr_send(@expr, @expr, node_id);
+    expr_recv(@expr, @expr, node_id);
+    expr_field(@expr, ident, node_id);
+    expr_index(@expr, @expr, node_id);
+    expr_path(path, node_id);
+    expr_ext(path, vec[@expr], option::t[str], @expr, node_id);
+    expr_fail(node_id, option::t[str]);
+    expr_break(node_id);
+    expr_cont(node_id);
+    expr_ret(option::t[@expr], node_id);
+    expr_put(option::t[@expr], node_id);
+    expr_be(@expr, node_id);
+    expr_log(int, @expr, node_id);
 
     /* just an assert, no significance to typestate */
-    expr_assert(@expr, ann);
+    expr_assert(@expr, node_id);
 
     /* preds that typestate is aware of */
-    expr_check(@expr, ann);
+    expr_check(@expr, node_id);
    /* FIXME Would be nice if expr_check desugared
       to expr_if_check. */
-    expr_if_check(@expr, block, option::t[@expr], ann);
-    expr_port(ann);
-    expr_chan(@expr, ann);
-    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids, ann);
+    expr_if_check(@expr, block, option::t[@expr], node_id);
+    expr_port(node_id);
+    expr_chan(@expr, node_id);
+    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids, node_id);
 }
 
 type lit = spanned[lit_];
@@ -348,7 +346,7 @@ tag ty_ {
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty, controlflow, vec[@constr]);
     ty_obj(vec[ty_method]);
-    ty_path(path, ann);
+    ty_path(path, node_id);
     ty_type;
     ty_constr(@ty, vec[@constr]);
 }
@@ -368,7 +366,9 @@ type constr_arg = constr_arg_general[uint];
 
 type constr_arg_general[T] = spanned[constr_arg_general_[T]];
 
-type constr_ = rec(path path, vec[@constr_arg_general[uint]] args, ann ann);
+type constr_ = rec(path path,
+                   vec[@constr_arg_general[uint]] args,
+                   node_id id);
 
 type constr = spanned[constr_];
 
@@ -376,7 +376,7 @@ type constr = spanned[constr_];
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
  corresponding to these. */
-type arg = rec(mode mode, @ty ty, ident ident, def_id id);
+type arg = rec(mode mode, @ty ty, ident ident, node_id id);
 
 type fn_decl =
     rec(vec[arg] inputs,
@@ -402,11 +402,11 @@ tag controlflow {
 
 type _fn = rec(fn_decl decl, proto proto, block body);
 
-type method_ = rec(ident ident, _fn meth, def_id id, ann ann);
+type method_ = rec(ident ident, _fn meth, node_id id);
 
 type method = spanned[method_];
 
-type obj_field = rec(mutability mut, @ty ty, ident ident, def_id id, ann ann);
+type obj_field = rec(mutability mut, @ty ty, ident ident, node_id id);
 
 type _obj =
     rec(vec[obj_field] fields, vec[@method] methods, option::t[@method] dtor);
@@ -435,22 +435,22 @@ type native_mod =
         vec[@view_item] view_items,
         vec[@native_item] items);
 
-type variant_arg = rec(@ty ty, def_id id);
+type variant_arg = rec(@ty ty, node_id id);
 
-type variant_ = rec(str name, vec[variant_arg] args, def_id id, ann ann);
+type variant_ = rec(str name, vec[variant_arg] args, node_id id);
 
 type variant = spanned[variant_];
 
 type view_item = spanned[view_item_];
 
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item], def_id, ann);
-    view_item_import(ident, vec[ident], def_id);
-    view_item_import_glob(vec[ident], def_id);
-    view_item_export(ident);
+    view_item_use(ident, vec[@meta_item], node_id);
+    view_item_import(ident, vec[ident], node_id);
+    view_item_import_glob(vec[ident], node_id);
+    view_item_export(ident, node_id);
 }
 
-type obj_def_ids = rec(def_id ty, def_id ctor);
+type obj_def_ids = rec(node_id ty, node_id ctor);
 
 
 // Meta-data associated with an item
@@ -464,14 +464,11 @@ tag attr_style { attr_outer; attr_inner; }
 
 type attribute_ = rec(attr_style style, meta_item value);
 
-type item =
-    rec(ident ident,
-        vec[attribute] attrs,
-        def_id id, // For objs, this is the type def_id
-
-        ann ann,
-        item_ node,
-        span span);
+type item = rec(ident ident,
+                vec[attribute] attrs,
+                node_id id, // For objs, this is the type's def_id
+                item_ node,
+                span span);
 
 tag item_ {
     item_const(@ty, @expr);
@@ -480,21 +477,18 @@ tag item_ {
     item_native_mod(native_mod);
     item_ty(@ty, vec[ty_param]);
     item_tag(vec[variant], vec[ty_param]);
-    item_obj(_obj, vec[ty_param], def_id);
-    /* constructor id */
-
+    item_obj(_obj, vec[ty_param], node_id /* constructor id */);
 }
 
 type native_item = spanned[native_item_];
 
 tag native_item_ {
-    native_item_ty(ident, def_id);
+    native_item_ty(ident, node_id);
     native_item_fn(ident,
                    option::t[str],
                    fn_decl,
                    vec[ty_param],
-                   def_id,
-                   ann);
+                   node_id);
 }
 
 fn is_exported(ident i, _mod m) -> bool {
@@ -514,7 +508,7 @@ fn is_exported(ident i, _mod m) -> bool {
     auto count = 0u;
     for (@ast::view_item vi in m.view_items) {
         alt (vi.node) {
-            case (ast::view_item_export(?id)) {
+            case (ast::view_item_export(?id, _)) {
                 if (str::eq(i, id)) {
                     // even if it's nonlocal (since it's explicit)
 

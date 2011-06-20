@@ -19,6 +19,7 @@ mod middle {
     mod walk;
     mod visit;
     mod metadata;
+    mod ast_map;
     mod resolve;
     mod typeck;
     mod alias;

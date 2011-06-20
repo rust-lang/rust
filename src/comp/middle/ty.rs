@@ -24,10 +24,10 @@ import util::data::interner;
 import pretty::ppaux::ty_to_str;
 
 
-export ann_to_monotype;
-export ann_to_type;
-export ann_to_type_params;
-export ann_to_ty_param_substs_opt_and_ty;
+export node_id_to_monotype;
+export node_id_to_type;
+export node_id_to_type_params;
+export node_id_to_ty_param_substs_opt_and_ty;
 export any_item_native;
 export any_item_rust;
 export arg;
@@ -42,7 +42,7 @@ export ctxt;
 export decl_local_ty;
 export def_has_ty_params;
 export eq_ty;
-export expr_ann;
+export expr_node_id;
 export expr_has_ty_params;
 export expr_ty;
 export fold_ty;
@@ -95,7 +95,7 @@ export mo_val;
 export mo_alias;
 export mt;
 export node_type_table;
-export pat_ann;
+export pat_node_id;
 export pat_ty;
 export path_to_str;
 export rename;
@@ -106,7 +106,7 @@ export sequence_element_type;
 export sequence_is_interior;
 export struct;
 export sort_methods;
-export stmt_ann;
+export stmt_node_id;
 export strip_boxes;
 export sty;
 export substitute_type_params;
@@ -190,14 +190,7 @@ type method =
         controlflow cf,
         vec[@constr_def] constrs);
 
-tag any_item {
-    any_item_rust(@ast::item);
-    any_item_native(@ast::native_item, ast::native_abi);
-}
-
-type item_table = hashmap[ast::def_id, any_item];
-
-type constr_table = hashmap[ast::def_id, vec[constr_def]];
+type constr_table = hashmap[ast::node_id, vec[constr_def]]; 
 
 type mt = rec(t ty, ast::mutability mut);
 
@@ -211,7 +204,7 @@ type ctxt =
         session::session sess,
         resolve::def_map def_map,
         node_type_table node_types,
-        item_table items, // Only contains type items
+        ast_map::map items,
 
         constr_table fn_constrs,
         type_cache tcache,
@@ -396,18 +389,18 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap[tup(int, uint, uint), t](h, e);
 }
 
-fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
+fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
+           ast_map::map amap) -> ctxt {
     let node_type_table ntt =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
-    auto items = new_def_hash[any_item]();
     auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
     auto cx =
         rec(ts=ts,
             sess=s,
             def_map=dm,
             node_types=ntt,
-            items=items,
+            items=amap,
             fn_constrs=cs,
             tcache=tcache,
             rcache=mk_rcache(),
@@ -1602,32 +1595,32 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 
 // Type lookups
-fn ann_to_ty_param_substs_opt_and_ty(&ctxt cx, &ast::ann ann) ->
+fn node_id_to_ty_param_substs_opt_and_ty(&ctxt cx, &ast::node_id id) ->
    ty_param_substs_opt_and_ty {
 
     // Pull out the node type table.
-    alt (smallintmap::find(*cx.node_types, ann.id)) {
+    alt (smallintmap::find(*cx.node_types, id as uint)) {
         case (none) {
-            cx.sess.bug("ann_to_ty_param_substs_opt_and_ty() called on an " +
-                            "untyped node");
+            cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
+                       "an untyped node (" + std::int::to_str(id, 10u) + ")");
         }
         case (some(?tpot)) { ret tpot; }
     }
 }
 
-fn ann_to_type(&ctxt cx, &ast::ann ann) -> t {
-    ret ann_to_ty_param_substs_opt_and_ty(cx, ann)._1;
+fn node_id_to_type(&ctxt cx, &ast::node_id id) -> t {
+    ret node_id_to_ty_param_substs_opt_and_ty(cx, id)._1;
 }
 
-fn ann_to_type_params(&ctxt cx, &ast::ann ann) -> vec[t] {
-    alt (ann_to_ty_param_substs_opt_and_ty(cx, ann)._0) {
+fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> vec[t] {
+    alt (node_id_to_ty_param_substs_opt_and_ty(cx, id)._0) {
         case (none) { let vec[t] result = []; ret result; }
         case (some(?tps)) { ret tps; }
     }
 }
 
-fn ann_has_type_params(&ctxt cx, &ast::ann ann) -> bool {
-    auto tpt = ann_to_ty_param_substs_opt_and_ty(cx, ann);
+fn node_id_has_type_params(&ctxt cx, &ast::node_id id) -> bool {
+    auto tpt = node_id_to_ty_param_substs_opt_and_ty(cx, id);
     ret !option::is_none[vec[t]](tpt._0);
 }
 
@@ -1645,8 +1638,8 @@ fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
 
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
-fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
-    auto tpot = ann_to_ty_param_substs_opt_and_ty(cx, a);
+fn node_id_to_monotype(&ctxt cx, ast::node_id id) -> t {
+    auto tpot = node_id_to_ty_param_substs_opt_and_ty(cx, id);
     ret ty_param_substs_opt_and_ty_to_monotype(cx, tpot);
 }
 
@@ -1726,59 +1719,61 @@ fn ty_var_id(&ctxt cx, t typ) -> int {
 
 
 // Type accessors for AST nodes
-fn block_ty(&ctxt cx, &ast::block b) -> t { ret ann_to_type(cx, b.node.a); }
+fn block_ty(&ctxt cx, &ast::block b) -> t {
+    ret node_id_to_type(cx, b.node.id);
+}
 
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
-    ret ann_to_monotype(cx, pat_ann(pat));
+    ret node_id_to_monotype(cx, pat_node_id(pat));
 }
 
-fn expr_ann(&@ast::expr e) -> ast::ann {
-    alt (e.node) {
-        case (ast::expr_vec(_, _, _, ?a)) { ret a; }
-        case (ast::expr_tup(_, ?a)) { ret a; }
-        case (ast::expr_rec(_, _, ?a)) { ret a; }
-        case (ast::expr_call(_, _, ?a)) { ret a; }
-        case (ast::expr_bind(_, _, ?a)) { ret a; }
-        case (ast::expr_binary(_, _, _, ?a)) { ret a; }
-        case (ast::expr_unary(_, _, ?a)) { ret a; }
-        case (ast::expr_lit(_, ?a)) { ret a; }
-        case (ast::expr_cast(_, _, ?a)) { ret a; }
-        case (ast::expr_if(_, _, _, ?a)) { ret a; }
-        case (ast::expr_if_check(_, _, _, ?a)) { ret a; }
-        case (ast::expr_while(_, _, ?a)) { ret a; }
-        case (ast::expr_for(_, _, _, ?a)) { ret a; }
-        case (ast::expr_for_each(_, _, _, ?a)) { ret a; }
-        case (ast::expr_do_while(_, _, ?a)) { ret a; }
-        case (ast::expr_alt(_, _, ?a)) { ret a; }
-        case (ast::expr_fn(_, ?a)) { ret a; }
-        case (ast::expr_block(_, ?a)) { ret a; }
-        case (ast::expr_move(_, _, ?a)) { ret a; }
-        case (ast::expr_assign(_, _, ?a)) { ret a; }
-        case (ast::expr_swap(_, _, ?a)) { ret a; }
-        case (ast::expr_assign_op(_, _, _, ?a)) { ret a; }
-        case (ast::expr_send(_, _, ?a)) { ret a; }
-        case (ast::expr_recv(_, _, ?a)) { ret a; }
-        case (ast::expr_field(_, _, ?a)) { ret a; }
-        case (ast::expr_index(_, _, ?a)) { ret a; }
-        case (ast::expr_path(_, ?a)) { ret a; }
-        case (ast::expr_ext(_, _, _, _, ?a)) { ret a; }
-        case (ast::expr_fail(?a, _)) { ret a; }
-        case (ast::expr_ret(_, ?a)) { ret a; }
-        case (ast::expr_put(_, ?a)) { ret a; }
-        case (ast::expr_be(_, ?a)) { ret a; }
-        case (ast::expr_log(_, _, ?a)) { ret a; }
-        case (ast::expr_assert(_, ?a)) { ret a; }
-        case (ast::expr_check(_, ?a)) { ret a; }
-        case (ast::expr_port(?a)) { ret a; }
-        case (ast::expr_chan(_, ?a)) { ret a; }
-        case (ast::expr_anon_obj(_, _, _, ?a)) { ret a; }
-        case (ast::expr_break(?a)) { ret a; }
-        case (ast::expr_cont(?a)) { ret a; }
-        case (ast::expr_self_method(_, ?a)) { ret a; }
-        case (ast::expr_spawn(_, _, _, _, ?a)) { ret a; }
+fn expr_node_id(&@ast::expr e) -> ast::node_id {
+    ret alt (e.node) {
+        case (ast::expr_vec(_, _, _, ?id)) { id }
+        case (ast::expr_tup(_, ?id)) { id }
+        case (ast::expr_rec(_, _, ?id)) { id }
+        case (ast::expr_call(_, _, ?id)) { id }
+        case (ast::expr_bind(_, _, ?id)) { id }
+        case (ast::expr_binary(_, _, _, ?id)) { id }
+        case (ast::expr_unary(_, _, ?id)) { id }
+        case (ast::expr_lit(_, ?id)) { id }
+        case (ast::expr_cast(_, _, ?id)) { id }
+        case (ast::expr_if(_, _, _, ?id)) { id }
+        case (ast::expr_if_check(_, _, _, ?id)) { id }
+        case (ast::expr_while(_, _, ?id)) { id }
+        case (ast::expr_for(_, _, _, ?id)) { id }
+        case (ast::expr_for_each(_, _, _, ?id)) { id }
+        case (ast::expr_do_while(_, _, ?id)) { id }
+        case (ast::expr_alt(_, _, ?id)) { id }
+        case (ast::expr_fn(_, ?id)) { id }
+        case (ast::expr_block(_, ?id)) { id }
+        case (ast::expr_move(_, _, ?id)) { id }
+        case (ast::expr_assign(_, _, ?id)) { id }
+        case (ast::expr_swap(_, _, ?id)) { id }
+        case (ast::expr_assign_op(_, _, _, ?id)) { id }
+        case (ast::expr_send(_, _, ?id)) { id }
+        case (ast::expr_recv(_, _, ?id)) { id }
+        case (ast::expr_field(_, _, ?id)) { id }
+        case (ast::expr_index(_, _, ?id)) { id }
+        case (ast::expr_path(_, ?id)) { id }
+        case (ast::expr_ext(_, _, _, _, ?id)) { id }
+        case (ast::expr_fail(?id, _)) { id }
+        case (ast::expr_ret(_, ?id)) { id }
+        case (ast::expr_put(_, ?id)) { id }
+        case (ast::expr_be(_, ?id)) { id }
+        case (ast::expr_log(_, _, ?id)) { id }
+        case (ast::expr_assert(_, ?id)) { id }
+        case (ast::expr_check(_, ?id)) { id }
+        case (ast::expr_port(?id)) { id }
+        case (ast::expr_chan(_, ?id)) { id }
+        case (ast::expr_anon_obj(_, _, _, ?id)) { id }
+        case (ast::expr_break(?id)) { id }
+        case (ast::expr_cont(?id)) { id }
+        case (ast::expr_self_method(_, ?id)) { id }
+        case (ast::expr_spawn(_, _, _, _, ?id)) { id }
     }
 }
 
@@ -1790,39 +1785,39 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
-    ret ann_to_monotype(cx, expr_ann(expr));
+    ret node_id_to_monotype(cx, expr_node_id(expr));
 }
 
 fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(vec[t], t) {
-    auto a = expr_ann(expr);
-    ret tup(ann_to_type_params(cx, a), ann_to_type(cx, a));
+    auto a = expr_node_id(expr);
+    ret tup(node_id_to_type_params(cx, a), node_id_to_type(cx, a));
 }
 
 fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
-    ret ann_has_type_params(cx, expr_ann(expr));
+    ret node_id_has_type_params(cx, expr_node_id(expr));
 }
 
 fn decl_local_ty(&ctxt cx, &@ast::local l) -> t {
-    ret ann_to_type(cx, l.node.ann);
+    ret node_id_to_type(cx, l.node.id);
 }
 
-fn stmt_ann(&@ast::stmt s) -> ast::ann {
+fn stmt_node_id(&@ast::stmt s) -> ast::node_id {
     alt (s.node) {
-        case (ast::stmt_decl(_, ?a)) { ret a; }
-        case (ast::stmt_expr(_, ?a)) { ret a; }
+        case (ast::stmt_decl(_, ?id)) { ret id; }
+        case (ast::stmt_expr(_, ?id)) { ret id; }
         case (ast::stmt_crate_directive(_)) {
-            log_err "ty::stmt_ann(): crate directive found";
+            log_err "ty::stmt_node_id(): crate directive found";
             fail;
         }
     }
 }
 
-fn pat_ann(&@ast::pat p) -> ast::ann {
+fn pat_node_id(&@ast::pat p) -> ast::node_id {
     alt (p.node) {
-        case (ast::pat_wild(?a)) { ret a; }
-        case (ast::pat_bind(_, _, ?a)) { ret a; }
-        case (ast::pat_lit(_, ?a)) { ret a; }
-        case (ast::pat_tag(_, _, ?a)) { ret a; }
+        case (ast::pat_wild(?id)) { ret id; }
+        case (ast::pat_bind(_, ?id)) { ret id; }
+        case (ast::pat_lit(_, ?id)) { ret id; }
+        case (ast::pat_tag(_, _, ?id)) { ret id; }
     }
 }
 
@@ -2688,14 +2683,15 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     if (cx.sess.get_targ_crate_num() != id._0) {
         ret creader::get_tag_variants(cx, id);
     }
-    assert (cx.items.contains_key(id));
-    alt (cx.items.get(id)) {
-        case (any_item_rust(?item)) {
+    assert (cx.items.contains_key(id._1));
+    alt (cx.items.get(id._1)) {
+        case (ast_map::node_item(?item)) {
             alt (item.node) {
                 case (ast::item_tag(?variants, _)) {
                     let vec[variant_info] result = [];
                     for (ast::variant variant in variants) {
-                        auto ctor_ty = ann_to_monotype(cx, variant.node.ann);
+                        auto ctor_ty = node_id_to_monotype
+                            (cx, variant.node.id);
                         let vec[t] arg_tys = [];
                         if (vec::len[ast::variant_arg](variant.node.args) >
                                 0u) {
@@ -2705,7 +2701,9 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
                         }
                         auto did = variant.node.id;
                         result +=
-                            [rec(args=arg_tys, ctor_ty=ctor_ty, id=did)];
+                            [rec(args=arg_tys,
+                                 ctor_ty=ctor_ty,
+                                 id=ast::local_def(did))];
                     }
                     ret result;
                 }
@@ -2759,8 +2757,8 @@ fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
     }
 }
 
-fn ret_ty_of_fn(ctxt cx, ast::ann ann) -> t {
-    ret ret_ty_of_fn_ty(cx, ann_to_type(cx, ann));
+fn ret_ty_of_fn(ctxt cx, ast::node_id id) -> t {
+    ret ret_ty_of_fn_ty(cx, node_id_to_type(cx, id));
 }
 
 

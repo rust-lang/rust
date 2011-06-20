@@ -44,7 +44,7 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
 
 fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit) -> @ast::expr {
     auto sp_lit = @rec(node=lit, span=sp);
-    auto expr = ast::expr_lit(sp_lit, cx.next_ann());
+    auto expr = ast::expr_lit(sp_lit, cx.next_id());
     ret @rec(node=expr, span=sp);
 }
 

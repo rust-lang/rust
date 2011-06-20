@@ -76,15 +76,16 @@ fn time[T](bool do_it, str what, fn() -> T  thunk) -> T {
 fn compile_input(session::session sess, eval::env env, str input,
                  str output) {
     auto time_passes = sess.get_opts().time_passes;
-    auto def = tup(ast::local_crate, 0);
-    auto p = parser::new_parser(sess, env, def, input, 0u, 0u);
+    auto p = parser::new_parser(sess, env, input, 0u, 0);
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
+    auto ast_map = time(time_passes, "ast indexing",
+                        bind middle::ast_map::map_crate(*crate));
     auto d =
         time(time_passes, "resolution",
-             bind resolve::resolve_crate(sess, crate));
-    auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
+             bind resolve::resolve_crate(sess, ast_map, crate));
+    auto ty_cx = ty::mk_ctxt(sess, d._0, d._1, ast_map);
     time[()](time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
     if (sess.get_opts().run_typestate) {
@@ -95,22 +96,22 @@ fn compile_input(session::session sess, eval::env env, str input,
          bind middle::alias::check_crate(@ty_cx, crate));
     auto llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
-                                    bind trans::trans_crate(sess, crate,
-                                                            ty_cx, output));
+                                    bind trans::trans_crate
+                                    (sess, crate, ty_cx, output, ast_map));
     time[()](time_passes, "LLVM passes",
              bind link::write::run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(session::session sess, eval::env env, str input,
                       pp_mode ppm) {
-    auto def = tup(ast::local_crate, 0);
-    auto p = front::parser::new_parser(sess, env, def, input, 0u, 0u);
+    auto p = front::parser::new_parser(sess, env, input, 0u, 0);
     auto crate = parse_input(sess, p, input);
     auto mode;
     alt (ppm) {
         case (ppm_typed) {
-            auto d = resolve::resolve_crate(sess, crate);
-            auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
+            auto amap = middle::ast_map::map_crate(*crate);
+            auto d = resolve::resolve_crate(sess, amap, crate);
+            auto ty_cx = ty::mk_ctxt(sess, d._0, d._1, amap);
             typeck::check_crate(ty_cx, crate);
             mode = ppaux::mo_typed(ty_cx);
         }

@@ -1,7 +1,6 @@
 
 import front::ast;
 import front::ast::method;
-import front::ast::ann;
 import front::ast::item;
 import front::ast::item_fn;
 import front::ast::_fn;
@@ -9,7 +8,9 @@ import front::ast::obj_field;
 import front::ast::_obj;
 import front::ast::stmt;
 import front::ast::ident;
+import front::ast::node_id;
 import front::ast::def_id;
+import front::ast::local_def;
 import front::ast::ty_param;
 import front::ast::crate;
 import front::ast::return;
@@ -118,8 +119,8 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
     }
 }
 
-fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
-                                   &span sp, &ident i, &def_id d) {
+fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
+                                   &span sp, &ident i) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
@@ -141,13 +142,13 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
                   keep_going=bind kg(keepgoing)
                   with walk::default_visitor());
 
-    walk::walk_fn(v, f, sp, i, d, a);
+    walk::walk_fn(v, f, sp, i, id);
 
     /* Finally, check that the return value is initialized */
     auto post = aux::block_poststate(fcx.ccx, f.body);
     let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
     if (f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
-            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, a)) &&
+            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
             f.decl.cf == return) {
         fcx.ccx.tcx.sess.span_note(f.body.span,
                                    "In function " + fcx.name +
@@ -171,8 +172,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a,
     }
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a, &span sp, &ident i,
-                   &def_id d) {
+fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &ident i) {
     /* Compute the pre- and post-states for this function */
 
     auto g = find_pre_post_state_fn;
@@ -180,17 +180,16 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a, &span sp, &ident i,
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f, a, sp, i, d);
+    check_states_against_conditions(fcx, f, id, sp, i);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i, &def_id id,
-             &ann a) {
+fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i, node_id id) {
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
     auto fcx = rec(enclosing=f_info, id=id, name=i, ccx=ccx);
-    check_fn_states(fcx, f, a, sp, i, id);
+    check_fn_states(fcx, f, id, sp, i);
 }
 
 fn check_crate(ty::ctxt cx, @crate crate) {
@@ -205,7 +204,7 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_pre_post = walk::default_visitor();
     do_pre_post =
-        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _, _)
+        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _)
             with do_pre_post);
     walk::walk_crate(do_pre_post, *crate);
     /* Check the pre- and postcondition against the pre- and poststate
@@ -213,7 +212,7 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_states = walk::default_visitor();
     do_states =
-        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _, _) with do_states);
+        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _) with do_states);
     walk::walk_crate(do_states, *crate);
 }
 //

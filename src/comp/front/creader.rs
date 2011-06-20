@@ -359,8 +359,8 @@ fn parse_def_id(vec[u8] buf) -> ast::def_id {
     auto crate_part = vec::slice[u8](buf, 0u, colon_idx);
     auto def_part = vec::slice[u8](buf, colon_idx + 1u, len);
     auto crate_num = uint::parse_buf(crate_part, 10u) as int;
-    auto def_num = uint::parse_buf(def_part, 10u) as int;
-    ret tup(crate_num, def_num);
+    auto def_id = uint::parse_buf(def_part, 10u) as int;
+    ret tup(crate_num, def_id);
 }
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool  eq_fn, uint hash) ->
@@ -407,7 +407,7 @@ fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
         ret ebml::be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
     auto eqer = bind eq_item(_, item_id);
-    auto found = lookup_hash(items, eqer, metadata::hash_def_num(item_id));
+    auto found = lookup_hash(items, eqer, metadata::hash_def_id(item_id));
     if (vec::len(found) == 0u) {
         ret option::none[ebml::doc];
     } else { ret option::some[ebml::doc](found.(0)); }
@@ -606,7 +606,7 @@ type env =
 
 fn visit_view_item(env e, &@ast::view_item i) {
     alt (i.node) {
-        case (ast::view_item_use(?ident, ?meta_items, ?id, ?ann)) {
+        case (ast::view_item_use(?ident, ?meta_items, ?id)) {
             auto cnum;
             if (!e.crate_cache.contains_key(ident)) {
                 cnum = e.next_crate_num;
@@ -615,7 +615,7 @@ fn visit_view_item(env e, &@ast::view_item i) {
                 e.crate_cache.insert(ident, e.next_crate_num);
                 e.next_crate_num += 1;
             } else { cnum = e.crate_cache.get(ident); }
-            e.crate_map.insert(ann.id, cnum);
+            e.crate_map.insert(id, cnum);
         }
         case (_) { }
     }
