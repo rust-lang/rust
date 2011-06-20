@@ -234,7 +234,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
                     alt (cx.local_map.find(dnum)) {
                         case (some(arg(ast::alias(?mut)))) {
                             if (mut_a && !mut) {
-                                cx.tcx.sess.span_warn(args.(i).span,
+                                cx.tcx.sess.span_fatal(args.(i).span,
                                                       "passing an immutable \
                                      alias by mutable alias");
                             }
@@ -245,7 +245,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
                 case (_) { ok = false; }
             }
             if (!ok) {
-                cx.tcx.sess.span_warn(args.(i).span,
+                cx.tcx.sess.span_fatal(args.(i).span,
                                       "can not pass a local value by \
                                      alias to a tail call");
             }
