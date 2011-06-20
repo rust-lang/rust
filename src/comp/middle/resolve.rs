@@ -502,12 +502,12 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
             }
         }
     }
-    fn register(&env e, def_id defid, &span sp, &ident id,
+    fn register(&env e, def_id defid, &span sp, &ident name,
                 &option::t[def] val, &option::t[def] typ,
                 &option::t[def] md) {
         if (option::is_none(val) && option::is_none(typ) &&
                 option::is_none(md)) {
-            unresolved_err(e, sp, id, "import");
+            unresolved_err(e, sp, name, "import");
         } else {
             e.imports.insert(defid._1, resolved(val, typ, md));
         }
@@ -538,8 +538,8 @@ fn ns_name(namespace ns) -> str {
     }
 }
 
-fn unresolved_err(&env e, &span sp, &ident id, &str kind) {
-    e.sess.span_err(sp, mk_unresolved_msg(id, kind));
+fn unresolved_err(&env e, &span sp, &ident name, &str kind) {
+    e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
 fn unresolved_fatal(&env e, &span sp, &ident id, &str kind) -> ! {
@@ -566,11 +566,11 @@ fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
     ret dcur;
 }
 
-fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident id,
+fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident name,
                           namespace ns) -> option::t[def] {
-    alt (lookup_in_scope(e, sc, sp, id, ns)) {
+    alt (lookup_in_scope(e, sc, sp, name, ns)) {
         case (none) {
-            unresolved_err(e, sp, id, ns_name(ns));
+            unresolved_err(e, sp, name, ns_name(ns));
             ret none;
         }
         case (some(?d)) { ret some(d); }
@@ -598,35 +598,37 @@ fn def_is_obj_field(&def d) -> bool {
     ret alt (d) { case (ast::def_obj_field(_)) { true } case (_) { false } };
 }
 
-fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
+fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
    option::t[def] {
-    fn in_scope(&env e, &span sp, &ident id, &scope s, namespace ns) ->
+    fn in_scope(&env e, &span sp, &ident name, &scope s, namespace ns) ->
        option::t[def] {
         //not recursing through globs
 
         alt (s) {
             case (scope_crate(?c)) {
-                ret lookup_in_local_mod(e, -1, sp, id, ns, inside);
+                ret lookup_in_local_mod(e, -1, sp, name, ns, inside);
             }
             case (scope_item(?it)) {
                 alt (it.node) {
                     case (ast::item_obj(?ob, ?ty_params, _)) {
-                        ret lookup_in_obj(id, ob, ty_params, ns);
+                        ret lookup_in_obj(name, ob, ty_params, ns);
                     }
                     case (ast::item_tag(_, ?ty_params)) {
                         if (ns == ns_type) {
-                            ret lookup_in_ty_params(id, ty_params);
+                            ret lookup_in_ty_params(name, ty_params);
                         }
                     }
                     case (ast::item_mod(_)) {
-                        ret lookup_in_local_mod(e, it.id, sp, id, ns, inside);
+                        ret lookup_in_local_mod
+                            (e, it.id, sp, name, ns, inside);
                     }
                     case (ast::item_native_mod(?m)) {
-                        ret lookup_in_local_native_mod(e, it.id, sp, id, ns);
+                        ret lookup_in_local_native_mod
+                            (e, it.id, sp, name, ns);
                     }
                     case (ast::item_ty(_, ?ty_params)) {
                         if (ns == ns_type) {
-                            ret lookup_in_ty_params(id, ty_params);
+                            ret lookup_in_ty_params(name, ty_params);
                         }
                     }
                     case (_) { }
@@ -636,23 +638,23 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
                 alt (it.node) {
                     case (ast::native_item_fn(_, _, ?decl, ?ty_params, _))
                          {
-                        ret lookup_in_fn(id, decl, ty_params, ns);
+                        ret lookup_in_fn(name, decl, ty_params, ns);
                     }
                 }
             }
             case (scope_fn(?decl, ?ty_params)) {
-                ret lookup_in_fn(id, decl, ty_params, ns);
+                ret lookup_in_fn(name, decl, ty_params, ns);
             }
             case (scope_loop(?local)) {
                 if (ns == ns_value) {
-                    if (str::eq(local.node.ident, id)) {
+                    if (str::eq(local.node.ident, name)) {
                         ret some(ast::def_local(local_def(local.node.id)));
                     }
                 }
             }
-            case (scope_block(?b)) { ret lookup_in_block(id, b.node, ns); }
+            case (scope_block(?b)) { ret lookup_in_block(name, b.node, ns); }
             case (scope_arm(?a)) {
-                if (ns == ns_value) { ret lookup_in_pat(id, *a.pat); }
+                if (ns == ns_value) { ret lookup_in_pat(name, *a.pat); }
             }
         }
         ret none[def];
@@ -665,7 +667,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
         alt ({ sc }) {
             case (nil) { ret none[def]; }
             case (cons(?hd, ?tl)) {
-                auto fnd = in_scope(e, sp, id, hd, ns);
+                auto fnd = in_scope(e, sp, name, hd, ns);
                 if (!option::is_none(fnd)) {
                     auto df = option::get(fnd);
                     if (left_fn && def_is_local(df) ||
@@ -686,20 +688,20 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident id, namespace ns) ->
 
 }
 
-fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params) ->
+fn lookup_in_ty_params(&ident name, &vec[ast::ty_param] ty_params) ->
    option::t[def] {
     auto i = 0u;
     for (ast::ty_param tp in ty_params) {
-        if (str::eq(tp, id)) { ret some(ast::def_ty_arg(i)); }
+        if (str::eq(tp, name)) { ret some(ast::def_ty_arg(i)); }
         i += 1u;
     }
     ret none[def];
 }
 
-fn lookup_in_pat(&ident ident, &ast::pat pat) -> option::t[def] {
+fn lookup_in_pat(&ident name, &ast::pat pat) -> option::t[def] {
     alt (pat.node) {
-        case (ast::pat_bind(?name, ?id)) {
-            if (str::eq(name, ident)) {
+        case (ast::pat_bind(?p_name, ?id)) {
+            if (str::eq(p_name, name)) {
                 ret some(ast::def_binding(local_def(id)));
             }
         }
@@ -707,7 +709,7 @@ fn lookup_in_pat(&ident ident, &ast::pat pat) -> option::t[def] {
         case (ast::pat_lit(_, _)) { }
         case (ast::pat_tag(_, ?pats, _)) {
             for (@ast::pat p in pats) {
-                auto found = lookup_in_pat(ident, *p);
+                auto found = lookup_in_pat(name, *p);
                 if (!option::is_none(found)) { ret found; }
             }
         }
@@ -715,46 +717,47 @@ fn lookup_in_pat(&ident ident, &ast::pat pat) -> option::t[def] {
     ret none[def];
 }
 
-fn lookup_in_fn(&ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
+fn lookup_in_fn(&ident name, &ast::fn_decl decl,
+                &vec[ast::ty_param] ty_params,
                 namespace ns) -> option::t[def] {
     alt (ns) {
         case (ns_value) {
             for (ast::arg a in decl.inputs) {
-                if (str::eq(a.ident, id)) {
+                if (str::eq(a.ident, name)) {
                     ret some(ast::def_arg(local_def(a.id)));
                 }
             }
             ret none[def];
         }
-        case (ns_type) { ret lookup_in_ty_params(id, ty_params); }
+        case (ns_type) { ret lookup_in_ty_params(name, ty_params); }
         case (_) { ret none[def]; }
     }
 }
 
-fn lookup_in_obj(&ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
+fn lookup_in_obj(&ident name, &ast::_obj ob, &vec[ast::ty_param] ty_params,
                  namespace ns) -> option::t[def] {
     alt (ns) {
         case (ns_value) {
             for (ast::obj_field f in ob.fields) {
-                if (str::eq(f.ident, id)) {
+                if (str::eq(f.ident, name)) {
                     ret some(ast::def_obj_field(local_def(f.id)));
                 }
             }
             ret none[def];
         }
-        case (ns_type) { ret lookup_in_ty_params(id, ty_params); }
+        case (ns_type) { ret lookup_in_ty_params(name, ty_params); }
         case (_) { ret none[def]; }
     }
 }
 
-fn lookup_in_block(&ident id, &ast::block_ b, namespace ns) ->
+fn lookup_in_block(&ident name, &ast::block_ b, namespace ns) ->
    option::t[def] {
     for (@ast::stmt st in b.stmts) {
         alt (st.node) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
                     case (ast::decl_local(?loc)) {
-                        if (ns == ns_value && str::eq(id, loc.node.ident)) {
+                        if (ns == ns_value && str::eq(name, loc.node.ident)) {
                             ret some(ast::def_local(local_def(loc.node.id)));
                         }
                     }
@@ -762,13 +765,13 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns) ->
                         alt (it.node) {
                             case (ast::item_tag(?variants, _)) {
                                 if (ns == ns_type) {
-                                    if (str::eq(it.ident, id)) {
+                                    if (str::eq(it.ident, name)) {
                                         ret some(ast::def_ty
                                                  (local_def(it.id)));
                                     }
                                 } else if (ns == ns_value) {
                                     for (ast::variant v in variants) {
-                                        if (str::eq(v.node.name, id)) {
+                                        if (str::eq(v.node.name, name)) {
                                             auto i = v.node.id;
                                             ret some(ast::def_variant
                                                      (local_def(it.id),
@@ -778,7 +781,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns) ->
                                 }
                             }
                             case (_) {
-                                if (str::eq(it.ident, id)) {
+                                if (str::eq(it.ident, name)) {
                                     auto found = found_def_item(it, ns);
                                     if (!option::is_none(found)) {
                                         ret found;
@@ -839,39 +842,40 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
     ret none[def];
 }
 
-fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id, namespace ns,
+fn lookup_in_mod_strict(&env e, def m, &span sp, &ident name, namespace ns,
                         dir dr) -> option::t[def] {
-    alt (lookup_in_mod(e, m, sp, id, ns, dr)) {
+    alt (lookup_in_mod(e, m, sp, name, ns, dr)) {
         case (none) {
-            unresolved_err(e, sp, id, ns_name(ns));
+            unresolved_err(e, sp, name, ns_name(ns));
             ret none;
         }
         case (some(?d)) { ret some(d); }
     }
 }
 
-fn lookup_in_mod(&env e, def m, &span sp, &ident id, namespace ns, dir dr) ->
+fn lookup_in_mod(&env e, def m, &span sp, &ident name, namespace ns,
+                 dir dr) ->
    option::t[def] {
     auto defid = ast::def_id_of_def(m);
     if (defid._0 != ast::local_crate) {
         // examining a module in an external crate
 
-        auto cached = e.ext_cache.find(tup(defid, id, ns));
+        auto cached = e.ext_cache.find(tup(defid, name, ns));
         if (!option::is_none(cached)) { ret cached; }
-        auto path = [id];
+        auto path = [name];
         if (defid._1 != -1) { path = e.ext_map.get(defid) + path; }
         auto fnd = lookup_external(e, defid._0, path, ns);
         if (!option::is_none(fnd)) {
-            e.ext_cache.insert(tup(defid, id, ns), option::get(fnd));
+            e.ext_cache.insert(tup(defid, name, ns), option::get(fnd));
         }
         ret fnd;
     }
     alt (m) {
         case (ast::def_mod(?defid)) {
-            ret lookup_in_local_mod(e, defid._1, sp, id, ns, dr);
+            ret lookup_in_local_mod(e, defid._1, sp, name, ns, dr);
         }
         case (ast::def_native_mod(?defid)) {
-            ret lookup_in_local_native_mod(e, defid._1, sp, id, ns);
+            ret lookup_in_local_native_mod(e, defid._1, sp, name, ns);
         }
     }
 }
@@ -1319,13 +1323,13 @@ fn checker(&env e, str kind) -> checker {
     ret @rec(mutable seen=seen, kind=kind, sess=e.sess);
 }
 
-fn add_name(&checker ch, &span sp, &ident id) {
+fn add_name(&checker ch, &span sp, &ident name) {
     for (ident s in ch.seen) {
-        if (str::eq(s, id)) {
-            ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + id);
+        if (str::eq(s, name)) {
+            ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
         }
     }
-    vec::push(ch.seen, id);
+    vec::push(ch.seen, name);
 }
 
 fn ident_id(&ident i) -> ident { ret i; }
