@@ -629,7 +629,7 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
     } else {
         // On heap; resize.
         heap_part = (rust_ivec_heap *)task->realloc(v->payload.ptr,
-                                                    new_alloc);
+                                                new_alloc + sizeof(size_t));
         v->payload.ptr = heap_part;
     }
 
