@@ -400,22 +400,21 @@ fn main(vec[str] args) {
         // The invocations of gcc share some flags across platforms
 
         let vec[str] common_args =
-            [stage, "-Lrt", "-lrustrt", "-fno-strict-aliasing", "-fPIC",
-             "-Wall", "-fno-rtti", "-fno-exceptions", "-g", glu, "-o",
+            [stage, "-Lrt", "-lrustrt", glu,  "-m32", "-o",
              saved_out_filename, saved_out_filename + ".o"];
         auto shared_cmd;
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 shared_cmd = "-shared";
-                gcc_args = common_args + ["-march=i686", "-O2", "-lssp"];
+                gcc_args = common_args + ["-lssp"];
             }
             case (session::os_macos) {
                 shared_cmd = "-dynamiclib";
-                gcc_args = common_args + ["-arch i386", "-O0", "-m32"];
+                gcc_args = common_args;
             }
             case (session::os_linux) {
                 shared_cmd = "-shared";
-                gcc_args = common_args + ["-march=i686", "-O2", "-m32"];
+                gcc_args = common_args;
             }
         }
         if (sopts.shared) {
