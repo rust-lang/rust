@@ -126,8 +126,7 @@ type crate_ctxt =
         // of the first instruction of the item's definition in the executable
         // we're generating.
         hashmap[ast::node_id, ValueRef] item_ids,
-        hashmap[ast::node_id, @ast::item] items,
-        hashmap[ast::node_id, @ast::native_item] native_items,
+        ast_map::map ast_map,
         hashmap[ast::node_id, str] item_symbols,
         mutable option::t[ValueRef] main_fn,
         str crate_meta_name,
@@ -7625,7 +7624,9 @@ fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
 // Returns the number of type parameters that the given native function has.
 fn native_fn_ty_param_count(&@crate_ctxt cx, ast::node_id id) -> uint {
     auto count;
-    auto native_item = cx.native_items.get(id);
+    auto native_item = alt (cx.ast_map.get(id)) {
+        case (ast_map::node_native_item(?i)) { i }
+    };
     alt (native_item.node) {
         case (ast::native_item_ty(_, _)) {
             cx.sess.bug("decl_native_fn_and_pair(): native fn isn't " +
@@ -7668,7 +7669,9 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path,
     auto lltop = bcx.llbb;
     // Declare the function itself.
 
-    auto item = ccx.native_items.get(id);
+    auto item = alt (ccx.ast_map.get(id)) {
+        case (ast_map::node_native_item(?i)) { i }
+    };
     auto fn_type = node_id_type(ccx, id); // NB: has no type params
 
     auto abi = ty::ty_fn_abi(ccx.tcx, fn_type);
@@ -7807,14 +7810,11 @@ fn collect_native_item(@crate_ctxt ccx, &@ast::native_item i, &vec[str] pt,
                        &vt[vec[str]] v) {
     alt (i.node) {
         case (ast::native_item_fn(?name, _, _, _, ?id)) {
-            ccx.native_items.insert(id, i);
             if (!ccx.obj_methods.contains_key(id)) {
                 decl_native_fn_and_pair(ccx, i.span, pt, name, id);
             }
         }
-        case (ast::native_item_ty(_, ?id)) {
-            ccx.native_items.insert(id, i);
-        }
+        case (_) {}
     }
 }
 
@@ -7830,13 +7830,8 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
             llvm::LLVMSetLinkage(g,
                                  lib::llvm::LLVMInternalLinkage as
                                      llvm::Linkage);
-            ccx.items.insert(i.id, i);
             ccx.consts.insert(i.id, g);
         }
-        case (ast::item_mod(?m)) { ccx.items.insert(i.id, i); }
-        case (ast::item_native_mod(_)) { ccx.items.insert(i.id, i); }
-        case (ast::item_ty(_, _)) { ccx.items.insert(i.id, i); }
-        case (ast::item_tag(_, _)) { ccx.items.insert(i.id, i); }
         case (_) { }
     }
 }
@@ -7847,13 +7842,11 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     visit::visit_item(i, new_pt, v);
     alt (i.node) {
         case (ast::item_fn(?f, ?tps)) {
-            ccx.items.insert(i.id, i);
             if (!ccx.obj_methods.contains_key(i.id)) {
                 decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id, i.id);
             }
         }
         case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
-            ccx.items.insert(ctor_id, i);
             decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, i.id,
                              ctor_id);
             for (@ast::method m in ob.methods) {
@@ -8105,7 +8098,7 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
-               &str output) -> ModuleRef {
+               &str output, &ast_map::map amap) -> ModuleRef {
     auto llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
@@ -8132,8 +8125,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              externs=new_str_hash[ValueRef](),
              intrinsics=intrinsics,
              item_ids=new_int_hash[ValueRef](),
-             items=new_int_hash[@ast::item](),
-             native_items=new_int_hash[@ast::native_item](),
+             ast_map=amap,
              item_symbols=new_int_hash[str](),
              mutable main_fn=none[ValueRef],
              crate_meta_name=crate_meta_name(sess, *crate, output),

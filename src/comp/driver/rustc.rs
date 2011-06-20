@@ -96,8 +96,8 @@ fn compile_input(session::session sess, eval::env env, str input,
          bind middle::alias::check_crate(@ty_cx, crate));
     auto llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
-                                    bind trans::trans_crate(sess, crate,
-                                                            ty_cx, output));
+                                    bind trans::trans_crate
+                                    (sess, crate, ty_cx, output, ast_map));
     time[()](time_passes, "LLVM passes",
              bind link::write::run_passes(sess, llmod, output));
 }
