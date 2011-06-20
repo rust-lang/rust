@@ -109,7 +109,7 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 STAGE0 := $(Q)$(call CFG_RUN_TARG,stage0,\
-                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
+                stage0/rustc$(X) $(CFG_RUSTC_FLAGS))
 STAGE1 := $(Q)$(call CFG_RUN_TARG,stage0, \
                 $(CFG_VALGRIND_COMPILE) stage1/rustc$(X) \
                 $(CFG_RUSTC_FLAGS))
