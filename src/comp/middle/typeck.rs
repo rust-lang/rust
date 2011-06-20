@@ -492,9 +492,10 @@ mod collect {
         auto it = cx.tcx.items.get(id._1);
         auto tpt;
         alt (it) {
-            case (ty::any_item_rust(?item)) { tpt = ty_of_item(cx, item); }
-            case (ty::any_item_native(?native_item, ?abi)) {
-                tpt = ty_of_native_item(cx, native_item, abi);
+            case (ast_map::node_item(?item)) { tpt = ty_of_item(cx, item); }
+            case (ast_map::node_native_item(?native_item)) {
+                tpt = ty_of_native_item(cx, native_item,
+                                        ast::native_abi_cdecl);
             }
         }
         ret tpt;
@@ -671,30 +672,6 @@ mod collect {
         ret vec::map[@ast::method,
                      method](bind ty_of_method(cx, _), object.methods);
     }
-    fn collect(ty::item_table id_to_ty_item, &@ast::item i) {
-        alt (i.node) {
-            case (ast::item_ty(_, _)) {
-                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
-            }
-            case (ast::item_tag(_, _)) {
-                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
-            }
-            case (ast::item_obj(_, _, _)) {
-                id_to_ty_item.insert(i.id, ty::any_item_rust(i));
-            }
-            case (_) {/* empty */ }
-        }
-    }
-    fn collect_native(ty::item_table id_to_ty_item, &@ast::native_item i) {
-        alt (i.node) {
-            case (ast::native_item_ty(_, ?id)) {
-                // The abi of types is not used.
-                auto abi = ast::native_abi_cdecl;
-                id_to_ty_item.insert(id, ty::any_item_native(i, abi));
-            }
-            case (_) {/* no-op */ }
-        }
-    }
     fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
                &@ast::item it) {
         alt (it.node) {
@@ -790,20 +767,12 @@ mod collect {
         }
     }
     fn collect_item_types(&ty::ctxt tcx, &@ast::crate crate) {
-        // First pass: collect all type item IDs.
-
-        auto module = crate.node.module;
-        auto visit =
-            rec(visit_item_pre=bind collect(tcx.items, _),
-                visit_native_item_pre=bind collect_native(tcx.items, _)
-                with walk::default_visitor());
-        walk::walk_crate(visit, *crate);
         // We have to propagate the surrounding ABI to the native items
         // contained within the native module.
 
         auto abi = @mutable none[ast::native_abi];
         auto cx = @rec(tcx=tcx);
-        visit =
+        auto visit =
             rec(visit_item_pre=bind convert(cx, abi, _),
                 visit_native_item_pre=bind convert_native(cx, abi, _)
                 with walk::default_visitor());

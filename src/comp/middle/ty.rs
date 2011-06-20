@@ -190,12 +190,6 @@ type method =
         controlflow cf,
         vec[@constr_def] constrs);
 
-tag any_item {
-    any_item_rust(@ast::item);
-    any_item_native(@ast::native_item, ast::native_abi);
-}
-
-type item_table = hashmap[ast::node_id, any_item];
 type constr_table = hashmap[ast::node_id, vec[constr_def]]; 
 
 type mt = rec(t ty, ast::mutability mut);
@@ -210,7 +204,7 @@ type ctxt =
         session::session sess,
         resolve::def_map def_map,
         node_type_table node_types,
-        item_table items, // Only contains type items
+        ast_map::map items,
 
         constr_table fn_constrs,
         type_cache tcache,
@@ -395,18 +389,18 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap[tup(int, uint, uint), t](h, e);
 }
 
-fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs) -> ctxt {
+fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
+           ast_map::map amap) -> ctxt {
     let node_type_table ntt =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
-    auto items = new_int_hash[any_item]();
     auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
     auto cx =
         rec(ts=ts,
             sess=s,
             def_map=dm,
             node_types=ntt,
-            items=items,
+            items=amap,
             fn_constrs=cs,
             tcache=tcache,
             rcache=mk_rcache(),
@@ -2691,7 +2685,7 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     }
     assert (cx.items.contains_key(id._1));
     alt (cx.items.get(id._1)) {
-        case (any_item_rust(?item)) {
+        case (ast_map::node_item(?item)) {
             alt (item.node) {
                 case (ast::item_tag(?variants, _)) {
                     let vec[variant_info] result = [];
