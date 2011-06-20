@@ -21,6 +21,8 @@ import front::creader;
 import middle::metadata;
 import util::common::*;
 import util::data::interner;
+import pretty::ppaux::ty_to_str;
+
 
 export ann_to_monotype;
 export ann_to_type;
@@ -2741,8 +2743,10 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
 fn ret_ty_of_fn_ty(ctxt cx, t a_ty) -> t {
     alt (ty::struct(cx, a_ty)) {
         case (ty::ty_fn(_, _, ?ret_ty, _, _)) { ret ret_ty; }
+        case (ty::ty_native_fn(_, _, ?ret_ty)) { ret ret_ty; }
         case (_) {
-            cx.sess.bug("ret_ty_of_fn_ty() called on non-function type");
+            cx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
+                        ty_to_str(cx, a_ty));
         }
     }
 }

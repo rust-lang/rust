@@ -7055,21 +7055,6 @@ fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
     }
 }
 
-fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
-    alt (ty::struct(ccx.tcx, t)) {
-        case (ty::ty_fn(_, _, ?ret_ty, _, _)) { ret ret_ty; }
-        case (ty::ty_native_fn(_, _, ?ret_ty)) { ret ret_ty; }
-        case (_) {
-            ccx.sess.bug("ret_ty_of_fn_ty() called on non-function type: " +
-                             ty_to_str(ccx.tcx, t));
-        }
-    }
-}
-
-fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
-    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx, ann));
-}
-
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     auto bcx = llstaticallocas_block_ctxt(fcx);
     let vec[ty::t] field_tys = [];
@@ -7143,8 +7128,8 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
-                              ret_ty_of_fn(cx.ccx, ann), f.decl.inputs,
-                              ty_params);
+                              ty::ret_ty_of_fn(cx.ccx.tcx, ann), 
+                              f.decl.inputs, ty_params);
     copy_any_self_to_alloca(fcx, ty_self);
     alt ({ fcx.llself }) {
         case (some(?llself)) { populate_fn_ctxt_from_llself(fcx, llself); }
@@ -7275,7 +7260,8 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // Both regular arguments and type parameters are handled here.
 
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ret_ty_of_fn(ccx, ann), fn_args, ty_params);
+                              ty::ret_ty_of_fn(ccx.tcx, ann),
+                              fn_args, ty_params);
     let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ann);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
     //  Create the first block context in the function and keep a handle on it
@@ -7286,7 +7272,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::def_id oid,
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
 
-    auto self_ty = ret_ty_of_fn(ccx, ann);
+    auto self_ty = ty::ret_ty_of_fn(ccx.tcx, ann);
     auto llself_ty = type_of(ccx, sp, self_ty);
     // Set up the two-word pair that we're going to return from the object
     // constructor we're building.  The two elements of this pair will be a
@@ -7461,7 +7447,8 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     let ValueRef llfndecl = cx.ccx.item_ids.get(variant.node.id);
     auto fcx = new_fn_ctxt(cx, variant.span, llfndecl);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ret_ty_of_fn(cx.ccx, variant.node.ann), fn_args,
+                              ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.ann),
+                              fn_args,
                               ty_params);
     let vec[ty::t] ty_param_substs = [];
     i = 0u;
