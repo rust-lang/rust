@@ -235,7 +235,7 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
             zerobreak(s.s);
         }
         case (lexer::isolated) {
-            hardbreak(s.s);
+            pprust::hardbreak_if_not_eof(s);
             for (str line in cmnt.lines) { word(s.s, line); hardbreak(s.s); }
         }
         case (lexer::trailing) {

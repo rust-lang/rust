@@ -1,5 +1,3 @@
-
-
 // trans.rs: Translate the completed AST to the LLVM IR.
 //
 // Some functions here, such as trans_block and trans_expr, return a value --

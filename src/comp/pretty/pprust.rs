@@ -120,6 +120,12 @@ fn bclose(&ps s, common::span span) {
 
 }
 
+fn hardbreak_if_not_eof(&ps s) {
+    if (s.s.last_token() != pp::EOF) {
+        hardbreak(s.s);
+    }
+}
+
 fn space_if_not_hardbreak(&ps s) {
     if (s.s.last_token() != pp::hardbreak_tok()) {
         space(s.s);
@@ -177,7 +183,7 @@ fn print_mod(&ps s, ast::_mod _mod) {
     for (@ast::item item in _mod.items) {
         // Mod-level item printing we're a little more space-y about.
 
-        hardbreak(s.s);
+        hardbreak_if_not_eof(s);
         print_item(s, item);
     }
     print_remaining_comments(s);
@@ -265,7 +271,7 @@ fn print_type(&ps s, &ast::ty ty) {
 }
 
 fn print_item(&ps s, &@ast::item item) {
-    hardbreak(s.s);
+    hardbreak_if_not_eof(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     alt (item.node) {
@@ -867,7 +873,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
     maybe_print_comment(s, decl.span.lo);
     alt (decl.node) {
         case (ast::decl_local(?loc)) {
-            space(s.s);
+            space_if_not_hardbreak(s);
             ibox(s, indent_unit);
             alt (loc.node.ty) {
                 case (some(?ty)) {
@@ -985,7 +991,7 @@ fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
-        space(s.s);
+        space_if_not_hardbreak(s);
         word_space(s, "->");
         print_type(s, *decl.output);
     }
@@ -1017,7 +1023,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
 }
 
 fn print_view_item(&ps s, &@ast::view_item item) {
-    hardbreak(s.s);
+    hardbreak_if_not_eof(s);
     maybe_print_comment(s, item.span.lo);
     alt (item.node) {
         case (ast::view_item_use(?id, ?mta, _, _)) {
@@ -1122,7 +1128,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {
-        space(s.s);
+        space_if_not_hardbreak(s);
         ibox(s, indent_unit);
         word_space(s, "->");
         alt (cf) {
