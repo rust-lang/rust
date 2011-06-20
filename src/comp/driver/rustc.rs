@@ -271,7 +271,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto crate_cache = common::new_int_hash[session::crate_metadata]();
     auto target_crate_num = 0;
     auto sess =
-        session::session(target_crate_num, target_cfg, sopts, crate_cache,
+        session::session(target_crate_num, target_cfg, sopts, crate_cache, [],
                          front::codemap::new_codemap(), 0u);
     ret sess;
 }
@@ -417,10 +417,13 @@ fn main(vec[str] args) {
                 gcc_args = common_args;
             }
         }
+
+        gcc_args += sess.get_used_libraries();
+
         if (sopts.shared) {
             gcc_args += [shared_cmd];
         } else {
-            gcc_args += ["-Lrustllvm", "-lrustllvm", "-lstd", "-lm", main];
+            gcc_args += ["-Lrustllvm", "-lrustllvm", "-lm", main];
         }
         // We run 'gcc' here
 

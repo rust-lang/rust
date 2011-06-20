@@ -582,12 +582,13 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
     ret none;
 }
 
-fn load_library_crate(&session::session sess, &int cnum, &ast::ident ident,
+fn load_library_crate(&session::session sess, int cnum, &ast::ident ident,
                       &vec[@ast::meta_item] metas,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
             sess.set_external_crate(cnum, rec(name=ident, data=t._1));
+            sess.add_used_library(t._0);
             ret;
         }
         case (_) { }

@@ -66,6 +66,7 @@ obj session(ast::crate_num cnum,
             @config targ_cfg,
             @options opts,
             map::hashmap[int, crate_metadata] crates,
+            mutable vec[str] used_libraries,
             codemap::codemap cm,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
@@ -122,6 +123,19 @@ obj session(ast::crate_num cnum,
         crates.insert(num, metadata);
     }
     fn has_external_crate(int num) -> bool { ret crates.contains_key(num); }
+    fn add_used_library(&str lib) {
+        // A program has a small number of libraries, so a vector is probably a
+        // good data structure in here.
+        for (str l in used_libraries) {
+            if (l == lib) {
+                ret;
+            }
+        }
+        used_libraries += [lib];
+    }
+    fn get_used_libraries() -> vec[str] {
+       ret used_libraries;
+    }
     fn get_codemap() -> codemap::codemap { ret cm; }
     fn lookup_pos(uint pos) -> codemap::loc {
         ret codemap::lookup_pos(cm, pos);
