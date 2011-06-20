@@ -1683,15 +1683,20 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_for(?decl, ?seq, ?body, ?id)) {
             check_expr(fcx, seq);
             auto elt_ty;
-            alt (structure_of(fcx, expr.span, expr_ty(fcx.ccx.tcx, seq))) {
+            auto ety = expr_ty(fcx.ccx.tcx, seq);
+            alt (structure_of(fcx, expr.span, ety)) {
                 case (ty::ty_vec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
                 case (ty::ty_str) {
                     elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
                 }
+                case (ty::ty_ivec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
+                case (ty::ty_istr) {
+                    elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
+                }
                 case (_) {
                     fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                              "type of for loop iterator \
-                                               is not a vector or string");
+                        "mismatched types: expected vector or string but " +
+                        "found " + ty_to_str(fcx.ccx.tcx, ety));
                 }
             }
             check_for_or_for_each(fcx, decl, elt_ty, body, id);

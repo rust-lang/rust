@@ -335,7 +335,11 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
         case (ty::ty_vec(?mt)) {
             if (mt.mut != ast::imm) { unsafe = [seq_t]; }
         }
-        case (ty::ty_str) { }
+        case (ty::ty_str) { /* no-op */ }
+        case (ty::ty_ivec(?mt)) {
+            if (mt.mut != ast::imm) { unsafe = [seq_t]; }
+        }
+        case (ty::ty_istr) { /* no-op */ }
     }
     auto new_sc =
         @rec(root_vars=root_def,

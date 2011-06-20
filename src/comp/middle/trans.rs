@@ -2691,15 +2691,24 @@ fn iter_sequence_inner(&@block_ctxt cx, ValueRef src,
 fn iter_sequence(@block_ctxt cx, ValueRef v, &ty::t t, &val_and_ty_fn f) ->
    result {
     fn iter_sequence_body(@block_ctxt cx, ValueRef v, &ty::t elt_ty,
-                          &val_and_ty_fn f, bool trailing_null) -> result {
-        auto p0 = cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
-        auto lenptr = cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_fill)]);
-        auto llunit_ty;
-        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, elt_ty)) {
-            llunit_ty = T_i8();
-        } else { llunit_ty = type_of(cx.fcx.lcx.ccx, cx.sp, elt_ty); }
-        auto bcx = cx;
-        auto len = bcx.build.Load(lenptr);
+                          &val_and_ty_fn f, bool trailing_null, bool interior)
+            -> result {
+        auto p0;
+        auto len;
+        auto bcx;
+        if (!interior) {
+            p0 = cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
+            auto lp = cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_fill)]);
+            len = cx.build.Load(lp);
+            bcx = cx;
+        } else {
+            auto len_and_data_rslt = ivec::get_len_and_data(cx, v, elt_ty);
+            len = len_and_data_rslt._0;
+            p0 = len_and_data_rslt._1;
+            bcx = len_and_data_rslt._2;
+        }
+
+        auto llunit_ty = type_of_or_i8(cx, elt_ty);
         if (trailing_null) {
             auto unit_sz = size_of(bcx, elt_ty);
             bcx = unit_sz.bcx;
@@ -2709,13 +2718,21 @@ fn iter_sequence(@block_ctxt cx, ValueRef v, &ty::t t, &val_and_ty_fn f) ->
             vi2p(bcx, bcx.build.Add(vp2i(bcx, p0), len), T_ptr(llunit_ty));
         ret iter_sequence_inner(bcx, p0, p1, elt_ty, f);
     }
+
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_vec(?elt)) {
-            ret iter_sequence_body(cx, v, elt.ty, f, false);
+            ret iter_sequence_body(cx, v, elt.ty, f, false, false);
         }
         case (ty::ty_str) {
             auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
-            ret iter_sequence_body(cx, v, et, f, true);
+            ret iter_sequence_body(cx, v, et, f, true, false);
+        }
+        case (ty::ty_ivec(?elt)) {
+            ret iter_sequence_body(cx, v, elt.ty, f, false, true);
+        }
+        case (ty::ty_istr) {
+            auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
+            ret iter_sequence_body(cx, v, et, f, true, true);
         }
         case (_) {
             cx.fcx.lcx.ccx.sess.bug("unexpected type in " +
