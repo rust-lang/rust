@@ -125,7 +125,7 @@ const uint LLVMRealULT = 12u;
 const uint LLVMRealULE = 13u;
 const uint LLVMRealUNE = 14u;
 
-native mod llvm = llvm_lib {
+native mod llvm = "rustllvm" {
 
     type ModuleRef;
     type ContextRef;
@@ -881,9 +881,6 @@ native mod llvm = llvm_lib {
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
     fn LLVMLinkModules(ModuleRef Dest, ModuleRef Src) -> Bool;
-}
-
-native mod rustllvm = llvm_lib {
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. For the

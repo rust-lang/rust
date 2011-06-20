@@ -80,23 +80,7 @@ auth middle::trans = unsafe;
 auth lib::llvm = unsafe;
 
 mod lib {
-    alt (target_os) {
-        case ("win32") {
-            let (llvm_lib = "rustllvm.dll") {
-                mod llvm;
-            }
-        }
-        case ("macos") {
-            let (llvm_lib = "librustllvm.dylib") {
-                mod llvm;
-            }
-        }
-        case (_) {
-            let (llvm_lib = "librustllvm.so") {
-                mod llvm;
-            }
-        }
-    }
+    mod llvm;
 }
 
 // Local Variables:
