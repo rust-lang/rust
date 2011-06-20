@@ -116,7 +116,7 @@ type env =
     rec(crate_map crate_map,
         def_map def_map,
         constr_table fn_constrs,
-        hashmap[ast::node_id, @ast::item] ast_map,
+        ast_map::map ast_map,
         hashmap[ast::node_id, import_state] imports,
         hashmap[ast::node_id, @indexed_mod] mod_map,
         hashmap[def_id, vec[ident]] ext_map,
@@ -130,13 +130,13 @@ tag dir { inside; outside; }
 
 tag namespace { ns_value; ns_type; ns_module; }
 
-fn resolve_crate(session sess, @ast::crate crate) ->
+fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
    tup(def_map, constr_table) {
     auto e =
         @rec(crate_map=new_int_hash[ast::crate_num](),
              def_map=new_int_hash[def](),
              fn_constrs = new_int_hash[vec[ty::constr_def]](),
-             ast_map=new_int_hash[@ast::item](),
+             ast_map=amap,
              imports=new_int_hash[import_state](),
              mod_map=new_int_hash[@indexed_mod](),
              ext_map=new_def_hash[vec[ident]](),
@@ -187,7 +187,6 @@ fn map_crate(&@env e, &@ast::crate c) {
                                       index=index_mod(md),
                                       mutable glob_imports=vec::empty[def](),
                                       glob_imported_names=s));
-                e.ast_map.insert(i.id, i);
             }
             case (ast::item_native_mod(?nmd)) {
                 auto s = new_str_hash[import_state]();
@@ -196,13 +195,8 @@ fn map_crate(&@env e, &@ast::crate c) {
                                       index=index_nmod(nmd),
                                       mutable glob_imports=vec::empty[def](),
                                       glob_imported_names=s));
-                e.ast_map.insert(i.id, i);
             }
-            case (ast::item_obj(_, _, ?ctor_id)) {
-                e.ast_map.insert(i.id, i);
-                e.ast_map.insert(ctor_id, i);
-            }
-            case (_) { e.ast_map.insert(i.id, i); }
+            case (_) { }
         }
     }
     // Next, assemble the links for globbed imports.
@@ -969,16 +963,12 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
             ret some[def](matches.(0));
         } else {
             for (def match in matches) {
-                alt (e.ast_map.find(ast::def_id_of_def(match)._1)) {
-                    case (some(?it)) {
-                        e.sess.span_note(it.span,
-                                         "'" + id + "' is defined here.");
-                    }
-                    case (_) {
-                        e.sess.bug("Internal error: imports and matches " +
-                                   "don't agree");
-                    }
-                }
+                auto span = alt (e.ast_map.get(ast::def_id_of_def(match)._1)){
+                    case (ast_map::node_item(?it)) { it.span }
+                    case (ast_map::node_obj_ctor(?it)) { it.span }
+                    case (ast_map::node_native_item(?it)) { it.span }
+                };
+                e.sess.span_note(span, "'" + id + "' is defined here.");
             }
             e.sess.span_fatal(sp,
                             "'" + id + "' is glob-imported from" +

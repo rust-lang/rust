@@ -80,9 +80,11 @@ fn compile_input(session::session sess, eval::env env, str input,
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
+    auto ast_map = time(time_passes, "ast indexing",
+                        bind middle::ast_map::map_crate(*crate));
     auto d =
         time(time_passes, "resolution",
-             bind resolve::resolve_crate(sess, crate));
+             bind resolve::resolve_crate(sess, ast_map, crate));
     auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
     time[()](time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
@@ -107,7 +109,8 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
     auto mode;
     alt (ppm) {
         case (ppm_typed) {
-            auto d = resolve::resolve_crate(sess, crate);
+            auto amap = middle::ast_map::map_crate(*crate);
+            auto d = resolve::resolve_crate(sess, amap, crate);
             auto ty_cx = ty::mk_ctxt(sess, d._0, d._1);
             typeck::check_crate(ty_cx, crate);
             mode = ppaux::mo_typed(ty_cx);
