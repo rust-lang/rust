@@ -503,9 +503,11 @@ fn print_block(&ps s, ast::block blk) {
 }
 
 fn print_if(&ps s, &@ast::expr test, &ast::block block,
-            &option::t[@ast::expr] elseopt, &str chk) {
+            &option::t[@ast::expr] elseopt, bool chk) {
     head(s, "if");
-    word_space(s, chk);
+    if (chk) {
+        word_nbsp(s, "check");
+    }
     popen(s);
     print_expr(s, test);
     pclose(s);
@@ -651,10 +653,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_type(s, *ty);
         }
         case (ast::expr_if(?test, ?block, ?elseopt, _)) {
-            print_if(s, test, block, elseopt, "");
+            print_if(s, test, block, elseopt, false);
         }
         case (ast::expr_if_check(?test, ?block, ?elseopt, _)) {
-            print_if(s, test, block, elseopt, "check");
+            print_if(s, test, block, elseopt, true);
         }
         case (ast::expr_while(?test, ?block, _)) {
             head(s, "while");
