@@ -71,6 +71,19 @@ command_line_args : public dom_owned<command_line_args>
     }
 };
 
+int get_num_threads()
+{
+    char *env = getenv("RUST_THREADS");
+    if(env) {
+        int num = atoi(env);
+        if(num > 0)
+            return num;
+    }
+    // TODO: in this case, determine the number of CPUs present on the
+    // machine.
+    return 1;
+}
+
 /**
  * Main entry point into the Rust runtime. Here we create a Rust service,
  * initialize the kernel, create the root domain and run it.
@@ -95,7 +108,11 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     dom->root_task->start(main_fn, (uintptr_t)args->args);
 
-    int ret = dom->start_main_loops(8);
+    int num_threads = get_num_threads();
+
+    DLOG(dom, dom, "Using %d worker threads.", num_threads);
+
+    int ret = dom->start_main_loops(num_threads);
     delete args;
     kernel->destroy_domain(dom);
     kernel->join_all_domains();
