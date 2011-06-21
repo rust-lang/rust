@@ -1,3 +1,4 @@
+// -*- c++ -*-
 #ifndef INDEXED_LIST_H
 #define INDEXED_LIST_H
 

@@ -70,7 +70,8 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     list_index(-1),
     rendezvous_ptr(0),
     alarm(this),
-    handle(NULL)
+    handle(NULL),
+    active(false)
 {
     LOGPTR(dom, "new task", (uintptr_t)this);
     DLOG(dom, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -123,17 +124,12 @@ struct spawn_args {
                        uintptr_t, uintptr_t);
 };
 
-// TODO: rewrite this in LLVM assembly so we can be sure the calling
-// conventions will match.
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
     int rval = 42;
     
-    // This is used by the context switching code. LLVM generates fastcall
-    // functions, but ucontext needs cdecl functions. This massages the
-    // calling conventions into the right form.
     a->f(&rval, task, a->a3, a->a4);
 
     LOG(task, task, "task exited with value %d", rval);
@@ -174,7 +170,10 @@ rust_task::start(uintptr_t spawnee_fn,
     ctx.call((void *)task_start_wrapper, a, sp);
 
     yield_timer.reset(0);
-    transition(&dom->newborn_tasks, &dom->running_tasks);
+    {
+        scoped_lock sync(dom->scheduler_lock);
+        transition(&dom->newborn_tasks, &dom->running_tasks);
+    }
 }
 
 void
@@ -425,7 +424,10 @@ rust_task::block(rust_cond *on, const char* name) {
     A(dom, cond == NULL, "Cannot block an already blocked task.");
     A(dom, on != NULL, "Cannot block on a NULL object.");
 
-    transition(&dom->running_tasks, &dom->blocked_tasks);
+    {
+        scoped_lock sync(dom->scheduler_lock);
+        transition(&dom->running_tasks, &dom->blocked_tasks);
+    }
     cond = on;
     cond_name = name;
 }
@@ -437,7 +439,10 @@ rust_task::wakeup(rust_cond *from) {
                         (uintptr_t) cond, (uintptr_t) from);
     A(dom, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    transition(&dom->blocked_tasks, &dom->running_tasks);
+    {
+        scoped_lock sync(dom->scheduler_lock);
+        transition(&dom->blocked_tasks, &dom->running_tasks);
+    }
     I(dom, cond == from);
     cond = NULL;
     cond_name = "none";
@@ -445,6 +450,7 @@ rust_task::wakeup(rust_cond *from) {
 
 void
 rust_task::die() {
+    scoped_lock sync(dom->scheduler_lock);
     transition(&dom->running_tasks, &dom->dead_tasks);
 }
 
@@ -480,6 +486,11 @@ rust_task::get_handle() {
         handle = dom->kernel->get_task_handle(this);
     }
     return handle;
+}
+
+bool rust_task::can_schedule()
+{
+    return yield_timer.has_timed_out() && !active;
 }
 
 //
