@@ -17,6 +17,8 @@ fn main() {
 
     // Extending an object with a new field.  Adding support for this
     // is issue #538.
+
+    // Right now, this fails with "unresolved name: quux".
     auto my_c = obj(int quux = 3) {
         fn baz() -> int {
             ret quux + 4;

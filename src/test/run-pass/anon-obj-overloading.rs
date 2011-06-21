@@ -30,5 +30,11 @@ fn main() {
 
     // The tricky part -- have to be sure to tie the knot in the right
     // place, so that bar() knows about the new foo().
+
+    // Right now, this just fails with "unknown method 'bar' of obj",
+    // but that's the easier of our worries; that'll be fixed when
+    // issue #539 is fixed.  The bigger problem will be when we do
+    // 'fall through' to bar() on the original object -- then we have
+    // to be sure that self refers to the extended object.
     assert (my_b.bar() == 3);
 }
