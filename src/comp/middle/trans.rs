@@ -4222,7 +4222,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Step 1: walk body and figure out which references it makes
     // escape. This could be determined upstream, and probably ought
-    // to be so, eventualy. For first cut, skip this. Null env.
+    // to be so, eventualy.
 
     auto lcx = cx.fcx.lcx;
     // FIXME: possibly support alias-mode here?
