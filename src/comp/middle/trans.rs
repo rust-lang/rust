@@ -4196,6 +4196,78 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     ret result;
 }
 
+// Given a block context and a list of upvars, construct a closure that
+// contains pointers to all of the upvars and all of the tydescs in
+// scope. Return the ValueRef and TypeRef corresponding to the closure. 
+fn build_environment(&@block_ctxt cx, &vec[ast::node_id] upvars) ->
+    tup(ValueRef, TypeRef)
+{
+    auto upvar_count = vec::len(upvars);
+    auto llbindingsptr;
+
+    if (upvar_count > 0u) {
+        // Gather up the upvars.
+        let vec[ValueRef] llbindings = [];
+        let vec[TypeRef] llbindingtys = [];
+        for (ast::node_id nid in upvars) {
+            auto llbinding;
+            alt (cx.fcx.lllocals.find(nid)) {
+                case (none) {
+                    alt (cx.fcx.llupvars.find(nid)) {
+                        case (none[ValueRef]) {
+                            llbinding = cx.fcx.llargs.get(nid);
+                        }
+                        case (some[ValueRef](?llval)) { llbinding = llval; }
+                    }
+                }
+                case (some(?llval)) { llbinding = llval; }
+            }
+            llbindings += [llbinding];
+            llbindingtys += [val_ty(llbinding)];
+        }
+
+        // Create an array of bindings and copy in aliases to the upvars.
+        llbindingsptr = alloca(cx, T_struct(llbindingtys));
+        auto i = 0u;
+        while (i < upvar_count) {
+            auto llbindingptr =
+                cx.build.GEP(llbindingsptr, [C_int(0), C_int(i as int)]);
+            cx.build.Store(llbindings.(i), llbindingptr);
+            i += 1u;
+        }
+    } else {
+        // Null bindings.
+        llbindingsptr = C_null(T_ptr(T_i8()));
+    }
+
+    // Create an environment and populate it with the bindings.
+    auto tydesc_count = vec::len[ValueRef](cx.fcx.lltydescs);
+    auto llenvptrty =
+        T_closure_ptr(cx.fcx.lcx.ccx.tn, T_ptr(T_nil()),
+                      val_ty(llbindingsptr), tydesc_count);
+    auto llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
+    auto llbindingsptrptr =
+        cx.build.GEP(llenvptr,
+                     [C_int(0), C_int(abi::box_rc_field_body), C_int(2)]);
+    cx.build.Store(llbindingsptr, llbindingsptrptr);
+
+    // Copy in our type descriptors, in case the iterator body needs to refer
+    // to them.
+    auto lltydescsptr =
+        cx.build.GEP(llenvptr,
+                     [C_int(0), C_int(abi::box_rc_field_body),
+                      C_int(abi::closure_elt_ty_params)]);
+    auto i = 0u;
+    while (i < tydesc_count) {
+        auto lltydescptr =
+            cx.build.GEP(lltydescsptr, [C_int(0), C_int(i as int)]);
+        cx.build.Store(cx.fcx.lltydescs.(i), lltydescptr);
+        i += 1u;
+    }
+
+    ret tup(llenvptr, llenvptrty);
+}
+
 fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
                   &ast::block body) -> result {
     /*
@@ -4223,86 +4295,27 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     // Step 1: walk body and figure out which references it makes
     // escape. This could be determined upstream, and probably ought
     // to be so, eventualy.
-
     auto lcx = cx.fcx.lcx;
-    // FIXME: possibly support alias-mode here?
 
+    // FIXME: possibly support alias-mode here?
     auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
     auto upvars = collect_upvars(cx, body, decl_id);
     auto upvar_count = vec::len(upvars);
-    auto llbindingsptr;
-    if (upvar_count > 0u) {
-        // Gather up the upvars.
 
-        let vec[ValueRef] llbindings = [];
-        let vec[TypeRef] llbindingtys = [];
-        for (ast::node_id nid in upvars) {
-            auto llbinding;
-            alt (cx.fcx.lllocals.find(nid)) {
-                case (none) {
-                    alt (cx.fcx.llupvars.find(nid)) {
-                        case (none[ValueRef]) {
-                            llbinding = cx.fcx.llargs.get(nid);
-                        }
-                        case (some[ValueRef](?llval)) { llbinding = llval; }
-                    }
-                }
-                case (some(?llval)) { llbinding = llval; }
-            }
-            llbindings += [llbinding];
-            llbindingtys += [val_ty(llbinding)];
-        }
-        // Create an array of bindings and copy in aliases to the upvars.
+    auto environment_data = build_environment(cx, upvars);
+    auto llenvptr = environment_data._0;
+    auto llenvptrty = environment_data._1;
 
-        llbindingsptr = alloca(cx, T_struct(llbindingtys));
-        auto i = 0u;
-        while (i < upvar_count) {
-            auto llbindingptr =
-                cx.build.GEP(llbindingsptr, [C_int(0), C_int(i as int)]);
-            cx.build.Store(llbindings.(i), llbindingptr);
-            i += 1u;
-        }
-    } else {
-        // Null bindings.
-
-        llbindingsptr = C_null(T_ptr(T_i8()));
-    }
-    // Create an environment and populate it with the bindings.
-
-    auto tydesc_count = vec::len[ValueRef](cx.fcx.lltydescs);
-    auto llenvptrty =
-        T_closure_ptr(lcx.ccx.tn, T_ptr(T_nil()), val_ty(llbindingsptr),
-                      tydesc_count);
-    auto llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
-    auto llbindingsptrptr =
-        cx.build.GEP(llenvptr,
-                     [C_int(0), C_int(abi::box_rc_field_body), C_int(2)]);
-    cx.build.Store(llbindingsptr, llbindingsptrptr);
-    // Copy in our type descriptors, in case the iterator body needs to refer
-    // to them.
-
-    auto lltydescsptr =
-        cx.build.GEP(llenvptr,
-                     [C_int(0), C_int(abi::box_rc_field_body),
-                      C_int(abi::closure_elt_ty_params)]);
-    auto i = 0u;
-    while (i < tydesc_count) {
-        auto lltydescptr =
-            cx.build.GEP(lltydescsptr, [C_int(0), C_int(i as int)]);
-        cx.build.Store(cx.fcx.lltydescs.(i), lltydescptr);
-        i += 1u;
-    }
     // Step 2: Declare foreach body function.
-
     let str s =
         mangle_internal_name_by_path_and_seq(lcx.ccx, lcx.path, "foreach");
+
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
     // points to a stack allocated env in this frame. We bundle that env
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
-
     auto iter_body_llty =
         type_of_fn_full(lcx.ccx, cx.sp, ast::proto_fn, none[TypeRef],
                         [rec(mode=ty::mo_alias(false), ty=decl_ty)],
@@ -4311,8 +4324,8 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
     auto fcx = new_fn_ctxt(lcx, cx.sp, lliterbody);
     auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
-    // Populate the upvars from the environment.
 
+    // Populate the upvars from the environment.
     auto llremoteenvptr =
         copy_args_bcx.build.PointerCast(fcx.llenv, llenvptrty);
     auto llremotebindingsptrptr =
@@ -4321,7 +4334,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
                                  C_int(abi::closure_elt_bindings)]);
     auto llremotebindingsptr =
         copy_args_bcx.build.Load(llremotebindingsptrptr);
-    i = 0u;
+    auto i = 0u;
     while (i < upvar_count) {
         auto upvar_id = upvars.(i);
         auto llupvarptrptr =
@@ -4331,12 +4344,13 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         fcx.llupvars.insert(upvar_id, llupvarptr);
         i += 1u;
     }
-    // Populate the type parameters from the environment.
 
+    // Populate the type parameters from the environment.
     auto llremotetydescsptr =
         copy_args_bcx.build.GEP(llremoteenvptr,
                                 [C_int(0), C_int(abi::box_rc_field_body),
                                  C_int(abi::closure_elt_ty_params)]);
+    auto tydesc_count = vec::len[ValueRef](cx.fcx.lltydescs);
     i = 0u;
     while (i < tydesc_count) {
         auto llremotetydescptr =
@@ -4346,8 +4360,8 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         fcx.lltydescs += [llremotetydesc];
         i += 1u;
     }
-    // Add an upvar for the loop variable alias.
 
+    // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
