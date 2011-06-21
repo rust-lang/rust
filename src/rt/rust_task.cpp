@@ -170,10 +170,7 @@ rust_task::start(uintptr_t spawnee_fn,
     ctx.call((void *)task_start_wrapper, a, sp);
 
     yield_timer.reset(0);
-    {
-        scoped_lock sync(dom->scheduler_lock);
-        transition(&dom->newborn_tasks, &dom->running_tasks);
-    }
+    transition(&dom->newborn_tasks, &dom->running_tasks);
 }
 
 void
@@ -408,6 +405,7 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
+    scoped_lock sync(dom->scheduler_lock);
     DLOG(dom, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);
@@ -424,10 +422,7 @@ rust_task::block(rust_cond *on, const char* name) {
     A(dom, cond == NULL, "Cannot block an already blocked task.");
     A(dom, on != NULL, "Cannot block on a NULL object.");
 
-    {
-        scoped_lock sync(dom->scheduler_lock);
-        transition(&dom->running_tasks, &dom->blocked_tasks);
-    }
+    transition(&dom->running_tasks, &dom->blocked_tasks);
     cond = on;
     cond_name = name;
 }
@@ -439,10 +434,7 @@ rust_task::wakeup(rust_cond *from) {
                         (uintptr_t) cond, (uintptr_t) from);
     A(dom, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    {
-        scoped_lock sync(dom->scheduler_lock);
-        transition(&dom->blocked_tasks, &dom->running_tasks);
-    }
+    transition(&dom->blocked_tasks, &dom->running_tasks);
     I(dom, cond == from);
     cond = NULL;
     cond_name = "none";
@@ -450,7 +442,6 @@ rust_task::wakeup(rust_cond *from) {
 
 void
 rust_task::die() {
-    scoped_lock sync(dom->scheduler_lock);
     transition(&dom->running_tasks, &dom->dead_tasks);
 }
 
