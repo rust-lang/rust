@@ -1179,8 +1179,8 @@ mod bar @{
 @subsection Ref.Comp.Meta
 @cindex Metadata, in crates
 
-FIXME: This section is out of date. The @code{meta} keyword has been replaced
-by general crate/item attributes.
+@c FIXME: This section is out of date. The @code{meta} keyword has been replaced
+@c by general crate/item attributes.
 
 In a crate, a @code{meta} directive associates free form key-value metadata
 with the crate. This metadata can, in turn, be used in providing partial
