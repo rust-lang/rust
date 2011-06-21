@@ -2113,26 +2113,41 @@ fn parse_inner_attrs(&parser p) -> vec[ast::attribute] {
 fn parse_meta_item(&parser p) -> @ast::meta_item {
     auto lo = p.get_lo_pos();
     auto ident = parse_ident(p);
-    expect(p, token::EQ);
     alt (p.peek()) {
-        case (token::LIT_STR(?s)) {
-            auto hi = p.get_hi_pos();
+        case (token::EQ) {
             p.bump();
-            ret @spanned(lo, hi, rec(key=ident, value=p.get_str(s)));
+            alt (p.peek()) {
+                case (token::LIT_STR(?s)) {
+                    p.bump();
+                    auto value = p.get_str(s);
+                    auto hi = p.get_hi_pos();
+                    ret @spanned(lo, hi, ast::meta_key_value(ident, value));
+                }
+                case (_) {
+                    p.fatal("Metadata items must be string literals");
+                }
+            }
         }
-        case (_) { p.fatal("Metadata items must be string literals"); }
+        case (token::LPAREN) {
+            auto inner_items = parse_meta_seq(p);
+            auto hi = p.get_hi_pos();
+            ret @spanned(lo, hi, ast::meta_list(ident, inner_items));
+        }
+        case (_) {
+            auto hi = p.get_hi_pos();
+            ret @spanned(lo, hi, ast::meta_word(ident));
+        }
     }
-    fail;
 }
 
-fn parse_meta(&parser p) -> vec[@ast::meta_item] {
+fn parse_meta_seq(&parser p) -> vec[@ast::meta_item] {
     ret parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_meta_item, p).node;
 }
 
 fn parse_optional_meta(&parser p) -> vec[@ast::meta_item] {
     alt (p.peek()) {
-        case (token::LPAREN) { ret parse_meta(p); }
+        case (token::LPAREN) { ret parse_meta_seq(p); }
         case (_) { let vec[@ast::meta_item] v = []; ret v; }
     }
 }

@@ -291,7 +291,15 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
                          str default, bool warn_default) -> str {
     let vec[@ast::meta_item] v = [];
     for each (@ast::meta_item mi in crate_export_metas(c)) {
-        if (mi.node.key == k) { v += [mi]; }
+        // FIXME (#487): Support all variants of meta_item
+        alt (mi.node) {
+            case (ast::meta_key_value(?key, ?value)) {
+                if (key == k) { v += [mi]; }
+            }
+            case (_) {
+                sess.unimpl("meta_item variant");
+            }
+        }
     }
     alt (vec::len(v)) {
         case (0u) {
@@ -301,7 +309,16 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
             }
             ret default;
         }
-        case (1u) { ret v.(0).node.value; }
+        case (1u) {
+            alt (v.(0).node) {
+                case (ast::meta_key_value(_, ?value)) {
+                    ret value;
+                }
+                case (_) {
+                    sess.unimpl("meta_item variant");
+                }
+            }
+        }
         case (_) {
             sess.span_fatal(v.(1).span, #fmt("duplicate meta '%s'", k));
         }
@@ -312,21 +329,45 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
 // This calculates CMH as defined above
 fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
-        ret ma.node.key <= mb.node.key;
+        fn key(&@ast::meta_item m) -> ast::ident {
+            alt (m.node) {
+                case (ast::meta_word(?name)) {
+                    name
+                }
+                case (ast::meta_key_value(?key, _)) {
+                    key
+                }
+            }
+        }
+        ret key(ma) <= key(mb);
     }
     fn len_and_str(&str s) -> str { ret #fmt("%u_%s", str::byte_len(s), s); }
     let vec[mutable @ast::meta_item] v = [mutable ];
     for each (@ast::meta_item mi in crate_export_metas(crate)) {
-        if (mi.node.key != "name" && mi.node.key != "vers") {
-            v += [mutable mi];
+        alt (mi.node) {
+            case (ast::meta_key_value(?key, _)) {
+                if (key != "name" && key != "vers") {
+                    v += [mutable mi];
+                }
+            }
+            case (_) {
+                v += [mutable mi];
+            }
         }
     }
     sort::quick_sort(lteq, v);
     sha.reset();
     for (@ast::meta_item m_ in v) {
         auto m = m_;
-        sha.input_str(len_and_str(m.node.key));
-        sha.input_str(len_and_str(m.node.value));
+        alt (m.node) {
+            case (ast::meta_key_value(?key, ?value)) {
+                sha.input_str(len_and_str(key));
+                sha.input_str(len_and_str(value));
+            }
+            case (ast::meta_word(?name)) {
+                sha.input_str(len_and_str(name));
+            }
+        }
     }
     ret truncated_sha1_result(sha);
 }

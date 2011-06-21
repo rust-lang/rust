@@ -173,6 +173,17 @@ mod test_distinguish_syntax_ext {
     }
 }
 
+mod test_other_forms {
+    #[attr]
+    #[attr(word)]
+    #[attr(attr(word))]
+    #[attr(key1 = "val",
+           key2 = "val",
+           attr)]
+    fn f() {
+    }
+}
+
 fn main() {
 }
 

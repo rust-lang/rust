@@ -1018,9 +1018,18 @@ fn print_type_params(&ps s, &vec[ast::ty_param] params) {
 
 fn print_meta_item(&ps s, &@ast::meta_item item) {
     ibox(s, indent_unit);
-    word_space(s, item.node.key);
-    word_space(s, "=");
-    print_string(s, item.node.value);
+    // FIXME (#487): Print other meta item variants
+    alt (item.node) {
+        case (ast::meta_key_value(?key, ?value)) {
+            word_space(s, key);
+            word_space(s, "=");
+            print_string(s, value);
+        }
+        case (_) {
+            log_err "unimplemented meta_item variant";
+            fail;
+        }
+    }
     end(s);
 }
 

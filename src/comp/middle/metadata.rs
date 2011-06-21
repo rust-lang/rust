@@ -669,13 +669,21 @@ fn write_int(&io::writer writer, &int n) {
 
 fn encode_meta_items(&ebml::writer ebml_w, &crate crate) {
     fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
+        // FIXME (#487): Support all forms of meta item
         ebml::start_tag(ebml_w, tag_meta_item);
-        ebml::start_tag(ebml_w, tag_meta_item_key);
-        ebml_w.writer.write(str::bytes(mi.node.key));
-        ebml::end_tag(ebml_w);
-        ebml::start_tag(ebml_w, tag_meta_item_value);
-        ebml_w.writer.write(str::bytes(mi.node.value));
-        ebml::end_tag(ebml_w);
+        alt (mi.node) {
+            case (meta_key_value(?key, ?value)) {
+                ebml::start_tag(ebml_w, tag_meta_item_key);
+                ebml_w.writer.write(str::bytes(key));
+                ebml::end_tag(ebml_w);
+                ebml::start_tag(ebml_w, tag_meta_item_value);
+                ebml_w.writer.write(str::bytes(value));
+                ebml::end_tag(ebml_w);
+            }
+            case (_) {
+                log_err "unimplemented meta_item type";
+            }
+        }
         ebml::end_tag(ebml_w);
     }
     ebml::start_tag(ebml_w, tag_meta_export);

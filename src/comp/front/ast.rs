@@ -97,7 +97,11 @@ type crate_directive = spanned[crate_directive_];
 
 type meta_item = spanned[meta_item_];
 
-type meta_item_ = rec(ident key, str value);
+tag meta_item_ {
+    meta_word(ident);
+    meta_list(ident, vec[@meta_item]);
+    meta_key_value(ident, str);
+}
 
 type block = spanned[block_];
 
