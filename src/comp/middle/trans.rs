@@ -4268,6 +4268,53 @@ fn build_environment(&@block_ctxt cx, &vec[ast::node_id] upvars) ->
     ret tup(llenvptr, llenvptrty);
 }
 
+// Given an enclosing block context, a new function context, a closure type,
+// and a list of upvars, generate code to load and populate the environment
+// with the upvars and type descriptors.
+fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
+                    TypeRef llenvptrty, &vec[ast::node_id] upvars)
+{
+    auto upvar_count = vec::len(upvars);
+    auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+
+    // Populate the upvars from the environment.
+    auto llremoteenvptr =
+        copy_args_bcx.build.PointerCast(fcx.llenv, llenvptrty);
+    auto llremotebindingsptrptr =
+        copy_args_bcx.build.GEP(llremoteenvptr,
+                                [C_int(0), C_int(abi::box_rc_field_body),
+                                 C_int(abi::closure_elt_bindings)]);
+    auto llremotebindingsptr =
+        copy_args_bcx.build.Load(llremotebindingsptrptr);
+    auto i = 0u;
+    while (i < upvar_count) {
+        auto upvar_id = upvars.(i);
+        auto llupvarptrptr =
+            copy_args_bcx.build.GEP(llremotebindingsptr,
+                                    [C_int(0), C_int(i as int)]);
+        auto llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
+        fcx.llupvars.insert(upvar_id, llupvarptr);
+        i += 1u;
+    }
+
+    // Populate the type parameters from the environment.
+    auto llremotetydescsptr =
+        copy_args_bcx.build.GEP(llremoteenvptr,
+                                [C_int(0), C_int(abi::box_rc_field_body),
+                                 C_int(abi::closure_elt_ty_params)]);
+    auto tydesc_count = vec::len(cx.fcx.lltydescs);
+    i = 0u;
+    while (i < tydesc_count) {
+        auto llremotetydescptr =
+            copy_args_bcx.build.GEP(llremotetydescsptr,
+                                    [C_int(0), C_int(i as int)]);
+        auto llremotetydesc = copy_args_bcx.build.Load(llremotetydescptr);
+        fcx.lltydescs += [llremotetydesc];
+        i += 1u;
+    }
+
+}
+
 fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
                   &ast::block body) -> result {
     /*
@@ -4323,43 +4370,10 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     let ValueRef lliterbody =
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
     auto fcx = new_fn_ctxt(lcx, cx.sp, lliterbody);
-    auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
-    // Populate the upvars from the environment.
-    auto llremoteenvptr =
-        copy_args_bcx.build.PointerCast(fcx.llenv, llenvptrty);
-    auto llremotebindingsptrptr =
-        copy_args_bcx.build.GEP(llremoteenvptr,
-                                [C_int(0), C_int(abi::box_rc_field_body),
-                                 C_int(abi::closure_elt_bindings)]);
-    auto llremotebindingsptr =
-        copy_args_bcx.build.Load(llremotebindingsptrptr);
-    auto i = 0u;
-    while (i < upvar_count) {
-        auto upvar_id = upvars.(i);
-        auto llupvarptrptr =
-            copy_args_bcx.build.GEP(llremotebindingsptr,
-                                    [C_int(0), C_int(i as int)]);
-        auto llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
-        fcx.llupvars.insert(upvar_id, llupvarptr);
-        i += 1u;
-    }
-
-    // Populate the type parameters from the environment.
-    auto llremotetydescsptr =
-        copy_args_bcx.build.GEP(llremoteenvptr,
-                                [C_int(0), C_int(abi::box_rc_field_body),
-                                 C_int(abi::closure_elt_ty_params)]);
-    auto tydesc_count = vec::len[ValueRef](cx.fcx.lltydescs);
-    i = 0u;
-    while (i < tydesc_count) {
-        auto llremotetydescptr =
-            copy_args_bcx.build.GEP(llremotetydescsptr,
-                                    [C_int(0), C_int(i as int)]);
-        auto llremotetydesc = copy_args_bcx.build.Load(llremotetydescptr);
-        fcx.lltydescs += [llremotetydesc];
-        i += 1u;
-    }
+    // Generate code to load the environment out of the
+    // environment pointer.
+    load_environment(cx, fcx, llenvptrty, upvars);
 
     // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));
