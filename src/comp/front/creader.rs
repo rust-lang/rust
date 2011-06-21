@@ -56,12 +56,21 @@ fn next(@pstate st) -> u8 {
 }
 
 fn parse_ident(@pstate st, str_def sd, char last) -> ast::ident {
+    fn is_last(char b, char c) -> bool {
+        ret c == b;
+    }
+    ret parse_ident_(st, sd, bind is_last(last, _));
+}
+
+fn parse_ident_(@pstate st, str_def sd, fn(char) -> bool is_last)
+    -> ast::ident {
     auto res = "";
-    while (peek(st) as char != last) {
+    while (! is_last(peek(st) as char)) {
         res += str::unsafe_from_byte(next(st));
     }
     ret res;
 }
+
 
 fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len, str_def sd,
                  ty::ctxt tcx) -> ty::t {
@@ -85,40 +94,59 @@ fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
             do  {
                 auto ignore = next(st);
                 vec::push(res, parse_constr(st, sd));
-            } while (peek(st) as char == ',')
+            } while (peek(st) as char == ';')
         }
         case (_) { }
     }
     ret res;
 }
 
+fn parse_path(@pstate st, str_def sd) -> ast::path {
+    let vec[ast::ident] idents = [];
+    fn is_last(char c) -> bool {
+        ret (c == '(' || c == ':');
+    }
+    idents += [parse_ident_(st, sd, is_last)];
+    while (true) {
+        alt (peek(st) as char) {
+            case (':') {
+                auto ignore = next(st);
+                ignore = next(st);
+            }
+            case (?c) {
+                if (c == '(') {
+                    ret respan(rec(lo=0u, hi=0u),
+                               rec(idents=idents, types=[]));
+                }
+                else {
+                    idents += [parse_ident_(st, sd, is_last)];
+                }
+            }
+        }
+    }
+    fail "parse_path: ill-formed path";
+}
+
 fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
-    st.tcx.sess.unimpl("Reading constraints " + " isn't implemented");
-    /*
     let vec[@ast::constr_arg] args = [];
-    auto sp = rec(lo=0u,hi=0u); // FIXME
-    let vec[ast::ident] ids = [];
-    let vec[@ast::ty] tys = [];
-    let ast::path pth = respan(sp,
-                               rec(idents=ids, types=tys)); // FIXME
-    let ast::ident p1 = parse_ident(st, sd, '(');
-    log_err("ignore=");
-    log_err(p1);
+    auto sp = rec(lo=0u,hi=0u); // FIXME: use a real span
+    let ast::path pth = parse_path(st, sd);
     let char ignore = next(st) as char;
     assert(ignore as char == '(');
     auto def = parse_def(st, sd);
     do {
         alt (peek(st) as char) {
             case ('*') {
-                auto ignore = next(st);
+                st.pos += 1u;
                 args += [@respan(sp, ast::carg_base)];
             }
             case (?c) {
-                log_err("c =");
-                log_err(str::from_bytes([c as u8]));
-                if (may_begin_ident(c)) {
-                    auto id = parse_ident(st, sd, ',');
-                    args += [@respan(sp, ast::carg_ident(id))];
+                /* how will we disambiguate between
+                 an arg index and a lit argument? */
+                if (c >= '0' && c <= '9') {
+                    // FIXME
+                    args += [@respan(sp, ast::carg_ident((c as uint) - 48u))];
+                    ignore = next(st) as char;
                 }
                 else {
                     log_err("Lit args are unimplemented");
@@ -132,10 +160,10 @@ fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
                 */
             }
         }
-    } while (next(st) as char == ',');
-    ignore = next(st) as char;
-    */
-
+        ignore = next(st) as char;
+    } while (ignore == ';');
+    assert(ignore == ')');
+    ret @respan(sp, rec(path=pth, args=args, id=def));
 }
 
 fn parse_ty(@pstate st, str_def sd) -> ty::t {
@@ -333,7 +361,7 @@ fn parse_ty_fn(@pstate st, str_def sd) ->
         }
         inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
     }
-    st.pos = st.pos + 1u;
+    st.pos += 1u; // eat the ']'
     auto cs = parse_constrs(st, sd);
     auto res = parse_ty_or_bang(st, sd);
     alt (res) {
@@ -641,6 +669,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
     ret alt (kind_ch as char) {
             case ('c') { false }
             case ('f') { true }
+            case ('p') { true }
             case ('F') { true }
             case ('y') { true }
             case ('o') { true }
@@ -669,7 +698,8 @@ fn lookup_def(int cnum, vec[u8] data, &ast::def_id did_) -> ast::def {
     auto def =
         alt (kind_ch as char) {
             case ('c') { ast::def_const(did) }
-            case ('f') { ast::def_fn(did) }
+            case ('f') { ast::def_fn(did, ast::impure_fn) }
+            case ('p') { ast::def_fn(did, ast::pure_fn) }
             case ('F') { ast::def_native_fn(did) }
             case ('y') { ast::def_ty(did) }
             case ('o') { ast::def_obj(did) }
@@ -781,6 +811,7 @@ fn item_kind_to_str(u8 kind) -> str {
     alt (kind as char) {
         case ('c') { ret "const"; }
         case ('f') { ret "fn"; }
+        case ('p') { ret "pred"; }
         case ('F') { ret "native fn"; }
         case ('y') { ret "type"; }
         case ('o') { ret "obj"; }

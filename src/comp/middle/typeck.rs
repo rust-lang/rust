@@ -48,13 +48,10 @@ import middle::tstate::ann::ts_ann;
 
 type ty_table = hashmap[ast::def_id, ty::t];
 
-type fn_purity_table = hashmap[ast::def_id, ast::purity];
-
 type obj_info = rec(vec[ast::obj_field] obj_fields, ast::node_id this_obj);
 
 type crate_ctxt =
     rec(mutable vec[obj_info] obj_infos,
-        @fn_purity_table fn_purity_table,
         ty::ctxt tcx);
 
 type fn_ctxt =
@@ -91,7 +88,9 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
             ret tup(0u, typ);
         }
-        case (ast::def_fn(?id)) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+        case (ast::def_fn(?id, _)) {
+            ret ty::lookup_item_type(fcx.ccx.tcx, id);
+        }
         case (ast::def_native_fn(?id)) {
             ret ty::lookup_item_type(fcx.ccx.tcx, id);
         }
@@ -1271,48 +1270,21 @@ fn require_impure(&session::session sess, &ast::purity f_purity, &span sp) {
     }
 }
 
-fn get_function_purity(@crate_ctxt ccx, &ast::def_id d_id) -> ast::purity {
-    let option::t[ast::purity] o = ccx.fn_purity_table.find(d_id);
-    ret from_maybe[ast::purity](ast::impure_fn, o);
-}
-
 fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
                      &@ast::expr callee, &span sp) {
     alt (caller_purity) {
         case (ast::impure_fn) { ret; }
         case (ast::pure_fn) {
-            alt (callee.node) {
-                case (ast::expr_path(_)) {
-                    auto d_id;
-                    alt (ccx.tcx.def_map.get(callee.id)) {
-                        case (ast::def_fn(?_d_id)) { d_id = _d_id; }
-                    }
-                    alt (get_function_purity(ccx, d_id)) {
-                        case (ast::pure_fn) { ret; }
-                        case (_) {
-                            ccx.tcx.sess.span_fatal(sp,
-                                                  "Pure function calls \
-                                                   impure function");
-                        }
-                    }
+            alt (ccx.tcx.def_map.get(callee.id)) {
+                case (ast::def_fn(_, ast::pure_fn)) {
+                    ret;
                 }
                 case (_) {
                     ccx.tcx.sess.span_fatal(sp,
-                                          "Pure function calls \
-                                           unknown function");
+                     "Pure function calls function not known to be pure");
                 }
             }
         }
-    }
-}
-
-fn require_pure_function(@crate_ctxt ccx, &ast::def_id d_id, &span sp) {
-    alt (get_function_purity(ccx, d_id)) {
-        case (ast::impure_fn) {
-            ccx.tcx.sess.span_fatal(sp,
-                                  "Found non-predicate in check expression");
-        }
-        case (_) { ret; }
     }
 }
 
@@ -1428,9 +1400,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::expr_call(?operator, ?operands)) {
                     alt (operator.node) {
                         case (ast::expr_path(?oper_name)) {
-                            auto d_id;
                             alt (fcx.ccx.tcx.def_map.get(operator.id)) {
-                                case (ast::def_fn(?_d_id)) { d_id = _d_id; }
+                                case (ast::def_fn(?_d_id, ast::pure_fn)) { 
+                                    // do nothing
+                                }
+                                case (_) {
+                                    fcx.ccx.tcx.sess.span_fatal(operator.span,
+                                      "non-predicate as operator \
+                                       in constraint");
+                                }
                             }
                             for (@ast::expr operand in operands) {
                                 if (!ast::is_constraint_arg(operand)) {
@@ -1439,7 +1417,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                     fcx.ccx.tcx.sess.span_fatal(e.span, s);
                                 }
                             }
-                            require_pure_function(fcx.ccx, d_id, e.span);
                         }
                         case (_) {
                             auto s = "In a constraint, expected the \
@@ -2193,14 +2170,15 @@ fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
 fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
     -> @ty::constr_def {
     alt (tcx.def_map.find(c.node.id)) {
-        case (some(ast::def_fn(?pred_id))) {
+        case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
             ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
                                     id=pred_id));
         }
         case (_) {
             tcx.sess.span_fatal(c.span, "Predicate "
                               + path_to_str(c.node.path)
-                              + " is unbound or bound to a non-function");
+                              + " is unbound or bound to a non-function or an\
+                                impure function");
         }
     }
 }
@@ -2372,30 +2350,12 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
     }
 }
 
-fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
-    auto res = @new_def_hash[ast::purity]();
-    fn do_one(@fn_purity_table t, &@ast::item i) {
-        alt (i.node) {
-            case (ast::item_fn(?f, _)) {
-                t.insert(local_def(i.id), f.decl.purity);
-            }
-            case (_) { }
-        }
-    }
-    auto do_one_fn = bind do_one(res, _);
-    auto v = walk::default_visitor();
-    auto add_fn_entry_visitor = rec(visit_item_post=do_one_fn with v);
-    walk::walk_crate(add_fn_entry_visitor, *crate);
-    ret res;
-}
-
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
     collect::collect_item_types(tcx, crate);
     let vec[obj_info] obj_infos = [];
-    auto fpt = mk_fn_purity_table(crate); // use a variation on collect
 
     auto ccx =
-        @rec(mutable obj_infos=obj_infos, fn_purity_table=fpt, tcx=tcx);
+        @rec(mutable obj_infos=obj_infos, tcx=tcx);
     auto visit =
         rec(visit_item_pre=bind check_item(ccx, _)
             with walk::default_visitor());

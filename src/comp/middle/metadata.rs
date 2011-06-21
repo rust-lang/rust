@@ -264,34 +264,37 @@ mod Encode {
             enc_ty(w, cx, arg.ty);
         }
         w.write_char(']');
-        alt (cf) {
-            case (noreturn) { w.write_char('!'); }
-            case (_) { enc_ty(w, cx, out); }
-        }
         auto colon = true;
         for (@ty::constr_def c in constrs) {
             if (colon) {
                 w.write_char(':');
                 colon = false;
-            } else { w.write_char(','); }
+            } else { w.write_char(';'); }
             enc_constr(w, cx, c);
         }
+        alt (cf) {
+            case (noreturn) { w.write_char('!'); }
+            case (_) { enc_ty(w, cx, out); }
+        }
+
     }
     fn enc_constr(&io::writer w, &@ctxt cx, &@ty::constr_def c) {
         w.write_str(path_to_str(c.node.path));
         w.write_char('(');
-        // FIXME
-        //   w.write_str(cx.ds(c.node.id));
-
-        auto comma = false;
+        w.write_str(cx.ds(c.node.id));
+        w.write_char('|');
+        auto semi = false;
         for (@constr_arg a in c.node.args) {
-            if (comma) { w.write_char(','); } else { comma = true; }
+            if (semi) { w.write_char(';'); } else { semi = true; }
             alt (a.node) {
                 case (carg_base) { w.write_char('*'); }
-                case (carg_ident(?i)) { w.write_uint(i); }
+                case (carg_ident(?i)) { 
+                    w.write_uint(i);
+                }
                 case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }
             }
         }
+        w.write_char(')');
     }
 }
 
@@ -506,10 +509,12 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
         }
-        case (item_fn(_, ?tps)) {
+        case (item_fn(?fd, ?tps)) {
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'f' as u8);
+            encode_kind(ebml_w, alt (fd.decl.purity) {
+                                  case (pure_fn) { 'p' }
+                                  case (impure_fn) { 'f' } } as u8);
             encode_type_param_count(ebml_w, tps);
             encode_type(cx, ebml_w, trans::node_id_type(cx, item.id));
             encode_symbol(cx, ebml_w, item.id);

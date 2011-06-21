@@ -10,17 +10,17 @@ fn div(uint x, uint y) -> uint { ret x / y; }
 
 fn rem(uint x, uint y) -> uint { ret x % y; }
 
-fn lt(uint x, uint y) -> bool { ret x < y; }
+pred lt(uint x, uint y) -> bool { ret x < y; }
 
-fn le(uint x, uint y) -> bool { ret x <= y; }
+pred le(uint x, uint y) -> bool { ret x <= y; }
 
-fn eq(uint x, uint y) -> bool { ret x == y; }
+pred eq(uint x, uint y) -> bool { ret x == y; }
 
-fn ne(uint x, uint y) -> bool { ret x != y; }
+pred ne(uint x, uint y) -> bool { ret x != y; }
 
-fn ge(uint x, uint y) -> bool { ret x >= y; }
+pred ge(uint x, uint y) -> bool { ret x >= y; }
 
-fn gt(uint x, uint y) -> bool { ret x > y; }
+pred gt(uint x, uint y) -> bool { ret x > y; }
 
 fn max(uint x, uint y) -> uint { if (x > y) { ret x; } ret y; }
 

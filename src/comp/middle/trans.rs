@@ -4681,7 +4681,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
             assert (cx.fcx.llobjfields.contains_key(did._1));
             ret lval_mem(cx, cx.fcx.llobjfields.get(did._1));
         }
-        case (ast::def_fn(?did)) {
+        case (ast::def_fn(?did, _)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, id);
         }

@@ -412,7 +412,7 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
         lookup_path_strict(*e, sc, c.span, c.node.path.node.idents, ns_value);
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
-            case (ast::def_fn(?pred_id)) {
+            case (ast::def_fn(?pred_id, _)) {
                 let ty::constr_general[uint] c_ =
                     rec(path=c.node.path, args=c.node.args, id=pred_id);
                 let ty::constr_def new_constr = respan(c.span, c_);
@@ -799,9 +799,9 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
                 ret some(ast::def_const(local_def(i.id)));
             }
         }
-        case (ast::item_fn(_, _)) {
+        case (ast::item_fn(?f, _)) {
             if (ns == ns_value) {
-                ret some(ast::def_fn(local_def(i.id)));
+                ret some(ast::def_fn(local_def(i.id), f.decl.purity));
             }
         }
         case (ast::item_mod(_)) {
@@ -1122,7 +1122,7 @@ fn index_nmod(&ast::native_mod md) -> mod_index {
 // External lookups
 fn ns_for_def(def d) -> namespace {
     ret alt (d) {
-            case (ast::def_fn(?id)) { ns_value }
+            case (ast::def_fn(?id, _)) { ns_value }
             case (ast::def_obj(?id)) { ns_value }
             case (ast::def_obj_field(?id)) { ns_value }
             case (ast::def_mod(?id)) { ns_module }

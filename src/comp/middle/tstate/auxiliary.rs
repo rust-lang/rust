@@ -537,7 +537,7 @@ fn node_id_for_constr(ty::ctxt tcx, node_id t) -> node_id {
         case (none) {
             tcx.sess.bug("node_id_for_constr: bad node_id " + istr(t));
         }
-        case (some(def_fn(?i))) { ret i._1; }
+        case (some(def_fn(?i,_))) { ret i._1; }
         case (_) {
             tcx.sess.bug("node_id_for_constr: pred is not a function");
         }

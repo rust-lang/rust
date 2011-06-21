@@ -1,6 +1,7 @@
 
 import rustrt::sbuf;
 import vec::rustrt::vbuf;
+import uint::le;
 export sbuf;
 export rustrt;
 export eq;
@@ -45,6 +46,7 @@ export split;
 export concat;
 export connect;
 export to_upper;
+export safe_slice;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -378,6 +380,12 @@ fn slice(str s, uint begin, uint end) -> str {
 
     assert (begin <= end);
     assert (end <= str::byte_len(s));
+    ret rustrt::str_slice(s, begin, end);
+}
+
+fn safe_slice(str s, uint begin, uint end) : le(begin, end) -> str {
+    assert (end <= str::byte_len(s)); // would need some magic to
+                                      // make this a precondition
     ret rustrt::str_slice(s, begin, end);
 }
 
