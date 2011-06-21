@@ -47,16 +47,14 @@ rust_dom::~rust_dom() {
 
 void
 rust_dom::activate(rust_task *task) {
-    curr_task = task;
-
     context ctx;
 
     task->ctx.next = &ctx;
     DLOG(this, task, "descheduling...");
+    scheduler_lock.unlock();
     task->ctx.swap(ctx);
+    scheduler_lock.lock();
     DLOG(this, task, "task has returned");
-
-    curr_task = NULL;
 }
 
 void
@@ -211,10 +209,13 @@ rust_dom::schedule_task() {
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
     if (running_tasks.length() > 0) {
-        size_t i = rand(&rctx);
-        i %= running_tasks.length();
-        if (running_tasks[i]->yield_timer.has_timed_out()) {
-            return (rust_task *)running_tasks[i];
+        size_t k = rand(&rctx);
+        // Look around for a runnable task, starting at k.
+        for(size_t j = 0; j < running_tasks.length(); ++j) {
+            size_t  i = (j + k) % running_tasks.length();
+            if (running_tasks[i]->can_schedule()) {
+                return (rust_task *)running_tasks[i];
+            }
         }
     }
     return NULL;
@@ -261,14 +262,19 @@ rust_dom::log_state() {
  * drop to zero.
  */
 int
-rust_dom::start_main_loop() {
+rust_dom::start_main_loop(int id) {
+    scheduler_lock.lock();
+
     // Make sure someone is watching, to pull us out of infinite loops.
     rust_timer timer(this);
 
-    DLOG(this, dom, "started domain loop");
+    DLOG(this, dom, "started domain loop %d", id);
 
     while (number_of_live_tasks() > 0) {
         A(this, kernel->is_deadlocked() == false, "deadlock");
+
+        DLOG(this, dom, "worker %d, number_of_live_tasks = %d",
+             id, number_of_live_tasks());
 
         drain_incoming_message_queue(true);
 
@@ -281,8 +287,11 @@ rust_dom::start_main_loop() {
         if (scheduled_task == NULL) {
             log_state();
             DLOG(this, task,
-                "all tasks are blocked, scheduler yielding ...");
+                 "all tasks are blocked, scheduler id %d yielding ...",
+                 id);
+            scheduler_lock.unlock();
             sync::sleep(100);
+            scheduler_lock.lock();
             DLOG(this, task,
                 "scheduler resuming ...");
             continue;
@@ -303,15 +312,21 @@ rust_dom::start_main_loop() {
 
         interrupt_flag = 0;
 
+        DLOG(this, task,
+             "Running task %p on worker %d",
+             scheduled_task, id);
+        scheduled_task->active = true;
         activate(scheduled_task);
+        scheduled_task->active = false;
 
         DLOG(this, task,
-                 "returned from task %s @0x%" PRIxPTR
-                 " in state '%s', sp=0x%" PRIxPTR,
-                 scheduled_task->name,
-                 (uintptr_t)scheduled_task,
-                 scheduled_task->state->name,
-                 scheduled_task->rust_sp);
+             "returned from task %s @0x%" PRIxPTR
+             " in state '%s', sp=0x%, worker id=%d" PRIxPTR,
+             scheduled_task->name,
+             (uintptr_t)scheduled_task,
+             scheduled_task->state->name,
+             scheduled_task->rust_sp,
+             id);
 
         /*
           // These invariants are no longer valid, as rust_sp is not
@@ -341,10 +356,32 @@ rust_dom::start_main_loop() {
         reap_dead_tasks();
     }
 
-    DLOG(this, dom, "finished main-loop (dom.rval = %d)", rval);
+    DLOG(this, dom, "finished main-loop %d (dom.rval = %d)", id, rval);
+
+    scheduler_lock.unlock();
     return rval;
 }
 
+int rust_dom::start_main_loops(int num_threads)
+{
+    dom_worker *worker = NULL;
+    
+    // -1, because this thread will also be a worker.
+    for(int i = 0; i < num_threads - 1; ++i) {
+        worker = new dom_worker(i + 1, this);
+        worker->start();
+        threads.push(worker);
+    }
+    
+    start_main_loop(0);
+
+    while(threads.pop(&worker)) {
+        worker->join();
+        delete worker;
+    }
+
+    return rval;
+}
 
 rust_crate_cache *
 rust_dom::get_cache() {
@@ -353,12 +390,24 @@ rust_dom::get_cache() {
 
 rust_task *
 rust_dom::create_task(rust_task *spawner, const char *name) {
+    scheduler_lock.lock();
     rust_task *task =
         new (this) rust_task (this, &newborn_tasks, spawner, name);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
     newborn_tasks.append(task);
+    scheduler_lock.unlock();
     return task;
+}
+
+rust_dom::dom_worker::dom_worker(int id, rust_dom *owner)
+    : id(id), owner(owner)
+{
+}
+
+void rust_dom::dom_worker::run()
+{
+    owner->start_main_loop(id);
 }
 
 //

@@ -50,6 +50,10 @@ rust_task : public maybe_proxy<rust_task>,
     rust_handle<rust_task> *handle;
 
     context ctx;
+    
+    // This flag indicates that a worker is either currently running the task
+    // or is about to run this task.
+    bool active;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
@@ -111,6 +115,8 @@ rust_task : public maybe_proxy<rust_task>,
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();
+
+    bool can_schedule();
 };
 
 //

@@ -95,7 +95,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     dom->root_task->start(main_fn, (uintptr_t)args->args);
 
-    int ret = dom->start_main_loop();
+    int ret = dom->start_main_loops(8);
     delete args;
     kernel->destroy_domain(dom);
     kernel->join_all_domains();
