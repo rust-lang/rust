@@ -29,8 +29,6 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
     }
     auto parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
     auto pieces = parse_fmt_string(fmt, parse_fmt_err);
-    auto args_len = vec::len[@ast::expr](args);
-    auto fmt_args = vec::slice[@ast::expr](args, 1u, args_len - 1u);
     ret pieces_to_expr(cx, sp, pieces, args);
 }
 

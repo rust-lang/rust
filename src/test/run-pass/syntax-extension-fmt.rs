@@ -11,6 +11,9 @@ fn test(str actual, str expected) {
 fn main() {
     test(#fmt("hello %d friends and %s things", 10, "formatted"),
          "hello 10 friends and formatted things");
+
+    test(#fmt("test"), "test");
+
     // Simple tests for types
 
     test(#fmt("%d", 1), "1");
