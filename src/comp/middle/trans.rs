@@ -6510,7 +6510,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         case (some(?fields)) {
             additional_fields = fields;
             for (ast::anon_obj_field f in fields) {
-                additional_field_tys += [node_ann_type(ccx, f.ann)];
+                additional_field_tys += [node_id_type(ccx, f.id)];
                 additional_field_vals += [trans_expr(bcx, f.expr)];
             }
         }
@@ -6526,7 +6526,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // Translating with_obj returns a ValueRef (pointer to a 2-word
             // value) wrapped in a result.
             with_obj_val  = some[result](trans_expr(bcx, e));
-            with_obj_ty = node_ann_type(ccx, ty::expr_ann(e));
+            with_obj_ty = ty::expr_ty(ccx.tcx, e);
         }
     }
     // FIXME (part of issue #538): much of the following code is copypasta
@@ -6552,7 +6552,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // and all we have is an ast::anon_obj, so we need to roll our own.
 
     fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) -> ast::obj_field {
-        ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id, ann=f.ann);
+        ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
     }
     let ast::_obj wrapper_obj = rec(
         fields = vec::map(anon_obj_field_to_obj_field, additional_fields),

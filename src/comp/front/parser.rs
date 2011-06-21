@@ -1734,8 +1734,7 @@ fn parse_anon_obj_field(&parser p) -> ast::anon_obj_field {
     auto ident = parse_value_ident(p);
     expect(p, token::EQ);
     auto expr = parse_expr(p);
-    ret rec(mut=mut, ty=ty, expr=expr, ident=ident, id=p.next_def_id(), 
-            ann=p.get_ann());
+    ret rec(mut=mut, ty=ty, expr=expr, ident=ident, id=p.get_id());
 }
 
 fn parse_method(&parser p) -> @ast::method {
