@@ -48,6 +48,7 @@ mod front {
     mod ext;
     mod extfmt;
     mod extenv;
+    mod extsimplext;
     mod fold;
     mod codemap;
     mod lexer;

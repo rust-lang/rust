@@ -228,6 +228,24 @@ fn find[T](fn(&T) -> bool  f, &vec[T] v) -> option::t[T] {
     ret none[T];
 }
 
+fn position[T](&T x, &array[T] v) -> option::t[uint] {
+    let uint i = 0u;
+    while (i < len(v)) {
+        if (x == v.(i)) { ret some[uint](i); }
+        i += 1u;
+    }
+    ret none[uint];
+}
+
+fn position_pred[T](fn (&T) -> bool f, &vec[T] v) -> option::t[uint] {
+    let uint i = 0u;
+    while (i < len(v)) {
+        if (f(v.(i))) { ret some[uint](i); }
+        i += 1u;
+    }
+    ret none[uint];
+}
+
 fn member[T](&T x, &array[T] v) -> bool {
     for (T elt in v) { if (x == elt) { ret true; } }
     ret false;

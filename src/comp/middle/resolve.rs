@@ -597,8 +597,6 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
    option::t[def] {
     fn in_scope(&env e, &span sp, &ident name, &scope s, namespace ns) ->
        option::t[def] {
-        //not recursing through globs
-
         alt (s) {
             case (scope_crate(?c)) {
                 ret lookup_in_local_mod(e, -1, sp, name, ns, inside);
