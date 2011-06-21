@@ -269,64 +269,64 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
     if (!v.keep_going()) { ret; }
     v.visit_expr_pre(e);
     alt (e.node) {
-        case (ast::expr_vec(?es, _, _, _)) { walk_exprs(v, es); }
-        case (ast::expr_tup(?elts, _)) {
+        case (ast::expr_vec(?es, _, _)) { walk_exprs(v, es); }
+        case (ast::expr_tup(?elts)) {
             for (ast::elt e in elts) { walk_expr(v, e.expr); }
         }
-        case (ast::expr_rec(?flds, ?base, _)) {
+        case (ast::expr_rec(?flds, ?base)) {
             for (ast::field f in flds) { walk_expr(v, f.node.expr); }
             walk_expr_opt(v, base);
         }
-        case (ast::expr_call(?callee, ?args, _)) {
+        case (ast::expr_call(?callee, ?args)) {
             walk_expr(v, callee);
             walk_exprs(v, args);
         }
-        case (ast::expr_self_method(_, _)) { }
-        case (ast::expr_bind(?callee, ?args, _)) {
+        case (ast::expr_self_method(_)) { }
+        case (ast::expr_bind(?callee, ?args)) {
             walk_expr(v, callee);
             for (option::t[@ast::expr] eo in args) { walk_expr_opt(v, eo); }
         }
-        case (ast::expr_spawn(_, _, ?callee, ?args, _)) {
+        case (ast::expr_spawn(_, _, ?callee, ?args)) {
             walk_expr(v, callee);
             walk_exprs(v, args);
         }
-        case (ast::expr_binary(_, ?a, ?b, _)) {
+        case (ast::expr_binary(_, ?a, ?b)) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast::expr_unary(_, ?a, _)) { walk_expr(v, a); }
-        case (ast::expr_lit(_, _)) { }
-        case (ast::expr_cast(?x, ?t, _)) { walk_expr(v, x); walk_ty(v, t); }
-        case (ast::expr_if(?x, ?b, ?eo, _)) {
+        case (ast::expr_unary(_, ?a)) { walk_expr(v, a); }
+        case (ast::expr_lit(_)) { }
+        case (ast::expr_cast(?x, ?t)) { walk_expr(v, x); walk_ty(v, t); }
+        case (ast::expr_if(?x, ?b, ?eo)) {
             walk_expr(v, x);
             walk_block(v, b);
             walk_expr_opt(v, eo);
         }
-        case (ast::expr_if_check(?x, ?b, ?eo, _)) {
+        case (ast::expr_if_check(?x, ?b, ?eo)) {
             walk_expr(v, x);
             walk_block(v, b);
             walk_expr_opt(v, eo);
         }
         
-        case (ast::expr_while(?x, ?b, _)) {
+        case (ast::expr_while(?x, ?b)) {
             walk_expr(v, x);
             walk_block(v, b);
         }
-        case (ast::expr_for(?dcl, ?x, ?b, _)) {
+        case (ast::expr_for(?dcl, ?x, ?b)) {
             walk_local(v, dcl);
             walk_expr(v, x);
             walk_block(v, b);
         }
-        case (ast::expr_for_each(?dcl, ?x, ?b, _)) {
+        case (ast::expr_for_each(?dcl, ?x, ?b)) {
             walk_local(v, dcl);
             walk_expr(v, x);
             walk_block(v, b);
         }
-        case (ast::expr_do_while(?b, ?x, _)) {
+        case (ast::expr_do_while(?b, ?x)) {
             walk_block(v, b);
             walk_expr(v, x);
         }
-        case (ast::expr_alt(?x, ?arms, _)) {
+        case (ast::expr_alt(?x, ?arms)) {
             walk_expr(v, x);
             for (ast::arm a in arms) {
                 walk_pat(v, a.pat);
@@ -335,48 +335,48 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
                 v.visit_arm_post(a);
             }
         }
-        case (ast::expr_fn(?f, ?a)) {
+        case (ast::expr_fn(?f)) {
             walk_fn_decl(v, f.decl);
             walk_block(v, f.body);
         }
-        case (ast::expr_block(?b, _)) { walk_block(v, b); }
-        case (ast::expr_assign(?a, ?b, _)) {
+        case (ast::expr_block(?b)) { walk_block(v, b); }
+        case (ast::expr_assign(?a, ?b)) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast::expr_move(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
-        case (ast::expr_swap(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
-        case (ast::expr_assign_op(_, ?a, ?b, _)) {
+        case (ast::expr_move(?a, ?b)) { walk_expr(v, a); walk_expr(v, b); }
+        case (ast::expr_swap(?a, ?b)) { walk_expr(v, a); walk_expr(v, b); }
+        case (ast::expr_assign_op(_, ?a, ?b)) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast::expr_send(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
-        case (ast::expr_recv(?a, ?b, _)) { walk_expr(v, a); walk_expr(v, b); }
-        case (ast::expr_field(?x, _, _)) { walk_expr(v, x); }
-        case (ast::expr_index(?a, ?b, _)) {
+        case (ast::expr_send(?a, ?b)) { walk_expr(v, a); walk_expr(v, b); }
+        case (ast::expr_recv(?a, ?b)) { walk_expr(v, a); walk_expr(v, b); }
+        case (ast::expr_field(?x, _)) { walk_expr(v, x); }
+        case (ast::expr_index(?a, ?b)) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast::expr_path(?p, _)) {
+        case (ast::expr_path(?p)) {
             for (@ast::ty tp in p.node.types) { walk_ty(v, tp); }
         }
-        case (ast::expr_ext(_, ?args, ?body, ?expansion, _)) {
+        case (ast::expr_ext(_, ?args, ?body, ?expansion)) {
             // Only walk expansion, not args/body.
 
             walk_expr(v, expansion);
         }
-        case (ast::expr_fail(_, _)) { }
-        case (ast::expr_break(_)) { }
-        case (ast::expr_cont(_)) { }
-        case (ast::expr_ret(?eo, _)) { walk_expr_opt(v, eo); }
-        case (ast::expr_put(?eo, _)) { walk_expr_opt(v, eo); }
-        case (ast::expr_be(?x, _)) { walk_expr(v, x); }
-        case (ast::expr_log(_, ?x, _)) { walk_expr(v, x); }
-        case (ast::expr_check(?x, _)) { walk_expr(v, x); }
-        case (ast::expr_assert(?x, _)) { walk_expr(v, x); }
-        case (ast::expr_port(_)) { }
-        case (ast::expr_chan(?x, _)) { walk_expr(v, x); }
-        case (ast::expr_anon_obj(?anon_obj, _, _, _)) {
+        case (ast::expr_fail(_)) { }
+        case (ast::expr_break) { }
+        case (ast::expr_cont) { }
+        case (ast::expr_ret(?eo)) { walk_expr_opt(v, eo); }
+        case (ast::expr_put(?eo)) { walk_expr_opt(v, eo); }
+        case (ast::expr_be(?x)) { walk_expr(v, x); }
+        case (ast::expr_log(_, ?x)) { walk_expr(v, x); }
+        case (ast::expr_check(?x)) { walk_expr(v, x); }
+        case (ast::expr_assert(?x)) { walk_expr(v, x); }
+        case (ast::expr_port) { }
+        case (ast::expr_chan(?x)) { walk_expr(v, x); }
+        case (ast::expr_anon_obj(?anon_obj, _, _)) {
             // Fields
 
             let option::t[vec[ast::obj_field]] fields =

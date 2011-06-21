@@ -254,121 +254,121 @@ fn visit_exprs[E](vec[@expr] exprs, &E e, &vt[E] v) {
 
 fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
     alt (ex.node) {
-        case (expr_vec(?es, _, _, _)) { visit_exprs(es, e, v); }
-        case (expr_tup(?elts, _)) {
+        case (expr_vec(?es, _, _)) { visit_exprs(es, e, v); }
+        case (expr_tup(?elts)) {
             for (elt el in elts) { vt(v).visit_expr(el.expr, e, v); }
         }
-        case (expr_rec(?flds, ?base, _)) {
+        case (expr_rec(?flds, ?base)) {
             for (field f in flds) { vt(v).visit_expr(f.node.expr, e, v); }
             visit_expr_opt(base, e, v);
         }
-        case (expr_call(?callee, ?args, _)) {
+        case (expr_call(?callee, ?args)) {
             vt(v).visit_expr(callee, e, v);
             visit_exprs(args, e, v);
         }
-        case (expr_self_method(_, _)) { }
-        case (expr_bind(?callee, ?args, _)) {
+        case (expr_self_method(_)) { }
+        case (expr_bind(?callee, ?args)) {
             vt(v).visit_expr(callee, e, v);
             for (option::t[@expr] eo in args) { visit_expr_opt(eo, e, v); }
         }
-        case (expr_spawn(_, _, ?callee, ?args, _)) {
+        case (expr_spawn(_, _, ?callee, ?args)) {
             vt(v).visit_expr(callee, e, v);
             visit_exprs(args, e, v);
         }
-        case (expr_binary(_, ?a, ?b, _)) {
+        case (expr_binary(_, ?a, ?b)) {
             vt(v).visit_expr(a, e, v);
             vt(v).visit_expr(b, e, v);
         }
-        case (expr_unary(_, ?a, _)) { vt(v).visit_expr(a, e, v); }
-        case (expr_lit(_, _)) { }
-        case (expr_cast(?x, ?t, _)) {
+        case (expr_unary(_, ?a)) { vt(v).visit_expr(a, e, v); }
+        case (expr_lit(_)) { }
+        case (expr_cast(?x, ?t)) {
             vt(v).visit_expr(x, e, v);
             vt(v).visit_ty(t, e, v);
         }
-        case (expr_if(?x, ?b, ?eo, _)) {
+        case (expr_if(?x, ?b, ?eo)) {
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
             visit_expr_opt(eo, e, v);
         }
-        case (expr_if_check(?x, ?b, ?eo, _)) {
+        case (expr_if_check(?x, ?b, ?eo)) {
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
             visit_expr_opt(eo, e, v);
         }
-        case (expr_while(?x, ?b, _)) {
+        case (expr_while(?x, ?b)) {
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
         }
-        case (expr_for(?dcl, ?x, ?b, _)) {
+        case (expr_for(?dcl, ?x, ?b)) {
             vt(v).visit_local(dcl, e, v);
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
         }
-        case (expr_for_each(?dcl, ?x, ?b, _)) {
+        case (expr_for_each(?dcl, ?x, ?b)) {
             vt(v).visit_local(dcl, e, v);
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);
         }
-        case (expr_do_while(?b, ?x, _)) {
+        case (expr_do_while(?b, ?x)) {
             vt(v).visit_block(b, e, v);
             vt(v).visit_expr(x, e, v);
         }
-        case (expr_alt(?x, ?arms, _)) {
+        case (expr_alt(?x, ?arms)) {
             vt(v).visit_expr(x, e, v);
             for (arm a in arms) { vt(v).visit_arm(a, e, v); }
         }
-        case (expr_fn(?f, _)) {
+        case (expr_fn(?f)) {
             visit_fn_decl(f.decl, e, v);
             vt(v).visit_block(f.body, e, v);
         }
-        case (expr_block(?b, _)) { vt(v).visit_block(b, e, v); }
-        case (expr_assign(?a, ?b, _)) {
+        case (expr_block(?b)) { vt(v).visit_block(b, e, v); }
+        case (expr_assign(?a, ?b)) {
             vt(v).visit_expr(b, e, v);
             vt(v).visit_expr(a, e, v);
         }
-        case (expr_move(?a, ?b, _)) {
+        case (expr_move(?a, ?b)) {
             vt(v).visit_expr(b, e, v);
             vt(v).visit_expr(a, e, v);
         }
-        case (expr_swap(?a, ?b, _)) {
+        case (expr_swap(?a, ?b)) {
             vt(v).visit_expr(a, e, v);
             vt(v).visit_expr(b, e, v);
         }
-        case (expr_assign_op(_, ?a, ?b, _)) {
+        case (expr_assign_op(_, ?a, ?b)) {
             vt(v).visit_expr(b, e, v);
             vt(v).visit_expr(a, e, v);
         }
-        case (expr_send(?a, ?b, _)) {
+        case (expr_send(?a, ?b)) {
             vt(v).visit_expr(a, e, v);
             vt(v).visit_expr(b, e, v);
         }
-        case (expr_recv(?a, ?b, _)) {
+        case (expr_recv(?a, ?b)) {
             vt(v).visit_expr(a, e, v);
             vt(v).visit_expr(b, e, v);
         }
-        case (expr_field(?x, _, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_index(?a, ?b, _)) {
+        case (expr_field(?x, _)) { vt(v).visit_expr(x, e, v); }
+        case (expr_index(?a, ?b)) {
             vt(v).visit_expr(a, e, v);
             vt(v).visit_expr(b, e, v);
         }
-        case (expr_path(?p, _)) {
+        case (expr_path(?p)) {
             for (@ty tp in p.node.types) { vt(v).visit_ty(tp, e, v); }
         }
-        case (expr_ext(_, _, _, ?expansion, _)) {
+        case (expr_ext(_, _, _, ?expansion)) {
             vt(v).visit_expr(expansion, e, v);
         }
-        case (expr_fail(_, _)) { }
-        case (expr_break(_)) { }
-        case (expr_cont(_)) { }
-        case (expr_ret(?eo, _)) { visit_expr_opt(eo, e, v); }
-        case (expr_put(?eo, _)) { visit_expr_opt(eo, e, v); }
-        case (expr_be(?x, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_log(_, ?x, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_check(?x, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_assert(?x, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_port(_)) { }
-        case (expr_chan(?x, _)) { vt(v).visit_expr(x, e, v); }
-        case (expr_anon_obj(?anon_obj, _, _, _)) {
+        case (expr_fail(_)) { }
+        case (expr_break) { }
+        case (expr_cont) { }
+        case (expr_ret(?eo)) { visit_expr_opt(eo, e, v); }
+        case (expr_put(?eo)) { visit_expr_opt(eo, e, v); }
+        case (expr_be(?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_log(_, ?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_check(?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_assert(?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_port) { }
+        case (expr_chan(?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_anon_obj(?anon_obj, _, _)) {
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {

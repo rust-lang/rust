@@ -220,61 +220,63 @@ tag spawn_dom { dom_implicit; dom_thread; }
 // FIXME: temporary
 tag seq_kind { sk_unique; sk_rc; }
 
-type expr = spanned[expr_];
+type expr = rec(node_id id,
+                expr_ node,
+                span span);
 
 tag expr_ {
-    expr_vec(vec[@expr], mutability, seq_kind, node_id);
-    expr_tup(vec[elt], node_id);
-    expr_rec(vec[field], option::t[@expr], node_id);
-    expr_call(@expr, vec[@expr], node_id);
-    expr_self_method(ident, node_id);
-    expr_bind(@expr, vec[option::t[@expr]], node_id);
-    expr_spawn(spawn_dom, option::t[str], @expr, vec[@expr], node_id);
-    expr_binary(binop, @expr, @expr, node_id);
-    expr_unary(unop, @expr, node_id);
-    expr_lit(@lit, node_id);
-    expr_cast(@expr, @ty, node_id);
-    expr_if(@expr, block, option::t[@expr], node_id);
-    expr_while(@expr, block, node_id);
-    expr_for(@local, @expr, block, node_id);
-    expr_for_each(@local, @expr, block, node_id);
-    expr_do_while(block, @expr, node_id);
-    expr_alt(@expr, vec[arm], node_id);
-    expr_fn(_fn, node_id);
-    expr_block(block, node_id);
+    expr_vec(vec[@expr], mutability, seq_kind);
+    expr_tup(vec[elt]);
+    expr_rec(vec[field], option::t[@expr]);
+    expr_call(@expr, vec[@expr]);
+    expr_self_method(ident);
+    expr_bind(@expr, vec[option::t[@expr]]);
+    expr_spawn(spawn_dom, option::t[str], @expr, vec[@expr]);
+    expr_binary(binop, @expr, @expr);
+    expr_unary(unop, @expr);
+    expr_lit(@lit);
+    expr_cast(@expr, @ty);
+    expr_if(@expr, block, option::t[@expr]);
+    expr_while(@expr, block);
+    expr_for(@local, @expr, block);
+    expr_for_each(@local, @expr, block);
+    expr_do_while(block, @expr);
+    expr_alt(@expr, vec[arm]);
+    expr_fn(_fn);
+    expr_block(block);
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
      */
-    expr_move(@expr, @expr, node_id);
-    expr_assign(@expr,@expr, node_id);
-    expr_swap(@expr, @expr, node_id);
-    expr_assign_op(binop, @expr, @expr, node_id);
-    expr_send(@expr, @expr, node_id);
-    expr_recv(@expr, @expr, node_id);
-    expr_field(@expr, ident, node_id);
-    expr_index(@expr, @expr, node_id);
-    expr_path(path, node_id);
-    expr_ext(path, vec[@expr], option::t[str], @expr, node_id);
-    expr_fail(node_id, option::t[str]);
-    expr_break(node_id);
-    expr_cont(node_id);
-    expr_ret(option::t[@expr], node_id);
-    expr_put(option::t[@expr], node_id);
-    expr_be(@expr, node_id);
-    expr_log(int, @expr, node_id);
+    expr_move(@expr, @expr);
+    expr_assign(@expr,@expr);
+    expr_swap(@expr, @expr);
+    expr_assign_op(binop, @expr, @expr);
+    expr_send(@expr, @expr);
+    expr_recv(@expr, @expr);
+    expr_field(@expr, ident);
+    expr_index(@expr, @expr);
+    expr_path(path);
+    expr_ext(path, vec[@expr], option::t[str], @expr);
+    expr_fail(option::t[str]);
+    expr_break;
+    expr_cont;
+    expr_ret(option::t[@expr]);
+    expr_put(option::t[@expr]);
+    expr_be(@expr);
+    expr_log(int, @expr);
 
     /* just an assert, no significance to typestate */
-    expr_assert(@expr, node_id);
+    expr_assert(@expr);
 
     /* preds that typestate is aware of */
-    expr_check(@expr, node_id);
+    expr_check(@expr);
    /* FIXME Would be nice if expr_check desugared
       to expr_if_check. */
-    expr_if_check(@expr, block, option::t[@expr], node_id);
-    expr_port(node_id);
-    expr_chan(@expr, node_id);
-    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids, node_id);
+    expr_if_check(@expr, block, option::t[@expr]);
+    expr_port;
+    expr_chan(@expr);
+    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids);
 }
 
 type lit = spanned[lit_];
@@ -527,15 +529,15 @@ fn is_exported(ident i, _mod m) -> bool {
 
 fn is_call_expr(@expr e) -> bool {
     alt (e.node) {
-        case (expr_call(_, _, _)) { ret true; }
+        case (expr_call(_, _)) { ret true; }
         case (_) { ret false; }
     }
 }
 
 fn is_constraint_arg(@expr e) -> bool {
     alt (e.node) {
-        case (expr_lit(_, _)) { ret true; }
-        case (expr_path(_, _)) { ret true; }
+        case (expr_lit(_)) { ret true; }
+        case (expr_path(_)) { ret true; }
         case (_) { ret false; }
     }
 }

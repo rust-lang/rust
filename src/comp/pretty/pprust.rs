@@ -519,9 +519,8 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
         alt (els) {
             case (some(?_else)) {
                 alt (_else.node) {
-                    case (
-                          // "another else-if"
-                          ast::expr_if(?i, ?t, ?e, _)) {
+                    // "another else-if"
+                    case (ast::expr_if(?i, ?t, ?e)) {
                         cbox(s, indent_unit - 1u);
                         ibox(s, 0u);
                         word(s.s, " else if ");
@@ -532,9 +531,8 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
                         print_block(s, t);
                         do_else(s, e);
                     }
-                    case (
-                          // "final else"
-                          ast::expr_block(?b, _)) {
+                    // "final else"
+                    case (ast::expr_block(?b)) {
                         cbox(s, indent_unit - 1u);
                         ibox(s, 0u);
                         word(s.s, " else ");
@@ -557,7 +555,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (mo_identified) { popen(s); }
     }
     alt (expr.node) {
-        case (ast::expr_vec(?exprs, ?mut, ?kind, _)) {
+        case (ast::expr_vec(?exprs, ?mut, ?kind)) {
             ibox(s, indent_unit);
             alt (kind) {
                 case (ast::sk_rc) { word(s.s, "["); }
@@ -568,7 +566,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word(s.s, "]");
             end(s);
         }
-        case (ast::expr_tup(?exprs, _)) {
+        case (ast::expr_tup(?exprs)) {
             fn printElt(&ps s, &ast::elt elt) {
                 ibox(s, indent_unit);
                 if (elt.mut == ast::mut) { word_nbsp(s, "mutable"); }
@@ -581,7 +579,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
             pclose(s);
         }
-        case (ast::expr_rec(?fields, ?wth, _)) {
+        case (ast::expr_rec(?fields, ?wth)) {
             fn print_field(&ps s, &ast::field field) {
                 ibox(s, indent_unit);
                 if (field.node.mut == ast::mut) { word_nbsp(s, "mutable"); }
@@ -606,17 +604,17 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             pclose(s);
         }
-        case (ast::expr_call(?func, ?args, _)) {
+        case (ast::expr_call(?func, ?args)) {
             print_expr(s, func);
             popen(s);
             commasep_exprs(s, inconsistent, args);
             pclose(s);
         }
-        case (ast::expr_self_method(?ident, _)) {
+        case (ast::expr_self_method(?ident)) {
             word(s.s, "self.");
             print_ident(s, ident);
         }
-        case (ast::expr_bind(?func, ?args, _)) {
+        case (ast::expr_bind(?func, ?args)) {
             fn print_opt(&ps s, &option::t[@ast::expr] expr) {
                 alt (expr) {
                     case (some(?expr)) { print_expr(s, expr); }
@@ -629,38 +627,38 @@ fn print_expr(&ps s, &@ast::expr expr) {
             commasep(s, inconsistent, args, print_opt);
             pclose(s);
         }
-        case (ast::expr_spawn(_, _, ?e, ?es, _)) {
+        case (ast::expr_spawn(_, _, ?e, ?es)) {
             word_nbsp(s, "spawn");
             print_expr(s, e);
             popen(s);
             commasep_exprs(s, inconsistent, es);
             pclose(s);
         }
-        case (ast::expr_binary(?op, ?lhs, ?rhs, _)) {
+        case (ast::expr_binary(?op, ?lhs, ?rhs)) {
             auto prec = operator_prec(op);
             print_maybe_parens(s, lhs, prec);
             space(s.s);
             word_space(s, ast::binop_to_str(op));
             print_maybe_parens(s, rhs, prec + 1);
         }
-        case (ast::expr_unary(?op, ?expr, _)) {
+        case (ast::expr_unary(?op, ?expr)) {
             word(s.s, ast::unop_to_str(op));
             print_maybe_parens(s, expr, front::parser::unop_prec);
         }
-        case (ast::expr_lit(?lit, _)) { print_literal(s, lit); }
-        case (ast::expr_cast(?expr, ?ty, _)) {
+        case (ast::expr_lit(?lit)) { print_literal(s, lit); }
+        case (ast::expr_cast(?expr, ?ty)) {
             print_maybe_parens(s, expr, front::parser::as_prec);
             space(s.s);
             word_space(s, "as");
             print_type(s, *ty);
         }
-        case (ast::expr_if(?test, ?block, ?elseopt, _)) {
+        case (ast::expr_if(?test, ?block, ?elseopt)) {
             print_if(s, test, block, elseopt, false);
         }
-        case (ast::expr_if_check(?test, ?block, ?elseopt, _)) {
+        case (ast::expr_if_check(?test, ?block, ?elseopt)) {
             print_if(s, test, block, elseopt, true);
         }
-        case (ast::expr_while(?test, ?block, _)) {
+        case (ast::expr_while(?test, ?block)) {
             head(s, "while");
             popen(s);
             print_expr(s, test);
@@ -668,7 +666,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             space(s.s);
             print_block(s, block);
         }
-        case (ast::expr_for(?decl, ?expr, ?block, _)) {
+        case (ast::expr_for(?decl, ?expr, ?block)) {
             head(s, "for");
             popen(s);
             print_for_decl(s, decl);
@@ -679,7 +677,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             space(s.s);
             print_block(s, block);
         }
-        case (ast::expr_for_each(?decl, ?expr, ?block, _)) {
+        case (ast::expr_for_each(?decl, ?expr, ?block)) {
             head(s, "for each");
             popen(s);
             print_for_decl(s, decl);
@@ -690,7 +688,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             space(s.s);
             print_block(s, block);
         }
-        case (ast::expr_do_while(?block, ?expr, _)) {
+        case (ast::expr_do_while(?block, ?expr)) {
             head(s, "do");
             space(s.s);
             print_block(s, block);
@@ -700,7 +698,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_alt(?expr, ?arms, _)) {
+        case (ast::expr_alt(?expr, ?arms)) {
             head(s, "alt");
             popen(s);
             print_expr(s, expr);
@@ -718,13 +716,13 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             bclose(s, expr.span);
         }
-        case (ast::expr_fn(?f, _)) {
+        case (ast::expr_fn(?f)) {
             head(s, "fn");
             print_fn_args_and_ret(s, f.decl);
             space(s.s);
             print_block(s, f.body);
         }
-        case (ast::expr_block(?block, _)) {
+        case (ast::expr_block(?block)) {
             // containing cbox, will be closed by print-block at }
 
             cbox(s, indent_unit);
@@ -733,103 +731,103 @@ fn print_expr(&ps s, &@ast::expr expr) {
             ibox(s, 0u);
             print_block(s, block);
         }
-        case (ast::expr_move(?lhs, ?rhs, _)) {
+        case (ast::expr_move(?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word_space(s, "<-");
             print_expr(s, rhs);
         }
-        case (ast::expr_assign(?lhs, ?rhs, _)) {
+        case (ast::expr_assign(?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word_space(s, "=");
             print_expr(s, rhs);
         }
-        case (ast::expr_swap(?lhs, ?rhs, _)) {
+        case (ast::expr_swap(?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word_space(s, "<->");
             print_expr(s, rhs);
         }
-        case (ast::expr_assign_op(?op, ?lhs, ?rhs, _)) {
+        case (ast::expr_assign_op(?op, ?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word(s.s, ast::binop_to_str(op));
             word_space(s, "=");
             print_expr(s, rhs);
         }
-        case (ast::expr_send(?lhs, ?rhs, _)) {
+        case (ast::expr_send(?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word_space(s, "<|");
             print_expr(s, rhs);
         }
-        case (ast::expr_recv(?lhs, ?rhs, _)) {
+        case (ast::expr_recv(?lhs, ?rhs)) {
             print_expr(s, lhs);
             space(s.s);
             word_space(s, "|>");
             print_expr(s, rhs);
         }
-        case (ast::expr_field(?expr, ?id, _)) {
+        case (ast::expr_field(?expr, ?id)) {
             print_expr(s, expr);
             word(s.s, ".");
             word(s.s, id);
         }
-        case (ast::expr_index(?expr, ?index, _)) {
+        case (ast::expr_index(?expr, ?index)) {
             print_expr(s, expr);
             word(s.s, ".");
             popen(s);
             print_expr(s, index);
             pclose(s);
         }
-        case (ast::expr_path(?path, _)) { print_path(s, path); }
-        case (ast::expr_fail(_, ?str)) {
+        case (ast::expr_path(?path)) { print_path(s, path); }
+        case (ast::expr_fail(?str)) {
             word(s.s, "fail");
             alt (str) {
                 case (some(?msg)) { word(s.s, #fmt("\"%s\"", msg)); }
                 case (_) { }
             }
         }
-        case (ast::expr_break(_)) { word(s.s, "break"); }
-        case (ast::expr_cont(_)) { word(s.s, "cont"); }
-        case (ast::expr_ret(?result, _)) {
+        case (ast::expr_break) { word(s.s, "break"); }
+        case (ast::expr_cont) { word(s.s, "cont"); }
+        case (ast::expr_ret(?result)) {
             word(s.s, "ret");
             alt (result) {
                 case (some(?expr)) { word(s.s, " "); print_expr(s, expr); }
                 case (_) { }
             }
         }
-        case (ast::expr_put(?result, _)) {
+        case (ast::expr_put(?result)) {
             word(s.s, "put");
             alt (result) {
                 case (some(?expr)) { word(s.s, " "); print_expr(s, expr); }
                 case (_) { }
             }
         }
-        case (ast::expr_be(?result, _)) {
+        case (ast::expr_be(?result)) {
             word_nbsp(s, "be");
             print_expr(s, result);
         }
-        case (ast::expr_log(?lvl, ?expr, _)) {
+        case (ast::expr_log(?lvl, ?expr)) {
             alt (lvl) {
                 case (1) { word_nbsp(s, "log"); }
                 case (0) { word_nbsp(s, "log_err"); }
             }
             print_expr(s, expr);
         }
-        case (ast::expr_check(?expr, _)) {
+        case (ast::expr_check(?expr)) {
             word_nbsp(s, "check");
             popen(s);
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_assert(?expr, _)) {
+        case (ast::expr_assert(?expr)) {
             word_nbsp(s, "assert");
             popen(s);
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_ext(?path, ?args, ?body, _, _)) {
+        case (ast::expr_ext(?path, ?args, ?body, _)) {
             word(s.s, "#");
             print_path(s, path);
             if (vec::len(args) > 0u) {
@@ -840,14 +838,14 @@ fn print_expr(&ps s, &@ast::expr expr) {
             // FIXME: extension 'body'
 
         }
-        case (ast::expr_port(_)) { word(s.s, "port"); popen(s); pclose(s); }
-        case (ast::expr_chan(?expr, _)) {
+        case (ast::expr_port) { word(s.s, "port"); popen(s); pclose(s); }
+        case (ast::expr_chan(?expr)) {
             word(s.s, "chan");
             popen(s);
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_anon_obj(_, _, _, _)) {
+        case (ast::expr_anon_obj(_, _, _)) {
             word(s.s, "anon obj");
             // FIXME (issue #499): nicer pretty-printing of anon objs
 
@@ -866,7 +864,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, int::to_str(ty::expr_node_id(expr), 10u));
+            synth_comment(s, int::to_str(expr.id, 10u));
             pclose(s);
         }
     }
@@ -1085,10 +1083,10 @@ fn operator_prec(ast::binop op) -> int {
 fn print_maybe_parens(&ps s, &@ast::expr expr, int outer_prec) {
     auto add_them;
     alt (expr.node) {
-        case (ast::expr_binary(?op, _, _, _)) {
+        case (ast::expr_binary(?op, _, _)) {
             add_them = operator_prec(op) < outer_prec;
         }
-        case (ast::expr_cast(_, _, _)) {
+        case (ast::expr_cast(_, _)) {
             add_them = front::parser::as_prec < outer_prec;
         }
         case (_) { add_them = false; }

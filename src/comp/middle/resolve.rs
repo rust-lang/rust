@@ -269,8 +269,8 @@ fn resolve_names(&@env e, &@ast::crate c) {
     fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
         visit_expr_with_scope(exp, sc, v);
         alt (exp.node) {
-            case (ast::expr_path(?p, ?id)) {
-                maybe_insert(e, id,
+            case (ast::expr_path(?p)) {
+                maybe_insert(e, exp.id,
                              lookup_path_strict(*e, sc, exp.span,
                                                 p.node.idents, ns_value));
             }
@@ -366,13 +366,13 @@ fn visit_arm_with_scope(&ast::arm a, &scopes sc, &vt[scopes] v) {
 fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     auto new_sc =
         alt (x.node) {
-            case (ast::expr_for(?d, _, _, _)) {
+            case (ast::expr_for(?d, _, _)) {
                 cons[scope](scope_loop(d), @sc)
             }
-            case (ast::expr_for_each(?d, _, _, _)) {
+            case (ast::expr_for_each(?d, _, _)) {
                 cons[scope](scope_loop(d), @sc)
             }
-            case (ast::expr_fn(?f, _)) { cons(scope_fn(f.decl, []), @sc) }
+            case (ast::expr_fn(?f)) { cons(scope_fn(f.decl, []), @sc) }
             case (_) { sc }
         };
     visit::visit_expr(x, new_sc, v);

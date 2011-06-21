@@ -10,7 +10,6 @@ import std::option::some;
 import std::option::maybe;
 import front::ast;
 import front::ast::*;
-import middle::ty::expr_node_id;
 import util::common;
 import util::common::span;
 import util::common::respan;
@@ -284,14 +283,14 @@ fn stmt_to_ann(&crate_ctxt ccx, &stmt s) -> ts_ann {
 /* fails if e has no annotation */
 fn expr_states(&crate_ctxt ccx, @expr e) -> pre_and_post_state {
     log "expr_states";
-    ret node_id_to_ts_ann(ccx, expr_node_id(e)).states;
+    ret node_id_to_ts_ann(ccx, e.id).states;
 }
 
 
 /* fails if e has no annotation */
 fn expr_pp(&crate_ctxt ccx, @expr e) -> pre_and_post {
     log "expr_pp";
-    ret node_id_to_ts_ann(ccx, expr_node_id(e)).conditions;
+    ret node_id_to_ts_ann(ccx, e.id).conditions;
 }
 
 fn stmt_pp(&crate_ctxt ccx, &stmt s) -> pre_and_post {
@@ -461,14 +460,14 @@ fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
  If it has a function type with a ! annotation,
 the answer is noreturn. */
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
-    alt (ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, expr_node_id(e)))) {
+    alt (ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, e.id))) {
         case (ty::ty_fn(_, _, _, ?cf, _)) { ret cf; }
         case (_) { ret return; }
     }
 }
 
 fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ty::constr_def] {
-    alt (ty::struct(cx, ty::node_id_to_type(cx, expr_node_id(e)))) {
+    alt (ty::struct(cx, ty::node_id_to_type(cx, e.id))) {
         case (ty::ty_fn(_, _, _, _, ?cs)) { ret cs; }
         case (_) { ret []; }
     }
@@ -547,7 +546,7 @@ fn node_id_for_constr(ty::ctxt tcx, node_id t) -> node_id {
 
 fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
     alt (e.node) {
-        case (expr_path(?p, _)) {
+        case (expr_path(?p)) {
             if (vec::len(p.node.idents) == 1u) {
                 ret @respan(p.span, carg_ident[ident](p.node.idents.(0)));
             } else {
@@ -555,7 +554,7 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
                                  "as pred arg");
             }
         }
-        case (expr_lit(?l, _)) { ret @respan(e.span, carg_lit(l)); }
+        case (expr_lit(?l)) { ret @respan(e.span, carg_lit(l)); }
         case (_) {
             tcx.sess.span_fatal(e.span,
                               "Arguments to constrained functions must be "
@@ -575,11 +574,11 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
         case (
              // FIXME change the first pattern to expr_path to test a
              // typechecker bug
-             expr_call(?operator, ?args, _)) {
+             expr_call(?operator, ?args)) {
             alt (operator.node) {
-                case (expr_path(?p, ?id)) {
+                case (expr_path(?p)) {
                     ret respan(e.span,
-                               rec(id=node_id_for_constr(tcx, id),
+                               rec(id=node_id_for_constr(tcx, operator.id),
                                    c=npred(p,
                                            exprs_to_constr_args(tcx, args))));
                 }

@@ -701,6 +701,12 @@ fn parse_field(&parser p) -> ast::field {
     ret spanned(lo, e.span.hi, rec(mut=m, ident=i, expr=e));
 }
 
+fn mk_expr(&parser p, uint lo, uint hi, &ast::expr_ node) -> @ast::expr {
+    ret @rec(id=p.get_id(),
+             node=node,
+             span=rec(lo=lo, hi=hi));
+}
+
 fn parse_bottom_expr(&parser p) -> @ast::expr {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
@@ -708,7 +714,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     // alt-exhaustive-match checking are co-operating.
 
     auto lit = @spanned(lo, hi, ast::lit_nil);
-    let ast::expr_ ex = ast::expr_lit(lit, p.get_id());
+    let ast::expr_ ex = ast::expr_lit(lit);
     if (p.peek() == token::LPAREN) {
         p.bump();
         alt (p.peek()) {
@@ -716,18 +722,17 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 hi = p.get_hi_pos();
                 p.bump();
                 auto lit = @spanned(lo, hi, ast::lit_nil);
-                ret @spanned(lo, hi, ast::expr_lit(lit, p.get_id()));
+                ret mk_expr(p, lo, hi, ast::expr_lit(lit));
             }
             case (_) {/* fall through */ }
         }
         auto e = parse_expr(p);
         hi = p.get_hi_pos();
         expect(p, token::RPAREN);
-        ret @spanned(lo, hi, e.node);
+        ret mk_expr(p, lo, hi, e.node);
     } else if (p.peek() == token::LBRACE) {
         auto blk = parse_block(p);
-        ret @spanned(blk.span.lo, blk.span.hi,
-                     ast::expr_block(blk, p.get_id()));
+        ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
     } else if (eat_word(p, "if")) {
         ret parse_if_expr(p);
     } else if (eat_word(p, "for")) {
@@ -752,14 +757,14 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                       parse_elt, p);
         hi = es.span.hi;
-        ex = ast::expr_tup(es.node, p.get_id());
+        ex = ast::expr_tup(es.node);
     } else if (p.peek() == token::LBRACKET) {
         p.bump();
         auto mut = parse_mutability(p);
         auto es =
             parse_seq_to_end(token::RBRACKET, some(token::COMMA), parse_expr,
                              p);
-        ex = ast::expr_vec(es, mut, ast::sk_rc, p.get_id());
+        ex = ast::expr_vec(es, mut, ast::sk_rc);
     } else if (p.peek() == token::TILDE) {
         p.bump();
         alt (p.peek()) {
@@ -770,14 +775,14 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 auto es =
                     parse_seq_to_end(token::RBRACKET, some(token::COMMA),
                                      parse_expr, p);
-                ex = ast::expr_vec(es, mut, ast::sk_unique, p.get_id());
+                ex = ast::expr_vec(es, mut, ast::sk_unique);
             }
             case (token::LIT_STR(?s)) {
                 p.bump();
                 auto lit =
                     @rec(node=ast::lit_str(p.get_str(s), ast::sk_unique),
                          span=p.get_span());
-                ex = ast::expr_lit(lit, p.get_id());
+                ex = ast::expr_lit(lit);
             }
             case (_) {
                 p.get_session().span_unimpl(p.get_span(),
@@ -819,7 +824,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         let ast::anon_obj ob =
             rec(fields=fields, methods=meths, with_obj=with_obj);
         auto odid = rec(ty=p.get_id(), ctor=p.get_id());
-        ex = ast::expr_anon_obj(ob, ty_params, odid, p.get_id());
+        ex = ast::expr_anon_obj(ob, ty_params, odid);
     } else if (eat_word(p, "rec")) {
         expect(p, token::LPAREN);
         auto fields = [parse_field(p)];
@@ -840,7 +845,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 fields += [parse_field(p)];
             } else { unexpected(p, p.peek()); }
         }
-        ex = ast::expr_rec(fields, base, p.get_id());
+        ex = ast::expr_rec(fields, base);
     } else if (eat_word(p, "bind")) {
         auto e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(&parser p) -> option::t[@ast::expr] {
@@ -853,7 +858,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                       parse_expr_opt, p);
         hi = es.span.hi;
-        ex = ast::expr_bind(e, es.node, p.get_id());
+        ex = ast::expr_bind(e, es.node);
     } else if (p.peek() == token::POUND) {
         auto ex_ext = parse_syntax_ext(p);
         lo = ex_ext.span.lo;
@@ -864,19 +869,19 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             case (token::LIT_STR(?s)) { msg = some(p.get_str(s)); p.bump(); }
             case (_) { msg = none; }
         }
-        ex = ast::expr_fail(p.get_id(), msg);
+        ex = ast::expr_fail(msg);
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = ast::expr_log(1, e, p.get_id());
+        ex = ast::expr_log(1, e);
     } else if (eat_word(p, "log_err")) {
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = ast::expr_log(0, e, p.get_id());
+        ex = ast::expr_log(0, e);
     } else if (eat_word(p, "assert")) {
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = ast::expr_assert(e, p.get_id());
+        ex = ast::expr_assert(e);
     } else if (eat_word(p, "check")) {
         /* Should be a predicate (pure boolean function) applied to 
            arguments that are all either slot variables or literals.
@@ -884,27 +889,27 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
 
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = ast::expr_check(e, p.get_id());
+        ex = ast::expr_check(e);
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
-            case (token::SEMI) { ex = ast::expr_ret(none, p.get_id()); }
+            case (token::SEMI) { ex = ast::expr_ret(none); }
             case (_) {
                 auto e = parse_expr(p);
                 hi = e.span.hi;
-                ex = ast::expr_ret(some(e), p.get_id());
+                ex = ast::expr_ret(some(e));
             }
         }
     } else if (eat_word(p, "break")) {
-        ex = ast::expr_break(p.get_id());
+        ex = ast::expr_break;
     } else if (eat_word(p, "cont")) {
-        ex = ast::expr_cont(p.get_id());
+        ex = ast::expr_cont;
     } else if (eat_word(p, "put")) {
         alt (p.peek()) {
-            case (token::SEMI) { ex = ast::expr_put(none, p.get_id()); }
+            case (token::SEMI) { ex = ast::expr_put(none); }
             case (_) {
                 auto e = parse_expr(p);
                 hi = e.span.hi;
-                ex = ast::expr_put(some(e), p.get_id());
+                ex = ast::expr_put(some(e));
             }
         }
     } else if (eat_word(p, "be")) {
@@ -913,19 +918,19 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         // FIXME: Is this the right place for this check?
         if (/*check*/ast::is_call_expr(e)) {
             hi = e.span.hi;
-            ex = ast::expr_be(e, p.get_id());
+            ex = ast::expr_be(e);
         } else { p.err("Non-call expression in tail call"); }
     } else if (eat_word(p, "port")) {
         expect(p, token::LPAREN);
         expect(p, token::RPAREN);
         hi = p.get_hi_pos();
-        ex = ast::expr_port(p.get_id());
+        ex = ast::expr_port;
     } else if (eat_word(p, "chan")) {
         expect(p, token::LPAREN);
         auto e = parse_expr(p);
         hi = e.span.hi;
         expect(p, token::RPAREN);
-        ex = ast::expr_chan(e, p.get_id());
+        ex = ast::expr_chan(e);
     } else if (eat_word(p, "self")) {
         log "parsing a self-call...";
         expect(p, token::DOT);
@@ -936,19 +941,19 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                       parse_expr, p);
         hi = es.span.hi;
-        ex = ast::expr_call(f, es.node, p.get_id());
+        ex = ast::expr_call(f, es.node);
     } else if (is_ident(p.peek()) && !is_word(p, "true") &&
                    !is_word(p, "false")) {
         check_bad_word(p);
         auto pth = parse_path_and_ty_param_substs(p);
         hi = pth.span.hi;
-        ex = ast::expr_path(pth, p.get_id());
+        ex = ast::expr_path(pth);
     } else {
         auto lit = parse_lit(p);
         hi = lit.span.hi;
-        ex = ast::expr_lit(@lit, p.get_id());
+        ex = ast::expr_lit(@lit);
     }
-    ret @spanned(lo, hi, ex);
+    ret mk_expr(p, lo, hi, ex);
 }
 
 fn parse_syntax_ext(&parser p) -> @ast::expr {
@@ -964,7 +969,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto hi = es.span.hi;
     auto ext_span = rec(lo=lo, hi=hi);
     auto ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
-    ret @spanned(lo, hi, ex);
+    ret mk_expr(p, lo, hi, ex);
 }
 
 /*
@@ -982,8 +987,7 @@ fn expand_syntax_ext(&parser p, common::span sp, &ast::path path,
         case (none) { p.err("unknown syntax expander: '" + extname + "'"); }
         case (some(ext::x(?ext))) {
             auto ext_cx = ext::mk_ctxt(p);
-            ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body),
-                              p.get_id());
+            ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
         }
     }
 }
@@ -991,8 +995,7 @@ fn expand_syntax_ext(&parser p, common::span sp, &ast::path path,
 fn parse_self_method(&parser p) -> @ast::expr {
     auto sp = p.get_span();
     let ast::ident f_name = parse_ident(p);
-    auto hi = p.get_span();
-    ret @rec(node=ast::expr_self_method(f_name, p.get_id()), span=sp);
+    ret mk_expr(p, sp.lo, sp.hi, ast::expr_self_method(f_name));
 }
 
 fn parse_dot_or_call_expr(&parser p) -> @ast::expr {
@@ -1014,8 +1017,7 @@ fn parse_dot_or_call_expr_with(&parser p, @ast::expr e) -> @ast::expr {
                         parse_seq(token::LPAREN, token::RPAREN,
                                   some(token::COMMA), parse_expr, p);
                     hi = es.span.hi;
-                    auto e_ = ast::expr_call(e, es.node, p.get_id());
-                    e = @spanned(lo, hi, e_);
+                    e = mk_expr(p, lo, hi, ast::expr_call(e, es.node));
                 }
             }
             case (token::DOT) {
@@ -1024,17 +1026,15 @@ fn parse_dot_or_call_expr_with(&parser p, @ast::expr e) -> @ast::expr {
                     case (token::IDENT(?i, _)) {
                         hi = p.get_hi_pos();
                         p.bump();
-                        auto e_ =
-                            ast::expr_field(e, p.get_str(i), p.get_id());
-                        e = @spanned(lo, hi, e_);
+                        e = mk_expr(p, lo, hi,
+                                    ast::expr_field(e, p.get_str(i)));
                     }
                     case (token::LPAREN) {
                         p.bump();
                         auto ix = parse_expr(p);
                         hi = ix.span.hi;
                         expect(p, token::RPAREN);
-                        auto e_ = ast::expr_index(e, ix, p.get_id());
-                        e = @spanned(lo, hi, e_);
+                        e = mk_expr(p, lo, hi, ast::expr_index(e, ix));
                     }
                     case (?t) { unexpected(p, t); }
                 }
@@ -1057,13 +1057,13 @@ fn parse_prefix_expr(&parser p) -> @ast::expr {
     // alt-exhaustive-match checking are co-operating.
 
     auto lit = @spanned(lo, lo, ast::lit_nil);
-    let ast::expr_ ex = ast::expr_lit(lit, p.get_id());
+    let ast::expr_ ex = ast::expr_lit(lit);
     alt (p.peek()) {
         case (token::NOT) {
             p.bump();
             auto e = parse_prefix_expr(p);
             hi = e.span.hi;
-            ex = ast::expr_unary(ast::not, e, p.get_id());
+            ex = ast::expr_unary(ast::not, e);
         }
         case (token::BINOP(?b)) {
             alt (b) {
@@ -1071,13 +1071,13 @@ fn parse_prefix_expr(&parser p) -> @ast::expr {
                     p.bump();
                     auto e = parse_prefix_expr(p);
                     hi = e.span.hi;
-                    ex = ast::expr_unary(ast::neg, e, p.get_id());
+                    ex = ast::expr_unary(ast::neg, e);
                 }
                 case (token::STAR) {
                     p.bump();
                     auto e = parse_prefix_expr(p);
                     hi = e.span.hi;
-                    ex = ast::expr_unary(ast::deref, e, p.get_id());
+                    ex = ast::expr_unary(ast::deref, e);
                 }
                 case (_) { ret parse_dot_or_call_expr(p); }
             }
@@ -1087,11 +1087,11 @@ fn parse_prefix_expr(&parser p) -> @ast::expr {
             auto m = parse_mutability(p);
             auto e = parse_prefix_expr(p);
             hi = e.span.hi;
-            ex = ast::expr_unary(ast::box(m), e, p.get_id());
+            ex = ast::expr_unary(ast::box(m), e);
         }
         case (_) { ret parse_dot_or_call_expr(p); }
     }
-    ret @spanned(lo, hi, ex);
+    ret mk_expr(p, lo, hi, ex);
 }
 
 type op_spec = rec(token::token tok, ast::binop op, int prec);
@@ -1135,16 +1135,16 @@ fn parse_more_binops(&parser p, @ast::expr lhs, int min_prec) -> @ast::expr {
         if (cur.prec > min_prec && cur.tok == peeked) {
             p.bump();
             auto rhs = parse_more_binops(p, parse_prefix_expr(p), cur.prec);
-            auto bin = ast::expr_binary(cur.op, lhs, rhs, p.get_id());
-            auto span = @spanned(lhs.span.lo, rhs.span.hi, bin);
-            ret parse_more_binops(p, span, min_prec);
+            auto bin = mk_expr(p, lhs.span.lo, rhs.span.hi,
+                               ast::expr_binary(cur.op, lhs, rhs));
+            ret parse_more_binops(p, bin, min_prec);
         }
     }
     if (as_prec > min_prec && eat_word(p, "as")) {
         auto rhs = parse_ty(p);
-        auto _as = ast::expr_cast(lhs, rhs, p.get_id());
-        auto span = @spanned(lhs.span.lo, rhs.span.hi, _as);
-        ret parse_more_binops(p, span, min_prec);
+        auto _as = mk_expr(p, lhs.span.lo, rhs.span.hi,
+                           ast::expr_cast(lhs, rhs));
+        ret parse_more_binops(p, _as, min_prec);
     }
     ret lhs;
 }
@@ -1156,8 +1156,7 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
         case (token::EQ) {
             p.bump();
             auto rhs = parse_expr(p);
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_assign(lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi, ast::expr_assign(lhs, rhs));
         }
         case (token::BINOPEQ(?op)) {
             p.bump();
@@ -1176,32 +1175,28 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
                 case (token::LSR) { aop = ast::lsr; }
                 case (token::ASR) { aop = ast::asr; }
             }
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_assign_op(aop, lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi,
+                        ast::expr_assign_op(aop, lhs, rhs));
         }
         case (token::LARROW) {
             p.bump();
             auto rhs = parse_expr(p);
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_move(lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi, ast::expr_move(lhs, rhs));
         }
         case (token::SEND) {
             p.bump();
             auto rhs = parse_expr(p);
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_send(lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi, ast::expr_send(lhs, rhs));
         }
         case (token::RECV) {
             p.bump();
             auto rhs = parse_expr(p);
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_recv(lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi, ast::expr_recv(lhs, rhs));
         }
         case (token::DARROW) {
             p.bump();
             auto rhs = parse_expr(p);
-            ret @spanned(lo, rhs.span.hi,
-                         ast::expr_swap(lhs, rhs, p.get_id()));
+            ret mk_expr(p, lo, rhs.span.hi, ast::expr_swap(lhs, rhs));
         }
         case (_) {/* fall through */ }
     }
@@ -1210,7 +1205,7 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
 
 fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
                                      ast::block, option::t[@ast::expr],
-                                     ast::node_id, uint, uint) {
+                                     uint, uint) {
     auto lo = p.get_last_lo_pos();
     expect(p, token::LPAREN);
     auto cond = parse_expr(p);
@@ -1223,19 +1218,18 @@ fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
         els = some(elexpr);
         hi = elexpr.span.hi;
     }
-    ret tup(cond, thn, els, p.get_id(), lo, hi);
+    ret tup(cond, thn, els, lo, hi);
 }
 
 fn parse_if_expr(&parser p) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
     if (eat_word(p, "check")) {
             auto q = parse_if_expr_1(p);
-            ret @spanned(q._4, q._5,
-                         ast::expr_if_check(q._0, q._1, q._2, q._3));
+            ret mk_expr(p, q._3, q._4, ast::expr_if_check(q._0, q._1, q._2));
     }
     else {
         auto q = parse_if_expr_1(p);
-        ret @spanned(q._4, q._5, ast::expr_if(q._0, q._1, q._2, q._3));
+        ret mk_expr(p, q._3, q._4, ast::expr_if(q._0, q._1, q._2));
     }
 }
 
@@ -1244,7 +1238,7 @@ fn parse_fn_expr(&parser p) -> @ast::expr {
     auto decl = parse_fn_decl(p, ast::impure_fn);
     auto body = parse_block(p);
     auto _fn = rec(decl=decl, proto=ast::proto_fn, body=body);
-    ret @spanned(lo, body.span.hi, ast::expr_fn(_fn, p.get_id()));
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
 
 fn parse_else_expr(&parser p) -> @ast::expr {
@@ -1252,8 +1246,7 @@ fn parse_else_expr(&parser p) -> @ast::expr {
         ret parse_if_expr(p);
     } else {
         auto blk = parse_block(p);
-        ret @spanned(blk.span.lo, blk.span.hi,
-                     ast::expr_block(blk, p.get_id()));
+        ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
     }
 }
 
@@ -1277,10 +1270,9 @@ fn parse_for_expr(&parser p) -> @ast::expr {
     auto body = parse_block(p);
     auto hi = body.span.hi;
     if (is_each) {
-        ret @spanned(lo, hi,
-                     ast::expr_for_each(decl, seq, body, p.get_id()));
+        ret mk_expr(p, lo, hi, ast::expr_for_each(decl, seq, body));
     } else {
-        ret @spanned(lo, hi, ast::expr_for(decl, seq, body, p.get_id()));
+        ret mk_expr(p, lo, hi, ast::expr_for(decl, seq, body));
     }
 }
 
@@ -1291,7 +1283,7 @@ fn parse_while_expr(&parser p) -> @ast::expr {
     expect(p, token::RPAREN);
     auto body = parse_block(p);
     auto hi = body.span.hi;
-    ret @spanned(lo, hi, ast::expr_while(cond, body, p.get_id()));
+    ret mk_expr(p, lo, hi, ast::expr_while(cond, body));
 }
 
 fn parse_do_while_expr(&parser p) -> @ast::expr {
@@ -1302,7 +1294,7 @@ fn parse_do_while_expr(&parser p) -> @ast::expr {
     auto cond = parse_expr(p);
     expect(p, token::RPAREN);
     auto hi = cond.span.hi;
-    ret @spanned(lo, hi, ast::expr_do_while(body, cond, p.get_id()));
+    ret mk_expr(p, lo, hi, ast::expr_do_while(body, cond));
 }
 
 fn parse_alt_expr(&parser p) -> @ast::expr {
@@ -1329,8 +1321,7 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
     }
     auto hi = p.get_hi_pos();
     p.bump();
-    auto expr = ast::expr_alt(discriminant, arms, p.get_id());
-    ret @spanned(lo, hi, expr);
+    ret mk_expr(p, lo, hi, ast::expr_alt(discriminant, arms));
 }
 
 fn parse_spawn_expr(&parser p) -> @ast::expr {
@@ -1343,10 +1334,8 @@ fn parse_spawn_expr(&parser p) -> @ast::expr {
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_expr, p);
     auto hi = es.span.hi;
-    auto spawn_expr =
-        ast::expr_spawn(ast::dom_implicit, option::none, fn_expr, es.node,
-                        p.get_id());
-    ret @spanned(lo, hi, spawn_expr);
+    ret mk_expr(p, lo, hi, ast::expr_spawn
+                (ast::dom_implicit, option::none, fn_expr, es.node));
 }
 
 fn parse_expr(&parser p) -> @ast::expr {
@@ -1555,53 +1544,52 @@ fn stmt_to_expr(@ast::stmt stmt) -> option::t[@ast::expr] {
 fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
     alt (stmt.node) {
         case (ast::stmt_decl(?d, _)) {
-            alt (d.node) {
-                case (ast::decl_local(_)) { ret true; }
-                case (ast::decl_item(_)) { ret false; }
+            ret alt (d.node) {
+                case (ast::decl_local(_)) { true }
+                case (ast::decl_item(_)) { false }
             }
         }
         case (ast::stmt_expr(?e, _)) {
-            alt (e.node) {
-                case (ast::expr_vec(_, _, _, _)) { ret true; }
-                case (ast::expr_tup(_, _)) { ret true; }
-                case (ast::expr_rec(_, _, _)) { ret true; }
-                case (ast::expr_call(_, _, _)) { ret true; }
-                case (ast::expr_self_method(_, _)) { ret false; }
-                case (ast::expr_binary(_, _, _, _)) { ret true; }
-                case (ast::expr_unary(_, _, _)) { ret true; }
-                case (ast::expr_lit(_, _)) { ret true; }
-                case (ast::expr_cast(_, _, _)) { ret true; }
-                case (ast::expr_if(_, _, _, _)) { ret false; }
-                case (ast::expr_for(_, _, _, _)) { ret false; }
-                case (ast::expr_for_each(_, _, _, _)) { ret false; }
-                case (ast::expr_while(_, _, _)) { ret false; }
-                case (ast::expr_do_while(_, _, _)) { ret false; }
-                case (ast::expr_alt(_, _, _)) { ret false; }
-                case (ast::expr_fn(_, _)) { ret false; }
-                case (ast::expr_block(_, _)) { ret false; }
-                case (ast::expr_move(_, _, _)) { ret true; }
-                case (ast::expr_assign(_, _, _)) { ret true; }
-                case (ast::expr_swap(_, _, _)) { ret true; }
-                case (ast::expr_assign_op(_, _, _, _)) { ret true; }
-                case (ast::expr_send(_, _, _)) { ret true; }
-                case (ast::expr_recv(_, _, _)) { ret true; }
-                case (ast::expr_field(_, _, _)) { ret true; }
-                case (ast::expr_index(_, _, _)) { ret true; }
-                case (ast::expr_path(_, _)) { ret true; }
-                case (ast::expr_fail(_, _)) { ret true; }
-                case (ast::expr_break(_)) { ret true; }
-                case (ast::expr_cont(_)) { ret true; }
-                case (ast::expr_ret(_, _)) { ret true; }
-                case (ast::expr_put(_, _)) { ret true; }
-                case (ast::expr_be(_, _)) { ret true; }
-                case (ast::expr_log(_, _, _)) { ret true; }
-                case (ast::expr_check(_, _)) { ret true; }
-                case (ast::expr_assert(_, _)) { ret true; }
+            ret alt (e.node) {
+                case (ast::expr_vec(_, _, _)) { true }
+                case (ast::expr_tup(_)) { true }
+                case (ast::expr_rec(_, _)) { true }
+                case (ast::expr_call(_, _)) { true }
+                case (ast::expr_self_method(_)) { false }
+                case (ast::expr_binary(_, _, _)) { true }
+                case (ast::expr_unary(_, _)) { true }
+                case (ast::expr_lit(_)) { true }
+                case (ast::expr_cast(_, _)) { true }
+                case (ast::expr_if(_, _, _)) { false }
+                case (ast::expr_for(_, _, _)) { false }
+                case (ast::expr_for_each(_, _, _)) { false }
+                case (ast::expr_while(_, _)) { false }
+                case (ast::expr_do_while(_, _)) { false }
+                case (ast::expr_alt(_, _)) { false }
+                case (ast::expr_fn(_)) { false }
+                case (ast::expr_block(_)) { false }
+                case (ast::expr_move(_, _)) { true }
+                case (ast::expr_assign(_, _)) { true }
+                case (ast::expr_swap(_, _)) { true }
+                case (ast::expr_assign_op(_, _, _)) { true }
+                case (ast::expr_send(_, _)) { true }
+                case (ast::expr_recv(_, _)) { true }
+                case (ast::expr_field(_, _)) { true }
+                case (ast::expr_index(_, _)) { true }
+                case (ast::expr_path(_)) { true }
+                case (ast::expr_fail(_)) { true }
+                case (ast::expr_break) { true }
+                case (ast::expr_cont) { true }
+                case (ast::expr_ret(_)) { true }
+                case (ast::expr_put(_)) { true }
+                case (ast::expr_be(_)) { true }
+                case (ast::expr_log(_, _)) { true }
+                case (ast::expr_check(_)) { true }
+                case (ast::expr_assert(_)) { true }
             }
         }
-        case (
-             // We should not be calling this on a cdir.
-             ast::stmt_crate_directive(?cdir)) {
+        // We should not be calling this on a cdir.
+        case (ast::stmt_crate_directive(?cdir)) {
             fail;
         }
     }

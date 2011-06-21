@@ -73,7 +73,6 @@ import bitvectors::gen_poststate;
 import bitvectors::kill_poststate;
 import front::ast;
 import front::ast::*;
-import middle::ty::expr_node_id;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;
@@ -238,13 +237,13 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
     /* FIXME could get rid of some of the copy/paste */
     alt (e.node) {
-        case (expr_vec(?elts, _, _, ?id)) {
-            ret find_pre_post_state_exprs(fcx, pres, id, elts);
+        case (expr_vec(?elts, _, _)) {
+            ret find_pre_post_state_exprs(fcx, pres, e.id, elts);
         }
-        case (expr_tup(?elts, ?id)) {
-            ret find_pre_post_state_exprs(fcx, pres, id, elt_exprs(elts));
+        case (expr_tup(?elts)) {
+            ret find_pre_post_state_exprs(fcx, pres, e.id, elt_exprs(elts));
         }
-        case (expr_call(?operator, ?operands, ?id)) {
+        case (expr_call(?operator, ?operands)) {
             /* do the prestate for the rator */
 
             /*            fcx.ccx.tcx.sess.span_note(operator.span, 
@@ -258,13 +257,13 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             changed =
                 find_pre_post_state_exprs(fcx,
                                           expr_poststate(fcx.ccx, operator),
-                                          id, operands) || changed;
+                                          e.id, operands) || changed;
             /* if this is a failing call, it sets everything as initialized */
 
             alt (controlflow_expr(fcx.ccx, operator)) {
                 case (noreturn) {
                     changed =
-                        set_poststate_ann(fcx.ccx, id,
+                        set_poststate_ann(fcx.ccx, e.id,
                                           false_postcond(num_local_vars)) ||
                             changed;
                 }
@@ -276,286 +275,253 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             */
             ret changed;
         }
-        case (expr_spawn(_, _, ?operator, ?operands, ?id)) {
+        case (expr_spawn(_, _, ?operator, ?operands)) {
             changed = find_pre_post_state_expr(fcx, pres, operator);
             ret find_pre_post_state_exprs(fcx,
                                           expr_poststate(fcx.ccx, operator),
-                                          id, operands) || changed;
+                                          e.id, operands) || changed;
         }
-        case (expr_bind(?operator, ?maybe_args, ?id)) {
+        case (expr_bind(?operator, ?maybe_args)) {
             changed =
                 find_pre_post_state_expr(fcx, pres, operator) || changed;
-            ret find_pre_post_state_exprs(fcx,
-                                          expr_poststate(fcx.ccx, operator),
-                                          id, cat_options[@expr](maybe_args))
-                    || changed;
+            ret find_pre_post_state_exprs
+                (fcx, expr_poststate(fcx.ccx, operator), e.id,
+                 cat_options[@expr](maybe_args)) || changed;
         }
-        case (expr_path(_, ?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (expr_log(_, ?e, ?id)) {
+        case (expr_path(_)) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_log(_, ?ex)) {
             /* factor out the "one exp" pattern */
 
-            changed = find_pre_post_state_expr(fcx, pres, e);
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, expr_poststate(fcx.ccx, e))
-                    || changed;
+            changed = find_pre_post_state_expr(fcx, pres, ex);
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, ex)) || changed;
             ret changed;
         }
-        case (expr_chan(?e, ?id)) {
-            changed = find_pre_post_state_expr(fcx, pres, e);
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, expr_poststate(fcx.ccx, e))
-                    || changed;
+        case (expr_chan(?ex)) {
+            changed = find_pre_post_state_expr(fcx, pres, ex);
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, ex)) || changed;
             ret changed;
         }
-        case (expr_ext(_, _, _, ?expanded, ?id)) {
+        case (expr_ext(_, _, _, ?expanded)) {
             changed = find_pre_post_state_expr(fcx, pres, expanded);
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id,
-                                     expr_poststate(fcx.ccx, expanded)) ||
-                    changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, expanded)) || changed;
             ret changed;
         }
-        case (expr_put(?maybe_e, ?id)) {
+        case (expr_put(?maybe_e)) {
             alt (maybe_e) {
                 case (some(?arg)) {
                     changed = find_pre_post_state_expr(fcx, pres, arg);
-                    changed =
-                        extend_prestate_ann(fcx.ccx, id, pres) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, arg)) ||
-                            changed;
+                    changed = extend_prestate_ann
+                        (fcx.ccx, e.id, pres) || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, arg)) ||
+                        changed;
                     ret changed;
                 }
-                case (none) { ret pure_exp(fcx.ccx, id, pres); }
+                case (none) { ret pure_exp(fcx.ccx, e.id, pres); }
             }
         }
-        case (expr_lit(?l, ?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (
-             // FIXME This was just put in here as a placeholder
-             expr_fn(?f, ?id)) {
-            ret pure_exp(fcx.ccx, id, pres);
-        }
-        case (expr_block(?b, ?id)) {
+        case (expr_lit(?l)) { ret pure_exp(fcx.ccx, e.id, pres); }
+        // FIXME This was just put in here as a placeholder
+        case (expr_fn(?f)) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_block(?b)) {
             changed = find_pre_post_state_block(fcx, pres, b) || changed;
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, block_poststate(fcx.ccx, b))
-                    || changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, block_poststate(fcx.ccx, b)) || changed;
             ret changed;
         }
-        case (expr_rec(?fields, ?maybe_base, ?id)) {
-            changed =
-                find_pre_post_state_exprs(fcx, pres, id, field_exprs(fields))
-                    || changed;
+        case (expr_rec(?fields, ?maybe_base)) {
+            changed = find_pre_post_state_exprs
+                (fcx, pres, e.id, field_exprs(fields)) || changed;
             alt (maybe_base) {
                 case (none) {/* do nothing */ }
                 case (some(?base)) {
                     changed =
                         find_pre_post_state_expr(fcx, pres, base) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, base)) ||
-                            changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, base))
+                        || changed;
                 }
             }
             ret changed;
         }
-        case (expr_move(?lhs, ?rhs, ?id)) {
+        case (expr_move(?lhs, ?rhs)) {
             // FIXME: this needs to deinitialize the rhs
 
-            extend_prestate_ann(fcx.ccx, id, pres);
+            extend_prestate_ann(fcx.ccx, e.id, pres);
             alt (lhs.node) {
-                case (expr_path(?p, ?id_lhs)) {
+                case (expr_path(?p)) {
                     // assignment to local var
 
-                    changed = pure_exp(fcx.ccx, id_lhs, pres) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, rhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, rhs)) ||
-                            changed;
-                    changed = gen_if_local(fcx, id_lhs, id, p) || changed;
+                    changed = pure_exp(fcx.ccx, lhs.id, pres) || changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, pres, rhs) || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs)) ||
+                        changed;
+                    changed = gen_if_local(fcx, lhs.id, e.id, p) || changed;
                 }
                 case (_) {
                     // assignment to something that must already have been
                     // init'd
 
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, lhs) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx,
-                                                 expr_poststate(fcx.ccx, lhs),
-                                                 rhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, rhs)) ||
-                            changed;
+                    changed = find_pre_post_state_expr(fcx, pres, lhs)
+                        || changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, expr_poststate(fcx.ccx, lhs), rhs)
+                        || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs))
+                        || changed;
                 }
             }
             ret changed;
         }
-        case (expr_assign(?lhs, ?rhs, ?id)) {
-            extend_prestate_ann(fcx.ccx, id, pres);
+        case (expr_assign(?lhs, ?rhs)) {
+            extend_prestate_ann(fcx.ccx, e.id, pres);
             alt (lhs.node) {
-                case (expr_path(?p, ?a_lhs)) {
+                case (expr_path(?p)) {
                     // assignment to local var
 
-                    changed = pure_exp(fcx.ccx, a_lhs, pres) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, rhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, rhs)) ||
-                            changed;
-                    changed = gen_if_local(fcx, a_lhs, id, p) || changed;
+                    changed = pure_exp(fcx.ccx, lhs.id, pres) || changed;
+                    changed = find_pre_post_state_expr(fcx, pres, rhs)
+                        || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs))
+                        || changed;
+                    changed = gen_if_local(fcx, lhs.id, e.id, p) || changed;
                 }
                 case (_) {
                     // assignment to something that must already have been
                     // init'd
 
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, lhs) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx,
-                                                 expr_poststate(fcx.ccx, lhs),
-                                                 rhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, rhs)) ||
-                            changed;
+                    changed = find_pre_post_state_expr(fcx, pres, lhs)
+                        || changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, expr_poststate(fcx.ccx, lhs), rhs) || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs))
+                        || changed;
                 }
             }
             ret changed;
         }
-        case (expr_swap(?lhs, ?rhs, ?id)) {
+        case (expr_swap(?lhs, ?rhs)) {
             /* quite similar to binary -- should abstract this */
 
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
-            changed =
-                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs),
-                                         rhs) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id,
-                                     expr_poststate(fcx.ccx, rhs)) || changed;
+            changed = find_pre_post_state_expr
+                (fcx, expr_poststate(fcx.ccx, lhs), rhs) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs)) || changed;
             ret changed;
         }
-        case (expr_recv(?lhs, ?rhs, ?id)) {
-            extend_prestate_ann(fcx.ccx, id, pres);
+        case (expr_recv(?lhs, ?rhs)) {
+            extend_prestate_ann(fcx.ccx, e.id, pres);
             alt (rhs.node) {
-                case (expr_path(?p, ?id_rhs)) {
+                case (expr_path(?p)) {
                     // receive to local var
 
-                    changed = pure_exp(fcx.ccx, id_rhs, pres) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, lhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, lhs)) ||
-                            changed;
-                    changed = gen_if_local(fcx, id_rhs, id, p) || changed;
+                    changed = pure_exp(fcx.ccx, rhs.id, pres) || changed;
+                    changed = find_pre_post_state_expr(fcx, pres, lhs)
+                        || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, lhs))
+                        || changed;
+                    changed = gen_if_local(fcx, rhs.id, e.id, p) || changed;
                 }
                 case (_) {
                     // receive to something that must already have been init'd
 
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, rhs) || changed;
-                    changed =
-                        find_pre_post_state_expr(fcx,
-                                                 expr_poststate(fcx.ccx, rhs),
-                                                 lhs) || changed;
-                    changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, lhs)) ||
-                            changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, pres, rhs) || changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, expr_poststate(fcx.ccx, rhs), lhs) || changed;
+                    changed = extend_poststate_ann
+                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, lhs))
+                        || changed;
                 }
             }
             ret changed;
         }
-        case (expr_ret(?maybe_ret_val, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_ret(?maybe_ret_val)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             /* normally, everything is true if execution continues after
                a ret expression (since execution never continues locally
                after a ret expression */
 
-            set_poststate_ann(fcx.ccx, id, false_postcond(num_local_vars));
+            set_poststate_ann(fcx.ccx, e.id, false_postcond(num_local_vars));
             /* return from an always-failing function clears the return bit */
 
             alt (fcx.enclosing.cf) {
                 case (noreturn) {
-                    kill_poststate(fcx, id, rec(id=fcx.id,
-                                                c=ninit(fcx.name)));
+                    kill_poststate(fcx, e.id, rec(id=fcx.id,
+                                                  c=ninit(fcx.name)));
                 }
                 case (_) { }
             }
             alt (maybe_ret_val) {
                 case (none) {/* do nothing */ }
                 case (some(?ret_val)) {
-                    changed =
-                        find_pre_post_state_expr(fcx, pres, ret_val) ||
-                            changed;
+                    changed = find_pre_post_state_expr
+                        (fcx, pres, ret_val) || changed;
                 }
             }
             ret changed;
         }
-        case (expr_be(?e, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            set_poststate_ann(fcx.ccx, id, false_postcond(num_local_vars));
-            changed = find_pre_post_state_expr(fcx, pres, e) || changed;
+        case (expr_be(?val)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            set_poststate_ann(fcx.ccx, e.id, false_postcond(num_local_vars));
+            changed = find_pre_post_state_expr(fcx, pres, val) || changed;
             ret changed;
         }
-        case (expr_if(?antec, ?conseq, ?maybe_alt, ?id)) {
-            changed = join_then_else(fcx, antec, conseq, maybe_alt, id,
-                                     plain_if, pres)
+        case (expr_if(?antec, ?conseq, ?maybe_alt)) {
+            changed = join_then_else
+                (fcx, antec, conseq, maybe_alt, e.id, plain_if, pres)
                 || changed;
-
             ret changed;
         }
-        case (expr_binary(?bop, ?l, ?r, ?id)) {
+        case (expr_binary(?bop, ?l, ?r)) {
             /* FIXME: what if bop is lazy? */
 
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, l) || changed;
-            changed =
-                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, l), r)
-                    || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, expr_poststate(fcx.ccx, r))
-                    || changed;
+            changed = find_pre_post_state_expr
+                (fcx, expr_poststate(fcx.ccx, l), r) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, r)) || changed;
             ret changed;
         }
-        case (expr_send(?l, ?r, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_send(?l, ?r)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, l) || changed;
-            changed =
-                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, l), r)
-                    || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, expr_poststate(fcx.ccx, r))
-                    || changed;
+            changed = find_pre_post_state_expr
+                (fcx, expr_poststate(fcx.ccx, l), r) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, r)) || changed;
             ret changed;
         }
-        case (expr_assign_op(?op, ?lhs, ?rhs, ?id)) {
+        case (expr_assign_op(?op, ?lhs, ?rhs)) {
             /* quite similar to binary -- should abstract this */
 
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
             changed =
                 find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs),
                                          rhs) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id,
-                                     expr_poststate(fcx.ccx, rhs))
-                    || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs)) || changed;
             ret changed;
         }
-        case (expr_while(?test, ?body, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_while(?test, ?body)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             /* to handle general predicates, we need to pass in
                 pres `intersect` (poststate(a)) 
              like: auto test_pres = intersect_postconds(pres,
@@ -572,22 +538,17 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             /* conservative approximation: if a loop contains a break
                or cont, we assume nothing about the poststate */
             if (has_nonlocal_exits(body)) { 
-                changed = set_poststate_ann(fcx.ccx, id, pres) || changed;
+                changed = set_poststate_ann(fcx.ccx, e.id, pres) || changed;
             }
 
-            changed =
-                {
-                    auto e_post = expr_poststate(fcx.ccx, test);
-                    auto b_post = block_poststate(fcx.ccx, body);
-                    extend_poststate_ann(fcx.ccx, id,
-                                         intersect_postconds([e_post,
-                                                              b_post])) ||
-                        changed
-                };
-            ret changed;
+            auto e_post = expr_poststate(fcx.ccx, test);
+            auto b_post = block_poststate(fcx.ccx, body);
+            ret extend_poststate_ann
+                (fcx.ccx, e.id, intersect_postconds([e_post, b_post])) ||
+                changed
         }
-        case (expr_do_while(?body, ?test, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_do_while(?body, ?test)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             auto changed0 = changed;
             changed = find_pre_post_state_block(fcx, pres, body) || changed;
             /* conservative approximination: if the body of the loop
@@ -611,36 +572,36 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                                          test) || changed;
 
             if (breaks) {
-                set_poststate_ann(fcx.ccx, id, pres);
+                set_poststate_ann(fcx.ccx, e.id, pres);
             }
             else {
-                changed =  extend_poststate_ann(fcx.ccx, id,
+                changed =  extend_poststate_ann(fcx.ccx, e.id,
                                             expr_poststate(fcx.ccx, test)) ||
                     changed;
             }
             ret changed;
         }
-        case (expr_for(?d, ?index, ?body, ?id)) {
-            ret find_pre_post_state_loop(fcx, pres, d, index, body, id);
+        case (expr_for(?d, ?index, ?body)) {
+            ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);
         }
-        case (expr_for_each(?d, ?index, ?body, ?id)) {
-            ret find_pre_post_state_loop(fcx, pres, d, index, body, id);
+        case (expr_for_each(?d, ?index, ?body)) {
+            ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);
         }
-        case (expr_index(?e, ?sub, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed = find_pre_post_state_expr(fcx, pres, e) || changed;
+        case (expr_index(?val, ?sub)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = find_pre_post_state_expr(fcx, pres, val) || changed;
             changed =
-                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, e), sub)
-                    || changed;
+                find_pre_post_state_expr
+                (fcx, expr_poststate(fcx.ccx, val), sub) || changed;
             changed =
-                extend_poststate_ann(fcx.ccx, id,
+                extend_poststate_ann(fcx.ccx, e.id,
                                      expr_poststate(fcx.ccx, sub));
             ret changed;
         }
-        case (expr_alt(?e, ?alts, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed = find_pre_post_state_expr(fcx, pres, e) || changed;
-            auto e_post = expr_poststate(fcx.ccx, e);
+        case (expr_alt(?val, ?alts)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = find_pre_post_state_expr(fcx, pres, val) || changed;
+            auto e_post = expr_poststate(fcx.ccx, val);
             auto a_post;
             if (vec::len[arm](alts) > 0u) {
                 a_post = false_postcond(num_local_vars);
@@ -659,85 +620,78 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
                 a_post = e_post;
             }
-            changed = extend_poststate_ann(fcx.ccx, id, a_post) || changed;
+            changed = extend_poststate_ann(fcx.ccx, e.id, a_post) || changed;
             ret changed;
         }
-        case (expr_field(?e, _, ?id)) {
-            changed = find_pre_post_state_expr(fcx, pres, e);
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id, expr_poststate(fcx.ccx, e))
-                    || changed;
+        case (expr_field(?val, _)) {
+            changed = find_pre_post_state_expr(fcx, pres, val);
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            changed = extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, val)) || changed;
             ret changed;
         }
-        case (expr_unary(_, ?operand, ?id)) {
+        case (expr_unary(_, ?operand)) {
             changed = find_pre_post_state_expr(fcx, pres, operand) || changed;
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id,
-                                     expr_poststate(fcx.ccx, operand)) ||
-                    changed;
-            ret changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            ret extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, operand))
+                || changed;
         }
-        case (expr_cast(?operand, _, ?id)) {
+        case (expr_cast(?operand, _)) {
             changed = find_pre_post_state_expr(fcx, pres, operand) || changed;
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-            changed =
-                extend_poststate_ann(fcx.ccx, id,
-                                     expr_poststate(fcx.ccx, operand)) ||
-                    changed;
-            ret changed;
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
+            ret extend_poststate_ann
+                (fcx.ccx, e.id, expr_poststate(fcx.ccx, operand))
+                || changed;
         }
-        case (expr_fail(?id, _)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_fail(_)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             /* if execution continues after fail, then everything is true!
                woo! */
 
-            changed =
-                set_poststate_ann(fcx.ccx, id, false_postcond(num_local_vars))
-                    || changed;
+            changed = set_poststate_ann
+                (fcx.ccx, e.id, false_postcond(num_local_vars)) || changed;
             ret changed;
         }
-        case (expr_assert(?p, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_assert(?p)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, p) || changed;
-            changed = extend_poststate_ann(fcx.ccx, id, pres) || changed;
+            changed = extend_poststate_ann(fcx.ccx, e.id, pres) || changed;
             ret changed;
         }
-        case (expr_check(?p, ?id)) {
-            changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
+        case (expr_check(?p)) {
+            changed = extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
             changed = find_pre_post_state_expr(fcx, pres, p) || changed;
-            changed = extend_poststate_ann(fcx.ccx, id, pres) || changed;
+            changed = extend_poststate_ann(fcx.ccx, e.id, pres) || changed;
             /* predicate p holds after this expression executes */
 
             let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
-            changed = gen_poststate(fcx, id, c.node) || changed;
+            changed = gen_poststate(fcx, e.id, c.node) || changed;
             ret changed;
         }
-        case (expr_if_check(?p, ?conseq, ?maybe_alt, ?id)) {
-            changed = join_then_else(fcx, p, conseq, maybe_alt, id, if_check,
-                                     pres)
-                || changed;
+        case (expr_if_check(?p, ?conseq, ?maybe_alt)) {
+            changed = join_then_else
+                (fcx, p, conseq, maybe_alt, e.id, if_check, pres) || changed;
 
             ret changed;
         }
-        case (expr_break(?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (expr_cont(?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (expr_port(?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (expr_self_method(_, ?id)) { ret pure_exp(fcx.ccx, id, pres); }
-        case (expr_anon_obj(?anon_obj, _, _, ?id)) {
+        case (expr_break) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_cont) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_port) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_self_method(_)) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_anon_obj(?anon_obj, _, _)) {
             alt (anon_obj.with_obj) {
-                case (some(?e)) {
-                    changed = find_pre_post_state_expr(fcx, pres, e);
+                case (some(?wt)) {
+                    changed = find_pre_post_state_expr(fcx, pres, wt);
                     changed =
-                        extend_prestate_ann(fcx.ccx, id, pres) || changed;
+                        extend_prestate_ann(fcx.ccx, e.id, pres) || changed;
                     changed =
-                        extend_poststate_ann(fcx.ccx, id,
-                                             expr_poststate(fcx.ccx, e)) ||
+                        extend_poststate_ann(fcx.ccx, e.id,
+                                             expr_poststate(fcx.ccx, wt)) ||
                             changed;
                     ret changed;
                 }
-                case (none) { ret pure_exp(fcx.ccx, id, pres); }
+                case (none) { ret pure_exp(fcx.ccx, e.id, pres); }
             }
         }
     }
@@ -816,14 +770,14 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                 }
             }
         }
-        case (stmt_expr(?e, _)) {
-            changed = find_pre_post_state_expr(fcx, pres, e) || changed;
+        case (stmt_expr(?ex, _)) {
+            changed = find_pre_post_state_expr(fcx, pres, ex) || changed;
             changed =
                 extend_prestate(stmt_ann.states.prestate,
-                                expr_prestate(fcx.ccx, e)) || changed;
+                                expr_prestate(fcx.ccx, ex)) || changed;
             changed =
                 extend_poststate(stmt_ann.states.poststate,
-                                 expr_poststate(fcx.ccx, e)) || changed;
+                                 expr_poststate(fcx.ccx, ex)) || changed;
             /*
               log("Summary: stmt = ");
               log_stmt(*s);
@@ -896,7 +850,6 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
 
     alt (f.body.node.expr) {
         case (some(?tailexpr)) {
-            auto tailann = expr_node_id(tailexpr);
             auto tailty = expr_ty(fcx.ccx.tcx, tailexpr);
 
             // Since blocks and alts and ifs that don't have results
@@ -906,12 +859,12 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
             if (!type_is_nil(fcx.ccx.tcx, tailty) &&
                     !type_is_bot(fcx.ccx.tcx, tailty)) {
                 auto p = false_postcond(num_local_vars);
-                set_poststate_ann(fcx.ccx, tailann, p);
+                set_poststate_ann(fcx.ccx, tailexpr.id, p);
                 // be sure to set the block poststate to the same thing
                 set_poststate_ann(fcx.ccx, f.body.node.id, p);
                 alt (fcx.enclosing.cf) {
                     case (noreturn) {
-                        kill_poststate(fcx, tailann,
+                        kill_poststate(fcx, tailexpr.id,
                                        rec(id=fcx.id, c=ninit(fcx.name)));
                     }
                     case (_) { }

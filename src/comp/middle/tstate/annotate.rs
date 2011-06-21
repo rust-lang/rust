@@ -4,7 +4,6 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import front::ast::*;
-import middle::ty::expr_node_id;
 import util::common::istr;
 import util::common::uistr;
 import util::common::span;
@@ -25,7 +24,7 @@ import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
 fn collect_ids_expr(&@expr e, @mutable vec[node_id] res) {
-    vec::push(*res, expr_node_id(e));
+    vec::push(*res, e.id);
 }
 
 fn collect_ids_block(&block b, @mutable vec[node_id] res) {

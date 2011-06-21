@@ -42,7 +42,7 @@ fn map_native_item(&map map, &@native_item i, &() e, &vt[()] v) {
 }
 
 fn map_expr(&map map, &@expr ex, &() e, &vt[()] v) {
-    map.insert(ty::expr_node_id(ex), node_expr(ex));
+    map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, e, v);
 }
 

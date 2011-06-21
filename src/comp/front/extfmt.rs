@@ -35,7 +35,7 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
 fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
     auto err_msg = "first argument to #fmt must be a string literal";
     alt (expr.node) {
-        case (ast::expr_lit(?l, _)) {
+        case (ast::expr_lit(?l)) {
             alt (l.node) {
                 case (ast::lit_str(?s, _)) { ret s; }
                 case (_) { cx.span_fatal(l.span, err_msg); }
@@ -54,8 +54,7 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
     fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit) ->
        @ast::expr {
         auto sp_lit = @rec(node=lit, span=sp);
-        auto expr = ast::expr_lit(sp_lit, cx.next_id());
-        ret @rec(node=expr, span=sp);
+        ret @rec(id=cx.next_id(), node=ast::expr_lit(sp_lit), span=sp);
     }
     fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
         auto lit = ast::lit_str(s, ast::sk_rc);
@@ -71,31 +70,27 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
     }
     fn make_add_expr(&ext_ctxt cx, common::span sp, @ast::expr lhs,
                      @ast::expr rhs) -> @ast::expr {
-        auto binexpr = ast::expr_binary(ast::add, lhs, rhs, cx.next_id());
-        ret @rec(node=binexpr, span=sp);
+        auto binexpr = ast::expr_binary(ast::add, lhs, rhs);
+        ret @rec(id=cx.next_id(), node=binexpr, span=sp);
     }
     fn make_path_expr(&ext_ctxt cx, common::span sp, vec[ast::ident] idents)
        -> @ast::expr {
         let vec[@ast::ty] types = [];
         auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
-        auto pathexpr = ast::expr_path(sp_path, cx.next_id());
-        auto sp_pathexpr = @rec(node=pathexpr, span=sp);
-        ret sp_pathexpr;
+        auto pathexpr = ast::expr_path(sp_path);
+        ret @rec(id=cx.next_id(), node=pathexpr, span=sp);
     }
     fn make_vec_expr(&ext_ctxt cx, common::span sp, vec[@ast::expr] exprs) ->
        @ast::expr {
-        auto vecexpr =
-            ast::expr_vec(exprs, ast::imm, ast::sk_rc, cx.next_id());
-        auto sp_vecexpr = @rec(node=vecexpr, span=sp);
-        ret sp_vecexpr;
+        auto vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_rc);
+        ret @rec(id=cx.next_id(), node=vecexpr, span=sp);
     }
     fn make_call(&ext_ctxt cx, common::span sp, vec[ast::ident] fn_path,
                  vec[@ast::expr] args) -> @ast::expr {
         auto pathexpr = make_path_expr(cx, sp, fn_path);
-        auto callexpr = ast::expr_call(pathexpr, args, cx.next_id());
-        auto sp_callexpr = @rec(node=callexpr, span=sp);
-        ret sp_callexpr;
+        auto callexpr = ast::expr_call(pathexpr, args);
+        ret @rec(id=cx.next_id(), node=callexpr, span=sp);
     }
     fn make_rec_expr(&ext_ctxt cx, common::span sp,
                      vec[tup(ast::ident, @ast::expr)] fields) -> @ast::expr {
@@ -107,10 +102,8 @@ fn pieces_to_expr(&ext_ctxt cx, common::span sp, vec[piece] pieces,
                 rec(node=rec(mut=ast::imm, ident=ident, expr=val), span=sp);
             astfields += [astfield];
         }
-        auto recexpr =
-            ast::expr_rec(astfields, option::none[@ast::expr], cx.next_id());
-        auto sp_recexpr = @rec(node=recexpr, span=sp);
-        ret sp_recexpr;
+        auto recexpr = ast::expr_rec(astfields, option::none[@ast::expr]);
+        ret @rec(id=cx.next_id(), node=recexpr, span=sp);
     }
     fn make_path_vec(str ident) -> vec[str] {
         // FIXME: #fmt can't currently be used from within std

@@ -32,7 +32,7 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
 // FIXME: duplicate code copied from extfmt:
 fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
     alt (expr.node) {
-        case (ast::expr_lit(?l, _)) {
+        case (ast::expr_lit(?l)) {
             alt (l.node) {
                 case (ast::lit_str(?s, _)) { ret s; }
                 case (_) { cx.span_fatal(l.span, "malformed #env call"); }
@@ -44,8 +44,7 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
 
 fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit) -> @ast::expr {
     auto sp_lit = @rec(node=lit, span=sp);
-    auto expr = ast::expr_lit(sp_lit, cx.next_id());
-    ret @rec(node=expr, span=sp);
+    ret @rec(id=cx.next_id(), node=ast::expr_lit(sp_lit), span=sp);
 }
 
 fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {

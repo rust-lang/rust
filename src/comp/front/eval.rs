@@ -77,15 +77,15 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
 
 fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
     alt (x.node) {
-        case (ast::expr_path(?pth, _)) {
+        case (ast::expr_path(?pth)) {
             if (vec::len[ident](pth.node.idents) == 1u &&
                     vec::len[@ast::ty](pth.node.types) == 0u) {
                 ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
             }
             cx.sess.span_fatal(x.span, "evaluating structured path-name");
         }
-        case (ast::expr_lit(?lit, _)) { ret eval_lit(cx, x.span, lit); }
-        case (ast::expr_unary(?op, ?a, _)) {
+        case (ast::expr_lit(?lit)) { ret eval_lit(cx, x.span, lit); }
+        case (ast::expr_unary(?op, ?a)) {
             auto av = eval_expr(cx, e, a);
             alt (op) {
                 case (ast::not) {
@@ -97,7 +97,7 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
                 }
             }
         }
-        case (ast::expr_binary(?op, ?a, ?b, _)) {
+        case (ast::expr_binary(?op, ?a, ?b)) {
             auto av = eval_expr(cx, e, a);
             auto bv = eval_expr(cx, e, b);
             alt (op) {
@@ -214,7 +214,7 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
                              &mutable vec[@ast::view_item] view_items,
                              &mutable vec[@ast::item] items) {
     alt (x.node) {
-        case (ast::expr_if(?cond, ?thn, ?elopt, _)) {
+        case (ast::expr_if(?cond, ?thn, ?elopt)) {
             auto cv = eval_expr(cx, e, cond);
             if (!val_is_bool(cv)) {
                 cx.sess.span_fatal(x.span, "bad cond type in 'if'");
@@ -234,7 +234,7 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
                 }
             }
         }
-        case (ast::expr_alt(?v, ?arms, _)) {
+        case (ast::expr_alt(?v, ?arms)) {
             auto vv = eval_expr(cx, e, v);
             for (ast::arm arm in arms) {
                 alt (arm.pat.node) {
@@ -259,7 +259,7 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
             }
             cx.sess.span_fatal(x.span, "no cases matched in 'alt'");
         }
-        case (ast::expr_block(?block, _)) {
+        case (ast::expr_block(?block)) {
             ret eval_crate_directive_block(cx, e, block, prefix, view_items,
                                            items);
         }

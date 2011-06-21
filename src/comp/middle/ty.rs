@@ -42,7 +42,6 @@ export ctxt;
 export decl_local_ty;
 export def_has_ty_params;
 export eq_ty;
-export expr_node_id;
 export expr_has_ty_params;
 export expr_ty;
 export fold_ty;
@@ -1730,53 +1729,6 @@ fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
     ret node_id_to_monotype(cx, pat_node_id(pat));
 }
 
-fn expr_node_id(&@ast::expr e) -> ast::node_id {
-    ret alt (e.node) {
-        case (ast::expr_vec(_, _, _, ?id)) { id }
-        case (ast::expr_tup(_, ?id)) { id }
-        case (ast::expr_rec(_, _, ?id)) { id }
-        case (ast::expr_call(_, _, ?id)) { id }
-        case (ast::expr_bind(_, _, ?id)) { id }
-        case (ast::expr_binary(_, _, _, ?id)) { id }
-        case (ast::expr_unary(_, _, ?id)) { id }
-        case (ast::expr_lit(_, ?id)) { id }
-        case (ast::expr_cast(_, _, ?id)) { id }
-        case (ast::expr_if(_, _, _, ?id)) { id }
-        case (ast::expr_if_check(_, _, _, ?id)) { id }
-        case (ast::expr_while(_, _, ?id)) { id }
-        case (ast::expr_for(_, _, _, ?id)) { id }
-        case (ast::expr_for_each(_, _, _, ?id)) { id }
-        case (ast::expr_do_while(_, _, ?id)) { id }
-        case (ast::expr_alt(_, _, ?id)) { id }
-        case (ast::expr_fn(_, ?id)) { id }
-        case (ast::expr_block(_, ?id)) { id }
-        case (ast::expr_move(_, _, ?id)) { id }
-        case (ast::expr_assign(_, _, ?id)) { id }
-        case (ast::expr_swap(_, _, ?id)) { id }
-        case (ast::expr_assign_op(_, _, _, ?id)) { id }
-        case (ast::expr_send(_, _, ?id)) { id }
-        case (ast::expr_recv(_, _, ?id)) { id }
-        case (ast::expr_field(_, _, ?id)) { id }
-        case (ast::expr_index(_, _, ?id)) { id }
-        case (ast::expr_path(_, ?id)) { id }
-        case (ast::expr_ext(_, _, _, _, ?id)) { id }
-        case (ast::expr_fail(?id, _)) { id }
-        case (ast::expr_ret(_, ?id)) { id }
-        case (ast::expr_put(_, ?id)) { id }
-        case (ast::expr_be(_, ?id)) { id }
-        case (ast::expr_log(_, _, ?id)) { id }
-        case (ast::expr_assert(_, ?id)) { id }
-        case (ast::expr_check(_, ?id)) { id }
-        case (ast::expr_port(?id)) { id }
-        case (ast::expr_chan(_, ?id)) { id }
-        case (ast::expr_anon_obj(_, _, _, ?id)) { id }
-        case (ast::expr_break(?id)) { id }
-        case (ast::expr_cont(?id)) { id }
-        case (ast::expr_self_method(_, ?id)) { id }
-        case (ast::expr_spawn(_, _, _, _, ?id)) { id }
-    }
-}
-
 
 // Returns the type of an expression as a monotype.
 //
@@ -1785,16 +1737,16 @@ fn expr_node_id(&@ast::expr e) -> ast::node_id {
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
-    ret node_id_to_monotype(cx, expr_node_id(expr));
+    ret node_id_to_monotype(cx, expr.id);
 }
 
 fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(vec[t], t) {
-    auto a = expr_node_id(expr);
-    ret tup(node_id_to_type_params(cx, a), node_id_to_type(cx, a));
+    ret tup(node_id_to_type_params(cx, expr.id),
+            node_id_to_type(cx, expr.id));
 }
 
 fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
-    ret node_id_has_type_params(cx, expr_node_id(expr));
+    ret node_id_has_type_params(cx, expr.id);
 }
 
 fn decl_local_ty(&ctxt cx, &@ast::local l) -> t {
@@ -1873,10 +1825,10 @@ fn sort_methods(&vec[method] meths) -> vec[method] {
 
 fn is_lval(&@ast::expr expr) -> bool {
     alt (expr.node) {
-        case (ast::expr_field(_, _, _)) { ret true; }
-        case (ast::expr_index(_, _, _)) { ret true; }
-        case (ast::expr_path(_, _)) { ret true; }
-        case (ast::expr_unary(ast::deref, _, _)) { ret true; }
+        case (ast::expr_field(_, _)) { ret true; }
+        case (ast::expr_index(_, _)) { ret true; }
+        case (ast::expr_path(_)) { ret true; }
+        case (ast::expr_unary(ast::deref, _)) { ret true; }
         case (_) { ret false; }
     }
 }

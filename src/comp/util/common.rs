@@ -152,8 +152,8 @@ fn has_nonlocal_exits(&ast::block b) -> bool {
     auto has_exits = @mutable false;
     fn visit_expr(@mutable bool flag, &@ast::expr e) {
         alt (e.node) {
-            case (ast::expr_break(_)) { *flag = true; }
-            case (ast::expr_cont(_)) { *flag = true; }
+            case (ast::expr_break) { *flag = true; }
+            case (ast::expr_cont) { *flag = true; }
             case (_) { }
         }
     }

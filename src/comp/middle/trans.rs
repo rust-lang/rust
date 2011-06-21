@@ -4077,18 +4077,20 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
     alt (els) {
         case (some(?elexpr)) {
             alt (elexpr.node) {
-                case (ast::expr_if(_, _, _, ?id)) {
+                case (ast::expr_if(_, _, _)) {
                     // Synthesize a block here to act as the else block
                     // containing an if expression. Needed in order for the
                     // else scope to behave like a normal block scope. A tad
                     // ugly.
 
                     let ast::block_ elseif_blk_ =
-                        rec(stmts=[], expr=some[@ast::expr](elexpr), id=id);
+                        rec(stmts=[],
+                            expr=some[@ast::expr](elexpr),
+                            id=elexpr.id);
                     auto elseif_blk = rec(node=elseif_blk_, span=elexpr.span);
                     else_res = trans_block(else_cx, elseif_blk, output);
                 }
-                case (ast::expr_block(?blk, _)) {
+                case (ast::expr_block(?blk)) {
                     // Calling trans_block directly instead of trans_expr
                     // because trans_expr will create another scope block
                     // context for the block, but we've already got the
@@ -4155,8 +4157,8 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
 
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
-            case (ast::expr_path(?path, ?id)) {
-                alt (e.def_map.get(id)) {
+            case (ast::expr_path(?path)) {
+                alt (e.def_map.get(expr.id)) {
                     case (ast::def_arg(?did)) {
                         vec::push(e.refs, did._1);
                     }
@@ -4354,7 +4356,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt (seq.node) {
-        case (ast::expr_call(?f, ?args, ?id)) {
+        case (ast::expr_call(?f, ?args)) {
             auto pair = alloca(cx, T_fn_pair(lcx.ccx.tn, iter_body_llty));
             auto code_cell =
                 cx.build.GEP(pair, [C_int(0), C_int(abi::fn_field_code)]);
@@ -4369,7 +4371,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
             r =
                 trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
-                           id);
+                           seq.id);
             ret res(r.bcx, C_nil());
         }
     }
@@ -4856,16 +4858,16 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
 // immediate).
 fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
     alt (e.node) {
-        case (ast::expr_path(?p, ?id)) { ret trans_path(cx, p, id); }
-        case (ast::expr_field(?base, ?ident, ?id)) {
+        case (ast::expr_path(?p)) { ret trans_path(cx, p, e.id); }
+        case (ast::expr_field(?base, ?ident)) {
             auto r = trans_expr(cx, base);
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
-            ret trans_field(r.bcx, e.span, r.val, t, ident, id);
+            ret trans_field(r.bcx, e.span, r.val, t, ident, e.id);
         }
-        case (ast::expr_index(?base, ?idx, ?id)) {
-            ret trans_index(cx, e.span, base, idx, id);
+        case (ast::expr_index(?base, ?idx)) {
+            ret trans_index(cx, e.span, base, idx, e.id);
         }
-        case (ast::expr_unary(?unop, ?base, ?id)) {
+        case (ast::expr_unary(?unop, ?base)) {
             assert (unop == ast::deref);
             auto sub = trans_expr(cx, base);
             auto val =
@@ -4873,12 +4875,12 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
                                   [C_int(0), C_int(abi::box_rc_field_body)]);
             ret lval_mem(sub.bcx, val);
         }
-        case (ast::expr_self_method(?ident, ?id)) {
+        case (ast::expr_self_method(?ident)) {
             alt ({ cx.fcx.llself }) {
                 case (some(?pair)) {
                     auto r = pair.v;
                     auto t = pair.t;
-                    ret trans_field(cx, e.span, r, t, ident, id);
+                    ret trans_field(cx, e.span, r, t, ident, e.id);
                 }
                 case (_) {
                     // Shouldn't happen.
@@ -4999,10 +5001,9 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
         auto out_arg = outgoing_args.(outgoing_arg_index);
         auto llout_arg_ty = llout_arg_tys.(outgoing_arg_index);
         alt (arg) {
-            case (
-                 // Arg provided at binding time; thunk copies it from
-                 // closure.
-                 some(?e)) {
+            // Arg provided at binding time; thunk copies it from
+            // closure.
+            case (some(?e)) {
                 auto e_ty = ty::expr_ty(cx.ccx.tcx, e);
                 auto bound_arg =
                     GEP_tup_like(bcx, closure_ty, llclosure,
@@ -5671,43 +5672,43 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
     // FIXME Fill in cx.sp
 
     alt (e.node) {
-        case (ast::expr_lit(?lit, ?id)) {
-            ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, id));
+        case (ast::expr_lit(?lit)) {
+            ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, e.id));
         }
-        case (ast::expr_unary(?op, ?x, ?id)) {
-            if (op != ast::deref) { ret trans_unary(cx, op, x, id); }
+        case (ast::expr_unary(?op, ?x)) {
+            if (op != ast::deref) { ret trans_unary(cx, op, x, e.id); }
         }
-        case (ast::expr_binary(?op, ?x, ?y, _)) {
+        case (ast::expr_binary(?op, ?x, ?y)) {
             ret trans_binary(cx, op, x, y);
         }
-        case (ast::expr_if(?cond, ?thn, ?els, ?id)) {
-            ret with_out_method(bind trans_if(cx, cond, thn, els, id, _), cx,
-                                id, output);
+        case (ast::expr_if(?cond, ?thn, ?els)) {
+            ret with_out_method(bind trans_if(cx, cond, thn, els, e.id, _),
+                                cx, e.id, output);
         }
-        case (ast::expr_if_check(?cond, ?thn, ?els, ?ann)) {
-            ret with_out_method(bind trans_if(cx, cond, thn, els, ann, _), cx,
-                                ann, output);
+        case (ast::expr_if_check(?cond, ?thn, ?els)) {
+            ret with_out_method(bind trans_if(cx, cond, thn, els, e.id, _),
+                                cx, e.id, output);
         }
-        case (ast::expr_for(?decl, ?seq, ?body, _)) {
+        case (ast::expr_for(?decl, ?seq, ?body)) {
             ret trans_for(cx, decl, seq, body);
         }
-        case (ast::expr_for_each(?decl, ?seq, ?body, _)) {
+        case (ast::expr_for_each(?decl, ?seq, ?body)) {
             ret trans_for_each(cx, decl, seq, body);
         }
-        case (ast::expr_while(?cond, ?body, _)) {
+        case (ast::expr_while(?cond, ?body)) {
             ret trans_while(cx, cond, body);
         }
-        case (ast::expr_do_while(?body, ?cond, _)) {
+        case (ast::expr_do_while(?body, ?cond)) {
             ret trans_do_while(cx, body, cond);
         }
-        case (ast::expr_alt(?expr, ?arms, ?id)) {
-            ret with_out_method(bind trans_alt(cx, expr, arms, id, _), cx,
-                                id, output);
+        case (ast::expr_alt(?expr, ?arms)) {
+            ret with_out_method(bind trans_alt(cx, expr, arms, e.id, _),
+                                cx, e.id, output);
         }
-        case (ast::expr_fn(?f, ?id)) {
+        case (ast::expr_fn(?f)) {
             auto ccx = cx.fcx.lcx.ccx;
             let TypeRef llfnty =
-                alt (ty::struct(ccx.tcx, node_id_type(ccx, id))) {
+                alt (ty::struct(ccx.tcx, node_id_type(ccx, e.id))) {
                     case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
                         type_of_fn_full(ccx, e.span, proto, none, inputs,
                                         output, 0u)
@@ -5716,20 +5717,20 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
             auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
             auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
-            trans_fn(sub_cx, e.span, f, llfn, none, [], id);
+            trans_fn(sub_cx, e.span, f, llfn, none, [], e.id);
             ret res(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
         }
-        case (ast::expr_block(?blk, ?id)) {
+        case (ast::expr_block(?blk)) {
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
             auto next_cx = new_sub_block_ctxt(cx, "next");
             auto sub =
-                with_out_method(bind trans_block(sub_cx, blk, _), cx, id,
+                with_out_method(bind trans_block(sub_cx, blk, _), cx, e.id,
                                 output);
             cx.build.Br(sub_cx.llbb);
             sub.bcx.build.Br(next_cx.llbb);
             ret res(next_cx, sub.val);
         }
-        case (ast::expr_move(?dst, ?src, _)) {
+        case (ast::expr_move(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             // FIXME Fill in lhs_res.res.bcx.sp
@@ -5743,7 +5744,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                          rhs_res.res.val, t);
             ret res(move_res.bcx, C_nil());
         }
-        case (ast::expr_assign(?dst, ?src, _)) {
+        case (ast::expr_assign(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             // FIXME Fill in lhs_res.res.bcx.sp
@@ -5757,7 +5758,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                          rhs_res.val, t);
             ret res(copy_res.bcx, C_nil());
         }
-        case (ast::expr_swap(?dst, ?src, _)) {
+        case (ast::expr_swap(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
             // FIXME Fill in lhs_res.res.bcx.sp
@@ -5776,7 +5777,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                 memmove_ty(move2_res.bcx, rhs_res.res.val, tmp_res.val, t);
             ret res(move3_res.bcx, C_nil());
         }
-        case (ast::expr_assign_op(?op, ?dst, ?src, _)) {
+        case (ast::expr_assign_op(?op, ?dst, ?src)) {
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
             auto lhs_res = trans_lval(cx, dst);
             assert (lhs_res.is_mem);
@@ -5806,27 +5807,27 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                 copy_val(v.bcx, DROP_EXISTING, lhs_res.res.val, v.val, t);
             ret res(copy_res.bcx, C_nil());
         }
-        case (ast::expr_bind(?f, ?args, ?id)) {
-            ret trans_bind(cx, f, args, id);
+        case (ast::expr_bind(?f, ?args)) {
+            ret trans_bind(cx, f, args, e.id);
         }
-        case (ast::expr_call(?f, ?args, ?id)) {
-            ret trans_call(cx, f, none[ValueRef], args, id);
+        case (ast::expr_call(?f, ?args)) {
+            ret trans_call(cx, f, none[ValueRef], args, e.id);
         }
-        case (ast::expr_cast(?e, _, ?id)) { ret trans_cast(cx, e, id); }
-        case (ast::expr_vec(?args, _, ast::sk_rc, ?id)) {
-            ret trans_vec(cx, args, id);
+        case (ast::expr_cast(?val, _)) { ret trans_cast(cx, val, e.id); }
+        case (ast::expr_vec(?args, _, ast::sk_rc)) {
+            ret trans_vec(cx, args, e.id);
         }
-        case (ast::expr_vec(?args, _, ast::sk_unique, ?id)) {
-            ret trans_ivec(cx, args, id);
+        case (ast::expr_vec(?args, _, ast::sk_unique)) {
+            ret trans_ivec(cx, args, e.id);
         }
-        case (ast::expr_tup(?args, ?id)) { ret trans_tup(cx, args, id); }
-        case (ast::expr_rec(?args, ?base, ?id)) {
-            ret trans_rec(cx, args, base, id);
+        case (ast::expr_tup(?args)) { ret trans_tup(cx, args, e.id); }
+        case (ast::expr_rec(?args, ?base)) {
+            ret trans_rec(cx, args, base, e.id);
         }
-        case (ast::expr_ext(_, _, _, ?expanded, _)) {
+        case (ast::expr_ext(_, _, _, ?expanded)) {
             ret trans_expr(cx, expanded);
         }
-        case (ast::expr_fail(_, ?str)) {
+        case (ast::expr_fail(?str)) {
             auto failmsg;
             alt (str) {
                 case (some(?msg)) { failmsg = msg; }
@@ -5834,31 +5835,31 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             }
             ret trans_fail(cx, some(e.span), failmsg);
         }
-        case (ast::expr_log(?lvl, ?a, _)) { ret trans_log(lvl, cx, a); }
-        case (ast::expr_assert(?a, _)) {
+        case (ast::expr_log(?lvl, ?a)) { ret trans_log(lvl, cx, a); }
+        case (ast::expr_assert(?a)) {
             ret trans_check_expr(cx, a, "Assertion");
         }
-        case (ast::expr_check(?a, _)) {
+        case (ast::expr_check(?a)) {
             ret trans_check_expr(cx, a, "Predicate");
         }
-        case (ast::expr_break(?a)) { ret trans_break(e.span, cx); }
-        case (ast::expr_cont(?a)) { ret trans_cont(e.span, cx); }
-        case (ast::expr_ret(?e, _)) { ret trans_ret(cx, e); }
-        case (ast::expr_put(?e, _)) { ret trans_put(cx, e); }
-        case (ast::expr_be(?e, _)) { ret trans_be(cx, e); }
-        case (ast::expr_port(?id)) { ret trans_port(cx, id); }
-        case (ast::expr_chan(?e, ?id)) { ret trans_chan(cx, e, id); }
-        case (ast::expr_send(?lhs, ?rhs, ?id)) {
-            ret trans_send(cx, lhs, rhs, id);
+        case (ast::expr_break) { ret trans_break(e.span, cx); }
+        case (ast::expr_cont) { ret trans_cont(e.span, cx); }
+        case (ast::expr_ret(?ex)) { ret trans_ret(cx, ex); }
+        case (ast::expr_put(?ex)) { ret trans_put(cx, ex); }
+        case (ast::expr_be(?ex)) { ret trans_be(cx, ex); }
+        case (ast::expr_port) { ret trans_port(cx, e.id); }
+        case (ast::expr_chan(?ex)) { ret trans_chan(cx, ex, e.id); }
+        case (ast::expr_send(?lhs, ?rhs)) {
+            ret trans_send(cx, lhs, rhs, e.id);
         }
-        case (ast::expr_recv(?lhs, ?rhs, ?id)) {
-            ret trans_recv(cx, lhs, rhs, id);
+        case (ast::expr_recv(?lhs, ?rhs)) {
+            ret trans_recv(cx, lhs, rhs, e.id);
         }
-        case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?id)) {
-            ret trans_spawn(cx, dom, name, func, args, id);
+        case (ast::expr_spawn(?dom, ?name, ?func, ?args)) {
+            ret trans_spawn(cx, dom, name, func, args, e.id);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid, ?id)) {
-            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid.ctor, id);
+        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid)) {
+            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid.ctor, e.id);
         }
         case (_) {
             // The expression is an lvalue. Fall through.
@@ -6600,8 +6601,7 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
                     // the value.
 
                     ty =
-                        node_id_type(cx.fcx.lcx.ccx,
-                                      ty::expr_node_id(init.expr));
+                        node_id_type(cx.fcx.lcx.ccx, init.expr.id);
                     auto sub = trans_expr(bcx, init.expr);
                     bcx = copy_val(sub.bcx, INIT, llptr, sub.val, ty).bcx;
                 }
@@ -6836,9 +6836,9 @@ fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
     }
     fn accept_out_method(&@ast::expr expr) -> bool {
         ret alt (expr.node) {
-                case (ast::expr_if(_, _, _, _)) { true }
-                case (ast::expr_alt(_, _, _)) { true }
-                case (ast::expr_block(_, _)) { true }
+                case (ast::expr_if(_, _, _)) { true }
+                case (ast::expr_alt(_, _)) { true }
+                case (ast::expr_block(_)) { true }
                 case (_) { false }
             };
     }
@@ -7506,7 +7506,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
 // that does so later on?
 fn trans_const_expr(&@crate_ctxt cx, @ast::expr e) -> ValueRef {
     alt (e.node) {
-        case (ast::expr_lit(?lit, ?id)) { ret trans_lit(cx, *lit, id); }
+        case (ast::expr_lit(?lit)) { ret trans_lit(cx, *lit, e.id); }
         case (_) {
             cx.sess.span_unimpl(e.span, "consts that's not a plain literal");
         }

@@ -35,15 +35,15 @@ fn collect_local(&ctxt cx, &@local loc) {
 
 fn collect_pred(&ctxt cx, &@expr e) {
     alt (e.node) {
-        case (expr_check(?e, _)) {
-            vec::push(*cx.cs, expr_to_constr(cx.tcx, e));
+        case (expr_check(?ch)) {
+            vec::push(*cx.cs, expr_to_constr(cx.tcx, ch));
         }
-        case (expr_if_check(?e, _, _, _)) {
-            vec::push(*cx.cs, expr_to_constr(cx.tcx, e));
+        case (expr_if_check(?ex, _, _)) {
+            vec::push(*cx.cs, expr_to_constr(cx.tcx, ex));
         }
         // If it's a call, generate appropriate instances of the
         // call's constraints.
-        case (expr_call(?operator, ?operands, _)) {
+        case (expr_call(?operator, ?operands)) {
             for (@ty::constr_def c in constraints_expr(cx.tcx, operator)) {
                 let aux::constr ct = respan(c.span,
                       rec(id=c.node.id._1,
