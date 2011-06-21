@@ -340,6 +340,10 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
             if (mt.mut != ast::imm) { unsafe = [seq_t]; }
         }
         case (ty::ty_istr) { /* no-op */ }
+        case (_) {
+            cx.tcx.sess.span_unimpl(seq.span, "unknown seq type " +
+                                    pretty::ppaux::ty_to_str(*cx.tcx, seq_t));
+        }
     }
     auto new_sc =
         @rec(root_vars=root_def,
