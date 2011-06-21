@@ -963,9 +963,18 @@ fn expand_syntax_ext(&parser p, common::span sp, &ast::path path,
     auto extname = path.node.idents.(0);
     alt (p.get_syntax_expanders().find(extname)) {
         case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
-        case (some(ext::x(?ext))) {
+        case (some(ext::normal(?ext))) {
             auto ext_cx = ext::mk_ctxt(p);
             ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
+        }
+        // because we have expansion inside parsing, new macros are only
+        // visible further down the file
+        case (some(ext::macro_defining(?ext))) {
+            auto ext_cx = ext::mk_ctxt(p);
+            auto name_and_extension = ext(ext_cx, sp, args, body);
+            p.get_syntax_expanders().insert(name_and_extension._0,
+                                            name_and_extension._1);
+            ret ast::expr_tup(vec::empty[ast::elt]());
         }
     }
 }

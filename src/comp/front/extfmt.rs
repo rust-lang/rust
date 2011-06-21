@@ -20,7 +20,8 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
     if (vec::len[@ast::expr](args) == 0u) {
         cx.span_fatal(sp, "#fmt requires a format string");
     }
-    auto fmt = expr_to_str(cx, args.(0));
+    auto fmt = expr_to_str(cx, args.(0), "first argument to #fmt must be a "
+                           + "string literal.");
     auto fmtspan = args.(0).span;
     log "Format string:";
     log fmt;
@@ -31,20 +32,6 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
     auto pieces = parse_fmt_string(fmt, parse_fmt_err);
     ret pieces_to_expr(cx, sp, pieces, args);
 }
-
-fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
-    auto err_msg = "first argument to #fmt must be a string literal";
-    alt (expr.node) {
-        case (ast::expr_lit(?l)) {
-            alt (l.node) {
-                case (ast::lit_str(?s, _)) { ret s; }
-                case (_) { cx.span_fatal(l.span, err_msg); }
-            }
-        }
-        case (_) { cx.span_fatal(expr.span, err_msg); }
-    }
-}
-
 
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.

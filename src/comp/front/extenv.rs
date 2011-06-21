@@ -21,24 +21,10 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
     // FIXME: if this was more thorough it would manufacture an
     // option::t[str] rather than just an maybe-empty string.
 
-    auto var = expr_to_str(cx, args.(0));
+    auto var = expr_to_str(cx, args.(0), "#env requires a string");
     alt (generic_os::getenv(var)) {
         case (option::none) { ret make_new_str(cx, sp, ""); }
         case (option::some(?s)) { ret make_new_str(cx, sp, s); }
-    }
-}
-
-
-// FIXME: duplicate code copied from extfmt:
-fn expr_to_str(&ext_ctxt cx, @ast::expr expr) -> str {
-    alt (expr.node) {
-        case (ast::expr_lit(?l)) {
-            alt (l.node) {
-                case (ast::lit_str(?s, _)) { ret s; }
-                case (_) { cx.span_fatal(l.span, "malformed #env call"); }
-            }
-        }
-        case (_) { cx.span_fatal(expr.span, "malformed #env call"); }
     }
 }
 
