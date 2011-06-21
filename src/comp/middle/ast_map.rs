@@ -33,11 +33,7 @@ fn map_item(&map map, &@item i, &() e, &vt[()] v) {
 }
 
 fn map_native_item(&map map, &@native_item i, &() e, &vt[()] v) {
-    auto id = alt (i.node) {
-        case (native_item_ty(_, ?id)) { id }
-        case (native_item_fn(_, _, _, _, ?id)) { id }
-    };
-    map.insert(id, node_native_item(i));
+    map.insert(i.id, node_native_item(i));
     visit::visit_native_item(i, e, v);
 }
 

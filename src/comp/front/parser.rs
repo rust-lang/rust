@@ -1841,8 +1841,10 @@ fn parse_item_native_type(&parser p) -> @ast::native_item {
     auto t = parse_type_decl(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item = ast::native_item_ty(t._1, p.get_id());
-    ret @spanned(t._0, hi, item);
+    ret @rec(ident=t._1,
+             node=ast::native_item_ty,
+             id=p.get_id(),
+             span=rec(lo=t._0, hi=hi));
 }
 
 fn parse_item_native_fn(&parser p) -> @ast::native_item {
@@ -1856,9 +1858,10 @@ fn parse_item_native_fn(&parser p) -> @ast::native_item {
     }
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto item =
-        ast::native_item_fn(t._0, link_name, decl, t._1, p.get_id());
-    ret @spanned(lo, hi, item);
+    ret @rec(ident=t._0,
+             node=ast::native_item_fn(link_name, decl, t._1),
+             id=p.get_id(),
+             span=rec(lo=lo, hi=hi));
 }
 
 fn parse_native_item(&parser p) -> @ast::native_item {

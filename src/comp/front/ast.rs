@@ -484,15 +484,14 @@ tag item_ {
     item_obj(_obj, vec[ty_param], node_id /* constructor id */);
 }
 
-type native_item = spanned[native_item_];
+type native_item = rec(ident ident,
+                       native_item_ node,
+                       node_id id,
+                       span span);
 
 tag native_item_ {
-    native_item_ty(ident, node_id);
-    native_item_fn(ident,
-                   option::t[str],
-                   fn_decl,
-                   vec[ty_param],
-                   node_id);
+    native_item_ty;
+    native_item_fn(option::t[str], fn_decl, vec[ty_param]);
 }
 
 fn is_exported(ident i, _mod m) -> bool {

@@ -610,21 +610,21 @@ mod collect {
     fn ty_of_native_item(&@ctxt cx, &@ast::native_item it,
                          ast::native_abi abi) -> ty::ty_param_count_and_ty {
         alt (it.node) {
-            case (ast::native_item_fn(_, _, ?fn_decl, ?params, ?id)) {
+            case (ast::native_item_fn(_, ?fn_decl, ?params)) {
                 auto get = bind getter(cx, _);
                 auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
-                                         ast::local_def(id));
+                                         ast::local_def(it.id));
             }
-            case (ast::native_item_ty(?tpt, ?id)) {
-                alt (cx.tcx.tcache.find(local_def(id))) {
+            case (ast::native_item_ty) {
+                alt (cx.tcx.tcache.find(local_def(it.id))) {
                     case (some(?tpt)) { ret tpt; }
                     case (none) { }
                 }
                 auto t = ty::mk_native(cx.tcx);
                 auto tpt = tup(0u, t);
-                cx.tcx.tcache.insert(local_def(id), tpt);
+                cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
             }
         }
@@ -757,12 +757,12 @@ mod collect {
         auto tpt =
             ty_of_native_item(cx, i, option::get[ast::native_abi]({ *abi }));
         alt (i.node) {
-            case (ast::native_item_ty(_, _)) {
+            case (ast::native_item_ty) {
                 // FIXME: Native types have no annotation. Should they? --pcw
 
             }
-            case (ast::native_item_fn(_, _, _, _, ?id)) {
-                write::ty_only(cx.tcx, id, tpt._1);
+            case (ast::native_item_fn(_, _, _)) {
+                write::ty_only(cx.tcx, i.id, tpt._1);
             }
         }
     }

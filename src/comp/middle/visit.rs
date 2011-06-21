@@ -202,8 +202,8 @@ fn visit_pat[E](&@pat p, &E e, &vt[E] v) {
 
 fn visit_native_item[E](&@native_item ni, &E e, &vt[E] v) {
     alt (ni.node) {
-        case (native_item_fn(_, _, ?fd, _, _)) { visit_fn_decl(fd, e, v); }
-        case (native_item_ty(_, _)) { }
+        case (native_item_fn(_, ?fd, _)) { visit_fn_decl(fd, e, v); }
+        case (native_item_ty) { }
     }
 }
 

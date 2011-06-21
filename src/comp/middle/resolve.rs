@@ -630,7 +630,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
             }
             case (scope_native_item(?it)) {
                 alt (it.node) {
-                    case (ast::native_item_fn(_, _, ?decl, ?ty_params, _))
+                    case (ast::native_item_fn(_, ?decl, ?ty_params))
                          {
                         ret lookup_in_fn(name, decl, ty_params, ns);
                     }
@@ -1021,14 +1021,16 @@ fn lookup_in_mie(&env e, &mod_index_entry mie, namespace ns) ->
         }
         case (mie_native_item(?native_item)) {
             alt (native_item.node) {
-                case (ast::native_item_ty(_, ?id)) {
+                case (ast::native_item_ty) {
                     if (ns == ns_type) {
-                        ret some(ast::def_native_ty(local_def(id)));
+                        ret some(ast::def_native_ty
+                                 (local_def(native_item.id)));
                     }
                 }
-                case (ast::native_item_fn(_, _, _, _, ?id)) {
+                case (ast::native_item_fn(_, _, _)) {
                     if (ns == ns_value) {
-                        ret some(ast::def_native_fn(local_def(id)));
+                        ret some(ast::def_native_fn
+                                 (local_def(native_item.id)));
                     }
                 }
             }
@@ -1111,14 +1113,7 @@ fn index_nmod(&ast::native_mod md) -> mod_index {
         }
     }
     for (@ast::native_item it in md.items) {
-        alt (it.node) {
-            case (ast::native_item_ty(?ident, _)) {
-                add_to_index(index, ident, mie_native_item(it));
-            }
-            case (ast::native_item_fn(?ident, _, _, _, _)) {
-                add_to_index(index, ident, mie_native_item(it));
-            }
-        }
+        add_to_index(index, it.ident, mie_native_item(it));
     }
     ret index;
 }

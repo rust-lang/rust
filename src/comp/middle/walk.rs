@@ -203,10 +203,10 @@ fn walk_native_item(&ast_visitor v, @ast::native_item ni) {
     if (!v.keep_going()) { ret; }
     v.visit_native_item_pre(ni);
     alt (ni.node) {
-        case (ast::native_item_fn(_, _, ?fd, _, _)) {
+        case (ast::native_item_fn(_, ?fd, _)) {
             walk_fn_decl(v, fd);
         }
-        case (ast::native_item_ty(_, _)) { }
+        case (ast::native_item_ty) { }
     }
     v.visit_native_item_post(ni);
 }

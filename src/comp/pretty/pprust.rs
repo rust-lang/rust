@@ -320,13 +320,13 @@ fn print_item(&ps s, &@ast::item item) {
                 ibox(s, indent_unit);
                 maybe_print_comment(s, item.span.lo);
                 alt (item.node) {
-                    case (ast::native_item_ty(?id, _)) {
+                    case (ast::native_item_ty) {
                         word_nbsp(s, "type");
-                        word(s.s, id);
+                        word(s.s, item.ident);
                     }
-                    case (ast::native_item_fn(?id, ?lname, ?decl,
-                                              ?typarams, _)) {
-                        print_fn(s, decl, ast::proto_fn, id, typarams);
+                    case (ast::native_item_fn(?lname, ?decl, ?typarams)) {
+                        print_fn(s, decl, ast::proto_fn, item.ident,
+                                 typarams);
                         alt (lname) {
                             case (none) { }
                             case (some(?ss)) {

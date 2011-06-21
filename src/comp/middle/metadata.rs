@@ -337,22 +337,11 @@ fn encode_native_module_item_paths(&ebml::writer ebml_w,
                                    &native_mod nmod, &vec[str] path,
                                    &mutable vec[tup(str, uint)] index) {
     for (@native_item nitem in nmod.items) {
-        alt (nitem.node) {
-            case (native_item_ty(?ident, ?id)) {
-                add_to_index(ebml_w, path, index, ident);
-                ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, ident);
-                encode_def_id(ebml_w, local_def(id));
-                ebml::end_tag(ebml_w);
-            }
-            case (native_item_fn(?ident, _, _, _, ?id)) {
-                add_to_index(ebml_w, path, index, ident);
-                ebml::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, ident);
-                encode_def_id(ebml_w, local_def(id));
-                ebml::end_tag(ebml_w);
-            }
-        }
+        add_to_index(ebml_w, path, index, nitem.ident);
+        ebml::start_tag(ebml_w, tag_paths_data_item);
+        encode_name(ebml_w, nitem.ident);
+        encode_def_id(ebml_w, local_def(nitem.id));
+        ebml::end_tag(ebml_w);
     }
 }
 
@@ -583,17 +572,17 @@ fn encode_info_for_native_item(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
                                &@native_item nitem) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     alt (nitem.node) {
-        case (native_item_ty(_, ?id)) {
-            encode_def_id(ebml_w, local_def(id));
+        case (native_item_ty) {
+            encode_def_id(ebml_w, local_def(nitem.id));
             encode_kind(ebml_w, 'T' as u8);
             encode_type(cx, ebml_w, ty::mk_native(cx.tcx));
         }
-        case (native_item_fn(_, _, _, ?tps, ?id)) {
-            encode_def_id(ebml_w, local_def(id));
+        case (native_item_fn(_, _, ?tps)) {
+            encode_def_id(ebml_w, local_def(nitem.id));
             encode_kind(ebml_w, 'F' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, trans::node_id_type(cx, id));
-            encode_symbol(cx, ebml_w, id);
+            encode_type(cx, ebml_w, trans::node_id_type(cx, nitem.id));
+            encode_symbol(cx, ebml_w, nitem.id);
         }
     }
     ebml::end_tag(ebml_w);
