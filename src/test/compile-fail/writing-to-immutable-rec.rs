@@ -1,7 +1,4 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// error-pattern: writing to immutable type
+// error-pattern: assignment to immutable field
 fn main() {
   let rec(int x) r = rec(x=1);
   r.x = 6;
