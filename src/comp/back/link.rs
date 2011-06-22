@@ -138,6 +138,30 @@ mod write {
             let int LLVMAssemblyFile = 0;
             let int LLVMObjectFile = 1;
             let int LLVMNullFile = 2;
+            let int LLVMOptNone = 0;        // -O0
+            let int LLVMOptLess = 1;        // -O1
+            let int LLVMOptDefault = 2;     // -O2, -Os
+            let int LLVMOptAggressive = 3;  // -O3
+
+            auto CodeGenOptLevel;
+            alt (opts.optimize) {
+                case (0u) {
+                     CodeGenOptLevel = LLVMOptNone;
+                }
+                case (1u) {
+                     CodeGenOptLevel = LLVMOptLess;
+                }
+                case (2u) {
+                     CodeGenOptLevel = LLVMOptDefault;
+                }
+                case (3u) {
+                     CodeGenOptLevel = LLVMOptAggressive;
+                }
+                case (_) {
+                     fail;
+                }
+            }
+
             auto FileType;
             if (opts.output_type == output_type_object ||
                     opts.output_type == output_type_exe) {
@@ -159,7 +183,8 @@ mod write {
                     llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                                   str::buf(triple),
                                                   str::buf(output),
-                                                  LLVMAssemblyFile);
+                                                  LLVMAssemblyFile,
+                                                  CodeGenOptLevel);
                 }
 
                 // Save the object file for -c or --save-temps alone
@@ -170,7 +195,8 @@ mod write {
                     llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                                   str::buf(triple),
                                                   str::buf(output),
-                                                  LLVMObjectFile);
+                                                  LLVMObjectFile,
+                                                  CodeGenOptLevel);
                 }
             } else {
                 // If we aren't saving temps then just output the file
@@ -179,7 +205,8 @@ mod write {
                 auto triple = x86::get_target_triple();
                 llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
                                               str::buf(triple),
-                                              str::buf(output), FileType);
+                                              str::buf(output), FileType,
+                                              CodeGenOptLevel);
             }
             // Clean up and return
 

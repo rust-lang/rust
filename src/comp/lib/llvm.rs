@@ -856,7 +856,7 @@ native mod llvm = "rustllvm" {
     /* FIXME: The FileType is an enum.*/
     fn LLVMRustWriteOutputFile(PassManagerRef PM, ModuleRef M,
                                sbuf Triple, sbuf Output,
-                               int FileType);
+                               int FileType, int OptLevel);
 
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */

@@ -53,11 +53,6 @@ extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
 int *RustHackToFetchPassesO = (int*)LLVMAddBasicAliasAnalysisPass;
 int *RustHackToFetchPasses2O = (int*)LLVMAddStandardModulePasses;
 
-enum LLVMCodeGenFileType {
-  LLVMAssemblyFile,
-  LLVMObjectFile,
-  LLVMNullFile         // Do not emit any output.
-};
 
 extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   static std::string err;
@@ -77,7 +72,8 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                                         LLVMModuleRef M,
                                         const char *triple,
                                         const char *path,
-                                        LLVMCodeGenFileType FileType) {
+                                        TargetMachine::CodeGenFileType FileType,
+                                        CodeGenOpt::Level OptLevel) {
 
   // Set compilation options.
   llvm::NoFramePointerElim = true;
@@ -91,16 +87,14 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   std::string FeaturesStr;
   TargetMachine *Target = TheTarget->createTargetMachine(triple, FeaturesStr);
   bool NoVerify = false;
-  CodeGenOpt::Level OLvl = CodeGenOpt::Default;
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
                     raw_fd_ostream::F_Binary);
   formatted_raw_ostream FOS(OS);
-  TargetMachine::CodeGenFileType FileType2 =
-    static_cast<TargetMachine::CodeGenFileType>(FileType);
 
-  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType2, OLvl, NoVerify);
+  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType, OptLevel,
+                                         NoVerify);
   assert(!foo);
   (void)foo;
   PM->run(*unwrap(M));
