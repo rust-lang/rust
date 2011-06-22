@@ -940,9 +940,9 @@ fn lookup_in_local_mod(&env e, node_id node_id, &span sp, &ident id,
             }
         }
     }
-    // not local or explicitly imported; try globs:
 
-    ret lookup_glob_in_mod(e, info, sp, id, ns, dr);
+    // not local or explicitly imported; try globs:
+    ret lookup_glob_in_mod(e, info, sp, id, ns, outside);
 }
 
 fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
