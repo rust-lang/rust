@@ -13,8 +13,6 @@ public:
     // Data sent to this port from remote tasks is buffered in this channel.
     rust_chan *remote_channel;
 
-    lock_and_signal lock;
-
     rust_port(rust_task *task, size_t unit_sz);
     ~rust_port();
     void log_state();
