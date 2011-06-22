@@ -34,8 +34,8 @@ fn fib(int n) -> int {
 }
 
 fn main() {
-    assert (fib(8) == 21);
-    assert (fib(15) == 610);
-    log fib(8);
-    log fib(15);
+  assert (fib(8) == 21);
+  assert (fib(15) == 610);
+  log fib(8);
+  log fib(15);
 }

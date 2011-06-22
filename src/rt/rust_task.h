@@ -53,7 +53,7 @@ rust_task : public maybe_proxy<rust_task>,
     
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
-    bool active;
+    volatile bool active;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
