@@ -28,7 +28,7 @@ type parser =
     obj {
         fn peek() -> token::token ;
         fn bump() ;
-        fn err(str) -> !  ;
+        fn fatal(str) -> !  ;
         fn restrict(restriction) ;
         fn get_restriction() -> restriction ;
         fn get_file_type() -> file_type ;
@@ -74,7 +74,7 @@ fn new_parser(session::session sess, eval::env env,
             lo = rdr.get_mark_chpos();
             hi = rdr.get_chpos();
         }
-        fn err(str m) -> ! { sess.span_fatal(rec(lo=lo, hi=hi), m); }
+        fn fatal(str m) -> ! { sess.span_fatal(rec(lo=lo, hi=hi), m); }
         fn restrict(restriction r) { res = r; }
         fn get_restriction() -> restriction { ret res; }
         fn get_session() -> session::session { ret sess; }
@@ -164,7 +164,7 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
 fn unexpected(&parser p, token::token t) -> ! {
     let str s = "unexpected token: ";
     s += token::to_str(p.get_reader(), t);
-    p.err(s);
+    p.fatal(s);
 }
 
 fn expect(&parser p, token::token t) {
@@ -175,7 +175,7 @@ fn expect(&parser p, token::token t) {
         s += token::to_str(p.get_reader(), t);
         s += ", found ";
         s += token::to_str(p.get_reader(), p.peek());
-        p.err(s);
+        p.fatal(s);
     }
 }
 
@@ -186,7 +186,7 @@ fn spanned[T](uint lo, uint hi, &T node) -> common::spanned[T] {
 fn parse_ident(&parser p) -> ast::ident {
     alt (p.peek()) {
         case (token::IDENT(?i, _)) { p.bump(); ret p.get_str(i); }
-        case (_) { p.err("expecting ident"); fail; }
+        case (_) { p.fatal("expecting ident"); fail; }
     }
 }
 
@@ -209,12 +209,12 @@ fn parse_str_lit_or_env_ident(&parser p) -> ast::ident {
                 eval::lookup(p.get_session(), p.get_env(), p.get_span(),
                              p.get_str(i));
             if (!eval::val_is_str(v)) {
-                p.err("expecting string-valued variable");
+                p.fatal("expecting string-valued variable");
             }
             p.bump();
             ret eval::val_as_str(v);
         }
-        case (_) { p.err("expecting string literal"); fail; }
+        case (_) { p.fatal("expecting string literal"); fail; }
     }
 }
 
@@ -239,7 +239,7 @@ fn eat_word(&parser p, &str word) -> bool {
 
 fn expect_word(&parser p, &str word) {
     if (!eat_word(p, word)) {
-        p.err("expecting " + word + ", found " +
+        p.fatal("expecting " + word + ", found " +
                   token::to_str(p.get_reader(), p.peek()));
     }
 }
@@ -249,7 +249,7 @@ fn check_bad_word(&parser p) {
         case (token::IDENT(?sid, false)) {
             auto w = p.get_str(sid);
             if (p.get_bad_expr_words().contains_key(w)) {
-                p.err("found " + w + " in expression position");
+                p.fatal("found " + w + " in expression position");
             }
         }
         case (_) { }
@@ -436,7 +436,7 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
                                               ann));
                 }
                 case (_) {
-                    p.err("type parameter instantiation only allowed for " +
+                    p.fatal("type parameter instantiation only allowed for " +
                           "paths");
                 }
             }
@@ -572,7 +572,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
         hi = path.span.hi;
-    } else { p.err("expecting type"); t = ast::ty_nil; fail; }
+    } else { p.fatal("expecting type"); t = ast::ty_nil; fail; }
     ret parse_ty_postfix(@spanned(lo, hi, t), p);
 }
 
@@ -917,7 +917,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         if (/*check*/ast::is_call_expr(e)) {
             hi = e.span.hi;
             ex = ast::expr_be(e);
-        } else { p.err("Non-call expression in tail call"); }
+        } else { p.fatal("Non-call expression in tail call"); }
     } else if (eat_word(p, "port")) {
         expect(p, token::LPAREN);
         expect(p, token::RPAREN);
@@ -982,7 +982,7 @@ fn expand_syntax_ext(&parser p, common::span sp, &ast::path path,
     assert (vec::len(path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
     alt (p.get_syntax_expanders().find(extname)) {
-        case (none) { p.err("unknown syntax expander: '" + extname + "'"); }
+        case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
         case (some(ext::x(?ext))) {
             auto ext_cx = ext::mk_ctxt(p);
             ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
@@ -1313,7 +1313,7 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
             /* empty */
 
         } else {
-            p.err("expected 'case' or '}' when parsing 'alt' statement " +
+            p.fatal("expected 'case' or '}' when parsing 'alt' statement " +
                       "but found " + token::to_str(p.get_reader(), p.peek()));
         }
     }
@@ -1391,7 +1391,7 @@ fn parse_pat(&parser p) -> @ast::pat {
                         ast::pat_bind(p.get_str(id), p.get_id());
                 }
                 case (?tok) {
-                    p.err("expected identifier after '?' in pattern but " +
+                    p.fatal("expected identifier after '?' in pattern but " +
                               "found " + token::to_str(p.get_reader(), tok));
                     fail;
                 }
@@ -1503,7 +1503,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
             alt (maybe_item) {
                 case (got_item(_)) { /* fallthrough */ }
                 case (_) {
-                    ret p.err("expected item");
+                    ret p.fatal("expected item");
                 }
             }
         }
@@ -1528,7 +1528,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
             }
         }
     }
-    p.err("expected statement");
+    p.fatal("expected statement");
     fail;
 }
 
@@ -1612,7 +1612,7 @@ fn parse_block(&parser p) -> ast::block {
                             case (token::RBRACE) { expr = some(e); }
                             case (?t) {
                                 if (stmt_ends_with_semi(*stmt)) {
-                                    p.err("expected ';' or '}' after " +
+                                    p.fatal("expected ';' or '}' after " +
                                               "expression but found " +
                                               token::to_str(p.get_reader(),
                                                             t));
@@ -1798,7 +1798,7 @@ fn parse_mod_items(&parser p, token::token term,
         alt (parse_item(p, attrs)) {
             case (got_item(?i)) { vec::push(items, i); }
             case (_) {
-                p.err("expected item but found " +
+                p.fatal("expected item but found " +
                           token::to_str(p.get_reader(), p.peek()));
             }
         }
@@ -1903,7 +1903,7 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
             abi = ast::native_abi_llvm;
         } else if (str::eq(t, "rust-intrinsic")) {
             abi = ast::native_abi_rust_intrinsic;
-        } else { p.err("unsupported abi: " + t); fail; }
+        } else { p.fatal("unsupported abi: " + t); fail; }
     }
     expect_word(p, "mod");
     auto id = parse_ident(p);
@@ -1971,7 +1971,7 @@ fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
             }
             case (token::RBRACE) {/* empty */ }
             case (_) {
-                p.err("expected name of variant or '}' but found " +
+                p.fatal("expected name of variant or '}' but found " +
                           token::to_str(p.get_reader(), tok));
             }
         }
@@ -2104,7 +2104,7 @@ fn parse_inner_attrs_and_next(&parser p) -> tup(vec[ast::attribute],
 fn parse_inner_attrs(&parser p) -> vec[ast::attribute] {
     auto attrs_and_next = parse_inner_attrs_and_next(p);
     if (vec::len(attrs_and_next._1) > 0u) {
-        ret p.err("expected crate directive but found " +
+        ret p.fatal("expected crate directive but found " +
                   token::to_str(p.get_reader(), p.peek()));
     }
     ret attrs_and_next._0;
@@ -2120,7 +2120,7 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
             p.bump();
             ret @spanned(lo, hi, rec(key=ident, value=p.get_str(s)));
         }
-        case (_) { p.err("Metadata items must be string literals"); }
+        case (_) { p.fatal("Metadata items must be string literals"); }
     }
     fail;
 }
@@ -2158,10 +2158,10 @@ fn parse_rest_import_name(&parser p, ast::ident first,
         alt (p.peek()) {
             case (token::SEMI) { p.bump(); break; }
             case (token::MOD_SEP) {
-                if (glob) { p.err("cannot path into a glob"); }
+                if (glob) { p.fatal("cannot path into a glob"); }
                 p.bump();
             }
-            case (_) { p.err("expecting '::' or ';'"); }
+            case (_) { p.fatal("expecting '::' or ';'"); }
         }
         alt (p.peek()) {
             case (token::IDENT(_, _)) { identifiers += [parse_ident(p)]; }
@@ -2171,14 +2171,14 @@ fn parse_rest_import_name(&parser p, ast::ident first,
                 glob = true;
                 p.bump();
             }
-            case (_) { p.err("expecting an identifier, or '*'"); }
+            case (_) { p.fatal("expecting an identifier, or '*'"); }
         }
     }
     auto hi = p.get_hi_pos();
     auto import_decl;
     alt (def_ident) {
         case (some(?i)) {
-            if (glob) { p.err("globbed imports can't be renamed"); }
+            if (glob) { p.fatal("globbed imports can't be renamed"); }
             import_decl =
                 ast::view_item_import(i, identifiers, p.get_id());
         }
@@ -2204,7 +2204,7 @@ fn parse_full_import_name(&parser p, ast::ident def_ident) ->
             p.bump();
             ret parse_rest_import_name(p, p.get_str(i), some(def_ident));
         }
-        case (_) { p.err("expecting an identifier"); }
+        case (_) { p.fatal("expecting an identifier"); }
     }
     fail;
 }
@@ -2223,7 +2223,7 @@ fn parse_import(&parser p) -> @ast::view_item {
                 }
             }
         }
-        case (_) { p.err("expecting an identifier"); }
+        case (_) { p.fatal("expecting an identifier"); }
     }
     fail;
 }
