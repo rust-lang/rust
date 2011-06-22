@@ -223,9 +223,12 @@ upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
     // on the port. Remember the rendezvous location so that any sender
     // task can write to it before waking up this task.
 
-    LOG(task, comm, "<=== waiting for rendezvous data ===");
-    task->rendezvous_ptr = dptr;
-    task->block(port, "waiting for rendezvous data");
+    {
+        scoped_lock sync(port->lock);
+        LOG(task, comm, "<=== waiting for rendezvous data ===");
+        task->rendezvous_ptr = dptr;
+        task->block(port, "waiting for rendezvous data");
+    }
     task->yield(3);
 }
 

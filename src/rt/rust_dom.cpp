@@ -166,9 +166,11 @@ rust_dom::number_of_live_tasks() {
  */
 void
 rust_dom::reap_dead_tasks() {
+    I(this, scheduler_lock.lock_held_by_current_thread());
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
-        if (task->ref_count == 0) {
+        // Make sure this task isn't still running somewhere else...
+        if (task->ref_count == 0 && task->can_schedule()) {
             I(this, task->tasks_waiting_to_join.is_empty());
             dead_tasks.remove(task);
             DLOG(this, task,
@@ -315,13 +317,14 @@ rust_dom::start_main_loop(int id) {
         DLOG(this, task,
              "Running task %p on worker %d",
              scheduled_task, id);
+        I(this, !scheduled_task->active);
         scheduled_task->active = true;
         activate(scheduled_task);
         scheduled_task->active = false;
 
         DLOG(this, task,
              "returned from task %s @0x%" PRIxPTR
-             " in state '%s', sp=0x%, worker id=%d" PRIxPTR,
+             " in state '%s', sp=0x%x, worker id=%d" PRIxPTR,
              scheduled_task->name,
              (uintptr_t)scheduled_task,
              scheduled_task->state->name,
@@ -349,7 +352,9 @@ rust_dom::start_main_loop(int id) {
                 "scheduler yielding ...",
                 dead_tasks.length());
             log_state();
+            scheduler_lock.unlock();
             sync::yield();
+            scheduler_lock.lock();
         } else {
             drain_incoming_message_queue(true);
         }
