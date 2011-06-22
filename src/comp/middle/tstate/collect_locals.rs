@@ -3,7 +3,7 @@ import std::vec;
 import std::vec::plus_option;
 import front::ast;
 import front::ast::*;
-import option::*;
+import std::option::*;
 import middle::walk::walk_crate;
 import middle::walk::walk_fn;
 import middle::walk::ast_visitor;

@@ -1,5 +1,6 @@
 
 import std::bitv;
+import std::str;
 import std::vec;
 import std::vec::len;
 import std::vec::grow;
@@ -12,6 +13,7 @@ import front::ast;
 import front::ast::*;
 import util::common;
 import util::common::span;
+import util::common::spanned;
 import util::common::respan;
 import util::common::log_block;
 import util::common::new_int_hash;

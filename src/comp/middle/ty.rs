@@ -96,6 +96,7 @@ export mt;
 export node_type_table;
 export pat_node_id;
 export pat_ty;
+export cname;
 export path_to_str;
 export rename;
 export ret_ty_of_fn;
@@ -170,6 +171,7 @@ export type_is_tup_like;
 export type_is_str;
 export type_owns_heap_mem;
 export type_param;
+export def_to_str;
 export unify;
 export variant_info;
 export walk_ty;
@@ -273,7 +275,7 @@ tag sty {
 type constr_def = spanned[constr_general[uint]];
 
 type constr_general[T] =
-    rec(path path, vec[@constr_arg_general[T]] args, def_id id);
+    rec(ast::path path, vec[@constr_arg_general[T]] args, def_id id);
 
 
 // Data structures used in type unification

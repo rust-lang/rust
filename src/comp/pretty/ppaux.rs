@@ -1,13 +1,22 @@
 
 import std::io;
+import std::vec;
+import std::str;
+import std::option;
+import std::option::none;
+import std::option::some;
 import middle::ty::*;
 import front::lexer;
+import front::ast;
 import pp::word;
 import pp::eof;
 import pp::zerobreak;
 import pp::hardbreak;
 import front::codemap;
 import front::codemap::codemap;
+import util::common::istr;
+import util::common::uistr;
+import util::common::ty_mach_to_str;
 
 fn ty_to_str(&ctxt cx, &t typ) -> str {
     fn fn_input_to_str(&ctxt cx, &rec(middle::ty::mode mode, t ty) input) ->
@@ -123,8 +132,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
 
 fn ty_to_short_str(&ctxt cx, t typ) -> str {
     auto f = def_to_str;
-    auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata::ac_no_abbrevs);
-    auto s = metadata::Encode::ty_str(ecx, typ);
+    auto ecx = @rec(ds=f, tcx=cx, abbrevs=middle::metadata::ac_no_abbrevs);
+    auto s = middle::metadata::Encode::ty_str(ecx, typ);
     if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
     ret s;
 }
