@@ -1600,14 +1600,8 @@ fn parse_block(&parser p) -> ast::block {
     expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
         alt (p.peek()) {
-            case (token::RBRACE) {
-                // empty; fall through to next iteration
-
-            }
             case (token::SEMI) {
-                p.bump();
-                // empty
-
+                p.bump(); // empty
             }
             case (_) {
                 auto stmt = parse_stmt(p);
@@ -1630,7 +1624,6 @@ fn parse_block(&parser p) -> ast::block {
                     }
                     case (none) {
                         // Not an expression statement.
-
                         stmts += [stmt];
 
                         if (p.get_file_type() == SOURCE_FILE
