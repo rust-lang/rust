@@ -2580,18 +2580,23 @@ fn type_err_to_str(&ty::type_err err) -> str {
 
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
-fn bind_params_in_type(&ctxt cx, fn() -> int  next_ty_var, t typ,
+fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
                        uint ty_param_count) -> tup(vec[int], t) {
     let vec[int] param_var_ids = [];
     auto i = 0u;
     while (i < ty_param_count) { param_var_ids += [next_ty_var()]; i += 1u; }
-    fn binder(ctxt cx, vec[int] param_var_ids, fn() -> int  next_ty_var,
-              uint index) -> t {
-        ret mk_var(cx, param_var_ids.(index));
+    fn binder(span sp, ctxt cx, vec[int] param_var_ids,
+              fn() -> int next_ty_var, uint index) -> t {
+        if (index < vec::len(param_var_ids)) {
+            ret mk_var(cx, param_var_ids.(index));
+        }
+        else {
+            cx.sess.span_fatal(sp, "Unbound type parameter in callee's type");
+        }
     }
     auto new_typ =
-        fold_ty(cx, fm_param(bind binder(cx, param_var_ids, next_ty_var, _)),
-                typ);
+        fold_ty(cx, fm_param(bind binder(sp, cx, param_var_ids,
+                                         next_ty_var, _)), typ);
     ret tup(param_var_ids, new_typ);
 }
 

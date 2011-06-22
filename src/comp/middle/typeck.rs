@@ -132,7 +132,7 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
                     &span sp) -> ty_param_substs_opt_and_ty {
     auto ty_param_count = tpt._0;
     auto bind_result =
-        bind_params_in_type(fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt._1,
+        bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt._1,
                             ty_param_count);
     auto ty_param_vars = bind_result._0;
     auto t = bind_result._1;
