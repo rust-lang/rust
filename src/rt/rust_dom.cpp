@@ -268,7 +268,7 @@ rust_dom::start_main_loop(int id) {
     scheduler_lock.lock();
 
     // Make sure someone is watching, to pull us out of infinite loops.
-    rust_timer timer(this);
+    //rust_timer timer(this);
 
     DLOG(this, dom, "started domain loop %d", id);
 
@@ -395,13 +395,13 @@ rust_dom::get_cache() {
 
 rust_task *
 rust_dom::create_task(rust_task *spawner, const char *name) {
-    scheduler_lock.lock();
+    //scheduler_lock.lock();
     rust_task *task =
         new (this) rust_task (this, &newborn_tasks, spawner, name);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
     newborn_tasks.append(task);
-    scheduler_lock.unlock();
+    //scheduler_lock.unlock();
     return task;
 }
 

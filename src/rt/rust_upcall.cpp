@@ -23,6 +23,7 @@ str_buf(rust_task *task, rust_str *s);
 
 extern "C" void
 upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
+    I(task->dom, false);
     LOG_UPCALL_ENTRY(task);
     task->grow(n_frame_bytes);
 }
@@ -74,6 +75,7 @@ extern "C" CDECL rust_port*
 upcall_new_port(rust_task *task, size_t unit_sz) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
+    scoped_lock with(dom->scheduler_lock);
     LOG(task, comm, "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
     return new (dom) rust_port(task, unit_sz);
@@ -82,6 +84,7 @@ upcall_new_port(rust_task *task, size_t unit_sz) {
 extern "C" CDECL void
 upcall_del_port(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     LOG(task, comm, "upcall del_port(0x%" PRIxPTR ")", (uintptr_t) port);
     I(task->dom, !port->ref_count);
     delete port;
@@ -121,6 +124,7 @@ upcall_flush_chan(rust_task *task, rust_chan *chan) {
 extern "C" CDECL
 void upcall_del_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
 
     LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
 
@@ -143,7 +147,7 @@ void upcall_del_chan(rust_task *task, rust_chan *chan) {
             //    here is that we can get ourselves in a deadlock if the
             //    parent task tries to join us.
             //
-            // 2. We can leave the channel in a "dormnat" state by not freeing
+            // 2. We can leave the channel in a "dormant" state by not freeing
             //    it and letting the receiver task delete it for us instead.
             if (chan->buffer.is_empty() == false) {
                 return;
@@ -162,6 +166,7 @@ extern "C" CDECL rust_chan *
 upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
                   rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     size_t unit_sz = chan->buffer.unit_sz;
     maybe_proxy<rust_port> *port = chan->port;
     rust_task *target_task = NULL;
@@ -203,28 +208,30 @@ upcall_sleep(rust_task *task, size_t time_in_us) {
 extern "C" CDECL void
 upcall_send(rust_task *task, rust_chan *chan, void *sptr) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     chan->send(sptr);
     LOG(task, comm, "=== sent data ===>");
 }
 
 extern "C" CDECL void
 upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
-        ", size: 0x%" PRIxPTR ", chan_no: %d",
-        (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
-        port->chans.length());
-
-    if (port->receive(dptr)) {
-        return;
-    }
-
-    // No data was buffered on any incoming channel, so block this task
-    // on the port. Remember the rendezvous location so that any sender
-    // task can write to it before waking up this task.
-
     {
-        scoped_lock sync(port->lock);
+        LOG_UPCALL_ENTRY(task);
+        scoped_lock with(task->dom->scheduler_lock);
+
+        LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
+            ", size: 0x%" PRIxPTR ", chan_no: %d",
+            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
+            port->chans.length());
+
+        if (port->receive(dptr)) {
+            return;
+        }
+
+        // No data was buffered on any incoming channel, so block this task
+        // on the port. Remember the rendezvous location so that any sender
+        // task can write to it before waking up this task.
+
         LOG(task, comm, "<=== waiting for rendezvous data ===");
         task->rendezvous_ptr = dptr;
         task->block(port, "waiting for rendezvous data");
@@ -248,6 +255,7 @@ upcall_fail(rust_task *task,
 extern "C" CDECL void
 upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     if (target->is_proxy()) {
         notify_message::
         send(notify_message::KILL, "kill", task->get_handle(),
@@ -264,18 +272,22 @@ upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
  */
 extern "C" CDECL void
 upcall_exit(rust_task *task) {
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, task, "task ref_count: %d", task->ref_count);
-    A(task->dom, task->ref_count >= 0,
-      "Task ref_count should not be negative on exit!");
-    task->die();
-    task->notify_tasks_waiting_to_join();
+    {
+        LOG_UPCALL_ENTRY(task);
+        scoped_lock with(task->dom->scheduler_lock);
+        LOG(task, task, "task ref_count: %d", task->ref_count);
+        A(task->dom, task->ref_count >= 0,
+          "Task ref_count should not be negative on exit!");
+        task->die();
+        task->notify_tasks_waiting_to_join();
+    }
     task->yield(1);
 }
 
 extern "C" CDECL uintptr_t
 upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
 
     LOG(task, mem,
                    "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")"
@@ -296,6 +308,7 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
 extern "C" CDECL void
 upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     rust_dom *dom = task->dom;
     DLOG(dom, mem,
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
@@ -306,6 +319,7 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
 extern "C" CDECL uintptr_t
 upcall_mark(rust_task *task, void* ptr) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
 
     rust_dom *dom = task->dom;
     if (ptr) {
@@ -336,6 +350,7 @@ rust_str *make_str(rust_task *task, char const *s, size_t fill) {
 extern "C" CDECL rust_str *
 upcall_new_str(rust_task *task, char const *s, size_t fill) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     
     return make_str(task, s, fill);
 }
@@ -343,6 +358,7 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
 extern "C" CDECL rust_str *
 upcall_dup_str(rust_task *task, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
 
     return make_str(task, (char const *)str->data, str->fill);
 }
@@ -350,6 +366,7 @@ upcall_dup_str(rust_task *task, rust_str *str) {
 extern "C" CDECL rust_vec *
 upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     rust_dom *dom = task->dom;
     DLOG(dom, mem, "upcall new_vec(%" PRIdPTR ")", fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
@@ -454,6 +471,7 @@ upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
                   rust_vec **dst_ptr, rust_vec *src, bool skip_null)
 {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     rust_vec *dst = *dst_ptr;
     uintptr_t need_copy;
     size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
@@ -483,6 +501,7 @@ upcall_get_type_desc(rust_task *task,
                      size_t n_descs,
                      type_desc const **descs) {
     LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->dom->scheduler_lock);
     LOG(task, cache, "upcall get_type_desc with size=%" PRIdPTR
         ", align=%" PRIdPTR ", %" PRIdPTR " descs", size, align,
         n_descs);
@@ -496,6 +515,7 @@ extern "C" CDECL rust_task *
 upcall_new_task(rust_task *spawner, rust_vec *name) {
     // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
+    scoped_lock with(spawner->dom->scheduler_lock);
     rust_dom *dom = spawner->dom;
     rust_task *task = dom->create_task(spawner, (const char *)name->data);
     return task;
@@ -535,6 +555,7 @@ upcall_start_task(rust_task *spawner,
  */
 extern "C" CDECL maybe_proxy<rust_task> *
 upcall_new_thread(rust_task *task, const char *name) {
+    I(task->dom, false);
     LOG_UPCALL_ENTRY(task);
     rust_dom *parent_dom = task->dom;
     rust_kernel *kernel = parent_dom->kernel;
@@ -583,6 +604,7 @@ upcall_start_thread(rust_task *task,
                     rust_proxy<rust_task> *child_task_proxy,
                     uintptr_t spawnee_fn,
                     size_t callsz) {
+    I(task->dom, false);
     LOG_UPCALL_ENTRY(task);
 #if 0
     rust_dom *parenet_dom = task->dom;
@@ -615,6 +637,7 @@ extern "C" CDECL void
 upcall_ivec_resize(rust_task *task,
                    rust_ivec *v,
                    size_t newsz) {
+    scoped_lock with(task->dom->scheduler_lock);
     I(task->dom, !v->fill);
 
     size_t new_alloc = next_power_of_two(newsz);
@@ -633,6 +656,7 @@ extern "C" CDECL void
 upcall_ivec_spill(rust_task *task,
                   rust_ivec *v,
                   size_t newsz) {
+    scoped_lock with(task->dom->scheduler_lock);
     size_t new_alloc = next_power_of_two(newsz);
 
     rust_ivec_heap *heap_part = (rust_ivec_heap *)
