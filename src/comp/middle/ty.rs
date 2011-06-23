@@ -1885,25 +1885,25 @@ mod unify {
             smallintmap::insert[t](cx.vb.types, root_c, t);
         } (_, _, set_a, set_b);
 
-        alt (smallintmap::find[t](cx.vb.types, root_a)) {
-            case (none[t]) {
-                alt (smallintmap::find[t](cx.vb.types, root_b)) {
-                    case (none[t]) {
+        alt (smallintmap::find(cx.vb.types, root_a)) {
+            case (none) {
+                alt (smallintmap::find(cx.vb.types, root_b)) {
+                    case (none) {
                         ufind::union(cx.vb.sets, set_a, set_b);
                         ret unres_ok; }
-                    case (some[t](?t_b)) {
+                    case (some(?t_b)) {
                         replace_type(cx, t_b);
                         ret unres_ok;
                     }
                 }
             }
-            case (some[t](?t_a)) {
-                alt (smallintmap::find[t](cx.vb.types, root_b)) {
-                    case (none[t]) {
+            case (some(?t_a)) {
+                alt (smallintmap::find(cx.vb.types, root_b)) {
+                    case (none) {
                         replace_type(cx, t_a);
                         ret unres_ok;
                     }
-                    case (some[t](?t_b)) {
+                    case (some(?t_b)) {
                         alt (unify_step(cx, t_a, t_b)) {
                             case (ures_ok(?t_c)) {
                                 replace_type(cx, t_c);
