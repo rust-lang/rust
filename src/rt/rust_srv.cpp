@@ -54,8 +54,7 @@ rust_srv::fatal(const char *expression,
              "fatal, '%s' failed, %s:%d %s",
              expression, file, (int)line, buf);
     log(msg);
-    abort();
-    //exit(1);
+    exit(1);
 }
 
 void
