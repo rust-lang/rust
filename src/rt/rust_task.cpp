@@ -14,9 +14,9 @@
 
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
-static size_t const min_stk_bytes = 0x300000;
-// static size_t const min_stk_bytes = 0x10000;
-
+//static size_t const min_stk_bytes = 0x300000;
+//static size_t const min_stk_bytes = 0x10000;
+static size_t const min_stk_bytes = 0x100000;
 
 // Task stack segments. Heap allocated and chained together.
 

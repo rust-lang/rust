@@ -87,6 +87,7 @@ rust_dom::malloc(size_t size, memory_region::memory_region_type type) {
     } else if (type == memory_region::SYNCHRONIZED) {
         return synchronized_region.malloc(size);
     }
+    I(this, false);
     return NULL;
 }
 

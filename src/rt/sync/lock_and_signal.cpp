@@ -41,18 +41,19 @@ lock_and_signal::~lock_and_signal() {
 void lock_and_signal::lock() {
 #if defined(__WIN32__)
     EnterCriticalSection(&_cs);
+    _holding_thread = GetCurrentThreadId();
 #else
     CHECKED(pthread_mutex_lock(&_mutex));
     _holding_thread = pthread_self();
-    _locked = true;
 #endif
+    _locked = true;
 }
 
 void lock_and_signal::unlock() {
+    _locked = false;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
 #else
-    _locked = false;
     CHECKED(pthread_mutex_unlock(&_mutex));
 #endif
 }
@@ -108,8 +109,7 @@ void lock_and_signal::signal_all() {
 bool lock_and_signal::lock_held_by_current_thread()
 {
 #if defined(__WIN32__)
-    // TODO: implement this functionality for win32.
-    return false;
+    return _locked && _holding_thread == GetCurrentThreadId();
 #else
     return _locked && _holding_thread == pthread_self();
 #endif

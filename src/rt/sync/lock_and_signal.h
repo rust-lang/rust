@@ -6,13 +6,14 @@ class lock_and_signal {
 #if defined(__WIN32__)
     HANDLE _event;
     CRITICAL_SECTION _cs;
+    DWORD _holding_thread;
 #else
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 
     pthread_t _holding_thread;
-    bool _locked;
 #endif
+    bool _locked;
 public:
     lock_and_signal();
     virtual ~lock_and_signal();
