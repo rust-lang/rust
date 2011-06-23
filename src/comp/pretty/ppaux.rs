@@ -5,6 +5,7 @@ import std::str;
 import std::option;
 import std::option::none;
 import std::option::some;
+import middle::ty;
 import middle::ty::*;
 import front::lexer;
 import front::ast;
@@ -18,15 +19,25 @@ import util::common::istr;
 import util::common::uistr;
 import util::common::ty_mach_to_str;
 
+fn mode_str(&ty::mode m) -> str {
+    alt (m) {
+        case (mo_val) { "" }
+        case (mo_alias(false)) { "&" }
+        case (mo_alias(true)) { "&mutable " }
+    }
+}
+
+fn mode_str_1(&ty::mode m) -> str {
+    alt (m) {
+        case (mo_val) { "val" }
+        case (_)      { mode_str(m) }
+    }
+}
+
 fn ty_to_str(&ctxt cx, &t typ) -> str {
     fn fn_input_to_str(&ctxt cx, &rec(middle::ty::mode mode, t ty) input) ->
        str {
-        auto s =
-            alt (input.mode) {
-                case (mo_val) { "" }
-                case (mo_alias(false)) { "&" }
-                case (mo_alias(true)) { "&mutable " }
-            };
+        auto s = mode_str(input.mode);
         ret s + ty_to_str(cx, input.ty);
     }
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,

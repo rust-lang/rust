@@ -22,6 +22,7 @@ import middle::metadata;
 import util::common::*;
 import util::data::interner;
 import pretty::ppaux::ty_to_str;
+import pretty::ppaux::mode_str_1;
 
 
 export node_id_to_monotype;
@@ -292,6 +293,7 @@ tag type_err {
     terr_meth_count;
     terr_obj_meths(ast::ident, ast::ident);
     terr_arg_count;
+    terr_mode_mismatch(mode, mode);
 }
 
 type ty_param_count_and_ty = tup(uint, t);
@@ -1984,9 +1986,8 @@ mod unify {
 
             auto result_mode;
             if (expected_input.mode != actual_input.mode) {
-                // FIXME this is the wrong error
-
-                ret fn_common_res_err(ures_err(terr_arg_count));
+                ret fn_common_res_err(ures_err(terr_mode_mismatch(
+                                    expected_input.mode, actual_input.mode)));
             } else { result_mode = expected_input.mode; }
             auto result = unify_step(cx, expected_input.ty, actual_input.ty);
             alt (result) {
@@ -2583,6 +2584,11 @@ fn type_err_to_str(&ty::type_err err) -> str {
         case (terr_obj_meths(?e_meth, ?a_meth)) {
             ret "expected an obj with method '" + e_meth +
                     "' but found one with method '" + a_meth + "'";
+        }
+        case (terr_mode_mismatch(?e_mode, ?a_mode)) {
+            ret "expected argument mode " + mode_str_1(e_mode) + " but found "
+                + mode_str_1(a_mode);
+            fail;
         }
     }
 }
