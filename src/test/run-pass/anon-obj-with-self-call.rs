@@ -27,6 +27,6 @@ fn main() {
         with my_a 
     };
 
-    assert my_b.baz() == 2);
+    assert (my_b.baz() == 2);
 
 }
