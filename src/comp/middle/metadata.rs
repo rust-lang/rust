@@ -80,7 +80,7 @@ type ty_abbrev = rec(uint pos, uint len, str s);
 
 tag abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap[ty::t, ty_abbrev]); }
 
-mod Encode {
+mod encode {
     type ctxt =
         rec(fn(&def_id) -> str  ds, // Def -> str Callback:
 
@@ -454,7 +454,7 @@ fn encode_type(&@trans::crate_ctxt cx, &ebml::writer ebml_w, &ty::t typ) {
     auto f = def_to_str;
     auto ty_str_ctxt =
         @rec(ds=f, tcx=cx.tcx, abbrevs=ac_use_abbrevs(cx.type_abbrevs));
-    Encode::enc_ty(io::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
+    encode::enc_ty(io::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebml::end_tag(ebml_w);
 }
 

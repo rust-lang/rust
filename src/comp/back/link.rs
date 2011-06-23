@@ -406,7 +406,7 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, str crate_meta_name,
     sha.input_str("-");
     sha.input_str(crate_meta_name);
     sha.input_str("-");
-    sha.input_str(metadata::Encode::ty_str(cx, t));
+    sha.input_str(metadata::encode::ty_str(cx, t));
     auto hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
