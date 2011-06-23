@@ -31,6 +31,13 @@ import std::option::some;
 import std::os;
 import std::map::hashmap;
 
+export get_symbol;
+export get_tag_variants;
+export get_type;
+export read_crates;
+export lookup_defs;
+export get_type;
+export list_file_metadata;
 
 // Type decoding
 
