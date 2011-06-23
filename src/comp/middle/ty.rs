@@ -1878,14 +1878,21 @@ mod unify {
         ufind::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
         auto root_a = ufind::find(cx.vb.sets, set_a);
         auto root_b = ufind::find(cx.vb.sets, set_b);
-        ufind::union(cx.vb.sets, set_a, set_b);
-        auto root_c = ufind::find(cx.vb.sets, set_a);
+
+        auto replace_type = bind fn (&@ctxt cx, t t, uint set_a, uint set_b) {
+            ufind::union(cx.vb.sets, set_a, set_b);
+            let uint root_c = ufind::find(cx.vb.sets, set_a);
+            smallintmap::insert[t](cx.vb.types, root_c, t);
+        } (_, _, set_a, set_b);
+
         alt (smallintmap::find[t](cx.vb.types, root_a)) {
             case (none[t]) {
                 alt (smallintmap::find[t](cx.vb.types, root_b)) {
-                    case (none[t]) { ret unres_ok; }
+                    case (none[t]) {
+                        ufind::union(cx.vb.sets, set_a, set_b);
+                        ret unres_ok; }
                     case (some[t](?t_b)) {
-                        smallintmap::insert[t](cx.vb.types, root_c, t_b);
+                        replace_type(cx, t_b);
                         ret unres_ok;
                     }
                 }
@@ -1893,17 +1900,18 @@ mod unify {
             case (some[t](?t_a)) {
                 alt (smallintmap::find[t](cx.vb.types, root_b)) {
                     case (none[t]) {
-                        smallintmap::insert[t](cx.vb.types, root_c, t_a);
+                        replace_type(cx, t_a);
                         ret unres_ok;
                     }
                     case (some[t](?t_b)) {
                         alt (unify_step(cx, t_a, t_b)) {
                             case (ures_ok(?t_c)) {
-                                smallintmap::insert[t](cx.vb.types, root_c,
-                                                       t_c);
+                                replace_type(cx, t_c);
                                 ret unres_ok;
                             }
-                            case (ures_err(?terr)) { ret unres_err(terr); }
+                            case (ures_err(?terr)) {
+                                ret unres_err(terr);
+                            }
                         }
                     }
                 }
