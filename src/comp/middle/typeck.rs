@@ -1994,11 +1994,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, id, t);
                 }
                 case (_) {
-                    fcx.ccx.tcx.sess.span_unimpl(expr.span,
-                                                 "base type for expr_field \
-                                                  in typeck::check_expr: "
-                                                 + ty_to_str(fcx.ccx.tcx,
-                                                             base_t));
+                    auto t_err = resolve_type_vars_if_possible(fcx, base_t);
+                    auto msg = #fmt("attempted field access on type %s",
+                                    ty_to_str(fcx.ccx.tcx, t_err));
+                    fcx.ccx.tcx.sess.span_fatal(expr.span, msg);
                 }
             }
         }

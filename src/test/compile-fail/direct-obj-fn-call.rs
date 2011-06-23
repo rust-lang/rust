@@ -1,4 +1,4 @@
-// error-pattern: base type for expr_field
+// error-pattern: attempted field access
 
 obj x() {
   fn hello() {
