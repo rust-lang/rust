@@ -1467,7 +1467,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
             auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
 
-            demand::autoderef(fcx, expr.span, lhs_t, rhs_t, AUTODEREF_OK);
+            demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
 
             // FIXME: Binops have a bit more subtlety than this.
 
