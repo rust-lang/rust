@@ -295,6 +295,11 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             vt(v).visit_block(b, e, v);
             visit_expr_opt(eo, e, v);
         }
+        case (expr_ternary(?c, ?t, ?el)) {
+            vt(v).visit_expr(c, e, v);
+            vt(v).visit_expr(t, e, v);
+            vt(v).visit_expr(el, e, v);
+        }
         case (expr_while(?x, ?b)) {
             vt(v).visit_expr(x, e, v);
             vt(v).visit_block(b, e, v);

@@ -1609,6 +1609,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_pred_expr(fcx, cond);
             check_then_else(fcx, thn, elsopt, id, expr.span);
         }
+        case (ast::expr_ternary(_, _, _)) {
+            check_expr(fcx, ast::ternary_to_if(expr));
+        }
         case (ast::expr_assert(?e)) {
             check_expr(fcx, e);
             auto ety = expr_ty(fcx.ccx.tcx, e);

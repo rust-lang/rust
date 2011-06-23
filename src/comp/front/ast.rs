@@ -241,6 +241,7 @@ tag expr_ {
     expr_lit(@lit);
     expr_cast(@expr, @ty);
     expr_if(@expr, block, option::t[@expr]);
+    expr_ternary(@expr, @expr, @expr);
     expr_while(@expr, block);
     expr_for(@local, @expr, block);
     expr_for_each(@local, @expr, block);
@@ -550,6 +551,32 @@ fn is_constraint_arg(@expr e) -> bool {
 fn eq_ty(&@ty a, &@ty b) -> bool { ret std::box::ptr_eq(a, b); }
 
 fn hash_ty(&@ty t) -> uint { ret t.span.lo << 16u + t.span.hi; }
+
+fn block_from_expr(@expr e) -> block {
+    let block_ blk_ =
+        rec(stmts=[],
+            expr=option::some[@expr](e),
+            id=e.id);
+    ret rec(node=blk_, span=e.span);
+}
+
+// This is a convenience function to transfor ternary expressions to if
+// expressions so that they can be treated the same
+fn ternary_to_if(&@expr e) -> @ast::expr {
+    alt (e.node) {
+        case (expr_ternary(?cond, ?then, ?els)) {
+            auto then_blk = block_from_expr(then);
+            auto els_blk = block_from_expr(els);
+            auto els_expr = @rec(id=els.id, node=expr_block(els_blk),
+                                 span=els.span);
+            ret @rec(id=e.id,
+                     node=expr_if(cond, then_blk, option::some(els_expr)),
+                     span=e.span);
+        }
+        case (_) { fail; }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

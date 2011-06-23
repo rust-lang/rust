@@ -422,6 +422,9 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_if(?antec, ?conseq, ?maybe_alt)) {
             join_then_else(fcx, antec, conseq, maybe_alt, e.id, plain_if);
         }
+        case (expr_ternary(_, _, _)) {
+            find_pre_post_expr(fcx, ternary_to_if(e));
+        }
         case (expr_binary(?bop, ?l, ?r)) {
             /* *unless* bop is lazy (e.g. and, or)? 
                FIXME */

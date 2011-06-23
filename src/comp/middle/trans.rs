@@ -5746,6 +5746,9 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             ret with_out_method(bind trans_if(cx, cond, thn, els, e.id, _),
                                 cx, e.id, output);
         }
+        case (ast::expr_ternary(_, _, _)) {
+            ret trans_expr_out(cx, ast::ternary_to_if(e), output);
+        }
         case (ast::expr_for(?decl, ?seq, ?body)) {
             ret trans_for(cx, decl, seq, body);
         }

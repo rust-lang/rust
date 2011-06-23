@@ -489,6 +489,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                 || changed;
             ret changed;
         }
+        case (expr_ternary(_, _, _)) {
+            ret find_pre_post_state_expr(fcx, pres, ternary_to_if(e));
+        }
         case (expr_binary(?bop, ?l, ?r)) {
             /* FIXME: what if bop is lazy? */
 
