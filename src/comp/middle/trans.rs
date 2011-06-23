@@ -2488,11 +2488,39 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         auto b_elem_i8 = bcx.build.PointerCast(b_elem, T_ptr(T_i8()));
         auto b_end_i8 = bcx.build.GEP(b_elem_i8, [len]);
         auto b_end = bcx.build.PointerCast(b_end_i8, T_ptr(llunitty));
-        // Now perform the iteration.
 
-        auto vpf = bind adapter(_, _, _, unit_ty, f);
-        ret iter_sequence_raw(bcx, a_elem, b_elem, b_end, unit_sz, vpf);
+        auto dest_elem_ptr = alloca(bcx, T_ptr(llunitty));
+        auto src_elem_ptr = alloca(bcx, T_ptr(llunitty));
+        bcx.build.Store(a_elem, dest_elem_ptr);
+        bcx.build.Store(b_elem, src_elem_ptr);
+
+        // Now perform the iteration.
+        auto loop_header_cx = new_sub_block_ctxt(bcx,
+                                                 "iter_ivec_loop_header");
+        bcx.build.Br(loop_header_cx.llbb);
+        auto dest_elem = loop_header_cx.build.Load(dest_elem_ptr);
+        auto src_elem = loop_header_cx.build.Load(src_elem_ptr);
+        auto not_yet_at_end = loop_header_cx.build.ICmp(lib::llvm::LLVMIntULT,
+                                                        dest_elem, b_end);
+        auto loop_body_cx = new_sub_block_ctxt(bcx, "iter_ivec_loop_body");
+        auto next_cx = new_sub_block_ctxt(bcx, "iter_ivec_next");
+        loop_header_cx.build.CondBr(not_yet_at_end, loop_body_cx.llbb,
+                                    next_cx.llbb);
+
+        rslt = f(loop_body_cx,
+            load_if_immediate(loop_body_cx, dest_elem, unit_ty),
+            load_if_immediate(loop_body_cx, src_elem, unit_ty), unit_ty);
+
+        loop_body_cx = rslt.bcx;
+        loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(dest_elem,
+            [C_int(1)]), dest_elem_ptr);
+        loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(src_elem,
+            [C_int(1)]), src_elem_ptr);
+        loop_body_cx.build.Br(loop_header_cx.llbb);
+
+        ret res(next_cx, C_nil());
     }
+
     let result r = res(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(?args)) {
