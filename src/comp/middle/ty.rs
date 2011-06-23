@@ -2658,7 +2658,6 @@ fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
 fn def_has_ty_params(&ast::def def) -> bool {
     alt (def) {
         case (ast::def_fn(_,_)) { ret true; }
-        case (ast::def_obj(_)) { ret true; }
         case (ast::def_obj_field(_)) { ret false; }
         case (ast::def_mod(_)) { ret false; }
         case (ast::def_const(_)) { ret false; }

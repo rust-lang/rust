@@ -701,7 +701,6 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
             case ('p') { true }
             case ('F') { true }
             case ('y') { true }
-            case ('o') { true }
             case ('t') { true }
             case ('T') { false }
             case ('m') { false }
@@ -731,13 +730,9 @@ fn lookup_def(int cnum, vec[u8] data, &ast::def_id did_) -> ast::def {
             case ('p') { ast::def_fn(did, ast::pure_fn) }
             case ('F') { ast::def_native_fn(did) }
             case ('y') { ast::def_ty(did) }
-            case ('o') { ast::def_obj(did) }
             case ('T') { ast::def_native_ty(did) }
-            case (
-                 // We treat references to tags as references to types.
-                 't') {
-                ast::def_ty(did)
-            }
+            // We treat references to tags as references to types.
+            case ('t') { ast::def_ty(did) }
             case ('m') { ast::def_mod(did) }
             case ('n') { ast::def_native_mod(did) }
             case ('v') {
@@ -843,7 +838,6 @@ fn item_kind_to_str(u8 kind) -> str {
         case ('p') { ret "pred"; }
         case ('F') { ret "native fn"; }
         case ('y') { ret "type"; }
-        case ('o') { ret "obj"; }
         case ('T') { ret "native type"; }
         case ('t') { ret "type"; }
         case ('m') { ret "mod"; }

@@ -412,7 +412,7 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
         lookup_path_strict(*e, sc, c.span, c.node.path.node.idents, ns_value);
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
-            case (ast::def_fn(?pred_id, _)) {
+            case (ast::def_fn(?pred_id, ast::pure_fn)) {
                 let ty::constr_general[uint] c_ =
                     rec(path=c.node.path, args=c.node.args, id=pred_id);
                 let ty::constr_def new_constr = respan(c.span, c_);
@@ -826,8 +826,9 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
         }
         case (ast::item_obj(_, _, ?ctor_id)) {
             alt (ns) {
-                case (ns_value) { ret some(ast::def_obj(local_def(ctor_id)));}
-                case (ns_type) { ret some(ast::def_obj(local_def(i.id))); }
+                case (ns_value) { ret some(ast::def_fn(local_def(ctor_id),
+                                                       ast::impure_fn)); }
+                case (ns_type) { ret some(ast::def_ty(local_def(i.id))); }
                 case (_) { }
             }
         }
@@ -1123,7 +1124,6 @@ fn index_nmod(&ast::native_mod md) -> mod_index {
 fn ns_for_def(def d) -> namespace {
     ret alt (d) {
             case (ast::def_fn(?id, _)) { ns_value }
-            case (ast::def_obj(?id)) { ns_value }
             case (ast::def_obj_field(?id)) { ns_value }
             case (ast::def_mod(?id)) { ns_module }
             case (ast::def_native_mod(?id)) { ns_module }

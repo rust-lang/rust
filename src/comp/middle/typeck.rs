@@ -105,9 +105,6 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
             auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
             ret tup(0u, typ);
         }
-        case (ast::def_obj(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.tcx, id);
-        }
         case (ast::def_mod(_)) {
             // Hopefully part of a path.
             // TODO: return a type that's more poisonous, perhaps?
@@ -327,11 +324,6 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                                     path.node.types);
                 }
                 case (ast::def_native_ty(?id)) { typ = getter(id)._1; }
-                case (ast::def_obj(?id)) {
-                    typ =
-                        instantiate(tcx, ast_ty.span, getter, id,
-                                    path.node.types);
-                }
                 case (ast::def_ty_arg(?id)) { typ = ty::mk_param(tcx, id); }
                 case (_) {
                     tcx.sess.span_fatal(ast_ty.span,

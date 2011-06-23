@@ -28,7 +28,6 @@ type ty_param = ident;
 
 tag def {
     def_fn(def_id, purity);
-    def_obj(def_id);
     def_obj_field(def_id);
     def_mod(def_id);
     def_native_mod(def_id);
@@ -55,7 +54,6 @@ fn variant_def_ids(&def d) -> tup(def_id, def_id) {
 fn def_id_of_def(def d) -> def_id {
     alt (d) {
         case (def_fn(?id,_)) { ret id; }
-        case (def_obj(?id)) { ret id; }
         case (def_obj_field(?id)) { ret id; }
         case (def_mod(?id)) { ret id; }
         case (def_native_mod(?id)) { ret id; }
