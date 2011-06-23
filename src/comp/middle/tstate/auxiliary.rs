@@ -1,5 +1,3 @@
-
-import std::bitv;
 import std::str;
 import std::vec;
 import std::vec::len;
@@ -39,6 +37,10 @@ import tstate::ann::extend_poststate;
 import tstate::ann::set_precondition;
 import tstate::ann::set_postcondition;
 import tstate::ann::ts_ann;
+import tstate::ann::clear_in_postcond;
+import tstate::ann::clear_in_poststate;
+import tritv::*;
+
 import pretty::ppaux::constr_args_to_str;
 import pretty::ppaux::lit_to_str;
 
@@ -53,7 +55,7 @@ fn comma_str(vec[@constr_arg_use] args) -> str {
         if (comma) { res += ", "; } else { comma = true; }
         alt (a.node) {
             case (carg_base) { res += "*"; }
-            case (carg_ident(?i)) { res += i; }
+            case (carg_ident(?i)) { res += i._0; }
             case (carg_lit(?l)) { res += lit_to_str(l); }
         }
     }
@@ -72,29 +74,33 @@ fn constraint_to_str(&ty::ctxt tcx, &constr c) -> str {
     }
 }
 
-fn bitv_to_str(fn_ctxt fcx, bitv::t v) -> str {
+fn tritv_to_str(fn_ctxt fcx, &tritv::t v) -> str {
     auto s = "";
     auto comma = false;
     for (norm_constraint p in constraints(fcx)) {
-        if (bitv::get(v, p.bit_num)) {
-            s +=
-                if (comma) { ", " } else { comma = true; "" } +
-                    aux::constraint_to_str(fcx.ccx.tcx, p.c);
+        alt (tritv_get(v, p.bit_num)) {
+            case (dont_care) { }
+            case (?t) {
+                s +=
+                    if (comma) { ", " } else { comma = true; "" } +
+                    if (t == tfalse) { "!" } else { "" } +                  
+                    constraint_to_str(fcx.ccx.tcx, p.c);
+            }
         }
     }
     ret s;
 }
 
-fn log_bitv(&fn_ctxt fcx, &bitv::t v) { log bitv_to_str(fcx, v); }
+fn log_tritv(&fn_ctxt fcx, &tritv::t v) { log tritv_to_str(fcx, v); }
 
-fn first_difference_string(&fn_ctxt fcx, &bitv::t expected, &bitv::t actual)
+fn first_difference_string(&fn_ctxt fcx, &tritv::t expected, &tritv::t actual)
    -> str {
     let str s = "";
     auto done = false;
     for (norm_constraint c in constraints(fcx)) {
         if (!done) {
-            if (bitv::get(expected, c.bit_num) &&
-                    !bitv::get(actual, c.bit_num)) {
+            if (tritv_get(expected, c.bit_num) == ttrue &&
+                tritv_get(actual, c.bit_num) != ttrue) {
                 /*
                   FIXME
                   for fun, try either:
@@ -111,11 +117,13 @@ fn first_difference_string(&fn_ctxt fcx, &bitv::t expected, &bitv::t actual)
     ret s;
 }
 
-fn log_bitv_err(fn_ctxt fcx, bitv::t v) { log_err bitv_to_str(fcx, v); }
+fn log_tritv_err(fn_ctxt fcx, tritv::t v) { log_err tritv_to_str(fcx, v); }
 
 fn tos(vec[uint] v) -> str {
     auto res = "";
-    for (uint i in v) { if (i == 0u) { res += "0"; } else { res += "1"; } }
+    for (uint i in v) { if (i == 0u) { res += "0"; } 
+        else if (i == 1u) { res += "1"; }
+        else { res += "?"; } }
     ret res;
 }
 
@@ -124,8 +132,8 @@ fn log_cond(vec[uint] v) { log tos(v); }
 fn log_cond_err(vec[uint] v) { log_err tos(v); }
 
 fn log_pp(&pre_and_post pp) {
-    auto p1 = bitv::to_vec(pp.precondition);
-    auto p2 = bitv::to_vec(pp.postcondition);
+    auto p1 = tritv::to_vec(pp.precondition);
+    auto p2 = tritv::to_vec(pp.postcondition);
     log "pre:";
     log_cond(p1);
     log "post:";
@@ -133,8 +141,8 @@ fn log_pp(&pre_and_post pp) {
 }
 
 fn log_pp_err(&pre_and_post pp) {
-    auto p1 = bitv::to_vec(pp.precondition);
-    auto p2 = bitv::to_vec(pp.postcondition);
+    auto p1 = tritv::to_vec(pp.precondition);
+    auto p2 = tritv::to_vec(pp.postcondition);
     log_err "pre:";
     log_cond_err(p1);
     log_err "post:";
@@ -142,8 +150,8 @@ fn log_pp_err(&pre_and_post pp) {
 }
 
 fn log_states(&pre_and_post_state pp) {
-    auto p1 = bitv::to_vec(pp.prestate);
-    auto p2 = bitv::to_vec(pp.poststate);
+    auto p1 = tritv::to_vec(pp.prestate);
+    auto p2 = tritv::to_vec(pp.poststate);
     log "prestate:";
     log_cond(p1);
     log "poststate:";
@@ -151,8 +159,8 @@ fn log_states(&pre_and_post_state pp) {
 }
 
 fn log_states_err(&pre_and_post_state pp) {
-    auto p1 = bitv::to_vec(pp.prestate);
-    auto p2 = bitv::to_vec(pp.poststate);
+    auto p1 = tritv::to_vec(pp.prestate);
+    auto p2 = tritv::to_vec(pp.poststate);
     log_err "prestate:";
     log_cond_err(p1);
     log_err "poststate:";
@@ -202,7 +210,7 @@ type pred_desc_ = rec(vec[@constr_arg_use] args, uint bit_num);
 
 type pred_desc = spanned[pred_desc_];
 
-type constr_arg_use = constr_arg_general[ident];
+type constr_arg_use = constr_arg_general[tup(ident, def_id)];
 
 tag constraint {
     cinit(uint, span, ident);
@@ -377,12 +385,6 @@ fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
     ret block_states(ccx, b).poststate;
 }
 
-
-/* sets the pre_and_post for an ann */
-fn with_pp(&crate_ctxt ccx, node_id id, pre_and_post p) {
-    add_node(ccx, id, @rec(conditions=p, states=empty_states(pps_len(p))));
-}
-
 fn set_prestate_ann(&crate_ctxt ccx, node_id id, &prestate pre) -> bool {
     log "set_prestate_ann";
     ret set_prestate(node_id_to_ts_ann(ccx, id), pre);
@@ -519,17 +521,16 @@ fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
     ret res;
 }
 
-
-// FIXME:
-// this probably doesn't handle name shadowing well (or at all)
-// variables should really always be id'd by def_id and not ident
 fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
    uint {
     log "match_args: looking at " +
-            pretty::ppaux::constr_args_to_str(std::util::id[str], occ);
+        pretty::ppaux::constr_args_to_str(std::util::fst[ident, def_id], occ);
     for (pred_desc pd in occs) {
         log "match_args: candidate " + pred_desc_to_str(pd);
-        if (ty::args_eq(str::eq, pd.node.args, occ)) { ret pd.node.bit_num; }
+        fn eq(&tup(ident, def_id) p, &tup(ident, def_id) q) -> bool {
+            ret p._1 == q._1;
+        }
+        if (ty::args_eq(eq, pd.node.args, occ)) { ret pd.node.bit_num; }
     }
     fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
 }
@@ -549,11 +550,20 @@ fn node_id_for_constr(ty::ctxt tcx, node_id t) -> node_id {
 fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
     alt (e.node) {
         case (expr_path(?p)) {
-            if (vec::len(p.node.idents) == 1u) {
-                ret @respan(p.span, carg_ident[ident](p.node.idents.(0)));
-            } else {
-                tcx.sess.bug("exprs_to_constr_args: non-local variable " +
+            alt (tcx.def_map.find(e.id)) {
+                case (some(def_local(?l_id))) {
+                    ret @respan(p.span, carg_ident(tup(p.node.idents.(0),
+                                                       l_id)));
+                }
+                case (some(def_arg(?a_id))) {
+                    ret @respan(p.span, carg_ident(tup(p.node.idents.(0),
+                                                       a_id)));
+                }
+                case (_) {
+                    tcx.sess.bug("exprs_to_constr_args: non-local variable " +
                                  "as pred arg");
+                        
+                }
             }
         }
         case (expr_lit(?l)) { ret @respan(e.span, carg_lit(l)); }
@@ -601,8 +611,8 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
 
 fn pred_desc_to_str(&pred_desc p) -> str {
     ret "<" + uistr(p.node.bit_num) + ", " +
-            pretty::ppaux::constr_args_to_str(std::util::id[str], p.node.args)
-            + ">";
+        pretty::ppaux::constr_args_to_str(std::util::fst[ident, def_id],
+                                          p.node.args) + ">";
 }
 
 fn substitute_constr_args(&ty::ctxt cx, &vec[@expr] actuals,
@@ -644,6 +654,77 @@ tag if_ty {
     if_check;
     plain_if;
 }
+
+fn local_node_id_to_def_id(&fn_ctxt fcx, &span sp, &node_id i) -> def_id {
+    alt (fcx.ccx.tcx.def_map.find(i)) {
+        case (some(def_local(?d_id))) {
+            ret d_id;
+        }
+        case (some (def_arg(?a_id))) {
+            ret a_id;
+        }
+        case (some(_)) {
+            fcx.ccx.tcx.sess.span_fatal(sp, "local_node_id_to_def_id: id \
+               isn't a local");
+        }
+        case (none) {
+            // should really be bug. span_bug()?
+            fcx.ccx.tcx.sess.span_fatal(sp, "local_node_id_to_def_id: id \
+               is unbound");
+        }
+    }
+}
+
+fn forget_in_postcond(&fn_ctxt fcx, &span dead_sp,
+                      node_id parent_exp, node_id dead_v) {
+    // In the postcondition given by parent_exp, clear the bits
+    // for any constraints mentioning dead_v
+    auto d_id = local_node_id_to_def_id(fcx, dead_sp, dead_v);
+    for (norm_constraint c in constraints(fcx)) {
+        if (constraint_mentions(fcx, c, d_id)) {
+            clear_in_postcond(c.bit_num,
+              node_id_to_ts_ann(fcx.ccx, parent_exp).conditions);
+        }
+    }
+}
+
+fn forget_in_poststate(&fn_ctxt fcx, &span dead_sp, 
+                       node_id parent_exp, node_id dead_v) -> bool {
+    // In the poststate given by parent_exp, clear the bits
+    // for any constraints mentioning dead_v
+    auto d_id = local_node_id_to_def_id(fcx, dead_sp, dead_v);
+    auto changed = false;
+    for (norm_constraint c in constraints(fcx)) {
+        if (constraint_mentions(fcx, c, d_id)) {
+            changed = clear_in_poststate(c.bit_num,
+              node_id_to_ts_ann(fcx.ccx, parent_exp).states) || changed;
+        }
+    }
+    ret changed;
+}
+
+fn constraint_mentions(&fn_ctxt fcx, &norm_constraint c, &def_id v) -> bool {
+    ret (alt (c.c.node.c) {
+            case (ninit(_)) {
+                v == local_def(c.c.node.id)
+            }
+            case (npred(_, ?args)) {
+                args_mention(args, v)
+            }
+        });
+}
+
+
+fn args_mention(&vec[@constr_arg_use] args, &def_id v) -> bool {
+    fn mentions(&def_id v, &@constr_arg_use a) -> bool {
+        alt (a.node) {
+            case (carg_ident(?p1)) { p1._1 == v }
+            case (_)               { false }
+        }
+    }
+    ret util::common::any[@constr_arg_use](bind mentions(v,_), args);
+}
+
 //
 // Local Variables:
 // mode: rust

@@ -51,11 +51,11 @@ import aux::stmt_poststate;
 import aux::stmt_to_ann;
 import aux::num_constraints;
 import aux::fixed_point_states;
-import aux::bitv_to_str;
+import aux::tritv_to_str;
 import aux::first_difference_string;
 import pretty::pprust::ty_to_str;
 import util::common::log_stmt_err;
-import aux::log_bitv_err;
+import aux::log_tritv_err;
 import bitvectors::promises;
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
@@ -83,9 +83,9 @@ fn check_states_expr(&fn_ctxt fcx, &@expr e) {
                 ") for expression:\n";
         s += pretty::pprust::expr_to_str(e);
         s += "\nPrecondition:\n";
-        s += bitv_to_str(fcx, prec);
+        s += tritv_to_str(fcx, prec);
         s += "\nPrestate:\n";
-        s += bitv_to_str(fcx, pres);
+        s += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(e.span, s);
     }
 }
@@ -112,9 +112,9 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
                 ") for statement:\n";
         ss += pretty::pprust::stmt_to_str(*s);
         ss += "\nPrecondition:\n";
-        ss += bitv_to_str(fcx, prec);
+        ss += tritv_to_str(fcx, prec);
         ss += "\nPrestate: \n";
-        ss += bitv_to_str(fcx, pres);
+        ss += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(s.span, ss);
     }
 }

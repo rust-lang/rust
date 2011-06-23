@@ -1,5 +1,3 @@
-
-import std::bitv;
 import std::vec;
 import std::vec::plus_option;
 import std::vec::cat_options;
@@ -15,7 +13,6 @@ import tstate::ann::postcond;
 import tstate::ann::empty_pre_post;
 import tstate::ann::empty_poststate;
 import tstate::ann::require_and_preserve;
-import tstate::ann::union;
 import tstate::ann::intersect;
 import tstate::ann::empty_prestate;
 import tstate::ann::prestate;
@@ -48,8 +45,8 @@ import aux::extend_poststate_ann;
 import aux::set_prestate_ann;
 import aux::set_poststate_ann;
 import aux::pure_exp;
-import aux::log_bitv;
-import aux::log_bitv_err;
+import aux::log_tritv;
+import aux::log_tritv_err;
 import aux::stmt_to_ann;
 import aux::log_states;
 import aux::log_states_err;
@@ -63,9 +60,12 @@ import aux::path_to_ident;
 import aux::if_ty;
 import aux::if_check;
 import aux::plain_if;
+import aux::forget_in_poststate;
+import tritv::tritv_clone;
+import tritv::tritv_set;
+import tritv::ttrue;
 
 import bitvectors::seq_preconds;
-import bitvectors::union_postconds;
 import bitvectors::intersect_postconds;
 import bitvectors::declare_var;
 import bitvectors::bit_num;
@@ -193,8 +193,8 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
             alt (chk) {
                 case (if_check) {
                     let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
-                    conseq_prestate = bitv::clone(conseq_prestate);
-                    bitv::set(conseq_prestate, bit_num(fcx, c.node), true);
+                    conseq_prestate = tritv_clone(conseq_prestate);
+                    tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
                 }
                 case (_) {}
             }
@@ -352,8 +352,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             ret changed;
         }
         case (expr_move(?lhs, ?rhs)) {
-            // FIXME: this needs to deinitialize the rhs
-
+        
             extend_prestate_ann(fcx.ccx, e.id, pres);
             alt (lhs.node) {
                 case (expr_path(?p)) {
@@ -362,9 +361,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                     changed = pure_exp(fcx.ccx, lhs.id, pres) || changed;
                     changed = find_pre_post_state_expr
                         (fcx, pres, rhs) || changed;
-                    changed = extend_poststate_ann
-                        (fcx.ccx, e.id, expr_poststate(fcx.ccx, rhs)) ||
-                        changed;
+                    // not extending e's poststate,
+                    // because rhs is getting deinit'd anyway
                     changed = gen_if_local(fcx, lhs.id, e.id, p) || changed;
                 }
                 case (_) {
@@ -381,6 +379,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                         || changed;
                 }
             }
+
+            changed = forget_in_poststate(fcx, rhs.span, e.id, rhs.id)
+                || changed;
             ret changed;
         }
         case (expr_assign(?lhs, ?rhs)) {
@@ -725,25 +726,42 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                 find_pre_post_state_expr(fcx, pres,
                                                          an_init.expr)
                                 || changed;
-                            changed =
-                                extend_poststate(stmt_ann.states.poststate,
-                                                 expr_poststate(fcx.ccx,
-                                                                an_init.expr))
-                                    || changed;
+
+
+                            /* FIXME less copypasta */
+                            alt (an_init.op) {
+                                case (init_move) {
+                                    changed = forget_in_poststate(fcx,
+                                      an_init.expr.span, id, an_init.expr.id)
+                                        || changed;
+                /* Safe to forget rhs's poststate here 'cause it's a var. */
+                                }
+                                case (_) { /* nothing gets deinitialized */ 
+                                    changed =
+                                      extend_poststate(
+                                        stmt_ann.states.poststate,
+                                        expr_poststate(fcx.ccx, an_init.expr))
+                                        || changed;
+                                } 
+                            }
+
                             changed =
                                 gen_poststate(fcx, id,
                                               rec(id=alocal.node.id,
                                                   c=ninit(alocal.node.ident)))
                                 || changed;
-                            log "Summary: stmt = ";
-                            log_stmt(*s);
-                            log "prestate = ";
-                            log bitv::to_str(stmt_ann.states.prestate);
-                            log_bitv(fcx, stmt_ann.states.prestate);
-                            log "poststate =";
-                            log_bitv(fcx, stmt_ann.states.poststate);
-                            log "changed =";
-                            log changed;
+                            
+                            /*
+                            log_err "Summary: stmt = ";
+                            log_stmt_err(*s);
+                            log_err "prestate = ";
+                            log_tritv_err(fcx, stmt_ann.states.prestate);
+                            log_err "poststate =";
+                            log_tritv_err(fcx, stmt_ann.states.poststate);
+                            log_err "changed =";
+                            log_err changed;
+                            */
+
                             ret changed;
                         }
                         case (none) {
@@ -778,17 +796,18 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
             changed =
                 extend_poststate(stmt_ann.states.poststate,
                                  expr_poststate(fcx.ccx, ex)) || changed;
+            
             /*
-              log("Summary: stmt = ");
-              log_stmt(*s);
-              log("prestate = ");
-              log(bitv::to_str(stmt_ann.states.prestate));
-              log_bitv(enclosing, stmt_ann.states.prestate);
-              log("poststate =");
-              log(bitv::to_str(stmt_ann.states.poststate));
-              log_bitv(enclosing, stmt_ann.states.poststate);
-              log("changed =");
-              log(changed);
+              log_err("Summary: stmt = ");
+              log_stmt_err(*s);
+              log_err("prestate = ");
+              //              log_err(bitv::to_str(stmt_ann.states.prestate));
+              log_tritv_err(fcx, stmt_ann.states.prestate);
+              log_err("poststate =");
+              //   log_err(bitv::to_str(stmt_ann.states.poststate));
+              log_tritv_err(fcx, stmt_ann.states.poststate);
+              log_err("changed =");
+              log_err(changed);
             */
 
             ret changed;
@@ -833,9 +852,9 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b) ->
     log_err "poststate = ";
     log_states_err(block_states(fcx.ccx, b));
     log_err "pres0:";
-    log_bitv_err(fcx, pres0);
+    log_tritv_err(fcx, pres0);
     log_err "post:";
-    log_bitv_err(fcx, post);
+    log_tritv_err(fcx, post);
     */
 
     ret changed;
@@ -844,7 +863,7 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b) ->
 fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
     auto num_local_vars = num_constraints(fcx.enclosing);
     auto changed =
-        find_pre_post_state_block(fcx, empty_prestate(num_local_vars),
+        find_pre_post_state_block(fcx, block_prestate(fcx.ccx, f.body),
                                   f.body);
     // Treat the tail expression as a return statement
 

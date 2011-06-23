@@ -252,6 +252,15 @@ fn is_hex_digit(char c) -> bool {
 }
 
 fn is_bin_digit(char c) -> bool { ret c == '0' || c == '1'; }
+
+// FIXME move to vec
+fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
+    for (T t in v) {
+        if (f(t)) { ret true; } 
+    }
+    ret false;
+}
+
 //
 // Local Variables:
 // mode: rust

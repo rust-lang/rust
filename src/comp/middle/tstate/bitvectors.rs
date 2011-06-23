@@ -1,12 +1,11 @@
-
-import std::bitv;
+import front::ast::*;
 import std::vec;
 import std::vec::len;
 import std::vec::slice;
-import front::ast::*;
 import aux::fn_ctxt;
 import aux::fn_info;
-import aux::log_bitv;
+import aux::log_tritv;
+import aux::log_tritv_err;
 import aux::num_constraints;
 import aux::cinit;
 import aux::cpred;
@@ -40,6 +39,7 @@ import tstate::ann::clone;
 import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
 import tstate::ann::clear_in_poststate;
+import tritv::*;
 
 fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
     assert (fcx.enclosing.constrs.contains_key(c.id));
@@ -67,56 +67,80 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
 }
 
 fn promises(&fn_ctxt fcx, &poststate p, &constr_ c) -> bool {
-    ret bitv::get(p, bit_num(fcx, c));
+    ret tritv_get(p, bit_num(fcx, c)) == ttrue;
 }
 
+// v "happens after" u
+fn seq_trit(trit u, trit v) -> trit {
+    alt (v) {
+        case (ttrue)     { ttrue }
+        case (tfalse)    { tfalse }
+        case (dont_care) { u }
+    }
+}
+
+// idea: q "happens after" p -- so if something is
+// 1 in q and 0 in p, it's 1 in the result; however,
+// if it's 0 in q and 1 in p, it's 0 in the result
+fn seq_tritv(&postcond p, &postcond q) {
+    auto i = 0u;
+    assert (p.nbits == q.nbits);
+    while (i < p.nbits) {
+        tritv_set(i, p, seq_trit(tritv_get(p, i), tritv_get(q, i)));
+        i += 1u;
+    }
+}
+
+fn seq_postconds(&fn_ctxt fcx, &vec[postcond] ps) -> postcond {
+    auto sz = vec::len(ps);
+    if (sz >= 1u) {
+        auto prev = tritv_clone(ps.(0));
+        for (postcond p in slice(ps, 1u, sz)) {
+            seq_tritv(prev, p);
+        }
+        ret prev;
+    }
+    else {
+        ret ann::empty_poststate(num_constraints(fcx.enclosing));
+    }
+}
 
 // Given a list of pres and posts for exprs e0 ... en,
 // return the precondition for evaluating each expr in order.
 // So, if e0's post is {x} and e1's pre is {x, y, z}, the entire
 // precondition shouldn't include x.
-fn seq_preconds(fn_ctxt fcx, vec[pre_and_post] pps) -> precond {
-    let uint sz = len[pre_and_post](pps);
+fn seq_preconds(&fn_ctxt fcx, &vec[pre_and_post] pps) -> precond {
+    let uint sz = len(pps);
     let uint num_vars = num_constraints(fcx.enclosing);
+
+    fn seq_preconds_go(&fn_ctxt fcx, &vec[pre_and_post] pps,
+                       &pre_and_post first)
+        -> precond {
+        let uint sz = len(pps);
+        if (sz >= 1u) {
+            auto second = pps.(0);
+            assert (pps_len(second) == num_constraints(fcx.enclosing));
+            auto second_pre = clone(second.precondition);
+            difference(second_pre, first.postcondition);
+            auto next_first = clone(first.precondition);
+            union(next_first, second_pre);
+            auto next_first_post = clone(first.postcondition);
+            seq_tritv(next_first_post, second.postcondition); 
+            ret seq_preconds_go(fcx, slice(pps, 1u, sz), 
+                                @rec(precondition=next_first,
+                                     postcondition=next_first_post));
+        }
+        else {
+            ret first.precondition;
+        }
+    }
+
     if (sz >= 1u) {
         auto first = pps.(0);
         assert (pps_len(first) == num_vars);
-        let precond rest =
-            seq_preconds(fcx, slice[pre_and_post](pps, 1u, sz));
-        difference(rest, first.postcondition);
-        auto res = clone(first.precondition);
-        union(res, rest);
-        log "seq_preconds:";
-        log "first.postcondition =";
-        log_bitv(fcx, first.postcondition);
-        log "rest =";
-        log_bitv(fcx, rest);
-        log "returning";
-        log_bitv(fcx, res);
-        ret res;
+        ret seq_preconds_go(fcx, slice(pps, 1u, sz), first);
     } else { ret true_precond(num_vars); }
 }
-
-
-/* works on either postconds or preconds
- should probably rethink the whole type synonym situation */
-fn union_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-    auto sz = vec::len[postcond](rest);
-    if (sz > 0u) {
-        auto other = rest.(0);
-        union(first, other);
-        union_postconds_go(first,
-                           slice[postcond](rest, 1u, len[postcond](rest)));
-    }
-    ret first;
-}
-
-fn union_postconds(uint nv, &vec[postcond] pcs) -> postcond {
-    if (len[postcond](pcs) > 0u) {
-        ret union_postconds_go(bitv::clone(pcs.(0)), pcs);
-    } else { ret empty_prestate(nv); }
-}
-
 
 /* Gee, maybe we could use foldl or something */
 fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
@@ -133,7 +157,7 @@ fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
 
 fn intersect_postconds(&vec[postcond] pcs) -> postcond {
     assert (len[postcond](pcs) > 0u);
-    ret intersect_postconds_go(bitv::clone(pcs.(0)), pcs);
+    ret intersect_postconds_go(tritv_clone(pcs.(0)), pcs);
 }
 
 fn gen(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {

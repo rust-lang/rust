@@ -47,18 +47,23 @@ import aux::expr_to_constr;
 import aux::if_ty;
 import aux::if_check;
 import aux::plain_if;
+import aux::forget_in_postcond;
 
 import aux::constraints_expr;
 import aux::substitute_constr_args;
 import aux::ninit;
 import aux::npred;
 import aux::path_to_ident;
-import bitvectors::seq_preconds;
-import bitvectors::union_postconds;
-import bitvectors::intersect_postconds;
 import bitvectors::bit_num;
-import bitvectors::gen;
+import bitvectors::promises;
+import bitvectors::seq_preconds;
+import bitvectors::seq_postconds;
+import bitvectors::intersect_postconds;
+import bitvectors::declare_var;
+import bitvectors::gen_poststate;
+import bitvectors::kill_poststate;
 import bitvectors::relax_precond_block;
+import bitvectors::gen;
 import front::ast::*;
 import util::common::new_int_hash;
 import util::common::new_def_hash;
@@ -153,9 +158,7 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, node_id id) {
     auto pps = vec::map[@expr, pre_and_post](g, args);
     auto h = get_post;
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
-                     union_postconds(nv,
-                                     vec::map[pre_and_post,
-                                              postcond](h, pps)));
+                     seq_postconds(fcx, vec::map(h, pps)));
 }
 
 fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
@@ -212,9 +215,8 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                              [expr_pp(fcx.ccx, antec),
                               expr_pp(fcx.ccx, altern)]);
             auto postcond_false_case =
-                union_postconds(num_local_vars,
-                                [expr_postcond(fcx.ccx, antec),
-                                 expr_postcond(fcx.ccx, altern)]);
+                seq_postconds(fcx, [expr_postcond(fcx.ccx, antec),
+                                    expr_postcond(fcx.ccx, altern)]);
 
             /* Be sure to set the bit for the check condition here,
              so that it's *not* set in the alternative. */
@@ -230,14 +232,12 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                              [expr_pp(fcx.ccx, antec),
                               block_pp(fcx.ccx, conseq)]);
             auto postcond_true_case =
-                union_postconds(num_local_vars,
-                                [expr_postcond(fcx.ccx, antec),
-                                 block_postcond(fcx.ccx, conseq)]);
+                seq_postconds(fcx, [expr_postcond(fcx.ccx, antec),
+                                    block_postcond(fcx.ccx, conseq)]);
 
             auto precond_res =
-                union_postconds(num_local_vars,
-                                [precond_true_case,
-                                 precond_false_case]);
+                seq_postconds(fcx, [precond_true_case,
+                                    precond_false_case]);
             auto postcond_res =
                 intersect_postconds([postcond_true_case,
                                      postcond_false_case]);
@@ -274,7 +274,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
     auto num_local_vars = num_constraints(enclosing);
     fn do_rand_(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
     log "find_pre_post_expr (num_constraints =" + uistr(num_local_vars) +
-            "):";
+        "):";
     log_expr(*e);
     alt (e.node) {
         case (expr_call(?operator, ?operands)) {
@@ -288,13 +288,13 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             auto pp = expr_pp(fcx.ccx, e);
             for (@ty::constr_def c in constraints_expr(fcx.ccx.tcx, operator))
                 {
-                auto i =
-                    bit_num(fcx,
-                            rec(id=c.node.id._1,
-                                c=substitute_constr_args(fcx.ccx.tcx,
-                                                         operands, c)));
-                require(i, pp);
-            }
+                    auto i =
+                        bit_num(fcx,
+                                rec(id=c.node.id._1,
+                                    c=substitute_constr_args(fcx.ccx.tcx,
+                                                             operands, c)));
+                    require(i, pp);
+                }
 
             /* if this is a failing call, its postcondition sets everything */
             alt (controlflow_expr(fcx.ccx, operator)) {
@@ -359,17 +359,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_exprs(fcx, es, e.id);
         }
         case (expr_move(?lhs, ?rhs)) {
-            // FIXME: this needs to deinitialize the rhs
             alt (lhs.node) {
                 case (expr_path(?p)) {
                     gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
                 }
                 case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
             }
+            forget_in_postcond(fcx, rhs.span, e.id, rhs.id);
         }
         case (expr_swap(?lhs, ?rhs)) {
             // Both sides must already be initialized
-
+            
             find_pre_post_exprs(fcx, [lhs, rhs], e.id);
         }
         case (expr_assign(?lhs, ?rhs)) {
@@ -455,9 +455,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_block(fcx, body);
             find_pre_post_expr(fcx, test);
             auto loop_postcond =
-                union_postconds(num_local_vars,
-                                [block_postcond(fcx.ccx, body),
-                                 expr_postcond(fcx.ccx, test)]);
+                seq_postconds(fcx, [block_postcond(fcx.ccx, body),
+                                    expr_postcond(fcx.ccx, test)]);
             /* conservative approximination: if the body
                could break or cont, the test may never be executed */
 
@@ -566,6 +565,9 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                 case (decl_local(?alocal)) {
                     alt (alocal.node.init) {
                         case (some(?an_init)) {
+                            /* LHS always becomes initialized,
+                             whether or not this is a move */
+
                             find_pre_post_expr(fcx, an_init.expr);
                             copy_pre_post(fcx.ccx, alocal.node.id, 
                                           an_init.expr);
@@ -576,6 +578,15 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                             gen(fcx, id,
                                 rec(id=alocal.node.id, 
                                     c=ninit(alocal.node.ident)));
+                            
+                            alt (an_init.op) {
+                                case (init_move) {
+                                    forget_in_postcond(fcx, an_init.expr.span,
+                                                       id, an_init.expr.id);
+                                }
+                                case (_) { /* nothing gets deinitialized */ } 
+                            }
+
                         }
                         case (none) {
                             clear_pp(node_id_to_ts_ann(fcx.ccx,
@@ -643,6 +654,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
     plus_option[pre_and_post](pps,
                               option::map[@expr,
                                           pre_and_post](g, b.node.expr));
+
     auto block_precond = seq_preconds(fcx, pps);
     auto h = get_post;
     auto postconds = vec::map[pre_and_post, postcond](h, pps);
@@ -654,7 +666,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
     /* conservative approximation */
 
     if (!has_nonlocal_exits(b)) {
-        block_postcond = union_postconds(nv, postconds);
+        block_postcond = seq_postconds(fcx, postconds);
     }
     set_pre_and_post(fcx.ccx, b.node.id, block_precond, block_postcond);
 }

@@ -33,6 +33,7 @@ mod middle {
         mod pre_post_conditions;
         mod states;
         mod ann;
+        mod tritv;
     }
 }
 
