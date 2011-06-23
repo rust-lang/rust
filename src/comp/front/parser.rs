@@ -891,6 +891,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
             case (token::SEMI) { ex = ast::expr_ret(none); }
+            // Handle ret as the block result expression
+            case (token::RBRACE) { ex = ast::expr_ret(none); }
             case (_) {
                 auto e = parse_expr(p);
                 hi = e.span.hi;
