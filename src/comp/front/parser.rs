@@ -195,29 +195,6 @@ fn parse_value_ident(&parser p) -> ast::ident {
     ret parse_ident(p);
 }
 
-
-/* FIXME: gross hack copied from rustboot to make certain configuration-based
- * decisions work at build-time.  We should probably change it to use a
- * lexical sytnax-extension or something similar. For now we just imitate
- * rustboot.
- */
-fn parse_str_lit_or_env_ident(&parser p) -> ast::ident {
-    alt (p.peek()) {
-        case (token::LIT_STR(?s)) { p.bump(); ret p.get_str(s); }
-        case (token::IDENT(?i, _)) {
-            auto v =
-                eval::lookup(p.get_session(), p.get_env(), p.get_span(),
-                             p.get_str(i));
-            if (!eval::val_is_str(v)) {
-                p.fatal("expecting string-valued variable");
-            }
-            p.bump();
-            ret eval::val_as_str(v);
-        }
-        case (_) { p.fatal("expecting string literal"); fail; }
-    }
-}
-
 fn is_word(&parser p, &str word) -> bool {
     ret alt (p.peek()) {
             case (token::IDENT(?sid, false)) { str::eq(word, p.get_str(sid)) }
@@ -1849,7 +1826,7 @@ fn parse_item_native_fn(&parser p) -> @ast::native_item {
     auto link_name = none;
     if (p.peek() == token::EQ) {
         p.bump();
-        link_name = some(parse_str_lit_or_env_ident(p));
+        link_name = some(parse_str(p));
     }
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
@@ -1897,7 +1874,7 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto abi = ast::native_abi_cdecl;
     if (!is_word(p, "mod")) {
-        auto t = parse_str_lit_or_env_ident(p);
+        auto t = parse_str(p);
         if (str::eq(t, "cdecl")) {
         } else if (str::eq(t, "rust")) {
             abi = ast::native_abi_rust;
@@ -1912,7 +1889,7 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto native_name;
     if (p.peek() == token::EQ) {
         expect(p, token::EQ);
-        native_name = parse_str_lit_or_env_ident(p);
+        native_name = parse_str(p);
     } else { native_name = default_native_name(p.get_session(), id); }
     expect(p, token::LBRACE);
     auto m = parse_native_mod_items(p, native_name, abi);
@@ -2297,6 +2274,15 @@ fn parse_crate_from_source_file(&parser p) -> @ast::crate {
                                          attrs=crate_attrs._0));
 }
 
+fn parse_str(&parser p) -> ast::ident {
+    alt (p.peek()) {
+        case (token::LIT_STR(?s)) {
+            p.bump();
+            ret p.get_str(s);
+        }
+        case (_) { fail; }
+    }
+}
 
 // Logic for parsing crate files (.rc)
 //
@@ -2318,9 +2304,7 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
             alt (p.peek()) {
                 case (token::EQ) {
                     p.bump();
-
-                    // FIXME: turn this into parse+eval expr
-                    some(parse_str_lit_or_env_ident(p))
+                    some(parse_str(p))
                 }
                 case (_) { none }
             };
