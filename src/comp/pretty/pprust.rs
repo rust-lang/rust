@@ -206,6 +206,7 @@ fn print_type(&ps s, &ast::ty ty) {
         case (ast::ty_machine(?tm)) { word(s.s, common::ty_mach_to_str(tm)); }
         case (ast::ty_char) { word(s.s, "char"); }
         case (ast::ty_str) { word(s.s, "str"); }
+        case (ast::ty_istr) { word(s.s, "istr"); }
         case (ast::ty_box(?mt)) { word(s.s, "@"); print_mt(s, mt); }
         case (ast::ty_vec(?mt)) {
             word(s.s, "vec[");
@@ -218,6 +219,13 @@ fn print_type(&ps s, &ast::ty ty) {
             print_mutability(s, mt.mut);
             word(s.s, "]");
         }
+        case (ast::ty_ptr(?mt)) {
+            word(s.s, "*");
+            print_mt(s, mt);
+        }
+        case (ast::ty_task) {
+            word(s.s, "task");
+        }
         case (ast::ty_port(?t)) {
             word(s.s, "port[");
             print_type(s, *t);
@@ -228,7 +236,6 @@ fn print_type(&ps s, &ast::ty ty) {
             print_type(s, *t);
             word(s.s, "]");
         }
-        case (ast::ty_type) { word(s.s, "type"); }
         case (ast::ty_tup(?elts)) {
             word(s.s, "tup");
             popen(s);
@@ -249,6 +256,9 @@ fn print_type(&ps s, &ast::ty ty) {
             commasep_cmnt(s, consistent, fields, print_field, get_span);
             pclose(s);
         }
+        case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
+            print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
+        }
         case (ast::ty_obj(?methods)) {
             head(s, "obj");
             bopen(s);
@@ -264,10 +274,15 @@ fn print_type(&ps s, &ast::ty ty) {
             }
             bclose(s, ty.span);
         }
-        case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
-            print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
-        }
         case (ast::ty_path(?path, _)) { print_path(s, path); }
+        case (ast::ty_type) { word(s.s, "type"); }
+        case (ast::ty_constr(?t, ?cs)) {
+            print_type(s, *t);
+            space(s.s);
+            word(s.s, ":");
+            space(s.s);
+            word(s.s, ast_constrs_str(cs));
+        }
     }
     end(s);
 }
