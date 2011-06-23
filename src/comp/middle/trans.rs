@@ -6519,17 +6519,20 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
 // itself.
 fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
                   &vec[ast::ty_param] ty_params, ast::node_id oid,
-                  ast::node_id id) -> result {
+                  ast::node_id type_id) -> result {
 
     // Right now, we're assuming that anon objs don't take ty params, even
     // though the AST supports it.  It's nonsensical to write an expression
     // like "obj[T](){ ... with ... }", since T is never instantiated;
-    // nevertheless, such an expression will parse.  FIXME for the future:
-    // support typarams (issue #n).
+    // nevertheless, such an expression will parse.  Idea for the future:
+    // support typarams.
 
     assert (vec::len(ty_params) == 0u);
     auto ccx = bcx.fcx.lcx.ccx;
 
+    // Fields.
+    // FIXME (part of issue #538): Where do we fill in the field *values* from
+    // the outer object?
     let vec[ast::anon_obj_field] additional_fields = [];
     let vec[result] additional_field_vals = [];
     let vec[ty::t] additional_field_tys = [];
@@ -6544,63 +6547,86 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         }
     }
 
-    // If with_obj (the object being extended) exists, translate it, producing
-    // a result.
-    let option::t[result] with_obj_val = none;
-    let ty::t with_obj_ty = ty::mk_type(ccx.tcx);
-    alt (anon_obj.with_obj) {
-        case (none) { }
-        case (some(?e)) {
-            // Translating with_obj returns a ValueRef (pointer to a 2-word
-            // value) wrapped in a result.
-            with_obj_val  = some[result](trans_expr(bcx, e));
-            with_obj_ty = ty::expr_ty(ccx.tcx, e);
-        }
-    }
-    // FIXME (part of issue #538): much of the following code is copypasta
-    // from trans_obj for translating the anonymous wrapper object.
-    // Eventually we might want to abstract this code out of trans_anon_obj
-    // and trans_obj.
+    // Get the type of the eventual entire anonymous object, possibly with
+    // extensions.
+    auto outer_obj_ty = ty::node_id_to_type(ccx.tcx, type_id);
+    auto llouter_obj_ty = type_of(ccx, sp, outer_obj_ty);
 
-    auto self_ty = ty::node_id_to_type(ccx.tcx, id);
-    auto llself_ty = type_of(ccx, sp, self_ty);
     // Allocate the object that we're going to return.  It's a two-word pair
     // containing a vtable pointer and a body pointer.
+    auto pair = alloca(bcx, llouter_obj_ty);
 
-    auto pair = alloca(bcx, llself_ty);
     // Grab onto the first and second elements of the pair.
     // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
     // of 'pair'.
-
     auto pair_vtbl =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     auto pair_box =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_box)]);
-    // Make a vtable for the outer object.  create_vtbl() wants an ast::_obj
-    // and all we have is an ast::anon_obj, so we need to roll our own.
 
-    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) -> ast::obj_field {
+    // Create a vtable for the anonymous object.
+
+    // create_vtbl() wants an ast::_obj and all we have is an ast::anon_obj,
+    // so we need to roll our own.
+    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) 
+        -> ast::obj_field {
         ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
     }
     let ast::_obj wrapper_obj = rec(
-        fields = vec::map(anon_obj_field_to_obj_field, additional_fields),
+        fields = vec::map(anon_obj_field_to_obj_field, 
+                          additional_fields),
         methods = anon_obj.methods,
         dtor = none[@ast::method]);
-    auto vtbl = create_vtbl(bcx.fcx.lcx, llself_ty, self_ty, wrapper_obj, 
-                            ty_params);
+
+
+    // If with_obj (the object being extended) exists, translate it, producing
+    // a result.
+    let option::t[result] with_obj_val = none;
+    let ty::t with_obj_ty = ty::mk_type(ccx.tcx);
+    let TypeRef llwith_obj_ty;
+    auto vtbl;
+    alt (anon_obj.with_obj) {
+        case (none) { 
+            // If there's no with_obj -- that is, if we aren't extending our
+            // object with any fields -- then we just pass the outer object to
+            // create_vtbl().  This vtable won't need to have any forwarding
+            // slots.
+            vtbl = create_vtbl(bcx.fcx.lcx, llouter_obj_ty, outer_obj_ty,
+                               wrapper_obj, ty_params, none);
+        }
+        case (some(?e)) {
+            // Translating with_obj returns a ValueRef (pointer to a 2-word
+            // value) wrapped in a result.
+            with_obj_val  = some[result](trans_expr(bcx, e));
+
+            // TODO: What makes more sense to get the type of an expr --
+            // calling ty::expr_ty(ccx.tcx, e) on it or calling
+            // ty::node_id_to_type(ccx.tcx, id) on its id?
+            with_obj_ty = ty::expr_ty(ccx.tcx, e);
+            //with_obj_ty = ty::node_id_to_type(ccx.tcx, e.id);
+
+            llwith_obj_ty = type_of(ccx, sp, with_obj_ty);
+
+            // If there's a with_obj, we pass it as the main argument to
+            // create_vtbl(), but we're also passing along the additional
+            // methods as the last argument.  Part of what create_vtbl() will
+            // do is take the set difference of methods defined on the
+            // original and methods being added.  For every method defined on
+            // the original that does *not* have one with a matching name and
+            // type being added, we'll need to create a forwarding slot.  And,
+            // of course, we need to create a normal vtable entry for every
+            // method being added.
+            vtbl = create_vtbl(bcx.fcx.lcx, llwith_obj_ty, with_obj_ty,
+                               wrapper_obj, ty_params, 
+                               some(anon_obj.methods));
+        }
+    }
 
     bcx.build.Store(vtbl, pair_vtbl);
-    // FIXME (part of issue #538): Where do we fill in the field *values* from
-    // the outer object?
-
-    // FIXME (part of issue #539): This vtable needs to contain "forwarding
-    // slots" for the methods that exist in the with_obj, as well.  How do we
-    // do that?
 
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
     // typarams, fields, and a pointer to our with_obj.
-
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
 
     if (vec::len[ast::ty_param](ty_params) == 0u &&
@@ -7330,11 +7356,13 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     finish_fn(fcx, lltop);
 }
 
-
 // Create a vtable for an object being translated.  Returns a pointer into
 // read-only memory.
 fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
-               &ast::_obj ob, &vec[ast::ty_param] ty_params) -> ValueRef {
+               &ast::_obj ob, &vec[ast::ty_param] ty_params,
+               option::t[vec[@ast::method]] additional_methods) -> ValueRef {
+    // FIXME (issue #539): Implement forwarding slots.
+    
     auto dtor = C_null(T_ptr(T_i8()));
     alt (ob.dtor) {
         case (some(?d)) {
@@ -7364,10 +7392,10 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
         let str s = mangle_internal_name_by_path(mcx.ccx, mcx.path);
         let ValueRef llfn =
             decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
-        // Every method on an object gets its def_id inserted into the
+
+        // Every method on an object gets its node_id inserted into the
         // crate-wide item_ids map, together with the ValueRef that points to
         // where that method's definition will be in the executable.
-
         cx.ccx.item_ids.insert(m.node.id, llfn);
         cx.ccx.item_symbols.insert(m.node.id, s);
         trans_fn(mcx, m.span, m.node.meth, llfn,
@@ -7459,7 +7487,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // creating and will contain ValueRefs for all of this object's methods.
     // create_vtbl returns a pointer to the vtable, which we store.
 
-    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params);
+    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params, none);
     bcx.build.Store(vtbl, pair_vtbl);
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
