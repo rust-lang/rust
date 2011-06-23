@@ -4556,6 +4556,29 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     ret result;
 }
 
+// Finds the ValueRef associated with a variable in a function
+// context. It checks locals, upvars, and args.
+fn find_variable(&@fn_ctxt fcx, ast::node_id nid) -> ValueRef {
+    ret
+        alt (fcx.lllocals.find(nid)) {
+            case (none) {
+                alt (fcx.llupvars.find(nid)) {
+                    case (none) {
+                        alt (fcx.llargs.find(nid)) {
+                            case (some(?llval)) { llval }
+                            case (_) {
+                                fcx.lcx.ccx.sess.bug("unbound var \
+                                      in build_environment " + int::str(nid))
+                            }
+                        }
+                    }
+                    case (some(?llval)) { llval }
+                }
+            }
+            case (some(?llval)) { llval }
+        }
+}
+
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
@@ -4575,24 +4598,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
             llbindingtys += ~[val_ty(llbindings.(0))];
         }
         for (ast::node_id nid in upvars) {
-            auto llbinding;
-            alt (cx.fcx.lllocals.find(nid)) {
-                case (none) {
-                    alt (cx.fcx.llupvars.find(nid)) {
-                        case (none) {
-                            alt (cx.fcx.llargs.find(nid)) {
-                                case (some(?x)) { llbinding = x; }
-                                case (_) {
-                                    cx.fcx.lcx.ccx.sess.bug("unbound var \
-                                      in build_environment " + int::str(nid));
-                                }
-                            }
-                        }
-                        case (some(?llval)) { llbinding = llval; }
-                    }
-                }
-                case (some(?llval)) { llbinding = llval; }
-            }
+            auto llbinding = find_variable(cx.fcx, nid);
             llbindings += ~[llbinding];
             llbindingtys += ~[val_ty(llbinding)];
         }
