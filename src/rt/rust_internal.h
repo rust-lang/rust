@@ -280,10 +280,6 @@ struct gc_alloc {
 #include "rust_chan.h"
 #include "rust_port.h"
 
-#include "test/rust_test_harness.h"
-#include "test/rust_test_util.h"
-#include "test/rust_test_runtime.h"
-
 //
 // Local Variables:
 // mode: C++
