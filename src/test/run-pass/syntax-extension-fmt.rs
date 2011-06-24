@@ -14,6 +14,17 @@ fn main() {
 
     test(#fmt("test"), "test");
 
+    // a quadratic optimization in LLVM (jump-threading) makes this test a 
+    // bit slow to compile unless we break it up
+    part1();
+    part2();
+    part3();
+    part4();
+    part5();
+    part6();
+}
+
+fn part1() {
     // Simple tests for types
 
     test(#fmt("%d", 1), "1");
@@ -36,6 +47,8 @@ fn main() {
     test(#fmt("%x", 0xffffffff_u), "ffffffff");
     test(#fmt("%o", 0xffffffff_u), "37777777777");
     test(#fmt("%t", 0xffffffff_u), "11111111111111111111111111111111");
+}
+fn part2() {
     // Widths
 
     test(#fmt("%1d", 500), "500");
@@ -61,6 +74,9 @@ fn main() {
     test(#fmt("%-10o", 10u), "12        ");
     test(#fmt("%-10t", 0xff_u), "11111111  ");
     test(#fmt("%-10c", 'A'), "A         ");
+}
+
+fn part3() {
     // Precision
 
     test(#fmt("%.d", 0), "");
@@ -99,6 +115,8 @@ fn main() {
     test(#fmt("%.1o", 10u), "12");
     test(#fmt("%.1t", 3u), "11");
     test(#fmt("%.1c", 'A'), "A");
+}
+fn part4() {
     test(#fmt("%.5d", 0), "00000");
     test(#fmt("%.5u", 0u), "00000");
     test(#fmt("%.5x", 0u), "00000");
@@ -115,10 +133,13 @@ fn main() {
     // conversions support precision - it's not standard printf so we
     // can do whatever. For now I'm making it behave the same as string
     // conversions.
-
+    
     test(#fmt("%.b", true), "");
     test(#fmt("%.0b", true), "");
-    test(#fmt("%.1b", true), "t");
+    test(#fmt("%.1b", true), "t");  
+}
+
+fn part5() {
     // Explicit + sign. Only for signed conversions
 
     test(#fmt("%+d", 0), "+0");
@@ -161,6 +182,8 @@ fn main() {
     test(#fmt("%-05s", "test"), "test ");
     test(#fmt("%-05c", 'A'), "A    ");
     test(#fmt("%-05b", true), "true ");
+}
+fn part6(){
     // Precision overrides 0-padding
 
     test(#fmt("%06.5d", 0), " 00000");
