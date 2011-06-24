@@ -102,10 +102,10 @@ fn seq_states(&fn_ctxt fcx, prestate pres, vec[@expr] exprs) ->
 
 fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, ast::node_id id,
                              &vec[@expr] es) -> bool {
-    auto res = seq_states(fcx, pres, es);
-    auto changed = res._0;
+    auto rslt = seq_states(fcx, pres, es);
+    auto changed = rslt._0;
     changed = extend_prestate_ann(fcx.ccx, id, pres) || changed;
-    changed = extend_poststate_ann(fcx.ccx, id, res._1) || changed;
+    changed = extend_poststate_ann(fcx.ccx, id, rslt._1) || changed;
     ret changed;
 }
 

@@ -314,8 +314,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_exprs(fcx, elt_exprs(elts), e.id);
         }
         case (expr_path(?p)) {
-            auto res = expr_pp(fcx.ccx, e);
-            clear_pp(res);
+            auto rslt = expr_pp(fcx.ccx, e);
+            clear_pp(rslt);
             auto df = node_id_to_def_strict(fcx.ccx.tcx, e.id);
             alt (df) {
                 case (def_local(?d_id)) {
@@ -323,7 +323,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                         bit_num(fcx,
                                 rec(id=d_id._1,
                                     c=ninit(path_to_ident(fcx.ccx.tcx, p))));
-                    require_and_preserve(i, res);
+                    require_and_preserve(i, rslt);
                 }
                 case (_) {/* nothing to check */ }
             }

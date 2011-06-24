@@ -54,9 +54,9 @@ fn empty_prestate(uint num_vars) -> prestate { be true_precond(num_vars); }
 fn empty_poststate(uint num_vars) -> poststate { be true_precond(num_vars); }
 
 fn false_postcond(uint num_vars) -> postcond {
-    auto res = create_tritv(num_vars);
-    tritv_set_all(res);
-    ret res;
+    auto rslt = create_tritv(num_vars);
+    tritv_set_all(rslt);
+    ret rslt;
 }
 
 fn empty_pre_post(uint num_vars) -> pre_and_post {

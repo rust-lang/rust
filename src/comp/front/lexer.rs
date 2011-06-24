@@ -158,31 +158,31 @@ fn digits_to_string(str s) -> int {
 
 fn scan_exponent(&reader rdr) -> option::t[str] {
     auto c = rdr.curr();
-    auto res = "";
+    auto rslt = "";
     if (c == 'e' || c == 'E') {
-        res += str::from_bytes([c as u8]);
+        rslt += str::from_bytes([c as u8]);
         rdr.bump();
         c = rdr.curr();
         if (c == '-' || c == '+') {
-            res += str::from_bytes([c as u8]);
+            rslt += str::from_bytes([c as u8]);
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
         if (str::byte_len(exponent) > 0u) {
-            ret some(res + exponent);
+            ret some(rslt + exponent);
         } else { rdr.err("scan_exponent: bad fp literal"); fail; }
     } else { ret none[str]; }
 }
 
 fn scan_dec_digits(&reader rdr) -> str {
     auto c = rdr.curr();
-    let str res = "";
+    let str rslt = "";
     while (is_dec_digit(c) || c == '_') {
-        if (c != '_') { res += str::from_bytes([c as u8]); }
+        if (c != '_') { rslt += str::from_bytes([c as u8]); }
         rdr.bump();
         c = rdr.curr();
     }
-    ret res;
+    ret rslt;
 }
 
 fn scan_number(char c, &reader rdr) -> token::token {

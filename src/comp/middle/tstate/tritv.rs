@@ -224,15 +224,15 @@ fn tritv_doesntcare(&t v) -> bool {
 
 fn to_vec(&t v) -> vec[uint] {
   let uint i = 0u;
-  let vec[uint] res = [];
+  let vec[uint] rslt = [];
   while (i < v.nbits) {
-    res += [alt (tritv_get(v, i)) {
+    rslt += [alt (tritv_get(v, i)) {
         case (dont_care) { 2u }
         case (ttrue)     { 1u }
         case (tfalse)    { 0u } }];
     i += 1u;
   }
-  ret res;
+  ret rslt;
 }
 //
 // Local Variables:

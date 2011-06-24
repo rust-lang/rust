@@ -71,11 +71,11 @@ fn parse_ident(@pstate st, str_def sd, char last) -> ast::ident {
 
 fn parse_ident_(@pstate st, str_def sd, fn(char) -> bool is_last)
     -> ast::ident {
-    auto res = "";
+    auto rslt = "";
     while (! is_last(peek(st) as char)) {
-        res += str::unsafe_from_byte(next(st));
+        rslt += str::unsafe_from_byte(next(st));
     }
-    ret res;
+    ret rslt;
 }
 
 
@@ -95,17 +95,17 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
 }
 
 fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
-    let vec[@ty::constr_def] res = [];
+    let vec[@ty::constr_def] rslt = [];
     alt (peek(st) as char) {
         case (':') {
             do  {
                 auto ignore = next(st);
-                vec::push(res, parse_constr(st, sd));
+                vec::push(rslt, parse_constr(st, sd));
             } while (peek(st) as char == ';')
         }
         case (_) { }
     }
-    ret res;
+    ret rslt;
 }
 
 fn parse_path(@pstate st, str_def sd) -> ast::path {
@@ -370,8 +370,7 @@ fn parse_ty_fn(@pstate st, str_def sd) ->
     }
     st.pos += 1u; // eat the ']'
     auto cs = parse_constrs(st, sd);
-    auto res = parse_ty_or_bang(st, sd);
-    alt (res) {
+    alt (parse_ty_or_bang(st, sd)) {
         case (a_bang) {
             ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn, cs);
         }

@@ -1956,7 +1956,7 @@ mod unify {
                     case (ures_ok(?unified_type)) {
                         result_type = unified_type;
                     }
-                    case (?res) { ret res; }
+                    case (?rs) { ret rs; }
                 }
             }
             case (none) {/* fall through */ }
@@ -2179,7 +2179,7 @@ mod unify {
                         // Just bind the type variable to the expected type.
                         alt (record_var_binding(cx, actual_id, expected)) {
                             case (ures_ok(_)) {/* fall through */ }
-                            case (?res) { ret res; }
+                            case (?rs) { ret rs; }
                         }
                     }
                 }
@@ -2193,7 +2193,7 @@ mod unify {
 
                 alt (record_var_binding(cx, expected_id, actual)) {
                     case (ures_ok(_)) {/* fall through */ }
-                    case (?res) { ret res; }
+                    case (?rs) { ret rs; }
                 }
                 ret ures_ok(mk_var(cx.tcx, expected_id));
             }

@@ -338,7 +338,9 @@ fn extend_path(@local_ctxt cx, &str name) -> @local_ctxt {
     ret @rec(path=cx.path + [name] with *cx);
 }
 
-fn res(@block_ctxt bcx, ValueRef val) -> result { ret rec(bcx=bcx, val=val); }
+fn rslt(@block_ctxt bcx, ValueRef val) -> result {
+    ret rec(bcx=bcx, val=val);
+}
 
 fn ty_str(type_names tn, TypeRef t) -> str {
     ret lib::llvm::type_to_str(tn, t);
@@ -1119,7 +1121,7 @@ fn trans_non_gc_free(&@block_ctxt cx, ValueRef v) -> result {
     cx.build.Call(cx.fcx.lcx.ccx.upcalls.free,
                   [cx.fcx.lltaskptr, cx.build.PointerCast(v, T_ptr(T_i8())),
                    C_int(0)]);
-    ret res(cx, C_int(0));
+    ret rslt(cx, C_int(0));
 }
 
 fn find_scope_cx(&@block_ctxt cx) -> @block_ctxt {
@@ -1167,14 +1169,14 @@ fn llalign_of(TypeRef t) -> ValueRef {
 
 fn size_of(&@block_ctxt cx, &ty::t t) -> result {
     if (!ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, llsize_of(type_of(cx.fcx.lcx.ccx, cx.sp, t)));
+        ret rslt(cx, llsize_of(type_of(cx.fcx.lcx.ccx, cx.sp, t)));
     }
     ret dynamic_size_of(cx, t);
 }
 
 fn align_of(&@block_ctxt cx, &ty::t t) -> result {
     if (!ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, llalign_of(type_of(cx.fcx.lcx.ccx, cx.sp, t)));
+        ret rslt(cx, llalign_of(type_of(cx.fcx.lcx.ccx, cx.sp, t)));
     }
     ret dynamic_align_of(cx, t);
 }
@@ -1282,13 +1284,13 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             max_align = umax(bcx, max_align, elt_align.val);
         }
         off = align_to(bcx, off, max_align);
-        ret res(bcx, off);
+        ret rslt(bcx, off);
     }
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_param(?p)) {
             auto szptr =
                 field_of_tydesc(cx, t, false, abi::tydesc_field_size);
-            ret res(szptr.bcx, szptr.bcx.build.Load(szptr.val));
+            ret rslt(szptr.bcx, szptr.bcx.build.Load(szptr.val));
         }
         case (ty::ty_tup(?elts)) {
             let vec[ty::t] tys = [];
@@ -1326,17 +1328,17 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             }
             auto max_size_val = bcx.build.Load(max_size);
             auto total_size = bcx.build.Add(max_size_val, llsize_of(T_int()));
-            ret res(bcx, total_size);
+            ret rslt(bcx, total_size);
         }
         case (ty::ty_ivec(?mt)) {
-            auto rslt = field_of_tydesc(cx, mt.ty, false,
-                                        abi::tydesc_field_size);
-            auto bcx = rslt.bcx;
-            auto llunitszptr = rslt.val;
+            auto rs = field_of_tydesc(cx, mt.ty, false,
+                                      abi::tydesc_field_size);
+            auto bcx = rs.bcx;
+            auto llunitszptr = rs.val;
             auto llunitsz = bcx.build.Load(llunitszptr);
             auto llsz = bcx.build.Add(llsize_of(T_opaque_ivec()),
                 bcx.build.Mul(llunitsz, C_uint(abi::ivec_default_length)));
-            ret res(bcx, llsz);
+            ret rslt(bcx, llsz);
         }
     }
 }
@@ -1346,7 +1348,7 @@ fn dynamic_align_of(&@block_ctxt cx, &ty::t t) -> result {
         case (ty::ty_param(?p)) {
             auto aptr =
                 field_of_tydesc(cx, t, false, abi::tydesc_field_align);
-            ret res(aptr.bcx, aptr.bcx.build.Load(aptr.val));
+            ret rslt(aptr.bcx, aptr.bcx.build.Load(aptr.val));
         }
         case (ty::ty_tup(?elts)) {
             auto a = C_int(1);
@@ -1356,7 +1358,7 @@ fn dynamic_align_of(&@block_ctxt cx, &ty::t t) -> result {
                 bcx = align.bcx;
                 a = umax(bcx, a, align.val);
             }
-            ret res(bcx, a);
+            ret rslt(bcx, a);
         }
         case (ty::ty_rec(?flds)) {
             auto a = C_int(1);
@@ -1366,17 +1368,17 @@ fn dynamic_align_of(&@block_ctxt cx, &ty::t t) -> result {
                 bcx = align.bcx;
                 a = umax(bcx, a, align.val);
             }
-            ret res(bcx, a);
+            ret rslt(bcx, a);
         }
         case (ty::ty_tag(_, _)) {
-            ret res(cx, C_int(1)); // FIXME: stub
+            ret rslt(cx, C_int(1)); // FIXME: stub
         }
         case (ty::ty_ivec(?tm)) {
-            auto rslt = align_of(cx, tm.ty);
-            auto bcx = rslt.bcx;
-            auto llunitalign = rslt.val;
+            auto rs = align_of(cx, tm.ty);
+            auto bcx = rs.bcx;
+            auto llunitalign = rs.val;
             auto llalign = umax(bcx, llalign_of(T_int()), llunitalign);
-            ret res(bcx, llalign);
+            ret rslt(bcx, llalign);
         }
     }
 }
@@ -1395,7 +1397,7 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t, ValueRef base, &vec[int] ixs) ->
     if (!ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         let vec[ValueRef] v = [];
         for (int i in ixs) { v += [C_int(i)]; }
-        ret res(cx, cx.build.GEP(base, v));
+        ret rslt(cx, cx.build.GEP(base, v));
     }
     // It is a dynamic-containing type that, if we convert directly to an LLVM
     // TypeRef, will be all wrong; there's no proper LLVM type to represent
@@ -1465,10 +1467,10 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t, ValueRef base, &vec[int] ixs) ->
     auto raw = bcx.build.PointerCast(base, T_ptr(T_i8()));
     auto bumped = bcx.build.GEP(raw, [sz.val]);
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, s.target)) {
-        ret res(bcx, bumped);
+        ret rslt(bcx, bumped);
     }
     auto typ = T_ptr(type_of(bcx.fcx.lcx.ccx, bcx.sp, s.target));
-    ret res(bcx, bcx.build.PointerCast(bumped, typ));
+    ret rslt(bcx, bcx.build.PointerCast(bumped, typ));
 }
 
 
@@ -1506,15 +1508,15 @@ fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast::def_id tag_id,
     } else { llunionptr = llblobptr; }
     // Do the GEP_tup_like().
 
-    auto rslt = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix]);
+    auto rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix]);
     // Cast the result to the appropriate type, if necessary.
 
     auto val;
     if (!ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, elem_ty)) {
-        auto llelemty = type_of(rslt.bcx.fcx.lcx.ccx, cx.sp, elem_ty);
-        val = rslt.bcx.build.PointerCast(rslt.val, T_ptr(llelemty));
-    } else { val = rslt.val; }
-    ret res(rslt.bcx, val);
+        auto llelemty = type_of(rs.bcx.fcx.lcx.ccx, cx.sp, elem_ty);
+        val = rs.bcx.build.PointerCast(rs.val, T_ptr(llelemty));
+    } else { val = rs.val; }
+    ret rslt(rs.bcx, val);
 }
 
 
@@ -1528,7 +1530,7 @@ fn trans_raw_malloc(&@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize) ->
     auto rval =
         cx.build.Call(cx.fcx.lcx.ccx.upcalls.malloc,
                       [cx.fcx.lltaskptr, llsize, tydesc]);
-    ret res(cx, cx.build.PointerCast(rval, llptr_ty));
+    ret rslt(cx, cx.build.PointerCast(rval, llptr_ty));
 }
 
 
@@ -1568,7 +1570,7 @@ fn field_of_tydesc(&@block_ctxt cx, &ty::t t, bool escapes, int field) ->
    result {
     auto ti = none[@tydesc_info];
     auto tydesc = get_tydesc(cx, t, escapes, ti);
-    ret res(tydesc.bcx,
+    ret rslt(tydesc.bcx,
             tydesc.bcx.build.GEP(tydesc.val, [C_int(0), C_int(field)]));
 }
 
@@ -1631,7 +1633,7 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
 
             // If the tydesc escapes in this context, the cached derived
             // tydesc also has to be one that was marked as escaping.
-            if (!(escapes && !info.escapes)) { ret res(cx, info.lltydesc); }
+            if (!(escapes && !info.escapes)) { ret rslt(cx, info.lltydesc); }
         }
         case (none) {/* fall through */ }
     }
@@ -1689,7 +1691,7 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
                                              llparamtydescs);
     }
     bcx.fcx.derived_tydescs.insert(t, rec(lltydesc=v, escapes=escapes));
-    ret res(cx, v);
+    ret rslt(cx, v);
 }
 
 fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
@@ -1697,7 +1699,7 @@ fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     // Is the supplied type a type param? If so, return the passed-in tydesc.
 
     alt (ty::type_param(cx.fcx.lcx.ccx.tcx, t)) {
-        case (some(?id)) { ret res(cx, cx.fcx.lltydescs.(id)); }
+        case (some(?id)) { ret rslt(cx, cx.fcx.lltydescs.(id)); }
         case (none) {/* fall through */ }
     }
     // Does it contain a type param? If so, generate a derived tydesc.
@@ -1710,7 +1712,7 @@ fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     let vec[uint] tps = [];
     auto info = get_static_tydesc(cx, t, tps);
     static_ti = some[@tydesc_info](info);
-    ret res(cx, info.tydesc);
+    ret rslt(cx, info.tydesc);
 }
 
 fn get_static_tydesc(&@block_ctxt cx, &ty::t t, &vec[uint] ty_params) ->
@@ -1934,24 +1936,22 @@ fn incr_refcnt_of_boxed(&@block_ctxt cx, ValueRef box_ptr) -> result {
     rc = rc_adj_cx.build.Add(rc, C_int(1));
     rc_adj_cx.build.Store(rc, rc_ptr);
     rc_adj_cx.build.Br(next_cx.llbb);
-    ret res(next_cx, C_nil());
+    ret rslt(next_cx, C_nil());
 }
 
 fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     // NB: v is an *alias* of type t here, not a direct value.
 
-    auto rslt;
-    alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+    auto rs = alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_str) {
             auto v = cx.build.Load(v0);
-            rslt = trans_non_gc_free(cx, v);
+            trans_non_gc_free(cx, v)
         }
         case (ty::ty_vec(_)) {
             auto v = cx.build.Load(v0);
-            auto res = iter_sequence(cx, v, t, bind drop_ty(_, _, _));
+            auto rs = iter_sequence(cx, v, t, bind drop_ty(_, _, _));
             // FIXME: switch gc/non-gc on layer of the type.
-
-            rslt = trans_non_gc_free(res.bcx, v);
+            trans_non_gc_free(rs.bcx, v)
         }
         case (ty::ty_box(?body_mt)) {
             auto v = cx.build.Load(v0);
@@ -1959,29 +1959,27 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                 cx.build.GEP(v, [C_int(0), C_int(abi::box_rc_field_body)]);
             auto body_ty = body_mt.ty;
             auto body_val = load_if_immediate(cx, body, body_ty);
-            auto res = drop_ty(cx, body_val, body_ty);
+            auto rs = drop_ty(cx, body_val, body_ty);
             // FIXME: switch gc/non-gc on layer of the type.
-
-            rslt = trans_non_gc_free(res.bcx, v);
+            trans_non_gc_free(rs.bcx, v)
         }
         case (ty::ty_port(_)) {
             auto v = cx.build.Load(v0);
             cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_port,
                           [cx.fcx.lltaskptr,
                            cx.build.PointerCast(v, T_opaque_port_ptr())]);
-            rslt = res(cx, C_int(0));
+            rslt(cx, C_int(0))
         }
         case (ty::ty_chan(_)) {
             auto v = cx.build.Load(v0);
             cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_chan,
                           [cx.fcx.lltaskptr,
                            cx.build.PointerCast(v, T_opaque_chan_ptr())]);
-            rslt = res(cx, C_int(0));
+            rslt(cx, C_int(0))
         }
         case (ty::ty_task) {
             // TODO: call upcall_kill
-
-            rslt = res(cx, C_nil());
+            rslt(cx, C_nil())
         }
         case (ty::ty_obj(_)) {
             auto box_cell =
@@ -2001,8 +1999,7 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                                   abi::tydesc_field_drop_glue, ti);
             // Then free the body.
             // FIXME: switch gc/non-gc on layer of the type.
-
-            rslt = trans_non_gc_free(cx_, b);
+            trans_non_gc_free(cx_, b)
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell =
@@ -2023,12 +2020,11 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                                   abi::tydesc_field_drop_glue, ti);
             // Then free the body.
             // FIXME: switch gc/non-gc on layer of the type.
-
-            rslt = trans_non_gc_free(cx, v);
+            trans_non_gc_free(cx, v)
         }
-        case (_) { rslt = res(cx, C_nil()); }
-    }
-    rslt.bcx.build.RetVoid();
+        case (_) { rslt(cx, C_nil()) }
+    };
+    rs.bcx.build.RetVoid();
 }
 
 fn maybe_free_ivec_heap_part(&@block_ctxt cx, ValueRef v0, ty::t unit_ty) ->
@@ -2056,16 +2052,16 @@ fn maybe_free_ivec_heap_part(&@block_ctxt cx, ValueRef v0, ty::t unit_ty) ->
         };
     auto after_free_cx = trans_non_gc_free(maybe_on_heap_cx, heap_ptr).bcx;
     after_free_cx.build.Br(next_cx.llbb);
-    ret res(next_cx, C_nil());
+    ret rslt(next_cx, C_nil());
 }
 
 fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
 
-    auto rslt;
-    alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-        case (ty::ty_str) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
-        case (ty::ty_vec(_)) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
+    auto ccx = cx.fcx.lcx.ccx;
+    auto rs = alt (ty::struct(ccx.tcx, t)) {
+        case (ty::ty_str) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+        case (ty::ty_vec(_)) { decr_refcnt_maybe_free(cx, v0, v0, t) }
         case (ty::ty_ivec(?tm)) {
             auto v1;
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, tm.ty)) {
@@ -2074,35 +2070,31 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                 v1 = v0;
             }
 
-            rslt = iter_structural_ty(cx, v1, t, drop_ty);
-            rslt = maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty);
+            auto rslt = iter_structural_ty(cx, v1, t, drop_ty);
+            maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty)
         }
-        case (ty::ty_box(_)) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
-        case (ty::ty_port(_)) {
-            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
-        }
-        case (ty::ty_chan(_)) {
-            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
-        }
-        case (ty::ty_task) { rslt = decr_refcnt_maybe_free(cx, v0, v0, t); }
+        case (ty::ty_box(_)) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+        case (ty::ty_port(_)) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+        case (ty::ty_chan(_)) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+        case (ty::ty_task) { decr_refcnt_maybe_free(cx, v0, v0, t) }
         case (ty::ty_obj(_)) {
             auto box_cell =
                 cx.build.GEP(v0, [C_int(0), C_int(abi::obj_field_box)]);
-            rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
+            decr_refcnt_maybe_free(cx, box_cell, v0, t)
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell =
                 cx.build.GEP(v0, [C_int(0), C_int(abi::fn_field_box)]);
-            rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
+            decr_refcnt_maybe_free(cx, box_cell, v0, t)
         }
         case (_) {
-            if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t) &&
-                    ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
-                rslt = iter_structural_ty(cx, v0, t, bind drop_ty(_, _, _));
-            } else { rslt = res(cx, C_nil()); }
+            if (ty::type_has_pointers(ccx.tcx, t) &&
+                    ty::type_is_structural(ccx.tcx, t)) {
+                iter_structural_ty(cx, v0, t, bind drop_ty(_, _, _))
+            } else { rslt(cx, C_nil()) }
         }
-    }
-    rslt.bcx.build.RetVoid();
+    };
+    rs.bcx.build.RetVoid();
 }
 
 fn decr_refcnt_maybe_free(&@block_ctxt cx, ValueRef box_ptr_alias,
@@ -2135,7 +2127,7 @@ fn decr_refcnt_maybe_free(&@block_ctxt cx, ValueRef box_ptr_alias,
         next_cx.build.Phi(t_else, [v_else, v_else, v_else, free_res.val],
                           [cx.llbb, load_rc_cx.llbb, rc_adj_cx.llbb,
                            free_res.bcx.llbb]);
-    ret res(next_cx, phi);
+    ret rslt(next_cx, phi);
 }
 
 
@@ -2228,7 +2220,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
                 scx.build.ICmp(lib::llvm::LLVMIntNE, llop,
                                C_u8(abi::cmp_glue_op_lt));
             scx.build.Store(result_if_equal, flag);
-            r = res(scx, C_nil());
+            r = rslt(scx, C_nil());
         }
         fn inner(@block_ctxt last_cx, bool load_inner, ValueRef flag,
                  ValueRef llop, &@block_ctxt cx, ValueRef av0, ValueRef bv0,
@@ -2261,7 +2253,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
             auto stop_r = call_cmp_glue(stop_cx, av, bv, t, llop);
             stop_r.bcx.build.Store(stop_r.val, flag);
             stop_r.bcx.build.Br(last_cx.llbb);
-            ret res(cnt_cx, C_nil());
+            ret rslt(cnt_cx, C_nil());
         }
         if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
             r =
@@ -2413,7 +2405,7 @@ fn compare_numerical_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     auto last_result =
         last_cx.build.Phi(T_i1(), [eq_result, lt_result, le_result],
                           [eq_cx.llbb, lt_cx.llbb, le_cx.llbb]);
-    ret res(last_cx, last_result);
+    ret rslt(last_cx, last_result);
 }
 
 
@@ -2458,7 +2450,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         cx.build.CondBr(null_test, next_cx.llbb, inner_cx.llbb);
         auto r = f(inner_cx, box_a_ptr, box_b_ptr, tbox);
         r.bcx.build.Br(next_cx.llbb);
-        ret res(next_cx, C_nil());
+        ret rslt(next_cx, C_nil());
     }
     fn iter_ivec(@block_ctxt bcx, ValueRef av, ValueRef bv, ty::t unit_ty,
                  &val_pair_and_ty_fn f) -> result {
@@ -2469,9 +2461,9 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             ret f(bcx, av, bv, unit_ty);
         }
         auto llunitty = type_of_or_i8(bcx, unit_ty);
-        auto rslt = size_of(bcx, unit_ty);
-        auto unit_sz = rslt.val;
-        bcx = rslt.bcx;
+        auto rs = size_of(bcx, unit_ty);
+        auto unit_sz = rs.val;
+        bcx = rs.bcx;
         auto a_len_and_data = ivec::get_len_and_data(bcx, av, unit_ty);
         auto a_len = a_len_and_data._0;
         auto a_elem = a_len_and_data._1;
@@ -2507,21 +2499,20 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         loop_header_cx.build.CondBr(not_yet_at_end, loop_body_cx.llbb,
                                     next_cx.llbb);
 
-        rslt = f(loop_body_cx,
-            load_if_immediate(loop_body_cx, dest_elem, unit_ty),
-            load_if_immediate(loop_body_cx, src_elem, unit_ty), unit_ty);
+        rs = f(loop_body_cx,
+               load_if_immediate(loop_body_cx, dest_elem, unit_ty),
+               load_if_immediate(loop_body_cx, src_elem, unit_ty), unit_ty);
 
-        loop_body_cx = rslt.bcx;
+        loop_body_cx = rs.bcx;
         loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(dest_elem,
             [C_int(1)]), dest_elem_ptr);
         loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(src_elem,
             [C_int(1)]), src_elem_ptr);
         loop_body_cx.build.Br(loop_header_cx.llbb);
 
-        ret res(next_cx, C_nil());
+        ret rslt(next_cx, C_nil());
     }
-
-    let result r = res(cx, C_nil());
+    let result r = rslt(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(?args)) {
             let int i = 0;
@@ -2612,9 +2603,9 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                                 auto llfld_b =
                                     load_if_immediate(variant_cx, llfldp_b,
                                                       ty_subst);
-                                auto res =
+                                rslt =
                                     f(variant_cx, llfld_a, llfld_b, ty_subst);
-                                variant_cx = res.bcx;
+                                variant_cx = rslt.bcx;
                                 j += 1;
                             }
                         }
@@ -2627,7 +2618,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                 }
                 i += 1u;
             }
-            ret res(next_cx, C_nil());
+            ret rslt(next_cx, C_nil());
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell_a =
@@ -2691,7 +2682,7 @@ fn iter_sequence_raw(@block_ctxt cx, ValueRef dst,
     body_cx.build.Br(cond_cx.llbb);
     cond_cx.build.AddIncomingToPhi(dst_curr, [dst_next], [body_cx.llbb]);
     cond_cx.build.AddIncomingToPhi(src_curr, [src_next], [body_cx.llbb]);
-    ret res(next_cx, C_nil());
+    ret rslt(next_cx, C_nil());
 }
 
 fn iter_sequence_inner(&@block_ctxt cx, ValueRef src,
@@ -2892,7 +2883,7 @@ fn call_tydesc_glue(&@block_ctxt cx, ValueRef v, &ty::t t, int field) ->
     auto td = get_tydesc(cx, t, false, ti);
     call_tydesc_glue_full(td.bcx, spill_if_immediate(td.bcx, v, t), td.val,
                           field, ti);
-    ret res(td.bcx, C_nil());
+    ret rslt(td.bcx, C_nil());
 }
 
 fn maybe_call_dtor(&@block_ctxt cx, ValueRef v) -> @block_ctxt {
@@ -2941,14 +2932,14 @@ fn call_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
         [llcmpresultptr, r.bcx.fcx.lltaskptr, C_null(T_ptr(T_nil())),
          lltydescs, llrawlhsptr, llrawrhsptr, llop];
     r.bcx.build.Call(llfn, llargs);
-    ret res(r.bcx, r.bcx.build.Load(llcmpresultptr));
+    ret rslt(r.bcx, r.bcx.build.Load(llcmpresultptr));
 }
 
 fn take_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_take_glue);
     }
-    ret res(cx, C_nil());
+    ret rslt(cx, C_nil());
 }
 
 fn drop_slot(&@block_ctxt cx, ValueRef slot, &ty::t t) -> result {
@@ -2964,14 +2955,14 @@ fn drop_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
-    ret res(cx, C_nil());
+    ret rslt(cx, C_nil());
 }
 
 fn free_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_free_glue);
     }
-    ret res(cx, C_nil());
+    ret rslt(cx, C_nil());
 }
 
 fn call_memmove(&@block_ctxt cx, ValueRef dst, ValueRef src,
@@ -2989,7 +2980,7 @@ fn call_memmove(&@block_ctxt cx, ValueRef dst, ValueRef src,
     auto size = cx.build.IntCast(n_bytes, T_i32());
     auto align = C_int(0);
     auto volatile = C_bool(false);
-    ret res(cx,
+    ret rslt(cx,
             cx.build.Call(memmove,
                           [dst_ptr, src_ptr, size, align, volatile]));
 }
@@ -3008,7 +2999,7 @@ fn call_bzero(&@block_ctxt cx, ValueRef dst, ValueRef n_bytes,
             cx.build.IntCast(align_bytes, T_i32())
         } else { cx.build.IntCast(C_int(0), T_i32()) };
     auto volatile = C_bool(false);
-    ret res(cx,
+    ret rslt(cx,
             cx.build.Call(memset,
                           [dst_ptr, C_u8(0u), size, align, volatile]));
 }
@@ -3018,7 +3009,7 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto llsz = size_of(cx, t);
         ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    } else { ret res(cx, cx.build.Store(cx.build.Load(src), dst)); }
+    } else { ret rslt(cx, cx.build.Store(cx.build.Load(src), dst)); }
 }
 
 // Duplicates the heap-owned memory owned by a value of the given type.
@@ -3036,7 +3027,7 @@ fn duplicate_heap_parts(&@block_ctxt cx, ValueRef vptr, ty::t typ) -> result {
             ret iter_structural_ty(cx, vptr, typ, duplicate_heap_parts);
         }
 
-        ret res(cx, C_nil());
+        ret rslt(cx, C_nil());
       }
     }
 }
@@ -3047,16 +3038,16 @@ fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, cx.build.Store(src, dst));
+        ret rslt(cx, cx.build.Store(src, dst));
     } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, C_nil());
+        ret rslt(cx, C_nil());
     } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
         auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
-        ret res(r.bcx, r.bcx.build.Store(src, dst));
+        ret rslt(r.bcx, r.bcx.build.Store(src, dst));
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto r = take_ty(cx, src, t);
@@ -3081,15 +3072,15 @@ fn move_val(@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, cx.build.Store(src, dst));
+        ret rslt(cx, cx.build.Store(src, dst));
     } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
-        ret res(cx, C_nil());
+        ret rslt(cx, C_nil());
     } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
         if (action == DROP_EXISTING) {
             cx = drop_ty(cx, cx.build.Load(dst), t).bcx;
         }
-        auto r = res(cx, cx.build.Store(cx.build.Load(src), dst));
+        auto r = rslt(cx, cx.build.Store(cx.build.Load(src), dst));
         ret zero_alloca(r.bcx, src, t);
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
@@ -3161,15 +3152,15 @@ fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e,
             sub =
                 autoderef(sub.bcx, sub.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
-            ret res(sub.bcx, sub.bcx.build.Not(sub.val));
+            ret rslt(sub.bcx, sub.bcx.build.Not(sub.val));
         }
         case (ast::neg) {
             sub =
                 autoderef(sub.bcx, sub.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
             if (ty::struct(cx.fcx.lcx.ccx.tcx, e_ty) == ty::ty_float) {
-                ret res(sub.bcx, sub.bcx.build.FNeg(sub.val));
-            } else { ret res(sub.bcx, sub.bcx.build.Neg(sub.val)); }
+                ret rslt(sub.bcx, sub.bcx.build.FNeg(sub.val));
+            } else { ret rslt(sub.bcx, sub.bcx.build.Neg(sub.val)); }
         }
         case (ast::box(_)) {
             auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
@@ -3197,7 +3188,7 @@ fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e,
                 body = sub.bcx.build.PointerCast(body, llety);
             }
             sub = copy_val(sub.bcx, INIT, body, e_val, e_ty);
-            ret res(sub.bcx, box);
+            ret rslt(sub.bcx, box);
         }
         case (ast::deref) {
             cx.fcx.lcx.ccx.sess.bug("deref expressions should have been " +
@@ -3231,17 +3222,17 @@ fn trans_compare(&@block_ctxt cx0, ast::binop op, &ty::t t0, ValueRef lhs0,
         case (ast::ge) { llop = C_u8(abi::cmp_glue_op_lt); }
         case (ast::gt) { llop = C_u8(abi::cmp_glue_op_le); }
     }
-    auto rslt = call_cmp_glue(cx, lhs, rhs, t, llop);
+    auto rs = call_cmp_glue(cx, lhs, rhs, t, llop);
 
     // Invert the result if necessary.
     // FIXME: Use or-patterns when we have them.
     alt (op) {
-        case (ast::eq) { ret res(rslt.bcx, rslt.val); }
-        case (ast::lt) { ret res(rslt.bcx, rslt.val); }
-        case (ast::le) { ret res(rslt.bcx, rslt.val); }
-        case (ast::ne) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
-        case (ast::ge) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
-        case (ast::gt) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
+        case (ast::eq) { ret rslt(rs.bcx, rs.val); }
+        case (ast::lt) { ret rslt(rs.bcx, rs.val); }
+        case (ast::le) { ret rslt(rs.bcx, rs.val); }
+        case (ast::ne) { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
+        case (ast::ge) { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
+        case (ast::gt) { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
     }
 }
 
@@ -3265,7 +3256,7 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t, ValueRef lhs, ValueRef rhs) ->
     bcx = llelt_tydesc.bcx;
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
     auto src = bcx.build.PointerCast(rhs, T_opaque_vec_ptr());
-    ret res(bcx,
+    ret rslt(bcx,
             bcx.build.Call(cx.fcx.lcx.ccx.upcalls.vec_append,
                            [cx.fcx.lltaskptr, llvec_tydesc.val,
                             llelt_tydesc.val, dst, src, skip_null]));
@@ -3505,7 +3496,7 @@ mod ivec {
                                stack_data_no_spill, heap_data_spill],
                               [heap_no_resize_cx.llbb, heap_resize_cx.llbb,
                                stack_no_spill_cx.llbb, stack_spill_cx.llbb]);
-        ret res(next_cx, data_ptr);
+        ret rslt(next_cx, data_ptr);
     }
     fn trans_append(&@block_ctxt cx, &ty::t t, ValueRef orig_lhs,
                     ValueRef orig_rhs) -> result {
@@ -3531,21 +3522,21 @@ mod ivec {
             }
         }
 
-        auto rslt = size_of(cx, unit_ty);
-        auto bcx = rslt.bcx;
-        auto unit_sz = rslt.val;
+        auto rs = size_of(cx, unit_ty);
+        auto bcx = rs.bcx;
+        auto unit_sz = rs.val;
 
         // Gather the various type descriptors we'll need.
 
         // FIXME (issue #511): This is needed to prevent a leak.
         auto no_tydesc_info = none;
 
-        rslt = get_tydesc(bcx, t, false, no_tydesc_info);
-        auto vec_tydesc = rslt.val;
-        bcx = rslt.bcx;
-        rslt = get_tydesc(bcx, unit_ty, false, no_tydesc_info);
-        auto unit_tydesc = rslt.val;
-        bcx = rslt.bcx;
+        rs = get_tydesc(bcx, t, false, no_tydesc_info);
+        auto vec_tydesc = rs.val;
+        bcx = rs.bcx;
+        rs = get_tydesc(bcx, unit_ty, false, no_tydesc_info);
+        auto unit_tydesc = rs.val;
+        bcx = rs.bcx;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, none);
@@ -3553,9 +3544,9 @@ mod ivec {
         auto rhs_len = rhs_len_and_data._0;
         auto rhs_data = rhs_len_and_data._1;
         bcx = rhs_len_and_data._2;
-        rslt = reserve_space(bcx, llunitty, lhs, rhs_len);
-        auto lhs_data = rslt.val;
-        bcx = rslt.bcx;
+        rs = reserve_space(bcx, llunitty, lhs, rhs_len);
+        auto lhs_data = rs.val;
+        bcx = rs.bcx;
         // Work out the end pointer.
 
         auto lhs_unscaled_idx = bcx.build.UDiv(rhs_len, llsize_of(llunitty));
@@ -3583,9 +3574,9 @@ mod ivec {
         auto copy_src = load_if_immediate(copy_loop_body_cx, copy_src_ptr,
                                           unit_ty);
 
-        rslt = copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src,
-                        unit_ty);
-        auto post_copy_cx = rslt.bcx;
+        rs = copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src,
+                      unit_ty);
+        auto post_copy_cx = rs.bcx;
         // Increment both pointers.
 
         if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
@@ -3602,7 +3593,7 @@ mod ivec {
         }
 
         post_copy_cx.build.Br(copy_loop_header_cx.llbb);
-        ret res(next_cx, C_nil());
+        ret rslt(next_cx, C_nil());
     }
 
     type alloc_result = rec(@block_ctxt bcx,
@@ -3740,9 +3731,9 @@ mod ivec {
                             heap_cx.build.InBoundsGEP(stub_ptr_heap,
                                                       stub_a));
         auto heap_sz = heap_cx.build.Add(llsize_of(llheappartty), lllen);
-        auto rslt = trans_raw_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
-        auto heap_part = rslt.val;
-        heap_cx = rslt.bcx;
+        auto rs = trans_raw_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
+        auto heap_part = rs.val;
+        heap_cx = rs.bcx;
         heap_cx.build.Store(heap_part,
                             heap_cx.build.InBoundsGEP(stub_ptr_heap,
                                                       stub_p));
@@ -3790,10 +3781,10 @@ mod ivec {
                                  rhs_copy_cx.llbb);
         auto dest_ptr_lhs_copy = lhs_do_copy_cx.build.Load(dest_ptr_ptr);
         auto lhs_val = load_if_immediate(lhs_do_copy_cx, lhs_ptr, unit_ty);
-        rslt =
+        rs =
             copy_val(lhs_do_copy_cx, INIT, dest_ptr_lhs_copy, lhs_val,
                      unit_ty);
-        lhs_do_copy_cx = rslt.bcx;
+        lhs_do_copy_cx = rs.bcx;
         {
             auto d = lhs_do_copy_cx.build.InBoundsGEP(dest_ptr_lhs_copy,
                                                       [C_int(1)]);
@@ -3814,10 +3805,10 @@ mod ivec {
                                  next_cx.llbb);
         auto dest_ptr_rhs_copy = rhs_do_copy_cx.build.Load(dest_ptr_ptr);
         auto rhs_val = load_if_immediate(rhs_do_copy_cx, rhs_ptr, unit_ty);
-        rslt =
+        rs =
             copy_val(rhs_do_copy_cx, INIT, dest_ptr_rhs_copy, rhs_val,
                      unit_ty);
-        rhs_do_copy_cx = rslt.bcx;
+        rhs_do_copy_cx = rs.bcx;
         {
             auto d = rhs_do_copy_cx.build.InBoundsGEP(dest_ptr_rhs_copy,
                                                       [C_int(1)]);
@@ -3829,7 +3820,7 @@ mod ivec {
         rhs_do_copy_cx.build.Br(rhs_copy_cx.llbb);
         // Finally done!
 
-        ret res(next_cx, llvecptr);
+        ret rslt(next_cx, llvecptr);
     }
 
     // NB: This does *not* adjust reference counts. The caller must have done
@@ -3877,18 +3868,18 @@ mod ivec {
 
         auto heap_part_sz = on_heap_cx.build.Add(alen,
             llsize_of(T_opaque_ivec_heap_part()));
-        auto rslt = trans_raw_malloc(on_heap_cx, T_ptr(llheappartty),
-                                     heap_part_sz);
-        on_heap_cx = rslt.bcx;
-        auto new_heap_ptr = rslt.val;
+        auto rs = trans_raw_malloc(on_heap_cx, T_ptr(llheappartty),
+                                   heap_part_sz);
+        on_heap_cx = rs.bcx;
+        auto new_heap_ptr = rs.val;
 
-        rslt = call_memmove(on_heap_cx, new_heap_ptr, heap_ptr, heap_part_sz);
-        on_heap_cx = rslt.bcx;
+        rs = call_memmove(on_heap_cx, new_heap_ptr, heap_ptr, heap_part_sz);
+        on_heap_cx = rs.bcx;
 
         on_heap_cx.build.Store(new_heap_ptr, heap_ptr_ptr);
         on_heap_cx.build.Br(next_cx.llbb);
 
-        ret res(next_cx, C_nil());
+        ret rslt(next_cx, C_nil());
     }
 }
 
@@ -3900,7 +3891,7 @@ fn trans_vec_add(&@block_ctxt cx, &ty::t t, ValueRef lhs, ValueRef rhs) ->
     auto bcx = trans_vec_append(r.bcx, t, tmp, rhs).bcx;
     tmp = load_if_immediate(bcx, tmp, t);
     find_scope_cx(cx).cleanups += [clean(bind drop_ty(_, tmp, t))];
-    ret res(bcx, tmp);
+    ret rslt(bcx, tmp);
 }
 
 fn trans_eager_binop(&@block_ctxt cx, ast::binop op, &ty::t intype,
@@ -3919,37 +3910,37 @@ fn trans_eager_binop(&@block_ctxt cx, ast::binop op, &ty::t intype,
                 ret trans_vec_add(cx, intype, lhs, rhs);
             }
             if (is_float) {
-                ret res(cx, cx.build.FAdd(lhs, rhs));
-            } else { ret res(cx, cx.build.Add(lhs, rhs)); }
+                ret rslt(cx, cx.build.FAdd(lhs, rhs));
+            } else { ret rslt(cx, cx.build.Add(lhs, rhs)); }
         }
         case (ast::sub) {
             if (is_float) {
-                ret res(cx, cx.build.FSub(lhs, rhs));
-            } else { ret res(cx, cx.build.Sub(lhs, rhs)); }
+                ret rslt(cx, cx.build.FSub(lhs, rhs));
+            } else { ret rslt(cx, cx.build.Sub(lhs, rhs)); }
         }
         case (ast::mul) {
             if (is_float) {
-                ret res(cx, cx.build.FMul(lhs, rhs));
-            } else { ret res(cx, cx.build.Mul(lhs, rhs)); }
+                ret rslt(cx, cx.build.FMul(lhs, rhs));
+            } else { ret rslt(cx, cx.build.Mul(lhs, rhs)); }
         }
         case (ast::div) {
-            if (is_float) { ret res(cx, cx.build.FDiv(lhs, rhs)); }
+            if (is_float) { ret rslt(cx, cx.build.FDiv(lhs, rhs)); }
             if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx, intype)) {
-                ret res(cx, cx.build.SDiv(lhs, rhs));
-            } else { ret res(cx, cx.build.UDiv(lhs, rhs)); }
+                ret rslt(cx, cx.build.SDiv(lhs, rhs));
+            } else { ret rslt(cx, cx.build.UDiv(lhs, rhs)); }
         }
         case (ast::rem) {
-            if (is_float) { ret res(cx, cx.build.FRem(lhs, rhs)); }
+            if (is_float) { ret rslt(cx, cx.build.FRem(lhs, rhs)); }
             if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx, intype)) {
-                ret res(cx, cx.build.SRem(lhs, rhs));
-            } else { ret res(cx, cx.build.URem(lhs, rhs)); }
+                ret rslt(cx, cx.build.SRem(lhs, rhs));
+            } else { ret rslt(cx, cx.build.URem(lhs, rhs)); }
         }
-        case (ast::bitor) { ret res(cx, cx.build.Or(lhs, rhs)); }
-        case (ast::bitand) { ret res(cx, cx.build.And(lhs, rhs)); }
-        case (ast::bitxor) { ret res(cx, cx.build.Xor(lhs, rhs)); }
-        case (ast::lsl) { ret res(cx, cx.build.Shl(lhs, rhs)); }
-        case (ast::lsr) { ret res(cx, cx.build.LShr(lhs, rhs)); }
-        case (ast::asr) { ret res(cx, cx.build.AShr(lhs, rhs)); }
+        case (ast::bitor) { ret rslt(cx, cx.build.Or(lhs, rhs)); }
+        case (ast::bitand) { ret rslt(cx, cx.build.And(lhs, rhs)); }
+        case (ast::bitxor) { ret rslt(cx, cx.build.Xor(lhs, rhs)); }
+        case (ast::lsl) { ret rslt(cx, cx.build.Shl(lhs, rhs)); }
+        case (ast::lsr) { ret rslt(cx, cx.build.LShr(lhs, rhs)); }
+        case (ast::asr) { ret rslt(cx, cx.build.AShr(lhs, rhs)); }
         case (_) { ret trans_compare(cx, op, intype, lhs, rhs); }
     }
 }
@@ -3978,7 +3969,7 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
             case (_) { break; }
         }
     }
-    ret res(cx, v1);
+    ret rslt(cx, v1);
 }
 
 fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
@@ -4010,7 +4001,7 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
                 autoderef(rhs_res.bcx, rhs_res.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
             auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
-            auto lhs_false_res = res(lhs_false_cx, C_bool(false));
+            auto lhs_false_res = rslt(lhs_false_cx, C_bool(false));
             // The following line ensures that any cleanups for rhs
             // are done within the block for rhs. This is necessary
             // because and/or are lazy. So the rhs may never execute,
@@ -4035,7 +4026,7 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
                 autoderef(rhs_res.bcx, rhs_res.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
             auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
-            auto lhs_true_res = res(lhs_true_cx, C_bool(true));
+            auto lhs_true_res = rslt(lhs_true_cx, C_bool(true));
             // see the and case for an explanation
 
             auto rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
@@ -4088,7 +4079,7 @@ fn join_results(&@block_ctxt parent_cx, TypeRef t, &vec[result] ins) ->
     auto join_cx = new_sub_block_ctxt(parent_cx, "join");
     for (result r in live) { r.bcx.build.Br(join_cx.llbb); }
     auto phi = join_cx.build.Phi(t, vals, bbs);
-    ret res(join_cx, phi);
+    ret rslt(join_cx, phi);
 }
 
 fn join_branches(&@block_ctxt parent_cx, &vec[result] ins) -> @block_ctxt {
@@ -4129,10 +4120,10 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
                 }
             }
         }
-        case (_) { res(else_cx, C_nil()) }
+        case (_) { rslt(else_cx, C_nil()) }
     };
     cond_res.bcx.build.CondBr(cond_res.val, then_cx.llbb, else_cx.llbb);
-    ret res(join_branches(cx, [then_res, else_res]), C_nil());
+    ret rslt(join_branches(cx, [then_res, else_res]), C_nil());
 }
 
 fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
@@ -4149,7 +4140,7 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         scope_cx.cleanups += [clean(bind drop_slot(_, local_res.val, t))];
         bcx = trans_block(bcx, body, return).bcx;
         bcx.build.Br(next_cx.llbb);
-        ret res(next_cx, C_nil());
+        ret rslt(next_cx, C_nil());
     }
     auto next_cx = new_sub_block_ctxt(cx, "next");
     auto seq_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, seq);
@@ -4158,7 +4149,7 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
                       bind inner(_, local, _, _, body, next_cx));
     it.bcx.build.Br(next_cx.llbb);
-    ret res(next_cx, it.val);
+    ret rslt(next_cx, it.val);
 }
 
 
@@ -4418,7 +4409,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
             r =
                 trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
                            seq.id);
-            ret res(r.bcx, C_nil());
+            ret rslt(r.bcx, C_nil());
         }
     }
 }
@@ -4436,7 +4427,7 @@ fn trans_while(&@block_ctxt cx, &@ast::expr cond, &ast::block body) ->
     auto cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
     cond_bcx.build.CondBr(cond_res.val, body_cx.llbb, next_cx.llbb);
     cx.build.Br(cond_cx.llbb);
-    ret res(next_cx, C_nil());
+    ret rslt(next_cx, C_nil());
 }
 
 fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
@@ -4449,7 +4440,7 @@ fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
     auto cond_res = trans_expr(body_res.bcx, cond);
     cond_res.bcx.build.CondBr(cond_res.val, body_cx.llbb, next_cx.llbb);
     cx.build.Br(body_cx.llbb);
-    ret res(next_cx, body_res.val);
+    ret rslt(next_cx, body_res.val);
 }
 
 
@@ -4457,15 +4448,15 @@ fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
 fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                    &@block_ctxt next_cx) -> result {
     alt (pat.node) {
-        case (ast::pat_wild(_)) { ret res(cx, llval); }
-        case (ast::pat_bind(_, _)) { ret res(cx, llval); }
+        case (ast::pat_wild(_)) { ret rslt(cx, llval); }
+        case (ast::pat_bind(_, _)) { ret rslt(cx, llval); }
         case (ast::pat_lit(?lt, ?id)) {
             auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, id);
             auto lltype = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
             lleq.bcx.build.CondBr(lleq.val, matched_cx.llbb, next_cx.llbb);
-            ret res(matched_cx, llval);
+            ret rslt(matched_cx, llval);
         }
         case (ast::pat_tag(?ident, ?subpats, ?id)) {
             auto lltagptr =
@@ -4513,7 +4504,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                     i += 1;
                 }
             }
-            ret res(matched_cx, llval);
+            ret rslt(matched_cx, llval);
         }
     }
 }
@@ -4521,12 +4512,12 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                      bool bind_alias) -> result {
     alt (pat.node) {
-        case (ast::pat_wild(_)) { ret res(cx, llval); }
-        case (ast::pat_lit(_, _)) { ret res(cx, llval); }
+        case (ast::pat_wild(_)) { ret rslt(cx, llval); }
+        case (ast::pat_lit(_, _)) { ret rslt(cx, llval); }
         case (ast::pat_bind(?name, ?id)) {
             if (bind_alias) {
                 cx.fcx.lllocals.insert(id, llval);
-                ret res(cx, llval);
+                ret rslt(cx, llval);
             } else {
                 auto t = node_id_type(cx.fcx.lcx.ccx, id);
                 auto rslt = alloc_ty(cx, t);
@@ -4539,7 +4530,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             }
         }
         case (ast::pat_tag(_, ?subpats, ?id)) {
-            if (vec::len[@ast::pat](subpats) == 0u) { ret res(cx, llval); }
+            if (vec::len[@ast::pat](subpats) == 0u) { ret rslt(cx, llval); }
             // Get the appropriate variant for this tag.
 
             auto vdef =
@@ -4562,7 +4553,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 this_cx = subpat_res.bcx;
                 i += 1;
             }
-            ret res(this_cx, llval);
+            ret rslt(this_cx, llval);
         }
     }
 }
@@ -4588,7 +4579,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
     auto default_res =
         trans_fail(default_cx, some[common::span](expr.span),
                    "non-exhaustive match failure");
-    ret res(join_branches(cx, arm_results), C_nil());
+    ret rslt(join_branches(cx, arm_results), C_nil());
 }
 
 type generic_info =
@@ -4604,7 +4595,7 @@ type lval_result =
         option::t[ty::t] method_ty);
 
 fn lval_mem(&@block_ctxt cx, ValueRef val) -> lval_result {
-    ret rec(res=res(cx, val),
+    ret rec(res=rslt(cx, val),
             is_mem=true,
             generic=none[generic_info],
             llobj=none[ValueRef],
@@ -4612,7 +4603,7 @@ fn lval_mem(&@block_ctxt cx, ValueRef val) -> lval_result {
 }
 
 fn lval_val(&@block_ctxt cx, ValueRef val) -> lval_result {
-    ret rec(res=res(cx, val),
+    ret rec(res=rslt(cx, val),
             is_mem=false,
             generic=none[generic_info],
             llobj=none[ValueRef],
@@ -4658,9 +4649,8 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
             vec::push[ValueRef](tydescs, td.val);
         }
         auto gen = rec(item_type=tpt._1, static_tis=tis, tydescs=tydescs);
-        lv =
-            rec(res=res(bcx, lv.res.val), generic=some[generic_info](gen)
-                with lv);
+        lv = rec(res=rslt(bcx, lv.res.val), generic=some[generic_info](gen)
+                 with lv);
     }
     ret lv;
 }
@@ -4958,15 +4948,15 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
         if (ty::type_is_native(cx.fcx.lcx.ccx.tcx,
                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
             e_res =
-                res(e_res.bcx,
+                rslt(e_res.bcx,
                     e_res.bcx.build.PtrToInt(e_res.val, lldsttype));
         } else if (ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
             e_res =
-                res(e_res.bcx,
+                rslt(e_res.bcx,
                     e_res.bcx.build.IntToPtr(e_res.val, lldsttype));
         } else {
             e_res =
-                res(e_res.bcx,
+                rslt(e_res.bcx,
                     int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
                              ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)));
         }
@@ -5251,7 +5241,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                             pair_box);
             find_scope_cx(cx).cleanups +=
                 [clean(bind drop_slot(_, pair_v, pair_ty))];
-            ret res(bcx, pair_v);
+            ret rslt(bcx, pair_v);
         }
     }
 }
@@ -5307,7 +5297,7 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
         // we are now passing it as an arg, so need to load it.
         val = bcx.build.Load(val);
     }
-    ret res(bcx, val);
+    ret rslt(bcx, val);
 }
 
 
@@ -5470,7 +5460,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
 
         }
     }
-    ret res(bcx, retval);
+    ret rslt(bcx, retval);
 }
 
 fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, ast::node_id id)
@@ -5491,7 +5481,7 @@ fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, ast::node_id id)
         bcx = copy_val(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
-    ret res(bcx, tup_val);
+    ret rslt(bcx, tup_val);
 }
 
 fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
@@ -5549,7 +5539,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
     }
     auto fill = bcx.build.GEP(vec_val, [C_int(0), C_int(abi::vec_elt_fill)]);
     bcx.build.Store(data_sz, fill);
-    ret res(bcx, vec_val);
+    ret rslt(bcx, vec_val);
 }
 
 
@@ -5644,7 +5634,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
         bcx = copy_val(bcx, INIT, lleltptr, llsrc, unit_ty).bcx;
         i += 1u;
     }
-    ret res(bcx, llvecptr);
+    ret rslt(bcx, llvecptr);
 }
 
 fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
@@ -5674,7 +5664,7 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
         auto dst_res = GEP_tup_like(bcx, t, rec_val, [0, i]);
         bcx = dst_res.bcx;
         auto expr_provided = false;
-        auto src_res = res(bcx, C_nil());
+        auto src_res = rslt(bcx, C_nil());
         for (ast::field f in fields) {
             if (str::eq(f.node.ident, tf.ident)) {
                 expr_provided = true;
@@ -5684,13 +5674,13 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
         if (!expr_provided) {
             src_res = GEP_tup_like(bcx, t, base_val, [0, i]);
             src_res =
-                res(src_res.bcx, load_if_immediate(bcx, src_res.val, e_ty));
+                rslt(src_res.bcx, load_if_immediate(bcx, src_res.val, e_ty));
         }
         bcx = src_res.bcx;
         bcx = copy_val(bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
-    ret res(bcx, rec_val);
+    ret rslt(bcx, rec_val);
 }
 
 fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
@@ -5703,7 +5693,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
 
     alt (e.node) {
         case (ast::expr_lit(?lit)) {
-            ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, e.id));
+            ret rslt(cx, trans_lit(cx.fcx.lcx.ccx, *lit, e.id));
         }
         case (ast::expr_unary(?op, ?x)) {
             if (op != ast::deref) { ret trans_unary(cx, op, x, e.id); }
@@ -5751,7 +5741,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
             auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
             trans_fn(sub_cx, e.span, f, llfn, none, [], e.id);
-            ret res(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
+            ret rslt(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
         }
         case (ast::expr_block(?blk)) {
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
@@ -5761,7 +5751,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                                 output);
             cx.build.Br(sub_cx.llbb);
             sub.bcx.build.Br(next_cx.llbb);
-            ret res(next_cx, sub.val);
+            ret rslt(next_cx, sub.val);
         }
         case (ast::expr_move(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
@@ -5775,7 +5765,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto move_res =
                 move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val,
                          rhs_res.res.val, t);
-            ret res(move_res.bcx, C_nil());
+            ret rslt(move_res.bcx, C_nil());
         }
         case (ast::expr_assign(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
@@ -5789,7 +5779,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto copy_res =
                 copy_val(rhs_res.bcx, DROP_EXISTING, lhs_res.res.val,
                          rhs_res.val, t);
-            ret res(copy_res.bcx, C_nil());
+            ret rslt(copy_res.bcx, C_nil());
         }
         case (ast::expr_swap(?dst, ?src)) {
             auto lhs_res = trans_lval(cx, dst);
@@ -5808,7 +5798,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                            t);
             auto move3_res =
                 memmove_ty(move2_res.bcx, rhs_res.res.val, tmp_res.val, t);
-            ret res(move3_res.bcx, C_nil());
+            ret rslt(move3_res.bcx, C_nil());
         }
         case (ast::expr_assign_op(?op, ?dst, ?src)) {
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, src);
@@ -5838,7 +5828,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
 
             auto copy_res =
                 copy_val(v.bcx, DROP_EXISTING, lhs_res.res.val, v.val, t);
-            ret res(copy_res.bcx, C_nil());
+            ret rslt(copy_res.bcx, C_nil());
         }
         case (ast::expr_bind(?f, ?args)) {
             ret trans_bind(cx, f, args, e.id);
@@ -5905,7 +5895,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
 
     auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     auto sub = trans_lval(cx, e);
-    ret res(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
+    ret rslt(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
 }
 
 fn with_out_method(fn(&out_method) -> result  work, @block_ctxt cx,
@@ -5926,7 +5916,8 @@ fn with_out_method(fn(&out_method) -> result  work, @block_ctxt cx,
         auto cleanup = bind drop_hoisted_ty(_, res_alloca.val, tp);
         find_scope_cx(cx).cleanups += [clean(cleanup)];
         auto done = work(save_in(res_alloca.val));
-        done = res(done.bcx, load_if_immediate(done.bcx, res_alloca.val, tp));
+        done = rslt(done.bcx,
+                    load_if_immediate(done.bcx, res_alloca.val, tp));
         ret done;
     }
 }
@@ -6036,7 +6027,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     }
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     log_bcx.build.Br(after_cx.llbb);
-    ret res(after_cx, C_nil());
+    ret rslt(after_cx, C_nil());
 }
 
 fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
@@ -6046,7 +6037,7 @@ fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
     auto fail_res = trans_fail(fail_cx, some[common::span](e.span), expr_str);
     auto next_cx = new_sub_block_ctxt(cx, "next");
     cond_res.bcx.build.CondBr(cond_res.val, next_cx.llbb, fail_cx.llbb);
-    ret res(next_cx, C_nil());
+    ret rslt(next_cx, C_nil());
 }
 
 fn trans_fail(&@block_ctxt cx, &option::t[common::span] sp_opt, &str fail_str)
@@ -6070,7 +6061,7 @@ fn trans_fail(&@block_ctxt cx, &option::t[common::span] sp_opt, &str fail_str)
     auto args = [cx.fcx.lltaskptr, V_fail_str, V_filename, C_int(V_line)];
     cx.build.Call(cx.fcx.lcx.ccx.upcalls._fail, args);
     cx.build.Unreachable();
-    ret res(cx, C_nil());
+    ret rslt(cx, C_nil());
 }
 
 fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
@@ -6102,7 +6093,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
             llargs += [r.val];
         }
     }
-    ret res(bcx, bcx.build.FastCall(llcallee, llargs));
+    ret rslt(bcx, bcx.build.FastCall(llcallee, llargs));
 }
 
 fn trans_break_cont(&span sp, &@block_ctxt cx, bool to_end) -> result {
@@ -6124,7 +6115,7 @@ fn trans_break_cont(&span sp, &@block_ctxt cx, bool to_end) -> result {
                         case (_) { bcx.build.Br(cleanup_cx.llbb); }
                     }
                 }
-                ret res(new_sub_block_ctxt(bcx, "break_cont.unreachable"),
+                ret rslt(new_sub_block_ctxt(bcx, "break_cont.unreachable"),
                         C_nil());
             }
             case (_) {
@@ -6183,7 +6174,7 @@ fn trans_ret(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
         }
     }
     bcx.build.RetVoid();
-    ret res(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
+    ret rslt(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
 }
 
 fn trans_be(&@block_ctxt cx, &@ast::expr e) -> result {
@@ -6214,7 +6205,7 @@ fn trans_port(&@block_ctxt cx, ast::node_id id) -> result {
     auto port_val = bcx.build.PointerCast(port_raw_val, llty);
     auto dropref = clean(bind drop_ty(_, port_val, t));
     find_scope_cx(bcx).cleanups += [dropref];
-    ret res(bcx, port_val);
+    ret rslt(bcx, port_val);
 }
 
 fn trans_chan(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
@@ -6230,7 +6221,7 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
     auto chan_val = bcx.build.PointerCast(chan_raw_val, chan_llty);
     auto dropref = clean(bind drop_ty(_, chan_val, chan_ty));
     find_scope_cx(bcx).cleanups += [dropref];
-    ret res(bcx, chan_val);
+    ret rslt(bcx, chan_val);
 }
 
 fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
@@ -6325,7 +6316,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     auto task_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     auto dropref = clean(bind drop_ty(_, new_task, task_ty));
     find_scope_cx(bcx).cleanups += [dropref];
-    ret res(bcx, new_task);
+    ret rslt(bcx, new_task);
 }
 
 fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
@@ -6374,7 +6365,7 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     finish_fn(fcx, fbcx.llbb);
     // TODO: make sure we clean up everything we need to.
 
-    ret res(cx, llfndecl);
+    ret rslt(cx, llfndecl);
 }
 
 // Does a deep copy of a value. This is needed for passing arguments to child
@@ -6390,10 +6381,10 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
 
     auto tcx = bcx.fcx.lcx.ccx.tcx;
     if(ty::type_is_scalar(tcx, t)) {
-        ret res(bcx, v);
+        ret rslt(bcx, v);
     }
     else if(ty::type_is_str(tcx, t)) {
-        ret res(bcx,
+        ret rslt(bcx,
                 bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.dup_str,
                                [bcx.fcx.lltaskptr, v]));
     }
@@ -6409,7 +6400,7 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
         auto chan_val = bcx.build.PointerCast(chan_raw_val, 
                                               val_ty(v));
 
-        ret res(bcx, chan_val);
+        ret rslt(bcx, chan_val);
     } 
     else if(ty::type_is_structural(tcx, t)) {
         fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
@@ -6451,7 +6442,7 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto lldataptr = bcx.build.PointerCast(data_alloc.val, T_ptr(T_i8()));
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.send,
                    [bcx.fcx.lltaskptr, llchanval, lldataptr]);
-    ret res(bcx, chn.val);
+    ret rslt(bcx, chn.val);
 }
 
 fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
@@ -6480,7 +6471,7 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
     bcx = cp.bcx;
     // TODO: Any cleanup need to be done here?
 
-    ret res(bcx, to);
+    ret rslt(bcx, to);
 }
 
 
@@ -6771,7 +6762,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     }
 
     // Return the object we built.
-    ret res(bcx, pair);
+    ret rslt(bcx, pair);
 }
 
 fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
@@ -6808,7 +6799,7 @@ fn init_local(&@block_ctxt cx, &@ast::local local) -> result {
         }
         case (_) { bcx = zero_alloca(bcx, llptr, ty).bcx; }
     }
-    ret res(bcx, llptr);
+    ret rslt(bcx, llptr);
 }
 
 fn zero_alloca(&@block_ctxt cx, ValueRef llptr, ty::t t) -> result {
@@ -6822,7 +6813,7 @@ fn zero_alloca(&@block_ctxt cx, ValueRef llptr, ty::t t) -> result {
         auto null = lib::llvm::llvm::LLVMConstNull(llty);
         bcx.build.Store(null, llptr);
     }
-    ret res(bcx, llptr);
+    ret rslt(bcx, llptr);
 }
 
 fn trans_stmt(&@block_ctxt cx, &ast::stmt s) -> result {
@@ -6841,7 +6832,7 @@ fn trans_stmt(&@block_ctxt cx, &ast::stmt s) -> result {
         }
         case (_) { cx.fcx.lcx.ccx.sess.unimpl("stmt variant"); }
     }
-    ret res(bcx, C_nil());
+    ret rslt(bcx, C_nil());
 }
 
 fn new_builder(BasicBlockRef llbb) -> builder {
@@ -6999,7 +6990,7 @@ fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
     // past caller conventions and may well make sense again,
     // so we leave it as-is.
 
-    ret res(cx, val);
+    ret rslt(cx, val);
 }
 
 fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
@@ -7015,7 +7006,7 @@ fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
         // FIXME Update bcx.sp
         bcx = alloc_local(bcx, local).bcx;
     }
-    auto r = res(bcx, C_nil());
+    auto r = rslt(bcx, C_nil());
     for (@ast::stmt s in b.node.stmts) {
         r = trans_stmt(bcx, *s);
         bcx = r.bcx;
@@ -7054,16 +7045,16 @@ fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
                         auto res_copy =
                             copy_val(bcx, INIT, target, r.val, r_ty);
                         bcx = res_copy.bcx;
-                        r = res(bcx, C_nil());
+                        r = rslt(bcx, C_nil());
                     }
                     case (return) { }
                 }
             }
         }
-        case (none) { r = res(bcx, C_nil()); }
+        case (none) { r = rslt(bcx, C_nil()); }
     }
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
-    ret res(bcx, r.val);
+    ret rslt(bcx, r.val);
 }
 
 fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
@@ -7344,16 +7335,16 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
 
-    auto res =
+    auto rslt =
         if (!ty::type_is_nil(cx.ccx.tcx, block_ty) &&
                 !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
             trans_block(bcx, f.body, save_in(fcx.llretptr))
         } else { trans_block(bcx, f.body, return) };
-    if (!is_terminated(res.bcx)) {
+    if (!is_terminated(rslt.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
 
-        res.bcx.build.RetVoid();
+       rslt.bcx.build.RetVoid();
     }
     // Insert the mandatory first few basic blocks before lltop.
 

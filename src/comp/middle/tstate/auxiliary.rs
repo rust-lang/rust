@@ -49,17 +49,17 @@ import pretty::ppaux::lit_to_str;
 fn def_id_to_str(def_id d) -> str { ret istr(d._0) + "," + istr(d._1); }
 
 fn comma_str(vec[@constr_arg_use] args) -> str {
-    auto res = "";
+    auto rslt = "";
     auto comma = false;
     for (@constr_arg_use a in args) {
-        if (comma) { res += ", "; } else { comma = true; }
+        if (comma) { rslt += ", "; } else { comma = true; }
         alt (a.node) {
-            case (carg_base) { res += "*"; }
-            case (carg_ident(?i)) { res += i._0; }
-            case (carg_lit(?l)) { res += lit_to_str(l); }
+            case (carg_base) { rslt += "*"; }
+            case (carg_ident(?i)) { rslt += i._0; }
+            case (carg_lit(?l)) { rslt += lit_to_str(l); }
         }
     }
-    ret res;
+    ret rslt;
 }
 
 fn constraint_to_str(&ty::ctxt tcx, &constr c) -> str {
@@ -120,11 +120,11 @@ fn first_difference_string(&fn_ctxt fcx, &tritv::t expected, &tritv::t actual)
 fn log_tritv_err(fn_ctxt fcx, tritv::t v) { log_err tritv_to_str(fcx, v); }
 
 fn tos(vec[uint] v) -> str {
-    auto res = "";
-    for (uint i in v) { if (i == 0u) { res += "0"; } 
-        else if (i == 1u) { res += "1"; }
-        else { res += "?"; } }
-    ret res;
+    auto rslt = "";
+    for (uint i in v) { if (i == 0u) { rslt += "0"; } 
+        else if (i == 1u) { rslt += "1"; }
+        else { rslt += "?"; } }
+    ret rslt;
 }
 
 fn log_cond(vec[uint] v) { log tos(v); }
@@ -497,15 +497,15 @@ fn norm_a_constraint(node_id id, &constraint c) -> vec[norm_constraint] {
             ret [rec(bit_num=n, c=respan(sp, rec(id=id, c=ninit(i))))];
         }
         case (cpred(?p, ?descs)) {
-            let vec[norm_constraint] res = [];
+            let vec[norm_constraint] rslt = [];
             for (pred_desc pd in *descs) {
-                vec::push(res,
+                vec::push(rslt,
                           rec(bit_num=pd.node.bit_num,
                               c=respan(pd.span,
                                        rec(id=id,
                                            c=npred(p, pd.node.args)))));
             }
-            ret res;
+            ret rslt;
         }
     }
 }
@@ -514,11 +514,11 @@ fn norm_a_constraint(node_id id, &constraint c) -> vec[norm_constraint] {
 // Tried to write this as an iterator, but I got a
 // non-exhaustive match in trans.
 fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
-    let vec[norm_constraint] res = [];
+    let vec[norm_constraint] rslt = [];
     for each (@tup(node_id, constraint) p in fcx.enclosing.constrs.items()) {
-        res += norm_a_constraint(p._0, p._1);
+        rslt += norm_a_constraint(p._0, p._1);
     }
-    ret res;
+    ret rslt;
 }
 
 fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
@@ -617,11 +617,11 @@ fn pred_desc_to_str(&pred_desc p) -> str {
 
 fn substitute_constr_args(&ty::ctxt cx, &vec[@expr] actuals,
                           &@ty::constr_def c) -> constr__ {
-    let vec[@constr_arg_use] res = [];
+    let vec[@constr_arg_use] rslt = [];
     for (@constr_arg a in c.node.args) {
-        res += [substitute_arg(cx, actuals, a)];
+        rslt += [substitute_arg(cx, actuals, a)];
     }
-    ret npred(c.node.path, res);
+    ret npred(c.node.path, rslt);
 }
 
 type subst = vec[tup(arg, @expr)];

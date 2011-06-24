@@ -23,42 +23,42 @@ import aux::crate_ctxt;
 import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
-fn collect_ids_expr(&@expr e, @mutable vec[node_id] res) {
-    vec::push(*res, e.id);
+fn collect_ids_expr(&@expr e, @mutable vec[node_id] rs) {
+    vec::push(*rs, e.id);
 }
 
-fn collect_ids_block(&block b, @mutable vec[node_id] res) {
-    vec::push(*res, b.node.id);
+fn collect_ids_block(&block b, @mutable vec[node_id] rs) {
+    vec::push(*rs, b.node.id);
 }
 
-fn collect_ids_stmt(&@stmt s, @mutable vec[node_id] res) {
+fn collect_ids_stmt(&@stmt s, @mutable vec[node_id] rs) {
     alt (s.node) {
         case (stmt_decl(_, ?id)) {
             log "node_id " + istr(id);
             log_stmt(*s);
-            vec::push(*res, id);
+            vec::push(*rs, id);
         }
         case (stmt_expr(_, ?id)) {
             log "node_id " + istr(id);
             log_stmt(*s);
-            vec::push(*res, id);
+            vec::push(*rs, id);
         }
         case (_) { }
     }
 }
 
-fn collect_ids_local(&@local l, @mutable vec[node_id] res) {
-    vec::push(*res, l.node.id);
+fn collect_ids_local(&@local l, @mutable vec[node_id] rs) {
+    vec::push(*rs, l.node.id);
 }
 
 fn node_ids_in_fn(&_fn f, &span sp, &ident i, node_id id,
-                  @mutable vec[node_id] res) {
+                  @mutable vec[node_id] rs) {
     auto collect_ids = walk::default_visitor();
     collect_ids =
-        rec(visit_expr_pre=bind collect_ids_expr(_, res),
-            visit_block_pre=bind collect_ids_block(_, res),
-            visit_stmt_pre=bind collect_ids_stmt(_, res),
-            visit_local_pre=bind collect_ids_local(_, res) with collect_ids);
+        rec(visit_expr_pre=bind collect_ids_expr(_, rs),
+            visit_block_pre=bind collect_ids_block(_, rs),
+            visit_stmt_pre=bind collect_ids_stmt(_, rs),
+            visit_local_pre=bind collect_ids_local(_, rs) with collect_ids);
     walk::walk_fn(collect_ids, f, sp, i, id);
 }
 

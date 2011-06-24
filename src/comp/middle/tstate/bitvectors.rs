@@ -43,10 +43,10 @@ import tritv::*;
 
 fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
     assert (fcx.enclosing.constrs.contains_key(c.id));
-    auto res = fcx.enclosing.constrs.get(c.id);
+    auto rslt = fcx.enclosing.constrs.get(c.id);
     alt (c.c) {
         case (ninit(_)) {
-            alt (res) {
+            alt (rslt) {
                 case (cinit(?n, _, _)) { ret n; }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for init constraint,"
@@ -55,7 +55,7 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
             }
         }
         case (npred(_, ?args)) {
-            alt (res) {
+            alt (rslt) {
                 case (cpred(_, ?descs)) { ret match_args(fcx, *descs, args); }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"
@@ -166,11 +166,11 @@ fn gen(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
 }
 
 fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
-    auto res = clone(pre);
-    relax_prestate(bit_num(fcx, c), res);
+    auto rslt = clone(pre);
+    relax_prestate(bit_num(fcx, c), rslt);
     // idea is this is scoped
-    relax_poststate(bit_num(fcx, c), res);
-    ret res;
+    relax_poststate(bit_num(fcx, c), rslt);
+    ret rslt;
 }
 
 fn relax_precond_block_non_recursive(&fn_ctxt fcx, node_id i, &block b) {

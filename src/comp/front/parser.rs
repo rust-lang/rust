@@ -58,7 +58,7 @@ fn new_parser(session::session sess, eval::env env,
                      mutable uint lo,
                      mutable uint hi,
                      mutable uint last_lo,
-                     mutable restriction res,
+                     mutable restriction restr,
                      lexer::reader rdr,
                      vec[op_spec] precs,
                      mutable ast::node_id next_id_var,
@@ -75,8 +75,8 @@ fn new_parser(session::session sess, eval::env env,
             hi = rdr.get_chpos();
         }
         fn fatal(str m) -> ! { sess.span_fatal(rec(lo=lo, hi=hi), m); }
-        fn restrict(restriction r) { res = r; }
-        fn get_restriction() -> restriction { ret res; }
+        fn restrict(restriction r) { restr = r; }
+        fn get_restriction() -> restriction { ret restr; }
         fn get_session() -> session::session { ret sess; }
         fn get_span() -> common::span { ret rec(lo=lo, hi=hi); }
         fn get_lo_pos() -> uint { ret lo; }
@@ -1653,15 +1653,15 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
     let util::common::spanned[vec[ast::arg]] inputs =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
-    let ty_or_bang res;
+    let ty_or_bang rslt;
     auto constrs = parse_constrs(inputs.node, p).node;
     if (p.peek() == token::RARROW) {
         p.bump();
-        res = parse_ty_or_bang(p);
+        rslt = parse_ty_or_bang(p);
     } else {
-        res = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
+        rslt = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
     }
-    alt (res) {
+    alt (rslt) {
         case (a_ty(?t)) {
             ret rec(inputs=inputs.node,
                     output=t,

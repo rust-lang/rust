@@ -123,12 +123,12 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp, &ident f_name,
 
     add_constraint(cx.tcx, respan(f_sp, rec(id=id, c=ninit(f_name))), next,
                    res_map);
-    auto res =
+    auto rslt =
         rec(constrs=res_map,
             num_constraints=vec::len(*cx.cs) + 1u,
             cf=f.decl.cf);
-    ccx.fm.insert(id, res);
-    log f_name + " has " + uistr(num_constraints(res)) + " constraints";
+    ccx.fm.insert(id, rslt);
+    log f_name + " has " + uistr(num_constraints(rslt)) + " constraints";
 }
 
 
