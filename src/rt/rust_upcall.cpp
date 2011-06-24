@@ -478,6 +478,12 @@ upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
     size_t n_dst_bytes = skip_null ? dst->fill - 1 : dst->fill;
     rust_vec *new_vec = vec_grow(task, dst, n_src_bytes, &need_copy, t);
 
+    // If src and dst are the same (due to "v += v"), then dst getting
+    // resized causes src to move as well.
+    if (dst == src) {
+        src = new_vec;
+    }
+
     if (need_copy) {
         // Copy any dst elements in, omitting null if doing str.
         copy_elements(task, elem_t, &new_vec->data, &dst->data, n_dst_bytes);
