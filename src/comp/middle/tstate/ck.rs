@@ -8,6 +8,7 @@ import front::ast::obj_field;
 import front::ast::_obj;
 import front::ast::stmt;
 import front::ast::ident;
+import front::ast::fn_ident;
 import front::ast::node_id;
 import front::ast::def_id;
 import front::ast::local_def;
@@ -120,7 +121,7 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
 }
 
 fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
-                                   &span sp, &ident i) {
+                                   &span sp, &fn_ident i) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
@@ -172,7 +173,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
     }
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &ident i) {
+fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &fn_ident i) {
     /* Compute the pre- and post-states for this function */
 
     auto g = find_pre_post_state_fn;
@@ -183,12 +184,13 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &ident i) {
     check_states_against_conditions(fcx, f, id, sp, i);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &ident i, node_id id) {
+fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &fn_ident i, node_id id) {
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
-    auto fcx = rec(enclosing=f_info, id=id, name=i, ccx=ccx);
+    auto name = option::from_maybe("anon", i);
+    auto fcx = rec(enclosing=f_info, id=id, name=name, ccx=ccx);
     check_fn_states(fcx, f, id, sp, i);
 }
 
