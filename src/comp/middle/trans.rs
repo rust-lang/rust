@@ -2504,10 +2504,18 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                load_if_immediate(loop_body_cx, src_elem, unit_ty), unit_ty);
 
         loop_body_cx = rs.bcx;
+
+        auto increment;
+        if (ty::type_has_dynamic_size(bcx.fcx.lcx.ccx.tcx, unit_ty)) {
+            increment = unit_sz;
+        } else {
+            increment = C_int(1);
+        }
+
         loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(dest_elem,
-            [C_int(1)]), dest_elem_ptr);
+            [increment]), dest_elem_ptr);
         loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(src_elem,
-            [C_int(1)]), src_elem_ptr);
+            [increment]), src_elem_ptr);
         loop_body_cx.build.Br(loop_header_cx.llbb);
 
         ret rslt(next_cx, C_nil());
