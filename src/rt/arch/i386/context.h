@@ -25,8 +25,6 @@ public:
   
   context *next;
 
-  void set();
-  
   void swap(context &out);
 
   void call(void *f, void *arg, void *sp);

@@ -25,7 +25,6 @@ get_registers:
 	movl %ebp, 16(%eax)
 	movl %esi, 20(%eax)
 	movl %edi, 24(%eax)
-	movl %esp, 28(%eax)
 	movw %cs, 32(%eax)
 	movw %ds, 34(%eax)
 	movw %ss, 36(%eax)
@@ -39,12 +38,14 @@ get_registers:
 	movl %ecx, 44(%eax)
 
 	// save the return address as the instruction pointer
-	movl 0(%esp), %ecx
+    // and save the stack pointer of the caller
+    popl %ecx
+    movl %esp, 28(%eax)
 	movl %ecx, 48(%eax)
 
 	// return 0
 	xor %eax, %eax
-	ret
+	jmp *%ecx
 
 .globl set_registers
 set_registers:
@@ -70,13 +71,9 @@ set_registers:
 	push %ecx
 	popf
 
-	// get ready to return back to the old eip
-	// We could write this directly to 0(%esp), but Valgrind on OS X
-	// complains.
-	pop %ecx
+    // get ready to return.
 	mov 48(%eax), %ecx
 	push %ecx	
-	//movl %ecx, 0(%esp)
 	
 	// okay, now we can restore ecx.
 	movl 8(%eax), %ecx
@@ -84,3 +81,26 @@ set_registers:
 	// return 1 to the saved eip
 	movl $1, %eax
 	ret
+
+// swap_registers(registers_t *oregs, registers_t *regs)
+.globl swap_registers
+swap_registers:
+    // %eax = get_registers(oregs);
+    movl 4(%esp), %eax
+    push %eax
+    call get_registers
+        
+    // if(!%eax) goto call_set
+    test %eax, %eax
+    jz call_set
+
+    // else
+    addl $4, %esp
+    ret
+        
+call_set:
+    // set_registers(regs)
+    movl 12(%esp), %eax
+    movl %eax, 0(%esp)
+    call set_registers
+    // set_registers never returns

@@ -5,32 +5,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern "C" uint32_t CDECL get_registers(registers_t *regs) 
-  asm ("get_registers");
-extern "C" uint32_t CDECL set_registers(registers_t *regs)
-  asm ("set_registers");
+//extern "C" uint32_t CDECL get_registers(registers_t *regs) 
+//  asm ("get_registers");
+extern "C" uint32_t CDECL swap_registers(registers_t *oregs, 
+                                         registers_t *regs)
+  asm ("swap_registers");
 
 context::context()
   : next(NULL)
 {
-  get_registers(&regs);
-}
-
-void context::set()
-{
-  //printf("Activating %p...\n", this);
-  set_registers(&regs);
+  //get_registers(&regs);
+  swap_registers(&regs, &regs);
 }
 
 void context::swap(context &out)
 {
-  //printf("Swapping to %p and saving in %p\n", this, &out);
-  uint32_t r = get_registers(&out.regs);
-  //printf("get_registers = %d, sp = 0x%x\n", r, out.regs.esp);
-  if(!r) {
-    set();
-  }
-  //printf("Resumed %p...\n", &out);
+  swap_registers(&out.regs, &regs);
 }
 
 void context::call(void *f, void *arg, void *stack) {
@@ -43,7 +33,6 @@ void context::call(void *f, void *arg, void *stack) {
   *--sp = (uint32_t)this;
   *--sp = (uint32_t)arg;
   *--sp = 0xdeadbeef;
-  *--sp = 0xca11ab1e;
 
   regs.esp = (uint32_t)sp;
   regs.eip = (uint32_t)f;

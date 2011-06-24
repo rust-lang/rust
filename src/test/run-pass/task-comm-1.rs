@@ -1,6 +1,9 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
+use std;
+
+import std::task::join;
+
 fn main() -> () {
    test00(); 
 }
@@ -10,7 +13,7 @@ fn start() {
 }
 
 fn test00() {
-    let task t = spawn thread start();
-    join t;
+    let task t = spawn start();
+    join(t);
     log "Completing.";
 }

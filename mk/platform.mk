@@ -48,8 +48,8 @@ ifeq ($(CFG_OSTYPE), Darwin)
   # approaches welcome!
   #
   # NB: Currently GCC's optimizer breaks rustrt (task-comm-1 hangs) on Darwin.
-  CFG_GCC_CFLAGS += -m32 -O0
-  CFG_CLANG_CFLAGS += -m32 -O0
+  CFG_GCC_CFLAGS += -m32 -O2
+  CFG_CLANG_CFLAGS += -m32 -O2
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCCISH_CFLAGS += -arch i386
     CFG_GCCISH_LINK_FLAGS += -arch i386
