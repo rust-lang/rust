@@ -8,13 +8,19 @@ fn test_simple() {
 fn test_precedence() {
   auto x;
 
+  x = true || true ? 10 : 11;
+  assert (x == 10);
+
   x = true == false ? 10 : 11;
   assert (x == 11);
 
   x = true ? false ? 10 : 11 : 12;
   assert (x == 11);
 
-  auto y = false ? 10 : 0xF0 | 0x0F;
+  auto y = true ? 0xF0 : 0x0 | 0x0F;
+  assert (y == 0xF0);
+
+  y = true ? 0xF0 | 0x0F : 0x0;
   assert (y == 0xFF);
 }
 
