@@ -4101,9 +4101,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
     auto then_cx = new_scope_block_ctxt(cx, "then");
     auto then_res = trans_block(then_cx, thn, output);
     auto else_cx = new_scope_block_ctxt(cx, "else");
-    auto else_res;
-    auto expr_llty;
-    alt (els) {
+    auto else_res =  alt (els) {
         case (some(?elexpr)) {
             alt (elexpr.node) {
                 case (ast::expr_if(_, _, _)) {
@@ -4111,13 +4109,8 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
                     // containing an if expression. Needed in order for the
                     // else scope to behave like a normal block scope. A tad
                     // ugly.
-
-                    let ast::block_ elseif_blk_ =
-                        rec(stmts=[],
-                            expr=some[@ast::expr](elexpr),
-                            id=elexpr.id);
-                    auto elseif_blk = rec(node=elseif_blk_, span=elexpr.span);
-                    else_res = trans_block(else_cx, elseif_blk, output);
+                    auto elseif_blk = ast::block_from_expr(elexpr);
+                    trans_block(else_cx, elseif_blk, output)
                 }
                 case (ast::expr_block(?blk)) {
                     // Calling trans_block directly instead of trans_expr
@@ -4125,23 +4118,12 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
                     // context for the block, but we've already got the
                     // 'else' context
 
-                    else_res = trans_block(else_cx, blk, output);
-                }
-            }
-            // FIXME: This isn't quite right, particularly re: dynamic types
-
-            auto expr_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
-            if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
-                expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
-            } else {
-                expr_llty = type_of(cx.fcx.lcx.ccx, elexpr.span, expr_ty);
-                if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, expr_ty)) {
-                    expr_llty = T_ptr(expr_llty);
+                    trans_block(else_cx, blk, output)
                 }
             }
         }
-        case (_) { else_res = res(else_cx, C_nil()); expr_llty = T_nil(); }
-    }
+        case (_) { res(else_cx, C_nil()) }
+    };
     cond_res.bcx.build.CondBr(cond_res.val, then_cx.llbb, else_cx.llbb);
     ret res(join_branches(cx, [then_res, else_res]), C_nil());
 }
@@ -4599,18 +4581,6 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
     auto default_res =
         trans_fail(default_cx, some[common::span](expr.span),
                    "non-exhaustive match failure");
-    // FIXME: This isn't quite right, particularly re: dynamic types
-
-    auto expr_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
-    auto expr_llty;
-    if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
-        expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
-    } else {
-        expr_llty = type_of(cx.fcx.lcx.ccx, expr.span, expr_ty);
-        if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, expr_ty)) {
-            expr_llty = T_ptr(expr_llty);
-        }
-    }
     ret res(join_branches(cx, arm_results), C_nil());
 }
 
