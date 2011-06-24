@@ -691,7 +691,7 @@ mod collect {
 
                 auto tpt =
                     ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
-                write::ty_only(cx.tcx, it.id, tpt._1);
+                write::ty_only(cx.tcx, ctor_id, tpt._1);
                 // Write the methods into the type table.
                 //
                 // FIXME: Inefficient; this ends up calling

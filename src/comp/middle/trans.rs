@@ -7426,7 +7426,7 @@ fn trans_dtor(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
 // trans_obj: creates an LLVM function that is the object constructor for the
 // object being translated.
 fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
-             &vec[ast::ty_param] ty_params, ast::node_id type_id) {
+             &vec[ast::ty_param] ty_params) {
     // To make a function, we have to create a function context and, inside
     // that, a number of block contexts for which code is generated.
 
@@ -7448,9 +7448,9 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // Both regular arguments and type parameters are handled here.
 
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ty::ret_ty_of_fn(ccx.tcx, type_id),
+                              ty::ret_ty_of_fn(ccx.tcx, ctor_id),
                               fn_args, ty_params);
-    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, type_id);
+    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ctor_id);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
     //  Create the first block context in the function and keep a handle on it
     //  to pass to finish_fn later.
@@ -7460,7 +7460,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
 
-    auto self_ty = ty::ret_ty_of_fn(ccx.tcx, type_id);
+    auto self_ty = ty::ret_ty_of_fn(ccx.tcx, ctor_id);
     auto llself_ty = type_of(ccx, sp, self_ty);
     // Set up the two-word pair that we're going to return from the object
     // constructor we're building.  The two elements of this pair will be a
@@ -7719,7 +7719,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
             auto sub_cx =
                 @rec(obj_typarams=tps, obj_fields=ob.fields
                      with *extend_path(cx, item.ident));
-            trans_obj(sub_cx, item.span, ob, ctor_id, tps, item.id);
+            trans_obj(sub_cx, item.span, ob, ctor_id, tps);
         }
         case (ast::item_mod(?m)) {
             auto sub_cx =
@@ -7759,8 +7759,7 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
 }
 
 fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
-                    vec[ast::ty_param] ty_params, ast::node_id node_id,
-                    ast::node_id def_id) {
+                    vec[ast::ty_param] ty_params, ast::node_id node_id) {
     auto llfty;
     alt (ty::struct(ccx.tcx, node_id_type(ccx, node_id))) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
@@ -7784,7 +7783,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
     // Declare the global constant pair that points to it.
 
     let str ps = mangle_exported_name(ccx, path, node_id_type(ccx, node_id));
-    register_fn_pair(ccx, ps, llfty, llfn, def_id);
+    register_fn_pair(ccx, ps, llfty, llfn, node_id);
     if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
             ccx.sess.span_fatal(sp, "multiple 'main' functions");
@@ -8046,12 +8045,11 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     alt (i.node) {
         case (ast::item_fn(?f, ?tps)) {
             if (!ccx.obj_methods.contains_key(i.id)) {
-                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id, i.id);
+                decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id);
             }
         }
         case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
-            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, i.id,
-                             ctor_id);
+            decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
             for (@ast::method m in ob.methods) {
                 ccx.obj_methods.insert(m.node.id, ());
             }
@@ -8081,7 +8079,7 @@ fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
                 if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
                                      new_pt + [variant.node.name], "tag", tps,
-                                     variant.node.id, variant.node.id);
+                                     variant.node.id);
                 }
             }
         }

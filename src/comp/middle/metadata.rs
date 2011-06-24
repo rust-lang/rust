@@ -558,7 +558,7 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             encode_def_id(ebml_w, local_def(ctor_id));
             encode_kind(ebml_w, 'f' as u8);
             encode_type_param_count(ebml_w, tps);
-            auto fn_ty = trans::node_id_type(cx, item.id);
+            auto fn_ty = trans::node_id_type(cx, ctor_id);
             encode_type(cx, ebml_w, fn_ty);
             encode_symbol(cx, ebml_w, ctor_id);
             ebml::end_tag(ebml_w);
