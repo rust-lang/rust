@@ -10,20 +10,20 @@ type lteq[T] = fn(&T, &T) -> bool ;
 
 fn merge_sort[T](lteq[T] le, vec[T] v) -> vec[T] {
     fn merge[T](lteq[T] le, vec[T] a, vec[T] b) -> vec[T] {
-        let vec[T] res = [];
+        let vec[T] rs = [];
         let uint a_len = len[T](a);
         let uint a_ix = 0u;
         let uint b_len = len[T](b);
         let uint b_ix = 0u;
         while (a_ix < a_len && b_ix < b_len) {
             if (le(a.(a_ix), b.(b_ix))) {
-                res += [a.(a_ix)];
+                rs += [a.(a_ix)];
                 a_ix += 1u;
-            } else { res += [b.(b_ix)]; b_ix += 1u; }
+            } else { rs += [b.(b_ix)]; b_ix += 1u; }
         }
-        res += slice[T](a, a_ix, a_len);
-        res += slice[T](b, b_ix, b_len);
-        ret res;
+        rs += slice[T](a, a_ix, a_len);
+        rs += slice[T](b, b_ix, b_len);
+        ret rs;
     }
     let uint v_len = len[T](v);
     if (v_len <= 1u) { ret v; }

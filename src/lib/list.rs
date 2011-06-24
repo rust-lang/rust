@@ -37,7 +37,7 @@ fn find[T, U](&list[T] ls_, fn(&T) -> option::t[U]  f) -> option::t[U] {
             case (cons(?hd, ?tl)) {
                 alt (f(hd)) {
                     case (none) { ls = *tl; }
-                    case (some(?res)) { ret some(res); }
+                    case (some(?rs)) { ret some(rs); }
                 }
             }
             case (nil) { break; }

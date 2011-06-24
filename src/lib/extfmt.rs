@@ -95,9 +95,9 @@ mod ct {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
-                    auto res = parse_conversion(s, i, lim, error);
-                    pieces += [res._0];
-                    i = res._1;
+                    auto rs = parse_conversion(s, i, lim, error);
+                    pieces += [rs._0];
+                    i = rs._1;
                 }
             } else { buf += curr; i += 1u; }
         }
@@ -273,7 +273,7 @@ mod rt {
     }
     fn conv_uint(&conv cv, uint u) -> str {
         auto prec = get_int_precision(cv);
-        auto res =
+        auto rs =
             alt (cv.ty) {
                 case (ty_default) { uint_to_str_prec(u, 10u, prec) }
                 case (ty_hex_lower) { uint_to_str_prec(u, 16u, prec) }
@@ -283,7 +283,7 @@ mod rt {
                 case (ty_bits) { uint_to_str_prec(u, 2u, prec) }
                 case (ty_octal) { uint_to_str_prec(u, 8u, prec) }
             };
-        ret pad(cv, res, pad_unsigned);
+        ret pad(cv, rs, pad_unsigned);
     }
     fn conv_bool(&conv cv, bool b) -> str {
         auto s = if (b) { "true" } else { "false" };

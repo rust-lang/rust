@@ -162,15 +162,15 @@ fn mk_sha1() -> sha1 {
     }
     fn mk_result(&sha1state st) -> vec[u8] {
         if (!st.computed) { pad_msg(st); st.computed = true; }
-        let vec[u8] res = [];
+        let vec[u8] rs = [];
         for (u32 hpart in st.h) {
             auto a = hpart >> 24u32 & 0xFFu32 as u8;
             auto b = hpart >> 16u32 & 0xFFu32 as u8;
             auto c = hpart >> 8u32 & 0xFFu32 as u8;
             auto d = hpart & 0xFFu32 as u8;
-            res += [a, b, c, d];
+            rs += [a, b, c, d];
         }
-        ret res;
+        ret rs;
     }
     /*
      * According to the standard, the message must be padded to an even

@@ -172,10 +172,10 @@ fn top[T](&array[T] v) -> T {
 fn push[T](&mutable array[T] v, &T t) { v += [t]; }
 
 fn unshift[T](&mutable array[T] v, &T t) {
-    auto res = alloc[T](len[T](v) + 1u);
-    res += [t];
-    res += v;
-    v = res;
+    auto rs = alloc[T](len[T](v) + 1u);
+    rs += [t];
+    rs += v;
+    v = rs;
 }
 
 fn grow[T](&mutable array[T] v, uint n, &T initval) {
@@ -201,17 +201,17 @@ fn grow_init_fn_set[T](&array[T] v, uint index, fn() -> T  init_fn, &T val) {
 }
 
 fn map[T, U](&fn(&T) -> U  f, &vec[T] v) -> vec[U] {
-    let vec[U] res = alloc[U](len[T](v));
-    for (T ve in v) { res += [f(ve)]; }
-    ret res;
+    let vec[U] rs = alloc[U](len[T](v));
+    for (T ve in v) { rs += [f(ve)]; }
+    ret rs;
 }
 
 fn filter_map[T, U](&fn(&T) -> option::t[U]  f, &vec[T] v) -> vec[U] {
-    let vec[U] res = [];
+    let vec[U] rs = [];
     for (T ve in v) {
-        alt (f(ve)) { case (some(?elt)) { res += [elt]; } case (none) { } }
+        alt (f(ve)) { case (some(?elt)) { rs += [elt]; } case (none) { } }
     }
-    ret res;
+    ret rs;
 }
 
 fn map2[T, U, V](&operator2[T, U, V] f, &vec[T] v0, &vec[U] v1) -> vec[V] {
@@ -288,11 +288,11 @@ fn plus_option[T](&mutable vec[T] v, &option::t[T] o) {
 }
 
 fn cat_options[T](&vec[option::t[T]] v) -> vec[T] {
-    let vec[T] res = [];
+    let vec[T] rs = [];
     for (option::t[T] o in v) {
-        alt (o) { case (none) { } case (some(?t)) { res += [t]; } }
+        alt (o) { case (none) { } case (some(?t)) { rs += [t]; } }
     }
-    ret res;
+    ret rs;
 }
 
 
@@ -322,12 +322,12 @@ fn reverse[T](&vec[mutable T] v) {
 
 // Functional vector reversal. Returns a reversed copy of v.
 fn reversed[T](vec[T] v) -> vec[T] {
-    let vec[T] res = [];
+    let vec[T] rs = [];
     auto i = len[T](v);
-    if (i == 0u) { ret res; } else { i -= 1u; }
-    while (i != 0u) { push[T](res, v.(i)); i -= 1u; }
-    push[T](res, v.(0));
-    ret res;
+    if (i == 0u) { ret rs; } else { i -= 1u; }
+    while (i != 0u) { push[T](rs, v.(i)); i -= 1u; }
+    push[T](rs, v.(0));
+    ret rs;
 }
 
 

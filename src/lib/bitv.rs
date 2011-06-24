@@ -154,11 +154,11 @@ fn to_vec(&t v) -> vec[uint] {
 }
 
 fn to_str(&t v) -> str {
-    auto res = "";
+    auto rs = "";
     for (uint i in bitv::to_vec(v)) {
-        if (i == 1u) { res += "1"; } else { res += "0"; }
+        if (i == 1u) { rs += "1"; } else { rs += "0"; }
     }
-    ret res;
+    ret rs;
 }
 
 

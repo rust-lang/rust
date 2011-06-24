@@ -410,10 +410,10 @@ fn push_byte(&mutable str s, u8 b) {
 }
 
 fn unshift_byte(&mutable str s, u8 b) {
-    auto res = alloc(byte_len(s) + 1u);
-    res += unsafe_from_byte(b);
-    res += s;
-    s = res;
+    auto rs = alloc(byte_len(s) + 1u);
+    rs += unsafe_from_byte(b);
+    rs += s;
+    s = rs;
 }
 
 fn split(str s, u8 sep) -> vec[str] {
