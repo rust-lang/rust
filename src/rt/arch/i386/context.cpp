@@ -5,17 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//extern "C" uint32_t CDECL get_registers(registers_t *regs) 
-//  asm ("get_registers");
 extern "C" uint32_t CDECL swap_registers(registers_t *oregs, 
                                          registers_t *regs)
   asm ("swap_registers");
 
 context::context()
-  : next(NULL)
 {
-  //get_registers(&regs);
-  swap_registers(&regs, &regs);
 }
 
 void context::swap(context &out)
@@ -24,13 +19,15 @@ void context::swap(context &out)
 }
 
 void context::call(void *f, void *arg, void *stack) {
+  // Get the current context, which we will then modify to call the
+  // given function.
+  swap(*this);
+
   // set up the trampoline frame
   uint32_t *sp = (uint32_t *)stack;
 
   // Shift the stack pointer so the alignment works out right.
-  sp = align_down(sp) - 2;
-
-  *--sp = (uint32_t)this;
+  sp = align_down(sp) - 3;
   *--sp = (uint32_t)arg;
   *--sp = 0xdeadbeef;
 
