@@ -673,6 +673,15 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_if_check(?test, ?block, ?elseopt)) {
             print_if(s, test, block, elseopt, true);
         }
+        case (ast::expr_ternary(?test, ?then, ?els)) {
+            print_expr(s, test);
+            space(s.s);
+            word_space(s, "?");
+            print_expr(s, then);
+            space(s.s);
+            word_space(s, ":");
+            print_expr(s, els);
+        }
         case (ast::expr_while(?test, ?block)) {
             head(s, "while");
             popen(s);
@@ -1112,6 +1121,9 @@ fn print_maybe_parens(&ps s, &@ast::expr expr, int outer_prec) {
         }
         case (ast::expr_cast(_, _)) {
             add_them = front::parser::as_prec < outer_prec;
+        }
+        case (ast::expr_ternary(_, _, _)) {
+            add_them = front::parser::ternary_prec < outer_prec;
         }
         case (_) { add_them = false; }
     }

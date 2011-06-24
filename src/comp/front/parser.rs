@@ -1119,6 +1119,7 @@ fn parse_binops(&parser p) -> @ast::expr {
 const int unop_prec = 100;
 
 const int as_prec = 5;
+const int ternary_prec = 0;
 
 fn parse_more_binops(&parser p, @ast::expr lhs, int min_prec) -> @ast::expr {
     auto peeked = p.peek();
@@ -1552,6 +1553,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_lit(_)) { true }
                 case (ast::expr_cast(_, _)) { true }
                 case (ast::expr_if(_, _, _)) { false }
+                case (ast::expr_ternary(_, _, _)) { true }
                 case (ast::expr_for(_, _, _)) { false }
                 case (ast::expr_for_each(_, _, _)) { false }
                 case (ast::expr_while(_, _)) { false }
