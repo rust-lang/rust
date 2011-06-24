@@ -34,6 +34,9 @@ public:
     }
 };
 
+class rust_task_thread;
+
+
 /**
  * A global object shared by all thread domains. Most of the data structures
  * in this class are synchronized since they are accessed from multiple
@@ -43,8 +46,6 @@ class rust_kernel : public rust_thread {
     memory_region *_region;
     rust_log _log;
     rust_srv *_srv;
-
-    rust_dom *dom;
 
     /**
      * Task proxy objects are kernel owned handles to Rust objects.
@@ -69,7 +70,11 @@ class rust_kernel : public rust_thread {
     rust_dom *create_domain(const char *name);
     void destroy_domain();
 
+    array_list<rust_task_thread *> threads;
+
 public:
+    rust_dom *dom;
+    lock_and_signal scheduler_lock;
 
     /**
      * Message queues are kernel objects and are associated with domains.
@@ -105,7 +110,10 @@ public:
     void *malloc(size_t size);
     void free(void *mem);
 
+    // TODO: this should go away
     inline rust_dom *get_domain() const { return dom; }
+
+    int start_task_threads(int num_threads);
 };
 
 inline void *operator new(size_t size, rust_kernel *kernel) {
@@ -115,5 +123,16 @@ inline void *operator new(size_t size, rust_kernel *kernel) {
 inline void *operator new(size_t size, rust_kernel &kernel) {
     return kernel.malloc(size);
 }
+
+
+class rust_task_thread : public rust_thread {
+    int id;
+    rust_kernel *owner;
+    
+public:
+    rust_task_thread(int id, rust_kernel *owner);
+    
+    virtual void run();
+};
 
 #endif /* RUST_KERNEL_H */

@@ -61,6 +61,7 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     gc_alloc_chain(0),
     dom(dom),
     cache(NULL),
+    kernel(dom->kernel),
     name(name),
     state(state),
     cond(NULL),
@@ -134,7 +135,7 @@ void task_start_wrapper(spawn_args *a)
     LOG(task, task, "task exited with value %d", rval);
 
     {
-        scoped_lock with(task->dom->scheduler_lock);
+        scoped_lock with(task->kernel->scheduler_lock);
 
         // FIXME: the old exit glue does some magical argument copying
         // stuff. This is probably still needed.
@@ -158,9 +159,9 @@ rust_task::start(uintptr_t spawnee_fn,
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
     I(dom, stk->data != NULL);
-    I(dom, !dom->scheduler_lock.lock_held_by_current_thread());
-
-    scoped_lock with(dom->scheduler_lock);
+    I(dom, !kernel->scheduler_lock.lock_held_by_current_thread());
+    
+    scoped_lock with(kernel->scheduler_lock);
 
     char *sp = (char *)rust_sp;
 
@@ -412,7 +413,7 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(dom, dom->scheduler_lock.lock_held_by_current_thread());
+    I(dom, kernel->scheduler_lock.lock_held_by_current_thread());
     DLOG(dom, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);

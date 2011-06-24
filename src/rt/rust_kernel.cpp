@@ -224,6 +224,37 @@ rust_kernel::signal_kernel_lock() {
     _kernel_lock.unlock();
 }
 
+int rust_kernel::start_task_threads(int num_threads)
+{
+    rust_task_thread *thread = NULL;
+    
+    // -1, because this thread will also be a thread.
+    for(int i = 0; i < num_threads - 1; ++i) {
+        thread = new rust_task_thread(i + 1, this);
+        thread->start();
+        threads.push(thread);
+    }
+    
+    dom->start_main_loop(0);
+
+    while(threads.pop(&thread)) {
+        thread->join();
+        delete thread;
+    }
+
+    return dom->rval;
+}
+
+rust_task_thread::rust_task_thread(int id, rust_kernel *owner)
+    : id(id), owner(owner)
+{
+}
+
+void rust_task_thread::run()
+{
+    owner->dom->start_main_loop(id);
+}
+
 //
 // Local Variables:
 // mode: C++

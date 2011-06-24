@@ -111,7 +111,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     DLOG(dom, dom, "Using %d worker threads.", num_threads);
 
-    int ret = dom->start_main_loops(num_threads);
+    int ret = kernel->start_task_threads(num_threads);
     delete args;
     delete kernel;
     delete srv;
