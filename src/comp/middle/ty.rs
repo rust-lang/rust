@@ -1151,36 +1151,62 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
 }
 
 fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
+    auto result = false;
     alt (struct(cx, ty)) {
-        case (ty_ivec(_)) { ret true; }
-        case (ty_istr) { ret true; }
+        case (ty_ivec(_)) { result = true; }
+        case (ty_istr) { result = true; }
 
-        case (ty_nil) { ret false; }
-        case (ty_bot) { ret false; }
-        case (ty_bool) { ret false; }
-        case (ty_int) { ret false; }
-        case (ty_float) { ret false; }
-        case (ty_uint) { ret false; }
-        case (ty_machine(_)) { ret false; }
-        case (ty_char) { ret false; }
-        case (ty_str) { ret false; }
-        case (ty_tag(_,_)) { ret false; }
-        case (ty_box(_)) { ret false; }
-        case (ty_vec(_)) { ret false; }
-        case (ty_ptr(_)) { ret false; }
-        case (ty_port(_)) { ret false; }
-        case (ty_chan(_)) { ret false; }
-        case (ty_task) { ret false; }
-        case (ty_tup(_)) { ret false; }
-        case (ty_rec(_)) { ret false; }
-        case (ty_fn(_,_,_,_,_)) { ret false; }
-        case (ty_native_fn(_,_,_)) { ret false; }
-        case (ty_obj(_)) { ret false; }
+        // scalar types
+        case (ty_nil) { result = false; }
+        case (ty_bot) { result = false; }
+        case (ty_bool) { result = false; }
+        case (ty_int) { result = false; }
+        case (ty_float) { result = false; }
+        case (ty_uint) { result = false; }
+        case (ty_machine(_)) { result = false; }
+        case (ty_char) { result = false; }
+        case (ty_type) { result = false; }
+        case (ty_native) { result = false; }
+
+        // boxed types
+        case (ty_str) { result = false; }
+        case (ty_box(_)) { result = false; }
+        case (ty_vec(_)) { result = false; }
+        case (ty_fn(_,_,_,_,_)) { result = false; }
+        case (ty_native_fn(_,_,_)) { result = false; }
+        case (ty_obj(_)) { result = false; }
+
+        // structural types
+        case (ty_tag(?did, ?tps)) {
+            auto variants = tag_variants(cx, did);
+            for (variant_info variant in variants) {
+                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // Perform any type parameter substitutions.
+                tup_ty = substitute_type_params(cx, tps, tup_ty);
+                if (type_owns_heap_mem(cx, tup_ty)) { result = true; }
+            }
+        }
+        case (ty_tup(?elts)) {
+            for (mt m in elts) {
+                if (type_owns_heap_mem(cx, m.ty)) { result = true; }
+            }
+        }
+        case (ty_rec(?flds)) {
+            for (field f in flds) {
+                if (type_owns_heap_mem(cx, f.mt.ty)) { result = true; }
+            }
+        }
+
+        case (ty_ptr(_)) { result = false; }
+        case (ty_port(_)) { result = false; }
+        case (ty_chan(_)) { result = false; }
+        case (ty_task) { result = false; }
+        case (ty_tup(_)) { result = false; }
+        case (ty_rec(_)) { result = false; }
         case (ty_var(_)) { fail "ty_var in type_owns_heap_mem"; }
-        case (ty_param(_)) { ret false; }
-        case (ty_type) { ret false; }
-        case (ty_native) { ret false; }
+        case (ty_param(_)) { result = false; }
     }
+    ret result;
 }
 
 fn type_param(&ctxt cx, &t ty) -> option::t[uint] {

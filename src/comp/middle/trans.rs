@@ -3024,13 +3024,20 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
 // Duplicates the heap-owned memory owned by a value of the given type.
 fn duplicate_heap_parts(&@block_ctxt cx, ValueRef vptr, ty::t typ) -> result {
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, typ)) {
-        case (ty::ty_ivec(?tm)) {
-            ret ivec::duplicate_heap_part(cx, vptr, tm.ty);
+      case (ty::ty_ivec(?tm)) {
+        ret ivec::duplicate_heap_part(cx, vptr, tm.ty);
+      }
+      case (ty::ty_istr) {
+        ret ivec::duplicate_heap_part(cx, vptr,
+            ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8));
+      }
+      case (_) {    // TODO: guard
+        if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, typ)) {
+            ret iter_structural_ty(cx, vptr, typ, duplicate_heap_parts);
         }
-        case (ty::ty_str) {
-            ret ivec::duplicate_heap_part(cx, vptr,
-                ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8));
-        }
+
+        ret res(cx, C_nil());
+      }
     }
 }
 
