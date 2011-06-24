@@ -22,6 +22,7 @@ rust_task : public maybe_proxy<rust_task>,
     rust_crate_cache *cache;
 
     // Fields known only to the runtime.
+    rust_kernel *kernel;
     const char *const name;
     rust_task_list *state;
     rust_cond *cond;
