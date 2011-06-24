@@ -974,8 +974,16 @@ mod writeback {
     fn visit_stmt_pre(@fn_ctxt fcx, &@ast::stmt s) {
         resolve_type_vars_for_node(fcx, s.span, ty::stmt_node_id(s));
     }
-    fn visit_expr_pre(@fn_ctxt fcx, &@ast::expr e) {
+    fn visit_expr_pre(@mutable bool ignore, @fn_ctxt fcx, &@ast::expr e) {
         resolve_type_vars_for_node(fcx, e.span, e.id);
+        alt (e.node) {
+            // We don't want to recurse down into lambdas.
+            case (ast::expr_fn(_)) { *ignore = true; }
+            case (_) { }
+        }
+    }
+    fn visit_expr_post(@mutable bool ignore, &@ast::expr e) {
+        *ignore = false;
     }
     fn visit_block_pre(@fn_ctxt fcx, &ast::block b) {
         resolve_type_vars_for_node(fcx, b.span, b.node.id);
@@ -1015,7 +1023,8 @@ mod writeback {
                 visit_item_pre=bind visit_item_pre(ignore, _),
                 visit_item_post=bind visit_item_post(ignore, _),
                 visit_stmt_pre=bind visit_stmt_pre(fcx, _),
-                visit_expr_pre=bind visit_expr_pre(fcx, _),
+                visit_expr_pre=bind visit_expr_pre(ignore, fcx, _),
+                visit_expr_post=bind visit_expr_post(ignore, _),
                 visit_block_pre=bind visit_block_pre(fcx, _),
                 visit_pat_pre=bind visit_pat_pre(fcx, _),
                 visit_local_pre=bind visit_local_pre(fcx, _)
