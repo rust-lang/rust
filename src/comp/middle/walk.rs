@@ -340,8 +340,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             }
         }
         case (ast::expr_fn(?f)) {
-            walk_fn_decl(v, f.decl);
-            walk_block(v, f.body);
+            walk_fn(v, f, e.span, none, e.id);
         }
         case (ast::expr_block(?b)) { walk_block(v, b); }
         case (ast::expr_assign(?a, ?b)) {
