@@ -44,6 +44,8 @@ class rust_kernel : public rust_thread {
     rust_log _log;
     rust_srv *_srv;
 
+    rust_dom *dom;
+
     /**
      * Task proxy objects are kernel owned handles to Rust objects.
      */
@@ -64,12 +66,10 @@ class rust_kernel : public rust_thread {
 
     rust_handle<rust_dom> *internal_get_dom_handle(rust_dom *dom);
 
-public:
+    rust_dom *create_domain(const char *name);
+    void destroy_domain();
 
-    /**
-     * List of domains that are currently executing.
-     */
-    indexed_list<rust_dom> domains;
+public:
 
     /**
      * Message queues are kernel objects and are associated with domains.
@@ -86,9 +86,6 @@ public:
 
     rust_kernel(rust_srv *srv);
 
-    rust_handle<rust_dom> *create_domain(const char *name);
-    void destroy_domain(rust_dom *dom);
-
     bool is_deadlocked();
 
     void signal_kernel_lock();
@@ -101,17 +98,14 @@ public:
     void
     notify_message_enqueued(rust_message_queue *queue, rust_message *message);
 
-    /**
-     * Blocks until all domains have terminated.
-     */
-    void join_all_domains();
-
     void log_all_domain_state();
     void log(uint32_t level, char const *fmt, ...);
     virtual ~rust_kernel();
 
     void *malloc(size_t size);
     void free(void *mem);
+
+    inline rust_dom *get_domain() const { return dom; }
 };
 
 inline void *operator new(size_t size, rust_kernel *kernel) {
