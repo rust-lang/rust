@@ -281,6 +281,11 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
         }
+        case ('r') {
+            auto def = parse_def(st, sd);
+            auto inner = parse_ty(st, sd);
+            ret ty::mk_res(st.tcx, def, inner);
+        }
         case ('X') { ret ty::mk_var(st.tcx, parse_int(st)); }
         case ('E') { ret ty::mk_native(st.tcx); }
         case ('Y') { ret ty::mk_type(st.tcx); }

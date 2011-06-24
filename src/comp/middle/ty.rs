@@ -78,6 +78,7 @@ export mk_native;
 export mk_native_fn;
 export mk_nil;
 export mk_obj;
+export mk_res;
 export mk_param;
 export mk_port;
 export mk_ptr;
@@ -134,6 +135,7 @@ export ty_machine;
 export ty_native;
 export ty_nil;
 export ty_obj;
+export ty_res;
 export ty_param;
 export ty_port;
 export ty_ptr;
@@ -263,14 +265,12 @@ tag sty {
     ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
+    ty_res(def_id, t);
     ty_var(int); // type variable
-
     ty_param(uint); // fn/tag type param
-
     ty_type;
     ty_native;
     // TODO: ty_fn_arg(t), for a possibly-aliased function argument
-
 }
 
 type constr_def = spanned[constr_general[uint]];
@@ -492,6 +492,7 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                                  m.output);
             }
         }
+        case (ty_res(_, ?tt)) { derive_flags_t(cx, has_params, has_vars, tt);}
     }
     ret rec(struct=st,
             cname=cname,
@@ -598,6 +599,10 @@ fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
+fn mk_res(&ctxt cx, &ast::def_id did, &t inner) -> t {
+    ret gen_ty(cx, ty_res(did, inner));
+}
+
 fn mk_var(&ctxt cx, int v) -> t { ret gen_ty(cx, ty_var(v)); }
 
 fn mk_param(&ctxt cx, uint n) -> t { ret gen_ty(cx, ty_param(n)); }
@@ -679,6 +684,7 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
                 walk_ty(cx, walker, m.output);
             }
         }
+        case (ty_res(_, ?sub)) { walk_ty(cx, walker, sub); }
         case (ty_var(_)) {/* no-op */ }
         case (ty_param(_)) {/* no-op */ }
     }
@@ -811,6 +817,9 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
+        case (ty_res(?did, ?subty)) {
+            ty = copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty)), ty);
+        }
         case (ty_var(?id)) {
             alt (fld) {
                 case (fm_var(?folder)) { ty = folder(id); }
@@ -880,6 +889,7 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
         case (ty_tag(_, _)) { ret true; }
         case (ty_fn(_, _, _, _, _)) { ret true; }
         case (ty_obj(_)) { ret true; }
+        case (ty_res(_, _)) { ret true; }
         case (ty_ivec(_)) { ret true; }
         case (ty_istr) { ret true; }
         case (_) { ret false; }
@@ -1091,6 +1101,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_fn(_,_,_,_,_)) { ret false; }
         case (ty_native_fn(_,_,_)) { ret false; }
         case (ty_obj(_)) { ret false; }
+        case (ty_res(_, ?sub)) { ret type_has_dynamic_size(cx, sub); }
         case (ty_var(_)) { fail "ty_var in type_has_dynamic_size()"; }
         case (ty_param(_)) { ret true; }
         case (ty_type) { ret false; }
@@ -1196,6 +1207,7 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
                 if (type_owns_heap_mem(cx, f.mt.ty)) { result = true; }
             }
         }
+        case (ty_res(_, ?inner)) { result = type_owns_heap_mem(cx, inner); }
 
         case (ty_ptr(_)) { result = false; }
         case (ty_port(_)) { result = false; }
@@ -1289,9 +1301,8 @@ fn hash_type_structure(&sty st) -> uint {
             for (field f in fields) { h += h << 5u + hash_ty(f.mt.ty); }
             ret h;
         }
-        case (
-             // ???
-             ty_fn(_, ?args, ?rty, _, _)) {
+        // ???
+        case (ty_fn(_, ?args, ?rty, _, _)) {
             ret hash_fn(27u, args, rty);
         }
         case (ty_native_fn(_, ?args, ?rty)) { ret hash_fn(28u, args, rty); }
@@ -1306,6 +1317,7 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_native) { ret 33u; }
         case (ty_bot) { ret 34u; }
         case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
+        case (ty_res(?did, ?sub)) { ret hash_subty(hash_def(18u, did), sub); }
     }
 }
 

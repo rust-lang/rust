@@ -231,6 +231,12 @@ mod encode {
                 }
                 w.write_char(']');
             }
+            case (ty::ty_res(?def, ?ty)) {
+                w.write_char('r');
+                w.write_str(cx.ds(def));
+                w.write_char('|');
+                enc_ty(w, cx, ty);
+            }
             case (ty::ty_var(?id)) {
                 w.write_char('X');
                 w.write_str(common::istr(id));
@@ -387,6 +393,18 @@ fn encode_module_item_paths(&ebml::writer ebml_w, &_mod module,
                 ebml::end_tag(ebml_w);
             }
             case (item_ty(_, ?tps)) {
+                add_to_index(ebml_w, path, index, it.ident);
+                ebml::start_tag(ebml_w, tag_paths_data_item);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, local_def(it.id));
+                ebml::end_tag(ebml_w);
+            }
+            case (item_res(_, _, ?tps, ?ctor_id)) {
+                add_to_index(ebml_w, path, index, it.ident);
+                ebml::start_tag(ebml_w, tag_paths_data_item);
+                encode_name(ebml_w, it.ident);
+                encode_def_id(ebml_w, local_def(ctor_id));
+                ebml::end_tag(ebml_w);
                 add_to_index(ebml_w, path, index, it.ident);
                 ebml::start_tag(ebml_w, tag_paths_data_item);
                 encode_name(ebml_w, it.ident);
@@ -552,6 +570,23 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             ebml::end_tag(ebml_w);
             encode_tag_variant_info(cx, ebml_w, item.id, variants, index,
                                     tps);
+        }
+        case (item_res(_, _, ?tps, ?ctor_id)) {
+            ebml::start_tag(ebml_w, tag_items_data_item);
+            encode_def_id(ebml_w, local_def(ctor_id));
+            encode_kind(ebml_w, 'f' as u8);
+            encode_type_param_count(ebml_w, tps);
+            auto fn_ty = trans::node_id_type(cx, item.id);
+            encode_type(cx, ebml_w, fn_ty);
+            encode_symbol(cx, ebml_w, ctor_id);
+            ebml::end_tag(ebml_w);
+            index += [tup(item.id, ebml_w.writer.tell())];
+            ebml::start_tag(ebml_w, tag_items_data_item);
+            encode_def_id(ebml_w, local_def(item.id));
+            encode_kind(ebml_w, 'y' as u8);
+            encode_type_param_count(ebml_w, tps);
+            encode_type(cx, ebml_w, ty::ty_fn_ret(cx.tcx, fn_ty));
+            ebml::end_tag(ebml_w);
         }
         case (item_obj(_, ?tps, ?ctor_id)) {
             ebml::start_tag(ebml_w, tag_items_data_item);

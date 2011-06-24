@@ -526,8 +526,7 @@ mod collect {
         auto methods = get_obj_method_types(cx, obj_info);
         auto t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
-        auto ty_param_count = vec::len[ast::ty_param](ty_params);
-        ret tup(ty_param_count, t_obj);
+        ret tup(vec::len(ty_params), t_obj);
     }
     fn ty_of_obj_ctor(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
                       ast::node_id ctor_id, &vec[ast::ty_param] ty_params) ->
@@ -578,6 +577,13 @@ mod collect {
                 auto tpt = tup(ty_param_count, typ);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
+            }
+            case (ast::item_res(?f, _, ?tps, _)) {
+                auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
+                auto t_res = tup(vec::len(tps), ty::mk_res
+                                 (cx.tcx, local_def(it.id), t_arg.ty));
+                cx.tcx.tcache.insert(local_def(it.id), t_res);
+                ret t_res;
             }
             case (ast::item_tag(_, ?tps)) {
                 // Create a new generic polytype.
@@ -728,6 +734,18 @@ mod collect {
                         write::ty_only(cx.tcx, m.node.id, t);
                     }
                 }
+            }
+            case (ast::item_res(?f, ?dtor_id, ?tps, ?ctor_id)) {
+                auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
+                auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty);
+                auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
+                                        t_res, ast::return, []);
+                auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
+                                        ty::mk_nil(cx.tcx), ast::return, []);
+                write::ty_only(cx.tcx, ctor_id, t_ctor);
+                cx.tcx.tcache.insert(local_def(ctor_id),
+                                     tup(vec::len(tps), t_ctor));
+                write::ty_only(cx.tcx, dtor_id, t_dtor);
             }
             case (_) {
                 // This call populates the type cache with the converted type
@@ -2336,6 +2354,9 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
         }
         case (ast::item_fn(?f, _)) {
             check_fn(ccx, f.decl, f.proto, f.body, it.id);
+        }
+        case (ast::item_res(?f, ?dtor_id, _, _)) {
+            check_fn(ccx, f.decl, f.proto, f.body, dtor_id);
         }
         case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.

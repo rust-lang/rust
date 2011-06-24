@@ -115,6 +115,9 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
             }
         }
         case (item_ty(?t, _)) { vt(v).visit_ty(t, e, v); }
+        case (item_res(?f, ?dtor_id, ?tps, _)) {
+            vt(v).visit_fn(f, tps, i.span, i.ident, dtor_id, e, v);
+        }
         case (item_tag(?variants, _)) {
             for (variant vr in variants) {
                 for (variant_arg va in vr.node.args) {

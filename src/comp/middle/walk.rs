@@ -105,6 +105,9 @@ fn walk_item(&ast_visitor v, @ast::item i) {
         case (ast::item_mod(?m)) { walk_mod(v, m); }
         case (ast::item_native_mod(?nm)) { walk_native_mod(v, nm); }
         case (ast::item_ty(?t, _)) { walk_ty(v, t); }
+        case (ast::item_res(?f, ?dtor_id, _, _)) {
+            walk_fn(v, f, i.span, some(i.ident), dtor_id);
+        }
         case (ast::item_tag(?variants, _)) {
             for (ast::variant vr in variants) {
                 for (ast::variant_arg va in vr.node.args) {

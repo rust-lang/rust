@@ -436,6 +436,18 @@ fn print_item(&ps s, &@ast::item item) {
             }
             bclose(s, item.span);
         }
+        case (ast::item_res(?dt, ?dt_id, ?tps, ?ct_id)) {
+            head(s, "res");
+            word(s.s, item.ident);
+            print_type_params(s, tps);
+            popen(s);
+            print_type(s, *dt.decl.inputs.(0).ty);
+            space(s.s);
+            word(s.s, dt.decl.inputs.(0).ident);
+            pclose(s);
+            space(s.s);
+            print_block(s, dt.body);
+        }
     }
 
     // Print the node ID if necessary. TODO: type as well.

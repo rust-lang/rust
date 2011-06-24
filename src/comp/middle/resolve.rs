@@ -819,6 +819,14 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
                 ret some(ast::def_ty(local_def(i.id)));
             }
         }
+        case (ast::item_res(_, _, _, ?ctor_id)) {
+            alt (ns) {
+                case (ns_value) { ret some(ast::def_fn(local_def(ctor_id),
+                                                       ast::impure_fn)); }
+                case (ns_type) { ret some(ast::def_ty(local_def(i.id))); }
+                case (_) { }
+            }
+        }
         case (ast::item_tag(_, _)) {
             if (ns == ns_type) {
                 ret some(ast::def_ty(local_def(i.id)));
@@ -1085,6 +1093,9 @@ fn index_mod(&ast::_mod md) -> mod_index {
             case (ast::item_ty(_, _)) {
                 add_to_index(index, it.ident, mie_item(it));
             }
+            case (ast::item_res(_, _, _, _)) {
+                add_to_index(index, it.ident, mie_item(it));
+            }
             case (ast::item_tag(?variants, _)) {
                 add_to_index(index, it.ident, mie_item(it));
                 let uint variant_idx = 0u;
@@ -1281,6 +1292,10 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
                             }
                             case (ast::item_ty(_, _)) {
                                 add_name(types, it.span, it.ident);
+                            }
+                            case (ast::item_res(_, _, _, _)) {
+                                add_name(types, it.span, it.ident);
+                                add_name(values, it.span, it.ident);
                             }
                             case (ast::item_obj(_, _, _)) {
                                 add_name(types, it.span, it.ident);

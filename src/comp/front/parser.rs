@@ -139,6 +139,7 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("be", ());
     words.insert("fail", ());
     words.insert("type", ());
+    words.insert("res", ());
     words.insert("check", ());
     words.insert("assert", ());
     words.insert("claim", ());
@@ -1656,7 +1657,6 @@ fn parse_ty_params(&parser p) -> vec[ast::ty_param] {
 }
 
 fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
-    auto pf = parse_arg;
     let util::common::spanned[vec[ast::arg]] inputs =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
@@ -1765,10 +1765,9 @@ fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
-    auto pf = parse_obj_field;
     let util::common::spanned[vec[ast::obj_field]] fields =
         parse_seq[ast::obj_field](token::LPAREN, token::RPAREN,
-                                  some(token::COMMA), pf, p);
+                                  some(token::COMMA), parse_obj_field, p);
     let vec[@ast::method] meths = [];
     let option::t[@ast::method] dtor = none;
     expect(p, token::LBRACE);
@@ -1782,6 +1781,27 @@ fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
     let ast::_obj ob = rec(fields=fields.node, methods=meths, dtor=dtor);
     ret mk_item(p, lo, hi, ident, ast::item_obj(ob, ty_params,
                                                 p.get_id()), attrs);
+}
+
+fn parse_item_res(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
+   @ast::item {
+    auto lo = p.get_last_lo_pos();
+    auto ident = parse_value_ident(p);
+    auto ty_params = parse_ty_params(p);
+    expect(p, token::LPAREN);
+    auto t = parse_ty(p);
+    auto arg_ident = parse_value_ident(p);
+    expect(p, token::RPAREN);
+    auto dtor = parse_block(p);
+    auto decl = rec(inputs=[rec(mode=ast::alias(false), ty=t, ident=arg_ident,
+                                id=p.get_id())],
+                    output=@spanned(lo, lo, ast::ty_nil),
+                    purity=ast::impure_fn,
+                    cf=ast::return,
+                    constraints=[]);
+    auto f = rec(decl=decl, proto=ast::proto_fn, body=dtor);
+    ret mk_item(p, lo, dtor.span.hi, ident,
+                ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);
 }
 
 fn parse_mod_items(&parser p, token::token term,
@@ -2028,6 +2048,8 @@ fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
         ret got_item(parse_item_tag(p, attrs));
     } else if (eat_word(p, "obj")) {
         ret got_item(parse_item_obj(p, lyr, attrs));
+    } else if (eat_word(p, "res")) {
+        ret got_item(parse_item_res(p, lyr, attrs));
     } else { ret no_item; }
 }
 

@@ -119,7 +119,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
                     ccx=ccx);
             find_pre_post_expr(fake_fcx, e);
         }
-        case (item_fn(?f, ?ps)) {
+        case (item_fn(?f, _)) {
             assert (ccx.fm.contains_key(i.id));
             auto fcx =
                 rec(enclosing=ccx.fm.get(i.id),
@@ -132,6 +132,13 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
         case (item_native_mod(?nm)) { find_pre_post_native_mod(nm); }
         case (item_ty(_, _)) { ret; }
         case (item_tag(_, _)) { ret; }
+        case (item_res(?dtor, ?dtor_id, _, _)) {
+            auto fcx = rec(enclosing=ccx.fm.get(dtor_id),
+                           id=dtor_id,
+                           name=i.ident,
+                           ccx=ccx);
+            find_pre_post_fn(fcx, dtor);
+        }
         case (item_obj(?o, _, _)) { find_pre_post_obj(ccx, o); }
     }
 }

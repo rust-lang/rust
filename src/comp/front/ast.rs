@@ -335,7 +335,7 @@ tag ty_ {
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-     ty_bool;
+    ty_bool;
     ty_int;
     ty_uint;
     ty_float;
@@ -478,7 +478,7 @@ type attribute_ = rec(attr_style style, meta_item value);
 
 type item = rec(ident ident,
                 vec[attribute] attrs,
-                node_id id, // For objs, this is the type's def_id
+                node_id id, // For objs and resources, this is the type def_id
                 item_ node,
                 span span);
 
@@ -490,6 +490,8 @@ tag item_ {
     item_ty(@ty, vec[ty_param]);
     item_tag(vec[variant], vec[ty_param]);
     item_obj(_obj, vec[ty_param], node_id /* constructor id */);
+    item_res(_fn /* dtor */, node_id /* dtor id */,
+             vec[ty_param], node_id /* ctor id */);
 }
 
 type native_item = rec(ident ident,
