@@ -3,6 +3,7 @@ import std::vec;
 import std::vec::plus_option;
 import front::ast;
 import front::ast::*;
+import pretty::ppaux::fn_ident_to_string;
 import std::option::*;
 import middle::walk::walk_crate;
 import middle::walk::walk_fn;
@@ -56,7 +57,7 @@ fn collect_pred(&ctxt cx, &@expr e) {
     }
 }
 
-fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &ident i, node_id id)
+fn find_locals(&ty::ctxt tcx, &_fn f, &span sp, &fn_ident i, node_id id)
     -> ctxt {
     let ctxt cx = rec(cs=@mutable vec::alloc(0u), tcx=tcx);
     auto visitor = walk::default_visitor();
@@ -103,7 +104,7 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp, &ident f_name,
+fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp, &fn_ident f_name,
               node_id id) {
     auto res_map = @new_int_hash[constraint]();
     let uint next = 0u;
@@ -121,14 +122,15 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &span f_sp, &ident f_name,
     /* add a pseudo-entry for the function's return value
        we can safely use the function's name itself for this purpose */
 
-    add_constraint(cx.tcx, respan(f_sp, rec(id=id, c=ninit(f_name))), next,
+    auto name = fn_ident_to_string(id, f_name);
+    add_constraint(cx.tcx, respan(f_sp, rec(id=id, c=ninit(name))), next,
                    res_map);
     auto rslt =
         rec(constrs=res_map,
             num_constraints=vec::len(*cx.cs) + 1u,
             cf=f.decl.cf);
     ccx.fm.insert(id, rslt);
-    log f_name + " has " + uistr(num_constraints(rslt)) + " constraints";
+    log name + " has " + uistr(num_constraints(rslt)) + " constraints";
 }
 
 

@@ -78,6 +78,7 @@ import util::common::log_expr_err;
 import util::common::log_block_err;
 import util::common::log_block;
 import util::common::span;
+import pretty::ppaux::fn_ident_to_string;
 
 fn find_pre_post_mod(&_mod m) -> _mod {
     log "implement find_pre_post_mod!";
@@ -686,10 +687,11 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) {
     }
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &span sp, &ident i, node_id id) {
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &span sp, &fn_ident i,
+               node_id id) {
     assert (ccx.fm.contains_key(id));
-    auto fcx = rec(enclosing=ccx.fm.get(id), id=id, name=i,
-                   ccx=ccx);
+    auto fcx = rec(enclosing=ccx.fm.get(id), id=id,
+                   name=fn_ident_to_string(id, i), ccx=ccx);
     find_pre_post_fn(fcx, f);
 }
 //

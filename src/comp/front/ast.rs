@@ -8,6 +8,8 @@ import util::common::ty_mach;
 import util::common::filename;
 
 type ident = str;
+// Functions may or may not have names.
+type fn_ident = option::t[ident];
 
 type path_ = rec(vec[ident] idents, vec[@ty] types);
 

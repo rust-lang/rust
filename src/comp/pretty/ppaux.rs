@@ -34,6 +34,13 @@ fn mode_str_1(&ty::mode m) -> str {
     }
 }
 
+fn fn_ident_to_string(ast::node_id id, &ast::fn_ident i) -> str {
+    ret alt (i) {
+        case (none) { "anon" + istr(id) }
+        case (some(?s)) { s }
+    };
+}
+
 fn ty_to_str(&ctxt cx, &t typ) -> str {
     fn fn_input_to_str(&ctxt cx, &rec(middle::ty::mode mode, t ty) input) ->
        str {
