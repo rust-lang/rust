@@ -11,11 +11,12 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
     _log(srv, NULL),
     _srv(srv),
-    _interrupt_kernel_loop(FALSE) {
-    // Nop.
+    _interrupt_kernel_loop(FALSE) 
+{
+    dom = create_domain("main");
 }
 
-rust_handle<rust_dom> *
+rust_dom *
 rust_kernel::create_domain(const char *name) {
     _kernel_lock.lock();
     rust_message_queue *message_queue =
@@ -25,21 +26,19 @@ rust_kernel::create_domain(const char *name) {
         new (this) rust_dom(this, message_queue, srv, name);
     rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
     message_queue->associate(handle);
-    domains.append(dom);
     message_queues.append(message_queue);
-    KLOG("created domain: " PTR ", name: %s, index: %d, domains %d",
-         dom, name, dom->list_index, domains.length());
+    KLOG("created domain: " PTR ", name: %s, index: %d",
+         dom, name, dom->list_index);
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
-    return handle;
+    return dom;
 }
 
 void
-rust_kernel::destroy_domain(rust_dom *dom) {
+rust_kernel::destroy_domain() {
     _kernel_lock.lock();
-    KLOG("deleting domain: " PTR ", name: %s, index: %d, domains %d",
-        dom, dom->name, dom->list_index, domains.length());
-    domains.remove(dom);
+    KLOG("deleting domain: " PTR ", name: %s, index: %d",
+        dom, dom->name, dom->list_index);
     dom->message_queue->disassociate();
     rust_srv *srv = dom->srv;
     delete dom;
@@ -97,21 +96,9 @@ rust_kernel::get_port_handle(rust_port *port) {
 }
 
 void
-rust_kernel::join_all_domains() {
-    _kernel_lock.lock();
-    while (domains.length() > 0) {
-        _kernel_lock.wait();
-    }
-    _kernel_lock.unlock();
-    KLOG("joined domains");
-}
-
-void
 rust_kernel::log_all_domain_state() {
-    KLOG("log_all_domain_state: %d domains", domains.length());
-    for (uint32_t i = 0; i < domains.length(); i++) {
-        domains[i]->log_state();
-    }
+    KLOG("log_all_domain_state");
+    dom->log_state();
 }
 
 /**
@@ -172,9 +159,7 @@ rust_kernel::terminate_kernel_loop() {
 }
 
 rust_kernel::~rust_kernel() {
-    K(_srv, domains.length() == 0,
-      "Kernel has %d live domain(s), join all domains before killing "
-       "the kernel.", domains.length());
+    destroy_domain();
 
     terminate_kernel_loop();
 

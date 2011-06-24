@@ -67,13 +67,11 @@ upcall_new_chan
 upcall_new_port
 upcall_new_str
 upcall_new_task
-upcall_new_thread
 upcall_new_vec
 upcall_recv
 upcall_send
 upcall_sleep
 upcall_start_task
-upcall_start_thread
 upcall_trace_str
 upcall_trace_word
 upcall_vec_append

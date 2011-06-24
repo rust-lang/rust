@@ -55,8 +55,6 @@ type upcalls =
         ValueRef get_type_desc,
         ValueRef new_task,
         ValueRef start_task,
-        ValueRef new_thread,
-        ValueRef start_thread,
         ValueRef ivec_resize,
         ValueRef ivec_spill);
 
@@ -118,10 +116,6 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
              start_task=d("start_task",
                           [T_taskptr(tn), T_int(), T_int(), T_size_t()],
                           T_taskptr(tn)),
-             new_thread=d("new_thread", [T_ptr(T_i8())], T_taskptr(tn)),
-             start_thread=d("start_thread",
-                            [T_taskptr(tn), T_int(), T_int(), T_int(),
-                             T_size_t()], T_taskptr(tn)),
              ivec_resize=d("ivec_resize", [T_ptr(T_opaque_ivec()), T_int()],
                            T_void()),
              ivec_spill=d("ivec_spill", [T_ptr(T_opaque_ivec()), T_int()],

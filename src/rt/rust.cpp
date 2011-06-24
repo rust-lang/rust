@@ -96,8 +96,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
-    rust_handle<rust_dom> *handle = kernel->create_domain("main");
-    rust_dom *dom = handle->referent();
+    rust_dom *dom = kernel->get_domain();
     command_line_args *args = new (dom) command_line_args(dom, argc, argv);
 
     DLOG(dom, dom, "startup: %d args in 0x%" PRIxPTR,
@@ -114,8 +113,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     int ret = dom->start_main_loops(num_threads);
     delete args;
-    kernel->destroy_domain(dom);
-    kernel->join_all_domains();
     delete kernel;
     delete srv;
 
