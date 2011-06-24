@@ -1476,6 +1476,19 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         write::ty_only_fixup(fcx, id, if_t);
     }
 
+    // Checks the compatibility 
+    fn check_binop_type_compat(&@fn_ctxt fcx, common::span span,
+                               ty::t ty, ast::binop binop) {
+        auto resolved_t = resolve_type_vars_if_possible(fcx, ty);
+        if (!ty::is_binopable(fcx.ccx.tcx, resolved_t, binop)) {
+            auto binopstr = ast::binop_to_str(binop);
+            auto t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
+            auto errmsg = "binary operation " + binopstr
+                + " cannot be applied to type `" + t_str + "`";
+            fcx.ccx.tcx.sess.span_fatal(span, errmsg);
+        }
+    }
+
     auto id = expr.id;
     alt (expr.node) {
         case (ast::expr_lit(?lit)) {
@@ -1490,19 +1503,17 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
 
             demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
+            check_binop_type_compat(fcx, expr.span, lhs_t, binop);
 
-            // FIXME: Binops have a bit more subtlety than this.
-
-            auto t = strip_boxes(fcx, expr.span, lhs_t);
-            alt (binop) {
-                case (ast::eq) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (ast::lt) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (ast::le) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (ast::ne) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (ast::ge) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (ast::gt) { t = ty::mk_bool(fcx.ccx.tcx); }
-                case (_) {/* fall through */ }
-            }
+            auto t = alt (binop) {
+                case (ast::eq) { ty::mk_bool(fcx.ccx.tcx) }
+                case (ast::lt) { ty::mk_bool(fcx.ccx.tcx) }
+                case (ast::le) { ty::mk_bool(fcx.ccx.tcx) }
+                case (ast::ne) { ty::mk_bool(fcx.ccx.tcx) }
+                case (ast::ge) { ty::mk_bool(fcx.ccx.tcx) }
+                case (ast::gt) { ty::mk_bool(fcx.ccx.tcx) }
+                case (_) { strip_boxes(fcx, expr.span, lhs_t) }
+            };
             write::ty_only_fixup(fcx, id, t);
         }
         case (ast::expr_unary(?unop, ?oper)) {
@@ -1646,6 +1657,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_assign_op(?op, ?lhs, ?rhs)) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
             check_assignment(fcx, expr.span, lhs, rhs, id);
+            check_binop_type_compat(fcx, expr.span,
+                                    expr_ty(fcx.ccx.tcx, lhs), op);
         }
         case (ast::expr_send(?lhs, ?rhs)) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);

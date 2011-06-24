@@ -54,6 +54,7 @@ export get_element_type;
 export hash_ty;
 export idx_nil;
 export is_lval;
+export is_binopable;
 export item_table;
 export lookup_item_type;
 export method;
@@ -2792,6 +2793,96 @@ fn strip_boxes(&ctxt cx, &ty::t t) -> ty::t {
     }
     fail;
 }
+
+fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
+
+    const int tycat_other = 0;
+    const int tycat_bool = 1;
+    const int tycat_int = 2;
+    const int tycat_float = 3;
+    const int tycat_str = 4;
+    const int tycat_vec = 5;
+    const int tycat_struct = 6;
+
+    const int opcat_add = 0;
+    const int opcat_sub = 1;
+    const int opcat_mult = 2;
+    const int opcat_shift = 3;
+    const int opcat_rel = 4;
+    const int opcat_eq = 5;
+    const int opcat_bit = 6;
+    const int opcat_logic = 7;
+
+    fn opcat(ast::binop op) -> int {
+        alt (op) {
+            case (ast::add) { opcat_add }
+            case (ast::sub) { opcat_sub }
+            case (ast::mul) { opcat_mult }
+            case (ast::div) { opcat_mult }
+            case (ast::rem) { opcat_mult }
+            case (ast::and) { opcat_logic }
+            case (ast::or) { opcat_logic }
+            case (ast::bitxor) { opcat_bit }
+            case (ast::bitand) { opcat_bit }
+            case (ast::bitor) { opcat_bit }
+            case (ast::lsl) { opcat_shift }
+            case (ast::lsr) { opcat_shift }
+            case (ast::asr) { opcat_shift }
+            case (ast::eq) { opcat_eq }
+            case (ast::ne) { opcat_eq }
+            case (ast::lt) { opcat_rel }
+            case (ast::le) { opcat_rel }
+            case (ast::ge) { opcat_rel }
+            case (ast::gt) { opcat_rel }
+        }
+    }
+
+    fn tycat(&ctxt cx, t ty) -> int {
+        alt (struct(cx, strip_boxes(cx, ty))) {
+            case (ty_bool) { tycat_bool }
+            case (ty_int) { tycat_int }
+            case (ty_uint) { tycat_int }
+            case (ty_machine(ty_i8)) { tycat_int }
+            case (ty_machine(ty_i16)) { tycat_int }
+            case (ty_machine(ty_i32)) { tycat_int }
+            case (ty_machine(ty_i64)) { tycat_int }
+            case (ty_machine(ty_u8)) { tycat_int }
+            case (ty_machine(ty_u16)) { tycat_int }
+            case (ty_machine(ty_u32)) { tycat_int }
+            case (ty_machine(ty_u64)) { tycat_int }
+            case (ty_float) { tycat_float }
+            case (ty_machine(ty_f32)) { tycat_float }
+            case (ty_machine(ty_f64)) { tycat_float }
+            case (ty_char) { tycat_int }
+            case (ty_ptr(_)) { tycat_int }
+            case (ty_str) { tycat_str }
+            case (ty_istr) { tycat_str }
+            case (ty_vec(_)) { tycat_vec }
+            case (ty_ivec(_)) { tycat_vec }
+            case (ty_tup(_)) { tycat_struct }
+            case (ty_rec(_)) { tycat_struct }
+            case (ty_tag(_, _)) { tycat_struct }
+            case (_) { tycat_other }
+        }
+    }
+
+    const bool t = true;
+    const bool f = false;
+
+    /*.          add,     shift,   bit
+      .             sub,     rel,     logic
+      .                mult,    eq,         */
+    auto tbl = [[f, f, f, f, t, t, f, f], /*other*/
+                [f, f, f, f, t, t, t, t], /*bool*/
+                [t, t, t, t, t, t, t, f], /*int*/
+                [t, t, t, f, t, t, f, f], /*float*/
+                [t, f, f, f, t, t, f, f], /*str*/
+                [t, f, f, f, t, t, f, f], /*vec*/
+                [f, f, f, f, t, t, f, f]];/*struct*/
+
+    ret tbl.(tycat(cx, ty)).(opcat(op));
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
