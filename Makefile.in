@@ -50,7 +50,7 @@ CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_VERSION := prerelease
+CFG_VERSION = prerelease
 ifneq ($(wildcard $(CFG_GIT)),)
 ifneq ($(wildcard $(CFG_GIT_DIR)),)
     CFG_VERSION += $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
@@ -233,7 +233,7 @@ config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 
 
 ######################################################################
-# Additional makefiles
+# Primary-target makefiles
 ######################################################################
 
 include $(CFG_SRC_DIR)/mk/intrinsics.mk
@@ -243,11 +243,38 @@ include $(CFG_SRC_DIR)/mk/stage2.mk
 include $(CFG_SRC_DIR)/mk/stage3.mk
 include $(CFG_SRC_DIR)/mk/rt.mk
 include $(CFG_SRC_DIR)/mk/rustllvm.mk
-include $(CFG_SRC_DIR)/mk/docs.mk
-include $(CFG_SRC_DIR)/mk/tests.mk
-include $(CFG_SRC_DIR)/mk/dist.mk
-include $(CFG_SRC_DIR)/mk/snap.mk
-include $(CFG_SRC_DIR)/mk/clean.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
 include $(CFG_SRC_DIR)/mk/fuzzer.mk
-include $(CFG_SRC_DIR)/mk/pp.mk
+include $(CFG_SRC_DIR)/mk/docs.mk
+
+
+######################################################################
+# Secondary makefiles, conditionalized for speed
+######################################################################
+
+ifneq ($(findstring dist,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/dist.mk
+endif
+
+ifneq ($(findstring snap,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/snap.mk
+endif
+
+ifneq ($(findstring reformat,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/pp.mk
+endif
+
+ifneq ($(findstring check,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/tests.mk
+else
+  ifneq ($(findstring test,$(MAKECMDGOALS)),)
+    include $(CFG_SRC_DIR)/mk/tests.mk
+  endif
+endif
+
+ifneq ($(findstring clean,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/dist.mk
+  include $(CFG_SRC_DIR)/mk/snap.mk
+  include $(CFG_SRC_DIR)/mk/tests.mk
+  include $(CFG_SRC_DIR)/mk/clean.mk
+endif

@@ -6,9 +6,11 @@ ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
                               $(S)src/test/*/*/*.rs \
                               $(S)src/test/*/*.rc)
 
-TEST_XFAILS_STAGE0 = $(shell grep -l xfail-stage0 $(ALL_TEST_INPUTS))
-TEST_XFAILS_STAGE1 = $(shell grep -l xfail-stage1 $(ALL_TEST_INPUTS))
-TEST_XFAILS_STAGE2 = $(shell grep -l xfail-stage2 $(ALL_TEST_INPUTS))
+ifneq ($(findstring check,$(MAKECMDGOALS)),)
+XFAIL_INPUTS := $(shell grep -l xfail $(ALL_TEST_INPUTS))
+TEST_XFAILS_STAGE0 := $(shell grep -l xfail-stage0 $(XFAIL_INPUTS))
+TEST_XFAILS_STAGE1 := $(shell grep -l xfail-stage1 $(XFAIL_INPUTS))
+TEST_XFAILS_STAGE2 := $(shell grep -l xfail-stage2 $(XFAIL_INPUTS))
 
 ifdef MINGW_CROSS
 TEST_XFAILS_STAGE0 += $(S)src/test/run-pass/native-mod.rc
@@ -20,101 +22,103 @@ TEST_XFAILS_STAGE0 += $(S)src/test/run-pass/native-mod.rc
 TEST_XFAILS_STAGE1 += $(S)src/test/run-pass/native-mod.rc
 TEST_XFAILS_STAGE2 += $(S)src/test/run-pass/native-mod.rc
 endif
-
-BENCH_RS = $(wildcard $(S)src/test/bench/shootout/*.rs) \
-            $(wildcard $(S)src/test/bench/99-bottles/*.rs)
-RPASS_RC = $(wildcard $(S)src/test/run-pass/*.rc)
-RPASS_RS = $(wildcard $(S)src/test/run-pass/*.rs) $(BENCH_RS)
-RFAIL_RC = $(wildcard $(S)src/test/run-fail/*.rc)
-RFAIL_RS = $(wildcard $(S)src/test/run-fail/*.rs)
-CFAIL_RC = $(wildcard $(S)src/test/compile-fail/*.rc)
-CFAIL_RS = $(wildcard $(S)src/test/compile-fail/*.rs)
-
-ifdef CHECK_XFAILS
-TEST_RPASS_CRATES_STAGE0 = $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RC))
-TEST_RPASS_CRATES_STAGE1 = $(filter $(TEST_XFAILS_STAGE1), $(RPASS_RC))
-TEST_RPASS_CRATES_STAGE2 = $(filter $(TEST_XFAILS_STAGE2), $(RPASS_RC))
-TEST_RPASS_SOURCES_STAGE0 = $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RS))
-TEST_RPASS_SOURCES_STAGE1 = $(filter $(TEST_XFAILS_STAGE1), $(RPASS_RS))
-TEST_RPASS_SOURCES_STAGE2 = $(filter $(TEST_XFAILS_STAGE2), $(RPASS_RS))
-else
-TEST_RPASS_CRATES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RC))
-TEST_RPASS_CRATES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(RPASS_RC))
-TEST_RPASS_CRATES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE2), $(RPASS_RC))
-TEST_RPASS_SOURCES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RS))
-TEST_RPASS_SOURCES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(RPASS_RS))
-TEST_RPASS_SOURCES_STAGE2 = $(filter-out $(TEST_XFAILS_STAGE2), $(RPASS_RS))
 endif
 
-TEST_RPASS_EXES_STAGE0 = \
+
+BENCH_RS := $(wildcard $(S)src/test/bench/shootout/*.rs) \
+            $(wildcard $(S)src/test/bench/99-bottles/*.rs)
+RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
+RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs) $(BENCH_RS)
+RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
+RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
+CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
+CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
+
+ifdef CHECK_XFAILS
+TEST_RPASS_CRATES_STAGE0 := $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE1 := $(filter $(TEST_XFAILS_STAGE1), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE2 := $(filter $(TEST_XFAILS_STAGE2), $(RPASS_RC))
+TEST_RPASS_SOURCES_STAGE0 := $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE1 := $(filter $(TEST_XFAILS_STAGE1), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE2 := $(filter $(TEST_XFAILS_STAGE2), $(RPASS_RS))
+else
+TEST_RPASS_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE2), $(RPASS_RC))
+TEST_RPASS_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE2 := $(filter-out $(TEST_XFAILS_STAGE2), $(RPASS_RS))
+endif
+
+TEST_RPASS_EXES_STAGE0 := \
   $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE0:.rc=.stage0$(X))) \
   $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE0:.rs=.stage0$(X)))
-TEST_RPASS_EXES_STAGE1 = \
+TEST_RPASS_EXES_STAGE1 := \
   $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE1:.rc=.stage1$(X))) \
   $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE1:.rs=.stage1$(X)))
-TEST_RPASS_EXES_STAGE2 = \
+TEST_RPASS_EXES_STAGE2 := \
   $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE1:.rc=.stage2$(X))) \
   $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE1:.rs=.stage2$(X)))
 
-TEST_RPASS_OUTS_STAGE0 = \
+TEST_RPASS_OUTS_STAGE0 := \
   $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0.out)
-TEST_RPASS_OUTS_STAGE1 = \
+TEST_RPASS_OUTS_STAGE1 := \
   $(TEST_RPASS_EXES_STAGE1:.stage1$(X)=.stage1.out)
-TEST_RPASS_OUTS_STAGE2 = \
+TEST_RPASS_OUTS_STAGE2 := \
   $(TEST_RPASS_EXES_STAGE2:.stage2$(X)=.stage2.out)
 
-TEST_RPASS_TMPS_STAGE0 = \
+TEST_RPASS_TMPS_STAGE0 := \
   $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
-TEST_RPASS_TMPS_STAGE1 = \
+TEST_RPASS_TMPS_STAGE1 := \
   $(TEST_RPASS_EXES_STAGE1:.stage1$(X)=.stage1$(X).tmp)
-TEST_RPASS_TMPS_STAGE2 = \
+TEST_RPASS_TMPS_STAGE2 := \
   $(TEST_RPASS_EXES_STAGE2:.stage2$(X)=.stage2$(X).tmp)
 
 
-TEST_RFAIL_CRATES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RC))
-TEST_RFAIL_CRATES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(RFAIL_RC))
-TEST_RFAIL_CRATES_STAGE2 = $(filter-out $(TEST_XFAILS_STAGE2), $(RFAIL_RC))
-TEST_RFAIL_SOURCES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RS))
-TEST_RFAIL_SOURCES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(RFAIL_RS))
-TEST_RFAIL_SOURCES_STAGE2 = $(filter-out $(TEST_XFAILS_STAGE2), $(RFAIL_RS))
+TEST_RFAIL_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RC))
+TEST_RFAIL_CRATES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(RFAIL_RC))
+TEST_RFAIL_CRATES_STAGE2 := $(filter-out $(TEST_XFAILS_STAGE2), $(RFAIL_RC))
+TEST_RFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RS))
+TEST_RFAIL_SOURCES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(RFAIL_RS))
+TEST_RFAIL_SOURCES_STAGE2 := $(filter-out $(TEST_XFAILS_STAGE2), $(RFAIL_RS))
 
-TEST_RFAIL_EXES_STAGE0 = \
+TEST_RFAIL_EXES_STAGE0 := \
   $(subst $(S)src/,,$(TEST_RFAIL_CRATES_STAGE0:.rc=.stage0$(X))) \
   $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
-TEST_RFAIL_EXES_STAGE1 = \
+TEST_RFAIL_EXES_STAGE1 := \
   $(subst $(S)src/,,$(TEST_RFAIL_CRATES_STAGE1:.rc=.stage1$(X))) \
   $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_STAGE1:.rs=.stage1$(X)))
-TEST_RFAIL_EXES_STAGE2 = \
+TEST_RFAIL_EXES_STAGE2 := \
   $(subst $(S)src/,,$(TEST_RFAIL_CRATES_STAGE2:.rc=.stage2$(X))) \
   $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_STAGE2:.rs=.stage2$(X)))
 
-TEST_RFAIL_OUTS_STAGE0 = \
+TEST_RFAIL_OUTS_STAGE0 := \
   $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
-TEST_RFAIL_OUTS_STAGE1 = \
+TEST_RFAIL_OUTS_STAGE1 := \
   $(TEST_RFAIL_EXES_STAGE1:.stage1$(X)=.stage1.out)
-TEST_RFAIL_OUTS_STAGE2 = \
+TEST_RFAIL_OUTS_STAGE2 := \
   $(TEST_RFAIL_EXES_STAGE2:.stage2$(X)=.stage2.out)
 
 
-TEST_CFAIL_CRATES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RC))
-TEST_CFAIL_CRATES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(CFAIL_RC))
-TEST_CFAIL_CRATES_STAGE2 = $(filter-out $(TEST_XFAILS_STAGE2), $(CFAIL_RC))
-TEST_CFAIL_SOURCES_STAGE0 = $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RS))
-TEST_CFAIL_SOURCES_STAGE1 = $(filter-out $(TEST_XFAILS_STAGE1), $(CFAIL_RS))
-TEST_CFAIL_SOURCES_STAGE2 = $(filter-out $(TEST_XFAILS_STAGE2), $(CFAIL_RS))
+TEST_CFAIL_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RC))
+TEST_CFAIL_CRATES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(CFAIL_RC))
+TEST_CFAIL_CRATES_STAGE2 := $(filter-out $(TEST_XFAILS_STAGE2), $(CFAIL_RC))
+TEST_CFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RS))
+TEST_CFAIL_SOURCES_STAGE1 := $(filter-out $(TEST_XFAILS_STAGE1), $(CFAIL_RS))
+TEST_CFAIL_SOURCES_STAGE2 := $(filter-out $(TEST_XFAILS_STAGE2), $(CFAIL_RS))
 
-TEST_CFAIL_OUTS_STAGE0 = \
+TEST_CFAIL_OUTS_STAGE0 := \
   $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE0:.rc=.stage0.out)) \
   $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE0:.rs=.stage0.out))
-TEST_CFAIL_OUTS_STAGE1 = \
+TEST_CFAIL_OUTS_STAGE1 := \
   $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE1:.rc=.stage1.out)) \
   $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE1:.rs=.stage1.out))
-TEST_CFAIL_OUTS_STAGE2 = \
+TEST_CFAIL_OUTS_STAGE2 := \
   $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE2:.rc=.stage2.out)) \
   $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE2:.rs=.stage2.out))
 
 
-ALL_TEST_CRATES =  $(TEST_CFAIL_CRATES_STAGE0) \
+ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_STAGE0) \
                    $(TEST_RFAIL_CRATES_STAGE0) \
                    $(TEST_RPASS_CRATES_STAGE0) \
                    $(TEST_CFAIL_CRATES_STAGE1) \
@@ -124,7 +128,7 @@ ALL_TEST_CRATES =  $(TEST_CFAIL_CRATES_STAGE0) \
                    $(TEST_RFAIL_CRATES_STAGE2) \
                    $(TEST_RPASS_CRATES_STAGE2)
 
-ALL_TEST_SOURCES =  $(TEST_CFAIL_SOURCES_STAGE0) \
+ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_STAGE0) \
                     $(TEST_RFAIL_SOURCES_STAGE0) \
                     $(TEST_RPASS_SOURCES_STAGE0) \
                     $(TEST_CFAIL_SOURCES_STAGE1) \
@@ -181,6 +185,15 @@ compile-check: tidy \
 ######################################################################
 # Testing rules
 ######################################################################
+
+tidy:
+	@$(call E, check: formatting)
+	$(Q)echo \
+      $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
+        $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
+          $(RUSTLLVM_HDR) $(PKG_3RDPARTY)) \
+        $(S)src/etc/%, $(PKG_FILES)) \
+    | xargs -n 10 python $(S)src/etc/tidy.py
 
 %.stage0$(X): %.rs $(SREQ0)
 	@$(call E, compile_and_link: $@)

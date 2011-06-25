@@ -81,10 +81,12 @@ rt/%.o: rt/%.s $(MKFILES)
 
 ifdef CFG_WINDOWSY
 rt/main.ll: rt/main.ll.in
-	sed 's/MAIN/WinMain@16/' < $^ > $@
+	@$(call E, sed: $@)
+	$(Q)sed 's/MAIN/WinMain@16/' < $^ > $@
 else
 rt/main.ll: rt/main.ll.in
-	sed 's/MAIN/main/' < $^ > $@
+	@$(call E, sed: $@)
+	$(Q)sed 's/MAIN/main/' < $^ > $@
 endif
 
 rt/%.o: rt/%.ll $(MKFILES)

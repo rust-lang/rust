@@ -4,15 +4,6 @@
 
 .PHONY: clean
 
-tidy:
-	@$(call E, check: formatting)
-	$(Q)echo \
-      $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
-        $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
-          $(RUSTLLVM_HDR) $(PKG_3RDPARTY)) \
-        $(S)src/etc/%, $(PKG_FILES)) \
-    | xargs -n 10 python $(S)src/etc/tidy.py
-
 clean:
 	@$(call E, cleaning)
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)

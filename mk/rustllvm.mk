@@ -20,8 +20,9 @@ RUSTLLVM_OBJS_OBJS := $(RUSTLLVM_OBJS_CS:.cpp=.o)
 # versions of LLVM. In newer versions some of the bits of this library are
 # already in LLVM itself, so they are skipped.
 rustllvm/rustllvmbits.a: $(RUSTLLVM_LIB_OBJS)
-	rm -f $@
-	ar crs $@ $^
+	@$(call E, archive: $@)
+	$(Q)rm -f $@
+	$(Q)ar crs $@ $^
 
 # Note: We pass $(CFG_LLVM_LIBS) twice to fix the windows link since
 # it has no -whole-archive.
