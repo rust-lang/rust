@@ -367,11 +367,12 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 }
                 case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
             }
-            forget_in_postcond(fcx, e.id, rhs.id);
+            if (is_path(rhs)) {
+                forget_in_postcond(fcx, e.id, rhs.id);
+            }
         }
         case (expr_swap(?lhs, ?rhs)) {
             // Both sides must already be initialized
-            
             find_pre_post_exprs(fcx, [lhs, rhs], e.id);
             forget_in_postcond_still_init(fcx, e.id, lhs.id);
             forget_in_postcond_still_init(fcx, e.id, rhs.id);
@@ -591,14 +592,10 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                                 rec(id=alocal.node.id, 
                                     c=ninit(alocal.node.ident)));
                             
-                            alt (an_init.op) {
-                                case (init_move) {
-                                    forget_in_postcond(fcx, id,
-                                                       an_init.expr.id);
-                                }
-                                case (_) { /* nothing gets deinitialized */ } 
+                            if (an_init.op == init_move &&
+                                is_path(an_init.expr)) {
+                                forget_in_postcond(fcx, id, an_init.expr.id);
                             }
-
                         }
                         case (none) {
                             clear_pp(node_id_to_ts_ann(fcx.ccx,

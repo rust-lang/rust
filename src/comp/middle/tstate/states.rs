@@ -633,12 +633,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
 
                             auto post = tritv_clone(expr_poststate(fcx.ccx,
                                                       an_init.expr));
-                            alt (an_init.op) {
-                                case (init_move) {
-                                    clear_in_poststate_expr(fcx, an_init.expr,
-                                                            post);
-                                }
-                                case (_) { /* nothing gets deinitialized */ } 
+                            if (an_init.op == init_move) {
+                                clear_in_poststate_expr(fcx, an_init.expr,
+                                                        post);
                             }
 
                             set_in_poststate_ident(fcx, alocal.node.id,

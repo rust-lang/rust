@@ -301,6 +301,13 @@ tag lit_ {
     lit_bool(bool);
 }
 
+fn is_path(&@expr e) -> bool {
+    ret alt (e.node) {
+        case (expr_path(_)) { true }
+        case (_) { false }
+    };
+}
+
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
