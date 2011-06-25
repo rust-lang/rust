@@ -11,6 +11,9 @@ type ident = str;
 // Functions may or may not have names.
 type fn_ident = option::t[ident];
 
+// FIXME: with typestate constraint, could say
+// idents and types are the same length, and are
+// non-empty
 type path_ = rec(vec[ident] idents, vec[@ty] types);
 
 type path = spanned[path_];

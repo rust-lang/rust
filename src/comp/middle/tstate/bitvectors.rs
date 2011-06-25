@@ -1,7 +1,10 @@
+
 import front::ast::*;
+import std::option::*;
 import std::vec;
 import std::vec::len;
 import std::vec::slice;
+import aux::local_node_id_to_def;
 import aux::fn_ctxt;
 import aux::fn_info;
 import aux::log_tritv;
@@ -38,7 +41,9 @@ import tstate::ann::intersect;
 import tstate::ann::clone;
 import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
+import tstate::ann::set_in_poststate_;
 import tstate::ann::clear_in_poststate;
+import tstate::ann::clear_in_poststate_;
 import tritv::*;
 
 fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
@@ -219,6 +224,36 @@ fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
     ret clear_in_poststate(bit_num(fcx, c),
                            node_id_to_ts_ann(fcx.ccx, id).states);
 }
+
+fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
+    alt (e.node) {
+        case (expr_path(?p)) {
+            alt (vec::last(p.node.idents)) {
+                case (some(?i)) {
+                    alt (local_node_id_to_def(fcx, e.id)) {
+                        case (some(def_local(?d_id))) {
+                            clear_in_poststate_(bit_num(fcx,
+                                                        rec(id=d_id._1,
+                                                            c=ninit(i))), t);
+                        }
+                        case (some(_)) { /* ignore args (for now...) */ }
+                        case (_) { 
+                            fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: \
+                                   unbound var"); }
+                        }
+                }
+                case (_) { fcx.ccx.tcx.sess.bug("clear_in_poststate_expr"); }
+            }
+        }
+        case (_) { /* do nothing */ }
+    }
+}
+
+fn set_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
+                          &poststate t) -> bool {
+    ret set_in_poststate_(bit_num(fcx, rec(id=id, c=ninit(ident))), t);
+}
+
 //
 // Local Variables:
 // mode: rust

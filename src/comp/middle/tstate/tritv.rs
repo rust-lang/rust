@@ -17,6 +17,7 @@ export tritv_intersect;
 export tritv_copy;
 export tritv_clear;
 export tritv_doesntcare;
+export to_str;
 
 /* for a fixed index: 
    10 = "this constraint may or may not be true after execution"
@@ -81,7 +82,6 @@ fn trit_or(trit a, trit b) -> trit {
   }
 }
 
-// FIXME: not sure about this
 fn trit_and(trit a, trit b) -> trit {
   alt (a) {
     case (dont_care) { dont_care }
@@ -89,12 +89,14 @@ fn trit_and(trit a, trit b) -> trit {
       alt (b) {
         case (dont_care) { dont_care }
         case (ttrue)     { ttrue }
-        case (tfalse)    { tfalse } // FIXME: ???
+        case (tfalse)    { dont_care } // ???
       }
     }
     case (tfalse) { tfalse }
   }
 }
+
+fn change(bool changed, trit old, trit new) -> bool { changed || new != old }
 
 fn tritv_difference(&t p1, &t p2) -> bool {
     let uint i = 0u;
@@ -104,7 +106,7 @@ fn tritv_difference(&t p1, &t p2) -> bool {
     while (i < sz) {
       auto old = tritv_get(p1, i);
       auto new = trit_minus(old, tritv_get(p2, i));
-      changed = changed || (old != new);
+      changed = change(changed, old, new);
       tritv_set(i, p1, new);
       i += 1u;
     }
@@ -119,7 +121,7 @@ fn tritv_union(&t p1, &t p2) -> bool {
     while (i < sz) {
       auto old = tritv_get(p1, i);
       auto new = trit_or(old, tritv_get(p2, i));
-      changed = changed || (old != new);
+      changed = change(changed, old, new);
       tritv_set(i, p1, new);
       i += 1u;
     }
@@ -134,7 +136,7 @@ fn tritv_intersect(&t p1, &t p2) -> bool {
     while (i < sz) {
       auto old = tritv_get(p1, i);
       auto new = trit_and(old, tritv_get(p2, i));
-      changed = changed || (old != new);
+      changed = change(changed, old, new);
       tritv_set(i, p1, new);
       i += 1u;
     }
@@ -166,24 +168,26 @@ fn tritv_set(uint i, &t v, trit t) -> bool {
       bitv::set(v.val, i, false);
     }
   }
-  ret (old != t);
+  ret change(false, old, t);
 }
 
 fn tritv_copy(&t target, &t source) -> bool {
   let uint i = 0u;
   assert (target.nbits == source.nbits);
   auto changed = false;
-  auto old;
-  auto new;
+  auto oldunc;
+  auto newunc;
+  auto oldval;
+  auto newval;
   while (i < target.nbits) {
-    old = bitv::get(target.uncertain, i);
-    new = bitv::get(source.uncertain, i);
-    bitv::set(target.uncertain, i, new);
-    changed = changed || (old != new);
-    old = bitv::get(target.val, i);
-    new = bitv::get(source.val, i);
-    bitv::set(target.val, i, new);
-    changed = changed || (old != new);
+    oldunc = bitv::get(target.uncertain, i);
+    newunc = bitv::get(source.uncertain, i);
+    oldval = bitv::get(target.val, i);
+    newval = bitv::get(source.val, i);
+    bitv::set(target.uncertain, i, newunc);
+    changed = changed || (oldunc && !newunc);
+    bitv::set(target.val, i, newval);
+    changed = changed || (oldval && !newval);
     i += 1u;
   }
   ret changed;
@@ -234,6 +238,20 @@ fn to_vec(&t v) -> vec[uint] {
   }
   ret rslt;
 }
+
+fn to_str(&t v) -> str {
+  let uint i = 0u;
+  let str res = "";
+  while (i < v.nbits) {
+    res += alt (tritv_get(v, i)) {
+        case (dont_care) { "?" }
+        case (ttrue)     { "1" }
+        case (tfalse)    { "0" } };
+    i += 1u;
+  }
+  ret res;
+}
+
 //
 // Local Variables:
 // mode: rust

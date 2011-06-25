@@ -112,28 +112,37 @@ fn set_in_postcond(uint i, &pre_and_post p) -> bool {
     // sets the ith bit in p's post
     auto was_set = tritv_get(p.postcondition, i);
     tritv_set(i, p.postcondition, ttrue);
-    ret was_set != ttrue;
+    ret was_set == dont_care;
 }
 
 fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
     // sets the ith bit in p's post
-    auto was_set = tritv_get(s.poststate, i);
-    tritv_set(i, s.poststate, ttrue);
-    ret was_set != ttrue;
+    ret set_in_poststate_(i, s.poststate);
+}
+
+fn set_in_poststate_(uint i, &poststate p) -> bool {
+    auto was_set = tritv_get(p, i);
+    tritv_set(i, p, ttrue);
+    ret was_set == dont_care;
+
 }
 
 fn clear_in_poststate(uint i, &pre_and_post_state s) -> bool {
     // sets the ith bit in p's post
-    auto was_set = tritv_get(s.poststate, i);
-    tritv_set(i, s.poststate, tfalse);
-    ret was_set != tfalse;
+    ret clear_in_poststate_(i, s.poststate);
+}
+
+fn clear_in_poststate_(uint i, &poststate s) -> bool {
+    auto was_set = tritv_get(s, i);
+    tritv_set(i, s, tfalse);
+    ret was_set == dont_care;
 }
 
 fn clear_in_postcond(uint i, &pre_and_post s) -> bool {
     // sets the ith bit in p's post
     auto was_set = tritv_get(s.postcondition, i);
     tritv_set(i, s.postcondition, tfalse);
-    ret was_set != tfalse;
+    ret was_set == dont_care;
 }
 
 // Sets all the bits in a's precondition to equal the
@@ -221,6 +230,14 @@ fn implies(t a, t b) -> bool {
     auto tmp = tritv_clone(b);
     tritv_difference(tmp, a);
     ret tritv_doesntcare(tmp);
+}
+
+fn trit_str(trit t) -> str {
+    alt (t) {
+        case (dont_care) { "?" }
+        case (ttrue)     { "1" }
+        case (tfalse)    { "0" }
+    }
 }
 //
 // Local Variables:

@@ -39,6 +39,7 @@ import tstate::ann::set_postcondition;
 import tstate::ann::ts_ann;
 import tstate::ann::clear_in_postcond;
 import tstate::ann::clear_in_poststate;
+import tstate::ann::clear_in_poststate_;
 import tritv::*;
 
 import pretty::ppaux::constr_args_to_str;
@@ -655,8 +656,9 @@ tag if_ty {
     plain_if;
 }
 
-fn local_node_id_to_def_id(&fn_ctxt fcx, &span sp, &node_id i) -> def_id {
-    alt (fcx.ccx.tcx.def_map.find(i)) {
+fn local_node_id_to_def_id_strict(&fn_ctxt fcx, &span sp, &node_id i) 
+    -> def_id {
+    alt (local_node_id_to_def(fcx, i)) {
         case (some(def_local(?d_id))) {
             ret d_id;
         }
@@ -675,30 +677,86 @@ fn local_node_id_to_def_id(&fn_ctxt fcx, &span sp, &node_id i) -> def_id {
     }
 }
 
-fn forget_in_postcond(&fn_ctxt fcx, &span dead_sp,
-                      node_id parent_exp, node_id dead_v) {
-    // In the postcondition given by parent_exp, clear the bits
-    // for any constraints mentioning dead_v
-    auto d_id = local_node_id_to_def_id(fcx, dead_sp, dead_v);
-    for (norm_constraint c in constraints(fcx)) {
-        if (constraint_mentions(fcx, c, d_id)) {
-            clear_in_postcond(c.bit_num,
-              node_id_to_ts_ann(fcx.ccx, parent_exp).conditions);
-        }
+fn local_node_id_to_def(&fn_ctxt fcx, &node_id i) -> option::t[def]
+  { fcx.ccx.tcx.def_map.find(i) }
+
+fn local_node_id_to_def_id(&fn_ctxt fcx, &node_id i) -> option::t[def_id] {
+    alt (local_node_id_to_def(fcx, i)) {
+        case (some(def_local(?d_id))) { some(d_id) }
+        case (some (def_arg(?a_id)))  { some(a_id) } 
+        case (_)                      { none }
     }
 }
 
-fn forget_in_poststate(&fn_ctxt fcx, &span dead_sp, 
-                       node_id parent_exp, node_id dead_v) -> bool {
+/* FIXME should refactor this better */
+fn forget_in_postcond(&fn_ctxt fcx, node_id parent_exp, node_id dead_v) {
+    // In the postcondition given by parent_exp, clear the bits
+    // for any constraints mentioning dead_v
+    auto d = local_node_id_to_def_id(fcx, dead_v);
+    alt (d) {
+        case (some(?d_id)) {
+            for (norm_constraint c in constraints(fcx)) {
+                if (constraint_mentions(fcx, c, d_id)) {
+                    clear_in_postcond(c.bit_num,
+                      node_id_to_ts_ann(fcx.ccx, parent_exp).conditions);
+                }
+            }
+        }
+        case (_) {}
+    }
+}
+
+fn forget_in_postcond_still_init(&fn_ctxt fcx, node_id parent_exp,
+                                 node_id dead_v) {
+    // In the postcondition given by parent_exp, clear the bits
+    // for any constraints mentioning dead_v
+    auto d = local_node_id_to_def_id(fcx, dead_v);
+    alt (d) {
+        case (some(?d_id)) {
+            for (norm_constraint c in constraints(fcx)) {
+                if (non_init_constraint_mentions(fcx, c, d_id)) {
+                    clear_in_postcond(c.bit_num,
+                      node_id_to_ts_ann(fcx.ccx, parent_exp).conditions);
+                }
+            }
+        }
+        case (_) { }
+    }
+}
+
+fn forget_in_poststate(&fn_ctxt fcx, &poststate p, node_id dead_v) -> bool {
     // In the poststate given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
-    auto d_id = local_node_id_to_def_id(fcx, dead_sp, dead_v);
+    auto d = local_node_id_to_def_id(fcx, dead_v);
     auto changed = false;
-    for (norm_constraint c in constraints(fcx)) {
-        if (constraint_mentions(fcx, c, d_id)) {
-            changed = clear_in_poststate(c.bit_num,
-              node_id_to_ts_ann(fcx.ccx, parent_exp).states) || changed;
+    alt (d) {
+        case (some(?d_id)) {
+            for (norm_constraint c in constraints(fcx)) {
+                if (constraint_mentions(fcx, c, d_id)) {
+                    changed = clear_in_poststate_(c.bit_num, p) || changed;
+                }
+            }
         }
+        case (_) {}
+    }
+    ret changed;
+}
+
+fn forget_in_poststate_still_init(&fn_ctxt fcx, &poststate p, node_id dead_v)
+    -> bool {
+    // In the poststate given by parent_exp, clear the bits
+    // for any constraints mentioning dead_v
+    auto d = local_node_id_to_def_id(fcx, dead_v);
+    auto changed = false;
+    alt (d) {
+        case (some(?d_id)) {
+            for (norm_constraint c in constraints(fcx)) {
+                if (non_init_constraint_mentions(fcx, c, d_id)) {
+                    changed = clear_in_poststate_(c.bit_num, p) || changed;
+                }
+            }
+        }
+        case (_) {}
     }
     ret changed;
 }
@@ -707,6 +765,18 @@ fn constraint_mentions(&fn_ctxt fcx, &norm_constraint c, &def_id v) -> bool {
     ret (alt (c.c.node.c) {
             case (ninit(_)) {
                 v == local_def(c.c.node.id)
+            }
+            case (npred(_, ?args)) {
+                args_mention(args, v)
+            }
+        });
+}
+
+fn non_init_constraint_mentions(&fn_ctxt fcx, &norm_constraint c,
+                                &def_id v) -> bool {
+    ret (alt (c.c.node.c) {
+            case (ninit(_)) {
+                false
             }
             case (npred(_, ?args)) {
                 args_mention(args, v)

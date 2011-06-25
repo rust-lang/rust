@@ -116,7 +116,7 @@ fn buf_off[T](array[T] v, uint offset) -> vbuf {
 
 fn print_debug_info[T](array[T] v) { rustrt::vec_print_debug_info[T](v); }
 
-
+// FIXME: typestate precondition (list is non-empty)
 // Returns the last element of v.
 fn last[T](array[T] v) -> option::t[T] {
     auto l = len[T](v);

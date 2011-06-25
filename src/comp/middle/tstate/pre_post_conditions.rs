@@ -48,6 +48,7 @@ import aux::if_ty;
 import aux::if_check;
 import aux::plain_if;
 import aux::forget_in_postcond;
+import aux::forget_in_postcond_still_init;
 
 import aux::constraints_expr;
 import aux::substitute_constr_args;
@@ -61,7 +62,6 @@ import bitvectors::seq_postconds;
 import bitvectors::intersect_postconds;
 import bitvectors::declare_var;
 import bitvectors::gen_poststate;
-import bitvectors::kill_poststate;
 import bitvectors::relax_precond_block;
 import bitvectors::gen;
 import front::ast::*;
@@ -274,19 +274,13 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
     auto enclosing = fcx.enclosing;
     auto num_local_vars = num_constraints(enclosing);
     fn do_rand_(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
-    log "find_pre_post_expr (num_constraints =" + uistr(num_local_vars) +
-        "):";
-    log_expr(*e);
+
     alt (e.node) {
         case (expr_call(?operator, ?operands)) {
-            auto args = vec::clone[@expr](operands);
-            vec::push[@expr](args, operator);
+            auto args = vec::clone(operands);
+            vec::push(args, operator);
             find_pre_post_exprs(fcx, args, e.id);
             /* see if the call has any constraints on its type */
-
-            log "a function: ";
-            log_expr(*operator);
-            auto pp = expr_pp(fcx.ccx, e);
             for (@ty::constr_def c in constraints_expr(fcx.ccx.tcx, operator))
                 {
                     auto i =
@@ -294,7 +288,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                                 rec(id=c.node.id._1,
                                     c=substitute_constr_args(fcx.ccx.tcx,
                                                              operands, c)));
-                    require(i, pp);
+                    require(i, expr_pp(fcx.ccx, e));
                 }
 
             /* if this is a failing call, its postcondition sets everything */
@@ -304,8 +298,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             }
         }
         case (expr_spawn(_, _, ?operator, ?operands)) {
-            auto args = vec::clone[@expr](operands);
-            vec::push[@expr](args, operator);
+            auto args = vec::clone(operands);
+            vec::push(args, operator);
             find_pre_post_exprs(fcx, args, e.id);
         }
         case (expr_vec(?args, _, _)) {
@@ -356,7 +350,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_rec(?fields, ?maybe_base)) {
             auto es = field_exprs(fields);
-            vec::plus_option[@expr](es, maybe_base);
+            vec::plus_option(es, maybe_base);
             find_pre_post_exprs(fcx, es, e.id);
         }
         case (expr_move(?lhs, ?rhs)) {
@@ -366,17 +360,22 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 }
                 case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
             }
-            forget_in_postcond(fcx, rhs.span, e.id, rhs.id);
+            forget_in_postcond(fcx, e.id, rhs.id);
         }
         case (expr_swap(?lhs, ?rhs)) {
             // Both sides must already be initialized
             
             find_pre_post_exprs(fcx, [lhs, rhs], e.id);
+            forget_in_postcond_still_init(fcx, e.id, lhs.id);
+            forget_in_postcond_still_init(fcx, e.id, rhs.id);
+            // Could be more precise and swap the roles of lhs and rhs
+            // in any constraints
         }
         case (expr_assign(?lhs, ?rhs)) {
             alt (lhs.node) {
                 case (expr_path(?p)) {
                     gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
+                    forget_in_postcond_still_init(fcx, e.id, lhs.id);
                 }
                 case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
             }
@@ -385,7 +384,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             alt (rhs.node) {
                 case (expr_path(?p)) {
                     gen_if_local(fcx, rhs, lhs, e.id, rhs.id, p);
-                }
+                    forget_in_postcond_still_init(fcx, e.id, lhs.id);
+                 }
                 case (_) {
                     // doesn't check that rhs is an lval, but
                     // that's probably ok
@@ -399,6 +399,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                already be initialized */
 
             find_pre_post_exprs(fcx, [lhs, rhs], e.id);
+            forget_in_postcond_still_init(fcx, e.id, lhs.id);
         }
         case (expr_lit(_)) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_ret(?maybe_val)) {
@@ -585,8 +586,8 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                             
                             alt (an_init.op) {
                                 case (init_move) {
-                                    forget_in_postcond(fcx, an_init.expr.span,
-                                                       id, an_init.expr.id);
+                                    forget_in_postcond(fcx, id,
+                                                       an_init.expr.id);
                                 }
                                 case (_) { /* nothing gets deinitialized */ } 
                             }
