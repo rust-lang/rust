@@ -16,8 +16,8 @@ fn test_from_vec() {
 fn test_foldl() {
     auto l = from_vec([0, 1, 2, 3, 4]);
     fn add(&int a, &uint b) -> uint { ret (a as uint) + b; }
-    auto res = list::foldl(l, 0u, add);
-    assert (res == 10u);
+    auto rs = list::foldl(l, 0u, add);
+    assert (rs == 10u);
 }
 
 fn test_find_success() {
@@ -25,15 +25,15 @@ fn test_find_success() {
     fn match(&int i) -> option::t[int] {
         ret if (i == 2) { option::some(i) } else { option::none[int] };
     }
-    auto res = list::find(l, match);
-    assert (res == option::some(2));
+    auto rs = list::find(l, match);
+    assert (rs == option::some(2));
 }
 
 fn test_find_fail() {
     auto l = from_vec([0, 1, 2]);
     fn match(&int i) -> option::t[int] { ret option::none[int]; }
-    auto res = list::find(l, match);
-    assert (res == option::none[int]);
+    auto rs = list::find(l, match);
+    assert (rs == option::none[int]);
 }
 
 fn test_has() {

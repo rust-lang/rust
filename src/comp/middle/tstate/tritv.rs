@@ -241,15 +241,15 @@ fn to_vec(&t v) -> vec[uint] {
 
 fn to_str(&t v) -> str {
   let uint i = 0u;
-  let str res = "";
+  let str rs = "";
   while (i < v.nbits) {
-    res += alt (tritv_get(v, i)) {
+    rs += alt (tritv_get(v, i)) {
         case (dont_care) { "?" }
         case (ttrue)     { "1" }
         case (tfalse)    { "0" } };
     i += 1u;
   }
-  ret res;
+  ret rs;
 }
 
 //

@@ -100,15 +100,15 @@ fn test_slice() {
     assert (str::eq("", str::slice("abc", 1u, 1u)));
     fn a_million_letter_a() -> str {
         auto i = 0;
-        auto res = "";
-        while (i < 100000) { res += "aaaaaaaaaa"; i += 1; }
-        ret res;
+        auto rs = "";
+        while (i < 100000) { rs += "aaaaaaaaaa"; i += 1; }
+        ret rs;
     }
     fn half_a_million_letter_a() -> str {
         auto i = 0;
-        auto res = "";
-        while (i < 100000) { res += "aaaaa"; i += 1; }
-        ret res;
+        auto rs = "";
+        while (i < 100000) { rs += "aaaaa"; i += 1; }
+        ret rs;
     }
     assert (str::eq(half_a_million_letter_a(),
                     str::slice(a_million_letter_a(), 0u, 500000u)));

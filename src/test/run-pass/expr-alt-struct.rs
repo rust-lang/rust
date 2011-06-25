@@ -5,14 +5,14 @@
 
 // Tests for alt as expressions resulting in structural types
 fn test_rec() {
-    auto res = alt (true) { case (true) { rec(i=100) } };
-    assert (res == rec(i=100));
+    auto rs = alt (true) { case (true) { rec(i=100) } };
+    assert (rs == rec(i=100));
 }
 
 fn test_tag() {
     tag mood { happy; sad; }
-    auto res = alt (true) { case (true) { happy } case (false) { sad } };
-    assert (res == happy);
+    auto rs = alt (true) { case (true) { happy } case (false) { sad } };
+    assert (rs == happy);
 }
 
 fn main() { test_rec(); test_tag(); }

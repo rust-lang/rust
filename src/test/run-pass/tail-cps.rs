@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn checktrue(bool res) -> bool { assert (res); ret true; }
+fn checktrue(bool rs) -> bool { assert (rs); ret true; }
 
 fn main() { auto k = checktrue; evenk(42, k); oddk(45, k); }
 

@@ -171,8 +171,8 @@ fn find_pre_post_state_call(&fn_ctxt fcx, &prestate pres, &@expr a,
 
 fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, ast::node_id id,
                              &vec[@expr] es, controlflow cf) -> bool {
-    auto res = seq_states(fcx, pres, es);
-    auto changed = res._0;
+    auto rs = seq_states(fcx, pres, es);
+    auto changed = rs._0;
     changed = set_prestate_ann(fcx.ccx, id, pres) || changed;
     /* if this is a failing call, it sets everything as initialized */
     alt (cf) {
@@ -183,7 +183,7 @@ fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, ast::node_id id,
                 changed;
         }
         case (_) { 
-            changed = set_poststate_ann(fcx.ccx, id, res._1) || changed;
+            changed = set_poststate_ann(fcx.ccx, id, rs._1) || changed;
         }
     }
     ret changed;

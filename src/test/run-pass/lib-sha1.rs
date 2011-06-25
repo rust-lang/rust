@@ -13,9 +13,9 @@ fn main() {
 
     fn a_million_letter_a() -> str {
         auto i = 0;
-        auto res = "";
-        while (i < 100000) { res += "aaaaaaaaaa"; i += 1; }
-        ret res;
+        auto rs = "";
+        while (i < 100000) { rs += "aaaaaaaaaa"; i += 1; }
+        ret rs;
     }
     // Test messages from FIPS 180-1
 

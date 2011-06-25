@@ -32,8 +32,8 @@ fn check_fail_type(opt::fail_ f, fail_type ft) {
 fn test_reqopt_long() {
     auto args = ["--test=20"];
     auto opts = [opt::reqopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "test"));
             assert (opt::opt_str(m, "test") == "20");
@@ -45,8 +45,8 @@ fn test_reqopt_long() {
 fn test_reqopt_long_missing() {
     auto args = ["blah"];
     auto opts = [opt::reqopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_missing); }
         case (_) { fail; }
     }
@@ -55,8 +55,8 @@ fn test_reqopt_long_missing() {
 fn test_reqopt_long_no_arg() {
     auto args = ["--test"];
     auto opts = [opt::reqopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -65,8 +65,8 @@ fn test_reqopt_long_no_arg() {
 fn test_reqopt_long_multi() {
     auto args = ["--test=20", "--test=30"];
     auto opts = [opt::reqopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -75,8 +75,8 @@ fn test_reqopt_long_multi() {
 fn test_reqopt_short() {
     auto args = ["-t", "20"];
     auto opts = [opt::reqopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "t"));
             assert (opt::opt_str(m, "t") == "20");
@@ -88,8 +88,8 @@ fn test_reqopt_short() {
 fn test_reqopt_short_missing() {
     auto args = ["blah"];
     auto opts = [opt::reqopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_missing); }
         case (_) { fail; }
     }
@@ -98,8 +98,8 @@ fn test_reqopt_short_missing() {
 fn test_reqopt_short_no_arg() {
     auto args = ["-t"];
     auto opts = [opt::reqopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -108,8 +108,8 @@ fn test_reqopt_short_no_arg() {
 fn test_reqopt_short_multi() {
     auto args = ["-t", "20", "-t", "30"];
     auto opts = [opt::reqopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -120,8 +120,8 @@ fn test_reqopt_short_multi() {
 fn test_optopt_long() {
     auto args = ["--test=20"];
     auto opts = [opt::optopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "test"));
             assert (opt::opt_str(m, "test") == "20");
@@ -133,8 +133,8 @@ fn test_optopt_long() {
 fn test_optopt_long_missing() {
     auto args = ["blah"];
     auto opts = [opt::optopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "test")); }
         case (_) { fail; }
     }
@@ -143,8 +143,8 @@ fn test_optopt_long_missing() {
 fn test_optopt_long_no_arg() {
     auto args = ["--test"];
     auto opts = [opt::optopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -153,8 +153,8 @@ fn test_optopt_long_no_arg() {
 fn test_optopt_long_multi() {
     auto args = ["--test=20", "--test=30"];
     auto opts = [opt::optopt("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -163,8 +163,8 @@ fn test_optopt_long_multi() {
 fn test_optopt_short() {
     auto args = ["-t", "20"];
     auto opts = [opt::optopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "t"));
             assert (opt::opt_str(m, "t") == "20");
@@ -176,8 +176,8 @@ fn test_optopt_short() {
 fn test_optopt_short_missing() {
     auto args = ["blah"];
     auto opts = [opt::optopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "t")); }
         case (_) { fail; }
     }
@@ -186,8 +186,8 @@ fn test_optopt_short_missing() {
 fn test_optopt_short_no_arg() {
     auto args = ["-t"];
     auto opts = [opt::optopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -196,8 +196,8 @@ fn test_optopt_short_no_arg() {
 fn test_optopt_short_multi() {
     auto args = ["-t", "20", "-t", "30"];
     auto opts = [opt::optopt("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -208,8 +208,8 @@ fn test_optopt_short_multi() {
 fn test_optflag_long() {
     auto args = ["--test"];
     auto opts = [opt::optflag("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (opt::opt_present(m, "test")); }
         case (_) { fail; }
     }
@@ -218,8 +218,8 @@ fn test_optflag_long() {
 fn test_optflag_long_missing() {
     auto args = ["blah"];
     auto opts = [opt::optflag("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "test")); }
         case (_) { fail; }
     }
@@ -228,8 +228,8 @@ fn test_optflag_long_missing() {
 fn test_optflag_long_arg() {
     auto args = ["--test=20"];
     auto opts = [opt::optflag("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) {
             log_err opt::fail_str(f);
             check_fail_type(f, unexpected_argument);
@@ -241,8 +241,8 @@ fn test_optflag_long_arg() {
 fn test_optflag_long_multi() {
     auto args = ["--test", "--test"];
     auto opts = [opt::optflag("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -251,8 +251,8 @@ fn test_optflag_long_multi() {
 fn test_optflag_short() {
     auto args = ["-t"];
     auto opts = [opt::optflag("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (opt::opt_present(m, "t")); }
         case (_) { fail; }
     }
@@ -261,8 +261,8 @@ fn test_optflag_short() {
 fn test_optflag_short_missing() {
     auto args = ["blah"];
     auto opts = [opt::optflag("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "t")); }
         case (_) { fail; }
     }
@@ -271,8 +271,8 @@ fn test_optflag_short_missing() {
 fn test_optflag_short_arg() {
     auto args = ["-t", "20"];
     auto opts = [opt::optflag("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             // The next variable after the flag is just a free argument
 
@@ -285,8 +285,8 @@ fn test_optflag_short_arg() {
 fn test_optflag_short_multi() {
     auto args = ["-t", "-t"];
     auto opts = [opt::optflag("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, option_duplicated); }
         case (_) { fail; }
     }
@@ -297,8 +297,8 @@ fn test_optflag_short_multi() {
 fn test_optmulti_long() {
     auto args = ["--test=20"];
     auto opts = [opt::optmulti("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "test"));
             assert (opt::opt_str(m, "test") == "20");
@@ -310,8 +310,8 @@ fn test_optmulti_long() {
 fn test_optmulti_long_missing() {
     auto args = ["blah"];
     auto opts = [opt::optmulti("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "test")); }
         case (_) { fail; }
     }
@@ -320,8 +320,8 @@ fn test_optmulti_long_missing() {
 fn test_optmulti_long_no_arg() {
     auto args = ["--test"];
     auto opts = [opt::optmulti("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -330,8 +330,8 @@ fn test_optmulti_long_no_arg() {
 fn test_optmulti_long_multi() {
     auto args = ["--test=20", "--test=30"];
     auto opts = [opt::optmulti("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "test"));
             assert (opt::opt_str(m, "test") == "20");
@@ -345,8 +345,8 @@ fn test_optmulti_long_multi() {
 fn test_optmulti_short() {
     auto args = ["-t", "20"];
     auto opts = [opt::optmulti("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "t"));
             assert (opt::opt_str(m, "t") == "20");
@@ -358,8 +358,8 @@ fn test_optmulti_short() {
 fn test_optmulti_short_missing() {
     auto args = ["blah"];
     auto opts = [opt::optmulti("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) { assert (!opt::opt_present(m, "t")); }
         case (_) { fail; }
     }
@@ -368,8 +368,8 @@ fn test_optmulti_short_missing() {
 fn test_optmulti_short_no_arg() {
     auto args = ["-t"];
     auto opts = [opt::optmulti("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, argument_missing); }
         case (_) { fail; }
     }
@@ -378,8 +378,8 @@ fn test_optmulti_short_no_arg() {
 fn test_optmulti_short_multi() {
     auto args = ["-t", "20", "-t", "30"];
     auto opts = [opt::optmulti("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (opt::opt_present(m, "t"));
             assert (opt::opt_str(m, "t") == "20");
@@ -393,8 +393,8 @@ fn test_optmulti_short_multi() {
 fn test_unrecognized_option_long() {
     auto args = ["--untest"];
     auto opts = [opt::optmulti("t")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, unrecognized_option); }
         case (_) { fail; }
     }
@@ -403,8 +403,8 @@ fn test_unrecognized_option_long() {
 fn test_unrecognized_option_short() {
     auto args = ["-t"];
     auto opts = [opt::optmulti("test")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::failure(?f)) { check_fail_type(f, unrecognized_option); }
         case (_) { fail; }
     }
@@ -417,8 +417,8 @@ fn test_combined() {
     auto opts =
         [opt::optopt("s"), opt::optflag("flag"), opt::reqopt("long"),
          opt::optflag("f"), opt::optmulti("m"), opt::optopt("notpresent")];
-    auto res = opt::getopts(args, opts);
-    alt (res) {
+    auto rs = opt::getopts(args, opts);
+    alt (rs) {
         case (opt::success(?m)) {
             assert (m.free.(0) == "prog");
             assert (m.free.(1) == "free1");

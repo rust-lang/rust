@@ -5,37 +5,37 @@
 
 // Tests for using alt as an expression
 fn test_basic() {
-    let bool res = alt (true) { case (true) { true } case (false) { false } };
-    assert (res);
-    res = alt (false) { case (true) { false } case (false) { true } };
-    assert (res);
+    let bool rs = alt (true) { case (true) { true } case (false) { false } };
+    assert (rs);
+    rs = alt (false) { case (true) { false } case (false) { true } };
+    assert (rs);
 }
 
 fn test_inferrence() {
-    auto res = alt (true) { case (true) { true } case (false) { false } };
-    assert (res);
+    auto rs = alt (true) { case (true) { true } case (false) { false } };
+    assert (rs);
 }
 
 fn test_alt_as_alt_head() {
     // Yeah, this is kind of confusing ...
 
-    auto res =
+    auto rs =
         alt (alt (false) { case (true) { true } case (false) { false } }) {
             case (true) { false }
             case (false) { true }
         };
-    assert (res);
+    assert (rs);
 }
 
 fn test_alt_as_block_result() {
-    auto res =
+    auto rs =
         alt (false) {
             case (true) { false }
             case (false) {
                 alt (true) { case (true) { true } case (false) { false } }
             }
         };
-    assert (res);
+    assert (rs);
 }
 
 fn main() {

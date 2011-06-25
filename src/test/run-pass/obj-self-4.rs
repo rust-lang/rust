@@ -15,12 +15,12 @@ fn main() {
         // }
         fn get() -> int { ret i; }
     }
-    let int res;
+    let int rs;
     auto o = foo(5);
-    res = o.get();
-    assert (res == 5);
-    res = o.inc_by(3);
-    assert (res == 8);
-    res = o.get();
-    assert (res == 8);
+    rs = o.get();
+    assert (rs == 5);
+    rs = o.inc_by(3);
+    assert (rs == 8);
+    rs = o.get();
+    assert (rs == 8);
 }

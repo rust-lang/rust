@@ -5,50 +5,50 @@
 
 // Tests for if as expressions
 fn test_if() {
-    let bool res = if (true) { true } else { false };
-    assert (res);
+    let bool rs = if (true) { true } else { false };
+    assert (rs);
 }
 
 fn test_else() {
-    let bool res = if (false) { false } else { true };
-    assert (res);
+    let bool rs = if (false) { false } else { true };
+    assert (rs);
 }
 
 fn test_elseif1() {
-    let bool res = if (true) { true } else if (true) { false } else { false };
-    assert (res);
+    let bool rs = if (true) { true } else if (true) { false } else { false };
+    assert (rs);
 }
 
 fn test_elseif2() {
-    let bool res =
+    let bool rs =
         if (false) { false } else if (true) { true } else { false };
-    assert (res);
+    assert (rs);
 }
 
 fn test_elseif3() {
-    let bool res =
+    let bool rs =
         if (false) { false } else if (false) { false } else { true };
-    assert (res);
+    assert (rs);
 }
 
 fn test_inferrence() {
-    auto res = if (true) { true } else { false };
-    assert (res);
+    auto rs = if (true) { true } else { false };
+    assert (rs);
 }
 
 fn test_if_as_if_condition() {
-    auto res1 =
+    auto rs1 =
         if (if (false) { false } else { true }) { true } else { false };
-    assert (res1);
-    auto res2 =
+    assert (rs1);
+    auto rs2 =
         if (if (true) { false } else { true }) { false } else { true };
-    assert (res2);
+    assert (rs2);
 }
 
 fn test_if_as_block_result() {
-    auto res =
+    auto rs =
         if (true) { if (false) { false } else { true } } else { false };
-    assert (res);
+    assert (rs);
 }
 
 fn main() {
