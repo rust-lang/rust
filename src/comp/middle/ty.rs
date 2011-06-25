@@ -170,6 +170,7 @@ export type_is_scalar;
 export type_is_sequence;
 export type_is_signed;
 export type_is_structural;
+export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_owns_heap_mem;
@@ -894,6 +895,13 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
         case (ty_istr) { ret true; }
         case (_) { ret false; }
     }
+}
+
+fn type_is_copyable(&ctxt cx, &t ty) -> bool {
+    ret alt (struct(cx, ty)) {
+        case (ty_res(_, _)) { false }
+        case (_) { true }
+    };
 }
 
 fn type_is_sequence(&ctxt cx, &t ty) -> bool {

@@ -3064,30 +3064,37 @@ tag copy_action { INIT; DROP_EXISTING; }
 
 fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
-    if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
-            ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
+    auto ccx = cx.fcx.lcx.ccx;
+    // FIXME this is just a clunky stopgap. we should do proper checking in an
+    // earlier pass.
+    if (!ty::type_is_copyable(ccx.tcx, t)) {
+        ccx.sess.span_err(cx.sp, "Copying a non-copyable type.");
+    }
+
+    if (ty::type_is_scalar(ccx.tcx, t) ||
+            ty::type_is_native(ccx.tcx, t)) {
         ret rslt(cx, cx.build.Store(src, dst));
-    } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
-                   ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
+    } else if (ty::type_is_nil(ccx.tcx, t) ||
+                   ty::type_is_bot(ccx.tcx, t)) {
         ret rslt(cx, C_nil());
-    } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
+    } else if (ty::type_is_boxed(ccx.tcx, t)) {
         auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
         ret rslt(r.bcx, r.bcx.build.Store(src, dst));
-    } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
-                   ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
+    } else if (ty::type_is_structural(ccx.tcx, t) ||
+                   ty::type_has_dynamic_size(ccx.tcx, t)) {
         auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) { r = drop_ty(r.bcx, dst, t); }
         r = memmove_ty(r.bcx, dst, src, t);
-        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, t)) {
+        if (ty::type_owns_heap_mem(ccx.tcx, t)) {
             r = duplicate_heap_parts(cx, dst, t);
         }
         ret r;
     }
-    cx.fcx.lcx.ccx.sess.bug("unexpected type in trans::copy_val: " +
-                                ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+    ccx.sess.bug("unexpected type in trans::copy_val: " +
+                 ty_to_str(ccx.tcx, t));
 }
 
 
