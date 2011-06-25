@@ -436,22 +436,8 @@ fn set_postcond_false(&crate_ctxt ccx, node_id id) {
 }
 
 fn pure_exp(&crate_ctxt ccx, node_id id, &prestate p) -> bool {
-    auto changed = false;
-    changed = extend_prestate_ann(ccx, id, p) || changed;
-    changed = extend_poststate_ann(ccx, id, p) || changed;
-    ret changed;
-}
-
-fn fixed_point_states(&fn_ctxt fcx, fn(&fn_ctxt, &_fn) -> bool  f,
-                      &_fn start) {
-    auto changed = f(fcx, start);
-    if (changed) {
-        ret fixed_point_states(fcx, f, start);
-    } else {
-        // we're done!
-
-        ret;
-    }
+    ret extend_prestate_ann(ccx, id, p) |
+        extend_poststate_ann(ccx, id, p);
 }
 
 fn num_constraints(fn_info m) -> uint { ret m.num_constraints; }
@@ -733,7 +719,7 @@ fn forget_in_poststate(&fn_ctxt fcx, &poststate p, node_id dead_v) -> bool {
         case (some(?d_id)) {
             for (norm_constraint c in constraints(fcx)) {
                 if (constraint_mentions(fcx, c, d_id)) {
-                    changed = clear_in_poststate_(c.bit_num, p) || changed;
+                    changed |= clear_in_poststate_(c.bit_num, p);
                 }
             }
         }
@@ -752,7 +738,7 @@ fn forget_in_poststate_still_init(&fn_ctxt fcx, &poststate p, node_id dead_v)
         case (some(?d_id)) {
             for (norm_constraint c in constraints(fcx)) {
                 if (non_init_constraint_mentions(fcx, c, d_id)) {
-                    changed = clear_in_poststate_(c.bit_num, p) || changed;
+                    changed |= clear_in_poststate_(c.bit_num, p);
                 }
             }
         }

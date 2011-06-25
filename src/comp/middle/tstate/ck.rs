@@ -51,7 +51,6 @@ import aux::expr_poststate;
 import aux::stmt_poststate;
 import aux::stmt_to_ann;
 import aux::num_constraints;
-import aux::fixed_point_states;
 import aux::tritv_to_str;
 import aux::first_difference_string;
 import pretty::pprust::ty_to_str;
@@ -176,8 +175,9 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
 fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &fn_ident i) {
     /* Compute the pre- and post-states for this function */
 
-    auto g = find_pre_post_state_fn;
-    fixed_point_states(fcx, g, f);
+    // Fixpoint iteration
+    while (find_pre_post_state_fn(fcx, f)) {}
+
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
