@@ -1548,6 +1548,8 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_rec(_, _)) { true }
                 case (ast::expr_call(_, _)) { true }
                 case (ast::expr_self_method(_)) { false }
+                case (ast::expr_bind(_, _)) { true }
+                case (ast::expr_spawn(_, _, _, _)) { true }
                 case (ast::expr_binary(_, _, _)) { true }
                 case (ast::expr_unary(_, _)) { true }
                 case (ast::expr_lit(_)) { true }
@@ -1570,6 +1572,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_field(_, _)) { true }
                 case (ast::expr_index(_, _)) { true }
                 case (ast::expr_path(_)) { true }
+                case (ast::expr_ext(_, _, _, _)) { true }
                 case (ast::expr_fail(_)) { true }
                 case (ast::expr_break) { true }
                 case (ast::expr_cont) { true }
@@ -1578,6 +1581,10 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_be(_)) { true }
                 case (ast::expr_log(_, _)) { true }
                 case (ast::expr_check(_)) { true }
+                case (ast::expr_if_check(_, _, _)) { false }
+                case (ast::expr_port) { true }
+                case (ast::expr_chan(_)) { true }
+                case (ast::expr_anon_obj(_,_,_)) { false }
                 case (ast::expr_assert(_)) { true }
             }
         }
