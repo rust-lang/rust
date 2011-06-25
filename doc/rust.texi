@@ -779,6 +779,9 @@ binary and interchange floating-point formats, as defined in the IEEE
 @cindex Binary token
 @cindex Floating-point token
 
+@c FIXME: This discussion isn't quite right since 'f' and 'i' can be used as
+@c suffixes
+
 A @dfn{number literal} is either an @emph{integer literal} or a
 @emph{floating-point literal}.
 
