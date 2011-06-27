@@ -11,7 +11,7 @@ tag ast_node {
 type map = std::map::hashmap[node_id, ast_node];
 
 fn map_crate(&crate c) -> map {
-    auto map = util::common::new_int_hash[ast_node]();
+    auto map = util::common::new_seq_int_hash[ast_node]();
 
     auto v_map = @rec(visit_item=bind map_item(map, _, _, _),
                       visit_native_item=bind map_native_item(map, _, _, _),
