@@ -10,6 +10,13 @@ import middle::ty;
 import pretty::ppaux::lit_to_str;
 import util::common;
 
+export ctxt;
+export ty_abbrev;
+export ac_no_abbrevs;
+export ac_use_abbrevs;
+export enc_ty;
+export ty_str;
+
 type ctxt =
     rec(fn(&def_id) -> str  ds, // Def -> str Callback:
         ty::ctxt tcx, // The type context.
