@@ -67,7 +67,6 @@ import link::crate_meta_vers;
 import link::crate_meta_extras_hash;
 import metadata::tyencode;
 import metadata::creader;
-import metadata::cwriter;
 import metadata::decoder;
 import pretty::ppaux::ty_to_str;
 import pretty::ppaux::ty_to_short_str;
@@ -1039,6 +1038,11 @@ fn C_str(&@crate_ctxt cx, &str s) -> ValueRef {
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     ret llvm::LLVMConstPointerCast(g, T_ptr(T_str()));
+}
+
+// Returns a Plain Old LLVM String:
+fn C_postr(&str s) -> ValueRef {
+    ret llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
 }
 
 fn C_zero_byte_arr(uint size) -> ValueRef {
@@ -8386,6 +8390,17 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     ret map;
 }
 
+fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
+    if (!cx.sess.get_opts().shared) { ret; }
+    auto llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
+    auto llconst = trans::C_struct([llmeta]);
+    auto llglobal =
+        llvm::LLVMAddGlobal(cx.llmod, trans::val_ty(llconst),
+                            str::buf("rust_metadata"));
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    llvm::LLVMSetSection(llglobal, str::buf(x86::get_meta_sect_name()));
+}
+
 fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                &str output, &ast_map::map amap) -> ModuleRef {
     auto llmod =
@@ -8452,7 +8467,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     emit_tydescs(ccx);
     // Translate the metadata:
 
-    cwriter::write_metadata(cx.ccx, crate);
+    write_metadata(cx.ccx, crate);
     if (ccx.sess.get_opts().stats) {
         log_err "--- trans stats ---";
         log_err #fmt("n_static_tydescs: %u", ccx.stats.n_static_tydescs);

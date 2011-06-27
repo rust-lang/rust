@@ -3,7 +3,6 @@ import driver::session;
 import lib::llvm::llvm;
 import middle::trans;
 import middle::ty;
-import metadata::cwriter;
 import std::str;
 import std::fs;
 import std::vec;

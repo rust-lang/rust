@@ -18,7 +18,6 @@ import front::ast::constr_arg_general;
 import front::ast::mutability;
 import front::ast::controlflow;
 import metadata::creader;
-import metadata::cwriter;
 import metadata::decoder;
 import util::common::*;
 import util::data::interner;

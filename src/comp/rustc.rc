@@ -69,7 +69,6 @@ mod metadata {
     mod encoder;
     mod decoder;
     mod creader;
-    mod cwriter;
 }
 
 mod driver {
