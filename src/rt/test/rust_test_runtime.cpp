@@ -53,7 +53,7 @@ rust_task_test::worker::run() {
         kernel->create_domain("test");
     rust_dom *domain = handle->referent();
     domain->root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL);
-    domain->start_main_loop();
+    domain->start_main_loop(0);
     kernel->destroy_domain(domain);
 }
 

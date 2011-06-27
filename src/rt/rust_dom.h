@@ -96,11 +96,25 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     void reap_dead_tasks();
     rust_task *schedule_task();
 
-    int start_main_loop();
+    int start_main_loop(int id);
+    int start_main_loops(int num_threads);
 
     void log_state();
 
     rust_task *create_task(rust_task *spawner, const char *name);
+
+    class dom_worker : public rust_thread {
+        int id;
+        rust_dom *owner;
+
+    public:
+        dom_worker(int id, rust_dom *owner);
+
+        virtual void run();
+    };
+
+    lock_and_signal scheduler_lock;
+    array_list<dom_worker *> threads;
 };
 
 inline rust_log &

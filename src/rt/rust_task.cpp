@@ -14,9 +14,9 @@
 
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
-static size_t const min_stk_bytes = 0x300000;
-// static size_t const min_stk_bytes = 0x10000;
-
+//static size_t const min_stk_bytes = 0x300000;
+//static size_t const min_stk_bytes = 0x10000;
+static size_t const min_stk_bytes = 0x100000;
 
 // Task stack segments. Heap allocated and chained together.
 
@@ -70,7 +70,8 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     list_index(-1),
     rendezvous_ptr(0),
     alarm(this),
-    handle(NULL)
+    handle(NULL),
+    active(false)
 {
     LOGPTR(dom, "new task", (uintptr_t)this);
     DLOG(dom, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -123,31 +124,31 @@ struct spawn_args {
                        uintptr_t, uintptr_t);
 };
 
-// TODO: rewrite this in LLVM assembly so we can be sure the calling
-// conventions will match.
 extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
     int rval = 42;
     
-    // This is used by the context switching code. LLVM generates fastcall
-    // functions, but ucontext needs cdecl functions. This massages the
-    // calling conventions into the right form.
     a->f(&rval, task, a->a3, a->a4);
-
+    
     LOG(task, task, "task exited with value %d", rval);
 
-    // TODO: the old exit glue does some magical argument copying stuff. This
-    // is probably still needed.
+    {
+        scoped_lock with(task->dom->scheduler_lock);
+        
+        // TODO: the old exit glue does some magical argument copying
+        // stuff. This is probably still needed.
 
-    // This is duplicated from upcall_exit, which is probably dead code by
-    // now.
-    LOG(task, task, "task ref_count: %d", task->ref_count);
-    A(task->dom, task->ref_count >= 0,
-      "Task ref_count should not be negative on exit!");
-    task->die();
-    task->notify_tasks_waiting_to_join();
+        // This is duplicated from upcall_exit, which is probably dead code by
+        // now.
+        LOG(task, task, "task ref_count: %d", task->ref_count);
+        A(task->dom, task->ref_count >= 0,
+          "Task ref_count should not be negative on exit!");
+        task->die();
+        task->notify_tasks_waiting_to_join();
+
+    }
     task->yield(1);
 }
 
@@ -158,6 +159,9 @@ rust_task::start(uintptr_t spawnee_fn,
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
     I(dom, stk->data != NULL);
+    I(dom, !dom->scheduler_lock.lock_held_by_current_thread());
+    
+    scoped_lock with(dom->scheduler_lock);
 
     char *sp = (char *)rust_sp;
 
@@ -409,6 +413,7 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
+    I(dom, dom->scheduler_lock.lock_held_by_current_thread());
     DLOG(dom, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);
@@ -480,6 +485,11 @@ rust_task::get_handle() {
         handle = dom->kernel->get_task_handle(this);
     }
     return handle;
+}
+
+bool rust_task::can_schedule()
+{
+    return yield_timer.has_timed_out() && !active;
 }
 
 //

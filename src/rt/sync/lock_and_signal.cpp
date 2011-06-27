@@ -21,7 +21,9 @@ lock_and_signal::lock_and_signal() {
 }
 
 #else
-lock_and_signal::lock_and_signal() {
+lock_and_signal::lock_and_signal() 
+    : _locked(false)
+{
     CHECKED(pthread_cond_init(&_cond, NULL));
     CHECKED(pthread_mutex_init(&_mutex, NULL));
 }
@@ -39,12 +41,16 @@ lock_and_signal::~lock_and_signal() {
 void lock_and_signal::lock() {
 #if defined(__WIN32__)
     EnterCriticalSection(&_cs);
+    _holding_thread = GetCurrentThreadId();
 #else
     CHECKED(pthread_mutex_lock(&_mutex));
+    _holding_thread = pthread_self();
 #endif
+    _locked = true;
 }
 
 void lock_and_signal::unlock() {
+    _locked = false;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
 #else
@@ -100,6 +106,25 @@ void lock_and_signal::signal_all() {
 #endif
 }
 
+bool lock_and_signal::lock_held_by_current_thread()
+{
+#if defined(__WIN32__)
+    return _locked && _holding_thread == GetCurrentThreadId();
+#else
+    return _locked && _holding_thread == pthread_self();
+#endif
+}
+
+scoped_lock::scoped_lock(lock_and_signal &lock)
+    : lock(lock)
+{
+    lock.lock();
+}
+
+scoped_lock::~scoped_lock()
+{
+    lock.unlock();
+}
 
 //
 // Local Variables:
