@@ -30,6 +30,7 @@ import std::option::none;
 import std::option::some;
 import std::os;
 import std::map::hashmap;
+import defs::*;
 
 export get_symbol;
 export get_tag_variants;
@@ -404,15 +405,15 @@ fn parse_def_id(vec[u8] buf) -> ast::def_id {
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool  eq_fn, uint hash) ->
    vec[ebml::doc] {
-    auto index = ebml::get_doc(d, cwriter::tag_index);
-    auto table = ebml::get_doc(index, cwriter::tag_index_table);
+    auto index = ebml::get_doc(d, tag_index);
+    auto table = ebml::get_doc(index, tag_index_table);
     auto hash_pos = table.start + hash % 256u * 4u;
     auto pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
     auto bucket = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
     let vec[ebml::doc] result = [];
-    auto belt = cwriter::tag_index_buckets_bucket_elt;
+    auto belt = tag_index_buckets_bucket_elt;
     for each (ebml::doc elt in ebml::tagged_docs(bucket, belt)) {
         auto pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
         if (eq_fn(vec::slice[u8](elt.data, elt.start + 4u, elt.end))) {
@@ -431,11 +432,11 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
     }
     auto s = str::connect(path, "::");
     auto md = ebml::new_doc(data);
-    auto paths = ebml::get_doc(md, cwriter::tag_paths);
+    auto paths = ebml::get_doc(md, tag_paths);
     auto eqer = bind eq_item(_, s);
     let vec[ast::def_id] result = [];
     for (ebml::doc doc in lookup_hash(paths, eqer, cwriter::hash_path(s))) {
-        auto did_doc = ebml::get_doc(doc, cwriter::tag_def_id);
+        auto did_doc = ebml::get_doc(doc, tag_def_id);
         vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
     }
     ret result;
@@ -460,22 +461,22 @@ fn find_item(int item_id, &ebml::doc items) -> ebml::doc {
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
 fn lookup_item(int item_id, vec[u8] data) -> ebml::doc {
-    auto items = ebml::get_doc(ebml::new_doc(data), cwriter::tag_items);
+    auto items = ebml::get_doc(ebml::new_doc(data), tag_items);
     ret find_item(item_id, items);
 }
 
 fn item_kind(&ebml::doc item) -> u8 {
-    auto kind = ebml::get_doc(item, cwriter::tag_items_data_item_kind);
+    auto kind = ebml::get_doc(item, tag_items_data_item_kind);
     ret ebml::doc_as_uint(kind) as u8;
 }
 
 fn item_symbol(&ebml::doc item) -> str {
-    auto sym = ebml::get_doc(item, cwriter::tag_items_data_item_symbol);
+    auto sym = ebml::get_doc(item, tag_items_data_item_symbol);
     ret str::unsafe_from_bytes(ebml::doc_data(sym));
 }
 
 fn variant_tag_id(&ebml::doc d) -> ast::def_id {
-    auto tagdoc = ebml::get_doc(d, cwriter::tag_items_data_item_tag_id);
+    auto tagdoc = ebml::get_doc(d, tag_items_data_item_tag_id);
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
@@ -490,7 +491,7 @@ fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
         auto external_def_id = parse_def_id(buf);
         ret tup(this_cnum, external_def_id._1);
     }
-    auto tp = ebml::get_doc(item, cwriter::tag_items_data_item_type);
+    auto tp = ebml::get_doc(item, tag_items_data_item_type);
     auto s = str::unsafe_from_bytes(ebml::doc_data(tp));
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
                       bind parse_external_def_id(this_cnum, _), tcx);
@@ -498,7 +499,7 @@ fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
 
 fn item_ty_param_count(&ebml::doc item, int this_cnum) -> uint {
     let uint ty_param_count = 0u;
-    auto tp = cwriter::tag_items_data_item_ty_param_count;
+    auto tp = tag_items_data_item_ty_param_count;
     for each (ebml::doc p in ebml::tagged_docs(item, tp)) {
         ty_param_count = ebml::vint_at(ebml::doc_data(p), 0u)._0;
     }
@@ -507,7 +508,7 @@ fn item_ty_param_count(&ebml::doc item, int this_cnum) -> uint {
 
 fn tag_variant_ids(&ebml::doc item, int this_cnum) -> vec[ast::def_id] {
     let vec[ast::def_id] ids = [];
-    auto v = cwriter::tag_items_data_item_variant;
+    auto v = tag_items_data_item_variant;
     for each (ebml::doc p in ebml::tagged_docs(item, v)) {
         auto ext = parse_def_id(ebml::doc_data(p));
         vec::push[ast::def_id](ids, tup(this_cnum, ext._1));
@@ -538,12 +539,12 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
 fn get_exported_metadata(&session::session sess, &str path, &vec[u8] data) ->
    hashmap[str, str] {
     auto meta_items =
-        ebml::get_doc(ebml::new_doc(data), cwriter::tag_meta_export);
+        ebml::get_doc(ebml::new_doc(data), tag_meta_export);
     auto mm = common::new_str_hash[str]();
     for each (ebml::doc m in
-             ebml::tagged_docs(meta_items, cwriter::tag_meta_item)) {
-        auto kd = ebml::get_doc(m, cwriter::tag_meta_item_key);
-        auto vd = ebml::get_doc(m, cwriter::tag_meta_item_value);
+             ebml::tagged_docs(meta_items, tag_meta_item)) {
+        auto kd = ebml::get_doc(m, tag_meta_item_key);
+        auto vd = ebml::get_doc(m, tag_meta_item_value);
         auto k = str::unsafe_from_bytes(ebml::doc_data(kd));
         auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
         log #fmt("metadata in %s: %s = %s", path, k, v);
@@ -807,7 +808,7 @@ fn get_symbol(session::session sess, ast::def_id def) -> str {
 fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> vec[ty::variant_info] {
     auto external_crate_id = def._0;
     auto data = tcx.sess.get_external_crate(external_crate_id).data;
-    auto items = ebml::get_doc(ebml::new_doc(data), cwriter::tag_items);
+    auto items = ebml::get_doc(ebml::new_doc(data), tag_items);
     auto item = find_item(def._1, items);
     let vec[ty::variant_info] infos = [];
     auto variant_ids = tag_variant_ids(item, external_crate_id);
@@ -848,17 +849,17 @@ fn read_path(&ebml::doc d) -> tup(str, uint) {
 
 fn list_crate_metadata(vec[u8] bytes, io::writer out) {
     auto md = ebml::new_doc(bytes);
-    auto paths = ebml::get_doc(md, cwriter::tag_paths);
-    auto items = ebml::get_doc(md, cwriter::tag_items);
-    auto index = ebml::get_doc(paths, cwriter::tag_index);
-    auto bs = ebml::get_doc(index, cwriter::tag_index_buckets);
+    auto paths = ebml::get_doc(md, tag_paths);
+    auto items = ebml::get_doc(md, tag_items);
+    auto index = ebml::get_doc(paths, tag_index);
+    auto bs = ebml::get_doc(index, tag_index_buckets);
     for each (ebml::doc bucket in
-             ebml::tagged_docs(bs, cwriter::tag_index_buckets_bucket)) {
-        auto et = cwriter::tag_index_buckets_bucket_elt;
+             ebml::tagged_docs(bs, tag_index_buckets_bucket)) {
+        auto et = tag_index_buckets_bucket_elt;
         for each (ebml::doc elt in ebml::tagged_docs(bucket, et)) {
             auto data = read_path(elt);
             auto def = ebml::doc_at(bytes, data._1);
-            auto did_doc = ebml::get_doc(def, cwriter::tag_def_id);
+            auto did_doc = ebml::get_doc(def, tag_def_id);
             auto did = parse_def_id(ebml::doc_data(did_doc));
             out.write_str(#fmt("%s (%s)\n", data._0,
                                describe_def(items, did)));
