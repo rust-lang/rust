@@ -111,3 +111,241 @@
    fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
 }
 
+{
+   mac-dyld
+   Memcheck:Cond
+   ...
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+   obj:*
+}
+
+{
+   mac-dyld-2
+   Memcheck:Value4
+   ...
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+   obj:*
+}
+
+{
+   mac-dyld-3
+   Memcheck:Param
+   stat(path)
+   ...
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+   obj:*
+}
+
+{
+   mac-dyld-4
+   Memcheck:Param
+   open(filename)
+   ...
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+   obj:*
+}
+
+{
+   mac-dyld-5
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+}
+
+{
+   mac-dyld-6
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+}
+
+{
+   mac-dyld-7
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
+}
+
+{
+   mac-dyld-8
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld4loadEPKcRKNS_11LoadContextE
+}
+
+{
+   mac-dyld-9
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyldL10loadPhase0EPKcRKNS_11LoadContextEPSt6vectorIS1_SaIS1_EE
+}
+
+{
+   mac-dyld-10
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyldL10loadPhase0EPKcRKNS_11LoadContextEPSt6vectorIS1_SaIS1_EE
+}
+
+{
+   mac-dyld-11
+   Memcheck:Param
+   stat(path)
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+}
+
+{
+   mac-dyld-12
+   Memcheck:Param
+   open(filename)
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+}
+
+{
+   mac-dyld-13
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+}
+
+{
+   mac-dyld-14
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+}
+
+{
+   mac-dyld-15
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+}
+
+{
+   mac-dyld-16
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+}
+
+{
+   mac-dyld-17
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+}
+
+{
+   mac-dyld-18
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+}
+
+{
+   mac-dyld-19
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+}
+
+{
+   mac-dyld-20
+   Memcheck:Value4
+   ...
+   fun:_ZN4dyld24initializeMainExecutableEv
+}
+
+{
+   mac-dyld-21
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld24initializeMainExecutableEv
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+}
+
+{
+   mac-dyld-22
+   Memcheck:Cond
+   ...
+   fun:_ZN4dyld24initializeMainExecutableEv
+}
+
+{
+   mac-dyld-23
+   Memcheck:Value4
+   ...
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextE
+}
+
+{
+   mac-dyld-24
+   Memcheck:Cond
+   ...
+   fun:dyld_stub_binder_
+   fun:main
+}
+
+{
+   mac-dyld-25
+   Memcheck:Value4
+   ...
+   fun:dyld_stub_binder_
+   fun:main
+}
+
+{
+   mac-dyld-26
+   Memcheck:Cond
+   ...
+   fun:dyld_stub_binder_
+   ...
+}
+
+{
+   mac-dyld-27
+   Memcheck:Value4
+   ...
+   fun:dyld_stub_binder_
+   ...
+}
+
+{
+   mac-dyld-28
+   Memcheck:Cond
+   fun:_ZN4dyld14runTerminatorsEPv
+   ...
+}
+
+{
+   mac-dyld-29
+   Memcheck:Cond
+   fun:_ZN4dyldL18notifyBatchPartialE17dyld_image_statesbPFPKcS0_jPK15dyld_image_infoE
+   ...
+}
+
+{
+   mac-dyld-30
+   Memcheck:Value4
+   fun:_ZN4dyldL18notifyBatchPartialE17dyld_image_statesbPFPKcS0_jPK15dyld_image_infoE
+   ...
+}
+
