@@ -480,7 +480,7 @@ upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
 
     // If src and dst are the same (due to "v += v"), then dst getting
     // resized causes src to move as well.
-    if (dst == src) {
+    if (dst == src && !need_copy) {
         src = new_vec;
     }
 
