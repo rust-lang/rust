@@ -68,6 +68,7 @@ import link::crate_meta_extras_hash;
 import metadata::tyencode;
 import metadata::creader;
 import metadata::cwriter;
+import metadata::decoder;
 import pretty::ppaux::ty_to_str;
 import pretty::ppaux::ty_to_short_str;
 import pretty::pprust::expr_to_str;
@@ -4676,7 +4677,7 @@ fn lval_val(&@block_ctxt cx, ValueRef val) -> lval_result {
 fn trans_external_path(&@block_ctxt cx, &ast::def_id did,
                        &ty::ty_param_count_and_ty tpt) -> lval_result {
     auto lcx = cx.fcx.lcx;
-    auto name = creader::get_symbol(lcx.ccx.sess, did);
+    auto name = decoder::get_symbol(lcx.ccx.sess, did);
     auto v =
         get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
                          type_of_ty_param_count_and_ty(lcx, cx.sp, tpt));
@@ -4723,7 +4724,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
             // It's an external discriminant that we haven't seen yet.
 
             assert (lcx.ccx.sess.get_targ_crate_num() != vid._0);
-            auto sym = creader::get_symbol(lcx.ccx.sess, vid);
+            auto sym = decoder::get_symbol(lcx.ccx.sess, vid);
             auto gvar =
                 llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), str::buf(sym));
             llvm::LLVMSetLinkage(gvar,

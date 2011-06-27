@@ -67,6 +67,7 @@ mod metadata {
     mod tyencode;
     mod tydecode;
     mod encoder;
+    mod decoder;
     mod creader;
     mod cwriter;
 }

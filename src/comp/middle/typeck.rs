@@ -2,7 +2,7 @@
 import front::ast;
 import front::ast::mutability;
 import front::ast::local_def;
-import metadata::creader;
+import metadata::decoder;
 import driver::session;
 import util::common;
 import util::common::span;
@@ -478,7 +478,7 @@ mod collect {
         if (id._0 != cx.tcx.sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
 
-            ret creader::get_type(cx.tcx, id);
+            ret decoder::get_type(cx.tcx, id);
         }
         auto it = cx.tcx.items.get(id._1);
         auto tpt;

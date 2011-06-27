@@ -19,6 +19,7 @@ import front::ast::mutability;
 import front::ast::controlflow;
 import metadata::creader;
 import metadata::cwriter;
+import metadata::decoder;
 import util::common::*;
 import util::data::interner;
 import pretty::ppaux::ty_to_str;
@@ -2700,7 +2701,7 @@ type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
 
 fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     if (cx.sess.get_targ_crate_num() != id._0) {
-        ret creader::get_tag_variants(cx, id);
+        ret decoder::get_tag_variants(cx, id);
     }
     auto item = alt (cx.items.find(id._1)) {
         case (some(?i)) { i }
@@ -2763,7 +2764,7 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
     alt (cx.tcache.find(did)) {
         case (some(?tpt)) { ret tpt; }
         case (none) {
-            auto tyt = creader::get_type(cx, did);
+            auto tyt = decoder::get_type(cx, did);
             cx.tcache.insert(did, tyt);
             ret tyt;
         }
