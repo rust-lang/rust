@@ -22,7 +22,8 @@ RUSTLLVM_OBJS_OBJS := $(RUSTLLVM_OBJS_CS:.cpp=.o)
 rustllvm/rustllvmbits.a: $(RUSTLLVM_LIB_OBJS)
 	@$(call E, archive: $@)
 	$(Q)rm -f $@
-	$(Q)ar crs $@ $^
+	$(Q)$(CFG_GCCISH_CROSS)ar crs $@ $^
+	$(Q)$(CFG_GCCISH_CROSS)ranlib $@
 
 # Note: We pass $(CFG_LLVM_LIBS) twice to fix the windows link since
 # it has no -whole-archive.

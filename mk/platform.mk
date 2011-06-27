@@ -111,14 +111,14 @@ ifdef CFG_UNIXY
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
     CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
     CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_TESTLIB,$(1)) $(1)
-
+    CFG_WINDOWSY := 1
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCCISH_CROSS := i586-mingw32msvc-
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
 
-    CFG_GCCISH_CFLAGS := -march=i686 -O2
+    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i686 -O2
     CFG_GCCISH_PRE_LIB_FLAGS :=
     CFG_GCCISH_POST_LIB_FLAGS :=
     CFG_GCCISH_DEF_FLAG :=
