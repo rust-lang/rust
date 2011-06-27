@@ -1,3 +1,5 @@
+// Metadata encoding
+
 import std::str;
 import std::vec;
 import std::uint;

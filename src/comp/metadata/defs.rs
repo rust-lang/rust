@@ -1,3 +1,4 @@
+// EBML tag definitions shared by the encoder and decoder
 
 const uint tag_paths = 0x01u;
 

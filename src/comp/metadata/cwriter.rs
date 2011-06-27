@@ -1,3 +1,4 @@
+// Writing metadata into crate files
 
 import std::str;
 import middle::trans;

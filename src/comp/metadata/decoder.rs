@@ -1,3 +1,5 @@
+// Metadata decoding
+
 import std::ebml;
 import std::option;
 import std::vec;

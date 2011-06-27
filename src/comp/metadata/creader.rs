@@ -1,6 +1,5 @@
+// Extracting metadata from crate files
 
-
-// -*- rust -*-
 import driver::session;
 import front::ast;
 import lib::llvm::False;
