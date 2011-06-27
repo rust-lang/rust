@@ -7,7 +7,7 @@ import std::str;
 import std::io;
 import front::ast;
 import middle::ty;
-import defs::*;
+import tags::*;
 import tydecode::parse_def_id;
 import tydecode::parse_ty_data;
 import driver::session;

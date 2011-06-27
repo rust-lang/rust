@@ -9,7 +9,7 @@ import std::option::some;
 import std::option::none;
 import std::ebml;
 import front::ast::*;
-import defs::*;
+import tags::*;
 import middle::trans::crate_ctxt;
 import middle::trans::node_id_type;
 import middle::ty;

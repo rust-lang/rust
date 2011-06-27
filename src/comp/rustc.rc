@@ -68,7 +68,7 @@ mod metadata {
     export decoder;
     export creader;
 
-    mod defs;
+    mod tags;
     mod tyencode;
     mod tydecode;
     mod encoder;

@@ -19,7 +19,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::map::hashmap;
-import defs::*;
+import tags::*;
 
 export read_crates;
 export list_file_metadata;
