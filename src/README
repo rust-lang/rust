@@ -4,6 +4,10 @@ Source layout:
 
 comp/              The self-hosted compiler
 
+lib/               The standard library
+
+rustllvm/          LLVM support code
+
 rt/                The runtime system
 rt/rust_*.cpp      - The majority of the runtime services
 rt/isaac           - The PRNG used for pseudo-random choices in the runtime
@@ -11,7 +15,7 @@ rt/bigint          - The bigint library used for the 'big' type
 rt/uthash          - Small hashtable-and-list library for C, used in runtime
 rt/{sync,util}     - Small utility classes for the runtime.
 
-test/              Testsuite (for both bootstrap and self-hosted)
+test/              Testsuite
 test/compile-fail  - Tests that should fail to compile
 test/run-fail      - Tests that should compile, run and fail
 test/run-pass      - Tests that should compile, run and succeed
