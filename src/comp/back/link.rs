@@ -398,7 +398,7 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, str crate_meta_name,
     // to be independent of one another in the crate.
 
     auto cx =
-        @rec(ds=metadata::cwriter::def_to_str,
+        @rec(ds=metadata::encoder::def_to_str,
              tcx=tcx,
              abbrevs=metadata::tyencode::ac_no_abbrevs);
     sha.reset();
@@ -452,7 +452,6 @@ fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
 
 fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) ->
    str {
-    auto f = metadata::cwriter::def_to_str;
     auto s = pretty::ppaux::ty_to_short_str(ccx.tcx, t);
     auto hash = get_symbol_hash(ccx, t);
     ret mangle([name, s, hash]);

@@ -65,6 +65,7 @@ mod back {
 mod metadata {
     mod defs;
     mod tyencode;
+    mod encoder;
     mod creader;
     mod cwriter;
 }
