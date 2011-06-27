@@ -2893,13 +2893,38 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
 fn call_tydesc_glue_full(&@block_ctxt cx, ValueRef v, ValueRef tydesc,
                          int field, &option::t[@tydesc_info] static_ti) {
     lazily_emit_tydesc_glue(cx, field, static_ti);
+
+    auto static_glue_fn = none;
+    alt (static_ti) {
+      case (none) { /* no-op */ }
+      case (some(?sti)) {
+        if (field == abi::tydesc_field_take_glue) {
+            static_glue_fn = sti.take_glue;
+        } else if (field == abi::tydesc_field_drop_glue) {
+            static_glue_fn = sti.drop_glue;
+        } else if (field == abi::tydesc_field_free_glue) {
+            static_glue_fn = sti.free_glue;
+        } else if (field == abi::tydesc_field_cmp_glue) {
+            static_glue_fn = sti.cmp_glue;
+        }
+      }
+    }
+
     auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
     auto lltydescs =
         cx.build.GEP(tydesc,
                      [C_int(0), C_int(abi::tydesc_field_first_param)]);
     lltydescs = cx.build.Load(lltydescs);
-    auto llfnptr = cx.build.GEP(tydesc, [C_int(0), C_int(field)]);
-    auto llfn = cx.build.Load(llfnptr);
+
+    auto llfn;
+    alt (static_glue_fn) {
+      case (none) {
+        auto llfnptr = cx.build.GEP(tydesc, [C_int(0), C_int(field)]);
+        llfn = cx.build.Load(llfnptr);
+      }
+      case (some(?sgf)) { llfn = sgf; }
+    }
+
     cx.build.Call(llfn,
                   [C_null(T_ptr(T_nil())), cx.fcx.lltaskptr,
                    C_null(T_ptr(T_nil())), lltydescs, llrawptr]);
