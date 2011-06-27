@@ -269,7 +269,11 @@ rust_dom::start_main_loop(int id) {
     scheduler_lock.lock();
 
     // Make sure someone is watching, to pull us out of infinite loops.
-    //rust_timer timer(this);
+    //
+    // FIXME: time-based interruption is not presently working; worked
+    // in rustboot and has been completely broken in rustc.
+    //
+    // rust_timer timer(this);
 
     DLOG(this, dom, "started domain loop %d", id);
 
@@ -332,14 +336,6 @@ rust_dom::start_main_loop(int id) {
              scheduled_task->rust_sp,
              id);
 
-        /*
-          // These invariants are no longer valid, as rust_sp is not
-          // updated.
-        I(this, scheduled_task->rust_sp >=
-          (uintptr_t) &scheduled_task->stk->data[0]);
-        I(this, scheduled_task->rust_sp < scheduled_task->stk->limit);
-        */
-        
         reap_dead_tasks();
     }
 
@@ -371,14 +367,14 @@ rust_dom::start_main_loop(int id) {
 int rust_dom::start_main_loops(int num_threads)
 {
     dom_worker *worker = NULL;
-    
+
     // -1, because this thread will also be a worker.
     for(int i = 0; i < num_threads - 1; ++i) {
         worker = new dom_worker(i + 1, this);
         worker->start();
         threads.push(worker);
     }
-    
+
     start_main_loop(0);
 
     while(threads.pop(&worker)) {

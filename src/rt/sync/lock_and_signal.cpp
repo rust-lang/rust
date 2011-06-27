@@ -11,7 +11,7 @@
 
 #if defined(__WIN32__)
 lock_and_signal::lock_and_signal() {
-    // TODO: In order to match the behavior of pthread_cond_broadcast on
+    // FIXME: In order to match the behavior of pthread_cond_broadcast on
     // Windows, we create manual reset events. This however breaks the
     // behavior of pthread_cond_signal, fixing this is quite involved:
     // refer to: http://www.cs.wustl.edu/~schmidt/win32-cv-1.html

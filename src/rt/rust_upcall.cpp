@@ -571,7 +571,7 @@ upcall_new_thread(rust_task *task, const char *name) {
     return child_task_proxy;
 }
 
-#if 0 /* TODO: this code will be re-enabled once we have multithreading. */
+#if 0 /* FIXME: this code will be re-enabled once we have multithreading. */
 
 #if defined(__WIN32__)
 static DWORD WINAPI rust_thread_start(void *ptr)

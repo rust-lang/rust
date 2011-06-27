@@ -2,7 +2,7 @@
  * The Rust runtime uses memory regions to provide a primitive level of
  * memory management and isolation between tasks, and domains.
  *
- * TODO: Implement a custom lock-free malloc / free instead of relying solely
+ * FIXME: Implement a custom lock-free malloc / free instead of relying solely
  *       on the standard malloc / free.
  */
 

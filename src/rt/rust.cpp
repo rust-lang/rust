@@ -79,7 +79,7 @@ int get_num_threads()
         if(num > 0)
             return num;
     }
-    // TODO: in this case, determine the number of CPUs present on the
+    // FIXME: in this case, determine the number of CPUs present on the
     // machine.
     return 1;
 }

@@ -1,11 +1,9 @@
 #include "rust_test_runtime.h"
 
 rust_test_runtime::rust_test_runtime() {
-    // TODO Auto-generated constructor stub
 }
 
 rust_test_runtime::~rust_test_runtime() {
-    // TODO Auto-generated destructor stub
 }
 
 #define DOMAINS 32

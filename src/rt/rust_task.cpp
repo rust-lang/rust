@@ -14,8 +14,7 @@
 
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
-//static size_t const min_stk_bytes = 0x300000;
-//static size_t const min_stk_bytes = 0x10000;
+
 static size_t const min_stk_bytes = 0x100000;
 
 // Task stack segments. Heap allocated and chained together.
@@ -120,7 +119,7 @@ struct spawn_args {
     rust_task *task;
     uintptr_t a3;
     uintptr_t a4;
-    void (*CDECL f)(int *, rust_task *, 
+    void (*CDECL f)(int *, rust_task *,
                        uintptr_t, uintptr_t);
 };
 
@@ -129,15 +128,15 @@ void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
     int rval = 42;
-    
+
     a->f(&rval, task, a->a3, a->a4);
-    
+
     LOG(task, task, "task exited with value %d", rval);
 
     {
         scoped_lock with(task->dom->scheduler_lock);
-        
-        // TODO: the old exit glue does some magical argument copying
+
+        // FIXME: the old exit glue does some magical argument copying
         // stuff. This is probably still needed.
 
         // This is duplicated from upcall_exit, which is probably dead code by
@@ -160,7 +159,7 @@ rust_task::start(uintptr_t spawnee_fn,
 
     I(dom, stk->data != NULL);
     I(dom, !dom->scheduler_lock.lock_held_by_current_thread());
-    
+
     scoped_lock with(dom->scheduler_lock);
 
     char *sp = (char *)rust_sp;
@@ -174,7 +173,7 @@ rust_task::start(uintptr_t spawnee_fn,
     a->a4 = args;
     void **f = (void **)&a->f;
     *f = (void *)spawnee_fn;
-    
+
     ctx.call((void *)task_start_wrapper, a, sp);
 
     yield_timer.reset(0);
@@ -201,7 +200,7 @@ rust_task::yield(size_t nargs, size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
 
-    // TODO: what is nargs for, and is it safe to ignore?
+    // FIXME: what is nargs for, and is it safe to ignore?
 
     yield_timer.reset(time_in_us);
 
@@ -254,9 +253,9 @@ rust_task::fail(size_t nargs) {
 void
 rust_task::gc(size_t nargs)
 {
+    // FIXME: not presently implemented; was broken by rustc.
     DLOG(dom, task,
              "task %s @0x%" PRIxPTR " garbage collecting", name, this);
-    // run_after_return(nargs, rust_gc_glue);
 }
 
 void
@@ -346,7 +345,7 @@ void *
 rust_task::malloc(size_t sz, type_desc *td)
 {
     // FIXME: GC is disabled for now.
-    // Effects, GC-memory classification are all wrong.
+    // GC-memory classification is all wrong.
     td = NULL;
 
     if (td) {
@@ -373,7 +372,7 @@ void *
 rust_task::realloc(void *data, size_t sz, bool is_gc)
 {
     // FIXME: GC is disabled for now.
-    // Effects, GC-memory classification are all wrong.
+    // Effects, GC-memory classification is all wrong.
     is_gc = false;
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
@@ -397,7 +396,7 @@ void
 rust_task::free(void *p, bool is_gc)
 {
     // FIXME: GC is disabled for now.
-    // Effects, GC-memory classification are all wrong.
+    // GC-memory classification is all wrong.
     is_gc = false;
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
