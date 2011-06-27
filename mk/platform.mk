@@ -103,9 +103,10 @@ ifdef CFG_UNIXY
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
 
-  ifdef MINGW_CROSS
+  ifdef CFG_ENABLE_MINGW_CROSS
     CFG_EXE_SUFFIX := .exe
     CFG_LIB_NAME=$(1).dll
+    CFG_DEF_SUFFIX := .def
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
     CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
@@ -116,8 +117,13 @@ ifdef CFG_UNIXY
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
-    CFG_GCCISH_CFLAGS := -march=i686
+
+    CFG_GCCISH_CFLAGS := -march=i686 -O2
+    CFG_GCCISH_PRE_LIB_FLAGS :=
+    CFG_GCCISH_POST_LIB_FLAGS :=
+    CFG_GCCISH_DEF_FLAG :=
     CFG_GCCISH_LINK_FLAGS := -shared
+
     ifeq ($(CFG_CPUTYPE), x86_64)
       CFG_GCCISH_CFLAGS += -m32
       CFG_GCCISH_LINK_FLAGS += -m32

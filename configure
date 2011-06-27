@@ -95,7 +95,7 @@ opt() {
         do
             if [ "$arg" = "--${FLAG}-${OP}" ]
             then
-                OP=$(echo $OP | tr 'a-z' 'A-Z')
+                OP=$(echo $OP | tr 'a-z-' 'A-Z_')
                 FLAG=$(echo $FLAG | tr 'a-z' 'A-Z')
                 local V="CFG_${FLAG}_${OP}"
                 eval $V=1
@@ -165,6 +165,7 @@ fi
 opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
+opt mingw-cross 0 "cross-compile for win32 using mingw"
 
 
 if [ $HELP -eq 1 ]
@@ -181,7 +182,7 @@ for i in \
     dl stage0 stage1 stage2 stage3 \
     stage0/lib stage1/lib stage2/lib stage3/lib \
     test/run-pass test/run-fail test/compile-fail \
-    test/bench/99-bottles test/bench/shootout     
+    test/bench/99-bottles test/bench/shootout
 do
     make_dir $i
 done

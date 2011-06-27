@@ -171,9 +171,9 @@ export CFG_LLVM_ROOT
 # Subprograms
 ######################################################################
 
-LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as
+LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as$(X)
 
-LLC := $(CFG_LLVM_BINDIR)/llc
+LLC := $(CFG_LLVM_BINDIR)/llc$(X)
 
 ######################################################################
 # Single-target rules
