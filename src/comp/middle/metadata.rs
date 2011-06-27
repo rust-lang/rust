@@ -20,6 +20,32 @@ import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
 import lib::llvm::False;
 
+export ac_no_abbrevs;
+export def_to_str;
+export encode;
+export hash_def_id;
+export hash_path;
+export tag_def_id;
+export tag_index;
+export tag_index_table;
+export tag_index_buckets;
+export tag_index_buckets_bucket;
+export tag_index_buckets_bucket_elt;
+export tag_items;
+export tag_items_data_item_kind;
+export tag_items_data_item_symbol;
+export tag_items_data_item_tag_id;
+export tag_items_data_item_type;
+export tag_items_data_item_ty_param_count;
+export tag_items_data_item_variant;
+export tag_meta_export;
+export tag_meta_item;
+export tag_meta_item_key;
+export tag_meta_item_value;
+export tag_paths;
+export ty_abbrev;
+export write_metadata;
+
 const uint tag_paths = 0x01u;
 
 const uint tag_items = 0x02u;
