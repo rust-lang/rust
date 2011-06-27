@@ -8,7 +8,7 @@ Adam Bozanich <adam.boz@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Benjamin Jackman <ben@jackman.biz>
 Brendan Eich <brendan@mozilla.org>
-Brian Anderson <andersrb@gmail.com>
+Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
 Dave Herman <dherman@mozilla.com>
 Eric Holk <eholk@mozilla.com>
