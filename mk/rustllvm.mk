@@ -3,7 +3,7 @@
 ######################################################################
 
 RUSTLLVM_LIB_CS := $(addprefix rustllvm/, \
-                     MachOObjectFile.cpp Passes.cpp Passes2.cpp)
+                     Passes.cpp Passes2.cpp)
 
 RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustWrapper.cpp)
 
