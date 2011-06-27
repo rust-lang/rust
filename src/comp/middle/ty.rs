@@ -2702,8 +2702,13 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     if (cx.sess.get_targ_crate_num() != id._0) {
         ret creader::get_tag_variants(cx, id);
     }
-    assert (cx.items.contains_key(id._1));
-    alt (cx.items.get(id._1)) {
+    auto item = alt (cx.items.find(id._1)) {
+        case (some(?i)) { i }
+        case (none) {
+            cx.sess.bug("expected to find cached node_item")
+        }
+    };
+    alt (item) {
         case (ast_map::node_item(?item)) {
             alt (item.node) {
                 case (ast::item_tag(?variants, _)) {
