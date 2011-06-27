@@ -132,8 +132,7 @@ ifdef CFG_UNIXY
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --leak-check=full \
                     --error-exitcode=1 \
-                    --quiet --vex-iropt-level=0 \
-                    --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
+                    --quiet --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
   endif
 endif
 
