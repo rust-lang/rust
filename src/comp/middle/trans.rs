@@ -5799,7 +5799,6 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto move_res =
                 move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val,
                          rhs_res.res.val, t);
-            log_err "returning move_res";
             ret rslt(move_res.bcx, C_nil());
         }
         case (ast::expr_assign(?dst, ?src)) {
