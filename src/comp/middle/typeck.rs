@@ -1163,7 +1163,7 @@ type gather_result =
         hashmap[ast::node_id, ast::ident] local_names,
         int next_var_id);
 
-fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
+fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
                  &ast::node_id id) -> gather_result {
     fn next_var_id(@mutable int nvi) -> int {
         auto rv = *nvi;
@@ -1207,8 +1207,8 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
     auto args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     auto i = 0u;
     for (ty::arg arg in args) {
-        assign(ccx.tcx, vb, locals, local_names, nvi, decl.inputs.(i).id,
-               decl.inputs.(i).ident, some[ty::t](arg.ty));
+        assign(ccx.tcx, vb, locals, local_names, nvi, f.decl.inputs.(i).id,
+               f.decl.inputs.(i).ident, some[ty::t](arg.ty));
         i += 1u;
     }
     // Add explicitly-declared locals.
@@ -1253,7 +1253,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
             visit_pat_pre=bind visit_pat_pre(ccx, vb, locals, local_names,
                                              nvi, _)
             with walk::default_visitor());
-    walk::walk_block(visit, body);
+    walk::walk_block(visit, f.body);
     ret rec(var_bindings=vb,
             locals=locals,
             local_names=local_names,
@@ -1999,7 +1999,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl,
                                        f.proto, ~[], none)._1;
             write::ty_only_fixup(fcx, id, fty);
-            check_fn(fcx.ccx, f.decl, f.proto, f.body, id);
+            check_fn(fcx.ccx, f, id);
         }
         case (ast::expr_block(?b)) {
             check_block(fcx, b);
@@ -2577,9 +2577,10 @@ fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::node_id id) {
     check_expr(fcx, e);
 }
 
-fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
-            &ast::block body, &ast::node_id id) {
-    auto gather_result = gather_locals(ccx, decl, body, id);
+fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id) {
+    auto decl = f.decl;
+    auto body = f.body;
+    auto gather_result = gather_locals(ccx, f, id);
     let ast::node_id[] fixups = ~[];
     let @fn_ctxt fcx =
         @rec(ret_ty=ast_ty_to_ty_crate(ccx, decl.output),
@@ -2621,8 +2622,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
 }
 
 fn check_method(&@crate_ctxt ccx, &@ast::method method) {
-    auto m = method.node.meth;
-    check_fn(ccx, m.decl, m.proto, m.body, method.node.id);
+    check_fn(ccx, method.node.meth, method.node.id);
 }
 
 fn check_item(@crate_ctxt ccx, &@ast::item it) {
@@ -2631,10 +2631,10 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
             check_const(ccx, it.span, e, it.id);
         }
         case (ast::item_fn(?f, _)) {
-            check_fn(ccx, f.decl, f.proto, f.body, it.id);
+            check_fn(ccx, f, it.id);
         }
         case (ast::item_res(?f, ?dtor_id, _, _)) {
-            check_fn(ccx, f.decl, f.proto, f.body, dtor_id);
+            check_fn(ccx, f, dtor_id);
         }
         case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.
