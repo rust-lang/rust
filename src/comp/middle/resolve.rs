@@ -6,7 +6,7 @@ import front::ast::def_id;
 import front::ast::node_id;
 import front::ast::local_def;
 
-import front::creader;
+import metadata::creader;
 import driver::session::session;
 import util::common::new_def_hash;
 import util::common::new_int_hash;

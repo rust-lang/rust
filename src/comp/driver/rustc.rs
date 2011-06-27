@@ -1,7 +1,7 @@
 
 
 // -*- rust -*-
-import front::creader;
+import metadata::creader;
 import front::parser;
 import front::token;
 import front::eval;
@@ -349,7 +349,7 @@ fn main(vec[str] args) {
         case (none[pp_mode]) {/* continue */ }
     }
     if (ls) {
-        front::creader::list_file_metadata(ifile, std::io::stdout());
+        metadata::creader::list_file_metadata(ifile, std::io::stdout());
         ret;
     }
     alt (output_file) {

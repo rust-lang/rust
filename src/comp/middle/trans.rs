@@ -25,7 +25,8 @@ import std::option::some;
 import std::option::none;
 import std::fs;
 import front::ast;
-import front::creader;
+import metadata::creader;
+import metadata::cwriter;
 import driver::session;
 import middle::ty;
 import back::link;
@@ -148,7 +149,7 @@ type crate_ctxt =
         namegen names,
         std::sha1::sha1 sha,
         hashmap[ty::t, str] type_sha1s,
-        hashmap[ty::t, metadata::ty_abbrev] type_abbrevs,
+        hashmap[ty::t, cwriter::ty_abbrev] type_abbrevs,
         hashmap[ty::t, str] type_short_names,
         ty::ctxt tcx,
         stats stats,
@@ -8400,7 +8401,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto tydescs = map::mk_hashmap[ty::t, @tydesc_info](hasher, eqer);
     auto lltypes = map::mk_hashmap[ty::t, TypeRef](hasher, eqer);
     auto sha1s = map::mk_hashmap[ty::t, str](hasher, eqer);
-    auto abbrevs = map::mk_hashmap[ty::t, metadata::ty_abbrev](hasher, eqer);
+    auto abbrevs = map::mk_hashmap[ty::t, cwriter::ty_abbrev](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto sha = std::sha1::mk_sha1();
     auto ccx =
@@ -8449,7 +8450,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     emit_tydescs(ccx);
     // Translate the metadata:
 
-    middle::metadata::write_metadata(cx.ccx, crate);
+    cwriter::write_metadata(cx.ccx, crate);
     if (ccx.sess.get_opts().stats) {
         log_err "--- trans stats ---";
         log_err #fmt("n_static_tydescs: %u", ccx.stats.n_static_tydescs);

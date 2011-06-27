@@ -150,8 +150,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
 
 fn ty_to_short_str(&ctxt cx, t typ) -> str {
     auto f = def_to_str;
-    auto ecx = @rec(ds=f, tcx=cx, abbrevs=middle::metadata::ac_no_abbrevs);
-    auto s = middle::metadata::encode::ty_str(ecx, typ);
+    auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata::cwriter::ac_no_abbrevs);
+    auto s = metadata::cwriter::encode::ty_str(ecx, typ);
     if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
     ret s;
 }

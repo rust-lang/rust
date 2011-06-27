@@ -18,7 +18,6 @@ mod middle {
     mod ty;
     mod walk;
     mod visit;
-    mod metadata;
     mod ast_map;
     mod resolve;
     mod typeck;
@@ -46,7 +45,6 @@ mod pretty {
 
 mod front {
     mod ast;
-    mod creader;
     mod ext;
     mod extfmt;
     mod extenv;
@@ -62,6 +60,11 @@ mod back {
     mod abi;
     mod upcall;
     mod x86;
+}
+
+mod metadata {
+    mod creader;
+    mod cwriter;
 }
 
 mod driver {

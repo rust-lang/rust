@@ -662,13 +662,13 @@ fn encode_info_for_items(&@trans::crate_ctxt cx, &ebml::writer ebml_w) ->
    vec[tup(int, uint)] {
     let vec[tup(int, uint)] index = [];
     ebml::start_tag(ebml_w, tag_items_data);
-    for each (@tup(node_id, ast_map::ast_node) kvp in cx.ast_map.items()) {
+    for each (@tup(node_id, middle::ast_map::ast_node) kvp in cx.ast_map.items()) {
         alt (kvp._1) {
-            case (ast_map::node_item(?i)) {
+            case (middle::ast_map::node_item(?i)) {
                 index += [tup(kvp._0, ebml_w.writer.tell())];
                 encode_info_for_item(cx, ebml_w, i, index);
             }
-            case (ast_map::node_native_item(?i)) {
+            case (middle::ast_map::node_native_item(?i)) {
                 index += [tup(kvp._0, ebml_w.writer.tell())];
                 encode_info_for_native_item(cx, ebml_w, i);
             }

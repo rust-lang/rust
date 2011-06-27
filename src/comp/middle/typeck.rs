@@ -2,7 +2,7 @@
 import front::ast;
 import front::ast::mutability;
 import front::ast::local_def;
-import front::creader;
+import metadata::creader;
 import driver::session;
 import util::common;
 import util::common::span;
