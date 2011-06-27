@@ -22,7 +22,7 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
     auto syntax_expanders = new_str_hash[syntax_extension]();
     syntax_expanders.insert("fmt", normal(extfmt::expand_syntax_ext));
     syntax_expanders.insert("env", normal(extenv::expand_syntax_ext));
-    syntax_expanders.insert("simplext",    
+    syntax_expanders.insert("macro",    
                             macro_defining(extsimplext::add_new_extension));
     ret syntax_expanders;
 }
