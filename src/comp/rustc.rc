@@ -63,6 +63,11 @@ mod back {
 }
 
 mod metadata {
+    export tyencode;
+    export encoder;
+    export decoder;
+    export creader;
+
     mod defs;
     mod tyencode;
     mod tydecode;
