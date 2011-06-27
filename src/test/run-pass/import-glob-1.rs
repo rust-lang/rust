@@ -12,7 +12,7 @@ mod a1 {                    //
 }                           //   |   |   |
                             //   |   |   |
 mod a2 {                    //   |   |   |
-  native mod b1 {           //   |   |   |
+  native mod b1 = "c" {     //   |   |   |
     import a1::b2::*;       //   | <-/  -/
     export word_traveler;   //   |
   }                         //   |

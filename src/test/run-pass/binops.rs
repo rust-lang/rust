@@ -112,7 +112,7 @@ fn test_fn() {
   assert (h1 >= h2);
 }
 
-native "rust" mod native_mod {
+native "rust" mod native_mod = "c" {
   fn str_byte_len(str s) -> vec[u8];
   fn str_alloc(uint n_bytes) -> str;
 }

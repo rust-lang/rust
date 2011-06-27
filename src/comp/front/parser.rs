@@ -1899,20 +1899,6 @@ fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi) ->
             items=items);
 }
 
-fn default_native_lib_naming(session::session sess) ->
-   rec(str prefix, str suffix) {
-    alt (sess.get_targ_cfg().os) {
-        case (session::os_win32) { ret rec(prefix="", suffix=".dll"); }
-        case (session::os_macos) { ret rec(prefix="lib", suffix=".dylib"); }
-        case (session::os_linux) { ret rec(prefix="lib", suffix=".so"); }
-    }
-}
-
-fn default_native_name(session::session sess, str id) -> str {
-    auto n = default_native_lib_naming(sess);
-    ret n.prefix + id + n.suffix;
-}
-
 fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto abi = ast::native_abi_cdecl;
@@ -1933,7 +1919,9 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     if (p.peek() == token::EQ) {
         expect(p, token::EQ);
         native_name = parse_str(p);
-    } else { native_name = default_native_name(p.get_session(), id); }
+    } else {
+        native_name = "";
+    }
     expect(p, token::LBRACE);
     auto m = parse_native_mod_items(p, native_name, abi);
     auto hi = p.get_hi_pos();

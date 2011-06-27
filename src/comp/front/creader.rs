@@ -590,6 +590,15 @@ fn metadata_matches(hashmap[str, str] mm, &vec[@ast::meta_item] metas) ->
     ret true;
 }
 
+fn default_native_lib_naming(session::session sess) ->
+   rec(str prefix, str suffix) {
+    alt (sess.get_targ_cfg().os) {
+        case (session::os_win32) { ret rec(prefix="", suffix=".dll"); }
+        case (session::os_macos) { ret rec(prefix="lib", suffix=".dylib"); }
+        case (session::os_linux) { ret rec(prefix="lib", suffix=".so"); }
+    }
+}
+
 fn find_library_crate(&session::session sess, &ast::ident ident,
                       &vec[@ast::meta_item] metas,
                       &vec[str] library_search_paths) ->
@@ -609,7 +618,7 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
             }
         }
     }
-    auto nn = parser::default_native_lib_naming(sess);
+    auto nn = default_native_lib_naming(sess);
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
@@ -649,7 +658,7 @@ fn load_library_crate(&session::session sess, int cnum, &ast::ident ident,
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
             sess.set_external_crate(cnum, rec(name=ident, data=t._1));
-            sess.add_used_library(t._0);
+            sess.add_used_crate_file(t._0);
             ret;
         }
         case (_) { }
@@ -682,6 +691,32 @@ fn visit_view_item(env e, &@ast::view_item i) {
     }
 }
 
+fn visit_item(env e, &@ast::item i) {
+    alt (i.node) {
+        case (ast::item_native_mod(?m)) {
+            auto name;
+            if (m.native_name == "" ) {
+                name = i.ident;
+            } else {
+                name = m.native_name;
+            }
+            alt (m.abi) {
+                case (ast::native_abi_rust) {
+                    e.sess.add_used_library(name);
+                }
+                case (ast::native_abi_cdecl) {
+                    e.sess.add_used_library(name);
+                }
+                case (ast::native_abi_llvm) {
+                }
+                case (ast::native_abi_rust_intrinsic) {
+                }
+            }
+        }
+        case (_) {
+        }
+    }
+}
 
 // Reads external crates referenced by "use" directives.
 fn read_crates(session::session sess, resolve::crate_map crate_map,
@@ -693,7 +728,8 @@ fn read_crates(session::session sess, resolve::crate_map crate_map,
              library_search_paths=sess.get_opts().library_search_paths,
              mutable next_crate_num=1);
     auto v =
-        rec(visit_view_item_pre=bind visit_view_item(e, _)
+        rec(visit_view_item_pre=bind visit_view_item(e, _),
+            visit_item_pre=bind visit_item(e, _)
             with walk::default_visitor());
     walk::walk_crate(v, crate);
 }
