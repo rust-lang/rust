@@ -10,7 +10,7 @@ doc/version.texi: $(MKFILES) rust.texi
 
 doc/%.pdf: %.texi doc/version.texi
 	@$(call E, texi2pdf: $@)
-	$(Q)texi2pdf --batch -I doc -o $@ --clean $<
+	$(Q)texi2pdf --silent --batch -I doc -o $@ --clean $<
 
 doc/%.html: %.texi doc/version.texi
 	@$(call E, makeinfo: $@)
