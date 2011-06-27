@@ -25,8 +25,6 @@ import std::option::some;
 import std::option::none;
 import std::fs;
 import front::ast;
-import metadata::creader;
-import metadata::cwriter;
 import driver::session;
 import middle::ty;
 import back::link;
@@ -67,6 +65,9 @@ import link::mangle_exported_name;
 import link::crate_meta_name;
 import link::crate_meta_vers;
 import link::crate_meta_extras_hash;
+import metadata::tyencode;
+import metadata::creader;
+import metadata::cwriter;
 import pretty::ppaux::ty_to_str;
 import pretty::ppaux::ty_to_short_str;
 import pretty::pprust::expr_to_str;
@@ -149,7 +150,7 @@ type crate_ctxt =
         namegen names,
         std::sha1::sha1 sha,
         hashmap[ty::t, str] type_sha1s,
-        hashmap[ty::t, cwriter::ty_abbrev] type_abbrevs,
+        hashmap[ty::t, tyencode::ty_abbrev] type_abbrevs,
         hashmap[ty::t, str] type_short_names,
         ty::ctxt tcx,
         stats stats,
@@ -8401,7 +8402,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto tydescs = map::mk_hashmap[ty::t, @tydesc_info](hasher, eqer);
     auto lltypes = map::mk_hashmap[ty::t, TypeRef](hasher, eqer);
     auto sha1s = map::mk_hashmap[ty::t, str](hasher, eqer);
-    auto abbrevs = map::mk_hashmap[ty::t, cwriter::ty_abbrev](hasher, eqer);
+    auto abbrevs = map::mk_hashmap[ty::t, tyencode::ty_abbrev](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto sha = std::sha1::mk_sha1();
     auto ccx =

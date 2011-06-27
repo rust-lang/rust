@@ -63,6 +63,7 @@ mod back {
 }
 
 mod metadata {
+    mod tyencode;
     mod creader;
     mod cwriter;
 }

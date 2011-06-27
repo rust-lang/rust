@@ -400,13 +400,13 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, str crate_meta_name,
     auto cx =
         @rec(ds=metadata::cwriter::def_to_str,
              tcx=tcx,
-             abbrevs=metadata::cwriter::ac_no_abbrevs);
+             abbrevs=metadata::tyencode::ac_no_abbrevs);
     sha.reset();
     sha.input_str(crate_meta_name);
     sha.input_str("-");
     sha.input_str(crate_meta_name);
     sha.input_str("-");
-    sha.input_str(metadata::cwriter::encode::ty_str(cx, t));
+    sha.input_str(metadata::tyencode::ty_str(cx, t));
     auto hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
@@ -453,7 +453,6 @@ fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
 fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) ->
    str {
     auto f = metadata::cwriter::def_to_str;
-    auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata::cwriter::ac_no_abbrevs);
     auto s = pretty::ppaux::ty_to_short_str(ccx.tcx, t);
     auto hash = get_symbol_hash(ccx, t);
     ret mangle([name, s, hash]);
