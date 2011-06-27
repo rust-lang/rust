@@ -3107,7 +3107,8 @@ fn move_val(@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
             &ty::t t) -> result {
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
-        ret rslt(cx, cx.build.Store(src, dst));
+        auto r = rslt(cx, cx.build.Store(cx.build.Load(src), dst));
+        ret zero_alloca(r.bcx, src, t);
     } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
                    ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
         ret rslt(cx, C_nil());
@@ -5798,6 +5799,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto move_res =
                 move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val,
                          rhs_res.res.val, t);
+            log_err "returning move_res";
             ret rslt(move_res.bcx, C_nil());
         }
         case (ast::expr_assign(?dst, ?src)) {
