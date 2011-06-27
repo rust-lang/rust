@@ -436,8 +436,8 @@ fn set_postcond_false(&crate_ctxt ccx, node_id id) {
 }
 
 fn pure_exp(&crate_ctxt ccx, node_id id, &prestate p) -> bool {
-    ret extend_prestate_ann(ccx, id, p) |
-        extend_poststate_ann(ccx, id, p);
+    ret set_prestate_ann(ccx, id, p) |
+        set_poststate_ann(ccx, id, p);
 }
 
 fn num_constraints(fn_info m) -> uint { ret m.num_constraints; }
