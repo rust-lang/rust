@@ -3137,7 +3137,7 @@ fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
     // FIXME this is just a clunky stopgap. we should do proper checking in an
     // earlier pass.
     if (!ty::type_is_copyable(ccx.tcx, t)) {
-        ccx.sess.span_err(cx.sp, "Copying a non-copyable type.");
+        ccx.sess.span_fatal(cx.sp, "Copying a non-copyable type.");
     }
 
     if (ty::type_is_scalar(ccx.tcx, t) ||
