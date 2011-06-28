@@ -212,7 +212,7 @@ struct type_desc {
     const type_desc **first_param;
     size_t size;
     size_t align;
-    glue_fn *take_glue;
+    glue_fn *copy_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *sever_glue;    // For GC.

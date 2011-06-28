@@ -52,7 +52,7 @@ const int tydesc_field_size = 1;
 
 const int tydesc_field_align = 2;
 
-const int tydesc_field_take_glue = 3;
+const int tydesc_field_copy_glue = 3;
 
 const int tydesc_field_drop_glue = 4;
 
