@@ -13,8 +13,6 @@ import tags::*;
 import middle::trans::crate_ctxt;
 import middle::trans::node_id_type;
 import middle::ty;
-import back::link::crate_export_metas;
-import back::link::crate_local_metas;
 
 export def_to_str;
 export hash_path;
@@ -459,16 +457,20 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
     ebml::end_tag(ebml_w);
 }
 
+// FIXME (#487): Transitional
 fn encode_meta_items(&ebml::writer ebml_w, &crate crate) {
+    auto name = middle::attr::find_attrs_by_name(crate.node.attrs,
+                                                 "name");
+    auto value = middle::attr::find_attrs_by_name(crate.node.attrs,
+                                                 "value");
+    auto name_and_val = middle::attr::attr_metas(name + value);
+
     ebml::start_tag(ebml_w, tag_meta_export);
-    for each (@meta_item mi in crate_export_metas(crate)) {
+    for (@meta_item mi in name_and_val) {
         encode_meta_item(ebml_w, *mi);
     }
     ebml::end_tag(ebml_w);
     ebml::start_tag(ebml_w, tag_meta_local);
-    for each (@meta_item mi in crate_local_metas(crate)) {
-        encode_meta_item(ebml_w, *mi);
-    }
     ebml::end_tag(ebml_w);
 }
 

@@ -6,6 +6,7 @@ import lib::llvm::False;
 import lib::llvm::llvm;
 import lib::llvm::mk_object_file;
 import lib::llvm::mk_section_iter;
+import middle::attr;
 import middle::resolve;
 import middle::walk;
 import back::x86;
@@ -19,42 +20,24 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::map::hashmap;
+import pretty::pprust;
 import tags::*;
 
 export read_crates;
 export list_file_metadata;
 
-fn metadata_matches(hashmap[str, str] mm, &vec[@ast::meta_item] metas) ->
-   bool {
-    log #fmt("matching %u metadata requirements against %u metadata items",
-             vec::len(metas), mm.size());
-    for (@ast::meta_item mi in metas) {
-        alt (mi.node) {
-            case (ast::meta_name_value(?name, ?value)) {
-                alt (mm.find(name)) {
-                    case (some(?v)) {
-                        if (v == value) {
-                            log #fmt("matched '%s': '%s'", name,
-                                     value);
-                        } else {
-                            log #fmt("missing '%s': '%s' (got '%s')",
-                                     name,
-                                     value, v);
-                            ret false;
-                        }
-                    }
-                    case (none) {
-                        log #fmt("missing '%s': '%s'",
-                                 name, value);
-                        ret false;
-                    }
-                }
-            }
-            case (_) {
-                // FIXME (#487): Support all forms of meta_item
-                log_err "unimplemented meta_item variant in metadata_matches";
-                ret false;
-            }
+fn metadata_matches(&vec[u8] crate_data,
+                    &vec[@ast::meta_item] metas) -> bool {
+    auto attrs = decoder::get_crate_attributes(crate_data);
+    auto linkage_metas = attr::find_linkage_metas(attrs);
+
+    log #fmt("matching %u metadata requirements against %u items",
+             vec::len(metas), vec::len(linkage_metas));
+
+    for (@ast::meta_item needed in metas) {
+        if (!attr::contains(linkage_metas, needed)) {
+            log #fmt("missing %s", pprust::meta_item_to_str(*needed));
+            ret false;
         }
     }
     ret true;
@@ -106,9 +89,7 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
             }
             alt (get_metadata_section(path)) {
                 case (option::some(?cvec)) {
-                    auto mm = decoder::get_exported_metadata(sess,
-                                                             path, cvec);
-                    if (!metadata_matches(mm, metas)) {
+                    if (!metadata_matches(cvec, metas)) {
                         log #fmt("skipping %s, metadata doesn't match", path);
                         cont;
                     }

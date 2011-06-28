@@ -1,6 +1,7 @@
 
 import driver::session;
 import lib::llvm::llvm;
+import middle::attr;
 import middle::trans;
 import middle::ty;
 import std::str;
@@ -274,57 +275,38 @@ mod write {
  *    system linkers understand.
  *
  */
-iter crate_export_metas(&ast::crate c) -> @ast::meta_item {
-    // FIXME: Need to identify exported attributes as described above,
-    // reevaluate how the above strategy fits in with attributes
-    for (ast::attribute attr in c.node.attrs) {
-        put @attr.node.value;
-    }
-}
+type link_metas = rec(option::t[str] name,
+                      option::t[str] vers,
+                      vec[@ast::meta_item] cmh_items);
 
-iter crate_local_metas(&ast::crate c) -> @ast::meta_item {
-    // FIXME: As above
-}
-
-fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
-                         str default, bool warn_default) -> str {
-    let vec[@ast::meta_item] v = [];
-    for each (@ast::meta_item mi in crate_export_metas(c)) {
-        // FIXME (#487): Support all variants of meta_item
-        alt (mi.node) {
-            case (ast::meta_name_value(?name, ?value)) {
-                if (name == k) { v += [mi]; }
+fn crate_link_metas(&ast::crate c) -> link_metas {
+    let option::t[str] name = none;
+    let option::t[str] vers = none;
+    let vec[@ast::meta_item] cmh_items = [];
+    for (@ast::meta_item meta in
+             attr::find_linkage_metas(c.node.attrs)) {
+        alt (meta.node) {
+            case (ast::meta_name_value("name", ?v)) {
+                // FIXME: Should probably warn about duplicate name items
+                name = some(v);
             }
-            case (_) {}
-        }
-    }
-    alt (vec::len(v)) {
-        case (0u) {
-            if (warn_default) {
-                sess.warn(#fmt("missing meta '%s', using '%s' as default", k,
-                               default));
+            case (ast::meta_name_value("value", ?v)) {
+                // FIXME: Should probably warn about duplicate value items
+                vers = some(v);
             }
-            ret default;
-        }
-        case (1u) {
-            alt (v.(0).node) {
-                case (ast::meta_name_value(_, ?value)) {
-                    ret value;
-                }
-                case (_) {
-                    ret default;
-                }
+            case (_) {
+                cmh_items += [meta];
             }
         }
-        case (_) {
-            sess.span_fatal(v.(1).span, #fmt("duplicate meta '%s'", k));
-        }
     }
+    ret rec(name = name,
+            vers = vers,
+            cmh_items = cmh_items);
 }
-
 
 // This calculates CMH as defined above
 fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
+    // FIXME (#487) Move this sorting stuff into middle::attr
     fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
         fn key(&@ast::meta_item m) -> ast::ident {
             alt (m.node) {
@@ -342,18 +324,10 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
         ret key(ma) <= key(mb);
     }
     fn len_and_str(&str s) -> str { ret #fmt("%u_%s", str::byte_len(s), s); }
+
     let vec[mutable @ast::meta_item] v = [mutable ];
-    for each (@ast::meta_item mi in crate_export_metas(crate)) {
-        alt (mi.node) {
-            case (ast::meta_name_value(?name, _)) {
-                if (name != "name" && name != "vers") {
-                    v += [mutable mi];
-                }
-            }
-            case (_) {
-                v += [mutable mi];
-            }
-        }
+    for (@ast::meta_item mi in crate_link_metas(crate).cmh_items) {
+        v += [mutable mi];
     }
     sort::quick_sort(lteq, v);
     sha.reset();
@@ -367,24 +341,32 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
             case (ast::meta_word(?name)) {
                 sha.input_str(len_and_str(name));
             }
-            case (_) {}
+            case (ast::meta_list(_, _)) {
+                fail "unimplemented meta_item variant";
+            }
         }
     }
     ret truncated_sha1_result(sha);
 }
 
-fn crate_meta_name(&session::session sess, &ast::crate crate, &str output) ->
-   str {
-    auto os = str::split(fs::basename(output), '.' as u8);
-    assert (vec::len(os) >= 2u);
-    vec::pop(os);
-    ret get_crate_meta_export(sess, crate, "name", str::connect(os, "."),
-                              sess.get_opts().shared);
+fn crate_meta_name(&session::session sess, &ast::crate crate,
+                   &str output) -> str {
+    ret alt (crate_link_metas(crate).name) {
+        case (some(?v)) { v }
+        case (none) {
+            auto os = str::split(fs::basename(output), '.' as u8);
+            assert (vec::len(os) >= 2u);
+            vec::pop(os);
+            str::connect(os, ".")
+        }
+    };
 }
 
 fn crate_meta_vers(&session::session sess, &ast::crate crate) -> str {
-    ret get_crate_meta_export(sess, crate, "vers", "0.0",
-                              sess.get_opts().shared);
+    ret alt (crate_link_metas(crate).vers) {
+        case (some(?v)) { v }
+        case (none) { "0.0" }
+    };
 }
 
 fn truncated_sha1_result(sha1 sha) -> str {

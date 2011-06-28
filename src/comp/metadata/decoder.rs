@@ -20,6 +20,7 @@ export get_tag_variants;
 export get_type;
 export lookup_defs;
 export get_type;
+export get_crate_attributes;
 export list_crate_metadata;
 export get_exported_metadata;
 
@@ -294,7 +295,6 @@ fn get_attributes(&ebml::doc md) -> vec[ast::attribute] {
                 auto meta_items = get_meta_items(attr_doc);
                 // Currently it's only possible to have a single meta item on
                 // an attribute
-                log_err vec::len(meta_items);
                 assert (vec::len(meta_items) == 1u);
                 auto meta_item = meta_items.(0);
                 attrs += [rec(node=rec(style=ast::attr_outer,
@@ -316,7 +316,7 @@ fn list_meta_items(&ebml::doc meta_items, io::writer out) {
 fn list_crate_attributes(&ebml::doc md, io::writer out) {
     out.write_str("=Crate=");
 
-    // FIXME: This is transitional until attributes are snapshotted
+    // FIXME (#487): This is transitional until attributes are snapshotted
     out.write_str("old-style:\n");
     auto meta_items = ebml::get_doc(md, tag_meta_export);
     list_meta_items(meta_items, out);
@@ -357,25 +357,6 @@ fn list_crate_metadata(vec[u8] bytes, io::writer out) {
     auto md = ebml::new_doc(bytes);
     list_crate_attributes(md, out);
     list_crate_items(bytes, md, out);
-}
-
-fn get_exported_metadata(&session::session sess, &str path, &vec[u8] data) ->
-   hashmap[str, str] {
-    auto meta_items =
-        ebml::get_doc(ebml::new_doc(data), tag_meta_export);
-    auto mm = common::new_str_hash[str]();
-    for each (ebml::doc m in
-             ebml::tagged_docs(meta_items, tag_meta_item_name_value)) {
-        auto nd = ebml::get_doc(m, tag_meta_item_name);
-        auto vd = ebml::get_doc(m, tag_meta_item_value);
-        auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
-        auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
-        log #fmt("metadata in %s: %s = %s", path, n, v);
-        if (!mm.insert(n, v)) {
-            sess.warn(#fmt("Duplicate metadata item in %s: %s", path, n));
-        }
-    }
-    ret mm;
 }
 
 // Local Variables:

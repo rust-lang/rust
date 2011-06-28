@@ -2,8 +2,10 @@ import std::vec;
 import std::option;
 import front::ast;
 
-export get_linkage_metas;
+export attr_metas;
+export find_linkage_metas;
 export find_attrs_by_name;
+export contains;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
@@ -60,6 +62,42 @@ fn get_meta_item_name(&@ast::meta_item meta) -> ast::ident {
         case (ast::meta_name_value(?n, _)) { n }
         case (ast::meta_list(?n, _)) { n }
     }
+}
+
+fn attr_meta(&ast::attribute attr) -> @ast::meta_item { @attr.node.value }
+
+fn attr_metas(&vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
+    ret vec::map(attr_meta, attrs);
+}
+
+fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
+    ret alt (a.node) {
+        case (ast::meta_word(?na)) {
+            alt (b.node) {
+                case(ast::meta_word(?nb)) { na == nb }
+                case(_) { false }
+            }
+        }
+        case (ast::meta_name_value(?na, ?va)) {
+            alt (b.node) {
+                case (ast::meta_name_value(?nb, ?vb)) { na == nb && va == vb }
+                case (_) { false }
+            }
+        }
+        case (ast::meta_list(?na, ?la)) {
+            // FIXME (#487): This involves probably sorting the list by name
+            fail "unimplemented meta_item variant"
+        }
+    }
+}
+
+fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
+    for (@ast::meta_item item in haystack) {
+        if (eq(item, needle)) {
+            ret true;
+        }
+    }
+    ret false;
 }
 
 //
