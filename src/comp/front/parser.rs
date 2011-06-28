@@ -2142,7 +2142,7 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
                     p.bump();
                     auto value = p.get_str(s);
                     auto hi = p.get_hi_pos();
-                    ret @spanned(lo, hi, ast::meta_key_value(ident, value));
+                    ret @spanned(lo, hi, ast::meta_name_value(ident, value));
                 }
                 case (_) {
                     p.fatal("Metadata items must be string literals");

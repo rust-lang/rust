@@ -104,8 +104,8 @@ fn fold_meta_item_(&@meta_item mi, ast_fold fld) -> @meta_item {
                      auto fold_meta_item = bind fold_meta_item_(_,fld);
                      meta_list(id, map(fold_meta_item, mis))
                  }
-                 case (meta_key_value(?id,?s)) {
-                     meta_key_value(fld.fold_ident(id),s)
+                 case (meta_name_value(?id,?s)) {
+                     meta_name_value(fld.fold_ident(id),s)
                  }
              },
              span=mi.span);

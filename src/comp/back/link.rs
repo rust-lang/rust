@@ -292,12 +292,10 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
     for each (@ast::meta_item mi in crate_export_metas(c)) {
         // FIXME (#487): Support all variants of meta_item
         alt (mi.node) {
-            case (ast::meta_key_value(?key, ?value)) {
-                if (key == k) { v += [mi]; }
+            case (ast::meta_name_value(?name, ?value)) {
+                if (name == k) { v += [mi]; }
             }
-            case (_) {
-                sess.unimpl("meta_item variant");
-            }
+            case (_) {}
         }
     }
     alt (vec::len(v)) {
@@ -310,11 +308,11 @@ fn get_crate_meta_export(&session::session sess, &ast::crate c, str k,
         }
         case (1u) {
             alt (v.(0).node) {
-                case (ast::meta_key_value(_, ?value)) {
+                case (ast::meta_name_value(_, ?value)) {
                     ret value;
                 }
                 case (_) {
-                    sess.unimpl("meta_item variant");
+                    ret default;
                 }
             }
         }
@@ -333,8 +331,11 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
                 case (ast::meta_word(?name)) {
                     name
                 }
-                case (ast::meta_key_value(?key, _)) {
-                    key
+                case (ast::meta_name_value(?name, _)) {
+                    name
+                }
+                case (ast::meta_list(?name, _)) {
+                    name
                 }
             }
         }
@@ -344,8 +345,8 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     let vec[mutable @ast::meta_item] v = [mutable ];
     for each (@ast::meta_item mi in crate_export_metas(crate)) {
         alt (mi.node) {
-            case (ast::meta_key_value(?key, _)) {
-                if (key != "name" && key != "vers") {
+            case (ast::meta_name_value(?name, _)) {
+                if (name != "name" && name != "vers") {
                     v += [mutable mi];
                 }
             }
@@ -359,13 +360,14 @@ fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
     for (@ast::meta_item m_ in v) {
         auto m = m_;
         alt (m.node) {
-            case (ast::meta_key_value(?key, ?value)) {
+            case (ast::meta_name_value(?key, ?value)) {
                 sha.input_str(len_and_str(key));
                 sha.input_str(len_and_str(value));
             }
             case (ast::meta_word(?name)) {
                 sha.input_str(len_and_str(name));
             }
+            case (_) {}
         }
     }
     ret truncated_sha1_result(sha);

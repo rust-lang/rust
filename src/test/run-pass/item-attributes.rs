@@ -5,6 +5,8 @@
 // notation to specify their module's attributes
 #[attr1 = "val"];
 #[attr2 = "val"];
+#[attr3];
+#[attr4(attr5)];
 
 // These are are attributes of the following mod
 #[attr1 = "val"]

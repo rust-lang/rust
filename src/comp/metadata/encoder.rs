@@ -418,21 +418,35 @@ fn write_int(&io::writer writer, &int n) {
 
 fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
     // FIXME (#487): Support all forms of meta item
-    ebml::start_tag(ebml_w, tag_meta_item_key_value);
     alt (mi.node) {
-        case (meta_key_value(?key, ?value)) {
-            ebml::start_tag(ebml_w, tag_meta_item_key);
-            ebml_w.writer.write(str::bytes(key));
+        case (meta_word(?name)) {
+            ebml::start_tag(ebml_w, tag_meta_item_word);
+            ebml::start_tag(ebml_w, tag_meta_item_name);
+            ebml_w.writer.write(str::bytes(name));
+            ebml::end_tag(ebml_w);
+            ebml::end_tag(ebml_w);
+        }
+        case (meta_name_value(?name, ?value)) {
+            ebml::start_tag(ebml_w, tag_meta_item_name_value);
+            ebml::start_tag(ebml_w, tag_meta_item_name);
+            ebml_w.writer.write(str::bytes(name));
             ebml::end_tag(ebml_w);
             ebml::start_tag(ebml_w, tag_meta_item_value);
             ebml_w.writer.write(str::bytes(value));
             ebml::end_tag(ebml_w);
+            ebml::end_tag(ebml_w);
         }
-        case (_) {
-            log_err "unimplemented meta_item type";
+        case (meta_list(?name, ?items)) {
+            ebml::start_tag(ebml_w, tag_meta_item_list);
+            ebml::start_tag(ebml_w, tag_meta_item_name);
+            ebml_w.writer.write(str::bytes(name));
+            ebml::end_tag(ebml_w);
+            for (@meta_item inner_item in items) {
+                encode_meta_item(ebml_w, *inner_item);
+            }
+            ebml::end_tag(ebml_w);
         }
     }
-    ebml::end_tag(ebml_w);
 }
 
 fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {

@@ -30,22 +30,22 @@ fn metadata_matches(hashmap[str, str] mm, &vec[@ast::meta_item] metas) ->
              vec::len(metas), mm.size());
     for (@ast::meta_item mi in metas) {
         alt (mi.node) {
-            case (ast::meta_key_value(?key, ?value)) {
-                alt (mm.find(key)) {
+            case (ast::meta_name_value(?name, ?value)) {
+                alt (mm.find(name)) {
                     case (some(?v)) {
                         if (v == value) {
-                            log #fmt("matched '%s': '%s'", key,
+                            log #fmt("matched '%s': '%s'", name,
                                      value);
                         } else {
                             log #fmt("missing '%s': '%s' (got '%s')",
-                                     key,
+                                     name,
                                      value, v);
                             ret false;
                         }
                     }
                     case (none) {
                         log #fmt("missing '%s': '%s'",
-                                 key, value);
+                                 name, value);
                         ret false;
                     }
                 }
@@ -76,15 +76,14 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
     let str crate_name = ident;
     for (@ast::meta_item mi in metas) {
         alt (mi.node) {
-            case (ast::meta_key_value(?key, ?value)) {
-                if (key == "name") {
+            case (ast::meta_name_value(?name, ?value)) {
+                if (name == "name") {
                     crate_name = value;
                     break;
                 }
             }
             case (_) {
                 // FIXME (#487)
-                sess.unimpl("meta_item variant")
             }
         }
     }
