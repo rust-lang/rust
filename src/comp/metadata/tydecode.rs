@@ -250,6 +250,11 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             ret ty::mk_fn(st.tcx, ast::proto_iter, func.args, func.ty,
                           func.cf, func.cs);
         }
+        case ('B') {
+            auto func = parse_ty_fn(st, sd);
+            ret ty::mk_fn(st.tcx, ast::proto_block, func.args, func.ty,
+                          func.cf, func.cs);
+        }
         case ('N') {
             auto abi;
             alt (next(st) as char) {

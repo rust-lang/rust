@@ -65,10 +65,13 @@ type crate_ctxt = rec(mutable obj_info[] obj_infos, ty::ctxt tcx);
 type fn_ctxt =
     rec(ty::t ret_ty,
         ast::purity purity,
+        // var_bindings, locals, local_names, and next_var_id are shared
+        // with any nested functions that capture the environment
+        // (and with any functions whose environment is being captured).
         @ty::unify::var_bindings var_bindings,
         hashmap[ast::node_id, int] locals,
         hashmap[ast::node_id, ast::ident] local_names,
-        mutable int next_var_id,
+        @mutable int next_var_id,
         mutable ast::node_id[] fixups,
         @crate_ctxt ccx);
 
@@ -235,6 +238,18 @@ fn structurally_resolved_type(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::t {
 // Returns the one-level-deep structure of the given type.
 fn structure_of(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::sty {
     ret ty::struct(fcx.ccx.tcx, structurally_resolved_type(fcx, sp, typ));
+}
+
+// Returns the one-level-deep structure of the given type or none if it
+// is not known yet.
+fn structure_of_maybe(&@fn_ctxt fcx, &span sp, ty::t typ)
+    -> option::t[ty::sty] {
+    auto r =
+        ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
+    ret alt (r) {
+      case (fix_ok(?typ_s)) { some(ty::struct(fcx.ccx.tcx, typ_s)) }
+      case (fix_err(_)) { none }
+    }
 }
 
 fn type_is_integral(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
@@ -470,6 +485,15 @@ mod write {
     }
 }
 
+// Determine the proto for a fn type given the proto for its associated
+// code. This is needed because fn and lambda have fn type while iter
+// has iter type and block has block type. This may end up changing.
+fn proto_to_ty_proto(&ast::proto proto) -> ast::proto {
+    ret alt (proto) {
+        ast::proto_iter | ast::proto_block { proto }
+        _ { ast::proto_fn }
+    };
+}
 
 // Item collection - a pair of bootstrap passes:
 //
@@ -511,8 +535,8 @@ mod collect {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         auto t_fn =
-            ty::mk_fn(cx.tcx, proto, input_tys, output_ty, decl.cf,
-                      out_constrs);
+            ty::mk_fn(cx.tcx, proto_to_ty_proto(proto), input_tys,
+                      output_ty, decl.cf, out_constrs);
         auto ty_param_count = ivec::len[ast::ty_param](ty_params);
         auto tpt = rec(count=ty_param_count, ty=t_fn);
         alt (def_id) {
@@ -590,9 +614,9 @@ mod collect {
         for (@ast::constr constr in m.node.meth.decl.constraints) {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
-        ret rec(proto=m.node.meth.proto, ident=m.node.ident,
-                inputs=inputs, output=output, cf=m.node.meth.decl.cf,
-                constrs=out_constrs);
+        ret rec(proto=proto_to_ty_proto(m.node.meth.proto),
+                ident=m.node.ident, inputs=inputs, output=output,
+                cf=m.node.meth.decl.cf, constrs=out_constrs);
     }
     fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj ob,
                  &ast::ty_param[] ty_params) -> ty::ty_param_count_and_ty {
@@ -872,7 +896,7 @@ mod unify {
     }
 }
 
-tag autoderef_kind { AUTODEREF_OK; NO_AUTODEREF; }
+tag autoderef_kind { AUTODEREF_OK; NO_AUTODEREF; AUTODEREF_BLOCK_COERCE; }
 
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
@@ -917,6 +941,29 @@ fn count_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> uint {
     fail;
 }
 
+fn do_fn_block_coerce(&@fn_ctxt fcx, &span sp,
+                      &ty::t actual, &ty::t expected) -> ty::t {
+    // fns can be silently coerced to blocks when being used as
+    // function call or bind arguments, but not the reverse.
+    // If our actual type is a fn and our expected type is a block,
+    // build up a new expected type that is identical to the old one
+    // except for its proto. If we don't know the expected or actual
+    // types, that's fine, but we can't do the coercion.
+    ret alt (structure_of_maybe(fcx, sp, actual)) {
+      some(ty::ty_fn(ast::proto_fn, ?args, ?ret_ty, ?cf, ?constrs)) {
+        alt (structure_of_maybe(fcx, sp, expected)) {
+          some(ty::ty_fn(ast::proto_block, _, _, _, _)) {
+            ty::mk_fn(fcx.ccx.tcx,
+                      ast::proto_block, args, ret_ty, cf, constrs)
+          }
+          _ { actual }
+        }
+      }
+      _ { actual }
+    }
+}
+
+
 fn resolve_type_vars_if_possible(&@fn_ctxt fcx, ty::t typ) -> ty::t {
     alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
         case (fix_ok(?new_type)) { ret new_type; }
@@ -951,6 +998,8 @@ mod demand {
             expected_1 = do_autoderef(fcx, sp, expected_1);
             actual_1 = do_autoderef(fcx, sp, actual_1);
             implicit_boxes = count_boxes(fcx, sp, actual);
+        } else if (adk == AUTODEREF_BLOCK_COERCE) {
+            actual_1 = do_fn_block_coerce(fcx, sp, actual, expected);
         }
         let ty::t[mutable] ty_param_substs = ~[mutable];
         let int[] ty_param_subst_var_ids = ~[];
@@ -1175,11 +1224,12 @@ type gather_result =
     rec(@ty::unify::var_bindings var_bindings,
         hashmap[ast::node_id, int] locals,
         hashmap[ast::node_id, ast::ident] local_names,
-        int next_var_id);
+        @mutable int next_var_id);
 
 // Used only as a helper for check_fn.
 fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
-                 &ast::node_id id) -> gather_result {
+                 &ast::node_id id, &option::t[@fn_ctxt] old_fcx)
+    -> gather_result {
     fn next_var_id(@mutable int nvi) -> int {
         auto rv = *nvi;
         *nvi += 1;
@@ -1201,10 +1251,22 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
             }
         }
     }
-    auto vb = ty::unify::mk_var_bindings();
-    auto locals = new_int_hash[int]();
-    auto local_names = new_int_hash[ast::ident]();
-    auto nvi = @mutable 0;
+
+    auto vb; auto locals; auto local_names; auto nvi;
+    alt (old_fcx) {
+        none {
+            vb = ty::unify::mk_var_bindings();
+            locals = new_int_hash[int]();
+            local_names = new_int_hash[ast::ident]();
+            nvi = @mutable 0;
+        }
+        some(?fcx) {
+            vb = fcx.var_bindings;
+            locals = fcx.locals;
+            local_names = fcx.local_names;
+            nvi = fcx.next_var_id;
+        }
+    }
 
     // Add object fields, if any.
     auto obj_fields = ~[];
@@ -1288,7 +1350,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
     ret rec(var_bindings=vb,
             locals=locals,
             local_names=local_names,
-            next_var_id=*nvi);
+            next_var_id=nvi);
 }
 
 // AST fragment checking
@@ -1555,8 +1617,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             alt (a_opt) {
                 case (some(?a)) {
                     check_expr(fcx, a);
-                    demand::simple(fcx, a.span, arg_tys.(i).ty,
-                                   expr_ty(fcx.ccx.tcx, a));
+                    demand::full(fcx, a.span, arg_tys.(i).ty,
+                                 expr_ty(fcx.ccx.tcx, a), ~[],
+                                 AUTODEREF_BLOCK_COERCE);
                 }
                 case (none) {
                     check_ty_vars = true;
@@ -2013,7 +2076,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl,
                                        f.proto, ~[], none).ty;
             write::ty_only_fixup(fcx, id, fty);
-            check_fn(fcx.ccx, f, id);
+            check_fn(fcx.ccx, f, id, some(fcx));
         }
         case (ast::expr_block(?b)) {
             check_block(fcx, b);
@@ -2487,8 +2550,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 }
 
 fn next_ty_var_id(@fn_ctxt fcx) -> int {
-    auto id = fcx.next_var_id;
-    fcx.next_var_id += 1;
+    auto id = *fcx.next_var_id;
+    *fcx.next_var_id = fcx.next_var_id + 1;
     ret id;
 }
 
@@ -2586,16 +2649,17 @@ fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::node_id id) {
              var_bindings=ty::unify::mk_var_bindings(),
              locals=new_int_hash[int](),
              local_names=new_int_hash[ast::ident](),
-             mutable next_var_id=0,
+             next_var_id=@mutable 0,
              mutable fixups=fixups,
              ccx=ccx);
     check_expr(fcx, e);
 }
 
-fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id) {
+fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id,
+            &option::t[@fn_ctxt] old_fcx) {
     auto decl = f.decl;
     auto body = f.body;
-    auto gather_result = gather_locals(ccx, f, id);
+    auto gather_result = gather_locals(ccx, f, id, old_fcx);
     let ast::node_id[] fixups = ~[];
     let @fn_ctxt fcx =
         @rec(ret_ty=ast_ty_to_ty_crate(ccx, decl.output),
@@ -2603,7 +2667,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id) {
              var_bindings=gather_result.var_bindings,
              locals=gather_result.locals,
              local_names=gather_result.local_names,
-             mutable next_var_id=gather_result.next_var_id,
+             next_var_id=gather_result.next_var_id,
              mutable fixups=fixups,
              ccx=ccx);
 
@@ -2636,7 +2700,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id) {
 }
 
 fn check_method(&@crate_ctxt ccx, &@ast::method method) {
-    check_fn(ccx, method.node.meth, method.node.id);
+    check_fn(ccx, method.node.meth, method.node.id, none);
 }
 
 fn check_item(@crate_ctxt ccx, &@ast::item it) {
@@ -2645,10 +2709,10 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
             check_const(ccx, it.span, e, it.id);
         }
         case (ast::item_fn(?f, _)) {
-            check_fn(ccx, f, it.id);
+            check_fn(ccx, f, it.id, none);
         }
         case (ast::item_res(?f, ?dtor_id, _, _)) {
-            check_fn(ccx, f, dtor_id);
+            check_fn(ccx, f, dtor_id, none);
         }
         case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.

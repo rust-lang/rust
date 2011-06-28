@@ -200,6 +200,7 @@ fn enc_proto(&ioivec::writer w, proto proto) {
     alt (proto) {
         case (proto_iter) { w.write_char('W'); }
         case (proto_fn) { w.write_char('F'); }
+        case (proto_block) { w.write_char('B'); }
     }
 }
 

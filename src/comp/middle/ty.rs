@@ -889,6 +889,7 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
 fn type_is_copyable(&ctxt cx, &t ty) -> bool {
     ret alt (struct(cx, ty)) {
         case (ty_res(_, _, _)) { false }
+        case (ty_fn(proto_block, _, _, _, _)) { false }
         case (_) { true }
     };
 }
