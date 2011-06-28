@@ -5,13 +5,13 @@
 
 // Tests for alt as expressions resulting in boxed types
 fn test_box() {
-    auto rs = alt (true) { case (true) { @100 } };
-    assert (*rs == 100);
+    auto res = alt (true) { case (true) { @100 } };
+    assert (*res == 100);
 }
 
 fn test_str() {
-    auto rs = alt (true) { case (true) { "happy" } };
-    assert (rs == "happy");
+    auto res = alt (true) { case (true) { "happy" } };
+    assert (res == "happy");
 }
 
 fn main() { test_box(); test_str(); }

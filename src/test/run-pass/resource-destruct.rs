@@ -1,4 +1,4 @@
-res shrinky_pointer(@mutable int i) {
+resource shrinky_pointer(@mutable int i) {
     *i -= 1;
 }
 

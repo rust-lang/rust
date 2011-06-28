@@ -139,7 +139,7 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("be", ());
     words.insert("fail", ());
     words.insert("type", ());
-    words.insert("res", ());
+    words.insert("resource", ());
     words.insert("check", ());
     words.insert("assert", ());
     words.insert("claim", ());
@@ -2045,7 +2045,7 @@ fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
         ret got_item(parse_item_tag(p, attrs));
     } else if (eat_word(p, "obj")) {
         ret got_item(parse_item_obj(p, lyr, attrs));
-    } else if (eat_word(p, "res")) {
+    } else if (eat_word(p, "resource")) {
         ret got_item(parse_item_res(p, lyr, attrs));
     } else { ret no_item; }
 }
