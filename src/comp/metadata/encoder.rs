@@ -478,3 +478,13 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
     ret string_w.get_str();
 }
+
+
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
