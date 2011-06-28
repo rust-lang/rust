@@ -420,8 +420,18 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             ret find_pre_post_state_expr(fcx, pres, ternary_to_if(e));
         }
         case (expr_binary(?bop, ?l, ?r)) {
-            /* FIXME: what if bop is lazy? */
-            ret find_pre_post_state_two(fcx, pres, l, r, e.id, oper_pure);
+            if (lazy_binop(bop)) {
+                auto changed = find_pre_post_state_expr(fcx, pres, l);
+                changed |= find_pre_post_state_expr(fcx,
+                              expr_poststate(fcx.ccx, l), r);
+                ret changed
+                    | set_prestate_ann(fcx.ccx, e.id, pres)
+                    | set_poststate_ann(fcx.ccx, e.id,
+                                        expr_poststate(fcx.ccx, l));
+            }
+            else {
+                ret find_pre_post_state_two(fcx, pres, l, r, e.id, oper_pure);
+            }
         }
         case (expr_send(?l, ?r)) {
             ret find_pre_post_state_two(fcx, pres, l, r, e.id, oper_pure);
@@ -507,7 +517,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                 find_pre_post_state_expr(fcx, pres, val);
             auto e_post = expr_poststate(fcx.ccx, val);
             auto a_post;
-            if (vec::len[arm](alts) > 0u) {
+            if (vec::len(alts) > 0u) {
                 a_post = false_postcond(num_constrs);
                 for (arm an_alt in alts) {
                     changed |= find_pre_post_state_block

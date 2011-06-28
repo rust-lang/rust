@@ -434,10 +434,19 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_expr(fcx, ternary_to_if(e));
         }
         case (expr_binary(?bop, ?l, ?r)) {
-            /* *unless* bop is lazy (e.g. and, or)? 
-               FIXME */
-
-            find_pre_post_exprs(fcx, [l, r], e.id);
+            if (lazy_binop(bop)) {
+                find_pre_post_expr(fcx, l);
+                find_pre_post_expr(fcx, r);
+                auto overall_pre = seq_preconds(fcx,
+                   [expr_pp(fcx.ccx, l), expr_pp(fcx.ccx, r)]);
+                set_precondition(node_id_to_ts_ann(fcx.ccx, e.id),
+                                 overall_pre);
+                set_postcondition(node_id_to_ts_ann(fcx.ccx, e.id),
+                                  expr_postcond(fcx.ccx, l));
+            }
+            else {
+                find_pre_post_exprs(fcx, [l, r], e.id);
+            }
         }
         case (expr_send(?l, ?r)) {
             find_pre_post_exprs(fcx, [l, r], e.id);
