@@ -884,7 +884,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = abs_pair;
         }
         case (ty::ty_res(_, ?sub)) {
-            ret type_of_inner(cx, sp, sub);
+            ret T_struct([T_i32(), type_of_inner(cx, sp, sub)]);
         }
         case (ty::ty_var(_)) {
             cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
@@ -1227,7 +1227,10 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
                                     ty::mk_imm_box(ccx.tcx,
                                                    ty::mk_nil(ccx.tcx))]);
             }
-            case (ty::ty_res(_, ?sub)) { ret simplify_type(ccx, sub);}
+            case (ty::ty_res(_, ?sub)) {
+                ret ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx),
+                                             simplify_type(ccx, sub)]);
+            }
             case (_) { ret typ; }
         }
     }
@@ -2068,7 +2071,6 @@ fn maybe_free_ivec_heap_part(&@block_ctxt cx, ValueRef v0, ty::t unit_ty) ->
 
 fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
-
     auto ccx = cx.fcx.lcx.ccx;
     auto rs = alt (ty::struct(ccx.tcx, t)) {
         case (ty::ty_str) { decr_refcnt_maybe_free(cx, v0, v0, t) }
@@ -2094,16 +2096,15 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             decr_refcnt_maybe_free(cx, box_cell, v0, t)
         }
         case (ty::ty_res(?did, ?inner)) {
-            auto dtor = alt (ccx.ast_map.get(did._1)) {
+            (alt (ccx.ast_map.get(did._1)) {
                 case (ast_map::node_item(?i)) {
                     alt (i.node) {
-                        case (ast::item_res(?dtor, _, _, _)) { dtor }
+                        case (ast::item_res(?dtor, _, _, _)) {
+                            drop_res(cx, v0, inner, dtor)
+                        }
                     }
                 }
-            };
-            cx.fcx.llargs.insert(dtor.decl.inputs.(0).id, v0);
-            auto rs = trans_block(cx, dtor.body, return);
-            drop_ty(rs.bcx, v0, inner)
+            })
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell =
@@ -2118,6 +2119,30 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
         }
     };
     rs.bcx.build.RetVoid();
+}
+
+fn drop_res(@block_ctxt cx, ValueRef rs, ty::t inner_t, &ast::_fn dtor)
+    -> result {
+    auto ccx = cx.fcx.lcx.ccx;
+    auto tup_ty = ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t]);
+    auto drop_cx = new_sub_block_ctxt(cx, "drop res");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+
+    auto drop_flag = GEP_tup_like(cx,  tup_ty, rs, [0, 0]);
+    cx = drop_flag.bcx;
+    auto null_test = cx.build.IsNull(cx.build.Load(drop_flag.val));
+    cx.build.CondBr(null_test, next_cx.llbb, drop_cx.llbb);
+
+    cx = drop_cx;
+    auto val = GEP_tup_like(cx,  tup_ty, rs, [0, 1]);
+    cx = val.bcx;
+    cx.fcx.llargs.insert(dtor.decl.inputs.(0).id, val.val);
+    cx = trans_block(cx, dtor.body, return).bcx;
+    cx = drop_ty(cx, val.val, inner_t).bcx;
+    cx.build.Store(C_int(0), drop_flag.val);
+    cx.build.Br(next_cx.llbb);
+
+    ret rslt(next_cx, C_nil());
 }
 
 fn decr_refcnt_maybe_free(&@block_ctxt cx, ValueRef box_ptr_alias,
@@ -2573,8 +2598,12 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             }
         }
         case (ty::ty_res(_, ?inner)) {
-            f(r.bcx, load_if_immediate(r.bcx, av, inner),
-              load_if_immediate(r.bcx, bv, inner), inner);
+            r = GEP_tup_like(r.bcx, t, av, [0, 1]);
+            auto llfld_a = r.val;
+            r = GEP_tup_like(r.bcx, t, bv, [0, 1]);
+            auto llfld_b = r.val;
+            f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner),
+              load_if_immediate(r.bcx, llfld_b, inner), inner);
         }
         case (ty::ty_tag(?tid, ?tps)) {
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, tid);
@@ -7691,17 +7720,21 @@ fn trans_res(@local_ctxt cx, &span sp, &ast::_fn f, ast::node_id ctor_id,
              &vec[ast::ty_param] ty_params) {
     auto llctor_decl = cx.ccx.item_ids.get(ctor_id);
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
-    auto ret_ty = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
+    auto ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ret_ty, f.decl.inputs, ty_params);
+                              ret_t, f.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
-    auto self_ty = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
-    auto llself_ty = type_of(cx.ccx, sp, self_ty);
-    auto arg_ty = arg_tys_of_fn(cx.ccx, ctor_id).(0).ty;
+    auto arg_t = arg_tys_of_fn(cx.ccx, ctor_id).(0).ty;
+    auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, [ty::mk_int(cx.ccx.tcx), arg_t]);
     auto arg = load_if_immediate
-        (bcx, fcx.llargs.get(f.decl.inputs.(0).id), arg_ty);
-    bcx = copy_val(bcx, INIT, fcx.llretptr, arg, arg_ty).bcx;
+        (bcx, fcx.llargs.get(f.decl.inputs.(0).id), arg_t);
+    auto dst = GEP_tup_like(bcx, tup_t, fcx.llretptr, [0, 1]);
+    bcx = dst.bcx;
+    bcx = copy_val(bcx, INIT, dst.val, arg, arg_t).bcx;
+    auto flag = GEP_tup_like(bcx, tup_t, fcx.llretptr, [0, 0]);
+    bcx = flag.bcx;
+    bcx.build.Store(C_int(1), flag.val);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 }
