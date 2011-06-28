@@ -2138,7 +2138,7 @@ fn drop_res(@block_ctxt cx, ValueRef rs, ty::t inner_t, &ast::_fn dtor)
     cx = val.bcx;
     cx.fcx.llargs.insert(dtor.decl.inputs.(0).id, val.val);
     cx = trans_block(cx, dtor.body, return).bcx;
-    cx = drop_ty(cx, val.val, inner_t).bcx;
+    cx = drop_slot(cx, val.val, inner_t).bcx;
     cx.build.Store(C_int(0), drop_flag.val);
     cx.build.Br(next_cx.llbb);
 
