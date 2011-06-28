@@ -112,7 +112,7 @@ fn set_in_postcond(uint i, &pre_and_post p) -> bool {
     // sets the ith bit in p's post
     auto was_set = tritv_get(p.postcondition, i);
     tritv_set(i, p.postcondition, ttrue);
-    ret was_set == dont_care;
+    ret was_set != ttrue;
 }
 
 fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
@@ -123,7 +123,7 @@ fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
 fn set_in_poststate_(uint i, &poststate p) -> bool {
     auto was_set = tritv_get(p, i);
     tritv_set(i, p, ttrue);
-    ret was_set == dont_care;
+    ret was_set != ttrue;
 
 }
 
@@ -135,14 +135,25 @@ fn clear_in_poststate(uint i, &pre_and_post_state s) -> bool {
 fn clear_in_poststate_(uint i, &poststate s) -> bool {
     auto was_set = tritv_get(s, i);
     tritv_set(i, s, tfalse);
-    ret was_set == dont_care;
+    ret was_set != tfalse;
+}
+
+fn clear_in_prestate(uint i, &pre_and_post_state s) -> bool {
+    // sets the ith bit in p's pre
+    ret clear_in_prestate_(i, s.prestate);
+}
+
+fn clear_in_prestate_(uint i, &prestate s) -> bool {
+    auto was_set = tritv_get(s, i);
+    tritv_set(i, s, tfalse);
+    ret was_set != tfalse;
 }
 
 fn clear_in_postcond(uint i, &pre_and_post s) -> bool {
     // sets the ith bit in p's post
     auto was_set = tritv_get(s.postcondition, i);
     tritv_set(i, s.postcondition, tfalse);
-    ret was_set == dont_care;
+    ret was_set != tfalse;
 }
 
 // Sets all the bits in a's precondition to equal the

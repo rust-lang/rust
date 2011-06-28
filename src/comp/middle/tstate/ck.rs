@@ -70,9 +70,9 @@ fn check_states_expr(&fn_ctxt fcx, &@expr e) {
     log_err("check_states_expr:");
       util::common::log_expr_err(*e);
       log_err("prec = ");
-      log_bitv_err(fcx, prec);
+      log_tritv_err(fcx, prec);
       log_err("pres = ");
-      log_bitv_err(fcx, pres);
+      log_tritv_err(fcx, pres);
     */
 
     if (!implies(pres, prec)) {
@@ -99,9 +99,9 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
       log_err("check_states_stmt:");
       log_stmt_err(*s);
       log_err("prec = ");
-      log_bitv_err(fcx, prec);
+      log_tritv_err(fcx, prec);
       log_err("pres = ");
-      log_bitv_err(fcx, pres);
+      log_tritv_err(fcx, pres);
     */
 
     if (!implies(pres, prec)) {

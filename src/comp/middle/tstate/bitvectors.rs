@@ -43,6 +43,7 @@ import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
 import tstate::ann::set_in_poststate_;
 import tstate::ann::clear_in_poststate;
+import tstate::ann::clear_in_prestate;
 import tstate::ann::clear_in_poststate_;
 import tritv::*;
 
@@ -147,22 +148,10 @@ fn seq_preconds(&fn_ctxt fcx, &vec[pre_and_post] pps) -> precond {
     } else { ret true_precond(num_vars); }
 }
 
-/* Gee, maybe we could use foldl or something */
-fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-    auto sz = vec::len[postcond](rest);
-    if (sz > 0u) {
-        auto other = rest.(0);
-        intersect(first, other);
-        intersect_postconds_go(first,
-                               slice[postcond](rest, 1u,
-                                               len[postcond](rest)));
-    }
-    ret first;
-}
-
-fn intersect_postconds(&vec[postcond] pcs) -> postcond {
-    assert (len[postcond](pcs) > 0u);
-    ret intersect_postconds_go(tritv_clone(pcs.(0)), pcs);
+fn intersect_states(&prestate p, &prestate q) -> prestate {
+    auto rslt = tritv_clone(p);
+    tritv_intersect(rslt, q);
+    ret rslt;
 }
 
 fn gen(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
@@ -219,6 +208,11 @@ fn gen_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
                          node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
+fn kill_prestate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
+    ret clear_in_prestate(bit_num(fcx, c),
+                           node_id_to_ts_ann(fcx.ccx, id).states);
+}
+
 fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
     log "kill_poststate";
     ret clear_in_poststate(bit_num(fcx, c),
@@ -252,6 +246,16 @@ fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
 fn set_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
                           &poststate t) -> bool {
     ret set_in_poststate_(bit_num(fcx, rec(id=id, c=ninit(ident))), t);
+}
+
+fn clear_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
+                            &node_id parent) -> bool {
+    ret kill_poststate(fcx, parent, rec(id=id, c=ninit(ident)));
+}
+
+fn clear_in_prestate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
+                            &node_id parent) -> bool {
+    ret kill_prestate(fcx, parent, rec(id=id, c=ninit(ident)));
 }
 
 //

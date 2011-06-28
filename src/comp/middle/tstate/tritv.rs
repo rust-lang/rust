@@ -82,18 +82,32 @@ fn trit_or(trit a, trit b) -> trit {
   }
 }
 
+// FIXME: This still seems kind of dodgy to me (that is,
+// that 1 + ? = 1. But it might work out given that
+// all variables start out in a 0 state. Probably I need
+// to make it so that all constraints start out in a 0 state
+// (we consider a constraint false until proven true), too.
 fn trit_and(trit a, trit b) -> trit {
   alt (a) {
-    case (dont_care) { dont_care }
-    case (ttrue)     {
-      alt (b) {
-        case (dont_care) { dont_care }
-        case (ttrue)     { ttrue }
-        case (tfalse)    { dont_care } // ???
+      case (dont_care) { b }  // also seems wrong for case b = ttrue
+      case (ttrue)     {
+          alt (b) {
+              case (dont_care) { ttrue } // ??? Seems wrong
+              case (ttrue)     { ttrue }
+              // false wins, since if something is uninit
+              // on one path, we care
+              // (Rationale: it's always safe to assume that
+         // a var is uninitialized or that a constraint
+         // needs to be re-established)
+              case (tfalse)    { tfalse }
+          }
       }
-    }
+      // Rationale: if it's uninit on one path,
+      // we can consider it as uninit on all paths
     case (tfalse) { tfalse }
   }
+  // if the result is dont_care, that means
+  // a and b were both dont_care
 }
 
 fn change(bool changed, trit old, trit new) -> bool { changed || new != old }

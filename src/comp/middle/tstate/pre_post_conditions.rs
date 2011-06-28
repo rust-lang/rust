@@ -59,7 +59,7 @@ import bitvectors::bit_num;
 import bitvectors::promises;
 import bitvectors::seq_preconds;
 import bitvectors::seq_postconds;
-import bitvectors::intersect_postconds;
+import bitvectors::intersect_states;
 import bitvectors::declare_var;
 import bitvectors::gen_poststate;
 import bitvectors::relax_precond_block;
@@ -180,9 +180,8 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
         seq_preconds(fcx,
                      [expr_pp(fcx.ccx, index),
                       block_pp(fcx.ccx, body)]);
-    auto loop_postcond =
-        intersect_postconds([expr_postcond(fcx.ccx, index),
-                             block_postcond(fcx.ccx, body)]);
+    auto loop_postcond = intersect_states(expr_postcond(fcx.ccx, index),
+                                          block_postcond(fcx.ccx, body));
     copy_pre_post_(fcx.ccx, id, loop_precond, loop_postcond);
 }
 
@@ -247,8 +246,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                 seq_postconds(fcx, [precond_true_case,
                                     precond_false_case]);
             auto postcond_res =
-                intersect_postconds([postcond_true_case,
-                                     postcond_false_case]);
+                intersect_states(postcond_true_case, postcond_false_case);
             set_pre_and_post(fcx.ccx, id, precond_res, postcond_res);
         }
     }
@@ -459,10 +457,9 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                              seq_preconds(fcx,
                                           [expr_pp(fcx.ccx, test),
                                            block_pp(fcx.ccx, body)]),
-                             intersect_postconds([expr_postcond(fcx.ccx,
-                                                                test),
-                                                  block_postcond(fcx.ccx,
-                                                                 body)]));
+                             intersect_states(expr_postcond(fcx.ccx, test),
+                                              block_postcond(fcx.ccx,
+                                                             body)));
         }
         case (expr_do_while(?body, ?test)) {
             find_pre_post_block(fcx, body);
