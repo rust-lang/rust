@@ -1047,6 +1047,7 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
                 if (type_has_pointers(cx, tup_ty)) { result = true; }
             }
         }
+        case (ty_res(?did, ?inner)) { result = type_has_pointers(cx, inner); }
         case (_) { result = true; }
     }
 
@@ -1517,8 +1518,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                     auto len = vec::len[mt](mts_a);
                     if (len != vec::len[mt](mts_b)) { ret false; }
                     auto i = 0u;
-                    while (i < len) {
-                        if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
+                    while (i < len) {                        if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
                         i += 1u;
                     }
                     ret true;
@@ -1583,6 +1583,14 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                         i += 1u;
                     }
                     ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_res(?id_a, ?inner_a)) {
+            alt (b) {
+                case (ty_res(?id_b, ?inner_b)) {
+                    ret equal_def(id_a, id_b) && ret eq_ty(inner_a, inner_b);
                 }
                 case (_) { ret false; }
             }
@@ -2368,6 +2376,24 @@ mod unify {
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(mk_port(cx.tcx, result_sub));
+                            }
+                            case (_) { ret result; }
+                        }
+                    }
+                    case (_) { ret ures_err(terr_mismatch); }
+                }
+            }
+            case (ty::ty_res(?ex_id, ?ex_inner)) {
+                alt (struct(cx.tcx, actual)) {
+                    case (ty::ty_res(?act_id, ?act_inner)) {
+                        if (ex_id._0 != act_id._0 || ex_id._1 != act_id._1) {
+                            ret ures_err(terr_mismatch);
+                        }
+                        auto result = unify_step(cx, ex_inner, act_inner);
+                        alt (result) {
+                            case (ures_ok(?res_inner)) {
+                                ret ures_ok(mk_res(cx.tcx, act_id,
+                                                   res_inner));
                             }
                             case (_) { ret result; }
                         }
