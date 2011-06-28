@@ -2965,6 +2965,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Alt::                Expression for complex conditional branching.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
+* Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
 * Ref.Expr.Assert::              Expression for halting the program if a
                                            boolean condition fails to hold.
 * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
@@ -3628,6 +3629,26 @@ fn test() @{
     print_even(y);
 @}
 @end example
+
+@node       Ref.Expr.Claim
+@subsection Ref.Expr.Claim
+@c * Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
+@cindex Claim expression
+@cindex Typestate system
+
+A @code{claim} expression is an unsafe variant on a @code{check} expression
+that is not actually checked at runtime. Thus, using a @code{claim} implies a
+proof obligation to ensure---without compiler assistance---that an assertion
+always holds.
+
+With a command-line flag, the compiler can turn all @code{claim} expressions
+into @code{check} expressions, but the default is to not check the assertion
+contained in a @code{claim}.
+
+The idea is to use @code{check} during development, with @code{claim}
+providing the freedom to disable a few runtime checks in performance-critical
+locations once code is debugged, while leaving the @code{claim} expressions in
+the code as documentation.
 
 @node       Ref.Expr.IfCheck
 @subsection Ref.Expr.IfCheck
