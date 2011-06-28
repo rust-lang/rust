@@ -565,7 +565,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_break) { ret pure_exp(fcx.ccx, e.id, pres); }
         case (expr_cont) { ret pure_exp(fcx.ccx, e.id, pres); }
-        case (expr_port) { ret pure_exp(fcx.ccx, e.id, pres); }
+        case (expr_port(_)) { ret pure_exp(fcx.ccx, e.id, pres); }
         case (expr_self_method(_)) { ret pure_exp(fcx.ccx, e.id, pres); }
         case (expr_anon_obj(?anon_obj, _, _)) {
             alt (anon_obj.with_obj) {

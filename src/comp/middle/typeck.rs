@@ -2075,8 +2075,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
             }
         }
-        case (ast::expr_port) {
+        case (ast::expr_port(?typ)) {
             auto t = next_ty_var(fcx);
+            alt(typ) {
+                case (some(?_t)) {
+                    demand::simple(fcx, expr.span, 
+                                   ast_ty_to_ty_crate(fcx.ccx, _t), 
+                                   t);
+                }
+                case (none) {}
+            }
             auto pt = ty::mk_port(fcx.ccx.tcx, t);
             write::ty_only_fixup(fcx, id, pt);
         }

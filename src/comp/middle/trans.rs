@@ -5996,7 +5996,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_ret(?ex)) { ret trans_ret(cx, ex); }
         case (ast::expr_put(?ex)) { ret trans_put(cx, ex); }
         case (ast::expr_be(?ex)) { ret trans_be(cx, ex); }
-        case (ast::expr_port) { ret trans_port(cx, e.id); }
+        case (ast::expr_port(_)) { ret trans_port(cx, e.id); }
         case (ast::expr_chan(?ex)) { ret trans_chan(cx, ex, e.id); }
         case (ast::expr_send(?lhs, ?rhs)) {
             ret trans_send(cx, lhs, rhs, e.id);

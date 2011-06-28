@@ -899,10 +899,16 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             ex = ast::expr_be(e);
         } else { p.fatal("Non-call expression in tail call"); }
     } else if (eat_word(p, "port")) {
+        auto ty = none;
+        if(token::LBRACKET == p.peek()) {
+            expect(p, token::LBRACKET);
+            ty = some(parse_ty(p));
+            expect(p, token::RBRACKET);
+        }
         expect(p, token::LPAREN);
         expect(p, token::RPAREN);
         hi = p.get_hi_pos();
-        ex = ast::expr_port;
+        ex = ast::expr_port(ty);
     } else if (eat_word(p, "chan")) {
         expect(p, token::LPAREN);
         auto e = parse_expr(p);
@@ -1592,7 +1598,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_log(_, _)) { true }
                 case (ast::expr_check(_)) { true }
                 case (ast::expr_if_check(_, _, _)) { false }
-                case (ast::expr_port) { true }
+                case (ast::expr_port(_)) { true }
                 case (ast::expr_chan(_)) { true }
                 case (ast::expr_anon_obj(_,_,_)) { false }
                 case (ast::expr_assert(_)) { true }
