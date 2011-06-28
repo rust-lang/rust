@@ -1920,7 +1920,7 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
         expect(p, token::EQ);
         native_name = parse_str(p);
     } else {
-        native_name = "";
+        native_name = id;
     }
     expect(p, token::LBRACE);
     auto m = parse_native_mod_items(p, native_name, abi);

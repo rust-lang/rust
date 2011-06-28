@@ -2,7 +2,7 @@
 import str::sbuf;
 import vec::vbuf;
 
-native "cdecl" mod libc = "c" {
+native "cdecl" mod libc = "" {
     fn open(sbuf s, int flags, uint mode) -> int = "_open";
     fn read(int fd, vbuf buf, uint count) -> int = "_read";
     fn write(int fd, vbuf buf, uint count) -> int = "_write";

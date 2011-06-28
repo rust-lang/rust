@@ -203,18 +203,12 @@ fn visit_view_item(env e, &@ast::view_item i) {
 fn visit_item(env e, &@ast::item i) {
     alt (i.node) {
         case (ast::item_native_mod(?m)) {
-            auto name;
-            if (m.native_name == "" ) {
-                name = i.ident;
-            } else {
-                name = m.native_name;
-            }
             alt (m.abi) {
                 case (ast::native_abi_rust) {
-                    e.sess.add_used_library(name);
+                    e.sess.add_used_library(m.native_name);
                 }
                 case (ast::native_abi_cdecl) {
-                    e.sess.add_used_library(name);
+                    e.sess.add_used_library(m.native_name);
                 }
                 case (ast::native_abi_llvm) {
                 }

@@ -1,6 +1,6 @@
 
 
-native "cdecl" mod libc = "c" {
+native "cdecl" mod libc = "" {
     type file_handle;
 }
 
