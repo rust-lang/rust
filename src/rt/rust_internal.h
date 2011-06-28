@@ -249,6 +249,10 @@ typedef ptr_vec<rust_alarm> rust_wait_queue;
 #include "rust_port.h"
 #include "memory.h"
 
+#include "test/rust_test_harness.h"
+#include "test/rust_test_util.h"
+#include "test/rust_test_runtime.h"
+
 //
 // Local Variables:
 // mode: C++

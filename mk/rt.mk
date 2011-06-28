@@ -25,6 +25,9 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_srv.cpp \
               rt/rust_kernel.cpp \
               rt/memory_region.cpp \
+              rt/test/rust_test_harness.cpp \
+              rt/test/rust_test_runtime.cpp \
+              rt/test/rust_test_util.cpp \
               rt/arch/i386/context.cpp \
 
 RUNTIME_LL :=
@@ -56,6 +59,9 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_kernel.h \
                rt/memory_region.h \
                rt/memory.h \
+               rt/test/rust_test_harness.h \
+               rt/test/rust_test_runtime.h \
+               rt/test/rust_test_util.h \
                rt/arch/i386/context.h \
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
