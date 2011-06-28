@@ -6512,7 +6512,7 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
     else if(ty::type_is_str(tcx, t)) {
         ret rslt(bcx,
                 bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.dup_str,
-                               [bcx.fcx.lltaskptr, v]));
+                               [bcx.fcx.lltaskptr, target_task, v]));
     }
     else if(ty::type_is_chan(tcx, t)) {
         // If this is a channel, we need to clone it.
