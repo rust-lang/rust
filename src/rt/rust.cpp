@@ -24,15 +24,15 @@ command_line_args : public kernel_owned<command_line_args>
         LPCWSTR cmdline = GetCommandLineW();
         LPWSTR *wargv = CommandLineToArgvW(cmdline, &argc);
         task->dom->win32_require("CommandLineToArgvW", wargv != NULL);
-        argv = (char **) dom->malloc(sizeof(char*) * argc);
+        argv = (char **) kernel->malloc(sizeof(char*) * argc);
         for (int i = 0; i < argc; ++i) {
             int n_chars = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
                                               NULL, 0, NULL, NULL);
-            dom->win32_require("WideCharToMultiByte(0)", n_chars != 0);
-            argv[i] = (char *) dom->malloc(n_chars);
+            task->dom->win32_require("WideCharToMultiByte(0)", n_chars != 0);
+            argv[i] = (char *) kernel->malloc(n_chars);
             n_chars = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
                                           argv[i], n_chars, NULL, NULL);
-            dom->win32_require("WideCharToMultiByte(1)", n_chars != 0);
+            task->dom->win32_require("WideCharToMultiByte(1)", n_chars != 0);
         }
         LocalFree(wargv);
 #endif
@@ -66,9 +66,9 @@ command_line_args : public kernel_owned<command_line_args>
 
 #ifdef __WIN32__
         for (int i = 0; i < argc; ++i) {
-            task->free(argv[i]);
+            kernel->free(argv[i]);
         }
-        task->free(argv);
+        kernel->free(argv);
 #endif
     }
 };
