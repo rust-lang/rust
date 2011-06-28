@@ -10,8 +10,6 @@ rust_dom::rust_dom(rust_kernel *kernel,
     _log(srv, this),
     log_lvl(log_note),
     srv(srv),
-    local_region(&srv->local_region),
-    synchronized_region(&srv->synchronized_region),
     name(name),
     newborn_tasks(this, "newborn"),
     running_tasks(this, "running"),
@@ -36,6 +34,7 @@ rust_dom::rust_dom(rust_kernel *kernel,
 
 rust_dom::~rust_dom() {
     DLOG(this, dom, "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
+
     newborn_tasks.delete_all();
     running_tasks.delete_all();
     blocked_tasks.delete_all();
@@ -73,69 +72,6 @@ rust_dom::fail() {
         name, this);
     I(this, rval == 0);
     rval = 1;
-}
-
-void *
-rust_dom::malloc(size_t size) {
-    return malloc(size, memory_region::LOCAL);
-}
-
-void *
-rust_dom::malloc(size_t size, memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.malloc(size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.malloc(size);
-    }
-    I(this, false);
-    return NULL;
-}
-
-void *
-rust_dom::calloc(size_t size) {
-    return calloc(size, memory_region::LOCAL);
-}
-
-void *
-rust_dom::calloc(size_t size, memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.calloc(size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.calloc(size);
-    }
-    return NULL;
-}
-
-void *
-rust_dom::realloc(void *mem, size_t size) {
-    return realloc(mem, size, memory_region::LOCAL);
-}
-
-void *
-rust_dom::realloc(void *mem, size_t size,
-    memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.realloc(mem, size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.realloc(mem, size);
-    }
-    return NULL;
-}
-
-void
-rust_dom::free(void *mem) {
-    free(mem, memory_region::LOCAL);
-}
-
-void
-rust_dom::free(void *mem, memory_region::memory_region_type type) {
-    DLOG(this, mem, "rust_dom::free(0x%" PRIxPTR ")", mem);
-    if (type == memory_region::LOCAL) {
-        local_region.free(mem);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        synchronized_region.free(mem);
-    }
-    return;
 }
 
 #ifdef __WIN32__
@@ -372,7 +308,7 @@ rust_dom::get_cache() {
 rust_task *
 rust_dom::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
-        new (this) rust_task (this, &newborn_tasks, spawner, name);
+        new (this->kernel) rust_task (this, &newborn_tasks, spawner, name);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
     newborn_tasks.append(task);

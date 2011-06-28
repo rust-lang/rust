@@ -3,14 +3,14 @@
 
 rust_port::rust_port(rust_task *task, size_t unit_sz) :
                      maybe_proxy<rust_port>(this), task(task),
-                     unit_sz(unit_sz), writers(task->dom), chans(task->dom) {
+                     unit_sz(unit_sz), writers(task), chans(task) {
 
     LOG(task, comm,
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
 
     // Allocate a remote channel, for remote channel data.
-    remote_channel = new (task->dom) rust_chan(task, this, unit_sz);
+    remote_channel = new (task) rust_chan(task, this, unit_sz);
 }
 
 rust_port::~rust_port() {

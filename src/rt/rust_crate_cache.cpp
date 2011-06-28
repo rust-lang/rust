@@ -16,7 +16,7 @@ rust_crate_cache::get_type_desc(size_t size,
         return td;
     }
     DLOG(dom, cache, "rust_crate_cache::get_type_desc miss");
-    td = (type_desc*) dom->malloc(sizeof(type_desc) + keysz);
+    td = (type_desc*) dom->kernel->malloc(sizeof(type_desc) + keysz);
     if (!td)
         return NULL;
     // By convention, desc 0 is the root descriptor.
@@ -53,7 +53,7 @@ rust_crate_cache::flush() {
         type_desc *d = type_descs;
         HASH_DEL(type_descs, d);
         DLOG(dom, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
-        dom->free(d);
+        dom->kernel->free(d);
     }
 }
 

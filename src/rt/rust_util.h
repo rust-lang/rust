@@ -1,6 +1,8 @@
 #ifndef RUST_UTIL_H
 #define RUST_UTIL_H
 
+#include "rust_task.h"
+
 // Reference counted objects
 
 template <typename T>
@@ -17,30 +19,30 @@ rc_base<T>::~rc_base()
 // Utility type: pointer-vector.
 
 template <typename T>
-ptr_vec<T>::ptr_vec(rust_dom *dom) :
-    dom(dom),
+ptr_vec<T>::ptr_vec(rust_task *task) :
+    task(task),
     alloc(INIT_SIZE),
     fill(0),
-    data(new (dom) T*[alloc])
+    data(new (task) T*[alloc])
 {
-    I(dom, data);
-    DLOG(dom, mem, "new ptr_vec(data=0x%" PRIxPTR ") -> 0x%" PRIxPTR,
+    I(task->dom, data);
+    DLOG(task->dom, mem, "new ptr_vec(data=0x%" PRIxPTR ") -> 0x%" PRIxPTR,
          (uintptr_t)data, (uintptr_t)this);
 }
 
 template <typename T>
 ptr_vec<T>::~ptr_vec()
 {
-    I(dom, data);
-    DLOG(dom, mem, "~ptr_vec 0x%" PRIxPTR ", data=0x%" PRIxPTR,
+    I(task->dom, data);
+    DLOG(task->dom, mem, "~ptr_vec 0x%" PRIxPTR ", data=0x%" PRIxPTR,
          (uintptr_t)this, (uintptr_t)data);
-    I(dom, fill == 0);
-    dom->free(data);
+    I(task->dom, fill == 0);
+    task->free(data);
 }
 
 template <typename T> T *&
 ptr_vec<T>::operator[](size_t offset) {
-    I(dom, data[offset]->idx == offset);
+    I(task->dom, data[offset]->idx == offset);
     return data[offset];
 }
 
@@ -48,14 +50,14 @@ template <typename T>
 void
 ptr_vec<T>::push(T *p)
 {
-    I(dom, data);
-    I(dom, fill <= alloc);
+    I(task->dom, data);
+    I(task->dom, fill <= alloc);
     if (fill == alloc) {
         alloc *= 2;
-        data = (T **)dom->realloc(data, alloc * sizeof(T*));
-        I(dom, data);
+        data = (T **)task->realloc(data, alloc * sizeof(T*));
+        I(task->dom, data);
     }
-    I(dom, fill < alloc);
+    I(task->dom, fill < alloc);
     p->idx = fill;
     data[fill++] = p;
 }
@@ -78,13 +80,13 @@ template <typename T>
 void
 ptr_vec<T>::trim(size_t sz)
 {
-    I(dom, data);
+    I(task->dom, data);
     if (sz <= (alloc / 4) &&
         (alloc / 2) >= INIT_SIZE) {
         alloc /= 2;
-        I(dom, alloc >= fill);
-        data = (T **)dom->realloc(data, alloc * sizeof(T*));
-        I(dom, data);
+        I(task->dom, alloc >= fill);
+        data = (T **)task->realloc(data, alloc * sizeof(T*));
+        I(task->dom, data);
     }
 }
 
@@ -93,9 +95,9 @@ void
 ptr_vec<T>::swap_delete(T *item)
 {
     /* Swap the endpoint into i and decr fill. */
-    I(dom, data);
-    I(dom, fill > 0);
-    I(dom, item->idx < fill);
+    I(task->dom, data);
+    I(task->dom, fill > 0);
+    I(task->dom, item->idx < fill);
     fill--;
     if (fill > 0) {
         T *subst = data[fill];
@@ -155,7 +157,8 @@ isaac_init(rust_dom *dom, randctx *rctx)
         } else {
             int fd = open("/dev/urandom", O_RDONLY);
             I(dom, fd > 0);
-            I(dom, read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
+            I(dom, 
+              read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
               == sizeof(rctx->randrsl));
             I(dom, close(fd) == 0);
         }

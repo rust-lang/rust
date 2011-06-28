@@ -74,11 +74,10 @@ upcall_trace_str(rust_task *task, char const *c) {
 extern "C" CDECL rust_port*
 upcall_new_port(rust_task *task, size_t unit_sz) {
     LOG_UPCALL_ENTRY(task);
-    rust_dom *dom = task->dom;
     scoped_lock with(task->kernel->scheduler_lock);
     LOG(task, comm, "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
-    return new (dom) rust_port(task, unit_sz);
+    return new (task) rust_port(task, unit_sz);
 }
 
 extern "C" CDECL void
@@ -101,7 +100,7 @@ upcall_new_chan(rust_task *task, rust_port *port) {
         "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
         (uintptr_t) task, task->name, port);
     I(dom, port);
-    return new (dom) rust_chan(task, port, port->unit_sz);
+    return new (task) rust_chan(task, port, port->unit_sz);
 }
 
 /**
@@ -181,7 +180,7 @@ upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
         port = proxy;
         target_task = target->as_proxy()->handle()->referent();
     }
-    return new (target_task->dom) rust_chan(target_task, port, unit_sz);
+    return new (target_task) rust_chan(target_task, port, unit_sz);
 }
 
 extern "C" CDECL void

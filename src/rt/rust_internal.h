@@ -115,15 +115,9 @@ template <typename T> struct rc_base {
     ~rc_base();
 };
 
-template <typename T> struct dom_owned {
-    void operator delete(void *ptr) {
-        ((T *)ptr)->dom->free(ptr);
-    }
-};
-
 template <typename T> struct task_owned {
     void operator delete(void *ptr) {
-        ((T *)ptr)->task->dom->free(ptr);
+        ((T *)ptr)->task->free(ptr);
     }
 };
 
@@ -148,14 +142,14 @@ struct rust_cond { };
 
 // Helper class used regularly elsewhere.
 
-template <typename T> class ptr_vec : public dom_owned<ptr_vec<T> > {
+template <typename T> class ptr_vec : public task_owned<ptr_vec<T> > {
     static const size_t INIT_SIZE = 8;
-    rust_dom *dom;
+    rust_task *task;
     size_t alloc;
     size_t fill;
     T **data;
 public:
-    ptr_vec(rust_dom *dom);
+    ptr_vec(rust_task *task);
     ~ptr_vec();
 
     size_t length() {
@@ -181,7 +175,6 @@ public:
 #include "rust_kernel.h"
 #include "rust_message.h"
 #include "rust_dom.h"
-#include "memory.h"
 
 struct rust_timer {
     // FIXME: This will probably eventually need replacement
@@ -250,35 +243,11 @@ rust_alarm
 typedef ptr_vec<rust_alarm> rust_wait_queue;
 
 
-struct stk_seg {
-    unsigned int valgrind_id;
-    uintptr_t limit;
-    uint8_t data[];
-};
-
-struct frame_glue_fns {
-    uintptr_t mark_glue_off;
-    uintptr_t drop_glue_off;
-    uintptr_t reloc_glue_off;
-};
-
-struct gc_alloc {
-    gc_alloc *prev;
-    gc_alloc *next;
-    uintptr_t ctrl_word;
-    uint8_t data[];
-    bool mark() {
-        if (ctrl_word & 1)
-            return false;
-        ctrl_word |= 1;
-        return true;
-    }
-};
-
 #include "circular_buffer.h"
 #include "rust_task.h"
 #include "rust_chan.h"
 #include "rust_port.h"
+#include "memory.h"
 
 //
 // Local Variables:
