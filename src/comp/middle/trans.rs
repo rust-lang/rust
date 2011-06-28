@@ -2987,7 +2987,7 @@ fn call_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
     auto llfnptr =
         r.bcx.build.GEP(r.val, [C_int(0), C_int(abi::tydesc_field_cmp_glue)]);
     auto llfn = r.bcx.build.Load(llfnptr);
-    auto llcmpresultptr = r.bcx.build.Alloca(T_i1());
+    auto llcmpresultptr = alloca(r.bcx, T_i1());
     let vec[ValueRef] llargs =
         [llcmpresultptr, r.bcx.fcx.lltaskptr, C_null(T_ptr(T_nil())),
          lltydescs, llrawlhsptr, llrawrhsptr, llop];
