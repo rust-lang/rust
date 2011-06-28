@@ -52,7 +52,7 @@ def full_snapshot_name(date, rev, platform, hsh):
 
 
 def get_kernel():
-    if os.name == "nt":
+    if os.name == "nt" or scrub(os.getenv("CFG_ENABLE_MINGW_CROSS")):
         return "winnt"
     kernel = os.uname()[0].lower()
     if kernel == "darwin":

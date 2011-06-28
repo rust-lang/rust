@@ -166,6 +166,7 @@ SREQ2 := stage2/rustc$(X) $(LREQ) rt/main.o stage2/glue.o \
 export CFG_SRC_DIR
 export CFG_VERSION
 export CFG_LLVM_ROOT
+export CFG_ENABLE_MINGW_CROSS
 
 ######################################################################
 # Subprograms

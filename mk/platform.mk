@@ -74,24 +74,6 @@ CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
                stage2/lib,                   \
                ))))
 
-ifdef CFG_WINDOWSY
-  CFG_INFO := $(info cfg: windows-y environment)
-
-  CFG_EXE_SUFFIX := .exe
-  CFG_LIB_NAME=$(1).dll
-  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
-  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
-  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH)" $(2)
-
-  CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
-                           -e 's@\\(\S)@/\1@go;'       \
-                           -e 's@^/([a-zA-Z])/@\1:/@o;')
-  CFG_GCCISH_CFLAGS += -march=i686 -O2
-  CFG_GCCISH_LINK_FLAGS += -shared -fPIC
-  CFG_DEF_SUFFIX := .def
-endif
-
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
@@ -104,13 +86,6 @@ ifdef CFG_UNIXY
       $(CFG_VALGRIND) $(1)
 
   ifdef CFG_ENABLE_MINGW_CROSS
-    CFG_EXE_SUFFIX := .exe
-    CFG_LIB_NAME=$(1).dll
-    CFG_DEF_SUFFIX := .def
-    CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
-    CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-    CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
-    CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_TESTLIB,$(1)) $(1)
     CFG_WINDOWSY := 1
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCCISH_CROSS := i586-mingw32msvc-
@@ -118,7 +93,7 @@ ifdef CFG_UNIXY
       CFG_VALGRIND += wine
     endif
 
-    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i686 -O2
+    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i586 -O2
     CFG_GCCISH_PRE_LIB_FLAGS :=
     CFG_GCCISH_POST_LIB_FLAGS :=
     CFG_GCCISH_DEF_FLAG :=
@@ -135,6 +110,29 @@ ifdef CFG_UNIXY
                     --quiet --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
   endif
 endif
+
+
+ifdef CFG_WINDOWSY
+  CFG_INFO := $(info cfg: windows-y environment)
+
+  CFG_EXE_SUFFIX := .exe
+  CFG_LIB_NAME=$(1).dll
+  CFG_DEF_SUFFIX := .def
+  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
+  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH)" $(2)
+
+  ifndef CFG_ENABLE_MINGW_CROSS
+    CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
+                             -e 's@\\(\S)@/\1@go;'       \
+                             -e 's@^/([a-zA-Z])/@\1:/@o;')
+    CFG_GCCISH_CFLAGS += -march=i686 -O2
+    CFG_GCCISH_LINK_FLAGS += -shared -fPIC
+  endif
+
+endif
+
 
 ifdef CFG_CLANG
   CFG_INFO := $(info cfg: using clang)
