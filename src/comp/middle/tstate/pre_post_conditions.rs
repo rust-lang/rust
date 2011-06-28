@@ -536,7 +536,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_expr(fcx, p);
             copy_pre_post(fcx.ccx, e.id, p);
         }
-        case (expr_check(?p)) {
+        case (expr_check(_, ?p)) {
             find_pre_post_expr(fcx, p);
             copy_pre_post(fcx.ccx, e.id, p);
             /* predicate p holds after this expression executes */

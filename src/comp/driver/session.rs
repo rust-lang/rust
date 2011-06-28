@@ -32,6 +32,7 @@ type options =
         bool stats,
         bool time_passes,
         bool time_llvm_passes,
+        bool check_claims,
         back::link::output_type output_type,
         vec[str] library_search_paths,
         str sysroot);

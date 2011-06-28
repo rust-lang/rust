@@ -372,7 +372,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_put(?eo)) { visit_expr_opt(eo, e, v); }
         case (expr_be(?x)) { vt(v).visit_expr(x, e, v); }
         case (expr_log(_, ?x)) { vt(v).visit_expr(x, e, v); }
-        case (expr_check(?x)) { vt(v).visit_expr(x, e, v); }
+        case (expr_check(_, ?x)) { vt(v).visit_expr(x, e, v); }
         case (expr_assert(?x)) { vt(v).visit_expr(x, e, v); }
         case (expr_port(_)) { }
         case (expr_chan(?x)) { vt(v).visit_expr(x, e, v); }

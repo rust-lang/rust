@@ -1626,7 +1626,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto expr_t = check_expr(fcx, e);
             write::nil_ty(fcx.ccx.tcx, id);
         }
-        case (ast::expr_check(?e)) {
+        case (ast::expr_check(_, ?e)) {
             check_pred_expr(fcx, e);
             write::nil_ty(fcx.ccx.tcx, id);
         }

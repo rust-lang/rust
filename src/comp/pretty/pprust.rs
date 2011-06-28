@@ -859,8 +859,15 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             print_expr(s, expr);
         }
-        case (ast::expr_check(?expr)) {
-            word_nbsp(s, "check");
+        case (ast::expr_check(?m, ?expr)) {
+            alt (m) {
+                case (ast::unchecked) {
+                    word_nbsp(s, "claim");
+                }
+                case (ast::checked) {
+                    word_nbsp(s, "check");
+                }
+            }
             popen(s);
             print_expr(s, expr);
             pclose(s);

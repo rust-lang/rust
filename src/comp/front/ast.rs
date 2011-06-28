@@ -231,6 +231,7 @@ type field = spanned[field_];
 
 tag spawn_dom { dom_implicit; dom_thread; }
 
+tag check_mode { checked; unchecked; }
 
 // FIXME: temporary
 tag seq_kind { sk_unique; sk_rc; }
@@ -286,7 +287,7 @@ tag expr_ {
     expr_assert(@expr);
 
     /* preds that typestate is aware of */
-    expr_check(@expr);
+    expr_check(check_mode, @expr);
    /* FIXME Would be nice if expr_check desugared
       to expr_if_check. */
     expr_if_check(@expr, block, option::t[@expr]);

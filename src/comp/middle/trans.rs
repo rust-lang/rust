@@ -5988,8 +5988,16 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_assert(?a)) {
             ret trans_check_expr(cx, a, "Assertion");
         }
-        case (ast::expr_check(?a)) {
+        case (ast::expr_check(ast::checked, ?a)) {
             ret trans_check_expr(cx, a, "Predicate");
+        }
+        case (ast::expr_check(ast::unchecked, ?a)) {
+            if (cx.fcx.lcx.ccx.sess.get_opts().check_claims) {
+                ret trans_check_expr(cx, a, "Claim");
+            }
+            else {
+                ret rslt(cx, C_nil());
+            }
         }
         case (ast::expr_break) { ret trans_break(e.span, cx); }
         case (ast::expr_cont) { ret trans_cont(e.span, cx); }

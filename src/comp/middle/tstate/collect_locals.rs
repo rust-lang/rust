@@ -36,7 +36,7 @@ fn collect_local(&ctxt cx, &@local loc) {
 
 fn collect_pred(&ctxt cx, &@expr e) {
     alt (e.node) {
-        case (expr_check(?ch)) {
+        case (expr_check(_, ?ch)) {
             vec::push(*cx.cs, expr_to_constr(cx.tcx, ch));
         }
         case (expr_if_check(?ex, _, _)) {

@@ -554,7 +554,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         case (expr_assert(?p)) {
             ret find_pre_post_state_sub(fcx, pres, p, e.id, none);
         }
-        case (expr_check(?p)) {
+        case (expr_check(_, ?p)) {
             /* predicate p holds after this expression executes */
             let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
             ret find_pre_post_state_sub(fcx, pres, p, e.id, some(c.node));

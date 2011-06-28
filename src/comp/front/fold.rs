@@ -404,7 +404,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_be(?e)) { expr_be(fld.fold_expr(e)) }
         case (expr_log(?lv, ?e)) { expr_log(lv, fld.fold_expr(e)) }
         case (expr_assert(?e)) { expr_assert(fld.fold_expr(e)) }
-        case (expr_check(?e)) { expr_check(fld.fold_expr(e)) }
+        case (expr_check(?m, ?e)) { expr_check(m, fld.fold_expr(e)) }
         case (expr_port(?ot)) { 
             expr_port(alt(ot) {
                     case (option::some(?t)) { option::some(fld.fold_ty(t)) }

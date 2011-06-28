@@ -865,7 +865,20 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
 
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = ast::expr_check(e);
+        ex = ast::expr_check(ast::checked, e);
+    } else if (eat_word(p, "claim")) {
+        /* Same rules as check, except that if check-claims
+         is enabled (a command-line flag), then the parser turns
+        claims into check */
+        
+        auto e = parse_expr(p);
+        auto hi = e.span.hi;
+        ex = if (p.get_session().get_opts().check_claims) {
+            ast::expr_check(ast::checked, e)
+        }
+        else {
+            ast::expr_check(ast::unchecked, e)
+        };
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
             case (token::SEMI) { ex = ast::expr_ret(none); }
@@ -1596,7 +1609,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_put(_)) { true }
                 case (ast::expr_be(_)) { true }
                 case (ast::expr_log(_, _)) { true }
-                case (ast::expr_check(_)) { true }
+                case (ast::expr_check(_, _)) { true }
                 case (ast::expr_if_check(_, _, _)) { false }
                 case (ast::expr_port(_)) { true }
                 case (ast::expr_chan(_)) { true }
