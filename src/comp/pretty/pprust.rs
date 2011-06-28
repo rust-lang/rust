@@ -80,6 +80,10 @@ fn block_to_str(&ast::block blk) -> str {
     ret writer.get_str();
 }
 
+fn meta_item_to_str(&ast::meta_item mi) -> str {
+    ret to_str(@mi, print_meta_item);
+}
+
 fn cbox(&ps s, uint u) {
     vec::push(s.boxes, pp::consistent);
     pp::cbox(s.s, u);

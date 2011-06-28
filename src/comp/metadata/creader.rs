@@ -24,25 +24,6 @@ import tags::*;
 export read_crates;
 export list_file_metadata;
 
-fn get_exported_metadata(&session::session sess, &str path, &vec[u8] data) ->
-   hashmap[str, str] {
-    auto meta_items =
-        ebml::get_doc(ebml::new_doc(data), tag_meta_export);
-    auto mm = common::new_str_hash[str]();
-    for each (ebml::doc m in
-             ebml::tagged_docs(meta_items, tag_meta_item)) {
-        auto kd = ebml::get_doc(m, tag_meta_item_key);
-        auto vd = ebml::get_doc(m, tag_meta_item_value);
-        auto k = str::unsafe_from_bytes(ebml::doc_data(kd));
-        auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
-        log #fmt("metadata in %s: %s = %s", path, k, v);
-        if (!mm.insert(k, v)) {
-            sess.warn(#fmt("Duplicate metadata item in %s: %s", path, k));
-        }
-    }
-    ret mm;
-}
-
 fn metadata_matches(hashmap[str, str] mm, &vec[@ast::meta_item] metas) ->
    bool {
     log #fmt("matching %u metadata requirements against %u metadata items",
@@ -126,7 +107,8 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
             }
             alt (get_metadata_section(path)) {
                 case (option::some(?cvec)) {
-                    auto mm = get_exported_metadata(sess, path, cvec);
+                    auto mm = decoder::get_exported_metadata(sess,
+                                                             path, cvec);
                     if (!metadata_matches(mm, metas)) {
                         log #fmt("skipping %s, metadata doesn't match", path);
                         cont;

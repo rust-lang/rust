@@ -5,12 +5,15 @@ import std::option;
 import std::vec;
 import std::str;
 import std::io;
+import std::map::hashmap;
 import front::ast;
 import middle::ty;
 import tags::*;
 import tydecode::parse_def_id;
 import tydecode::parse_ty_data;
 import driver::session;
+import util::common;
+import pretty::pprust;
 
 export get_symbol;
 export get_tag_variants;
@@ -18,6 +21,7 @@ export get_type;
 export lookup_defs;
 export get_type;
 export list_crate_metadata;
+export get_exported_metadata;
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool  eq_fn, uint hash) ->
    vec[ebml::doc] {
@@ -252,8 +256,35 @@ fn item_kind_to_str(u8 kind) -> str {
     }
 }
 
-fn list_crate_metadata(vec[u8] bytes, io::writer out) {
-    auto md = ebml::new_doc(bytes);
+fn get_meta_items(&ebml::doc md) -> vec[ast::meta_item] {
+    let vec[ast::meta_item] items = [];
+    for each (ebml::doc meta_item_doc in
+              ebml::tagged_docs(md, tag_meta_item)) {
+        auto kd = ebml::get_doc(meta_item_doc, tag_meta_item_key);
+        auto vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
+        auto k = str::unsafe_from_bytes(ebml::doc_data(kd));
+        auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
+        items += [rec(node=ast::meta_key_value(k, v),
+                      span=rec(lo=0u, hi=0u))];
+    }
+    ret items;
+}
+
+fn list_meta_items(&ebml::doc meta_items, io::writer out) {
+    for (ast::meta_item mi in get_meta_items(meta_items)) {
+        out.write_str(#fmt("%s\n", pprust::meta_item_to_str(mi)));
+    }
+}
+
+fn list_crate_attributes(&ebml::doc md, io::writer out) {
+    out.write_str("=Crate=\n");
+    auto meta_items = ebml::get_doc(md, tag_meta_export);
+    list_meta_items(meta_items, out);
+    out.write_str("\n");
+}
+
+fn list_crate_items(vec[u8] bytes, &ebml::doc md, io::writer out) {
+    out.write_str("=Items=\n");
     auto paths = ebml::get_doc(md, tag_paths);
     auto items = ebml::get_doc(md, tag_items);
     auto index = ebml::get_doc(paths, tag_index);
@@ -270,8 +301,33 @@ fn list_crate_metadata(vec[u8] bytes, io::writer out) {
                                describe_def(items, did)));
         }
     }
+    out.write_str("\n");
 }
 
+fn list_crate_metadata(vec[u8] bytes, io::writer out) {
+    auto md = ebml::new_doc(bytes);
+    list_crate_attributes(md, out);
+    list_crate_items(bytes, md, out);
+}
+
+fn get_exported_metadata(&session::session sess, &str path, &vec[u8] data) ->
+   hashmap[str, str] {
+    auto meta_items =
+        ebml::get_doc(ebml::new_doc(data), tag_meta_export);
+    auto mm = common::new_str_hash[str]();
+    for each (ebml::doc m in
+             ebml::tagged_docs(meta_items, tag_meta_item)) {
+        auto kd = ebml::get_doc(m, tag_meta_item_key);
+        auto vd = ebml::get_doc(m, tag_meta_item_value);
+        auto k = str::unsafe_from_bytes(ebml::doc_data(kd));
+        auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
+        log #fmt("metadata in %s: %s = %s", path, k, v);
+        if (!mm.insert(k, v)) {
+            sess.warn(#fmt("Duplicate metadata item in %s: %s", path, k));
+        }
+    }
+    ret mm;
+}
 
 // Local Variables:
 // mode: rust
