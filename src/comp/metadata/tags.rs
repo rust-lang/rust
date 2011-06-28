@@ -40,10 +40,6 @@ const uint tag_index_buckets_bucket_elt = 0x14u;
 
 const uint tag_index_table = 0x15u;
 
-const uint tag_meta_export = 0x16u;
-
-const uint tag_meta_local = 0x17u;
-
 const uint tag_meta_item_name_value = 0x18u;
 
 const uint tag_meta_item_name = 0x19u;

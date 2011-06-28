@@ -457,32 +457,11 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
     ebml::end_tag(ebml_w);
 }
 
-// FIXME (#487): Transitional
-fn encode_meta_items(&ebml::writer ebml_w, &crate crate) {
-    auto name = middle::attr::find_attrs_by_name(crate.node.attrs,
-                                                 "name");
-    auto value = middle::attr::find_attrs_by_name(crate.node.attrs,
-                                                 "value");
-    auto name_and_val = middle::attr::attr_metas(name + value);
-
-    ebml::start_tag(ebml_w, tag_meta_export);
-    for (@meta_item mi in name_and_val) {
-        encode_meta_item(ebml_w, *mi);
-    }
-    ebml::end_tag(ebml_w);
-    ebml::start_tag(ebml_w, tag_meta_local);
-    ebml::end_tag(ebml_w);
-}
-
 fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     auto string_w = io::string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
     auto ebml_w = ebml::create_writer(buf_w);
 
-    // FIXME: This is the old way of encoding crate meta items
-    // Remove after going through a snapshot cycle
-    encode_meta_items(ebml_w, *crate);
-    // Encode crate attributes
     encode_attributes(ebml_w, crate.node.attrs);
     // Encode and index the paths.
 

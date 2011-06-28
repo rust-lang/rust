@@ -316,11 +316,6 @@ fn list_meta_items(&ebml::doc meta_items, io::writer out) {
 fn list_crate_attributes(&ebml::doc md, io::writer out) {
     out.write_str("=Crate=");
 
-    // FIXME (#487): This is transitional until attributes are snapshotted
-    out.write_str("old-style:\n");
-    auto meta_items = ebml::get_doc(md, tag_meta_export);
-    list_meta_items(meta_items, out);
-
     for (ast::attribute attr in get_attributes(md)) {
         out.write_str(#fmt("%s", pprust::attribute_to_str(attr)));
     }
