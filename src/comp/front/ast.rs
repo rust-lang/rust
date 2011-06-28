@@ -173,6 +173,14 @@ fn binop_to_str(binop op) -> str {
     }
 }
 
+pred lazy_binop(binop b) -> bool {
+    alt (b) {
+        case (and) { true }
+        case (or)  { true }
+        case (_)   { false }
+    }
+}
+
 tag unop { box(mutability); deref; not; neg; }
 
 fn unop_to_str(unop op) -> str {
