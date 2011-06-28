@@ -259,7 +259,7 @@ fn item_kind_to_str(u8 kind) -> str {
 fn get_meta_items(&ebml::doc md) -> vec[ast::meta_item] {
     let vec[ast::meta_item] items = [];
     for each (ebml::doc meta_item_doc in
-              ebml::tagged_docs(md, tag_meta_item)) {
+              ebml::tagged_docs(md, tag_meta_item_key_value)) {
         auto kd = ebml::get_doc(meta_item_doc, tag_meta_item_key);
         auto vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         auto k = str::unsafe_from_bytes(ebml::doc_data(kd));
@@ -270,6 +270,27 @@ fn get_meta_items(&ebml::doc md) -> vec[ast::meta_item] {
     ret items;
 }
 
+fn get_attributes(&ebml::doc md) -> vec[ast::attribute] {
+    let vec[ast::attribute] attrs = [];
+    alt (ebml::maybe_get_doc(md, tag_attributes)) {
+        case (option::some(?attrs_d)) {
+            for each (ebml::doc attr_doc in
+                      ebml::tagged_docs(attrs_d, tag_attribute)) {
+                auto meta_items = get_meta_items(attr_doc);
+                // Currently it's only possible to have a single meta item on
+                // an attribute
+                assert (vec::len(meta_items) == 1u);
+                auto meta_item = meta_items.(0);
+                attrs += [rec(node=rec(style=ast::attr_outer,
+                                       value=meta_item),
+                              span=rec(lo=0u, hi=0u))];
+            }
+        }
+        case (option::none) { }
+    }
+    ret attrs;
+}
+
 fn list_meta_items(&ebml::doc meta_items, io::writer out) {
     for (ast::meta_item mi in get_meta_items(meta_items)) {
         out.write_str(#fmt("%s\n", pprust::meta_item_to_str(mi)));
@@ -277,10 +298,18 @@ fn list_meta_items(&ebml::doc meta_items, io::writer out) {
 }
 
 fn list_crate_attributes(&ebml::doc md, io::writer out) {
-    out.write_str("=Crate=\n");
+    out.write_str("=Crate=");
+
+    // FIXME: This is transitional until attributes are snapshotted
+    out.write_str("old-style:\n");
     auto meta_items = ebml::get_doc(md, tag_meta_export);
     list_meta_items(meta_items, out);
-    out.write_str("\n");
+
+    for (ast::attribute attr in get_attributes(md)) {
+        out.write_str(#fmt("%s", pprust::attribute_to_str(attr)));
+    }
+
+    out.write_str("\n\n");
 }
 
 fn list_crate_items(vec[u8] bytes, &ebml::doc md, io::writer out) {
@@ -316,7 +345,7 @@ fn get_exported_metadata(&session::session sess, &str path, &vec[u8] data) ->
         ebml::get_doc(ebml::new_doc(data), tag_meta_export);
     auto mm = common::new_str_hash[str]();
     for each (ebml::doc m in
-             ebml::tagged_docs(meta_items, tag_meta_item)) {
+             ebml::tagged_docs(meta_items, tag_meta_item_key_value)) {
         auto kd = ebml::get_doc(m, tag_meta_item_key);
         auto vd = ebml::get_doc(m, tag_meta_item_value);
         auto k = str::unsafe_from_bytes(ebml::doc_data(kd));

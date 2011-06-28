@@ -44,8 +44,13 @@ const uint tag_meta_export = 0x16u;
 
 const uint tag_meta_local = 0x17u;
 
-const uint tag_meta_item = 0x18u;
+const uint tag_meta_item_key_value = 0x18u;
 
 const uint tag_meta_item_key = 0x19u;
 
 const uint tag_meta_item_value = 0x20u;
+
+const uint tag_attributes = 0x21u;
+
+const uint tag_attribute = 0x22u;
+

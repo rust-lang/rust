@@ -416,25 +416,36 @@ fn write_int(&io::writer writer, &int n) {
     writer.write_be_uint(n as uint, 4u);
 }
 
-fn encode_meta_items(&ebml::writer ebml_w, &crate crate) {
-    fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
-        // FIXME (#487): Support all forms of meta item
-        ebml::start_tag(ebml_w, tag_meta_item);
-        alt (mi.node) {
-            case (meta_key_value(?key, ?value)) {
-                ebml::start_tag(ebml_w, tag_meta_item_key);
-                ebml_w.writer.write(str::bytes(key));
-                ebml::end_tag(ebml_w);
-                ebml::start_tag(ebml_w, tag_meta_item_value);
-                ebml_w.writer.write(str::bytes(value));
-                ebml::end_tag(ebml_w);
-            }
-            case (_) {
-                log_err "unimplemented meta_item type";
-            }
+fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
+    // FIXME (#487): Support all forms of meta item
+    ebml::start_tag(ebml_w, tag_meta_item_key_value);
+    alt (mi.node) {
+        case (meta_key_value(?key, ?value)) {
+            ebml::start_tag(ebml_w, tag_meta_item_key);
+            ebml_w.writer.write(str::bytes(key));
+            ebml::end_tag(ebml_w);
+            ebml::start_tag(ebml_w, tag_meta_item_value);
+            ebml_w.writer.write(str::bytes(value));
+            ebml::end_tag(ebml_w);
         }
+        case (_) {
+            log_err "unimplemented meta_item type";
+        }
+    }
+    ebml::end_tag(ebml_w);
+}
+
+fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
+    ebml::start_tag(ebml_w, tag_attributes);
+    for (attribute attr in attrs) {
+        ebml::start_tag(ebml_w, tag_attribute);
+        encode_meta_item(ebml_w, attr.node.value);
         ebml::end_tag(ebml_w);
     }
+    ebml::end_tag(ebml_w);
+}
+
+fn encode_meta_items(&ebml::writer ebml_w, &crate crate) {
     ebml::start_tag(ebml_w, tag_meta_export);
     for each (@meta_item mi in crate_export_metas(crate)) {
         encode_meta_item(ebml_w, *mi);
@@ -451,9 +462,12 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     auto string_w = io::string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
     auto ebml_w = ebml::create_writer(buf_w);
-    // Encode the meta items
 
+    // FIXME: This is the old way of encoding crate meta items
+    // Remove after going through a snapshot cycle
     encode_meta_items(ebml_w, *crate);
+    // Encode crate attributes
+    encode_attributes(ebml_w, crate.node.attrs);
     // Encode and index the paths.
 
     ebml::start_tag(ebml_w, tag_paths);
