@@ -57,7 +57,7 @@ rust_timer::rust_timer(rust_dom *dom) :
     DLOG(dom, timer, "creating timer for domain 0x%" PRIxPTR, dom);
 #if defined(__WIN32__)
     thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
-    dom->win32_require("CreateThread", thread != NULL);
+    dom->kernel->win32_require("CreateThread", thread != NULL);
     if (RUNNING_ON_VALGRIND)
         Sleep(10);
 #else
@@ -70,8 +70,9 @@ rust_timer::rust_timer(rust_dom *dom) :
 rust_timer::~rust_timer() {
     exit_flag = 1;
 #if defined(__WIN32__)
-    dom->win32_require("WaitForSingleObject",
-            WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
+    dom->kernel->win32_require("WaitForSingleObject",
+                               WaitForSingleObject(thread, INFINITE) == 
+                               WAIT_OBJECT_0);
 #else
     pthread_join(thread, NULL);
 #endif

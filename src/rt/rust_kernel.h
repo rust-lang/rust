@@ -110,10 +110,14 @@ public:
     void *malloc(size_t size);
     void free(void *mem);
 
-    // TODO: this should go away
+    // FIXME: this should go away
     inline rust_dom *get_domain() const { return dom; }
 
     int start_task_threads(int num_threads);
+
+#ifdef __WIN32__
+    void win32_require(LPCTSTR fn, BOOL ok);
+#endif
 };
 
 class rust_task_thread : public rust_thread {
