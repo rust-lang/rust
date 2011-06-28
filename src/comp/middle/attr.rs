@@ -8,6 +8,7 @@ export attr_metas;
 export find_linkage_metas;
 export find_attrs_by_name;
 export contains;
+export sort_meta_items;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
@@ -101,6 +102,39 @@ fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
         }
     }
     ret false;
+}
+
+fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
+    fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
+        fn key(&@ast::meta_item m) -> ast::ident {
+            alt (m.node) {
+                case (ast::meta_word(?name)) {
+                    name
+                }
+                case (ast::meta_name_value(?name, _)) {
+                    name
+                }
+                case (ast::meta_list(?name, _)) {
+                    name
+                }
+            }
+        }
+        ret key(ma) <= key(mb);
+    }
+
+    // This is sort of stupid here, converting to a vec of mutables and back
+    let vec[mutable @ast::meta_item] v = [mutable ];
+    for (@ast::meta_item mi in items) {
+        v += [mutable mi];
+    }
+
+    std::sort::quick_sort(lteq, v);
+
+    let vec[@ast::meta_item] v2 = [];
+    for (@ast::meta_item mi in v) {
+        v2 += [mi]
+    }
+    ret v2;
 }
 
 //

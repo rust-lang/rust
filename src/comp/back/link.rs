@@ -306,32 +306,15 @@ fn crate_link_metas(&ast::crate c) -> link_metas {
 
 // This calculates CMH as defined above
 fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
-    // FIXME (#487) Move this sorting stuff into middle::attr
-    fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
-        fn key(&@ast::meta_item m) -> ast::ident {
-            alt (m.node) {
-                case (ast::meta_word(?name)) {
-                    name
-                }
-                case (ast::meta_name_value(?name, _)) {
-                    name
-                }
-                case (ast::meta_list(?name, _)) {
-                    name
-                }
-            }
-        }
-        ret key(ma) <= key(mb);
-    }
     fn len_and_str(&str s) -> str { ret #fmt("%u_%s", str::byte_len(s), s); }
+    
+    auto cmh_items = {
+        auto cmh_items = crate_link_metas(crate).cmh_items;
+        attr::sort_meta_items(cmh_items)
+    };
 
-    let vec[mutable @ast::meta_item] v = [mutable ];
-    for (@ast::meta_item mi in crate_link_metas(crate).cmh_items) {
-        v += [mutable mi];
-    }
-    sort::quick_sort(lteq, v);
     sha.reset();
-    for (@ast::meta_item m_ in v) {
+    for (@ast::meta_item m_ in cmh_items) {
         auto m = m_;
         alt (m.node) {
             case (ast::meta_name_value(?key, ?value)) {
