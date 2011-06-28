@@ -75,10 +75,6 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 
     void drain_incoming_message_queue(bool process);
 
-#ifdef __WIN32__
-    void win32_require(LPCTSTR fn, BOOL ok);
-#endif
-
     rust_crate_cache *get_cache();
     size_t number_of_live_tasks();
 

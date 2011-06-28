@@ -245,6 +245,25 @@ int rust_kernel::start_task_threads(int num_threads)
     return dom->rval;
 }
 
+#ifdef __WIN32__
+void
+rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
+    if (!ok) {
+        LPTSTR buf;
+        DWORD err = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                      FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err,
+                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      (LPTSTR) &buf, 0, NULL );
+        DLOG_ERR(dom, dom, "%s failed with error %ld: %s", fn, err, buf);
+        LocalFree((HLOCAL)buf);
+        I(dom, ok);
+    }
+}
+#endif
+
 rust_task_thread::rust_task_thread(int id, rust_kernel *owner)
     : id(id), owner(owner)
 {

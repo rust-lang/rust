@@ -74,25 +74,6 @@ rust_dom::fail() {
     rval = 1;
 }
 
-#ifdef __WIN32__
-void
-rust_dom::win32_require(LPCTSTR fn, BOOL ok) {
-    if (!ok) {
-        LPTSTR buf;
-        DWORD err = GetLastError();
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                      FORMAT_MESSAGE_FROM_SYSTEM |
-                      FORMAT_MESSAGE_IGNORE_INSERTS,
-                      NULL, err,
-                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                      (LPTSTR) &buf, 0, NULL );
-        DLOG_ERR(this, dom, "%s failed with error %ld: %s", fn, err, buf);
-        LocalFree((HLOCAL)buf);
-        I(this, ok);
-    }
-}
-#endif
-
 size_t
 rust_dom::number_of_live_tasks() {
     return running_tasks.length() + blocked_tasks.length();
