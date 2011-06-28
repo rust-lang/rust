@@ -123,8 +123,8 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     ret option::none[vec[u8]];
 }
 
-fn load_library_crate(&session::session sess, int cnum, &ast::ident ident,
-                      &vec[@ast::meta_item] metas,
+fn load_library_crate(&session::session sess, common::span span, int cnum,
+                      &ast::ident ident, vec[@ast::meta_item] metas,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
@@ -134,8 +134,7 @@ fn load_library_crate(&session::session sess, int cnum, &ast::ident ident,
         }
         case (_) { }
     }
-    log_err #fmt("can't find crate for '%s'", ident);
-    fail;
+    sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
 }
 
 type env =
@@ -151,8 +150,8 @@ fn visit_view_item(env e, &@ast::view_item i) {
             auto cnum;
             if (!e.crate_cache.contains_key(ident)) {
                 cnum = e.next_crate_num;
-                load_library_crate(e.sess, cnum, ident, meta_items,
-                                   e.library_search_paths);
+                load_library_crate(e.sess, i.span, cnum, ident,
+                                   meta_items, e.library_search_paths);
                 e.crate_cache.insert(ident, e.next_crate_num);
                 e.next_crate_num += 1;
             } else { cnum = e.crate_cache.get(ident); }
