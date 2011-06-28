@@ -2199,7 +2199,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
             alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
                 case (ty::ty_box(?ti)) { ti.ty }
             };
-        auto rslt = call_cmp_glue(cx, lhs, rhs, t_inner, llop);
+        auto rslt = compare(cx, lhs, rhs, t_inner, llop);
         rslt.bcx.build.Store(rslt.val, cx.fcx.llretptr);
         rslt.bcx.build.RetVoid();
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t) ||
@@ -2291,14 +2291,13 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
                 av = load_if_immediate(cx, av, t);
                 bv = load_if_immediate(cx, bv, t);
             }
+
             // First 'eq' comparison: if so, continue to next elts.
-
-            auto eq_r =
-                call_cmp_glue(cx, av, bv, t, C_u8(abi::cmp_glue_op_eq));
+            auto eq_r = compare(cx, av, bv, t, C_u8(abi::cmp_glue_op_eq));
             eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
-            // Second 'op' comparison: find out how this elt-pair decides.
 
-            auto stop_r = call_cmp_glue(stop_cx, av, bv, t, llop);
+            // Second 'op' comparison: find out how this elt-pair decides.
+            auto stop_r = compare(stop_cx, av, bv, t, llop);
             stop_r.bcx.build.Store(stop_r.val, flag);
             stop_r.bcx.build.Br(last_cx.llbb);
             ret rslt(cnt_cx, C_nil());
@@ -2339,61 +2338,73 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
 tag numerical_type { signed_int; unsigned_int; floating_point; }
 
 
-// A helper function to create scalar comparison glue.
-fn make_scalar_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
-                        ValueRef llop) {
-    // assert ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t);
-
-    // In most cases, we need to know whether to do signed, unsigned, or float
-    // comparison.
-
-    auto f = bind make_numerical_cmp_glue(cx, lhs, rhs, _, llop);
-
+fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
+                        ValueRef llop) -> result {
     // FIXME: this could be a lot shorter if we could combine multiple cases
     // of alt expressions (issue #449).
+
+    auto f = bind compare_numerical_values(cx, lhs, rhs, _, llop);
+
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-        case (ty::ty_nil) {
-            cx.build.Store(C_bool(true), cx.fcx.llretptr);
-            cx.build.RetVoid();
-        }
-        case (ty::ty_bool) { f(unsigned_int); }
-        case (ty::ty_int) { f(signed_int); }
-        case (ty::ty_float) { f(floating_point); }
-        case (ty::ty_uint) { f(unsigned_int); }
+        case (ty::ty_nil) { ret rslt(cx, C_bool(true)); }
+        case (ty::ty_bool) { ret f(unsigned_int); }
+        case (ty::ty_int) { ret f(signed_int); }
+        case (ty::ty_float) { ret f(floating_point); }
+        case (ty::ty_uint) { ret f(unsigned_int); }
         case (ty::ty_machine(_)) {
 
-            // Floating point machine types
             if (ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
-                f(floating_point);
-            } else if (
-             // Signed, integral machine types
-             ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)) {
-                f(signed_int);
-            } else 
-             // Unsigned, integral machine types
-             {
-                f(unsigned_int);
+                // Floating point machine types
+                ret f(floating_point);
+            } else if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)) {
+                // Signed, integral machine types
+                ret f(signed_int);
+            } else {
+                // Unsigned, integral machine types
+                ret f(unsigned_int);
             }
         }
-        case (ty::ty_char) { f(unsigned_int); }
+        case (ty::ty_char) { ret f(unsigned_int); }
         case (ty::ty_type) {
             trans_fail(cx, none[common::span],
                        "attempt to compare values of type type");
+
+            // This is a bit lame, because we return a dummy block to the
+            // caller that's actually unreachable, but I don't think it
+            // matters.
+            ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"),
+                     C_bool(false));
         }
         case (ty::ty_native) {
             trans_fail(cx, none[common::span],
                        "attempt to compare values of type native");
+            ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"),
+                     C_bool(false));
         }
         case (ty::ty_ptr(_)) {
-            f(unsigned_int);
+            ret f(unsigned_int);
         }
         case (_) {
             // Should never get here, because t is scalar.
-
             cx.fcx.lcx.ccx.sess.bug("non-scalar type passed to " +
-                                        "make_scalar_cmp_glue");
+                                    "compare_scalar_types");
         }
     }
+}
+
+// A helper function to create scalar comparison glue.
+fn make_scalar_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
+                        ValueRef llop) {
+    assert ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t);
+
+    // In most cases, we need to know whether to do signed, unsigned, or float
+    // comparison.
+
+    auto rslt = compare_scalar_types(cx, lhs, rhs, t, llop);
+    auto bcx = rslt.bcx;
+    auto compare_result = rslt.val;
+    bcx.build.Store(compare_result, cx.fcx.llretptr);
+    bcx.build.RetVoid();
 }
 
 
@@ -3032,6 +3043,16 @@ fn call_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
     ret rslt(r.bcx, r.bcx.build.Load(llcmpresultptr));
 }
 
+// Compares two values. Performs the simple scalar comparison if the types are
+// scalar and calls to comparison glue otherwise.
+fn compare(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
+           ValueRef llop) -> result {
+    if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
+        ret compare_scalar_types(cx, lhs, rhs, t, llop);
+    }
+    ret call_cmp_glue(cx, lhs, rhs, t, llop);
+}
+
 fn take_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_take_glue);
@@ -3327,7 +3348,7 @@ fn trans_compare(&@block_ctxt cx0, ast::binop op, &ty::t t0, ValueRef lhs0,
         case (ast::ge) { llop = C_u8(abi::cmp_glue_op_lt); }
         case (ast::gt) { llop = C_u8(abi::cmp_glue_op_le); }
     }
-    auto rs = call_cmp_glue(cx, lhs, rhs, t, llop);
+    auto rs = compare(cx, lhs, rhs, t, llop);
 
     // Invert the result if necessary.
     // FIXME: Use or-patterns when we have them.
