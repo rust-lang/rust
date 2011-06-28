@@ -11,10 +11,7 @@ type node = option::t[uint];
 type ufind = rec(mutable vec[mutable node] nodes);
 
 fn make() -> ufind {
-    let vec[mutable node] v = [mutable none[uint]];
-    vec::pop(v); // FIXME: botch
-
-    ret rec(mutable nodes=v);
+    ret rec(mutable nodes=[mutable]);
 }
 
 fn make_set(&ufind ufnd) -> uint {
