@@ -7,6 +7,7 @@ import front::ast;
 export attr_metas;
 export find_linkage_metas;
 export find_attrs_by_name;
+export find_meta_items_by_name;
 export contains;
 export sort_meta_items;
 

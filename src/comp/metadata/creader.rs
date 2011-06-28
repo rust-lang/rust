@@ -56,20 +56,24 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
                       &vec[@ast::meta_item] metas,
                       &vec[str] library_search_paths) ->
    option::t[tup(str, vec[u8])] {
-    let str crate_name = ident;
-    for (@ast::meta_item mi in metas) {
-        alt (mi.node) {
-            case (ast::meta_name_value(?name, ?value)) {
-                if (name == "name") {
-                    crate_name = value;
-                    break;
+
+    auto crate_name = {
+        auto name_items = attr::find_meta_items_by_name(metas, "name");
+        alt (vec::last(name_items)) {
+            case (some(?i)) {
+                alt (i.node) {
+                    case (ast::meta_name_value(_, ?v)) { v }
+                    case (_) {
+                        // FIXME: Probably want a warning here since the user
+                        // is using the wrong type of meta item
+                        ident
+                    }
                 }
             }
-            case (_) {
-                // FIXME (#487)
-            }
+            case (none) { ident }
         }
-    }
+    };
+
     auto nn = default_native_lib_naming(sess);
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will

@@ -415,7 +415,6 @@ fn write_int(&io::writer writer, &int n) {
 }
 
 fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
-    // FIXME (#487): Support all forms of meta item
     alt (mi.node) {
         case (meta_word(?name)) {
             ebml::start_tag(ebml_w, tag_meta_item_word);
