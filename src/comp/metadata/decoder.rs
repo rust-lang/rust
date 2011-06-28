@@ -328,6 +328,10 @@ fn list_crate_attributes(&ebml::doc md, io::writer out) {
     out.write_str("\n\n");
 }
 
+fn get_crate_attributes(&vec[u8] data) -> vec[ast::attribute] {
+    ret get_attributes(ebml::new_doc(data));
+}
+
 fn list_crate_items(vec[u8] bytes, &ebml::doc md, io::writer out) {
     out.write_str("=Items=\n");
     auto paths = ebml::get_doc(md, tag_paths);
