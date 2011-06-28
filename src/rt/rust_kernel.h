@@ -116,15 +116,6 @@ public:
     int start_task_threads(int num_threads);
 };
 
-inline void *operator new(size_t size, rust_kernel *kernel) {
-    return kernel->malloc(size);
-}
-
-inline void *operator new(size_t size, rust_kernel &kernel) {
-    return kernel.malloc(size);
-}
-
-
 class rust_task_thread : public rust_thread {
     int id;
     rust_kernel *owner;

@@ -42,7 +42,7 @@ last_os_error(rust_task *task) {
 #endif
     size_t fill = strlen(buf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = dom->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc, memory_region::LOCAL);
     if (!mem) {
         task->fail(1);
         return NULL;
@@ -73,7 +73,7 @@ rust_getcwd(rust_task *task) {
 
     size_t fill = strlen(cbuf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = dom->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc, memory_region::LOCAL);
     if (!mem) {
         task->fail(1);
         return NULL;
@@ -200,7 +200,7 @@ vec_alloc_with_data(rust_task *task,
 {
     rust_dom *dom = task->dom;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
-    void *mem = dom->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc, memory_region::LOCAL);
     if (!mem) return NULL;
     return new (mem) rust_vec(dom, alloc, fill * elt_size, (uint8_t*)d);
 }

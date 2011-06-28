@@ -9,7 +9,7 @@ rust_chan::rust_chan(rust_task *task,
                      size_t unit_sz) :
                      task(task),
                      port(port),
-                     buffer(task->dom, unit_sz) {
+                     buffer(task, unit_sz) {
     ++task->ref_count;
     if (port) {
         associate(port);

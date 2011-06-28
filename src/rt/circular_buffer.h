@@ -6,15 +6,17 @@
 #define CIRCULAR_BUFFER_H
 
 class
-circular_buffer : public dom_owned<circular_buffer> {
+circular_buffer : public task_owned<circular_buffer> {
     static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
     static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
-public:
     rust_dom *dom;
+
+public:
+    rust_task *task;
     // Size of the data unit in bytes.
     const size_t unit_sz;
-    circular_buffer(rust_dom *dom, size_t unit_sz);
+    circular_buffer(rust_task *task, size_t unit_sz);
     ~circular_buffer();
     void transfer(void *dst);
     void enqueue(void *src);

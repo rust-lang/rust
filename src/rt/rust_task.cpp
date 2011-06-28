@@ -20,16 +20,16 @@ static size_t const min_stk_bytes = 0x100000;
 // Task stack segments. Heap allocated and chained together.
 
 static stk_seg*
-new_stk(rust_dom *dom, size_t minsz)
+new_stk(rust_task *task, size_t minsz)
 {
     if (minsz < min_stk_bytes)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
-    stk_seg *stk = (stk_seg *)dom->malloc(sz);
-    LOGPTR(dom, "new stk", (uintptr_t)stk);
+    stk_seg *stk = (stk_seg *)task->malloc(sz);
+    LOGPTR(task->dom, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->limit = (uintptr_t) &stk->data[minsz];
-    LOGPTR(dom, "stk limit", stk->limit);
+    LOGPTR(task->dom, "stk limit", stk->limit);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 &stk->data[minsz]);
@@ -37,11 +37,11 @@ new_stk(rust_dom *dom, size_t minsz)
 }
 
 static void
-del_stk(rust_dom *dom, stk_seg *stk)
+del_stk(rust_task *task, stk_seg *stk)
 {
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
-    LOGPTR(dom, "freeing stk segment", (uintptr_t)stk);
-    dom->free(stk);
+    LOGPTR(task->dom, "freeing stk segment", (uintptr_t)stk);
+    task->free(stk);
 }
 
 // Tasks
@@ -55,9 +55,9 @@ size_t const callee_save_fp = 0;
 rust_task::rust_task(rust_dom *dom, rust_task_list *state,
                      rust_task *spawner, const char *name) :
     maybe_proxy<rust_task>(this),
-    stk(new_stk(dom, 0)),
+    stk(NULL),
     runtime_sp(0),
-    rust_sp(stk->limit),
+    rust_sp(NULL),
     gc_alloc_chain(0),
     dom(dom),
     cache(NULL),
@@ -69,12 +69,16 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     supervisor(spawner),
     list_index(-1),
     rendezvous_ptr(0),
-    alarm(this),
     handle(NULL),
-    active(false)
+    active(false),
+    local_region(&dom->srv->local_region),
+    synchronized_region(&dom->srv->synchronized_region)
 {
     LOGPTR(dom, "new task", (uintptr_t)this);
     DLOG(dom, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
+
+    stk = new_stk(this, 0);
+    rust_sp = stk->limit;
 
     if (spawner == NULL) {
         ref_count = 0;
@@ -111,7 +115,7 @@ rust_task::~rust_task()
     I(dom, ref_count == 0 ||
       (ref_count == 1 && this == dom->root_task));
 
-    del_stk(dom, stk);
+    del_stk(this, stk);
 }
 
 extern "C" void rust_new_exit_task_glue();
@@ -352,7 +356,7 @@ rust_task::malloc(size_t sz, type_desc *td)
     if (td) {
         sz += sizeof(gc_alloc);
     }
-    void *mem = dom->malloc(sz);
+    void *mem = malloc(sz, memory_region::LOCAL);
     if (!mem)
         return mem;
     if (td) {
@@ -379,7 +383,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
         unlink_gc(gcm);
         sz += sizeof(gc_alloc);
-        gcm = (gc_alloc*) dom->realloc((void*)gcm, sz);
+        gcm = (gc_alloc*) realloc((void*)gcm, sz, memory_region::LOCAL);
         DLOG(dom, task, "task %s @0x%" PRIxPTR
              " reallocated %d GC bytes = 0x%" PRIxPTR,
              name, (uintptr_t)this, sz, gcm);
@@ -388,7 +392,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         link_gc(gcm);
         data = (void*) &(gcm->data);
     } else {
-        data = dom->realloc(data, sz);
+        data = realloc(data, sz, memory_region::LOCAL);
     }
     return data;
 }
@@ -405,9 +409,9 @@ rust_task::free(void *p, bool is_gc)
         DLOG(dom, mem,
              "task %s @0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
              name, (uintptr_t)this, gcm);
-        dom->free(gcm);
+        free(gcm, memory_region::LOCAL);
     } else {
-        dom->free(p);
+        free(p, memory_region::LOCAL);
     }
 }
 
@@ -490,6 +494,54 @@ rust_task::get_handle() {
 bool rust_task::can_schedule()
 {
     return yield_timer.has_timed_out() && !active;
+}
+
+void *
+rust_task::malloc(size_t size, memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.malloc(size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.malloc(size);
+    }
+    I(dom, false);
+    return NULL;
+}
+
+void *
+rust_task::calloc(size_t size) {
+    return calloc(size, memory_region::LOCAL);
+}
+
+void *
+rust_task::calloc(size_t size, memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.calloc(size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.calloc(size);
+    }
+    return NULL;
+}
+
+void *
+rust_task::realloc(void *mem, size_t size,
+    memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.realloc(mem, size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.realloc(mem, size);
+    }
+    return NULL;
+}
+
+void
+rust_task::free(void *mem, memory_region::memory_region_type type) {
+    DLOG(dom, mem, "rust_task::free(0x%" PRIxPTR ")", mem);
+    if (type == memory_region::LOCAL) {
+        local_region.free(mem);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        synchronized_region.free(mem);
+    }
+    return;
 }
 
 //

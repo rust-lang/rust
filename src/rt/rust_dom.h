@@ -35,8 +35,6 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     rust_log _log;
     uint32_t log_lvl;
     rust_srv *srv;
-    memory_region local_region;
-    memory_region synchronized_region;
     const char *const name;
 
     rust_task_list newborn_tasks;
@@ -74,15 +72,6 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
     void fail();
-    void *malloc(size_t size);
-    void *malloc(size_t size, memory_region::memory_region_type type);
-    void *calloc(size_t size);
-    void *calloc(size_t size, memory_region::memory_region_type type);
-    void *realloc(void *mem, size_t size);
-    void *realloc(void *mem, size_t size,
-        memory_region::memory_region_type type);
-    void free(void *mem);
-    void free(void *mem, memory_region::memory_region_type type);
 
     void drain_incoming_message_queue(bool process);
 

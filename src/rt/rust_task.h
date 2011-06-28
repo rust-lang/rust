@@ -9,9 +9,34 @@
 
 #include "context.h"
 
+struct stk_seg {
+    unsigned int valgrind_id;
+    uintptr_t limit;
+    uint8_t data[];
+};
+
+struct frame_glue_fns {
+    uintptr_t mark_glue_off;
+    uintptr_t drop_glue_off;
+    uintptr_t reloc_glue_off;
+};
+
+struct gc_alloc {
+    gc_alloc *prev;
+    gc_alloc *next;
+    uintptr_t ctrl_word;
+    uint8_t data[];
+    bool mark() {
+        if (ctrl_word & 1)
+            return false;
+        ctrl_word |= 1;
+        return true;
+    }
+};
+
 struct
 rust_task : public maybe_proxy<rust_task>,
-            public dom_owned<rust_task>
+            public kernel_owned<rust_task>
 {
     // Fields known to the compiler.
     stk_seg *stk;
@@ -46,8 +71,6 @@ rust_task : public maybe_proxy<rust_task>,
     // List of tasks waiting for this task to finish.
     array_list<maybe_proxy<rust_task> *> tasks_waiting_to_join;
 
-    rust_alarm alarm;
-
     rust_handle<rust_task> *handle;
 
     context ctx;
@@ -55,6 +78,9 @@ rust_task : public maybe_proxy<rust_task>,
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
     volatile bool active;
+
+    memory_region local_region;
+    memory_region synchronized_region;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
@@ -118,6 +144,13 @@ rust_task : public maybe_proxy<rust_task>,
     rust_crate_cache * get_crate_cache();
 
     bool can_schedule();
+
+    void *malloc(size_t size, memory_region::memory_region_type type);
+    void *calloc(size_t size);
+    void *calloc(size_t size, memory_region::memory_region_type type);
+    void *realloc(void *mem, size_t size,
+        memory_region::memory_region_type type);
+    void free(void *mem, memory_region::memory_region_type type);
 };
 
 //

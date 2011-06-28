@@ -109,9 +109,10 @@ void data_message::kernel_process() {
 
 }
 
-rust_message_queue::rust_message_queue(rust_srv *srv, rust_kernel *kernel) :
-                                       region (srv, true), kernel(kernel),
-                                       dom_handle(NULL) {
+rust_message_queue::rust_message_queue(rust_srv *srv, rust_kernel *kernel) 
+    : region(srv, true),
+      kernel(kernel),
+      dom_handle(NULL) {
     // Nop.
 }
 
