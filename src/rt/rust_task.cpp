@@ -26,10 +26,10 @@ new_stk(rust_task *task, size_t minsz)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
     stk_seg *stk = (stk_seg *)task->malloc(sz);
-    LOGPTR(task->dom, "new stk", (uintptr_t)stk);
+    LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->limit = (uintptr_t) &stk->data[minsz];
-    LOGPTR(task->dom, "stk limit", stk->limit);
+    LOGPTR(task->sched, "stk limit", stk->limit);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 &stk->data[minsz]);
@@ -40,7 +40,7 @@ static void
 del_stk(rust_task *task, stk_seg *stk)
 {
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
-    LOGPTR(task->dom, "freeing stk segment", (uintptr_t)stk);
+    LOGPTR(task->sched, "freeing stk segment", (uintptr_t)stk);
     task->free(stk);
 }
 
@@ -52,16 +52,16 @@ del_stk(rust_task *task, stk_seg *stk)
 size_t const n_callee_saves = 4;
 size_t const callee_save_fp = 0;
 
-rust_task::rust_task(rust_dom *dom, rust_task_list *state,
+rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
                      rust_task *spawner, const char *name) :
     maybe_proxy<rust_task>(this),
     stk(NULL),
     runtime_sp(0),
     rust_sp(0),
     gc_alloc_chain(0),
-    dom(dom),
+    sched(sched),
     cache(NULL),
-    kernel(dom->kernel),
+    kernel(sched->kernel),
     name(name),
     state(state),
     cond(NULL),
@@ -71,11 +71,11 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     rendezvous_ptr(0),
     handle(NULL),
     active(false),
-    local_region(&dom->srv->local_region),
-    synchronized_region(&dom->srv->synchronized_region)
+    local_region(&sched->srv->local_region),
+    synchronized_region(&sched->srv->synchronized_region)
 {
-    LOGPTR(dom, "new task", (uintptr_t)this);
-    DLOG(dom, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
+    LOGPTR(sched, "new task", (uintptr_t)this);
+    DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
     stk = new_stk(this, 0);
     rust_sp = stk->limit;
@@ -87,33 +87,13 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
 
 rust_task::~rust_task()
 {
-    DLOG(dom, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
+    DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
-
-    /*
-      for (uintptr_t fp = get_fp(); fp; fp = get_previous_fp(fp)) {
-      frame_glue_fns *glue_fns = get_frame_glue_fns(fp);
-      DLOG(dom, task,
-      "~rust_task, frame fp=0x%" PRIxPTR ", glue_fns=0x%" PRIxPTR,
-      fp, glue_fns);
-      if (glue_fns) {
-      DLOG(dom, task,
-               "~rust_task, mark_glue=0x%" PRIxPTR,
-               glue_fns->mark_glue);
-      DLOG(dom, task,
-               "~rust_task, drop_glue=0x%" PRIxPTR,
-               glue_fns->drop_glue);
-      DLOG(dom, task,
-               "~rust_task, reloc_glue=0x%" PRIxPTR,
-               glue_fns->reloc_glue);
-      }
-      }
-    */
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
-    I(dom, ref_count == 0 ||
-      (ref_count == 1 && this == dom->root_task));
+    I(sched, ref_count == 0 ||
+      (ref_count == 1 && this == sched->root_task));
 
     del_stk(this, stk);
 }
@@ -147,7 +127,7 @@ void task_start_wrapper(spawn_args *a)
         // This is duplicated from upcall_exit, which is probably dead code by
         // now.
         LOG(task, task, "task ref_count: %d", task->ref_count);
-        A(task->dom, task->ref_count >= 0,
+        A(task->sched, task->ref_count >= 0,
           "Task ref_count should not be negative on exit!");
         task->die();
         task->notify_tasks_waiting_to_join();
@@ -160,10 +140,10 @@ void
 rust_task::start(uintptr_t spawnee_fn,
                  uintptr_t args)
 {
-    LOGPTR(dom, "from spawnee", spawnee_fn);
+    LOGPTR(sched, "from spawnee", spawnee_fn);
 
-    I(dom, stk->data != NULL);
-    I(dom, !kernel->scheduler_lock.lock_held_by_current_thread());
+    I(sched, stk->data != NULL);
+    I(sched, !kernel->scheduler_lock.lock_held_by_current_thread());
     
     scoped_lock with(kernel->scheduler_lock);
 
@@ -182,7 +162,7 @@ rust_task::start(uintptr_t spawnee_fn,
     ctx.call((void *)task_start_wrapper, a, sp);
 
     yield_timer.reset(0);
-    transition(&dom->newborn_tasks, &dom->running_tasks);
+    transition(&sched->newborn_tasks, &sched->running_tasks);
 }
 
 void
@@ -227,8 +207,8 @@ rust_task::kill() {
     // Unblock the task so it can unwind.
     unblock();
 
-    if (this == dom->root_task)
-        dom->fail();
+    if (this == sched->root_task)
+        sched->fail();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
     // run_on_resume(rust_unwind_glue);
@@ -237,15 +217,15 @@ rust_task::kill() {
 void
 rust_task::fail(size_t nargs) {
     // See note in ::kill() regarding who should call this.
-    DLOG(dom, task, "task %s @0x%" PRIxPTR " failing", name, this);
+    DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
     // Unblock the task so it can unwind.
     unblock();
-    if (this == dom->root_task)
-        dom->fail();
+    if (this == sched->root_task)
+        sched->fail();
     // run_after_return(nargs, rust_unwind_glue);
     if (supervisor) {
-        DLOG(dom, task,
+        DLOG(sched, task,
              "task %s @0x%" PRIxPTR
              " propagating failure to supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
@@ -259,14 +239,14 @@ void
 rust_task::gc(size_t nargs)
 {
     // FIXME: not presently implemented; was broken by rustc.
-    DLOG(dom, task,
+    DLOG(sched, task,
              "task %s @0x%" PRIxPTR " garbage collecting", name, this);
 }
 
 void
 rust_task::unsupervise()
 {
-    DLOG(dom, task,
+    DLOG(sched, task,
              "task %s @0x%" PRIxPTR
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
@@ -302,13 +282,13 @@ rust_task::get_frame_glue_fns(uintptr_t fp) {
 bool
 rust_task::running()
 {
-    return state == &dom->running_tasks;
+    return state == &sched->running_tasks;
 }
 
 bool
 rust_task::blocked()
 {
-    return state == &dom->blocked_tasks;
+    return state == &sched->blocked_tasks;
 }
 
 bool
@@ -320,13 +300,13 @@ rust_task::blocked_on(rust_cond *on)
 bool
 rust_task::dead()
 {
-    return state == &dom->dead_tasks;
+    return state == &sched->dead_tasks;
 }
 
 void
 rust_task::link_gc(gc_alloc *gcm) {
-    I(dom, gcm->prev == NULL);
-    I(dom, gcm->next == NULL);
+    I(sched, gcm->prev == NULL);
+    I(sched, gcm->next == NULL);
     gcm->prev = NULL;
     gcm->next = gc_alloc_chain;
     gc_alloc_chain = gcm;
@@ -361,7 +341,7 @@ rust_task::malloc(size_t sz, type_desc *td)
         return mem;
     if (td) {
         gc_alloc *gcm = (gc_alloc*) mem;
-        DLOG(dom, task, "task %s @0x%" PRIxPTR
+        DLOG(sched, task, "task %s @0x%" PRIxPTR
              " allocated %d GC bytes = 0x%" PRIxPTR,
              name, (uintptr_t)this, sz, gcm);
         memset((void*) gcm, 0, sizeof(gc_alloc));
@@ -384,7 +364,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         unlink_gc(gcm);
         sz += sizeof(gc_alloc);
         gcm = (gc_alloc*) realloc((void*)gcm, sz, memory_region::LOCAL);
-        DLOG(dom, task, "task %s @0x%" PRIxPTR
+        DLOG(sched, task, "task %s @0x%" PRIxPTR
              " reallocated %d GC bytes = 0x%" PRIxPTR,
              name, (uintptr_t)this, sz, gcm);
         if (!gcm)
@@ -406,7 +386,7 @@ rust_task::free(void *p, bool is_gc)
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
         unlink_gc(gcm);
-        DLOG(dom, mem,
+        DLOG(sched, mem,
              "task %s @0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
              name, (uintptr_t)this, gcm);
         free(gcm, memory_region::LOCAL);
@@ -417,11 +397,11 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(dom, kernel->scheduler_lock.lock_held_by_current_thread());
-    DLOG(dom, task,
+    I(sched, kernel->scheduler_lock.lock_held_by_current_thread());
+    DLOG(sched, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);
-    I(dom, state == src);
+    I(sched, state == src);
     src->remove(this);
     dst->append(this);
     state = dst;
@@ -431,30 +411,30 @@ void
 rust_task::block(rust_cond *on, const char* name) {
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
-    A(dom, cond == NULL, "Cannot block an already blocked task.");
-    A(dom, on != NULL, "Cannot block on a NULL object.");
+    A(sched, cond == NULL, "Cannot block an already blocked task.");
+    A(sched, on != NULL, "Cannot block on a NULL object.");
 
-    transition(&dom->running_tasks, &dom->blocked_tasks);
+    transition(&sched->running_tasks, &sched->blocked_tasks);
     cond = on;
     cond_name = name;
 }
 
 void
 rust_task::wakeup(rust_cond *from) {
-    A(dom, cond != NULL, "Cannot wake up unblocked task.");
+    A(sched, cond != NULL, "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
-    A(dom, cond == from, "Cannot wake up blocked task on wrong condition.");
+    A(sched, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    transition(&dom->blocked_tasks, &dom->running_tasks);
-    I(dom, cond == from);
+    transition(&sched->blocked_tasks, &sched->running_tasks);
+    I(sched, cond == from);
     cond = NULL;
     cond_name = "none";
 }
 
 void
 rust_task::die() {
-    transition(&dom->running_tasks, &dom->dead_tasks);
+    transition(&sched->running_tasks, &sched->dead_tasks);
 }
 
 void
@@ -467,8 +447,8 @@ rust_crate_cache *
 rust_task::get_crate_cache()
 {
     if (!cache) {
-        DLOG(dom, task, "fetching cache for current crate");
-        cache = dom->get_cache();
+        DLOG(sched, task, "fetching cache for current crate");
+        cache = sched->get_cache();
     }
     return cache;
 }
@@ -486,7 +466,7 @@ rust_task::backtrace() {
 rust_handle<rust_task> *
 rust_task::get_handle() {
     if (handle == NULL) {
-        handle = dom->kernel->get_task_handle(this);
+        handle = sched->kernel->get_task_handle(this);
     }
     return handle;
 }
@@ -503,7 +483,7 @@ rust_task::malloc(size_t size, memory_region::memory_region_type type) {
     } else if (type == memory_region::SYNCHRONIZED) {
         return synchronized_region.malloc(size);
     }
-    I(dom, false);
+    I(sched, false);
     return NULL;
 }
 
@@ -535,7 +515,7 @@ rust_task::realloc(void *mem, size_t size,
 
 void
 rust_task::free(void *mem, memory_region::memory_region_type type) {
-    DLOG(dom, mem, "rust_task::free(0x%" PRIxPTR ")", mem);
+    DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", mem);
     if (type == memory_region::LOCAL) {
         local_region.free(mem);
     } else if (type == memory_region::SYNCHRONIZED) {

@@ -43,7 +43,7 @@ rust_task : public maybe_proxy<rust_task>,
     uintptr_t runtime_sp;      // Runtime sp while task running.
     uintptr_t rust_sp;         // Saved sp when not running.
     gc_alloc *gc_alloc_chain;  // Linked list of GC allocations.
-    rust_dom *dom;
+    rust_scheduler *sched;
     rust_crate_cache *cache;
 
     // Fields known only to the runtime.
@@ -83,7 +83,7 @@ rust_task : public maybe_proxy<rust_task>,
     memory_region synchronized_region;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
-    rust_task(rust_dom *dom,
+    rust_task(rust_scheduler *sched,
               rust_task_list *state,
               rust_task *spawner,
               const char *name);
@@ -111,8 +111,8 @@ rust_task : public maybe_proxy<rust_task>,
     void die();
     void unblock();
 
-    void check_active() { I(dom, dom->curr_task == this); }
-    void check_suspended() { I(dom, dom->curr_task != this); }
+    void check_active() { I(sched, sched->curr_task == this); }
+    void check_suspended() { I(sched, sched->curr_task != this); }
 
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();

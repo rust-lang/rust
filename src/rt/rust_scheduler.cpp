@@ -3,7 +3,7 @@
 #include "rust_internal.h"
 #include "globals.h"
 
-rust_dom::rust_dom(rust_kernel *kernel,
+rust_scheduler::rust_scheduler(rust_kernel *kernel,
     rust_message_queue *message_queue, rust_srv *srv,
     const char *name) :
     interrupt_flag(0),
@@ -32,8 +32,8 @@ rust_dom::rust_dom(rust_kernel *kernel,
     root_task = create_task(NULL, name);
 }
 
-rust_dom::~rust_dom() {
-    DLOG(this, dom, "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
+rust_scheduler::~rust_scheduler() {
+    DLOG(this, dom, "~rust_scheduler %s @0x%" PRIxPTR, name, (uintptr_t)this);
 
     newborn_tasks.delete_all();
     running_tasks.delete_all();
@@ -45,7 +45,7 @@ rust_dom::~rust_dom() {
 }
 
 void
-rust_dom::activate(rust_task *task) {
+rust_scheduler::activate(rust_task *task) {
     context ctx;
 
     task->ctx.next = &ctx;
@@ -57,7 +57,7 @@ rust_dom::activate(rust_task *task) {
 }
 
 void
-rust_dom::log(rust_task* task, uint32_t level, char const *fmt, ...) {
+rust_scheduler::log(rust_task* task, uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
     va_list args;
     va_start(args, fmt);
@@ -67,7 +67,7 @@ rust_dom::log(rust_task* task, uint32_t level, char const *fmt, ...) {
 }
 
 void
-rust_dom::fail() {
+rust_scheduler::fail() {
     log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     I(this, rval == 0);
@@ -75,7 +75,7 @@ rust_dom::fail() {
 }
 
 size_t
-rust_dom::number_of_live_tasks() {
+rust_scheduler::number_of_live_tasks() {
     return running_tasks.length() + blocked_tasks.length();
 }
 
@@ -83,7 +83,7 @@ rust_dom::number_of_live_tasks() {
  * Delete any dead tasks.
  */
 void
-rust_dom::reap_dead_tasks() {
+rust_scheduler::reap_dead_tasks() {
     I(this, kernel->scheduler_lock.lock_held_by_current_thread());
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
@@ -104,7 +104,7 @@ rust_dom::reap_dead_tasks() {
 /**
  * Drains and processes incoming pending messages.
  */
-void rust_dom::drain_incoming_message_queue(bool process) {
+void rust_scheduler::drain_incoming_message_queue(bool process) {
     rust_message *message;
     while (message_queue->dequeue(&message)) {
         DLOG(this, comm, "<== receiving \"%s\" " PTR,
@@ -124,7 +124,7 @@ void rust_dom::drain_incoming_message_queue(bool process) {
  * Returns NULL if no tasks can be scheduled.
  */
 rust_task *
-rust_dom::schedule_task() {
+rust_scheduler::schedule_task() {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
@@ -142,7 +142,7 @@ rust_dom::schedule_task() {
 }
 
 void
-rust_dom::log_state() {
+rust_scheduler::log_state() {
     if (log_rt_task < log_note) return;
 
     if (!running_tasks.is_empty()) {
@@ -182,7 +182,7 @@ rust_dom::log_state() {
  * drop to zero.
  */
 int
-rust_dom::start_main_loop(int id) {
+rust_scheduler::start_main_loop(int id) {
     kernel->scheduler_lock.lock();
 
     // Make sure someone is watching, to pull us out of infinite loops.
@@ -282,12 +282,12 @@ rust_dom::start_main_loop(int id) {
 }
 
 rust_crate_cache *
-rust_dom::get_cache() {
+rust_scheduler::get_cache() {
     return &cache;
 }
 
 rust_task *
-rust_dom::create_task(rust_task *spawner, const char *name) {
+rust_scheduler::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this->kernel) rust_task (this, &newborn_tasks, spawner, name);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",

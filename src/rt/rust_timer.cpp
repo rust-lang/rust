@@ -29,8 +29,8 @@ static void *
 timer_loop(void *ptr) {
     // We were handed the rust_timer that owns us.
     rust_timer *timer = (rust_timer *)ptr;
-    rust_dom *dom = timer->dom;
-    DLOG(dom, timer, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
+    rust_scheduler *sched = timer->sched;
+    DLOG(sched, timer, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
     size_t ms = TIME_SLICE_IN_MS;
 
     while (!timer->exit_flag) {
@@ -39,10 +39,10 @@ timer_loop(void *ptr) {
 #else
         usleep(ms * 1000);
 #endif
-        DLOG(dom, timer, "timer 0x%" PRIxPTR
-        " interrupting domain 0x%" PRIxPTR, (uintptr_t) timer,
-                 (uintptr_t) dom);
-        dom->interrupt_flag = 1;
+        DLOG(sched, timer, "timer 0x%" PRIxPTR
+        " interrupting schedain 0x%" PRIxPTR, (uintptr_t) timer,
+                 (uintptr_t) sched);
+        sched->interrupt_flag = 1;
     }
 #if defined(__WIN32__)
     ExitThread(0);
@@ -52,12 +52,12 @@ timer_loop(void *ptr) {
     return 0;
 }
 
-rust_timer::rust_timer(rust_dom *dom) :
-    dom(dom), exit_flag(0) {
-    DLOG(dom, timer, "creating timer for domain 0x%" PRIxPTR, dom);
+rust_timer::rust_timer(rust_scheduler *sched) :
+    sched(sched), exit_flag(0) {
+    DLOG(sched, timer, "creating timer for domain 0x%" PRIxPTR, sched);
 #if defined(__WIN32__)
     thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
-    dom->kernel->win32_require("CreateThread", thread != NULL);
+    sched->kernel->win32_require("CreateThread", thread != NULL);
     if (RUNNING_ON_VALGRIND)
         Sleep(10);
 #else
@@ -70,7 +70,7 @@ rust_timer::rust_timer(rust_dom *dom) :
 rust_timer::~rust_timer() {
     exit_flag = 1;
 #if defined(__WIN32__)
-    dom->kernel->win32_require("WaitForSingleObject",
+    sched->kernel->win32_require("WaitForSingleObject",
                                WaitForSingleObject(thread, INFINITE) == 
                                WAIT_OBJECT_0);
 #else

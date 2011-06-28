@@ -50,7 +50,7 @@ extern "C" {
 #include "sync/lock_and_signal.h"
 #include "sync/lock_free_queue.h"
 
-struct rust_dom;
+struct rust_scheduler;
 struct rust_task;
 class rust_log;
 class rust_port;
@@ -174,7 +174,7 @@ public:
 #include "rust_proxy.h"
 #include "rust_kernel.h"
 #include "rust_message.h"
-#include "rust_dom.h"
+#include "rust_scheduler.h"
 
 struct rust_timer {
     // FIXME: This will probably eventually need replacement
@@ -183,7 +183,7 @@ struct rust_timer {
     // For now it's just the most basic "thread that can interrupt
     // its associated domain-thread" device, so that we have
     // *some* form of task-preemption.
-    rust_dom *dom;
+    rust_scheduler *sched;
     uintptr_t exit_flag;
 
 #if defined(__WIN32__)
@@ -193,7 +193,7 @@ struct rust_timer {
     pthread_t thread;
 #endif
 
-    rust_timer(rust_dom *dom);
+    rust_timer(rust_scheduler *sched);
     ~rust_timer();
 };
 

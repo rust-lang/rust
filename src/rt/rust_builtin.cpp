@@ -9,7 +9,7 @@
 
 extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     LOG(task, task, "last_os_error()");
 
 #if defined(__WIN32__)
@@ -47,7 +47,7 @@ last_os_error(rust_task *task) {
         task->fail(1);
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(dom, alloc, fill, (const uint8_t *)buf);
+    rust_str *st = new (mem) rust_str(sched, alloc, fill, (const uint8_t *)buf);
 
 #ifdef __WIN32__
     LocalFree((HLOCAL)buf);
@@ -57,7 +57,7 @@ last_os_error(rust_task *task) {
 
 extern "C" CDECL rust_str *
 rust_getcwd(rust_task *task) {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     LOG(task, task, "rust_getcwd()");
 
     char cbuf[BUF_BYTES];
@@ -80,7 +80,7 @@ rust_getcwd(rust_task *task) {
     }
 
     rust_str *st;
-    st = new (mem) rust_str(dom, alloc, fill, (const uint8_t *)cbuf);
+    st = new (mem) rust_str(sched, alloc, fill, (const uint8_t *)cbuf);
 
     return st;    
 }
@@ -124,7 +124,7 @@ unsupervise(rust_task *task) {
 extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
 {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     LOG(task, mem, "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
         n_elts, elem_t->size);
     size_t fill = n_elts * elem_t->size;
@@ -134,7 +134,7 @@ vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
         task->fail(4);
         return NULL;
     }
-    rust_vec *vec = new (mem) rust_vec(dom, alloc, 0, NULL);
+    rust_vec *vec = new (mem) rust_vec(sched, alloc, 0, NULL);
     return vec;
 }
 
@@ -198,11 +198,11 @@ vec_alloc_with_data(rust_task *task,
                     size_t elt_size,
                     void *d)
 {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
     void *mem = task->malloc(alloc, memory_region::LOCAL);
     if (!mem) return NULL;
-    return new (mem) rust_vec(dom, alloc, fill * elt_size, (uint8_t*)d);
+    return new (mem) rust_vec(sched, alloc, fill * elt_size, (uint8_t*)d);
 }
 
 extern "C" CDECL rust_vec*
@@ -355,13 +355,13 @@ str_from_buf(rust_task *task, char *buf, unsigned int len) {
 extern "C" CDECL void *
 rand_new(rust_task *task)
 {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     randctx *rctx = (randctx *) task->malloc(sizeof(randctx));
     if (!rctx) {
         task->fail(1);
         return NULL;
     }
-    isaac_init(dom, rctx);
+    isaac_init(sched, rctx);
     return rctx;
 }
 

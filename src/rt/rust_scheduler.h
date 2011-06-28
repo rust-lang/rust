@@ -1,7 +1,7 @@
-#ifndef RUST_DOM_H
-#define RUST_DOM_H
+#ifndef RUST_SCHEDULER_H
+#define RUST_SCHEDULER_H
 
-struct rust_dom;
+struct rust_scheduler;
 
 class
 rust_crate_cache
@@ -18,15 +18,15 @@ private:
 
 public:
 
-    rust_dom *dom;
+    rust_scheduler *sched;
     size_t idx;
 
-    rust_crate_cache(rust_dom *dom);
+    rust_crate_cache(rust_scheduler *sched);
     ~rust_crate_cache();
     void flush();
 };
 
-struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
+struct rust_scheduler : public kernel_owned<rust_scheduler>, rc_base<rust_scheduler>
 {
     // Fields known to the compiler:
     uintptr_t interrupt_flag;
@@ -64,10 +64,10 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_dom(rust_kernel *kernel,
+    rust_scheduler(rust_kernel *kernel,
              rust_message_queue *message_queue, rust_srv *srv,
              const char *name);
-    ~rust_dom();
+    ~rust_scheduler();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
@@ -89,7 +89,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 };
 
 inline rust_log &
-rust_dom::get_log() {
+rust_scheduler::get_log() {
     return _log;
 }
 
@@ -104,4 +104,4 @@ rust_dom::get_log() {
 // End:
 //
 
-#endif /* RUST_DOM_H */
+#endif /* RUST_SCHEDULER_H */

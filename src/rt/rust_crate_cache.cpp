@@ -7,16 +7,16 @@ rust_crate_cache::get_type_desc(size_t size,
                                 size_t n_descs,
                                 type_desc const **descs)
 {
-    I(dom, n_descs > 1);
+    I(sched, n_descs > 1);
     type_desc *td = NULL;
     size_t keysz = n_descs * sizeof(type_desc*);
     HASH_FIND(hh, this->type_descs, descs, keysz, td);
     if (td) {
-        DLOG(dom, cache, "rust_crate_cache::get_type_desc hit");
+        DLOG(sched, cache, "rust_crate_cache::get_type_desc hit");
         return td;
     }
-    DLOG(dom, cache, "rust_crate_cache::get_type_desc miss");
-    td = (type_desc*) dom->kernel->malloc(sizeof(type_desc) + keysz);
+    DLOG(sched, cache, "rust_crate_cache::get_type_desc miss");
+    td = (type_desc*) sched->kernel->malloc(sizeof(type_desc) + keysz);
     if (!td)
         return NULL;
     // By convention, desc 0 is the root descriptor.
@@ -27,7 +27,7 @@ rust_crate_cache::get_type_desc(size_t size,
     td->size = size;
     td->align = align;
     for (size_t i = 0; i < n_descs; ++i) {
-        DLOG(dom, cache,
+        DLOG(sched, cache,
                  "rust_crate_cache::descs[%" PRIdPTR "] = 0x%" PRIxPTR,
                  i, descs[i]);
         td->descs[i] = descs[i];
@@ -38,22 +38,22 @@ rust_crate_cache::get_type_desc(size_t size,
     return td;
 }
 
-rust_crate_cache::rust_crate_cache(rust_dom *dom)
+rust_crate_cache::rust_crate_cache(rust_scheduler *sched)
     : type_descs(NULL),
-      dom(dom),
+      sched(sched),
       idx(0)
 {
 }
 
 void
 rust_crate_cache::flush() {
-    DLOG(dom, cache, "rust_crate_cache::flush()");
+    DLOG(sched, cache, "rust_crate_cache::flush()");
 
     while (type_descs) {
         type_desc *d = type_descs;
         HASH_DEL(type_descs, d);
-        DLOG(dom, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
-        dom->kernel->free(d);
+        DLOG(sched, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
+        sched->kernel->free(d);
     }
 }
 

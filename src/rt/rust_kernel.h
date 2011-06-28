@@ -52,7 +52,7 @@ class rust_kernel : public rust_thread {
      */
     hash_map<rust_task *, rust_handle<rust_task> *> _task_handles;
     hash_map<rust_port *, rust_handle<rust_port> *> _port_handles;
-    hash_map<rust_dom *, rust_handle<rust_dom> *> _dom_handles;
+    hash_map<rust_scheduler *, rust_handle<rust_scheduler> *> _sched_handles;
 
     template<class T> void free_handles(hash_map<T*, rust_handle<T>* > &map);
 
@@ -65,15 +65,16 @@ class rust_kernel : public rust_thread {
     void terminate_kernel_loop();
     void pump_message_queues();
 
-    rust_handle<rust_dom> *internal_get_dom_handle(rust_dom *dom);
+    rust_handle<rust_scheduler> *
+    internal_get_sched_handle(rust_scheduler *sched);
 
-    rust_dom *create_domain(const char *name);
-    void destroy_domain();
+    rust_scheduler *create_scheduler(const char *name);
+    void destroy_scheduler();
 
     array_list<rust_task_thread *> threads;
 
 public:
-    rust_dom *dom;
+    rust_scheduler *sched;
     lock_and_signal scheduler_lock;
 
     /**
@@ -85,7 +86,7 @@ public:
      */
     indexed_list<rust_message_queue> message_queues;
 
-    rust_handle<rust_dom> *get_dom_handle(rust_dom *dom);
+    rust_handle<rust_scheduler> *get_sched_handle(rust_scheduler *sched);
     rust_handle<rust_task> *get_task_handle(rust_task *task);
     rust_handle<rust_port> *get_port_handle(rust_port *port);
 
@@ -103,7 +104,7 @@ public:
     void
     notify_message_enqueued(rust_message_queue *queue, rust_message *message);
 
-    void log_all_domain_state();
+    void log_all_scheduler_state();
     void log(uint32_t level, char const *fmt, ...);
     virtual ~rust_kernel();
 
@@ -111,7 +112,7 @@ public:
     void free(void *mem);
 
     // FIXME: this should go away
-    inline rust_dom *get_domain() const { return dom; }
+    inline rust_scheduler *get_scheduler() const { return sched; }
 
     int start_task_threads(int num_threads);
 

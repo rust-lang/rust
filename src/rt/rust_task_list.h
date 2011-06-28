@@ -1,4 +1,4 @@
-// -*- c++-mode -*-
+// -*- c++ -*-
 #ifndef RUST_TASK_LIST_H
 #define RUST_TASK_LIST_H
 
@@ -8,9 +8,9 @@
 class rust_task_list : public indexed_list<rust_task>,
                        public kernel_owned<rust_task_list> {
 public:
-    rust_dom *dom;
+    rust_scheduler *sched;
     const char* name;
-    rust_task_list (rust_dom *dom, const char* name);
+    rust_task_list (rust_scheduler *sched, const char* name);
     void delete_all();
 };
 
