@@ -22,7 +22,7 @@ rust_chan::rust_chan(rust_task *task,
 rust_chan::~rust_chan() {
     LOG(task, comm, "del rust_chan(task=0x%" PRIxPTR ")", (uintptr_t) this);
 
-    A(task->dom, is_associated() == false,
+    A(task->sched, is_associated() == false,
       "Channel must be disassociated before being freed.");
     --task->ref_count;
 }
@@ -49,7 +49,7 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
-    A(task->dom, is_associated(), "Channel must be associated with a port.");
+    A(task->sched, is_associated(), "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
         LOG(task, task,
@@ -69,14 +69,14 @@ void rust_chan::disassociate() {
 void rust_chan::send(void *sptr) {
     buffer.enqueue(sptr);
 
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     if (!is_associated()) {
-        W(dom, is_associated(),
+        W(sched, is_associated(),
           "rust_chan::transmit with no associated port.");
         return;
     }
 
-    A(dom, !buffer.is_empty(),
+    A(sched, !buffer.is_empty(),
       "rust_chan::transmit with nothing to send.");
 
     if (port->is_proxy()) {
@@ -86,7 +86,7 @@ void rust_chan::send(void *sptr) {
     } else {
         rust_port *target_port = port->referent();
         if (target_port->task->blocked_on(target_port)) {
-            DLOG(dom, comm, "dequeued in rendezvous_ptr");
+            DLOG(sched, comm, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);
             target_port->task->rendezvous_ptr = 0;
             target_port->task->wakeup(target_port);

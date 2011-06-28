@@ -1,3 +1,4 @@
+// -*- c++ -*-
 #ifndef RUST_LOG_H
 #define RUST_LOG_H
 
@@ -5,30 +6,30 @@ const uint32_t log_err = 0;
 const uint32_t log_note = 1;
 
 #define LOG(task, field, ...)                                   \
-    DLOG_LVL(log_note, task, task->dom, field, __VA_ARGS__)
+    DLOG_LVL(log_note, task, task->sched, field, __VA_ARGS__)
 #define LOG_ERR(task, field, ...)                               \
-    DLOG_LVL(log_err, task, task->dom, field, __VA_ARGS__)
-#define DLOG(dom, field, ...)                                   \
-    DLOG_LVL(log_note, NULL, dom, field, __VA_ARGS__)
-#define DLOG_ERR(dom, field, ...)                               \
-    DLOG_LVL(log_err, NULL, dom, field, __VA_ARGS__)
-#define LOGPTR(dom, msg, ptrval)                                \
-    DLOG_LVL(log_note, NULL, dom, mem, "%s 0x%" PRIxPTR, msg, ptrval)
-#define DLOG_LVL(lvl, task, dom, field, ...)                    \
+    DLOG_LVL(log_err, task, task->sched, field, __VA_ARGS__)
+#define DLOG(sched, field, ...)                                   \
+    DLOG_LVL(log_note, NULL, sched, field, __VA_ARGS__)
+#define DLOG_ERR(sched, field, ...)                               \
+    DLOG_LVL(log_err, NULL, sched, field, __VA_ARGS__)
+#define LOGPTR(sched, msg, ptrval)                                \
+    DLOG_LVL(log_note, NULL, sched, mem, "%s 0x%" PRIxPTR, msg, ptrval)
+#define DLOG_LVL(lvl, task, sched, field, ...)                    \
     do {                                                        \
-        rust_dom* _d_ = dom;                                    \
+        rust_scheduler* _d_ = sched;                            \
         if (log_rt_##field >= lvl && _d_->log_lvl >= lvl) {     \
             _d_->log(task, lvl, __VA_ARGS__);                   \
         }                                                       \
     } while (0)
 
-struct rust_dom;
+struct rust_scheduler;
 struct rust_task;
 
 class rust_log {
 
 public:
-    rust_log(rust_srv *srv, rust_dom *dom);
+    rust_log(rust_srv *srv, rust_scheduler *sched);
     virtual ~rust_log();
 
     enum ansi_color {
@@ -53,7 +54,7 @@ public:
 
 private:
     rust_srv *_srv;
-    rust_dom *_dom;
+    rust_scheduler *_sched;
     bool _use_labels;
     bool _use_colors;
     void trace_ln(rust_task *task, char *message);

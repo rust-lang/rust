@@ -23,7 +23,7 @@ str_buf(rust_task *task, rust_str *s);
 
 extern "C" void
 upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
-    I(task->dom, false);
+    I(task->sched, false);
     LOG_UPCALL_ENTRY(task);
     task->grow(n_frame_bytes);
 }
@@ -31,44 +31,44 @@ upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
 extern "C" CDECL
 void upcall_log_int(rust_task *task, uint32_t level, int32_t i) {
     LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level)
-        task->dom->log(task, level, "rust: %" PRId32 " (0x%" PRIx32 ")",
+    if (task->sched->log_lvl >= level)
+        task->sched->log(task, level, "rust: %" PRId32 " (0x%" PRIx32 ")",
                        i, i);
 }
 
 extern "C" CDECL
 void upcall_log_float(rust_task *task, uint32_t level, float f) {
     LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level)
-        task->dom->log(task, level, "rust: %12.12f", f);
+    if (task->sched->log_lvl >= level)
+        task->sched->log(task, level, "rust: %12.12f", f);
 }
 
 extern "C" CDECL
 void upcall_log_double(rust_task *task, uint32_t level, double *f) {
     LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level)
-        task->dom->log(task, level, "rust: %12.12f", *f);
+    if (task->sched->log_lvl >= level)
+        task->sched->log(task, level, "rust: %12.12f", *f);
 }
 
 extern "C" CDECL void
 upcall_log_str(rust_task *task, uint32_t level, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level) {
+    if (task->sched->log_lvl >= level) {
         const char *c = str_buf(task, str);
-        task->dom->log(task, level, "rust: %s", c);
+        task->sched->log(task, level, "rust: %s", c);
     }
 }
 
 extern "C" CDECL void
 upcall_trace_word(rust_task *task, uintptr_t i) {
     LOG_UPCALL_ENTRY(task);
-    task->dom->log(task, 2, "trace: 0x%" PRIxPTR "", i, i, (char) i);
+    task->sched->log(task, 2, "trace: 0x%" PRIxPTR "", i, i, (char) i);
 }
 
 extern "C" CDECL void
 upcall_trace_str(rust_task *task, char const *c) {
     LOG_UPCALL_ENTRY(task);
-    task->dom->log(task, 2, "trace: %s", c);
+    task->sched->log(task, 2, "trace: %s", c);
 }
 
 extern "C" CDECL rust_port*
@@ -85,7 +85,7 @@ upcall_del_port(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
     LOG(task, comm, "upcall del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    I(task->dom, !port->ref_count);
+    I(task->sched, !port->ref_count);
     delete port;
 }
 
@@ -95,11 +95,11 @@ upcall_del_port(rust_task *task, rust_port *port) {
 extern "C" CDECL rust_chan*
 upcall_new_chan(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     LOG(task, comm, "upcall_new_chan("
         "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
         (uintptr_t) task, task->name, port);
-    I(dom, port);
+    I(sched, port);
     return new (task) rust_chan(task, port, port->unit_sz);
 }
 
@@ -127,7 +127,7 @@ void upcall_del_chan(rust_task *task, rust_chan *chan) {
 
     LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
 
-    A(task->dom, chan->ref_count == 0,
+    A(task->sched, chan->ref_count == 0,
       "Channel's ref count should be zero.");
 
     if (chan->is_associated()) {
@@ -174,7 +174,7 @@ upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
         target_task = target->referent();
     } else {
         rust_handle<rust_port> *handle =
-            task->dom->kernel->get_port_handle(port->as_referent());
+            task->sched->kernel->get_port_handle(port->as_referent());
         maybe_proxy<rust_port> *proxy = new rust_proxy<rust_port> (handle);
         LOG(task, mem, "new proxy: " PTR, proxy);
         port = proxy;
@@ -275,7 +275,7 @@ upcall_exit(rust_task *task) {
         LOG_UPCALL_ENTRY(task);
         scoped_lock with(task->kernel->scheduler_lock);
         LOG(task, task, "task ref_count: %d", task->ref_count);
-        A(task->dom, task->ref_count >= 0,
+        A(task->sched, task->ref_count >= 0,
           "Task ref_count should not be negative on exit!");
         task->die();
         task->notify_tasks_waiting_to_join();
@@ -308,8 +308,8 @@ extern "C" CDECL void
 upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
-    rust_dom *dom = task->dom;
-    DLOG(dom, mem,
+    rust_scheduler *sched = task->sched;
+    DLOG(sched, mem,
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
              (uintptr_t)ptr, is_gc);
     task->free(ptr, (bool) is_gc);
@@ -320,11 +320,11 @@ upcall_mark(rust_task *task, void* ptr) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
 
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     if (ptr) {
         gc_alloc *gcm = (gc_alloc*) (((char*)ptr) - sizeof(gc_alloc));
         uintptr_t marked = (uintptr_t) gcm->mark();
-        DLOG(dom, gc, "upcall mark(0x%" PRIxPTR ") = %" PRIdPTR,
+        DLOG(sched, gc, "upcall mark(0x%" PRIxPTR ") = %" PRIdPTR,
                  (uintptr_t)gcm, marked);
         return marked;
     }
@@ -332,14 +332,14 @@ upcall_mark(rust_task *task, void* ptr) {
 }
 
 rust_str *make_str(rust_task *task, char const *s, size_t fill) {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc);
     if (!mem) {
         task->fail(3);
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(dom, alloc, fill, (uint8_t const *) s);
+    rust_str *st = new (mem) rust_str(sched, alloc, fill, (uint8_t const *) s);
     LOG(task, mem,
         "upcall new_str('%s', %" PRIdPTR ") = 0x%" PRIxPTR,
         s, fill, st);
@@ -366,15 +366,15 @@ extern "C" CDECL rust_vec *
 upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
-    rust_dom *dom = task->dom;
-    DLOG(dom, mem, "upcall new_vec(%" PRIdPTR ")", fill);
+    rust_scheduler *sched = task->sched;
+    DLOG(sched, mem, "upcall new_vec(%" PRIdPTR ")", fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
     void *mem = task->malloc(alloc, td);
     if (!mem) {
         task->fail(3);
         return NULL;
     }
-    rust_vec *v = new (mem) rust_vec(dom, alloc, 0, NULL);
+    rust_vec *v = new (mem) rust_vec(sched, alloc, 0, NULL);
     LOG(task, mem,
               "upcall new_vec(%" PRIdPTR ") = 0x%" PRIxPTR, fill, v);
     return v;
@@ -387,7 +387,7 @@ vec_grow(rust_task *task,
          uintptr_t *need_copy,
          type_desc *td)
 {
-    rust_dom *dom = task->dom;
+    rust_scheduler *sched = task->sched;
     LOG(task, mem,
         "vec_grow(0x%" PRIxPTR ", %" PRIdPTR
         "), rc=%" PRIdPTR " alloc=%" PRIdPTR ", fill=%" PRIdPTR
@@ -438,10 +438,10 @@ vec_grow(rust_task *task,
         if (v->ref_count != CONST_REFCOUNT)
             v->deref();
 
-        v = new (mem) rust_vec(dom, alloc, 0, NULL);
+        v = new (mem) rust_vec(sched, alloc, 0, NULL);
         *need_copy = 1;
     }
-    I(dom, sizeof(rust_vec) + v->fill <= v->alloc);
+    I(sched, sizeof(rust_vec) + v->fill <= v->alloc);
     return v;
 }
 
@@ -521,8 +521,8 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
     scoped_lock with(spawner->kernel->scheduler_lock);
-    rust_dom *dom = spawner->dom;
-    rust_task *task = dom->create_task(spawner, (const char *)name->data);
+    rust_scheduler *sched = spawner->sched;
+    rust_task *task = sched->create_task(spawner, (const char *)name->data);
     return task;
 }
 
@@ -534,8 +534,8 @@ upcall_start_task(rust_task *spawner,
                   size_t args_sz) {
     LOG_UPCALL_ENTRY(spawner);
 
-    rust_dom *dom = spawner->dom;
-    DLOG(dom, task,
+    rust_scheduler *sched = spawner->sched;
+    DLOG(sched, task,
          "upcall start_task(task %s @0x%" PRIxPTR
          ", spawnee 0x%" PRIxPTR ")", 
          task->name, task,
@@ -563,7 +563,7 @@ upcall_ivec_resize(rust_task *task,
                    rust_ivec *v,
                    size_t newsz) {
     scoped_lock with(task->kernel->scheduler_lock);
-    I(task->dom, !v->fill);
+    I(task->sched, !v->fill);
 
     size_t new_alloc = next_power_of_two(newsz);
     rust_ivec_heap *new_heap_part = (rust_ivec_heap *)

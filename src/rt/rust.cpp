@@ -39,13 +39,13 @@ command_line_args : public kernel_owned<command_line_args>
         size_t vec_fill = sizeof(rust_str *) * argc;
         size_t vec_alloc = next_power_of_two(sizeof(rust_vec) + vec_fill);
         void *mem = kernel->malloc(vec_alloc);
-        args = new (mem) rust_vec(task->dom, vec_alloc, 0, NULL);
+        args = new (mem) rust_vec(task->sched, vec_alloc, 0, NULL);
         rust_str **strs = (rust_str**) &args->data[0];
         for (int i = 0; i < argc; ++i) {
             size_t str_fill = strlen(argv[i]) + 1;
             size_t str_alloc = next_power_of_two(sizeof(rust_str) + str_fill);
             mem = kernel->malloc(str_alloc);
-            strs[i] = new (mem) rust_str(task->dom, str_alloc, str_fill,
+            strs[i] = new (mem) rust_str(task->sched, str_alloc, str_fill,
                                          (uint8_t const *)argv[i]);
         }
         args->fill = vec_fill;
@@ -98,21 +98,21 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
-    rust_dom *dom = kernel->get_domain();
+    rust_scheduler *sched = kernel->get_scheduler();
     command_line_args *args 
-        = new (kernel) command_line_args(dom->root_task, argc, argv);
+        = new (kernel) command_line_args(sched->root_task, argc, argv);
 
-    DLOG(dom, dom, "startup: %d args in 0x%" PRIxPTR,
+    DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
-        DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
+        DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    dom->root_task->start(main_fn, (uintptr_t)args->args);
+    sched->root_task->start(main_fn, (uintptr_t)args->args);
 
     int num_threads = get_num_threads();
 
-    DLOG(dom, dom, "Using %d worker threads.", num_threads);
+    DLOG(sched, dom, "Using %d worker threads.", num_threads);
 
     int ret = kernel->start_task_threads(num_threads);
     delete args;

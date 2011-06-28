@@ -13,55 +13,55 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _srv(srv),
     _interrupt_kernel_loop(FALSE) 
 {
-    dom = create_domain("main");
+    sched = create_scheduler("main");
 }
 
-rust_dom *
-rust_kernel::create_domain(const char *name) {
+rust_scheduler *
+rust_kernel::create_scheduler(const char *name) {
     _kernel_lock.lock();
     rust_message_queue *message_queue =
         new (this) rust_message_queue(_srv, this);
     rust_srv *srv = _srv->clone();
-    rust_dom *dom =
-        new (this) rust_dom(this, message_queue, srv, name);
-    rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
+    rust_scheduler *sched =
+        new (this) rust_scheduler(this, message_queue, srv, name);
+    rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
     message_queue->associate(handle);
     message_queues.append(message_queue);
-    KLOG("created domain: " PTR ", name: %s, index: %d",
-         dom, name, dom->list_index);
+    KLOG("created scheduler: " PTR ", name: %s, index: %d",
+         sched, name, sched->list_index);
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
-    return dom;
+    return sched;
 }
 
 void
-rust_kernel::destroy_domain() {
+rust_kernel::destroy_scheduler() {
     _kernel_lock.lock();
-    KLOG("deleting domain: " PTR ", name: %s, index: %d",
-        dom, dom->name, dom->list_index);
-    dom->message_queue->disassociate();
-    rust_srv *srv = dom->srv;
-    delete dom;
+    KLOG("deleting scheduler: " PTR ", name: %s, index: %d",
+        sched, sched->name, sched->list_index);
+    sched->message_queue->disassociate();
+    rust_srv *srv = sched->srv;
+    delete sched;
     delete srv;
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
 }
 
-rust_handle<rust_dom> *
-rust_kernel::internal_get_dom_handle(rust_dom *dom) {
-    rust_handle<rust_dom> *handle = NULL;
-    if (_dom_handles.get(dom, &handle) == false) {
+rust_handle<rust_scheduler> *
+rust_kernel::internal_get_sched_handle(rust_scheduler *sched) {
+    rust_handle<rust_scheduler> *handle = NULL;
+    if (_sched_handles.get(sched, &handle) == false) {
         handle =
-            new (this) rust_handle<rust_dom>(this, dom->message_queue, dom);
-        _dom_handles.put(dom, handle);
+            new (this) rust_handle<rust_scheduler>(this, sched->message_queue, sched);
+        _sched_handles.put(sched, handle);
     }
     return handle;
 }
 
-rust_handle<rust_dom> *
-rust_kernel::get_dom_handle(rust_dom *dom) {
+rust_handle<rust_scheduler> *
+rust_kernel::get_sched_handle(rust_scheduler *sched) {
     _kernel_lock.lock();
-    rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
+    rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
     _kernel_lock.unlock();
     return handle;
 }
@@ -72,7 +72,7 @@ rust_kernel::get_task_handle(rust_task *task) {
     rust_handle<rust_task> *handle = NULL;
     if (_task_handles.get(task, &handle) == false) {
         handle =
-            new (this) rust_handle<rust_task>(this, task->dom->message_queue,
+            new (this) rust_handle<rust_task>(this, task->sched->message_queue,
                                               task);
         _task_handles.put(task, handle);
     }
@@ -87,7 +87,7 @@ rust_kernel::get_port_handle(rust_port *port) {
     if (_port_handles.get(port, &handle) == false) {
         handle =
             new (this) rust_handle<rust_port>(this,
-                                              port->task->dom->message_queue,
+                                              port->task->sched->message_queue,
                                               port);
         _port_handles.put(port, handle);
     }
@@ -96,9 +96,8 @@ rust_kernel::get_port_handle(rust_port *port) {
 }
 
 void
-rust_kernel::log_all_domain_state() {
-    KLOG("log_all_domain_state");
-    dom->log_state();
+rust_kernel::log_all_scheduler_state() {
+    sched->log_state();
 }
 
 /**
@@ -159,7 +158,7 @@ rust_kernel::terminate_kernel_loop() {
 }
 
 rust_kernel::~rust_kernel() {
-    destroy_domain();
+    destroy_scheduler();
 
     terminate_kernel_loop();
 
@@ -175,8 +174,8 @@ rust_kernel::~rust_kernel() {
     KLOG("..task handles freed");
     free_handles(_port_handles);
     KLOG("..port handles freed");
-    free_handles(_dom_handles);
-    KLOG("..dom handles freed");
+    free_handles(_sched_handles);
+    KLOG("..sched handles freed");
 
     KLOG("freeing queues");
 
@@ -235,14 +234,14 @@ int rust_kernel::start_task_threads(int num_threads)
         threads.push(thread);
     }
     
-    dom->start_main_loop(0);
+    sched->start_main_loop(0);
 
     while(threads.pop(&thread)) {
         thread->join();
         delete thread;
     }
 
-    return dom->rval;
+    return sched->rval;
 }
 
 #ifdef __WIN32__
@@ -257,9 +256,9 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
                       NULL, err,
                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                       (LPTSTR) &buf, 0, NULL );
-        DLOG_ERR(dom, dom, "%s failed with error %ld: %s", fn, err, buf);
+        DLOG_ERR(sched, dom, "%s failed with error %ld: %s", fn, err, buf);
         LocalFree((HLOCAL)buf);
-        I(dom, ok);
+        I(sched, ok);
     }
 }
 #endif
@@ -271,7 +270,7 @@ rust_task_thread::rust_task_thread(int id, rust_kernel *owner)
 
 void rust_task_thread::run()
 {
-    owner->dom->start_main_loop(id);
+    owner->sched->start_main_loop(id);
 }
 
 //

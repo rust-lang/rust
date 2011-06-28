@@ -93,26 +93,26 @@ class rust_message_queue : public lock_free_queue<rust_message*>,
 public:
     memory_region region;
     rust_kernel *kernel;
-    rust_handle<rust_dom> *dom_handle;
+    rust_handle<rust_scheduler> *sched_handle;
     int32_t list_index;
     rust_message_queue(rust_srv *srv, rust_kernel *kernel);
 
-    void associate(rust_handle<rust_dom> *dom_handle) {
-        this->dom_handle = dom_handle;
+    void associate(rust_handle<rust_scheduler> *sched_handle) {
+        this->sched_handle = sched_handle;
     }
 
     /**
      * The Rust domain relinquishes control to the Rust kernel.
      */
     void disassociate() {
-        this->dom_handle = NULL;
+        this->sched_handle = NULL;
     }
 
     /**
      * Checks if a Rust domain is responsible for draining the message queue.
      */
     bool is_associated() {
-        return this->dom_handle != NULL;
+        return this->sched_handle != NULL;
     }
 
     void enqueue(rust_message* message) {

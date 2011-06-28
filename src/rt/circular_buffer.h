@@ -10,7 +10,7 @@ circular_buffer : public task_owned<circular_buffer> {
     static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
     static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
-    rust_dom *dom;
+    rust_scheduler *sched;
 
 public:
     rust_task *task;

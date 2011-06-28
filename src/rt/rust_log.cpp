@@ -23,9 +23,9 @@ static const char * _foreground_colors[] = { "[37m",
 static lock_and_signal _log_lock;
 static uint32_t _last_thread_id;
 
-rust_log::rust_log(rust_srv *srv, rust_dom *dom) :
+rust_log::rust_log(rust_srv *srv, rust_scheduler *sched) :
     _srv(srv),
-    _dom(dom),
+    _sched(sched),
     _use_colors(getenv("RUST_COLOR_LOG")) {
 }
 
@@ -104,12 +104,12 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
     uint32_t thread_id = hash((uint32_t) pthread_self());
 #endif
     char prefix[BUF_BYTES] = "";
-    if (_dom && _dom->name) {
+    if (_sched && _sched->name) {
         append_string(prefix, "%04" PRIxPTR ":%.10s:",
-                      thread_id, _dom->name);
+                      thread_id, _sched->name);
     } else {
         append_string(prefix, "%04" PRIxPTR ":0x%08" PRIxPTR ":",
-                      thread_id, (uintptr_t) _dom);
+                      thread_id, (uintptr_t) _sched);
     }
     if (task) {
         if (task->name) {
