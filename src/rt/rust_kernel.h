@@ -68,10 +68,10 @@ class rust_kernel : public rust_thread {
     rust_handle<rust_scheduler> *
     internal_get_sched_handle(rust_scheduler *sched);
 
+    array_list<rust_task_thread *> threads;
+
     rust_scheduler *create_scheduler(const char *name);
     void destroy_scheduler();
-
-    array_list<rust_task_thread *> threads;
 
 public:
     rust_scheduler *sched;
