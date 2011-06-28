@@ -100,7 +100,7 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
              mark=d("mark", [T_ptr(T_i8())], T_int()),
              new_str=d("new_str", [T_ptr(T_i8()), T_size_t()],
                        T_ptr(T_str())),
-             dup_str=d("dup_str", [T_ptr(T_str())],
+             dup_str=d("dup_str", [T_taskptr(tn), T_ptr(T_str())],
                        T_ptr(T_str())),
              new_vec=d("new_vec", [T_size_t(), T_ptr(T_tydesc(tn))],
                        T_opaque_vec_ptr()),

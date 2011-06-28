@@ -355,11 +355,11 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
 }
 
 extern "C" CDECL rust_str *
-upcall_dup_str(rust_task *task, rust_str *str) {
+upcall_dup_str(rust_task *task, rust_task *target, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
 
-    return make_str(task, (char const *)str->data, str->fill);
+    return make_str(target, (char const *)str->data, str->fill);
 }
 
 extern "C" CDECL rust_vec *
