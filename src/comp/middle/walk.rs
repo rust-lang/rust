@@ -380,7 +380,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_log(_, ?x)) { walk_expr(v, x); }
         case (ast::expr_check(?x)) { walk_expr(v, x); }
         case (ast::expr_assert(?x)) { walk_expr(v, x); }
-        case (ast::expr_port) { }
+        case (ast::expr_port(_)) { }
         case (ast::expr_chan(?x)) { walk_expr(v, x); }
         case (ast::expr_anon_obj(?anon_obj, _, _)) {
             // Fields

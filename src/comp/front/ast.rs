@@ -290,7 +290,7 @@ tag expr_ {
    /* FIXME Would be nice if expr_check desugared
       to expr_if_check. */
     expr_if_check(@expr, block, option::t[@expr]);
-    expr_port;
+    expr_port(option::t[@ty]);
     expr_chan(@expr);
     expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids);
 }

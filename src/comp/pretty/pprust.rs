@@ -882,7 +882,18 @@ fn print_expr(&ps s, &@ast::expr expr) {
             // FIXME: extension 'body'
 
         }
-        case (ast::expr_port) { word(s.s, "port"); popen(s); pclose(s); }
+        case (ast::expr_port(?ot)) {
+            word(s.s, "port"); 
+            alt(ot) {
+                case(some(?t)) {
+                    word(s.s, "[");
+                    print_type(s, *t);
+                    word(s.s, "]");
+                }
+                case(none) {}
+            }
+            popen(s); pclose(s); 
+        }
         case (ast::expr_chan(?expr)) {
             word(s.s, "chan");
             popen(s);

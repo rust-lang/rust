@@ -556,7 +556,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_break) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_cont) { clear_pp(expr_pp(fcx.ccx, e)); }
-        case (expr_port) { clear_pp(expr_pp(fcx.ccx, e)); }
+        case (expr_port(_)) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_ext(_, _, _, ?expanded)) {
             find_pre_post_expr(fcx, expanded);
             copy_pre_post(fcx.ccx, e.id, expanded);
