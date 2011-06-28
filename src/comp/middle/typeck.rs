@@ -1526,6 +1526,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::deref) {
                     alt (structure_of(fcx, expr.span, oper_t)) {
                         case (ty::ty_box(?inner)) { oper_t = inner.ty; }
+                        case (ty::ty_res(_, ?inner)) { oper_t = inner; }
                         case (_) {
                             auto s = "dereferencing non-box type: " +
                                 ty_to_str(fcx.ccx.tcx, oper_t);

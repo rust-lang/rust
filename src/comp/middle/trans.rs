@@ -4511,8 +4511,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
             cx.build.Store(llenvblobptr, env_cell);
             // log "lliterbody: " + val_str(lcx.ccx.tn, lliterbody);
 
-            r =
-                trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
+            r = trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
                            seq.id);
             ret rslt(r.bcx, C_nil());
         }
@@ -4993,9 +4992,12 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         case (ast::expr_unary(?unop, ?base)) {
             assert (unop == ast::deref);
             auto sub = trans_expr(cx, base);
-            auto val =
-                sub.bcx.build.GEP(sub.val,
-                                  [C_int(0), C_int(abi::box_rc_field_body)]);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
+            auto offset = alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+                case (ty::ty_box(_)) { abi::box_rc_field_body }
+                case (ty::ty_res(_, _)) { 1 }
+            };
+            auto val = sub.bcx.build.GEP(sub.val, [C_int(0), C_int(offset)]);
             ret lval_mem(sub.bcx, val);
         }
         case (ast::expr_self_method(?ident)) {
