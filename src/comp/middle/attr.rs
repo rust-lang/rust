@@ -1,3 +1,5 @@
+// Functions dealing with attributes and meta_items
+
 import std::vec;
 import std::option;
 import front::ast;
@@ -66,6 +68,7 @@ fn get_meta_item_name(&@ast::meta_item meta) -> ast::ident {
 
 fn attr_meta(&ast::attribute attr) -> @ast::meta_item { @attr.node.value }
 
+// Get the meta_items from inside an attribute
 fn attr_metas(&vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
     ret vec::map(attr_meta, attrs);
 }
