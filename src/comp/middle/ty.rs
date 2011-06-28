@@ -217,6 +217,7 @@ type ctxt =
         creader_cache rcache,
         hashmap[t, str] short_names_cache,
         hashmap[t, bool] has_pointer_cache,
+        hashmap[t, bool] owns_heap_mem_cache,
         hashmap[@ast::ty, option::t[t]] ast_ty_to_ty_cache);
 
 type ty_ctxt = ctxt;
@@ -413,6 +414,8 @@ fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
                                               str](ty::hash_ty, ty::eq_ty),
             has_pointer_cache=map::mk_hashmap[ty::t,
                                               bool](ty::hash_ty, ty::eq_ty),
+            owns_heap_mem_cache=map::mk_hashmap[ty::t,
+                                                bool](ty::hash_ty, ty::eq_ty),
             ast_ty_to_ty_cache=map::mk_hashmap[@ast::ty,
                                                option::t[t]](ast::hash_ty,
                                                              ast::eq_ty));
@@ -1172,6 +1175,11 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
 }
 
 fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
+    alt (cx.owns_heap_mem_cache.find(ty)) {
+        case (some(?result)) { ret result; }
+        case (none) { /* fall through */ }
+    }
+
     auto result = false;
     alt (struct(cx, ty)) {
         case (ty_ivec(_)) { result = true; }
@@ -1228,6 +1236,8 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
         case (ty_var(_)) { fail "ty_var in type_owns_heap_mem"; }
         case (ty_param(_)) { result = false; }
     }
+
+    cx.owns_heap_mem_cache.insert(ty, result);
     ret result;
 }
 
