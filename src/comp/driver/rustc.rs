@@ -393,7 +393,7 @@ fn main(vec[str] args) {
     //
     // TODO: Factor this out of main.
     if (sopts.output_type == link::output_type_exe) {
-        let str glu = binary_dir + "/glue.o";
+        let str glu = binary_dir + "/lib/glue.o";
         let str main = "rt/main.o";
         let str stage = "-L" + binary_dir + "/lib";
         let vec[str] gcc_args;

@@ -4,10 +4,13 @@ stage2/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 	@$(call E, compile_and_link: $@)
 	$(STAGE2)  --shared -o $@ $<
 
-stage2/glue.o: stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) stage2/intrinsics.bc \
-               rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
+stage2/lib/glue.o: stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) \
+	stage2/intrinsics.bc rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -c -o $@ --glue
+
+stage2/glue.o: stage2/lib/glue.o
+	cp stage2/lib/glue.o stage2/glue.o
 
 stage2/intrinsics.bc:	$(INTRINSICS_BC)
 	@$(call E, cp: $@)
