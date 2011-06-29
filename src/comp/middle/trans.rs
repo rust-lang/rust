@@ -1933,6 +1933,9 @@ fn make_copy_glue(&@block_ctxt cx, ValueRef v, &ty::t t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
         bcx = iter_structural_ty(cx, v, t, bind copy_ty(_, _, _)).bcx;
+        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, t)) {
+            bcx = duplicate_heap_parts(bcx, v, t).bcx;
+        }
     } else { bcx = cx; }
     bcx.build.RetVoid();
 }
@@ -3054,7 +3057,8 @@ fn compare(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
 }
 
 fn copy_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
-    if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t) ||
+            ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_copy_glue);
     }
     ret rslt(cx, C_nil());
@@ -3168,20 +3172,24 @@ fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
                    ty::type_is_bot(ccx.tcx, t)) {
         ret rslt(cx, C_nil());
     } else if (ty::type_is_boxed(ccx.tcx, t)) {
-        auto r = copy_ty(cx, src, t);
+        auto bcx;
         if (action == DROP_EXISTING) {
-            r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
+            bcx = drop_ty(cx, cx.build.Load(dst), t).bcx;
+        } else {
+            bcx = cx;
         }
-        ret rslt(r.bcx, r.bcx.build.Store(src, dst));
+        bcx = copy_ty(bcx, src, t).bcx;
+        ret rslt(bcx, bcx.build.Store(src, dst));
     } else if (ty::type_is_structural(ccx.tcx, t) ||
                    ty::type_has_dynamic_size(ccx.tcx, t)) {
-        auto r = copy_ty(cx, src, t);
-        if (action == DROP_EXISTING) { r = drop_ty(r.bcx, dst, t); }
-        r = memmove_ty(r.bcx, dst, src, t);
-        if (ty::type_owns_heap_mem(ccx.tcx, t)) {
-            r = duplicate_heap_parts(cx, dst, t);
+        auto bcx;
+        if (action == DROP_EXISTING) {
+            bcx = drop_ty(cx, dst, t).bcx;
+        } else {
+            bcx = cx;
         }
-        ret r;
+        bcx = memmove_ty(bcx, dst, src, t).bcx;
+        ret copy_ty(bcx, dst, t);
     }
     ccx.sess.bug("unexpected type in trans::copy_val: " +
                  ty_to_str(ccx.tcx, t));

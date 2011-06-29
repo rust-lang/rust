@@ -452,18 +452,17 @@ copy_elements(rust_task *task, type_desc *elem_t,
               void *pdst, void *psrc, size_t n)
 {
     char *dst = (char *)pdst, *src = (char *)psrc;
+    memmove(dst, src, n);
 
-    // FIXME: Copy glue doesn't work this way.
     // increment the refcount of each element of the vector
     if (elem_t->copy_glue) {
         glue_fn *copy_glue = elem_t->copy_glue;
         size_t elem_size = elem_t->size;
         const type_desc **tydescs = elem_t->first_param;
-        for (char *p = src; p < src+n; p += elem_size) {
+        for (char *p = dst; p < dst+n; p += elem_size) {
             copy_glue(NULL, task, NULL, tydescs, p);
         }
     }
-    memmove(dst, src, n);
 }
 
 extern "C" CDECL void
