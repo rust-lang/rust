@@ -87,8 +87,8 @@ obj session(ast::crate_num cnum,
         emit_diagnostic(some(sp), msg, "error", 9u8, cm);
         err_count += 1u;
     }
-    fn err(span sp, str msg) {
-        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
+    fn err(str msg) {
+        emit_diagnostic(none, msg, "error", 9u8, cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
