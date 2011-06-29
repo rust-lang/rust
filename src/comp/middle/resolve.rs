@@ -1,6 +1,7 @@
 
 import front::ast;
 import front::ast::ident;
+import front::ast::fn_ident;
 import front::ast::def;
 import front::ast::def_id;
 import front::ast::node_id;
@@ -344,7 +345,7 @@ fn visit_native_item_with_scope(&@ast::native_item ni, &scopes sc,
 }
 
 fn visit_fn_with_scope(&@env e, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
-                       &ident name, node_id id, &scopes sc,
+                       &fn_ident name, node_id id, &scopes sc,
                        &vt[scopes] v) {
     // here's where we need to set up the mapping
     // for f's constrs in the table.

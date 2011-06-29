@@ -1,6 +1,7 @@
 
 import front::ast;
 import front::ast::ident;
+import front::ast::fn_ident;
 import front::ast::node_id;
 import front::ast::def_id;
 import util::common::span;
@@ -53,7 +54,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
 }
 
 fn visit_fn(@ctx cx, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
-            &ident name, ast::node_id id, &scope sc, &vt[scope] v) {
+            &fn_ident name, ast::node_id id, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
     for (ast::arg arg_ in f.decl.inputs) {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
