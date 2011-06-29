@@ -5113,7 +5113,22 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
                     int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
                              ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)));
         }
-    } else { cx.fcx.lcx.ccx.sess.unimpl("fp cast"); }
+    } 
+    else { 
+        if (ty::type_is_integral(cx.fcx.lcx.ccx.tcx,
+                                 ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
+            if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx,
+                                   ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
+                e_res = rslt(e_res.bcx,
+                             e_res.bcx.build.SIToFP(e_res.val, lldsttype));
+            }
+            else {
+                e_res = rslt(e_res.bcx,
+                             e_res.bcx.build.UIToFP(e_res.val, lldsttype));
+            }
+        }
+        else { cx.fcx.lcx.ccx.sess.unimpl("fp cast"); }
+    }
     ret e_res;
 }
 

@@ -9,7 +9,7 @@ timer::timer() {
 #if __WIN32__
     uint64_t ticks_per_second;
     QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_second);
-    _ticks_per_us = ticks_per_second / 1000000;
+    _ticks_per_ns = ticks_per_second / 1000;
 #endif
     reset(0);
 }
@@ -41,7 +41,7 @@ timer::has_timed_out() {
 }
 
 uint64_t
-timer::get_time() {
+timer::nano_time() {
 #ifdef __APPLE__
     uint64_t time = mach_absolute_time();
     mach_timebase_info_data_t info = {0, 0};
@@ -49,16 +49,21 @@ timer::get_time() {
         mach_timebase_info(&info);
     }
     uint64_t time_nano = time * (info.numer / info.denom);
-    return time_nano / 1000;
+    return time_nano;
 #elif __WIN32__
     uint64_t ticks;
     QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
-    return ticks / _ticks_per_us;
+    return ticks / _ticks_per_ns;
 #else
     timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (ts.tv_sec * 1000000000LL + ts.tv_nsec) / 1000;
+    return (ts.tv_sec * 1000000000LL + ts.tv_nsec);
 #endif
+}
+
+uint64_t
+timer::get_time() {
+    return nano_time() / 1000;
 }
 
 timer::~timer() {

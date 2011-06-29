@@ -11,7 +11,7 @@ private:
     uint64_t _timeout;
     uint64_t get_time();
 #if __WIN32__
-    uint64_t _ticks_per_us;
+    uint64_t _ticks_per_ns;
 #endif
 public:
     timer();
@@ -20,6 +20,7 @@ public:
     double get_elapsed_time_in_ms();
     int64_t get_timeout();
     bool has_timed_out();
+    uint64_t nano_time();
     virtual ~timer();
 };
 

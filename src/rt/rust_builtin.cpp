@@ -612,6 +612,12 @@ get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
 }
 #endif
 
+extern "C" CDECL void
+nano_time(rust_task *task, uint64_t *ns) {
+    timer t;
+    *ns = t.nano_time();
+}
+
 /**
  * Preallocates the exact number of bytes in the given interior vector.
  */

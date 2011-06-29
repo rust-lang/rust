@@ -15,6 +15,7 @@ ivec_on_heap
 ivec_reserve
 ivec_to_ptr
 last_os_error
+nano_time
 pin_task
 unpin_task
 rand_free
