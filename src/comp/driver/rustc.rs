@@ -419,7 +419,13 @@ fn main(vec[str] args) {
             }
         }
 
-        gcc_args += sess.get_used_crate_files();
+        for (str cratepath in sess.get_used_crate_files()) {
+            auto dir = fs::dirname(cratepath);
+            if (dir != "") {
+                gcc_args += ["-L" + dir];
+            }
+            gcc_args += [fs::basename(cratepath)];
+        }
 
         auto used_libs = sess.get_used_libraries();
         for (str l in used_libs) {
@@ -435,7 +441,12 @@ fn main(vec[str] args) {
         }
         // We run 'gcc' here
 
-        run::run_program(prog, gcc_args);
+        auto err_code = run::run_program(prog, gcc_args);
+        if (0 != err_code) {
+            sess.err(#fmt("linking with gcc failed with code %d", err_code));
+            sess.note(#fmt("gcc arguments: %s", str::connect(gcc_args, " ")));
+            sess.abort_if_errors();
+        }
         // Clean up on Darwin
 
         if (sess.get_targ_cfg().os == session::os_macos) {
