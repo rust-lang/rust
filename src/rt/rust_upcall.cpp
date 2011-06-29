@@ -567,7 +567,7 @@ upcall_ivec_resize(rust_task *task,
 
     size_t new_alloc = next_power_of_two(newsz);
     rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
-        task->realloc(v->payload.ptr, new_alloc);
+        task->realloc(v->payload.ptr, new_alloc + sizeof(size_t));
 
     new_heap_part->fill = newsz;
     v->alloc = new_alloc;
