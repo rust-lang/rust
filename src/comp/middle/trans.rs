@@ -5135,6 +5135,13 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
     auto fcx = new_fn_ctxt(cx, sp, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
+
+    // The 'llenv' that will arrive in the thunk we're creating is an
+    // environment that will contain the values of its arguments and a pointer
+    // to the original function.  So, let's create one of those:
+
+    // The llenv pointer needs to be the correct size.  That size is
+    // 'closure_ty', which was determined by trans_bind.
     auto llclosure_ptr_ty =
         type_of(cx.ccx, sp, ty::mk_imm_box(cx.ccx.tcx, closure_ty));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
@@ -5296,14 +5303,12 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             // Translate the bound expressions.
             let vec[ty::t] bound_tys = [];
             let vec[ValueRef] bound_vals = [];
-            auto i = 0u;
             for (@ast::expr e in bound) {
                 auto arg = trans_expr(bcx, e);
                 bcx = arg.bcx;
                 vec::push[ValueRef](bound_vals, arg.val);
                 vec::push[ty::t](bound_tys,
                                  ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
-                i += 1u;
             }
 
             // Synthesize a closure type.
@@ -5384,9 +5389,9 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             auto src = bcx.build.Load(f_res.res.val);
             bound_target = bcx.build.PointerCast(bound_target, llclosurety);
             bcx.build.Store(src, bound_target);
-            // Copy expr values into boxed bindings.
 
-            i = 0u;
+            // Copy expr values into boxed bindings.
+            auto i = 0u;
             auto bindings =
                 bcx.build.GEP(closure,
                               [C_int(0), C_int(abi::closure_elt_bindings)]);
