@@ -1931,9 +1931,7 @@ fn make_copy_glue(&@block_ctxt cx, ValueRef v, &ty::t t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
         bcx = iter_structural_ty(cx, v, t, bind copy_ty(_, _, _)).bcx;
-        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, t)) {
-            bcx = duplicate_heap_parts(bcx, v, t).bcx;
-        }
+        bcx = duplicate_heap_parts_if_necessary(bcx, v, t).bcx;
     } else { bcx = cx; }
     bcx.build.RetVoid();
 }
@@ -3132,8 +3130,9 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
     } else { ret rslt(cx, cx.build.Store(cx.build.Load(src), dst)); }
 }
 
-// Duplicates the heap-owned memory owned by a value of the given type.
-fn duplicate_heap_parts(&@block_ctxt cx, ValueRef vptr, ty::t typ) -> result {
+// Duplicates any heap-owned memory owned by a value of the given type.
+fn duplicate_heap_parts_if_necessary(&@block_ctxt cx, ValueRef vptr,
+                                     ty::t typ) -> result {
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, typ)) {
       case (ty::ty_ivec(?tm)) {
         ret ivec::duplicate_heap_part(cx, vptr, tm.ty);
@@ -3142,13 +3141,7 @@ fn duplicate_heap_parts(&@block_ctxt cx, ValueRef vptr, ty::t typ) -> result {
         ret ivec::duplicate_heap_part(cx, vptr,
             ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8));
       }
-      case (_) {    // TODO: guard
-        if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, typ)) {
-            ret iter_structural_ty(cx, vptr, typ, duplicate_heap_parts);
-        }
-
-        ret rslt(cx, C_nil());
-      }
+      case (_) { ret rslt(cx, C_nil()); }
     }
 }
 
