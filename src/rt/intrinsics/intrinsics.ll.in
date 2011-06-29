@@ -61,7 +61,7 @@ target triple = "@CFG_LLVM_TRIPLE@"
 %struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*, i8*, i8)*, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
 %union.rust_ivec_payload = type { %struct.rust_ivec_heap* }
 
-define linkonce_odr i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly ssp {
+define linkonce_odr i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly {
 entry:
   %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
   %tmp1 = load i32* %fill, align 4, !tbaa !0
@@ -71,7 +71,7 @@ entry:
   ret i32 %div
 }
 
-define linkonce_odr i32 @rust_intrinsic_ivec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind readonly ssp {
+define linkonce_odr i32 @rust_intrinsic_ivec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind readonly {
 entry:
   %fill1 = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 0
   %tmp2 = load i32* %fill1, align 4, !tbaa !0
