@@ -138,6 +138,13 @@ ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_STAGE0) \
                     $(TEST_RFAIL_SOURCES_STAGE2) \
                     $(TEST_RPASS_SOURCES_STAGE2)
 
+
+FT := run_pass_stage2
+FT_LIB := $(call CFG_LIB_NAME,$(FT))
+FT_DRIVER := $(FT)_driver
+GENERATED += test/$(FT).rc test/$(FT_DRIVER).rs
+
+
 check-nocompile: $(TEST_CFAIL_OUTS_STAGE0) \
                  $(TEST_CFAIL_OUTS_STAGE1) \
                  $(TEST_CFAIL_OUTS_STAGE2)
@@ -165,6 +172,9 @@ check: tidy \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2)
 
+fast-check: tidy \
+       test/$(FT_DRIVER).out
+
 full-check: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
        $(TEST_RPASS_OUTS_STAGE0) $(TEST_RFAIL_OUTS_STAGE0) \
@@ -180,6 +190,28 @@ compile-check: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
        $(TEST_RPASS_EXES_STAGE1) $(TEST_RFAIL_EXES_STAGE1) \
        $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2)
+
+
+
+######################################################################
+# Fast-test rules
+######################################################################
+
+test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
+    $(S)src/etc/combine-tests.py
+	@$(call E, check: building combined stage2 test runner)
+	$(Q)$(S)src/etc/combine-tests.py
+
+stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2)
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) --shared -o $@ $<
+
+test/$(FT_DRIVER): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2)
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) -o $@ $<
+
+test/$(FT_DRIVER).out: test/$(FT_DRIVER) $(SREQ2)
+	$(Q)$(call CFG_RUN_TEST, $<) | tee $@
 
 
 ######################################################################

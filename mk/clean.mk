@@ -25,7 +25,9 @@ clean:
 	$(Q)rm -Rf $(foreach ext,out out.tmp                      \
                              stage0$(X) stage1$(X) stage2$(X) \
                              bc o s exe dSYM,                 \
-                        $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
+                        $(wildcard test/*.$(ext) \
+                                   test/*/*.$(ext) \
+                                   test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
                  aux cp fn ky log pdf html pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext)))
