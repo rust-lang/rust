@@ -6061,12 +6061,23 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             ret trans_check_expr(cx, a, "Predicate");
         }
         case (ast::expr_check(ast::unchecked, ?a)) {
-            if (cx.fcx.lcx.ccx.sess.get_opts().check_claims) {
-                ret trans_check_expr(cx, a, "Claim");
-            }
-            else {
-                ret rslt(cx, C_nil());
-            }
+            /* Claims are turned on and off by a global variable
+               that the RTS sets. This case generates code to
+               check the value of that variable, doing nothing
+               if it's set to false and acting like a check
+               otherwise. */
+            auto c = get_extern_const(cx.fcx.lcx.ccx.externs, 
+                                      cx.fcx.lcx.ccx.llmod,
+                                      "check_claims", T_bool());
+            auto cond = cx.build.Load(c);
+
+            auto then_cx   = new_scope_block_ctxt(cx, "claim_then");
+            auto check_res = trans_check_expr(then_cx, a, "Claim");
+            auto else_cx = new_scope_block_ctxt(cx, "else");
+            auto els = rslt(else_cx, C_nil());
+
+            cx.build.CondBr(cond, then_cx.llbb, else_cx.llbb);
+            ret rslt(join_branches(cx, [check_res, els]), C_nil());
         }
         case (ast::expr_break) { ret trans_break(e.span, cx); }
         case (ast::expr_cont) { ret trans_cont(e.span, cx); }

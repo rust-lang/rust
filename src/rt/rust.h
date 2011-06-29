@@ -20,6 +20,10 @@
 #define FASTCALL
 #endif
 
+/* Controls whether claims are turned into checks */
+/* Variable name must be kept consistent with trans.rs */
+extern "C" int check_claims;
+
 /*
  * Local Variables:
  * fill-column: 78;
