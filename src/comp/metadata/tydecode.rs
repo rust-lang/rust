@@ -191,8 +191,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('C') { ret ty::mk_chan(st.tcx, parse_ty(st, sd)); }
         case ('T') {
             assert (next(st) as char == '[');
-            let vec[ty::mt] params = [];
-            while (peek(st) as char != ']') { params += [parse_mt(st, sd)]; }
+            let ty::mt[] params = ~[];
+            while (peek(st) as char != ']') { params += ~[parse_mt(st, sd)]; }
             st.pos = st.pos + 1u;
             ret ty::mk_tup(st.tcx, params);
         }

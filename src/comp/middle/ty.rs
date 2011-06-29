@@ -1,5 +1,6 @@
 
 import std::int;
+import std::ivec;
 import std::str;
 import std::uint;
 import std::vec;
@@ -263,7 +264,7 @@ tag sty {
     ty_port(t);
     ty_chan(t);
     ty_task;
-    ty_tup(vec[mt]);
+    ty_tup(mt[]);
     ty_rec(vec[field]);
     ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, vec[arg], t);
@@ -584,13 +585,13 @@ fn mk_chan(&ctxt cx, &t ty) -> t { ret gen_ty(cx, ty_chan(ty)); }
 
 fn mk_task(&ctxt cx) -> t { ret gen_ty(cx, ty_task); }
 
-fn mk_tup(&ctxt cx, &vec[mt] tms) -> t { ret gen_ty(cx, ty_tup(tms)); }
+fn mk_tup(&ctxt cx, &mt[] tms) -> t { ret gen_ty(cx, ty_tup(tms)); }
 
 fn mk_imm_tup(&ctxt cx, &vec[t] tys) -> t {
     // TODO: map
 
-    let vec[ty::mt] mts = [];
-    for (t typ in tys) { mts += [rec(ty=typ, mut=ast::imm)]; }
+    let ty::mt[] mts = ~[];
+    for (t typ in tys) { mts += ~[rec(ty=typ, mut=ast::imm)]; }
     ret mk_tup(cx, mts);
 }
 
@@ -775,10 +776,10 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
         }
         case (ty_tup(?mts)) {
-            let vec[mt] new_mts = [];
+            let mt[] new_mts = ~[];
             for (mt tm in mts) {
                 auto new_subty = fold_ty(cx, fld, tm.ty);
-                new_mts += [rec(ty=new_subty, mut=tm.mut)];
+                new_mts += ~[rec(ty=new_subty, mut=tm.mut)];
             }
             ty = copy_cname(cx, mk_tup(cx, new_mts), ty);
         }
@@ -1111,7 +1112,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_task) { ret false; }
         case (ty_tup(?mts)) {
             auto i = 0u;
-            while (i < vec::len[mt](mts)) {
+            while (i < ivec::len[mt](mts)) {
                 if (type_has_dynamic_size(cx, mts.(i).ty)) { ret true; }
                 i += 1u;
             }
@@ -1551,8 +1552,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_tup(?mts_a)) {
             alt (b) {
                 case (ty_tup(?mts_b)) {
-                    auto len = vec::len[mt](mts_a);
-                    if (len != vec::len[mt](mts_b)) { ret false; }
+                    auto len = ivec::len[mt](mts_a);
+                    if (len != ivec::len[mt](mts_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
@@ -2477,8 +2478,8 @@ mod unify {
             case (ty::ty_tup(?expected_elems)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_tup(?actual_elems)) {
-                        auto expected_len = vec::len[ty::mt](expected_elems);
-                        auto actual_len = vec::len[ty::mt](actual_elems);
+                        auto expected_len = ivec::len[ty::mt](expected_elems);
+                        auto actual_len = ivec::len[ty::mt](actual_elems);
                         if (expected_len != actual_len) {
                             auto err =
                                 terr_tuple_size(expected_len, actual_len);
@@ -2487,7 +2488,7 @@ mod unify {
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
 
-                        let vec[ty::mt] result_elems = [];
+                        let ty::mt[] result_elems = ~[];
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
@@ -2507,7 +2508,7 @@ mod unify {
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
-                                    result_elems += [mt];
+                                    result_elems += ~[mt];
                                 }
                                 case (_) { ret result; }
                             }

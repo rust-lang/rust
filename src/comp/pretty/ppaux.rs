@@ -107,8 +107,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_type) { s += "type"; }
         case (ty_task) { s += "task"; }
         case (ty_tup(?elems)) {
-            auto f = bind mt_to_str(cx, _);
-            auto strs = vec::map[mt, str](f, elems);
+            let vec[str] strs = [];
+            for (mt tm in elems) { strs += [mt_to_str(cx, tm)]; }
             s += "tup(" + str::connect(strs, ",") + ")";
         }
         case (ty_rec(?elems)) {

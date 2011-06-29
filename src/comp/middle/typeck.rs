@@ -33,6 +33,7 @@ import middle::ty::unify::fixup_result;
 import middle::ty::unify::fix_ok;
 import middle::ty::unify::fix_err;
 import std::int;
+import std::ivec;
 import std::str;
 import std::ufind;
 import std::uint;
@@ -293,9 +294,10 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
         }
         case (ast::ty_tup(?fields)) {
-            let vec[ty::mt] flds = [];
+            let ty::mt[] flds = ~[];
+            ivec::reserve(flds, vec::len(fields));
             for (ast::mt field in fields) {
-                vec::push[ty::mt](flds, ast_mt_to_mt(tcx, getter, field));
+                flds += ~[ast_mt_to_mt(tcx, getter, field)];
             }
             typ = ty::mk_tup(tcx, flds);
         }
@@ -1937,11 +1939,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::ty_only_fixup(fcx, id, typ);
         }
         case (ast::expr_tup(?elts)) {
-            let vec[ty::mt] elts_mt = [];
+            let ty::mt[] elts_mt = ~[];
+            ivec::reserve(elts_mt, vec::len(elts));
             for (ast::elt e in elts) {
                 check_expr(fcx, e.expr);
                 auto ety = expr_ty(fcx.ccx.tcx, e.expr);
-                elts_mt += [rec(ty=ety, mut=e.mut)];
+                elts_mt += ~[rec(ty=ety, mut=e.mut)];
             }
             auto typ = ty::mk_tup(fcx.ccx.tcx, elts_mt);
             write::ty_only_fixup(fcx, id, typ);
@@ -2004,7 +2007,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ty::ty_tup(?args)) {
                     let uint ix =
                         ty::field_num(fcx.ccx.tcx.sess, expr.span, field);
-                    if (ix >= vec::len[ty::mt](args)) {
+                    if (ix >= ivec::len[ty::mt](args)) {
                         fcx.ccx.tcx.sess.span_fatal(expr.span,
                                                   "bad index on tuple");
                     }
