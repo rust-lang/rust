@@ -15,7 +15,7 @@ fn dirname(path p) -> path {
     let int i = str::rindex(p, os_fs::path_sep as u8);
     if (i == -1) {
         i = str::rindex(p, os_fs::alt_path_sep as u8);
-        if (i == -1) { ret p; }
+        if (i == -1) { ret "."; }
     }
     ret str::substr(p, 0u, i as uint);
 }
