@@ -742,6 +742,7 @@ mod collect {
                                         t_res, ast::return, []);
                 auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
                                         ty::mk_nil(cx.tcx), ast::return, []);
+                write::ty_only(cx.tcx, it.id, t_res);
                 write::ty_only(cx.tcx, ctor_id, t_ctor);
                 cx.tcx.tcache.insert(local_def(ctor_id),
                                      tup(vec::len(tps), t_ctor));
