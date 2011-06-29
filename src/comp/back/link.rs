@@ -275,6 +275,22 @@ mod write {
  *    system linkers understand.
  *
  */
+
+type link_meta = rec(str name,
+                     str vers,
+                     str extras_hash);
+
+fn build_link_meta(&session::session sess, &ast::crate c,
+                   &str output, sha1 sha) -> link_meta {
+    auto meta_info = crate_link_metas(c);
+
+    auto name = crate_meta_name(sess, c, output);
+    auto vers = crate_meta_vers(sess, c);
+    auto extras_hash = crate_meta_extras_hash(sha, c);
+
+    ret rec(name = name, vers = vers, extras_hash = extras_hash);
+}
+
 type link_metas = rec(option::t[str] name,
                       option::t[str] vers,
                       vec[@ast::meta_item] cmh_items);
@@ -385,8 +401,9 @@ fn get_symbol_hash(&@crate_ctxt ccx, &ty::t t) -> str {
         case (some(?h)) { hash = h; }
         case (none) {
             hash =
-                symbol_hash(ccx.tcx, ccx.sha, t, ccx.crate_meta_name,
-                            ccx.crate_meta_extras_hash);
+                symbol_hash(ccx.tcx, ccx.sha, t,
+                            ccx.link_meta.name,
+                            ccx.link_meta.extras_hash);
             ccx.type_sha1s.insert(t, hash);
         }
     }
@@ -413,7 +430,7 @@ fn exported_name(&vec[str] path, &str hash, &str vers) -> str {
 
 fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
     auto hash = get_symbol_hash(ccx, t);
-    ret exported_name(path, hash, ccx.crate_meta_vers);
+    ret exported_name(path, hash, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) ->

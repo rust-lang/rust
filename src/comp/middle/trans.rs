@@ -62,9 +62,6 @@ import link::mangle_internal_name_by_seq;
 import link::mangle_internal_name_by_path;
 import link::mangle_internal_name_by_path_and_seq;
 import link::mangle_exported_name;
-import link::crate_meta_name;
-import link::crate_meta_vers;
-import link::crate_meta_extras_hash;
 import metadata::tyencode;
 import metadata::creader;
 import metadata::decoder;
@@ -132,9 +129,7 @@ type crate_ctxt =
         ast_map::map ast_map,
         hashmap[ast::node_id, str] item_symbols,
         mutable option::t[ValueRef] main_fn,
-        str crate_meta_name,
-        str crate_meta_vers,
-        str crate_meta_extras_hash,
+        link::link_meta link_meta,
 
         // TODO: hashmap[tup(tag_id,subtys), @tag_info]
         hashmap[ty::t, uint] tag_sizes,
@@ -7270,7 +7265,7 @@ fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
     let vec[ast::ty_param] obj_typarams = [];
     let vec[ast::obj_field] obj_fields = [];
     ret @rec(path=pth,
-             module_path=[ccx.crate_meta_name],
+             module_path=[ccx.link_meta.name],
              obj_typarams=obj_typarams,
              obj_fields=obj_fields,
              ccx=ccx);
@@ -8522,7 +8517,7 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     vec::push[ValueRef](subcrates, C_int(0));
     auto mapname;
     if (ccx.sess.get_opts().shared) {
-        mapname = ccx.crate_meta_name;
+        mapname = ccx.link_meta.name;
     } else { mapname = "toplevel"; }
     auto sym_name = "_rust_crate_map_" + mapname;
     auto arrtype = T_array(T_int(), vec::len[ValueRef](subcrates));
@@ -8578,9 +8573,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              ast_map=amap,
              item_symbols=new_int_hash[str](),
              mutable main_fn=none[ValueRef],
-             crate_meta_name=crate_meta_name(sess, *crate, output),
-             crate_meta_vers=crate_meta_vers(sess, *crate),
-             crate_meta_extras_hash=crate_meta_extras_hash(sha, *crate),
+             link_meta=link::build_link_meta(sess, *crate, output, sha),
              tag_sizes=tag_sizes,
              discrims=new_int_hash[ValueRef](),
              discrim_symbols=new_int_hash[str](),
