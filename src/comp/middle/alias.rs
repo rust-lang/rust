@@ -111,6 +111,10 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
             check_var(*cx, ex, pt, ex.id, false, sc);
             handled = false;
         }
+        case (ast::expr_swap(?lhs, ?rhs)) {
+            check_lval(cx, lhs, sc, v);
+            check_lval(cx, rhs, sc, v);
+        }
         case (ast::expr_move(?dest, ?src)) {
             check_assign(cx, dest, src, sc, v);
         }
@@ -376,11 +380,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
     }
 }
 
-
-// FIXME does not catch assigning to immutable object fields yet
-fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
-                &vt[scope] v) {
-    visit_expr(cx, src, sc, v);
+fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
     alt (dest.node) {
         case (ast::expr_path(?p)) {
             auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id))._1;
@@ -417,6 +417,13 @@ fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
         }
     }
 }
+
+fn check_assign(&@ctx cx, &@ast::expr dest, &@ast::expr src, &scope sc,
+                &vt[scope] v) {
+    visit_expr(cx, src, sc, v);
+    check_lval(cx, dest, sc, v);
+}
+
 
 fn is_immutable_alias(&@ctx cx, &scope sc, node_id dnum) -> bool {
     alt (cx.local_map.find(dnum)) {
