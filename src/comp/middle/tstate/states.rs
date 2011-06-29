@@ -631,7 +631,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                             // let int = x; => x is uninit in poststate
                             set_poststate_ann(fcx.ccx, id, pres);
                             clear_in_poststate_ident(fcx, alocal.node.id,
-                                                         alocal.node.ident, id);
+                                                     alocal.node.ident, id);
                             set_prestate(stmt_ann, pres);
                             ret false;
                         }

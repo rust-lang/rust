@@ -49,7 +49,8 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
-    A(task->sched, is_associated(), "Channel must be associated with a port.");
+    A(task->sched, is_associated(),
+      "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
         LOG(task, task,

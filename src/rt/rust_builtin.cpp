@@ -47,7 +47,8 @@ last_os_error(rust_task *task) {
         task->fail(1);
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(sched, alloc, fill, (const uint8_t *)buf);
+    rust_str *st = new (mem) rust_str(sched, alloc, fill,
+                                      (const uint8_t *)buf);
 
 #ifdef __WIN32__
     LocalFree((HLOCAL)buf);

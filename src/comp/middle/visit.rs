@@ -134,7 +134,8 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
             alt (ob.dtor) {
                 case (none) { }
                 case (some(?m)) {
-                    vt(v).visit_fn(m.node.meth, [], m.span, some(m.node.ident),
+                    vt(v).visit_fn(m.node.meth, [], m.span,
+                                   some(m.node.ident),
                                    m.node.id, e, v);
                 }
             }

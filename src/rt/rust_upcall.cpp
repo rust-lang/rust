@@ -339,7 +339,8 @@ rust_str *make_str(rust_task *task, char const *s, size_t fill) {
         task->fail(3);
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(sched, alloc, fill, (uint8_t const *) s);
+    rust_str *st = new (mem) rust_str(sched, alloc, fill,
+                                      (uint8_t const *) s);
     LOG(task, mem,
         "upcall new_str('%s', %" PRIdPTR ") = 0x%" PRIxPTR,
         s, fill, st);

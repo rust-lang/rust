@@ -1528,7 +1528,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                     auto len = vec::len[mt](mts_a);
                     if (len != vec::len[mt](mts_b)) { ret false; }
                     auto i = 0u;
-                    while (i < len) {                        if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
+                    while (i < len) {
+                        if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
                         i += 1u;
                     }
                     ret true;

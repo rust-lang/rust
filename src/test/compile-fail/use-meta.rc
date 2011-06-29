@@ -1,4 +1,4 @@
 // error-pattern:can't find crate for 'std'
 
 use std (name = "std",
-	 vers = "bogus");
+         vers = "bogus");

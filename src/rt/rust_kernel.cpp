@@ -52,7 +52,9 @@ rust_kernel::internal_get_sched_handle(rust_scheduler *sched) {
     rust_handle<rust_scheduler> *handle = NULL;
     if (_sched_handles.get(sched, &handle) == false) {
         handle =
-            new (this) rust_handle<rust_scheduler>(this, sched->message_queue, sched);
+            new (this) rust_handle<rust_scheduler>(this,
+                                                   sched->message_queue,
+                                                   sched);
         _sched_handles.put(sched, handle);
     }
     return handle;
@@ -72,7 +74,8 @@ rust_kernel::get_task_handle(rust_task *task) {
     rust_handle<rust_task> *handle = NULL;
     if (_task_handles.get(task, &handle) == false) {
         handle =
-            new (this) rust_handle<rust_task>(this, task->sched->message_queue,
+            new (this) rust_handle<rust_task>(this,
+                                              task->sched->message_queue,
                                               task);
         _task_handles.put(task, handle);
     }
@@ -85,10 +88,10 @@ rust_kernel::get_port_handle(rust_port *port) {
     _kernel_lock.lock();
     rust_handle<rust_port> *handle = NULL;
     if (_port_handles.get(port, &handle) == false) {
-        handle =
-            new (this) rust_handle<rust_port>(this,
-                                              port->task->sched->message_queue,
-                                              port);
+        handle = new (this)
+            rust_handle<rust_port>(this,
+                                   port->task->sched->message_queue,
+                                   port);
         _port_handles.put(port, handle);
     }
     _kernel_lock.unlock();

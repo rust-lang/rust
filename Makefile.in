@@ -265,12 +265,11 @@ ifneq ($(findstring reformat,$(MAKECMDGOALS)),)
   include $(CFG_SRC_DIR)/mk/pp.mk
 endif
 
-ifneq ($(findstring check,$(MAKECMDGOALS)),)
+ifneq ($(findstring check,$(MAKECMDGOALS))\
+       $(findstring test,$(MAKECMDGOALS))\
+       $(findstring tidy,$(MAKECMDGOALS)),)
+  include $(CFG_SRC_DIR)/mk/dist.mk
   include $(CFG_SRC_DIR)/mk/tests.mk
-else
-  ifneq ($(findstring test,$(MAKECMDGOALS)),)
-    include $(CFG_SRC_DIR)/mk/tests.mk
-  endif
 endif
 
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)

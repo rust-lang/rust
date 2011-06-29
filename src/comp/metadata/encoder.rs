@@ -180,7 +180,8 @@ fn encode_type(&@crate_ctxt cx, &ebml::writer ebml_w, &ty::t typ) {
     ebml::start_tag(ebml_w, tag_items_data_item_type);
     auto f = def_to_str;
     auto ty_str_ctxt =
-        @rec(ds=f, tcx=cx.tcx, abbrevs=tyencode::ac_use_abbrevs(cx.type_abbrevs));
+        @rec(ds=f, tcx=cx.tcx,
+             abbrevs=tyencode::ac_use_abbrevs(cx.type_abbrevs));
     tyencode::enc_ty(io::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebml::end_tag(ebml_w);
 }
@@ -346,7 +347,8 @@ fn encode_info_for_items(&@crate_ctxt cx, &ebml::writer ebml_w) ->
    vec[tup(int, uint)] {
     let vec[tup(int, uint)] index = [];
     ebml::start_tag(ebml_w, tag_items_data);
-    for each (@tup(node_id, middle::ast_map::ast_node) kvp in cx.ast_map.items()) {
+    for each (@tup(node_id, middle::ast_map::ast_node) kvp in
+              cx.ast_map.items()) {
         alt (kvp._1) {
             case (middle::ast_map::node_item(?i)) {
                 index += [tup(kvp._0, ebml_w.writer.tell())];
@@ -458,10 +460,10 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
     ebml::end_tag(ebml_w);
 }
 
-// So there's a special crate attribute called 'link' which defines the metadata
-// that Rust cares about for linking crates. This attribute requires name and
-// value attributes, so if the user didn't provide them we will throw them in
-// anyway with default values.
+// So there's a special crate attribute called 'link' which defines the
+// metadata that Rust cares about for linking crates. This attribute requires
+// name and value attributes, so if the user didn't provide them we will throw
+// them in anyway with default values.
 fn synthesize_crate_attrs(&@crate_ctxt cx,
                           &@crate crate) -> vec[attribute] {
 

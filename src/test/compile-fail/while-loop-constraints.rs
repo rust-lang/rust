@@ -8,9 +8,9 @@ fn main() {
     log y;
     while (true) {
       while (true) {
-	while (true) {
-	  x <- y;
-	}
+    while (true) {
+      x <- y;
+    }
       }
     }
   }

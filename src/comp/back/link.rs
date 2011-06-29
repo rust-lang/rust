@@ -375,7 +375,8 @@ fn truncated_sha1_result(sha1 sha) -> str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, &link_meta link_meta) -> str {
+fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
+               &link_meta link_meta) -> str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 

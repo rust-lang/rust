@@ -17,9 +17,9 @@ fn main() {
     print_even(y);
     do {
       do {
-	do {
-	  y += 1;
-	} while (true);
+    do {
+      y += 1;
+    } while (true);
       } while (true);
     } while (true);
   } while (true);

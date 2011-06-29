@@ -154,7 +154,8 @@ void
 circular_buffer::shrink() {
     size_t new_buffer_sz = _buffer_sz / 2;
     I(sched, initial_size() <= new_buffer_sz);
-    DLOG(sched, mem, "circular_buffer is shrinking to %d bytes", new_buffer_sz);
+    DLOG(sched, mem, "circular_buffer is shrinking to %d bytes",
+         new_buffer_sz);
     void *new_buffer = task->malloc(new_buffer_sz);
     transfer(new_buffer);
     task->free(_buffer);
