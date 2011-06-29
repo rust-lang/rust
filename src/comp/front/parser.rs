@@ -873,12 +873,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         
         auto e = parse_expr(p);
         auto hi = e.span.hi;
-        ex = if (p.get_session().get_opts().check_claims) {
-            ast::expr_check(ast::checked, e)
-        }
-        else {
-            ast::expr_check(ast::unchecked, e)
-        };
+        ex = ast::expr_check(ast::unchecked, e);
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
             case (token::SEMI) { ex = ast::expr_ret(none); }

@@ -157,8 +157,7 @@ options:
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
-    --no-typestate     don't run the typestate pass (unsafe!)
-    --check-claims     treat 'claim' and 'check' synonymously\n\n");
+    --no-typestate     don't run the typestate pass (unsafe!)\n\n");
 }
 
 fn get_os(str triple) -> session::os {
@@ -227,7 +226,6 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
     auto time_llvm_passes = opt_present(match, "time-llvm-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
     auto sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
-    auto check_claims = opt_present(match, "check-claims");
     let uint opt_level =
         if (opt_present(match, "O")) {
             if (opt_present(match, "OptLevel")) {
@@ -263,7 +261,6 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
              stats=stats,
              time_passes=time_passes,
              time_llvm_passes=time_llvm_passes,
-             check_claims=check_claims,
              output_type=output_type,
              library_search_paths=library_search_paths,
              sysroot=sysroot);
@@ -299,7 +296,7 @@ fn main(vec[str] args) {
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("check-claims"), optflag("noverify")];
+         optflag("noverify")];
     auto binary = vec::shift[str](args);
     auto binary_dir = fs::dirname(binary);
     auto match =
