@@ -166,7 +166,6 @@ type local_ctxt =
 
 // Types used for llself.
 type val_self_pair = rec(ValueRef v, ty::t t);
-
 type ty_self_pair = tup(TypeRef, ty::t);
 
 
@@ -719,22 +718,22 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
                    &option::t[TypeRef] obj_self, &vec[ty::arg] inputs,
                    &ty::t output, uint ty_param_count) -> TypeRef {
     let vec[TypeRef] atys = [];
-    // Arg 0: Output pointer.
 
+    // Arg 0: Output pointer.
     if (ty::type_has_dynamic_size(cx.tcx, output)) {
         atys += [T_typaram_ptr(cx.tn)];
     } else { atys += [T_ptr(type_of_inner(cx, sp, output))]; }
+
     // Arg 1: task pointer.
-
     atys += [T_taskptr(cx.tn)];
-    // Arg 2: Env (closure-bindings / self-obj)
 
+    // Arg 2: Env (closure-bindings / self-obj)
     alt (obj_self) {
         case (some(?t)) { assert (t as int != 0); atys += [t]; }
         case (_) { atys += [T_opaque_closure_ptr(cx.tn)]; }
     }
-    // Args >3: ty params, if not acquired via capture...
 
+    // Args >3: ty params, if not acquired via capture...
     if (obj_self == none[TypeRef]) {
         auto i = 0u;
         while (i < ty_param_count) {
@@ -746,7 +745,6 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
         // If it's an iter, the 'output' type of the iter is actually the
         // *input* type of the function we're given as our iter-block
         // argument.
-
         atys +=
             [T_fn_pair(cx.tn,
                        type_of_fn_full(cx, sp, ast::proto_fn, none[TypeRef],
@@ -754,8 +752,8 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
                                             ty=output)], ty::mk_nil(cx.tcx),
                                        0u))];
     }
-    // ... then explicit args.
 
+    // ... then explicit args.
     atys += type_of_explicit_args(cx, sp, inputs);
     ret T_fn(atys, llvm::LLVMVoidType());
 }
@@ -5102,37 +5100,79 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
                     &ty::t outgoing_fty, &vec[option::t[@ast::expr]] args,
                     &ty::t closure_ty, &vec[ty::t] bound_tys,
                     uint ty_param_count) -> ValueRef {
-    // Construct a thunk-call with signature incoming_fty, and that copies
-    // args forward into a call to outgoing_fty:
 
+    // Here we're not necessarily constructing a thunk in the sense of
+    // "function with no arguments".  The result of compiling 'bind f(foo,
+    // bar, baz)' would be a thunk that, when called, applies f to those
+    // arguments and returns the result.  But we're stretching the meaning of
+    // the word "thunk" here to also mean the result of compiling, say, 'bind
+    // f(foo, _, baz)', or any other bind expression that binds f and leaves
+    // some (or all) of the arguments unbound.
+
+    // Here, 'incoming_fty' is the type of the entire bind expression, while
+    // 'outgoing_fty' is the type of the function that is having some of its
+    // arguments bound.  If f is a function that takes three arguments of type
+    // int and returns int, and we're translating, say, 'bind f(3, _, 5)',
+    // then outgoing_fty is the type of f, which is (int, int, int) -> int,
+    // and incoming_fty is the type of 'bind f(3, _, 5)', which is int -> int.
+
+    // Once translated, the entire bind expression will be the call f(foo,
+    // bar, baz) wrapped in a (so-called) thunk that takes 'bar' as its
+    // argument and that has bindings of 'foo' to 3 and 'baz' to 5 and a
+    // pointer to 'f' all saved in its environment.  So, our job is to
+    // construct and return that thunk.
+
+    // Give the thunk a name, type, and value.
     let str s =
         mangle_internal_name_by_path_and_seq(cx.ccx, cx.path, "thunk");
     let TypeRef llthunk_ty =
         get_pair_fn_ty(type_of(cx.ccx, sp, incoming_fty));
     let ValueRef llthunk =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llthunk_ty);
+
+    // Create a new function context and block context for the thunk, and hold
+    // onto a pointer to the first block in the function for later use.
     auto fcx = new_fn_ctxt(cx, sp, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
     auto llclosure_ptr_ty =
         type_of(cx.ccx, sp, ty::mk_imm_box(cx.ccx.tcx, closure_ty));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
+
+    // "target", in this context, means the function that's having some of its
+    // arguments bound and that will be called inside the thunk we're
+    // creating.  (In our running example, target is the function f.)  Pick
+    // out the pointer to the target function from the environment.
     auto lltarget =
         GEP_tup_like(bcx, closure_ty, llclosure,
                      [0, abi::box_rc_field_body, abi::closure_elt_target]);
     bcx = lltarget.bcx;
+
+    // And then, pick out the target function's own environment.  That's what
+    // we'll use as the environment the thunk gets.
     auto lltargetclosure =
         bcx.build.GEP(lltarget.val, [C_int(0), C_int(abi::fn_field_box)]);
     lltargetclosure = bcx.build.Load(lltargetclosure);
+
+    // Get f's return type, which will also be the return type of the entire
+    // bind expression.
     auto outgoing_ret_ty = ty::ty_fn_ret(cx.ccx.tcx, outgoing_fty);
+
+    // Get the types of the arguments to f.
     auto outgoing_args = ty::ty_fn_args(cx.ccx.tcx, outgoing_fty);
+
+    // The 'llretptr' that will arrive in the thunk we're creating also needs
+    // to be the correct size.  Cast it to the size of f's return type, if
+    // necessary.
     auto llretptr = fcx.llretptr;
     if (ty::type_has_dynamic_size(cx.ccx.tcx, outgoing_ret_ty)) {
         llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.ccx.tn));
     }
-    let vec[ValueRef] llargs = [llretptr, fcx.lltaskptr, lltargetclosure];
-    // Copy in the type parameters.
 
+    // Set up the three implicit arguments to the thunk.
+    let vec[ValueRef] llargs = [llretptr, fcx.lltaskptr, lltargetclosure];
+
+    // Copy in the type parameters.
     let uint i = 0u;
     while (i < ty_param_count) {
         auto lltyparam_ptr =
@@ -5145,6 +5185,7 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
         fcx.lltydescs += [td];
         i += 1u;
     }
+
     let uint a = 3u; // retptr, task ptr, env come first
 
     let int b = 0;
@@ -5199,9 +5240,9 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
 
     auto lltargetfn =
         bcx.build.GEP(lltarget.val, [C_int(0), C_int(abi::fn_field_code)]);
+
     // Cast the outgoing function to the appropriate type (see the comments in
     // trans_bind below for why this is necessary).
-
     auto lltargetty =
         type_of_fn(bcx.fcx.lcx.ccx, sp,
                    ty::ty_fn_proto(bcx.fcx.lcx.ccx.tcx, outgoing_fty),
@@ -5227,8 +5268,8 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 case (some(?e)) { vec::push[@ast::expr](bound, e); }
             }
         }
-        // Figure out which tydescs we need to pass, if any.
 
+        // Figure out which tydescs we need to pass, if any.
         let ty::t outgoing_fty;
         let vec[ValueRef] lltydescs;
         alt (f_res.generic) {
@@ -5244,15 +5285,15 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
         }
         auto ty_param_count = vec::len[ValueRef](lltydescs);
         if (vec::len[@ast::expr](bound) == 0u && ty_param_count == 0u) {
-            // Trivial 'binding': just return the static pair-ptr.
 
+            // Trivial 'binding': just return the static pair-ptr.
             ret f_res.res;
         } else {
             auto bcx = f_res.res.bcx;
             auto pair_t = node_type(cx.fcx.lcx.ccx, cx.sp, id);
             auto pair_v = alloca(bcx, pair_t);
-            // Translate the bound expressions.
 
+            // Translate the bound expressions.
             let vec[ty::t] bound_tys = [];
             let vec[ValueRef] bound_vals = [];
             auto i = 0u;
@@ -5264,33 +5305,54 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                                  ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
                 i += 1u;
             }
+
             // Synthesize a closure type.
 
+            // First, synthesize a tuple type containing the types of all the
+            // bound expressions.
+            // bindings_ty = [bound_ty1, bound_ty2, ...]
             let ty::t bindings_ty =
                 ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, bound_tys);
+
             // NB: keep this in sync with T_closure_ptr; we're making
             // a ty::t structure that has the same "shape" as the LLVM type
             // it constructs.
 
+            // Make a vector that contains ty_param_count copies of tydesc_ty.
+            // (We'll need room for that many tydescs in the closure.)
             let ty::t tydesc_ty = ty::mk_type(cx.fcx.lcx.ccx.tcx);
             let vec[ty::t] captured_tys =
                 vec::init_elt[ty::t](tydesc_ty, ty_param_count);
+
+            // Get all the types we've got (some of which we synthesized
+            // ourselves) into a vector.  The whole things ends up looking
+            // like:
+
+            // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
+            // ...], [tydesc_ty, tydesc_ty, ...]]
             let vec[ty::t] closure_tys =
                 [tydesc_ty, outgoing_fty, bindings_ty,
                  ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, captured_tys)];
+
+            // Finally, synthesize a type for that whole vector.
             let ty::t closure_ty =
                 ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, closure_tys);
+
+            // Allocate a box that can hold something closure-sized, including
+            // space for a refcount.
             auto r = trans_malloc_boxed(bcx, closure_ty);
             auto box = r.val;
             bcx = r.bcx;
+
+            // Grab onto the refcount and body parts of the box we allocated.
             auto rc =
                 bcx.build.GEP(box,
                               [C_int(0), C_int(abi::box_rc_field_refcnt)]);
             auto closure =
                 bcx.build.GEP(box, [C_int(0), C_int(abi::box_rc_field_body)]);
             bcx.build.Store(C_int(1), rc);
-            // Store bindings tydesc.
 
+            // Store bindings tydesc.
             auto bound_tydesc =
                 bcx.build.GEP(closure,
                               [C_int(0), C_int(abi::closure_elt_tydesc)]);
@@ -5300,13 +5362,13 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
             bcx = bindings_tydesc.bcx;
             bcx.build.Store(bindings_tydesc.val, bound_tydesc);
+
             // Determine the LLVM type for the outgoing function type. This
             // may be different from the type returned by trans_malloc_boxed()
             // since we have more information than that function does;
             // specifically, we know how many type descriptors the outgoing
             // function has, which type_of() doesn't, as only we know which
             // item the function refers to.
-
             auto llfnty =
                 type_of_fn(bcx.fcx.lcx.ccx, cx.sp,
                            ty::ty_fn_proto(bcx.fcx.lcx.ccx.tcx, outgoing_fty),
@@ -5314,8 +5376,8 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                            ty::ty_fn_ret(bcx.fcx.lcx.ccx.tcx, outgoing_fty),
                            ty_param_count);
             auto llclosurety = T_ptr(T_fn_pair(bcx.fcx.lcx.ccx.tn, llfnty));
-            // Store thunk-target.
 
+            // Store thunk-target.
             auto bound_target =
                 bcx.build.GEP(closure,
                               [C_int(0), C_int(abi::closure_elt_target)]);
@@ -5334,9 +5396,9 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 bcx = copy_val(bcx, INIT, bound, v, bound_tys.(i)).bcx;
                 i += 1u;
             }
+
             // If necessary, copy tydescs describing type parameters into the
             // appropriate slot in the closure.
-
             alt (f_res.generic) {
                 case (none) {/* nothing to do */ }
                 case (some(?ginfo)) {
@@ -5356,17 +5418,19 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                     outgoing_fty = ginfo.item_type;
                 }
             }
-            // Make thunk and store thunk-ptr in outer pair's code slot.
 
+            // Make thunk and store thunk-ptr in outer pair's code slot.
             auto pair_code =
                 bcx.build.GEP(pair_v, [C_int(0), C_int(abi::fn_field_code)]);
+            // The type of the entire bind expression.
             let ty::t pair_ty = node_id_type(cx.fcx.lcx.ccx, id);
+
             let ValueRef llthunk =
                 trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
                                  args, closure_ty, bound_tys, ty_param_count);
             bcx.build.Store(llthunk, pair_code);
-            // Store box ptr in outer pair's box slot.
 
+            // Store box ptr in outer pair's box slot.
             auto tn = bcx.fcx.lcx.ccx.tn;
             auto pair_box =
                 bcx.build.GEP(pair_v, [C_int(0), C_int(abi::fn_field_box)]);
@@ -5533,12 +5597,10 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     alt (f_res.llobj) {
         case (some(_)) {
             // It's a vtbl entry.
-
             faddr = f_res.res.bcx.build.Load(faddr);
         }
         case (none) {
             // It's a closure.
-
             auto bcx = f_res.res.bcx;
             auto pair = faddr;
             faddr =
@@ -5553,7 +5615,6 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     alt (f_res.method_ty) {
         case (some(?meth)) {
             // self-call
-
             fn_ty = meth;
         }
         case (_) { fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f); }
@@ -7452,8 +7513,8 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
             option::t[ty_self_pair] ty_self, &vec[ast::ty_param] ty_params,
             ast::node_id id) {
     set_uwtable(llfndecl);
-    // Set up arguments to the function.
 
+    // Set up arguments to the function.
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
                               ty::ret_ty_of_fn(cx.ccx.tcx, id), 
@@ -7465,18 +7526,18 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     }
     auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
     copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
+
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-
     auto bcx = new_top_block_ctxt(fcx);
     add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
     auto lltop = bcx.llbb;
     auto block_ty = node_id_type(cx.ccx, f.body.node.id);
+
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, trans_obj, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-
     auto rslt =
         if (!ty::type_is_nil(cx.ccx.tcx, block_ty) &&
                 !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
@@ -7564,7 +7625,6 @@ fn trans_dtor(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
     ret llfn;
 }
 
-
 // trans_obj: creates an LLVM function that is the object constructor for the
 // object being translated.
 fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
@@ -7587,45 +7647,46 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
             [rec(mode=ast::alias(false), ty=f.ty, ident=f.ident, id=f.id)];
     }
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
-    // Both regular arguments and type parameters are handled here.
 
+    // Both regular arguments and type parameters are handled here.
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
                               ty::ret_ty_of_fn(ccx.tcx, ctor_id),
                               fn_args, ty_params);
     let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ctor_id);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
+
     //  Create the first block context in the function and keep a handle on it
     //  to pass to finish_fn later.
-
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
+
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
-
     auto self_ty = ty::ret_ty_of_fn(ccx.tcx, ctor_id);
     auto llself_ty = type_of(ccx, sp, self_ty);
+
     // Set up the two-word pair that we're going to return from the object
     // constructor we're building.  The two elements of this pair will be a
     // vtable pointer and a body pointer.  (llretptr already points to the
     // place where this two-word pair should go; it was pre-allocated by the
     // caller of the function.)
-
     auto pair = bcx.fcx.llretptr;
+
     // Grab onto the first and second elements of the pair.
     // abi::obj_field_vtbl and abi::obj_field_box simply specify words 0 and 1
     // of 'pair'.
-
     auto pair_vtbl =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_vtbl)]);
     auto pair_box =
         bcx.build.GEP(pair, [C_int(0), C_int(abi::obj_field_box)]);
+
     // Make a vtable for this object: a static array of pointers to functions.
     // It will be located in the read-only memory of the executable we're
     // creating and will contain ValueRefs for all of this object's methods.
     // create_vtbl returns a pointer to the vtable, which we store.
-
     auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params, none);
     bcx.build.Store(vtbl, pair_vtbl);
+
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
     // typarams, and fields.
@@ -7634,10 +7695,10 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // (Pertains to issues #538/#539/#540/#543.)
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
+
     // FIXME: we should probably also allocate a box for empty objs that have
     // a dtor, since otherwise they are never dropped, and the dtor never
     // runs.
-
     if (vec::len[ast::ty_param](ty_params) == 0u &&
             vec::len[ty::arg](arg_tys) == 0u) {
         // If the object we're translating has no fields or type parameters,
