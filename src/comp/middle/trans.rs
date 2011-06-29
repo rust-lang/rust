@@ -3180,14 +3180,21 @@ fn copy_val(&@block_ctxt cx, copy_action action, ValueRef dst, ValueRef src,
         ret rslt(bcx, bcx.build.Store(src, dst));
     } else if (ty::type_is_structural(ccx.tcx, t) ||
                    ty::type_has_dynamic_size(ccx.tcx, t)) {
-        auto bcx;
+        // Check for self-assignment.
+        auto do_copy_cx = new_sub_block_ctxt(cx, "do_copy");
+        auto next_cx = new_sub_block_ctxt(cx, "next");
+        auto self_assigning = cx.build.ICmp(lib::llvm::LLVMIntNE,
+            cx.build.PointerCast(dst, val_ty(src)), src);
+        cx.build.CondBr(self_assigning, do_copy_cx.llbb, next_cx.llbb);
+
         if (action == DROP_EXISTING) {
-            bcx = drop_ty(cx, dst, t).bcx;
-        } else {
-            bcx = cx;
+            do_copy_cx = drop_ty(do_copy_cx, dst, t).bcx;
         }
-        bcx = memmove_ty(bcx, dst, src, t).bcx;
-        ret copy_ty(bcx, dst, t);
+        do_copy_cx = memmove_ty(do_copy_cx, dst, src, t).bcx;
+        do_copy_cx = copy_ty(do_copy_cx, dst, t).bcx;
+        do_copy_cx.build.Br(next_cx.llbb);
+
+        ret rslt(next_cx, C_nil());
     }
     ccx.sess.bug("unexpected type in trans::copy_val: " +
                  ty_to_str(ccx.tcx, t));
