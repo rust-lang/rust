@@ -298,7 +298,7 @@ fn build_link_meta(&session::session sess, &ast::crate c,
                     // FIXME: Should probably warn about duplicate name items
                     name = some(v);
                 }
-                case (ast::meta_name_value("value", ?v)) {
+                case (ast::meta_name_value("vers", ?v)) {
                     // FIXME: Should probably warn about duplicate value items
                     vers = some(v);
                 }
