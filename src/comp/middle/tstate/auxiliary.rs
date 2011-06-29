@@ -99,20 +99,9 @@ fn first_difference_string(&fn_ctxt fcx, &tritv::t expected, &tritv::t actual)
     let str s = "";
     auto done = false;
     for (norm_constraint c in constraints(fcx)) {
-        if (!done) {
-            if (tritv_get(expected, c.bit_num) == ttrue &&
-                tritv_get(actual, c.bit_num) != ttrue) {
-                /*
-                  FIXME
-                  for fun, try either:
-                  * "ret s" after the assignment to s
-                  or
-                  * using break here
-                  */
-
-                s = constraint_to_str(fcx.ccx.tcx, c.c);
-                done = true;
-            }
+        if (tritv_get(expected, c.bit_num) == ttrue &&
+            tritv_get(actual, c.bit_num) != ttrue) {
+            ret constraint_to_str(fcx.ccx.tcx, c.c);
         }
     }
     ret s;
