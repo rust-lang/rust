@@ -410,7 +410,7 @@ fn main(vec[str] args) {
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 shared_cmd = "-shared";
-                gcc_args = common_args + ["-lssp"];
+                gcc_args = common_args;
             }
             case (session::os_macos) {
                 shared_cmd = "-dynamiclib";
