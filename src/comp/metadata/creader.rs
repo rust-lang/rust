@@ -83,7 +83,9 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
     // manually filtering fs::list_dir here.
 
     for (str library_search_path in library_search_paths) {
+        log #fmt("searching %s", library_search_path);
         for (str path in fs::list_dir(library_search_path)) {
+            log #fmt("searching %s", path);
             let str f = fs::basename(path);
             if (!(str::starts_with(f, prefix) &&
                       str::ends_with(f, nn.suffix))) {

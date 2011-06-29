@@ -419,12 +419,37 @@ fn main(vec[str] args) {
             }
         }
 
+        // Converts a library file name into a gcc -l argument
+        fn unlib(@session::config config, str filename) -> str {
+            auto rmlib = bind fn(@session::config config,
+                                 str filename) -> str {
+                if (config.os == session::os_macos
+                    || config.os == session::os_linux
+                    && str::find(filename, "lib") == 0) {
+                    ret str::slice(filename, 3u, str::byte_len(filename));
+                } else {
+                    ret filename;
+                }
+            } (config, _);
+            fn rmext(str filename) -> str {
+                auto parts = str::split(filename, '.' as u8);
+                vec::pop(parts);
+                ret str::connect(parts, ".");
+            }
+            ret alt (config.os) {
+                case (session::os_macos) { rmext(rmlib(filename)) }
+                case (session::os_linux) { rmext(rmlib(filename)) }
+                case (_) { rmext(filename) }
+            };
+        }
+        
         for (str cratepath in sess.get_used_crate_files()) {
             auto dir = fs::dirname(cratepath);
             if (dir != "") {
                 gcc_args += ["-L" + dir];
             }
-            gcc_args += [fs::basename(cratepath)];
+            auto libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
+            gcc_args += ["-l" + libarg];
         }
 
         auto used_libs = sess.get_used_libraries();
