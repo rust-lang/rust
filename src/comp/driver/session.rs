@@ -109,6 +109,9 @@ obj session(ast::crate_num cnum,
 
         emit_diagnostic(some(sp), msg, "note", 10u8, cm);
     }
+    fn note(str msg) {
+        emit_diagnostic(none, msg, "note", 10u8, cm);
+    }
     fn span_bug(span sp, str msg) -> ! {
         self.span_fatal(sp, #fmt("internal compiler error %s", msg));
     }
