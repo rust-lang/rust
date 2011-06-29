@@ -346,7 +346,6 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (none) { clear_pp(expr_pp(fcx.ccx, e)); }
             }
         }
-        // FIXME this was just put in here as a placeholder
         case (expr_fn(?f)) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_block(?b)) {
             find_pre_post_block(fcx, b);

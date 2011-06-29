@@ -337,7 +337,6 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             }
         }
         case (expr_lit(?l)) { ret pure_exp(fcx.ccx, e.id, pres); }
-        // FIXME This was just put in here as a placeholder
         case (expr_fn(?f)) { ret pure_exp(fcx.ccx, e.id, pres); }
         case (expr_block(?b)) {
             ret find_pre_post_state_block(fcx, pres, b) |
