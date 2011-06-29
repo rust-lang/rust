@@ -3641,14 +3641,12 @@ that is not actually checked at runtime. Thus, using a @code{claim} implies a
 proof obligation to ensure---without compiler assistance---that an assertion
 always holds.
 
-With a command-line flag, the compiler can turn all @code{claim} expressions
-into @code{check} expressions, but the default is to not check the assertion
-contained in a @code{claim}.
-
-The idea is to use @code{check} during development, with @code{claim}
-providing the freedom to disable a few runtime checks in performance-critical
-locations once code is debugged, while leaving the @code{claim} expressions in
-the code as documentation.
+Setting a runtime flag can turn all @code{claim} expressions
+into @code{check} expressions in a compiled Rust program, but the default is to not check the assertion
+contained in a @code{claim}. The idea behind @code{claim} is that performance profiling might identify a
+few bottlenecks in the code where actually checking a given callee's predicate
+is too expensive; @code{claim} allows the code to typecheck without removing
+the predicate check at every other call site.
 
 @node       Ref.Expr.IfCheck
 @subsection Ref.Expr.IfCheck
