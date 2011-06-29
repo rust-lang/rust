@@ -88,13 +88,11 @@ const int obj_body_elt_typarams = 1;
 
 const int obj_body_elt_fields = 2;
 
+// The base object to which an anonymous object is attached.
 const int obj_body_elt_with_obj = 3;
 
-
-/* The base object to which an anonymous
- * object is attached */
+// The two halves of a closure: code and environment.
 const int fn_field_code = 0;
-
 const int fn_field_box = 1;
 
 const int closure_elt_tydesc = 0;
