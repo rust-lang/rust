@@ -81,6 +81,8 @@ fn init_fn_mut[T](&init_op[T] op, uint n_elts) -> vec[mutable T] {
     ret v;
 }
 
+// init_elt: creates and returns a vector of length n_elts, filled with
+// that many copies of element t.
 fn init_elt[T](&T t, uint n_elts) -> vec[T] {
     /**
      * FIXME (issue #81): should be:
