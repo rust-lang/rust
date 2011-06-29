@@ -66,8 +66,8 @@ fn visit_crate_directive[E](&@crate_directive cd, &E e, &vt[E] v) {
                 visit_crate_directive(cdir, e, v);
             }
         }
-        case (cdir_src_mod(_, _)) { }
-        case (cdir_dir_mod(_, _, ?cdirs)) {
+        case (cdir_src_mod(_, _, _)) { }
+        case (cdir_dir_mod(_, _, ?cdirs, _)) {
             for (@crate_directive cdir in cdirs) {
                 visit_crate_directive(cdir, e, v);
             }

@@ -1,5 +1,5 @@
 // xfail-stage0
-// error-pattern: expected crate directive
+// error-pattern: expecting mod
 
 #[attr = "val"];
 #[attr = "val"] // Unterminated

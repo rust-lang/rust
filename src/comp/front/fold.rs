@@ -143,12 +143,12 @@ fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld)
             cdir_let(fld.fold_ident(id), fld.fold_expr(e),
                      map(fld.fold_crate_directive, cds))
                 }
-        case(cdir_src_mod(?id,?fname)) { 
-            cdir_src_mod(fld.fold_ident(id), fname)
+        case(cdir_src_mod(?id,?fname,?attrs)) { 
+            cdir_src_mod(fld.fold_ident(id), fname, attrs)
                 }
-        case(cdir_dir_mod(?id,?fname,?cds)) {
+        case(cdir_dir_mod(?id,?fname,?cds,?attrs)) {
             cdir_dir_mod(fld.fold_ident(id),fname,
-                         map(fld.fold_crate_directive, cds))
+                         map(fld.fold_crate_directive, cds), attrs)
                 }
         case(cdir_view_item(?vi)) { 
             cdir_view_item(fld.fold_view_item(vi))

@@ -1488,7 +1488,7 @@ fn parse_stmt(&parser p) -> @ast::stmt {
 }
 
 fn parse_crate_stmt(&parser p) -> @ast::stmt {
-    auto cdir = parse_crate_directive(p);
+    auto cdir = parse_crate_directive(p, []);
     ret @spanned(cdir.span.lo, cdir.span.hi,
                  ast::stmt_crate_directive(@cdir));
 }
@@ -2141,15 +2141,6 @@ fn parse_inner_attrs_and_next(&parser p) -> tup(vec[ast::attribute],
     ret tup(inner_attrs, next_outer_attrs);
 }
 
-fn parse_inner_attrs(&parser p) -> vec[ast::attribute] {
-    auto attrs_and_next = parse_inner_attrs_and_next(p);
-    if (vec::len(attrs_and_next._1) > 0u) {
-        ret p.fatal("expected crate directive but found " +
-                  token::to_str(p.get_reader(), p.peek()));
-    }
-    ret attrs_and_next._0;
-}
-
 fn parse_meta_item(&parser p) -> @ast::meta_item {
     auto lo = p.get_lo_pos();
     auto ident = parse_ident(p);
@@ -2350,16 +2341,18 @@ fn parse_str(&parser p) -> ast::ident {
 // Each crate file is a sequence of directives.
 //
 // Each directive imperatively extends its environment with 0 or more items.
-fn parse_crate_directive(&parser p) -> ast::crate_directive {
+fn parse_crate_directive(&parser p, vec[ast::attribute] first_outer_attr)
+    -> ast::crate_directive {
+
+    // Collect the next attributes
+    auto outer_attrs = first_outer_attr
+        + parse_outer_attributes(p);
+    // In a crate file outer attributes are only going to apply to mods
+    auto expect_mod = vec::len(outer_attrs) > 0u;
+
     auto lo = p.get_lo_pos();
-    if (eat_word(p, "auth")) {
-        auto n = parse_path(p);
-        expect(p, token::EQ);
-        auto a = parse_auth(p);
-        auto hi = p.get_hi_pos();
-        expect(p, token::SEMI);
-        ret spanned(lo, hi, ast::cdir_auth(n, a));
-    } else if (eat_word(p, "mod")) {
+    if (expect_mod || is_word(p, "mod")) {
+        expect_word(p, "mod");
         auto id = parse_ident(p);
         auto file_opt =
             alt (p.peek()) {
@@ -2375,19 +2368,32 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
                  token::SEMI) {
                 auto hi = p.get_hi_pos();
                 p.bump();
-                ret spanned(lo, hi, ast::cdir_src_mod(id, file_opt));
+                ret spanned(lo, hi, ast::cdir_src_mod(id, file_opt,
+                                                      outer_attrs));
             }
             case (
                  // mod x = "foo_dir" { ...directives... }
                  token::LBRACE) {
                 p.bump();
-                auto cdirs = parse_crate_directives(p, token::RBRACE);
+                auto inner_attrs = parse_inner_attrs_and_next(p);
+                auto mod_attrs = outer_attrs + inner_attrs._0;
+                auto next_outer_attr = inner_attrs._1;
+                auto cdirs = parse_crate_directives(p, token::RBRACE,
+                                                    next_outer_attr);
                 auto hi = p.get_hi_pos();
                 expect(p, token::RBRACE);
-                ret spanned(lo, hi, ast::cdir_dir_mod(id, file_opt, cdirs));
+                ret spanned(lo, hi, ast::cdir_dir_mod(id, file_opt, cdirs,
+                                                      mod_attrs));
             }
             case (?t) { unexpected(p, t); }
         }
+    } else if (eat_word(p, "auth")) {
+        auto n = parse_path(p);
+        expect(p, token::EQ);
+        auto a = parse_auth(p);
+        auto hi = p.get_hi_pos();
+        expect(p, token::SEMI);
+        ret spanned(lo, hi, ast::cdir_auth(n, a));
     } else if (eat_word(p, "let")) {
         expect(p, token::LPAREN);
         auto id = parse_value_ident(p);
@@ -2395,7 +2401,7 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
         auto x = parse_expr(p);
         expect(p, token::RPAREN);
         expect(p, token::LBRACE);
-        auto v = parse_crate_directives(p, token::RBRACE);
+        auto v = parse_crate_directives(p, token::RBRACE, []);
         auto hi = p.get_hi_pos();
         expect(p, token::RBRACE);
         ret spanned(lo, hi, ast::cdir_let(id, x, v));
@@ -2409,11 +2415,20 @@ fn parse_crate_directive(&parser p) -> ast::crate_directive {
     fail;
 }
 
-fn parse_crate_directives(&parser p, token::token term) ->
+fn parse_crate_directives(&parser p, token::token term,
+                          vec[ast::attribute] first_outer_attr) ->
    vec[@ast::crate_directive] {
+
+    // This is pretty ugly. If we have an outer attribute then we can't accept
+    // seeing the terminator next, so if we do see it then fail the same way
+    // parse_crate_directive would
+    if (vec::len(first_outer_attr) > 0u && p.peek() == term) {
+        expect_word(p, "mod");
+    }
+
     let vec[@ast::crate_directive] cdirs = [];
     while (p.peek() != term) {
-        auto cdir = @parse_crate_directive(p);
+        auto cdir = @parse_crate_directive(p, first_outer_attr);
         vec::push(cdirs, cdir);
     }
     ret cdirs;
@@ -2422,8 +2437,10 @@ fn parse_crate_directives(&parser p, token::token term) ->
 fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
-    auto crate_attrs = parse_inner_attrs(p);
-    auto cdirs = parse_crate_directives(p, token::EOF);
+    auto leading_attrs = parse_inner_attrs_and_next(p);
+    auto crate_attrs = leading_attrs._0;
+    auto first_cdir_attr = leading_attrs._1;
+    auto cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
     let vec[str] deps = [];
     auto cx =
         @rec(p=p,

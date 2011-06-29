@@ -1,6 +1,10 @@
 #[name = "crate-attributes"];
 #[vers = "1.0"];
 
+#[attr1]
 mod m = "crate-attributes-src" {
+  #[attr_inner];
+
+  #[attr2]
   mod foo;
 }
