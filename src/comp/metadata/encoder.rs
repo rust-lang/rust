@@ -13,6 +13,7 @@ import tags::*;
 import middle::trans::crate_ctxt;
 import middle::trans::node_id_type;
 import middle::ty;
+import middle::attr;
 
 export def_to_str;
 export hash_path;
@@ -457,12 +458,76 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
     ebml::end_tag(ebml_w);
 }
 
+// So there's a special crate attribute called 'link' which defines the metadata
+// that Rust cares about for linking crates. This attribute requires name and
+// value attributes, so if the user didn't provide them we will throw them in
+// anyway with default values.
+fn synthesize_crate_attrs(&@crate_ctxt cx,
+                          &@crate crate) -> vec[attribute] {
+
+    fn synthesize_link_attr(&@crate_ctxt cx,
+                            &vec[@meta_item] items)
+        -> attribute {
+
+        auto bogus_span = rec(lo = 0u, hi = 0u);
+
+        auto name_item_ = meta_name_value("name", cx.link_meta.name);
+        auto name_item = rec(node=name_item_,
+                             span=bogus_span);
+
+        auto vers_item_ = meta_name_value("vers", cx.link_meta.vers);
+        auto vers_item = rec(node=vers_item_,
+                             span=bogus_span);
+
+        auto other_items = {
+            auto tmp = attr::remove_meta_items_by_name(items, "name");
+            attr::remove_meta_items_by_name(tmp, "vers")
+        };
+
+        auto meta_items = [@name_item] + [@vers_item] + other_items;
+
+        auto link_item_ = meta_list("link", meta_items);
+        auto link_item = rec(node=link_item_,
+                             span=bogus_span);
+
+        auto attr_ = rec(style = attr_inner,
+                         value = link_item);
+        auto attr = rec(node=attr_,
+                        span=bogus_span);
+
+        ret attr;
+    }
+
+    let vec[attribute] attrs = [];
+    auto found_link_attr = false;
+    for (attribute attr in crate.node.attrs) {
+        attrs += if (attr::get_attr_name(attr) != "link") {
+            [attr]
+        } else {
+            alt (attr.node.value.node) {
+                case (meta_list(?n, ?l)) {
+                    found_link_attr = true;
+                    [synthesize_link_attr(cx, l)]
+                }
+                case (_) { [attr] }
+            }
+        }
+    }
+
+    if (!found_link_attr) {
+        attrs += [synthesize_link_attr(cx, [])];
+    }
+
+    ret attrs;
+}
+
 fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     auto string_w = io::string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
     auto ebml_w = ebml::create_writer(buf_w);
 
-    encode_attributes(ebml_w, crate.node.attrs);
+    auto crate_attrs = synthesize_crate_attrs(cx, crate);
+    encode_attributes(ebml_w, crate_attrs);
     // Encode and index the paths.
 
     ebml::start_tag(ebml_w, tag_paths);

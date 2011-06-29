@@ -10,6 +10,8 @@ export find_attrs_by_name;
 export find_meta_items_by_name;
 export contains;
 export sort_meta_items;
+export remove_meta_items_by_name;
+export get_attr_name;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
@@ -136,6 +138,21 @@ fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
         v2 += [mi]
     }
     ret v2;
+}
+
+fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
+                             str name) -> vec[@ast::meta_item] {
+
+    auto filter = bind fn(&@ast::meta_item item,
+                          str name) -> option::t[@ast::meta_item] {
+        if (get_meta_item_name(item) != name) {
+            option::some(item)
+        } else {
+            option::none
+        }
+    } (_, name);
+
+    ret vec::filter_map(filter, items);
 }
 
 //
