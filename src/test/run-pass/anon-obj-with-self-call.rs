@@ -1,5 +1,6 @@
 //xfail-stage0
 //xfail-stage1
+//xfail-stage2
 use std;
 
 fn main() {
@@ -20,11 +21,11 @@ fn main() {
 
     // Right now, this fails with a failed lookup in a hashmap; not
     // sure where, but I think it might be during typeck.
-    auto my_b = obj { 
-        fn baz() -> int { 
-            ret self.foo(); 
-        } 
-        with my_a 
+    auto my_b = obj {
+        fn baz() -> int {
+            ret self.foo();
+        }
+        with my_a
     };
 
     assert (my_b.baz() == 2);

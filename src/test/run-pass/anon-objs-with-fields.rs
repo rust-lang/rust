@@ -1,5 +1,6 @@
 //xfail-stage0
 //xfail-stage1
+//xfail-stage2
 use std;
 
 fn main() {
@@ -23,7 +24,7 @@ fn main() {
         fn baz() -> int {
             ret quux + 4;
         }
-        with my_a 
+        with my_a
     };
 
     assert (my_c.baz() == 7);

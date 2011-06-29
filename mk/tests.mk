@@ -57,8 +57,8 @@ TEST_RPASS_EXES_STAGE1 := \
   $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE1:.rc=.stage1$(X))) \
   $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE1:.rs=.stage1$(X)))
 TEST_RPASS_EXES_STAGE2 := \
-  $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE1:.rc=.stage2$(X))) \
-  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE1:.rs=.stage2$(X)))
+  $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE2:.rc=.stage2$(X))) \
+  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE2:.rs=.stage2$(X)))
 
 TEST_RPASS_OUTS_STAGE0 := \
   $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0.out)

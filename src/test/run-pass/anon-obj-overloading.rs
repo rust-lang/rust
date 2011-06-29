@@ -1,5 +1,6 @@
 //xfail-stage0
 //xfail-stage1
+//xfail-stage2
 use std;
 
 fn main() {
@@ -18,12 +19,12 @@ fn main() {
     // An anonymous object that overloads the 'foo' method.  Adding
     // support for this is issue #543 (making this work in the
     // presence of self-calls is the tricky part).
-    auto my_b = obj() { 
+    auto my_b = obj() {
         fn foo() -> int {
             ret 3;
         }
 
-        with my_a 
+        with my_a
     };
 
     assert (my_b.foo() == 3);
