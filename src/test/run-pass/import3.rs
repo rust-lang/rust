@@ -8,4 +8,4 @@ mod baz {
     }
 }
 
-fn main(vec[str] args) { bar(); }
+fn main() { bar(); }

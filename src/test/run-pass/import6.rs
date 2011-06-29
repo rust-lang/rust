@@ -11,6 +11,6 @@ mod bar {
   import zed::baz;
   export baz;
 }
-fn main(vec[str] args) {
+fn main() {
   baz();
 }
