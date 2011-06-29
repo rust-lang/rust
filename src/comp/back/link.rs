@@ -282,90 +282,91 @@ type link_meta = rec(str name,
 
 fn build_link_meta(&session::session sess, &ast::crate c,
                    &str output, sha1 sha) -> link_meta {
-    auto meta_info = crate_link_metas(c);
 
-    auto name = crate_meta_name(sess, c, output);
-    auto vers = crate_meta_vers(sess, c);
-    auto extras_hash = crate_meta_extras_hash(sha, c);
+    type provided_metas = rec(option::t[str] name,
+                              option::t[str] vers,
+                              vec[@ast::meta_item] cmh_items);
+
+    fn provided_link_metas(&ast::crate c) -> provided_metas {
+        let option::t[str] name = none;
+        let option::t[str] vers = none;
+        let vec[@ast::meta_item] cmh_items = [];
+        for (@ast::meta_item meta in
+                 attr::find_linkage_metas(c.node.attrs)) {
+            alt (meta.node) {
+                case (ast::meta_name_value("name", ?v)) {
+                    // FIXME: Should probably warn about duplicate name items
+                    name = some(v);
+                }
+                case (ast::meta_name_value("value", ?v)) {
+                    // FIXME: Should probably warn about duplicate value items
+                    vers = some(v);
+                }
+                case (_) {
+                    cmh_items += [meta];
+                }
+            }
+        }
+        ret rec(name = name,
+                vers = vers,
+                cmh_items = cmh_items);
+    }
+
+    // This calculates CMH as defined above
+    fn crate_meta_extras_hash(sha1 sha, &ast::crate crate,
+                              &provided_metas metas) -> str {
+        fn len_and_str(&str s) -> str {
+            ret #fmt("%u_%s", str::byte_len(s), s);
+        }
+    
+        auto cmh_items = attr::sort_meta_items(metas.cmh_items);
+
+        sha.reset();
+        for (@ast::meta_item m_ in cmh_items) {
+            auto m = m_;
+            alt (m.node) {
+                case (ast::meta_name_value(?key, ?value)) {
+                    sha.input_str(len_and_str(key));
+                    sha.input_str(len_and_str(value));
+                }
+                case (ast::meta_word(?name)) {
+                    sha.input_str(len_and_str(name));
+                }
+                case (ast::meta_list(_, _)) {
+                    fail "unimplemented meta_item variant";
+                }
+            }
+        }
+        ret truncated_sha1_result(sha);
+    }
+
+    fn crate_meta_name(&session::session sess, &ast::crate crate,
+                       &str output, &provided_metas metas) -> str {
+        ret alt (metas.name) {
+            case (some(?v)) { v }
+            case (none) {
+                auto os = str::split(fs::basename(output), '.' as u8);
+                assert (vec::len(os) >= 2u);
+                vec::pop(os);
+                str::connect(os, ".")
+            }
+        };
+    }
+
+    fn crate_meta_vers(&session::session sess, &ast::crate crate,
+                       &provided_metas metas) -> str {
+        ret alt (metas.vers) {
+            case (some(?v)) { v }
+            case (none) { "0.0" }
+        };
+    }
+
+    auto provided_metas = provided_link_metas(c);
+    auto name = crate_meta_name(sess, c, output, provided_metas);
+    auto vers = crate_meta_vers(sess, c, provided_metas);
+    auto extras_hash = crate_meta_extras_hash(sha, c, provided_metas);
 
     ret rec(name = name, vers = vers, extras_hash = extras_hash);
-}
-
-type link_metas = rec(option::t[str] name,
-                      option::t[str] vers,
-                      vec[@ast::meta_item] cmh_items);
-
-fn crate_link_metas(&ast::crate c) -> link_metas {
-    let option::t[str] name = none;
-    let option::t[str] vers = none;
-    let vec[@ast::meta_item] cmh_items = [];
-    for (@ast::meta_item meta in
-             attr::find_linkage_metas(c.node.attrs)) {
-        alt (meta.node) {
-            case (ast::meta_name_value("name", ?v)) {
-                // FIXME: Should probably warn about duplicate name items
-                name = some(v);
-            }
-            case (ast::meta_name_value("value", ?v)) {
-                // FIXME: Should probably warn about duplicate value items
-                vers = some(v);
-            }
-            case (_) {
-                cmh_items += [meta];
-            }
-        }
-    }
-    ret rec(name = name,
-            vers = vers,
-            cmh_items = cmh_items);
-}
-
-// This calculates CMH as defined above
-fn crate_meta_extras_hash(sha1 sha, &ast::crate crate) -> str {
-    fn len_and_str(&str s) -> str { ret #fmt("%u_%s", str::byte_len(s), s); }
-    
-    auto cmh_items = {
-        auto cmh_items = crate_link_metas(crate).cmh_items;
-        attr::sort_meta_items(cmh_items)
-    };
-
-    sha.reset();
-    for (@ast::meta_item m_ in cmh_items) {
-        auto m = m_;
-        alt (m.node) {
-            case (ast::meta_name_value(?key, ?value)) {
-                sha.input_str(len_and_str(key));
-                sha.input_str(len_and_str(value));
-            }
-            case (ast::meta_word(?name)) {
-                sha.input_str(len_and_str(name));
-            }
-            case (ast::meta_list(_, _)) {
-                fail "unimplemented meta_item variant";
-            }
-        }
-    }
-    ret truncated_sha1_result(sha);
-}
-
-fn crate_meta_name(&session::session sess, &ast::crate crate,
-                   &str output) -> str {
-    ret alt (crate_link_metas(crate).name) {
-        case (some(?v)) { v }
-        case (none) {
-            auto os = str::split(fs::basename(output), '.' as u8);
-            assert (vec::len(os) >= 2u);
-            vec::pop(os);
-            str::connect(os, ".")
-        }
-    };
-}
-
-fn crate_meta_vers(&session::session sess, &ast::crate crate) -> str {
-    ret alt (crate_link_metas(crate).vers) {
-        case (some(?v)) { v }
-        case (none) { "0.0" }
-    };
 }
 
 fn truncated_sha1_result(sha1 sha) -> str {
@@ -374,8 +375,7 @@ fn truncated_sha1_result(sha1 sha) -> str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, str crate_meta_name,
-               str crate_meta_extras_hash) -> str {
+fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, &link_meta link_meta) -> str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -384,9 +384,10 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t, str crate_meta_name,
              tcx=tcx,
              abbrevs=metadata::tyencode::ac_no_abbrevs);
     sha.reset();
-    sha.input_str(crate_meta_name);
+    sha.input_str(link_meta.name);
     sha.input_str("-");
-    sha.input_str(crate_meta_name);
+    // FIXME: This wants to be link_meta.meta_hash
+    sha.input_str(link_meta.name);
     sha.input_str("-");
     sha.input_str(metadata::tyencode::ty_str(cx, t));
     auto hash = truncated_sha1_result(sha);
@@ -402,8 +403,7 @@ fn get_symbol_hash(&@crate_ctxt ccx, &ty::t t) -> str {
         case (none) {
             hash =
                 symbol_hash(ccx.tcx, ccx.sha, t,
-                            ccx.link_meta.name,
-                            ccx.link_meta.extras_hash);
+                            ccx.link_meta);
             ccx.type_sha1s.insert(t, hash);
         }
     }
