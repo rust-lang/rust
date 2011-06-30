@@ -17,6 +17,7 @@ if not src_dir:
   raise Exception("missing env var CFG_SRC_DIR")
 
 run_pass = os.path.join(src_dir, "src", "test", "run-pass")
+run_pass = os.path.abspath(run_pass)
 stage2_tests = []
 take_args = {}
 
@@ -32,17 +33,13 @@ for t in os.listdir(run_pass):
 
 stage2_tests.sort()
 
-# add a .. prefix because we're about to write down into test/..
-parent_run_pass = os.path.join("..", run_pass);
-
-
 c = open("test/run_pass_stage2.rc", "w")
 i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 for t in stage2_tests:
     c.write("mod t_%d = \"%s\";\n"
-            % (i, os.path.join(parent_run_pass, t)))
+            % (i, os.path.join(run_pass, t)))
     i += 1
 c.close()
 

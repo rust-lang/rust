@@ -206,11 +206,11 @@ stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2)
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) --shared -o $@ $<
 
-test/$(FT_DRIVER): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2)
+test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2)
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -o $@ $<
 
-test/$(FT_DRIVER).out: test/$(FT_DRIVER) $(SREQ2)
+test/$(FT_DRIVER).out: test/$(FT_DRIVER)$(X) $(SREQ2)
 	$(Q)$(call CFG_RUN_TEST, $<) | tee $@
 
 

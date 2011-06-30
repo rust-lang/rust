@@ -285,7 +285,11 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
                 case (some(?f)) { file_path = f; }
                 case (none) { }
             }
-            auto full_path = prefix + std::fs::path_sep() + file_path;
+            auto full_path = if (std::fs::path_is_absolute(file_path)) {
+                file_path
+            } else {
+                prefix + std::fs::path_sep() + file_path
+            };
             if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
             auto p0 =
                 new_parser(cx.sess, e, full_path, cx.chpos,
@@ -306,7 +310,11 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs, ?attrs)) {
             auto path = id;
             alt (dir_opt) { case (some(?d)) { path = d; } case (none) { } }
-            auto full_path = prefix + std::fs::path_sep() + path;
+            auto full_path = if (std::fs::path_is_absolute(path)) {
+                path
+            } else {
+                prefix + std::fs::path_sep() + path
+            };
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
             auto i = @rec(ident=id,
                           attrs=attrs,
