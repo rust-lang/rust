@@ -1,10 +1,11 @@
 
 // -*- rust -*-
 
-#[name = "rustc"];
-#[vers = "0.1"];
-#[uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf"];
-#[url = "http://rust-lang.org/src/rustc"];
+#[link(name = "rustc",
+       vers = "0.1",
+       uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
+       url = "http://rust-lang.org/src/rustc")];
+
 #[desc = "The Rust compiler"];
 #[license = "BSD"];
 
