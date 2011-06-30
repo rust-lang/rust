@@ -2318,7 +2318,8 @@ fn parse_crate_from_source_file(&parser p) -> @ast::crate {
     let vec[@ast::crate_directive] cdirs = [];
     ret @spanned(lo, p.get_lo_pos(), rec(directives=cdirs,
                                          module=m,
-                                         attrs=crate_attrs._0));
+                                         attrs=crate_attrs._0,
+                                         config=[]));
 }
 
 fn parse_str(&parser p) -> ast::ident {
@@ -2450,7 +2451,8 @@ fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
     expect(p, token::EOF);
     ret @spanned(lo, hi, rec(directives=cdirs,
                              module=m,
-                             attrs=crate_attrs));
+                             attrs=crate_attrs,
+                             config=[]));
 }
 //
 // Local Variables:

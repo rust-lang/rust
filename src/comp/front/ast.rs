@@ -76,11 +76,16 @@ fn def_id_of_def(def d) -> def_id {
     fail;
 }
 
+// The set of meta_items that define the compilation environment of the crate,
+// used to drive conditional compilation
+type crate_cfg = vec[@meta_item];
+
 type crate = spanned[crate_];
 
 type crate_ = rec(vec[@crate_directive] directives,
                   _mod module,
-                  vec[attribute] attrs);
+                  vec[attribute] attrs,
+                  crate_cfg config);
 
 tag crate_directive_ {
     cdir_expr(@expr);
