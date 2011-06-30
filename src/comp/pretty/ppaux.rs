@@ -112,8 +112,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             s += "tup(" + str::connect(strs, ",") + ")";
         }
         case (ty_rec(?elems)) {
-            auto f = bind field_to_str(cx, _);
-            auto strs = vec::map[field, str](f, elems);
+            let vec[str] strs = [];
+            for (field fld in elems) { strs += [field_to_str(cx, fld)]; }
             s += "rec(" + str::connect(strs, ",") + ")";
         }
         case (ty_tag(?id, ?tps)) {

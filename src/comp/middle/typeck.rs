@@ -302,10 +302,10 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_tup(tcx, flds);
         }
         case (ast::ty_rec(?fields)) {
-            let vec[field] flds = [];
+            let field[] flds = ~[];
             for (ast::ty_field f in fields) {
                 auto tm = ast_mt_to_mt(tcx, getter, f.node.mt);
-                vec::push[field](flds, rec(ident=f.node.ident, mt=tm));
+                flds += ~[rec(ident=f.node.ident, mt=tm)];
             }
             typ = ty::mk_rec(tcx, flds);
         }
@@ -1954,13 +1954,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (none) {/* no-op */ }
                 case (some(?b_0)) { check_expr(fcx, b_0); }
             }
-            let vec[field] fields_t = [];
+            let field[] fields_t = ~[];
             for (ast::field f in fields) {
                 check_expr(fcx, f.node.expr);
                 auto expr_t = expr_ty(fcx.ccx.tcx, f.node.expr);
                 auto expr_mt = rec(ty=expr_t, mut=f.node.mut);
-                vec::push[field](fields_t,
-                                 rec(ident=f.node.ident, mt=expr_mt));
+                fields_t += ~[rec(ident=f.node.ident, mt=expr_mt)];
             }
             alt (base) {
                 case (none) {
@@ -1970,7 +1969,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (some(?bexpr)) {
                     check_expr(fcx, bexpr);
                     auto bexpr_t = expr_ty(fcx.ccx.tcx, bexpr);
-                    let vec[field] base_fields = [];
+                    let field[] base_fields = ~[];
                     alt (structure_of(fcx, expr.span, bexpr_t)) {
                         case (ty::ty_rec(?flds)) { base_fields = flds; }
                         case (_) {
@@ -2017,7 +2016,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     let uint ix =
                         ty::field_idx(fcx.ccx.tcx.sess, expr.span, field,
                                       fields);
-                    if (ix >= vec::len[ty::field](fields)) {
+                    if (ix >= ivec::len[ty::field](fields)) {
                         fcx.ccx.tcx.sess.span_fatal(expr.span,
                                                   "bad index on record");
                     }

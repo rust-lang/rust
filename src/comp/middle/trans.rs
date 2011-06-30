@@ -5901,7 +5901,7 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
             base_val = base_res.val;
         }
     }
-    let vec[ty::field] ty_fields = [];
+    let ty::field[] ty_fields = ~[];
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_rec(?flds)) { ty_fields = flds; }
     }

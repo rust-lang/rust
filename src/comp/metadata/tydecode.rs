@@ -198,14 +198,14 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('R') {
             assert (next(st) as char == '[');
-            let vec[ty::field] fields = [];
+            let ty::field[] fields = ~[];
             while (peek(st) as char != ']') {
                 auto name = "";
                 while (peek(st) as char != '=') {
                     name += str::unsafe_from_byte(next(st));
                 }
                 st.pos = st.pos + 1u;
-                fields += [rec(ident=name, mt=parse_mt(st, sd))];
+                fields += ~[rec(ident=name, mt=parse_mt(st, sd))];
             }
             st.pos = st.pos + 1u;
             ret ty::mk_rec(st.tcx, fields);

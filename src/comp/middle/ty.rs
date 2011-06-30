@@ -265,7 +265,7 @@ tag sty {
     ty_chan(t);
     ty_task;
     ty_tup(mt[]);
-    ty_rec(vec[field]);
+    ty_rec(field[]);
     ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
@@ -595,7 +595,7 @@ fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
     ret mk_tup(cx, mts);
 }
 
-fn mk_rec(&ctxt cx, &vec[field] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
+fn mk_rec(&ctxt cx, &field[] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_fn(&ctxt cx, &ast::proto proto, &vec[arg] args, &t ty, &controlflow cf,
          &vec[@constr_def] constrs) -> t {
@@ -784,11 +784,11 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_tup(cx, new_mts), ty);
         }
         case (ty_rec(?fields)) {
-            let vec[field] new_fields = [];
+            let field[] new_fields = ~[];
             for (field fl in fields) {
                 auto new_ty = fold_ty(cx, fld, fl.mt.ty);
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
-                new_fields += [rec(ident=fl.ident, mt=new_mt)];
+                new_fields += ~[rec(ident=fl.ident, mt=new_mt)];
             }
             ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
         }
@@ -1124,7 +1124,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         }
         case (ty_rec(?fields)) {
             auto i = 0u;
-            while (i < vec::len[field](fields)) {
+            while (i < ivec::len[field](fields)) {
                 if (type_has_dynamic_size(cx, fields.(i).mt.ty)) { ret true; }
                 i += 1u;
             }
@@ -1576,8 +1576,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_rec(?flds_a)) {
             alt (b) {
                 case (ty_rec(?flds_b)) {
-                    auto len = vec::len[field](flds_a);
-                    if (len != vec::len[field](flds_b)) { ret false; }
+                    auto len = ivec::len[field](flds_a);
+                    if (len != ivec::len[field](flds_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         auto fld_a = flds_a.(i);
@@ -1917,7 +1917,7 @@ fn field_num(&session::session sess, &span sp, &ast::ident id) -> uint {
 }
 
 fn field_idx(&session::session sess, &span sp, &ast::ident id,
-             &vec[field] fields) -> uint {
+             &field[] fields) -> uint {
     let uint i = 0u;
     for (field f in fields) { if (str::eq(f.ident, id)) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown field '" + id + "' of record");
@@ -2531,8 +2531,8 @@ mod unify {
             case (ty::ty_rec(?expected_fields)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_rec(?actual_fields)) {
-                        auto expected_len = vec::len[field](expected_fields);
-                        auto actual_len = vec::len[field](actual_fields);
+                        auto expected_len = ivec::len[field](expected_fields);
+                        auto actual_len = ivec::len[field](actual_fields);
                         if (expected_len != actual_len) {
                             auto err =
                                 terr_record_size(expected_len, actual_len);
@@ -2541,7 +2541,7 @@ mod unify {
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
 
-                        let vec[field] result_fields = [];
+                        let field[] result_fields = ~[];
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_field = expected_fields.(i);
@@ -2567,10 +2567,8 @@ mod unify {
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
-                                    vec::push[field](result_fields,
-                                                     rec(mt=mt
-                                                         with
-                                                             expected_field));
+                                    result_fields +=
+                                        ~[rec(mt=mt with expected_field)];
                                 }
                                 case (_) { ret result; }
                             }
