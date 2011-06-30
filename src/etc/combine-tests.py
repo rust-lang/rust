@@ -4,7 +4,7 @@
 # can run it "fast": spawning zillions of windows processes is our major build
 # bottleneck (and it doesn't hurt to run faster on other platforms as well).
 
-import sys, os, re
+import sys, os, re, codecs
 
 def scrub(b):
   if sys.version_info >= (3,) and type(b) == bytes:
@@ -23,7 +23,7 @@ take_args = {}
 
 for t in os.listdir(run_pass):
     if t.endswith(".rs"):
-        f = open(os.path.join(run_pass, t))
+        f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
         if not ("xfail-stage2" in s):
             stage2_tests.append(t)
@@ -38,8 +38,9 @@ i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 for t in stage2_tests:
-    c.write("mod t_%d = \"%s\";\n"
-            % (i, os.path.join(run_pass, t)))
+    p = os.path.join(run_pass, t)
+    p = p.replace("\\", "\\\\")
+    c.write("mod t_%d = \"%s\";\n" % (i, p))
     i += 1
 c.close()
 
@@ -53,8 +54,9 @@ d.write("fn main() {\n");
 d.write("    auto out = std::io::stdout();\n");
 i = 0
 for t in stage2_tests:
-    d.write("    out.write_str(\"run-pass [stage2]: %s\\n\");\n"
-            % os.path.join("test", "run-pass", t))
+    p = os.path.join("test", "run-pass", t)
+    p = p.replace("\\", "\\\\")
+    d.write("    out.write_str(\"run-pass [stage2]: %s\\n\");\n" % p)
     if t in take_args:
         d.write("    t_%d::main([\"arg0\"]);\n" % i)
     else:
