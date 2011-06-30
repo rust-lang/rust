@@ -176,6 +176,10 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
     find_pre_post_block(fcx, body);
     auto v_init = rec(id=l.node.id, c=ninit(l.node.ident));
     relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
+    
+    // Hack: for-loop index variables are frequently ignored,
+    // so we pretend they're used
+    use_var(fcx, l.node.id);
 
     auto loop_precond =
         seq_preconds(fcx,
