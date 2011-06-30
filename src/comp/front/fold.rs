@@ -131,7 +131,8 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
     auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
     ret rec(directives=map(fld.fold_crate_directive, c.directives),
-            module=c.module, attrs=map(fold_attribute, c.attrs),
+            module=fld.fold_mod(c.module),
+            attrs=map(fold_attribute, c.attrs),
             config=map(fold_meta_item, c.config));
 }
 
