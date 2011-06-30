@@ -55,6 +55,7 @@ import aux::substitute_constr_args;
 import aux::ninit;
 import aux::npred;
 import aux::path_to_ident;
+import aux::use_var;
 import bitvectors::bit_num;
 import bitvectors::promises;
 import bitvectors::seq_preconds;
@@ -74,10 +75,12 @@ import util::common::elt_exprs;
 import util::common::field_exprs;
 import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
+import util::common::log_stmt_err;
 import util::common::log_expr_err;
 import util::common::log_block_err;
 import util::common::log_block;
 import util::common::span;
+import util::common::istr;
 import pretty::ppaux::fn_ident_to_string;
 
 fn find_pre_post_mod(&_mod m) -> _mod {
@@ -109,11 +112,12 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
     alt (i.node) {
         case (item_const(_, ?e)) {
             // make a fake fcx
-
+            let @mutable vec[node_id] v = @mutable [];
             auto fake_fcx =
                 rec(enclosing=rec(constrs=@new_int_hash[constraint](),
                                   num_constraints=0u,
-                                  cf=return),
+                                  cf=return,
+                                  used_vars=v),
                     id=0,
                     name="",
                     ccx=ccx);
@@ -323,6 +327,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                         bit_num(fcx,
                                 rec(id=d_id._1,
                                     c=ninit(path_to_ident(fcx.ccx.tcx, p))));
+                    use_var(fcx, d_id._1);
                     require_and_preserve(i, rslt);
                 }
                 case (_) {/* nothing to check */ }
@@ -686,6 +691,9 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
 }
 
 fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) {
+    // hack
+    use_var(fcx, fcx.id);
+
     find_pre_post_block(fcx, f.body);
 
     // Treat the tail expression as a return statement
@@ -697,8 +705,8 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) {
     }
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &span sp, &fn_ident i,
-               node_id id) {
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &vec[ty_param] tps,
+               &span sp, &fn_ident i, node_id id) {
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id), id=id,
                    name=fn_ident_to_string(id, i), ccx=ccx);

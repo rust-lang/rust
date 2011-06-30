@@ -42,25 +42,30 @@ import std::option;
 import std::option::t;
 import std::option::some;
 import std::option::none;
-import aux::fn_ctxt;
-import aux::crate_ctxt;
-import aux::new_crate_ctxt;
-import aux::expr_precond;
-import aux::expr_prestate;
-import aux::expr_poststate;
-import aux::stmt_poststate;
-import aux::stmt_to_ann;
-import aux::num_constraints;
-import aux::tritv_to_str;
-import aux::first_difference_string;
+import aux::*;
 import pretty::pprust::ty_to_str;
 import util::common::log_stmt_err;
-import aux::log_tritv_err;
 import bitvectors::promises;
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
+
+fn check_unused_vars(&fn_ctxt fcx) {
+    // FIXME: could be more efficient
+    for (norm_constraint c in constraints(fcx)) {
+        alt (c.c.node.c) {
+            case (ninit(?v)) {
+                if (!vec_contains(fcx.enclosing.used_vars,
+                                  c.c.node.id)) {
+                    fcx.ccx.tcx.sess.span_warn(c.c.span,
+                                               "Unused variable " + v);
+                }
+            }
+            case (_) { /* ignore pred constraints */ }
+        }
+    }
+}
 
 fn check_states_expr(&fn_ctxt fcx, &@expr e) {
     let precond prec = expr_precond(fcx.ccx, e);
@@ -119,8 +124,8 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
     }
 }
 
-fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
-                                   &span sp, &fn_ident i) {
+fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &vec[ast::ty_param] tps,
+                                   node_id id, &span sp, &fn_ident i) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
@@ -142,9 +147,9 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
                   keep_going=bind kg(keepgoing)
                   with walk::default_visitor());
 
-    walk::walk_fn(v, f, sp, i, id);
+    walk::walk_fn(v, f, tps, sp, i, id);
 
-    /* Finally, check that the return value is initialized */
+    /* Check that the return value is initialized */
     auto post = aux::block_poststate(fcx.ccx, f.body);
     let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
     if (f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
@@ -170,9 +175,13 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, node_id id,
                                            return to the caller");
         }
     }
+
+    /* Finally, check for unused variables */
+    check_unused_vars(fcx);
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &fn_ident i) {
+fn check_fn_states(&fn_ctxt fcx, &_fn f, &vec[ast::ty_param] tps,
+                   node_id id, &span sp, &fn_ident i) {
     /* Compute the pre- and post-states for this function */
 
     // Fixpoint iteration
@@ -181,17 +190,18 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, node_id id, &span sp, &fn_ident i) {
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f, id, sp, i);
+    check_states_against_conditions(fcx, f, tps, id, sp, i);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &span sp, &fn_ident i, node_id id) {
+fn fn_states(&crate_ctxt ccx, &_fn f, &vec[ast::ty_param] tps,
+             &span sp, &fn_ident i, node_id id) {
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
     auto name = option::from_maybe("anon", i);
     auto fcx = rec(enclosing=f_info, id=id, name=name, ccx=ccx);
-    check_fn_states(fcx, f, id, sp, i);
+    check_fn_states(fcx, f, tps, id, sp, i);
 }
 
 fn check_crate(ty::ctxt cx, @crate crate) {
@@ -206,7 +216,7 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_pre_post = walk::default_visitor();
     do_pre_post =
-        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _)
+        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _, _)
             with do_pre_post);
     walk::walk_crate(do_pre_post, *crate);
     /* Check the pre- and postcondition against the pre- and poststate
@@ -214,7 +224,8 @@ fn check_crate(ty::ctxt cx, @crate crate) {
 
     auto do_states = walk::default_visitor();
     do_states =
-        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _) with do_states);
+        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _, _)
+            with do_states);
     walk::walk_crate(do_states, *crate);
 }
 //

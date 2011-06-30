@@ -217,7 +217,15 @@ type norm_constraint = rec(uint bit_num, constr c);
 
 type constr_map = @std::map::hashmap[node_id, constraint];
 
-type fn_info = rec(constr_map constrs, uint num_constraints, controlflow cf);
+type fn_info = rec(constr_map constrs,
+                   uint num_constraints,
+                   controlflow cf,
+                   /* list, accumulated during pre/postcondition
+                    computation, of all local variables that may be
+                    used*/
+                   // Doesn't seem to work without the @ --
+                   // bug?
+                   @mutable vec[node_id] used_vars);
 
 
 /* mapping from node ID to typestate annotation */
@@ -770,6 +778,16 @@ fn args_mention(&vec[@constr_arg_use] args, &def_id v) -> bool {
     ret util::common::any[@constr_arg_use](bind mentions(v,_), args);
 }
 
+fn use_var(&fn_ctxt fcx, &node_id v) {
+    vec::push(*fcx.enclosing.used_vars, v);
+}
+
+fn vec_contains(&@mutable vec[node_id] v, &node_id i) -> bool {
+    for (node_id d in *v) {
+        if (d == i) { ret true; }
+    }
+    ret false;
+}
 //
 // Local Variables:
 // mode: rust

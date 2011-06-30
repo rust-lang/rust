@@ -1025,12 +1025,12 @@ mod writeback {
         fn visit_item_post(@mutable bool ignore, &@ast::item item) {
             *ignore = false;
         }
-        fn visit_fn_pre(@mutable bool ignore, &ast::_fn f, &span sp,
-                        &ast::fn_ident i, ast::node_id d) {
+        fn visit_fn_pre(@mutable bool ignore, &ast::_fn f, &vec[ast::ty_param] tps,
+                        &span sp, &ast::fn_ident i, ast::node_id d) {
             *ignore = true;
         }
-        fn visit_fn_post(@mutable bool ignore, &ast::_fn f, &span sp,
-                         &ast::fn_ident i, ast::node_id d) {
+        fn visit_fn_post(@mutable bool ignore, &ast::_fn f, &vec[ast::ty_param] tps, 
+                         &span sp, &ast::fn_ident i, ast::node_id d) {
             *ignore = false;
         }
         fn keep_going(@mutable bool ignore) -> bool { ret !*ignore; }
@@ -1038,8 +1038,8 @@ mod writeback {
             rec(keep_going=bind keep_going(ignore),
                 visit_item_pre=bind visit_item_pre(ignore, _),
                 visit_item_post=bind visit_item_post(ignore, _),
-                visit_fn_pre=bind visit_fn_pre(ignore, _, _, _, _),
-                visit_fn_post=bind visit_fn_post(ignore, _, _, _, _),
+                visit_fn_pre=bind visit_fn_pre(ignore, _, _, _, _, _),
+                visit_fn_post=bind visit_fn_post(ignore, _, _, _, _, _),
                 visit_stmt_pre=bind visit_stmt_pre(fcx, _),
                 visit_expr_pre=bind visit_expr_pre(fcx, _),
                 visit_block_pre=bind visit_block_pre(fcx, _),

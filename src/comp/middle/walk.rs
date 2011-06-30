@@ -1,5 +1,6 @@
 
 import front::ast;
+import middle::ty::ty_param;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -38,8 +39,8 @@ type ast_visitor =
         fn(&@ast::ty)  visit_ty_pre,
         fn(&@ast::ty)  visit_ty_post,
         fn(&@ast::constr)  visit_constr,
-        fn(&ast::_fn, &span, &ast::fn_ident, ast::node_id) visit_fn_pre,
-        fn(&ast::_fn, &span, &ast::fn_ident, ast::node_id) visit_fn_post);
+        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident, ast::node_id) visit_fn_pre,
+        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident, ast::node_id) visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
     if (!v.keep_going()) { ret; }
@@ -99,14 +100,14 @@ fn walk_item(&ast_visitor v, @ast::item i) {
     v.visit_item_pre(i);
     alt (i.node) {
         case (ast::item_const(?t, ?e)) { walk_ty(v, t); walk_expr(v, e); }
-        case (ast::item_fn(?f, _)) {
-            walk_fn(v, f, i.span, some(i.ident), i.id);
+        case (ast::item_fn(?f, ?tps)) {
+            walk_fn(v, f, tps, i.span, some(i.ident), i.id);
         }
         case (ast::item_mod(?m)) { walk_mod(v, m); }
         case (ast::item_native_mod(?nm)) { walk_native_mod(v, nm); }
         case (ast::item_ty(?t, _)) { walk_ty(v, t); }
-        case (ast::item_res(?f, ?dtor_id, _, _)) {
-            walk_fn(v, f, i.span, some(i.ident), dtor_id);
+        case (ast::item_res(?f, ?dtor_id, ?tps, _)) {
+            walk_fn(v, f, tps, i.span, some(i.ident), dtor_id);
         }
         case (ast::item_tag(?variants, _)) {
             for (ast::variant vr in variants) {
@@ -119,14 +120,15 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             for (ast::obj_field f in ob.fields) { walk_ty(v, f.ty); }
             for (@ast::method m in ob.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, m.span,
+                // Methods don't have ty params?
+                walk_fn(v, m.node.meth, [], m.span,
                         some(m.node.ident), m.node.id);
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none) { }
                 case (some(?m)) {
-                    walk_fn(v, m.node.meth, m.span,
+                    walk_fn(v, m.node.meth, [], m.span,
                             some(m.node.ident), m.node.id);
                 }
             }
@@ -220,13 +222,13 @@ fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     walk_ty(v, fd.output);
 }
 
-fn walk_fn(&ast_visitor v, &ast::_fn f, &span sp, &ast::fn_ident i,
-           ast::node_id d) {
+fn walk_fn(&ast_visitor v, &ast::_fn f, &vec[ast::ty_param] tps,
+           &span sp, &ast::fn_ident i, ast::node_id d) {
     if (!v.keep_going()) { ret; }
-    v.visit_fn_pre(f, sp, i, d);
+    v.visit_fn_pre(f, tps, sp, i, d);
     walk_fn_decl(v, f.decl);
     walk_block(v, f.body);
-    v.visit_fn_post(f, sp, i, d);
+    v.visit_fn_post(f, tps, sp, i, d);
 }
 
 fn walk_block(&ast_visitor v, &ast::block b) {
@@ -343,7 +345,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             }
         }
         case (ast::expr_fn(?f)) {
-            walk_fn(v, f, e.span, none, e.id);
+            walk_fn(v, f, [], e.span, none, e.id);
         }
         case (ast::expr_block(?b)) { walk_block(v, b); }
         case (ast::expr_assign(?a, ?b)) {
@@ -407,7 +409,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             // Methods
             for (@ast::method m in anon_obj.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, m.span, some(m.node.ident),
+                walk_fn(v, m.node.meth, [], m.span, some(m.node.ident),
                         m.node.id);
                 v.visit_method_post(m);
             }
@@ -450,7 +452,8 @@ fn def_visit_ty(&@ast::ty t) { }
 
 fn def_visit_constr(&@ast::constr c) { }
 
-fn def_visit_fn(&ast::_fn f, &span sp, &ast::fn_ident i, ast::node_id d) { }
+fn def_visit_fn(&ast::_fn f, &vec[ast::ty_param] tps,
+  &span sp, &ast::fn_ident i, ast::node_id d) { }
 
 fn default_visitor() -> ast_visitor {
     ret rec(keep_going=def_keep_going,
