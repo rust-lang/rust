@@ -41,8 +41,7 @@ fn print_crate(session sess, @ast::crate crate, str filename,
              mutable cur_lit=0u,
              mutable boxes=boxes,
              mode=mode);
-    print_inner_attributes(s, crate.node.attrs);
-    print_mod(s, crate.node.module);
+    print_mod(s, crate.node.module, crate.node.attrs);
     eof(s.s);
 }
 
@@ -186,7 +185,8 @@ fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(&ps s, ast::_mod _mod) {
+fn print_mod(&ps s, ast::_mod _mod, &vec[ast::attribute] attrs) {
+    print_inner_attributes(s, attrs);
     for (@ast::view_item vitem in _mod.view_items) {
         print_view_item(s, vitem);
     }
@@ -322,8 +322,7 @@ fn print_item(&ps s, &@ast::item item) {
             head(s, "mod");
             word_nbsp(s, item.ident);
             bopen(s);
-            print_inner_attributes(s, item.attrs);
-            for (@ast::item itm in _mod.items) { print_item(s, itm); }
+            print_mod(s, _mod, item.attrs);
             bclose(s, item.span);
         }
         case (ast::item_native_mod(?nmod)) {
