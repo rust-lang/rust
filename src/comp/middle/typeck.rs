@@ -337,7 +337,6 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         }
         case (ast::ty_obj(?meths)) {
             let vec[ty::method] tmeths = [];
-            auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast::ty_method m in meths) {
                 auto ins = ~[];
                 for (ast::ty_arg ta in m.node.inputs) {
@@ -535,7 +534,6 @@ mod collect {
         for (ast::arg a in m.node.meth.decl.inputs) {
             inputs += ~[ty_of_arg(cx, a)];
         }
-        auto f = bind ty_of_arg(cx, _);
 
         auto output = convert(m.node.meth.decl.output);
         let fn(&@ast::constr) -> @ty::constr_def g =
