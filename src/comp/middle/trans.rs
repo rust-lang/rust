@@ -5299,8 +5299,14 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
             auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
             auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
-            trans_fn(sub_cx, e.span, f, llfn, none, ~[], e.id);
-            ret rslt(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
+
+            auto fn_res = trans_closure(some(cx), some(llfnty), sub_cx,
+                                        e.span, f, llfn, none, ~[], e.id);
+            auto fn_pair = alt (fn_res) {
+                some(?fn_pair) { fn_pair }
+                none { create_fn_pair(ccx, s, llfnty, llfn, false) }
+            };
+            ret rslt(cx, fn_pair);
         }
         case (ast::expr_block(?blk)) {
             auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
@@ -6592,10 +6598,16 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
     new_builder(fcx.lldynamicallocas).Br(lltop);
 }
 
-
-fn trans_fn_inner(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
-                  option::t[ty::t] ty_self, &ast::ty_param[] ty_params,
-                  ast::node_id id) {
+// trans_closure: Builds an LLVM function out of a source function.
+// If the function closes over its environment a closure will be
+// returned.
+fn trans_closure(&option::t[@block_ctxt] bcx_maybe,
+                 &option::t[TypeRef] llfnty,
+                 @local_ctxt cx,
+                 &span sp, &ast::_fn f, ValueRef llfndecl,
+                 option::t[ty::t] ty_self,
+                 &ast::ty_param[] ty_params, ast::node_id id)
+    -> option::t[ValueRef] {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
@@ -6605,11 +6617,33 @@ fn trans_fn_inner(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
                               f.decl.inputs, ty_params);
     copy_any_self_to_alloca(fcx);
     alt ({ fcx.llself }) {
-        case (some(?llself)) { populate_fn_ctxt_from_llself(fcx, llself); }
-        case (_) { }
+        some(?llself) { populate_fn_ctxt_from_llself(fcx, llself); }
+        _ { }
     }
     auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
     copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
+
+    // Figure out if we need to build a closure and act accordingly
+    auto closure = none;
+    alt(f.proto) {
+        ast::proto_block {
+            auto bcx = option::get(bcx_maybe);
+            auto upvars = get_freevars(cx.ccx.tcx, id);
+
+            auto llenv = build_environment(bcx, upvars);
+
+            // Generate code to load the environment out of the
+            // environment pointer.
+            load_environment(bcx, fcx, llenv.ptrty, upvars);
+            // Build the closure.
+            closure = some(create_real_fn_pair(bcx, option::get(llfnty),
+                                               llfndecl, llenv.ptr));
+        }
+        ast::proto_closure {
+            fail "copy capture not implemented yet";
+        }
+        _ {}
+    }
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -6643,6 +6677,14 @@ fn trans_fn_inner(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
+
+    ret closure;
+}
+
+fn trans_fn_inner(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
+                  option::t[ty::t] ty_self, &ast::ty_param[] ty_params,
+                  ast::node_id id) {
+    trans_closure(none, none, cx, sp, f, llfndecl, ty_self, ty_params, id);
 }
 
 
