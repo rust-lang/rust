@@ -71,12 +71,30 @@ fn fold_block(&ast::crate_cfg cfg, &ast::block_ b,
 // configuration based on the item's attributes
 fn in_cfg(&ast::crate_cfg cfg, &@ast::item item) -> bool {
 
+    // The "cfg" attributes on the item
     auto item_cfg_attrs = attr::find_attrs_by_name(item.attrs, "cfg");
-
     auto item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if (!item_has_cfg_attrs) { ret true; }
 
-    auto item_cfg_metas = attr::attr_metas(item_cfg_attrs);
+    // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
+    // so we can match against them. This is the list of configurations for
+    // which the item is valid
+    auto item_cfg_metas = {
+        fn extract_metas(&vec[@ast::meta_item] inner_items,
+                         &@ast::meta_item cfg_item)
+        -> vec[@ast::meta_item] {
+
+            alt (cfg_item.node) {
+                case (ast::meta_list(?name, ?items)) {
+                    assert name == "cfg";
+                    inner_items + items
+                }
+                case (_) { inner_items }
+            }
+        }
+        auto cfg_metas = attr::attr_metas(item_cfg_attrs);
+        vec::foldl(extract_metas, [], cfg_metas)
+    };
 
     for (@ast::meta_item cfg_mi in item_cfg_metas) {
         if (attr::contains(cfg, cfg_mi)) {

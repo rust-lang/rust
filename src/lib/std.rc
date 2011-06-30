@@ -49,18 +49,20 @@ auth rand::mk_rng = unsafe;
 // TODO: Have each os module re-export everything from genericos.
 mod generic_os;
 
-alt (target_os) {
-    case ("win32") {
-        mod os = "win32_os.rs";
-        mod os_fs = "win32_fs.rs";
-    } case ("macos") {
-        mod os = "macos_os.rs";
-        mod os_fs = "posix_fs.rs";
-    } case (_) {
-        mod os = "linux_os.rs";
-        mod os_fs = "posix_fs.rs";
-    }
-}
+#[cfg(target_os = "win32")]
+mod os = "win32_os.rs";
+#[cfg(target_os = "win32")]
+mod os_fs = "win32_fs.rs";
+
+#[cfg(target_os = "macos")]
+mod os = "macos_os.rs";
+#[cfg(target_os = "macos")]
+mod os_fs = "posix_fs.rs";
+
+#[cfg(target_os = "linux")]
+mod os = "linux_os.rs";
+#[cfg(target_os = "linux")]
+mod os_fs = "posix_fs.rs";
 
 mod run = "run_program.rs";
 mod fs;

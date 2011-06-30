@@ -99,11 +99,15 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
 }
 
 fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
+    log #fmt("looking for %s", pretty::pprust::meta_item_to_str(*needle));
     for (@ast::meta_item item in haystack) {
+        log #fmt("looking in %s", pretty::pprust::meta_item_to_str(*item));
         if (eq(item, needle)) {
+            log "found it!";
             ret true;
         }
     }
+    log "found it not :(";
     ret false;
 }
 
