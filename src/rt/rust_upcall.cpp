@@ -126,35 +126,7 @@ void upcall_del_chan(rust_task *task, rust_chan *chan) {
     scoped_lock with(task->kernel->scheduler_lock);
 
     LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
-
-    A(task->sched, chan->ref_count == 0,
-      "Channel's ref count should be zero.");
-
-    if (chan->is_associated()) {
-        if (chan->port->is_proxy()) {
-            // Here is a good place to delete the port proxy we allocated
-            // in upcall_clone_chan.
-            rust_proxy<rust_port> *proxy = chan->port->as_proxy();
-            chan->disassociate();
-            delete proxy;
-        } else {
-            // We're trying to delete a channel that another task may be
-            // reading from. We have two options:
-            //
-            // 1. We can flush the channel by blocking in upcall_flush_chan()
-            //    and resuming only when the channel is flushed. The problem
-            //    here is that we can get ourselves in a deadlock if the
-            //    parent task tries to join us.
-            //
-            // 2. We can leave the channel in a "dormant" state by not freeing
-            //    it and letting the receiver task delete it for us instead.
-            if (chan->buffer.is_empty() == false) {
-                return;
-            }
-            chan->disassociate();
-        }
-    }
-    delete chan;
+    chan->destroy();
 }
 
 /**

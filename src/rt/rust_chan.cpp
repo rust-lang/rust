@@ -116,6 +116,41 @@ rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
     return new (target_task) rust_chan(target_task, port, unit_sz);
 }
 
+/**
+ * Cannot Yield: If the task were to unwind, the dropped ref would still
+ * appear to be live, causing modify-after-free errors.
+ */
+void rust_chan::destroy() {
+    A(task->sched, ref_count == 0,
+      "Channel's ref count should be zero.");
+
+    if (is_associated()) {
+        if (port->is_proxy()) {
+            // Here is a good place to delete the port proxy we allocated
+            // in upcall_clone_chan.
+            rust_proxy<rust_port> *proxy = port->as_proxy();
+            disassociate();
+            delete proxy;
+        } else {
+            // We're trying to delete a channel that another task may be
+            // reading from. We have two options:
+            //
+            // 1. We can flush the channel by blocking in upcall_flush_chan()
+            //    and resuming only when the channel is flushed. The problem
+            //    here is that we can get ourselves in a deadlock if the
+            //    parent task tries to join us.
+            //
+            // 2. We can leave the channel in a "dormnat" state by not freeing
+            //    it and letting the receiver task delete it for us instead.
+            if (buffer.is_empty() == false) {
+                return;
+            }
+            disassociate();
+        }
+    }
+    delete this;
+}
+
 //
 // Local Variables:
 // mode: C++
