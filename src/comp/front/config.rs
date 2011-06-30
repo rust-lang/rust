@@ -11,7 +11,8 @@ export strip_unconfigured_items;
 fn strip_unconfigured_items(@ast::crate crate) -> @ast::crate {
     auto cfg = crate.node.config;
 
-    auto precursor = rec(fold_mod = bind fold_mod(cfg, _, _)
+    auto precursor = rec(fold_mod = bind fold_mod(cfg, _, _),
+                         fold_block = bind fold_block(cfg, _, _)
                          with *fold::default_ast_fold());
 
     auto fold = fold::make_fold(precursor);
@@ -36,6 +37,34 @@ fn fold_mod(&ast::crate_cfg cfg, &ast::_mod m,
     auto filtered_items = vec::filter_map(filter, m.items);
     ret rec(view_items=vec::map(fld.fold_view_item, m.view_items),
             items=vec::map(fld.fold_item, filtered_items));
+}
+
+fn filter_stmt(&ast::crate_cfg cfg,
+               &@ast::stmt stmt) -> option::t[@ast::stmt] {
+    alt (stmt.node) {
+        case (ast::stmt_decl(?decl, _)) {
+            alt (decl.node) {
+                case (ast::decl_item(?item)) {
+                    if (in_cfg(cfg, item)) {
+                        option::some(stmt)
+                    } else {
+                        option::none
+                    }
+                }
+                case (_) { option::some(stmt) }
+            }
+        }
+        case (_) { option::some(stmt) }
+    }
+}
+
+fn fold_block(&ast::crate_cfg cfg, &ast::block_ b,
+              fold::ast_fold fld) -> ast::block_  {
+    auto filter = bind filter_stmt(cfg, _);
+    auto filtered_stmts = vec::filter_map(filter, b.stmts);
+    ret rec(stmts=vec::map(fld.fold_stmt, filtered_stmts),
+            expr=option::map(fld.fold_expr, b.expr),
+            id=b.id);
 }
 
 // Determine if an item should be translated in the current crate

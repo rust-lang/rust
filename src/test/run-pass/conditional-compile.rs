@@ -70,5 +70,18 @@ fn main() {
   assert b;
   let t x = true;
   let tg y = bar;
+
+  test_in_fn_ctxt();
 }
 
+fn test_in_fn_ctxt() {
+  #[cfg(bogus)]
+  fn f() { fail }
+  fn f() {}
+  f();
+
+  #[cfg(bogus)]
+  const int i = 0;
+  const int i = 1;
+  assert i == 1;
+}
