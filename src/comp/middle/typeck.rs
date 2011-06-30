@@ -308,9 +308,12 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_rec(tcx, flds);
         }
         case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
-            auto f = bind ast_arg_to_arg(tcx, getter, _);
-            auto i = vec::map[ast::ty_arg, arg](f, inputs);
+            auto i = ~[];
+            for (ast::ty_arg ta in inputs) {
+                i += ~[ast_arg_to_arg(tcx, getter, ta)];
+            }
             auto out_ty = ast_ty_to_ty(tcx, getter, output);
+
             let fn(&@ast::constr) -> @ty::constr_def g =
                 bind ast_constr_to_constr(tcx, _);
             let vec[@ty::constr_def] out_constrs = vec::map(g, constrs);
@@ -336,8 +339,12 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             let vec[ty::method] tmeths = [];
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast::ty_method m in meths) {
-                auto ins = vec::map[ast::ty_arg, arg](f, m.node.inputs);
+                auto ins = ~[];
+                for (ast::ty_arg ta in m.node.inputs) {
+                    ins += ~[ast_arg_to_arg(tcx, getter, ta)];
+                }
                 auto out = ast_ty_to_ty(tcx, getter, m.node.output);
+
                 let fn(&@ast::constr) -> @ty::constr_def g =
                     bind ast_constr_to_constr(tcx, _);
                 let vec[@ty::constr_def] out_constrs =
@@ -453,8 +460,10 @@ mod collect {
                      ast::proto proto, &vec[ast::ty_param] ty_params,
                      &option::t[ast::def_id] def_id) ->
        ty::ty_param_count_and_ty {
-        auto input_tys = vec::map[ast::arg, arg](ty_of_arg, decl.inputs);
+        auto input_tys = ~[];
+        for (ast::arg a in decl.inputs) { input_tys += ~[ty_of_arg(a)]; }
         auto output_ty = convert(decl.output);
+
         let fn(&@ast::constr) -> @ty::constr_def g =
             bind ast_constr_to_constr(cx.tcx, _);
         let vec[@ty::constr_def] out_constrs = vec::map(g, decl.constraints);
@@ -475,8 +484,10 @@ mod collect {
                             &vec[ast::ty_param] ty_params,
                             &ast::def_id def_id) ->
        ty::ty_param_count_and_ty {
-        auto input_tys = vec::map[ast::arg, arg](ty_of_arg, decl.inputs);
+        auto input_tys = ~[];
+        for (ast::arg a in decl.inputs) { input_tys += ~[ty_of_arg(a)]; }
         auto output_ty = convert(decl.output);
+
         auto t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
@@ -519,8 +530,13 @@ mod collect {
     fn ty_of_method(@ctxt cx, &@ast::method m) -> ty::method {
         auto get = bind getter(cx, _);
         auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
+
+        auto inputs = ~[];
+        for (ast::arg a in m.node.meth.decl.inputs) {
+            inputs += ~[ty_of_arg(cx, a)];
+        }
         auto f = bind ty_of_arg(cx, _);
-        auto inputs = vec::map[ast::arg, arg](f, m.node.meth.decl.inputs);
+
         auto output = convert(m.node.meth.decl.output);
         let fn(&@ast::constr) -> @ty::constr_def g =
             bind ast_constr_to_constr(cx.tcx, _);
@@ -541,12 +557,14 @@ mod collect {
                       ast::node_id ctor_id, &vec[ast::ty_param] ty_params) ->
        ty::ty_param_count_and_ty {
         auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
-        let vec[arg] t_inputs = [];
+
+        let arg[] t_inputs = ~[];
         for (ast::obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            vec::push(t_inputs, rec(mode=ty::mo_alias(false), ty=t_field));
+            t_inputs += ~[rec(mode=ty::mo_alias(false), ty=t_field)];
         }
+
         auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1,
                               ast::return, []);
         auto tpt = tup(t_obj._0, t_fn);
@@ -650,10 +668,10 @@ mod collect {
                 // should be called to resolve named types.
 
                 auto f = bind getter(cx, _);
-                let vec[arg] args = [];
+                let arg[] args = ~[];
                 for (ast::variant_arg va in variant.node.args) {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += [rec(mode=ty::mo_alias(false), ty=arg_ty)];
+                    args += ~[rec(mode=ty::mo_alias(false), ty=arg_ty)];
                 }
                 auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
@@ -718,7 +736,7 @@ mod collect {
 
                 auto args = ty::ty_fn_args(cx.tcx, tpt._1);
                 i = 0u;
-                while (i < vec::len[ty::arg](args)) {
+                while (i < ivec::len[ty::arg](args)) {
                     auto fld = object.fields.(i);
                     write::ty_only(cx.tcx, fld.id, args.(i).ty);
                     i += 1u;
@@ -728,7 +746,7 @@ mod collect {
                 alt (object.dtor) {
                     case (none) {/* nothing to do */ }
                     case (some(?m)) {
-                        auto t = ty::mk_fn(cx.tcx, ast::proto_fn, [],
+                        auto t = ty::mk_fn(cx.tcx, ast::proto_fn, ~[],
                                    ty::mk_nil(cx.tcx), ast::return, []);
                         write::ty_only(cx.tcx, m.node.id, t);
                     }
@@ -738,9 +756,9 @@ mod collect {
                 auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
                 auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                                         mk_ty_params(cx, vec::len(tps)));
-                auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
+                auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
                                         t_res, ast::return, []);
-                auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
+                auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
                                         ty::mk_nil(cx.tcx), ast::return, []);
                 write::ty_only(cx.tcx, it.id, t_res);
                 write::ty_only(cx.tcx, ctor_id, t_ctor);
@@ -1343,7 +1361,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         // Check that the correct number of arguments were supplied.
 
-        auto expected_arg_count = vec::len[ty::arg](arg_tys);
+        auto expected_arg_count = ivec::len[ty::arg](arg_tys);
         auto supplied_arg_count = vec::len[option::t[@ast::expr]](args);
         if (expected_arg_count != supplied_arg_count) {
             fcx.ccx.tcx.sess.span_fatal(sp,
@@ -1794,7 +1812,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // Pull the argument and return types out.
 
             auto proto_1;
-            let vec[ty::arg] arg_tys_1 = [];
+            let ty::arg[] arg_tys_1 = ~[];
             auto rt_1;
             auto fty = expr_ty(fcx.ccx.tcx, f);
             auto t_1;
@@ -1813,7 +1831,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     while (i < vec::len[option::t[@ast::expr]](args)) {
                         alt (args.(i)) {
                             case (some(_)) {/* no-op */ }
-                            case (none) { arg_tys_1 += [arg_tys.(i)]; }
+                            case (none) { arg_tys_1 += ~[arg_tys.(i)]; }
                         }
                         i += 1u;
                     }
@@ -2149,9 +2167,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
             fn ty_of_method(@crate_ctxt ccx, &@ast::method m) -> ty::method {
                 auto convert = bind ast_ty_to_ty_crate(ccx, _);
-                auto f = bind ty_of_arg(ccx, _);
-                auto inputs =
-                    vec::map[ast::arg, arg](f, m.node.meth.decl.inputs);
+
+                auto inputs = ~[];
+                for (ast::arg aa in m.node.meth.decl.inputs) {
+                    inputs += ~[ty_of_arg(ccx, aa)];
+                }
+
                 auto output = convert(m.node.meth.decl.output);
                 let fn(&@ast::constr) -> @ty::constr_def g =
                     bind ast_constr_to_constr(ccx.tcx, _);

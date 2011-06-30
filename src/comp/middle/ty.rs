@@ -192,7 +192,7 @@ type field = rec(ast::ident ident, mt mt);
 type method =
     rec(ast::proto proto,
         ast::ident ident,
-        vec[arg] inputs,
+        arg[] inputs,
         t output,
         controlflow cf,
         vec[@constr_def] constrs);
@@ -266,8 +266,8 @@ tag sty {
     ty_task;
     ty_tup(mt[]);
     ty_rec(field[]);
-    ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
-    ty_native_fn(ast::native_abi, vec[arg], t);
+    ty_fn(ast::proto, arg[], t, controlflow, vec[@constr_def]);
+    ty_native_fn(ast::native_abi, arg[], t);
     ty_obj(vec[method]);
     ty_res(def_id, t, vec[t]);
     ty_var(int); // type variable
@@ -445,7 +445,7 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
         derive_flags_t(cx, has_params, has_vars, a.ty);
     }
     fn derive_flags_sig(&ctxt cx, &mutable bool has_params,
-                        &mutable bool has_vars, &vec[arg] args, &t tt) {
+                        &mutable bool has_vars, &arg[] args, &t tt) {
         for (arg a in args) { derive_flags_arg(cx, has_params, has_vars, a); }
         derive_flags_t(cx, has_params, has_vars, tt);
     }
@@ -597,12 +597,12 @@ fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
 
 fn mk_rec(&ctxt cx, &field[] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
-fn mk_fn(&ctxt cx, &ast::proto proto, &vec[arg] args, &t ty, &controlflow cf,
+fn mk_fn(&ctxt cx, &ast::proto proto, &arg[] args, &t ty, &controlflow cf,
          &vec[@constr_def] constrs) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
-fn mk_native_fn(&ctxt cx, &ast::native_abi abi, &vec[arg] args, &t ty) -> t {
+fn mk_native_fn(&ctxt cx, &ast::native_abi abi, &arg[] args, &t ty) -> t {
     ret gen_ty(cx, ty_native_fn(abi, args, ty));
 }
 
@@ -792,10 +792,10 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
         }
         case (ty_fn(?proto, ?args, ?ret_ty, ?cf, ?constrs)) {
-            let vec[arg] new_args = [];
+            let arg[] new_args = ~[];
             for (arg a in args) {
                 auto new_ty = fold_ty(cx, fld, a.ty);
-                new_args += [rec(mode=a.mode, ty=new_ty)];
+                new_args += ~[rec(mode=a.mode, ty=new_ty)];
             }
             ty =
                 copy_cname(cx,
@@ -803,10 +803,10 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                                  fold_ty(cx, fld, ret_ty), cf, constrs), ty);
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
-            let vec[arg] new_args = [];
+            let arg[] new_args = ~[];
             for (arg a in args) {
                 auto new_ty = fold_ty(cx, fld, a.ty);
-                new_args += [rec(mode=a.mode, ty=new_ty)];
+                new_args += ~[rec(mode=a.mode, ty=new_ty)];
             }
             ty =
                 copy_cname(cx,
@@ -816,9 +816,10 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
         case (ty_obj(?methods)) {
             let vec[method] new_methods = [];
             for (method m in methods) {
-                let vec[arg] new_args = [];
+                let arg[] new_args = ~[];
                 for (arg a in m.inputs) {
-                    new_args += [rec(mode=a.mode, ty=fold_ty(cx, fld, a.ty))];
+                    new_args += ~[rec(mode=a.mode,
+                                      ty=fold_ty(cx, fld, a.ty))];
                 }
                 new_methods +=
                     [rec(proto=m.proto,
@@ -1302,7 +1303,7 @@ fn hash_type_structure(&sty st) -> uint {
         h += h << 5u + hash_ty(subty);
         ret h;
     }
-    fn hash_fn(uint id, &vec[arg] args, &t rty) -> uint {
+    fn hash_fn(uint id, &arg[] args, &t rty) -> uint {
         auto h = id;
         for (arg a in args) { h += h << 5u + hash_ty(a.ty); }
         h += h << 5u + hash_ty(rty);
@@ -1448,11 +1449,11 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
     fn equal_mt(&mt a, &mt b) -> bool {
         ret a.mut == b.mut && eq_ty(a.ty, b.ty);
     }
-    fn equal_fn(&vec[arg] args_a, &t rty_a, &vec[arg] args_b, &t rty_b) ->
+    fn equal_fn(&arg[] args_a, &t rty_a, &arg[] args_b, &t rty_b) ->
        bool {
         if (!eq_ty(rty_a, rty_b)) { ret false; }
-        auto len = vec::len[arg](args_a);
-        if (len != vec::len[arg](args_b)) { ret false; }
+        auto len = ivec::len[arg](args_a);
+        if (len != ivec::len[arg](args_b)) { ret false; }
         auto i = 0u;
         while (i < len) {
             auto arg_a = args_a.(i);
@@ -1788,7 +1789,7 @@ fn type_contains_params(&ctxt cx, &t typ) -> bool {
 
 
 // Type accessors for substructures of types
-fn ty_fn_args(&ctxt cx, &t fty) -> vec[arg] {
+fn ty_fn_args(&ctxt cx, &t fty) -> arg[] {
     alt (struct(cx, fty)) {
         case (ty::ty_fn(_, ?a, _, _, _)) { ret a; }
         case (ty::ty_native_fn(_, ?a, _)) { ret a; }
@@ -2073,20 +2074,20 @@ mod unify {
     }
     tag fn_common_res {
         fn_common_res_err(result);
-        fn_common_res_ok(vec[arg], t);
+        fn_common_res_ok(arg[], t);
     }
     fn unify_fn_common(&@ctxt cx, &t expected, &t actual,
-                       &vec[arg] expected_inputs, &t expected_output,
-                       &vec[arg] actual_inputs, &t actual_output) ->
+                       &arg[] expected_inputs, &t expected_output,
+                       &arg[] actual_inputs, &t actual_output) ->
        fn_common_res {
-        auto expected_len = vec::len[arg](expected_inputs);
-        auto actual_len = vec::len[arg](actual_inputs);
+        auto expected_len = ivec::len[arg](expected_inputs);
+        auto actual_len = ivec::len[arg](actual_inputs);
         if (expected_len != actual_len) {
             ret fn_common_res_err(ures_err(terr_arg_count));
         }
         // TODO: as above, we should have an iter2 iterator.
 
-        let vec[arg] result_ins = [];
+        let arg[] result_ins = ~[];
         auto i = 0u;
         while (i < expected_len) {
             auto expected_input = expected_inputs.(i);
@@ -2101,7 +2102,7 @@ mod unify {
             auto result = unify_step(cx, expected_input.ty, actual_input.ty);
             alt (result) {
                 case (ures_ok(?rty)) {
-                    result_ins += [rec(mode=result_mode, ty=rty)];
+                    result_ins += ~[rec(mode=result_mode, ty=rty)];
                 }
                 case (_) { ret fn_common_res_err(result); }
             }
@@ -2116,8 +2117,8 @@ mod unify {
         }
     }
     fn unify_fn(&@ctxt cx, &ast::proto e_proto, &ast::proto a_proto,
-                &t expected, &t actual, &vec[arg] expected_inputs,
-                &t expected_output, &vec[arg] actual_inputs, &t actual_output,
+                &t expected, &t actual, &arg[] expected_inputs,
+                &t expected_output, &arg[] actual_inputs, &t actual_output,
                 &controlflow expected_cf, &controlflow actual_cf,
                 &vec[@constr_def] expected_constrs,
                 &vec[@constr_def] actual_constrs) -> result {
@@ -2158,8 +2159,8 @@ mod unify {
     }
     fn unify_native_fn(&@ctxt cx, &ast::native_abi e_abi,
                        &ast::native_abi a_abi, &t expected, &t actual,
-                       &vec[arg] expected_inputs, &t expected_output,
-                       &vec[arg] actual_inputs, &t actual_output) -> result {
+                       &arg[] expected_inputs, &t expected_output,
+                       &arg[] actual_inputs, &t actual_output) -> result {
         if (e_abi != a_abi) { ret ures_err(terr_mismatch); }
         auto t =
             unify_fn_common(cx, expected, actual, expected_inputs,

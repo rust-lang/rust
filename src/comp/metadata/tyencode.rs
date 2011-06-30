@@ -199,7 +199,7 @@ fn enc_proto(&io::writer w, proto proto) {
         case (proto_fn) { w.write_char('F'); }
     }
 }
-fn enc_ty_fn(&io::writer w, &@ctxt cx, &vec[ty::arg] args, &ty::t out,
+fn enc_ty_fn(&io::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
              &controlflow cf, &vec[@ty::constr_def] constrs) {
     w.write_char('[');
     for (ty::arg arg in args) {

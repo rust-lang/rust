@@ -334,9 +334,9 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(vec[ty::arg], ty::t, ast::controlflow, vec[@ty::constr_def]) {
+   tup(ty::arg[], ty::t, ast::controlflow, vec[@ty::constr_def]) {
     assert (next(st) as char == '[');
-    let vec[ty::arg] inputs = [];
+    let ty::arg[] inputs = ~[];
     while (peek(st) as char != ']') {
         auto mode = ty::mo_val;
         if (peek(st) as char == '&') {
@@ -347,7 +347,7 @@ fn parse_ty_fn(@pstate st, str_def sd) ->
                 st.pos += 1u;
             }
         }
-        inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
+        inputs += ~[rec(mode=mode, ty=parse_ty(st, sd))];
     }
     st.pos += 1u; // eat the ']'
     auto cs = parse_constrs(st, sd);

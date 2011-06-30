@@ -48,9 +48,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         ret s + ty_to_str(cx, input.ty);
     }
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
-                 vec[arg] inputs, t output, ast::controlflow cf,
+                 &arg[] inputs, t output, ast::controlflow cf,
                  &vec[@constr_def] constrs) -> str {
-        auto f = bind fn_input_to_str(cx, _);
         auto s;
         alt (proto) {
             case (ast::proto_iter) { s = "iter"; }
@@ -58,7 +57,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         alt (ident) { case (some(?i)) { s += " "; s += i; } case (_) { } }
         s += "(";
-        s += str::connect(vec::map[arg, str](f, inputs), ", ");
+        auto strs = [];
+        for (arg a in inputs) { strs += [fn_input_to_str(cx, a)]; }
+        s += str::connect(strs, ", ");
         s += ")";
         if (struct(cx, output) != ty_nil) {
             alt (cf) {
@@ -130,9 +131,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             s += fn_to_str(cx, proto, none, inputs, output, cf, constrs);
         }
         case (ty_native_fn(_, ?inputs, ?output)) {
-            s +=
-                fn_to_str(cx, ast::proto_fn, none, inputs, output,
-                          ast::return, []);
+            s += fn_to_str(cx, ast::proto_fn, none, inputs, output,
+                           ast::return, []);
         }
         case (ty_obj(?meths)) {
             auto f = bind method_to_str(cx, _);

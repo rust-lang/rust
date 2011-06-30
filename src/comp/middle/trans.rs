@@ -472,7 +472,7 @@ fn T_glue_fn(&type_names tn) -> TypeRef {
 
 fn T_dtor(&@crate_ctxt ccx, &span sp, TypeRef llself_ty) -> TypeRef {
     ret type_of_fn_full(ccx, sp, ast::proto_fn, some[TypeRef](llself_ty),
-                        vec::empty[ty::arg](), ty::mk_nil(ccx.tcx), 0u);
+                        ~[], ty::mk_nil(ccx.tcx), 0u);
 }
 
 fn T_cmp_glue_fn(&type_names tn) -> TypeRef {
@@ -681,7 +681,7 @@ fn type_of(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     ret type_of_inner(cx, sp, t);
 }
 
-fn type_of_explicit_args(&@crate_ctxt cx, &span sp, &vec[ty::arg] inputs) ->
+fn type_of_explicit_args(&@crate_ctxt cx, &span sp, &ty::arg[] inputs) ->
    vec[TypeRef] {
     let vec[TypeRef] atys = [];
     for (ty::arg arg in inputs) {
@@ -710,7 +710,7 @@ fn type_of_explicit_args(&@crate_ctxt cx, &span sp, &vec[ty::arg] inputs) ->
 //  - new_fn_ctxt
 //  - trans_args
 fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
-                   &option::t[TypeRef] obj_self, &vec[ty::arg] inputs,
+                   &option::t[TypeRef] obj_self, &ty::arg[] inputs,
                    &ty::t output, uint ty_param_count) -> TypeRef {
     let vec[TypeRef] atys = [];
 
@@ -743,7 +743,7 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
         atys +=
             [T_fn_pair(cx.tn,
                        type_of_fn_full(cx, sp, ast::proto_fn, none[TypeRef],
-                                       [rec(mode=ty::mo_alias(false),
+                                       ~[rec(mode=ty::mo_alias(false),
                                             ty=output)], ty::mk_nil(cx.tcx),
                                        0u))];
     }
@@ -754,14 +754,14 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
 }
 
 fn type_of_fn(&@crate_ctxt cx, &span sp, ast::proto proto,
-              &vec[ty::arg] inputs, &ty::t output, uint ty_param_count) ->
+              &ty::arg[] inputs, &ty::t output, uint ty_param_count) ->
    TypeRef {
     ret type_of_fn_full(cx, sp, proto, none[TypeRef], inputs, output,
                         ty_param_count);
 }
 
 fn type_of_native_fn(&@crate_ctxt cx, &span sp, ast::native_abi abi,
-                     &vec[ty::arg] inputs, &ty::t output, uint ty_param_count)
+                     &ty::arg[] inputs, &ty::t output, uint ty_param_count)
    -> TypeRef {
     let vec[TypeRef] atys = [];
     if (abi == ast::native_abi_rust) {
@@ -2137,7 +2137,7 @@ fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
     } else {
         auto params = decoder::get_type_param_count(ccx.tcx, did);
         auto f_t = type_of_fn(ccx, cx.sp, ast::proto_fn,
-                              [rec(mode=ty::mo_alias(false), ty=inner_t)],
+                              ~[rec(mode=ty::mo_alias(false), ty=inner_t)],
                               ty::mk_nil(ccx.tcx), params);
         get_extern_const(ccx.externs, ccx.llmod,
                          decoder::get_symbol(ccx.sess, did),
@@ -4526,7 +4526,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     // and pass it in as a first class fn-arg to the iterator.
     auto iter_body_llty =
         type_of_fn_full(lcx.ccx, cx.sp, ast::proto_fn, none[TypeRef],
-                        [rec(mode=ty::mo_alias(false), ty=decl_ty)],
+                        ~[rec(mode=ty::mo_alias(false), ty=decl_ty)],
                         ty::mk_nil(lcx.ccx.tcx), 0u);
     let ValueRef lliterbody =
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
@@ -5551,7 +5551,7 @@ fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
               &option::t[generic_info] gen, &option::t[ValueRef] lliterbody,
               &vec[@ast::expr] es, &ty::t fn_ty) ->
    tup(@block_ctxt, vec[ValueRef], ValueRef) {
-    let vec[ty::arg] args = ty::ty_fn_args(cx.fcx.lcx.ccx.tcx, fn_ty);
+    let ty::arg[] args = ty::ty_fn_args(cx.fcx.lcx.ccx.tcx, fn_ty);
     let vec[ValueRef] llargs = [];
     let vec[ValueRef] lltydescs = [];
     let @block_ctxt bcx = cx;
@@ -6342,7 +6342,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
             auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, x);
             auto arg = rec(mode=ty::mo_alias(false), ty=e_ty);
             auto arg_tys =
-                type_of_explicit_args(cx.fcx.lcx.ccx, x.span, [arg]);
+                type_of_explicit_args(cx.fcx.lcx.ccx, x.span, ~[arg]);
             auto r = trans_arg_expr(bcx, arg, arg_tys.(0), x);
             bcx = r.bcx;
             llargs += [r.val];
@@ -6578,7 +6578,7 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     auto llmod = cx.fcx.lcx.ccx.llmod;
     let TypeRef wrapper_fn_type =
         type_of_fn(cx.fcx.lcx.ccx, cx.sp, ast::proto_fn,
-                   [rec(mode=ty::mo_alias(false), ty=args_ty)], ty::idx_nil,
+                   ~[rec(mode=ty::mo_alias(false), ty=args_ty)], ty::idx_nil,
                    0u);
     // TODO: construct a name based on tname
 
@@ -7450,7 +7450,7 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx, option::t[ty_self_pair] ty_self) {
 }
 
 fn copy_args_to_allocas(@fn_ctxt fcx, vec[ast::arg] args,
-                        vec[ty::arg] arg_tys) {
+                        &ty::arg[] arg_tys) {
     auto bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
@@ -7468,7 +7468,7 @@ fn copy_args_to_allocas(@fn_ctxt fcx, vec[ast::arg] args,
 }
 
 fn add_cleanups_for_args(&@block_ctxt bcx, vec[ast::arg] args,
-                         vec[ty::arg] arg_tys) {
+                         &ty::arg[] arg_tys) {
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
         if (aarg.mode == ast::val) {
@@ -7485,7 +7485,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
     ret llvm::LLVMIsATerminatorInst(inst) as int != 0;
 }
 
-fn arg_tys_of_fn(&@crate_ctxt ccx,ast::node_id id) -> vec[ty::arg] {
+fn arg_tys_of_fn(&@crate_ctxt ccx,ast::node_id id) -> ty::arg[] {
     alt (ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id))) {
         case (ty::ty_fn(_, ?arg_tys, _, _, _)) { ret arg_tys; }
     }
@@ -7699,7 +7699,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
                               ty::ret_ty_of_fn(ccx.tcx, ctor_id),
                               fn_args, ty_params);
-    let vec[ty::arg] arg_tys = arg_tys_of_fn(ccx, ctor_id);
+    let ty::arg[] arg_tys = arg_tys_of_fn(ccx, ctor_id);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     //  Create the first block context in the function and keep a handle on it
@@ -7747,7 +7747,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // a dtor, since otherwise they are never dropped, and the dtor never
     // runs.
     if (vec::len[ast::ty_param](ty_params) == 0u &&
-            vec::len[ty::arg](arg_tys) == 0u) {
+            std::ivec::len[ty::arg](arg_tys) == 0u) {
         // If the object we're translating has no fields or type parameters,
         // there's not much to do.
 
