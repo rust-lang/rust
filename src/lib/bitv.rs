@@ -126,7 +126,6 @@ fn set(&t v, uint i, bool x) {
     auto bits = uint_bits();
     auto w = i / bits;
     auto b = i % bits;
-    auto w0 = v.storage.(w);
     auto flag = 1u << b;
     v.storage.(w) =
         if (x) { v.storage.(w) | flag } else { v.storage.(w) & !flag };
