@@ -18,8 +18,8 @@ import pretty::pprust;
 export get_symbol;
 export get_tag_variants;
 export get_type;
+export get_type_param_count;
 export lookup_defs;
-export get_type;
 export get_crate_attributes;
 export list_crate_metadata;
 export get_exported_metadata;
@@ -98,7 +98,7 @@ fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
                       bind parse_external_def_id(this_cnum, _), tcx);
 }
 
-fn item_ty_param_count(&ebml::doc item, int this_cnum) -> uint {
+fn item_ty_param_count(&ebml::doc item) -> uint {
     let uint ty_param_count = 0u;
     auto tp = tag_items_data_item_ty_param_count;
     for each (ebml::doc p in ebml::tagged_docs(item, tp)) {
@@ -178,9 +178,14 @@ fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
     auto kind_ch = item_kind(item);
     auto has_ty_params = kind_has_type_params(kind_ch);
     if (has_ty_params) {
-        tp_count = item_ty_param_count(item, external_crate_id);
+        tp_count = item_ty_param_count(item);
     } else { tp_count = 0u; }
     ret tup(tp_count, t);
+}
+
+fn get_type_param_count(ty::ctxt tcx, &ast::def_id def) -> uint {
+    auto data = tcx.sess.get_external_crate(def._0).data;
+    ret item_ty_param_count(lookup_item(def._1, data));
 }
 
 fn get_symbol(session::session sess, ast::def_id def) -> str {

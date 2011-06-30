@@ -2090,15 +2090,7 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             decr_refcnt_maybe_free(cx, box_cell, v0, t)
         }
         case (ty::ty_res(?did, ?inner)) {
-            (alt (ccx.ast_map.get(did._1)) {
-                case (ast_map::node_item(?i)) {
-                    alt (i.node) {
-                        case (ast::item_res(?dtor, _, _, _)) {
-                            drop_res(cx, v0, inner, dtor)
-                        }
-                    }
-                }
-            })
+            trans_res_drop(cx, v0, did, inner)
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell =
@@ -2115,8 +2107,8 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     rs.bcx.build.RetVoid();
 }
 
-fn drop_res(@block_ctxt cx, ValueRef rs, ty::t inner_t, &ast::_fn dtor)
-    -> result {
+fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
+                  ty::t inner_t) -> result {
     auto ccx = cx.fcx.lcx.ccx;
     auto tup_ty = ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t]);
     auto drop_cx = new_sub_block_ctxt(cx, "drop res");
@@ -2126,12 +2118,29 @@ fn drop_res(@block_ctxt cx, ValueRef rs, ty::t inner_t, &ast::_fn dtor)
     cx = drop_flag.bcx;
     auto null_test = cx.build.IsNull(cx.build.Load(drop_flag.val));
     cx.build.CondBr(null_test, next_cx.llbb, drop_cx.llbb);
-
     cx = drop_cx;
-    auto val = GEP_tup_like(cx,  tup_ty, rs, [0, 1]);
+
+    // Find and call the actual destructor.
+    auto dtor_pair = if (did._0 == ast::local_crate) {
+        ccx.fn_pairs.get(did._1)
+    } else {
+        auto params = decoder::get_type_param_count(ccx.tcx, did);
+        auto f_t = type_of_fn(ccx, cx.sp, ast::proto_fn,
+                              [rec(mode=ty::mo_alias(false), ty=inner_t)],
+                              ty::mk_nil(ccx.tcx), params);
+        get_extern_const(ccx.externs, ccx.llmod,
+                         decoder::get_symbol(ccx.sess, did),
+                         T_fn_pair(ccx.tn, f_t))
+    };
+    auto dtor_addr = cx.build.Load
+        (cx.build.GEP(dtor_pair, [C_int(0), C_int(abi::fn_field_code)]));
+    auto dtor_env = cx.build.Load
+        (cx.build.GEP(dtor_pair, [C_int(0), C_int(abi::fn_field_box)]));
+    auto val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
     cx = val.bcx;
-    cx.fcx.llargs.insert(dtor.decl.inputs.(0).id, val.val);
-    cx = trans_block(cx, dtor.body, return).bcx;
+    cx.build.FastCall(dtor_addr, [cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env]
+                      + cx.fcx.lltydescs + [val.val]);
+
     cx = drop_slot(cx, val.val, inner_t).bcx;
     cx.build.Store(C_int(0), drop_flag.val);
     cx.build.Br(next_cx.llbb);
@@ -7827,19 +7836,20 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     finish_fn(fcx, lltop);
 }
 
-fn trans_res(@local_ctxt cx, &span sp, &ast::_fn f, ast::node_id ctor_id,
-             &vec[ast::ty_param] ty_params) {
+fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
+                  ast::node_id ctor_id, &vec[ast::ty_param] ty_params) {
+    // Create a function for the constructor
     auto llctor_decl = cx.ccx.item_ids.get(ctor_id);
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
     auto ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
-                              ret_t, f.decl.inputs, ty_params);
+                              ret_t, dtor.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
     auto arg_t = arg_tys_of_fn(cx.ccx, ctor_id).(0).ty;
     auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, [ty::mk_int(cx.ccx.tcx), arg_t]);
     auto arg = load_if_immediate
-        (bcx, fcx.llargs.get(f.decl.inputs.(0).id), arg_t);
+        (bcx, fcx.llargs.get(dtor.decl.inputs.(0).id), arg_t);
     auto dst = GEP_tup_like(bcx, tup_t, fcx.llretptr, [0, 1]);
     bcx = dst.bcx;
     bcx = copy_val(bcx, INIT, dst.val, arg, arg_t).bcx;
@@ -7959,8 +7969,11 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
                      with *extend_path(cx, item.ident));
             trans_obj(sub_cx, item.span, ob, ctor_id, tps);
         }
-        case (ast::item_res(?decl, _, ?tps, ?ctor_id)) {
-            trans_res(cx, item.span, decl, ctor_id, tps);
+        case (ast::item_res(?dtor, ?dtor_id, ?tps, ?ctor_id)) {
+            trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
+            // Create a function for the destructor
+            auto lldtor_decl = cx.ccx.item_ids.get(item.id);
+            trans_fn(cx, item.span, dtor, lldtor_decl, none, tps, dtor_id);
         }
         case (ast::item_mod(?m)) {
             auto sub_cx =
@@ -7999,10 +8012,17 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
     ret struct_elt(llpairty, 0u);
 }
 
-fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
+fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, &vec[str] path, str flav,
                     vec[ast::ty_param] ty_params, ast::node_id node_id) {
+    decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id,
+                          node_id_type(ccx, node_id));
+}
+
+fn decl_fn_and_pair_full(&@crate_ctxt ccx, &span sp, &vec[str] path, str flav,
+                         vec[ast::ty_param] ty_params, ast::node_id node_id,
+                         ty::t node_type) {
     auto llfty;
-    alt (ty::struct(ccx.tcx, node_id_type(ccx, node_id))) {
+    alt (ty::struct(ccx.tcx, node_type)) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfty =
                 type_of_fn(ccx, sp, proto, inputs, output,
@@ -8023,7 +8043,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path, str flav,
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
     // Declare the global constant pair that points to it.
 
-    let str ps = mangle_exported_name(ccx, path, node_id_type(ccx, node_id));
+    let str ps = mangle_exported_name(ccx, path, node_type);
     register_fn_pair(ccx, ps, llfty, llfn, node_id);
     if (is_main) {
         if (ccx.main_fn != none[ValueRef]) {
@@ -8295,8 +8315,14 @@ fn collect_item_2(&@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
                 ccx.obj_methods.insert(m.node.id, ());
             }
         }
-        case (ast::item_res(?decl, _, ?tps, ?ctor_id)) {
+        case (ast::item_res(_, ?dtor_id, ?tps, ?ctor_id)) {
             decl_fn_and_pair(ccx, i.span, new_pt, "res_ctor", tps, ctor_id);
+            // Note that the destructor is associated with the item's id, not
+            // the dtor_id. This is a bit counter-intuitive, but simplifies
+            // ty_res, which would have to carry around two def_ids otherwise
+            // -- one to identify the type, and one to find the dtor symbol.
+            decl_fn_and_pair_full(ccx, i.span, new_pt, "res_dtor", tps, i.id,
+                                  node_id_type(ccx, dtor_id));
         }
         case (_) { }
     }

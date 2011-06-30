@@ -282,7 +282,6 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
                                     tps);
         }
         case (item_res(_, _, ?tps, ?ctor_id)) {
-
             auto fn_ty = node_id_type(cx, ctor_id);
 
             ebml::start_tag(ebml_w, tag_items_data_item);
@@ -290,6 +289,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
             encode_type(cx, ebml_w, ty::ty_fn_ret(cx.tcx, fn_ty));
+            encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
 
             index += [tup(ctor_id, ebml_w.writer.tell())];
