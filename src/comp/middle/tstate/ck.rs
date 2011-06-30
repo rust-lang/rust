@@ -124,7 +124,8 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
     }
 }
 
-fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &vec[ast::ty_param] tps,
+fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
+                                   &vec[ast::ty_param] tps,
                                    node_id id, &span sp, &fn_ident i) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement

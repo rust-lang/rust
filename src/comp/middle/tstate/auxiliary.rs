@@ -97,7 +97,6 @@ fn log_tritv(&fn_ctxt fcx, &tritv::t v) { log tritv_to_str(fcx, v); }
 fn first_difference_string(&fn_ctxt fcx, &tritv::t expected, &tritv::t actual)
    -> str {
     let str s = "";
-    auto done = false;
     for (norm_constraint c in constraints(fcx)) {
         if (tritv_get(expected, c.bit_num) == ttrue &&
             tritv_get(actual, c.bit_num) != ttrue) {

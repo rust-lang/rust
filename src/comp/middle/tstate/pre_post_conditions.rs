@@ -157,9 +157,6 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, node_id id) {
         log "find_pre_post_exprs: oper =";
         log_expr(*args.(0));
     }
-    auto enclosing = fcx.enclosing;
-    auto fm = fcx.ccx.fm;
-    auto nv = num_constraints(enclosing);
     fn do_one(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
     auto f = bind do_one(fcx, _);
     vec::map[@expr, ()](f, args);
@@ -194,7 +191,6 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
 // and alternative maybe_alt
 fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                   &option::t[@expr] maybe_alt, node_id id, &if_ty chck) {
-    auto num_local_vars = num_constraints(fcx.enclosing);
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     alt (maybe_alt) {
@@ -580,8 +576,6 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
 fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
     log "stmt =";
     log_stmt(s);
-    auto enclosing = fcx.enclosing;
-    auto num_local_vars = num_constraints(enclosing);
     alt (s.node) {
         case (stmt_decl(?adecl, ?id)) {
             alt (adecl.node) {

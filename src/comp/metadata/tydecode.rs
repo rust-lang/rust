@@ -64,7 +64,7 @@ fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len, str_def sd,
 
 fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     alt (peek(st) as char) {
-        case ('!') { auto ignore = next(st); ret a_bang[ty::t]; }
+        case ('!') { next(st); ret a_bang[ty::t]; }
         case (_) { ret a_ty[ty::t](parse_ty(st, sd)); }
     }
 }
@@ -74,7 +74,7 @@ fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
     alt (peek(st) as char) {
         case (':') {
             do  {
-                auto ignore = next(st);
+                next(st);
                 vec::push(rslt, parse_constr(st, sd));
             } while (peek(st) as char == ';')
         }
@@ -91,10 +91,7 @@ fn parse_path(@pstate st, str_def sd) -> ast::path {
     idents += [parse_ident_(st, sd, is_last)];
     while (true) {
         alt (peek(st) as char) {
-            case (':') {
-                auto ignore = next(st);
-                ignore = next(st);
-            }
+            case (':') { next(st); next(st); }
             case (?c) {
                 if (c == '(') {
                     ret respan(rec(lo=0u, hi=0u),

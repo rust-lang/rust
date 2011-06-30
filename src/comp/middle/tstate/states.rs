@@ -670,7 +670,6 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
    returns a boolean flag saying whether any pre- or poststates changed */
 fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
     -> bool {
-    auto num_local_vars = num_constraints(fcx.enclosing);
     /* First, set the pre-states and post-states for every expression */
 
     auto pres = pres0;

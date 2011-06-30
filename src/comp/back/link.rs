@@ -137,7 +137,6 @@ mod write {
         if (is_object_or_assembly_or_exe(opts.output_type)) {
             let int LLVMAssemblyFile = 0;
             let int LLVMObjectFile = 1;
-            let int LLVMNullFile = 2;
             let int LLVMOptNone = 0;        // -O0
             let int LLVMOptLess = 1;        // -O1
             let int LLVMOptDefault = 2;     // -O2, -Os

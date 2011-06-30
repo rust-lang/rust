@@ -392,7 +392,6 @@ fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
                 cx.tcx.sess.span_fatal(dest.span,
                                      "assigning to immutable obj field");
             }
-            auto var_t = ty::expr_ty(*cx.tcx, dest);
             for (restrict r in sc) {
                 if (vec::member(dnum, r.root_vars)) {
                     r.ok = overwritten(dest.span, p);

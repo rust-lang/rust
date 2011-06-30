@@ -39,8 +39,10 @@ type ast_visitor =
         fn(&@ast::ty)  visit_ty_pre,
         fn(&@ast::ty)  visit_ty_post,
         fn(&@ast::constr)  visit_constr,
-        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident, ast::node_id) visit_fn_pre,
-        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident, ast::node_id) visit_fn_post);
+        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident,
+           ast::node_id) visit_fn_pre,
+        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident,
+           ast::node_id) visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
     if (!v.keep_going()) { ret; }
@@ -387,8 +389,6 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_anon_obj(?anon_obj, _, _)) {
             // Fields
 
-            let option::t[vec[ast::anon_obj_field]] fields =
-                none[vec[ast::anon_obj_field]];
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
@@ -400,7 +400,6 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             }
             // with_obj
 
-            let option::t[@ast::expr] with_obj = none[@ast::expr];
             alt (anon_obj.with_obj) {
                 case (none) { }
                 case (some(?e)) { walk_expr(v, e); }

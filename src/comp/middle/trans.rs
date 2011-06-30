@@ -766,7 +766,6 @@ fn type_of_native_fn(&@crate_ctxt cx, &span sp, ast::native_abi abi,
     let vec[TypeRef] atys = [];
     if (abi == ast::native_abi_rust) {
         atys += [T_taskptr(cx.tn)];
-        auto t = ty::ty_native_fn(abi, inputs, output);
         auto i = 0u;
         while (i < ty_param_count) {
             atys += [T_ptr(T_tydesc(cx.tn))];
@@ -2684,7 +2683,6 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                         case (ty::ty_fn(_, ?args, _, _, _)) {
                             auto j = 0;
                             for (ty::arg a in args) {
-                                auto v = [C_int(0), C_int(j as int)];
                                 auto rslt =
                                     GEP_tag(variant_cx, llunion_a_ptr, tid,
                                             variant.id, tps, j);
@@ -3636,8 +3634,7 @@ mod ivec {
                 auto p = stack_spill_cx.build.InBoundsGEP(spill_stub, stub_p);
                 stack_spill_cx.build.Load(p)
             };
-        auto heap_len_ptr_spill =
-            {
+        {
                 auto v = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
                 stack_spill_cx.build.InBoundsGEP(heap_ptr_spill, v)
             };
@@ -3673,10 +3670,9 @@ mod ivec {
 
         auto unit_ty = ty::sequence_element_type(cx.fcx.lcx.ccx.tcx, t);
         auto llunitty = type_of_or_i8(cx, unit_ty);
-        auto skip_null;
         alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-            case (ty::ty_istr) { skip_null = true; }
-            case (ty::ty_ivec(_)) { skip_null = false; }
+            case (ty::ty_istr) {  }
+            case (ty::ty_ivec(_)) {  }
             case (_) {
                 cx.fcx.lcx.ccx.tcx.sess.bug("non-istr/ivec in trans_append");
             }
@@ -3692,10 +3688,8 @@ mod ivec {
         auto no_tydesc_info = none;
 
         rs = get_tydesc(bcx, t, false, no_tydesc_info);
-        auto vec_tydesc = rs.val;
         bcx = rs.bcx;
         rs = get_tydesc(bcx, unit_ty, false, no_tydesc_info);
-        auto unit_tydesc = rs.val;
         bcx = rs.bcx;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_copy_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
@@ -4516,7 +4510,6 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
     auto upvars = collect_upvars(cx, body, decl_id);
-    auto upvar_count = vec::len(upvars);
 
     auto environment_data = build_environment(cx, upvars);
     auto llenvptr = environment_data._0;
@@ -4791,7 +4784,6 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
         lv = trans_external_path(cx, fn_id, tpt);
     }
     auto tys = ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
-    auto monoty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
     if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = [];
@@ -5299,7 +5291,7 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
                    outgoing_args, outgoing_ret_ty, ty_param_count);
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
-    auto r = bcx.build.FastCall(lltargetfn, llargs);
+    bcx.build.FastCall(lltargetfn, llargs);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
     ret llthunk;
@@ -6459,7 +6451,6 @@ fn trans_port(&@block_ctxt cx, ast::node_id id) -> result {
         case (ty::ty_port(?t)) { unit_ty = t; }
         case (_) { cx.fcx.lcx.ccx.sess.bug("non-port type in trans_port"); }
     }
-    auto llunit_ty = type_of(cx.fcx.lcx.ccx, cx.sp, unit_ty);
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
@@ -6587,7 +6578,6 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
 fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
    result {
     auto llmod = cx.fcx.lcx.ccx.llmod;
-    let TypeRef args_ty_tref = type_of(cx.fcx.lcx.ccx, cx.sp, args_ty);
     let TypeRef wrapper_fn_type =
         type_of_fn(cx.fcx.lcx.ccx, cx.sp, ast::proto_fn,
                    [rec(mode=ty::mo_alias(false), ty=args_ty)], ty::idx_nil,
@@ -6669,8 +6659,6 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
     } 
     else if(ty::type_is_structural(tcx, t)) {
         fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
-            auto tcx = bcx.fcx.lcx.ccx.tcx;
-    
             log_err "Unimplemented type for deep_copy.";
             fail;
         }
@@ -6841,7 +6829,6 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     // If with_obj (the object being extended) exists, translate it, producing
     // a result.
-    let option::t[result] with_obj_val = none;
     let ty::t with_obj_ty = ty::mk_type(ccx.tcx);
     let TypeRef llwith_obj_ty;
     auto vtbl;
@@ -6857,7 +6844,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         case (some(?e)) {
             // Translating with_obj returns a ValueRef (pointer to a 2-word
             // value) wrapped in a result.
-            with_obj_val  = some[result](trans_expr(bcx, e));
+            trans_expr(bcx, e);
 
             // TODO: What makes more sense to get the type of an expr --
             // calling ty::expr_ty(ccx.tcx, e) on it or calling
@@ -6992,7 +6979,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // FIXME (part of issue #538): make this work eventually, when we
             // have additional field exprs in the AST.
 
-            auto field_val = load_if_immediate(
+            load_if_immediate(
                 bcx,
                 additional_field_vals.(i).val,
                 additional_field_tys.(i));
@@ -7992,7 +7979,6 @@ fn trans_const_expr(&@crate_ctxt cx, @ast::expr e) -> ValueRef {
 }
 
 fn trans_const(&@crate_ctxt cx, @ast::expr e, ast::node_id id) {
-    auto t = node_id_type(cx, id);
     auto v = trans_const_expr(cx, e);
     // The scalars come back as 1st class LLVM vals
     // which we have to stick into global constants.
@@ -8179,15 +8165,9 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, vec[str] path,
     auto lltop = bcx.llbb;
     // Declare the function itself.
 
-    auto item = alt (ccx.ast_map.get(id)) {
-        case (ast_map::node_native_item(?i)) { i }
-    };
     auto fn_type = node_id_type(ccx, id); // NB: has no type params
 
     auto abi = ty::ty_fn_abi(ccx.tcx, fn_type);
-    auto llfnty =
-        type_of_native_fn(ccx, sp, abi, ty::ty_fn_args(ccx.tcx, fn_type),
-                          ty::ty_fn_ret(ccx.tcx, fn_type), num_ty_param);
     // FIXME: If the returned type is not nil, then we assume it's 32 bits
     // wide. This is obviously wildly unsafe. We should have a better FFI
     // that allows types of different sizes to be returned.
@@ -8561,11 +8541,11 @@ fn make_common_glue(&session::session sess, &str output) {
                                                 llvm::LLVMGetGlobalContext());
     llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
     llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
-    auto td = mk_target_data(x86::get_data_layout());
+    mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
-    auto intrinsics = declare_intrinsics(llmod);
+    declare_intrinsics(llmod);
     llvm::LLVMSetModuleInlineAsm(llmod, str::buf(x86::get_module_asm()));
-    auto glues = make_glues(llmod, tn);
+    make_glues(llmod, tn);
     link::write::run_passes(sess, llmod, output);
 }
 
@@ -8686,7 +8666,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     collect_tag_ctors(ccx, crate);
     trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
-    auto crate_map = create_crate_map(ccx);
+    create_crate_map(ccx);
     emit_tydescs(ccx);
     // Translate the metadata:
 

@@ -60,7 +60,8 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
     visit::visit_expr(e, cx, v);
 }
 
-fn do_nothing(&@item i, &ctxt ignore1, &visit::vt[ctxt] ignore) {
+fn do_nothing(&_fn f, &vec[ty_param] tp, &span sp, &fn_ident i,
+              node_id iid, &ctxt cx, &visit::vt[ctxt] v) {
 }
  
 fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ast::ty_param] tps,
@@ -72,7 +73,7 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ast::ty_param] tps,
     visitor =
         @rec(visit_local=collect_local,
              visit_expr=collect_pred,
-             visit_item=do_nothing
+             visit_fn=do_nothing
              with *visitor);
     visit::visit_fn(f, tps, sp, i, id, cx, visit::vtor(visitor));
     ret cx;
@@ -119,9 +120,6 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ast::ty_param] tp,
               node_id id) {
     auto res_map = @new_int_hash[constraint]();
     let uint next = 0u;
-    let vec[arg] f_args = f.decl.inputs;
-    /* ignore args, which we know are initialized;
-       just collect locally declared vars */
 
     let ctxt cx = find_locals(ccx.tcx, f, tp, f_sp, f_name, id);
     /* now we have to add bit nums for both the constraints

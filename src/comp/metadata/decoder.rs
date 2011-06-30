@@ -93,7 +93,6 @@ fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
         ret tup(this_cnum, external_def_id._1);
     }
     auto tp = ebml::get_doc(item, tag_items_data_item_type);
-    auto s = str::unsafe_from_bytes(ebml::doc_data(tp));
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
                       bind parse_external_def_id(this_cnum, _), tcx);
 }

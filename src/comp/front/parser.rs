@@ -456,7 +456,7 @@ fn parse_ty(&parser p) -> @ast::ty {
     let ast::ty_ t;
     // FIXME: do something with this
 
-    let ast::layer lyr = parse_layer(p);
+    parse_layer(p);
     if (eat_word(p, "bool")) {
         t = ast::ty_bool;
     } else if (eat_word(p, "int")) {
@@ -863,15 +863,12 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_fail(msg);
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
-        auto hi = e.span.hi;
         ex = ast::expr_log(1, e);
     } else if (eat_word(p, "log_err")) {
         auto e = parse_expr(p);
-        auto hi = e.span.hi;
         ex = ast::expr_log(0, e);
     } else if (eat_word(p, "assert")) {
         auto e = parse_expr(p);
-        auto hi = e.span.hi;
         ex = ast::expr_assert(e);
     } else if (eat_word(p, "check")) {
         /* Should be a predicate (pure boolean function) applied to 
@@ -879,7 +876,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
            but the typechecker enforces that. */
 
         auto e = parse_expr(p);
-        auto hi = e.span.hi;
         ex = ast::expr_check(ast::checked, e);
     } else if (eat_word(p, "claim")) {
         /* Same rules as check, except that if check-claims
@@ -887,7 +883,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         claims into check */
         
         auto e = parse_expr(p);
-        auto hi = e.span.hi;
         ex = ast::expr_check(ast::unchecked, e);
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
@@ -1253,7 +1248,6 @@ fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
 }
 
 fn parse_if_expr(&parser p) -> @ast::expr {
-    auto lo = p.get_last_lo_pos();
     if (eat_word(p, "check")) {
             auto q = parse_if_expr_1(p);
             ret mk_expr(p, q._3, q._4, ast::expr_if_check(q._0, q._1, q._2));
@@ -1282,7 +1276,6 @@ fn parse_else_expr(&parser p) -> @ast::expr {
 }
 
 fn parse_head_local(&parser p) -> @ast::local {
-    auto lo = p.get_lo_pos();
     if (is_word(p, "auto")) {
         ret parse_auto_local(p);
     } else { 
@@ -1507,11 +1500,9 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
     auto lo = p.get_lo_pos();
     if (eat_word(p, "let")) {
         auto decl = parse_let(p);
-        auto hi = p.get_span();
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_id()));
     } else if (eat_word(p, "auto")) {
         auto decl = parse_auto(p);
-        auto hi = p.get_span();
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_id()));
     } else {
 
@@ -1918,7 +1909,7 @@ fn parse_item_native_fn(&parser p) -> @ast::native_item {
 }
 
 fn parse_native_item(&parser p) -> @ast::native_item {
-    let ast::layer lyr = parse_layer(p);
+    parse_layer(p);
     if (eat_word(p, "type")) {
         ret parse_item_native_type(p);
     } else if (eat_word(p, "fn")) {
@@ -2010,7 +2001,7 @@ fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
                 }
                 auto vhi = p.get_hi_pos();
                 expect(p, token::SEMI);
-                auto id = p.get_id();
+                p.get_id();
                 auto vr =
                     rec(name=p.get_str(name),
                         args=args,

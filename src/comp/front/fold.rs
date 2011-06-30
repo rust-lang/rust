@@ -138,7 +138,6 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
 
 fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld) 
     -> crate_directive_ {
-    auto fold_meta_item = bind fold_meta_item_(_,fld);
     ret alt(cd) {
         case(cdir_expr(?e)) { cdir_expr(fld.fold_expr(e)) }
         case(cdir_let(?id, ?e, ?cds)) {

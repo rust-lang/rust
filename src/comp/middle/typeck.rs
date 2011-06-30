@@ -133,7 +133,6 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt._1,
                             ty_param_count);
     auto ty_param_vars = bind_result._0;
-    auto t = bind_result._1;
     auto ty_substs_opt;
     auto ty_substs_len = vec::len[@ast::ty](pth.node.types);
     if (ty_substs_len > 0u) {
@@ -260,7 +259,6 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                                        params_opt_and_ty._1);
         ret typ;
     }
-    auto mut = ast::imm;
     auto typ;
     auto cname = none[str];
     alt (ast_ty.node) {
@@ -691,11 +689,10 @@ mod collect {
                                       ty_params);
             }
             case (ast::item_obj(?object, ?ty_params, ?ctor_id)) {
-                // This calls ty_of_obj().
-
-                auto t_obj = ty_of_item(cx, it);
                 // Now we need to call ty_of_obj_ctor(); this is the type that
                 // we write into the table for this item.
+
+                ty_of_item(cx, it);
 
                 auto tpt =
                     ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
@@ -924,7 +921,6 @@ fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
 // Returns the types of the arguments to a tag variant.
 fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
                      &vec[ty::t] tag_ty_params) -> vec[ty::t] {
-    auto ty_param_count = vec::len[ty::t](tag_ty_params);
     let vec[ty::t] result = [];
     auto tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt (ty::struct(ccx.tcx, tpt._1)) {
@@ -1025,12 +1021,14 @@ mod writeback {
         fn visit_item_post(@mutable bool ignore, &@ast::item item) {
             *ignore = false;
         }
-        fn visit_fn_pre(@mutable bool ignore, &ast::_fn f, &vec[ast::ty_param] tps,
-                        &span sp, &ast::fn_ident i, ast::node_id d) {
+        fn visit_fn_pre(@mutable bool ignore, &ast::_fn f,
+                        &vec[ast::ty_param] tps, &span sp,
+                        &ast::fn_ident i, ast::node_id d) {
             *ignore = true;
         }
-        fn visit_fn_post(@mutable bool ignore, &ast::_fn f, &vec[ast::ty_param] tps, 
-                         &span sp, &ast::fn_ident i, ast::node_id d) {
+        fn visit_fn_post(@mutable bool ignore, &ast::_fn f,
+                         &vec[ast::ty_param] tps, &span sp,
+                         &ast::fn_ident i, ast::node_id d) {
             *ignore = false;
         }
         fn keep_going(@mutable bool ignore) -> bool { ret !*ignore; }
@@ -1555,7 +1553,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::ty_only_fixup(fcx, id, oper_t);
         }
         case (ast::expr_path(?pth)) {
-            auto t = ty::mk_nil(fcx.ccx.tcx);
             auto defn = fcx.ccx.tcx.def_map.get(id);
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
             if (ty::def_has_ty_params(defn)) {
@@ -1627,7 +1624,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::nil_ty(fcx.ccx.tcx, id);
         }
         case (ast::expr_log(?l, ?e)) {
-            auto expr_t = check_expr(fcx, e);
+            check_expr(fcx, e);
             write::nil_ty(fcx.ccx.tcx, id);
         }
         case (ast::expr_check(_, ?e)) {
@@ -1671,10 +1668,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             check_expr(fcx, rhs);
             auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
             auto chan_t = ty::mk_chan(fcx.ccx.tcx, rhs_t);
-            auto item_t;
             auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
             alt (structure_of(fcx, expr.span, lhs_t)) {
-                case (ty::ty_chan(?it)) { item_t = it; }
+                case (ty::ty_chan(?it)) { }
                 case (_) {
                     auto s = #fmt("mismatched types: expected chan \
                                    but found %s",
@@ -1755,7 +1751,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // Now typecheck the blocks.
 
             auto result_ty = next_ty_var(fcx);
-            let vec[ast::block] blocks = [];
             for (ast::arm arm in arms) {
                 check_block(fcx, arm.block);
                 auto bty = block_ty(fcx.ccx.tcx, arm.block);
@@ -2135,7 +2130,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                     this_obj=di));
 
             // Typecheck 'with_obj', if it exists.
-            let option::t[@ast::expr] with_obj = none[@ast::expr];
             alt (anon_obj.with_obj) {
                 case (none) { }
                 case (some(?e)) {
@@ -2192,7 +2186,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             for (@ast::method method in anon_obj.methods) {
                 check_method(fcx.ccx, method);
             }
-            auto t = next_ty_var(fcx);
+            next_ty_var(fcx);
             // Now remove the info from the stack.
 
             vec::pop[obj_info](fcx.ccx.obj_infos);

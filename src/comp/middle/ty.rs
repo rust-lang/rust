@@ -689,7 +689,6 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
             walk_ty(cx, walker, ret_ty);
         }
         case (ty_obj(?methods)) {
-            let vec[method] new_methods = [];
             for (method m in methods) {
                 for (arg a in m.inputs) { walk_ty(cx, walker, a.ty); }
                 walk_ty(cx, walker, m.output);

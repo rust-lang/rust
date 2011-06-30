@@ -61,7 +61,7 @@ fn enc_ty(&io::writer w, &@ctxt cx, &ty::t t) {
                 case (some(?a)) { w.write_str(a.s); ret; }
                 case (none) {
                     auto pos = w.get_buf_writer().tell();
-                    auto ss = enc_sty(w, cx, ty::struct(cx.tcx, t));
+                    enc_sty(w, cx, ty::struct(cx.tcx, t));
                     auto end = w.get_buf_writer().tell();
                     auto len = end - pos;
                     fn estimate_sz(uint u) -> uint {

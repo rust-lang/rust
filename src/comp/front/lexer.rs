@@ -148,7 +148,6 @@ fn consume_block_comment(&reader rdr) {
 
 fn digits_to_string(str s) -> int {
     let int accum_int = 0;
-    let int i = 0;
     for (u8 c in s) {
         accum_int *= 10;
         accum_int += dec_digit_val(c as char);
