@@ -97,6 +97,25 @@ void rust_chan::send(void *sptr) {
 
     return;
 }
+
+rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
+    size_t unit_sz = buffer.unit_sz;
+    maybe_proxy<rust_port> *port = this->port;
+    rust_task *target_task = NULL;
+    if (target->is_proxy() == false) {
+        port = this->port;
+        target_task = target->referent();
+    } else {
+        rust_handle<rust_port> *handle =
+            task->sched->kernel->get_port_handle(port->as_referent());
+        maybe_proxy<rust_port> *proxy = new rust_proxy<rust_port> (handle);
+        LOG(task, mem, "new proxy: " PTR, proxy);
+        port = proxy;
+        target_task = target->as_proxy()->handle()->referent();
+    }
+    return new (target_task) rust_chan(target_task, port, unit_sz);
+}
+
 //
 // Local Variables:
 // mode: C++

@@ -19,6 +19,8 @@ public:
     bool is_associated();
 
     void send(void *sptr);
+
+    rust_chan *clone(maybe_proxy<rust_task> *target);
 };
 
 //

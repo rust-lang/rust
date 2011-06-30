@@ -166,21 +166,7 @@ upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
                   rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
-    size_t unit_sz = chan->buffer.unit_sz;
-    maybe_proxy<rust_port> *port = chan->port;
-    rust_task *target_task = NULL;
-    if (target->is_proxy() == false) {
-        port = chan->port;
-        target_task = target->referent();
-    } else {
-        rust_handle<rust_port> *handle =
-            task->sched->kernel->get_port_handle(port->as_referent());
-        maybe_proxy<rust_port> *proxy = new rust_proxy<rust_port> (handle);
-        LOG(task, mem, "new proxy: " PTR, proxy);
-        port = proxy;
-        target_task = target->as_proxy()->handle()->referent();
-    }
-    return new (target_task) rust_chan(target_task, port, unit_sz);
+    return chan->clone(target);
 }
 
 extern "C" CDECL void
