@@ -397,6 +397,12 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
                            m.node.id, e, v);
             }
         }
+        case (expr_embeded_type(?ty)) {
+            vt(v).visit_ty(ty, e, v);
+        }
+        case (expr_embeded_block(?blk)) {
+            vt(v).visit_block(blk, e, v);
+        }
     }
 }
 

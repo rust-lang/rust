@@ -445,6 +445,12 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_anon_obj(?ao, ?typms)) {
             expr_anon_obj(fold_anon_obj(ao), typms)
                 }
+        case (expr_embeded_type(?ty)) {
+            expr_embeded_type(fld.fold_ty(ty))
+        }
+        case (expr_embeded_block(?blk)) {
+            expr_embeded_block(fld.fold_block(blk))
+        }
     }
 }
 
@@ -695,22 +701,6 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
                   fold_path = bind f_path(afp,result,_),
                   fold_local = bind f_local(afp,result,_));
     ret result;
-    /*
-    ret rec(fold_crate = noop_fold_crate,
-          fold_crate_directive = noop_fold_crate_drective,
-          fold_view_item = noop_fold_view_item,
-          fold_native_item = noop_fold_native_item,
-          fold_item = noop_fold_item,
-          fold_method = noop_fold_method,
-          fold_block = noop_fold_block,
-          fold_stmt = noop_fold_stmt,
-          fold_arm = noop_fold_arm,
-          fold_pat = noop_fold_pat,
-          fold_decl = noop_fold_decl,
-          fold_expr = noop_fold_expr,
-          fold_ty = noop_fold_ty,
-          fold_constr = noop_fold_constr,
-          fold_fn = noop_fold_fn);*/
 }
 
 

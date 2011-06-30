@@ -410,6 +410,12 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
                 v.visit_method_post(m);
             }
         }
+        case (ast::expr_embeded_type(?ty)) {
+            walk_ty(v, ty);
+        }
+        case (ast::expr_embeded_block(?blk)) {
+            walk_block(v, blk);
+        }
     }
     v.visit_expr_post(e);
 }

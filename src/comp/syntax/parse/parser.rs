@@ -804,6 +804,13 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             parse_seq_to_end_ivec(token::RBRACKET, some(token::COMMA),
                                   parse_expr, p);
         ex = ast::expr_vec(es, mut, ast::sk_rc);
+    } else if (p.peek() == token::POUND_LT) {
+        p.bump();
+        ex = ast::expr_embeded_type(parse_ty(p));
+        expect(p, token::GT);
+    } else if (p.peek() == token::POUND_LBRACE) {
+        p.bump();
+        ex = ast::expr_embeded_block(parse_block_tail(p));
     } else if (p.peek() == token::TILDE) {
         p.bump();
         alt (p.peek()) {
@@ -1715,10 +1722,15 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
 }
 
 fn parse_block(&parser p) -> ast::block {
+    expect(p, token::LBRACE);
+    be parse_block_tail(p);
+}
+
+// some blocks start with "#{"... 
+fn parse_block_tail(&parser p) -> ast::block {
     auto lo = p.get_lo_pos();
     let (@ast::stmt)[] stmts = ~[];
     let option::t[@ast::expr] expr = none;
-    expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
         alt (p.peek()) {
             case (token::SEMI) {
@@ -2204,8 +2216,10 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
         if (p.peek() == token::LBRACKET) {
             auto first_attr = parse_attribute_naked(p, ast::attr_outer, lo);
             ret some(left(~[first_attr] + parse_outer_attributes(p)));
-        } else {
+        } else if (! (p.peek() == token::LT || p.peek() == token::LBRACKET)) {
             ret some(right(parse_syntax_ext_naked(p, lo)));
+        } else {
+            ret none;
         }
     } else {
         ret none;
