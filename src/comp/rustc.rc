@@ -57,6 +57,7 @@ mod front {
     mod parser;
     mod token;
     mod eval;
+    mod config;
 }
 
 mod back {

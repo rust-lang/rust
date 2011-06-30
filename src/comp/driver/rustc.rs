@@ -80,6 +80,8 @@ fn compile_input(session::session sess, eval::env env, str input,
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
+    crate = time(time_passes, "configuration",
+                 bind front::config::strip_unconfigured_items(crate));
     auto ast_map = time(time_passes, "ast indexing",
                         bind middle::ast_map::map_crate(*crate));
     auto d =
