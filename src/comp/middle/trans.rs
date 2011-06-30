@@ -180,8 +180,16 @@ type fn_ctxt =
         // env*, int, int).  These are also available via
         // llvm::LLVMGetParam(llfn, uint) where uint = 1, 2, 0 respectively,
         // but we unpack them into these fields for convenience.
+
+        // Points to the current task.
         ValueRef lltaskptr,
+
+        // Points to the current environment (bindings of variables to
+        // values), if this is a regular function; points to the current
+        // object, if this is a method.
         ValueRef llenv,
+
+        // Points to where the return value of this function should end up.
         ValueRef llretptr,
 
         // The next three elements: "hoisted basic blocks" containing
@@ -1726,19 +1734,19 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
 
 fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
               &mutable option::t[@tydesc_info] static_ti) -> result {
-    // Is the supplied type a type param? If so, return the passed-in tydesc.
 
+    // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty::type_param(cx.fcx.lcx.ccx.tcx, t)) {
         case (some(?id)) { ret rslt(cx, cx.fcx.lltydescs.(id)); }
         case (none) {/* fall through */ }
     }
-    // Does it contain a type param? If so, generate a derived tydesc.
 
+    // Does it contain a type param? If so, generate a derived tydesc.
     if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, t)) {
         ret get_derived_tydesc(cx, t, escapes, static_ti);
     }
-    // Otherwise, generate a tydesc if necessary, and return it.
 
+    // Otherwise, generate a tydesc if necessary, and return it.
     auto info = get_static_tydesc(cx, t, []);
     static_ti = some[@tydesc_info](info);
     ret rslt(cx, info.tydesc);
@@ -5003,8 +5011,8 @@ fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
                 r.bcx.build.GEP(r.val,
                                 [C_int(0), C_int(abi::obj_field_vtbl)]);
             vtbl = r.bcx.build.Load(vtbl);
-            // +1 because slot #0 contains the destructor
 
+            // +1 because slot #0 contains the destructor
             auto v = r.bcx.build.GEP(vtbl, [C_int(0), C_int(ix + 1u as int)]);
             auto lvo = lval_mem(r.bcx, v);
             let ty::t fn_ty =
@@ -7760,11 +7768,10 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     if (!is_terminated(rslt.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
-
        rslt.bcx.build.RetVoid();
     }
-    // Insert the mandatory first few basic blocks before lltop.
 
+    // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 }
 
