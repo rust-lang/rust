@@ -700,6 +700,15 @@ ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
     v->payload.ptr->fill = new_size;
 }
 
+extern "C" void
+pin_task(rust_task *task) {
+    task->pin();
+}
+
+extern "C" void
+unpin_task(rust_task *task) {
+    task->unpin();
+}
 
 //
 // Local Variables:

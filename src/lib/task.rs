@@ -2,6 +2,8 @@ native "rust" mod rustrt {
     fn task_sleep(uint time_in_us);
     fn task_yield();
     fn task_join(task t);
+    fn pin_task();
+    fn unpin_task();
 }
 
 /**
@@ -19,6 +21,14 @@ fn yield() {
 
 fn join(task t) {
     ret rustrt::task_join(t);
+}
+
+fn pin() {
+    rustrt::pin_task();
+}
+
+fn unpin() {
+    rustrt::unpin_task();
 }
 
 // Local Variables:

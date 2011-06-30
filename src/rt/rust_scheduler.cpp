@@ -83,12 +83,12 @@ rust_scheduler::number_of_live_tasks() {
  * Delete any dead tasks.
  */
 void
-rust_scheduler::reap_dead_tasks() {
+rust_scheduler::reap_dead_tasks(int id) {
     I(this, kernel->scheduler_lock.lock_held_by_current_thread());
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
         // Make sure this task isn't still running somewhere else...
-        if (task->ref_count == 0 && task->can_schedule()) {
+        if (task->ref_count == 0 && task->can_schedule(id)) {
             I(this, task->tasks_waiting_to_join.is_empty());
             dead_tasks.remove(task);
             DLOG(this, task,
@@ -124,7 +124,7 @@ void rust_scheduler::drain_incoming_message_queue(bool process) {
  * Returns NULL if no tasks can be scheduled.
  */
 rust_task *
-rust_scheduler::schedule_task() {
+rust_scheduler::schedule_task(int id) {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
@@ -133,7 +133,7 @@ rust_scheduler::schedule_task() {
         // Look around for a runnable task, starting at k.
         for(size_t j = 0; j < running_tasks.length(); ++j) {
             size_t  i = (j + k) % running_tasks.length();
-            if (running_tasks[i]->can_schedule()) {
+            if (running_tasks[i]->can_schedule(id)) {
                 return (rust_task *)running_tasks[i];
             }
         }
@@ -202,7 +202,7 @@ rust_scheduler::start_main_loop(int id) {
 
         drain_incoming_message_queue(true);
 
-        rust_task *scheduled_task = schedule_task();
+        rust_task *scheduled_task = schedule_task(id);
 
         // The scheduler busy waits until a task is available for scheduling.
         // Eventually we'll want a smarter way to do this, perhaps sleep
@@ -239,10 +239,9 @@ rust_scheduler::start_main_loop(int id) {
         DLOG(this, task,
              "Running task %p on worker %d",
              scheduled_task, id);
-        I(this, !scheduled_task->active);
-        scheduled_task->active = true;
+        scheduled_task->running_on = id;
         activate(scheduled_task);
-        scheduled_task->active = false;
+        scheduled_task->running_on = -1;
 
         DLOG(this, task,
              "returned from task %s @0x%" PRIxPTR
@@ -253,7 +252,7 @@ rust_scheduler::start_main_loop(int id) {
              scheduled_task->rust_sp,
              id);
 
-        reap_dead_tasks();
+        reap_dead_tasks(id);
     }
 
     DLOG(this, dom,
@@ -272,7 +271,7 @@ rust_scheduler::start_main_loop(int id) {
         } else {
             drain_incoming_message_queue(true);
         }
-        reap_dead_tasks();
+        reap_dead_tasks(id);
     }
 
     DLOG(this, dom, "finished main-loop %d (dom.rval = %d)", id, rval);

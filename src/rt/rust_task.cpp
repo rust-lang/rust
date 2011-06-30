@@ -70,7 +70,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     list_index(-1),
     rendezvous_ptr(0),
     handle(NULL),
-    active(false),
+    running_on(-1),
+    pinned_on(-1),
     local_region(&sched->srv->local_region),
     synchronized_region(&sched->srv->synchronized_region)
 {
@@ -471,9 +472,11 @@ rust_task::get_handle() {
     return handle;
 }
 
-bool rust_task::can_schedule()
+bool rust_task::can_schedule(int id)
 {
-    return yield_timer.has_timed_out() && !active;
+    return yield_timer.has_timed_out() && 
+        running_on == -1 &&
+        (pinned_on == -1 || pinned_on == id);
 }
 
 void *
@@ -522,6 +525,14 @@ rust_task::free(void *mem, memory_region::memory_region_type type) {
         synchronized_region.free(mem);
     }
     return;
+}
+
+void rust_task::pin() {
+    pinned_on = running_on;
+}
+
+void rust_task::unpin() {
+    pinned_on = -1;
 }
 
 //

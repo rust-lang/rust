@@ -77,7 +77,8 @@ rust_task : public maybe_proxy<rust_task>,
     
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
-    volatile bool active;
+    int running_on;
+    int pinned_on;
 
     memory_region local_region;
     memory_region synchronized_region;
@@ -143,7 +144,7 @@ rust_task : public maybe_proxy<rust_task>,
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();
 
-    bool can_schedule();
+    bool can_schedule(int worker);
 
     void *malloc(size_t size, memory_region::memory_region_type type);
     void *calloc(size_t size);
@@ -151,6 +152,9 @@ rust_task : public maybe_proxy<rust_task>,
     void *realloc(void *mem, size_t size,
         memory_region::memory_region_type type);
     void free(void *mem, memory_region::memory_region_type type);
+
+    void pin();
+    void unpin();
 };
 
 //
