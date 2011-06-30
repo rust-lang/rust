@@ -361,12 +361,8 @@ fn next_token(&reader rdr) -> token::token {
         } else { ret token::BINOP(op); }
     }
     alt (c) {
-        case (
-             // One-byte tokens.
-             '?') {
-            rdr.bump();
-            ret token::QUES;
-        }
+        // One-byte tokens.
+        case ('?') { rdr.bump(); ret token::QUES; }
         case (';') { rdr.bump(); ret token::SEMI; }
         case (',') { rdr.bump(); ret token::COMMA; }
         case ('.') { rdr.bump(); ret token::DOT; }
@@ -377,7 +373,18 @@ fn next_token(&reader rdr) -> token::token {
         case ('[') { rdr.bump(); ret token::LBRACKET; }
         case (']') { rdr.bump(); ret token::RBRACKET; }
         case ('@') { rdr.bump(); ret token::AT; }
-        case ('#') { rdr.bump(); ret token::POUND; }
+        case ('#') { 
+            rdr.bump(); 
+            if (rdr.curr() == '<') {
+                rdr.bump();
+                ret token::POUND_LT;
+            }
+            if (rdr.curr() == '{') {
+                rdr.bump();
+                ret token::POUND_LBRACE;
+            }
+            ret token::POUND;
+        }
         case ('~') { rdr.bump(); ret token::TILDE; }
         case (':') {
             rdr.bump();
@@ -386,9 +393,8 @@ fn next_token(&reader rdr) -> token::token {
                 ret token::MOD_SEP;
             } else { ret token::COLON; }
         }
-        case (
-             // Multi-byte tokens.
-             '=') {
+        // Multi-byte tokens.
+        case ('=') {
             rdr.bump();
             if (rdr.curr() == '=') {
                 rdr.bump();

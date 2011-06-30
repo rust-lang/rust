@@ -60,6 +60,8 @@ tag token {
     LBRACE;
     RBRACE;
     POUND;
+    POUND_LBRACE;
+    POUND_LT;
 
     /* Literals */
     LIT_INT(int);
@@ -110,11 +112,8 @@ fn to_str(lexer::reader r, token t) -> str {
         case (ANDAND) { ret "&&"; }
         case (BINOP(?op)) { ret binop_to_str(op); }
         case (BINOPEQ(?op)) { ret binop_to_str(op) + "="; }
-        case (
              /* Structural symbols */
-             AT) {
-            ret "@";
-        }
+        case (AT) { ret "@"; }
         case (DOT) { ret "."; }
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
@@ -133,11 +132,10 @@ fn to_str(lexer::reader r, token t) -> str {
         case (LBRACE) { ret "{"; }
         case (RBRACE) { ret "}"; }
         case (POUND) { ret "#"; }
-        case (
+        case (POUND_LBRACE) { ret "#{"; }
+        case (POUND_LT) { ret "#<"; }
              /* Literals */
-             LIT_INT(?i)) {
-            ret int::to_str(i, 10u);
-        }
+        case (LIT_INT(?i)) { ret int::to_str(i, 10u); }
         case (LIT_UINT(?u)) { ret uint::to_str(u, 10u); }
         case (LIT_MACH_INT(?tm, ?i)) {
             ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
@@ -147,25 +145,19 @@ fn to_str(lexer::reader r, token t) -> str {
                     ty_mach_to_str(tm);
         }
         case (LIT_FLOAT(?s)) { ret interner::get[str](*r.get_interner(), s); }
-        case (LIT_STR(?s)) {
-            // FIXME: escape.
-
+        case (LIT_STR(?s)) { // FIXME: escape.
             ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
         }
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
-
             auto tmp = "'";
             str::push_char(tmp, c);
             str::push_byte(tmp, '\'' as u8);
             ret tmp;
         }
         case (LIT_BOOL(?b)) { if (b) { ret "true"; } else { ret "false"; } }
-        case (
              /* Name components */
-             IDENT(?s, _)) {
-            ret interner::get[str](*r.get_interner(), s);
-        }
+        case (IDENT(?s, _)) { ret interner::get[str](*r.get_interner(), s); }
         case (IDX(?i)) { ret "_" + int::to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
         case (BRACEQUOTE(_)) { ret "<bracequote>"; }

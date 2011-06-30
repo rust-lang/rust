@@ -297,6 +297,9 @@ tag expr_ {
     expr_port(option::t[@ty]);
     expr_chan(@expr);
     expr_anon_obj(anon_obj, vec[ty_param]);
+    /* for the macro system */
+    expr_embeded_type(@ty);
+    expr_embeded_block(block);
 }
 
 type lit = spanned[lit_];
