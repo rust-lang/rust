@@ -1,7 +1,7 @@
 
 import driver::session;
 import lib::llvm::llvm;
-import middle::attr;
+import front::attr;
 import middle::trans;
 import middle::ty;
 import std::str;

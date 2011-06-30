@@ -6,7 +6,7 @@ import lib::llvm::False;
 import lib::llvm::llvm;
 import lib::llvm::mk_object_file;
 import lib::llvm::mk_section_iter;
-import middle::attr;
+import front::attr;
 import middle::resolve;
 import middle::walk;
 import back::x86;

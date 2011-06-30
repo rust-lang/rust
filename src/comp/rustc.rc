@@ -15,7 +15,6 @@ use std (name = "std",
          url = "http://rust-lang.org/src/std");
 
 mod middle {
-    mod attr;
     mod trans;
     mod ty;
     mod walk;
@@ -47,6 +46,7 @@ mod pretty {
 
 mod front {
     mod ast;
+    mod attr;
     mod ext;
     mod extfmt;
     mod extenv;

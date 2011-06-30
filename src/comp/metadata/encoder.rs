@@ -13,7 +13,7 @@ import tags::*;
 import middle::trans::crate_ctxt;
 import middle::trans::node_id_type;
 import middle::ty;
-import middle::attr;
+import front::attr;
 
 export def_to_str;
 export hash_path;
