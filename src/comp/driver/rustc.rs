@@ -396,26 +396,23 @@ fn main(vec[str] args) {
         let str glu = binary_dir + "/lib/glue.o";
         let str main = "rt/main.o";
         let str stage = "-L" + binary_dir + "/lib";
-        let vec[str] gcc_args;
         let str prog = "gcc";
         // The invocations of gcc share some flags across platforms
 
-        let vec[str] common_args =
+        let vec[str] gcc_args =
             [stage, "-Lrt", "-lrustrt", glu,  "-m32", "-o",
              saved_out_filename, saved_out_filename + ".o"];
         auto shared_cmd;
+
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 shared_cmd = "-shared";
-                gcc_args = common_args + ["-lssp"];
             }
             case (session::os_macos) {
                 shared_cmd = "-dynamiclib";
-                gcc_args = common_args;
             }
             case (session::os_linux) {
                 shared_cmd = "-shared";
-                gcc_args = common_args;
             }
         }
 
