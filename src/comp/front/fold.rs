@@ -346,6 +346,11 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_if(fld.fold_expr(cond), fld.fold_block(tr), 
                     option::map(fld.fold_expr, fl))
                 }
+        case (expr_ternary(?cond, ?tr, ?fl)) {
+            expr_ternary(fld.fold_expr(cond),
+                         fld.fold_expr(tr),
+                         fld.fold_expr(fl))
+                }
         case (expr_while(?cond, ?body)) {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
                 }
@@ -363,6 +368,9 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_alt(?expr, ?arms)) {
             expr_alt(fld.fold_expr(expr), map(fld.fold_arm, arms))
                 }
+        case (expr_fn(?f)) {
+            expr_fn(fld.fold_fn(f))
+                }
         case (expr_block(?block)) {
             expr_block(fld.fold_block(block))
                 }
@@ -371,6 +379,9 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
                 }
         case (expr_assign(?el, ?er)) {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
+                }
+        case (expr_swap(?el, ?er)) {
+            expr_swap(fld.fold_expr(el), fld.fold_expr(er))
                 }
         case (expr_assign_op(?op, ?el, ?er)) {
             expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
@@ -407,6 +418,10 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_log(?lv, ?e)) { expr_log(lv, fld.fold_expr(e)) }
         case (expr_assert(?e)) { expr_assert(fld.fold_expr(e)) }
         case (expr_check(?m, ?e)) { expr_check(m, fld.fold_expr(e)) }
+        case (expr_if_check(?cond, ?tr, ?fl)) {
+            expr_if_check(fld.fold_expr(cond), fld.fold_block(tr), 
+                          option::map(fld.fold_expr, fl))
+                }
         case (expr_port(?ot)) { 
             expr_port(alt(ot) {
                     case (option::some(?t)) { option::some(fld.fold_ty(t)) }
