@@ -1,9 +1,12 @@
-
-
-
 // Export the tag variants, without the tag
+
 mod foo {
-    tag t { t1; }
+  export t1;
+  tag t {
+    t1;
+  }
 }
 
-fn main() { auto v = foo::t1; }
+fn main() {
+  auto v = foo::t1;
+}

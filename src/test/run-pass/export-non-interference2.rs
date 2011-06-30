@@ -1,10 +1,18 @@
-
-
 mod foo {
-    mod bar {
-        fn y() { x(); }
+
+  export bar;
+
+  mod bar {
+    fn y() {
+      x();
     }
-    fn x() { log "x"; }
+  }
+
+  fn x() {
+    log "x";
+  }
 }
 
-fn main() { foo::bar::y(); }
+fn main() {
+  foo::bar::y();
+}
