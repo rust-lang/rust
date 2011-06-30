@@ -230,7 +230,7 @@ endif
 
 config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
-	$(S)configure $(CFG_CONFIGURE_ARGS)
+	$(Q)$(S)configure $(CFG_CONFIGURE_ARGS)
 
 
 ######################################################################
@@ -253,28 +253,33 @@ include $(CFG_SRC_DIR)/mk/docs.mk
 # Secondary makefiles, conditionalized for speed
 ######################################################################
 
-ifneq ($(findstring dist,$(MAKECMDGOALS)),)
+ifneq ($(strip $(findstring dist,$(MAKECMDGOALS))   \
+               $(findstring check,$(MAKECMDGOALS))  \
+               $(findstring test,$(MAKECMDGOALS))   \
+               $(findstring clean,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including dist rules)
   include $(CFG_SRC_DIR)/mk/dist.mk
 endif
 
-ifneq ($(findstring snap,$(MAKECMDGOALS)),)
+ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
+               $(findstring clean,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including snap rules)
   include $(CFG_SRC_DIR)/mk/snap.mk
 endif
 
 ifneq ($(findstring reformat,$(MAKECMDGOALS)),)
+  CFG_INFO := $(info cfg: including reformat rules)
   include $(CFG_SRC_DIR)/mk/pp.mk
 endif
 
-ifneq ($(findstring check,$(MAKECMDGOALS))\
-       $(findstring test,$(MAKECMDGOALS))\
-       $(findstring tidy,$(MAKECMDGOALS)),)
-  include $(CFG_SRC_DIR)/mk/dist.mk
+ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
+               $(findstring test,$(MAKECMDGOALS))  \
+               $(findstring tidy,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including test rules)
   include $(CFG_SRC_DIR)/mk/tests.mk
 endif
 
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)
-  include $(CFG_SRC_DIR)/mk/dist.mk
-  include $(CFG_SRC_DIR)/mk/snap.mk
-  include $(CFG_SRC_DIR)/mk/tests.mk
+  CFG_INFO := $(info cfg: including clean rules)
   include $(CFG_SRC_DIR)/mk/clean.mk
 endif
