@@ -528,7 +528,13 @@ rust_task::free(void *mem, memory_region::memory_region_type type) {
 }
 
 void rust_task::pin() {
+    I(this->sched, running_on != -1);
     pinned_on = running_on;
+}
+
+void rust_task::pin(int id) {
+    I(this->sched, running_on == -1);
+    pinned_on = id;
 }
 
 void rust_task::unpin() {

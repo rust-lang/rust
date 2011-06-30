@@ -154,6 +154,7 @@ rust_task : public maybe_proxy<rust_task>,
     void free(void *mem, memory_region::memory_region_type type);
 
     void pin();
+    void pin(int id);
     void unpin();
 };
 

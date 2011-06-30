@@ -291,6 +291,8 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         new (this->kernel) rust_task (this, &newborn_tasks, spawner, name);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
+    if(spawner)
+        task->pin(spawner->pinned_on);
     newborn_tasks.append(task);
     return task;
 }
