@@ -1209,22 +1209,22 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
             }
             case (ty::ty_fn(_, _, _, _, _)) {
                 ret ty::mk_imm_tup(ccx.tcx,
-                                   [ty::mk_imm_box(ccx.tcx,
-                                                   ty::mk_nil(ccx.tcx)),
-                                    ty::mk_imm_box(ccx.tcx,
-                                                   ty::mk_nil(ccx.tcx))]);
+                                   ~[ty::mk_imm_box(ccx.tcx,
+                                                    ty::mk_nil(ccx.tcx)),
+                                     ty::mk_imm_box(ccx.tcx,
+                                                    ty::mk_nil(ccx.tcx))]);
             }
             case (ty::ty_obj(_)) {
                 ret ty::mk_imm_tup(ccx.tcx,
-                                   [ty::mk_imm_box(ccx.tcx,
-                                                   ty::mk_nil(ccx.tcx)),
-                                    ty::mk_imm_box(ccx.tcx,
-                                                   ty::mk_nil(ccx.tcx))]);
+                                   ~[ty::mk_imm_box(ccx.tcx,
+                                                    ty::mk_nil(ccx.tcx)),
+                                     ty::mk_imm_box(ccx.tcx,
+                                                    ty::mk_nil(ccx.tcx))]);
             }
             case (ty::ty_res(_, ?sub, ?tps)) {
                 auto sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
-                ret ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx),
-                                             simplify_type(ccx, sub1)]);
+                ret ty::mk_imm_tup(ccx.tcx, ~[ty::mk_int(ccx.tcx),
+                                              simplify_type(ccx, sub1)]);
             }
             case (_) { ret typ; }
         }
@@ -1256,7 +1256,11 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
     auto max_size = 0u;
     auto variants = ty::tag_variants(cx.tcx, tid);
     for (ty::variant_info variant in variants) {
-        auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, variant.args));
+        // TODO: Remove this vec->ivec conversion.
+        auto args = ~[];
+        for (ty::t typ in variant.args) { args += ~[typ]; }
+
+        auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, args));
         // Perform any type parameter substitutions.
 
         tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
@@ -1469,7 +1473,11 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t, ValueRef base, &vec[int] ixs) ->
     // flattened the incoming structure.
 
     auto s = split_type(cx.fcx.lcx.ccx, t, ixs, 0u);
-    auto prefix_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, s.prefix);
+
+    auto args = ~[];
+    for (ty::t typ in s.prefix) { args += ~[typ]; }
+    auto prefix_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, args);
+
     auto bcx = cx;
     auto sz = size_of(bcx, prefix_ty);
     bcx = sz.bcx;
@@ -1498,11 +1506,11 @@ fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast::def_id tag_id,
     auto elem_ty = ty::mk_nil(cx.fcx.lcx.ccx.tcx); // typestate infelicity
 
     auto i = 0;
-    let vec[ty::t] true_arg_tys = [];
+    let ty::t[] true_arg_tys = ~[];
     for (ty::t aty in arg_tys) {
         auto arg_ty =
             ty::substitute_type_params(cx.fcx.lcx.ccx.tcx, ty_substs, aty);
-        true_arg_tys += [arg_ty];
+        true_arg_tys += ~[arg_ty];
         if (i == ix) { elem_ty = arg_ty; }
         i += 1;
     }
@@ -1559,7 +1567,7 @@ fn trans_malloc_boxed(&@block_ctxt cx, ty::t t) -> result {
         ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx,
                        // The mk_int here is the space being
                        // reserved for the refcount.
-                       [ty::mk_int(cx.fcx.lcx.ccx.tcx), t]);
+                       ~[ty::mk_int(cx.fcx.lcx.ccx.tcx), t]);
     auto box_ptr = ty::mk_imm_box(cx.fcx.lcx.ccx.tcx, t);
     auto sz = size_of(cx, boxed_body);
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
@@ -2111,9 +2119,8 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
 fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
                   ty::t inner_t, &vec[ty::t] tps) -> result {
     auto ccx = cx.fcx.lcx.ccx;
-
     auto inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
-    auto tup_ty = ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t_s]);
+    auto tup_ty = ty::mk_imm_tup(ccx.tcx, ~[ty::mk_int(ccx.tcx), inner_t_s]);
     auto drop_cx = new_sub_block_ctxt(cx, "drop res");
     auto next_cx = new_sub_block_ctxt(cx, "next");
 
@@ -5343,8 +5350,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 auto arg = trans_expr(bcx, e);
                 bcx = arg.bcx;
                 vec::push[ValueRef](bound_vals, arg.val);
-                vec::push[ty::t](bound_tys,
-                                 ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
+                bound_tys += [ty::expr_ty(cx.fcx.lcx.ccx.tcx, e)];
             }
 
             // Synthesize a closure type.
@@ -5352,8 +5358,13 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             // First, synthesize a tuple type containing the types of all the
             // bound expressions.
             // bindings_ty = [bound_ty1, bound_ty2, ...]
+
+            // TODO: Remove this vec->ivec conversion.
+            auto bound_tys_ivec = ~[];
+            for (ty::t typ in bound_tys) { bound_tys_ivec += ~[typ]; }
+
             let ty::t bindings_ty =
-                ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, bound_tys);
+                ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, bound_tys_ivec);
 
             // NB: keep this in sync with T_closure_ptr; we're making
             // a ty::t structure that has the same "shape" as the LLVM type
@@ -5362,8 +5373,8 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             // Make a vector that contains ty_param_count copies of tydesc_ty.
             // (We'll need room for that many tydescs in the closure.)
             let ty::t tydesc_ty = ty::mk_type(cx.fcx.lcx.ccx.tcx);
-            let vec[ty::t] captured_tys =
-                vec::init_elt[ty::t](tydesc_ty, ty_param_count);
+            let ty::t[] captured_tys =
+                std::ivec::init_elt[ty::t](tydesc_ty, ty_param_count);
 
             // Get all the types we've got (some of which we synthesized
             // ourselves) into a vector.  The whole things ends up looking
@@ -5371,9 +5382,9 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
 
             // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
             // ...], [tydesc_ty, tydesc_ty, ...]]
-            let vec[ty::t] closure_tys =
-                [tydesc_ty, outgoing_fty, bindings_ty,
-                 ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, captured_tys)];
+            let ty::t[] closure_tys =
+                ~[tydesc_ty, outgoing_fty, bindings_ty,
+                  ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, captured_tys)];
 
             // Finally, synthesize a type for that whole vector.
             let ty::t closure_ty =
@@ -5745,8 +5756,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
     auto body = bcx.build.GEP(vec_val, [C_int(0), C_int(abi::vec_elt_data)]);
     auto pseudo_tup_ty =
         ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx,
-                       vec::init_elt[ty::t](unit_ty,
-                                            vec::len[@ast::expr](args)));
+                       std::ivec::init_elt[ty::t](unit_ty, vec::len(args)));
     let int i = 0;
     for (@ast::expr e in args) {
         auto src_res = trans_expr(bcx, e);
@@ -6524,7 +6534,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     // Translate the arguments, remembering their types and where the values
     // ended up.
 
-    let vec[ty::t] arg_tys = [];
+    let ty::t[] arg_tys = ~[];
     let vec[ValueRef] arg_vals = [];
     for (@ast::expr e in args) {
         auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
@@ -6535,7 +6545,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
         bcx = arg.bcx;
 
         vec::push[ValueRef](arg_vals, arg.val);
-        vec::push[ty::t](arg_tys, e_ty);
+        arg_tys += ~[e_ty];
     }
     // Make the tuple.
 
@@ -6785,13 +6795,13 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // the outer object?
     let vec[ast::anon_obj_field] additional_fields = [];
     let vec[result] additional_field_vals = [];
-    let vec[ty::t] additional_field_tys = [];
+    let ty::t[] additional_field_tys = ~[];
     alt (anon_obj.fields) {
         case (none) { }
         case (some(?fields)) {
             additional_fields = fields;
             for (ast::anon_obj_field f in fields) {
-                additional_field_tys += [node_id_type(ccx, f.id)];
+                additional_field_tys += ~[node_id_type(ccx, f.id)];
                 additional_field_vals += [trans_expr(bcx, f.expr)];
             }
         }
@@ -6895,9 +6905,9 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         // actually supporting typarams for anon objs yet, but let's
         // create space for them in case we ever want them.
         let ty::t tydesc_ty = ty::mk_type(ccx.tcx);
-        let vec[ty::t] tps = [];
+        let ty::t[] tps = ~[];
         for (ast::ty_param tp in ty_params) {
-            vec::push[ty::t](tps, tydesc_ty);
+            tps += ~[tydesc_ty];
         }
         // Synthesize a tuple type for typarams: [typaram, ...]
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
@@ -6905,8 +6915,8 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         // Tuple type for body: 
         // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
         let ty::t body_ty =
-            ty::mk_imm_tup(ccx.tcx, [tydesc_ty, typarams_ty, 
-                                     fields_ty, with_obj_ty]);
+            ty::mk_imm_tup(ccx.tcx, ~[tydesc_ty, typarams_ty,
+                                      fields_ty, with_obj_ty]);
 
         // Hand this type we've synthesized off to trans_malloc_boxed, which
         // allocates a box, including space for a refcount.
@@ -7498,9 +7508,9 @@ fn arg_tys_of_fn(&@crate_ctxt ccx,ast::node_id id) -> vec[ty::arg] {
 
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     auto bcx = llstaticallocas_block_ctxt(fcx);
-    let vec[ty::t] field_tys = [];
+    let ty::t[] field_tys = ~[];
     for (ast::obj_field f in bcx.fcx.lcx.obj_fields) {
-        field_tys += [node_id_type(bcx.fcx.lcx.ccx, f.id)];
+        field_tys += ~[node_id_type(bcx.fcx.lcx.ccx, f.id)];
     }
     // Synthesize a tuple type for the fields so that GEP_tup_like() can work
     // its magic.
@@ -7761,24 +7771,22 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     } else {
         // Otherwise, we have to synthesize a big structural type for the
         // object body.
-        let vec[ty::t] obj_fields = [];
-        for (ty::arg a in arg_tys) { vec::push[ty::t](obj_fields, a.ty); }
+        let ty::t[] obj_fields = ~[];
+        for (ty::arg a in arg_tys) { obj_fields += ~[a.ty]; }
 
         // Tuple type for fields: [field, ...]
         let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, obj_fields);
 
         auto tydesc_ty = ty::mk_type(ccx.tcx);
-        let vec[ty::t] tps = [];
-        for (ast::ty_param tp in ty_params) {
-            vec::push[ty::t](tps, tydesc_ty);
-        }
+        let ty::t[] tps = ~[];
+        for (ast::ty_param tp in ty_params) { tps += ~[tydesc_ty]; }
 
         // Tuple type for typarams: [typaram, ...]
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
 
         // Tuple type for body: [tydesc_ty, [typaram, ...], [field, ...]]
         let ty::t body_ty =
-            ty::mk_imm_tup(ccx.tcx, [tydesc_ty, typarams_ty, fields_ty]);
+            ty::mk_imm_tup(ccx.tcx, ~[tydesc_ty, typarams_ty, fields_ty]);
 
         // Hand this type we've synthesized off to trans_malloc_boxed, which
         // allocates a box, including space for a refcount.
@@ -7879,7 +7887,7 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
     auto arg_t = arg_tys_of_fn(cx.ccx, ctor_id).(0).ty;
-    auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, [ty::mk_int(cx.ccx.tcx), arg_t]);
+    auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, ~[ty::mk_int(cx.ccx.tcx), arg_t]);
     auto arg = load_if_immediate
         (bcx, fcx.llargs.get(dtor.decl.inputs.(0).id), arg_t);
 

@@ -587,7 +587,7 @@ fn mk_task(&ctxt cx) -> t { ret gen_ty(cx, ty_task); }
 
 fn mk_tup(&ctxt cx, &mt[] tms) -> t { ret gen_ty(cx, ty_tup(tms)); }
 
-fn mk_imm_tup(&ctxt cx, &vec[t] tys) -> t {
+fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
     // TODO: map
 
     let ty::mt[] mts = ~[];
@@ -1055,7 +1055,11 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
         case (ty_tag(?did, ?tps)) {
             auto variants = tag_variants(cx, did);
             for (variant_info variant in variants) {
-                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // TODO: Remove this vec->ivec conversion.
+                auto args = ~[];
+                for (ty::t arg in variant.args) { args += ~[arg]; }
+
+                auto tup_ty = mk_imm_tup(cx, args);
                 // Perform any type parameter substitutions.
 
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
@@ -1229,7 +1233,12 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
         case (ty_tag(?did, ?tps)) {
             auto variants = tag_variants(cx, did);
             for (variant_info variant in variants) {
-                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // TODO: Remove this vec->ivec conversion.
+                auto args = ~[];
+                for (ty::t arg in variant.args) { args += ~[arg]; }
+
+                auto tup_ty = mk_imm_tup(cx, args);
+
                 // Perform any type parameter substitutions.
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
                 if (type_owns_heap_mem(cx, tup_ty)) { result = true; }
