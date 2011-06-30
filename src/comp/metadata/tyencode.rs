@@ -172,11 +172,13 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
             }
             w.write_char(']');
         }
-        case (ty::ty_res(?def, ?ty)) {
-            w.write_char('r');
+        case (ty::ty_res(?def, ?ty, ?tps)) {
+            w.write_str("r[");
             w.write_str(cx.ds(def));
             w.write_char('|');
             enc_ty(w, cx, ty);
+            for (ty::t t in tps) { enc_ty(w, cx, t); }
+            w.write_char(']');
         }
         case (ty::ty_var(?id)) {
             w.write_char('X');

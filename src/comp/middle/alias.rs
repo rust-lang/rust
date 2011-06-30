@@ -556,7 +556,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                                               kind=unbox,
                                               outer_t=base_t));
                         }
-                        case (ty::ty_res(_, ?inner)) {
+                        case (ty::ty_res(_, ?inner, _)) {
                             vec::push(ds, rec(mut=false,
                                               kind=unbox,
                                               outer_t=base_t));

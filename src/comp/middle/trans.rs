@@ -876,8 +876,9 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             abs_pair = llvm::LLVMResolveTypeHandle(th.llth);
             llty = abs_pair;
         }
-        case (ty::ty_res(_, ?sub)) {
-            ret T_struct([T_i32(), type_of_inner(cx, sp, sub)]);
+        case (ty::ty_res(_, ?sub, ?tps)) {
+            auto sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
+            ret T_struct([T_i32(), type_of_inner(cx, sp, sub1)]);
         }
         case (ty::ty_var(_)) {
             cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
@@ -1220,9 +1221,10 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
                                     ty::mk_imm_box(ccx.tcx,
                                                    ty::mk_nil(ccx.tcx))]);
             }
-            case (ty::ty_res(_, ?sub)) {
+            case (ty::ty_res(_, ?sub, ?tps)) {
+                auto sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
                 ret ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx),
-                                             simplify_type(ccx, sub)]);
+                                             simplify_type(ccx, sub1)]);
             }
             case (_) { ret typ; }
         }
@@ -1716,8 +1718,7 @@ fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     }
     // Otherwise, generate a tydesc if necessary, and return it.
 
-    let vec[uint] tps = [];
-    auto info = get_static_tydesc(cx, t, tps);
+    auto info = get_static_tydesc(cx, t, []);
     static_ti = some[@tydesc_info](info);
     ret rslt(cx, info.tydesc);
 }
@@ -2089,8 +2090,8 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                 cx.build.GEP(v0, [C_int(0), C_int(abi::obj_field_box)]);
             decr_refcnt_maybe_free(cx, box_cell, v0, t)
         }
-        case (ty::ty_res(?did, ?inner)) {
-            trans_res_drop(cx, v0, did, inner)
+        case (ty::ty_res(?did, ?inner, ?tps)) {
+            trans_res_drop(cx, v0, did, inner, tps)
         }
         case (ty::ty_fn(_, _, _, _, _)) {
             auto box_cell =
@@ -2108,9 +2109,11 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
 }
 
 fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
-                  ty::t inner_t) -> result {
+                  ty::t inner_t, &vec[ty::t] tps) -> result {
     auto ccx = cx.fcx.lcx.ccx;
-    auto tup_ty = ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t]);
+
+    auto inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
+    auto tup_ty = ty::mk_imm_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t_s]);
     auto drop_cx = new_sub_block_ctxt(cx, "drop res");
     auto next_cx = new_sub_block_ctxt(cx, "next");
 
@@ -2120,6 +2123,8 @@ fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
     cx.build.CondBr(null_test, next_cx.llbb, drop_cx.llbb);
     cx = drop_cx;
 
+    auto val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
+    cx = val.bcx;
     // Find and call the actual destructor.
     auto dtor_pair = if (did._0 == ast::local_crate) {
         ccx.fn_pairs.get(did._1)
@@ -2136,15 +2141,25 @@ fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
         (cx.build.GEP(dtor_pair, [C_int(0), C_int(abi::fn_field_code)]));
     auto dtor_env = cx.build.Load
         (cx.build.GEP(dtor_pair, [C_int(0), C_int(abi::fn_field_box)]));
-    auto val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
-    cx = val.bcx;
-    cx.build.FastCall(dtor_addr, [cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env]
-                      + cx.fcx.lltydescs + [val.val]);
+    auto args = [cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env];
+    for (ty::t tp in tps) {
+        let option::t[@tydesc_info] ti = none;
+        auto td = get_tydesc(cx, tp, false, ti);
+        args += [td.val];
+        cx = td.bcx;
+    }
+    // Kludge to work around the fact that we know the precise type of the
+    // value here, but the dtor expects a type that still has opaque pointers
+    // for type variables.
+    auto val_llty = lib::llvm::fn_ty_param_tys
+        (llvm::LLVMGetElementType(llvm::LLVMTypeOf(dtor_addr)))
+        .(vec::len(args));
+    auto val_cast = cx.build.BitCast(val.val, val_llty);
+    cx.build.FastCall(dtor_addr, args + [val_cast]);
 
-    cx = drop_slot(cx, val.val, inner_t).bcx;
+    cx = drop_slot(cx, val.val, inner_t_s).bcx;
     cx.build.Store(C_int(0), drop_flag.val);
     cx.build.Br(next_cx.llbb);
-
     ret rslt(next_cx, C_nil());
 }
 
@@ -2611,13 +2626,15 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                 i += 1;
             }
         }
-        case (ty::ty_res(_, ?inner)) {
+        case (ty::ty_res(_, ?inner, ?tps)) {
+            auto inner1 = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
+                                                     tps, inner);
             r = GEP_tup_like(r.bcx, t, av, [0, 1]);
             auto llfld_a = r.val;
             r = GEP_tup_like(r.bcx, t, bv, [0, 1]);
             auto llfld_b = r.val;
-            f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner),
-              load_if_immediate(r.bcx, llfld_b, inner), inner);
+            f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner1),
+              load_if_immediate(r.bcx, llfld_b, inner1), inner1);
         }
         case (ty::ty_tag(?tid, ?tps)) {
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, tid);
@@ -2891,9 +2908,9 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                                                  T_glue_fn(lcx.ccx.tn),
                                                  "drop");
                         ti.drop_glue = some[ValueRef](glue_fn);
-                        auto dg = make_drop_glue;
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_single(dg), ti.ty_params);
+                                          mgghf_single(make_drop_glue),
+                                          ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue DROP %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -5026,7 +5043,7 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
             auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
             auto offset = alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
                 case (ty::ty_box(_)) { abi::box_rc_field_body }
-                case (ty::ty_res(_, _)) { 1 }
+                case (ty::ty_res(_, _, _)) { 1 }
             };
             auto val = sub.bcx.build.GEP(sub.val, [C_int(0), C_int(offset)]);
             ret lval_mem(sub.bcx, val);
@@ -7850,10 +7867,17 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
     auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, [ty::mk_int(cx.ccx.tcx), arg_t]);
     auto arg = load_if_immediate
         (bcx, fcx.llargs.get(dtor.decl.inputs.(0).id), arg_t);
-    auto dst = GEP_tup_like(bcx, tup_t, fcx.llretptr, [0, 1]);
+
+    auto llretptr = fcx.llretptr;
+    if (ty::type_has_dynamic_size(cx.ccx.tcx, ret_t)) {
+        auto llret_t = T_ptr(T_struct([T_i32(), llvm::LLVMTypeOf(arg)]));
+        llretptr = bcx.build.BitCast(llretptr, llret_t);
+    }
+
+    auto dst = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
     bcx = dst.bcx;
     bcx = copy_val(bcx, INIT, dst.val, arg, arg_t).bcx;
-    auto flag = GEP_tup_like(bcx, tup_t, fcx.llretptr, [0, 0]);
+    auto flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
     bcx.build.Store(C_int(1), flag.val);
     bcx.build.RetVoid();
@@ -7973,7 +7997,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
             trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
             // Create a function for the destructor
             auto lldtor_decl = cx.ccx.item_ids.get(item.id);
-            trans_fn(cx, item.span, dtor, lldtor_decl, none, tps, dtor_id);
+            trans_fn(cx, item.span, dtor, lldtor_decl, none, tps, dtor_id)
         }
         case (ast::item_mod(?m)) {
             auto sub_cx =

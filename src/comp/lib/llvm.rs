@@ -1570,6 +1570,13 @@ fn type_to_str_inner(type_names names,
     }
 }
 
+fn fn_ty_param_tys(TypeRef fn_ty) -> vec[TypeRef] {
+    auto args = vec::init_elt(0 as TypeRef, llvm::LLVMCountParamTypes(fn_ty));
+    llvm::LLVMGetParamTypes(fn_ty, vec::buf(args));
+    ret args;
+}
+
+
 /* Memory-managed interface to target data. */
 
 obj target_data_dtor(TargetDataRef TD) {

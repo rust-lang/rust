@@ -439,6 +439,15 @@ mod write {
 mod collect {
     type ctxt = rec(ty::ctxt tcx);
 
+    fn mk_ty_params(&@ctxt cx, uint n) -> vec[ty::t] {
+        auto tps = [];
+        auto i = 0u;
+        while (i < n) {
+            tps += [ty::mk_param(cx.tcx, i)];
+            i += 1u;
+        }
+        ret tps;
+    }
     fn ty_of_fn_decl(&@ctxt cx, &fn(&@ast::ty) -> ty::t  convert,
                      &fn(&ast::arg) -> arg  ty_of_arg, &ast::fn_decl decl,
                      ast::proto proto, &vec[ast::ty_param] ty_params,
@@ -581,21 +590,17 @@ mod collect {
             case (ast::item_res(?f, _, ?tps, _)) {
                 auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
                 auto t_res = tup(vec::len(tps), ty::mk_res
-                                 (cx.tcx, local_def(it.id), t_arg.ty));
+                                 (cx.tcx, local_def(it.id), t_arg.ty,
+                                  mk_ty_params(cx, vec::len(tps))));
                 cx.tcx.tcache.insert(local_def(it.id), t_res);
                 ret t_res;
             }
             case (ast::item_tag(_, ?tps)) {
                 // Create a new generic polytype.
 
-                let vec[ty::t] subtys = [];
-                auto i = 0u;
-                for (ast::ty_param tp in tps) {
-                    subtys += [ty::mk_param(cx.tcx, i)];
-                    i += 1u;
-                }
-                auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
                 auto ty_param_count = vec::len[ast::ty_param](tps);
+                let vec[ty::t] subtys = mk_ty_params(cx, ty_param_count);
+                auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
                 auto tpt = tup(ty_param_count, t);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
@@ -631,13 +636,8 @@ mod collect {
                              &vec[ast::ty_param] ty_params) {
         // Create a set of parameter types shared among all the variants.
 
-        let vec[ty::t] ty_param_tys = [];
-        auto i = 0u;
-        for (ast::ty_param tp in ty_params) {
-            ty_param_tys += [ty::mk_param(cx.tcx, i)];
-            i += 1u;
-        }
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
+        let vec[ty::t] ty_param_tys = mk_ty_params(cx, ty_param_count);
         for (ast::variant variant in variants) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
@@ -737,7 +737,8 @@ mod collect {
             }
             case (ast::item_res(?f, ?dtor_id, ?tps, ?ctor_id)) {
                 auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
-                auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty);
+                auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
+                                        mk_ty_params(cx, vec::len(tps)));
                 auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
                                         t_res, ast::return, []);
                 auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, [t_arg],
@@ -1527,7 +1528,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::deref) {
                     alt (structure_of(fcx, expr.span, oper_t)) {
                         case (ty::ty_box(?inner)) { oper_t = inner.ty; }
-                        case (ty::ty_res(_, ?inner)) { oper_t = inner; }
+                        case (ty::ty_res(_, ?inner, _)) { oper_t = inner; }
                         case (_) {
                             auto s = "dereferencing non-box type: " +
                                 ty_to_str(fcx.ccx.tcx, oper_t);

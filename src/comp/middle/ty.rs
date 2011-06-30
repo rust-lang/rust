@@ -268,7 +268,7 @@ tag sty {
     ty_fn(ast::proto, vec[arg], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, vec[arg], t);
     ty_obj(vec[method]);
-    ty_res(def_id, t);
+    ty_res(def_id, t, vec[t]);
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
     ty_type;
@@ -497,7 +497,12 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                                  m.output);
             }
         }
-        case (ty_res(_, ?tt)) { derive_flags_t(cx, has_params, has_vars, tt);}
+        case (ty_res(_, ?tt, ?tps)) {
+            derive_flags_t(cx, has_params, has_vars, tt);
+            for (t tt in tps) {
+                derive_flags_t(cx, has_params, has_vars, tt);
+            }
+        }
     }
     ret rec(struct=st,
             cname=cname,
@@ -604,8 +609,8 @@ fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
-fn mk_res(&ctxt cx, &ast::def_id did, &t inner) -> t {
-    ret gen_ty(cx, ty_res(did, inner));
+fn mk_res(&ctxt cx, &ast::def_id did, &t inner, &vec[t] tps) -> t {
+    ret gen_ty(cx, ty_res(did, inner, tps));
 }
 
 fn mk_var(&ctxt cx, int v) -> t { ret gen_ty(cx, ty_var(v)); }
@@ -689,7 +694,10 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
                 walk_ty(cx, walker, m.output);
             }
         }
-        case (ty_res(_, ?sub)) { walk_ty(cx, walker, sub); }
+        case (ty_res(_, ?sub, ?tps)) {
+            walk_ty(cx, walker, sub);
+            for (t tp in tps) { walk_ty(cx, walker, tp); }
+        }
         case (ty_var(_)) {/* no-op */ }
         case (ty_param(_)) {/* no-op */ }
     }
@@ -822,8 +830,11 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
-        case (ty_res(?did, ?subty)) {
-            ty = copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty)), ty);
+        case (ty_res(?did, ?subty, ?tps)) {
+            auto new_tps = [];
+            for (t tp in tps) { new_tps += [fold_ty(cx, fld, tp)]; }
+            ty = copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty),
+                                       new_tps), ty);
         }
         case (ty_var(?id)) {
             alt (fld) {
@@ -894,7 +905,7 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
         case (ty_tag(_, _)) { ret true; }
         case (ty_fn(_, _, _, _, _)) { ret true; }
         case (ty_obj(_)) { ret true; }
-        case (ty_res(_, _)) { ret true; }
+        case (ty_res(_, _, _)) { ret true; }
         case (ty_ivec(_)) { ret true; }
         case (ty_istr) { ret true; }
         case (_) { ret false; }
@@ -903,7 +914,7 @@ fn type_is_structural(&ctxt cx, &t ty) -> bool {
 
 fn type_is_copyable(&ctxt cx, &t ty) -> bool {
     ret alt (struct(cx, ty)) {
-        case (ty_res(_, _)) { false }
+        case (ty_res(_, _, _)) { false }
         case (_) { true }
     };
 }
@@ -1050,7 +1061,10 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
                 if (type_has_pointers(cx, tup_ty)) { result = true; }
             }
         }
-        case (ty_res(?did, ?inner)) { result = type_has_pointers(cx, inner); }
+        case (ty_res(?did, ?inner, ?tps)) {
+            result = type_has_pointers
+                (cx, substitute_type_params(cx, tps, inner));
+        }
         case (_) { result = true; }
     }
 
@@ -1114,7 +1128,12 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_fn(_,_,_,_,_)) { ret false; }
         case (ty_native_fn(_,_,_)) { ret false; }
         case (ty_obj(_)) { ret false; }
-        case (ty_res(_, ?sub)) { ret type_has_dynamic_size(cx, sub); }
+        case (ty_res(_, ?sub, ?tps)) {
+            for (t tp in tps) {
+                if (type_has_dynamic_size(cx, tp)) { ret true; }
+            }
+            ret type_has_dynamic_size(cx, sub);
+        }
         case (ty_var(_)) { fail "ty_var in type_has_dynamic_size()"; }
         case (ty_param(_)) { ret true; }
         case (ty_type) { ret false; }
@@ -1225,7 +1244,10 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
                 if (type_owns_heap_mem(cx, f.mt.ty)) { result = true; }
             }
         }
-        case (ty_res(_, ?inner)) { result = type_owns_heap_mem(cx, inner); }
+        case (ty_res(_, ?inner, ?tps)) {
+            result = type_owns_heap_mem
+                (cx, substitute_type_params(cx, tps, inner));
+        }
 
         case (ty_ptr(_)) { result = false; }
         case (ty_port(_)) { result = false; }
@@ -1337,7 +1359,11 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_native) { ret 33u; }
         case (ty_bot) { ret 34u; }
         case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
-        case (ty_res(?did, ?sub)) { ret hash_subty(hash_def(18u, did), sub); }
+        case (ty_res(?did, ?sub, ?tps)) {
+            auto h = hash_subty(hash_def(18u, did), sub);
+            for (t tp in tps) { h += h << 5u + hash_ty(tp); }
+            ret h;
+        }
     }
 }
 
@@ -1598,10 +1624,18 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 case (_) { ret false; }
             }
         }
-        case (ty_res(?id_a, ?inner_a)) {
+        case (ty_res(?id_a, ?inner_a, ?tps_a)) {
             alt (b) {
-                case (ty_res(?id_b, ?inner_b)) {
-                    ret equal_def(id_a, id_b) && ret eq_ty(inner_a, inner_b);
+                case (ty_res(?id_b, ?inner_b, ?tps_b)) {
+                    if (!equal_def(id_a, id_b) || !eq_ty(inner_a, inner_b)) {
+                        ret false;
+                    }
+                    auto i = 0u;
+                    for (t tp_a in tps_a) {
+                        if (!eq_ty(tp_a, tps_b.(i))) { ret false; }
+                        i += 1u;
+                    }
+                    ret true;
                 }
                 case (_) { ret false; }
             }
@@ -2394,17 +2428,30 @@ mod unify {
                     case (_) { ret ures_err(terr_mismatch); }
                 }
             }
-            case (ty::ty_res(?ex_id, ?ex_inner)) {
+            case (ty::ty_res(?ex_id, ?ex_inner, ?ex_tps)) {
                 alt (struct(cx.tcx, actual)) {
-                    case (ty::ty_res(?act_id, ?act_inner)) {
+                    case (ty::ty_res(?act_id, ?act_inner, ?act_tps)) {
                         if (ex_id._0 != act_id._0 || ex_id._1 != act_id._1) {
                             ret ures_err(terr_mismatch);
                         }
                         auto result = unify_step(cx, ex_inner, act_inner);
                         alt (result) {
                             case (ures_ok(?res_inner)) {
-                                ret ures_ok(mk_res(cx.tcx, act_id,
-                                                   res_inner));
+                                auto i = 0u;
+                                auto res_tps = [];
+                                for (t ex_tp in ex_tps) {
+                                    auto result =
+                                        unify_step(cx, ex_tp, act_tps.(i));
+                                    alt (result) {
+                                        case (ures_ok(?rty)) {
+                                            vec::push(res_tps, rty);
+                                        }
+                                        case (_) { ret result; }
+                                    }
+                                    i += 1u;
+                                }
+                                ret ures_ok(mk_res(cx.tcx, act_id, res_inner,
+                                                   res_tps));
                             }
                             case (_) { ret result; }
                         }
