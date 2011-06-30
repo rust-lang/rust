@@ -3,6 +3,7 @@
 import std::vec;
 import std::option;
 import front::ast;
+import util::common;
 
 export attr_metas;
 export find_linkage_metas;
@@ -12,6 +13,9 @@ export contains;
 export sort_meta_items;
 export remove_meta_items_by_name;
 export get_attr_name;
+export mk_name_value_item;
+export mk_link_item;
+export mk_word_item;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
@@ -157,6 +161,22 @@ fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
     } (_, name);
 
     ret vec::filter_map(filter, items);
+}
+
+fn span[T](&T item) -> common::spanned[T] {
+    ret rec(node=item, span=rec(lo=0u, hi=0u));
+}
+
+fn mk_name_value_item(ast::ident name, str value) -> @ast::meta_item {
+    ret @span(ast::meta_name_value(name, value));
+}
+
+fn mk_list_item(ast::ident name, &vec[@ast::meta_item] items) -> @ast::meta_item {
+    ret @span(ast::meta_list(name, items));
+}
+
+fn mk_word_item(ast::ident name) -> @ast::meta_item {
+    ret @span(ast::meta_word(name));
 }
 
 //
