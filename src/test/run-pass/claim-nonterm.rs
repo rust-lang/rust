@@ -10,7 +10,6 @@ pred fails(uint a) -> bool {
 }
 
 fn main() {
-  let uint a = 5u;
   let uint b = 4u;
   claim fails(b);
 }
