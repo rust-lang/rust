@@ -225,6 +225,9 @@ fn noop_fold_item_underscore(&item_ i, ast_fold fld) -> item_ {
                          dtor=option::map(fld.fold_method,o.dtor)),
                      typms, d)
                 }
+        case (item_res(?dtor, ?did, ?typms, ?cid)) {
+            item_res(fld.fold_fn(dtor), did, typms, cid)
+        }
     };
 }
 
