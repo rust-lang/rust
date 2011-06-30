@@ -4086,6 +4086,10 @@ fn collect_upvars(&@block_ctxt cx, &fn (&walk::ast_visitor) walker,
              resolve::def_map def_map,
              session::session sess);
 
+    fn walk_fn(env e, &ast::_fn f, &ast::ty_param[] tps, &span sp,
+               &ast::fn_ident i, ast::node_id nid) {
+        for (ast::arg a in f.decl.inputs) { e.decls.insert(a.id, ()); }
+    }
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
             case (ast::expr_path(?path)) {
@@ -4123,7 +4127,8 @@ fn collect_upvars(&@block_ctxt cx, &fn (&walk::ast_visitor) walker,
              def_map=cx.fcx.lcx.ccx.tcx.def_map,
              sess=cx.fcx.lcx.ccx.tcx.sess);
     auto visitor =
-        @rec(visit_local_pre=bind walk_local(e, _),
+        @rec(visit_fn_pre=bind walk_fn(e, _, _, _, _, _),
+             visit_local_pre=bind walk_local(e, _),
              visit_expr_pre=bind walk_expr(e, _),
              visit_pat_pre=bind walk_pat(e, _)
              with walk::default_visitor());
