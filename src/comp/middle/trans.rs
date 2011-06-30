@@ -4728,9 +4728,8 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
         this_cx = next_cx;
     }
     auto default_cx = this_cx;
-    auto default_res =
-        trans_fail(default_cx, some[common::span](expr.span),
-                   "non-exhaustive match failure");
+    trans_fail(default_cx, some[common::span](expr.span),
+               "non-exhaustive match failure");
     ret rslt(join_branches(cx, arm_results), C_nil());
 }
 
@@ -4995,8 +4994,7 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
     bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
     // fail: bad bounds check.
 
-    auto fail_res =
-        trans_fail(fail_cx, some[common::span](sp), "bounds check");
+    trans_fail(fail_cx, some[common::span](sp), "bounds check");
     auto body;
     alt (interior_len_and_data) {
         case (some(?lad)) { body = lad._1; }
@@ -6291,7 +6289,7 @@ fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
     auto cond_res = trans_expr(cx, e);
     auto expr_str = s + " " + expr_to_str(e) + " failed";
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
-    auto fail_res = trans_fail(fail_cx, some[common::span](e.span), expr_str);
+    trans_fail(fail_cx, some[common::span](e.span), expr_str);
     auto next_cx = new_sub_block_ctxt(cx, "next");
     cond_res.bcx.build.CondBr(cond_res.val, next_cx.llbb, fail_cx.llbb);
     ret rslt(next_cx, C_nil());
