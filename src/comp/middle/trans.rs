@@ -6157,13 +6157,8 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_ext(_, _, _, ?expanded)) {
             ret trans_expr(cx, expanded);
         }
-        case (ast::expr_fail(?str)) {
-            auto failmsg;
-            alt (str) {
-                case (some(?msg)) { failmsg = msg; }
-                case (_) { failmsg = "explicit failure"; }
-            }
-            ret trans_fail(cx, some(e.span), failmsg);
+        case (ast::expr_fail(?expr)) {
+            ret trans_fail_expr(cx, some(e.span), expr);
         }
         case (ast::expr_log(?lvl, ?a)) { ret trans_log(lvl, cx, a); }
         case (ast::expr_assert(?a)) {
@@ -6366,9 +6361,40 @@ fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
     ret rslt(next_cx, C_nil());
 }
 
+fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
+                   &option::t[@ast::expr] fail_expr)
+        -> result {
+    alt (fail_expr) {
+        case (some(?expr)) {
+            auto tcx = cx.fcx.lcx.ccx.tcx;
+            auto expr_res = trans_expr(cx, expr);
+            auto e_ty = ty::expr_ty(tcx, expr);
+
+            if (ty::type_is_str(tcx, e_ty)) {
+                auto elt = cx.build.GEP(expr_res.val,
+                                        [C_int(0), C_int(abi::vec_elt_data)]);
+                ret trans_fail_value(cx, sp_opt, elt);
+            } else {
+                cx.fcx.lcx.ccx.sess.span_fatal(expr.span,
+                                               "fail called with unsupported \
+                                               type " + ty_to_str(tcx, e_ty));
+            }
+        }
+        case (_) {
+            ret trans_fail(cx, sp_opt, "explicit failure");
+        }
+    }
+}
+ 
 fn trans_fail(&@block_ctxt cx, &option::t[common::span] sp_opt, &str fail_str)
    -> result {
     auto V_fail_str = C_cstr(cx.fcx.lcx.ccx, fail_str);
+    ret trans_fail_value(cx, sp_opt, V_fail_str);
+}
+
+fn trans_fail_value(&@block_ctxt cx, &option::t[common::span] sp_opt,
+                    &ValueRef V_fail_str)
+        -> result {
     auto V_filename;
     auto V_line;
     alt (sp_opt) {
@@ -6382,9 +6408,9 @@ fn trans_fail(&@block_ctxt cx, &option::t[common::span] sp_opt, &str fail_str)
             V_line = 0;
         }
     }
-    V_fail_str = cx.build.PointerCast(V_fail_str, T_ptr(T_i8()));
+    auto V_str = cx.build.PointerCast(V_fail_str, T_ptr(T_i8()));
     V_filename = cx.build.PointerCast(V_filename, T_ptr(T_i8()));
-    auto args = [cx.fcx.lltaskptr, V_fail_str, V_filename, C_int(V_line)];
+    auto args = [cx.fcx.lltaskptr, V_str, V_filename, C_int(V_line)];
     cx.build.Call(cx.fcx.lcx.ccx.upcalls._fail, args);
     cx.build.Unreachable();
     ret rslt(cx, C_nil());

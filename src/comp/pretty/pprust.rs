@@ -838,10 +838,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
             pclose(s);
         }
         case (ast::expr_path(?path)) { print_path(s, path); }
-        case (ast::expr_fail(?str)) {
+        case (ast::expr_fail(?maybe_fail_val)) {
             word(s.s, "fail");
-            alt (str) {
-                case (some(?msg)) { word(s.s, #fmt(" \"%s\"", msg)); }
+            alt (maybe_fail_val) {
+                case (some(?expr)) { word(s.s, " "); print_expr(s, expr); }
                 case (_) { }
             }
         }

@@ -543,12 +543,18 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         case (expr_cast(?operand, _)) {
             ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
         }
-        case (expr_fail(_)) {
+        case (expr_fail(?maybe_fail_val)) {
             ret set_prestate_ann(fcx.ccx, e.id, pres) |
             /* if execution continues after fail, then everything is true!
                woo! */
                 set_poststate_ann(fcx.ccx, e.id,
-                                  false_postcond(num_constrs));
+                                  false_postcond(num_constrs)) |
+                alt(maybe_fail_val) {
+                    case (none) { false }
+                    case (some(?fail_val)) {
+                        find_pre_post_state_expr(fcx, pres, fail_val)
+                    }
+                }
         }
         case (expr_assert(?p)) {
             ret find_pre_post_state_sub(fcx, pres, p, e.id, none);

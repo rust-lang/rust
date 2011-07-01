@@ -841,12 +841,15 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         lo = ex_ext.span.lo;
         ex = ex_ext.node;
     } else if (eat_word(p, "fail")) {
-        auto msg;
         alt (p.peek()) {
-            case (token::LIT_STR(?s)) { msg = some(p.get_str(s)); p.bump(); }
-            case (_) { msg = none; }
+            case (token::SEMI) { ex = ast::expr_fail(none) }
+            case (token::RBRACE) { ex = ast::expr_fail(none) }
+            case (_) {
+                auto e = parse_expr(p);
+                hi = e.span.hi;
+                ex = ast::expr_fail(some(e));
+            }
         }
-        ex = ast::expr_fail(msg);
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
         ex = ast::expr_log(1, e);

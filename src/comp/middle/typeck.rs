@@ -1622,7 +1622,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto t = expr_ty(fcx.ccx.tcx, expanded);
             write::ty_only_fixup(fcx, id, t);
         }
-        case (ast::expr_fail(_)) { write::bot_ty(fcx.ccx.tcx, id); }
+        case (ast::expr_fail(?expr_opt)) {
+            alt (expr_opt) {
+                case (none) { /* do nothing */ }
+                case (some(?e)) { check_expr(fcx, e); }
+            }
+            write::bot_ty(fcx.ccx.tcx, id);
+        }
         case (ast::expr_break) { write::bot_ty(fcx.ccx.tcx, id); }
         case (ast::expr_cont) { write::bot_ty(fcx.ccx.tcx, id); }
         case (ast::expr_ret(?expr_opt)) {

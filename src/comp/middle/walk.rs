@@ -369,7 +369,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
 
             walk_expr(v, expansion);
         }
-        case (ast::expr_fail(_)) { }
+        case (ast::expr_fail(?eo)) { walk_expr_opt(v, eo); }
         case (ast::expr_break) { }
         case (ast::expr_cont) { }
         case (ast::expr_ret(?eo)) { walk_expr_opt(v, eo); }
