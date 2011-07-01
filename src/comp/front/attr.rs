@@ -28,8 +28,7 @@ fn find_linkage_metas(vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
                 metas += items;
             }
             case (_) {
-                // FIXME: Maybe need a warning that this attr isn't
-                // being used for linkage
+                log "ignoring link attribute that has incorrect type";
             }
         }
     }
