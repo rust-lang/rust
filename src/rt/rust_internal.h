@@ -97,19 +97,18 @@ static intptr_t const CONST_REFCOUNT = 0x7badface;
 static size_t const BUF_BYTES = 2048;
 
 // Every reference counted object should derive from this base class.
+// Or use this macro. The macro is preferred as the base class will be
+// disappearing.
+
+#define RUST_REFCOUNTED(T) \
+  RUST_REFCOUNTED_WITH_DTOR(T, delete (T*)this)
+#define RUST_REFCOUNTED_WITH_DTOR(T, dtor) \
+  intptr_t ref_count;      \
+  void ref() { ++ref_count; } \
+  void deref() { if (--ref_count == 0) { dtor; } }
 
 template <typename T> struct rc_base {
-    intptr_t ref_count;
-
-    void ref() {
-        ++ref_count;
-    }
-
-    void deref() {
-        if (--ref_count == 0) {
-            delete (T*)this;
-        }
-    }
+    RUST_REFCOUNTED(T)
 
     rc_base();
     ~rc_base();
