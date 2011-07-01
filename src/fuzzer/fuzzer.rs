@@ -6,8 +6,6 @@ import std::getopts::opt_str;
 import std::io;
 import std::vec;
 
-import rustc::front::ast;
-
 type src_gen = iter() -> str;
 
 iter dir_src_gen(str dir) -> str {

@@ -29,3 +29,8 @@ stage1/%.o: stage1/%.s
 stage1/%$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0) stage0/intrinsics.bc
 	@$(call E, compile_and_link: $@)
 	$(STAGE0) -o $@ $<
+
+stage1/lib/$(CFG_LIBRUSTC): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1) \
+                            stage1/intrinsics.bc
+	@$(call E, compile_and_link: $@)
+	$(STAGE1) --shared -o $@ $<
