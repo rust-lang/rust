@@ -169,8 +169,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('t') {
             assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
-            let vec[ty::t] params = [];
-            while (peek(st) as char != ']') { params += [parse_ty(st, sd)]; }
+            let ty::t[] params = ~[];
+            while (peek(st) as char != ']') { params += ~[parse_ty(st, sd)]; }
             st.pos = st.pos + 1u;
             ret ty::mk_tag(st.tcx, def, params);
         }
