@@ -4099,12 +4099,18 @@ fn trans_eager_binop(&@block_ctxt cx, ast::binop op, &ty::t intype,
     }
 }
 
-fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
+fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
+    -> result {
     let ValueRef v1 = v;
     let ty::t t1 = t;
     while (true) {
         alt (ty::struct(cx.fcx.lcx.ccx.tcx, t1)) {
             case (ty::ty_box(?mt)) {
+                // If we are working with an lval, we want to
+                // unconditionally load at the top of the loop
+                // to get rid of the extra indirection
+                if (is_lval) { v1 = cx.build.Load(v1); }
+
                 auto body =
                     cx.build.GEP(v1,
                                  [C_int(0), C_int(abi::box_rc_field_body)]);
@@ -4118,12 +4124,20 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
                     auto llty = type_of(cx.fcx.lcx.ccx, cx.sp, mt.ty);
                     v1 = cx.build.PointerCast(body, T_ptr(llty));
                 } else { v1 = body; }
-                v1 = load_if_immediate(cx, v1, t1);
+
+                // But if we aren't working with an lval, we get rid of
+                // a layer of indirection at the bottom of the loop so
+                // that it is gone when we return...
+                if (!is_lval) { v1 = load_if_immediate(cx, v1, t1); }
             }
             case (_) { break; }
         }
     }
     ret rslt(cx, v1);
+}
+
+fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
+    ret autoderef_lval(cx, v, t, false);
 }
 
 fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
@@ -5637,17 +5651,33 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     // with trans_call.
 
     auto f_res = trans_lval(cx, f);
+    let ty::t fn_ty;
+    alt (f_res.method_ty) {
+        case (some(?meth)) {
+            // self-call
+            fn_ty = meth;
+        }
+        case (_) {
+            fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f);
+        }
+    }
+
+    auto bcx = f_res.res.bcx;
+
     auto faddr = f_res.res.val;
     auto llenv = C_null(T_opaque_closure_ptr(cx.fcx.lcx.ccx.tn));
     alt (f_res.llobj) {
         case (some(_)) {
             // It's a vtbl entry.
-            faddr = f_res.res.bcx.build.Load(faddr);
+            faddr = bcx.build.Load(faddr);
         }
         case (none) {
-            // It's a closure.
-            auto bcx = f_res.res.bcx;
-            auto pair = faddr;
+            // It's a closure. We have to autoderef.
+            auto res = autoderef_lval(bcx, f_res.res.val, fn_ty, true);
+            bcx = res.bcx;
+            fn_ty = ty::type_autoderef(bcx.fcx.lcx.ccx.tcx, fn_ty);
+
+            auto pair = res.val;
             faddr =
                 bcx.build.GEP(pair, [C_int(0), C_int(abi::fn_field_code)]);
             faddr = bcx.build.Load(faddr);
@@ -5656,19 +5686,12 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
             llenv = bcx.build.Load(llclosure);
         }
     }
-    let ty::t fn_ty;
-    alt (f_res.method_ty) {
-        case (some(?meth)) {
-            // self-call
-            fn_ty = meth;
-        }
-        case (_) { fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f); }
-    }
+
     auto ret_ty = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
     auto args_res =
-        trans_args(f_res.res.bcx, llenv, f_res.llobj, f_res.generic,
+        trans_args(bcx, llenv, f_res.llobj, f_res.generic,
                    lliterbody, args, fn_ty);
-    auto bcx = args_res._0;
+    bcx = args_res._0;
     auto llargs = args_res._1;
     auto llretslot = args_res._2;
     /*

@@ -1336,17 +1336,21 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // expressions.
 
     fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                          &vec[option::t[@ast::expr]] args) {
+                          &vec[option::t[@ast::expr]] args, bool is_call) {
         // Check the function.
 
         check_expr(fcx, f);
         // Get the function type.
 
         auto fty = expr_ty(fcx.ccx.tcx, f);
-        // Grab the argument types and the return type.
 
+        // We want to autoderef calls but not binds
+        auto fty_stripped =
+            if (is_call) { strip_boxes(fcx, sp, fty) } else { fty };
+
+        // Grab the argument types and the return type.
         auto arg_tys;
-        alt (structure_of(fcx, sp, fty)) {
+        alt (structure_of(fcx, sp, fty_stripped)) {
             case (ty::ty_fn(_, ?arg_tys_0, _, _, _)) { arg_tys = arg_tys_0; }
             case (ty::ty_native_fn(_, ?arg_tys_0, _)) { arg_tys = arg_tys_0; }
             case (_) {
@@ -1410,7 +1414,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         // Call the generic checker.
 
-        check_call_or_bind(fcx, sp, f, args_opt_0);
+        check_call_or_bind(fcx, sp, f, args_opt_0, true);
     }
     // A generic function for checking for or for-each loops
 
@@ -1806,7 +1810,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_bind(?f, ?args)) {
             // Call the generic checker.
 
-            check_call_or_bind(fcx, expr.span, f, args);
+            check_call_or_bind(fcx, expr.span, f, args, false);
             // Pull the argument and return types out.
 
             auto proto_1;
@@ -1855,7 +1859,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // Pull the return type out of the type of the function.
 
             auto rt_1;
-            auto fty = ty::expr_ty(fcx.ccx.tcx, f);
+            auto fty = strip_boxes(fcx, expr.span,
+                                   ty::expr_ty(fcx.ccx.tcx, f));
             alt (structure_of(fcx, expr.span, fty)) {
                 case (ty::ty_fn(_, _, ?rt, _, _)) { rt_1 = rt; }
                 case (ty::ty_native_fn(_, _, ?rt)) { rt_1 = rt; }
