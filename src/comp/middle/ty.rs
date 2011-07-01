@@ -268,7 +268,7 @@ tag sty {
     ty_rec(field[]);
     ty_fn(ast::proto, arg[], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, arg[], t);
-    ty_obj(vec[method]);
+    ty_obj(method[]);
     ty_res(def_id, t, vec[t]);
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
@@ -603,7 +603,7 @@ fn mk_native_fn(&ctxt cx, &ast::native_abi abi, &arg[] args, &t ty) -> t {
     ret gen_ty(cx, ty_native_fn(abi, args, ty));
 }
 
-fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
+fn mk_obj(&ctxt cx, &method[] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
@@ -811,7 +811,7 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                                         fold_ty(cx, fld, ret_ty)), ty);
         }
         case (ty_obj(?methods)) {
-            let vec[method] new_methods = [];
+            let method[] new_methods = ~[];
             for (method m in methods) {
                 let arg[] new_args = ~[];
                 for (arg a in m.inputs) {
@@ -819,12 +819,12 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                                       ty=fold_ty(cx, fld, a.ty))];
                 }
                 new_methods +=
-                    [rec(proto=m.proto,
-                         ident=m.ident,
-                         inputs=new_args,
-                         output=fold_ty(cx, fld, m.output),
-                         cf=m.cf,
-                         constrs=m.constrs)];
+                    ~[rec(proto=m.proto,
+                          ident=m.ident,
+                          inputs=new_args,
+                          output=fold_ty(cx, fld, m.output),
+                          cf=m.cf,
+                          constrs=m.constrs)];
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
@@ -1634,8 +1634,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_obj(?methods_a)) {
             alt (b) {
                 case (ty_obj(?methods_b)) {
-                    auto len = vec::len[method](methods_a);
-                    if (len != vec::len[method](methods_b)) { ret false; }
+                    auto len = ivec::len[method](methods_a);
+                    if (len != ivec::len[method](methods_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         auto m_a = methods_a.(i);
@@ -1947,17 +1947,17 @@ fn field_idx(&session::session sess, &span sp, &ast::ident id,
 }
 
 fn method_idx(&session::session sess, &span sp, &ast::ident id,
-              &vec[method] meths) -> uint {
+              &method[] meths) -> uint {
     let uint i = 0u;
     for (method m in meths) { if (str::eq(m.ident, id)) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown method '" + id + "' of obj");
 }
 
-fn sort_methods(&vec[method] meths) -> vec[method] {
+fn sort_methods(&method[] meths) -> method[] {
     fn method_lteq(&method a, &method b) -> bool {
         ret str::lteq(a.ident, b.ident);
     }
-    ret std::sort::merge_sort[method](bind method_lteq(_, _), meths);
+    ret std::sort::ivector::merge_sort[method](bind method_lteq(_, _), meths);
 }
 
 fn is_lval(&@ast::expr expr) -> bool {
@@ -2197,12 +2197,12 @@ mod unify {
         }
     }
     fn unify_obj(&@ctxt cx, &t expected, &t actual,
-                 &vec[method] expected_meths, &vec[method] actual_meths) ->
+                 &method[] expected_meths, &method[] actual_meths) ->
        result {
-        let vec[method] result_meths = [];
+        let method[] result_meths = ~[];
         let uint i = 0u;
-        let uint expected_len = vec::len[method](expected_meths);
-        let uint actual_len = vec::len[method](actual_meths);
+        let uint expected_len = ivec::len[method](expected_meths);
+        let uint actual_len = ivec::len[method](actual_meths);
         if (expected_len != actual_len) { ret ures_err(terr_meth_count); }
         while (i < expected_len) {
             auto e_meth = expected_meths.(i);
@@ -2220,10 +2220,10 @@ mod unify {
                     alt (struct(cx.tcx, tfn)) {
                         case (ty_fn(?proto, ?ins, ?out, ?cf, ?constrs)) {
                             result_meths +=
-                                [rec(inputs=ins,
-                                     output=out,
-                                     cf=cf,
-                                     constrs=constrs with e_meth)];
+                                ~[rec(inputs=ins,
+                                      output=out,
+                                      cf=cf,
+                                      constrs=constrs with e_meth)];
                         }
                     }
                 }
