@@ -103,7 +103,7 @@ fn parse_path(@pstate st, str_def sd) -> ast::path {
 }
 
 fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
-    let vec[@ast::constr_arg] args = [];
+    let (@ast::constr_arg)[] args = ~[];
     auto sp = rec(lo=0u,hi=0u); // FIXME: use a real span
     let ast::path pth = parse_path(st, sd);
     let char ignore = next(st) as char;
@@ -113,14 +113,15 @@ fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
         alt (peek(st) as char) {
             case ('*') {
                 st.pos += 1u;
-                args += [@respan(sp, ast::carg_base)];
+                args += ~[@respan(sp, ast::carg_base)];
             }
             case (?c) {
                 /* how will we disambiguate between
                  an arg index and a lit argument? */
                 if (c >= '0' && c <= '9') {
                     // FIXME
-                    args += [@respan(sp, ast::carg_ident((c as uint) - 48u))];
+                    args += ~[@respan(sp,
+                                      ast::carg_ident((c as uint) - 48u))];
                     ignore = next(st) as char;
                 }
                 else {

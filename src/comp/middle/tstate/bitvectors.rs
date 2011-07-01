@@ -5,6 +5,7 @@ import std::option::*;
 import std::vec;
 import std::vec::len;
 import std::vec::slice;
+import aux::constr_arg_use;
 import aux::local_node_id_to_def;
 import aux::fn_ctxt;
 import aux::fn_info;
@@ -63,7 +64,14 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
         }
         case (npred(_, ?args)) {
             alt (rslt) {
-                case (cpred(_, ?descs)) { ret match_args(fcx, *descs, args); }
+                case (cpred(_, ?descs)) {
+                    // FIXME: Remove this vec->ivec conversion.
+                    let (@constr_arg_use)[] cau_ivec = ~[];
+                    for (@constr_arg_use cau in args) {
+                        cau_ivec += ~[cau];
+                    }
+                    ret match_args(fcx, *descs, cau_ivec);
+                }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"
                                              + " found an init constraint");

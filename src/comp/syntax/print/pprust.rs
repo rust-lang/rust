@@ -1421,7 +1421,7 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
 
 
 fn constr_args_to_str[T](fn(&T) -> str  f,
-                         &vec[@ast::constr_arg_general[T]] args) -> str {
+                         &(@ast::constr_arg_general[T])[] args) -> str {
     auto comma = false;
     auto s = "(";
     for (@ast::constr_arg_general[T] a in args) {
@@ -1447,8 +1447,13 @@ fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
 fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
+    // TODO: Remove this vec->ivec conversion.
+    auto cag_ivec = ~[];
+    for (@ast::constr_arg_general[uint] cag in c.node.args) {
+        cag_ivec += ~[cag];
+    }
     ret ast::path_to_str(c.node.path) +
-            constr_args_to_str(uint_to_str, c.node.args);
+            constr_args_to_str(uint_to_str, cag_ivec);
 }
 
 fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {

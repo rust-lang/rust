@@ -2385,7 +2385,13 @@ fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
     -> @ty::constr_def {
     alt (tcx.def_map.find(c.node.id)) {
         case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
-            ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
+            // FIXME: Remove this vec->ivec conversion.
+            let (@ast::constr_arg_general[uint])[] cag_ivec = ~[];
+            for (@ast::constr_arg_general[uint] cag in c.node.args) {
+                cag_ivec += ~[cag];
+            }
+
+            ret @respan(c.span, rec(path=c.node.path, args=cag_ivec,
                                     id=pred_id));
         }
         case (_) {
