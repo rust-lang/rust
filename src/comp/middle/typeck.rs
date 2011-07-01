@@ -336,7 +336,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             cname = some(path_to_str(path));
         }
         case (ast::ty_obj(?meths)) {
-            let ty::method[] tmeths = ~[];
+            let vec[ty::method] tmeths = [];
             for (ast::ty_method m in meths) {
                 auto ins = ~[];
                 for (ast::ty_arg ta in m.node.inputs) {
@@ -355,7 +355,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                         output=out,
                         cf=m.node.cf,
                         constrs=out_constrs);
-                tmeths += ~[new_m];
+                vec::push[ty::method](tmeths, new_m);
             }
             typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
         }
@@ -681,12 +681,9 @@ mod collect {
             write::ty_only(cx.tcx, variant.node.id, result_ty);
         }
     }
-    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> ty::method[] {
-        auto meths = ~[];
-        for (@ast::method am in object.methods) {
-            meths += ~[ty_of_method(cx, am)];
-        }
-        ret meths;
+    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> vec[ty::method] {
+        ret vec::map[@ast::method,
+                     method](bind ty_of_method(cx, _), object.methods);
     }
     fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
                &@ast::item it) {
@@ -2072,7 +2069,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     let uint ix =
                         ty::method_idx(fcx.ccx.tcx.sess, expr.span, field,
                                        methods);
-                    if (ix >= ivec::len[ty::method](methods)) {
+                    if (ix >= vec::len[ty::method](methods)) {
                         fcx.ccx.tcx.sess.span_fatal(expr.span,
                                                   "bad index on obj");
                     }
@@ -2216,13 +2213,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         constrs=out_constrs);
             }
             fn get_anon_obj_method_types(@crate_ctxt ccx,
-                                         &ast::anon_obj anon_obj)
-                -> ty::method[] {
-                auto meths = ~[];
-                for (@ast::method am in anon_obj.methods) {
-                    meths += ~[ty_of_method(ccx, am)];
-                }
-                ret meths;
+                                         &ast::anon_obj anon_obj) ->
+               vec[ty::method] {
+                ret vec::map[@ast::method,
+                             method](bind ty_of_method(ccx, _),
+                                     anon_obj.methods);
             }
             auto method_types = get_anon_obj_method_types(fcx.ccx, anon_obj);
             auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));

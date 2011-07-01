@@ -230,7 +230,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('O') {
             assert (next(st) as char == '[');
-            let ty::method[] methods = ~[];
+            let vec[ty::method] methods = [];
             while (peek(st) as char != ']') {
                 auto proto;
                 alt (next(st) as char) {
@@ -243,12 +243,12 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 }
                 auto func = parse_ty_fn(st, sd);
                 methods +=
-                    ~[rec(proto=proto,
-                          ident=name,
-                          inputs=func._0,
-                          output=func._1,
-                          cf=func._2,
-                          constrs=func._3)];
+                    [rec(proto=proto,
+                         ident=name,
+                         inputs=func._0,
+                         output=func._1,
+                         cf=func._2,
+                         constrs=func._3)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);

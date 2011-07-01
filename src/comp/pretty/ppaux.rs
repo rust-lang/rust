@@ -135,9 +135,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
                            ast::return, []);
         }
         case (ty_obj(?meths)) {
-            auto strs = [];
-            for (method m in meths) { strs += [method_to_str(cx, m)]; }
-            s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
+            auto f = bind method_to_str(cx, _);
+            auto m = vec::map[method, str](f, meths);
+            s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
         case (ty_res(?id, _, _)) {
             s += "<resource#" + istr(id._0) + ":" + istr(id._1) + ">";
