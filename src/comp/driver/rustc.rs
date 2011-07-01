@@ -57,6 +57,23 @@ fn default_configuration(session::session sess, str argv0, str input) ->
          mk("build_input", input)];
 }
 
+fn build_configuration(session::session sess, str argv0,
+                       str input) -> ast::crate_cfg {
+    // Combine the configuration requested by the session (command line) with
+    // some default configuration items
+    ret sess.get_opts().cfg + default_configuration(sess, argv0, input);
+}
+
+// Convert strings provided as --cfg [cfgspec] into a crate_cfg
+fn parse_cfgspecs(&vec[str] cfgspecs) -> ast::crate_cfg {
+    // FIXME: It would be nice to use the parser to parse all varieties of
+    // meta_item here. At the moment we just support the meta_word variant.
+    fn to_meta_word(&str cfgspec) -> @ast::meta_item {
+        attr::mk_word_item(cfgspec)
+    }
+    ret vec::map(to_meta_word, cfgspecs);
+}
+
 fn parse_input(session::session sess, parser::parser p, str input) ->
    @ast::crate {
     ret if (str::ends_with(input, ".rc")) {
@@ -160,6 +177,7 @@ options:
     --emit-llvm        produce an LLVM bitcode file
     --save-temps       write intermediate files in addition to normal output
     --stats            gather and report various compilation statistics
+    --cfg [cfgspec]    configure the compilation environment
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
@@ -257,6 +275,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
             case (none) { get_default_sysroot(binary) }
             case (some(?s)) { s }
         };
+    auto cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let @session::options sopts =
         @rec(shared=shared,
              optimize=opt_level,
@@ -269,7 +288,8 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
              time_llvm_passes=time_llvm_passes,
              output_type=output_type,
              library_search_paths=library_search_paths,
-             sysroot=sysroot);
+             sysroot=sysroot,
+             cfg=cfg);
     ret sopts;
 }
 
@@ -302,7 +322,7 @@ fn main(vec[str] args) {
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("noverify")];
+         optflag("noverify"), optmulti("cfg")];
     auto binary = vec::shift[str](args);
     auto binary_dir = fs::dirname(binary);
     auto match =
@@ -341,7 +361,7 @@ fn main(vec[str] args) {
     }
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
-    auto cfg = default_configuration(sess, binary, ifile);
+    auto cfg = build_configuration(sess, binary, ifile);
     auto pretty =
         option::map[str,
                     pp_mode](bind parse_pretty(sess, _),

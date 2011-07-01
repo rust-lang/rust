@@ -34,7 +34,10 @@ type options =
         bool time_llvm_passes,
         back::link::output_type output_type,
         vec[str] library_search_paths,
-        str sysroot);
+        str sysroot,
+        // The crate config requested for the session, which may be combined
+        // with additional crate configurations during the compile process
+        ast::crate_cfg cfg);
 
 type crate_metadata = rec(str name, vec[u8] data);
 
