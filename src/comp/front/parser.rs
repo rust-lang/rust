@@ -2412,10 +2412,8 @@ fn parse_crate_directive(&parser p, vec[ast::attribute] first_outer_attr)
         auto vi = parse_view_item(p);
         ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));
     } else {
-        auto x = parse_expr(p);
-        ret spanned(lo, x.span.hi, ast::cdir_expr(x));
+        ret p.fatal("expected crate directive");
     }
-    fail;
 }
 
 fn parse_crate_directives(&parser p, token::token term,

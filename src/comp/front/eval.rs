@@ -196,63 +196,6 @@ fn eval_crate_directive_block(ctx cx, &ast::block blk, str prefix,
     }
 }
 
-fn eval_crate_directive_expr(ctx cx, @ast::expr x, str prefix,
-                             &mutable vec[@ast::view_item] view_items,
-                             &mutable vec[@ast::item] items) {
-    alt (x.node) {
-        case (ast::expr_if(?cond, ?thn, ?elopt)) {
-            auto cv = eval_expr(cx, cond);
-            if (!val_is_bool(cv)) {
-                cx.sess.span_fatal(x.span, "bad cond type in 'if'");
-            }
-            if (val_as_bool(cv)) {
-                ret eval_crate_directive_block(cx, thn, prefix, view_items,
-                                               items);
-            }
-            alt (elopt) {
-                case (some(?els)) {
-                    ret eval_crate_directive_expr(cx, els, prefix,
-                                                  view_items, items);
-                }
-                case (_) {
-                    // Absent-else is ok.
-
-                }
-            }
-        }
-        case (ast::expr_alt(?v, ?arms)) {
-            auto vv = eval_expr(cx, v);
-            for (ast::arm arm in arms) {
-                alt (arm.pat.node) {
-                    case (ast::pat_lit(?lit, _)) {
-                        auto pv = eval_lit(cx, arm.pat.span, lit);
-                        if (val_eq(cx.sess, arm.pat.span, vv, pv)) {
-                            ret eval_crate_directive_block(cx, arm.block,
-                                                           prefix, view_items,
-                                                           items);
-                        }
-                    }
-                    case (ast::pat_wild(_)) {
-                        ret eval_crate_directive_block(cx, arm.block,
-                                                       prefix, view_items,
-                                                       items);
-                    }
-                    case (_) {
-                        cx.sess.span_fatal(arm.pat.span,
-                                         "bad pattern type in 'alt'");
-                    }
-                }
-            }
-            cx.sess.span_fatal(x.span, "no cases matched in 'alt'");
-        }
-        case (ast::expr_block(?block)) {
-            ret eval_crate_directive_block(cx, block, prefix, view_items,
-                                           items);
-        }
-        case (_) { cx.sess.span_fatal(x.span, "unsupported expr type"); }
-    }
-}
-
 fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                         &mutable vec[@ast::view_item] view_items,
                         &mutable vec[@ast::item] items) {
@@ -260,9 +203,6 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
         case (ast::cdir_let(?id, ?x, ?cdirs)) {
             auto v = eval_expr(cx, x);
             eval_crate_directives(cx, cdirs, prefix, view_items, items);
-        }
-        case (ast::cdir_expr(?x)) {
-            eval_crate_directive_expr(cx, x, prefix, view_items, items);
         }
         case (ast::cdir_src_mod(?id, ?file_opt, ?attrs)) {
             auto file_path = id + ".rs";

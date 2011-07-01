@@ -88,8 +88,6 @@ type crate_ = rec(vec[@crate_directive] directives,
                   crate_cfg config);
 
 tag crate_directive_ {
-    cdir_expr(@expr);
-
     // FIXME: cdir_let should be eliminated
     // and redirected to the use of const stmt_decls inside
     // crate directive blocks.
