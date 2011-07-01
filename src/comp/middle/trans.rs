@@ -3367,7 +3367,7 @@ fn trans_compare(&@block_ctxt cx0, ast::binop op, &ty::t t0, ValueRef lhs0,
     auto rhs_r = autoderef(cx, rhs0, t0);
     auto rhs = rhs_r.val;
     cx = rhs_r.bcx;
-    auto t = autoderefed_ty(cx.fcx.lcx.ccx, t0);
+    auto t = ty::type_autoderef(cx.fcx.lcx.ccx.tcx, t0);
     // Determine the operation we need.
     // FIXME: Use or-patterns when we have them.
 
@@ -4126,17 +4126,6 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
     ret rslt(cx, v1);
 }
 
-fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
-    let ty::t t1 = t;
-    while (true) {
-        alt (ty::struct(ccx.tcx, t1)) {
-            case (ty::ty_box(?mt)) { t1 = mt.ty; }
-            case (_) { break; }
-        }
-    }
-    ret t1;
-}
-
 fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
    -> result {
 
@@ -4199,7 +4188,7 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
             auto rhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, b);
             rhs = autoderef(rhs.bcx, rhs.val, rhty);
             ret trans_eager_binop(rhs.bcx, op,
-                                  autoderefed_ty(cx.fcx.lcx.ccx, lhty),
+                                  ty::type_autoderef(cx.fcx.lcx.ccx.tcx,lhty),
                                   lhs.val, rhs.val);
         }
     }
@@ -4910,7 +4899,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
 fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
                &ast::ident field, ast::node_id id) -> lval_result {
     auto r = autoderef(cx, v, t0);
-    auto t = autoderefed_ty(cx.fcx.lcx.ccx, t0);
+    auto t = ty::type_autoderef(cx.fcx.lcx.ccx.tcx, t0);
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(_)) {
             let uint ix = ty::field_num(cx.fcx.lcx.ccx.sess, sp, field);

@@ -176,6 +176,7 @@ export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_owns_heap_mem;
+export type_autoderef;
 export type_param;
 export def_to_str;
 export unify;
@@ -1279,6 +1280,17 @@ fn type_param(&ctxt cx, &t ty) -> option::t[uint] {
         case (_) {/* fall through */ }
     }
     ret none[uint];
+}
+
+fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
+    let ty::t t1 = t;
+    while (true) {
+        alt (struct(cx, t1)) {
+            case (ty::ty_box(?mt)) { t1 = mt.ty; }
+            case (_) { break; }
+        }
+    }
+    ret t1;
 }
 
 fn def_to_str(&ast::def_id did) -> str { ret #fmt("%d:%d", did._0, did._1); }
