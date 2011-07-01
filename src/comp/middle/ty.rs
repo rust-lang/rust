@@ -378,7 +378,7 @@ fn populate_type_store(&ctxt cx) {
     intern(cx, ty_task, none[str]);
     intern(cx, ty_type, none[str]);
     intern(cx, ty_bot, none[str]);
-    assert (vec::len(cx.ts.vect) == idx_first_others);
+    assert (ivec::len(cx.ts.vect) == idx_first_others);
 }
 
 fn mk_rcache() -> creader_cache {
