@@ -209,7 +209,8 @@ mod ivector {
     // Based on algorithm presented by Sedgewick and Bentley here:
     // http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
     // According to these slides this is the algorithm of choice for
-    // 'randomly ordered keys, abstract compare' & 'small number of key values'
+    // 'randomly ordered keys, abstract compare' & 'small number of key
+    // values'
     fn qsort3[T](lteq[T] compare_func_lt, lteq[T] compare_func_eq,
                  &T[mutable] arr, int left, int right) {
         if (right <= left) { ret; }
