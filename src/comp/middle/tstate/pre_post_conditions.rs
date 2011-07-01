@@ -529,11 +529,19 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_expr(fcx, operator);
             copy_pre_post(fcx.ccx, e.id, operator);
         }
-        case (expr_fail(_)) {
+        case (expr_fail(?maybe_val)) {
+            auto prestate;
+            alt (maybe_val) {
+                case (none) { prestate = empty_prestate(num_local_vars); }
+                case (some(?fail_val)) {
+                    find_pre_post_expr(fcx, fail_val);
+                    prestate = expr_precond(fcx.ccx, fail_val);
+                }
+            }
             set_pre_and_post(fcx.ccx, e.id,
                              /* if execution continues after fail,
                                 then everything is true! */
-                             empty_prestate(num_local_vars),
+                             prestate,
                              false_postcond(num_local_vars));
         }
         case (expr_assert(?p)) {
