@@ -269,8 +269,8 @@ tag sty {
     ty_rec(field[]);
     ty_fn(ast::proto, arg[], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, arg[], t);
-    ty_obj(vec[method]);
-    ty_res(def_id, t, vec[t]);
+    ty_obj(method[]);
+    ty_res(def_id, t, t[]);
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
     ty_type;
@@ -608,7 +608,7 @@ fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
-fn mk_res(&ctxt cx, &ast::def_id did, &t inner, &vec[t] tps) -> t {
+fn mk_res(&ctxt cx, &ast::def_id did, &t inner, &t[] tps) -> t {
     ret gen_ty(cx, ty_res(did, inner, tps));
 }
 
@@ -817,8 +817,8 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
         case (ty_res(?did, ?subty, ?tps)) {
-            auto new_tps = [];
-            for (t tp in tps) { new_tps += [fold_ty(cx, fld, tp)]; }
+            auto new_tps = ~[];
+            for (t tp in tps) { new_tps += ~[fold_ty(cx, fld, tp)]; }
             ty = copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty),
                                        new_tps), ty);
         }
@@ -2475,13 +2475,13 @@ mod unify {
                         alt (result) {
                             case (ures_ok(?res_inner)) {
                                 auto i = 0u;
-                                auto res_tps = [];
+                                auto res_tps = ~[];
                                 for (t ex_tp in ex_tps) {
                                     auto result =
                                         unify_step(cx, ex_tp, act_tps.(i));
                                     alt (result) {
                                         case (ures_ok(?rty)) {
-                                            vec::push(res_tps, rty);
+                                            res_tps += ~[rty];
                                         }
                                         case (_) { ret result; }
                                     }

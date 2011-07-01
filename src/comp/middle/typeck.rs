@@ -472,11 +472,11 @@ mod write {
 mod collect {
     type ctxt = rec(ty::ctxt tcx);
 
-    fn mk_ty_params(&@ctxt cx, uint n) -> vec[ty::t] {
-        auto tps = [];
+    fn mk_ty_params(&@ctxt cx, uint n) -> ty::t[] {
+        auto tps = ~[];
         auto i = 0u;
         while (i < n) {
-            tps += [ty::mk_param(cx.tcx, i)];
+            tps += ~[ty::mk_param(cx.tcx, i)];
             i += 1u;
         }
         ret tps;
@@ -648,12 +648,8 @@ mod collect {
 
                 auto ty_param_count = vec::len[ast::ty_param](tps);
 
-                let vec[ty::t] subtys = mk_ty_params(cx, ty_param_count);
-                // FIXME: Remove this vec->ivec conversion.
-                auto tps_ivec = ~[];
-                for (ty::t tp in subtys) { tps_ivec += ~[tp]; }
-
-                auto t = ty::mk_tag(cx.tcx, local_def(it.id), tps_ivec);
+                let ty::t[] subtys = mk_ty_params(cx, ty_param_count);
+                auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
                 auto tpt = tup(ty_param_count, t);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
@@ -690,18 +686,14 @@ mod collect {
         // Create a set of parameter types shared among all the variants.
 
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
-        let vec[ty::t] ty_param_tys = mk_ty_params(cx, ty_param_count);
+        let ty::t[] ty_param_tys = mk_ty_params(cx, ty_param_count);
         for (ast::variant variant in variants) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
 
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in ty_param_tys) { tps_ivec += ~[tp]; }
-
             auto result_ty;
             if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
-                result_ty = ty::mk_tag(cx.tcx, tag_id, tps_ivec);
+                result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -712,7 +704,7 @@ mod collect {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
                     args += ~[rec(mode=ty::mo_alias(false), ty=arg_ty)];
                 }
-                auto tag_t = ty::mk_tag(cx.tcx, tag_id, tps_ivec);
+                auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
                 result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
                                       ast::return, []);
