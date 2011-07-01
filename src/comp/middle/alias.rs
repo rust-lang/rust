@@ -663,7 +663,7 @@ fn def_is_local(&ast::def d, bool objfields_count) -> bool {
 }
 
 fn fty_args(&ctx cx, ty::t fty) -> ty::arg[] {
-    ret alt (ty::struct(*cx.tcx, fty)) {
+    ret alt (ty::struct(*cx.tcx, ty::type_autoderef(*cx.tcx, fty))) {
             case (ty::ty_fn(_, ?args, _, _, _)) { args }
             case (ty::ty_native_fn(_, ?args, _)) { args }
         };
