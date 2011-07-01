@@ -6,6 +6,7 @@ import front::parser;
 import front::token;
 import front::eval;
 import front::ast;
+import front::attr;
 import middle::trans;
 import middle::resolve;
 import middle::ty;
@@ -35,8 +36,8 @@ import back::link::output_type;
 
 tag pp_mode { ppm_normal; ppm_typed; ppm_identified; }
 
-fn default_environment(session::session sess, str argv0, str input) ->
-   eval::env {
+fn default_configuration(session::session sess, str argv0, str input) ->
+    ast::crate_cfg {
     auto libc =
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) { "msvcrt.dll" }
@@ -44,13 +45,16 @@ fn default_environment(session::session sess, str argv0, str input) ->
             case (session::os_linux) { "libc.so.6" }
             case (_) { "libc.so" }
         };
+
+    auto mk = attr::mk_name_value_item;
+
     ret [ // Target bindings.
-         tup("target_os", eval::val_str(std::os::target_os())),
-         tup("target_arch", eval::val_str("x86")),
-         tup("target_libc", eval::val_str(libc)),
+         mk("target_os", std::os::target_os()),
+         mk("target_arch", "x86"),
+         mk("target_libc", libc),
          // Build bindings.
-         tup("build_compiler", eval::val_str(argv0)),
-         tup("build_input", eval::val_str(input))];
+         mk("build_compiler", argv0),
+         mk("build_input", input)];
 }
 
 fn parse_input(session::session sess, parser::parser p, str input) ->
@@ -73,10 +77,10 @@ fn time[T](bool do_it, str what, fn() -> T  thunk) -> T {
     ret rv;
 }
 
-fn compile_input(session::session sess, eval::env env, str input,
+fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
                  str output) {
     auto time_passes = sess.get_opts().time_passes;
-    auto p = parser::new_parser(sess, env, input, 0u, 0);
+    auto p = parser::new_parser(sess, cfg, input, 0u, 0);
     auto crate =
         time(time_passes, "parsing", bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
@@ -104,9 +108,9 @@ fn compile_input(session::session sess, eval::env env, str input,
              bind link::write::run_passes(sess, llmod, output));
 }
 
-fn pretty_print_input(session::session sess, eval::env env, str input,
-                      pp_mode ppm) {
-    auto p = front::parser::new_parser(sess, env, input, 0u, 0);
+fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
+                      str input, pp_mode ppm) {
+    auto p = front::parser::new_parser(sess, cfg, input, 0u, 0);
     auto crate = parse_input(sess, p, input);
     auto mode;
     alt (ppm) {
@@ -337,7 +341,7 @@ fn main(vec[str] args) {
     }
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
-    auto env = default_environment(sess, binary, ifile);
+    auto cfg = default_configuration(sess, binary, ifile);
     auto pretty =
         option::map[str,
                     pp_mode](bind parse_pretty(sess, _),
@@ -345,7 +349,7 @@ fn main(vec[str] args) {
     auto ls = opt_present(match, "ls");
     alt (pretty) {
         case (some[pp_mode](?ppm)) {
-            pretty_print_input(sess, env, ifile, ppm);
+            pretty_print_input(sess, cfg, ifile, ppm);
             ret;
         }
         case (none[pp_mode]) {/* continue */ }
@@ -371,7 +375,7 @@ fn main(vec[str] args) {
                 case (link::output_type_exe) { parts += ["o"]; }
             }
             auto ofile = str::connect(parts, ".");
-            compile_input(sess, env, ifile, ofile);
+            compile_input(sess, cfg, ifile, ofile);
         }
         case (some(?ofile)) {
             // FIXME: what about windows? This will create a foo.exe.o.
@@ -386,7 +390,7 @@ fn main(vec[str] args) {
                 }
                 case (_) { temp_filename = ofile; }
             }
-            compile_input(sess, env, ifile, temp_filename);
+            compile_input(sess, cfg, ifile, temp_filename);
         }
     }
 

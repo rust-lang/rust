@@ -23,17 +23,14 @@ tag val { val_bool(bool); val_int(int); val_str(str); }
 
 tag eval_mode { mode_depend; mode_parse; }
 
-type env = vec[tup(ident, val)];
-
 type ctx =
     @rec(parser p,
          eval_mode mode,
          mutable vec[str] deps,
          session::session sess,
          mutable uint chpos,
-         mutable int next_id);
-
-fn mk_env() -> env { ret []; }
+         mutable int next_id,
+         ast::crate_cfg cfg);
 
 fn val_is_bool(val v) -> bool {
     alt (v) { case (val_bool(_)) { true } case (_) { false } }
@@ -59,13 +56,6 @@ fn val_as_str(val v) -> str {
     alt (v) { case (val_str(?s)) { s } case (_) { fail } }
 }
 
-fn lookup(session::session sess, env e, span sp, ident i) -> val {
-    for (tup(ident, val) pair in e) {
-        if (str::eq(i, pair._0)) { ret pair._1; }
-    }
-    sess.span_fatal(sp, "unknown variable: " + i)
-}
-
 fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
     alt (lit.node) {
         case (ast::lit_bool(?b)) { val_bool(b) }
@@ -75,18 +65,14 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
     }
 }
 
-fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
+fn eval_expr(ctx cx, @ast::expr x) -> val {
     alt (x.node) {
         case (ast::expr_path(?pth)) {
-            if (vec::len[ident](pth.node.idents) == 1u &&
-                    vec::len[@ast::ty](pth.node.types) == 0u) {
-                ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
-            }
             cx.sess.span_fatal(x.span, "evaluating structured path-name");
         }
         case (ast::expr_lit(?lit)) { ret eval_lit(cx, x.span, lit); }
         case (ast::expr_unary(?op, ?a)) {
-            auto av = eval_expr(cx, e, a);
+            auto av = eval_expr(cx, a);
             alt (op) {
                 case (ast::not) {
                     if (val_is_bool(av)) { ret val_bool(!val_as_bool(av)); }
@@ -98,8 +84,8 @@ fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
             }
         }
         case (ast::expr_binary(?op, ?a, ?b)) {
-            auto av = eval_expr(cx, e, a);
-            auto bv = eval_expr(cx, e, b);
+            auto av = eval_expr(cx, a);
+            auto bv = eval_expr(cx, b);
             alt (op) {
                 case (ast::add) {
                     if (val_is_int(av) && val_is_int(bv)) {
@@ -177,30 +163,30 @@ fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
     } else { sess.span_fatal(sp, "bad types in comparison") }
 }
 
-fn eval_crate_directives(ctx cx, env e, vec[@ast::crate_directive] cdirs,
+fn eval_crate_directives(ctx cx, vec[@ast::crate_directive] cdirs,
                          str prefix, &mutable vec[@ast::view_item] view_items,
                          &mutable vec[@ast::item] items) {
     for (@ast::crate_directive sub_cdir in cdirs) {
-        eval_crate_directive(cx, e, sub_cdir, prefix, view_items, items);
+        eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }
 
-fn eval_crate_directives_to_mod(ctx cx, env e,
+fn eval_crate_directives_to_mod(ctx cx,
                                 vec[@ast::crate_directive] cdirs, str prefix)
    -> ast::_mod {
     let vec[@ast::view_item] view_items = [];
     let vec[@ast::item] items = [];
-    eval_crate_directives(cx, e, cdirs, prefix, view_items, items);
+    eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret rec(view_items=view_items, items=items);
 }
 
-fn eval_crate_directive_block(ctx cx, env e, &ast::block blk, str prefix,
+fn eval_crate_directive_block(ctx cx, &ast::block blk, str prefix,
                               &mutable vec[@ast::view_item] view_items,
                               &mutable vec[@ast::item] items) {
     for (@ast::stmt s in blk.node.stmts) {
         alt (s.node) {
             case (ast::stmt_crate_directive(?cdir)) {
-                eval_crate_directive(cx, e, cdir, prefix, view_items, items);
+                eval_crate_directive(cx, cdir, prefix, view_items, items);
             }
             case (_) {
                 cx.sess.span_fatal(s.span,
@@ -210,22 +196,22 @@ fn eval_crate_directive_block(ctx cx, env e, &ast::block blk, str prefix,
     }
 }
 
-fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
+fn eval_crate_directive_expr(ctx cx, @ast::expr x, str prefix,
                              &mutable vec[@ast::view_item] view_items,
                              &mutable vec[@ast::item] items) {
     alt (x.node) {
         case (ast::expr_if(?cond, ?thn, ?elopt)) {
-            auto cv = eval_expr(cx, e, cond);
+            auto cv = eval_expr(cx, cond);
             if (!val_is_bool(cv)) {
                 cx.sess.span_fatal(x.span, "bad cond type in 'if'");
             }
             if (val_as_bool(cv)) {
-                ret eval_crate_directive_block(cx, e, thn, prefix, view_items,
+                ret eval_crate_directive_block(cx, thn, prefix, view_items,
                                                items);
             }
             alt (elopt) {
                 case (some(?els)) {
-                    ret eval_crate_directive_expr(cx, e, els, prefix,
+                    ret eval_crate_directive_expr(cx, els, prefix,
                                                   view_items, items);
                 }
                 case (_) {
@@ -235,19 +221,19 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
             }
         }
         case (ast::expr_alt(?v, ?arms)) {
-            auto vv = eval_expr(cx, e, v);
+            auto vv = eval_expr(cx, v);
             for (ast::arm arm in arms) {
                 alt (arm.pat.node) {
                     case (ast::pat_lit(?lit, _)) {
                         auto pv = eval_lit(cx, arm.pat.span, lit);
                         if (val_eq(cx.sess, arm.pat.span, vv, pv)) {
-                            ret eval_crate_directive_block(cx, e, arm.block,
+                            ret eval_crate_directive_block(cx, arm.block,
                                                            prefix, view_items,
                                                            items);
                         }
                     }
                     case (ast::pat_wild(_)) {
-                        ret eval_crate_directive_block(cx, e, arm.block,
+                        ret eval_crate_directive_block(cx, arm.block,
                                                        prefix, view_items,
                                                        items);
                     }
@@ -260,24 +246,23 @@ fn eval_crate_directive_expr(ctx cx, env e, @ast::expr x, str prefix,
             cx.sess.span_fatal(x.span, "no cases matched in 'alt'");
         }
         case (ast::expr_block(?block)) {
-            ret eval_crate_directive_block(cx, e, block, prefix, view_items,
+            ret eval_crate_directive_block(cx, block, prefix, view_items,
                                            items);
         }
         case (_) { cx.sess.span_fatal(x.span, "unsupported expr type"); }
     }
 }
 
-fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
+fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                         &mutable vec[@ast::view_item] view_items,
                         &mutable vec[@ast::item] items) {
     alt (cdir.node) {
         case (ast::cdir_let(?id, ?x, ?cdirs)) {
-            auto v = eval_expr(cx, e, x);
-            auto e0 = [tup(id, v)] + e;
-            eval_crate_directives(cx, e0, cdirs, prefix, view_items, items);
+            auto v = eval_expr(cx, x);
+            eval_crate_directives(cx, cdirs, prefix, view_items, items);
         }
         case (ast::cdir_expr(?x)) {
-            eval_crate_directive_expr(cx, e, x, prefix, view_items, items);
+            eval_crate_directive_expr(cx, x, prefix, view_items, items);
         }
         case (ast::cdir_src_mod(?id, ?file_opt, ?attrs)) {
             auto file_path = id + ".rs";
@@ -292,7 +277,7 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             };
             if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
             auto p0 =
-                new_parser(cx.sess, e, full_path, cx.chpos,
+                new_parser(cx.sess, cx.cfg, full_path, cx.chpos,
                            cx.next_id);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto mod_attrs = attrs + inner_attrs._0;
@@ -315,7 +300,7 @@ fn eval_crate_directive(ctx cx, env e, @ast::crate_directive cdir, str prefix,
             } else {
                 prefix + std::fs::path_sep() + path
             };
-            auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
+            auto m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
             auto i = @rec(ident=id,
                           attrs=attrs,
                           id=cx.next_id,

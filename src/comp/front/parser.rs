@@ -32,7 +32,6 @@ type parser =
         fn restrict(restriction) ;
         fn get_restriction() -> restriction ;
         fn get_file_type() -> file_type ;
-        fn get_env() -> eval::env ;
         fn get_cfg() -> ast::crate_cfg;
         fn get_session() -> session::session ;
         fn get_span() -> common::span ;
@@ -50,10 +49,9 @@ type parser =
         fn next_id() -> ast::node_id ;
     };
 
-fn new_parser(session::session sess, eval::env env,
+fn new_parser(session::session sess, ast::crate_cfg cfg,
               str path, uint pos, ast::node_id next_id) -> parser {
     obj stdio_parser(session::session sess,
-                     eval::env env,
                      ast::crate_cfg cfg,
                      file_type ftype,
                      mutable token::token tok,
@@ -85,7 +83,6 @@ fn new_parser(session::session sess, eval::env env,
         fn get_hi_pos() -> uint { ret hi; }
         fn get_last_lo_pos() -> uint { ret last_lo; }
         fn get_file_type() -> file_type { ret ftype; }
-        fn get_env() -> eval::env { ret env; }
         fn get_cfg() -> ast::crate_cfg { ret cfg; }
         fn get_prec_table() -> vec[op_spec] { ret precs; }
         fn get_str(token::str_num i) -> str {
@@ -106,17 +103,6 @@ fn new_parser(session::session sess, eval::env env,
         fn next_id() -> ast::node_id { ret next_id_var; }
     }
 
-    auto cfg = {
-        fn m(&tup(ast::ident, eval::val) item) -> @ast::meta_item {
-            auto name = item._0;
-            auto value = eval::val_as_str(item._1);
-            auto meta_item_ = ast::meta_name_value(name, value);
-            ret @rec(node=meta_item_,
-                     span=rec(lo=0u,hi=0u));
-        }
-        vec::map(m, env)
-    };
-
     auto ftype = SOURCE_FILE;
     if (str::ends_with(path, ".rc")) { ftype = CRATE_FILE; }
     auto srdr = io::file_reader(path);
@@ -128,7 +114,7 @@ fn new_parser(session::session sess, eval::env env,
 
     lexer::consume_whitespace_and_comments(rdr);
     auto npos = rdr.get_chpos();
-    ret stdio_parser(sess, env, cfg, ftype, lexer::next_token(rdr),
+    ret stdio_parser(sess, cfg, ftype, lexer::next_token(rdr),
                      npos, npos, npos, UNRESTRICTED, rdr,
                      prec_table(), next_id, bad_expr_word_table(),
                      ext::syntax_expander_table());
@@ -2465,9 +2451,10 @@ fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
              mutable deps=deps,
              sess=p.get_session(),
              mutable chpos=p.get_chpos(),
-             mutable next_id=p.next_id());
+             mutable next_id=p.next_id(),
+             cfg = p.get_cfg());
     auto m =
-        eval::eval_crate_directives_to_mod(cx, p.get_env(), cdirs, prefix);
+        eval::eval_crate_directives_to_mod(cx, cdirs, prefix);
     auto hi = p.get_hi_pos();
     expect(p, token::EOF);
     ret @spanned(lo, hi, rec(directives=cdirs,
