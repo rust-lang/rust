@@ -60,12 +60,6 @@ fn visit_crate[E](&crate c, &E e, &vt[E] v) {
 
 fn visit_crate_directive[E](&@crate_directive cd, &E e, &vt[E] v) {
     alt (cd.node) {
-        case (cdir_let(_, ?ex, ?cdirs)) {
-            vt(v).visit_expr(ex, e, v);
-            for (@crate_directive cdir in cdirs) {
-                visit_crate_directive(cdir, e, v);
-            }
-        }
         case (cdir_src_mod(_, _, _)) { }
         case (cdir_dir_mod(_, _, ?cdirs, _)) {
             for (@crate_directive cdir in cdirs) {

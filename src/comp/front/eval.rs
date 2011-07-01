@@ -65,94 +65,6 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
     }
 }
 
-fn eval_expr(ctx cx, @ast::expr x) -> val {
-    alt (x.node) {
-        case (ast::expr_path(?pth)) {
-            cx.sess.span_fatal(x.span, "evaluating structured path-name");
-        }
-        case (ast::expr_lit(?lit)) { ret eval_lit(cx, x.span, lit); }
-        case (ast::expr_unary(?op, ?a)) {
-            auto av = eval_expr(cx, a);
-            alt (op) {
-                case (ast::not) {
-                    if (val_is_bool(av)) { ret val_bool(!val_as_bool(av)); }
-                    cx.sess.span_fatal(x.span, "bad types in '!' expression");
-                }
-                case (_) {
-                    cx.sess.span_fatal(x.span, "evaluating unsupported unop");
-                }
-            }
-        }
-        case (ast::expr_binary(?op, ?a, ?b)) {
-            auto av = eval_expr(cx, a);
-            auto bv = eval_expr(cx, b);
-            alt (op) {
-                case (ast::add) {
-                    if (val_is_int(av) && val_is_int(bv)) {
-                        ret val_int(val_as_int(av) + val_as_int(bv));
-                    }
-                    if (val_is_str(av) && val_is_str(bv)) {
-                        ret val_str(val_as_str(av) + val_as_str(bv));
-                    }
-                    cx.sess.span_fatal(x.span, "bad types in '+' expression");
-                }
-                case (ast::sub) {
-                    if (val_is_int(av) && val_is_int(bv)) {
-                        ret val_int(val_as_int(av) - val_as_int(bv));
-                    }
-                    cx.sess.span_fatal(x.span, "bad types in '-' expression");
-                }
-                case (ast::mul) {
-                    if (val_is_int(av) && val_is_int(bv)) {
-                        ret val_int(val_as_int(av) * val_as_int(bv));
-                    }
-                    cx.sess.span_fatal(x.span, "bad types in '*' expression");
-                }
-                case (ast::div) {
-                    if (val_is_int(av) && val_is_int(bv)) {
-                        ret val_int(val_as_int(av) / val_as_int(bv));
-                    }
-                    cx.sess.span_fatal(x.span, "bad types in '/' expression");
-                }
-                case (ast::rem) {
-                    if (val_is_int(av) && val_is_int(bv)) {
-                        ret val_int(val_as_int(av) % val_as_int(bv));
-                    }
-                    cx.sess.span_fatal(x.span, "bad types in '%' expression");
-                }
-                case (ast::and) {
-                    if (val_is_bool(av) && val_is_bool(bv)) {
-                        ret val_bool(val_as_bool(av) && val_as_bool(bv));
-                    }
-                    cx.sess.span_fatal(x.span,
-                                       "bad types in '&&' expression");
-                }
-                case (ast::or) {
-                    if (val_is_bool(av) && val_is_bool(bv)) {
-                        ret val_bool(val_as_bool(av) || val_as_bool(bv));
-                    }
-                    cx.sess.span_fatal(x.span,
-                                       "bad types in '||' expression");
-                }
-                case (ast::eq) {
-                    ret val_bool(val_eq(cx.sess, x.span, av, bv));
-                }
-                case (ast::ne) {
-                    ret val_bool(!val_eq(cx.sess, x.span, av, bv));
-                }
-                case (_) {
-                    cx.sess.span_fatal(x.span,
-                                       "evaluating unsupported binop");
-                }
-            }
-        }
-        case (_) {
-            cx.sess.span_fatal(x.span, "evaluating unsupported expression");
-        }
-    }
-    fail;
-}
-
 fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
     if (val_is_bool(av) && val_is_bool(bv)) {
         val_as_bool(av) == val_as_bool(bv)
@@ -200,10 +112,6 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                         &mutable vec[@ast::view_item] view_items,
                         &mutable vec[@ast::item] items) {
     alt (cdir.node) {
-        case (ast::cdir_let(?id, ?x, ?cdirs)) {
-            auto v = eval_expr(cx, x);
-            eval_crate_directives(cx, cdirs, prefix, view_items, items);
-        }
         case (ast::cdir_src_mod(?id, ?file_opt, ?attrs)) {
             auto file_path = id + ".rs";
             alt (file_opt) {

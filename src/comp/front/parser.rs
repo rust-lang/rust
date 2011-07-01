@@ -2397,17 +2397,6 @@ fn parse_crate_directive(&parser p, vec[ast::attribute] first_outer_attr)
         auto hi = p.get_hi_pos();
         expect(p, token::SEMI);
         ret spanned(lo, hi, ast::cdir_auth(n, a));
-    } else if (eat_word(p, "let")) {
-        expect(p, token::LPAREN);
-        auto id = parse_value_ident(p);
-        expect(p, token::EQ);
-        auto x = parse_expr(p);
-        expect(p, token::RPAREN);
-        expect(p, token::LBRACE);
-        auto v = parse_crate_directives(p, token::RBRACE, []);
-        auto hi = p.get_hi_pos();
-        expect(p, token::RBRACE);
-        ret spanned(lo, hi, ast::cdir_let(id, x, v));
     } else if (is_view_item(p)) {
         auto vi = parse_view_item(p);
         ret spanned(lo, vi.span.hi, ast::cdir_view_item(vi));

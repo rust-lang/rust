@@ -139,10 +139,6 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
 fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld) 
     -> crate_directive_ {
     ret alt(cd) {
-        case(cdir_let(?id, ?e, ?cds)) {
-            cdir_let(fld.fold_ident(id), fld.fold_expr(e),
-                     map(fld.fold_crate_directive, cds))
-                }
         case(cdir_src_mod(?id,?fname,?attrs)) { 
             cdir_src_mod(fld.fold_ident(id), fname, attrs)
                 }

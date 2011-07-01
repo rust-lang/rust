@@ -56,12 +56,6 @@ fn walk_crate_directive(&ast_visitor v, @ast::crate_directive cd) {
     if (!v.want_crate_directives()) { ret; }
     v.visit_crate_directive_pre(cd);
     alt (cd.node) {
-        case (ast::cdir_let(_, ?e, ?cdirs)) {
-            walk_expr(v, e);
-            for (@ast::crate_directive cdir in cdirs) {
-                walk_crate_directive(v, cdir);
-            }
-        }
         case (ast::cdir_src_mod(_, _, _)) { }
         case (ast::cdir_dir_mod(_, _, ?cdirs, _)) {
             for (@ast::crate_directive cdir in cdirs) {
