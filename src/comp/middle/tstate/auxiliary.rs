@@ -453,10 +453,10 @@ fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
     }
 }
 
-fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ty::constr_def] {
+fn constraints_expr(&ty::ctxt cx, @expr e) -> (@ty::constr_def)[] {
     alt (ty::struct(cx, ty::node_id_to_type(cx, e.id))) {
         case (ty::ty_fn(_, _, _, _, ?cs)) { ret cs; }
-        case (_) { ret []; }
+        case (_) { ret ~[]; }
     }
 }
 
