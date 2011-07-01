@@ -9108,8 +9108,8 @@ fn collect_items(&@crate_ctxt ccx, @ast::crate crate) {
              visit_item=bind collect_item_1(ccx, _, _, _) with *visitor0);
     auto visitor2 =
         @rec(visit_item=bind collect_item_2(ccx, _, _, _) with *visitor0);
-    visit::visit_crate(*crate, ~[], visit::vtor(visitor1));
-    visit::visit_crate(*crate, ~[], visit::vtor(visitor2));
+    visit::visit_crate(*crate, ~[], visit::mk_vt(visitor1));
+    visit::visit_crate(*crate, ~[], visit::mk_vt(visitor2));
 }
 
 fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i, &str[] pt, &vt[str[]] v) {
@@ -9133,7 +9133,7 @@ fn collect_tag_ctors(&@crate_ctxt ccx, @ast::crate crate) {
     auto visitor =
         @rec(visit_item=bind collect_tag_ctor(ccx, _, _, _)
              with *visit::default_visitor());
-    visit::visit_crate(*crate, ~[], visit::vtor(visitor));
+    visit::visit_crate(*crate, ~[], visit::mk_vt(visitor));
 }
 
 
@@ -9178,7 +9178,7 @@ fn trans_constants(&@crate_ctxt ccx, @ast::crate crate) {
     auto visitor =
         @rec(visit_item=bind trans_constant(ccx, _, _, _)
              with *visit::default_visitor());
-    visit::visit_crate(*crate, ~[], visit::vtor(visitor));
+    visit::visit_crate(*crate, ~[], visit::mk_vt(visitor));
 }
 
 fn vp2i(&@block_ctxt cx, ValueRef v) -> ValueRef {

@@ -23,7 +23,7 @@ fn map_crate(&crate c) -> map {
                       visit_native_item=bind map_native_item(map, _, _, _),
                       visit_expr=bind map_expr(map, _, _, _)
                       with *visit::default_visitor[()]());
-    visit::visit_crate(c, (), visit::vtor(v_map));
+    visit::visit_crate(c, (), visit::mk_vt(v_map));
     ret map;
 }
 

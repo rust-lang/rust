@@ -49,7 +49,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
              visit_item=bind visit_item(cx, _, _, _),
              visit_expr=bind visit_expr(cx, _, _, _)
              with *visit::default_visitor[scope]());
-    visit::visit_crate(*crate, [], visit::vtor(v));
+    visit::visit_crate(*crate, [], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
 
@@ -59,7 +59,7 @@ fn visit_fn(@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
     for (ast::arg arg_ in f.decl.inputs) {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
     }
-    vt(v).visit_block(f.body, [], v);
+    v.visit_block(f.body, [], v);
 }
 
 fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {

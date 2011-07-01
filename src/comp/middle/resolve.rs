@@ -155,7 +155,7 @@ fn map_crate(&@env e, &@ast::crate c) {
              visit_item=bind index_i(e, _, _, _)
              with *visit::default_visitor[scopes]());
     visit::visit_crate(*c, cons(scope_crate(c), @nil),
-                       visit::vtor(v_map_mod));
+                       visit::mk_vt(v_map_mod));
     // Register the top-level mod 
 
     e.mod_map.insert(-1,
@@ -200,7 +200,7 @@ fn map_crate(&@env e, &@ast::crate c) {
              visit_item=visit_item_with_scope
              with *visit::default_visitor[scopes]());
     visit::visit_crate(*c, cons(scope_crate(c), @nil),
-                       visit::vtor(v_link_glob));
+                       visit::mk_vt(v_link_glob));
     fn link_glob(@env e, &@ast::view_item vi, &scopes sc, &vt[scopes] v) {
         fn find_mod(@env e, scopes sc) -> @indexed_mod {
             alt (sc) {
@@ -257,7 +257,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
              visit_constr=bind walk_constr(e, _, _, _),
              visit_fn=bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
              with *visit::default_visitor());
-    visit::visit_crate(*c, cons(scope_crate(c), @nil), visit::vtor(v));
+    visit::visit_crate(*c, cons(scope_crate(c), @nil), visit::mk_vt(v));
     e.sess.abort_if_errors();
 
     fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
@@ -1183,7 +1183,7 @@ fn check_for_collisions(&@env e, &ast::crate c) {
              visit_block=bind check_block(e, _, _, _),
              visit_arm=bind check_arm(e, _, _, _)
              with *visit::default_visitor());
-    visit::visit_crate(c, (), visit::vtor(v));
+    visit::visit_crate(c, (), visit::mk_vt(v));
 }
 
 fn check_mod_name(&env e, &ident name, list[mod_index_entry] entries) {

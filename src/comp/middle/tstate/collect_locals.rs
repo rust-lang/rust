@@ -73,12 +73,11 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &ty_param[] tps, &span sp, &fn_ident i,
     let ctxt cx = rec(cs=@mutable ~[], tcx=tcx);
     auto visitor = visit::default_visitor[ctxt]();
 
-    visitor =
-        @rec(visit_local=collect_local,
-             visit_expr=collect_pred,
-             visit_fn=do_nothing
-             with *visitor);
-    visit::visit_fn(f, tps, sp, i, id, cx, visit::vtor(visitor));
+    visitor = @rec(visit_local=collect_local,
+                   visit_expr=collect_pred,
+                   visit_fn=do_nothing
+                   with *visitor);
+    visit::visit_fn(f, tps, sp, i, id, cx, visit::mk_vt(visitor));
     ret cx;
 }
 
