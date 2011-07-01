@@ -825,7 +825,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         case (ast::expr_fail(?str)) {
             word(s.s, "fail");
             alt (str) {
-                case (some(?msg)) { word(s.s, #fmt("\"%s\"", msg)); }
+                case (some(?msg)) { word(s.s, #fmt(" \"%s\"", msg)); }
                 case (_) { }
             }
         }
@@ -887,7 +887,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
 
         }
         case (ast::expr_port(?ot)) {
-            word(s.s, "port"); 
+            word(s.s, "port");
             alt(ot) {
                 case(some(?t)) {
                     word(s.s, "[");
@@ -896,7 +896,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 }
                 case(none) {}
             }
-            popen(s); pclose(s); 
+            popen(s); pclose(s);
         }
         case (ast::expr_chan(?expr)) {
             word(s.s, "chan");
@@ -1230,7 +1230,7 @@ fn maybe_print_trailing_comment(&ps s, common::span span,
             auto next = cmnt.pos + 1u;
             alt (next_pos) { case (none) { } case (some(?p)) { next = p; } }
             if (span.hi < cmnt.pos && cmnt.pos < next &&
-                    span_line.line == comment_line.line) {
+                span_line.line == comment_line.line) {
                 print_comment(s, cmnt);
                 s.cur_cmnt += 1u;
             }
