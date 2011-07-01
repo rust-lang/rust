@@ -18,9 +18,6 @@ import util::common::span;
 import util::common::new_str_hash;
 
 
-// Simple dynamic-typed value type for eval_expr.
-tag val { val_bool(bool); val_int(int); val_str(str); }
-
 tag eval_mode { mode_depend; mode_parse; }
 
 type ctx =
@@ -31,49 +28,6 @@ type ctx =
          mutable uint chpos,
          mutable int next_id,
          ast::crate_cfg cfg);
-
-fn val_is_bool(val v) -> bool {
-    alt (v) { case (val_bool(_)) { true } case (_) { false } }
-}
-
-fn val_is_int(val v) -> bool {
-    alt (v) { case (val_int(_)) { true } case (_) { false } }
-}
-
-fn val_is_str(val v) -> bool {
-    alt (v) { case (val_str(_)) { true } case (_) { false } }
-}
-
-fn val_as_bool(val v) -> bool {
-    alt (v) { case (val_bool(?b)) { b } case (_) { fail } }
-}
-
-fn val_as_int(val v) -> int {
-    alt (v) { case (val_int(?i)) { i } case (_) { fail } }
-}
-
-fn val_as_str(val v) -> str {
-    alt (v) { case (val_str(?s)) { s } case (_) { fail } }
-}
-
-fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
-    alt (lit.node) {
-        case (ast::lit_bool(?b)) { val_bool(b) }
-        case (ast::lit_int(?i)) { val_int(i) }
-        case (ast::lit_str(?s, _)) { val_str(s) }
-        case (_) { cx.sess.span_fatal(sp, "evaluating unsupported literal") }
-    }
-}
-
-fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
-    if (val_is_bool(av) && val_is_bool(bv)) {
-        val_as_bool(av) == val_as_bool(bv)
-    } else if (val_is_int(av) && val_is_int(bv)) {
-        val_as_int(av) == val_as_int(bv)
-    } else if (val_is_str(av) && val_is_str(bv)) {
-        str::eq(val_as_str(av), val_as_str(bv))
-    } else { sess.span_fatal(sp, "bad types in comparison") }
-}
 
 fn eval_crate_directives(ctx cx, vec[@ast::crate_directive] cdirs,
                          str prefix, &mutable vec[@ast::view_item] view_items,
