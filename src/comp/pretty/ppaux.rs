@@ -139,6 +139,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             auto m = vec::map[method, str](f, meths);
             s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
+        case (ty_res(?id, _, _)) {
+            s += "<resource#" + istr(id._0) + ":" + istr(id._1) + ">";
+        }
         case (ty_var(?v)) { s += "<T" + istr(v) + ">"; }
         case (ty_param(?id)) {
             s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);

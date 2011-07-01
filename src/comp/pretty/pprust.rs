@@ -442,7 +442,7 @@ fn print_item(&ps s, &@ast::item item) {
             bclose(s, item.span);
         }
         case (ast::item_res(?dt, ?dt_id, ?tps, ?ct_id)) {
-            head(s, "res");
+            head(s, "resource");
             word(s.s, item.ident);
             print_type_params(s, tps);
             popen(s);
