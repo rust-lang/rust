@@ -5515,7 +5515,21 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
             val = do_spill(lv.res.bcx, lv.res.val);
         }
     } else { auto re = trans_expr(bcx, e); val = re.val; bcx = re.bcx; }
-    if (arg.mode == ty::mo_val) { bcx = copy_ty(bcx, val, e_ty).bcx; }
+
+    // Make a copy here if the type is structural and we're passing by value.
+    if (arg.mode == ty::mo_val) {
+        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, e_ty)) {
+            auto rslt = alloc_ty(bcx, e_ty);
+            bcx = rslt.bcx;
+            auto dst = rslt.val;
+            rslt = copy_val(bcx, INIT, dst, val, e_ty);
+            bcx = rslt.bcx;
+            val = dst;
+        } else {
+            bcx = copy_ty(bcx, val, e_ty).bcx;
+        }
+    }
+
     if (ty::type_is_bot(cx.fcx.lcx.ccx.tcx, e_ty)) {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
