@@ -47,7 +47,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     }
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  &arg[] inputs, t output, ast::controlflow cf,
-                 &vec[@constr_def] constrs) -> str {
+                 &(@constr_def)[] constrs) -> str {
         auto s;
         alt (proto) {
             case (ast::proto_iter) { s = "iter"; }
@@ -130,7 +130,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         case (ty_native_fn(_, ?inputs, ?output)) {
             s += fn_to_str(cx, ast::proto_fn, none, inputs, output,
-                           ast::return, []);
+                           ast::return, ~[]);
         }
         case (ty_obj(?meths)) {
             auto f = bind method_to_str(cx, _);
@@ -162,7 +162,7 @@ fn constr_to_str(&@constr_def c) -> str {
         pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(&vec[@constr_def] constrs) -> str {
+fn constrs_str(&(@constr_def)[] constrs) -> str {
     auto s = "";
     auto colon = true;
     for (@constr_def c in constrs) {

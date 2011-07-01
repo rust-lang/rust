@@ -196,7 +196,7 @@ type method =
         arg[] inputs,
         t output,
         controlflow cf,
-        vec[@constr_def] constrs);
+        (@constr_def)[] constrs);
 
 type constr_table = hashmap[ast::node_id, vec[constr_def]]; 
 
@@ -267,9 +267,9 @@ tag sty {
     ty_task;
     ty_tup(mt[]);
     ty_rec(field[]);
-    ty_fn(ast::proto, arg[], t, controlflow, vec[@constr_def]);
+    ty_fn(ast::proto, arg[], t, controlflow, (@constr_def)[]);
     ty_native_fn(ast::native_abi, arg[], t);
-    ty_obj(method[]);
+    ty_obj(vec[method]);
     ty_res(def_id, t, t[]);
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
@@ -596,7 +596,7 @@ fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
 fn mk_rec(&ctxt cx, &field[] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_fn(&ctxt cx, &ast::proto proto, &arg[] args, &t ty, &controlflow cf,
-         &vec[@constr_def] constrs) -> t {
+         &(@constr_def)[] constrs) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
@@ -1454,8 +1454,8 @@ fn constr_eq(&@constr_def c, &@constr_def d) -> bool {
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
-fn constrs_eq(&vec[@constr_def] cs, &vec[@constr_def] ds) -> bool {
-    if (vec::len(cs) != vec::len(ds)) { ret false; }
+fn constrs_eq(&(@constr_def)[] cs, &(@constr_def)[] ds) -> bool {
+    if (ivec::len(cs) != ivec::len(ds)) { ret false; }
     auto i = 0u;
     for (@constr_def c in cs) {
         if (!constr_eq(c, ds.(i))) { ret false; }
@@ -2139,8 +2139,8 @@ mod unify {
                 &t expected, &t actual, &arg[] expected_inputs,
                 &t expected_output, &arg[] actual_inputs, &t actual_output,
                 &controlflow expected_cf, &controlflow actual_cf,
-                &vec[@constr_def] expected_constrs,
-                &vec[@constr_def] actual_constrs) -> result {
+                &(@constr_def)[] expected_constrs,
+                &(@constr_def)[] actual_constrs) -> result {
         if (e_proto != a_proto) { ret ures_err(terr_mismatch); }
         alt (expected_cf) {
             case (ast::return) { }

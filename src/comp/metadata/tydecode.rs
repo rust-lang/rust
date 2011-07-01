@@ -65,13 +65,13 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     }
 }
 
-fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
-    let vec[@ty::constr_def] rslt = [];
+fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr_def)[] {
+    let (@ty::constr_def)[] rslt = ~[];
     alt (peek(st) as char) {
         case (':') {
             do  {
                 next(st);
-                vec::push(rslt, parse_constr(st, sd));
+                rslt += ~[parse_constr(st, sd)];
             } while (peek(st) as char == ';')
         }
         case (_) { }
@@ -333,7 +333,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(ty::arg[], ty::t, ast::controlflow, vec[@ty::constr_def]) {
+   tup(ty::arg[], ty::t, ast::controlflow, (@ty::constr_def)[]) {
     assert (next(st) as char == '[');
     let ty::arg[] inputs = ~[];
     while (peek(st) as char != ']') {
