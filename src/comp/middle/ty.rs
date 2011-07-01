@@ -198,7 +198,7 @@ type method =
         controlflow cf,
         (@constr_def)[] constrs);
 
-type constr_table = hashmap[ast::node_id, vec[constr_def]]; 
+type constr_table = hashmap[ast::node_id, constr_def[]];
 
 type mt = rec(t ty, ast::mutability mut);
 
@@ -281,7 +281,7 @@ tag sty {
 type constr_def = spanned[constr_general[uint]];
 
 type constr_general[T] =
-    rec(ast::path path, vec[@constr_arg_general[T]] args, def_id id);
+    rec(ast::path path, (@constr_arg_general[T])[] args, def_id id);
 
 
 // Data structures used in type unification
@@ -1438,8 +1438,8 @@ fn arg_eq[T](&fn(&T, &T) -> bool  eq, @ast::constr_arg_general[T] a,
     }
 }
 
-fn args_eq[T](fn(&T, &T) -> bool  eq, vec[@ast::constr_arg_general[T]] a,
-              vec[@ast::constr_arg_general[T]] b) -> bool {
+fn args_eq[T](fn(&T, &T) -> bool eq, &(@ast::constr_arg_general[T])[] a,
+              &(@ast::constr_arg_general[T])[] b) -> bool {
     let uint i = 0u;
     for (@ast::constr_arg_general[T] arg in a) {
         if (!arg_eq(eq, arg, b.(i))) { ret false; }

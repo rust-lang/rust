@@ -504,7 +504,7 @@ fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
     ret rslt;
 }
 
-fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
+fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, &(@constr_arg_use)[] occ) ->
    uint {
     log "match_args: looking at " +
         constr_args_to_str(std::util::fst[ident, def_id], occ);
@@ -513,7 +513,13 @@ fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
         fn eq(&tup(ident, def_id) p, &tup(ident, def_id) q) -> bool {
             ret p._1 == q._1;
         }
-        if (ty::args_eq(eq, pd.node.args, occ)) { ret pd.node.bit_num; }
+
+        // FIXME: Remove this vec->ivec conversion.
+        let (@constr_arg_use)[] cau_ivec = ~[];
+        for (@constr_arg_use cau in pd.node.args) {
+            cau_ivec += ~[cau];
+        }
+        if (ty::args_eq(eq, cau_ivec, occ)) { ret pd.node.bit_num; }
     }
     fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
 }
@@ -593,8 +599,14 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
 }
 
 fn pred_desc_to_str(&pred_desc p) -> str {
+    // FIXME: Remove this vec->ivec conversion.
+    let (@constr_arg_use)[] cau_ivec = ~[];
+    for (@constr_arg_use cau in p.node.args) {
+        cau_ivec += ~[cau];
+    }
+
     ret "<" + uint::str(p.node.bit_num) + ", " +
-        constr_args_to_str(std::util::fst[ident, def_id], p.node.args) + ">";
+        constr_args_to_str(std::util::fst[ident, def_id], cau_ivec) + ">";
 }
 
 fn substitute_constr_args(&ty::ctxt cx, &vec[@expr] actuals,

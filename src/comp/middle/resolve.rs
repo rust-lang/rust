@@ -138,7 +138,7 @@ fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
     auto e =
         @rec(crate_map=new_int_hash[ast::crate_num](),
              def_map=new_int_hash[def](),
-             fn_constrs = new_int_hash[vec[ty::constr_def]](),
+             fn_constrs = new_int_hash[ty::constr_def[]](),
              ast_map=amap,
              imports=new_int_hash[import_state](),
              mod_map=new_int_hash[@indexed_mod](),
@@ -416,8 +416,14 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
             case (ast::def_fn(?pred_id, ast::pure_fn)) {
+                // FIXME: Remove this vec->ivec conversion.
+                let (@ast::constr_arg_general[uint])[] cag_ivec = ~[];
+                for (@ast::constr_arg_general[uint] cag in c.node.args) {
+                    cag_ivec += ~[cag];
+                }
+
                 let ty::constr_general[uint] c_ =
-                    rec(path=c.node.path, args=c.node.args, id=pred_id);
+                    rec(path=c.node.path, args=cag_ivec, id=pred_id);
                 let ty::constr_def new_constr = respan(c.span, c_);
                 add_constr(e, id, new_constr);
             }
@@ -433,8 +439,8 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
 fn add_constr(&@env e, node_id id, &ty::constr_def c) {
     e.fn_constrs.insert(id,
                         alt (e.fn_constrs.find(id)) {
-                            case (none) { [c] }
-                            case (some(?cs)) { cs + [c] }
+                            case (none) { ~[c] }
+                            case (some(?cs)) { cs + ~[c] }
                         });
 }
 
