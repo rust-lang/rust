@@ -10,6 +10,8 @@ import front::parser::new_parser;
 import front::parser::parse_inner_attrs_and_next;
 import front::parser::parse_mod_items;
 
+export eval_crate_directives_to_mod;
+export mode_parse;
 
 tag eval_mode { mode_depend; mode_parse; }
 
