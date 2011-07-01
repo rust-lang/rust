@@ -2145,13 +2145,9 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
 }
 
 fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
-                  ty::t inner_t, &vec[ty::t] tps) -> result {
-    // FIXME: Remove this vec->ivec conversion.
-    auto tps_ivec = ~[];
-    for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
+                  ty::t inner_t, &ty::t[] tps) -> result {
     auto ccx = cx.fcx.lcx.ccx;
-    auto inner_t_s = ty::substitute_type_params(ccx.tcx, tps_ivec, inner_t);
+    auto inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
     auto tup_ty = ty::mk_imm_tup(ccx.tcx, ~[ty::mk_int(ccx.tcx), inner_t_s]);
     auto drop_cx = new_sub_block_ctxt(cx, "drop res");
     auto next_cx = new_sub_block_ctxt(cx, "next");
