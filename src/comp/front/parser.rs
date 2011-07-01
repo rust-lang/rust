@@ -945,7 +945,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         hi = es.span.hi;
         ex = ast::expr_call(f, es.node);
     } else if (is_ident(p.peek()) && !is_word(p, "true") &&
-                   !is_word(p, "false")) {
+               !is_word(p, "false")) {
         check_bad_word(p);
         auto pth = parse_path_and_ty_param_substs(p);
         hi = pth.span.hi;
@@ -1979,6 +1979,21 @@ fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
     let vec[ast::variant] variants = [];
+    // Newtype syntax
+    if (p.peek() == token::EQ) {
+        if (p.get_bad_expr_words().contains_key(id)) {
+            p.fatal("found " + id + " in tag constructor position");
+        }
+        p.bump();
+        auto ty = parse_ty(p);
+        expect(p, token::SEMI);
+        auto variant = spanned(ty.span.lo, ty.span.hi,
+                               rec(name=id,
+                                   args=[rec(ty=ty, id=p.get_id())],
+                                   id=p.get_id()));
+        ret mk_item(p, lo, ty.span.hi, id,
+                    ast::item_tag([variant], ty_params), attrs);
+    }
     expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
         auto tok = p.peek();

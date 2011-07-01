@@ -383,27 +383,43 @@ fn print_item(&ps s, &@ast::item item) {
             break_offset(s.s, 0u, 0);
         }
         case (ast::item_tag(?variants, ?params)) {
-            head(s, "tag");
+            auto newtype = vec::len(variants) == 1u &&
+                str::eq(item.ident, variants.(0).node.name) &&
+                vec::len(variants.(0).node.args) == 1u;
+            if (newtype) {
+                ibox(s, indent_unit);
+                word_space(s, "tag");
+            } else {
+                head(s, "tag");
+            }
             word(s.s, item.ident);
             print_type_params(s, params);
             space(s.s);
-            bopen(s);
-            for (ast::variant v in variants) {
-                space(s.s);
-                maybe_print_comment(s, v.span.lo);
-                word(s.s, v.node.name);
-                if (vec::len(v.node.args) > 0u) {
-                    popen(s);
-                    fn print_variant_arg(&ps s, &ast::variant_arg arg) {
-                        print_type(s, *arg.ty);
-                    }
-                    commasep(s, consistent, v.node.args, print_variant_arg);
-                    pclose(s);
-                }
+            if (newtype) {
+                word_space(s, "=");
+                print_type(s, *variants.(0).node.args.(0).ty);
                 word(s.s, ";");
-                maybe_print_trailing_comment(s, v.span, none[uint]);
+                end(s);
+            } else {
+                bopen(s);
+                for (ast::variant v in variants) {
+                    space(s.s);
+                    maybe_print_comment(s, v.span.lo);
+                    word(s.s, v.node.name);
+                    if (vec::len(v.node.args) > 0u) {
+                        popen(s);
+                        fn print_variant_arg(&ps s, &ast::variant_arg arg) {
+                            print_type(s, *arg.ty);
+                        }
+                        commasep(s, consistent, v.node.args,
+                                 print_variant_arg);
+                        pclose(s);
+                    }
+                    word(s.s, ";");
+                    maybe_print_trailing_comment(s, v.span, none[uint]);
+                }
+                bclose(s, item.span);
             }
-            bclose(s, item.span);
         }
         case (ast::item_obj(?_obj, ?params, _)) {
             head(s, "obj");
