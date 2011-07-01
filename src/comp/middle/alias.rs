@@ -549,18 +549,13 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
             case (ast::expr_unary(?op, ?base)) {
                 if (op == ast::deref) {
                     auto base_t = ty::expr_ty(*cx.tcx, base);
+                    auto mut = false;
                     alt (ty::struct(*cx.tcx, base_t)) {
-                        case (ty::ty_box(?mt)) {
-                            vec::push(ds, rec(mut=mt.mut != ast::imm,
-                                              kind=unbox,
-                                              outer_t=base_t));
-                        }
-                        case (ty::ty_res(_, ?inner, _)) {
-                            vec::push(ds, rec(mut=false,
-                                              kind=unbox,
-                                              outer_t=base_t));
-                        }
+                        case (ty::ty_box(?mt)) { mut = mt.mut != ast::imm; }
+                        case (ty::ty_res(_, _, _)) {}
+                        case (ty::ty_tag(_, _)) {}
                     }
+                    vec::push(ds, rec(mut=mut, kind=unbox, outer_t=base_t));
                     ex = base;
                 } else { break; }
             }

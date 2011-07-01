@@ -111,7 +111,6 @@ export sequence_is_interior;
 export struct;
 export sort_methods;
 export stmt_node_id;
-export strip_boxes;
 export sty;
 export substitute_type_params;
 export t;
@@ -1287,6 +1286,17 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
     while (true) {
         alt (struct(cx, t1)) {
             case (ty::ty_box(?mt)) { t1 = mt.ty; }
+            case (ty::ty_res(_, ?inner, ?tps)) {
+                t1 = substitute_type_params(cx, tps, inner);
+            }
+            case (ty::ty_tag(?did, ?tps)) {
+                auto variants = tag_variants(cx, did);
+                if (vec::len(variants) != 1u ||
+                    vec::len(variants.(0).args) != 1u) {
+                    break;
+                }
+                t1 = substitute_type_params(cx, tps, variants.(0).args.(0));
+            }
             case (_) { break; }
         }
     }
@@ -2891,7 +2901,7 @@ fn ret_ty_of_fn(ctxt cx, ast::node_id id) -> t {
 
 
 // NB: This function requires that the given type has no variables. So, inside
-// typeck, you should use typeck::strip_boxes() instead.
+// typeck, you should use typeck::do_autoderef() instead.
 fn strip_boxes(&ctxt cx, &ty::t t) -> ty::t {
     auto t1 = t;
     while (true) {

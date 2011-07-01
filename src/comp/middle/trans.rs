@@ -329,6 +329,7 @@ type block_ctxt =
 tag block_parent { parent_none; parent_some(@block_ctxt); }
 
 type result = rec(@block_ctxt bcx, ValueRef val);
+type result_t = rec(@block_ctxt bcx, ValueRef val, ty::t ty);
 
 fn extend_path(@local_ctxt cx, &str name) -> @local_ctxt {
     ret @rec(path=cx.path + [name] with *cx);
@@ -3320,18 +3321,16 @@ fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e,
     auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     alt (op) {
         case (ast::not) {
-            sub =
-                autoderef(sub.bcx, sub.val,
-                          ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
-            ret rslt(sub.bcx, sub.bcx.build.Not(sub.val));
+            auto dr = autoderef(sub.bcx, sub.val,
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
+            ret rslt(dr.bcx, dr.bcx.build.Not(dr.val));
         }
         case (ast::neg) {
-            sub =
-                autoderef(sub.bcx, sub.val,
-                          ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
+            auto dr = autoderef(sub.bcx, sub.val,
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
             if (ty::struct(cx.fcx.lcx.ccx.tcx, e_ty) == ty::ty_float) {
-                ret rslt(sub.bcx, sub.bcx.build.FNeg(sub.val));
-            } else { ret rslt(sub.bcx, sub.bcx.build.Neg(sub.val)); }
+                ret rslt(dr.bcx, dr.bcx.build.FNeg(dr.val));
+            } else { ret rslt(dr.bcx, sub.bcx.build.Neg(dr.val)); }
         }
         case (ast::box(_)) {
             auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
@@ -3380,7 +3379,6 @@ fn trans_compare(&@block_ctxt cx0, ast::binop op, &ty::t t0, ValueRef lhs0,
     auto rhs_r = autoderef(cx, rhs0, t0);
     auto rhs = rhs_r.val;
     cx = rhs_r.bcx;
-    auto t = ty::type_autoderef(cx.fcx.lcx.ccx.tcx, t0);
     // Determine the operation we need.
     // FIXME: Use or-patterns when we have them.
 
@@ -3393,7 +3391,7 @@ fn trans_compare(&@block_ctxt cx0, ast::binop op, &ty::t t0, ValueRef lhs0,
         case (ast::ge) { llop = C_u8(abi::cmp_glue_op_lt); }
         case (ast::gt) { llop = C_u8(abi::cmp_glue_op_le); }
     }
-    auto rs = compare(cx, lhs, rhs, t, llop);
+    auto rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
 
     // Invert the result if necessary.
     // FIXME: Use or-patterns when we have them.
@@ -4113,11 +4111,12 @@ fn trans_eager_binop(&@block_ctxt cx, ast::binop op, &ty::t intype,
 }
 
 fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
-    -> result {
+    -> result_t {
     let ValueRef v1 = v;
     let ty::t t1 = t;
+    auto ccx = cx.fcx.lcx.ccx;
     while (true) {
-        alt (ty::struct(cx.fcx.lcx.ccx.tcx, t1)) {
+        alt (ty::struct(ccx.tcx, t1)) {
             case (ty::ty_box(?mt)) {
                 // If we are working with an lval, we want to
                 // unconditionally load at the top of the loop
@@ -4132,24 +4131,41 @@ fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
                 // to cast this pointer, since statically-sized tag types have
                 // different types depending on whether they're behind a box
                 // or not.
-
-                if (!ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, mt.ty)) {
-                    auto llty = type_of(cx.fcx.lcx.ccx, cx.sp, mt.ty);
+                if (!ty::type_has_dynamic_size(ccx.tcx, mt.ty)) {
+                    auto llty = type_of(ccx, cx.sp, mt.ty);
                     v1 = cx.build.PointerCast(body, T_ptr(llty));
                 } else { v1 = body; }
-
-                // But if we aren't working with an lval, we get rid of
-                // a layer of indirection at the bottom of the loop so
-                // that it is gone when we return...
-                if (!is_lval) { v1 = load_if_immediate(cx, v1, t1); }
+            }
+            case (ty::ty_res(?did, ?inner, ?tps)) {
+                if (is_lval) { v1 = cx.build.Load(v1); }
+                t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
+                v1 = cx.build.GEP(v1, [C_int(0), C_int(1)]);
+            }
+            case (ty::ty_tag(?did, ?tps)) {
+                auto variants = ty::tag_variants(ccx.tcx, did);
+                if (vec::len(variants) != 1u ||
+                    vec::len(variants.(0).args) != 1u) {
+                    break;
+                }
+                if (is_lval) { v1 = cx.build.Load(v1); }
+                t1 = ty::substitute_type_params
+                    (ccx.tcx, tps, variants.(0).args.(0));
+                if (!ty::type_has_dynamic_size(ccx.tcx, t1)) {
+                    v1 = cx.build.PointerCast
+                        (v1, T_ptr(type_of(ccx, cx.sp, t1)));
+                }
             }
             case (_) { break; }
         }
+        // But if we aren't working with an lval, we get rid of
+        // a layer of indirection at the bottom of the loop so
+        // that it is gone when we return...
+        if (!is_lval) { v1 = load_if_immediate(cx, v1, t1); }
     }
-    ret rslt(cx, v1);
+    ret rec(bcx=cx, val=v1, ty=t1);
 }
 
-fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
+fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result_t {
     ret autoderef_lval(cx, v, t, false);
 }
 
@@ -4160,15 +4176,14 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
     alt (op) {
         case (ast::and) {
             // Lazy-eval and
-
-            auto lhs_res = trans_expr(cx, a);
-            lhs_res =
-                autoderef(lhs_res.bcx, lhs_res.val,
+            auto lhs_expr = trans_expr(cx, a);
+            auto lhs_res =
+                autoderef(lhs_expr.bcx, lhs_expr.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, a));
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
-            auto rhs_res = trans_expr(rhs_cx, b);
-            rhs_res =
-                autoderef(rhs_res.bcx, rhs_res.val,
+            auto rhs_expr = trans_expr(rhs_cx, b);
+            auto rhs_res =
+                autoderef(rhs_expr.bcx, rhs_expr.val,
                           ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
             auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
             auto lhs_false_res = rslt(lhs_false_cx, C_bool(false));
@@ -4181,20 +4196,18 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
             lhs_res.bcx.build.CondBr(lhs_res.val, rhs_cx.llbb,
                                      lhs_false_cx.llbb);
             ret join_results(cx, T_bool(),
-                             [lhs_false_res, rec(bcx=rhs_bcx with rhs_res)]);
+                             [lhs_false_res, rec(bcx=rhs_bcx,
+                                                 val=rhs_res.val)]);
         }
         case (ast::or) {
             // Lazy-eval or
-
-            auto lhs_res = trans_expr(cx, a);
-            lhs_res =
-                autoderef(lhs_res.bcx, lhs_res.val,
-                          ty::expr_ty(cx.fcx.lcx.ccx.tcx, a));
+            auto lhs_expr = trans_expr(cx, a);
+            auto lhs_res = autoderef(lhs_expr.bcx, lhs_expr.val,
+                                     ty::expr_ty(cx.fcx.lcx.ccx.tcx, a));
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
-            auto rhs_res = trans_expr(rhs_cx, b);
-            rhs_res =
-                autoderef(rhs_res.bcx, rhs_res.val,
-                          ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
+            auto rhs_expr = trans_expr(rhs_cx, b);
+            auto rhs_res = autoderef(rhs_expr.bcx, rhs_expr.val,
+                                     ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
             auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
             auto lhs_true_res = rslt(lhs_true_cx, C_bool(true));
             // see the and case for an explanation
@@ -4203,19 +4216,19 @@ fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
             lhs_res.bcx.build.CondBr(lhs_res.val, lhs_true_cx.llbb,
                                      rhs_cx.llbb);
             ret join_results(cx, T_bool(),
-                             [lhs_true_res, rec(bcx=rhs_bcx with rhs_res)]);
+                             [lhs_true_res, rec(bcx=rhs_bcx,
+                                                val=rhs_res.val)]);
         }
         case (_) {
             // Remaining cases are eager:
 
-            auto lhs = trans_expr(cx, a);
+            auto lhs_expr = trans_expr(cx, a);
             auto lhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, a);
-            lhs = autoderef(lhs.bcx, lhs.val, lhty);
-            auto rhs = trans_expr(lhs.bcx, b);
+            auto lhs = autoderef(lhs_expr.bcx, lhs_expr.val, lhty);
+            auto rhs_expr = trans_expr(lhs.bcx, b);
             auto rhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, b);
-            rhs = autoderef(rhs.bcx, rhs.val, rhty);
-            ret trans_eager_binop(rhs.bcx, op,
-                                  ty::type_autoderef(cx.fcx.lcx.ccx.tcx,lhty),
+            auto rhs = autoderef(rhs_expr.bcx, rhs_expr.val, rhty);
+            ret trans_eager_binop(rhs.bcx, op, lhs.ty,
                                   lhs.val, rhs.val);
         }
     }
@@ -4931,7 +4944,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
 fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
                &ast::ident field, ast::node_id id) -> lval_result {
     auto r = autoderef(cx, v, t0);
-    auto t = ty::type_autoderef(cx.fcx.lcx.ccx.tcx, t0);
+    auto t = r.ty;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(_)) {
             let uint ix = ty::field_num(cx.fcx.lcx.ccx.sess, sp, field);
@@ -4971,11 +4984,11 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
     // Is this an interior vector?
 
     auto base_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
-    auto base_ty_no_boxes = ty::strip_boxes(cx.fcx.lcx.ccx.tcx, base_ty);
+    auto exp = trans_expr(cx, base);
+    auto lv = autoderef(exp.bcx, exp.val, base_ty);
+    auto base_ty_no_boxes = lv.ty;
     auto is_interior =
         ty::sequence_is_interior(cx.fcx.lcx.ccx.tcx, base_ty_no_boxes);
-    auto lv = trans_expr(cx, base);
-    lv = autoderef(lv.bcx, lv.val, base_ty);
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
     auto bcx = ix.bcx;
@@ -5056,14 +5069,29 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
             ret trans_index(cx, e.span, base, idx, e.id);
         }
         case (ast::expr_unary(?unop, ?base)) {
+            auto ccx = cx.fcx.lcx.ccx;
             assert (unop == ast::deref);
             auto sub = trans_expr(cx, base);
-            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
-            auto offset = alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-                case (ty::ty_box(_)) { abi::box_rc_field_body }
-                case (ty::ty_res(_, _, _)) { 1 }
+            auto t = ty::expr_ty(ccx.tcx, base);
+            auto val = alt (ty::struct(ccx.tcx, t)) {
+                case (ty::ty_box(_)) {
+                    sub.bcx.build.GEP
+                    (sub.val, [C_int(0), C_int(abi::box_rc_field_body)])
+                }
+                case (ty::ty_res(_, _, _)) {
+                    sub.bcx.build.GEP(sub.val, [C_int(0), C_int(1)])
+                }
+                case (ty::ty_tag(_, _)) {
+                    auto ety = ty::expr_ty(ccx.tcx, e);
+                    auto ellty;
+                    if (ty::type_has_dynamic_size(ccx.tcx, ety)) {
+                        ellty = T_typaram_ptr(ccx.tn);
+                    } else {
+                        ellty = T_ptr(type_of(ccx, e.span, ety));
+                    };
+                    sub.bcx.build.PointerCast(sub.val, ellty)
+                }
             };
-            auto val = sub.bcx.build.GEP(sub.val, [C_int(0), C_int(offset)]);
             ret lval_mem(sub.bcx, val);
         }
         case (ast::expr_self_method(?ident)) {
@@ -5692,7 +5720,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
             // It's a closure. We have to autoderef.
             auto res = autoderef_lval(bcx, f_res.res.val, fn_ty, true);
             bcx = res.bcx;
-            fn_ty = ty::type_autoderef(bcx.fcx.lcx.ccx.tcx, fn_ty);
+            fn_ty = res.ty;
 
             auto pair = res.val;
             faddr =

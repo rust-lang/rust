@@ -819,11 +819,25 @@ mod unify {
 
 tag autoderef_kind { AUTODEREF_OK; NO_AUTODEREF; }
 
-fn strip_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
+// FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
+// instead of ty::struct.
+fn do_autoderef(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
     auto t1 = t;
     while (true) {
         alt (structure_of(fcx, sp, t1)) {
             case (ty::ty_box(?inner)) { t1 = inner.ty; }
+            case (ty::ty_res(_, ?inner, ?tps)) {
+                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
+            }
+            case (ty::ty_tag(?did, ?tps)) {
+                auto variants = ty::tag_variants(fcx.ccx.tcx, did);
+                if (vec::len(variants) != 1u ||
+                    vec::len(variants.(0).args) != 1u) {
+                    ret t1;
+                }
+                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps,
+                                                variants.(0).args.(0));
+            }
             case (_) { ret t1; }
         }
     }
@@ -881,8 +895,8 @@ mod demand {
         auto actual_1 = actual;
         auto implicit_boxes = 0u;
         if (adk == AUTODEREF_OK) {
-            expected_1 = strip_boxes(fcx, sp, expected_1);
-            actual_1 = strip_boxes(fcx, sp, actual_1);
+            expected_1 = do_autoderef(fcx, sp, expected_1);
+            actual_1 = do_autoderef(fcx, sp, actual_1);
             implicit_boxes = count_boxes(fcx, sp, actual);
         }
         let vec[mutable ty::t] ty_param_substs = [mutable ];
@@ -1346,7 +1360,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         // We want to autoderef calls but not binds
         auto fty_stripped =
-            if (is_call) { strip_boxes(fcx, sp, fty) } else { fty };
+            if (is_call) { do_autoderef(fcx, sp, fty) } else { fty };
 
         // Grab the argument types and the return type.
         auto arg_tys;
@@ -1534,7 +1548,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::ne) { ty::mk_bool(fcx.ccx.tcx) }
                 case (ast::ge) { ty::mk_bool(fcx.ccx.tcx) }
                 case (ast::gt) { ty::mk_bool(fcx.ccx.tcx) }
-                case (_) { strip_boxes(fcx, expr.span, lhs_t) }
+                case (_) { do_autoderef(fcx, expr.span, lhs_t) }
             };
             write::ty_only_fixup(fcx, id, t);
         }
@@ -1549,10 +1563,23 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     alt (structure_of(fcx, expr.span, oper_t)) {
                         case (ty::ty_box(?inner)) { oper_t = inner.ty; }
                         case (ty::ty_res(_, ?inner, _)) { oper_t = inner; }
+                        case (ty::ty_tag(?id, ?tps)) {
+                            auto variants = ty::tag_variants(fcx.ccx.tcx, id);
+                            if (vec::len(variants) != 1u ||
+                                vec::len(variants.(0).args) != 1u) {
+                                fcx.ccx.tcx.sess.span_fatal
+                                    (expr.span, "can only dereference tags " +
+                                     "with a single variant which has a " +
+                                     "single argument");
+                            }
+                            oper_t = ty::substitute_type_params
+                                (fcx.ccx.tcx, tps, variants.(0).args.(0));
+                        }
                         case (_) {
-                            auto s = "dereferencing non-box type: " +
-                                ty_to_str(fcx.ccx.tcx, oper_t);
-                            fcx.ccx.tcx.sess.span_fatal(expr.span, s);
+                            fcx.ccx.tcx.sess.span_fatal
+                                (expr.span, "dereferencing non-" + 
+                                 "dereferenceable type: " +
+                                 ty_to_str(fcx.ccx.tcx, oper_t));
                         }
                     }
                 }
@@ -1568,7 +1595,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                                                  oper_t)));
                     }
                 }
-                case (_) { oper_t = strip_boxes(fcx, expr.span, oper_t); }
+                case (_) { oper_t = do_autoderef(fcx, expr.span, oper_t); }
             }
             write::ty_only_fixup(fcx, id, oper_t);
         }
@@ -1859,7 +1886,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // Pull the return type out of the type of the function.
 
             auto rt_1;
-            auto fty = strip_boxes(fcx, expr.span,
+            auto fty = do_autoderef(fcx, expr.span,
                                    ty::expr_ty(fcx.ccx.tcx, f));
             alt (structure_of(fcx, expr.span, fty)) {
                 case (ty::ty_fn(_, _, ?rt, _, _)) { rt_1 = rt; }
@@ -2017,7 +2044,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_field(?base, ?field)) {
             check_expr(fcx, base);
             auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = strip_boxes(fcx, expr.span, base_t);
+            base_t = do_autoderef(fcx, expr.span, base_t);
             alt (structure_of(fcx, expr.span, base_t)) {
                 case (ty::ty_tup(?args)) {
                     let uint ix =
@@ -2063,7 +2090,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_index(?base, ?idx)) {
             check_expr(fcx, base);
             auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = strip_boxes(fcx, expr.span, base_t);
+            base_t = do_autoderef(fcx, expr.span, base_t);
             check_expr(fcx, idx);
             auto idx_t = expr_ty(fcx.ccx.tcx, idx);
             if (!type_is_integral(fcx, idx.span, idx_t)) {
