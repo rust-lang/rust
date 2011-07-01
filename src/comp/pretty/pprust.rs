@@ -191,9 +191,7 @@ fn print_mod(&ps s, ast::_mod _mod, &vec[ast::attribute] attrs) {
         print_view_item(s, vitem);
     }
     for (@ast::item item in _mod.items) {
-        // Mod-level item printing we're a little more space-y about.
-        hardbreak(s.s);
-        hardbreak(s.s);
+        hardbreak_if_not_bol(s);
         print_item(s, item);
     }
     print_remaining_comments(s);
@@ -271,7 +269,7 @@ fn print_type(&ps s, &ast::ty ty) {
             head(s, "obj");
             bopen(s);
             for (ast::ty_method m in methods) {
-                hardbreak(s.s);
+                hardbreak_if_not_bol(s);
                 cbox(s, indent_unit);
                 maybe_print_comment(s, m.span.lo);
                 print_ty_fn(s, m.node.proto, some(m.node.ident),
@@ -338,7 +336,7 @@ fn print_item(&ps s, &@ast::item item) {
             word_nbsp(s, item.ident);
             bopen(s);
             for (@ast::native_item item in nmod.items) {
-                hardbreak(s.s);
+                hardbreak_if_not_bol(s);
                 ibox(s, indent_unit);
                 maybe_print_comment(s, item.span.lo);
                 alt (item.node) {
@@ -427,7 +425,7 @@ fn print_item(&ps s, &@ast::item item) {
             bopen(s);
             for (@ast::method meth in _obj.methods) {
                 let vec[ast::ty_param] typarams = [];
-                hardbreak(s.s);
+                hardbreak_if_not_bol(s);
                 maybe_print_comment(s, meth.span.lo);
                 print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
                          meth.node.ident, typarams);
@@ -475,7 +473,7 @@ fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
             case (_) {/* fallthrough */ }
         }
     }
-    if (count > 0) { hardbreak(s.s); }
+    if (count > 0) { hardbreak_if_not_bol(s); }
 }
 
 fn print_inner_attributes(&ps s, vec[ast::attribute] attrs) {
@@ -490,11 +488,11 @@ fn print_inner_attributes(&ps s, vec[ast::attribute] attrs) {
             case (_) { /* fallthrough */ }
         }
     }
-    if (count > 0) { hardbreak(s.s); }
+    if (count > 0) { hardbreak_if_not_bol(s); }
 }
 
 fn print_attribute(&ps s, &ast::attribute attr) {
-    hardbreak(s.s);
+    hardbreak_if_not_bol(s);
     maybe_print_comment(s, attr.span.lo);
     word(s.s, "#[");
     print_meta_item(s, @attr.node.value);

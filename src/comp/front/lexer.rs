@@ -536,6 +536,8 @@ tag cmnt_style {
 
     mixed; // Code before /* foo */ and after the comment
 
+    blank_line; // Just a manual blank linke "\n\n", for layout
+
 }
 
 type cmnt = rec(cmnt_style style, vec[str] lines, uint pos);
@@ -546,7 +548,6 @@ fn read_to_eol(&reader rdr) -> str {
         str::push_char(val, rdr.curr());
         rdr.bump();
     }
-    if (rdr.curr() == '\n') { rdr.bump(); } else { assert (rdr.is_eof()); }
     ret val;
 }
 
@@ -562,6 +563,19 @@ fn consume_whitespace(&reader rdr) {
 
 fn consume_non_eol_whitespace(&reader rdr) {
     while (is_whitespace(rdr.curr()) && rdr.curr() != '\n' && !rdr.is_eof()) {
+        rdr.bump();
+    }
+}
+
+fn consume_whitespace_counting_blank_lines(&reader rdr,
+                                           &mutable vec[cmnt] comments) {
+    while (is_whitespace(rdr.curr()) && !rdr.is_eof()) {
+        if (rdr.curr() == '\n' && rdr.next() == '\n') {
+            log ">>> blank-line comment";
+            let vec[str] v = [];
+            comments += [rec(style=blank_line, lines=v,
+                             pos=rdr.get_chpos())];
+        }
         rdr.bump();
     }
 }
@@ -694,19 +708,21 @@ fn gather_comments_and_literals(session sess, str path) ->
             consume_non_eol_whitespace(rdr);
             if (rdr.curr() == '\n') {
                 code_to_the_left = false;
-                consume_whitespace(rdr);
+                consume_whitespace_counting_blank_lines(rdr, comments);
             }
             while (peeking_at_comment(rdr)) {
                 consume_comment(rdr, code_to_the_left, comments);
-                consume_whitespace(rdr);
+                consume_whitespace_counting_blank_lines(rdr, comments);
             }
             break;
         }
-        if (is_lit(next_token(rdr))) {
+        auto tok = next_token(rdr);
+        if (is_lit(tok)) {
             vec::push[lit](literals,
                            rec(lit=rdr.get_mark_str(),
                                pos=rdr.get_mark_chpos()));
         }
+        log "tok: " + token::to_str(rdr, tok);
         first_read = false;
     }
     ret rec(cmnts=comments, lits=literals);

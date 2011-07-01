@@ -279,6 +279,11 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
                 end(s);
             }
         }
+        case (lexer::blank_line) {
+            // We need to do at least one, possibly two hardbreaks.
+            pprust::hardbreak_if_not_bol(s);
+            hardbreak(s.s);
+        }
     }
 }
 
