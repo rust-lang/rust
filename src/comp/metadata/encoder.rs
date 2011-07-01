@@ -463,7 +463,7 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
 
 // So there's a special crate attribute called 'link' which defines the
 // metadata that Rust cares about for linking crates. This attribute requires
-// name and value attributes, so if the user didn't provide them we will throw
+// 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
 fn synthesize_crate_attrs(&@crate_ctxt cx,
                           &@crate crate) -> vec[attribute] {
@@ -472,33 +472,23 @@ fn synthesize_crate_attrs(&@crate_ctxt cx,
                             &vec[@meta_item] items)
         -> attribute {
 
-        auto bogus_span = rec(lo = 0u, hi = 0u);
+        assert cx.link_meta.name != "";
+        assert cx.link_meta.vers != "";
 
-        auto name_item_ = meta_name_value("name", cx.link_meta.name);
-        auto name_item = rec(node=name_item_,
-                             span=bogus_span);
-
-        auto vers_item_ = meta_name_value("vers", cx.link_meta.vers);
-        auto vers_item = rec(node=vers_item_,
-                             span=bogus_span);
+        auto name_item = attr::mk_name_value_item("name",
+                                                  cx.link_meta.name);
+        auto vers_item = attr::mk_name_value_item("vers",
+                                                  cx.link_meta.vers);
 
         auto other_items = {
             auto tmp = attr::remove_meta_items_by_name(items, "name");
             attr::remove_meta_items_by_name(tmp, "vers")
         };
 
-        auto meta_items = [@name_item] + [@vers_item] + other_items;
+        auto meta_items = [name_item] + [vers_item] + other_items;
+        auto link_item = attr::mk_list_item("link", meta_items);
 
-        auto link_item_ = meta_list("link", meta_items);
-        auto link_item = rec(node=link_item_,
-                             span=bogus_span);
-
-        auto attr_ = rec(style = attr_inner,
-                         value = link_item);
-        auto attr = rec(node=attr_,
-                        span=bogus_span);
-
-        ret attr;
+        ret attr::mk_attr(link_item);
     }
 
     let vec[attribute] attrs = [];

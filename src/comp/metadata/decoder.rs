@@ -7,6 +7,7 @@ import std::str;
 import std::io;
 import std::map::hashmap;
 import front::ast;
+import front::attr;
 import middle::ty;
 import tags::*;
 import tydecode::parse_def_id;
@@ -267,8 +268,7 @@ fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
               ebml::tagged_docs(md, tag_meta_item_word)) {
         auto nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
-        items += [@rec(node=ast::meta_word(n),
-                       span=rec(lo=0u, hi=0u))];
+        items += [attr::mk_word_item(n)];
     }
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_name_value)) {
@@ -276,16 +276,14 @@ fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
         auto vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
         auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
-        items += [@rec(node=ast::meta_name_value(n, v),
-                       span=rec(lo=0u, hi=0u))];
+        items += [attr::mk_name_value_item(n, v)];
     }
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_list)) {
         auto nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
         auto subitems = get_meta_items(meta_item_doc);
-        items += [@rec(node=ast::meta_list(n, subitems),
-                       span=rec(lo=0u, hi=0u))];                  
+        items += [attr::mk_list_item(n, subitems)];
     }
     ret items;
 }
