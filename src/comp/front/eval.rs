@@ -4,18 +4,11 @@ import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::map::hashmap;
 import driver::session;
-import ast::ident;
 import front::parser::parser;
-import front::parser::spanned;
 import front::parser::new_parser;
 import front::parser::parse_inner_attrs_and_next;
 import front::parser::parse_mod_items;
-import util::common;
-import util::common::filename;
-import util::common::span;
-import util::common::new_str_hash;
 
 
 tag eval_mode { mode_depend; mode_parse; }
