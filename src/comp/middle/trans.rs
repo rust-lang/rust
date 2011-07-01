@@ -4891,7 +4891,7 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
         lv = trans_external_path(cx, fn_id, tpt);
     }
     auto tys = ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
-    if (vec::len[ty::t](tys) != 0u) {
+    if (std::ivec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = [];
         let vec[option::t[@tydesc_info]] tis = [];

@@ -157,7 +157,7 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
     auto ty_substs_opt;
     auto ty_substs_len = vec::len[@ast::ty](pth.node.types);
     if (ty_substs_len > 0u) {
-        let vec[ty::t] ty_substs = [];
+        let ty::t[] ty_substs = ~[];
         auto i = 0u;
         while (i < ty_substs_len) {
             // TODO: Report an error if the number of type params in the item
@@ -166,10 +166,10 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
             auto ty_var = ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i));
             auto ty_subst = ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i));
             auto res_ty = demand::simple(fcx, pth.span, ty_var, ty_subst);
-            ty_substs += [res_ty];
+            ty_substs += ~[res_ty];
             i += 1u;
         }
-        ty_substs_opt = some[vec[ty::t]](ty_substs);
+        ty_substs_opt = some[ty::t[]](ty_substs);
         if (ty_param_count == 0u) {
             fcx.ccx.tcx.sess.span_fatal(sp,
                                       "this item does not take type " +
@@ -179,13 +179,13 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
     } else {
         // We will acquire the type parameters through unification.
 
-        let vec[ty::t] ty_substs = [];
+        let ty::t[] ty_substs = ~[];
         auto i = 0u;
         while (i < ty_param_count) {
-            ty_substs += [ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i))];
+            ty_substs += ~[ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i))];
             i += 1u;
         }
-        ty_substs_opt = some[vec[ty::t]](ty_substs);
+        ty_substs_opt = some[ty::t[]](ty_substs);
     }
     ret tup(ty_substs_opt, tpt._1);
 }
@@ -435,23 +435,23 @@ mod write {
 
     // Writes a type with no type parameters into the node type table.
     fn ty_only(&ty::ctxt tcx, ast::node_id node_id, ty::t typ) {
-        ret ty(tcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty(tcx, node_id, tup(none[ty::t[]], typ));
     }
 
     // Writes a type with no type parameters into the node type table. This
     // function allows for the possibility of type variables.
     fn ty_only_fixup(@fn_ctxt fcx, ast::node_id node_id, ty::t typ) {
-        ret ty_fixup(fcx, node_id, tup(none[vec[ty::t]], typ));
+        ret ty_fixup(fcx, node_id, tup(none[ty::t[]], typ));
     }
 
     // Writes a nil type into the node type table.
     fn nil_ty(&ty::ctxt tcx, ast::node_id node_id) {
-        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
+        ret ty(tcx, node_id, tup(none[ty::t[]], ty::mk_nil(tcx)));
     }
 
     // Writes the bottom type into the node type table.
     fn bot_ty(&ty::ctxt tcx, ast::node_id node_id) {
-        ret ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
+        ret ty(tcx, node_id, tup(none[ty::t[]], ty::mk_bot(tcx)));
     }
 }
 
@@ -912,24 +912,22 @@ fn resolve_type_vars_if_possible(&@fn_ctxt fcx, ty::t typ) -> ty::t {
 
 // Demands - procedures that require that two types unify and emit an error
 // message if they don't.
-type ty_param_substs_and_ty = tup(vec[ty::t], ty::t);
+type ty_param_substs_and_ty = tup(ty::t[], ty::t);
 
 mod demand {
     fn simple(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual) ->
        ty::t {
-        let vec[ty::t] tps = [];
-        ret full(fcx, sp, expected, actual, tps, NO_AUTODEREF)._1;
+        ret full(fcx, sp, expected, actual, ~[], NO_AUTODEREF)._1;
     }
     fn autoderef(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
                  autoderef_kind adk) -> ty::t {
-        let vec[ty::t] tps = [];
-        ret full(fcx, sp, expected, actual, tps, adk)._1;
+        ret full(fcx, sp, expected, actual, ~[], adk)._1;
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
     fn full(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
-            &vec[ty::t] ty_param_substs_0, autoderef_kind adk) ->
+            &ty::t[] ty_param_substs_0, autoderef_kind adk) ->
        ty_param_substs_and_ty {
         auto expected_1 = expected;
         auto actual_1 = actual;
@@ -954,10 +952,10 @@ mod demand {
         fn mk_result(&@fn_ctxt fcx, &ty::t result_ty,
                      &vec[int] ty_param_subst_var_ids,
                      uint implicit_boxes) -> ty_param_substs_and_ty {
-            let vec[ty::t] result_ty_param_substs = [];
+            let ty::t[] result_ty_param_substs = ~[];
             for (int var_id in ty_param_subst_var_ids) {
                 auto tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
-                result_ty_param_substs += [tp_subst];
+                result_ty_param_substs += ~[tp_subst];
             }
             ret tup(result_ty_param_substs,
                     add_boxes(fcx.ccx, implicit_boxes, result_ty));
@@ -1047,13 +1045,14 @@ mod writeback {
         auto new_ty = resolve_type_vars_in_type(fcx, sp, tpot._1);
         auto new_substs_opt;
         alt (tpot._0) {
-            case (none[vec[ty::t]]) { new_substs_opt = none[vec[ty::t]]; }
-            case (some[vec[ty::t]](?substs)) {
-                let vec[ty::t] new_substs = [];
+            case (none[ty::t[]]) { new_substs_opt = none[ty::t[]]; }
+            case (some[ty::t[]](?substs)) {
+                let ty::t[] new_substs = ~[];
                 for (ty::t subst in substs) {
-                    new_substs += [resolve_type_vars_in_type(fcx, sp, subst)];
+                    new_substs += ~[resolve_type_vars_in_type(fcx, sp,
+                                                              subst)];
                 }
-                new_substs_opt = some[vec[ty::t]](new_substs);
+                new_substs_opt = some[ty::t[]](new_substs);
             }
         }
         write::ty(fcx.ccx.tcx, id, tup(new_substs_opt, new_ty));
@@ -1234,11 +1233,11 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
 
 // AST fragment utilities
 fn replace_expr_type(&@fn_ctxt fcx, &@ast::expr expr,
-                     &tup(vec[ty::t], ty::t) new_tyt) {
+                     &tup(ty::t[], ty::t) new_tyt) {
     auto new_tps;
     if (ty::expr_has_ty_params(fcx.ccx.tcx, expr)) {
-        new_tps = some[vec[ty::t]](new_tyt._0);
-    } else { new_tps = none[vec[ty::t]]; }
+        new_tps = some[ty::t[]](new_tyt._0);
+    } else { new_tps = none[ty::t[]]; }
     write::ty_fixup(fcx, expr.id, tup(new_tps, new_tyt._1));
 }
 
@@ -1295,13 +1294,13 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                                                                path_tpot);
 
                 // FIXME: Remove this ivec->vec conversion.
-                auto tps_vec = [];
-                for (ty::t tp in expected_tps) { tps_vec += [tp]; }
+                auto tps_vec = ~[];
+                for (ty::t tp in expected_tps) { tps_vec += ~[tp]; }
 
                 auto path_tpt =
                     demand::full(fcx, pat.span, expected, ctor_ty, tps_vec,
                                  NO_AUTODEREF);
-                path_tpot = tup(some[vec[ty::t]](path_tpt._0), path_tpt._1);
+                path_tpot = tup(some[ty::t[]](path_tpt._0), path_tpt._1);
                 // Get the number of arguments in this tag variant.
 
                 auto arg_types =

@@ -351,7 +351,7 @@ const uint idx_first_others = 21u;
 
 type type_store = interner::interner[raw_t];
 
-type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
+type ty_param_substs_opt_and_ty = tup(option::t[ty::t[]], ty::t);
 
 type node_type_table =
     @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
@@ -1748,16 +1748,16 @@ fn node_id_to_type(&ctxt cx, &ast::node_id id) -> t {
     ret node_id_to_ty_param_substs_opt_and_ty(cx, id)._1;
 }
 
-fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> vec[t] {
+fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> t[] {
     alt (node_id_to_ty_param_substs_opt_and_ty(cx, id)._0) {
-        case (none) { let vec[t] result = []; ret result; }
+        case (none)       { ret ~[]; }
         case (some(?tps)) { ret tps; }
     }
 }
 
 fn node_id_has_type_params(&ctxt cx, &ast::node_id id) -> bool {
     auto tpt = node_id_to_ty_param_substs_opt_and_ty(cx, id);
-    ret !option::is_none[vec[t]](tpt._0);
+    ret !option::is_none[t[]](tpt._0);
 }
 
 
@@ -1883,7 +1883,7 @@ fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
     ret node_id_to_monotype(cx, expr.id);
 }
 
-fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(vec[t], t) {
+fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(t[], t) {
     ret tup(node_id_to_type_params(cx, expr.id),
             node_id_to_type(cx, expr.id));
 }
