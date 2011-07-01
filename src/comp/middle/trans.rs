@@ -809,14 +809,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_char) { llty = T_char(); }
         case (ty::ty_str) { llty = T_ptr(T_str()); }
         case (ty::ty_istr) { llty = T_ivec(T_i8()); }
-        case (ty::ty_tag(_, _)) {
-            if (ty::type_has_dynamic_size(cx.tcx, t)) {
-                llty = T_opaque_tag(cx.tn);
-            } else {
-                auto size = static_size_of_tag(cx, sp, t);
-                llty = T_tag(cx.tn, size);
-            }
-        }
+        case (ty::ty_tag(?did, _)) { llty = type_of_tag(cx, sp, did, t); }
         case (ty::ty_box(?mt)) {
             llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty)));
         }
@@ -893,6 +886,22 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     cx.lltypes.insert(t, llty);
     ret llty;
 }
+
+fn type_of_tag(&@crate_ctxt cx, &span sp, &ast::def_id did, &ty::t t)
+    -> TypeRef {
+    auto degen = vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
+    if (ty::type_has_dynamic_size(cx.tcx, t)) {
+        if (degen) { ret T_i8(); }
+        else { ret T_opaque_tag(cx.tn); }
+    } else {
+        auto size = static_size_of_tag(cx, sp, t);
+        if (!degen) { ret T_tag(cx.tn, size); }
+        // LLVM does not like 0-size arrays, apparently
+        if (size == 0u) { size = 1u; }
+        ret T_array(T_i8(), size);
+    }
+}
+
 
 fn type_of_arg(@local_ctxt cx, &span sp, &ty::arg arg) -> TypeRef {
     alt (ty::struct(cx.ccx.tcx, arg.ty)) {
@@ -1339,7 +1348,9 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
                 bcx.build.Store(umax(bcx, this_size, old_max_size), max_size);
             }
             auto max_size_val = bcx.build.Load(max_size);
-            auto total_size = bcx.build.Add(max_size_val, llsize_of(T_int()));
+            auto total_size = if (vec::len(variants) != 1u) {
+                bcx.build.Add(max_size_val, llsize_of(T_int()))
+            } else { max_size_val };
             ret rslt(bcx, total_size);
         }
         case (ty::ty_ivec(?mt)) {
@@ -2535,6 +2546,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         r.bcx.build.Br(next_cx.llbb);
         ret rslt(next_cx, C_nil());
     }
+
     fn iter_ivec(@block_ctxt bcx, ValueRef av, ValueRef bv, ty::t unit_ty,
                  &val_pair_and_ty_fn f) -> result {
         // FIXME: "unimplemented rebinding existing function" workaround
@@ -2603,6 +2615,42 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
 
         ret rslt(next_cx, C_nil());
     }
+
+    fn iter_variant(@block_ctxt cx, ValueRef a_tup, ValueRef b_tup,
+                    &ty::variant_info variant, &vec[ty::t] tps,
+                    &ast::def_id tid, &val_pair_and_ty_fn f) -> result {
+        if (vec::len[ty::t](variant.args) == 0u) {
+            ret rslt(cx, C_nil());
+        }
+        auto fn_ty = variant.ctor_ty;
+        auto ccx = cx.fcx.lcx.ccx;
+        alt (ty::struct(ccx.tcx, fn_ty)) {
+            case (ty::ty_fn(_, ?args, _, _, _)) {
+                auto j = 0;
+                for (ty::arg a in args) {
+                    auto rslt = GEP_tag(cx, a_tup, tid,
+                                        variant.id, tps, j);
+                    auto llfldp_a = rslt.val;
+                    cx = rslt.bcx;
+                    rslt = GEP_tag(cx, b_tup, tid,
+                                   variant.id, tps, j);
+                    auto llfldp_b = rslt.val;
+                    cx = rslt.bcx;
+                    auto ty_subst =
+                        ty::substitute_type_params(ccx.tcx, tps, a.ty);
+                    auto llfld_a =
+                        load_if_immediate(cx, llfldp_a, ty_subst);
+                    auto llfld_b =
+                        load_if_immediate(cx, llfldp_b, ty_subst);
+                    rslt = f(cx, llfld_a, llfld_b, ty_subst);
+                    cx = rslt.bcx;
+                    j += 1;
+                }
+            }
+        }
+        ret rslt(cx, C_nil());
+    }
+    
     let result r = rslt(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(?args)) {
@@ -2612,8 +2660,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                 auto elt_a = r.val;
                 r = GEP_tup_like(r.bcx, t, bv, [0, i]);
                 auto elt_b = r.val;
-                r =
-                    f(r.bcx, load_if_immediate(r.bcx, elt_a, arg.ty),
+                r = f(r.bcx, load_if_immediate(r.bcx, elt_a, arg.ty),
                       load_if_immediate(r.bcx, elt_b, arg.ty), arg.ty);
                 i += 1;
             }
@@ -2625,8 +2672,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                 auto llfld_a = r.val;
                 r = GEP_tup_like(r.bcx, t, bv, [0, i]);
                 auto llfld_b = r.val;
-                r =
-                    f(r.bcx, load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
+                r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
                       load_if_immediate(r.bcx, llfld_b, fld.mt.ty),
                       fld.mt.ty);
                 i += 1;
@@ -2644,8 +2690,12 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         }
         case (ty::ty_tag(?tid, ?tps)) {
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, tid);
-            auto n_variants = vec::len[ty::variant_info](variants);
+            auto n_variants = vec::len(variants);
+
             // Cast the tags to types we can GEP into.
+            if (n_variants == 1u) {
+                ret iter_variant(cx, av, bv, variants.(0), tps, tid, f);
+            }
 
             auto lltagty = T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn);
             auto av_tag = cx.build.PointerCast(av, lltagty);
@@ -2656,9 +2706,9 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             auto lldiscrim_b_ptr = cx.build.GEP(bv_tag, [C_int(0), C_int(0)]);
             auto llunion_b_ptr = cx.build.GEP(bv_tag, [C_int(0), C_int(1)]);
             auto lldiscrim_b = cx.build.Load(lldiscrim_b_ptr);
+
             // NB: we must hit the discriminant first so that structural
             // comparison know not to proceed when the discriminants differ.
-
             auto bcx = cx;
             bcx =
                 f(bcx, lldiscrim_a, lldiscrim_b,
@@ -2675,47 +2725,10 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                                        "tag-iter-variant-" +
                                            uint::to_str(i, 10u));
                 llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
-                if (vec::len[ty::t](variant.args) > 0u) {
-                    // N-ary variant.
-
-                    auto fn_ty = variant.ctor_ty;
-                    alt (ty::struct(bcx.fcx.lcx.ccx.tcx, fn_ty)) {
-                        case (ty::ty_fn(_, ?args, _, _, _)) {
-                            auto j = 0;
-                            for (ty::arg a in args) {
-                                auto rslt =
-                                    GEP_tag(variant_cx, llunion_a_ptr, tid,
-                                            variant.id, tps, j);
-                                auto llfldp_a = rslt.val;
-                                variant_cx = rslt.bcx;
-                                rslt =
-                                    GEP_tag(variant_cx, llunion_b_ptr, tid,
-                                            variant.id, tps, j);
-                                auto llfldp_b = rslt.val;
-                                variant_cx = rslt.bcx;
-                                auto tcx = cx.fcx.lcx.ccx.tcx;
-                                auto ty_subst =
-                                    ty::substitute_type_params(tcx, tps,
-                                                               a.ty);
-                                auto llfld_a =
-                                    load_if_immediate(variant_cx, llfldp_a,
-                                                      ty_subst);
-                                auto llfld_b =
-                                    load_if_immediate(variant_cx, llfldp_b,
-                                                      ty_subst);
-                                rslt =
-                                    f(variant_cx, llfld_a, llfld_b, ty_subst);
-                                variant_cx = rslt.bcx;
-                                j += 1;
-                            }
-                        }
-                    }
-                    variant_cx.build.Br(next_cx.llbb);
-                } else {
-                    // Nullary variant; nothing to do.
-
-                    variant_cx.build.Br(next_cx.llbb);
-                }
+                variant_cx = iter_variant
+                    (variant_cx, llunion_a_ptr, llunion_b_ptr, variant,
+                     tps, tid, f).bcx;
+                variant_cx.build.Br(next_cx.llbb);
                 i += 1u;
             }
             ret rslt(next_cx, C_nil());
@@ -4614,34 +4627,43 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             ret rslt(matched_cx, llval);
         }
         case (ast::pat_tag(?ident, ?subpats, ?id)) {
-            auto lltagptr =
-                cx.build.PointerCast(llval,
-                                     T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
-            auto lldiscrimptr = cx.build.GEP(lltagptr, [C_int(0), C_int(0)]);
-            auto lldiscrim = cx.build.Load(lldiscrimptr);
             auto vdef =
                 ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
-            auto variant_tag = 0;
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
-            auto i = 0;
-            for (ty::variant_info v in variants) {
-                auto this_variant_id = v.id;
-                if (vdef._1._0 == this_variant_id._0 &&
-                        vdef._1._1 == this_variant_id._1) {
-                    variant_tag = i;
-                }
-                i += 1;
-            }
             auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
-            auto lleq =
-                cx.build.ICmp(lib::llvm::LLVMIntEQ, lldiscrim,
-                              C_int(variant_tag));
-            cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
+            auto llblobptr = llval;
+
+            if (vec::len(variants) == 1u) {
+                cx.build.Br(matched_cx.llbb);
+            } else {
+                auto lltagptr =
+                    cx.build.PointerCast(llval,
+                                         T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
+                auto lldiscrimptr = cx.build.GEP(lltagptr,
+                                                 [C_int(0), C_int(0)]);
+                auto lldiscrim = cx.build.Load(lldiscrimptr);
+                auto variant_tag = 0;
+                auto i = 0;
+                for (ty::variant_info v in variants) {
+                    auto this_variant_id = v.id;
+                    if (vdef._1._0 == this_variant_id._0 &&
+                        vdef._1._1 == this_variant_id._1) {
+                        variant_tag = i;
+                    }
+                    i += 1;
+                }
+                auto lleq =
+                    cx.build.ICmp(lib::llvm::LLVMIntEQ, lldiscrim,
+                                  C_int(variant_tag));
+                cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
+                if (vec::len(subpats) > 0u) {
+                    llblobptr =
+                        matched_cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
+                }
+            }
             auto ty_params = ty::node_id_to_type_params
                 (cx.fcx.lcx.ccx.tcx, id);
-            if (vec::len[@ast::pat](subpats) > 0u) {
-                auto llblobptr =
-                    matched_cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
+            if (vec::len(subpats) > 0u) {
                 auto i = 0;
                 for (@ast::pat subpat in subpats) {
                     auto rslt =
@@ -4690,10 +4712,12 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 
             auto vdef =
                 ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
-            auto lltagptr =
-                cx.build.PointerCast(llval,
-                                     T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
-            auto llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
+            auto llblobptr = llval;
+            if (vec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))!=1u) {
+                auto lltagptr = cx.build.PointerCast
+                    (llval, T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
+                llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
+            }
             auto ty_param_substs =
                 ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
             auto this_cx = cx;
@@ -4828,6 +4852,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
 }
 
 fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
+    auto ccx = cx.fcx.lcx.ccx;
     alt (cx.fcx.lcx.ccx.tcx.def_map.get(id)) {
         case (ast::def_arg(?did)) {
             alt (cx.fcx.llargs.find(did._1)) {
@@ -4856,12 +4881,12 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
             ret lval_mem(cx, cx.fcx.llobjfields.get(did._1));
         }
         case (ast::def_fn(?did, _)) {
-            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
+            auto tyt = ty::lookup_item_type(ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, id);
         }
         case (ast::def_variant(?tid, ?vid)) {
-            auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, vid);
-            alt (ty::struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
+            auto v_tyt = ty::lookup_item_type(ccx.tcx, vid);
+            alt (ty::struct(ccx.tcx, v_tyt._1)) {
                 case (ty::ty_fn(_, _, _, _, _)) {
                     // N-ary variant.
 
@@ -4869,43 +4894,36 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
                 }
                 case (_) {
                     // Nullary variant.
-
-                    auto tag_ty = node_id_type(cx.fcx.lcx.ccx, id);
-                    auto lldiscrim_gv =
-                        lookup_discriminant(cx.fcx.lcx, tid, vid);
-                    auto lldiscrim = cx.build.Load(lldiscrim_gv);
+                    auto tag_ty = node_id_type(ccx, id);
                     auto alloc_result = alloc_ty(cx, tag_ty);
                     auto lltagblob = alloc_result.val;
-                    auto lltagty;
-                    if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, tag_ty))
-                       {
-                        lltagty = T_opaque_tag(cx.fcx.lcx.ccx.tn);
-                    } else {
-                        lltagty = type_of(cx.fcx.lcx.ccx, p.span, tag_ty);
+                    auto lltagty = type_of_tag(ccx, p.span, tid, tag_ty);
+                    auto bcx = alloc_result.bcx;
+                    auto lltagptr = bcx.build.PointerCast
+                        (lltagblob, T_ptr(lltagty));
+                    if (vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u) {
+                        auto lldiscrim_gv =
+                            lookup_discriminant(bcx.fcx.lcx, tid, vid);
+                        auto lldiscrim = bcx.build.Load(lldiscrim_gv);
+                        auto lldiscrimptr = bcx.build.GEP
+                            (lltagptr, [C_int(0), C_int(0)]);
+                        bcx.build.Store(lldiscrim, lldiscrimptr);
                     }
-                    auto lltagptr =
-                        alloc_result.bcx.build.PointerCast(lltagblob,
-                                                           T_ptr(lltagty));
-                    auto lldiscrimptr =
-                        alloc_result.bcx.build.GEP(lltagptr,
-                                                   [C_int(0), C_int(0)]);
-                    alloc_result.bcx.build.Store(lldiscrim, lldiscrimptr);
-                    ret lval_val(alloc_result.bcx, lltagptr);
+                    ret lval_val(bcx, lltagptr);
                 }
             }
         }
         case (ast::def_const(?did)) {
             // TODO: externals
-
-            assert (cx.fcx.lcx.ccx.consts.contains_key(did._1));
-            ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did._1));
+            assert (ccx.consts.contains_key(did._1));
+            ret lval_mem(cx, ccx.consts.get(did._1));
         }
         case (ast::def_native_fn(?did)) {
-            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
+            auto tyt = ty::lookup_item_type(ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, id);
         }
         case (_) {
-            cx.fcx.lcx.ccx.sess.span_unimpl(cx.sp, "def variant in trans");
+            ccx.sess.span_unimpl(cx.sp, "def variant in trans");
         }
     }
 }
@@ -5538,7 +5556,6 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
         // to have type lldestty0 (the callee's expected type).
-
         val = llvm::LLVMGetUndef(lldestty0);
     } else if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
@@ -7920,7 +7937,7 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
 
 
 fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
-                     &ast::variant variant, int index,
+                     &ast::variant variant, int index, bool is_degen,
                      &vec[ast::ty_param] ty_params) {
     if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
         ret; // nullary constructors are just constants
@@ -7953,13 +7970,17 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
     copy_args_to_allocas(fcx, fn_args, arg_tys);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
-    // Cast the tag to a type we can GEP into.
 
-    auto lltagptr =
-        bcx.build.PointerCast(fcx.llretptr, T_opaque_tag_ptr(fcx.lcx.ccx.tn));
-    auto lldiscrimptr = bcx.build.GEP(lltagptr, [C_int(0), C_int(0)]);
-    bcx.build.Store(C_int(index), lldiscrimptr);
-    auto llblobptr = bcx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
+    auto llblobptr = if (is_degen) {
+        fcx.llretptr
+    } else {
+        // Cast the tag to a type we can GEP into.
+        auto lltagptr = bcx.build.PointerCast
+            (fcx.llretptr, T_opaque_tag_ptr(fcx.lcx.ccx.tn));
+        auto lldiscrimptr = bcx.build.GEP(lltagptr, [C_int(0), C_int(0)]);
+        bcx.build.Store(C_int(index), lldiscrimptr);
+        bcx.build.GEP(lltagptr, [C_int(0), C_int(1)])
+    };
     i = 0u;
     for (ast::variant_arg va in variant.node.args) {
         auto rslt =
@@ -8040,9 +8061,10 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
         }
         case (ast::item_tag(?variants, ?tps)) {
             auto sub_cx = extend_path(cx, item.ident);
+            auto degen = vec::len(variants) == 1u;
             auto i = 0;
             for (ast::variant variant in variants) {
-                trans_tag_variant(sub_cx, item.id, variant, i, tps);
+                trans_tag_variant(sub_cx, item.id, variant, i, degen, tps);
                 i += 1;
             }
         }
@@ -8427,13 +8449,14 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &vec[str] pt,
             auto n_variants = vec::len[ast::variant](variants);
             while (i < n_variants) {
                 auto variant = variants.(i);
-                auto discrim_val = C_int(i as int);
                 auto p = new_pt + [it.ident, variant.node.name, "discrim"];
                 auto s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
                 auto discrim_gvar =
                     llvm::LLVMAddGlobal(ccx.llmod, T_int(), str::buf(s));
-                llvm::LLVMSetInitializer(discrim_gvar, discrim_val);
-                llvm::LLVMSetGlobalConstant(discrim_gvar, True);
+                if (n_variants != 1u) {
+                    llvm::LLVMSetInitializer(discrim_gvar, C_int(i as int));
+                    llvm::LLVMSetGlobalConstant(discrim_gvar, True);
+                }
                 ccx.discrims.insert(variant.node.id, discrim_gvar);
                 ccx.discrim_symbols.insert(variant.node.id, s);
                 i += 1u;
