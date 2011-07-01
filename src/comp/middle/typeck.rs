@@ -640,7 +640,7 @@ mod collect {
                     case (some(?tpt)) { ret tpt; }
                     case (none) { }
                 }
-                auto t = ty::mk_native(cx.tcx);
+                auto t = ty::mk_native(cx.tcx, ast::local_def(it.id));
                 auto tpt = tup(0u, t);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;

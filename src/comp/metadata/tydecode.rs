@@ -263,7 +263,10 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             ret ty::mk_res(st.tcx, def, inner, params);
         }
         case ('X') { ret ty::mk_var(st.tcx, parse_int(st)); }
-        case ('E') { ret ty::mk_native(st.tcx); }
+        case ('E') {
+            auto def = parse_def(st, sd);
+            ret ty::mk_native(st.tcx, def);
+        }
         case ('Y') { ret ty::mk_type(st.tcx); }
         case ('#') {
             auto pos = parse_hex(st);

@@ -89,7 +89,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     alt (cname(cx, typ)) { case (some(?cs)) { ret cs; } case (_) { } }
     auto s = "";
     alt (struct(cx, typ)) {
-        case (ty_native) { s += "native"; }
+        case (ty_native(_)) { s += "native"; }
         case (ty_nil) { s += "()"; }
         case (ty_bot) { s += "_|_"; }
         case (ty_bool) { s += "bool"; }

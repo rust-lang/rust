@@ -330,7 +330,8 @@ fn encode_info_for_native_item(&@crate_ctxt cx, &ebml::writer ebml_w,
         case (native_item_ty) {
             encode_def_id(ebml_w, local_def(nitem.id));
             encode_kind(ebml_w, 'T' as u8);
-            encode_type(cx, ebml_w, ty::mk_native(cx.tcx));
+            encode_type(cx, ebml_w,
+                        ty::mk_native(cx.tcx, local_def(nitem.id)));
         }
         case (native_item_fn(_, _, ?tps)) {
             encode_def_id(ebml_w, local_def(nitem.id));

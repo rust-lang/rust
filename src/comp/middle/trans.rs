@@ -783,7 +783,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
     if (cx.lltypes.contains_key(t)) { ret cx.lltypes.get(t); }
     let TypeRef llty = 0 as TypeRef;
     alt (ty::struct(cx.tcx, t)) {
-        case (ty::ty_native) { llty = T_ptr(T_i8()); }
+        case (ty::ty_native(_)) { llty = T_ptr(T_i8()); }
         case (ty::ty_nil) { llty = T_nil(); }
         case (ty::ty_bot) {
             llty = T_nil(); /* ...I guess? */
@@ -2411,7 +2411,7 @@ fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
             ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"),
                      C_bool(false));
         }
-        case (ty::ty_native) {
+        case (ty::ty_native(_)) {
             trans_fail(cx, none[common::span],
                        "attempt to compare values of type native");
             ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"),

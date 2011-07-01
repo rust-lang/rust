@@ -184,7 +184,11 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
             w.write_char('X');
             w.write_str(common::istr(id));
         }
-        case (ty::ty_native) { w.write_char('E'); }
+        case (ty::ty_native(?def)) {
+            w.write_char('E');
+            w.write_str(cx.ds(def));
+            w.write_char('|');
+        }
         case (ty::ty_param(?id)) {
             w.write_char('p');
             w.write_str(common::uistr(id));

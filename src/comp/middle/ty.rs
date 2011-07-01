@@ -273,7 +273,7 @@ tag sty {
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
     ty_type;
-    ty_native;
+    ty_native(def_id);
     // TODO: ty_fn_arg(t), for a possibly-aliased function argument
 }
 
@@ -342,13 +342,11 @@ const uint idx_istr = 17u;
 
 const uint idx_task = 18u;
 
-const uint idx_native = 19u;
+const uint idx_type = 19u;
 
-const uint idx_type = 20u;
+const uint idx_bot = 20u;
 
-const uint idx_bot = 21u;
-
-const uint idx_first_others = 22u;
+const uint idx_first_others = 21u;
 
 type type_store = interner::interner[raw_t];
 
@@ -377,7 +375,6 @@ fn populate_type_store(&ctxt cx) {
     intern(cx, ty_str, none[str]);
     intern(cx, ty_istr, none[str]);
     intern(cx, ty_task, none[str]);
-    intern(cx, ty_native, none[str]);
     intern(cx, ty_type, none[str]);
     intern(cx, ty_bot, none[str]);
     assert (vec::len(cx.ts.vect) == idx_first_others);
@@ -462,7 +459,7 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
         case (ty_istr) {/* no-op */ }
         case (ty_task) {/* no-op */ }
         case (ty_type) {/* no-op */ }
-        case (ty_native) {/* no-op */ }
+        case (ty_native(_)) {/* no-op */ }
         case (ty_param(_)) { has_params = true; }
         case (ty_var(_)) { has_vars = true; }
         case (ty_tag(_, ?tys)) {
@@ -620,7 +617,7 @@ fn mk_param(&ctxt cx, uint n) -> t { ret gen_ty(cx, ty_param(n)); }
 
 fn mk_type(&ctxt cx) -> t { ret idx_type; }
 
-fn mk_native(&ctxt cx) -> t { ret idx_native; }
+fn mk_native(&ctxt cx, &def_id did) -> t { ret gen_ty(cx, ty_native(did)); }
 
 
 // Returns the one-level-deep type structure of the given type.
@@ -664,7 +661,7 @@ fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
         case (ty_str) {/* no-op */ }
         case (ty_istr) {/* no-op */ }
         case (ty_type) {/* no-op */ }
-        case (ty_native) {/* no-op */ }
+        case (ty_native(_)) {/* no-op */ }
         case (ty_box(?tm)) { walk_ty(cx, walker, tm.ty); }
         case (ty_vec(?tm)) { walk_ty(cx, walker, tm.ty); }
         case (ty_ivec(?tm)) { walk_ty(cx, walker, tm.ty); }
@@ -731,7 +728,7 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
         case (ty_str) {/* no-op */ }
         case (ty_istr) {/* no-op */ }
         case (ty_type) {/* no-op */ }
-        case (ty_native) {/* no-op */ }
+        case (ty_native(_)) {/* no-op */ }
         case (ty_task) {/* no-op */ }
         case (ty_box(?tm)) {
             ty =
@@ -1017,7 +1014,7 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }
         case (ty_type) { ret true; }
-        case (ty_native) { ret true; }
+        case (ty_native(_)) { ret true; }
         case (ty_ptr(_)) { ret true; }
         case (_) { ret false; }
     }
@@ -1041,7 +1038,7 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
         case (ty_machine(_)) { /* no-op */ }
         case (ty_char) { /* no-op */ }
         case (ty_type) { /* no-op */ }
-        case (ty_native) { /* no-op */ }
+        case (ty_native(_)) { /* no-op */ }
         case (ty_tup(?elts)) {
             for (mt m in elts) {
                 if (type_has_pointers(cx, m.ty)) { result = true; }
@@ -1082,7 +1079,7 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
 // type_is_scalar?
 fn type_is_native(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
-        case (ty_native) { ret true; }
+        case (ty_native(_)) { ret true; }
         case (_) { ret false; }
     }
 }
@@ -1142,7 +1139,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_var(_)) { fail "ty_var in type_has_dynamic_size()"; }
         case (ty_param(_)) { ret true; }
         case (ty_type) { ret false; }
-        case (ty_native) { ret false; }
+        case (ty_native(_)) { ret false; }
     }
 }
 
@@ -1219,7 +1216,7 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
         case (ty_machine(_)) { result = false; }
         case (ty_char) { result = false; }
         case (ty_type) { result = false; }
-        case (ty_native) { result = false; }
+        case (ty_native(_)) { result = false; }
 
         // boxed types
         case (ty_str) { result = false; }
@@ -1388,7 +1385,7 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_var(?v)) { ret hash_uint(30u, v as uint); }
         case (ty_param(?pid)) { ret hash_uint(31u, pid); }
         case (ty_type) { ret 32u; }
-        case (ty_native) { ret 33u; }
+        case (ty_native(?did)) { ret hash_def(33u, did); }
         case (ty_bot) { ret 34u; }
         case (ty_ptr(?mt)) { ret hash_subty(35u, mt.ty); }
         case (ty_res(?did, ?sub, ?tps)) {
@@ -1687,8 +1684,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_type) {
             alt (b) { case (ty_type) { ret true; } case (_) { ret false; } }
         }
-        case (ty_native) {
-            alt (b) { case (ty_native) { ret true; } case (_) { ret false; } }
+        case (ty_native(?a_id)) {
+            alt (b) {
+                case (ty_native(?b_id)) {
+                    ret a_id._0 == b_id._0 && a_id._1 == b_id._1;
+                }
+                case (_) { ret false; } }
         }
     }
 }
@@ -2313,9 +2314,8 @@ mod unify {
         }
         alt (struct(cx.tcx, expected)) {
             case (ty::ty_nil) { ret struct_cmp(cx, expected, actual); }
-            case (
-                 // _|_ unifies with anything
-                 ty::ty_bot) {
+            // _|_ unifies with anything
+            case (ty::ty_bot) {
                 ret ures_ok(actual);
             }
             case (ty::ty_bool) { ret struct_cmp(cx, expected, actual); }
@@ -2327,7 +2327,18 @@ mod unify {
             case (ty::ty_str) { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_istr) { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_type) { ret struct_cmp(cx, expected, actual); }
-            case (ty::ty_native) { ret struct_cmp(cx, expected, actual); }
+            case (ty::ty_native(?ex_id)) {
+                alt (struct(cx.tcx, actual)) {
+                    case (ty_native(?act_id)) {
+                        if (ex_id._0 == act_id._0 && ex_id._1 == act_id._1) {
+                            ret ures_ok(actual);
+                        } else {
+                            ret ures_err(terr_mismatch);
+                        }
+                    }
+                    case (_) { ret ures_err(terr_mismatch); }
+                }
+            }       
             case (ty::ty_param(_)) { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_tag(?expected_id, ?expected_tps)) {
                 alt (struct(cx.tcx, actual)) {
