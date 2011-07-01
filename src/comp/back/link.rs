@@ -332,6 +332,7 @@ fn build_link_meta(&session::session sess, &ast::crate c,
                     sha.input_str(len_and_str(name));
                 }
                 case (ast::meta_list(_, _)) {
+                    // FIXME (#607): Implement this
                     fail "unimplemented meta_item variant";
                 }
             }

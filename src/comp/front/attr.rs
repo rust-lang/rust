@@ -96,7 +96,9 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
             }
         }
         case (ast::meta_list(?na, ?la)) {
-            // FIXME (#487): This involves probably sorting the list by name
+            // FIXME (#607): Needs implementing
+            // This involves probably sorting the list by name and
+            // meta_item variant
             fail "unimplemented meta_item variant"
         }
     }
@@ -115,6 +117,7 @@ fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
     ret false;
 }
 
+// FIXME: This needs to sort by meta_item variant in addition to the item name
 fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
     fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
         fn key(&@ast::meta_item m) -> ast::ident {
