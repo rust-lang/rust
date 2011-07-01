@@ -267,11 +267,11 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         // The typedef is type-parametric. Do the type substitution.
         //
 
-        let vec[ty::t] param_bindings = [];
+        let ty::t[] param_bindings = ~[];
         for (@ast::ty ast_ty in args) {
-            param_bindings += [ast_ty_to_ty(tcx, getter, ast_ty)];
+            param_bindings += ~[ast_ty_to_ty(tcx, getter, ast_ty)];
         }
-        if (vec::len(param_bindings) !=
+        if (ivec::len(param_bindings) !=
                 ty::count_ty_params(tcx, params_opt_and_ty._1)) {
             tcx.sess.span_fatal(sp,
                               "Wrong number of type arguments for a" +
@@ -649,8 +649,13 @@ mod collect {
                 // Create a new generic polytype.
 
                 auto ty_param_count = vec::len[ast::ty_param](tps);
+
                 let vec[ty::t] subtys = mk_ty_params(cx, ty_param_count);
-                auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
+                // FIXME: Remove this vec->ivec conversion.
+                auto tps_ivec = ~[];
+                for (ty::t tp in subtys) { tps_ivec += ~[tp]; }
+
+                auto t = ty::mk_tag(cx.tcx, local_def(it.id), tps_ivec);
                 auto tpt = tup(ty_param_count, t);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
@@ -692,9 +697,13 @@ mod collect {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
 
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in ty_param_tys) { tps_ivec += ~[tp]; }
+
             auto result_ty;
             if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
-                result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
+                result_ty = ty::mk_tag(cx.tcx, tag_id, tps_ivec);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -705,7 +714,7 @@ mod collect {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
                     args += ~[rec(mode=ty::mo_alias(false), ty=arg_ty)];
                 }
-                auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
+                auto tag_t = ty::mk_tag(cx.tcx, tag_id, tps_ivec);
                 // FIXME: this will be different for constrained types
                 result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
                                       ast::return, []);
@@ -861,7 +870,11 @@ fn do_autoderef(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
         alt (structure_of(fcx, sp, t1)) {
             case (ty::ty_box(?inner)) { t1 = inner.ty; }
             case (ty::ty_res(_, ?inner, ?tps)) {
-                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
+                // FIXME: Remove this vec->ivec conversion.
+                auto tps_ivec = ~[];
+                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps_ivec, inner);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = ty::tag_variants(fcx.ccx.tcx, did);
@@ -991,7 +1004,7 @@ fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
 
 // Returns the types of the arguments to a tag variant.
 fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
-                     &vec[ty::t] tag_ty_params) -> vec[ty::t] {
+                     &ty::t[] tag_ty_params) -> vec[ty::t] {
     let vec[ty::t] result = [];
     auto tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt (ty::struct(ccx.tcx, tpt._1)) {
@@ -1310,67 +1323,60 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
             auto path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
             // Take the tag type params out of `expected`.
 
-            auto expected_tps;
             alt (structure_of(fcx, pat.span, expected)) {
-                case (ty::ty_tag(_, ?tps)) { expected_tps = tps; }
-                case (_) {
-                    // FIXME: Switch expected and actual in this message? I
-                    // can never tell.
+              case (ty::ty_tag(_, ?expected_tps)) {
+                // Unify with the expected tag type.
 
-                    fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                              #fmt("mismatched types: \
-                                                    expected tag, found %s",
-                                                   ty_to_str(fcx.ccx.tcx,
-                                                             expected)));
-                }
-            }
-            // Unify with the expected tag type.
+                auto ctor_ty =
+                    ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
+                                                               path_tpot);
 
-            auto ctor_ty =
-                ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
-                                                           path_tpot);
-            auto path_tpt =
-                demand::full(fcx, pat.span, expected, ctor_ty, expected_tps,
-                             NO_AUTODEREF);
-            path_tpot = tup(some[vec[ty::t]](path_tpt._0), path_tpt._1);
-            // Get the number of arguments in this tag variant.
+                // FIXME: Remove this ivec->vec conversion.
+                auto tps_vec = [];
+                for (ty::t tp in expected_tps) { tps_vec += [tp]; }
 
-            auto arg_types =
-                variant_arg_types(fcx.ccx, pat.span, v_def_ids._1,
-                                  expected_tps);
-            auto subpats_len = vec::len[@ast::pat](subpats);
-            if (vec::len[ty::t](arg_types) > 0u) {
-                // N-ary variant.
+                auto path_tpt =
+                    demand::full(fcx, pat.span, expected, ctor_ty, tps_vec,
+                                 NO_AUTODEREF);
+                path_tpot = tup(some[vec[ty::t]](path_tpt._0), path_tpt._1);
+                // Get the number of arguments in this tag variant.
 
-                auto arg_len = vec::len[ty::t](arg_types);
-                if (arg_len != subpats_len) {
+                auto arg_types =
+                    variant_arg_types(fcx.ccx, pat.span, v_def_ids._1,
+                                      expected_tps);
+                auto subpats_len = vec::len[@ast::pat](subpats);
+                if (vec::len[ty::t](arg_types) > 0u) {
+                    // N-ary variant.
+
+                    auto arg_len = vec::len[ty::t](arg_types);
+                    if (arg_len != subpats_len) {
+                        // TODO: note definition of tag variant
+                        // TODO (issue #448): Wrap a #fmt string over multiple
+                        // lines...
+                        auto s = #fmt("this pattern has %u field%s, but the \
+                                       corresponding variant has %u field%s",
+                                      subpats_len,
+                                      if (subpats_len == 1u) {
+                                          ""
+                                      } else { "s" }, arg_len,
+                                      if (arg_len == 1u) {
+                                          ""
+                                      } else { "s" });
+                        fcx.ccx.tcx.sess.span_fatal(pat.span, s);
+                    }
+                    // TODO: vec::iter2
+
+                    auto i = 0u;
+                    for (@ast::pat subpat in subpats) {
+                        check_pat(fcx, subpat, arg_types.(i));
+                        i += 1u;
+                    }
+                } else if (subpats_len > 0u) {
                     // TODO: note definition of tag variant
                     // TODO (issue #448): Wrap a #fmt string over multiple
                     // lines...
-                    auto s = #fmt("this pattern has %u field%s, but the \
-                                   corresponding variant has %u field%s",
-                                  subpats_len,
-                                  if (subpats_len == 1u) {
-                                      ""
-                                  } else { "s" }, arg_len,
-                                  if (arg_len == 1u) {
-                                      ""
-                                  } else { "s" });
-                    fcx.ccx.tcx.sess.span_fatal(pat.span, s);
-                }
-                // TODO: vec::iter2
 
-                auto i = 0u;
-                for (@ast::pat subpat in subpats) {
-                    check_pat(fcx, subpat, arg_types.(i));
-                    i += 1u;
-                }
-            } else if (subpats_len > 0u) {
-                // TODO: note definition of tag variant
-                // TODO (issue #448): Wrap a #fmt string over multiple
-                // lines...
-
-                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                    fcx.ccx.tcx.sess.span_fatal(pat.span,
                                           #fmt("this pattern has %u field%s, \
                                                 but the corresponding \
                                                 variant has no fields",
@@ -1378,6 +1384,19 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                                                if (subpats_len == 1u) {
                                                    ""
                                                } else { "s" }));
+                }
+                write::ty_fixup(fcx, pat.id, path_tpot);
+              }
+              case (_) {
+                // FIXME: Switch expected and actual in this message? I
+                // can never tell.
+
+                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                            #fmt("mismatched types: \
+                                                  expected tag, found %s",
+                                                 ty_to_str(fcx.ccx.tcx,
+                                                           expected)));
+              }
             }
             write::ty_fixup(fcx, pat.id, path_tpot);
         }

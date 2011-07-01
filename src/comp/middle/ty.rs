@@ -257,7 +257,7 @@ tag sty {
     ty_char;
     ty_str;
     ty_istr;
-    ty_tag(def_id, vec[t]);
+    ty_tag(def_id, t[]);
     ty_box(mt);
     ty_vec(mt);
     ty_ivec(mt);
@@ -557,7 +557,7 @@ fn mk_str(&ctxt cx) -> t { ret idx_str; }
 
 fn mk_istr(&ctxt cx) -> t { ret idx_istr; }
 
-fn mk_tag(&ctxt cx, &ast::def_id did, &vec[t] tys) -> t {
+fn mk_tag(&ctxt cx, &ast::def_id did, &t[] tys) -> t {
     ret gen_ty(cx, ty_tag(did, tys));
 }
 
@@ -753,9 +753,9 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_chan(cx, fold_ty(cx, fld, subty)), ty);
         }
         case (ty_tag(?tid, ?subtys)) {
-            let vec[t] new_subtys = [];
+            let t[] new_subtys = ~[];
             for (t subty in subtys) {
-                new_subtys += [fold_ty(cx, fld, subty)];
+                new_subtys += ~[fold_ty(cx, fld, subty)];
             }
             ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
         }
@@ -1052,8 +1052,12 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_res(?did, ?inner, ?tps)) {
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
             result = type_has_pointers
-                (cx, substitute_type_params(cx, tps, inner));
+                (cx, substitute_type_params(cx, tps_ivec, inner));
         }
         case (_) { result = true; }
     }
@@ -1086,7 +1090,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_istr) { ret false; }
         case (ty_tag(_, ?subtys)) {
             auto i = 0u;
-            while (i < vec::len[t](subtys)) {
+            while (i < ivec::len[t](subtys)) {
                 if (type_has_dynamic_size(cx, subtys.(i))) { ret true; }
                 i += 1u;
             }
@@ -1240,8 +1244,12 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_res(_, ?inner, ?tps)) {
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
             result = type_owns_heap_mem
-                (cx, substitute_type_params(cx, tps, inner));
+                (cx, substitute_type_params(cx, tps_ivec, inner));
         }
 
         case (ty_ptr(_)) { result = false; }
@@ -1272,7 +1280,11 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
         alt (struct(cx, t1)) {
             case (ty::ty_box(?mt)) { t1 = mt.ty; }
             case (ty::ty_res(_, ?inner, ?tps)) {
-                t1 = substitute_type_params(cx, tps, inner);
+                // FIXME: Remove this vec->ivec conversion.
+                auto tps_ivec = ~[];
+                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+                t1 = substitute_type_params(cx, tps_ivec, inner);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = tag_variants(cx, did);
@@ -1514,8 +1526,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
             alt (b) {
                 case (ty_tag(?id_b, ?tys_b)) {
                     if (!equal_def(id_a, id_b)) { ret false; }
-                    auto len = vec::len[t](tys_a);
-                    if (len != vec::len[t](tys_b)) { ret false; }
+                    auto len = ivec::len[t](tys_a);
+                    if (len != ivec::len[t](tys_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         if (!eq_ty(tys_a.(i), tys_b.(i))) { ret false; }
@@ -1755,7 +1767,13 @@ fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
    t {
     alt (tpot._0) {
         case (none) { ret tpot._1; }
-        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot._1); }
+        case (some(?tps)) {
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+            ret substitute_type_params(cx, tps_ivec, tpot._1);
+        }
     }
 }
 
@@ -2328,18 +2346,16 @@ mod unify {
                         // TODO: factor this cruft out, see the TODO in the
                         // ty::ty_tup case
 
-                        let vec[t] result_tps = [];
+                        let t[] result_tps = ~[];
                         auto i = 0u;
-                        auto expected_len = vec::len[t](expected_tps);
+                        auto expected_len = ivec::len[t](expected_tps);
                         while (i < expected_len) {
                             auto expected_tp = expected_tps.(i);
                             auto actual_tp = actual_tps.(i);
                             auto result =
                                 unify_step(cx, expected_tp, actual_tp);
                             alt (result) {
-                                case (ures_ok(?rty)) {
-                                    vec::push[t](result_tps, rty);
-                                }
+                                case (ures_ok(?rty)) { result_tps += ~[rty]; }
                                 case (_) { ret result; }
                             }
                             i += 1u;
@@ -2769,14 +2785,13 @@ fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
 
 // Replaces type parameters in the given type using the given list of
 // substitions.
-fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
+fn substitute_type_params(&ctxt cx, &ty::t[] substs, t typ) -> t {
     if (!type_contains_params(cx, typ)) { ret typ; }
-    fn substituter(ctxt cx, vec[ty::t] substs, uint idx) -> t {
+    fn substituter(ctxt cx, @ty::t[] substs, uint idx) -> t {
         // FIXME: bounds check can fail
-
         ret substs.(idx);
     }
-    ret fold_ty(cx, fm_param(bind substituter(cx, substs, _)), typ);
+    ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _)), typ);
 }
 
 fn def_has_ty_params(&ast::def def) -> bool {
