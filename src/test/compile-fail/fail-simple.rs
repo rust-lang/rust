@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern: after expression but found
+// error-pattern:unexpected token
 fn main() {
   fail @ ;
 }
