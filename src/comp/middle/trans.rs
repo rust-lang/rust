@@ -1945,8 +1945,8 @@ fn make_copy_glue(&@block_ctxt cx, ValueRef v, &ty::t t) {
     if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
-        bcx = iter_structural_ty(cx, v, t, bind copy_ty(_, _, _)).bcx;
-        bcx = duplicate_heap_parts_if_necessary(bcx, v, t).bcx;
+        bcx = duplicate_heap_parts_if_necessary(cx, v, t).bcx;
+        bcx = iter_structural_ty(bcx, v, t, bind copy_ty(_, _, _)).bcx;
     } else { bcx = cx; }
     bcx.build.RetVoid();
 }
