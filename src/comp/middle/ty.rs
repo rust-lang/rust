@@ -1788,24 +1788,22 @@ fn node_id_to_monotype(&ctxt cx, ast::node_id id) -> t {
 
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(&ctxt cx, t ty) -> uint {
-    fn counter(&ctxt cx, @mutable vec[uint] param_indices, t ty) {
+    fn counter(&ctxt cx, @mutable (uint[]) param_indices, t ty) {
         alt (struct(cx, ty)) {
             case (ty_param(?param_idx)) {
                 auto seen = false;
                 for (uint other_param_idx in *param_indices) {
                     if (param_idx == other_param_idx) { seen = true; }
                 }
-                if (!seen) { *param_indices += [param_idx]; }
+                if (!seen) { *param_indices += ~[param_idx]; }
             }
             case (_) {/* fall through */ }
         }
     }
-    let vec[uint] v = []; // FIXME: typechecker botch
-
-    let @mutable vec[uint] param_indices = @mutable v;
+    let @mutable (uint[]) param_indices = @mutable ~[];
     auto f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
-    ret vec::len[uint](*param_indices);
+    ret ivec::len[uint](*param_indices);
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
