@@ -598,6 +598,19 @@ fn ternary_to_if(&@expr e) -> @ast::expr {
     }
 }
 
+// Path stringification
+fn path_to_str(&ast::path pth) -> str {
+    auto result = str::connect(pth.node.idents, "::");
+    if (vec::len[@ast::ty](pth.node.types) > 0u) {
+        fn f(&@ast::ty t) -> str { ret pretty::pprust::ty_to_str(*t); }
+        result += "[";
+        result += str::connect(vec::map(f, pth.node.types), ",");
+        result += "]";
+    }
+    ret result;
+}
+
+
 //
 // Local Variables:
 // mode: rust

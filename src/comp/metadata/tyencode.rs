@@ -232,7 +232,7 @@ fn enc_ty_fn(&io::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
 
 }
 fn enc_constr(&io::writer w, &@ctxt cx, &@ty::constr_def c) {
-    w.write_str(ty::path_to_str(c.node.path));
+    w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');

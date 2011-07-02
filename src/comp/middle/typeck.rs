@@ -2,6 +2,7 @@
 import front::ast;
 import front::ast::mutability;
 import front::ast::local_def;
+import front::ast::path_to_str;
 import metadata::decoder;
 import driver::session;
 import util::common;
@@ -22,7 +23,6 @@ import middle::ty::mo_val;
 import middle::ty::mo_alias;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
-import middle::ty::path_to_str;
 import middle::ty::ty_param_substs_opt_and_ty;
 import pretty::ppaux::ty_to_str;
 import middle::ty::ty_param_count_and_ty;

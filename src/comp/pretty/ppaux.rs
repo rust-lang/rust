@@ -379,12 +379,12 @@ const uint default_columns = 78u;
 fn uint_to_str(&uint i) -> str { ret uistr(i); }
 
 fn constr_to_str(&@constr_def c) -> str {
-    ret path_to_str(c.node.path) +
+    ret ast::path_to_str(c.node.path) +
             constr_args_to_str(uint_to_str, c.node.args);
 }
 
 fn ast_constr_to_str(&@front::ast::constr c) -> str {
-    ret path_to_str(c.node.path) +
+    ret ast::path_to_str(c.node.path) +
             constr_args_to_str(uint_to_str, c.node.args);
 }
 

@@ -18,6 +18,7 @@ import front::ast::def_id;
 import front::ast::constr_arg_general;
 import front::ast::mutability;
 import front::ast::controlflow;
+import front::ast::path_to_str;
 import metadata::creader;
 import metadata::decoder;
 import util::common::*;
@@ -101,7 +102,6 @@ export node_type_table;
 export pat_node_id;
 export pat_ty;
 export cname;
-export path_to_str;
 export rename;
 export ret_ty_of_fn;
 export ret_ty_of_fn_ty;
@@ -629,19 +629,6 @@ fn struct(&ctxt cx, &t typ) -> sty {
 // Returns the canonical name of the given type.
 fn cname(&ctxt cx, &t typ) -> option::t[str] {
     ret interner::get[raw_t](*cx.ts, typ).cname;
-}
-
-
-// Stringification
-fn path_to_str(&ast::path pth) -> str {
-    auto result = str::connect(pth.node.idents, "::");
-    if (vec::len[@ast::ty](pth.node.types) > 0u) {
-        fn f(&@ast::ty t) -> str { ret pretty::pprust::ty_to_str(*t); }
-        result += "[";
-        result += str::connect(vec::map(f, pth.node.types), ",");
-        result += "]";
-    }
-    ret result;
 }
 
 
