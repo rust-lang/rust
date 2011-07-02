@@ -955,6 +955,9 @@ fn parse_syntax_ext(&parser p) -> @ast::expr {
 
 fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto pth = parse_path(p);
+    if (vec::len(pth.node.idents) == 0u) {
+        p.fatal("expected a syntax expander name");
+    }
     auto es = parse_seq(token::LPAREN, token::RPAREN,
                         some(token::COMMA), parse_expr, p);
     auto hi = es.span.hi;
