@@ -6295,8 +6295,6 @@ fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
         -> result {
     alt (fail_expr) {
         case (some(?expr)) {
-            //auto log_cx = new_scope_block_ctxt(cx, "log");
-
             auto tcx = cx.fcx.lcx.ccx.tcx;
             auto expr_res = trans_expr(cx, expr);
             auto e_ty = ty::expr_ty(tcx, expr);
