@@ -5564,9 +5564,10 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
             val = do_spill(lv.res.bcx, lv.res.val);
         }
     } else { auto re = trans_expr(bcx, e); val = re.val; bcx = re.bcx; }
+    auto is_bot = ty::type_is_bot(cx.fcx.lcx.ccx.tcx, e_ty);
 
     // Make a copy here if the type is structural and we're passing by value.
-    if (arg.mode == ty::mo_val) {
+    if (arg.mode == ty::mo_val && !is_bot) {
         if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, e_ty)) {
             auto rslt = alloc_ty(bcx, e_ty);
             bcx = rslt.bcx;
@@ -5579,7 +5580,7 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
         }
     }
 
-    if (ty::type_is_bot(cx.fcx.lcx.ccx.tcx, e_ty)) {
+    if (is_bot) {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
@@ -5747,25 +5748,30 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     }
     */
 
-    bcx.build.FastCall(faddr, llargs);
+    /* If the block is terminated,
+       then one or more of the args has
+       type _|_. Since that means it diverges, the code
+       for the call itself is unreachable. */
     auto retval = C_nil();
-    alt (lliterbody) {
-        case (none) {
-            if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, ret_ty)) {
-                retval = load_if_immediate(bcx, llretslot, ret_ty);
-                // Retval doesn't correspond to anything really tangible in
-                // the frame, but it's a ref all the same, so we put a note
-                // here to drop it when we're done in this scope.
-
-                find_scope_cx(cx).cleanups +=
-                    [clean(bind drop_ty(_, retval, ret_ty))];
+    if (!bcx.build.is_terminated()) {
+        bcx.build.FastCall(faddr, llargs);
+        alt (lliterbody) {
+            case (none) {
+                if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, ret_ty)) {
+                    retval = load_if_immediate(bcx, llretslot, ret_ty);
+                    // Retval doesn't correspond to anything really tangible
+                    // in the frame, but it's a ref all the same, so we put a
+                    // note here to drop it when we're done in this scope.
+                    
+                    find_scope_cx(cx).cleanups +=
+                        [clean(bind drop_ty(_, retval, ret_ty))];
+                }
             }
-        }
-        case (some(_)) {
-            // If there was an lliterbody, it means we were calling an
-            // iter, and we are *not* the party using its 'output' value,
-            // we should ignore llretslot.
-
+            case (some(_)) {
+                // If there was an lliterbody, it means we were calling an
+                // iter, and we are *not* the party using its 'output' value,
+                // we should ignore llretslot.
+            }
         }
     }
     ret rslt(bcx, retval);
