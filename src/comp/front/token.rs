@@ -172,6 +172,27 @@ fn to_str(lexer::reader r, token t) -> str {
         case (EOF) { ret "<eof>"; }
     }
 }
+
+
+pred can_begin_expr(token t) -> bool {
+    alt (t) {
+        case (LPAREN) { true }
+        case (LBRACE) { true }
+        case (IDENT(_,_)) { true }
+        case (UNDERSCORE) { true }
+        case (TILDE) { true }
+        case (LIT_INT(_)) { true }
+        case (LIT_UINT(_)) { true }
+        case (LIT_MACH_INT(_,_)) { true }
+        case (LIT_FLOAT(_)) { true }
+        case (LIT_MACH_FLOAT(_,_)) { true }
+        case (LIT_STR(_)) { true }
+        case (LIT_CHAR(_)) { true }
+        case (POUND) { true }
+        case (AT) { true }
+        case (_) { false }
+    }
+}
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil
