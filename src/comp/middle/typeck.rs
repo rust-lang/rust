@@ -229,6 +229,11 @@ fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
     ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
 }
 
+fn type_is_str(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
+    auto typ_s = structurally_resolved_type(fcx, sp, typ);
+    ret ty::type_is_str(fcx.ccx.tcx, typ_s);    
+}
+
 
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
@@ -1658,7 +1663,17 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_fail(?expr_opt)) {
             alt (expr_opt) {
                 case (none) { /* do nothing */ }
-                case (some(?e)) { check_expr(fcx, e); }
+                case (some(?e)) {
+                    check_expr(fcx, e);
+                    auto tcx = fcx.ccx.tcx;
+                    auto ety = expr_ty(tcx, e);
+                    if (!type_is_str(fcx, e.span, ety)) {
+                        tcx.sess.span_fatal(e.span,
+                                            #fmt("mismatched types: expected \
+                                                  str, found %s",
+                                                 ty_to_str(tcx, ety)));
+                    }
+                }
             }
             write::bot_ty(fcx.ccx.tcx, id);
         }
