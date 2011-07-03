@@ -1405,6 +1405,10 @@ obj builder(BuilderRef B, @mutable bool terminated) {
                                str::buf(""));
     }
 
+    fn is_terminated() -> bool {
+        ret *terminated;
+    }
+
     drop {
         llvm::LLVMDisposeBuilder(B);
     }
