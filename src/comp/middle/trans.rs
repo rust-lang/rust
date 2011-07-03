@@ -5610,6 +5610,14 @@ fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
     let @block_ctxt bcx = cx;
     // Arg 0: Output pointer.
 
+    // FIXME: test case looks like
+    // f(1, fail, @42);
+    if (bcx.build.is_terminated()) {
+        // This means an earlier arg was divergent.
+        // So this arg can't be evaluated.
+        ret tup(bcx, [], C_nil());
+    }
+
     auto retty = ty::ty_fn_ret(cx.fcx.lcx.ccx.tcx, fn_ty);
     auto llretslot_res = alloc_ty(bcx, retty);
     bcx = llretslot_res.bcx;
