@@ -69,6 +69,25 @@ type fn_ctxt =
 // Used for ast_ty_to_ty() below.
 type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty ;
 
+fn lookup_local(&@fn_ctxt fcx, &span sp, ast::node_id id) -> int {
+    alt (fcx.locals.find(id)) {
+        case (some(?x)) { x }
+        case (_) {
+            fcx.ccx.tcx.sess.span_fatal(sp, "internal error looking up a \
+              local var")
+        }
+    }
+}
+
+fn lookup_def(&@fn_ctxt fcx, &span sp, ast::node_id id) -> ast::def {
+    alt (fcx.ccx.tcx.def_map.find(id)) {
+        case (some(?x)) { x }
+        case (_) {
+            fcx.ccx.tcx.sess.span_fatal(sp, "internal error looking up \
+              a definition")
+        }
+    }
+}
 
 // Returns the type parameter count and the type for the given definition.
 fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
@@ -76,17 +95,18 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
     alt (defn) {
         case (ast::def_arg(?id)) {
             assert (fcx.locals.contains_key(id._1));
-            auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
+            auto typ = ty::mk_var(fcx.ccx.tcx, 
+                                  lookup_local(fcx, sp, id._1));
             ret tup(0u, typ);
         }
         case (ast::def_local(?id)) {
             assert (fcx.locals.contains_key(id._1));
-            auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
+            auto typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id._1));
             ret tup(0u, typ);
         }
         case (ast::def_obj_field(?id)) {
             assert (fcx.locals.contains_key(id._1));
-            auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
+            auto typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id._1));
             ret tup(0u, typ);
         }
         case (ast::def_fn(?id, _)) {
@@ -103,7 +123,7 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
         }
         case (ast::def_binding(?id)) {
             assert (fcx.locals.contains_key(id._1));
-            auto typ = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(id._1));
+            auto typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id._1));
             ret tup(0u, typ);
         }
         case (ast::def_mod(_)) {
@@ -320,17 +340,23 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
         }
         case (ast::ty_path(?path, ?id)) {
-            alt (tcx.def_map.get(id)) {
-                case (ast::def_ty(?id)) {
+            alt (tcx.def_map.find(id)) {
+                case (some(ast::def_ty(?id))) {
                     typ =
                         instantiate(tcx, ast_ty.span, getter, id,
                                     path.node.types);
                 }
-                case (ast::def_native_ty(?id)) { typ = getter(id)._1; }
-                case (ast::def_ty_arg(?id)) { typ = ty::mk_param(tcx, id); }
-                case (_) {
+                case (some(ast::def_native_ty(?id))) { typ = getter(id)._1; }
+                case (some(ast::def_ty_arg(?id))) {
+                    typ = ty::mk_param(tcx, id);
+                }
+                case (some(_)) {
                     tcx.sess.span_fatal(ast_ty.span,
                                       "found type name used as a variable");
+                }
+                case (_) {
+                    tcx.sess.span_fatal(ast_ty.span,
+                                       "internal error in instantiate");
                 }
             }
             cname = some(path_to_str(path));
@@ -499,13 +525,19 @@ mod collect {
 
             ret decoder::get_type(cx.tcx, id);
         }
-        auto it = cx.tcx.items.get(id._1);
+        auto it = cx.tcx.items.find(id._1);
         auto tpt;
         alt (it) {
-            case (ast_map::node_item(?item)) { tpt = ty_of_item(cx, item); }
-            case (ast_map::node_native_item(?native_item)) {
+            case (some(ast_map::node_item(?item))) {
+                tpt = ty_of_item(cx, item);
+            }
+            case (some(ast_map::node_native_item(?native_item))) {
                 tpt = ty_of_native_item(cx, native_item,
                                         ast::native_abi_cdecl);
+            }
+            case (_) {
+                cx.tcx.sess.fatal("internal error " +
+                                  util::common::istr(id._1));
             }
         }
         ret tpt;
@@ -1027,7 +1059,7 @@ mod writeback {
         resolve_type_vars_for_node(fcx, p.span, ty::pat_node_id(p));
     }
     fn visit_local_pre(@fn_ctxt fcx, &@ast::local l) {
-        auto var_id = fcx.locals.get(l.node.id);
+        auto var_id = lookup_local(fcx, l.span, l.node.id);
         auto fix_rslt =
             ty::unify::resolve_type_var(fcx.ccx.tcx, fcx.var_bindings,
                                         var_id);
@@ -1226,7 +1258,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
             write::ty_only_fixup(fcx, id, typ);
         }
         case (ast::pat_bind(?name, ?id)) {
-            auto vid = fcx.locals.get(id);
+            auto vid = lookup_local(fcx, pat.span, id);
             auto typ = ty::mk_var(fcx.ccx.tcx, vid);
             typ = demand::simple(fcx, pat.span, expected, typ);
             write::ty_only_fixup(fcx, id, typ);
@@ -1234,7 +1266,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
         case (ast::pat_tag(?path, ?subpats, ?id)) {
             // Typecheck the path.
 
-            auto v_def = fcx.ccx.tcx.def_map.get(id);
+            auto v_def = lookup_def(fcx, path.span, id);
             auto v_def_ids = ast::variant_def_ids(v_def);
             auto tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids._0);
             auto path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
@@ -1329,8 +1361,8 @@ fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
     alt (caller_purity) {
         case (ast::impure_fn) { ret; }
         case (ast::pure_fn) {
-            alt (ccx.tcx.def_map.get(callee.id)) {
-                case (ast::def_fn(_, ast::pure_fn)) {
+            alt (ccx.tcx.def_map.find(callee.id)) {
+                case (some(ast::def_fn(_, ast::pure_fn))) {
                     ret;
                 }
                 case (_) {
@@ -1458,8 +1490,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::expr_call(?operator, ?operands)) {
                     alt (operator.node) {
                         case (ast::expr_path(?oper_name)) {
-                            alt (fcx.ccx.tcx.def_map.get(operator.id)) {
-                                case (ast::def_fn(?_d_id, ast::pure_fn)) { 
+                            alt (fcx.ccx.tcx.def_map.find(operator.id)) {
+                                case (some(ast::def_fn(?_d_id,
+                                                       ast::pure_fn))) { 
                                     // do nothing
                                 }
                                 case (_) {
@@ -1600,7 +1633,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             write::ty_only_fixup(fcx, id, oper_t);
         }
         case (ast::expr_path(?pth)) {
-            auto defn = fcx.ccx.tcx.def_map.get(id);
+            auto defn = lookup_def(fcx, pth.span, id);
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
             if (ty::def_has_ty_params(defn)) {
                 auto path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
@@ -2287,7 +2320,8 @@ fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
 fn check_decl_initializer(&@fn_ctxt fcx, ast::node_id nid,
                           &ast::initializer init) {
     check_expr(fcx, init.expr);
-    auto lty = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(nid));
+    auto lty = ty::mk_var(fcx.ccx.tcx,
+                          lookup_local(fcx, init.expr.span, nid));
     alt (init.op) {
         case (ast::init_assign) {
             demand::simple(fcx, init.expr.span, lty,
