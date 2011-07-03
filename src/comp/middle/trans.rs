@@ -6375,9 +6375,9 @@ fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
                                         [C_int(0), C_int(abi::vec_elt_data)]);
                 ret trans_fail_value(cx, sp_opt, elt);
             } else {
-                cx.fcx.lcx.ccx.sess.span_fatal(expr.span,
-                                               "fail called with unsupported \
-                                               type " + ty_to_str(tcx, e_ty));
+                cx.fcx.lcx.ccx.sess.span_bug(expr.span,
+                                             "fail called with unsupported \
+                                              type " + ty_to_str(tcx, e_ty));
             }
         }
         case (_) {
