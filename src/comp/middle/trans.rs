@@ -5682,6 +5682,11 @@ fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
     auto arg_tys = type_of_explicit_args(cx.fcx.lcx.ccx, cx.sp, args);
     auto i = 0u;
     for (@ast::expr e in es) {
+        if (bcx.build.is_terminated()) {
+            // This means an earlier arg was divergent.
+            // So this arg can't be evaluated.
+            break;
+        }
         auto r = trans_arg_expr(bcx, args.(i), arg_tys.(i), e);
         bcx = r.bcx;
         llargs += [r.val];

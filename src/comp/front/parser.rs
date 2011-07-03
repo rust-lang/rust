@@ -9,6 +9,7 @@ import std::either;
 import std::either::left;
 import std::either::right;
 import std::map::hashmap;
+import token::can_begin_expr;
 import driver::session;
 import util::common;
 import util::common::filename;
@@ -119,7 +120,6 @@ fn new_parser(session::session sess, ast::crate_cfg cfg,
                      prec_table(), next_id, bad_expr_word_table(),
                      ext::syntax_expander_table());
 }
-
 
 // These are the words that shouldn't be allowed as value identifiers,
 // because, if used at the start of a line, they will cause the line to be
@@ -841,14 +841,13 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         lo = ex_ext.span.lo;
         ex = ex_ext.node;
     } else if (eat_word(p, "fail")) {
-        alt (p.peek()) {
-            case (token::SEMI) { ex = ast::expr_fail(none) }
-            case (token::RBRACE) { ex = ast::expr_fail(none) }
-            case (_) {
-                auto e = parse_expr(p);
-                hi = e.span.hi;
-                ex = ast::expr_fail(some(e));
-            }
+        if (can_begin_expr(p.peek())) {
+            auto e = parse_expr(p);
+            hi = e.span.hi;
+            ex = ast::expr_fail(some(e));
+        }
+        else {
+            ex = ast::expr_fail(none);
         }
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
