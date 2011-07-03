@@ -6370,24 +6370,26 @@ fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
 fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
                    &option::t[@ast::expr] fail_expr)
         -> result {
+    auto bcx = cx;
     alt (fail_expr) {
         case (some(?expr)) {
-            auto tcx = cx.fcx.lcx.ccx.tcx;
-            auto expr_res = trans_expr(cx, expr);
+            auto tcx = bcx.fcx.lcx.ccx.tcx;
+            auto expr_res = trans_expr(bcx, expr);
             auto e_ty = ty::expr_ty(tcx, expr);
+            bcx = expr_res.bcx;
 
             if (ty::type_is_str(tcx, e_ty)) {
-                auto elt = cx.build.GEP(expr_res.val,
+                auto elt = bcx.build.GEP(expr_res.val,
                                         [C_int(0), C_int(abi::vec_elt_data)]);
-                ret trans_fail_value(cx, sp_opt, elt);
+                ret trans_fail_value(bcx, sp_opt, elt);
             } else {
-                cx.fcx.lcx.ccx.sess.span_fatal(expr.span,
+                bcx.fcx.lcx.ccx.sess.span_fatal(expr.span,
                                                "fail called with unsupported \
                                                type " + ty_to_str(tcx, e_ty));
             }
         }
         case (_) {
-            ret trans_fail(cx, sp_opt, "explicit failure");
+            ret trans_fail(bcx, sp_opt, "explicit failure");
         }
     }
 }

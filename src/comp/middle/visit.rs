@@ -359,7 +359,9 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_ext(_, _, _, ?expansion)) {
             vt(v).visit_expr(expansion, e, v);
         }
-        case (expr_fail(_)) { }
+        case (expr_fail(?eo)) {
+            visit_expr_opt(eo, e, v);
+        }
         case (expr_break) { }
         case (expr_cont) { }
         case (expr_ret(?eo)) { visit_expr_opt(eo, e, v); }
