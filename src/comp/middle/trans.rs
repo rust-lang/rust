@@ -4629,19 +4629,19 @@ fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
 fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                    &@block_ctxt next_cx) -> result {
     alt (pat.node) {
-        case (ast::pat_wild(_)) { ret rslt(cx, llval); }
-        case (ast::pat_bind(_, _)) { ret rslt(cx, llval); }
-        case (ast::pat_lit(?lt, ?id)) {
-            auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, id);
-            auto lltype = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, id);
+        case (ast::pat_wild) { ret rslt(cx, llval); }
+        case (ast::pat_bind(_)) { ret rslt(cx, llval); }
+        case (ast::pat_lit(?lt)) {
+            auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, pat.id);
+            auto lltype = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, pat.id);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
             lleq.bcx.build.CondBr(lleq.val, matched_cx.llbb, next_cx.llbb);
             ret rslt(matched_cx, llval);
         }
-        case (ast::pat_tag(?ident, ?subpats, ?id)) {
+        case (ast::pat_tag(?ident, ?subpats)) {
             auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
+                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(pat.id));
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
             auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
             auto llblobptr = llval;
@@ -4675,7 +4675,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 }
             }
             auto ty_params = ty::node_id_to_type_params
-                (cx.fcx.lcx.ccx.tcx, id);
+                (cx.fcx.lcx.ccx.tcx, pat.id);
             if (vec::len(subpats) > 0u) {
                 auto i = 0;
                 for (@ast::pat subpat in subpats) {
@@ -4702,29 +4702,29 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                      bool bind_alias) -> result {
     alt (pat.node) {
-        case (ast::pat_wild(_)) { ret rslt(cx, llval); }
-        case (ast::pat_lit(_, _)) { ret rslt(cx, llval); }
-        case (ast::pat_bind(?name, ?id)) {
+        case (ast::pat_wild) { ret rslt(cx, llval); }
+        case (ast::pat_lit(_)) { ret rslt(cx, llval); }
+        case (ast::pat_bind(?name)) {
             if (bind_alias) {
-                cx.fcx.lllocals.insert(id, llval);
+                cx.fcx.lllocals.insert(pat.id, llval);
                 ret rslt(cx, llval);
             } else {
-                auto t = node_id_type(cx.fcx.lcx.ccx, id);
+                auto t = node_id_type(cx.fcx.lcx.ccx, pat.id);
                 auto rslt = alloc_ty(cx, t);
                 auto dst = rslt.val;
                 auto bcx = rslt.bcx;
                 maybe_name_value(cx.fcx.lcx.ccx, dst, name);
-                bcx.fcx.lllocals.insert(id, dst);
+                bcx.fcx.lllocals.insert(pat.id, dst);
                 bcx.cleanups += [clean(bind drop_slot(_, dst, t))];
                 ret copy_val(bcx, INIT, dst, llval, t);
             }
         }
-        case (ast::pat_tag(_, ?subpats, ?id)) {
+        case (ast::pat_tag(_, ?subpats)) {
             if (vec::len[@ast::pat](subpats) == 0u) { ret rslt(cx, llval); }
             // Get the appropriate variant for this tag.
 
             auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(id));
+                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(pat.id));
             auto llblobptr = llval;
             if (vec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))!=1u) {
                 auto lltagptr = cx.build.PointerCast
@@ -4732,7 +4732,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
             }
             auto ty_param_substs =
-                ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
+                ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, pat.id);
             auto this_cx = cx;
             auto i = 0;
             for (@ast::pat subpat in subpats) {

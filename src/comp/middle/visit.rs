@@ -190,7 +190,7 @@ fn visit_constr[E](&@constr c, &E e, &vt[E] v) {
 
 fn visit_pat[E](&@pat p, &E e, &vt[E] v) {
     alt (p.node) {
-        case (pat_tag(?path, ?children, _)) {
+        case (pat_tag(?path, ?children)) {
             for (@ty tp in path.node.types) { vt(v).visit_ty(tp, e, v); }
             for (@pat child in children) { vt(v).visit_pat(child, e, v); }
         }

@@ -1056,7 +1056,7 @@ mod writeback {
         resolve_type_vars_for_node(fcx, b.span, b.node.id);
     }
     fn visit_pat_pre(@fn_ctxt fcx, &@ast::pat p) {
-        resolve_type_vars_for_node(fcx, p.span, ty::pat_node_id(p));
+        resolve_type_vars_for_node(fcx, p.span, p.id);
     }
     fn visit_local_pre(@fn_ctxt fcx, &@ast::local l) {
         auto var_id = lookup_local(fcx, l.span, l.node.id);
@@ -1196,9 +1196,9 @@ fn gather_locals(&@crate_ctxt ccx, &ast::fn_decl decl, &ast::block body,
                      hashmap[ast::node_id, ast::ident] local_names,
                      @mutable int nvi, &@ast::pat p) {
         alt (p.node) {
-            case (ast::pat_bind(?ident, ?id)) {
+            case (ast::pat_bind(?ident)) {
                 assign(ccx.tcx, vb, locals, local_names, nvi,
-                       id, ident, none[ty::t]);
+                       p.id, ident, none[ty::t]);
             }
             case (_) {/* no-op */ }
         }
@@ -1249,24 +1249,23 @@ fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
 // their types immediately.
 fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
     alt (pat.node) {
-        case (ast::pat_wild(?id)) {
-            write::ty_only_fixup(fcx, id, expected);
+        case (ast::pat_wild) {
+            write::ty_only_fixup(fcx, pat.id, expected);
         }
-        case (ast::pat_lit(?lt, ?id)) {
+        case (ast::pat_lit(?lt)) {
             auto typ = check_lit(fcx.ccx, lt);
             typ = demand::simple(fcx, pat.span, expected, typ);
-            write::ty_only_fixup(fcx, id, typ);
+            write::ty_only_fixup(fcx, pat.id, typ);
         }
-        case (ast::pat_bind(?name, ?id)) {
-            auto vid = lookup_local(fcx, pat.span, id);
+        case (ast::pat_bind(?name)) {
+            auto vid = lookup_local(fcx, pat.span, pat.id);
             auto typ = ty::mk_var(fcx.ccx.tcx, vid);
             typ = demand::simple(fcx, pat.span, expected, typ);
-            write::ty_only_fixup(fcx, id, typ);
+            write::ty_only_fixup(fcx, pat.id, typ);
         }
-        case (ast::pat_tag(?path, ?subpats, ?id)) {
+        case (ast::pat_tag(?path, ?subpats)) {
             // Typecheck the path.
-
-            auto v_def = lookup_def(fcx, path.span, id);
+            auto v_def = lookup_def(fcx, path.span, pat.id);
             auto v_def_ids = ast::variant_def_ids(v_def);
             auto tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids._0);
             auto path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
@@ -1341,7 +1340,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                                                    ""
                                                } else { "s" }));
             }
-            write::ty_fixup(fcx, id, path_tpot);
+            write::ty_fixup(fcx, pat.id, path_tpot);
         }
     }
 }

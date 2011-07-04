@@ -252,12 +252,12 @@ fn noop_fold_arm(&arm a, ast_fold fld) -> arm {
 
 fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {
     ret alt (p) {
-        case (pat_wild(_)) { p }
-        case (pat_bind(?id, ?d)) { pat_bind(fld.fold_ident(id), d)}
-        case (pat_lit(_, _)) { p }
-        case (pat_tag(?pth, ?pats, ?nid)) {
-            pat_tag(fld.fold_path(pth), map(fld.fold_pat, pats), nid)
-                }
+        case (pat_wild) { p }
+        case (pat_bind(?ident)) { pat_bind(fld.fold_ident(ident))}
+        case (pat_lit(_)) { p }
+        case (pat_tag(?pth, ?pats)) {
+            pat_tag(fld.fold_path(pth), map(fld.fold_pat, pats))
+        }
     };
 }
 
@@ -616,7 +616,7 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
         ret afp.fold_arm(x, f);
     }
     fn f_pat(&ast_fold_precursor afp, ast_fold f, &@pat x) -> @pat {
-        ret @rec(node=afp.fold_pat(x.node, f), span=x.span);
+        ret @rec(id=x.id, node=afp.fold_pat(x.node, f), span=x.span);
     }
     fn f_decl(&ast_fold_precursor afp, ast_fold f, &@decl x) -> @decl {
         ret @rec(node=afp.fold_decl(x.node, f), span=x.span);

@@ -185,7 +185,7 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
 fn walk_pat(&ast_visitor v, &@ast::pat p) {
     v.visit_pat_pre(p);
     alt (p.node) {
-        case (ast::pat_tag(?path, ?children, _)) {
+        case (ast::pat_tag(?path, ?children)) {
             for (@ast::ty tp in path.node.types) { walk_ty(v, tp); }
             for (@ast::pat child in children) { walk_pat(v, child); }
         }

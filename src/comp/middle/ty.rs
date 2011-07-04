@@ -99,7 +99,6 @@ export mo_val;
 export mo_alias;
 export mt;
 export node_type_table;
-export pat_node_id;
 export pat_ty;
 export cname;
 export rename;
@@ -1850,7 +1849,7 @@ fn block_ty(&ctxt cx, &ast::block b) -> t {
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
-    ret node_id_to_monotype(cx, pat_node_id(pat));
+    ret node_id_to_monotype(cx, pat.id);
 }
 
 
@@ -1887,16 +1886,6 @@ fn stmt_node_id(&@ast::stmt s) -> ast::node_id {
         }
     }
 }
-
-fn pat_node_id(&@ast::pat p) -> ast::node_id {
-    alt (p.node) {
-        case (ast::pat_wild(?id)) { ret id; }
-        case (ast::pat_bind(_, ?id)) { ret id; }
-        case (ast::pat_lit(_, ?id)) { ret id; }
-        case (ast::pat_tag(_, _, ?id)) { ret id; }
-    }
-}
-
 
 // Expression utilities
 fn field_num(&session::session sess, &span sp, &ast::ident id) -> uint {

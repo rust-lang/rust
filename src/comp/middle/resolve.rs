@@ -301,14 +301,14 @@ fn resolve_names(&@env e, &@ast::crate c) {
     }
     fn walk_pat(&env e, &scopes sc, &@ast::pat pat) {
         alt (pat.node) {
-            case (ast::pat_tag(?p, ?children, ?id)) {
+            case (ast::pat_tag(?p, ?children)) {
                 auto fnd =
                     lookup_path_strict(e, sc, p.span, p.node.idents,
                                        ns_value);
                 if (option::is_some(fnd)) {
                     alt (option::get(fnd)) {
                         case (ast::def_variant(?did, ?vid)) {
-                            e.def_map.insert(id, option::get(fnd));
+                            e.def_map.insert(pat.id, option::get(fnd));
                             for (@ast::pat child in children) {
                                 walk_pat(e, sc, child);
                             }
@@ -694,14 +694,14 @@ fn lookup_in_ty_params(&ident name, &vec[ast::ty_param] ty_params) ->
 
 fn lookup_in_pat(&ident name, &ast::pat pat) -> option::t[def] {
     alt (pat.node) {
-        case (ast::pat_bind(?p_name, ?id)) {
+        case (ast::pat_bind(?p_name)) {
             if (str::eq(p_name, name)) {
-                ret some(ast::def_binding(local_def(id)));
+                ret some(ast::def_binding(local_def(pat.id)));
             }
         }
-        case (ast::pat_wild(_)) { }
-        case (ast::pat_lit(_, _)) { }
-        case (ast::pat_tag(_, ?pats, _)) {
+        case (ast::pat_wild) { }
+        case (ast::pat_lit(_)) { }
+        case (ast::pat_tag(_, ?pats)) {
             for (@ast::pat p in pats) {
                 auto found = lookup_in_pat(name, *p);
                 if (!option::is_none(found)) { ret found; }
@@ -1248,8 +1248,8 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
     visit::visit_arm(a, x, v);
     fn walk_pat(checker ch, &@ast::pat p) {
         alt (p.node) {
-            case (ast::pat_bind(?name, _)) { add_name(ch, p.span, name); }
-            case (ast::pat_tag(_, ?children, _)) {
+            case (ast::pat_bind(?name)) { add_name(ch, p.span, name); }
+            case (ast::pat_tag(_, ?children)) {
                 for (@ast::pat child in children) { walk_pat(ch, child); }
             }
             case (_) { }

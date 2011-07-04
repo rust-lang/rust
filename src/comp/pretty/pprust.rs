@@ -1016,10 +1016,10 @@ fn print_path(&ps s, &ast::path path) {
 fn print_pat(&ps s, &@ast::pat pat) {
     maybe_print_comment(s, pat.span.lo);
     alt (pat.node) {
-        case (ast::pat_wild(_)) { word(s.s, "_"); }
-        case (ast::pat_bind(?id, _)) { word(s.s, "?" + id); }
-        case (ast::pat_lit(?lit, _)) { print_literal(s, lit); }
-        case (ast::pat_tag(?path, ?args, _)) {
+        case (ast::pat_wild) { word(s.s, "_"); }
+        case (ast::pat_bind(?id)) { word(s.s, "?" + id); }
+        case (ast::pat_lit(?lit)) { print_literal(s, lit); }
+        case (ast::pat_tag(?path, ?args)) {
             print_path(s, path);
             if (vec::len(args) > 0u) {
                 popen(s);
@@ -1033,7 +1033,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
     alt (s.mode) {
         case (mo_identified) {
             space(s.s);
-            synth_comment(s, int::to_str(ty::pat_node_id(pat), 10u));
+            synth_comment(s, int::to_str(pat.id, 10u));
         }
         case (_) {/* no-op */ }
     }

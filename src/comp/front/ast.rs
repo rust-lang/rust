@@ -110,13 +110,15 @@ type block = spanned[block_];
 
 type block_ = rec(vec[@stmt] stmts, option::t[@expr] expr, node_id id);
 
-type pat = spanned[pat_];
+type pat = rec(node_id id,
+               pat_ node,
+               span span);
 
 tag pat_ {
-    pat_wild(node_id);
-    pat_bind(ident, node_id);
-    pat_lit(@lit, node_id);
-    pat_tag(path, vec[@pat], node_id);
+    pat_wild;
+    pat_bind(ident);
+    pat_lit(@lit);
+    pat_tag(path, vec[@pat]);
 }
 
 tag mutability { mut; imm; maybe_mut; }

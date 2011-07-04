@@ -1396,7 +1396,7 @@ fn parse_pat(&parser p) -> @ast::pat {
     alt (p.peek()) {
         case (token::UNDERSCORE) {
             p.bump();
-            pat = ast::pat_wild(p.get_id());
+            pat = ast::pat_wild;
         }
         case (token::QUES) {
             p.bump();
@@ -1404,8 +1404,7 @@ fn parse_pat(&parser p) -> @ast::pat {
                 case (token::IDENT(?id, _)) {
                     hi = p.get_hi_pos();
                     p.bump();
-                    pat =
-                        ast::pat_bind(p.get_str(id), p.get_id());
+                    pat = ast::pat_bind(p.get_str(id));
                 }
                 case (?tok) {
                     p.fatal("expected identifier after '?' in pattern but " +
@@ -1418,7 +1417,7 @@ fn parse_pat(&parser p) -> @ast::pat {
             if (!is_ident(tok) || is_word(p, "true") || is_word(p, "false")) {
                 auto lit = parse_lit(p);
                 hi = lit.span.hi;
-                pat = ast::pat_lit(@lit, p.get_id());
+                pat = ast::pat_lit(@lit);
             } else {
                 auto tag_path = parse_path_and_ty_param_substs(p);
                 hi = tag_path.span.hi;
@@ -1434,11 +1433,11 @@ fn parse_pat(&parser p) -> @ast::pat {
                     }
                     case (_) { args = []; }
                 }
-                pat = ast::pat_tag(tag_path, args, p.get_id());
+                pat = ast::pat_tag(tag_path, args);
             }
         }
     }
-    ret @spanned(lo, hi, pat);
+    ret @rec(id=p.get_id(), node=pat, span=rec(lo=lo, hi=hi));
 }
 
 fn parse_local_full(&option::t[@ast::ty] tyopt, &parser p)

@@ -291,8 +291,8 @@ fn arm_defnums(&ast::arm arm) -> vec[node_id] {
     auto dnums = [];
     fn walk_pat(&mutable vec[node_id] found, &@ast::pat p) {
         alt (p.node) {
-            case (ast::pat_bind(_, ?id)) { vec::push(found, id); }
-            case (ast::pat_tag(_, ?children, _)) {
+            case (ast::pat_bind(_)) { vec::push(found, p.id); }
+            case (ast::pat_tag(_, ?children)) {
                 for (@ast::pat child in children) { walk_pat(found, child); }
             }
             case (_) { }
