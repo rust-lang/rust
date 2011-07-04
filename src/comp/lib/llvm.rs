@@ -125,6 +125,7 @@ const uint LLVMRealULT = 12u;
 const uint LLVMRealULE = 13u;
 const uint LLVMRealUNE = 14u;
 
+#[link_args = "-Lrustllvm"]
 native mod llvm = "rustllvm" {
 
     type ModuleRef;

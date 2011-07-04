@@ -299,7 +299,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_crate_num = 0;
     auto sess =
         session::session(target_crate_num, target_cfg, sopts, crate_cache, [],
-                         [], front::codemap::new_codemap(), 0u);
+                         [], [], front::codemap::new_codemap(), 0u);
     ret sess;
 }
 
@@ -460,7 +460,7 @@ fn main(vec[str] args) {
                 case (_) { rmext(filename) }
             };
         }
-        
+
         for (str cratepath in sess.get_used_crate_files()) {
             auto dir = fs::dirname(cratepath);
             if (dir != "") {
@@ -470,6 +470,7 @@ fn main(vec[str] args) {
             gcc_args += ["-l" + libarg];
         }
 
+        gcc_args += sess.get_used_link_args();
         auto used_libs = sess.get_used_libraries();
         for (str l in used_libs) {
             gcc_args += ["-l" + l];
@@ -478,9 +479,8 @@ fn main(vec[str] args) {
         if (sopts.shared) {
             gcc_args += [shared_cmd];
         } else {
-            // FIXME: having -Lrustllvm hardcoded in here is hack
-            // FIXME: same for -lm
-            gcc_args += ["-Lrustllvm", "-lm", main];
+            // FIXME: why do we hardcode -lm?
+            gcc_args += ["-lm", main];
         }
         // We run 'gcc' here
 

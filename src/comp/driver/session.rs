@@ -10,6 +10,7 @@ import std::map;
 import std::option;
 import std::option::some;
 import std::option::none;
+import std::str;
 
 tag os { os_win32; os_macos; os_linux; }
 
@@ -71,6 +72,7 @@ obj session(ast::crate_num cnum,
             map::hashmap[int, crate_metadata] crates,
             mutable vec[str] used_crate_files,
             mutable vec[str] used_libraries,
+            mutable vec[str] used_link_args,
             codemap::codemap cm,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
@@ -130,18 +132,25 @@ obj session(ast::crate_num cnum,
         crates.insert(num, metadata);
     }
     fn has_external_crate(int num) -> bool { ret crates.contains_key(num); }
-    fn add_used_library(&str lib) {
+    fn add_used_link_args(&str args) {
+        used_link_args += str::split(args, ' ' as u8);
+    }
+    fn get_used_link_args() -> vec[str] {
+        ret used_link_args;
+    }
+    fn add_used_library(&str lib) -> bool {
         if (lib == "") {
-            ret;
+            ret false;
         }
         // A program has a small number of libraries, so a vector is probably
         // a good data structure in here.
         for (str l in used_libraries) {
             if (l == lib) {
-                ret;
+                ret false;
             }
         }
         used_libraries += [lib];
+        ret true;
     }
     fn get_used_libraries() -> vec[str] {
        ret used_libraries;

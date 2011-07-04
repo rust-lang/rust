@@ -170,9 +170,25 @@ fn visit_view_item(env e, &@ast::view_item i) {
 fn visit_item(env e, &@ast::item i) {
     alt (i.node) {
         case (ast::item_native_mod(?m)) {
-            if (m.abi == ast::native_abi_rust ||
-                m.abi == ast::native_abi_cdecl) {
-                e.sess.add_used_library(m.native_name);
+            if (m.abi != ast::native_abi_rust &&
+                m.abi != ast::native_abi_cdecl) {
+                ret;
+            }
+            if (!e.sess.add_used_library(m.native_name)) {
+                ret;
+            }
+            for (ast::attribute a in i.attrs) {
+                auto v = a.node.value.node;
+                alt (v) {
+                    case (ast::meta_name_value(?i, ?s)) {
+                        if (i != "link_args") {
+                            cont;
+                        }
+                        e.sess.add_used_link_args(s);
+                    }
+                    case (_) {
+                    }
+                }
             }
         }
         case (_) {
