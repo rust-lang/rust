@@ -430,16 +430,11 @@ fn main(vec[str] args) {
              saved_out_filename, saved_out_filename + ".o"];
         auto shared_cmd;
 
-        alt (sess.get_targ_cfg().os) {
-            case (session::os_win32) {
-                shared_cmd = "-shared";
-            }
-            case (session::os_macos) {
+        auto os = sess.get_targ_cfg().os;
+        if (os == session::os_macos) {
                 shared_cmd = "-dynamiclib";
-            }
-            case (session::os_linux) {
+        } else {
                 shared_cmd = "-shared";
-            }
         }
 
         // Converts a library file name into a gcc -l argument
