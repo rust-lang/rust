@@ -85,7 +85,9 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
-  TargetMachine *Target = TheTarget->createTargetMachine(triple, FeaturesStr);
+  std::string Trip(triple);
+  std::string CPUStr = llvm::sys::getHostCPUName();
+  TargetMachine *Target = TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr);
   bool NoVerify = false;
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
