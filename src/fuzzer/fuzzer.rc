@@ -1,6 +1,7 @@
 // -*- rust -*-
 
 use std;
+use rustc;
 
 mod fuzzer;
 
