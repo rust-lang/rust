@@ -4312,7 +4312,10 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
         auto bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t).bcx;
         scope_cx.cleanups += [clean(bind drop_slot(_, local_res.val, t))];
         bcx = trans_block(bcx, body, return).bcx;
-        bcx.build.Br(next_cx.llbb);
+        if (!bcx.build.is_terminated()) {
+            bcx.build.Br(next_cx.llbb);
+            // otherwise, this code is unreachable
+        }
         ret rslt(next_cx, C_nil());
     }
     auto next_cx = new_sub_block_ctxt(cx, "next");
