@@ -58,6 +58,8 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
                       &vec[str] library_search_paths) ->
    option::t[tup(str, vec[u8])] {
 
+    attr::require_unique_names(sess, metas);
+
     auto crate_name = {
         auto name_items = attr::find_meta_items_by_name(metas, "name");
         alt (vec::last(name_items)) {
