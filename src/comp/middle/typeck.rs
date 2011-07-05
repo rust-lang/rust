@@ -521,9 +521,8 @@ mod collect {
         ret tpt;
     }
     fn getter(@ctxt cx, &ast::def_id id) -> ty::ty_param_count_and_ty {
-        if (id._0 != cx.tcx.sess.get_targ_crate_num()) {
+        if (id._0 != ast::local_crate) {
             // This is a type we need to load in from the crate reader.
-
             ret decoder::get_type(cx.tcx, id);
         }
         auto it = cx.tcx.items.find(id._1);

@@ -344,11 +344,8 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
 fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
     auto crate_cache = syntax::_std::new_int_hash[session::crate_metadata]();
-    auto target_crate_num = 0;
-    auto sess =
-        session::session(target_crate_num, target_cfg, sopts, crate_cache, [],
+    ret session::session(target_cfg, sopts, crate_cache, [],
                          [], [], codemap::new_codemap(), 0u);
-    ret sess;
 }
 
 fn parse_pretty(session::session sess, &str name) -> pp_mode {

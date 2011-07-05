@@ -2802,7 +2802,7 @@ fn def_has_ty_params(&ast::def def) -> bool {
 type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
 
 fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
-    if (cx.sess.get_targ_crate_num() != id._0) {
+    if (ast::local_crate != id._0) {
         ret decoder::get_tag_variants(cx, id);
     }
     auto item = alt (cx.items.find(id._1)) {
@@ -2857,7 +2857,7 @@ fn tag_variant_with_id(&ctxt cx, &ast::def_id tag_id, &ast::def_id variant_id)
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
-    if (did._0 == cx.sess.get_targ_crate_num()) {
+    if (did._0 == ast::local_crate) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
 

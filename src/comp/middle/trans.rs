@@ -4816,7 +4816,7 @@ fn trans_external_path(&@block_ctxt cx, &ast::def_id did,
 fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
                    &ast::def_id fn_id, ast::node_id id) -> lval_result {
     auto lv;
-    if (cx.fcx.lcx.ccx.sess.get_targ_crate_num() == fn_id._0) {
+    if (fn_id._0 == ast::local_crate) {
         // Internal reference.
         assert (cx.fcx.lcx.ccx.fn_pairs.contains_key(fn_id._1));
         lv = lval_val(cx, cx.fcx.lcx.ccx.fn_pairs.get(fn_id._1));
@@ -4851,7 +4851,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
         case (none) {
             // It's an external discriminant that we haven't seen yet.
 
-            assert (lcx.ccx.sess.get_targ_crate_num() != vid._0);
+            assert (vid._0 != ast::local_crate);
             auto sym = decoder::get_symbol(lcx.ccx.sess, vid);
             auto gvar =
                 llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), str::buf(sym));
