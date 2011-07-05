@@ -1,9 +1,5 @@
 import std::ivec;
 import std::str;
-import std::vec;
-import std::vec::len;
-import std::vec::grow;
-import std::vec::pop;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -645,7 +641,7 @@ fn substitute_arg(&ty::ctxt cx, &(@expr)[] actuals, @constr_arg a) ->
 }
 
 fn path_to_ident(&ty::ctxt cx, &path p) -> ident {
-    alt (vec::last(p.node.idents)) {
+    alt (std::vec::last(p.node.idents)) {
         case (none) { cx.sess.span_fatal(p.span, "Malformed path"); }
         case (some(?i)) { ret i; }
     }
