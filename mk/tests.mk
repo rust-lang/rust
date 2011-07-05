@@ -166,6 +166,10 @@ check-stage2: tidy \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2) \
 
+# FIXME: This duplicate rule is only here until the tinderbox scripts
+# are fixed to use the check-stage2 rule
+stage2-check: tidy \
+       check-stage2
 
 check: tidy \
        $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2) \
