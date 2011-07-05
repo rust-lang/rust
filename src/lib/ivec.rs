@@ -158,6 +158,20 @@ fn grow_set[T](&mutable T[mutable] v, uint index, &T initval, &T val) {
     v.(index) = val;
 }
 
+
+// Functional utilities
+
+fn map[T,U](fn(&T)->U f, &mutable T[mutable?] v) -> U[] {
+    auto result = ~[];
+    reserve(result, len(v));
+    for (T elem in v) {
+        auto elem2 = elem;  // satisfies alias checker
+        result += ~[f(elem2)];
+    }
+    ret result;
+}
+
+
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
         ret rustrt::ivec_copy_from_buf(v, ptr, count);

@@ -164,6 +164,26 @@ fn test_grow_set() {
     assert (v.(4) == 5);
 }
 
+fn test_map() {
+    // Test on-stack map.
+    auto v = ~[ 1u, 2u, 3u ];
+    auto w = ivec::map(square, v);
+    assert (ivec::len(w) == 3u);
+    assert (w.(0) == 1u);
+    assert (w.(1) == 4u);
+    assert (w.(2) == 9u);
+
+    // Test on-heap map.
+    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    w = ivec::map(square, v);
+    assert (ivec::len(w) == 5u);
+    assert (w.(0) == 1u);
+    assert (w.(1) == 4u);
+    assert (w.(2) == 9u);
+    assert (w.(3) == 16u);
+    assert (w.(4) == 25u);
+}
+
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
@@ -181,5 +201,8 @@ fn main() {
     test_grow();
     test_grow_fn();
     test_grow_set();
+
+    // Functional utilities
+    test_map();
 }
 
