@@ -1,4 +1,5 @@
 
+import std::ivec;
 import std::vec;
 import std::vec::plus_option;
 import std::option;
@@ -110,7 +111,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
     alt (i.node) {
         case (item_const(_, ?e)) {
             // make a fake fcx
-            let @mutable vec[node_id] v = @mutable [];
+            let @mutable node_id[] v = @mutable ~[];
             auto fake_fcx =
                 rec(enclosing=rec(constrs=@new_int_hash[constraint](),
                                   num_constraints=0u,
@@ -163,9 +164,13 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, node_id id) {
     }
     auto g = bind get_pp(fcx.ccx, _);
     auto pps = vec::map[@expr, pre_and_post](g, args);
-    auto h = get_post;
-    set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
-                     seq_postconds(fcx, vec::map(h, pps)));
+
+    // TODO: Remove this vec->ivec conversion.
+    auto pps_ivec = ~[];
+    for (pre_and_post pp in pps) { pps_ivec += ~[pp]; }
+
+    set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps_ivec),
+                     seq_postconds(fcx, ivec::map(get_post, pps_ivec)));
 }
 
 fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
@@ -179,10 +184,8 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
     // so we pretend they're used
     use_var(fcx, l.node.id);
 
-    auto loop_precond =
-        seq_preconds(fcx,
-                     [expr_pp(fcx.ccx, index),
-                      block_pp(fcx.ccx, body)]);
+    auto loop_precond = seq_preconds(fcx, ~[expr_pp(fcx.ccx, index),
+                                            block_pp(fcx.ccx, body)]);
     auto loop_postcond = intersect_states(expr_postcond(fcx.ccx, index),
                                           block_postcond(fcx.ccx, body));
     copy_pre_post_(fcx.ccx, id, loop_precond, loop_postcond);
@@ -205,10 +208,8 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                 case (_) {}
             }
 
-            auto precond_res =
-                seq_preconds(fcx,
-                             [expr_pp(fcx.ccx, antec),
-                              block_pp(fcx.ccx, conseq)]);
+            auto precond_res = seq_preconds(fcx,
+                ~[expr_pp(fcx.ccx, antec), block_pp(fcx.ccx, conseq)]);
             set_pre_and_post(fcx.ccx, id, precond_res,
                              expr_poststate(fcx.ccx, antec));
         }
@@ -219,13 +220,11 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
               is *not* true in the alternative
              */
             find_pre_post_expr(fcx, altern);
-            auto precond_false_case =
-                seq_preconds(fcx,
-                             [expr_pp(fcx.ccx, antec),
-                              expr_pp(fcx.ccx, altern)]);
-            auto postcond_false_case =
-                seq_postconds(fcx, [expr_postcond(fcx.ccx, antec),
-                                    expr_postcond(fcx.ccx, altern)]);
+            auto precond_false_case = seq_preconds(fcx,
+                ~[expr_pp(fcx.ccx, antec), expr_pp(fcx.ccx, altern)]);
+            auto postcond_false_case = seq_postconds(fcx,
+                ~[expr_postcond(fcx.ccx, antec),
+                  expr_postcond(fcx.ccx, altern)]);
 
             /* Be sure to set the bit for the check condition here,
              so that it's *not* set in the alternative. */
@@ -236,17 +235,14 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                 }
                 case (_) {}
             }
-            auto precond_true_case =
-                seq_preconds(fcx,
-                             [expr_pp(fcx.ccx, antec),
-                              block_pp(fcx.ccx, conseq)]);
-            auto postcond_true_case =
-                seq_postconds(fcx, [expr_postcond(fcx.ccx, antec),
-                                    block_postcond(fcx.ccx, conseq)]);
+            auto precond_true_case = seq_preconds(fcx,
+                ~[expr_pp(fcx.ccx, antec), block_pp(fcx.ccx, conseq)]);
+            auto postcond_true_case = seq_postconds(fcx,
+                ~[expr_postcond(fcx.ccx, antec),
+                  block_postcond(fcx.ccx, conseq)]);
 
-            auto precond_res =
-                seq_postconds(fcx, [precond_true_case,
-                                    precond_false_case]);
+            auto precond_res = seq_postconds(fcx, ~[precond_true_case,
+                                                    precond_false_case]);
             auto postcond_res =
                 intersect_states(postcond_true_case, postcond_false_case);
             set_pre_and_post(fcx.ccx, id, precond_res, postcond_res);
@@ -286,6 +282,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_call(?operator, ?operands)) {
             auto args = vec::clone(operands);
             vec::push(args, operator);
+
+            // TODO: Remove this vec->ivec conversion.
+            auto operands_ivec = ~[];
+            for (@expr e in operands) { operands_ivec += ~[e]; }
+
             find_pre_post_exprs(fcx, args, e.id);
             /* see if the call has any constraints on its type */
             for (@ty::constr_def c in constraints_expr(fcx.ccx.tcx, operator))
@@ -294,7 +295,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                         bit_num(fcx,
                                 rec(id=c.node.id._1,
                                     c=substitute_constr_args(fcx.ccx.tcx,
-                                                             operands, c)));
+                                                             operands_ivec,
+                                                             c)));
                     require(i, expr_pp(fcx.ccx, e));
                 }
 
@@ -440,7 +442,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 find_pre_post_expr(fcx, l);
                 find_pre_post_expr(fcx, r);
                 auto overall_pre = seq_preconds(fcx,
-                   [expr_pp(fcx.ccx, l), expr_pp(fcx.ccx, r)]);
+                   ~[expr_pp(fcx.ccx, l), expr_pp(fcx.ccx, r)]);
                 set_precondition(node_id_to_ts_ann(fcx.ccx, e.id),
                                  overall_pre);
                 set_postcondition(node_id_to_ts_ann(fcx.ccx, e.id),
@@ -465,20 +467,18 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_expr(fcx, test);
             find_pre_post_block(fcx, body);
             set_pre_and_post(fcx.ccx, e.id,
-                             seq_preconds(fcx,
-                                          [expr_pp(fcx.ccx, test),
-                                           block_pp(fcx.ccx, body)]),
+                             seq_preconds(fcx, ~[expr_pp(fcx.ccx, test),
+                                                 block_pp(fcx.ccx, body)]),
                              intersect_states(expr_postcond(fcx.ccx, test),
-                                              block_postcond(fcx.ccx,
-                                                             body)));
+                                              block_postcond(fcx.ccx, body)));
         }
         case (expr_do_while(?body, ?test)) {
             find_pre_post_block(fcx, body);
             find_pre_post_expr(fcx, test);
-            auto loop_postcond =
-                seq_postconds(fcx, [block_postcond(fcx.ccx, body),
-                                    expr_postcond(fcx.ccx, test)]);
-            /* conservative approximination: if the body
+            auto loop_postcond = seq_postconds(fcx,
+                ~[block_postcond(fcx.ccx, body),
+                  expr_postcond(fcx.ccx, test)]);
+            /* conservative approximation: if the body
                could break or cont, the test may never be executed */
 
             if (has_nonlocal_exits(body)) {
@@ -486,8 +486,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             }
             set_pre_and_post(fcx.ccx, e.id,
                              seq_preconds(fcx,
-                                          [block_pp(fcx.ccx, body),
-                                           expr_pp(fcx.ccx, test)]),
+                                          ~[block_pp(fcx.ccx, body),
+                                            expr_pp(fcx.ccx, test)]),
                              loop_postcond);
         }
         case (expr_for(?d, ?index, ?body)) {
@@ -509,7 +509,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             auto alt_pps = vec::map[arm, pre_and_post](f, alts);
             fn combine_pp(pre_and_post antec, fn_ctxt fcx, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
-                union(pp.precondition, seq_preconds(fcx, [antec, next]));
+                union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
                 intersect(pp.postcondition, next.postcondition);
                 ret pp;
             }
@@ -664,27 +664,23 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
     fn do_inner_(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
     auto do_inner = bind do_inner_(fcx, _);
     option::map[@expr, ()](do_inner, b.node.expr);
-    let vec[pre_and_post] pps = [];
-    fn get_pp_stmt(crate_ctxt ccx, &@stmt s) -> pre_and_post {
-        ret stmt_pp(ccx, *s);
+
+    let pre_and_post[] pps = ~[];
+    for (@stmt s in b.node.stmts) { pps += ~[stmt_pp(fcx.ccx, *s)]; }
+    alt (b.node.expr) {
+      case (none) { /* no-op */ }
+      case (some(?e)) { pps += ~[expr_pp(fcx.ccx, e)]; }
     }
-    auto f = bind get_pp_stmt(fcx.ccx, _);
-    pps += vec::map[@stmt, pre_and_post](f, b.node.stmts);
-    fn get_pp_expr(crate_ctxt ccx, &@expr e) -> pre_and_post {
-        ret expr_pp(ccx, e);
-    }
-    auto g = bind get_pp_expr(fcx.ccx, _);
-    plus_option[pre_and_post](pps,
-                              option::map[@expr,
-                                          pre_and_post](g, b.node.expr));
 
     auto block_precond = seq_preconds(fcx, pps);
-    auto h = get_post;
-    auto postconds = vec::map[pre_and_post, postcond](h, pps);
+
+    auto postconds = ~[];
+    for (pre_and_post pp in pps) { postconds += ~[get_post(pp)]; }
+
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
+    postconds += ~[block_precond];
 
-    vec::push[postcond](postconds, block_precond);
     auto block_postcond = empty_poststate(nv);
     /* conservative approximation */
 
