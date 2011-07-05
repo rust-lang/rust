@@ -1,6 +1,6 @@
 
+import std::ivec;
 import std::vec;
-import std::vec::plus_option;
 import syntax::ast::*;
 import util::ppaux::fn_ident_to_string;
 import std::option::*;
@@ -26,22 +26,22 @@ import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast::respan;
 
-type ctxt = rec(@mutable vec[aux::constr] cs, ty::ctxt tcx);
+type ctxt = rec(@mutable (aux::constr[]) cs, ty::ctxt tcx);
 
 fn collect_local(&@local loc, &ctxt cx, &visit::vt[ctxt] v) {
     log "collect_local: pushing " + loc.node.ident;
-    vec::push(*cx.cs,
-              respan(loc.span, rec(id=loc.node.id, c=ninit(loc.node.ident))));
+    *cx.cs += ~[respan(loc.span, rec(id=loc.node.id,
+                                     c=ninit(loc.node.ident)))];
     visit::visit_local(loc, cx, v);
 }
 
 fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
     alt (e.node) {
         case (expr_check(_, ?ch)) {
-            vec::push(*cx.cs, expr_to_constr(cx.tcx, ch));
+            *cx.cs += ~[expr_to_constr(cx.tcx, ch)];
         }
         case (expr_if_check(?ex, _, _)) {
-            vec::push(*cx.cs, expr_to_constr(cx.tcx, ex));
+            *cx.cs += ~[expr_to_constr(cx.tcx, ex)];
         }
         // If it's a call, generate appropriate instances of the
         // call's constraints.
@@ -55,7 +55,7 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
                       rec(id=c.node.id._1,
                           c=aux::substitute_constr_args(cx.tcx,
                                                         operands_ivec, c)));
-                vec::push(*cx.cs, ct);
+                *cx.cs += ~[ct];
             }
         }
         case (_) { }
@@ -71,7 +71,7 @@ fn do_nothing(&_fn f, &vec[ty_param] tp, &span sp, &fn_ident i,
 fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ty_param] tps,
                &span sp, &fn_ident i, node_id id)
     -> ctxt {
-    let ctxt cx = rec(cs=@mutable vec::alloc(0u), tcx=tcx);
+    let ctxt cx = rec(cs=@mutable ~[], tcx=tcx);
     auto visitor = visit::default_visitor[ctxt]();
 
     visitor =
@@ -140,7 +140,7 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ty_param] tp,
     let @mutable node_id[] v = @mutable ~[];
     auto rslt =
         rec(constrs=res_map,
-            num_constraints=vec::len(*cx.cs) + 1u,
+            num_constraints=ivec::len(*cx.cs) + 1u,
             cf=f.decl.cf,
             used_vars=v);
     ccx.fm.insert(id, rslt);
