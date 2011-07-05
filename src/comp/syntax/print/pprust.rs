@@ -1,9 +1,10 @@
 
-import std::uint;
+import std::ivec;
 import std::int;
-import std::vec;
-import std::str;
 import std::io;
+import std::str;
+import std::uint;
+import std::vec;
 import std::option;
 import parse::lexer;
 import syntax::codemap::codemap;
@@ -205,6 +206,17 @@ fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op) {
     }
     end(s);
 }
+
+fn commasep_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op) {
+    box(s, 0u, b);
+    auto first = true;
+    for (IN elt in elts) {
+        if (first) { first = false; } else { word_space(s, ","); }
+        op(s, elt);
+    }
+    end(s);
+}
+
 
 fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
                      fn(&IN) -> codemap::span  get_span) {
@@ -1013,9 +1025,9 @@ fn print_path(&ps s, &ast::path path) {
         if (first) { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
-    if (vec::len(path.node.types) > 0u) {
+    if (ivec::len(path.node.types) > 0u) {
         word(s.s, "[");
-        commasep(s, inconsistent, path.node.types, print_boxed_type);
+        commasep_ivec(s, inconsistent, path.node.types, print_boxed_type);
         word(s.s, "]");
     }
 }

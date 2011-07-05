@@ -18,6 +18,7 @@ import syntax::ast::respan;
 import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
+import std::ivec;
 import std::map::hashmap;
 import std::list;
 import std::list::list;
@@ -554,9 +555,9 @@ fn mk_unresolved_msg(&ident id, &str kind) -> str {
 }
 
 // Lookup helpers
-fn lookup_path_strict(&env e, &scopes sc, &span sp, vec[ident] idents,
+fn lookup_path_strict(&env e, &scopes sc, &span sp, &ident[] idents,
                       namespace ns) -> option::t[def] {
-    auto n_idents = vec::len(idents);
+    auto n_idents = ivec::len(idents);
     auto headns = if (n_idents == 1u) { ns } else { ns_module };
     auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), headns);
     auto i = 1u;

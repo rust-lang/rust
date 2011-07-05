@@ -1,6 +1,7 @@
 import syntax::codemap::span;
 import ast::*;
 
+import std::ivec;
 import std::vec;
 import std::option;
 import vec::map;
@@ -485,8 +486,8 @@ fn noop_fold_ident(&ident i, ast_fold fld) -> ident {
 }
 
 fn noop_fold_path(&path_ p, ast_fold fld) -> path_ {
-    ret rec(idents=map(fld.fold_ident, p.idents),
-            types=map(fld.fold_ty, p.types));
+    ret rec(idents=ivec::map(fld.fold_ident, p.idents),
+            types=ivec::map(fld.fold_ty, p.types));
 }
 
 fn noop_fold_local(&local_ l, ast_fold fld) -> local_ {

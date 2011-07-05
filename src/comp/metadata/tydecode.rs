@@ -80,21 +80,21 @@ fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr_def)[] {
 }
 
 fn parse_path(@pstate st, str_def sd) -> ast::path {
-    let vec[ast::ident] idents = [];
+    let ast::ident[] idents = ~[];
     fn is_last(char c) -> bool {
         ret (c == '(' || c == ':');
     }
-    idents += [parse_ident_(st, sd, is_last)];
+    idents += ~[parse_ident_(st, sd, is_last)];
     while (true) {
         alt (peek(st) as char) {
             case (':') { next(st); next(st); }
             case (?c) {
                 if (c == '(') {
                     ret respan(rec(lo=0u, hi=0u),
-                               rec(idents=idents, types=[]));
+                               rec(idents=idents, types=~[]));
                 }
                 else {
-                    idents += [parse_ident_(st, sd, is_last)];
+                    idents += ~[parse_ident_(st, sd, is_last)];
                 }
             }
         }

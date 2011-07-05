@@ -230,7 +230,7 @@ fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
 fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
     alt (e.node) {
         case (expr_path(?p)) {
-            alt (std::vec::last(p.node.idents)) {
+            alt (ivec::last(p.node.idents)) {
                 case (some(?i)) {
                     alt (local_node_id_to_def(fcx, e.id)) {
                         case (some(def_local(?d_id))) {

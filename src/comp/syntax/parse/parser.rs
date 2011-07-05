@@ -1,5 +1,6 @@
 
 import std::io;
+import std::ivec;
 import std::vec;
 import std::str;
 import std::option;
@@ -409,13 +410,18 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
             // This is explicit type parameter instantiation.
             auto seq = parse_seq_to_end(token::RBRACKET, some(token::COMMA),
                                         parse_ty, p);
+
+            // FIXME: Remove this vec->ivec conversion.
+            auto seq_ivec = ~[];
+            for (@ast::ty typ in seq) { seq_ivec += ~[typ]; }
+
             alt (orig_t.node) {
                 case (ast::ty_path(?pth, ?ann)) {
                     auto hi = p.get_hi_pos();
                     ret @spanned(lo, hi,
                                  ast::ty_path(spanned(lo, hi,
                                               rec(idents=pth.node.idents,
-                                                  types=seq)),
+                                                  types=seq_ivec)),
                                               ann));
                 }
                 case (_) {
@@ -637,12 +643,12 @@ fn is_ident(token::token t) -> bool {
 fn parse_path(&parser p) -> ast::path {
     auto lo = p.get_lo_pos();
     auto hi = lo;
-    let vec[ast::ident] ids = [];
+    let ast::ident[] ids = ~[];
     while (true) {
         alt (p.peek()) {
             case (token::IDENT(?i, _)) {
                 hi = p.get_hi_pos();
-                ids += [p.get_str(i)];
+                ids += ~[p.get_str(i)];
                 p.bump();
                 if (p.peek() == token::MOD_SEP) { p.bump(); } else { break; }
             }
@@ -650,7 +656,7 @@ fn parse_path(&parser p) -> ast::path {
         }
     }
     hi = p.get_hi_pos();
-    ret spanned(lo, hi, rec(idents=ids, types=[]));
+    ret spanned(lo, hi, rec(idents=ids, types=~[]));
 }
 
 fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
@@ -659,8 +665,13 @@ fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
     if (p.peek() == token::LBRACKET) {
         auto seq = parse_seq(token::LBRACKET, token::RBRACKET,
                              some(token::COMMA), parse_ty, p);
+
+        // FIXME: Remove this vec->ivec conversion.
+        auto seq_ivec = ~[];
+        for (@ast::ty typ in seq.node) { seq_ivec += ~[typ]; }
+
         auto hi = p.get_hi_pos();
-        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq.node));
+        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq_ivec));
     }
     ret path;
 }
@@ -955,7 +966,7 @@ fn parse_syntax_ext(&parser p) -> @ast::expr {
 
 fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto pth = parse_path(p);
-    if (vec::len(pth.node.idents) == 0u) {
+    if (ivec::len(pth.node.idents) == 0u) {
         p.fatal("expected a syntax expander name");
     }
     auto es = parse_seq(token::LPAREN, token::RPAREN,
@@ -975,7 +986,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
 fn expand_syntax_ext(&parser p, span sp, &ast::path path,
                      vec[@ast::expr] args, option::t[str] body) ->
    ast::expr_ {
-    assert (vec::len(path.node.idents) > 0u);
+    assert (ivec::len(path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
     alt (p.get_syntax_expanders().find(extname)) {
         case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }

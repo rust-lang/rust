@@ -1,6 +1,7 @@
 use std;
 
 import codemap::span;
+import std::ivec;
 import std::vec;
 import std::option;
 import vec::map;
@@ -50,7 +51,7 @@ fn subst_ident(&ext_ctxt cx, &vec[@ast::expr] args,
 fn subst_path(&ext_ctxt cx, &vec[@ast::expr] args, 
               @vec[ident] param_names, &path_ p, ast_fold fld) -> path_ {
     // Don't substitute into qualified names.
-    if (len(p.types) > 0u || len(p.idents) != 1u) { ret p; }
+    if (ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u) { ret p; }
     alt (position(p.idents.(0), *param_names)) {
         case (some[uint](?idx)) {
             alt (args.(idx).node) {
@@ -75,7 +76,8 @@ fn subst_expr(&ext_ctxt cx, &vec[@ast::expr] args, @vec[ident] param_names,
     ret alt(e) {
         case (expr_path(?p)){
             // Don't substitute into qualified names.
-            if (len(p.node.types) > 0u || len(p.node.idents) != 1u) { e }
+            if (ivec::len(p.node.types) > 0u ||
+                    ivec::len(p.node.idents) != 1u) { e }
             alt (position(p.node.idents.(0), *param_names)) {
                 case (some[uint](?idx)) {
                     args.(idx).node
