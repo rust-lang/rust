@@ -621,7 +621,7 @@ nano_time(rust_task *task, uint64_t *ns) {
 /**
  * Preallocates the exact number of bytes in the given interior vector.
  */
-extern "C" void
+extern "C" CDECL void
 ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
 {
     size_t new_alloc = n_elems * ty->size;
@@ -652,7 +652,7 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
  * Returns true if the given vector is on the heap and false if it's on the
  * stack.
  */
-extern "C" bool
+extern "C" CDECL bool
 ivec_on_heap(rust_task *task, type_desc *ty, rust_ivec *v)
 {
     return !v->fill && v->payload.ptr;
@@ -661,7 +661,7 @@ ivec_on_heap(rust_task *task, type_desc *ty, rust_ivec *v)
 /**
  * Returns an unsafe pointer to the data part of an interior vector.
  */
-extern "C" void *
+extern "C" CDECL void *
 ivec_to_ptr(rust_task *task, type_desc *ty, rust_ivec *v)
 {
     return v->fill ? v->payload.data : v->payload.ptr->data;
@@ -681,7 +681,7 @@ get_ivec_size(rust_ivec *v)
  * Copies elements in an unsafe buffer to the given interior vector. The
  * vector must have size zero.
  */
-extern "C" void
+extern "C" CDECL void
 ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
                    size_t count)
 {
@@ -706,12 +706,12 @@ ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
     v->payload.ptr->fill = new_size;
 }
 
-extern "C" void
+extern "C" CDECL void
 pin_task(rust_task *task) {
     task->pin();
 }
 
-extern "C" void
+extern "C" CDECL void
 unpin_task(rust_task *task) {
     task->unpin();
 }
