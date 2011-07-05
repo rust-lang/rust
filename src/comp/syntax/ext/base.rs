@@ -1,3 +1,4 @@
+import std::ivec;
 import std::vec;
 import std::option;
 import std::map::hashmap;
@@ -71,8 +72,8 @@ fn expr_to_str(&ext_ctxt cx, @ast::expr expr, str error) -> str {
 fn expr_to_ident(&ext_ctxt cx, @ast::expr expr, str error) -> ast::ident {
     alt(expr.node) {
         case (ast::expr_path(?p)) {
-            if (vec::len(p.node.types) > 0u 
-                || vec::len(p.node.idents) != 1u) {
+            if (ivec::len(p.node.types) > 0u 
+                    || ivec::len(p.node.idents) != 1u) {
                 cx.span_fatal(expr.span, error);
             } else {
                 ret p.node.idents.(0);

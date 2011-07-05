@@ -1,4 +1,6 @@
+// The Rust abstract syntax tree.
 
+import std::ivec;
 import std::option;
 import std::str;
 import std::vec;
@@ -15,11 +17,11 @@ type fn_ident = option::t[ident];
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
-type path_ = rec(vec[ident] idents, vec[@ty] types);
+type path_ = rec(ident[] idents, (@ty)[] types);
 
 type path = spanned[path_];
 
-fn path_name(&path p) -> str { ret str::connect(p.node.idents, "::"); }
+fn path_name(&path p) -> str { ret str::connect_ivec(p.node.idents, "::"); }
 
 type crate_num = int;
 type node_id = int;
@@ -632,11 +634,11 @@ fn ternary_to_if(&@expr e) -> @ast::expr {
 
 // Path stringification
 fn path_to_str(&ast::path pth) -> str {
-    auto result = str::connect(pth.node.idents, "::");
-    if (vec::len[@ast::ty](pth.node.types) > 0u) {
+    auto result = str::connect_ivec(pth.node.idents, "::");
+    if (ivec::len[@ast::ty](pth.node.types) > 0u) {
         fn f(&@ast::ty t) -> str { ret print::pprust::ty_to_str(*t); }
         result += "[";
-        result += str::connect(vec::map(f, pth.node.types), ",");
+        result += str::connect_ivec(ivec::map(f, pth.node.types), ",");
         result += "]";
     }
     ret result;

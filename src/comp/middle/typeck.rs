@@ -157,7 +157,7 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
                             ty_param_count);
     auto ty_param_vars = bind_result._0;
     auto ty_substs_opt;
-    auto ty_substs_len = vec::len[@ast::ty](pth.node.types);
+    auto ty_substs_len = ivec::len[@ast::ty](pth.node.types);
     if (ty_substs_len > 0u) {
         let ty::t[] ty_substs = ~[];
         auto i = 0u;
@@ -258,7 +258,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         ret rec(ty=ast_ty_to_ty(tcx, getter, mt.ty), mut=mt.mut);
     }
     fn instantiate(&ty::ctxt tcx, &span sp, &ty_getter getter,
-                   &ast::def_id id, &vec[@ast::ty] args) -> ty::t {
+                   &ast::def_id id, &(@ast::ty)[] args) -> ty::t {
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
 
@@ -346,9 +346,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_path(?path, ?id)) {
             alt (tcx.def_map.find(id)) {
                 case (some(ast::def_ty(?id))) {
-                    typ =
-                        instantiate(tcx, ast_ty.span, getter, id,
-                                    path.node.types);
+                    typ = instantiate(tcx, ast_ty.span, getter, id,
+                                      path.node.types);
                 }
                 case (some(ast::def_native_ty(?id))) { typ = getter(id)._1; }
                 case (some(ast::def_ty_arg(?id))) {
@@ -1696,7 +1695,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // The definition doesn't take type parameters. If the programmer
             // supplied some, that's an error.
 
-            if (vec::len[@ast::ty](pth.node.types) > 0u) {
+            if (ivec::len[@ast::ty](pth.node.types) > 0u) {
                 fcx.ccx.tcx.sess.span_fatal(expr.span,
                                           "this kind of value does not \
                                            take type parameters");
