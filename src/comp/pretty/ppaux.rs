@@ -337,6 +337,22 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
     }
 }
 
+// The ps is stored here to prevent recursive type.
+// FIXME use a nominal tag instead
+tag ann_node {
+    node_block(ps, ast::block);
+    node_item(ps, @ast::item);
+    node_expr(ps, @ast::expr);
+    node_pat(ps, @ast::pat);
+}
+type pp_ann = rec(fn(&ann_node node) pre,
+                  fn(&ann_node node) post);
+
+fn no_ann() -> pp_ann {
+    fn ignore(&ann_node node) {}
+    ret rec(pre=ignore, post=ignore);
+}
+
 type ps =
     @rec(pp::printer s,
          option::t[codemap] cm,
@@ -345,7 +361,7 @@ type ps =
          mutable uint cur_cmnt,
          mutable uint cur_lit,
          mutable vec[pp::breaks] boxes,
-         mode mode);
+         pp_ann ann);
 
 fn ibox(&ps s, uint u) {
     vec::push(s.boxes, pp::inconsistent);
@@ -353,8 +369,6 @@ fn ibox(&ps s, uint u) {
 }
 
 fn end(&ps s) { vec::pop(s.boxes); pp::end(s.s); }
-
-tag mode { mo_untyped; mo_typed(ctxt); mo_identified; }
 
 fn rust_printer(io::writer writer) -> ps {
     let vec[pp::breaks] boxes = [];
@@ -365,7 +379,7 @@ fn rust_printer(io::writer writer) -> ps {
              mutable cur_cmnt=0u,
              mutable cur_lit=0u,
              mutable boxes=boxes,
-             mode=mo_untyped);
+             ann=no_ann());
 }
 
 const uint indent_unit = 4u;

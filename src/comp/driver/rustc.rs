@@ -12,6 +12,7 @@ import middle::resolve;
 import middle::ty;
 import middle::typeck;
 import middle::tstate::ck;
+import pretty::pp;
 import pretty::pprust;
 import pretty::ppaux;
 import back::link;
@@ -24,6 +25,7 @@ import std::option::some;
 import std::option::none;
 import std::str;
 import std::vec;
+import std::int;
 import std::io;
 import std::run;
 import std::getopts;
@@ -127,22 +129,67 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
 
 fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
                       str input, pp_mode ppm) {
+    fn ann_paren_for_expr(&ppaux::ann_node node) {
+        alt (node) {
+            case (ppaux::node_expr(?s, ?expr)) {
+                pprust::popen(s);
+            }
+            case (_) {}
+        }
+    }
+    fn ann_typed_post(&ty::ctxt tcx, &ppaux::ann_node node) {
+        alt (node) {
+            case (ppaux::node_expr(?s, ?expr)) {
+                pp::space(s.s);
+                pp::word(s.s, "as");
+                pp::space(s.s);
+                pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+                pprust::pclose(s);
+            }
+            case (_) {}
+        }
+    }
+    fn ann_identified_post(&ppaux::ann_node node) {
+        alt (node) {
+            case (ppaux::node_item(?s, ?item)) {
+                pp::space(s.s);
+                pprust::synth_comment(s, int::to_str(item.id, 10u));
+            }
+            case (ppaux::node_block(?s, ?blk)) {
+                pp::space(s.s);
+                pprust::synth_comment(s, "block " +
+                                      int::to_str(blk.node.id, 10u));
+            }
+            case (ppaux::node_expr(?s, ?expr)) {
+                pp::space(s.s);
+                pprust::synth_comment(s, int::to_str(expr.id, 10u));
+                pprust::pclose(s);
+            }
+            case (_) {}
+        }
+    }
+
     auto p = front::parser::new_parser(sess, cfg, input, 0u, 0);
     auto crate = parse_input(sess, p, input);
-    auto mode;
+    auto ann;
     alt (ppm) {
         case (ppm_typed) {
             auto amap = middle::ast_map::map_crate(*crate);
             auto d = resolve::resolve_crate(sess, amap, crate);
             auto ty_cx = ty::mk_ctxt(sess, d._0, d._1, amap);
             typeck::check_crate(ty_cx, crate);
-            mode = ppaux::mo_typed(ty_cx);
+            ann = rec(pre=ann_paren_for_expr,
+                      post=bind ann_typed_post(ty_cx, _));
         }
-        case (ppm_normal) { mode = ppaux::mo_untyped; }
-        case (ppm_identified) { mode = ppaux::mo_identified; }
+        case (ppm_identified) {
+            ann = rec(pre=ann_paren_for_expr,
+                      post=ann_identified_post);
+        }
+        case (ppm_normal) {
+            ann = ppaux::no_ann();
+        }
     }
-    pprust::print_crate(sess, crate, input, std::io::stdout(),
-                        mode);
+    pprust::print_crate(sess, crate, input, std::io::stdout(), ann);
 }
 
 fn version(str argv0) {

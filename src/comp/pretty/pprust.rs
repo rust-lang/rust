@@ -10,7 +10,6 @@ import front::lexer;
 import front::codemap;
 import front::codemap::codemap;
 import front::ast;
-import middle::ty;
 import util::common;
 import option::some;
 import option::none;
@@ -29,7 +28,7 @@ import pp::eof;
 import ppaux::*;
 
 fn print_crate(session sess, @ast::crate crate, str filename,
-               io::writer out, mode mode) {
+               io::writer out, &pp_ann ann) {
     let vec[pp::breaks] boxes = [];
     auto r = lexer::gather_comments_and_literals(sess, filename);
     auto s =
@@ -40,7 +39,7 @@ fn print_crate(session sess, @ast::crate crate, str filename,
              mutable cur_cmnt=0u,
              mutable cur_lit=0u,
              mutable boxes=boxes,
-             mode=mode);
+             ann=ann);
     print_mod(s, crate.node.module, crate.node.attrs);
     eof(s.s);
 }
@@ -297,6 +296,8 @@ fn print_item(&ps s, &@ast::item item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
+    auto ann_node = node_item(s, item);
+    s.ann.pre(ann_node);
     alt (item.node) {
         case (ast::item_const(?ty, ?expr)) {
             head(s, "const");
@@ -470,15 +471,7 @@ fn print_item(&ps s, &@ast::item item) {
             print_block(s, dt.body);
         }
     }
-
-    // Print the node ID if necessary. TODO: type as well.
-    alt (s.mode) {
-        case (mo_identified) {
-            space(s.s);
-            synth_comment(s, int::to_str(item.id, 10u));
-        }
-        case (_) {/* no-op */ }
-    }
+    s.ann.post(ann_node);
 }
 
 fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
@@ -530,6 +523,8 @@ fn print_stmt(&ps s, &ast::stmt st) {
 
 fn print_block(&ps s, ast::block blk) {
     maybe_print_comment(s, blk.span.lo);
+    auto ann_node = node_block(s, blk);
+    s.ann.pre(ann_node);
     bopen(s);
     for (@ast::stmt st in blk.node.stmts) { print_stmt(s, *st) }
     alt (blk.node.expr) {
@@ -541,15 +536,7 @@ fn print_block(&ps s, ast::block blk) {
         case (_) { }
     }
     bclose(s, blk.span);
-
-    // Print the node ID if necessary: TODO: type as well.
-    alt (s.mode) {
-        case (mo_identified) {
-            space(s.s);
-            synth_comment(s, "block " + int::to_str(blk.node.id, 10u));
-        }
-        case (_) {/* no-op */ }
-    }
+    s.ann.post(ann_node);
 }
 
 fn print_if(&ps s, &@ast::expr test, &ast::block block,
@@ -597,11 +584,8 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
 fn print_expr(&ps s, &@ast::expr expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
-    alt (s.mode) {
-        case (mo_untyped) {/* no-op */ }
-        case (mo_typed(_)) { popen(s); }
-        case (mo_identified) { popen(s); }
-    }
+    auto ann_node = node_expr(s, expr);
+    s.ann.pre(ann_node);
     alt (expr.node) {
         case (ast::expr_vec(?exprs, ?mut, ?kind)) {
             ibox(s, indent_unit);
@@ -926,23 +910,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
 
         }
     }
-    // Print the type or node ID if necessary.
-
-    alt (s.mode) {
-        case (mo_untyped) {/* no-op */ }
-        case (mo_typed(?tcx)) {
-            space(s.s);
-            word(s.s, "as");
-            space(s.s);
-            word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
-            pclose(s);
-        }
-        case (mo_identified) {
-            space(s.s);
-            synth_comment(s, int::to_str(expr.id, 10u));
-            pclose(s);
-        }
-    }
+    s.ann.post(ann_node);
     end(s);
 }
 
@@ -960,16 +928,6 @@ fn print_decl(&ps s, &@ast::decl decl) {
                 }
                 case (_) {
                     word_nbsp(s, "auto");
-
-                    // Print the type or node ID if necessary.
-                    alt (s.mode) {
-                        case (mo_untyped) {/* no-op */ }
-                        case (mo_typed(?tcx)) {
-                            auto lty = ty::node_id_to_type(tcx, loc.node.id);
-                            word_space(s, ppaux::ty_to_str(tcx, lty));
-                        }
-                        case (mo_identified) {/* no-op */ }
-                    }
                 }
             }
             word(s.s, loc.node.ident);
@@ -1015,6 +973,8 @@ fn print_path(&ps s, &ast::path path) {
 
 fn print_pat(&ps s, &@ast::pat pat) {
     maybe_print_comment(s, pat.span.lo);
+    auto ann_node = node_pat(s, pat);
+    s.ann.pre(ann_node);
     alt (pat.node) {
         case (ast::pat_wild) { word(s.s, "_"); }
         case (ast::pat_bind(?id)) { word(s.s, "?" + id); }
@@ -1028,15 +988,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
             }
         }
     }
-
-    // Print the node ID if necessary. TODO: type as well.
-    alt (s.mode) {
-        case (mo_identified) {
-            space(s.s);
-            synth_comment(s, int::to_str(pat.id, 10u));
-        }
-        case (_) {/* no-op */ }
-    }
+    s.ann.post(ann_node);
 }
 
 fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,

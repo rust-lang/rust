@@ -25,7 +25,6 @@ import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
 import pretty::pprust::print_type;
 import pretty::ppaux::print_literal;
-import pretty::ppaux::mo_untyped;
 import pretty::pp::mk_printer;
 
 type filename = str;
