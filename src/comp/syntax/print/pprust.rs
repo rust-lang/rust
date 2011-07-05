@@ -88,6 +88,7 @@ fn print_crate(&codemap cm, @ast::crate crate, str filename,
              mutable boxes=boxes,
              ann=ann);
     print_mod(s, crate.node.module, crate.node.attrs);
+    print_remaining_comments(s);
     eof(s.s);
 }
 
@@ -240,7 +241,6 @@ fn print_mod(&ps s, ast::_mod _mod, &vec[ast::attribute] attrs) {
         hardbreak_if_not_bol(s);
         print_item(s, item);
     }
-    print_remaining_comments(s);
 }
 
 fn print_boxed_type(&ps s, &@ast::ty ty) { print_type(s, *ty); }
