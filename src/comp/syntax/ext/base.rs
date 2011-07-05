@@ -1,10 +1,10 @@
 import std::vec;
 import std::option;
 import std::map::hashmap;
-import driver::session::session;
-import front::parser::parser;
-import util::common::span;
-import util::common::new_str_hash;
+import parse::parser::parse_sess;
+import codemap::span;
+import syntax::_std::new_str_hash;
+import codemap;
 
 type syntax_expander = 
     fn(&ext_ctxt, span, &vec[@ast::expr], option::t[str]) -> @ast::expr;
@@ -20,10 +20,10 @@ tag syntax_extension {
 // AST nodes into full ASTs
 fn syntax_expander_table() -> hashmap[str, syntax_extension] {
     auto syntax_expanders = new_str_hash[syntax_extension]();
-    syntax_expanders.insert("fmt", normal(extfmt::expand_syntax_ext));
-    syntax_expanders.insert("env", normal(extenv::expand_syntax_ext));
+    syntax_expanders.insert("fmt", normal(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));
     syntax_expanders.insert("macro",    
-                            macro_defining(extsimplext::add_new_extension));
+                            macro_defining(ext::simplext::add_new_extension));
     ret syntax_expanders;
 }
 
@@ -39,18 +39,18 @@ type ext_ctxt =
         span_msg_fn span_unimpl,
         next_id_fn next_id);
 
-fn mk_ctxt(parser parser) -> ext_ctxt {
-    auto sess = parser.get_session();
-    fn ext_span_fatal_(session sess, span sp, str msg) -> ! {
-        sess.span_fatal(sp, msg);
+fn mk_ctxt(&parse_sess sess) -> ext_ctxt {
+    fn ext_span_fatal_(&codemap::codemap cm, span sp, str msg) -> ! {
+        codemap::emit_error(option::some(sp), msg, cm);
+        fail;
     }
-    auto ext_span_fatal = bind ext_span_fatal_(sess, _, _);
-    fn ext_span_unimpl_(session sess, span sp, str msg) -> ! {
-        sess.span_unimpl(sp, msg);
+    auto ext_span_fatal = bind ext_span_fatal_(sess.cm, _, _);
+    fn ext_span_unimpl_(&codemap::codemap cm, span sp, str msg) -> ! {
+        codemap::emit_error(option::some(sp), "unimplemented " + msg, cm);
+        fail;
     }
-    auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
-    fn ext_next_id_(parser parser) -> ast::node_id { parser.get_id() }
-    auto ext_next_id = bind ext_next_id_(parser);
+    auto ext_span_unimpl = bind ext_span_unimpl_(sess.cm, _, _);
+    auto ext_next_id = bind parse::parser::next_node_id(sess);
     ret rec(span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
             next_id=ext_next_id);

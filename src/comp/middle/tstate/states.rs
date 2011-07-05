@@ -75,13 +75,12 @@ import bitvectors::gen_poststate;
 import bitvectors::kill_poststate;
 import bitvectors::clear_in_poststate_ident;
 import bitvectors::intersect_states;
-import front::ast;
-import front::ast::*;
+import syntax::ast::*;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;
 import util::common::new_def_hash;
-import util::common::uistr;
+import syntax::_std::uistr;
 import util::common::log_expr;
 import util::common::log_block;
 import util::common::log_block_err;
@@ -171,7 +170,7 @@ fn find_pre_post_state_call(&fn_ctxt fcx, &prestate pres, &@expr a,
           expr_poststate(fcx.ccx, a), id, bs, cf) || changed;
 }
 
-fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, ast::node_id id,
+fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
                              &vec[@expr] es, controlflow cf) -> bool {
     auto rs = seq_states(fcx, pres, es);
     auto changed = rs._0 | set_prestate_ann(fcx.ccx, id, pres);
@@ -229,7 +228,7 @@ fn gen_if_local(&fn_ctxt fcx, &poststate p, &@expr e) -> bool {
 }
 
 fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
-                  &option::t[@expr] maybe_alt, ast::node_id id, &if_ty chk,
+                  &option::t[@expr] maybe_alt, node_id id, &if_ty chk,
                   &prestate pres) -> bool {
     auto changed = set_prestate_ann(fcx.ccx, id, pres) |
         find_pre_post_state_expr(fcx, pres, antec);

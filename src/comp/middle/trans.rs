@@ -24,7 +24,8 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::fs;
-import front::ast;
+import syntax::ast;
+import syntax::walk;
 import driver::session;
 import middle::ty;
 import back::link;
@@ -32,14 +33,15 @@ import back::x86;
 import back::abi;
 import back::upcall;
 import middle::ty::pat_ty;
+import syntax::visit;
 import visit::vt;
 import util::common;
-import util::common::istr;
+import syntax::_std::istr;
 import util::common::new_def_hash;
-import util::common::new_int_hash;
-import util::common::new_str_hash;
+import syntax::_std::new_int_hash;
+import syntax::_std::new_str_hash;
 import util::common::local_rhs_span;
-import util::common::span;
+import syntax::codemap::span;
 import lib::llvm::llvm;
 import lib::llvm::builder;
 import lib::llvm::target_data;
@@ -65,10 +67,10 @@ import link::mangle_exported_name;
 import metadata::tyencode;
 import metadata::creader;
 import metadata::decoder;
-import pretty::ppaux::ty_to_str;
-import pretty::ppaux::ty_to_short_str;
-import pretty::pprust::expr_to_str;
-import pretty::pprust::path_to_str;
+import util::ppaux::ty_to_str;
+import util::ppaux::ty_to_short_str;
+import syntax::print::pprust::expr_to_str;
+import syntax::print::pprust::path_to_str;
 
 obj namegen(mutable int i) {
     fn next(str prefix) -> str { i += 1; ret prefix + istr(i); }
@@ -795,16 +797,16 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_uint) { llty = T_int(); }
         case (ty::ty_machine(?tm)) {
             alt (tm) {
-                case (common::ty_i8) { llty = T_i8(); }
-                case (common::ty_u8) { llty = T_i8(); }
-                case (common::ty_i16) { llty = T_i16(); }
-                case (common::ty_u16) { llty = T_i16(); }
-                case (common::ty_i32) { llty = T_i32(); }
-                case (common::ty_u32) { llty = T_i32(); }
-                case (common::ty_i64) { llty = T_i64(); }
-                case (common::ty_u64) { llty = T_i64(); }
-                case (common::ty_f32) { llty = T_f32(); }
-                case (common::ty_f64) { llty = T_f64(); }
+                case (ast::ty_i8) { llty = T_i8(); }
+                case (ast::ty_u8) { llty = T_i8(); }
+                case (ast::ty_i16) { llty = T_i16(); }
+                case (ast::ty_u16) { llty = T_i16(); }
+                case (ast::ty_i32) { llty = T_i32(); }
+                case (ast::ty_u32) { llty = T_i32(); }
+                case (ast::ty_i64) { llty = T_i64(); }
+                case (ast::ty_u64) { llty = T_i64(); }
+                case (ast::ty_f32) { llty = T_f32(); }
+                case (ast::ty_f64) { llty = T_f64(); }
             }
         }
         case (ty::ty_char) { llty = T_char(); }
@@ -2363,7 +2365,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
     } else {
         // FIXME: compare obj, fn by pointer?
 
-        trans_fail(cx, none[common::span],
+        trans_fail(cx, none[span],
                    "attempt to compare values of type " +
                        ty_to_str(cx.fcx.lcx.ccx.tcx, t));
     }
@@ -2402,7 +2404,7 @@ fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
         }
         case (ty::ty_char) { ret f(unsigned_int); }
         case (ty::ty_type) {
-            trans_fail(cx, none[common::span],
+            trans_fail(cx, none[span],
                        "attempt to compare values of type type");
 
             // This is a bit lame, because we return a dummy block to the
@@ -2412,7 +2414,7 @@ fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
                      C_bool(false));
         }
         case (ty::ty_native(_)) {
-            trans_fail(cx, none[common::span],
+            trans_fail(cx, none[span],
                        "attempt to compare values of type native");
             ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"),
                      C_bool(false));
@@ -2752,7 +2754,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             ret iter_ivec(cx, av, bv, unit_tm.ty, f);
         }
         case (ty::ty_istr) {
-            auto unit_ty = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
+            auto unit_ty = ty::mk_mach(cx.fcx.lcx.ccx.tcx, ast::ty_u8);
             ret iter_ivec(cx, av, bv, unit_ty, f);
         }
         case (_) {
@@ -2858,14 +2860,14 @@ fn iter_sequence(@block_ctxt cx, ValueRef v, &ty::t t, &val_and_ty_fn f) ->
             ret iter_sequence_body(cx, v, elt.ty, f, false, false);
         }
         case (ty::ty_str) {
-            auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
+            auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, ast::ty_u8);
             ret iter_sequence_body(cx, v, et, f, true, false);
         }
         case (ty::ty_ivec(?elt)) {
             ret iter_sequence_body(cx, v, elt.ty, f, false, true);
         }
         case (ty::ty_istr) {
-            auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
+            auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, ast::ty_u8);
             ret iter_sequence_body(cx, v, et, f, true, true);
         }
         case (_) {
@@ -3179,7 +3181,7 @@ fn duplicate_heap_parts_if_necessary(&@block_ctxt cx, ValueRef vptr,
       }
       case (ty::ty_istr) {
         ret ivec::duplicate_heap_part(cx, vptr,
-            ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8));
+            ty::mk_mach(cx.fcx.lcx.ccx.tcx, ast::ty_u8));
       }
       case (_) { ret rslt(cx, C_nil()); }
     }
@@ -3276,14 +3278,14 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit, ast::node_id id) -> ValueRef {
             auto t = T_int();
             auto s = True;
             alt (tm) {
-                case (common::ty_u8) { t = T_i8(); s = False; }
-                case (common::ty_u16) { t = T_i16(); s = False; }
-                case (common::ty_u32) { t = T_i32(); s = False; }
-                case (common::ty_u64) { t = T_i64(); s = False; }
-                case (common::ty_i8) { t = T_i8(); }
-                case (common::ty_i16) { t = T_i16(); }
-                case (common::ty_i32) { t = T_i32(); }
-                case (common::ty_i64) { t = T_i64(); }
+                case (ast::ty_u8) { t = T_i8(); s = False; }
+                case (ast::ty_u16) { t = T_i16(); s = False; }
+                case (ast::ty_u32) { t = T_i32(); s = False; }
+                case (ast::ty_u64) { t = T_i64(); s = False; }
+                case (ast::ty_i8) { t = T_i8(); }
+                case (ast::ty_i16) { t = T_i16(); }
+                case (ast::ty_i32) { t = T_i32(); }
+                case (ast::ty_i64) { t = T_i64(); }
             }
             ret C_integral(t, i as uint, s);
         }
@@ -3291,8 +3293,8 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit, ast::node_id id) -> ValueRef {
         case (ast::lit_mach_float(?tm, ?s)) {
             auto t = T_float();
             alt (tm) {
-                case (common::ty_f32) { t = T_f32(); }
-                case (common::ty_f64) { t = T_f64(); }
+                case (ast::ty_f32) { t = T_f32(); }
+                case (ast::ty_f64) { t = T_f64(); }
             }
             ret C_floating(s, t);
         }
@@ -4768,7 +4770,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
         this_cx = next_cx;
     }
     auto default_cx = this_cx;
-    trans_fail(default_cx, some[common::span](expr.span),
+    trans_fail(default_cx, some[span](expr.span),
                "non-exhaustive match failure");
     ret rslt(join_branches(cx, arm_results), C_nil());
 }
@@ -5028,7 +5030,7 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
     bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
     // fail: bad bounds check.
 
-    trans_fail(fail_cx, some[common::span](sp), "bounds check");
+    trans_fail(fail_cx, some[span](sp), "bounds check");
     auto body;
     alt (interior_len_and_data) {
         case (some(?lad)) { body = lad._1; }
@@ -6313,11 +6315,11 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
         let TypeRef tr;
         let bool is32bit = false;
         alt (ty::struct(cx.fcx.lcx.ccx.tcx, e_ty)) {
-            case (ty::ty_machine(util::common::ty_f32)) {
+            case (ty::ty_machine(ast::ty_f32)) {
                 tr = T_f32();
                 is32bit = true;
             }
-            case (ty::ty_machine(util::common::ty_f64)) { tr = T_f64(); }
+            case (ty::ty_machine(ast::ty_f64)) { tr = T_f64(); }
             case (_) { tr = T_float(); }
         }
         if (is32bit) {
@@ -6366,13 +6368,13 @@ fn trans_check_expr(&@block_ctxt cx, &@ast::expr e, &str s) -> result {
     auto cond_res = trans_expr(cx, e);
     auto expr_str = s + " " + expr_to_str(e) + " failed";
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
-    trans_fail(fail_cx, some[common::span](e.span), expr_str);
+    trans_fail(fail_cx, some[span](e.span), expr_str);
     auto next_cx = new_sub_block_ctxt(cx, "next");
     cond_res.bcx.build.CondBr(cond_res.val, next_cx.llbb, fail_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
 
-fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
+fn trans_fail_expr(&@block_ctxt cx, &option::t[span] sp_opt,
                    &option::t[@ast::expr] fail_expr)
         -> result {
     auto bcx = cx;
@@ -6399,13 +6401,13 @@ fn trans_fail_expr(&@block_ctxt cx, &option::t[common::span] sp_opt,
     }
 }
  
-fn trans_fail(&@block_ctxt cx, &option::t[common::span] sp_opt, &str fail_str)
+fn trans_fail(&@block_ctxt cx, &option::t[span] sp_opt, &str fail_str)
    -> result {
     auto V_fail_str = C_cstr(cx.fcx.lcx.ccx, fail_str);
     ret trans_fail_value(cx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(&@block_ctxt cx, &option::t[common::span] sp_opt,
+fn trans_fail_value(&@block_ctxt cx, &option::t[span] sp_opt,
                     &ValueRef V_fail_str)
         -> result {
     auto V_filename;

@@ -2,7 +2,7 @@
 
 import std::vec;
 import std::option;
-import front::ast;
+import syntax::ast;
 import util::common;
 
 export attr_metas;
@@ -105,9 +105,11 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
 }
 
 fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
-    log #fmt("looking for %s", pretty::pprust::meta_item_to_str(*needle));
+    log #fmt("looking for %s",
+             syntax::print::pprust::meta_item_to_str(*needle));
     for (@ast::meta_item item in haystack) {
-        log #fmt("looking in %s", pretty::pprust::meta_item_to_str(*item));
+        log #fmt("looking in %s",
+                 syntax::print::pprust::meta_item_to_str(*item));
         if (eq(item, needle)) {
             log "found it!";
             ret true;
@@ -166,7 +168,7 @@ fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
     ret vec::filter_map(filter, items);
 }
 
-fn span[T](&T item) -> common::spanned[T] {
+fn span[T](&T item) -> ast::spanned[T] {
     ret rec(node=item, span=rec(lo=0u, hi=0u));
 }
 

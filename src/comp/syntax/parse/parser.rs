@@ -10,32 +10,37 @@ import std::either::left;
 import std::either::right;
 import std::map::hashmap;
 import token::can_begin_expr;
-import driver::session;
-import util::common;
-import util::common::filename;
-import util::common::span;
-import util::common::new_str_hash;
-import util::data::interner;
-import util::common::a_bang;
-import util::common::a_ty;
+import ex=ext::base;
+import codemap::span;
+import _std::new_str_hash;
+import util::interner;
 
 tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
 
 tag file_type { CRATE_FILE; SOURCE_FILE; }
 
-type ty_or_bang = util::common::ty_or_bang[@ast::ty];
+tag ty_or_bang { a_ty(@ast::ty); a_bang; }
+
+type parse_sess = @rec(codemap::codemap cm,
+                       mutable ast::node_id next_id);
+
+fn next_node_id(&parse_sess sess) -> ast::node_id {
+    auto rv = sess.next_id;
+    sess.next_id += 1;
+    ret rv;
+}
 
 type parser =
     obj {
         fn peek() -> token::token ;
         fn bump() ;
         fn fatal(str) -> !  ;
+        fn warn(str);
         fn restrict(restriction) ;
         fn get_restriction() -> restriction ;
         fn get_file_type() -> file_type ;
         fn get_cfg() -> ast::crate_cfg;
-        fn get_session() -> session::session ;
-        fn get_span() -> common::span ;
+        fn get_span() -> span ;
         fn get_lo_pos() -> uint ;
         fn get_hi_pos() -> uint ;
         fn get_last_lo_pos() -> uint ;
@@ -44,15 +49,15 @@ type parser =
         fn get_reader() -> lexer::reader ;
         fn get_filemap() -> codemap::filemap ;
         fn get_bad_expr_words() -> hashmap[str, ()] ;
-        fn get_syntax_expanders() -> hashmap[str, ext::syntax_extension] ;
+        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] ;
         fn get_chpos() -> uint ;
         fn get_id() -> ast::node_id ;
-        fn next_id() -> ast::node_id ;
+        fn get_sess() -> parse_sess;
     };
 
-fn new_parser(session::session sess, ast::crate_cfg cfg,
-              str path, uint pos, ast::node_id next_id) -> parser {
-    obj stdio_parser(session::session sess,
+fn new_parser(parse_sess sess, ast::crate_cfg cfg,
+              str path, uint pos) -> parser {
+    obj stdio_parser(parse_sess sess,
                      ast::crate_cfg cfg,
                      file_type ftype,
                      mutable token::token tok,
@@ -62,9 +67,8 @@ fn new_parser(session::session sess, ast::crate_cfg cfg,
                      mutable restriction restr,
                      lexer::reader rdr,
                      vec[op_spec] precs,
-                     mutable ast::node_id next_id_var,
                      hashmap[str, ()] bad_words,
-                     hashmap[str, ext::syntax_extension] syntax_expanders) {
+                     hashmap[str, ex::syntax_extension] syntax_expanders) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
             // log rdr.get_filename()
@@ -75,11 +79,16 @@ fn new_parser(session::session sess, ast::crate_cfg cfg,
             lo = rdr.get_mark_chpos();
             hi = rdr.get_chpos();
         }
-        fn fatal(str m) -> ! { sess.span_fatal(rec(lo=lo, hi=hi), m); }
+        fn fatal(str m) -> ! {
+            codemap::emit_error(some(self.get_span()), m, sess.cm);
+            fail;
+        }
+        fn warn(str m) {
+            codemap::emit_warning(some(self.get_span()), m, sess.cm);
+        }
         fn restrict(restriction r) { restr = r; }
         fn get_restriction() -> restriction { ret restr; }
-        fn get_session() -> session::session { ret sess; }
-        fn get_span() -> common::span { ret rec(lo=lo, hi=hi); }
+        fn get_span() -> span { ret rec(lo=lo, hi=hi); }
         fn get_lo_pos() -> uint { ret lo; }
         fn get_hi_pos() -> uint { ret hi; }
         fn get_last_lo_pos() -> uint { ret last_lo; }
@@ -92,33 +101,29 @@ fn new_parser(session::session sess, ast::crate_cfg cfg,
         fn get_reader() -> lexer::reader { ret rdr; }
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
         fn get_bad_expr_words() -> hashmap[str, ()] { ret bad_words; }
-        fn get_syntax_expanders() -> hashmap[str, ext::syntax_extension] {
+        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] {
             ret syntax_expanders;
         }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
-        fn get_id() -> ast::node_id {
-            auto rv = next_id_var;
-            next_id_var += 1;
-            ret rv;
-        }
-        fn next_id() -> ast::node_id { ret next_id_var; }
+        fn get_id() -> ast::node_id { ret next_node_id(sess); }
+        fn get_sess() -> parse_sess { ret sess; }
     }
 
     auto ftype = SOURCE_FILE;
     if (str::ends_with(path, ".rc")) { ftype = CRATE_FILE; }
     auto srdr = io::file_reader(path);
     auto filemap = codemap::new_filemap(path, pos);
-    vec::push(sess.get_codemap().files, filemap);
+    vec::push(sess.cm.files, filemap);
     auto itr = @interner::mk(str::hash, str::eq);
-    auto rdr = lexer::new_reader(sess, srdr, filemap, itr);
+    auto rdr = lexer::new_reader(sess.cm, srdr, filemap, itr);
     // Make sure npos points at first actual token:
 
     lexer::consume_whitespace_and_comments(rdr);
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, cfg, ftype, lexer::next_token(rdr),
                      npos, npos, npos, UNRESTRICTED, rdr,
-                     prec_table(), next_id, bad_expr_word_table(),
-                     ext::syntax_expander_table());
+                     prec_table(), bad_expr_word_table(),
+                     ex::syntax_expander_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
@@ -181,7 +186,7 @@ fn expect(&parser p, token::token t) {
     }
 }
 
-fn spanned[T](uint lo, uint hi, &T node) -> common::spanned[T] {
+fn spanned[T](uint lo, uint hi, &T node) -> ast::spanned[T] {
     ret rec(node=node, span=rec(lo=lo, hi=hi));
 }
 
@@ -326,8 +331,7 @@ fn parse_ty_field(&parser p) -> ast::ty_field {
 fn ident_index(&parser p, &vec[ast::arg] args, &ast::ident i) -> uint {
     auto j = 0u;
     for (ast::arg a in args) { if (a.ident == i) { ret j; } j += 1u; }
-    p.get_session().span_fatal(p.get_span(),
-                             "Unbound variable " + i + " in constraint arg");
+    p.fatal("Unbound variable " + i + " in constraint arg");
 }
 
 fn parse_constr_arg(vec[ast::arg] args, &parser p) -> @ast::constr_arg {
@@ -359,7 +363,7 @@ fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
 // mentioned in a constraint to an arg index.
 // Seems weird to do this in the parser, but I'm not sure how else to.
 fn parse_constrs(&vec[ast::arg] args, &parser p) ->
-   common::spanned[vec[@ast::constr]] {
+    ast::spanned[vec[@ast::constr]] {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
     let vec[@ast::constr] constrs = [];
@@ -431,7 +435,7 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
 
 fn parse_ty_or_bang(&parser p) -> ty_or_bang {
     alt (p.peek()) {
-        case (token::NOT) { p.bump(); ret a_bang[@ast::ty]; }
+        case (token::NOT) { p.bump(); ret a_bang; }
         case (_) { ret a_ty(parse_ty(p)); }
     }
 }
@@ -460,25 +464,25 @@ fn parse_ty(&parser p) -> @ast::ty {
     } else if (eat_word(p, "task")) {
         t = ast::ty_task;
     } else if (eat_word(p, "i8")) {
-        t = ast::ty_machine(common::ty_i8);
+        t = ast::ty_machine(ast::ty_i8);
     } else if (eat_word(p, "i16")) {
-        t = ast::ty_machine(common::ty_i16);
+        t = ast::ty_machine(ast::ty_i16);
     } else if (eat_word(p, "i32")) {
-        t = ast::ty_machine(common::ty_i32);
+        t = ast::ty_machine(ast::ty_i32);
     } else if (eat_word(p, "i64")) {
-        t = ast::ty_machine(common::ty_i64);
+        t = ast::ty_machine(ast::ty_i64);
     } else if (eat_word(p, "u8")) {
-        t = ast::ty_machine(common::ty_u8);
+        t = ast::ty_machine(ast::ty_u8);
     } else if (eat_word(p, "u16")) {
-        t = ast::ty_machine(common::ty_u16);
+        t = ast::ty_machine(ast::ty_u16);
     } else if (eat_word(p, "u32")) {
-        t = ast::ty_machine(common::ty_u32);
+        t = ast::ty_machine(ast::ty_u32);
     } else if (eat_word(p, "u64")) {
-        t = ast::ty_machine(common::ty_u64);
+        t = ast::ty_machine(ast::ty_u64);
     } else if (eat_word(p, "f32")) {
-        t = ast::ty_machine(common::ty_f32);
+        t = ast::ty_machine(ast::ty_f32);
     } else if (eat_word(p, "f64")) {
-        t = ast::ty_machine(common::ty_f64);
+        t = ast::ty_machine(ast::ty_f64);
     } else if (p.peek() == token::LPAREN) {
         p.bump();
         alt (p.peek()) {
@@ -541,9 +545,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {
-        p.get_session().span_warn(p.get_span(),
-                                  "ignoring deprecated 'mutable'"
-                                  + " type constructor");
+        p.warn("ignoring deprecated 'mutable' type constructor");
         auto typ = parse_ty(p);
         t = typ.node;
         hi = typ.span.hi;
@@ -585,7 +587,7 @@ fn parse_seq_to_end[T](token::token ket, option::t[token::token] sep,
 
 fn parse_seq[T](token::token bra, token::token ket,
                 option::t[token::token] sep, fn(&parser) -> T  f, &parser p)
-   -> util::common::spanned[vec[T]] {
+   -> ast::spanned[vec[T]] {
     auto lo = p.get_lo_pos();
     expect(p, bra);
     auto result = parse_seq_to_end[T](ket, sep, f, p);
@@ -764,8 +766,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 ex = ast::expr_lit(lit);
             }
             case (_) {
-                p.get_session().span_unimpl(p.get_span(),
-                                            "unique pointer creation");
+                p.fatal("unimplemented: unique pointer creation");
             }
         }
     } else if (eat_word(p, "obj")) {
@@ -971,21 +972,21 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
  * wish to use while bootstrapping. The eventual aim is to permit
  * loading rust crates to process extensions.
  */
-fn expand_syntax_ext(&parser p, common::span sp, &ast::path path,
+fn expand_syntax_ext(&parser p, span sp, &ast::path path,
                      vec[@ast::expr] args, option::t[str] body) ->
    ast::expr_ {
     assert (vec::len(path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
     alt (p.get_syntax_expanders().find(extname)) {
         case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
-        case (some(ext::normal(?ext))) {
-            auto ext_cx = ext::mk_ctxt(p);
+        case (some(ex::normal(?ext))) {
+            auto ext_cx = ex::mk_ctxt(p.get_sess());
             ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
         }
         // because we have expansion inside parsing, new macros are only
         // visible further down the file
-        case (some(ext::macro_defining(?ext))) {
-            auto ext_cx = ext::mk_ctxt(p);
+        case (some(ex::macro_defining(?ext))) {
+            auto ext_cx = ex::mk_ctxt(p.get_sess());
             auto name_and_extension = ext(ext_cx, sp, args, body);
             p.get_syntax_expanders().insert(name_and_extension._0,
                                             name_and_extension._1);
@@ -1049,9 +1050,7 @@ fn parse_dot_or_call_expr_with(&parser p, @ast::expr e) -> @ast::expr {
 
 fn parse_prefix_expr(&parser p) -> @ast::expr {
     if (eat_word(p, "mutable")) {
-        p.get_session().span_warn(p.get_span(),
-                                  "ignoring deprecated 'mutable'"
-                                  + " prefix operator");
+        p.warn("ignoring deprecated 'mutable' prefix operator");
     }
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
@@ -1676,7 +1675,7 @@ fn parse_ty_params(&parser p) -> vec[ast::ty_param] {
 }
 
 fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
-    let util::common::spanned[vec[ast::arg]] inputs =
+    let ast::spanned[vec[ast::arg]] inputs =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
     let ty_or_bang rslt;
@@ -1784,7 +1783,7 @@ fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
-    let util::common::spanned[vec[ast::obj_field]] fields =
+    let ast::spanned[vec[ast::obj_field]] fields =
         parse_seq[ast::obj_field](token::LPAREN, token::RPAREN,
                                   some(token::COMMA), parse_obj_field, p);
     let vec[@ast::method] meths = [];
@@ -2320,7 +2319,10 @@ fn parse_native_view(&parser p) -> vec[@ast::view_item] {
     ret items;
 }
 
-fn parse_crate_from_source_file(&parser p) -> @ast::crate {
+fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
+                                &codemap::codemap cm) -> @ast::crate {
+    auto sess = @rec(cm=cm, mutable next_id=0);
+    auto p = new_parser(sess, cfg, input, 0u);
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = crate_attrs._1;
@@ -2428,7 +2430,10 @@ fn parse_crate_directives(&parser p, token::token term,
     ret cdirs;
 }
 
-fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
+fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
+                               &codemap::codemap cm) -> @ast::crate {
+    auto sess = @rec(cm=cm, mutable next_id=0);
+    auto p = new_parser(sess, cfg, input, 0u);
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
     auto leading_attrs = parse_inner_attrs_and_next(p);
@@ -2436,14 +2441,12 @@ fn parse_crate_from_crate_file(&parser p) -> @ast::crate {
     auto first_cdir_attr = leading_attrs._1;
     auto cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
     let vec[str] deps = [];
-    auto cx =
-        @rec(p=p,
-             mode=eval::mode_parse,
-             mutable deps=deps,
-             sess=p.get_session(),
-             mutable chpos=p.get_chpos(),
-             mutable next_id=p.next_id(),
-             cfg = p.get_cfg());
+    auto cx = @rec(p=p,
+                   mode=eval::mode_parse,
+                   mutable deps=deps,
+                   sess=sess,
+                   mutable chpos=p.get_chpos(),
+                   cfg = p.get_cfg());
     auto m =
         eval::eval_crate_directives_to_mod(cx, cdirs, prefix);
     auto hi = p.get_hi_pos();

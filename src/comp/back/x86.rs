@@ -4,7 +4,7 @@ import lib::llvm::llvm::ModuleRef;
 import std::str;
 import std::vec;
 import std::os::target_os;
-import util::common::istr;
+import syntax::_std::istr;
 
 fn get_module_asm() -> str { ret ""; }
 

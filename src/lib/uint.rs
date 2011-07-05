@@ -92,6 +92,8 @@ fn to_str(uint num, uint radix) -> str {
     while (len != 0u) { len -= 1u; s1 += str::unsafe_from_byte(s.(len)); }
     ret s1;
 }
+fn str(uint i) -> str { ret to_str(i, 10u); }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

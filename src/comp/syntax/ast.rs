@@ -2,10 +2,11 @@
 import std::option;
 import std::str;
 import std::vec;
-import util::common::span;
-import util::common::spanned;
-import util::common::ty_mach;
-import util::common::filename;
+import codemap::span;
+import codemap::filename;
+
+type spanned[T] = rec(T node, span span);
+fn respan[T](&span sp, &T t) -> spanned[T] { ret rec(node=t, span=sp); }
 
 type ident = str;
 // Functions may or may not have names.
@@ -342,6 +343,34 @@ type ty_arg = spanned[ty_arg_];
 
 type ty_method = spanned[ty_method_];
 
+tag ty_mach {
+    ty_i8;
+    ty_i16;
+    ty_i32;
+    ty_i64;
+    ty_u8;
+    ty_u16;
+    ty_u32;
+    ty_u64;
+    ty_f32;
+    ty_f64;
+}
+
+fn ty_mach_to_str(ty_mach tm) -> str {
+    alt (tm) {
+        case (ty_u8) { ret "u8"; }
+        case (ty_u16) { ret "u16"; }
+        case (ty_u32) { ret "u32"; }
+        case (ty_u64) { ret "u64"; }
+        case (ty_i8) { ret "i8"; }
+        case (ty_i16) { ret "i16"; }
+        case (ty_i32) { ret "i32"; }
+        case (ty_i64) { ret "i64"; }
+        case (ty_f32) { ret "f32"; }
+        case (ty_f64) { ret "f64"; }
+    }
+}
+
 type ty = spanned[ty_];
 
 tag ty_ {
@@ -357,7 +386,7 @@ tag ty_ {
     ty_int;
     ty_uint;
     ty_float;
-    ty_machine(util::common::ty_mach);
+    ty_machine(ty_mach);
     ty_char;
     ty_str;
     ty_istr; // interior string
@@ -604,7 +633,7 @@ fn ternary_to_if(&@expr e) -> @ast::expr {
 fn path_to_str(&ast::path pth) -> str {
     auto result = str::connect(pth.node.idents, "::");
     if (vec::len[@ast::ty](pth.node.types) > 0u) {
-        fn f(&@ast::ty t) -> str { ret pretty::pprust::ty_to_str(*t); }
+        fn f(&@ast::ty t) -> str { ret print::pprust::ty_to_str(*t); }
         result += "[";
         result += str::connect(vec::map(f, pth.node.types), ",");
         result += "]";

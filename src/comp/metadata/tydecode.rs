@@ -6,12 +6,9 @@ import std::uint;
 import std::option;
 import std::option::none;
 import std::option::some;
-import front::ast;
+import syntax::ast;
+import ast::respan;
 import middle::ty;
-import util::common;
-import util::common::respan;
-import util::common::a_ty;
-import util::common::a_bang;
 
 export parse_def_id;
 export parse_ty_data;
@@ -26,7 +23,7 @@ type str_def = fn(str) -> ast::def_id ;
 type pstate =
     rec(vec[u8] data, int crate, mutable uint pos, uint len, ty::ctxt tcx);
 
-type ty_or_bang = util::common::ty_or_bang[ty::t];
+tag ty_or_bang { a_ty(ty::t); a_bang; }
 
 fn peek(@pstate st) -> u8 { ret st.data.(st.pos); }
 
@@ -63,8 +60,8 @@ fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len, str_def sd,
 
 fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     alt (peek(st) as char) {
-        case ('!') { next(st); ret a_bang[ty::t]; }
-        case (_) { ret a_ty[ty::t](parse_ty(st, sd)); }
+        case ('!') { next(st); ret a_bang; }
+        case (_) { ret a_ty(parse_ty(st, sd)); }
     }
 }
 
@@ -154,16 +151,16 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('l') { ret ty::mk_float(st.tcx); }
         case ('M') {
             alt (next(st) as char) {
-                case ('b') { ret ty::mk_mach(st.tcx, common::ty_u8); }
-                case ('w') { ret ty::mk_mach(st.tcx, common::ty_u16); }
-                case ('l') { ret ty::mk_mach(st.tcx, common::ty_u32); }
-                case ('d') { ret ty::mk_mach(st.tcx, common::ty_u64); }
-                case ('B') { ret ty::mk_mach(st.tcx, common::ty_i8); }
-                case ('W') { ret ty::mk_mach(st.tcx, common::ty_i16); }
-                case ('L') { ret ty::mk_mach(st.tcx, common::ty_i32); }
-                case ('D') { ret ty::mk_mach(st.tcx, common::ty_i64); }
-                case ('f') { ret ty::mk_mach(st.tcx, common::ty_f32); }
-                case ('F') { ret ty::mk_mach(st.tcx, common::ty_f64); }
+                case ('b') { ret ty::mk_mach(st.tcx, ast::ty_u8); }
+                case ('w') { ret ty::mk_mach(st.tcx, ast::ty_u16); }
+                case ('l') { ret ty::mk_mach(st.tcx, ast::ty_u32); }
+                case ('d') { ret ty::mk_mach(st.tcx, ast::ty_u64); }
+                case ('B') { ret ty::mk_mach(st.tcx, ast::ty_i8); }
+                case ('W') { ret ty::mk_mach(st.tcx, ast::ty_i16); }
+                case ('L') { ret ty::mk_mach(st.tcx, ast::ty_i32); }
+                case ('D') { ret ty::mk_mach(st.tcx, ast::ty_i64); }
+                case ('f') { ret ty::mk_mach(st.tcx, ast::ty_f32); }
+                case ('F') { ret ty::mk_mach(st.tcx, ast::ty_f64); }
             }
         }
         case ('c') { ret ty::mk_char(st.tcx); }

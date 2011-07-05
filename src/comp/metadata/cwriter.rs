@@ -2,7 +2,7 @@
 
 import std::str;
 import middle::trans;
-import front::ast::crate;
+import syntax::ast::crate;
 import back::x86;
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;

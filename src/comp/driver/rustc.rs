@@ -2,19 +2,19 @@
 
 // -*- rust -*-
 import metadata::creader;
-import front::parser;
-import front::token;
-import front::eval;
-import front::ast;
+import syntax::parse::parser;
+import syntax::parse::token;
+import syntax::ast;
+import syntax::codemap;
 import front::attr;
 import middle::trans;
 import middle::resolve;
 import middle::ty;
 import middle::typeck;
 import middle::tstate::ck;
-import pretty::pp;
-import pretty::pprust;
-import pretty::ppaux;
+import syntax::print::pp;
+import syntax::print::pprust;
+import util::ppaux;
 import back::link;
 import lib::llvm;
 import util::common;
@@ -76,12 +76,14 @@ fn parse_cfgspecs(&vec[str] cfgspecs) -> ast::crate_cfg {
     ret vec::map(to_meta_word, cfgspecs);
 }
 
-fn parse_input(session::session sess, parser::parser p, str input) ->
-   @ast::crate {
+fn parse_input(session::session sess, &ast::crate_cfg cfg, str input)
+    -> @ast::crate {
     ret if (str::ends_with(input, ".rc")) {
-            parser::parse_crate_from_crate_file(p)
+            parser::parse_crate_from_crate_file
+                (input, cfg, sess.get_codemap())
         } else if (str::ends_with(input, ".rs")) {
-            parser::parse_crate_from_source_file(p)
+            parser::parse_crate_from_source_file
+                (input, cfg, sess.get_codemap())
         } else { sess.fatal("unknown input file type: " + input); fail };
 }
 
@@ -99,9 +101,8 @@ fn time[T](bool do_it, str what, fn() -> T  thunk) -> T {
 fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
                  str output) {
     auto time_passes = sess.get_opts().time_passes;
-    auto p = parser::new_parser(sess, cfg, input, 0u, 0);
     auto crate =
-        time(time_passes, "parsing", bind parse_input(sess, p, input));
+        time(time_passes, "parsing", bind parse_input(sess, cfg, input));
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
     crate = time(time_passes, "configuration",
                  bind front::config::strip_unconfigured_items(crate));
@@ -129,17 +130,17 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
 
 fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
                       str input, pp_mode ppm) {
-    fn ann_paren_for_expr(&ppaux::ann_node node) {
+    fn ann_paren_for_expr(&pprust::ann_node node) {
         alt (node) {
-            case (ppaux::node_expr(?s, ?expr)) {
+            case (pprust::node_expr(?s, ?expr)) {
                 pprust::popen(s);
             }
             case (_) {}
         }
     }
-    fn ann_typed_post(&ty::ctxt tcx, &ppaux::ann_node node) {
+    fn ann_typed_post(&ty::ctxt tcx, &pprust::ann_node node) {
         alt (node) {
-            case (ppaux::node_expr(?s, ?expr)) {
+            case (pprust::node_expr(?s, ?expr)) {
                 pp::space(s.s);
                 pp::word(s.s, "as");
                 pp::space(s.s);
@@ -149,18 +150,18 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
             case (_) {}
         }
     }
-    fn ann_identified_post(&ppaux::ann_node node) {
+    fn ann_identified_post(&pprust::ann_node node) {
         alt (node) {
-            case (ppaux::node_item(?s, ?item)) {
+            case (pprust::node_item(?s, ?item)) {
                 pp::space(s.s);
                 pprust::synth_comment(s, int::to_str(item.id, 10u));
             }
-            case (ppaux::node_block(?s, ?blk)) {
+            case (pprust::node_block(?s, ?blk)) {
                 pp::space(s.s);
                 pprust::synth_comment(s, "block " +
                                       int::to_str(blk.node.id, 10u));
             }
-            case (ppaux::node_expr(?s, ?expr)) {
+            case (pprust::node_expr(?s, ?expr)) {
                 pp::space(s.s);
                 pprust::synth_comment(s, int::to_str(expr.id, 10u));
                 pprust::pclose(s);
@@ -169,8 +170,7 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
         }
     }
 
-    auto p = front::parser::new_parser(sess, cfg, input, 0u, 0);
-    auto crate = parse_input(sess, p, input);
+    auto crate = parse_input(sess, cfg, input);
     auto ann;
     alt (ppm) {
         case (ppm_typed) {
@@ -186,10 +186,11 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
                       post=ann_identified_post);
         }
         case (ppm_normal) {
-            ann = ppaux::no_ann();
+            ann = pprust::no_ann();
         }
     }
-    pprust::print_crate(sess, crate, input, std::io::stdout(), ann);
+    pprust::print_crate(sess.get_codemap(), crate, input,
+                        std::io::stdout(), ann);
 }
 
 fn version(str argv0) {
@@ -268,9 +269,9 @@ fn build_target_config() -> @session::config {
     let @session::config target_cfg =
         @rec(os=get_os(triple),
              arch=get_arch(triple),
-             int_type=common::ty_i32,
-             uint_type=common::ty_u32,
-             float_type=common::ty_f64);
+             int_type=ast::ty_i32,
+             uint_type=ast::ty_u32,
+             float_type=ast::ty_f64);
     ret target_cfg;
 }
 
@@ -342,11 +343,11 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
 
 fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
-    auto crate_cache = common::new_int_hash[session::crate_metadata]();
+    auto crate_cache = syntax::_std::new_int_hash[session::crate_metadata]();
     auto target_crate_num = 0;
     auto sess =
         session::session(target_crate_num, target_cfg, sopts, crate_cache, [],
-                         [], [], front::codemap::new_codemap(), 0u);
+                         [], [], codemap::new_codemap(), 0u);
     ret sess;
 }
 

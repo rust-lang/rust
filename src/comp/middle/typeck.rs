@@ -1,14 +1,15 @@
 
-import front::ast;
-import front::ast::mutability;
-import front::ast::local_def;
-import front::ast::path_to_str;
+import syntax::ast;
+import ast::mutability;
+import ast::local_def;
+import ast::path_to_str;
+import ast::respan;
+import syntax::walk;
 import metadata::decoder;
 import driver::session;
 import util::common;
-import util::common::span;
-import util::common::respan;
-import util::common::new_int_hash;
+import syntax::codemap::span;
+import syntax::_std::new_int_hash;
 import util::common::new_def_hash;
 import util::common::log_expr_err;
 import middle::ty;
@@ -24,7 +25,7 @@ import middle::ty::mo_alias;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::ty_param_substs_opt_and_ty;
-import pretty::ppaux::ty_to_str;
+import util::ppaux::ty_to_str;
 import middle::ty::ty_param_count_and_ty;
 import middle::ty::ty_nil;
 import middle::ty::unify::ures_ok;
@@ -537,7 +538,7 @@ mod collect {
             }
             case (_) {
                 cx.tcx.sess.fatal("internal error " +
-                                  util::common::istr(id._1));
+                                  syntax::_std::istr(id._1));
             }
         }
         ret tpt;
@@ -1375,7 +1376,7 @@ fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
 
 fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
-    //                                pretty::pprust::expr_to_str(expr));
+    //                            syntax::print::pprust::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.
@@ -1545,7 +1546,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     }
 
     // Checks the compatibility 
-    fn check_binop_type_compat(&@fn_ctxt fcx, common::span span,
+    fn check_binop_type_compat(&@fn_ctxt fcx, span span,
                                ty::t ty, ast::binop binop) {
         auto resolved_t = resolve_type_vars_if_possible(fcx, ty);
         if (!ty::is_binopable(fcx.ccx.tcx, resolved_t, binop)) {
@@ -1794,11 +1795,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             alt (structure_of(fcx, expr.span, ety)) {
                 case (ty::ty_vec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
                 case (ty::ty_str) {
-                    elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
+                    elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
                 }
                 case (ty::ty_ivec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
                 case (ty::ty_istr) {
-                    elt_ty = ty::mk_mach(fcx.ccx.tcx, util::common::ty_u8);
+                    elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
                 }
                 case (_) {
                     fcx.ccx.tcx.sess.span_fatal(expr.span,
@@ -2150,11 +2151,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, id, mt.ty);
                 }
                 case (ty::ty_str) {
-                    auto typ = ty::mk_mach(fcx.ccx.tcx, common::ty_u8);
+                    auto typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
                     write::ty_only_fixup(fcx, id, typ);
                 }
                 case (ty::ty_istr) {
-                    auto typ = ty::mk_mach(fcx.ccx.tcx, common::ty_u8);
+                    auto typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
                     write::ty_only_fixup(fcx, id, typ);
                 }
                 case (_) {

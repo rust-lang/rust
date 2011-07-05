@@ -4,11 +4,12 @@ import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
-import driver::session;
-import front::parser::parser;
-import front::parser::new_parser;
-import front::parser::parse_inner_attrs_and_next;
-import front::parser::parse_mod_items;
+import syntax::ast;
+import syntax::parse::token;
+import syntax::parse::parser::parser;
+import syntax::parse::parser::new_parser;
+import syntax::parse::parser::parse_inner_attrs_and_next;
+import syntax::parse::parser::parse_mod_items;
 
 export eval_crate_directives_to_mod;
 export mode_parse;
@@ -19,9 +20,8 @@ type ctx =
     @rec(parser p,
          eval_mode mode,
          mutable vec[str] deps,
-         session::session sess,
+         parser::parse_sess sess,
          mutable uint chpos,
-         mutable int next_id,
          ast::crate_cfg cfg);
 
 fn eval_crate_directives(ctx cx, vec[@ast::crate_directive] cdirs,
@@ -50,8 +50,9 @@ fn eval_crate_directive_block(ctx cx, &ast::block blk, str prefix,
                 eval_crate_directive(cx, cdir, prefix, view_items, items);
             }
             case (_) {
-                cx.sess.span_fatal(s.span,
-                                 "unsupported stmt in crate-directive block");
+                codemap::emit_warning
+                   (some(s.span), "unsupported stmt in crate-directive block",
+                    cx.sess.cm);
             }
         }
     }
@@ -74,19 +75,17 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             };
             if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
             auto p0 =
-                new_parser(cx.sess, cx.cfg, full_path, cx.chpos,
-                           cx.next_id);
+                new_parser(cx.sess, cx.cfg, full_path, cx.chpos);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto mod_attrs = attrs + inner_attrs._0;
             auto first_item_outer_attrs = inner_attrs._1;
             auto m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
 
-            auto i = front::parser::mk_item(p0, cdir.span.lo, cdir.span.hi,
-                                            id, ast::item_mod(m0),
-                                            mod_attrs);
+            auto i = syntax::parse::parser::mk_item
+                (p0, cdir.span.lo, cdir.span.hi, id, ast::item_mod(m0),
+                 mod_attrs);
             // Thread defids and chpos through the parsers
             cx.chpos = p0.get_chpos();
-            cx.next_id = p0.next_id();
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs, ?attrs)) {
@@ -100,10 +99,10 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             auto m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
             auto i = @rec(ident=id,
                           attrs=attrs,
-                          id=cx.next_id,
+                          id=cx.sess.next_id,
                           node=ast::item_mod(m0),
                           span=cdir.span);
-            cx.next_id += 1;
+            cx.sess.next_id += 1;
             vec::push[@ast::item](items, i);
         }
         case (ast::cdir_view_item(?vi)) {

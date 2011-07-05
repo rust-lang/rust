@@ -1,11 +1,11 @@
 
-import front::ast;
-import middle::ty::ty_param;
+import ast;
+import ast::ty_param;
+import ast::respan;
 import std::option;
 import std::option::some;
 import std::option::none;
-import util::common::span;
-import util::common::respan;
+import codemap::span;
 
 type ast_visitor =
     rec(fn() -> bool  keep_going,

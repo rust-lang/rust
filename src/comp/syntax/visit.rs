@@ -1,10 +1,9 @@
 
-import front::ast::*;
+import ast::*;
 import std::option;
 import std::option::some;
 import std::option::none;
-import util::common::span;
-import util::common::respan;
+import codemap::span;
 
 
 // Context-passing AST walker. Each overridden visit method has full control

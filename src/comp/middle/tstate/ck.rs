@@ -1,25 +1,26 @@
 
-import front::ast;
-import front::ast::method;
-import front::ast::item;
-import front::ast::item_fn;
-import front::ast::_fn;
-import front::ast::obj_field;
-import front::ast::_obj;
-import front::ast::stmt;
-import front::ast::ident;
-import front::ast::fn_ident;
-import front::ast::node_id;
-import front::ast::def_id;
-import front::ast::local_def;
-import front::ast::ty_param;
-import front::ast::crate;
-import front::ast::return;
-import front::ast::noreturn;
-import front::ast::expr;
+import syntax::ast;
+import ast::method;
+import ast::item;
+import ast::item_fn;
+import ast::_fn;
+import ast::obj_field;
+import ast::_obj;
+import ast::stmt;
+import ast::ident;
+import ast::fn_ident;
+import ast::node_id;
+import ast::def_id;
+import ast::local_def;
+import ast::ty_param;
+import ast::crate;
+import ast::return;
+import ast::noreturn;
+import ast::expr;
+import syntax::walk;
+import syntax::codemap::span;
 import middle::ty::type_is_nil;
 import middle::ty::ret_ty_of_fn;
-import util::common::span;
 import tstate::ann::ts_ann;
 import tstate::ann::empty_poststate;
 import tstate::ann::true_precond;
@@ -43,7 +44,7 @@ import std::option::t;
 import std::option::some;
 import std::option::none;
 import aux::*;
-import pretty::pprust::ty_to_str;
+import syntax::print::pprust::ty_to_str;
 import util::common::log_stmt_err;
 import bitvectors::promises;
 import annotate::annotate_crate;
@@ -86,7 +87,7 @@ fn check_states_expr(&fn_ctxt fcx, &@expr e) {
         s +=
             "Unsatisfied precondition constraint (for example, " + diff +
                 ") for expression:\n";
-        s += pretty::pprust::expr_to_str(e);
+        s += syntax::print::pprust::expr_to_str(e);
         s += "\nPrecondition:\n";
         s += tritv_to_str(fcx, prec);
         s += "\nPrestate:\n";
@@ -115,7 +116,7 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
         ss +=
             "Unsatisfied precondition constraint (for example, " + diff +
                 ") for statement:\n";
-        ss += pretty::pprust::stmt_to_str(*s);
+        ss += syntax::print::pprust::stmt_to_str(*s);
         ss += "\nPrecondition:\n";
         ss += tritv_to_str(fcx, prec);
         ss += "\nPrestate: \n";

@@ -17,8 +17,6 @@ use std (name = "std",
 mod middle {
     mod trans;
     mod ty;
-    mod walk;
-    mod visit;
     mod ast_map;
     mod resolve;
     mod typeck;
@@ -38,25 +36,36 @@ mod middle {
 }
 
 
-mod pretty {
-    mod pprust;
-    mod pp;
-    mod ppaux;
+mod syntax {
+    mod _std; // FIXME remove
+    mod ast;
+    mod fold;
+    mod walk;
+    mod visit;
+    mod codemap;
+    mod parse {
+        mod lexer;
+        mod parser;
+        mod token;
+        mod eval;
+    }
+    mod ext {
+        mod base;
+        mod fmt;
+        mod env;
+        mod simplext;
+    }
+    mod print {
+        mod pprust;
+        mod pp;
+    }
+    mod util {
+        mod interner;
+    }
 }
 
 mod front {
-    mod ast;
     mod attr;
-    mod ext;
-    mod extfmt;
-    mod extenv;
-    mod extsimplext;
-    mod fold;
-    mod codemap;
-    mod lexer;
-    mod parser;
-    mod token;
-    mod eval;
     mod config;
 }
 
@@ -88,11 +97,9 @@ mod driver {
 
 mod util {
     mod common;
-    mod data;
+    mod ppaux;
 }
 
-auth front::creader::load_crate = unsafe;
-auth front::creader::get_metadata_section = unsafe;
 auth middle::metadata = unsafe;
 auth middle::trans = unsafe;
 auth lib::llvm = unsafe;

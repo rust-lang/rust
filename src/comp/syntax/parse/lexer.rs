@@ -8,11 +8,9 @@ import std::map::hashmap;
 import std::option;
 import std::option::some;
 import std::option::none;
-import driver::session::session;
-import util::common;
-import util::common::*;
-import util::data::interner;
-import util::data::interner::intern;
+import util::interner;
+import util::interner::intern;
+import codemap;
 
 type reader =
     obj {
@@ -31,9 +29,9 @@ type reader =
         fn err(str) ;
     };
 
-fn new_reader(session sess, io::reader rdr, codemap::filemap filemap,
+fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
               @interner::interner[str] itr) -> reader {
-    obj reader(session sess,
+    obj reader(codemap::codemap cm,
                str file,
                uint len,
                mutable uint col,
@@ -75,12 +73,14 @@ fn new_reader(session sess, io::reader rdr, codemap::filemap filemap,
         fn get_interner() -> @interner::interner[str] { ret itr; }
         fn get_col() -> uint { ret col; }
         fn get_filemap() -> codemap::filemap { ret fm; }
-        fn err(str m) { sess.span_fatal(rec(lo=chpos, hi=chpos), m); }
+        fn err(str m) {
+            codemap::emit_error(some(rec(lo=chpos, hi=chpos)), m, cm);
+        }
     }
     auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
     auto rd =
-        reader(sess, file, str::byte_len(file), 0u, 0u, -1 as char,
+        reader(cm, file, str::byte_len(file), 0u, 0u, -1 as char,
                filemap.start_pos, filemap.start_pos, strs, filemap, itr);
     rd.init();
     ret rd;
@@ -100,6 +100,25 @@ fn bin_digit_value(char c) -> int { if (c == '0') { ret 0; } ret 1; }
 fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
+
+fn may_begin_ident(char c) -> bool { ret is_alpha(c) || c == '_'; }
+
+fn in_range(char c, char lo, char hi) -> bool { ret lo <= c && c <= hi; }
+
+fn is_alpha(char c) -> bool {
+    ret in_range(c, 'a', 'z') || in_range(c, 'A', 'Z');
+}
+
+fn is_dec_digit(char c) -> bool { ret in_range(c, '0', '9'); }
+
+fn is_alnum(char c) -> bool { ret is_alpha(c) || is_dec_digit(c); }
+
+fn is_hex_digit(char c) -> bool {
+    ret in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
+            in_range(c, 'A', 'F');
+}
+
+fn is_bin_digit(char c) -> bool { ret c == '0' || c == '1'; }
 
 fn consume_whitespace_and_comments(&reader rdr) {
     while (is_whitespace(rdr.curr())) { rdr.bump(); }
@@ -218,30 +237,30 @@ fn scan_number(char c, &reader rdr) -> token::token {
         if (c == '8') {
             rdr.bump();
             if (signed) {
-                ret token::LIT_MACH_INT(common::ty_i8, accum_int);
-            } else { ret token::LIT_MACH_INT(common::ty_u8, accum_int); }
+                ret token::LIT_MACH_INT(ast::ty_i8, accum_int);
+            } else { ret token::LIT_MACH_INT(ast::ty_u8, accum_int); }
         }
         n = rdr.next();
         if (c == '1' && n == '6') {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token::LIT_MACH_INT(common::ty_i16, accum_int);
-            } else { ret token::LIT_MACH_INT(common::ty_u16, accum_int); }
+                ret token::LIT_MACH_INT(ast::ty_i16, accum_int);
+            } else { ret token::LIT_MACH_INT(ast::ty_u16, accum_int); }
         }
         if (c == '3' && n == '2') {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token::LIT_MACH_INT(common::ty_i32, accum_int);
-            } else { ret token::LIT_MACH_INT(common::ty_u32, accum_int); }
+                ret token::LIT_MACH_INT(ast::ty_i32, accum_int);
+            } else { ret token::LIT_MACH_INT(ast::ty_u32, accum_int); }
         }
         if (c == '6' && n == '4') {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token::LIT_MACH_INT(common::ty_i64, accum_int);
-            } else { ret token::LIT_MACH_INT(common::ty_u64, accum_int); }
+                ret token::LIT_MACH_INT(ast::ty_i64, accum_int);
+            } else { ret token::LIT_MACH_INT(ast::ty_u64, accum_int); }
         }
         if (signed) {
             ret token::LIT_INT(accum_int);
@@ -272,13 +291,13 @@ fn scan_number(char c, &reader rdr) -> token::token {
             if (c == '3' && n == '2') {
                 rdr.bump();
                 rdr.bump();
-                ret token::LIT_MACH_FLOAT(util::common::ty_f32,
+                ret token::LIT_MACH_FLOAT(ast::ty_f32,
                                           intern(*rdr.get_interner(),
                                                  float_str));
             } else if (c == '6' && n == '4') {
                 rdr.bump();
                 rdr.bump();
-                ret token::LIT_MACH_FLOAT(util::common::ty_f64,
+                ret token::LIT_MACH_FLOAT(ast::ty_f64,
                                           intern(*rdr.get_interner(),
                                                  float_str));
                 /* FIXME: if this is out of range for either a 32-bit or
@@ -694,11 +713,11 @@ fn is_lit(&token::token t) -> bool {
 
 type lit = rec(str lit, uint pos);
 
-fn gather_comments_and_literals(session sess, str path) ->
+fn gather_comments_and_literals(&codemap::codemap cm, str path) ->
    rec(vec[cmnt] cmnts, vec[lit] lits) {
     auto srdr = io::file_reader(path);
     auto itr = @interner::mk[str](str::hash, str::eq);
-    auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
+    auto rdr = new_reader(cm, srdr, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
     let vec[lit] literals = [];
     let bool first_read = true;

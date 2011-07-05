@@ -1,7 +1,7 @@
 import std::option;
 import std::vec;
-import ast;
-import fold;
+import syntax::ast;
+import syntax::fold;
 import attr;
 
 export strip_unconfigured_items;

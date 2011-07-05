@@ -1,10 +1,9 @@
 
-import front::ast;
-import front::codemap;
-import util::common::span;
-import util::common::ty_mach;
+import syntax::ast;
+import syntax::codemap;
+import codemap::span;
+import syntax::ast::ty_mach;
 import std::uint;
-import std::term;
 import std::io;
 import std::map;
 import std::option;
@@ -42,30 +41,6 @@ type options =
 
 type crate_metadata = rec(str name, vec[u8] data);
 
-fn span_to_str(span sp, codemap::codemap cm) -> str {
-    auto lo = codemap::lookup_pos(cm, sp.lo);
-    auto hi = codemap::lookup_pos(cm, sp.hi);
-    ret #fmt("%s:%u:%u:%u:%u", lo.filename, lo.line, lo.col, hi.line, hi.col);
-}
-
-fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
-                   codemap::codemap cm) {
-    auto ss = "<input>:0:0:0:0";
-    alt (sp) {
-        case (some(?ssp)) { ss = span_to_str(ssp, cm); }
-        case (none) { }
-    }
-    io::stdout().write_str(ss + ": ");
-    if (term::color_supported()) {
-        term::fg(io::stdout().get_buf_writer(), color);
-    }
-    io::stdout().write_str(#fmt("%s:", kind));
-    if (term::color_supported()) {
-        term::reset(io::stdout().get_buf_writer());
-    }
-    io::stdout().write_str(#fmt(" %s\n", msg));
-}
-
 obj session(ast::crate_num cnum,
             @config targ_cfg,
             @options opts,
@@ -80,20 +55,19 @@ obj session(ast::crate_num cnum,
     fn get_targ_crate_num() -> ast::crate_num { ret cnum; }
     fn span_fatal(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-
-        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
+        codemap::emit_error(some(sp), msg, cm);
         fail;
     }
     fn fatal(str msg) -> ! {
-        emit_diagnostic(none[span], msg, "error", 9u8, cm);
+        codemap::emit_error(none, msg, cm);
         fail;
     }
     fn span_err(span sp, str msg) {
-        emit_diagnostic(some(sp), msg, "error", 9u8, cm);
+        codemap::emit_error(some(sp), msg, cm);
         err_count += 1u;
     }
     fn err(str msg) {
-        emit_diagnostic(none, msg, "error", 9u8, cm);
+        codemap::emit_error(none, msg, cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
@@ -103,19 +77,17 @@ obj session(ast::crate_num cnum,
     }
     fn span_warn(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-
-        emit_diagnostic(some(sp), msg, "warning", 11u8, cm);
+        codemap::emit_warning(some(sp), msg, cm);
     }
     fn warn(str msg) {
-        emit_diagnostic(none[span], msg, "warning", 11u8, cm);
+        codemap::emit_warning(none, msg, cm);
     }
     fn span_note(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-
-        emit_diagnostic(some(sp), msg, "note", 10u8, cm);
+        codemap::emit_note(some(sp), msg, cm);
     }
     fn note(str msg) {
-        emit_diagnostic(none, msg, "note", 10u8, cm);
+        codemap::emit_note(none, msg, cm);
     }
     fn span_bug(span sp, str msg) -> ! {
         self.span_fatal(sp, #fmt("internal compiler error %s", msg));
@@ -172,7 +144,9 @@ obj session(ast::crate_num cnum,
     fn lookup_pos(uint pos) -> codemap::loc {
         ret codemap::lookup_pos(cm, pos);
     }
-    fn span_str(span sp) -> str { ret span_to_str(sp, self.get_codemap()); }
+    fn span_str(span sp) -> str {
+        ret codemap::span_to_str(sp, self.get_codemap());
+    }
 }
 // Local Variables:
 // fill-column: 78;

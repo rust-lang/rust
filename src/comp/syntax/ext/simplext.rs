@@ -1,6 +1,6 @@
 use std;
 
-import util::common::span;
+import codemap::span;
 import std::vec;
 import std::option;
 import vec::map;
@@ -8,11 +8,11 @@ import vec::len;
 import option::some;
 import option::none;
 
-import ext::syntax_extension;
-import ext::ext_ctxt;
-import ext::normal;
-import ext::expr_to_str;
-import ext::expr_to_ident;
+import base::syntax_extension;
+import base::ext_ctxt;
+import base::normal;
+import base::expr_to_str;
+import base::expr_to_ident;
 
 import fold::*;
 import ast::ident;

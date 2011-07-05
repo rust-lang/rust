@@ -1,5 +1,4 @@
 
-import front::ast::ident;
 import std::vec;
 import tritv::*;
 

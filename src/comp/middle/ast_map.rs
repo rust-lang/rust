@@ -1,6 +1,7 @@
 import std::smallintmap;
 import std::option;
-import front::ast::*;
+import syntax::ast::*;
+import syntax::visit;
 import visit::vt;
 
 tag ast_node {

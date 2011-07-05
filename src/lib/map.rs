@@ -1,6 +1,3 @@
-
-
-
 /**
  * At the moment, this is a partial hashmap implementation, not yet fit for
  * use, but useful as a stress test for rustboot.
@@ -196,6 +193,31 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     let vec[mutable bucket[K, V]] bkts = make_buckets[K, V](initial_capacity);
     ret hashmap[K, V](hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }
+
+// Hash map constructors for basic types
+
+fn new_str_hash[V]() -> hashmap[str, V] {
+    let hashfn[str] hasher = str::hash;
+    let eqfn[str] eqer = str::eq;
+    ret mk_hashmap[str, V](hasher, eqer);
+}
+
+fn new_int_hash[V]() -> hashmap[int, V] {
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+    ret mk_hashmap[int, V](hasher, eqer);
+}
+
+fn new_uint_hash[V]() -> hashmap[uint, V] {
+    fn hash_uint(&uint x) -> uint { ret x; }
+    fn eq_uint(&uint a, &uint b) -> bool { ret a == b; }
+    auto hasher = hash_uint;
+    auto eqer = eq_uint;
+    ret mk_hashmap[uint, V](hasher, eqer);
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

@@ -5,9 +5,9 @@ import std::map::hashmap;
 import std::option::some;
 import std::option::none;
 import std::uint;
-import front::ast::*;
+import syntax::ast::*;
 import middle::ty;
-import pretty::ppaux::lit_to_str;
+import syntax::print::pprust::lit_to_str;
 import util::common;
 
 export ctxt;
@@ -105,16 +105,16 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         case (ty::ty_float) { w.write_char('l'); }
         case (ty::ty_machine(?mach)) {
             alt (mach) {
-                case (common::ty_u8) { w.write_str("Mb"); }
-                case (common::ty_u16) { w.write_str("Mw"); }
-                case (common::ty_u32) { w.write_str("Ml"); }
-                case (common::ty_u64) { w.write_str("Md"); }
-                case (common::ty_i8) { w.write_str("MB"); }
-                case (common::ty_i16) { w.write_str("MW"); }
-                case (common::ty_i32) { w.write_str("ML"); }
-                case (common::ty_i64) { w.write_str("MD"); }
-                case (common::ty_f32) { w.write_str("Mf"); }
-                case (common::ty_f64) { w.write_str("MF"); }
+                case (ty_u8) { w.write_str("Mb"); }
+                case (ty_u16) { w.write_str("Mw"); }
+                case (ty_u32) { w.write_str("Ml"); }
+                case (ty_u64) { w.write_str("Md"); }
+                case (ty_i8) { w.write_str("MB"); }
+                case (ty_i16) { w.write_str("MW"); }
+                case (ty_i32) { w.write_str("ML"); }
+                case (ty_i64) { w.write_str("MD"); }
+                case (ty_f32) { w.write_str("Mf"); }
+                case (ty_f64) { w.write_str("MF"); }
             }
         }
         case (ty::ty_char) { w.write_char('c'); }
@@ -182,7 +182,7 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         }
         case (ty::ty_var(?id)) {
             w.write_char('X');
-            w.write_str(common::istr(id));
+            w.write_str(syntax::_std::istr(id));
         }
         case (ty::ty_native(?def)) {
             w.write_char('E');
@@ -191,7 +191,7 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         }
         case (ty::ty_param(?id)) {
             w.write_char('p');
-            w.write_str(common::uistr(id));
+            w.write_str(syntax::_std::uistr(id));
         }
         case (ty::ty_type) { w.write_char('Y'); }
         case (ty::ty_task) { w.write_char('a'); }

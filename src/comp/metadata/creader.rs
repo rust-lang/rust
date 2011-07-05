@@ -1,14 +1,15 @@
 // Extracting metadata from crate files
 
 import driver::session;
-import front::ast;
+import syntax::ast;
 import lib::llvm::False;
 import lib::llvm::llvm;
 import lib::llvm::mk_object_file;
 import lib::llvm::mk_section_iter;
 import front::attr;
 import middle::resolve;
-import middle::walk;
+import syntax::walk;
+import syntax::codemap::span;
 import back::x86;
 import util::common;
 import std::str;
@@ -20,7 +21,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::map::hashmap;
-import pretty::pprust;
+import syntax::print::pprust;
 import tags::*;
 
 export read_crates;
@@ -129,7 +130,7 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     ret option::none[vec[u8]];
 }
 
-fn load_library_crate(&session::session sess, common::span span, int cnum,
+fn load_library_crate(&session::session sess, span span, int cnum,
                       &ast::ident ident, vec[@ast::meta_item] metas,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
@@ -202,7 +203,7 @@ fn read_crates(session::session sess, resolve::crate_map crate_map,
     auto e =
         @rec(sess=sess,
              crate_map=crate_map,
-             crate_cache=@common::new_str_hash[int](),
+             crate_cache=@syntax::_std::new_str_hash[int](),
              library_search_paths=sess.get_opts().library_search_paths,
              mutable next_crate_num=1);
     auto v =

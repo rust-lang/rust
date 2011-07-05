@@ -13,18 +13,20 @@ import std::option::none;
 import std::option::some;
 import std::smallintmap;
 import driver::session;
-import front::ast;
-import front::ast::def_id;
-import front::ast::constr_arg_general;
-import front::ast::mutability;
-import front::ast::controlflow;
-import front::ast::path_to_str;
+import syntax::ast;
+import ast::def_id;
+import ast::constr_arg_general;
+import ast::mutability;
+import ast::controlflow;
+import ast::path_to_str;
+import ast::spanned;
+import syntax::codemap::span;
 import metadata::creader;
 import metadata::decoder;
 import util::common::*;
-import util::data::interner;
-import pretty::ppaux::ty_to_str;
-import pretty::ppaux::mode_str_1;
+import syntax::util::interner;
+import util::ppaux::ty_to_str;
+import util::ppaux::mode_str_1;
 
 
 export node_id_to_monotype;
@@ -251,7 +253,7 @@ tag sty {
     ty_int;
     ty_float;
     ty_uint;
-    ty_machine(ty_mach);
+    ty_machine(ast::ty_mach);
     ty_char;
     ty_str;
     ty_istr;
@@ -360,16 +362,16 @@ fn populate_type_store(&ctxt cx) {
     intern(cx, ty_int, none[str]);
     intern(cx, ty_float, none[str]);
     intern(cx, ty_uint, none[str]);
-    intern(cx, ty_machine(ty_i8), none[str]);
-    intern(cx, ty_machine(ty_i16), none[str]);
-    intern(cx, ty_machine(ty_i32), none[str]);
-    intern(cx, ty_machine(ty_i64), none[str]);
-    intern(cx, ty_machine(ty_u8), none[str]);
-    intern(cx, ty_machine(ty_u16), none[str]);
-    intern(cx, ty_machine(ty_u32), none[str]);
-    intern(cx, ty_machine(ty_u64), none[str]);
-    intern(cx, ty_machine(ty_f32), none[str]);
-    intern(cx, ty_machine(ty_f64), none[str]);
+    intern(cx, ty_machine(ast::ty_i8), none[str]);
+    intern(cx, ty_machine(ast::ty_i16), none[str]);
+    intern(cx, ty_machine(ast::ty_i32), none[str]);
+    intern(cx, ty_machine(ast::ty_i64), none[str]);
+    intern(cx, ty_machine(ast::ty_u8), none[str]);
+    intern(cx, ty_machine(ast::ty_u16), none[str]);
+    intern(cx, ty_machine(ast::ty_u32), none[str]);
+    intern(cx, ty_machine(ast::ty_u64), none[str]);
+    intern(cx, ty_machine(ast::ty_f32), none[str]);
+    intern(cx, ty_machine(ast::ty_f64), none[str]);
     intern(cx, ty_char, none[str]);
     intern(cx, ty_str, none[str]);
     intern(cx, ty_istr, none[str]);
@@ -534,18 +536,18 @@ fn mk_float(&ctxt cx) -> t { ret idx_float; }
 
 fn mk_uint(&ctxt cx) -> t { ret idx_uint; }
 
-fn mk_mach(&ctxt cx, &ty_mach tm) -> t {
+fn mk_mach(&ctxt cx, &ast::ty_mach tm) -> t {
     alt (tm) {
-        case (ty_u8) { ret idx_u8; }
-        case (ty_u16) { ret idx_u16; }
-        case (ty_u32) { ret idx_u32; }
-        case (ty_u64) { ret idx_u64; }
-        case (ty_i8) { ret idx_i8; }
-        case (ty_i16) { ret idx_i16; }
-        case (ty_i32) { ret idx_i32; }
-        case (ty_i64) { ret idx_i64; }
-        case (ty_f32) { ret idx_f32; }
-        case (ty_f64) { ret idx_f64; }
+        case (ast::ty_u8) { ret idx_u8; }
+        case (ast::ty_u16) { ret idx_u16; }
+        case (ast::ty_u32) { ret idx_u32; }
+        case (ast::ty_u64) { ret idx_u64; }
+        case (ast::ty_i8) { ret idx_i8; }
+        case (ast::ty_i16) { ret idx_i16; }
+        case (ast::ty_i32) { ret idx_i32; }
+        case (ast::ty_i64) { ret idx_i64; }
+        case (ast::ty_f32) { ret idx_f32; }
+        case (ast::ty_f64) { ret idx_f64; }
     }
 }
 
@@ -938,8 +940,8 @@ fn sequence_is_interior(&ctxt cx, &t ty) -> bool {
 
 fn sequence_element_type(&ctxt cx, &t ty) -> t {
     alt (struct(cx, ty)) {
-        case (ty_str) { ret mk_mach(cx, ty_u8); }
-        case (ty_istr) { ret mk_mach(cx, ty_u8); }
+        case (ty_str) { ret mk_mach(cx, ast::ty_u8); }
+        case (ty_istr) { ret mk_mach(cx, ast::ty_u8); }
         case (ty_vec(?mt)) { ret mt.ty; }
         case (ty_ivec(?mt)) { ret mt.ty; }
         case (_) {
@@ -1135,14 +1137,14 @@ fn type_is_integral(&ctxt cx, &t ty) -> bool {
         case (ty_uint) { ret true; }
         case (ty_machine(?m)) {
             alt (m) {
-                case (ty_i8) { ret true; }
-                case (ty_i16) { ret true; }
-                case (ty_i32) { ret true; }
-                case (ty_i64) { ret true; }
-                case (ty_u8) { ret true; }
-                case (ty_u16) { ret true; }
-                case (ty_u32) { ret true; }
-                case (ty_u64) { ret true; }
+                case (ast::ty_i8) { ret true; }
+                case (ast::ty_i16) { ret true; }
+                case (ast::ty_i32) { ret true; }
+                case (ast::ty_i64) { ret true; }
+                case (ast::ty_u8) { ret true; }
+                case (ast::ty_u16) { ret true; }
+                case (ast::ty_u32) { ret true; }
+                case (ast::ty_u64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -1155,8 +1157,8 @@ fn type_is_fp(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (ty_f32) { ret true; }
-                case (ty_f64) { ret true; }
+                case (ast::ty_f32) { ret true; }
+                case (ast::ty_f64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -1170,10 +1172,10 @@ fn type_is_signed(&ctxt cx, &t ty) -> bool {
         case (ty_int) { ret true; }
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (ty_i8) { ret true; }
-                case (ty_i16) { ret true; }
-                case (ty_i32) { ret true; }
-                case (ty_i64) { ret true; }
+                case (ast::ty_i8) { ret true; }
+                case (ast::ty_i16) { ret true; }
+                case (ast::ty_i32) { ret true; }
+                case (ast::ty_i64) { ret true; }
                 case (_) { ret false; }
             }
         }
@@ -1322,16 +1324,16 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_uint) { ret 4u; }
         case (ty_machine(?tm)) {
             alt (tm) {
-                case (ty_i8) { ret 5u; }
-                case (ty_i16) { ret 6u; }
-                case (ty_i32) { ret 7u; }
-                case (ty_i64) { ret 8u; }
-                case (ty_u8) { ret 9u; }
-                case (ty_u16) { ret 10u; }
-                case (ty_u32) { ret 11u; }
-                case (ty_u64) { ret 12u; }
-                case (ty_f32) { ret 13u; }
-                case (ty_f64) { ret 14u; }
+                case (ast::ty_i8) { ret 5u; }
+                case (ast::ty_i16) { ret 6u; }
+                case (ast::ty_i32) { ret 7u; }
+                case (ast::ty_i64) { ret 8u; }
+                case (ast::ty_u8) { ret 9u; }
+                case (ast::ty_u16) { ret 10u; }
+                case (ast::ty_u32) { ret 11u; }
+                case (ast::ty_u64) { ret 12u; }
+                case (ast::ty_f32) { ret 13u; }
+                case (ast::ty_f64) { ret 14u; }
             }
         }
         case (ty_char) { ret 15u; }
@@ -2644,7 +2646,7 @@ mod unify {
             alt (smallintmap::find[t](vb.types, i)) {
                 case (none[t]) { typespec = ""; }
                 case (some[t](?typ)) {
-                    typespec = " =" + pretty::ppaux::ty_to_str(tcx, typ);
+                    typespec = " =" + ty_to_str(tcx, typ);
                 }
             }
             log_err #fmt("set %u:%s%s", i, typespec, sets);
@@ -2948,17 +2950,17 @@ fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
             case (ty_bool) { tycat_bool }
             case (ty_int) { tycat_int }
             case (ty_uint) { tycat_int }
-            case (ty_machine(ty_i8)) { tycat_int }
-            case (ty_machine(ty_i16)) { tycat_int }
-            case (ty_machine(ty_i32)) { tycat_int }
-            case (ty_machine(ty_i64)) { tycat_int }
-            case (ty_machine(ty_u8)) { tycat_int }
-            case (ty_machine(ty_u16)) { tycat_int }
-            case (ty_machine(ty_u32)) { tycat_int }
-            case (ty_machine(ty_u64)) { tycat_int }
+            case (ty_machine(ast::ty_i8)) { tycat_int }
+            case (ty_machine(ast::ty_i16)) { tycat_int }
+            case (ty_machine(ast::ty_i32)) { tycat_int }
+            case (ty_machine(ast::ty_i64)) { tycat_int }
+            case (ty_machine(ast::ty_u8)) { tycat_int }
+            case (ty_machine(ast::ty_u16)) { tycat_int }
+            case (ty_machine(ast::ty_u32)) { tycat_int }
+            case (ty_machine(ast::ty_u64)) { tycat_int }
             case (ty_float) { tycat_float }
-            case (ty_machine(ty_f32)) { tycat_float }
-            case (ty_machine(ty_f64)) { tycat_float }
+            case (ty_machine(ast::ty_f32)) { tycat_float }
+            case (ty_machine(ast::ty_f64)) { tycat_float }
             case (ty_char) { tycat_int }
             case (ty_ptr(_)) { tycat_int }
             case (ty_str) { tycat_str }

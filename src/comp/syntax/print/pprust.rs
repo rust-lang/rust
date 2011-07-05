@@ -5,12 +5,11 @@ import std::vec;
 import std::str;
 import std::io;
 import std::option;
-import driver::session::session;
-import front::lexer;
-import front::codemap;
-import front::codemap::codemap;
-import front::ast;
-import util::common;
+import parse::lexer;
+import syntax::codemap::codemap;
+import ast;
+import _std::istr;
+import _std::uistr;
 import option::some;
 import option::none;
 import pp::printer;
@@ -25,15 +24,63 @@ import pp::breaks;
 import pp::consistent;
 import pp::inconsistent;
 import pp::eof;
-import ppaux::*;
 
-fn print_crate(session sess, @ast::crate crate, str filename,
+// The ps is stored here to prevent recursive type.
+// FIXME use a nominal tag instead
+tag ann_node {
+    node_block(ps, ast::block);
+    node_item(ps, @ast::item);
+    node_expr(ps, @ast::expr);
+    node_pat(ps, @ast::pat);
+}
+type pp_ann = rec(fn(&ann_node node) pre,
+                  fn(&ann_node node) post);
+
+fn no_ann() -> pp_ann {
+    fn ignore(&ann_node node) {}
+    ret rec(pre=ignore, post=ignore);
+}
+
+type ps =
+    @rec(pp::printer s,
+         option::t[codemap] cm,
+         option::t[vec[lexer::cmnt]] comments,
+         option::t[vec[lexer::lit]] literals,
+         mutable uint cur_cmnt,
+         mutable uint cur_lit,
+         mutable vec[pp::breaks] boxes,
+         pp_ann ann);
+
+fn ibox(&ps s, uint u) {
+    vec::push(s.boxes, pp::inconsistent);
+    pp::ibox(s.s, u);
+}
+
+fn end(&ps s) { vec::pop(s.boxes); pp::end(s.s); }
+
+fn rust_printer(io::writer writer) -> ps {
+    let vec[pp::breaks] boxes = [];
+    ret @rec(s=pp::mk_printer(writer, default_columns),
+             cm=none[codemap],
+             comments=none[vec[lexer::cmnt]],
+             literals=none[vec[lexer::lit]],
+             mutable cur_cmnt=0u,
+             mutable cur_lit=0u,
+             mutable boxes=boxes,
+             ann=no_ann());
+}
+
+const uint indent_unit = 4u;
+
+const uint default_columns = 78u;
+
+fn print_crate(&codemap cm, @ast::crate crate, str filename,
                io::writer out, &pp_ann ann) {
     let vec[pp::breaks] boxes = [];
-    auto r = lexer::gather_comments_and_literals(sess, filename);
+    auto r = lexer::gather_comments_and_literals(cm, filename);
     auto s =
         @rec(s=pp::mk_printer(out, default_columns),
-             cm=some(sess.get_codemap()),
+             cm=some(cm),
              comments=some(r.cmnts),
              literals=some(r.lits),
              mutable cur_cmnt=0u,
@@ -119,7 +166,7 @@ fn bopen(&ps s) {
 
 }
 
-fn bclose(&ps s, common::span span) {
+fn bclose(&ps s, codemap::span span) {
     maybe_print_comment(s, span.hi);
     break_offset(s.s, 1u, -(indent_unit as int));
     word(s.s, "}");
@@ -161,7 +208,7 @@ fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op) {
 }
 
 fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
-                     fn(&IN) -> common::span  get_span) {
+                     fn(&IN) -> codemap::span  get_span) {
     box(s, 0u, b);
     auto len = vec::len[IN](elts);
     auto i = 0u;
@@ -180,7 +227,7 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
 }
 
 fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
-    fn expr_span(&@ast::expr expr) -> common::span { ret expr.span; }
+    fn expr_span(&@ast::expr expr) -> codemap::span { ret expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
@@ -208,7 +255,7 @@ fn print_type(&ps s, &ast::ty ty) {
         case (ast::ty_int) { word(s.s, "int"); }
         case (ast::ty_uint) { word(s.s, "uint"); }
         case (ast::ty_float) { word(s.s, "float"); }
-        case (ast::ty_machine(?tm)) { word(s.s, common::ty_mach_to_str(tm)); }
+        case (ast::ty_machine(?tm)) { word(s.s, ast::ty_mach_to_str(tm)); }
         case (ast::ty_char) { word(s.s, "char"); }
         case (ast::ty_str) { word(s.s, "str"); }
         case (ast::ty_istr) { word(s.s, "istr"); }
@@ -257,7 +304,7 @@ fn print_type(&ps s, &ast::ty ty) {
                 word(s.s, f.node.ident);
                 end(s);
             }
-            fn get_span(&ast::ty_field f) -> common::span { ret f.span; }
+            fn get_span(&ast::ty_field f) -> codemap::span { ret f.span; }
             commasep_cmnt(s, consistent, fields, print_field, get_span);
             pclose(s);
         }
@@ -435,7 +482,7 @@ fn print_item(&ps s, &@ast::item item) {
                 word(s.s, field.ident);
                 end(s);
             }
-            fn get_span(&ast::obj_field f) -> common::span { ret f.ty.span; }
+            fn get_span(&ast::obj_field f) -> codemap::span { ret f.ty.span; }
             commasep_cmnt(s, consistent, _obj.fields, print_field, get_span);
             pclose(s);
             space(s.s);
@@ -517,7 +564,7 @@ fn print_stmt(&ps s, &ast::stmt st) {
             print_expr(s, expr);
         }
     }
-    if (front::parser::stmt_ends_with_semi(st)) { word(s.s, ";"); }
+    if (parse::parser::stmt_ends_with_semi(st)) { word(s.s, ";"); }
     maybe_print_trailing_comment(s, st.span, none[uint]);
 }
 
@@ -605,7 +652,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 print_expr(s, elt.expr);
                 end(s);
             }
-            fn get_span(&ast::elt elt) -> common::span { ret elt.expr.span; }
+            fn get_span(&ast::elt elt) -> codemap::span { ret elt.expr.span; }
             word(s.s, "tup");
             popen(s);
             commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
@@ -620,7 +667,9 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 print_expr(s, field.node.expr);
                 end(s);
             }
-            fn get_span(&ast::field field) -> common::span { ret field.span; }
+            fn get_span(&ast::field field) -> codemap::span {
+                ret field.span;
+            }
             word(s.s, "rec");
             popen(s);
             commasep_cmnt(s, consistent, fields, print_field, get_span);
@@ -675,11 +724,11 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_unary(?op, ?expr)) {
             word(s.s, ast::unop_to_str(op));
-            print_maybe_parens(s, expr, front::parser::unop_prec);
+            print_maybe_parens(s, expr, parse::parser::unop_prec);
         }
         case (ast::expr_lit(?lit)) { print_literal(s, lit); }
         case (ast::expr_cast(?expr, ?ty)) {
-            print_maybe_parens(s, expr, front::parser::as_prec);
+            print_maybe_parens(s, expr, parse::parser::as_prec);
             space(s.s);
             word_space(s, "as");
             print_type(s, *ty);
@@ -1114,7 +1163,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
 // FIXME: The fact that this builds up the table anew for every call is
 // not good. Eventually, table should be a const.
 fn operator_prec(ast::binop op) -> int {
-    for (front::parser::op_spec spec in front::parser::prec_table()) {
+    for (parse::parser::op_spec spec in parse::parser::prec_table()) {
         if (spec.op == op) { ret spec.prec; }
     }
     fail;
@@ -1127,10 +1176,10 @@ fn print_maybe_parens(&ps s, &@ast::expr expr, int outer_prec) {
             add_them = operator_prec(op) < outer_prec;
         }
         case (ast::expr_cast(_, _)) {
-            add_them = front::parser::as_prec < outer_prec;
+            add_them = parse::parser::as_prec < outer_prec;
         }
         case (ast::expr_ternary(_, _, _)) {
-            add_them = front::parser::ternary_prec < outer_prec;
+            add_them = parse::parser::ternary_prec < outer_prec;
         }
         case (_) { add_them = false; }
     }
@@ -1186,7 +1235,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     end(s);
 }
 
-fn maybe_print_trailing_comment(&ps s, common::span span,
+fn maybe_print_trailing_comment(&ps s, codemap::span span,
                                 option::t[uint] next_pos) {
     auto cm;
     alt (s.cm) { case (some(?ccm)) { cm = ccm; } case (_) { ret; } }
@@ -1221,6 +1270,197 @@ fn in_cbox(&ps s) -> bool {
     if (len == 0u) { ret false; }
     ret s.boxes.(len - 1u) == pp::consistent;
 }
+
+fn print_literal(&ps s, &@ast::lit lit) {
+    maybe_print_comment(s, lit.span.lo);
+    alt (next_lit(s)) {
+        case (some(?lt)) {
+            if (lt.pos == lit.span.lo) {
+                word(s.s, lt.lit);
+                s.cur_lit += 1u;
+                ret;
+            }
+        }
+        case (_) { }
+    }
+    alt (lit.node) {
+        case (ast::lit_str(?st, ?kind)) {
+            if (kind == ast::sk_unique) { word(s.s, "~"); }
+            print_string(s, st);
+        }
+        case (ast::lit_char(?ch)) {
+            word(s.s,
+                 "'" + escape_str(str::from_bytes([ch as u8]), '\'') + "'");
+        }
+        case (ast::lit_int(?val)) { word(s.s, istr(val)); }
+        case (ast::lit_uint(?val)) { word(s.s, uistr(val) + "u"); }
+        case (ast::lit_float(?fstr)) { word(s.s, fstr); }
+        case (ast::lit_mach_int(?mach, ?val)) {
+            word(s.s, istr(val as int));
+            word(s.s, ast::ty_mach_to_str(mach));
+        }
+        case (ast::lit_mach_float(?mach, ?val)) {
+            // val is already a str
+            word(s.s, val);
+            word(s.s, ast::ty_mach_to_str(mach));
+        }
+        case (ast::lit_nil) { word(s.s, "()"); }
+        case (ast::lit_bool(?val)) {
+            if (val) { word(s.s, "true"); } else { word(s.s, "false"); }
+        }
+    }
+}
+
+fn lit_to_str(&@ast::lit l) -> str { be to_str(l, print_literal); }
+
+fn next_lit(&ps s) -> option::t[lexer::lit] {
+    alt (s.literals) {
+        case (some(?lits)) {
+            if (s.cur_lit < vec::len(lits)) {
+                ret some(lits.(s.cur_lit));
+            } else { ret none[lexer::lit]; }
+        }
+        case (_) { ret none[lexer::lit]; }
+    }
+}
+
+fn maybe_print_comment(&ps s, uint pos) {
+    while (true) {
+        alt (next_comment(s)) {
+            case (some(?cmnt)) {
+                if (cmnt.pos < pos) {
+                    print_comment(s, cmnt);
+                    s.cur_cmnt += 1u;
+                } else { break; }
+            }
+            case (_) { break; }
+        }
+    }
+}
+
+fn print_comment(&ps s, lexer::cmnt cmnt) {
+    alt (cmnt.style) {
+        case (lexer::mixed) {
+            assert (vec::len(cmnt.lines) == 1u);
+            zerobreak(s.s);
+            word(s.s, cmnt.lines.(0));
+            zerobreak(s.s);
+        }
+        case (lexer::isolated) {
+            pprust::hardbreak_if_not_bol(s);
+            for (str line in cmnt.lines) { word(s.s, line); hardbreak(s.s); }
+        }
+        case (lexer::trailing) {
+            word(s.s, " ");
+            if (vec::len(cmnt.lines) == 1u) {
+                word(s.s, cmnt.lines.(0));
+                hardbreak(s.s);
+            } else {
+                ibox(s, 0u);
+                for (str line in cmnt.lines) {
+                    word(s.s, line);
+                    hardbreak(s.s);
+                }
+                end(s);
+            }
+        }
+        case (lexer::blank_line) {
+            // We need to do at least one, possibly two hardbreaks.
+            pprust::hardbreak_if_not_bol(s);
+            hardbreak(s.s);
+        }
+    }
+}
+
+fn print_string(&ps s, &str st) {
+    word(s.s, "\"");
+    word(s.s, escape_str(st, '"'));
+    word(s.s, "\"");
+}
+
+fn escape_str(str st, char to_escape) -> str {
+    let str out = "";
+    auto len = str::byte_len(st);
+    auto i = 0u;
+    while (i < len) {
+        alt (st.(i) as char) {
+            case ('\n') { out += "\\n"; }
+            case ('\t') { out += "\\t"; }
+            case ('\r') { out += "\\r"; }
+            case ('\\') { out += "\\\\"; }
+            case (?cur) {
+                if (cur == to_escape) { out += "\\"; }
+                // FIXME some (or all?) non-ascii things should be escaped
+
+                str::push_char(out, cur);
+            }
+        }
+        i += 1u;
+    }
+    ret out;
+}
+
+fn to_str[T](&T t, fn(&ps, &T)  f) -> str {
+    auto writer = io::string_writer();
+    auto s = rust_printer(writer.get_writer());
+    f(s, t);
+    eof(s.s);
+    ret writer.get_str();
+}
+
+fn next_comment(&ps s) -> option::t[lexer::cmnt] {
+    alt (s.comments) {
+        case (some(?cmnts)) {
+            if (s.cur_cmnt < vec::len(cmnts)) {
+                ret some(cmnts.(s.cur_cmnt));
+            } else { ret none[lexer::cmnt]; }
+        }
+        case (_) { ret none[lexer::cmnt]; }
+    }
+}
+
+
+fn constr_args_to_str[T](fn(&T) -> str  f,
+                         &vec[@ast::constr_arg_general[T]] args) -> str {
+    auto comma = false;
+    auto s = "(";
+    for (@ast::constr_arg_general[T] a in args) {
+        if (comma) { s += ", "; } else { comma = true; }
+        s += constr_arg_to_str[T](f, a.node);
+    }
+    s += ")";
+    ret s;
+}
+
+fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
+   str {
+    alt (c) {
+        case (ast::carg_base) { ret "*"; }
+        case (ast::carg_ident(?i)) { ret f(i); }
+        case (ast::carg_lit(?l)) { ret lit_to_str(l); }
+    }
+}
+
+// needed b/c constr_args_to_str needs
+// something that takes an alias
+// (argh)
+fn uint_to_str(&uint i) -> str { ret uistr(i); }
+
+fn ast_constr_to_str(&@ast::constr c) -> str {
+    ret ast::path_to_str(c.node.path) +
+            constr_args_to_str(uint_to_str, c.node.args);
+}
+
+fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {
+    auto s = "";
+    auto colon = true;
+    for (@ast::constr c in constrs) {
+        if (colon) { s += " : "; colon = false; } else { s += ", "; }
+        s += ast_constr_to_str(c);
+    }
+    ret s;
+}
+
 //
 // Local Variables:
 // mode: rust

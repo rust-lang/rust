@@ -7,69 +7,29 @@ import std::vec;
 import std::option;
 import std::option::none;
 import std::option::some;
-import front::ast;
-import front::ast::ty;
-import front::ast::pat;
-import front::codemap::codemap;
-import front::ast::lit;
-import front::ast::path;
-import middle::walk;
+import syntax::ast;
+import ast::ty;
+import ast::pat;
+import syntax::codemap::codemap;
+import syntax::codemap::span;
+import ast::lit;
+import ast::path;
+import syntax::walk;
 import std::io::stdout;
 import std::io::str_writer;
 import std::io::string_writer;
-import pretty::pprust::print_block;
-import pretty::pprust::print_item;
-import pretty::pprust::print_expr;
-import pretty::pprust::print_path;
-import pretty::pprust::print_decl;
-import pretty::pprust::print_fn;
-import pretty::pprust::print_type;
-import pretty::ppaux::print_literal;
-import pretty::pp::mk_printer;
-
-type filename = str;
-
-type span = rec(uint lo, uint hi);
-
-type spanned[T] = rec(T node, span span);
+import syntax::print;
+import print::pprust::print_block;
+import print::pprust::print_item;
+import print::pprust::print_expr;
+import print::pprust::print_path;
+import print::pprust::print_decl;
+import print::pprust::print_fn;
+import print::pprust::print_type;
+import print::pprust::print_literal;
+import print::pp::mk_printer;
 
 type flag = hashmap[str, ()];
-
-tag ty_mach {
-    ty_i8;
-    ty_i16;
-    ty_i32;
-    ty_i64;
-    ty_u8;
-    ty_u16;
-    ty_u32;
-    ty_u64;
-    ty_f32;
-    ty_f64;
-}
-
-tag ty_or_bang[T] { a_ty(T); a_bang; }
-
-fn ty_mach_to_str(ty_mach tm) -> str {
-    alt (tm) {
-        case (ty_u8) { ret "u8"; }
-        case (ty_u16) { ret "u16"; }
-        case (ty_u32) { ret "u32"; }
-        case (ty_u64) { ret "u64"; }
-        case (ty_i8) { ret "i8"; }
-        case (ty_i16) { ret "i16"; }
-        case (ty_i32) { ret "i32"; }
-        case (ty_i64) { ret "i64"; }
-        case (ty_f32) { ret "f32"; }
-        case (ty_f64) { ret "f64"; }
-    }
-}
-
-fn new_str_hash[V]() -> std::map::hashmap[str, V] {
-    let std::map::hashfn[str] hasher = std::str::hash;
-    let std::map::eqfn[str] eqer = std::str::eq;
-    ret std::map::mk_hashmap[str, V](hasher, eqer);
-}
 
 fn def_eq(&ast::def_id a, &ast::def_id b) -> bool {
     ret a._0 == b._0 && a._1 == b._1;
@@ -88,26 +48,6 @@ fn new_def_hash[V]() -> std::map::hashmap[ast::def_id, V] {
     ret std::map::mk_hashmap[ast::def_id, V](hasher, eqer);
 }
 
-fn new_int_hash[V]() -> std::map::hashmap[int, V] {
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-    ret std::map::mk_hashmap[int, V](hasher, eqer);
-}
-
-fn new_uint_hash[V]() -> std::map::hashmap[uint, V] {
-    fn hash_uint(&uint x) -> uint { ret x; }
-    fn eq_uint(&uint a, &uint b) -> bool { ret a == b; }
-    auto hasher = hash_uint;
-    auto eqer = eq_uint;
-    ret std::map::mk_hashmap[uint, V](hasher, eqer);
-}
-
-fn istr(int i) -> str { ret int::to_str(i, 10u); }
-
-fn uistr(uint i) -> str { ret uint::to_str(i, 10u); }
-
 fn elt_expr(&ast::elt e) -> @ast::expr { ret e.expr; }
 
 fn elt_exprs(&vec[ast::elt] elts) -> vec[@ast::expr] {
@@ -122,31 +62,31 @@ fn field_exprs(vec[ast::field] fields) -> vec[@ast::expr] {
     ret vec::map[ast::field, @ast::expr](f, fields);
 }
 
-fn log_expr(&ast::expr e) { log pretty::pprust::expr_to_str(@e); }
+fn log_expr(&ast::expr e) { log print::pprust::expr_to_str(@e); }
 
-fn log_expr_err(&ast::expr e) { log_err pretty::pprust::expr_to_str(@e); }
+fn log_expr_err(&ast::expr e) { log_err print::pprust::expr_to_str(@e); }
 
-fn log_ty_err(&ty t) { log_err pretty::pprust::ty_to_str(t); }
+fn log_ty_err(&ty t) { log_err print::pprust::ty_to_str(t); }
 
-fn log_pat_err(&@pat p) { log_err pretty::pprust::pat_to_str(p); }
+fn log_pat_err(&@pat p) { log_err print::pprust::pat_to_str(p); }
 
-fn log_block(&ast::block b) { log pretty::pprust::block_to_str(b); }
+fn log_block(&ast::block b) { log print::pprust::block_to_str(b); }
 
-fn log_block_err(&ast::block b) { log_err pretty::pprust::block_to_str(b); }
+fn log_block_err(&ast::block b) { log_err print::pprust::block_to_str(b); }
 
-fn log_item_err(&@ast::item i) { log_err pretty::pprust::item_to_str(i); }
+fn log_item_err(&@ast::item i) { log_err print::pprust::item_to_str(i); }
 
 fn log_fn(&ast::_fn f, str name, vec[ast::ty_param] params) {
-    log pretty::pprust::fun_to_str(f, name, params);
+    log print::pprust::fun_to_str(f, name, params);
 }
 
 fn log_fn_err(&ast::_fn f, str name, vec[ast::ty_param] params) {
-    log_err pretty::pprust::fun_to_str(f, name, params);
+    log_err print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_stmt(&ast::stmt st) { log pretty::pprust::stmt_to_str(st); }
+fn log_stmt(&ast::stmt st) { log print::pprust::stmt_to_str(st); }
 
-fn log_stmt_err(&ast::stmt st) { log_err pretty::pprust::stmt_to_str(st); }
+fn log_stmt_err(&ast::stmt st) { log_err print::pprust::stmt_to_str(st); }
 
 fn has_nonlocal_exits(&ast::block b) -> bool {
     auto has_exits = @mutable false;
@@ -231,27 +171,6 @@ fn lit_eq(&@ast::lit l, &@ast::lit m) -> bool {
         }
     }
 }
-
-fn respan[T](&span sp, &T t) -> spanned[T] { ret rec(node=t, span=sp); }
-
-fn may_begin_ident(char c) -> bool { ret is_alpha(c) || c == '_'; }
-
-fn in_range(char c, char lo, char hi) -> bool { ret lo <= c && c <= hi; }
-
-fn is_alpha(char c) -> bool {
-    ret in_range(c, 'a', 'z') || in_range(c, 'A', 'Z');
-}
-
-fn is_dec_digit(char c) -> bool { ret in_range(c, '0', '9'); }
-
-fn is_alnum(char c) -> bool { ret is_alpha(c) || is_dec_digit(c); }
-
-fn is_hex_digit(char c) -> bool {
-    ret in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
-            in_range(c, 'A', 'F');
-}
-
-fn is_bin_digit(char c) -> bool { ret c == '0' || c == '1'; }
 
 // FIXME move to vec
 fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {

@@ -6,7 +6,7 @@ import std::vec;
 import std::str;
 import std::io;
 import std::map::hashmap;
-import front::ast;
+import syntax::ast;
 import front::attr;
 import middle::ty;
 import tags::*;
@@ -14,7 +14,7 @@ import tydecode::parse_def_id;
 import tydecode::parse_ty_data;
 import driver::session;
 import util::common;
-import pretty::pprust;
+import syntax::print::pprust;
 
 export get_symbol;
 export get_tag_variants;

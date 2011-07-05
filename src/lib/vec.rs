@@ -301,6 +301,19 @@ fn or(&vec[bool] v) -> bool {
     ret vec::foldl[bool, bool](f, false, v);
 }
 
+fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
+    for (T t in v) {
+        if (f(t)) { ret true; } 
+    }
+    ret false;
+}
+fn all[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
+    for (T t in v) {
+        if (!f(t)) { ret false; } 
+    }
+    ret true;
+}
+
 fn clone[T](&vec[T] v) -> vec[T] { ret slice[T](v, 0u, len[T](v)); }
 
 fn plus_option[T](&mutable vec[T] v, &option::t[T] o) {

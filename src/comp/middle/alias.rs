@@ -1,10 +1,11 @@
 
-import front::ast;
-import front::ast::ident;
-import front::ast::fn_ident;
-import front::ast::node_id;
-import front::ast::def_id;
-import util::common::span;
+import syntax::ast;
+import ast::ident;
+import ast::fn_ident;
+import ast::node_id;
+import ast::def_id;
+import syntax::codemap::span;
+import syntax::visit;
 import visit::vt;
 import std::vec;
 import std::str;
@@ -44,7 +45,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
 
              // Stores information about object fields and function
              // arguments that's otherwise not easily available.
-             local_map=util::common::new_int_hash());
+             local_map=syntax::_std::new_int_hash());
     auto v =
         @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _),
              visit_item=bind visit_item(cx, _, _, _),
@@ -348,7 +349,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
         case (ty::ty_istr) { /* no-op */ }
         case (_) {
             cx.tcx.sess.span_unimpl(seq.span, "unknown seq type " +
-                                    pretty::ppaux::ty_to_str(*cx.tcx, seq_t));
+                                    util::ppaux::ty_to_str(*cx.tcx, seq_t));
         }
     }
     auto new_sc =

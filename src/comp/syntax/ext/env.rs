@@ -5,15 +5,14 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
-import util::common;
 import std::str;
 import std::vec;
 import std::option;
 import std::generic_os;
-import ext::*;
+import base::*;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
+fn expand_syntax_ext(&ext_ctxt cx, codemap::span sp, &vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
     if (vec::len[@ast::expr](args) != 1u) {
         cx.span_fatal(sp, "malformed #env call");
@@ -28,12 +27,12 @@ fn expand_syntax_ext(&ext_ctxt cx, common::span sp, &vec[@ast::expr] args,
     }
 }
 
-fn make_new_lit(&ext_ctxt cx, common::span sp, ast::lit_ lit) -> @ast::expr {
+fn make_new_lit(&ext_ctxt cx, codemap::span sp, ast::lit_ lit) -> @ast::expr {
     auto sp_lit = @rec(node=lit, span=sp);
     ret @rec(id=cx.next_id(), node=ast::expr_lit(sp_lit), span=sp);
 }
 
-fn make_new_str(&ext_ctxt cx, common::span sp, str s) -> @ast::expr {
+fn make_new_str(&ext_ctxt cx, codemap::span sp, str s) -> @ast::expr {
     ret make_new_lit(cx, sp, ast::lit_str(s, ast::sk_rc));
 }
 //

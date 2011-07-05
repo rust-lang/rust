@@ -1,5 +1,6 @@
 
-import front::ast::*;
+import syntax::ast::*;
+import syntax::walk;
 import std::option::*;
 import std::vec;
 import std::vec::len;

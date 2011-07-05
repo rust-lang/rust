@@ -1,13 +1,14 @@
 
 import std::vec;
 import std::vec::plus_option;
-import front::ast;
-import front::ast::*;
-import pretty::ppaux::fn_ident_to_string;
+import syntax::ast::*;
+import util::ppaux::fn_ident_to_string;
 import std::option::*;
-import middle::walk::walk_crate;
-import middle::walk::walk_fn;
-import middle::walk::ast_visitor;
+import syntax::walk;
+import syntax::visit;
+import walk::walk_crate;
+import walk::walk_fn;
+import walk::ast_visitor;
 import aux::cinit;
 import aux::ninit;
 import aux::npred;
@@ -20,11 +21,11 @@ import aux::constr_map;
 import aux::expr_to_constr;
 import aux::constraints_expr;
 import aux::node_id_to_def_strict;
-import util::common::new_int_hash;
+import syntax::_std::new_int_hash;
 import util::common::new_def_hash;
-import util::common::uistr;
-import util::common::span;
-import util::common::respan;
+import syntax::_std::uistr;
+import syntax::codemap::span;
+import syntax::ast::respan;
 
 type ctxt = rec(@mutable vec[aux::constr] cs, ty::ctxt tcx);
 
@@ -64,7 +65,7 @@ fn do_nothing(&_fn f, &vec[ty_param] tp, &span sp, &fn_ident i,
               node_id iid, &ctxt cx, &visit::vt[ctxt] v) {
 }
  
-fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ast::ty_param] tps,
+fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ty_param] tps,
                &span sp, &fn_ident i, node_id id)
     -> ctxt {
     let ctxt cx = rec(cs=@mutable vec::alloc(0u), tcx=tcx);
@@ -81,7 +82,7 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ast::ty_param] tps,
 
 fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
    uint {
-    log aux::constraint_to_str(tcx, c) + " |-> " + util::common::uistr(next);
+    log aux::constraint_to_str(tcx, c) + " |-> " + uistr(next);
     alt (c.node.c) {
         case (ninit(?i)) { tbl.insert(c.node.id, cinit(next, c.span, i)); }
         case (npred(?p, ?args)) {
@@ -115,7 +116,7 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ast::ty_param] tp,
+fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ty_param] tp,
               &span f_sp, &fn_ident f_name,
               node_id id) {
     auto res_map = @new_int_hash[constraint]();

@@ -13,7 +13,7 @@ import option::none;
 import std::sha1::sha1;
 import std::sort;
 import trans::crate_ctxt;
-import front::ast;
+import syntax::ast;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
 import lib::llvm::mk_pass_manager;
@@ -436,7 +436,7 @@ fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
 
 fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) ->
    str {
-    auto s = pretty::ppaux::ty_to_short_str(ccx.tcx, t);
+    auto s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     auto hash = get_symbol_hash(ccx, t);
     ret mangle([name, s, hash]);
 }

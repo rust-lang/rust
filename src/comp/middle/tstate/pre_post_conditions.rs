@@ -65,10 +65,11 @@ import bitvectors::declare_var;
 import bitvectors::gen_poststate;
 import bitvectors::relax_precond_block;
 import bitvectors::gen;
-import front::ast::*;
-import util::common::new_int_hash;
+import syntax::ast::*;
+import syntax::_std::new_int_hash;
 import util::common::new_def_hash;
-import util::common::uistr;
+import syntax::_std::istr;
+import syntax::_std::uistr;
 import util::common::log_expr;
 import util::common::log_fn;
 import util::common::elt_exprs;
@@ -79,9 +80,8 @@ import util::common::log_stmt_err;
 import util::common::log_expr_err;
 import util::common::log_block_err;
 import util::common::log_block;
-import util::common::span;
-import util::common::istr;
-import pretty::ppaux::fn_ident_to_string;
+import syntax::codemap::span;
+import util::ppaux::fn_ident_to_string;
 
 fn find_pre_post_mod(&_mod m) -> _mod {
     log "implement find_pre_post_mod!";

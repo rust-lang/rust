@@ -1,4 +1,4 @@
-import util::common::span;
+import syntax::codemap::span;
 import ast::*;
 
 import std::vec;

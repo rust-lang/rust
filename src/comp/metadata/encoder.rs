@@ -8,7 +8,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::ebml;
-import front::ast::*;
+import syntax::ast::*;
 import tags::*;
 import middle::trans::crate_ctxt;
 import middle::trans::node_id_type;

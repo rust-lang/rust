@@ -47,6 +47,7 @@ fn to_str(int n, uint radix) -> str {
             "-" + uint::to_str(-n as uint, radix)
         } else { uint::to_str(n as uint, radix) };
 }
+fn str(int i) -> str { ret to_str(i, 10u); }
 
 fn pow(int base, uint exponent) -> int {
     ret if (exponent == 0u) {

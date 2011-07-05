@@ -1,21 +1,22 @@
 
-import front::ast;
-import front::ast::ident;
-import front::ast::fn_ident;
-import front::ast::def;
-import front::ast::def_id;
-import front::ast::node_id;
-import front::ast::local_def;
+import syntax::ast;
+import ast::ident;
+import ast::fn_ident;
+import ast::def;
+import ast::def_id;
+import ast::node_id;
+import ast::local_def;
 
 import metadata::creader;
 import metadata::decoder;
 import driver::session::session;
 import util::common::new_def_hash;
-import util::common::new_int_hash;
-import util::common::new_str_hash;
-import util::common::span;
-import util::common::respan;
+import syntax::_std::new_int_hash;
+import syntax::_std::new_str_hash;
+import syntax::codemap::span;
+import syntax::ast::respan;
 import middle::ty::constr_table;
+import syntax::visit;
 import visit::vt;
 import std::map::hashmap;
 import std::list;
