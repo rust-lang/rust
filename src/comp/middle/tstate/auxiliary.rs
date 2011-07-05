@@ -1,3 +1,4 @@
+import std::ivec;
 import std::str;
 import std::vec;
 import std::vec::len;
@@ -48,7 +49,7 @@ fn def_id_to_str(def_id d) -> str {
     ret int::str(d._0) + "," + int::str(d._1);
 }
 
-fn comma_str(vec[@constr_arg_use] args) -> str {
+fn comma_str(&(@constr_arg_use)[] args) -> str {
     auto rslt = "";
     auto comma = false;
     for (@constr_arg_use a in args) {
@@ -107,7 +108,7 @@ fn first_difference_string(&fn_ctxt fcx, &tritv::t expected, &tritv::t actual)
 
 fn log_tritv_err(fn_ctxt fcx, tritv::t v) { log_err tritv_to_str(fcx, v); }
 
-fn tos(vec[uint] v) -> str {
+fn tos(&uint[] v) -> str {
     auto rslt = "";
     for (uint i in v) { if (i == 0u) { rslt += "0"; } 
         else if (i == 1u) { rslt += "1"; }
@@ -115,9 +116,9 @@ fn tos(vec[uint] v) -> str {
     ret rslt;
 }
 
-fn log_cond(vec[uint] v) { log tos(v); }
+fn log_cond(&uint[] v) { log tos(v); }
 
-fn log_cond_err(vec[uint] v) { log_err tos(v); }
+fn log_cond_err(&uint[] v) { log_err tos(v); }
 
 fn log_pp(&pre_and_post pp) {
     auto p1 = tritv::to_vec(pp.precondition);
@@ -157,10 +158,10 @@ fn log_states_err(&pre_and_post_state pp) {
 
 fn print_ident(&ident i) { log " " + i + " "; }
 
-fn print_idents(vec[ident] idents) {
-    if (len[ident](idents) == 0u) {
-        ret;
-    } else { log "an ident: " + pop[ident](idents); print_idents(idents); }
+fn print_idents(&mutable ident[] idents) {
+    if (ivec::len[ident](idents) == 0u) { ret; }
+    log "an ident: " + ivec::pop[ident](idents);
+    print_idents(idents);
 }
 
 
@@ -194,7 +195,7 @@ to represent predicate *arguments* however. This type
 
 Both types store an ident and span, for error-logging purposes.
 */
-type pred_desc_ = rec(vec[@constr_arg_use] args, uint bit_num);
+type pred_desc_ = rec((@constr_arg_use)[] args, uint bit_num);
 
 type pred_desc = spanned[pred_desc_];
 
@@ -202,10 +203,13 @@ type constr_arg_use = constr_arg_general[tup(ident, def_id)];
 
 tag constraint {
     cinit(uint, span, ident);
-    cpred(path, @mutable vec[pred_desc]);
+    cpred(path, @mutable pred_desc[]);
 }
 
-tag constr__ { ninit(ident); npred(path, vec[@constr_arg_use]); }
+tag constr__ {
+    ninit(ident);
+    npred(path, (@constr_arg_use)[]);
+}
 
 type constr_ = rec(node_id id, constr__ c);
 
@@ -223,11 +227,11 @@ type fn_info = rec(constr_map constrs,
                     used*/
                    // Doesn't seem to work without the @ --
                    // bug?
-                   @mutable vec[node_id] used_vars);
+                   @mutable node_id[] used_vars);
 
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @mutable vec[mutable ts_ann];
+type node_ann_table = @mutable ts_ann[mutable];
 
 
 /* mapping from function name to fn_info map */
@@ -243,15 +247,15 @@ fn get_fn_info(&crate_ctxt ccx, node_id id) -> fn_info {
 }
 
 fn add_node(&crate_ctxt ccx, node_id i, &ts_ann a) {
-    auto sz = len(*ccx.node_anns);
+    auto sz = ivec::len(*ccx.node_anns);
     if (sz <= i as uint) {
-        grow(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
+        ivec::grow_mut(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
     }
     ccx.node_anns.(i) = a;
 }
 
 fn get_ts_ann(&crate_ctxt ccx, node_id i) -> option::t[ts_ann] {
-    if (i as uint < len(*ccx.node_anns)) {
+    if (i as uint < ivec::len(*ccx.node_anns)) {
         ret some[ts_ann](ccx.node_anns.(i));
     } else { ret none[ts_ann]; }
 }
@@ -439,7 +443,7 @@ fn pure_exp(&crate_ctxt ccx, node_id id, &prestate p) -> bool {
 fn num_constraints(fn_info m) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
-    let vec[mutable ts_ann] na = vec::empty_mut();
+    let ts_ann[mutable] na = ~[mutable];
     ret rec(tcx=cx, node_anns=@mutable na, fm=@new_int_hash[fn_info]());
 }
 
@@ -474,19 +478,18 @@ fn node_id_to_def(&crate_ctxt ccx, node_id id) -> option::t[def] {
     ret ccx.tcx.def_map.find(id);
 }
 
-fn norm_a_constraint(node_id id, &constraint c) -> vec[norm_constraint] {
+fn norm_a_constraint(node_id id, &constraint c) -> norm_constraint[] {
     alt (c) {
         case (cinit(?n, ?sp, ?i)) {
-            ret [rec(bit_num=n, c=respan(sp, rec(id=id, c=ninit(i))))];
+            ret ~[rec(bit_num=n, c=respan(sp, rec(id=id, c=ninit(i))))];
         }
         case (cpred(?p, ?descs)) {
-            let vec[norm_constraint] rslt = [];
+            let norm_constraint[] rslt = ~[];
             for (pred_desc pd in *descs) {
-                vec::push(rslt,
-                          rec(bit_num=pd.node.bit_num,
+                rslt += ~[rec(bit_num=pd.node.bit_num,
                               c=respan(pd.span,
                                        rec(id=id,
-                                           c=npred(p, pd.node.args)))));
+                                           c=npred(p, pd.node.args))))];
             }
             ret rslt;
         }
@@ -496,15 +499,15 @@ fn norm_a_constraint(node_id id, &constraint c) -> vec[norm_constraint] {
 
 // Tried to write this as an iterator, but I got a
 // non-exhaustive match in trans.
-fn constraints(&fn_ctxt fcx) -> vec[norm_constraint] {
-    let vec[norm_constraint] rslt = [];
+fn constraints(&fn_ctxt fcx) -> norm_constraint[] {
+    let norm_constraint[] rslt = ~[];
     for each (@tup(node_id, constraint) p in fcx.enclosing.constrs.items()) {
         rslt += norm_a_constraint(p._0, p._1);
     }
     ret rslt;
 }
 
-fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, &(@constr_arg_use)[] occ) ->
+fn match_args(&fn_ctxt fcx, &pred_desc[] occs, &(@constr_arg_use)[] occ) ->
    uint {
     log "match_args: looking at " +
         constr_args_to_str(std::util::fst[ident, def_id], occ);
@@ -564,10 +567,10 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
     }
 }
 
-fn exprs_to_constr_args(ty::ctxt tcx, vec[@expr] args) ->
-   vec[@constr_arg_use] {
+fn exprs_to_constr_args(ty::ctxt tcx, &(@expr)[] args)
+        -> (@constr_arg_use)[] {
     auto f = bind expr_to_constr_arg(tcx, _);
-    ret vec::map(f, args);
+    ret ivec::map(f, args);
 }
 
 fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
@@ -578,10 +581,14 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
              expr_call(?operator, ?args)) {
             alt (operator.node) {
                 case (expr_path(?p)) {
+                    // FIXME: Remove this vec->ivec conversion.
+                    auto args_ivec = ~[];
+                    for (@expr e in args) { args_ivec += ~[e]; }
+
                     ret respan(e.span,
                                rec(id=node_id_for_constr(tcx, operator.id),
-                                   c=npred(p,
-                                           exprs_to_constr_args(tcx, args))));
+                                   c=npred(p, exprs_to_constr_args(tcx,
+                                        args_ivec))));
                 }
                 case (_) {
                     tcx.sess.span_fatal(operator.span,
@@ -609,20 +616,20 @@ fn pred_desc_to_str(&pred_desc p) -> str {
         constr_args_to_str(std::util::fst[ident, def_id], cau_ivec) + ">";
 }
 
-fn substitute_constr_args(&ty::ctxt cx, &vec[@expr] actuals,
+fn substitute_constr_args(&ty::ctxt cx, &(@expr)[] actuals,
                           &@ty::constr_def c) -> constr__ {
-    let vec[@constr_arg_use] rslt = [];
+    let (@constr_arg_use)[] rslt = ~[];
     for (@constr_arg a in c.node.args) {
-        rslt += [substitute_arg(cx, actuals, a)];
+        rslt += ~[substitute_arg(cx, actuals, a)];
     }
     ret npred(c.node.path, rslt);
 }
 
-type subst = vec[tup(arg, @expr)];
+type subst = tup(arg, @expr)[];
 
-fn substitute_arg(&ty::ctxt cx, &vec[@expr] actuals, @constr_arg a) ->
+fn substitute_arg(&ty::ctxt cx, &(@expr)[] actuals, @constr_arg a) ->
    @constr_arg_use {
-    auto num_actuals = vec::len(actuals);
+    auto num_actuals = ivec::len(actuals);
     alt (a.node) {
         case (carg_ident(?i)) {
             if (i < num_actuals) {
@@ -778,26 +785,28 @@ fn non_init_constraint_mentions(&fn_ctxt fcx, &norm_constraint c,
 }
 
 
-fn args_mention(&vec[@constr_arg_use] args, &def_id v) -> bool {
+fn args_mention(&(@constr_arg_use)[] args, &def_id v) -> bool {
     fn mentions(&def_id v, &@constr_arg_use a) -> bool {
         alt (a.node) {
             case (carg_ident(?p1)) { p1._1 == v }
             case (_)               { false }
         }
     }
-    ret util::common::any[@constr_arg_use](bind mentions(v,_), args);
+    ret ivec::any[@constr_arg_use](bind mentions(v,_), args);
 }
 
 fn use_var(&fn_ctxt fcx, &node_id v) {
-    vec::push(*fcx.enclosing.used_vars, v);
+    *fcx.enclosing.used_vars += ~[v];
 }
 
-fn vec_contains(&@mutable vec[node_id] v, &node_id i) -> bool {
+// FIXME: This should be a function in std::ivec::.
+fn vec_contains(&@mutable (node_id[]) v, &node_id i) -> bool {
     for (node_id d in *v) {
         if (d == i) { ret true; }
     }
     ret false;
 }
+
 //
 // Local Variables:
 // mode: rust

@@ -46,11 +46,15 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
         // If it's a call, generate appropriate instances of the
         // call's constraints.
         case (expr_call(?operator, ?operands)) {
+            // FIXME: Remove this vec->ivec conversion.
+            auto operands_ivec = ~[];
+            for (@expr opd in operands) { operands_ivec += ~[opd]; }
+
             for (@ty::constr_def c in constraints_expr(cx.tcx, operator)) {
                 let aux::constr ct = respan(c.span,
                       rec(id=c.node.id._1,
                           c=aux::substitute_constr_args(cx.tcx,
-                                                        operands, c)));
+                                                        operands_ivec, c)));
                 vec::push(*cx.cs, ct);
             }
         }
@@ -93,18 +97,17 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
                                              " as a variable and a pred");
                         }
                         case (cpred(_, ?pds)) {
-                            vec::push(*pds,
-                                      respan(c.span,
-                                             rec(args=args, bit_num=next)));
+                            *pds += ~[respan(c.span,
+                                             rec(args=args, bit_num=next))];
                         }
                     }
                 }
                 case (none) {
                     tbl.insert(c.node.id,
                                cpred(p,
-                                     @mutable [respan(c.span,
-                                                      rec(args=args,
-                                                          bit_num=next))]));
+                                     @mutable ~[respan(c.span,
+                                                       rec(args=args,
+                                                           bit_num=next))]));
                 }
             }
         }
@@ -134,7 +137,7 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ty_param] tp,
     auto name = fn_ident_to_string(id, f_name);
     add_constraint(cx.tcx, respan(f_sp, rec(id=id, c=ninit(name))), next,
                    res_map);
-    let @mutable vec[node_id] v = @mutable [];
+    let @mutable node_id[] v = @mutable ~[];
     auto rslt =
         rec(constrs=res_map,
             num_constraints=vec::len(*cx.cs) + 1u,
