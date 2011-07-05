@@ -194,27 +194,27 @@ fn get_symbol(session::session sess, ast::def_id def) -> str {
     ret item_symbol(lookup_item(def._1, data));
 }
 
-fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> vec[ty::variant_info] {
+fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
     auto external_crate_id = def._0;
     auto data = tcx.sess.get_external_crate(external_crate_id).data;
     auto items = ebml::get_doc(ebml::new_doc(data), tag_items);
     auto item = find_item(def._1, items);
-    let vec[ty::variant_info] infos = [];
+    let ty::variant_info[] infos = ~[];
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast::def_id did in variant_ids) {
         auto item = find_item(did._1, items);
         auto ctor_ty = item_type(item, external_crate_id, tcx);
-        let vec[ty::t] arg_tys = [];
+        let ty::t[] arg_tys = ~[];
         alt (ty::struct(tcx, ctor_ty)) {
             case (ty::ty_fn(_, ?args, _, _, _)) {
-                for (ty::arg a in args) { arg_tys += [a.ty]; }
+                for (ty::arg a in args) { arg_tys += ~[a.ty]; }
             }
             case (_) {
                 // Nullary tag variant.
 
             }
         }
-        infos += [rec(args=arg_tys, ctor_ty=ctor_ty, id=did)];
+        infos += ~[rec(args=arg_tys, ctor_ty=ctor_ty, id=did)];
     }
     ret infos;
 }
