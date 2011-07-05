@@ -161,7 +161,7 @@ fn grow_set[T](&mutable T[mutable] v, uint index, &T initval, &T val) {
 
 // Functional utilities
 
-fn map[T,U](fn(&T)->U f, &mutable T[mutable?] v) -> U[] {
+fn map[T,U](fn(&T)->U f, &T[mutable?] v) -> U[] {
     auto result = ~[];
     reserve(result, len(v));
     for (T elem in v) {
