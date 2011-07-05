@@ -171,6 +171,16 @@ fn map[T,U](fn(&T)->U f, &mutable T[mutable?] v) -> U[] {
     ret result;
 }
 
+fn any[T](fn(&T)->bool f, &T[] v) -> bool {
+    for (T elem in v) { if (f(elem)) { ret true; } }
+    ret false;
+}
+
+fn all[T](fn(&T)->bool f, &T[] v) -> bool {
+    for (T elem in v) { if (!f(elem)) { ret false; } }
+    ret true;
+}
+
 
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {

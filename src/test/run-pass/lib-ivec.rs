@@ -7,6 +7,10 @@ import std::option::some;
 
 fn square(uint n) -> uint { ret n * n; }
 
+fn square_alias(&uint n) -> uint { ret n * n; }
+
+pred is_three(&uint n) -> bool { ret n == 3u; }
+
 fn test_reserve_and_on_heap() {
     let int[] v = ~[ 1, 2 ];
     assert (!ivec::on_heap(v));
@@ -167,7 +171,7 @@ fn test_grow_set() {
 fn test_map() {
     // Test on-stack map.
     auto v = ~[ 1u, 2u, 3u ];
-    auto w = ivec::map(square, v);
+    auto w = ivec::map(square_alias, v);
     assert (ivec::len(w) == 3u);
     assert (w.(0) == 1u);
     assert (w.(1) == 4u);
@@ -175,13 +179,25 @@ fn test_map() {
 
     // Test on-heap map.
     v = ~[ 1u, 2u, 3u, 4u, 5u ];
-    w = ivec::map(square, v);
+    w = ivec::map(square_alias, v);
     assert (ivec::len(w) == 5u);
     assert (w.(0) == 1u);
     assert (w.(1) == 4u);
     assert (w.(2) == 9u);
     assert (w.(3) == 16u);
     assert (w.(4) == 25u);
+}
+
+fn test_any_and_all() {
+    assert (ivec::any(is_three, ~[ 1u, 2u, 3u ]));
+    assert (!ivec::any(is_three, ~[ 0u, 1u, 2u ]));
+    assert (ivec::any(is_three, ~[ 1u, 2u, 3u, 4u, 5u ]));
+    assert (!ivec::any(is_three, ~[ 1u, 2u, 4u, 5u, 6u ]));
+
+    assert (ivec::all(is_three, ~[ 3u, 3u, 3u ]));
+    assert (!ivec::all(is_three, ~[ 3u, 3u, 2u ]));
+    assert (ivec::all(is_three, ~[ 3u, 3u, 3u, 3u, 3u ]));
+    assert (!ivec::all(is_three, ~[ 3u, 3u, 0u, 1u, 2u ]));
 }
 
 fn main() {
@@ -204,5 +220,6 @@ fn main() {
 
     // Functional utilities
     test_map();
+    test_any_and_all();
 }
 
