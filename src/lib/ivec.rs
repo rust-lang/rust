@@ -12,7 +12,7 @@ native "rust-intrinsic" mod rusti {
 
 native "rust" mod rustrt {
     fn ivec_reserve[T](&mutable T[mutable?] v, uint n);
-    fn ivec_on_heap[T](&T[] v) -> bool;
+    fn ivec_on_heap[T](&T[] v) -> uint;
     fn ivec_to_ptr[T](&T[] v) -> *T;
     fn ivec_copy_from_buf[T](&mutable T[mutable?] v, *T ptr, uint count);
 }
@@ -23,7 +23,7 @@ fn reserve[T](&mutable T[mutable?] v, uint n) {
 }
 
 fn on_heap[T](&T[] v) -> bool {
-    ret rustrt::ivec_on_heap(v);
+    ret rustrt::ivec_on_heap(v) != 0u;
 }
 
 fn to_ptr[T](&T[] v) -> *T {
