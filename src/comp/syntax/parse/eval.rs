@@ -41,23 +41,6 @@ fn eval_crate_directives_to_mod(ctx cx,
     ret rec(view_items=view_items, items=items);
 }
 
-fn eval_crate_directive_block(ctx cx, &ast::block blk, str prefix,
-                              &mutable vec[@ast::view_item] view_items,
-                              &mutable vec[@ast::item] items) {
-    for (@ast::stmt s in blk.node.stmts) {
-        alt (s.node) {
-            case (ast::stmt_crate_directive(?cdir)) {
-                eval_crate_directive(cx, cdir, prefix, view_items, items);
-            }
-            case (_) {
-                codemap::emit_warning
-                   (some(s.span), "unsupported stmt in crate-directive block",
-                    cx.sess.cm);
-            }
-        }
-    }
-}
-
 fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                         &mutable vec[@ast::view_item] view_items,
                         &mutable vec[@ast::item] items) {
