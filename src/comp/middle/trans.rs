@@ -4564,7 +4564,11 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto lltop = bcx.llbb;
     auto r = trans_block(bcx, body, return);
     finish_fn(fcx, lltop);
-    r.bcx.build.RetVoid();
+
+    if (!r.bcx.build.is_terminated()) {
+        // if terminated is true, no need for the ret-fail
+        r.bcx.build.RetVoid();
+    }
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt (seq.node) {
