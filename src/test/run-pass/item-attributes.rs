@@ -192,6 +192,18 @@ mod test_other_forms {
     }
 }
 
+mod test_native_items {
+    native "rust" mod rustrt {
+        #[attr];
+
+        #[attr]
+        type vbuf;
+
+        #[attr]
+        fn vec_len[T](vec[T] v) -> uint;
+    }
+}
+
 fn main() {
 }
 

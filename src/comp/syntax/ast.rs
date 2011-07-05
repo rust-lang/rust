@@ -542,6 +542,7 @@ tag item_ {
 }
 
 type native_item = rec(ident ident,
+                       vec[attribute] attrs,
                        native_item_ node,
                        node_id id,
                        span span);

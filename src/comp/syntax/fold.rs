@@ -161,8 +161,11 @@ fn noop_fold_view_item(&view_item_ vi, ast_fold fld) -> view_item_ {
 
 fn noop_fold_native_item(&@native_item ni, ast_fold fld) -> @native_item {
     auto fold_arg = bind fold_arg_(_, fld);
+    auto fold_meta_item = bind fold_meta_item_(_,fld);
+    auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
     ret @rec(ident=fld.fold_ident(ni.ident),
+             attrs=map(fold_attribute, ni.attrs),
              node=alt (ni.node) {
                  case (native_item_ty) { native_item_ty }
                  case (native_item_fn(?st, ?fdec, ?typms)) {

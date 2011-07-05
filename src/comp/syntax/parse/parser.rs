@@ -1870,17 +1870,20 @@ fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs._0);
 }
 
-fn parse_item_native_type(&parser p) -> @ast::native_item {
+fn parse_item_native_type(&parser p,
+                          &vec[ast::attribute] attrs) -> @ast::native_item {
     auto t = parse_type_decl(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret @rec(ident=t._1,
+             attrs=attrs,
              node=ast::native_item_ty,
              id=p.get_id(),
              span=rec(lo=t._0, hi=hi));
 }
 
-fn parse_item_native_fn(&parser p) -> @ast::native_item {
+fn parse_item_native_fn(&parser p,
+                        &vec[ast::attribute] attrs) -> @ast::native_item {
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto decl = parse_fn_decl(p, ast::impure_fn);
@@ -1892,25 +1895,38 @@ fn parse_item_native_fn(&parser p) -> @ast::native_item {
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret @rec(ident=t._0,
+             attrs=attrs,
              node=ast::native_item_fn(link_name, decl, t._1),
              id=p.get_id(),
              span=rec(lo=lo, hi=hi));
 }
 
-fn parse_native_item(&parser p) -> @ast::native_item {
+fn parse_native_item(&parser p,
+                     &vec[ast::attribute] attrs) -> @ast::native_item {
     parse_layer(p);
     if (eat_word(p, "type")) {
-        ret parse_item_native_type(p);
+        ret parse_item_native_type(p, attrs);
     } else if (eat_word(p, "fn")) {
-        ret parse_item_native_fn(p);
+        ret parse_item_native_fn(p, attrs);
     } else { unexpected(p, p.peek()); fail; }
 }
 
-fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi) ->
+fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi,
+                          &vec[ast::attribute] first_item_attrs) ->
    ast::native_mod {
+    auto view_items = if (vec::len(first_item_attrs) == 0u) {
+        parse_native_view(p)
+    } else {
+        // Shouldn't be any view items since we've already parsed an item attr
+        []
+    };
     let vec[@ast::native_item] items = [];
-    auto view_items = parse_native_view(p);
-    while (p.peek() != token::RBRACE) { items += [parse_native_item(p)]; }
+    auto initial_attrs = first_item_attrs;
+    while (p.peek() != token::RBRACE) {
+        auto attrs = initial_attrs + parse_outer_attributes(p);
+        initial_attrs = [];
+        items += [parse_native_item(p, attrs)];
+    }
     ret rec(native_name=native_name,
             abi=abi,
             view_items=view_items,
@@ -1941,10 +1957,14 @@ fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
         native_name = id;
     }
     expect(p, token::LBRACE);
-    auto m = parse_native_mod_items(p, native_name, abi);
+    auto more_attrs = parse_inner_attrs_and_next(p);
+    auto inner_attrs = more_attrs._0;
+    auto first_item_outer_attrs = more_attrs._1;
+    auto m = parse_native_mod_items(p, native_name, abi,
+                                    first_item_outer_attrs);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs);
+    ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs + inner_attrs);
 }
 
 fn parse_type_decl(&parser p) -> tup(uint, ast::ident) {

@@ -383,8 +383,10 @@ fn print_item(&ps s, &@ast::item item) {
             word_nbsp(s, "mod");
             word_nbsp(s, item.ident);
             bopen(s);
+            print_inner_attributes(s, item.attrs);
             for (@ast::native_item item in nmod.items) {
                 hardbreak_if_not_bol(s);
+                print_outer_attributes(s, item.attrs);
                 ibox(s, indent_unit);
                 maybe_print_comment(s, item.span.lo);
                 alt (item.node) {
