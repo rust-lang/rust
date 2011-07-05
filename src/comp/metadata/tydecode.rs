@@ -16,10 +16,9 @@ import util::common::a_bang;
 export parse_def_id;
 export parse_ty_data;
 
-// Compact string representation for ty::t values. API ty_str & parse_from_str
-// (The second has to be authed pure.) Extra parameters are for converting
-// to/from def_ids in the data buffer. Whatever format you choose should not
-// contain pipe characters.
+// Compact string representation for ty::t values. API ty_str &
+// parse_from_str. Extra parameters are for converting to/from def_ids in the
+// data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
 type str_def = fn(str) -> ast::def_id ;
