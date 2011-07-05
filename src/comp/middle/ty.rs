@@ -2761,13 +2761,16 @@ fn type_err_to_str(&ty::type_err err) -> str {
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
 fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
-                       uint ty_param_count) -> tup(vec[int], t) {
-    let vec[int] param_var_ids = [];
+                       uint ty_param_count) -> tup(int[], t) {
+    let @mutable int[] param_var_ids = @mutable ~[];
     auto i = 0u;
-    while (i < ty_param_count) { param_var_ids += [next_ty_var()]; i += 1u; }
-    fn binder(span sp, ctxt cx, vec[int] param_var_ids,
+    while (i < ty_param_count) {
+        *param_var_ids += ~[next_ty_var()];
+        i += 1u;
+    }
+    fn binder(span sp, ctxt cx, @mutable int[] param_var_ids,
               fn() -> int next_ty_var, uint index) -> t {
-        if (index < vec::len(param_var_ids)) {
+        if (index < ivec::len(*param_var_ids)) {
             ret mk_var(cx, param_var_ids.(index));
         }
         else {
@@ -2777,7 +2780,7 @@ fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
     auto new_typ =
         fold_ty(cx, fm_param(bind binder(sp, cx, param_var_ids,
                                          next_ty_var, _)), typ);
-    ret tup(param_var_ids, new_typ);
+    ret tup(*param_var_ids, new_typ);
 }
 
 
