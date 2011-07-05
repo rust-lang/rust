@@ -1,9 +1,12 @@
 // Functions dealing with attributes and meta_items
 
 import std::vec;
+import std::str;
+import std::map;
 import std::option;
 import syntax::ast;
 import util::common;
+import driver::session;
 
 export attr_metas;
 export find_linkage_metas;
@@ -12,6 +15,7 @@ export find_meta_items_by_name;
 export contains;
 export sort_meta_items;
 export remove_meta_items_by_name;
+export require_unique_names;
 export get_attr_name;
 export mk_name_value_item;
 export mk_list_item;
@@ -166,6 +170,18 @@ fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
     } (_, name);
 
     ret vec::filter_map(filter, items);
+}
+
+fn require_unique_names(&session::session sess, &vec[@ast::meta_item] metas) {
+    auto map = map::mk_hashmap[str, ()](str::hash, str::eq);
+    for (@ast::meta_item meta in metas) {
+        auto name = get_meta_item_name(meta);
+        if (map.contains_key(name)) {
+            sess.span_fatal(meta.span, 
+                            #fmt("duplicate meta item `%s`", name));
+        }
+        map.insert(name, ());
+    }
 }
 
 fn span[T](&T item) -> ast::spanned[T] {

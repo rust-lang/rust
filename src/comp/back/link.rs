@@ -286,19 +286,19 @@ fn build_link_meta(&session::session sess, &ast::crate c,
                               option::t[str] vers,
                               vec[@ast::meta_item] cmh_items);
 
-    fn provided_link_metas(&ast::crate c) -> provided_metas {
+    fn provided_link_metas(&session::session sess,
+                           &ast::crate c) -> provided_metas {
         let option::t[str] name = none;
         let option::t[str] vers = none;
         let vec[@ast::meta_item] cmh_items = [];
-        for (@ast::meta_item meta in
-                 attr::find_linkage_metas(c.node.attrs)) {
+        auto linkage_metas = attr::find_linkage_metas(c.node.attrs);
+        attr::require_unique_names(sess, linkage_metas);
+        for (@ast::meta_item meta in linkage_metas) {
             alt (meta.node) {
                 case (ast::meta_name_value("name", ?v)) {
-                    // FIXME: Should probably warn about duplicate name items
                     name = some(v);
                 }
                 case (ast::meta_name_value("vers", ?v)) {
-                    // FIXME: Should probably warn about duplicate value items
                     vers = some(v);
                 }
                 case (_) {
@@ -361,7 +361,7 @@ fn build_link_meta(&session::session sess, &ast::crate c,
         };
     }
 
-    auto provided_metas = provided_link_metas(c);
+    auto provided_metas = provided_link_metas(sess, c);
     auto name = crate_meta_name(sess, c, output, provided_metas);
     auto vers = crate_meta_vers(sess, c, provided_metas);
     auto extras_hash = crate_meta_extras_hash(sha, c, provided_metas);
