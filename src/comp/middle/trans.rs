@@ -2533,6 +2533,23 @@ fn iter_structural_ty(&@block_ctxt cx, ValueRef v, &ty::t t, val_and_ty_fn f)
     ret iter_structural_ty_full(cx, v, v, t, bind adaptor_fn(f, _, _, _, _));
 }
 
+fn load_inbounds(&@block_ctxt cx, ValueRef p,
+                 vec[ValueRef] idxs) -> ValueRef {
+    ret cx.build.Load(cx.build.InBoundsGEP(p, idxs));
+}
+
+fn store_inbounds(&@block_ctxt cx, ValueRef v,
+                  ValueRef p, vec[ValueRef] idxs) {
+    cx.build.Store(v, cx.build.InBoundsGEP(p, idxs));
+}
+
+// This uses store and inboundsGEP, but it only doing so superficially; it's
+// really storing an incremented pointer to another pointer.
+fn incr_ptr(&@block_ctxt cx, ValueRef p,
+            ValueRef incr, ValueRef pp) {
+    cx.build.Store(cx.build.InBoundsGEP(p, [incr]), pp);
+}
+
 fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
                            &ty::t t, &val_pair_and_ty_fn f) -> result {
     fn iter_boxpp(@block_ctxt cx, ValueRef box_a_cell, ValueRef box_b_cell,
@@ -2610,10 +2627,8 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             increment = C_int(1);
         }
 
-        loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(dest_elem,
-            [increment]), dest_elem_ptr);
-        loop_body_cx.build.Store(loop_body_cx.build.InBoundsGEP(src_elem,
-            [increment]), src_elem_ptr);
+        incr_ptr(loop_body_cx, dest_elem, increment, dest_elem_ptr);
+        incr_ptr(loop_body_cx, src_elem, increment, src_elem_ptr);
         loop_body_cx.build.Br(loop_header_cx.llbb);
 
         ret rslt(next_cx, C_nil());
@@ -3450,13 +3465,8 @@ mod ivec {
         }
 
         auto llunitty = type_of_or_i8(bcx, unit_ty);
-        auto stack_len =
-            {
-                auto p = bcx.build.InBoundsGEP(v,
-                                               [C_int(0),
+        auto stack_len = load_inbounds(bcx, v, [C_int(0),
                                                 C_uint(abi::ivec_elt_len)]);
-                bcx.build.Load(p)
-            };
         auto stack_elem =
             bcx.build.InBoundsGEP(v,
                                   [C_int(0), C_uint(abi::ivec_elt_elems),
@@ -3468,12 +3478,10 @@ mod ivec {
         bcx.build.CondBr(on_heap, on_heap_cx.llbb, next_cx.llbb);
         auto heap_stub =
             on_heap_cx.build.PointerCast(v, T_ptr(T_ivec_heap(llunitty)));
-        auto heap_ptr =
-            {
-                auto v = [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)];
-                on_heap_cx.build.Load(on_heap_cx.build.InBoundsGEP(heap_stub,
-                                                                   v))
-            };
+        auto heap_ptr = load_inbounds(on_heap_cx, heap_stub,
+                                      [C_int(0),
+                                       C_uint(abi::ivec_heap_stub_elt_ptr)]);
+
         // Check whether the heap pointer is null. If it is, the vector length
         // is truly zero.
 
@@ -3494,18 +3502,16 @@ mod ivec {
         zero_len_cx.build.Br(next_cx.llbb);
         // If we're here, then we actually have a heapified vector.
 
-        auto heap_len =
-            {
-                auto v = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
-                auto m = nonzero_len_cx.build.InBoundsGEP(heap_ptr, v);
-                nonzero_len_cx.build.Load(m)
-            };
+        auto heap_len = load_inbounds(nonzero_len_cx, heap_ptr,
+                                      [C_int(0),
+                                       C_uint(abi::ivec_heap_elt_len)]);
         auto heap_elem =
             {
                 auto v = [C_int(0), C_uint(abi::ivec_heap_elt_elems),
                           C_int(0)];
                 nonzero_len_cx.build.InBoundsGEP(heap_ptr,v)
             };
+
         nonzero_len_cx.build.Br(next_cx.llbb);
         // Now we can figure out the length of `v` and get a pointer to its
         // first element.
@@ -3529,10 +3535,8 @@ mod ivec {
         auto stack_len_ptr =
             cx.build.InBoundsGEP(v, [C_int(0), C_uint(abi::ivec_elt_len)]);
         auto stack_len = cx.build.Load(stack_len_ptr);
-        auto alen =
-            cx.build.Load(cx.build.InBoundsGEP(v,
-                                               [C_int(0),
-                                                C_uint(abi::ivec_elt_alen)]));
+        auto alen = load_inbounds(cx, v, [C_int(0),
+                                          C_uint(abi::ivec_elt_alen)]);
         // There are four cases we have to consider:
         // (1) On heap, no resize necessary.
         // (2) On heap, need to resize.
@@ -3552,11 +3556,7 @@ mod ivec {
         auto stub_ptr =
             maybe_on_heap_cx.build.PointerCast(v,
                                                T_ptr(T_ivec_heap(llunitty)));
-        auto heap_ptr =
-            {
-                auto m = maybe_on_heap_cx.build.InBoundsGEP(stub_ptr, stub_p);
-                maybe_on_heap_cx.build.Load(m)
-            };
+        auto heap_ptr = load_inbounds(maybe_on_heap_cx, stub_ptr, stub_p);
         auto on_heap =
             maybe_on_heap_cx.build.ICmp(lib::llvm::LLVMIntNE, heap_ptr,
                                         C_null(val_ty(heap_ptr)));
@@ -3599,10 +3599,8 @@ mod ivec {
                                       [cx.fcx.lltaskptr, p, new_heap_len]);
         }
         auto heap_ptr_resize =
-            {
-                auto m = heap_resize_cx.build.InBoundsGEP(stub_ptr, stub_p);
-                heap_resize_cx.build.Load(m)
-            };
+            load_inbounds(heap_resize_cx, stub_ptr, stub_p);
+
         auto heap_data_resize =
             {
                 auto v = [C_int(0), C_uint(abi::ivec_heap_elt_elems),
@@ -3642,15 +3640,10 @@ mod ivec {
         }
         auto spill_stub =
             stack_spill_cx.build.PointerCast(v, T_ptr(T_ivec_heap(llunitty)));
+
         auto heap_ptr_spill =
-            {
-                auto p = stack_spill_cx.build.InBoundsGEP(spill_stub, stub_p);
-                stack_spill_cx.build.Load(p)
-            };
-        {
-                auto v = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
-                stack_spill_cx.build.InBoundsGEP(heap_ptr_spill, v)
-            };
+            load_inbounds(stack_spill_cx, spill_stub, stub_p);
+
         auto heap_data_spill =
             {
                 auto v = [C_int(0), C_uint(abi::ivec_heap_elt_elems),
@@ -3745,18 +3738,13 @@ mod ivec {
                       unit_ty);
         auto post_copy_cx = rs.bcx;
         // Increment both pointers.
-
         if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
             // We have to increment by the dynamically-computed size.
-            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
-                copy_dest_ptr, [unit_sz]), dest_ptr);
-            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
-                copy_src_ptr, [unit_sz]), src_ptr);
+            incr_ptr(post_copy_cx, copy_dest_ptr, unit_sz, dest_ptr);
+            incr_ptr(post_copy_cx, copy_src_ptr, unit_sz, src_ptr);
         } else {
-            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
-                copy_dest_ptr, [C_int(1)]), dest_ptr);
-            post_copy_cx.build.Store(post_copy_cx.build.InBoundsGEP(
-                copy_src_ptr, [C_int(1)]), src_ptr);
+            incr_ptr(post_copy_cx, copy_dest_ptr, C_int(1), dest_ptr);
+            incr_ptr(post_copy_cx, copy_src_ptr, C_int(1), src_ptr);
         }
 
         post_copy_cx.build.Br(copy_loop_header_cx.llbb);
