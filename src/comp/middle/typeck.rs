@@ -942,29 +942,36 @@ mod demand {
             ty_param_subst_var_ids += [ty::ty_var_id(fcx.ccx.tcx, t_0)];
             simple(fcx, sp, ty_param_subst, t_0);
         }
+
+        fn mk_result(&@fn_ctxt fcx, &ty::t result_ty,
+                     &vec[int] ty_param_subst_var_ids,
+                     uint implicit_boxes) -> ty_param_substs_and_ty {
+            let vec[ty::t] result_ty_param_substs = [];
+            for (int var_id in ty_param_subst_var_ids) {
+                auto tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
+                result_ty_param_substs += [tp_subst];
+            }
+            ret tup(result_ty_param_substs,
+                    add_boxes(fcx.ccx, implicit_boxes, result_ty));
+        }
+
         alt (unify::simple(fcx, expected_1, actual_1)) {
             case (ures_ok(?t)) {
-                let vec[ty::t] result_ty_param_substs = [];
-                for (int var_id in ty_param_subst_var_ids) {
-                    auto tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
-                    result_ty_param_substs += [tp_subst];
-                }
-                ret tup(result_ty_param_substs,
-                        add_boxes(fcx.ccx, implicit_boxes, t));
+                ret mk_result(fcx, t, ty_param_subst_var_ids,
+                              implicit_boxes);
             }
             case (ures_err(?err)) {
                 auto e_err = resolve_type_vars_if_possible(fcx, expected_1);
                 auto a_err = resolve_type_vars_if_possible(fcx, actual_1);
-                fcx.ccx.tcx.sess.span_fatal(sp,
+                fcx.ccx.tcx.sess.span_err(sp,
                                           "mismatched types: expected " +
-                                              ty_to_str(fcx.ccx.tcx, e_err) +
-                                              " but found " +
-                                              ty_to_str(fcx.ccx.tcx, a_err) +
-                                              " (" + ty::type_err_to_str(err)
-                                              + ")");
-                // TODO: In the future, try returning "expected", reporting
-                // the error, and continue.
-
+                                          ty_to_str(fcx.ccx.tcx, e_err) +
+                                          " but found " +
+                                          ty_to_str(fcx.ccx.tcx, a_err) +
+                                          " (" + ty::type_err_to_str(err)
+                                          + ")");
+                ret mk_result(fcx, expected_1,
+                              ty_param_subst_var_ids, implicit_boxes);
             }
         }
     }
@@ -2502,6 +2509,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
         rec(visit_item_pre=bind check_item(ccx, _)
             with walk::default_visitor());
     walk::walk_crate(visit, *crate);
+    tcx.sess.abort_if_errors();
 }
 //
 // Local Variables:
