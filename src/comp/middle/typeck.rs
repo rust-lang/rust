@@ -874,8 +874,8 @@ fn do_autoderef(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = ty::tag_variants(fcx.ccx.tcx, did);
-                if (vec::len(variants) != 1u ||
-                    vec::len(variants.(0).args) != 1u) {
+                if (ivec::len(variants) != 1u ||
+                        ivec::len(variants.(0).args) != 1u) {
                     ret t1;
                 }
                 t1 = ty::substitute_type_params(fcx.ccx.tcx, tps,
@@ -1620,8 +1620,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         case (ty::ty_res(_, ?inner, _)) { oper_t = inner; }
                         case (ty::ty_tag(?id, ?tps)) {
                             auto variants = ty::tag_variants(fcx.ccx.tcx, id);
-                            if (vec::len(variants) != 1u ||
-                                vec::len(variants.(0).args) != 1u) {
+                            if (ivec::len(variants) != 1u ||
+                                    ivec::len(variants.(0).args) != 1u) {
                                 fcx.ccx.tcx.sess.span_fatal
                                     (expr.span, "can only dereference tags " +
                                      "with a single variant which has a " +

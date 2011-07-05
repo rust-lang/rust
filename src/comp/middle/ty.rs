@@ -1288,8 +1288,8 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = tag_variants(cx, did);
-                if (vec::len(variants) != 1u ||
-                    vec::len(variants.(0).args) != 1u) {
+                if (ivec::len(variants) != 1u ||
+                        ivec::len(variants.(0).args) != 1u) {
                     break;
                 }
                 t1 = substitute_type_params(cx, tps, variants.(0).args.(0));
@@ -2812,12 +2812,10 @@ fn def_has_ty_params(&ast::def def) -> bool {
 
 
 // Tag information
-type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
+type variant_info = rec(ty::t[] args, ty::t ctor_ty, ast::def_id id);
 
-fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
-    if (ast::local_crate != id._0) {
-        ret decoder::get_tag_variants(cx, id);
-    }
+fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
+    if (ast::local_crate != id._0) { ret decoder::get_tag_variants(cx, id); }
     auto item = alt (cx.items.find(id._1)) {
         case (some(?i)) { i }
         case (none) {
@@ -2828,22 +2826,22 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
         case (ast_map::node_item(?item)) {
             alt (item.node) {
                 case (ast::item_tag(?variants, _)) {
-                    let vec[variant_info] result = [];
+                    let variant_info[] result = ~[];
                     for (ast::variant variant in variants) {
                         auto ctor_ty = node_id_to_monotype
                             (cx, variant.node.id);
-                        let vec[t] arg_tys = [];
+                        let t[] arg_tys = ~[];
                         if (vec::len[ast::variant_arg](variant.node.args) >
                                 0u) {
                             for (arg a in ty_fn_args(cx, ctor_ty)) {
-                                arg_tys += [a.ty];
+                                arg_tys += ~[a.ty];
                             }
                         }
                         auto did = variant.node.id;
                         result +=
-                            [rec(args=arg_tys,
-                                 ctor_ty=ctor_ty,
-                                 id=ast::local_def(did))];
+                            ~[rec(args=arg_tys,
+                                  ctor_ty=ctor_ty,
+                                  id=ast::local_def(did))];
                     }
                     ret result;
                 }
@@ -2858,7 +2856,7 @@ fn tag_variant_with_id(&ctxt cx, &ast::def_id tag_id, &ast::def_id variant_id)
    -> variant_info {
     auto variants = tag_variants(cx, tag_id);
     auto i = 0u;
-    while (i < vec::len[variant_info](variants)) {
+    while (i < ivec::len[variant_info](variants)) {
         auto variant = variants.(i);
         if (def_eq(variant.id, variant_id)) { ret variant; }
         i += 1u;
