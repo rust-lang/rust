@@ -12,7 +12,8 @@ fn strip_unconfigured_items(@ast::crate crate) -> @ast::crate {
     auto cfg = crate.node.config;
 
     auto precursor = rec(fold_mod = bind fold_mod(cfg, _, _),
-                         fold_block = bind fold_block(cfg, _, _)
+                         fold_block = bind fold_block(cfg, _, _),
+                         fold_native_mod = bind fold_native_mod(cfg, _, _)
                          with *fold::default_ast_fold());
 
     auto fold = fold::make_fold(precursor);
@@ -24,7 +25,7 @@ fn strip_unconfigured_items(@ast::crate crate) -> @ast::crate {
 
 fn filter_item(&ast::crate_cfg cfg,
                &@ast::item item) -> option::t[@ast::item] {
-    if (in_cfg(cfg, item)) {
+    if (item_in_cfg(cfg, item)) {
         option::some(item)
     } else {
         option::none
@@ -39,13 +40,32 @@ fn fold_mod(&ast::crate_cfg cfg, &ast::_mod m,
             items=vec::map(fld.fold_item, filtered_items));
 }
 
+fn filter_native_item(&ast::crate_cfg cfg, &@ast::native_item item)
+    -> option::t[@ast::native_item] {
+    if (native_item_in_cfg(cfg, item)) {
+        option::some(item)
+    } else {
+        option::none
+    }
+}
+
+fn fold_native_mod(&ast::crate_cfg cfg, &ast::native_mod nm,
+                   fold::ast_fold fld) -> ast::native_mod {
+    auto filter = bind filter_native_item(cfg, _);
+    auto filtered_items = vec::filter_map(filter, nm.items);
+    ret rec(native_name=nm.native_name,
+            abi=nm.abi,
+            view_items=vec::map(fld.fold_view_item, nm.view_items),
+            items=filtered_items);
+}
+
 fn filter_stmt(&ast::crate_cfg cfg,
                &@ast::stmt stmt) -> option::t[@ast::stmt] {
     alt (stmt.node) {
         case (ast::stmt_decl(?decl, _)) {
             alt (decl.node) {
                 case (ast::decl_item(?item)) {
-                    if (in_cfg(cfg, item)) {
+                    if (item_in_cfg(cfg, item)) {
                         option::some(stmt)
                     } else {
                         option::none
@@ -67,12 +87,20 @@ fn fold_block(&ast::crate_cfg cfg, &ast::block_ b,
             id=b.id);
 }
 
+fn item_in_cfg(&ast::crate_cfg cfg, &@ast::item item) -> bool {
+    ret in_cfg(cfg, item.attrs);
+}
+
+fn native_item_in_cfg(&ast::crate_cfg cfg, &@ast::native_item item) -> bool {
+    ret in_cfg(cfg, item.attrs);
+}
+
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(&ast::crate_cfg cfg, &@ast::item item) -> bool {
+fn in_cfg(&ast::crate_cfg cfg, &vec[ast::attribute] attrs) -> bool {
 
     // The "cfg" attributes on the item
-    auto item_cfg_attrs = attr::find_attrs_by_name(item.attrs, "cfg");
+    auto item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
     auto item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if (!item_has_cfg_attrs) { ret true; }
 

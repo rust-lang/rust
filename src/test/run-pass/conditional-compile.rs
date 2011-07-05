@@ -85,3 +85,11 @@ fn test_in_fn_ctxt() {
   const int i = 1;
   assert i == 1;
 }
+
+mod test_native_items {
+  native "rust" mod rustrt {
+    #[cfg(bogus)]
+    fn str_vec(str s) -> vec[u8];
+    fn str_vec(str s) -> vec[u8];
+  }
+}
