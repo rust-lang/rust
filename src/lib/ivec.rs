@@ -104,7 +104,17 @@ fn slice_mut[T](&T[mutable?] v, uint start, uint end) -> T[mutable] {
 
 // Mutators
 
-// TODO
+// TODO: Write this, unsafely, in a way that's not O(n).
+fn pop[T](&mutable T[mutable?] v) -> T {
+    auto ln = len(v);
+    assert (ln > 0u);
+    ln -= 1u;
+    auto e = v.(ln);
+    v = slice(v, 0u, ln);
+    ret e;
+}
+
+// TODO: More.
 
 
 // Appending

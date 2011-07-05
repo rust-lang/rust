@@ -106,6 +106,26 @@ fn test_slice() {
     assert (v.(4) == 6);
 }
 
+fn test_pop() {
+    // Test on-stack pop.
+    auto v = ~[ 1, 2, 3 ];
+    auto e = ivec::pop(v);
+    assert (ivec::len(v) == 2u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 2);
+    assert (e == 3);
+
+    // Test on-heap pop.
+    v = ~[ 1, 2, 3, 4, 5 ];
+    e = ivec::pop(v);
+    assert (ivec::len(v) == 4u);
+    assert (v.(0) == 1);
+    assert (v.(1) == 2);
+    assert (v.(2) == 3);
+    assert (v.(3) == 4);
+    assert (e == 5);
+}
+
 fn test_grow() {
     // Test on-stack grow().
     auto v = ~[];
@@ -153,6 +173,9 @@ fn main() {
     test_init_elt();
     test_last();
     test_slice();
+
+    // Mutators
+    test_pop();
 
     // Appending
     test_grow();
