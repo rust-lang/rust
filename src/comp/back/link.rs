@@ -340,15 +340,25 @@ fn build_link_meta(&session::session sess, &ast::crate c,
         ret truncated_sha1_result(sha);
     }
 
+    fn warn_missing(&session::session sess, str name, str default) {
+        if (!sess.get_opts().shared) { ret; }
+        sess.warn(#fmt("missing crate link meta '%s', using '%s' as default",
+                       name, default));
+    }
+
     fn crate_meta_name(&session::session sess, &ast::crate crate,
                        &str output, &provided_metas metas) -> str {
         ret alt (metas.name) {
             case (some(?v)) { v }
             case (none) {
-                auto os = str::split(fs::basename(output), '.' as u8);
-                assert (vec::len(os) >= 2u);
-                vec::pop(os);
-                str::connect(os, ".")
+                auto name = {
+                    auto os = str::split(fs::basename(output), '.' as u8);
+                    assert (vec::len(os) >= 2u);
+                    vec::pop(os);
+                    str::connect(os, ".")
+                };
+                warn_missing(sess, "name", name);
+                name
             }
         };
     }
@@ -357,7 +367,11 @@ fn build_link_meta(&session::session sess, &ast::crate c,
                        &provided_metas metas) -> str {
         ret alt (metas.vers) {
             case (some(?v)) { v }
-            case (none) { "0.0" }
+            case (none) {
+                auto vers = "0.0";
+                warn_missing(sess, "vers", vers);
+                vers
+            }
         };
     }
 
