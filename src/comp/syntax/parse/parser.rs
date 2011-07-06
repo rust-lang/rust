@@ -50,7 +50,6 @@ type parser =
         fn get_reader() -> lexer::reader ;
         fn get_filemap() -> codemap::filemap ;
         fn get_bad_expr_words() -> hashmap[str, ()] ;
-        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] ;
         fn get_chpos() -> uint ;
         fn get_id() -> ast::node_id ;
         fn get_sess() -> parse_sess;
@@ -82,8 +81,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
                      mutable restriction restr,
                      lexer::reader rdr,
                      vec[op_spec] precs,
-                     hashmap[str, ()] bad_words,
-                     hashmap[str, ex::syntax_extension] syntax_expanders) {
+                     hashmap[str, ()] bad_words) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
             // log rdr.get_filename()
@@ -116,9 +114,6 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn get_reader() -> lexer::reader { ret rdr; }
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
         fn get_bad_expr_words() -> hashmap[str, ()] { ret bad_words; }
-        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] {
-            ret syntax_expanders;
-        }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
         fn get_id() -> ast::node_id { ret next_node_id(sess); }
         fn get_sess() -> parse_sess { ret sess; }
@@ -129,8 +124,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, cfg, ftype, lexer::next_token(rdr),
                      npos, npos, npos, UNRESTRICTED, rdr,
-                     prec_table(), bad_expr_word_table(),
-                     ex::syntax_expander_table());
+                     prec_table(), bad_expr_word_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
@@ -1028,38 +1022,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto es = parse_seq_ivec(token::LPAREN, token::RPAREN,
                              some(token::COMMA), parse_expr, p);
     auto hi = es.span.hi;
-    auto ext_span = rec(lo=lo, hi=hi);
-    auto ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
-    ret mk_expr(p, lo, hi, ex);
-}
-
-/*
- * FIXME: This is a crude approximation of the syntax-extension system,
- * for purposes of prototyping and/or hard-wiring any extensions we
- * wish to use while bootstrapping. The eventual aim is to permit
- * loading rust crates to process extensions.
- */
-fn expand_syntax_ext(&parser p, span sp, &ast::path path,
-                     &(@ast::expr)[] args, option::t[str] body) ->
-   ast::expr_ {
-    assert (ivec::len(path.node.idents) > 0u);
-    auto extname = path.node.idents.(0);
-    alt (p.get_syntax_expanders().find(extname)) {
-        case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
-        case (some(ex::normal(?ext))) {
-            auto ext_cx = ex::mk_ctxt(p.get_sess());
-            ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
-        }
-        // because we have expansion inside parsing, new macros are only
-        // visible further down the file
-        case (some(ex::macro_defining(?ext))) {
-            auto ext_cx = ex::mk_ctxt(p.get_sess());
-            auto name_and_extension = ext(ext_cx, sp, args, body);
-            p.get_syntax_expanders().insert(name_and_extension._0,
-                                            name_and_extension._1);
-            ret ast::expr_tup(~[]);
-        }
-    }
+    ret mk_expr(p, lo, hi, ast::expr_ext(pth, es.node, none));
 }
 
 fn parse_self_method(&parser p) -> @ast::expr {
@@ -1698,7 +1661,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_field(_, _)) { true }
                 case (ast::expr_index(_, _)) { true }
                 case (ast::expr_path(_)) { true }
-                case (ast::expr_ext(_, _, _, _)) { true }
+                case (ast::expr_ext(_, _, _)) { true }
                 case (ast::expr_fail(_)) { true }
                 case (ast::expr_break) { true }
                 case (ast::expr_cont) { true }
@@ -2443,10 +2406,9 @@ fn parse_native_view(&parser p) -> (@ast::view_item)[] {
 }
 
 fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
-                                &codemap::codemap cm) -> @ast::crate {
-    auto sess = @rec(cm=cm, mutable next_id=0);
+                                &parse_sess sess) -> @ast::crate {
     auto p = new_parser_from_file(sess, cfg, input, 0u);
-    ret parse_crate_mod(p, cfg);
+    ret parse_crate_mod(p, cfg, sess);
 }
 
 fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
@@ -2458,12 +2420,12 @@ fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
     auto itr = @interner::mk(str::hash, str::eq);
     auto rdr = lexer::new_reader(sess.cm, source, filemap, itr);
     auto p = new_parser(sess, cfg, rdr, ftype);
-    ret parse_crate_mod(p, cfg);
+    ret parse_crate_mod(p, cfg, sess);
 }
 
 // Parses a source module as a crate
-fn parse_crate_mod(&parser p, &ast::crate_cfg cfg) -> @ast::crate {
-
+fn parse_crate_mod(&parser p, &ast::crate_cfg cfg, parse_sess sess) 
+    -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = crate_attrs._1;
@@ -2570,8 +2532,7 @@ fn parse_crate_directives(&parser p, token::token term,
 }
 
 fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
-                               &codemap::codemap cm) -> @ast::crate {
-    auto sess = @rec(cm=cm, mutable next_id=0);
+                               &parse_sess sess) -> @ast::crate {
     auto p = new_parser_from_file(sess, cfg, input, 0u);
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);

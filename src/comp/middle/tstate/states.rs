@@ -367,8 +367,8 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         case (expr_chan(?ex)) {
             ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
         }
-        case (expr_ext(_, _, _, ?expanded)) {
-            ret find_pre_post_state_sub(fcx, pres, expanded, e.id, none);
+        case (expr_ext(_, _, _)) {
+            fcx.ccx.tcx.sess.bug("unexpanded macro");
         }
         case (expr_put(?maybe_e)) {
             alt (maybe_e) {

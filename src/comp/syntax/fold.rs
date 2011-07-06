@@ -414,11 +414,11 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_path(?pth)) {
             expr_path(fld.fold_path(pth))
                 }
-        case (expr_ext(?pth, ?args, ?body, ?expanded)) {
+        case (expr_ext(?pth, ?args, ?body)) {
             expr_ext(fld.fold_path(pth), ivec::map(fld.fold_expr, args),
                      body, fld.fold_expr(expanded))
                 }
-        case (expr_fail(_)) { e }
+        case (expr_fail(?e)) { expr_fail(option::map(fld.fold_expr, e)) }
         case (expr_break()) { e }
         case (expr_cont()) { e }
         case (expr_ret(?e)) { 

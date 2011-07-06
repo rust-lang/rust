@@ -53,6 +53,7 @@ mod syntax {
         mod fmt;
         mod env;
         mod simplext;
+        mod expand;
     }
     mod print {
         mod pprust;

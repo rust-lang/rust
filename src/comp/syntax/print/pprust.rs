@@ -961,7 +961,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_ext(?path, ?args, ?body, _)) {
+        case (ast::expr_ext(?path, ?args, ?body)) {
             word(s.s, "#");
             print_path(s, path);
             if (ivec::len(args) > 0u) {

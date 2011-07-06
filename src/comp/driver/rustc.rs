@@ -80,10 +80,10 @@ fn parse_input(session::session sess, &ast::crate_cfg cfg, str input)
     -> @ast::crate {
     ret if (str::ends_with(input, ".rc")) {
             parser::parse_crate_from_crate_file
-                (input, cfg, sess.get_codemap())
+                (input, cfg, sess.get_parse_sess())
         } else if (str::ends_with(input, ".rs")) {
             parser::parse_crate_from_source_file
-                (input, cfg, sess.get_codemap())
+                (input, cfg, sess.get_parse_sess())
         } else { sess.fatal("unknown input file type: " + input); fail };
 }
 
@@ -110,6 +110,9 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
         crate = time(time_passes, "building test harness",
                      bind front::test::modify_for_testing(crate));
     }
+    crate = time(time_passes, "expansion",
+                 bind syntax::ext::expand::expand_crate(sess, crate));
+
     auto ast_map = time(time_passes, "ast indexing",
                         bind middle::ast_map::map_crate(*crate));
     time(time_passes, "external crate/lib resolution",
@@ -357,7 +360,8 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
     auto cstore = cstore::mk_cstore();
     ret session::session(target_cfg, sopts, cstore,
-                         codemap::new_codemap(), 0u);
+                         @rec(cm=codemap::new_codemap(), mutable next_id=0),
+                         0u);
 }
 
 fn parse_pretty(session::session sess, &str name) -> pp_mode {

@@ -367,10 +367,10 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_path(?p)) {
             for (@ast::ty tp in p.node.types) { walk_ty(v, tp); }
         }
-        case (ast::expr_ext(_, ?args, ?body, ?expansion)) {
-            // Only walk expansion, not args/body.
-
-            walk_expr(v, expansion);
+        case (ast::expr_ext(_, ?args, _)) {
+            for (@ast::expr e in args) {
+                walk_expr(v, e);
+            }
         }
         case (ast::expr_fail(?eo)) { walk_expr_opt(v, eo); }
         case (ast::expr_break) { }

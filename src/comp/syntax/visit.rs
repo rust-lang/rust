@@ -362,8 +362,10 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_path(?p)) {
             for (@ty tp in p.node.types) { v.visit_ty(tp, e, v); }
         }
-        case (expr_ext(_, _, _, ?expansion)) {
-            v.visit_expr(expansion, e, v);
+        case (expr_ext(_, ?args, _)) {
+            for(@ast::expr arg in args) {
+                vt(v).visit_expr(arg, e, v);
+            }
         }
         case (expr_fail(?eo)) {
             visit_expr_opt(eo, e, v);
