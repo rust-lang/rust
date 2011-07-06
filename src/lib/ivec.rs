@@ -183,6 +183,14 @@ fn filter_map[T,U](fn(&T)->option::t[U] f, &T[mutable?] v) -> U[] {
     ret result;
 }
 
+fn foldl[T,U](fn(&U,&T)->U p, &U z, &T[mutable?] v) -> U {
+    auto sz = len(v);
+    if (sz == 0u) { ret z; }
+    auto first = v.(0);
+    auto rest = slice(v, 1u, sz);
+    ret p(foldl[T,U](p, z, rest), first);
+}
+
 fn any[T](fn(&T)->bool f, &T[] v) -> bool {
     for (T elem in v) { if (f(elem)) { ret true; } }
     ret false;

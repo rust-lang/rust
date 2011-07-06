@@ -16,6 +16,8 @@ fn square_if_odd(&uint n) -> option::t[uint] {
     ret if (n % 2u == 1u) { some(n * n) } else { none };
 }
 
+fn add(&uint x, &uint y) -> uint { ret x + y; }
+
 fn test_reserve_and_on_heap() {
     let int[] v = ~[ 1, 2 ];
     assert (!ivec::on_heap(v));
@@ -210,6 +212,18 @@ fn test_filter_map() {
     assert (w.(2) == 25u);
 }
 
+fn test_foldl() {
+    // Test on-stack fold.
+    auto v = ~[ 1u, 2u, 3u ];
+    auto sum = ivec::foldl(add, 0u, v);
+    assert (sum == 6u);
+
+    // Test on-heap fold.
+    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    sum = ivec::foldl(add, 0u, v);
+    assert (sum == 15u);
+}
+
 fn test_any_and_all() {
     assert (ivec::any(is_three, ~[ 1u, 2u, 3u ]));
     assert (!ivec::any(is_three, ~[ 0u, 1u, 2u ]));
@@ -243,6 +257,7 @@ fn main() {
     // Functional utilities
     test_map();
     test_filter_map();
+    test_foldl();
     test_any_and_all();
 }
 
