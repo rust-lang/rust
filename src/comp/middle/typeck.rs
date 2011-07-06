@@ -1055,65 +1055,72 @@ mod writeback {
         }
         write::ty(fcx.ccx.tcx, id, tup(new_substs_opt, new_ty));
     }
-    fn visit_stmt_pre(@fn_ctxt fcx, &@ast::stmt s) {
-        resolve_type_vars_for_node(fcx, s.span, ty::stmt_node_id(s));
+
+    type wb_ctxt = rec(@fn_ctxt fcx,
+                       // A flag to ignore contained items and lambdas
+                       mutable bool ignore);
+
+    fn visit_stmt_pre(@wb_ctxt wbcx, &@ast::stmt s) {
+        resolve_type_vars_for_node(wbcx.fcx, s.span, ty::stmt_node_id(s));
     }
-    fn visit_expr_pre(@fn_ctxt fcx, &@ast::expr e) {
-        resolve_type_vars_for_node(fcx, e.span, e.id);
+    fn visit_expr_pre(@wb_ctxt wbcx, &@ast::expr e) {
+        resolve_type_vars_for_node(wbcx.fcx, e.span, e.id);
     }
-    fn visit_block_pre(@fn_ctxt fcx, &ast::block b) {
-        resolve_type_vars_for_node(fcx, b.span, b.node.id);
+    fn visit_block_pre(@wb_ctxt wbcx, &ast::block b) {
+        resolve_type_vars_for_node(wbcx.fcx, b.span, b.node.id);
     }
-    fn visit_pat_pre(@fn_ctxt fcx, &@ast::pat p) {
-        resolve_type_vars_for_node(fcx, p.span, p.id);
+    fn visit_pat_pre(@wb_ctxt wbcx, &@ast::pat p) {
+        resolve_type_vars_for_node(wbcx.fcx, p.span, p.id);
     }
-    fn visit_local_pre(@fn_ctxt fcx, &@ast::local l) {
-        auto var_id = lookup_local(fcx, l.span, l.node.id);
+    fn visit_local_pre(@wb_ctxt wbcx, &@ast::local l) {
+        auto var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
         auto fix_rslt =
-            ty::unify::resolve_type_var(fcx.ccx.tcx, fcx.var_bindings,
+            ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx,
+                                        wbcx.fcx.var_bindings,
                                         var_id);
         alt (fix_rslt) {
             case (fix_ok(?lty)) {
-                write::ty_only(fcx.ccx.tcx, l.node.id, lty);
+                write::ty_only(wbcx.fcx.ccx.tcx, l.node.id, lty);
             }
             case (fix_err(_)) {
-                fcx.ccx.tcx.sess.span_fatal(l.span,
-                                          "cannot determine a type \
-                                           for this local variable");
+                wbcx.fcx.ccx.tcx.sess.span_fatal(l.span,
+                                                 "cannot determine a type \
+                                                  for this local variable");
             }
         }
     }
+    fn visit_item_pre(@wb_ctxt wbcx, &@ast::item item) {
+        wbcx.ignore = true;
+    }
+    fn visit_item_post(@wb_ctxt wbcx, &@ast::item item) {
+        wbcx.ignore = false;
+    }
+    fn visit_fn_pre(@wb_ctxt wbcx, &ast::_fn f,
+                    &vec[ast::ty_param] tps, &span sp,
+                    &ast::fn_ident i, ast::node_id d) {
+        wbcx.ignore = true;
+    }
+    fn visit_fn_post(@wb_ctxt wbcx, &ast::_fn f,
+                     &vec[ast::ty_param] tps, &span sp,
+                     &ast::fn_ident i, ast::node_id d) {
+        wbcx.ignore = false;
+    }
+    fn keep_going(@wb_ctxt wbcx) -> bool { ret !wbcx.ignore; }
+
     fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block block) {
-        // A trick to ignore any contained items and lambdas.
-        auto ignore = @mutable false;
-        fn visit_item_pre(@mutable bool ignore, &@ast::item item) {
-            *ignore = true;
-        }
-        fn visit_item_post(@mutable bool ignore, &@ast::item item) {
-            *ignore = false;
-        }
-        fn visit_fn_pre(@mutable bool ignore, &ast::_fn f,
-                        &vec[ast::ty_param] tps, &span sp,
-                        &ast::fn_ident i, ast::node_id d) {
-            *ignore = true;
-        }
-        fn visit_fn_post(@mutable bool ignore, &ast::_fn f,
-                         &vec[ast::ty_param] tps, &span sp,
-                         &ast::fn_ident i, ast::node_id d) {
-            *ignore = false;
-        }
-        fn keep_going(@mutable bool ignore) -> bool { ret !*ignore; }
+        auto wbcx = @rec(fcx = fcx,
+                        mutable ignore = false);
         auto visit =
-            rec(keep_going=bind keep_going(ignore),
-                visit_item_pre=bind visit_item_pre(ignore, _),
-                visit_item_post=bind visit_item_post(ignore, _),
-                visit_fn_pre=bind visit_fn_pre(ignore, _, _, _, _, _),
-                visit_fn_post=bind visit_fn_post(ignore, _, _, _, _, _),
-                visit_stmt_pre=bind visit_stmt_pre(fcx, _),
-                visit_expr_pre=bind visit_expr_pre(fcx, _),
-                visit_block_pre=bind visit_block_pre(fcx, _),
-                visit_pat_pre=bind visit_pat_pre(fcx, _),
-                visit_local_pre=bind visit_local_pre(fcx, _)
+            rec(keep_going=bind keep_going(wbcx),
+                visit_item_pre=bind visit_item_pre(wbcx, _),
+                visit_item_post=bind visit_item_post(wbcx, _),
+                visit_fn_pre=bind visit_fn_pre(wbcx, _, _, _, _, _),
+                visit_fn_post=bind visit_fn_post(wbcx, _, _, _, _, _),
+                visit_stmt_pre=bind visit_stmt_pre(wbcx, _),
+                visit_expr_pre=bind visit_expr_pre(wbcx, _),
+                visit_block_pre=bind visit_block_pre(wbcx, _),
+                visit_pat_pre=bind visit_pat_pre(wbcx, _),
+                visit_local_pre=bind visit_local_pre(wbcx, _)
                 with walk::default_visitor());
         walk::walk_block(visit, block);
     }
