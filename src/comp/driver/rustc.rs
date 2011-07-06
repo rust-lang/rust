@@ -50,13 +50,13 @@ fn default_configuration(session::session sess, str argv0, str input) ->
 
     auto mk = attr::mk_name_value_item_str;
 
-    ret [ // Target bindings.
-         mk("target_os", std::os::target_os()),
-         mk("target_arch", "x86"),
-         mk("target_libc", libc),
-         // Build bindings.
-         mk("build_compiler", argv0),
-         mk("build_input", input)];
+    ret ~[ // Target bindings.
+          mk("target_os", std::os::target_os()),
+          mk("target_arch", "x86"),
+          mk("target_libc", libc),
+          // Build bindings.
+          mk("build_compiler", argv0),
+          mk("build_input", input)];
 }
 
 fn build_configuration(session::session sess, str argv0,
@@ -70,10 +70,9 @@ fn build_configuration(session::session sess, str argv0,
 fn parse_cfgspecs(&vec[str] cfgspecs) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
-    fn to_meta_word(&str cfgspec) -> @ast::meta_item {
-        attr::mk_word_item(cfgspec)
-    }
-    ret vec::map(to_meta_word, cfgspecs);
+    auto words = ~[];
+    for (str s in cfgspecs) { words += ~[attr::mk_word_item(s)]; }
+    ret words;
 }
 
 fn parse_input(session::session sess, &ast::crate_cfg cfg, str input)

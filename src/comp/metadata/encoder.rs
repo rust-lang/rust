@@ -473,9 +473,8 @@ fn encode_attributes(&ebml::writer ebml_w, &vec[attribute] attrs) {
 fn synthesize_crate_attrs(&@crate_ctxt cx,
                           &@crate crate) -> vec[attribute] {
 
-    fn synthesize_link_attr(&@crate_ctxt cx,
-                            &vec[@meta_item] items)
-        -> attribute {
+    fn synthesize_link_attr(&@crate_ctxt cx, &(@meta_item)[] items)
+            -> attribute {
 
         assert cx.link_meta.name != "";
         assert cx.link_meta.vers != "";
@@ -490,7 +489,7 @@ fn synthesize_crate_attrs(&@crate_ctxt cx,
             attr::remove_meta_items_by_name(tmp, "vers")
         };
 
-        auto meta_items = [name_item] + [vers_item] + other_items;
+        auto meta_items = ~[name_item, vers_item] + other_items;
         auto link_item = attr::mk_list_item("link", meta_items);
 
         ret attr::mk_attr(link_item);
@@ -513,7 +512,7 @@ fn synthesize_crate_attrs(&@crate_ctxt cx,
     }
 
     if (!found_link_attr) {
-        attrs += [synthesize_link_attr(cx, [])];
+        attrs += [synthesize_link_attr(cx, ~[])];
     }
 
     ret attrs;

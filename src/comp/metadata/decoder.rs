@@ -1,6 +1,7 @@
 // Metadata decoding
 
 import std::ebml;
+import std::ivec;
 import std::option;
 import std::vec;
 import std::str;
@@ -262,13 +263,13 @@ fn item_kind_to_str(u8 kind) -> str {
     }
 }
 
-fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
-    let vec[@ast::meta_item] items = [];
+fn get_meta_items(&ebml::doc md) -> (@ast::meta_item)[] {
+    let (@ast::meta_item)[] items = ~[];
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_word)) {
         auto nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
-        items += [attr::mk_word_item(n)];
+        items += ~[attr::mk_word_item(n)];
     }
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_name_value)) {
@@ -278,14 +279,14 @@ fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
         auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
-        items += [attr::mk_name_value_item_str(n, v)];
+        items += ~[attr::mk_name_value_item_str(n, v)];
     }
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_list)) {
         auto nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
         auto subitems = get_meta_items(meta_item_doc);
-        items += [attr::mk_list_item(n, subitems)];
+        items += ~[attr::mk_list_item(n, subitems)];
     }
     ret items;
 }
@@ -299,7 +300,7 @@ fn get_attributes(&ebml::doc md) -> ast::attribute[] {
                 auto meta_items = get_meta_items(attr_doc);
                 // Currently it's only possible to have a single meta item on
                 // an attribute
-                assert (vec::len(meta_items) == 1u);
+                assert (ivec::len(meta_items) == 1u);
                 auto meta_item = meta_items.(0);
                 attrs += ~[rec(node=rec(style=ast::attr_outer,
                                         value=*meta_item),

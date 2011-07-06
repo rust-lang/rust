@@ -591,6 +591,24 @@ fn parse_seq_to_end[T](token::token ket, option::t[token::token] sep,
     ret v;
 }
 
+fn parse_seq_to_end_ivec[T](token::token ket, option::t[token::token] sep,
+                            fn(&parser)->T  f, &parser p) -> T[] {
+    let bool first = true;
+    let T[] v = ~[];
+    while (p.peek() != ket) {
+        alt (sep) {
+            case (some(?t)) {
+                if (first) { first = false; } else { expect(p, t); }
+            }
+            case (_) { }
+        }
+        v += ~[f(p)];
+    }
+    expect(p, ket);
+    ret v;
+}
+
+
 fn parse_seq[T](token::token bra, token::token ket,
                 option::t[token::token] sep, fn(&parser) -> T  f, &parser p)
    -> ast::spanned[vec[T]] {
@@ -600,6 +618,17 @@ fn parse_seq[T](token::token bra, token::token ket,
     auto hi = p.get_hi_pos();
     ret spanned(lo, hi, result);
 }
+
+fn parse_seq_ivec[T](token::token bra, token::token ket,
+                     option::t[token::token] sep,
+                     fn(&parser)->T  f, &parser p) -> ast::spanned[T[]] {
+    auto lo = p.get_lo_pos();
+    expect(p, bra);
+    auto result = parse_seq_to_end_ivec[T](ket, sep, f, p);
+    auto hi = p.get_hi_pos();
+    ret spanned(lo, hi, result);
+}
+
 
 fn parse_lit(&parser p) -> ast::lit {
     auto sp = p.get_span();
@@ -2185,15 +2214,15 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
     }
 }
 
-fn parse_meta_seq(&parser p) -> vec[@ast::meta_item] {
-    ret parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                  parse_meta_item, p).node;
+fn parse_meta_seq(&parser p) -> (@ast::meta_item)[] {
+    ret parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                       parse_meta_item, p).node;
 }
 
-fn parse_optional_meta(&parser p) -> vec[@ast::meta_item] {
+fn parse_optional_meta(&parser p) -> (@ast::meta_item)[] {
     alt (p.peek()) {
         case (token::LPAREN) { ret parse_meta_seq(p); }
-        case (_) { let vec[@ast::meta_item] v = []; ret v; }
+        case (_) { ret ~[]; }
     }
 }
 
@@ -2203,8 +2232,7 @@ fn parse_use(&parser p) -> @ast::view_item {
     auto metadata = parse_optional_meta(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto use_decl =
-        ast::view_item_use(ident, metadata, p.get_id());
+    auto use_decl = ast::view_item_use(ident, metadata, p.get_id());
     ret @spanned(lo, hi, use_decl);
 }
 

@@ -29,13 +29,11 @@ export mk_attr;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
-fn find_linkage_metas(&ast::attribute[] attrs) -> vec[@ast::meta_item] {
-    let vec[@ast::meta_item] metas = [];
+fn find_linkage_metas(&ast::attribute[] attrs) -> (@ast::meta_item)[] {
+    let (@ast::meta_item)[] metas = ~[];
     for (ast::attribute attr in find_attrs_by_name(attrs, "link")) {
         alt (attr.node.value.node) {
-            case (ast::meta_list(_, ?items)) {
-                metas += items;
-            }
+            case (ast::meta_list(_, ?items)) { metas += items; }
             case (_) {
                 log "ignoring link attribute that has incorrect type";
             }
@@ -62,8 +60,8 @@ fn get_attr_name(&ast::attribute attr) -> ast::ident {
     get_meta_item_name(@attr.node.value)
 }
 
-fn find_meta_items_by_name(vec[@ast::meta_item] metas,
-                           ast::ident name) -> vec[@ast::meta_item] {
+fn find_meta_items_by_name(&(@ast::meta_item)[] metas,
+                           ast::ident name) -> (@ast::meta_item)[] {
     auto filter = bind fn(&@ast::meta_item m,
                           ast::ident name) -> option::t[@ast::meta_item] {
         if (get_meta_item_name(m) == name) {
@@ -72,7 +70,7 @@ fn find_meta_items_by_name(vec[@ast::meta_item] metas,
             option::none
         }
     } (_, name);
-    ret vec::filter_map(filter, metas);
+    ret ivec::filter_map(filter, metas);
 }
 
 fn get_meta_item_name(&@ast::meta_item meta) -> ast::ident {
@@ -102,9 +100,9 @@ fn get_meta_item_value_str(&@ast::meta_item meta) -> option::t[str] {
 fn attr_meta(&ast::attribute attr) -> @ast::meta_item { @attr.node.value }
 
 // Get the meta_items from inside a vector of attributes
-fn attr_metas(&ast::attribute[] attrs) -> vec[@ast::meta_item] {
-    auto mitems = [];
-    for (ast::attribute a in attrs) { mitems += [attr_meta(a)]; }
+fn attr_metas(&ast::attribute[] attrs) -> (@ast::meta_item)[] {
+    auto mitems = ~[];
+    for (ast::attribute a in attrs) { mitems += ~[attr_meta(a)]; }
     ret mitems;
 }
 
@@ -133,7 +131,7 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
     }
 }
 
-fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
+fn contains(&(@ast::meta_item)[] haystack, @ast::meta_item needle) -> bool {
     log #fmt("looking for %s",
              syntax::print::pprust::meta_item_to_str(*needle));
     for (@ast::meta_item item in haystack) {
@@ -182,8 +180,8 @@ fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
     ret v2;
 }
 
-fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
-                             str name) -> vec[@ast::meta_item] {
+fn remove_meta_items_by_name(&(@ast::meta_item)[] items,
+                             str name) -> (@ast::meta_item)[] {
 
     auto filter = bind fn(&@ast::meta_item item,
                           str name) -> option::t[@ast::meta_item] {
@@ -194,10 +192,10 @@ fn remove_meta_items_by_name(&vec[@ast::meta_item] items,
         }
     } (_, name);
 
-    ret vec::filter_map(filter, items);
+    ret ivec::filter_map(filter, items);
 }
 
-fn require_unique_names(&session::session sess, &vec[@ast::meta_item] metas) {
+fn require_unique_names(&session::session sess, &(@ast::meta_item)[] metas) {
     auto map = map::mk_hashmap[str, ()](str::hash, str::eq);
     for (@ast::meta_item meta in metas) {
         auto name = get_meta_item_name(meta);
@@ -222,8 +220,8 @@ fn mk_name_value_item(ast::ident name, ast::lit value) -> @ast::meta_item {
     ret @span(ast::meta_name_value(name, value));
 }
 
-fn mk_list_item(ast::ident name,
-                &vec[@ast::meta_item] items) -> @ast::meta_item {
+fn mk_list_item(ast::ident name, &(@ast::meta_item)[] items)
+        -> @ast::meta_item {
     ret @span(ast::meta_list(name, items));
 }
 

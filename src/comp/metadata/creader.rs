@@ -12,6 +12,7 @@ import syntax::walk;
 import syntax::codemap::span;
 import back::x86;
 import util::common;
+import std::ivec;
 import std::str;
 import std::vec;
 import std::ebml;
@@ -28,12 +29,12 @@ export read_crates;
 export list_file_metadata;
 
 fn metadata_matches(&vec[u8] crate_data,
-                    &vec[@ast::meta_item] metas) -> bool {
+                    &(@ast::meta_item)[] metas) -> bool {
     auto attrs = decoder::get_crate_attributes(crate_data);
     auto linkage_metas = attr::find_linkage_metas(attrs);
 
     log #fmt("matching %u metadata requirements against %u items",
-             vec::len(metas), vec::len(linkage_metas));
+             ivec::len(metas), ivec::len(linkage_metas));
 
     for (@ast::meta_item needed in metas) {
         if (!attr::contains(linkage_metas, needed)) {
@@ -54,7 +55,7 @@ fn default_native_lib_naming(session::session sess) ->
 }
 
 fn find_library_crate(&session::session sess, &ast::ident ident,
-                      &vec[@ast::meta_item] metas,
+                      &(@ast::meta_item)[] metas,
                       &vec[str] library_search_paths) ->
    option::t[tup(str, vec[u8])] {
 
@@ -62,7 +63,7 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
 
     auto crate_name = {
         auto name_items = attr::find_meta_items_by_name(metas, "name");
-        alt (vec::last(name_items)) {
+        alt (ivec::last(name_items)) {
             case (some(?i)) {
                 alt (attr::get_meta_item_value_str(i)) {
                     case (some(?n)) { n }
@@ -133,7 +134,7 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
 }
 
 fn load_library_crate(&session::session sess, span span, int cnum,
-                      &ast::ident ident, vec[@ast::meta_item] metas,
+                      &ast::ident ident, &(@ast::meta_item)[] metas,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
