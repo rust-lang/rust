@@ -1076,6 +1076,8 @@ mod writeback {
     type wb_ctxt = rec(@fn_ctxt fcx,
                        // A flag to ignore contained items and lambdas
                        mutable bool ignore,
+                       // As soon as we hit an error we have to stop resolving
+                       // the entire function
                        mutable bool success);
 
     fn visit_stmt_pre(@wb_ctxt wbcx, &@ast::stmt s) {
@@ -1101,9 +1103,10 @@ mod writeback {
                 write::ty_only(wbcx.fcx.ccx.tcx, l.node.id, lty);
             }
             case (fix_err(_)) {
-                wbcx.fcx.ccx.tcx.sess.span_fatal(l.span,
-                                                 "cannot determine a type \
-                                                  for this local variable");
+                wbcx.fcx.ccx.tcx.sess.span_err(l.span,
+                                               "cannot determine a type \
+                                                for this local variable");
+                wbcx.success = false;
             }
         }
     }
