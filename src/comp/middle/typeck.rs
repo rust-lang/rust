@@ -1061,9 +1061,6 @@ mod writeback {
     fn visit_expr_pre(@fn_ctxt fcx, &@ast::expr e) {
         resolve_type_vars_for_node(fcx, e.span, e.id);
     }
-    fn visit_expr_post(@mutable bool ignore, &@ast::expr e) {
-        *ignore = false;
-    }
     fn visit_block_pre(@fn_ctxt fcx, &ast::block b) {
         resolve_type_vars_for_node(fcx, b.span, b.node.id);
     }
