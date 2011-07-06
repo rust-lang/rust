@@ -290,8 +290,8 @@ fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
     ret items;
 }
 
-fn get_attributes(&ebml::doc md) -> vec[ast::attribute] {
-    let vec[ast::attribute] attrs = [];
+fn get_attributes(&ebml::doc md) -> ast::attribute[] {
+    let ast::attribute[] attrs = ~[];
     alt (ebml::maybe_get_doc(md, tag_attributes)) {
         case (option::some(?attrs_d)) {
             for each (ebml::doc attr_doc in
@@ -301,9 +301,9 @@ fn get_attributes(&ebml::doc md) -> vec[ast::attribute] {
                 // an attribute
                 assert (vec::len(meta_items) == 1u);
                 auto meta_item = meta_items.(0);
-                attrs += [rec(node=rec(style=ast::attr_outer,
-                                       value=*meta_item),
-                              span=rec(lo=0u, hi=0u))];
+                attrs += ~[rec(node=rec(style=ast::attr_outer,
+                                        value=*meta_item),
+                               span=rec(lo=0u, hi=0u))];
             }
         }
         case (option::none) { }
@@ -327,7 +327,7 @@ fn list_crate_attributes(&ebml::doc md, io::writer out) {
     out.write_str("\n\n");
 }
 
-fn get_crate_attributes(&vec[u8] data) -> vec[ast::attribute] {
+fn get_crate_attributes(&vec[u8] data) -> ast::attribute[] {
     ret get_attributes(ebml::new_doc(data));
 }
 

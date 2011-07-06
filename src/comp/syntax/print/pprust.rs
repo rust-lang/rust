@@ -242,7 +242,7 @@ fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(&ps s, ast::_mod _mod, &vec[ast::attribute] attrs) {
+fn print_mod(&ps s, ast::_mod _mod, &ast::attribute[] attrs) {
     print_inner_attributes(s, attrs);
     for (@ast::view_item vitem in _mod.view_items) {
         print_view_item(s, vitem);
@@ -533,7 +533,7 @@ fn print_item(&ps s, &@ast::item item) {
     s.ann.post(ann_node);
 }
 
-fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
+fn print_outer_attributes(&ps s, &ast::attribute[] attrs) {
     auto count = 0;
     for (ast::attribute attr in attrs) {
         alt (attr.node.style) {
@@ -544,7 +544,7 @@ fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
     if (count > 0) { hardbreak_if_not_bol(s); }
 }
 
-fn print_inner_attributes(&ps s, vec[ast::attribute] attrs) {
+fn print_inner_attributes(&ps s, &ast::attribute[] attrs) {
     auto count = 0;
     for (ast::attribute attr in attrs) {
         alt (attr.node.style) {
