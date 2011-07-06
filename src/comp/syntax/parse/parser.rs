@@ -363,17 +363,17 @@ fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
 // Use the args list to translate each bound variable 
 // mentioned in a constraint to an arg index.
 // Seems weird to do this in the parser, but I'm not sure how else to.
-fn parse_constrs(&vec[ast::arg] args, &parser p) ->
-    ast::spanned[vec[@ast::constr]] {
+fn parse_constrs(&vec[ast::arg] args, &parser p)
+        -> ast::spanned[(@ast::constr)[]] {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
-    let vec[@ast::constr] constrs = [];
+    let (@ast::constr)[] constrs = ~[];
     if (p.peek() == token::COLON) {
         p.bump();
         while (true) {
             auto constr = parse_ty_constr(args, p);
             hi = constr.span.hi;
-            vec::push(constrs, constr);
+            constrs += ~[constr];
             if (p.peek() == token::COMMA) { p.bump(); } else { break; }
         }
     }
@@ -1799,7 +1799,7 @@ fn parse_dtor(&parser p) -> @ast::method {
             cf=ast::return,
 
             // I guess dtors can't have constraints? 
-            constraints=[]);
+            constraints=~[]);
     let ast::_fn f = rec(decl=d, proto=ast::proto_fn, body=b);
     let ast::method_ m =
         rec(ident="drop", meth=f, id=p.get_id());
@@ -1844,7 +1844,7 @@ fn parse_item_res(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
                     output=@spanned(lo, lo, ast::ty_nil),
                     purity=ast::impure_fn,
                     cf=ast::return,
-                    constraints=[]);
+                    constraints=~[]);
     auto f = rec(decl=decl, proto=ast::proto_fn, body=dtor);
     ret mk_item(p, lo, dtor.span.hi, ident,
                 ast::item_res(f, p.get_id(), ty_params, p.get_id()), attrs);

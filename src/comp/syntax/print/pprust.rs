@@ -1235,7 +1235,7 @@ fn print_mt(&ps s, &ast::mt mt) {
 
 fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
                &ast::ty_arg[] inputs, &@ast::ty output,
-               &ast::controlflow cf, &vec[@ast::constr] constrs) {
+               &ast::controlflow cf, &(@ast::constr)[] constrs) {
     ibox(s, indent_unit);
     if (proto == ast::proto_fn) {
         word(s.s, "fn");
@@ -1488,7 +1488,7 @@ fn ast_constr_to_str(&@ast::constr c) -> str {
             constr_args_to_str(uint_to_str, cag_ivec);
 }
 
-fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {
+fn ast_constrs_str(&(@ast::constr)[] constrs) -> str {
     auto s = "";
     auto colon = true;
     for (@ast::constr c in constrs) {

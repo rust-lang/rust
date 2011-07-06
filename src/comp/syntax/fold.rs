@@ -175,8 +175,8 @@ fn noop_fold_native_item(&@native_item ni, ast_fold fld) -> @native_item {
                                     rec(inputs=map(fold_arg, fdec.inputs),
                                         output=fld.fold_ty(fdec.output),
                                         purity=fdec.purity, cf=fdec.cf,
-                                        constraints=map(fld.fold_constr,
-                                                        fdec.constraints)),
+                                        constraints=ivec::map(fld.fold_constr,
+                                            fdec.constraints)),
                                     typms)
                  }
              },
@@ -450,11 +450,12 @@ fn noop_fold_constr(&constr_ c, ast_fold fld) -> constr_ {
 fn noop_fold_fn(&_fn f, ast_fold fld) -> _fn {
     auto fold_arg = bind fold_arg_(_, fld);
 
-    ret rec(decl= rec(inputs=map(fold_arg, f.decl.inputs),
+    ret rec(decl= rec(inputs=vec::map(fold_arg, f.decl.inputs),
                       output=fld.fold_ty(f.decl.output),
                       purity=f.decl.purity,
                       cf=f.decl.cf,
-                      constraints=map(fld.fold_constr, f.decl.constraints)),
+                      constraints=ivec::map(fld.fold_constr,
+                                            f.decl.constraints)),
             proto = f.proto,
             body = fld.fold_block(f.body));
 }

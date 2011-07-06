@@ -337,7 +337,7 @@ type ty_method_ =
         ty_arg[] inputs,
         @ty output,
         controlflow cf,
-        vec[@constr] constrs);
+        (@constr)[] constrs);
 
 type ty_field = spanned[ty_field_];
 
@@ -403,11 +403,11 @@ tag ty_ {
     ty_chan(@ty);
     ty_tup(mt[]);
     ty_rec(ty_field[]);
-    ty_fn(proto, ty_arg[], @ty, controlflow, vec[@constr]);
+    ty_fn(proto, ty_arg[], @ty, controlflow, (@constr)[]);
     ty_obj(ty_method[]);
     ty_path(path, node_id);
     ty_type;
-    ty_constr(@ty, vec[@constr]);
+    ty_constr(@ty, (@constr)[]);
 }
 
 
@@ -442,7 +442,7 @@ type fn_decl =
         @ty output,
         purity purity,
         controlflow cf,
-        vec[@constr] constraints);
+        (@constr)[] constraints);
 
 tag purity {
     pure_fn; // declared with "pred"
