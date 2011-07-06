@@ -21,6 +21,22 @@
 extern "C" CDECL char const *
 str_buf(rust_task *task, rust_str *s);
 
+#ifdef __i386__
+void
+check_stack(rust_task *task) {
+    void *esp;
+    asm volatile("movl %%esp,%0" : "=r" (esp));
+    if (esp < task->stk->data)
+        task->kernel->fatal("Out of stack space, sorry");
+}
+#else
+#warning "Stack checks are not supported on this architecture"
+void
+check_stack(rust_task *task) {
+    // TODO
+}
+#endif
+
 extern "C" void
 upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
     I(task->sched, false);
@@ -463,6 +479,7 @@ upcall_get_type_desc(rust_task *task,
                      size_t align,
                      size_t n_descs,
                      type_desc const **descs) {
+    check_stack(task);
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
     LOG(task, cache, "upcall get_type_desc with size=%" PRIdPTR

@@ -122,6 +122,17 @@ rust_kernel::log(uint32_t level, char const *fmt, ...) {
 }
 
 void
+rust_kernel::fatal(char const *fmt, ...) {
+    char buf[BUF_BYTES];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    _log.trace_ln(NULL, (uint32_t)0, buf);
+    exit(1);
+    va_end(args);
+}
+
+void
 rust_kernel::pump_message_queues() {
     for (size_t i = 0; i < message_queues.length(); i++) {
         rust_message_queue *queue = message_queues[i];

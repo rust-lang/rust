@@ -106,6 +106,7 @@ public:
 
     void log_all_scheduler_state();
     void log(uint32_t level, char const *fmt, ...);
+    void fatal(char const *fmt, ...);
     virtual ~rust_kernel();
 
     void *malloc(size_t size);
