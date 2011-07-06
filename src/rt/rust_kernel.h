@@ -110,6 +110,7 @@ public:
     virtual ~rust_kernel();
 
     void *malloc(size_t size);
+    void *realloc(void *mem, size_t size);
     void free(void *mem);
 
     // FIXME: this should go away
