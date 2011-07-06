@@ -1118,7 +1118,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
         case (ast::meta_list(?name, ?items)) {
             word(s.s, name);
             popen(s);
-            commasep(s, consistent, items, print_meta_item);
+            commasep_ivec(s, consistent, items, print_meta_item);
             pclose(s);
         }
     }
@@ -1132,9 +1132,9 @@ fn print_view_item(&ps s, &@ast::view_item item) {
         case (ast::view_item_use(?id, ?mta, _)) {
             head(s, "use");
             word(s.s, id);
-            if (vec::len(mta) > 0u) {
+            if (ivec::len(mta) > 0u) {
                 popen(s);
-                commasep(s, consistent, mta, print_meta_item);
+                commasep_ivec(s, consistent, mta, print_meta_item);
                 pclose(s);
             }
         }

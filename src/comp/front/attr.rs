@@ -29,13 +29,11 @@ export mk_attr;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
-fn find_linkage_metas(&ast::attribute[] attrs) -> vec[@ast::meta_item] {
-    let vec[@ast::meta_item] metas = [];
+fn find_linkage_metas(&ast::attribute[] attrs) -> (@ast::meta_item)[] {
+    let (@ast::meta_item)[] metas = ~[];
     for (ast::attribute attr in find_attrs_by_name(attrs, "link")) {
         alt (attr.node.value.node) {
-            case (ast::meta_list(_, ?items)) {
-                metas += items;
-            }
+            case (ast::meta_list(_, ?items)) { metas += items; }
             case (_) {
                 log "ignoring link attribute that has incorrect type";
             }
@@ -133,7 +131,7 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
     }
 }
 
-fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
+fn contains(&(@ast::meta_item)[] haystack, @ast::meta_item needle) -> bool {
     log #fmt("looking for %s",
              syntax::print::pprust::meta_item_to_str(*needle));
     for (@ast::meta_item item in haystack) {
@@ -222,8 +220,8 @@ fn mk_name_value_item(ast::ident name, ast::lit value) -> @ast::meta_item {
     ret @span(ast::meta_name_value(name, value));
 }
 
-fn mk_list_item(ast::ident name,
-                &vec[@ast::meta_item] items) -> @ast::meta_item {
+fn mk_list_item(ast::ident name, &(@ast::meta_item)[] items)
+        -> @ast::meta_item {
     ret @span(ast::meta_list(name, items));
 }
 

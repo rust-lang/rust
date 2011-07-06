@@ -81,7 +81,7 @@ fn def_id_of_def(def d) -> def_id {
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
-type crate_cfg = vec[@meta_item];
+type crate_cfg = (@meta_item)[];
 
 type crate = spanned[crate_];
 
@@ -105,7 +105,7 @@ type meta_item = spanned[meta_item_];
 
 tag meta_item_ {
     meta_word(ident);
-    meta_list(ident, vec[@meta_item]);
+    meta_list(ident, (@meta_item)[]);
     meta_name_value(ident, lit);
 }
 
@@ -505,7 +505,7 @@ type variant = spanned[variant_];
 type view_item = spanned[view_item_];
 
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item], node_id);
+    view_item_use(ident, (@meta_item)[], node_id);
     view_item_import(ident, vec[ident], node_id);
     view_item_import_glob(vec[ident], node_id);
     view_item_export(ident, node_id);

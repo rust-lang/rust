@@ -103,7 +103,7 @@ fn fold_meta_item_(&@meta_item mi, ast_fold fld) -> @meta_item {
                  case (meta_word(?id)) { meta_word(fld.fold_ident(id)) }
                  case (meta_list(?id, ?mis)) {
                      auto fold_meta_item = bind fold_meta_item_(_,fld);
-                     meta_list(id, map(fold_meta_item, mis))
+                     meta_list(id, ivec::map(fold_meta_item, mis))
                  }
                  case (meta_name_value(?id,?s)) {
                      meta_name_value(fld.fold_ident(id),s)
@@ -134,7 +134,7 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
     ret rec(directives=ivec::map(fld.fold_crate_directive, c.directives),
             module=fld.fold_mod(c.module),
             attrs=ivec::map(fold_attribute, c.attrs),
-            config=vec::map(fold_meta_item, c.config));
+            config=ivec::map(fold_meta_item, c.config));
 }
 
 fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld) 
