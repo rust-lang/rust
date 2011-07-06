@@ -131,7 +131,7 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
     auto fold_meta_item = bind fold_meta_item_(_,fld);
     auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
-    ret rec(directives=vec::map(fld.fold_crate_directive, c.directives),
+    ret rec(directives=ivec::map(fld.fold_crate_directive, c.directives),
             module=fld.fold_mod(c.module),
             attrs=ivec::map(fold_attribute, c.attrs),
             config=vec::map(fold_meta_item, c.config));
@@ -145,7 +145,7 @@ fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld)
                 }
         case(cdir_dir_mod(?id,?fname,?cds,?attrs)) {
             cdir_dir_mod(fld.fold_ident(id),fname,
-                         map(fld.fold_crate_directive, cds), attrs)
+                         ivec::map(fld.fold_crate_directive, cds), attrs)
                 }
         case(cdir_view_item(?vi)) { 
             cdir_view_item(fld.fold_view_item(vi))

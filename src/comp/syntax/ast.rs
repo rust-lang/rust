@@ -85,7 +85,7 @@ type crate_cfg = vec[@meta_item];
 
 type crate = spanned[crate_];
 
-type crate_ = rec(vec[@crate_directive] directives,
+type crate_ = rec((@crate_directive)[] directives,
                   _mod module,
                   attribute[] attrs,
                   crate_cfg config);
@@ -93,7 +93,7 @@ type crate_ = rec(vec[@crate_directive] directives,
 tag crate_directive_ {
     cdir_src_mod(ident, option::t[filename], attribute[]);
     cdir_dir_mod(ident, option::t[filename],
-                 vec[@crate_directive], attribute[]);
+                 (@crate_directive)[], attribute[]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);

@@ -2338,7 +2338,7 @@ fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
     auto first_item_outer_attrs = crate_attrs._1;
     auto m = parse_mod_items(p, token::EOF,
                              first_item_outer_attrs);
-    ret @spanned(lo, p.get_lo_pos(), rec(directives=[],
+    ret @spanned(lo, p.get_lo_pos(), rec(directives=~[],
                                          module=m,
                                          attrs=crate_attrs._0,
                                          config=p.get_cfg()));
@@ -2420,8 +2420,8 @@ fn parse_crate_directive(&parser p, &ast::attribute[] first_outer_attr)
 }
 
 fn parse_crate_directives(&parser p, token::token term,
-                          &ast::attribute[] first_outer_attr) ->
-   vec[@ast::crate_directive] {
+                          &ast::attribute[] first_outer_attr)
+        -> (@ast::crate_directive)[] {
 
     // This is pretty ugly. If we have an outer attribute then we can't accept
     // seeing the terminator next, so if we do see it then fail the same way
@@ -2430,10 +2430,10 @@ fn parse_crate_directives(&parser p, token::token term,
         expect_word(p, "mod");
     }
 
-    let vec[@ast::crate_directive] cdirs = [];
+    let (@ast::crate_directive)[] cdirs = ~[];
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p, first_outer_attr);
-        vec::push(cdirs, cdir);
+        cdirs += ~[cdir];
     }
     ret cdirs;
 }
