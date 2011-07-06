@@ -2202,7 +2202,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
             }
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps, ?obj_def_ids)) {
+        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
             // TODO: We probably need to do more work here to be able to
             // handle additional methods that use 'self'
 
@@ -2221,12 +2221,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
             }
 
-            let ast::node_id di = obj_def_ids.ty;
             vec::push[obj_info](fcx.ccx.obj_infos,
                                 rec(obj_fields=
                                     vec::map(anon_obj_field_to_obj_field, 
                                              fields),
-                                    this_obj=di));
+                                    this_obj=id));
 
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?

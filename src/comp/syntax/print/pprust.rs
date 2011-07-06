@@ -953,7 +953,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_anon_obj(_, _, _)) {
+        case (ast::expr_anon_obj(_, _)) {
             word(s.s, "anon obj");
             // FIXME (issue #499): nicer pretty-printing of anon objs
 

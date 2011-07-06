@@ -571,7 +571,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_expr(fcx, expanded);
             copy_pre_post(fcx.ccx, e.id, expanded);
         }
-        case (expr_anon_obj(?anon_obj, _, _)) {
+        case (expr_anon_obj(?anon_obj, _)) {
             alt (anon_obj.with_obj) {
                 case (some(?ex)) {
                     find_pre_post_expr(fcx, ex);

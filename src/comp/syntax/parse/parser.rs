@@ -801,8 +801,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         // "spanned".
         let ast::anon_obj ob =
             rec(fields=fields, methods=meths, with_obj=with_obj);
-        auto odid = rec(ty=p.get_id(), ctor=p.get_id());
-        ex = ast::expr_anon_obj(ob, ty_params, odid);
+        ex = ast::expr_anon_obj(ob, ty_params);
     } else if (eat_word(p, "rec")) {
         expect(p, token::LPAREN);
         auto fields = [parse_field(p)];
@@ -1592,7 +1591,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_if_check(_, _, _)) { false }
                 case (ast::expr_port(_)) { true }
                 case (ast::expr_chan(_)) { true }
-                case (ast::expr_anon_obj(_,_,_)) { false }
+                case (ast::expr_anon_obj(_,_)) { false }
                 case (ast::expr_assert(_)) { true }
             }
         }

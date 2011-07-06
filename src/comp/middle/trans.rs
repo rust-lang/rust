@@ -6268,7 +6268,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_spawn(?dom, ?name, ?func, ?args)) {
             ret trans_spawn(cx, dom, name, func, args, e.id);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps, _)) {
+        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
             ret trans_anon_obj(cx, e.span, anon_obj, tps, e.id);
         }
         case (_) {

@@ -296,7 +296,7 @@ tag expr_ {
     expr_if_check(@expr, block, option::t[@expr]);
     expr_port(option::t[@ty]);
     expr_chan(@expr);
-    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids);
+    expr_anon_obj(anon_obj, vec[ty_param]);
 }
 
 type lit = spanned[lit_];

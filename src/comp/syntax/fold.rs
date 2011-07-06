@@ -429,8 +429,8 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
                 })
                 }
         case (expr_chan(?e)) { expr_chan(fld.fold_expr(e)) }
-        case (expr_anon_obj(?ao, ?typms, ?odis)) {
-            expr_anon_obj(fold_anon_obj(ao), typms, odis)
+        case (expr_anon_obj(?ao, ?typms)) {
+            expr_anon_obj(fold_anon_obj(ao), typms)
                 }
     }
 }
