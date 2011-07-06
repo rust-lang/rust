@@ -2120,8 +2120,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         auto found = false;
                         for (ty::field bf in base_fields) {
                             if (str::eq(f.ident, bf.ident)) {
-                                demand::simple(fcx, expr.span, f.mt.ty,
-                                               bf.mt.ty);
+                                demand::simple(fcx, expr.span, bf.mt.ty,
+                                               f.mt.ty);
                                 found = true;
                             }
                         }
