@@ -12,7 +12,7 @@ import std::map::hashmap;
 import token::can_begin_expr;
 import ex=ext::base;
 import codemap::span;
-import _std::new_str_hash;
+import std::map::new_str_hash;
 import util::interner;
 
 tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }

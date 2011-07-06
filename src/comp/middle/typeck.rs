@@ -9,7 +9,7 @@ import metadata::decoder;
 import driver::session;
 import util::common;
 import syntax::codemap::span;
-import syntax::_std::new_int_hash;
+import std::map::new_int_hash;
 import util::common::new_def_hash;
 import util::common::log_expr_err;
 import middle::ty;
@@ -537,7 +537,7 @@ mod collect {
             }
             case (_) {
                 cx.tcx.sess.fatal("internal error " +
-                                  syntax::_std::istr(id._1));
+                                  std::int::str(id._1));
             }
         }
         ret tpt;

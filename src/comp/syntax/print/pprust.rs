@@ -8,8 +8,6 @@ import std::option;
 import parse::lexer;
 import syntax::codemap::codemap;
 import ast;
-import _std::istr;
-import _std::uistr;
 import option::some;
 import option::none;
 import pp::printer;
@@ -1294,11 +1292,11 @@ fn print_literal(&ps s, &@ast::lit lit) {
             word(s.s,
                  "'" + escape_str(str::from_bytes([ch as u8]), '\'') + "'");
         }
-        case (ast::lit_int(?val)) { word(s.s, istr(val)); }
-        case (ast::lit_uint(?val)) { word(s.s, uistr(val) + "u"); }
+        case (ast::lit_int(?val)) { word(s.s, int::str(val)); }
+        case (ast::lit_uint(?val)) { word(s.s, uint::str(val) + "u"); }
         case (ast::lit_float(?fstr)) { word(s.s, fstr); }
         case (ast::lit_mach_int(?mach, ?val)) {
-            word(s.s, istr(val as int));
+            word(s.s, int::str(val as int));
             word(s.s, ast::ty_mach_to_str(mach));
         }
         case (ast::lit_mach_float(?mach, ?val)) {
@@ -1446,7 +1444,7 @@ fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
-fn uint_to_str(&uint i) -> str { ret uistr(i); }
+fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
     ret ast::path_to_str(c.node.path) +

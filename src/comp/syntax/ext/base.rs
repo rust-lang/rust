@@ -3,7 +3,7 @@ import std::option;
 import std::map::hashmap;
 import parse::parser::parse_sess;
 import codemap::span;
-import syntax::_std::new_str_hash;
+import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander = 

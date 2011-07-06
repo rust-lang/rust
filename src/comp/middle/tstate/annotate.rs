@@ -3,12 +3,12 @@ import std::vec;
 import std::option;
 import std::option::some;
 import std::option::none;
+import std::int;
+import std::uint;
 import syntax::ast::*;
 import syntax::walk;
 import syntax::codemap::span;
-import syntax::_std::istr;
-import syntax::_std::uistr;
-import syntax::_std::new_str_hash;
+import std::map::new_str_hash;
 import util::common::log_expr_err;
 import util::common::log_block_err;
 import util::common::log_item_err;
@@ -35,12 +35,12 @@ fn collect_ids_block(&block b, @mutable vec[node_id] rs) {
 fn collect_ids_stmt(&@stmt s, @mutable vec[node_id] rs) {
     alt (s.node) {
         case (stmt_decl(_, ?id)) {
-            log "node_id " + istr(id);
+            log "node_id " + int::str(id);
             log_stmt(*s);
             vec::push(*rs, id);
         }
         case (stmt_expr(_, ?id)) {
-            log "node_id " + istr(id);
+            log "node_id " + int::str(id);
             log_stmt(*s);
             vec::push(*rs, id);
         }
@@ -65,7 +65,7 @@ fn node_ids_in_fn(&_fn f, &vec[ty_param] tps, &span sp, &fn_ident i,
 
 fn init_vecs(&crate_ctxt ccx, &vec[node_id] node_ids, uint len) {
     for (node_id i in node_ids) {
-        log istr(i) + " |-> " + uistr(len);
+        log int::str(i) + " |-> " + uint::str(len);
         add_node(ccx, i, empty_ann(len));
     }
 }

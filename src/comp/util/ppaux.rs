@@ -1,6 +1,7 @@
 import std::io;
 import std::vec;
 import std::str;
+import std::int;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -12,8 +13,6 @@ import pp::word;
 import pp::eof;
 import pp::zerobreak;
 import pp::hardbreak;
-import syntax::_std::istr;
-import syntax::_std::uistr;
 import ast::ty_mach_to_str;
 import syntax::ast;
 
@@ -34,7 +33,7 @@ fn mode_str_1(&ty::mode m) -> str {
 
 fn fn_ident_to_string(ast::node_id id, &ast::fn_ident i) -> str {
     ret alt (i) {
-        case (none) { "anon" + istr(id) }
+        case (none) { "anon" + int::str(id) }
         case (some(?s)) { s }
     };
 }
@@ -118,7 +117,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
 
-            s += "<tag#" + istr(id._0) + ":" + istr(id._1) + ">";
+            s += "<tag#" + int::str(id._0) + ":" + int::str(id._1) + ">";
             if (vec::len[t](tps) > 0u) {
                 auto f = bind ty_to_str(cx, _);
                 auto strs = vec::map[t, str](f, tps);
@@ -138,9 +137,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
         case (ty_res(?id, _, _)) {
-            s += "<resource#" + istr(id._0) + ":" + istr(id._1) + ">";
+            s += "<resource#" + int::str(id._0) + ":" + int::str(id._1) + ">";
         }
-        case (ty_var(?v)) { s += "<T" + istr(v) + ">"; }
+        case (ty_var(?v)) { s += "<T" + int::str(v) + ">"; }
         case (ty_param(?id)) {
             s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
         }

@@ -201,7 +201,7 @@ fn read_crates(session::session sess, resolve::crate_map crate_map,
     auto e =
         @rec(sess=sess,
              crate_map=crate_map,
-             crate_cache=@syntax::_std::new_str_hash[int](),
+             crate_cache=@std::map::new_str_hash[int](),
              library_search_paths=sess.get_opts().library_search_paths,
              mutable next_crate_num=1);
     auto v =

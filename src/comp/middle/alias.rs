@@ -45,7 +45,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
 
              // Stores information about object fields and function
              // arguments that's otherwise not easily available.
-             local_map=syntax::_std::new_int_hash());
+             local_map=std::map::new_int_hash());
     auto v =
         @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _),
              visit_item=bind visit_item(cx, _, _, _),

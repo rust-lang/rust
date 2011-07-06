@@ -37,7 +37,6 @@ mod middle {
 
 
 mod syntax {
-    mod _std; // FIXME remove
     mod ast;
     mod fold;
     mod walk;

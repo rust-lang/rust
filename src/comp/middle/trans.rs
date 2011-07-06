@@ -36,10 +36,9 @@ import middle::ty::pat_ty;
 import syntax::visit;
 import visit::vt;
 import util::common;
-import syntax::_std::istr;
 import util::common::new_def_hash;
-import syntax::_std::new_int_hash;
-import syntax::_std::new_str_hash;
+import std::map::new_int_hash;
+import std::map::new_str_hash;
 import util::common::local_rhs_span;
 import syntax::codemap::span;
 import lib::llvm::llvm;
@@ -73,7 +72,7 @@ import syntax::print::pprust::expr_to_str;
 import syntax::print::pprust::path_to_str;
 
 obj namegen(mutable int i) {
-    fn next(str prefix) -> str { i += 1; ret prefix + istr(i); }
+    fn next(str prefix) -> str { i += 1; ret prefix + int::str(i); }
 }
 
 type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
@@ -4432,7 +4431,8 @@ fn build_environment(&@block_ctxt cx, &vec[ast::node_id] upvars) ->
                                 case (some(?x)) { llbinding = x; }
                                 case (_) {
                                     cx.fcx.lcx.ccx.sess.bug("unbound var \
-                                      in build_environment " + istr(nid)); }
+                                      in build_environment " + int::str(nid));
+                                }
                             }
                         }
                         case (some(?llval)) { llbinding = llval; }

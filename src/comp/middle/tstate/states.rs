@@ -80,7 +80,6 @@ import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;
 import util::common::new_def_hash;
-import syntax::_std::uistr;
 import util::common::log_expr;
 import util::common::log_block;
 import util::common::log_block_err;

@@ -4,6 +4,7 @@ import std::io;
 import std::map::hashmap;
 import std::option::some;
 import std::option::none;
+import std::int;
 import std::uint;
 import syntax::ast::*;
 import middle::ty;
@@ -182,7 +183,7 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         }
         case (ty::ty_var(?id)) {
             w.write_char('X');
-            w.write_str(syntax::_std::istr(id));
+            w.write_str(int::str(id));
         }
         case (ty::ty_native(?def)) {
             w.write_char('E');
@@ -191,7 +192,7 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         }
         case (ty::ty_param(?id)) {
             w.write_char('p');
-            w.write_str(syntax::_std::uistr(id));
+            w.write_str(uint::str(id));
         }
         case (ty::ty_type) { w.write_char('Y'); }
         case (ty::ty_task) { w.write_char('a'); }

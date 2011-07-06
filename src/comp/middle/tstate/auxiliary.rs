@@ -7,15 +7,15 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::option::maybe;
+import std::int;
+import std::uint;
 import syntax::ast::*;
 import syntax::codemap::span;
 import util::common;
 import util::common::log_block;
-import syntax::_std::new_int_hash;
-import syntax::_std::new_uint_hash;
+import std::map::new_int_hash;
+import std::map::new_uint_hash;
 import util::common::log_expr_err;
-import syntax::_std::istr;
-import syntax::_std::uistr;
 import util::common::lit_eq;
 import syntax::print::pprust::path_to_str;
 import tstate::ann::pre_and_post;
@@ -44,7 +44,9 @@ import syntax::print::pprust::lit_to_str;
 
 
 /* logging funs */
-fn def_id_to_str(def_id d) -> str { ret istr(d._0) + "," + istr(d._1); }
+fn def_id_to_str(def_id d) -> str {
+    ret int::str(d._0) + "," + int::str(d._1);
+}
 
 fn comma_str(vec[@constr_arg_use] args) -> str {
     auto rslt = "";
@@ -259,7 +261,8 @@ fn get_ts_ann(&crate_ctxt ccx, node_id i) -> option::t[ts_ann] {
 fn node_id_to_ts_ann(&crate_ctxt ccx, node_id id) -> ts_ann {
     alt (get_ts_ann(ccx, id)) {
         case (none) {
-            log_err "node_id_to_ts_ann: no ts_ann for node_id " + istr(id);
+            log_err "node_id_to_ts_ann: no ts_ann for node_id " +
+                int::str(id);
             fail;
         }
         case (some(?t)) { ret t; }
@@ -460,7 +463,7 @@ fn constraints_expr(&ty::ctxt cx, @expr e) -> vec[@ty::constr_def] {
 fn node_id_to_def_strict(&ty::ctxt cx, node_id id) -> def {
     alt (cx.def_map.find(id)) {
         case (none) {
-            log_err "node_id_to_def: node_id " + istr(id) + " has no def";
+            log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
             fail;
         }
         case (some(?d)) { ret d; }
@@ -518,7 +521,7 @@ fn match_args(&fn_ctxt fcx, vec[pred_desc] occs, vec[@constr_arg_use] occ) ->
 fn node_id_for_constr(ty::ctxt tcx, node_id t) -> node_id {
     alt (tcx.def_map.find(t)) {
         case (none) {
-            tcx.sess.bug("node_id_for_constr: bad node_id " + istr(t));
+            tcx.sess.bug("node_id_for_constr: bad node_id " + int::str(t));
         }
         case (some(def_fn(?i,_))) { ret i._1; }
         case (_) {
@@ -590,7 +593,7 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
 }
 
 fn pred_desc_to_str(&pred_desc p) -> str {
-    ret "<" + uistr(p.node.bit_num) + ", " +
+    ret "<" + uint::str(p.node.bit_num) + ", " +
         constr_args_to_str(std::util::fst[ident, def_id], p.node.args) + ">";
 }
 

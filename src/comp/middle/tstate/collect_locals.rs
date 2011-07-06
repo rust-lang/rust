@@ -21,9 +21,8 @@ import aux::constr_map;
 import aux::expr_to_constr;
 import aux::constraints_expr;
 import aux::node_id_to_def_strict;
-import syntax::_std::new_int_hash;
+import std::map::new_int_hash;
 import util::common::new_def_hash;
-import syntax::_std::uistr;
 import syntax::codemap::span;
 import syntax::ast::respan;
 
@@ -82,7 +81,7 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ty_param] tps,
 
 fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
    uint {
-    log aux::constraint_to_str(tcx, c) + " |-> " + uistr(next);
+    log aux::constraint_to_str(tcx, c) + " |-> " + std::uint::str(next);
     alt (c.node.c) {
         case (ninit(?i)) { tbl.insert(c.node.id, cinit(next, c.span, i)); }
         case (npred(?p, ?args)) {
@@ -142,7 +141,8 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ty_param] tp,
             cf=f.decl.cf,
             used_vars=v);
     ccx.fm.insert(id, rslt);
-    log name + " has " + uistr(num_constraints(rslt)) + " constraints";
+    log name + " has " + std::uint::str(num_constraints(rslt)) +
+        " constraints";
 }
 
 

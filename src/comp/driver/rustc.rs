@@ -343,7 +343,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
 
 fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
-    auto crate_cache = syntax::_std::new_int_hash[session::crate_metadata]();
+    auto crate_cache = std::map::new_int_hash[session::crate_metadata]();
     ret session::session(target_cfg, sopts, crate_cache, [],
                          [], [], codemap::new_codemap(), 0u);
 }

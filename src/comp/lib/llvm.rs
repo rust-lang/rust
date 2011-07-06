@@ -1457,7 +1457,7 @@ state obj type_names(std::map::hashmap[TypeRef, str] type_names,
 }
 
 fn mk_type_names() -> type_names {
-    auto nt = syntax::_std::new_str_hash[TypeRef]();
+    auto nt = std::map::new_str_hash[TypeRef]();
 
     fn hash(&TypeRef t) -> uint {
         ret t as uint;
@@ -1519,8 +1519,7 @@ fn type_to_str_inner(type_names names,
         case (6) { ret "Label"; }
 
         case (7) {
-            ret "i" + syntax::_std::istr(llvm::LLVMGetIntTypeWidth(ty)
-                                         as int);
+            ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
         }
 
         case (8) {
@@ -1558,7 +1557,7 @@ fn type_to_str_inner(type_names names,
                 i += 1u;
                 if (tout as int == ty as int) {
                     let uint n = vec::len[TypeRef](outer0) - i;
-                    ret "*\\" + syntax::_std::istr(n as int);
+                    ret "*\\" + std::int::str(n as int);
                 }
             }
             ret "*" + type_to_str_inner(names, outer,
