@@ -237,6 +237,26 @@ fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
     end(s);
 }
 
+// TODO: Remove me.
+fn commasep_cmnt_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op,
+                          fn(&IN) -> codemap::span  get_span) {
+    box(s, 0u, b);
+    auto len = ivec::len[IN](elts);
+    auto i = 0u;
+    for (IN elt in elts) {
+        maybe_print_comment(s, get_span(elt).hi);
+        op(s, elt);
+        i += 1u;
+        if (i < len) {
+            word(s.s, ",");
+            maybe_print_trailing_comment(s, get_span(elt),
+                                         some(get_span(elts.(i)).hi));
+            space_if_not_hardbreak(s);
+        }
+    }
+    end(s);
+}
+
 fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     fn expr_span(&@ast::expr expr) -> codemap::span { ret expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
@@ -315,7 +335,7 @@ fn print_type(&ps s, &ast::ty ty) {
                 end(s);
             }
             fn get_span(&ast::ty_field f) -> codemap::span { ret f.span; }
-            commasep_cmnt(s, consistent, fields, print_field, get_span);
+            commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
             pclose(s);
         }
         case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
@@ -1214,7 +1234,7 @@ fn print_mt(&ps s, &ast::mt mt) {
 }
 
 fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
-               &vec[ast::ty_arg] inputs, &@ast::ty output,
+               &ast::ty_arg[] inputs, &@ast::ty output,
                &ast::controlflow cf, &vec[@ast::constr] constrs) {
     ibox(s, indent_unit);
     if (proto == ast::proto_fn) {
@@ -1230,7 +1250,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
         print_alias(s, input.node.mode);
         print_type(s, *input.node.ty);
     }
-    commasep(s, inconsistent, inputs, print_arg);
+    commasep_ivec(s, inconsistent, inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {

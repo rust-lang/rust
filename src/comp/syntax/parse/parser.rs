@@ -258,8 +258,8 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo) -> ast::ty_ {
     }
     auto lo = p.get_lo_pos();
     auto inputs =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                  parse_fn_input_ty, p);
+        parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                       parse_fn_input_ty, p);
     auto constrs = parse_constrs([], p);
     let @ast::ty output;
     auto cf = ast::return;
@@ -308,7 +308,7 @@ fn parse_ty_obj(&parser p, &mutable uint hi) -> ast::ty_ {
         fail;
     }
     auto f = parse_method_sig;
-    auto meths = parse_seq(token::LBRACE, token::RBRACE, none, f, p);
+    auto meths = parse_seq_ivec(token::LBRACE, token::RBRACE, none, f, p);
     hi = meths.span.hi;
     ret ast::ty_obj(meths.node);
 }
@@ -526,8 +526,8 @@ fn parse_ty(&parser p) -> @ast::ty {
         t = ast::ty_tup(elems.node);
     } else if (eat_word(p, "rec")) {
         auto elems =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_ty_field, p);
+            parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                           parse_ty_field, p);
         hi = elems.span.hi;
         t = ast::ty_rec(elems.node);
     } else if (eat_word(p, "fn")) {

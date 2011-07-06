@@ -334,7 +334,7 @@ type ty_arg_ = rec(mode mode, @ty ty);
 type ty_method_ =
     rec(proto proto,
         ident ident,
-        vec[ty_arg] inputs,
+        ty_arg[] inputs,
         @ty output,
         controlflow cf,
         vec[@constr] constrs);
@@ -402,9 +402,9 @@ tag ty_ {
     ty_port(@ty);
     ty_chan(@ty);
     ty_tup(mt[]);
-    ty_rec(vec[ty_field]);
-    ty_fn(proto, vec[ty_arg], @ty, controlflow, vec[@constr]);
-    ty_obj(vec[ty_method]);
+    ty_rec(ty_field[]);
+    ty_fn(proto, ty_arg[], @ty, controlflow, vec[@constr]);
+    ty_obj(ty_method[]);
     ty_path(path, node_id);
     ty_type;
     ty_constr(@ty, vec[@constr]);
