@@ -6268,8 +6268,8 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_spawn(?dom, ?name, ?func, ?args)) {
             ret trans_spawn(cx, dom, name, func, args, e.id);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid)) {
-            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid.ctor, e.id);
+        case (ast::expr_anon_obj(?anon_obj, ?tps, _)) {
+            ret trans_anon_obj(cx, e.span, anon_obj, tps, e.id);
         }
         case (_) {
             // The expression is an lvalue. Fall through.
@@ -6929,8 +6929,7 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
 // instead "inlining" the construction of the object and returning the object
 // itself.
 fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
-                  &vec[ast::ty_param] ty_params, ast::node_id oid,
-                  ast::node_id type_id) -> result {
+                  &vec[ast::ty_param] ty_params, ast::node_id id) -> result {
 
     // Right now, we're assuming that anon objs don't take ty params, even
     // though the AST supports it.  It's nonsensical to write an expression
@@ -6960,7 +6959,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     // Get the type of the eventual entire anonymous object, possibly with
     // extensions.  NB: This type includes both inner and outer methods.
-    auto outer_obj_ty = ty::node_id_to_type(ccx.tcx, type_id);
+    auto outer_obj_ty = ty::node_id_to_type(ccx.tcx, id);
     auto llouter_obj_ty = type_of(ccx, sp, outer_obj_ty);
 
     // Create a vtable for the anonymous object.
@@ -6979,7 +6978,6 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     let result with_obj_val;
     let ty::t with_obj_ty;
-    let TypeRef llwith_obj_ty;
     auto vtbl;
     alt (anon_obj.with_obj) {
         case (none) { 
@@ -7012,8 +7010,6 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             with_obj_ty = ty::expr_ty(ccx.tcx, e);
             //with_obj_ty = ty::node_id_to_type(ccx.tcx, e.id);
 
-            llwith_obj_ty = type_of(ccx, sp, with_obj_ty);
-
             // If there's a with_obj, we pass its type along to create_vtbl().
             // Part of what create_vtbl() will do is take the set difference
             // of methods defined on the original and methods being added.
@@ -7023,7 +7019,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // normal vtable entry for every method being added.
             vtbl = create_vtbl(bcx.fcx.lcx, llouter_obj_ty, outer_obj_ty,
                                wrapper_obj, ty_params, 
-                               some(tup(with_obj_ty, llwith_obj_ty)),
+                               some(with_obj_ty),
                                additional_field_tys);
         }
     }
@@ -7037,7 +7033,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
                                    vec::len[ast::ty_param](ty_params))]));
 
     // Take care of cleanups.
-    auto t = node_id_type(ccx, type_id);
+    auto t = node_id_type(ccx, id);
     find_scope_cx(bcx).cleanups += [clean(bind drop_ty(_, pair, t))];
 
     // Grab onto the first and second elements of the pair.
@@ -7800,7 +7796,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 // helper function for create_vtbl.
 fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
                        ty::t self_ty, &vec[ast::ty_param] ty_params,
-                       tup(ty::t, TypeRef) with_obj_ty_tup,
+                       ty::t with_obj_ty,
                        ty::t[] additional_field_tys) -> ValueRef {
 
     // NB: self_ty (and llself_ty) is the type of the outer object;
@@ -7815,10 +7811,6 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
     // except we also have to pass the inner object that m should be called
     // on.  That object won't exist until run-time, but we know its type
     // statically.
-
-    // Unpack the tuple.
-    let ty::t with_obj_ty = with_obj_ty_tup._0;
-    // TODO: We don't actually need both halves of this.
 
     // Create a fake span for functions that expect it.  Shouldn't matter what
     // it is, since this isn't user-written code.  (Possibly better: have
@@ -8024,7 +8016,7 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
 // read-only memory.
 fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
                &ast::_obj ob, &vec[ast::ty_param] ty_params,
-               option::t[tup(ty::t, TypeRef)] with_obj_ty_tup,
+               option::t[ty::t] with_obj_ty,
                ty::t[] additional_field_tys) -> ValueRef {
 
     // Used only inside create_vtbl to distinguish different kinds of slots
@@ -8048,7 +8040,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
     let vec[ValueRef] llmethods = [dtor];
     let vec[vtbl_mthd] meths = [];
 
-    alt (with_obj_ty_tup) {
+    alt (with_obj_ty) {
         case (none) {
             // If there's no with_obj, then we don't need any forwarding
             // slots.  Just use the object's regular methods.
@@ -8056,7 +8048,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
                 meths += [normal_mthd(m)];
             }
         }
-        case (some(?with_obj_ty_tup)) {
+        case (some(?with_obj_ty)) {
             // Handle forwarding slots.
 
             // If this vtable is being created for an extended object, then
@@ -8074,7 +8066,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
             // methods we need forwarding methods for.
 
             // Gather up methods on the original object in 'meths'.
-            alt (ty::struct(cx.ccx.tcx, with_obj_ty_tup._0)) {
+            alt (ty::struct(cx.ccx.tcx, with_obj_ty)) {
                 case (ty::ty_obj(?with_obj_methods)) {
                     for (ty::method m in with_obj_methods) {
                         meths += [fwding_mthd(@m)];
@@ -8156,11 +8148,11 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
             // If we have to process a forwarding method, then we need to know
             // about the with_obj's type as well as the outer object's type.
             case (fwding_mthd(?fm)) {
-                alt (with_obj_ty_tup) {
+                alt (with_obj_ty) {
                     case (none) {
                         // This shouldn't happen; if we're trying to process a
                         // forwarding method, then we should always have a
-                        // with_obj_ty_tup.
+                        // with_obj_ty.
                         cx.ccx.sess.bug("create_vtbl(): trying to create "
                                         + "forwarding method without a type "
                                         + "of object to forward to");
