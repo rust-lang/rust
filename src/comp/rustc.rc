@@ -66,6 +66,7 @@ mod syntax {
 mod front {
     mod attr;
     mod config;
+    mod test;
 }
 
 mod back {

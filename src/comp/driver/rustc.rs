@@ -106,6 +106,10 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
     if (sess.get_opts().output_type == link::output_type_none) { ret; }
     crate = time(time_passes, "configuration",
                  bind front::config::strip_unconfigured_items(crate));
+    if (sess.get_opts().test) {
+        crate = time(time_passes, "building test harness",
+                     bind front::test::modify_for_testing(sess, crate));
+    }
     auto ast_map = time(time_passes, "ast indexing",
                         bind middle::ast_map::map_crate(*crate));
     auto d =
@@ -229,7 +233,8 @@ options:
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
-    --no-typestate     don't run the typestate pass (unsafe!)\n\n");
+    --no-typestate     don't run the typestate pass (unsafe!)
+    --test             build test harness\n\n");
 }
 
 fn get_os(str triple) -> session::os {
@@ -324,6 +329,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
             case (some(?s)) { s }
         };
     auto cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
+    auto test = opt_present(match, "test");
     let @session::options sopts =
         @rec(shared=shared,
              optimize=opt_level,
@@ -337,7 +343,8 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
              output_type=output_type,
              library_search_paths=library_search_paths,
              sysroot=sysroot,
-             cfg=cfg);
+             cfg=cfg,
+             test=test);
     ret sopts;
 }
 
@@ -367,7 +374,7 @@ fn main(vec[str] args) {
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("noverify"), optmulti("cfg")];
+         optflag("noverify"), optmulti("cfg"), optflag("test")];
     auto binary = vec::shift[str](args);
     auto binary_dir = fs::dirname(binary);
     auto match =

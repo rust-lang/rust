@@ -37,7 +37,8 @@ type options =
         str sysroot,
         // The crate config requested for the session, which may be combined
         // with additional crate configurations during the compile process
-        ast::crate_cfg cfg);
+        ast::crate_cfg cfg,
+        bool test);
 
 type crate_metadata = rec(str name, vec[u8] data);
 
