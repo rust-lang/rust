@@ -426,7 +426,7 @@ type constr_arg = constr_arg_general[uint];
 type constr_arg_general[T] = spanned[constr_arg_general_[T]];
 
 type constr_ = rec(path path,
-                   vec[@constr_arg_general[uint]] args,
+                   (@constr_arg_general[uint])[] args,
                    node_id id);
 
 type constr = spanned[constr_];

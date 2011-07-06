@@ -351,8 +351,9 @@ fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
     auto lo = p.get_lo_pos();
     auto path = parse_path(p);
     auto pf = bind parse_constr_arg(fn_args, _);
-    let rec(vec[@ast::constr_arg] node, span span) args =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), pf, p);
+    let rec((@ast::constr_arg)[] node, span span) args =
+        parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA), pf,
+                       p);
     // FIXME fix the def_id
 
     ret @spanned(lo, args.span.hi,
