@@ -337,3 +337,10 @@ test/compile-fail/%.stage2.out.tmp: test/compile-fail/%.rc $(SREQ2)
 	$(STAGE2) -c -o $(@:.o=$(X)) $< >$@ 2>&1; test $$? -ne 0
 	$(Q)grep --text --quiet \
       "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+STDTEST_CRATE := $(S)src/test/stdtest/stdtest.rc
+STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
+
+test/stdtest/stdtest.stage1$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ1)
+	@$(call E, compile_and_link: $@)
+	$(STAGE1) -o $@ $< --test
