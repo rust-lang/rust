@@ -14,6 +14,7 @@ import std::sha1::sha1;
 import std::sort;
 import trans::crate_ctxt;
 import syntax::ast;
+import syntax::print::pprust;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
 import lib::llvm::mk_pass_manager;
@@ -294,16 +295,18 @@ fn build_link_meta(&session::session sess, &ast::crate c,
         auto linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for (@ast::meta_item meta in linkage_metas) {
-            alt (meta.node) {
-                case (ast::meta_name_value("name", ?v)) {
-                    name = some(v);
+            if (attr::get_meta_item_name(meta) == "name") {
+                alt (attr::get_meta_item_value_str(meta)) {
+                    case (some(?v)) { name = some(v); }
+                    case (none) { cmh_items += [meta]; }
                 }
-                case (ast::meta_name_value("vers", ?v)) {
-                    vers = some(v);
+            } else if (attr::get_meta_item_name(meta) == "vers") {
+                alt (attr::get_meta_item_value_str(meta)) {
+                    case (some(?v)) { vers = some(v); }
+                    case (none) { cmh_items += [meta]; }
                 }
-                case (_) {
-                    cmh_items += [meta];
-                }
+            } else {
+                cmh_items += [meta];
             }
         }
         ret rec(name = name,
@@ -317,6 +320,10 @@ fn build_link_meta(&session::session sess, &ast::crate c,
         fn len_and_str(&str s) -> str {
             ret #fmt("%u_%s", str::byte_len(s), s);
         }
+
+        fn len_and_str_lit(&ast::lit l) -> str {
+            ret len_and_str(pprust::lit_to_str(@l));
+        }
     
         auto cmh_items = attr::sort_meta_items(metas.cmh_items);
 
@@ -326,7 +333,7 @@ fn build_link_meta(&session::session sess, &ast::crate c,
             alt (m.node) {
                 case (ast::meta_name_value(?key, ?value)) {
                     sha.input_str(len_and_str(key));
-                    sha.input_str(len_and_str(value));
+                    sha.input_str(len_and_str_lit(value));
                 }
                 case (ast::meta_word(?name)) {
                     sha.input_str(len_and_str(name));

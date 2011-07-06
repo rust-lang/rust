@@ -64,8 +64,8 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
         auto name_items = attr::find_meta_items_by_name(metas, "name");
         alt (vec::last(name_items)) {
             case (some(?i)) {
-                alt (i.node) {
-                    case (ast::meta_name_value(_, ?v)) { v }
+                alt (attr::get_meta_item_value_str(i)) {
+                    case (some(?n)) { n }
                     case (_) {
                         // FIXME: Probably want a warning here since the user
                         // is using the wrong type of meta item
@@ -180,17 +180,13 @@ fn visit_item(env e, &@ast::item i) {
             if (!e.sess.add_used_library(m.native_name)) {
                 ret;
             }
-            for (ast::attribute a in i.attrs) {
-                auto v = a.node.value.node;
-                alt (v) {
-                    case (ast::meta_name_value(?i, ?s)) {
-                        if (i != "link_args") {
-                            cont;
-                        }
-                        e.sess.add_used_link_args(s);
+            for (ast::attribute a in
+                     attr::find_attrs_by_name(i.attrs, "link_args")) {
+                alt (attr::get_meta_item_value_str(attr::attr_meta(a))) {
+                    case (some(?linkarg)) {
+                        e.sess.add_used_link_args(linkarg);
                     }
-                    case (_) {
-                    }
+                    case (none) { /* fallthrough */ }
                 }
             }
         }

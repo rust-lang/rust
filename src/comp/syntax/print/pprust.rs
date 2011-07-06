@@ -1103,7 +1103,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
         case (ast::meta_name_value(?name, ?value)) {
             word_space(s, name);
             word_space(s, "=");
-            print_string(s, value);
+            print_literal(s, @value);
         }
         case (ast::meta_list(?name, ?items)) {
             word(s.s, name);

@@ -8,6 +8,7 @@ import syntax::ast;
 import util::common;
 import driver::session;
 
+export attr_meta;
 export attr_metas;
 export find_linkage_metas;
 export find_attrs_by_name;
@@ -17,6 +18,9 @@ export sort_meta_items;
 export remove_meta_items_by_name;
 export require_unique_names;
 export get_attr_name;
+export get_meta_item_name;
+export get_meta_item_value_str;
+export mk_name_value_item_str;
 export mk_name_value_item;
 export mk_list_item;
 export mk_word_item;
@@ -78,9 +82,25 @@ fn get_meta_item_name(&@ast::meta_item meta) -> ast::ident {
     }
 }
 
+// Gets the string value if the meta_item is a meta_name_value variant
+// containing a string, otherwise none
+fn get_meta_item_value_str(&@ast::meta_item meta) -> option::t[str] {
+    alt (meta.node) {
+        case (ast::meta_name_value(_, ?v)) {
+            alt (v.node) {
+                case (ast::lit_str(?s, _)) {
+                    option::some(s)
+                }
+                case (_) { option::none }
+            }
+        }
+        case (_) { option::none }
+    }
+}
+
 fn attr_meta(&ast::attribute attr) -> @ast::meta_item { @attr.node.value }
 
-// Get the meta_items from inside an attribute
+// Get the meta_items from inside a vector of attributes
 fn attr_metas(&vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
     ret vec::map(attr_meta, attrs);
 }
@@ -95,7 +115,9 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
         }
         case (ast::meta_name_value(?na, ?va)) {
             alt (b.node) {
-                case (ast::meta_name_value(?nb, ?vb)) { na == nb && va == vb }
+                case (ast::meta_name_value(?nb, ?vb)) {
+                    na == nb && va.node == vb.node
+                }
                 case (_) { false }
             }
         }
@@ -188,7 +210,12 @@ fn span[T](&T item) -> ast::spanned[T] {
     ret rec(node=item, span=rec(lo=0u, hi=0u));
 }
 
-fn mk_name_value_item(ast::ident name, str value) -> @ast::meta_item {
+fn mk_name_value_item_str(ast::ident name, str value) -> @ast::meta_item {
+    auto value_lit = span(ast::lit_str(value, ast::sk_rc));
+    ret mk_name_value_item(name, value_lit);
+}
+
+fn mk_name_value_item(ast::ident name, ast::lit value) -> @ast::meta_item {
     ret @span(ast::meta_name_value(name, value));
 }
 

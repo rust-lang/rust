@@ -276,7 +276,9 @@ fn get_meta_items(&ebml::doc md) -> vec[@ast::meta_item] {
         auto vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         auto n = str::unsafe_from_bytes(ebml::doc_data(nd));
         auto v = str::unsafe_from_bytes(ebml::doc_data(vd));
-        items += [attr::mk_name_value_item(n, v)];
+        // FIXME (#611): Should be able to decode meta_name_value variants,
+        // but currently they can't be encoded
+        items += [attr::mk_name_value_item_str(n, v)];
     }
     for each (ebml::doc meta_item_doc in
               ebml::tagged_docs(md, tag_meta_item_list)) {

@@ -48,7 +48,7 @@ fn default_configuration(session::session sess, str argv0, str input) ->
             case (_) { "libc.so" }
         };
 
-    auto mk = attr::mk_name_value_item;
+    auto mk = attr::mk_name_value_item_str;
 
     ret [ // Target bindings.
          mk("target_os", std::os::target_os()),

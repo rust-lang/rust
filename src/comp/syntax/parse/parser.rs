@@ -2172,17 +2172,9 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
     alt (p.peek()) {
         case (token::EQ) {
             p.bump();
-            alt (p.peek()) {
-                case (token::LIT_STR(?s)) {
-                    p.bump();
-                    auto value = p.get_str(s);
-                    auto hi = p.get_hi_pos();
-                    ret @spanned(lo, hi, ast::meta_name_value(ident, value));
-                }
-                case (_) {
-                    p.fatal("Metadata items must be string literals");
-                }
-            }
+            auto lit = parse_lit(p);
+            auto hi = p.get_hi_pos();
+            ret @spanned(lo, hi, ast::meta_name_value(ident, lit));
         }
         case (token::LPAREN) {
             auto inner_items = parse_meta_seq(p);

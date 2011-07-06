@@ -204,6 +204,20 @@ mod test_native_items {
     }
 }
 
+mod test_literals {
+    #[str = "s"];
+    #[char = 'c'];
+    #[int = 100];
+    #[uint = 100u];
+    #[mach_int = 100u32];
+    #[float = 1.0];
+    #[mach_float = 1.0f32];
+    // FIXME (#622): Can't parse a nil literal here
+    //#[nil = ()];
+    #[bool = true];
+    mod m {}
+}
+
 fn main() {
 }
 

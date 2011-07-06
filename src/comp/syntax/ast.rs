@@ -104,7 +104,7 @@ type meta_item = spanned[meta_item_];
 tag meta_item_ {
     meta_word(ident);
     meta_list(ident, vec[@meta_item]);
-    meta_name_value(ident, str);
+    meta_name_value(ident, lit);
 }
 
 type block = spanned[block_];

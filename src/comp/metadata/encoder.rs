@@ -429,14 +429,19 @@ fn encode_meta_item(&ebml::writer ebml_w, &meta_item mi) {
             ebml::end_tag(ebml_w);
         }
         case (meta_name_value(?name, ?value)) {
-            ebml::start_tag(ebml_w, tag_meta_item_name_value);
-            ebml::start_tag(ebml_w, tag_meta_item_name);
-            ebml_w.writer.write(str::bytes(name));
-            ebml::end_tag(ebml_w);
-            ebml::start_tag(ebml_w, tag_meta_item_value);
-            ebml_w.writer.write(str::bytes(value));
-            ebml::end_tag(ebml_w);
-            ebml::end_tag(ebml_w);
+            alt (value.node) {
+                case (lit_str(?value, _)) {
+                    ebml::start_tag(ebml_w, tag_meta_item_name_value);
+                    ebml::start_tag(ebml_w, tag_meta_item_name);
+                    ebml_w.writer.write(str::bytes(name));
+                    ebml::end_tag(ebml_w);
+                    ebml::start_tag(ebml_w, tag_meta_item_value);
+                    ebml_w.writer.write(str::bytes(value));
+                    ebml::end_tag(ebml_w);
+                    ebml::end_tag(ebml_w);
+                }
+                case (_) { /* FIXME (#611) */ }
+            }
         }
         case (meta_list(?name, ?items)) {
             ebml::start_tag(ebml_w, tag_meta_item_list);
@@ -475,10 +480,10 @@ fn synthesize_crate_attrs(&@crate_ctxt cx,
         assert cx.link_meta.name != "";
         assert cx.link_meta.vers != "";
 
-        auto name_item = attr::mk_name_value_item("name",
-                                                  cx.link_meta.name);
-        auto vers_item = attr::mk_name_value_item("vers",
-                                                  cx.link_meta.vers);
+        auto name_item = attr::mk_name_value_item_str("name",
+                                                      cx.link_meta.name);
+        auto vers_item = attr::mk_name_value_item_str("vers",
+                                                      cx.link_meta.vers);
 
         auto other_items = {
             auto tmp = attr::remove_meta_items_by_name(items, "name");
