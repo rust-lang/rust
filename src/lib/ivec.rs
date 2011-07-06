@@ -11,15 +11,16 @@ native "rust-intrinsic" mod rusti {
 }
 
 native "rust" mod rustrt {
-    fn ivec_reserve[T](&mutable T[mutable?] v, uint n);
+    fn ivec_reserve_shared[T](&mutable T[mutable?] v, uint n);
     fn ivec_on_heap[T](&T[] v) -> uint;
     fn ivec_to_ptr[T](&T[] v) -> *T;
-    fn ivec_copy_from_buf[T](&mutable T[mutable?] v, *T ptr, uint count);
+    fn ivec_copy_from_buf_shared[T](&mutable T[mutable?] v,
+                                    *T ptr, uint count);
 }
 
 /// Reserves space for `n` elements in the given vector.
 fn reserve[T](&mutable T[mutable?] v, uint n) {
-    rustrt::ivec_reserve(v, n);
+    rustrt::ivec_reserve_shared(v, n);
 }
 
 fn on_heap[T](&T[] v) -> bool {
@@ -204,7 +205,7 @@ fn all[T](fn(&T)->bool f, &T[] v) -> bool {
 
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
-        ret rustrt::ivec_copy_from_buf(v, ptr, count);
+        ret rustrt::ivec_copy_from_buf_shared(v, ptr, count);
     }
 }
 

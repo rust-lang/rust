@@ -47,6 +47,8 @@ type upcalls =
         ValueRef exit,
         ValueRef malloc,
         ValueRef free,
+        ValueRef shared_malloc,
+        ValueRef shared_free,
         ValueRef mark,
         ValueRef new_str,
         ValueRef dup_str,
@@ -56,7 +58,9 @@ type upcalls =
         ValueRef new_task,
         ValueRef start_task,
         ValueRef ivec_resize,
-        ValueRef ivec_spill);
+        ValueRef ivec_spill,
+        ValueRef ivec_resize_shared,
+        ValueRef ivec_spill_shared);
 
 fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
     fn decl(type_names tn, ModuleRef llmod, str name, vec[TypeRef] tys,
@@ -97,6 +101,9 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
              malloc=d("malloc", [T_size_t(), T_ptr(T_tydesc(tn))],
                       T_ptr(T_i8())),
              free=dv("free", [T_ptr(T_i8()), T_int()]),
+             shared_malloc=d("shared_malloc",
+                      [T_size_t(), T_ptr(T_tydesc(tn))], T_ptr(T_i8())),
+             shared_free=dv("shared_free", [T_ptr(T_i8())]),
              mark=d("mark", [T_ptr(T_i8())], T_int()),
              new_str=d("new_str", [T_ptr(T_i8()), T_size_t()],
                        T_ptr(T_str())),
@@ -119,7 +126,11 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
              ivec_resize=d("ivec_resize", [T_ptr(T_opaque_ivec()), T_int()],
                            T_void()),
              ivec_spill=d("ivec_spill", [T_ptr(T_opaque_ivec()), T_int()],
-                          T_void()));
+                          T_void()),
+             ivec_resize_shared=d("ivec_resize_shared",
+                           [T_ptr(T_opaque_ivec()), T_int()], T_void()),
+             ivec_spill_shared=d("ivec_spill_shared",
+                          [T_ptr(T_opaque_ivec()), T_int()], T_void()));
 }
 //
 // Local Variables:

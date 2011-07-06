@@ -649,6 +649,37 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
 }
 
 /**
+ * Preallocates the exact number of bytes in the given interior vector.
+ */
+extern "C" CDECL void
+ivec_reserve_shared(rust_task *task, type_desc *ty, rust_ivec *v,
+                    size_t n_elems)
+{
+    size_t new_alloc = n_elems * ty->size;
+    if (new_alloc <= v->alloc)
+        return;     // Already big enough.
+
+    rust_ivec_heap *heap_part;
+    if (v->fill || !v->payload.ptr) {
+        // On stack; spill to heap.
+        heap_part = (rust_ivec_heap *)task->kernel->malloc(new_alloc +
+                                                           sizeof(size_t));
+        heap_part->fill = v->fill;
+        memcpy(&heap_part->data, v->payload.data, v->fill);
+
+        v->fill = 0;
+        v->payload.ptr = heap_part;
+    } else {
+        // On heap; resize.
+        heap_part = (rust_ivec_heap *)task->kernel->realloc(v->payload.ptr,
+                                                new_alloc + sizeof(size_t));
+        v->payload.ptr = heap_part;
+    }
+
+    v->alloc = new_alloc;
+}
+
+/**
  * Returns true if the given vector is on the heap and false if it's on the
  * stack.
  */
@@ -692,6 +723,35 @@ ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
     }
 
     ivec_reserve(task, ty, v, count);
+
+    size_t new_size = count * ty->size;
+    if (v->fill || !v->payload.ptr) {
+        // On stack.
+        memmove(v->payload.data, ptr, new_size);
+        v->fill = new_size;
+        return;
+    }
+
+    // On heap.
+    memmove(v->payload.ptr->data, ptr, new_size);
+    v->payload.ptr->fill = new_size;
+}
+
+/**
+ * Copies elements in an unsafe buffer to the given interior vector. The
+ * vector must have size zero.
+ */
+extern "C" CDECL void
+ivec_copy_from_buf_shared(rust_task *task, type_desc *ty, rust_ivec *v,
+                   void *ptr, size_t count)
+{
+    size_t old_size = get_ivec_size(v);
+    if (old_size) {
+        task->fail(1);
+        return;
+    }
+
+    ivec_reserve_shared(task, ty, v, count);
 
     size_t new_size = count * ty->size;
     if (v->fill || !v->payload.ptr) {
