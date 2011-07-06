@@ -1,3 +1,4 @@
+import std::ivec;
 import std::option;
 import std::vec;
 import syntax::ast;
@@ -97,11 +98,11 @@ fn native_item_in_cfg(&ast::crate_cfg cfg, &@ast::native_item item) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(&ast::crate_cfg cfg, &vec[ast::attribute] attrs) -> bool {
+fn in_cfg(&ast::crate_cfg cfg, &ast::attribute[] attrs) -> bool {
 
     // The "cfg" attributes on the item
     auto item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
-    auto item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
+    auto item_has_cfg_attrs = ivec::len(item_cfg_attrs) > 0u;
     if (!item_has_cfg_attrs) { ret true; }
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,

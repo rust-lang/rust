@@ -87,13 +87,13 @@ type crate = spanned[crate_];
 
 type crate_ = rec(vec[@crate_directive] directives,
                   _mod module,
-                  vec[attribute] attrs,
+                  attribute[] attrs,
                   crate_cfg config);
 
 tag crate_directive_ {
-    cdir_src_mod(ident, option::t[filename], vec[attribute]);
+    cdir_src_mod(ident, option::t[filename], attribute[]);
     cdir_dir_mod(ident, option::t[filename],
-                 vec[@crate_directive], vec[attribute]);
+                 vec[@crate_directive], attribute[]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);
@@ -526,7 +526,7 @@ tag attr_style { attr_outer; attr_inner; }
 type attribute_ = rec(attr_style style, meta_item value);
 
 type item = rec(ident ident,
-                vec[attribute] attrs,
+                attribute[] attrs,
                 node_id id, // For objs and resources, this is the type def_id
                 item_ node,
                 span span);
@@ -544,7 +544,7 @@ tag item_ {
 }
 
 type native_item = rec(ident ident,
-                       vec[attribute] attrs,
+                       attribute[] attrs,
                        native_item_ node,
                        node_id id,
                        span span);

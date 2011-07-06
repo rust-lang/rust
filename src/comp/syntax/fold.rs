@@ -132,10 +132,10 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
     auto fold_meta_item = bind fold_meta_item_(_,fld);
     auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
-    ret rec(directives=map(fld.fold_crate_directive, c.directives),
+    ret rec(directives=vec::map(fld.fold_crate_directive, c.directives),
             module=fld.fold_mod(c.module),
-            attrs=map(fold_attribute, c.attrs),
-            config=map(fold_meta_item, c.config));
+            attrs=ivec::map(fold_attribute, c.attrs),
+            config=vec::map(fold_meta_item, c.config));
 }
 
 fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld) 
@@ -167,7 +167,7 @@ fn noop_fold_native_item(&@native_item ni, ast_fold fld) -> @native_item {
     auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
     ret @rec(ident=fld.fold_ident(ni.ident),
-             attrs=map(fold_attribute, ni.attrs),
+             attrs=ivec::map(fold_attribute, ni.attrs),
              node=alt (ni.node) {
                  case (native_item_ty) { native_item_ty }
                  case (native_item_fn(?st, ?fdec, ?typms)) {
@@ -189,7 +189,7 @@ fn noop_fold_item(&@item i, ast_fold fld) -> @item {
     auto fold_attribute = bind fold_attribute_(_,fold_meta_item);
 
     ret @rec(ident=fld.fold_ident(i.ident),
-             attrs=map(fold_attribute,i.attrs),
+             attrs=ivec::map(fold_attribute,i.attrs),
              id=i.id, node=fld.fold_item_underscore(i.node),
              span=i.span);
 }
