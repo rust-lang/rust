@@ -73,7 +73,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
-    synchronized_region(&sched->srv->synchronized_region),
     _on_wakeup(NULL)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
@@ -326,7 +325,7 @@ rust_task::malloc(size_t sz, type_desc *td)
     if (td) {
         sz += sizeof(gc_alloc);
     }
-    void *mem = malloc(sz, memory_region::LOCAL);
+    void *mem = local_region.malloc(sz);
     if (!mem)
         return mem;
     if (td) {
@@ -353,7 +352,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
         unlink_gc(gcm);
         sz += sizeof(gc_alloc);
-        gcm = (gc_alloc*) realloc((void*)gcm, sz, memory_region::LOCAL);
+        gcm = (gc_alloc*) local_region.realloc((void*)gcm, sz);
         DLOG(sched, task, "task %s @0x%" PRIxPTR
              " reallocated %d GC bytes = 0x%" PRIxPTR,
              name, (uintptr_t)this, sz, gcm);
@@ -362,7 +361,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         link_gc(gcm);
         data = (void*) &(gcm->data);
     } else {
-        data = realloc(data, sz, memory_region::LOCAL);
+        data = local_region.realloc(data, sz);
     }
     return data;
 }
@@ -379,9 +378,11 @@ rust_task::free(void *p, bool is_gc)
         DLOG(sched, mem,
              "task %s @0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
              name, (uintptr_t)this, gcm);
-        free(gcm, memory_region::LOCAL);
+        DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", gcm);
+        local_region.free(gcm);
     } else {
-        free(p, memory_region::LOCAL);
+        DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", p);
+        local_region.free(p);
     }
 }
 
@@ -474,51 +475,8 @@ bool rust_task::can_schedule(int id)
 }
 
 void *
-rust_task::malloc(size_t size, memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.malloc(size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.malloc(size);
-    }
-    I(sched, false);
-    return NULL;
-}
-
-void *
 rust_task::calloc(size_t size) {
-    return calloc(size, memory_region::LOCAL);
-}
-
-void *
-rust_task::calloc(size_t size, memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.calloc(size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.calloc(size);
-    }
-    return NULL;
-}
-
-void *
-rust_task::realloc(void *mem, size_t size,
-    memory_region::memory_region_type type) {
-    if (type == memory_region::LOCAL) {
-        return local_region.realloc(mem, size);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        return synchronized_region.realloc(mem, size);
-    }
-    return NULL;
-}
-
-void
-rust_task::free(void *mem, memory_region::memory_region_type type) {
-    DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", mem);
-    if (type == memory_region::LOCAL) {
-        local_region.free(mem);
-    } else if (type == memory_region::SYNCHRONIZED) {
-        synchronized_region.free(mem);
-    }
-    return;
+    return local_region.calloc(size);
 }
 
 void rust_task::pin() {

@@ -6,8 +6,7 @@
 #include "rust_srv.h"
 
 rust_srv::rust_srv() :
-    local_region(this, false),
-    synchronized_region(this, true) {
+    local_region(this, false) {
     // Nop.
 }
 

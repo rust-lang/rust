@@ -1,3 +1,4 @@
+// -*- c++ -*-
 #ifndef RUST_SRV_H
 #define RUST_SRV_H
 
@@ -6,7 +7,6 @@
 class rust_srv {
 public:
     memory_region local_region;
-    memory_region synchronized_region;
     virtual void log(char const *msg);
     virtual void fatal(char const *expression,
         char const *file,

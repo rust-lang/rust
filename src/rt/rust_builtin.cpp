@@ -42,7 +42,7 @@ last_os_error(rust_task *task) {
 #endif
     size_t fill = strlen(buf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc);
     if (!mem) {
         task->fail(1);
         return NULL;
@@ -74,7 +74,7 @@ rust_getcwd(rust_task *task) {
 
     size_t fill = strlen(cbuf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc);
     if (!mem) {
         task->fail(1);
         return NULL;
@@ -201,7 +201,7 @@ vec_alloc_with_data(rust_task *task,
 {
     rust_scheduler *sched = task->sched;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
-    void *mem = task->malloc(alloc, memory_region::LOCAL);
+    void *mem = task->malloc(alloc);
     if (!mem) return NULL;
     return new (mem) rust_vec(sched, alloc, fill * elt_size, (uint8_t*)d);
 }
@@ -635,8 +635,9 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
         v->payload.ptr = heap_part;
     } else {
         // On heap; resize.
-        heap_part = (rust_ivec_heap *)task->realloc(v->payload.ptr,
-                                                new_alloc + sizeof(size_t));
+        heap_part = (rust_ivec_heap *)
+            task->realloc(v->payload.ptr,
+                          new_alloc + sizeof(size_t));
         v->payload.ptr = heap_part;
     }
 

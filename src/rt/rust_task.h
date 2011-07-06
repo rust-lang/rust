@@ -81,7 +81,6 @@ rust_task : public maybe_proxy<rust_task>,
     int pinned_on;
 
     memory_region local_region;
-    memory_region synchronized_region;
 
     class wakeup_callback {
     public:
@@ -153,12 +152,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     bool can_schedule(int worker);
 
-    void *malloc(size_t size, memory_region::memory_region_type type);
     void *calloc(size_t size);
-    void *calloc(size_t size, memory_region::memory_region_type type);
-    void *realloc(void *mem, size_t size,
-        memory_region::memory_region_type type);
-    void free(void *mem, memory_region::memory_region_type type);
 
     void pin();
     void pin(int id);

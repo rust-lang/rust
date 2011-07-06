@@ -23,9 +23,6 @@ private:
     const bool _synchronized;
     lock_and_signal _lock;
 public:
-    enum memory_region_type {
-        LOCAL = 0x1, SYNCHRONIZED = 0x2
-    };
     memory_region(rust_srv *srv, bool synchronized);
     memory_region(memory_region *parent);
     void *malloc(size_t size);
