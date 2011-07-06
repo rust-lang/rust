@@ -1021,6 +1021,9 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
 // TODO: inefficient since not all types have vars in them. It would be better
 // to maintain a list of fixups.
 mod writeback {
+
+    export resolve_type_vars_in_block;
+
     fn resolve_type_vars_in_type(&@fn_ctxt fcx, &span sp, ty::t typ) ->
        ty::t {
         if (!ty::type_contains_vars(fcx.ccx.tcx, typ)) { ret typ; }
