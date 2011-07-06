@@ -120,21 +120,12 @@ void task_start_wrapper(spawn_args *a)
 
     LOG(task, task, "task exited with value %d", rval);
 
-    {
-        scoped_lock with(task->kernel->scheduler_lock);
+    LOG(task, task, "task ref_count: %d", task->ref_count);
+    A(task->sched, task->ref_count >= 0,
+      "Task ref_count should not be negative on exit!");
+    task->die();
+    task->notify_tasks_waiting_to_join();
 
-        // FIXME: the old exit glue does some magical argument copying
-        // stuff. This is probably still needed.
-
-        // This is duplicated from upcall_exit, which is probably dead code by
-        // now.
-        LOG(task, task, "task ref_count: %d", task->ref_count);
-        A(task->sched, task->ref_count >= 0,
-          "Task ref_count should not be negative on exit!");
-        task->die();
-        task->notify_tasks_waiting_to_join();
-
-    }
     task->yield(1);
 }
 
@@ -145,10 +136,7 @@ rust_task::start(uintptr_t spawnee_fn,
     LOGPTR(sched, "from spawnee", spawnee_fn);
 
     I(sched, stk->data != NULL);
-    I(sched, !kernel->scheduler_lock.lock_held_by_current_thread());
     
-    scoped_lock with(kernel->scheduler_lock);
-
     char *sp = (char *)rust_sp;
 
     sp -= sizeof(spawn_args);
@@ -399,7 +387,8 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(sched, kernel->scheduler_lock.lock_held_by_current_thread());
+    I(sched, !kernel->scheduler_lock.lock_held_by_current_thread());
+    scoped_lock with(kernel->scheduler_lock);
     DLOG(sched, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);

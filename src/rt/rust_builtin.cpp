@@ -392,16 +392,11 @@ task_yield(rust_task *task) {
 
 extern "C" CDECL void
 task_join(rust_task *task, rust_task *join_task) {
-    task->kernel->scheduler_lock.lock();
     // If the other task is already dying, we don't have to wait for it.
     if (join_task->dead() == false) {
         join_task->tasks_waiting_to_join.push(task);
         task->block(join_task, "joining local task");
-        task->kernel->scheduler_lock.unlock();
         task->yield(2);
-    }
-    else {
-        task->kernel->scheduler_lock.unlock();
     }
 }
 
