@@ -2116,6 +2116,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, id, fields.(ix).mt.ty);
                 }
                 case (ty::ty_obj(?methods)) {
+                    // log_err "checking method_idx 1...";
                     let uint ix =
                         ty::method_idx(fcx.ccx.tcx.sess, expr.span, field,
                                        methods);
@@ -2227,18 +2228,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                              fields),
                                     this_obj=di));
 
-            // Typecheck 'with_obj', if it exists.
-            alt (anon_obj.with_obj) {
-                case (none) { }
-                case (some(?e)) {
-                    // This had better have object type.  TODO: report an
-                    // error if the user is trying to extend a non-object
-                    // with_obj.
-
-                    check_expr(fcx, e);
-                }
-            }
-
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?
             fn ty_of_arg(@crate_ctxt ccx, &ast::arg a) -> ty::arg {
@@ -2262,15 +2251,50 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         inputs=inputs, output=output, cf=m.node.meth.decl.cf,
                         constrs=out_constrs);
             }
-            fn get_anon_obj_method_types(@crate_ctxt ccx,
+            fn get_anon_obj_method_types(@fn_ctxt fcx,
                                          &ast::anon_obj anon_obj) ->
                vec[ty::method] {
-                ret vec::map[@ast::method,
-                             method](bind ty_of_method(ccx, _),
-                                     anon_obj.methods);
+
+                let vec[ty::method] methods = [];
+
+                // Outer methods.
+                methods += vec::map[@ast::method,
+                                    method](bind ty_of_method(fcx.ccx, _),
+                                            anon_obj.methods);
+
+                // Inner methods.
+
+                // Typecheck 'with_obj'.  If it exists, it had better have
+                // object type.
+                let vec[ty::method] with_obj_methods = [];
+                alt (anon_obj.with_obj) {
+                    case (none) { }
+                    case (some(?e)) {
+                        check_expr(fcx, e);
+                        auto with_obj_ty = expr_ty(fcx.ccx.tcx, e);
+
+                        alt (structure_of(fcx, e.span, with_obj_ty)) {
+                            case (ty::ty_obj(?ms)) {
+                                with_obj_methods = ms;
+                            }
+                            case (_) {
+                                // The user is trying to extend a non-object.
+                                fcx.ccx.tcx.sess.span_fatal(
+                                    e.span,
+                                    syntax::print::pprust::expr_to_str(e) + 
+                                    " does not have object type");
+                            }
+                        }
+                    }
+                }
+                methods += with_obj_methods;
+
+                ret methods;
             }
-            auto method_types = get_anon_obj_method_types(fcx.ccx, anon_obj);
+
+            auto method_types = get_anon_obj_method_types(fcx, anon_obj);
             auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
+
             write::ty_only_fixup(fcx, id, ot);
             // Write the methods into the node type table.  (This happens in
             // collect::convert for regular objects.)
