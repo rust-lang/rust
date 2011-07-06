@@ -2,6 +2,7 @@
 
 use std;
 import std::ivec;
+import std::option;
 import std::option::none;
 import std::option::some;
 
@@ -10,6 +11,10 @@ fn square(uint n) -> uint { ret n * n; }
 fn square_alias(&uint n) -> uint { ret n * n; }
 
 pred is_three(&uint n) -> bool { ret n == 3u; }
+
+fn square_if_odd(&uint n) -> option::t[uint] {
+    ret if (n % 2u == 1u) { some(n * n) } else { none };
+}
 
 fn test_reserve_and_on_heap() {
     let int[] v = ~[ 1, 2 ];
@@ -188,6 +193,23 @@ fn test_map() {
     assert (w.(4) == 25u);
 }
 
+fn test_filter_map() {
+    // Test on-stack filter-map.
+    auto v = ~[ 1u, 2u, 3u ];
+    auto w = ivec::filter_map(square_if_odd, v);
+    assert (ivec::len(w) == 2u);
+    assert (w.(0) == 1u);
+    assert (w.(1) == 9u);
+
+    // Test on-heap filter-map.
+    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    w = ivec::filter_map(square_if_odd, v);
+    assert (ivec::len(w) == 3u);
+    assert (w.(0) == 1u);
+    assert (w.(1) == 9u);
+    assert (w.(2) == 25u);
+}
+
 fn test_any_and_all() {
     assert (ivec::any(is_three, ~[ 1u, 2u, 3u ]));
     assert (!ivec::any(is_three, ~[ 0u, 1u, 2u ]));
@@ -220,6 +242,7 @@ fn main() {
 
     // Functional utilities
     test_map();
+    test_filter_map();
     test_any_and_all();
 }
 

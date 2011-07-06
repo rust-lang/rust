@@ -171,6 +171,18 @@ fn map[T,U](fn(&T)->U f, &T[mutable?] v) -> U[] {
     ret result;
 }
 
+fn filter_map[T,U](fn(&T)->option::t[U] f, &T[mutable?] v) -> U[] {
+    auto result = ~[];
+    for (T elem in v) {
+        auto elem2 = elem;  // satisfies alias checker
+        alt (f(elem2)) {
+          case (none) { /* no-op */ }
+          case (some(?result_elem)) { result += ~[result_elem]; }
+        }
+    }
+    ret result;
+}
+
 fn any[T](fn(&T)->bool f, &T[] v) -> bool {
     for (T elem in v) { if (f(elem)) { ret true; } }
     ret false;
