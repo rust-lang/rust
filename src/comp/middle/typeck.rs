@@ -48,6 +48,8 @@ import std::option::from_maybe;
 import std::smallintmap;
 import middle::tstate::ann::ts_ann;
 
+export check_crate;
+
 type ty_table = hashmap[ast::def_id, ty::t];
 
 type obj_info = rec(vec[ast::obj_field] obj_fields, ast::node_id this_obj);
