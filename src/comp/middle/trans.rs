@@ -2147,7 +2147,10 @@ fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
     cx = val.bcx;
     // Find and call the actual destructor.
     auto dtor_pair = if (did._0 == ast::local_crate) {
-        ccx.fn_pairs.get(did._1)
+        alt (ccx.fn_pairs.find(did._1)) {
+            case (some(?x)) { x }
+            case (_) { ccx.tcx.sess.bug("internal error in trans_res_drop") }
+        }
     } else {
         auto params = decoder::get_type_param_count(ccx.tcx, did);
         auto f_t = type_of_fn(ccx, cx.sp, ast::proto_fn,
@@ -4338,16 +4341,24 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     type env =
         @rec(mutable vec[ast::node_id] refs,
              hashmap[ast::node_id, ()] decls,
-             resolve::def_map def_map);
+             resolve::def_map def_map,
+             session::session sess);
 
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
             case (ast::expr_path(?path)) {
+                if (! e.def_map.contains_key(expr.id)) {
+                    e.sess.span_fatal(expr.span,
+                       "internal error in collect_upvars");
+                }
                 alt (e.def_map.get(expr.id)) {
                     case (ast::def_arg(?did)) {
                         vec::push(e.refs, did._1);
                     }
                     case (ast::def_local(?did)) {
+                        vec::push(e.refs, did._1);
+                    }
+                    case (ast::def_binding(?did)) {
                         vec::push(e.refs, did._1);
                     }
                     case (_) { }
@@ -4359,15 +4370,25 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     fn walk_local(env e, &@ast::local local) {
         e.decls.insert(local.node.id, ());
     }
+    fn walk_pat(env e, &@ast::pat p) {
+        alt (p.node) {
+            case (ast::pat_bind(_)) {
+                e.decls.insert(p.id, ());
+            }
+            case (_) {}
+        }
+    }
     let hashmap[ast::node_id, ()] decls = new_int_hash[()]();
     decls.insert(initial_decl, ());
     let env e =
         @rec(mutable refs=[],
              decls=decls,
-             def_map=cx.fcx.lcx.ccx.tcx.def_map);
+             def_map=cx.fcx.lcx.ccx.tcx.def_map,
+             sess=cx.fcx.lcx.ccx.tcx.sess);
     auto visitor =
         @rec(visit_local_pre=bind walk_local(e, _),
-             visit_expr_pre=bind walk_expr(e, _)
+             visit_expr_pre=bind walk_expr(e, _),
+             visit_pat_pre=bind walk_pat(e, _)
              with walk::default_visitor());
     walk::walk_block(*visitor, bloc);
     // Calculate (refs - decls). This is the set of captured upvars.
@@ -4398,10 +4419,15 @@ fn build_environment(&@block_ctxt cx, &vec[ast::node_id] upvars) ->
             alt (cx.fcx.lllocals.find(nid)) {
                 case (none) {
                     alt (cx.fcx.llupvars.find(nid)) {
-                        case (none[ValueRef]) {
-                            llbinding = cx.fcx.llargs.get(nid);
+                        case (none) {
+                            alt (cx.fcx.llargs.find(nid)) {
+                                case (some(?x)) { llbinding = x; }
+                                case (_) {
+                                    cx.fcx.lcx.ccx.sess.bug("unbound var \
+                                      in build_environment " + istr(nid)); }
+                            }
                         }
-                        case (some[ValueRef](?llval)) { llbinding = llval; }
+                        case (some(?llval)) { llbinding = llval; }
                     }
                 }
                 case (some(?llval)) { llbinding = llval; }
@@ -4637,8 +4663,15 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             ret rslt(matched_cx, llval);
         }
         case (ast::pat_tag(?ident, ?subpats)) {
-            auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(pat.id));
+            auto vdef;
+            alt (cx.fcx.lcx.ccx.tcx.def_map.find(pat.id)) {
+                case (some(?x)) { vdef = ast::variant_def_ids(x); }
+                case (_) {
+                    cx.fcx.lcx.ccx.sess.span_fatal(pat.span,
+                                             "trans_pat_match: unbound var");
+                }
+            }
+
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
             auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
             auto llblobptr = llval;
@@ -4720,8 +4753,12 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             if (vec::len[@ast::pat](subpats) == 0u) { ret rslt(cx, llval); }
             // Get the appropriate variant for this tag.
 
-            auto vdef =
-                ast::variant_def_ids(cx.fcx.lcx.ccx.tcx.def_map.get(pat.id));
+            auto vdef;
+            alt (cx.fcx.lcx.ccx.tcx.def_map.find(pat.id)) {
+                case (some(?x)) { vdef = ast::variant_def_ids(x); }
+                case (_) { cx.fcx.lcx.ccx.sess.span_fatal(pat.span,
+                      "trans_pat_binding: internal error, unbound var"); }
+            }
             auto llblobptr = llval;
             if (vec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))!=1u) {
                 auto lltagptr = cx.build.PointerCast
@@ -4863,8 +4900,8 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
 
 fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
     auto ccx = cx.fcx.lcx.ccx;
-    alt (cx.fcx.lcx.ccx.tcx.def_map.get(id)) {
-        case (ast::def_arg(?did)) {
+    alt (cx.fcx.lcx.ccx.tcx.def_map.find(id)) {
+        case (some(ast::def_arg(?did))) {
             alt (cx.fcx.llargs.find(did._1)) {
                 case (none) {
                     assert (cx.fcx.llupvars.contains_key(did._1));
@@ -4873,7 +4910,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
                 case (some(?llval)) { ret lval_mem(cx, llval); }
             }
         }
-        case (ast::def_local(?did)) {
+        case (some(ast::def_local(?did))) {
             alt (cx.fcx.lllocals.find(did._1)) {
                 case (none) {
                     assert (cx.fcx.llupvars.contains_key(did._1));
@@ -4882,19 +4919,24 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
                 case (some(?llval)) { ret lval_mem(cx, llval); }
             }
         }
-        case (ast::def_binding(?did)) {
-            assert (cx.fcx.lllocals.contains_key(did._1));
-            ret lval_mem(cx, cx.fcx.lllocals.get(did._1));
+        case (some(ast::def_binding(?did))) {
+            alt (cx.fcx.lllocals.find(did._1)) {
+                case (none) {
+                    assert (cx.fcx.llupvars.contains_key(did._1));
+                    ret lval_mem(cx, cx.fcx.llupvars.get(did._1));
+                }
+                case (some(?llval)) { ret lval_mem(cx, llval); }
+            }
         }
-        case (ast::def_obj_field(?did)) {
+        case (some(ast::def_obj_field(?did))) {
             assert (cx.fcx.llobjfields.contains_key(did._1));
             ret lval_mem(cx, cx.fcx.llobjfields.get(did._1));
         }
-        case (ast::def_fn(?did, _)) {
+        case (some(ast::def_fn(?did, _))) {
             auto tyt = ty::lookup_item_type(ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, id);
         }
-        case (ast::def_variant(?tid, ?vid)) {
+        case (some(ast::def_variant(?tid, ?vid))) {
             auto v_tyt = ty::lookup_item_type(ccx.tcx, vid);
             alt (ty::struct(ccx.tcx, v_tyt._1)) {
                 case (ty::ty_fn(_, _, _, _, _)) {
@@ -4923,12 +4965,12 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
                 }
             }
         }
-        case (ast::def_const(?did)) {
+        case (some(ast::def_const(?did))) {
             // TODO: externals
             assert (ccx.consts.contains_key(did._1));
             ret lval_mem(cx, ccx.consts.get(did._1));
         }
-        case (ast::def_native_fn(?did)) {
+        case (some(ast::def_native_fn(?did))) {
             auto tyt = ty::lookup_item_type(ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, id);
         }
@@ -7572,7 +7614,12 @@ fn copy_args_to_allocas(@fn_ctxt fcx, vec[ast::arg] args,
         if (aarg.mode == ast::val) {
             auto arg_t = type_of_arg(bcx.fcx.lcx, fcx.sp, arg_tys.(arg_n));
             auto a = alloca(bcx, arg_t);
-            auto argval = bcx.fcx.llargs.get(aarg.id);
+            auto argval;
+            alt (bcx.fcx.llargs.find(aarg.id)) {
+                case (some(?x)) { argval = x; }
+                case (_) { bcx.fcx.lcx.ccx.sess.span_fatal(aarg.ty.span,
+                         "unbound arg ID in copy_args_to_allocas"); }
+            }
             bcx.build.Store(argval, a);
             // Overwrite the llargs entry for this arg with its alloca.
 
@@ -7587,7 +7634,12 @@ fn add_cleanups_for_args(&@block_ctxt bcx, vec[ast::arg] args,
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
         if (aarg.mode == ast::val) {
-            auto argval = bcx.fcx.llargs.get(aarg.id);
+            auto argval;
+            alt (bcx.fcx.llargs.find(aarg.id)) {
+                case (some(?x)) { argval = x; }
+                case (_) { bcx.fcx.lcx.ccx.sess.span_fatal(aarg.ty.span,
+                      "unbound arg ID in copy_args_to_allocas"); }
+            }
             find_scope_cx(bcx).cleanups +=
                 [clean(bind drop_slot(_, argval, arg_tys.(arg_n).ty))];
         }
@@ -7795,7 +7847,12 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // that, a number of block contexts for which code is generated.
 
     auto ccx = cx.ccx;
-    auto llctor_decl = ccx.item_ids.get(ctor_id);
+    auto llctor_decl;
+    alt (ccx.item_ids.find(ctor_id)) {
+        case (some(?x)) { llctor_decl = x; }
+        case (_) { cx.ccx.sess.span_fatal(sp,
+                     "unbound llctor_decl in trans_obj"); }
+    }
     // Much like trans_fn, we must create an LLVM function, but since we're
     // starting with an ast::_obj rather than an ast::_fn, we have some setup
     // work to do.
@@ -7957,13 +8014,21 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
         bcx = body_fields.bcx;
         i = 0;
         for (ast::obj_field f in ob.fields) {
-            auto arg = bcx.fcx.llargs.get(f.id);
-            arg = load_if_immediate(bcx, arg, arg_tys.(i).ty);
-            auto field =
-                GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
-            bcx = field.bcx;
-            bcx = copy_val(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
-            i += 1;
+            alt (bcx.fcx.llargs.find(f.id)) {
+                case (some(?arg1)) {
+                    auto arg = load_if_immediate(bcx, arg1, arg_tys.(i).ty);
+                    auto field =
+                        GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
+                    bcx = field.bcx;
+                    bcx = copy_val(bcx, INIT, field.val, arg,
+                                   arg_tys.(i).ty).bcx;
+                    i += 1;
+                }
+                case (none) {
+                    bcx.fcx.lcx.ccx.sess.span_fatal(f.ty.span,
+                                  "internal error in trans_obj");
+                }
+            }
         }
 
         // Store box ptr in outer pair.
@@ -7979,7 +8044,13 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
 fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
                   ast::node_id ctor_id, &vec[ast::ty_param] ty_params) {
     // Create a function for the constructor
-    auto llctor_decl = cx.ccx.item_ids.get(ctor_id);
+    auto llctor_decl;
+    alt (cx.ccx.item_ids.find(ctor_id)) {
+        case (some(?x)) { llctor_decl = x; }
+        case (_) { 
+            cx.ccx.sess.span_fatal(sp, "unbound ctor_id in trans_res_ctor");
+        }
+    }
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
     auto ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
@@ -7988,8 +8059,13 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
     auto lltop = bcx.llbb;
     auto arg_t = arg_tys_of_fn(cx.ccx, ctor_id).(0).ty;
     auto tup_t = ty::mk_imm_tup(cx.ccx.tcx, ~[ty::mk_int(cx.ccx.tcx), arg_t]);
-    auto arg = load_if_immediate
-        (bcx, fcx.llargs.get(dtor.decl.inputs.(0).id), arg_t);
+    auto arg;
+    alt (fcx.llargs.find(dtor.decl.inputs.(0).id)) {
+        case (some(?x)) { arg = load_if_immediate(bcx, x, arg_t); }
+        case (_) {
+            cx.ccx.sess.span_fatal(sp, "unbound dtor decl in trans_res_ctor");
+        }
+    }
 
     auto llretptr = fcx.llretptr;
     if (ty::type_has_dynamic_size(cx.ccx.tcx, ret_t)) {
@@ -8027,7 +8103,14 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
                  id=varg.id)];
     }
     assert (cx.ccx.item_ids.contains_key(variant.node.id));
-    let ValueRef llfndecl = cx.ccx.item_ids.get(variant.node.id);
+    let ValueRef llfndecl;
+    alt (cx.ccx.item_ids.find(variant.node.id)) {
+        case (some(?x)) { llfndecl = x; }
+        case (_) {
+            cx.ccx.sess.span_fatal(variant.span,
+                               "unbound variant id in trans_tag_variant");
+        }
+    }
     auto fcx = new_fn_ctxt(cx, variant.span, llfndecl);
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
                               ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.id),
@@ -8065,8 +8148,16 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
 
-        auto llargptr =
-            bcx.build.PointerCast(fcx.llargs.get(va.id), val_ty(lldestptr));
+        auto llargptr;
+        alt (fcx.llargs.find(va.id)) {
+            case (some(?x)) {
+                llargptr = bcx.build.PointerCast(x, val_ty(lldestptr));
+            }
+            case (none) {
+                bcx.fcx.lcx.ccx.sess.bug("unbound argptr in \
+                   trans_tag_variant");
+            }
+        }
         auto arg_ty = arg_tys.(i).ty;
         auto llargval;
         if (ty::type_is_structural(cx.ccx.tcx, arg_ty) ||
@@ -8100,18 +8191,31 @@ fn trans_const(&@crate_ctxt cx, @ast::expr e, ast::node_id id) {
     // The scalars come back as 1st class LLVM vals
     // which we have to stick into global constants.
 
-    auto g = cx.consts.get(id);
-    llvm::LLVMSetInitializer(g, v);
-    llvm::LLVMSetGlobalConstant(g, True);
+    alt (cx.consts.find(id)) {
+        case (some(?g)) {
+            llvm::LLVMSetInitializer(g, v);
+            llvm::LLVMSetGlobalConstant(g, True);
+        }
+        case (_) {
+            cx.sess.span_fatal(e.span, "Unbound const in trans_const");
+        }
+    }
 }
 
 fn trans_item(@local_ctxt cx, &ast::item item) {
     alt (item.node) {
         case (ast::item_fn(?f, ?tps)) {
             auto sub_cx = extend_path(cx, item.ident);
-            auto llfndecl = cx.ccx.item_ids.get(item.id);
-            trans_fn(sub_cx, item.span, f, llfndecl, none[ty_self_pair], tps,
-                     item.id);
+            alt (cx.ccx.item_ids.find(item.id)) {
+                case (some(?llfndecl)) {
+                    trans_fn(sub_cx, item.span, f, llfndecl,
+                             none[ty_self_pair], tps, item.id);
+                }
+                case (_) {
+                    cx.ccx.sess.span_fatal(item.span,
+                           "unbound function item in trans_item");
+                }
+            }
         }
         case (ast::item_obj(?ob, ?tps, ?ctor_id)) {
             auto sub_cx =
@@ -8122,8 +8226,14 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
         case (ast::item_res(?dtor, ?dtor_id, ?tps, ?ctor_id)) {
             trans_res_ctor(cx, item.span, dtor, ctor_id, tps);
             // Create a function for the destructor
-            auto lldtor_decl = cx.ccx.item_ids.get(item.id);
-            trans_fn(cx, item.span, dtor, lldtor_decl, none, tps, dtor_id)
+            alt (cx.ccx.item_ids.find(item.id)) {
+                case (some(?lldtor_decl)) {
+                    trans_fn(cx, item.span, dtor, lldtor_decl, none, tps,
+                             dtor_id);
+                }
+                case (_) { cx.ccx.sess.span_fatal(item.span,
+                                          "unbound dtor in trans_item"); }
+            }
         }
         case (ast::item_mod(?m)) {
             auto sub_cx =
@@ -8238,8 +8348,8 @@ fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
 // Returns the number of type parameters that the given native function has.
 fn native_fn_ty_param_count(&@crate_ctxt cx, ast::node_id id) -> uint {
     auto count;
-    auto native_item = alt (cx.ast_map.get(id)) {
-        case (ast_map::node_native_item(?i)) { i }
+    auto native_item = alt (cx.ast_map.find(id)) {
+        case (some(ast_map::node_native_item(?i))) { i }
     };
     alt (native_item.node) {
         case (ast::native_item_ty) {
@@ -8623,7 +8733,10 @@ fn trace_ptr(&@block_ctxt cx, ValueRef v) {
 
 fn trap(&@block_ctxt bcx) {
     let vec[ValueRef] v = [];
-    bcx.build.Call(bcx.fcx.lcx.ccx.intrinsics.get("llvm.trap"), v);
+    alt (bcx.fcx.lcx.ccx.intrinsics.find("llvm.trap")) {
+        case (some(?x)) { bcx.build.Call(x, v); }
+        case (_) { bcx.fcx.lcx.ccx.sess.bug("unbound llvm.trap in trap"); }
+    }
 }
 
 fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
