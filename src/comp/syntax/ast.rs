@@ -1,6 +1,4 @@
-// The Rust abstract syntax tree.
 
-import std::ivec;
 import std::option;
 import std::str;
 import std::vec;
@@ -17,11 +15,11 @@ type fn_ident = option::t[ident];
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
-type path_ = rec(ident[] idents, (@ty)[] types);
+type path_ = rec(vec[ident] idents, vec[@ty] types);
 
 type path = spanned[path_];
 
-fn path_name(&path p) -> str { ret str::connect_ivec(p.node.idents, "::"); }
+fn path_name(&path p) -> str { ret str::connect(p.node.idents, "::"); }
 
 type crate_num = int;
 type node_id = int;
@@ -81,19 +79,19 @@ fn def_id_of_def(def d) -> def_id {
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
-type crate_cfg = (@meta_item)[];
+type crate_cfg = vec[@meta_item];
 
 type crate = spanned[crate_];
 
-type crate_ = rec((@crate_directive)[] directives,
+type crate_ = rec(vec[@crate_directive] directives,
                   _mod module,
-                  attribute[] attrs,
+                  vec[attribute] attrs,
                   crate_cfg config);
 
 tag crate_directive_ {
-    cdir_src_mod(ident, option::t[filename], attribute[]);
+    cdir_src_mod(ident, option::t[filename], vec[attribute]);
     cdir_dir_mod(ident, option::t[filename],
-                 (@crate_directive)[], attribute[]);
+                 vec[@crate_directive], vec[attribute]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);
@@ -105,7 +103,7 @@ type meta_item = spanned[meta_item_];
 
 tag meta_item_ {
     meta_word(ident);
-    meta_list(ident, (@meta_item)[]);
+    meta_list(ident, vec[@meta_item]);
     meta_name_value(ident, lit);
 }
 
@@ -505,7 +503,7 @@ type variant = spanned[variant_];
 type view_item = spanned[view_item_];
 
 tag view_item_ {
-    view_item_use(ident, (@meta_item)[], node_id);
+    view_item_use(ident, vec[@meta_item], node_id);
     view_item_import(ident, vec[ident], node_id);
     view_item_import_glob(vec[ident], node_id);
     view_item_export(ident, node_id);
@@ -526,7 +524,7 @@ tag attr_style { attr_outer; attr_inner; }
 type attribute_ = rec(attr_style style, meta_item value);
 
 type item = rec(ident ident,
-                attribute[] attrs,
+                vec[attribute] attrs,
                 node_id id, // For objs and resources, this is the type def_id
                 item_ node,
                 span span);
@@ -544,7 +542,7 @@ tag item_ {
 }
 
 type native_item = rec(ident ident,
-                       attribute[] attrs,
+                       vec[attribute] attrs,
                        native_item_ node,
                        node_id id,
                        span span);
@@ -634,11 +632,11 @@ fn ternary_to_if(&@expr e) -> @ast::expr {
 
 // Path stringification
 fn path_to_str(&ast::path pth) -> str {
-    auto result = str::connect_ivec(pth.node.idents, "::");
-    if (ivec::len[@ast::ty](pth.node.types) > 0u) {
+    auto result = str::connect(pth.node.idents, "::");
+    if (vec::len[@ast::ty](pth.node.types) > 0u) {
         fn f(&@ast::ty t) -> str { ret print::pprust::ty_to_str(*t); }
         result += "[";
-        result += str::connect_ivec(ivec::map(f, pth.node.types), ",");
+        result += str::connect(vec::map(f, pth.node.types), ",");
         result += "]";
     }
     ret result;

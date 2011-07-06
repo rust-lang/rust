@@ -1,4 +1,3 @@
-import std::ivec;
 import std::option;
 import std::vec;
 import syntax::ast;
@@ -98,20 +97,20 @@ fn native_item_in_cfg(&ast::crate_cfg cfg, &@ast::native_item item) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(&ast::crate_cfg cfg, &ast::attribute[] attrs) -> bool {
+fn in_cfg(&ast::crate_cfg cfg, &vec[ast::attribute] attrs) -> bool {
 
     // The "cfg" attributes on the item
     auto item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
-    auto item_has_cfg_attrs = ivec::len(item_cfg_attrs) > 0u;
+    auto item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if (!item_has_cfg_attrs) { ret true; }
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
     auto item_cfg_metas = {
-        fn extract_metas(&(@ast::meta_item)[] inner_items,
+        fn extract_metas(&vec[@ast::meta_item] inner_items,
                          &@ast::meta_item cfg_item)
-        -> (@ast::meta_item)[] {
+        -> vec[@ast::meta_item] {
 
             alt (cfg_item.node) {
                 case (ast::meta_list(?name, ?items)) {
@@ -122,11 +121,13 @@ fn in_cfg(&ast::crate_cfg cfg, &ast::attribute[] attrs) -> bool {
             }
         }
         auto cfg_metas = attr::attr_metas(item_cfg_attrs);
-        ivec::foldl(extract_metas, ~[], cfg_metas)
+        vec::foldl(extract_metas, [], cfg_metas)
     };
 
     for (@ast::meta_item cfg_mi in item_cfg_metas) {
-        if (attr::contains(cfg, cfg_mi)) { ret true; }
+        if (attr::contains(cfg, cfg_mi)) {
+            ret true;
+        }
     }
 
     ret false;

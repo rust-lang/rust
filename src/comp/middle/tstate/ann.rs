@@ -1,4 +1,5 @@
 
+import std::vec;
 import tritv::*;
 
 type precond = t;

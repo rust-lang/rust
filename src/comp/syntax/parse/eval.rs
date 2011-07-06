@@ -24,7 +24,7 @@ type ctx =
          mutable uint chpos,
          ast::crate_cfg cfg);
 
-fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
+fn eval_crate_directives(ctx cx, vec[@ast::crate_directive] cdirs,
                          str prefix, &mutable vec[@ast::view_item] view_items,
                          &mutable vec[@ast::item] items) {
     for (@ast::crate_directive sub_cdir in cdirs) {
@@ -32,8 +32,9 @@ fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
     }
 }
 
-fn eval_crate_directives_to_mod(ctx cx, &(@ast::crate_directive)[] cdirs,
-                                str prefix) -> ast::_mod {
+fn eval_crate_directives_to_mod(ctx cx,
+                                vec[@ast::crate_directive] cdirs, str prefix)
+   -> ast::_mod {
     let vec[@ast::view_item] view_items = [];
     let vec[@ast::item] items = [];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);

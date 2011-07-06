@@ -24,36 +24,36 @@ import aux::crate_ctxt;
 import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
-fn collect_ids_expr(&@expr e, @mutable node_id[] rs) {
-    *rs += ~[e.id];
+fn collect_ids_expr(&@expr e, @mutable vec[node_id] rs) {
+    vec::push(*rs, e.id);
 }
 
-fn collect_ids_block(&block b, @mutable node_id[] rs) {
-    *rs += ~[b.node.id];
+fn collect_ids_block(&block b, @mutable vec[node_id] rs) {
+    vec::push(*rs, b.node.id);
 }
 
-fn collect_ids_stmt(&@stmt s, @mutable node_id[] rs) {
+fn collect_ids_stmt(&@stmt s, @mutable vec[node_id] rs) {
     alt (s.node) {
         case (stmt_decl(_, ?id)) {
             log "node_id " + int::str(id);
             log_stmt(*s);
-            *rs += ~[id];
+            vec::push(*rs, id);
         }
         case (stmt_expr(_, ?id)) {
             log "node_id " + int::str(id);
             log_stmt(*s);
-            *rs += ~[id];
+            vec::push(*rs, id);
         }
         case (_) { }
     }
 }
 
-fn collect_ids_local(&@local l, @mutable node_id[] rs) {
-    *rs += ~[l.node.id];
+fn collect_ids_local(&@local l, @mutable vec[node_id] rs) {
+    vec::push(*rs, l.node.id);
 }
 
 fn node_ids_in_fn(&_fn f, &vec[ty_param] tps, &span sp, &fn_ident i,
-                  node_id id, @mutable node_id[] rs) {
+                  node_id id, @mutable vec[node_id] rs) {
     auto collect_ids = walk::default_visitor();
     collect_ids =
         rec(visit_expr_pre=bind collect_ids_expr(_, rs),
@@ -63,7 +63,7 @@ fn node_ids_in_fn(&_fn f, &vec[ty_param] tps, &span sp, &fn_ident i,
     walk::walk_fn(collect_ids, f, tps, sp, i, id);
 }
 
-fn init_vecs(&crate_ctxt ccx, &node_id[] node_ids, uint len) {
+fn init_vecs(&crate_ctxt ccx, &vec[node_id] node_ids, uint len) {
     for (node_id i in node_ids) {
         log int::str(i) + " |-> " + uint::str(len);
         add_node(ccx, i, empty_ann(len));
@@ -72,7 +72,7 @@ fn init_vecs(&crate_ctxt ccx, &node_id[] node_ids, uint len) {
 
 fn visit_fn(&crate_ctxt ccx, uint num_constraints, &_fn f, &vec[ty_param] tps,
             &span sp, &fn_ident i, node_id id) {
-    let @mutable node_id[] node_ids = @mutable ~[];
+    let @mutable vec[node_id] node_ids = @mutable [];
     node_ids_in_fn(f, tps, sp, i, id, node_ids);
     auto node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);

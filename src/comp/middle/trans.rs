@@ -879,11 +879,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = abs_pair;
         }
         case (ty::ty_res(_, ?sub, ?tps)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t typ in tps) { tps_ivec += ~[typ]; }
-
-            auto sub1 = ty::substitute_type_params(cx.tcx, tps_ivec, sub);
+            auto sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
             ret T_struct([T_i32(), type_of_inner(cx, sp, sub1)]);
         }
         case (ty::ty_var(_)) {
@@ -903,7 +899,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
 
 fn type_of_tag(&@crate_ctxt cx, &span sp, &ast::def_id did, &ty::t t)
     -> TypeRef {
-    auto degen = std::ivec::len(ty::tag_variants(cx.tcx, did)) == 1u;
+    auto degen = vec::len(ty::tag_variants(cx.tcx, did)) == 1u;
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
         if (degen) { ret T_i8(); }
         else { ret T_opaque_tag(cx.tn); }
@@ -1244,12 +1240,7 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
                                                     ty::mk_nil(ccx.tcx))]);
             }
             case (ty::ty_res(_, ?sub, ?tps)) {
-                // FIXME: Remove this vec->ivec conversion.
-                auto tps_ivec = ~[];
-                for (ty::t typ in tps) { tps_ivec += ~[typ]; }
-
-                auto sub1 = ty::substitute_type_params(ccx.tcx, tps_ivec,
-                                                       sub);
+                auto sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
                 ret ty::mk_imm_tup(ccx.tcx, ~[ty::mk_int(ccx.tcx),
                                               simplify_type(ccx, sub1)]);
             }
@@ -1268,35 +1259,36 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
                                  "static_size_of_tag()");
     }
     if (cx.tag_sizes.contains_key(t)) { ret cx.tag_sizes.get(t); }
+    auto tid;
+    let vec[ty::t] subtys;
     alt (ty::struct(cx.tcx, t)) {
-        case (ty::ty_tag(?tid, ?subtys)) {
-            // Compute max(variant sizes).
-
-            auto max_size = 0u;
-            auto variants = ty::tag_variants(cx.tcx, tid);
-            for (ty::variant_info variant in variants) {
-                // TODO: Remove this vec->ivec conversion.
-                auto args = ~[];
-                for (ty::t typ in variant.args) { args += ~[typ]; }
-
-                auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, args));
-                // Perform any type parameter substitutions.
-
-                tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
-                // Here we possibly do a recursive call.
-
-                auto this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
-                if (max_size < this_size) { max_size = this_size; }
-            }
-            cx.tag_sizes.insert(t, max_size);
-            ret max_size;
-        }
+        case (ty::ty_tag(?tid_, ?subtys_)) { tid = tid_; subtys = subtys_; }
         case (_) {
             cx.tcx.sess.span_fatal(sp,
                                  "non-tag passed to " +
                                      "static_size_of_tag()");
         }
     }
+    // Compute max(variant sizes).
+
+    auto max_size = 0u;
+    auto variants = ty::tag_variants(cx.tcx, tid);
+    for (ty::variant_info variant in variants) {
+        // TODO: Remove this vec->ivec conversion.
+        auto args = ~[];
+        for (ty::t typ in variant.args) { args += ~[typ]; }
+
+        auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, args));
+        // Perform any type parameter substitutions.
+
+        tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
+        // Here we possibly do a recursive call.
+
+        auto this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
+        if (max_size < this_size) { max_size = this_size; }
+    }
+    cx.tag_sizes.insert(t, max_size);
+    ret max_size;
 }
 
 fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
@@ -1351,7 +1343,7 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             for (ty::variant_info variant in variants) {
                 // Perform type substitution on the raw argument types.
 
-                let ty::t[] raw_tys = variant.args;
+                let vec[ty::t] raw_tys = variant.args;
                 let vec[ty::t] tys = [];
                 for (ty::t raw_ty in raw_tys) {
                     auto t =
@@ -1366,7 +1358,7 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
                 bcx.build.Store(umax(bcx, this_size, old_max_size), max_size);
             }
             auto max_size_val = bcx.build.Load(max_size);
-            auto total_size = if (std::ivec::len(variants) != 1u) {
+            auto total_size = if (vec::len(variants) != 1u) {
                 bcx.build.Add(max_size_val, llsize_of(T_int()))
             } else { max_size_val };
             ret rslt(bcx, total_size);
@@ -1524,7 +1516,7 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t, ValueRef base, &vec[int] ixs) ->
 // appropriate. @llblobptr is the data part of a tag value; its actual type is
 // meaningless, as it will be cast away.
 fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast::def_id tag_id,
-           &ast::def_id variant_id, &ty::t[] ty_substs, int ix) -> result {
+           &ast::def_id variant_id, &vec[ty::t] ty_substs, int ix) -> result {
     auto variant =
         ty::tag_variant_with_id(cx.fcx.lcx.ccx.tcx, tag_id, variant_id);
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
@@ -2145,7 +2137,7 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
 }
 
 fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
-                  ty::t inner_t, &ty::t[] tps) -> result {
+                  ty::t inner_t, &vec[ty::t] tps) -> result {
     auto ccx = cx.fcx.lcx.ccx;
     auto inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
     auto tup_ty = ty::mk_imm_tup(ccx.tcx, ~[ty::mk_int(ccx.tcx), inner_t_s]);
@@ -2653,9 +2645,9 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
     }
 
     fn iter_variant(@block_ctxt cx, ValueRef a_tup, ValueRef b_tup,
-                    &ty::variant_info variant, &ty::t[] tps,
+                    &ty::variant_info variant, &vec[ty::t] tps,
                     &ast::def_id tid, &val_pair_and_ty_fn f) -> result {
-        if (std::ivec::len[ty::t](variant.args) == 0u) {
+        if (vec::len[ty::t](variant.args) == 0u) {
             ret rslt(cx, C_nil());
         }
         auto fn_ty = variant.ctor_ty;
@@ -2664,10 +2656,12 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             case (ty::ty_fn(_, ?args, _, _, _)) {
                 auto j = 0;
                 for (ty::arg a in args) {
-                    auto rslt = GEP_tag(cx, a_tup, tid, variant.id, tps, j);
+                    auto rslt = GEP_tag(cx, a_tup, tid,
+                                        variant.id, tps, j);
                     auto llfldp_a = rslt.val;
                     cx = rslt.bcx;
-                    rslt = GEP_tag(cx, b_tup, tid, variant.id, tps, j);
+                    rslt = GEP_tag(cx, b_tup, tid,
+                                   variant.id, tps, j);
                     auto llfldp_b = rslt.val;
                     cx = rslt.bcx;
                     auto ty_subst =
@@ -2713,12 +2707,8 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
             }
         }
         case (ty::ty_res(_, ?inner, ?tps)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
             auto inner1 = ty::substitute_type_params(cx.fcx.lcx.ccx.tcx,
-                                                     tps_ivec, inner);
+                                                     tps, inner);
             r = GEP_tup_like(r.bcx, t, av, [0, 1]);
             auto llfld_a = r.val;
             r = GEP_tup_like(r.bcx, t, bv, [0, 1]);
@@ -2728,7 +2718,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         }
         case (ty::ty_tag(?tid, ?tps)) {
             auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, tid);
-            auto n_variants = std::ivec::len(variants);
+            auto n_variants = vec::len(variants);
 
             // Cast the tags to types we can GEP into.
             if (n_variants == 1u) {
@@ -4147,18 +4137,14 @@ fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
                 } else { v1 = body; }
             }
             case (ty::ty_res(?did, ?inner, ?tps)) {
-                // FIXME: Remove this vec->ivec conversion.
-                auto tps_ivec = ~[];
-                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
                 if (is_lval) { v1 = cx.build.Load(v1); }
-                t1 = ty::substitute_type_params(ccx.tcx, tps_ivec, inner);
+                t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
                 v1 = cx.build.GEP(v1, [C_int(0), C_int(1)]);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = ty::tag_variants(ccx.tcx, did);
-                if (std::ivec::len(variants) != 1u ||
-                    std::ivec::len(variants.(0).args) != 1u) {
+                if (vec::len(variants) != 1u ||
+                    vec::len(variants.(0).args) != 1u) {
                     break;
                 }
                 if (is_lval) { v1 = cx.build.Load(v1); }
@@ -4698,7 +4684,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
             auto llblobptr = llval;
 
-            if (std::ivec::len(variants) == 1u) {
+            if (vec::len(variants) == 1u) {
                 cx.build.Br(matched_cx.llbb);
             } else {
                 auto lltagptr =
@@ -4726,19 +4712,14 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                         matched_cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
                 }
             }
-
             auto ty_params = ty::node_id_to_type_params
                 (cx.fcx.lcx.ccx.tcx, pat.id);
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in ty_params) { tps_ivec += ~[tp]; }
-
             if (vec::len(subpats) > 0u) {
                 auto i = 0;
                 for (@ast::pat subpat in subpats) {
                     auto rslt =
                         GEP_tag(matched_cx, llblobptr, vdef._0, vdef._1,
-                                tps_ivec, i);
+                                ty_params, i);
                     auto llsubvalptr = rslt.val;
                     matched_cx = rslt.bcx;
                     auto llsubval =
@@ -4787,25 +4768,19 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                       "trans_pat_binding: internal error, unbound var"); }
             }
             auto llblobptr = llval;
-            if (std::ivec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))
-                    != 1u) {
+            if (vec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))!=1u) {
                 auto lltagptr = cx.build.PointerCast
                     (llval, T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
                 llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
             }
-
             auto ty_param_substs =
                 ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, pat.id);
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in ty_param_substs) { tps_ivec += ~[tp]; }
-
             auto this_cx = cx;
             auto i = 0;
             for (@ast::pat subpat in subpats) {
                 auto rslt =
-                    GEP_tag(this_cx, llblobptr, vdef._0, vdef._1, tps_ivec,
-                            i);
+                    GEP_tag(this_cx, llblobptr, vdef._0, vdef._1,
+                            ty_param_substs, i);
                 this_cx = rslt.bcx;
                 auto subpat_res =
                     trans_pat_binding(this_cx, subpat, rslt.val, true);
@@ -4890,7 +4865,7 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
         lv = trans_external_path(cx, fn_id, tpt);
     }
     auto tys = ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
-    if (std::ivec::len[ty::t](tys) != 0u) {
+    if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = [];
         let vec[option::t[@tydesc_info]] tis = [];
@@ -4986,8 +4961,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
                     auto bcx = alloc_result.bcx;
                     auto lltagptr = bcx.build.PointerCast
                         (lltagblob, T_ptr(lltagty));
-                    if (std::ivec::len(ty::tag_variants(ccx.tcx, tid))
-                            != 1u) {
+                    if (vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u) {
                         auto lldiscrim_gv =
                             lookup_discriminant(bcx.fcx.lcx, tid, vid);
                         auto lldiscrim = bcx.build.Load(lldiscrim_gv);
@@ -8504,10 +8478,10 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
     create_llargs_for_fn_args(fcx, ast::proto_fn, none[ty_self_pair],
                               ty::ret_ty_of_fn(cx.ccx.tcx, variant.node.id),
                               fn_args, ty_params);
-    let ty::t[] ty_param_substs = ~[];
+    let vec[ty::t] ty_param_substs = [];
     i = 0u;
     for (ast::ty_param tp in ty_params) {
-        ty_param_substs += ~[ty::mk_param(cx.ccx.tcx, i)];
+        ty_param_substs += [ty::mk_param(cx.ccx.tcx, i)];
         i += 1u;
     }
     auto arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);

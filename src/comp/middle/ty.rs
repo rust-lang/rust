@@ -196,9 +196,9 @@ type method =
         arg[] inputs,
         t output,
         controlflow cf,
-        (@constr_def)[] constrs);
+        vec[@constr_def] constrs);
 
-type constr_table = hashmap[ast::node_id, constr_def[]];
+type constr_table = hashmap[ast::node_id, vec[constr_def]]; 
 
 type mt = rec(t ty, ast::mutability mut);
 
@@ -257,7 +257,7 @@ tag sty {
     ty_char;
     ty_str;
     ty_istr;
-    ty_tag(def_id, t[]);
+    ty_tag(def_id, vec[t]);
     ty_box(mt);
     ty_vec(mt);
     ty_ivec(mt);
@@ -267,10 +267,10 @@ tag sty {
     ty_task;
     ty_tup(mt[]);
     ty_rec(field[]);
-    ty_fn(ast::proto, arg[], t, controlflow, (@constr_def)[]);
+    ty_fn(ast::proto, arg[], t, controlflow, vec[@constr_def]);
     ty_native_fn(ast::native_abi, arg[], t);
-    ty_obj(method[]);
-    ty_res(def_id, t, t[]);
+    ty_obj(vec[method]);
+    ty_res(def_id, t, vec[t]);
     ty_var(int); // type variable
     ty_param(uint); // fn/tag type param
     ty_type;
@@ -281,7 +281,7 @@ tag sty {
 type constr_def = spanned[constr_general[uint]];
 
 type constr_general[T] =
-    rec(ast::path path, (@constr_arg_general[T])[] args, def_id id);
+    rec(ast::path path, vec[@constr_arg_general[T]] args, def_id id);
 
 
 // Data structures used in type unification
@@ -351,7 +351,7 @@ const uint idx_first_others = 21u;
 
 type type_store = interner::interner[raw_t];
 
-type ty_param_substs_opt_and_ty = tup(option::t[ty::t[]], ty::t);
+type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
 
 type node_type_table =
     @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
@@ -378,7 +378,7 @@ fn populate_type_store(&ctxt cx) {
     intern(cx, ty_task, none[str]);
     intern(cx, ty_type, none[str]);
     intern(cx, ty_bot, none[str]);
-    assert (ivec::len(cx.ts.vect) == idx_first_others);
+    assert (vec::len(cx.ts.vect) == idx_first_others);
 }
 
 fn mk_rcache() -> creader_cache {
@@ -557,7 +557,7 @@ fn mk_str(&ctxt cx) -> t { ret idx_str; }
 
 fn mk_istr(&ctxt cx) -> t { ret idx_istr; }
 
-fn mk_tag(&ctxt cx, &ast::def_id did, &t[] tys) -> t {
+fn mk_tag(&ctxt cx, &ast::def_id did, &vec[t] tys) -> t {
     ret gen_ty(cx, ty_tag(did, tys));
 }
 
@@ -596,7 +596,7 @@ fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
 fn mk_rec(&ctxt cx, &field[] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_fn(&ctxt cx, &ast::proto proto, &arg[] args, &t ty, &controlflow cf,
-         &(@constr_def)[] constrs) -> t {
+         &vec[@constr_def] constrs) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
@@ -604,11 +604,11 @@ fn mk_native_fn(&ctxt cx, &ast::native_abi abi, &arg[] args, &t ty) -> t {
     ret gen_ty(cx, ty_native_fn(abi, args, ty));
 }
 
-fn mk_obj(&ctxt cx, &method[] meths) -> t {
+fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
-fn mk_res(&ctxt cx, &ast::def_id did, &t inner, &t[] tps) -> t {
+fn mk_res(&ctxt cx, &ast::def_id did, &t inner, &vec[t] tps) -> t {
     ret gen_ty(cx, ty_res(did, inner, tps));
 }
 
@@ -753,9 +753,9 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_chan(cx, fold_ty(cx, fld, subty)), ty);
         }
         case (ty_tag(?tid, ?subtys)) {
-            let t[] new_subtys = ~[];
+            let vec[t] new_subtys = [];
             for (t subty in subtys) {
-                new_subtys += ~[fold_ty(cx, fld, subty)];
+                new_subtys += [fold_ty(cx, fld, subty)];
             }
             ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
         }
@@ -799,7 +799,7 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                                         fold_ty(cx, fld, ret_ty)), ty);
         }
         case (ty_obj(?methods)) {
-            let method[] new_methods = ~[];
+            let vec[method] new_methods = [];
             for (method m in methods) {
                 let arg[] new_args = ~[];
                 for (arg a in m.inputs) {
@@ -807,18 +807,18 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
                                       ty=fold_ty(cx, fld, a.ty))];
                 }
                 new_methods +=
-                    ~[rec(proto=m.proto,
-                          ident=m.ident,
-                          inputs=new_args,
-                          output=fold_ty(cx, fld, m.output),
-                          cf=m.cf,
-                          constrs=m.constrs)];
+                    [rec(proto=m.proto,
+                         ident=m.ident,
+                         inputs=new_args,
+                         output=fold_ty(cx, fld, m.output),
+                         cf=m.cf,
+                         constrs=m.constrs)];
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
         case (ty_res(?did, ?subty, ?tps)) {
-            auto new_tps = ~[];
-            for (t tp in tps) { new_tps += ~[fold_ty(cx, fld, tp)]; }
+            auto new_tps = [];
+            for (t tp in tps) { new_tps += [fold_ty(cx, fld, tp)]; }
             ty = copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty),
                                        new_tps), ty);
         }
@@ -1052,12 +1052,8 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_res(?did, ?inner, ?tps)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
             result = type_has_pointers
-                (cx, substitute_type_params(cx, tps_ivec, inner));
+                (cx, substitute_type_params(cx, tps, inner));
         }
         case (_) { result = true; }
     }
@@ -1090,7 +1086,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         case (ty_istr) { ret false; }
         case (ty_tag(_, ?subtys)) {
             auto i = 0u;
-            while (i < ivec::len[t](subtys)) {
+            while (i < vec::len[t](subtys)) {
                 if (type_has_dynamic_size(cx, subtys.(i))) { ret true; }
                 i += 1u;
             }
@@ -1244,12 +1240,8 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_res(_, ?inner, ?tps)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
             result = type_owns_heap_mem
-                (cx, substitute_type_params(cx, tps_ivec, inner));
+                (cx, substitute_type_params(cx, tps, inner));
         }
 
         case (ty_ptr(_)) { result = false; }
@@ -1280,16 +1272,12 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
         alt (struct(cx, t1)) {
             case (ty::ty_box(?mt)) { t1 = mt.ty; }
             case (ty::ty_res(_, ?inner, ?tps)) {
-                // FIXME: Remove this vec->ivec conversion.
-                auto tps_ivec = ~[];
-                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
-                t1 = substitute_type_params(cx, tps_ivec, inner);
+                t1 = substitute_type_params(cx, tps, inner);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = tag_variants(cx, did);
-                if (ivec::len(variants) != 1u ||
-                        ivec::len(variants.(0).args) != 1u) {
+                if (vec::len(variants) != 1u ||
+                    vec::len(variants.(0).args) != 1u) {
                     break;
                 }
                 t1 = substitute_type_params(cx, tps, variants.(0).args.(0));
@@ -1438,8 +1426,8 @@ fn arg_eq[T](&fn(&T, &T) -> bool  eq, @ast::constr_arg_general[T] a,
     }
 }
 
-fn args_eq[T](fn(&T, &T) -> bool eq, &(@ast::constr_arg_general[T])[] a,
-              &(@ast::constr_arg_general[T])[] b) -> bool {
+fn args_eq[T](fn(&T, &T) -> bool  eq, vec[@ast::constr_arg_general[T]] a,
+              vec[@ast::constr_arg_general[T]] b) -> bool {
     let uint i = 0u;
     for (@ast::constr_arg_general[T] arg in a) {
         if (!arg_eq(eq, arg, b.(i))) { ret false; }
@@ -1454,8 +1442,8 @@ fn constr_eq(&@constr_def c, &@constr_def d) -> bool {
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
-fn constrs_eq(&(@constr_def)[] cs, &(@constr_def)[] ds) -> bool {
-    if (ivec::len(cs) != ivec::len(ds)) { ret false; }
+fn constrs_eq(&vec[@constr_def] cs, &vec[@constr_def] ds) -> bool {
+    if (vec::len(cs) != vec::len(ds)) { ret false; }
     auto i = 0u;
     for (@constr_def c in cs) {
         if (!constr_eq(c, ds.(i))) { ret false; }
@@ -1526,8 +1514,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
             alt (b) {
                 case (ty_tag(?id_b, ?tys_b)) {
                     if (!equal_def(id_a, id_b)) { ret false; }
-                    auto len = ivec::len[t](tys_a);
-                    if (len != ivec::len[t](tys_b)) { ret false; }
+                    auto len = vec::len[t](tys_a);
+                    if (len != vec::len[t](tys_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         if (!eq_ty(tys_a.(i), tys_b.(i))) { ret false; }
@@ -1634,8 +1622,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_obj(?methods_a)) {
             alt (b) {
                 case (ty_obj(?methods_b)) {
-                    auto len = ivec::len[method](methods_a);
-                    if (len != ivec::len[method](methods_b)) { ret false; }
+                    auto len = vec::len[method](methods_a);
+                    if (len != vec::len[method](methods_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         auto m_a = methods_a.(i);
@@ -1748,16 +1736,16 @@ fn node_id_to_type(&ctxt cx, &ast::node_id id) -> t {
     ret node_id_to_ty_param_substs_opt_and_ty(cx, id)._1;
 }
 
-fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> t[] {
+fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> vec[t] {
     alt (node_id_to_ty_param_substs_opt_and_ty(cx, id)._0) {
-        case (none)       { ret ~[]; }
+        case (none) { let vec[t] result = []; ret result; }
         case (some(?tps)) { ret tps; }
     }
 }
 
 fn node_id_has_type_params(&ctxt cx, &ast::node_id id) -> bool {
     auto tpt = node_id_to_ty_param_substs_opt_and_ty(cx, id);
-    ret !option::is_none[t[]](tpt._0);
+    ret !option::is_none[vec[t]](tpt._0);
 }
 
 
@@ -1767,13 +1755,7 @@ fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
    t {
     alt (tpot._0) {
         case (none) { ret tpot._1; }
-        case (some(?tps)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto tps_ivec = ~[];
-            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
-            ret substitute_type_params(cx, tps_ivec, tpot._1);
-        }
+        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot._1); }
     }
 }
 
@@ -1788,22 +1770,24 @@ fn node_id_to_monotype(&ctxt cx, ast::node_id id) -> t {
 
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(&ctxt cx, t ty) -> uint {
-    fn counter(&ctxt cx, @mutable (uint[]) param_indices, t ty) {
+    fn counter(&ctxt cx, @mutable vec[uint] param_indices, t ty) {
         alt (struct(cx, ty)) {
             case (ty_param(?param_idx)) {
                 auto seen = false;
                 for (uint other_param_idx in *param_indices) {
                     if (param_idx == other_param_idx) { seen = true; }
                 }
-                if (!seen) { *param_indices += ~[param_idx]; }
+                if (!seen) { *param_indices += [param_idx]; }
             }
             case (_) {/* fall through */ }
         }
     }
-    let @mutable (uint[]) param_indices = @mutable ~[];
+    let vec[uint] v = []; // FIXME: typechecker botch
+
+    let @mutable vec[uint] param_indices = @mutable v;
     auto f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
-    ret ivec::len[uint](*param_indices);
+    ret vec::len[uint](*param_indices);
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
@@ -1881,7 +1865,7 @@ fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
     ret node_id_to_monotype(cx, expr.id);
 }
 
-fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(t[], t) {
+fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(vec[t], t) {
     ret tup(node_id_to_type_params(cx, expr.id),
             node_id_to_type(cx, expr.id));
 }
@@ -1941,17 +1925,17 @@ fn field_idx(&session::session sess, &span sp, &ast::ident id,
 }
 
 fn method_idx(&session::session sess, &span sp, &ast::ident id,
-              &method[] meths) -> uint {
+              &vec[method] meths) -> uint {
     let uint i = 0u;
     for (method m in meths) { if (str::eq(m.ident, id)) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown method '" + id + "' of obj");
 }
 
-fn sort_methods(&method[] meths) -> method[] {
+fn sort_methods(&vec[method] meths) -> vec[method] {
     fn method_lteq(&method a, &method b) -> bool {
         ret str::lteq(a.ident, b.ident);
     }
-    ret std::sort::ivector::merge_sort[method](bind method_lteq(_, _), meths);
+    ret std::sort::merge_sort[method](bind method_lteq(_, _), meths);
 }
 
 fn is_lval(&@ast::expr expr) -> bool {
@@ -2137,8 +2121,8 @@ mod unify {
                 &t expected, &t actual, &arg[] expected_inputs,
                 &t expected_output, &arg[] actual_inputs, &t actual_output,
                 &controlflow expected_cf, &controlflow actual_cf,
-                &(@constr_def)[] expected_constrs,
-                &(@constr_def)[] actual_constrs) -> result {
+                &vec[@constr_def] expected_constrs,
+                &vec[@constr_def] actual_constrs) -> result {
         if (e_proto != a_proto) { ret ures_err(terr_mismatch); }
         alt (expected_cf) {
             case (ast::return) { }
@@ -2191,12 +2175,12 @@ mod unify {
         }
     }
     fn unify_obj(&@ctxt cx, &t expected, &t actual,
-                 &method[] expected_meths, &method[] actual_meths) ->
+                 &vec[method] expected_meths, &vec[method] actual_meths) ->
        result {
-        let method[] result_meths = ~[];
+        let vec[method] result_meths = [];
         let uint i = 0u;
-        let uint expected_len = ivec::len[method](expected_meths);
-        let uint actual_len = ivec::len[method](actual_meths);
+        let uint expected_len = vec::len[method](expected_meths);
+        let uint actual_len = vec::len[method](actual_meths);
         if (expected_len != actual_len) { ret ures_err(terr_meth_count); }
         while (i < expected_len) {
             auto e_meth = expected_meths.(i);
@@ -2214,10 +2198,10 @@ mod unify {
                     alt (struct(cx.tcx, tfn)) {
                         case (ty_fn(?proto, ?ins, ?out, ?cf, ?constrs)) {
                             result_meths +=
-                                ~[rec(inputs=ins,
-                                      output=out,
-                                      cf=cf,
-                                      constrs=constrs with e_meth)];
+                                [rec(inputs=ins,
+                                     output=out,
+                                     cf=cf,
+                                     constrs=constrs with e_meth)];
                         }
                     }
                 }
@@ -2344,16 +2328,18 @@ mod unify {
                         // TODO: factor this cruft out, see the TODO in the
                         // ty::ty_tup case
 
-                        let t[] result_tps = ~[];
+                        let vec[t] result_tps = [];
                         auto i = 0u;
-                        auto expected_len = ivec::len[t](expected_tps);
+                        auto expected_len = vec::len[t](expected_tps);
                         while (i < expected_len) {
                             auto expected_tp = expected_tps.(i);
                             auto actual_tp = actual_tps.(i);
                             auto result =
                                 unify_step(cx, expected_tp, actual_tp);
                             alt (result) {
-                                case (ures_ok(?rty)) { result_tps += ~[rty]; }
+                                case (ures_ok(?rty)) {
+                                    vec::push[t](result_tps, rty);
+                                }
                                 case (_) { ret result; }
                             }
                             i += 1u;
@@ -2473,13 +2459,13 @@ mod unify {
                         alt (result) {
                             case (ures_ok(?res_inner)) {
                                 auto i = 0u;
-                                auto res_tps = ~[];
+                                auto res_tps = [];
                                 for (t ex_tp in ex_tps) {
                                     auto result =
                                         unify_step(cx, ex_tp, act_tps.(i));
                                     alt (result) {
                                         case (ures_ok(?rty)) {
-                                            res_tps += ~[rty];
+                                            vec::push(res_tps, rty);
                                         }
                                         case (_) { ret result; }
                                     }
@@ -2761,16 +2747,13 @@ fn type_err_to_str(&ty::type_err err) -> str {
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
 fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
-                       uint ty_param_count) -> tup(int[], t) {
-    let @mutable int[] param_var_ids = @mutable ~[];
+                       uint ty_param_count) -> tup(vec[int], t) {
+    let vec[int] param_var_ids = [];
     auto i = 0u;
-    while (i < ty_param_count) {
-        *param_var_ids += ~[next_ty_var()];
-        i += 1u;
-    }
-    fn binder(span sp, ctxt cx, @mutable int[] param_var_ids,
+    while (i < ty_param_count) { param_var_ids += [next_ty_var()]; i += 1u; }
+    fn binder(span sp, ctxt cx, vec[int] param_var_ids,
               fn() -> int next_ty_var, uint index) -> t {
-        if (index < ivec::len(*param_var_ids)) {
+        if (index < vec::len(param_var_ids)) {
             ret mk_var(cx, param_var_ids.(index));
         }
         else {
@@ -2780,19 +2763,20 @@ fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
     auto new_typ =
         fold_ty(cx, fm_param(bind binder(sp, cx, param_var_ids,
                                          next_ty_var, _)), typ);
-    ret tup(*param_var_ids, new_typ);
+    ret tup(param_var_ids, new_typ);
 }
 
 
 // Replaces type parameters in the given type using the given list of
 // substitions.
-fn substitute_type_params(&ctxt cx, &ty::t[] substs, t typ) -> t {
+fn substitute_type_params(&ctxt cx, vec[ty::t] substs, t typ) -> t {
     if (!type_contains_params(cx, typ)) { ret typ; }
-    fn substituter(ctxt cx, @ty::t[] substs, uint idx) -> t {
+    fn substituter(ctxt cx, vec[ty::t] substs, uint idx) -> t {
         // FIXME: bounds check can fail
+
         ret substs.(idx);
     }
-    ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _)), typ);
+    ret fold_ty(cx, fm_param(bind substituter(cx, substs, _)), typ);
 }
 
 fn def_has_ty_params(&ast::def def) -> bool {
@@ -2815,10 +2799,12 @@ fn def_has_ty_params(&ast::def def) -> bool {
 
 
 // Tag information
-type variant_info = rec(ty::t[] args, ty::t ctor_ty, ast::def_id id);
+type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
 
-fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
-    if (ast::local_crate != id._0) { ret decoder::get_tag_variants(cx, id); }
+fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
+    if (ast::local_crate != id._0) {
+        ret decoder::get_tag_variants(cx, id);
+    }
     auto item = alt (cx.items.find(id._1)) {
         case (some(?i)) { i }
         case (none) {
@@ -2829,22 +2815,22 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
         case (ast_map::node_item(?item)) {
             alt (item.node) {
                 case (ast::item_tag(?variants, _)) {
-                    let variant_info[] result = ~[];
+                    let vec[variant_info] result = [];
                     for (ast::variant variant in variants) {
                         auto ctor_ty = node_id_to_monotype
                             (cx, variant.node.id);
-                        let t[] arg_tys = ~[];
+                        let vec[t] arg_tys = [];
                         if (vec::len[ast::variant_arg](variant.node.args) >
                                 0u) {
                             for (arg a in ty_fn_args(cx, ctor_ty)) {
-                                arg_tys += ~[a.ty];
+                                arg_tys += [a.ty];
                             }
                         }
                         auto did = variant.node.id;
                         result +=
-                            ~[rec(args=arg_tys,
-                                  ctor_ty=ctor_ty,
-                                  id=ast::local_def(did))];
+                            [rec(args=arg_tys,
+                                 ctor_ty=ctor_ty,
+                                 id=ast::local_def(did))];
                     }
                     ret result;
                 }
@@ -2859,7 +2845,7 @@ fn tag_variant_with_id(&ctxt cx, &ast::def_id tag_id, &ast::def_id variant_id)
    -> variant_info {
     auto variants = tag_variants(cx, tag_id);
     auto i = 0u;
-    while (i < ivec::len[variant_info](variants)) {
+    while (i < vec::len[variant_info](variants)) {
         auto variant = variants.(i);
         if (def_eq(variant.id, variant_id)) { ret variant; }
         i += 1u;

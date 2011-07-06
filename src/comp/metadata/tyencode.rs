@@ -162,7 +162,7 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
                 case (native_abi_cdecl) { w.write_char('c'); }
                 case (native_abi_llvm) { w.write_char('l'); }
             }
-            enc_ty_fn(w, cx, args, out, return, ~[]);
+            enc_ty_fn(w, cx, args, out, return, []);
         }
         case (ty::ty_obj(?methods)) {
             w.write_str("O[");
@@ -205,7 +205,7 @@ fn enc_proto(&io::writer w, proto proto) {
     }
 }
 fn enc_ty_fn(&io::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
-             &controlflow cf, &(@ty::constr_def)[] constrs) {
+             &controlflow cf, &vec[@ty::constr_def] constrs) {
     w.write_char('[');
     for (ty::arg arg in args) {
         alt (arg.mode) {

@@ -60,9 +60,10 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
         auto binexpr = ast::expr_binary(ast::add, lhs, rhs);
         ret @rec(id=cx.next_id(), node=binexpr, span=sp);
     }
-    fn make_path_expr(&ext_ctxt cx, span sp, &ast::ident[] idents)
+    fn make_path_expr(&ext_ctxt cx, span sp, vec[ast::ident] idents)
        -> @ast::expr {
-        auto path = rec(idents=idents, types=~[]);
+        let vec[@ast::ty] types = [];
+        auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
         auto pathexpr = ast::expr_path(sp_path);
         ret @rec(id=cx.next_id(), node=pathexpr, span=sp);
@@ -72,7 +73,7 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
         auto vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_rc);
         ret @rec(id=cx.next_id(), node=vecexpr, span=sp);
     }
-    fn make_call(&ext_ctxt cx, span sp, &ast::ident[] fn_path,
+    fn make_call(&ext_ctxt cx, span sp, vec[ast::ident] fn_path,
                  vec[@ast::expr] args) -> @ast::expr {
         auto pathexpr = make_path_expr(cx, sp, fn_path);
         auto callexpr = ast::expr_call(pathexpr, args);
@@ -91,11 +92,11 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
         auto recexpr = ast::expr_rec(astfields, option::none[@ast::expr]);
         ret @rec(id=cx.next_id(), node=recexpr, span=sp);
     }
-    fn make_path_vec(str ident) -> str[] {
+    fn make_path_vec(str ident) -> vec[str] {
         // FIXME: #fmt can't currently be used from within std
         // because we're explicitly referencing the 'std' crate here
 
-        ret ~["std", "extfmt", "rt", ident];
+        ret ["std", "extfmt", "rt", ident];
     }
     fn make_rt_path_expr(&ext_ctxt cx, span sp, str ident) ->
        @ast::expr {

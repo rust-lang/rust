@@ -65,13 +65,13 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     }
 }
 
-fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr_def)[] {
-    let (@ty::constr_def)[] rslt = ~[];
+fn parse_constrs(@pstate st, str_def sd) -> vec[@ty::constr_def] {
+    let vec[@ty::constr_def] rslt = [];
     alt (peek(st) as char) {
         case (':') {
             do  {
                 next(st);
-                rslt += ~[parse_constr(st, sd)];
+                vec::push(rslt, parse_constr(st, sd));
             } while (peek(st) as char == ';')
         }
         case (_) { }
@@ -80,21 +80,21 @@ fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr_def)[] {
 }
 
 fn parse_path(@pstate st, str_def sd) -> ast::path {
-    let ast::ident[] idents = ~[];
+    let vec[ast::ident] idents = [];
     fn is_last(char c) -> bool {
         ret (c == '(' || c == ':');
     }
-    idents += ~[parse_ident_(st, sd, is_last)];
+    idents += [parse_ident_(st, sd, is_last)];
     while (true) {
         alt (peek(st) as char) {
             case (':') { next(st); next(st); }
             case (?c) {
                 if (c == '(') {
                     ret respan(rec(lo=0u, hi=0u),
-                               rec(idents=idents, types=~[]));
+                               rec(idents=idents, types=[]));
                 }
                 else {
-                    idents += ~[parse_ident_(st, sd, is_last)];
+                    idents += [parse_ident_(st, sd, is_last)];
                 }
             }
         }
@@ -103,7 +103,7 @@ fn parse_path(@pstate st, str_def sd) -> ast::path {
 }
 
 fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
-    let (@ast::constr_arg)[] args = ~[];
+    let vec[@ast::constr_arg] args = [];
     auto sp = rec(lo=0u,hi=0u); // FIXME: use a real span
     let ast::path pth = parse_path(st, sd);
     let char ignore = next(st) as char;
@@ -113,15 +113,14 @@ fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
         alt (peek(st) as char) {
             case ('*') {
                 st.pos += 1u;
-                args += ~[@respan(sp, ast::carg_base)];
+                args += [@respan(sp, ast::carg_base)];
             }
             case (?c) {
                 /* how will we disambiguate between
                  an arg index and a lit argument? */
                 if (c >= '0' && c <= '9') {
                     // FIXME
-                    args += ~[@respan(sp,
-                                      ast::carg_ident((c as uint) - 48u))];
+                    args += [@respan(sp, ast::carg_ident((c as uint) - 48u))];
                     ignore = next(st) as char;
                 }
                 else {
@@ -170,8 +169,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('t') {
             assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
-            let ty::t[] params = ~[];
-            while (peek(st) as char != ']') { params += ~[parse_ty(st, sd)]; }
+            let vec[ty::t] params = [];
+            while (peek(st) as char != ']') { params += [parse_ty(st, sd)]; }
             st.pos = st.pos + 1u;
             ret ty::mk_tag(st.tcx, def, params);
         }
@@ -227,7 +226,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('O') {
             assert (next(st) as char == '[');
-            let ty::method[] methods = ~[];
+            let vec[ty::method] methods = [];
             while (peek(st) as char != ']') {
                 auto proto;
                 alt (next(st) as char) {
@@ -240,12 +239,12 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 }
                 auto func = parse_ty_fn(st, sd);
                 methods +=
-                    ~[rec(proto=proto,
-                          ident=name,
-                          inputs=func._0,
-                          output=func._1,
-                          cf=func._2,
-                          constrs=func._3)];
+                    [rec(proto=proto,
+                         ident=name,
+                         inputs=func._0,
+                         output=func._1,
+                         cf=func._2,
+                         constrs=func._3)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
@@ -254,8 +253,8 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
             auto inner = parse_ty(st, sd);
-            let ty::t[] params = ~[];
-            while (peek(st) as char != ']') { params += ~[parse_ty(st, sd)]; }
+            let vec[ty::t] params = [];
+            while (peek(st) as char != ']') { params += [parse_ty(st, sd)]; }
             st.pos = st.pos + 1u;
             ret ty::mk_res(st.tcx, def, inner, params);
         }
@@ -334,7 +333,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(ty::arg[], ty::t, ast::controlflow, (@ty::constr_def)[]) {
+   tup(ty::arg[], ty::t, ast::controlflow, vec[@ty::constr_def]) {
     assert (next(st) as char == '[');
     let ty::arg[] inputs = ~[];
     while (peek(st) as char != ']') {

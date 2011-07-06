@@ -1,9 +1,10 @@
 
 import syntax::ast::*;
 import syntax::walk;
-import std::ivec;
 import std::option::*;
-import aux::constr_arg_use;
+import std::vec;
+import std::vec::len;
+import std::vec::slice;
 import aux::local_node_id_to_def;
 import aux::fn_ctxt;
 import aux::fn_info;
@@ -62,15 +63,7 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
         }
         case (npred(_, ?args)) {
             alt (rslt) {
-                case (cpred(_, ?descs)) {
-                    // FIXME: Remove this vec->ivec conversion.
-                    let (@constr_arg_use)[] cau_ivec = ~[];
-                    for (@constr_arg_use cau in args) {
-                        cau_ivec += ~[cau];
-                    }
-                    auto d = *descs;
-                    ret match_args(fcx, d, cau_ivec);
-                }
+                case (cpred(_, ?descs)) { ret match_args(fcx, *descs, args); }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"
                                              + " found an init constraint");
@@ -105,11 +98,11 @@ fn seq_tritv(&postcond p, &postcond q) {
     }
 }
 
-fn seq_postconds(&fn_ctxt fcx, &postcond[] ps) -> postcond {
-    auto sz = ivec::len(ps);
+fn seq_postconds(&fn_ctxt fcx, &vec[postcond] ps) -> postcond {
+    auto sz = vec::len(ps);
     if (sz >= 1u) {
         auto prev = tritv_clone(ps.(0));
-        for (postcond p in ivec::slice(ps, 1u, sz)) {
+        for (postcond p in slice(ps, 1u, sz)) {
             seq_tritv(prev, p);
         }
         ret prev;
@@ -123,14 +116,14 @@ fn seq_postconds(&fn_ctxt fcx, &postcond[] ps) -> postcond {
 // return the precondition for evaluating each expr in order.
 // So, if e0's post is {x} and e1's pre is {x, y, z}, the entire
 // precondition shouldn't include x.
-fn seq_preconds(&fn_ctxt fcx, &pre_and_post[] pps) -> precond {
-    let uint sz = ivec::len(pps);
+fn seq_preconds(&fn_ctxt fcx, &vec[pre_and_post] pps) -> precond {
+    let uint sz = len(pps);
     let uint num_vars = num_constraints(fcx.enclosing);
 
-    fn seq_preconds_go(&fn_ctxt fcx, &pre_and_post[] pps,
+    fn seq_preconds_go(&fn_ctxt fcx, &vec[pre_and_post] pps,
                        &pre_and_post first)
         -> precond {
-        let uint sz = ivec::len(pps);
+        let uint sz = len(pps);
         if (sz >= 1u) {
             auto second = pps.(0);
             assert (pps_len(second) == num_constraints(fcx.enclosing));
@@ -140,7 +133,7 @@ fn seq_preconds(&fn_ctxt fcx, &pre_and_post[] pps) -> precond {
             union(next_first, second_pre);
             auto next_first_post = clone(first.postcondition);
             seq_tritv(next_first_post, second.postcondition); 
-            ret seq_preconds_go(fcx, ivec::slice(pps, 1u, sz),
+            ret seq_preconds_go(fcx, slice(pps, 1u, sz), 
                                 @rec(precondition=next_first,
                                      postcondition=next_first_post));
         }
@@ -152,7 +145,7 @@ fn seq_preconds(&fn_ctxt fcx, &pre_and_post[] pps) -> precond {
     if (sz >= 1u) {
         auto first = pps.(0);
         assert (pps_len(first) == num_vars);
-        ret seq_preconds_go(fcx, ivec::slice(pps, 1u, sz), first);
+        ret seq_preconds_go(fcx, slice(pps, 1u, sz), first);
     } else { ret true_precond(num_vars); }
 }
 
@@ -230,7 +223,7 @@ fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
 fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
     alt (e.node) {
         case (expr_path(?p)) {
-            alt (ivec::last(p.node.idents)) {
+            alt (vec::last(p.node.idents)) {
                 case (some(?i)) {
                     alt (local_node_id_to_def(fcx, e.id)) {
                         case (some(def_local(?d_id))) {

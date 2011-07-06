@@ -240,11 +240,11 @@ fn tritv_doesntcare(&t v) -> bool {
   ret true;
 }
 
-fn to_vec(&t v) -> uint[] {
+fn to_vec(&t v) -> vec[uint] {
   let uint i = 0u;
-  let uint[] rslt = ~[];
+  let vec[uint] rslt = [];
   while (i < v.nbits) {
-    rslt += ~[alt (tritv_get(v, i)) {
+    rslt += [alt (tritv_get(v, i)) {
         case (dont_care) { 2u }
         case (ttrue)     { 1u }
         case (tfalse)    { 0u } }];

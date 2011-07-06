@@ -1,6 +1,5 @@
 // Functions dealing with attributes and meta_items
 
-import std::ivec;
 import std::vec;
 import std::str;
 import std::map;
@@ -29,11 +28,13 @@ export mk_attr;
 
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
-fn find_linkage_metas(&ast::attribute[] attrs) -> (@ast::meta_item)[] {
-    let (@ast::meta_item)[] metas = ~[];
+fn find_linkage_metas(vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
+    let vec[@ast::meta_item] metas = [];
     for (ast::attribute attr in find_attrs_by_name(attrs, "link")) {
         alt (attr.node.value.node) {
-            case (ast::meta_list(_, ?items)) { metas += items; }
+            case (ast::meta_list(_, ?items)) {
+                metas += items;
+            }
             case (_) {
                 log "ignoring link attribute that has incorrect type";
             }
@@ -43,8 +44,8 @@ fn find_linkage_metas(&ast::attribute[] attrs) -> (@ast::meta_item)[] {
 }
 
 // Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(&ast::attribute[] attrs,
-                      ast::ident name) -> ast::attribute[] {
+fn find_attrs_by_name(vec[ast::attribute] attrs,
+                      ast::ident name) -> vec[ast::attribute] {
     auto filter = bind fn(&ast::attribute a,
                           ast::ident name) -> option::t[ast::attribute] {
         if (get_attr_name(a) == name) {
@@ -53,7 +54,7 @@ fn find_attrs_by_name(&ast::attribute[] attrs,
             option::none
         }
     } (_, name);
-    ret ivec::filter_map(filter, attrs);
+    ret vec::filter_map(filter, attrs);
 }
 
 fn get_attr_name(&ast::attribute attr) -> ast::ident {
@@ -100,10 +101,8 @@ fn get_meta_item_value_str(&@ast::meta_item meta) -> option::t[str] {
 fn attr_meta(&ast::attribute attr) -> @ast::meta_item { @attr.node.value }
 
 // Get the meta_items from inside a vector of attributes
-fn attr_metas(&ast::attribute[] attrs) -> vec[@ast::meta_item] {
-    auto mitems = [];
-    for (ast::attribute a in attrs) { mitems += [attr_meta(a)]; }
-    ret mitems;
+fn attr_metas(&vec[ast::attribute] attrs) -> vec[@ast::meta_item] {
+    ret vec::map(attr_meta, attrs);
 }
 
 fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
@@ -131,7 +130,7 @@ fn eq(@ast::meta_item a, @ast::meta_item b) -> bool {
     }
 }
 
-fn contains(&(@ast::meta_item)[] haystack, @ast::meta_item needle) -> bool {
+fn contains(&vec[@ast::meta_item] haystack, @ast::meta_item needle) -> bool {
     log #fmt("looking for %s",
              syntax::print::pprust::meta_item_to_str(*needle));
     for (@ast::meta_item item in haystack) {
@@ -220,8 +219,8 @@ fn mk_name_value_item(ast::ident name, ast::lit value) -> @ast::meta_item {
     ret @span(ast::meta_name_value(name, value));
 }
 
-fn mk_list_item(ast::ident name, &(@ast::meta_item)[] items)
-        -> @ast::meta_item {
+fn mk_list_item(ast::ident name,
+                &vec[@ast::meta_item] items) -> @ast::meta_item {
     ret @span(ast::meta_list(name, items));
 }
 

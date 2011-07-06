@@ -1,6 +1,5 @@
 
 import std::io;
-import std::ivec;
 import std::vec;
 import std::str;
 import std::option;
@@ -410,18 +409,13 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
             // This is explicit type parameter instantiation.
             auto seq = parse_seq_to_end(token::RBRACKET, some(token::COMMA),
                                         parse_ty, p);
-
-            // FIXME: Remove this vec->ivec conversion.
-            auto seq_ivec = ~[];
-            for (@ast::ty typ in seq) { seq_ivec += ~[typ]; }
-
             alt (orig_t.node) {
                 case (ast::ty_path(?pth, ?ann)) {
                     auto hi = p.get_hi_pos();
                     ret @spanned(lo, hi,
                                  ast::ty_path(spanned(lo, hi,
                                               rec(idents=pth.node.idents,
-                                                  types=seq_ivec)),
+                                                  types=seq)),
                                               ann));
                 }
                 case (_) {
@@ -591,24 +585,6 @@ fn parse_seq_to_end[T](token::token ket, option::t[token::token] sep,
     ret v;
 }
 
-fn parse_seq_to_end_ivec[T](token::token ket, option::t[token::token] sep,
-                            fn(&parser)->T  f, &parser p) -> T[] {
-    let bool first = true;
-    let T[] v = ~[];
-    while (p.peek() != ket) {
-        alt (sep) {
-            case (some(?t)) {
-                if (first) { first = false; } else { expect(p, t); }
-            }
-            case (_) { }
-        }
-        v += ~[f(p)];
-    }
-    expect(p, ket);
-    ret v;
-}
-
-
 fn parse_seq[T](token::token bra, token::token ket,
                 option::t[token::token] sep, fn(&parser) -> T  f, &parser p)
    -> ast::spanned[vec[T]] {
@@ -618,17 +594,6 @@ fn parse_seq[T](token::token bra, token::token ket,
     auto hi = p.get_hi_pos();
     ret spanned(lo, hi, result);
 }
-
-fn parse_seq_ivec[T](token::token bra, token::token ket,
-                     option::t[token::token] sep,
-                     fn(&parser)->T  f, &parser p) -> ast::spanned[T[]] {
-    auto lo = p.get_lo_pos();
-    expect(p, bra);
-    auto result = parse_seq_to_end_ivec[T](ket, sep, f, p);
-    auto hi = p.get_hi_pos();
-    ret spanned(lo, hi, result);
-}
-
 
 fn parse_lit(&parser p) -> ast::lit {
     auto sp = p.get_span();
@@ -672,12 +637,12 @@ fn is_ident(token::token t) -> bool {
 fn parse_path(&parser p) -> ast::path {
     auto lo = p.get_lo_pos();
     auto hi = lo;
-    let ast::ident[] ids = ~[];
+    let vec[ast::ident] ids = [];
     while (true) {
         alt (p.peek()) {
             case (token::IDENT(?i, _)) {
                 hi = p.get_hi_pos();
-                ids += ~[p.get_str(i)];
+                ids += [p.get_str(i)];
                 p.bump();
                 if (p.peek() == token::MOD_SEP) { p.bump(); } else { break; }
             }
@@ -685,7 +650,7 @@ fn parse_path(&parser p) -> ast::path {
         }
     }
     hi = p.get_hi_pos();
-    ret spanned(lo, hi, rec(idents=ids, types=~[]));
+    ret spanned(lo, hi, rec(idents=ids, types=[]));
 }
 
 fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
@@ -694,13 +659,8 @@ fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
     if (p.peek() == token::LBRACKET) {
         auto seq = parse_seq(token::LBRACKET, token::RBRACKET,
                              some(token::COMMA), parse_ty, p);
-
-        // FIXME: Remove this vec->ivec conversion.
-        auto seq_ivec = ~[];
-        for (@ast::ty typ in seq.node) { seq_ivec += ~[typ]; }
-
         auto hi = p.get_hi_pos();
-        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq_ivec));
+        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq.node));
     }
     ret path;
 }
@@ -995,7 +955,7 @@ fn parse_syntax_ext(&parser p) -> @ast::expr {
 
 fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto pth = parse_path(p);
-    if (ivec::len(pth.node.idents) == 0u) {
+    if (vec::len(pth.node.idents) == 0u) {
         p.fatal("expected a syntax expander name");
     }
     auto es = parse_seq(token::LPAREN, token::RPAREN,
@@ -1015,7 +975,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
 fn expand_syntax_ext(&parser p, span sp, &ast::path path,
                      vec[@ast::expr] args, option::t[str] body) ->
    ast::expr_ {
-    assert (ivec::len(path.node.idents) > 0u);
+    assert (vec::len(path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
     alt (p.get_syntax_expanders().find(extname)) {
         case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
@@ -1509,7 +1469,7 @@ fn parse_stmt(&parser p) -> @ast::stmt {
 }
 
 fn parse_crate_stmt(&parser p) -> @ast::stmt {
-    auto cdir = parse_crate_directive(p, ~[]);
+    auto cdir = parse_crate_directive(p, []);
     ret @spanned(cdir.span.lo, cdir.span.hi,
                  ast::stmt_crate_directive(@cdir));
 }
@@ -1527,7 +1487,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
         auto item_attrs;
         alt (parse_outer_attrs_or_ext(p)) {
             case (none) {
-                item_attrs = ~[];
+                item_attrs = [];
             }
             case (some(left(?attrs))) {
                 item_attrs = attrs;
@@ -1541,7 +1501,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
         auto maybe_item = parse_item(p, item_attrs);
 
         // If we have attributes then we should have an item
-        if (ivec::len(item_attrs) > 0u) {
+        if (vec::len(item_attrs) > 0u) {
             alt (maybe_item) {
                 case (got_item(_)) { /* fallthrough */ }
                 case (_) {
@@ -1747,7 +1707,7 @@ fn parse_fn_header(&parser p) -> tup(ast::ident, vec[ast::ty_param]) {
 }
 
 fn mk_item(&parser p, uint lo, uint hi, &ast::ident ident, &ast::item_ node,
-           &ast::attribute[] attrs) -> @ast::item {
+           &vec[ast::attribute] attrs) -> @ast::item {
     ret @rec(ident=ident,
              attrs=attrs,
              id=p.get_id(),
@@ -1756,7 +1716,7 @@ fn mk_item(&parser p, uint lo, uint hi, &ast::ident ident, &ast::item_ node,
 }
 
 fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto,
-                         &ast::attribute[] attrs) -> @ast::item {
+                         vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto f = parse_fn(p, proto, purity);
@@ -1807,7 +1767,7 @@ fn parse_dtor(&parser p) -> @ast::method {
     ret @spanned(lo, f.body.span.hi, m);
 }
 
-fn parse_item_obj(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
+fn parse_item_obj(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
    @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
@@ -1830,7 +1790,7 @@ fn parse_item_obj(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
                                                 p.get_id()), attrs);
 }
 
-fn parse_item_res(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
+fn parse_item_res(&parser p, ast::layer lyr, vec[ast::attribute] attrs) ->
    @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
@@ -1852,8 +1812,8 @@ fn parse_item_res(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
 }
 
 fn parse_mod_items(&parser p, token::token term,
-                   &ast::attribute[] first_item_attrs) -> ast::_mod {
-    auto view_items = if (ivec::len(first_item_attrs) == 0u) {
+                   vec[ast::attribute] first_item_attrs) -> ast::_mod {
+    auto view_items = if (vec::len(first_item_attrs) == 0u) {
         parse_view(p)
     } else {
         // Shouldn't be any view items since we've already parsed an item attr
@@ -1863,7 +1823,7 @@ fn parse_mod_items(&parser p, token::token term,
     auto initial_attrs = first_item_attrs;
     while (p.peek() != term) {
         auto attrs = initial_attrs + parse_outer_attributes(p);
-        initial_attrs = ~[];
+        initial_attrs = [];
         alt (parse_item(p, attrs)) {
             case (got_item(?i)) { vec::push(items, i); }
             case (_) {
@@ -1875,7 +1835,7 @@ fn parse_mod_items(&parser p, token::token term,
     ret rec(view_items=view_items, items=items);
 }
 
-fn parse_item_const(&parser p, &ast::attribute[] attrs) -> @ast::item {
+fn parse_item_const(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ty = parse_ty(p);
     auto id = parse_value_ident(p);
@@ -1886,20 +1846,21 @@ fn parse_item_const(&parser p, &ast::attribute[] attrs) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_const(ty, e), attrs);
 }
 
-fn parse_item_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
+fn parse_item_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     expect(p, token::LBRACE);
     auto inner_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = inner_attrs._1;
-    auto m = parse_mod_items(p, token::RBRACE, first_item_outer_attrs);
+    auto m = parse_mod_items(p, token::RBRACE,
+                             first_item_outer_attrs);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
     ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs._0);
 }
 
-fn parse_item_native_type(&parser p, &ast::attribute[] attrs)
-        -> @ast::native_item {
+fn parse_item_native_type(&parser p,
+                          &vec[ast::attribute] attrs) -> @ast::native_item {
     auto t = parse_type_decl(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
@@ -1910,8 +1871,8 @@ fn parse_item_native_type(&parser p, &ast::attribute[] attrs)
              span=rec(lo=t._0, hi=hi));
 }
 
-fn parse_item_native_fn(&parser p, &ast::attribute[] attrs)
-        -> @ast::native_item {
+fn parse_item_native_fn(&parser p,
+                        &vec[ast::attribute] attrs) -> @ast::native_item {
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto decl = parse_fn_decl(p, ast::impure_fn);
@@ -1929,8 +1890,8 @@ fn parse_item_native_fn(&parser p, &ast::attribute[] attrs)
              span=rec(lo=lo, hi=hi));
 }
 
-fn parse_native_item(&parser p, &ast::attribute[] attrs)
-        -> @ast::native_item {
+fn parse_native_item(&parser p,
+                     &vec[ast::attribute] attrs) -> @ast::native_item {
     parse_layer(p);
     if (eat_word(p, "type")) {
         ret parse_item_native_type(p, attrs);
@@ -1940,9 +1901,9 @@ fn parse_native_item(&parser p, &ast::attribute[] attrs)
 }
 
 fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi,
-                          &ast::attribute[] first_item_attrs)
-        -> ast::native_mod {
-    auto view_items = if (ivec::len(first_item_attrs) == 0u) {
+                          &vec[ast::attribute] first_item_attrs) ->
+   ast::native_mod {
+    auto view_items = if (vec::len(first_item_attrs) == 0u) {
         parse_native_view(p)
     } else {
         // Shouldn't be any view items since we've already parsed an item attr
@@ -1952,7 +1913,7 @@ fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi,
     auto initial_attrs = first_item_attrs;
     while (p.peek() != token::RBRACE) {
         auto attrs = initial_attrs + parse_outer_attributes(p);
-        initial_attrs = ~[];
+        initial_attrs = [];
         items += [parse_native_item(p, attrs)];
     }
     ret rec(native_name=native_name,
@@ -1961,7 +1922,7 @@ fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi,
             items=items);
 }
 
-fn parse_item_native_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
+fn parse_item_native_mod(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto abi = ast::native_abi_cdecl;
     if (!is_word(p, "mod")) {
@@ -2001,7 +1962,7 @@ fn parse_type_decl(&parser p) -> tup(uint, ast::ident) {
     ret tup(lo, id);
 }
 
-fn parse_item_type(&parser p, &ast::attribute[] attrs) -> @ast::item {
+fn parse_item_type(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto t = parse_type_decl(p);
     auto tps = parse_ty_params(p);
     expect(p, token::EQ);
@@ -2011,7 +1972,7 @@ fn parse_item_type(&parser p, &ast::attribute[] attrs) -> @ast::item {
     ret mk_item(p, t._0, hi, t._1, ast::item_ty(ty, tps), attrs);
 }
 
-fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
+fn parse_item_tag(&parser p, vec[ast::attribute] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
@@ -2090,7 +2051,7 @@ fn parse_auth(&parser p) -> ast::_auth {
 
 tag parsed_item { got_item(@ast::item); no_item; fn_no_item; }
 
-fn parse_item(&parser p, &ast::attribute[] attrs) -> parsed_item {
+fn parse_item(&parser p, vec[ast::attribute] attrs) -> parsed_item {
     if (eat_word(p, "const")) {
         ret got_item(parse_item_const(p, attrs));
     } else if (eat_word(p, "fn")) {
@@ -2124,7 +2085,8 @@ fn parse_item(&parser p, &ast::attribute[] attrs) -> parsed_item {
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option::t[either::t[ast::attribute[], @ast::expr]];
+type attr_or_ext = option::t[either::t[vec[ast::attribute],
+                                       @ast::expr]];
 
 fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
     if (p.peek() == token::POUND) {
@@ -2132,7 +2094,7 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
         p.bump();
         if (p.peek() == token::LBRACKET) {
             auto first_attr = parse_attribute_naked(p, ast::attr_outer, lo);
-            ret some(left(~[first_attr] + parse_outer_attributes(p)));
+            ret some(left([first_attr] + parse_outer_attributes(p)));
         } else {
             ret some(right(parse_syntax_ext_naked(p, lo)));
         }
@@ -2142,10 +2104,10 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
 }
 
 // Parse attributes that appear before an item
-fn parse_outer_attributes(&parser p) -> ast::attribute[] {
-    let ast::attribute[] attrs = ~[];
+fn parse_outer_attributes(&parser p) -> vec[ast::attribute] {
+    let vec[ast::attribute] attrs = [];
     while (p.peek() == token::POUND) {
-        attrs += ~[parse_attribute(p, ast::attr_outer)];
+        attrs += [parse_attribute(p, ast::attr_outer)];
     }
     ret attrs;
 }
@@ -2171,22 +2133,22 @@ fn parse_attribute_naked(&parser p, ast::attr_style style,
 // next item (since we can't know whether the attribute is an inner attribute
 // of the containing item or an outer attribute of the first contained item
 // until we see the semi).
-fn parse_inner_attrs_and_next(&parser p) -> tup(ast::attribute[],
-                                                ast::attribute[]) {
-    let ast::attribute[] inner_attrs = ~[];
-    let ast::attribute[] next_outer_attrs = ~[];
+fn parse_inner_attrs_and_next(&parser p) -> tup(vec[ast::attribute],
+                                                vec[ast::attribute]) {
+    let vec[ast::attribute] inner_attrs = [];
+    let vec[ast::attribute] next_outer_attrs = [];
     while (p.peek() == token::POUND) {
         auto attr = parse_attribute(p, ast::attr_inner);
         if (p.peek() == token::SEMI) {
             p.bump();
-            inner_attrs += ~[attr];
+            inner_attrs += [attr];
         } else {
             // It's not really an inner attribute
             auto outer_attr = spanned(attr.span.lo,
                                       attr.span.hi,
                                       rec(style=ast::attr_outer,
                                           value=attr.node.value));
-            next_outer_attrs += ~[outer_attr];
+            next_outer_attrs += [outer_attr];
             break;
         }
     }
@@ -2215,15 +2177,15 @@ fn parse_meta_item(&parser p) -> @ast::meta_item {
     }
 }
 
-fn parse_meta_seq(&parser p) -> (@ast::meta_item)[] {
-    ret parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
-                       parse_meta_item, p).node;
+fn parse_meta_seq(&parser p) -> vec[@ast::meta_item] {
+    ret parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
+                  parse_meta_item, p).node;
 }
 
-fn parse_optional_meta(&parser p) -> (@ast::meta_item)[] {
+fn parse_optional_meta(&parser p) -> vec[@ast::meta_item] {
     alt (p.peek()) {
         case (token::LPAREN) { ret parse_meta_seq(p); }
-        case (_) { ret ~[]; }
+        case (_) { let vec[@ast::meta_item] v = []; ret v; }
     }
 }
 
@@ -2233,7 +2195,8 @@ fn parse_use(&parser p) -> @ast::view_item {
     auto metadata = parse_optional_meta(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    auto use_decl = ast::view_item_use(ident, metadata, p.get_id());
+    auto use_decl =
+        ast::view_item_use(ident, metadata, p.get_id());
     ret @spanned(lo, hi, use_decl);
 }
 
@@ -2366,7 +2329,8 @@ fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
     auto first_item_outer_attrs = crate_attrs._1;
     auto m = parse_mod_items(p, token::EOF,
                              first_item_outer_attrs);
-    ret @spanned(lo, p.get_lo_pos(), rec(directives=~[],
+    let vec[@ast::crate_directive] cdirs = [];
+    ret @spanned(lo, p.get_lo_pos(), rec(directives=cdirs,
                                          module=m,
                                          attrs=crate_attrs._0,
                                          config=p.get_cfg()));
@@ -2387,13 +2351,14 @@ fn parse_str(&parser p) -> ast::ident {
 // Each crate file is a sequence of directives.
 //
 // Each directive imperatively extends its environment with 0 or more items.
-fn parse_crate_directive(&parser p, &ast::attribute[] first_outer_attr)
+fn parse_crate_directive(&parser p, vec[ast::attribute] first_outer_attr)
     -> ast::crate_directive {
 
     // Collect the next attributes
-    auto outer_attrs = first_outer_attr + parse_outer_attributes(p);
+    auto outer_attrs = first_outer_attr
+        + parse_outer_attributes(p);
     // In a crate file outer attributes are only going to apply to mods
-    auto expect_mod = ivec::len(outer_attrs) > 0u;
+    auto expect_mod = vec::len(outer_attrs) > 0u;
 
     auto lo = p.get_lo_pos();
     if (expect_mod || is_word(p, "mod")) {
@@ -2448,20 +2413,20 @@ fn parse_crate_directive(&parser p, &ast::attribute[] first_outer_attr)
 }
 
 fn parse_crate_directives(&parser p, token::token term,
-                          &ast::attribute[] first_outer_attr)
-        -> (@ast::crate_directive)[] {
+                          vec[ast::attribute] first_outer_attr) ->
+   vec[@ast::crate_directive] {
 
     // This is pretty ugly. If we have an outer attribute then we can't accept
     // seeing the terminator next, so if we do see it then fail the same way
     // parse_crate_directive would
-    if (ivec::len(first_outer_attr) > 0u && p.peek() == term) {
+    if (vec::len(first_outer_attr) > 0u && p.peek() == term) {
         expect_word(p, "mod");
     }
 
-    let (@ast::crate_directive)[] cdirs = ~[];
+    let vec[@ast::crate_directive] cdirs = [];
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p, first_outer_attr);
-        cdirs += ~[cdir];
+        vec::push(cdirs, cdir);
     }
     ret cdirs;
 }

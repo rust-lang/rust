@@ -1,5 +1,4 @@
 import std::io;
-import std::ivec;
 import std::vec;
 import std::str;
 import std::int;
@@ -47,7 +46,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     }
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  &arg[] inputs, t output, ast::controlflow cf,
-                 &(@constr_def)[] constrs) -> str {
+                 &vec[@constr_def] constrs) -> str {
         auto s;
         alt (proto) {
             case (ast::proto_iter) { s = "iter"; }
@@ -119,9 +118,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             // The user should never see this if the cname is set properly!
 
             s += "<tag#" + int::str(id._0) + ":" + int::str(id._1) + ">";
-            if (ivec::len[t](tps) > 0u) {
-                let vec[str] strs = [];
-                for (t typ in tps) { strs += [ty_to_str(cx, typ)]; }
+            if (vec::len[t](tps) > 0u) {
+                auto f = bind ty_to_str(cx, _);
+                auto strs = vec::map[t, str](f, tps);
                 s += "[" + str::connect(strs, ",") + "]";
             }
         }
@@ -130,13 +129,12 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         }
         case (ty_native_fn(_, ?inputs, ?output)) {
             s += fn_to_str(cx, ast::proto_fn, none, inputs, output,
-                           ast::return, ~[]);
+                           ast::return, []);
         }
         case (ty_obj(?meths)) {
-            // TODO: Remove this ivec->vec conversion.
-            auto strs = [];
-            for (method m in meths) { strs += [method_to_str(cx, m)]; }
-            s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
+            auto f = bind method_to_str(cx, _);
+            auto m = vec::map[method, str](f, meths);
+            s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
         case (ty_res(?id, _, _)) {
             s += "<resource#" + int::str(id._0) + ":" + int::str(id._1) + ">";
@@ -163,7 +161,7 @@ fn constr_to_str(&@constr_def c) -> str {
         pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(&(@constr_def)[] constrs) -> str {
+fn constrs_str(&vec[@constr_def] constrs) -> str {
     auto s = "";
     auto colon = true;
     for (@constr_def c in constrs) {

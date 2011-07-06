@@ -1,10 +1,9 @@
 
-import std::ivec;
-import std::int;
-import std::io;
-import std::str;
 import std::uint;
+import std::int;
 import std::vec;
+import std::str;
+import std::io;
 import std::option;
 import parse::lexer;
 import syntax::codemap::codemap;
@@ -207,17 +206,6 @@ fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op) {
     end(s);
 }
 
-fn commasep_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op) {
-    box(s, 0u, b);
-    auto first = true;
-    for (IN elt in elts) {
-        if (first) { first = false; } else { word_space(s, ","); }
-        op(s, elt);
-    }
-    end(s);
-}
-
-
 fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
                      fn(&IN) -> codemap::span  get_span) {
     box(s, 0u, b);
@@ -242,7 +230,7 @@ fn commasep_exprs(&ps s, breaks b, vec[@ast::expr] exprs) {
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(&ps s, ast::_mod _mod, &ast::attribute[] attrs) {
+fn print_mod(&ps s, ast::_mod _mod, &vec[ast::attribute] attrs) {
     print_inner_attributes(s, attrs);
     for (@ast::view_item vitem in _mod.view_items) {
         print_view_item(s, vitem);
@@ -533,7 +521,7 @@ fn print_item(&ps s, &@ast::item item) {
     s.ann.post(ann_node);
 }
 
-fn print_outer_attributes(&ps s, &ast::attribute[] attrs) {
+fn print_outer_attributes(&ps s, vec[ast::attribute] attrs) {
     auto count = 0;
     for (ast::attribute attr in attrs) {
         alt (attr.node.style) {
@@ -544,7 +532,7 @@ fn print_outer_attributes(&ps s, &ast::attribute[] attrs) {
     if (count > 0) { hardbreak_if_not_bol(s); }
 }
 
-fn print_inner_attributes(&ps s, &ast::attribute[] attrs) {
+fn print_inner_attributes(&ps s, vec[ast::attribute] attrs) {
     auto count = 0;
     for (ast::attribute attr in attrs) {
         alt (attr.node.style) {
@@ -1025,9 +1013,9 @@ fn print_path(&ps s, &ast::path path) {
         if (first) { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
-    if (ivec::len(path.node.types) > 0u) {
+    if (vec::len(path.node.types) > 0u) {
         word(s.s, "[");
-        commasep_ivec(s, inconsistent, path.node.types, print_boxed_type);
+        commasep(s, inconsistent, path.node.types, print_boxed_type);
         word(s.s, "]");
     }
 }
@@ -1118,7 +1106,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
         case (ast::meta_list(?name, ?items)) {
             word(s.s, name);
             popen(s);
-            commasep_ivec(s, consistent, items, print_meta_item);
+            commasep(s, consistent, items, print_meta_item);
             pclose(s);
         }
     }
@@ -1132,9 +1120,9 @@ fn print_view_item(&ps s, &@ast::view_item item) {
         case (ast::view_item_use(?id, ?mta, _)) {
             head(s, "use");
             word(s.s, id);
-            if (ivec::len(mta) > 0u) {
+            if (vec::len(mta) > 0u) {
                 popen(s);
-                commasep_ivec(s, consistent, mta, print_meta_item);
+                commasep(s, consistent, mta, print_meta_item);
                 pclose(s);
             }
         }
@@ -1433,7 +1421,7 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
 
 
 fn constr_args_to_str[T](fn(&T) -> str  f,
-                         &(@ast::constr_arg_general[T])[] args) -> str {
+                         &vec[@ast::constr_arg_general[T]] args) -> str {
     auto comma = false;
     auto s = "(";
     for (@ast::constr_arg_general[T] a in args) {
@@ -1459,13 +1447,8 @@ fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
 fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
-    // TODO: Remove this vec->ivec conversion.
-    auto cag_ivec = ~[];
-    for (@ast::constr_arg_general[uint] cag in c.node.args) {
-        cag_ivec += ~[cag];
-    }
     ret ast::path_to_str(c.node.path) +
-            constr_args_to_str(uint_to_str, cag_ivec);
+            constr_args_to_str(uint_to_str, c.node.args);
 }
 
 fn ast_constrs_str(&vec[@ast::constr] constrs) -> str {
