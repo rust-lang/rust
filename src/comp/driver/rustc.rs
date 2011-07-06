@@ -107,7 +107,7 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
                  bind front::config::strip_unconfigured_items(crate));
     if (sess.get_opts().test) {
         crate = time(time_passes, "building test harness",
-                     bind front::test::modify_for_testing(sess, crate));
+                     bind front::test::modify_for_testing(crate));
     }
     auto ast_map = time(time_passes, "ast indexing",
                         bind middle::ast_map::map_crate(*crate));
