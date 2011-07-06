@@ -83,6 +83,13 @@ rust_task : public maybe_proxy<rust_task>,
     memory_region local_region;
     memory_region synchronized_region;
 
+    class wakeup_callback {
+    public:
+        virtual void on_wakeup() = 0;
+    };
+
+    wakeup_callback *_on_wakeup;
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,
               rust_task_list *state,
@@ -156,6 +163,8 @@ rust_task : public maybe_proxy<rust_task>,
     void pin();
     void pin(int id);
     void unpin();
+
+    void on_wakeup(wakeup_callback *callback);
 };
 
 //

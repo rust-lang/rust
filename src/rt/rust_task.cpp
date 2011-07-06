@@ -73,7 +73,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
-    synchronized_region(&sched->srv->synchronized_region)
+    synchronized_region(&sched->srv->synchronized_region),
+    _on_wakeup(NULL)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -431,6 +432,10 @@ rust_task::wakeup(rust_cond *from) {
     I(sched, cond == from);
     cond = NULL;
     cond_name = "none";
+
+    if(_on_wakeup) {
+        _on_wakeup->on_wakeup();
+    }
 }
 
 void
@@ -539,6 +544,10 @@ void rust_task::pin(int id) {
 
 void rust_task::unpin() {
     pinned_on = -1;
+}
+
+void rust_task::on_wakeup(rust_task::wakeup_callback *callback) {
+    _on_wakeup = callback;
 }
 
 //
