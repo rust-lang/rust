@@ -315,11 +315,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
         }
         case (ast::ty_tup(?fields)) {
-            let ty::mt[] flds = ~[];
-            ivec::reserve(flds, vec::len(fields));
-            for (ast::mt field in fields) {
-                flds += ~[ast_mt_to_mt(tcx, getter, field)];
-            }
+            auto flds = ivec::map(bind ast_mt_to_mt(tcx, getter, _), fields);
             typ = ty::mk_tup(tcx, flds);
         }
         case (ast::ty_rec(?fields)) {

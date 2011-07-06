@@ -401,7 +401,7 @@ tag ty_ {
     ty_task;
     ty_port(@ty);
     ty_chan(@ty);
-    ty_tup(vec[mt]);
+    ty_tup(mt[]);
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty, controlflow, vec[@constr]);
     ty_obj(vec[ty_method]);

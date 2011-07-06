@@ -520,8 +520,8 @@ fn parse_ty(&parser p) -> @ast::ty {
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "tup")) {
         auto elems =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_mt, p);
+            parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                           parse_mt, p);
         hi = elems.span.hi;
         t = ast::ty_tup(elems.node);
     } else if (eat_word(p, "rec")) {

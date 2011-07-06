@@ -301,7 +301,7 @@ fn print_type(&ps s, &ast::ty ty) {
         case (ast::ty_tup(?elts)) {
             word(s.s, "tup");
             popen(s);
-            commasep(s, inconsistent, elts, print_mt);
+            commasep_ivec(s, inconsistent, elts, print_mt);
             pclose(s);
         }
         case (ast::ty_rec(?fields)) {
