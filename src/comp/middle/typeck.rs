@@ -1027,28 +1027,45 @@ mod writeback {
     export resolve_type_vars_in_block;
 
     fn resolve_type_vars_in_type(&@fn_ctxt fcx, &span sp, ty::t typ) ->
-       ty::t {
-        if (!ty::type_contains_vars(fcx.ccx.tcx, typ)) { ret typ; }
+        option::t[ty::t] {
+        if (!ty::type_contains_vars(fcx.ccx.tcx, typ)) { ret some(typ); }
         alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
-            case (fix_ok(?new_type)) { ret new_type; }
+            case (fix_ok(?new_type)) { ret some(new_type); }
             case (fix_err(?vid)) {
-                fcx.ccx.tcx.sess.span_fatal(sp,
+                fcx.ccx.tcx.sess.span_err(sp,
                                           "cannot determine a type \
                                            for this expression");
+                ret none;
             }
         }
     }
-    fn resolve_type_vars_for_node(&@fn_ctxt fcx, &span sp, ast::node_id id) {
+    fn resolve_type_vars_for_node(&@wb_ctxt wbcx,
+                                  &span sp, ast::node_id id) {
+        auto fcx = wbcx.fcx;
         auto tpot = ty::node_id_to_ty_param_substs_opt_and_ty
             (fcx.ccx.tcx, id);
-        auto new_ty = resolve_type_vars_in_type(fcx, sp, tpot._1);
+        auto new_ty = alt (resolve_type_vars_in_type(fcx, sp, tpot._1)) {
+            case (some(?t)) { t }
+            case (none) {
+                wbcx.success = false;
+                ret
+            }
+        };
         auto new_substs_opt;
         alt (tpot._0) {
             case (none[vec[ty::t]]) { new_substs_opt = none[vec[ty::t]]; }
             case (some[vec[ty::t]](?substs)) {
                 let vec[ty::t] new_substs = [];
                 for (ty::t subst in substs) {
-                    new_substs += [resolve_type_vars_in_type(fcx, sp, subst)];
+                    alt (resolve_type_vars_in_type(fcx, sp, subst)) {
+                        case (some(?t)) {
+                            new_substs += [t];
+                        }
+                        case (none) {
+                            wbcx.success = false;
+                            ret;
+                        }
+                    }
                 }
                 new_substs_opt = some[vec[ty::t]](new_substs);
             }
@@ -1058,19 +1075,20 @@ mod writeback {
 
     type wb_ctxt = rec(@fn_ctxt fcx,
                        // A flag to ignore contained items and lambdas
-                       mutable bool ignore);
+                       mutable bool ignore,
+                       mutable bool success);
 
     fn visit_stmt_pre(@wb_ctxt wbcx, &@ast::stmt s) {
-        resolve_type_vars_for_node(wbcx.fcx, s.span, ty::stmt_node_id(s));
+        resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     }
     fn visit_expr_pre(@wb_ctxt wbcx, &@ast::expr e) {
-        resolve_type_vars_for_node(wbcx.fcx, e.span, e.id);
+        resolve_type_vars_for_node(wbcx, e.span, e.id);
     }
     fn visit_block_pre(@wb_ctxt wbcx, &ast::block b) {
-        resolve_type_vars_for_node(wbcx.fcx, b.span, b.node.id);
+        resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     }
     fn visit_pat_pre(@wb_ctxt wbcx, &@ast::pat p) {
-        resolve_type_vars_for_node(wbcx.fcx, p.span, p.id);
+        resolve_type_vars_for_node(wbcx, p.span, p.id);
     }
     fn visit_local_pre(@wb_ctxt wbcx, &@ast::local l) {
         auto var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
@@ -1105,11 +1123,12 @@ mod writeback {
                      &ast::fn_ident i, ast::node_id d) {
         wbcx.ignore = false;
     }
-    fn keep_going(@wb_ctxt wbcx) -> bool { ret !wbcx.ignore; }
+    fn keep_going(@wb_ctxt wbcx) -> bool { !wbcx.ignore && wbcx.success }
 
-    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block block) {
+    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block block) -> bool {
         auto wbcx = @rec(fcx = fcx,
-                        mutable ignore = false);
+                         mutable ignore = false,
+                         mutable success = true);
         auto visit =
             rec(keep_going=bind keep_going(wbcx),
                 visit_item_pre=bind visit_item_pre(wbcx, _),
@@ -1123,6 +1142,7 @@ mod writeback {
                 visit_local_pre=bind visit_local_pre(wbcx, _)
                 with walk::default_visitor());
         walk::walk_block(visit, block);
+        ret wbcx.success;
     }
 }
 
@@ -2482,9 +2502,9 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
         case (_) { }
     }
 
-    writeback::resolve_type_vars_in_block(fcx, body);
+    auto success = writeback::resolve_type_vars_in_block(fcx, body);
 
-    if (option::is_some(body.node.expr)) {
+    if (success && option::is_some(body.node.expr)) {
         auto tail_expr = option::get(body.node.expr);
         auto tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
         // Have to exclude ty_nil to allow functions to end in
