@@ -15,7 +15,7 @@ rust_domain_test::worker::run() {
     for (int i = 0; i < TASKS; i++) {
         handle->create_task(NULL, "child");
     }
-    sync::random_sleep(1000);
+    sync::sleep(rand(&handle->rctx) % 1000);
 }
 
 bool
@@ -62,6 +62,6 @@ rust_task_test::run() {
         worker->start();
     }
 
-    sync::random_sleep(1000);
+    sync::sleep(rand(&kernel.sched->rctx) % 1000);
     return true;
 }

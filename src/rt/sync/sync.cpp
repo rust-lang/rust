@@ -19,10 +19,6 @@ void sync::sleep(size_t timeout_in_ms) {
 #endif
 }
 
-void sync::random_sleep(size_t max_timeout_in_ms) {
-    sleep(rand() % max_timeout_in_ms);
-}
-
 rust_thread::rust_thread() : _is_running(false), thread(0) {
     // Nop.
 }
