@@ -1223,9 +1223,7 @@ fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
                                      ast::block, option::t[@ast::expr],
                                      uint, uint) {
     auto lo = p.get_last_lo_pos();
-    expect(p, token::LPAREN);
     auto cond = parse_expr(p);
-    expect(p, token::RPAREN);
     auto thn = parse_block(p);
     let option::t[@ast::expr] els = none;
     auto hi = thn.span.hi;
@@ -1292,9 +1290,7 @@ fn parse_for_expr(&parser p) -> @ast::expr {
 
 fn parse_while_expr(&parser p) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
-    expect(p, token::LPAREN);
     auto cond = parse_expr(p);
-    expect(p, token::RPAREN);
     auto body = parse_block(p);
     auto hi = body.span.hi;
     ret mk_expr(p, lo, hi, ast::expr_while(cond, body));
@@ -1304,34 +1300,27 @@ fn parse_do_while_expr(&parser p) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
     auto body = parse_block(p);
     expect_word(p, "while");
-    expect(p, token::LPAREN);
     auto cond = parse_expr(p);
-    expect(p, token::RPAREN);
     auto hi = cond.span.hi;
     ret mk_expr(p, lo, hi, ast::expr_do_while(body, cond));
 }
 
 fn parse_alt_expr(&parser p) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
-    expect(p, token::LPAREN);
     auto discriminant = parse_expr(p);
-    expect(p, token::RPAREN);
     expect(p, token::LBRACE);
     let vec[ast::arm] arms = [];
     while (p.peek() != token::RBRACE) {
-        if (eat_word(p, "case")) {
-            expect(p, token::LPAREN);
-            auto pat = parse_pat(p);
-            expect(p, token::RPAREN);
-            auto block = parse_block(p);
-            arms += [rec(pat=pat, block=block)];
-        } else if (p.peek() == token::RBRACE) {
-            /* empty */
-
-        } else {
-            p.fatal("expected 'case' or '}' when parsing 'alt' statement " +
-                      "but found " + token::to_str(p.get_reader(), p.peek()));
-        }
+        // Optionally eat the case keyword.
+        // FIXME remove this (and the optional parens) once we've updated our
+        // code to not use the old syntax
+        eat_word(p, "case");
+        auto parens = false;
+        if (p.peek() == token::LPAREN) { parens = true; p.bump(); }
+        auto pat = parse_pat(p);
+        if (parens) { expect(p, token::RPAREN); }
+        auto block = parse_block(p);
+        arms += [rec(pat=pat, block=block)];
     }
     auto hi = p.get_hi_pos();
     p.bump();
