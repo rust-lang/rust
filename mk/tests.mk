@@ -208,7 +208,7 @@ test/$(FT).rc test/$(FT_DRIVER).rs: $(TEST_RPASS_SOURCES_STAGE2) \
 
 stage2/lib/$(FT_LIB): test/$(FT).rc $(SREQ2)
 	@$(call E, compile_and_link: $@)
-	$(STAGE2) --shared -o $@ $<
+	$(STAGE2) --lib -o $@ $<
 
 test/$(FT_DRIVER)$(X): test/$(FT_DRIVER).rs stage2/lib/$(FT_LIB) $(SREQ2)
 	@$(call E, compile_and_link: $@)
