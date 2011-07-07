@@ -25,8 +25,8 @@ type ctx =
          ast::crate_cfg cfg);
 
 fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
-                         str prefix, &mutable vec[@ast::view_item] view_items,
-                         &mutable vec[@ast::item] items) {
+                         str prefix, &mutable (@ast::view_item)[] view_items,
+                         &mutable (@ast::item)[] items) {
     for (@ast::crate_directive sub_cdir in cdirs) {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
@@ -34,15 +34,15 @@ fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
 
 fn eval_crate_directives_to_mod(ctx cx, &(@ast::crate_directive)[] cdirs,
                                 str prefix) -> ast::_mod {
-    let vec[@ast::view_item] view_items = [];
-    let vec[@ast::item] items = [];
+    let (@ast::view_item)[] view_items = ~[];
+    let (@ast::item)[] items = ~[];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret rec(view_items=view_items, items=items);
 }
 
 fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
-                        &mutable vec[@ast::view_item] view_items,
-                        &mutable vec[@ast::item] items) {
+                        &mutable (@ast::view_item)[] view_items,
+                        &mutable (@ast::item)[] items) {
     alt (cdir.node) {
         case (ast::cdir_src_mod(?id, ?file_opt, ?attrs)) {
             auto file_path = id + ".rs";
@@ -68,7 +68,7 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                  mod_attrs);
             // Thread defids and chpos through the parsers
             cx.chpos = p0.get_chpos();
-            vec::push[@ast::item](items, i);
+            items += ~[i];
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs, ?attrs)) {
             auto path = id;
@@ -85,11 +85,9 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                           node=ast::item_mod(m0),
                           span=cdir.span);
             cx.sess.next_id += 1;
-            vec::push[@ast::item](items, i);
+            items += ~[i];
         }
-        case (ast::cdir_view_item(?vi)) {
-            vec::push[@ast::view_item](view_items, vi);
-        }
+        case (ast::cdir_view_item(?vi)) { view_items += ~[vi]; }
         case (ast::cdir_syntax(?pth)) { }
         case (ast::cdir_auth(?pth, ?eff)) { }
     }

@@ -8529,7 +8529,7 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
 fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
                      &ast::variant variant, int index, bool is_degen,
                      &ast::ty_param[] ty_params) {
-    if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
+    if (std::ivec::len[ast::variant_arg](variant.node.args) == 0u) {
         ret; // nullary constructors are just constants
 
     }
@@ -9043,7 +9043,7 @@ fn collect_tag_ctor(@crate_ctxt ccx, &@ast::item i, &vec[str] pt,
     alt (i.node) {
         case (ast::item_tag(?variants, ?tps)) {
             for (ast::variant variant in variants) {
-                if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
+                if (std::ivec::len(variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, i.span,
                                      new_pt + [variant.node.name], "tag", tps,
                                      variant.node.id);

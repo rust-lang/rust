@@ -692,7 +692,7 @@ mod collect {
             // constructors get turned into functions.
 
             auto result_ty;
-            if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
+            if (ivec::len[ast::variant_arg](variant.node.args) == 0u) {
                 result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()

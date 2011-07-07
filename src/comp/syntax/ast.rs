@@ -3,7 +3,6 @@
 import std::ivec;
 import std::option;
 import std::str;
-import std::vec;
 import codemap::span;
 import codemap::filename;
 
@@ -481,7 +480,7 @@ type anon_obj =
         // with_obj: the original object being extended, if it exists.
         option::t[@expr] with_obj);
 
-type _mod = rec(vec[@view_item] view_items, vec[@item] items);
+type _mod = rec((@view_item)[] view_items, (@item)[] items);
 
 tag native_abi {
     native_abi_rust;
@@ -493,12 +492,12 @@ tag native_abi {
 type native_mod =
     rec(str native_name,
         native_abi abi,
-        vec[@view_item] view_items,
-        vec[@native_item] items);
+        (@view_item)[] view_items,
+        (@native_item)[] items);
 
 type variant_arg = rec(@ty ty, node_id id);
 
-type variant_ = rec(str name, vec[variant_arg] args, node_id id);
+type variant_ = rec(str name, (variant_arg)[] args, node_id id);
 
 type variant = spanned[variant_];
 
@@ -506,8 +505,8 @@ type view_item = spanned[view_item_];
 
 tag view_item_ {
     view_item_use(ident, (@meta_item)[], node_id);
-    view_item_import(ident, vec[ident], node_id);
-    view_item_import_glob(vec[ident], node_id);
+    view_item_import(ident, ident[], node_id);
+    view_item_import_glob(ident[], node_id);
     view_item_export(ident, node_id);
 }
 

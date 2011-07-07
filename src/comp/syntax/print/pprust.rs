@@ -465,7 +465,7 @@ fn print_item(&ps s, &@ast::item item) {
         case (ast::item_tag(?variants, ?params)) {
             auto newtype = ivec::len(variants) == 1u &&
                 str::eq(item.ident, variants.(0).node.name) &&
-                vec::len(variants.(0).node.args) == 1u;
+                ivec::len(variants.(0).node.args) == 1u;
             if (newtype) {
                 ibox(s, indent_unit);
                 word_space(s, "tag");
@@ -486,13 +486,13 @@ fn print_item(&ps s, &@ast::item item) {
                     space(s.s);
                     maybe_print_comment(s, v.span.lo);
                     word(s.s, v.node.name);
-                    if (vec::len(v.node.args) > 0u) {
+                    if (ivec::len(v.node.args) > 0u) {
                         popen(s);
                         fn print_variant_arg(&ps s, &ast::variant_arg arg) {
                             print_type(s, *arg.ty);
                         }
-                        commasep(s, consistent, v.node.args,
-                                 print_variant_arg);
+                        commasep_ivec(s, consistent, v.node.args,
+                                      print_variant_arg);
                         pclose(s);
                     }
                     word(s.s, ";");
@@ -1161,7 +1161,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
         }
         case (ast::view_item_import(?id, ?ids, _)) {
             head(s, "import");
-            if (!str::eq(id, ids.(vec::len(ids) - 1u))) {
+            if (!str::eq(id, ids.(ivec::len(ids) - 1u))) {
                 word_space(s, id);
                 word_space(s, "=");
             }

@@ -36,9 +36,9 @@ fn filter_item(&ast::crate_cfg cfg,
 fn fold_mod(&ast::crate_cfg cfg, &ast::_mod m,
               fold::ast_fold fld) -> ast::_mod {
     auto filter = bind filter_item(cfg, _);
-    auto filtered_items = vec::filter_map(filter, m.items);
-    ret rec(view_items=vec::map(fld.fold_view_item, m.view_items),
-            items=vec::map(fld.fold_item, filtered_items));
+    auto filtered_items = ivec::filter_map(filter, m.items);
+    ret rec(view_items=ivec::map(fld.fold_view_item, m.view_items),
+            items=ivec::map(fld.fold_item, filtered_items));
 }
 
 fn filter_native_item(&ast::crate_cfg cfg, &@ast::native_item item)
@@ -53,10 +53,10 @@ fn filter_native_item(&ast::crate_cfg cfg, &@ast::native_item item)
 fn fold_native_mod(&ast::crate_cfg cfg, &ast::native_mod nm,
                    fold::ast_fold fld) -> ast::native_mod {
     auto filter = bind filter_native_item(cfg, _);
-    auto filtered_items = vec::filter_map(filter, nm.items);
+    auto filtered_items = ivec::filter_map(filter, nm.items);
     ret rec(native_name=nm.native_name,
             abi=nm.abi,
-            view_items=vec::map(fld.fold_view_item, nm.view_items),
+            view_items=ivec::map(fld.fold_view_item, nm.view_items),
             items=filtered_items);
 }
 

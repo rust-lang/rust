@@ -216,7 +216,7 @@ fn encode_tag_variant_info(&@crate_ctxt cx, &ebml::writer ebml_w,
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, local_def(id));
         encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, variant.node.id));
-        if (vec::len[variant_arg](variant.node.args) > 0u) {
+        if (ivec::len[variant_arg](variant.node.args) > 0u) {
             encode_symbol(cx, ebml_w, variant.node.id);
         }
         encode_discriminant(cx, ebml_w, variant.node.id);

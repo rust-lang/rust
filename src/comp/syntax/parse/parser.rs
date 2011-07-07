@@ -1859,15 +1859,15 @@ fn parse_mod_items(&parser p, token::token term,
         parse_view(p)
     } else {
         // Shouldn't be any view items since we've already parsed an item attr
-        []
+        ~[]
     };
-    let vec[@ast::item] items = [];
+    let (@ast::item)[] items = ~[];
     auto initial_attrs = first_item_attrs;
     while (p.peek() != term) {
         auto attrs = initial_attrs + parse_outer_attributes(p);
         initial_attrs = ~[];
         alt (parse_item(p, attrs)) {
-            case (got_item(?i)) { vec::push(items, i); }
+            case (got_item(?i)) { items += ~[i]; }
             case (_) {
                 p.fatal("expected item but found " +
                           token::to_str(p.get_reader(), p.peek()));
@@ -1948,14 +1948,14 @@ fn parse_native_mod_items(&parser p, &str native_name, ast::native_abi abi,
         parse_native_view(p)
     } else {
         // Shouldn't be any view items since we've already parsed an item attr
-        []
+        ~[]
     };
-    let vec[@ast::native_item] items = [];
+    let (@ast::native_item)[] items = ~[];
     auto initial_attrs = first_item_attrs;
     while (p.peek() != token::RBRACE) {
         auto attrs = initial_attrs + parse_outer_attributes(p);
         initial_attrs = ~[];
-        items += [parse_native_item(p, attrs)];
+        items += ~[parse_native_item(p, attrs)];
     }
     ret rec(native_name=native_name,
             abi=abi,
@@ -2028,7 +2028,7 @@ fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
         expect(p, token::SEMI);
         auto variant = spanned(ty.span.lo, ty.span.hi,
                                rec(name=id,
-                                   args=[rec(ty=ty, id=p.get_id())],
+                                   args=~[rec(ty=ty, id=p.get_id())],
                                    id=p.get_id()));
         ret mk_item(p, lo, ty.span.hi, id,
                     ast::item_tag(~[variant], ty_params), attrs);
@@ -2041,14 +2041,14 @@ fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
                 check_bad_word(p);
                 auto vlo = p.get_lo_pos();
                 p.bump();
-                let vec[ast::variant_arg] args = [];
+                let ast::variant_arg[] args = ~[];
                 alt (p.peek()) {
                     case (token::LPAREN) {
                         auto arg_tys =
                             parse_seq(token::LPAREN, token::RPAREN,
                                       some(token::COMMA), parse_ty, p);
                         for (@ast::ty ty in arg_tys.node) {
-                            args += [rec(ty=ty, id=p.get_id())];
+                            args += ~[rec(ty=ty, id=p.get_id())];
                         }
                     }
                     case (_) {/* empty */ }
@@ -2243,7 +2243,7 @@ fn parse_rest_import_name(&parser p, ast::ident first,
                           option::t[ast::ident] def_ident) ->
    @ast::view_item {
     auto lo = p.get_lo_pos();
-    let vec[ast::ident] identifiers = [first];
+    let ast::ident[] identifiers = ~[first];
     let bool glob = false;
     while (true) {
         alt (p.peek()) {
@@ -2255,7 +2255,7 @@ fn parse_rest_import_name(&parser p, ast::ident first,
             case (_) { p.fatal("expecting '::' or ';'"); }
         }
         alt (p.peek()) {
-            case (token::IDENT(_, _)) { identifiers += [parse_ident(p)]; }
+            case (token::IDENT(_, _)) { identifiers += ~[parse_ident(p)]; }
             case (
                  //the lexer can't tell the different kinds of stars apart ) :
                  token::BINOP(token::STAR)) {
@@ -2278,7 +2278,7 @@ fn parse_rest_import_name(&parser p, ast::ident first,
                 import_decl =
                     ast::view_item_import_glob(identifiers, p.get_id());
             } else {
-                auto len = vec::len(identifiers);
+                auto len = ivec::len(identifiers);
                 import_decl =
                     ast::view_item_import(identifiers.(len - 1u), identifiers,
                                           p.get_id());
@@ -2347,15 +2347,15 @@ fn is_view_item(&parser p) -> bool {
     ret false;
 }
 
-fn parse_view(&parser p) -> vec[@ast::view_item] {
-    let vec[@ast::view_item] items = [];
-    while (is_view_item(p)) { items += [parse_view_item(p)]; }
+fn parse_view(&parser p) -> (@ast::view_item)[] {
+    let (@ast::view_item)[] items = ~[];
+    while (is_view_item(p)) { items += ~[parse_view_item(p)]; }
     ret items;
 }
 
-fn parse_native_view(&parser p) -> vec[@ast::view_item] {
-    let vec[@ast::view_item] items = [];
-    while (is_view_item(p)) { items += [parse_view_item(p)]; }
+fn parse_native_view(&parser p) -> (@ast::view_item)[] {
+    let (@ast::view_item)[] items = ~[];
+    while (is_view_item(p)) { items += ~[parse_view_item(p)]; }
     ret items;
 }
 

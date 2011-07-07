@@ -382,16 +382,15 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     visit::visit_expr(x, new_sc, v);
 }
 
-fn follow_import(&env e, &scopes sc,
-                 vec[ident] path, &span sp) -> option::t[def] {
-    auto path_len = vec::len(path);
+fn follow_import(&env e, &scopes sc, &ident[] path, &span sp)
+        -> option::t[def] {
+    auto path_len = ivec::len(path);
     auto dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
     auto i = 1u;
     while (true && option::is_some(dcur)) {
         if (i == path_len) { break; }
-        dcur =
-            lookup_in_mod_strict(e, option::get(dcur),
-                                 sp, path.(i), ns_module, outside);
+        dcur = lookup_in_mod_strict(e, option::get(dcur),
+                                    sp, path.(i), ns_module, outside);
         i += 1u;
     }
     if (i == path_len) {
@@ -399,8 +398,7 @@ fn follow_import(&env e, &scopes sc,
             case (ast::def_mod(?def_id)) { ret dcur; }
             case (ast::def_native_mod(?def_id)) { ret dcur; }
             case (_) {
-                e.sess.span_err(sp,
-                                str::connect(path, "::") +
+                e.sess.span_err(sp, str::connect_ivec(path, "::") +
                                 " does not name a module.");
                 ret none;
             }
@@ -457,7 +455,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
         }
     }
     e.imports.insert(defid._1, resolving(it.span));
-    auto n_idents = vec::len(ids);
+    auto n_idents = ivec::len(ids);
     auto end_id = ids.(n_idents - 1u);
     if (n_idents == 1u) {
         auto next_sc = std::list::cdr(sc);

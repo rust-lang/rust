@@ -2830,8 +2830,7 @@ fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
                         auto ctor_ty = node_id_to_monotype
                             (cx, variant.node.id);
                         let t[] arg_tys = ~[];
-                        if (vec::len[ast::variant_arg](variant.node.args) >
-                                0u) {
+                        if (std::ivec::len(variant.node.args) > 0u) {
                             for (arg a in ty_fn_args(cx, ctor_ty)) {
                                 arg_tys += ~[a.ty];
                             }

@@ -50,14 +50,12 @@ fn fold_crate(&test_ctxt cx, &ast::crate_ c,
 
 fn add_test_module(&test_ctxt cx, &ast::_mod m) -> ast::_mod {
     auto testmod = mk_test_module(cx);
-    ret rec(items = m.items + [testmod]
-            with m);
+    ret rec(items=m.items + ~[testmod] with m);
 }
 
 fn mk_test_module(&test_ctxt cx) -> @ast::item {
     auto mainfn = mk_main(cx);
-    let ast::_mod testmod = rec(view_items = [],
-                                items = [mainfn]);
+    let ast::_mod testmod = rec(view_items=~[], items=~[mainfn]);
     auto item_ = ast::item_mod(testmod);
     let ast::item item = rec(ident = "__test",
                              attrs = ~[],

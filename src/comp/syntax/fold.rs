@@ -463,15 +463,15 @@ fn noop_fold_fn(&_fn f, ast_fold fld) -> _fn {
 
 // ...nor do modules
 fn noop_fold_mod(&_mod m, ast_fold fld) -> _mod {
-    ret rec(view_items=map(fld.fold_view_item, m.view_items),
-            items=map(fld.fold_item, m.items));
+    ret rec(view_items=ivec::map(fld.fold_view_item, m.view_items),
+            items=ivec::map(fld.fold_item, m.items));
 }
 
 fn noop_fold_native_mod(&native_mod nm, ast_fold fld) -> native_mod {
     ret rec(native_name=nm.native_name,
             abi=nm.abi,
-            view_items=map(fld.fold_view_item, nm.view_items),
-            items=map(fld.fold_native_item, nm.items))
+            view_items=ivec::map(fld.fold_view_item, nm.view_items),
+            items=ivec::map(fld.fold_native_item, nm.items))
 }
 
 fn noop_fold_variant(&variant_ v, ast_fold fld) -> variant_ {
@@ -480,7 +480,7 @@ fn noop_fold_variant(&variant_ v, ast_fold fld) -> variant_ {
     }
     auto fold_variant_arg = bind fold_variant_arg_(_,fld);
     ret rec(name=v.name,
-            args=map(fold_variant_arg, v.args),
+            args=ivec::map(fold_variant_arg, v.args),
             id=v.id);
 }
 
