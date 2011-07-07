@@ -11,8 +11,10 @@ debug_tydesc
 do_gc
 get_time
 ivec_copy_from_buf
+ivec_copy_from_buf_shared
 ivec_on_heap
 ivec_reserve
+ivec_reserve_shared
 ivec_to_ptr
 last_os_error
 nano_time
@@ -59,7 +61,9 @@ upcall_free
 upcall_get_type_desc
 upcall_grow_task
 upcall_ivec_resize
+upcall_ivec_resize_shared
 upcall_ivec_spill
+upcall_ivec_spill_shared
 upcall_kill
 upcall_log_double
 upcall_log_float
@@ -74,6 +78,8 @@ upcall_new_task
 upcall_new_vec
 upcall_recv
 upcall_send
+upcall_shared_malloc
+upcall_shared_free
 upcall_sleep
 upcall_start_task
 upcall_trace_str

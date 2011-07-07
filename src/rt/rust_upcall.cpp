@@ -290,6 +290,36 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
 }
 
 extern "C" CDECL uintptr_t
+upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
+    LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->kernel->scheduler_lock);
+
+    LOG(task, mem,
+                   "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
+                   nbytes, td);
+    void *p = task->kernel->malloc(nbytes);
+    LOG(task, mem,
+                   "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR
+                   ") = 0x%" PRIxPTR,
+                   nbytes, td, (uintptr_t)p);
+    return (uintptr_t) p;
+}
+
+/**
+ * Called whenever an object's ref count drops to zero.
+ */
+extern "C" CDECL void
+upcall_shared_free(rust_task *task, void* ptr) {
+    LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->kernel->scheduler_lock);
+    rust_scheduler *sched = task->sched;
+    DLOG(sched, mem,
+             "upcall shared_free(0x%" PRIxPTR")",
+             (uintptr_t)ptr);
+    task->kernel->free(ptr);
+}
+
+extern "C" CDECL uintptr_t
 upcall_mark(rust_task *task, void* ptr) {
     LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
@@ -537,6 +567,7 @@ extern "C" CDECL void
 upcall_ivec_resize(rust_task *task,
                    rust_ivec *v,
                    size_t newsz) {
+    LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
     I(task->sched, !v->fill);
 
@@ -556,6 +587,7 @@ extern "C" CDECL void
 upcall_ivec_spill(rust_task *task,
                   rust_ivec *v,
                   size_t newsz) {
+    LOG_UPCALL_ENTRY(task);
     scoped_lock with(task->kernel->scheduler_lock);
     size_t new_alloc = next_power_of_two(newsz);
 
@@ -569,6 +601,46 @@ upcall_ivec_spill(rust_task *task,
     v->payload.ptr = heap_part;
 }
 
+/**
+ * Resizes an interior vector that has been spilled to the heap.
+ */
+extern "C" CDECL void
+upcall_ivec_resize_shared(rust_task *task,
+                          rust_ivec *v,
+                          size_t newsz) {
+    LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->kernel->scheduler_lock);
+    I(task->sched, !v->fill);
+
+    size_t new_alloc = next_power_of_two(newsz);
+    rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
+        task->kernel->realloc(v->payload.ptr, new_alloc + sizeof(size_t));
+
+    new_heap_part->fill = newsz;
+    v->alloc = new_alloc;
+    v->payload.ptr = new_heap_part;
+}
+
+/**
+ * Spills an interior vector to the heap.
+ */
+extern "C" CDECL void
+upcall_ivec_spill_shared(rust_task *task,
+                         rust_ivec *v,
+                         size_t newsz) {
+    LOG_UPCALL_ENTRY(task);
+    scoped_lock with(task->kernel->scheduler_lock);
+    size_t new_alloc = next_power_of_two(newsz);
+
+    rust_ivec_heap *heap_part = (rust_ivec_heap *)
+        task->kernel->malloc(new_alloc + sizeof(size_t));
+    heap_part->fill = newsz;
+    memcpy(&heap_part->data, v->payload.data, v->fill);
+
+    v->fill = 0;
+    v->alloc = new_alloc;
+    v->payload.ptr = heap_part;
+}
 //
 // Local Variables:
 // mode: C++
