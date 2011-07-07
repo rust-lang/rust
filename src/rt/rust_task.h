@@ -89,6 +89,8 @@ rust_task : public maybe_proxy<rust_task>,
 
     wakeup_callback *_on_wakeup;
 
+    lock_and_signal lock;
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,
               rust_task_list *state,

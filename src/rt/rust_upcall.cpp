@@ -92,7 +92,9 @@ upcall_new_port(rust_task *task, size_t unit_sz) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, comm, "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
-    return new (task) rust_port(task, unit_sz);
+    // take a reference on behalf of the port
+    task->ref();
+    return new (task->kernel) rust_port(task, unit_sz);
 }
 
 extern "C" CDECL void
@@ -101,6 +103,9 @@ upcall_del_port(rust_task *task, rust_port *port) {
     LOG(task, comm, "upcall del_port(0x%" PRIxPTR ")", (uintptr_t) port);
     I(task->sched, !port->ref_count);
     delete port;
+
+    // FIXME: We shouldn't ever directly manipulate the ref count.
+    --task->ref_count;
 }
 
 /**
@@ -114,7 +119,7 @@ upcall_new_chan(rust_task *task, rust_port *port) {
         "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
         (uintptr_t) task, task->name, port);
     I(sched, port);
-    return new (task) rust_chan(task, port, port->unit_sz);
+    return new (task->kernel) rust_chan(task, port, port->unit_sz);
 }
 
 /**
@@ -137,6 +142,8 @@ upcall_flush_chan(rust_task *task, rust_chan *chan) {
 extern "C" CDECL
 void upcall_del_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
+
+    I(task->sched, chan->task == task);
 
     LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
     chan->destroy();
@@ -183,25 +190,27 @@ upcall_send(rust_task *task, rust_chan *chan, void *sptr) {
 
 extern "C" CDECL void
 upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
-    LOG_UPCALL_ENTRY(task);
+    {
+        scoped_lock with(port->lock);
+        LOG_UPCALL_ENTRY(task);
     
-    LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
-        ", size: 0x%" PRIxPTR ", chan_no: %d",
-        (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
-        port->chans.length());
+        LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
+            ", size: 0x%" PRIxPTR ", chan_no: %d",
+            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
+            port->chans.length());
     
-    if (port->receive(dptr)) {
-        return;
+        if (port->receive(dptr)) {
+            return;
+        }
+    
+        // No data was buffered on any incoming channel, so block this task on
+        // the port. Remember the rendezvous location so that any sender task
+        // can write to it before waking up this task.
+    
+        LOG(task, comm, "<=== waiting for rendezvous data ===");
+        task->rendezvous_ptr = dptr;
+        task->block(port, "waiting for rendezvous data");
     }
-    
-    // No data was buffered on any incoming channel, so block this task on the
-    // port. Remember the rendezvous location so that any sender task can
-    // write to it before waking up this task.
-    
-    LOG(task, comm, "<=== waiting for rendezvous data ===");
-    task->rendezvous_ptr = dptr;
-    task->block(port, "waiting for rendezvous data");
-
     task->yield(3);
 }
 

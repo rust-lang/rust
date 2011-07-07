@@ -6,11 +6,12 @@
  */
 rust_chan::rust_chan(rust_task *task,
                      maybe_proxy<rust_port> *port,
-                     size_t unit_sz) :
-                     ref_count(1),
-                     task(task),
-                     port(port),
-                     buffer(task, unit_sz) {
+                     size_t unit_sz) 
+    : ref_count(1),
+      kernel(task->kernel),
+      task(task),
+      port(port),
+      buffer(task, unit_sz) {
     ++task->ref_count;
     if (port) {
         associate(port);
@@ -87,6 +88,7 @@ void rust_chan::send(void *sptr) {
         buffer.dequeue(NULL);
     } else {
         rust_port *target_port = port->referent();
+        scoped_lock right(target_port->lock);
         if (target_port->task->blocked_on(target_port)) {
             DLOG(sched, comm, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);
@@ -114,7 +116,7 @@ rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
         port = proxy;
         target_task = target->as_proxy()->handle()->referent();
     }
-    return new (target_task) rust_chan(target_task, port, unit_sz);
+    return new (target_task->kernel) rust_chan(target_task, port, unit_sz);
 }
 
 /**

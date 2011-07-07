@@ -1,7 +1,7 @@
 #ifndef RUST_CHAN_H
 #define RUST_CHAN_H
 
-class rust_chan : public task_owned<rust_chan>,
+class rust_chan : public kernel_owned<rust_chan>,
                   public rust_cond {
 public:
     RUST_REFCOUNTED_WITH_DTOR(rust_chan, destroy())
@@ -9,6 +9,7 @@ public:
 
     ~rust_chan();
 
+    rust_kernel *kernel;
     rust_task *task;
     maybe_proxy<rust_port> *port;
     size_t idx;

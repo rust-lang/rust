@@ -22,6 +22,9 @@ private:
     const bool _detailed_leaks;
     const bool _synchronized;
     lock_and_signal _lock;
+
+    void add_alloc();
+    void dec_alloc();
 public:
     memory_region(rust_srv *srv, bool synchronized);
     memory_region(memory_region *parent);

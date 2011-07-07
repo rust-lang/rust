@@ -19,8 +19,18 @@ memory_region::memory_region(memory_region *parent) :
     // Nop.
 }
 
+void memory_region::add_alloc() {
+    //_live_allocations++;
+    sync::increment(_live_allocations);
+}
+
+void memory_region::dec_alloc() {
+    //_live_allocations--;
+    sync::decrement(_live_allocations);
+}
+
 void memory_region::free(void *mem) {
-    // printf("free: ptr 0x%" PRIxPTR"\n", (uintptr_t) mem);
+    // printf("free: ptr 0x%" PRIxPTR" region=%p\n", (uintptr_t) mem, this);
     if (!mem) { return; }
     if (_synchronized) { _lock.lock(); }
 #ifdef TRACK_ALLOCATIONS
@@ -33,7 +43,7 @@ void memory_region::free(void *mem) {
     if (_live_allocations < 1) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
     }
-    _live_allocations--;
+    dec_alloc();
     _srv->free(mem);
     if (_synchronized) { _lock.unlock(); }
 }
@@ -42,7 +52,7 @@ void *
 memory_region::realloc(void *mem, size_t size) {
     if (_synchronized) { _lock.lock(); }
     if (!mem) {
-        _live_allocations++;
+        add_alloc();
     }
     void *newMem = _srv->realloc(mem, size);
 #ifdef TRACK_ALLOCATIONS
@@ -59,12 +69,13 @@ memory_region::realloc(void *mem, size_t size) {
 void *
 memory_region::malloc(size_t size) {
     if (_synchronized) { _lock.lock(); }
-    _live_allocations++;
+    add_alloc();
     void *mem = _srv->malloc(size);
 #ifdef TRACK_ALLOCATIONS
     _allocation_list.append(mem);
 #endif
-    // printf("malloc: ptr 0x%" PRIxPTR "\n", (uintptr_t) mem);
+    // printf("malloc: ptr 0x%" PRIxPTR " region=%p\n", 
+    //        (uintptr_t) mem, this);
     if (_synchronized) { _lock.unlock(); }
     return mem;
 }
@@ -72,7 +83,7 @@ memory_region::malloc(size_t size) {
 void *
 memory_region::calloc(size_t size) {
     if (_synchronized) { _lock.lock(); }
-    _live_allocations++;
+    add_alloc();
     void *mem = _srv->malloc(size);
     memset(mem, 0, size);
 #ifdef TRACK_ALLOCATIONS

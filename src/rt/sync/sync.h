@@ -1,3 +1,4 @@
+// -*- c++-mode -*-
 #ifndef SYNC_H
 #define SYNC_H
 
@@ -10,6 +11,26 @@ public:
         T oldValue, T newValue) {
         return __sync_bool_compare_and_swap(address, oldValue, newValue);
     }
+    
+    template <class T>
+    static T increment(T *address) {
+        return __sync_add_and_fetch(address, 1);
+    }
+
+    template <class T>
+    static T decrement(T *address) {
+        return __sync_sub_and_fetch(address, 1);
+    }    
+
+    template <class T>
+    static T increment(T &address) {
+        return __sync_add_and_fetch(&address, 1);
+    }
+
+    template <class T>
+    static T decrement(T &address) {
+        return __sync_sub_and_fetch(&address, 1);
+    }    
 };
 
 /**
