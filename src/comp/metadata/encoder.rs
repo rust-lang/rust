@@ -12,8 +12,8 @@ import std::ebml;
 import syntax::ast::*;
 import tags::*;
 import middle::trans::crate_ctxt;
-import middle::trans::node_id_type;
 import middle::ty;
+import middle::ty::node_id_to_monotype;
 import front::attr;
 
 export def_to_str;
@@ -217,7 +217,7 @@ fn encode_tag_variant_info(&@crate_ctxt cx, &ebml::writer ebml_w,
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, local_def(id));
-        encode_type(cx, ebml_w, node_id_type(cx, variant.node.id));
+        encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, variant.node.id));
         if (vec::len[variant_arg](variant.node.args) > 0u) {
             encode_symbol(cx, ebml_w, variant.node.id);
         }
@@ -234,7 +234,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(item.id));
             encode_kind(ebml_w, 'c' as u8);
-            encode_type(cx, ebml_w, node_id_type(cx, item.id));
+            encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, item.id));
             encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
         }
@@ -245,7 +245,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
                                   case (pure_fn) { 'p' }
                                   case (impure_fn) { 'f' } } as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, node_id_type(cx, item.id));
+            encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, item.id));
             encode_symbol(cx, ebml_w, item.id);
             ebml::end_tag(ebml_w);
         }
@@ -266,7 +266,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
             encode_def_id(ebml_w, local_def(item.id));
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, node_id_type(cx, item.id));
+            encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, item.id));
             ebml::end_tag(ebml_w);
         }
         case (item_tag(?variants, ?tps)) {
@@ -274,7 +274,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
             encode_def_id(ebml_w, local_def(item.id));
             encode_kind(ebml_w, 't' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, node_id_type(cx, item.id));
+            encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, item.id));
             for (variant v in variants) {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
@@ -283,7 +283,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
                                     tps);
         }
         case (item_res(_, _, ?tps, ?ctor_id)) {
-            auto fn_ty = node_id_type(cx, ctor_id);
+            auto fn_ty = node_id_to_monotype(cx.tcx, ctor_id);
 
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(ctor_id));
@@ -303,7 +303,7 @@ fn encode_info_for_item(@crate_ctxt cx, &ebml::writer ebml_w,
             ebml::end_tag(ebml_w);
         }
         case (item_obj(_, ?tps, ?ctor_id)) {
-            auto fn_ty = node_id_type(cx, ctor_id);
+            auto fn_ty = node_id_to_monotype(cx.tcx, ctor_id);
 
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(item.id));
@@ -338,7 +338,7 @@ fn encode_info_for_native_item(&@crate_ctxt cx, &ebml::writer ebml_w,
             encode_def_id(ebml_w, local_def(nitem.id));
             encode_kind(ebml_w, 'F' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, node_id_type(cx, nitem.id));
+            encode_type(cx, ebml_w, node_id_to_monotype(cx.tcx, nitem.id));
             encode_symbol(cx, ebml_w, nitem.id);
         }
     }
