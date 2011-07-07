@@ -16,7 +16,6 @@ export ty_abbrev;
 export ac_no_abbrevs;
 export ac_use_abbrevs;
 export enc_ty;
-export ty_str;
 
 type ctxt =
     rec(fn(&def_id) -> str  ds, // Def -> str Callback:
@@ -36,14 +35,7 @@ fn cx_uses_abbrevs(&@ctxt cx) -> bool {
         case (ac_use_abbrevs(_)) { ret true; }
     }
 }
-fn ty_str(&ty::ctxt tcx, &ty::t t) -> str {
-    auto cx = @rec(ds = encoder::def_to_str,
-                   tcx = tcx,
-                   abbrevs = metadata::tyencode::ac_no_abbrevs);
-    auto sw = io::string_writer();
-    enc_ty(sw.get_writer(), cx, t);
-    ret sw.get_str();
-}
+
 fn enc_ty(&io::writer w, &@ctxt cx, &ty::t t) {
     alt (cx.abbrevs) {
         case (ac_no_abbrevs) {

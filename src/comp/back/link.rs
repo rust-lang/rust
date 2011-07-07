@@ -4,6 +4,7 @@ import lib::llvm::llvm;
 import front::attr;
 import middle::trans;
 import middle::ty;
+import metadata::encoder;
 import std::str;
 import std::fs;
 import std::vec;
@@ -407,7 +408,7 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
     // FIXME: This wants to be link_meta.meta_hash
     sha.input_str(link_meta.name);
     sha.input_str("-");
-    sha.input_str(metadata::tyencode::ty_str(tcx, t));
+    sha.input_str(encoder::ty_str(tcx, t));
     auto hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 

@@ -18,6 +18,7 @@ import front::attr;
 
 export def_to_str;
 export encode_metadata;
+export ty_str;
 
 // Path table encoding
 fn encode_name(&ebml::writer ebml_w, &str name) {
@@ -538,6 +539,16 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
     ret string_w.get_str();
+}
+
+// Get the encoded string for a type
+fn ty_str(&ty::ctxt tcx, &ty::t t) -> str {
+    auto cx = @rec(ds = encoder::def_to_str,
+                   tcx = tcx,
+                   abbrevs = metadata::tyencode::ac_no_abbrevs);
+    auto sw = io::string_writer();
+    tyencode::enc_ty(sw.get_writer(), cx, t);
+    ret sw.get_str();
 }
 
 
