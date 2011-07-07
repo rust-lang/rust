@@ -283,6 +283,7 @@ fn build_target_config() -> @session::config {
 fn build_session_options(str binary, getopts::match match, str binary_dir) ->
    @session::options {
     auto library = opt_present(match, "lib");
+    auto static = opt_present(match, "static");
     auto library_search_paths = [binary_dir + "/lib"];
     library_search_paths += getopts::opt_strs(match, "L");
     auto output_type =
@@ -332,6 +333,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
     auto test = opt_present(match, "test");
     let @session::options sopts =
         @rec(library=library,
+             static=static,
              optimize=opt_level,
              debuginfo=debuginfo,
              verify=verify,
@@ -455,13 +457,10 @@ fn main(vec[str] args) {
 
             saved_out_filename = ofile;
             auto temp_filename;
-            alt (sopts.output_type) {
-                case (link::output_type_exe) {
-                    // FIXME: what about --lib?
-
-                    temp_filename = ofile + ".o";
-                }
-                case (_) { temp_filename = ofile; }
+            if (sopts.output_type == link::output_type_exe && !sopts.static) {
+                temp_filename = ofile + ".o";
+            } else {
+                temp_filename = ofile;
             }
             compile_input(sess, cfg, ifile, temp_filename);
         }
@@ -471,7 +470,7 @@ fn main(vec[str] args) {
     // gcc to link the object file with some libs
     //
     // TODO: Factor this out of main.
-    if (sopts.output_type != link::output_type_exe) {
+    if (sopts.output_type != link::output_type_exe || sopts.static) {
         ret;
     }
 

@@ -24,6 +24,7 @@ type config =
 
 type options =
     rec(bool library,
+        bool static,
         uint optimize,
         bool debuginfo,
         bool verify,
