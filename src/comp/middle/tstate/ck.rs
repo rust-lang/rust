@@ -120,7 +120,7 @@ fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
 }
 
 fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
-                                   &vec[ast::ty_param] tps,
+                                   &ast::ty_param[] tps,
                                    node_id id, &span sp, &fn_ident i) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
@@ -176,7 +176,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
     check_unused_vars(fcx);
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, &vec[ast::ty_param] tps,
+fn check_fn_states(&fn_ctxt fcx, &_fn f, &ast::ty_param[] tps,
                    node_id id, &span sp, &fn_ident i) {
     /* Compute the pre- and post-states for this function */
 
@@ -189,7 +189,7 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &vec[ast::ty_param] tps,
     check_states_against_conditions(fcx, f, tps, id, sp, i);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &vec[ast::ty_param] tps,
+fn fn_states(&crate_ctxt ccx, &_fn f, &ast::ty_param[] tps,
              &span sp, &fn_ident i, node_id id) {
     /* Look up the var-to-bit-num map for this function */
 

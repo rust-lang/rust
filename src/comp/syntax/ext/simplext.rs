@@ -34,7 +34,7 @@ fn position[T](&T x, &vec[T] v) -> option::t[uint] {
 }
 
 // substitute, in a position that's required to be an ident
-fn subst_ident(&ext_ctxt cx, &vec[@ast::expr] args, 
+fn subst_ident(&ext_ctxt cx, &(@ast::expr)[] args, 
                @vec[ident] param_names, &ident i, ast_fold fld) -> ident {
     alt (position(i, *param_names)) {
         case (some[uint](?idx)) {
@@ -48,7 +48,7 @@ fn subst_ident(&ext_ctxt cx, &vec[@ast::expr] args,
     }
 }
 
-fn subst_path(&ext_ctxt cx, &vec[@ast::expr] args, 
+fn subst_path(&ext_ctxt cx, &(@ast::expr)[] args, 
               @vec[ident] param_names, &path_ p, ast_fold fld) -> path_ {
     // Don't substitute into qualified names.
     if (ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u) { ret p; }
@@ -70,7 +70,7 @@ fn subst_path(&ext_ctxt cx, &vec[@ast::expr] args,
 }
 
 
-fn subst_expr(&ext_ctxt cx, &vec[@ast::expr] args, @vec[ident] param_names, 
+fn subst_expr(&ext_ctxt cx, &(@ast::expr)[] args, @vec[ident] param_names, 
               &ast::expr_ e, ast_fold fld, 
               fn(&ast::expr_, ast_fold) -> ast::expr_ orig) -> ast::expr_ {
     ret alt(e) {
@@ -90,20 +90,21 @@ fn subst_expr(&ext_ctxt cx, &vec[@ast::expr] args, @vec[ident] param_names,
 }
 
 
-fn add_new_extension(&ext_ctxt cx, span sp, &vec[@ast::expr] args,
+fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                      option::t[str] body) -> tup(str, syntax_extension) {
-    if (len(args) < 2u) {
+    if (ivec::len(args) < 2u) {
         cx.span_fatal(sp, "malformed extension description");
     }
 
-    fn generic_extension(&ext_ctxt cx, span sp, &vec[@ast::expr] args,
+    fn generic_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                          option::t[str] body, @vec[ident] param_names,
                          @ast::expr dest_form) -> @ast::expr {
-        if (len(args) != len(*param_names)) {
+        if (ivec::len(args) != len(*param_names)) {
             cx.span_fatal(sp, #fmt("extension expects %u arguments, got %u",
-                                 len(*param_names), len(args)));
+                                 len(*param_names), ivec::len(args)));
         }
 
+        // FIXME: This binds to alias arguments.
         auto afp = default_ast_fold();
         auto f_pre = 
             rec(fold_ident = bind subst_ident(cx, args, param_names, _, _),
@@ -120,7 +121,7 @@ fn add_new_extension(&ext_ctxt cx, span sp, &vec[@ast::expr] args,
 
     let vec[ident] param_names = vec::empty[ident]();
     let uint idx = 1u;
-    while(1u+idx < len(args)) {
+    while(1u+idx < ivec::len(args)) {
         param_names +=
             [expr_to_ident(cx, args.(idx),
                            "this parameter name must be an identifier.")];
@@ -129,7 +130,7 @@ fn add_new_extension(&ext_ctxt cx, span sp, &vec[@ast::expr] args,
 
     ret tup(expr_to_str(cx, args.(0), "first arg must be a literal string."),
             normal(bind generic_extension(_,_,_,_,@param_names,
-                                          args.(len(args)-1u))));
+                                          args.(ivec::len(args)-1u))));
 }
 
 

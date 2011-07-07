@@ -47,7 +47,7 @@ export crate_map;
 tag scope {
     scope_crate(@ast::crate);
     scope_item(@ast::item);
-    scope_fn(ast::fn_decl, vec[ast::ty_param]);
+    scope_fn(ast::fn_decl, ast::ty_param[]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::block);
@@ -346,7 +346,7 @@ fn visit_native_item_with_scope(&@ast::native_item ni, &scopes sc,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_with_scope(&@env e, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
+fn visit_fn_with_scope(&@env e, &ast::_fn f, &ast::ty_param[] tp, &span sp,
                        &fn_ident name, node_id id, &scopes sc,
                        &vt[scopes] v) {
     // here's where we need to set up the mapping
@@ -376,7 +376,7 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
             case (ast::expr_for_each(?d, _, _)) {
                 cons[scope](scope_loop(d), @sc)
             }
-            case (ast::expr_fn(?f)) { cons(scope_fn(f.decl, []), @sc) }
+            case (ast::expr_fn(?f)) { cons(scope_fn(f.decl, ~[]), @sc) }
             case (_) { sc }
         };
     visit::visit_expr(x, new_sc, v);
@@ -638,8 +638,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
             }
             case (scope_native_item(?it)) {
                 alt (it.node) {
-                    case (ast::native_item_fn(_, ?decl, ?ty_params))
-                         {
+                    case (ast::native_item_fn(_, ?decl, ?ty_params)) {
                         ret lookup_in_fn(name, decl, ty_params, ns);
                     }
                 }
@@ -690,7 +689,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
 
 }
 
-fn lookup_in_ty_params(&ident name, &vec[ast::ty_param] ty_params) ->
+fn lookup_in_ty_params(&ident name, &ast::ty_param[] ty_params) ->
    option::t[def] {
     auto i = 0u;
     for (ast::ty_param tp in ty_params) {
@@ -720,7 +719,7 @@ fn lookup_in_pat(&ident name, &ast::pat pat) -> option::t[def] {
 }
 
 fn lookup_in_fn(&ident name, &ast::fn_decl decl,
-                &vec[ast::ty_param] ty_params,
+                &ast::ty_param[] ty_params,
                 namespace ns) -> option::t[def] {
     alt (ns) {
         case (ns_value) {
@@ -736,7 +735,7 @@ fn lookup_in_fn(&ident name, &ast::fn_decl decl,
     }
 }
 
-fn lookup_in_obj(&ident name, &ast::_obj ob, &vec[ast::ty_param] ty_params,
+fn lookup_in_obj(&ident name, &ast::_obj ob, &ast::ty_param[] ty_params,
                  namespace ns) -> option::t[def] {
     alt (ns) {
         case (ns_value) {
@@ -1229,18 +1228,22 @@ fn check_item(@env e, &@ast::item i, &() x, &vt[()] v) {
     alt (i.node) {
         case (ast::item_fn(?f, ?ty_params)) {
             check_fn(*e, i.span, f);
-            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+                               "type parameter");
         }
         case (ast::item_obj(?ob, ?ty_params, _)) {
             fn field_name(&ast::obj_field field) -> ident { ret field.ident; }
-            ensure_unique(*e, i.span, ob.fields, field_name, "object field");
+            ensure_unique_ivec(*e, i.span, ob.fields, field_name,
+                               "object field");
             for (@ast::method m in ob.methods) {
                 check_fn(*e, m.span, m.node.meth);
             }
-            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+                               "type parameter");
         }
         case (ast::item_tag(_, ?ty_params)) {
-            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+                               "type parameter");
         }
         case (_) { }
     }
@@ -1315,7 +1318,7 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
 
 fn check_fn(&env e, &span sp, &ast::_fn f) {
     fn arg_name(&ast::arg a) -> ident { ret a.ident; }
-    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
+    ensure_unique_ivec(e, sp, f.decl.inputs, arg_name, "argument");
 }
 
 type checker = @rec(mutable vec[ident] seen, str kind, session sess);
@@ -1341,6 +1344,14 @@ fn ensure_unique[T](&env e, &span sp, &vec[T] elts, fn(&T) -> ident  id,
     auto ch = checker(e, kind);
     for (T elt in elts) { add_name(ch, sp, id(elt)); }
 }
+
+// FIXME: Remove me.
+fn ensure_unique_ivec[T](&env e, &span sp, &T[] elts, fn(&T) -> ident  id,
+                         &str kind) {
+    auto ch = checker(e, kind);
+    for (T elt in elts) { add_name(ch, sp, id(elt)); }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

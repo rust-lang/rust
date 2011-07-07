@@ -71,14 +71,14 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
     auto ret_ty = @rec(node=ast::ty_nil,
                        span=rec(lo=0u, hi=0u));
 
-    let ast::fn_decl decl = rec(inputs = [],
+    let ast::fn_decl decl = rec(inputs = ~[],
                                 output = ret_ty,
                                 purity = ast::impure_fn,
                                 cf = ast::return,
                                 constraints = ~[]);
     auto proto = ast::proto_fn;
 
-    let ast::block_ body_ = rec(stmts = [],
+    let ast::block_ body_ = rec(stmts = ~[],
                                  expr = option::none,
                                  id = cx.next_node_id());
     auto body = rec(node = body_, span = rec(lo=0u, hi=0u));
@@ -87,7 +87,7 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
                    proto = proto,
                    body = body);
 
-    auto item_ = ast::item_fn(fn_, []);
+    auto item_ = ast::item_fn(fn_, ~[]);
     let ast::item item = rec(ident = "main",
                              attrs = ~[],
                              id = cx.next_node_id(),

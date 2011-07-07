@@ -50,16 +50,18 @@ fn new_def_hash[V]() -> std::map::hashmap[ast::def_id, V] {
 
 fn elt_expr(&ast::elt e) -> @ast::expr { ret e.expr; }
 
-fn elt_exprs(&vec[ast::elt] elts) -> vec[@ast::expr] {
-    auto f = elt_expr;
-    ret vec::map[ast::elt, @ast::expr](f, elts);
+fn elt_exprs(&ast::elt[] elts) -> (@ast::expr)[] {
+    auto es = ~[];
+    for (ast::elt e in elts) { es += ~[e.expr]; }
+    ret es;
 }
 
 fn field_expr(&ast::field f) -> @ast::expr { ret f.node.expr; }
 
-fn field_exprs(vec[ast::field] fields) -> vec[@ast::expr] {
-    auto f = field_expr;
-    ret vec::map[ast::field, @ast::expr](f, fields);
+fn field_exprs(&ast::field[] fields) -> (@ast::expr)[] {
+    auto es = ~[];
+    for (ast::field f in fields) { es += ~[f.node.expr]; }
+    ret es;
 }
 
 fn log_expr(&ast::expr e) { log print::pprust::expr_to_str(@e); }
@@ -76,11 +78,11 @@ fn log_block_err(&ast::block b) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(&@ast::item i) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(&ast::_fn f, str name, vec[ast::ty_param] params) {
+fn log_fn(&ast::_fn f, str name, &ast::ty_param[] params) {
     log print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_fn_err(&ast::_fn f, str name, vec[ast::ty_param] params) {
+fn log_fn_err(&ast::_fn f, str name, &ast::ty_param[] params) {
     log_err print::pprust::fun_to_str(f, name, params);
 }
 

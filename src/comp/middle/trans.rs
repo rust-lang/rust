@@ -155,8 +155,8 @@ type crate_ctxt =
 type local_ctxt =
     rec(vec[str] path,
         vec[str] module_path,
-        vec[ast::ty_param] obj_typarams,
-        vec[ast::obj_field] obj_fields,
+        ast::ty_param[] obj_typarams,
+        ast::obj_field[] obj_fields,
         @crate_ctxt ccx);
 
 
@@ -4382,8 +4382,10 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
 
 fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
              &ast::block body) -> result {
+    // FIXME: We bind to an alias here to avoid a segfault... this is
+    // obviously a bug.
     fn inner(&@block_ctxt cx, @ast::local local, ValueRef curr, ty::t t,
-             ast::block body, @block_ctxt outer_next_cx) -> result {
+             &ast::block body, @block_ctxt outer_next_cx) -> result {
         auto next_cx = new_sub_block_ctxt(cx, "next");
         auto scope_cx =
             new_loop_scope_block_ctxt(cx, option::some[@block_ctxt](next_cx),
@@ -4778,7 +4780,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                     cx.build.ICmp(lib::llvm::LLVMIntEQ, lldiscrim,
                                   C_int(variant_tag));
                 cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
-                if (vec::len(subpats) > 0u) {
+                if (std::ivec::len(subpats) > 0u) {
                     llblobptr =
                         matched_cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
                 }
@@ -4790,7 +4792,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             auto tps_ivec = ~[];
             for (ty::t tp in ty_params) { tps_ivec += ~[tp]; }
 
-            if (vec::len(subpats) > 0u) {
+            if (std::ivec::len(subpats) > 0u) {
                 auto i = 0;
                 for (@ast::pat subpat in subpats) {
                     auto rslt =
@@ -4834,9 +4836,11 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             }
         }
         case (ast::pat_tag(_, ?subpats)) {
-            if (vec::len[@ast::pat](subpats) == 0u) { ret rslt(cx, llval); }
-            // Get the appropriate variant for this tag.
+            if (std::ivec::len[@ast::pat](subpats) == 0u) {
+                ret rslt(cx, llval);
+            }
 
+            // Get the appropriate variant for this tag.
             auto vdef;
             alt (cx.fcx.lcx.ccx.tcx.def_map.find(pat.id)) {
                 case (some(?x)) { vdef = ast::variant_def_ids(x); }
@@ -4874,7 +4878,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
     }
 }
 
-fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &vec[ast::arm] arms,
+fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
              ast::node_id id, &out_method output) -> result {
     auto expr_res = trans_expr(cx, expr);
     auto this_cx = expr_res.bcx;
@@ -5308,7 +5312,7 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
 }
 
 fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
-                    &ty::t outgoing_fty, &vec[option::t[@ast::expr]] args,
+                    &ty::t outgoing_fty, &(option::t[@ast::expr])[] args,
                     &ty::t closure_ty, &vec[ty::t] bound_tys,
                     uint ty_param_count) -> ValueRef {
 
@@ -5474,7 +5478,7 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
 }
 
 fn trans_bind(&@block_ctxt cx, &@ast::expr f,
-              &vec[option::t[@ast::expr]] args, ast::node_id id) -> result {
+              &(option::t[@ast::expr])[] args, ast::node_id id) -> result {
     auto f_res = trans_lval(cx, f);
     if (f_res.is_mem) {
         cx.fcx.lcx.ccx.sess.unimpl("re-binding existing function");
@@ -5720,7 +5724,7 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
 //  - trans_args
 fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
               &option::t[generic_info] gen, &option::t[ValueRef] lliterbody,
-              &vec[@ast::expr] es, &ty::t fn_ty) ->
+              &(@ast::expr)[] es, &ty::t fn_ty) ->
    tup(@block_ctxt, vec[ValueRef], ValueRef) {
     let ty::arg[] args = ty::ty_fn_args(cx.fcx.lcx.ccx.tcx, fn_ty);
     let vec[ValueRef] llargs = [];
@@ -5812,7 +5816,7 @@ fn trans_args(&@block_ctxt cx, ValueRef llenv, &option::t[ValueRef] llobj,
 }
 
 fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
-              &vec[@ast::expr] args, ast::node_id id) -> result {
+              &(@ast::expr)[] args, ast::node_id id) -> result {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
@@ -5896,8 +5900,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     ret rslt(bcx, retval);
 }
 
-fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, ast::node_id id)
-    -> result {
+fn trans_tup(&@block_ctxt cx, &ast::elt[] elts, ast::node_id id) -> result {
     auto bcx = cx;
     auto t = node_id_type(bcx.fcx.lcx.ccx, id);
     auto tup_res = alloc_ty(bcx, t);
@@ -5916,7 +5919,7 @@ fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts, ast::node_id id)
     ret rslt(bcx, tup_val);
 }
 
-fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
+fn trans_vec(&@block_ctxt cx, &(@ast::expr)[] args, ast::node_id id) ->
    result {
     auto t = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_ty = t;
@@ -5928,7 +5931,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
     auto data_sz =
-        bcx.build.Mul(C_int(vec::len[@ast::expr](args) as int), unit_sz.val);
+        bcx.build.Mul(C_uint(std::ivec::len[@ast::expr](args)), unit_sz.val);
     // FIXME: pass tydesc properly.
 
     auto vec_val =
@@ -5941,7 +5944,8 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
     auto body = bcx.build.GEP(vec_val, [C_int(0), C_int(abi::vec_elt_data)]);
     auto pseudo_tup_ty =
         ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx,
-                       std::ivec::init_elt[ty::t](unit_ty, vec::len(args)));
+                       std::ivec::init_elt[ty::t](unit_ty,
+                                                  std::ivec::len(args)));
     let int i = 0;
     for (@ast::expr e in args) {
         auto src = trans_lval(bcx, e);
@@ -5975,7 +5979,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args, ast::node_id id) ->
 
 
 // TODO: Move me to ivec::
-fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
+fn trans_ivec(@block_ctxt bcx, &(@ast::expr)[] args, ast::node_id id) ->
         result {
     auto typ = node_id_type(bcx.fcx.lcx.ccx, id);
     auto unit_ty;
@@ -5993,11 +5997,12 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
 
     add_clean_temp(bcx, llvecptr, typ);
 
-    auto lllen = bcx.build.Mul(C_uint(vec::len(args)), unit_sz);
+    auto lllen = bcx.build.Mul(C_uint(std::ivec::len(args)), unit_sz);
     // Allocate the vector pieces and store length and allocated length.
 
     auto llfirsteltptr;
-    if (vec::len(args) > 0u && vec::len(args) <= abi::ivec_default_length) {
+    if (std::ivec::len(args) > 0u &&
+            std::ivec::len(args) <= abi::ivec_default_length) {
         // Interior case.
 
         bcx.build.Store(lllen,
@@ -6022,7 +6027,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
         auto llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
         bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr, stub_z));
         auto llheapty = T_ivec_heap_part(llunitty);
-        if (vec::len(args) == 0u) {
+        if (std::ivec::len(args) == 0u) {
             // Null heap pointer indicates a zero-length vector.
 
             bcx.build.Store(llalen, bcx.build.InBoundsGEP(llstubptr, stub_a));
@@ -6067,7 +6072,7 @@ fn trans_ivec(@block_ctxt bcx, &vec[@ast::expr] args, ast::node_id id) ->
     ret rslt(bcx, llvecptr);
 }
 
-fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
+fn trans_rec(&@block_ctxt cx, &ast::field[] fields,
              &option::t[@ast::expr] base, ast::node_id id) -> result {
     auto bcx = cx;
     auto t = node_id_type(bcx.fcx.lcx.ccx, id);
@@ -6172,7 +6177,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             auto sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
             auto s = mangle_internal_name_by_path(ccx, sub_cx.path);
             auto llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
-            trans_fn(sub_cx, e.span, f, llfn, none, [], e.id);
+            trans_fn(sub_cx, e.span, f, llfn, none, ~[], e.id);
             ret rslt(cx, create_fn_pair(ccx, s, llfnty, llfn, false));
         }
         case (ast::expr_block(?blk)) {
@@ -6696,16 +6701,17 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
 }
 
 fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
-               &@ast::expr func, &vec[@ast::expr] args, ast::node_id id) ->
-   result {
+               &@ast::expr func, &(@ast::expr)[] args, ast::node_id id)
+        -> result {
     auto bcx = cx;
     // Make the task name
 
     auto tname =
         alt (name) {
             case (none) {
-                auto argss = vec::map(expr_to_str, args);
-                #fmt("%s(%s)", expr_to_str(func), str::connect(argss, ", "))
+                auto argss = std::ivec::map(expr_to_str, args);
+                #fmt("%s(%s)", expr_to_str(func),
+                     str::connect_ivec(argss, ", "))
             }
             case (some(?n)) { n }
         };
@@ -6979,7 +6985,7 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
 // instead "inlining" the construction of the object and returning the object
 // itself.
 fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
-                  &vec[ast::ty_param] ty_params, ast::node_id id) -> result {
+                  &ast::ty_param[] ty_params, ast::node_id id) -> result {
 
     // Right now, we're assuming that anon objs don't take ty params, even
     // though the AST supports it.  It's nonsensical to write an expression
@@ -6987,13 +6993,13 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // nevertheless, such an expression will parse.  Idea for the future:
     // support typarams.
 
-    assert (vec::len(ty_params) == 0u);
+    assert (std::ivec::len(ty_params) == 0u);
     auto ccx = bcx.fcx.lcx.ccx;
 
     // Fields.
     // FIXME (part of issue #538): Where do we fill in the field *values* from
     // the outer object?
-    let vec[ast::anon_obj_field] additional_fields = [];
+    let ast::anon_obj_field[] additional_fields = ~[];
     let vec[result] additional_field_vals = [];
     let ty::t[] additional_field_tys = ~[];
     alt (anon_obj.fields) {
@@ -7021,8 +7027,8 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
     }
     let ast::_obj wrapper_obj = rec(
-        fields = vec::map(anon_obj_field_to_obj_field, 
-                          additional_fields),
+        fields = std::ivec::map(anon_obj_field_to_obj_field, 
+                                additional_fields),
         methods = anon_obj.methods,
         dtor = none[@ast::method]);
 
@@ -7079,8 +7085,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     auto pair = 
         alloca(bcx, 
                T_struct([val_ty(vtbl),
-                         T_obj_ptr(ccx.tn,
-                                   vec::len[ast::ty_param](ty_params))]));
+                         T_obj_ptr(ccx.tn, std::ivec::len(ty_params))]));
 
     // Take care of cleanups.
     auto t = node_id_type(ccx, id);
@@ -7101,8 +7106,8 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // typarams, fields, and a pointer to our with_obj.
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
 
-    if (vec::len[ast::ty_param](ty_params) == 0u &&
-        vec::len[ast::anon_obj_field](additional_fields) == 0u &&
+    if (std::ivec::len[ast::ty_param](ty_params) == 0u &&
+        std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
         anon_obj.with_obj == none) {
         // If the object we're translating has no fields or type parameters
         // and no with_obj, there's not much to do.
@@ -7544,12 +7549,10 @@ fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
 
 fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
     let vec[str] pth = [];
-    let vec[ast::ty_param] obj_typarams = [];
-    let vec[ast::obj_field] obj_fields = [];
     ret @rec(path=pth,
              module_path=[ccx.link_meta.name],
-             obj_typarams=obj_typarams,
-             obj_fields=obj_fields,
+             obj_typarams=~[],
+             obj_fields=~[],
              ccx=ccx);
 }
 
@@ -7621,8 +7624,8 @@ fn new_fn_ctxt(@local_ctxt cx, &span sp, ValueRef llfndecl) -> @fn_ctxt {
 // field of the fn_ctxt with
 fn create_llargs_for_fn_args(&@fn_ctxt cx, ast::proto proto,
                              option::t[ty_self_pair] ty_self, ty::t ret_ty,
-                             &vec[ast::arg] args,
-                             &vec[ast::ty_param] ty_params) {
+                             &ast::arg[] args,
+                             &ast::ty_param[] ty_params) {
     // Skip the implicit arguments 0, 1, and 2.  TODO: Pull out 3u and define
     // it as a constant, since we're using it in several places in trans this
     // way.
@@ -7684,8 +7687,7 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx, option::t[ty_self_pair] ty_self) {
     }
 }
 
-fn copy_args_to_allocas(@fn_ctxt fcx, vec[ast::arg] args,
-                        &ty::arg[] arg_tys) {
+fn copy_args_to_allocas(@fn_ctxt fcx, &ast::arg[] args, &ty::arg[] arg_tys) {
     auto bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
@@ -7707,7 +7709,7 @@ fn copy_args_to_allocas(@fn_ctxt fcx, vec[ast::arg] args,
     }
 }
 
-fn add_cleanups_for_args(&@block_ctxt bcx, vec[ast::arg] args,
+fn add_cleanups_for_args(&@block_ctxt bcx, &ast::arg[] args,
                          &ty::arg[] arg_tys) {
     let uint arg_n = 0u;
     for (ast::arg aarg in args) {
@@ -7745,7 +7747,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, val_self_pair llself) {
     // its magic.
 
     auto fields_tup_ty = ty::mk_imm_tup(fcx.lcx.ccx.tcx, field_tys);
-    auto n_typarams = vec::len[ast::ty_param](bcx.fcx.lcx.obj_typarams);
+    auto n_typarams = std::ivec::len[ast::ty_param](bcx.fcx.lcx.obj_typarams);
     let TypeRef llobj_box_ty = T_obj_ptr(bcx.fcx.lcx.ccx.tn, n_typarams);
     auto box_cell =
         bcx.build.GEP(llself.v, [C_int(0), C_int(abi::obj_field_box)]);
@@ -7801,7 +7803,7 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
-            option::t[ty_self_pair] ty_self, &vec[ast::ty_param] ty_params,
+            option::t[ty_self_pair] ty_self, &ast::ty_param[] ty_params,
             ast::node_id id) {
     set_uwtable(llfndecl);
 
@@ -7847,11 +7849,11 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 // process_fwding_mthd: Create the forwarding function that appears in a
 // vtable slot for method calls that "fall through" to an inner object.  A
 // helper function for create_vtbl.
-fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m, 
+fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
                        TypeRef llself_ty, ty::t self_ty,
-                       &vec[ast::ty_param] ty_params,
+                       &ast::ty_param[] ty_params,
                        ty::t with_obj_ty,
-                       ty::t[] additional_field_tys) -> ValueRef {
+                       &ty::t[] additional_field_tys) -> ValueRef {
 
     // NB: self_ty (and llself_ty) is the type of the outer object;
     // with_obj_ty is the type of the inner object.
@@ -7880,7 +7882,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
         type_of_fn_full(
             cx.ccx, sp, m.proto,
             some[TypeRef](llself_ty), m.inputs, m.output,
-            vec::len[ast::ty_param](ty_params));
+            std::ivec::len[ast::ty_param](ty_params));
     let ValueRef llforwarding_fn =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
 
@@ -7997,7 +7999,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
                         some[TypeRef](llself_ty),
                         m.inputs,
                         m.output,
-                        vec::len[ast::ty_param](ty_params));
+                        std::ivec::len[ast::ty_param](ty_params));
     llorig_mthd = bcx.build.PointerCast(llorig_mthd, 
                                         T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = bcx.build.Load(llorig_mthd);
@@ -8032,7 +8034,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 // process_normal_mthd: Create the contents of a normal vtable slot.  A helper
 // function for create_vtbl.
 fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty, 
-                       ty::t self_ty, &vec[ast::ty_param] ty_params) 
+                       ty::t self_ty, &ast::ty_param[] ty_params) 
     -> ValueRef {
 
     auto llfnty = T_nil();
@@ -8042,7 +8044,7 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
                 type_of_fn_full(
                     cx.ccx, m.span, proto, 
                     some[TypeRef](llself_ty), inputs, output,
-                    vec::len[ast::ty_param](ty_params));
+                    std::ivec::len[ast::ty_param](ty_params));
         }
     }
     let @local_ctxt mcx =
@@ -8066,9 +8068,9 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
 // Create a vtable for an object being translated.  Returns a pointer into
 // read-only memory.
 fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
-               &ast::_obj ob, &vec[ast::ty_param] ty_params,
+               &ast::_obj ob, &ast::ty_param[] ty_params,
                option::t[ty::t] with_obj_ty,
-               ty::t[] additional_field_tys) -> ValueRef {
+               &ty::t[] additional_field_tys) -> ValueRef {
 
     // Used only inside create_vtbl to distinguish different kinds of slots
     // we'll have to create.
@@ -8232,7 +8234,7 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
 }
 
 fn trans_dtor(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
-              &vec[ast::ty_param] ty_params, &@ast::method dtor) -> ValueRef {
+              &ast::ty_param[] ty_params, &@ast::method dtor) -> ValueRef {
     auto llfnty = T_dtor(cx.ccx, dtor.span, llself_ty);
     let str s = mangle_internal_name_by_path(cx.ccx, cx.path + ["drop"]);
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
@@ -8247,7 +8249,7 @@ fn trans_dtor(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
 // trans_obj: creates an LLVM function that is the object constructor for the
 // object being translated.
 fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
-             &vec[ast::ty_param] ty_params) {
+             &ast::ty_param[] ty_params) {
     // To make a function, we have to create a function context and, inside
     // that, a number of block contexts for which code is generated.
 
@@ -8265,10 +8267,10 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // The fields of our object will become the arguments to the function
     // we're creating.
 
-    let vec[ast::arg] fn_args = [];
+    let ast::arg[] fn_args = ~[];
     for (ast::obj_field f in ob.fields) {
         fn_args +=
-            [rec(mode=ast::alias(false), ty=f.ty, ident=f.ident, id=f.id)];
+            ~[rec(mode=ast::alias(false), ty=f.ty, ident=f.ident, id=f.id)];
     }
     auto fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
@@ -8325,7 +8327,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // FIXME: we should probably also allocate a box for empty objs that have
     // a dtor, since otherwise they are never dropped, and the dtor never
     // runs.
-    if (vec::len[ast::ty_param](ty_params) == 0u &&
+    if (std::ivec::len[ast::ty_param](ty_params) == 0u &&
             std::ivec::len[ty::arg](arg_tys) == 0u) {
         // If the object we're translating has no fields or type parameters,
         // there's not much to do.
@@ -8449,7 +8451,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
 }
 
 fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
-                  ast::node_id ctor_id, &vec[ast::ty_param] ty_params) {
+                  ast::node_id ctor_id, &ast::ty_param[] ty_params) {
     // Create a function for the constructor
     auto llctor_decl;
     alt (cx.ccx.item_ids.find(ctor_id)) {
@@ -8493,21 +8495,21 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
 
 fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
                      &ast::variant variant, int index, bool is_degen,
-                     &vec[ast::ty_param] ty_params) {
+                     &ast::ty_param[] ty_params) {
     if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
         ret; // nullary constructors are just constants
 
     }
     // Translate variant arguments to function arguments.
 
-    let vec[ast::arg] fn_args = [];
+    let ast::arg[] fn_args = ~[];
     auto i = 0u;
     for (ast::variant_arg varg in variant.node.args) {
         fn_args +=
-            [rec(mode=ast::alias(false),
-                 ty=varg.ty,
-                 ident="arg" + uint::to_str(i, 10u),
-                 id=varg.id)];
+            ~[rec(mode=ast::alias(false),
+                  ty=varg.ty,
+                  ident="arg" + uint::to_str(i, 10u),
+                  id=varg.id)];
     }
     assert (cx.ccx.item_ids.contains_key(variant.node.id));
     let ValueRef llfndecl;
@@ -8650,7 +8652,7 @@ fn trans_item(@local_ctxt cx, &ast::item item) {
         }
         case (ast::item_tag(?variants, ?tps)) {
             auto sub_cx = extend_path(cx, item.ident);
-            auto degen = vec::len(variants) == 1u;
+            auto degen = std::ivec::len(variants) == 1u;
             auto i = 0;
             for (ast::variant variant in variants) {
                 trans_tag_variant(sub_cx, item.id, variant, i, degen, tps);
@@ -8681,20 +8683,20 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
 }
 
 fn decl_fn_and_pair(&@crate_ctxt ccx, &span sp, &vec[str] path, str flav,
-                    vec[ast::ty_param] ty_params, ast::node_id node_id) {
+                    &ast::ty_param[] ty_params, ast::node_id node_id) {
     decl_fn_and_pair_full(ccx, sp, path, flav, ty_params, node_id,
                           node_id_type(ccx, node_id));
 }
 
 fn decl_fn_and_pair_full(&@crate_ctxt ccx, &span sp, &vec[str] path, str flav,
-                         vec[ast::ty_param] ty_params, ast::node_id node_id,
+                         &ast::ty_param[] ty_params, ast::node_id node_id,
                          ty::t node_type) {
     auto llfty;
     alt (ty::struct(ccx.tcx, node_type)) {
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfty =
                 type_of_fn(ccx, sp, proto, inputs, output,
-                           vec::len[ast::ty_param](ty_params));
+                           std::ivec::len[ast::ty_param](ty_params));
         }
         case (_) {
             ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!");
@@ -8764,7 +8766,7 @@ fn native_fn_ty_param_count(&@crate_ctxt cx, ast::node_id id) -> uint {
                             "actually a fn");
         }
         case (ast::native_item_fn(_, _, ?tps)) {
-            count = vec::len[ast::ty_param](tps);
+            count = std::ivec::len[ast::ty_param](tps);
         }
     }
     ret count;
@@ -9035,7 +9037,7 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &vec[str] pt,
     alt (it.node) {
         case (ast::item_tag(?variants, _)) {
             auto i = 0u;
-            auto n_variants = vec::len[ast::variant](variants);
+            auto n_variants = std::ivec::len[ast::variant](variants);
             while (i < n_variants) {
                 auto variant = variants.(i);
                 auto p = new_pt + [it.ident, variant.node.name, "discrim"];

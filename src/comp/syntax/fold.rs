@@ -172,7 +172,8 @@ fn noop_fold_native_item(&@native_item ni, ast_fold fld) -> @native_item {
                  case (native_item_ty) { native_item_ty }
                  case (native_item_fn(?st, ?fdec, ?typms)) {
                      native_item_fn(st, 
-                                    rec(inputs=map(fold_arg, fdec.inputs),
+                                    rec(inputs=ivec::map(fold_arg,
+                                                         fdec.inputs),
                                         output=fld.fold_ty(fdec.output),
                                         purity=fdec.purity, cf=fdec.cf,
                                         constraints=ivec::map(fld.fold_constr,
@@ -216,11 +217,11 @@ fn noop_fold_item_underscore(&item_ i, ast_fold fld) -> item_ {
             item_ty(fld.fold_ty(t), typms)
                 }
         case (item_tag(?variants, ?typms)) {
-            item_tag(map(fld.fold_variant, variants), typms)
+            item_tag(ivec::map(fld.fold_variant, variants), typms)
                 }
         case (item_obj(?o, ?typms, ?d)) {
-            item_obj(rec(fields=map(fold_obj_field,o.fields),
-                         methods=map(fld.fold_method,o.methods),
+            item_obj(rec(fields=ivec::map(fold_obj_field,o.fields),
+                         methods=ivec::map(fld.fold_method,o.methods),
                          dtor=option::map(fld.fold_method,o.dtor)),
                      typms, d)
                 }
@@ -237,7 +238,7 @@ fn noop_fold_method(&method_ m, ast_fold fld) -> method_ {
 
 
 fn noop_fold_block(&block_ b, ast_fold fld) -> block_ {
-    ret rec(stmts=map(fld.fold_stmt, b.stmts),
+    ret rec(stmts=ivec::map(fld.fold_stmt, b.stmts),
             expr=option::map(fld.fold_expr, b.expr), id=b.id);
 }
 
@@ -261,7 +262,7 @@ fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {
         case (pat_bind(?ident)) { pat_bind(fld.fold_ident(ident))}
         case (pat_lit(_)) { p }
         case (pat_tag(?pth, ?pats)) {
-            pat_tag(fld.fold_path(pth), map(fld.fold_pat, pats))
+            pat_tag(fld.fold_path(pth), ivec::map(fld.fold_pat, pats))
         }
     };
 }
@@ -298,12 +299,12 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         auto fold_anon_obj_field = bind fold_anon_obj_field_(_,fld);
 
         ret rec(fields=alt(ao.fields) {
-                    case (option::none[vec[anon_obj_field]]) { ao.fields }
-                    case (option::some[vec[anon_obj_field]](?v)) {
-                        option::some[vec[anon_obj_field]]
-                            (map(fold_anon_obj_field, v))
+                    case (option::none[anon_obj_field[]]) { ao.fields }
+                    case (option::some[anon_obj_field[]](?v)) {
+                        option::some[anon_obj_field[]]
+                            (ivec::map(fold_anon_obj_field, v))
                     }},
-                methods=map(fld.fold_method, ao.methods),
+                methods=ivec::map(fld.fold_method, ao.methods),
                 with_obj=option::map(fld.fold_expr, ao.with_obj))
     }
     auto fold_anon_obj = bind fold_anon_obj_(_,fld);
@@ -311,28 +312,28 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
 
     ret alt (e) {
         case (expr_vec(?exprs, ?mut, ?seq_kind)) {
-            expr_vec(map(fld.fold_expr, exprs), mut, seq_kind)
+            expr_vec(ivec::map(fld.fold_expr, exprs), mut, seq_kind)
                 }
         case (expr_tup(?elts)) {
-            expr_tup(map(fold_elt, elts))
+            expr_tup(ivec::map(fold_elt, elts))
                 }
         case (expr_rec(?fields, ?maybe_expr)) {
-            expr_rec(map(fold_field, fields),
+            expr_rec(ivec::map(fold_field, fields),
                      option::map(fld.fold_expr, maybe_expr))
                 }
         case (expr_call(?f, ?args)) {
-            expr_call(fld.fold_expr(f), map(fld.fold_expr, args))
+            expr_call(fld.fold_expr(f), ivec::map(fld.fold_expr, args))
                 }
         case (expr_self_method(?id)) {
             expr_self_method(fld.fold_ident(id))
                 }
         case (expr_bind(?f, ?args)) {
             auto opt_map_se = bind option::map(fld.fold_expr,_);
-            expr_bind(fld.fold_expr(f), map(opt_map_se, args))
+            expr_bind(fld.fold_expr(f), ivec::map(opt_map_se, args))
                 }
         case (expr_spawn(?spawn_dom, ?name, ?f, ?args)) {
             expr_spawn(spawn_dom, name, fld.fold_expr(f), 
-                       map(fld.fold_expr, args))
+                       ivec::map(fld.fold_expr, args))
                 }
         case (expr_binary(?binop, ?lhs, ?rhs)) {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
@@ -368,7 +369,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_do_while(fld.fold_block(block), fld.fold_expr(expr))
                 }
         case (expr_alt(?expr, ?arms)) {
-            expr_alt(fld.fold_expr(expr), map(fld.fold_arm, arms))
+            expr_alt(fld.fold_expr(expr), ivec::map(fld.fold_arm, arms))
                 }
         case (expr_fn(?f)) {
             expr_fn(fld.fold_fn(f))
@@ -404,7 +405,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_path(fld.fold_path(pth))
                 }
         case (expr_ext(?pth, ?args, ?body, ?expanded)) {
-            expr_ext(fld.fold_path(pth), map(fld.fold_expr, args),
+            expr_ext(fld.fold_path(pth), ivec::map(fld.fold_expr, args),
                      body, fld.fold_expr(expanded))
                 }
         case (expr_fail(_)) { e }
@@ -450,7 +451,7 @@ fn noop_fold_constr(&constr_ c, ast_fold fld) -> constr_ {
 fn noop_fold_fn(&_fn f, ast_fold fld) -> _fn {
     auto fold_arg = bind fold_arg_(_, fld);
 
-    ret rec(decl= rec(inputs=vec::map(fold_arg, f.decl.inputs),
+    ret rec(decl= rec(inputs=ivec::map(fold_arg, f.decl.inputs),
                       output=fld.fold_ty(f.decl.output),
                       purity=f.decl.purity,
                       cf=f.decl.cf,

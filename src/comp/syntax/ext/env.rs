@@ -5,6 +5,7 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
+import std::ivec;
 import std::str;
 import std::vec;
 import std::option;
@@ -12,9 +13,9 @@ import std::generic_os;
 import base::*;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(&ext_ctxt cx, codemap::span sp, &vec[@ast::expr] args,
+fn expand_syntax_ext(&ext_ctxt cx, codemap::span sp, &(@ast::expr)[] args,
                      option::t[str] body) -> @ast::expr {
-    if (vec::len[@ast::expr](args) != 1u) {
+    if (ivec::len[@ast::expr](args) != 1u) {
         cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an

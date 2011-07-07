@@ -64,13 +64,12 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
     visit::visit_expr(e, cx, v);
 }
 
-fn do_nothing(&_fn f, &vec[ty_param] tp, &span sp, &fn_ident i,
+fn do_nothing(&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
               node_id iid, &ctxt cx, &visit::vt[ctxt] v) {
 }
  
-fn find_locals(&ty::ctxt tcx, &_fn f, &vec[ty_param] tps,
-               &span sp, &fn_ident i, node_id id)
-    -> ctxt {
+fn find_locals(&ty::ctxt tcx, &_fn f, &ty_param[] tps, &span sp, &fn_ident i,
+               node_id id) -> ctxt {
     let ctxt cx = rec(cs=@mutable ~[], tcx=tcx);
     auto visitor = visit::default_visitor[ctxt]();
 
@@ -118,9 +117,8 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(&crate_ctxt ccx, &_fn f, &vec[ty_param] tp,
-              &span f_sp, &fn_ident f_name,
-              node_id id) {
+fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ty_param[] tp,
+              &span f_sp, &fn_ident f_name, node_id id) {
     auto res_map = @new_int_hash[constraint]();
     let uint next = 0u;
 

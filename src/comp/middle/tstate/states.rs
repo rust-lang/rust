@@ -1,3 +1,4 @@
+import std::ivec;
 import std::vec;
 import std::vec::plus_option;
 import std::vec::cat_options;
@@ -100,7 +101,7 @@ tag oper_type {
     oper_pure;
 }
 
-fn seq_states(&fn_ctxt fcx, prestate pres, vec[@expr] exprs) ->
+fn seq_states(&fn_ctxt fcx, prestate pres, &(@expr)[] exprs) ->
    tup(bool, poststate) {
     auto changed = false;
     auto post = pres;
@@ -162,7 +163,7 @@ fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr a, &@expr b,
 }
 
 fn find_pre_post_state_call(&fn_ctxt fcx, &prestate pres, &@expr a,
-                            node_id id, &vec[@expr] bs,
+                            node_id id, &(@expr)[] bs,
                             controlflow cf) -> bool {
     auto changed = find_pre_post_state_expr(fcx, pres, a);
     ret find_pre_post_state_exprs(fcx,
@@ -170,7 +171,7 @@ fn find_pre_post_state_call(&fn_ctxt fcx, &prestate pres, &@expr a,
 }
 
 fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
-                             &vec[@expr] es, controlflow cf) -> bool {
+                             &(@expr)[] es, controlflow cf) -> bool {
     auto rs = seq_states(fcx, pres, es);
     auto changed = rs._0 | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
@@ -313,8 +314,16 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                                          return);
         }
         case (expr_bind(?operator, ?maybe_args)) {
-            ret find_pre_post_state_call(fcx, pres, operator, e.id,
-                                         cat_options(maybe_args), return);
+            auto args = ~[];
+            for (option::t[@expr] a_opt in maybe_args) {
+                alt (a_opt) {
+                  case (none) { /* no-op */ }
+                  case (some(?a)) { args += ~[a]; }
+                }
+            }
+
+            ret find_pre_post_state_call(fcx, pres, operator, e.id, args,
+                                         return);
         }
         case (expr_path(_)) { ret pure_exp(fcx.ccx, e.id, pres); }
         case (expr_log(_, ?ex)) {
@@ -514,7 +523,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                 find_pre_post_state_expr(fcx, pres, val);
             auto e_post = expr_poststate(fcx.ccx, val);
             auto a_post;
-            if (vec::len(alts) > 0u) {
+            if (ivec::len(alts) > 0u) {
                 a_post = false_postcond(num_constrs);
                 for (arm an_alt in alts) {
                     changed |= find_pre_post_state_block

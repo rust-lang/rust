@@ -39,9 +39,9 @@ type ast_visitor =
         fn(&@ast::ty)  visit_ty_pre,
         fn(&@ast::ty)  visit_ty_post,
         fn(&@ast::constr)  visit_constr,
-        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident,
+        fn(&ast::_fn, &ast::ty_param[], &span, &ast::fn_ident,
            ast::node_id) visit_fn_pre,
-        fn(&ast::_fn, &vec[ast::ty_param], &span, &ast::fn_ident,
+        fn(&ast::_fn, &ast::ty_param[], &span, &ast::fn_ident,
            ast::node_id) visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
@@ -117,14 +117,14 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             for (@ast::method m in ob.methods) {
                 v.visit_method_pre(m);
                 // Methods don't have ty params?
-                walk_fn(v, m.node.meth, [], m.span,
+                walk_fn(v, m.node.meth, ~[], m.span,
                         some(m.node.ident), m.node.id);
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none) { }
                 case (some(?m)) {
-                    walk_fn(v, m.node.meth, [], m.span,
+                    walk_fn(v, m.node.meth, ~[], m.span,
                             some(m.node.ident), m.node.id);
                 }
             }
@@ -218,7 +218,7 @@ fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     walk_ty(v, fd.output);
 }
 
-fn walk_fn(&ast_visitor v, &ast::_fn f, &vec[ast::ty_param] tps,
+fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::ty_param[] tps,
            &span sp, &ast::fn_ident i, ast::node_id d) {
     if (!v.keep_going()) { ret; }
     v.visit_fn_pre(f, tps, sp, i, d);
@@ -262,7 +262,7 @@ fn walk_expr_opt(&ast_visitor v, option::t[@ast::expr] eo) {
     alt (eo) { case (none) { } case (some(?e)) { walk_expr(v, e); } }
 }
 
-fn walk_exprs(&ast_visitor v, vec[@ast::expr] exprs) {
+fn walk_exprs(&ast_visitor v, &(@ast::expr)[] exprs) {
     for (@ast::expr e in exprs) { walk_expr(v, e); }
 }
 
@@ -341,7 +341,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             }
         }
         case (ast::expr_fn(?f)) {
-            walk_fn(v, f, [], e.span, none, e.id);
+            walk_fn(v, f, ~[], e.span, none, e.id);
         }
         case (ast::expr_block(?b)) { walk_block(v, b); }
         case (ast::expr_assign(?a, ?b)) {
@@ -402,7 +402,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             // Methods
             for (@ast::method m in anon_obj.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, [], m.span, some(m.node.ident),
+                walk_fn(v, m.node.meth, ~[], m.span, some(m.node.ident),
                         m.node.id);
                 v.visit_method_post(m);
             }
@@ -445,7 +445,7 @@ fn def_visit_ty(&@ast::ty t) { }
 
 fn def_visit_constr(&@ast::constr c) { }
 
-fn def_visit_fn(&ast::_fn f, &vec[ast::ty_param] tps,
+fn def_visit_fn(&ast::_fn f, &ast::ty_param[] tps,
   &span sp, &ast::fn_ident i, ast::node_id d) { }
 
 fn default_visitor() -> ast_visitor {

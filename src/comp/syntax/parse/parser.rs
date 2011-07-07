@@ -260,7 +260,7 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo) -> ast::ty_ {
     auto inputs =
         parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
                        parse_fn_input_ty, p);
-    auto constrs = parse_constrs([], p);
+    auto constrs = parse_constrs(~[], p);
     let @ast::ty output;
     auto cf = ast::return;
     if (p.peek() == token::RARROW) {
@@ -329,13 +329,13 @@ fn parse_ty_field(&parser p) -> ast::ty_field {
 
 // if i is the jth ident in args, return j
 // otherwise, fail
-fn ident_index(&parser p, &vec[ast::arg] args, &ast::ident i) -> uint {
+fn ident_index(&parser p, &ast::arg[] args, &ast::ident i) -> uint {
     auto j = 0u;
     for (ast::arg a in args) { if (a.ident == i) { ret j; } j += 1u; }
     p.fatal("Unbound variable " + i + " in constraint arg");
 }
 
-fn parse_constr_arg(vec[ast::arg] args, &parser p) -> @ast::constr_arg {
+fn parse_constr_arg(&ast::arg[] args, &parser p) -> @ast::constr_arg {
     auto sp = p.get_span();
     auto carg = ast::carg_base;
     if (p.peek() == token::BINOP(token::STAR)) {
@@ -347,7 +347,7 @@ fn parse_constr_arg(vec[ast::arg] args, &parser p) -> @ast::constr_arg {
     ret @rec(node=carg, span=sp);
 }
 
-fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
+fn parse_ty_constr(&ast::arg[] fn_args, &parser p) -> @ast::constr {
     auto lo = p.get_lo_pos();
     auto path = parse_path(p);
     auto pf = bind parse_constr_arg(fn_args, _);
@@ -364,7 +364,7 @@ fn parse_ty_constr(&vec[ast::arg] fn_args, &parser p) -> @ast::constr {
 // Use the args list to translate each bound variable 
 // mentioned in a constraint to an arg index.
 // Seems weird to do this in the parser, but I'm not sure how else to.
-fn parse_constrs(&vec[ast::arg] args, &parser p)
+fn parse_constrs(&ast::arg[] args, &parser p)
         -> ast::spanned[(@ast::constr)[]] {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
@@ -383,7 +383,7 @@ fn parse_constrs(&vec[ast::arg] args, &parser p)
 
 fn parse_ty_constrs(@ast::ty t, &parser p) -> @ast::ty {
     if (p.peek() == token::COLON) {
-        auto constrs = parse_constrs([], p);
+        auto constrs = parse_constrs(~[], p);
         ret @spanned(t.span.lo, constrs.span.hi,
                      ast::ty_constr(t, constrs.node));
     }
@@ -776,16 +776,16 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             ret rec(mut=m, expr=e);
         }
         auto es =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_elt, p);
+            parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                           parse_elt, p);
         hi = es.span.hi;
         ex = ast::expr_tup(es.node);
     } else if (p.peek() == token::LBRACKET) {
         p.bump();
         auto mut = parse_mutability(p);
         auto es =
-            parse_seq_to_end(token::RBRACKET, some(token::COMMA), parse_expr,
-                             p);
+            parse_seq_to_end_ivec(token::RBRACKET, some(token::COMMA),
+                                  parse_expr, p);
         ex = ast::expr_vec(es, mut, ast::sk_rc);
     } else if (p.peek() == token::TILDE) {
         p.bump();
@@ -795,8 +795,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 p.bump();
                 auto mut = parse_mutability(p);
                 auto es =
-                    parse_seq_to_end(token::RBRACKET, some(token::COMMA),
-                                     parse_expr, p);
+                    parse_seq_to_end_ivec(token::RBRACKET, some(token::COMMA),
+                                          parse_expr, p);
                 ex = ast::expr_vec(es, mut, ast::sk_unique);
             }
             case (token::LIT_STR(?s)) {
@@ -817,20 +817,22 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         auto ty_params = parse_ty_params(p);
 
         // Only make people type () if they're actually adding new fields
-        let option::t[vec[ast::anon_obj_field]] fields = none;
+        let option::t[ast::anon_obj_field[]] fields = none;
         if (p.peek() == token::LPAREN) {
             p.bump();
             fields =
-                some(parse_seq_to_end(token::RPAREN, some(token::COMMA),
-                                      parse_anon_obj_field, p));
+                some(parse_seq_to_end_ivec(token::RPAREN, some(token::COMMA),
+                                           parse_anon_obj_field, p));
         }
-        let vec[@ast::method] meths = [];
+        let (@ast::method)[] meths = ~[];
         let option::t[@ast::expr] with_obj = none;
         expect(p, token::LBRACE);
         while (p.peek() != token::RBRACE) {
             if (eat_word(p, "with")) {
                 with_obj = some(parse_expr(p));
-            } else { vec::push(meths, parse_method(p)); }
+            } else {
+                meths += ~[parse_method(p)];
+            }
         }
         hi = p.get_hi_pos();
         expect(p, token::RBRACE);
@@ -845,7 +847,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_anon_obj(ob, ty_params);
     } else if (eat_word(p, "rec")) {
         expect(p, token::LPAREN);
-        auto fields = [parse_field(p)];
+        auto fields = ~[parse_field(p)];
         auto more = true;
         auto base = none;
         while (more) {
@@ -860,7 +862,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 more = false;
             } else if (p.peek() == token::COMMA) {
                 p.bump();
-                fields += [parse_field(p)];
+                fields += ~[parse_field(p)];
             } else { unexpected(p, p.peek()); }
         }
         ex = ast::expr_rec(fields, base);
@@ -873,8 +875,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             }
         }
         auto es =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_expr_opt, p);
+            parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                           parse_expr_opt, p);
         hi = es.span.hi;
         ex = ast::expr_bind(e, es.node);
     } else if (p.peek() == token::POUND) {
@@ -969,8 +971,8 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
 
         let @ast::expr f = parse_self_method(p);
         auto es =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                      parse_expr, p);
+            parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                           parse_expr, p);
         hi = es.span.hi;
         ex = ast::expr_call(f, es.node);
     } else if (is_ident(p.peek()) && !is_word(p, "true") &&
@@ -998,8 +1000,8 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     if (ivec::len(pth.node.idents) == 0u) {
         p.fatal("expected a syntax expander name");
     }
-    auto es = parse_seq(token::LPAREN, token::RPAREN,
-                        some(token::COMMA), parse_expr, p);
+    auto es = parse_seq_ivec(token::LPAREN, token::RPAREN,
+                             some(token::COMMA), parse_expr, p);
     auto hi = es.span.hi;
     auto ext_span = rec(lo=lo, hi=hi);
     auto ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
@@ -1013,7 +1015,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
  * loading rust crates to process extensions.
  */
 fn expand_syntax_ext(&parser p, span sp, &ast::path path,
-                     vec[@ast::expr] args, option::t[str] body) ->
+                     &(@ast::expr)[] args, option::t[str] body) ->
    ast::expr_ {
     assert (ivec::len(path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
@@ -1030,7 +1032,7 @@ fn expand_syntax_ext(&parser p, span sp, &ast::path path,
             auto name_and_extension = ext(ext_cx, sp, args, body);
             p.get_syntax_expanders().insert(name_and_extension._0,
                                             name_and_extension._1);
-            ret ast::expr_tup(vec::empty[ast::elt]());
+            ret ast::expr_tup(~[]);
         }
     }
 }
@@ -1057,8 +1059,8 @@ fn parse_dot_or_call_expr_with(&parser p, @ast::expr e) -> @ast::expr {
                     // Call expr.
 
                     auto es =
-                        parse_seq(token::LPAREN, token::RPAREN,
-                                  some(token::COMMA), parse_expr, p);
+                        parse_seq_ivec(token::LPAREN, token::RPAREN,
+                                       some(token::COMMA), parse_expr, p);
                     hi = es.span.hi;
                     e = mk_expr(p, lo, hi, ast::expr_call(e, es.node));
                 }
@@ -1349,7 +1351,7 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
     auto discriminant = parse_expr(p);
     expect(p, token::LBRACE);
-    let vec[ast::arm] arms = [];
+    let ast::arm[] arms = ~[];
     while (p.peek() != token::RBRACE) {
         // Optionally eat the case keyword.
         // FIXME remove this (and the optional parens) once we've updated our
@@ -1360,7 +1362,7 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
         auto pat = parse_pat(p);
         if (parens) { expect(p, token::RPAREN); }
         auto block = parse_block(p);
-        arms += [rec(pat=pat, block=block)];
+        arms += ~[rec(pat=pat, block=block)];
     }
     auto hi = p.get_hi_pos();
     p.bump();
@@ -1374,8 +1376,8 @@ fn parse_spawn_expr(&parser p) -> @ast::expr {
 
     auto fn_expr = parse_bottom_expr(p);
     auto es =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                  parse_expr, p);
+        parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                       parse_expr, p);
     auto hi = es.span.hi;
     ret mk_expr(p, lo, hi, ast::expr_spawn
                 (ast::dom_implicit, option::none, fn_expr, es.node));
@@ -1449,17 +1451,17 @@ fn parse_pat(&parser p) -> @ast::pat {
             } else {
                 auto tag_path = parse_path_and_ty_param_substs(p);
                 hi = tag_path.span.hi;
-                let vec[@ast::pat] args;
+                let (@ast::pat)[] args;
                 alt (p.peek()) {
                     case (token::LPAREN) {
                         auto f = parse_pat;
                         auto a =
-                            parse_seq(token::LPAREN, token::RPAREN,
-                                      some(token::COMMA), f, p);
+                            parse_seq_ivec(token::LPAREN, token::RPAREN,
+                                           some(token::COMMA), f, p);
                         args = a.node;
                         hi = a.span.hi;
                     }
-                    case (_) { args = []; }
+                    case (_) { args = ~[]; }
                 }
                 pat = ast::pat_tag(tag_path, args);
             }
@@ -1645,7 +1647,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
 
 fn parse_block(&parser p) -> ast::block {
     auto lo = p.get_lo_pos();
-    let vec[@ast::stmt] stmts = [];
+    let (@ast::stmt)[] stmts = ~[];
     let option::t[@ast::expr] expr = none;
     expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
@@ -1658,7 +1660,7 @@ fn parse_block(&parser p) -> ast::block {
                 alt (stmt_to_expr(stmt)) {
                     case (some(?e)) {
                         alt (p.peek()) {
-                            case (token::SEMI) { p.bump(); stmts += [stmt]; }
+                            case (token::SEMI) { p.bump(); stmts += ~[stmt]; }
                             case (token::RBRACE) { expr = some(e); }
                             case (?t) {
                                 if (stmt_ends_with_semi(*stmt)) {
@@ -1668,13 +1670,13 @@ fn parse_block(&parser p) -> ast::block {
                                                             t));
                                     fail;
                                 }
-                                stmts += [stmt];
+                                stmts += ~[stmt];
                             }
                         }
                     }
                     case (none) {
                         // Not an expression statement.
-                        stmts += [stmt];
+                        stmts += ~[stmt];
 
                         if (p.get_file_type() == SOURCE_FILE
                             && stmt_ends_with_semi(*stmt)) {
@@ -1693,20 +1695,20 @@ fn parse_block(&parser p) -> ast::block {
 
 fn parse_ty_param(&parser p) -> ast::ty_param { ret parse_ident(p); }
 
-fn parse_ty_params(&parser p) -> vec[ast::ty_param] {
-    let vec[ast::ty_param] ty_params = [];
+fn parse_ty_params(&parser p) -> ast::ty_param[] {
+    let ast::ty_param[] ty_params = ~[];
     if (p.peek() == token::LBRACKET) {
         ty_params =
-            parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
-                      parse_ty_param, p).node;
+            parse_seq_ivec(token::LBRACKET, token::RBRACKET,
+                           some(token::COMMA), parse_ty_param, p).node;
     }
     ret ty_params;
 }
 
 fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
-    let ast::spanned[vec[ast::arg]] inputs =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
-                  p);
+    let ast::spanned[ast::arg[]] inputs =
+        parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                       parse_arg, p);
     let ty_or_bang rslt;
     auto constrs = parse_constrs(inputs.node, p).node;
     if (p.peek() == token::RARROW) {
@@ -1740,7 +1742,7 @@ fn parse_fn(&parser p, ast::proto proto, ast::purity purity) -> ast::_fn {
     ret rec(decl=decl, proto=proto, body=body);
 }
 
-fn parse_fn_header(&parser p) -> tup(ast::ident, vec[ast::ty_param]) {
+fn parse_fn_header(&parser p) -> tup(ast::ident, ast::ty_param[]) {
     auto id = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
     ret tup(id, ty_params);
@@ -1791,7 +1793,7 @@ fn parse_method(&parser p) -> @ast::method {
 fn parse_dtor(&parser p) -> @ast::method {
     auto lo = p.get_last_lo_pos();
     let ast::block b = parse_block(p);
-    let vec[ast::arg] inputs = [];
+    let ast::arg[] inputs = ~[];
     let @ast::ty output = @spanned(lo, lo, ast::ty_nil);
     let ast::fn_decl d =
         rec(inputs=inputs,
@@ -1812,16 +1814,16 @@ fn parse_item_obj(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
     auto lo = p.get_last_lo_pos();
     auto ident = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
-    let ast::spanned[vec[ast::obj_field]] fields =
-        parse_seq[ast::obj_field](token::LPAREN, token::RPAREN,
-                                  some(token::COMMA), parse_obj_field, p);
-    let vec[@ast::method] meths = [];
+    let ast::spanned[ast::obj_field[]] fields =
+        parse_seq_ivec(token::LPAREN, token::RPAREN, some(token::COMMA),
+                       parse_obj_field, p);
+    let (@ast::method)[] meths = ~[];
     let option::t[@ast::method] dtor = none;
     expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
         if (eat_word(p, "drop")) {
             dtor = some(parse_dtor(p));
-        } else { vec::push(meths, parse_method(p)); }
+        } else { meths += ~[parse_method(p)]; }
     }
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
@@ -1840,8 +1842,8 @@ fn parse_item_res(&parser p, ast::layer lyr, &ast::attribute[] attrs) ->
     auto arg_ident = parse_value_ident(p);
     expect(p, token::RPAREN);
     auto dtor = parse_block(p);
-    auto decl = rec(inputs=[rec(mode=ast::alias(false), ty=t, ident=arg_ident,
-                                id=p.get_id())],
+    auto decl = rec(inputs=~[rec(mode=ast::alias(false), ty=t,
+                                 ident=arg_ident, id=p.get_id())],
                     output=@spanned(lo, lo, ast::ty_nil),
                     purity=ast::impure_fn,
                     cf=ast::return,
@@ -2015,7 +2017,7 @@ fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
-    let vec[ast::variant] variants = [];
+    let ast::variant[] variants = ~[];
     // Newtype syntax
     if (p.peek() == token::EQ) {
         if (p.get_bad_expr_words().contains_key(id)) {
@@ -2029,7 +2031,7 @@ fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
                                    args=[rec(ty=ty, id=p.get_id())],
                                    id=p.get_id()));
         ret mk_item(p, lo, ty.span.hi, id,
-                    ast::item_tag([variant], ty_params), attrs);
+                    ast::item_tag(~[variant], ty_params), attrs);
     }
     expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
@@ -2058,7 +2060,7 @@ fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
                     rec(name=p.get_str(name),
                         args=args,
                         id=p.get_id());
-                variants += [spanned(vlo, vhi, vr)];
+                variants += ~[spanned(vlo, vhi, vr)];
             }
             case (token::RBRACE) {/* empty */ }
             case (_) {

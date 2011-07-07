@@ -52,7 +52,7 @@ fn collect_ids_local(&@local l, @mutable node_id[] rs) {
     *rs += ~[l.node.id];
 }
 
-fn node_ids_in_fn(&_fn f, &vec[ty_param] tps, &span sp, &fn_ident i,
+fn node_ids_in_fn(&_fn f, &ty_param[] tps, &span sp, &fn_ident i,
                   node_id id, @mutable node_id[] rs) {
     auto collect_ids = walk::default_visitor();
     collect_ids =
@@ -70,7 +70,7 @@ fn init_vecs(&crate_ctxt ccx, &node_id[] node_ids, uint len) {
     }
 }
 
-fn visit_fn(&crate_ctxt ccx, uint num_constraints, &_fn f, &vec[ty_param] tps,
+fn visit_fn(&crate_ctxt ccx, uint num_constraints, &_fn f, &ty_param[] tps,
             &span sp, &fn_ident i, node_id id) {
     let @mutable node_id[] node_ids = @mutable ~[];
     node_ids_in_fn(f, tps, sp, i, id, node_ids);
@@ -78,7 +78,7 @@ fn visit_fn(&crate_ctxt ccx, uint num_constraints, &_fn f, &vec[ty_param] tps,
     init_vecs(ccx, node_id_vec, num_constraints);
 }
 
-fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &vec[ty_param] tps,
+fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &ty_param[] tps,
                   &span sp, &fn_ident i, node_id id) {
     auto f_info = get_fn_info(ccx, id);
     visit_fn(ccx, num_constraints(f_info), f, tps, sp, i, id);

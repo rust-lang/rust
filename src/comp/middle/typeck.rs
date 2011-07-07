@@ -52,7 +52,7 @@ export check_crate;
 
 type ty_table = hashmap[ast::def_id, ty::t];
 
-type obj_info = rec(vec[ast::obj_field] obj_fields, ast::node_id this_obj);
+type obj_info = rec(ast::obj_field[] obj_fields, ast::node_id this_obj);
 
 type crate_ctxt =
     rec(mutable vec[obj_info] obj_infos,
@@ -481,7 +481,7 @@ mod collect {
     }
     fn ty_of_fn_decl(&@ctxt cx, &fn(&@ast::ty) -> ty::t  convert,
                      &fn(&ast::arg) -> arg  ty_of_arg, &ast::fn_decl decl,
-                     ast::proto proto, &vec[ast::ty_param] ty_params,
+                     ast::proto proto, &ast::ty_param[] ty_params,
                      &option::t[ast::def_id] def_id) ->
        ty::ty_param_count_and_ty {
         auto input_tys = ~[];
@@ -495,7 +495,7 @@ mod collect {
         auto t_fn =
             ty::mk_fn(cx.tcx, proto, input_tys, output_ty, decl.cf,
                       out_constrs);
-        auto ty_param_count = vec::len[ast::ty_param](ty_params);
+        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         alt (def_id) {
             case (some(?did)) { cx.tcx.tcache.insert(did, tpt); }
@@ -506,7 +506,7 @@ mod collect {
     fn ty_of_native_fn_decl(&@ctxt cx, &fn(&@ast::ty) -> ty::t  convert,
                             &fn(&ast::arg) -> arg  ty_of_arg,
                             &ast::fn_decl decl, ast::native_abi abi,
-                            &vec[ast::ty_param] ty_params,
+                            &ast::ty_param[] ty_params,
                             &ast::def_id def_id) ->
        ty::ty_param_count_and_ty {
         auto input_tys = ~[];
@@ -514,7 +514,7 @@ mod collect {
         auto output_ty = convert(decl.output);
 
         auto t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
-        auto ty_param_count = vec::len[ast::ty_param](ty_params);
+        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.tcx.tcache.insert(def_id, tpt);
         ret tpt;
@@ -577,14 +577,14 @@ mod collect {
                 constrs=out_constrs);
     }
     fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
-                 &vec[ast::ty_param] ty_params) -> ty::ty_param_count_and_ty {
+                 &ast::ty_param[] ty_params) -> ty::ty_param_count_and_ty {
         auto methods = get_obj_method_types(cx, obj_info);
         auto t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
-        ret tup(vec::len(ty_params), t_obj);
+        ret tup(ivec::len(ty_params), t_obj);
     }
     fn ty_of_obj_ctor(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
-                      ast::node_id ctor_id, &vec[ast::ty_param] ty_params) ->
+                      ast::node_id ctor_id, &ast::ty_param[] ty_params) ->
        ty::ty_param_count_and_ty {
         auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
 
@@ -630,23 +630,23 @@ mod collect {
                 // call to resolve any named types.
 
                 auto typ = convert(t);
-                auto ty_param_count = vec::len[ast::ty_param](tps);
+                auto ty_param_count = ivec::len[ast::ty_param](tps);
                 auto tpt = tup(ty_param_count, typ);
                 cx.tcx.tcache.insert(local_def(it.id), tpt);
                 ret tpt;
             }
             case (ast::item_res(?f, _, ?tps, _)) {
                 auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
-                auto t_res = tup(vec::len(tps), ty::mk_res
+                auto t_res = tup(ivec::len(tps), ty::mk_res
                                  (cx.tcx, local_def(it.id), t_arg.ty,
-                                  mk_ty_params(cx, vec::len(tps))));
+                                  mk_ty_params(cx, ivec::len(tps))));
                 cx.tcx.tcache.insert(local_def(it.id), t_res);
                 ret t_res;
             }
             case (ast::item_tag(_, ?tps)) {
                 // Create a new generic polytype.
 
-                auto ty_param_count = vec::len[ast::ty_param](tps);
+                auto ty_param_count = ivec::len[ast::ty_param](tps);
 
                 let ty::t[] subtys = mk_ty_params(cx, ty_param_count);
                 auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
@@ -681,11 +681,11 @@ mod collect {
         }
     }
     fn get_tag_variant_types(&@ctxt cx, &ast::def_id tag_id,
-                             &vec[ast::variant] variants,
-                             &vec[ast::ty_param] ty_params) {
+                             &ast::variant[] variants,
+                             &ast::ty_param[] ty_params) {
         // Create a set of parameter types shared among all the variants.
 
-        auto ty_param_count = vec::len[ast::ty_param](ty_params);
+        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
         let ty::t[] ty_param_tys = mk_ty_params(cx, ty_param_count);
         for (ast::variant variant in variants) {
             // Nullary tag constructors get turned into constants; n-ary tag
@@ -757,7 +757,7 @@ mod collect {
 
                 auto method_types = get_obj_method_types(cx, object);
                 auto i = 0u;
-                while (i < vec::len[@ast::method](object.methods)) {
+                while (i < ivec::len[@ast::method](object.methods)) {
                     write::ty_only(cx.tcx, object.methods.(i).node.id,
                                    ty::method_ty_to_fn_ty(cx.tcx,
                                                           method_types.(i)));
@@ -789,7 +789,7 @@ mod collect {
             case (ast::item_res(?f, ?dtor_id, ?tps, ?ctor_id)) {
                 auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
                 auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
-                                        mk_ty_params(cx, vec::len(tps)));
+                                        mk_ty_params(cx, ivec::len(tps)));
                 auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
                                         t_res, ast::return, ~[]);
                 auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
@@ -797,7 +797,7 @@ mod collect {
                 write::ty_only(cx.tcx, it.id, t_res);
                 write::ty_only(cx.tcx, ctor_id, t_ctor);
                 cx.tcx.tcache.insert(local_def(ctor_id),
-                                     tup(vec::len(tps), t_ctor));
+                                     tup(ivec::len(tps), t_ctor));
                 write::ty_only(cx.tcx, dtor_id, t_dtor);
             }
             case (_) {
@@ -995,8 +995,8 @@ fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
 
 // Returns the types of the arguments to a tag variant.
 fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
-                     &ty::t[] tag_ty_params) -> vec[ty::t] {
-    let vec[ty::t] result = [];
+                     &ty::t[] tag_ty_params) -> ty::t[] {
+    let ty::t[] result = ~[];
     auto tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt (ty::struct(ccx.tcx, tpt._1)) {
         case (ty::ty_fn(_, ?ins, _, _, _)) {
@@ -1006,7 +1006,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
                 auto arg_ty =
                     ty::substitute_type_params(ccx.tcx, tag_ty_params,
                                                arg.ty);
-                result += [arg_ty];
+                result += ~[arg_ty];
             }
         }
         case (_) {
@@ -1121,12 +1121,12 @@ mod writeback {
         wbcx.ignore = false;
     }
     fn visit_fn_pre(@wb_ctxt wbcx, &ast::_fn f,
-                    &vec[ast::ty_param] tps, &span sp,
+                    &ast::ty_param[] tps, &span sp,
                     &ast::fn_ident i, ast::node_id d) {
         wbcx.ignore = true;
     }
     fn visit_fn_post(@wb_ctxt wbcx, &ast::_fn f,
-                     &vec[ast::ty_param] tps, &span sp,
+                     &ast::ty_param[] tps, &span sp,
                      &ast::fn_ident i, ast::node_id d) {
         wbcx.ignore = false;
     }
@@ -1335,11 +1335,11 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
                 auto arg_types =
                     variant_arg_types(fcx.ccx, pat.span, v_def_ids._1,
                                       expected_tps);
-                auto subpats_len = vec::len[@ast::pat](subpats);
-                if (vec::len[ty::t](arg_types) > 0u) {
+                auto subpats_len = std::ivec::len[@ast::pat](subpats);
+                if (std::ivec::len[ty::t](arg_types) > 0u) {
                     // N-ary variant.
 
-                    auto arg_len = vec::len[ty::t](arg_types);
+                    auto arg_len = ivec::len[ty::t](arg_types);
                     if (arg_len != subpats_len) {
                         // TODO: note definition of tag variant
                         // TODO (issue #448): Wrap a #fmt string over multiple
@@ -1430,7 +1430,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // expressions.
 
     fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                          &vec[option::t[@ast::expr]] args, bool is_call) {
+                          &(option::t[@ast::expr])[] args, bool is_call) {
         // Check the function.
 
         check_expr(fcx, f);
@@ -1458,7 +1458,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         // Check that the correct number of arguments were supplied.
 
         auto expected_arg_count = ivec::len[ty::arg](arg_tys);
-        auto supplied_arg_count = vec::len[option::t[@ast::expr]](args);
+        auto supplied_arg_count = ivec::len[option::t[@ast::expr]](args);
         if (expected_arg_count != supplied_arg_count) {
             fcx.ccx.tcx.sess.span_fatal(sp,
                                       #fmt("this function takes %u \
@@ -1501,10 +1501,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // A generic function for checking call expressions
 
     fn check_call(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                  &vec[@ast::expr] args) {
-        let vec[option::t[@ast::expr]] args_opt_0 = [];
+                  &(@ast::expr)[] args) {
+        let (option::t[@ast::expr])[] args_opt_0 = ~[];
         for (@ast::expr arg in args) {
-            args_opt_0 += [some[@ast::expr](arg)];
+            args_opt_0 += ~[some[@ast::expr](arg)];
         }
         // Call the generic checker.
 
@@ -1909,7 +1909,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto ty_of_arg = bind collect::ty_of_arg(cx, _);
             auto fty =
                 collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl,
-                                       f.proto, [], none)._1;
+                                       f.proto, ~[], none)._1;
             write::ty_only_fixup(fcx, id, fty);
             check_fn(fcx.ccx, f.decl, f.proto, f.body, id);
         }
@@ -1949,7 +1949,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     // to the resulting function type.
 
                     auto i = 0u;
-                    while (i < vec::len[option::t[@ast::expr]](args)) {
+                    while (i < ivec::len[option::t[@ast::expr]](args)) {
                         alt (args.(i)) {
                             case (some(_)) {/* no-op */ }
                             case (none) { arg_tys_1 += ~[arg_tys.(i)]; }
@@ -2051,7 +2051,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_vec(?args, ?mut, ?kind)) {
             let ty::t t;
-            if (vec::len[@ast::expr](args) == 0u) {
+            if (ivec::len[@ast::expr](args) == 0u) {
                 t = next_ty_var(fcx);
             } else {
                 check_expr(fcx, args.(0));
@@ -2075,7 +2075,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_tup(?elts)) {
             let ty::mt[] elts_mt = ~[];
-            ivec::reserve(elts_mt, vec::len(elts));
+            ivec::reserve(elts_mt, ivec::len(elts));
             for (ast::elt e in elts) {
                 check_expr(fcx, e.expr);
                 auto ety = expr_ty(fcx.ccx.tcx, e.expr);
@@ -2250,7 +2250,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             // We're entering an object, so gather up the info we need.
 
-            let vec[ast::anon_obj_field] fields = [];
+            let ast::anon_obj_field[] fields = ~[];
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?v)) { fields = v; }
@@ -2265,8 +2265,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             vec::push[obj_info](fcx.ccx.obj_infos,
                                 rec(obj_fields=
-                                    vec::map(anon_obj_field_to_obj_field, 
-                                             fields),
+                                    ivec::map(anon_obj_field_to_obj_field, 
+                                              fields),
                                     this_obj=id));
 
             // FIXME: These next three functions are largely ripped off from
@@ -2343,7 +2343,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // collect::convert for regular objects.)
 
             auto i = 0u;
-            while (i < vec::len[@ast::method](anon_obj.methods)) {
+            while (i < ivec::len[@ast::method](anon_obj.methods)) {
                 write::ty_only(fcx.ccx.tcx, anon_obj.methods.(i).node.id,
                                ty::method_ty_to_fn_ty(fcx.ccx.tcx,
                                                       method_types.(i)));

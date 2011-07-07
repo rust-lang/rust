@@ -33,7 +33,7 @@ type visitor[E] =
          fn(&@expr, &E, &vt[E])  visit_expr,
          fn(&@ty, &E, &vt[E])  visit_ty,
          fn(&@constr, &E, &vt[E])  visit_constr,
-         fn(&_fn, &vec[ty_param], &span, &fn_ident, node_id, &E, &vt[E])
+         fn(&_fn, &ty_param[], &span, &fn_ident, node_id, &E, &vt[E])
              visit_fn);
 
 fn default_visitor[E]() -> visitor[E] {
@@ -121,13 +121,13 @@ fn visit_item[E](&@item i, &E e, &vt[E] v) {
         case (item_obj(?ob, _, _)) {
             for (obj_field f in ob.fields) { vt(v).visit_ty(f.ty, e, v); }
             for (@method m in ob.methods) {
-                vt(v).visit_fn(m.node.meth, [], m.span, some(m.node.ident),
+                vt(v).visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
                                m.node.id, e, v);
             }
             alt (ob.dtor) {
                 case (none) { }
                 case (some(?m)) {
-                    vt(v).visit_fn(m.node.meth, [], m.span,
+                    vt(v).visit_fn(m.node.meth, ~[], m.span,
                                    some(m.node.ident),
                                    m.node.id, e, v);
                 }
@@ -210,7 +210,7 @@ fn visit_fn_decl[E](&fn_decl fd, &E e, &vt[E] v) {
     vt(v).visit_ty(fd.output, e, v);
 }
 
-fn visit_fn[E](&_fn f, &vec[ty_param] tp, &span sp, &fn_ident i,
+fn visit_fn[E](&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
                node_id id, &E e, &vt[E] v) {
     visit_fn_decl(f.decl, e, v);
     vt(v).visit_block(f.body, e, v);
@@ -245,7 +245,7 @@ fn visit_expr_opt[E](option::t[@expr] eo, &E e, &vt[E] v) {
     }
 }
 
-fn visit_exprs[E](vec[@expr] exprs, &E e, &vt[E] v) {
+fn visit_exprs[E](&(@expr)[] exprs, &E e, &vt[E] v) {
     for (@expr ex in exprs) { vt(v).visit_expr(ex, e, v); }
 }
 
@@ -320,7 +320,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             for (arm a in arms) { vt(v).visit_arm(a, e, v); }
         }
         case (expr_fn(?f)) {
-            vt(v).visit_fn(f, [], ex.span, none, ex.id, e, v);
+            vt(v).visit_fn(f, ~[], ex.span, none, ex.id, e, v);
         }
         case (expr_block(?b)) { vt(v).visit_block(b, e, v); }
         case (expr_assign(?a, ?b)) {
@@ -386,7 +386,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
                 case (some(?ex)) { vt(v).visit_expr(ex, e, v); }
             }
             for (@method m in anon_obj.methods) {
-                vt(v).visit_fn(m.node.meth, [], m.span, some(m.node.ident),
+                vt(v).visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
                                m.node.id, e, v);
             }
         }

@@ -102,9 +102,8 @@ fn find_pre_post_obj(&crate_ctxt ccx, _obj o) {
                 ccx=ccx);
         find_pre_post_fn(fcx, m.node.meth);
     }
-    auto f = bind do_a_method(ccx, _);
-    vec::map[@method, ()](f, o.methods);
-    option::map[@method, ()](f, o.dtor);
+    for (@method m in o.methods) { do_a_method(ccx, m); }
+    option::map[@method, ()](bind do_a_method(ccx, _), o.dtor);
 }
 
 fn find_pre_post_item(&crate_ctxt ccx, &item i) {
@@ -151,26 +150,21 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
    sets the precondition in a to be the result of combining
    the preconditions for <args>, and the postcondition in a to 
    be the union of all postconditions for <args> */
-fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, node_id id) {
-    if (vec::len[@expr](args) > 0u) {
+fn find_pre_post_exprs(&fn_ctxt fcx, &(@expr)[] args, node_id id) {
+    if (ivec::len[@expr](args) > 0u) {
         log "find_pre_post_exprs: oper =";
         log_expr(*args.(0));
     }
     fn do_one(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
-    auto f = bind do_one(fcx, _);
-    vec::map[@expr, ()](f, args);
+    for (@expr e in args) { do_one(fcx, e); }
+
     fn get_pp(crate_ctxt ccx, &@expr e) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    auto g = bind get_pp(fcx.ccx, _);
-    auto pps = vec::map[@expr, pre_and_post](g, args);
+    auto pps = ivec::map[@expr, pre_and_post](bind get_pp(fcx.ccx, _), args);
 
-    // TODO: Remove this vec->ivec conversion.
-    auto pps_ivec = ~[];
-    for (pre_and_post pp in pps) { pps_ivec += ~[pp]; }
-
-    set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps_ivec),
-                     seq_postconds(fcx, ivec::map(get_post, pps_ivec)));
+    set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
+                     seq_postconds(fcx, ivec::map(get_post, pps)));
 }
 
 fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
@@ -264,10 +258,10 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, node_id larger_id,
                         rec(id=d_id._1,
                             c=ninit(path_to_ident(fcx.ccx.tcx, pth))));
                 }
-                case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
+                case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
             }
         }
-        case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
+        case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
     }
 }
 
@@ -280,12 +274,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
 
     alt (e.node) {
         case (expr_call(?operator, ?operands)) {
-            auto args = vec::clone(operands);
-            vec::push(args, operator);
-
-            // TODO: Remove this vec->ivec conversion.
-            auto operands_ivec = ~[];
-            for (@expr e in operands) { operands_ivec += ~[e]; }
+            auto args = /* copy */ operands;
+            args += ~[operator];
 
             find_pre_post_exprs(fcx, args, e.id);
             /* see if the call has any constraints on its type */
@@ -295,8 +285,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                         bit_num(fcx,
                                 rec(id=c.node.id._1,
                                     c=substitute_constr_args(fcx.ccx.tcx,
-                                                             operands_ivec,
-                                                             c)));
+                                                             args, c)));
                     require(i, expr_pp(fcx.ccx, e));
                 }
 
@@ -307,8 +296,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             }
         }
         case (expr_spawn(_, _, ?operator, ?operands)) {
-            auto args = vec::clone(operands);
-            vec::push(args, operator);
+            auto args = /* copy */ operands;
+            args += ~[operator];
             find_pre_post_exprs(fcx, args, e.id);
         }
         case (expr_vec(?args, _, _)) {
@@ -359,7 +348,10 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_rec(?fields, ?maybe_base)) {
             auto es = field_exprs(fields);
-            vec::plus_option(es, maybe_base);
+            alt (maybe_base) {
+              case (none) { /* no-op */ }
+              case (some(?b)) { es += ~[b]; }
+            }
             find_pre_post_exprs(fcx, es, e.id);
         }
         case (expr_move(?lhs, ?rhs)) {
@@ -367,7 +359,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (expr_path(?p)) {
                     gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
                 }
-                case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
+                case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], e.id); }
             }
             if (is_path(rhs)) {
                 forget_in_postcond(fcx, e.id, rhs.id);
@@ -375,7 +367,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
         case (expr_swap(?lhs, ?rhs)) {
             // Both sides must already be initialized
-            find_pre_post_exprs(fcx, [lhs, rhs], e.id);
+            find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
             forget_in_postcond_still_init(fcx, e.id, lhs.id);
             forget_in_postcond_still_init(fcx, e.id, rhs.id);
             // Could be more precise and swap the roles of lhs and rhs
@@ -387,7 +379,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                     gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
                     forget_in_postcond_still_init(fcx, e.id, lhs.id);
                 }
-                case (_) { find_pre_post_exprs(fcx, [lhs, rhs], e.id); }
+                case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], e.id); }
             }
         }
         case (expr_recv(?lhs, ?rhs)) {
@@ -400,7 +392,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                     // doesn't check that rhs is an lval, but
                     // that's probably ok
 
-                    find_pre_post_exprs(fcx, [lhs, rhs], e.id);
+                    find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
                 }
             }
         }
@@ -408,7 +400,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             /* Different from expr_assign in that the lhs *must*
                already be initialized */
 
-            find_pre_post_exprs(fcx, [lhs, rhs], e.id);
+            find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
             forget_in_postcond_still_init(fcx, e.id, lhs.id);
         }
         case (expr_lit(_)) { clear_pp(expr_pp(fcx.ccx, e)); }
@@ -449,11 +441,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                                   expr_postcond(fcx.ccx, l));
             }
             else {
-                find_pre_post_exprs(fcx, [l, r], e.id);
+                find_pre_post_exprs(fcx, ~[l, r], e.id);
             }
         }
         case (expr_send(?l, ?r)) {
-            find_pre_post_exprs(fcx, [l, r], e.id);
+            find_pre_post_exprs(fcx, ~[l, r], e.id);
         }
         case (expr_unary(_, ?operand)) {
             find_pre_post_expr(fcx, operand);
@@ -497,7 +489,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_loop(fcx, d, index, body, e.id);
         }
         case (expr_index(?val, ?sub)) {
-            find_pre_post_exprs(fcx, [val, sub], e.id);
+            find_pre_post_exprs(fcx, ~[val, sub], e.id);
         }
         case (expr_alt(?ex, ?alts)) {
             find_pre_post_expr(fcx, ex);
@@ -505,8 +497,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 find_pre_post_block(fcx, an_alt.block);
                 ret block_pp(fcx.ccx, an_alt.block);
             }
-            auto f = bind do_an_alt(fcx, _);
-            auto alt_pps = vec::map[arm, pre_and_post](f, alts);
+            auto alt_pps = [];
+            for (arm a in alts) { alt_pps += [do_an_alt(fcx, a)]; }
             fn combine_pp(pre_and_post antec, fn_ctxt fcx, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
                 union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
@@ -559,8 +551,14 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         }
 
         case (expr_bind(?operator, ?maybe_args)) {
-            auto args = vec::cat_options[@expr](maybe_args);
-            vec::push[@expr](args, operator); /* ??? order of eval? */
+            auto args = ~[];
+            for (option::t[@expr] expr_opt in maybe_args) {
+                alt (expr_opt) {
+                  case (none) { /* no-op */ }
+                  case (some(?expr)) { args += ~[expr]; }
+                }
+            }
+            args += ~[operator]; /* ??? order of eval? */
 
             find_pre_post_exprs(fcx, args, e.id);
         }
@@ -659,8 +657,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
         log "is:";
         log_pp(stmt_pp(fcx.ccx, *s));
     }
-    auto do_one = bind do_one_(fcx, _);
-    vec::map[@stmt, ()](do_one, b.node.stmts);
+    for (@stmt s in b.node.stmts) { do_one_(fcx, s); }
     fn do_inner_(fn_ctxt fcx, &@expr e) { find_pre_post_expr(fcx, e); }
     auto do_inner = bind do_inner_(fcx, _);
     option::map[@expr, ()](do_inner, b.node.expr);
@@ -705,7 +702,7 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) {
     }
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &vec[ty_param] tps,
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &ty_param[] tps,
                &span sp, &fn_ident i, node_id id) {
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id), id=id,

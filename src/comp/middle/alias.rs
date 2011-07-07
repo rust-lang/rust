@@ -53,7 +53,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(@ctx cx, &ast::_fn f, &vec[ast::ty_param] tp, &span sp,
+fn visit_fn(@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
             &fn_ident name, ast::node_id id, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
     for (ast::arg arg_ in f.decl.inputs) {
@@ -132,7 +132,7 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
     if (!handled) { visit::visit_expr(ex, sc, v); }
 }
 
-fn check_call(&ctx cx, &@ast::expr f, &vec[@ast::expr] args, &scope sc) ->
+fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
    rec(vec[node_id] root_vars, vec[ty::t] unsafe_ts) {
     auto fty = ty::expr_ty(*cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
@@ -261,7 +261,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
     }
 }
 
-fn check_alt(&ctx cx, &@ast::expr input, &vec[ast::arm] arms, &scope sc,
+fn check_alt(&ctx cx, &@ast::expr input, &ast::arm[] arms, &scope sc,
              &vt[scope] v) {
     visit::visit_expr(input, sc, v);
     auto root = expr_root(cx, input, true);

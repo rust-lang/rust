@@ -1,5 +1,6 @@
 // Metadata encoding
 
+import std::ivec;
 import std::str;
 import std::vec;
 import std::uint;
@@ -33,7 +34,7 @@ fn encode_def_id(&ebml::writer ebml_w, &def_id id) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_tag_variant_paths(&ebml::writer ebml_w, &vec[variant] variants,
+fn encode_tag_variant_paths(&ebml::writer ebml_w, &variant[] variants,
                             &vec[str] path,
                             &mutable vec[tup(str, uint)] index) {
     for (variant variant in variants) {
@@ -164,9 +165,9 @@ fn encode_kind(&ebml::writer ebml_w, u8 c) {
 
 fn def_to_str(&def_id did) -> str { ret #fmt("%d:%d", did._0, did._1); }
 
-fn encode_type_param_count(&ebml::writer ebml_w, &vec[ty_param] tps) {
+fn encode_type_param_count(&ebml::writer ebml_w, &ty_param[] tps) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_count);
-    ebml::write_vint(ebml_w.writer, vec::len[ty_param](tps));
+    ebml::write_vint(ebml_w.writer, ivec::len[ty_param](tps));
     ebml::end_tag(ebml_w);
 }
 
@@ -207,9 +208,9 @@ fn encode_tag_id(&ebml::writer ebml_w, &def_id id) {
 }
 
 fn encode_tag_variant_info(&@crate_ctxt cx, &ebml::writer ebml_w,
-                           node_id id, &vec[variant] variants,
+                           node_id id, &variant[] variants,
                            &mutable vec[tup(int, uint)] index,
-                           &vec[ty_param] ty_params) {
+                           &ty_param[] ty_params) {
     for (variant variant in variants) {
         index += [tup(variant.node.id, ebml_w.writer.tell())];
         ebml::start_tag(ebml_w, tag_items_data_item);

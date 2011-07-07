@@ -8,8 +8,8 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander = 
-    fn(&ext_ctxt, span, &vec[@ast::expr], option::t[str]) -> @ast::expr;
-type macro_definer = fn(&ext_ctxt, span, &vec[@ast::expr],
+    fn(&ext_ctxt, span, &(@ast::expr)[], option::t[str]) -> @ast::expr;
+type macro_definer = fn(&ext_ctxt, span, &(@ast::expr)[],
                         option::t[str]) -> tup(str, syntax_extension);
 
 tag syntax_extension {

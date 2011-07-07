@@ -111,7 +111,7 @@ tag meta_item_ {
 
 type block = spanned[block_];
 
-type block_ = rec(vec[@stmt] stmts, option::t[@expr] expr, node_id id);
+type block_ = rec((@stmt)[] stmts, option::t[@expr] expr, node_id id);
 
 type pat = rec(node_id id,
                pat_ node,
@@ -121,7 +121,7 @@ tag pat_ {
     pat_wild;
     pat_bind(ident);
     pat_lit(@lit);
-    pat_tag(path, vec[@pat]);
+    pat_tag(path, (@pat)[]);
 }
 
 tag mutability { mut; imm; maybe_mut; }
@@ -246,13 +246,13 @@ type expr = rec(node_id id,
                 span span);
 
 tag expr_ {
-    expr_vec(vec[@expr], mutability, seq_kind);
-    expr_tup(vec[elt]);
-    expr_rec(vec[field], option::t[@expr]);
-    expr_call(@expr, vec[@expr]);
+    expr_vec((@expr)[], mutability, seq_kind);
+    expr_tup(elt[]);
+    expr_rec(field[], option::t[@expr]);
+    expr_call(@expr, (@expr)[]);
     expr_self_method(ident);
-    expr_bind(@expr, vec[option::t[@expr]]);
-    expr_spawn(spawn_dom, option::t[str], @expr, vec[@expr]);
+    expr_bind(@expr, (option::t[@expr])[]);
+    expr_spawn(spawn_dom, option::t[str], @expr, (@expr)[]);
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
@@ -263,7 +263,7 @@ tag expr_ {
     expr_for(@local, @expr, block);
     expr_for_each(@local, @expr, block);
     expr_do_while(block, @expr);
-    expr_alt(@expr, vec[arm]);
+    expr_alt(@expr, arm[]);
     expr_fn(_fn);
     expr_block(block);
     /*
@@ -279,7 +279,7 @@ tag expr_ {
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_path(path);
-    expr_ext(path, vec[@expr], option::t[str], @expr);
+    expr_ext(path, (@expr)[], option::t[str], @expr);
     expr_fail(option::t[@expr]);
     expr_break;
     expr_cont;
@@ -298,7 +298,7 @@ tag expr_ {
     expr_if_check(@expr, block, option::t[@expr]);
     expr_port(option::t[@ty]);
     expr_chan(@expr);
-    expr_anon_obj(anon_obj, vec[ty_param]);
+    expr_anon_obj(anon_obj, ty_param[]);
 }
 
 type lit = spanned[lit_];
@@ -438,7 +438,7 @@ type constr = spanned[constr_];
 type arg = rec(mode mode, @ty ty, ident ident, node_id id);
 
 type fn_decl =
-    rec(vec[arg] inputs,
+    rec(arg[] inputs,
         @ty output,
         purity purity,
         controlflow cf,
@@ -470,13 +470,13 @@ type anon_obj_field = rec(mutability mut, @ty ty, @expr expr, ident ident,
                           node_id id);
 
 type _obj =
-    rec(vec[obj_field] fields, vec[@method] methods, option::t[@method] dtor);
+    rec(obj_field[] fields, (@method)[] methods, option::t[@method] dtor);
 
 type anon_obj =
     rec(
         // New fields and methods, if they exist.
-        option::t[vec[anon_obj_field]] fields,
-        vec[@method] methods,
+        option::t[anon_obj_field[]] fields,
+        (@method)[] methods,
 
         // with_obj: the original object being extended, if it exists.
         option::t[@expr] with_obj);
@@ -533,14 +533,14 @@ type item = rec(ident ident,
 
 tag item_ {
     item_const(@ty, @expr);
-    item_fn(_fn, vec[ty_param]);
+    item_fn(_fn, ty_param[]);
     item_mod(_mod);
     item_native_mod(native_mod);
-    item_ty(@ty, vec[ty_param]);
-    item_tag(vec[variant], vec[ty_param]);
-    item_obj(_obj, vec[ty_param], node_id /* constructor id */);
+    item_ty(@ty, ty_param[]);
+    item_tag(variant[], ty_param[]);
+    item_obj(_obj, ty_param[], node_id /* constructor id */);
     item_res(_fn /* dtor */, node_id /* dtor id */,
-             vec[ty_param], node_id /* ctor id */);
+             ty_param[], node_id /* ctor id */);
 }
 
 type native_item = rec(ident ident,
@@ -551,7 +551,7 @@ type native_item = rec(ident ident,
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t[str], fn_decl, vec[ty_param]);
+    native_item_fn(option::t[str], fn_decl, ty_param[]);
 }
 
 fn is_exported(ident i, _mod m) -> bool {
@@ -609,7 +609,7 @@ fn hash_ty(&@ty t) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(@expr e) -> block {
     let block_ blk_ =
-        rec(stmts=[],
+        rec(stmts=~[],
             expr=option::some[@expr](e),
             id=e.id);
     ret rec(node=blk_, span=e.span);
