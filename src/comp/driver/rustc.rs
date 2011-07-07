@@ -471,88 +471,90 @@ fn main(vec[str] args) {
     // gcc to link the object file with some libs
     //
     // TODO: Factor this out of main.
-    if (sopts.output_type == link::output_type_exe) {
-        let str glu = binary_dir + "/lib/glue.o";
-        let str main = "rt/main.o";
-        let str stage = "-L" + binary_dir + "/lib";
-        let str prog = "gcc";
-        // The invocations of gcc share some flags across platforms
+    if (sopts.output_type != link::output_type_exe) {
+        ret;
+    }
 
-        let vec[str] gcc_args =
-            [stage, "-Lrt", "-lrustrt", glu,  "-m32", "-o",
-             saved_out_filename, saved_out_filename + ".o"];
-        auto lib_cmd;
+    let str glu = binary_dir + "/lib/glue.o";
+    let str main = "rt/main.o";
+    let str stage = "-L" + binary_dir + "/lib";
+    let str prog = "gcc";
+    // The invocations of gcc share some flags across platforms
 
-        auto os = sess.get_targ_cfg().os;
-        if (os == session::os_macos) {
-                lib_cmd = "-dynamiclib";
-        } else {
-                lib_cmd = "-shared";
-        }
+    let vec[str] gcc_args =
+        [stage, "-Lrt", "-lrustrt", glu,  "-m32", "-o",
+         saved_out_filename, saved_out_filename + ".o"];
+    auto lib_cmd;
 
-        // Converts a library file name into a gcc -l argument
-        fn unlib(@session::config config, str filename) -> str {
-            auto rmlib = bind fn(@session::config config,
-                                 str filename) -> str {
-                if (config.os == session::os_macos
-                    || config.os == session::os_linux
-                    && str::find(filename, "lib") == 0) {
-                    ret str::slice(filename, 3u, str::byte_len(filename));
-                } else {
-                    ret filename;
-                }
-            } (config, _);
-            fn rmext(str filename) -> str {
-                auto parts = str::split(filename, '.' as u8);
-                vec::pop(parts);
-                ret str::connect(parts, ".");
+    auto os = sess.get_targ_cfg().os;
+    if (os == session::os_macos) {
+            lib_cmd = "-dynamiclib";
+    } else {
+            lib_cmd = "-shared";
+    }
+
+    // Converts a library file name into a gcc -l argument
+    fn unlib(@session::config config, str filename) -> str {
+        auto rmlib = bind fn(@session::config config,
+                             str filename) -> str {
+            if (config.os == session::os_macos
+                || config.os == session::os_linux
+                && str::find(filename, "lib") == 0) {
+                ret str::slice(filename, 3u, str::byte_len(filename));
+            } else {
+                ret filename;
             }
-            ret alt (config.os) {
-                case (session::os_macos) { rmext(rmlib(filename)) }
-                case (session::os_linux) { rmext(rmlib(filename)) }
-                case (_) { rmext(filename) }
-            };
+        } (config, _);
+        fn rmext(str filename) -> str {
+            auto parts = str::split(filename, '.' as u8);
+            vec::pop(parts);
+            ret str::connect(parts, ".");
         }
+        ret alt (config.os) {
+            case (session::os_macos) { rmext(rmlib(filename)) }
+            case (session::os_linux) { rmext(rmlib(filename)) }
+            case (_) { rmext(filename) }
+        };
+    }
 
-        for (str cratepath in sess.get_used_crate_files()) {
-            auto dir = fs::dirname(cratepath);
-            if (dir != "") {
-                gcc_args += ["-L" + dir];
-            }
-            auto libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
-            gcc_args += ["-l" + libarg];
+    for (str cratepath in sess.get_used_crate_files()) {
+        auto dir = fs::dirname(cratepath);
+        if (dir != "") {
+            gcc_args += ["-L" + dir];
         }
+        auto libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
+        gcc_args += ["-l" + libarg];
+    }
 
-        gcc_args += sess.get_used_link_args();
-        auto used_libs = sess.get_used_libraries();
-        for (str l in used_libs) {
-            gcc_args += ["-l" + l];
-        }
+    gcc_args += sess.get_used_link_args();
+    auto used_libs = sess.get_used_libraries();
+    for (str l in used_libs) {
+        gcc_args += ["-l" + l];
+    }
 
-        if (sopts.library) {
-            gcc_args += [lib_cmd];
-        } else {
-            // FIXME: why do we hardcode -lm?
-            gcc_args += ["-lm", main];
-        }
-        // We run 'gcc' here
+    if (sopts.library) {
+        gcc_args += [lib_cmd];
+    } else {
+        // FIXME: why do we hardcode -lm?
+        gcc_args += ["-lm", main];
+    }
+    // We run 'gcc' here
 
-        auto err_code = run::run_program(prog, gcc_args);
-        if (0 != err_code) {
-            sess.err(#fmt("linking with gcc failed with code %d", err_code));
-            sess.note(#fmt("gcc arguments: %s", str::connect(gcc_args, " ")));
-            sess.abort_if_errors();
-        }
-        // Clean up on Darwin
+    auto err_code = run::run_program(prog, gcc_args);
+    if (0 != err_code) {
+        sess.err(#fmt("linking with gcc failed with code %d", err_code));
+        sess.note(#fmt("gcc arguments: %s", str::connect(gcc_args, " ")));
+        sess.abort_if_errors();
+    }
+    // Clean up on Darwin
 
-        if (sess.get_targ_cfg().os == session::os_macos) {
-            run::run_program("dsymutil", [saved_out_filename]);
-        }
+    if (sess.get_targ_cfg().os == session::os_macos) {
+        run::run_program("dsymutil", [saved_out_filename]);
+    }
 
-        // Remove the temporary object file if we aren't saving temps
-        if (!sopts.save_temps) {
-            run::run_program("rm", [saved_out_filename + ".o"]);
-        }
+    // Remove the temporary object file if we aren't saving temps
+    if (!sopts.save_temps) {
+        run::run_program("rm", [saved_out_filename + ".o"]);
     }
 }
 // Local Variables:
