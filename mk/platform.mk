@@ -63,8 +63,6 @@ ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
 
-CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
-CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
 CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
  $(if $(findstring stage0,$(1)),         \
        stage0/lib,                           \
@@ -79,7 +77,7 @@ ifdef CFG_UNIXY
 
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
-  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
+  CFG_LDPATH :=$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
   CFG_RUN_TEST=\
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
@@ -118,7 +116,7 @@ ifdef CFG_WINDOWSY
   CFG_EXE_SUFFIX := .exe
   CFG_LIB_NAME=$(1).dll
   CFG_DEF_SUFFIX := .def
-  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+  CFG_LDPATH :=$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
   CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH)" $(2)
