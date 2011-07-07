@@ -14,14 +14,14 @@ import std::option::some;
 import std::option::none;
 import std::option::is_none;
 
-
 // This is not an alias-analyser (though it would merit from becoming one, or
-// at getting input from one, to be more precise). It is a pass that checks
+// getting input from one, to be more precise). It is a pass that checks
 // whether aliases are used in a safe way. Beyond that, though it doesn't have
 // a lot to do with aliases, it also checks whether assignments are valid
 // (using an lval, which is actually mutable), since it already has all the
 // information needed to do that (and the typechecker, which would be a
 // logical place for such a check, doesn't).
+
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
@@ -40,12 +40,10 @@ type ctx = rec(@ty::ctxt tcx,
                std::map::hashmap[node_id, local_info] local_map);
 
 fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
-    auto cx =
-        @rec(tcx=tcx,
-
-             // Stores information about object fields and function
-             // arguments that's otherwise not easily available.
-             local_map=std::map::new_int_hash());
+    auto cx = @rec(tcx=tcx,
+                   // Stores information about object fields and function
+                   // arguments that's otherwise not easily available.
+                   local_map=std::map::new_int_hash());
     auto v =
         @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _),
              visit_item=bind visit_item(cx, _, _, _),
@@ -117,9 +115,11 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
         case (ast::expr_swap(?lhs, ?rhs)) {
             check_lval(cx, lhs, sc, v);
             check_lval(cx, rhs, sc, v);
+            handled = false;
         }
         case (ast::expr_move(?dest, ?src)) {
             check_assign(cx, dest, src, sc, v);
+            check_move_rhs(cx, src, sc, v);
         }
         case (ast::expr_assign(?dest, ?src)) {
             check_assign(cx, dest, src, sc, v);
@@ -369,7 +369,6 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
     for (restrict r in sc) {
-
         // excludes variables introduced since the alias was made
         if (my_defnum < r.block_defnum) {
             for (ty::t t in r.tys) {
@@ -399,7 +398,6 @@ fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
                     r.ok = overwritten(dest.span, p);
                 }
             }
-            check_var(*cx, dest, p, dest.id, true, sc);
         }
         case (_) {
             auto root = expr_root(*cx, dest, false);
@@ -416,6 +414,22 @@ fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
                                      "assignment to immutable " + name);
             }
             visit_expr(cx, dest, sc, v);
+        }
+    }
+}
+
+fn check_move_rhs(&@ctx cx, &@ast::expr src, &scope sc, &vt[scope] v) {
+    alt (src.node) {
+        case (ast::expr_path(?p)) {
+            check_lval(cx, src, sc, v);
+        }
+        case (_) {
+            auto root = expr_root(*cx, src, false);
+            // Not a path and no-derefs means this is a temporary.
+            if (vec::len(root.ds) != 0u) {
+                cx.tcx.sess.span_err
+                    (src.span, "moving out of a data structure");
+            }
         }
     }
 }
