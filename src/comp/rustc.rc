@@ -82,7 +82,7 @@ mod metadata {
     export decoder;
     export creader;
 
-    mod tags;
+    mod common;
     mod tyencode;
     mod tydecode;
     mod encoder;

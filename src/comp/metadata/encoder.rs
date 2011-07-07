@@ -10,15 +10,13 @@ import std::option::some;
 import std::option::none;
 import std::ebml;
 import syntax::ast::*;
-import tags::*;
+import common::*;
 import middle::trans::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_monotype;
 import front::attr;
 
 export def_to_str;
-export hash_path;
-export hash_node_id;
 export encode_metadata;
 
 // Path table encoding
@@ -369,15 +367,6 @@ fn encode_info_for_items(&@crate_ctxt cx, &ebml::writer ebml_w) ->
 
 
 // Path and definition ID indexing
-
-// djb's cdb hashes.
-fn hash_node_id(&int node_id) -> uint { ret 177573u ^ (node_id as uint); }
-
-fn hash_path(&str s) -> uint {
-    auto h = 5381u;
-    for (u8 ch in str::bytes(s)) { h = (h << 5u) + h ^ (ch as uint); }
-    ret h;
-}
 
 fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint  hash_fn) ->
    vec[vec[tup(T, uint)]] {

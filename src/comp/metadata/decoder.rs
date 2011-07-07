@@ -10,11 +10,10 @@ import std::map::hashmap;
 import syntax::ast;
 import front::attr;
 import middle::ty;
-import tags::*;
+import common::*;
 import tydecode::parse_def_id;
 import tydecode::parse_ty_data;
 import driver::session;
-import util::common;
 import syntax::print::pprust;
 
 export get_symbol;
@@ -51,7 +50,7 @@ fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
         ret ebml::be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
     auto eqer = bind eq_item(_, item_id);
-    auto found = lookup_hash(items, eqer, encoder::hash_node_id(item_id));
+    auto found = lookup_hash(items, eqer, hash_node_id(item_id));
     if (vec::len(found) == 0u) {
         ret option::none[ebml::doc];
     } else { ret option::some[ebml::doc](found.(0)); }
@@ -129,7 +128,7 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
     auto paths = ebml::get_doc(md, tag_paths);
     auto eqer = bind eq_item(_, s);
     let vec[ast::def_id] result = [];
-    for (ebml::doc doc in lookup_hash(paths, eqer, encoder::hash_path(s))) {
+    for (ebml::doc doc in lookup_hash(paths, eqer, hash_path(s))) {
         auto did_doc = ebml::get_doc(doc, tag_def_id);
         vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
     }

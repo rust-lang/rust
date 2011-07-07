@@ -1,4 +1,6 @@
-// EBML tag definitions shared by the encoder and decoder
+// EBML tag definitions and utils shared by the encoder and decoder
+
+import std::str;
 
 const uint tag_paths = 0x01u;
 
@@ -53,3 +55,13 @@ const uint tag_attribute = 0x22u;
 const uint tag_meta_item_word = 0x23u;
 
 const uint tag_meta_item_list = 0x24u;
+
+// djb's cdb hashes.
+fn hash_node_id(&int node_id) -> uint { ret 177573u ^ (node_id as uint); }
+
+fn hash_path(&str s) -> uint {
+    auto h = 5381u;
+    for (u8 ch in str::bytes(s)) { h = (h << 5u) + h ^ (ch as uint); }
+    ret h;
+}
+

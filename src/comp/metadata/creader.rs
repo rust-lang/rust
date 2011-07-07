@@ -23,7 +23,7 @@ import std::option::none;
 import std::option::some;
 import std::map::hashmap;
 import syntax::print::pprust;
-import tags::*;
+import common::*;
 
 export read_crates;
 export list_file_metadata;
