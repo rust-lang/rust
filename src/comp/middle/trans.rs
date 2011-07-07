@@ -1778,6 +1778,8 @@ fn set_no_inline(ValueRef f) {
                                   lib::llvm::llvm::Attribute);
 }
 
+// Tell LLVM to emit the information necessary to unwind the stack for the
+// function f.
 fn set_uwtable(ValueRef f) {
     llvm::LLVMAddFunctionAttr(f,
                               lib::llvm::LLVMUWTableAttribute as
@@ -7964,11 +7966,11 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
 
     // Set up the original method to be called.
     auto orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
-    auto llwith_obj_ty_real = val_ty(llwith_obj.val);
+    auto llwith_obj_ty = val_ty(llwith_obj.val);
     auto llorig_mthd_ty =
         type_of_fn_full(bcx.fcx.lcx.ccx, fake_span,
                         ty::ty_fn_proto(bcx.fcx.lcx.ccx.tcx, orig_mthd_ty),
-                        some[TypeRef](llwith_obj_ty_real), 
+                        some[TypeRef](llwith_obj_ty),
                         m.inputs,
                         m.output,
                         vec::len[ast::ty_param](ty_params));
