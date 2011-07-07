@@ -864,9 +864,8 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, &ident name, namespace ns,
     }
 }
 
-fn lookup_in_mod(&env e, def m, &span sp, &ident name, namespace ns,
-                 dir dr) ->
-   option::t[def] {
+fn lookup_in_mod(&env e, &def m, &span sp, &ident name, namespace ns,
+                 dir dr) -> option::t[def] {
     auto defid = ast::def_id_of_def(m);
     if (defid._0 != ast::local_crate) {
         // examining a module in an external crate
@@ -966,14 +965,9 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
                       namespace wanted_ns, dir dr) -> option::t[def] {
     fn per_ns(&env e, @indexed_mod info, &span sp, &ident id, namespace ns,
               dir dr) -> option::t[def] {
-        fn l_i_m_r(&env e, &def m, &span sp, &ident id, namespace ns, dir dr)
-           -> option::t[def] {
-            be lookup_in_mod(e, m, sp, id, ns, dr);
-        }
         auto matches =
-            vec::filter_map[def,
-                            def](bind l_i_m_r(e, _, sp, id, ns, dr),
-                                 { info.glob_imports });
+            vec::filter_map(bind lookup_in_mod(e, _, sp, id, ns, dr),
+                            { info.glob_imports });
         if (vec::len(matches) == 0u) {
             ret none[def];
         } else if (vec::len(matches) == 1u) {

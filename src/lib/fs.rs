@@ -36,7 +36,6 @@ fn basename(path p) -> path {
 fn connect(path pre, path post) -> path {
     auto len = str::byte_len(pre);
     ret if (pre.(len - 1u) == os_fs::path_sep as u8) {
-
             // Trailing '/'?
             pre + post
         } else { pre + path_sep() + post };

@@ -313,10 +313,7 @@ fn refcount(str s) -> uint {
     if (r == dbg::const_refcount) {
         ret r;
     } else {
-        // -2 because calling this function and the native function both
-        // incremented the refcount.
-
-        ret r - 2u;
+        ret r - 1u;
     }
 }
 
