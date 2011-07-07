@@ -5,7 +5,7 @@ stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 
 # These two will be made in the process of making rustc above.
 
-stage0/glue.o: stage0/rustc$(X)
+stage0/lib/glue.o: stage0/rustc$(X)
 	$(Q)touch $@
 
 stage0/lib/$(CFG_STDLIB): stage0/rustc$(X)

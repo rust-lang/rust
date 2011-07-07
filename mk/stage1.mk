@@ -1,13 +1,13 @@
 stage1/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage1/rustc$(X) stage0/lib/$(CFG_STDLIB) stage1/intrinsics.bc \
               stage1/lib/$(CFG_RUNTIME) stage1/lib/$(CFG_RUSTLLVM) \
-              stage1/glue.o $(LREQ) $(MKFILES)
+              stage1/lib/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
 	$(STAGE1) --lib -o $@ $<
 
 stage1/lib/libstd.rlib:  $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage1/rustc$(X) stage0/lib/$(CFG_STDLIB) stage1/intrinsics.bc \
-              stage1/glue.o $(LREQ) $(MKFILES)
+              stage1/lib/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
 	$(STAGE1) --lib --static -o $@ $<
 
@@ -15,9 +15,6 @@ stage1/lib/glue.o: stage1/rustc$(X) stage0/lib/$(CFG_STDLIB) \
 	stage1/intrinsics.bc $(LREQ) $(MKFILES)
 	@$(call E, generate: $@)
 	$(STAGE1) -c -o $@ --glue
-
-stage1/glue.o: stage1/lib/glue.o
-	cp stage1/lib/glue.o stage1/glue.o
 
 stage1/intrinsics.bc:	$(INTRINSICS_BC)
 	@$(call E, cp: $@)

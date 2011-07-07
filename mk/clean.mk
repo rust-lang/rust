@@ -13,10 +13,10 @@ clean:
 	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(GENERATED)
-	$(Q)rm -f stage0/rustc$(X) stage0/lib/$(CFG_STDLIB)
-	$(Q)rm -f stage1/rustc$(X) stage1/lib/$(CFG_STDLIB) stage1/glue*
-	$(Q)rm -f stage2/rustc$(X) stage2/lib/$(CFG_STDLIB) stage2/glue*
-	$(Q)rm -f stage3/rustc$(X) stage3/lib/$(CFG_STDLIB) stage3/glue*
+	$(Q)rm -f stage0/rustc$(X) stage0/lib/$(CFG_STDLIB) stage0/lib/glue*
+	$(Q)rm -f stage1/rustc$(X) stage1/lib/$(CFG_STDLIB) stage1/lib/glue*
+	$(Q)rm -f stage2/rustc$(X) stage2/lib/$(CFG_STDLIB) stage2/lib/glue*
+	$(Q)rm -f stage3/rustc$(X) stage3/lib/$(CFG_STDLIB) stage3/lib/glue*
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)rm -f rt/main.o
