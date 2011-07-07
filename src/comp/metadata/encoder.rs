@@ -18,7 +18,7 @@ import front::attr;
 
 export def_to_str;
 export hash_path;
-export hash_def_id;
+export hash_node_id;
 export encode_metadata;
 
 // Path table encoding
@@ -371,7 +371,7 @@ fn encode_info_for_items(&@crate_ctxt cx, &ebml::writer ebml_w) ->
 // Path and definition ID indexing
 
 // djb's cdb hashes.
-fn hash_def_id(&int def_id) -> uint { ret 177573u ^ (def_id as uint); }
+fn hash_node_id(&int node_id) -> uint { ret 177573u ^ (node_id as uint); }
 
 fn hash_path(&str s) -> uint {
     auto h = 5381u;
@@ -540,7 +540,7 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     ebml::start_tag(ebml_w, tag_items);
     auto items_index = encode_info_for_items(cx, ebml_w);
     auto int_writer = write_int;
-    auto item_hasher = hash_def_id;
+    auto item_hasher = hash_node_id;
     auto items_buckets = create_index[int](items_index, item_hasher);
     encode_index[int](ebml_w, items_buckets, int_writer);
     ebml::end_tag(ebml_w);

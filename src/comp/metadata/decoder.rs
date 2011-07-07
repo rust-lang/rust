@@ -51,7 +51,7 @@ fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
         ret ebml::be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
     auto eqer = bind eq_item(_, item_id);
-    auto found = lookup_hash(items, eqer, encoder::hash_def_id(item_id));
+    auto found = lookup_hash(items, eqer, encoder::hash_node_id(item_id));
     if (vec::len(found) == 0u) {
         ret option::none[ebml::doc];
     } else { ret option::some[ebml::doc](found.(0)); }
