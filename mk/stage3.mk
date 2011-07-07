@@ -7,6 +7,7 @@ stage3/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 
 stage3/lib/libstd.rlib:  $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage3/rustc$(X) stage2/lib/$(CFG_STDLIB) stage3/intrinsics.bc \
+              stage3/lib/$(CFG_RUNTIME) stage3/lib/$(CFG_RUSTLLVM) \
               stage3/lib/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
 	$(STAGE3) --lib --static -o $@ $<
