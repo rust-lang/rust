@@ -178,7 +178,6 @@ export type_is_str;
 export type_owns_heap_mem;
 export type_autoderef;
 export type_param;
-export def_to_str;
 export unify;
 export variant_info;
 export walk_ty;
@@ -1299,9 +1298,6 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
     }
     ret t1;
 }
-
-fn def_to_str(&ast::def_id did) -> str { ret #fmt("%d:%d", did._0, did._1); }
-
 
 // Type hashing. This function is private to this module (and slow); external
 // users should use `hash_ty()` instead.
