@@ -36,8 +36,10 @@ fn cx_uses_abbrevs(&@ctxt cx) -> bool {
         case (ac_use_abbrevs(_)) { ret true; }
     }
 }
-fn ty_str(&@ctxt cx, &ty::t t) -> str {
-    assert (!cx_uses_abbrevs(cx));
+fn ty_str(&ty::ctxt tcx, &ty::t t) -> str {
+    auto cx = @rec(ds = encoder::def_to_str,
+                   tcx = tcx,
+                   abbrevs = metadata::tyencode::ac_no_abbrevs);
     auto sw = io::string_writer();
     enc_ty(sw.get_writer(), cx, t);
     ret sw.get_str();

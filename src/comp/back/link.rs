@@ -401,17 +401,13 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
-    auto cx =
-        @rec(ds=metadata::encoder::def_to_str,
-             tcx=tcx,
-             abbrevs=metadata::tyencode::ac_no_abbrevs);
     sha.reset();
     sha.input_str(link_meta.name);
     sha.input_str("-");
     // FIXME: This wants to be link_meta.meta_hash
     sha.input_str(link_meta.name);
     sha.input_str("-");
-    sha.input_str(metadata::tyencode::ty_str(cx, t));
+    sha.input_str(metadata::tyencode::ty_str(tcx, t));
     auto hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
