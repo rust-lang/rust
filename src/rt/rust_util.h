@@ -184,6 +184,10 @@ rust_vec : public rc_base<rust_vec>
             memcpy(&data[0], d, fill);
     }
     ~rust_vec() {}
+
+    inline void *operator new(size_t size, void *mem) {
+        return mem;
+    }
 };
 
 // Rust types vec and str look identical from our perspective.

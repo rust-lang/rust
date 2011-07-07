@@ -115,12 +115,22 @@ template <typename T> struct rc_base {
 };
 
 template <typename T> struct task_owned {
+    inline void *operator new(size_t size, rust_task *task);
+
+    inline void *operator new[](size_t size, rust_task *task);
+
+    inline void *operator new(size_t size, rust_task &task);
+
+    inline void *operator new[](size_t size, rust_task &task);
+
     void operator delete(void *ptr) {
         ((T *)ptr)->task->free(ptr);
     }
 };
 
 template <typename T> struct kernel_owned {
+    inline void *operator new(size_t size, rust_kernel *kernel);
+
     void operator delete(void *ptr) {
         ((T *)ptr)->kernel->free(ptr);
     }
