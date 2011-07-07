@@ -408,7 +408,7 @@ fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
     // FIXME: This wants to be link_meta.meta_hash
     sha.input_str(link_meta.name);
     sha.input_str("-");
-    sha.input_str(encoder::ty_str(tcx, t));
+    sha.input_str(encoder::encoded_ty(tcx, t));
     auto hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 

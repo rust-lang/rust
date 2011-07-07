@@ -152,7 +152,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
 }
 
 fn ty_to_short_str(&ctxt cx, t typ) -> str {
-    auto s = encoder::ty_str(cx, typ);
+    auto s = encoder::encoded_ty(cx, typ);
     if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
     ret s;
 }
