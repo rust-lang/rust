@@ -15,10 +15,20 @@ download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
-snapshot_files = {
+# FIXME: This is transitional for moving rt/rustllvm into the snapshot
+old_snapshot_files = {
     "linux": ["rustc", "lib/glue.o", "lib/libstd.so", "lib/libstd.rlib" ],
     "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib", "lib/libstd.rlib" ],
     "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll", "lib/libstd.rlib" ]
+    }
+
+snapshot_files = {
+    "linux": ["rustc", "lib/glue.o", "lib/libstd.so", "lib/libstd.rlib",
+              "lib/librustrt.so", "lib/librustllvm.so"],
+    "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib", "lib/libstd.rlib",
+              "lib/librustrt.dylib", "lib/librustllvm.dylib"],
+    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll", "lib/libstd.rlib",
+              "lib/rustrt.dll", "lib/rustllvm.dll"]
     }
 
 def parse_line(n, line):
