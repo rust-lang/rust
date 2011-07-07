@@ -77,10 +77,9 @@ ifdef CFG_UNIXY
 
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
-  CFG_LDPATH :=$(CFG_LLVM_LIBDIR)
-  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1)/lib:$(CFG_LDPATH) $(2)
+  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1)/lib $(2)
   CFG_RUN_TEST=\
-      $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
+      $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)) \
       $(CFG_VALGRIND) $(1)
 
   ifdef CFG_ENABLE_MINGW_CROSS
