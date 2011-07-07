@@ -8701,7 +8701,7 @@ fn decl_fn_and_pair_full(&@crate_ctxt ccx, &span sp, &vec[str] path, str flav,
         }
     }
     let bool is_main =
-        str::eq(vec::top(path), "main") && !ccx.sess.get_opts().shared;
+        str::eq(vec::top(path), "main") && !ccx.sess.get_opts().library;
     // Declare the function itself.
 
     let str s =
@@ -8745,7 +8745,7 @@ fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
     // FIXME: We should also hide the unexported pairs in crates.
 
     auto gvar =
-        create_fn_pair(cx, ps, llfnty, llfn, cx.sess.get_opts().shared);
+        create_fn_pair(cx, ps, llfnty, llfn, cx.sess.get_opts().library);
     cx.item_ids.insert(id, llfn);
     cx.item_symbols.insert(id, ps);
     cx.fn_pairs.insert(id, gvar);
@@ -9219,7 +9219,7 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     }
     vec::push[ValueRef](subcrates, C_int(0));
     auto mapname;
-    if (ccx.sess.get_opts().shared) {
+    if (ccx.sess.get_opts().library) {
         mapname = ccx.link_meta.name;
     } else { mapname = "toplevel"; }
     auto sym_name = "_rust_crate_map_" + mapname;
@@ -9235,7 +9235,7 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
 }
 
 fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
-    if (!cx.sess.get_opts().shared) { ret; }
+    if (!cx.sess.get_opts().library) { ret; }
     auto llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
     auto llconst = trans::C_struct([llmeta]);
     auto llglobal =

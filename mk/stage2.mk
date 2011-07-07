@@ -2,7 +2,7 @@ stage2/lib/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
               stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) stage2/intrinsics.bc \
               stage2/glue.o $(LREQ) $(MKFILES)
 	@$(call E, compile_and_link: $@)
-	$(STAGE2)  --shared -o $@ $<
+	$(STAGE2)  --lib -o $@ $<
 
 stage2/lib/glue.o: stage2/rustc$(X) stage1/lib/$(CFG_STDLIB) \
 	stage2/intrinsics.bc rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)

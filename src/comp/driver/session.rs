@@ -23,7 +23,7 @@ type config =
         ty_mach float_type);
 
 type options =
-    rec(bool shared,
+    rec(bool library,
         uint optimize,
         bool debuginfo,
         bool verify,

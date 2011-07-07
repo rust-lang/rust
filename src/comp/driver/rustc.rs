@@ -213,7 +213,8 @@ options:
 
     -o <filename>      write output to <filename>
     --glue             generate glue.bc file
-    --shared           compile a shared-library crate
+    --lib              compile a library crate
+    --static           use or produce static libraries
     --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
@@ -281,7 +282,7 @@ fn build_target_config() -> @session::config {
 
 fn build_session_options(str binary, getopts::match match, str binary_dir) ->
    @session::options {
-    auto shared = opt_present(match, "shared");
+    auto library = opt_present(match, "lib");
     auto library_search_paths = [binary_dir + "/lib"];
     library_search_paths += getopts::opt_strs(match, "L");
     auto output_type =
@@ -330,7 +331,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
     auto cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     auto test = opt_present(match, "test");
     let @session::options sopts =
-        @rec(shared=shared,
+        @rec(library=library,
              optimize=opt_level,
              debuginfo=debuginfo,
              verify=verify,
@@ -369,11 +370,12 @@ fn main(vec[str] args) {
         [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("O"),
-         optopt("OptLevel"), optflag("shared"), optmulti("L"), optflag("S"),
+         optopt("OptLevel"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("noverify"), optmulti("cfg"), optflag("test")];
+         optflag("noverify"), optmulti("cfg"), optflag("test"),
+         optflag("lib"), optflag("static")];
     auto binary = vec::shift[str](args);
     auto binary_dir = fs::dirname(binary);
     auto match =
@@ -455,7 +457,7 @@ fn main(vec[str] args) {
             auto temp_filename;
             alt (sopts.output_type) {
                 case (link::output_type_exe) {
-                    // FIXME: what about shared?
+                    // FIXME: what about --lib?
 
                     temp_filename = ofile + ".o";
                 }
@@ -479,13 +481,13 @@ fn main(vec[str] args) {
         let vec[str] gcc_args =
             [stage, "-Lrt", "-lrustrt", glu,  "-m32", "-o",
              saved_out_filename, saved_out_filename + ".o"];
-        auto shared_cmd;
+        auto lib_cmd;
 
         auto os = sess.get_targ_cfg().os;
         if (os == session::os_macos) {
-                shared_cmd = "-dynamiclib";
+                lib_cmd = "-dynamiclib";
         } else {
-                shared_cmd = "-shared";
+                lib_cmd = "-shared";
         }
 
         // Converts a library file name into a gcc -l argument
@@ -527,8 +529,8 @@ fn main(vec[str] args) {
             gcc_args += ["-l" + l];
         }
 
-        if (sopts.shared) {
-            gcc_args += [shared_cmd];
+        if (sopts.library) {
+            gcc_args += [lib_cmd];
         } else {
             // FIXME: why do we hardcode -lm?
             gcc_args += ["-lm", main];
