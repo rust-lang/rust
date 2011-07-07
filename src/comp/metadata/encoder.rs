@@ -16,7 +16,6 @@ import middle::ty;
 import middle::ty::node_id_to_monotype;
 import front::attr;
 
-export def_to_str;
 export encode_metadata;
 export ty_str;
 
@@ -543,7 +542,7 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 
 // Get the encoded string for a type
 fn ty_str(&ty::ctxt tcx, &ty::t t) -> str {
-    auto cx = @rec(ds = encoder::def_to_str,
+    auto cx = @rec(ds = def_to_str,
                    tcx = tcx,
                    abbrevs = metadata::tyencode::ac_no_abbrevs);
     auto sw = io::string_writer();
