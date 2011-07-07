@@ -7022,7 +7022,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // create_vtbl() with no "additional methods".  What's happening
             // is that, since *all* of the methods are "additional", we can
             // get away with acting like none of them are.
-            vtbl = create_vtbl(bcx.fcx.lcx, llouter_obj_ty, outer_obj_ty,
+            vtbl = create_vtbl(bcx.fcx.lcx, sp, llouter_obj_ty, outer_obj_ty,
                                wrapper_obj, ty_params, none,
                                additional_field_tys);
         }
@@ -7045,7 +7045,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // one with a matching name and type being added, we'll need to
             // create a forwarding slot.  And, of course, we need to create a
             // normal vtable entry for every method being added.
-            vtbl = create_vtbl(bcx.fcx.lcx, llouter_obj_ty, outer_obj_ty,
+            vtbl = create_vtbl(bcx.fcx.lcx, sp, llouter_obj_ty, outer_obj_ty,
                                wrapper_obj, ty_params, 
                                some(with_obj_ty),
                                additional_field_tys);
@@ -7822,8 +7822,9 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 // process_fwding_mthd: Create the forwarding function that appears in a
 // vtable slot for method calls that "fall through" to an inner object.  A
 // helper function for create_vtbl.
-fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
-                       ty::t self_ty, &vec[ast::ty_param] ty_params,
+fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m, 
+                       TypeRef llself_ty, ty::t self_ty,
+                       &vec[ast::ty_param] ty_params,
                        ty::t with_obj_ty,
                        ty::t[] additional_field_tys) -> ValueRef {
 
@@ -7840,11 +7841,6 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
     // on.  That object won't exist until run-time, but we know its type
     // statically.
 
-    // Create a fake span for functions that expect it.  Shouldn't matter what
-    // it is, since this isn't user-written code.  (Possibly better: have
-    // create_vtable take a span argument and pass it in here?)
-    let span fake_span = rec(lo=0u,hi=0u);
-
     // Create a local context that's aware of the name of the method we're
     // creating.
     let @local_ctxt mcx =
@@ -7857,7 +7853,7 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
     // Get the forwarding function's type and declare it.
     let TypeRef llforwarding_fn_ty =
         type_of_fn_full(
-            cx.ccx, fake_span, m.proto, 
+            cx.ccx, sp, m.proto,
             some[TypeRef](llself_ty), m.inputs, m.output,
             vec::len[ast::ty_param](ty_params));
     let ValueRef llforwarding_fn =
@@ -7865,7 +7861,7 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
 
     // Create a new function context and block context for the forwarding
     // function, holding onto a pointer to the first block.
-    auto fcx = new_fn_ctxt(cx, fake_span, llforwarding_fn);
+    auto fcx = new_fn_ctxt(cx, sp, llforwarding_fn);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
@@ -7926,8 +7922,7 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
 
     // And cast to that type.
     llself_obj_body = bcx.build.PointerCast(llself_obj_body,
-                                            T_ptr(type_of(cx.ccx,
-                                                          fake_span,
+                                            T_ptr(type_of(cx.ccx, sp,
                                                           body_ty)));
 
     // Now, reach into the body and grab the with_obj.
@@ -7950,7 +7945,7 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
     let uint ix = 0u;
     alt (ty::struct(bcx.fcx.lcx.ccx.tcx, with_obj_ty)) {
         case (ty::ty_obj(?methods)) {
-            ix = ty::method_idx(cx.ccx.sess, fake_span, m.ident, methods);
+            ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
         }
         case (_) {
             // Shouldn't happen.
@@ -7968,7 +7963,7 @@ fn process_fwding_mthd(@local_ctxt cx, @ty::method m, TypeRef llself_ty,
     auto orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
     auto llwith_obj_ty = val_ty(llwith_obj.val);
     auto llorig_mthd_ty =
-        type_of_fn_full(bcx.fcx.lcx.ccx, fake_span,
+        type_of_fn_full(bcx.fcx.lcx.ccx, sp,
                         ty::ty_fn_proto(bcx.fcx.lcx.ccx.tcx, orig_mthd_ty),
                         some[TypeRef](llwith_obj_ty),
                         m.inputs,
@@ -8042,7 +8037,7 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
 
 // Create a vtable for an object being translated.  Returns a pointer into
 // read-only memory.
-fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
+fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
                &ast::_obj ob, &vec[ast::ty_param] ty_params,
                option::t[ty::t] with_obj_ty,
                ty::t[] additional_field_tys) -> ValueRef {
@@ -8187,7 +8182,7 @@ fn create_vtbl(@local_ctxt cx, TypeRef llself_ty, ty::t self_ty,
                     }
                     case (some(?t)) {
                         llmethods += [process_fwding_mthd(
-                                cx, fm, llself_ty, 
+                                cx, sp, fm, llself_ty,
                                 self_ty, ty_params,
                                 t,
                                 additional_field_tys)];
@@ -8285,7 +8280,8 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // It will be located in the read-only memory of the executable we're
     // creating and will contain ValueRefs for all of this object's methods.
     // create_vtbl returns a pointer to the vtable, which we store.
-    auto vtbl = create_vtbl(cx, llself_ty, self_ty, ob, ty_params, none, ~[]);
+    auto vtbl = create_vtbl(cx, sp, llself_ty, self_ty, ob, ty_params, none, 
+                            ~[]);
 
     bcx.build.Store(vtbl, pair_vtbl);
 
