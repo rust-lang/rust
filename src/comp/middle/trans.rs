@@ -7829,7 +7829,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
                        ty::t[] additional_field_tys) -> ValueRef {
 
     // NB: self_ty (and llself_ty) is the type of the outer object;
-    // with_obj_ty (and llwith_obj_ty) is the type of the inner object.
+    // with_obj_ty is the type of the inner object.
 
     // The method m is being called on the outer object, but the outer object
     // doesn't have that method; only the inner object does.  So what we have
@@ -7869,6 +7869,11 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     // argument.  Put it in an alloca so that we can GEP into it later.
     auto llself_obj_ptr = alloca(bcx, llself_ty);
     bcx.build.Store(fcx.llenv, llself_obj_ptr);
+
+    // Grab hold of the outer object so we can pass it into the inner object,
+    // in case that inner object needs to make any self-calls.  (Such calls
+    // will need to dispatch back through the outer object.)
+    auto llself_obj = bcx.build.Load(llself_obj_ptr);
 
     // The 'llretptr' that will arrive in the forwarding function we're
     // creating also needs to be the correct size.  Cast it to the size of the
@@ -7961,11 +7966,10 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 
     // Set up the original method to be called.
     auto orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
-    auto llwith_obj_ty = val_ty(llwith_obj.val);
     auto llorig_mthd_ty =
         type_of_fn_full(bcx.fcx.lcx.ccx, sp,
                         ty::ty_fn_proto(bcx.fcx.lcx.ccx.tcx, orig_mthd_ty),
-                        some[TypeRef](llwith_obj_ty),
+                        some[TypeRef](llself_ty),
                         m.inputs,
                         m.output,
                         vec::len[ast::ty_param](ty_params));
@@ -7976,7 +7980,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     // Set up the three implicit arguments to the original method we'll need
     // to call.
     let vec[ValueRef] llorig_mthd_args = [llretptr, fcx.lltaskptr, 
-                                          llwith_obj.val];
+                                          llself_obj];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llorig_mthd_args.
