@@ -34,11 +34,17 @@ void memory_region::free(void *mem) {
     if (!mem) { return; }
     if (_synchronized) { _lock.lock(); }
 #ifdef TRACK_ALLOCATIONS
-    if (_allocation_list.replace(mem, NULL) == false) {
+    int index = ((int  *)mem)[-1];
+    if (_allocation_list[index] != (uint8_t *)mem - sizeof(int)) {
         printf("free: ptr 0x%" PRIxPTR " is not in allocation_list\n",
-            (uintptr_t) mem);
+               (uintptr_t) mem);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
+    else {
+        // printf("freed index %d\n", index);
+        _allocation_list[index] = NULL;
+    }
+    mem = (void*)((uint8_t*)mem - sizeof(int));
 #endif
     if (_live_allocations < 1) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
@@ -54,15 +60,31 @@ memory_region::realloc(void *mem, size_t size) {
     if (!mem) {
         add_alloc();
     }
+#ifdef TRACK_ALLOCATIONS
+    size += sizeof(int);
+    mem = (void*)((uint8_t*)mem - sizeof(int));
+    int index = *(int  *)mem;
+#endif
     void *newMem = _srv->realloc(mem, size);
 #ifdef TRACK_ALLOCATIONS
-    if (_allocation_list.replace(mem, newMem) == false) {
+    if (_allocation_list[index] != mem) {
+        printf("at index %d, found %p, expected %p\n", 
+               index, _allocation_list[index], mem);
         printf("realloc: ptr 0x%" PRIxPTR " is not in allocation_list\n",
             (uintptr_t) mem);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
+    else {
+        _allocation_list[index] = newMem;
+        (*(int*)newMem) = index;
+        // printf("realloc: stored %p at index %d, replacing %p\n", 
+        //        newMem, index, mem);
+    }
 #endif
     if (_synchronized) { _lock.unlock(); }
+#ifdef TRACK_ALLOCATIONS
+    newMem = (void *)((uint8_t*)newMem + sizeof(int));
+#endif
     return newMem;
 }
 
@@ -70,13 +92,22 @@ void *
 memory_region::malloc(size_t size) {
     if (_synchronized) { _lock.lock(); }
     add_alloc();
+#ifdef TRACK_ALLOCATIONS
+    size += sizeof(int);
+#endif
     void *mem = _srv->malloc(size);
 #ifdef TRACK_ALLOCATIONS
-    _allocation_list.append(mem);
+    int index = _allocation_list.append(mem);
+    int *p = (int *)mem;
+    *p = index;
+    // printf("malloc: stored %p at index %d\n", mem, index);
 #endif
     // printf("malloc: ptr 0x%" PRIxPTR " region=%p\n", 
     //        (uintptr_t) mem, this);
     if (_synchronized) { _lock.unlock(); }
+#ifdef TRACK_ALLOCATIONS
+    mem = (void*)((uint8_t*)mem + sizeof(int));
+#endif
     return mem;
 }
 
@@ -84,17 +115,28 @@ void *
 memory_region::calloc(size_t size) {
     if (_synchronized) { _lock.lock(); }
     add_alloc();
+#ifdef TRACK_ALLOCATIONS
+    size += sizeof(int);
+#endif
     void *mem = _srv->malloc(size);
     memset(mem, 0, size);
 #ifdef TRACK_ALLOCATIONS
-    _allocation_list.append(mem);
+    int index = _allocation_list.append(mem);
+    int *p = (int *)mem;
+    *p = index;
+    // printf("calloc: stored %p at index %d\n", mem, index);
 #endif
     if (_synchronized) { _lock.unlock(); }
+#ifdef TRACK_ALLOCATIONS
+    mem = (void*)((uint8_t*)mem + sizeof(int));
+#endif
     return mem;
 }
 
 memory_region::~memory_region() {
+    if (_synchronized) { _lock.lock(); }
     if (_live_allocations == 0) {
+        if (_synchronized) { _lock.unlock(); }
         return;
     }
     char msg[128];
@@ -112,6 +154,7 @@ memory_region::~memory_region() {
     }
 #endif
     _srv->fatal(msg, __FILE__, __LINE__, "%d objects", _live_allocations);
+    if (_synchronized) { _lock.unlock(); }
 }
 
 //
