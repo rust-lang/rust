@@ -1186,6 +1186,12 @@ fn trans_non_gc_free(&@block_ctxt cx, ValueRef v) -> result {
     ret rslt(cx, C_int(0));
 }
 
+fn trans_shared_free(&@block_ctxt cx, ValueRef v) -> result {
+    cx.build.Call(cx.fcx.lcx.ccx.upcalls.shared_free,
+                  [cx.fcx.lltaskptr, cx.build.PointerCast(v, T_ptr(T_i8()))]);
+    ret rslt(cx, C_int(0));
+}
+
 fn find_scope_cx(&@block_ctxt cx) -> @block_ctxt {
     if (cx.kind != NON_SCOPE_BLOCK) { ret cx; }
     alt (cx.parent) {
@@ -1614,6 +1620,18 @@ fn trans_raw_malloc(&@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize) ->
     ret rslt(cx, cx.build.PointerCast(rval, llptr_ty));
 }
 
+// trans_shared_malloc: expects a type indicating which pointer type we want
+// and a size indicating how much space we want malloc'd.
+fn trans_shared_malloc(&@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize) ->
+   result {
+    // FIXME: need a table to collect tydesc globals.
+
+    auto tydesc = C_null(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)));
+    auto rval =
+        cx.build.Call(cx.fcx.lcx.ccx.upcalls.shared_malloc,
+                      [cx.fcx.lltaskptr, llsize, tydesc]);
+    ret rslt(cx, cx.build.PointerCast(rval, llptr_ty));
+}
 
 // trans_malloc_boxed: expects an unboxed type and returns a pointer to enough
 // space for something of that type, along with space for a reference count;
@@ -2133,7 +2151,7 @@ fn maybe_free_ivec_heap_part(&@block_ctxt cx, ValueRef v0, ty::t unit_ty) ->
             auto m = maybe_on_heap_cx.build.InBoundsGEP(stub_ptr, v);
             maybe_on_heap_cx.build.Load(m)
         };
-    auto after_free_cx = trans_non_gc_free(maybe_on_heap_cx, heap_ptr).bcx;
+    auto after_free_cx = trans_shared_free(maybe_on_heap_cx, heap_ptr).bcx;
     after_free_cx.build.Br(next_cx.llbb);
     ret rslt(next_cx, C_nil());
 }
@@ -3673,7 +3691,8 @@ mod ivec {
         {
             auto p =
                 heap_resize_cx.build.PointerCast(v, T_ptr(T_opaque_ivec()));
-            heap_resize_cx.build.Call(cx.fcx.lcx.ccx.upcalls.ivec_resize,
+            auto upcall = cx.fcx.lcx.ccx.upcalls.ivec_resize_shared;
+            heap_resize_cx.build.Call(upcall,
                                       [cx.fcx.lltaskptr, p, new_heap_len]);
         }
         auto heap_ptr_resize =
@@ -3713,7 +3732,8 @@ mod ivec {
         {
             auto p =
                 stack_spill_cx.build.PointerCast(v, T_ptr(T_opaque_ivec()));
-            stack_spill_cx.build.Call(cx.fcx.lcx.ccx.upcalls.ivec_spill,
+            auto upcall = cx.fcx.lcx.ccx.upcalls.ivec_spill_shared;
+            stack_spill_cx.build.Call(upcall,
                                       [cx.fcx.lltaskptr, p, new_stack_len]);
         }
         auto spill_stub =
@@ -3963,7 +3983,7 @@ mod ivec {
                             heap_cx.build.InBoundsGEP(stub_ptr_heap,
                                                       stub_a));
         auto heap_sz = heap_cx.build.Add(llsize_of(llheappartty), lllen);
-        auto rs = trans_raw_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
+        auto rs = trans_shared_malloc(heap_cx, T_ptr(llheappartty), heap_sz);
         auto heap_part = rs.val;
         heap_cx = rs.bcx;
         heap_cx.build.Store(heap_part,
@@ -4100,7 +4120,7 @@ mod ivec {
 
         auto heap_part_sz = on_heap_cx.build.Add(alen,
             llsize_of(T_opaque_ivec_heap_part()));
-        auto rs = trans_raw_malloc(on_heap_cx, T_ptr(llheappartty),
+        auto rs = trans_shared_malloc(on_heap_cx, T_ptr(llheappartty),
                                    heap_part_sz);
         on_heap_cx = rs.bcx;
         auto new_heap_ptr = rs.val;
@@ -6038,7 +6058,7 @@ fn trans_ivec(@block_ctxt bcx, &(@ast::expr)[] args, ast::node_id id) ->
             bcx.build.Store(lllen, bcx.build.InBoundsGEP(llstubptr, stub_a));
 
             auto llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
-            auto rslt = trans_raw_malloc(bcx, T_ptr(llheapty), llheapsz);
+            auto rslt = trans_shared_malloc(bcx, T_ptr(llheapty), llheapsz);
             bcx = rslt.bcx;
             auto llheapptr = rslt.val;
             bcx.build.Store(llheapptr,

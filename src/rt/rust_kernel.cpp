@@ -206,6 +206,11 @@ rust_kernel::malloc(size_t size) {
     return _region->malloc(size);
 }
 
+void *
+rust_kernel::realloc(void *mem, size_t size) {
+    return _region->realloc(mem, size);
+}
+
 void rust_kernel::free(void *mem) {
     _region->free(mem);
 }
