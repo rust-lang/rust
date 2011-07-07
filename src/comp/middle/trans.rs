@@ -5666,64 +5666,44 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
 
 fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
                   &@ast::expr e) -> result {
-    auto val;
-    auto bcx = cx;
-    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
-    if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
-        auto re = trans_expr(bcx, e);
-        val = re.val;
-        bcx = re.bcx;
-    } else if (arg.mode != ty::mo_val) {
-        let lval_result lv;
-        if (ty::is_lval(e)) {
-            lv = trans_lval(bcx, e);
-        } else {
-            auto r = trans_expr(bcx, e);
-            if (type_is_immediate(cx.fcx.lcx.ccx, e_ty)) {
-                lv = lval_val(r.bcx, r.val);
-            } else { lv = lval_mem(r.bcx, r.val); }
-        }
-        bcx = lv.res.bcx;
-        if (lv.is_mem) {
-            val = lv.res.val;
-        } else {
-            // Non-mem but we're trying to alias; synthesize an
-            // alloca, spill to it and pass its address.
-            val = do_spill(lv.res.bcx, lv.res.val);
-        }
-    } else { auto re = trans_expr(bcx, e); val = re.val; bcx = re.bcx; }
-    auto is_bot = ty::type_is_bot(cx.fcx.lcx.ccx.tcx, e_ty);
-
-    // Make a copy here if the type is structural and we're passing by value.
-    if (arg.mode == ty::mo_val && !is_bot) {
-        if (ty::type_owns_heap_mem(cx.fcx.lcx.ccx.tcx, e_ty)) {
-            auto rslt = alloc_ty(bcx, e_ty);
-            bcx = rslt.bcx;
-            auto dst = rslt.val;
-            rslt = copy_val(bcx, INIT, dst, val, e_ty);
-            bcx = rslt.bcx;
-            val = dst;
-        } else {
-            bcx = copy_ty(bcx, val, e_ty).bcx;
-        }
-    }
-
+    auto ccx = cx.fcx.lcx.ccx;
+    auto e_ty = ty::expr_ty(ccx.tcx, e);
+    auto is_bot = ty::type_is_bot(ccx.tcx, e_ty);
+    auto lv = trans_lval(cx, e);
+    auto bcx = lv.res.bcx;
+    auto val = lv.res.val;
     if (is_bot) {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
-    } else if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
+    } else if (arg.mode == ty::mo_val) {
+        if (ty::type_owns_heap_mem(ccx.tcx, e_ty)) {
+            auto dst = alloc_ty(bcx, e_ty);
+            val = dst.val;
+            bcx = move_val_if_temp(dst.bcx, INIT, val, lv, e_ty).bcx;
+        } else {
+            if (lv.is_mem) { val = load_if_immediate(bcx, val, e_ty); }
+            // FIXME for non-is-mem lvals, we should be able to just drop the
+            // cleanup. However, this currently leads to a memory-corrupting
+            // stage2/rustc . Find out why.
+            bcx = copy_ty(bcx, val, e_ty).bcx;
+        }
+    } else if (type_is_immediate(ccx, e_ty) && !lv.is_mem) {
+        val = do_spill(bcx, val);
+    }
+
+    if (!is_bot && ty::type_contains_params(ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
         if (arg.mode == ty::mo_val
-            && ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
+            && ty::type_is_structural(ccx.tcx, e_ty)) {
             lldestty = T_ptr(lldestty);
         }
         val = bcx.build.PointerCast(val, lldestty);
     }
     if (arg.mode == ty::mo_val
-        && ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
+        && ty::type_is_structural(ccx.tcx, e_ty)) {
         // Until here we've been treating structures by pointer;
         // we are now passing it as an arg, so need to load it.
         val = bcx.build.Load(val);
