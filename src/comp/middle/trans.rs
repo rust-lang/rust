@@ -7969,10 +7969,9 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
                         m.inputs,
                         m.output,
                         vec::len[ast::ty_param](ty_params));
-    // TODO: can we leave out one of these T_ptrs and then get rid of the
-    // Load?
     llorig_mthd = bcx.build.PointerCast(llorig_mthd, 
-                                        T_ptr(llorig_mthd_ty));
+                                        T_ptr(T_ptr(llorig_mthd_ty)));
+    llorig_mthd = bcx.build.Load(llorig_mthd);
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
