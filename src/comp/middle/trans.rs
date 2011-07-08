@@ -5201,7 +5201,7 @@ fn trans_index(&@block_ctxt cx, &span sp, &@ast::expr base, &@ast::expr idx,
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
-fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
+fn trans_lval_gen(&@block_ctxt cx, &@ast::expr e) -> lval_result {
     alt (e.node) {
         case (ast::expr_path(?p)) { ret trans_path(cx, p, e.id); }
         case (ast::expr_field(?base, ?ident)) {
@@ -5259,6 +5259,23 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
                     generic=none,
                     llobj=none,
                     method_ty=none);
+        }
+    }
+}
+
+fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
+    auto lv = trans_lval_gen(cx, e);
+    alt (lv.generic) {
+        case (some(?gi)) {
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
+            auto n_args =
+                std::ivec::len(ty::ty_fn_args(cx.fcx.lcx.ccx.tcx, t));
+            auto args = std::ivec::init_elt(none[@ast::expr], n_args);
+            auto bound = trans_bind_1(lv.res.bcx, e, lv, args, e.id);
+            ret lval_val(bound.bcx, bound.val);
+        }
+        case (none) {
+            ret lv;
         }
     }
 }
@@ -5489,7 +5506,12 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
 
 fn trans_bind(&@block_ctxt cx, &@ast::expr f,
               &(option::t[@ast::expr])[] args, ast::node_id id) -> result {
-    auto f_res = trans_lval(cx, f);
+    auto f_res = trans_lval_gen(cx, f);
+    ret trans_bind_1(cx, f, f_res, args, id);
+}
+
+fn trans_bind_1(&@block_ctxt cx, &@ast::expr f, &lval_result f_res,
+                &(option::t[@ast::expr])[] args, ast::node_id id) -> result {
     if (f_res.is_mem) {
         cx.fcx.lcx.ccx.sess.unimpl("re-binding existing function");
     } else {
@@ -5839,7 +5861,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
 
-    auto f_res = trans_lval(cx, f);
+    auto f_res = trans_lval_gen(cx, f);
     let ty::t fn_ty;
     alt (f_res.method_ty) {
         case (some(?meth)) {
@@ -6361,7 +6383,9 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
 
     auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     auto sub = trans_lval(cx, e);
-    ret rslt(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
+    auto v = sub.res.val;
+    if (sub.is_mem) { v = load_if_immediate(sub.res.bcx, v, t); }
+    ret rslt(sub.res.bcx, v);
 }
 
 fn with_out_method(fn(&out_method) -> result  work, @block_ctxt cx,
