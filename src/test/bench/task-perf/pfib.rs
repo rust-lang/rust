@@ -17,6 +17,8 @@ import std::time;
 import std::str;
 import std::int::range;
 import std::io;
+import std::getopts;
+import std::task;
 
 fn recv[T](&port[T] p) -> T {
     let T x;
@@ -33,7 +35,7 @@ fn fib(int n) -> int {
             c <| 1;
         }
         else {
-            let port[int] p = port();
+            auto p = port();
       
             auto t1 = spawn pfib(chan(p), n - 1);
             auto t2 = spawn pfib(chan(p), n - 2);
@@ -42,9 +44,46 @@ fn fib(int n) -> int {
         }
     }
 
-    let port[int] p = port();
+    auto p = port();
     auto t = spawn pfib(chan(p), n);
     ret recv(p);
+}
+
+type config = rec(bool stress);
+
+fn parse_opts(vec[str] argv) -> config {
+    auto opts = [getopts::optflag("stress")];
+
+    auto opt_args = vec::slice(argv, 1u, vec::len(argv));
+
+    alt(getopts::getopts(opt_args, opts)) {
+        case(getopts::success(?m)) {
+            ret rec(stress = getopts::opt_present(m, "stress"))
+        }
+        case(getopts::failure(_)) {
+            fail;
+        }
+    }
+}
+
+fn stress_task(int id) {
+    auto i = 0;
+    while(true) {
+        auto n = 15;
+        assert(fib(n) == fib(n));
+        i += 1;
+        log_err #fmt("%d: Completed %d iterations", id, i);
+    }
+}
+
+fn stress(int num_tasks) {
+    auto tasks = [];
+    for each(int i in range(0, num_tasks)) {
+        tasks += [spawn stress_task(i)];
+    }
+    for each(int i in range(0, num_tasks)) {
+        task::join(tasks.(i));
+    }    
 }
 
 fn main(vec[str] argv) {
@@ -56,24 +95,29 @@ fn main(vec[str] argv) {
     }
     else {
         // Interactive mode! Wooo!!!!
+        auto opts = parse_opts(argv);
 
-        auto max = uint::parse_buf(str::bytes(argv.(1)), 10u) as int;
+        if(opts.stress) {
+            stress(2);
+        }
+        else {
+            auto max = uint::parse_buf(str::bytes(argv.(1)), 10u) as int;
 
-        auto num_trials = 10;
+            auto num_trials = 10;
 
-        auto out = io::stdout();
+            auto out = io::stdout();
 
-        for each(int n in range(1, max + 1)) {
-            for each(int i in range(0, num_trials)) {
-                auto start = time::precise_time_ns();
-                auto fibn = fib(n);
-                auto stop = time::precise_time_ns();
+            for each(int n in range(1, max + 1)) {
+                for each(int i in range(0, num_trials)) {
+                    auto start = time::precise_time_ns();
+                    auto fibn = fib(n);
+                    auto stop = time::precise_time_ns();
 
-                auto elapsed = (stop - start) as int;
+                    auto elapsed = (stop - start) as int;
             
-                out.write_line(#fmt("%d\t%d\t%d", n, fibn, elapsed));
+                    out.write_line(#fmt("%d\t%d\t%d", n, fibn, elapsed));
+                }
             }
         }
-
     }
 }
