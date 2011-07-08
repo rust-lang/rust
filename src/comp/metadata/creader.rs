@@ -244,13 +244,17 @@ fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
         auto cfilename = cinfo._0;
         auto cdata = cinfo._1;
 
-        auto cmeta = rec(name=ident,
-                         data=cdata,
-                         cnum_map = new_int_hash[ast::crate_num]());
-
+        // Claim this crate number and cache it
         auto cnum = e.next_crate_num;
         e.crate_cache.insert(ident, cnum);
         e.next_crate_num += 1;
+
+        // Now resolve the crates referenced by this crate
+        auto cnum_map = resolve_crate_deps(e, cdata);
+
+        auto cmeta = rec(name=ident,
+                         data=cdata,
+                         cnum_map=cnum_map);
 
         auto cstore = e.sess.get_cstore();
         cstore::set_crate_data(cstore, cnum, cmeta);
@@ -259,8 +263,34 @@ fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
     } else {
         ret e.crate_cache.get(ident);
     }
- }
+}
 
+// Go through the crate metadata and load any crates that it references
+fn resolve_crate_deps(env e, &vec[u8] cdata) -> cstore::cnum_map {
+    log "resolving deps of external crate";
+    // The map from crate numbers in the crate we're resolving to local crate
+    // numbers
+    auto cnum_map = new_int_hash[ast::crate_num]();
+    for (decoder::crate_dep dep in decoder::get_crate_deps(cdata)) {
+        auto extrn_cnum = dep._0;
+        auto cname = dep._1;
+        log #fmt("resolving dep %s", cname);
+        if (e.crate_cache.contains_key(cname)) {
+            log "already have it";
+            // We've already seen this crate
+            auto local_cnum = e.crate_cache.get(cname);
+            cnum_map.insert(extrn_cnum, local_cnum);
+        } else {
+            log "need to load it";
+            // This is a new one so we've got to load it
+            // FIXME: Need better error reporting than just a bogus span
+            auto fake_span = rec(lo=0u,hi=0u);
+            auto local_cnum = resolve_crate(e, cname, ~[], fake_span);
+            cnum_map.insert(extrn_cnum, local_cnum);
+        }
+    }
+    ret cnum_map;
+}
 
 // Local Variables:
 // mode: rust
