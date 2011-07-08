@@ -171,12 +171,12 @@ fn lookup_def(ast::crate_num cnum, vec[u8] data,
     ret def;
 }
 
-fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
-    auto external_crate_id = def._0;
-    auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
-                                       external_crate_id).data;
-    auto item = lookup_item(def._1, data);
-    auto t = item_type(item, external_crate_id, tcx);
+fn get_type(&vec[u8] data, ast::def_id def,
+            &ty::ctxt tcx) -> ty::ty_param_count_and_ty {
+    auto this_cnum = def._0;
+    auto node_id = def._1;
+    auto item = lookup_item(node_id, data);
+    auto t = item_type(item, this_cnum, tcx);
     auto tp_count;
     auto kind_ch = item_kind(item);
     auto has_ty_params = kind_has_type_params(kind_ch);
@@ -194,7 +194,8 @@ fn get_symbol(&vec[u8] data, ast::node_id id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
-fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
+fn get_tag_variants(&vec[u8] data, ast::def_id def,
+                    &ty::ctxt tcx) -> ty::variant_info[] {
     auto external_crate_id = def._0;
     auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
                                        external_crate_id).data;
