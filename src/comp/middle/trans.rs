@@ -5525,8 +5525,12 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
                         bcx = copy_ty(bcx, val, e_ty).bcx;
                         val = bcx.build.Load(val);
                     }
-                } else if (ty::type_contains_params(cx.ccx.tcx, out_arg.ty)) {
-                    assert (out_arg.mode != ty::mo_val);
+                }
+                // If the type is parameterized, then we need to cast the
+                // type we actually have to the parameterized out type.
+                if (ty::type_contains_params(cx.ccx.tcx, out_arg.ty)) {
+                    // FIXME: (#642) This works for boxes and alias params
+                    // but does not work for bare functions.
                     val = bcx.build.PointerCast(val, llout_arg_ty);
                 }
                 llargs += ~[val];
