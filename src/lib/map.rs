@@ -23,8 +23,8 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
     let util::rational load_factor = rec(num=3, den=4);
     tag bucket[K, V] { nil; deleted; some(K, V); }
-    fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-        ret vec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
+    fn make_buckets[K, V](uint nbkts) -> (bucket[K, V])[mutable] {
+        ret ivec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
     // Derive two hash functions from the one given by taking the upper
     // half and lower half of the uint bits.  Our bucket probing
@@ -52,7 +52,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
     fn insert_common[K,
                      V](&hashfn[K] hasher, &eqfn[K] eqer,
-                        vec[mutable bucket[K, V]] bkts, uint nbkts, &K key,
+                        &(bucket[K, V])[mutable] bkts, uint nbkts, &K key,
                         &V val) -> bool {
         let uint i = 0u;
         let uint h = hasher(key);
@@ -77,7 +77,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
     fn find_common[K,
                    V](&hashfn[K] hasher, &eqfn[K] eqer,
-                      vec[mutable bucket[K, V]] bkts, uint nbkts, &K key) ->
+                      &(bucket[K, V])[mutable] bkts, uint nbkts, &K key) ->
        option::t[V] {
         let uint i = 0u;
         let uint h = hasher(key);
@@ -100,8 +100,8 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
     fn rehash[K,
               V](&hashfn[K] hasher, &eqfn[K] eqer,
-                 vec[mutable bucket[K, V]] oldbkts, uint noldbkts,
-                 vec[mutable bucket[K, V]] newbkts, uint nnewbkts) {
+                 &(bucket[K, V])[mutable] oldbkts, uint noldbkts,
+                 &(bucket[K, V])[mutable] newbkts, uint nnewbkts) {
         for (bucket[K, V] b in oldbkts) {
             alt (b) {
                 case (some(?k_, ?v_)) {
@@ -117,7 +117,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     obj hashmap[K,
                 V](hashfn[K] hasher,
                    eqfn[K] eqer,
-                   mutable vec[mutable bucket[K, V]] bkts,
+                   mutable (bucket[K, V])[mutable] bkts,
                    mutable uint nbkts,
                    mutable uint nelts,
                    util::rational lf) {
@@ -127,8 +127,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 rec(num=nelts + 1u as int, den=nbkts as int);
             if (!util::rational_leq(load, lf)) {
                 let uint nnewbkts = uint::next_power_of_two(nbkts + 1u);
-                let vec[mutable bucket[K, V]] newbkts =
-                    make_buckets[K, V](nnewbkts);
+                auto newbkts = make_buckets[K, V](nnewbkts);
                 rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nnewbkts);
                 bkts = newbkts;
                 nbkts = nnewbkts;
@@ -177,7 +176,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             ret option::none[V];
         }
         fn rehash() {
-            let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nbkts);
+            auto newbkts = make_buckets[K, V](nbkts);
             rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nbkts);
             bkts = newbkts;
         }
@@ -190,7 +189,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             }
         }
     }
-    let vec[mutable bucket[K, V]] bkts = make_buckets[K, V](initial_capacity);
+    auto bkts = make_buckets[K, V](initial_capacity);
     ret hashmap[K, V](hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }
 
