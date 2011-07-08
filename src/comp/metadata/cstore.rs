@@ -1,3 +1,6 @@
+// The crate store - a central repo for information collected about external
+// crates and libraries
+
 import std::map;
 import std::vec;
 import std::str;
