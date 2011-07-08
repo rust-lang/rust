@@ -34,15 +34,6 @@ fn lookup_defs(session::session sess, ast::crate_num cnum,
     ret decoder::lookup_defs(cdata, cnum, path);
 }
 
-fn get_crate_attributes(&vec[u8] data) -> ast::attribute[] {
-    decoder::get_crate_attributes(data)
-}
-
-fn list_crate_metadata(vec[u8] data, io::writer out) {
-    decoder::list_crate_metadata(data, out)
-}
-
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;
