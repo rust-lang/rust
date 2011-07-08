@@ -180,7 +180,8 @@ fn visit_item(env e, &@ast::item i) {
                 m.abi != ast::native_abi_cdecl) {
                 ret;
             }
-            if (!e.sess.add_used_library(m.native_name)) {
+            auto cstore = e.sess.get_cstore();
+            if (!cstore::add_used_library(cstore, m.native_name)) {
                 ret;
             }
             for (ast::attribute a in

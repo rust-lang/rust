@@ -46,7 +46,6 @@ type crate_metadata = rec(str name, vec[u8] data);
 obj session(@config targ_cfg,
             @options opts,
             metadata::cstore::cstore cstore,
-            mutable vec[str] used_libraries,
             mutable vec[str] used_link_args,
             codemap::codemap cm,
             mutable uint err_count) {
@@ -104,23 +103,6 @@ obj session(@config targ_cfg,
     }
     fn get_used_link_args() -> vec[str] {
         ret used_link_args;
-    }
-    fn add_used_library(&str lib) -> bool {
-        if (lib == "") {
-            ret false;
-        }
-        // A program has a small number of libraries, so a vector is probably
-        // a good data structure in here.
-        for (str l in used_libraries) {
-            if (l == lib) {
-                ret false;
-            }
-        }
-        used_libraries += [lib];
-        ret true;
-    }
-    fn get_used_libraries() -> vec[str] {
-       ret used_libraries;
     }
     fn get_codemap() -> codemap::codemap { ret cm; }
     fn lookup_pos(uint pos) -> codemap::loc {

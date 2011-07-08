@@ -355,7 +355,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
     auto cstore = cstore::mk_cstore();
     ret session::session(target_cfg, sopts, cstore,
-                         [], [], codemap::new_codemap(), 0u);
+                         [], codemap::new_codemap(), 0u);
 }
 
 fn parse_pretty(session::session sess, &str name) -> pp_mode {
@@ -517,7 +517,8 @@ fn main(vec[str] args) {
         };
     }
 
-    for (str cratepath in cstore::get_used_crate_files(sess.get_cstore())) {
+    auto cstore = sess.get_cstore();
+    for (str cratepath in cstore::get_used_crate_files(cstore)) {
         auto dir = fs::dirname(cratepath);
         if (dir != "") {
             gcc_args += ["-L" + dir];
@@ -527,7 +528,7 @@ fn main(vec[str] args) {
     }
 
     gcc_args += sess.get_used_link_args();
-    auto used_libs = sess.get_used_libraries();
+    auto used_libs = cstore::get_used_libraries(cstore);
     for (str l in used_libs) {
         gcc_args += ["-l" + l];
     }

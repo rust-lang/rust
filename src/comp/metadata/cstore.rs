@@ -38,6 +38,21 @@ fn get_used_crate_files(&cstore cstore) -> vec[str] {
     ret cstore.used_crate_files;
 }
 
+fn add_used_library(&cstore cstore, &str lib) -> bool {
+    if (lib == "") { ret false; }
+
+    if (vec::member(lib, cstore.used_libraries)) {
+        ret false;
+    }
+
+    cstore.used_libraries += [lib];
+    ret true;
+}
+
+fn get_used_libraries(&cstore cstore) -> vec[str] {
+    ret cstore.used_libraries;
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
