@@ -436,6 +436,10 @@ fn main(vec[str] args) {
         metadata::creader::list_file_metadata(ifile, std::io::stdout());
         ret;
     }
+
+    auto stop_after_codegen = sopts.output_type != link::output_type_exe ||
+        (sopts.static && sopts.library);
+
     alt (output_file) {
         case (none) {
             let vec[str] parts = str::split(ifile, '.' as u8);
@@ -460,7 +464,7 @@ fn main(vec[str] args) {
 
             saved_out_filename = ofile;
             auto temp_filename;
-            if (sopts.output_type == link::output_type_exe && !sopts.static) {
+            if (!stop_after_codegen) {
                 temp_filename = ofile + ".o";
             } else {
                 temp_filename = ofile;
@@ -473,7 +477,7 @@ fn main(vec[str] args) {
     // gcc to link the object file with some libs
     //
     // TODO: Factor this out of main.
-    if (sopts.output_type != link::output_type_exe || sopts.static) {
+    if (stop_after_codegen) {
         ret;
     }
 
@@ -521,6 +525,10 @@ fn main(vec[str] args) {
 
     auto cstore = sess.get_cstore();
     for (str cratepath in cstore::get_used_crate_files(cstore)) {
+        if (str::ends_with(cratepath, ".rlib")) {
+            gcc_args += [cratepath];
+            cont;
+        }
         auto dir = fs::dirname(cratepath);
         if (dir != "") {
             gcc_args += ["-L" + dir];

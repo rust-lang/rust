@@ -124,6 +124,9 @@ fn metadata_matches(&vec[u8] crate_data,
 
 fn default_native_lib_naming(session::session sess) ->
    rec(str prefix, str suffix) {
+    if (sess.get_opts().static) {
+        ret rec(prefix="lib", suffix=".rlib");
+    }
     alt (sess.get_targ_cfg().os) {
         case (session::os_win32) { ret rec(prefix="", suffix=".dll"); }
         case (session::os_macos) { ret rec(prefix="lib", suffix=".dylib"); }

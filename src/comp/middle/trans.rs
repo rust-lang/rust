@@ -9263,6 +9263,9 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
     auto maptype = T_array(elttype, ccx.module_data.size() + 1u);
     auto map =
         llvm::LLVMAddGlobal(ccx.llmod, maptype, str::buf("_rust_mod_map"));
+    llvm::LLVMSetLinkage(map,
+                         lib::llvm::LLVMInternalLinkage as
+                         llvm::Linkage);
     let ValueRef[] elts = ~[];
     for each (@tup(str, ValueRef) item in ccx.module_data.items()) {
         auto elt = C_struct(~[p2i(C_cstr(ccx, item._0)), p2i(item._1)]);
