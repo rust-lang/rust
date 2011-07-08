@@ -220,32 +220,41 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     ret option::none[vec[u8]];
 }
 
-fn load_library_crate(&session::session sess, span span, ast::crate_num cnum,
+fn load_library_crate(&session::session sess, span span,
                       &ast::ident ident, &(@ast::meta_item)[] metas,
-                      &vec[str] library_search_paths) {
+                      &vec[str] library_search_paths)
+    -> tup(str, vec[u8]) {
+
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
-            auto cstore = sess.get_cstore();
-            auto cmeta = rec(name=ident,
-                             data=t._1,
-                             cnum_map = new_int_hash[ast::crate_num]());
-            cstore::set_crate_data(cstore, cnum, cmeta);
-            cstore::add_used_crate_file(cstore, t._0);
-            ret;
+            ret t;
         }
-        case (_) { }
+        case (none) {
+            sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
+        }
     }
-    sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
 }
 
 fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
                  span span) -> ast::crate_num {
     if (!e.crate_cache.contains_key(ident)) {
+        auto cinfo = load_library_crate(e.sess, span, ident, metas,
+                                        e.library_search_paths);
+
+        auto cfilename = cinfo._0;
+        auto cdata = cinfo._1;
+
+        auto cmeta = rec(name=ident,
+                         data=cdata,
+                         cnum_map = new_int_hash[ast::crate_num]());
+
         auto cnum = e.next_crate_num;
-        load_library_crate(e.sess, span, cnum, ident,
-                           metas, e.library_search_paths);
-        e.crate_cache.insert(ident, e.next_crate_num);
+        e.crate_cache.insert(ident, cnum);
         e.next_crate_num += 1;
+
+        auto cstore = e.sess.get_cstore();
+        cstore::set_crate_data(cstore, cnum, cmeta);
+        cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;
     } else {
         ret e.crate_cache.get(ident);
