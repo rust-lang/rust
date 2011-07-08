@@ -46,7 +46,6 @@ type crate_metadata = rec(str name, vec[u8] data);
 obj session(@config targ_cfg,
             @options opts,
             metadata::cstore::cstore cstore,
-            mutable vec[str] used_link_args,
             codemap::codemap cm,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
@@ -98,12 +97,6 @@ obj session(@config targ_cfg,
         self.span_bug(sp, "unimplemented " + msg);
     }
     fn unimpl(str msg) -> ! { self.bug("unimplemented " + msg); }
-    fn add_used_link_args(&str args) {
-        used_link_args += str::split(args, ' ' as u8);
-    }
-    fn get_used_link_args() -> vec[str] {
-        ret used_link_args;
-    }
     fn get_codemap() -> codemap::codemap { ret cm; }
     fn lookup_pos(uint pos) -> codemap::loc {
         ret codemap::lookup_pos(cm, pos);

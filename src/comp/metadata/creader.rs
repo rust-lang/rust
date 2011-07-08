@@ -188,7 +188,7 @@ fn visit_item(env e, &@ast::item i) {
                      attr::find_attrs_by_name(i.attrs, "link_args")) {
                 alt (attr::get_meta_item_value_str(attr::attr_meta(a))) {
                     case (some(?linkarg)) {
-                        e.sess.add_used_link_args(linkarg);
+                        cstore::add_used_link_args(cstore, linkarg);
                     }
                     case (none) { /* fallthrough */ }
                 }

@@ -355,7 +355,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
     auto cstore = cstore::mk_cstore();
     ret session::session(target_cfg, sopts, cstore,
-                         [], codemap::new_codemap(), 0u);
+                         codemap::new_codemap(), 0u);
 }
 
 fn parse_pretty(session::session sess, &str name) -> pp_mode {
@@ -527,7 +527,7 @@ fn main(vec[str] args) {
         gcc_args += ["-l" + libarg];
     }
 
-    gcc_args += sess.get_used_link_args();
+    gcc_args += cstore::get_used_link_args(cstore);
     auto used_libs = cstore::get_used_libraries(cstore);
     for (str l in used_libs) {
         gcc_args += ["-l" + l];

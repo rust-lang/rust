@@ -1,5 +1,6 @@
 import std::map;
 import std::vec;
+import std::str;
 
 type crate_metadata = rec(str name, vec[u8] data);
 
@@ -51,6 +52,14 @@ fn add_used_library(&cstore cstore, &str lib) -> bool {
 
 fn get_used_libraries(&cstore cstore) -> vec[str] {
     ret cstore.used_libraries;
+}
+
+fn add_used_link_args(&cstore cstore, &str args) {
+    cstore.used_link_args += str::split(args, ' ' as u8);
+}
+
+fn get_used_link_args(&cstore cstore) -> vec[str] {
+    ret cstore.used_link_args;
 }
 
 // Local Variables:
