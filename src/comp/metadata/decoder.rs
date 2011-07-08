@@ -327,7 +327,7 @@ fn list_meta_items(&ebml::doc meta_items, io::writer out) {
 }
 
 fn list_crate_attributes(&ebml::doc md, io::writer out) {
-    out.write_str("=Crate=");
+    out.write_str("=Crate Attributes=");
 
     for (ast::attribute attr in get_attributes(md)) {
         out.write_str(#fmt("%s", pprust::attribute_to_str(attr)));
@@ -338,6 +338,32 @@ fn list_crate_attributes(&ebml::doc md, io::writer out) {
 
 fn get_crate_attributes(&vec[u8] data) -> ast::attribute[] {
     ret get_attributes(ebml::new_doc(data));
+}
+
+type crate_dep = tup(ast::crate_num, str);
+
+fn get_crate_deps(&vec[u8] data) -> vec[crate_dep] {
+    let vec[crate_dep] deps = [];
+    auto cratedoc = ebml::new_doc(data);
+    auto depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
+    auto crate_num = 1;
+    for each (ebml::doc depdoc in
+              ebml::tagged_docs(depsdoc, tag_crate_dep)) {
+        auto depname = str::unsafe_from_bytes(ebml::doc_data(depdoc));
+        deps += [tup(crate_num, depname)];
+        crate_num += 1;
+    }
+    ret deps;
+}
+
+fn list_crate_deps(&vec[u8] data, io::writer out) {
+    out.write_str("=External Dependencies=\n");
+
+    for (crate_dep dep in get_crate_deps(data)) {
+        out.write_str(#fmt("%d %s\n", dep._0, dep._1));
+    }
+
+    out.write_str("\n");
 }
 
 fn list_crate_items(vec[u8] bytes, &ebml::doc md, io::writer out) {
@@ -364,6 +390,7 @@ fn list_crate_items(vec[u8] bytes, &ebml::doc md, io::writer out) {
 fn list_crate_metadata(vec[u8] bytes, io::writer out) {
     auto md = ebml::new_doc(bytes);
     list_crate_attributes(md, out);
+    list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
 }
 

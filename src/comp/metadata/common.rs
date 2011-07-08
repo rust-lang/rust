@@ -56,6 +56,12 @@ const uint tag_meta_item_word = 0x23u;
 
 const uint tag_meta_item_list = 0x24u;
 
+// The list of crates that this crate depends on
+const uint tag_crate_deps = 0x25u;
+
+// A single crate dependency
+const uint tag_crate_dep = 0x26u;
+
 // djb's cdb hashes.
 fn hash_node_id(&int node_id) -> uint { ret 177573u ^ (node_id as uint); }
 

@@ -520,6 +520,49 @@ fn synthesize_crate_attrs(&@encode_ctxt ecx,
     ret attrs;
 }
 
+fn encode_crate_deps(&ebml::writer ebml_w, &cstore::cstore cstore) {
+
+    fn get_ordered_names(&cstore::cstore cstore) -> vec[str] {
+        type hashkv = @tup(crate_num, cstore::crate_metadata);
+        type numname = tup(crate_num, str);
+
+        // Pull the cnums and names out of cstore
+        let vec[mutable numname] pairs = [mutable];
+        for each (hashkv hashkv in cstore.metas.items()) {
+            pairs += [mutable tup(hashkv._0, hashkv._1.name)];
+        }
+
+        // Sort by cnum
+        fn lteq(&numname kv1, &numname kv2) -> bool { kv1._0 <= kv2._0 }
+        std::sort::quick_sort(lteq, pairs);
+
+        // Sanity-check the crate numbers
+        auto expected_cnum = 1;
+        for (numname n in pairs) {
+            assert n._0 == expected_cnum;
+            expected_cnum += 1;
+        }
+
+        // Return just the names
+        fn name(&numname kv) -> str { kv._1 }
+        // mutable -> immutable hack for vec::map
+        auto immpairs = vec::slice(pairs, 0u, vec::len(pairs));
+        ret vec::map(name, immpairs);
+    }
+
+    // We're just going to write a list of crate names, with the assumption
+    // that they are numbered 1 to n.
+    // FIXME: This is not nearly enough to support correct versioning
+    // but is enough to get transitive crate dependencies working.
+    ebml::start_tag(ebml_w, tag_crate_deps);
+    for (str cname in get_ordered_names(cstore)) {
+        ebml::start_tag(ebml_w, tag_crate_dep);
+        ebml_w.writer.write(str::bytes(cname));
+        ebml::end_tag(ebml_w);
+    }
+    ebml::end_tag(ebml_w);
+}
+
 fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 
     auto abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
@@ -531,6 +574,9 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 
     auto crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
+
+    encode_crate_deps(ebml_w, cx.sess.get_cstore());
+
     // Encode and index the paths.
 
     ebml::start_tag(ebml_w, tag_paths);
