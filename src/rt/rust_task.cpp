@@ -15,13 +15,22 @@
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
 
-static size_t const min_stk_bytes = 0x200000;
+static size_t get_min_stk_size() {
+    char *stack_size = getenv("RUST_MIN_STACK");
+    if(stack_size) {
+        return atoi(stack_size);
+    }
+    else {
+        return 0x200000;
+    }
+}
 
 // Task stack segments. Heap allocated and chained together.
 
 static stk_seg*
 new_stk(rust_task *task, size_t minsz)
 {
+    size_t min_stk_bytes = get_min_stk_size();
     if (minsz < min_stk_bytes)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
