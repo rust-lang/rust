@@ -77,7 +77,6 @@ mod back {
 }
 
 mod metadata {
-    export tyencode;
     export encoder;
     export creader;
     export cstore;

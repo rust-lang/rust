@@ -63,7 +63,6 @@ import link::mangle_internal_name_by_seq;
 import link::mangle_internal_name_by_path;
 import link::mangle_internal_name_by_path_and_seq;
 import link::mangle_exported_name;
-import metadata::tyencode;
 import metadata::creader;
 import metadata::csearch;
 import metadata::cstore;
@@ -147,7 +146,6 @@ type crate_ctxt =
         namegen names,
         std::sha1::sha1 sha,
         hashmap[ty::t, str] type_sha1s,
-        hashmap[ty::t, tyencode::ty_abbrev] type_abbrevs,
         hashmap[ty::t, str] type_short_names,
         ty::ctxt tcx,
         stats stats,
@@ -9318,7 +9316,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto tydescs = map::mk_hashmap[ty::t, @tydesc_info](hasher, eqer);
     auto lltypes = map::mk_hashmap[ty::t, TypeRef](hasher, eqer);
     auto sha1s = map::mk_hashmap[ty::t, str](hasher, eqer);
-    auto abbrevs = map::mk_hashmap[ty::t, tyencode::ty_abbrev](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto sha = std::sha1::mk_sha1();
     auto ccx =
@@ -9346,7 +9343,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              names=namegen(0),
              sha=sha,
              type_sha1s=sha1s,
-             type_abbrevs=abbrevs,
              type_short_names=short_names,
              tcx=tcx,
              stats=rec(mutable n_static_tydescs=0u,
