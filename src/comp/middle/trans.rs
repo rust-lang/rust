@@ -5694,12 +5694,23 @@ fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
             auto dst = alloc_ty(bcx, e_ty);
             val = dst.val;
             bcx = move_val_if_temp(dst.bcx, INIT, val, lv, e_ty).bcx;
-        } else {
-            if (lv.is_mem) { val = load_if_immediate(bcx, val, e_ty); }
-            // FIXME for non-is-mem lvals, we should be able to just drop the
-            // cleanup. However, this currently leads to a memory-corrupting
-            // stage2/rustc . Find out why.
+        } else if (lv.is_mem) {
+            val = load_if_immediate(bcx, val, e_ty);
             bcx = copy_ty(bcx, val, e_ty).bcx;
+        } else {
+            // Eliding take/drop for appending of external vectors currently
+            // corrupts memory. I can't figure out why, and external vectors
+            // are on the way out anyway, so this simply turns off the
+            // optimization for that case.
+            auto is_ext_vec_plus = alt (e.node) {
+                case (ast::expr_binary(_, _, _)) {
+                    ty::type_is_sequence(ccx.tcx, e_ty) &&
+                    !ty::sequence_is_interior(ccx.tcx, e_ty)
+                }
+                case (_) { false }
+            };
+            if (is_ext_vec_plus) { bcx = copy_ty(bcx, val, e_ty).bcx; }
+            else { revoke_clean(bcx, val); }
         }
     } else if (type_is_immediate(ccx, e_ty) && !lv.is_mem) {
         val = do_spill(bcx, val);
@@ -6368,11 +6379,8 @@ fn with_out_method(fn(&out_method) -> result  work, @block_ctxt cx,
             auto reg_val = load_if_immediate(cx, target, t);
             ret drop_ty(cx, reg_val, t);
         }
-        auto cleanup = bind drop_hoisted_ty(_, res_alloca.val, tp);
-        find_scope_cx(cx).cleanups += ~[clean_temp(res_alloca.val, cleanup)];
         auto done = work(save_in(res_alloca.val));
         auto loaded = load_if_immediate(done.bcx, res_alloca.val, tp);
-        revoke_clean(cx, res_alloca.val);
         add_clean_temp(cx, loaded, tp);
         ret rslt(done.bcx, loaded);;
     }
