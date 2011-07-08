@@ -55,10 +55,15 @@ fn main(vec[str] argv) {
         auto fibn = fib(n);
         auto stop = time::precise_time_ns();
 
-        auto elapsed = (stop - start) as int;
-        auto us_task = elapsed / fibn / 1000; 
+        assert(stop >= start);
 
-        log_err #fmt("Determined that fib(%d) = %d in %d ns (%d us / task)",
-                     n, fibn, elapsed, us_task);
+        auto elapsed = stop - start;
+        auto us_task = elapsed / (fibn as u64) / (1000 as u64); 
+
+        log_err #fmt("Determined that fib(%d) = %d in %d%d ns (%d us / task)",
+                     n, fibn, 
+                     (elapsed / (1000000 as u64)) as int, 
+                     (elapsed % (1000000 as u64)) as int, 
+                     us_task as int);
     }
 }

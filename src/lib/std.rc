@@ -12,6 +12,7 @@
 mod int;
 mod uint;
 mod u8;
+mod u64;
 mod vec;
 mod ivec;
 mod str;

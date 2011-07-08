@@ -19,6 +19,7 @@ import std::int::range;
 import std::io;
 import std::getopts;
 import std::task;
+import std::u64;
 
 fn recv[T](&port[T] p) -> T {
     let T x;
@@ -106,16 +107,17 @@ fn main(vec[str] argv) {
             auto num_trials = 10;
 
             auto out = io::stdout();
-
+            
             for each(int n in range(1, max + 1)) {
                 for each(int i in range(0, num_trials)) {
                     auto start = time::precise_time_ns();
                     auto fibn = fib(n);
                     auto stop = time::precise_time_ns();
 
-                    auto elapsed = (stop - start) as int;
+                    auto elapsed = stop - start;
             
-                    out.write_line(#fmt("%d\t%d\t%d", n, fibn, elapsed));
+                    out.write_line(#fmt("%d\t%d\t%s", n, fibn, 
+                                        u64::str(elapsed)));
                 }
             }
         }
