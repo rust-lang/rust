@@ -122,9 +122,9 @@ fn metadata_matches(&vec[u8] crate_data,
     ret true;
 }
 
-fn default_native_lib_naming(session::session sess) ->
+fn default_native_lib_naming(session::session sess, bool static) ->
    rec(str prefix, str suffix) {
-    if (sess.get_opts().static) {
+    if (static) {
         ret rec(prefix="lib", suffix=".rlib");
     }
     alt (sess.get_targ_cfg().os) {
@@ -158,7 +158,20 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
         }
     };
 
-    auto nn = default_native_lib_naming(sess);
+    auto nn = default_native_lib_naming(sess, sess.get_opts().static);
+    auto x = find_library_crate_aux(nn, crate_name, metas,
+                                    library_search_paths);
+    if (x != none || sess.get_opts().static) {
+        ret x;
+    }
+    auto nn2 = default_native_lib_naming(sess, true);
+    ret find_library_crate_aux(nn2, crate_name, metas, library_search_paths);
+}
+
+fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
+                          &(@ast::meta_item)[] metas,
+                          &vec[str] library_search_paths) ->
+                          option::t[tup(str, vec[u8])] {
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
