@@ -4,17 +4,24 @@
 import std::map;
 import std::vec;
 import std::str;
+import syntax::ast;
 
 type crate_metadata = rec(str name, vec[u8] data);
 
+// Map from node_id's of local use statements to crate numbers
+type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
+
 type cstore = @rec(map::hashmap[int, crate_metadata] metas,
+                   use_crate_map use_crate_map,
                    mutable vec[str] used_crate_files,
                    mutable vec[str] used_libraries,
                    mutable vec[str] used_link_args);
 
 fn mk_cstore() -> cstore {
     auto meta_cache = map::new_int_hash[crate_metadata]();
+    auto crate_map = map::new_int_hash[ast::crate_num]();
     ret @rec(metas = meta_cache,
+             use_crate_map = crate_map,
              mutable used_crate_files = [],
              mutable used_libraries = [],
              mutable used_link_args = []);
@@ -64,6 +71,11 @@ fn add_used_link_args(&cstore cstore, &str args) {
 fn get_used_link_args(&cstore cstore) -> vec[str] {
     ret cstore.used_link_args;
 }
+
+fn add_use_stmt_cnum(&cstore cstore, ast::node_id use_id, int cnum) {
+    cstore.use_crate_map.insert(use_id, cnum);
+}
+
 
 // Local Variables:
 // mode: rust

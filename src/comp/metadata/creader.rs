@@ -30,11 +30,10 @@ export list_file_metadata;
 
 // Traverses an AST, reading all the information about use'd crates and native
 // libraries necessary for later resolving, typechecking, linking, etc.
-fn read_crates(session::session sess, resolve::crate_map crate_map,
+fn read_crates(session::session sess,
                &ast::crate crate) {
     auto e =
         @rec(sess=sess,
-             crate_map=crate_map,
              crate_cache=@std::map::new_str_hash[int](),
              library_search_paths=sess.get_opts().library_search_paths,
              mutable next_crate_num=1);
@@ -43,6 +42,55 @@ fn read_crates(session::session sess, resolve::crate_map crate_map,
             visit_item_pre=bind visit_item(e, _)
             with walk::default_visitor());
     walk::walk_crate(v, crate);
+}
+
+type env =
+    @rec(session::session sess,
+         @hashmap[str, int] crate_cache,
+         vec[str] library_search_paths,
+         mutable int next_crate_num);
+
+fn visit_view_item(env e, &@ast::view_item i) {
+    alt (i.node) {
+        case (ast::view_item_use(?ident, ?meta_items, ?id)) {
+            auto cnum;
+            if (!e.crate_cache.contains_key(ident)) {
+                cnum = e.next_crate_num;
+                load_library_crate(e.sess, i.span, cnum, ident,
+                                   meta_items, e.library_search_paths);
+                e.crate_cache.insert(ident, e.next_crate_num);
+                e.next_crate_num += 1;
+            } else { cnum = e.crate_cache.get(ident); }
+            cstore::add_use_stmt_cnum(e.sess.get_cstore(), id, cnum);
+        }
+        case (_) { }
+    }
+}
+
+fn visit_item(env e, &@ast::item i) {
+    alt (i.node) {
+        case (ast::item_native_mod(?m)) {
+            if (m.abi != ast::native_abi_rust &&
+                m.abi != ast::native_abi_cdecl) {
+                ret;
+            }
+            auto cstore = e.sess.get_cstore();
+            if (!cstore::add_used_library(cstore, m.native_name)) {
+                ret;
+            }
+            for (ast::attribute a in
+                     attr::find_attrs_by_name(i.attrs, "link_args")) {
+                alt (attr::get_meta_item_value_str(attr::attr_meta(a))) {
+                    case (some(?linkarg)) {
+                        cstore::add_used_link_args(cstore, linkarg);
+                    }
+                    case (none) { /* fallthrough */ }
+                }
+            }
+        }
+        case (_) {
+        }
+    }
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
@@ -178,55 +226,6 @@ fn load_library_crate(&session::session sess, span span, int cnum,
     sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
 }
 
-type env =
-    @rec(session::session sess,
-         resolve::crate_map crate_map,
-         @hashmap[str, int] crate_cache,
-         vec[str] library_search_paths,
-         mutable int next_crate_num);
-
-fn visit_view_item(env e, &@ast::view_item i) {
-    alt (i.node) {
-        case (ast::view_item_use(?ident, ?meta_items, ?id)) {
-            auto cnum;
-            if (!e.crate_cache.contains_key(ident)) {
-                cnum = e.next_crate_num;
-                load_library_crate(e.sess, i.span, cnum, ident,
-                                   meta_items, e.library_search_paths);
-                e.crate_cache.insert(ident, e.next_crate_num);
-                e.next_crate_num += 1;
-            } else { cnum = e.crate_cache.get(ident); }
-            e.crate_map.insert(id, cnum);
-        }
-        case (_) { }
-    }
-}
-
-fn visit_item(env e, &@ast::item i) {
-    alt (i.node) {
-        case (ast::item_native_mod(?m)) {
-            if (m.abi != ast::native_abi_rust &&
-                m.abi != ast::native_abi_cdecl) {
-                ret;
-            }
-            auto cstore = e.sess.get_cstore();
-            if (!cstore::add_used_library(cstore, m.native_name)) {
-                ret;
-            }
-            for (ast::attribute a in
-                     attr::find_attrs_by_name(i.attrs, "link_args")) {
-                alt (attr::get_meta_item_value_str(attr::attr_meta(a))) {
-                    case (some(?linkarg)) {
-                        cstore::add_used_link_args(cstore, linkarg);
-                    }
-                    case (none) { /* fallthrough */ }
-                }
-            }
-        }
-        case (_) {
-        }
-    }
-}
 
 
 // Local Variables:

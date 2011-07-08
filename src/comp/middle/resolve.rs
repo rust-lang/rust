@@ -9,6 +9,7 @@ import ast::local_def;
 
 import metadata::creader;
 import metadata::decoder;
+import metadata::cstore;
 import driver::session::session;
 import util::common::new_def_hash;
 import std::map::new_int_hash;
@@ -32,7 +33,6 @@ import std::vec;
 
 export resolve_crate;
 export def_map;
-export crate_map;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
@@ -103,13 +103,10 @@ type indexed_mod =
 /* native modules can't contain tags, and we don't store their ASTs because we
    only need to look at them to determine exports, which they can't control.*/
 
-// It should be safe to use index to memoize lookups of globbed names.
-type crate_map = hashmap[node_id, ast::crate_num];
-
 type def_map = hashmap[node_id, def];
 
 type env =
-    rec(crate_map crate_map,
+    rec(cstore::use_crate_map crate_map,
         def_map def_map,
         constr_table fn_constrs,
         ast_map::map ast_map,
@@ -128,8 +125,9 @@ tag namespace { ns_value; ns_type; ns_module; }
 
 fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
    tup(def_map, constr_table) {
+    creader::read_crates(sess, *crate);
     auto e =
-        @rec(crate_map=new_int_hash[ast::crate_num](),
+        @rec(crate_map=sess.get_cstore().use_crate_map,
              def_map=new_int_hash[def](),
              fn_constrs = new_int_hash[ty::constr_def[]](),
              ast_map=amap,
@@ -138,7 +136,6 @@ fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
              ext_map=new_def_hash[vec[ident]](),
              ext_cache=new_ext_hash(),
              sess=sess);
-    creader::read_crates(sess, e.crate_map, *crate);
     map_crate(e, crate);
     resolve_imports(*e);
     check_for_collisions(e, *crate);
