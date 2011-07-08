@@ -28,6 +28,35 @@ import common::*;
 export read_crates;
 export list_file_metadata;
 
+// Traverses an AST, reading all the information about use'd crates and native
+// libraries necessary for later resolving, typechecking, linking, etc.
+fn read_crates(session::session sess, resolve::crate_map crate_map,
+               &ast::crate crate) {
+    auto e =
+        @rec(sess=sess,
+             crate_map=crate_map,
+             crate_cache=@std::map::new_str_hash[int](),
+             library_search_paths=sess.get_opts().library_search_paths,
+             mutable next_crate_num=1);
+    auto v =
+        rec(visit_view_item_pre=bind visit_view_item(e, _),
+            visit_item_pre=bind visit_item(e, _)
+            with walk::default_visitor());
+    walk::walk_crate(v, crate);
+}
+
+// A diagnostic function for dumping crate metadata to an output stream
+fn list_file_metadata(str path, io::writer out) {
+    alt (get_metadata_section(path)) {
+        case (option::some(?bytes)) {
+            decoder::list_crate_metadata(bytes, out);
+        }
+        case (option::none) {
+            out.write_str("Could not find metadata in " + path + ".\n");
+        }
+    }
+}
+
 fn metadata_matches(&vec[u8] crate_data,
                     &(@ast::meta_item)[] metas) -> bool {
     auto attrs = decoder::get_crate_attributes(crate_data);
@@ -195,34 +224,6 @@ fn visit_item(env e, &@ast::item i) {
             }
         }
         case (_) {
-        }
-    }
-}
-
-// Reads external crates referenced by "use" directives.
-fn read_crates(session::session sess, resolve::crate_map crate_map,
-               &ast::crate crate) {
-    auto e =
-        @rec(sess=sess,
-             crate_map=crate_map,
-             crate_cache=@std::map::new_str_hash[int](),
-             library_search_paths=sess.get_opts().library_search_paths,
-             mutable next_crate_num=1);
-    auto v =
-        rec(visit_view_item_pre=bind visit_view_item(e, _),
-            visit_item_pre=bind visit_item(e, _)
-            with walk::default_visitor());
-    walk::walk_crate(v, crate);
-}
-
-
-fn list_file_metadata(str path, io::writer out) {
-    alt (get_metadata_section(path)) {
-        case (option::some(?bytes)) {
-            decoder::list_crate_metadata(bytes, out);
-        }
-        case (option::none) {
-            out.write_str("Could not find metadata in " + path + ".\n");
         }
     }
 }
