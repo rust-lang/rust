@@ -66,6 +66,7 @@ import link::mangle_exported_name;
 import metadata::tyencode;
 import metadata::creader;
 import metadata::decoder;
+import metadata::cstore;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_to_short_str;
 import syntax::print::pprust::expr_to_str;
@@ -9262,8 +9263,9 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
 fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     let ValueRef[] subcrates = ~[];
     auto i = 1;
-    while (ccx.sess.has_external_crate(i)) {
-        auto name = ccx.sess.get_external_crate(i).name;
+    auto cstore = ccx.sess.get_cstore();
+    while (cstore::have_crate_data(cstore, i)) {
+        auto name = cstore::get_crate_data(cstore, i).name;
         auto cr =
             llvm::LLVMAddGlobal(ccx.llmod, T_int(),
                                 str::buf("_rust_crate_map_" + name));

@@ -15,6 +15,7 @@ import tydecode::parse_def_id;
 import tydecode::parse_ty_data;
 import driver::session;
 import syntax::print::pprust;
+import cstore;
 
 export get_symbol;
 export get_tag_variants;
@@ -138,7 +139,7 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
 // Crate metadata queries
 fn lookup_defs(session::session sess, int cnum, vec[ast::ident] path) ->
    vec[ast::def] {
-    auto data = sess.get_external_crate(cnum).data;
+    auto data = cstore::get_crate_data(sess.get_cstore(), cnum).data;
     ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
@@ -171,7 +172,8 @@ fn lookup_def(int cnum, vec[u8] data, &ast::def_id did_) -> ast::def {
 
 fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
     auto external_crate_id = def._0;
-    auto data = tcx.sess.get_external_crate(external_crate_id).data;
+    auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
+                                       external_crate_id).data;
     auto item = lookup_item(def._1, data);
     auto t = item_type(item, external_crate_id, tcx);
     auto tp_count;
@@ -184,19 +186,22 @@ fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
 }
 
 fn get_type_param_count(ty::ctxt tcx, &ast::def_id def) -> uint {
-    auto data = tcx.sess.get_external_crate(def._0).data;
+    auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
+                                       def._0).data;
     ret item_ty_param_count(lookup_item(def._1, data));
 }
 
 fn get_symbol(session::session sess, ast::def_id def) -> str {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id).data;
+    auto data = cstore::get_crate_data(sess.get_cstore(),
+                                       external_crate_id).data;
     ret item_symbol(lookup_item(def._1, data));
 }
 
 fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
     auto external_crate_id = def._0;
-    auto data = tcx.sess.get_external_crate(external_crate_id).data;
+    auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
+                                       external_crate_id).data;
     auto items = ebml::get_doc(ebml::new_doc(data), tag_items);
     auto item = find_item(def._1, items);
     let ty::variant_info[] infos = ~[];

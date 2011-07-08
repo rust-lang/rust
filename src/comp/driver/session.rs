@@ -46,7 +46,6 @@ type crate_metadata = rec(str name, vec[u8] data);
 obj session(@config targ_cfg,
             @options opts,
             metadata::cstore::cstore cstore,
-            map::hashmap[int, crate_metadata] crates,
             mutable vec[str] used_crate_files,
             mutable vec[str] used_libraries,
             mutable vec[str] used_link_args,
@@ -101,11 +100,6 @@ obj session(@config targ_cfg,
         self.span_bug(sp, "unimplemented " + msg);
     }
     fn unimpl(str msg) -> ! { self.bug("unimplemented " + msg); }
-    fn get_external_crate(int num) -> crate_metadata { ret crates.get(num); }
-    fn set_external_crate(int num, &crate_metadata metadata) {
-        crates.insert(num, metadata);
-    }
-    fn has_external_crate(int num) -> bool { ret crates.contains_key(num); }
     fn add_used_link_args(&str args) {
         used_link_args += str::split(args, ' ' as u8);
     }
