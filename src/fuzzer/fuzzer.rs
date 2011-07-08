@@ -1,3 +1,6 @@
+use std;
+use rustc;
+
 import std::fs;
 import std::getopts;
 import std::getopts::optopt;
@@ -5,56 +8,57 @@ import std::getopts::opt_present;
 import std::getopts::opt_str;
 import std::io;
 import std::vec;
+import std::ivec;
+import std::str;
 
-type src_gen = iter() -> str;
+import rustc::back::link;
+import rustc::syntax::ast;
+import driver = rustc::driver::rustc; // see https://github.com/graydon/rust/issues/624
+import rustc::driver::session;
 
-iter dir_src_gen(str dir) -> str {
-}
 
-fn usage(str binary) {
-    io::stdout().write_line("usage");
-}
-
-type session = rec(str srcdir);
-
-fn make_session(vec[str] args) -> session {
-    // Directory of rust source files to use as input
-    auto opt_src = "src";
-
-    auto binary = vec::shift[str](args);
-    auto opts  = [optopt(opt_src)];
-    auto match;
-    alt (getopts::getopts(args, opts)) {
-        case (getopts::failure(?f)) {
-            log_err #fmt("error: %s", getopts::fail_str(f));
-            fail;
+fn find_rust_files(&mutable str[] files, str root) {
+    for (str filename in fs::list_dir(root)) {
+        if (str::ends_with(filename, ".rs")) {
+           files += ~[filename];
         }
-        case (getopts::success(?m)) {
-            match = m;
-        }
-    };
-
-    if (!opt_present(match, opt_src)) {
-        usage(binary);
-        fail;
     }
-
-    auto srcdir = opt_str(match, opt_src);
-
-    ret rec(srcdir = srcdir);
-}
-
-fn log_session(session sess) {
-    log #fmt("srcdir: %s", sess.srcdir);
-}
-
-fn run_session(session sess) {
 }
 
 fn main(vec[str] args) {
-    auto sess = make_session(args);
-    log_session(sess);
-    run_session(sess);
+    auto files = ~[];
+    auto root = "/Users/jruderman/code/rust/src/lib/"; // XXX
+    find_rust_files(files, root); // not using driver::time here because that currently screws with passing-a-mutable-array
+
+    auto binary = vec::shift[str](args);
+    auto binary_dir = fs::dirname(binary);
+
+    let @session::options sopts =
+        @rec(library=false,
+             static=false,
+             optimize=0u,
+             debuginfo=false,
+             verify=true,
+             run_typestate=true,
+             save_temps=false,
+             stats=false,
+             time_passes=false,
+             time_llvm_passes=false,
+             output_type=link::output_type_bitcode,
+             library_search_paths=[binary_dir + "/lib"],
+             sysroot=driver::get_default_sysroot(binary),
+             cfg=~[],
+             test=false);
+
+    let session::session sess = driver::build_session(sopts);
+
+    log_err ivec::len(files);
+    for (str file in files) {
+        log_err file;
+        // Can't use parse_input here because of https://github.com/graydon/rust/issues/632 :(
+        //auto crate = driver::parse_input(sess, ~[], file);
+        //let @ast::crate crate = driver::time(true, "parsing " + file, bind driver::parse_input(sess, ~[], file));
+    }
 }
 
 // Local Variables:
