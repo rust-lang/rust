@@ -85,7 +85,6 @@ fn add_use_stmt_cnum(&cstore cstore, ast::node_id use_id,
     cstore.use_crate_map.insert(use_id, cnum);
 }
 
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;

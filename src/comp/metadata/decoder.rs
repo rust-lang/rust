@@ -26,6 +26,14 @@ export get_crate_attributes;
 export list_crate_metadata;
 export crate_dep;
 export get_crate_deps;
+export external_resolver;
+
+// A function that takes a def_id relative to the crate being searched and
+// returns a def_id relative to the compilation environment, i.e. if we hit a
+// def_id for an item defined in another crate, somebody needs to figure out
+// what crate that's in and give us a def_id that makes sense for the current
+// build.
+type external_resolver = fn(&ast::def_id def_id) -> ast::def_id;
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool  eq_fn, uint hash) ->
    vec[ebml::doc] {
@@ -85,8 +93,10 @@ fn variant_tag_id(&ebml::doc d) -> ast::def_id {
 }
 
 fn item_type(&ebml::doc item, ast::crate_num this_cnum,
-             ty::ctxt tcx) -> ty::t {
-    fn parse_external_def_id(ast::crate_num this_cnum, str s) -> ast::def_id {
+             ty::ctxt tcx, &external_resolver extres) -> ty::t {
+    fn parse_external_def_id(ast::crate_num this_cnum,
+                             &external_resolver extres,
+                             str s) -> ast::def_id {
         auto buf = str::bytes(s);
         auto external_def_id = parse_def_id(buf);
 
@@ -95,17 +105,13 @@ fn item_type(&ebml::doc item, ast::crate_num this_cnum,
         if (external_def_id._0 == ast::local_crate) {
             ret tup(this_cnum, external_def_id._1);
         } else {
-            // FIXME: This is completely wrong when linking against a crate
-            // that, in turn, links against another crate. We need a mapping
-            // from crate ID to crate "meta" attributes as part of the crate
-            // metadata:
-            fail "trying to load type info from a crate that is \
-                  defined in a different crate";
+            ret extres(external_def_id);
         }
     }
     auto tp = ebml::get_doc(item, tag_items_data_item_type);
+    auto def_parser = bind parse_external_def_id(this_cnum, extres, _);
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
-                      bind parse_external_def_id(this_cnum, _), tcx);
+                      def_parser, tcx);
 }
 
 fn item_ty_param_count(&ebml::doc item) -> uint {
@@ -180,12 +186,12 @@ fn lookup_def(ast::crate_num cnum, vec[u8] data,
     ret def;
 }
 
-fn get_type(&vec[u8] data, ast::def_id def,
-            &ty::ctxt tcx) -> ty::ty_param_count_and_ty {
+fn get_type(&vec[u8] data, ast::def_id def, &ty::ctxt tcx,
+            &external_resolver extres) -> ty::ty_param_count_and_ty {
     auto this_cnum = def._0;
     auto node_id = def._1;
     auto item = lookup_item(node_id, data);
-    auto t = item_type(item, this_cnum, tcx);
+    auto t = item_type(item, this_cnum, tcx, extres);
     auto tp_count;
     auto kind_ch = item_kind(item);
     auto has_ty_params = kind_has_type_params(kind_ch);
@@ -204,7 +210,8 @@ fn get_symbol(&vec[u8] data, ast::node_id id) -> str {
 }
 
 fn get_tag_variants(&vec[u8] data, ast::def_id def,
-                    &ty::ctxt tcx) -> ty::variant_info[] {
+                    &ty::ctxt tcx,
+                    &external_resolver extres) -> ty::variant_info[] {
     auto external_crate_id = def._0;
     auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
                                        external_crate_id).data;
@@ -214,7 +221,7 @@ fn get_tag_variants(&vec[u8] data, ast::def_id def,
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast::def_id did in variant_ids) {
         auto item = find_item(did._1, items);
-        auto ctor_ty = item_type(item, external_crate_id, tcx);
+        auto ctor_ty = item_type(item, external_crate_id, tcx, extres);
         let ty::t[] arg_tys = ~[];
         alt (ty::struct(tcx, ctor_ty)) {
             case (ty::ty_fn(_, ?args, _, _, _)) {
