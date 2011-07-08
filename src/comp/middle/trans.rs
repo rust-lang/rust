@@ -65,7 +65,7 @@ import link::mangle_internal_name_by_path_and_seq;
 import link::mangle_exported_name;
 import metadata::tyencode;
 import metadata::creader;
-import metadata::decoder;
+import metadata::csearch;
 import metadata::cstore;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_to_short_str;
@@ -2220,12 +2220,12 @@ fn trans_res_drop(@block_ctxt cx, ValueRef rs, &ast::def_id did,
             case (_) { ccx.tcx.sess.bug("internal error in trans_res_drop") }
         }
     } else {
-        auto params = decoder::get_type_param_count(ccx.tcx, did);
+        auto params = csearch::get_type_param_count(ccx.tcx, did);
         auto f_t = type_of_fn(ccx, cx.sp, ast::proto_fn,
                               ~[rec(mode=ty::mo_alias(false), ty=inner_t)],
                               ty::mk_nil(ccx.tcx), params);
         get_extern_const(ccx.externs, ccx.llmod,
-                         decoder::get_symbol(ccx.sess, did),
+                         csearch::get_symbol(ccx.sess, did),
                          T_fn_pair(ccx.tn, f_t))
     };
     auto dtor_addr = cx.build.Load
@@ -4942,7 +4942,7 @@ fn lval_val(&@block_ctxt cx, ValueRef val) -> lval_result {
 fn trans_external_path(&@block_ctxt cx, &ast::def_id did,
                        &ty::ty_param_count_and_ty tpt) -> lval_result {
     auto lcx = cx.fcx.lcx;
-    auto name = decoder::get_symbol(lcx.ccx.sess, did);
+    auto name = csearch::get_symbol(lcx.ccx.sess, did);
     auto v =
         get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
                          type_of_ty_param_count_and_ty(lcx, cx.sp, tpt));
@@ -4988,7 +4988,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
             // It's an external discriminant that we haven't seen yet.
 
             assert (vid._0 != ast::local_crate);
-            auto sym = decoder::get_symbol(lcx.ccx.sess, vid);
+            auto sym = csearch::get_symbol(lcx.ccx.sess, vid);
             auto gvar =
                 llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(), str::buf(sym));
             llvm::LLVMSetLinkage(gvar,

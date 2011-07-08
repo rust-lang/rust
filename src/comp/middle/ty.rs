@@ -21,8 +21,7 @@ import ast::controlflow;
 import ast::path_to_str;
 import ast::spanned;
 import syntax::codemap::span;
-import metadata::creader;
-import metadata::decoder;
+import metadata::csearch;
 import util::common::*;
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
@@ -2814,7 +2813,7 @@ fn def_has_ty_params(&ast::def def) -> bool {
 type variant_info = rec(ty::t[] args, ty::t ctor_ty, ast::def_id id);
 
 fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
-    if (ast::local_crate != id._0) { ret decoder::get_tag_variants(cx, id); }
+    if (ast::local_crate != id._0) { ret csearch::get_tag_variants(cx, id); }
     auto item = alt (cx.items.find(id._1)) {
         case (some(?i)) { i }
         case (none) {
@@ -2875,7 +2874,7 @@ fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
     alt (cx.tcache.find(did)) {
         case (some(?tpt)) { ret tpt; }
         case (none) {
-            auto tyt = decoder::get_type(cx, did);
+            auto tyt = csearch::get_type(cx, did);
             cx.tcache.insert(did, tyt);
             ret tyt;
         }

@@ -79,9 +79,9 @@ mod back {
 mod metadata {
     export tyencode;
     export encoder;
-    export decoder;
     export creader;
     export cstore;
+    export csearch;
 
     mod common;
     mod tyencode;
@@ -90,6 +90,7 @@ mod metadata {
     mod decoder;
     mod creader;
     mod cstore;
+    mod csearch;
 }
 
 mod driver {

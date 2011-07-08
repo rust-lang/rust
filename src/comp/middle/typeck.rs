@@ -5,7 +5,7 @@ import ast::local_def;
 import ast::path_to_str;
 import ast::respan;
 import syntax::walk;
-import metadata::decoder;
+import metadata::csearch;
 import driver::session;
 import util::common;
 import syntax::codemap::span;
@@ -522,7 +522,7 @@ mod collect {
     fn getter(@ctxt cx, &ast::def_id id) -> ty::ty_param_count_and_ty {
         if (id._0 != ast::local_crate) {
             // This is a type we need to load in from the crate reader.
-            ret decoder::get_type(cx.tcx, id);
+            ret csearch::get_type(cx.tcx, id);
         }
         auto it = cx.tcx.items.find(id._1);
         auto tpt;

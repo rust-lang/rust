@@ -7,7 +7,7 @@ import ast::def_id;
 import ast::node_id;
 import ast::local_def;
 
-import metadata::decoder;
+import metadata::csearch;
 import metadata::cstore;
 import driver::session::session;
 import util::common::new_def_hash;
@@ -1143,7 +1143,7 @@ fn ns_for_def(def d) -> namespace {
 
 fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns) ->
    option::t[def] {
-    for (def d in decoder::lookup_defs(e.sess, cnum, ids)) {
+    for (def d in csearch::lookup_defs(e.sess, cnum, ids)) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
         if (ns == ns_for_def(d)) { ret some(d); }
     }
