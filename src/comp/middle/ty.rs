@@ -2897,20 +2897,6 @@ fn ret_ty_of_fn(ctxt cx, ast::node_id id) -> t {
     ret ret_ty_of_fn_ty(cx, node_id_to_type(cx, id));
 }
 
-
-// NB: This function requires that the given type has no variables. So, inside
-// typeck, you should use typeck::do_autoderef() instead.
-fn strip_boxes(&ctxt cx, &ty::t t) -> ty::t {
-    auto t1 = t;
-    while (true) {
-        alt (struct(cx, t1)) {
-            case (ty::ty_box(?inner)) { t1 = inner.ty; }
-            case (_) { ret t1; }
-        }
-    }
-    fail;
-}
-
 fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
 
     const int tycat_other = 0;
@@ -2955,7 +2941,7 @@ fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
     }
 
     fn tycat(&ctxt cx, t ty) -> int {
-        alt (struct(cx, strip_boxes(cx, ty))) {
+        alt (struct(cx, ty)) {
             case (ty_bool) { tycat_bool }
             case (ty_int) { tycat_int }
             case (ty_uint) { tycat_int }

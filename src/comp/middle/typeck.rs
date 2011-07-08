@@ -1620,7 +1620,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
 
             demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
-            check_binop_type_compat(fcx, expr.span, lhs_t, binop);
+            auto deref_t = do_autoderef(fcx, expr.span, lhs_t);
+            check_binop_type_compat(fcx, expr.span, deref_t, binop);
 
             auto t = alt (binop) {
                 case (ast::eq) { ty::mk_bool(fcx.ccx.tcx) }
@@ -1629,7 +1630,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (ast::ne) { ty::mk_bool(fcx.ccx.tcx) }
                 case (ast::ge) { ty::mk_bool(fcx.ccx.tcx) }
                 case (ast::gt) { ty::mk_bool(fcx.ccx.tcx) }
-                case (_) { do_autoderef(fcx, expr.span, lhs_t) }
+                case (_) { deref_t }
             };
             write::ty_only_fixup(fcx, id, t);
         }
