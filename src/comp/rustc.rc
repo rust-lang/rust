@@ -81,6 +81,7 @@ mod metadata {
     export encoder;
     export decoder;
     export creader;
+    export cstore;
 
     mod common;
     mod tyencode;
@@ -88,6 +89,7 @@ mod metadata {
     mod encoder;
     mod decoder;
     mod creader;
+    mod cstore;
 }
 
 mod driver {

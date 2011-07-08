@@ -45,6 +45,7 @@ type crate_metadata = rec(str name, vec[u8] data);
 
 obj session(@config targ_cfg,
             @options opts,
+            metadata::cstore::cstore cstore,
             map::hashmap[int, crate_metadata] crates,
             mutable vec[str] used_crate_files,
             mutable vec[str] used_libraries,
@@ -53,6 +54,7 @@ obj session(@config targ_cfg,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
+    fn get_cstore() -> metadata::cstore::cstore { cstore }
     fn span_fatal(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_error(some(sp), msg, cm);
