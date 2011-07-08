@@ -2425,26 +2425,22 @@ fn check_decl_initializer(&@fn_ctxt fcx, ast::node_id nid,
     }
 }
 
-fn check_decl_local(&@fn_ctxt fcx, &@ast::local local) -> @ast::local {
+fn check_decl_local(&@fn_ctxt fcx, &@ast::local local) {
     auto a_id = local.node.id;
     alt (fcx.locals.find(a_id)) {
         case (none) {
-
             fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
                                      local.node.ident);
         }
         case (some(?i)) {
             auto t = ty::mk_var(fcx.ccx.tcx, i);
             write::ty_only_fixup(fcx, a_id, t);
-            auto initopt = local.node.init;
-            alt (initopt) {
+            alt (local.node.init) {
                 case (some(?init)) {
                     check_decl_initializer(fcx, local.node.id, init);
                 }
                 case (_) {/* fall through */ }
             }
-            auto newlocal = rec(init=initopt with local.node);
-            ret @rec(node=newlocal, span=local.span);
         }
     }
 }
