@@ -986,10 +986,57 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_anon_obj(_, _)) {
-            word(s.s, "anon obj");
-            // FIXME (issue #499): nicer pretty-printing of anon objs
+        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
+            head(s, "obj");
+            print_type_params(s, tps);
 
+            // Fields
+            popen(s);
+            fn print_field(&ps s, &ast::anon_obj_field field) {
+                ibox(s, indent_unit);
+                print_mutability(s, field.mut);
+                print_type(s, *field.ty);
+                space(s.s);
+                word(s.s, field.ident);
+                word_space(s, "=");
+                print_expr(s, field.expr);
+                end(s);
+            }
+            fn get_span(&ast::anon_obj_field f) -> codemap::span { 
+                ret f.ty.span; 
+            }
+            alt (anon_obj.fields) {
+                case (none) { }
+                case (some(?fields)) {
+                    commasep_cmnt_ivec(s, consistent, fields, print_field, 
+                                       get_span);
+                }
+            }
+            pclose(s);
+            space(s.s);
+            bopen(s);
+
+            // Methods
+            for (@ast::method meth in anon_obj.methods) {
+                let ast::ty_param[] typarams = ~[];
+                hardbreak_if_not_bol(s);
+                maybe_print_comment(s, meth.span.lo);
+                print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
+                         meth.node.ident, typarams);
+                word(s.s, " ");
+                print_block(s, meth.node.meth.body);
+            }
+            space(s.s);
+
+            // With object
+            alt (anon_obj.with_obj) {
+                case (none) { }
+                case (some(?e)) {
+                    word_space(s, "with");
+                    print_expr(s, e);
+                }
+            }
+            bclose(s, expr.span);
         }
     }
     s.ann.post(ann_node);
