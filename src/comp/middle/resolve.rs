@@ -58,17 +58,10 @@ type scopes = list[scope];
 
 tag import_state {
     todo(@ast::view_item, scopes); // only used for explicit imports
-
     resolving(span);
-    resolved(option::t[def],
-
-             /* value */
-             option::t[def],
-
-             /* type */
-             option::t[def]);
-    /* module */
-
+    resolved(option::t[def], /* value */
+             option::t[def], /* type */
+             option::t[def]); /* module */
 }
 
 type ext_hash = hashmap[tup(def_id, str, namespace), def];
@@ -94,8 +87,7 @@ tag mod_index_entry {
     mie_view_item(@ast::view_item);
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
-    mie_tag_variant(@ast::item, /* tag item */uint);
-    /* variant index */
+    mie_tag_variant(@ast::item /* tag item */, uint /* variant index */);
 
 }
 
@@ -445,24 +437,29 @@ fn add_constr(&@env e, node_id id, &ty::constr_def c) {
 
 
 // Import resolution
-fn resolve_import(&env e, &@ast::view_item it, &scopes sc) {
+fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
     auto defid;
     auto ids;
+    auto name;
     alt (it.node) {
-        case (ast::view_item_import(_, ?_ids, ?_id)) {
+        case (ast::view_item_import(?_name, ?_ids, ?_id)) {
             defid = local_def(_id);
             ids = _ids;
+            name = _name;
         }
     }
     e.imports.insert(defid._1, resolving(it.span));
     auto n_idents = ivec::len(ids);
     auto end_id = ids.(n_idents - 1u);
+    // Ignore the current scope if this import would shadow itself.
+    if (str::eq(name, ids.(0))) {
+        sc = std::list::cdr(sc);
+    }
     if (n_idents == 1u) {
-        auto next_sc = std::list::cdr(sc);
         register(e, defid, it.span, end_id,
-                 lookup_in_scope(e, next_sc, it.span, end_id, ns_value),
-                 lookup_in_scope(e, next_sc, it.span, end_id, ns_type),
-                 lookup_in_scope(e, next_sc, it.span, end_id, ns_module));
+                 lookup_in_scope(e, sc, it.span, end_id, ns_value),
+                 lookup_in_scope(e, sc, it.span, end_id, ns_type),
+                 lookup_in_scope(e, sc, it.span, end_id, ns_module));
         remove_if_unresolved(e.imports, defid._1);
     } else {
         auto dcur = alt(lookup_in_scope(e, sc, it.span, ids.(0), ns_module)) {
