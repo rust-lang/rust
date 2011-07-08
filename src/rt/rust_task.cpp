@@ -118,12 +118,15 @@ void task_start_wrapper(spawn_args *a)
     a->f(&rval, task, a->a3, a->a4);
 
     LOG(task, task, "task exited with value %d", rval);
+    
 
     LOG(task, task, "task ref_count: %d", task->ref_count);
     A(task->sched, task->ref_count >= 0,
       "Task ref_count should not be negative on exit!");
     task->die();
+    task->lock.lock();
     task->notify_tasks_waiting_to_join();
+    task->lock.unlock();
 
     task->yield(1);
 }

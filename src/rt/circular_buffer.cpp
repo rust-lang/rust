@@ -20,6 +20,7 @@ circular_buffer::circular_buffer(rust_task *task, size_t unit_sz) :
          _buffer_sz, _unread, this);
 
     A(sched, _buffer, "Failed to allocate buffer.");
+    task->ref();
 }
 
 circular_buffer::~circular_buffer() {
@@ -28,6 +29,7 @@ circular_buffer::~circular_buffer() {
     W(sched, _unread == 0,
       "freeing circular_buffer with %d unread bytes", _unread);
     task->free(_buffer);
+    --task->ref_count;
 }
 
 size_t
