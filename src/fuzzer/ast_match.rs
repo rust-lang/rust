@@ -21,15 +21,9 @@ fn builtin_equal[T](&T a, &T b) -> bool {
 }
 
 fn main() {
-    // These pass
     assert  builtin_equal(5, 5);
     assert !builtin_equal(5, 4);
-
-    // This passes
     assert !ivec_equal(~[5, 5], ~[5], builtin_equal);
-
-    // These crash
-    // https://github.com/graydon/rust/issues/633
     assert !ivec_equal(~[5, 5], ~[5, 4], builtin_equal);
     assert !ivec_equal(~[5, 5], ~[4, 5], builtin_equal);
     assert  ivec_equal(~[5, 5], ~[5, 5], builtin_equal);
