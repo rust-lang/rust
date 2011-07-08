@@ -22,6 +22,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import std::map::hashmap;
+import std::map::new_int_hash;
 import syntax::print::pprust;
 import common::*;
 
@@ -225,8 +226,10 @@ fn load_library_crate(&session::session sess, span span, ast::crate_num cnum,
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
             auto cstore = sess.get_cstore();
-            cstore::set_crate_data(cstore, cnum,
-                                   rec(name=ident, data=t._1));
+            auto cmeta = rec(name=ident,
+                             data=t._1,
+                             cnum_map = new_int_hash[ast::crate_num]());
+            cstore::set_crate_data(cstore, cnum, cmeta);
             cstore::add_used_crate_file(cstore, t._0);
             ret;
         }

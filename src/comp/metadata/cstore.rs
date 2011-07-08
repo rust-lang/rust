@@ -6,7 +6,15 @@ import std::vec;
 import std::str;
 import syntax::ast;
 
-type crate_metadata = rec(str name, vec[u8] data);
+// A map from external crate numbers (as decoded from some crate file) to
+// local crate numbers (as generated during this session). Each external
+// crate may refer to types in other external crates, and each has their
+// own crate numbers.
+type cnum_map = map::hashmap[ast::crate_num, ast::crate_num];
+
+type crate_metadata = rec(str name,
+                          vec[u8] data,
+                          cnum_map cnum_map);
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
