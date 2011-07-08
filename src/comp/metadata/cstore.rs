@@ -11,7 +11,7 @@ type crate_metadata = rec(str name, vec[u8] data);
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
 
-type cstore = @rec(map::hashmap[int, crate_metadata] metas,
+type cstore = @rec(map::hashmap[ast::crate_num, crate_metadata] metas,
                    use_crate_map use_crate_map,
                    mutable vec[str] used_crate_files,
                    mutable vec[str] used_libraries,
@@ -27,15 +27,15 @@ fn mk_cstore() -> cstore {
              mutable used_link_args = []);
 }
 
-fn get_crate_data(&cstore cstore, int cnum) -> crate_metadata {
+fn get_crate_data(&cstore cstore, ast::crate_num cnum) -> crate_metadata {
     ret cstore.metas.get(cnum);
 }
 
-fn set_crate_data(&cstore cstore, int cnum, &crate_metadata data) {
+fn set_crate_data(&cstore cstore, ast::crate_num cnum, &crate_metadata data) {
     cstore.metas.insert(cnum, data);
 }
 
-fn have_crate_data(&cstore cstore, int cnum) -> bool {
+fn have_crate_data(&cstore cstore, ast::crate_num cnum) -> bool {
     ret cstore.metas.contains_key(cnum);
 }
 
@@ -72,7 +72,8 @@ fn get_used_link_args(&cstore cstore) -> vec[str] {
     ret cstore.used_link_args;
 }
 
-fn add_use_stmt_cnum(&cstore cstore, ast::node_id use_id, int cnum) {
+fn add_use_stmt_cnum(&cstore cstore, ast::node_id use_id,
+                     ast::crate_num cnum) {
     cstore.use_crate_map.insert(use_id, cnum);
 }
 

@@ -82,8 +82,9 @@ fn variant_tag_id(&ebml::doc d) -> ast::def_id {
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
-fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
-    fn parse_external_def_id(int this_cnum, str s) -> ast::def_id {
+fn item_type(&ebml::doc item, ast::crate_num this_cnum,
+             ty::ctxt tcx) -> ty::t {
+    fn parse_external_def_id(ast::crate_num this_cnum, str s) -> ast::def_id {
         // FIXME: This is completely wrong when linking against a crate
         // that, in turn, links against another crate. We need a mapping
         // from crate ID to crate "meta" attributes as part of the crate
@@ -107,7 +108,8 @@ fn item_ty_param_count(&ebml::doc item) -> uint {
     ret ty_param_count;
 }
 
-fn tag_variant_ids(&ebml::doc item, int this_cnum) -> vec[ast::def_id] {
+fn tag_variant_ids(&ebml::doc item,
+                   ast::crate_num this_cnum) -> vec[ast::def_id] {
     let vec[ast::def_id] ids = [];
     auto v = tag_items_data_item_variant;
     for each (ebml::doc p in ebml::tagged_docs(item, v)) {
@@ -136,15 +138,16 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
 }
 
 // Crate metadata queries
-fn lookup_defs(session::session sess, int cnum, vec[ast::ident] path) ->
-   vec[ast::def] {
+fn lookup_defs(session::session sess, ast::crate_num cnum,
+               vec[ast::ident] path) -> vec[ast::def] {
     auto data = cstore::get_crate_data(sess.get_cstore(), cnum).data;
     ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
 
 // FIXME doesn't yet handle re-exported externals
-fn lookup_def(int cnum, vec[u8] data, &ast::def_id did_) -> ast::def {
+fn lookup_def(ast::crate_num cnum, vec[u8] data,
+              &ast::def_id did_) -> ast::def {
     auto item = lookup_item(did_._1, data);
     auto kind_ch = item_kind(item);
     auto did = tup(cnum, did_._1);

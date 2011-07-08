@@ -48,7 +48,7 @@ type env =
     @rec(session::session sess,
          @hashmap[str, int] crate_cache,
          vec[str] library_search_paths,
-         mutable int next_crate_num);
+         mutable ast::crate_num next_crate_num);
 
 fn visit_view_item(env e, &@ast::view_item i) {
     alt (i.node) {
@@ -210,7 +210,7 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     ret option::none[vec[u8]];
 }
 
-fn load_library_crate(&session::session sess, span span, int cnum,
+fn load_library_crate(&session::session sess, span span, ast::crate_num cnum,
                       &ast::ident ident, &(@ast::meta_item)[] metas,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
