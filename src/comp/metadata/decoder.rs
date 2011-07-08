@@ -327,10 +327,10 @@ fn list_meta_items(&ebml::doc meta_items, io::writer out) {
 }
 
 fn list_crate_attributes(&ebml::doc md, io::writer out) {
-    out.write_str("=Crate Attributes=");
+    out.write_str("=Crate Attributes=\n");
 
     for (ast::attribute attr in get_attributes(md)) {
-        out.write_str(#fmt("%s", pprust::attribute_to_str(attr)));
+        out.write_str(#fmt("%s\n", pprust::attribute_to_str(attr)));
     }
 
     out.write_str("\n\n");
