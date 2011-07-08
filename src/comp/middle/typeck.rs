@@ -1750,6 +1750,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
                 case (some(?e)) {
                     check_expr(fcx, e);
+                    demand::simple(fcx, expr.span, fcx.ret_ty,
+                                   expr_ty(fcx.ccx.tcx, e));
                     write::nil_ty(fcx.ccx.tcx, id);
                 }
             }
