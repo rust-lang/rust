@@ -65,8 +65,8 @@ type upcalls =
 fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
     fn decl(type_names tn, ModuleRef llmod, str name, vec[TypeRef] tys,
             TypeRef rv) -> ValueRef {
-        let vec[TypeRef] arg_tys = [T_taskptr(tn)];
-        for (TypeRef t in tys) { arg_tys += [t]; }
+        let TypeRef[] arg_tys = ~[T_taskptr(tn)];
+        for (TypeRef t in tys) { arg_tys += ~[t]; }
         auto fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }

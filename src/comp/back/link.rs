@@ -429,7 +429,7 @@ fn get_symbol_hash(&@crate_ctxt ccx, &ty::t t) -> str {
     ret hash;
 }
 
-fn mangle(&vec[str] ss) -> str {
+fn mangle(&str[] ss) -> str {
     // Follow C++ namespace-mangling style
 
     auto n = "_ZN"; // Begin name-sequence.
@@ -440,14 +440,14 @@ fn mangle(&vec[str] ss) -> str {
     ret n;
 }
 
-fn exported_name(&vec[str] path, &str hash, &str vers) -> str {
+fn exported_name(&str[] path, &str hash, &str vers) -> str {
     // FIXME: versioning isn't working yet
 
-    ret mangle(path + [hash]); //  + "@" + vers;
+    ret mangle(path + ~[hash]); //  + "@" + vers;
 
 }
 
-fn mangle_exported_name(&@crate_ctxt ccx, &vec[str] path, &ty::t t) -> str {
+fn mangle_exported_name(&@crate_ctxt ccx, &str[] path, &ty::t t) -> str {
     auto hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
@@ -456,15 +456,15 @@ fn mangle_internal_name_by_type_only(&@crate_ctxt ccx, &ty::t t, &str name) ->
    str {
     auto s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     auto hash = get_symbol_hash(ccx, t);
-    ret mangle([name, s, hash]);
+    ret mangle(~[name, s, hash]);
 }
 
-fn mangle_internal_name_by_path_and_seq(&@crate_ctxt ccx, &vec[str] path,
+fn mangle_internal_name_by_path_and_seq(&@crate_ctxt ccx, &str[] path,
                                         &str flav) -> str {
-    ret mangle(path + [ccx.names.next(flav)]);
+    ret mangle(path + ~[ccx.names.next(flav)]);
 }
 
-fn mangle_internal_name_by_path(&@crate_ctxt ccx, &vec[str] path) -> str {
+fn mangle_internal_name_by_path(&@crate_ctxt ccx, &str[] path) -> str {
     ret mangle(path);
 }
 
