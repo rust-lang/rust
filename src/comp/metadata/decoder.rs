@@ -24,7 +24,6 @@ export get_type_param_count;
 export lookup_defs;
 export get_crate_attributes;
 export list_crate_metadata;
-export get_exported_metadata;
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool  eq_fn, uint hash) ->
    vec[ebml::doc] {
