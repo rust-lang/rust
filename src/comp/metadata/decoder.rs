@@ -138,9 +138,8 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
 }
 
 // Crate metadata queries
-fn lookup_defs(session::session sess, ast::crate_num cnum,
+fn lookup_defs(&vec[u8] data, ast::crate_num cnum,
                vec[ast::ident] path) -> vec[ast::def] {
-    auto data = cstore::get_crate_data(sess.get_cstore(), cnum).data;
     ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
@@ -187,17 +186,12 @@ fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
     ret tup(tp_count, t);
 }
 
-fn get_type_param_count(ty::ctxt tcx, &ast::def_id def) -> uint {
-    auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
-                                       def._0).data;
-    ret item_ty_param_count(lookup_item(def._1, data));
+fn get_type_param_count(&vec[u8] data, ast::node_id id) -> uint {
+    ret item_ty_param_count(lookup_item(id, data));
 }
 
-fn get_symbol(session::session sess, ast::def_id def) -> str {
-    auto external_crate_id = def._0;
-    auto data = cstore::get_crate_data(sess.get_cstore(),
-                                       external_crate_id).data;
-    ret item_symbol(lookup_item(def._1, data));
+fn get_symbol(&vec[u8] data, ast::node_id id) -> str {
+    ret item_symbol(lookup_item(id, data));
 }
 
 fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
