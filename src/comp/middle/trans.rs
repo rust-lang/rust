@@ -4488,15 +4488,20 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure. 
 fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
-    tup(ValueRef, TypeRef)
-{
+    tup(ValueRef, TypeRef) {
     auto upvar_count = std::ivec::len(upvars);
+    auto has_iterbody = !option::is_none(cx.fcx.lliterbody);
+    if (has_iterbody) { upvar_count += 1u; }
     auto llbindingsptr;
 
     if (upvar_count > 0u) {
         // Gather up the upvars.
         let ValueRef[] llbindings = ~[];
         let TypeRef[] llbindingtys = ~[];
+        if (has_iterbody) {
+            llbindings += ~[option::get(cx.fcx.lliterbody)];
+            llbindingtys += ~[val_ty(llbindings.(0))];
+        }
         for (ast::node_id nid in upvars) {
             auto llbinding;
             alt (cx.fcx.lllocals.find(nid)) {
@@ -4566,9 +4571,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
-                    TypeRef llenvptrty, &ast::node_id[] upvars)
-{
-    auto upvar_count = std::ivec::len(upvars);
+                    TypeRef llenvptrty, &ast::node_id[] upvars) {
     auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // Populate the upvars from the environment.
@@ -4581,7 +4584,17 @@ fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
     auto llremotebindingsptr =
         copy_args_bcx.build.Load(llremotebindingsptrptr);
     auto i = 0u;
-    while (i < upvar_count) {
+    auto end = std::ivec::len(upvars);
+    if (!option::is_none(cx.fcx.lliterbody)) {
+        end += 1u;
+        i += 1u;
+        auto lliterbodyptr =
+            copy_args_bcx.build.GEP(llremotebindingsptr,
+                                    ~[C_int(0), C_int(0)]);
+        auto lliterbody = copy_args_bcx.build.Load(lliterbodyptr);
+        fcx.lliterbody = some(lliterbody);
+    }
+    while (i < end) {
         auto upvar_id = upvars.(i);
         auto llupvarptrptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
