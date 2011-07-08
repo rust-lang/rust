@@ -53,14 +53,7 @@ type env =
 fn visit_view_item(env e, &@ast::view_item i) {
     alt (i.node) {
         case (ast::view_item_use(?ident, ?meta_items, ?id)) {
-            auto cnum;
-            if (!e.crate_cache.contains_key(ident)) {
-                cnum = e.next_crate_num;
-                load_library_crate(e.sess, i.span, cnum, ident,
-                                   meta_items, e.library_search_paths);
-                e.crate_cache.insert(ident, e.next_crate_num);
-                e.next_crate_num += 1;
-            } else { cnum = e.crate_cache.get(ident); }
+            auto cnum = resolve_crate(e, ident, meta_items, i.span);
             cstore::add_use_stmt_cnum(e.sess.get_cstore(), id, cnum);
         }
         case (_) { }
@@ -242,6 +235,19 @@ fn load_library_crate(&session::session sess, span span, ast::crate_num cnum,
     sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
 }
 
+fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
+                 span span) -> ast::crate_num {
+    if (!e.crate_cache.contains_key(ident)) {
+        auto cnum = e.next_crate_num;
+        load_library_crate(e.sess, span, cnum, ident,
+                           metas, e.library_search_paths);
+        e.crate_cache.insert(ident, e.next_crate_num);
+        e.next_crate_num += 1;
+        ret cnum;
+    } else {
+        ret e.crate_cache.get(ident);
+    }
+ }
 
 
 // Local Variables:
