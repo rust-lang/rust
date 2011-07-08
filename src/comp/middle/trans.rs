@@ -4001,12 +4001,20 @@ mod ivec {
             copy_cx.build.Phi(T_ptr(llunitty),
                               ~[dest_ptr_stack, dest_ptr_heap],
                               ~[stack_cx.llbb, heap_cx.llbb]);
-        auto lhs_len_unscaled = copy_cx.build.UDiv(lhs_len, unit_sz);
-        auto lhs_end_ptr =
-            copy_cx.build.InBoundsGEP(lhs_data, ~[lhs_len_unscaled]);
-        auto rhs_len_unscaled = copy_cx.build.UDiv(rhs_len, unit_sz);
-        auto rhs_end_ptr =
-            copy_cx.build.InBoundsGEP(rhs_data, ~[rhs_len_unscaled]);
+
+        auto lhs_end_ptr; auto rhs_end_ptr;
+        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
+            lhs_end_ptr = copy_cx.build.InBoundsGEP(lhs_data, ~[lhs_len]);
+            rhs_end_ptr = copy_cx.build.InBoundsGEP(rhs_data, ~[rhs_len]);
+        } else {
+            auto lhs_len_unscaled = copy_cx.build.UDiv(lhs_len, unit_sz);
+            lhs_end_ptr = copy_cx.build.InBoundsGEP(lhs_data,
+                                                    ~[lhs_len_unscaled]);
+            auto rhs_len_unscaled = copy_cx.build.UDiv(rhs_len, unit_sz);
+            rhs_end_ptr = copy_cx.build.InBoundsGEP(rhs_data,
+                                                    ~[rhs_len_unscaled]);
+        }
+
         auto dest_ptr_ptr = alloca(copy_cx, T_ptr(llunitty));
         copy_cx.build.Store(first_dest_ptr, dest_ptr_ptr);
         auto lhs_ptr_ptr = alloca(copy_cx, T_ptr(llunitty));
@@ -4027,18 +4035,22 @@ mod ivec {
                                  rhs_copy_cx.llbb);
         auto dest_ptr_lhs_copy = lhs_do_copy_cx.build.Load(dest_ptr_ptr);
         auto lhs_val = load_if_immediate(lhs_do_copy_cx, lhs_ptr, unit_ty);
-        rs =
-            copy_val(lhs_do_copy_cx, INIT, dest_ptr_lhs_copy, lhs_val,
-                     unit_ty);
+        rs = copy_val(lhs_do_copy_cx, INIT, dest_ptr_lhs_copy, lhs_val,
+                      unit_ty);
         lhs_do_copy_cx = rs.bcx;
-        {
-            auto d = lhs_do_copy_cx.build.InBoundsGEP(dest_ptr_lhs_copy,
-                                                      ~[C_int(1)]);
-            auto lhs = lhs_do_copy_cx.build.InBoundsGEP(lhs_ptr,
-                                                        ~[C_int(1)]);
-            lhs_do_copy_cx.build.Store(d, dest_ptr_ptr);
-            lhs_do_copy_cx.build.Store(lhs, lhs_ptr_ptr);
+
+        // Increment both pointers.
+        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
+            // We have to increment by the dynamically-computed size.
+            incr_ptr(lhs_do_copy_cx, dest_ptr_lhs_copy, unit_sz,
+                     dest_ptr_ptr);
+            incr_ptr(lhs_do_copy_cx, lhs_ptr, unit_sz, lhs_ptr_ptr);
+        } else {
+            incr_ptr(lhs_do_copy_cx, dest_ptr_lhs_copy, C_int(1),
+                     dest_ptr_ptr);
+            incr_ptr(lhs_do_copy_cx, lhs_ptr, C_int(1), lhs_ptr_ptr);
         }
+
         lhs_do_copy_cx.build.Br(lhs_copy_cx.llbb);
         // Copy in elements from the RHS.
 
@@ -4055,14 +4067,19 @@ mod ivec {
             copy_val(rhs_do_copy_cx, INIT, dest_ptr_rhs_copy, rhs_val,
                      unit_ty);
         rhs_do_copy_cx = rs.bcx;
-        {
-            auto d = rhs_do_copy_cx.build.InBoundsGEP(dest_ptr_rhs_copy,
-                                                      ~[C_int(1)]);
-            auto rhs = rhs_do_copy_cx.build.InBoundsGEP(rhs_ptr,
-                                                        ~[C_int(1)]);
-            rhs_do_copy_cx.build.Store(d, dest_ptr_ptr);
-            rhs_do_copy_cx.build.Store(rhs, rhs_ptr_ptr);
+
+        // Increment both pointers.
+        if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
+            // We have to increment by the dynamically-computed size.
+            incr_ptr(rhs_do_copy_cx, dest_ptr_rhs_copy, unit_sz,
+                     dest_ptr_ptr);
+            incr_ptr(rhs_do_copy_cx, rhs_ptr, unit_sz, rhs_ptr_ptr);
+        } else {
+            incr_ptr(rhs_do_copy_cx, dest_ptr_rhs_copy, C_int(1),
+                     dest_ptr_ptr);
+            incr_ptr(rhs_do_copy_cx, rhs_ptr, C_int(1), rhs_ptr_ptr);
         }
+
         rhs_do_copy_cx.build.Br(rhs_copy_cx.llbb);
         // Finally done!
 
