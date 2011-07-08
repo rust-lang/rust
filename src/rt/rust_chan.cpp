@@ -88,7 +88,7 @@ void rust_chan::send(void *sptr) {
         buffer.dequeue(NULL);
     } else {
         rust_port *target_port = port->referent();
-        scoped_lock right(target_port->lock);
+        scoped_lock with(target_port->lock);
         if (target_port->task->blocked_on(target_port)) {
             DLOG(sched, comm, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);

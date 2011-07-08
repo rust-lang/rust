@@ -2,13 +2,6 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#if 0
-inline void operator delete(void *mem, rust_task *task) {
-    task->free(mem);
-    return;
-}
-#endif
-
 // FIXME: It would be really nice to be able to get rid of this.
 inline void *operator new[](size_t size, rust_task *task) {
     return task->malloc(size);
