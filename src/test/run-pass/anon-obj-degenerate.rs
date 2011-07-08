@@ -1,4 +1,3 @@
-//xfail-stage0
 use std;
 
 fn main() {
