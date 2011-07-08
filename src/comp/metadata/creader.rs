@@ -138,9 +138,10 @@ fn load_library_crate(&session::session sess, span span, int cnum,
                       &vec[str] library_search_paths) {
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
-            cstore::set_crate_data(sess.get_cstore(), cnum,
+            auto cstore = sess.get_cstore();
+            cstore::set_crate_data(cstore, cnum,
                                    rec(name=ident, data=t._1));
-            sess.add_used_crate_file(t._0);
+            cstore::add_used_crate_file(cstore, t._0);
             ret;
         }
         case (_) { }

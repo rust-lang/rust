@@ -1,18 +1,19 @@
 import std::map;
+import std::vec;
 
 type crate_metadata = rec(str name, vec[u8] data);
 
 type cstore = @rec(map::hashmap[int, crate_metadata] metas,
-                   vec[str] used_crate_files,
-                   vec[str] used_libraries,
-                   vec[str] used_link_args);
+                   mutable vec[str] used_crate_files,
+                   mutable vec[str] used_libraries,
+                   mutable vec[str] used_link_args);
 
 fn mk_cstore() -> cstore {
     auto meta_cache = map::new_int_hash[crate_metadata]();
     ret @rec(metas = meta_cache,
-             used_crate_files = [],
-             used_libraries = [],
-             used_link_args = []);
+             mutable used_crate_files = [],
+             mutable used_libraries = [],
+             mutable used_link_args = []);
 }
 
 fn get_crate_data(&cstore cstore, int cnum) -> crate_metadata {
@@ -25,6 +26,16 @@ fn set_crate_data(&cstore cstore, int cnum, &crate_metadata data) {
 
 fn have_crate_data(&cstore cstore, int cnum) -> bool {
     ret cstore.metas.contains_key(cnum);
+}
+
+fn add_used_crate_file(&cstore cstore, &str lib) {
+    if (!vec::member(lib, cstore.used_crate_files)) {
+        cstore.used_crate_files += [lib];
+    }
+}
+
+fn get_used_crate_files(&cstore cstore) -> vec[str] {
+    ret cstore.used_crate_files;
 }
 
 // Local Variables:

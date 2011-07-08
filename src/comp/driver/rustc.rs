@@ -2,6 +2,7 @@
 
 // -*- rust -*-
 import metadata::creader;
+import metadata::cstore;
 import syntax::parse::parser;
 import syntax::parse::token;
 import syntax::ast;
@@ -352,8 +353,8 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
 
 fn build_session(@session::options sopts) -> session::session {
     auto target_cfg = build_target_config();
-    auto cstore = metadata::cstore::mk_cstore();
-    ret session::session(target_cfg, sopts, cstore, [],
+    auto cstore = cstore::mk_cstore();
+    ret session::session(target_cfg, sopts, cstore,
                          [], [], codemap::new_codemap(), 0u);
 }
 
@@ -516,7 +517,7 @@ fn main(vec[str] args) {
         };
     }
 
-    for (str cratepath in sess.get_used_crate_files()) {
+    for (str cratepath in cstore::get_used_crate_files(sess.get_cstore())) {
         auto dir = fs::dirname(cratepath);
         if (dir != "") {
             gcc_args += ["-L" + dir];
