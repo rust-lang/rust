@@ -1,4 +1,4 @@
-// Metadata decoding
+// Decoding metadata from a single crate's metadata
 
 import std::ebml;
 import std::ivec;
@@ -85,14 +85,21 @@ fn variant_tag_id(&ebml::doc d) -> ast::def_id {
 fn item_type(&ebml::doc item, ast::crate_num this_cnum,
              ty::ctxt tcx) -> ty::t {
     fn parse_external_def_id(ast::crate_num this_cnum, str s) -> ast::def_id {
-        // FIXME: This is completely wrong when linking against a crate
-        // that, in turn, links against another crate. We need a mapping
-        // from crate ID to crate "meta" attributes as part of the crate
-        // metadata:
-
         auto buf = str::bytes(s);
         auto external_def_id = parse_def_id(buf);
-        ret tup(this_cnum, external_def_id._1);
+
+        // This item was defined in the crate we're searching if it's has the
+        // local crate number, otherwise we need to search a different crate
+        if (external_def_id._0 == ast::local_crate) {
+            ret tup(this_cnum, external_def_id._1);
+        } else {
+            // FIXME: This is completely wrong when linking against a crate
+            // that, in turn, links against another crate. We need a mapping
+            // from crate ID to crate "meta" attributes as part of the crate
+            // metadata:
+            fail "trying to load type info from a crate that is \
+                  defined in a different crate";
+        }
     }
     auto tp = ebml::get_doc(item, tag_items_data_item_type);
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,

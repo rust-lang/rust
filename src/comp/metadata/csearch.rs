@@ -1,3 +1,5 @@
+// Searching for information from the cstore
+
 import syntax::ast;
 import middle::ty;
 import std::io;
