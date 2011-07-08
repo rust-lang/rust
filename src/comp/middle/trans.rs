@@ -5439,6 +5439,11 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
     auto fcx = new_fn_ctxt(cx, sp, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
+    // Since we might need to construct derived tydescs that depend on
+    // our bound tydescs, we need to load tydescs out of the environment
+    // before derived tydescs are constructed. To do this, we load them
+    // in the copy_args block.
+    auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // The 'llenv' that will arrive in the thunk we're creating is an
     // environment that will contain the values of its arguments and a pointer
@@ -5448,7 +5453,8 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
     // 'closure_ty', which was determined by trans_bind.
     auto llclosure_ptr_ty =
         type_of(cx.ccx, sp, ty::mk_imm_box(cx.ccx.tcx, closure_ty));
-    auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
+    auto llclosure = copy_args_bcx.build.PointerCast(fcx.llenv,
+                                                     llclosure_ptr_ty);
 
     // "target", in this context, means the function that's having some of its
     // arguments bound and that will be called inside the thunk we're
@@ -5487,11 +5493,11 @@ fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,
     let uint i = 0u;
     while (i < ty_param_count) {
         auto lltyparam_ptr =
-            GEP_tup_like(bcx, closure_ty, llclosure,
+            GEP_tup_like(copy_args_bcx, closure_ty, llclosure,
                          ~[0, abi::box_rc_field_body,
                            abi::closure_elt_ty_params, i as int]);
-        bcx = lltyparam_ptr.bcx;
-        auto td = bcx.build.Load(lltyparam_ptr.val);
+        copy_args_bcx = lltyparam_ptr.bcx;
+        auto td = copy_args_bcx.build.Load(lltyparam_ptr.val);
         llargs += ~[td];
         fcx.lltydescs += ~[td];
         i += 1u;
