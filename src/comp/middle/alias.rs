@@ -300,7 +300,7 @@ fn arm_defnums(&ast::arm arm) -> vec[node_id] {
             case (_) { }
         }
     }
-    walk_pat(dnums, arm.pat);
+    walk_pat(dnums, arm.pats.(0));
     ret dnums;
 }
 

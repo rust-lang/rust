@@ -10,6 +10,7 @@ import driver::session;
 import util::common;
 import syntax::codemap::span;
 import std::map::new_int_hash;
+import std::map::new_str_hash;
 import util::common::new_def_hash;
 import util::common::log_expr_err;
 import middle::ty;
@@ -1286,10 +1287,10 @@ fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
     }
 }
 
-
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
+fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
+             ty::t expected) {
     alt (pat.node) {
         case (ast::pat_wild) {
             write::ty_only_fixup(fcx, pat.id, expected);
@@ -1303,6 +1304,12 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
             auto vid = lookup_local(fcx, pat.span, pat.id);
             auto typ = ty::mk_var(fcx.ccx.tcx, vid);
             typ = demand::simple(fcx, pat.span, expected, typ);
+            auto canon_id = map.get(name);
+            if (canon_id != pat.id) {
+                auto ct = ty::mk_var(fcx.ccx.tcx,
+                                     lookup_local(fcx, pat.span, canon_id));
+                typ = demand::simple(fcx, pat.span, ct, typ);
+            }
             write::ty_only_fixup(fcx, pat.id, typ);
         }
         case (ast::pat_tag(?path, ?subpats)) {
@@ -1358,7 +1365,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat, ty::t expected) {
 
                     auto i = 0u;
                     for (@ast::pat subpat in subpats) {
-                        check_pat(fcx, subpat, arg_types.(i));
+                        check_pat(fcx, map, subpat, arg_types.(i));
                         i += 1u;
                     }
                 } else if (subpats_len > 0u) {
@@ -1884,10 +1891,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // bindings.
 
             auto pattern_ty = ty::expr_ty(fcx.ccx.tcx, expr);
-            let vec[@ast::pat] pats = [];
             for (ast::arm arm in arms) {
-                check_pat(fcx, arm.pat, pattern_ty);
-                pats += [arm.pat];
+                auto id_map = ast::pat_id_map(arm.pats.(0));
+                for (@ast::pat p in arm.pats) {
+                    check_pat(fcx, id_map, p, pattern_ty);
+                }
             }
             // Now typecheck the blocks.
 

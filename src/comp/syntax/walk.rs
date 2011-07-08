@@ -334,7 +334,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_alt(?x, ?arms)) {
             walk_expr(v, x);
             for (ast::arm a in arms) {
-                walk_pat(v, a.pat);
+                for (@ast::pat p in a.pats) { walk_pat(v, p); }
                 v.visit_arm_pre(a);
                 walk_block(v, a.block);
                 v.visit_arm_post(a);

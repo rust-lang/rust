@@ -206,6 +206,15 @@ fn all[T](fn(&T)->bool f, &T[] v) -> bool {
     ret true;
 }
 
+fn member[T](&T x, &T[] v) -> bool {
+    for (T elt in v) { if (x == elt) { ret true; } }
+    ret false;
+}
+
+fn find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
+    for (T elt in v) { if (f(elt)) { ret some[T](elt); } }
+    ret none[T];
+}
 
 mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {

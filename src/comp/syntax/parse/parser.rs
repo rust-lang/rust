@@ -1359,10 +1359,10 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
         eat_word(p, "case");
         auto parens = false;
         if (p.peek() == token::LPAREN) { parens = true; p.bump(); }
-        auto pat = parse_pat(p);
+        auto pats = parse_pats(p);
         if (parens) { expect(p, token::RPAREN); }
         auto block = parse_block(p);
-        arms += ~[rec(pat=pat, block=block)];
+        arms += ~[rec(pats=pats, block=block)];
     }
     auto hi = p.get_hi_pos();
     p.bump();
@@ -1405,18 +1405,30 @@ fn parse_initializer(&parser p) -> option::t[ast::initializer] {
             p.bump();
             ret some(rec(op=ast::init_move, expr=parse_expr(p)));
         }
-        case (
-             // Now that the the channel is the first argument to receive,
-             // combining it with an initializer doesn't really make sense.
-             // case (token::RECV) {
-             //     p.bump();
-             //     ret some(rec(op = ast::init_recv,
-             //                  expr = parse_expr(p)));
-             // }
-             _) {
+        // Now that the the channel is the first argument to receive,
+        // combining it with an initializer doesn't really make sense.
+        // case (token::RECV) {
+        //     p.bump();
+        //     ret some(rec(op = ast::init_recv,
+        //                  expr = parse_expr(p)));
+        // }
+        case (_) {
             ret none;
         }
     }
+}
+
+fn parse_pats(&parser p) -> (@ast::pat)[] {
+    auto pats = ~[];
+    while (true) {
+        pats += ~[parse_pat(p)];
+        if (p.peek() == token::BINOP(token::OR)) {
+            p.bump();
+        } else {
+            break;
+        }
+    }
+    ret pats;
 }
 
 fn parse_pat(&parser p) -> @ast::pat {

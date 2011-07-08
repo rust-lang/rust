@@ -288,7 +288,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
                                         c.node.path.node.idents, ns_value));
     }
     fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
-        walk_pat(*e, sc, a.pat);
+        for (@ast::pat p in a.pats) { walk_pat(*e, sc, p); }
         visit_arm_with_scope(a, sc, v);
     }
     fn walk_pat(&env e, &scopes sc, &@ast::pat pat) {
@@ -648,7 +648,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
             }
             case (scope_block(?b)) { ret lookup_in_block(name, b.node, ns); }
             case (scope_arm(?a)) {
-                if (ns == ns_value) { ret lookup_in_pat(name, *a.pat); }
+                if (ns == ns_value) { ret lookup_in_pat(name, *a.pats.(0)); }
             }
         }
         ret none[def];
@@ -1264,7 +1264,32 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
             case (_) { }
         }
     }
-    walk_pat(checker(*e, "binding"), a.pat);
+    auto ch0 = checker(*e, "binding");
+    walk_pat(ch0, a.pats.(0));
+    auto seen0 = ch0.seen;
+    auto i = ivec::len(a.pats);
+    while (i > 1u) {
+        i -= 1u;
+        auto ch = checker(*e, "binding");
+        walk_pat(ch, a.pats.(i));
+        // Ensure the bindings introduced in this pattern are the same as in
+        // the first pattern.
+        if (vec::len(ch.seen) != vec::len(seen0)) {
+            e.sess.span_err(a.pats.(i).span,
+                            "inconsistent number of bindings");
+        } else {
+            for (ident name in ch.seen) {
+                if (option::is_none(vec::find(bind str::eq(name, _),
+                                              seen0))) {
+                    // Fight the alias checker
+                    auto name_ = name;
+                    e.sess.span_err
+                        (a.pats.(i).span, "binding " + name_ + 
+                         " does not occur in first pattern");
+                }
+            }
+        }
+    }
 }
 
 fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {

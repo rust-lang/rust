@@ -125,6 +125,25 @@ tag pat_ {
     pat_tag(path, (@pat)[]);
 }
 
+type pat_id_map = std::map::hashmap[str, ast::node_id];
+
+// This is used because same-named variables in alternative patterns need to
+// use the node_id of their namesake in the first pattern.
+fn pat_id_map(&@pat pat) -> pat_id_map {
+    auto map = std::map::new_str_hash[node_id]();
+    fn walk(&pat_id_map map, &@pat pat) {
+        alt (pat.node) {
+            pat_bind(?name) { map.insert(name, pat.id); }
+            pat_tag(_, ?sub) {
+                for (@pat p in sub) { walk(map, p); }
+            }
+            _ {}
+        }
+    }
+    walk(map, pat);
+    ret map;
+}
+
 tag mutability { mut; imm; maybe_mut; }
 
 tag layer { layer_value; layer_state; layer_gc; }
@@ -227,7 +246,7 @@ type decl = spanned[decl_];
 
 tag decl_ { decl_local(@local); decl_item(@item); }
 
-type arm = rec(@pat pat, block block);
+type arm = rec((@pat)[] pats, block block);
 
 type elt = rec(mutability mut, @expr expr);
 

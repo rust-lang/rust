@@ -4842,8 +4842,10 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
     }
 }
 
+type bind_map = hashmap[ast::ident, result];
+
 fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
-                     bool is_mem) -> result {
+                     bool is_mem, &bind_map bound) -> result {
     alt (pat.node) {
         case (ast::pat_wild) { ret rslt(cx, llval); }
         case (ast::pat_lit(_)) { ret rslt(cx, llval); }
@@ -4853,8 +4855,9 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 val = spill_if_immediate
                     (cx, llval, node_id_type(cx.fcx.lcx.ccx, pat.id));
             }
-            cx.fcx.lllocals.insert(pat.id, val);
-            ret rslt(cx, val);
+            auto r = rslt(cx, val);
+            bound.insert(name, r);
+            ret r;
         }
         case (ast::pat_tag(_, ?subpats)) {
             if (std::ivec::len[@ast::pat](subpats) == 0u) {
@@ -4887,7 +4890,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                             ty_param_substs, i);
                 this_cx = rslt.bcx;
                 auto subpat_res =
-                    trans_pat_binding(this_cx, subpat, rslt.val, true);
+                    trans_pat_binding(this_cx, subpat, rslt.val, true, bound);
                 this_cx = subpat_res.bcx;
                 i += 1;
             }
@@ -4902,16 +4905,34 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
     auto this_cx = expr_res.bcx;
     let result[] arm_results = ~[];
     for (ast::arm arm in arms) {
-        auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
-        auto match_res =
-            trans_pat_match(this_cx, arm.pat, expr_res.val, next_cx);
-        auto binding_res =
-            trans_pat_binding(match_res.bcx, arm.pat, expr_res.val, false);
-        auto block_cx = new_scope_block_ctxt(match_res.bcx, "case block");
-        binding_res.bcx.build.Br(block_cx.llbb);
+        auto bind_maps = ~[];
+        auto block_cx = new_scope_block_ctxt(expr_res.bcx, "case block");
+        for (@ast::pat pat in arm.pats) {
+            auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
+            auto match_res =
+                trans_pat_match(this_cx, pat, expr_res.val, next_cx);
+            auto bind_map = new_str_hash[result]();
+            auto binding_res = trans_pat_binding
+                (match_res.bcx, pat, expr_res.val, false, bind_map);
+            bind_maps += ~[bind_map];
+            binding_res.bcx.build.Br(block_cx.llbb);
+            this_cx = next_cx;
+        }
+        // Go over the names and node_ids of the bound variables, add a Phi
+        // node for each and register the bindings.
+        for each (@tup(ast::ident, ast::node_id) item in
+                  ast::pat_id_map(arm.pats.(0)).items()) {
+            auto vals = ~[]; auto llbbs = ~[];
+            for (bind_map map in bind_maps) {
+                auto rslt = map.get(item._0);
+                vals += ~[rslt.val];
+                llbbs += ~[rslt.bcx.llbb];
+            }
+            auto phi = block_cx.build.Phi(val_ty(vals.(0)), vals, llbbs);
+            block_cx.fcx.lllocals.insert(item._1, phi);
+        }
         auto block_res = trans_block(block_cx, arm.block, output);
         arm_results += ~[block_res];
-        this_cx = next_cx;
     }
     auto default_cx = this_cx;
     trans_fail(default_cx, some[span](expr.span),

@@ -394,7 +394,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
 }
 
 fn visit_arm[E](&arm a, &E e, &vt[E] v) {
-    vt(v).visit_pat(a.pat, e, v);
+    for (@pat p in a.pats) { vt(v).visit_pat(p, e, v); }
     vt(v).visit_block(a.block, e, v);
 }
 // Local Variables:

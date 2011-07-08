@@ -255,7 +255,8 @@ fn noop_fold_stmt(&stmt_ s, ast_fold fld) -> stmt_ {
 }
 
 fn noop_fold_arm(&arm a, ast_fold fld) -> arm {
-    ret rec(pat=fld.fold_pat(a.pat), block=fld.fold_block(a.block));
+    ret rec(pats=ivec::map(fld.fold_pat, a.pats),
+            block=fld.fold_block(a.block));
 }
 
 fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {

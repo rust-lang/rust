@@ -832,9 +832,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             for (ast::arm arm in arms) {
                 space(s.s);
                 head(s, "case");
-                popen(s);
-                print_pat(s, arm.pat);
-                pclose(s);
+                auto first = true;
+                for (@ast::pat p in arm.pats) {
+                    if (first) { first = false; }
+                    else { space(s.s); word_space(s, "|"); }
+                    print_pat(s, p);
+                }
                 space(s.s);
                 print_block(s, arm.block);
             }
