@@ -39,7 +39,8 @@ stage1/%.o: stage1/%.s
 	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCCISH_CFLAGS) -o $@ -c $<
 
-stage1/%$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0) stage0/intrinsics.bc
+stage1/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0) \
+	stage0/intrinsics.bc
 	@$(call E, compile_and_link: $@)
 	$(STAGE0) -o $@ $<
 
