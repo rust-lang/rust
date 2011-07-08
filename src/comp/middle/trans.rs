@@ -282,7 +282,8 @@ fn add_clean(&@block_ctxt cx, ValueRef val, ty::t ty) {
     find_scope_cx(cx).cleanups += ~[clean(bind drop_slot(_, val, ty))];
 }
 fn add_clean_temp(&@block_ctxt cx, ValueRef val, ty::t ty) {
-    find_scope_cx(cx).cleanups += ~[clean_temp(val, bind drop_ty(_, val, ty))];
+    find_scope_cx(cx).cleanups += ~[clean_temp(val,
+                                               bind drop_ty(_, val, ty))];
 }
 
 // Note that this only works for temporaries. We should, at some point, move
