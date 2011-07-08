@@ -43,6 +43,7 @@ tag token {
     /* Structural symbols */
     AT;
     DOT;
+    ELIPSIS;
     COMMA;
     SEMI;
     COLON;

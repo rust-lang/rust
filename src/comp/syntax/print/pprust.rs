@@ -602,11 +602,19 @@ fn print_stmt(&ps s, &ast::stmt st) {
     maybe_print_trailing_comment(s, st.span, none[uint]);
 }
 
-fn print_block(&ps s, ast::block blk) {
+fn print_block(&ps s, &ast::block blk) {
+    print_possibly_embedded_block(s, blk, false);
+} 
+
+fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded) {
     maybe_print_comment(s, blk.span.lo);
     auto ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
-    bopen(s);
+    if (embedded) {
+        word(s.s, "#{"); end(s);
+    } else {
+        bopen(s);
+    }
     for (@ast::stmt st in blk.node.stmts) { print_stmt(s, *st) }
     alt (blk.node.expr) {
         case (some(?expr)) {
@@ -660,6 +668,33 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
         }
     }
     do_else(s, elseopt);
+}
+
+fn print_mac(&ps s, &ast::mac m) {
+    alt (m.node) {
+        case (ast::mac_invoc(?path, ?args, ?body)) {
+            word(s.s, "#");
+            print_path(s, path);
+            if (ivec::len(args) > 0u) {
+                popen(s);
+                commasep_exprs(s, inconsistent, args);
+                pclose(s);
+            }
+            // FIXME: extension 'body'
+
+        }
+        case (ast::mac_embed_type(?ty)) {
+            word(s.s, "#<");
+            print_type(s, *ty);
+            word(s.s, ">");
+        }
+        case (ast::mac_embed_block(?blk)) {
+            print_possibly_embedded_block(s, blk, true);
+        }
+        case (ast::mac_elipsis) {
+            word(s.s, "...");
+        }
+    }
 }
 
 fn print_expr(&ps s, &@ast::expr expr) {
@@ -961,16 +996,8 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_ext(?path, ?args, ?body)) {
-            word(s.s, "#");
-            print_path(s, path);
-            if (ivec::len(args) > 0u) {
-                popen(s);
-                commasep_exprs(s, inconsistent, args);
-                pclose(s);
-            }
-            // FIXME: extension 'body'
-
+        case (ast::expr_mac(?m)) {
+            print_mac(s, m);
         }
         case (ast::expr_port(?ot)) {
             word(s.s, "port");

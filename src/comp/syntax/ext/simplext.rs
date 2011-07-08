@@ -22,11 +22,12 @@ import ast::path;
 import ast::path_;
 import ast::expr_path;
 import ast::expr_vec;
-import ast::expr_ext;
+import ast::expr_mac;
+import ast::mac_invoc;
 
 export add_new_extension;
 
-fn lookup(&vec[invk_binding] ibs, ident i) -> option::t[invk_binding] {
+fn lookup(&(invk_binding)[] ibs, ident i) -> option::t[invk_binding] {
     for (invk_binding ib in ibs) {
         alt (ib) {
             case (ident_binding(?p_id, _)) { if (i == p_id) { ret some(ib); }}
@@ -96,7 +97,7 @@ fn subst_expr(&ext_ctxt cx, &(invk_binding)[] ibs, &ast::expr_ e,
     }
 }
 
-type pat_ext = rec(vec[@ast::expr] invk, @ast::expr body);
+type pat_ext = rec((@ast::expr)[] invk, @ast::expr body);
 
 // maybe box?
 tag invk_binding {
@@ -113,6 +114,24 @@ fn path_to_ident(&path pth) -> option::t[ident] {
     ret none;
 }
 
+fn process_clause(&ext_ctxt cx, &mutable vec[pat_ext] pes,
+                  &mutable option::t[str] macro_name, &path pth, 
+                  &(@ast::expr)[] invoc_args, @ast::expr body) {
+    let str clause_name = alt(path_to_ident(pth)) {
+        case (some(?id)) { id }
+        case (none) {
+            cx.span_fatal(pth.span, "macro name must not be a path")
+        }
+    };
+    if (macro_name == none) {
+        macro_name = some(clause_name);
+    } else if (macro_name != some(clause_name)) {
+        cx.span_fatal(pth.span, "#macro can only introduce one name");
+    }
+    pes += [rec(invk=invoc_args, body=body)];
+}
+
+
 fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                      option::t[str] body) -> tup(str, syntax_extension) {
     let option::t[str] macro_name = none;
@@ -121,28 +140,19 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
         alt(arg.node) {
             case(expr_vec(?elts, ?mut, ?seq_kind)) {
                 
-                if (len(elts) != 2u) {
+                if (ivec::len(elts) != 2u) {
                     cx.span_fatal((*arg).span, 
                                   "extension clause must consist of [" + 
                                   "macro invocation, expansion body]");
                 }
                 alt(elts.(0u).node) {
-                    case(expr_ext(?pth, ?invk_args, ?body)) {
-                        let str clause_name = alt(path_to_ident(pth)) {
-                            case (some(?id)) { id }
-                            case (none) {
-                                cx.span_fatal
-                                (elts.(0u).span,
-                                 "macro name must not be a path")
+                    case(expr_mac(?mac)) {
+                        alt (mac.node) {
+                            case (mac_invoc(?pth, ?invoc_args, ?body)) {
+                                process_clause(cx, pat_exts, macro_name,
+                                               pth, invoc_args, elts.(1u));
                             }
-                        };
-                        if (macro_name == none) {
-                            macro_name = some(clause_name);
-                        } else if (macro_name != some(clause_name)) {
-                            cx.span_fatal(elts.(0u).span, "macros must have"
-                                          + " only one name");
                         }
-                        pat_exts += [rec(invk=invk_args, body=elts.(1u))];
                     }
                     case(_) {
                         cx.span_fatal(elts.(0u).span, "extension clause must"
@@ -169,25 +179,25 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
             normal(ext));
 
 
-    fn generic_extension(&ext_ctxt cx, span sp, &vec[@ast::expr] args,
+    fn generic_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                          option::t[str] body, @vec[pat_ext] clauses)
         -> @ast::expr {
 
         /* returns a list of bindings, or none if the match fails. */
         fn match_invk(@ast::expr pattern, @ast::expr argument)
-            -> option::t[vec[invk_binding]] {
+            -> option::t[(invk_binding)[]] {
             auto pat = pattern.node;
             auto arg = argument.node;
             ret alt (pat) {
                 case (expr_vec(?p_elts, _, _)) {
                     alt (arg) {
                         case (expr_vec(?a_elts, _, _)) {
-                            if (vec::len(p_elts) != vec::len(a_elts)) { 
+                            if (ivec::len(p_elts) != ivec::len(a_elts)) { 
                                 none[vec[invk_binding]]
                             }
                             let uint i = 0u;
-                            let vec[invk_binding] res = [];
-                            while (i < vec::len(p_elts)) {
+                            let (invk_binding)[] res = ~[];
+                            while (i < ivec::len(p_elts)) {
                                 alt (match_invk(p_elts.(i), a_elts.(i))) {
                                     case (some(?v)) { res += v; }
                                     case (none) { ret none; }
@@ -207,34 +217,36 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                                 case (expr_path(?a_pth)) {
                                     alt (path_to_ident(a_pth)) {
                                         case (some(?a_id)) {
-                                            some([ident_binding
-                                                  (p_id, respan(argument.span,
+                                            some(~[ident_binding
+                                                   (p_id, 
+                                                    respan(argument.span,
                                                                  a_id))])
                                         }
                                         case (none) {
-                                            some([path_binding(p_id, @a_pth)])
+                                            some(~[path_binding(p_id, 
+                                                                @a_pth)])
                                         }
                                     }
                                 }
                                 case (_) {
-                                    some([expr_binding(p_id, argument)])
+                                    some(~[expr_binding(p_id, argument)])
                                 }
                             }
                         }
                         // FIXME this still compares on internal spans
-                        case (_) { if(pat == arg) { some([]) } else { none } }
+                        case (_) { if(pat == arg) { some(~[]) } else { none }}
                     }
                 }
                 // FIXME this still compares on internal spans
-                case (_) { if (pat == arg) { some([]) } else { none } }
+                case (_) { if (pat == arg) { some(~[]) } else { none }}
             }
         }
 
         for (pat_ext pe in *clauses) {
-            if (vec::len(args) != vec::len(pe.invk)) { cont; }
+            if (ivec::len(args) != ivec::len(pe.invk)) { cont; }
             let uint i = 0u;
-            let vec[invk_binding] bindings = [];
-            while (i < vec::len(args)) {
+            let (invk_binding)[] bindings = ~[];
+            while (i < ivec::len(args)) {
                 alt (match_invk(pe.invk.(i), args.(i))) {
                     case (some(?v)) { bindings += v; }
                     case (none) { cont }

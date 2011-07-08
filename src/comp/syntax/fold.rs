@@ -126,6 +126,25 @@ fn fold_arg_(&arg a, ast_fold fld) -> arg {
     ret rec(mode=a.mode, ty=fld.fold_ty(a.ty), 
             ident=fld.fold_ident(a.ident), id=a.id);
 }
+//used in noop_fold_expr, and possibly elsewhere in the future
+fn fold_mac_(&mac m, ast_fold fld) -> mac {
+    ret rec(node=
+            alt(m.node) {
+                case (mac_invoc(?pth,?args,?body)) {
+                    mac_invoc(fld.fold_path(pth), 
+                              ivec::map(fld.fold_expr, args), body)
+                }
+                case (mac_embed_type(?ty)) { 
+                    mac_embed_type(fld.fold_ty(ty))
+                }
+                case (mac_embed_block(?block)) {
+                    mac_embed_block(fld.fold_block(block))
+                }
+                case (mac_elipsis) { mac_elipsis }
+            },
+            span=m.span);
+}
+
 
 
 
@@ -319,6 +338,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
     }
     auto fold_anon_obj = bind fold_anon_obj_(_,fld);
     
+    auto fold_mac = bind fold_mac_(_,fld);
 
     ret alt (e) {
         case (expr_vec(?exprs, ?mut, ?seq_kind)) {
@@ -414,10 +434,6 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_path(?pth)) {
             expr_path(fld.fold_path(pth))
                 }
-        case (expr_ext(?pth, ?args, ?body)) {
-            expr_ext(fld.fold_path(pth), ivec::map(fld.fold_expr, args),
-                     body, fld.fold_expr(expanded))
-                }
         case (expr_fail(?e)) { expr_fail(option::map(fld.fold_expr, e)) }
         case (expr_break()) { e }
         case (expr_cont()) { e }
@@ -445,11 +461,8 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_anon_obj(?ao, ?typms)) {
             expr_anon_obj(fold_anon_obj(ao), typms)
                 }
-        case (expr_embeded_type(?ty)) {
-            expr_embeded_type(fld.fold_ty(ty))
-        }
-        case (expr_embeded_block(?blk)) {
-            expr_embeded_block(fld.fold_block(blk))
+        case (expr_mac(?mac)) {
+            expr_mac(fold_mac(mac))
         }
     }
 }

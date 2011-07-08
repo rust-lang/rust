@@ -256,6 +256,15 @@ fn visit_exprs[E](&(@expr)[] exprs, &E e, &vt[E] v) {
     for (@expr ex in exprs) { v.visit_expr(ex, e, v); }
 }
 
+fn visit_mac[E](mac m, &E e, &vt[E] v) {
+    alt(m.node) {
+        case (ast::mac_invoc(?pth, ?args, ?body)) { visit_exprs(args, e, v); }
+        case (ast::mac_embed_type(?ty)) { v.visit_ty(ty, e, v); }
+        case (ast::mac_embed_block(?blk)) { v.visit_block(blk, e, v); }
+        case (ast::mac_elipsis) { }
+    }
+}
+
 fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
     alt (ex.node) {
         case (expr_vec(?es, _, _)) { visit_exprs(es, e, v); }
@@ -362,11 +371,6 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_path(?p)) {
             for (@ty tp in p.node.types) { v.visit_ty(tp, e, v); }
         }
-        case (expr_ext(_, ?args, _)) {
-            for(@ast::expr arg in args) {
-                vt(v).visit_expr(arg, e, v);
-            }
-        }
         case (expr_fail(?eo)) {
             visit_expr_opt(eo, e, v);
         }
@@ -399,11 +403,8 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
                            m.node.id, e, v);
             }
         }
-        case (expr_embeded_type(?ty)) {
-            vt(v).visit_ty(ty, e, v);
-        }
-        case (expr_embeded_block(?blk)) {
-            vt(v).visit_block(blk, e, v);
+        case (expr_mac(?mac)) {
+            visit_mac(mac, e, v);
         }
     }
 }

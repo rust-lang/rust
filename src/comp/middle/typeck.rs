@@ -1780,7 +1780,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
             write::ty_only_fixup(fcx, id, tpt._1);
         }
-        case (ast::expr_ext(_,_,_)) {
+        case (ast::expr_mac(_)) {
             fcx.ccx.tcx.sess.bug("unexpanded macro");
         }
         case (ast::expr_fail(?expr_opt)) {

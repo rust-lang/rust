@@ -365,7 +365,15 @@ fn next_token(&reader rdr) -> token::token {
         case ('?') { rdr.bump(); ret token::QUES; }
         case (';') { rdr.bump(); ret token::SEMI; }
         case (',') { rdr.bump(); ret token::COMMA; }
-        case ('.') { rdr.bump(); ret token::DOT; }
+        case ('.') { 
+            rdr.bump(); 
+            if (rdr.curr() == '.' && rdr.next() == '.') {
+                rdr.bump();
+                rdr.bump();
+                ret token::ELIPSIS;
+            }
+            ret token::DOT;
+        }
         case ('(') { rdr.bump(); ret token::LPAREN; }
         case (')') { rdr.bump(); ret token::RPAREN; }
         case ('{') { rdr.bump(); ret token::LBRACE; }

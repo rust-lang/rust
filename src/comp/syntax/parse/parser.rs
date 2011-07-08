@@ -740,6 +740,12 @@ fn mk_expr(&parser p, uint lo, uint hi, &ast::expr_ node) -> @ast::expr {
              span=rec(lo=lo, hi=hi));
 }
 
+fn mk_mac_expr(&parser p, uint lo, uint hi, &ast::mac_ m) -> @ast::expr {
+    ret @rec(id=p.get_id(),
+             node=ast::expr_mac(rec(node=m, span=rec(lo=lo, hi=hi))),
+             span=rec(lo=lo, hi=hi));
+}
+
 fn parse_bottom_expr(&parser p) -> @ast::expr {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
@@ -800,11 +806,14 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_vec(es, mut, ast::sk_rc);
     } else if (p.peek() == token::POUND_LT) {
         p.bump();
-        ex = ast::expr_embeded_type(parse_ty(p));
+        auto ty = parse_ty(p);
         expect(p, token::GT);
+        /* hack: early return to take advantage of specialized function */
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty))
     } else if (p.peek() == token::POUND_LBRACE) {
         p.bump();
-        ex = ast::expr_embeded_block(parse_block_tail(p));
+        auto blk = ast::mac_embed_block(parse_block_tail(p));
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if (p.peek() == token::TILDE) {
         p.bump();
         alt (p.peek()) {
@@ -899,7 +908,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_bind(e, es.node);
     } else if (p.peek() == token::POUND) {
         auto ex_ext = parse_syntax_ext(p);
-        lo = ex_ext.span.lo;
+        hi = ex_ext.span.hi;
         ex = ex_ext.node;
     } else if (eat_word(p, "fail")) {
         if (can_begin_expr(p.peek())) {
@@ -913,18 +922,22 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
         ex = ast::expr_log(1, e);
+        hi = e.span.hi;
     } else if (eat_word(p, "log_err")) {
         auto e = parse_expr(p);
         ex = ast::expr_log(0, e);
+        hi = e.span.hi;
     } else if (eat_word(p, "assert")) {
         auto e = parse_expr(p);
         ex = ast::expr_assert(e);
+        hi = e.span.hi;
     } else if (eat_word(p, "check")) {
         /* Should be a predicate (pure boolean function) applied to 
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
 
         auto e = parse_expr(p);
+        hi = e.span.hi;
         ex = ast::expr_check(ast::checked, e);
     } else if (eat_word(p, "claim")) {
         /* Same rules as check, except that if check-claims
@@ -932,6 +945,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         claims into check */
         
         auto e = parse_expr(p);
+        hi = e.span.hi;
         ex = ast::expr_check(ast::unchecked, e);
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
@@ -946,8 +960,10 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         }
     } else if (eat_word(p, "break")) {
         ex = ast::expr_break;
+        hi = p.get_hi_pos();
     } else if (eat_word(p, "cont")) {
         ex = ast::expr_cont;
+        hi = p.get_hi_pos();
     } else if (eat_word(p, "put")) {
         alt (p.peek()) {
             case (token::SEMI) { ex = ast::expr_put(none); }
@@ -1022,7 +1038,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto es = parse_seq_ivec(token::LPAREN, token::RPAREN,
                              some(token::COMMA), parse_expr, p);
     auto hi = es.span.hi;
-    ret mk_expr(p, lo, hi, ast::expr_ext(pth, es.node, none));
+    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, es.node, none));
 }
 
 fn parse_self_method(&parser p) -> @ast::expr {
@@ -1661,7 +1677,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_field(_, _)) { true }
                 case (ast::expr_index(_, _)) { true }
                 case (ast::expr_path(_)) { true }
-                case (ast::expr_ext(_, _, _)) { true }
+                case (ast::expr_mac(_)) { true }
                 case (ast::expr_fail(_)) { true }
                 case (ast::expr_break) { true }
                 case (ast::expr_cont) { true }

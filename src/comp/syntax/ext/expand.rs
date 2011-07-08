@@ -3,7 +3,8 @@ import codemap::emit_error;
 import driver::session;
 import syntax::ast::crate;
 import syntax::ast::expr_;
-import syntax::ast::expr_ext;
+import syntax::ast::expr_mac;
+import syntax::ast::mac_invoc;
 import syntax::fold::*;
 
 import std::option::none;
@@ -16,27 +17,39 @@ fn expand_expr(&hashmap[str, base::syntax_extension] exts,
                &session::session sess, &expr_ e, ast_fold fld, 
                &fn(&ast::expr_, ast_fold) -> expr_ orig) -> expr_ {
     ret alt(e) {
-        case (expr_ext(?pth, ?args, ?body)) {
-            assert(ivec::len(pth.node.idents) > 0u);
-            auto extname = pth.node.idents.(0);
-            auto ext_cx = base::mk_ctxt(sess);
-            alt (exts.find(extname)) {
-                case (none) {
-                    emit_error(some(pth.span), "unknown syntax expander: '"
-                               + extname + "'", sess.get_codemap());
+        case (expr_mac(?mac)) {
+            alt(mac.node) {
+                case (mac_invoc(?pth, ?args, ?body)) {
+                    assert(ivec::len(pth.node.idents) > 0u);
+                    auto extname = pth.node.idents.(0);
+                    auto ext_cx = base::mk_ctxt(sess);
+                    alt (exts.find(extname)) {
+                        case (none) {
+                            emit_error(some(pth.span), 
+                                       "unknown syntax expander: '"
+                                       + extname + "'", sess.get_codemap());
+                            fail
+                        }
+                        case (some(base::normal(?ext))) {
+                            //keep going, outside-in
+                            fld.fold_expr(ext(ext_cx, pth.span, 
+                                              args, body)).node
+                        }
+                        case (some(base::macro_defining(?ext))) {
+                            auto named_extension 
+                                = ext(ext_cx, pth.span, args, body);
+                            exts.insert(named_extension._0,
+                                        named_extension._1);
+                            ast::expr_tup(~[])
+                        }
+                    }
+                }
+                case (_) {
+                    emit_error(some(mac.span), "naked syntactic bit",
+                               sess.get_codemap());
                     fail
                 }
-                case (some(base::normal(?ext))) {
-                    //keep going, outside-in
-                    fld.fold_expr(ext(ext_cx, pth.span, args, body)).node
-                }
-                case (some(base::macro_defining(?ext))) {
-                    auto named_extension = ext(ext_cx, pth.span, args, body);
-                    exts.insert(named_extension._0, named_extension._1);
-                    ast::expr_tup([])
-                }
             }
-
         }
         case (_) { orig(e, fld) }
     };

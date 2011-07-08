@@ -6378,7 +6378,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_rec(?args, ?base)) {
             ret trans_rec(cx, args, base, e.id);
         }
-        case (ast::expr_ext(_, _, _)) {
+        case (ast::expr_mac(_)) {
             ret cx.fcx.lcx.ccx.sess.bug("unexpanded macro");
         }
         case (ast::expr_fail(?expr)) {

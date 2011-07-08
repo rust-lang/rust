@@ -570,7 +570,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_break) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_cont) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_port(_)) { clear_pp(expr_pp(fcx.ccx, e)); }
-        case (expr_ext(_, _, _)) {
+        case (expr_mac(_)) {
             fcx.ccx.tcx.sess.bug("unexpanded macro");
         }
         case (expr_anon_obj(?anon_obj, _)) {
