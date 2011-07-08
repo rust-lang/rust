@@ -16,9 +16,7 @@ fn main() {
 
     auto my_a = a();
 
-    // An anonymous object that overloads the 'foo' method.  Adding
-    // support for this is issue #543 (making this work in the
-    // presence of self-calls is the tricky part).
+    // An anonymous object that overloads the 'foo' method.
     auto my_b = obj() {
         fn foo() -> int {
             ret 3;
@@ -27,15 +25,7 @@ fn main() {
         with my_a
     };
 
+    // FIXME: raises a valgrind error (issue #543).
     assert (my_b.foo() == 3);
-
-    // The tricky part -- have to be sure to tie the knot in the right
-    // place, so that bar() knows about the new foo().
-
-    // Right now, this just fails with "unknown method 'bar' of obj",
-    // but that's the easier of our worries; that'll be fixed when
-    // issue #539 is fixed.  The bigger problem will be when we do
-    // 'fall through' to bar() on the original object -- then we have
-    // to be sure that self refers to the extended object.
     assert (my_b.bar() == 3);
 }

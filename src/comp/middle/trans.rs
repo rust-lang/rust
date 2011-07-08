@@ -8152,34 +8152,47 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
                 }
             }
 
-            // Now, filter out any methods that are being replaced.
-            fn filtering_fn(&vtbl_mthd m, vec[vtbl_mthd] addtl_meths) ->
-                option::t[vtbl_mthd] {
+            // Now, filter out any methods that we don't need forwarding slots
+            // for, because they're being replaced.
+            fn filtering_fn(@local_ctxt cx, &vtbl_mthd m,
+                            (@ast::method)[] addtl_meths) 
+                -> option::t[vtbl_mthd] {
 
-                let option::t[vtbl_mthd] rslt;
-                if (std::vec::member[vtbl_mthd](m, addtl_meths)) {
-                    rslt = none;
-                } else {
-                    rslt = some(m);
+                alt (m) {
+                    case (fwding_mthd(?fm)) {
+                        // Since fm is a fwding_mthd, and we're checking to
+                        // see if it's in addtl_meths (which only contains
+                        // normal_mthds), we can't just check if fm is a
+                        // member of addtl_meths.  Instead, we have to go
+                        // through addtl_meths and see if there's some method
+                        // in it that has the same name as fm.
+
+                        // FIXME (part of #543): We're only checking names
+                        // here.  If a method is replacing another, it also
+                        // needs to have the same type, but this should
+                        // probably be enforced in typechecking.
+                        for (@ast::method am in addtl_meths) {
+                            if (str::eq(am.node.ident, fm.ident)) {
+                                ret none;
+                            }
+                        }
+                        ret some(fwding_mthd(fm));
+                    }
+                    case (normal_mthd(_)) {
+                        // Should never happen.
+                        cx.ccx.sess.bug("create_vtbl(): shouldn't be any"
+                                        + " normal_mthds in meths here");
+                    }
                 }
-                ret rslt;
             }
-
-            // NB: addtl_meths is just like ob.methods except that it's of
-            // type vec[vtbl_mthd], not vec[@ast::method].
-            let vec[vtbl_mthd] addtl_meths = [];
-            for (@ast::method m in ob.methods) {
-                addtl_meths += [normal_mthd(m)];
-            }
-            auto f = bind filtering_fn(_, addtl_meths);
-
-            // Filter out any methods that we don't need forwarding slots for
-            // (namely, those that are being replaced).
+            auto f = bind filtering_fn(cx, _, ob.methods);
             meths = std::vec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
             
             // And now add the additional ones (both replacements and entirely
-            // new ones).
-            meths += addtl_meths;
+            // new ones).  These'll just be normal methods.
+            for (@ast::method m in ob.methods) {
+                meths += [normal_mthd(m)];
+            }
         }
     } 
     
