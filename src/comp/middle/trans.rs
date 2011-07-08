@@ -1407,11 +1407,9 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             ret rslt(bcx, total_size);
         }
         case (ty::ty_ivec(?mt)) {
-            auto rs = field_of_tydesc(cx, mt.ty, false,
-                                      abi::tydesc_field_size);
+            auto rs = size_of(cx, mt.ty);
             auto bcx = rs.bcx;
-            auto llunitszptr = rs.val;
-            auto llunitsz = bcx.build.Load(llunitszptr);
+            auto llunitsz = rs.val;
             auto llsz = bcx.build.Add(llsize_of(T_opaque_ivec()),
                 bcx.build.Mul(llunitsz, C_uint(abi::ivec_default_length)));
             ret rslt(bcx, llsz);
