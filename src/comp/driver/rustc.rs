@@ -112,6 +112,8 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
     }
     auto ast_map = time(time_passes, "ast indexing",
                         bind middle::ast_map::map_crate(*crate));
+    time(time_passes, "external crate/lib resolution",
+         bind creader::read_crates(sess, *crate));
     auto d =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));

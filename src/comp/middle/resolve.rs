@@ -7,7 +7,6 @@ import ast::def_id;
 import ast::node_id;
 import ast::local_def;
 
-import metadata::creader;
 import metadata::decoder;
 import metadata::cstore;
 import driver::session::session;
@@ -125,7 +124,6 @@ tag namespace { ns_value; ns_type; ns_module; }
 
 fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
    tup(def_map, constr_table) {
-    creader::read_crates(sess, *crate);
     auto e =
         @rec(crate_map=sess.get_cstore().use_crate_map,
              def_map=new_int_hash[def](),
