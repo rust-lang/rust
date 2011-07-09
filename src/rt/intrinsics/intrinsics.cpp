@@ -1,5 +1,5 @@
 // Use `clang++ -emit-llvm -S -arch i386 -O3 -I../isaac -I../uthash
-//      -I../arch/i386 -o intrinsics.ll intrinsics.cpp`
+//      -I../arch/i386 -fno-stack-protector -o intrinsics.ll intrinsics.cpp`
 
 #include "../rust_internal.h"
 
@@ -20,5 +20,12 @@ rust_intrinsic_ivec_len(rust_task *task, type_desc *ty, rust_ivec *v)
     else
         fill = 0;
     return fill / ty->size;
+}
+
+extern "C" void *
+rust_intrinsic_ptr_offset(rust_task *task, type_desc *ty, void *ptr,
+                          uintptr_t count)
+{
+    return &((uint8_t *)ptr)[ty->size * count];
 }
 

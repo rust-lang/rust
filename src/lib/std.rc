@@ -86,6 +86,7 @@ mod getopts;
 mod term;
 mod time;
 mod smallintmap;
+mod ptr;
 
 // Local Variables:
 // mode: rust;
