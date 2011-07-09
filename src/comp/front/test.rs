@@ -4,13 +4,15 @@ import std::option;
 import std::ivec;
 import syntax::ast;
 import syntax::fold;
+import front::attr;
 
 export modify_for_testing;
 
 type node_id_gen = @fn() -> ast::node_id;
 
 type test_ctxt = rec(node_id_gen next_node_id,
-                     mutable ast::ident[] path);
+                     mutable ast::ident[] path,
+                     mutable ast::ident[][] testfns);
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -28,8 +30,9 @@ fn modify_for_testing(@ast::crate crate) -> @ast::crate {
         ret this_node_id;
     } (next_node_id);
 
-    auto cx = rec(next_node_id = next_node_id_fn,
-                  mutable path = ~[]);
+    let test_ctxt cx = rec(next_node_id = next_node_id_fn,
+                  mutable path = ~[],
+                  mutable testfns = ~[]);
 
     auto precursor = rec(fold_crate = bind fold_crate(cx, _, _),
                          fold_item = bind fold_item(cx, _, _)
@@ -103,9 +106,34 @@ fn fold_item(&test_ctxt cx, &@ast::item i,
 
     cx.path += ~[i.ident];
     log #fmt("current path: %s", ast::path_name_i(cx.path));
+
+    if (is_test_fn(i)) {
+        log "this is a test function";
+        cx.testfns += ~[cx.path];
+    }
+
     auto res = fold::noop_fold_item(i, fld);
     ivec::pop(cx.path);
     ret res;
+}
+
+fn is_test_fn(&@ast::item i) -> bool {
+    auto has_test_attr = 
+        ivec::len(attr::find_attrs_by_name(i.attrs, "test")) > 0u;
+
+    fn has_test_signature(&@ast::item i) -> bool {
+        alt (i.node) {
+            case (ast::item_fn(?f, ?tps)) {
+                auto input_cnt = ivec::len(f.decl.inputs);
+                auto no_output = f.decl.output.node == ast::ty_nil;
+                auto tparm_cnt = ivec::len(tps);
+                input_cnt == 0u && no_output && tparm_cnt == 0u
+            }
+            case (_) { false }
+        }
+    }
+
+    ret has_test_attr && has_test_signature(i);
 }
 
 // Local Variables:
