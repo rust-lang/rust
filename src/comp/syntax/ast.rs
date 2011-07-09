@@ -20,7 +20,9 @@ type path_ = rec(ident[] idents, (@ty)[] types);
 
 type path = spanned[path_];
 
-fn path_name(&path p) -> str { ret str::connect_ivec(p.node.idents, "::"); }
+fn path_name(&path p) -> str { path_name_i(p.node.idents) }
+
+fn path_name_i(&ident[] idents) -> str { str::connect_ivec(idents, "::") }
 
 type crate_num = int;
 type node_id = int;

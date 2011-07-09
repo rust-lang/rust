@@ -12,6 +12,7 @@ export default_ast_fold;
 export make_fold;
 export dummy_out;
 export noop_fold_crate;
+export noop_fold_item;
 
 type ast_fold = @mutable a_f;
 

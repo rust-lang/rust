@@ -1,6 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
 import std::option;
+import std::ivec;
 import syntax::ast;
 import syntax::fold;
 
@@ -8,7 +9,8 @@ export modify_for_testing;
 
 type node_id_gen = @fn() -> ast::node_id;
 
-type test_ctxt = rec(node_id_gen next_node_id);
+type test_ctxt = rec(node_id_gen next_node_id,
+                     mutable ast::ident[] path);
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -26,9 +28,11 @@ fn modify_for_testing(@ast::crate crate) -> @ast::crate {
         ret this_node_id;
     } (next_node_id);
 
-    auto cx = rec(next_node_id = next_node_id_fn);
+    auto cx = rec(next_node_id = next_node_id_fn,
+                  mutable path = ~[]);
 
-    auto precursor = rec(fold_crate = bind fold_crate(cx, _, _)
+    auto precursor = rec(fold_crate = bind fold_crate(cx, _, _),
+                         fold_item = bind fold_item(cx, _, _)
                          with *fold::default_ast_fold());
 
     auto fold = fold::make_fold(precursor);
@@ -92,6 +96,16 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
                              node = item_,
                              span = rec(lo=0u, hi=0u));
     ret @item;
+}
+
+fn fold_item(&test_ctxt cx, &@ast::item i,
+             fold::ast_fold fld) -> @ast::item {
+
+    cx.path += ~[i.ident];
+    log #fmt("current path: %s", ast::path_name_i(cx.path));
+    auto res = fold::noop_fold_item(i, fld);
+    ivec::pop(cx.path);
+    ret res;
 }
 
 // Local Variables:
