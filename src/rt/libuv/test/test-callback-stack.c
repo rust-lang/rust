@@ -24,7 +24,7 @@
  * stack.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "task.h"
 
 
@@ -43,7 +43,7 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
   uv_buf_t buf;
   buf.len = size;
   buf.base = (char*) malloc(size);
@@ -67,10 +67,10 @@ static void shutdown_cb(uv_req_t* req, int status) {
 }
 
 
-static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
-  printf("Read. nread == %d\n", nread);
+  printf("Read. nread == %d\n", (int)nread);
   free(buf.base);
 
   if (nread == 0) {
@@ -97,7 +97,7 @@ static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
   /* from a fresh stack. */
   if (bytes_received == sizeof MESSAGE) {
     nested++;
-    uv_req_init(&shutdown_req, (uv_handle_t*)tcp, shutdown_cb);
+    uv_req_init(&shutdown_req, (uv_handle_t*)tcp, (void *(*)(void *))shutdown_cb);
 
     puts("Shutdown");
 
@@ -109,24 +109,24 @@ static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
 }
 
 
-static void timer_cb(uv_handle_t* handle, int status) {
+static void timer_cb(uv_timer_t* handle, int status) {
   int r;
 
-  ASSERT(handle == (uv_handle_t*)&timer);
+  ASSERT(handle == &timer);
   ASSERT(status == 0);
   ASSERT(nested == 0 && "timer_cb must be called from a fresh stack");
 
   puts("Timeout complete. Now read data...");
 
   nested++;
-  if (uv_read_start(&client, alloc_cb, read_cb)) {
+  if (uv_read_start((uv_stream_t*)&client, alloc_cb, read_cb)) {
     FATAL("uv_read_start failed");
   }
   nested--;
 
   timer_cb_called++;
 
-  r = uv_close(handle, close_cb);
+  r = uv_close((uv_handle_t*)handle, close_cb);
   ASSERT(r == 0);
 }
 
@@ -167,7 +167,7 @@ static void connect_cb(uv_req_t* req, int status) {
   buf.base = (char*) &MESSAGE;
   buf.len = sizeof MESSAGE;
 
-  uv_req_init(&write_req, req->handle, write_cb);
+  uv_req_init(&write_req, req->handle, (void *(*)(void *))write_cb);
 
   if (uv_write(&write_req, &buf, 1)) {
     FATAL("uv_write failed");
@@ -191,9 +191,11 @@ TEST_IMPL(callback_stack) {
   puts("Connecting...");
 
   nested++;
-  uv_req_init(&connect_req, (uv_handle_t*)&client, connect_cb);
-  if (uv_connect(&connect_req, addr)) {
-    FATAL("uv_connect failed");
+  uv_req_init(&connect_req, (uv_handle_t*)&client,
+      (void *(*)(void *))connect_cb);
+
+  if (uv_tcp_connect(&connect_req, addr)) {
+    FATAL("uv_tcp_connect failed");
   }
   nested--;
 

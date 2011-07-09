@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@ static int bytes_received = 0;
 static int bytes_received_done = 0;
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
   uv_buf_t buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
@@ -83,7 +83,7 @@ static void shutdown_cb(uv_req_t* req, int status) {
 }
 
 
-static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
   ASSERT(tcp != NULL);
 
   if (nread < 0) {
@@ -144,7 +144,7 @@ static void connect_cb(uv_req_t* req, int status) {
     req = (uv_req_t*)malloc(sizeof *req);
     ASSERT(req != NULL);
 
-    uv_req_init(req, (uv_handle_t*)tcp, write_cb);
+    uv_req_init(req, (uv_handle_t*)tcp, (void *(*)(void *))write_cb);
     r = uv_write(req, (uv_buf_t*)&send_bufs, CHUNKS_PER_WRITE);
     ASSERT(r == 0);
   }
@@ -152,7 +152,7 @@ static void connect_cb(uv_req_t* req, int status) {
   /* Shutdown on drain. FIXME: dealloc req? */
   req = (uv_req_t*) malloc(sizeof(uv_req_t));
   ASSERT(req != NULL);
-  uv_req_init(req, (uv_handle_t*)tcp, shutdown_cb);
+  uv_req_init(req, (uv_handle_t*)tcp, (void *(*)(void *))shutdown_cb);
   r = uv_shutdown(req);
   ASSERT(r == 0);
 
@@ -160,8 +160,8 @@ static void connect_cb(uv_req_t* req, int status) {
   req = (uv_req_t*)malloc(sizeof *req);
   ASSERT(req != NULL);
 
-  uv_req_init(req, (uv_handle_t*)tcp, read_cb);
-  r = uv_read_start(tcp, alloc_cb, read_cb);
+  uv_req_init(req, (uv_handle_t*)tcp, (void *(*)(void *))read_cb);
+  r = uv_read_start((uv_stream_t*)tcp, alloc_cb, read_cb);
   ASSERT(r == 0);
 }
 
@@ -184,8 +184,8 @@ TEST_IMPL(tcp_writealot) {
   r = uv_tcp_init(client);
   ASSERT(r == 0);
 
-  uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);
-  r = uv_connect(connect_req, addr);
+  uv_req_init(connect_req, (uv_handle_t*)client, (void *(*)(void *))connect_cb);
+  r = uv_tcp_connect(connect_req, addr);
   ASSERT(r == 0);
 
   uv_run();

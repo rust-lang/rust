@@ -3,7 +3,7 @@
 // Disable libev prototypes - they will make inline compatability functions
 // which are unused and so trigger a warning in gcc since -Wall is on.
 #define EV_PROTOTYPES 0
-#include "libuv/uv.h"
+#include "uv.h"
 
 #ifdef __GNUC__
 #define LOG_CALLBACK_ENTRY(p) \
@@ -45,7 +45,7 @@ struct request : public uv_req_t, public task_owned<request> {
   rust_chan *chan;
   request(socket_data *data, rust_chan *chan,
           void (*cb)(request *req, int status)) {
-    uv_req_init(this, (uv_handle_t*)&data->socket, (void*)cb);
+    uv_req_init(this, (uv_handle_t*)&data->socket, (void*(*)(void*))cb);
     this->data = data;
     this->task = data->task;
     this->chan = chan->clone(iotask);
@@ -64,7 +64,7 @@ extern "C" CDECL void aio_close_socket(rust_task *task, socket_data *);
 
 static uv_idle_s idle_handler;
 
-static void idle_callback(uv_handle_t* handle, int status) {
+static void idle_callback(uv_idle_t* handle, int status) {
   rust_task *task = reinterpret_cast<rust_task*>(handle->data);
   task->yield();
 }
@@ -110,7 +110,7 @@ static socket_data *make_socket(rust_task *task, rust_chan *chan) {
 
 // We allocate the requested space + rust_vec but return a pointer at a
 // +rust_vec offset so that it writes the bytes to the correct location.
-static uv_buf_t alloc_buffer(uv_tcp_t *socket, size_t suggested_size) {
+static uv_buf_t alloc_buffer(uv_stream_t *socket, size_t suggested_size) {
   LOG_CALLBACK_ENTRY(socket);
   uv_buf_t buf;
   size_t actual_size = suggested_size + sizeof (rust_ivec_heap);
@@ -123,7 +123,7 @@ static uv_buf_t alloc_buffer(uv_tcp_t *socket, size_t suggested_size) {
   return buf;
 }
 
-static void read_progress(uv_tcp_t *socket, ssize_t nread, uv_buf_t buf) {
+static void read_progress(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   LOG_CALLBACK_ENTRY(socket);
   socket_data *data = (socket_data*)socket->data;
   I(data->task->sched, data->reader != NULL);
@@ -151,17 +151,17 @@ static void read_progress(uv_tcp_t *socket, ssize_t nread, uv_buf_t buf) {
   data->reader->send(&v);
 }
 
-static void new_connection(uv_tcp_t *socket, int status) {
+static void new_connection(uv_handle_t *socket, int status) {
   LOG_CALLBACK_ENTRY(socket);
   socket_data *server = (socket_data*)socket->data;
-  I(server->task->sched, socket == &server->socket);
+  I(server->task->sched, (uv_tcp_t*)socket == &server->socket);
   // Connections from servers don't have a channel
   socket_data *client = make_socket(server->task, NULL);
   if (!client) {
     server->task->fail();
     return;
   }
-  if (uv_accept(socket, &client->socket)) {
+  if (uv_accept(socket, (uv_stream_t*)&client->socket)) {
     aio_close_socket(client->task, client);
     server->task->fail();
     return;
@@ -176,8 +176,8 @@ extern "C" CDECL socket_data *aio_serve(rust_task *task, const char *ip,
   socket_data *server = make_socket(iotask, chan);
   if (!server)
     goto oom;
-  if (uv_bind(&server->socket, addr) ||
-      uv_listen(&server->socket, 128, new_connection)) {
+  if (uv_tcp_bind(&server->socket, addr) ||
+      uv_tcp_listen(&server->socket, 128, new_connection)) {
     aio_close_socket(task, server);
     return NULL;
   }
@@ -196,9 +196,9 @@ static void free_socket(uv_handle_t *handle) {
   // reading and should send the close notification.
   if (data->reader) {
     if (data->reader->is_associated()) {
-      uv_buf_t buf = alloc_buffer(socket, 0);
-      read_progress(socket, -1, buf);
-      uv_read_stop(socket);
+      uv_buf_t buf = alloc_buffer((uv_stream_t*)socket, 0);
+      read_progress((uv_stream_t*)socket, -1, buf);
+      uv_read_stop((uv_stream_t*)socket);
     }
   } else {
     // This is a server socket
@@ -256,7 +256,7 @@ extern "C" CDECL void aio_connect(rust_task *task, const char *host,
   if (!req) {
     goto oom_req;
   }
-  if (0 == uv_connect(req, addr)) {
+  if (0 == uv_tcp_connect(req, addr)) {
     return;
   }
 oom_req:
@@ -296,5 +296,5 @@ extern "C" CDECL void aio_read(rust_task *task, socket_data *data,
   LOG_UPCALL_ENTRY(task);
   I(task->sched, data->reader == NULL);
   data->reader = reader->clone(iotask);
-  uv_read_start(&data->socket, alloc_buffer, read_progress);
+  uv_read_start((uv_stream_t*)&data->socket, alloc_buffer, read_progress);
 }

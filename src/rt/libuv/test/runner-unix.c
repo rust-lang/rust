@@ -248,7 +248,7 @@ int process_copy_output(process_info_t *p, int fd) {
     return -1;
   }
 
-  size_t nread, nwritten;
+  ssize_t nread, nwritten;
   char buf[1024];
 
   while ((nread = read(fileno(p->stdout_file), buf, 1024)) > 0) {
@@ -331,5 +331,5 @@ int uv_wait_thread(uintptr_t thread_id) {
 
 /* Pause the calling thread for a number of milliseconds. */
 void uv_sleep(int msec) {
-  usleep(msec);
+  usleep(msec * 1000);
 }

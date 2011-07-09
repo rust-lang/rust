@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +32,7 @@ static int close_cb_called = 0;
 static int connect_cb_called = 0;
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
   uv_buf_t buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
@@ -49,7 +49,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void do_accept(uv_handle_t* timer_handle, int status) {
+static void do_accept(uv_timer_t* timer_handle, int status) {
   uv_tcp_t* server;
   uv_tcp_t* accepted_handle = (uv_tcp_t*)malloc(sizeof *accepted_handle);
   int r;
@@ -65,7 +65,7 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
   tcpcnt = uv_counters()->tcp_init;
 
   server = (uv_tcp_t*)timer_handle->data;
-  r = uv_accept(server, accepted_handle);
+  r = uv_accept((uv_handle_t*)server, (uv_stream_t*)accepted_handle);
   ASSERT(r == 0);
 
   ASSERT(uv_counters()->tcp_init == tcpcnt);
@@ -83,12 +83,12 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
   }
 
   /* Dispose the timer. */
-  r = uv_close(timer_handle, close_cb);
+  r = uv_close((uv_handle_t*)timer_handle, close_cb);
   ASSERT(r == 0);
 }
 
 
-static void connection_cb(uv_tcp_t* tcp, int status) {
+static void connection_cb(uv_handle_t* tcp, int status) {
   int r;
   uv_timer_t* timer_handle;
 
@@ -122,25 +122,30 @@ static void start_server() {
   ASSERT(uv_counters()->tcp_init == 1);
   ASSERT(uv_counters()->handle_init == 1);
 
-  r = uv_bind(server, addr);
+  r = uv_tcp_bind(server, addr);
   ASSERT(r == 0);
 
-  r = uv_listen(server, 128, connection_cb);
+  r = uv_tcp_listen(server, 128, connection_cb);
   ASSERT(r == 0);
 }
 
 
-static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
   /* The server will not send anything, it should close gracefully. */
-  ASSERT(tcp != NULL);
-  ASSERT(nread == -1);
-  ASSERT(uv_last_error().code == UV_EOF);
 
   if (buf.base) {
     free(buf.base);
   }
 
-  uv_close((uv_handle_t*)tcp, close_cb);
+  if (nread != -1) {
+    ASSERT(nread == 0);
+    ASSERT(uv_last_error().code == UV_EAGAIN);
+  } else {
+    ASSERT(tcp != NULL);
+    ASSERT(nread == -1);
+    ASSERT(uv_last_error().code == UV_EOF);
+    uv_close((uv_handle_t*)tcp, close_cb);
+  }
 }
 
 
@@ -152,7 +157,7 @@ static void connect_cb(uv_req_t* req, int status) {
 
   /* Not that the server will send anything, but otherwise we'll never know */
   /* when te server closes the connection. */
-  r = uv_read_start((uv_tcp_t*)(req->handle), alloc_cb, read_cb);
+  r = uv_read_start((uv_stream_t*)(req->handle), alloc_cb, read_cb);
   ASSERT(r == 0);
 
   connect_cb_called++;
@@ -173,8 +178,8 @@ static void client_connect() {
   r = uv_tcp_init(client);
   ASSERT(r == 0);
 
-  uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);
-  r = uv_connect(connect_req, addr);
+  uv_req_init(connect_req, (uv_handle_t*)client, (void *(*)(void *))connect_cb);
+  r = uv_tcp_connect(connect_req, addr);
   ASSERT(r == 0);
 }
 

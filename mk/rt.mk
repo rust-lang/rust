@@ -66,7 +66,7 @@ RUNTIME_HDR := rt/globals.h \
 
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
-                -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv
+                -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv/include
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
 RUNTIME_LIBS := $(S)src/rt/libuv/uv.a
 
@@ -97,7 +97,7 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RU
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@,$(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
 
-$(S)src/rt/libuv/uv.a: rt/libuv/LIBUV_REVISION
+$(S)src/rt/libuv/uv.a: $(S)src/rt/libuv/LIBUV_REVISION
 	$(Q)$(MAKE) -C $(S)src/rt/libuv CFLAGS=\"-m32\" LDFLAGS=\"-m32\"
 	$(Q)mkdir -p rt/libuv
 	$(Q)cp $(S)src/rt/libuv/uv.a rt/libuv/uv.a

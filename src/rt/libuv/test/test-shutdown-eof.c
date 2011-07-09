@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../uv.h"
+#include "uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +37,7 @@ static int called_timer_close_cb;
 static int called_timer_cb;
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+static uv_buf_t alloc_cb(uv_stream_t* tcp, size_t size) {
   uv_buf_t buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
@@ -45,8 +45,16 @@ static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
 }
 
 
-static void read_cb(uv_tcp_t* t, ssize_t nread, uv_buf_t buf) {
-  ASSERT(t == &tcp);
+static void read_cb(uv_stream_t* t, ssize_t nread, uv_buf_t buf) {
+  uv_err_t err = uv_last_error();
+
+  ASSERT((uv_tcp_t*)t == &tcp);
+
+  if (nread == 0) {
+    ASSERT(err.code == UV_EAGAIN);
+    free(buf.base);
+    return;
+  }
 
   if (!got_q) {
     ASSERT(nread == 1);
@@ -56,7 +64,7 @@ static void read_cb(uv_tcp_t* t, ssize_t nread, uv_buf_t buf) {
     got_q = 1;
     puts("got Q");
   } else {
-    ASSERT(uv_last_error().code == UV_EOF);
+    ASSERT(err.code == UV_EOF);
     if (buf.base) {
       free(buf.base);
     }
@@ -84,7 +92,7 @@ static void connect_cb(uv_req_t *req, int status) {
   ASSERT(req == &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
-  uv_read_start(&tcp, alloc_cb, read_cb);
+  uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb);
 
   /*
    * Write the letter 'Q' to gracefully kill the echo-server. This will not
@@ -94,7 +102,7 @@ static void connect_cb(uv_req_t *req, int status) {
   uv_write(&write_req, &qbuf, 1);
 
   /* Shutdown our end of the connection.  */
-  uv_req_init(&shutdown_req, (uv_handle_t*)&tcp, shutdown_cb);
+  uv_req_init(&shutdown_req, (uv_handle_t*)&tcp, (void *(*)(void *))shutdown_cb);
   uv_shutdown(&shutdown_req);
 
   called_connect_cb++;
@@ -120,9 +128,9 @@ void timer_close_cb(uv_handle_t* handle) {
 }
 
 
-void timer_cb(uv_handle_t* handle, int status) {
-  ASSERT(handle == (uv_handle_t*) &timer);
-  uv_close(handle, timer_close_cb);
+void timer_cb(uv_timer_t* handle, int status) {
+  ASSERT(handle == &timer);
+  uv_close((uv_handle_t*) handle, timer_close_cb);
 
   /*
    * The most important assert of the test: we have not received
@@ -157,8 +165,8 @@ TEST_IMPL(shutdown_eof) {
   r = uv_tcp_init(&tcp);
   ASSERT(!r);
 
-  uv_req_init(&connect_req, (uv_handle_t*) &tcp, connect_cb);
-  r = uv_connect(&connect_req, server_addr);
+  uv_req_init(&connect_req, (uv_handle_t*) &tcp, (void *(*)(void *))connect_cb);
+  r = uv_tcp_connect(&connect_req, server_addr);
   ASSERT(!r);
 
   uv_run();
