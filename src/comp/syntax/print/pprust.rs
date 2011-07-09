@@ -1499,8 +1499,9 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
     }
 }
 
-
-fn constr_args_to_str[T](fn(&T) -> str  f,
+// Removing the aliases from the type of f in the next two functions
+// triggers memory corruption, but I haven't isolated the bug yet. FIXME
+fn constr_args_to_str[T](&fn(&T) -> str f,
                          &(@ast::constr_arg_general[T])[] args) -> str {
     auto comma = false;
     auto s = "(";
@@ -1512,7 +1513,7 @@ fn constr_args_to_str[T](fn(&T) -> str  f,
     ret s;
 }
 
-fn constr_arg_to_str[T](fn(&T) -> str  f, &ast::constr_arg_general_[T] c) ->
+fn constr_arg_to_str[T](&fn(&T) -> str f, &ast::constr_arg_general_[T] c) ->
    str {
     alt (c) {
         case (ast::carg_base) { ret "*"; }
