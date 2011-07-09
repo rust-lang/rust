@@ -959,16 +959,17 @@ fn type_is_tup_like(&ctxt cx, &t ty) -> bool {
 }
 
 fn get_element_type(&ctxt cx, &t ty, uint i) -> t {
-    assert (type_is_tup_like(cx, ty));
     alt (struct(cx, ty)) {
         case (ty_tup(?mts)) { ret mts.(i).ty; }
         case (ty_rec(?flds)) { ret flds.(i).mt.ty; }
+        case (_)             {
+            cx.sess.bug("get_element_type called on type "
+                        + ty_to_str(cx, ty) + " - expected a \
+            tuple or record");
+        }
     }
     // NB: This is not exhaustive -- struct(cx, ty) could be a box or a
     // tag.
-
-    cx.sess.bug("get_element_type called on a value other than a " +
-                    "tuple or record");
 }
 
 fn type_is_box(&ctxt cx, &t ty) -> bool {
