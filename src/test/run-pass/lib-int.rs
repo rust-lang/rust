@@ -15,11 +15,14 @@ fn test_pow() {
     assert (int::pow(0, 0u) == 1);
     assert (int::pow(0, 1u) == 0);
     assert (int::pow(0, 2u) == 0);
-    assert (int::pow(-1, 0u) == -1);
+    assert (int::pow(-1, 0u) == 1);
     assert (int::pow(1, 0u) == 1);
     assert (int::pow(-3, 2u) == 9);
     assert (int::pow(-3, 3u) == -27);
     assert (int::pow(4, 9u) == 262144);
 }
 
-fn main() { test_to_str(); }
+fn main() {
+  test_to_str();
+  test_pow();
+}
