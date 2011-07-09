@@ -23,6 +23,8 @@ import tstate::ann::false_postcond;
 import tstate::ann::ts_ann;
 import tstate::ann::set_prestate;
 import tstate::ann::set_poststate;
+import aux::*;
+/*
 import aux::crate_ctxt;
 import aux::fn_ctxt;
 import aux::num_constraints;
@@ -64,6 +66,10 @@ import aux::if_check;
 import aux::plain_if;
 import aux::forget_in_poststate;
 import aux::forget_in_poststate_still_init;
+import aux::copy_in_poststate;
+import aux::copy_in_poststate_two;
+import aux::local_node_id_to_def;
+*/
 import tritv::tritv_clone;
 import tritv::tritv_set;
 import tritv::ttrue;
@@ -91,15 +97,6 @@ import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
 import util::common::log_stmt_err;
 import util::common::log_expr_err;
-
-// Used to communicate which operands should be invalidated
-// to helper functions
-tag oper_type {
-    oper_move;
-    oper_swap;
-    oper_assign;
-    oper_pure;
-}
 
 fn seq_states(&fn_ctxt fcx, prestate pres, &(@expr)[] exprs) ->
    tup(bool, poststate) {
@@ -133,30 +130,68 @@ fn find_pre_post_state_sub(&fn_ctxt fcx, &prestate pres, &@expr e,
     ret changed;
 }
 
-fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr a, &@expr b,
-                           node_id parent, oper_type op) -> bool {
+fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr lhs,
+                           &@expr rhs, node_id parent, oper_type ty)
+    -> bool {
     auto changed = set_prestate_ann(fcx.ccx, parent, pres);
-    changed = find_pre_post_state_expr(fcx, pres, a) || changed;
-    changed = find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, a), b)
+    changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
+    changed = find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs), rhs)
         || changed;
 
+    auto post = tritv_clone(expr_poststate(fcx.ccx, rhs));
+
+    alt (lhs.node) {
+        case (expr_path(?p)) {
     // for termination, need to make sure intermediate changes don't set
     // changed flag
-    auto post = tritv_clone(expr_poststate(fcx.ccx, b));
-    alt (op) {
-        case (oper_move) {
-            forget_in_poststate(fcx, post, b.id);
-            gen_if_local(fcx, post, a); 
+            // tmp remembers "old" constraints we'd otherwise forget,
+            // for substitution purposes
+            auto tmp = tritv_clone(post);
+            
+            alt (ty) {
+                case (oper_move) {
+                    if (is_path(rhs)) {
+                        forget_in_poststate(fcx, post, rhs.id);
+                    }
+                    forget_in_poststate_still_init(fcx, post, lhs.id);
+                }
+                case (oper_swap) {
+                    forget_in_poststate_still_init(fcx, post, lhs.id);
+                    forget_in_poststate_still_init(fcx, post, rhs.id);
+                }
+                case (_) {
+                    forget_in_poststate_still_init(fcx, post, lhs.id);
+                }
+            }
+
+            gen_if_local(fcx, post, lhs);
+            alt (rhs.node) {
+                case (expr_path(?p1)) {
+                    auto d = local_node_id_to_def_id(fcx, lhs.id);
+                    auto d1 = local_node_id_to_def_id(fcx, rhs.id);
+                    alt (d) {
+                        case (some(?id)) {
+                            alt (d1) {
+                                case (some(?id1)) {
+                                    auto instlhs =
+                                        tup(path_to_ident(fcx.ccx.tcx,
+                                                          p), id);
+                                    auto instrhs =
+                                        tup(path_to_ident(fcx.ccx.tcx,
+                                                          p1), id1);
+                                    copy_in_poststate_two(fcx, tmp,
+                                            post, instlhs, instrhs, ty);
+                                }
+                                case (_) {}
+                            }
+                        }
+                        case (_) {}
+                    }
+                }
+                case (_) { /* do nothing */ }
+            }
         }
-        case (oper_swap) {
-            forget_in_poststate_still_init(fcx, post, a.id);
-            forget_in_poststate_still_init(fcx, post, b.id);
-        }
-        case (oper_assign) {
-            forget_in_poststate_still_init(fcx, post, a.id);
-            gen_if_local(fcx, post, a); 
-        }
-        case (_) {}
+        case (_) { }
     }
     changed = set_poststate_ann(fcx.ccx, parent, post) || changed;
     ret changed;
@@ -444,7 +479,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_assign_op(?op, ?lhs, ?rhs)) {
             ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id,
-                                        oper_assign);
+                                        oper_assign_op);
         }
         case (expr_while(?test, ?body)) {
             /*
@@ -616,29 +651,50 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
 
                             auto post = tritv_clone(expr_poststate(fcx.ccx,
                                                       an_init.expr));
-                            if (an_init.op == init_move) {
-                                clear_in_poststate_expr(fcx, an_init.expr,
-                                                        post);
-                            }
+                            alt (an_init.expr.node) {
+                                case (expr_path(?p)) {
 
+                                    auto instlhs =
+                                        tup(alocal.node.ident,
+                                            local_def(alocal.node.id));
+                                    auto rhs_d = local_node_id_to_def_id(fcx,
+                                                          an_init.expr.id);
+                                    alt (rhs_d) {
+                                        case (some(?rhsid)) {
+                                            auto instrhs = 
+                                                tup(path_to_ident(fcx.ccx.tcx,
+                                                                  p), rhsid);
+                                            copy_in_poststate(fcx, post,
+                                               instlhs, instrhs,
+                                               op_to_oper_ty(an_init.op));
+                                        }
+                                        case (_) { }
+                                    }
+                                }
+                                case (_) { }
+                            }
+                            if (an_init.op == init_move) {
+                                forget_in_poststate(fcx, post,
+                                                    an_init.expr.id);
+                            }
                             set_in_poststate_ident(fcx, alocal.node.id,
                                                    alocal.node.ident, post);
-
-                            /* important to do this in one step to ensure
-                               termination (don't want to set changed to true
-                               for intermediate changes) */
-                            ret changed | set_poststate(stmt_ann, post);
-
                             /*
                             log_err "Summary: stmt = ";
                             log_stmt_err(*s);
                             log_err "prestate = ";
                             log_tritv_err(fcx, stmt_ann.states.prestate);
                             log_err "poststate =";
-                            log_tritv_err(fcx, stmt_ann.states.poststate);
+                            log_tritv_err(fcx, post);
                             log_err "changed =";
                             log_err changed;
                             */
+                            /* important to do this in one step to ensure
+                               termination (don't want to set changed to true
+                               for intermediate changes) */
+                            ret changed | set_poststate(stmt_ann, post);
+
+
                         }
                         case (none) {
                             // let int = x; => x is uninit in poststate

@@ -20,43 +20,7 @@ import tstate::ann::pp_clone;
 import tstate::ann::empty_prestate;
 import tstate::ann::set_precondition;
 import tstate::ann::set_postcondition;
-import aux::crate_ctxt;
-import aux::fn_ctxt;
-import aux::num_constraints;
-import aux::constraint;
-import aux::expr_pp;
-import aux::stmt_pp;
-import aux::block_pp;
-import aux::clear_pp;
-import aux::clear_precond;
-import aux::set_pre_and_post;
-import aux::copy_pre_post;
-import aux::copy_pre_post_;
-import aux::expr_precond;
-import aux::expr_postcond;
-import aux::expr_prestate;
-import aux::expr_poststate;
-import aux::block_postcond;
-import aux::fn_info;
-import aux::log_pp;
-import aux::node_id_to_def;
-import aux::node_id_to_def_strict;
-import aux::node_id_to_ts_ann;
-import aux::set_postcond_false;
-import aux::controlflow_expr;
-import aux::expr_to_constr;
-import aux::if_ty;
-import aux::if_check;
-import aux::plain_if;
-import aux::forget_in_postcond;
-import aux::forget_in_postcond_still_init;
-
-import aux::constraints_expr;
-import aux::substitute_constr_args;
-import aux::ninit;
-import aux::npred;
-import aux::path_to_ident;
-import aux::use_var;
+import aux::*;
 import bitvectors::bit_num;
 import bitvectors::promises;
 import bitvectors::seq_preconds;
@@ -66,6 +30,7 @@ import bitvectors::declare_var;
 import bitvectors::gen_poststate;
 import bitvectors::relax_precond_block;
 import bitvectors::gen;
+import tritv::tritv_clone;
 import syntax::ast::*;
 import std::map::new_int_hash;
 import util::common::new_def_hash;
@@ -265,6 +230,75 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, node_id larger_id,
     }
 }
 
+fn handle_update(&fn_ctxt fcx, &@expr parent,
+                 &@expr lhs, &@expr rhs, oper_type ty) {
+    find_pre_post_expr(fcx, rhs);
+     alt (lhs.node) {
+        case (expr_path(?p)) {
+            auto post = expr_postcond(fcx.ccx, parent);
+            auto tmp = tritv_clone(post);
+            
+            alt (ty) {
+                case (oper_move) {
+                    if (is_path(rhs)) {
+                        forget_in_postcond(fcx, parent.id, rhs.id);
+                    }
+                }
+                case (oper_swap) {
+                    forget_in_postcond_still_init(fcx, parent.id, lhs.id);
+                    forget_in_postcond_still_init(fcx, parent.id, rhs.id);
+                }
+                case (oper_assign) {
+                    forget_in_postcond_still_init(fcx, parent.id, lhs.id);
+                }
+                case (_) {
+                    // pure and assign_op require the lhs to be init'd
+                    auto df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
+                    alt (df) {
+                        case (def_local(?d_id)) {
+                            auto i = 
+                                bit_num(fcx,
+                                 rec(id=d_id._1,
+                                     c=ninit(path_to_ident(fcx.ccx.tcx, p))));
+                            require_and_preserve(i, expr_pp(fcx.ccx, lhs));
+                        }
+                        case (_) {}
+                    }
+                }
+            }
+
+            gen_if_local(fcx, lhs, rhs, parent.id, lhs.id, p);
+            alt (rhs.node) {
+                case (expr_path(?p1)) {
+                    auto d = local_node_id_to_def_id(fcx, lhs.id);
+                    auto d1 = local_node_id_to_def_id(fcx, rhs.id);
+                    alt (d) {
+                        case (some(?id)) {
+                            alt (d1) {
+                                case (some(?id1)) {
+                                    auto instlhs =
+                                        tup(path_to_ident(fcx.ccx.tcx,
+                                                          p), id);
+                                    auto instrhs =
+                                        tup(path_to_ident(fcx.ccx.tcx,
+                                                          p1), id1);
+                                    copy_in_poststate_two(fcx, tmp,
+                                        post, instlhs, instrhs, ty);
+                                }
+                                case (_) {}
+                            }
+                        }
+                        case (_) {}
+                    }
+                }
+                case (_) { /* do nothing */ }
+            }
+        }
+        case (_) { 
+            find_pre_post_expr(fcx, lhs);
+        }
+    }
+}
 
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
@@ -355,46 +389,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             find_pre_post_exprs(fcx, es, e.id);
         }
         case (expr_move(?lhs, ?rhs)) {
-            alt (lhs.node) {
-                case (expr_path(?p)) {
-                    gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
-                }
-                case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], e.id); }
-            }
-            if (is_path(rhs)) {
-                forget_in_postcond(fcx, e.id, rhs.id);
-            }
+            handle_update(fcx, e, lhs, rhs, oper_move);
         }
         case (expr_swap(?lhs, ?rhs)) {
-            // Both sides must already be initialized
-            find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
-            forget_in_postcond_still_init(fcx, e.id, lhs.id);
-            forget_in_postcond_still_init(fcx, e.id, rhs.id);
-            // Could be more precise and swap the roles of lhs and rhs
-            // in any constraints
+            handle_update(fcx, e, lhs, rhs, oper_swap);
         }
         case (expr_assign(?lhs, ?rhs)) {
-            alt (lhs.node) {
-                case (expr_path(?p)) {
-                    gen_if_local(fcx, lhs, rhs, e.id, lhs.id, p);
-                    forget_in_postcond_still_init(fcx, e.id, lhs.id);
-                }
-                case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], e.id); }
-            }
+            handle_update(fcx, e, lhs, rhs, oper_assign);
         }
         case (expr_recv(?lhs, ?rhs)) {
-            alt (rhs.node) {
-                case (expr_path(?p)) {
-                    gen_if_local(fcx, rhs, lhs, e.id, rhs.id, p);
-                    forget_in_postcond_still_init(fcx, e.id, lhs.id);
-                 }
-                case (_) {
-                    // doesn't check that rhs is an lval, but
-                    // that's probably ok
-
-                    find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
-                }
-            }
+            // note inversion of lhs and rhs
+            handle_update(fcx, e, rhs, lhs, oper_assign);
         }
         case (expr_assign_op(_, ?lhs, ?rhs)) {
             /* Different from expr_assign in that the lhs *must*
@@ -600,10 +605,23 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                                initialized to the postcondition */
 
                             copy_pre_post(fcx.ccx, id, an_init.expr);
+
+                            alt (an_init.expr.node) {
+                                case (expr_path(?p)) {
+                                    copy_in_postcond(fcx, id,
+                                      tup(alocal.node.ident,
+                                          local_def(alocal.node.id)),
+                                      tup(path_to_ident(fcx.ccx.tcx, p),
+                                          local_def(an_init.expr.id)),
+                                             op_to_oper_ty(an_init.op));
+                                }
+                                case (_) {}
+                            }
+
                             gen(fcx, id,
                                 rec(id=alocal.node.id, 
                                     c=ninit(alocal.node.ident)));
-                            
+
                             if (an_init.op == init_move &&
                                 is_path(an_init.expr)) {
                                 forget_in_postcond(fcx, id, an_init.expr.id);
