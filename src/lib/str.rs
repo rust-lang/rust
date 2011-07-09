@@ -55,6 +55,7 @@ native "rust" mod rustrt {
     fn str_vec(str s) -> vec[u8];
     fn str_byte_len(str s) -> uint;
     fn str_alloc(uint n_bytes) -> str;
+    fn str_from_ivec(&u8[mutable?] b) -> str;
     fn str_from_vec(vec[mutable? u8] b) -> str;
     fn str_from_cstr(sbuf cstr) -> str;
     fn str_from_buf(sbuf buf, uint len) -> str;
@@ -168,6 +169,10 @@ fn from_bytes(vec[u8] v) -> str { ret rustrt::str_from_vec(v); }
 // FIXME temp thing
 fn unsafe_from_bytes(vec[mutable? u8] v) -> str {
     ret rustrt::str_from_vec(v);
+}
+
+fn unsafe_from_bytes_ivec(&u8[mutable?] v) -> str {
+    ret rustrt::str_from_ivec(v);
 }
 
 fn unsafe_from_byte(u8 u) -> str { ret rustrt::str_from_vec([u]); }
