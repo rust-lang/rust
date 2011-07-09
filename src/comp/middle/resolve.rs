@@ -92,10 +92,13 @@ tag mod_index_entry {
 
 type mod_index = hashmap[ident, list[mod_index_entry]];
 
+// A tuple of an imported def and the import stmt that brung it
+type glob_imp_def = tup(def, @ast::view_item);
+
 type indexed_mod =
     rec(option::t[ast::_mod] m,
         mod_index index,
-        mutable vec[def] glob_imports,
+        mutable vec[glob_imp_def] glob_imports,
         hashmap[str, import_state] glob_imported_names);
 
 
@@ -105,7 +108,7 @@ type indexed_mod =
 type def_map = hashmap[node_id, def];
 
 type env =
-    rec(cstore::use_crate_map crate_map,
+    rec(cstore::cstore cstore,
         def_map def_map,
         constr_table fn_constrs,
         ast_map::map ast_map,
@@ -125,7 +128,7 @@ tag namespace { ns_value; ns_type; ns_module; }
 fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
    tup(def_map, constr_table) {
     auto e =
-        @rec(crate_map=sess.get_cstore().use_crate_map,
+        @rec(cstore=sess.get_cstore(),
              def_map=new_int_hash[def](),
              fn_constrs = new_int_hash[ty::constr_def[]](),
              ast_map=amap,
@@ -158,7 +161,7 @@ fn map_crate(&@env e, &@ast::crate c) {
     e.mod_map.insert(-1,
                      @rec(m=some(c.node.module),
                           index=index_mod(c.node.module),
-                          mutable glob_imports=vec::empty[def](),
+                          mutable glob_imports=[],
                           glob_imported_names=new_str_hash[import_state]()));
     fn index_vi(@env e, &@ast::view_item i, &scopes sc, &vt[scopes] v) {
         alt (i.node) {
@@ -176,7 +179,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 e.mod_map.insert(i.id,
                                  @rec(m=some(md),
                                       index=index_mod(md),
-                                      mutable glob_imports=vec::empty[def](),
+                                      mutable glob_imports=[],
                                       glob_imported_names=s));
             }
             case (ast::item_native_mod(?nmd)) {
@@ -184,7 +187,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 e.mod_map.insert(i.id,
                                  @rec(m=none[ast::_mod],
                                       index=index_nmod(nmd),
-                                      mutable glob_imports=vec::empty[def](),
+                                      mutable glob_imports=[],
                                       glob_imported_names=s));
             }
             case (_) { }
@@ -225,7 +228,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 auto imp = follow_import(*e, sc, path, vi.span);
                 if (option::is_some(imp)) {
                     find_mod(e, sc).glob_imports +=
-                        [option::get(imp)];
+                        [tup(option::get(imp), vi)];
                 }
             }
             case (_) { }
@@ -883,7 +886,8 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns) ->
    option::t[def] {
     alt (vi.node) {
         case (ast::view_item_use(_, _, ?id)) {
-            ret some(ast::def_mod(tup(e.crate_map.get(id), -1)));
+            auto crate_map = e.cstore.use_crate_map;
+            ret some(ast::def_mod(tup(crate_map.get(id), -1)));
         }
         case (ast::view_item_import(_, _, ?id)) {
             ret lookup_import(e, local_def(id), ns);
@@ -954,21 +958,31 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
                       namespace wanted_ns, dir dr) -> option::t[def] {
     fn per_ns(&env e, @indexed_mod info, &span sp, &ident id, namespace ns,
               dir dr) -> option::t[def] {
+
+        fn lookup_in_mod_(&env e, &glob_imp_def def, &span sp,
+                          &ident name, namespace ns,
+                          dir dr) -> option::t[glob_imp_def] {
+            alt (lookup_in_mod(e, def._0, sp, name, ns, dr)) {
+                case (option::some(?d)) {
+                    option::some(tup(d, def._1))
+                }
+                case (option::none) {
+                    option::none
+                }
+            }
+        }
+
         auto matches =
-            vec::filter_map(bind lookup_in_mod(e, _, sp, id, ns, dr),
+            vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
                             { info.glob_imports });
         if (vec::len(matches) == 0u) {
             ret none[def];
         } else if (vec::len(matches) == 1u) {
-            ret some[def](matches.(0));
+            ret some[def](matches.(0)._0);
         } else {
-            for (def match in matches) {
-                auto span = alt (e.ast_map.get(ast::def_id_of_def(match)._1)){
-                    case (ast_map::node_item(?it)) { it.span }
-                    case (ast_map::node_obj_ctor(?it)) { it.span }
-                    case (ast_map::node_native_item(?it)) { it.span }
-                };
-                e.sess.span_note(span, "'" + id + "' is defined here.");
+            for (glob_imp_def match in matches) {
+                auto sp = match._1.span;
+                e.sess.span_note(sp, #fmt("'%s' is imported here", id));
             }
             e.sess.span_fatal(sp,
                             "'" + id + "' is glob-imported from" +
