@@ -36,7 +36,6 @@ import middle::ty::unify::fix_err;
 import std::int;
 import std::ivec;
 import std::str;
-import std::ufind;
 import std::uint;
 import std::vec;
 import std::map;

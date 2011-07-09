@@ -5,7 +5,7 @@ import std::str;
 import std::uint;
 import std::vec;
 import std::box;
-import std::ufind;
+import std::ufindivec;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -1989,23 +1989,23 @@ mod unify {
 
     }
     type var_bindings =
-        rec(ufind::ufind sets, smallintmap::smallintmap[t] types);
+        rec(ufindivec::ufind sets, smallintmap::smallintmap[t] types);
 
     type ctxt = rec(@var_bindings vb, ty_ctxt tcx);
 
     fn mk_var_bindings() -> @var_bindings {
-        ret @rec(sets=ufind::make(), types=smallintmap::mk[t]());
+        ret @rec(sets=ufindivec::make(), types=smallintmap::mk[t]());
     }
 
     // Unifies two sets.
     fn union(&@ctxt cx, uint set_a, uint set_b) -> union_result {
-        ufind::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
-        auto root_a = ufind::find(cx.vb.sets, set_a);
-        auto root_b = ufind::find(cx.vb.sets, set_b);
+        ufindivec::grow(cx.vb.sets, uint::max(set_a, set_b) + 1u);
+        auto root_a = ufindivec::find(cx.vb.sets, set_a);
+        auto root_b = ufindivec::find(cx.vb.sets, set_b);
 
         auto replace_type = bind fn (&@ctxt cx, t t, uint set_a, uint set_b) {
-            ufind::union(cx.vb.sets, set_a, set_b);
-            let uint root_c = ufind::find(cx.vb.sets, set_a);
+            ufindivec::union(cx.vb.sets, set_a, set_b);
+            let uint root_c = ufindivec::find(cx.vb.sets, set_a);
             smallintmap::insert[t](cx.vb.types, root_c, t);
         } (_, _, set_a, set_b);
 
@@ -2013,7 +2013,7 @@ mod unify {
             case (none) {
                 alt (smallintmap::find(cx.vb.types, root_b)) {
                     case (none) {
-                        ufind::union(cx.vb.sets, set_a, set_b);
+                        ufindivec::union(cx.vb.sets, set_a, set_b);
                         ret unres_ok; }
                     case (some(?t_b)) {
                         replace_type(cx, t_b);
@@ -2043,8 +2043,8 @@ mod unify {
         }
     }
     fn record_var_binding(&@ctxt cx, int key, t typ) -> result {
-        ufind::grow(cx.vb.sets, (key as uint) + 1u);
-        auto root = ufind::find(cx.vb.sets, key as uint);
+        ufindivec::grow(cx.vb.sets, (key as uint) + 1u);
+        auto root = ufindivec::find(cx.vb.sets, key as uint);
         auto result_type = typ;
         alt (smallintmap::find[t](cx.vb.types, root)) {
             case (some(?old_type)) {
@@ -2229,10 +2229,10 @@ mod unify {
        fixup_result {
         alt (struct(tcx, typ)) {
             case (ty_var(?vid)) {
-                if (vid as uint >= ufind::set_count(vb.sets)) {
+                if (vid as uint >= ufindivec::set_count(vb.sets)) {
                     ret fix_err(vid);
                 }
-                auto root_id = ufind::find(vb.sets, vid as uint);
+                auto root_id = ufindivec::find(vb.sets, vid as uint);
                 alt (smallintmap::find[t](vb.types, root_id)) {
                     case (none[t]) { ret fix_err(vid); }
                     case (some[t](?rt)) { ret fix_ok(rt); }
@@ -2644,11 +2644,13 @@ mod unify {
     }
     fn dump_var_bindings(ty_ctxt tcx, @var_bindings vb) {
         auto i = 0u;
-        while (i < vec::len[ufind::node](vb.sets.nodes)) {
+        while (i < ivec::len[ufindivec::node](vb.sets.nodes)) {
             auto sets = "";
             auto j = 0u;
-            while (j < vec::len[option::t[uint]](vb.sets.nodes)) {
-                if (ufind::find(vb.sets, j) == i) { sets += #fmt(" %u", j); }
+            while (j < ivec::len[option::t[uint]](vb.sets.nodes)) {
+                if (ufindivec::find(vb.sets, j) == i) {
+                    sets += #fmt(" %u", j);
+                }
                 j += 1u;
             }
             auto typespec;
@@ -2667,11 +2669,11 @@ mod unify {
     fn fixup_vars(ty_ctxt tcx, @var_bindings vb, t typ) -> fixup_result {
         fn subst_vars(ty_ctxt tcx, @var_bindings vb,
                       @mutable option::t[int] unresolved, int vid) -> t {
-            if (vid as uint >= ufind::set_count(vb.sets)) {
+            if (vid as uint >= ufindivec::set_count(vb.sets)) {
                 *unresolved = some[int](vid);
                 ret ty::mk_var(tcx, vid);
             }
-            auto root_id = ufind::find(vb.sets, vid as uint);
+            auto root_id = ufindivec::find(vb.sets, vid as uint);
             alt (smallintmap::find[t](vb.types, root_id)) {
                 case (none[t]) {
                     *unresolved = some[int](vid);
@@ -2696,8 +2698,10 @@ mod unify {
     }
     fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid) ->
        fixup_result {
-        if (vid as uint >= ufind::set_count(vb.sets)) { ret fix_err(vid); }
-        auto root_id = ufind::find(vb.sets, vid as uint);
+        if (vid as uint >= ufindivec::set_count(vb.sets)) {
+            ret fix_err(vid);
+        }
+        auto root_id = ufindivec::find(vb.sets, vid as uint);
         alt (smallintmap::find[t](vb.types, root_id)) {
             case (none[t]) { ret fix_err(vid); }
             case (some[t](?rt)) { ret fixup_vars(tcx, vb, rt); }
