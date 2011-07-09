@@ -87,6 +87,7 @@ mod term;
 mod time;
 mod smallintmap;
 mod ptr;
+mod test;
 
 // Local Variables:
 // mode: rust;
