@@ -1,5 +1,7 @@
 use std;
 
+mod sha1;
+mod int;
 // Local Variables:
 // mode: rust
 // fill-column: 78;
