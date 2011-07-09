@@ -81,7 +81,11 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
 }
 
 fn promises(&fn_ctxt fcx, &poststate p, &constr_ c) -> bool {
-    ret tritv_get(p, bit_num(fcx, c)) == ttrue;
+    ret promises_(bit_num(fcx, c), p);
+}
+
+fn promises_(uint n, &poststate p) -> bool {
+    ret tritv_get(p, n) == ttrue;
 }
 
 // v "happens after" u

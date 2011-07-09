@@ -108,8 +108,12 @@ fn require_and_preserve(uint i, &pre_and_post p) {
 
 fn set_in_postcond(uint i, &pre_and_post p) -> bool {
     // sets the ith bit in p's post
-    auto was_set = tritv_get(p.postcondition, i);
-    tritv_set(i, p.postcondition, ttrue);
+    ret set_in_postcond_(i, p.postcondition);
+}
+
+fn set_in_postcond_(uint i, &postcond p) -> bool {
+    auto was_set = tritv_get(p, i);
+    tritv_set(i, p, ttrue);
     ret was_set != ttrue;
 }
 
