@@ -404,6 +404,7 @@ fn print_item(&ps s, &@ast::item item) {
         case (ast::item_native_mod(?nmod)) {
             head(s, "native");
             alt (nmod.abi) {
+                case (ast::native_abi_llvm) { word_nbsp(s, "\"llvm\""); }
                 case (ast::native_abi_rust) { word_nbsp(s, "\"rust\""); }
                 case (ast::native_abi_cdecl) { word_nbsp(s, "\"cdecl\""); }
                 case (ast::native_abi_rust_intrinsic) {
