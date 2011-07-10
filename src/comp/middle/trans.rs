@@ -8878,31 +8878,44 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
     // wide. This is obviously wildly unsafe. We should have a better FFI
     // that allows types of different sizes to be returned.
 
-    auto rty_is_nil =
-        ty::type_is_nil(ccx.tcx, ty::ty_fn_ret(ccx.tcx, fn_type));
+    auto rty = ty::ty_fn_ret(ccx.tcx, fn_type);
+    auto rty_is_nil = ty::type_is_nil(ccx.tcx, rty);
+
     auto pass_task;
+    auto uses_retptr;
     auto cast_to_i32;
     alt (abi) {
-        case (ast::native_abi_rust) { pass_task = true; cast_to_i32 = true; }
-        case (ast::native_abi_rust_intrinsic) {
-            pass_task = true;
-            cast_to_i32 = false;
-        }
-        case (ast::native_abi_cdecl) {
-            pass_task = false;
-            cast_to_i32 = true;
-        }
-        case (ast::native_abi_llvm) {
-            pass_task = false;
-            cast_to_i32 = false;
-        }
+      case (ast::native_abi_rust) {
+        pass_task = true;
+        uses_retptr = false;
+        cast_to_i32 = true;
+      }
+      case (ast::native_abi_rust_intrinsic) {
+        pass_task = true;
+        uses_retptr = true;
+        cast_to_i32 = false;
+      }
+      case (ast::native_abi_cdecl) {
+        pass_task = false;
+        uses_retptr = false;
+        cast_to_i32 = true;
+      }
+      case (ast::native_abi_llvm) {
+        pass_task = false;
+        uses_retptr = false;
+        cast_to_i32 = false;
+      }
     }
+
     auto lltaskptr;
     if (cast_to_i32) {
         lltaskptr = vp2i(bcx, fcx.lltaskptr);
     } else { lltaskptr = fcx.lltaskptr; }
+
     let ValueRef[] call_args = ~[];
     if (pass_task) { call_args += ~[lltaskptr]; }
+    if (uses_retptr) { call_args += ~[bcx.fcx.llretptr]; }
+
     auto arg_n = 3u;
     for each (uint i in uint::range(0u, num_ty_param)) {
         auto llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
@@ -8931,16 +8944,25 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
         }
         ret vp2i(cx, v);
     }
+
     fn trans_simple_native_abi(&@block_ctxt bcx, str name,
                                &mutable ValueRef[] call_args,
-                               ty::t fn_type, uint first_arg_n) ->
+                               ty::t fn_type, uint first_arg_n,
+                               bool uses_retptr) ->
        tup(ValueRef, ValueRef) {
         let TypeRef[] call_arg_tys = ~[];
         for (ValueRef arg in call_args) { call_arg_tys += ~[val_ty(arg)]; }
-        auto llnativefnty =
-            T_fn(call_arg_tys,
-                 type_of(bcx.fcx.lcx.ccx, bcx.sp,
-                         ty::ty_fn_ret(bcx.fcx.lcx.ccx.tcx, fn_type)));
+
+        auto llnativefnty;
+        if (uses_retptr) {
+            llnativefnty = T_fn(call_arg_tys, T_void());
+        } else {
+            llnativefnty =
+                T_fn(call_arg_tys,
+                     type_of(bcx.fcx.lcx.ccx, bcx.sp,
+                             ty::ty_fn_ret(bcx.fcx.lcx.ccx.tcx, fn_type)));
+        }
+
         auto llnativefn =
             get_extern_fn(bcx.fcx.lcx.ccx.externs, bcx.fcx.lcx.ccx.llmod,
                           name, lib::llvm::LLVMCCallConv, llnativefnty);
@@ -8948,6 +8970,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
         auto rptr = bcx.fcx.llretptr;
         ret tup(r, rptr);
     }
+
     auto args = ty::ty_fn_args(ccx.tcx, fn_type);
     // Build up the list of arguments.
 
@@ -8970,7 +8993,8 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
     alt (abi) {
         case (ast::native_abi_llvm) {
             auto result =
-                trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n);
+                trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n,
+                                        uses_retptr);
             r = result._0;
             rptr = result._1;
         }
@@ -8978,7 +9002,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
             auto external_name = "rust_intrinsic_" + name;
             auto result =
                 trans_simple_native_abi(bcx, external_name, call_args,
-                                        fn_type, arg_n);
+                                        fn_type, arg_n, uses_retptr);
             r = result._0;
             rptr = result._1;
         }
@@ -8994,7 +9018,8 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
     // pointer. This is the only concession made to non-i32 return values. See
     // the FIXME above.
 
-    if (!rty_is_nil) { bcx.build.Store(r, rptr); }
+    if (!rty_is_nil && !uses_retptr) { bcx.build.Store(r, rptr); }
+
     for (tup(ValueRef, ty::t) d in drop_args) {
         bcx = drop_ty(bcx, d._0, d._1).bcx;
     }

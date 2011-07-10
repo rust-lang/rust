@@ -100,16 +100,55 @@ if.end17:                                         ; preds = %if.else, %entry, %i
   ret i32 %div
 }
 
-define linkonce_odr i8* @rust_intrinsic_ptr_offset(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, i8* %ptr, i32 %count) nounwind readonly {
+define linkonce_odr void @rust_intrinsic_vec_len_2(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind {
+entry:
+  %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
+  %tmp1 = load i32* %fill, align 4, !tbaa !0
+  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
+  %tmp3 = load i32* %size, align 4, !tbaa !0
+  %div = udiv i32 %tmp1, %tmp3
+  store i32 %div, i32* %retptr, align 4, !tbaa !0
+  ret void
+}
+
+define linkonce_odr void @rust_intrinsic_ivec_len_2(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind {
+entry:
+  %fill1 = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 0
+  %tmp2 = load i32* %fill1, align 4, !tbaa !0
+  %tobool = icmp eq i32 %tmp2, 0
+  br i1 %tobool, label %if.else, label %if.end17
+
+if.else:                                          ; preds = %entry
+  %ptr = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 2, i32 0
+  %tmp7 = load %struct.rust_ivec_heap** %ptr, align 4, !tbaa !3
+  %tobool8 = icmp eq %struct.rust_ivec_heap* %tmp7, null
+  br i1 %tobool8, label %if.end17, label %if.then9
+
+if.then9:                                         ; preds = %if.else
+  %fill14 = getelementptr inbounds %struct.rust_ivec_heap* %tmp7, i32 0, i32 0
+  %tmp15 = load i32* %fill14, align 4, !tbaa !0
+  br label %if.end17
+
+if.end17:                                         ; preds = %if.else, %entry, %if.then9
+  %fill.0 = phi i32 [ %tmp15, %if.then9 ], [ %tmp2, %entry ], [ 0, %if.else ]
+  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
+  %tmp20 = load i32* %size, align 4, !tbaa !0
+  %div = udiv i32 %fill.0, %tmp20
+  store i32 %div, i32* %retptr, align 4, !tbaa !0
+  ret void
+}
+
+define linkonce_odr void @rust_intrinsic_ptr_offset(%struct.rust_task* nocapture %task, i8** nocapture %retptr, %struct.type_desc* nocapture %ty, i8* %ptr, i32 %count) nounwind {
 entry:
   %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
   %tmp1 = load i32* %size, align 4, !tbaa !0
   %mul = mul i32 %tmp1, %count
   %arrayidx = getelementptr inbounds i8* %ptr, i32 %mul
-  ret i8* %arrayidx
+  store i8* %arrayidx, i8** %retptr, align 4, !tbaa !3
+  ret void
 }
 
-define linkonce_odr void @rust_intrinsic_cast(%struct.rust_task* %task, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %dest, i8* nocapture %src) {
+define linkonce_odr void @rust_intrinsic_cast(%struct.rust_task* %task, i8* nocapture %retptr, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) {
 entry:
   %size = getelementptr inbounds %struct.type_desc* %t1, i32 0, i32 1
   %tmp1 = load i32* %size, align 4, !tbaa !0
@@ -119,11 +158,11 @@ entry:
   br i1 %cmp, label %if.end, label %if.then
 
 if.then:                                          ; preds = %entry
-  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 43)
+  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 64)
   br label %return
 
 if.end:                                           ; preds = %entry
-  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %dest, i8* %src, i32 %tmp1, i32 1, i1 false)
+  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %retptr, i8* %src, i32 %tmp1, i32 1, i1 false)
   br label %return
 
 return:                                           ; preds = %if.end, %if.then
