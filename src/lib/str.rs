@@ -48,6 +48,7 @@ export connect;
 export connect_ivec;
 export to_upper;
 export safe_slice;
+export bytes_ivec;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -162,6 +163,12 @@ fn byte_len(str s) -> uint { ret rustrt::str_byte_len(s); }
 fn buf(str s) -> sbuf { ret rustrt::str_buf(s); }
 
 fn bytes(str s) -> vec[u8] { ret rustrt::str_vec(s); }
+
+fn bytes_ivec(str s) -> u8[] {
+    auto sbuffer = buf(s);
+    auto ptr = unsafe::reinterpret_cast(sbuffer);
+    ret ivec::unsafe::from_buf(ptr, byte_len(s));
+}
 
 fn from_bytes(vec[u8] v) -> str { ret rustrt::str_from_vec(v); }
 

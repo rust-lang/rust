@@ -207,5 +207,11 @@ mod unsafe {
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
         ret rustrt::ivec_copy_from_buf_shared(v, ptr, count);
     }
+
+    fn from_buf[T](*T ptr, uint bytes) -> T[] {
+        auto v = ~[];
+        copy_from_buf(v, ptr, bytes);
+        ret v;
+    }
 }
 
