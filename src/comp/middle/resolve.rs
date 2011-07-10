@@ -886,8 +886,8 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns) ->
    option::t[def] {
     alt (vi.node) {
         case (ast::view_item_use(_, _, ?id)) {
-            auto crate_map = e.cstore.use_crate_map;
-            ret some(ast::def_mod(tup(crate_map.get(id), -1)));
+            auto cnum = cstore::get_use_stmt_cnum(e.cstore, id);
+            ret some(ast::def_mod(tup(cnum, -1)));
         }
         case (ast::view_item_import(_, _, ?id)) {
             ret lookup_import(e, local_def(id), ns);

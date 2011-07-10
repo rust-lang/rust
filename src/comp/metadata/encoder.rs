@@ -528,7 +528,7 @@ fn encode_crate_deps(&ebml::writer ebml_w, &cstore::cstore cstore) {
 
         // Pull the cnums and names out of cstore
         let vec[mutable numname] pairs = [mutable];
-        for each (hashkv hashkv in cstore.metas.items()) {
+        for each (hashkv hashkv in cstore::iter_crate_data(cstore)) {
             pairs += [mutable tup(hashkv._0, hashkv._1.name)];
         }
 
