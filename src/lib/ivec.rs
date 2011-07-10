@@ -7,7 +7,7 @@ import uint::next_power_of_two;
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
 native "rust-intrinsic" mod rusti {
-    fn ivec_len_2[T](&T[] v) -> uint;
+    fn ivec_len[T](&T[] v) -> uint;
 }
 
 native "rust" mod rustrt {
@@ -32,7 +32,7 @@ fn to_ptr[T](&T[] v) -> *T {
 }
 
 fn len[T](&T[mutable?] v) -> uint {
-    ret rusti::ivec_len_2(v);
+    ret rusti::ivec_len(v);
 }
 
 type init_op[T] = fn(uint) -> T;

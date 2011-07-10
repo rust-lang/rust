@@ -64,43 +64,7 @@ target triple = "@CFG_LLVM_TRIPLE@"
 @.str = private unnamed_addr constant [42 x i8] c"attempt to cast values of differing sizes\00", align 1
 @.str1 = private unnamed_addr constant [15 x i8] c"intrinsics.cpp\00", align 1
 
-define linkonce_odr i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly {
-entry:
-  %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
-  %tmp1 = load i32* %fill, align 4, !tbaa !0
-  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
-  %tmp3 = load i32* %size, align 4, !tbaa !0
-  %div = udiv i32 %tmp1, %tmp3
-  ret i32 %div
-}
-
-define linkonce_odr i32 @rust_intrinsic_ivec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind readonly {
-entry:
-  %fill1 = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 0
-  %tmp2 = load i32* %fill1, align 4, !tbaa !0
-  %tobool = icmp eq i32 %tmp2, 0
-  br i1 %tobool, label %if.else, label %if.end17
-
-if.else:                                          ; preds = %entry
-  %ptr = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 2, i32 0
-  %tmp7 = load %struct.rust_ivec_heap** %ptr, align 4, !tbaa !3
-  %tobool8 = icmp eq %struct.rust_ivec_heap* %tmp7, null
-  br i1 %tobool8, label %if.end17, label %if.then9
-
-if.then9:                                         ; preds = %if.else
-  %fill14 = getelementptr inbounds %struct.rust_ivec_heap* %tmp7, i32 0, i32 0
-  %tmp15 = load i32* %fill14, align 4, !tbaa !0
-  br label %if.end17
-
-if.end17:                                         ; preds = %if.else, %entry, %if.then9
-  %fill.0 = phi i32 [ %tmp15, %if.then9 ], [ %tmp2, %entry ], [ 0, %if.else ]
-  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
-  %tmp20 = load i32* %size, align 4, !tbaa !0
-  %div = udiv i32 %fill.0, %tmp20
-  ret i32 %div
-}
-
-define linkonce_odr void @rust_intrinsic_vec_len_2(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind {
+define linkonce_odr void @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind {
 entry:
   %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
   %tmp1 = load i32* %fill, align 4, !tbaa !0
@@ -111,7 +75,7 @@ entry:
   ret void
 }
 
-define linkonce_odr void @rust_intrinsic_ivec_len_2(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind {
+define linkonce_odr void @rust_intrinsic_ivec_len(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind {
 entry:
   %fill1 = getelementptr inbounds %struct.rust_ivec* %v, i32 0, i32 0
   %tmp2 = load i32* %fill1, align 4, !tbaa !0
@@ -158,7 +122,7 @@ entry:
   br i1 %cmp, label %if.end, label %if.then
 
 if.then:                                          ; preds = %entry
-  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 64)
+  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 45)
   br label %return
 
 if.end:                                           ; preds = %entry
