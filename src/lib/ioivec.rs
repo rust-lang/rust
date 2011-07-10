@@ -395,9 +395,6 @@ obj byte_buf_writer(mutable_byte_buf buf) {
         // Fast path.
 
         if (buf.pos == ivec::len(buf.buf)) {
-            // FIXME: Fix our type system. There's no reason you shouldn't be
-            // able to add a mutable vector to an immutable one.
-
             for (u8 b in v) { buf.buf += ~[mutable b]; }
             buf.pos += ivec::len[u8](v);
             ret;
