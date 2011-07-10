@@ -561,46 +561,6 @@ upcall_start_task(rust_task *spawner,
  * Resizes an interior vector that has been spilled to the heap.
  */
 extern "C" CDECL void
-upcall_ivec_resize(rust_task *task,
-                   rust_ivec *v,
-                   size_t newsz) {
-    LOG_UPCALL_ENTRY(task);
-
-    I(task->sched, !v->fill);
-
-    size_t new_alloc = next_power_of_two(newsz);
-    rust_ivec_heap *new_heap_part = (rust_ivec_heap *)
-        task->realloc(v->payload.ptr, new_alloc + sizeof(size_t));
-
-    new_heap_part->fill = newsz;
-    v->alloc = new_alloc;
-    v->payload.ptr = new_heap_part;
-}
-
-/**
- * Spills an interior vector to the heap.
- */
-extern "C" CDECL void
-upcall_ivec_spill(rust_task *task,
-                  rust_ivec *v,
-                  size_t newsz) {
-    LOG_UPCALL_ENTRY(task);
-    size_t new_alloc = next_power_of_two(newsz);
-
-    rust_ivec_heap *heap_part = (rust_ivec_heap *)
-        task->malloc(new_alloc + sizeof(size_t));
-    heap_part->fill = newsz;
-    memcpy(&heap_part->data, v->payload.data, v->fill);
-
-    v->fill = 0;
-    v->alloc = new_alloc;
-    v->payload.ptr = heap_part;
-}
-
-/**
- * Resizes an interior vector that has been spilled to the heap.
- */
-extern "C" CDECL void
 upcall_ivec_resize_shared(rust_task *task,
                           rust_ivec *v,
                           size_t newsz) {
