@@ -7,7 +7,7 @@ Idea: provide functions for 'exhaustive' and 'random' modification of vecs.
   two functions, "return the number of possible edits" and "return edit #n"
 
 It would be nice if this could be data-driven, so the two functions could share information:
-  type vec_modifier = rec(fn (&int[] v, uint i) -> int[] fun, uint lo, uint di);
+  type vec_modifier = rec(fn (&T[] v, uint i) -> T[] fun, uint lo, uint di);
   const vec_modifier[] vec_modifiers = ~[rec(fun=vec_omit, 0u, 1u), ...];
 But that gives me "error: internal compiler error unimplemented consts that's not a plain literal".
 https://github.com/graydon/rust/issues/570
@@ -26,23 +26,23 @@ import std::ivec::slice;
 import std::ivec::len;
 import std::int;
 
-//fn vec_reverse(&int[] v) -> int[] { ... }
+//fn vec_reverse(&T[] v) -> T[] { ... }
 
-fn vec_omit   (&int[] v, uint i) -> int[] { slice(v, 0u, i) +                      slice(v, i+1u, len(v)) }
-fn vec_dup    (&int[] v, uint i) -> int[] { slice(v, 0u, i) + ~[v.(i)]           + slice(v, i,    len(v)) }
-fn vec_swadj  (&int[] v, uint i) -> int[] { slice(v, 0u, i) + ~[v.(i+1u), v.(i)] + slice(v, i+2u, len(v)) }
-fn vec_prefix (&int[] v, uint i) -> int[] { slice(v, 0u, i) }
-fn vec_suffix (&int[] v, uint i) -> int[] { slice(v, i, len(v)) }
+fn vec_omit   [T] (&T[] v, uint i) -> T[] { slice(v, 0u, i) +                      slice(v, i+1u, len(v)) }
+fn vec_dup    [T] (&T[] v, uint i) -> T[] { slice(v, 0u, i) + ~[v.(i)]           + slice(v, i,    len(v)) }
+fn vec_swadj  [T] (&T[] v, uint i) -> T[] { slice(v, 0u, i) + ~[v.(i+1u), v.(i)] + slice(v, i+2u, len(v)) }
+fn vec_prefix [T] (&T[] v, uint i) -> T[] { slice(v, 0u, i) }
+fn vec_suffix [T] (&T[] v, uint i) -> T[] { slice(v, i, len(v)) }
 
-fn vec_poke   (&int[] v, uint i, int x) -> int[] { slice(v, 0u, i) + ~[x] + slice(v, i+1u, len(v)) }
-fn vec_insert (&int[] v, uint i, int x) -> int[] { slice(v, 0u, i) + ~[x] + slice(v, i, len(v)) }
+fn vec_poke   [T] (&T[] v, uint i, &T x) -> T[] { slice(v, 0u, i) + ~[x] + slice(v, i+1u, len(v)) }
+fn vec_insert [T] (&T[] v, uint i, &T x) -> T[] { slice(v, 0u, i) + ~[x] + slice(v, i, len(v)) }
 
 // Iterates over 0...length, skipping the specified number on each side.
 iter ix(uint skip_low, uint skip_high, uint length) -> uint { let uint i = skip_low; while (i + skip_high <= length) { put i; i += 1u; } }
 
 // Returns a bunch of modified versions of v, some of which introduce new elements (borrowed from xs).
-fn vec_edits(&int[] v, &int[] xs) -> int[][] {
-    let int[][] edits = ~[];
+fn vec_edits[T](&T[] v, &T[] xs) -> T[][] {
+    let T[][] edits = ~[];
     let uint Lv = len(v);
 
     if (Lv != 1u) { edits += ~[~[]]; } // When Lv == 1u, this is redundant with omit
@@ -55,8 +55,8 @@ fn vec_edits(&int[] v, &int[] xs) -> int[][] {
     for each (uint i in ix(2u, 1u, Lv)) { edits += ~[vec_suffix(v, i)]; }
 
     for each (uint j in ix(0u, 1u, len(xs))) {
-      for each (uint i in ix(0u, 1u, Lv)) { edits += ~[vec_poke  (v, i, xs.(j))]; }
-      for each (uint i in ix(0u, 0u, Lv)) { edits += ~[vec_insert(v, i, xs.(j))]; }
+        for each (uint i in ix(0u, 1u, Lv)) { edits += ~[vec_poke  (v, i, xs.(j))]; }
+        for each (uint i in ix(0u, 0u, Lv)) { edits += ~[vec_insert(v, i, xs.(j))]; }
     }
 
     edits
