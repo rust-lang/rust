@@ -2,6 +2,11 @@
 //      -I../arch/i386 -fno-stack-protector -o intrinsics.ll intrinsics.cpp`
 
 #include "../rust_internal.h"
+#include <cstdlib>
+#include <cstring>
+
+extern "C" CDECL void
+upcall_fail(rust_task *task, char const *expr, char const *file, size_t line);
 
 extern "C" size_t
 rust_intrinsic_vec_len(rust_task *task, type_desc *ty, rust_vec *v)
@@ -27,5 +32,18 @@ rust_intrinsic_ptr_offset(rust_task *task, type_desc *ty, void *ptr,
                           uintptr_t count)
 {
     return &((uint8_t *)ptr)[ty->size * count];
+}
+
+extern "C" void
+rust_intrinsic_cast(rust_task *task, type_desc *t1, type_desc *t2, void *dest,
+                    void *src)
+{
+    if (t1->size != t2->size) {
+        upcall_fail(task, "attempt to cast values of differing sizes",
+                    __FILE__, __LINE__);
+        return;
+    }
+
+    memmove(dest, src, t1->size);
 }
 

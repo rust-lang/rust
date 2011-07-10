@@ -61,6 +61,9 @@ target triple = "@CFG_LLVM_TRIPLE@"
 %struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*)*, i32, void (i8*, %struct.rust_task*, i8*, %struct.type_desc**, i8*, i8*, i8)*, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
 %union.rust_ivec_payload = type { %struct.rust_ivec_heap* }
 
+@.str = private unnamed_addr constant [42 x i8] c"attempt to cast values of differing sizes\00", align 1
+@.str1 = private unnamed_addr constant [15 x i8] c"intrinsics.cpp\00", align 1
+
 define linkonce_odr i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly {
 entry:
   %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
@@ -105,6 +108,31 @@ entry:
   %arrayidx = getelementptr inbounds i8* %ptr, i32 %mul
   ret i8* %arrayidx
 }
+
+define linkonce_odr void @rust_intrinsic_cast(%struct.rust_task* %task, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %dest, i8* nocapture %src) {
+entry:
+  %size = getelementptr inbounds %struct.type_desc* %t1, i32 0, i32 1
+  %tmp1 = load i32* %size, align 4, !tbaa !0
+  %size3 = getelementptr inbounds %struct.type_desc* %t2, i32 0, i32 1
+  %tmp4 = load i32* %size3, align 4, !tbaa !0
+  %cmp = icmp eq i32 %tmp1, %tmp4
+  br i1 %cmp, label %if.end, label %if.then
+
+if.then:                                          ; preds = %entry
+  tail call void @upcall_fail(%struct.rust_task* %task, i8* getelementptr inbounds ([42 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 43)
+  br label %return
+
+if.end:                                           ; preds = %entry
+  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %dest, i8* %src, i32 %tmp1, i32 1, i1 false)
+  br label %return
+
+return:                                           ; preds = %if.end, %if.then
+  ret void
+}
+
+declare void @upcall_fail(%struct.rust_task*, i8*, i8*, i32)
+
+declare void @llvm.memmove.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 
 !0 = metadata !{metadata !"long", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}
