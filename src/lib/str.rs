@@ -49,6 +49,7 @@ export connect_ivec;
 export to_upper;
 export safe_slice;
 export bytes_ivec;
+export unsafe_from_bytes_ivec;
 
 native "rust" mod rustrt {
     type sbuf;

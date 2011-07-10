@@ -35,6 +35,10 @@ fn len[T](&T[mutable?] v) -> uint {
     ret rusti::ivec_len(v);
 }
 
+fn len_set[T](&mutable T[mutable?] v, uint new_len) {
+    v = slice(v, 0u, new_len);
+}
+
 type init_op[T] = fn(uint) -> T;
 
 fn init_fn[T](&init_op[T] op, uint n_elts) -> T[] {

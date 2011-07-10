@@ -22,6 +22,13 @@ native "cdecl" mod libc = "" {
     fn _pipe(vbuf fds, uint size, int mode) -> int;
 }
 
+native "cdecl" mod libc_ivec = "" {
+    fn read(int fd, *u8 buf, uint count) -> int;
+    fn write(int fd, *u8 buf, uint count) -> int;
+    fn fread(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
+    fn fwrite(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
+}
+
 mod libc_constants {
     fn O_RDONLY() -> int { ret 0; }
     fn O_WRONLY() -> int { ret 1; }

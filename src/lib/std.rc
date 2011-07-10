@@ -20,6 +20,7 @@ mod str;
 // General io and system-services modules.
 
 mod io;
+mod ioivec;
 mod sys;
 mod task;
 
