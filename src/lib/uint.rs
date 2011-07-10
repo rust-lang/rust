@@ -24,6 +24,8 @@ pred gt(uint x, uint y) -> bool { ret x > y; }
 
 fn max(uint x, uint y) -> uint { if (x > y) { ret x; } ret y; }
 
+fn min(uint x, uint y) -> uint { if (x > y) { ret y; } ret x; }
+
 iter range(uint lo, uint hi) -> uint {
     auto lo_ = lo;
     while (lo_ < hi) { put lo_; lo_ += 1u; }
