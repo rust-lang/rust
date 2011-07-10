@@ -27,7 +27,7 @@ type test_desc = rec(test_name name,
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(&vec[str] args, &test_desc[] tests) -> int {
+fn test_main(&test_desc[] tests) -> int {
     if (run_tests(tests)) {
         ret 0;
     } else {

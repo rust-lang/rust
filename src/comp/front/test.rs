@@ -10,9 +10,9 @@ export modify_for_testing;
 
 type node_id_gen = @fn() -> ast::node_id;
 
-type test_ctxt = rec(node_id_gen next_node_id,
-                     mutable ast::ident[] path,
-                     mutable ast::ident[][] testfns);
+type test_ctxt = @rec(node_id_gen next_node_id,
+                      mutable ast::ident[] path,
+                      mutable ast::ident[][] testfns);
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -30,9 +30,9 @@ fn modify_for_testing(@ast::crate crate) -> @ast::crate {
         ret this_node_id;
     } (next_node_id);
 
-    let test_ctxt cx = rec(next_node_id = next_node_id_fn,
-                  mutable path = ~[],
-                  mutable testfns = ~[]);
+    let test_ctxt cx = @rec(next_node_id = next_node_id_fn,
+                            mutable path = ~[],
+                            mutable testfns = ~[]);
 
     auto precursor = rec(fold_crate = bind fold_crate(cx, _, _),
                          fold_item = bind fold_item(cx, _, _)
@@ -55,51 +55,6 @@ fn fold_crate(&test_ctxt cx, &ast::crate_ c,
             with folded);
 }
 
-fn add_test_module(&test_ctxt cx, &ast::_mod m) -> ast::_mod {
-    auto testmod = mk_test_module(cx);
-    ret rec(items=m.items + ~[testmod] with m);
-}
-
-fn mk_test_module(&test_ctxt cx) -> @ast::item {
-    auto mainfn = mk_main(cx);
-    let ast::_mod testmod = rec(view_items=~[], items=~[mainfn]);
-    auto item_ = ast::item_mod(testmod);
-    let ast::item item = rec(ident = "__test",
-                             attrs = ~[],
-                             id = cx.next_node_id(),
-                             node = item_,
-                             span = rec(lo=0u, hi=0u));
-    ret @item;
-}
-
-fn mk_main(&test_ctxt cx) -> @ast::item {
-    auto ret_ty = @rec(node=ast::ty_nil,
-                       span=rec(lo=0u, hi=0u));
-
-    let ast::fn_decl decl = rec(inputs = ~[],
-                                output = ret_ty,
-                                purity = ast::impure_fn,
-                                cf = ast::return,
-                                constraints = ~[]);
-    auto proto = ast::proto_fn;
-
-    let ast::block_ body_ = rec(stmts = ~[],
-                                 expr = option::none,
-                                 id = cx.next_node_id());
-    auto body = rec(node = body_, span = rec(lo=0u, hi=0u));
-
-    auto fn_ = rec(decl = decl,
-                   proto = proto,
-                   body = body);
-
-    auto item_ = ast::item_fn(fn_, ~[]);
-    let ast::item item = rec(ident = "main",
-                             attrs = ~[],
-                             id = cx.next_node_id(),
-                             node = item_,
-                             span = rec(lo=0u, hi=0u));
-    ret @item;
-}
 
 fn fold_item(&test_ctxt cx, &@ast::item i,
              fold::ast_fold fld) -> @ast::item {
@@ -110,6 +65,7 @@ fn fold_item(&test_ctxt cx, &@ast::item i,
     if (is_test_fn(i)) {
         log "this is a test function";
         cx.testfns += ~[cx.path];
+        log #fmt("have %u test functions", ivec::len(cx.testfns));
     }
 
     auto res = fold::noop_fold_item(i, fld);
@@ -134,6 +90,231 @@ fn is_test_fn(&@ast::item i) -> bool {
     }
 
     ret has_test_attr && has_test_signature(i);
+}
+
+fn add_test_module(&test_ctxt cx, &ast::_mod m) -> ast::_mod {
+    auto testmod = mk_test_module(cx);
+    ret rec(items=m.items + ~[testmod] with m);
+}
+
+/*
+
+We're going to be building a module that looks more or less like:
+
+mod __test {
+
+  fn main(vec[str] args) -> int {
+    std::test::test_main(args, tests())
+  }
+
+  fn tests() -> std::test::test_desc[] {
+    ... the list of tests in the crate ...
+  }
+}
+
+*/
+
+fn mk_test_module(&test_ctxt cx) -> @ast::item {
+    // A function that generates a vector of test descriptors to feed to the
+    // test runner
+    auto testsfn = mk_tests(cx);
+    // The synthesized main function which will call the console test runner
+    // with our list of tests
+    auto mainfn = mk_main(cx);
+    let ast::_mod testmod = rec(view_items=~[],
+                                items=~[mainfn, testsfn]);
+    auto item_ = ast::item_mod(testmod);
+    let ast::item item = rec(ident = "__test",
+                             attrs = ~[],
+                             id = cx.next_node_id(),
+                             node = item_,
+                             span = rec(lo=0u, hi=0u));
+    ret @item;
+}
+
+fn nospan[T](&T t) -> ast::spanned[T] {
+    ret rec(node=t,
+            span=rec(lo=0u,hi=0u));
+}
+
+fn mk_tests(&test_ctxt cx) -> @ast::item {
+    auto ret_ty = mk_test_desc_ivec_ty();
+
+    let ast::fn_decl decl = rec(inputs = ~[],
+                                output = ret_ty,
+                                purity = ast::impure_fn,
+                                cf = ast::return,
+                                constraints = ~[]);
+    auto proto = ast::proto_fn;
+    
+    // The vector of test_descs for this crate
+    auto test_descs = mk_test_desc_vec(cx);
+
+    let ast::block_ body_= rec(stmts = ~[],
+                               expr = option::some(test_descs),
+                               id = cx.next_node_id());
+    auto body = nospan(body_);
+
+    auto fn_ = rec(decl = decl,
+                   proto = proto,
+                   body = body);
+
+    auto item_ = ast::item_fn(fn_, ~[]);
+    let ast::item item = rec(ident = "tests",
+                             attrs = ~[],
+                             id = cx.next_node_id(),
+                             node = item_,
+                             span = rec(lo=0u, hi=0u));
+    ret @item;
+}
+
+fn empty_fn_ty() -> ast::ty {
+    auto proto = ast::proto_fn;
+    auto input_ty = ~[];
+    auto ret_ty = @nospan(ast::ty_nil);
+    auto cf = ast::return;
+    auto constrs = ~[];
+    ret nospan(ast::ty_fn(proto, input_ty, ret_ty, cf, constrs));
+}
+
+// The ast::ty of std::test::test_desc
+fn mk_test_desc_ivec_ty() -> @ast::ty {
+    // Oh this is brutal to build by hand
+    let ast::mt name_mt = rec(ty = @nospan(ast::ty_str),
+                              mut = ast::imm);
+    let ast::mt fn_mt = rec(ty = @empty_fn_ty(),
+                            mut = ast::imm);
+
+    let ast::ty_field_ name_ty_field_ = rec(ident = "name",
+                                            mt = name_mt);
+
+    let ast::ty_field_ fn_ty_field_ = rec(ident = "fn",
+                                          mt = fn_mt);
+    
+    let ast::ty_field[] test_desc_fields = ~[nospan(name_ty_field_),
+                                             nospan(fn_ty_field_)];
+    let ast::ty test_desc_ty = nospan(ast::ty_rec(test_desc_fields));
+
+    let ast::mt ivec_mt = rec(ty = @test_desc_ty,
+                              mut = ast::imm);
+
+    ret @nospan(ast::ty_ivec(ivec_mt));
+}
+
+fn mk_test_desc_vec(&test_ctxt cx) -> @ast::expr {
+    log #fmt("building test vector from %u tests",
+             ivec::len(cx.testfns));
+    auto descs = ~[];
+    for (ast::ident[] testpath in cx.testfns) {
+        log #fmt("encoding %s", ast::path_name_i(testpath));
+        auto path = testpath;
+        descs += ~[mk_test_desc_rec(cx, path)];
+    }
+
+    ret @rec(id = cx.next_node_id(),
+             node = ast::expr_vec(descs, ast::imm, ast::sk_unique),
+             span = rec(lo=0u,hi=0u));
+}
+
+fn mk_test_desc_rec(&test_ctxt cx, ast::ident[] path) -> @ast::expr {
+
+    let ast::lit name_lit = nospan(ast::lit_str(ast::path_name_i(path),
+                                                ast::sk_rc));
+    let ast::expr name_expr = rec(id = cx.next_node_id(),
+                                  node = ast::expr_lit(@name_lit),
+                                  span = rec(lo=0u, hi=0u));
+
+    let ast::field name_field = nospan(rec(mut = ast::imm,
+                                           ident = "name",
+                                           expr = @name_expr));
+
+    let ast::path fn_path = nospan(rec(idents = path,
+                                       types = ~[]));
+
+    let ast::expr fn_expr = rec(id = cx.next_node_id(),
+                                node = ast::expr_path(fn_path),
+                                span = rec(lo=0u, hi=0u));
+
+    let ast::field fn_field = nospan(rec(mut = ast::imm,
+                                         ident = "fn",
+                                         expr = @fn_expr));
+
+    let ast::expr_ desc_rec_ = ast::expr_rec(~[name_field, fn_field],
+                                             option::none);
+    let ast::expr desc_rec = rec(id = cx.next_node_id(),
+                                 node = desc_rec_,
+                                 span = rec(lo=0u, hi=0u));
+    ret @desc_rec;
+}
+
+fn mk_main(&test_ctxt cx) -> @ast::item {
+    auto ret_ty = @rec(node=ast::ty_int,
+                       span=rec(lo=0u, hi=0u));
+
+    let ast::fn_decl decl = rec(inputs = ~[],
+                                output = ret_ty,
+                                purity = ast::impure_fn,
+                                cf = ast::return,
+                                constraints = ~[]);
+    auto proto = ast::proto_fn;
+
+    auto test_main_call_expr = mk_test_main_call(cx);
+
+    let ast::block_ body_ = rec(stmts = ~[],
+                                expr = option::some(test_main_call_expr),
+                                id = cx.next_node_id());
+    auto body = rec(node = body_, span = rec(lo=0u, hi=0u));
+
+    auto fn_ = rec(decl = decl,
+                   proto = proto,
+                   body = body);
+
+    auto item_ = ast::item_fn(fn_, ~[]);
+    let ast::item item = rec(ident = "main",
+                             attrs = ~[],
+                             id = cx.next_node_id(),
+                             node = item_,
+                             span = rec(lo=0u, hi=0u));
+    ret @item;
+}
+
+fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
+
+    let ast::path test_path = nospan(rec(idents = ~["tests"],
+                                         types = ~[]));
+
+    let ast::expr_ test_path_expr_ = ast::expr_path(test_path);
+
+    let ast::expr test_path_expr = rec(id = cx.next_node_id(),
+                                       node = test_path_expr_,
+                                       span = rec(lo=0u, hi=0u));
+
+    let ast::expr_ test_call_expr_ = ast::expr_call(@test_path_expr, ~[]);
+
+    let ast::expr test_call_expr = rec(id = cx.next_node_id(),
+                                       node = test_call_expr_,
+                                       span = rec(lo=0u, hi=0u));
+
+    let ast::path test_main_path = nospan(rec(idents = ~["std",
+                                                         "test",
+                                                         "test_main"],
+                                              types = ~[]));
+
+    let ast::expr_ test_main_path_expr_
+        = ast::expr_path(test_main_path);
+
+    let ast::expr test_main_path_expr = rec(id = cx.next_node_id(),
+                                            node = test_main_path_expr_,
+                                            span = rec(lo=0u, hi=0u));
+
+    let ast::expr_ test_main_call_expr_ 
+        = ast::expr_call(@test_main_path_expr, ~[@test_call_expr]);
+
+    let ast::expr test_main_call_expr = rec(id = cx.next_node_id(),
+                                            node = test_main_call_expr_,
+                                            span = rec(lo=0u, hi=0u));
+
+    ret @test_main_call_expr;
 }
 
 // Local Variables:
