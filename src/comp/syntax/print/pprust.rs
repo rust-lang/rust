@@ -691,7 +691,7 @@ fn print_mac(&ps s, &ast::mac m) {
         case (ast::mac_embed_block(?blk)) {
             print_possibly_embedded_block(s, blk, true);
         }
-        case (ast::mac_elipsis) {
+        case (ast::mac_ellipsis) {
             word(s.s, "...");
         }
     }

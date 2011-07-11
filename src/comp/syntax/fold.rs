@@ -140,7 +140,7 @@ fn fold_mac_(&mac m, ast_fold fld) -> mac {
                 case (mac_embed_block(?block)) {
                     mac_embed_block(fld.fold_block(block))
                 }
-                case (mac_elipsis) { mac_elipsis }
+                case (mac_ellipsis) { mac_ellipsis }
             },
             span=m.span);
 }

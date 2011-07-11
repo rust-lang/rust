@@ -43,7 +43,7 @@ tag token {
     /* Structural symbols */
     AT;
     DOT;
-    ELIPSIS;
+    ELLIPSIS;
     COMMA;
     SEMI;
     COLON;
@@ -116,7 +116,7 @@ fn to_str(lexer::reader r, token t) -> str {
              /* Structural symbols */
         case (AT) { ret "@"; }
         case (DOT) { ret "."; }
-        case (ELIPSIS) { ret "..."; }
+        case (ELLIPSIS) { ret "..."; }
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
         case (COLON) { ret ":"; }

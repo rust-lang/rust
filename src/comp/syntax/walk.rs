@@ -274,7 +274,7 @@ fn walk_mac(&ast_visitor v, ast::mac mac) {
         case (ast::mac_invoc(?pth, ?args, ?body)) { walk_exprs(v, args); }
         case (ast::mac_embed_type(?ty)) { walk_ty(v, ty); }
         case (ast::mac_embed_block(?blk)) { walk_block(v, blk); }
-        case (ast::mac_elipsis) { }
+        case (ast::mac_ellipsis) { }
     }
 }
 

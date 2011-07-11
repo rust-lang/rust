@@ -370,7 +370,7 @@ fn next_token(&reader rdr) -> token::token {
             if (rdr.curr() == '.' && rdr.next() == '.') {
                 rdr.bump();
                 rdr.bump();
-                ret token::ELIPSIS;
+                ret token::ELLIPSIS;
             }
             ret token::DOT;
         }

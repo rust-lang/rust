@@ -261,7 +261,7 @@ fn visit_mac[E](mac m, &E e, &vt[E] v) {
         case (ast::mac_invoc(?pth, ?args, ?body)) { visit_exprs(args, e, v); }
         case (ast::mac_embed_type(?ty)) { v.visit_ty(ty, e, v); }
         case (ast::mac_embed_block(?blk)) { v.visit_block(blk, e, v); }
-        case (ast::mac_elipsis) { }
+        case (ast::mac_ellipsis) { }
     }
 }
 

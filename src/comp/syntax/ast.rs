@@ -333,7 +333,7 @@ tag mac_ {
     mac_invoc(path, (@expr)[], option::t[str]);
     mac_embed_type(@ty);
     mac_embed_block(block);
-    mac_elipsis;
+    mac_ellipsis;
 }
 
 type lit = spanned[lit_];
