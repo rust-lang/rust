@@ -249,11 +249,20 @@ fn mk_test_desc_rec(&test_ctxt cx, ast::ident[] path) -> @ast::expr {
 }
 
 fn mk_main(&test_ctxt cx) -> @ast::item {
-    auto ret_ty = @rec(node=ast::ty_int,
-                       span=rec(lo=0u, hi=0u));
 
-    let ast::fn_decl decl = rec(inputs = ~[],
-                                output = ret_ty,
+    let ast::mt args_mt = rec(ty = @nospan(ast::ty_str),
+                              mut = ast::imm);
+    let ast::ty args_ty = nospan(ast::ty_vec(args_mt));
+
+    let ast::arg args_arg = rec(mode = ast::val,
+                                ty = @args_ty,
+                                ident = "args",
+                                id = cx.next_node_id());
+
+    auto ret_ty = nospan(ast::ty_int);
+
+    let ast::fn_decl decl = rec(inputs = ~[args_arg],
+                                output = @ret_ty,
                                 purity = ast::impure_fn,
                                 cf = ast::return,
                                 constraints = ~[]);
@@ -281,6 +290,18 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
 
 fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
 
+    // Get the args passed to main so we can pass the to test_main
+    let ast::path args_path = nospan(rec(global = false,
+                                         idents = ~["args"],
+                                         types = ~[]));
+
+    let ast::expr_ args_path_expr_ = ast::expr_path(args_path);
+
+    let ast::expr args_path_expr = rec(id = cx.next_node_id(),
+                                       node = args_path_expr_,
+                                       span = rec(lo=0u, hi=0u));
+
+    // Call __test::test to generate the vector of test_descs
     let ast::path test_path = nospan(rec(global = false,
                                          idents = ~["tests"],
                                          types = ~[]));
@@ -297,6 +318,7 @@ fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
                                        node = test_call_expr_,
                                        span = rec(lo=0u, hi=0u));
 
+    // Call std::test::test_main
     let ast::path test_main_path = nospan(rec(global = false,
                                               idents = ~["std",
                                                          "test",
@@ -311,7 +333,8 @@ fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
                                             span = rec(lo=0u, hi=0u));
 
     let ast::expr_ test_main_call_expr_ 
-        = ast::expr_call(@test_main_path_expr, ~[@test_call_expr]);
+        = ast::expr_call(@test_main_path_expr, ~[@args_path_expr,
+                                                 @test_call_expr]);
 
     let ast::expr test_main_call_expr = rec(id = cx.next_node_id(),
                                             node = test_main_call_expr_,
