@@ -78,16 +78,64 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
     io::stdout().write_str(#fmt(" %s\n", msg));
     alt (maybe_lines) {
         case (some(?lines)) {
+            // FIXME: reading in the entire file is the worst possible way to
+            //        get access to the necessary lines.
             auto rdr = io::file_reader(lines.name);
             auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
             auto fm = codemap::get_filemap(cm, lines.name);
-            for (uint line in lines.lines) {
+
+            // arbitrarily only print up to six lines of the error
+            auto max_lines = 6u;
+            auto elided = false;
+            auto display_lines = lines.lines;
+            if (vec::len(display_lines) > max_lines) {
+                display_lines = vec::slice(display_lines, 0u, max_lines);
+                elided = true;
+            }
+            // Print the offending lines
+            for (uint line in display_lines) {
                 io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
                 auto s = codemap::get_line(fm, line as int, file);
                 if (!str::ends_with(s, "\n")) {
                     s += "\n";
                 }
                 io::stdout().write_str(s);
+            }
+            if (elided) {
+                auto last_line = display_lines.(vec::len(display_lines) - 1u);
+                auto s = #fmt("%s:%u ", fm.name, last_line + 1u);
+                auto indent = str::char_len(s);
+                auto out = "";
+                while (indent > 0u) { out += " "; indent -= 1u; }
+                out += "...\n";
+                io::stdout().write_str(out);
+            }
+
+            // If there's one line at fault we can easily point to the problem
+            if (vec::len(lines.lines) == 1u) {
+                auto lo = codemap::lookup_pos(cm, option::get(sp).lo);
+                auto digits = 0u;
+                auto num = lines.lines.(0) / 10u;
+
+                // how many digits must be indent past?
+                while (num > 0u) { num /= 10u; digits += 1u; }
+
+                // indent past |name:## | and the 0-offset column location
+                auto left = str::char_len(fm.name) + digits + lo.col + 3u;
+                auto s = "";
+                while (left > 0u) { str::push_char(s, ' '); left -= 1u; }
+
+                s += "^";
+                auto hi = codemap::lookup_pos(cm, option::get(sp).hi);
+                if (hi.col != lo.col) {
+                    // the ^ already takes up one space
+                    auto width = hi.col - lo.col - 1u;
+                    while (width > 0u) {
+                        str::push_char(s, '~');
+                        width -= 1u;
+                    }
+                }
+                io::stdout().write_str(s + "\n");
             }
         }
         case (_) {}

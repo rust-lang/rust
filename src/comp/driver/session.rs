@@ -10,6 +10,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::vec;
 
 tag os { os_win32; os_macos; os_linux; }
 
