@@ -1877,6 +1877,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     fcx.ccx.tcx.sess.span_fatal(expr.span,s);
                 }
             }
+            demand::simple(fcx, expr.span, chan_t, lhs_t);
             write::ty_only_fixup(fcx, id, chan_t);
         }
         case (ast::expr_recv(?lhs, ?rhs)) {
