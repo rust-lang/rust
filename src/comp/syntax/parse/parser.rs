@@ -1465,10 +1465,11 @@ fn parse_pat(&parser p) -> @ast::pat {
             auto etc = false;
             auto first = true;
             while (p.peek() != token::RBRACE) {
-                if (p.peek() == token::DOT) {
+                if (first) { first = false; }
+                else { expect(p, token::COMMA); }
+
+                if (p.peek() == token::UNDERSCORE) {
                     p.bump();
-                    expect(p, token::DOT);
-                    expect(p, token::DOT);
                     if (p.peek() != token::RBRACE) {
                         p.fatal("expecting }, found " +
                                 token::to_str(p.get_reader(), p.peek()));
@@ -1476,8 +1477,7 @@ fn parse_pat(&parser p) -> @ast::pat {
                     etc = true;
                     break;
                 }
-                if (first) { first = false; }
-                else { expect(p, token::COMMA); }
+
                 auto fieldname = parse_ident(p);
                 auto subpat;
                 if (p.peek() == token::COLON) {

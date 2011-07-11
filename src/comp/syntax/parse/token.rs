@@ -116,6 +116,7 @@ fn to_str(lexer::reader r, token t) -> str {
              /* Structural symbols */
         case (AT) { ret "@"; }
         case (DOT) { ret "."; }
+        case (ELIPSIS) { ret "..."; }
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
         case (COLON) { ret ":"; }
