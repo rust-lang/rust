@@ -71,7 +71,8 @@ fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
     io::stdout().write_str(#fmt(" %s\n", msg));
     alt (maybe_lines) {
         case (some(?lines)) {
-            // Print the offending lines
+            // FIXME: reading in the entire file is the worst possible way to
+            //        get access to the necessary lines.
             auto rdr = io::file_reader(lines.name);
             auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
             auto fm = codemap::get_filemap(cm, lines.name);
@@ -84,6 +85,7 @@ fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
                 display_lines = vec::slice(display_lines, 0u, max_lines);
                 elided = true;
             }
+            // Print the offending lines
             for (uint line in display_lines) {
                 io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
                 auto s = codemap::get_line(fm, line as int, file);
