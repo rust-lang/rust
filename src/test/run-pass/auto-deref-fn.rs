@@ -8,4 +8,5 @@ fn main() {
     assert(f(5) == 6);
     assert(g(8) == 9);
     assert(h(0x1badd00d) == 0x1badd00e);
+    assert((@add1)(42) == 43);
 }
