@@ -90,6 +90,8 @@ mod smallintmap;
 mod ptr;
 mod test;
 mod unsafe;
+mod ebmlivec;
+mod termivec;
 
 // Local Variables:
 // mode: rust;
