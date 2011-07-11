@@ -228,7 +228,8 @@ fn mk_test_desc_rec(&test_ctxt cx, ast::ident[] path) -> @ast::expr {
                                            ident = "name",
                                            expr = @name_expr));
 
-    let ast::path fn_path = nospan(rec(idents = path,
+    let ast::path fn_path = nospan(rec(global = false,
+                                       idents = path,
                                        types = ~[]));
 
     let ast::expr fn_expr = rec(id = cx.next_node_id(),
@@ -280,7 +281,8 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
 
 fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
 
-    let ast::path test_path = nospan(rec(idents = ~["tests"],
+    let ast::path test_path = nospan(rec(global = false,
+                                         idents = ~["tests"],
                                          types = ~[]));
 
     let ast::expr_ test_path_expr_ = ast::expr_path(test_path);
@@ -295,7 +297,8 @@ fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
                                        node = test_call_expr_,
                                        span = rec(lo=0u, hi=0u));
 
-    let ast::path test_main_path = nospan(rec(idents = ~["std",
+    let ast::path test_main_path = nospan(rec(global = false,
+                                              idents = ~["std",
                                                          "test",
                                                          "test_main"],
                                               types = ~[]));

@@ -16,7 +16,7 @@ type fn_ident = option::t[ident];
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
-type path_ = rec(ident[] idents, (@ty)[] types);
+type path_ = rec(bool global, ident[] idents, (@ty)[] types);
 
 type path = spanned[path_];
 

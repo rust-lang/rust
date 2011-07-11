@@ -499,7 +499,8 @@ fn noop_fold_ident(&ident i, ast_fold fld) -> ident {
 }
 
 fn noop_fold_path(&path_ p, ast_fold fld) -> path_ {
-    ret rec(idents=ivec::map(fld.fold_ident, p.idents),
+    ret rec(global=p.global,
+            idents=ivec::map(fld.fold_ident, p.idents),
             types=ivec::map(fld.fold_ty, p.types));
 }
 

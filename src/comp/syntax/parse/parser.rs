@@ -421,7 +421,8 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
                     auto hi = p.get_hi_pos();
                     ret @spanned(lo, hi,
                                  ast::ty_path(spanned(lo, hi,
-                                              rec(idents=pth.node.idents,
+                                              rec(global=pth.node.global,
+                                                  idents=pth.node.idents,
                                                   types=seq_ivec)),
                                               ann));
                 }
@@ -556,7 +557,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto typ = parse_ty(p);
         t = typ.node;
         hi = typ.span.hi;
-    } else if (is_ident(p.peek())) {
+    } else if (p.peek() == token::MOD_SEP || is_ident(p.peek())) {
         auto path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
         hi = path.span.hi;
@@ -673,6 +674,14 @@ fn is_ident(token::token t) -> bool {
 fn parse_path(&parser p) -> ast::path {
     auto lo = p.get_lo_pos();
     auto hi = lo;
+
+    auto global;
+    if (p.peek() == token::MOD_SEP) {
+        global = true; p.bump();
+    } else {
+        global = false;
+    }
+
     let ast::ident[] ids = ~[];
     while (true) {
         alt (p.peek()) {
@@ -686,7 +695,7 @@ fn parse_path(&parser p) -> ast::path {
         }
     }
     hi = p.get_hi_pos();
-    ret spanned(lo, hi, rec(idents=ids, types=~[]));
+    ret spanned(lo, hi, rec(global=global, idents=ids, types=~[]));
 }
 
 fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
@@ -701,7 +710,9 @@ fn parse_path_and_ty_param_substs(&parser p) -> ast::path {
         for (@ast::ty typ in seq.node) { seq_ivec += ~[typ]; }
 
         auto hi = p.get_hi_pos();
-        path = spanned(lo, hi, rec(idents=path.node.idents, types=seq_ivec));
+        path = spanned(lo, hi, rec(global=path.node.global,
+                                   idents=path.node.idents,
+                                   types=seq_ivec));
     }
     ret path;
 }
@@ -975,8 +986,9 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                            parse_expr, p);
         hi = es.span.hi;
         ex = ast::expr_call(f, es.node);
-    } else if (is_ident(p.peek()) && !is_word(p, "true") &&
-               !is_word(p, "false")) {
+    } else if (p.peek() == token::MOD_SEP ||
+               (is_ident(p.peek()) && !is_word(p, "true") &&
+                !is_word(p, "false"))) {
         check_bad_word(p);
         auto pth = parse_path_and_ty_param_substs(p);
         hi = pth.span.hi;

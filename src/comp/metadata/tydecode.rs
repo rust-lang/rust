@@ -91,7 +91,7 @@ fn parse_path(@pstate st, str_def sd) -> ast::path {
             case (?c) {
                 if (c == '(') {
                     ret respan(rec(lo=0u, hi=0u),
-                               rec(idents=idents, types=~[]));
+                               rec(global=false, idents=idents, types=~[]));
                 }
                 else {
                     idents += ~[parse_ident_(st, sd, is_last)];

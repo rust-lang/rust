@@ -63,7 +63,7 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
     }
     fn make_path_expr(&ext_ctxt cx, span sp, &ast::ident[] idents)
        -> @ast::expr {
-        auto path = rec(idents=idents, types=~[]);
+        auto path = rec(global=false, idents=idents, types=~[]);
         auto sp_path = rec(node=path, span=sp);
         auto pathexpr = ast::expr_path(sp_path);
         ret @rec(id=cx.next_id(), node=pathexpr, span=sp);

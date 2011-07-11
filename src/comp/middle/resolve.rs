@@ -44,7 +44,7 @@ export def_map;
 // (FIXME See https://github.com/graydon/rust/issues/358 for the reason this
 //  isn't a const.)
 tag scope {
-    scope_crate(@ast::crate);
+    scope_crate;
     scope_item(@ast::item);
     scope_fn(ast::fn_decl, ast::ty_param[]);
     scope_native_item(@ast::native_item);
@@ -154,7 +154,7 @@ fn map_crate(&@env e, &@ast::crate c) {
         @rec(visit_view_item=bind index_vi(e, _, _, _),
              visit_item=bind index_i(e, _, _, _)
              with *visit::default_visitor[scopes]());
-    visit::visit_crate(*c, cons(scope_crate(c), @nil),
+    visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_map_mod));
     // Register the top-level mod 
 
@@ -199,7 +199,7 @@ fn map_crate(&@env e, &@ast::crate c) {
         @rec(visit_view_item=bind link_glob(e, _, _, _),
              visit_item=visit_item_with_scope
              with *visit::default_visitor[scopes]());
-    visit::visit_crate(*c, cons(scope_crate(c), @nil),
+    visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_link_glob));
     fn link_glob(@env e, &@ast::view_item vi, &scopes sc, &vt[scopes] v) {
         fn find_mod(@env e, scopes sc) -> @indexed_mod {
@@ -253,7 +253,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
              visit_constr=bind walk_constr(e, _, _, _),
              visit_fn=bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
              with *visit::default_visitor());
-    visit::visit_crate(*c, cons(scope_crate(c), @nil), visit::mk_vt(v));
+    visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.sess.abort_if_errors();
 
     fn walk_expr(@env e, &@ast::expr exp, &scopes sc, &vt[scopes] v) {
@@ -261,8 +261,8 @@ fn resolve_names(&@env e, &@ast::crate c) {
         alt (exp.node) {
             case (ast::expr_path(?p)) {
                 maybe_insert(e, exp.id,
-                             lookup_path_strict(*e, sc, exp.span,
-                                                p.node.idents, ns_value));
+                             lookup_path_strict(*e, sc, exp.span, p.node,
+                                                ns_value));
             }
             case (_) { }
         }
@@ -272,16 +272,16 @@ fn resolve_names(&@env e, &@ast::crate c) {
         alt (t.node) {
             case (ast::ty_path(?p, ?id)) {
                 maybe_insert(e, id,
-                             lookup_path_strict(*e, sc, t.span,
-                                                p.node.idents, ns_type));
+                             lookup_path_strict(*e, sc, t.span, p.node,
+                                                ns_type));
             }
             case (_) { }
         }
     }
     fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
         maybe_insert(e, c.node.id,
-                     lookup_path_strict(*e, sc, c.span,
-                                        c.node.path.node.idents, ns_value));
+                     lookup_path_strict(*e, sc, c.span, c.node.path.node,
+                                        ns_value));
     }
     fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
         for (@ast::pat p in a.pats) { walk_pat(*e, sc, p); }
@@ -291,8 +291,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
         alt (pat.node) {
             case (ast::pat_tag(?p, ?children)) {
                 auto fnd =
-                    lookup_path_strict(e, sc, p.span, p.node.idents,
-                                       ns_value);
+                    lookup_path_strict(e, sc, p.span, p.node, ns_value);
                 if (option::is_some(fnd)) {
                     alt (option::get(fnd)) {
                         case (ast::def_variant(?did, ?vid)) {
@@ -396,7 +395,7 @@ fn follow_import(&env e, &scopes sc, &ident[] path, &span sp)
 fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
                   &vt[scopes] v) {
     auto new_def =
-        lookup_path_strict(*e, sc, c.span, c.node.path.node.idents, ns_value);
+        lookup_path_strict(*e, sc, c.span, c.node.path.node, ns_value);
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
             case (ast::def_fn(?pred_id, ast::pure_fn)) {
@@ -543,16 +542,26 @@ fn mk_unresolved_msg(&ident id, &str kind) -> str {
 }
 
 // Lookup helpers
-fn lookup_path_strict(&env e, &scopes sc, &span sp, &ident[] idents,
+fn lookup_path_strict(&env e, &scopes sc, &span sp, &ast::path_ pth,
                       namespace ns) -> option::t[def] {
-    auto n_idents = ivec::len(idents);
+    auto n_idents = ivec::len(pth.idents);
     auto headns = if (n_idents == 1u) { ns } else { ns_module };
-    auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), headns);
+
+    auto first_scope;
+    if (pth.global) {
+        first_scope = list::cons(scope_crate, @list::nil);
+    } else {
+        first_scope = sc;
+    }
+
+    auto dcur = lookup_in_scope_strict(e, first_scope, sp, pth.idents.(0),
+                                       headns);
+
     auto i = 1u;
     while (i < n_idents && option::is_some(dcur)) {
         auto curns = if (n_idents == i + 1u) { ns } else { ns_module };
         dcur = lookup_in_mod_strict(e, option::get(dcur),
-                                    sp, idents.(i), curns, outside);
+                                    sp, pth.idents.(i), curns, outside);
         i += 1u;
     }
     ret dcur;
@@ -592,7 +601,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
     fn in_scope(&env e, &span sp, &ident name, &scope s, namespace ns) ->
        option::t[def] {
         alt (s) {
-            case (scope_crate(?c)) {
+            case (scope_crate) {
                 ret lookup_in_local_mod(e, -1, sp, name, ns, inside);
             }
             case (scope_item(?it)) {
