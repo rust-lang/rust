@@ -159,12 +159,20 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
     auto ty_substs_opt;
     auto ty_substs_len = ivec::len[@ast::ty](pth.node.types);
     if (ty_substs_len > 0u) {
+        auto param_var_len = ivec::len(ty_param_vars);
+        if (param_var_len == 0u) {
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "this item does not take type parameters");
+        } else if (ty_substs_len > param_var_len) {
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "too many type parameter provided for this item");
+        } else if (ty_substs_len < param_var_len) {
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "not enough type parameters provided for this item");
+        }
         let ty::t[] ty_substs = ~[];
         auto i = 0u;
         while (i < ty_substs_len) {
-            // TODO: Report an error if the number of type params in the item
-            // and the supplied number of type params don't match.
-
             auto ty_var = ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i));
             auto ty_subst = ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i));
             auto res_ty = demand::simple(fcx, pth.span, ty_var, ty_subst);
