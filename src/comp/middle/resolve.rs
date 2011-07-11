@@ -206,13 +206,10 @@ fn map_crate(&@env e, &@ast::crate c) {
             alt (sc) {
                 case (cons(scope_item(?i), ?tl)) {
                     alt (i.node) {
-                        case (ast::item_mod(_)) {
+                        ast::item_mod(_) | ast::item_native_mod(_) {
                             ret e.mod_map.get(i.id);
                         }
-                        case (ast::item_native_mod(_)) {
-                            ret e.mod_map.get(i.id);
-                        }
-                        case (_) { be find_mod(e, *tl); }
+                        _ { be find_mod(e, *tl); }
                     }
                 }
                 case (_) {
@@ -222,9 +219,8 @@ fn map_crate(&@env e, &@ast::crate c) {
             }
         }
         alt (vi.node) {
-            case (
-                 //if it really is a glob import, that is
-                 ast::view_item_import_glob(?path, _)) {
+            //if it really is a glob import, that is
+            case (ast::view_item_import_glob(?path, _)) {
                 auto imp = follow_import(*e, sc, path, vi.span);
                 if (option::is_some(imp)) {
                     find_mod(e, sc).glob_imports +=
@@ -363,14 +359,11 @@ fn visit_arm_with_scope(&ast::arm a, &scopes sc, &vt[scopes] v) {
 fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
     auto new_sc =
         alt (x.node) {
-            case (ast::expr_for(?d, _, _)) {
+            ast::expr_for(?d, _, _) | ast::expr_for_each(?d, _, _) {
                 cons[scope](scope_loop(d), @sc)
             }
-            case (ast::expr_for_each(?d, _, _)) {
-                cons[scope](scope_loop(d), @sc)
-            }
-            case (ast::expr_fn(?f)) { cons(scope_fn(f.decl, ~[]), @sc) }
-            case (_) { sc }
+            ast::expr_fn(?f) { cons(scope_fn(f.decl, ~[]), @sc) }
+            _ { sc }
         };
     visit::visit_expr(x, new_sc, v);
 }
@@ -388,9 +381,8 @@ fn follow_import(&env e, &scopes sc, &ident[] path, &span sp)
     }
     if (i == path_len) {
         alt (option::get(dcur)) {
-            case (ast::def_mod(?def_id)) { ret dcur; }
-            case (ast::def_native_mod(?def_id)) { ret dcur; }
-            case (_) {
+            ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
+            _ {
                 e.sess.span_err(sp, str::connect_ivec(path, "::") +
                                 " does not name a module.");
                 ret none;
@@ -579,19 +571,16 @@ fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident name,
 
 fn scope_is_fn(&scope sc) -> bool {
     ret alt (sc) {
-            case (scope_fn(_, _)) { true }
-            case (scope_native_item(_)) { true }
-            case (_) { false }
+            scope_fn(_, _) | scope_native_item(_) { true }
+            _ { false }
         };
 }
 
 fn def_is_local(&def d) -> bool {
     ret alt (d) {
-            case (ast::def_arg(_)) { true }
-            case (ast::def_local(_)) { true }
-            case (ast::def_binding(_)) { true }
-            case (_) { false }
-        };
+        ast::def_arg(_) | ast::def_local(_) | ast::def_binding(_) { true }
+        _ { false }
+    };
 }
 
 fn def_is_obj_field(&def d) -> bool {
@@ -1092,25 +1081,12 @@ fn index_mod(&ast::_mod md) -> mod_index {
     }
     for (@ast::item it in md.items) {
         alt (it.node) {
-            case (ast::item_const(_, _)) {
+            ast::item_const(_, _) | ast::item_fn(_, _) | ast::item_mod(_) |
+            ast::item_native_mod(_) | ast::item_ty(_, _) |
+            ast::item_res(_, _, _, _) | ast::item_obj(_, _, _) {
                 add_to_index(index, it.ident, mie_item(it));
             }
-            case (ast::item_fn(_, _)) {
-                add_to_index(index, it.ident, mie_item(it));
-            }
-            case (ast::item_mod(_)) {
-                add_to_index(index, it.ident, mie_item(it));
-            }
-            case (ast::item_native_mod(_)) {
-                add_to_index(index, it.ident, mie_item(it));
-            }
-            case (ast::item_ty(_, _)) {
-                add_to_index(index, it.ident, mie_item(it));
-            }
-            case (ast::item_res(_, _, _, _)) {
-                add_to_index(index, it.ident, mie_item(it));
-            }
-            case (ast::item_tag(?variants, _)) {
+            ast::item_tag(?variants, _) {
                 add_to_index(index, it.ident, mie_item(it));
                 let uint variant_idx = 0u;
                 for (ast::variant v in variants) {
@@ -1118,9 +1094,6 @@ fn index_mod(&ast::_mod md) -> mod_index {
                                  mie_tag_variant(it, variant_idx));
                     variant_idx += 1u;
                 }
-            }
-            case (ast::item_obj(_, _, _)) {
-                add_to_index(index, it.ident, mie_item(it));
             }
         }
     }
@@ -1228,12 +1201,12 @@ fn check_mod_name(&env e, &ident name, list[mod_index_entry] entries) {
 }
 
 fn mie_span(&mod_index_entry mie) -> span {
-    alt (mie) {
-        case (mie_view_item(?item)) { ret item.span; }
-        case (mie_item(?item)) { ret item.span; }
-        case (mie_tag_variant(?item, _)) { ret item.span; }
-        case (mie_native_item(?item)) { ret item.span; }
-    }
+    ret alt (mie) {
+        mie_view_item(?item) { item.span }
+        mie_item(?item) { item.span }
+        mie_tag_variant(?item, _) { item.span }
+        mie_native_item(?item) { item.span }
+    };
 }
 
 fn check_item(@env e, &@ast::item i, &() x, &vt[()] v) {
@@ -1313,41 +1286,32 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
         alt (st.node) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
-                    case (ast::decl_local(?loc)) {
+                    ast::decl_local(?loc) {
                         add_name(values, d.span, loc.node.ident);
                     }
-                    case (ast::decl_item(?it)) {
+                    ast::decl_item(?it) {
                         alt (it.node) {
-                            case (ast::item_tag(?variants, _)) {
+                            ast::item_tag(?variants, _) {
                                 add_name(types, it.span, it.ident);
                                 for (ast::variant v in variants) {
                                     add_name(values, v.span, v.node.name);
                                 }
                             }
-                            case (ast::item_const(_, _)) {
-                                add_name(values, it.span, it.ident);
-                            }
-                            case (ast::item_fn(_, _)) {
-                                add_name(values, it.span, it.ident);
-                            }
-                            case (ast::item_mod(_)) {
+                            ast::item_mod(_) | ast::item_native_mod(_) {
                                 add_name(mods, it.span, it.ident);
                             }
-                            case (ast::item_native_mod(_)) {
-                                add_name(mods, it.span, it.ident);
+                            ast::item_const(_, _) | ast::item_fn(_, _) {
+                                add_name(values, it.span, it.ident);
                             }
-                            case (ast::item_ty(_, _)) {
+                            ast::item_ty(_, _) {
                                 add_name(types, it.span, it.ident);
                             }
-                            case (ast::item_res(_, _, _, _)) {
+                            ast::item_res(_, _, _, _) |
+                            ast::item_obj(_, _, _) {
                                 add_name(types, it.span, it.ident);
                                 add_name(values, it.span, it.ident);
                             }
-                            case (ast::item_obj(_, _, _)) {
-                                add_name(types, it.span, it.ident);
-                                add_name(values, it.span, it.ident);
-                            }
-                            case (_) { }
+                            _ { }
                         }
                     }
                 }
