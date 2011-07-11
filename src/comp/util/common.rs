@@ -195,6 +195,7 @@ fn call_kind_str(call_kind c) -> str {
         case (kind_bind)  { "Bind" }
     }
 }
+
 //
 // Local Variables:
 // mode: rust

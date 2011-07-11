@@ -32,7 +32,6 @@ import back::link;
 import back::x86;
 import back::abi;
 import back::upcall;
-import middle::ty::pat_ty;
 import syntax::visit;
 import visit::vt;
 import util::common;
@@ -3370,7 +3369,7 @@ fn move_val_if_temp(@block_ctxt cx, copy_action action, ValueRef dst,
     }
 }
 
-fn trans_lit(&@crate_ctxt cx, &ast::lit lit, ast::node_id id) -> ValueRef {
+fn trans_lit(&@crate_ctxt cx, &ast::lit lit) -> ValueRef {
     alt (lit.node) {
         case (ast::lit_int(?i)) { ret C_int(i); }
         case (ast::lit_uint(?u)) { ret C_int(u as int); }
@@ -4742,219 +4741,6 @@ fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
     ret rslt(next_cx, body_res.val);
 }
 
-
-// Pattern matching translation
-fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
-                   &@block_ctxt next_cx) -> result {
-    alt (pat.node) {
-        case (ast::pat_wild) { ret rslt(cx, llval); }
-        case (ast::pat_bind(_)) { ret rslt(cx, llval); }
-        case (ast::pat_lit(?lt)) {
-            auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, pat.id);
-            auto lltype = ty::node_id_to_type(cx.fcx.lcx.ccx.tcx, pat.id);
-            auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
-            auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
-            lleq.bcx.build.CondBr(lleq.val, matched_cx.llbb, next_cx.llbb);
-            ret rslt(matched_cx, llval);
-        }
-        case (ast::pat_tag(?ident, ?subpats)) {
-            auto vdef;
-            alt (cx.fcx.lcx.ccx.tcx.def_map.find(pat.id)) {
-                case (some(?x)) { vdef = ast::variant_def_ids(x); }
-                case (_) {
-                    cx.fcx.lcx.ccx.sess.span_fatal(pat.span,
-                                             "trans_pat_match: unbound var");
-                }
-            }
-
-            auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
-            auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
-            auto llblobptr = llval;
-
-            if (std::ivec::len(variants) == 1u) {
-                cx.build.Br(matched_cx.llbb);
-            } else {
-                auto lltagptr =
-                    cx.build.PointerCast(llval,
-                                         T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
-                auto lldiscrimptr = cx.build.GEP(lltagptr,
-                                                 ~[C_int(0), C_int(0)]);
-                auto lldiscrim = cx.build.Load(lldiscrimptr);
-                auto variant_tag = 0;
-                auto i = 0;
-                for (ty::variant_info v in variants) {
-                    auto this_variant_id = v.id;
-                    if (vdef._1._0 == this_variant_id._0 &&
-                        vdef._1._1 == this_variant_id._1) {
-                        variant_tag = i;
-                    }
-                    i += 1;
-                }
-                auto lleq =
-                    cx.build.ICmp(lib::llvm::LLVMIntEQ, lldiscrim,
-                                  C_int(variant_tag));
-                cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
-                if (std::ivec::len(subpats) > 0u) {
-                    llblobptr =
-                        matched_cx.build.GEP(lltagptr, ~[C_int(0), C_int(1)]);
-                }
-            }
-
-            auto ty_params = ty::node_id_to_type_params
-                (cx.fcx.lcx.ccx.tcx, pat.id);
-            if (std::ivec::len(subpats) > 0u) {
-                auto i = 0;
-                for (@ast::pat subpat in subpats) {
-                    auto rslt =
-                        GEP_tag(matched_cx, llblobptr, vdef._0, vdef._1,
-                                ty_params, i);
-                    auto llsubvalptr = rslt.val;
-                    matched_cx = rslt.bcx;
-                    auto llsubval =
-                        load_if_immediate(matched_cx, llsubvalptr,
-                                          pat_ty(cx.fcx.lcx.ccx.tcx, subpat));
-                    auto subpat_res =
-                        trans_pat_match(matched_cx, subpat, llsubval,
-                                        next_cx);
-                    matched_cx = subpat_res.bcx;
-                    i += 1;
-                }
-            }
-            ret rslt(matched_cx, llval);
-        }
-        case (ast::pat_rec(?field_pats, _)) {
-            auto bcx = cx;
-            auto ccx = cx.fcx.lcx.ccx;
-            auto rec_ty = pat_ty(ccx.tcx, pat);
-            auto fields = alt (ty::struct(ccx.tcx, rec_ty)) {
-                ty::ty_rec(?fields) { fields }
-            };
-            for (ast::field_pat f in field_pats) {
-                let uint ix = ty::field_idx(ccx.sess, f.pat.span,
-                                            f.ident, fields);
-                auto r = GEP_tup_like(bcx, rec_ty, llval, ~[0, ix as int]);
-                auto v = load_if_immediate(r.bcx, r.val,
-                                           pat_ty(ccx.tcx, f.pat));
-                bcx = trans_pat_match(r.bcx, f.pat, v, next_cx).bcx;
-            }
-            ret rslt(bcx, llval);
-        }
-    }
-}
-
-type bind_map = hashmap[ast::ident, result];
-
-fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
-                     bool is_mem, &bind_map bound) -> result {
-    alt (pat.node) {
-        case (ast::pat_wild) { ret rslt(cx, llval); }
-        case (ast::pat_lit(_)) { ret rslt(cx, llval); }
-        case (ast::pat_bind(?name)) {
-            auto val = llval;
-            if (!is_mem) {
-                val = spill_if_immediate
-                    (cx, llval, node_id_type(cx.fcx.lcx.ccx, pat.id));
-            }
-            auto r = rslt(cx, val);
-            bound.insert(name, r);
-            ret r;
-        }
-        case (ast::pat_tag(_, ?subpats)) {
-            if (std::ivec::len[@ast::pat](subpats) == 0u) {
-                ret rslt(cx, llval);
-            }
-
-            // Get the appropriate variant for this tag.
-            auto vdef;
-            alt (cx.fcx.lcx.ccx.tcx.def_map.find(pat.id)) {
-                case (some(?x)) { vdef = ast::variant_def_ids(x); }
-                case (_) { cx.fcx.lcx.ccx.sess.span_fatal(pat.span,
-                      "trans_pat_binding: internal error, unbound var"); }
-            }
-            auto llblobptr = llval;
-            if (std::ivec::len(ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0))
-                    != 1u) {
-                auto lltagptr = cx.build.PointerCast
-                    (llval, T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
-                llblobptr = cx.build.GEP(lltagptr, ~[C_int(0), C_int(1)]);
-            }
-
-            auto ty_param_substs =
-                ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, pat.id);
-
-            auto this_cx = cx;
-            auto i = 0;
-            for (@ast::pat subpat in subpats) {
-                auto rslt =
-                    GEP_tag(this_cx, llblobptr, vdef._0, vdef._1,
-                            ty_param_substs, i);
-                this_cx = rslt.bcx;
-                auto subpat_res =
-                    trans_pat_binding(this_cx, subpat, rslt.val, true, bound);
-                this_cx = subpat_res.bcx;
-                i += 1;
-            }
-            ret rslt(this_cx, llval);
-        }
-        case (ast::pat_rec(?field_pats, _)) {
-            auto bcx = cx;
-            auto ccx = cx.fcx.lcx.ccx;
-            auto rec_ty = pat_ty(ccx.tcx, pat);
-            auto fields = alt (ty::struct(ccx.tcx, rec_ty)) {
-                ty::ty_rec(?fields) { fields }
-            };
-            for (ast::field_pat f in field_pats) {
-                let uint ix = ty::field_idx(ccx.sess, f.pat.span,
-                                            f.ident, fields);
-                auto r = GEP_tup_like(bcx, rec_ty, llval, ~[0, ix as int]);
-                bcx = trans_pat_binding(bcx, f.pat, r.val, true, bound).bcx;
-            }
-            ret rslt(bcx, llval);
-        }
-    }
-}
-
-fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
-             ast::node_id id, &out_method output) -> result {
-    auto expr_res = trans_expr(cx, expr);
-    auto this_cx = expr_res.bcx;
-    let result[] arm_results = ~[];
-    for (ast::arm arm in arms) {
-        auto bind_maps = ~[];
-        auto block_cx = new_scope_block_ctxt(expr_res.bcx, "case block");
-        for (@ast::pat pat in arm.pats) {
-            auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
-            auto match_res =
-                trans_pat_match(this_cx, pat, expr_res.val, next_cx);
-            auto bind_map = new_str_hash[result]();
-            auto binding_res = trans_pat_binding
-                (match_res.bcx, pat, expr_res.val, false, bind_map);
-            bind_maps += ~[bind_map];
-            binding_res.bcx.build.Br(block_cx.llbb);
-            this_cx = next_cx;
-        }
-        // Go over the names and node_ids of the bound variables, add a Phi
-        // node for each and register the bindings.
-        for each (@tup(ast::ident, ast::node_id) item in
-                  ast::pat_id_map(arm.pats.(0)).items()) {
-            auto vals = ~[]; auto llbbs = ~[];
-            for (bind_map map in bind_maps) {
-                auto rslt = map.get(item._0);
-                vals += ~[rslt.val];
-                llbbs += ~[rslt.bcx.llbb];
-            }
-            auto phi = block_cx.build.Phi(val_ty(vals.(0)), vals, llbbs);
-            block_cx.fcx.lllocals.insert(item._1, phi);
-        }
-        auto block_res = trans_block(block_cx, arm.block, output);
-        arm_results += ~[block_res];
-    }
-    auto default_cx = this_cx;
-    trans_fail(default_cx, some[span](expr.span),
-               "non-exhaustive match failure");
-    ret rslt(join_branches(cx, arm_results), C_nil());
-}
-
 type generic_info =
     rec(ty::t item_type,
         (option::t[@tydesc_info])[] static_tis,
@@ -6224,10 +6010,9 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
 fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
    result {
     // FIXME Fill in cx.sp
-
     alt (e.node) {
         case (ast::expr_lit(?lit)) {
-            ret rslt(cx, trans_lit(cx.fcx.lcx.ccx, *lit, e.id));
+            ret rslt(cx, trans_lit(cx.fcx.lcx.ccx, *lit));
         }
         case (ast::expr_unary(?op, ?x)) {
             if (op != ast::deref) { ret trans_unary(cx, op, x, e.id); }
@@ -6259,7 +6044,8 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
             ret trans_do_while(cx, body, cond);
         }
         case (ast::expr_alt(?expr, ?arms)) {
-            ret with_out_method(bind trans_alt(cx, expr, arms, e.id, _),
+            ret with_out_method(bind trans_alt::trans_alt(cx, expr,
+                                                          arms, e.id, _),
                                 cx, e.id, output);
         }
         case (ast::expr_fn(?f)) {
@@ -8692,7 +8478,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
 // that does so later on?
 fn trans_const_expr(&@crate_ctxt cx, @ast::expr e) -> ValueRef {
     alt (e.node) {
-        case (ast::expr_lit(?lit)) { ret trans_lit(cx, *lit, e.id); }
+        case (ast::expr_lit(?lit)) { ret trans_lit(cx, *lit); }
         case (_) {
             cx.sess.span_unimpl(e.span, "consts that's not a plain literal");
         }

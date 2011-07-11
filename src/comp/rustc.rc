@@ -16,6 +16,7 @@ use std (name = "std",
 
 mod middle {
     mod trans;
+    mod trans_alt;
     mod ty;
     mod ast_map;
     mod resolve;
