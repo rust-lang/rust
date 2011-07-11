@@ -49,7 +49,9 @@ fn get_line(filemap fm, int line, &str file) -> str {
     } else {
         end = fm.lines.(line + 1);
     }
-    ret str::slice(file, fm.lines.(line), end);
+    auto begin = fm.lines.(line) - fm.start_pos;
+    end -= fm.start_pos;
+    ret str::slice(file, begin, end);
 }
 
 fn get_filemap(codemap cm, str filename) -> filemap {
