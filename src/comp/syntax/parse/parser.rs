@@ -113,10 +113,11 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg,
     auto ftype = SOURCE_FILE;
     if (str::ends_with(path, ".rc")) { ftype = CRATE_FILE; }
     auto srdr = io::file_reader(path);
+    auto src = str::unsafe_from_bytes(srdr.read_whole_stream());
     auto filemap = codemap::new_filemap(path, pos);
     vec::push(sess.cm.files, filemap);
     auto itr = @interner::mk(str::hash, str::eq);
-    auto rdr = lexer::new_reader(sess.cm, srdr, filemap, itr);
+    auto rdr = lexer::new_reader(sess.cm, src, filemap, itr);
     // Make sure npos points at first actual token:
 
     lexer::consume_whitespace_and_comments(rdr);

@@ -29,10 +29,10 @@ type reader =
         fn err(str) ;
     };
 
-fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
+fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
               @interner::interner[str] itr) -> reader {
     obj reader(codemap::codemap cm,
-               str file,
+               str src,
                uint len,
                mutable uint col,
                mutable uint pos,
@@ -45,18 +45,18 @@ fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
                @interner::interner[str] itr) {
         fn is_eof() -> bool { ret ch == -1 as char; }
         fn mark() { mark_pos = pos; mark_chpos = chpos; }
-        fn get_mark_str() -> str { ret str::slice(file, mark_pos, pos); }
+        fn get_mark_str() -> str { ret str::slice(src, mark_pos, pos); }
         fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
         fn curr() -> char { ret ch; }
         fn next() -> char {
             if (pos < len) {
-                ret str::char_at(file, pos);
+                ret str::char_at(src, pos);
             } else { ret -1 as char; }
         }
         fn init() {
             if (pos < len) {
-                auto next = str::char_range_at(file, pos);
+                auto next = str::char_range_at(src, pos);
                 pos = next._1;
                 ch = next._0;
             }
@@ -66,7 +66,7 @@ fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
                 col += 1u;
                 chpos += 1u;
                 if (ch == '\n') { codemap::next_line(fm, chpos); col = 0u; }
-                auto next = str::char_range_at(file, pos);
+                auto next = str::char_range_at(src, pos);
                 pos = next._1;
                 ch = next._0;
             } else { ch = -1 as char; }
@@ -78,10 +78,9 @@ fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
             codemap::emit_error(some(rec(lo=chpos, hi=chpos)), m, cm);
         }
     }
-    auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
     auto rd =
-        reader(cm, file, str::byte_len(file), 0u, 0u, -1 as char, 0u,
+        reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char, 0u,
                filemap.start_pos, filemap.start_pos, strs, filemap, itr);
     rd.init();
     ret rd;
@@ -717,8 +716,9 @@ type lit = rec(str lit, uint pos);
 fn gather_comments_and_literals(&codemap::codemap cm, str path) ->
    rec(vec[cmnt] cmnts, vec[lit] lits) {
     auto srdr = io::file_reader(path);
+    auto src = str::unsafe_from_bytes(srdr.read_whole_stream());
     auto itr = @interner::mk[str](str::hash, str::eq);
-    auto rdr = new_reader(cm, srdr, codemap::new_filemap(path, 0u), itr);
+    auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
     let vec[lit] literals = [];
     let bool first_read = true;
