@@ -10,6 +10,7 @@ import std::map;
 import std::option;
 import std::option::some;
 import std::option::none;
+import std::str;
 
 tag os { os_win32; os_macos; os_linux; }
 
@@ -50,8 +51,12 @@ fn span_to_str(span sp, codemap::codemap cm) -> str {
 fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
                    codemap::codemap cm) {
     auto ss = "<input>:0:0:0:0";
+    let option::t[@file_lines] maybe_lines = none;
     alt (sp) {
-        case (some(?ssp)) { ss = span_to_str(ssp, cm); }
+        case (some(?ssp)) {
+            ss = span_to_str(ssp, cm);
+            maybe_lines = some(span_to_lines(ssp, cm));
+        }
         case (none) { }
     }
     io::stdout().write_str(ss + ": ");
@@ -63,6 +68,34 @@ fn emit_diagnostic(option::t[span] sp, str msg, str kind, u8 color,
         term::reset(io::stdout().get_buf_writer());
     }
     io::stdout().write_str(#fmt(" %s\n", msg));
+    alt (maybe_lines) {
+        case (some(?lines)) {
+            auto rdr = io::file_reader(lines.name);
+            auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
+            auto fm = codemap::get_filemap(cm, lines.name);
+            for (uint line in lines.lines) {
+                io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
+                auto s = codemap::get_line(fm, line as int, file);
+                if (!str::ends_with(s, "\n")) {
+                    s += "\n";
+                }
+                io::stdout().write_str(s);
+            }
+        }
+        case (_) {}
+    }
+}
+
+type file_lines = rec(str name, vec[uint] lines);
+
+fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
+    auto lo = codemap::lookup_pos(cm, sp.lo);
+    auto hi = codemap::lookup_pos(cm, sp.hi);
+    auto lines = [];
+    for each (uint i in uint::range(lo.line - 1u, hi.line as uint)) {
+        lines += [i];
+    }
+    ret @rec(name=lo.filename, lines=lines);
 }
 
 obj session(ast::crate_num cnum,

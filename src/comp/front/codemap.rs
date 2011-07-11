@@ -1,5 +1,6 @@
 
 import std::vec;
+import std::str;
 
 
 /* A codemap is a thing that maps uints to file/line/column positions
@@ -39,6 +40,27 @@ fn lookup_pos(codemap map, uint pos) -> loc {
         if (f.lines.(m) > pos) { b = m; } else { a = m; }
     }
     ret rec(filename=f.name, line=a + 1u, col=pos - f.lines.(a));
+}
+
+fn get_line(filemap fm, int line, &str file) -> str {
+    let uint end;
+    if ((line as uint) + 1u >= vec::len(fm.lines)) {
+        end = str::byte_len(file);
+    } else {
+        end = fm.lines.(line + 1);
+    }
+    ret str::slice(file, fm.lines.(line), end);
+}
+
+fn get_filemap(codemap cm, str filename) -> filemap {
+    for (filemap fm in cm.files) {
+        if (fm.name == filename) {
+            ret fm;
+        }
+    }
+    //XXjdm the following triggers a mismatched type bug
+    //      (or expected function, found _|_)
+    fail;// ("asking for " + filename + " which we don't know about");
 }
 //
 // Local Variables:
