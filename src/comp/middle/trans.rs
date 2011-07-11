@@ -4843,24 +4843,18 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 }
 
 fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
-                     bool bind_alias) -> result {
+                     bool is_mem) -> result {
     alt (pat.node) {
         case (ast::pat_wild) { ret rslt(cx, llval); }
         case (ast::pat_lit(_)) { ret rslt(cx, llval); }
         case (ast::pat_bind(?name)) {
-            if (bind_alias) {
-                cx.fcx.lllocals.insert(pat.id, llval);
-                ret rslt(cx, llval);
-            } else {
-                auto t = node_id_type(cx.fcx.lcx.ccx, pat.id);
-                auto rslt = alloc_ty(cx, t);
-                auto dst = rslt.val;
-                auto bcx = rslt.bcx;
-                maybe_name_value(cx.fcx.lcx.ccx, dst, name);
-                bcx.fcx.lllocals.insert(pat.id, dst);
-                add_clean(bcx, dst, t);
-                ret copy_val(bcx, INIT, dst, llval, t);
+            auto val = llval;
+            if (!is_mem) {
+                val = spill_if_immediate
+                    (cx, llval, node_id_type(cx.fcx.lcx.ccx, pat.id));
             }
+            cx.fcx.lllocals.insert(pat.id, val);
+            ret rslt(cx, val);
         }
         case (ast::pat_tag(_, ?subpats)) {
             if (std::ivec::len[@ast::pat](subpats) == 0u) {
@@ -4911,11 +4905,11 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
         auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
         auto match_res =
             trans_pat_match(this_cx, arm.pat, expr_res.val, next_cx);
-        auto binding_cx = new_scope_block_ctxt(match_res.bcx, "binding");
-        match_res.bcx.build.Br(binding_cx.llbb);
         auto binding_res =
-            trans_pat_binding(binding_cx, arm.pat, expr_res.val, false);
-        auto block_res = trans_block(binding_res.bcx, arm.block, output);
+            trans_pat_binding(match_res.bcx, arm.pat, expr_res.val, false);
+        auto block_cx = new_scope_block_ctxt(match_res.bcx, "case block");
+        binding_res.bcx.build.Br(block_cx.llbb);
+        auto block_res = trans_block(block_cx, arm.block, output);
         arm_results += ~[block_res];
         this_cx = next_cx;
     }
