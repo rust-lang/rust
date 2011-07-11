@@ -7,7 +7,7 @@ import std::option::none;
 import syntax::ast;
 import syntax::parse::token;
 import syntax::parse::parser::parser;
-import syntax::parse::parser::new_parser;
+import syntax::parse::parser::new_parser_from_file;
 import syntax::parse::parser::parse_inner_attrs_and_next;
 import syntax::parse::parser::parse_mod_items;
 
@@ -57,7 +57,7 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             };
             if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
             auto p0 =
-                new_parser(cx.sess, cx.cfg, full_path, cx.chpos);
+                new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto mod_attrs = attrs + inner_attrs._0;
             auto first_item_outer_attrs = inner_attrs._1;
