@@ -1455,6 +1455,45 @@ fn parse_pat(&parser p) -> @ast::pat {
                 }
             }
         }
+        case (token::LBRACE) {
+            p.bump();
+            auto fields = ~[];
+            auto etc = false;
+            auto first = true;
+            while (p.peek() != token::RBRACE) {
+                if (p.peek() == token::DOT) {
+                    p.bump();
+                    expect(p, token::DOT);
+                    expect(p, token::DOT);
+                    if (p.peek() != token::RBRACE) {
+                        p.fatal("expecting }, found " +
+                                token::to_str(p.get_reader(), p.peek()));
+                    }
+                    etc = true;
+                    break;
+                }
+                if (first) { first = false; }
+                else { expect(p, token::COMMA); }
+                auto fieldname = parse_ident(p);
+                auto subpat;
+                if (p.peek() == token::COLON) {
+                    p.bump();
+                    subpat = parse_pat(p);
+                } else {
+                    if (p.get_bad_expr_words().contains_key(fieldname)) {
+                        p.fatal("found " + fieldname +
+                                " in binding position");
+                    }
+                    subpat = @rec(id=p.get_id(),
+                                  node=ast::pat_bind(fieldname),
+                                  span=rec(lo=lo, hi=hi));
+                }
+                fields += ~[rec(ident=fieldname, pat=subpat)];
+            }
+            hi = p.get_hi_pos();
+            p.bump();
+            pat = ast::pat_rec(fields, etc);
+        }
         case (?tok) {
             if (!is_ident(tok) || is_word(p, "true") || is_word(p, "false")) {
                 auto lit = parse_lit(p);

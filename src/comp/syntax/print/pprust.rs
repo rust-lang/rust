@@ -1120,6 +1120,22 @@ fn print_pat(&ps s, &@ast::pat pat) {
                 pclose(s);
             }
         }
+        case (ast::pat_rec(?fields, ?etc)) {
+            bopen(s);
+            fn print_field(&ps s, &ast::field_pat f) {
+                cbox(s, indent_unit);
+                word(s.s, f.ident);
+                word(s.s, ":");
+                print_pat(s, f.pat);
+                end(s);
+            }
+            fn get_span(&ast::field_pat f) -> codemap::span {
+                ret f.pat.span;
+            }
+            commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
+            if (etc) { space(s.s); word(s.s, "..."); }
+            bclose(s, pat.span);
+        }
     }
     s.ann.post(ann_node);
 }

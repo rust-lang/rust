@@ -4839,6 +4839,23 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             }
             ret rslt(matched_cx, llval);
         }
+        case (ast::pat_rec(?field_pats, _)) {
+            auto bcx = cx;
+            auto ccx = cx.fcx.lcx.ccx;
+            auto rec_ty = pat_ty(ccx.tcx, pat);
+            auto fields = alt (ty::struct(ccx.tcx, rec_ty)) {
+                ty::ty_rec(?fields) { fields }
+            };
+            for (ast::field_pat f in field_pats) {
+                let uint ix = ty::field_idx(ccx.sess, f.pat.span,
+                                            f.ident, fields);
+                auto r = GEP_tup_like(bcx, rec_ty, llval, ~[0, ix as int]);
+                auto v = load_if_immediate(r.bcx, r.val,
+                                           pat_ty(ccx.tcx, f.pat));
+                bcx = trans_pat_match(r.bcx, f.pat, v, next_cx).bcx;
+            }
+            ret rslt(bcx, llval);
+        }
     }
 }
 
@@ -4895,6 +4912,21 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 i += 1;
             }
             ret rslt(this_cx, llval);
+        }
+        case (ast::pat_rec(?field_pats, _)) {
+            auto bcx = cx;
+            auto ccx = cx.fcx.lcx.ccx;
+            auto rec_ty = pat_ty(ccx.tcx, pat);
+            auto fields = alt (ty::struct(ccx.tcx, rec_ty)) {
+                ty::ty_rec(?fields) { fields }
+            };
+            for (ast::field_pat f in field_pats) {
+                let uint ix = ty::field_idx(ccx.sess, f.pat.span,
+                                            f.ident, fields);
+                auto r = GEP_tup_like(bcx, rec_ty, llval, ~[0, ix as int]);
+                bcx = trans_pat_binding(bcx, f.pat, r.val, true, bound).bcx;
+            }
+            ret rslt(bcx, llval);
         }
     }
 }

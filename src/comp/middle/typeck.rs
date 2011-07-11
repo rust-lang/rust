@@ -1278,6 +1278,11 @@ fn replace_expr_type(&@fn_ctxt fcx, &@ast::expr expr,
     write::ty_fixup(fcx, expr.id, tup(new_tps, new_tyt._1));
 }
 
+// FIXME remove once std::ivec::find makes it into a snapshot
+fn ivec_find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
+    for (T elt in v) { if (f(elt)) { ret some[T](elt); } }
+    ret none[T];
+}
 
 // AST fragment checking
 fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
@@ -1395,15 +1400,51 @@ fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
               case (_) {
                 // FIXME: Switch expected and actual in this message? I
                 // can never tell.
-
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
                                             #fmt("mismatched types: \
-                                                  expected tag, found %s",
+                                                  expected %s, found tag",
                                                  ty_to_str(fcx.ccx.tcx,
                                                            expected)));
               }
             }
             write::ty_fixup(fcx, pat.id, path_tpot);
+        }
+        case (ast::pat_rec(?fields, ?etc)) {
+            auto ex_fields;
+            alt (structure_of(fcx, pat.span, expected)) {
+                case (ty::ty_rec(?fields)) { ex_fields = fields; }
+                case (_) {
+                    fcx.ccx.tcx.sess.span_fatal
+                        (pat.span, #fmt("mismatched types: expected %s, \
+                                         found record",
+                                        ty_to_str(fcx.ccx.tcx, expected)));
+                }
+            };
+            auto f_count = ivec::len(fields);
+            auto ex_f_count = ivec::len(ex_fields);
+            if (ex_f_count < f_count || (!etc && ex_f_count > f_count)) {
+                fcx.ccx.tcx.sess.span_fatal
+                    (pat.span, #fmt("mismatched types: expected a record \
+                                     with %u fields, found one with %u \
+                                     fields", ex_f_count, f_count));
+            }
+            fn matches(&str name, &ty::field f) -> bool {
+                ret str::eq(name, f.ident);
+            }
+            for (ast::field_pat f in fields) {
+                alt (ivec_find(bind matches(f.ident, _), ex_fields)) {
+                    some(?field) {
+                        check_pat(fcx, map, f.pat, field.mt.ty);
+                    }
+                    none {
+                        fcx.ccx.tcx.sess.span_fatal
+                            (pat.span, #fmt("mismatched types: did not \
+                                             expect a record with a field %s",
+                                            f.ident));
+                    }
+                }
+            }
+            write::ty_only_fixup(fcx, pat.id, expected);
         }
     }
 }

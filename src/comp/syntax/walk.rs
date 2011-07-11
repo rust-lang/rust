@@ -189,6 +189,9 @@ fn walk_pat(&ast_visitor v, &@ast::pat p) {
             for (@ast::ty tp in path.node.types) { walk_ty(v, tp); }
             for (@ast::pat child in children) { walk_pat(v, child); }
         }
+        case (ast::pat_rec(?fields, _)) {
+            for (ast::field_pat f in fields) { walk_pat(v, f.pat); }
+        }
         case (_) { }
     }
     v.visit_pat_post(p);

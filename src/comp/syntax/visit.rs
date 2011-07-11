@@ -190,6 +190,9 @@ fn visit_pat[E](&@pat p, &E e, &vt[E] v) {
             for (@ty tp in path.node.types) { v.visit_ty(tp, e, v); }
             for (@pat child in children) { v.visit_pat(child, e, v); }
         }
+        case (pat_rec(?fields, _)) {
+            for (field_pat f in fields) { v.visit_pat(f.pat, e, v); }
+        }
         case (_) { }
     }
 }

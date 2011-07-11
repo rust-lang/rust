@@ -118,11 +118,14 @@ type pat = rec(node_id id,
                pat_ node,
                span span);
 
+type field_pat = rec(ident ident, @pat pat);
+
 tag pat_ {
     pat_wild;
     pat_bind(ident);
     pat_lit(@lit);
     pat_tag(path, (@pat)[]);
+    pat_rec(field_pat[], bool);
 }
 
 type pat_id_map = std::map::hashmap[str, ast::node_id];
@@ -136,6 +139,9 @@ fn pat_id_map(&@pat pat) -> pat_id_map {
             pat_bind(?name) { map.insert(name, pat.id); }
             pat_tag(_, ?sub) {
                 for (@pat p in sub) { walk(map, p); }
+            }
+            pat_rec(?fields, _) {
+                for (field_pat f in fields) { walk(map, f.pat); }
             }
             _ {}
         }

@@ -297,6 +297,9 @@ fn arm_defnums(&ast::arm arm) -> vec[node_id] {
             case (ast::pat_tag(_, ?children)) {
                 for (@ast::pat child in children) { walk_pat(found, child); }
             }
+            case (ast::pat_rec(?fields, _)) {
+                for (ast::field_pat f in fields) { walk_pat(found, f.pat); }
+            }
             case (_) { }
         }
     }

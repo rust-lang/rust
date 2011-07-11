@@ -313,6 +313,9 @@ fn resolve_names(&@env e, &@ast::crate c) {
                     }
                 }
             }
+            case (ast::pat_rec(?fields, _)) {
+                for (ast::field_pat f in fields) { walk_pat(e, sc, f.pat); }
+            }
             case (_) { }
         }
     }
@@ -704,6 +707,12 @@ fn lookup_in_pat(&ident name, &ast::pat pat) -> option::t[def] {
         case (ast::pat_tag(_, ?pats)) {
             for (@ast::pat p in pats) {
                 auto found = lookup_in_pat(name, *p);
+                if (!option::is_none(found)) { ret found; }
+            }
+        }
+        case (ast::pat_rec(?fields, _)) {
+            for (ast::field_pat f in fields) {
+                auto found = lookup_in_pat(name, *f.pat);
                 if (!option::is_none(found)) { ret found; }
             }
         }
@@ -1260,6 +1269,9 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
             case (ast::pat_bind(?name)) { add_name(ch, p.span, name); }
             case (ast::pat_tag(_, ?children)) {
                 for (@ast::pat child in children) { walk_pat(ch, child); }
+            }
+            case (ast::pat_rec(?fields, _)) {
+                for (ast::field_pat f in fields) { walk_pat(ch, f.pat); }
             }
             case (_) { }
         }

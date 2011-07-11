@@ -267,6 +267,13 @@ fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {
         case (pat_tag(?pth, ?pats)) {
             pat_tag(fld.fold_path(pth), ivec::map(fld.fold_pat, pats))
         }
+        case (pat_rec(?fields, ?etc)) {
+            auto fs = ~[];
+            for (ast::field_pat f in fields) {
+                fs += ~[rec(ident=f.ident, pat=fld.fold_pat(f.pat))];
+            }
+            pat_rec(fs, etc)
+        }
     };
 }
 
