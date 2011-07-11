@@ -1712,6 +1712,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                             oper_t = ty::substitute_type_params
                                 (fcx.ccx.tcx, tps, variants.(0).args.(0));
                         }
+                        case (ty::ty_ptr(?inner)) { oper_t = inner.ty; }
                         case (_) {
                             fcx.ccx.tcx.sess.span_fatal
                                 (expr.span, "dereferencing non-" + 

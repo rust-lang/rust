@@ -573,6 +573,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                         case (ty::ty_box(?mt)) { mut = mt.mut != ast::imm; }
                         case (ty::ty_res(_, _, _)) {}
                         case (ty::ty_tag(_, _)) {}
+                        case (ty::ty_ptr(?mt)) { mut = mt.mut != ast::imm; }
                     }
                     vec::push(ds, rec(mut=mut, kind=unbox, outer_t=base_t));
                     ex = base;

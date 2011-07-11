@@ -5263,11 +5263,11 @@ fn trans_lval_gen(&@block_ctxt cx, &@ast::expr e) -> lval_result {
             auto t = ty::expr_ty(ccx.tcx, base);
             auto val = alt (ty::struct(ccx.tcx, t)) {
                 case (ty::ty_box(_)) {
-                    sub.bcx.build.GEP
+                    sub.bcx.build.InBoundsGEP
                     (sub.val, ~[C_int(0), C_int(abi::box_rc_field_body)])
                 }
                 case (ty::ty_res(_, _, _)) {
-                    sub.bcx.build.GEP(sub.val, ~[C_int(0), C_int(1)])
+                    sub.bcx.build.InBoundsGEP(sub.val, ~[C_int(0), C_int(1)])
                 }
                 case (ty::ty_tag(_, _)) {
                     auto ety = ty::expr_ty(ccx.tcx, e);
@@ -5279,6 +5279,7 @@ fn trans_lval_gen(&@block_ctxt cx, &@ast::expr e) -> lval_result {
                     };
                     sub.bcx.build.PointerCast(sub.val, ellty)
                 }
+                case (ty::ty_ptr(_)) { sub.val }
             };
             ret lval_mem(sub.bcx, val);
         }
