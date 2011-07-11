@@ -1121,11 +1121,11 @@ fn print_pat(&ps s, &@ast::pat pat) {
             }
         }
         case (ast::pat_rec(?fields, ?etc)) {
-            bopen(s);
+            word(s.s, "{");
             fn print_field(&ps s, &ast::field_pat f) {
                 cbox(s, indent_unit);
                 word(s.s, f.ident);
-                word(s.s, ":");
+                word_space(s, ":");
                 print_pat(s, f.pat);
                 end(s);
             }
@@ -1134,7 +1134,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
             }
             commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
             if (etc) { space(s.s); word(s.s, "..."); }
-            bclose(s, pat.span);
+            word(s.s, "}");
         }
     }
     s.ann.post(ann_node);
