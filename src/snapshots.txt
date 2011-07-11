@@ -1,3 +1,8 @@
+S 2011-07-11 f666c97
+  linux-i386 434346526e3feecf80ceb58f132fb4ea6cbfec0a
+  macos-i386 f643f88b1414bf43c1821a9d3eea0bdc8df2f68d
+  winnt-i386 67e09bf1fb2ae0894cfc99fabee1ed716f218486
+
 S 2011-07-09 f42c947
   linux-i386 9cb82d02baaccc6efc1b5dff5f3d41aa0c8546e8
   macos-i386 5fd5b3fff6bdaaffc5a55d208370d3764076b54e

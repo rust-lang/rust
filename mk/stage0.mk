@@ -11,8 +11,5 @@ stage0/lib/glue.o: stage0/rustc$(X)
 stage0/lib/$(CFG_STDLIB): stage0/rustc$(X)
 	$(Q)touch $@
 
-# TODO: Include as part of the snapshot.
-stage0/intrinsics.bc:   $(INTRINSICS_BC)
-	@$(call E, cp: $@)
-	$(Q)cp $< $@
-
+stage0/intrinsics.bc: stage0/rustc$(X)
+	$(Q)touch $@
