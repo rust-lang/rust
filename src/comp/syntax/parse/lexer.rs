@@ -37,14 +37,15 @@ fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
                mutable uint col,
                mutable uint pos,
                mutable char ch,
+               mutable uint mark_pos,
                mutable uint mark_chpos,
                mutable uint chpos,
                mutable vec[str] strs,
                codemap::filemap fm,
                @interner::interner[str] itr) {
         fn is_eof() -> bool { ret ch == -1 as char; }
-        fn mark() { mark_chpos = chpos; }
-        fn get_mark_str() -> str { ret str::slice(file, mark_chpos, chpos); }
+        fn mark() { mark_pos = pos; mark_chpos = chpos; }
+        fn get_mark_str() -> str { ret str::slice(file, mark_pos, pos); }
         fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
         fn curr() -> char { ret ch; }
@@ -80,7 +81,7 @@ fn new_reader(&codemap::codemap cm, io::reader rdr, codemap::filemap filemap,
     auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
     auto rd =
-        reader(cm, file, str::byte_len(file), 0u, 0u, -1 as char,
+        reader(cm, file, str::byte_len(file), 0u, 0u, -1 as char, 0u,
                filemap.start_pos, filemap.start_pos, strs, filemap, itr);
     rd.init();
     ret rd;
