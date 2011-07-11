@@ -49,3 +49,9 @@ rust_intrinsic_cast(rust_task *task, void *retptr, type_desc *t1,
     memmove(retptr, src, t1->size);
 }
 
+extern "C" void
+rust_intrinsic_addr_of(rust_task *task, void **retptr, type_desc *ty,
+                       void *valptr) {
+    *retptr = valptr;
+}
+

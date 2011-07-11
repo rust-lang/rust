@@ -137,6 +137,12 @@ declare void @upcall_fail(%struct.rust_task*, i8*, i8*, i32)
 
 declare void @llvm.memmove.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 
+define linkonce_odr void @rust_intrinsic_addr_of(%struct.rust_task* nocapture %task, i8** nocapture %retptr, %struct.type_desc* nocapture %ty, i8* %valptr) nounwind {
+entry:
+  store i8* %valptr, i8** %retptr, align 4, !tbaa !3
+  ret void
+}
+
 !0 = metadata !{metadata !"long", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}
 !2 = metadata !{metadata !"Simple C/C++ TBAA", null}
