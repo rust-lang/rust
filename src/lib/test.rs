@@ -36,14 +36,61 @@ fn test_main(&test_desc[] tests) -> int {
 }
 
 fn run_tests(&test_desc[] tests) -> bool {
+
     auto out = io::stdout();
 
+    auto total = ivec::len(tests);
+    out.write_line(#fmt("running %u tests", total));
+
+    auto passed = 0u;
+    auto failed = 0u;
+
     for (test_desc test in tests) {
-        out.write_line("running " + test.name);
+        out.write_str(#fmt("running %s ... ", test.name));
+        if (run_test(test)) {
+            passed += 1u;
+            write_ok(out);
+            out.write_line("");
+        } else {
+            failed += 1u;
+            write_failed(out);
+            out.write_line("");
+        }
     }
 
+    assert passed + failed == total;
+
+    out.write_str(#fmt("\nresults: %u passed; %u failed\n\n",
+                        passed, failed));
+
     ret true;
+
+    fn run_test(&test_desc test) -> bool {
+        test.fn();
+        ret true;
+    }
+
+    fn write_ok(&io::writer out) {
+        if (term::color_supported()) {
+            term::fg(out.get_buf_writer(), term::color_green);
+        }
+        out.write_str("ok");
+        if (term::color_supported()) {
+            term::reset(out.get_buf_writer());
+        }
+     }
+
+    fn write_failed(&io::writer out) {
+        if (term::color_supported()) {
+            term::fg(out.get_buf_writer(), term::color_red);
+        }
+        out.write_str("FAILED");
+        if (term::color_supported()) {
+            term::reset(out.get_buf_writer());
+        }
+    }
 }
+
 
 
 // Local Variables:
