@@ -2362,9 +2362,8 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
                 rhs_fill = vec_fill(scx, rhs);
                 bcx = scx;
             }
-            r =
-                compare_numerical_values(bcx, lhs_fill, rhs_fill,
-                                         unsigned_int, llop);
+            r = compare_scalar_values(bcx, lhs_fill, rhs_fill,
+                                      unsigned_int, llop);
             r.bcx.build.Store(r.val, flag);
         } else {
             // == and <= default to true if they find == all the way. <
@@ -2441,7 +2440,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
 
 
 // Used only for creating scalar comparsion glue.
-tag numerical_type { signed_int; unsigned_int; floating_point; }
+tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
 
 
 fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
@@ -2449,10 +2448,10 @@ fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
     // FIXME: this could be a lot shorter if we could combine multiple cases
     // of alt expressions (issue #449).
 
-    auto f = bind compare_numerical_values(cx, lhs, rhs, _, llop);
+    auto f = bind compare_scalar_values(cx, lhs, rhs, _, llop);
 
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-        case (ty::ty_nil) { ret rslt(cx, C_bool(true)); }
+        case (ty::ty_nil) { ret f(nil_type); }
         case (ty::ty_bool) { ret f(unsigned_int); }
         case (ty::ty_int) { ret f(signed_int); }
         case (ty::ty_float) { ret f(floating_point); }
@@ -2514,13 +2513,20 @@ fn make_scalar_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
 }
 
 
-// A helper function to compare numerical values.
-fn compare_numerical_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
-                            numerical_type nt, ValueRef llop) -> result {
+// A helper function to do the actual comparison of scalar values.
+fn compare_scalar_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
+                         scalar_type nt, ValueRef llop) -> result {
     auto eq_cmp;
     auto lt_cmp;
     auto le_cmp;
     alt (nt) {
+        case (nil_type) {
+            // We don't need to do actual comparisons for nil.
+            // () == () holds but () < () does not.
+            eq_cmp = 1u;
+            lt_cmp = 0u;
+            le_cmp = 1u;
+        }
         case (floating_point) {
             eq_cmp = lib::llvm::LLVMRealUEQ;
             lt_cmp = lib::llvm::LLVMRealULT;
@@ -2543,10 +2549,12 @@ fn compare_numerical_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     // the above, and "auto eq_result = cmp_fn(eq_cmp, lhs, rhs);" in the
     // below.
 
-    fn generic_cmp(&@block_ctxt cx, numerical_type nt, uint op, ValueRef lhs,
+    fn generic_cmp(&@block_ctxt cx, scalar_type nt, uint op, ValueRef lhs,
                    ValueRef rhs) -> ValueRef {
         let ValueRef r;
-        if (nt == floating_point) {
+        if (nt == nil_type) {
+            r = C_bool(op != 0u);
+        } else if (nt == floating_point) {
             r = cx.build.FCmp(op, lhs, rhs);
         } else { r = cx.build.ICmp(op, lhs, rhs); }
         ret r;
@@ -2572,16 +2580,6 @@ fn compare_numerical_values(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
                           ~[eq_cx.llbb, lt_cx.llbb, le_cx.llbb]);
     ret rslt(last_cx, last_result);
 }
-
-
-// A helper function to create numerical comparison glue.
-fn make_numerical_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
-                           numerical_type nt, ValueRef llop) {
-    auto r = compare_numerical_values(cx, lhs, rhs, nt, llop);
-    r.bcx.build.Store(r.val, r.bcx.fcx.llretptr);
-    r.bcx.build.RetVoid();
-}
-
 
 type val_pair_fn = fn(&@block_ctxt, ValueRef, ValueRef) -> result ;
 
