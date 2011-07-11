@@ -4206,19 +4206,13 @@ fn trans_eager_binop(&@block_ctxt cx, ast::binop op, &ty::t intype,
     }
 }
 
-fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
-    -> result_t {
+fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result_t {
     let ValueRef v1 = v;
     let ty::t t1 = t;
     auto ccx = cx.fcx.lcx.ccx;
     while (true) {
         alt (ty::struct(ccx.tcx, t1)) {
             case (ty::ty_box(?mt)) {
-                // If we are working with an lval, we want to
-                // unconditionally load at the top of the loop
-                // to get rid of the extra indirection
-                if (is_lval) { v1 = cx.build.Load(v1); }
-
                 auto body =
                     cx.build.GEP(v1,
                                  ~[C_int(0), C_int(abi::box_rc_field_body)]);
@@ -4233,7 +4227,6 @@ fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
                 } else { v1 = body; }
             }
             case (ty::ty_res(?did, ?inner, ?tps)) {
-                if (is_lval) { v1 = cx.build.Load(v1); }
                 t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
                 v1 = cx.build.GEP(v1, ~[C_int(0), C_int(1)]);
             }
@@ -4243,7 +4236,6 @@ fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
                     std::ivec::len(variants.(0).args) != 1u) {
                     break;
                 }
-                if (is_lval) { v1 = cx.build.Load(v1); }
                 t1 = ty::substitute_type_params
                     (ccx.tcx, tps, variants.(0).args.(0));
                 if (!ty::type_has_dynamic_size(ccx.tcx, t1)) {
@@ -4253,16 +4245,9 @@ fn autoderef_lval(&@block_ctxt cx, ValueRef v, &ty::t t, bool is_lval)
             }
             case (_) { break; }
         }
-        // But if we aren't working with an lval, we get rid of
-        // a layer of indirection at the bottom of the loop so
-        // that it is gone when we return...
-        if (!is_lval) { v1 = load_if_immediate(cx, v1, t1); }
+        v1 = load_if_immediate(cx, v1, t1);
     }
     ret rec(bcx=cx, val=v1, ty=t1);
-}
-
-fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result_t {
-    ret autoderef_lval(cx, v, t, false);
 }
 
 fn trans_binary(&@block_ctxt cx, ast::binop op, &@ast::expr a, &@ast::expr b)
@@ -5956,7 +5941,8 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
         }
         case (none) {
             // It's a closure. We have to autoderef.
-            auto res = autoderef_lval(bcx, f_res.res.val, fn_ty, true);
+            if (f_res.is_mem) { faddr = load_if_immediate(bcx, faddr, fn_ty);}
+            auto res = autoderef(bcx, faddr, fn_ty);
             bcx = res.bcx;
             fn_ty = res.ty;
 
