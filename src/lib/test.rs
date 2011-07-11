@@ -28,24 +28,37 @@ type test_desc = rec(test_name name,
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(&vec[str] args, &test_desc[] tests) -> int {
-    if (run_tests(tests)) {
+    if (run_tests(parse_opts(args), tests)) {
         ret 0;
     } else {
         ret -1;
     }
 }
 
-fn run_tests(&test_desc[] tests) -> bool {
+type test_opts = rec(option::t[str] filter);
+
+fn parse_opts(&vec[str] args) -> test_opts {
+    rec(filter = if (vec::len(args) > 1u) {
+            option::some(args.(1))
+        } else {
+            option::none
+        })
+}
+
+// A simple console test runner
+fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
+
+    auto filtered_tests = filter_tests(opts, tests);
 
     auto out = io::stdout();
 
-    auto total = ivec::len(tests);
+    auto total = ivec::len(filtered_tests);
     out.write_line(#fmt("running %u tests", total));
 
     auto passed = 0u;
     auto failed = 0u;
 
-    for (test_desc test in tests) {
+    for (test_desc test in filtered_tests) {
         out.write_str(#fmt("running %s ... ", test.name));
         if (run_test(test)) {
             passed += 1u;
@@ -91,6 +104,25 @@ fn run_tests(&test_desc[] tests) -> bool {
     }
 }
 
+fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
+    if (option::is_none(opts.filter)) {
+        ret tests;
+    }
+
+    auto filter_str = alt opts.filter { option::some(?f) { f }
+                                        option::none { "" } };
+
+    auto filter = bind fn(&test_desc test,
+                          str filter_str) -> option::t[test_desc] {
+        if (str::find(test.name, filter_str) >= 0) {
+            ret option::some(test);
+        } else {
+            ret option::none;
+        }
+    } (_, filter_str);
+
+    ret ivec::filter_map(filter, tests);
+}
 
 
 // Local Variables:
