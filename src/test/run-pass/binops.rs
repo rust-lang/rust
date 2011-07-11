@@ -3,12 +3,10 @@
 fn test_nil() {
   assert () == ();
   assert !(() != ());
-  // FIXME (#576): The current implementation of relational ops on nil
-  // is nonsensical
-  assert () < ();
+  assert !(() < ());
   assert () <= ();
   assert !(() > ());
-  assert !(() >= ());
+  assert () >= ();
 }
 
 fn test_bool() {
