@@ -92,15 +92,19 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
         auto recexpr = ast::expr_rec(astfields, option::none[@ast::expr]);
         ret @rec(id=cx.next_id(), node=recexpr, span=sp);
     }
-    fn make_path_vec(str ident) -> str[] {
-        // FIXME: #fmt can't currently be used from within std
-        // because we're explicitly referencing the 'std' crate here
-
-        ret ~["std", "extfmt", "rt", ident];
+    fn make_path_vec(&ext_ctxt cx, str ident) -> str[] {
+        fn compiling_std(&ext_ctxt cx) -> bool {
+            ret str::find(cx.crate_file_name_hack, "std.rc") >= 0;
+        }
+        if (compiling_std(cx)) {
+            ret ~["extfmt", "rt", ident];
+        } else {
+            ret ~["std", "extfmt", "rt", ident];
+        }
     }
     fn make_rt_path_expr(&ext_ctxt cx, span sp, str ident) ->
        @ast::expr {
-        auto path = make_path_vec(ident);
+        auto path = make_path_vec(cx, ident);
         ret make_path_expr(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
@@ -141,7 +145,7 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
                 }
                 case (count_is(?c)) {
                     auto count_lit = make_new_int(cx, sp, c);
-                    auto count_is_path = make_path_vec("count_is");
+                    auto count_is_path = make_path_vec(cx, "count_is");
                     auto count_is_args = ~[count_lit];
                     ret make_call(cx, sp, count_is_path, count_is_args);
                 }
@@ -184,7 +188,7 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
     fn make_conv_call(&ext_ctxt cx, span sp, str conv_type, &conv cnv,
                       @ast::expr arg) -> @ast::expr {
         auto fname = "conv_" + conv_type;
-        auto path = make_path_vec(fname);
+        auto path = make_path_vec(cx, fname);
         auto cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         auto args = ~[cnv_expr, arg];
         ret make_call(cx, arg.span, path, args);

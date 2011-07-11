@@ -36,7 +36,8 @@ type next_id_fn = fn() -> ast::node_id ;
 // Provides a limited set of services necessary for syntax extensions
 // to do their thing
 type ext_ctxt =
-    rec(span_msg_fn span_fatal,
+    rec(str crate_file_name_hack,
+        span_msg_fn span_fatal,
         span_msg_fn span_unimpl,
         next_id_fn next_id);
 
@@ -50,9 +51,19 @@ fn mk_ctxt(&parse_sess sess) -> ext_ctxt {
         codemap::emit_error(option::some(sp), "unimplemented " + msg, cm);
         fail;
     }
+
+    // FIXME: Some extensions work by building ASTs with paths to functions
+    // they need to call at runtime. As those functions live in the std crate,
+    // the paths are prefixed with "std::". Unfortunately, these paths can't
+    // work for code called from inside the stdard library, so here we pass
+    // the extensions the file name of the crate being compiled so they can
+    // use it to guess whether paths should be prepended with "std::". This is
+    // super-ugly and needs a better solution.
+    auto crate_file_name_hack = sess.cm.files.(0).name;
     auto ext_span_unimpl = bind ext_span_unimpl_(sess.cm, _, _);
     auto ext_next_id = bind parse::parser::next_node_id(sess);
-    ret rec(span_fatal=ext_span_fatal,
+    ret rec(crate_file_name_hack=crate_file_name_hack,
+            span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
             next_id=ext_next_id);
 }
