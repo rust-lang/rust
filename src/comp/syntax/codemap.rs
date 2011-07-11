@@ -1,4 +1,5 @@
-
+import std::uint;
+import std::str;
 import std::vec;
 import std::term;
 import std::io;
@@ -58,8 +59,12 @@ fn span_to_str(&span sp, &codemap cm) -> str {
 fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                    &codemap cm) {
     auto ss = "<input>:0:0:0:0";
+    let option::t[@file_lines] maybe_lines = none;
     alt (sp) {
-        case (some(?ssp)) { ss = span_to_str(ssp, cm); }
+        case (some(?ssp)) {
+            ss = span_to_str(ssp, cm);
+            maybe_lines = some(span_to_lines(ssp, cm));
+        }
         case (none) { }
     }
     io::stdout().write_str(ss + ": ");
@@ -71,6 +76,22 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
         term::reset(io::stdout().get_buf_writer());
     }
     io::stdout().write_str(#fmt(" %s\n", msg));
+    alt (maybe_lines) {
+        case (some(?lines)) {
+            auto rdr = io::file_reader(lines.name);
+            auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
+            auto fm = codemap::get_filemap(cm, lines.name);
+            for (uint line in lines.lines) {
+                io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
+                auto s = codemap::get_line(fm, line as int, file);
+                if (!str::ends_with(s, "\n")) {
+                    s += "\n";
+                }
+                io::stdout().write_str(s);
+            }
+        }
+        case (_) {}
+    }
 }
 
 fn emit_warning(&option::t[span] sp, &str msg, &codemap cm) {
@@ -83,6 +104,38 @@ fn emit_note(&option::t[span] sp, &str msg, &codemap cm) {
     emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 
+type file_lines = rec(str name, vec[uint] lines);
+
+fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
+    auto lo = codemap::lookup_pos(cm, sp.lo);
+    auto hi = codemap::lookup_pos(cm, sp.hi);
+    auto lines = [];
+    for each (uint i in uint::range(lo.line - 1u, hi.line as uint)) {
+        lines += [i];
+    }
+    ret @rec(name=lo.filename, lines=lines);
+}
+
+fn get_line(filemap fm, int line, &str file) -> str {
+    let uint end;
+    if ((line as uint) + 1u >= vec::len(fm.lines)) {
+        end = str::byte_len(file);
+    } else {
+        end = fm.lines.(line + 1);
+    }
+    ret str::slice(file, fm.lines.(line), end);
+}
+
+fn get_filemap(codemap cm, str filename) -> filemap {
+    for (filemap fm in cm.files) {
+        if (fm.name == filename) {
+            ret fm;
+        }
+    }
+    //XXjdm the following triggers a mismatched type bug
+    //      (or expected function, found _|_)
+    fail;// ("asking for " + filename + " which we don't know about");
+}
 
 //
 // Local Variables:
