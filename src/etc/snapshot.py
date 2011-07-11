@@ -15,15 +15,6 @@ download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
-old_snapshot_files = {
-    "linux": ["rustc", "lib/glue.o", "lib/libstd.so", "lib/libstd.rlib",
-              "lib/librustrt.so", "lib/librustllvm.so", "intrinsics.bc"],
-    "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib", "lib/libstd.rlib",
-              "lib/librustrt.dylib", "lib/librustllvm.dylib", "intrinsics.bc"],
-    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll", "lib/libstd.rlib",
-              "lib/rustrt.dll", "lib/rustllvm.dll", "intrinsics.bc"]
-    }
-
 snapshot_files = {
     "linux": ["rustc", "lib/glue.o", "lib/libstd.so", "lib/libstd.rlib",
               "lib/librustrt.so", "librustllvm.so", "intrinsics.bc"],

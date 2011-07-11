@@ -14,7 +14,7 @@ stage0/lib/$(CFG_STDLIB): stage0/rustc$(X)
 stage0/intrinsics.bc: stage0/rustc$(X)
 	$(Q)touch $@
 
-stage0/lib/$(CFG_RUSTLLVM): stage0/rustc$(X)
+stage0/$(CFG_RUSTLLVM): stage0/rustc$(X)
 	$(Q)touch $@
 
 stage0/lib/$(CFG_RUNTIME): stage0/rustc$(X)
