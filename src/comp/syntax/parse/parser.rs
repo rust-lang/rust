@@ -2291,25 +2291,20 @@ fn parse_optional_meta(&parser p) -> (@ast::meta_item)[] {
     }
 }
 
-fn parse_use(&parser p) -> @ast::view_item {
-    auto lo = p.get_last_lo_pos();
+fn parse_use(&parser p) -> ast::view_item_ {
     auto ident = parse_ident(p);
     auto metadata = parse_optional_meta(p);
-    auto hi = p.get_hi_pos();
-    expect(p, token::SEMI);
-    auto use_decl = ast::view_item_use(ident, metadata, p.get_id());
-    ret @spanned(lo, hi, use_decl);
+    ret ast::view_item_use(ident, metadata, p.get_id());
 }
 
 fn parse_rest_import_name(&parser p, ast::ident first,
                           option::t[ast::ident] def_ident) ->
-   @ast::view_item {
-    auto lo = p.get_lo_pos();
+   ast::view_item_ {
     let ast::ident[] identifiers = ~[first];
     let bool glob = false;
     while (true) {
         alt (p.peek()) {
-            case (token::SEMI) { p.bump(); break; }
+            case (token::SEMI) { break; }
             case (token::MOD_SEP) {
                 if (glob) { p.fatal("cannot path into a glob"); }
                 p.bump();
@@ -2327,31 +2322,25 @@ fn parse_rest_import_name(&parser p, ast::ident first,
             case (_) { p.fatal("expecting an identifier, or '*'"); }
         }
     }
-    auto hi = p.get_hi_pos();
-    auto import_decl;
     alt (def_ident) {
         case (some(?i)) {
             if (glob) { p.fatal("globbed imports can't be renamed"); }
-            import_decl =
-                ast::view_item_import(i, identifiers, p.get_id());
+            ret ast::view_item_import(i, identifiers, p.get_id());
         }
         case (_) {
             if (glob) {
-                import_decl =
-                    ast::view_item_import_glob(identifiers, p.get_id());
+                ret ast::view_item_import_glob(identifiers, p.get_id());
             } else {
                 auto len = ivec::len(identifiers);
-                import_decl =
-                    ast::view_item_import(identifiers.(len - 1u), identifiers,
+                ret ast::view_item_import(identifiers.(len - 1u), identifiers,
                                           p.get_id());
             }
         }
     }
-    ret @spanned(lo, hi, import_decl);
 }
 
 fn parse_full_import_name(&parser p, ast::ident def_ident) ->
-   @ast::view_item {
+   ast::view_item_ {
     alt (p.peek()) {
         case (token::IDENT(?i, _)) {
             p.bump();
@@ -2362,7 +2351,7 @@ fn parse_full_import_name(&parser p, ast::ident def_ident) ->
     fail;
 }
 
-fn parse_import(&parser p) -> @ast::view_item {
+fn parse_import(&parser p) -> ast::view_item_ {
     alt (p.peek()) {
         case (token::IDENT(?i, _)) {
             p.bump();
@@ -2381,20 +2370,20 @@ fn parse_import(&parser p) -> @ast::view_item {
     fail;
 }
 
-fn parse_export(&parser p) -> @ast::view_item {
-    auto lo = p.get_last_lo_pos();
+fn parse_export(&parser p) -> ast::view_item_ {
     auto id = parse_ident(p);
-    auto hi = p.get_hi_pos();
-    expect(p, token::SEMI);
-    ret @spanned(lo, hi, ast::view_item_export(id, p.get_id()));
+    ret ast::view_item_export(id, p.get_id());
 }
 
 fn parse_view_item(&parser p) -> @ast::view_item {
-    if (eat_word(p, "use")) {
-        ret parse_use(p);
-    } else if (eat_word(p, "import")) {
-        ret parse_import(p);
-    } else if (eat_word(p, "export")) { ret parse_export(p); } else { fail; }
+    auto lo = p.get_lo_pos();
+    auto the_item = if (eat_word(p, "use")) { parse_use(p) }
+                    else if (eat_word(p, "import")) { parse_import(p) }
+                    else if (eat_word(p, "export")) { parse_export(p) }
+                    else { fail };
+    auto hi = p.get_lo_pos();
+    expect(p, token::SEMI);
+    ret @spanned(lo, hi, the_item);
 }
 
 fn is_view_item(&parser p) -> bool {
