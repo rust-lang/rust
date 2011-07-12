@@ -1160,7 +1160,10 @@ fn print_pat(&ps s, &@ast::pat pat) {
                 ret f.pat.span;
             }
             commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
-            if (etc) { space(s.s); word(s.s, "..."); }
+            if (etc) {
+                if (ivec::len(fields) != 0u) { word_space(s, ","); }
+                word(s.s, "_");
+            }
             word(s.s, "}");
         }
     }
