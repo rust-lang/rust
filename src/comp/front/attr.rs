@@ -1,7 +1,6 @@
 // Functions dealing with attributes and meta_items
 
 import std::ivec;
-import std::vec;
 import std::str;
 import std::map;
 import std::option;
@@ -147,7 +146,7 @@ fn contains(&(@ast::meta_item)[] haystack, @ast::meta_item needle) -> bool {
 }
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
-fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
+fn sort_meta_items(&(@ast::meta_item)[] items) -> (@ast::meta_item)[] {
     fn lteq(&@ast::meta_item ma, &@ast::meta_item mb) -> bool {
         fn key(&@ast::meta_item m) -> ast::ident {
             alt (m.node) {
@@ -166,16 +165,16 @@ fn sort_meta_items(&vec[@ast::meta_item] items) -> vec[@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let vec[mutable @ast::meta_item] v = [mutable ];
+    let (@ast::meta_item)[mutable] v = ~[mutable];
     for (@ast::meta_item mi in items) {
-        v += [mutable mi];
+        v += ~[mutable mi];
     }
 
-    std::sort::quick_sort(lteq, v);
+    std::sort::ivector::quick_sort(lteq, v);
 
-    let vec[@ast::meta_item] v2 = [];
+    let (@ast::meta_item)[] v2 = ~[];
     for (@ast::meta_item mi in v) {
-        v2 += [mi]
+        v2 += ~[mi];
     }
     ret v2;
 }

@@ -286,28 +286,28 @@ fn build_link_meta(&session::session sess, &ast::crate c,
 
     type provided_metas = rec(option::t[str] name,
                               option::t[str] vers,
-                              vec[@ast::meta_item] cmh_items);
+                              (@ast::meta_item)[] cmh_items);
 
     fn provided_link_metas(&session::session sess,
                            &ast::crate c) -> provided_metas {
         let option::t[str] name = none;
         let option::t[str] vers = none;
-        let vec[@ast::meta_item] cmh_items = [];
+        let (@ast::meta_item)[] cmh_items = ~[];
         auto linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for (@ast::meta_item meta in linkage_metas) {
             if (attr::get_meta_item_name(meta) == "name") {
                 alt (attr::get_meta_item_value_str(meta)) {
                     case (some(?v)) { name = some(v); }
-                    case (none) { cmh_items += [meta]; }
+                    case (none) { cmh_items += ~[meta]; }
                 }
             } else if (attr::get_meta_item_name(meta) == "vers") {
                 alt (attr::get_meta_item_value_str(meta)) {
                     case (some(?v)) { vers = some(v); }
-                    case (none) { cmh_items += [meta]; }
+                    case (none) { cmh_items += ~[meta]; }
                 }
             } else {
-                cmh_items += [meta];
+                cmh_items += ~[meta];
             }
         }
         ret rec(name = name,
