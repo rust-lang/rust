@@ -454,7 +454,9 @@ debug_opaque(rust_task *task, type_desc *t, uint8_t *front)
     }
 }
 
-struct rust_box : rc_base<rust_box> {
+struct rust_box {
+    RUST_REFCOUNTED(rust_box)
+
     // FIXME `data` could be aligned differently from the actual box body data
     uint8_t data[];
 };
@@ -578,6 +580,42 @@ rust_list_files(rust_task *task, rust_str *path) {
 #endif
   return vec_alloc_with_data(task, strings.size(), strings.size(),
                              sizeof(rust_str*), strings.data());
+}
+
+extern "C" CDECL rust_box*
+rust_list_files_ivec(rust_task *task, rust_str *path) {
+    array_list<rust_str*> strings;
+#if defined(__WIN32__)
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            strings.push(c_str_to_rust(task, FindFileData.cFileName));
+        } while (FindNextFile(hFind, &FindFileData));
+        FindClose(hFind);
+    }
+#else
+  DIR *dirp = opendir((char*)path->data);
+  if (dirp) {
+      struct dirent *dp;
+      while ((dp = readdir(dirp)))
+          strings.push(c_str_to_rust(task, dp->d_name));
+      closedir(dirp);
+  }
+#endif
+  rust_box *box = (rust_box *)task->malloc(sizeof(rust_box) +
+                                           sizeof(rust_ivec));
+  box->ref_count = 1;
+  rust_ivec *iv = (rust_ivec *)&box->data;
+  iv->fill = 0;
+
+  size_t alloc_sz = sizeof(rust_str *) * strings.size();
+  iv->alloc = alloc_sz;
+  iv->payload.ptr = (rust_ivec_heap *)
+      task->kernel->malloc(alloc_sz + sizeof(size_t));
+  iv->payload.ptr->fill = alloc_sz;
+  memcpy(&iv->payload.ptr->data, strings.data(), alloc_sz);
+  return box;
 }
 
 #if defined(__WIN32__)

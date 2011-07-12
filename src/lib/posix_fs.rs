@@ -1,11 +1,12 @@
 
 native "rust" mod rustrt {
     fn rust_list_files(str path) -> vec[str];
+    fn rust_list_files_ivec(str path) -> @str[];
     fn rust_dirent_filename(os::libc::dirent ent) -> str;
 }
 
-fn list_dir(str path) -> vec[str] {
-    ret rustrt::rust_list_files(path);
+fn list_dir(str path) -> str[] {
+    ret *rustrt::rust_list_files_ivec(path);
     // TODO ensure this is always closed
 
     // FIXME: No idea why, but this appears to corrupt memory on OSX. I

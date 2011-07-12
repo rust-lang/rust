@@ -2,10 +2,11 @@
 
 native "rust" mod rustrt {
     fn rust_list_files(str path) -> vec[str];
+    fn rust_list_files_ivec(str path) -> @str[];
     fn rust_file_is_dir(str path) -> int;
 }
 
-fn list_dir(str path) -> vec[str] { ret rustrt::rust_list_files(path + "*"); }
+fn list_dir(str path) -> str[] { ret *rustrt::rust_list_files(path + "*"); }
 
 fn path_is_absolute(str p) -> bool {
     ret str::char_at(p, 0u) == '/' 
