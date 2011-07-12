@@ -2432,6 +2432,24 @@ fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
                                 &codemap::codemap cm) -> @ast::crate {
     auto sess = @rec(cm=cm, mutable next_id=0);
     auto p = new_parser_from_file(sess, cfg, input, 0u);
+    ret parse_crate_mod(p, cfg);
+}
+
+fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
+                               &codemap::codemap cm) -> @ast::crate {
+    auto sess = @rec(cm=cm, mutable next_id=0);
+    auto ftype = SOURCE_FILE;
+    auto filemap = codemap::new_filemap(name, 0u);
+    sess.cm.files += [filemap];
+    auto itr = @interner::mk(str::hash, str::eq);
+    auto rdr = lexer::new_reader(sess.cm, source, filemap, itr);
+    auto p = new_parser(sess, cfg, rdr, ftype);
+    ret parse_crate_mod(p, cfg);
+}
+
+// Parses a source module as a crate
+fn parse_crate_mod(&parser p, &ast::crate_cfg cfg) -> @ast::crate {
+
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = crate_attrs._1;
