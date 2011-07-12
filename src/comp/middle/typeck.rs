@@ -2603,18 +2603,19 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
         case (_) { }
     }
 
-    auto success = writeback::resolve_type_vars_in_block(fcx, body);
-
-    if (success && option::is_some(body.node.expr)) {
+    if (option::is_some(body.node.expr)) {
         auto tail_expr = option::get(body.node.expr);
         auto tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
         // Have to exclude ty_nil to allow functions to end in
         // while expressions, etc.
-        if (!ty::type_is_nil(ccx.tcx, tail_expr_ty)) {
+        auto nil = ty::mk_nil(fcx.ccx.tcx);
+        if (!are_compatible(fcx, nil, tail_expr_ty)) {
             demand::simple(fcx, tail_expr.span,
                            fcx.ret_ty, tail_expr_ty);
         }
     }
+
+    writeback::resolve_type_vars_in_block(fcx, body);
 }
 
 fn check_method(&@crate_ctxt ccx, &@ast::method method) {
