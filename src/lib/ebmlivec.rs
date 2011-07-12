@@ -15,9 +15,9 @@ type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
 // modules within this file.
 
 // ebml reading
-type doc = rec(u8[] data, uint start, uint end);
+type doc = rec(@u8[] data, uint start, uint end);
 
-fn vint_at(&u8[] data, uint start) -> tup(uint, uint) {
+fn vint_at(&@u8[] data, uint start) -> tup(uint, uint) {
     auto a = data.(start);
     if (a & 0x80u8 != 0u8) { ret tup(a & 0x7fu8 as uint, start + 1u); }
     if (a & 0x40u8 != 0u8) {
@@ -35,11 +35,11 @@ fn vint_at(&u8[] data, uint start) -> tup(uint, uint) {
     } else { log_err "vint too big"; fail; }
 }
 
-fn new_doc(&u8[] data) -> doc {
-    ret rec(data=data, start=0u, end=ivec::len[u8](data));
+fn new_doc(&@u8[] data) -> doc {
+    ret rec(data=data, start=0u, end=ivec::len[u8](*data));
 }
 
-fn doc_at(&u8[] data, uint start) -> doc {
+fn doc_at(&@u8[] data, uint start) -> doc {
     auto elt_tag = vint_at(data, start);
     auto elt_size = vint_at(data, elt_tag._1);
     auto end = elt_size._1 + elt_size._0;
@@ -91,9 +91,9 @@ iter tagged_docs(doc d, uint tg) -> doc {
     }
 }
 
-fn doc_data(doc d) -> u8[] { ret ivec::slice[u8](d.data, d.start, d.end); }
+fn doc_data(doc d) -> u8[] { ret ivec::slice[u8](*d.data, d.start, d.end); }
 
-fn be_uint_from_bytes(&u8[] data, uint start, uint size) -> uint {
+fn be_uint_from_bytes(&@u8[] data, uint start, uint size) -> uint {
     auto sz = size;
     assert (sz <= 4u);
     auto val = 0u;
