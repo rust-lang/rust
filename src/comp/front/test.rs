@@ -4,6 +4,7 @@ import std::option;
 import std::ivec;
 import syntax::ast;
 import syntax::fold;
+import syntax::print::pprust;
 import front::attr;
 
 export modify_for_testing;
@@ -148,10 +149,13 @@ fn mk_test_module(&test_ctxt cx) -> @ast::item {
                                 items=~[mainfn, testsfn]);
     auto item_ = ast::item_mod(testmod);
     let ast::item item = rec(ident = "__test",
-                             attrs = ~[],
-                             id = cx.next_node_id(),
-                             node = item_,
-                             span = rec(lo=0u, hi=0u));
+                              attrs = ~[],
+                              id = cx.next_node_id(),
+                              node = item_,
+                              span = rec(lo=0u, hi=0u));
+
+    log #fmt("Synthetic test module:\n%s\n", pprust::item_to_str(@item));
+
     ret @item;
 }
 
