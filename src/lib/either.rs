@@ -16,35 +16,35 @@ fn either[T, U,
     }
 }
 
-fn lefts[T, U](&vec[t[T, U]] eithers) -> vec[T] {
-    let vec[T] result = [];
+fn lefts[T, U](&(t[T, U])[] eithers) -> T[] {
+    let T[] result = ~[];
     for (t[T, U] elt in eithers) {
         alt (elt) {
-            case (left(?l)) { result += [l] }
+            case (left(?l)) { result += ~[l] }
             case (_) {/* fallthrough */ }
         }
     }
     ret result;
 }
 
-fn rights[T, U](&vec[t[T, U]] eithers) -> vec[U] {
-    let vec[U] result = [];
+fn rights[T, U](&(t[T, U])[] eithers) -> U[] {
+    let U[] result = ~[];
     for (t[T, U] elt in eithers) {
         alt (elt) {
-            case (right(?r)) { result += [r] }
+            case (right(?r)) { result += ~[r] }
             case (_) {/* fallthrough */ }
         }
     }
     ret result;
 }
 
-fn partition[T, U](&vec[t[T, U]] eithers) -> tup(vec[T], vec[U]) {
-    let vec[T] lefts = [];
-    let vec[U] rights = [];
+fn partition[T, U](&(t[T, U])[] eithers) -> tup(T[], U[]) {
+    let T[] lefts = ~[];
+    let U[] rights = ~[];
     for (t[T, U] elt in eithers) {
         alt (elt) {
-            case (left(?l)) { lefts += [l] }
-            case (right(?r)) { rights += [r] }
+            case (left(?l)) { lefts += ~[l] }
+            case (right(?r)) { rights += ~[r] }
         }
     }
     ret tup(lefts, rights);
