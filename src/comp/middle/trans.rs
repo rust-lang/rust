@@ -7298,19 +7298,10 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         for (ast::anon_obj_field f in additional_fields) {
             // FIXME (part of issue #538): make this work eventually, when we
             // have additional field exprs in the AST.
-
             load_if_immediate(
                 bcx,
                 additional_field_vals.(i).val,
                 additional_field_tys.(i));
-
-            // what was the type of arg_tys.(i)?  What's the type of
-            // additional_field_tys.(i) ?
-
-            // arg_tys is a vector of ty::arg, so arg_tys.(i) is a ty::arg,
-            // which is a record of mode and t.  Meanwhile,
-            // additional_field_tys is a vec of ty::t.  So how about I just
-            // don't index into it?
 
             auto field =
                 GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
