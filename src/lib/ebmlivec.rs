@@ -17,7 +17,7 @@ type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
 // ebml reading
 type doc = rec(@u8[] data, uint start, uint end);
 
-fn vint_at(&@u8[] data, uint start) -> tup(uint, uint) {
+fn vint_at(&u8[] data, uint start) -> tup(uint, uint) {
     auto a = data.(start);
     if (a & 0x80u8 != 0u8) { ret tup(a & 0x7fu8 as uint, start + 1u); }
     if (a & 0x40u8 != 0u8) {
@@ -40,8 +40,8 @@ fn new_doc(&@u8[] data) -> doc {
 }
 
 fn doc_at(&@u8[] data, uint start) -> doc {
-    auto elt_tag = vint_at(data, start);
-    auto elt_size = vint_at(data, elt_tag._1);
+    auto elt_tag = vint_at(*data, start);
+    auto elt_size = vint_at(*data, elt_tag._1);
     auto end = elt_size._1 + elt_size._0;
     ret rec(data=data, start=elt_size._1, end=end);
 }
@@ -49,8 +49,8 @@ fn doc_at(&@u8[] data, uint start) -> doc {
 fn maybe_get_doc(doc d, uint tg) -> option::t[doc] {
     auto pos = d.start;
     while (pos < d.end) {
-        auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
+        auto elt_tag = vint_at(*d.data, pos);
+        auto elt_size = vint_at(*d.data, elt_tag._1);
         pos = elt_size._1 + elt_size._0;
         if (elt_tag._0 == tg) {
             ret some[doc](rec(data=d.data, start=elt_size._1, end=pos));
@@ -72,8 +72,8 @@ fn get_doc(doc d, uint tg) -> doc {
 iter docs(doc d) -> tup(uint, doc) {
     auto pos = d.start;
     while (pos < d.end) {
-        auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
+        auto elt_tag = vint_at(*d.data, pos);
+        auto elt_size = vint_at(*d.data, elt_tag._1);
         pos = elt_size._1 + elt_size._0;
         put tup(elt_tag._0, rec(data=d.data, start=elt_size._1, end=pos));
     }
@@ -82,8 +82,8 @@ iter docs(doc d) -> tup(uint, doc) {
 iter tagged_docs(doc d, uint tg) -> doc {
     auto pos = d.start;
     while (pos < d.end) {
-        auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
+        auto elt_tag = vint_at(*d.data, pos);
+        auto elt_size = vint_at(*d.data, elt_tag._1);
         pos = elt_size._1 + elt_size._0;
         if (elt_tag._0 == tg) {
             put rec(data=d.data, start=elt_size._1, end=pos);
