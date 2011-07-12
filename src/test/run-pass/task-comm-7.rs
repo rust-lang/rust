@@ -1,6 +1,8 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
+use std;
+import std::task;
+
 fn main() -> () {
    test00();
 }
@@ -37,10 +39,10 @@ fn test00() {
         i += 1;
     }
             
-    join t0;
-    join t1;
-    join t2;
-    join t3;
+    task::join(t0);
+    task::join(t1);
+    task::join(t2);
+    task::join(t3);
     
     assert (sum == (((number_of_messages * 4) * 
                    ((number_of_messages * 4) - 1)) / 2));

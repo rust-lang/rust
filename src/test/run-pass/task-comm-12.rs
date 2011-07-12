@@ -1,8 +1,7 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
 use std;
-import std::_task;
+import std::task;
 
 fn main() -> () {
     test00();
@@ -14,13 +13,13 @@ fn start(int task_number) {
     
 fn test00() {    
     let int i = 0;
-    let task t = spawn thread "child" start(i);
+    let task t = spawn start(i);
     
     // Sleep long enough for the task to finish.
-    _task::sleep(10000u);
+    task::sleep(10000u);
     
     // Try joining tasks that have already finished.
-    join t;
+    task::join(t);
     
     log "Joined task.";
 }

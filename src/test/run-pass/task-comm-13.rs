@@ -1,8 +1,7 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
 use std;
-import std::_task;
+import std::task;
 
 fn start(chan[int] c, int start, int number_of_messages) {
     let int i = 0;
@@ -15,7 +14,7 @@ fn start(chan[int] c, int start, int number_of_messages) {
 fn main() -> () {
     log "Check that we don't deadlock.";
     let port[int] p = port();
-    let task a = spawn "start" start(chan(p), 0, 10);
-    join a;
+    let task a = spawn start(chan(p), 0, 10);
+    task::join(a);
     log "Joined task";
 }

@@ -1,9 +1,11 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
+use std;
+
+import std::task;
 
 fn main() -> () {
-    test00(true);
+    test00();
     // test01();
     test02();
     test03();
@@ -23,7 +25,7 @@ fn test00_start(chan[int] ch, int message, int count) {
     log "Ending test00_start";
 }
 
-fn test00(bool is_multithreaded) {
+fn test00() {
     let int number_of_tasks = 1;
     let int number_of_messages = 4;
     log "Creating tasks";
@@ -36,12 +38,7 @@ fn test00(bool is_multithreaded) {
     let vec[task] tasks = [];
     while (i < number_of_tasks) {
         i = i + 1;
-        if (is_multithreaded) {
-            tasks += [
-                spawn thread test00_start(ch, i, number_of_messages)];
-        } else {
-            tasks += [spawn test00_start(ch, i, number_of_messages)];
-        }
+        tasks += [spawn test00_start(ch, i, number_of_messages)];
     }
     
     let int sum = 0;
@@ -55,7 +52,7 @@ fn test00(bool is_multithreaded) {
     }
 
     for (task t in tasks) {
-        join t;
+        task::join(t);
     }
     
     log "Completed: Final number is: ";
@@ -89,9 +86,9 @@ obj vector(mutable int x, int y) {
 
 fn test03() {
     log "Creating object ...";
-    let mutable vector v = vector(1, 2);
+    let vector v = vector(1, 2);
     log "created object ...";
-    let mutable vector t = v;
+    let vector t = v;
     log v.length();
 }
 
@@ -109,7 +106,7 @@ fn test04() {
     let int i = 4;
     while (i > 0) {
         i = i - 1;
-        spawn thread test04_start();
+        spawn test04_start();
     }
     log "Finishing up.";
 }
@@ -125,7 +122,7 @@ fn test05_start(chan[int] ch) {
 fn test05() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
-    spawn thread test05_start(ch);
+    spawn test05_start(ch);
     let int value; po |> value;
     po |> value;
     po |> value;
@@ -150,12 +147,11 @@ fn test06() {
     let vec[task] tasks = [];
     while (i < number_of_tasks) {
         i = i + 1;
-        tasks += [spawn thread test06_start(i)];
-        // tasks += [spawn test06_start(i)];
+        tasks += [spawn test06_start(i)];
     }
     
     for (task t in tasks) {
-        join t;
+        task::join(t);
     }
 }
 

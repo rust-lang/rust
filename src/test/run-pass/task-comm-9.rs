@@ -1,6 +1,8 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
+use std;
+import std::task;
+
 fn main() -> () {
    test00();
 }
@@ -19,7 +21,7 @@ fn test00() {
     let port[int] p = port();
     let int number_of_messages = 10;
         
-    let task t0 = spawn thread "child"
+    let task t0 = spawn
         test00_start(chan(p), number_of_messages);
     
     let int i = 0;
@@ -28,7 +30,7 @@ fn test00() {
         i += 1;
     }
             
-    join t0;
+    task::join(t0);
     
     assert (sum == (number_of_messages * (number_of_messages - 1)) / 2);
 }
