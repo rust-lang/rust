@@ -29,9 +29,7 @@ export get_use_stmt_cnum;
 // own crate numbers.
 type cnum_map = map::hashmap[ast::crate_num, ast::crate_num];
 
-type crate_metadata = rec(str name,
-                          vec[u8] data,
-                          cnum_map cnum_map);
+type crate_metadata = rec(str name, @u8[] data, cnum_map cnum_map);
 
 // This is a bit of an experiment at encapsulating the data in cstore. By
 // keeping all the data in a non-exported tag variant, it's impossible for

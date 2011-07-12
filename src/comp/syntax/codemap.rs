@@ -1,8 +1,8 @@
 import std::uint;
 import std::str;
 import std::vec;
-import std::term;
-import std::io;
+import std::termivec;
+import std::ioivec;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -70,21 +70,21 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
         }
         case (none) { }
     }
-    io::stdout().write_str(ss + ": ");
-    if (term::color_supported()) {
-        term::fg(io::stdout().get_buf_writer(), color);
+    ioivec::stdout().write_str(ss + ": ");
+    if (termivec::color_supported()) {
+        termivec::fg(ioivec::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(#fmt("%s:", kind));
-    if (term::color_supported()) {
-        term::reset(io::stdout().get_buf_writer());
+    ioivec::stdout().write_str(#fmt("%s:", kind));
+    if (termivec::color_supported()) {
+        termivec::reset(ioivec::stdout().get_buf_writer());
     }
-    io::stdout().write_str(#fmt(" %s\n", msg));
+    ioivec::stdout().write_str(#fmt(" %s\n", msg));
     alt (maybe_lines) {
         case (some(?lines)) {
             // FIXME: reading in the entire file is the worst possible way to
             //        get access to the necessary lines.
-            auto rdr = io::file_reader(lines.name);
-            auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
+            auto rdr = ioivec::file_reader(lines.name);
+            auto file = str::unsafe_from_bytes_ivec(rdr.read_whole_stream());
             auto fm = codemap::get_filemap(cm, lines.name);
 
             // arbitrarily only print up to six lines of the error
@@ -97,12 +97,13 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             }
             // Print the offending lines
             for (uint line in display_lines) {
-                io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
+                ioivec::stdout().write_str(#fmt("%s:%u ", fm.name,
+                                                line + 1u));
                 auto s = codemap::get_line(fm, line as int, file);
                 if (!str::ends_with(s, "\n")) {
                     s += "\n";
                 }
-                io::stdout().write_str(s);
+                ioivec::stdout().write_str(s);
             }
             if (elided) {
                 auto last_line = display_lines.(vec::len(display_lines) - 1u);
@@ -111,7 +112,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                 auto out = "";
                 while (indent > 0u) { out += " "; indent -= 1u; }
                 out += "...\n";
-                io::stdout().write_str(out);
+                ioivec::stdout().write_str(out);
             }
 
             // If there's one line at fault we can easily point to the problem
@@ -138,7 +139,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                         width -= 1u;
                     }
                 }
-                io::stdout().write_str(s + "\n");
+                ioivec::stdout().write_str(s + "\n");
             }
         }
         case (_) {}

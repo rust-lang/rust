@@ -1,5 +1,5 @@
 
-import std::io;
+import std::ioivec;
 import std::ivec;
 import std::vec;
 import std::str;
@@ -59,8 +59,8 @@ fn new_parser_from_file(parse_sess sess, ast::crate_cfg cfg,
                         str path, uint pos) -> parser {
     auto ftype = SOURCE_FILE;
     if (str::ends_with(path, ".rc")) { ftype = CRATE_FILE; }
-    auto srdr = io::file_reader(path);
-    auto src = str::unsafe_from_bytes(srdr.read_whole_stream());
+    auto srdr = ioivec::file_reader(path);
+    auto src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     auto filemap = codemap::new_filemap(path, pos);
     vec::push(sess.cm.files, filemap);
     auto itr = @interner::mk(str::hash, str::eq);

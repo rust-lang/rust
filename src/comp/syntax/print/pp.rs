@@ -1,5 +1,5 @@
 
-import std::io;
+import std::ioivec;
 import std::vec;
 import std::str;
 
@@ -98,7 +98,7 @@ type print_stack_elt = rec(int offset, print_stack_break pbreak);
 
 const int size_infinity = 0xffff;
 
-fn mk_printer(io::writer out, uint linewidth) -> printer {
+fn mk_printer(ioivec::writer out, uint linewidth) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
 
@@ -198,7 +198,7 @@ fn mk_printer(io::writer out, uint linewidth) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-obj printer(io::writer out,
+obj printer(ioivec::writer out,
             uint buf_len,
             mutable int margin, // width of lines we're constrained to
 

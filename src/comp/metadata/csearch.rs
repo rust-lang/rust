@@ -2,7 +2,6 @@
 
 import syntax::ast;
 import middle::ty;
-import std::io;
 import std::option;
 import driver::session;
 

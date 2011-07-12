@@ -5,7 +5,6 @@ import syntax::codemap;
 import codemap::span;
 import syntax::ast::ty_mach;
 import std::uint;
-import std::io;
 import std::map;
 import std::option;
 import std::option::some;

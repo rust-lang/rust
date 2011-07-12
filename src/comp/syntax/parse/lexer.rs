@@ -1,5 +1,5 @@
 
-import std::io;
+import std::ioivec;
 import std::str;
 import std::vec;
 import std::int;
@@ -734,8 +734,8 @@ type lit = rec(str lit, uint pos);
 
 fn gather_comments_and_literals(&codemap::codemap cm, str path)
         -> rec(cmnt[] cmnts, lit[] lits) {
-    auto srdr = io::file_reader(path);
-    auto src = str::unsafe_from_bytes(srdr.read_whole_stream());
+    auto srdr = ioivec::file_reader(path);
+    auto src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u), itr);
     let cmnt[] comments = ~[];

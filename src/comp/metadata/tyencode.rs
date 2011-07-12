@@ -1,6 +1,6 @@
 // Type encoding
 
-import std::io;
+import std::ioivec;
 import std::map::hashmap;
 import std::option::some;
 import std::option::none;
@@ -36,14 +36,14 @@ fn cx_uses_abbrevs(&@ctxt cx) -> bool {
     }
 }
 
-fn enc_ty(&io::writer w, &@ctxt cx, &ty::t t) {
+fn enc_ty(&ioivec::writer w, &@ctxt cx, &ty::t t) {
     alt (cx.abbrevs) {
         case (ac_no_abbrevs) {
             auto result_str;
             alt (cx.tcx.short_names_cache.find(t)) {
                 case (some(?s)) { result_str = s; }
                 case (none) {
-                    auto sw = io::string_writer();
+                    auto sw = ioivec::string_writer();
                     enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
                     result_str = sw.get_str();
                     cx.tcx.short_names_cache.insert(t, result_str);
@@ -82,7 +82,7 @@ fn enc_ty(&io::writer w, &@ctxt cx, &ty::t t) {
         }
     }
 }
-fn enc_mt(&io::writer w, &@ctxt cx, &ty::mt mt) {
+fn enc_mt(&ioivec::writer w, &@ctxt cx, &ty::mt mt) {
     alt (mt.mut) {
         case (imm) { }
         case (mut) { w.write_char('m'); }
@@ -90,7 +90,7 @@ fn enc_mt(&io::writer w, &@ctxt cx, &ty::mt mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
+fn enc_sty(&ioivec::writer w, &@ctxt cx, &ty::sty st) {
     alt (st) {
         case (ty::ty_nil) { w.write_char('n'); }
         case (ty::ty_bot) { w.write_char('z'); }
@@ -192,13 +192,13 @@ fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         case (ty::ty_task) { w.write_char('a'); }
     }
 }
-fn enc_proto(&io::writer w, proto proto) {
+fn enc_proto(&ioivec::writer w, proto proto) {
     alt (proto) {
         case (proto_iter) { w.write_char('W'); }
         case (proto_fn) { w.write_char('F'); }
     }
 }
-fn enc_ty_fn(&io::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
+fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
              &controlflow cf, &(@ty::constr_def)[] constrs) {
     w.write_char('[');
     for (ty::arg arg in args) {
@@ -226,7 +226,7 @@ fn enc_ty_fn(&io::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
     }
 
 }
-fn enc_constr(&io::writer w, &@ctxt cx, &@ty::constr_def c) {
+fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr_def c) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));

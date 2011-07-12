@@ -1,5 +1,6 @@
 // Type decoding
 
+import std::ivec;
 import std::str;
 import std::vec;
 import std::uint;
@@ -21,7 +22,7 @@ export parse_ty_data;
 type str_def = fn(str) -> ast::def_id ;
 
 type pstate =
-    rec(vec[u8] data, int crate, mutable uint pos, uint len, ty::ctxt tcx);
+    rec(@u8[] data, int crate, mutable uint pos, uint len, ty::ctxt tcx);
 
 tag ty_or_bang { a_ty(ty::t); a_bang; }
 
@@ -50,7 +51,7 @@ fn parse_ident_(@pstate st, str_def sd, fn(char) -> bool is_last)
 }
 
 
-fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len, str_def sd,
+fn parse_ty_data(@u8[] data, int crate_num, uint pos, uint len, str_def sd,
                  ty::ctxt tcx) -> ty::t {
     auto st =
         @rec(data=data, crate=crate_num, mutable pos=pos, len=len, tcx=tcx);
@@ -361,9 +362,9 @@ fn parse_ty_fn(@pstate st, str_def sd) ->
 
 
 // Rust metadata parsing
-fn parse_def_id(vec[u8] buf) -> ast::def_id {
+fn parse_def_id(&u8[] buf) -> ast::def_id {
     auto colon_idx = 0u;
-    auto len = vec::len[u8](buf);
+    auto len = ivec::len[u8](buf);
     while (colon_idx < len && buf.(colon_idx) != ':' as u8) {
         colon_idx += 1u;
     }
@@ -371,9 +372,15 @@ fn parse_def_id(vec[u8] buf) -> ast::def_id {
         log_err "didn't find ':' when parsing def id";
         fail;
     }
-    auto crate_part = vec::slice[u8](buf, 0u, colon_idx);
-    auto def_part = vec::slice[u8](buf, colon_idx + 1u, len);
-    auto crate_num = uint::parse_buf(crate_part, 10u) as int;
-    auto def_id = uint::parse_buf(def_part, 10u) as int;
+    auto crate_part = ivec::slice[u8](buf, 0u, colon_idx);
+    auto def_part = ivec::slice[u8](buf, colon_idx + 1u, len);
+
+    // FIXME: Remove these ivec->vec conversions.
+    auto crate_part_vec = []; auto def_part_vec = [];
+    for (u8 b in crate_part) { crate_part_vec += [b]; }
+    for (u8 b in def_part) { def_part_vec += [b]; }
+
+    auto crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
+    auto def_id = uint::parse_buf(def_part_vec, 10u) as int;
     ret tup(crate_num, def_id);
 }

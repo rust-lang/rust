@@ -27,7 +27,7 @@ import std::option::none;
 import std::str;
 import std::vec;
 import std::int;
-import std::io;
+import std::ioivec;
 import std::run;
 import std::getopts;
 import std::getopts::optopt;
@@ -209,19 +209,19 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
             ann = pprust::no_ann();
         }
     }
-    pprust::print_crate(sess.get_codemap(), crate, input,
-                        std::io::stdout(), ann);
+    pprust::print_crate(sess.get_codemap(), crate, input, ioivec::stdout(),
+                        ann);
 }
 
 fn version(str argv0) {
     auto vers = "unknown version";
     auto env_vers = #env("CFG_VERSION");
     if (str::byte_len(env_vers) != 0u) { vers = env_vers; }
-    io::stdout().write_str(#fmt("%s %s\n", argv0, vers));
+    ioivec::stdout().write_str(#fmt("%s %s\n", argv0, vers));
 }
 
 fn usage(str argv0) {
-    io::stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) +
+    ioivec::stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) +
                                "
 options:
 
@@ -450,7 +450,7 @@ fn main(vec[str] args) {
         case (none[pp_mode]) {/* continue */ }
     }
     if (ls) {
-        metadata::creader::list_file_metadata(ifile, std::io::stdout());
+        metadata::creader::list_file_metadata(ifile, ioivec::stdout());
         ret;
     }
 

@@ -15,9 +15,8 @@ import util::common;
 import std::ivec;
 import std::str;
 import std::vec;
-import std::ebml;
 import std::fs;
-import std::io;
+import std::ioivec;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -88,7 +87,7 @@ fn visit_item(env e, &@ast::item i) {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(str path, io::writer out) {
+fn list_file_metadata(str path, ioivec::writer out) {
     alt (get_metadata_section(path)) {
         case (option::some(?bytes)) {
             decoder::list_crate_metadata(bytes, out);
@@ -99,8 +98,7 @@ fn list_file_metadata(str path, io::writer out) {
     }
 }
 
-fn metadata_matches(&vec[u8] crate_data,
-                    &(@ast::meta_item)[] metas) -> bool {
+fn metadata_matches(&@u8[] crate_data, &(@ast::meta_item)[] metas) -> bool {
     auto attrs = decoder::get_crate_attributes(crate_data);
     auto linkage_metas = attr::find_linkage_metas(attrs);
 
@@ -130,8 +128,8 @@ fn default_native_lib_naming(session::session sess, bool static) ->
 
 fn find_library_crate(&session::session sess, &ast::ident ident,
                       &(@ast::meta_item)[] metas,
-                      &vec[str] library_search_paths) ->
-   option::t[tup(str, vec[u8])] {
+                      &vec[str] library_search_paths)
+        -> option::t[tup(str, @u8[])] {
 
     attr::require_unique_names(sess, metas);
 
@@ -165,7 +163,7 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
 fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
                           &(@ast::meta_item)[] metas,
                           &vec[str] library_search_paths) ->
-                          option::t[tup(str, vec[u8])] {
+                          option::t[tup(str, @u8[])] {
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
@@ -200,10 +198,10 @@ fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
     ret none;
 }
 
-fn get_metadata_section(str filename) -> option::t[vec[u8]] {
+fn get_metadata_section(str filename) -> option::t[@u8[]] {
     auto b = str::buf(filename);
     auto mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(b);
-    if (mb as int == 0) { ret option::none[vec[u8]]; }
+    if (mb as int == 0) { ret option::none[@u8[]]; }
     auto of = mk_object_file(mb);
     auto si = mk_section_iter(of.llof);
     while (llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False) {
@@ -212,18 +210,17 @@ fn get_metadata_section(str filename) -> option::t[vec[u8]] {
         if (str::eq(name, x86::get_meta_sect_name())) {
             auto cbuf = llvm::LLVMGetSectionContents(si.llsi);
             auto csz = llvm::LLVMGetSectionSize(si.llsi);
-            auto cvbuf = cbuf as vec::vbuf;
-            ret option::some[vec[u8]](vec::vec_from_vbuf[u8](cvbuf, csz));
+            let *u8 cvbuf = std::unsafe::reinterpret_cast(cbuf);
+            ret option::some[@u8[]](@ivec::unsafe::from_buf(cvbuf, csz));
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
-    ret option::none[vec[u8]];
+    ret option::none[@u8[]];
 }
 
 fn load_library_crate(&session::session sess, span span,
                       &ast::ident ident, &(@ast::meta_item)[] metas,
-                      &vec[str] library_search_paths)
-    -> tup(str, vec[u8]) {
+                      &vec[str] library_search_paths) -> tup(str, @u8[]) {
 
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
@@ -266,7 +263,7 @@ fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(env e, &vec[u8] cdata) -> cstore::cnum_map {
+fn resolve_crate_deps(env e, &@u8[] cdata) -> cstore::cnum_map {
     log "resolving deps of external crate";
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers

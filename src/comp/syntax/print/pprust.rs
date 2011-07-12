@@ -1,7 +1,7 @@
 
 import std::ivec;
 import std::int;
-import std::io;
+import std::ioivec;
 import std::str;
 import std::uint;
 import std::vec;
@@ -57,7 +57,7 @@ fn ibox(&ps s, uint u) {
 
 fn end(&ps s) { ivec::pop(s.boxes); pp::end(s.s); }
 
-fn rust_printer(io::writer writer) -> ps {
+fn rust_printer(ioivec::writer writer) -> ps {
     let pp::breaks[] boxes = ~[];
     ret @rec(s=pp::mk_printer(writer, default_columns),
              cm=none[codemap],
@@ -74,7 +74,7 @@ const uint indent_unit = 4u;
 const uint default_columns = 78u;
 
 fn print_crate(&codemap cm, @ast::crate crate, str filename,
-               io::writer out, &pp_ann ann) {
+               ioivec::writer out, &pp_ann ann) {
     let pp::breaks[] boxes = ~[];
     auto r = lexer::gather_comments_and_literals(cm, filename);
     auto s =
@@ -104,7 +104,7 @@ fn item_to_str(&@ast::item i) -> str { be to_str(i, print_item); }
 fn path_to_str(&ast::path p) -> str { be to_str(p, print_path); }
 
 fn fun_to_str(&ast::_fn f, str name, &ast::ty_param[] params) -> str {
-    auto writer = io::string_writer();
+    auto writer = ioivec::string_writer();
     auto s = rust_printer(writer.get_writer());
     print_fn(s, f.decl, f.proto, name, params);
     eof(s.s);
@@ -112,7 +112,7 @@ fn fun_to_str(&ast::_fn f, str name, &ast::ty_param[] params) -> str {
 }
 
 fn block_to_str(&ast::block blk) -> str {
-    auto writer = io::string_writer();
+    auto writer = ioivec::string_writer();
     auto s = rust_printer(writer.get_writer());
     // containing cbox, will be closed by print-block at }
 
@@ -1505,7 +1505,7 @@ fn escape_str(str st, char to_escape) -> str {
 }
 
 fn to_str[T](&T t, fn(&ps, &T)  f) -> str {
-    auto writer = io::string_writer();
+    auto writer = ioivec::string_writer();
     auto s = rust_printer(writer.get_writer());
     f(s, t);
     eof(s.s);
