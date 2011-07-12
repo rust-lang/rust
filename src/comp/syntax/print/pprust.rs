@@ -43,26 +43,26 @@ fn no_ann() -> pp_ann {
 type ps =
     @rec(pp::printer s,
          option::t[codemap] cm,
-         option::t[vec[lexer::cmnt]] comments,
-         option::t[vec[lexer::lit]] literals,
+         option::t[lexer::cmnt[]] comments,
+         option::t[lexer::lit[]] literals,
          mutable uint cur_cmnt,
          mutable uint cur_lit,
-         mutable vec[pp::breaks] boxes,
+         mutable pp::breaks[] boxes,
          pp_ann ann);
 
 fn ibox(&ps s, uint u) {
-    vec::push(s.boxes, pp::inconsistent);
+    s.boxes += ~[pp::inconsistent];
     pp::ibox(s.s, u);
 }
 
-fn end(&ps s) { vec::pop(s.boxes); pp::end(s.s); }
+fn end(&ps s) { ivec::pop(s.boxes); pp::end(s.s); }
 
 fn rust_printer(io::writer writer) -> ps {
-    let vec[pp::breaks] boxes = [];
+    let pp::breaks[] boxes = ~[];
     ret @rec(s=pp::mk_printer(writer, default_columns),
              cm=none[codemap],
-             comments=none[vec[lexer::cmnt]],
-             literals=none[vec[lexer::lit]],
+             comments=none[lexer::cmnt[]],
+             literals=none[lexer::lit[]],
              mutable cur_cmnt=0u,
              mutable cur_lit=0u,
              mutable boxes=boxes,
@@ -75,7 +75,7 @@ const uint default_columns = 78u;
 
 fn print_crate(&codemap cm, @ast::crate crate, str filename,
                io::writer out, &pp_ann ann) {
-    let vec[pp::breaks] boxes = [];
+    let pp::breaks[] boxes = ~[];
     auto r = lexer::gather_comments_and_literals(cm, filename);
     auto s =
         @rec(s=pp::mk_printer(out, default_columns),
@@ -134,12 +134,12 @@ fn attribute_to_str(&ast::attribute attr) -> str {
 }
 
 fn cbox(&ps s, uint u) {
-    vec::push(s.boxes, pp::consistent);
+    s.boxes += ~[pp::consistent];
     pp::cbox(s.s, u);
 }
 
 fn box(&ps s, uint u, pp::breaks b) {
-    vec::push(s.boxes, b);
+    s.boxes += ~[b];
     pp::box(s.s, u, b);
 }
 
@@ -197,17 +197,7 @@ fn synth_comment(&ps s, str text) {
     word(s.s, "*/");
 }
 
-fn commasep[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op) {
-    box(s, 0u, b);
-    auto first = true;
-    for (IN elt in elts) {
-        if (first) { first = false; } else { word_space(s, ","); }
-        op(s, elt);
-    }
-    end(s);
-}
-
-fn commasep_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op) {
+fn commasep[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op) {
     box(s, 0u, b);
     auto first = true;
     for (IN elt in elts) {
@@ -218,28 +208,8 @@ fn commasep_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op) {
 }
 
 
-fn commasep_cmnt[IN](&ps s, breaks b, vec[IN] elts, fn(&ps, &IN)  op,
+fn commasep_cmnt[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op,
                      fn(&IN) -> codemap::span  get_span) {
-    box(s, 0u, b);
-    auto len = vec::len[IN](elts);
-    auto i = 0u;
-    for (IN elt in elts) {
-        maybe_print_comment(s, get_span(elt).hi);
-        op(s, elt);
-        i += 1u;
-        if (i < len) {
-            word(s.s, ",");
-            maybe_print_trailing_comment(s, get_span(elt),
-                                         some(get_span(elts.(i)).hi));
-            space_if_not_hardbreak(s);
-        }
-    }
-    end(s);
-}
-
-// TODO: Remove me.
-fn commasep_cmnt_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op,
-                          fn(&IN) -> codemap::span  get_span) {
     box(s, 0u, b);
     auto len = ivec::len[IN](elts);
     auto i = 0u;
@@ -259,7 +229,7 @@ fn commasep_cmnt_ivec[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op,
 
 fn commasep_exprs(&ps s, breaks b, &(@ast::expr)[] exprs) {
     fn expr_span(&@ast::expr expr) -> codemap::span { ret expr.span; }
-    commasep_cmnt_ivec(s, b, exprs, print_expr, expr_span);
+    commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
 fn print_mod(&ps s, ast::_mod _mod, &ast::attribute[] attrs) {
@@ -321,7 +291,7 @@ fn print_type(&ps s, &ast::ty ty) {
         case (ast::ty_tup(?elts)) {
             word(s.s, "tup");
             popen(s);
-            commasep_ivec(s, inconsistent, elts, print_mt);
+            commasep(s, inconsistent, elts, print_mt);
             pclose(s);
         }
         case (ast::ty_rec(?fields)) {
@@ -335,7 +305,7 @@ fn print_type(&ps s, &ast::ty ty) {
                 end(s);
             }
             fn get_span(&ast::ty_field f) -> codemap::span { ret f.span; }
-            commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
+            commasep_cmnt(s, consistent, fields, print_field, get_span);
             pclose(s);
         }
         case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
@@ -492,7 +462,7 @@ fn print_item(&ps s, &@ast::item item) {
                         fn print_variant_arg(&ps s, &ast::variant_arg arg) {
                             print_type(s, *arg.ty);
                         }
-                        commasep_ivec(s, consistent, v.node.args,
+                        commasep(s, consistent, v.node.args,
                                       print_variant_arg);
                         pclose(s);
                     }
@@ -516,7 +486,7 @@ fn print_item(&ps s, &@ast::item item) {
                 end(s);
             }
             fn get_span(&ast::obj_field f) -> codemap::span { ret f.ty.span; }
-            commasep_cmnt_ivec(s, consistent, _obj.fields, print_field,
+            commasep_cmnt(s, consistent, _obj.fields, print_field,
                                get_span);
             pclose(s);
             space(s.s);
@@ -724,7 +694,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             fn get_span(&ast::elt elt) -> codemap::span { ret elt.expr.span; }
             word(s.s, "tup");
             popen(s);
-            commasep_cmnt_ivec(s, inconsistent, exprs, printElt, get_span);
+            commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
             pclose(s);
         }
         case (ast::expr_rec(?fields, ?wth)) {
@@ -741,7 +711,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             }
             word(s.s, "rec");
             popen(s);
-            commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
+            commasep_cmnt(s, consistent, fields, print_field, get_span);
             alt (wth) {
                 case (some(?expr)) {
                     if (ivec::len(fields) > 0u) { space(s.s); }
@@ -774,7 +744,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word_nbsp(s, "bind");
             print_expr(s, func);
             popen(s);
-            commasep_ivec(s, inconsistent, args, print_opt);
+            commasep(s, inconsistent, args, print_opt);
             pclose(s);
         }
         case (ast::expr_spawn(_, _, ?e, ?es)) {
@@ -1039,7 +1009,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
-                    commasep_cmnt_ivec(s, consistent, fields, print_field, 
+                    commasep_cmnt(s, consistent, fields, print_field, 
                                        get_span);
                 }
             }
@@ -1126,7 +1096,7 @@ fn print_path(&ps s, &ast::path path) {
     }
     if (ivec::len(path.node.types) > 0u) {
         word(s.s, "[");
-        commasep_ivec(s, inconsistent, path.node.types, print_boxed_type);
+        commasep(s, inconsistent, path.node.types, print_boxed_type);
         word(s.s, "]");
     }
 }
@@ -1143,7 +1113,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
             print_path(s, path);
             if (ivec::len(args) > 0u) {
                 popen(s);
-                commasep_ivec(s, inconsistent, args, print_pat);
+                commasep(s, inconsistent, args, print_pat);
                 pclose(s);
             }
         }
@@ -1159,7 +1129,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
             fn get_span(&ast::field_pat f) -> codemap::span {
                 ret f.pat.span;
             }
-            commasep_cmnt_ivec(s, consistent, fields, print_field, get_span);
+            commasep_cmnt(s, consistent, fields, print_field, get_span);
             if (etc) {
                 if (ivec::len(fields) != 0u) { word_space(s, ","); }
                 word(s.s, "_");
@@ -1195,7 +1165,7 @@ fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
         word(s.s, x.ident);
         end(s);
     }
-    commasep_ivec(s, inconsistent, decl.inputs, print_arg);
+    commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
@@ -1217,7 +1187,7 @@ fn print_type_params(&ps s, &ast::ty_param[] params) {
     if (ivec::len(params) > 0u) {
         word(s.s, "[");
         fn printParam(&ps s, &ast::ty_param param) { word(s.s, param); }
-        commasep_ivec(s, inconsistent, params, printParam);
+        commasep(s, inconsistent, params, printParam);
         word(s.s, "]");
     }
 }
@@ -1236,7 +1206,7 @@ fn print_meta_item(&ps s, &@ast::meta_item item) {
         case (ast::meta_list(?name, ?items)) {
             word(s.s, name);
             popen(s);
-            commasep_ivec(s, consistent, items, print_meta_item);
+            commasep(s, consistent, items, print_meta_item);
             pclose(s);
         }
     }
@@ -1252,7 +1222,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
             word(s.s, id);
             if (ivec::len(mta) > 0u) {
                 popen(s);
-                commasep_ivec(s, consistent, mta, print_meta_item);
+                commasep(s, consistent, mta, print_meta_item);
                 pclose(s);
             }
         }
@@ -1348,7 +1318,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
         print_alias(s, input.node.mode);
         print_type(s, *input.node.ty);
     }
-    commasep_ivec(s, inconsistent, inputs, print_arg);
+    commasep(s, inconsistent, inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {
@@ -1396,7 +1366,7 @@ fn print_remaining_comments(&ps s) {
 }
 
 fn in_cbox(&ps s) -> bool {
-    auto len = vec::len(s.boxes);
+    auto len = ivec::len(s.boxes);
     if (len == 0u) { ret false; }
     ret s.boxes.(len - 1u) == pp::consistent;
 }
@@ -1446,7 +1416,7 @@ fn lit_to_str(&@ast::lit l) -> str { be to_str(l, print_literal); }
 fn next_lit(&ps s) -> option::t[lexer::lit] {
     alt (s.literals) {
         case (some(?lits)) {
-            if (s.cur_lit < vec::len(lits)) {
+            if (s.cur_lit < ivec::len(lits)) {
                 ret some(lits.(s.cur_lit));
             } else { ret none[lexer::lit]; }
         }
@@ -1541,7 +1511,7 @@ fn to_str[T](&T t, fn(&ps, &T)  f) -> str {
 fn next_comment(&ps s) -> option::t[lexer::cmnt] {
     alt (s.comments) {
         case (some(?cmnts)) {
-            if (s.cur_cmnt < vec::len(cmnts)) {
+            if (s.cur_cmnt < ivec::len(cmnts)) {
                 ret some(cmnts.(s.cur_cmnt));
             } else { ret none[lexer::cmnt]; }
         }
@@ -1579,12 +1549,11 @@ fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
     // TODO: Remove this vec->ivec conversion.
-    auto cag_ivec = ~[];
+    auto cags = ~[];
     for (@ast::constr_arg_general[uint] cag in c.node.args) {
-        cag_ivec += ~[cag];
+        cags += ~[cag];
     }
-    ret ast::path_to_str(c.node.path) +
-            constr_args_to_str(uint_to_str, cag_ivec);
+    ret ast::path_to_str(c.node.path) + constr_args_to_str(uint_to_str, cags);
 }
 
 fn ast_constrs_str(&(@ast::constr)[] constrs) -> str {

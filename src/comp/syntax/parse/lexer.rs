@@ -606,13 +606,13 @@ fn consume_non_eol_whitespace(&reader rdr) {
 }
 
 fn consume_whitespace_counting_blank_lines(&reader rdr,
-                                           &mutable vec[cmnt] comments) {
+                                           &mutable cmnt[] comments) {
     while (is_whitespace(rdr.curr()) && !rdr.is_eof()) {
         if (rdr.curr() == '\n' && rdr.next() == '\n') {
             log ">>> blank-line comment";
             let vec[str] v = [];
-            comments += [rec(style=blank_line, lines=v,
-                             pos=rdr.get_chpos())];
+            comments += ~[rec(style=blank_line, lines=v,
+                              pos=rdr.get_chpos())];
         }
         rdr.bump();
     }
@@ -706,12 +706,12 @@ fn peeking_at_comment(&reader rdr) -> bool {
 }
 
 fn consume_comment(&reader rdr, bool code_to_the_left,
-                   &mutable vec[cmnt] comments) {
+                   &mutable cmnt[] comments) {
     log ">>> consume comment";
     if (rdr.curr() == '/' && rdr.next() == '/') {
-        vec::push[cmnt](comments, read_line_comments(rdr, code_to_the_left));
+        comments += ~[read_line_comments(rdr, code_to_the_left)];
     } else if (rdr.curr() == '/' && rdr.next() == '*') {
-        vec::push[cmnt](comments, read_block_comment(rdr, code_to_the_left));
+        comments += ~[read_block_comment(rdr, code_to_the_left)];
     } else { fail; }
     log "<<< consume comment";
 }
@@ -732,14 +732,14 @@ fn is_lit(&token::token t) -> bool {
 
 type lit = rec(str lit, uint pos);
 
-fn gather_comments_and_literals(&codemap::codemap cm, str path) ->
-   rec(vec[cmnt] cmnts, vec[lit] lits) {
+fn gather_comments_and_literals(&codemap::codemap cm, str path)
+        -> rec(cmnt[] cmnts, lit[] lits) {
     auto srdr = io::file_reader(path);
     auto src = str::unsafe_from_bytes(srdr.read_whole_stream());
     auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u), itr);
-    let vec[cmnt] comments = [];
-    let vec[lit] literals = [];
+    let cmnt[] comments = ~[];
+    let lit[] literals = ~[];
     let bool first_read = true;
     while (!rdr.is_eof()) {
         while (true) {
@@ -757,9 +757,8 @@ fn gather_comments_and_literals(&codemap::codemap cm, str path) ->
         }
         auto tok = next_token(rdr);
         if (is_lit(tok)) {
-            vec::push[lit](literals,
-                           rec(lit=rdr.get_mark_str(),
-                               pos=rdr.get_mark_chpos()));
+            literals += ~[rec(lit=rdr.get_mark_str(),
+                              pos=rdr.get_mark_chpos())];
         }
         log "tok: " + token::to_str(rdr, tok);
         first_read = false;
