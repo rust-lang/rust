@@ -6,7 +6,9 @@ native "rust" mod rustrt {
     fn rust_file_is_dir(str path) -> int;
 }
 
-fn list_dir(str path) -> str[] { ret *rustrt::rust_list_files(path + "*"); }
+fn list_dir(str path) -> str[] {
+    ret *rustrt::rust_list_files_ivec(path + "*");
+}
 
 fn path_is_absolute(str p) -> bool {
     ret str::char_at(p, 0u) == '/' 
