@@ -73,8 +73,14 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 
     assert passed + failed == total;
 
-    out.write_str(#fmt("\nresults: %u passed; %u failed\n\n",
-                        passed, failed));
+    out.write_str(#fmt("\nresult: "));
+    if (failed == 0u) {
+        write_ok(out);
+    } else {
+        write_failed(out);
+    }
+    out.write_str(#fmt(". %u passed; %u failed\n\n",
+                       passed, failed));
 
     ret true;
 
