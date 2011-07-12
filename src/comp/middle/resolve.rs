@@ -596,6 +596,10 @@ fn def_is_obj_field(&def d) -> bool {
     ret alt (d) { case (ast::def_obj_field(_)) { true } case (_) { false } };
 }
 
+fn def_is_ty_arg(&def d) -> bool {
+    ret alt(d) { case (ast::def_ty_arg(_)) { true } case (_) { false } };
+}
+
 fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
    option::t[def] {
     fn in_scope(&env e, &span sp, &ident name, &scope s, namespace ns) ->
@@ -666,15 +670,24 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
                 if (!option::is_none(fnd)) {
                     auto df = option::get(fnd);
                     if (left_fn && def_is_local(df) ||
-                            left_fn_level2 && def_is_obj_field(df)) {
-                        e.sess.span_fatal(sp,
-                                        "attempted dynamic \
-                                         environment-capture");
+                        left_fn_level2 && def_is_obj_field(df)
+                        || (scope_is_fn(hd) && left_fn
+                            && def_is_ty_arg(df))) {
+                        auto msg = alt (ns) {
+                            case (ns_type) {
+                                "Attempt to use a type \
+                                argument out of scope"
+                            }
+                            case (_) { "attempted dynamic \
+                                       environment-capture" }
+                        };
+                        e.sess.span_fatal(sp, msg);
                     }
                     ret fnd;
                 }
                 if (left_fn) { left_fn_level2 = true; }
-                if (ns == ns_value && !left_fn) { left_fn = scope_is_fn(hd); }
+                if ((ns == ns_value || ns == ns_type) && !left_fn) {
+                    left_fn = scope_is_fn(hd); }
                 sc = *tl;
             }
         }
