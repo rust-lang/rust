@@ -24,8 +24,6 @@ export eq_vec;
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
 
-// FIXME: Almost all the functions in this module should be state fns, but the
-//        effect system isn't currently working correctly.
 type t = rec(vec[mutable uint] storage, uint nbits);
 
 
