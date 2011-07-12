@@ -11,6 +11,7 @@ import std::option::some;
 import std::option::none;
 import std::str;
 import std::vec;
+import syntax::parse::parser::parse_sess;
 
 tag os { os_win32; os_macos; os_linux; }
 
@@ -47,26 +48,26 @@ type crate_metadata = rec(str name, vec[u8] data);
 obj session(@config targ_cfg,
             @options opts,
             metadata::cstore::cstore cstore,
-            codemap::codemap cm,
+            parse_sess parse_sess,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_cstore() -> metadata::cstore::cstore { cstore }
     fn span_fatal(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_error(some(sp), msg, cm);
+        codemap::emit_error(some(sp), msg, parse_sess.cm);
         fail;
     }
     fn fatal(str msg) -> ! {
-        codemap::emit_error(none, msg, cm);
+        codemap::emit_error(none, msg, parse_sess.cm);
         fail;
     }
     fn span_err(span sp, str msg) {
-        codemap::emit_error(some(sp), msg, cm);
+        codemap::emit_error(some(sp), msg, parse_sess.cm);
         err_count += 1u;
     }
     fn err(str msg) {
-        codemap::emit_error(none, msg, cm);
+        codemap::emit_error(none, msg, parse_sess.cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
@@ -76,17 +77,17 @@ obj session(@config targ_cfg,
     }
     fn span_warn(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_warning(some(sp), msg, cm);
+        codemap::emit_warning(some(sp), msg, parse_sess.cm);
     }
     fn warn(str msg) {
-        codemap::emit_warning(none, msg, cm);
+        codemap::emit_warning(none, msg, parse_sess.cm);
     }
     fn span_note(span sp, str msg) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
-        codemap::emit_note(some(sp), msg, cm);
+        codemap::emit_note(some(sp), msg, parse_sess.cm);
     }
     fn note(str msg) {
-        codemap::emit_note(none, msg, cm);
+        codemap::emit_note(none, msg, parse_sess.cm);
     }
     fn span_bug(span sp, str msg) -> ! {
         self.span_fatal(sp, #fmt("internal compiler error %s", msg));
@@ -98,9 +99,13 @@ obj session(@config targ_cfg,
         self.span_bug(sp, "unimplemented " + msg);
     }
     fn unimpl(str msg) -> ! { self.bug("unimplemented " + msg); }
-    fn get_codemap() -> codemap::codemap { ret cm; }
+    fn get_codemap() -> codemap::codemap { ret parse_sess.cm; }
     fn lookup_pos(uint pos) -> codemap::loc {
-        ret codemap::lookup_pos(cm, pos);
+        ret codemap::lookup_pos(parse_sess.cm, pos);
+    }
+    fn get_parse_sess() -> parse_sess { ret parse_sess; }
+    fn next_node_id() -> ast::node_id {
+        ret syntax::parse::parser::next_node_id(parse_sess);
     }
     fn span_str(span sp) -> str {
         ret codemap::span_to_str(sp, self.get_codemap());

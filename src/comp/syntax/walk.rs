@@ -269,6 +269,15 @@ fn walk_exprs(&ast_visitor v, &(@ast::expr)[] exprs) {
     for (@ast::expr e in exprs) { walk_expr(v, e); }
 }
 
+fn walk_mac(&ast_visitor v, ast::mac mac) {
+    alt(mac.node) {
+        case (ast::mac_invoc(?pth, ?args, ?body)) { walk_exprs(v, args); }
+        case (ast::mac_embed_type(?ty)) { walk_ty(v, ty); }
+        case (ast::mac_embed_block(?blk)) { walk_block(v, blk); }
+        case (ast::mac_ellipsis) { }
+    }
+}
+
 fn walk_expr(&ast_visitor v, @ast::expr e) {
     if (!v.keep_going()) { ret; }
     v.visit_expr_pre(e);
@@ -367,11 +376,6 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_path(?p)) {
             for (@ast::ty tp in p.node.types) { walk_ty(v, tp); }
         }
-        case (ast::expr_ext(_, ?args, ?body, ?expansion)) {
-            // Only walk expansion, not args/body.
-
-            walk_expr(v, expansion);
-        }
         case (ast::expr_fail(?eo)) { walk_expr_opt(v, eo); }
         case (ast::expr_break) { }
         case (ast::expr_cont) { }
@@ -409,6 +413,9 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
                         m.node.id);
                 v.visit_method_post(m);
             }
+        }
+        case (ast::expr_mac(?mac)) {
+            walk_mac(v, mac);
         }
     }
     v.visit_expr_post(e);

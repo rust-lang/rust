@@ -305,7 +305,6 @@ tag expr_ {
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_path(path);
-    expr_ext(path, (@expr)[], option::t[str], @expr);
     expr_fail(option::t[@expr]);
     expr_break;
     expr_cont;
@@ -325,6 +324,16 @@ tag expr_ {
     expr_port(option::t[@ty]);
     expr_chan(@expr);
     expr_anon_obj(anon_obj, ty_param[]);
+    expr_mac(mac);
+}
+
+type mac = spanned[mac_];
+
+tag mac_ {
+    mac_invoc(path, (@expr)[], option::t[str]);
+    mac_embed_type(@ty);
+    mac_embed_block(block);
+    mac_ellipsis;
 }
 
 type lit = spanned[lit_];
@@ -434,6 +443,7 @@ tag ty_ {
     ty_path(path, node_id);
     ty_type;
     ty_constr(@ty, (@constr)[]);
+    ty_mac(mac);
 }
 
 

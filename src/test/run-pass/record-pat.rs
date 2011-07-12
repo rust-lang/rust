@@ -4,7 +4,7 @@ tag t3 { c(t2, uint); }
 
 fn m(&t3 in) -> int {
     alt in {
-        c({x: a(?m) ...}, _) { ret m; }
+        c({x: a(?m), _}, _) { ret m; }
         c({x: b(?m), y}, ?z) { ret (m + z) as int + y; }
     }
 }

@@ -126,6 +126,25 @@ fn fold_arg_(&arg a, ast_fold fld) -> arg {
     ret rec(mode=a.mode, ty=fld.fold_ty(a.ty), 
             ident=fld.fold_ident(a.ident), id=a.id);
 }
+//used in noop_fold_expr, and possibly elsewhere in the future
+fn fold_mac_(&mac m, ast_fold fld) -> mac {
+    ret rec(node=
+            alt(m.node) {
+                case (mac_invoc(?pth,?args,?body)) {
+                    mac_invoc(fld.fold_path(pth), 
+                              ivec::map(fld.fold_expr, args), body)
+                }
+                case (mac_embed_type(?ty)) { 
+                    mac_embed_type(fld.fold_ty(ty))
+                }
+                case (mac_embed_block(?block)) {
+                    mac_embed_block(fld.fold_block(block))
+                }
+                case (mac_ellipsis) { mac_ellipsis }
+            },
+            span=m.span);
+}
+
 
 
 
@@ -319,6 +338,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
     }
     auto fold_anon_obj = bind fold_anon_obj_(_,fld);
     
+    auto fold_mac = bind fold_mac_(_,fld);
 
     ret alt (e) {
         case (expr_vec(?exprs, ?mut, ?seq_kind)) {
@@ -414,11 +434,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_path(?pth)) {
             expr_path(fld.fold_path(pth))
                 }
-        case (expr_ext(?pth, ?args, ?body, ?expanded)) {
-            expr_ext(fld.fold_path(pth), ivec::map(fld.fold_expr, args),
-                     body, fld.fold_expr(expanded))
-                }
-        case (expr_fail(_)) { e }
+        case (expr_fail(?e)) { expr_fail(option::map(fld.fold_expr, e)) }
         case (expr_break()) { e }
         case (expr_cont()) { e }
         case (expr_ret(?e)) { 
@@ -445,6 +461,9 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_anon_obj(?ao, ?typms)) {
             expr_anon_obj(fold_anon_obj(ao), typms)
                 }
+        case (expr_mac(?mac)) {
+            expr_mac(fold_mac(mac))
+        }
     }
 }
 
@@ -695,22 +714,6 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
                   fold_path = bind f_path(afp,result,_),
                   fold_local = bind f_local(afp,result,_));
     ret result;
-    /*
-    ret rec(fold_crate = noop_fold_crate,
-          fold_crate_directive = noop_fold_crate_drective,
-          fold_view_item = noop_fold_view_item,
-          fold_native_item = noop_fold_native_item,
-          fold_item = noop_fold_item,
-          fold_method = noop_fold_method,
-          fold_block = noop_fold_block,
-          fold_stmt = noop_fold_stmt,
-          fold_arm = noop_fold_arm,
-          fold_pat = noop_fold_pat,
-          fold_decl = noop_fold_decl,
-          fold_expr = noop_fold_expr,
-          fold_ty = noop_fold_ty,
-          fold_constr = noop_fold_constr,
-          fold_fn = noop_fold_fn);*/
 }
 
 

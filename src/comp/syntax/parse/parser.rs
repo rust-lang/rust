@@ -50,7 +50,6 @@ type parser =
         fn get_reader() -> lexer::reader ;
         fn get_filemap() -> codemap::filemap ;
         fn get_bad_expr_words() -> hashmap[str, ()] ;
-        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] ;
         fn get_chpos() -> uint ;
         fn get_id() -> ast::node_id ;
         fn get_sess() -> parse_sess;
@@ -82,8 +81,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
                      mutable restriction restr,
                      lexer::reader rdr,
                      vec[op_spec] precs,
-                     hashmap[str, ()] bad_words,
-                     hashmap[str, ex::syntax_extension] syntax_expanders) {
+                     hashmap[str, ()] bad_words) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
             // log rdr.get_filename()
@@ -116,9 +114,6 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn get_reader() -> lexer::reader { ret rdr; }
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
         fn get_bad_expr_words() -> hashmap[str, ()] { ret bad_words; }
-        fn get_syntax_expanders() -> hashmap[str, ex::syntax_extension] {
-            ret syntax_expanders;
-        }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
         fn get_id() -> ast::node_id { ret next_node_id(sess); }
         fn get_sess() -> parse_sess { ret sess; }
@@ -129,8 +124,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, cfg, ftype, lexer::next_token(rdr),
                      npos, npos, npos, UNRESTRICTED, rdr,
-                     prec_table(), bad_expr_word_table(),
-                     ex::syntax_expander_table());
+                     prec_table(), bad_expr_word_table());
 }
 
 // These are the words that shouldn't be allowed as value identifiers,
@@ -746,6 +740,12 @@ fn mk_expr(&parser p, uint lo, uint hi, &ast::expr_ node) -> @ast::expr {
              span=rec(lo=lo, hi=hi));
 }
 
+fn mk_mac_expr(&parser p, uint lo, uint hi, &ast::mac_ m) -> @ast::expr {
+    ret @rec(id=p.get_id(),
+             node=ast::expr_mac(rec(node=m, span=rec(lo=lo, hi=hi))),
+             span=rec(lo=lo, hi=hi));
+}
+
 fn parse_bottom_expr(&parser p) -> @ast::expr {
     auto lo = p.get_lo_pos();
     auto hi = p.get_hi_pos();
@@ -804,6 +804,16 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             parse_seq_to_end_ivec(token::RBRACKET, some(token::COMMA),
                                   parse_expr, p);
         ex = ast::expr_vec(es, mut, ast::sk_rc);
+    } else if (p.peek() == token::POUND_LT) {
+        p.bump();
+        auto ty = parse_ty(p);
+        expect(p, token::GT);
+        /* hack: early return to take advantage of specialized function */
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty))
+    } else if (p.peek() == token::POUND_LBRACE) {
+        p.bump();
+        auto blk = ast::mac_embed_block(parse_block_tail(p));
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if (p.peek() == token::TILDE) {
         p.bump();
         alt (p.peek()) {
@@ -898,7 +908,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_bind(e, es.node);
     } else if (p.peek() == token::POUND) {
         auto ex_ext = parse_syntax_ext(p);
-        lo = ex_ext.span.lo;
+        hi = ex_ext.span.hi;
         ex = ex_ext.node;
     } else if (eat_word(p, "fail")) {
         if (can_begin_expr(p.peek())) {
@@ -912,18 +922,22 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
         ex = ast::expr_log(1, e);
+        hi = e.span.hi;
     } else if (eat_word(p, "log_err")) {
         auto e = parse_expr(p);
         ex = ast::expr_log(0, e);
+        hi = e.span.hi;
     } else if (eat_word(p, "assert")) {
         auto e = parse_expr(p);
         ex = ast::expr_assert(e);
+        hi = e.span.hi;
     } else if (eat_word(p, "check")) {
         /* Should be a predicate (pure boolean function) applied to 
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
 
         auto e = parse_expr(p);
+        hi = e.span.hi;
         ex = ast::expr_check(ast::checked, e);
     } else if (eat_word(p, "claim")) {
         /* Same rules as check, except that if check-claims
@@ -931,6 +945,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         claims into check */
         
         auto e = parse_expr(p);
+        hi = e.span.hi;
         ex = ast::expr_check(ast::unchecked, e);
     } else if (eat_word(p, "ret")) {
         alt (p.peek()) {
@@ -945,8 +960,10 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         }
     } else if (eat_word(p, "break")) {
         ex = ast::expr_break;
+        hi = p.get_hi_pos();
     } else if (eat_word(p, "cont")) {
         ex = ast::expr_cont;
+        hi = p.get_hi_pos();
     } else if (eat_word(p, "put")) {
         alt (p.peek()) {
             case (token::SEMI) { ex = ast::expr_put(none); }
@@ -1021,38 +1038,7 @@ fn parse_syntax_ext_naked(&parser p, uint lo) -> @ast::expr {
     auto es = parse_seq_ivec(token::LPAREN, token::RPAREN,
                              some(token::COMMA), parse_expr, p);
     auto hi = es.span.hi;
-    auto ext_span = rec(lo=lo, hi=hi);
-    auto ex = expand_syntax_ext(p, ext_span, pth, es.node, none);
-    ret mk_expr(p, lo, hi, ex);
-}
-
-/*
- * FIXME: This is a crude approximation of the syntax-extension system,
- * for purposes of prototyping and/or hard-wiring any extensions we
- * wish to use while bootstrapping. The eventual aim is to permit
- * loading rust crates to process extensions.
- */
-fn expand_syntax_ext(&parser p, span sp, &ast::path path,
-                     &(@ast::expr)[] args, option::t[str] body) ->
-   ast::expr_ {
-    assert (ivec::len(path.node.idents) > 0u);
-    auto extname = path.node.idents.(0);
-    alt (p.get_syntax_expanders().find(extname)) {
-        case (none) { p.fatal("unknown syntax expander: '" + extname + "'"); }
-        case (some(ex::normal(?ext))) {
-            auto ext_cx = ex::mk_ctxt(p.get_sess());
-            ret ast::expr_ext(path, args, body, ext(ext_cx, sp, args, body));
-        }
-        // because we have expansion inside parsing, new macros are only
-        // visible further down the file
-        case (some(ex::macro_defining(?ext))) {
-            auto ext_cx = ex::mk_ctxt(p.get_sess());
-            auto name_and_extension = ext(ext_cx, sp, args, body);
-            p.get_syntax_expanders().insert(name_and_extension._0,
-                                            name_and_extension._1);
-            ret ast::expr_tup(~[]);
-        }
-    }
+    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, es.node, none));
 }
 
 fn parse_self_method(&parser p) -> @ast::expr {
@@ -1479,10 +1465,11 @@ fn parse_pat(&parser p) -> @ast::pat {
             auto etc = false;
             auto first = true;
             while (p.peek() != token::RBRACE) {
-                if (p.peek() == token::DOT) {
+                if (first) { first = false; }
+                else { expect(p, token::COMMA); }
+
+                if (p.peek() == token::UNDERSCORE) {
                     p.bump();
-                    expect(p, token::DOT);
-                    expect(p, token::DOT);
                     if (p.peek() != token::RBRACE) {
                         p.fatal("expecting }, found " +
                                 token::to_str(p.get_reader(), p.peek()));
@@ -1490,8 +1477,7 @@ fn parse_pat(&parser p) -> @ast::pat {
                     etc = true;
                     break;
                 }
-                if (first) { first = false; }
-                else { expect(p, token::COMMA); }
+
                 auto fieldname = parse_ident(p);
                 auto subpat;
                 if (p.peek() == token::COLON) {
@@ -1691,7 +1677,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_field(_, _)) { true }
                 case (ast::expr_index(_, _)) { true }
                 case (ast::expr_path(_)) { true }
-                case (ast::expr_ext(_, _, _, _)) { true }
+                case (ast::expr_mac(_)) { true }
                 case (ast::expr_fail(_)) { true }
                 case (ast::expr_break) { true }
                 case (ast::expr_cont) { true }
@@ -1715,10 +1701,15 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
 }
 
 fn parse_block(&parser p) -> ast::block {
+    expect(p, token::LBRACE);
+    be parse_block_tail(p);
+}
+
+// some blocks start with "#{"... 
+fn parse_block_tail(&parser p) -> ast::block {
     auto lo = p.get_lo_pos();
     let (@ast::stmt)[] stmts = ~[];
     let option::t[@ast::expr] expr = none;
-    expect(p, token::LBRACE);
     while (p.peek() != token::RBRACE) {
         alt (p.peek()) {
             case (token::SEMI) {
@@ -2204,8 +2195,10 @@ fn parse_outer_attrs_or_ext(&parser p) -> attr_or_ext {
         if (p.peek() == token::LBRACKET) {
             auto first_attr = parse_attribute_naked(p, ast::attr_outer, lo);
             ret some(left(~[first_attr] + parse_outer_attributes(p)));
-        } else {
+        } else if (! (p.peek() == token::LT || p.peek() == token::LBRACKET)) {
             ret some(right(parse_syntax_ext_naked(p, lo)));
+        } else {
+            ret none;
         }
     } else {
         ret none;
@@ -2429,10 +2422,9 @@ fn parse_native_view(&parser p) -> (@ast::view_item)[] {
 }
 
 fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
-                                &codemap::codemap cm) -> @ast::crate {
-    auto sess = @rec(cm=cm, mutable next_id=0);
+                                &parse_sess sess) -> @ast::crate {
     auto p = new_parser_from_file(sess, cfg, input, 0u);
-    ret parse_crate_mod(p, cfg);
+    ret parse_crate_mod(p, cfg, sess);
 }
 
 fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
@@ -2444,12 +2436,12 @@ fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
     auto itr = @interner::mk(str::hash, str::eq);
     auto rdr = lexer::new_reader(sess.cm, source, filemap, itr);
     auto p = new_parser(sess, cfg, rdr, ftype);
-    ret parse_crate_mod(p, cfg);
+    ret parse_crate_mod(p, cfg, sess);
 }
 
 // Parses a source module as a crate
-fn parse_crate_mod(&parser p, &ast::crate_cfg cfg) -> @ast::crate {
-
+fn parse_crate_mod(&parser p, &ast::crate_cfg cfg, parse_sess sess) 
+    -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);
     auto first_item_outer_attrs = crate_attrs._1;
@@ -2556,8 +2548,7 @@ fn parse_crate_directives(&parser p, token::token term,
 }
 
 fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
-                               &codemap::codemap cm) -> @ast::crate {
-    auto sess = @rec(cm=cm, mutable next_id=0);
+                               &parse_sess sess) -> @ast::crate {
     auto p = new_parser_from_file(sess, cfg, input, 0u);
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);

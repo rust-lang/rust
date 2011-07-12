@@ -2,7 +2,7 @@ import std::ivec;
 import std::vec;
 import std::option;
 import std::map::hashmap;
-import parse::parser::parse_sess;
+import driver::session::session;
 import codemap::span;
 import std::map::new_str_hash;
 import codemap;
@@ -41,14 +41,14 @@ type ext_ctxt =
         span_msg_fn span_unimpl,
         next_id_fn next_id);
 
-fn mk_ctxt(&parse_sess sess) -> ext_ctxt {
-    fn ext_span_fatal_(&codemap::codemap cm, span sp, str msg) -> ! {
-        codemap::emit_error(option::some(sp), msg, cm);
+fn mk_ctxt(&session sess) -> ext_ctxt {
+    fn ext_span_fatal_(&session sess, span sp, str msg) -> ! {
+        sess.span_err(sp, msg);
         fail;
     }
-    auto ext_span_fatal = bind ext_span_fatal_(sess.cm, _, _);
-    fn ext_span_unimpl_(&codemap::codemap cm, span sp, str msg) -> ! {
-        codemap::emit_error(option::some(sp), "unimplemented " + msg, cm);
+    auto ext_span_fatal = bind ext_span_fatal_(sess, _, _);
+    fn ext_span_unimpl_(&session sess, span sp, str msg) -> ! {
+        sess.span_err(sp, "unimplemented " + msg);
         fail;
     }
 
@@ -59,9 +59,12 @@ fn mk_ctxt(&parse_sess sess) -> ext_ctxt {
     // the extensions the file name of the crate being compiled so they can
     // use it to guess whether paths should be prepended with "std::". This is
     // super-ugly and needs a better solution.
-    auto crate_file_name_hack = sess.cm.files.(0).name;
-    auto ext_span_unimpl = bind ext_span_unimpl_(sess.cm, _, _);
-    auto ext_next_id = bind parse::parser::next_node_id(sess);
+    auto crate_file_name_hack = sess.get_codemap().files.(0).name;
+    auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+    fn ext_next_id_(&session sess) -> ast::node_id {
+        ret sess.next_node_id(); // temporary, until bind works better
+    }
+    auto ext_next_id = bind ext_next_id_(sess);
     ret rec(crate_file_name_hack=crate_file_name_hack,
             span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
