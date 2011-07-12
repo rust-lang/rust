@@ -442,6 +442,21 @@ fn split(str s, u8 sep) -> vec[str] {
     ret v;
 }
 
+fn split_ivec(str s, u8 sep) -> str[] {
+    let str[] v = ~[];
+    let str accum = "";
+    let bool ends_with_sep = false;
+    for (u8 c in s) {
+        if (c == sep) {
+            v += ~[accum];
+            accum = "";
+            ends_with_sep = true;
+        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+    }
+    if (str::byte_len(accum) != 0u || ends_with_sep) { v += ~[accum]; }
+    ret v;
+}
+
 fn concat(vec[str] v) -> str {
     let str s = "";
     for (str ss in v) { s += ss; }
