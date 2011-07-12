@@ -179,6 +179,13 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
     }
 }
 
+fn visit_ty_opt[E](&option::t[@ty] ot, &E e, &vt[E] v) {
+    alt (ot) {
+        case (none) {}
+        case (some(?t)) { v.visit_ty(t, e, v); }
+    }
+}
+
 fn visit_constr[E](&@constr c, &E e, &vt[E] v) {
     // default
 
@@ -369,7 +376,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_log(_, ?x)) { v.visit_expr(x, e, v); }
         case (expr_check(_, ?x)) { v.visit_expr(x, e, v); }
         case (expr_assert(?x)) { v.visit_expr(x, e, v); }
-        case (expr_port(_)) { }
+        case (expr_port(?t)) { visit_ty_opt(t, e, v); }
         case (expr_chan(?x)) { v.visit_expr(x, e, v); }
         case (expr_anon_obj(?anon_obj, _)) {
             alt (anon_obj.fields) {
