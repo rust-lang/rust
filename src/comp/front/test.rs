@@ -35,7 +35,8 @@ fn modify_for_testing(@ast::crate crate) -> @ast::crate {
                             mutable testfns = ~[]);
 
     auto precursor = rec(fold_crate = bind fold_crate(cx, _, _),
-                         fold_item = bind fold_item(cx, _, _)
+                         fold_item = bind fold_item(cx, _, _),
+                         fold_mod = bind fold_mod(cx, _, _)
                          with *fold::default_ast_fold());
 
     auto fold = fold::make_fold(precursor);
@@ -43,6 +44,28 @@ fn modify_for_testing(@ast::crate crate) -> @ast::crate {
     // FIXME: This is necessary to break a circular reference
     fold::dummy_out(fold);
     ret res;
+}
+
+fn fold_mod(&test_ctxt cx, &ast::_mod m,
+            fold::ast_fold fld) -> ast::_mod {
+
+    // Remove any defined main function from the AST so it doesn't clash with
+    // the one we're going to add.  FIXME: This is sloppy. Instead we should
+    // have some mechanism to indicate to the translation pass which function
+    // we want to be main.
+    fn nomain(&@ast::item item) -> option::t[@ast::item] {
+        alt (item.node) {
+            ast::item_fn(?f, _) {
+                if (item.ident == "main") { option::none }
+                else { option::some(item) }
+            }
+            _ { option::some(item) }
+        }
+    }
+
+    auto mod_nomain = rec(view_items=m.view_items,
+                          items=ivec::filter_map(nomain, m.items));
+    ret fold::noop_fold_mod(mod_nomain, fld);
 }
 
 fn fold_crate(&test_ctxt cx, &ast::crate_ c,
