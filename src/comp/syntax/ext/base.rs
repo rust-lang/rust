@@ -1,5 +1,4 @@
 import std::ivec;
-import std::vec;
 import std::option;
 import std::map::hashmap;
 import driver::session::session;

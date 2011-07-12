@@ -591,14 +591,10 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> constr {
              expr_call(?operator, ?args)) {
             alt (operator.node) {
                 case (expr_path(?p)) {
-                    // FIXME: Remove this vec->ivec conversion.
-                    auto args_ivec = ~[];
-                    for (@expr e in args) { args_ivec += ~[e]; }
-
                     ret respan(e.span,
                                rec(id=node_id_for_constr(tcx, operator.id),
                                    c=npred(p, exprs_to_constr_args(tcx,
-                                        args_ivec))));
+                                           args))));
                 }
                 case (_) {
                     tcx.sess.span_fatal(operator.span,
@@ -698,9 +694,9 @@ type inst = tup(ident, def_id);
 type subst = tup(inst, inst)[];
 
 fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
-    -> vec[tup(uint, uint)] {
+        -> (tup(uint, uint))[] {
    
-    let vec[tup(uint, uint)] rslt = [];
+    let (tup(uint, uint))[] rslt = ~[];
     if (ivec::len(subst) == 0u) {
         ret rslt;
     }
@@ -714,7 +710,7 @@ fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
                     auto new = replace(subst, d);
                     alt (find_instance_(new, *descs)) {
                         case (some(?d1)) {
-                            rslt += [tup(old_bit_num, d1)];
+                            rslt += ~[tup(old_bit_num, d1)];
                         }
                         case (_) { }
                     }

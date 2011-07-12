@@ -174,14 +174,6 @@ fn lit_eq(&@ast::lit l, &@ast::lit m) -> bool {
     }
 }
 
-// FIXME move to vec
-fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
-    for (T t in v) {
-        if (f(t)) { ret true; } 
-    }
-    ret false;
-}
-
 tag call_kind {
     kind_call;
     kind_spawn;

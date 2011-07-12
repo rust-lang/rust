@@ -1,7 +1,4 @@
 import std::ivec;
-import std::vec;
-import std::vec::plus_option;
-import std::vec::cat_options;
 import std::option;
 import std::option::get;
 import std::option::is_none;

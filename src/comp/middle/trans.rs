@@ -15,9 +15,7 @@
 import std::int;
 import std::str;
 import std::uint;
-import std::vec;
 import std::str::rustrt::sbuf;
-import std::vec::rustrt::vbuf;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -256,10 +254,10 @@ type fn_ctxt =
         // Derived tydescs are tydescs created at runtime, for types that
         // involve type parameters inside type constructors.  For example,
         // suppose a function parameterized by T creates a vector of type
-        // vec[T].  The function doesn't know what T is until runtime, and the
+        // [T].  The function doesn't know what T is until runtime, and the
         // function's caller knows T but doesn't know that a vector is
-        // involved.  So a tydesc for vec[T] can't be created until runtime,
-        // when information about both "vec" and "T" are available.  When such
+        // involved.  So a tydesc for [T] can't be created until runtime,
+        // when information about both "[T]" and "T" are available.  When such
         // a tydesc is created, we cache it in the derived_tydescs table for
         // the next time that such a tydesc is needed.
         hashmap[ty::t, derived_tydesc_info] derived_tydescs,
