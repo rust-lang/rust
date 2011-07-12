@@ -366,3 +366,31 @@ check-stage3-std:test/stdtest.stage3$(X)
 	@$(call E, run: $<)
 	$(Q)$(call CFG_RUN_TARG,stage3,stage3, $<)
 
+# Testing the rustctest crate
+
+test/rustctest.stage1$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0) \
+	stage0/intrinsics.bc
+	@$(call E, compile_and_link: $@)
+	$(STAGE0) -o $@ $< --test
+
+test/rustctest.stage2$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1) \
+	stage1/intrinsics.bc
+	@$(call E, compile_and_link: $@)
+	$(STAGE1) -o $@ $< --test
+
+test/rustctest.stage3$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2) \
+	stage2/intrinsics.bc
+	@$(call E, compile_and_link: $@)
+	$(STAGE2) -o $@ $< --test
+
+check-stage1-rustc: test/rustctest.stage1$(X)
+	@$(call E, run: $<)
+	$(Q)$(call CFG_RUN_TARG,stage1,stage0, $<)
+
+check-stage2-rustc: test/rustctest.stage2$(X)
+	@$(call E, run: $<)
+	$(Q)$(call CFG_RUN_TARG,stage2,stage1, $<)
+
+check-stage3-rustc: test/rustctest.stage3$(X)
+	@$(call E, run: $<)
+	$(Q)$(call CFG_RUN_TARG,stage2,stage1, $<)
