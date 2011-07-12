@@ -95,7 +95,7 @@ fn safe_to_steal(ast::expr_ e) -> bool {
         case (ast::expr_assign(_, _)) { false }
         case (ast::expr_assign_op(_, _, _)) { false }
 
-        // "if (ret) { }" doesn't make sense, at least from a typecheck point of view, but for some reason it's rejected by the *parser*
+        // https://github.com/graydon/rust/issues/676
         case (ast::expr_ret(option::none)) { false }
         case (ast::expr_put(option::none)) { false }
 
@@ -203,6 +203,7 @@ fn main(vec[str] args) {
             check_roundtrip(crate, cm, file + ".pp.rs");
         }
         //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
+        // Currently hits https://github.com/graydon/rust/issues/675
         //pp_variants(*crate, cm, file);
     }
 }
