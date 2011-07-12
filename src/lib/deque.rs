@@ -25,23 +25,25 @@ fn create[T]() -> t[T] {
       * elsewhere.
       */
 
-    fn grow[T](uint nelts, uint lo, vec[mutable cell[T]] elts) ->
-       vec[mutable cell[T]] {
-        assert (nelts == vec::len(elts));
-        // FIXME: Making the vector argument an alias is a workaround for
-        // issue #375
+    fn grow[T](uint nelts, uint lo, &(cell[T])[mutable] elts)
+            -> (cell[T])[mutable] {
+        assert (nelts == ivec::len(elts));
+        auto rv = ~[mutable];
 
-        fn fill[T](uint i, uint nelts, uint lo, &vec[mutable cell[T]] old) ->
-           cell[T] {
-            ret if (i < nelts) {
-                    old.((lo + i) % nelts)
-                } else { option::none };
+        auto i = 0u;
+        auto nalloc = uint::next_power_of_two(nelts + 1u);
+        while (i < nalloc) {
+            if (i < nelts) {
+                rv += ~[mutable elts.((lo + i) % nelts)];
+            } else {
+                rv += ~[mutable option::none];
+            }
+            i += 1u;
         }
-        let uint nalloc = uint::next_power_of_two(nelts + 1u);
-        let vec::init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
-        ret vec::init_fn_mut[cell[T]](copy_op, nalloc);
+
+        ret rv;
     }
-    fn get[T](vec[mutable cell[T]] elts, uint i) -> T {
+    fn get[T](&(cell[T])[mutable] elts, uint i) -> T {
         ret alt (elts.(i)) {
                 case (option::some(?t)) { t }
                 case (_) { fail }
@@ -50,16 +52,16 @@ fn create[T]() -> t[T] {
     obj deque[T](mutable uint nelts,
                  mutable uint lo,
                  mutable uint hi,
-                 mutable vec[mutable cell[T]] elts) {
+                 mutable (cell[T])[mutable] elts) {
         fn size() -> uint { ret nelts; }
         fn add_front(&T t) {
             let uint oldlo = lo;
             if (lo == 0u) {
-                lo = vec::len[cell[T]](elts) - 1u;
+                lo = ivec::len[cell[T]](elts) - 1u;
             } else { lo -= 1u; }
             if (lo == hi) {
                 elts = grow[T](nelts, oldlo, elts);
-                lo = vec::len[cell[T]](elts) - 1u;
+                lo = ivec::len[cell[T]](elts) - 1u;
                 hi = nelts;
             }
             elts.(lo) = option::some[T](t);
@@ -72,7 +74,7 @@ fn create[T]() -> t[T] {
                 hi = nelts;
             }
             elts.(hi) = option::some[T](t);
-            hi = (hi + 1u) % vec::len[cell[T]](elts);
+            hi = (hi + 1u) % ivec::len[cell[T]](elts);
             nelts += 1u;
         }
 
@@ -83,14 +85,16 @@ fn create[T]() -> t[T] {
         fn pop_front() -> T {
             let T t = get[T](elts, lo);
             elts.(lo) = option::none[T];
-            lo = (lo + 1u) % vec::len[cell[T]](elts);
+            lo = (lo + 1u) % ivec::len[cell[T]](elts);
             nelts -= 1u;
             ret t;
         }
         fn pop_back() -> T {
             if (hi == 0u) {
-                hi = vec::len[cell[T]](elts) - 1u;
-            } else { hi -= 1u; }
+                hi = ivec::len[cell[T]](elts) - 1u;
+            } else {
+                hi -= 1u;
+            }
             let T t = get[T](elts, hi);
             elts.(hi) = option::none[T];
             nelts -= 1u;
@@ -99,12 +103,12 @@ fn create[T]() -> t[T] {
         fn peek_front() -> T { ret get[T](elts, lo); }
         fn peek_back() -> T { ret get[T](elts, hi - 1u); }
         fn get(int i) -> T {
-            let uint idx = (lo + (i as uint)) % vec::len[cell[T]](elts);
+            let uint idx = (lo + (i as uint)) % ivec::len[cell[T]](elts);
             ret get[T](elts, idx);
         }
     }
-    let vec[mutable cell[T]] v =
-        vec::init_elt_mut(option::none, initial_capacity);
+    let (cell[T])[mutable] v =
+        ivec::init_elt_mut(option::none, initial_capacity);
     ret deque[T](0u, 0u, 0u, v);
 }
 // Local Variables:
