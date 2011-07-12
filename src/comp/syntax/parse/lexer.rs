@@ -45,7 +45,12 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
                @interner::interner[str] itr) {
         fn is_eof() -> bool { ret ch == -1 as char; }
         fn mark() { mark_pos = pos; mark_chpos = chpos; }
-        fn get_mark_str() -> str { ret str::slice(src, mark_pos, pos); }
+        fn get_mark_str() -> str {
+            // I'm pretty skeptical about this subtraction. What if there's a
+            // multi-byte character before the mark?
+            ret str::slice(src, mark_pos - 1u,
+                           pos - 1u);
+        }
         fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
         fn curr() -> char { ret ch; }
