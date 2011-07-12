@@ -12,20 +12,22 @@ import std::vec;
 import std::ivec;
 import std::str;
 import std::uint;
+import std::option;
 
 import rustc::syntax::ast;
 import rustc::syntax::fold;
 import rustc::syntax::walk;
 import rustc::syntax::codemap;
+import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
+/*
+// Imports for "the rest of driver::compile_input"
 import driver = rustc::driver::rustc; // see https://github.com/graydon/rust/issues/624
 import rustc::back::link;
 import rustc::driver::rustc::time;
 import rustc::driver::session;
 
-/*
-// Imports for "the rest of driver::compile_input"
 import rustc::metadata::creader;
 import rustc::metadata::cstore;
 import rustc::syntax::parse::parser;
@@ -43,21 +45,21 @@ import rustc::util::ppaux;
 import rustc::lib::llvm;
 */
 
+fn read_whole_file(&str filename) -> str {
+    str::unsafe_from_bytes(io::file_reader(filename).read_whole_stream())
+}
+
 fn file_contains(&str filename, &str needle) -> bool {
-    auto r = io::file_reader(filename);
-    auto contents = str::unsafe_from_bytes(r.read_whole_stream());
+    auto contents = read_whole_file(filename);
     ret str::find(contents, needle) != -1;
 }
+
+fn contains(&str haystack, &str needle) -> bool { str::find(haystack, needle) != -1 }
 
 fn find_rust_files(&mutable str[] files, str path) {
     if (str::ends_with(path, ".rs")) {
         if (file_contains(path, "xfail-stage1")) {
             //log_err "Skipping " + path + " because it is marked as xfail-stage1";
-        } else if (
-            !str::ends_with(path, "constrained-type.rs") &&     // https://github.com/graydon/rust/issues/653
-             str::find(path, "utf8") != -1 &&  // https://github.com/graydon/rust/issues/654
-             true) {
-            //log_err "Skipping " + path + " because of a known bug";
         } else {
             files += ~[path];
         }
@@ -68,10 +70,43 @@ fn find_rust_files(&mutable str[] files, str path) {
     }
 }
 
+fn safe_to_steal(ast::expr_ e) -> bool {
+    alt (e) {
+        // pretty-printer precedence issues -- https://github.com/graydon/rust/issues/670
+        case (ast::expr_unary(_, _)) { false }
+        case (ast::expr_lit(?lit)) {
+            alt(lit.node) {
+                case(ast::lit_str(_, _)) { true }
+                case(ast::lit_char(_)) { true }
+                case(ast::lit_int(_)) { false }
+                case(ast::lit_uint(_)) { false }
+                case(ast::lit_mach_int(_, _)) { false }
+                case(ast::lit_float(_)) { false }
+                case(ast::lit_mach_float(_, _)) { false }
+                case(ast::lit_nil) { true }
+                case(ast::lit_bool(_)) { true }
+            }
+        }
+        case (ast::expr_cast(_, _)) { false }
+        case (ast::expr_send(_, _)) { false }
+        case (ast::expr_recv(_, _)) { false }
+        case (ast::expr_assert(_)) { false }
+        case (ast::expr_binary(_, _, _)) { false }
+        case (ast::expr_assign(_, _)) { false }
+        case (ast::expr_assign_op(_, _, _)) { false }
+
+        // "if (ret) { }" doesn't make sense, at least from a typecheck point of view, but for some reason it's rejected by the *parser*
+        case (ast::expr_ret(option::none)) { false }
+        case (ast::expr_put(option::none)) { false }
+
+        case (_) { true }
+    }
+}
+
 fn steal_exprs(&ast::crate crate) -> ast::expr[] {
     let @mutable ast::expr[] exprs = @mutable ~[];
-    // "Stash" cannot be type-parameterized because of https://github.com/graydon/rust/issues/375
-    fn stash_expr(@mutable ast::expr[] es, &@ast::expr e) { *es += ~[*e]; }
+    // "Stash" is not type-parameterized because of the need for safe_to_steal
+    fn stash_expr(@mutable ast::expr[] es, &@ast::expr e) { if (safe_to_steal(e.node)) { *es += ~[*e]; } else { /* now my indices are wrong :( */ } }
     auto v = rec(visit_expr_pre = bind stash_expr(exprs, _) with walk::default_visitor());
     walk::walk_crate(v, crate);
     *exprs
@@ -108,7 +143,9 @@ iter under(uint n) -> uint { let uint i = 0u; while (i < n) { put i; i += 1u; } 
 
 fn devnull() -> io::writer { std::io::string_writer().get_writer() }
 
-fn pp_variants(&ast::crate crate, &session::session sess, &str filename) {
+fn as_str(fn (io::writer) f) -> str { auto w = std::io::string_writer(); f(w.get_writer()); w.get_str() }
+
+fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
     auto exprs = steal_exprs(crate);
     auto exprsL = ivec::len(exprs);
     if (exprsL < 100u) {
@@ -117,10 +154,35 @@ fn pp_variants(&ast::crate crate, &session::session sess, &str filename) {
             for each (uint j in under(uint::min(exprsL, 5u))) {
                 log_err "With... " + pprust::expr_to_str(@exprs.(j));
                 auto crate2 = @replace_expr_in_crate(crate, i, exprs.(j).node);
-                pprust::print_crate(sess.get_codemap(), crate2, filename, devnull(), pprust::no_ann());
+                check_roundtrip(crate2, cmap, filename + ".4.rs");
             }
         }
     }
+}
+
+fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str fakefilename) {
+    auto str3 = as_str(bind pprust::print_crate(cmap, crate2, "empty.rs", _, pprust::no_ann()));
+    auto cm4 = codemap::new_codemap();
+    if (true
+      && !contains(str3, "][]") // https://github.com/graydon/rust/issues/669
+      && !contains(str3, "][mutable]") // https://github.com/graydon/rust/issues/669
+      && !contains(str3, "][mutable ]") // https://github.com/graydon/rust/issues/669
+      && !contains(str3, "self") // crazy rules enforced by parser rather than typechecker?
+      && !contains(str3, "spawn") // more precedence issues
+      && !contains(str3, "bind") // more precedence issues?
+       ) {
+        auto crate4 = parser::parse_crate_from_source_str(fakefilename, str3, ~[], cm4);
+        // should compare crates at this point, but it's easier to compare strings
+        auto str5 = as_str(bind pprust::print_crate(cmap, crate4, "empty.rs", _, pprust::no_ann()));
+        if (!str::is_ascii(str3)) {
+          log_err "Non-ASCII in " + fakefilename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
+        } else if (str3 != str5) {
+          log_err "Mismatch: " + fakefilename;
+          log_err "str3:\n" + str3;
+          log_err "str5:\n" + str5;
+          fail "Mismatch";
+        }
+   }
 }
 
 fn main(vec[str] args) {
@@ -129,32 +191,19 @@ fn main(vec[str] args) {
     find_rust_files(files, root); // not using time here because that currently screws with passing-a-mutable-array
     log_err uint::str(ivec::len(files)) + " files";
 
-    auto binary = vec::shift[str](args);
-    auto binary_dir = fs::dirname(binary);
-
-    let @session::options sopts =
-        @rec(library=false,
-             static=false,
-             optimize=0u,
-             debuginfo=false,
-             verify=true,
-             run_typestate=true,
-             save_temps=false,
-             stats=false,
-             time_passes=false,
-             time_llvm_passes=false,
-             output_type=link::output_type_bitcode,
-             library_search_paths=[binary_dir + "/lib"],
-             sysroot=driver::get_default_sysroot(binary),
-             cfg=~[],
-             test=false);
-
     for (str file in files) {
         log_err "=== " + file + " ===";
-        let session::session sess = driver::build_session(sopts);
-        let @ast::crate crate = time(true, "parsing " + file, bind driver::parse_input(sess, ~[], file));
-        pprust::print_crate(sess.get_codemap(), crate, file, devnull(), pprust::no_ann());
-        pp_variants(*crate, sess, file);
+        auto cm = codemap::new_codemap();
+        auto src = read_whole_file(file);
+        auto crate = parser::parse_crate_from_source_str(file, src, ~[], cm);
+        if (!contains(src, "#macro") // https://github.com/graydon/rust/issues/671
+         && !str::ends_with(file, "block-expr-precedence.rs") // https://github.com/graydon/rust/issues/674
+         && !str::ends_with(file, "syntax-extension-fmt.rs") // an issue where -2147483648 gains an extra negative sign each time through, which i can't reproduce using "rustc --pretty normal"???
+) {
+            check_roundtrip(crate, cm, file + ".pp.rs");
+        }
+        //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
+        //pp_variants(*crate, cm, file);
     }
 }
 
