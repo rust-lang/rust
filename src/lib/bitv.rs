@@ -24,7 +24,7 @@ export eq_vec;
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
 
-type t = rec(vec[mutable uint] storage, uint nbits);
+type t = @rec(uint[mutable] storage, uint nbits);
 
 
 // FIXME: this should be a constant once they work
@@ -32,13 +32,13 @@ fn uint_bits() -> uint { ret 32u + (1u << 32u >> 27u); }
 
 fn create(uint nbits, bool init) -> t {
     auto elt = if (init) { !0u } else { 0u };
-    auto storage = vec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
-    ret rec(storage=storage, nbits=nbits);
+    auto storage = ivec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
+    ret @rec(storage=storage, nbits=nbits);
 }
 
 fn process(&fn(uint, uint) -> uint  op, &t v0, &t v1) -> bool {
-    auto len = vec::len(v1.storage);
-    assert (vec::len(v0.storage) == len);
+    auto len = ivec::len(v1.storage);
+    assert (ivec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     auto changed = false;
     for each (uint i in uint::range(0u, len)) {
@@ -66,10 +66,10 @@ fn right(uint w0, uint w1) -> uint { ret w1; }
 fn copy(&t v0, t v1) -> bool { auto sub = right; ret process(sub, v0, v1); }
 
 fn clone(t v) -> t {
-    auto storage = vec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
-    auto len = vec::len(v.storage);
+    auto storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
+    auto len = ivec::len(v.storage);
     for each (uint i in uint::range(0u, len)) { storage.(i) = v.storage.(i); }
-    ret rec(storage=storage, nbits=v.nbits);
+    ret @rec(storage=storage, nbits=v.nbits);
 }
 
 fn get(&t v, uint i) -> bool {
@@ -85,7 +85,7 @@ fn equal(&t v0, &t v1) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
 
-    auto len = vec::len(v1.storage);
+    auto len = ivec::len(v1.storage);
     auto i = 0u;
     while (i < len) {
         if (v0.storage.(i) != v1.storage.(i)) { ret false; }
@@ -95,7 +95,7 @@ fn equal(&t v0, &t v1) -> bool {
 }
 
 fn clear(&t v) {
-    for each (uint i in uint::range(0u, vec::len(v.storage))) {
+    for each (uint i in uint::range(0u, ivec::len(v.storage))) {
         v.storage.(i) = 0u;
     }
 }
@@ -105,7 +105,7 @@ fn set_all(&t v) {
 }
 
 fn invert(&t v) {
-    for each (uint i in uint::range(0u, vec::len(v.storage))) {
+    for each (uint i in uint::range(0u, ivec::len(v.storage))) {
         v.storage.(i) = !v.storage.(i);
     }
 }
@@ -132,14 +132,14 @@ fn set(&t v, uint i, bool x) {
 
 /* true if all bits are 1 */
 fn is_true(&t v) -> bool {
-    for (uint i in to_vec(v)) { if (i != 1u) { ret false; } }
+    for (uint i in to_ivec(v)) { if (i != 1u) { ret false; } }
     ret true;
 }
 
 
 /* true if all bits are non-1 */
 fn is_false(&t v) -> bool {
-    for (uint i in to_vec(v)) { if (i == 1u) { ret false; } }
+    for (uint i in to_ivec(v)) { if (i == 1u) { ret false; } }
     ret true;
 }
 
@@ -148,6 +148,11 @@ fn init_to_vec(t v, uint i) -> uint { ret if (get(v, i)) { 1u } else { 0u }; }
 fn to_vec(&t v) -> vec[uint] {
     auto sub = bind init_to_vec(v, _);
     ret vec::init_fn[uint](sub, v.nbits);
+}
+
+fn to_ivec(&t v) -> uint[] {
+    auto sub = bind init_to_vec(v, _);
+    ret ivec::init_fn[uint](sub, v.nbits);
 }
 
 fn to_str(&t v) -> str {
@@ -172,6 +177,20 @@ fn eq_vec(&t v0, &vec[uint] v1) -> bool {
     }
     ret true;
 }
+
+fn eq_ivec(&t v0, &uint[] v1) -> bool {
+    assert (v0.nbits == ivec::len[uint](v1));
+    auto len = v0.nbits;
+    auto i = 0u;
+    while (i < len) {
+        auto w0 = get(v0, i);
+        auto w1 = v1.(i);
+        if (!w0 && w1 != 0u || w0 && w1 == 0u) { ret false; }
+        i = i + 1u;
+    }
+    ret true;
+}
+
 //
 // Local Variables:
 // mode: rust
