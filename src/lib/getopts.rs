@@ -120,8 +120,7 @@ tag result { success(match); failure(fail_); }
 
 fn getopts(vec[str] args, vec[opt] opts) -> result {
     auto n_opts = vec::len[opt](opts);
-    fn empty_(uint x) -> vec[optval] { ret vec::empty[optval](); }
-    auto f = empty_;
+    fn f(uint x) -> vec[optval] { ret vec::empty(); }
     auto vals = vec::init_fn_mut[vec[optval]](f, n_opts);
     let vec[str] free = [];
     auto l = vec::len[str](args);
