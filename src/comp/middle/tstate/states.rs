@@ -24,52 +24,6 @@ import tstate::ann::ts_ann;
 import tstate::ann::set_prestate;
 import tstate::ann::set_poststate;
 import aux::*;
-/*
-import aux::crate_ctxt;
-import aux::fn_ctxt;
-import aux::num_constraints;
-import aux::expr_pp;
-import aux::stmt_pp;
-import aux::block_pp;
-import aux::set_pre_and_post;
-import aux::expr_prestate;
-import aux::expr_precond;
-import aux::expr_postcond;
-import aux::stmt_poststate;
-import aux::expr_poststate;
-import aux::block_prestate;
-import aux::block_poststate;
-import aux::block_precond;
-import aux::block_postcond;
-import aux::fn_info;
-import aux::log_pp;
-import aux::log_pp_err;
-import aux::extend_prestate_ann;
-import aux::extend_poststate_ann;
-import aux::set_prestate_ann;
-import aux::set_poststate_ann;
-import aux::pure_exp;
-import aux::log_tritv;
-import aux::log_tritv_err;
-import aux::stmt_to_ann;
-import aux::log_states;
-import aux::log_states_err;
-import aux::block_states;
-import aux::controlflow_expr;
-import aux::node_id_to_def;
-import aux::expr_to_constr;
-import aux::ninit;
-import aux::npred;
-import aux::path_to_ident;
-import aux::if_ty;
-import aux::if_check;
-import aux::plain_if;
-import aux::forget_in_poststate;
-import aux::forget_in_poststate_still_init;
-import aux::copy_in_poststate;
-import aux::copy_in_poststate_two;
-import aux::local_node_id_to_def;
-*/
 import tritv::tritv_clone;
 import tritv::tritv_set;
 import tritv::ttrue;
@@ -229,7 +183,13 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
 
     auto changed = set_prestate_ann(fcx.ccx, id, loop_pres) |
         find_pre_post_state_expr(fcx, pres, index);
-        find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, index), body);
+
+    // Make sure the index var is considered initialized
+    // in the body
+    auto index_post = tritv_clone(expr_poststate(fcx.ccx, index));
+    set_in_poststate_ident(fcx, l.node.id, l.node.ident, index_post);
+
+    changed |= find_pre_post_state_block(fcx, index_post, body);
 
     if (has_nonlocal_exits(body)) { 
         // See [Break-unsound]
@@ -238,11 +198,6 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
     else {
         auto res_p = intersect_states(expr_poststate(fcx.ccx, index),
                                       block_poststate(fcx.ccx, body));
-    /*
-    auto res_p =
-        intersect_postconds([expr_poststate(fcx.ccx, index),
-        block_poststate(fcx.ccx, body)]); */
-
         ret changed | set_poststate_ann(fcx.ccx, id, res_p);
     }
 }

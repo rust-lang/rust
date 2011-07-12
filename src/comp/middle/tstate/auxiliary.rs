@@ -8,6 +8,7 @@ import std::int;
 import std::uint;
 import syntax::ast::*;
 import syntax::codemap::span;
+import syntax::visit;
 import util::common;
 import util::common::log_block;
 import std::map::new_int_hash;
@@ -527,13 +528,7 @@ fn match_args(&fn_ctxt fcx, &pred_desc[] occs, &(@constr_arg_use)[] occ) ->
         fn eq(&tup(ident, def_id) p, &tup(ident, def_id) q) -> bool {
             ret p._1 == q._1;
         }
-
-        // FIXME: Remove this vec->ivec conversion.
-        let (@constr_arg_use)[] cau_ivec = ~[];
-        for (@constr_arg_use cau in pd.node.args) {
-            cau_ivec += ~[cau];
-        }
-        if (ty::args_eq(eq, cau_ivec, occ)) { ret pd.node.bit_num; }
+        if (ty::args_eq(eq, pd.node.args, occ)) { ret pd.node.bit_num; }
     }
     fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
 }
@@ -1037,6 +1032,11 @@ fn op_to_oper_ty(init_op io) -> oper_type {
         case (init_move) { oper_move }
         case (_)         { oper_assign }
     }
+}
+
+// default function visitor
+fn do_nothing[T](&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
+              node_id iid, &T cx, &visit::vt[T] v) {
 }
 //
 // Local Variables:

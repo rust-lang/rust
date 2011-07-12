@@ -32,6 +32,7 @@ import bitvectors::relax_precond_block;
 import bitvectors::gen;
 import tritv::tritv_clone;
 import syntax::ast::*;
+import syntax::visit;
 import std::map::new_int_hash;
 import util::common::new_def_hash;
 import util::common::log_expr;
@@ -719,8 +720,10 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) {
     }
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &ty_param[] tps,
-               &span sp, &fn_ident i, node_id id) {
+fn fn_pre_post(&_fn f, &ty_param[] tps,
+               &span sp, &fn_ident i, node_id id, &crate_ctxt ccx,
+               &visit::vt[crate_ctxt] v) {
+    visit::visit_fn(f, tps, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id), id=id,
                    name=fn_ident_to_string(id, i), ccx=ccx);

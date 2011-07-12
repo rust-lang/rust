@@ -9,18 +9,7 @@ import syntax::visit;
 import walk::walk_crate;
 import walk::walk_fn;
 import walk::ast_visitor;
-import aux::cinit;
-import aux::ninit;
-import aux::npred;
-import aux::cpred;
-import aux::constraint;
-import aux::fn_info;
-import aux::crate_ctxt;
-import aux::num_constraints;
-import aux::constr_map;
-import aux::expr_to_constr;
-import aux::constraints_expr;
-import aux::node_id_to_def_strict;
+import aux::*;
 import std::map::new_int_hash;
 import util::common::new_def_hash;
 import syntax::codemap::span;
@@ -62,10 +51,6 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
     }
     // visit subexpressions
     visit::visit_expr(e, cx, v);
-}
-
-fn do_nothing(&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
-              node_id iid, &ctxt cx, &visit::vt[ctxt] v) {
 }
  
 fn find_locals(&ty::ctxt tcx, &_fn f, &ty_param[] tps, &span sp, &fn_ident i,

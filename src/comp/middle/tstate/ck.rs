@@ -17,7 +17,7 @@ import ast::crate;
 import ast::return;
 import ast::noreturn;
 import ast::expr;
-import syntax::walk;
+import syntax::visit;
 import syntax::codemap::span;
 import middle::ty::type_is_nil;
 import middle::ty::ret_ty_of_fn;
@@ -62,7 +62,9 @@ fn check_unused_vars(&fn_ctxt fcx) {
     }
 }
 
-fn check_states_expr(&fn_ctxt fcx, &@expr e) {
+fn check_states_expr(&@expr e, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
+    visit::visit_expr(e, fcx, v);
+
     let precond prec = expr_precond(fcx.ccx, e);
     let prestate pres = expr_prestate(fcx.ccx, e);
 
@@ -90,7 +92,9 @@ fn check_states_expr(&fn_ctxt fcx, &@expr e) {
     }
 }
 
-fn check_states_stmt(&fn_ctxt fcx, &@stmt s) {
+fn check_states_stmt(&@stmt s, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
+    visit::visit_stmt(s, fcx, v);
+
     auto a = stmt_to_ann(fcx.ccx, *s);
     let precond prec = ann_precond(a);
     let prestate pres = ann_prestate(a);
@@ -126,24 +130,13 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
        because we want the smallest possible erroneous statement
        or expression. */
 
-    let @mutable bool keepgoing = @mutable true;
-    
-    /* TODO probably should use visit instead */
+    auto visitor = visit::default_visitor[fn_ctxt]();
 
-    fn quit(@mutable bool keepgoing, &@ast::item i) {
-        *keepgoing = false;
-    }
-    fn kg(@mutable bool keepgoing) -> bool { 
-        ret *keepgoing;
-    }
-
-    auto v = rec (visit_stmt_post=bind check_states_stmt(fcx, _),
-                  visit_expr_post=bind check_states_expr(fcx, _),
-                  visit_item_pre=bind quit(keepgoing, _),
-                  keep_going=bind kg(keepgoing)
-                  with walk::default_visitor());
-
-    walk::walk_fn(v, f, tps, sp, i, id);
+    visitor = @rec(visit_stmt=check_states_stmt,
+                 visit_expr=check_states_expr,
+                 visit_fn=do_nothing
+                 with *visitor);
+    visit::visit_fn(f, tps, sp, i, id, fcx, visit::mk_vt(visitor));
 
     /* Check that the return value is initialized */
     auto post = aux::block_poststate(fcx.ccx, f.body);
@@ -189,10 +182,12 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ast::ty_param[] tps,
     check_states_against_conditions(fcx, f, tps, id, sp, i);
 }
 
-fn fn_states(&crate_ctxt ccx, &_fn f, &ast::ty_param[] tps,
-             &span sp, &fn_ident i, node_id id) {
+fn fn_states(&_fn f, &ast::ty_param[] tps,
+             &span sp, &fn_ident i, node_id id, &crate_ctxt ccx,
+             &visit::vt[crate_ctxt] v) {
+    visit::visit_fn(f, tps, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
-
+    
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
     auto name = option::from_maybe("anon", i);
@@ -210,19 +205,14 @@ fn check_crate(ty::ctxt cx, @crate crate) {
     annotate_crate(ccx, *crate);
     /* Compute the pre and postcondition for every subexpression */
 
-    auto do_pre_post = walk::default_visitor();
-    do_pre_post =
-        rec(visit_fn_post=bind fn_pre_post(ccx, _, _, _, _, _)
-            with do_pre_post);
-    walk::walk_crate(do_pre_post, *crate);
+    auto vtor = visit::default_visitor[crate_ctxt]();
+    vtor = @rec(visit_fn=fn_pre_post with *vtor);
+    visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
+
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
-
-    auto do_states = walk::default_visitor();
-    do_states =
-        rec(visit_fn_post=bind fn_states(ccx, _, _, _, _, _)
-            with do_states);
-    walk::walk_crate(do_states, *crate);
+    vtor = @rec(visit_fn=fn_states with *vtor);
+    visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 }
 //
 // Local Variables:
