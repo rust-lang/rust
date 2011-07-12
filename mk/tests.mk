@@ -342,26 +342,27 @@ test/compile-fail/%.stage2.out.tmp: test/compile-fail/%.rc $(SREQ2)
 STDTEST_CRATE := $(S)src/test/stdtest/stdtest.rc
 STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
 
-test/stdtest/stdtest.stage1$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ1)
+test/stdtest.stage1$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ1)
 	@$(call E, compile_and_link: $@)
 	$(STAGE1) -o $@ $< --test
 
-test/stdtest/stdtest.stage2$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ2)
+test/stdtest.stage2$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ2)
 	@$(call E, compile_and_link: $@)
 	$(STAGE2) -o $@ $< --test
 
-test/stdtest/stdtest.stage3$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ3)
+test/stdtest.stage3$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ3)
 	@$(call E, compile_and_link: $@)
 	$(STAGE3) -o $@ $< --test
 
-check-stage1-std:test/stdtest/stdtest.stage1$(X)
+check-stage1-std:test/stdtest.stage1$(X)
 	@$(call E, run: $<)
 	$(Q)$(call CFG_RUN_TARG,stage1,stage1, $<)
 
-check-stage2-std:test/stdtest/stdtest.stage2$(X)
+check-stage2-std:test/stdtest.stage2$(X)
 	@$(call E, run: $<)
 	$(Q)$(call CFG_RUN_TARG,stage2,stage2, $<)
 
-check-stage3-std:test/stdtest/stdtest.stage3$(X)
+check-stage3-std:test/stdtest.stage3$(X)
 	@$(call E, run: $<)
 	$(Q)$(call CFG_RUN_TARG,stage3,stage3, $<)
+
