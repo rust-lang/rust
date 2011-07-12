@@ -8,11 +8,10 @@ import syntax::walk;
 import metadata::csearch;
 import driver::session;
 import util::common;
+import util::common::*;
 import syntax::codemap::span;
 import std::map::new_int_hash;
 import std::map::new_str_hash;
-import util::common::new_def_hash;
-import util::common::log_expr_err;
 import middle::ty;
 import middle::ty::node_id_to_type;
 import middle::ty::arg;
@@ -1485,7 +1484,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // expressions.
 
     fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                          &(option::t[@ast::expr])[] args, bool is_call) {
+               &(option::t[@ast::expr])[] args, call_kind call_kind) {
         // Check the function.
 
         check_expr(fcx, f);
@@ -1494,8 +1493,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         auto fty = expr_ty(fcx.ccx.tcx, f);
 
         // We want to autoderef calls but not binds
-        auto fty_stripped =
-            if (is_call) { do_autoderef(fcx, sp, fty) } else { fty };
+        auto fty_stripped = alt (call_kind) {
+            case (kind_call) { do_autoderef(fcx, sp, fty) }
+            case (_)         { fty } };
 
         // Grab the argument types and the return type.
         auto arg_tys;
@@ -1532,13 +1532,38 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         auto i = 0u;
         for (option::t[@ast::expr] a_opt in args) {
+            auto check_ty_vars = call_kind == kind_spawn;
             alt (a_opt) {
                 case (some(?a)) {
                     check_expr(fcx, a);
                     demand::simple(fcx, a.span, arg_tys.(i).ty,
                                    expr_ty(fcx.ccx.tcx, a));
                 }
-                case (none) {/* no-op */ }
+                case (none) {
+                    check_ty_vars = true;
+                }
+            }
+            /* If this argument is going to be a thunk argument
+               (that is, it's an underscore-bind thing or a spawn
+               argument), then it has to be either passed by reference,
+               or have a statically known size. */
+            alt (call_kind) {
+                case (kind_call) { }
+                case (_) { /* bind or spawn */
+                    if (check_ty_vars &&
+                        ((ty::type_contains_params(fcx.ccx.tcx,
+                                                   arg_tys.(i).ty))
+                        || ty::type_contains_vars(fcx.ccx.tcx,
+                                                  arg_tys.(i).ty))
+                        && arg_tys.(i).mode == mo_val) {
+                        // For why the check is necessary, see the
+                        // none case in trans_bind_thunk
+                        fcx.ccx.tcx.sess.span_fatal(sp,
+                           call_kind_str(call_kind) +
+                           " arguments with types containing parameters \
+                             must be passed by alias");
+                    }
+                }
             }
             i += 1u;
         }
@@ -1556,14 +1581,14 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // A generic function for checking call expressions
 
     fn check_call(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                  &(@ast::expr)[] args) {
+                  &(@ast::expr)[] args, call_kind call_kind) {
         let (option::t[@ast::expr])[] args_opt_0 = ~[];
         for (@ast::expr arg in args) {
             args_opt_0 += ~[some[@ast::expr](arg)];
         }
         // Call the generic checker.
 
-        check_call_or_bind(fcx, sp, f, args_opt_0, true);
+        check_call_or_bind(fcx, sp, f, args_opt_0, call_kind);
     }
     // A generic function for checking for or for-each loops
 
@@ -1990,7 +2015,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         case (ast::expr_bind(?f, ?args)) {
             // Call the generic checker.
 
-            check_call_or_bind(fcx, expr.span, f, args, false);
+            check_call_or_bind(fcx, expr.span, f, args, kind_bind);
             // Pull the argument and return types out.
 
             auto proto_1;
@@ -2035,7 +2060,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             function name onto purity-designation */
 
             require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
-            check_call(fcx, expr.span, f, args);
+            check_call(fcx, expr.span, f, args, kind_call);
             // Pull the return type out of the type of the function.
 
             auto rt_1;
@@ -2085,7 +2110,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
         }
         case (ast::expr_spawn(_, _, ?f, ?args)) {
-            check_call(fcx, expr.span, f, args);
+            check_call(fcx, expr.span, f, args, kind_spawn);
             auto fty = expr_ty(fcx.ccx.tcx, f);
             auto ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
             demand::simple(fcx, f.span, ty::mk_nil(fcx.ccx.tcx), ret_ty);

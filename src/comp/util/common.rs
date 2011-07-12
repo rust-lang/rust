@@ -182,6 +182,19 @@ fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
     ret false;
 }
 
+tag call_kind {
+    kind_call;
+    kind_spawn;
+    kind_bind;
+}
+
+fn call_kind_str(call_kind c) -> str {
+    alt (c) {
+        case (kind_call)  { "Call" }
+        case (kind_spawn) { "Spawn" }
+        case (kind_bind)  { "Bind" }
+    }
+}
 //
 // Local Variables:
 // mode: rust
