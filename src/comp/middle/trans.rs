@@ -7129,7 +7129,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         methods = anon_obj.methods,
         dtor = none[@ast::method]);
 
-    let result with_obj_val;
+    let option::t[result] with_obj_val = none;
     let ty::t with_obj_ty;
     auto vtbl;
     alt (anon_obj.with_obj) {
@@ -7155,7 +7155,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // If with_obj (the object being extended) exists, translate it.
             // Translating with_obj returns a ValueRef (pointer to a 2-word
             // value) wrapped in a result.
-            with_obj_val = trans_expr(bcx, e);
+            with_obj_val = some(trans_expr(bcx, e));
 
             // TODO: What makes more sense to get the type of an expr --
             // calling ty::expr_ty(ccx.tcx, e) on it or calling
@@ -7332,9 +7332,13 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             GEP_tup_like(bcx, body_ty, body.val,
                          ~[0, abi::obj_body_elt_with_obj]);
         bcx = body_with_obj.bcx;
-        bcx = copy_val(bcx, INIT, body_with_obj.val,
-                       with_obj_val.val,
-                       with_obj_ty).bcx;
+        alt (with_obj_val) {
+            case (some(?v)) {
+                bcx = copy_val(bcx, INIT, body_with_obj.val,
+                               v.val, with_obj_ty).bcx;
+            }
+            case (_) {}
+        }
 
         // Store box ptr in outer pair.
         auto p = bcx.build.PointerCast(box.val, llbox_ty);
