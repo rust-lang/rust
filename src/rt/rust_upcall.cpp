@@ -292,7 +292,6 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
 extern "C" CDECL uintptr_t
 upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->kernel->scheduler_lock);
 
     LOG(task, mem,
                    "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
@@ -311,7 +310,7 @@ upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
 extern "C" CDECL void
 upcall_shared_free(rust_task *task, void* ptr) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->kernel->scheduler_lock);
+
     rust_scheduler *sched = task->sched;
     DLOG(sched, mem,
              "upcall shared_free(0x%" PRIxPTR")",
