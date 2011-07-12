@@ -186,24 +186,11 @@ fn tritv_set(uint i, &t v, trit t) -> bool {
 }
 
 fn tritv_copy(&t target, &t source) -> bool {
-  let uint i = 0u;
   assert (target.nbits == source.nbits);
-  auto changed = false;
-  auto oldunc;
-  auto newunc;
-  auto oldval;
-  auto newval;
-  while (i < target.nbits) {
-    oldunc = bitv::get(target.uncertain, i);
-    newunc = bitv::get(source.uncertain, i);
-    oldval = bitv::get(target.val, i);
-    newval = bitv::get(source.val, i);
-    bitv::set(target.uncertain, i, newunc);
-    changed = changed || (oldunc && !newunc);
-    bitv::set(target.val, i, newval);
-    changed = changed || (oldval && !newval);
-    i += 1u;
-  }
+  auto changed = !bitv::equal(target.uncertain, source.uncertain) ||
+    !bitv::equal(target.val, source.val);
+  bitv::copy(target.uncertain, source.uncertain);
+  bitv::copy(target.val, source.val);
   ret changed;
 }
 
