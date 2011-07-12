@@ -165,7 +165,7 @@ fn nospan[T](&T t) -> ast::spanned[T] {
 }
 
 fn mk_tests(&test_ctxt cx) -> @ast::item {
-    auto ret_ty = mk_test_desc_ivec_ty();
+    auto ret_ty = mk_test_desc_ivec_ty(cx);
 
     let ast::fn_decl decl = rec(inputs = ~[],
                                 output = ret_ty,
@@ -204,23 +204,16 @@ fn empty_fn_ty() -> ast::ty {
     ret nospan(ast::ty_fn(proto, input_ty, ret_ty, cf, constrs));
 }
 
-// The ast::ty of std::test::test_desc
-fn mk_test_desc_ivec_ty() -> @ast::ty {
-    // Oh this is brutal to build by hand
-    let ast::mt name_mt = rec(ty = @nospan(ast::ty_str),
-                              mut = ast::imm);
-    let ast::mt fn_mt = rec(ty = @empty_fn_ty(),
-                            mut = ast::imm);
+// The ast::ty of std::test::test_desc[]
+fn mk_test_desc_ivec_ty(&test_ctxt cx) -> @ast::ty {
+    let ast::path test_desc_ty_path = nospan(rec(global = false,
+                                                 idents = ~["std",
+                                                            "test",
+                                                            "test_desc"],
+                                                 types = ~[]));
 
-    let ast::ty_field_ name_ty_field_ = rec(ident = "name",
-                                            mt = name_mt);
-
-    let ast::ty_field_ fn_ty_field_ = rec(ident = "fn",
-                                          mt = fn_mt);
-    
-    let ast::ty_field[] test_desc_fields = ~[nospan(name_ty_field_),
-                                             nospan(fn_ty_field_)];
-    let ast::ty test_desc_ty = nospan(ast::ty_rec(test_desc_fields));
+    let ast::ty test_desc_ty = nospan(ast::ty_path(test_desc_ty_path,
+                                                   cx.next_node_id()));
 
     let ast::mt ivec_mt = rec(ty = @test_desc_ty,
                               mut = ast::imm);
