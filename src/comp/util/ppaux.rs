@@ -1,6 +1,5 @@
 import std::io;
 import std::ivec;
-import std::vec;
 import std::str;
 import std::int;
 import std::option;
@@ -107,23 +106,23 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_type) { s += "type"; }
         case (ty_task) { s += "task"; }
         case (ty_tup(?elems)) {
-            let vec[str] strs = [];
-            for (mt tm in elems) { strs += [mt_to_str(cx, tm)]; }
-            s += "tup(" + str::connect(strs, ",") + ")";
+            let str[] strs = ~[];
+            for (mt tm in elems) { strs += ~[mt_to_str(cx, tm)]; }
+            s += "tup(" + str::connect_ivec(strs, ",") + ")";
         }
         case (ty_rec(?elems)) {
-            let vec[str] strs = [];
-            for (field fld in elems) { strs += [field_to_str(cx, fld)]; }
-            s += "rec(" + str::connect(strs, ",") + ")";
+            let str[] strs = ~[];
+            for (field fld in elems) { strs += ~[field_to_str(cx, fld)]; }
+            s += "rec(" + str::connect_ivec(strs, ",") + ")";
         }
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
 
             s += "<tag#" + int::str(id._0) + ":" + int::str(id._1) + ">";
             if (ivec::len[t](tps) > 0u) {
-                let vec[str] strs = [];
-                for (t typ in tps) { strs += [ty_to_str(cx, typ)]; }
-                s += "[" + str::connect(strs, ",") + "]";
+                let str[] strs = ~[];
+                for (t typ in tps) { strs += ~[ty_to_str(cx, typ)]; }
+                s += "[" + str::connect_ivec(strs, ",") + "]";
             }
         }
         case (ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
@@ -134,10 +133,9 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
                            ast::return, ~[]);
         }
         case (ty_obj(?meths)) {
-            // TODO: Remove this ivec->vec conversion.
-            auto strs = [];
-            for (method m in meths) { strs += [method_to_str(cx, m)]; }
-            s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
+            auto strs = ~[];
+            for (method m in meths) { strs += ~[method_to_str(cx, m)]; }
+            s += "obj {\n\t" + str::connect_ivec(strs, "\n\t") + "\n}";
         }
         case (ty_res(?id, _, _)) {
             s += "<resource#" + int::str(id._0) + ":" + int::str(id._1) + ">";

@@ -1548,12 +1548,8 @@ fn constr_arg_to_str[T](&fn(&T) -> str f, &ast::constr_arg_general_[T] c) ->
 fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
-    // TODO: Remove this vec->ivec conversion.
-    auto cags = ~[];
-    for (@ast::constr_arg_general[uint] cag in c.node.args) {
-        cags += ~[cag];
-    }
-    ret ast::path_to_str(c.node.path) + constr_args_to_str(uint_to_str, cags);
+    ret ast::path_to_str(c.node.path) +
+        constr_args_to_str(uint_to_str, c.node.args);
 }
 
 fn ast_constrs_str(&(@ast::constr)[] constrs) -> str {

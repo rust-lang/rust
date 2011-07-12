@@ -2,9 +2,7 @@ import syntax::codemap::span;
 import ast::*;
 
 import std::ivec;
-import std::vec;
 import std::option;
-import vec::map;
 
 export ast_fold_precursor;
 export ast_fold;
