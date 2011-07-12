@@ -1,5 +1,8 @@
 
+import rustrt::size_of;
+
 export rustrt;
+export size_of;
 
 native "rust" mod rustrt {
 
@@ -13,6 +16,7 @@ native "rust" mod rustrt {
     fn do_gc();
     fn unsupervise();
 }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

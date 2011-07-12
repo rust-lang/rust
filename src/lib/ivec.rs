@@ -3,6 +3,7 @@
 import option::none;
 import option::some;
 import uint::next_power_of_two;
+import ptr::addr_of;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
@@ -33,10 +34,6 @@ fn to_ptr[T](&T[] v) -> *T {
 
 fn len[T](&T[mutable?] v) -> uint {
     ret rusti::ivec_len(v);
-}
-
-fn len_set[T](&mutable T[mutable?] v, uint new_len) {
-    v = slice(v, 0u, new_len);
 }
 
 type init_op[T] = fn(uint) -> T;
@@ -217,6 +214,11 @@ fn find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
 }
 
 mod unsafe {
+    type ivec_repr = rec(mutable uint fill,
+                         mutable uint alloc,
+                         *mutable ivec_heap_part heap_part);
+    type ivec_heap_part = rec(mutable uint fill);
+
     fn copy_from_buf[T](&mutable T[] v, *T ptr, uint count) {
         ret rustrt::ivec_copy_from_buf_shared(v, ptr, count);
     }
@@ -225,6 +227,17 @@ mod unsafe {
         auto v = ~[];
         copy_from_buf(v, ptr, bytes);
         ret v;
+    }
+
+    fn set_len[T](&mutable T[] v, uint new_len) {
+        auto new_fill = new_len * sys::size_of[T]();
+        let *mutable ivec_repr stack_part =
+            ::unsafe::reinterpret_cast(addr_of(v));
+        if ((*stack_part).fill == 0u) {
+            (*(*stack_part).heap_part).fill = new_fill;     // On heap.
+        } else {
+            (*stack_part).fill = new_fill;                  // On stack.
+        }
     }
 }
 

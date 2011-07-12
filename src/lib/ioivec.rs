@@ -63,7 +63,7 @@ obj FILE_buf_reader(os::libc::FILE f, bool must_close) {
         auto buf = ~[];
         ivec::reserve[u8](buf, len);
         auto read = os::libc_ivec::fread(ivec::to_ptr[u8](buf), 1u, len, f);
-        ivec::len_set[u8](buf, read);
+        ivec::unsafe::set_len[u8](buf, read);
         ret buf;
     }
     fn read_byte() -> int { ret os::libc::fgetc(f); }
