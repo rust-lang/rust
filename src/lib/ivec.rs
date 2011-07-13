@@ -208,6 +208,12 @@ fn member[T](&T x, &T[] v) -> bool {
     ret false;
 }
 
+fn count[T](&T x, &T[mutable?] v) -> uint {
+    auto cnt = 0u;
+    for (T elt in v) { if (x == elt) { cnt += 1u; } }
+    ret cnt;
+}
+
 fn find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
     for (T elt in v) { if (f(elt)) { ret some[T](elt); } }
     ret none[T];
