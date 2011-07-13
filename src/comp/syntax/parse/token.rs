@@ -172,6 +172,7 @@ pred can_begin_expr(token t) -> bool {
     alt (t) {
         case (LPAREN) { true }
         case (LBRACE) { true }
+        case (LBRACKET) { true }
         case (IDENT(_,_)) { true }
         case (UNDERSCORE) { true }
         case (TILDE) { true }
@@ -184,6 +185,9 @@ pred can_begin_expr(token t) -> bool {
         case (LIT_CHAR(_)) { true }
         case (POUND) { true }
         case (AT) { true }
+        case (NOT) { true }
+        case (BINOP(MINUS)) { true }
+        case (BINOP(STAR)) { true }
         case (_) { false }
     }
 }
