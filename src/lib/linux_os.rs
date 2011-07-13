@@ -29,8 +29,8 @@ native "cdecl" mod libc = "" {
     fn getenv(sbuf n) -> sbuf;
     fn setenv(sbuf n, sbuf v, int overwrite) -> int;
     fn unsetenv(sbuf n) -> int;
-    fn pipe(vbuf buf) -> int;
-    fn waitpid(int pid, vbuf status, int options) -> int;
+    fn pipe(*mutable int buf) -> int;
+    fn waitpid(int pid, &mutable int status, int options) -> int;
 }
 
 native "cdecl" mod libc_ivec = "" {
@@ -67,16 +67,16 @@ fn target_os() -> str { ret "linux"; }
 fn dylib_filename(str base) -> str { ret "lib" + base + ".so"; }
 
 fn pipe() -> tup(int, int) {
-    let vec[mutable int] fds = [mutable 0, 0];
-    assert (os::libc::pipe(vec::buf(fds)) == 0);
-    ret tup(fds.(0), fds.(1));
+    auto fds = tup(mutable 0, 0);
+    assert (os::libc::pipe(ptr::addr_of(fds._0)) == 0);
+    ret tup(fds._0, fds._1);
 }
 
 fn fd_FILE(int fd) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
 
 fn waitpid(int pid) -> int {
-    let vec[mutable int] status = [mutable 0];
-    assert (os::libc::waitpid(pid, vec::buf(status), 0) != -1);
+    auto status = 0;
+    assert (os::libc::waitpid(pid, status, 0) != -1);
     ret status.(0);
 }
 

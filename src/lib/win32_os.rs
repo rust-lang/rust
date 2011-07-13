@@ -19,7 +19,7 @@ native "cdecl" mod libc = "" {
     fn fseek(FILE f, int offset, int whence) -> int;
     fn ftell(FILE f) -> int;
     fn getenv(sbuf n) -> sbuf;
-    fn _pipe(vbuf fds, uint size, int mode) -> int;
+    fn _pipe(*mutable int fds, uint size, int mode) -> int;
 }
 
 native "cdecl" mod libc_ivec = "" {
@@ -56,10 +56,10 @@ fn target_os() -> str { ret "win32"; }
 fn dylib_filename(str base) -> str { ret base + ".dll"; }
 
 fn pipe() -> tup(int, int) {
-    let vec[mutable int] fds = [mutable 0, 0];
-    assert (os::libc::_pipe(vec::buf(fds), 1024u, libc_constants::O_BINARY())
-                == 0);
-    ret tup(fds.(0), fds.(1));
+    auto fds = tup(mutable 0, 0);
+    assert (os::libc::pipe(ptr::addr_of(fds._0), 1024u,
+                           libc_constants::O_BINARY()) == 0);
+    ret tup(fds._0, fds._1);
 }
 
 fn fd_FILE(int fd) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
