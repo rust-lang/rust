@@ -57,8 +57,8 @@ fn dylib_filename(str base) -> str { ret base + ".dll"; }
 
 fn pipe() -> tup(int, int) {
     auto fds = tup(mutable 0, 0);
-    assert (os::libc::pipe(ptr::addr_of(fds._0), 1024u,
-                           libc_constants::O_BINARY()) == 0);
+    assert (os::libc::_pipe(ptr::addr_of(fds._0), 1024u,
+                            libc_constants::O_BINARY()) == 0);
     ret tup(fds._0, fds._1);
 }
 
