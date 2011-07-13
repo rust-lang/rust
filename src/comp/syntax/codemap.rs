@@ -63,9 +63,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
     alt (sp) {
         case (some(?ssp)) {
             ss = span_to_str(ssp, cm);
-
             maybe_lines = some(span_to_lines(ssp, cm));
-
         }
         case (none) { }
     }
@@ -170,12 +168,12 @@ fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
 }
 
 fn get_line(filemap fm, int line, &str file) -> str {
-    let uint begin = fm.lines.(line) - fm.lines.(0);
+    let uint begin = fm.lines.(line) - fm.start_pos;
     let uint end;
     if ((line as uint) + 1u >= ivec::len(fm.lines)) {
         end = str::byte_len(file);
     } else {
-        end = fm.lines.(line + 1) - fm.lines.(0);
+        end = fm.lines.(line + 1) - fm.start_pos;
     }
     ret str::slice(file, begin, end);
 }
