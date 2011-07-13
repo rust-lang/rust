@@ -28,6 +28,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::vec;
 
 export resolve_crate;
 export def_map;
@@ -97,7 +98,7 @@ type glob_imp_def = tup(def, @ast::view_item);
 type indexed_mod =
     rec(option::t[ast::_mod] m,
         mod_index index,
-        mutable glob_imp_def[] glob_imports,
+        mutable vec[glob_imp_def] glob_imports,
         hashmap[str, import_state] glob_imported_names);
 
 
@@ -113,7 +114,7 @@ type env =
         ast_map::map ast_map,
         hashmap[ast::node_id, import_state] imports,
         hashmap[ast::node_id, @indexed_mod] mod_map,
-        hashmap[def_id, ident[]] ext_map,
+        hashmap[def_id, vec[ident]] ext_map,
         ext_hash ext_cache,
         session sess);
 
@@ -133,7 +134,7 @@ fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
              ast_map=amap,
              imports=new_int_hash[import_state](),
              mod_map=new_int_hash[@indexed_mod](),
-             ext_map=new_def_hash[ident[]](),
+             ext_map=new_def_hash[vec[ident]](),
              ext_cache=new_ext_hash(),
              sess=sess);
     map_crate(e, crate);
@@ -160,7 +161,7 @@ fn map_crate(&@env e, &@ast::crate c) {
     e.mod_map.insert(-1,
                      @rec(m=some(c.node.module),
                           index=index_mod(c.node.module),
-                          mutable glob_imports=~[],
+                          mutable glob_imports=[],
                           glob_imported_names=new_str_hash[import_state]()));
     fn index_vi(@env e, &@ast::view_item i, &scopes sc, &vt[scopes] v) {
         alt (i.node) {
@@ -178,7 +179,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 e.mod_map.insert(i.id,
                                  @rec(m=some(md),
                                       index=index_mod(md),
-                                      mutable glob_imports=~[],
+                                      mutable glob_imports=[],
                                       glob_imported_names=s));
             }
             case (ast::item_native_mod(?nmd)) {
@@ -186,7 +187,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 e.mod_map.insert(i.id,
                                  @rec(m=none[ast::_mod],
                                       index=index_nmod(nmd),
-                                      mutable glob_imports=~[],
+                                      mutable glob_imports=[],
                                       glob_imported_names=s));
             }
             case (_) { }
@@ -223,7 +224,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 auto imp = follow_import(*e, sc, path, vi.span);
                 if (option::is_some(imp)) {
                     find_mod(e, sc).glob_imports +=
-                        ~[tup(option::get(imp), vi)];
+                        [tup(option::get(imp), vi)];
                 }
             }
             case (_) { }
@@ -398,8 +399,14 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
             case (ast::def_fn(?pred_id, ast::pure_fn)) {
+                // FIXME: Remove this vec->ivec conversion.
+                let (@ast::constr_arg_general[uint])[] cag_ivec = ~[];
+                for (@ast::constr_arg_general[uint] cag in c.node.args) {
+                    cag_ivec += ~[cag];
+                }
+
                 let ty::constr_general[uint] c_ =
-                    rec(path=c.node.path, args=c.node.args, id=pred_id);
+                    rec(path=c.node.path, args=cag_ivec, id=pred_id);
                 let ty::constr_def new_constr = respan(c.span, c_);
                 add_constr(e, id, new_constr);
             }
@@ -877,7 +884,7 @@ fn lookup_in_mod(&env e, &def m, &span sp, &ident name, namespace ns,
 
         auto cached = e.ext_cache.find(tup(defid, name, ns));
         if (!option::is_none(cached)) { ret cached; }
-        auto path = ~[name];
+        auto path = [name];
         if (defid._1 != -1) { path = e.ext_map.get(defid) + path; }
         auto fnd = lookup_external(e, defid._0, path, ns);
         if (!option::is_none(fnd)) {
@@ -986,11 +993,11 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
         }
 
         auto matches =
-            ivec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
-                             { info.glob_imports });
-        if (ivec::len(matches) == 0u) {
+            vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
+                            { info.glob_imports });
+        if (vec::len(matches) == 0u) {
             ret none[def];
-        } else if (ivec::len(matches) == 1u) {
+        } else if (vec::len(matches) == 1u) {
             ret some[def](matches.(0)._0);
         } else {
             for (glob_imp_def match in matches) {
@@ -1152,13 +1159,9 @@ fn ns_for_def(def d) -> namespace {
         };
 }
 
-fn lookup_external(&env e, int cnum, &ident[] ids, namespace ns) ->
+fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns) ->
    option::t[def] {
-    // FIXME: Remove this ivec->vec conversion.
-    auto ids_vec = [];
-    for (ident i in ids) { ids_vec += [i]; }
-
-    for (def d in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids_vec)) {
+    for (def d in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids)) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
         if (ns == ns_for_def(d)) { ret some(d); }
     }
@@ -1278,13 +1281,13 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
         walk_pat(ch, a.pats.(i));
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
-        if (ivec::len(ch.seen) != ivec::len(seen0)) {
+        if (vec::len(ch.seen) != vec::len(seen0)) {
             e.sess.span_err(a.pats.(i).span,
                             "inconsistent number of bindings");
         } else {
             for (ident name in ch.seen) {
-                if (option::is_none(ivec::find(bind str::eq(name, _),
-                                               seen0))) {
+                if (option::is_none(vec::find(bind str::eq(name, _),
+                                              seen0))) {
                     // Fight the alias checker
                     auto name_ = name;
                     e.sess.span_err
@@ -1345,10 +1348,10 @@ fn check_fn(&env e, &span sp, &ast::_fn f) {
     ensure_unique_ivec(e, sp, f.decl.inputs, arg_name, "argument");
 }
 
-type checker = @rec(mutable ident[] seen, str kind, session sess);
+type checker = @rec(mutable vec[ident] seen, str kind, session sess);
 
 fn checker(&env e, str kind) -> checker {
-    let ident[] seen = ~[];
+    let vec[ident] seen = [];
     ret @rec(mutable seen=seen, kind=kind, sess=e.sess);
 }
 
@@ -1358,12 +1361,12 @@ fn add_name(&checker ch, &span sp, &ident name) {
             ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
         }
     }
-    ch.seen += ~[name];
+    vec::push(ch.seen, name);
 }
 
 fn ident_id(&ident i) -> ident { ret i; }
 
-fn ensure_unique[T](&env e, &span sp, &T[] elts, fn(&T) -> ident  id,
+fn ensure_unique[T](&env e, &span sp, &vec[T] elts, fn(&T) -> ident  id,
                     &str kind) {
     auto ch = checker(e, kind);
     for (T elt in elts) { add_name(ch, sp, id(elt)); }
