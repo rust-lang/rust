@@ -1,6 +1,5 @@
 import std::ivec;
 import std::option;
-import std::vec;
 import syntax::ast;
 import syntax::fold;
 import attr;

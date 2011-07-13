@@ -1,5 +1,4 @@
 
-import std::vec;
 import std::option;
 import std::option::some;
 import std::option::none;

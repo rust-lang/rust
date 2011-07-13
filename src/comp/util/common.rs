@@ -3,7 +3,6 @@ import std::map;
 import std::map::hashmap;
 import std::uint;
 import std::int;
-import std::vec;
 import std::option;
 import std::option::none;
 import std::option::some;
