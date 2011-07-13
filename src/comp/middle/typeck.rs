@@ -37,7 +37,6 @@ import std::int;
 import std::ivec;
 import std::str;
 import std::uint;
-import std::vec;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -53,9 +52,7 @@ type ty_table = hashmap[ast::def_id, ty::t];
 
 type obj_info = rec(ast::obj_field[] obj_fields, ast::node_id this_obj);
 
-type crate_ctxt =
-    rec(mutable vec[obj_info] obj_infos,
-        ty::ctxt tcx);
+type crate_ctxt = rec(mutable obj_info[] obj_infos, ty::ctxt tcx);
 
 type fn_ctxt =
     rec(ty::t ret_ty,
@@ -64,7 +61,7 @@ type fn_ctxt =
         hashmap[ast::node_id, int] locals,
         hashmap[ast::node_id, ast::ident] local_names,
         mutable int next_var_id,
-        mutable vec[ast::node_id] fixups,
+        mutable ast::node_id[] fixups,
         @crate_ctxt ccx);
 
 
@@ -433,7 +430,7 @@ mod write {
                 &ty_param_substs_opt_and_ty tpot) {
         inner(fcx.ccx.tcx.node_types, node_id, tpot);
         if (ty::type_contains_vars(fcx.ccx.tcx, tpot._1)) {
-            fcx.fixups += [node_id];
+            fcx.fixups += ~[node_id];
         }
     }
 
@@ -870,11 +867,7 @@ fn do_autoderef(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
         alt (structure_of(fcx, sp, t1)) {
             case (ty::ty_box(?inner)) { t1 = inner.ty; }
             case (ty::ty_res(_, ?inner, ?tps)) {
-                // FIXME: Remove this vec->ivec conversion.
-                auto tps_ivec = ~[];
-                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
-
-                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps_ivec, inner);
+                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = ty::tag_variants(fcx.ccx.tcx, did);
@@ -944,20 +937,20 @@ mod demand {
             actual_1 = do_autoderef(fcx, sp, actual_1);
             implicit_boxes = count_boxes(fcx, sp, actual);
         }
-        let vec[mutable ty::t] ty_param_substs = [mutable ];
-        let vec[int] ty_param_subst_var_ids = [];
+        let ty::t[mutable] ty_param_substs = ~[mutable];
+        let int[] ty_param_subst_var_ids = ~[];
         for (ty::t ty_param_subst in ty_param_substs_0) {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
 
             auto t_0 = next_ty_var(fcx);
-            ty_param_substs += [mutable t_0];
-            ty_param_subst_var_ids += [ty::ty_var_id(fcx.ccx.tcx, t_0)];
+            ty_param_substs += ~[mutable t_0];
+            ty_param_subst_var_ids += ~[ty::ty_var_id(fcx.ccx.tcx, t_0)];
             simple(fcx, sp, ty_param_subst, t_0);
         }
 
         fn mk_result(&@fn_ctxt fcx, &ty::t result_ty,
-                     &vec[int] ty_param_subst_var_ids,
+                     &int[] ty_param_subst_var_ids,
                      uint implicit_boxes) -> ty_param_substs_and_ty {
             let ty::t[] result_ty_param_substs = ~[];
             for (int var_id in ty_param_subst_var_ids) {
@@ -1340,13 +1333,9 @@ fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
                     ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
                                                                path_tpot);
 
-                // FIXME: Remove this ivec->vec conversion.
-                auto tps_vec = ~[];
-                for (ty::t tp in expected_tps) { tps_vec += ~[tp]; }
-
                 auto path_tpt =
-                    demand::full(fcx, pat.span, expected, ctor_ty, tps_vec,
-                                 NO_AUTODEREF);
+                    demand::full(fcx, pat.span, expected, ctor_ty,
+                                 expected_tps, NO_AUTODEREF);
                 path_tpot = tup(some[ty::t[]](path_tpt._0), path_tpt._1);
                 // Get the number of arguments in this tag variant.
 
@@ -1373,6 +1362,7 @@ fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
                                       } else { "s" });
                         fcx.ccx.tcx.sess.span_fatal(pat.span, s);
                     }
+
                     // TODO: vec::iter2
 
                     auto i = 0u;
@@ -2347,11 +2337,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
             }
 
-            vec::push[obj_info](fcx.ccx.obj_infos,
-                                rec(obj_fields=
-                                    ivec::map(anon_obj_field_to_obj_field, 
-                                              fields),
-                                    this_obj=id));
+            fcx.ccx.obj_infos +=
+                ~[rec(obj_fields=ivec::map(anon_obj_field_to_obj_field,
+                                           fields),
+                      this_obj=id)];
 
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?
@@ -2441,7 +2430,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             next_ty_var(fcx);
             // Now remove the info from the stack.
 
-            vec::pop[obj_info](fcx.ccx.obj_infos);
+            ivec::pop[obj_info](fcx.ccx.obj_infos);
         }
         case (_) {
             fcx.ccx.tcx.sess.unimpl("expr type in typeck::check_expr");
@@ -2460,20 +2449,14 @@ fn next_ty_var(&@fn_ctxt fcx) -> ty::t {
 }
 
 fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
-    ret vec::last[obj_info](ccx.obj_infos);
+    ret ivec::last[obj_info](ccx.obj_infos);
 }
 
 fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
     -> @ty::constr_def {
     alt (tcx.def_map.find(c.node.id)) {
         case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
-            // FIXME: Remove this vec->ivec conversion.
-            let (@ast::constr_arg_general[uint])[] cag_ivec = ~[];
-            for (@ast::constr_arg_general[uint] cag in c.node.args) {
-                cag_ivec += ~[cag];
-            }
-
-            ret @respan(c.span, rec(path=c.node.path, args=cag_ivec,
+            ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
                                     id=pred_id));
         }
         case (_) {
@@ -2562,7 +2545,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::node_id id) {
     // and statement context for checking the initializer expression.
 
     auto rty = node_id_to_type(ccx.tcx, id);
-    let vec[ast::node_id] fixups = [];
+    let ast::node_id[] fixups = ~[];
     let @fn_ctxt fcx =
         @rec(ret_ty=rty,
              purity=ast::pure_fn,
@@ -2578,7 +2561,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::node_id id) {
 fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
             &ast::block body, &ast::node_id id) {
     auto gather_result = gather_locals(ccx, decl, body, id);
-    let vec[ast::node_id] fixups = [];
+    let ast::node_id[] fixups = ~[];
     let @fn_ctxt fcx =
         @rec(ret_ty=ast_ty_to_ty_crate(ccx, decl.output),
              purity=decl.purity,
@@ -2637,8 +2620,7 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
         case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.
 
-            vec::push[obj_info](ccx.obj_infos,
-                                rec(obj_fields=ob.fields, this_obj=it.id));
+            ccx.obj_infos += ~[rec(obj_fields=ob.fields, this_obj=it.id)];
             // Typecheck the methods.
 
             for (@ast::method method in ob.methods) {
@@ -2647,7 +2629,7 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
             option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
             // Now remove the info from the stack.
 
-            vec::pop[obj_info](ccx.obj_infos);
+            ivec::pop[obj_info](ccx.obj_infos);
         }
         case (_) {/* nothing to do */ }
     }
@@ -2655,7 +2637,8 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
 
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
     collect::collect_item_types(tcx, crate);
-    let vec[obj_info] obj_infos = [];
+
+    let obj_info[] obj_infos = ~[];
 
     auto ccx =
         @rec(mutable obj_infos=obj_infos, tcx=tcx);
