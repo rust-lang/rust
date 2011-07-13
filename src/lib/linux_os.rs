@@ -77,7 +77,7 @@ fn fd_FILE(int fd) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
 fn waitpid(int pid) -> int {
     auto status = 0;
     assert (os::libc::waitpid(pid, status, 0) != -1);
-    ret status.(0);
+    ret status;
 }
 
 native "rust" mod rustrt {
