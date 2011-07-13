@@ -47,13 +47,14 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
     auto v =
         @rec(visit_fn=bind visit_fn(cx, _, _, _, _, _, _, _),
              visit_item=bind visit_item(cx, _, _, _),
-             visit_expr=bind visit_expr(cx, _, _, _)
+             visit_expr=bind visit_expr(cx, _, _, _),
+             visit_decl=bind visit_decl(cx, _, _, _)
              with *visit::default_visitor[scope]());
     visit::visit_crate(*crate, [], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
+fn visit_fn(&@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
             &fn_ident name, ast::node_id id, &scope sc, &vt[scope] v) {
     visit::visit_fn_decl(f.decl, sc, v);
     for (ast::arg arg_ in f.decl.inputs) {
@@ -62,7 +63,7 @@ fn visit_fn(@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
     v.visit_block(f.body, [], v);
 }
 
-fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
+fn visit_item(&@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
     alt (i.node) {
         case (ast::item_obj(?o, _, _)) {
             for (ast::obj_field f in o.fields) {
@@ -74,21 +75,21 @@ fn visit_item(@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
     visit::visit_item(i, sc, v);
 }
 
-fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
+fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
     auto handled = true;
     alt (ex.node) {
-        case (ast::expr_call(?f, ?args)) {
+        ast::expr_call(?f, ?args) {
             check_call(*cx, f, args, sc);
             handled = false;
         }
-        case (ast::expr_be(?cl)) {
+        ast::expr_be(?cl) {
             check_tail_call(*cx, cl);
             visit::visit_expr(cl, sc, v);
         }
-        case (ast::expr_alt(?input, ?arms)) {
+        ast::expr_alt(?input, ?arms) {
             check_alt(*cx, input, arms, sc, v);
         }
-        case (ast::expr_put(?val)) {
+        ast::expr_put(?val) {
             alt (val) {
                 case (some(?ex)) {
                     auto root = expr_root(*cx, ex, false);
@@ -102,34 +103,48 @@ fn visit_expr(@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
                 case (_) { }
             }
         }
-        case (ast::expr_for_each(?decl, ?call, ?block)) {
+        ast::expr_for_each(?decl, ?call, ?block) {
             check_for_each(*cx, decl, call, block, sc, v);
         }
-        case (ast::expr_for(?decl, ?seq, ?block)) {
+        ast::expr_for(?decl, ?seq, ?block) {
             check_for(*cx, decl, seq, block, sc, v);
         }
-        case (ast::expr_path(?pt)) {
+        ast::expr_path(?pt) {
             check_var(*cx, ex, pt, ex.id, false, sc);
             handled = false;
         }
-        case (ast::expr_swap(?lhs, ?rhs)) {
+        ast::expr_swap(?lhs, ?rhs) {
             check_lval(cx, lhs, sc, v);
             check_lval(cx, rhs, sc, v);
             handled = false;
         }
-        case (ast::expr_move(?dest, ?src)) {
+        ast::expr_move(?dest, ?src) {
             check_assign(cx, dest, src, sc, v);
             check_move_rhs(cx, src, sc, v);
         }
-        case (ast::expr_assign(?dest, ?src)) {
+        ast::expr_assign(?dest, ?src) | ast::expr_assign_op(_, ?dest, ?src) {
             check_assign(cx, dest, src, sc, v);
         }
-        case (ast::expr_assign_op(_, ?dest, ?src)) {
-            check_assign(cx, dest, src, sc, v);
-        }
-        case (_) { handled = false; }
+        _ { handled = false; }
     }
     if (!handled) { visit::visit_expr(ex, sc, v); }
+}
+
+fn visit_decl(&@ctx cx, &@ast::decl d, &scope sc, &vt[scope] v) {
+    visit::visit_decl(d, sc, v);
+    alt (d.node) {
+        ast::decl_local(?loc) {
+            alt (loc.node.init) {
+                some(?init) {
+                    if (init.op == ast::init_move) {
+                        check_move_rhs(cx, init.expr, sc, v);
+                    }
+                }
+                none {}
+            }
+        }
+        _ {}
+    }
 }
 
 fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
@@ -265,25 +280,22 @@ fn check_alt(&ctx cx, &@ast::expr input, &ast::arm[] arms, &scope sc,
              &vt[scope] v) {
     visit::visit_expr(input, sc, v);
     auto root = expr_root(cx, input, true);
-    auto roots =
-        alt (path_def_id(cx, root.ex)) {
-            case (some(?did)) { [did._1] }
-            case (_) { [] }
-        };
+    auto roots = alt (path_def_id(cx, root.ex)) {
+        some(?did) { [did._1] }
+        _ { [] }
+    };
     let vec[ty::t] forbidden_tp =
-        alt (inner_mut(root.ds)) { case (some(?t)) { [t] } case (_) { [] } };
+        alt (inner_mut(root.ds)) { some(?t) { [t] } _ { [] } };
     for (ast::arm a in arms) {
         auto dnums = arm_defnums(a);
         auto new_sc = sc;
         if (vec::len(dnums) > 0u) {
-            new_sc =
-                sc +
-                    [@rec(root_vars=roots,
-                          block_defnum=dnums.(0),
-                          bindings=dnums,
-                          tys=forbidden_tp,
-                          depends_on=deps(sc, roots),
-                          mutable ok=valid)];
+            new_sc = sc + [@rec(root_vars=roots,
+                                block_defnum=dnums.(0),
+                                bindings=dnums,
+                                tys=forbidden_tp,
+                                depends_on=deps(sc, roots),
+                                mutable ok=valid)];
         }
         visit::visit_arm(a, new_sc, v);
     }
@@ -331,26 +343,20 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
     visit::visit_expr(seq, sc, v);
     auto defnum = local.node.id;
     auto root = expr_root(cx, seq, false);
-    auto root_def =
-        alt (path_def_id(cx, root.ex)) {
-            case (some(?did)) { [did._1] }
-            case (_) { [] }
-        };
-    auto unsafe =
-        alt (inner_mut(root.ds)) { case (some(?t)) { [t] } case (_) { [] } };
-    // If this is a mutable vector, don't allow it to be touched.
+    auto root_def = alt (path_def_id(cx, root.ex)) {
+        some(?did) { [did._1] }
+        _ { [] }
+    };
+    auto unsafe = alt (inner_mut(root.ds)) { some(?t) { [t] } _ { [] } };
 
+    // If this is a mutable vector, don't allow it to be touched.
     auto seq_t = ty::expr_ty(*cx.tcx, seq);
     alt (ty::struct(*cx.tcx, seq_t)) {
-        case (ty::ty_vec(?mt)) {
+        ty::ty_vec(?mt) | ty::ty_ivec(?mt) {
             if (mt.mut != ast::imm) { unsafe = [seq_t]; }
         }
-        case (ty::ty_str) { /* no-op */ }
-        case (ty::ty_ivec(?mt)) {
-            if (mt.mut != ast::imm) { unsafe = [seq_t]; }
-        }
-        case (ty::ty_istr) { /* no-op */ }
-        case (_) {
+        ty::ty_str | ty::ty_istr { /* no-op */ }
+        _ {
             cx.tcx.sess.span_unimpl(seq.span, "unknown seq type " +
                                     util::ppaux::ty_to_str(*cx.tcx, seq_t));
         }
@@ -424,6 +430,13 @@ fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
 fn check_move_rhs(&@ctx cx, &@ast::expr src, &scope sc, &vt[scope] v) {
     alt (src.node) {
         case (ast::expr_path(?p)) {
+            alt (cx.tcx.def_map.get(src.id)) {
+                ast::def_obj_field(_) {
+                    cx.tcx.sess.span_err
+                        (src.span, "may not move out of an obj field");
+                }
+                _ {}
+            }
             check_lval(cx, src, sc, v);
         }
         case (_) {
@@ -550,16 +563,14 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                     maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, base));
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_vec(?mt)) {
-                        vec::push(ds,
-                                  rec(mut=mt.mut != ast::imm,
-                                      kind=index,
-                                      outer_t=auto_unbox.t));
+                        vec::push(ds, rec(mut=mt.mut != ast::imm,
+                                          kind=index,
+                                          outer_t=auto_unbox.t));
                     }
                     case (ty::ty_ivec(?mt)) {
-                        vec::push(ds,
-                                  rec(mut=mt.mut != ast::imm,
-                                      kind=index,
-                                      outer_t=auto_unbox.t));
+                        vec::push(ds, rec(mut=mt.mut != ast::imm,
+                                          kind=index,
+                                          outer_t=auto_unbox.t));
                     }
                 }
                 maybe_push_auto_unbox(auto_unbox.d, ds);
@@ -616,22 +627,16 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
     fn helper(&ty::ctxt tcx, ty::t needle, ty::t haystack, bool mut) -> bool {
         if (needle == haystack) { ret true; }
         alt (ty::struct(tcx, haystack)) {
-            case (ty::ty_tag(_, ?ts)) {
+            ty::ty_tag(_, ?ts) {
                 for (ty::t t in ts) {
                     if (helper(tcx, needle, t, mut)) { ret true; }
                 }
                 ret false;
             }
-            case (ty::ty_box(?mt)) {
+            ty::ty_box(?mt) | ty::ty_vec(?mt) | ty::ty_ptr(?mt) {
                 ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
             }
-            case (ty::ty_vec(?mt)) {
-                ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
-            }
-            case (ty::ty_ptr(?mt)) {
-                ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
-            }
-            case (ty::ty_tup(?mts)) {
+            ty::ty_tup(?mts) {
                 for (ty::mt mt in mts) {
                     if (helper(tcx, needle, mt.ty, get_mut(mut, mt))) {
                         ret true;
@@ -639,7 +644,7 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
                 }
                 ret false;
             }
-            case (ty::ty_rec(?fields)) {
+            ty::ty_rec(?fields) {
                 for (ty::field f in fields) {
                     if (helper(tcx, needle, f.mt.ty, get_mut(mut, f.mt))) {
                         ret true;
@@ -647,21 +652,17 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
                 }
                 ret false;
             }
-            case (
-                 // These may contain anything.
-                 ty::ty_fn(_, _, _, _, _)) {
+            // These may contain anything.
+            ty::ty_fn(_, _, _, _, _) {
                 ret true;
             }
-            case (ty::ty_obj(_)) { ret true; }
-            case (
-                 // A type param may include everything, but can only be
-                 // treated as opaque downstream, and is thus safe unless we
-                 // saw mutable fields, in which case the whole thing can be
-                 // overwritten.
-                 ty::ty_param(_)) {
-                ret mut;
-            }
-            case (_) { ret false; }
+            ty::ty_obj(_) { ret true; }
+            // A type param may include everything, but can only be
+            // treated as opaque downstream, and is thus safe unless we
+            // saw mutable fields, in which case the whole thing can be
+            // overwritten.
+            ty::ty_param(_) { ret mut; }
+            _ { ret false; }
         }
     }
     ret helper(*cx.tcx, needle, haystack, mut);
@@ -669,19 +670,16 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
 
 fn def_is_local(&ast::def d, bool objfields_count) -> bool {
     ret alt (d) {
-            case (ast::def_local(_)) { true }
-            case (ast::def_arg(_)) { true }
-            case (ast::def_obj_field(_)) { objfields_count }
-            case (ast::def_binding(_)) { true }
-            case (_) { false }
-        };
+        ast::def_local(_) | ast::def_arg(_) | ast::def_binding(_) { true }
+        ast::def_obj_field(_) { objfields_count }
+        _ { false }
+    };
 }
 
 fn fty_args(&ctx cx, ty::t fty) -> ty::arg[] {
     ret alt (ty::struct(*cx.tcx, ty::type_autoderef(*cx.tcx, fty))) {
-            case (ty::ty_fn(_, ?args, _, _, _)) { args }
-            case (ty::ty_native_fn(_, ?args, _)) { args }
-        };
+        ty::ty_fn(_, ?args, _, _, _) | ty::ty_native_fn(_, ?args, _) { args }
+    };
 }
 // Local Variables:
 // mode: rust
