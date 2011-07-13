@@ -1,4 +1,5 @@
 // xfail-stage0
+// xfail-fast
 
 fn f() -> int { ret 1; }
 

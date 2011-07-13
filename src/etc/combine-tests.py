@@ -25,7 +25,8 @@ for t in os.listdir(run_pass):
     if t.endswith(".rs"):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
-        if not ("xfail-stage2" in s):
+        if not ("xfail-stage2" in s or
+                "xfail-fast" in s):
             stage2_tests.append(t)
             if "main(vec[str] args)" in s:
                 take_args[t] = True
