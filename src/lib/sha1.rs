@@ -14,6 +14,8 @@ type sha1 =
             // Provide message input as bytes
             fn input(&vec[u8]) ;
 
+            fn input_ivec(&u8[]);
+
             // Provide message input as string
             fn input_str(&str) ;
 
@@ -21,6 +23,8 @@ type sha1 =
             // calling this no further input may provided
             // until reset is called
             fn result() -> vec[u8] ;
+
+            fn result_ivec() -> u8[];
 
             // Same as above, just a hex-string version.
             fn result_str() -> str ;
@@ -50,15 +54,15 @@ const u32 k3 = 0xCA62C1D6u32;
 // Builds a sha1 object
 fn mk_sha1() -> sha1 {
     type sha1state =
-        rec(vec[mutable u32] h,
+        rec(u32[mutable] h,
             mutable u32 len_low,
             mutable u32 len_high,
-            vec[mutable u8] msg_block,
+            u8[mutable] msg_block,
             mutable uint msg_block_idx,
             mutable bool computed,
-            vec[mutable u32] work_buf);
+            u32[mutable] work_buf);
 
-    fn add_input(&sha1state st, &vec[u8] msg) {
+    fn add_input(&sha1state st, &u8[] msg) {
         // FIXME: Should be typestate precondition
 
         assert (!st.computed);
@@ -80,8 +84,8 @@ fn mk_sha1() -> sha1 {
     fn process_msg_block(&sha1state st) {
         // FIXME: Make precondition
 
-        assert (vec::len(st.h) == digest_buf_len);
-        assert (vec::len(st.work_buf) == work_buf_len);
+        assert (ivec::len(st.h) == digest_buf_len);
+        assert (ivec::len(st.work_buf) == work_buf_len);
         let int t; // Loop counter
 
         auto w = st.work_buf;
@@ -160,15 +164,15 @@ fn mk_sha1() -> sha1 {
     fn circular_shift(u32 bits, u32 word) -> u32 {
         ret word << bits | word >> 32u32 - bits;
     }
-    fn mk_result(&sha1state st) -> vec[u8] {
+    fn mk_result(&sha1state st) -> u8[] {
         if (!st.computed) { pad_msg(st); st.computed = true; }
-        let vec[u8] rs = [];
+        let u8[] rs = ~[];
         for (u32 hpart in st.h) {
             auto a = hpart >> 24u32 & 0xFFu32 as u8;
             auto b = hpart >> 16u32 & 0xFFu32 as u8;
             auto c = hpart >> 8u32 & 0xFFu32 as u8;
             auto d = hpart & 0xFFu32 as u8;
-            rs += [a, b, c, d];
+            rs += ~[a, b, c, d];
         }
         ret rs;
     }
@@ -185,7 +189,7 @@ fn mk_sha1() -> sha1 {
     fn pad_msg(&sha1state st) {
         // FIXME: Should be a precondition
 
-        assert (vec::len(st.msg_block) == msg_block_len);
+        assert (ivec::len(st.msg_block) == msg_block_len);
         /*
          * Check to see if the current message block is too small to hold
          * the initial padding bits and length.  If so, we will pad the
@@ -224,7 +228,7 @@ fn mk_sha1() -> sha1 {
         fn reset() {
             // FIXME: Should be typestate precondition
 
-            assert (vec::len(st.h) == digest_buf_len);
+            assert (ivec::len(st.h) == digest_buf_len);
             st.len_low = 0u32;
             st.len_high = 0u32;
             st.msg_block_idx = 0u;
@@ -235,9 +239,20 @@ fn mk_sha1() -> sha1 {
             st.h.(4) = 0xC3D2E1F0u32;
             st.computed = false;
         }
-        fn input(&vec[u8] msg) { add_input(st, msg); }
-        fn input_str(&str msg) { add_input(st, str::bytes(msg)); }
-        fn result() -> vec[u8] { ret mk_result(st); }
+        fn input(&vec[u8] msg) {
+            auto m = ~[];
+            for (u8 b in msg) { m += ~[b]; }
+            add_input(st, m);
+        }
+        fn input_ivec(&u8[] msg) { add_input(st, msg); }
+        fn input_str(&str msg) { add_input(st, str::bytes_ivec(msg)); }
+        fn result() -> vec[u8] {
+            auto rivec = mk_result(st);
+            auto rvec = [];
+            for (u8 b in rivec) { rvec += [b]; }
+            ret rvec;
+        }
+        fn result_ivec() -> u8[] { ret mk_result(st); }
         fn result_str() -> str {
             auto r = mk_result(st);
             auto s = "";
@@ -246,13 +261,13 @@ fn mk_sha1() -> sha1 {
         }
     }
     auto st =
-        rec(h=vec::init_elt_mut[u32](0u32, digest_buf_len),
+        rec(h=ivec::init_elt_mut[u32](0u32, digest_buf_len),
             mutable len_low=0u32,
             mutable len_high=0u32,
-            msg_block=vec::init_elt_mut[u8](0u8, msg_block_len),
+            msg_block=ivec::init_elt_mut[u8](0u8, msg_block_len),
             mutable msg_block_idx=0u,
             mutable computed=false,
-            work_buf=vec::init_elt_mut[u32](0u32, work_buf_len));
+            work_buf=ivec::init_elt_mut[u32](0u32, work_buf_len));
     auto sh = sha1(st);
     sh.reset();
     ret sh;
