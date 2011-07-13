@@ -948,15 +948,13 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         hi = e.span.hi;
         ex = ast::expr_check(ast::unchecked, e);
     } else if (eat_word(p, "ret")) {
-        alt (p.peek()) {
-            case (token::SEMI) { ex = ast::expr_ret(none); }
-            // Handle ret as the block result expression
-            case (token::RBRACE) { ex = ast::expr_ret(none); }
-            case (_) {
-                auto e = parse_expr(p);
-                hi = e.span.hi;
-                ex = ast::expr_ret(some(e));
-            }
+        if (can_begin_expr(p.peek())) {
+            auto e = parse_expr(p);
+            hi = e.span.hi;
+            ex = ast::expr_ret(some(e));
+        }
+        else {
+            ex = ast::expr_ret(none);
         }
     } else if (eat_word(p, "break")) {
         ex = ast::expr_break;
