@@ -165,20 +165,15 @@ check-stage2: tidy \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2) \
 
-# FIXME: This duplicate rule is only here until the tinderbox scripts
-# are fixed to use the check-stage2 rule
-stage2-check: tidy \
-       check-stage2
-
 check: tidy \
        $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2) \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2)
 
-fast-check: tidy \
+check-fast: tidy \
        test/$(FT_DRIVER).out
 
-full-check: tidy \
+check-full: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
        $(TEST_RPASS_OUTS_STAGE0) $(TEST_RFAIL_OUTS_STAGE0) \
        $(TEST_CFAIL_OUTS_STAGE0) \
@@ -189,7 +184,7 @@ full-check: tidy \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2)
 
-compile-check: tidy \
+check-compile: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
        $(TEST_RPASS_EXES_STAGE1) $(TEST_RFAIL_EXES_STAGE1) \
        $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2)
