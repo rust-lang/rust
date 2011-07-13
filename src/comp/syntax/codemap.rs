@@ -85,7 +85,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             //        get access to the necessary lines.
             auto rdr = ioivec::file_reader(lines.name);
             auto file = str::unsafe_from_bytes_ivec(rdr.read_whole_stream());
-            auto fm = codemap::get_filemap(cm, lines.name);
+            auto fm = get_filemap(cm, lines.name);
 
             // arbitrarily only print up to six lines of the error
             auto max_lines = 6u;
@@ -99,7 +99,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             for (uint line in display_lines) {
                 ioivec::stdout().write_str(#fmt("%s:%u ", fm.name,
                                                 line + 1u));
-                auto s = codemap::get_line(fm, line as int, file);
+                auto s = get_line(fm, line as int, file);
                 if (!str::ends_with(s, "\n")) {
                     s += "\n";
                 }
@@ -119,6 +119,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             // If there's one line at fault we can easily point to the problem
             if (ivec::len(lines.lines) == 1u) {
                 auto lo = codemap::lookup_pos(cm, option::get(sp).lo);
+                auto lo = lookup_pos(cm, option::get(sp).lo);
                 auto digits = 0u;
                 auto num = lines.lines.(0) / 10u;
 
@@ -131,7 +132,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                 while (left > 0u) { str::push_char(s, ' '); left -= 1u; }
 
                 s += "^";
-                auto hi = codemap::lookup_pos(cm, option::get(sp).hi);
+                auto hi = lookup_pos(cm, option::get(sp).hi);
                 if (hi.col != lo.col) {
                     // the ^ already takes up one space
                     auto width = hi.col - lo.col - 1u;
@@ -170,13 +171,14 @@ fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
 }
 
 fn get_line(filemap fm, int line, &str file) -> str {
+    let uint begin = fm.lines.(line) - fm.lines.(0);
     let uint end;
     if ((line as uint) + 1u >= ivec::len(fm.lines)) {
         end = str::byte_len(file);
     } else {
-        end = fm.lines.(line + 1);
+        end = fm.lines.(line + 1) - fm.lines.(0);
     }
-    ret str::slice(file, fm.lines.(line), end);
+    ret str::slice(file, begin, end);
 }
 
 fn get_filemap(codemap cm, str filename) -> filemap {
