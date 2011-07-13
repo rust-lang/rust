@@ -312,6 +312,7 @@ fn arm_defnums(&ast::arm arm) -> vec[node_id] {
             case (ast::pat_rec(?fields, _)) {
                 for (ast::field_pat f in fields) { walk_pat(found, f.pat); }
             }
+            case (ast::pat_box(?inner)) { walk_pat(found, inner); }
             case (_) { }
         }
     }

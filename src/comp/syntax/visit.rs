@@ -200,6 +200,7 @@ fn visit_pat[E](&@pat p, &E e, &vt[E] v) {
         case (pat_rec(?fields, _)) {
             for (field_pat f in fields) { v.visit_pat(f.pat, e, v); }
         }
+        case (pat_box(?inner)) { v.visit_pat(inner, e, v); }
         case (_) { }
     }
 }

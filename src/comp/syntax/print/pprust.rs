@@ -1136,6 +1136,10 @@ fn print_pat(&ps s, &@ast::pat pat) {
             }
             word(s.s, "}");
         }
+        case (ast::pat_box(?inner)) {
+            word(s.s, "@");
+            print_pat(s, inner);
+        }
     }
     s.ann.post(ann_node);
 }

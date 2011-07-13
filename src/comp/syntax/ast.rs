@@ -126,6 +126,7 @@ tag pat_ {
     pat_lit(@lit);
     pat_tag(path, (@pat)[]);
     pat_rec(field_pat[], bool);
+    pat_box(@pat);
 }
 
 type pat_id_map = std::map::hashmap[str, ast::node_id];
@@ -143,6 +144,7 @@ fn pat_id_map(&@pat pat) -> pat_id_map {
             pat_rec(?fields, _) {
                 for (field_pat f in fields) { walk(map, f.pat); }
             }
+            pat_box(?inner) { walk(map, inner); }
             _ {}
         }
     }

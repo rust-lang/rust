@@ -192,6 +192,7 @@ fn walk_pat(&ast_visitor v, &@ast::pat p) {
         case (ast::pat_rec(?fields, _)) {
             for (ast::field_pat f in fields) { walk_pat(v, f.pat); }
         }
+        case (ast::pat_box(?inner)) { walk_pat(v, inner); }
         case (_) { }
     }
     v.visit_pat_post(p);

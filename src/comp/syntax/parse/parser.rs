@@ -1459,6 +1459,12 @@ fn parse_pat(&parser p) -> @ast::pat {
                 }
             }
         }
+        case (token::AT) {
+            p.bump();
+            auto sub = parse_pat(p);
+            pat = ast::pat_box(sub);
+            hi = sub.span.hi;
+        }
         case (token::LBRACE) {
             p.bump();
             auto fields = ~[];
@@ -2313,9 +2319,8 @@ fn parse_rest_import_name(&parser p, ast::ident first,
         }
         alt (p.peek()) {
             case (token::IDENT(_, _)) { identifiers += ~[parse_ident(p)]; }
-            case (
-                 //the lexer can't tell the different kinds of stars apart ) :
-                 token::BINOP(token::STAR)) {
+            //the lexer can't tell the different kinds of stars apart ) :
+            case (token::BINOP(token::STAR)) {
                 glob = true;
                 p.bump();
             }

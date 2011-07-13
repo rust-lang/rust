@@ -1435,6 +1435,20 @@ fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
             }
             write::ty_only_fixup(fcx, pat.id, expected);
         }
+        case (ast::pat_box(?inner)) {
+            alt (structure_of(fcx, pat.span, expected)) {
+                case (ty::ty_box(?e_inner)) {
+                    check_pat(fcx, map, inner, e_inner.ty);
+                    write::ty_only_fixup(fcx, pat.id, expected);
+                }
+                case (_) {
+                    fcx.ccx.tcx.sess.span_fatal
+                        (pat.span, "mismatched types: expected " +
+                         ty_to_str(fcx.ccx.tcx, expected) +
+                         " found box");
+                }
+            }
+        }
     }
 }
 

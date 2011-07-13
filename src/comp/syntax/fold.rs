@@ -292,6 +292,7 @@ fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {
             }
             pat_rec(fs, etc)
         }
+        case (pat_box(?inner)) { pat_box(fld.fold_pat(inner)) }
     };
 }
 
