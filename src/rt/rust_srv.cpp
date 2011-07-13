@@ -1,13 +1,8 @@
-/*
- *
- */
-
 #include "rust_internal.h"
 #include "rust_srv.h"
 
 rust_srv::rust_srv() :
     local_region(this, false) {
-    // Nop.
 }
 
 rust_srv::~rust_srv() {}
@@ -79,3 +74,14 @@ rust_srv *
 rust_srv::clone() {
     return new rust_srv();
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

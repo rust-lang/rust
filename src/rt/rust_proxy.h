@@ -17,7 +17,6 @@ protected:
     T *_referent;
 public:
     maybe_proxy(T *referent) : _referent(referent) {
-        // Nop.
     }
 
     T *referent() {
@@ -50,12 +49,10 @@ private:
 public:
     rust_proxy(rust_handle<T> *handle) :
         maybe_proxy<T> (NULL), _strong(FALSE), _handle(handle) {
-        // Nop.
     }
 
     rust_proxy(T *referent) :
         maybe_proxy<T> (referent), _strong(FALSE), _handle(NULL) {
-        // Nop.
     }
 
     rust_handle<T> *handle() {

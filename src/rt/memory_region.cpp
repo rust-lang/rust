@@ -16,7 +16,6 @@ memory_region::memory_region(memory_region *parent) :
     _srv(parent->_srv), _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
     _synchronized(parent->_synchronized) {
-    // Nop.
 }
 
 void memory_region::add_alloc() {

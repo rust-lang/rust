@@ -130,7 +130,6 @@ upcall_new_chan(rust_task *task, rust_port *port) {
 extern "C" CDECL void
 upcall_flush_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
-    // Nop.
 }
 
 /**

@@ -10,7 +10,6 @@ template<typename T> class synchronized_indexed_list :
 
 public:
     synchronized_indexed_list() {
-        // Nop.
     }
 
     int32_t append(T *value) {

@@ -16,7 +16,6 @@ public:
         public:
         rust_kernel *kernel;
         worker(rust_kernel *kernel) : kernel(kernel) {
-            // Nop.
         }
         void run();
     };
@@ -30,7 +29,6 @@ class rust_task_test : public rust_test {
 public:
     rust_test_suite *suite;
     rust_task_test(rust_test_suite *suite) : suite(suite) {
-        // Nop.
     }
     class worker : public rust_thread {
         public:
@@ -38,7 +36,6 @@ public:
         rust_task_test *parent;
         worker(rust_kernel *kernel, rust_task_test *parent) :
             kernel(kernel), parent(parent) {
-            // Nop.
         }
         void run();
     };

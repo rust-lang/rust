@@ -72,5 +72,4 @@ timer::time_us() {
 }
 
 timer::~timer() {
-    // Nop.
 }

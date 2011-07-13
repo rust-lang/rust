@@ -15,7 +15,6 @@ class indexed_list_element : public indexed_list_object {
 public:
     T value;
     indexed_list_element(T value) : value(value) {
-        // Nop;
     }
 };
 

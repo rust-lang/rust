@@ -21,14 +21,12 @@ public:
     synchronized_indexed_list<indexed_list_element<int> > list;
 
     rust_synchronized_indexed_list_test() {
-        // Nop.
     }
 
     class worker : public rust_thread {
     public:
         rust_synchronized_indexed_list_test *parent;
         worker(rust_synchronized_indexed_list_test *parent) : parent(parent) {
-            // Nop.
         }
         void run();
     };

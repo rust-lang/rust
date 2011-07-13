@@ -13,7 +13,6 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
               rt/rust_task_list.cpp \
-              rt/rust_proxy.cpp \
               rt/rust_chan.cpp \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \

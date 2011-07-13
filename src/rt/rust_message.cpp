@@ -8,15 +8,12 @@ rust_message(memory_region *region, const char* label,
 }
 
 rust_message::~rust_message() {
-    // Nop.
 }
 
 void rust_message::process() {
-    // Nop.
 }
 
 void rust_message::kernel_process() {
-    // Nop.
 }
 
 notify_message::
@@ -113,7 +110,6 @@ rust_message_queue::rust_message_queue(rust_srv *srv, rust_kernel *kernel)
     : region(srv, true),
       kernel(kernel),
       sched_handle(NULL) {
-    // Nop.
 }
 
 //

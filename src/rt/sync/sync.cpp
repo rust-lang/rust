@@ -20,7 +20,6 @@ void sync::sleep(size_t timeout_in_ms) {
 }
 
 rust_thread::rust_thread() : _is_running(false), thread(0) {
-    // Nop.
 }
 
 #if defined(__WIN32__)

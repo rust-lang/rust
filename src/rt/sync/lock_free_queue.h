@@ -50,7 +50,6 @@ class lock_free_queue {
         node_t *node;
         uint32_t count;
         pointer_t() : node(NULL), count(0) {
-            // Nop.
         }
         pointer_t(node_t *node, uint32_t count) {
             this->node = node;

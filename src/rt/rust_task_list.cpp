@@ -2,7 +2,6 @@
 
 rust_task_list::rust_task_list (rust_scheduler *sched, const char* name) :
     sched(sched), name(name) {
-    // Nop;
 }
 
 void
