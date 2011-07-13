@@ -3,6 +3,7 @@ import std::int;
 import std::ivec;
 import std::str;
 import std::uint;
+import std::vec;
 import std::box;
 import std::ufindivec;
 import std::map;
@@ -1038,16 +1039,24 @@ fn type_has_pointers(&ctxt cx, &t ty) -> bool {
         case (ty_tag(?did, ?tps)) {
             auto variants = tag_variants(cx, did);
             for (variant_info variant in variants) {
-                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // TODO: Remove this vec->ivec conversion.
+                auto args = ~[];
+                for (ty::t arg in variant.args) { args += ~[arg]; }
 
+                auto tup_ty = mk_imm_tup(cx, args);
                 // Perform any type parameter substitutions.
+
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
                 if (type_has_pointers(cx, tup_ty)) { result = true; }
             }
         }
         case (ty_res(?did, ?inner, ?tps)) {
-            result = type_has_pointers(cx,
-                substitute_type_params(cx, tps, inner));
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+            result = type_has_pointers
+                (cx, substitute_type_params(cx, tps_ivec, inner));
         }
         case (_) { result = true; }
     }
@@ -1212,7 +1221,11 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
         case (ty_tag(?did, ?tps)) {
             auto variants = tag_variants(cx, did);
             for (variant_info variant in variants) {
-                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // TODO: Remove this vec->ivec conversion.
+                auto args = ~[];
+                for (ty::t arg in variant.args) { args += ~[arg]; }
+
+                auto tup_ty = mk_imm_tup(cx, args);
 
                 // Perform any type parameter substitutions.
                 tup_ty = substitute_type_params(cx, tps, tup_ty);
@@ -1230,8 +1243,12 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_res(_, ?inner, ?tps)) {
-            result = type_owns_heap_mem(cx,
-                substitute_type_params(cx, tps, inner));
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+            result = type_owns_heap_mem
+                (cx, substitute_type_params(cx, tps_ivec, inner));
         }
 
         case (ty_ptr(_)) { result = false; }
@@ -1262,7 +1279,11 @@ fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
         alt (struct(cx, t1)) {
             case (ty::ty_box(?mt)) { t1 = mt.ty; }
             case (ty::ty_res(_, ?inner, ?tps)) {
-                t1 = substitute_type_params(cx, tps, inner);
+                // FIXME: Remove this vec->ivec conversion.
+                auto tps_ivec = ~[];
+                for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+                t1 = substitute_type_params(cx, tps_ivec, inner);
             }
             case (ty::ty_tag(?did, ?tps)) {
                 auto variants = tag_variants(cx, did);
@@ -1742,7 +1763,13 @@ fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
    t {
     alt (tpot._0) {
         case (none) { ret tpot._1; }
-        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot._1); }
+        case (some(?tps)) {
+            // FIXME: Remove this vec->ivec conversion.
+            auto tps_ivec = ~[];
+            for (ty::t tp in tps) { tps_ivec += ~[tp]; }
+
+            ret substitute_type_params(cx, tps_ivec, tpot._1);
+        }
     }
 }
 
@@ -2952,13 +2979,13 @@ fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
     /*.          add,     shift,   bit
       .             sub,     rel,     logic
       .                mult,    eq,         */
-    auto tbl = ~[~[f, f, f, f, t, t, f, f], /*other*/
-                 ~[f, f, f, f, t, t, t, t], /*bool*/
-                 ~[t, t, t, t, t, t, t, f], /*int*/
-                 ~[t, t, t, f, t, t, f, f], /*float*/
-                 ~[t, f, f, f, t, t, f, f], /*str*/
-                 ~[t, f, f, f, t, t, f, f], /*vec*/
-                 ~[f, f, f, f, t, t, f, f]];/*struct*/
+    auto tbl = [[f, f, f, f, t, t, f, f], /*other*/
+                [f, f, f, f, t, t, t, t], /*bool*/
+                [t, t, t, t, t, t, t, f], /*int*/
+                [t, t, t, f, t, t, f, f], /*float*/
+                [t, f, f, f, t, t, f, f], /*str*/
+                [t, f, f, f, t, t, f, f], /*vec*/
+                [f, f, f, f, t, t, f, f]];/*struct*/
 
     ret tbl.(tycat(cx, ty)).(opcat(op));
 }
