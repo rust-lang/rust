@@ -1,3 +1,8 @@
+
+
+// -*- rust -*-
+
+use std;
 import std::sha1;
 import std::vec;
 import std::str;

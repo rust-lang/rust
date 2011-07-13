@@ -1,8 +1,35 @@
 use std;
 
-mod sha1;
+mod bitv;
+mod box;
+mod deque;
+mod either;
+mod fs;
+mod getopts;
 mod int;
+mod io;
+mod ivec;
+mod list;
+mod map;
+mod option;
+mod os;
+mod path;
+mod ptr;
+mod qsort3;
+mod qsort;
+mod rand;
+mod run;
+mod sha1;
+mod sort_ivec;
+mod sort;
+mod str_buf;
+mod str;
+mod task;
 mod test;
+mod uint;
+mod vec;
+mod vec_str_conversions;
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

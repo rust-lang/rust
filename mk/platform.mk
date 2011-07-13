@@ -63,24 +63,27 @@ ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
 
-CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
- $(if $(findstring stage0,$(1)),         \
-       stage0/lib,                           \
-      $(if $(findstring stage1,$(1)),    \
-           stage1/lib,                       \
-          $(if $(findstring stage2,$(1)),\
-               stage2/lib,                   \
-               ))))
+CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip \
+ $(if $(findstring stage0,$(1)), \
+       stage0/lib, \
+      $(if $(findstring stage1,$(1)), \
+           stage1/lib, \
+          $(if $(findstring stage2,$(1)), \
+               stage2/lib, \
+               $(if $(findstring stage3,$(1)), \
+                    stage3/lib, \
+               )))))
 
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
-  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1) $(2)
-  CFG_RUN_TEST=\
-      $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)) \
-      $(CFG_VALGRIND) $(1)
+  CFG_LDPATH :=
+  CFG_RUN=$(CFG_LDENV)=$(1) $(2)
+  CFG_RUN_TARG=$(call CFG_RUN,$(CFG_BUILD_DIR)/$(1),$(2))
+  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),\
+      $(CFG_VALGRIND) $(1))
 
   ifdef CFG_ENABLE_MINGW_CROSS
     CFG_WINDOWSY := 1
@@ -117,8 +120,9 @@ ifdef CFG_WINDOWSY
   CFG_DEF_SUFFIX := .def
   CFG_LDPATH :=$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
-  CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(2)
+  CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
+  CFG_RUN_TARG=$(call CFG_RUN,,$(2))
+  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),$(1))
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \

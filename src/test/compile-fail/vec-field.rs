@@ -1,5 +1,5 @@
 // xfail-stage0
-// error-pattern:attempted field access on type vec\[int\]
+// error-pattern:attempted field access on type vec[int]
 // issue #367
 
 fn f() {

@@ -1,5 +1,5 @@
 // xfail-stage0
-// error-pattern:expecting \]
+// error-pattern:expecting ]
 
 // asterisk is bogus
 #[attr*]

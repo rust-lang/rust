@@ -14,6 +14,7 @@ export test_opts;
 export tr_ok;
 export tr_failed;
 export tr_ignored;
+export run_tests_console;
 export run_test;
 export filter_tests;
 export parse_opts;
@@ -51,7 +52,7 @@ fn test_main(&vec[str] args, &test_desc[] tests) {
         either::left(?o) { o }
         either::right(?m) { fail m }
     };
-    if (!run_tests(opts, tests)) {
+    if (!run_tests_console(opts, tests)) {
         fail "Some tests failed";
     }
 }
@@ -94,7 +95,7 @@ tag test_result {
 }
 
 // A simple console test runner
-fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
+fn run_tests_console(&test_opts opts, &test_desc[] tests) -> bool {
 
     auto filtered_tests = filter_tests(opts, tests);
 
