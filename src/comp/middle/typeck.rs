@@ -4,6 +4,7 @@ import ast::mutability;
 import ast::local_def;
 import ast::path_to_str;
 import ast::respan;
+import ast::spanned;
 import syntax::walk;
 import metadata::csearch;
 import driver::session;
@@ -2177,16 +2178,21 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 case (none) {/* no-op */ }
                 case (some(?b_0)) { check_expr(fcx, b_0); }
             }
-            let field[] fields_t = ~[];
+            let (spanned[field])[] fields_t = ~[];
             for (ast::field f in fields) {
                 check_expr(fcx, f.node.expr);
                 auto expr_t = expr_ty(fcx.ccx.tcx, f.node.expr);
                 auto expr_mt = rec(ty=expr_t, mut=f.node.mut);
-                fields_t += ~[rec(ident=f.node.ident, mt=expr_mt)];
+                // for the most precise error message,
+                // should be f.node.expr.span, not f.span
+                fields_t += ~[respan(f.node.expr.span,
+                                     rec(ident=f.node.ident, mt=expr_mt))];
             }
             alt (base) {
                 case (none) {
-                    auto typ = ty::mk_rec(fcx.ccx.tcx, fields_t);
+                    fn get_node(&spanned[field] f) -> field { f.node }
+                    auto typ = ty::mk_rec(fcx.ccx.tcx, 
+                                          ivec::map(get_node, fields_t));
                     write::ty_only_fixup(fcx, id, typ);
                 }
                 case (some(?bexpr)) {
@@ -2202,20 +2208,20 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         }
                     }
                     write::ty_only_fixup(fcx, id, bexpr_t);
-                    for (ty::field f in fields_t) {
+                    for (spanned[ty::field] f in fields_t) {
                         auto found = false;
                         for (ty::field bf in base_fields) {
-                            if (str::eq(f.ident, bf.ident)) {
-                                demand::simple(fcx, expr.span, bf.mt.ty,
-                                               f.mt.ty);
+                            if (str::eq(f.node.ident, bf.ident)) {
+                                demand::simple(fcx, f.span, bf.mt.ty,
+                                               f.node.mt.ty);
                                 found = true;
                             }
                         }
                         if (!found) {
-                            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                            fcx.ccx.tcx.sess.span_fatal(f.span,
                                                       "unknown field in \
                                                        record update: "
-                                                      + f.ident);
+                                                      + f.node.ident);
                         }
                     }
                 }
