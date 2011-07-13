@@ -170,8 +170,8 @@ upcall_yield(rust_task *task) {
 extern "C" CDECL void
 upcall_sleep(rust_task *task, size_t time_in_us) {
     LOG_UPCALL_ENTRY(task);
-    LOG(task, task, "elapsed %d",
-              task->yield_timer.get_elapsed_time());
+    LOG(task, task, "elapsed %" PRIu64 " us",
+              task->yield_timer.elapsed_us());
     LOG(task, task, "sleep %d us", time_in_us);
     task->yield(2, time_in_us);
 }

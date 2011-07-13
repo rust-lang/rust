@@ -162,7 +162,7 @@ rust_task::start(uintptr_t spawnee_fn,
 
     ctx.call((void *)task_start_wrapper, a, sp);
 
-    yield_timer.reset(0);
+    yield_timer.reset_us(0);
     transition(&sched->newborn_tasks, &sched->running_tasks);
 }
 
@@ -188,7 +188,7 @@ rust_task::yield(size_t nargs, size_t time_in_us) {
 
     // FIXME: what is nargs for, and is it safe to ignore?
 
-    yield_timer.reset(time_in_us);
+    yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
     ctx.next->swap(ctx);

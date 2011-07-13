@@ -30,7 +30,7 @@ rust_test_suite::run() {
         timer timer;
         bool result = tests[i]->run();
         printf("test: %s %s %.2f ms\n", test->name(),
-               result ? "PASSED" : "FAILE", timer.get_elapsed_time_in_ms());
+               result ? "PASS" : "FAIL", timer.elapsed_ms());
         if (result == false) {
             pass = false;
         }

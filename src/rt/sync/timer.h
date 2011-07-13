@@ -7,20 +7,20 @@
 
 class timer {
 private:
-    uint64_t _start;
-    uint64_t _timeout;
-    uint64_t get_time();
+    uint64_t _start_us;
+    uint64_t _timeout_us;
+    uint64_t time_us();
 #if __WIN32__
-    uint64_t _ticks_per_ns;
+    uint64_t _ticks_per_s;
 #endif
 public:
     timer();
-    void reset(uint64_t timeout);
-    uint64_t get_elapsed_time();
-    double get_elapsed_time_in_ms();
-    int64_t get_timeout();
+    void reset_us(uint64_t timeout);
+    uint64_t elapsed_us();
+    double elapsed_ms();
+    int64_t remaining_us();
     bool has_timed_out();
-    uint64_t nano_time();
+    uint64_t time_ns();
     virtual ~timer();
 };
 

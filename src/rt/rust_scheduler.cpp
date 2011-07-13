@@ -148,10 +148,11 @@ rust_scheduler::log_state() {
     if (!running_tasks.is_empty()) {
         log(NULL, log_note, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR " timeout: %d",
+            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR
+                " remaining: %" PRId64 " us",
                 running_tasks[i]->name,
                 running_tasks[i],
-                running_tasks[i]->yield_timer.get_timeout());
+                running_tasks[i]->yield_timer.remaining_us());
         }
     }
 
