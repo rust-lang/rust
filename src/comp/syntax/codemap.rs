@@ -26,7 +26,7 @@ fn new_codemap() -> codemap {
 }
 
 fn new_filemap(filename filename, uint start_pos) -> filemap {
-    ret @rec(name=filename, start_pos=start_pos, mutable lines=~[0u]);
+    ret @rec(name=filename, start_pos=start_pos, mutable lines=[start_pos]);
 }
 
 fn next_line(filemap file, uint pos) { file.lines += ~[pos]; }
@@ -170,10 +170,18 @@ fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
 fn get_line(filemap fm, int line, &str file) -> str {
     let uint begin = fm.lines.(line) - fm.start_pos;
     let uint end;
-    if ((line as uint) + 1u >= ivec::len(fm.lines)) {
-        end = str::byte_len(file);
-    } else {
+    if (line as uint < ivec::len(fm.lines) - 1u) {
         end = fm.lines.(line + 1) - fm.start_pos;
+    } else {
+        // If we're not done parsing the file, we're at the limit of what's
+        // parsed. If we just slice the rest of the string, we'll print out
+        // the remainder of the file, which is undesirable.
+        end = str::byte_len(file);
+        auto rest = str::slice(file, begin, end);
+        auto newline = str::index(rest, '\n' as u8);
+        if (newline != -1) {
+            end = begin + (newline as uint);
+        }
     }
     ret str::slice(file, begin, end);
 }
