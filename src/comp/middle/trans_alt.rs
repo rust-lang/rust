@@ -164,6 +164,23 @@ fn enter_rec(&@crate_ctxt ccx, &match m, uint col, &ast::ident[] fields,
     ret result;
 }
 
+fn enter_box(&@crate_ctxt ccx, &match m, uint col, ValueRef val) -> match {
+    auto result = ~[];
+    auto dummy = @rec(id=0, node=ast::pat_wild, span=rec(lo=0u, hi=0u));
+    for (match_branch br in m) {
+        auto pats = ivec::slice(br.pats, 0u, col);
+        alt (br.pats.(col).node) {
+            ast::pat_box(?sub) { pats += ~[sub]; }
+            _ { pats += ~[dummy]; }
+        }
+        pats += ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
+        auto new_br = @rec(pats=pats with *br);
+        result += ~[new_br];
+        bind_for_pat(br.pats.(col), new_br, val);
+    }
+    ret result;
+}
+
 fn get_options(&@crate_ctxt ccx, &match m, uint col) -> opt[] {
     fn add_to_set(&mutable opt[] set, &opt val) {
         for (opt l in set) {
@@ -211,6 +228,33 @@ fn extract_variant_args(@block_ctxt bcx, ast::node_id pat_id,
     ret tup(args, bcx);
 }
 
+fn collect_record_fields(&match m, uint col) -> ast::ident[] {
+    auto fields = ~[];
+    for (match_branch br in m) {
+        alt (br.pats.(col).node) {
+            ast::pat_rec(?fs, _) {
+                for (ast::field_pat f in fs) {
+                    if (!ivec::any(bind str::eq(f.ident, _), fields)) {
+                        fields += ~[f.ident];
+                    }
+                }
+            }
+            _ {}
+        }
+    }
+    ret fields;
+}
+
+fn any_box_pat(&match m, uint col) -> bool {
+    for (match_branch br in m) {
+        alt (br.pats.(col).node) {
+            ast::pat_box(_) { ret true; }
+            _ {}
+        }
+    }
+    ret false;
+}
+
 type exit_node = rec(bind_map bound,
                      BasicBlockRef from,
                      BasicBlockRef to);
@@ -236,24 +280,13 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
     auto vals_left = ivec::slice(vals, 1u, ivec::len(vals));
     auto ccx = bcx.fcx.lcx.ccx;
     auto pat_id = 0;
-
-    auto rec_fields = ~[];
     for (match_branch br in m) {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if (pat_id == 0) { pat_id = br.pats.(col).id; }
-        // Gather field names
-        alt (br.pats.(col).node) {
-            ast::pat_rec(?fs, _) {
-                for (ast::field_pat f in fs) {
-                    if (!ivec::any(bind str::eq(f.ident, _), rec_fields)) {
-                        rec_fields += ~[f.ident];
-                    }
-                }
-            }
-            _ {}
-        }
     }
+
+    auto rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
     if (ivec::len(rec_fields) > 0u) {
         auto rec_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
@@ -270,6 +303,16 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
         }
         compile_submatch(bcx, enter_rec(ccx, m, col, rec_fields, val),
                          rec_vals + vals_left, f, exits);
+        ret;
+    }
+
+    // Unbox in case of a box field
+    if (any_box_pat(m, col)) {
+        auto box = bcx.build.Load(val);
+        auto unboxed = bcx.build.InBoundsGEP
+            (box, ~[C_int(0), C_int(back::abi::box_rc_field_body)]);
+        compile_submatch(bcx, enter_box(ccx, m, col, val),
+                         ~[unboxed] + vals_left, f, exits);
         ret;
     }
 
