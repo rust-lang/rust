@@ -64,8 +64,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
         case (some(?ssp)) {
             ss = span_to_str(ssp, cm);
 
-            // FIXME: we're not able to look up lines read from .rc files yet.
-            // maybe_lines = some(span_to_lines(ssp, cm));
+            maybe_lines = some(span_to_lines(ssp, cm));
 
         }
         case (none) { }
