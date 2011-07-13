@@ -84,63 +84,61 @@ fn bind_for_pat(&@ast::pat p, &match_branch br, ValueRef val) {
     }
 }
 
-fn enter_default(&match m, uint col, ValueRef val) -> match {
+type enter_pat = fn(&@ast::pat) -> option::t[(@ast::pat)[]];
+
+fn enter_match(&match m, uint col, ValueRef val, &enter_pat e) -> match {
     auto result = ~[];
     for (match_branch br in m) {
-        if (matches_always(br.pats.(col))) {
-            auto pats = ivec::slice(br.pats, 0u, col) +
-                ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
-            auto new_br = @rec(pats=pats with *br);
-            result += ~[new_br];
-            bind_for_pat(br.pats.(col), new_br, val);
+        alt (e(br.pats.(col))) {
+            some(?sub) {
+                auto pats = ivec::slice(br.pats, 0u, col) +
+                    sub + ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
+                auto new_br = @rec(pats=pats with *br);
+                result += ~[new_br];
+                bind_for_pat(br.pats.(col), new_br, val);
+            }
+            none {}
         }
     }
     ret result;
+}
+
+fn enter_default(&match m, uint col, ValueRef val) -> match {
+    fn e(&@ast::pat p) -> option::t[(@ast::pat)[]] {
+        ret if (matches_always(p)) { some(~[]) }
+            else { none };
+    }
+    ret enter_match(m, col, val, e);
 }
 
 fn enter_opt(&@crate_ctxt ccx, &match m, &opt opt,
              uint col, uint tag_size, ValueRef val) -> match {
-    auto result = ~[];
     auto dummy = @rec(id=0, node=ast::pat_wild, span=rec(lo=0u, hi=0u));
-    for (match_branch br in m) {
-        auto pats = ivec::slice(br.pats, 0u, col);
-        auto include = true;
-        alt (br.pats.(col).node) {
-            ast::pat_tag(?ctor, _) {
-                include = opt_eq(variant_opt(ccx, br.pats.(col).id), opt);
+    fn e(&@crate_ctxt ccx, &@ast::pat dummy, &opt opt, uint size,
+         &@ast::pat p) -> option::t[(@ast::pat)[]] {
+        alt (p.node) {
+            ast::pat_tag(?ctor, ?subpats) {
+                ret if (opt_eq(variant_opt(ccx, p.id), opt)) { some(subpats) }
+                    else { none };
             }
             ast::pat_lit(?l) {
-                include = opt_eq(lit(l), opt);
+                ret if (opt_eq(lit(l), opt)) { some(~[]) }
+                    else { none };
             }
-            _ {}
-        }
-        if (include) {
-            alt (br.pats.(col).node) {
-                ast::pat_tag(_, ?subpats) {
-                    assert ivec::len(subpats) == tag_size;
-                    pats += subpats;
-                }
-                _ {
-                    pats += ivec::init_elt(dummy, tag_size);
-                }
-            }
-            pats += ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
-            auto new_br = @rec(pats=pats with *br);
-            result += ~[new_br];
-            bind_for_pat(br.pats.(col), new_br, val);
+            _ { ret some(ivec::init_elt(dummy, size)); }
         }
     }
-    ret result;
+    ret enter_match(m, col, val, bind e(ccx, dummy, opt, tag_size, _));
 }
 
-fn enter_rec(&@crate_ctxt ccx, &match m, uint col, &ast::ident[] fields,
+fn enter_rec(&match m, uint col, &ast::ident[] fields,
              ValueRef val) -> match {
-    auto result = ~[];
     auto dummy = @rec(id=0, node=ast::pat_wild, span=rec(lo=0u, hi=0u));
-    for (match_branch br in m) {
-        auto pats = ivec::slice(br.pats, 0u, col);
-        alt (br.pats.(col).node) {
+    fn e(&@ast::pat dummy, &ast::ident[] fields, &@ast::pat p)
+        -> option::t[(@ast::pat)[]] {
+        alt (p.node) {
             ast::pat_rec(?fpats, _) {
+                auto pats = ~[];
                 for (ast::ident fname in fields) {
                     auto pat = dummy;
                     for (ast::field_pat fpat in fpats) {
@@ -151,34 +149,23 @@ fn enter_rec(&@crate_ctxt ccx, &match m, uint col, &ast::ident[] fields,
                     }
                     pats += ~[pat];
                 }
+                ret some(pats);
             }
-            _ {
-                pats += ivec::init_elt(dummy, ivec::len(fields));
-            }
+            _ { ret some(ivec::init_elt(dummy, ivec::len(fields))); }
         }
-        pats += ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
-        auto new_br = @rec(pats=pats with *br);
-        result += ~[new_br];
-        bind_for_pat(br.pats.(col), new_br, val);
     }
-    ret result;
+    ret enter_match(m, col, val, bind e(dummy, fields, _));
 }
 
-fn enter_box(&@crate_ctxt ccx, &match m, uint col, ValueRef val) -> match {
-    auto result = ~[];
+fn enter_box(&match m, uint col, ValueRef val) -> match {
     auto dummy = @rec(id=0, node=ast::pat_wild, span=rec(lo=0u, hi=0u));
-    for (match_branch br in m) {
-        auto pats = ivec::slice(br.pats, 0u, col);
-        alt (br.pats.(col).node) {
-            ast::pat_box(?sub) { pats += ~[sub]; }
-            _ { pats += ~[dummy]; }
+    fn e(&@ast::pat dummy, &@ast::pat p) -> option::t[(@ast::pat)[]] {
+        alt (p.node) {
+            ast::pat_box(?sub) { ret some(~[sub]); }
+            _ { ret some(~[dummy]); }
         }
-        pats += ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
-        auto new_br = @rec(pats=pats with *br);
-        result += ~[new_br];
-        bind_for_pat(br.pats.(col), new_br, val);
     }
-    ret result;
+    ret enter_match(m, col, val, bind e(dummy, _));
 }
 
 fn get_options(&@crate_ctxt ccx, &match m, uint col) -> opt[] {
@@ -301,7 +288,7 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
             rec_vals += ~[r.val];
             bcx = r.bcx;
         }
-        compile_submatch(bcx, enter_rec(ccx, m, col, rec_fields, val),
+        compile_submatch(bcx, enter_rec(m, col, rec_fields, val),
                          rec_vals + vals_left, f, exits);
         ret;
     }
@@ -311,7 +298,7 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
         auto box = bcx.build.Load(val);
         auto unboxed = bcx.build.InBoundsGEP
             (box, ~[C_int(0), C_int(back::abi::box_rc_field_body)]);
-        compile_submatch(bcx, enter_box(ccx, m, col, val),
+        compile_submatch(bcx, enter_box(m, col, val),
                          ~[unboxed] + vals_left, f, exits);
         ret;
     }
