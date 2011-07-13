@@ -9,7 +9,10 @@
 *.rustc
 *.cmx
 *.dll
+*.def
 *.exe
+*.a
+*.rlib
 *.so
 *.dylib
 *.orig
@@ -32,6 +35,9 @@
 *.toc
 *.tp
 *.vr
+*.patch
+*.diff
+*.rej
 *.swp
 *.tmp
 *.pyc
@@ -52,6 +58,7 @@ config.mk
 /rustllvm/
 /test/
 /build/
+/mingw-build/
 src/.DS_Store
 /stage0/
 /dl/
