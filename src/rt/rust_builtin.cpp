@@ -22,7 +22,7 @@ last_os_error(rust_task *task) {
                               MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                               (LPTSTR) &buf, 0, NULL);
     if (!res) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
 #elif defined(_GNU_SOURCE)
@@ -36,7 +36,7 @@ last_os_error(rust_task *task) {
     char buf[BUF_BYTES];
     int err = strerror_r(errno, buf, sizeof(buf));
     if (err) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
 #endif
@@ -652,7 +652,7 @@ get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
     FILETIME fileTime;
     GetSystemTime(&systemTime);
     if (!SystemTimeToFileTime(&systemTime, &fileTime)) {
-        task->fail(1);
+        task->fail();
         return;
     }
 
