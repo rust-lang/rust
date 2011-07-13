@@ -173,7 +173,7 @@ upcall_sleep(rust_task *task, size_t time_in_us) {
     LOG(task, task, "elapsed %" PRIu64 " us",
               task->yield_timer.elapsed_us());
     LOG(task, task, "sleep %d us", time_in_us);
-    task->yield(2, time_in_us);
+    task->yield(time_in_us);
 }
 
 /**
@@ -221,7 +221,7 @@ upcall_fail(rust_task *task,
             size_t line) {
     LOG_UPCALL_ENTRY(task);
     LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
-    task->fail(4);
+    task->fail();
 }
 
 /**
@@ -338,7 +338,7 @@ rust_str *make_str(rust_task *task, char const *s, size_t fill) {
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc);
     if (!mem) {
-        task->fail(3);
+        task->fail();
         return NULL;
     }
     rust_str *st = new (mem) rust_str(sched, alloc, fill,
@@ -372,7 +372,7 @@ upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
     void *mem = task->malloc(alloc, td);
     if (!mem) {
-        task->fail(3);
+        task->fail();
         return NULL;
     }
     rust_vec *v = new (mem) rust_vec(sched, alloc, 0, NULL);
@@ -410,7 +410,7 @@ vec_grow(rust_task *task,
         LOG(task, mem, "realloc path");
         v = (rust_vec*) task->realloc(v, alloc, td->is_stateful);
         if (!v) {
-            task->fail(4);
+            task->fail();
             return NULL;
         }
         v->alloc = alloc;
@@ -432,7 +432,7 @@ vec_grow(rust_task *task,
         LOG(task, mem, "new vec path");
         void *mem = task->malloc(alloc, td);
         if (!mem) {
-            task->fail(4);
+            task->fail();
             return NULL;
         }
 

@@ -177,16 +177,14 @@ rust_task::grow(size_t n_frame_bytes)
 }
 
 void
-rust_task::yield(size_t nargs) {
-    yield(nargs, 0);
+rust_task::yield() {
+    yield(0);
 }
 
 void
-rust_task::yield(size_t nargs, size_t time_in_us) {
+rust_task::yield(size_t time_in_us) {
     LOG(this, task, "task %s @0x%" PRIxPTR " yielding for %d us",
         name, this, time_in_us);
-
-    // FIXME: what is nargs for, and is it safe to ignore?
 
     yield_timer.reset_us(time_in_us);
 
@@ -203,7 +201,7 @@ rust_task::kill() {
 
     // Note the distinction here: kill() is when you're in an upcall
     // from task A and want to force-fail task B, you do B->kill().
-    // If you want to fail yourself you do self->fail(upcall_nargs).
+    // If you want to fail yourself you do self->fail().
     LOG(this, task, "killing task %s @0x%" PRIxPTR, name, this);
     // Unblock the task so it can unwind.
     unblock();
@@ -216,7 +214,7 @@ rust_task::kill() {
 }
 
 void
-rust_task::fail(size_t nargs) {
+rust_task::fail() {
     // See note in ::kill() regarding who should call this.
     DLOG(sched, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
@@ -224,7 +222,6 @@ rust_task::fail(size_t nargs) {
     unblock();
     if (this == sched->root_task)
         sched->fail();
-    // run_after_return(nargs, rust_unwind_glue);
     if (supervisor) {
         DLOG(sched, task,
              "task %s @0x%" PRIxPTR
@@ -237,7 +234,7 @@ rust_task::fail(size_t nargs) {
 }
 
 void
-rust_task::gc(size_t nargs)
+rust_task::gc()
 {
     // FIXME: not presently implemented; was broken by rustc.
     DLOG(sched, task,

@@ -127,19 +127,19 @@ rust_task : public maybe_proxy<rust_task>,
     void backtrace();
 
     // Save callee-saved registers and return to the main loop.
-    void yield(size_t nargs);
+    void yield();
 
     // Yields for a specified duration of time.
-    void yield(size_t nargs, size_t time_in_ms);
+    void yield(size_t time_in_ms);
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();
 
     // Fail self, assuming caller-on-stack is this task.
-    void fail(size_t nargs);
+    void fail();
 
     // Run the gc glue on the task stack.
-    void gc(size_t nargs);
+    void gc();
 
     // Disconnect from our supervisor.
     void unsupervise();

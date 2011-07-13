@@ -29,7 +29,7 @@ last_os_error(rust_task *task) {
     char cbuf[BUF_BYTES];
     char *buf = strerror_r(errno, cbuf, sizeof(cbuf));
     if (!buf) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
 #else
@@ -44,7 +44,7 @@ last_os_error(rust_task *task) {
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc);
     if (!mem) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
     rust_str *st = new (mem) rust_str(sched, alloc, fill,
@@ -68,7 +68,7 @@ rust_getcwd(rust_task *task) {
 #else
         if (!getcwd(cbuf, sizeof(cbuf))) {
 #endif
-        task->fail(1);
+        task->fail();
         return NULL;
     }
 
@@ -76,7 +76,7 @@ rust_getcwd(rust_task *task) {
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc);
     if (!mem) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
 
@@ -114,7 +114,7 @@ refcount(rust_task *task, type_desc *t, intptr_t *v) {
 
 extern "C" CDECL void
 do_gc(rust_task *task) {
-    task->gc(1);
+    task->gc();
 }
 
 extern "C" CDECL void
@@ -132,7 +132,7 @@ vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
     void *mem = task->malloc(alloc, t->is_stateful ? t : NULL);
     if (!mem) {
-        task->fail(4);
+        task->fail();
         return NULL;
     }
     rust_vec *vec = new (mem) rust_vec(sched, alloc, 0, NULL);
@@ -230,7 +230,7 @@ str_alloc(rust_task *task, size_t n_bytes)
                                        1, 1,
                                        (void*)"");
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     return st;
@@ -244,7 +244,7 @@ str_push_byte(rust_task* task, rust_str* v, size_t byte)
     if (v->ref_count > 1 || v->alloc < alloc) {
         v = vec_alloc_with_data(task, fill + 1, fill, 1, (void*)&v->data[0]);
         if (!v) {
-            task->fail(2);
+            task->fail();
             return NULL;
         }
     }
@@ -268,7 +268,7 @@ str_slice(rust_task* task, rust_str* v, size_t begin, size_t end)
                             1,
                             len ? v->data + begin : NULL);
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     st->data[st->fill++] = '\0';
@@ -301,7 +301,7 @@ str_vec(rust_task *task, rust_str *s)
                             1,
                             (s->fill - 1) ? (void*)s->data : NULL);
     if (!v) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     return v;
@@ -326,7 +326,7 @@ str_from_ivec(rust_task *task, rust_ivec *v)
                             1,
                             fill ? data : NULL);
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     st->data[st->fill++] = '\0';
@@ -343,7 +343,7 @@ str_from_vec(rust_task *task, rust_vec *v)
                             1,
                             v->fill ? (void*)v->data : NULL);
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     st->data[st->fill++] = '\0';
@@ -356,7 +356,7 @@ str_from_cstr(rust_task *task, char *sbuf)
     size_t len = strlen(sbuf) + 1;
     rust_str *st = vec_alloc_with_data(task, len, len, 1, sbuf);
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     return st;
@@ -366,7 +366,7 @@ extern "C" CDECL rust_str *
 str_from_buf(rust_task *task, char *buf, unsigned int len) {
     rust_str *st = vec_alloc_with_data(task, len + 1, len, 1, buf);
     if (!st) {
-        task->fail(2);
+        task->fail();
         return NULL;
     }
     st->data[st->fill++] = '\0';
@@ -379,7 +379,7 @@ rand_new(rust_task *task)
     rust_scheduler *sched = task->sched;
     randctx *rctx = (randctx *) task->malloc(sizeof(randctx));
     if (!rctx) {
-        task->fail(1);
+        task->fail();
         return NULL;
     }
     isaac_init(sched, rctx);
@@ -777,7 +777,7 @@ ivec_copy_from_buf(rust_task *task, type_desc *ty, rust_ivec *v, void *ptr,
 {
     size_t old_size = get_ivec_size(v);
     if (old_size) {
-        task->fail(1);
+        task->fail();
         return;
     }
 
@@ -806,7 +806,7 @@ ivec_copy_from_buf_shared(rust_task *task, type_desc *ty, rust_ivec *v,
 {
     size_t old_size = get_ivec_size(v);
     if (old_size) {
-        task->fail(1);
+        task->fail();
         return;
     }
 
