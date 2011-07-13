@@ -127,7 +127,7 @@ void task_start_wrapper(spawn_args *a)
     a->f(&rval, task, a->a3, a->a4);
 
     LOG(task, task, "task exited with value %d", rval);
-    
+
 
     LOG(task, task, "task ref_count: %d", task->ref_count);
     A(task->sched, task->ref_count >= 0,
@@ -147,7 +147,7 @@ rust_task::start(uintptr_t spawnee_fn,
     LOGPTR(sched, "from spawnee", spawnee_fn);
 
     I(sched, stk->data != NULL);
-    
+
     char *sp = (char *)rust_sp;
 
     sp -= sizeof(spawn_args);
@@ -481,7 +481,7 @@ rust_task::get_handle() {
 
 bool rust_task::can_schedule(int id)
 {
-    return yield_timer.has_timed_out() && 
+    return yield_timer.has_timed_out() &&
         running_on == -1 &&
         (pinned_on == -1 || pinned_on == id);
 }

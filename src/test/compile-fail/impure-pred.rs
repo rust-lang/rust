@@ -3,7 +3,7 @@
 
 fn g() -> () {}
 
-pred f(int q) -> bool { 
+pred f(int q) -> bool {
   g();
   ret true;
 }
@@ -11,5 +11,5 @@ pred f(int q) -> bool {
 fn main() {
   auto x = 0;
 
-  check f(x); 
+  check f(x);
 }

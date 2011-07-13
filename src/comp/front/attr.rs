@@ -199,7 +199,7 @@ fn require_unique_names(&session::session sess, &(@ast::meta_item)[] metas) {
     for (@ast::meta_item meta in metas) {
         auto name = get_meta_item_name(meta);
         if (map.contains_key(name)) {
-            sess.span_fatal(meta.span, 
+            sess.span_fatal(meta.span,
                             #fmt("duplicate meta item `%s`", name));
         }
         map.insert(name, ());

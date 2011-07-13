@@ -83,7 +83,7 @@ rust_getcwd(rust_task *task) {
     rust_str *st;
     st = new (mem) rust_str(sched, alloc, fill, (const uint8_t *)cbuf);
 
-    return st;    
+    return st;
 }
 
 extern "C" CDECL

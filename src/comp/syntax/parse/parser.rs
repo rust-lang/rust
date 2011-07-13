@@ -361,7 +361,7 @@ fn parse_ty_constr(&ast::arg[] fn_args, &parser p) -> @ast::constr {
 }
 
 
-// Use the args list to translate each bound variable 
+// Use the args list to translate each bound variable
 // mentioned in a constraint to an arg index.
 // Seems weird to do this in the parser, but I'm not sure how else to.
 fn parse_constrs(&ast::arg[] args, &parser p)
@@ -932,7 +932,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_assert(e);
         hi = e.span.hi;
     } else if (eat_word(p, "check")) {
-        /* Should be a predicate (pure boolean function) applied to 
+        /* Should be a predicate (pure boolean function) applied to
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
 
@@ -943,7 +943,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         /* Same rules as check, except that if check-claims
          is enabled (a command-line flag), then the parser turns
         claims into check */
-        
+
         auto e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_check(ast::unchecked, e);
@@ -1310,7 +1310,7 @@ fn parse_else_expr(&parser p) -> @ast::expr {
 fn parse_head_local(&parser p) -> @ast::local {
     if (is_word(p, "auto")) {
         ret parse_auto_local(p);
-    } else { 
+    } else {
         ret parse_typed_local(p);
     }
 }
@@ -1709,7 +1709,7 @@ fn parse_block(&parser p) -> ast::block {
     be parse_block_tail(p);
 }
 
-// some blocks start with "#{"... 
+// some blocks start with "#{"...
 fn parse_block_tail(&parser p) -> ast::block {
     auto lo = p.get_lo_pos();
     let (@ast::stmt)[] stmts = ~[];
@@ -1865,7 +1865,7 @@ fn parse_dtor(&parser p) -> @ast::method {
             purity=ast::impure_fn,
             cf=ast::return,
 
-            // I guess dtors can't have constraints? 
+            // I guess dtors can't have constraints?
             constraints=~[]);
     let ast::_fn f = rec(decl=d, proto=ast::proto_fn, body=b);
     let ast::method_ m =
@@ -2432,7 +2432,7 @@ fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
 }
 
 // Parses a source module as a crate
-fn parse_crate_mod(&parser p, &ast::crate_cfg cfg, parse_sess sess) 
+fn parse_crate_mod(&parser p, &ast::crate_cfg cfg, parse_sess sess)
     -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);

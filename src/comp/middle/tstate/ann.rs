@@ -3,7 +3,7 @@ import tritv::*;
 
 type precond = t;
 
-/* 2 means "this constraint may or may not be true after execution" 
+/* 2 means "this constraint may or may not be true after execution"
    1 means "this constraint is definitely true after execution"
    0 means "this constraint is definitely false after execution" */
 type postcond = t;
@@ -23,7 +23,7 @@ type poststate = t;
   0 means "don't know whether this variable is
   initialized" */
 
-/* 
+/*
    This says: this expression requires the constraints whose value is 1 in
    <pre> to be true, and given the precondition, it guarantees that the
    constraints in <post> whose values are 1 are true, and that the constraints

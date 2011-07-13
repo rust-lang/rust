@@ -13,7 +13,7 @@ pred even(uint x) -> bool {
 }
 
 fn foo(uint x) -> () {
-  if check(even(x)) { 
+  if check(even(x)) {
       log x;
     }
   else {

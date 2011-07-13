@@ -6,7 +6,7 @@ fn main() {
           self();
       }
   }
-  
+
   auto a = foo;
   a.m();
 }

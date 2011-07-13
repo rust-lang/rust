@@ -21,7 +21,7 @@ lock_and_signal::lock_and_signal() {
 }
 
 #else
-lock_and_signal::lock_and_signal() 
+lock_and_signal::lock_and_signal()
     : _locked(false)
 {
     CHECKED(pthread_cond_init(&_cond, NULL));

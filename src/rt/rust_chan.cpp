@@ -6,7 +6,7 @@
  */
 rust_chan::rust_chan(rust_task *task,
                      maybe_proxy<rust_port> *port,
-                     size_t unit_sz) 
+                     size_t unit_sz)
     : ref_count(1),
       kernel(task->kernel),
       task(task),

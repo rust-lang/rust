@@ -13,8 +13,8 @@ import std::option::some;
 import std::map::hashmap;
 import std::ivec;
 
-fn expand_expr(&hashmap[str, base::syntax_extension] exts, 
-               &session::session sess, &expr_ e, ast_fold fld, 
+fn expand_expr(&hashmap[str, base::syntax_extension] exts,
+               &session::session sess, &expr_ e, ast_fold fld,
                &fn(&ast::expr_, ast_fold) -> expr_ orig) -> expr_ {
     ret alt(e) {
         case (expr_mac(?mac)) {
@@ -25,18 +25,18 @@ fn expand_expr(&hashmap[str, base::syntax_extension] exts,
                     auto ext_cx = base::mk_ctxt(sess);
                     alt (exts.find(extname)) {
                         case (none) {
-                            emit_error(some(pth.span), 
+                            emit_error(some(pth.span),
                                        "unknown syntax expander: '"
                                        + extname + "'", sess.get_codemap());
                             fail
                         }
                         case (some(base::normal(?ext))) {
                             //keep going, outside-in
-                            fld.fold_expr(ext(ext_cx, pth.span, 
+                            fld.fold_expr(ext(ext_cx, pth.span,
                                               args, body)).node
                         }
                         case (some(base::macro_defining(?ext))) {
-                            auto named_extension 
+                            auto named_extension
                                 = ext(ext_cx, pth.span, args, body);
                             exts.insert(named_extension._0,
                                         named_extension._1);
@@ -65,7 +65,7 @@ fn expand_crate(&session::session sess, &@crate c) -> @crate {
     auto res = @f.fold_crate(*c);
     dummy_out(f); //temporary: kill circular reference
     ret res;
-    
+
 }
 
 // Local Variables:

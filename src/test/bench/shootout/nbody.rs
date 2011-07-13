@@ -40,10 +40,10 @@ mod NBodySystem {
     fn MakeNBodySystem() -> vec[Body::props] {
         let vec[Body::props] bodies = [
             // these each return a Body::props
-            Body::sun(), 
-            Body::jupiter(), 
-            Body::saturn(), 
-            Body::uranus(), 
+            Body::sun(),
+            Body::jupiter(),
+            Body::saturn(),
+            Body::uranus(),
             Body::neptune()];
 
         let float px = 0.0;
@@ -132,7 +132,7 @@ mod NBodySystem {
 
                 distance = llvm::sqrt(dx*dx + dy*dy + dz*dz);
                 e -= (bodies.(i).mass * bodies.(j).mass) / distance;
-                
+
                 j += 1;
             }
 
@@ -149,12 +149,12 @@ mod Body {
     const float SOLAR_MASS = 39.478417604357432; // was 4 * PI * PI originally
     const float DAYS_PER_YEAR = 365.24;
 
-    type props = rec(mutable float x, 
-                     mutable float y, 
-                     mutable float z, 
-                     mutable float vx, 
+    type props = rec(mutable float x,
+                     mutable float y,
+                     mutable float z,
+                     mutable float vx,
                      mutable float vy,
-                     mutable float vz, 
+                     mutable float vz,
                      float mass);
 
     fn jupiter() -> Body::props {
@@ -218,8 +218,8 @@ mod Body {
    }
 
    fn offsetMomentum(&Body::props props,
-                            float px, 
-                            float py, 
+                            float px,
+                            float py,
                             float pz) -> () {
        props.vx = -px / SOLAR_MASS;
        props.vy = -py / SOLAR_MASS;

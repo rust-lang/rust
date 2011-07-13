@@ -7,8 +7,8 @@ fn main() {
     auto my_normal_obj = normal();
 
     // Extending an object with a new method
-    auto my_anon_obj = obj { 
-        fn bar() -> int { 
+    auto my_anon_obj = obj {
+        fn bar() -> int {
             ret 3;
         }
         with my_normal_obj

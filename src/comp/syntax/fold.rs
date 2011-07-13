@@ -18,9 +18,9 @@ type ast_fold = @mutable a_f;
 
 // We may eventually want to be able to fold over type parameters, too
 
-type ast_fold_precursor = 
+type ast_fold_precursor =
     rec(fn (&crate_ c, ast_fold) -> crate_                fold_crate,
-        fn (&crate_directive_ cd, ast_fold) -> crate_directive_ 
+        fn (&crate_directive_ cd, ast_fold) -> crate_directive_
                                                  fold_crate_directive,
         fn (&view_item_ i, ast_fold) -> view_item_        fold_view_item,
         fn (&@native_item i, ast_fold) -> @native_item    fold_native_item,
@@ -72,27 +72,27 @@ type a_f =
 
 //fn nf_dummy[T](&T node) -> T { fail; }
 fn nf_crate_dummy(&crate c) -> crate { fail; }
-fn nf_crate_directive_dummy(&@crate_directive c) 
+fn nf_crate_directive_dummy(&@crate_directive c)
     -> @crate_directive { fail; }
-fn nf_view_item_dummy(&@view_item v) -> @view_item { fail; } 
-fn nf_native_item_dummy(&@native_item n) -> @native_item { fail; } 
-fn nf_item_dummy(&@item i) -> @item { fail; } 
-fn nf_item_underscore_dummy(&item_ i) -> item_ { fail; } 
-fn nf_method_dummy(&@method m) -> @method { fail; } 
-fn nf_block_dummy(&block b) -> block { fail; } 
-fn nf_stmt_dummy(&@stmt s) -> @stmt { fail; } 
-fn nf_arm_dummy(&arm a) -> arm { fail; } 
-fn nf_pat_dummy(&@pat p) -> @pat { fail; } 
-fn nf_decl_dummy(&@decl d) -> @decl { fail; } 
-fn nf_expr_dummy(&@expr e) -> @expr { fail; } 
-fn nf_ty_dummy(&@ty t) -> @ty { fail; } 
-fn nf_constr_dummy(&@constr c) -> @constr { fail; } 
-fn nf_fn_dummy(&_fn f) -> _fn { fail; } 
-fn nf_mod_dummy(&_mod m) -> _mod { fail; } 
-fn nf_native_mod_dummy(&native_mod n) -> native_mod { fail; } 
-fn nf_variant_dummy(&variant v) -> variant { fail; } 
-fn nf_ident_dummy(&ident i) -> ident { fail; } 
-fn nf_path_dummy(&path p) -> path { fail; } 
+fn nf_view_item_dummy(&@view_item v) -> @view_item { fail; }
+fn nf_native_item_dummy(&@native_item n) -> @native_item { fail; }
+fn nf_item_dummy(&@item i) -> @item { fail; }
+fn nf_item_underscore_dummy(&item_ i) -> item_ { fail; }
+fn nf_method_dummy(&@method m) -> @method { fail; }
+fn nf_block_dummy(&block b) -> block { fail; }
+fn nf_stmt_dummy(&@stmt s) -> @stmt { fail; }
+fn nf_arm_dummy(&arm a) -> arm { fail; }
+fn nf_pat_dummy(&@pat p) -> @pat { fail; }
+fn nf_decl_dummy(&@decl d) -> @decl { fail; }
+fn nf_expr_dummy(&@expr e) -> @expr { fail; }
+fn nf_ty_dummy(&@ty t) -> @ty { fail; }
+fn nf_constr_dummy(&@constr c) -> @constr { fail; }
+fn nf_fn_dummy(&_fn f) -> _fn { fail; }
+fn nf_mod_dummy(&_mod m) -> _mod { fail; }
+fn nf_native_mod_dummy(&native_mod n) -> native_mod { fail; }
+fn nf_variant_dummy(&variant v) -> variant { fail; }
+fn nf_ident_dummy(&ident i) -> ident { fail; }
+fn nf_path_dummy(&path p) -> path { fail; }
 fn nf_obj_field_dummy(&obj_field o) -> obj_field { fail; }
 fn nf_local_dummy(&@local o) -> @local { fail; }
 
@@ -114,7 +114,7 @@ fn fold_meta_item_(&@meta_item mi, ast_fold fld) -> @meta_item {
              span=mi.span);
 }
 //used in noop_fold_item and noop_fold_crate
-fn fold_attribute_(&attribute at, fn(&@meta_item) -> @meta_item fmi) 
+fn fold_attribute_(&attribute at, fn(&@meta_item) -> @meta_item fmi)
     -> attribute {
     ret rec(node=rec(style=at.node.style,
                      value=*fmi(@at.node.value)),
@@ -122,7 +122,7 @@ fn fold_attribute_(&attribute at, fn(&@meta_item) -> @meta_item fmi)
 }
 //used in noop_fold_native_item and noop_fold_fn
 fn fold_arg_(&arg a, ast_fold fld) -> arg {
-    ret rec(mode=a.mode, ty=fld.fold_ty(a.ty), 
+    ret rec(mode=a.mode, ty=fld.fold_ty(a.ty),
             ident=fld.fold_ident(a.ident), id=a.id);
 }
 //used in noop_fold_expr, and possibly elsewhere in the future
@@ -130,10 +130,10 @@ fn fold_mac_(&mac m, ast_fold fld) -> mac {
     ret rec(node=
             alt(m.node) {
                 case (mac_invoc(?pth,?args,?body)) {
-                    mac_invoc(fld.fold_path(pth), 
+                    mac_invoc(fld.fold_path(pth),
                               ivec::map(fld.fold_expr, args), body)
                 }
-                case (mac_embed_type(?ty)) { 
+                case (mac_embed_type(?ty)) {
                     mac_embed_type(fld.fold_ty(ty))
                 }
                 case (mac_embed_block(?block)) {
@@ -158,17 +158,17 @@ fn noop_fold_crate(&crate_ c, ast_fold fld) -> crate_ {
             config=ivec::map(fold_meta_item, c.config));
 }
 
-fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld) 
+fn noop_fold_crate_directive(&crate_directive_ cd, ast_fold fld)
     -> crate_directive_ {
     ret alt(cd) {
-        case(cdir_src_mod(?id,?fname,?attrs)) { 
+        case(cdir_src_mod(?id,?fname,?attrs)) {
             cdir_src_mod(fld.fold_ident(id), fname, attrs)
                 }
         case(cdir_dir_mod(?id,?fname,?cds,?attrs)) {
             cdir_dir_mod(fld.fold_ident(id),fname,
                          ivec::map(fld.fold_crate_directive, cds), attrs)
                 }
-        case(cdir_view_item(?vi)) { 
+        case(cdir_view_item(?vi)) {
             cdir_view_item(fld.fold_view_item(vi))
                 }
         case(cdir_syntax(_)) { cd }
@@ -191,7 +191,7 @@ fn noop_fold_native_item(&@native_item ni, ast_fold fld) -> @native_item {
              node=alt (ni.node) {
                  case (native_item_ty) { native_item_ty }
                  case (native_item_fn(?st, ?fdec, ?typms)) {
-                     native_item_fn(st, 
+                     native_item_fn(st,
                                     rec(inputs=ivec::map(fold_arg,
                                                          fdec.inputs),
                                         output=fld.fold_ty(fdec.output),
@@ -217,7 +217,7 @@ fn noop_fold_item(&@item i, ast_fold fld) -> @item {
 
 fn noop_fold_item_underscore(&item_ i, ast_fold fld) -> item_ {
     fn fold_obj_field_(&obj_field of, ast_fold fld) -> obj_field {
-        ret rec(mut=of.mut, ty=fld.fold_ty(of.ty), 
+        ret rec(mut=of.mut, ty=fld.fold_ty(of.ty),
                 ident=fld.fold_ident(of.ident), id=of.id);
     }
     auto fold_obj_field = bind fold_obj_field_(_,fld);
@@ -253,7 +253,7 @@ fn noop_fold_item_underscore(&item_ i, ast_fold fld) -> item_ {
 
 fn noop_fold_method(&method_ m, ast_fold fld) -> method_ {
     ret rec(ident=fld.fold_ident(m.ident),
-            meth=fld.fold_fn(m.meth), id=m.id); 
+            meth=fld.fold_fn(m.meth), id=m.id);
 }
 
 
@@ -319,9 +319,9 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
     }
     auto fold_field = bind fold_field_(_,fld);
     fn fold_anon_obj_(&anon_obj ao, ast_fold fld) -> anon_obj {
-        fn fold_anon_obj_field_(&anon_obj_field aof, ast_fold fld) 
+        fn fold_anon_obj_field_(&anon_obj_field aof, ast_fold fld)
             -> anon_obj_field {
-            ret rec(mut=aof.mut, ty=fld.fold_ty(aof.ty), 
+            ret rec(mut=aof.mut, ty=fld.fold_ty(aof.ty),
                     expr=fld.fold_expr(aof.expr),
                     ident=fld.fold_ident(aof.ident), id=aof.id);
         }
@@ -337,7 +337,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
                 with_obj=option::map(fld.fold_expr, ao.with_obj))
     }
     auto fold_anon_obj = bind fold_anon_obj_(_,fld);
-    
+
     auto fold_mac = bind fold_mac_(_,fld);
 
     ret alt (e) {
@@ -362,7 +362,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_bind(fld.fold_expr(f), ivec::map(opt_map_se, args))
                 }
         case (expr_spawn(?spawn_dom, ?name, ?f, ?args)) {
-            expr_spawn(spawn_dom, name, fld.fold_expr(f), 
+            expr_spawn(spawn_dom, name, fld.fold_expr(f),
                        ivec::map(fld.fold_expr, args))
                 }
         case (expr_binary(?binop, ?lhs, ?rhs)) {
@@ -376,7 +376,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_cast(fld.fold_expr(expr), ty)
         }
         case (expr_if(?cond, ?tr, ?fl)) {
-            expr_if(fld.fold_expr(cond), fld.fold_block(tr), 
+            expr_if(fld.fold_expr(cond), fld.fold_block(tr),
                     option::map(fld.fold_expr, fl))
                 }
         case (expr_ternary(?cond, ?tr, ?fl)) {
@@ -388,11 +388,11 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
                 }
         case (expr_for(?decl, ?expr, ?block)) {
-            expr_for(fld.fold_local(decl), fld.fold_expr(expr), 
+            expr_for(fld.fold_local(decl), fld.fold_expr(expr),
                      fld.fold_block(block))
                 }
         case (expr_for_each(?decl, ?expr, ?block)) {
-            expr_for_each(fld.fold_local(decl), fld.fold_expr(expr), 
+            expr_for_each(fld.fold_local(decl), fld.fold_expr(expr),
                           fld.fold_block(block))
                 }
         case (expr_do_while(?block, ?expr)) {
@@ -437,10 +437,10 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_fail(?e)) { expr_fail(option::map(fld.fold_expr, e)) }
         case (expr_break()) { e }
         case (expr_cont()) { e }
-        case (expr_ret(?e)) { 
+        case (expr_ret(?e)) {
             expr_ret(option::map(fld.fold_expr, e))
                 }
-        case (expr_put(?e)) { 
+        case (expr_put(?e)) {
             expr_put(option::map(fld.fold_expr, e))
                 }
         case (expr_be(?e)) { expr_be(fld.fold_expr(e)) }
@@ -448,10 +448,10 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_assert(?e)) { expr_assert(fld.fold_expr(e)) }
         case (expr_check(?m, ?e)) { expr_check(m, fld.fold_expr(e)) }
         case (expr_if_check(?cond, ?tr, ?fl)) {
-            expr_if_check(fld.fold_expr(cond), fld.fold_block(tr), 
+            expr_if_check(fld.fold_expr(cond), fld.fold_block(tr),
                           option::map(fld.fold_expr, fl))
                 }
-        case (expr_port(?ot)) { 
+        case (expr_port(?ot)) {
             expr_port(alt(ot) {
                     case (option::some(?t)) { option::some(fld.fold_ty(t)) }
                     case (option::none) { option::none }
@@ -531,7 +531,7 @@ fn noop_fold_local(&local_ l, ast_fold fld) -> local_ {
                 case (option::none[initializer]) { l.init }
                 case (option::some[initializer](?init)) {
                     option::some[initializer]
-                    (rec(op=init.op, 
+                    (rec(op=init.op,
                          expr=fld.fold_expr(init.expr)))
                 }
             },
@@ -591,7 +591,7 @@ fn dummy_out(ast_fold a) {
 
 
 fn make_fold(&ast_fold_precursor afp) -> ast_fold {
-    let ast_fold result = 
+    let ast_fold result =
         @mutable rec(fold_crate = nf_crate_dummy,
                      fold_crate_directive = nf_crate_directive_dummy,
                      fold_view_item = nf_view_item_dummy,
@@ -620,7 +620,7 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
         ret rec(node=afp.fold_crate(c.node, f),
                 span=c.span);
     }
-    fn f_crate_directive(&ast_fold_precursor afp, ast_fold f, 
+    fn f_crate_directive(&ast_fold_precursor afp, ast_fold f,
                          &@crate_directive c) -> @crate_directive {
         ret @rec(node=afp.fold_crate_directive(c.node, f),
                  span=c.span);
@@ -669,14 +669,14 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
     }
     fn f_fn(&ast_fold_precursor afp, ast_fold f, &_fn x) -> _fn {
         ret afp.fold_fn(x, f);
-    }    
+    }
     fn f_mod(&ast_fold_precursor afp, ast_fold f, &_mod x) -> _mod {
         ret afp.fold_mod(x, f);
     }
-    fn f_native_mod(&ast_fold_precursor afp, ast_fold f, &native_mod x) -> 
+    fn f_native_mod(&ast_fold_precursor afp, ast_fold f, &native_mod x) ->
         native_mod {
         ret afp.fold_native_mod(x, f);
-    }    
+    }
     fn f_variant(&ast_fold_precursor afp, ast_fold f, &variant x)
         -> variant {
         ret rec(node=afp.fold_variant(x.node, f), span=x.span);

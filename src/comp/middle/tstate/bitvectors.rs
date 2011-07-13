@@ -138,7 +138,7 @@ fn seq_preconds(&fn_ctxt fcx, &pre_and_post[] pps) -> precond {
             auto next_first = clone(first.precondition);
             union(next_first, second_pre);
             auto next_first_post = clone(first.postcondition);
-            seq_tritv(next_first_post, second.postcondition); 
+            seq_tritv(next_first_post, second.postcondition);
             ret seq_preconds_go(fcx, ivec::slice(pps, 1u, sz),
                                 @rec(precondition=next_first,
                                      postcondition=next_first_post));
@@ -189,7 +189,7 @@ fn relax_precond_stmt(&fn_ctxt fcx, node_id i, &@stmt s) {
 fn relax_precond_block(&fn_ctxt fcx, node_id i, &block b) {
     relax_precond_block_non_recursive(fcx, i, b);
     // FIXME: should use visit instead
-    // could at least generalize this pattern 
+    // could at least generalize this pattern
     // (also seen in ck::check_states_against_conditions)
     let @mutable bool keepgoing = @mutable true;
 
@@ -238,7 +238,7 @@ fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
                                                             c=ninit(i))), t);
                         }
                         case (some(_)) { /* ignore args (for now...) */ }
-                        case (_) { 
+                        case (_) {
                             fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: \
                                    unbound var"); }
                         }

@@ -27,7 +27,7 @@ fn fib(int n) -> int {
         }
         else {
             let port[int] p = port();
-      
+
             auto t1 = spawn pfib(chan(p), n - 1);
             auto t2 = spawn pfib(chan(p), n - 2);
 
@@ -58,12 +58,12 @@ fn main(vec[str] argv) {
         assert(stop >= start);
 
         auto elapsed = stop - start;
-        auto us_task = elapsed / (fibn as u64) / (1000 as u64); 
+        auto us_task = elapsed / (fibn as u64) / (1000 as u64);
 
         log_err #fmt("Determined that fib(%d) = %d in %d%d ns (%d us / task)",
-                     n, fibn, 
-                     (elapsed / (1000000 as u64)) as int, 
-                     (elapsed % (1000000 as u64)) as int, 
+                     n, fibn,
+                     (elapsed / (1000000 as u64)) as int,
+                     (elapsed % (1000000 as u64)) as int,
                      us_task as int);
     }
 }

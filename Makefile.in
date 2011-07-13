@@ -257,6 +257,7 @@ include $(CFG_SRC_DIR)/mk/docs.mk
 ifneq ($(strip $(findstring dist,$(MAKECMDGOALS))   \
                $(findstring check,$(MAKECMDGOALS))  \
                $(findstring test,$(MAKECMDGOALS))   \
+               $(findstring tidy,$(MAKECMDGOALS))   \
                $(findstring clean,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including dist rules)
   include $(CFG_SRC_DIR)/mk/dist.mk

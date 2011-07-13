@@ -889,7 +889,7 @@ native mod llvm = "rustllvm" {
  * BuilderRef B into place.  A BuilderRef is a cursor-like LLVM value that
  * inserts instructions for a particular BasicBlockRef at a particular
  * position; for our purposes, it always inserts at the end of the basic block
- * it's attached to.  
+ * it's attached to.
  */
 
 // FIXME: Do we want to support mutable object fields?
@@ -1524,9 +1524,9 @@ fn type_to_str_inner(type_names names, &TypeRef[] outer0, TypeRef ty) -> str {
             ret s;
         }
 
-        case (10) { 
+        case (10) {
             auto el_ty = llvm::LLVMGetElementType(ty);
-            ret "[" + type_to_str_inner(names, outer, el_ty) + "]"; 
+            ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
         }
 
         case (11) {

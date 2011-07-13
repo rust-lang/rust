@@ -4,6 +4,6 @@ fn f(int a) {
   log a;
 }
 
-fn main() { 
+fn main() {
   f(fail "woe");
-} 
+}

@@ -1,5 +1,5 @@
 
-/* 
+/*
    This is a test case for Issue 507.
 
    https://github.com/graydon/rust/issues/507
@@ -22,7 +22,7 @@ fn main() {
   let port[int] p = port();
 
   auto _child = spawn child(chan(p));
-  
+
   let int x;
   p |> x;
 

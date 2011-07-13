@@ -48,7 +48,7 @@ mod test2 {
     //assert(f1() == 1u);
     assert(f2() == 2u);
     assert(f2() == 2u);
-    assert(common() == 2u);    
+    assert(common() == 2u);
     assert(common() == 2u);
   }
 }

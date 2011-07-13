@@ -25,6 +25,9 @@ for line in fileinput.input(openhook=fileinput.hook_encoded("utf-8")):
     if not autocrlf and line.find('\r') != -1:
         report_err("CR character")
 
+    if line.endswith(" \n") or line.endswith("\t\n"):
+        report_err("trailing whitespace")
+
     line_len = len(line)-2 if autocrlf else len(line)-1
     if line_len > cols:
         report_err("line longer than %d chars" % cols)

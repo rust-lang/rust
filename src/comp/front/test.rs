@@ -98,7 +98,7 @@ fn fold_item(&test_ctxt cx, &@ast::item i,
 }
 
 fn is_test_fn(&@ast::item i) -> bool {
-    auto has_test_attr = 
+    auto has_test_attr =
         ivec::len(attr::find_attrs_by_name(i.attrs, "test")) > 0u;
 
     fn has_test_signature(&@ast::item i) -> bool {
@@ -173,7 +173,7 @@ fn mk_tests(&test_ctxt cx) -> @ast::item {
                                 cf = ast::return,
                                 constraints = ~[]);
     auto proto = ast::proto_fn;
-    
+
     // The vector of test_descs for this crate
     auto test_descs = mk_test_desc_vec(cx);
 
@@ -352,7 +352,7 @@ fn mk_test_main_call(&test_ctxt cx) -> @ast::expr {
                                             node = test_main_path_expr_,
                                             span = rec(lo=0u, hi=0u));
 
-    let ast::expr_ test_main_call_expr_ 
+    let ast::expr_ test_main_call_expr_
         = ast::expr_call(@test_main_path_expr, ~[@args_path_expr,
                                                  @test_call_expr]);
 

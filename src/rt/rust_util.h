@@ -157,7 +157,7 @@ isaac_init(rust_scheduler *sched, randctx *rctx)
         } else {
             int fd = open("/dev/urandom", O_RDONLY);
             I(sched, fd > 0);
-            I(sched, 
+            I(sched,
               read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
               == sizeof(rctx->randrsl));
             I(sched, close(fd) == 0);
@@ -175,8 +175,8 @@ rust_vec : public rc_base<rust_vec>
     size_t fill;
     size_t pad; // Pad to align data[0] to 16 bytes.
     uint8_t data[];
-    rust_vec(rust_scheduler *sched, size_t alloc, size_t fill, 
-             uint8_t const *d) 
+    rust_vec(rust_scheduler *sched, size_t alloc, size_t fill,
+             uint8_t const *d)
         : alloc(alloc),
           fill(fill)
     {

@@ -22,7 +22,7 @@ class context {
 
 public:
   context();
-  
+
   context *next;
 
   void swap(context &out);

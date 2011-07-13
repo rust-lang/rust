@@ -190,7 +190,7 @@ fn main() {
                               two(17, 42));
     /*
      * FIXME: Segfault.  Also appears to be caused only after upcall_grow_task
-    
+
     log "*** test parameterized: taggypar[int]";
     let eqfn[taggypar[int]] eq4 = taggypareq[int];
     test_parameterized[taggypar[int]](eq4,
@@ -199,7 +199,7 @@ fn main() {
                                       threepar[int](1, 2, 3),
                                       twopar[int](17, 42));
     log "*** end test parameterized: taggypar[int]";
-    
+
      */
 
     log "*** test parameterized: reccy";

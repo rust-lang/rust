@@ -620,7 +620,7 @@ fn is_exported(ident i, _mod m) -> bool {
             case (_) {/* fall through */ }
         }
     }
-    // If there are no declared exports then 
+    // If there are no declared exports then
     // everything not imported is exported
 
     ret count == 0u && !nonlocal;

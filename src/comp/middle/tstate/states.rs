@@ -98,7 +98,7 @@ fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr lhs,
             // tmp remembers "old" constraints we'd otherwise forget,
             // for substitution purposes
             auto tmp = tritv_clone(post);
-            
+
             alt (ty) {
                 case (oper_move) {
                     if (is_path(rhs)) {
@@ -166,7 +166,7 @@ fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
             changed |= set_poststate_ann
                 (fcx.ccx, id, false_postcond(num_constraints(fcx.enclosing)));
         }
-        case (_) { 
+        case (_) {
             changed |= set_poststate_ann(fcx.ccx, id, rs._1);
         }
     }
@@ -188,7 +188,7 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
 
     changed |= find_pre_post_state_block(fcx, index_post, body);
 
-    if (has_nonlocal_exits(body)) { 
+    if (has_nonlocal_exits(body)) {
         // See [Break-unsound]
         ret (changed | set_poststate_ann(fcx.ccx, id, pres));
     }
@@ -201,7 +201,7 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
 
 fn gen_if_local(&fn_ctxt fcx, &poststate p, &@expr e) -> bool {
     alt (e.node) {
-        case (expr_path(?pth)) { 
+        case (expr_path(?pth)) {
             alt (node_id_to_def(fcx.ccx, e.id)) {
                 case (some(def_local(?loc))) {
                     ret set_in_poststate_ident(fcx, loc._1,
@@ -219,7 +219,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                   &prestate pres) -> bool {
     auto changed = set_prestate_ann(fcx.ccx, id, pres) |
         find_pre_post_state_expr(fcx, pres, antec);
-    
+
     /*
     log_err("join_then_else:");
     log_expr_err(*antec);
@@ -259,7 +259,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
 
             changed |=
                 find_pre_post_state_block(fcx, conseq_prestate, conseq);
-   
+
             auto poststate_res =
                 intersect_states(block_poststate(fcx.ccx, conseq),
                                     expr_poststate(fcx.ccx, altern));
@@ -271,7 +271,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
                 aux::tritv_to_str(fcx, expr_poststate(fcx.ccx, altern)));
             fcx.ccx.tcx.sess.span_note(antec.span,
             "conseq poststate = " + aux::tritv_to_str(fcx,
-               block_poststate(fcx.ccx, conseq))); 
+               block_poststate(fcx.ccx, conseq)));
             */
 
             changed |= set_poststate_ann(fcx.ccx, id, poststate_res);
@@ -373,7 +373,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
                 (fcx, expr_poststate(fcx.ccx, lhs), rhs);
             auto post = tritv_clone(expr_poststate(fcx.ccx, rhs));
             forget_in_poststate_still_init(fcx, post, rhs.id);
-            gen_if_local(fcx, post, rhs); 
+            gen_if_local(fcx, post, rhs);
             ret changed | set_poststate_ann(fcx.ccx, e.id, post);
         }
         case (expr_ret(?maybe_ret_val)) {
@@ -452,7 +452,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
             /* conservative approximation: if a loop contains a break
                or cont, we assume nothing about the poststate */
             /* which is still unsound -- see [Break-unsound] */
-            if (has_nonlocal_exits(body)) { 
+            if (has_nonlocal_exits(body)) {
                 ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
             }
             else {
@@ -580,7 +580,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
     auto stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
-    /*    
+    /*
     log_err "*At beginning: stmt = ";
     log_stmt_err(*s);
     log_err "*prestate = ";
@@ -613,7 +613,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                                           an_init.expr.id);
                                     alt (rhs_d) {
                                         case (some(?rhsid)) {
-                                            auto instrhs = 
+                                            auto instrhs =
                                                 tup(path_to_ident(fcx.ccx.tcx,
                                                                   p), rhsid);
                                             copy_in_poststate(fcx, post,

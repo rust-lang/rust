@@ -2328,7 +2328,7 @@ mod unify {
                     }
                     case (_) { ret ures_err(terr_mismatch); }
                 }
-            }       
+            }
             case (ty::ty_param(_)) { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_tag(?expected_id, ?expected_tps)) {
                 alt (struct(cx.tcx, actual)) {

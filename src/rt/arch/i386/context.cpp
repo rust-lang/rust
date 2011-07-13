@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern "C" uint32_t CDECL swap_registers(registers_t *oregs, 
+extern "C" uint32_t CDECL swap_registers(registers_t *oregs,
                                          registers_t *regs)
   asm ("swap_registers");
 

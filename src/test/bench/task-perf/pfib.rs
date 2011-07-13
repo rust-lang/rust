@@ -37,7 +37,7 @@ fn fib(int n) -> int {
         }
         else {
             auto p = port();
-      
+
             auto t1 = spawn pfib(chan(p), n - 1);
             auto t2 = spawn pfib(chan(p), n - 2);
 
@@ -84,7 +84,7 @@ fn stress(int num_tasks) {
     }
     for each(int i in range(0, num_tasks)) {
         task::join(tasks.(i));
-    }    
+    }
 }
 
 fn main(vec[str] argv) {
@@ -107,7 +107,7 @@ fn main(vec[str] argv) {
             auto num_trials = 10;
 
             auto out = io::stdout();
-            
+
             for each(int n in range(1, max + 1)) {
                 for each(int i in range(0, num_trials)) {
                     auto start = time::precise_time_ns();
@@ -115,8 +115,8 @@ fn main(vec[str] argv) {
                     auto stop = time::precise_time_ns();
 
                     auto elapsed = stop - start;
-            
-                    out.write_line(#fmt("%d\t%d\t%s", n, fibn, 
+
+                    out.write_line(#fmt("%d\t%d\t%s", n, fibn,
                                         u64::str(elapsed)));
                 }
             }

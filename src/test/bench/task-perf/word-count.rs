@@ -30,10 +30,10 @@ mod map_reduce {
     type mapper = fn(str, putter);
 
     type getter = fn() -> option[str];
-    
+
     type reducer = fn(str, getter);
 
-    
+
     fn map_reduce (vec[str] inputs,
                    mapper f,
                    reducer reduce) {
@@ -48,7 +48,7 @@ mod map_reduce {
                 }
                 case (none) { }
             }
-            
+
             im.insert(key, old + [val]);
         }
 
@@ -86,7 +86,7 @@ fn main(vec[str] argv) {
 
         while(true) {
             alt(read_word(f)) {
-                case (some(?w)) { 
+                case (some(?w)) {
                     emit(w, "1");
                 }
                 case (none) {
@@ -98,7 +98,7 @@ fn main(vec[str] argv) {
 
     fn reduce(str word, map_reduce::getter get) {
         auto count = 0;
-        
+
         while(true) {
             alt(get()) {
                 case(some(_)) { count += 1 }

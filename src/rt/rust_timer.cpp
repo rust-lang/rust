@@ -71,7 +71,7 @@ rust_timer::~rust_timer() {
     exit_flag = 1;
 #if defined(__WIN32__)
     sched->kernel->win32_require("WaitForSingleObject",
-                               WaitForSingleObject(thread, INFINITE) == 
+                               WaitForSingleObject(thread, INFINITE) ==
                                WAIT_OBJECT_0);
 #else
     pthread_join(thread, NULL);

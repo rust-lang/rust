@@ -112,7 +112,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
 
 /* Finds the pre and postcondition for each expr in <args>;
    sets the precondition in a to be the result of combining
-   the preconditions for <args>, and the postcondition in a to 
+   the preconditions for <args>, and the postcondition in a to
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(&fn_ctxt fcx, &(@expr)[] args, node_id id) {
     if (ivec::len[@expr](args) > 0u) {
@@ -137,7 +137,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
     find_pre_post_block(fcx, body);
     auto v_init = rec(id=l.node.id, c=ninit(l.node.ident));
     relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
-    
+
     // Hack: for-loop index variables are frequently ignored,
     // so we pretend they're used
     use_var(fcx, l.node.id);
@@ -149,7 +149,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
     copy_pre_post_(fcx.ccx, id, loop_precond, loop_postcond);
 }
 
-// Generates a pre/post assuming that a is the 
+// Generates a pre/post assuming that a is the
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
 fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
@@ -236,7 +236,7 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
         case (expr_path(?p)) {
             auto post = expr_postcond(fcx.ccx, parent);
             auto tmp = tritv_clone(post);
-            
+
             alt (ty) {
                 case (oper_move) {
                     if (is_path(rhs)) {
@@ -255,7 +255,7 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
                     auto df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
                     alt (df) {
                         case (def_local(?d_id)) {
-                            auto i = 
+                            auto i =
                                 bit_num(fcx,
                                  rec(id=d_id._1,
                                      c=ninit(path_to_ident(fcx.ccx.tcx, p))));
@@ -293,7 +293,7 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
                 case (_) { /* do nothing */ }
             }
         }
-        case (_) { 
+        case (_) {
             find_pre_post_expr(fcx, lhs);
         }
     }
@@ -597,7 +597,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                              whether or not this is a move */
 
                             find_pre_post_expr(fcx, an_init.expr);
-                            copy_pre_post(fcx.ccx, alocal.node.id, 
+                            copy_pre_post(fcx.ccx, alocal.node.id,
                                           an_init.expr);
                             /* Inherit ann from initializer, and add var being
                                initialized to the postcondition */
@@ -617,7 +617,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                             }
 
                             gen(fcx, id,
-                                rec(id=alocal.node.id, 
+                                rec(id=alocal.node.id,
                                     c=ninit(alocal.node.ident)));
 
                             if (an_init.op == init_move &&
@@ -650,7 +650,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
 fn find_pre_post_block(&fn_ctxt fcx, block b) {
     /* Want to say that if there is a break or cont in this
      block, then that invalidates the poststate upheld by
-    any of the stmts after it. 
+    any of the stmts after it.
     Given that the typechecker has run, we know any break will be in
     a block that forms a loop body. So that's ok. There'll never be an
     expr_break outside a loop body, therefore, no expr_break outside a block.
@@ -661,7 +661,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) {
      This will mean that:
      x = 0;
      break;
-    
+
      won't have a postcondition that says x is initialized, but that's ok.
      */
 

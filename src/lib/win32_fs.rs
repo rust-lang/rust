@@ -11,7 +11,7 @@ fn list_dir(str path) -> str[] {
 }
 
 fn path_is_absolute(str p) -> bool {
-    ret str::char_at(p, 0u) == '/' 
+    ret str::char_at(p, 0u) == '/'
         || (str::char_at(p, 1u) == ':' && str::char_at(p, 2u) == '\\');
 }
 

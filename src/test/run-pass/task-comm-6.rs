@@ -32,7 +32,7 @@ fn test00() {
         i += 1;
     }
     assert (sum == 1998000);
-    // assert (sum == 4 * ((number_of_messages * 
+    // assert (sum == 4 * ((number_of_messages *
     //                   (number_of_messages - 1)) / 2));
 
 }

@@ -192,20 +192,20 @@ upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
     {
         scoped_lock with(port->lock);
         LOG_UPCALL_ENTRY(task);
-    
+
         LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
             ", size: 0x%" PRIxPTR ", chan_no: %d",
             (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
             port->chans.length());
-    
+
         if (port->receive(dptr)) {
             return;
         }
-    
+
         // No data was buffered on any incoming channel, so block this task on
         // the port. Remember the rendezvous location so that any sender task
         // can write to it before waking up this task.
-    
+
         LOG(task, comm, "<=== waiting for rendezvous data ===");
         task->rendezvous_ptr = dptr;
         task->block(port, "waiting for rendezvous data");
@@ -351,7 +351,6 @@ rust_str *make_str(rust_task *task, char const *s, size_t fill) {
 extern "C" CDECL rust_str *
 upcall_new_str(rust_task *task, char const *s, size_t fill) {
     LOG_UPCALL_ENTRY(task);
-    
     return make_str(task, s, fill);
 }
 
@@ -537,7 +536,7 @@ upcall_start_task(rust_task *spawner,
     rust_scheduler *sched = spawner->sched;
     DLOG(sched, task,
          "upcall start_task(task %s @0x%" PRIxPTR
-         ", spawnee 0x%" PRIxPTR ")", 
+         ", spawnee 0x%" PRIxPTR ")",
          task->name, task,
          spawnee_fn);
 

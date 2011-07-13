@@ -93,7 +93,7 @@ fn tritv_to_str(fn_ctxt fcx, &tritv::t v) -> str {
             case (?t) {
                 s +=
                     if (comma) { ", " } else { comma = true; "" } +
-                    if (t == tfalse) { "!" } else { "" } +                  
+                    if (t == tfalse) { "!" } else { "" } +
                     constraint_to_str(fcx.ccx.tcx, p.c);
             }
         }
@@ -119,7 +119,7 @@ fn log_tritv_err(fn_ctxt fcx, tritv::t v) { log_err tritv_to_str(fcx, v); }
 
 fn tos(&uint[] v) -> str {
     auto rslt = "";
-    for (uint i in v) { if (i == 0u) { rslt += "0"; } 
+    for (uint i in v) { if (i == 0u) { rslt += "0"; }
         else if (i == 1u) { rslt += "1"; }
         else { rslt += "?"; } }
     ret rslt;
@@ -190,7 +190,7 @@ once.
 norm_constraint, in contrast, gets used when handling an instance
 of a constraint rather than a definition of a constraint. It can
 also be init or pred (ninit or npred), but the npred case just has
-a single argument list. 
+a single argument list.
 
 The representation of constraints, where multiple instances of the
 same predicate are collapsed into one entry in the table, makes it
@@ -209,7 +209,7 @@ type pred_desc_ = rec((@constr_arg_use)[] args, uint bit_num);
 type pred_desc = spanned[pred_desc_];
 
 // FIXME: Should be node_id, since we can only talk
-// about locals. 
+// about locals.
 type constr_arg_use = constr_arg_general[tup(ident, def_id)];
 
 tag constraint {
@@ -559,7 +559,7 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
                 case (_) {
                     tcx.sess.bug("exprs_to_constr_args: non-local variable " +
                                  "as pred arg");
-                        
+
                 }
             }
         }
@@ -694,7 +694,7 @@ type subst = tup(inst, inst)[];
 
 fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
         -> (tup(uint, uint))[] {
-   
+
     let (tup(uint, uint))[] rslt = ~[];
     if (ivec::len(subst) == 0u) {
         ret rslt;
@@ -765,7 +765,7 @@ fn replace(subst subst, pred_desc d) -> (constr_arg_general_[inst])[] {
             }
          }
     }
-    
+
     /*
     for (constr_arg_general_[tup(ident, def_id)] p in rslt) {
         alt (p) {
@@ -787,12 +787,12 @@ fn path_to_ident(&ty::ctxt cx, &path p) -> ident {
     }
 }
 
-tag if_ty { 
+tag if_ty {
     if_check;
     plain_if;
 }
 
-fn local_node_id_to_def_id_strict(&fn_ctxt fcx, &span sp, &node_id i) 
+fn local_node_id_to_def_id_strict(&fn_ctxt fcx, &span sp, &node_id i)
     -> def_id {
     alt (local_node_id_to_def(fcx, i)) {
         case (some(def_local(?d_id))) {
@@ -819,7 +819,7 @@ fn local_node_id_to_def(&fn_ctxt fcx, &node_id i) -> option::t[def]
 fn local_node_id_to_def_id(&fn_ctxt fcx, &node_id i) -> option::t[def_id] {
     alt (local_node_id_to_def(fcx, i)) {
         case (some(def_local(?d_id))) { some(d_id) }
-        case (some (def_arg(?a_id)))  { some(a_id) } 
+        case (some (def_arg(?a_id)))  { some(a_id) }
         case (_)                      { none }
     }
 }
@@ -865,7 +865,7 @@ fn copy_in_poststate_two(&fn_ctxt fcx, &poststate src_post,
         // dest def_id
         auto instances = find_instances(fcx, subst, p._1);
 
-        for (tup(uint,uint) p in instances) { 
+        for (tup(uint,uint) p in instances) {
             if (promises_(p._0, src_post)) {
                 set_in_poststate_(p._1, target_post);
             }

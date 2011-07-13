@@ -5,7 +5,7 @@ use std;
 import std::task::join;
 
 fn main() -> () {
-   test00(); 
+   test00();
 }
 
 fn start() {

@@ -126,10 +126,10 @@ public:
 class rust_task_thread : public rust_thread {
     int id;
     rust_kernel *owner;
-    
+
 public:
     rust_task_thread(int id, rust_kernel *owner);
-    
+
     virtual void run();
 };
 

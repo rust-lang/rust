@@ -61,8 +61,8 @@ fn subst_path(&ext_ctxt cx, &(invk_binding)[] ibs, &path_ p, ast_fold fld)
     // Don't substitute into qualified names.
     if (ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u) { ret p; }
     ret alt (lookup(ibs, p.idents.(0))) {
-        case (some(ident_binding(_, ?id))) { 
-            rec(global=false, idents=~[id.node], types=~[]) 
+        case (some(ident_binding(_, ?id))) {
+            rec(global=false, idents=~[id.node], types=~[])
         }
         case (some(path_binding(_, ?a_pth))) { a_pth.node }
         case (some(expr_binding(_, ?expr))) {
@@ -74,18 +74,18 @@ fn subst_path(&ext_ctxt cx, &(invk_binding)[] ibs, &path_ p, ast_fold fld)
 }
 
 
-fn subst_expr(&ext_ctxt cx, &(invk_binding)[] ibs, &ast::expr_ e, 
-              ast_fold fld, fn(&ast::expr_, ast_fold) -> ast::expr_ orig) 
+fn subst_expr(&ext_ctxt cx, &(invk_binding)[] ibs, &ast::expr_ e,
+              ast_fold fld, fn(&ast::expr_, ast_fold) -> ast::expr_ orig)
     -> ast::expr_ {
     ret alt(e) {
         case (expr_path(?p)){
             // Don't substitute into qualified names.
-            if (ivec::len(p.node.types) > 0u || 
+            if (ivec::len(p.node.types) > 0u ||
                 ivec::len(p.node.idents) != 1u) { e }
             alt (lookup(ibs, p.node.idents.(0))) {
-                case (some(ident_binding(_, ?id))) { 
-                    expr_path(respan(id.span, 
-                                     rec(global=false, 
+                case (some(ident_binding(_, ?id))) {
+                    expr_path(respan(id.span,
+                                     rec(global=false,
                                          idents=~[id.node],types=~[])))
                 }
                 case (some(path_binding(_, ?a_pth))) { expr_path(*a_pth) }
@@ -107,7 +107,7 @@ tag invk_binding {
 }
 
 fn path_to_ident(&path pth) -> option::t[ident] {
-    if (ivec::len(pth.node.idents) == 1u 
+    if (ivec::len(pth.node.idents) == 1u
         && ivec::len(pth.node.types) == 0u) {
         ret some(pth.node.idents.(0u));
     }
@@ -115,7 +115,7 @@ fn path_to_ident(&path pth) -> option::t[ident] {
 }
 
 fn process_clause(&ext_ctxt cx, &mutable vec[pat_ext] pes,
-                  &mutable option::t[str] macro_name, &path pth, 
+                  &mutable option::t[str] macro_name, &path pth,
                   &(@ast::expr)[] invoc_args, @ast::expr body) {
     let str clause_name = alt(path_to_ident(pth)) {
         case (some(?id)) { id }
@@ -139,10 +139,10 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
     for (@ast::expr arg in args) {
         alt(arg.node) {
             case(expr_vec(?elts, ?mut, ?seq_kind)) {
-                
+
                 if (ivec::len(elts) != 2u) {
-                    cx.span_fatal((*arg).span, 
-                                  "extension clause must consist of [" + 
+                    cx.span_fatal((*arg).span,
+                                  "extension clause must consist of [" +
                                   "macro invocation, expansion body]");
                 }
                 alt(elts.(0u).node) {
@@ -168,10 +168,10 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
     }
 
     auto ext = bind generic_extension(_,_,_,_,@pat_exts);
-    
+
     ret tup(alt (macro_name) {
                 case (some(?id)) { id }
-                case (none) { 
+                case (none) {
                     cx.span_fatal(sp, "macro definition must have "
                                   + "at least one clause")
                 }
@@ -192,7 +192,7 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                 case (expr_vec(?p_elts, _, _)) {
                     alt (arg) {
                         case (expr_vec(?a_elts, _, _)) {
-                            if (ivec::len(p_elts) != ivec::len(a_elts)) { 
+                            if (ivec::len(p_elts) != ivec::len(a_elts)) {
                                 none[vec[invk_binding]]
                             }
                             let uint i = 0u;
@@ -218,12 +218,12 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
                                     alt (path_to_ident(a_pth)) {
                                         case (some(?a_id)) {
                                             some(~[ident_binding
-                                                   (p_id, 
+                                                   (p_id,
                                                     respan(argument.span,
                                                                  a_id))])
                                         }
                                         case (none) {
-                                            some(~[path_binding(p_id, 
+                                            some(~[path_binding(p_id,
                                                                 @a_pth)])
                                         }
                                     }

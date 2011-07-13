@@ -6,5 +6,5 @@ fn f(int q) -> bool { ret true; }
 fn main() {
   auto x = 0;
 
-  check f(x); 
+  check f(x);
 }

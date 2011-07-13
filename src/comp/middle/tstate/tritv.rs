@@ -19,7 +19,7 @@ export tritv_clear;
 export tritv_doesntcare;
 export to_str;
 
-/* for a fixed index: 
+/* for a fixed index:
    10 = "this constraint may or may not be true after execution"
    01 = "this constraint is definitely true"
    00 = "this constraint is definitely false"
@@ -165,7 +165,7 @@ fn tritv_get(&t v, uint i) -> trit {
   else if (b2) { ttrue }
   else         { tfalse}
 }
- 
+
 fn tritv_set(uint i, &t v, trit t) -> bool {
   auto old = tritv_get(v, i);
   alt (t) {

@@ -67,7 +67,7 @@ memory_region::realloc(void *mem, size_t size) {
     void *newMem = _srv->realloc(mem, size);
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list[index] != mem) {
-        printf("at index %d, found %p, expected %p\n", 
+        printf("at index %d, found %p, expected %p\n",
                index, _allocation_list[index], mem);
         printf("realloc: ptr 0x%" PRIxPTR " is not in allocation_list\n",
             (uintptr_t) mem);
@@ -76,7 +76,7 @@ memory_region::realloc(void *mem, size_t size) {
     else {
         _allocation_list[index] = newMem;
         (*(int*)newMem) = index;
-        // printf("realloc: stored %p at index %d, replacing %p\n", 
+        // printf("realloc: stored %p at index %d, replacing %p\n",
         //        newMem, index, mem);
     }
 #endif
@@ -101,7 +101,7 @@ memory_region::malloc(size_t size) {
     *p = index;
     // printf("malloc: stored %p at index %d\n", mem, index);
 #endif
-    // printf("malloc: ptr 0x%" PRIxPTR " region=%p\n", 
+    // printf("malloc: ptr 0x%" PRIxPTR " region=%p\n",
     //        (uintptr_t) mem, this);
     if (_synchronized) { _lock.unlock(); }
 #ifdef TRACK_ALLOCATIONS

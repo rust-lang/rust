@@ -2,7 +2,7 @@ fn to_str(u64 n, uint radix) -> str {
     assert(0u < radix && radix <= 16u);
 
     auto r64 = radix as u64;
-    
+
     fn digit(u64 n) -> str {
         ret alt (n) {
             case (0u64) { "0" }

@@ -76,7 +76,7 @@ void randinit(randctx *ctx, word flag)
      mix(a,b,c,d,e,f,g,h);
    }
 
-   if (flag) 
+   if (flag)
    {
      /* initialize using the contents of r[] as the seed */
      for (i=0; i<RANDSIZ; i+=8)

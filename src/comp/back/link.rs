@@ -325,7 +325,7 @@ fn build_link_meta(&session::session sess, &ast::crate c,
         fn len_and_str_lit(&ast::lit l) -> str {
             ret len_and_str(pprust::lit_to_str(@l));
         }
-    
+
         auto cmh_items = attr::sort_meta_items(metas.cmh_items);
 
         sha.reset();

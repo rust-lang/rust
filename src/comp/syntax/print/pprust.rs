@@ -574,7 +574,7 @@ fn print_stmt(&ps s, &ast::stmt st) {
 
 fn print_block(&ps s, &ast::block blk) {
     print_possibly_embedded_block(s, blk, false);
-} 
+}
 
 fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded) {
     maybe_print_comment(s, blk.span.lo);
@@ -1003,13 +1003,13 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 print_expr(s, field.expr);
                 end(s);
             }
-            fn get_span(&ast::anon_obj_field f) -> codemap::span { 
-                ret f.ty.span; 
+            fn get_span(&ast::anon_obj_field f) -> codemap::span {
+                ret f.ty.span;
             }
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
-                    commasep_cmnt(s, consistent, fields, print_field, 
+                    commasep_cmnt(s, consistent, fields, print_field,
                                        get_span);
                 }
             }

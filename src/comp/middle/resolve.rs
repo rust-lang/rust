@@ -156,7 +156,7 @@ fn map_crate(&@env e, &@ast::crate c) {
              with *visit::default_visitor[scopes]());
     visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_map_mod));
-    // Register the top-level mod 
+    // Register the top-level mod
 
     e.mod_map.insert(-1,
                      @rec(m=some(c.node.module),
@@ -342,7 +342,7 @@ fn visit_fn_with_scope(&@env e, &ast::_fn f, &ast::ty_param[] tp, &span sp,
     // for f's constrs in the table.
 
     for (@ast::constr c in f.decl.constraints) {
-        resolve_constr(e, id, c, sc, v); 
+        resolve_constr(e, id, c, sc, v);
     }
     visit::visit_fn(f, tp, sp, name, id,
                     cons(scope_fn(f.decl, tp), @sc), v);
@@ -1294,7 +1294,7 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
                     // Fight the alias checker
                     auto name_ = name;
                     e.sess.span_err
-                        (a.pats.(i).span, "binding " + name_ + 
+                        (a.pats.(i).span, "binding " + name_ +
                          " does not occur in first pattern");
                 }
             }

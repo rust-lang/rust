@@ -14,7 +14,7 @@ fn main() {
 
     test(#fmt("test"), "test");
 
-    // a quadratic optimization in LLVM (jump-threading) makes this test a 
+    // a quadratic optimization in LLVM (jump-threading) makes this test a
     // bit slow to compile unless we break it up
     part1();
     part2();
@@ -133,10 +133,10 @@ fn part4() {
     // conversions support precision - it's not standard printf so we
     // can do whatever. For now I'm making it behave the same as string
     // conversions.
-    
+
     test(#fmt("%.b", true), "");
     test(#fmt("%.0b", true), "");
-    test(#fmt("%.1b", true), "t");  
+    test(#fmt("%.1b", true), "t");
 }
 
 fn part5() {

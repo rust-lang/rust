@@ -8,7 +8,7 @@ fn start(chan[int] c, int start, int number_of_messages) {
     while (i < number_of_messages) {
         c <| start + i;
         i += 1;
-    }    
+    }
 }
 
 fn main() -> () {

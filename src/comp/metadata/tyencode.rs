@@ -236,7 +236,7 @@ fn enc_constr(&io::writer w, &@ctxt cx, &@ty::constr_def c) {
         if (semi) { w.write_char(';'); } else { semi = true; }
         alt (a.node) {
             case (carg_base) { w.write_char('*'); }
-            case (carg_ident(?i)) { 
+            case (carg_ident(?i)) {
                 w.write_uint(i);
             }
             case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }

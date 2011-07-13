@@ -13,7 +13,7 @@ fn child(int i1,
          int i6,
          int i7,
          int i8,
-         int i9) 
+         int i9)
 {
   log_err i1;
   log_err i2;

@@ -23,16 +23,16 @@ fn main() {
 
     // ports
     auto p1; auto p2;
-    
+
     p1 = port[int]();
     p2 = port[int]();
 
     assert(p1 == p1);
     assert(p1 != p2);
-    
+
     // channels
     auto c1; auto c2;
-    
+
     c1 = chan(p1);
     c2 = chan(p2);
 

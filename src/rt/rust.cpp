@@ -105,7 +105,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
     rust_scheduler *sched = kernel->get_scheduler();
-    command_line_args *args 
+    command_line_args *args
         = new (kernel) command_line_args(sched->root_task, argc, argv);
 
     DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,

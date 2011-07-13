@@ -30,7 +30,7 @@ public:
 
 class scoped_lock {
   lock_and_signal &lock;
-  
+
 public:
   scoped_lock(lock_and_signal &lock);
   ~scoped_lock();

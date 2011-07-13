@@ -8,5 +8,5 @@ fn main() {
   let uint b = 4u;
   check le(a, b);
   auto c <- a;
-  log (safe_slice("kitties", c, b)); 
+  log (safe_slice("kitties", c, b));
 }

@@ -74,7 +74,7 @@ rust_task : public maybe_proxy<rust_task>,
     rust_handle<rust_task> *handle;
 
     context ctx;
-    
+
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
     int running_on;

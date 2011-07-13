@@ -4,5 +4,5 @@ fn main() -> () {
 }
 
 fn child(str s) {
-    
+
 }

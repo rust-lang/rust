@@ -11,7 +11,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
     _log(srv, NULL),
     _srv(srv),
-    _interrupt_kernel_loop(FALSE) 
+    _interrupt_kernel_loop(FALSE)
 {
     sched = create_scheduler("main");
 }
@@ -245,14 +245,14 @@ rust_kernel::signal_kernel_lock() {
 int rust_kernel::start_task_threads(int num_threads)
 {
     rust_task_thread *thread = NULL;
-    
+
     // -1, because this thread will also be a thread.
     for(int i = 0; i < num_threads - 1; ++i) {
         thread = new rust_task_thread(i + 1, this);
         thread->start();
         threads.push(thread);
     }
-    
+
     sched->start_main_loop(0);
 
     while(threads.pop(&thread)) {

@@ -187,7 +187,7 @@ fn fn_states(&_fn f, &ast::ty_param[] tps,
              &visit::vt[crate_ctxt] v) {
     visit::visit_fn(f, tps, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
-    
+
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
     auto name = option::from_maybe("anon", i);

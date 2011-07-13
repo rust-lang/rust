@@ -8,7 +8,7 @@ import std::option::some;
 fn foo[T](&option::t[T] y) {
     let int x;
     let vec[int] rs = [];
-    /* tests that x doesn't get put in the precondition for the 
+    /* tests that x doesn't get put in the precondition for the
        entire if expression */
 
     if (true) {

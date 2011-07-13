@@ -1,7 +1,7 @@
 #include "rust_internal.h"
 #include "rust_port.h"
 
-rust_port::rust_port(rust_task *task, size_t unit_sz) 
+rust_port::rust_port(rust_task *task, size_t unit_sz)
     : maybe_proxy<rust_port>(this), kernel(task->kernel), task(task),
       unit_sz(unit_sz), writers(task), chans(task) {
 

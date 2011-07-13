@@ -5,7 +5,7 @@ fn main() {
   let int z = 42;
   let int x;
   while (z < 50) {
-    z += 1; 
+    z += 1;
     while (false) {
       x <- y;
       y = z;

@@ -300,13 +300,13 @@ fn or(&vec[bool] v) -> bool {
 
 fn any[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
     for (T t in v) {
-        if (f(t)) { ret true; } 
+        if (f(t)) { ret true; }
     }
     ret false;
 }
 fn all[T](&fn(&T) -> bool f, &vec[T] v) -> bool {
     for (T t in v) {
-        if (!f(t)) { ret false; } 
+        if (!f(t)) { ret false; }
     }
     ret true;
 }

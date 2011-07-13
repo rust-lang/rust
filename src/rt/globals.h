@@ -45,6 +45,6 @@ extern "C" {
                     __FILE__, __LINE__, res, strerror(res));        \
             abort();                                                \
         }                                                           \
-    }                                                               
+    }
 
 #endif /* GLOBALS_H */

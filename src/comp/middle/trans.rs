@@ -2726,7 +2726,7 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
         }
         ret rslt(cx, C_nil());
     }
-    
+
     let result r = rslt(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty::ty_tup(?args)) {
@@ -4481,7 +4481,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
 
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
-// scope. Return the ValueRef and TypeRef corresponding to the closure. 
+// scope. Return the ValueRef and TypeRef corresponding to the closure.
 fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
     tup(ValueRef, TypeRef) {
     auto upvar_count = std::ivec::len(upvars);
@@ -5149,8 +5149,8 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
                     int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
                              ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)));
         }
-    } 
-    else { 
+    }
+    else {
         if (ty::type_is_integral(cx.fcx.lcx.ccx.tcx,
                                  ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
             if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx,
@@ -5748,7 +5748,7 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     auto llretslot = args_res._2;
     /*
     log "calling: " + val_str(cx.fcx.lcx.ccx.tn, faddr);
-    
+
     for (ValueRef arg in llargs) {
         log "arg: " + val_str(cx.fcx.lcx.ccx.tn, arg);
     }
@@ -6181,7 +6181,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
                check the value of that variable, doing nothing
                if it's set to false and acting like a check
                otherwise. */
-            auto c = get_extern_const(cx.fcx.lcx.ccx.externs, 
+            auto c = get_extern_const(cx.fcx.lcx.ccx.externs,
                                       cx.fcx.lcx.ccx.llmod,
                                       "check_claims", T_bool());
             auto cond = cx.build.Load(c);
@@ -6215,7 +6215,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         }
         case (_) {
             // The expression is an lvalue. Fall through.
-            assert (ty::is_lval(e)); // make sure it really is and that we 
+            assert (ty::is_lval(e)); // make sure it really is and that we
                                // didn't forget to add a case for a new expr!
         }
     }
@@ -6396,7 +6396,7 @@ fn trans_fail_expr(&@block_ctxt cx, &option::t[span] sp_opt,
         }
     }
 }
- 
+
 fn trans_fail(&@block_ctxt cx, &option::t[span] sp_opt, &str fail_str)
    -> result {
     auto V_fail_str = C_cstr(cx.fcx.lcx.ccx, fail_str);
@@ -6607,7 +6607,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     // order, so that they match the expected stack layout for the spawnee)
     //
     // 3. Fill the tuple with the arguments we evaluated.
-    // 
+    //
     // 3.5. Generate a wrapper function that takes the tuple and unpacks it to
     // call the real task.
     //
@@ -6648,12 +6648,12 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     auto llargs = alloc_ty(bcx, args_ty);
     auto i = 0u;
     for (ValueRef v in arg_vals) {
-        // log_err #fmt("ty(llargs) = %s", 
+        // log_err #fmt("ty(llargs) = %s",
         //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
 
         auto target = bcx.build.GEP(llargs.val, ~[C_int(0), C_int(i as int)]);
         // log_err #fmt("ty(v) = %s", val_str(bcx.fcx.lcx.ccx.tn, v));
-        // log_err #fmt("ty(target) = %s", 
+        // log_err #fmt("ty(target) = %s",
         //              val_str(bcx.fcx.lcx.ccx.tn, target));
 
         bcx.build.Store(v, target);
@@ -6728,8 +6728,8 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
 // tasks, and for sending things through channels. There are probably some
 // uniqueness optimizations and things we can do here for tasks in the same
 // domain.
-fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task) 
-    -> result 
+fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
+    -> result
 {
     // TODO: make sure all paths add any reference counting that they need to.
 
@@ -6747,17 +6747,17 @@ fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
     else if(ty::type_is_chan(tcx, t)) {
         // If this is a channel, we need to clone it.
         auto chan_ptr = bcx.build.PointerCast(v, T_opaque_chan_ptr());
-      
-        auto chan_raw_val = 
+
+        auto chan_raw_val =
             bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.clone_chan,
                            ~[bcx.fcx.lltaskptr, target_task, chan_ptr]);
 
         // Cast back to the type the context was expecting.
-        auto chan_val = bcx.build.PointerCast(chan_raw_val, 
+        auto chan_val = bcx.build.PointerCast(chan_raw_val,
                                               val_ty(v));
 
         ret rslt(bcx, chan_val);
-    } 
+    }
     else if(ty::type_is_structural(tcx, t)) {
         fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
             log_err "Unimplemented type for deep_copy.";
@@ -6865,7 +6865,7 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
 // function and putting it in the generated code as an object item, we are
 // instead "inlining" the construction of the object and returning the object
 // itself.
-fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj, 
+fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
                   &ast::ty_param[] ty_params, ast::node_id id) -> result {
 
     // Right now, we're assuming that anon objs don't take ty params, even
@@ -6903,12 +6903,12 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     // create_vtbl() wants an ast::_obj and all we have is an ast::anon_obj,
     // so we need to roll our own.
-    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) 
+    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
         -> ast::obj_field {
         ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
     }
     let ast::_obj wrapper_obj = rec(
-        fields = std::ivec::map(anon_obj_field_to_obj_field, 
+        fields = std::ivec::map(anon_obj_field_to_obj_field,
                                 additional_fields),
         methods = anon_obj.methods,
         dtor = none[@ast::method]);
@@ -6916,7 +6916,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     let ty::t with_obj_ty;
     auto vtbl;
     alt (anon_obj.with_obj) {
-        case (none) { 
+        case (none) {
             // If there's no with_obj -- that is, if we're just adding new
             // fields rather than extending an existing object -- then we just
             // pass the outer object to create_vtbl().  Our vtable won't need
@@ -6949,16 +6949,16 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // create a forwarding slot.  And, of course, we need to create a
             // normal vtable entry for every method being added.
             vtbl = create_vtbl(bcx.fcx.lcx, sp, llouter_obj_ty, outer_obj_ty,
-                               wrapper_obj, ty_params, 
+                               wrapper_obj, ty_params,
                                some(with_obj_ty),
                                additional_field_tys);
         }
     }
-    
+
     // Allocate the object that we're going to return.  It's a two-word pair
     // containing a vtable pointer and a body pointer.
-    auto pair = 
-        alloca(bcx, 
+    auto pair =
+        alloca(bcx,
                T_struct(~[val_ty(vtbl),
                           T_obj_ptr(ccx.tn, std::ivec::len(ty_params))]));
 
@@ -7003,7 +7003,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         // Synthesize a tuple type for typarams: [typaram, ...]
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
 
-        // Tuple type for body: 
+        // Tuple type for body:
         // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
         let ty::t body_ty =
             ty::mk_imm_tup(ccx.tcx, ~[tydesc_ty, typarams_ty,
@@ -7068,7 +7068,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             auto capture =
                 GEP_tup_like(bcx, typarams_ty, body_typarams.val, ~[0, i]);
             bcx = capture.bcx;
-            bcx = copy_val(bcx, INIT, capture.val, typaram, 
+            bcx = copy_val(bcx, INIT, capture.val, typaram,
                            tydesc_ty).bcx;
             i += 1;
         }
@@ -7091,7 +7091,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
                 GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
             bcx = field.bcx;
             bcx = copy_val(bcx, INIT, field.val,
-                           additional_field_vals.(i).val, 
+                           additional_field_vals.(i).val,
                            additional_field_tys.(i)).bcx;
             i += 1;
         }
@@ -7258,7 +7258,7 @@ fn new_raw_block_ctxt(&@fn_ctxt fcx, BasicBlockRef llbb) -> @block_ctxt {
 
 
 // trans_block_cleanups: Go through all the cleanups attached to this
-// block_ctxt and execute them.  
+// block_ctxt and execute them.
 //
 // When translating a block that introdces new variables during its scope, we
 // need to make sure those variables go out of scope when the block ends.  We
@@ -7685,7 +7685,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     // Set up arguments to the function.
     auto fcx = new_fn_ctxt(cx, sp, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
-                              ty::ret_ty_of_fn(cx.ccx.tcx, id), 
+                              ty::ret_ty_of_fn(cx.ccx.tcx, id),
                               f.decl.inputs, ty_params);
     copy_any_self_to_alloca(fcx, ty_self);
     alt ({ fcx.llself }) {
@@ -7782,13 +7782,13 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     // method's return type, if necessary.
     auto llretptr = fcx.llretptr;
     if (ty::type_has_dynamic_size(cx.ccx.tcx, m.output)) {
-        llretptr = bcx.build.PointerCast(llretptr, 
+        llretptr = bcx.build.PointerCast(llretptr,
                                          T_typaram_ptr(cx.ccx.tn));
     }
 
     // Now, we have to get the the with_obj's vtbl out of the self_obj.  This
     // is a multi-step process:
-    
+
     // First, grab the box out of the self_obj.  It contains a refcount and a
     // body.
     auto llself_obj_box =
@@ -7821,7 +7821,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     // Synthesize a tuple type for typarams: [typaram, ...]
     let ty::t typarams_ty = ty::mk_imm_tup(cx.ccx.tcx, tps);
 
-    // Tuple type for body: 
+    // Tuple type for body:
     // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
     let ty::t body_ty =
         ty::mk_imm_tup(cx.ccx.tcx, ~[tydesc_ty, typarams_ty,
@@ -7864,7 +7864,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 
     // Pick out the original method from the vtable.  The +1 is because slot
     // #0 contains the destructor.
-    auto llorig_mthd = bcx.build.GEP(llwith_obj_vtbl, 
+    auto llorig_mthd = bcx.build.GEP(llwith_obj_vtbl,
                                      ~[C_int(0), C_int(ix + 1u as int)]);
 
     // Set up the original method to be called.
@@ -7876,7 +7876,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
                         m.inputs,
                         m.output,
                         std::ivec::len[ast::ty_param](ty_params));
-    llorig_mthd = bcx.build.PointerCast(llorig_mthd, 
+    llorig_mthd = bcx.build.PointerCast(llorig_mthd,
                                         T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = bcx.build.Load(llorig_mthd);
 
@@ -7886,13 +7886,13 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llorig_mthd_args.
-    
+
     let uint a = 3u; // retptr, task ptr, env come first
     let ValueRef passed_arg = llvm::LLVMGetParam(llforwarding_fn, a);
     for (ty::arg arg in m.inputs) {
         if (arg.mode == ty::mo_val) {
             passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
-        } 
+        }
         llorig_mthd_args += ~[passed_arg];
         a += 1u;
     }
@@ -7908,8 +7908,8 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 
 // process_normal_mthd: Create the contents of a normal vtable slot.  A helper
 // function for create_vtbl.
-fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty, 
-                       ty::t self_ty, &ast::ty_param[] ty_params) 
+fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
+                       ty::t self_ty, &ast::ty_param[] ty_params)
     -> ValueRef {
 
     auto llfnty = T_nil();
@@ -7917,7 +7917,7 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
         case (ty::ty_fn(?proto, ?inputs, ?output, _, _)) {
             llfnty =
                 type_of_fn_full(
-                    cx.ccx, m.span, proto, 
+                    cx.ccx, m.span, proto,
                     some[TypeRef](llself_ty), inputs, output,
                     std::ivec::len[ast::ty_param](ty_params));
         }
@@ -7927,14 +7927,14 @@ fn process_normal_mthd(@local_ctxt cx, @ast::method m, TypeRef llself_ty,
     let str s = mangle_internal_name_by_path(mcx.ccx, mcx.path);
     let ValueRef llfn =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
- 
+
     // Every method on an object gets its node_id inserted into the
     // crate-wide item_ids map, together with the ValueRef that points to
     // where that method's definition will be in the executable.
     cx.ccx.item_ids.insert(m.node.id, llfn);
     cx.ccx.item_symbols.insert(m.node.id, s);
     trans_fn(mcx, m.span, m.node.meth, llfn,
-             some[ty_self_pair](tup(llself_ty, self_ty)), 
+             some[ty_self_pair](tup(llself_ty, self_ty)),
              ty_params, m.node.id);
 
     ret llfn;
@@ -7996,7 +7996,7 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
                 case (ty::ty_obj(?with_obj_methods)) {
                     for (ty::method m in with_obj_methods) {
                         meths += ~[fwding_mthd(@m)];
-                    } 
+                    }
                 }
                 case (_) {
                     // Shouldn't happen.
@@ -8008,7 +8008,7 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
             // Now, filter out any methods that we don't need forwarding slots
             // for, because they're being replaced.
             fn filtering_fn(@local_ctxt cx, &vtbl_mthd m,
-                            (@ast::method)[] addtl_meths) 
+                            (@ast::method)[] addtl_meths)
                 -> option::t[vtbl_mthd] {
 
                 alt (m) {
@@ -8040,15 +8040,15 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
             }
             auto f = bind filtering_fn(cx, _, ob.methods);
             meths = std::ivec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
-            
+
             // And now add the additional ones (both replacements and entirely
             // new ones).  These'll just be normal methods.
             for (@ast::method m in ob.methods) {
                 meths += ~[normal_mthd(m)];
             }
         }
-    } 
-    
+    }
+
     // Sort all the methods.
     fn vtbl_mthd_lteq(&vtbl_mthd a, &vtbl_mthd b) -> bool {
         alt (a) {
@@ -8107,7 +8107,7 @@ fn create_vtbl(@local_ctxt cx, &span sp, TypeRef llself_ty, ty::t self_ty,
             }
         }
     }
-    
+
     auto vtbl = C_struct(llmethods);
     auto vtbl_name = mangle_internal_name_by_path(cx.ccx,
                                                   cx.path + ~["vtbl"]);
@@ -8197,7 +8197,7 @@ fn trans_obj(@local_ctxt cx, &span sp, &ast::_obj ob, ast::node_id ctor_id,
     // It will be located in the read-only memory of the executable we're
     // creating and will contain ValueRefs for all of this object's methods.
     // create_vtbl returns a pointer to the vtable, which we store.
-    auto vtbl = create_vtbl(cx, sp, llself_ty, self_ty, ob, ty_params, none, 
+    auto vtbl = create_vtbl(cx, sp, llself_ty, self_ty, ob, ty_params, none,
                             ~[]);
 
     bcx.build.Store(vtbl, pair_vtbl);
@@ -8344,7 +8344,7 @@ fn trans_res_ctor(@local_ctxt cx, &span sp, &ast::_fn dtor,
     auto llctor_decl;
     alt (cx.ccx.item_ids.find(ctor_id)) {
         case (some(?x)) { llctor_decl = x; }
-        case (_) { 
+        case (_) {
             cx.ccx.sess.span_fatal(sp, "unbound ctor_id in trans_res_ctor");
         }
     }

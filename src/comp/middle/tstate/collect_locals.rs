@@ -47,7 +47,7 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
     // visit subexpressions
     visit::visit_expr(e, cx, v);
 }
- 
+
 fn find_locals(&ty::ctxt tcx, &_fn f, &ty_param[] tps, &span sp, &fn_ident i,
                node_id id) -> ctxt {
     let ctxt cx = rec(cs=@mutable ~[], tcx=tcx);

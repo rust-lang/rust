@@ -1,6 +1,6 @@
 
 
-/* -*- mode::rust;indent-tabs-mode::nil -*- 
+/* -*- mode::rust;indent-tabs-mode::nil -*-
  * Implementation of 99 Bottles of Beer
  * http://99-bottles-of-beer.net/
  */

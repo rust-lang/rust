@@ -180,7 +180,7 @@ fn get_options(&@crate_ctxt ccx, &match m, uint col) -> opt[] {
     for (match_branch br in m) {
         alt (br.pats.(col).node) {
             ast::pat_lit(?l) { add_to_set(found, lit(l)); }
-            ast::pat_tag(_, _) { 
+            ast::pat_tag(_, _) {
                 add_to_set(found, variant_opt(ccx, br.pats.(col).id));
             }
             _ {}
@@ -323,7 +323,7 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
                 }
             }
             lit(?l) {
-                test_val = bcx.build.Load(val); 
+                test_val = bcx.build.Load(val);
                 kind = alt (l.node) {
                     ast::lit_str(_, _) { compare }
                     _ { switch }
@@ -386,7 +386,7 @@ fn make_phi_bindings(&@block_ctxt bcx, &exit_node[] map,
         }
         fail;
     }
-    
+
     auto our_block = bcx.llbb as uint;
     for each (@tup(ast::ident, ast::node_id) item in ids.items()) {
         auto llbbs = ~[];

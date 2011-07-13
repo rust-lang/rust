@@ -16,7 +16,7 @@ fn print_even(uint x) : even(x) {
 }
 
 fn foo(uint x) -> () {
-  if check(even(x)) { 
+  if check(even(x)) {
       print_even(x);
     }
   else {

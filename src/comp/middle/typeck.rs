@@ -95,7 +95,7 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
     alt (defn) {
         case (ast::def_arg(?id)) {
             assert (fcx.locals.contains_key(id._1));
-            auto typ = ty::mk_var(fcx.ccx.tcx, 
+            auto typ = ty::mk_var(fcx.ccx.tcx,
                                   lookup_local(fcx, sp, id._1));
             ret tup(0u, typ);
         }
@@ -1616,7 +1616,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         check_expr(fcx, e);
         demand::simple(fcx, e.span, ty::mk_bool(fcx.ccx.tcx),
                        expr_ty(fcx.ccx.tcx, e));
-        
+
         /* e must be a call expr where all arguments are either
            literals or slots */
             alt (e.node) {
@@ -1625,7 +1625,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         case (ast::expr_path(?oper_name)) {
                             alt (fcx.ccx.tcx.def_map.find(operator.id)) {
                                 case (some(ast::def_fn(?_d_id,
-                                                       ast::pure_fn))) { 
+                                                       ast::pure_fn))) {
                                     // do nothing
                                 }
                                 case (_) {
@@ -1678,7 +1678,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         write::ty_only_fixup(fcx, id, if_t);
     }
 
-    // Checks the compatibility 
+    // Checks the compatibility
     fn check_binop_type_compat(&@fn_ctxt fcx, span span,
                                ty::t ty, ast::binop binop) {
         auto resolved_t = resolve_type_vars_if_possible(fcx, ty);
@@ -1745,7 +1745,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         case (ty::ty_ptr(?inner)) { oper_t = inner.ty; }
                         case (_) {
                             fcx.ccx.tcx.sess.span_fatal
-                                (expr.span, "dereferencing non-" + 
+                                (expr.span, "dereferencing non-" +
                                  "dereferenceable type: " +
                                  ty_to_str(fcx.ccx.tcx, oper_t));
                         }
@@ -2191,7 +2191,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             alt (base) {
                 case (none) {
                     fn get_node(&spanned[field] f) -> field { f.node }
-                    auto typ = ty::mk_rec(fcx.ccx.tcx, 
+                    auto typ = ty::mk_rec(fcx.ccx.tcx,
                                           ivec::map(get_node, fields_t));
                     write::ty_only_fixup(fcx, id, typ);
                 }
@@ -2313,8 +2313,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto t = next_ty_var(fcx);
             alt(typ) {
                 case (some(?_t)) {
-                    demand::simple(fcx, expr.span, 
-                                   ast_ty_to_ty_crate(fcx.ccx, _t), 
+                    demand::simple(fcx, expr.span,
+                                   ast_ty_to_ty_crate(fcx.ccx, _t),
                                    t);
                 }
                 case (none) {}
@@ -2352,7 +2352,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             // FIXME: this is duplicated between here and trans -- it should
             // appear in one place
-            fn anon_obj_field_to_obj_field(&ast::anon_obj_field f) 
+            fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
                 -> ast::obj_field {
                 ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
             }
@@ -2417,7 +2417,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                 // The user is trying to extend a non-object.
                                 fcx.ccx.tcx.sess.span_fatal(
                                     e.span,
-                                    syntax::print::pprust::expr_to_str(e) + 
+                                    syntax::print::pprust::expr_to_str(e) +
                                     " does not have object type");
                             }
                         }

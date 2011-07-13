@@ -394,7 +394,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {
-                    for (ast::anon_obj_field f in fields) { 
+                    for (ast::anon_obj_field f in fields) {
                         walk_ty(v, f.ty);
                         walk_expr(v, f.expr);
                     }
