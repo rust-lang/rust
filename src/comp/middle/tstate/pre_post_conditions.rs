@@ -1,7 +1,5 @@
 
 import std::ivec;
-import std::vec;
-import std::vec::plus_option;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -503,8 +501,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 find_pre_post_block(fcx, an_alt.block);
                 ret block_pp(fcx.ccx, an_alt.block);
             }
-            auto alt_pps = [];
-            for (arm a in alts) { alt_pps += [do_an_alt(fcx, a)]; }
+            auto alt_pps = ~[];
+            for (arm a in alts) { alt_pps += ~[do_an_alt(fcx, a)]; }
             fn combine_pp(pre_and_post antec, fn_ctxt fcx, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
                 union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
@@ -517,7 +515,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                      postcondition=false_postcond(num_local_vars));
             auto g = bind combine_pp(antec_pp, fcx, _, _);
             auto alts_overall_pp =
-                vec::foldl[pre_and_post, pre_and_post](g, e_pp, alt_pps);
+                ivec::foldl[pre_and_post, pre_and_post](g, e_pp, alt_pps);
             set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
                              alts_overall_pp.postcondition);
         }

@@ -63,13 +63,8 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
         case (npred(_, ?args)) {
             alt (rslt) {
                 case (cpred(_, ?descs)) {
-                    // FIXME: Remove this vec->ivec conversion.
-                    let (@constr_arg_use)[] cau_ivec = ~[];
-                    for (@constr_arg_use cau in args) {
-                        cau_ivec += ~[cau];
-                    }
                     auto d = *descs;
-                    ret match_args(fcx, d, cau_ivec);
+                    ret match_args(fcx, d, args);
                 }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"

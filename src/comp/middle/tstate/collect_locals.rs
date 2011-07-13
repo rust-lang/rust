@@ -1,6 +1,5 @@
 
 import std::ivec;
-import std::vec;
 import syntax::ast::*;
 import util::ppaux::fn_ident_to_string;
 import std::option::*;
@@ -35,15 +34,11 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
         // If it's a call, generate appropriate instances of the
         // call's constraints.
         case (expr_call(?operator, ?operands)) {
-            // FIXME: Remove this vec->ivec conversion.
-            auto operands_ivec = ~[];
-            for (@expr opd in operands) { operands_ivec += ~[opd]; }
-
             for (@ty::constr_def c in constraints_expr(cx.tcx, operator)) {
                 let aux::constr ct = respan(c.span,
                       rec(id=c.node.id._1,
-                          c=aux::substitute_constr_args(cx.tcx,
-                                                        operands_ivec, c)));
+                          c=aux::substitute_constr_args(cx.tcx, operands,
+                                                        c)));
                 *cx.cs += ~[ct];
             }
         }
