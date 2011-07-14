@@ -169,11 +169,6 @@ native mod llvm = "rustllvm" {
     fn LLVMGetTarget(ModuleRef M) -> sbuf;
     fn LLVMSetTarget(ModuleRef M, sbuf Triple);
 
-    /** See Module::addTypeName. */
-    fn LLVMAddTypeName(ModuleRef M, sbuf Name, TypeRef Ty) -> Bool;
-    fn LLVMDeleteTypeName(ModuleRef M, sbuf Name);
-    fn LLVMGetTypeByName(ModuleRef M, sbuf Name) -> TypeRef;
-
     /** See Module::dump. */
     fn LLVMDumpModule(ModuleRef M);
 
@@ -250,17 +245,9 @@ native mod llvm = "rustllvm" {
     /* Operations on other types */
     fn LLVMVoidTypeInContext(ContextRef C) -> TypeRef;
     fn LLVMLabelTypeInContext(ContextRef C) -> TypeRef;
-    fn LLVMOpaqueTypeInContext(ContextRef C) -> TypeRef;
 
     fn LLVMVoidType() -> TypeRef;
     fn LLVMLabelType() -> TypeRef;
-    fn LLVMOpaqueType() -> TypeRef;
-
-    /* Operations on type handles */
-    fn LLVMCreateTypeHandle(TypeRef PotentiallyAbstractTy) -> TypeHandleRef;
-    fn LLVMRefineType(TypeRef AbstractTy, TypeRef ConcreteTy);
-    fn LLVMResolveTypeHandle(TypeHandleRef TypeHandle) -> TypeRef;
-    fn LLVMDisposeTypeHandle(TypeHandleRef TypeHandle);
 
     /* Operations on all values */
     fn LLVMTypeOf(ValueRef Val) -> TypeRef;
@@ -792,7 +779,6 @@ native mod llvm = "rustllvm" {
     fn LLVMAddSCCPPass(PassManagerRef PM);
     fn LLVMAddDeadStoreEliminationPass(PassManagerRef PM);
     fn LLVMAddStripDeadPrototypesPass(PassManagerRef PM);
-    fn LLVMAddDeadTypeEliminationPass(PassManagerRef PM);
     fn LLVMAddConstantMergePass(PassManagerRef PM);
     fn LLVMAddArgumentPromotionPass(PassManagerRef PM);
     fn LLVMAddTailCallEliminationPass(PassManagerRef PM);
@@ -878,6 +864,14 @@ native mod llvm = "rustllvm" {
 
     /** Print the pass timings since static dtors aren't picking them up. */
     fn LLVMRustPrintPassTimings();
+
+    fn LLVMStructCreateNamed(ContextRef C, sbuf Name) -> TypeRef;
+
+    fn LLVMStructSetBody(TypeRef StructTy, *TypeRef ElementTypes,
+                         uint ElementCount, Bool Packed);
+
+    fn LLVMConstNamedStruct(TypeRef S, *ValueRef ConstantVals,
+                            uint Count) -> ValueRef;
 
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
@@ -1397,18 +1391,6 @@ obj builder(BuilderRef B, @mutable bool terminated) {
 }
 
 /* Memory-managed object interface to type handles. */
-
-obj type_handle_dtor(TypeHandleRef TH) {
-    drop { llvm::LLVMDisposeTypeHandle(TH); }
-}
-
-type type_handle = rec(TypeHandleRef llth, type_handle_dtor dtor);
-
-fn mk_type_handle() -> type_handle {
-    auto th = llvm::LLVMCreateTypeHandle(llvm::LLVMOpaqueType());
-    ret rec(llth=th, dtor=type_handle_dtor(th));
-}
-
 
 state obj type_names(std::map::hashmap[TypeRef, str] type_names,
                     std::map::hashmap[str, TypeRef] named_types) {
