@@ -4073,10 +4073,13 @@ fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
 // Iterator translation
 
-// Searches through a block for all references to locals or upvars in this
-// frame and returns the list of definition IDs thus found.
-fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
-                  ast::node_id initial_decl) -> ast::node_id[] {
+// Searches through part of the AST for all references to locals or
+// upvars in this frame and returns the list of definition IDs thus found.
+// Since we want to be able to collect upvars in some arbitrary piece
+// of the AST, we take a walker function that we invoke with a visitor
+// in order to start the search.
+fn collect_upvars(&@block_ctxt cx, &fn (&walk::ast_visitor) walker,
+                  ast::node_id[] initial_decls) -> ast::node_id[] {
     type env =
         @rec(mutable ast::node_id[] refs,
              hashmap[ast::node_id, ()] decls,
@@ -4112,7 +4115,8 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
         }
     }
     let hashmap[ast::node_id, ()] decls = new_int_hash[()]();
-    decls.insert(initial_decl, ());
+    for (ast::node_id decl in initial_decls) { decls.insert(decl, ()); }
+
     let env e =
         @rec(mutable refs=~[],
              decls=decls,
@@ -4123,7 +4127,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
              visit_expr_pre=bind walk_expr(e, _),
              visit_pat_pre=bind walk_pat(e, _)
              with walk::default_visitor());
-    walk::walk_block(*visitor, bloc);
+    walker(*visitor);
     // Calculate (refs - decls). This is the set of captured upvars.
 
     let ast::node_id[] result = ~[];
@@ -4310,7 +4314,8 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     // FIXME: possibly support alias-mode here?
     auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
-    auto upvars = collect_upvars(cx, body, decl_id);
+    auto upvars = collect_upvars(cx, bind walk::walk_block(_, body),
+                                 ~[decl_id]);
 
     auto environment_data = build_environment(cx, upvars);
     auto llenvptr = environment_data._0;
