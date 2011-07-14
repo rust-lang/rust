@@ -4655,11 +4655,11 @@ fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
                                   C_int(abi::closure_elt_bindings)]);
     auto llremotebindingsptr =
         copy_args_bcx.build.Load(llremotebindingsptrptr);
+    auto base = 0u;
     auto i = 0u;
     auto end = std::ivec::len(upvars);
     if (!option::is_none(cx.fcx.lliterbody)) {
-        end += 1u;
-        i += 1u;
+        base += 1u;
         auto lliterbodyptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
                                     ~[C_int(0), C_int(0)]);
@@ -4670,7 +4670,7 @@ fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
         auto upvar_id = upvars.(i);
         auto llupvarptrptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
-                                    ~[C_int(0), C_int(i as int)]);
+                                    ~[C_int(0), C_int(base+i as int)]);
         auto llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
         fcx.llupvars.insert(upvar_id, llupvarptr);
         i += 1u;
