@@ -55,7 +55,8 @@ fn lookup_hash(&ebmlivec::doc d, fn(&u8[]) -> bool  eq_fn, uint hash) ->
     ret result;
 }
 
-fn maybe_find_item(int item_id, &ebmlivec::doc items) -> option::t[ebmlivec::doc] {
+fn maybe_find_item(int item_id, &ebmlivec::doc items)
+    -> option::t[ebmlivec::doc] {
     fn eq_item(&u8[] bytes, int item_id) -> bool {
         ret ebmlivec::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
