@@ -49,6 +49,10 @@ fn read_whole_file(&str filename) -> str {
     str::unsafe_from_bytes(io::file_reader(filename).read_whole_stream())
 }
 
+fn write_file(&str filename, &str content) {
+    io::file_writer(filename, [io::create]).write_str(content);
+}
+
 fn file_contains(&str filename, &str needle) -> bool {
     auto contents = read_whole_file(filename);
     ret str::find(contents, needle) != -1;
@@ -160,8 +164,8 @@ fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
     }
 }
 
-fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str fakefilename) {
-    auto str3 = as_str(bind pprust::print_crate(cmap, crate2, "empty.rs", _, pprust::no_ann()));
+fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str filename) {
+    auto str3 = as_str(bind pprust::print_crate(cmap, crate2, filename, _, pprust::no_ann()));
     auto cm4 = codemap::new_codemap();
     if (true
       && !contains(str3, "][]") // https://github.com/graydon/rust/issues/669
@@ -171,25 +175,29 @@ fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str fakefilename
       && !contains(str3, "spawn") // more precedence issues
       && !contains(str3, "bind") // more precedence issues?
        ) {
-        auto crate4 = parser::parse_crate_from_source_str(fakefilename, str3, ~[], cm4);
+        auto crate4 = parser::parse_crate_from_source_str(filename, str3, ~[], cm4);
         // should compare crates at this point, but it's easier to compare strings
-        auto str5 = as_str(bind pprust::print_crate(cmap, crate4, "empty.rs", _, pprust::no_ann()));
+        auto str5 = as_str(bind pprust::print_crate(cmap, crate4, filename, _, pprust::no_ann()));
         if (!str::is_ascii(str3)) {
-          log_err "Non-ASCII in " + fakefilename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
+          log_err "Non-ASCII in " + filename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
         } else if (str3 != str5) {
-          log_err "Mismatch: " + fakefilename;
-          log_err "str3:\n" + str3;
-          log_err "str5:\n" + str5;
-          fail "Mismatch";
+            write_file("round-trip-a.rs", str3);
+            write_file("round-trip-b.rs", str5);
+            std::run::run_program("kdiff3", ["round-trip-a.rs", "round-trip-b.rs"]);
+            fail "Mismatch";
         }
    }
 }
 
 fn main(vec[str] args) {
+    if (vec::len(args) != 2u) {
+        log_err #fmt("usage: %s <testdir>", args.(0));
+        ret;
+    }
     auto files = ~[];
-    auto root = "/Users/jruderman/code/rust/src/"; // XXX
+    auto root = args.(1);
     find_rust_files(files, root); // not using time here because that currently screws with passing-a-mutable-array
-    log_err uint::str(ivec::len(files)) + " files";
+    log_err #fmt("%u files", ivec::len(files));
 
     for (str file in files) {
         log_err "=== " + file + " ===";
@@ -200,7 +208,7 @@ fn main(vec[str] args) {
          && !str::ends_with(file, "block-expr-precedence.rs") // https://github.com/graydon/rust/issues/674
          && !str::ends_with(file, "syntax-extension-fmt.rs") // an issue where -2147483648 gains an extra negative sign each time through, which i can't reproduce using "rustc --pretty normal"???
 ) {
-            check_roundtrip(crate, cm, file + ".pp.rs");
+            check_roundtrip(crate, cm, file);
         }
         //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
         // Currently hits https://github.com/graydon/rust/issues/675
