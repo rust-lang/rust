@@ -1,3 +1,5 @@
+// xfail-stage0
+
 fn main() {
   #macro([#mylambda(x,body), {fn f(int x) -> int { ret body }; f}]);
 

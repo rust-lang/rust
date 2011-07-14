@@ -1,3 +1,5 @@
+// xfail-stage0
+
 tag t1 { a(int); b(uint); }
 type t2 = rec(t1 x, int y);
 tag t3 { c(t2, uint); }

@@ -1,3 +1,5 @@
+// xfail-stage0
+
 type foo = rec(int a, uint b);
 tag bar {
     u(@foo);
