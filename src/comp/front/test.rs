@@ -11,9 +11,12 @@ export modify_for_testing;
 
 type node_id_gen = @fn() -> ast::node_id;
 
+type test = rec(ast::ident[] path,
+                bool ignore);
+
 type test_ctxt = @rec(node_id_gen next_node_id,
                       mutable ast::ident[] path,
-                      mutable ast::ident[][] testfns);
+                      mutable test[] testfns);
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -88,7 +91,9 @@ fn fold_item(&test_ctxt cx, &@ast::item i,
 
     if (is_test_fn(i)) {
         log "this is a test function";
-        cx.testfns += ~[cx.path];
+        auto test = rec(path = cx.path,
+                        ignore = is_ignored(i));
+        cx.testfns += ~[test];
         log #fmt("have %u test functions", ivec::len(cx.testfns));
     }
 
@@ -114,6 +119,10 @@ fn is_test_fn(&@ast::item i) -> bool {
     }
 
     ret has_test_attr && has_test_signature(i);
+}
+
+fn is_ignored(&@ast::item i) -> bool {
+    attr::contains_name(attr::attr_metas(i.attrs), "ignore")
 }
 
 fn add_test_module(&test_ctxt cx, &ast::_mod m) -> ast::_mod {
@@ -225,10 +234,9 @@ fn mk_test_desc_vec(&test_ctxt cx) -> @ast::expr {
     log #fmt("building test vector from %u tests",
              ivec::len(cx.testfns));
     auto descs = ~[];
-    for (ast::ident[] testpath in cx.testfns) {
-        log #fmt("encoding %s", ast::path_name_i(testpath));
-        auto path = testpath;
-        descs += ~[mk_test_desc_rec(cx, path)];
+    for (test test in cx.testfns) {
+        auto test_ = test; // Satisfy alias analysis
+        descs += ~[mk_test_desc_rec(cx, test_)];
     }
 
     ret @rec(id = cx.next_node_id(),
@@ -236,7 +244,10 @@ fn mk_test_desc_vec(&test_ctxt cx) -> @ast::expr {
              span = rec(lo=0u,hi=0u));
 }
 
-fn mk_test_desc_rec(&test_ctxt cx, ast::ident[] path) -> @ast::expr {
+fn mk_test_desc_rec(&test_ctxt cx, test test) -> @ast::expr {
+    auto path = test.path;
+
+    log #fmt("encoding %s", ast::path_name_i(path));
 
     let ast::lit name_lit = nospan(ast::lit_str(ast::path_name_i(path),
                                                 ast::sk_rc));
@@ -260,7 +271,19 @@ fn mk_test_desc_rec(&test_ctxt cx, ast::ident[] path) -> @ast::expr {
                                          ident = "fn",
                                          expr = @fn_expr));
 
-    let ast::expr_ desc_rec_ = ast::expr_rec(~[name_field, fn_field],
+    let ast::lit ignore_lit = nospan(ast::lit_bool(test.ignore));
+
+    let ast::expr ignore_expr = rec(id = cx.next_node_id(),
+                                    node = ast::expr_lit(@ignore_lit),
+                                    span = rec(lo=0u, hi=0u));
+
+    let ast::field ignore_field = nospan(rec(mut = ast::imm,
+                                             ident = "ignore",
+                                             expr = @ignore_expr));
+
+    let ast::expr_ desc_rec_ = ast::expr_rec(~[name_field,
+                                               fn_field,
+                                               ignore_field],
                                              option::none);
     let ast::expr desc_rec = rec(id = cx.next_node_id(),
                                  node = desc_rec_,

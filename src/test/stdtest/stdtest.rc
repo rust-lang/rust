@@ -2,6 +2,7 @@ use std;
 
 mod sha1;
 mod int;
+mod test;
 // Local Variables:
 // mode: rust
 // fill-column: 78;

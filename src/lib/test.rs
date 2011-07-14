@@ -7,6 +7,11 @@ export test_name;
 export test_fn;
 export test_desc;
 export test_main;
+export test_result;
+export tr_ok;
+export tr_failed;
+export tr_ignored;
+export run_test;
 
 // The name of a test. By convention this follows the rules for rust
 // paths, i.e it should be a series of identifiers seperated by double
@@ -23,7 +28,8 @@ type test_fn = fn();
 // The definition of a single test. A test runner will run a list of
 // these.
 type test_desc = rec(test_name name,
-                     test_fn fn);
+                     test_fn fn,
+                     bool ignore);
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
@@ -43,6 +49,12 @@ fn parse_opts(&vec[str] args) -> test_opts {
         })
 }
 
+tag test_result {
+    tr_ok;
+    tr_failed;
+    tr_ignored;
+}
+
 // A simple console test runner
 fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 
@@ -55,21 +67,30 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 
     auto passed = 0u;
     auto failed = 0u;
+    auto ignored = 0u;
 
     for (test_desc test in filtered_tests) {
         out.write_str(#fmt("running %s ... ", test.name));
-        if (run_test(test)) {
-            passed += 1u;
-            write_ok(out);
-            out.write_line("");
-        } else {
-            failed += 1u;
-            write_failed(out);
-            out.write_line("");
+        alt (run_test(test)) {
+            tr_ok {
+                passed += 1u;
+                write_ok(out);
+                out.write_line("");
+            }
+            tr_failed {
+                failed += 1u;
+                write_failed(out);
+                out.write_line("");
+            }
+            tr_ignored {
+                ignored += 1u;
+                write_ignored(out);
+                out.write_line("");
+            }
         }
     }
 
-    assert passed + failed == total;
+    assert passed + failed + ignored == total;
 
     out.write_str(#fmt("\nresult: "));
     if (failed == 0u) {
@@ -77,15 +98,10 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
     } else {
         write_failed(out);
     }
-    out.write_str(#fmt(". %u passed; %u failed\n\n",
-                       passed, failed));
+    out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
+                       passed, failed, ignored));
 
     ret true;
-
-    fn run_test(&test_desc test) -> bool {
-        test.fn();
-        ret true;
-    }
 
     fn write_ok(&io::writer out) {
         if (term::color_supported()) {
@@ -102,6 +118,16 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
             term::fg(out.get_buf_writer(), term::color_red);
         }
         out.write_str("FAILED");
+        if (term::color_supported()) {
+            term::reset(out.get_buf_writer());
+        }
+    }
+
+    fn write_ignored(&io::writer out) {
+        if (term::color_supported()) {
+            term::fg(out.get_buf_writer(), term::color_yellow);
+        }
+        out.write_str("ignored");
         if (term::color_supported()) {
             term::reset(out.get_buf_writer());
         }
@@ -126,6 +152,15 @@ fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
     } (_, filter_str);
 
     ret ivec::filter_map(filter, tests);
+}
+
+fn run_test(&test_desc test) -> test_result {
+    if (!test.ignore) {
+        test.fn();
+        ret tr_ok;
+    } else {
+        ret tr_ignored;
+    }
 }
 
 
