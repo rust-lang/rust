@@ -63,8 +63,19 @@ fn default_configuration(session::session sess, str argv0, str input) ->
 fn build_configuration(session::session sess, str argv0,
                        str input) -> ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
-    // some default configuration items
-    ret sess.get_opts().cfg + default_configuration(sess, argv0, input);
+    // some default and generated configuration items
+    auto default_cfg = default_configuration(sess, argv0, input);
+    auto user_cfg = sess.get_opts().cfg;
+    auto gen_cfg = {
+        // If the user wants a test runner, then add the test cfg
+        if (sess.get_opts().test
+            && !attr::contains_name(user_cfg, "test")) {
+            ~[attr::mk_word_item("test")]
+        } else {
+            ~[]
+        }
+    };
+    ret user_cfg + gen_cfg + default_cfg;
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -374,9 +385,8 @@ fn parse_pretty(session::session sess, &str name) -> pp_mode {
                  "`identified`");
 }
 
-fn main(vec[str] args) {
-    auto opts =
-        [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
+fn opts() -> vec[getopts::opt] {
+    ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("O"),
          optopt("OptLevel"), optmulti("L"), optflag("S"),
@@ -385,10 +395,13 @@ fn main(vec[str] args) {
          optflag("time-llvm-passes"), optflag("no-typestate"),
          optflag("noverify"), optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("static")];
+}
+
+fn main(vec[str] args) {
     auto binary = vec::shift[str](args);
     auto binary_dir = fs::dirname(binary);
     auto match =
-        alt (getopts::getopts(args, opts)) {
+        alt (getopts::getopts(args, opts())) {
             case (getopts::success(?m)) { m }
             case (getopts::failure(?f)) {
                 log_err #fmt("error: %s", getopts::fail_str(f));
@@ -572,6 +585,40 @@ fn main(vec[str] args) {
         run::run_program("rm", [saved_out_filename + ".o"]);
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    import std::ivec;
+
+    // When the user supplies --test we should implicitly supply --cfg test
+    #[test]
+    fn test_switch_implies_cfg_test() {
+        auto match = alt (getopts::getopts(["--test"], opts())) {
+            getopts::success(?m) { m }
+        };
+        auto sessopts = build_session_options("whatever", match, "whatever");
+        auto sess = build_session(sessopts);
+        auto cfg = build_configuration(sess, "whatever", "whatever");
+        assert attr::contains_name(cfg, "test");
+    }
+
+    // When the user supplies --test and --cfg test, don't implicitly add
+    // another --cfg test
+    #[test]
+    fn test_switch_implies_cfg_test_unless_cfg_test() {
+        auto match = alt (getopts::getopts(["--test",
+                                            "--cfg=test"], opts())) {
+            getopts::success(?m) { m }
+        };
+        auto sessopts = build_session_options("whatever", match, "whatever");
+        auto sess = build_session(sessopts);
+        auto cfg = build_configuration(sess, "whatever", "whatever");
+        auto test_items = attr::find_meta_items_by_name(cfg, "test");
+        assert ivec::len(test_items) == 1u;
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

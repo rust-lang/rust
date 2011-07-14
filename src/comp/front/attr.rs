@@ -14,6 +14,7 @@ export find_linkage_metas;
 export find_attrs_by_name;
 export find_meta_items_by_name;
 export contains;
+export contains_name;
 export sort_meta_items;
 export remove_meta_items_by_name;
 export require_unique_names;
@@ -143,6 +144,11 @@ fn contains(&(@ast::meta_item)[] haystack, @ast::meta_item needle) -> bool {
     }
     log "found it not :(";
     ret false;
+}
+
+fn contains_name(&(@ast::meta_item)[] metas, ast::ident name) -> bool {
+    auto matches = find_meta_items_by_name(metas, name);
+    ret ivec::len(matches) > 0u;
 }
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
