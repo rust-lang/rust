@@ -17,6 +17,7 @@ export optflag;
 export optflagopt;
 export optmulti;
 export getopts;
+export getopts_ivec;
 export result;
 export success;
 export failure;

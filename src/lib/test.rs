@@ -8,10 +8,13 @@ export test_fn;
 export test_desc;
 export test_main;
 export test_result;
+export test_opts;
 export tr_ok;
 export tr_failed;
 export tr_ignored;
 export run_test;
+export filter_tests;
+export parse_opts;
 
 // The name of a test. By convention this follows the rules for rust
 // paths, i.e it should be a series of identifiers seperated by double
@@ -34,19 +37,52 @@ type test_desc = rec(test_name name,
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(&vec[str] args, &test_desc[] tests) {
-    if (!run_tests(parse_opts(args), tests)) {
+    auto ivec_args = {
+        auto iargs = ~[];
+        for (str arg in args) {
+            iargs += ~[arg]
+        }
+        iargs
+    };
+    check ivec::is_not_empty(ivec_args);
+    auto opts = alt (parse_opts(ivec_args)) {
+        either::left(?o) { o }
+        either::right(?m) { fail m }
+    };
+    if (!run_tests(opts, tests)) {
         fail "Some tests failed";
     }
 }
 
-type test_opts = rec(option::t[str] filter);
+type test_opts = rec(option::t[str] filter,
+                     bool run_ignored);
 
-fn parse_opts(&vec[str] args) -> test_opts {
-    rec(filter = if (vec::len(args) > 1u) {
-            option::some(args.(1))
-        } else {
-            option::none
-        })
+type opt_res = either::t[test_opts, str];
+
+// Parses command line arguments into test options
+fn parse_opts(&str[] args) : ivec::is_not_empty(args) -> opt_res {
+
+    // FIXME (#649): Shouldn't have to check here
+    check ivec::is_not_empty(args);
+    auto args_ = ivec::tail(args);
+    auto opts = ~[getopts::optflag("ignored")];
+    auto match = alt (getopts::getopts_ivec(args_, opts)) {
+        getopts::success(?m) { m }
+        getopts::failure(?f) { ret either::right(getopts::fail_str(f)) }
+    };
+
+    auto filter = if (vec::len(match.free) > 0u) {
+        option::some(match.free.(0))
+    } else {
+        option::none
+    };
+
+    auto run_ignored = getopts::opt_present(match, "ignored");
+
+    auto test_opts = rec(filter = filter,
+                         run_ignored = run_ignored);
+
+    ret either::left(test_opts);
 }
 
 tag test_result {
@@ -135,23 +171,43 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 }
 
 fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
-    if (option::is_none(opts.filter)) {
-        ret tests;
-    }
+    auto filtered = tests;
 
-    auto filter_str = alt opts.filter { option::some(?f) { f }
-                                        option::none { "" } };
+    filtered = if (option::is_none(opts.filter)) {
+        filtered
+    } else {
+        auto filter_str = alt opts.filter { option::some(?f) { f }
+                                            option::none { "" } };
 
-    auto filter = bind fn(&test_desc test,
-                          str filter_str) -> option::t[test_desc] {
-        if (str::find(test.name, filter_str) >= 0) {
-            ret option::some(test);
-        } else {
-            ret option::none;
-        }
-    } (_, filter_str);
+        auto filter = bind fn(&test_desc test,
+                              str filter_str) -> option::t[test_desc] {
+            if (str::find(test.name, filter_str) >= 0) {
+                ret option::some(test);
+            } else {
+                ret option::none;
+            }
+        } (_, filter_str);
 
-    ret ivec::filter_map(filter, tests);
+        ivec::filter_map(filter, filtered)
+    };
+
+    filtered = if (!opts.run_ignored) {
+        filtered
+    } else {
+        auto filter = fn(&test_desc test) -> option::t[test_desc] {
+            if (test.ignore) {
+                ret option::some(rec(name = test.name,
+                                     fn = test.fn,
+                                     ignore = false));
+            } else {
+                ret option::none;
+            }
+        };
+
+        ivec::filter_map(filter, filtered)
+    };
+
+    ret filtered;
 }
 
 fn run_test(&test_desc test) -> test_result {
