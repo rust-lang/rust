@@ -72,6 +72,18 @@ fn init_elt_mut[T](&T t, uint n_elts) -> T[mutable] {
     ret v;
 }
 
+// Predicates
+pred is_empty[T](&T[mutable?] v) -> bool {
+    // FIXME: This would be easier if we could just call len
+    for (T t in v) {
+        ret false;
+    }
+    ret true;
+}
+
+pred is_not_empty[T](&T[mutable?] v) -> bool {
+    ret !is_empty(v);
+}
 
 // Accessors
 
@@ -247,3 +259,11 @@ mod unsafe {
     }
 }
 
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

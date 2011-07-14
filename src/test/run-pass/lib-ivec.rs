@@ -84,6 +84,16 @@ fn test_init_elt() {
     assert (v.(5) == 20u);
 }
 
+fn test_is_empty() {
+    assert ivec::is_empty[int](~[]);
+    assert !ivec::is_empty(~[0]);
+}
+
+fn test_is_not_empty() {
+    assert ivec::is_not_empty(~[0]);
+    assert !ivec::is_not_empty[int](~[]);
+}
+
 fn test_last() {
     auto n = ivec::last(~[]);
     assert (n == none);
@@ -240,6 +250,10 @@ fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
 
+    // Predicates
+    test_is_empty();
+    test_is_not_empty();
+
     // Accessors
     test_init_fn();
     test_init_elt();
@@ -260,4 +274,13 @@ fn main() {
     test_foldl();
     test_any_and_all();
 }
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
 
