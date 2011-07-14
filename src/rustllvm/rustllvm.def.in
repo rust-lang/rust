@@ -30,7 +30,6 @@ LLVMAddConstantPropagationPass
 LLVMAddCorrelatedValuePropagationPass
 LLVMAddDeadArgEliminationPass
 LLVMAddDeadStoreEliminationPass
-LLVMAddDeadTypeEliminationPass
 LLVMAddDemoteMemoryToRegisterPass
 LLVMAddDestination
 LLVMAddEarlyCSEPass
@@ -78,7 +77,6 @@ LLVMAddStripSymbolsPass
 LLVMAddTailCallEliminationPass
 LLVMAddTargetData
 LLVMAddTypeBasedAliasAnalysisPass
-LLVMAddTypeName
 LLVMAddVerifierPass
 LLVMAlignOf
 LLVMAppendBasicBlock
@@ -279,11 +277,9 @@ LLVMCreateModuleProviderForExistingModule
 LLVMCreateObjectFile
 LLVMCreatePassManager
 LLVMCreateTargetData
-LLVMCreateTypeHandle
 LLVMDeleteBasicBlock
 LLVMDeleteFunction
 LLVMDeleteGlobal
-LLVMDeleteTypeName
 LLVMDisposeBuilder
 LLVMDisposeExecutionEngine
 LLVMDisposeGenericValue
@@ -295,7 +291,6 @@ LLVMDisposeObjectFile
 LLVMDisposePassManager
 LLVMDisposeSectionIterator
 LLVMDisposeTargetData
-LLVMDisposeTypeHandle
 LLVMDoubleType
 LLVMDoubleTypeInContext
 LLVMDumpModule
@@ -388,10 +383,8 @@ LLVMGetSectionSize
 LLVMGetSections
 LLVMGetStructElementTypes
 LLVMGetTarget
-LLVMGetTypeByName
 LLVMGetTypeContext
 LLVMGetTypeKind
-LLVMGetTypeName
 LLVMGetUndef
 LLVMGetUsedValue
 LLVMGetUser
@@ -527,8 +520,6 @@ LLVMMoveBasicBlockAfter
 LLVMMoveBasicBlockBefore
 LLVMMoveToNextSection
 LLVMOffsetOfElement
-LLVMOpaqueType
-LLVMOpaqueTypeInContext
 LLVMPPCFP128Type
 LLVMPPCFP128TypeInContext
 LLVMParseBitcode
@@ -541,14 +532,12 @@ LLVMPositionBuilderBefore
 LLVMPreferredAlignmentOfGlobal
 LLVMPreferredAlignmentOfType
 LLVMRecompileAndRelinkFunction
-LLVMRefineType
 LLVMRemoveAttribute
 LLVMRemoveFunctionAttr
 LLVMRemoveInstrAttribute
 LLVMRemoveModule
 LLVMRemoveModuleProvider
 LLVMReplaceAllUsesWith
-LLVMResolveTypeHandle
 LLVMRunFunction
 LLVMRunFunctionAsMain
 LLVMRunFunctionPassManager
@@ -598,4 +587,6 @@ LLVMX86FP80Type
 LLVMX86FP80TypeInContext
 LLVMX86MMXType
 LLVMX86MMXTypeInContext
-
+LLVMConstNamedStruct
+LLVMStructCreateNamed
+LLVMStructSetBody

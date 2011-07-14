@@ -40,10 +40,8 @@ import syntax::codemap::span;
 import lib::llvm::llvm;
 import lib::llvm::builder;
 import lib::llvm::target_data;
-import lib::llvm::type_handle;
 import lib::llvm::type_names;
 import lib::llvm::mk_target_data;
-import lib::llvm::mk_type_handle;
 import lib::llvm::mk_type_names;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
@@ -475,18 +473,29 @@ fn T_struct(&TypeRef[] elts) -> TypeRef {
                              False);
 }
 
-fn T_opaque() -> TypeRef { ret llvm::LLVMOpaqueType(); }
+fn T_named_struct(&str name) -> TypeRef {
+    auto c = llvm::LLVMGetGlobalContext();
+    ret llvm::LLVMStructCreateNamed(c, str::buf(name));
+}
+
+fn set_struct_body(TypeRef t, &TypeRef[] elts) {
+    llvm::LLVMStructSetBody(t, std::ivec::to_ptr(elts), std::ivec::len(elts),
+                            False);
+}
 
 fn T_empty_struct() -> TypeRef { ret T_struct(~[]); }
 
 fn T_rust_object() -> TypeRef {
-   auto e = T_ptr(T_empty_struct());
-   ret T_struct(~[e, e]);
+    auto t = T_named_struct("rust_object");
+    auto e = T_ptr(T_empty_struct());
+    set_struct_body(t, ~[e,e]);
+    ret t;
 }
 
 fn T_task() -> TypeRef {
-    auto t =
-        T_struct(~[T_int(), // Refcount
+    auto t = T_named_struct("task");
+
+    auto elems = ~[T_int(), // Refcount
                    T_int(), // Delegate pointer
                    T_int(), // Stack segment pointer
                    T_int(), // Runtime SP
@@ -495,7 +504,8 @@ fn T_task() -> TypeRef {
 
                    T_int(), // Domain pointer
                             // Crate cache pointer
-                   T_int()]);
+                   T_int()];
+    set_struct_body(t, elems);
     ret t;
 }
 
@@ -532,9 +542,8 @@ fn T_cmp_glue_fn(&crate_ctxt cx) -> TypeRef {
 }
 
 fn T_tydesc(TypeRef taskptr_type) -> TypeRef {
-    auto th = mk_type_handle();
-    auto abs_tydesc = llvm::LLVMResolveTypeHandle(th.llth);
-    auto tydescpp = T_ptr(T_ptr(abs_tydesc));
+    auto tydesc = T_named_struct("tydesc");
+    auto tydescpp = T_ptr(T_ptr(tydesc));
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty =
         T_ptr(T_fn(~[T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
@@ -542,8 +551,8 @@ fn T_tydesc(TypeRef taskptr_type) -> TypeRef {
     auto cmp_glue_fn_ty =
         T_ptr(T_fn(~[T_ptr(T_i1()), taskptr_type, T_ptr(T_nil()), tydescpp,
                      pvoid, pvoid, T_i8()], T_void()));
-    auto tydesc =
-        T_struct(~[tydescpp,   // first_param
+
+    auto elems = ~[tydescpp,   // first_param
                    T_int(),    // size
                    T_int(),    // align
                    glue_fn_ty, // copy_glue
@@ -553,11 +562,9 @@ fn T_tydesc(TypeRef taskptr_type) -> TypeRef {
                    glue_fn_ty, // mark_glue
                    glue_fn_ty, // obj_drop_glue
                    glue_fn_ty, // is_stateful
-                   cmp_glue_fn_ty]); // cmp_glue
-
-    llvm::LLVMRefineType(abs_tydesc, tydesc);
-    auto t = llvm::LLVMResolveTypeHandle(th.llth);
-    ret t;
+                   cmp_glue_fn_ty];
+    set_struct_body(tydesc, elems);
+    ret tydesc;
 }
 
 fn T_array(TypeRef t, uint n) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
@@ -915,10 +922,6 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_type) { llty = T_ptr(cx.tydesc_type); }
     }
     assert (llty as int != 0);
-    if (cx.sess.get_opts().save_temps) {
-        llvm::LLVMAddTypeName(cx.llmod, str::buf(ty_to_short_str(cx.tcx, t)),
-                              llty);
-    }
     cx.lltypes.insert(t, llty);
     ret llty;
 }
@@ -1094,6 +1097,11 @@ fn C_zero_byte_arr(uint size) -> ValueRef {
 fn C_struct(&ValueRef[] elts) -> ValueRef {
     ret llvm::LLVMConstStruct(std::ivec::to_ptr(elts), std::ivec::len(elts),
                               False);
+}
+
+fn C_named_struct(TypeRef T, &ValueRef[] elts) -> ValueRef {
+    ret llvm::LLVMConstNamedStruct(T, std::ivec::to_ptr(elts),
+                                   std::ivec::len(elts));
 }
 
 fn C_array(TypeRef ty, &ValueRef[] elts) -> ValueRef {
@@ -1971,7 +1979,8 @@ fn emit_tydescs(&@crate_ctxt ccx) {
                 case (some(?v)) { ccx.stats.n_real_glues += 1u; v }
             };
         auto tydesc =
-            C_struct(~[C_null(T_ptr(T_ptr(ccx.tydesc_type))), ti.size,
+            C_named_struct(ccx.tydesc_type,
+                     ~[C_null(T_ptr(T_ptr(ccx.tydesc_type))), ti.size,
                        ti.align, copy_glue, // copy_glue
                        drop_glue, // drop_glue
                        free_glue, // free_glue
@@ -9074,11 +9083,6 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
     ret llvm::LLVMConstIntToPtr(v, t);
 }
 
-fn create_typedefs(&@crate_ctxt cx) {
-    llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), cx.task_type);
-    llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), cx.tydesc_type);
-}
-
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str, ValueRef] {
     let TypeRef[] T_memmove32_args =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
@@ -9298,7 +9302,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              tydesc_type=tydesc_type,
              task_type=task_type);
     auto cx = new_local_ctxt(ccx);
-    create_typedefs(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
     trans_constants(ccx, crate);
