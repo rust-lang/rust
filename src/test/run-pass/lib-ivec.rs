@@ -94,6 +94,22 @@ fn test_is_not_empty() {
     assert !ivec::is_not_empty[int](~[]);
 }
 
+fn test_head() {
+    auto a = ~[11, 12];
+    check ivec::is_not_empty(a);
+    assert ivec::head(a) == 11;
+}
+
+fn test_tail() {
+    auto a = ~[11];
+    check ivec::is_not_empty(a);
+    assert ivec::tail(a) == ~[];
+
+    a = ~[11, 12];
+    check ivec::is_not_empty(a);
+    assert ivec::tail(a) == ~[12];
+}
+
 fn test_last() {
     auto n = ivec::last(~[]);
     assert (n == none);
@@ -257,6 +273,8 @@ fn main() {
     // Accessors
     test_init_fn();
     test_init_elt();
+    test_head();
+    test_tail();
     test_last();
     test_slice();
 

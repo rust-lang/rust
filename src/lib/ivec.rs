@@ -87,6 +87,16 @@ pred is_not_empty[T](&T[mutable?] v) -> bool {
 
 // Accessors
 
+/// Returns the first element of a vector
+fn head[T](&T[mutable?] v) : is_not_empty(v) -> T {
+    ret v.(0);
+}
+
+/// Returns all but the first element of a vector
+fn tail[T](&T[mutable?] v) : is_not_empty(v) -> T[mutable?] {
+    ret slice(v, 1u, len(v));
+}
+
 /// Returns the last element of `v`.
 fn last[T](&T[mutable?] v) -> option::t[T] {
     if (len(v) == 0u) { ret none; }
