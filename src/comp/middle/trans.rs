@@ -147,7 +147,8 @@ type crate_ctxt =
         ty::ctxt tcx,
         stats stats,
         @upcall::upcalls upcalls,
-        TypeRef tydesc_type);
+        TypeRef tydesc_type,
+        TypeRef task_type);
 
 type local_ctxt =
     rec(str[] path,
@@ -477,9 +478,8 @@ fn T_struct(&TypeRef[] elts) -> TypeRef {
 
 fn T_opaque() -> TypeRef { ret llvm::LLVMOpaqueType(); }
 
-fn T_task(&type_names tn) -> TypeRef {
+fn T_task2() -> TypeRef {
     auto s = "task";
-    if (tn.name_has_type(s)) { ret tn.get_type(s); }
     auto t =
         T_struct(~[T_int(), // Refcount
                    T_int(), // Delegate pointer
@@ -491,7 +491,6 @@ fn T_task(&type_names tn) -> TypeRef {
                    T_int(), // Domain pointer
                             // Crate cache pointer
                    T_int()]);
-    tn.associate(s, t);
     ret t;
 }
 
@@ -527,16 +526,16 @@ fn T_cmp_glue_fn(&crate_ctxt cx) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc(&type_names tn) -> TypeRef {
+fn T_tydesc(TypeRef taskptr_type) -> TypeRef {
     auto th = mk_type_handle();
     auto abs_tydesc = llvm::LLVMResolveTypeHandle(th.llth);
     auto tydescpp = T_ptr(T_ptr(abs_tydesc));
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_nil()), T_taskptr(tn), T_ptr(T_nil()), tydescpp,
+        T_ptr(T_fn(~[T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
                      pvoid], T_void()));
     auto cmp_glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_i1()), T_taskptr(tn), T_ptr(T_nil()), tydescpp,
+        T_ptr(T_fn(~[T_ptr(T_i1()), taskptr_type, T_ptr(T_nil()), tydescpp,
                      pvoid, pvoid, T_i8()], T_void()));
     auto tydesc =
         T_struct(~[tydescpp,   // first_param
@@ -633,7 +632,7 @@ fn T_chan(TypeRef t) -> TypeRef {
 
 }
 
-fn T_taskptr(&type_names tn) -> TypeRef { ret T_ptr(T_task(tn)); }
+fn T_taskptr(&crate_ctxt cx) -> TypeRef { ret T_ptr(cx.task_type); }
 
 
 // This type must never be used directly; it must always be cast away.
@@ -766,7 +765,7 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
     }
 
     // Arg 1: task pointer.
-    atys += ~[T_taskptr(cx.tn)];
+    atys += ~[T_taskptr(*cx)];
 
     // Arg 2: Env (closure-bindings / self-obj)
     alt (obj_self) {
@@ -811,7 +810,7 @@ fn type_of_native_fn(&@crate_ctxt cx, &span sp, ast::native_abi abi,
    -> TypeRef {
     let TypeRef[] atys = ~[];
     if (abi == ast::native_abi_rust) {
-        atys += ~[T_taskptr(cx.tn)];
+        atys += ~[T_taskptr(*cx)];
         auto i = 0u;
         while (i < ty_param_count) {
             atys += ~[T_ptr(cx.tydesc_type)];
@@ -874,7 +873,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
         case (ty::ty_chan(?t)) {
             llty = T_ptr(T_chan(type_of_inner(cx, sp, t)));
         }
-        case (ty::ty_task) { llty = T_taskptr(cx.tn); }
+        case (ty::ty_task) { llty = T_taskptr(*cx); }
         case (ty::ty_tup(?elts)) {
             let TypeRef[] tys = ~[];
             for (ty::mt elt in elts) {
@@ -1136,8 +1135,8 @@ fn decl_internal_fastcall_fn(ModuleRef llmod, &str name, TypeRef llty) ->
     ret llfn;
 }
 
-fn decl_glue(ModuleRef llmod, type_names tn, &str s) -> ValueRef {
-    ret decl_cdecl_fn(llmod, s, T_fn(~[T_taskptr(tn)], T_void()));
+fn decl_glue(ModuleRef llmod, &crate_ctxt cx, &str s) -> ValueRef {
+    ret decl_cdecl_fn(llmod, s, T_fn(~[T_taskptr(cx)], T_void()));
 }
 
 fn get_extern_fn(&hashmap[str, ValueRef] externs, ModuleRef llmod, &str name,
@@ -8999,7 +8998,7 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
 }
 
 fn create_typedefs(&@crate_ctxt cx) {
-    llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), T_task(cx.tn));
+    llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), cx.task_type);
     llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), cx.tydesc_type);
 }
 
@@ -9057,8 +9056,8 @@ fn trap(&@block_ctxt bcx) {
     }
 }
 
-fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
-    auto ty = T_fn(~[T_taskptr(tn), T_ptr(T_i8())], T_void());
+fn decl_no_op_type_glue(ModuleRef llmod, TypeRef taskptr_type) -> ValueRef {
+    auto ty = T_fn(~[taskptr_type, T_ptr(T_i8())], T_void());
     ret decl_fastcall_fn(llmod, abi::no_op_type_glue_name(), ty);
 }
 
@@ -9078,13 +9077,16 @@ fn vec_p0(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     ret bcx.build.PointerCast(p, T_ptr(T_i8()));
 }
 
-fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
-    ret @rec(no_op_type_glue=decl_no_op_type_glue(llmod, tn));
+fn make_glues(ModuleRef llmod, TypeRef taskptr_type) -> @glue_fns {
+    ret @rec(no_op_type_glue=decl_no_op_type_glue(llmod, taskptr_type));
 }
 
 fn make_common_glue(&session::session sess, &str output) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it.
+
+    auto task_type = T_task2();
+    auto taskptr_type = T_ptr(task_type);
 
     auto llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
@@ -9092,10 +9094,9 @@ fn make_common_glue(&session::session sess, &str output) {
     llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
     llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
     mk_target_data(x86::get_data_layout());
-    auto tn = mk_type_names();
     declare_intrinsics(llmod);
     llvm::LLVMSetModuleInlineAsm(llmod, str::buf(x86::get_module_asm()));
-    make_glues(llmod, tn);
+    make_glues(llmod, taskptr_type);
     link::write::run_passes(sess, llmod, output);
 }
 
@@ -9170,7 +9171,10 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
     auto intrinsics = declare_intrinsics(llmod);
-    auto glues = make_glues(llmod, tn);
+    auto task_type = T_task2();
+    auto taskptr_type = T_ptr(task_type);
+    auto tydesc_type = T_tydesc(taskptr_type);
+    auto glues = make_glues(llmod, taskptr_type);
     auto hasher = ty::hash_ty;
     auto eqer = ty::eq_ty;
     auto tag_sizes = map::mk_hashmap[ty::t, uint](hasher, eqer);
@@ -9179,7 +9183,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto sha1s = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto sha = std::sha1::mk_sha1();
-    auto tydesc_type = T_tydesc(tn);
     auto ccx =
         @rec(sess=sess,
              llmod=llmod,
@@ -9212,8 +9215,10 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                        mutable n_glues_created=0u,
                        mutable n_null_glues=0u,
                        mutable n_real_glues=0u),
-             upcalls=upcall::declare_upcalls(tn, tydesc_type, llmod),
-             tydesc_type=tydesc_type);
+             upcalls=upcall::declare_upcalls(tn, tydesc_type, taskptr_type,
+                                             llmod),
+             tydesc_type=tydesc_type,
+             task_type=task_type);
     auto cx = new_local_ctxt(ccx);
     create_typedefs(ccx);
     collect_items(ccx, crate);

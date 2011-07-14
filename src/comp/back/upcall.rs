@@ -16,7 +16,6 @@ import trans::T_opaque_vec_ptr;
 import trans::T_ptr;
 import trans::T_size_t;
 import trans::T_str;
-import trans::T_taskptr;
 import trans::T_void;
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;
@@ -61,17 +60,19 @@ type upcalls =
         ValueRef ivec_resize_shared,
         ValueRef ivec_spill_shared);
 
-fn declare_upcalls(type_names tn, TypeRef tydesc_type, ModuleRef llmod)
+fn declare_upcalls(type_names tn, TypeRef tydesc_type, TypeRef taskptr_type,
+                   ModuleRef llmod)
    -> @upcalls {
-    fn decl(type_names tn, TypeRef tydesc_type, ModuleRef llmod, str name,
-            vec[TypeRef] tys, TypeRef rv) -> ValueRef {
-        let TypeRef[] arg_tys = ~[T_taskptr(tn)];
+    fn decl(type_names tn, TypeRef tydesc_type, TypeRef taskptr_type,
+            ModuleRef llmod, str name, vec[TypeRef] tys,
+            TypeRef rv) -> ValueRef {
+        let TypeRef[] arg_tys = ~[taskptr_type];
         for (TypeRef t in tys) { arg_tys += ~[t]; }
         auto fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    auto dv = bind decl(tn, tydesc_type, llmod, _, _, T_void());
-    auto d = bind decl(tn, tydesc_type, llmod, _, _, _);
+    auto dv = bind decl(tn, tydesc_type, taskptr_type, llmod, _, _, T_void());
+    auto d = bind decl(tn, tydesc_type, taskptr_type, llmod, _, _, _);
     // FIXME: Sigh:.. remove this when I fix the typechecker pushdown.
     // --pcwalton
 
@@ -89,14 +90,14 @@ fn declare_upcalls(type_names tn, TypeRef tydesc_type, ModuleRef llmod)
                         T_opaque_chan_ptr()),
              flush_chan=dv("flush_chan", [T_opaque_chan_ptr()]),
              del_chan=dv("del_chan", [T_opaque_chan_ptr()]),
-             clone_chan=d("clone_chan", [T_taskptr(tn), T_opaque_chan_ptr()],
+             clone_chan=d("clone_chan", [taskptr_type, T_opaque_chan_ptr()],
                           T_opaque_chan_ptr()),
              _yield=dv("yield", empty_vec),
              sleep=dv("sleep", [T_size_t()]),
              send=dv("send", [T_opaque_chan_ptr(), T_ptr(T_i8())]),
              recv=dv("recv", [T_ptr(T_ptr(T_i8())), T_opaque_port_ptr()]),
              _fail=dv("fail", [T_ptr(T_i8()), T_ptr(T_i8()), T_size_t()]),
-             kill=dv("kill", [T_taskptr(tn)]),
+             kill=dv("kill", [taskptr_type]),
              exit=dv("exit", empty_vec),
              malloc=d("malloc", [T_size_t(), T_ptr(tydesc_type)],
                       T_ptr(T_i8())),
@@ -107,7 +108,7 @@ fn declare_upcalls(type_names tn, TypeRef tydesc_type, ModuleRef llmod)
              mark=d("mark", [T_ptr(T_i8())], T_int()),
              new_str=d("new_str", [T_ptr(T_i8()), T_size_t()],
                        T_ptr(T_str())),
-                     dup_str=d("dup_str", [T_taskptr(tn), T_ptr(T_str())],
+                     dup_str=d("dup_str", [taskptr_type, T_ptr(T_str())],
                        T_ptr(T_str())),
              new_vec=d("new_vec", [T_size_t(), T_ptr(tydesc_type)],
                        T_opaque_vec_ptr()),
@@ -119,10 +120,10 @@ fn declare_upcalls(type_names tn, TypeRef tydesc_type, ModuleRef llmod)
                              [T_ptr(T_nil()), T_size_t(), T_size_t(),
                               T_size_t(), T_ptr(T_ptr(tydesc_type))],
                              T_ptr(tydesc_type)),
-             new_task=d("new_task", [T_ptr(T_str())], T_taskptr(tn)),
+             new_task=d("new_task", [T_ptr(T_str())], taskptr_type),
              start_task=d("start_task",
-                          [T_taskptr(tn), T_int(), T_int(), T_size_t()],
-                          T_taskptr(tn)),
+                          [taskptr_type, T_int(), T_int(), T_size_t()],
+                          taskptr_type),
              ivec_resize=d("ivec_resize", [T_ptr(T_opaque_ivec()), T_int()],
                            T_void()),
              ivec_spill=d("ivec_spill", [T_ptr(T_opaque_ivec()), T_int()],
