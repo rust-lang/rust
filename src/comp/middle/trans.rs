@@ -146,6 +146,7 @@ type crate_ctxt =
         ty::ctxt tcx,
         stats stats,
         @upcall::upcalls upcalls,
+        TypeRef rust_object_type,
         TypeRef tydesc_type,
         TypeRef task_type);
 
@@ -773,7 +774,7 @@ fn type_of_fn_full(&@crate_ctxt cx, &span sp, ast::proto proto,
 
     // Arg 2: Env (closure-bindings / self-obj)
     if (is_method) {
-        atys += ~[T_rust_object()];
+        atys += ~[cx.rust_object_type];
     } else {
         atys += ~[T_opaque_closure_ptr(*cx)];
     }
@@ -901,7 +902,7 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = T_fn_pair(*cx, nft);
         }
         case (ty::ty_obj(?meths)) {
-            llty = T_rust_object();
+            llty = cx.rust_object_type;
         }
         case (ty::ty_res(_, ?sub, ?tps)) {
             auto sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
@@ -6963,7 +6964,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     }
 
     // Allocate the object that we're going to return.
-    auto pair = alloca(bcx, T_rust_object());
+    auto pair = alloca(bcx, ccx.rust_object_type);
 
     // Take care of cleanups.
     auto t = node_id_type(ccx, id);
@@ -7124,9 +7125,9 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     }
 
     // Cast the final object to how we want its type to appear.
-    pair = bcx.build.PointerCast(pair, T_ptr(T_rust_object()));
+    pair = bcx.build.PointerCast(pair, T_ptr(ccx.rust_object_type));
 
-    // Return the object we built.
+    // return the object we built.
     ret rslt(bcx, pair);
 }
 
@@ -7554,7 +7555,7 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx) {
     auto bcx = llstaticallocas_block_ctxt(fcx);
     alt ({ fcx.llself }) {
         case (some(?pair)) {
-            auto a = alloca(bcx, T_rust_object());
+            auto a = alloca(bcx, fcx.lcx.ccx.rust_object_type);
             bcx.build.Store(pair.v, a);
             fcx.llself = some[val_self_pair](rec(v=a, t=pair.t));
         }
@@ -7769,7 +7770,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
 
     // The outer object will arrive in the forwarding function via the llenv
     // argument.  Put it in an alloca so that we can GEP into it later.
-    auto llself_obj_ptr = alloca(bcx, T_rust_object());
+    auto llself_obj_ptr = alloca(bcx, fcx.lcx.ccx.rust_object_type);
     bcx.build.Store(fcx.llenv, llself_obj_ptr);
 
     // Grab hold of the outer object so we can pass it into the inner object,
@@ -9225,6 +9226,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                        mutable n_real_glues=0u),
              upcalls=upcall::declare_upcalls(tn, tydesc_type, taskptr_type,
                                              llmod),
+             rust_object_type=T_rust_object(),
              tydesc_type=tydesc_type,
              task_type=task_type);
     auto cx = new_local_ctxt(ccx);
