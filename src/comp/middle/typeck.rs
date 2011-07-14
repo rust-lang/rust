@@ -2672,10 +2672,7 @@ fn check_main_fn_ty(&ty::ctxt tcx, &ast::node_id main_id) {
     alt (ty::struct(tcx, main_t)) {
         case (ty::ty_fn(ast::proto_fn, ?args, ?rs, ast::return, ?constrs)) {
             auto ok = ivec::len(constrs) == 0u;
-            ok &= ty::type_is_nil(tcx, rs) || alt (ty::struct(tcx, rs)) {
-                ty::ty_int { true }
-                _ { false }
-            };
+            ok &= ty::type_is_nil(tcx, rs);
             auto num_args = ivec::len(args);
             ok &= num_args == 0u || (num_args == 1u &&
                                      arg_is_argv_ty(tcx, args.(0)));
