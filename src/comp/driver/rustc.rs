@@ -361,7 +361,7 @@ fn build_session(@session::options sopts) -> session::session {
     auto cstore = cstore::mk_cstore();
     ret session::session(target_cfg, sopts, cstore,
                          @rec(cm=codemap::new_codemap(), mutable next_id=0),
-                         0u);
+                         none, 0u);
 }
 
 fn parse_pretty(session::session sess, &str name) -> pp_mode {

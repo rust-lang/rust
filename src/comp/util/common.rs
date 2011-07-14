@@ -1,4 +1,4 @@
-
+import std::str;
 import std::map;
 import std::map::hashmap;
 import std::uint;
@@ -187,6 +187,9 @@ fn call_kind_str(call_kind c) -> str {
     }
 }
 
+fn is_main_name(&str[] path) -> bool {
+    str::eq(option::get(std::ivec::last(path)), "main")
+}
 //
 // Local Variables:
 // mode: rust

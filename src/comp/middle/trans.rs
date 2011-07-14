@@ -33,10 +33,9 @@ import back::upcall;
 import syntax::visit;
 import visit::vt;
 import util::common;
-import util::common::new_def_hash;
+import util::common::*;
 import std::map::new_int_hash;
 import std::map::new_str_hash;
-import util::common::local_rhs_span;
 import syntax::codemap::span;
 import lib::llvm::llvm;
 import lib::llvm::builder;
@@ -8586,9 +8585,7 @@ fn decl_fn_and_pair_full(&@crate_ctxt ccx, &span sp, &str[] path, str flav,
             ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!");
         }
     }
-    let bool is_main =
-        str::eq(option::get(std::ivec::last(path)), "main") &&
-                !ccx.sess.get_opts().library;
+    let bool is_main = is_main_name(path) && !ccx.sess.get_opts().library;
     // Declare the function itself.
 
     let str s =

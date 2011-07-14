@@ -10,7 +10,7 @@ import ast::local_def;
 import metadata::csearch;
 import metadata::cstore;
 import driver::session::session;
-import util::common::new_def_hash;
+import util::common::*;
 import std::map::new_int_hash;
 import std::map::new_str_hash;
 import syntax::codemap::span;
@@ -337,6 +337,18 @@ fn visit_native_item_with_scope(&@ast::native_item ni, &scopes sc,
 fn visit_fn_with_scope(&@env e, &ast::_fn f, &ast::ty_param[] tp, &span sp,
                        &fn_ident name, node_id id, &scopes sc,
                        &vt[scopes] v) {
+    // is this a main fn declaration?
+    alt (name) {
+        case (some(?nm)) {
+            if (is_main_name(~[nm]) && !e.sess.get_opts().library) {
+                // This is a main function -- set it in the session
+                // as the main ID
+                e.sess.set_main_id(id);
+            }
+        }
+        case (_) {}
+    }
+
     // here's where we need to set up the mapping
     // for f's constrs in the table.
 

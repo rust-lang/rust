@@ -1624,8 +1624,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     alt (operator.node) {
                         case (ast::expr_path(?oper_name)) {
                             alt (fcx.ccx.tcx.def_map.find(operator.id)) {
-                                case (some(ast::def_fn(?_d_id,
-                                                       ast::pure_fn))) {
+                                case (some(ast::def_fn(_, ast::pure_fn))) {
                                     // do nothing
                                 }
                                 case (_) {
@@ -2655,6 +2654,54 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
     }
 }
 
+fn arg_is_argv_ty(&ty::ctxt tcx, &ty::arg a) -> bool {
+    alt (ty::struct(tcx, a.ty)) {
+        case (ty::ty_vec(?mt)) {
+            if (mt.mut != ast::imm) { ret false; }
+            alt (ty::struct(tcx, mt.ty)) {
+                case (ty::ty_str) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (_) { ret false; }
+    }
+}
+
+fn check_main_fn_ty(&ty::ctxt tcx, &ast::node_id main_id) {
+    auto main_t = ty::node_id_to_monotype(tcx, main_id);
+    alt (ty::struct(tcx, main_t)) {
+        case (ty::ty_fn(ast::proto_fn, ?args, ?rs, ast::return, ?constrs)) {
+            auto ok = ivec::len(constrs) == 0u;
+            ok &= ty::type_is_nil(tcx, rs);
+            auto num_args = ivec::len(args);
+            ok &= num_args == 0u || (num_args == 1u &&
+                                     arg_is_argv_ty(tcx, args.(0)));
+            if (!ok) {
+                    tcx.sess.err("Wrong type in main function: found "
+                         + ty_to_str(tcx, main_t));
+            }
+        }
+        case (_) {
+            tcx.sess.err("Main has a non-function type: found"
+                         + ty_to_str(tcx, main_t));
+        }
+    }
+}
+
+fn check_for_main_fn(&ty::ctxt tcx, &@ast::crate crate) {
+    if (!tcx.sess.get_opts().library) {
+        alt (tcx.sess.get_main_id()) {
+            case (some(?id)) {
+                check_main_fn_ty(tcx, id);
+            }
+            case (none) {
+                tcx.sess.span_err(crate.span,
+                                  "Main function not found");
+            }
+        }
+    }
+}
+
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
     collect::collect_item_types(tcx, crate);
 
@@ -2666,6 +2713,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
         rec(visit_item_pre=bind check_item(ccx, _)
             with walk::default_visitor());
     walk::walk_crate(visit, *crate);
+    check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
 }
 //

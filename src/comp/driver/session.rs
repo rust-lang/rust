@@ -1,5 +1,6 @@
 
 import syntax::ast;
+import syntax::ast::node_id;
 import syntax::codemap;
 import codemap::span;
 import syntax::ast::ty_mach;
@@ -49,6 +50,8 @@ obj session(@config targ_cfg,
             @options opts,
             metadata::cstore::cstore cstore,
             parse_sess parse_sess,
+            // For a library crate, this is always none
+            mutable option::t[node_id] main_fn,
             mutable uint err_count) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
@@ -110,6 +113,10 @@ obj session(@config targ_cfg,
     fn span_str(span sp) -> str {
         ret codemap::span_to_str(sp, self.get_codemap());
     }
+    fn set_main_id(node_id d) {
+        main_fn = some(d);
+    }
+    fn get_main_id() -> option::t[node_id] { main_fn }
 }
 // Local Variables:
 // fill-column: 78;
