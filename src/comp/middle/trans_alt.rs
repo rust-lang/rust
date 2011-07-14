@@ -41,10 +41,10 @@ fn opt_eq(&opt a, &opt b) -> bool {
         }
     }
 }
-fn trans_opt(&@crate_ctxt ccx, &opt o) -> ValueRef {
+fn trans_opt(&@block_ctxt bcx, &opt o) -> result {
     alt (o) {
-        lit(?l) { ret trans::trans_lit(ccx, *l); }
-        var(?id, _) { ret C_int(id as int); }
+        lit(?l) { ret trans::trans_lit(bcx, *l); }
+        var(?id, _) { ret rslt(bcx, C_int(id as int)); }
     }
 }
 
@@ -344,11 +344,17 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
         auto opt_cx = new_sub_block_ctxt(bcx, "match_case");
         alt (kind) {
             single { bcx.build.Br(opt_cx.llbb); }
-            switch { llvm::LLVMAddCase(sw, trans_opt(ccx, opt), opt_cx.llbb);}
+            switch {
+                auto r = trans_opt(bcx, opt);
+                bcx = r.bcx;
+                llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
+            }
             compare {
+                auto r = trans_opt(bcx, opt);
+                bcx = r.bcx;
                 auto t = ty::node_id_to_type(ccx.tcx, pat_id);
                 auto eq = trans::trans_compare(bcx, ast::eq, t, test_val,
-                                               trans_opt(ccx, opt));
+                                               r.val);
                 bcx = new_sub_block_ctxt(bcx, "next");
                 eq.bcx.build.CondBr(eq.val, opt_cx.llbb, bcx.llbb);
             }

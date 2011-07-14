@@ -3244,7 +3244,9 @@ fn memmove_ty(&@block_ctxt cx, ValueRef dst, ValueRef src, &ty::t t) ->
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto llsz = size_of(cx, t);
         ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    } else { ret rslt(cx, cx.build.Store(cx.build.Load(src), dst)); }
+    } else {
+        ret rslt(cx, cx.build.Store(cx.build.Load(src), dst));
+    }
 }
 
 // Duplicates any heap-owned memory owned by a value of the given type.
@@ -3365,7 +3367,65 @@ fn move_val_if_temp(@block_ctxt cx, copy_action action, ValueRef dst,
     }
 }
 
-fn trans_lit(&@crate_ctxt cx, &ast::lit lit) -> ValueRef {
+fn trans_lit_istr(&@block_ctxt cx, str s) -> result {
+    auto llstackpart = alloca(cx, T_ivec(T_i8()));
+    auto len = str::byte_len(s);
+
+    auto bcx;
+    if (len < 3u) {     // 3 because of the \0
+        cx.build.Store(C_uint(len + 1u),
+                       cx.build.InBoundsGEP(llstackpart,
+                                            ~[C_int(0), C_int(0)]));
+        cx.build.Store(C_int(4),
+                       cx.build.InBoundsGEP(llstackpart,
+                                            ~[C_int(0), C_int(1)]));
+        auto i = 0u;
+        while (i < len) {
+            cx.build.Store(C_u8(s.(i) as uint),
+                           cx.build.InBoundsGEP(llstackpart,
+                                                ~[C_int(0), C_int(2),
+                                                  C_uint(i)]));
+            i += 1u;
+        }
+        cx.build.Store(C_u8(0u),
+                       cx.build.InBoundsGEP(llstackpart,
+                                            ~[C_int(0), C_int(2),
+                                              C_uint(len)]));
+
+        bcx = cx;
+    } else {
+        auto r =
+            trans_shared_malloc(cx, T_ptr(T_ivec_heap_part(T_i8())),
+                                llsize_of(T_struct(~[T_int(),
+                                                     T_array(T_i8(),
+                                                             len + 1u)])));
+        bcx = r.bcx;
+        auto llheappart = r.val;
+
+        bcx.build.Store(C_uint(len + 1u),
+                        bcx.build.InBoundsGEP(llheappart,
+                                              ~[C_int(0), C_int(0)]));
+        bcx.build.Store(llvm::LLVMConstString(str::buf(s), len, False),
+                        bcx.build.InBoundsGEP(llheappart,
+                                              ~[C_int(0), C_int(1)]));
+
+        auto llspilledstackpart = bcx.build.PointerCast(llstackpart,
+            T_ptr(T_ivec_heap(T_i8())));
+        bcx.build.Store(C_int(0),
+                        bcx.build.InBoundsGEP(llspilledstackpart,
+                                              ~[C_int(0), C_int(0)]));
+        bcx.build.Store(C_uint(len + 1u),
+                        bcx.build.InBoundsGEP(llspilledstackpart,
+                                              ~[C_int(0), C_int(1)]));
+        bcx.build.Store(llheappart,
+                        bcx.build.InBoundsGEP(llspilledstackpart,
+                                              ~[C_int(0), C_int(2)]));
+    }
+
+    ret rslt(bcx, llstackpart);
+}
+
+fn trans_crate_lit(&@crate_ctxt cx, &ast::lit lit) -> ValueRef {
     alt (lit.node) {
         case (ast::lit_int(?i)) { ret C_int(i); }
         case (ast::lit_uint(?u)) { ret C_int(u as int); }
@@ -3402,7 +3462,17 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit) -> ValueRef {
         }
         case (ast::lit_bool(?b)) { ret C_bool(b); }
         case (ast::lit_nil) { ret C_nil(); }
-        case (ast::lit_str(?s, _)) { ret C_str(cx, s); }
+        case (ast::lit_str(?s, ast::sk_rc)) { ret C_str(cx, s); }
+        case (ast::lit_str(?s, ast::sk_unique)) {
+            cx.sess.span_unimpl(lit.span, "unique string in this context");
+        }
+    }
+}
+
+fn trans_lit(&@block_ctxt cx, &ast::lit lit) -> result {
+    alt (lit.node) {
+      ast::lit_str(?s, ast::sk_unique) { ret trans_lit_istr(cx, s); }
+      _ { ret rslt(cx, trans_crate_lit(cx.fcx.lcx.ccx, lit)); }
     }
 }
 
@@ -6018,9 +6088,7 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
    result {
     // FIXME Fill in cx.sp
     alt (e.node) {
-        case (ast::expr_lit(?lit)) {
-            ret rslt(cx, trans_lit(cx.fcx.lcx.ccx, *lit));
-        }
+        case (ast::expr_lit(?lit)) { ret trans_lit(cx, *lit); }
         case (ast::expr_unary(?op, ?x)) {
             if (op != ast::deref) { ret trans_unary(cx, op, x, e.id); }
         }
@@ -8484,7 +8552,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
 // that does so later on?
 fn trans_const_expr(&@crate_ctxt cx, @ast::expr e) -> ValueRef {
     alt (e.node) {
-        case (ast::expr_lit(?lit)) { ret trans_lit(cx, *lit); }
+        case (ast::expr_lit(?lit)) { ret trans_crate_lit(cx, *lit); }
         case (_) {
             cx.sess.span_unimpl(e.span, "consts that's not a plain literal");
         }
