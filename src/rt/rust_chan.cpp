@@ -70,6 +70,7 @@ void rust_chan::disassociate() {
  * Attempt to send data to the associated port.
  */
 void rust_chan::send(void *sptr) {
+    scoped_lock with(task->kernel->scheduler_lock);
     buffer.enqueue(sptr);
 
     rust_scheduler *sched = task->sched;
