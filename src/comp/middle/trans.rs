@@ -4556,6 +4556,29 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     ret result;
 }
 
+// Finds the ValueRef associated with a variable in a function
+// context. It checks locals, upvars, and args.
+fn find_variable(&@fn_ctxt fcx, ast::node_id nid) -> ValueRef {
+    ret
+        alt (fcx.lllocals.find(nid)) {
+            case (none) {
+                alt (fcx.llupvars.find(nid)) {
+                    case (none) {
+                        alt (fcx.llargs.find(nid)) {
+                            case (some(?llval)) { llval }
+                            case (_) {
+                                fcx.lcx.ccx.sess.bug("unbound var \
+                                      in build_environment " + int::str(nid))
+                            }
+                        }
+                    }
+                    case (some(?llval)) { llval }
+                }
+            }
+            case (some(?llval)) { llval }
+        }
+}
+
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
@@ -4575,24 +4598,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
             llbindingtys += ~[val_ty(llbindings.(0))];
         }
         for (ast::node_id nid in upvars) {
-            auto llbinding;
-            alt (cx.fcx.lllocals.find(nid)) {
-                case (none) {
-                    alt (cx.fcx.llupvars.find(nid)) {
-                        case (none) {
-                            alt (cx.fcx.llargs.find(nid)) {
-                                case (some(?x)) { llbinding = x; }
-                                case (_) {
-                                    cx.fcx.lcx.ccx.sess.bug("unbound var \
-                                      in build_environment " + int::str(nid));
-                                }
-                            }
-                        }
-                        case (some(?llval)) { llbinding = llval; }
-                    }
-                }
-                case (some(?llval)) { llbinding = llval; }
-            }
+            auto llbinding = find_variable(cx.fcx, nid);
             llbindings += ~[llbinding];
             llbindingtys += ~[val_ty(llbinding)];
         }
@@ -4768,20 +4774,10 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt (seq.node) {
         case (ast::expr_call(?f, ?args)) {
-            auto pair = alloca(cx, T_fn_pair(*lcx.ccx, iter_body_llty));
-            auto code_cell =
-                cx.build.GEP(pair, ~[C_int(0), C_int(abi::fn_field_code)]);
-            cx.build.Store(lliterbody, code_cell);
-            auto env_cell =
-                cx.build.GEP(pair, ~[C_int(0), C_int(abi::fn_field_box)]);
-            auto llenvblobptr =
-                cx.build.PointerCast(llenvptr,
-                                     T_opaque_closure_ptr(*lcx.ccx));
-            cx.build.Store(llenvblobptr, env_cell);
-            // log "lliterbody: " + val_str(lcx.ccx.tn, lliterbody);
-
-            r = trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
-                           seq.id);
+            auto pair = create_real_fn_pair(cx, iter_body_llty,
+                                            lliterbody, llenvptr);
+            r = trans_call(cx, f, some[ValueRef](cx.build.Load(pair)),
+                           args, seq.id);
             ret rslt(r.bcx, C_nil());
         }
     }
@@ -8712,6 +8708,26 @@ fn create_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     }
     ret gvar;
+}
+
+// Create a /real/ closure: this is like create_fn_pair, but creates a
+// a fn value on the stack with a specified environment (which need not be
+// on the stack).
+fn create_real_fn_pair(&@block_ctxt cx, TypeRef llfnty,
+                       ValueRef llfn, ValueRef llenvptr) -> ValueRef {
+    auto lcx = cx.fcx.lcx;
+
+    auto pair = alloca(cx, T_fn_pair(*lcx.ccx, llfnty));
+    auto code_cell =
+        cx.build.GEP(pair, ~[C_int(0), C_int(abi::fn_field_code)]);
+    cx.build.Store(llfn, code_cell);
+    auto env_cell =
+        cx.build.GEP(pair, ~[C_int(0), C_int(abi::fn_field_box)]);
+    auto llenvblobptr =
+        cx.build.PointerCast(llenvptr,
+                             T_opaque_closure_ptr(*lcx.ccx));
+    cx.build.Store(llenvblobptr, env_cell);
+    ret pair;
 }
 
 fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llfnty, ValueRef llfn,
