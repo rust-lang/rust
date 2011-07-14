@@ -478,8 +478,7 @@ fn T_struct(&TypeRef[] elts) -> TypeRef {
 
 fn T_opaque() -> TypeRef { ret llvm::LLVMOpaqueType(); }
 
-fn T_task2() -> TypeRef {
-    auto s = "task";
+fn T_task() -> TypeRef {
     auto t =
         T_struct(~[T_int(), // Refcount
                    T_int(), // Delegate pointer
@@ -9085,7 +9084,7 @@ fn make_common_glue(&session::session sess, &str output) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it.
 
-    auto task_type = T_task2();
+    auto task_type = T_task();
     auto taskptr_type = T_ptr(task_type);
 
     auto llmod =
@@ -9171,7 +9170,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
     auto intrinsics = declare_intrinsics(llmod);
-    auto task_type = T_task2();
+    auto task_type = T_task();
     auto taskptr_type = T_ptr(task_type);
     auto tydesc_type = T_tydesc(taskptr_type);
     auto glues = make_glues(llmod, taskptr_type);
