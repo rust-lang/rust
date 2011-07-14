@@ -27,11 +27,9 @@ type test_desc = rec(test_name name,
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(&vec[str] args, &test_desc[] tests) -> int {
-    if (run_tests(parse_opts(args), tests)) {
-        ret 0;
-    } else {
-        ret -1;
+fn test_main(&vec[str] args, &test_desc[] tests) {
+    if (!run_tests(parse_opts(args), tests)) {
+        fail "Some tests failed";
     }
 }
 

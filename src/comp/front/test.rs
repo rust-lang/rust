@@ -279,7 +279,7 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
                                 ident = "args",
                                 id = cx.next_node_id());
 
-    auto ret_ty = nospan(ast::ty_int);
+    auto ret_ty = nospan(ast::ty_nil);
 
     let ast::fn_decl decl = rec(inputs = ~[args_arg],
                                 output = @ret_ty,
