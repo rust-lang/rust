@@ -50,6 +50,7 @@ str_vec
 task_sleep
 task_yield
 task_join
+task_unsupervise
 unsafe_vec_to_mut
 unsupervise
 upcall_clone_chan
