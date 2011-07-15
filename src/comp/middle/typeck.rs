@@ -6,6 +6,7 @@ import ast::path_to_str;
 import ast::respan;
 import ast::spanned;
 import syntax::walk;
+import syntax::visit;
 import metadata::csearch;
 import driver::session;
 import util::common;
@@ -1211,34 +1212,35 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
                f.decl.inputs.(i).ident, some[ty::t](arg.ty));
         i += 1u;
     }
-    // Add explicitly-declared locals.
 
-    fn visit_local_pre(@crate_ctxt ccx, @ty::unify::var_bindings vb,
-                       hashmap[ast::node_id, int] locals,
-                       hashmap[ast::node_id, ast::ident] local_names,
-                       @mutable int nvi, &@ast::local local) {
+    // Add explicitly-declared locals.
+    fn visit_local(@crate_ctxt ccx, @ty::unify::var_bindings vb,
+                   hashmap[ast::node_id, int] locals,
+                   hashmap[ast::node_id, ast::ident] local_names,
+                   @mutable int nvi, &@ast::local local,
+                   &() e, &visit::vt[()] v) {
         alt (local.node.ty) {
             case (none) {
                 // Auto slot.
-
                 assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
                        local.node.ident, none[ty::t]);
             }
             case (some(?ast_ty)) {
                 // Explicitly typed slot.
-
                 auto local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
                 assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
                        local.node.ident, some[ty::t](local_ty));
             }
         }
+        visit::visit_local(local, e, v);
     }
-    // Add pattern bindings.
 
-    fn visit_pat_pre(@crate_ctxt ccx, @ty::unify::var_bindings vb,
-                     hashmap[ast::node_id, int] locals,
-                     hashmap[ast::node_id, ast::ident] local_names,
-                     @mutable int nvi, &@ast::pat p) {
+    // Add pattern bindings.
+    fn visit_pat(@crate_ctxt ccx, @ty::unify::var_bindings vb,
+                 hashmap[ast::node_id, int] locals,
+                 hashmap[ast::node_id, ast::ident] local_names,
+                 @mutable int nvi, &@ast::pat p,
+                 &() e, &visit::vt[()] v) {
         alt (p.node) {
             case (ast::pat_bind(?ident)) {
                 assign(ccx.tcx, vb, locals, local_names, nvi,
@@ -1246,14 +1248,15 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
             }
             case (_) {/* no-op */ }
         }
+        visit::visit_pat(p, e, v);
     }
     auto visit =
-        rec(visit_local_pre=bind visit_local_pre(ccx, vb, locals, local_names,
-                                                 nvi, _),
-            visit_pat_pre=bind visit_pat_pre(ccx, vb, locals, local_names,
-                                             nvi, _)
-            with walk::default_visitor());
-    walk::walk_block(visit, f.body);
+        @rec(visit_local=bind visit_local(ccx, vb, locals, local_names,
+                                          nvi, _, _, _),
+             visit_pat=bind visit_pat(ccx, vb, locals, local_names,
+                                      nvi, _, _, _)
+             with *visit::default_visitor());
+    visit::visit_block(f.body, (), visit::mk_vt(visit));
     ret rec(var_bindings=vb,
             locals=locals,
             local_names=local_names,
