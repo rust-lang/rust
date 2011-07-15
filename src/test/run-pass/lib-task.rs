@@ -1,10 +1,22 @@
 
 
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-use std;
-import std::_task;
 
-fn main() { _task::sleep(1000000u); }
+use std;
+import std::task;
+
+fn test_sleep() { task::sleep(1000000u); }
+
+fn test_unsupervise() {
+  fn f() {
+    task::unsupervise();
+    fail;
+  }
+  spawn f();
+}
+
+fn main() {
+  // FIXME: Why aren't we running this?
+  //test_sleep();
+  test_unsupervise();
+}
