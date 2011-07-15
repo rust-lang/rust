@@ -140,30 +140,22 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
     ret true;
 
     fn write_ok(&io::writer out) {
-        if (term::color_supported()) {
-            term::fg(out.get_buf_writer(), term::color_green);
-        }
-        out.write_str("ok");
-        if (term::color_supported()) {
-            term::reset(out.get_buf_writer());
-        }
+        write_pretty(out, "ok", term::color_green);
      }
 
     fn write_failed(&io::writer out) {
-        if (term::color_supported()) {
-            term::fg(out.get_buf_writer(), term::color_red);
-        }
-        out.write_str("FAILED");
-        if (term::color_supported()) {
-            term::reset(out.get_buf_writer());
-        }
+        write_pretty(out, "FAILED", term::color_red);
     }
 
     fn write_ignored(&io::writer out) {
+        write_pretty(out, "ignored", term::color_yellow);
+    }
+
+    fn write_pretty(&io::writer out, &str word, u8 color) {
         if (term::color_supported()) {
-            term::fg(out.get_buf_writer(), term::color_yellow);
+            term::fg(out.get_buf_writer(), color);
         }
-        out.write_str("ignored");
+        out.write_str(word);
         if (term::color_supported()) {
             term::reset(out.get_buf_writer());
         }
