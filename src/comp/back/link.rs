@@ -7,7 +7,7 @@ import middle::ty;
 import metadata::encoder;
 import std::str;
 import std::fs;
-import std::vec;
+import std::ivec;
 import std::option;
 import option::some;
 import option::none;
@@ -360,10 +360,14 @@ fn build_link_meta(&session::session sess, &ast::crate c,
             case (some(?v)) { v }
             case (none) {
                 auto name = {
-                    auto os = str::split(fs::basename(output), '.' as u8);
-                    assert (vec::len(os) >= 2u);
-                    vec::pop(os);
-                    str::connect(os, ".")
+                    auto os_vec = str::split(fs::basename(output), '.' as u8);
+                    // FIXME: Remove this vec->ivec conversion.
+                    auto os = ~[];
+                    for (str s in os_vec) { os += ~[s]; }
+
+                    assert (ivec::len(os) >= 2u);
+                    ivec::pop(os);
+                    str::connect_ivec(os, ".")
                 };
                 warn_missing(sess, "name", name);
                 name

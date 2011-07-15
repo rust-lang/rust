@@ -14,7 +14,6 @@ import back::x86;
 import util::common;
 import std::ivec;
 import std::str;
-import std::vec;
 import std::fs;
 import std::ioivec;
 import std::option;
@@ -47,7 +46,7 @@ fn read_crates(session::session sess,
 type env =
     @rec(session::session sess,
          @hashmap[str, int] crate_cache,
-         vec[str] library_search_paths,
+         str[] library_search_paths,
          mutable ast::crate_num next_crate_num);
 
 fn visit_view_item(env e, &@ast::view_item i) {
@@ -128,7 +127,7 @@ fn default_native_lib_naming(session::session sess, bool static) ->
 
 fn find_library_crate(&session::session sess, &ast::ident ident,
                       &(@ast::meta_item)[] metas,
-                      &vec[str] library_search_paths)
+                      &str[] library_search_paths)
         -> option::t[tup(str, @u8[])] {
 
     attr::require_unique_names(sess, metas);
@@ -162,7 +161,7 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
 
 fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
                           &(@ast::meta_item)[] metas,
-                          &vec[str] library_search_paths) ->
+                          &str[] library_search_paths) ->
                           option::t[tup(str, @u8[])] {
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
@@ -220,7 +219,7 @@ fn get_metadata_section(str filename) -> option::t[@u8[]] {
 
 fn load_library_crate(&session::session sess, span span,
                       &ast::ident ident, &(@ast::meta_item)[] metas,
-                      &vec[str] library_search_paths) -> tup(str, @u8[]) {
+                      &str[] library_search_paths) -> tup(str, @u8[]) {
 
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {

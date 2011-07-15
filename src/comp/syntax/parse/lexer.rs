@@ -1,8 +1,8 @@
 
 import std::ioivec;
-import std::str;
-import std::vec;
 import std::int;
+import std::ivec;
+import std::str;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -40,7 +40,7 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
                mutable uint mark_pos,
                mutable uint mark_chpos,
                mutable uint chpos,
-               mutable vec[str] strs,
+               mutable str[] strs,
                codemap::filemap fm,
                @interner::interner[str] itr) {
         fn is_eof() -> bool { ret ch == -1 as char; }
@@ -83,7 +83,7 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
             codemap::emit_error(some(rec(lo=chpos, hi=chpos)), m, cm);
         }
     }
-    let vec[str] strs = [];
+    let str[] strs = ~[];
     auto rd =
         reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char, 0u,
                filemap.start_pos, filemap.start_pos, strs, filemap, itr);
@@ -578,7 +578,7 @@ tag cmnt_style {
 
 }
 
-type cmnt = rec(cmnt_style style, vec[str] lines, uint pos);
+type cmnt = rec(cmnt_style style, str[] lines, uint pos);
 
 fn read_to_eol(&reader rdr) -> str {
     auto val = "";
@@ -610,7 +610,7 @@ fn consume_whitespace_counting_blank_lines(&reader rdr,
     while (is_whitespace(rdr.curr()) && !rdr.is_eof()) {
         if (rdr.curr() == '\n' && rdr.next() == '\n') {
             log ">>> blank-line comment";
-            let vec[str] v = [];
+            let str[] v = ~[];
             comments += ~[rec(style=blank_line, lines=v,
                               pos=rdr.get_chpos())];
         }
@@ -621,11 +621,11 @@ fn consume_whitespace_counting_blank_lines(&reader rdr,
 fn read_line_comments(&reader rdr, bool code_to_the_left) -> cmnt {
     log ">>> line comments";
     auto p = rdr.get_chpos();
-    let vec[str] lines = [];
+    let str[] lines = ~[];
     while (rdr.curr() == '/' && rdr.next() == '/') {
         auto line = read_one_line_comment(rdr);
         log line;
-        lines += [line];
+        lines += ~[line];
         consume_non_eol_whitespace(rdr);
     }
     log "<<< line comments";
@@ -643,7 +643,7 @@ fn all_whitespace(&str s, uint begin, uint end) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(&mutable vec[str] lines, &str s,
+fn trim_whitespace_prefix_and_push_line(&mutable str[] lines, &str s,
                                         uint col) {
     auto s1;
     if (all_whitespace(s, 0u, col)) {
@@ -652,13 +652,13 @@ fn trim_whitespace_prefix_and_push_line(&mutable vec[str] lines, &str s,
         } else { s1 = ""; }
     } else { s1 = s; }
     log "pushing line: " + s1;
-    lines += [s1];
+    lines += ~[s1];
 }
 
 fn read_block_comment(&reader rdr, bool code_to_the_left) -> cmnt {
     log ">>> block comment";
     auto p = rdr.get_chpos();
-    let vec[str] lines = [];
+    let str[] lines = ~[];
     let uint col = rdr.get_col();
     rdr.bump();
     rdr.bump();
@@ -693,7 +693,7 @@ fn read_block_comment(&reader rdr, bool code_to_the_left) -> cmnt {
     }
     auto style = if (code_to_the_left) { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
-    if (!rdr.is_eof() && rdr.curr() != '\n' && vec::len(lines) == 1u) {
+    if (!rdr.is_eof() && rdr.curr() != '\n' && ivec::len(lines) == 1u) {
         style = mixed;
     }
     log "<<< block comment";

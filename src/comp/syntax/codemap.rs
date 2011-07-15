@@ -1,6 +1,6 @@
+import std::ivec;
 import std::uint;
 import std::str;
-import std::vec;
 import std::termivec;
 import std::ioivec;
 import std::option;
@@ -14,33 +14,33 @@ type filename = str;
  * with single-word things, rather than passing records all over the
  * compiler.
  */
-type filemap = @rec(filename name, uint start_pos, mutable vec[uint] lines);
+type filemap = @rec(filename name, uint start_pos, mutable uint[] lines);
 
-type codemap = @rec(mutable vec[filemap] files);
+type codemap = @rec(mutable filemap[] files);
 
 type loc = rec(filename filename, uint line, uint col);
 
 fn new_codemap() -> codemap {
-    let vec[filemap] files = [];
+    let filemap[] files = ~[];
     ret @rec(mutable files=files);
 }
 
 fn new_filemap(filename filename, uint start_pos) -> filemap {
-    ret @rec(name=filename, start_pos=start_pos, mutable lines=[0u]);
+    ret @rec(name=filename, start_pos=start_pos, mutable lines=~[0u]);
 }
 
-fn next_line(filemap file, uint pos) { vec::push[uint](file.lines, pos); }
+fn next_line(filemap file, uint pos) { file.lines += ~[pos]; }
 
 fn lookup_pos(codemap map, uint pos) -> loc {
     auto a = 0u;
-    auto b = vec::len[filemap](map.files);
+    auto b = ivec::len[filemap](map.files);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
         if (map.files.(m).start_pos > pos) { b = m; } else { a = m; }
     }
     auto f = map.files.(a);
     a = 0u;
-    b = vec::len[uint](f.lines);
+    b = ivec::len[uint](f.lines);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
         if (f.lines.(m) > pos) { b = m; } else { a = m; }
@@ -91,8 +91,8 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             auto max_lines = 6u;
             auto elided = false;
             auto display_lines = lines.lines;
-            if (vec::len(display_lines) > max_lines) {
-                display_lines = vec::slice(display_lines, 0u, max_lines);
+            if (ivec::len(display_lines) > max_lines) {
+                display_lines = ivec::slice(display_lines, 0u, max_lines);
                 elided = true;
             }
             // Print the offending lines
@@ -106,7 +106,8 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                 ioivec::stdout().write_str(s);
             }
             if (elided) {
-                auto last_line = display_lines.(vec::len(display_lines) - 1u);
+                auto last_line = display_lines.(ivec::len(display_lines) -
+                                                1u);
                 auto s = #fmt("%s:%u ", fm.name, last_line + 1u);
                 auto indent = str::char_len(s);
                 auto out = "";
@@ -116,7 +117,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
             }
 
             // If there's one line at fault we can easily point to the problem
-            if (vec::len(lines.lines) == 1u) {
+            if (ivec::len(lines.lines) == 1u) {
                 auto lo = codemap::lookup_pos(cm, option::get(sp).lo);
                 auto digits = 0u;
                 auto num = lines.lines.(0) / 10u;
@@ -156,21 +157,21 @@ fn emit_note(&option::t[span] sp, &str msg, &codemap cm) {
     emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 
-type file_lines = rec(str name, vec[uint] lines);
+type file_lines = rec(str name, uint[] lines);
 
 fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
     auto lo = codemap::lookup_pos(cm, sp.lo);
     auto hi = codemap::lookup_pos(cm, sp.hi);
-    auto lines = [];
+    auto lines = ~[];
     for each (uint i in uint::range(lo.line - 1u, hi.line as uint)) {
-        lines += [i];
+        lines += ~[i];
     }
     ret @rec(name=lo.filename, lines=lines);
 }
 
 fn get_line(filemap fm, int line, &str file) -> str {
     let uint end;
-    if ((line as uint) + 1u >= vec::len(fm.lines)) {
+    if ((line as uint) + 1u >= ivec::len(fm.lines)) {
         end = str::byte_len(file);
     } else {
         end = fm.lines.(line + 1);

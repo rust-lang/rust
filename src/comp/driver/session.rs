@@ -10,7 +10,6 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::vec;
 import syntax::parse::parser::parse_sess;
 
 tag os { os_win32; os_macos; os_linux; }
@@ -36,14 +35,14 @@ type options =
         bool time_passes,
         bool time_llvm_passes,
         back::link::output_type output_type,
-        vec[str] library_search_paths,
+        str[] library_search_paths,
         str sysroot,
         // The crate config requested for the session, which may be combined
         // with additional crate configurations during the compile process
         ast::crate_cfg cfg,
         bool test);
 
-type crate_metadata = rec(str name, vec[u8] data);
+type crate_metadata = rec(str name, u8[] data);
 
 obj session(@config targ_cfg,
             @options opts,

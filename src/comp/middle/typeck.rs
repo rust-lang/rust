@@ -1364,7 +1364,7 @@ fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
                         fcx.ccx.tcx.sess.span_fatal(pat.span, s);
                     }
 
-                    // TODO: vec::iter2
+                    // TODO: ivec::iter2
 
                     auto i = 0u;
                     for (@ast::pat subpat in subpats) {

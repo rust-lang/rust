@@ -1,5 +1,4 @@
 
-import std::vec;
 import std::str;
 import std::option;
 import std::option::some;
@@ -19,7 +18,7 @@ tag eval_mode { mode_depend; mode_parse; }
 type ctx =
     @rec(parser p,
          eval_mode mode,
-         mutable vec[str] deps,
+         mutable str[] deps,
          parser::parse_sess sess,
          mutable uint chpos,
          ast::crate_cfg cfg);
@@ -55,7 +54,7 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             } else {
                 prefix + std::fs::path_sep() + file_path
             };
-            if (cx.mode == mode_depend) { cx.deps += [full_path]; ret; }
+            if (cx.mode == mode_depend) { cx.deps += ~[full_path]; ret; }
             auto p0 =
                 new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos);
             auto inner_attrs = parse_inner_attrs_and_next(p0);

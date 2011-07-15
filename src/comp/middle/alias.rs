@@ -7,7 +7,7 @@ import ast::def_id;
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::vec;
+import std::ivec;
 import std::str;
 import std::option;
 import std::option::some;
@@ -25,14 +25,14 @@ import std::option::is_none;
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
-    @rec(vec[node_id] root_vars,
+    @rec(node_id[] root_vars,
          node_id block_defnum,
-         vec[node_id] bindings,
-         vec[ty::t] tys,
-         vec[uint] depends_on,
+         node_id[] bindings,
+         ty::t[] tys,
+         uint[] depends_on,
          mutable valid ok);
 
-type scope = vec[restrict];
+type scope = @restrict[];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
@@ -50,7 +50,7 @@ fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
              visit_expr=bind visit_expr(cx, _, _, _),
              visit_decl=bind visit_decl(cx, _, _, _)
              with *visit::default_visitor[scope]());
-    visit::visit_crate(*crate, [], visit::mk_vt(v));
+    visit::visit_crate(*crate, @~[], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
 
@@ -60,7 +60,7 @@ fn visit_fn(&@ctx cx, &ast::_fn f, &ast::ty_param[] tp, &span sp,
     for (ast::arg arg_ in f.decl.inputs) {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
     }
-    v.visit_block(f.body, [], v);
+    v.visit_block(f.body, @~[], v);
 }
 
 fn visit_item(&@ctx cx, &@ast::item i, &scope sc, &vt[scope] v) {
@@ -148,13 +148,13 @@ fn visit_decl(&@ctx cx, &@ast::decl d, &scope sc, &vt[scope] v) {
 }
 
 fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
-   rec(vec[node_id] root_vars, vec[ty::t] unsafe_ts) {
+   rec(node_id[] root_vars, ty::t[] unsafe_ts) {
     auto fty = ty::expr_ty(*cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
-    let vec[node_id] roots = [];
-    let vec[tup(uint, node_id)] mut_roots = [];
-    let vec[ty::t] unsafe_ts = [];
-    let vec[uint] unsafe_t_offsets = [];
+    let node_id[] roots = ~[];
+    let tup(uint, node_id)[] mut_roots = ~[];
+    let ty::t[] unsafe_ts = ~[];
+    let uint[] unsafe_t_offsets = ~[];
     auto i = 0u;
     for (ty::arg arg_t in arg_ts) {
         if (arg_t.mode != ty::mo_val) {
@@ -162,34 +162,31 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
             auto root = expr_root(cx, arg, false);
             if (arg_t.mode == ty::mo_alias(true)) {
                 alt (path_def_id(cx, arg)) {
-                    case (some(?did)) {
-                        vec::push(mut_roots, tup(i, did._1));
-                    }
-                    case (_) {
-                        if (!mut_field(root.ds)) {
-                            auto m =
-                                "passing a temporary value or \
+                  some(?did) { mut_roots += ~[tup(i, did._1)]; }
+                  _ {
+                    if (!mut_field(root.ds)) {
+                        auto m = "passing a temporary value or \
                                  immutable field by mutable alias";
-                            cx.tcx.sess.span_err(arg.span, m);
-                        }
+                        cx.tcx.sess.span_err(arg.span, m);
                     }
+                  }
                 }
             }
             alt (path_def_id(cx, root.ex)) {
-                case (some(?did)) { vec::push(roots, did._1); }
-                case (_) { }
+              some(?did) { roots += ~[did._1]; }
+              _ { }
             }
             alt (inner_mut(root.ds)) {
-                case (some(?t)) {
-                    vec::push(unsafe_ts, t);
-                    vec::push(unsafe_t_offsets, i);
-                }
-                case (_) { }
+              some(?t) {
+                unsafe_ts += ~[t];
+                unsafe_t_offsets += ~[i];
+              }
+              _ { }
             }
         }
         i += 1u;
     }
-    if (vec::len(unsafe_ts) > 0u) {
+    if (ivec::len(unsafe_ts) > 0u) {
         alt (f.node) {
             case (ast::expr_path(_)) {
                 if (def_is_local(cx.tcx.def_map.get(f.id), true)) {
@@ -223,12 +220,18 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
     // Ensure we're not passing a root by mutable alias.
 
     for (tup(uint, node_id) root in mut_roots) {
-        auto mut_alias_to_root = vec::count(root._1, roots) > 1u;
-        for (restrict r in sc) {
-            if (vec::member(root._1, r.root_vars)) {
-                mut_alias_to_root = true;
+        auto mut_alias_to_root = false;
+        auto mut_alias_to_root_count = 0u;
+        for (node_id r in roots) {
+            if root._1 == r {
+                mut_alias_to_root_count += 1u;
+                if mut_alias_to_root_count > 1u {
+                    mut_alias_to_root = true;
+                    break;
+                }
             }
         }
+
         if (mut_alias_to_root) {
             cx.tcx.sess.span_err(args.(root._0).span,
                                  "passing a mutable alias to a \
@@ -281,31 +284,31 @@ fn check_alt(&ctx cx, &@ast::expr input, &ast::arm[] arms, &scope sc,
     visit::visit_expr(input, sc, v);
     auto root = expr_root(cx, input, true);
     auto roots = alt (path_def_id(cx, root.ex)) {
-        some(?did) { [did._1] }
-        _ { [] }
+      some(?did) { ~[did._1] }
+      _ { ~[] }
     };
-    let vec[ty::t] forbidden_tp =
-        alt (inner_mut(root.ds)) { some(?t) { [t] } _ { [] } };
+    let ty::t[] forbidden_tp =
+        alt (inner_mut(root.ds)) { some(?t) { ~[t] } _ { ~[] } };
     for (ast::arm a in arms) {
         auto dnums = arm_defnums(a);
         auto new_sc = sc;
-        if (vec::len(dnums) > 0u) {
-            new_sc = sc + [@rec(root_vars=roots,
-                                block_defnum=dnums.(0),
-                                bindings=dnums,
-                                tys=forbidden_tp,
-                                depends_on=deps(sc, roots),
-                                mutable ok=valid)];
+        if (ivec::len(dnums) > 0u) {
+            new_sc = @(*sc + ~[@rec(root_vars=roots,
+                                    block_defnum=dnums.(0),
+                                    bindings=dnums,
+                                    tys=forbidden_tp,
+                                    depends_on=deps(sc, roots),
+                                    mutable ok=valid)]);
         }
         visit::visit_arm(a, new_sc, v);
     }
 }
 
-fn arm_defnums(&ast::arm arm) -> vec[node_id] {
-    auto dnums = [];
-    fn walk_pat(&mutable vec[node_id] found, &@ast::pat p) {
+fn arm_defnums(&ast::arm arm) -> node_id[] {
+    auto dnums = ~[];
+    fn walk_pat(&mutable node_id[] found, &@ast::pat p) {
         alt (p.node) {
-            case (ast::pat_bind(_)) { vec::push(found, p.id); }
+            case (ast::pat_bind(_)) { found += ~[p.id]; }
             case (ast::pat_tag(_, ?children)) {
                 for (@ast::pat child in children) { walk_pat(found, child); }
             }
@@ -330,11 +333,11 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
             auto new_sc =
                 @rec(root_vars=data.root_vars,
                      block_defnum=defnum,
-                     bindings=[defnum],
+                     bindings=~[defnum],
                      tys=data.unsafe_ts,
                      depends_on=deps(sc, data.root_vars),
                      mutable ok=valid);
-            visit::visit_block(block, sc + [new_sc], v);
+            visit::visit_block(block, @(*sc + ~[new_sc]), v);
         }
     }
 }
@@ -345,16 +348,16 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
     auto defnum = local.node.id;
     auto root = expr_root(cx, seq, false);
     auto root_def = alt (path_def_id(cx, root.ex)) {
-        some(?did) { [did._1] }
-        _ { [] }
+      some(?did) { ~[did._1] }
+      _ { ~[] }
     };
-    auto unsafe = alt (inner_mut(root.ds)) { some(?t) { [t] } _ { [] } };
+    auto unsafe = alt (inner_mut(root.ds)) { some(?t) { ~[t] } _ { ~[] } };
 
     // If this is a mutable vector, don't allow it to be touched.
     auto seq_t = ty::expr_ty(*cx.tcx, seq);
     alt (ty::struct(*cx.tcx, seq_t)) {
         ty::ty_vec(?mt) | ty::ty_ivec(?mt) {
-            if (mt.mut != ast::imm) { unsafe = [seq_t]; }
+            if (mt.mut != ast::imm) { unsafe = ~[seq_t]; }
         }
         ty::ty_str | ty::ty_istr { /* no-op */ }
         _ {
@@ -365,11 +368,11 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
     auto new_sc =
         @rec(root_vars=root_def,
              block_defnum=defnum,
-             bindings=[defnum],
+             bindings=~[defnum],
              tys=unsafe,
              depends_on=deps(sc, root_def),
              mutable ok=valid);
-    visit::visit_block(block, sc + [new_sc], v);
+    visit::visit_block(block, @(*sc + ~[new_sc]), v);
 }
 
 fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
@@ -378,7 +381,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
     if (!def_is_local(def, true)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
     auto var_t = ty::expr_ty(*cx.tcx, ex);
-    for (restrict r in sc) {
+    for (restrict r in *sc) {
         // excludes variables introduced since the alias was made
         if (my_defnum < r.block_defnum) {
             for (ty::t t in r.tys) {
@@ -386,7 +389,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
                     r.ok = val_taken(ex.span, p);
                 }
             }
-        } else if (vec::member(my_defnum, r.bindings)) {
+        } else if (ivec::member(my_defnum, r.bindings)) {
             test_scope(cx, sc, r, p);
         }
     }
@@ -403,15 +406,15 @@ fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
                 cx.tcx.sess.span_err(dest.span,
                                      "assigning to immutable obj field");
             }
-            for (restrict r in sc) {
-                if (vec::member(dnum, r.root_vars)) {
+            for (restrict r in *sc) {
+                if (ivec::member(dnum, r.root_vars)) {
                     r.ok = overwritten(dest.span, p);
                 }
             }
         }
         case (_) {
             auto root = expr_root(*cx, dest, false);
-            if (vec::len(root.ds) == 0u) {
+            if (ivec::len(*root.ds) == 0u) {
                 cx.tcx.sess.span_err(dest.span, "assignment to non-lvalue");
             } else if (!root.ds.(0).mut) {
                 auto name =
@@ -443,7 +446,7 @@ fn check_move_rhs(&@ctx cx, &@ast::expr src, &scope sc, &vt[scope] v) {
         case (_) {
             auto root = expr_root(*cx, src, false);
             // Not a path and no-derefs means this is a temporary.
-            if (vec::len(root.ds) != 0u) {
+            if (ivec::len(*root.ds) != 0u) {
                 cx.tcx.sess.span_err
                     (src.span, "moving out of a data structure");
             }
@@ -463,8 +466,8 @@ fn is_immutable_alias(&@ctx cx, &scope sc, node_id dnum) -> bool {
         case (some(arg(ast::alias(false)))) { ret true; }
         case (_) { }
     }
-    for (restrict r in sc) {
-        if (vec::member(dnum, r.bindings)) { ret true; }
+    for (restrict r in *sc) {
+        if (ivec::member(dnum, r.bindings)) { ret true; }
     }
     ret false;
 }
@@ -495,12 +498,12 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
     }
 }
 
-fn deps(&scope sc, vec[node_id] roots) -> vec[uint] {
+fn deps(&scope sc, &node_id[] roots) -> uint[] {
     auto i = 0u;
-    auto result = [];
-    for (restrict r in sc) {
+    auto result = ~[];
+    for (restrict r in *sc) {
         for (node_id dn in roots) {
-            if (vec::member(dn, r.bindings)) { vec::push(result, i); }
+            if ivec::member(dn, r.bindings) { result += ~[i]; }
         }
         i += 1u;
     }
@@ -509,7 +512,7 @@ fn deps(&scope sc, vec[node_id] roots) -> vec[uint] {
 
 tag deref_t { unbox; field; index; }
 
-type deref = rec(bool mut, deref_t kind, ty::t outer_t);
+type deref = @rec(bool mut, deref_t kind, ty::t outer_t);
 
 
 // Finds the root (the thing that is dereferenced) for the given expr, and a
@@ -517,23 +520,23 @@ type deref = rec(bool mut, deref_t kind, ty::t outer_t);
 // the inner derefs come in front, so foo.bar.baz becomes rec(ex=foo,
 // ds=[field(baz),field(bar)])
 fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
-   rec(@ast::expr ex, vec[deref] ds) {
+   rec(@ast::expr ex, @deref[] ds) {
     fn maybe_auto_unbox(&ctx cx, &ty::t t) ->
        rec(ty::t t, option::t[deref] d) {
         alt (ty::struct(*cx.tcx, t)) {
             case (ty::ty_box(?mt)) {
                 ret rec(t=mt.ty,
-                        d=some(rec(mut=mt.mut != ast::imm,
-                                   kind=unbox,
-                                   outer_t=t)));
+                        d=some(@rec(mut=mt.mut != ast::imm,
+                                    kind=unbox,
+                                    outer_t=t)));
             }
             case (_) { ret rec(t=t, d=none); }
         }
     }
-    fn maybe_push_auto_unbox(&option::t[deref] d, &mutable vec[deref] ds) {
-        alt (d) { case (some(?d)) { vec::push(ds, d); } case (none) { } }
+    fn maybe_push_auto_unbox(&option::t[deref] d, &mutable deref[] ds) {
+        alt (d) { case (some(?d)) { ds += ~[d]; } case (none) { } }
     }
-    let vec[deref] ds = [];
+    let deref[] ds = ~[];
     while (true) {
         alt ({ ex.node }) {
             case (ast::expr_field(?base, ?ident)) {
@@ -555,7 +558,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                     }
                     case (ty::ty_obj(_)) { }
                 }
-                vec::push(ds, rec(mut=mut, kind=field, outer_t=auto_unbox.t));
+                ds += ~[@rec(mut=mut, kind=field, outer_t=auto_unbox.t)];
                 maybe_push_auto_unbox(auto_unbox.d, ds);
                 ex = base;
             }
@@ -564,14 +567,14 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                     maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, base));
                 alt (ty::struct(*cx.tcx, auto_unbox.t)) {
                     case (ty::ty_vec(?mt)) {
-                        vec::push(ds, rec(mut=mt.mut != ast::imm,
-                                          kind=index,
-                                          outer_t=auto_unbox.t));
+                        ds += ~[@rec(mut=mt.mut != ast::imm,
+                                    kind=index,
+                                    outer_t=auto_unbox.t)];
                     }
                     case (ty::ty_ivec(?mt)) {
-                        vec::push(ds, rec(mut=mt.mut != ast::imm,
-                                          kind=index,
-                                          outer_t=auto_unbox.t));
+                        ds += ~[@rec(mut=mt.mut != ast::imm,
+                                    kind=index,
+                                    outer_t=auto_unbox.t)];
                     }
                 }
                 maybe_push_auto_unbox(auto_unbox.d, ds);
@@ -587,7 +590,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                         case (ty::ty_tag(_, _)) {}
                         case (ty::ty_ptr(?mt)) { mut = mt.mut != ast::imm; }
                     }
-                    vec::push(ds, rec(mut=mut, kind=unbox, outer_t=base_t));
+                    ds += ~[@rec(mut=mut, kind=unbox, outer_t=base_t)];
                     ex = base;
                 } else { break; }
             }
@@ -598,16 +601,16 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
         auto auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, ex));
         maybe_push_auto_unbox(auto_unbox.d, ds);
     }
-    ret rec(ex=ex, ds=ds);
+    ret rec(ex=ex, ds=@ds);
 }
 
-fn mut_field(&vec[deref] ds) -> bool {
-    for (deref d in ds) { if (d.mut) { ret true; } }
+fn mut_field(&@deref[] ds) -> bool {
+    for (deref d in *ds) { if (d.mut) { ret true; } }
     ret false;
 }
 
-fn inner_mut(&vec[deref] ds) -> option::t[ty::t] {
-    for (deref d in ds) { if (d.mut) { ret some(d.outer_t); } }
+fn inner_mut(&@deref[] ds) -> option::t[ty::t] {
+    for (deref d in *ds) { if (d.mut) { ret some(d.outer_t); } }
     ret none;
 }
 

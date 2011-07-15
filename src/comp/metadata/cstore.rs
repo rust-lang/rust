@@ -1,8 +1,8 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
+import std::ivec;
 import std::map;
-import std::vec;
 import std::str;
 import syntax::ast;
 
@@ -42,9 +42,9 @@ tag cstore {
 
 type cstore_private = @rec(map::hashmap[ast::crate_num, crate_metadata] metas,
                            use_crate_map use_crate_map,
-                           mutable vec[str] used_crate_files,
-                           mutable vec[str] used_libraries,
-                           mutable vec[str] used_link_args);
+                           mutable str[] used_crate_files,
+                           mutable str[] used_libraries,
+                           mutable str[] used_link_args);
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
@@ -61,9 +61,9 @@ fn mk_cstore() -> cstore {
     auto crate_map = map::new_int_hash[ast::crate_num]();
     ret private(@rec(metas = meta_cache,
                      use_crate_map = crate_map,
-                     mutable used_crate_files = [],
-                     mutable used_libraries = [],
-                     mutable used_link_args = []));
+                     mutable used_crate_files = ~[],
+                     mutable used_libraries = ~[],
+                     mutable used_link_args = ~[]));
 }
 
 fn get_crate_data(&cstore cstore, ast::crate_num cnum) -> crate_metadata {
@@ -86,35 +86,39 @@ iter iter_crate_data(&cstore cstore) -> @tup(ast::crate_num, crate_metadata) {
 }
 
 fn add_used_crate_file(&cstore cstore, &str lib) {
-    if (!vec::member(lib, p(cstore).used_crate_files)) {
-        p(cstore).used_crate_files += [lib];
+    if (!ivec::member(lib, p(cstore).used_crate_files)) {
+        p(cstore).used_crate_files += ~[lib];
     }
 }
 
-fn get_used_crate_files(&cstore cstore) -> vec[str] {
+fn get_used_crate_files(&cstore cstore) -> str[] {
     ret p(cstore).used_crate_files;
 }
 
 fn add_used_library(&cstore cstore, &str lib) -> bool {
     if (lib == "") { ret false; }
 
-    if (vec::member(lib, p(cstore).used_libraries)) {
+    if (ivec::member(lib, p(cstore).used_libraries)) {
         ret false;
     }
 
-    p(cstore).used_libraries += [lib];
+    p(cstore).used_libraries += ~[lib];
     ret true;
 }
 
-fn get_used_libraries(&cstore cstore) -> vec[str] {
+fn get_used_libraries(&cstore cstore) -> str[] {
     ret p(cstore).used_libraries;
 }
 
 fn add_used_link_args(&cstore cstore, &str args) {
-    p(cstore).used_link_args += str::split(args, ' ' as u8);
+    auto used_link_args_vec = str::split(args, ' ' as u8);
+    // TODO: Remove this vec->ivec conversion.
+    for (str ula in used_link_args_vec) {
+        p(cstore).used_link_args += ~[ula];
+    }
 }
 
-fn get_used_link_args(&cstore cstore) -> vec[str] {
+fn get_used_link_args(&cstore cstore) -> str[] {
     ret p(cstore).used_link_args;
 }
 

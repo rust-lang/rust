@@ -1168,11 +1168,7 @@ fn ns_for_def(def d) -> namespace {
 
 fn lookup_external(&env e, int cnum, &ident[] ids, namespace ns) ->
    option::t[def] {
-    // FIXME: Remove this ivec->vec conversion.
-    auto ids_vec = [];
-    for (ident i in ids) { ids_vec += [i]; }
-
-    for (def d in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids_vec)) {
+    for (def d in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids)) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
         if (ns == ns_for_def(d)) { ret some(d); }
     }

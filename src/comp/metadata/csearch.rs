@@ -26,7 +26,7 @@ fn get_type_param_count(&cstore::cstore cstore, &ast::def_id def) -> uint {
 }
 
 fn lookup_defs(&cstore::cstore cstore, ast::crate_num cnum,
-               vec[ast::ident] path) -> vec[ast::def] {
+               &ast::ident[] path) -> ast::def[] {
     auto cdata = cstore::get_crate_data(cstore, cnum).data;
     ret decoder::lookup_defs(cdata, cnum, path);
 }

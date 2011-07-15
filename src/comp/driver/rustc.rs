@@ -301,8 +301,12 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
    @session::options {
     auto library = opt_present(match, "lib");
     auto static = opt_present(match, "static");
-    auto library_search_paths = [binary_dir + "/lib"];
-    library_search_paths += getopts::opt_strs(match, "L");
+
+    auto library_search_paths = ~[binary_dir + "/lib"];
+    // FIXME: Remove this vec->ivec conversion.
+    auto lsp_vec = getopts::opt_strs(match, "L");
+    for (str lsp in lsp_vec) { library_search_paths += ~[lsp]; }
+
     auto output_type =
         if (opt_present(match, "parse-only")) {
             link::output_type_none
@@ -398,7 +402,7 @@ fn opts() -> vec[getopts::opt] {
 }
 
 fn main(vec[str] args) {
-    auto binary = vec::shift[str](args);
+    auto binary = vec::shift(args);
     auto binary_dir = fs::dirname(binary);
     auto match =
         alt (getopts::getopts(args, opts())) {
@@ -554,7 +558,10 @@ fn main(vec[str] args) {
         gcc_args += ["-l" + libarg];
     }
 
-    gcc_args += cstore::get_used_link_args(cstore);
+    // FIXME: Remove this ivec->vec conversion.
+    auto ula = cstore::get_used_link_args(cstore);
+    for (str arg in ula) { gcc_args += [arg]; }
+
     auto used_libs = cstore::get_used_libraries(cstore);
     for (str l in used_libs) {
         gcc_args += ["-l" + l];

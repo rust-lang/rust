@@ -2,7 +2,6 @@
 
 import std::ivec;
 import std::str;
-import std::vec;
 import std::uint;
 import std::option;
 import std::option::none;

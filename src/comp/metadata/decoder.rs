@@ -3,7 +3,6 @@
 import std::ebmlivec;
 import std::ivec;
 import std::option;
-import std::vec;
 import std::str;
 import std::ioivec;
 import std::map::hashmap;
@@ -125,38 +124,38 @@ fn item_ty_param_count(&ebmlivec::doc item) -> uint {
 }
 
 fn tag_variant_ids(&ebmlivec::doc item,
-                   ast::crate_num this_cnum) -> vec[ast::def_id] {
-    let vec[ast::def_id] ids = [];
+                   ast::crate_num this_cnum) -> ast::def_id[] {
+    let ast::def_id[] ids = ~[];
     auto v = tag_items_data_item_variant;
     for each (ebmlivec::doc p in ebmlivec::tagged_docs(item, v)) {
         auto ext = parse_def_id(ebmlivec::doc_data(p));
-        vec::push[ast::def_id](ids, tup(this_cnum, ext._1));
+        ids += ~[tup(this_cnum, ext._1)];
     }
     ret ids;
 }
 
 // Given a path and serialized crate metadata, returns the ID of the
 // definition the path refers to.
-fn resolve_path(vec[ast::ident] path, @u8[] data) -> vec[ast::def_id] {
+fn resolve_path(&ast::ident[] path, @u8[] data) -> ast::def_id[] {
     fn eq_item(&u8[] data, str s) -> bool {
         ret str::eq(str::unsafe_from_bytes_ivec(data), s);
     }
-    auto s = str::connect(path, "::");
+    auto s = str::connect_ivec(path, "::");
     auto md = ebmlivec::new_doc(data);
     auto paths = ebmlivec::get_doc(md, tag_paths);
     auto eqer = bind eq_item(_, s);
-    let vec[ast::def_id] result = [];
+    let ast::def_id[] result = ~[];
     for (ebmlivec::doc doc in lookup_hash(paths, eqer, hash_path(s))) {
         auto did_doc = ebmlivec::get_doc(doc, tag_def_id);
-        vec::push(result, parse_def_id(ebmlivec::doc_data(did_doc)));
+        result += ~[parse_def_id(ebmlivec::doc_data(did_doc))];
     }
     ret result;
 }
 
 // Crate metadata queries
-fn lookup_defs(&@u8[] data, ast::crate_num cnum,
-               vec[ast::ident] path) -> vec[ast::def] {
-    ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
+fn lookup_defs(&@u8[] data, ast::crate_num cnum, &ast::ident[] path)
+        -> ast::def[] {
+    ret ivec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
 
@@ -352,8 +351,8 @@ fn get_crate_attributes(@u8[] data) -> ast::attribute[] {
 
 type crate_dep = tup(ast::crate_num, str);
 
-fn get_crate_deps(@u8[] data) -> vec[crate_dep] {
-    let vec[crate_dep] deps = [];
+fn get_crate_deps(@u8[] data) -> crate_dep[] {
+    let crate_dep[] deps = ~[];
     auto cratedoc = ebmlivec::new_doc(data);
     auto depsdoc = ebmlivec::get_doc(cratedoc, tag_crate_deps);
     auto crate_num = 1;
@@ -361,7 +360,7 @@ fn get_crate_deps(@u8[] data) -> vec[crate_dep] {
               ebmlivec::tagged_docs(depsdoc, tag_crate_dep)) {
         auto depname =
             str::unsafe_from_bytes_ivec(ebmlivec::doc_data(depdoc));
-        deps += [tup(crate_num, depname)];
+        deps += ~[tup(crate_num, depname)];
         crate_num += 1;
     }
     ret deps;

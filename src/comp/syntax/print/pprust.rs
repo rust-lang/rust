@@ -4,7 +4,6 @@ import std::int;
 import std::ioivec;
 import std::str;
 import std::uint;
-import std::vec;
 import std::option;
 import parse::lexer;
 import syntax::codemap::codemap;
@@ -1267,7 +1266,7 @@ fn print_view_item(&ps s, &@ast::view_item item) {
 // FIXME: The fact that this builds up the table anew for every call is
 // not good. Eventually, table should be a const.
 fn operator_prec(ast::binop op) -> int {
-    for (parse::parser::op_spec spec in parse::parser::prec_table()) {
+    for (parse::parser::op_spec spec in *parse::parser::prec_table()) {
         if (spec.op == op) { ret spec.prec; }
     }
     fail;
@@ -1445,7 +1444,7 @@ fn maybe_print_comment(&ps s, uint pos) {
 fn print_comment(&ps s, lexer::cmnt cmnt) {
     alt (cmnt.style) {
         case (lexer::mixed) {
-            assert (vec::len(cmnt.lines) == 1u);
+            assert (ivec::len(cmnt.lines) == 1u);
             zerobreak(s.s);
             word(s.s, cmnt.lines.(0));
             zerobreak(s.s);
@@ -1456,7 +1455,7 @@ fn print_comment(&ps s, lexer::cmnt cmnt) {
         }
         case (lexer::trailing) {
             word(s.s, " ");
-            if (vec::len(cmnt.lines) == 1u) {
+            if (ivec::len(cmnt.lines) == 1u) {
                 word(s.s, cmnt.lines.(0));
                 hardbreak(s.s);
             } else {

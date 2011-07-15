@@ -1,6 +1,6 @@
 
 import std::ioivec;
-import std::vec;
+import std::ivec;
 import std::str;
 
 
@@ -74,10 +74,10 @@ fn tok_str(token t) -> str {
     }
 }
 
-fn buf_str(vec[mutable token] toks, vec[mutable int] szs, uint left,
-           uint right, uint lim) -> str {
-    auto n = vec::len(toks);
-    assert (n == vec::len(szs));
+fn buf_str(&token[mutable] toks, &int[mutable] szs, uint left, uint right,
+           uint lim) -> str {
+    auto n = ivec::len(toks);
+    assert (n == ivec::len(szs));
     auto i = left;
     auto L = lim;
     auto s = "[";
@@ -104,10 +104,10 @@ fn mk_printer(ioivec::writer out, uint linewidth) -> printer {
 
     let uint n = 3u * linewidth;
     log #fmt("mk_printer %u", linewidth);
-    let vec[mutable token] token = vec::init_elt_mut(EOF, n);
-    let vec[mutable int] size = vec::init_elt_mut(0, n);
-    let vec[mutable uint] scan_stack = vec::init_elt_mut(0u, n);
-    let vec[print_stack_elt] print_stack = [];
+    let token[mutable] token = ivec::init_elt_mut(EOF, n);
+    let int[mutable] size = ivec::init_elt_mut(0, n);
+    let uint[mutable] scan_stack = ivec::init_elt_mut(0u, n);
+    let print_stack_elt[] print_stack = ~[];
     ret printer(out, n, linewidth as int, // margin
                  linewidth as int, // space
                  0u, // left
@@ -208,9 +208,9 @@ obj printer(ioivec::writer out,
 
             mutable uint right, // index of right side of input stream
 
-            mutable vec[mutable token] token,
+            mutable token[mutable] token,
              // ring-buffr stream goes through
-            mutable vec[mutable int] size, // ring-buffer of calculated sizes
+            mutable int[mutable] size, // ring-buffer of calculated sizes
 
             mutable int left_total, // running size of stream "...left"
 
@@ -222,7 +222,7 @@ obj printer(ioivec::writer out,
              // BEGIN (if there is any) on top of it. Stuff is flushed off the
              // bottom as it becomes irrelevant due to the primary ring-buffer
              // advancing.
-             mutable vec[mutable uint] scan_stack,
+             mutable uint[mutable] scan_stack,
             mutable bool scan_stack_empty, // top==bottom disambiguator
 
             mutable uint top, // index of top of scan_stack
@@ -230,7 +230,7 @@ obj printer(ioivec::writer out,
             mutable uint bottom, // index of bottom of scan_stack
 
              // stack of blocks-in-progress being flushed by print
-            mutable vec[print_stack_elt] print_stack,
+            mutable print_stack_elt[] print_stack,
 
             // buffered indentation to avoid writing trailing whitespace
             mutable int pending_indentation) {
@@ -403,7 +403,7 @@ obj printer(ioivec::writer out,
         pending_indentation += amount;
     }
     fn top() -> print_stack_elt {
-        auto n = vec::len(print_stack);
+        auto n = ivec::len(print_stack);
         let print_stack_elt top = rec(offset=0, pbreak=broken(inconsistent));
         if (n != 0u) { top = print_stack.(n - 1u); }
         ret top;
@@ -425,17 +425,17 @@ obj printer(ioivec::writer out,
                     auto col = margin - space + b.offset;
                     log #fmt("print BEGIN -> push broken block at col %d",
                              col);
-                    vec::push(print_stack,
-                              rec(offset=col, pbreak=broken(b.breaks)));
+                    print_stack += ~[rec(offset=col,
+                                         pbreak=broken(b.breaks))];
                 } else {
                     log "print BEGIN -> push fitting block";
-                    vec::push(print_stack, rec(offset=0, pbreak=fits));
+                    print_stack += ~[rec(offset=0, pbreak=fits)];
                 }
             }
             case (END) {
                 log "print END -> pop END";
-                assert (vec::len(print_stack) != 0u);
-                vec::pop(print_stack);
+                assert (ivec::len(print_stack) != 0u);
+                ivec::pop(print_stack);
             }
             case (BREAK(?b)) {
                 auto top = self.top();
