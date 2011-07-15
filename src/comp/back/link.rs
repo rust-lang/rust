@@ -41,7 +41,7 @@ fn llvm_err(session::session sess, str msg) {
 }
 
 fn link_intrinsics(session::session sess, ModuleRef llmod) {
-    auto path = fs::connect(sess.get_opts().sysroot, "intrinsics.bc");
+    auto path = fs::connect(sess.get_opts().sysroot, "lib/intrinsics.bc");
     auto membuf =
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(str::buf(path));
     if (membuf as uint == 0u) {

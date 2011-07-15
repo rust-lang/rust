@@ -508,7 +508,7 @@ fn main(vec[str] args) {
     }
 
     let str glu = binary_dir + "/lib/glue.o";
-    let str main = "rt/main.o";
+    let str main = binary_dir + "/lib/main.o";
     let str stage = "-L" + binary_dir + "/lib";
     let str prog = "gcc";
     // The invocations of gcc share some flags across platforms
