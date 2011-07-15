@@ -6743,6 +6743,9 @@ fn alloc_ty(&@block_ctxt cx, &ty::t t) -> result {
 fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
     auto t = node_id_type(cx.fcx.lcx.ccx, local.node.id);
     auto r = alloc_ty(cx, t);
+    if (cx.fcx.lcx.ccx.sess.get_opts().debuginfo) {
+        llvm::LLVMSetValueName(r.val, str::buf(local.node.ident));
+    }
     r.bcx.fcx.lllocals.insert(local.node.id, r.val);
     ret r;
 }
