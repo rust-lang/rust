@@ -72,6 +72,7 @@ rust_scheduler::fail() {
         name, this);
     I(this, rval == 0);
     rval = 1;
+    exit(1);
 }
 
 size_t

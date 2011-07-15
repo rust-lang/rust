@@ -220,8 +220,6 @@ rust_task::fail() {
     backtrace();
     // Unblock the task so it can unwind.
     unblock();
-    if (this == sched->root_task)
-        sched->fail();
     if (supervisor) {
         DLOG(sched, task,
              "task %s @0x%" PRIxPTR
@@ -230,7 +228,8 @@ rust_task::fail() {
         supervisor->kill();
     }
     // FIXME: implement unwinding again.
-    exit(1);
+    if (this == sched->root_task)
+        sched->fail();
 }
 
 void
