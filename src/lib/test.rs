@@ -212,10 +212,29 @@ fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
 
 fn run_test(&test_desc test) -> test_result {
     if (!test.ignore) {
-        test.fn();
-        ret tr_ok;
+        if (run_test_fn_in_task(test.fn)) {
+            ret tr_ok;
+        } else {
+            ret tr_failed;
+        }
     } else {
         ret tr_ignored;
+    }
+}
+
+// We need to run our tests in another task in order to trap test failures.
+// But, at least currently, functions can't be used as spawn arguments so
+// we've got to treat our test functions as unsafe pointers.
+fn run_test_fn_in_task(&fn() f) -> bool {
+    fn run_task(*mutable fn() fptr) {
+        task::unsupervise();
+        (*fptr)()
+    }
+    auto fptr = ptr::addr_of(f);
+    auto test_task = spawn run_task(fptr);
+    ret alt (task::join(test_task)) {
+        task::tr_success { true }
+        task::tr_failure { false }
     }
 }
 
