@@ -430,11 +430,6 @@ task_join(rust_task *task, rust_task *join_task) {
     }
 }
 
-extern "C" CDECL void
-task_unsupervise(rust_task *task) {
-    task->unsupervise();
-}
-
 /* Debug builtins for std.dbg. */
 
 static void
