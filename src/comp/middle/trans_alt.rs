@@ -16,15 +16,14 @@ import trans::block_ctxt;
 import trans::new_sub_block_ctxt;
 import trans::new_scope_block_ctxt;
 import trans::load_if_immediate;
-import trans::C_int;
-import trans::C_uint;
-import trans::C_nil;
 import trans::val_ty;
 import ty::pat_ty;
 import syntax::ast;
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import util::common::lit_eq;
+
+import trans_common::*;
 
 // An option identifying a branch (either a literal or a tag variant)
 tag opt {
@@ -201,7 +200,7 @@ fn extract_variant_args(@block_ctxt bcx, ast::node_id pat_id,
                           (ccx.tcx, vdefs._0, vdefs._1).args);
     if (size > 0u && ivec::len(variants) != 1u) {
         auto tagptr = bcx.build.PointerCast
-            (val, trans::T_opaque_tag_ptr(ccx.tn));
+            (val, trans_common::T_opaque_tag_ptr(ccx.tn));
         blobptr = bcx.build.GEP(tagptr, ~[C_int(0), C_int(1)]);
     }
     auto i = 0u;
@@ -315,7 +314,7 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
                     kind = single;
                 } else {
                     auto tagptr = bcx.build.PointerCast
-                        (val, trans::T_opaque_tag_ptr(ccx.tn));
+                        (val, trans_common::T_opaque_tag_ptr(ccx.tn));
                     auto discrimptr = bcx.build.GEP
                         (tagptr, ~[C_int(0), C_int(0)]);
                     test_val = bcx.build.Load(discrimptr);

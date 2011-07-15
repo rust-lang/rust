@@ -15,6 +15,7 @@ use std (name = "std",
          url = "http://rust-lang.org/src/std");
 
 mod middle {
+    mod trans_common;
     mod trans;
     mod trans_alt;
     mod ty;
