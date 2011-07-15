@@ -410,7 +410,7 @@ task_yield(rust_task *task) {
     task->yield(1);
 }
 
-extern "C" CDECL void
+extern "C" CDECL intptr_t
 task_join(rust_task *task, rust_task *join_task) {
     // If the other task is already dying, we don't have to wait for it.
     join_task->lock.lock();
@@ -422,6 +422,11 @@ task_join(rust_task *task, rust_task *join_task) {
     }
     else {
         join_task->lock.unlock();
+    }
+    if (!join_task->failed) {
+        return 0;
+    } else {
+        return -1;
     }
 }
 

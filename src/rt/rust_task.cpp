@@ -82,7 +82,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
-    _on_wakeup(NULL)
+    _on_wakeup(NULL),
+    failed(false)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -230,6 +231,7 @@ rust_task::fail() {
     // FIXME: implement unwinding again.
     if (this == sched->root_task)
         sched->fail();
+    failed = true;
 }
 
 void

@@ -1,7 +1,7 @@
 native "rust" mod rustrt {
     fn task_sleep(uint time_in_us);
     fn task_yield();
-    fn task_join(task t);
+    fn task_join(task t) -> int;
     fn task_unsupervise();
     fn pin_task();
     fn unpin_task();
@@ -20,8 +20,16 @@ fn yield() {
     ret rustrt::task_yield();
 }
 
-fn join(task t) {
-    ret rustrt::task_join(t);
+tag task_result {
+    tr_success;
+    tr_failure;
+}
+
+fn join(task t) -> task_result {
+    alt (rustrt::task_join(t)) {
+        0 { tr_success }
+        _ { tr_failure }
+    }
 }
 
 fn unsupervise() {

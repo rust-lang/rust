@@ -5,7 +5,7 @@ use std;
 
 fn main() {
     auto t = spawn child(10);
-    std::task::join(t)
+    std::task::join(t);
 }
 
 fn child(int i) {

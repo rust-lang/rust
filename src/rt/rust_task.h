@@ -89,6 +89,9 @@ rust_task : public maybe_proxy<rust_task>,
 
     wakeup_callback *_on_wakeup;
 
+    // Indicates that the task ended in failure
+    bool failed;
+
     lock_and_signal lock;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.

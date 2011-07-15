@@ -15,8 +15,27 @@ fn test_unsupervise() {
   spawn f();
 }
 
+fn test_join() {
+  fn winner() {
+  }
+
+  auto wintask = spawn winner();
+
+  assert task::join(wintask) == task::tr_success;
+
+  fn failer() {
+    task::unsupervise();
+    fail;
+  }
+
+  auto failtask = spawn failer();
+
+  assert task::join(failtask) == task::tr_failure;
+}
+
 fn main() {
   // FIXME: Why aren't we running this?
   //test_sleep();
   test_unsupervise();
+  test_join();
 }
