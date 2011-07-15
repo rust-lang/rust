@@ -199,6 +199,7 @@ all: rt/$(CFG_RUNTIME)          \
      stage1/intrinsics.bc       \
      stage1/lib/glue.o          \
      stage1/rustc$(X)           \
+     stage1/fuzzer$(X)          \
 
 else
 
@@ -213,6 +214,7 @@ all: rt/$(CFG_RUNTIME)          \
      stage1/intrinsics.bc       \
      stage1/lib/glue.o          \
      stage1/rustc$(X)           \
+     stage1/fuzzer$(X)          \
      stage2/lib/$(CFG_STDLIB)   \
      stage2/intrinsics.bc       \
      stage2/lib/glue.o          \
