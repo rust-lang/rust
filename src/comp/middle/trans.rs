@@ -6510,9 +6510,6 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         bcx.build.Store(p, pair_box);
     }
 
-    // Cast the final object to how we want its type to appear.
-    pair = bcx.build.PointerCast(pair, T_ptr(ccx.rust_object_type));
-
     // return the object we built.
     ret rslt(bcx, pair);
 }
