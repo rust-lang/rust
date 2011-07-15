@@ -1250,11 +1250,20 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
         }
         visit::visit_pat(p, e, v);
     }
+
+    // Don't descend into fns and items
+    fn visit_fn[E](&ast::_fn f, &ast::ty_param[] tp, &span sp,
+                   &ast::fn_ident i, ast::node_id id, &E e,
+                   &visit::vt[E] v) {}
+    fn visit_item[E](&@ast::item i, &E e, &visit::vt[E] v) {}
+
     auto visit =
         @rec(visit_local=bind visit_local(ccx, vb, locals, local_names,
                                           nvi, _, _, _),
              visit_pat=bind visit_pat(ccx, vb, locals, local_names,
-                                      nvi, _, _, _)
+                                      nvi, _, _, _),
+             visit_fn=visit_fn,
+             visit_item=visit_item
              with *visit::default_visitor());
     visit::visit_block(f.body, (), visit::mk_vt(visit));
     ret rec(var_bindings=vb,
