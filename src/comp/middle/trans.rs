@@ -7083,19 +7083,27 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
     auto lltop = bcx.llbb;
     auto block_ty = node_id_type(cx.ccx, f.body.node.id);
 
-    // This call to trans_block is the place where we bridge between
-    // translation calls that don't have a return value (trans_crate,
-    // trans_mod, trans_item, trans_obj, et cetera) and those that do
-    // (trans_block, trans_expr, et cetera).
-    auto rslt =
-        if (!ty::type_is_nil(cx.ccx.tcx, block_ty) &&
-                !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
-            trans_block(bcx, f.body, save_in(fcx.llretptr))
-        } else { trans_block(bcx, f.body, return) };
-    if (!is_terminated(rslt.bcx)) {
+    if (cx.ccx.sess.get_opts().dps) {
+        // Call into the new destination-passing-style translation engine.
+        auto dest = trans_dps::dest_move(cx.ccx.tcx, fcx.llretptr, block_ty);
+        bcx = trans_dps::trans_block(bcx, dest, f.body);
+    } else {
+        // This call to trans_block is the place where we bridge between
+        // translation calls that don't have a return value (trans_crate,
+        // trans_mod, trans_item, trans_obj, et cetera) and those that do
+        // (trans_block, trans_expr, et cetera).
+        auto rslt =
+            if (!ty::type_is_nil(cx.ccx.tcx, block_ty) &&
+                    !ty::type_is_bot(cx.ccx.tcx, block_ty)) {
+                trans_block(bcx, f.body, save_in(fcx.llretptr))
+            } else { trans_block(bcx, f.body, return) };
+        bcx = rslt.bcx;
+    }
+
+    if (!is_terminated(bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
-       rslt.bcx.build.RetVoid();
+       bcx.build.RetVoid();
     }
 
     // Insert the mandatory first few basic blocks before lltop.

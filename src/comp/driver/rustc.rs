@@ -251,7 +251,10 @@ options:
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
     --no-typestate     don't run the typestate pass (unsafe!)
-    --test             build test harness\n\n");
+    --test             build test harness
+    --dps              translate via destination-passing style (experimental)
+
+");
 }
 
 fn get_os(str triple) -> session::os {
@@ -352,6 +355,7 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
         };
     auto cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     auto test = opt_present(match, "test");
+    auto dps = opt_present(match, "dps");
     let @session::options sopts =
         @rec(library=library,
              static=static,
@@ -367,7 +371,8 @@ fn build_session_options(str binary, getopts::match match, str binary_dir) ->
              library_search_paths=library_search_paths,
              sysroot=sysroot,
              cfg=cfg,
-             test=test);
+             test=test,
+             dps=dps);
     ret sopts;
 }
 
@@ -398,7 +403,7 @@ fn opts() -> vec[getopts::opt] {
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
          optflag("noverify"), optmulti("cfg"), optflag("test"),
-         optflag("lib"), optflag("static")];
+         optflag("lib"), optflag("static"), optflag("dps")];
 }
 
 fn main(vec[str] args) {

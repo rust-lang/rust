@@ -40,7 +40,8 @@ type options =
         // The crate config requested for the session, which may be combined
         // with additional crate configurations during the compile process
         ast::crate_cfg cfg,
-        bool test);
+        bool test,
+        bool dps);
 
 type crate_metadata = rec(str name, u8[] data);
 
