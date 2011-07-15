@@ -6,8 +6,8 @@ import std::getopts;
 import std::getopts::optopt;
 import std::getopts::opt_present;
 import std::getopts::opt_str;
-import std::io;
-import std::io::stdout;
+import std::ioivec;
+import std::ioivec::stdout;
 import std::vec;
 import std::ivec;
 import std::str;
@@ -46,11 +46,11 @@ import rustc::lib::llvm;
 */
 
 fn read_whole_file(&str filename) -> str {
-    str::unsafe_from_bytes(io::file_reader(filename).read_whole_stream())
+    str::unsafe_from_bytes_ivec(ioivec::file_reader(filename).read_whole_stream())
 }
 
 fn write_file(&str filename, &str content) {
-    io::file_writer(filename, [io::create]).write_str(content);
+    ioivec::file_writer(filename, ~[ioivec::create]).write_str(content);
 }
 
 fn file_contains(&str filename, &str needle) -> bool {
@@ -145,9 +145,9 @@ fn replace_expr_in_crate(&ast::crate crate, uint i, ast::expr_ newexpr) -> ast::
 
 iter under(uint n) -> uint { let uint i = 0u; while (i < n) { put i; i += 1u; } }
 
-fn devnull() -> io::writer { std::io::string_writer().get_writer() }
+fn devnull() -> ioivec::writer { std::ioivec::string_writer().get_writer() }
 
-fn as_str(fn (io::writer) f) -> str { auto w = std::io::string_writer(); f(w.get_writer()); w.get_str() }
+fn as_str(fn (ioivec::writer) f) -> str { auto w = std::ioivec::string_writer(); f(w.get_writer()); w.get_str() }
 
 fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
     auto exprs = steal_exprs(crate);
@@ -166,7 +166,6 @@ fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
 
 fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str filename) {
     auto str3 = as_str(bind pprust::print_crate(cmap, crate2, filename, _, pprust::no_ann()));
-    auto cm4 = codemap::new_codemap();
     if (true
       && !contains(str3, "][]") // https://github.com/graydon/rust/issues/669
       && !contains(str3, "][mutable]") // https://github.com/graydon/rust/issues/669
@@ -175,9 +174,10 @@ fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str filename) {
       && !contains(str3, "spawn") // more precedence issues
       && !contains(str3, "bind") // more precedence issues?
        ) {
+        auto cm4 = codemap::new_codemap();
         auto crate4 = parser::parse_crate_from_source_str(filename, str3, ~[], cm4);
         // should compare crates at this point, but it's easier to compare strings
-        auto str5 = as_str(bind pprust::print_crate(cmap, crate4, filename, _, pprust::no_ann()));
+        auto str5 = as_str(bind pprust::print_crate(cm4, crate4, filename, _, pprust::no_ann()));
         if (!str::is_ascii(str3)) {
           log_err "Non-ASCII in " + filename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
         } else if (str3 != str5) {
