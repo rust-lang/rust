@@ -72,6 +72,22 @@ fn init_elt_mut[T](&T t, uint n_elts) -> T[mutable] {
     ret v;
 }
 
+fn to_mut[T](&T[] v) -> T[mutable] {
+    auto vres = ~[mutable];
+    for (T t in v) {
+        vres += ~[mutable t];
+    }
+    ret vres;
+}
+
+fn from_mut[T](&T[mutable] v) -> T[] {
+    auto vres = ~[];
+    for (T t in v) {
+        vres += ~[t];
+    }
+    ret vres;
+}
+
 // Predicates
 pred is_empty[T](&T[mutable?] v) -> bool {
     // FIXME: This would be easier if we could just call len
