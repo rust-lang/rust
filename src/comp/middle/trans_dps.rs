@@ -222,6 +222,9 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
                 ty::ty_machine(ast::ty_u32) {
             by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_int;
           }
+          ty::ty_istr {
+            by_val = false; llupcall = bcx_ccx(bcx).upcalls.log_istr;
+          }
           _ {
             bcx_ccx(bcx).sess.span_unimpl(sp, "logging for values of type " +
                 ppaux::ty_to_str(bcx_tcx(bcx), t));
@@ -322,11 +325,12 @@ fn trans_lit_str_common(&@crate_ctxt ccx, &str s)
                 none);
     }
 
-    auto llarray = tc::C_array(tc::T_i8(), array);
+    auto llheappart = tc::C_struct(~[tc::C_uint(len),
+                                     tc::C_array(tc::T_i8(), array)]);
     ret tup(tc::C_struct(~[tc::C_uint(0u),
                            tc::C_uint(abi::ivec_default_length),
-                           tc::C_null(tc::T_ptr(lltype_of(llarray)))]),
-            some(llarray));
+                           tc::C_null(tc::T_ptr(lltype_of(llheappart)))]),
+            some(llheappart));
 }
 
 // As above, we don't use destination-passing style here.

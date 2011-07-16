@@ -8,6 +8,7 @@ import middle::trans_common::T_bool;
 import middle::trans_common::T_i8;
 import middle::trans_common::T_i32;
 import middle::trans_common::T_int;
+import middle::trans_common::T_ivec;
 import middle::trans_common::T_nil;
 import middle::trans_common::T_opaque_chan_ptr;
 import middle::trans_common::T_opaque_ivec;
@@ -28,6 +29,7 @@ type upcalls =
         ValueRef log_float,
         ValueRef log_double,
         ValueRef log_str,
+        ValueRef log_istr,
         ValueRef trace_word,
         ValueRef trace_str,
         ValueRef new_port,
@@ -82,6 +84,7 @@ fn declare_upcalls(type_names tn, TypeRef tydesc_type, TypeRef taskptr_type,
              log_float=dv("log_float", ~[T_i32(), T_f32()]),
              log_double=dv("log_double", ~[T_i32(), T_ptr(T_f64())]),
              log_str=dv("log_str", ~[T_i32(), T_ptr(T_str())]),
+             log_istr=dv("log_istr", ~[T_i32(), T_ptr(T_ivec(T_i8()))]),
              trace_word=dv("trace_word", ~[T_int()]),
              trace_str=dv("trace_str", ~[T_ptr(T_i8())]),
              new_port=d("new_port", ~[T_size_t()], T_opaque_port_ptr()),

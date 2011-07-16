@@ -76,6 +76,16 @@ upcall_log_str(rust_task *task, uint32_t level, rust_str *str) {
 }
 
 extern "C" CDECL void
+upcall_log_istr(rust_task *task, uint32_t level, rust_ivec *str) {
+    LOG_UPCALL_ENTRY(task);
+    if (task->sched->log_lvl < level)
+        return;
+    const char *buf = (const char *)
+        (str->fill ? str->payload.data : str->payload.ptr->data);
+    task->sched->log(task, level, "rust: %s", buf);
+}
+
+extern "C" CDECL void
 upcall_trace_word(rust_task *task, uintptr_t i) {
     LOG_UPCALL_ENTRY(task);
     task->sched->log(task, 2, "trace: 0x%" PRIxPTR "", i, i, (char) i);

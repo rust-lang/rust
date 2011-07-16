@@ -68,6 +68,7 @@ upcall_kill
 upcall_log_double
 upcall_log_float
 upcall_log_int
+upcall_log_istr
 upcall_log_str
 upcall_malloc
 upcall_mark
