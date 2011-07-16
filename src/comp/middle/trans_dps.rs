@@ -41,7 +41,8 @@ fn llelement_type(TypeRef llty) -> TypeRef {
 
 tag dest_slot {
     dst_nil;
-    dst_val(ValueRef);
+    dst_imm(@mutable option[ValueRef]);
+    dst_ptr(ValueRef);
 }
 
 tag dest_mode { dm_copy; dm_move; dm_alias; }
@@ -49,7 +50,7 @@ tag dest_mode { dm_copy; dm_move; dm_alias; }
 type dest = rec(dest_slot slot, dest_mode mode);
 
 fn dest_slot_for_ptr(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest_slot {
-    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_val(llptr) }
+    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_ptr(llptr) }
 }
 
 fn dest_copy(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
@@ -69,16 +70,34 @@ fn dest_tmp(&@block_ctxt bcx, ty::t t, bool alias) -> tup(@block_ctxt, dest) {
     if ty::type_is_nil(bcx_tcx(bcx), t) {
         ret tup(bcx, rec(slot=dst_nil, mode=mode));
     }
+    if trans::type_is_immediate(bcx_ccx(bcx), t) {
+        ret tup(bcx, rec(slot=dst_imm(@mutable none), mode=mode));
+    }
     auto r = trans::alloc_ty(bcx, t);
     trans::add_clean(bcx, r.val, t);
     ret tup(r.bcx, rec(slot=dest_slot_for_ptr(bcx_tcx(bcx), r.val, t),
                        mode=mode));
 }
 
+// Invariant: the type of the destination must be structural (non-immediate).
 fn dest_ptr(&dest dest) -> ValueRef {
     alt (dest.slot) {
-      dst_nil { tc::C_null(tc::T_ptr(tc::T_i8())) }
-      dst_val(?llptr) { llptr }
+      dst_nil { fail "nil dest in dest_ptr" }
+      dst_imm(_) { fail "immediate dest in dest_ptr" }
+      dst_ptr(?llptr) { llptr }
+    }
+}
+
+fn dest_llval(&dest dest) -> ValueRef {
+    alt (dest.slot) {
+      dst_nil { ret tc::C_nil(); }
+      dst_imm(?box) {
+        alt (*box) {
+          none { fail "immediate wasn't filled in prior to dest_llval"; }
+          some(?llval) { ret llval; }
+        }
+      }
+      dst_ptr(?llval) { ret llval; }
     }
 }
 
@@ -100,9 +119,15 @@ fn store(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
         -> @block_ctxt {
     alt (dest.slot) {
       dst_nil { /* no-op */ }
-      dst_val(?lldestptr_orig) {
+      dst_imm(?box) {
+        if !std::option::is_none(*box) {
+          fail "attempt to store an immediate twice";
+        };
+        *box = some(llsrc);
+      }
+      dst_ptr(?lldestptr_orig) {
         auto lldestptr = lldestptr_orig;
-        if (cast) {
+        if cast {
             lldestptr = bcx.build.PointerCast(lldestptr,
                                               tc::T_ptr(lltype_of(llsrc)));
         }
@@ -201,29 +226,37 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
         ret lllevelptr;
     }
 
-    fn trans_log_upcall(&@block_ctxt bcx, &span sp, ValueRef in_llval,
-                        int level, ty::t t) {
+    fn trans_log_upcall(&@block_ctxt cx, &span sp, ValueRef in_llval,
+                        int level, ty::t t) -> @block_ctxt {
+        auto bcx = cx;
         auto llval = in_llval;
-        auto by_val; auto llupcall;
+        auto llupcall;
         alt (ty::struct(bcx_tcx(bcx), t)) {
           ty::ty_machine(ast::ty_f32) {
-            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_float;
+            llupcall = bcx_ccx(bcx).upcalls.log_float;
           }
           ty::ty_machine(ast::ty_f64) | ty::ty_float {
-            by_val = false; llupcall = bcx_ccx(bcx).upcalls.log_double;
+            llupcall = bcx_ccx(bcx).upcalls.log_double;
+
+            // TODO: Here we have to spill due to legacy calling conventions.
+            // This is no longer necessary.
+            auto r = trans::alloc_ty(bcx, t);
+            bcx = r.bcx; auto llptr = r.val;
+            bcx.build.Store(llval, llptr);
+            llval = llptr;
           }
           ty::ty_bool | ty::ty_machine(ast::ty_i8) |
                 ty::ty_machine(ast::ty_i16) | ty::ty_machine(ast::ty_u8) |
                 ty::ty_machine(ast::ty_u16) {
-            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_int;
+            llupcall = bcx_ccx(bcx).upcalls.log_int;
             llval = bcx.build.ZExt(llval, tc::T_i32());
           }
           ty::ty_int | ty::ty_machine(ast::ty_i32) |
                 ty::ty_machine(ast::ty_u32) {
-            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_int;
+            llupcall = bcx_ccx(bcx).upcalls.log_int;
           }
           ty::ty_istr {
-            by_val = false; llupcall = bcx_ccx(bcx).upcalls.log_istr;
+            llupcall = bcx_ccx(bcx).upcalls.log_istr;
           }
           _ {
             bcx_ccx(bcx).sess.span_unimpl(sp, "logging for values of type " +
@@ -231,9 +264,9 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
           }
         }
 
-        if by_val { llval = bcx.build.Load(llval); }
         bcx.build.Call(llupcall,
                        ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llval]);
+        ret bcx;
     }
 
     auto bcx = cx;
@@ -253,7 +286,7 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
     log_bcx = r._0; auto tmp = r._1;
     log_bcx = trans_expr(log_bcx, tmp, expr);
 
-    trans_log_upcall(log_bcx, sp, dest_ptr(tmp), level, expr_t);
+    log_bcx = trans_log_upcall(log_bcx, sp, dest_llval(tmp), level, expr_t);
 
     log_bcx = trans::trans_block_cleanups(log_bcx,
                                           trans::find_scope_cx(log_bcx));
