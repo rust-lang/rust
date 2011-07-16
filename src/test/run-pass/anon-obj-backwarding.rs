@@ -50,15 +50,16 @@ fn main() {
    expect.  When we call my_outer.z(), we should also get 3, because
    at no point is z being overridden.
 
-   To fix this bug, we need to add a second level of forwarding
-   functions (let's call them "backwarding functions") on the inner
-   object.  Every time an object is extended with another object, we
-   have to rewrite the inner object's vtable to account for the fact
-   that future self-calls will get a larger object.  The inner
-   object's vtable will need to have five slots, too.  The ones for b
-   and n will point right back at the outer object.  (These are the
-   "backwarding" ones.)  And the ones for a, m, and z will point at
-   the original, real vtable for inner.
+   To fix this bug, we need to make the vtable slots on the inner
+   object match whatever the object being passed in at runtime has.
+   My first instinct was to change the vtable to match the runtime
+   object, but vtables are already baked into RO memory.  So, instead,
+   we're going to tweak the object being passed in at runtime to match
+   the vtable that inner already has.  That is, it needs to only have
+   a, m, and z slots in its vtable, and each one of those slots will
+   forward to the *outer* object's a, m, and z slots, respectively.
+   From there they will either head right back to inner, or they'll be
+   overridden.
 
    Adding support for this is issue #702.
 
