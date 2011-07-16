@@ -103,7 +103,7 @@ obj session(@config targ_cfg,
     fn unimpl(str msg) -> ! { self.bug("unimplemented " + msg); }
     fn get_codemap() -> codemap::codemap { ret parse_sess.cm; }
     fn lookup_pos(uint pos) -> codemap::loc {
-        ret codemap::lookup_pos(parse_sess.cm, pos);
+        ret codemap::lookup_char_pos(parse_sess.cm, pos);
     }
     fn get_parse_sess() -> parse_sess { ret parse_sess; }
     fn next_node_id() -> ast::node_id {

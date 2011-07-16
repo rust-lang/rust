@@ -1345,8 +1345,8 @@ fn maybe_print_trailing_comment(&ps s, codemap::span span,
     alt (next_comment(s)) {
         case (some(?cmnt)) {
             if (cmnt.style != lexer::trailing) { ret; }
-            auto span_line = codemap::lookup_pos(cm, span.hi);
-            auto comment_line = codemap::lookup_pos(cm, cmnt.pos);
+            auto span_line = codemap::lookup_char_pos(cm, span.hi);
+            auto comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
             auto next = cmnt.pos + 1u;
             alt (next_pos) { case (none) { } case (some(?p)) { next = p; } }
             if (span.hi < cmnt.pos && cmnt.pos < next &&

@@ -21,6 +21,7 @@ type ctx =
          mutable str[] deps,
          parser::parse_sess sess,
          mutable uint chpos,
+         mutable uint byte_pos,
          ast::crate_cfg cfg);
 
 fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
@@ -56,7 +57,8 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             };
             if (cx.mode == mode_depend) { cx.deps += ~[full_path]; ret; }
             auto p0 =
-                new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos);
+                new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
+                                     cx.byte_pos);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
             auto mod_attrs = attrs + inner_attrs._0;
             auto first_item_outer_attrs = inner_attrs._1;
@@ -65,8 +67,9 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
             auto i = syntax::parse::parser::mk_item
                 (p0, cdir.span.lo, cdir.span.hi, id, ast::item_mod(m0),
                  mod_attrs);
-            // Thread defids and chpos through the parsers
+            // Thread defids, chpos and byte_pos through the parsers
             cx.chpos = p0.get_chpos();
+            cx.byte_pos = p0.get_byte_pos();
             items += ~[i];
         }
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs, ?attrs)) {

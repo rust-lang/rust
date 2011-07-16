@@ -24,6 +24,7 @@ type reader =
         fn get_mark_str() -> str ;
         fn get_interner() -> @interner::interner[str] ;
         fn get_chpos() -> uint ;
+        fn get_byte_pos() -> uint ;
         fn get_col() -> uint ;
         fn get_filemap() -> codemap::filemap ;
         fn err(str) ;
@@ -53,6 +54,7 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
         }
         fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
+        fn get_byte_pos() -> uint { ret pos; }
         fn curr() -> char { ret ch; }
         fn next() -> char {
             if (pos < len) {
@@ -70,7 +72,10 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
             if (pos < len) {
                 col += 1u;
                 chpos += 1u;
-                if (ch == '\n') { codemap::next_line(fm, chpos); col = 0u; }
+                if (ch == '\n') {
+                    codemap::next_line(fm, chpos, pos + fm.start_pos.byte);
+                    col = 0u;
+                }
                 auto next = str::char_range_at(src, pos);
                 pos = next._1;
                 ch = next._0;
@@ -86,7 +91,8 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
     let str[] strs = ~[];
     auto rd =
         reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char, 0u,
-               filemap.start_pos, filemap.start_pos, strs, filemap, itr);
+               filemap.start_pos.ch, filemap.start_pos.ch, strs, filemap,
+               itr);
     rd.init();
     ret rd;
 }
@@ -737,7 +743,7 @@ fn gather_comments_and_literals(&codemap::codemap cm, str path)
     auto srdr = ioivec::file_reader(path);
     auto src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     auto itr = @interner::mk[str](str::hash, str::eq);
-    auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u), itr);
+    auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u, 0u), itr);
     let cmnt[] comments = ~[];
     let lit[] literals = ~[];
     let bool first_read = true;

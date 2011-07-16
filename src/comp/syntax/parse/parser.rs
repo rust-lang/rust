@@ -50,17 +50,18 @@ type parser =
         fn get_filemap() -> codemap::filemap ;
         fn get_bad_expr_words() -> hashmap[str, ()] ;
         fn get_chpos() -> uint ;
+        fn get_byte_pos() -> uint ;
         fn get_id() -> ast::node_id ;
         fn get_sess() -> parse_sess;
     };
 
 fn new_parser_from_file(parse_sess sess, ast::crate_cfg cfg,
-                        str path, uint pos) -> parser {
+                        str path, uint chpos, uint byte_pos) -> parser {
     auto ftype = SOURCE_FILE;
     if (str::ends_with(path, ".rc")) { ftype = CRATE_FILE; }
     auto srdr = ioivec::file_reader(path);
     auto src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
-    auto filemap = codemap::new_filemap(path, pos);
+    auto filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += ~[filemap];
     auto itr = @interner::mk(str::hash, str::eq);
     auto rdr = lexer::new_reader(sess.cm, src, filemap, itr);
@@ -114,6 +115,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn get_filemap() -> codemap::filemap { ret rdr.get_filemap(); }
         fn get_bad_expr_words() -> hashmap[str, ()] { ret bad_words; }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
+        fn get_byte_pos() -> uint { ret rdr.get_byte_pos(); }
         fn get_id() -> ast::node_id { ret next_node_id(sess); }
         fn get_sess() -> parse_sess { ret sess; }
     }
@@ -2378,7 +2380,7 @@ fn parse_native_view(&parser p) -> (@ast::view_item)[] {
 
 fn parse_crate_from_source_file(&str input, &ast::crate_cfg cfg,
                                 &parse_sess sess) -> @ast::crate {
-    auto p = new_parser_from_file(sess, cfg, input, 0u);
+    auto p = new_parser_from_file(sess, cfg, input, 0u, 0u);
     ret parse_crate_mod(p, cfg, sess);
 }
 
@@ -2386,7 +2388,7 @@ fn parse_crate_from_source_str(&str name, &str source, &ast::crate_cfg cfg,
                                &codemap::codemap cm) -> @ast::crate {
     auto sess = @rec(cm=cm, mutable next_id=0);
     auto ftype = SOURCE_FILE;
-    auto filemap = codemap::new_filemap(name, 0u);
+    auto filemap = codemap::new_filemap(name, 0u, 0u);
     sess.cm.files += ~[filemap];
     auto itr = @interner::mk(str::hash, str::eq);
     auto rdr = lexer::new_reader(sess.cm, source, filemap, itr);
@@ -2504,7 +2506,7 @@ fn parse_crate_directives(&parser p, token::token term,
 
 fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
                                &parse_sess sess) -> @ast::crate {
-    auto p = new_parser_from_file(sess, cfg, input, 0u);
+    auto p = new_parser_from_file(sess, cfg, input, 0u, 0u);
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
     auto leading_attrs = parse_inner_attrs_and_next(p);
@@ -2517,6 +2519,7 @@ fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
                    mutable deps=deps,
                    sess=sess,
                    mutable chpos=p.get_chpos(),
+                   mutable byte_pos=p.get_byte_pos(),
                    cfg = p.get_cfg());
     auto m = eval::eval_crate_directives_to_mod(cx, cdirs, prefix);
     auto hi = p.get_hi_pos();

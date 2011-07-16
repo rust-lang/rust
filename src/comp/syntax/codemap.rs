@@ -9,50 +9,69 @@ import std::option::none;
 
 type filename = str;
 
+type file_pos = rec(uint ch, uint byte);
+
 /* A codemap is a thing that maps uints to file/line/column positions
  * in a crate. This to make it possible to represent the positions
  * with single-word things, rather than passing records all over the
  * compiler.
  */
-type filemap = @rec(filename name, uint start_pos, mutable uint[] lines);
+type filemap = @rec(filename name, file_pos start_pos,
+                    mutable file_pos[] lines);
 
 type codemap = @rec(mutable filemap[] files);
 
 type loc = rec(filename filename, uint line, uint col);
 
 fn new_codemap() -> codemap {
-    let filemap[] files = ~[];
-    ret @rec(mutable files=files);
+    ret @rec(mutable files=~[]);
 }
 
-fn new_filemap(filename filename, uint start_pos) -> filemap {
-    ret @rec(name=filename, start_pos=start_pos, mutable lines=[start_pos]);
+fn new_filemap(filename filename, uint start_pos_ch, uint start_pos_byte)
+        -> filemap {
+    ret @rec(name=filename, start_pos=rec(ch=start_pos_ch,
+                                          byte=start_pos_byte),
+             mutable lines=~[rec(ch=start_pos_ch, byte=start_pos_byte)]);
 }
 
-fn next_line(filemap file, uint pos) { file.lines += ~[pos]; }
+fn next_line(filemap file, uint chpos, uint byte_pos) {
+    file.lines += ~[rec(ch=chpos, byte=byte_pos)];
+}
 
-fn lookup_pos(codemap map, uint pos) -> loc {
+type lookup_fn = fn (file_pos pos) -> uint;
+
+fn lookup_pos(codemap map, uint pos, lookup_fn lookup) -> loc {
     auto a = 0u;
-    auto b = ivec::len[filemap](map.files);
+    auto b = ivec::len(map.files);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
-        if (map.files.(m).start_pos > pos) { b = m; } else { a = m; }
+        if (lookup(map.files.(m).start_pos) > pos) { b = m; } else { a = m; }
     }
     auto f = map.files.(a);
     a = 0u;
-    b = ivec::len[uint](f.lines);
+    b = ivec::len(f.lines);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
-        if (f.lines.(m) > pos) { b = m; } else { a = m; }
+        if (lookup(f.lines.(m)) > pos) { b = m; } else { a = m; }
     }
-    ret rec(filename=f.name, line=a + 1u, col=pos - f.lines.(a));
+    ret rec(filename=f.name, line=a + 1u, col=pos - lookup(f.lines.(a)));
+}
+
+fn lookup_char_pos(codemap map, uint pos) -> loc {
+    fn lookup(file_pos pos) -> uint { ret pos.ch; }
+    ret lookup_pos(map, pos, lookup);
+}
+
+fn lookup_byte_pos(codemap map, uint pos) -> loc {
+    fn lookup(file_pos pos) -> uint { ret pos.byte; }
+    ret lookup_pos(map, pos, lookup);
 }
 
 type span = rec(uint lo, uint hi);
 
 fn span_to_str(&span sp, &codemap cm) -> str {
-    auto lo = lookup_pos(cm, sp.lo);
-    auto hi = lookup_pos(cm, sp.hi);
+    auto lo = lookup_char_pos(cm, sp.lo);
+    auto hi = lookup_char_pos(cm, sp.hi);
     ret #fmt("%s:%u:%u:%u:%u", lo.filename, lo.line, lo.col, hi.line, hi.col);
 }
 
@@ -115,8 +134,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
 
             // If there's one line at fault we can easily point to the problem
             if (ivec::len(lines.lines) == 1u) {
-                auto lo = codemap::lookup_pos(cm, option::get(sp).lo);
-                auto lo = lookup_pos(cm, option::get(sp).lo);
+                auto lo = lookup_char_pos(cm, option::get(sp).lo);
                 auto digits = 0u;
                 auto num = lines.lines.(0) / 10u;
 
@@ -129,7 +147,7 @@ fn emit_diagnostic(&option::t[span] sp, &str msg, &str kind, u8 color,
                 while (left > 0u) { str::push_char(s, ' '); left -= 1u; }
 
                 s += "^";
-                auto hi = lookup_pos(cm, option::get(sp).hi);
+                auto hi = lookup_char_pos(cm, option::get(sp).hi);
                 if (hi.col != lo.col) {
                     // the ^ already takes up one space
                     auto width = hi.col - lo.col - 1u;
@@ -158,8 +176,8 @@ fn emit_note(&option::t[span] sp, &str msg, &codemap cm) {
 type file_lines = rec(str name, uint[] lines);
 
 fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
-    auto lo = codemap::lookup_pos(cm, sp.lo);
-    auto hi = codemap::lookup_pos(cm, sp.hi);
+    auto lo = lookup_char_pos(cm, sp.lo);
+    auto hi = lookup_char_pos(cm, sp.hi);
     auto lines = ~[];
     for each (uint i in uint::range(lo.line - 1u, hi.line as uint)) {
         lines += ~[i];
@@ -168,10 +186,10 @@ fn span_to_lines(span sp, codemap::codemap cm) -> @file_lines {
 }
 
 fn get_line(filemap fm, int line, &str file) -> str {
-    let uint begin = fm.lines.(line) - fm.start_pos;
+    let uint begin = fm.lines.(line).byte - fm.start_pos.byte;
     let uint end;
     if (line as uint < ivec::len(fm.lines) - 1u) {
-        end = fm.lines.(line + 1) - fm.start_pos;
+        end = fm.lines.(line + 1).byte - fm.start_pos.byte;
     } else {
         // If we're not done parsing the file, we're at the limit of what's
         // parsed. If we just slice the rest of the string, we'll print out
