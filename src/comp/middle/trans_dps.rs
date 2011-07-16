@@ -2,16 +2,19 @@
 // destination-passing style.
 
 import back::abi;
+import back::link;
 import lib::llvm::llvm;
 import llvm::TypeRef;
 import llvm::ValueRef;
 import middle::trans;
 import middle::ty;
 import syntax::ast;
+import syntax::codemap::span;
 import trans::block_ctxt;
 import trans::crate_ctxt;
 import trans::fn_ctxt;
 import trans::local_ctxt;
+import util::ppaux;
 
 import std::ivec;
 import std::option::none;
@@ -20,6 +23,7 @@ import std::str;
 
 import LLFalse = lib::llvm::False;
 import LLTrue = lib::llvm::True;
+import ll = lib::llvm;
 import lltype_of = trans::val_ty;
 import option = std::option::t;
 import tc = trans_common;
@@ -40,26 +44,35 @@ tag dest_slot {
     dst_val(ValueRef);
 }
 
-type dest = rec(dest_slot slot, bool move);
+tag dest_mode { dm_copy; dm_move; dm_alias; }
+
+type dest = rec(dest_slot slot, dest_mode mode);
 
 fn dest_slot_for_ptr(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest_slot {
     if ty::type_is_nil(tcx, t) { dst_nil } else { dst_val(llptr) }
 }
 
 fn dest_copy(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
-    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), move=false);
+    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_copy);
 }
 
 fn dest_move(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
-    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), move=true);
+    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_move);
 }
 
-fn dest_tmp(&@block_ctxt bcx, ty::t t) -> tup(@block_ctxt, dest) {
+fn dest_alias(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
+    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_alias);
+}
+
+fn dest_tmp(&@block_ctxt bcx, ty::t t, bool alias) -> tup(@block_ctxt, dest) {
+    auto mode = if alias { dm_alias } else { dm_move };
     if ty::type_is_nil(bcx_tcx(bcx), t) {
-        ret tup(bcx, rec(slot=dst_nil, move=true));
+        ret tup(bcx, rec(slot=dst_nil, mode=mode));
     }
     auto r = trans::alloc_ty(bcx, t);
-    ret tup(r.bcx, dest_move(bcx_tcx(bcx), r.val, t));
+    trans::add_clean(bcx, r.val, t);
+    ret tup(r.bcx, rec(slot=dest_slot_for_ptr(bcx_tcx(bcx), r.val, t),
+                       mode=mode));
 }
 
 fn dest_ptr(&dest dest) -> ValueRef {
@@ -77,6 +90,7 @@ fn bcx_tcx(&@block_ctxt bcx) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
 fn bcx_ccx(&@block_ctxt bcx) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
 fn bcx_lcx(&@block_ctxt bcx) -> @local_ctxt { ret bcx.fcx.lcx; }
 fn bcx_fcx(&@block_ctxt bcx) -> @fn_ctxt { ret bcx.fcx; }
+fn lcx_ccx(&@local_ctxt lcx) -> @crate_ctxt { ret lcx.ccx; }
 
 
 // Common operations
@@ -164,9 +178,92 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
     ret bcx;
 }
 
+fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
+        -> @block_ctxt {
+    fn trans_log_level(&@local_ctxt lcx) -> ValueRef {
+        auto modname = str::connect_ivec(lcx.module_path, "::");
+
+        if (lcx_ccx(lcx).module_data.contains_key(modname)) {
+            ret lcx_ccx(lcx).module_data.get(modname);
+        }
+
+        auto s =
+            link::mangle_internal_name_by_path_and_seq(lcx_ccx(lcx),
+                                                       lcx.module_path,
+                                                       "loglevel");
+        auto lllevelptr = llvm::LLVMAddGlobal(lcx.ccx.llmod, tc::T_int(),
+                                              str::buf(s));
+        llvm::LLVMSetGlobalConstant(lllevelptr, LLFalse);
+        llvm::LLVMSetInitializer(lllevelptr, tc::C_int(0));
+        llvm::LLVMSetLinkage(lllevelptr, lib::llvm::LLVMInternalLinkage as
+                             llvm::Linkage);
+        lcx_ccx(lcx).module_data.insert(modname, lllevelptr);
+        ret lllevelptr;
+    }
+
+    fn trans_log_upcall(&@block_ctxt bcx, &span sp, ValueRef in_llval,
+                        int level, ty::t t) {
+        auto llval = in_llval;
+        auto by_val; auto llupcall;
+        alt (ty::struct(bcx_tcx(bcx), t)) {
+          ty::ty_machine(ast::ty_f32) {
+            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_float;
+          }
+          ty::ty_machine(ast::ty_f64) | ty::ty_float {
+            by_val = false; llupcall = bcx_ccx(bcx).upcalls.log_double;
+          }
+          ty::ty_bool | ty::ty_machine(ast::ty_i8) |
+                ty::ty_machine(ast::ty_i16) | ty::ty_machine(ast::ty_u8) |
+                ty::ty_machine(ast::ty_u16) {
+            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_int;
+            llval = bcx.build.ZExt(llval, tc::T_i32());
+          }
+          ty::ty_int | ty::ty_machine(ast::ty_i32) |
+                ty::ty_machine(ast::ty_u32) {
+            by_val = true; llupcall = bcx_ccx(bcx).upcalls.log_int;
+          }
+          _ {
+            bcx_ccx(bcx).sess.span_unimpl(sp, "logging for values of type " +
+                ppaux::ty_to_str(bcx_tcx(bcx), t));
+          }
+        }
+
+        if by_val { llval = bcx.build.Load(llval); }
+        bcx.build.Call(llupcall,
+                       ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llval]);
+    }
+
+    auto bcx = cx;
+
+    auto lllevelptr = trans_log_level(bcx_lcx(bcx));
+
+    auto log_bcx = trans::new_scope_block_ctxt(bcx, "log");
+    auto next_bcx = trans::new_scope_block_ctxt(bcx, "next_log");
+
+    auto should_log = bcx.build.ICmp(ll::LLVMIntSGE,
+                                     bcx.build.Load(lllevelptr),
+                                     tc::C_int(level));
+    bcx.build.CondBr(should_log, log_bcx.llbb, next_bcx.llbb);
+
+    auto expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
+    auto r = dest_tmp(log_bcx, expr_t, true);
+    log_bcx = r._0; auto tmp = r._1;
+    log_bcx = trans_expr(log_bcx, tmp, expr);
+
+    trans_log_upcall(log_bcx, sp, dest_ptr(tmp), level, expr_t);
+
+    log_bcx = trans::trans_block_cleanups(log_bcx,
+                                          trans::find_scope_cx(log_bcx));
+    log_bcx.build.Br(next_bcx.llbb);
+    ret next_bcx;
+}
+
 fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
     alt (expr.node) {
       ast::expr_lit(?lit) { trans_lit(bcx, dest, *lit); ret bcx; }
+      ast::expr_log(?level, ?operand) {
+        ret trans_log(bcx, expr.span, level, operand);
+      }
       _ { fail "unhandled expr type in trans_expr"; }
     }
 }
@@ -191,9 +288,12 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
     }
 
     alt (block.node.expr) {
-      some(?e) { ret trans_expr(bcx, dest, e); }
-      none { ret bcx; }
+      some(?e) { bcx = trans_expr(bcx, dest, e); }
+      none { /* no-op */ }
     }
+
+    bcx = trans::trans_block_cleanups(bcx, trans::find_scope_cx(bcx));
+    ret bcx;
 }
 
 
@@ -305,7 +405,7 @@ fn trans_stmt(&@block_ctxt cx, &@ast::stmt stmt) -> @block_ctxt {
     auto bcx = cx;
     alt (stmt.node) {
       ast::stmt_expr(?e, _) {
-        auto tmp_r = dest_tmp(bcx, ty::expr_ty(bcx_tcx(bcx), e));
+        auto tmp_r = dest_tmp(bcx, ty::expr_ty(bcx_tcx(bcx), e), true);
         bcx = tmp_r._0; auto tmp = tmp_r._1;
         ret trans_expr(bcx, tmp, e);
       }
