@@ -15,7 +15,7 @@ fn do_not_run_ignored_tests() {
                     fn = f,
                     ignore = true);
 
-    auto res = test::run_test(desc);
+    test::run_test(desc);
 
     assert ran == false;
 }
