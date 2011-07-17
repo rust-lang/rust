@@ -2057,7 +2057,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
             }
 
-            // Now check for any duplicate patterns (boring old O(n!))
+            // Now check for any duplicate patterns
             
             iter all_arm_pats(ast::arm[] arms, uint start)
                     -> tup(@ast::pat, uint) {
