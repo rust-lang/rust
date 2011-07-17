@@ -106,7 +106,6 @@ fn sort_tests() {
     auto pairs = ivec::zip(expected, filtered);
 
     for (tup(str, test::test_desc) p in pairs) {
-        log_err #fmt("e: %s a: %s", p._0, p._1.name);
         assert p._0 == p._1.name;
     }
 }
