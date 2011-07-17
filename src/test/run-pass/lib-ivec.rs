@@ -262,6 +262,23 @@ fn test_any_and_all() {
     assert (!ivec::all(is_three, ~[ 3u, 3u, 0u, 1u, 2u ]));
 }
 
+#[test]
+fn test_zip_unzip() {
+    auto v1 = ~[1, 2, 3];
+    auto v2 = ~[4, 5, 6];
+    auto z1 = ivec::zip(v1, v2);
+
+    assert tup(1, 4) == z1.(0);
+    assert tup(2, 5) == z1.(1);
+    assert tup(3, 6) == z1.(2);
+
+    auto u1 = ivec::unzip(z1);
+
+    assert tup(1, 4) == tup(u1._0.(0), u1._1.(0));
+    assert tup(2, 5) == tup(u1._0.(1), u1._1.(1));
+    assert tup(3, 6) == tup(u1._0.(2), u1._1.(2));
+}
+
 fn main() {
     test_reserve_and_on_heap();
     test_unsafe_ptrs();
@@ -291,6 +308,7 @@ fn main() {
     test_filter_map();
     test_foldl();
     test_any_and_all();
+    test_zip_unzip();
 }
 
 // Local Variables:

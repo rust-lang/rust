@@ -241,6 +241,32 @@ fn find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
     ret none[T];
 }
 
+fn unzip[T, U](&tup(T, U)[] v) -> tup(T[], U[]) {
+    auto sz = len[tup(T, U)](v);
+    if (sz == 0u) {
+        ret tup(~[], ~[]);
+    } else {
+        auto rest = slice[tup(T, U)](v, 1u, sz);
+        auto tl = unzip[T, U](rest);
+        auto a = ~[v.(0)._0];
+        auto b = ~[v.(0)._1];
+        ret tup(a + tl._0, b + tl._1);
+    }
+}
+
+
+// FIXME make the lengths being equal a constraint
+fn zip[T, U](&T[] v, &U[] u) -> tup(T, U)[] {
+    auto sz = len[T](v);
+    assert (sz == len[U](u));
+    if (sz == 0u) {
+        ret ~[];
+    } else {
+        auto rest = zip[T, U](slice[T](v, 1u, sz), slice[U](u, 1u, sz));
+        ret ~[tup(v.(0), u.(0))] + rest;
+    }
+}
+
 mod unsafe {
     type ivec_repr = rec(mutable uint fill,
                          mutable uint alloc,
