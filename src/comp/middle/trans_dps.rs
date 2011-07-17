@@ -20,6 +20,7 @@ import std::ivec;
 import std::option::none;
 import std::option::some;
 import std::str;
+import std::uint;
 
 import LLFalse = lib::llvm::False;
 import LLTrue = lib::llvm::True;
@@ -34,6 +35,30 @@ import type_of_node = trans::node_id_type;
 
 fn llelement_type(TypeRef llty) -> TypeRef {
     lib::llvm::llvm::LLVMGetElementType(llty)
+}
+
+fn llalign_of(&@crate_ctxt ccx, TypeRef llty) -> uint {
+    ret llvm::LLVMPreferredAlignmentOfType(ccx.td.lltd, llty);
+}
+
+fn llsize_of(&@crate_ctxt ccx, TypeRef llty) -> uint {
+    ret llvm::LLVMStoreSizeOfType(ccx.td.lltd, llty);
+}
+
+fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
+        -> ValueRef {
+    auto llglobal = llvm::LLVMAddGlobal(ccx.llmod, trans::val_ty(llval),
+                                        str::buf(name));
+
+    llvm::LLVMSetInitializer(llglobal, llval);
+    llvm::LLVMSetGlobalConstant(llglobal, LLTrue);
+
+    if !exported {
+        llvm::LLVMSetLinkage(llglobal,
+                             lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    }
+
+    ret llglobal;
 }
 
 
@@ -138,10 +163,38 @@ fn store(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
     ret bcx;
 }
 
-tag heap { hp_task; hp_shared; }
+fn memmove(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
+    alt (dest.slot) {
+      // TODO: We might want to support these; I can't think of any case in
+      // which we would want them off the top of my head, but feel free to add
+      // them if they aid orthogonality.
+      dst_nil { fail "dst_nil in memmove"; }
+      dst_imm(_) { fail "dst_imm in memmove"; }
+      dst_ptr(?lldestptr) {
+        auto lldestty = llelement_type(trans::val_ty(llsrcptr));
+        auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
+        auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
+        auto src_align = llalign_of(bcx_ccx(bcx), llsrcty);
+        auto align = uint::min(dest_align, src_align);
+        auto llfn = bcx_ccx(bcx).intrinsics.get("llvm.memmove.p0i8.p0i8.i32");
+        auto lldestptr_i8 = bcx.build.PointerCast(lldestptr,
+                                                  tc::T_ptr(tc::T_i8()));
+        auto llsrcptr_i8 = bcx.build.PointerCast(llsrcptr,
+                                                 tc::T_ptr(tc::T_i8()));
+        bcx.build.Call(llfn,
+                       ~[lldestptr_i8,
+                         llsrcptr_i8,
+                         tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty)),
+                         tc::C_uint(align),
+                         tc::C_bool(false)]);
+        ret bcx;
+      }
+    }
+}
 
 // Allocates a value of the given LLVM size on either the task heap or the
 // shared heap.
+tag heap { hp_task; hp_shared; }
 fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
           option[ValueRef] llcustom_size_opt) -> @block_ctxt {
     auto llptrty = llelement_type(lltype_of(lldest));
@@ -177,7 +230,7 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
       ast::lit_str(?s, ast::sk_unique) {
         auto r = trans_lit_str_common(bcx_ccx(bcx), s);
         auto llstackpart = r._0; auto llheappartopt = r._1;
-        bcx = store(bcx, dest, llstackpart, true);
+        bcx = memmove(bcx, dest, llstackpart);
         alt (llheappartopt) {
           none { /* no-op */ }
           some(?llheappart) {
@@ -191,7 +244,8 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
                                       tc::T_ptr(tc::T_ptr(llheappartty)));
             malloc(bcx, lldestptrptr, hp_shared, none);
             auto lldestptr = bcx.build.Load(lldestptrptr);
-            bcx.build.Store(llheappart, lldestptr);
+            memmove(bcx, rec(slot=dst_ptr(lldestptr), mode=dm_copy),
+                    llheappart);
           }
         }
       }
@@ -341,6 +395,8 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
 // since that doesn't work for crate constants.
 fn trans_lit_str_common(&@crate_ctxt ccx, &str s)
         -> tup(ValueRef, option[ValueRef]) {
+    auto llstackpart; auto llheappartopt;
+
     auto len = str::byte_len(s);
 
     auto array = ~[];
@@ -352,18 +408,23 @@ fn trans_lit_str_common(&@crate_ctxt ccx, &str s)
             array += ~[tc::C_u8(0u)];
         }
 
-        ret tup(tc::C_struct(~[tc::C_uint(len + 1u),
-                               tc::C_uint(abi::ivec_default_length),
-                               tc::C_array(tc::T_i8(), array)]),
-                none);
+        llstackpart = tc::C_struct(~[tc::C_uint(len + 1u),
+                                     tc::C_uint(abi::ivec_default_length),
+                                     tc::C_array(tc::T_i8(), array)]);
+        llheappartopt = none;
+    } else {
+        auto llheappart = tc::C_struct(~[tc::C_uint(len),
+                                         tc::C_array(tc::T_i8(), array)]);
+        llstackpart =
+            tc::C_struct(~[tc::C_uint(0u),
+                           tc::C_uint(abi::ivec_default_length),
+                           tc::C_null(tc::T_ptr(lltype_of(llheappart)))]);
+        llheappartopt = some(mk_const(ccx, "const_istr_heap", false,
+                                      llheappart));
     }
 
-    auto llheappart = tc::C_struct(~[tc::C_uint(len),
-                                     tc::C_array(tc::T_i8(), array)]);
-    ret tup(tc::C_struct(~[tc::C_uint(0u),
-                           tc::C_uint(abi::ivec_default_length),
-                           tc::C_null(tc::T_ptr(lltype_of(llheappart)))]),
-            some(llheappart));
+    ret tup(mk_const(ccx, "const_istr_stack", false, llstackpart),
+            llheappartopt);
 }
 
 // As above, we don't use destination-passing style here.
