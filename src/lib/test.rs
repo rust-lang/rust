@@ -3,6 +3,8 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+import sort = sort::ivector;
+
 export test_name;
 export test_fn;
 export test_desc;
@@ -165,6 +167,7 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
     auto filtered = tests;
 
+    // Remove tests that don't match the test filter
     filtered = if (option::is_none(opts.filter)) {
         filtered
     } else {
@@ -183,6 +186,7 @@ fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
         ivec::filter_map(filter, filtered)
     };
 
+    // Maybe pull out the ignored test and unignore them
     filtered = if (!opts.run_ignored) {
         filtered
     } else {
@@ -197,6 +201,14 @@ fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
         };
 
         ivec::filter_map(filter, filtered)
+    };
+
+    // Sort the tests alphabetically
+    filtered = {
+        fn lteq(&test_desc t1, &test_desc t2) -> bool {
+            str::lteq(t1.name, t2.name)
+        }
+        sort::merge_sort(lteq, filtered)
     };
 
     ret filtered;

@@ -66,6 +66,51 @@ fn filter_for_ignored_option() {
     assert filtered.(0).ignore == false;
 }
 
+#[test]
+fn sort_tests() {
+    auto opts = rec(filter = option::none,
+                    run_ignored = false);
+
+    auto names = ~["sha1::test",
+                   "int::test_to_str",
+                   "int::test_pow",
+                   "test::do_not_run_ignored_tests",
+                   "test::ignored_tests_result_in_ignored",
+                   "test::first_free_arg_should_be_a_filter",
+                   "test::parse_ignored_flag",
+                   "test::filter_for_ignored_option",
+                   "test::sort_tests"];
+    auto tests = {
+        auto testfn = fn() {};
+        auto tests = ~[];
+        for (str name in names) {
+            auto test = rec(name = name,
+                            fn = testfn,
+                            ignore = false);
+            tests += ~[test];
+        }
+        tests
+    };
+    auto filtered = test::filter_tests(opts, tests);
+
+    auto expected = ~["int::test_pow",
+                      "int::test_to_str",
+                      "sha1::test",
+                      "test::do_not_run_ignored_tests",
+                      "test::filter_for_ignored_option",
+                      "test::first_free_arg_should_be_a_filter",
+                      "test::ignored_tests_result_in_ignored",
+                      "test::parse_ignored_flag",
+                      "test::sort_tests"];
+
+    auto pairs = ivec::zip(expected, filtered);
+
+    for (tup(str, test::test_desc) p in pairs) {
+        log_err #fmt("e: %s a: %s", p._0, p._1.name);
+        assert p._0 == p._1.name;
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
