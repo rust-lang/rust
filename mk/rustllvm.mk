@@ -2,8 +2,7 @@
 # rustc LLVM-extensions (C++) library variables and rules
 ######################################################################
 
-RUSTLLVM_LIB_CS := $(addprefix rustllvm/, \
-                     Passes.cpp Passes2.cpp)
+RUSTLLVM_LIB_CS := $(addprefix rustllvm/, Passes2.cpp)
 
 RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustWrapper.cpp)
 
