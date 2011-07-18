@@ -34,7 +34,7 @@ new_stk(rust_task *task, size_t minsz)
     if (minsz < min_stk_bytes)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
-    stk_seg *stk = (stk_seg *)task->malloc(sz);
+    stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
     LOGPTR(task->sched, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->limit = (uintptr_t) &stk->data[minsz];
@@ -326,7 +326,7 @@ rust_task::unlink_gc(gc_alloc *gcm) {
 }
 
 void *
-rust_task::malloc(size_t sz, type_desc *td)
+rust_task::malloc(size_t sz, const char *tag, type_desc *td)
 {
     // FIXME: GC is disabled for now.
     // GC-memory classification is all wrong.
@@ -335,7 +335,8 @@ rust_task::malloc(size_t sz, type_desc *td)
     if (td) {
         sz += sizeof(gc_alloc);
     }
-    void *mem = local_region.malloc(sz);
+
+    void *mem = local_region.malloc(sz, tag);
     if (!mem)
         return mem;
     if (td) {
@@ -488,8 +489,8 @@ bool rust_task::can_schedule(int id)
 }
 
 void *
-rust_task::calloc(size_t size) {
-    return local_region.calloc(size);
+rust_task::calloc(size_t size, const char *tag) {
+    return local_region.calloc(size, tag);
 }
 
 void rust_task::pin() {

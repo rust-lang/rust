@@ -115,21 +115,59 @@ template <typename T> struct rc_base {
 };
 
 template <typename T> struct task_owned {
-    inline void *operator new(size_t size, rust_task *task);
+    inline void *operator new(size_t size, rust_task *task, const char *tag);
 
-    inline void *operator new[](size_t size, rust_task *task);
+    inline void *operator new[](size_t size, rust_task *task,
+                                const char *tag);
 
-    inline void *operator new(size_t size, rust_task &task);
+    inline void *operator new(size_t size, rust_task &task, const char *tag);
 
-    inline void *operator new[](size_t size, rust_task &task);
+    inline void *operator new[](size_t size, rust_task &task,
+                                const char *tag);
 
     void operator delete(void *ptr) {
         ((T *)ptr)->task->free(ptr);
     }
 };
 
+template<class T>
+class smart_ptr {
+    T *p;
+
+    smart_ptr(const smart_ptr &sp) : p(sp.p) {
+        if(p) { p->ref(); }
+    }
+
+public:
+    smart_ptr() : p(NULL) {};
+    smart_ptr(T *p) : p(p) { if(p) { p->ref(); } }
+
+    ~smart_ptr() {
+        if(p) {
+            p->deref();
+        }
+    }
+
+    T *operator=(T* p) {
+        if(this->p) {
+            this->p->deref();
+        }
+        if(p) {
+            p->ref();
+        }
+        this->p = p;
+
+        return p;
+    }
+
+    T *operator->() const { return p; };
+
+    operator T*() const { return p; }
+};
+
 template <typename T> struct kernel_owned {
-    inline void *operator new(size_t size, rust_kernel *kernel);
+    inline void *operator new(size_t size, rust_kernel *kernel,
+                              const char *tag);
 
     void operator delete(void *ptr) {
         ((T *)ptr)->kernel->free(ptr);

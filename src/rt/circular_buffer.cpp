@@ -4,14 +4,14 @@
 
 #include "rust_internal.h"
 
-circular_buffer::circular_buffer(rust_task *task, size_t unit_sz) :
-    sched(task->sched),
-    task(task),
+circular_buffer::circular_buffer(rust_kernel *kernel, size_t unit_sz) :
+    sched(kernel->sched),
+    kernel(kernel),
     unit_sz(unit_sz),
     _buffer_sz(initial_size()),
     _next(0),
     _unread(0),
-    _buffer((uint8_t *)task->malloc(_buffer_sz)) {
+    _buffer((uint8_t *)kernel->malloc(_buffer_sz, "circular_buffer")) {
 
     A(sched, unit_sz, "Unit size must be larger than zero.");
 
@@ -20,7 +20,6 @@ circular_buffer::circular_buffer(rust_task *task, size_t unit_sz) :
          _buffer_sz, _unread, this);
 
     A(sched, _buffer, "Failed to allocate buffer.");
-    task->ref();
 }
 
 circular_buffer::~circular_buffer() {
@@ -28,8 +27,7 @@ circular_buffer::~circular_buffer() {
     I(sched, _buffer);
     W(sched, _unread == 0,
       "freeing circular_buffer with %d unread bytes", _unread);
-    task->free(_buffer);
-    --task->ref_count;
+    kernel->free(_buffer);
 }
 
 size_t
@@ -144,9 +142,10 @@ circular_buffer::grow() {
     size_t new_buffer_sz = _buffer_sz * 2;
     I(sched, new_buffer_sz <= MAX_CIRCULAR_BUFFER_SIZE);
     DLOG(sched, mem, "circular_buffer is growing to %d bytes", new_buffer_sz);
-    void *new_buffer = task->malloc(new_buffer_sz);
+    void *new_buffer = kernel->malloc(new_buffer_sz,
+                                    "new circular_buffer (grow)");
     transfer(new_buffer);
-    task->free(_buffer);
+    kernel->free(_buffer);
     _buffer = (uint8_t *)new_buffer;
     _next = 0;
     _buffer_sz = new_buffer_sz;
@@ -158,9 +157,10 @@ circular_buffer::shrink() {
     I(sched, initial_size() <= new_buffer_sz);
     DLOG(sched, mem, "circular_buffer is shrinking to %d bytes",
          new_buffer_sz);
-    void *new_buffer = task->malloc(new_buffer_sz);
+    void *new_buffer = kernel->malloc(new_buffer_sz,
+                                    "new circular_buffer (shrink)");
     transfer(new_buffer);
-    task->free(_buffer);
+    kernel->free(_buffer);
     _buffer = (uint8_t *)new_buffer;
     _next = 0;
     _buffer_sz = new_buffer_sz;

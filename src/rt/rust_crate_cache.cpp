@@ -16,7 +16,8 @@ rust_crate_cache::get_type_desc(size_t size,
         return td;
     }
     DLOG(sched, cache, "rust_crate_cache::get_type_desc miss");
-    td = (type_desc*) sched->kernel->malloc(sizeof(type_desc) + keysz);
+    td = (type_desc*) sched->kernel->malloc(sizeof(type_desc) + keysz,
+                                            "crate cache typedesc");
     if (!td)
         return NULL;
     // By convention, desc 0 is the root descriptor.

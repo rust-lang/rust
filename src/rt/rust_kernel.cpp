@@ -8,7 +8,7 @@
   } while (0)
 
 rust_kernel::rust_kernel(rust_srv *srv) :
-    _region(&srv->local_region),
+    _region(srv, true),
     _log(srv, NULL),
     _srv(srv),
     _interrupt_kernel_loop(FALSE)
@@ -20,10 +20,11 @@ rust_scheduler *
 rust_kernel::create_scheduler(const char *name) {
     _kernel_lock.lock();
     rust_message_queue *message_queue =
-        new (this) rust_message_queue(_srv, this);
+        new (this, "rust_message_queue") rust_message_queue(_srv, this);
     rust_srv *srv = _srv->clone();
     rust_scheduler *sched =
-        new (this) rust_scheduler(this, message_queue, srv, name);
+        new (this, "rust_scheduler")
+        rust_scheduler(this, message_queue, srv, name);
     rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
     message_queue->associate(handle);
     message_queues.append(message_queue);
@@ -51,10 +52,8 @@ rust_handle<rust_scheduler> *
 rust_kernel::internal_get_sched_handle(rust_scheduler *sched) {
     rust_handle<rust_scheduler> *handle = NULL;
     if (_sched_handles.get(sched, &handle) == false) {
-        handle =
-            new (this) rust_handle<rust_scheduler>(this,
-                                                   sched->message_queue,
-                                                   sched);
+        handle = new (this, "rust_handle<rust_scheduler")
+            rust_handle<rust_scheduler>(this, sched->message_queue, sched);
         _sched_handles.put(sched, handle);
     }
     return handle;
@@ -74,9 +73,8 @@ rust_kernel::get_task_handle(rust_task *task) {
     rust_handle<rust_task> *handle = NULL;
     if (_task_handles.get(task, &handle) == false) {
         handle =
-            new (this) rust_handle<rust_task>(this,
-                                              task->sched->message_queue,
-                                              task);
+            new (this, "rust_handle<rust_task>")
+            rust_handle<rust_task>(this, task->sched->message_queue, task);
         _task_handles.put(task, handle);
     }
     _kernel_lock.unlock();
@@ -88,7 +86,7 @@ rust_kernel::get_port_handle(rust_port *port) {
     _kernel_lock.lock();
     rust_handle<rust_port> *handle = NULL;
     if (_port_handles.get(port, &handle) == false) {
-        handle = new (this)
+        handle = new (this, "rust_handle<rust_port>")
             rust_handle<rust_port>(this,
                                    port->task->sched->message_queue,
                                    port);
@@ -202,17 +200,17 @@ rust_kernel::~rust_kernel() {
 }
 
 void *
-rust_kernel::malloc(size_t size) {
-    return _region->malloc(size);
+rust_kernel::malloc(size_t size, const char *tag) {
+    return _region.malloc(size, tag);
 }
 
 void *
 rust_kernel::realloc(void *mem, size_t size) {
-    return _region->realloc(mem, size);
+    return _region.realloc(mem, size);
 }
 
 void rust_kernel::free(void *mem) {
-    _region->free(mem);
+    _region.free(mem);
 }
 
 template<class T> void
