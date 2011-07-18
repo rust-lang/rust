@@ -122,6 +122,16 @@ fn test_ends_with() {
     assert (!str::ends_with("", "abc"));
 }
 
+fn test_is_empty() {
+  assert str::is_empty("");
+  assert !str::is_empty("a");
+}
+
+fn test_is_not_empty() {
+  assert str::is_not_empty("a");
+  assert !str::is_not_empty("");
+}
+
 fn main() {
     test_bytes_len();
     test_index_and_rindex();
@@ -133,4 +143,6 @@ fn main() {
     test_to_upper();
     test_slice();
     test_ends_with();
+    test_is_empty();
+    test_is_not_empty();
 }

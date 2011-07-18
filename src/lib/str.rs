@@ -50,6 +50,8 @@ export to_upper;
 export safe_slice;
 export bytes_ivec;
 export unsafe_from_bytes_ivec;
+export is_empty;
+export is_not_empty;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -153,6 +155,16 @@ fn is_ascii(str s) -> bool {
 
 fn alloc(uint n_bytes) -> str { ret rustrt::str_alloc(n_bytes); }
 
+/// Returns true if the string has length 0
+pred is_empty(str s) -> bool {
+    for (u8 c in s) {
+        ret false;
+    }
+    ret true;
+}
+
+/// Returns true if the string has length greater than 0
+pred is_not_empty(str s) -> bool { !is_empty(s) }
 
 // Returns the number of bytes (a.k.a. UTF-8 code units) in s.
 // Contrast with a function that would return the number of code
