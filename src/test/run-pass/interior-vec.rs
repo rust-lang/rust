@@ -3,11 +3,11 @@
 import rusti::ivec_len;
 
 native "rust-intrinsic" mod rusti {
-    fn ivec_len[T](v: &T[]) -> uint;
+    fn ivec_len[T](v: &[T]) -> uint;
 }
 
 fn main() {
-    let v: int[] = ~[];
+    let v: [int] = ~[];
     assert (ivec_len(v) == 0u); // zero-length
     let x = ~[1, 2];
     assert (ivec_len(x) == 2u); // on stack

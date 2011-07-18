@@ -287,24 +287,13 @@ fn print_type(s: &ps, ty: &ast::ty) {
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
       ast::ty_vec(mt) { word(s.s, "vec["); print_mt(s, mt); word(s.s, "]"); }
       ast::ty_ivec(mt) {
-        let parens =
-            alt mt.ty.node {
-              ast::ty_box(_) | ast::ty_vec(_) | ast::ty_ptr(_) |
-              ast::ty_port(_) | ast::ty_chan(_) {
-                true
-              }
-              ast::ty_path(pt, _) { ivec::len(pt.node.types) > 0u }
-              _ { false }
-            };
-        if parens { popen(s); }
-        print_type(s, *mt.ty);
-        if parens { pclose(s); }
         word(s.s, "[");
         alt mt.mut {
-          ast::mut. { word(s.s, "mutable"); }
-          ast::maybe_mut. { word(s.s, "mutable?"); }
+          ast::mut. { word_space(s, "mutable"); }
+          ast::maybe_mut. { word_space(s, "mutable?"); }
           ast::imm. {}
         }
+        print_type(s, *mt.ty);
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
