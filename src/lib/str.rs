@@ -52,6 +52,7 @@ export bytes_ivec;
 export unsafe_from_bytes_ivec;
 export is_empty;
 export is_not_empty;
+export replace;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -511,6 +512,22 @@ fn to_upper(str s) -> str {
     }
     ret outstr;
 }
+
+// FIXME: This is super-inefficient
+fn replace(str s, str from, str to) : is_not_empty(from) -> str {
+    // FIXME (694): Shouldn't have to check this
+    check is_not_empty(from);
+    if (byte_len(s) == 0u) {
+        ret "";
+    } else if (starts_with(s, from)) {
+        ret to + replace(slice(s, byte_len(from), byte_len(s)),
+                             from, to);
+    } else {
+        ret unsafe_from_byte(s.(0))
+            + replace(slice(s, 1u, byte_len(s)), from, to);
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

@@ -132,6 +132,19 @@ fn test_is_not_empty() {
   assert !str::is_not_empty("");
 }
 
+fn test_replace() {
+    auto a = "a";
+    check str::is_not_empty(a);
+    assert str::replace("", a, "b") == "";
+    assert str::replace("a", a, "b") == "b";
+    assert str::replace("ab", a, "b") == "bb";
+    auto test = "test";
+    check str::is_not_empty(test);
+    assert str::replace(" test test ", test, "toast")
+        == " toast toast ";
+    assert str::replace(" test test ", test, "") == "   ";
+}
+
 fn main() {
     test_bytes_len();
     test_index_and_rindex();
@@ -145,4 +158,15 @@ fn main() {
     test_ends_with();
     test_is_empty();
     test_is_not_empty();
+    test_replace();
 }
+
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
