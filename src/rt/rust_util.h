@@ -23,7 +23,7 @@ ptr_vec<T>::ptr_vec(rust_task *task) :
     task(task),
     alloc(INIT_SIZE),
     fill(0),
-    data(new (task) T*[alloc])
+    data(new (task, "ptr_vec<T>") T*[alloc])
 {
     I(task->sched, data);
     DLOG(task->sched, mem, "new ptr_vec(data=0x%" PRIxPTR ") -> 0x%" PRIxPTR,
@@ -175,7 +175,7 @@ rust_vec : public rc_base<rust_vec>
     size_t fill;
     size_t pad; // Pad to align data[0] to 16 bytes.
     uint8_t data[];
-    rust_vec(rust_scheduler *sched, size_t alloc, size_t fill,
+    rust_vec(size_t alloc, size_t fill,
              uint8_t const *d)
         : alloc(alloc),
           fill(fill)

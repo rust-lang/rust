@@ -11,22 +11,21 @@ rust_chan::rust_chan(rust_task *task,
       kernel(task->kernel),
       task(task),
       port(port),
-      buffer(task, unit_sz) {
-    ++task->ref_count;
+      buffer(kernel, unit_sz) {
     if (port) {
         associate(port);
     }
-    LOG(task, comm, "new rust_chan(task=0x%" PRIxPTR
+    DLOG(kernel->sched, comm, "new rust_chan(task=0x%" PRIxPTR
         ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
         (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
 }
 
 rust_chan::~rust_chan() {
-    LOG(task, comm, "del rust_chan(task=0x%" PRIxPTR ")", (uintptr_t) this);
+    DLOG(kernel->sched, comm, "del rust_chan(task=0x%" PRIxPTR ")",
+         (uintptr_t) this);
 
-    A(task->sched, is_associated() == false,
+    A(kernel->sched, is_associated() == false,
       "Channel must be disassociated before being freed.");
-    --task->ref_count;
 }
 
 /**
@@ -35,10 +34,11 @@ rust_chan::~rust_chan() {
 void rust_chan::associate(maybe_proxy<rust_port> *port) {
     this->port = port;
     if (port->is_proxy() == false) {
-        LOG(task, task,
+        DLOG(kernel->sched, task,
             "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
             this, port);
         ++this->ref_count;
+        this->task = port->referent()->task;
         this->port->referent()->chans.push(this);
     }
 }
@@ -51,14 +51,15 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
-    A(task->sched, is_associated(),
+    A(kernel->sched, is_associated(),
       "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
-        LOG(task, task,
+        DLOG(kernel->sched, task,
             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
             this, port->referent());
         --this->ref_count;
+        this->task = NULL;
         port->referent()->chans.swap_delete(this);
     }
 
@@ -72,7 +73,7 @@ void rust_chan::disassociate() {
 void rust_chan::send(void *sptr) {
     buffer.enqueue(sptr);
 
-    rust_scheduler *sched = task->sched;
+    rust_scheduler *sched = kernel->sched;
     if (!is_associated()) {
         W(sched, is_associated(),
           "rust_chan::transmit with no associated port.");
@@ -112,11 +113,12 @@ rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
         rust_handle<rust_port> *handle =
             task->sched->kernel->get_port_handle(port->as_referent());
         maybe_proxy<rust_port> *proxy = new rust_proxy<rust_port> (handle);
-        LOG(task, mem, "new proxy: " PTR, proxy);
+        DLOG(kernel->sched, mem, "new proxy: " PTR, proxy);
         port = proxy;
         target_task = target->as_proxy()->handle()->referent();
     }
-    return new (target_task->kernel) rust_chan(target_task, port, unit_sz);
+    return new (target_task->kernel, "cloned chan")
+        rust_chan(target_task, port, unit_sz);
 }
 
 /**
@@ -124,7 +126,7 @@ rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
  * appear to be live, causing modify-after-free errors.
  */
 void rust_chan::destroy() {
-    A(task->sched, ref_count == 0,
+    A(kernel->sched, ref_count == 0,
       "Channel's ref count should be zero.");
 
     if (is_associated()) {

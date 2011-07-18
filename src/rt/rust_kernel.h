@@ -43,7 +43,7 @@ class rust_task_thread;
  * threads.
  */
 class rust_kernel : public rust_thread {
-    memory_region *_region;
+    memory_region _region;
     rust_log _log;
     rust_srv *_srv;
 
@@ -109,7 +109,7 @@ public:
     void fatal(char const *fmt, ...);
     virtual ~rust_kernel();
 
-    void *malloc(size_t size);
+    void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
 

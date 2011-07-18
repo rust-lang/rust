@@ -6,17 +6,17 @@
 #define CIRCULAR_BUFFER_H
 
 class
-circular_buffer : public task_owned<circular_buffer> {
+circular_buffer : public kernel_owned<circular_buffer> {
     static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
     static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
     rust_scheduler *sched;
 
 public:
-    rust_task *task;
+    rust_kernel *kernel;
     // Size of the data unit in bytes.
     const size_t unit_sz;
-    circular_buffer(rust_task *task, size_t unit_sz);
+    circular_buffer(rust_kernel *kernel, size_t unit_sz);
     ~circular_buffer();
     void transfer(void *dst);
     void enqueue(void *src);

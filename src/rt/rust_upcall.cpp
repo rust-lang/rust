@@ -104,7 +104,7 @@ upcall_new_port(rust_task *task, size_t unit_sz) {
         (uintptr_t) task, task->name, unit_sz);
     // take a reference on behalf of the port
     task->ref();
-    return new (task->kernel) rust_port(task, unit_sz);
+    return new (task->kernel, "rust_port") rust_port(task, unit_sz);
 }
 
 extern "C" CDECL void
@@ -129,7 +129,8 @@ upcall_new_chan(rust_task *task, rust_port *port) {
         "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
         (uintptr_t) task, task->name, port);
     I(sched, port);
-    return new (task->kernel) rust_chan(task, port, port->unit_sz);
+    return new (task->kernel, "rust_chan")
+        rust_chan(task, port, port->unit_sz);
 }
 
 /**
@@ -152,8 +153,6 @@ extern "C" CDECL
 void upcall_del_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
 
-    I(task->sched, chan->task == task);
-
     LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
     chan->destroy();
 }
@@ -167,6 +166,14 @@ upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
                   rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
     return chan->clone(target);
+}
+
+extern "C" CDECL rust_task *
+upcall_chan_target_task(rust_task *task, rust_chan *chan) {
+    LOG_UPCALL_ENTRY(task);
+    I(task->sched, !chan->port->is_proxy());
+
+    return chan->port->referent()->task;
 }
 
 extern "C" CDECL void
@@ -277,7 +284,10 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
         " with gc-chain head = 0x%" PRIxPTR,
         nbytes, td, task->gc_alloc_chain);
 
-    void *p = task->malloc(nbytes, td);
+    // TODO: Maybe use dladdr here to find a more useful name for the
+    // type_desc.
+
+    void *p = task->malloc(nbytes, "tdesc", td);
 
     LOG(task, mem,
         "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR
@@ -308,7 +318,7 @@ upcall_shared_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     LOG(task, mem,
                    "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
                    nbytes, td);
-    void *p = task->kernel->malloc(nbytes);
+    void *p = task->kernel->malloc(nbytes, "shared malloc");
     LOG(task, mem,
                    "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR
                    ") = 0x%" PRIxPTR,
@@ -346,14 +356,13 @@ upcall_mark(rust_task *task, void* ptr) {
 }
 
 rust_str *make_str(rust_task *task, char const *s, size_t fill) {
-    rust_scheduler *sched = task->sched;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc);
+    void *mem = task->malloc(alloc, "rust_str (make_str)");
     if (!mem) {
         task->fail();
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(sched, alloc, fill,
+    rust_str *st = new (mem) rust_str(alloc, fill,
                                       (uint8_t const *) s);
     LOG(task, mem,
         "upcall new_str('%s', %" PRIdPTR ") = 0x%" PRIxPTR,
@@ -381,12 +390,12 @@ upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     rust_scheduler *sched = task->sched;
     DLOG(sched, mem, "upcall new_vec(%" PRIdPTR ")", fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = task->malloc(alloc, td);
+    void *mem = task->malloc(alloc, "rust_vec (upcall_new_vec)", td);
     if (!mem) {
         task->fail();
         return NULL;
     }
-    rust_vec *v = new (mem) rust_vec(sched, alloc, 0, NULL);
+    rust_vec *v = new (mem) rust_vec(alloc, 0, NULL);
     LOG(task, mem,
               "upcall new_vec(%" PRIdPTR ") = 0x%" PRIxPTR, fill, v);
     return v;
@@ -441,7 +450,7 @@ vec_grow(rust_task *task,
          * that we need the copies performed for us.
          */
         LOG(task, mem, "new vec path");
-        void *mem = task->malloc(alloc, td);
+        void *mem = task->malloc(alloc, "rust_vec (vec_grow)", td);
         if (!mem) {
             task->fail();
             return NULL;
@@ -450,7 +459,7 @@ vec_grow(rust_task *task,
         if (v->ref_count != CONST_REFCOUNT)
             v->deref();
 
-        v = new (mem) rust_vec(sched, alloc, 0, NULL);
+        v = new (mem) rust_vec(alloc, 0, NULL);
         *need_copy = 1;
     }
     I(sched, sizeof(rust_vec) + v->fill <= v->alloc);
@@ -599,7 +608,8 @@ upcall_ivec_spill_shared(rust_task *task,
     size_t new_alloc = next_power_of_two(newsz);
 
     rust_ivec_heap *heap_part = (rust_ivec_heap *)
-        task->kernel->malloc(new_alloc + sizeof(size_t));
+        task->kernel->malloc(new_alloc + sizeof(size_t),
+                             "ivec spill shared");
     heap_part->fill = newsz;
     memcpy(&heap_part->data, v->payload.data, v->fill);
 

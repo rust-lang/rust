@@ -15,10 +15,19 @@ class rust_srv;
 
 class memory_region {
 private:
+    struct alloc_header {
+        uint32_t magic;
+        int index;
+        const char *tag;
+        char data[];
+    };
+
+    alloc_header *get_header(void *mem);
+
     rust_srv *_srv;
     memory_region *_parent;
     size_t _live_allocations;
-    array_list<void *> _allocation_list;
+    array_list<alloc_header *> _allocation_list;
     const bool _detailed_leaks;
     const bool _synchronized;
     lock_and_signal _lock;
@@ -29,8 +38,8 @@ private:
 public:
     memory_region(rust_srv *srv, bool synchronized);
     memory_region(memory_region *parent);
-    void *malloc(size_t size);
-    void *calloc(size_t size);
+    void *malloc(size_t size, const char *tag, bool zero = true);
+    void *calloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     virtual ~memory_region();
@@ -40,12 +49,14 @@ public:
     void hack_allow_leaks();
 };
 
-inline void *operator new(size_t size, memory_region &region) {
-    return region.malloc(size);
+inline void *operator new(size_t size, memory_region &region,
+                          const char *tag) {
+    return region.malloc(size, tag);
 }
 
-inline void *operator new(size_t size, memory_region *region) {
-    return region->malloc(size);
+inline void *operator new(size_t size, memory_region *region,
+                          const char *tag) {
+    return region->malloc(size, tag);
 }
 
 //

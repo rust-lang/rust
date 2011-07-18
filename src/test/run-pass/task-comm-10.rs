@@ -6,17 +6,30 @@ use std;
 import std::task;
 
 fn start(chan[chan[str]] c) {
-    let port[str] p = port();
+    let port[str] p;
+
+    p = port();
     c <| chan(p);
-    auto a; p |> a;
-    // auto b; p |> b; // Never read the second string.
+    p |> a;
+    log_err a;
+    p |> b;
+    log_err b;
+
+    auto a;
+    auto b;
 }
 
 fn main() {
-    let port[chan[str]] p = port();
-    auto child = spawn start(chan(p));
-    auto c; p |> c;
+    let port[chan[str]] p;
+    auto child;
+
+    p = port();
+    child = spawn start(chan(p));
+
+    p |> c;
     c <| "A";
     c <| "B";
     task::yield();
+
+    auto c;
 }

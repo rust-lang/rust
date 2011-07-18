@@ -112,7 +112,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     void link_gc(gc_alloc *gcm);
     void unlink_gc(gc_alloc *gcm);
-    void *malloc(size_t sz, type_desc *td=0);
+    void *malloc(size_t sz, const char *tag, type_desc *td=0);
     void *realloc(void *data, size_t sz, bool gc_mem=false);
     void free(void *p, bool gc_mem=false);
 
@@ -157,7 +157,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     bool can_schedule(int worker);
 
-    void *calloc(size_t size);
+    void *calloc(size_t size, const char *tag);
 
     void pin();
     void pin(int id);

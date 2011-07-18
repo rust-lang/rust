@@ -53,6 +53,7 @@ task_yield
 task_join
 unsafe_vec_to_mut
 unsupervise
+upcall_chan_target_task
 upcall_clone_chan
 upcall_del_chan
 upcall_del_port

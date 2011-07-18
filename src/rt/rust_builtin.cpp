@@ -9,7 +9,6 @@
 
 extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
-    rust_scheduler *sched = task->sched;
     LOG(task, task, "last_os_error()");
 
 #if defined(__WIN32__)
@@ -42,12 +41,12 @@ last_os_error(rust_task *task) {
 #endif
     size_t fill = strlen(buf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc);
+    void *mem = task->malloc(alloc, "rust_str(last_os_error)");
     if (!mem) {
         task->fail();
         return NULL;
     }
-    rust_str *st = new (mem) rust_str(sched, alloc, fill,
+    rust_str *st = new (mem) rust_str(alloc, fill,
                                       (const uint8_t *)buf);
 
 #ifdef __WIN32__
@@ -58,7 +57,6 @@ last_os_error(rust_task *task) {
 
 extern "C" CDECL rust_str *
 rust_getcwd(rust_task *task) {
-    rust_scheduler *sched = task->sched;
     LOG(task, task, "rust_getcwd()");
 
     char cbuf[BUF_BYTES];
@@ -74,14 +72,14 @@ rust_getcwd(rust_task *task) {
 
     size_t fill = strlen(cbuf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = task->malloc(alloc);
+    void *mem = task->malloc(alloc, "rust_str(getcwd)");
     if (!mem) {
         task->fail();
         return NULL;
     }
 
     rust_str *st;
-    st = new (mem) rust_str(sched, alloc, fill, (const uint8_t *)cbuf);
+    st = new (mem) rust_str(alloc, fill, (const uint8_t *)cbuf);
 
     return st;
 }
@@ -125,17 +123,16 @@ unsupervise(rust_task *task) {
 extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
 {
-    rust_scheduler *sched = task->sched;
     LOG(task, mem, "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
         n_elts, elem_t->size);
     size_t fill = n_elts * elem_t->size;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = task->malloc(alloc, t->is_stateful ? t : NULL);
+    void *mem = task->malloc(alloc, "rust_vec", t->is_stateful ? t : NULL);
     if (!mem) {
         task->fail();
         return NULL;
     }
-    rust_vec *vec = new (mem) rust_vec(sched, alloc, 0, NULL);
+    rust_vec *vec = new (mem) rust_vec(alloc, 0, NULL);
     return vec;
 }
 
@@ -199,11 +196,10 @@ vec_alloc_with_data(rust_task *task,
                     size_t elt_size,
                     void *d)
 {
-    rust_scheduler *sched = task->sched;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
-    void *mem = task->malloc(alloc);
+    void *mem = task->malloc(alloc, "rust_vec (with data)");
     if (!mem) return NULL;
-    return new (mem) rust_vec(sched, alloc, fill * elt_size, (uint8_t*)d);
+    return new (mem) rust_vec(alloc, fill * elt_size, (uint8_t*)d);
 }
 
 extern "C" CDECL rust_vec*
@@ -377,7 +373,7 @@ extern "C" CDECL void *
 rand_new(rust_task *task)
 {
     rust_scheduler *sched = task->sched;
-    randctx *rctx = (randctx *) task->malloc(sizeof(randctx));
+    randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "randctx");
     if (!rctx) {
         task->fail();
         return NULL;
@@ -619,8 +615,9 @@ rust_list_files_ivec(rust_task *task, rust_str *path) {
       sizeof(size_t)            // fill
       + sizeof(size_t)          // alloc
       + sizeof(rust_str *) * 4; // payload
-  rust_box *box = (rust_box *)task->malloc(sizeof(rust_box) +
-                                           str_ivec_sz);
+  rust_box *box = (rust_box *)task->malloc(sizeof(rust_box) + str_ivec_sz,
+                                           "rust_box(list_files_ivec)");
+
   box->ref_count = 1;
   rust_ivec *iv = (rust_ivec *)&box->data;
   iv->fill = 0;
@@ -628,7 +625,7 @@ rust_list_files_ivec(rust_task *task, rust_str *path) {
   size_t alloc_sz = sizeof(rust_str *) * strings.size();
   iv->alloc = alloc_sz;
   iv->payload.ptr = (rust_ivec_heap *)
-      task->kernel->malloc(alloc_sz + sizeof(size_t));
+      task->kernel->malloc(alloc_sz + sizeof(size_t), "files ivec");
   iv->payload.ptr->fill = alloc_sz;
   memcpy(&iv->payload.ptr->data, strings.data(), alloc_sz);
   return box;
@@ -706,7 +703,8 @@ ivec_reserve(rust_task *task, type_desc *ty, rust_ivec *v, size_t n_elems)
     if (v->fill || !v->payload.ptr) {
         // On stack; spill to heap.
         heap_part = (rust_ivec_heap *)task->malloc(new_alloc +
-                                                   sizeof(size_t));
+                                                   sizeof(size_t),
+                                                   "ivec reserve heap part");
         heap_part->fill = v->fill;
         memcpy(&heap_part->data, v->payload.data, v->fill);
 
@@ -737,8 +735,9 @@ ivec_reserve_shared(rust_task *task, type_desc *ty, rust_ivec *v,
     rust_ivec_heap *heap_part;
     if (v->fill || !v->payload.ptr) {
         // On stack; spill to heap.
-        heap_part = (rust_ivec_heap *)task->kernel->malloc(new_alloc +
-                                                           sizeof(size_t));
+        heap_part = (rust_ivec_heap *)
+            task->kernel->malloc(new_alloc + sizeof(size_t),
+                                 "ivec reserve shared");
         heap_part->fill = v->fill;
         memcpy(&heap_part->data, v->payload.data, v->fill);
 

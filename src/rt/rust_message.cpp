@@ -47,7 +47,8 @@ send(notification_type type, const char* label,
      rust_handle<rust_task> *source, rust_handle<rust_task> *target) {
     memory_region *region = &target->message_queue->region;
     notify_message *message =
-        new (region) notify_message(region, type, label, source, target);
+        new (region, "notify_message")
+        notify_message(region, type, label, source, target);
     target->message_queue->enqueue(message);
 }
 
@@ -91,8 +92,8 @@ send(uint8_t *buffer, size_t buffer_sz, const char* label,
 
     memory_region *region = &port->message_queue->region;
     data_message *message =
-        new (region) data_message(region, buffer, buffer_sz, label, source,
-                                  port);
+        new (region, "data_message")
+        data_message(region, buffer, buffer_sz, label, source, port);
     LOG(source->referent(), comm, "==> sending \"%s\"" PTR " in queue " PTR,
         label, message, &port->message_queue);
     port->message_queue->enqueue(message);

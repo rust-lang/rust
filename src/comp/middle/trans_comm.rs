@@ -22,6 +22,12 @@ import back::link::mangle_internal_name_by_path_and_seq;
 import trans_common::*;
 import trans::*;
 
+export trans_port;
+export trans_chan;
+export trans_spawn;
+export trans_send;
+export trans_recv;
+
 fn trans_port(&@block_ctxt cx, ast::node_id id) -> result {
     auto t = node_id_type(cx.fcx.lcx.ccx, id);
     auto unit_ty;
@@ -123,13 +129,7 @@ fn trans_spawn(&@block_ctxt cx, &ast::spawn_dom dom, &option::t[str] name,
     auto llargs = alloc_ty(bcx, args_ty);
     auto i = 0u;
     for (ValueRef v in arg_vals) {
-        // log_err #fmt("ty(llargs) = %s",
-        //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
-
         auto target = bcx.build.GEP(llargs.val, ~[C_int(0), C_int(i as int)]);
-        // log_err #fmt("ty(v) = %s", val_str(bcx.fcx.lcx.ccx.tn, v));
-        // log_err #fmt("ty(target) = %s",
-        //              val_str(bcx.fcx.lcx.ccx.tn, target));
 
         bcx.build.Store(v, target);
         i += 1u;
@@ -199,55 +199,6 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     ret rslt(cx, llfndecl);
 }
 
-// Does a deep copy of a value. This is needed for passing arguments to child
-// tasks, and for sending things through channels. There are probably some
-// uniqueness optimizations and things we can do here for tasks in the same
-// domain.
-fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
-    -> result
-{
-    // TODO: make sure all paths add any reference counting that they need to.
-
-    // TODO: Teach deep copy to understand everything else it needs to.
-
-    auto tcx = bcx.fcx.lcx.ccx.tcx;
-    if(ty::type_is_scalar(tcx, t)) {
-        ret rslt(bcx, v);
-    }
-    else if(ty::type_is_str(tcx, t)) {
-        ret rslt(bcx,
-                bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.dup_str,
-                               ~[bcx.fcx.lltaskptr, target_task, v]));
-    }
-    else if(ty::type_is_chan(tcx, t)) {
-        // If this is a channel, we need to clone it.
-        auto chan_ptr = bcx.build.PointerCast(v, T_opaque_chan_ptr());
-
-        auto chan_raw_val =
-            bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.clone_chan,
-                           ~[bcx.fcx.lltaskptr, target_task, chan_ptr]);
-
-        // Cast back to the type the context was expecting.
-        auto chan_val = bcx.build.PointerCast(chan_raw_val,
-                                              val_ty(v));
-
-        ret rslt(bcx, chan_val);
-    }
-    else if(ty::type_is_structural(tcx, t)) {
-        fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
-            log_err "Unimplemented type for deep_copy.";
-            fail;
-        }
-
-        ret iter_structural_ty(bcx, v, t, inner_deep_copy);
-    }
-    else {
-        bcx.fcx.lcx.ccx.sess.bug("unexpected type in " +
-                                 "trans::deep_copy: " +
-                                 ty_to_str(tcx, t));
-    }
-}
-
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
               ast::node_id id) -> result {
     auto bcx = cx;
@@ -300,5 +251,54 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
     bcx = cp.bcx;
     // TODO: Any cleanup need to be done here?
     ret rslt(bcx, to);
+}
+
+// Does a deep copy of a value. This is needed for passing arguments to child
+// tasks, and for sending things through channels. There are probably some
+// uniqueness optimizations and things we can do here for tasks in the same
+// domain.
+fn deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t, ValueRef target_task)
+    -> result
+{
+    // TODO: make sure all paths add any reference counting that they need to.
+
+    // TODO: Teach deep copy to understand everything else it needs to.
+
+    auto tcx = bcx.fcx.lcx.ccx.tcx;
+    if(ty::type_is_scalar(tcx, t)) {
+        ret rslt(bcx, v);
+    }
+    else if(ty::type_is_str(tcx, t)) {
+        ret rslt(bcx,
+                bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.dup_str,
+                               ~[bcx.fcx.lltaskptr, target_task, v]));
+    }
+    else if(ty::type_is_chan(tcx, t)) {
+        // If this is a channel, we need to clone it.
+        auto chan_ptr = bcx.build.PointerCast(v, T_opaque_chan_ptr());
+
+        auto chan_raw_val =
+            bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.clone_chan,
+                           ~[bcx.fcx.lltaskptr, target_task, chan_ptr]);
+
+        // Cast back to the type the context was expecting.
+        auto chan_val = bcx.build.PointerCast(chan_raw_val,
+                                              val_ty(v));
+
+        ret rslt(bcx, chan_val);
+    }
+    else if(ty::type_is_structural(tcx, t)) {
+        fn inner_deep_copy(&@block_ctxt bcx, ValueRef v, ty::t t) -> result {
+            log_err "Unimplemented type for deep_copy.";
+            fail;
+        }
+
+        ret iter_structural_ty(bcx, v, t, inner_deep_copy);
+    }
+    else {
+        bcx.fcx.lcx.ccx.sess.bug("unexpected type in " +
+                                 "trans::deep_copy: " +
+                                 ty_to_str(tcx, t));
+    }
 }
 

@@ -10,7 +10,7 @@ public:
     ~rust_chan();
 
     rust_kernel *kernel;
-    rust_task *task;
+    smart_ptr<rust_task> task;
     maybe_proxy<rust_port> *port;
     size_t idx;
     circular_buffer buffer;
