@@ -18,7 +18,6 @@ native "cdecl" mod libc = "" {
     fn fwrite(vbuf buf, uint size, uint n, FILE f) -> uint;
     fn fseek(FILE f, int offset, int whence) -> int;
     fn ftell(FILE f) -> int;
-    fn getenv(sbuf n) -> sbuf;
     fn _pipe(*mutable int fds, uint size, int mode) -> int;
 }
 
@@ -47,6 +46,11 @@ mod libc_constants {
         ret 128u; // really _S_IWRITE in win32
 
     }
+}
+
+native "x86stdcall" mod kernel32 {
+    fn GetEnvironmentVariableA(sbuf n, sbuf v, uint nsize) -> uint;
+    fn SetEnvironmentVariableA(sbuf n, sbuf v) -> int;
 }
 
 fn exec_suffix() -> str { ret ".exe"; }
