@@ -73,13 +73,13 @@ mod map_reduce {
     type reducer = fn(str, getter) ;
 
     tag ctrl_proto {
-        find_reducer(u8[], chan[chan[reduce_proto]]);
+        find_reducer([u8], chan[chan[reduce_proto]]);
         mapper_done;
     }
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) -> task[] {
+    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) -> [task] {
         let tasks = ~[];
         // log_err "starting mappers";
         for i: str  in inputs {

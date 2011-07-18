@@ -27,7 +27,7 @@ type reqchan = chan[request];
 type handle = {task: option::t[task], chan: reqchan};
 
 tag request {
-    exec(str, str, str[], chan[response]);
+    exec(str, str, [str], chan[response]);
     stop;
 }
 
@@ -189,7 +189,7 @@ fn clone_str(s: &str) -> str {
     new
 }
 
-fn clone_ivecstr(v: &str[]) -> str[] {
+fn clone_ivecstr(v: &[str]) -> [str] {
     let r = ~[];
     for t: str in ivec::slice(v, 0u, ivec::len(v)) {
         r += ~[clone_str(t)];
