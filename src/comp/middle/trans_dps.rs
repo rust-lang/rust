@@ -64,57 +64,43 @@ fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
 
 // Destination utilities
 
-tag dest_slot {
-    dst_nil;
-    dst_imm(@mutable option[ValueRef]);
-    dst_ptr(ValueRef);
+tag dest {
+    dst_nil;                                // Unit destination; ignore.
+    dst_imm(@mutable option[ValueRef]);     // Fill with an immediate value.
+    dst_alias(@mutable option[ValueRef]);   // Fill with an alias pointer.
+    dst_copy(ValueRef);                     // Copy to the given address.
+    dst_move(ValueRef);                     // Move to the given address.
 }
 
-tag dest_mode { dm_copy; dm_move; dm_alias; }
+fn dest_imm(&ty::ctxt tcx, ty::t t) -> dest {
+    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_imm(@mutable none) }
+}
 
-type dest = rec(dest_slot slot, dest_mode mode);
-
-fn dest_slot_for_ptr(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest_slot {
-    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_ptr(llptr) }
+fn dest_alias(&ty::ctxt tcx, ty::t t) -> dest {
+    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_alias(@mutable none) }
 }
 
 fn dest_copy(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
-    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_copy);
+    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_copy(llptr) }
 }
 
 fn dest_move(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
-    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_move);
-}
-
-fn dest_alias(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
-    ret rec(slot=dest_slot_for_ptr(tcx, llptr, t), mode=dm_alias);
-}
-
-fn dest_tmp(&@block_ctxt bcx, ty::t t, bool alias) -> tup(@block_ctxt, dest) {
-    auto mode = if alias { dm_alias } else { dm_move };
-    if ty::type_is_nil(bcx_tcx(bcx), t) {
-        ret tup(bcx, rec(slot=dst_nil, mode=mode));
-    }
-    if trans::type_is_immediate(bcx_ccx(bcx), t) {
-        ret tup(bcx, rec(slot=dst_imm(@mutable none), mode=mode));
-    }
-    auto r = trans::alloc_ty(bcx, t);
-    trans::add_clean(bcx, r.val, t);
-    ret tup(r.bcx, rec(slot=dest_slot_for_ptr(bcx_tcx(bcx), r.val, t),
-                       mode=mode));
+    if ty::type_is_nil(tcx, t) { dst_nil } else { dst_move(llptr) }
 }
 
 // Invariant: the type of the destination must be structural (non-immediate).
 fn dest_ptr(&dest dest) -> ValueRef {
-    alt (dest.slot) {
+    alt (dest) {
       dst_nil { fail "nil dest in dest_ptr" }
       dst_imm(_) { fail "immediate dest in dest_ptr" }
-      dst_ptr(?llptr) { llptr }
+      dst_alias(_) { fail "alias dest in dest_ptr" }
+      dst_copy(?llptr) { llptr }
+      dst_move(?llptr) { llptr }
     }
 }
 
 fn dest_llval(&dest dest) -> ValueRef {
-    alt (dest.slot) {
+    alt (dest) {
       dst_nil { ret tc::C_nil(); }
       dst_imm(?box) {
         alt (*box) {
@@ -122,8 +108,19 @@ fn dest_llval(&dest dest) -> ValueRef {
           some(?llval) { ret llval; }
         }
       }
-      dst_ptr(?llval) { ret llval; }
+      dst_alias(?box) {
+        alt (*box) {
+          none { fail "alias wasn't filled in prior to dest_llval"; }
+          some(?llval) { ret llval; }
+        }
+      }
+      dst_copy(?llptr) { ret llptr; }
+      dst_move(?llptr) { ret llptr; }
     }
+}
+
+fn dest_is_alias(&dest dest) -> bool {
+    alt (dest) { dst_alias(_) { true } _ { false } }
 }
 
 
@@ -135,42 +132,44 @@ fn bcx_ccx(&@block_ctxt bcx) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
 fn bcx_lcx(&@block_ctxt bcx) -> @local_ctxt { ret bcx.fcx.lcx; }
 fn bcx_fcx(&@block_ctxt bcx) -> @fn_ctxt { ret bcx.fcx; }
 fn lcx_ccx(&@local_ctxt lcx) -> @crate_ctxt { ret lcx.ccx; }
+fn ccx_tcx(&@crate_ctxt ccx) -> ty::ctxt { ret ccx.tcx; }
 
 
 // Common operations
 
 // If "cast" is true, casts dest appropriately before the store.
-fn store(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
+fn store_imm(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
         -> @block_ctxt {
-    alt (dest.slot) {
+    alt (dest) {
       dst_nil { /* no-op */ }
       dst_imm(?box) {
-        if !std::option::is_none(*box) {
-          fail "attempt to store an immediate twice";
-        };
+        assert (std::option::is_none(*box));
         *box = some(llsrc);
       }
-      dst_ptr(?lldestptr_orig) {
+      dst_alias(?box) {
+        bcx_ccx(bcx).sess.unimpl("dst_alias spill in store_imm");
+      }
+      dst_copy(?lldestptr_orig) | dst_move(?lldestptr_orig) {
         auto lldestptr = lldestptr_orig;
         if cast {
             lldestptr = bcx.build.PointerCast(lldestptr,
                                               tc::T_ptr(lltype_of(llsrc)));
         }
-
         bcx.build.Store(llsrc, lldestptr);
       }
     }
     ret bcx;
 }
 
-fn memmove(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
-    alt (dest.slot) {
-      // TODO: We might want to support these; I can't think of any case in
-      // which we would want them off the top of my head, but feel free to add
-      // them if they aid orthogonality.
-      dst_nil { fail "dst_nil in memmove"; }
-      dst_imm(_) { fail "dst_imm in memmove"; }
-      dst_ptr(?lldestptr) {
+fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
+    alt (dest) {
+      dst_nil { /* no-op */ }
+      dst_imm(?box) { fail "dst_imm in store_ptr"; }
+      dst_alias(?box) {
+        assert (std::option::is_none(*box));
+        *box = some(llsrcptr);
+      }
+      dst_copy(?lldestptr) | dst_move(?lldestptr) {
         auto lldestty = llelement_type(trans::val_ty(llsrcptr));
         auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
         auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
@@ -190,6 +189,7 @@ fn memmove(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
         ret bcx;
       }
     }
+    ret bcx;
 }
 
 // Allocates a value of the given LLVM size on either the task heap or the
@@ -228,9 +228,9 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
     auto bcx = cx;
     alt (lit.node) {
       ast::lit_str(?s, ast::sk_unique) {
-        auto r = trans_lit_str_common(bcx_ccx(bcx), s);
+        auto r = trans_lit_str_common(bcx_ccx(bcx), s, dest_is_alias(dest));
         auto llstackpart = r._0; auto llheappartopt = r._1;
-        bcx = memmove(bcx, dest, llstackpart);
+        bcx = store_ptr(bcx, dest, llstackpart);
         alt (llheappartopt) {
           none { /* no-op */ }
           some(?llheappart) {
@@ -244,13 +244,13 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
                                       tc::T_ptr(tc::T_ptr(llheappartty)));
             malloc(bcx, lldestptrptr, hp_shared, none);
             auto lldestptr = bcx.build.Load(lldestptrptr);
-            memmove(bcx, rec(slot=dst_ptr(lldestptr), mode=dm_copy),
-                    llheappart);
+            store_ptr(bcx, dst_copy(lldestptr), llheappart);
           }
         }
       }
       _ {
-        bcx = store(bcx, dest, trans_lit_common(bcx_ccx(bcx), lit), false);
+        bcx = store_imm(bcx, dest, trans_lit_common(bcx_ccx(bcx), lit),
+                        false);
       }
     }
 
@@ -280,47 +280,35 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
         ret lllevelptr;
     }
 
-    fn trans_log_upcall(&@block_ctxt cx, &span sp, ValueRef in_llval,
-                        int level, ty::t t) -> @block_ctxt {
-        auto bcx = cx;
-        auto llval = in_llval;
-        auto llupcall;
-        alt (ty::struct(bcx_tcx(bcx), t)) {
+    tag upcall_style { us_imm; us_imm_i32_zext; us_alias; us_alias_istr; }
+    fn get_upcall(&@crate_ctxt ccx, &span sp, ty::t t)
+            -> tup(ValueRef, upcall_style) {
+        alt (ty::struct(ccx_tcx(ccx), t)) {
           ty::ty_machine(ast::ty_f32) {
-            llupcall = bcx_ccx(bcx).upcalls.log_float;
+            ret tup(ccx.upcalls.log_float, us_imm);
           }
           ty::ty_machine(ast::ty_f64) | ty::ty_float {
-            llupcall = bcx_ccx(bcx).upcalls.log_double;
-
-            // TODO: Here we have to spill due to legacy calling conventions.
-            // This is no longer necessary.
-            auto r = trans::alloc_ty(bcx, t);
-            bcx = r.bcx; auto llptr = r.val;
-            bcx.build.Store(llval, llptr);
-            llval = llptr;
+            // TODO: We have to spill due to legacy calling conventions that
+            // should probably be modernized.
+            ret tup(ccx.upcalls.log_double, us_alias);
           }
           ty::ty_bool | ty::ty_machine(ast::ty_i8) |
                 ty::ty_machine(ast::ty_i16) | ty::ty_machine(ast::ty_u8) |
                 ty::ty_machine(ast::ty_u16) {
-            llupcall = bcx_ccx(bcx).upcalls.log_int;
-            llval = bcx.build.ZExt(llval, tc::T_i32());
+            ret tup(ccx.upcalls.log_int, us_imm_i32_zext);
           }
           ty::ty_int | ty::ty_machine(ast::ty_i32) |
                 ty::ty_machine(ast::ty_u32) {
-            llupcall = bcx_ccx(bcx).upcalls.log_int;
+            ret tup(ccx.upcalls.log_int, us_imm);
           }
           ty::ty_istr {
-            llupcall = bcx_ccx(bcx).upcalls.log_istr;
+            ret tup(ccx.upcalls.log_istr, us_alias_istr);
           }
           _ {
-            bcx_ccx(bcx).sess.span_unimpl(sp, "logging for values of type " +
-                ppaux::ty_to_str(bcx_tcx(bcx), t));
+            ccx.sess.span_unimpl(sp, "logging for values of type " +
+                                 ppaux::ty_to_str(ccx_tcx(ccx), t));
           }
         }
-
-        bcx.build.Call(llupcall,
-                       ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llval]);
-        ret bcx;
     }
 
     auto bcx = cx;
@@ -336,11 +324,32 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
     bcx.build.CondBr(should_log, log_bcx.llbb, next_bcx.llbb);
 
     auto expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
-    auto r = dest_tmp(log_bcx, expr_t, true);
-    log_bcx = r._0; auto tmp = r._1;
-    log_bcx = trans_expr(log_bcx, tmp, expr);
+    auto r = get_upcall(bcx_ccx(bcx), sp, expr_t);
+    auto llupcall = r._0; auto style = r._1;
 
-    log_bcx = trans_log_upcall(log_bcx, sp, dest_llval(tmp), level, expr_t);
+    auto arg_dest;
+    alt (style) {
+      us_imm | us_imm_i32_zext {
+        arg_dest = dest_imm(bcx_tcx(log_bcx), expr_t);
+      }
+      us_alias | us_alias_istr {
+        arg_dest = dest_alias(bcx_tcx(log_bcx), expr_t);
+      }
+    }
+    log_bcx = trans_expr(log_bcx, arg_dest, expr);
+
+    auto llarg = dest_llval(arg_dest);
+    alt (style) {
+      us_imm | us_alias { /* no-op */ }
+      us_imm_i32_zext { llarg = log_bcx.build.ZExt(llarg, tc::T_i32()); }
+      us_alias_istr {
+        llarg = log_bcx.build.PointerCast(llarg,
+                                          tc::T_ptr(tc::T_ivec(tc::T_i8())));
+      }
+    }
+
+    log_bcx.build.Call(llupcall,
+                       ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llarg]);
 
     log_bcx = trans::trans_block_cleanups(log_bcx,
                                           trans::find_scope_cx(log_bcx));
@@ -393,7 +402,10 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
 // Common setup code shared between the crate-constant literal string case and
 // the block-local literal string case. We don't use destination-passing style
 // since that doesn't work for crate constants.
-fn trans_lit_str_common(&@crate_ctxt ccx, &str s)
+//
+// If |expand| is true, we never spill to the heap. This should be used
+// whenever the destination size isn't fixed.
+fn trans_lit_str_common(&@crate_ctxt ccx, &str s, bool expand)
         -> tup(ValueRef, option[ValueRef]) {
     auto llstackpart; auto llheappartopt;
 
@@ -403,7 +415,12 @@ fn trans_lit_str_common(&@crate_ctxt ccx, &str s)
     for (u8 ch in s) { array += ~[tc::C_u8(ch as uint)]; }
     array += ~[tc::C_u8(0u)];
 
-    if len < abi::ivec_default_length - 1u {    // minus 1 because of the \0
+    if expand {
+        llstackpart = tc::C_struct(~[tc::C_uint(len + 1u),
+                                     tc::C_uint(len + 1u),
+                                     tc::C_array(tc::T_i8(), array)]);
+        llheappartopt = none;
+    } else if len < abi::ivec_default_length - 1u { // minus one for the null
         while (ivec::len(array) < abi::ivec_default_length) {
             array += ~[tc::C_u8(0u)];
         }
@@ -492,10 +509,7 @@ fn trans_init_local(&@block_ctxt bcx, &@ast::local local) -> @block_ctxt {
           }
         }
       }
-      none {
-        ret store(bcx, dest_copy(bcx_tcx(bcx), llptr, t),
-                  tc::C_null(llelement_type(trans::val_ty(llptr))), false);
-      }
+      none { ret bcx; }
     }
 }
 
@@ -503,8 +517,7 @@ fn trans_stmt(&@block_ctxt cx, &@ast::stmt stmt) -> @block_ctxt {
     auto bcx = cx;
     alt (stmt.node) {
       ast::stmt_expr(?e, _) {
-        auto tmp_r = dest_tmp(bcx, ty::expr_ty(bcx_tcx(bcx), e), true);
-        bcx = tmp_r._0; auto tmp = tmp_r._1;
+        auto tmp = dest_alias(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
         ret trans_expr(bcx, tmp, e);
       }
       ast::stmt_decl(?d, _) {
