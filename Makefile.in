@@ -171,6 +171,13 @@ STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1),stage$(1), \
                 $$(CFG_RUSTC_FLAGS))
 endef
 
+# FIXME: fuzzer only appears to work on unix at the moment.
+ifdef CFG_UNIXY
+FUZZ := stage1/fuzzer
+else
+FUZZ :=
+endif
+
 $(eval $(call SREQ,0))
 $(eval $(call SREQ,1))
 $(eval $(call SREQ,2))
@@ -187,9 +194,9 @@ CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
-all: $(SREQ0) $(SREQ1) $(GENERATED) $(DOCS)
+all: $(SREQ0) $(SREQ1) $(GENERATED) $(DOCS) $(FUZZ)
 else
-all: $(SREQ0) $(SREQ1) $(SREQ2) $(SREQ3) $(GENERATED) $(DOCS)
+all: $(SREQ0) $(SREQ1) $(SREQ2) $(SREQ3) $(GENERATED) $(DOCS) $(FUZZ)
 endif
 
 
