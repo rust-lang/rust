@@ -2004,6 +2004,8 @@ fn parse_item_native_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
             abi = ast::native_abi_llvm;
         } else if (str::eq(t, "rust-intrinsic")) {
             abi = ast::native_abi_rust_intrinsic;
+        } else if (str::eq(t, "x86stdcall")) {
+            abi = ast::native_abi_x86stdcall;
         } else { p.fatal("unsupported abi: " + t); fail; }
     }
     expect_word(p, "mod");

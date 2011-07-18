@@ -751,7 +751,8 @@ fn trans_native_call(&builder b, @glue_fns glues, ValueRef lltaskptr,
                      ModuleRef llmod, &str name, bool pass_task,
                      &ValueRef[] args) -> ValueRef {
     let int n = std::ivec::len[ValueRef](args) as int;
-    let ValueRef llnative = get_simple_extern_fn(externs, llmod, name, n);
+    let ValueRef llnative = get_simple_extern_fn(externs, llmod,
+                                                 name, n);
     let ValueRef[] call_args = ~[];
     for (ValueRef a in args) { call_args += ~[b.ZExtOrBitCast(a, T_int())]; }
     ret b.Call(llnative, call_args);
@@ -8142,6 +8143,11 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
         uses_retptr = false;
         cast_to_i32 = false;
       }
+      case (ast::native_abi_x86stdcall) {
+        pass_task = false;
+        uses_retptr = false;
+        cast_to_i32 = true;
+      }
     }
 
     auto lltaskptr;
@@ -8185,7 +8191,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
     fn trans_simple_native_abi(&@block_ctxt bcx, str name,
                                &mutable ValueRef[] call_args,
                                ty::t fn_type, uint first_arg_n,
-                               bool uses_retptr) ->
+                               bool uses_retptr, uint cc) ->
        tup(ValueRef, ValueRef) {
         let TypeRef[] call_arg_tys = ~[];
         for (ValueRef arg in call_args) { call_arg_tys += ~[val_ty(arg)]; }
@@ -8202,8 +8208,12 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
 
         auto llnativefn =
             get_extern_fn(bcx.fcx.lcx.ccx.externs, bcx.fcx.lcx.ccx.llmod,
-                          name, lib::llvm::LLVMCCallConv, llnativefnty);
-        auto r = bcx.build.Call(llnativefn, call_args);
+                          name, cc, llnativefnty);
+        auto r = if (cc == lib::llvm::LLVMCCallConv) {
+            bcx.build.Call(llnativefn, call_args)
+        } else {
+            bcx.build.CallWithConv(llnativefn, call_args, cc)
+        };
         auto rptr = bcx.fcx.llretptr;
         ret tup(r, rptr);
     }
@@ -8231,7 +8241,8 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
         case (ast::native_abi_llvm) {
             auto result =
                 trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n,
-                                        uses_retptr);
+                                        uses_retptr,
+                                        lib::llvm::LLVMCCallConv);
             r = result._0;
             rptr = result._1;
         }
@@ -8239,7 +8250,16 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx, &span sp, &str[] path, str name,
             auto external_name = "rust_intrinsic_" + name;
             auto result =
                 trans_simple_native_abi(bcx, external_name, call_args,
-                                        fn_type, arg_n, uses_retptr);
+                                        fn_type, arg_n, uses_retptr,
+                                        lib::llvm::LLVMCCallConv);
+            r = result._0;
+            rptr = result._1;
+        }
+        case (ast::native_abi_x86stdcall) {
+            auto result =
+                trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n,
+                                        uses_retptr,
+                                        lib::llvm::LLVMX86StdcallCallConv);
             r = result._0;
             rptr = result._1;
         }

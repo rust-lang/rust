@@ -155,6 +155,7 @@ fn enc_sty(&ioivec::writer w, &@ctxt cx, &ty::sty st) {
                 }
                 case (native_abi_cdecl) { w.write_char('c'); }
                 case (native_abi_llvm) { w.write_char('l'); }
+                case (native_abi_x86stdcall) { w.write_char('s'); }
             }
             enc_ty_fn(w, cx, args, out, return, ~[]);
         }

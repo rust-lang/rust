@@ -221,6 +221,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 case ('i') { abi = ast::native_abi_rust_intrinsic; }
                 case ('c') { abi = ast::native_abi_cdecl; }
                 case ('l') { abi = ast::native_abi_llvm; }
+                case ('s') { abi = ast::native_abi_x86stdcall; }
             }
             auto func = parse_ty_fn(st, sd);
             ret ty::mk_native_fn(st.tcx, abi, func._0, func._1);

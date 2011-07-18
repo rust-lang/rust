@@ -1314,6 +1314,15 @@ obj builder(BuilderRef B, @mutable bool terminated) {
         ret v;
     }
 
+    fn CallWithConv(ValueRef Fn, &ValueRef[] Args,
+                    uint Conv) -> ValueRef {
+        assert !(*terminated);
+        auto v = llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args),
+                                     ivec::len(Args), str::buf(""));
+        llvm::LLVMSetInstructionCallConv(v, Conv);
+        ret v;
+    }
+
     fn Select(ValueRef If, ValueRef Then, ValueRef Else) -> ValueRef {
         assert (!*terminated);
         ret llvm::LLVMBuildSelect(B, If, Then, Else, str::buf(""));

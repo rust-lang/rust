@@ -526,6 +526,7 @@ tag native_abi {
     native_abi_cdecl;
     native_abi_llvm;
     native_abi_rust_intrinsic;
+    native_abi_x86stdcall;
 }
 
 type native_mod =
