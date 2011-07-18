@@ -63,8 +63,10 @@ fn qsort[T](lteq[T] compare_func, vec[mutable T] arr, uint left, uint right) {
     if (right > left) {
         auto pivot = (left + right) / 2u;
         auto new_pivot = part[T](compare_func, arr, left, right, pivot);
-        if (new_pivot == 0u) { ret; }
-        qsort[T](compare_func, arr, left, new_pivot - 1u);
+        if (new_pivot != 0u) {
+            // Need to do this check before recursing due to overflow
+            qsort[T](compare_func, arr, left, new_pivot - 1u);
+        }
         qsort[T](compare_func, arr, new_pivot + 1u, right);
     }
 }
@@ -194,8 +196,10 @@ mod ivector {
         if (right > left) {
             auto pivot = (left + right) / 2u;
             auto new_pivot = part[T](compare_func, arr, left, right, pivot);
-            if (new_pivot == 0u) { ret; }
-            qsort[T](compare_func, arr, left, new_pivot - 1u);
+            if (new_pivot != 0u) {
+                // Need to do this check before recursing due to overflow
+                qsort[T](compare_func, arr, left, new_pivot - 1u);
+            }
             qsort[T](compare_func, arr, new_pivot + 1u, right);
         }
     }
