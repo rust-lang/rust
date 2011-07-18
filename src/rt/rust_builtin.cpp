@@ -651,20 +651,6 @@ rust_ptr_eq(rust_task *task, type_desc *t, rust_box *a, rust_box *b) {
 }
 
 #if defined(__WIN32__)
-extern "C" CDECL int32_t
-rust_SetEnvironmentVariable(rust_task *task,
-                            const char *name, const char *val) {
-     return SetEnvironmentVariable(name, val);
-}
-
-extern "C" CDECL uint32_t
-rust_GetEnvironmentVariable(rust_task *task,
-                            const char *name, char *buf, uint32_t size) {
-    return GetEnvironmentVariable(name, buf, size);
-}
-#endif
-
-#if defined(__WIN32__)
 extern "C" CDECL void
 get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
     SYSTEMTIME systemTime;

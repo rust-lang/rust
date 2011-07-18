@@ -18,6 +18,7 @@ native "cdecl" mod libc = "" {
     fn fwrite(vbuf buf, uint size, uint n, FILE f) -> uint;
     fn fseek(FILE f, int offset, int whence) -> int;
     fn ftell(FILE f) -> int;
+    fn getenv(sbuf n) -> sbuf;
     fn _pipe(*mutable int fds, uint size, int mode) -> int;
 }
 
@@ -66,8 +67,6 @@ fn fd_FILE(int fd) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
 native "rust" mod rustrt {
     fn rust_process_wait(int handle) -> int;
     fn rust_getcwd() -> str;
-    fn rust_SetEnvironmentVariable(sbuf n, sbuf v) -> int;
-    fn rust_GetEnvironmentVariable(sbuf n, sbuf v, uint nsize) -> uint;
 }
 
 fn waitpid(int pid) -> int { ret rustrt::rust_process_wait(pid); }
