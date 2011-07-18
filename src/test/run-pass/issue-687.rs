@@ -1,20 +1,20 @@
 use std;
 import std::ivec;
 
-tag msg { closed; received(u8[]); }
+tag msg { closed; received([u8]); }
 
-fn producer(c: chan[u8[]]) {
+fn producer(c: chan[[u8]]) {
     c <| ~[1u8, 2u8, 3u8, 4u8];
-    let empty: u8[] = ~[];
+    let empty: [u8] = ~[];
     c <| empty;
 }
 
-fn packager(cb: chan[chan[u8[]]], msg: chan[msg]) {
-    let p: port[u8[]] = port();
+fn packager(cb: chan[chan[[u8]]], msg: chan[msg]) {
+    let p: port[[u8]] = port();
     cb <| chan(p);
     while true {
         log "waiting for bytes";
-        let data: u8[];
+        let data: [u8];
         p |> data;
         log "got bytes";
         if ivec::len[u8](data) == 0u {
@@ -33,10 +33,10 @@ fn packager(cb: chan[chan[u8[]]], msg: chan[msg]) {
 
 fn main() {
     let p: port[msg] = port();
-    let recv_reader: port[chan[u8[]]] = port();
+    let recv_reader: port[chan[[u8]]] = port();
     let pack = spawn packager(chan(recv_reader), chan(p));
 
-    let source_chan: chan[u8[]];
+    let source_chan: chan[[u8]];
     recv_reader |> source_chan;
     let prod: task = spawn producer(source_chan);
 

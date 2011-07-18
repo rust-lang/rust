@@ -554,6 +554,11 @@ fn parse_ty(p: &parser) -> @ast::ty {
         t = ast::ty_vec(parse_mt(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
+    } else if (p.peek() == token::LBRACKET) {
+        expect(p, token::LBRACKET);
+        t = ast::ty_ivec(parse_mt(p));
+        hi = p.get_hi_pos();
+        expect(p, token::RBRACKET);
     } else if (eat_word(p, "fn")) {
         let flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_fn, p, flo);

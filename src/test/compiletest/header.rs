@@ -11,7 +11,7 @@ export is_test_ignored;
 
 type test_props = {
     // Lines that should be expected, in order, on standard out
-    error_patterns: str[],
+    error_patterns: [str],
     // Extra flags to pass to the compiler
     compile_flags: option::t[str],
     // If present, the name of a file that this test should match when

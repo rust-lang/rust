@@ -22,9 +22,9 @@ fn test_rec() {
 fn test_vec() {
     let po = comm::mk_port();
     let ch = po.mk_chan();
-    let v0: int[] = ~[0, 1, 2];
+    let v0: [int] = ~[0, 1, 2];
     ch.send(v0);
-    let v1: int[];
+    let v1: [int];
     v1 = po.recv();
     assert (v1.(0) == 0);
     assert (v1.(1) == 1);

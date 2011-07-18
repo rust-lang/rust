@@ -25,7 +25,7 @@ fn main(args: vec[str]) {
     run_tests(config);
 }
 
-fn parse_config(args: &str[]) -> config {
+fn parse_config(args: &[str]) -> config {
     let opts =
         ~[getopts::reqopt("compile-lib-path"),
           getopts::reqopt("run-lib-path"), getopts::reqopt("rustc-path"),
@@ -117,7 +117,7 @@ fn test_opts(config: &config) -> test::test_opts {
 }
 
 type tests_and_conv_fn =
-    {tests: test::test_desc[], to_task: fn(&fn() ) -> task };
+    {tests: [test::test_desc], to_task: fn(&fn() ) -> task };
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt("making tests from %s", cx.config.src_base);

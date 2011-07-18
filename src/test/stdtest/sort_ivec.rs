@@ -1,7 +1,7 @@
 
 use std;
 
-fn check_sort(v1: &int[], v2: &int[]) {
+fn check_sort(v1: &[int], v2: &[int]) {
     let len = std::ivec::len[int](v1);
     fn lteq(a: &int, b: &int) -> bool { ret a <= b; }
     let f = lteq;
@@ -18,7 +18,7 @@ fn test() {
         check_sort(v1, v2);
     }
     { let v1 = ~[1, 1, 1]; let v2 = ~[1, 1, 1]; check_sort(v1, v2); }
-    { let v1: int[] = ~[]; let v2: int[] = ~[]; check_sort(v1, v2); }
+    { let v1: [int] = ~[]; let v2: [int] = ~[]; check_sort(v1, v2); }
     { let v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
     {
         let v1 = ~[9, 3, 3, 3, 9];
