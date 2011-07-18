@@ -35,6 +35,8 @@ rust_ptr_eq
 rust_run_program
 rust_start
 rust_getcwd
+rust_SetEnvironmentVariable
+rust_GetEnvironmentVariable
 size_of
 squareroot
 str_alloc
