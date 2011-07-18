@@ -221,6 +221,36 @@ fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
     ret bcx;
 }
 
+// If the supplied destination is an alias, spills to a temporary. Returns the
+// new destination.
+fn spill_alias(&@block_ctxt cx, &dest dest, ty::t t)
+        -> tup(@block_ctxt, dest) {
+    auto bcx = cx;
+    alt (dest) {
+      dst_alias(?box) {
+        // TODO: Mark the alias as needing a cleanup.
+        assert (std::option::is_none(*box));
+        auto r = trans::alloc_ty(cx, t);
+        bcx = r.bcx; auto llptr = r.val;
+        *box = some(llptr);
+        ret tup(bcx, dst_move(llptr));
+      }
+      _ { ret tup(bcx, dest); }
+    }
+}
+
+fn mk_temp(&@block_ctxt cx, ty::t t) -> tup(@block_ctxt, dest) {
+    auto bcx = cx;
+    if ty::type_is_nil(bcx_tcx(bcx), t) { ret tup(bcx, dst_nil); }
+    if trans::type_is_immediate(bcx_ccx(bcx), t) {
+        ret tup(bcx, dst_imm(@mutable none));
+    }
+
+    auto r = trans::alloc_ty(cx, t);
+    bcx = r.bcx; auto llptr = r.val;
+    ret tup(bcx, dst_copy(llptr));
+}
+
 
 // AST substructure translation, with destinations
 
@@ -255,6 +285,20 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
     }
 
     ret bcx;
+}
+
+fn trans_binary(&@block_ctxt cx, &dest in_dest, ast::binop op,
+                &@ast::expr lhs, &@ast::expr rhs) -> @block_ctxt {
+    auto bcx = cx;
+    auto r = spill_alias(bcx, in_dest, ty::expr_ty(bcx_tcx(bcx), lhs));
+    bcx = r._0; auto dest = r._1;
+    bcx = trans_expr(bcx, dest, lhs);
+
+    r = mk_temp(bcx, ty::expr_ty(bcx_tcx(bcx), rhs));
+    bcx = r._0; auto rhs_tmp = r._1;
+    bcx = trans_expr(bcx, rhs_tmp, rhs);
+
+    ret bcx;    // TODO
 }
 
 fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
@@ -362,6 +406,9 @@ fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
       ast::expr_lit(?lit) { trans_lit(bcx, dest, *lit); ret bcx; }
       ast::expr_log(?level, ?operand) {
         ret trans_log(bcx, expr.span, level, operand);
+      }
+      ast::expr_binary(?op, ?lhs, ?rhs) {
+        ret trans_binary(bcx, dest, op, lhs, rhs);
       }
       _ { fail "unhandled expr type in trans_expr"; }
     }
