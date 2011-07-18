@@ -2092,7 +2092,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_self_method(?ident)) {
             auto t = ty::mk_nil(fcx.ccx.tcx);
-            let ty::t this_obj_ty;
+            let ty::t this_obj_ty = ty::mk_nil(fcx.ccx.tcx);
             let option::t[obj_info] this_obj_info = get_obj_info(fcx.ccx);
             alt (this_obj_info) {
                 case (
@@ -2106,7 +2106,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         ty::lookup_item_type(fcx.ccx.tcx,
                                              local_def(obj_info.this_obj))._1;
                 }
-                case (none) { fail; }
+                case (none) {
+                    // Shouldn't happen.
+                    fcx.ccx.tcx.sess.span_err(expr.span,
+                                              "self-call in non-object \
+                                               context");
+                }
             }
             // Grab this method's type out of the current object type.
 
