@@ -4276,17 +4276,14 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
      *
      */
 
-    // Step 1: walk body and figure out which references it makes
-    // escape. This could be determined upstream, and probably ought
-    // to be so, eventualy.
+    // Step 1: Generate code to build an environment containing pointers
+    // to all of the upvars
     auto lcx = cx.fcx.lcx;
 
     // FIXME: possibly support alias-mode here?
     auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
-    auto upvars = freevars::collect_upvars(cx.fcx.lcx.ccx.tcx,
-                                           bind walk::walk_block(_, body),
-                                           ~[decl_id]);
+    auto upvars = cx.fcx.lcx.ccx.tcx.freevars.get(body.node.id);
 
     auto environment_data = build_environment(cx, upvars);
     auto llenvptr = environment_data._0;
