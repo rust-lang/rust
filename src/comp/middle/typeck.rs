@@ -52,7 +52,13 @@ export check_crate;
 
 type ty_table = hashmap[ast::def_id, ty::t];
 
-type obj_info = rec(ast::obj_field[] obj_fields, ast::node_id this_obj);
+// Used for typechecking the methods of an object.
+tag obj_info {
+    // Regular objects have a node_id at compile time.
+    regular_obj(ast::obj_field[], ast::node_id);
+    // Anonymous objects only have a type at compile time.
+    anon_obj(ast::obj_field[], ty::t);
+}
 
 type crate_ctxt = rec(mutable obj_info[] obj_infos, ty::ctxt tcx);
 
@@ -622,8 +628,8 @@ mod collect {
                 ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
                                   tps, some(local_def(it.id)));
             }
-            case (ast::item_obj(?obj_info, ?tps, _)) {
-                auto t_obj = ty_of_obj(cx, it.ident, obj_info, tps);
+            case (ast::item_obj(?ob, ?tps, _)) {
+                auto t_obj = ty_of_obj(cx, it.ident, ob, tps);
                 cx.tcx.tcache.insert(local_def(it.id), t_obj);
                 ret t_obj;
             }
@@ -1196,10 +1202,21 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
     // Add object fields, if any.
     alt (get_obj_info(ccx)) {
         case (option::some(?oinfo)) {
-            for (ast::obj_field f in oinfo.obj_fields) {
-                auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-                assign(ccx.tcx, vb, locals, local_names, nvi, f.id,
-                       f.ident, some(field_ty));
+            alt (oinfo) {
+                case (regular_obj(?obj_fields, _)) {
+                    for (ast::obj_field f in obj_fields) {
+                        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
+                        assign(ccx.tcx, vb, locals, local_names, nvi, f.id,
+                               f.ident, some(field_ty));
+                    }
+                }
+                case (anon_obj(?obj_fields, _)) {
+                    for (ast::obj_field f in obj_fields) {
+                        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
+                        assign(ccx.tcx, vb, locals, local_names, nvi, f.id,
+                               f.ident, some(field_ty));
+                    }
+                }
             }
         }
         case (option::none) {/* no fields */ }
@@ -2095,16 +2112,30 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             let ty::t this_obj_ty = ty::mk_nil(fcx.ccx.tcx);
             let option::t[obj_info] this_obj_info = get_obj_info(fcx.ccx);
             alt (this_obj_info) {
-                case (
-                     // If we're inside a current object, grab its type.
-                     some(?obj_info)) {
-                    // FIXME: In the case of anonymous objects with methods
-                    // containing self-calls, this lookup fails because
-                    // obj_info.this_obj is not in the type cache
-
-                    this_obj_ty =
-                        ty::lookup_item_type(fcx.ccx.tcx,
-                                             local_def(obj_info.this_obj))._1;
+                case (some(?oinfo)) {
+                    alt (oinfo) {
+                        case (regular_obj(_, ?obj_id)) {
+                            auto did = local_def(obj_id);
+                            // Try looking up the current object in the type
+                            // cache.
+                            alt (fcx.ccx.tcx.tcache.find(did)) {
+                                case (some(?tpt)) {
+                                    // If we're typechecking a self-method on
+                                    // a regular object, this lookup should
+                                    // succeed.
+                                    this_obj_ty = tpt._1;
+                                }
+                                case (none) {
+                                    fcx.ccx.tcx.sess.bug(
+                                        "didn't find " + int::str(did._1) +
+                                        " in type cache");
+                                }
+                            }
+                        }
+                        case (anon_obj(_, ?obj_ty)) {
+                            this_obj_ty = obj_ty;
+                        }
+                    }
                 }
                 case (none) {
                     // Shouldn't happen.
@@ -2353,29 +2384,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
             }
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
-            // TODO: We probably need to do more work here to be able to
-            // handle additional methods that use 'self'
-
-            // We're entering an object, so gather up the info we need.
+        case (ast::expr_anon_obj(?ao, ?tps)) {
 
             let ast::anon_obj_field[] fields = ~[];
-            alt (anon_obj.fields) {
+            alt (ao.fields) {
                 case (none) { }
                 case (some(?v)) { fields = v; }
             }
-
-            // FIXME: this is duplicated between here and trans -- it should
-            // appear in one place
-            fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
-                -> ast::obj_field {
-                ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
-            }
-
-            fcx.ccx.obj_infos +=
-                ~[rec(obj_fields=ivec::map(anon_obj_field_to_obj_field,
-                                           fields),
-                      this_obj=id)];
 
             // FIXME: These next three functions are largely ripped off from
             // similar ones in collect::.  Is there a better way to do this?
@@ -2383,6 +2398,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 auto ty_mode = ast_mode_to_mode(a.mode);
                 ret rec(mode=ty_mode, ty=ast_ty_to_ty_crate(ccx, a.ty));
             }
+
             fn ty_of_method(@crate_ctxt ccx, &@ast::method m) -> ty::method {
                 auto convert = bind ast_ty_to_ty_crate(ccx, _);
 
@@ -2402,14 +2418,17 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         inputs=inputs, output=output, cf=m.node.meth.decl.cf,
                         constrs=out_constrs);
             }
+
             fn get_anon_obj_method_types(@fn_ctxt fcx,
-                                         &ast::anon_obj anon_obj)
+                                         &ast::anon_obj ao,
+                                         &ast::anon_obj_field[] fields,
+                                         &ast::ty_param[] tps)
                 -> ty::method[] {
 
                 let ty::method[] methods = ~[];
 
                 // Outer methods.
-                for (@ast::method m in anon_obj.methods) {
+                for (@ast::method m in ao.methods) {
                     methods += ~[ty_of_method(fcx.ccx, m)];
                 }
 
@@ -2418,11 +2437,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 // Typecheck 'with_obj'.  If it exists, it had better have
                 // object type.
                 let ty::method[] with_obj_methods = ~[];
-                alt (anon_obj.with_obj) {
+                auto with_obj_ty = ty::mk_nil(fcx.ccx.tcx);
+                alt (ao.with_obj) {
                     case (none) { }
                     case (some(?e)) {
                         check_expr(fcx, e);
-                        auto with_obj_ty = expr_ty(fcx.ccx.tcx, e);
+                        with_obj_ty = expr_ty(fcx.ccx.tcx, e);
 
                         alt (structure_of(fcx, e.span, with_obj_ty)) {
                             case (ty::ty_obj(?ms)) {
@@ -2438,12 +2458,24 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                         }
                     }
                 }
+
+                log_err "Pushing an anon obj onto the obj_infos stack...";
+                fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
+                    -> ast::obj_field {
+                    ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
+                }
+                fcx.ccx.obj_infos +=
+                    ~[anon_obj(ivec::map(anon_obj_field_to_obj_field,
+                                         fields),
+                               with_obj_ty)];
+
                 methods += with_obj_methods;
 
                 ret methods;
             }
 
-            auto method_types = get_anon_obj_method_types(fcx, anon_obj);
+            auto method_types = get_anon_obj_method_types(fcx, ao,
+                                                          fields, tps);
             auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
 
             write::ty_only_fixup(fcx, id, ot);
@@ -2451,15 +2483,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             // collect::convert for regular objects.)
 
             auto i = 0u;
-            while (i < ivec::len[@ast::method](anon_obj.methods)) {
-                write::ty_only(fcx.ccx.tcx, anon_obj.methods.(i).node.id,
+            while (i < ivec::len[@ast::method](ao.methods)) {
+                write::ty_only(fcx.ccx.tcx, ao.methods.(i).node.id,
                                ty::method_ty_to_fn_ty(fcx.ccx.tcx,
                                                       method_types.(i)));
                 i += 1u;
             }
 
             // Typecheck the methods.
-            for (@ast::method method in anon_obj.methods) {
+            for (@ast::method method in ao.methods) {
                 check_method(fcx.ccx, method);
             }
             next_ty_var(fcx);
@@ -2654,8 +2686,8 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
         }
         case (ast::item_obj(?ob, _, _)) {
             // We're entering an object, so gather up the info we need.
+            ccx.obj_infos += ~[regular_obj(ob.fields, it.id)];
 
-            ccx.obj_infos += ~[rec(obj_fields=ob.fields, this_obj=it.id)];
             // Typecheck the methods.
             for (@ast::method method in ob.methods) {
                 check_method(ccx, method);
