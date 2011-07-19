@@ -1,6 +1,3 @@
-
-
-
 // -*- rust -*-
 
 // Tests of ports and channels on various types
@@ -19,11 +16,11 @@ fn test_rec() {
 }
 
 fn test_vec() {
-    let port[vec[int]] po = port();
-    let chan[vec[int]] ch = chan(po);
-    let vec[int] v0 = [0, 1, 2];
+    let port[int[]] po = port();
+    let chan[int[]] ch = chan(po);
+    let int[] v0 = ~[0, 1, 2];
     ch <| v0;
-    let vec[int] v1;
+    let int[] v1;
     po |> v1;
     assert (v1.(0) == 0);
     assert (v1.(1) == 1);
