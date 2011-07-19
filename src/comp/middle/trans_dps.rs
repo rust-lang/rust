@@ -62,6 +62,17 @@ fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
 }
 
 
+// Type utilities
+
+fn size_of(&@crate_ctxt ccx, &span sp, ty::t t) -> uint {
+    if ty::type_has_dynamic_size(ccx.tcx, t) {
+        ccx.sess.bug("trans_dps::size_of() called on a type with dynamic " +
+                     "size");
+    }
+    ret llsize_of(ccx, trans::type_of_inner(ccx, sp, t));
+}
+
+
 // Destination utilities
 
 tag dest {
@@ -93,7 +104,12 @@ fn dest_ptr(&dest dest) -> ValueRef {
     alt (dest) {
       dst_nil { fail "nil dest in dest_ptr" }
       dst_imm(_) { fail "immediate dest in dest_ptr" }
-      dst_alias(_) { fail "alias dest in dest_ptr" }
+      dst_alias(?box) {
+        alt (*box) {
+          none { fail "alias wasn't filled in prior to dest_ptr" }
+          some(?llval) { llval }
+        }
+      }
       dst_copy(?llptr) { llptr }
       dst_move(?llptr) { llptr }
     }
@@ -137,6 +153,22 @@ fn ccx_tcx(&@crate_ctxt ccx) -> ty::ctxt { ret ccx.tcx; }
 
 // Common operations
 
+fn memmove(&@block_ctxt bcx, ValueRef lldestptr, ValueRef llsrcptr,
+           ValueRef llsz) {
+    auto lldestty = llelement_type(trans::val_ty(lldestptr));
+    auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
+    auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
+    auto src_align = llalign_of(bcx_ccx(bcx), llsrcty);
+    auto align = uint::min(dest_align, src_align);
+    auto llfn = bcx_ccx(bcx).intrinsics.get("llvm.memmove.p0i8.p0i8.i32");
+    auto lldestptr_i8 = bcx.build.PointerCast(lldestptr,
+                                              tc::T_ptr(tc::T_i8()));
+    auto llsrcptr_i8 = bcx.build.PointerCast(llsrcptr,
+                                             tc::T_ptr(tc::T_i8()));
+    bcx.build.Call(llfn, ~[lldestptr_i8, llsrcptr_i8, llsz, tc::C_uint(align),
+                           tc::C_bool(false)]);
+}
+
 // If "cast" is true, casts dest appropriately before the store.
 fn store_imm(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
         -> @block_ctxt {
@@ -170,22 +202,9 @@ fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
         *box = some(llsrcptr);
       }
       dst_copy(?lldestptr) | dst_move(?lldestptr) {
-        auto lldestty = llelement_type(trans::val_ty(llsrcptr));
         auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
-        auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
-        auto src_align = llalign_of(bcx_ccx(bcx), llsrcty);
-        auto align = uint::min(dest_align, src_align);
-        auto llfn = bcx_ccx(bcx).intrinsics.get("llvm.memmove.p0i8.p0i8.i32");
-        auto lldestptr_i8 = bcx.build.PointerCast(lldestptr,
-                                                  tc::T_ptr(tc::T_i8()));
-        auto llsrcptr_i8 = bcx.build.PointerCast(llsrcptr,
-                                                 tc::T_ptr(tc::T_i8()));
-        bcx.build.Call(llfn,
-                       ~[lldestptr_i8,
-                         llsrcptr_i8,
-                         tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty)),
-                         tc::C_uint(align),
-                         tc::C_bool(false)]);
+        auto llsz = tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty));
+        memmove(bcx, lldestptr, llsrcptr, llsz);
         ret bcx;
       }
     }
@@ -194,6 +213,9 @@ fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
 
 // Allocates a value of the given LLVM size on either the task heap or the
 // shared heap.
+//
+// TODO: This should *not* use destination-passing style, because doing so
+// makes callers incur an extra load.
 tag heap { hp_task; hp_shared; }
 fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
           option[ValueRef] llcustom_size_opt) -> @block_ctxt {
@@ -287,18 +309,18 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
     ret bcx;
 }
 
-fn trans_binary(&@block_ctxt cx, &dest in_dest, ast::binop op,
+fn trans_binary(&@block_ctxt cx, &dest dest, &span sp, ast::binop op,
                 &@ast::expr lhs, &@ast::expr rhs) -> @block_ctxt {
     auto bcx = cx;
-    auto r = spill_alias(bcx, in_dest, ty::expr_ty(bcx_tcx(bcx), lhs));
-    bcx = r._0; auto dest = r._1;
-    bcx = trans_expr(bcx, dest, lhs);
-
-    r = mk_temp(bcx, ty::expr_ty(bcx_tcx(bcx), rhs));
-    bcx = r._0; auto rhs_tmp = r._1;
-    bcx = trans_expr(bcx, rhs_tmp, rhs);
-
-    ret bcx;    // TODO
+    alt (op) {
+      ast::add {
+        bcx = trans_vec::trans_concat(bcx, dest, sp,
+                                      ty::expr_ty(bcx_tcx(bcx), rhs), lhs,
+                                      rhs);
+      }
+      // TODO: Many more to add here.
+    }
+    ret bcx;
 }
 
 fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
@@ -408,7 +430,7 @@ fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
         ret trans_log(bcx, expr.span, level, operand);
       }
       ast::expr_binary(?op, ?lhs, ?rhs) {
-        ret trans_binary(bcx, dest, op, lhs, rhs);
+        ret trans_binary(bcx, dest, expr.span, op, lhs, rhs);
       }
       _ { fail "unhandled expr type in trans_expr"; }
     }
