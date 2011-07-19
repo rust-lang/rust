@@ -210,6 +210,7 @@ type ctxt =
         resolve::def_map def_map,
         node_type_table node_types,
         ast_map::map items,
+        freevars::freevar_map freevars,
 
         constr_table fn_constrs,
         type_cache tcache,
@@ -392,7 +393,7 @@ fn mk_rcache() -> creader_cache {
 }
 
 fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
-           ast_map::map amap) -> ctxt {
+           ast_map::map amap, freevars::freevar_map freevars) -> ctxt {
     let node_type_table ntt =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
@@ -403,6 +404,7 @@ fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
             def_map=dm,
             node_types=ntt,
             items=amap,
+            freevars=freevars,
             fn_constrs=cs,
             tcache=tcache,
             rcache=mk_rcache(),
