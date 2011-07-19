@@ -26,6 +26,7 @@ mod middle {
     mod resolve;
     mod typeck;
     mod alias;
+    mod freevars;
 
     mod tstate {
         mod ck;
