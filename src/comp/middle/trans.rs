@@ -22,6 +22,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::fs;
+import std::time;
 import syntax::ast;
 import syntax::walk;
 import driver::session;
@@ -113,7 +114,8 @@ type stats =
         mutable uint n_derived_tydescs,
         mutable uint n_glues_created,
         mutable uint n_null_glues,
-        mutable uint n_real_glues);
+        mutable uint n_real_glues,
+        @mutable (tup(str,int)[]) fn_times);
 
 
 // Crate context.  Every crate we compile has one of these.
@@ -690,6 +692,14 @@ fn sanitize(&str s) -> str {
         }
     }
     ret result;
+}
+
+
+fn log_fn_time(&@crate_ctxt ccx, str name, &time::timeval start,
+               &time::timeval end) {
+    auto elapsed = 1000 * ((end.sec - start.sec) as int) +
+        ((end.usec as int) - (start.usec as int)) / 1000;
+    *ccx.stats.fn_times += ~[tup(name, elapsed)];
 }
 
 
@@ -1475,9 +1485,9 @@ fn declare_generic_glue(&@local_ctxt cx, &ty::t t, TypeRef llfnty, &str name)
     ret llfn;
 }
 
-fn make_generic_glue(&@local_ctxt cx, &span sp, &ty::t t, ValueRef llfn,
-                     &make_generic_glue_helper_fn helper,
-                     &uint[] ty_params) -> ValueRef {
+fn make_generic_glue_inner(&@local_ctxt cx, &span sp, &ty::t t, ValueRef llfn,
+                           &make_generic_glue_helper_fn helper,
+                           &uint[] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, sp, llfn);
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
@@ -1524,6 +1534,21 @@ fn make_generic_glue(&@local_ctxt cx, &span sp, &ty::t t, ValueRef llfn,
     }
     finish_fn(fcx, lltop);
     ret llfn;
+}
+
+fn make_generic_glue(&@local_ctxt cx, &span sp, &ty::t t, ValueRef llfn,
+                     &make_generic_glue_helper_fn helper,
+                     &uint[] ty_params, &str name) -> ValueRef {
+    if !cx.ccx.sess.get_opts().stats {
+        ret make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
+    }
+
+    auto start = time::get_time();
+    auto llval = make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
+    auto end = time::get_time();
+    log_fn_time(cx.ccx, "glue " + name + " " + ty_to_short_str(cx.ccx.tcx, t),
+                start, end);
+    ret llval;
 }
 
 fn emit_tydescs(&@crate_ctxt ccx) {
@@ -2579,7 +2604,8 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         ti.copy_glue = some[ValueRef](glue_fn);
                         auto tg = make_copy_glue;
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_single(tg), ti.ty_params);
+                                          mgghf_single(tg), ti.ty_params,
+                                          "take");
                         log #fmt("--- lazily_emit_tydesc_glue TAKE %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -2598,7 +2624,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         ti.drop_glue = some[ValueRef](glue_fn);
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                           mgghf_single(make_drop_glue),
-                                          ti.ty_params);
+                                          ti.ty_params, "drop");
                         log #fmt("--- lazily_emit_tydesc_glue DROP %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -2617,7 +2643,8 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         ti.free_glue = some[ValueRef](glue_fn);
                         auto dg = make_free_glue;
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_single(dg), ti.ty_params);
+                                          mgghf_single(dg), ti.ty_params,
+                                          "free");
                         log #fmt("--- lazily_emit_tydesc_glue FREE %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -2635,7 +2662,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                                                  "cmp");
                         ti.cmp_glue = some[ValueRef](glue_fn);
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_cmp, ti.ty_params);
+                                          mgghf_cmp, ti.ty_params, "cmp");
                         log #fmt("--- lazily_emit_tydesc_glue CMP %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -7060,11 +7087,9 @@ fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
 }
 
 
-// trans_fn: creates an LLVM function corresponding to a source language
-// function.
-fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
-            option::t[ty::t] ty_self, &ast::ty_param[] ty_params,
-            ast::node_id id) {
+fn trans_fn_inner(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
+                  option::t[ty::t] ty_self, &ast::ty_param[] ty_params,
+                  ast::node_id id) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
@@ -7112,6 +7137,22 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
+}
+
+
+// trans_fn: creates an LLVM function corresponding to a source language
+// function.
+fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
+            option::t[ty::t] ty_self, &ast::ty_param[] ty_params,
+            ast::node_id id) {
+    if !cx.ccx.sess.get_opts().stats {
+        trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
+    }
+
+    auto start = time::get_time();
+    trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
+    auto end = time::get_time();
+    log_fn_time(cx.ccx, str::connect_ivec(cx.path, "::"), start, end);
 }
 
 // process_fwding_mthd: Create the forwarding function that appears in a
@@ -8649,7 +8690,8 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                        mutable n_derived_tydescs=0u,
                        mutable n_glues_created=0u,
                        mutable n_null_glues=0u,
-                       mutable n_real_glues=0u),
+                       mutable n_real_glues=0u,
+                       fn_times=@mutable ~[]),
              upcalls=upcall::declare_upcalls(tn, tydesc_type, taskptr_type,
                                              llmod),
              rust_object_type=T_rust_object(),
@@ -8672,6 +8714,10 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
         log_err #fmt("n_glues_created: %u", ccx.stats.n_glues_created);
         log_err #fmt("n_null_glues: %u", ccx.stats.n_null_glues);
         log_err #fmt("n_real_glues: %u", ccx.stats.n_real_glues);
+
+        for (tup(str,int) timing in *ccx.stats.fn_times) {
+            log_err #fmt("time: %s took %d ms", timing._0, timing._1);
+        }
     }
     ret llmod;
 }
