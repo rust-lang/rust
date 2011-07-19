@@ -196,7 +196,10 @@ fn store_imm(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
 fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
     alt (dest) {
       dst_nil { /* no-op */ }
-      dst_imm(?box) { fail "dst_imm in store_ptr"; }
+      dst_imm(?box) {
+        assert (std::option::is_none(*box));
+        *box = some(bcx.build.Load(llsrcptr));
+      }
       dst_alias(?box) {
         assert (std::option::is_none(*box));
         *box = some(llsrcptr);
@@ -423,6 +426,23 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
     ret next_bcx;
 }
 
+fn trans_path(&@block_ctxt bcx, &dest dest, &ast::path path, ast::node_id id)
+        -> @block_ctxt {
+    alt (bcx_tcx(bcx).def_map.get(id)) {
+      ast::def_local(?def_id) {
+        alt (bcx_fcx(bcx).lllocals.find(def_id._1)) {
+          none { bcx_ccx(bcx).sess.unimpl("upvar in trans_path"); }
+          some(?llptr) {
+            // TODO: Copy hooks.
+            store_ptr(bcx, dest, llptr);
+          }
+        }
+      }
+      _ { bcx_ccx(bcx).sess.unimpl("def variant in trans_dps::trans_path"); }
+    }
+    ret bcx;
+}
+
 fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
     alt (expr.node) {
       ast::expr_lit(?lit) { trans_lit(bcx, dest, *lit); ret bcx; }
@@ -432,6 +452,7 @@ fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
       ast::expr_binary(?op, ?lhs, ?rhs) {
         ret trans_binary(bcx, dest, expr.span, op, lhs, rhs);
       }
+      ast::expr_path(?path) { ret trans_path(bcx, dest, path, expr.id); }
       _ { fail "unhandled expr type in trans_expr"; }
     }
 }
