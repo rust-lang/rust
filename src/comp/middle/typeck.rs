@@ -216,8 +216,8 @@ fn structurally_resolved_type(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::t {
         case (fix_ok(?typ_s)) { ret typ_s; }
         case (fix_err(_)) {
             fcx.ccx.tcx.sess.span_fatal(sp,
-                                      "the type of this value must be " +
-                                          "known in this context");
+                                        "the type of this value must be \
+                                        known in this context");
         }
     }
 }
@@ -247,9 +247,9 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (some[option::t[ty::t]](some[ty::t](?ty))) { ret ty; }
         case (some[option::t[ty::t]](none)) {
             tcx.sess.span_fatal(ast_ty.span,
-                              "illegal recursive type " +
-                              "(insert a tag in the cycle, " +
-                              "if this is desired)");
+                              "illegal recursive type \
+                              insert a tag in the cycle, \
+                              if this is desired)");
         }
         case (none[option::t[ty::t]]) { }
     } /* go on */
@@ -280,8 +280,8 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         if (ivec::len(param_bindings) !=
                 ty::count_ty_params(tcx, params_opt_and_ty._1)) {
             tcx.sess.span_fatal(sp,
-                              "Wrong number of type arguments for a" +
-                                  " polymorphic tag");
+                                "Wrong number of type arguments for a \
+                                polymorphic tag");
         }
         auto typ =
             ty::substitute_type_params(tcx, param_bindings,
