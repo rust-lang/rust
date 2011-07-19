@@ -1,3 +1,5 @@
+// xfail-stage0
+
 use std;
 import std::ivec;
 import std::int;
