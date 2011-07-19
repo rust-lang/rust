@@ -52,7 +52,7 @@ fn color_supported() -> bool {
     ret alt (generic_os::getenv("TERM")) {
           case (option::some(?env)) {
             for (str term in supported_terms) {
-                if (str::eq(term, env)) { true }
+                if (str::eq(term, env)) { ret true; }
             }
             false
           }
