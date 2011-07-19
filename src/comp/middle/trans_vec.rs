@@ -127,8 +127,10 @@ fn trans_concat(&@block_ctxt cx, &dest in_dest, &span sp, ty::t t,
     // TODO: Detect "a + [ literal ]" and optimize to copying the literal
     //       elements in directly.
 
-    // Translate the LHS and RHS. Pull out their length and data.
     auto t = ty::expr_ty(bcx_tcx(bcx), lhs);
+    auto skip_null = ty::type_is_str(bcx_tcx(bcx), t);
+
+    // Translate the LHS and RHS. Pull out their length and data.
     auto lhs_tmp = trans_dps::dest_alias(bcx_tcx(bcx), t);
     bcx = trans_dps::trans_expr(bcx, lhs_tmp, lhs);
     auto lllhsptr = trans_dps::dest_ptr(lhs_tmp);
@@ -141,6 +143,8 @@ fn trans_concat(&@block_ctxt cx, &dest in_dest, &span sp, ty::t t,
     bcx = r0._0; auto lllhslen = r0._1; auto lllhsdata = r0._2;
     r0 = get_len_and_data(bcx, t, llrhsptr);
     bcx = r0._0; auto llrhslen = r0._1; auto llrhsdata = r0._2;
+
+    if skip_null { lllhslen = bcx.build.Sub(lllhslen, C_int(1)); }
 
     // Allocate the destination.
     auto r1 = trans_dps::spill_alias(bcx, in_dest, t);

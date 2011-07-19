@@ -915,6 +915,7 @@ fn type_is_sequence(&ctxt cx, &t ty) -> bool {
 fn type_is_str(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_str) { ret true; }
+        case (ty_istr) { ret true; }
         case (_) { ret false; }
     }
 }
