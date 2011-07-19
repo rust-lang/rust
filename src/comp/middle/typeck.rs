@@ -582,20 +582,20 @@ mod collect {
                 inputs=inputs, output=output, cf=m.node.meth.decl.cf,
                 constrs=out_constrs);
     }
-    fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
+    fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj ob,
                  &ast::ty_param[] ty_params) -> ty::ty_param_count_and_ty {
-        auto methods = get_obj_method_types(cx, obj_info);
+        auto methods = get_obj_method_types(cx, ob);
         auto t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
         ret tup(ivec::len(ty_params), t_obj);
     }
-    fn ty_of_obj_ctor(@ctxt cx, &ast::ident id, &ast::_obj obj_info,
+    fn ty_of_obj_ctor(@ctxt cx, &ast::ident id, &ast::_obj ob,
                       ast::node_id ctor_id, &ast::ty_param[] ty_params) ->
        ty::ty_param_count_and_ty {
-        auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
+        auto t_obj = ty_of_obj(cx, id, ob, ty_params);
 
         let arg[] t_inputs = ~[];
-        for (ast::obj_field f in obj_info.fields) {
+        for (ast::obj_field f in ob.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
             t_inputs += ~[rec(mode=ty::mo_alias(false), ty=t_field)];
