@@ -382,29 +382,38 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
     }
 }
 
-// FIXME breaks on unreacheable cases
+// Returns false for unreachable blocks
 fn make_phi_bindings(&@block_ctxt bcx, &exit_node[] map,
-                     &ast::pat_id_map ids) {
-    fn assoc(str key, &tup(str, ValueRef)[] list) -> ValueRef {
+                     &ast::pat_id_map ids) -> bool {
+    fn assoc(str key, &tup(str, ValueRef)[] list) -> option::t[ValueRef] {
         for (tup(str, ValueRef) elt in list) {
-            if (str::eq(elt._0, key)) { ret elt._1; }
+            if (str::eq(elt._0, key)) { ret some(elt._1); }
         }
-        fail;
+        ret none;
     }
 
     auto our_block = bcx.llbb as uint;
+    auto success = true;
     for each (@tup(ast::ident, ast::node_id) item in ids.items()) {
         auto llbbs = ~[];
         auto vals = ~[];
         for (exit_node ex in map) {
             if (ex.to as uint == our_block) {
-                llbbs += ~[ex.from];
-                vals += ~[assoc(item._0, ex.bound)];
+                alt (assoc(item._0, ex.bound)) {
+                    some(?val) {
+                        llbbs += ~[ex.from];
+                        vals += ~[val];
+                    }
+                    none {}
+                }
             }
         }
-        auto phi = bcx.build.Phi(val_ty(vals.(0)), vals, llbbs);
-        bcx.fcx.lllocals.insert(item._1, phi);
+        if (ivec::len(vals) > 0u) {
+            auto phi = bcx.build.Phi(val_ty(vals.(0)), vals, llbbs);
+            bcx.fcx.lllocals.insert(item._1, phi);
+        } else { success = false; }
     }
+    ret success;
 }
 
 fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
@@ -444,9 +453,13 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr, &ast::arm[] arms,
     auto arm_results = ~[];
     for (ast::arm a in arms) {
         auto body_cx = bodies.(i);
-        make_phi_bindings(body_cx, exit_map, ast::pat_id_map(a.pats.(0)));
-        auto block_res = trans::trans_block(body_cx, a.block, output);
-        arm_results += ~[block_res];
+        if (make_phi_bindings(body_cx, exit_map,
+                              ast::pat_id_map(a.pats.(0)))) {
+            auto block_res = trans::trans_block(body_cx, a.block, output);
+            arm_results += ~[block_res];
+        } else { // Unreachable
+            arm_results += ~[rslt(body_cx, C_nil())];
+        }
         i += 1u;
     }
     ret rslt(trans::join_branches(cx, arm_results), C_nil());
