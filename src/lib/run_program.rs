@@ -2,6 +2,11 @@
 import str::sbuf;
 import vec::vbuf;
 
+export program;
+export run_program;
+export start_program;
+export program_output;
+
 native "rust" mod rustrt {
     fn rust_run_program(vbuf argv, int in_fd, int out_fd, int err_fd) -> int;
 }
@@ -13,12 +18,18 @@ fn arg_vec(str prog, vec[str] args) -> vec[sbuf] {
     ret argptrs;
 }
 
-fn run_program(str prog, vec[str] args) -> int {
+fn spawn_process(str prog, vec[str] args,
+                 int in_fd, int out_fd, int err_fd) -> int {
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
     auto argv = arg_vec(prog, args);
-    auto pid = rustrt::rust_run_program(vec::buf(argv), 0, 0, 0);
-    ret os::waitpid(pid);
+    auto pid = rustrt::rust_run_program(vec::buf(argv),
+                                        in_fd, out_fd, err_fd);
+    ret pid;
+}
+
+fn run_program(str prog, vec[str] args) -> int {
+    ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
 type program =
@@ -33,12 +44,8 @@ type program =
 fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os::pipe();
     auto pipe_output = os::pipe();
-    // Note: we have to hold on to this vector reference while we hold a
-    // pointer to its buffer
-    auto argv = arg_vec(prog, args);
-    auto pid =
-        rustrt::rust_run_program(vec::buf(argv),
-                                 pipe_input._0, pipe_output._1, 0);
+    auto pid = spawn_process(prog, args, pipe_input._0, pipe_output._1, 0);
+
     if (pid == -1) { fail; }
     os::libc::close(pipe_input._0);
     os::libc::close(pipe_output._1);
