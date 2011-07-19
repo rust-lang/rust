@@ -122,7 +122,6 @@ fn trans_concat(&@block_ctxt cx, &dest in_dest, &span sp, ty::t t,
                 &@ast::expr lhs, &@ast::expr rhs) -> @block_ctxt {
     auto bcx = cx;
 
-    // TODO: Skip null if copying strings.
     // TODO: Detect "a = a + b" and promote to trans_append.
     // TODO: Detect "a + [ literal ]" and optimize to copying the literal
     //       elements in directly.
