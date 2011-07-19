@@ -250,14 +250,14 @@ fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
 // corresponding to a definition ID:
 fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
-        case (some[option::t[ty::t]](some[ty::t](?ty))) { ret ty; }
-        case (some[option::t[ty::t]](none)) {
+        case (some(some(?ty))) { ret ty; }
+        case (some(none)) {
             tcx.sess.span_fatal(ast_ty.span,
                               "illegal recursive type \
                               insert a tag in the cycle, \
                               if this is desired)");
         }
-        case (none[option::t[ty::t]]) { }
+        case (none) { }
     } /* go on */
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none[ty::t]);
@@ -1201,7 +1201,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
 
     // Add object fields, if any.
     alt (get_obj_info(ccx)) {
-        case (option::some(?oinfo)) {
+        case (some(?oinfo)) {
             alt (oinfo) {
                 case (regular_obj(?obj_fields, _)) {
                     for (ast::obj_field f in obj_fields) {
@@ -1219,7 +1219,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
                 }
             }
         }
-        case (option::none) {/* no fields */ }
+        case (none) {/* no fields */ }
     }
     // Add formal parameters.
     auto args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
@@ -1240,7 +1240,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
             case (none) {
                 // Auto slot.
                 assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                       local.node.ident, none[ty::t]);
+                       local.node.ident, none);
             }
             case (some(?ast_ty)) {
                 // Explicitly typed slot.
@@ -1261,7 +1261,7 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
         alt (p.node) {
             case (ast::pat_bind(?ident)) {
                 assign(ccx.tcx, vb, locals, local_names, nvi,
-                       p.id, ident, none[ty::t]);
+                       p.id, ident, none);
             }
             case (_) {/* no-op */ }
         }
@@ -1296,14 +1296,14 @@ fn replace_expr_type(&@fn_ctxt fcx, &@ast::expr expr,
     auto new_tps;
     if (ty::expr_has_ty_params(fcx.ccx.tcx, expr)) {
         new_tps = some[ty::t[]](new_tyt._0);
-    } else { new_tps = none[ty::t[]]; }
+    } else { new_tps = none; }
     write::ty_fixup(fcx, expr.id, tup(new_tps, new_tyt._1));
 }
 
 // FIXME remove once std::ivec::find makes it into a snapshot
 fn ivec_find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
     for (T elt in v) { if (f(elt)) { ret some[T](elt); } }
-    ret none[T];
+    ret none;
 }
 
 // AST fragment checking
@@ -1692,16 +1692,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         check_block(fcx, thn);
         auto if_t =
             alt (elsopt) {
-                    case (some(?els)) {
-                        check_expr(fcx, els);
-                        auto thn_t = block_ty(fcx.ccx.tcx, thn);
-                        auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
-                        demand::simple(fcx, sp, thn_t, elsopt_t);
-                        if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
-                            elsopt_t
-                                } else { thn_t }
-                    }
-                    case (none) { ty::mk_nil(fcx.ccx.tcx) }
+                case (some(?els)) {
+                    check_expr(fcx, els);
+                    auto thn_t = block_ty(fcx.ccx.tcx, thn);
+                    auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
+                    demand::simple(fcx, sp, thn_t, elsopt_t);
+                    if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
+                        elsopt_t
+                            } else { thn_t }
+                }
+                case (none) { ty::mk_nil(fcx.ccx.tcx) }
             };
         write::ty_only_fixup(fcx, id, if_t);
     }
