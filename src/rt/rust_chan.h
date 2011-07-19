@@ -5,12 +5,13 @@ class rust_chan : public kernel_owned<rust_chan>,
                   public rust_cond {
 public:
     RUST_REFCOUNTED_WITH_DTOR(rust_chan, destroy())
-    rust_chan(rust_task *task, maybe_proxy<rust_port> *port, size_t unit_sz);
+    rust_chan(rust_kernel *kernel, maybe_proxy<rust_port> *port,
+              size_t unit_sz);
 
     ~rust_chan();
 
     rust_kernel *kernel;
-    smart_ptr<rust_task> task;
+    rust_task *task;
     maybe_proxy<rust_port> *port;
     size_t idx;
     circular_buffer buffer;

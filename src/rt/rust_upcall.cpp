@@ -130,7 +130,7 @@ upcall_new_chan(rust_task *task, rust_port *port) {
         (uintptr_t) task, task->name, port);
     I(sched, port);
     return new (task->kernel, "rust_chan")
-        rust_chan(task, port, port->unit_sz);
+        rust_chan(task->kernel, port, port->unit_sz);
 }
 
 /**

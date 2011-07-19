@@ -247,10 +247,11 @@ fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.recv,
                    ~[bcx.fcx.lltaskptr, lldataptr, llportptr]);
     auto data_load = load_if_immediate(bcx, to, unit_ty);
-    auto cp = copy_val(bcx, action, to, data_load, unit_ty);
-    bcx = cp.bcx;
-    // TODO: Any cleanup need to be done here?
-    ret rslt(bcx, to);
+    //auto cp = copy_val(bcx, action, to, data_load, unit_ty);
+    //bcx = cp.bcx;
+
+    add_clean_temp(cx, data_load, unit_ty);
+    ret rslt(bcx, data_load);
 }
 
 // Does a deep copy of a value. This is needed for passing arguments to child

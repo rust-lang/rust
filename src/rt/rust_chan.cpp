@@ -4,12 +4,10 @@
 /**
  * Create a new rust channel and associate it with the specified port.
  */
-rust_chan::rust_chan(rust_task *task,
-                     maybe_proxy<rust_port> *port,
+rust_chan::rust_chan(rust_kernel *kernel, maybe_proxy<rust_port> *port,
                      size_t unit_sz)
     : ref_count(1),
-      kernel(task->kernel),
-      task(task),
+      kernel(kernel),
       port(port),
       buffer(kernel, unit_sz) {
     if (port) {
@@ -39,6 +37,7 @@ void rust_chan::associate(maybe_proxy<rust_port> *port) {
             this, port);
         ++this->ref_count;
         this->task = port->referent()->task;
+        this->task->ref();
         this->port->referent()->chans.push(this);
     }
 }
@@ -59,6 +58,7 @@ void rust_chan::disassociate() {
             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
             this, port->referent());
         --this->ref_count;
+        --this->task->ref_count;
         this->task = NULL;
         port->referent()->chans.swap_delete(this);
     }
@@ -118,7 +118,7 @@ rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
         target_task = target->as_proxy()->handle()->referent();
     }
     return new (target_task->kernel, "cloned chan")
-        rust_chan(target_task, port, unit_sz);
+        rust_chan(kernel, port, unit_sz);
 }
 
 /**

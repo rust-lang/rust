@@ -10,8 +10,8 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
 
     // Allocate a remote channel, for remote channel data.
-    remote_channel = new (task->kernel, "remote chan")
-        rust_chan(task, this, unit_sz);
+    remote_channel = new (kernel, "remote chan")
+        rust_chan(kernel, this, unit_sz);
 }
 
 rust_port::~rust_port() {

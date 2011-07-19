@@ -1,6 +1,4 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 
 use std;
 import std::task;
