@@ -14,9 +14,10 @@ fn arg_vec(str prog, vec[str] args) -> vec[sbuf] {
 }
 
 fn run_program(str prog, vec[str] args) -> int {
-    auto pid =
-        rustrt::rust_run_program(vec::buf[sbuf](arg_vec(prog, args)), 0, 0,
-                                 0);
+    // Note: we have to hold on to this vector reference while we hold a
+    // pointer to its buffer
+    auto argv = arg_vec(prog, args);
+    auto pid = rustrt::rust_run_program(vec::buf(argv), 0, 0, 0);
     ret os::waitpid(pid);
 }
 
@@ -32,8 +33,11 @@ type program =
 fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os::pipe();
     auto pipe_output = os::pipe();
+    // Note: we have to hold on to this vector reference while we hold a
+    // pointer to its buffer
+    auto argv = arg_vec(prog, args);
     auto pid =
-        rustrt::rust_run_program(vec::buf[sbuf](arg_vec(prog, args)),
+        rustrt::rust_run_program(vec::buf(argv),
                                  pipe_input._0, pipe_output._1, 0);
     if (pid == -1) { fail; }
     os::libc::close(pipe_input._0);
