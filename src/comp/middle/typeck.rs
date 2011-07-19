@@ -68,7 +68,7 @@ type fn_ctxt =
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty ;
+type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty;
 
 fn lookup_local(&@fn_ctxt fcx, &span sp, ast::node_id id) -> int {
     alt (fcx.locals.find(id)) {
@@ -1164,6 +1164,7 @@ type gather_result =
         hashmap[ast::node_id, ast::ident] local_names,
         int next_var_id);
 
+// Used only as a helper for check_fn.
 fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
                  &ast::node_id id) -> gather_result {
     fn next_var_id(@mutable int nvi) -> int {
@@ -1191,8 +1192,8 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
     auto locals = new_int_hash[int]();
     auto local_names = new_int_hash[ast::ident]();
     auto nvi = @mutable 0;
-    // Add object fields, if any.
 
+    // Add object fields, if any.
     alt (get_obj_info(ccx)) {
         case (option::some(?oinfo)) {
             for (ast::obj_field f in oinfo.obj_fields) {
@@ -1204,7 +1205,6 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
         case (option::none) {/* no fields */ }
     }
     // Add formal parameters.
-
     auto args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     auto i = 0u;
     for (ty::arg arg in args) {
@@ -2113,8 +2113,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                                context");
                 }
             }
-            // Grab this method's type out of the current object type.
 
+            // Grab this method's type out of the current object type.
             alt (structure_of(fcx, expr.span, this_obj_ty)) {
                 case (ty::ty_obj(?methods)) {
                     for (ty::method method in methods) {
@@ -2268,7 +2268,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     write::ty_only_fixup(fcx, id, fields.(ix).mt.ty);
                 }
                 case (ty::ty_obj(?methods)) {
-                    // log_err "checking method_idx 1...";
                     let uint ix =
                         ty::method_idx(fcx.ccx.tcx.sess, expr.span, field,
                                        methods);
@@ -2458,14 +2457,14 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                                       method_types.(i)));
                 i += 1u;
             }
-            // Typecheck the methods.
 
+            // Typecheck the methods.
             for (@ast::method method in anon_obj.methods) {
                 check_method(fcx.ccx, method);
             }
             next_ty_var(fcx);
-            // Now remove the info from the stack.
 
+            // Now remove the info from the stack.
             ivec::pop[obj_info](fcx.ccx.obj_infos);
         }
         case (_) {
@@ -2658,13 +2657,12 @@ fn check_item(@crate_ctxt ccx, &@ast::item it) {
 
             ccx.obj_infos += ~[rec(obj_fields=ob.fields, this_obj=it.id)];
             // Typecheck the methods.
-
             for (@ast::method method in ob.methods) {
                 check_method(ccx, method);
             }
             option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
-            // Now remove the info from the stack.
 
+            // Now remove the info from the stack.
             ivec::pop[obj_info](ccx.obj_infos);
         }
         case (_) {/* nothing to do */ }
