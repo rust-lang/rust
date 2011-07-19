@@ -50,7 +50,7 @@ fn start_program(str prog, vec[str] args) -> @program {
     os::libc::close(pipe_input._0);
     os::libc::close(pipe_output._1);
     obj new_program(int pid,
-                    int in_fd,
+                    mutable int in_fd,
                     os::libc::FILE out_file,
                     mutable bool finished) {
         fn get_id() -> int { ret pid; }
@@ -60,14 +60,23 @@ fn start_program(str prog, vec[str] args) -> @program {
         fn output() -> io::reader {
             ret io::new_reader(io::FILE_buf_reader(out_file, false));
         }
-        fn close_input() { os::libc::close(in_fd); }
+        fn close_input() {
+            auto invalid_fd = -1;
+            if (in_fd != invalid_fd) {
+                os::libc::close(in_fd);
+                in_fd = invalid_fd;
+            }
+        }
         fn finish() -> int {
             if (finished) { ret 0; }
             finished = true;
-            os::libc::close(in_fd);
+            self.close_input();
             ret os::waitpid(pid);
         }drop {
-             if (!finished) { os::libc::close(in_fd); os::waitpid(pid); }
+            self.close_input();
+            if (!finished) {
+                os::waitpid(pid);
+            }
              os::libc::fclose(out_file);
          }
     }
