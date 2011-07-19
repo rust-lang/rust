@@ -202,6 +202,7 @@ rust_ivec_heap
     uint8_t data[];
 };
 
+// Note that the payload is actually size 4*sizeof(elem), even when heapified
 union
 rust_ivec_payload
 {

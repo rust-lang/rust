@@ -9,4 +9,12 @@ fn test_connect() {
     assert (fs::connect("a" + slash, "b") == "a" + slash + "b");
 }
 
-fn main() { test_connect(); }
+// Issue #712
+fn test_list_dir_no_invalid_memory_access() {
+  fs::list_dir(".");
+}
+
+fn main() {
+  test_connect();
+  test_list_dir_no_invalid_memory_access();
+}

@@ -608,8 +608,12 @@ rust_list_files_ivec(rust_task *task, rust_str *path) {
       closedir(dirp);
   }
 #endif
+  size_t str_ivec_sz =
+      sizeof(size_t)            // fill
+      + sizeof(size_t)          // alloc
+      + sizeof(rust_str *) * 4; // payload
   rust_box *box = (rust_box *)task->malloc(sizeof(rust_box) +
-                                           sizeof(rust_ivec));
+                                           str_ivec_sz);
   box->ref_count = 1;
   rust_ivec *iv = (rust_ivec *)&box->data;
   iv->fill = 0;
