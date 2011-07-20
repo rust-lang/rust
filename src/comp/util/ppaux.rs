@@ -11,6 +11,7 @@ import syntax::print::pp;
 import syntax::print::pprust;
 import syntax::print::pprust::path_to_str;
 import syntax::print::pprust::constr_args_to_str;
+import syntax::print::pprust::proto_to_str;
 import pp::word;
 import pp::eof;
 import pp::zerobreak;
@@ -49,11 +50,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  &arg[] inputs, t output, ast::controlflow cf,
                  &(@constr)[] constrs) -> str {
-        auto s;
-        alt (proto) {
-            case (ast::proto_iter) { s = "iter"; }
-            case (ast::proto_fn) { s = "fn"; }
-        }
+        auto s = proto_to_str(proto);
         alt (ident) { case (some(?i)) { s += " "; s += i; } case (_) { } }
         s += "(";
         auto strs = [];
