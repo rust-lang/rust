@@ -122,6 +122,7 @@ export ty_box;
 export ty_chan;
 export ty_char;
 export ty_constr;
+export ty_constr_arg;
 export ty_float;
 export ty_fn;
 export ty_fn_abi;

@@ -82,6 +82,23 @@ fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr)[] {
     ret rslt;
 }
 
+// FIXME less copy-and-paste
+fn parse_ty_constrs(@pstate st, str_def sd) -> (@ty::type_constr)[] {
+    let (@ty::type_constr)[] rslt = ~[];
+    alt (peek(st) as char) {
+        case (':') {
+            do {
+                next(st);
+                let @ty::type_constr one = parse_constr[path](st, sd,
+                                                  parse_ty_constr_arg);
+                rslt += ~[one];
+            } while (peek(st) as char == ';')
+        }
+        case (_) { }
+    }
+    ret rslt;
+}
+
 fn parse_path(@pstate st, str_def sd) -> ast::path {
     let ast::ident[] idents = ~[];
     fn is_last(char c) -> bool {
@@ -132,6 +149,19 @@ fn parse_constr_arg(@pstate st, str_def sd) -> ast::fn_constr_arg {
           args += [respan(st.span, ast::carg_lit(lit))];
           }
         */
+      }
+    }
+}
+
+fn parse_ty_constr_arg(@pstate st, str_def sd)
+    -> ast::constr_arg_general_[path] {
+     alt (peek(st) as char) {
+      case ('*') {
+        st.pos += 1u;
+        ret ast::carg_base;
+      }
+      case (?c) {
+          ret ast::carg_ident(parse_path(st, sd));
       }
     }
 }
@@ -293,6 +323,13 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                     ret tt;
                 }
             }
+        }
+        case ('A') {
+            assert (next(st) as char == '[');
+            auto tt = parse_ty(st, sd);
+            auto tcs = parse_ty_constrs(st, sd);
+            assert (next(st) as char == ']');
+            ret ty::mk_constr(st.tcx, tt, tcs);
         }
         case (?c) {
             log_err "unexpected char in type string: ";

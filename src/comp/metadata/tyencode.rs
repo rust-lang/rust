@@ -191,6 +191,14 @@ fn enc_sty(&ioivec::writer w, &@ctxt cx, &ty::sty st) {
         }
         case (ty::ty_type) { w.write_char('Y'); }
         case (ty::ty_task) { w.write_char('a'); }
+        case (ty::ty_constr(?ty, ?cs)) {
+            w.write_str("A[");
+            enc_ty(w, cx, ty);
+            for (@ty::type_constr tc in cs) {
+                enc_ty_constr(w, cx, tc);
+            }
+            w.write_char(']');
+        }
     }
 }
 fn enc_proto(&ioivec::writer w, proto proto) {
@@ -229,6 +237,7 @@ fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
 
 }
 
+// FIXME less copy-and-paste
 fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr c) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
@@ -241,6 +250,25 @@ fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr c) {
             case (carg_base) { w.write_char('*'); }
             case (carg_ident(?i)) {
                 w.write_uint(i);
+            }
+            case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }
+        }
+    }
+    w.write_char(')');
+}
+
+fn enc_ty_constr(&ioivec::writer w, &@ctxt cx, &@ty::type_constr c) {
+    w.write_str(path_to_str(c.node.path));
+    w.write_char('(');
+    w.write_str(cx.ds(c.node.id));
+    w.write_char('|');
+    auto semi = false;
+    for (@ty::ty_constr_arg a in c.node.args) {
+        if (semi) { w.write_char(';'); } else { semi = true; }
+        alt (a.node) {
+            case (carg_base) { w.write_char('*'); }
+            case (carg_ident(?p)) {
+                w.write_str(path_to_str(p));
             }
             case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }
         }
