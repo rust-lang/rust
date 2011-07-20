@@ -171,6 +171,8 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("gc", ());
     words.insert("native", ());
     words.insert("fn", ());
+    words.insert("block", ());
+    words.insert("lambda", ());
     words.insert("pred", ());
     words.insert("iter", ());
     words.insert("block", ());
@@ -300,6 +302,8 @@ fn parse_proto(&parser p) -> ast::proto {
         ret ast::proto_iter;
     } else if (eat_word(p, "fn")) {
         ret ast::proto_fn;
+    } else if (eat_word(p, "block")) {
+        ret ast::proto_block;
     } else if (eat_word(p, "pred")) {
         ret ast::proto_fn;
     } else { unexpected(p, p.peek()); }
@@ -582,6 +586,10 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_fn, p, flo);
         alt (t) { case (ast::ty_fn(_, _, ?out, _, _)) { hi = out.span.hi; } }
+    } else if (eat_word(p, "block")) {
+        auto flo = p.get_last_lo_pos();
+        t = parse_ty_fn(ast::proto_block, p, flo);
+        alt (t) { case (ast::ty_fn(_, _, ?out, _, _)) { hi = out.span.hi; } }
     } else if (eat_word(p, "iter")) {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_iter, p, flo);
@@ -830,7 +838,11 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (eat_word(p, "spawn")) {
         ret parse_spawn_expr(p);
     } else if (eat_word(p, "fn")) {
-        ret parse_fn_expr(p);
+        ret parse_fn_expr(p, ast::proto_fn);
+    } else if (eat_word(p, "block")) {
+        ret parse_fn_expr(p, ast::proto_block);
+    } else if (eat_word(p, "lambda")) {
+        ret parse_fn_expr(p, ast::proto_closure);
     } else if (p.peek() == token::LBRACKET) {
         p.bump();
         auto mut = parse_mutability(p);
@@ -1320,11 +1332,11 @@ fn parse_if_expr(&parser p) -> @ast::expr {
     }
 }
 
-fn parse_fn_expr(&parser p) -> @ast::expr {
+fn parse_fn_expr(&parser p, ast::proto proto) -> @ast::expr {
     auto lo = p.get_last_lo_pos();
     auto decl = parse_fn_decl(p, ast::impure_fn);
     auto body = parse_block(p);
-    auto _fn = rec(decl=decl, proto=ast::proto_fn, body=body);
+    auto _fn = rec(decl=decl, proto=proto, body=body);
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
 
@@ -1687,7 +1699,7 @@ fn parse_source_stmt(&parser p) -> @ast::stmt {
             }
             case (fn_no_item) { // parse_item will have already skipped "fn"
 
-                auto e = parse_fn_expr(p);
+                auto e = parse_fn_expr(p, ast::proto_fn);
                 e = parse_dot_or_call_expr_with(p, e);
                 ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
             }

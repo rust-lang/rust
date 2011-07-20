@@ -1551,6 +1551,8 @@ fn proto_to_str(&ast::proto p) -> str {
     ret alt (p) {
         ast::proto_fn { "fn" }
         ast::proto_iter { "iter" }
+        ast::proto_block { "block" }
+        ast::proto_closure { "lambda" }
     };
 }
 

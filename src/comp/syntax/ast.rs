@@ -166,7 +166,7 @@ tag layer { layer_value; layer_state; layer_gc; }
 
 tag _auth { auth_unsafe; }
 
-tag proto { proto_iter; proto_fn; }
+tag proto { proto_iter; proto_fn; proto_block; proto_closure; }
 
 tag binop {
     add;
