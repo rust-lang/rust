@@ -1,4 +1,3 @@
-
 import syntax::ast;
 import ast::mutability;
 import ast::local_def;
@@ -186,8 +185,8 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
         ty_substs_opt = some[ty::t[]](ty_substs);
         if (ty_param_count == 0u) {
             fcx.ccx.tcx.sess.span_fatal(sp,
-                                      "this item does not take type " +
-                                          "parameters");
+                                      "this item does not take type \
+                                      parameters");
             fail;
         }
     } else {
@@ -1527,10 +1526,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
                &(option::t[@ast::expr])[] args, call_kind call_kind) {
         // Check the function.
-
         check_expr(fcx, f);
-        // Get the function type.
 
+        // Get the function type.
         auto fty = expr_ty(fcx.ccx.tcx, f);
 
         // We want to autoderef calls but not binds
@@ -1551,8 +1549,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                           + ty_to_str(fcx.ccx.tcx, fty));
             }
         }
-        // Check that the correct number of arguments were supplied.
 
+        // Check that the correct number of arguments were supplied.
         auto expected_arg_count = ivec::len[ty::arg](arg_tys);
         auto supplied_arg_count = ivec::len[option::t[@ast::expr]](args);
         if (expected_arg_count != supplied_arg_count) {
@@ -1568,9 +1566,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                                " was"
                                            } else { "s were" }));
         }
+
         // Check the arguments.
         // TODO: iter2
-
         auto i = 0u;
         for (option::t[@ast::expr] a_opt in args) {
             auto check_ty_vars = call_kind == kind_spawn;
@@ -2486,9 +2484,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
 
             write::ty_only_fixup(fcx, id, ot);
+
             // Write the methods into the node type table.  (This happens in
             // collect::convert for regular objects.)
-
             auto i = 0u;
             while (i < ivec::len[@ast::method](ao.methods)) {
                 write::ty_only(fcx.ccx.tcx, ao.methods.(i).node.id,
@@ -2569,7 +2567,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::local local) {
     alt (fcx.locals.find(a_id)) {
         case (none) {
             fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
-                                     local.node.ident);
+                                 local.node.ident);
         }
         case (some(?i)) {
             auto t = ty::mk_var(fcx.ccx.tcx, i);
@@ -2650,12 +2648,11 @@ fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id) {
     check_block(fcx, body);
     alt (decl.purity) {
         case (ast::pure_fn) {
-
-            // per the previous comment, this just checks that the declared
-            // type is bool, and trusts that that's the actual return type.
+            // This just checks that the declared type is bool, and trusts
+            // that that's the actual return type.
             if (!ty::type_is_bool(ccx.tcx, fcx.ret_ty)) {
                 ccx.tcx.sess.span_fatal(body.span,
-                                      "Non-boolean return type in pred");
+                                        "Non-boolean return type in pred");
             }
         }
         case (_) { }
