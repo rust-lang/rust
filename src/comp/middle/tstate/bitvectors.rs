@@ -1,29 +1,8 @@
-
 import syntax::ast::*;
 import syntax::walk;
 import std::ivec;
 import std::option::*;
-import aux::constr_arg_use;
-import aux::local_node_id_to_def;
-import aux::fn_ctxt;
-import aux::fn_info;
-import aux::log_tritv;
-import aux::log_tritv_err;
-import aux::num_constraints;
-import aux::cinit;
-import aux::cpred;
-import aux::ninit;
-import aux::npred;
-import aux::pred_desc;
-import aux::match_args;
-import aux::constr_;
-import aux::block_precond;
-import aux::stmt_precond;
-import aux::expr_precond;
-import aux::block_prestate;
-import aux::expr_prestate;
-import aux::stmt_prestate;
-import tstate::aux::node_id_to_ts_ann;
+import aux::*;
 import tstate::ann::pre_and_post;
 import tstate::ann::precond;
 import tstate::ann::postcond;
@@ -47,11 +26,12 @@ import tstate::ann::clear_in_prestate;
 import tstate::ann::clear_in_poststate_;
 import tritv::*;
 
-fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
-    assert (fcx.enclosing.constrs.contains_key(c.id));
-    auto rslt = fcx.enclosing.constrs.get(c.id);
-    alt (c.c) {
-        case (ninit(_)) {
+fn bit_num(&fn_ctxt fcx, &tsconstr c) -> uint {
+    auto d = tsconstr_to_def_id(c);
+    assert (fcx.enclosing.constrs.contains_key(d));
+    auto rslt = fcx.enclosing.constrs.get(d);
+    alt (c) {
+        case (ninit(_,_)) {
             alt (rslt) {
                 case (cinit(?n, _, _)) { ret n; }
                 case (_) {
@@ -60,11 +40,10 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
                 }
             }
         }
-        case (npred(_, ?args)) {
+        case (npred(_, _, ?args)) {
             alt (rslt) {
                 case (cpred(_, ?descs)) {
-                    auto d = *descs;
-                    ret match_args(fcx, d, args);
+                    ret match_args(fcx, descs, args);
                 }
                 case (_) {
                     fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint,"
@@ -75,7 +54,7 @@ fn bit_num(&fn_ctxt fcx, &constr_ c) -> uint {
     }
 }
 
-fn promises(&fn_ctxt fcx, &poststate p, &constr_ c) -> bool {
+fn promises(&fn_ctxt fcx, &poststate p, &tsconstr c) -> bool {
     ret promises_(bit_num(fcx, c), p);
 }
 
@@ -161,12 +140,12 @@ fn intersect_states(&prestate p, &prestate q) -> prestate {
     ret rslt;
 }
 
-fn gen(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
+fn gen(&fn_ctxt fcx, node_id id, &tsconstr c) -> bool {
     ret set_in_postcond(bit_num(fcx, c),
                         node_id_to_ts_ann(fcx.ccx, id).conditions);
 }
 
-fn declare_var(&fn_ctxt fcx, &constr_ c, prestate pre) -> prestate {
+fn declare_var(&fn_ctxt fcx, &tsconstr c, prestate pre) -> prestate {
     auto rslt = clone(pre);
     relax_prestate(bit_num(fcx, c), rslt);
     // idea is this is scoped
@@ -209,18 +188,18 @@ fn relax_precond_block(&fn_ctxt fcx, node_id i, &block b) {
     walk::walk_block(v, b);
 }
 
-fn gen_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
+fn gen_poststate(&fn_ctxt fcx, node_id id, &tsconstr c) -> bool {
     log "gen_poststate";
     ret set_in_poststate(bit_num(fcx, c),
                          node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
-fn kill_prestate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
+fn kill_prestate(&fn_ctxt fcx, node_id id, &tsconstr c) -> bool {
     ret clear_in_prestate(bit_num(fcx, c),
                            node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
-fn kill_poststate(&fn_ctxt fcx, node_id id, &constr_ c) -> bool {
+fn kill_poststate(&fn_ctxt fcx, node_id id, &tsconstr c) -> bool {
     log "kill_poststate";
     ret clear_in_poststate(bit_num(fcx, c),
                            node_id_to_ts_ann(fcx.ccx, id).states);
@@ -233,9 +212,8 @@ fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
                 case (some(?i)) {
                     alt (local_node_id_to_def(fcx, e.id)) {
                         case (some(def_local(?d_id))) {
-                            clear_in_poststate_(bit_num(fcx,
-                                                        rec(id=d_id._1,
-                                                            c=ninit(i))), t);
+                            clear_in_poststate_(
+                               bit_num(fcx,ninit(d_id._1, i)), t);
                         }
                         case (some(_)) { /* ignore args (for now...) */ }
                         case (_) {
@@ -252,17 +230,17 @@ fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
 
 fn set_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
                           &poststate t) -> bool {
-    ret set_in_poststate_(bit_num(fcx, rec(id=id, c=ninit(ident))), t);
+    ret set_in_poststate_(bit_num(fcx, ninit(id, ident)), t);
 }
 
 fn clear_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
                             &node_id parent) -> bool {
-    ret kill_poststate(fcx, parent, rec(id=id, c=ninit(ident)));
+    ret kill_poststate(fcx, parent, ninit(id, ident));
 }
 
 fn clear_in_prestate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
                             &node_id parent) -> bool {
-    ret kill_prestate(fcx, parent, rec(id=id, c=ninit(ident)));
+    ret kill_prestate(fcx, parent, ninit(id, ident));
 }
 
 //

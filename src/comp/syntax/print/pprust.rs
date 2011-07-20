@@ -332,7 +332,7 @@ fn print_type(&ps s, &ast::ty ty) {
             space(s.s);
             word(s.s, ":");
             space(s.s);
-            word(s.s, ast_constrs_str(cs));
+            word(s.s, ast_ty_constrs_str(cs));
         }
     }
     end(s);
@@ -1521,10 +1521,10 @@ fn next_comment(&ps s) -> option::t[lexer::cmnt] {
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
 fn constr_args_to_str[T](&fn(&T) -> str f,
-                         &(@ast::constr_arg_general[T])[] args) -> str {
+                         &(@ast::sp_constr_arg[T])[] args) -> str {
     auto comma = false;
     auto s = "(";
-    for (@ast::constr_arg_general[T] a in args) {
+    for (@ast::sp_constr_arg[T] a in args) {
         if (comma) { s += ", "; } else { comma = true; }
         s += constr_arg_to_str[T](f, a.node);
     }
@@ -1547,10 +1547,11 @@ fn constr_arg_to_str[T](&fn(&T) -> str f, &ast::constr_arg_general_[T] c) ->
 fn uint_to_str(&uint i) -> str { ret uint::str(i); }
 
 fn ast_constr_to_str(&@ast::constr c) -> str {
-    ret ast::path_to_str(c.node.path) +
-        constr_args_to_str(uint_to_str, c.node.args);
+    ret path_to_str(c.node.path) +
+          constr_args_to_str(uint_to_str, c.node.args);
 }
 
+// FIXME: fix repeated code
 fn ast_constrs_str(&(@ast::constr)[] constrs) -> str {
     auto s = "";
     auto colon = true;
@@ -1566,6 +1567,22 @@ fn proto_to_str(&ast::proto p) -> str {
         ast::proto_fn { "fn" }
         ast::proto_iter { "iter" }
     };
+}
+
+fn ty_constr_to_str(&@ast::ty_constr c) -> str {
+    ret path_to_str(c.node.path) +
+          constr_args_to_str[ast::path](path_to_str, c.node.args);
+}
+
+
+fn ast_ty_constrs_str(&(@ast::ty_constr)[] constrs) -> str {
+    auto s = "";
+    auto colon = true;
+    for (@ast::ty_constr c in constrs) {
+        if (colon) { s += " : "; colon = false; } else { s += ", "; }
+        s += ty_constr_to_str(c);
+    }
+    ret s;
 }
 
 //

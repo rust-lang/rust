@@ -76,7 +76,7 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) {
             // make a fake fcx
             let @mutable node_id[] v = @mutable ~[];
             auto fake_fcx =
-                rec(enclosing=rec(constrs=@new_int_hash[constraint](),
+                rec(enclosing=rec(constrs=@new_def_hash[constraint](),
                                   num_constraints=0u,
                                   cf=return,
                                   used_vars=v),
@@ -135,7 +135,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
                       node_id id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    auto v_init = rec(id=l.node.id, c=ninit(l.node.ident));
+    auto v_init = ninit(l.node.id, l.node.ident);
     relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
 
     // Hack: for-loop index variables are frequently ignored,
@@ -160,7 +160,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
         case (none) {
             alt (chck) {
                 case (if_check) {
-                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    let sp_constr c = expr_to_constr(fcx.ccx.tcx, antec);
                     gen(fcx, antec.id, c.node);
                 }
                 case (_) {}
@@ -188,7 +188,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
              so that it's *not* set in the alternative. */
             alt (chck) {
                 case (if_check) {
-                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    let sp_constr c = expr_to_constr(fcx.ccx.tcx, antec);
                     gen(fcx, antec.id, c.node);
                 }
                 case (_) {}
@@ -219,8 +219,7 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, node_id larger_id,
                     set_pre_and_post(fcx.ccx, larger_id, p.precondition,
                                      p.postcondition);
                     gen(fcx, larger_id,
-                        rec(id=d_id._1,
-                            c=ninit(path_to_ident(fcx.ccx.tcx, pth))));
+                        ninit(d_id._1, path_to_ident(fcx.ccx.tcx, pth)));
                 }
                 case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
             }
@@ -256,9 +255,8 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
                     alt (df) {
                         case (def_local(?d_id)) {
                             auto i =
-                                bit_num(fcx,
-                                 rec(id=d_id._1,
-                                     c=ninit(path_to_ident(fcx.ccx.tcx, p))));
+                                bit_num(fcx, ninit(d_id._1,
+                                        path_to_ident(fcx.ccx.tcx, p)));
                             require_and_preserve(i, expr_pp(fcx.ccx, lhs));
                         }
                         case (_) {}
@@ -269,8 +267,8 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
             gen_if_local(fcx, lhs, rhs, parent.id, lhs.id, p);
             alt (rhs.node) {
                 case (expr_path(?p1)) {
-                    auto d = local_node_id_to_def_id(fcx, lhs.id);
-                    auto d1 = local_node_id_to_def_id(fcx, rhs.id);
+                    auto d = local_node_id_to_local_def_id(fcx, lhs.id);
+                    auto d1 = local_node_id_to_local_def_id(fcx, rhs.id);
                     alt (d) {
                         case (some(?id)) {
                             alt (d1) {
@@ -312,13 +310,11 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
 
             find_pre_post_exprs(fcx, args, e.id);
             /* see if the call has any constraints on its type */
-            for (@ty::constr_def c in constraints_expr(fcx.ccx.tcx, operator))
+            for (@ty::constr c in constraints_expr(fcx.ccx.tcx, operator))
                 {
                     auto i =
-                        bit_num(fcx,
-                                rec(id=c.node.id._1,
-                                    c=substitute_constr_args(fcx.ccx.tcx,
-                                                             args, c)));
+                        bit_num(fcx, substitute_constr_args(fcx.ccx.tcx,
+                                                             args, c));
                     require(i, expr_pp(fcx.ccx, e));
                 }
 
@@ -347,8 +343,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (def_local(?d_id)) {
                     auto i =
                         bit_num(fcx,
-                                rec(id=d_id._1,
-                                    c=ninit(path_to_ident(fcx.ccx.tcx, p))));
+                          ninit(d_id._1, path_to_ident(fcx.ccx.tcx, p)));
                     use_var(fcx, d_id._1);
                     require_and_preserve(i, rslt);
                 }
@@ -547,7 +542,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
             copy_pre_post(fcx.ccx, e.id, p);
             /* predicate p holds after this expression executes */
 
-            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+            let sp_constr c = expr_to_constr(fcx.ccx.tcx, p);
             gen(fcx, e.id, c.node);
         }
         case (expr_if_check(?p, ?conseq, ?maybe_alt)) {
@@ -608,17 +603,17 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                                 case (expr_path(?p)) {
                                     copy_in_postcond(fcx, id,
                                       tup(alocal.node.ident,
-                                          local_def(alocal.node.id)),
+                                          alocal.node.id),
                                       tup(path_to_ident(fcx.ccx.tcx, p),
-                                          local_def(an_init.expr.id)),
-                                             op_to_oper_ty(an_init.op));
+                                          an_init.expr.id),
+                                       op_to_oper_ty(an_init.op));
                                 }
                                 case (_) {}
                             }
 
                             gen(fcx, id,
-                                rec(id=alocal.node.id,
-                                    c=ninit(alocal.node.ident)));
+                                ninit(alocal.node.id,
+                                      alocal.node.ident));
 
                             if (an_init.op == init_move &&
                                 is_path(an_init.expr)) {

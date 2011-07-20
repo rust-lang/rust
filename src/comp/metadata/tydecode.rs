@@ -7,6 +7,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 import syntax::ast;
+import syntax::ast::*;
 import ast::respan;
 import middle::ty;
 
@@ -65,13 +66,15 @@ fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
     }
 }
 
-fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr_def)[] {
-    let (@ty::constr_def)[] rslt = ~[];
+fn parse_constrs(@pstate st, str_def sd) -> (@ty::constr)[] {
+    let (@ty::constr)[] rslt = ~[];
     alt (peek(st) as char) {
         case (':') {
-            do  {
+            do {
                 next(st);
-                rslt += ~[parse_constr(st, sd)];
+                let @ty::constr one = parse_constr[uint](st, sd,
+                                                         parse_constr_arg);
+                rslt += ~[one];
             } while (peek(st) as char == ';')
         }
         case (_) { }
@@ -102,40 +105,50 @@ fn parse_path(@pstate st, str_def sd) -> ast::path {
     fail "parse_path: ill-formed path";
 }
 
-fn parse_constr(@pstate st, str_def sd) -> @ty::constr_def {
-    let (@ast::constr_arg)[] args = ~[];
+type arg_parser[T] = fn (@pstate st, str_def sd)
+                       -> ast::constr_arg_general_[T];
+
+fn parse_constr_arg(@pstate st, str_def sd) -> ast::fn_constr_arg {
+     alt (peek(st) as char) {
+      case ('*') {
+        st.pos += 1u;
+        ret ast::carg_base;
+      }
+      case (?c) {
+        /* how will we disambiguate between
+           an arg index and a lit argument? */
+        if (c >= '0' && c <= '9') {
+            next(st);
+          // FIXME
+          ret ast::carg_ident((c as uint) - 48u);
+        }
+        else {
+          log_err("Lit args are unimplemented");
+          fail; // FIXME
+        }
+        /*
+          else {
+          auto lit = parse_lit(st, sd, ',');
+          args += [respan(st.span, ast::carg_lit(lit))];
+          }
+        */
+      }
+    }
+}
+
+fn parse_constr[T](@pstate st, str_def sd, arg_parser[T] pser)
+    -> @ty::constr_general[T] {
     auto sp = rec(lo=0u,hi=0u); // FIXME: use a real span
-    let ast::path pth = parse_path(st, sd);
+    let (@sp_constr_arg[T])[] args = ~[];
+    let path pth = parse_path(st, sd);
     let char ignore = next(st) as char;
     assert(ignore as char == '(');
     auto def = parse_def(st, sd);
+    let constr_arg_general_[T] an_arg;
     do {
-        alt (peek(st) as char) {
-            case ('*') {
-                st.pos += 1u;
-                args += ~[@respan(sp, ast::carg_base)];
-            }
-            case (?c) {
-                /* how will we disambiguate between
-                 an arg index and a lit argument? */
-                if (c >= '0' && c <= '9') {
-                    // FIXME
-                    args += ~[@respan(sp,
-                                      ast::carg_ident((c as uint) - 48u))];
-                    ignore = next(st) as char;
-                }
-                else {
-                    log_err("Lit args are unimplemented");
-                    fail; // FIXME
-                }
-                /*
-                else {
-                    auto lit = parse_lit(st, sd, ',');
-                    args += [respan(st.span, ast::carg_lit(lit))];
-                }
-                */
-            }
-        }
+        an_arg = pser(st, sd);
+        // FIXME use a real span
+        args += ~[@respan(sp, an_arg)];
         ignore = next(st) as char;
     } while (ignore == ';');
     assert(ignore == ')');
@@ -335,7 +348,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(ty::arg[], ty::t, ast::controlflow, (@ty::constr_def)[]) {
+   tup(ty::arg[], ty::t, ast::controlflow, (@ty::constr)[]) {
     assert (next(st) as char == '[');
     let ty::arg[] inputs = ~[];
     while (peek(st) as char != ']') {
@@ -384,3 +397,14 @@ fn parse_def_id(&u8[] buf) -> ast::def_id {
     auto def_id = uint::parse_buf(def_part_vec, 10u) as int;
     ret tup(crate_num, def_id);
 }
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

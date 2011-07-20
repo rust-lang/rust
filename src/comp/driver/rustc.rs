@@ -134,8 +134,8 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
              bind resolve::resolve_crate(sess, ast_map, crate));
     auto freevars =
         time(time_passes, "freevar finding",
-             bind freevars::annotate_freevars(sess, d._0, crate));
-    auto ty_cx = ty::mk_ctxt(sess, d._0, d._1, ast_map, freevars);
+             bind freevars::annotate_freevars(sess, d, crate));
+    auto ty_cx = ty::mk_ctxt(sess, d, ast_map, freevars);
     time[()](time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
     if (sess.get_opts().run_typestate) {
@@ -200,8 +200,8 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
         case (ppm_typed) {
             auto amap = middle::ast_map::map_crate(*crate);
             auto d = resolve::resolve_crate(sess, amap, crate);
-            auto freevars = freevars::annotate_freevars(sess, d._0, crate);
-            auto ty_cx = ty::mk_ctxt(sess, d._0, d._1, amap, freevars);
+            auto freevars = freevars::annotate_freevars(sess, d, crate);
+            auto ty_cx = ty::mk_ctxt(sess, d, amap, freevars);
             typeck::check_crate(ty_cx, crate);
             ann = rec(pre=ann_paren_for_expr,
                       post=bind ann_typed_post(ty_cx, _));

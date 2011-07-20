@@ -14,6 +14,8 @@ import ex=ext::base;
 import codemap::span;
 import std::map::new_str_hash;
 import util::interner;
+import ast::node_id;
+import ast::spanned;
 
 tag restriction { UNRESTRICTED; RESTRICT_NO_CALL_EXPRS; }
 
@@ -22,9 +24,9 @@ tag file_type { CRATE_FILE; SOURCE_FILE; }
 tag ty_or_bang { a_ty(@ast::ty); a_bang; }
 
 type parse_sess = @rec(codemap::codemap cm,
-                       mutable ast::node_id next_id);
+                       mutable node_id next_id);
 
-fn next_node_id(&parse_sess sess) -> ast::node_id {
+fn next_node_id(&parse_sess sess) -> node_id {
     auto rv = sess.next_id;
     sess.next_id += 1;
     ret rv;
@@ -51,7 +53,7 @@ type parser =
         fn get_bad_expr_words() -> hashmap[str, ()] ;
         fn get_chpos() -> uint ;
         fn get_byte_pos() -> uint ;
-        fn get_id() -> ast::node_id ;
+        fn get_id() -> node_id ;
         fn get_sess() -> parse_sess;
     };
 
@@ -116,7 +118,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn get_bad_expr_words() -> hashmap[str, ()] { ret bad_words; }
         fn get_chpos() -> uint { ret rdr.get_chpos(); }
         fn get_byte_pos() -> uint { ret rdr.get_byte_pos(); }
-        fn get_id() -> ast::node_id { ret next_node_id(sess); }
+        fn get_id() -> node_id { ret next_node_id(sess); }
         fn get_sess() -> parse_sess { ret sess; }
     }
 
@@ -188,7 +190,7 @@ fn expect(&parser p, token::token t) {
     }
 }
 
-fn spanned[T](uint lo, uint hi, &T node) -> ast::spanned[T] {
+fn spanned[T](uint lo, uint hi, &T node) -> spanned[T] {
     ret rec(node=node, span=rec(lo=lo, hi=hi));
 }
 
@@ -261,7 +263,9 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo) -> ast::ty_ {
     auto inputs =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                        parse_fn_input_ty, p);
-    auto constrs = parse_constrs(~[], p);
+    // FIXME: there's no syntax for this right now anyway
+    //  auto constrs = parse_constrs(~[], p);
+    let (@ast::constr)[] constrs = ~[];
     let @ast::ty output;
     auto cf = ast::return;
     if (p.peek() == token::RARROW) {
@@ -275,7 +279,7 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo) -> ast::ty_ {
             }
         }
     } else { output = @spanned(lo, inputs.span.hi, ast::ty_nil); }
-    ret ast::ty_fn(proto, inputs.node, output, cf, constrs.node);
+    ret ast::ty_fn(proto, inputs.node, output, cf, constrs);
 }
 
 fn parse_proto(&parser p) -> ast::proto {
@@ -336,6 +340,20 @@ fn ident_index(&parser p, &ast::arg[] args, &ast::ident i) -> uint {
     p.fatal("Unbound variable " + i + " in constraint arg");
 }
 
+fn parse_type_constr_arg(&parser p) -> @ast::ty_constr_arg {
+    auto sp = p.get_span();
+    auto carg = ast::carg_base;
+    expect(p, token::BINOP(token::STAR));
+    if (p.peek() == token::DOT) {
+        // "*..." notation for record fields
+        p.bump();
+        let ast::path pth = parse_path(p);
+        carg = ast::carg_ident(pth);
+    }
+    // No literals yet, I guess?
+    ret @rec(node=carg, span=sp);
+}
+
 fn parse_constr_arg(&ast::arg[] args, &parser p) -> @ast::constr_arg {
     auto sp = p.get_span();
     auto carg = ast::carg_base;
@@ -355,43 +373,39 @@ fn parse_ty_constr(&ast::arg[] fn_args, &parser p) -> @ast::constr {
     let rec((@ast::constr_arg)[] node, span span) args =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), pf,
                        p);
-    // FIXME fix the def_id
-
     ret @spanned(lo, args.span.hi,
                  rec(path=path, args=args.node, id=p.get_id()));
 }
 
-
-// Use the args list to translate each bound variable
-// mentioned in a constraint to an arg index.
-// Seems weird to do this in the parser, but I'm not sure how else to.
-fn parse_constrs(&ast::arg[] args, &parser p)
-        -> ast::spanned[(@ast::constr)[]] {
+fn parse_constr_in_type(&parser p) -> @ast::ty_constr {
     auto lo = p.get_lo_pos();
-    auto hi = p.get_hi_pos();
-    let (@ast::constr)[] constrs = ~[];
-    if (p.peek() == token::COLON) {
-        p.bump();
-        while (true) {
-            auto constr = parse_ty_constr(args, p);
-            hi = constr.span.hi;
-            constrs += ~[constr];
-            if (p.peek() == token::COMMA) { p.bump(); } else { break; }
-        }
-    }
-    ret spanned(lo, hi, constrs);
+    auto path = parse_path(p);
+    let (@ast::ty_constr_arg)[] args =
+        (parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
+                        parse_type_constr_arg, p)).node;
+    auto hi = p.get_lo_pos();
+    let ast::ty_constr_ tc = rec(path=path, args=args, id=p.get_id());
+    ret @spanned(lo, hi, tc);
 }
 
-fn parse_ty_constrs(@ast::ty t, &parser p) -> @ast::ty {
-    if (p.peek() == token::COLON) {
-        auto constrs = parse_constrs(~[], p);
-        ret @spanned(t.span.lo, constrs.span.hi,
-                     ast::ty_constr(t, constrs.node));
+
+fn parse_constrs[T](fn(&parser p) ->
+                    (@ast::constr_general[T]) pser, &parser p)
+    ->  (@ast::constr_general[T])[] {
+    let (@ast::constr_general[T])[] constrs = ~[];
+    while (true) {
+        auto constr = pser(p);
+        constrs += ~[constr];
+        if (p.peek() == token::COMMA) { p.bump(); } else { break; }
     }
-    ret t;
+    constrs
 }
 
-fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
+fn parse_type_constraints(&parser p) -> (@ast::ty_constr)[] {
+    ret parse_constrs(parse_constr_in_type, p);
+}
+
+fn parse_ty_postfix(ast::ty_ orig_t, &parser p) -> @ast::ty {
     auto lo = p.get_lo_pos();
     if (p.peek() == token::LBRACKET) {
         p.bump();
@@ -413,7 +427,7 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
             auto seq = parse_seq_to_end(token::RBRACKET,
                                              some(token::COMMA), parse_ty, p);
 
-            alt (orig_t.node) {
+            alt (orig_t) {
                 case (ast::ty_path(?pth, ?ann)) {
                     auto hi = p.get_hi_pos();
                     ret @spanned(lo, hi,
@@ -432,10 +446,11 @@ fn parse_ty_postfix(@ast::ty orig_t, &parser p) -> @ast::ty {
 
         expect(p, token::RBRACKET);
         auto hi = p.get_hi_pos();
-        auto t = ast::ty_ivec(rec(ty=orig_t, mut=mut));
-        ret parse_ty_postfix(@spanned(lo, hi, t), p);
+        // FIXME: spans are probably wrong
+        auto t = ast::ty_ivec(rec(ty=@spanned(lo, hi, orig_t), mut=mut));
+        ret parse_ty_postfix(t, p);
     }
-    ret parse_ty_constrs(orig_t, p);
+    ret @spanned(lo, p.get_lo_pos(), orig_t);
 }
 
 fn parse_ty_or_bang(&parser p) -> ty_or_bang {
@@ -528,7 +543,15 @@ fn parse_ty(&parser p) -> @ast::ty {
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                            parse_ty_field, p);
         hi = elems.span.hi;
+        // possible constrs
+        // FIXME: something seems dodgy or at least repetitive
+        // about how constrained types get parsed
         t = ast::ty_rec(elems.node);
+        if (p.peek() == token::COLON) {
+            p.bump();
+            t = ast::ty_constr(@spanned(lo, hi, t),
+                               parse_type_constraints(p));
+        }
     } else if (eat_word(p, "fn")) {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_fn, p, flo);
@@ -559,7 +582,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         t = ast::ty_path(path, p.get_id());
         hi = path.span.hi;
     } else { p.fatal("expecting type"); t = ast::ty_nil; fail; }
-    ret parse_ty_postfix(@spanned(lo, hi, t), p);
+    ret parse_ty_postfix(t, p);
 }
 
 fn parse_arg(&parser p) -> ast::arg {
@@ -593,7 +616,7 @@ fn parse_seq_to_end[T](token::token ket, option::t[token::token] sep,
 
 fn parse_seq[T](token::token bra, token::token ket,
                      option::t[token::token] sep,
-                     fn(&parser)->T  f, &parser p) -> ast::spanned[T[]] {
+                     fn(&parser)->T  f, &parser p) -> spanned[T[]] {
     auto lo = p.get_lo_pos();
     expect(p, bra);
     auto result = parse_seq_to_end[T](ket, sep, f, p);
@@ -1739,7 +1762,14 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                        parse_arg, p);
     let ty_or_bang rslt;
-    auto constrs = parse_constrs(inputs.node, p).node;
+// Use the args list to translate each bound variable
+// mentioned in a constraint to an arg index.
+// Seems weird to do this in the parser, but I'm not sure how else to.
+    auto constrs = ~[];
+    if (p.peek() == token::COLON) {
+        p.bump();
+        constrs = parse_constrs(bind parse_ty_constr(inputs.node,_), p);
+    }
     if (p.peek() == token::RARROW) {
         p.bump();
         rslt = parse_ty_or_bang(p);

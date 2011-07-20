@@ -1,5 +1,6 @@
 
 import syntax::ast;
+import syntax::ast::*;
 import ast::ident;
 import ast::fn_ident;
 import ast::def;
@@ -19,6 +20,7 @@ import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
 import std::ivec;
+import std::int;
 import std::map::hashmap;
 import std::list;
 import std::list::list;
@@ -28,6 +30,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
+import syntax::print::pprust::*;
 
 export resolve_crate;
 export def_map;
@@ -109,7 +112,6 @@ type def_map = hashmap[node_id, def];
 type env =
     rec(cstore::cstore cstore,
         def_map def_map,
-        constr_table fn_constrs,
         ast_map::map ast_map,
         hashmap[ast::node_id, import_state] imports,
         hashmap[ast::node_id, @indexed_mod] mod_map,
@@ -124,12 +126,11 @@ tag dir { inside; outside; }
 
 tag namespace { ns_value; ns_type; ns_module; }
 
-fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
-   tup(def_map, constr_table) {
+fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate)
+  -> def_map {
     auto e =
         @rec(cstore=sess.get_cstore(),
              def_map=new_int_hash[def](),
-             fn_constrs = new_int_hash[ty::constr_def[]](),
              ast_map=amap,
              imports=new_int_hash[import_state](),
              mod_map=new_int_hash[@indexed_mod](),
@@ -140,7 +141,7 @@ fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate) ->
     resolve_imports(*e);
     check_for_collisions(e, *crate);
     resolve_names(e, crate);
-    ret tup(e.def_map, e.fn_constrs);
+    ret e.def_map;
 }
 
 
@@ -249,7 +250,7 @@ fn resolve_names(&@env e, &@ast::crate c) {
              visit_arm=bind walk_arm(e, _, _, _),
              visit_expr=bind walk_expr(e, _, _, _),
              visit_ty=bind walk_ty(e, _, _, _),
-             visit_constr=bind walk_constr(e, _, _, _),
+             visit_constr=bind walk_constr(e, _, _, _, _, _),
              visit_fn=bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
              with *visit::default_visitor());
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
@@ -277,10 +278,9 @@ fn resolve_names(&@env e, &@ast::crate c) {
             case (_) { }
         }
     }
-    fn walk_constr(@env e, &@ast::constr c, &scopes sc, &vt[scopes] v) {
-        maybe_insert(e, c.node.id,
-                     lookup_path_strict(*e, sc, c.span, c.node.path.node,
-                                        ns_value));
+    fn walk_constr(@env e, &ast::path p, &span sp, node_id id,
+                   &scopes sc, &vt[scopes] v) {
+        maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_value));
     }
     fn walk_arm(@env e, &ast::arm a, &scopes sc, &vt[scopes] v) {
         for (@ast::pat p in a.pats) { walk_pat(*e, sc, p); }
@@ -411,28 +411,17 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
     if (option::is_some(new_def)) {
         alt (option::get(new_def)) {
             case (ast::def_fn(?pred_id, ast::pure_fn)) {
-                let ty::constr_general[uint] c_ =
-                    rec(path=c.node.path, args=c.node.args, id=pred_id);
-                let ty::constr_def new_constr = respan(c.span, c_);
-                add_constr(e, id, new_constr);
+                e.def_map.insert(c.node.id, ast::def_fn(pred_id,
+                                                        ast::pure_fn));
             }
             case (_) {
                 e.sess.span_err(c.span,
                                 "Non-predicate in constraint: " +
-                                ast::path_to_str(c.node.path));
+                                path_to_str(c.node.path));
             }
         }
     }
 }
-
-fn add_constr(&@env e, node_id id, &ty::constr_def c) {
-    e.fn_constrs.insert(id,
-                        alt (e.fn_constrs.find(id)) {
-                            case (none) { ~[c] }
-                            case (some(?cs)) { cs + ~[c] }
-                        });
-}
-
 
 // Import resolution
 fn resolve_import(&env e, &@ast::view_item it, scopes sc) {

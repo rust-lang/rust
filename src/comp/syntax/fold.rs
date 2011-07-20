@@ -35,7 +35,7 @@ type ast_fold_precursor =
         fn (&decl_ d, ast_fold) -> decl_                  fold_decl,
         fn (&expr_ e, ast_fold) -> expr_                  fold_expr,
         fn (&ty_ t, ast_fold) -> ty_                      fold_ty,
-        fn (&constr_ c, ast_fold) -> constr_              fold_constr,
+        fn (&ast::constr_ c, ast_fold) -> constr_              fold_constr,
         fn (&_fn f, ast_fold) -> _fn                      fold_fn,
         fn (&_mod m, ast_fold) -> _mod                    fold_mod,
         fn (&native_mod, ast_fold) -> native_mod          fold_native_mod,
@@ -473,7 +473,7 @@ fn noop_fold_ty(&ty_ t, ast_fold fld) -> ty_ {
 }
 
 fn noop_fold_constr(&constr_ c, ast_fold fld) -> constr_ {
-    ret rec(path=fld.fold_path(c.path), args=c.args, id=c.id);
+    rec(path=fld.fold_path(c.path), args=c.args, id=c.id)
 }
 
 // functions just don't get spans, for some reason
@@ -664,7 +664,8 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
     fn f_ty(&ast_fold_precursor afp, ast_fold f, &@ty x) -> @ty {
         ret @rec(node=afp.fold_ty(x.node, f), span=x.span);
     }
-    fn f_constr(&ast_fold_precursor afp, ast_fold f, &@constr x) -> @constr {
+    fn f_constr(&ast_fold_precursor afp, ast_fold f, &@ast::constr x)
+        -> @ast::constr {
         ret @rec(node=afp.fold_constr(x.node, f), span=x.span);
     }
     fn f_fn(&ast_fold_precursor afp, ast_fold f, &_fn x) -> _fn {

@@ -9,6 +9,8 @@ import middle::ty::*;
 import metadata::encoder;
 import syntax::print::pp;
 import syntax::print::pprust;
+import syntax::print::pprust::path_to_str;
+import syntax::print::pprust::constr_args_to_str;
 import pp::word;
 import pp::eof;
 import pp::zerobreak;
@@ -46,7 +48,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
     }
     fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
                  &arg[] inputs, t output, ast::controlflow cf,
-                 &(@constr_def)[] constrs) -> str {
+                 &(@constr)[] constrs) -> str {
         auto s;
         alt (proto) {
             case (ast::proto_iter) { s = "iter"; }
@@ -154,19 +156,25 @@ fn ty_to_short_str(&ctxt cx, t typ) -> str {
     ret s;
 }
 
-fn constr_to_str(&@constr_def c) -> str {
-    ret ast::path_to_str(c.node.path) +
+fn constr_to_str(&@constr c) -> str {
+    ret path_to_str(c.node.path) +
         pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(&(@constr_def)[] constrs) -> str {
+fn constrs_str(&(@constr)[] constrs) -> str {
     auto s = "";
     auto colon = true;
-    for (@constr_def c in constrs) {
+    for (@constr c in constrs) {
         if (colon) { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }
     ret s;
+}
+
+fn ty_constr_to_str[Q](&@ast::spanned[ast::constr_general_[ast::path,Q]]
+                       c) -> str {
+    ret path_to_str(c.node.path) +
+          constr_args_to_str[ast::path](path_to_str, c.node.args);
 }
 
 // Local Variables:

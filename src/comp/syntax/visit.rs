@@ -30,7 +30,9 @@ type visitor[E] =
          fn(&@decl, &E, &vt[E])  visit_decl,
          fn(&@expr, &E, &vt[E])  visit_expr,
          fn(&@ty, &E, &vt[E])  visit_ty,
-         fn(&@constr, &E, &vt[E])  visit_constr,
+         // takes the components so that one function can be
+         // generic over constr and ty_constr
+         fn(&path, &span, node_id, &E, &vt[E])  visit_constr,
          fn(&_fn, &ty_param[], &span, &fn_ident, node_id, &E, &vt[E])
              visit_fn);
 
@@ -47,7 +49,7 @@ fn default_visitor[E]() -> visitor[E] {
              visit_decl=bind visit_decl[E](_, _, _),
              visit_expr=bind visit_expr[E](_, _, _),
              visit_ty=bind visit_ty[E](_, _, _),
-             visit_constr=bind visit_constr[E](_, _, _),
+             visit_constr=bind visit_constr[E](_, _, _, _, _),
              visit_fn=bind visit_fn[E](_, _, _, _, _, _, _));
 }
 
@@ -160,7 +162,8 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
         }
         case (ty_fn(_, ?args, ?out, _, ?constrs)) {
             for (ty_arg a in args) { v.visit_ty(a.node.ty, e, v); }
-            for (@constr c in constrs) { v.visit_constr(c, e, v); }
+            for (@constr c in constrs) { v.visit_constr(c.node.path,
+                                            c.span, c.node.id, e, v); }
             v.visit_ty(out, e, v);
         }
         case (ty_obj(?tmeths)) {
@@ -175,7 +178,12 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
             for (@ty tp in p.node.types) { v.visit_ty(tp, e, v); }
         }
         case (ty_type)          { /* no-op */ }
-        case (ty_constr(?t, _)) { v.visit_ty(t, e, v); }
+        case (ty_constr(?t, ?cs)) {
+            v.visit_ty(t, e, v);
+            for (@spanned[constr_general_[path, node_id]] tc in cs) {
+                v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
+            }
+        }
     }
 }
 
@@ -186,7 +194,7 @@ fn visit_ty_opt[E](&option::t[@ty] ot, &E e, &vt[E] v) {
     }
 }
 
-fn visit_constr[E](&@constr c, &E e, &vt[E] v) {
+fn visit_constr[E](&path operator, &span sp, node_id id, &E e, &vt[E] v) {
     // default
 
 }
@@ -214,7 +222,9 @@ fn visit_native_item[E](&@native_item ni, &E e, &vt[E] v) {
 
 fn visit_fn_decl[E](&fn_decl fd, &E e, &vt[E] v) {
     for (arg a in fd.inputs) { v.visit_ty(a.ty, e, v); }
-    for (@constr c in fd.constraints) { v.visit_constr(c, e, v); }
+    for (@constr c in fd.constraints) {
+        v.visit_constr(c.node.path, c.span, c.node.id, e, v);
+    }
     v.visit_ty(fd.output, e, v);
 }
 

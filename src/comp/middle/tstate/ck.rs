@@ -49,10 +49,9 @@ import states::find_pre_post_state_fn;
 fn check_unused_vars(&fn_ctxt fcx) {
     // FIXME: could be more efficient
     for (norm_constraint c in constraints(fcx)) {
-        alt (c.c.node.c) {
-            case (ninit(?v)) {
-                if (!vec_contains(fcx.enclosing.used_vars,
-                                  c.c.node.id)) {
+        alt (c.c.node) {
+            case (ninit(?id, ?v)) {
+                if (!vec_contains(fcx.enclosing.used_vars, id)) {
                     fcx.ccx.tcx.sess.span_warn(c.c.span,
                                                "Unused variable " + v);
                 }
@@ -140,7 +139,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
 
     /* Check that the return value is initialized */
     auto post = aux::block_poststate(fcx.ccx, f.body);
-    let aux::constr_ ret_c = rec(id=fcx.id, c=aux::ninit(fcx.name));
+    let tsconstr ret_c = ninit(fcx.id, fcx.name);
     if (f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
             !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
             f.decl.cf == return) {

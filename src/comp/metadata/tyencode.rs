@@ -8,7 +8,7 @@ import std::int;
 import std::uint;
 import syntax::ast::*;
 import middle::ty;
-import syntax::print::pprust::lit_to_str;
+import syntax::print::pprust::*;
 import util::common;
 
 export ctxt;
@@ -199,8 +199,9 @@ fn enc_proto(&ioivec::writer w, proto proto) {
         case (proto_fn) { w.write_char('F'); }
     }
 }
+
 fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
-             &controlflow cf, &(@ty::constr_def)[] constrs) {
+             &controlflow cf, &(@ty::constr)[] constrs) {
     w.write_char('[');
     for (ty::arg arg in args) {
         alt (arg.mode) {
@@ -214,7 +215,7 @@ fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
     }
     w.write_char(']');
     auto colon = true;
-    for (@ty::constr_def c in constrs) {
+    for (@ty::constr c in constrs) {
         if (colon) {
             w.write_char(':');
             colon = false;
@@ -227,7 +228,8 @@ fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
     }
 
 }
-fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr_def c) {
+
+fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr c) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));

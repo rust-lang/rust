@@ -14,12 +14,11 @@ import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast::respan;
 
-type ctxt = rec(@mutable (aux::constr[]) cs, ty::ctxt tcx);
+type ctxt = rec(@mutable (sp_constr[]) cs, ty::ctxt tcx);
 
 fn collect_local(&@local loc, &ctxt cx, &visit::vt[ctxt] v) {
     log "collect_local: pushing " + loc.node.ident;
-    *cx.cs += ~[respan(loc.span, rec(id=loc.node.id,
-                                     c=ninit(loc.node.ident)))];
+    *cx.cs += ~[respan(loc.span, ninit(loc.node.id, loc.node.ident))];
     visit::visit_local(loc, cx, v);
 }
 
@@ -34,11 +33,10 @@ fn collect_pred(&@expr e, &ctxt cx, &visit::vt[ctxt] v) {
         // If it's a call, generate appropriate instances of the
         // call's constraints.
         case (expr_call(?operator, ?operands)) {
-            for (@ty::constr_def c in constraints_expr(cx.tcx, operator)) {
-                let aux::constr ct = respan(c.span,
-                      rec(id=c.node.id._1,
-                          c=aux::substitute_constr_args(cx.tcx, operands,
-                                                        c)));
+            for (@ty::constr c in constraints_expr(cx.tcx, operator)) {
+                let sp_constr ct = respan(c.span,
+                           aux::substitute_constr_args(cx.tcx, operands,
+                                                       c));
                 *cx.cs += ~[ct];
             }
         }
@@ -61,13 +59,14 @@ fn find_locals(&ty::ctxt tcx, &_fn f, &ty_param[] tps, &span sp, &fn_ident i,
     ret cx;
 }
 
-fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
+fn add_constraint(&ty::ctxt tcx, sp_constr c, uint next, constr_map tbl) ->
    uint {
-    log aux::constraint_to_str(tcx, c) + " |-> " + std::uint::str(next);
-    alt (c.node.c) {
-        case (ninit(?i)) { tbl.insert(c.node.id, cinit(next, c.span, i)); }
-        case (npred(?p, ?args)) {
-            alt (tbl.find(c.node.id)) {
+    log constraint_to_str(tcx, c) + " |-> " + std::uint::str(next);
+    alt (c.node) {
+        case (ninit(?id, ?i)) { tbl.insert(local_def(id),
+                                           cinit(next, c.span, i)); }
+        case (npred(?p, ?d_id, ?args)) {
+            alt (tbl.find(d_id)) {
                 case (some(?ct)) {
                     alt (ct) {
                         case (cinit(_, _, _)) {
@@ -76,16 +75,15 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
                         }
                         case (cpred(_, ?pds)) {
                             *pds += ~[respan(c.span,
-                                             rec(args=args, bit_num=next))];
+                                            rec(args=args, bit_num=next))];
                         }
                     }
                 }
                 case (none) {
-                    tbl.insert(c.node.id,
-                               cpred(p,
-                                     @mutable ~[respan(c.span,
-                                                       rec(args=args,
-                                                           bit_num=next))]));
+                    let @mutable(pred_args[]) rslt = @mutable(~[respan(c.span,
+                                                         rec(args=args,
+                                                             bit_num=next))]);
+                    tbl.insert(d_id, cpred(p, rslt));
                 }
             }
         }
@@ -98,22 +96,21 @@ fn add_constraint(&ty::ctxt tcx, aux::constr c, uint next, constr_map tbl) ->
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ty_param[] tp,
               &span f_sp, &fn_ident f_name, node_id id) {
-    auto res_map = @new_int_hash[constraint]();
+    auto res_map = @new_def_hash[constraint]();
     let uint next = 0u;
 
     let ctxt cx = find_locals(ccx.tcx, f, tp, f_sp, f_name, id);
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    for (aux::constr c in { *cx.cs }) {
+    for (sp_constr c in { *cx.cs }) {
         next = add_constraint(cx.tcx, c, next, res_map);
     }
     /* add a pseudo-entry for the function's return value
        we can safely use the function's name itself for this purpose */
 
     auto name = fn_ident_to_string(id, f_name);
-    add_constraint(cx.tcx, respan(f_sp, rec(id=id, c=ninit(name))), next,
-                   res_map);
+    add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next, res_map);
     let @mutable node_id[] v = @mutable ~[];
     auto rslt =
         rec(constrs=res_map,

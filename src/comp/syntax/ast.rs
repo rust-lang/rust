@@ -444,7 +444,7 @@ tag ty_ {
     ty_obj(ty_method[]);
     ty_path(path, node_id);
     ty_type;
-    ty_constr(@ty, (@constr)[]);
+    ty_constr(@ty, (@ty_constr)[]);
     ty_mac(mac);
 }
 
@@ -459,16 +459,26 @@ declarations, and ident for uses.
 */
 tag constr_arg_general_[T] { carg_base; carg_ident(T); carg_lit(@lit); }
 
-type constr_arg = constr_arg_general[uint];
+type fn_constr_arg = constr_arg_general_[uint];
+type sp_constr_arg[T] = spanned[constr_arg_general_[T]];
+type ty_constr_arg = sp_constr_arg[path];
+type constr_arg = spanned[fn_constr_arg];
 
-type constr_arg_general[T] = spanned[constr_arg_general_[T]];
+// Constrained types' args are parameterized by paths, since
+// we refer to paths directly and not by indices.
+// The implicit root of such path, in the constraint-list for a
+// constrained type, is * (referring to the base record)
 
-type constr_ = rec(path path,
-                   (@constr_arg_general[uint])[] args,
-                   node_id id);
+type constr_general_[ARG, ID] = rec(path path,
+     (@(spanned[constr_arg_general_[ARG]]))[] args, ID id);
 
-type constr = spanned[constr_];
-
+// In the front end, constraints have a node ID attached.
+// Typeck turns this to a def_id, using the output of resolve.
+type constr_general[ARG] = spanned[constr_general_[ARG, node_id]];
+type constr_ = constr_general_[uint, node_id];
+type constr = spanned[constr_general_[uint, node_id]];
+type ty_constr_ = ast::constr_general_[ast::path, ast::node_id];
+type ty_constr = spanned[ty_constr_];
 
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
@@ -670,19 +680,6 @@ fn ternary_to_if(&@expr e) -> @ast::expr {
         case (_) { fail; }
     }
 }
-
-// Path stringification
-fn path_to_str(&ast::path pth) -> str {
-    auto result = str::connect_ivec(pth.node.idents, "::");
-    if (ivec::len[@ast::ty](pth.node.types) > 0u) {
-        fn f(&@ast::ty t) -> str { ret print::pprust::ty_to_str(*t); }
-        result += "[";
-        result += str::connect_ivec(ivec::map(f, pth.node.types), ",");
-        result += "]";
-    }
-    ret result;
-}
-
 
 //
 // Local Variables:

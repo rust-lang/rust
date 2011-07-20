@@ -13,19 +13,15 @@ import std::option::some;
 import std::smallintmap;
 import driver::session;
 import syntax::ast;
-import ast::def_id;
-import ast::constr_arg_general;
-import ast::mutability;
-import ast::controlflow;
-import ast::path_to_str;
-import ast::spanned;
+import syntax::ast::*;
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
+import util::ppaux::ty_constr_to_str;
 import util::ppaux::mode_str_1;
-
+import syntax::print::pprust::*;
 
 export node_id_to_monotype;
 export node_id_to_type;
@@ -37,7 +33,8 @@ export arg;
 export args_eq;
 export bind_params_in_type;
 export block_ty;
-export constr_def;
+export constr;
+export constr_;
 export constr_general;
 export constr_table;
 export count_ty_params;
@@ -67,6 +64,7 @@ export mk_bot;
 export mk_box;
 export mk_chan;
 export mk_char;
+export mk_constr;
 export mk_ctxt;
 export mk_float;
 export mk_fn;
@@ -123,6 +121,7 @@ export ty_bot;
 export ty_box;
 export ty_chan;
 export ty_char;
+export ty_constr;
 export ty_float;
 export ty_fn;
 export ty_fn_abi;
@@ -151,6 +150,7 @@ export ty_var_id;
 export ty_vec;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
+export type_constr;
 export type_contains_params;
 export type_contains_vars;
 export type_err;
@@ -193,9 +193,9 @@ type method =
         arg[] inputs,
         t output,
         controlflow cf,
-        (@constr_def)[] constrs);
+        (@constr)[] constrs);
 
-type constr_table = hashmap[ast::node_id, constr_def[]];
+type constr_table = hashmap[ast::node_id, constr[]];
 
 type mt = rec(t ty, ast::mutability mut);
 
@@ -212,7 +212,7 @@ type ctxt =
         ast_map::map items,
         freevars::freevar_map freevars,
 
-        constr_table fn_constrs,
+        //        constr_table fn_constrs,
         type_cache tcache,
         creader_cache rcache,
         hashmap[t, str] short_names_cache,
@@ -265,7 +265,7 @@ tag sty {
     ty_task;
     ty_tup(mt[]);
     ty_rec(field[]);
-    ty_fn(ast::proto, arg[], t, controlflow, (@constr_def)[]);
+    ty_fn(ast::proto, arg[], t, controlflow, (@constr)[]);
     ty_native_fn(ast::native_abi, arg[], t);
     ty_obj(method[]);
     ty_res(def_id, t, t[]);
@@ -273,14 +273,15 @@ tag sty {
     ty_param(uint); // fn/tag type param
     ty_type;
     ty_native(def_id);
+    ty_constr(t, (@type_constr)[]);
     // TODO: ty_fn_arg(t), for a possibly-aliased function argument
 }
 
-type constr_def = spanned[constr_general[uint]];
-
-type constr_general[T] =
-    rec(ast::path path, (@constr_arg_general[T])[] args, def_id id);
-
+// In the middle end, constraints have a def_id attached, referring
+// to the definition of the operator in the constraint.
+type constr_general[ARG] = spanned[constr_general_[ARG, def_id]];
+type type_constr = constr_general[path];
+type constr = constr_general[uint];
 
 // Data structures used in type unification
 tag type_err {
@@ -297,6 +298,8 @@ tag type_err {
     terr_obj_meths(ast::ident, ast::ident);
     terr_arg_count;
     terr_mode_mismatch(mode, mode);
+    terr_constr_len(uint, uint);
+    terr_constr_mismatch(@type_constr, @type_constr);
 }
 
 type ty_param_count_and_ty = tup(uint, t);
@@ -392,7 +395,8 @@ fn mk_rcache() -> creader_cache {
     ret map::mk_hashmap[tup(int, uint, uint), t](h, e);
 }
 
-fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
+
+fn mk_ctxt(session::session s, resolve::def_map dm,
            ast_map::map amap, freevars::freevar_map freevars) -> ctxt {
     let node_type_table ntt =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
@@ -405,7 +409,6 @@ fn mk_ctxt(session::session s, resolve::def_map dm, constr_table cs,
             node_types=ntt,
             items=amap,
             freevars=freevars,
-            fn_constrs=cs,
             tcache=tcache,
             rcache=mk_rcache(),
             short_names_cache=map::mk_hashmap[ty::t,
@@ -501,6 +504,9 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                 derive_flags_t(cx, has_params, has_vars, tt);
             }
         }
+        case (ty_constr(?tt, _)) {
+            derive_flags_t(cx, has_params, has_vars, tt);
+        }
     }
     ret rec(struct=st,
             cname=cname,
@@ -594,8 +600,12 @@ fn mk_imm_tup(&ctxt cx, &t[] tys) -> t {
 
 fn mk_rec(&ctxt cx, &field[] fs) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
+fn mk_constr(&ctxt cx, &t t, &(@type_constr)[] cs) -> t {
+    ret gen_ty(cx, ty_constr(t, cs));
+}
+
 fn mk_fn(&ctxt cx, &ast::proto proto, &arg[] args, &t ty, &controlflow cf,
-         &(@constr_def)[] constrs) -> t {
+         &(@constr)[] constrs) -> t {
     ret gen_ty(cx, ty_fn(proto, args, ty, cf, constrs));
 }
 
@@ -1300,6 +1310,33 @@ fn hash_type_structure(&sty st) -> uint {
         h += h << 5u + hash_ty(subty);
         ret h;
     }
+    fn hash_type_constr(uint id, &@type_constr c)
+        -> uint {
+        auto h = id;
+        h += h << 5u + hash_def(h, c.node.id);
+        ret hash_type_constr_args(h, c.node.args);
+    }
+    fn hash_type_constr_args(uint id, (@ty_constr_arg)[] args) -> uint {
+        auto h = id;
+        for (@ty_constr_arg a in args) {
+            alt (a.node) {
+                case (carg_base) {
+                    h += h << 5u;
+                }
+                case (carg_lit(_)) {
+                    // FIXME
+                    fail "lit args not implemented yet";
+                }
+                case (carg_ident(?p)) {
+                    // FIXME: Not sure what to do here.
+                    h += h << 5u;
+                }
+            }
+        }
+        ret h;
+    }
+
+
     fn hash_fn(uint id, &arg[] args, &t rty) -> uint {
         auto h = id;
         for (arg a in args) { h += h << 5u + hash_ty(a.ty); }
@@ -1371,6 +1408,13 @@ fn hash_type_structure(&sty st) -> uint {
             for (t tp in tps) { h += h << 5u + hash_ty(tp); }
             ret h;
         }
+        case (ty_constr(?t, ?cs)) {
+            auto h = 36u;
+            for (@type_constr c in cs) {
+                h += h << 5u + hash_type_constr(h, c);
+            }
+            ret h;
+        }
     }
 }
 
@@ -1392,8 +1436,8 @@ fn hash_ty(&t typ) -> uint { ret typ; }
 // users should use `eq_ty()` instead.
 fn eq_int(&uint x, &uint y) -> bool { ret x == y; }
 
-fn arg_eq[T](&fn(&T, &T) -> bool  eq, @ast::constr_arg_general[T] a,
-             @ast::constr_arg_general[T] b) -> bool {
+fn arg_eq[T](&fn(&T, &T) -> bool eq, @sp_constr_arg[T] a,
+             @sp_constr_arg[T] b) -> bool {
     alt (a.node) {
         case (ast::carg_base) {
             alt (b.node) {
@@ -1416,26 +1460,26 @@ fn arg_eq[T](&fn(&T, &T) -> bool  eq, @ast::constr_arg_general[T] a,
     }
 }
 
-fn args_eq[T](fn(&T, &T) -> bool eq, &(@ast::constr_arg_general[T])[] a,
-              &(@ast::constr_arg_general[T])[] b) -> bool {
+fn args_eq[T](fn(&T, &T) -> bool eq,
+              &(@sp_constr_arg[T])[] a, &(@sp_constr_arg[T])[] b) -> bool {
     let uint i = 0u;
-    for (@ast::constr_arg_general[T] arg in a) {
+    for (@sp_constr_arg[T] arg in a) {
         if (!arg_eq(eq, arg, b.(i))) { ret false; }
         i += 1u;
     }
     ret true;
 }
 
-fn constr_eq(&@constr_def c, &@constr_def d) -> bool {
+fn constr_eq(&@constr c, &@constr d) -> bool {
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
             // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
-fn constrs_eq(&(@constr_def)[] cs, &(@constr_def)[] ds) -> bool {
+fn constrs_eq(&(@constr)[] cs, &(@constr)[] ds) -> bool {
     if (ivec::len(cs) != ivec::len(ds)) { ret false; }
     auto i = 0u;
-    for (@constr_def c in cs) {
+    for (@constr c in cs) {
         if (!constr_eq(c, ds.(i))) { ret false; }
         i += 1u;
     }
@@ -2053,6 +2097,76 @@ mod unify {
         ret ures_err(terr_mismatch);
     }
 
+    // Right now this just checks that the lists of constraints are
+    // pairwise equal.
+    fn unify_constrs(&t base_t, (@type_constr)[] expected,
+                     &(@type_constr)[] actual) -> result {
+        auto expected_len = ivec::len(expected);
+        auto actual_len = ivec::len(actual);
+
+        if (expected_len != actual_len) {
+            ret ures_err(terr_constr_len(expected_len, actual_len));
+        }
+        auto i = 0u;
+        auto rslt;
+        for (@type_constr c in expected) {
+            rslt = unify_constr(base_t, c, actual.(i));
+            alt (rslt) {
+                case (ures_ok(_)) { }
+                case (ures_err(_)) { ret rslt; }
+            }
+            i += 1u;
+        }
+        ret ures_ok(base_t);
+    }
+    fn unify_constr(&t base_t, @type_constr expected,
+                    &@type_constr actual_constr) -> result {
+        auto ok_res = ures_ok(base_t);
+        auto err_res = ures_err(terr_constr_mismatch(expected,
+                                                     actual_constr));
+        if (expected.node.id != actual_constr.node.id) {
+            ret err_res;
+        }
+        auto expected_arg_len = ivec::len(expected.node.args);
+        auto actual_arg_len = ivec::len(actual_constr.node.args);
+        if (expected_arg_len != actual_arg_len) {
+            ret err_res;
+        }
+        auto i = 0u;
+        auto actual;
+        for (@ty_constr_arg a in expected.node.args) {
+            actual = actual_constr.node.args.(i);
+            alt (a.node) {
+                case (carg_base) {
+                    alt (actual.node) {
+                        case (carg_base) { }
+                        case (_)         { ret err_res; }
+                    }
+                }
+                case (carg_lit(?l)) {
+                    alt (actual.node) {
+                        case (carg_lit(?m)) {
+                            if (l != m) { ret err_res; }
+                        }
+                        case (_) { ret err_res; }
+                    }
+                }
+                case (carg_ident(?p)) {
+                    alt (actual.node) {
+                        case (carg_ident(?q)) {
+                            if (p.node != q.node) {
+                                ret err_res;
+                            }
+                        }
+                        case (_) { ret err_res; }
+                    }
+                }
+            }
+            i += 1u;
+        }
+        ret ok_res;
+    }
+
     // Unifies two mutability flags.
     fn unify_mut(ast::mutability expected, ast::mutability actual) ->
        option::t[ast::mutability] {
@@ -2109,8 +2223,8 @@ mod unify {
                 &t expected, &t actual, &arg[] expected_inputs,
                 &t expected_output, &arg[] actual_inputs, &t actual_output,
                 &controlflow expected_cf, &controlflow actual_cf,
-                &(@constr_def)[] expected_constrs,
-                &(@constr_def)[] actual_constrs) -> result {
+                &(@constr)[] expected_constrs,
+                &(@constr)[] actual_constrs) -> result {
         if (e_proto != a_proto) { ret ures_err(terr_mismatch); }
         alt (expected_cf) {
             case (ast::return) { }
@@ -2612,6 +2726,31 @@ mod unify {
                     case (_) { ret ures_err(terr_mismatch); }
                 }
             }
+            case (ty::ty_constr(?expected_t, ?expected_constrs)) {
+                // unify the base types...
+                alt (struct(cx.tcx, actual)) {
+                    case (ty::ty_constr(?actual_t, ?actual_constrs)) {
+                        auto rslt = unify_step(cx, expected_t, actual_t);
+                        alt (rslt) {
+                            case (ures_ok(?rty)) {
+                                // FIXME: probably too restrictive --
+                                // requires the constraints to be
+                                // syntactically equal
+                                ret unify_constrs(expected,
+                                                  expected_constrs,
+                                                  actual_constrs);
+                            }
+                            case (_) { ret rslt; }
+                        }
+                    }
+                    case (_) {
+                        // If the actual type is *not* a constrained type,
+                        // then we go ahead and just ignore the constraints on
+                        // the expected type. typestate handles the rest.
+                        ret unify_step(cx, expected_t, actual);
+                    }
+                }
+            }
         }
     }
     fn unify(&t expected, &t actual, &@var_bindings vb, &ty_ctxt tcx) ->
@@ -2729,6 +2868,15 @@ fn type_err_to_str(&ty::type_err err) -> str {
             ret "expected argument mode " + mode_str_1(e_mode) + " but found "
                 + mode_str_1(a_mode);
             fail;
+        }
+        case (terr_constr_len(?e_len, ?a_len)) {
+            ret "Expected a type with " + uint::str(e_len) + " constraints, \
+              but found one with " + uint::str(a_len) + " constraints";
+        }
+        case (terr_constr_mismatch(?e_constr, ?a_constr)) {
+            ret "Expected a type with constraint "
+              + ty_constr_to_str(e_constr) + " but found one with constraint "
+                + ty_constr_to_str(a_constr);
         }
     }
 }

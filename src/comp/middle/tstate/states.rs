@@ -63,8 +63,7 @@ fn seq_states(&fn_ctxt fcx, prestate pres, &(@expr)[] exprs) ->
 }
 
 fn find_pre_post_state_sub(&fn_ctxt fcx, &prestate pres, &@expr e,
-                           node_id parent, option::t[aux::constr_] c)
-    -> bool {
+        node_id parent, option::t[tsconstr] c) -> bool {
     auto changed = find_pre_post_state_expr(fcx, pres, e);
 
     changed = set_prestate_ann(fcx.ccx, parent, pres) || changed;
@@ -118,8 +117,8 @@ fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr lhs,
             gen_if_local(fcx, post, lhs);
             alt (rhs.node) {
                 case (expr_path(?p1)) {
-                    auto d = local_node_id_to_def_id(fcx, lhs.id);
-                    auto d1 = local_node_id_to_def_id(fcx, rhs.id);
+                    auto d = local_node_id_to_local_def_id(fcx, lhs.id);
+                    auto d1 = local_node_id_to_local_def_id(fcx, rhs.id);
                     alt (d) {
                         case (some(?id)) {
                             alt (d1) {
@@ -249,7 +248,7 @@ fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
             auto conseq_prestate = expr_poststate(fcx.ccx, antec);
             alt (chk) {
                 case (if_check) {
-                    let aux::constr c = expr_to_constr(fcx.ccx.tcx, antec);
+                    let sp_constr c = expr_to_constr(fcx.ccx.tcx, antec);
                     conseq_prestate = tritv_clone(conseq_prestate);
                     tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
                 }
@@ -387,8 +386,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
 
             alt (fcx.enclosing.cf) {
                 case (noreturn) {
-                    kill_poststate(fcx, e.id, rec(id=fcx.id,
-                                                  c=ninit(fcx.name)));
+                    kill_poststate(fcx, e.id, ninit(fcx.id, fcx.name));
                 }
                 case (_) { }
             }
@@ -555,7 +553,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         }
         case (expr_check(_, ?p)) {
             /* predicate p holds after this expression executes */
-            let aux::constr c = expr_to_constr(fcx.ccx.tcx, p);
+            let sp_constr c = expr_to_constr(fcx.ccx.tcx, p);
             ret find_pre_post_state_sub(fcx, pres, p, e.id, some(c.node));
         }
         case (expr_if_check(?p, ?conseq, ?maybe_alt)) {
@@ -608,9 +606,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
 
                                     auto instlhs =
                                         tup(alocal.node.ident,
-                                            local_def(alocal.node.id));
-                                    auto rhs_d = local_node_id_to_def_id(fcx,
-                                                          an_init.expr.id);
+                                            alocal.node.id);
+                                    auto rhs_d = local_node_id_to_local_def_id
+                                        (fcx, an_init.expr.id);
                                     alt (rhs_d) {
                                         case (some(?rhsid)) {
                                             auto instrhs =

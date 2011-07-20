@@ -2,7 +2,6 @@
 import syntax::ast;
 import ast::mutability;
 import ast::local_def;
-import ast::path_to_str;
 import ast::respan;
 import ast::spanned;
 import syntax::walk;
@@ -47,6 +46,7 @@ import std::option::some;
 import std::option::from_maybe;
 import std::smallintmap;
 import middle::tstate::ann::ts_ann;
+import syntax::print::pprust::*;
 
 export check_crate;
 
@@ -395,6 +395,13 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
                 tmeths += ~[new_m];
             }
             typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
+        }
+        case (ast::ty_constr(?t, ?cs)) {
+            auto out_cs = ~[];
+            for (@ast::ty_constr constr in cs) {
+                out_cs += ~[ast_constr_to_constr(tcx, constr)];
+            }
+            typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
         }
     }
     alt (cname) {
@@ -2519,8 +2526,8 @@ fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
     ret ivec::last[obj_info](ccx.obj_infos);
 }
 
-fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
-    -> @ty::constr_def {
+fn ast_constr_to_constr[T](ty::ctxt tcx, &@ast::constr_general[T] c)
+    -> @ty::constr_general[T] {
     alt (tcx.def_map.find(c.node.id)) {
         case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
             ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
@@ -2528,9 +2535,9 @@ fn ast_constr_to_constr(ty::ctxt tcx, &@ast::constr c)
         }
         case (_) {
             tcx.sess.span_fatal(c.span, "Predicate "
-                              + path_to_str(c.node.path)
-                              + " is unbound or bound to a non-function or an\
-                                impure function");
+                      + path_to_str(c.node.path)
+                      + " is unbound or bound to a non-function or an \
+                        impure function");
         }
     }
 }
