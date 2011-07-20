@@ -653,6 +653,11 @@ fn parse_lit(&parser p) -> ast::lit {
                 p.bump();
                 lit = ast::lit_str(p.get_str(s), ast::sk_rc);
             }
+            case (token::LPAREN) {
+                p.bump();
+                expect(p, token::RPAREN);
+                lit = ast::lit_nil;
+            }
             case (?t) { unexpected(p, t); }
         }
     }
