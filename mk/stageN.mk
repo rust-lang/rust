@@ -23,7 +23,7 @@ stage$(2)/%.o: stage$(2)/%.s
 
 stage$(2)/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
                       stage$(2)/$$(CFG_RUNTIME)              \
-                      stage$(2)/$$(CFG_STDLIB)               \
+                      stage$(1)/$$(CFG_STDLIB_DEFAULT)       \
                       stage$(2)/$$(CFG_RUSTLLVM)             \
                       $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)

@@ -162,6 +162,7 @@ else
     step_msg "processing $CFG_SELF args"
 fi
 
+opt sharedstd 1 "build libstd as a shared library"
 opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"

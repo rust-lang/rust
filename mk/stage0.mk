@@ -33,3 +33,6 @@ stage0/lib/$(CFG_RUNTIME): stage0/rustc$(X)
 
 stage0/lib/$(CFG_STDLIB): stage0/rustc$(X)
 	$(Q)touch $@
+
+stage0/lib/libstd.rlib: stage0/rustc$(X)
+	$(Q)touch $@
