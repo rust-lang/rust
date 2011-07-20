@@ -129,9 +129,10 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
     }
 
     assert passed + failed + ignored == total;
+    auto success = failed == 0u;
 
     out.write_str(#fmt("\nresult: "));
-    if (failed == 0u) {
+    if (success) {
         write_ok(out);
     } else {
         write_failed(out);
@@ -139,7 +140,7 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
     out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
                        passed, failed, ignored));
 
-    ret true;
+    ret success;
 
     fn write_ok(&io::writer out) {
         write_pretty(out, "ok", term::color_green);
