@@ -227,12 +227,26 @@ fn run_test(&test_desc test) -> test_result {
     }
 }
 
+native "rust" mod rustrt {
+    fn hack_allow_leaks();
+}
+
 // We need to run our tests in another task in order to trap test failures.
 // But, at least currently, functions can't be used as spawn arguments so
 // we've got to treat our test functions as unsafe pointers.
 fn run_test_fn_in_task(&fn() f) -> bool {
     fn run_task(*mutable fn() fptr) {
+        // If this task fails we don't want that failure to propagate to the
+        // test runner or else we couldn't keep running tests
         task::unsupervise();
+
+        // FIXME (236): Hack supreme - unwinding doesn't work yet so if this
+        // task fails memory will not be freed correctly. This turns off the
+        // sanity checks in the runtime's memory region for the task, so that
+        // the test runner can continue.
+        rustrt::hack_allow_leaks();
+
+        // Run the test
         (*fptr)()
     }
     auto fptr = ptr::addr_of(f);

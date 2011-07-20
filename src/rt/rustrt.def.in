@@ -10,6 +10,7 @@ debug_trap
 debug_tydesc
 do_gc
 get_time
+hack_allow_leaks
 ivec_copy_from_buf
 ivec_copy_from_buf_shared
 ivec_on_heap

@@ -22,6 +22,7 @@ private:
     const bool _detailed_leaks;
     const bool _synchronized;
     lock_and_signal _lock;
+    bool _hack_allow_leaks;
 
     void add_alloc();
     void dec_alloc();
@@ -33,6 +34,10 @@ public:
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     virtual ~memory_region();
+    // FIXME (236: This is a temporary hack to allow failing tasks that leak
+    // to not kill the entire process, which the test runner needs. Please
+    // kill with prejudice once unwinding works.
+    void hack_allow_leaks();
 };
 
 inline void *operator new(size_t size, memory_region &region) {

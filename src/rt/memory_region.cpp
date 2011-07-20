@@ -152,8 +152,19 @@ memory_region::~memory_region() {
         }
     }
 #endif
-    _srv->fatal(msg, __FILE__, __LINE__, "%d objects", _live_allocations);
+    if (!_hack_allow_leaks) {
+        _srv->fatal(msg, __FILE__, __LINE__,
+                    "%d objects", _live_allocations);
+    } else {
+        _srv->warning(msg, __FILE__, __LINE__,
+                      "%d objects", _live_allocations);
+    }
     if (_synchronized) { _lock.unlock(); }
+}
+
+void
+memory_region::hack_allow_leaks() {
+    _hack_allow_leaks = true;
 }
 
 //
