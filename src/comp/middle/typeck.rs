@@ -1207,27 +1207,22 @@ fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
     auto nvi = @mutable 0;
 
     // Add object fields, if any.
+    auto obj_fields = ~[];
     alt (get_obj_info(ccx)) {
-        case (some(?oinfo)) {
+        some(?oinfo) {
             alt (oinfo) {
-                case (regular_obj(?obj_fields, _)) {
-                    for (ast::obj_field f in obj_fields) {
-                        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-                        assign(ccx.tcx, vb, locals, local_names, nvi, f.id,
-                               f.ident, some(field_ty));
-                    }
-                }
-                case (anon_obj(?obj_fields, _)) {
-                    for (ast::obj_field f in obj_fields) {
-                        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-                        assign(ccx.tcx, vb, locals, local_names, nvi, f.id,
-                               f.ident, some(field_ty));
-                    }
-                }
+                regular_obj(?ofs, _) { obj_fields = ofs; }
+                anon_obj(?ofs, _) { obj_fields = ofs; }
             }
         }
-        case (none) {/* no fields */ }
+        none { /* no fields */ }
     }
+    for (ast::obj_field f in obj_fields) {
+        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
+        assign(ccx.tcx, vb, locals, local_names, nvi, f.id, f.ident,
+               some(field_ty));
+    }
+
     // Add formal parameters.
     auto args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     auto i = 0u;
