@@ -1,6 +1,5 @@
 //xfail-stage0
-//xfail-stage1
-//xfail-stage2
+
 use std;
 
 fn main() {

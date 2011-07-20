@@ -55,8 +55,9 @@ type ty_table = hashmap[ast::def_id, ty::t];
 tag obj_info {
     // Regular objects have a node_id at compile time.
     regular_obj(ast::obj_field[], ast::node_id);
-    // Anonymous objects only have a type at compile time.
-    anon_obj(ast::obj_field[], ty::t);
+    // Anonymous objects only have a type at compile time.  It's optional
+    // because not all anonymous objects have a with_obj to attach to.
+    anon_obj(ast::obj_field[], option::t[ty::sty]);
 }
 
 type crate_ctxt = rec(mutable obj_info[] obj_infos, ty::ctxt tcx);
@@ -2114,7 +2115,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
         }
         case (ast::expr_self_method(?ident)) {
             auto t = ty::mk_nil(fcx.ccx.tcx);
-            let ty::t this_obj_ty = ty::mk_nil(fcx.ccx.tcx);
+            let option::t[ty::sty] this_obj_sty =
+                some(structure_of(fcx, expr.span, ty::mk_nil(fcx.ccx.tcx)));
             let option::t[obj_info] this_obj_info = get_obj_info(fcx.ccx);
             alt (this_obj_info) {
                 case (some(?oinfo)) {
@@ -2128,7 +2130,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                     // If we're typechecking a self-method on
                                     // a regular object, this lookup should
                                     // succeed.
-                                    this_obj_ty = tpt._1;
+                                    this_obj_sty =
+                                        some(structure_of(fcx,
+                                                          expr.span,
+                                                          tpt._1));
                                 }
                                 case (none) {
                                     fcx.ccx.tcx.sess.bug(
@@ -2137,8 +2142,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                                 }
                             }
                         }
-                        case (anon_obj(_, ?obj_ty)) {
-                            this_obj_ty = obj_ty;
+                        case (anon_obj(_, ?obj_sty)) {
+                            this_obj_sty = obj_sty;
                         }
                     }
                 }
@@ -2151,15 +2156,21 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
 
             // Grab this method's type out of the current object type.
-            alt (structure_of(fcx, expr.span, this_obj_ty)) {
-                case (ty::ty_obj(?methods)) {
-                    for (ty::method method in methods) {
-                        if (method.ident == ident) {
-                            t = ty::method_ty_to_fn_ty(fcx.ccx.tcx, method);
+            alt (this_obj_sty) {
+                case (some(?sty)) {
+                    alt (sty) {
+                        case (ty::ty_obj(?methods)) {
+                            for (ty::method method in methods) {
+                                if (method.ident == ident) {
+                                    t = ty::method_ty_to_fn_ty(fcx.ccx.tcx,
+                                                               method);
+                                }
+                            }
                         }
+                        case (_) { fail; }
                     }
                 }
-                case (_) { fail; }
+                case (none) { }
             }
             write::ty_only_fixup(fcx, id, t);
             require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
@@ -2442,40 +2453,49 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 // Typecheck 'with_obj'.  If it exists, it had better have
                 // object type.
                 let ty::method[] with_obj_methods = ~[];
-                auto with_obj_ty = ty::mk_nil(fcx.ccx.tcx);
+                let ty::t with_obj_ty = ty::mk_nil(fcx.ccx.tcx);
+                let option::t[ty::sty] with_obj_sty = none;
                 alt (ao.with_obj) {
                     case (none) { }
                     case (some(?e)) {
+                        // If there's a with_obj, we push it onto the
+                        // obj_infos stack so that self-calls can be checked
+                        // within its context later.
                         check_expr(fcx, e);
                         with_obj_ty = expr_ty(fcx.ccx.tcx, e);
+                        with_obj_sty = some(structure_of(fcx, e.span,
+                                                         with_obj_ty));
 
-                        alt (structure_of(fcx, e.span, with_obj_ty)) {
-                            case (ty::ty_obj(?ms)) {
-                                with_obj_methods = ms;
-                            }
-                            case (_) {
-                                // The user is trying to extend a non-object.
-                                fcx.ccx.tcx.sess.span_fatal(
-                                    e.span,
-                                    syntax::print::pprust::expr_to_str(e) +
-                                    " does not have object type");
+                        alt (with_obj_sty) {
+                            case (none) { }
+                            case (some(?sty)) {
+                                alt (sty) {
+                                    case (ty::ty_obj(?ms)) {
+                                        with_obj_methods = ms;
+                                    }
+                                    case (_) {
+                                        // The user is trying to extend a
+                                        // non-object.
+                                        fcx.ccx.tcx.sess.span_fatal(
+                                            e.span,
+                                      syntax::print::pprust::expr_to_str(e) +
+                                            " does not have object type");
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                log_err "Pushing an anon obj onto the obj_infos stack...";
-                fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
+                fn ao_field_to_o_field(&ast::anon_obj_field f)
                     -> ast::obj_field {
                     ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
                 }
                 fcx.ccx.obj_infos +=
-                    ~[anon_obj(ivec::map(anon_obj_field_to_obj_field,
-                                         fields),
-                               with_obj_ty)];
+                    ~[anon_obj(ivec::map(ao_field_to_o_field, fields),
+                               with_obj_sty)];
 
                 methods += with_obj_methods;
-
                 ret methods;
             }
 
