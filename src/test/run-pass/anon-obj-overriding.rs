@@ -1,6 +1,5 @@
 //xfail-stage0
-//xfail-stage1
-//xfail-stage2
+
 use std;
 
 fn main() {
@@ -25,7 +24,6 @@ fn main() {
         with my_a
     };
 
-    // FIXME: raises a valgrind error (issue #543).
     assert (my_b.foo() == 3);
     assert (my_b.bar() == 3);
 }

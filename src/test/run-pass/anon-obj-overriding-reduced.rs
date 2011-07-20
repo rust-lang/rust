@@ -1,6 +1,4 @@
 //xfail-stage0
-//xfail-stage1
-//xfail-stage2
 
 // Reduced test case for issue #543.
 fn main() {
