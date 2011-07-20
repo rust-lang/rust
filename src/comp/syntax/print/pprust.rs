@@ -848,7 +848,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             bclose(s, expr.span);
         }
         case (ast::expr_fn(?f)) {
-            head(s, "fn");
+            head(s, proto_to_str(f.proto));
             print_fn_args_and_ret(s, f.decl);
             space(s.s);
             print_block(s, f.body);
@@ -1147,9 +1147,7 @@ fn print_fn(&ps s, ast::fn_decl decl, ast::proto proto, str name,
             &ast::ty_param[] typarams) {
     alt (decl.purity) {
         case (ast::impure_fn) {
-            if (proto == ast::proto_iter) {
-                head(s, "iter");
-            } else { head(s, "fn"); }
+            head(s, proto_to_str(proto));
         }
         case (_) { head(s, "pred"); }
     }
@@ -1308,9 +1306,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
                &ast::ty_arg[] inputs, &@ast::ty output,
                &ast::controlflow cf, &(@ast::constr)[] constrs) {
     ibox(s, indent_unit);
-    if (proto == ast::proto_fn) {
-        word(s.s, "fn");
-    } else { word(s.s, "iter"); }
+    word(s.s, proto_to_str(proto));
     alt (id) {
         case (some(?id)) { word(s.s, " "); word(s.s, id); }
         case (_) { }
@@ -1563,6 +1559,13 @@ fn ast_constrs_str(&(@ast::constr)[] constrs) -> str {
         s += ast_constr_to_str(c);
     }
     ret s;
+}
+
+fn proto_to_str(&ast::proto p) -> str {
+    ret alt (p) {
+        ast::proto_fn { "fn" }
+        ast::proto_iter { "iter" }
+    };
 }
 
 //
