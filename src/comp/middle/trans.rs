@@ -8564,6 +8564,17 @@ fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
                             str::buf("rust_metadata"));
     llvm::LLVMSetInitializer(llglobal, llconst);
     llvm::LLVMSetSection(llglobal, str::buf(x86::get_meta_sect_name()));
+    llvm::LLVMSetLinkage(llglobal,
+                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+
+    auto t_ptr_i8 = T_ptr(T_i8());
+    llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
+    auto llvm_used =
+        llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u),
+                            str::buf("llvm_used"));
+    llvm::LLVMSetLinkage(llvm_used,
+                         lib::llvm::LLVMAppendingLinkage as llvm::Linkage);
+    llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, ~[llglobal]));
 }
 
 fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
