@@ -8571,7 +8571,7 @@ fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
     llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
     auto llvm_used =
         llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u),
-                            str::buf("llvm_used"));
+                            str::buf("llvm.used"));
     llvm::LLVMSetLinkage(llvm_used,
                          lib::llvm::LLVMAppendingLinkage as llvm::Linkage);
     llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, ~[llglobal]));
