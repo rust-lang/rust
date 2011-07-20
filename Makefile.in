@@ -171,12 +171,7 @@ STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1),stage$(1), \
                 $$(CFG_RUSTC_FLAGS))
 endef
 
-# FIXME: fuzzer only appears to work on unix at the moment.
-ifdef CFG_UNIXY
-FUZZ := stage1/fuzzer
-else
-FUZZ :=
-endif
+FUZZ := stage1/fuzzer$(X)
 
 $(eval $(call SREQ,0))
 $(eval $(call SREQ,1))
