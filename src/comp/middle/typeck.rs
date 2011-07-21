@@ -347,7 +347,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
 
             auto out_constrs = ~[];
             for (@ast::constr constr in constrs) {
-                out_constrs += ~[ast_constr_to_constr(tcx, constr)];
+                out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
             }
             typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
         }
@@ -383,7 +383,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
 
                 auto out_constrs = ~[];
                 for (@ast::constr constr in m.node.constrs) {
-                    out_constrs += ~[ast_constr_to_constr(tcx, constr)];
+                    out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
                 }
                 let ty::method new_m =
                     rec(proto=m.node.proto,
@@ -399,7 +399,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_constr(?t, ?cs)) {
             auto out_cs = ~[];
             for (@ast::ty_constr constr in cs) {
-                out_cs += ~[ast_constr_to_constr(tcx, constr)];
+                out_cs += ~[ty::ast_constr_to_constr(tcx, constr)];
             }
             typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
         }
@@ -509,7 +509,7 @@ mod collect {
 
         auto out_constrs = ~[];
         for (@ast::constr constr in decl.constraints) {
-            out_constrs += ~[ast_constr_to_constr(cx.tcx, constr)];
+            out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         auto t_fn =
             ty::mk_fn(cx.tcx, proto, input_tys, output_ty, decl.cf,
@@ -589,7 +589,7 @@ mod collect {
 
         auto out_constrs = ~[];
         for (@ast::constr constr in m.node.meth.decl.constraints) {
-            out_constrs += ~[ast_constr_to_constr(cx.tcx, constr)];
+            out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         ret rec(proto=m.node.meth.proto, ident=m.node.ident,
                 inputs=inputs, output=output, cf=m.node.meth.decl.cf,
@@ -2422,7 +2422,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
                 auto out_constrs = ~[];
                 for (@ast::constr constr in m.node.meth.decl.constraints) {
-                    out_constrs += ~[ast_constr_to_constr(ccx.tcx, constr)];
+                    out_constrs +=
+                      ~[ty::ast_constr_to_constr(ccx.tcx, constr)];
                 }
 
                 ret rec(proto=m.node.meth.proto, ident=m.node.ident,
@@ -2533,22 +2534,6 @@ fn next_ty_var(&@fn_ctxt fcx) -> ty::t {
 
 fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
     ret ivec::last[obj_info](ccx.obj_infos);
-}
-
-fn ast_constr_to_constr[T](ty::ctxt tcx, &@ast::constr_general[T] c)
-    -> @ty::constr_general[T] {
-    alt (tcx.def_map.find(c.node.id)) {
-        case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
-            ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
-                                    id=pred_id));
-        }
-        case (_) {
-            tcx.sess.span_fatal(c.span, "Predicate "
-                      + path_to_str(c.node.path)
-                      + " is unbound or bound to a non-function or an \
-                        impure function");
-        }
-    }
 }
 
 fn check_decl_initializer(&@fn_ctxt fcx, ast::node_id nid,

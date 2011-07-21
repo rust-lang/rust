@@ -30,6 +30,7 @@ export any_item_native;
 export any_item_rust;
 export arg;
 export args_eq;
+export ast_constr_to_constr;
 export bind_params_in_type;
 export block_ty;
 export constr;
@@ -3118,6 +3119,22 @@ fn is_binopable(&ctxt cx, t ty, ast::binop op) -> bool {
                 [f, f, f, f, t, t, f, f]];/*struct*/
 
     ret tbl.(tycat(cx, ty)).(opcat(op));
+}
+
+fn ast_constr_to_constr[T](ty::ctxt tcx, &@ast::constr_general[T] c)
+    -> @ty::constr_general[T] {
+    alt (tcx.def_map.find(c.node.id)) {
+        case (some(ast::def_fn(?pred_id, ast::pure_fn))) {
+            ret @respan(c.span, rec(path=c.node.path, args=c.node.args,
+                                    id=pred_id));
+        }
+        case (_) {
+            tcx.sess.span_fatal(c.span, "Predicate "
+                      + path_to_str(c.node.path)
+                      + " is unbound or bound to a non-function or an \
+                        impure function");
+        }
+    }
 }
 
 // Local Variables:
