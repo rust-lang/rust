@@ -1370,8 +1370,10 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     ret rslt(cx, v);
 }
 
-fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
+fn get_tydesc(&@block_ctxt cx, &ty::t orig_t, bool escapes,
               &mutable option::t[@tydesc_info] static_ti) -> result {
+
+    auto t = ty::strip_cname(cx.fcx.lcx.ccx.tcx, orig_t);
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty::type_param(cx.fcx.lcx.ccx.tcx, t)) {
@@ -1390,8 +1392,10 @@ fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     ret rslt(cx, info.tydesc);
 }
 
-fn get_static_tydesc(&@block_ctxt cx, &ty::t t, &uint[] ty_params)
+fn get_static_tydesc(&@block_ctxt cx, &ty::t orig_t, &uint[] ty_params)
         -> @tydesc_info {
+    auto t = ty::strip_cname(cx.fcx.lcx.ccx.tcx, orig_t);
+
     alt (cx.fcx.lcx.ccx.tydescs.find(t)) {
         case (some(?info)) { ret info; }
         case (none) {

@@ -108,6 +108,7 @@ export sequence_is_interior;
 export struct;
 export sort_methods;
 export stmt_node_id;
+export strip_cname;
 export sty;
 export substitute_type_params;
 export t;
@@ -855,10 +856,14 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
 
 
 // Type utilities
+
 fn rename(&ctxt cx, t typ, str new_cname) -> t {
     ret gen_ty_full(cx, struct(cx, typ), some[str](new_cname));
 }
 
+fn strip_cname(&ctxt cx, t typ) -> t {
+    ret gen_ty_full(cx, struct(cx, typ), none);
+}
 
 // Returns a type with the structural part taken from `struct_ty` and the
 // canonical name from `cname_ty`.
