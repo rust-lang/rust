@@ -69,6 +69,7 @@ fn rust_printer(ioivec::writer writer) -> ps {
 }
 
 const uint indent_unit = 4u;
+const uint alt_indent_unit = 2u;
 
 const uint default_columns = 78u;
 
@@ -165,12 +166,14 @@ fn bopen(&ps s) {
 
 }
 
-fn bclose(&ps s, codemap::span span) {
+fn bclose_(&ps s, codemap::span span, uint indented) {
     maybe_print_comment(s, span.hi);
-    break_offset(s.s, 1u, -(indent_unit as int));
+    break_offset(s.s, 1u, -(indented as int));
     word(s.s, "}");
     end(s); // close the outer-box
-
+}
+fn bclose(&ps s, codemap::span span) {
+    bclose_(s, span, indent_unit);
 }
 
 fn hardbreak_if_not_bol(&ps s) {
@@ -572,10 +575,11 @@ fn print_stmt(&ps s, &ast::stmt st) {
 }
 
 fn print_block(&ps s, &ast::block blk) {
-    print_possibly_embedded_block(s, blk, false);
+    print_possibly_embedded_block(s, blk, false, indent_unit);
 }
 
-fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded) {
+fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded,
+                                 uint indented) {
     maybe_print_comment(s, blk.span.lo);
     auto ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
@@ -593,7 +597,7 @@ fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded) {
         }
         case (_) { }
     }
-    bclose(s, blk.span);
+    bclose_(s, blk.span, indented);
     s.ann.post(ann_node);
 }
 
@@ -603,9 +607,7 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
     if (chk) {
         word_nbsp(s, "check");
     }
-    popen(s);
     print_expr(s, test);
-    pclose(s);
     space(s.s);
     print_block(s, block);
     fn do_else(&ps s, option::t[@ast::expr] els) {
@@ -658,7 +660,7 @@ fn print_mac(&ps s, &ast::mac m) {
             word(s.s, ">");
         }
         case (ast::mac_embed_block(?blk)) {
-            print_possibly_embedded_block(s, blk, true);
+            print_possibly_embedded_block(s, blk, true, indent_unit);
         }
         case (ast::mac_ellipsis) {
             word(s.s, "...");
@@ -788,9 +790,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_while(?test, ?block)) {
             head(s, "while");
-            popen(s);
             print_expr(s, test);
-            pclose(s);
             space(s.s);
             print_block(s, block);
         }
@@ -822,20 +822,19 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_block(s, block);
             space(s.s);
             word_space(s, "while");
-            popen(s);
             print_expr(s, expr);
-            pclose(s);
         }
         case (ast::expr_alt(?expr, ?arms)) {
-            head(s, "alt");
-            popen(s);
+            cbox(s, alt_indent_unit);
+            ibox(s, 4u);
+            word_nbsp(s, "alt");
             print_expr(s, expr);
-            pclose(s);
             space(s.s);
             bopen(s);
             for (ast::arm arm in arms) {
                 space(s.s);
-                head(s, "case");
+                cbox(s, alt_indent_unit);
+                ibox(s, 0u);
                 auto first = true;
                 for (@ast::pat p in arm.pats) {
                     if (first) { first = false; }
@@ -843,9 +842,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
                     print_pat(s, p);
                 }
                 space(s.s);
-                print_block(s, arm.block);
+                print_possibly_embedded_block(s, arm.block, false,
+                                              alt_indent_unit);
             }
-            bclose(s, expr.span);
+            bclose_(s, expr.span, alt_indent_unit);
         }
         case (ast::expr_fn(?f)) {
             head(s, proto_to_str(f.proto));
