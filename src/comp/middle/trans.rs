@@ -7076,6 +7076,7 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
             ast::node_id id) {
     if !cx.ccx.sess.get_opts().stats {
         trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
+        ret;
     }
 
     auto start = time::get_time();
