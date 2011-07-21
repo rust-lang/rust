@@ -18,10 +18,10 @@
 static size_t get_min_stk_size() {
     char *stack_size = getenv("RUST_MIN_STACK");
     if(stack_size) {
-        return atoi(stack_size);
+        return strtol(stack_size, NULL, 0);
     }
     else {
-        return 0x200000;
+        return 0x300000;
     }
 }
 
