@@ -428,7 +428,8 @@ fn mk_ctxt(session::session s, resolve::def_map dm,
 
 
 // Type constructors
-fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
+fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] in_cname) -> raw_t {
+    auto cname = none;
     auto h = hash_type_info(st, cname);
     let bool has_params = false;
     let bool has_vars = false;
