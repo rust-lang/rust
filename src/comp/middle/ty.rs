@@ -1,4 +1,3 @@
-
 import std::int;
 import std::ivec;
 import std::str;
@@ -360,27 +359,27 @@ type node_type_table =
     @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
 
 fn populate_type_store(&ctxt cx) {
-    intern(cx, ty_nil, none[str]);
-    intern(cx, ty_bool, none[str]);
-    intern(cx, ty_int, none[str]);
-    intern(cx, ty_float, none[str]);
-    intern(cx, ty_uint, none[str]);
-    intern(cx, ty_machine(ast::ty_i8), none[str]);
-    intern(cx, ty_machine(ast::ty_i16), none[str]);
-    intern(cx, ty_machine(ast::ty_i32), none[str]);
-    intern(cx, ty_machine(ast::ty_i64), none[str]);
-    intern(cx, ty_machine(ast::ty_u8), none[str]);
-    intern(cx, ty_machine(ast::ty_u16), none[str]);
-    intern(cx, ty_machine(ast::ty_u32), none[str]);
-    intern(cx, ty_machine(ast::ty_u64), none[str]);
-    intern(cx, ty_machine(ast::ty_f32), none[str]);
-    intern(cx, ty_machine(ast::ty_f64), none[str]);
-    intern(cx, ty_char, none[str]);
-    intern(cx, ty_str, none[str]);
-    intern(cx, ty_istr, none[str]);
-    intern(cx, ty_task, none[str]);
-    intern(cx, ty_type, none[str]);
-    intern(cx, ty_bot, none[str]);
+    intern(cx, ty_nil, none);
+    intern(cx, ty_bool, none);
+    intern(cx, ty_int, none);
+    intern(cx, ty_float, none);
+    intern(cx, ty_uint, none);
+    intern(cx, ty_machine(ast::ty_i8), none);
+    intern(cx, ty_machine(ast::ty_i16), none);
+    intern(cx, ty_machine(ast::ty_i32), none);
+    intern(cx, ty_machine(ast::ty_i64), none);
+    intern(cx, ty_machine(ast::ty_u8), none);
+    intern(cx, ty_machine(ast::ty_u16), none);
+    intern(cx, ty_machine(ast::ty_u32), none);
+    intern(cx, ty_machine(ast::ty_u64), none);
+    intern(cx, ty_machine(ast::ty_f32), none);
+    intern(cx, ty_machine(ast::ty_f64), none);
+    intern(cx, ty_char, none);
+    intern(cx, ty_str, none);
+    intern(cx, ty_istr, none);
+    intern(cx, ty_task, none);
+    intern(cx, ty_type, none);
+    intern(cx, ty_bot, none);
     assert (ivec::len(cx.ts.vect) == idx_first_others);
 }
 
@@ -530,7 +529,7 @@ fn gen_ty_full(&ctxt cx, &sty st, &option::t[str] cname) -> t {
 
 // These are private constructors to this module. External users should always
 // use the mk_foo() functions below.
-fn gen_ty(&ctxt cx, &sty st) -> t { ret gen_ty_full(cx, st, none[str]); }
+fn gen_ty(&ctxt cx, &sty st) -> t { ret gen_ty_full(cx, st, none); }
 
 fn mk_nil(&ctxt cx) -> t { ret idx_nil; }
 
@@ -859,7 +858,7 @@ fn fold_ty(&ctxt cx, fold_mode fld, t ty_0) -> t {
 // Type utilities
 
 fn rename(&ctxt cx, t typ, str new_cname) -> t {
-    ret gen_ty_full(cx, struct(cx, typ), some[str](new_cname));
+    ret gen_ty_full(cx, struct(cx, typ), some(new_cname));
 }
 
 fn strip_cname(&ctxt cx, t typ) -> t {
@@ -1270,10 +1269,10 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
 
 fn type_param(&ctxt cx, &t ty) -> option::t[uint] {
     alt (struct(cx, ty)) {
-        case (ty_param(?id)) { ret some[uint](id); }
+        case (ty_param(?id)) { ret some(id); }
         case (_) {/* fall through */ }
     }
-    ret none[uint];
+    ret none;
 }
 
 fn type_autoderef(&ctxt cx, &ty::t t) -> ty::t {
@@ -1737,7 +1736,7 @@ fn eq_raw_ty(&@raw_t a, &@raw_t b) -> bool {
     alt (a.cname) {
         case (none) {
             alt (b.cname) {
-                case (none[str]) {/* ok */ }
+                case (none) { /* ok */ }
                 case (_) { ret false; }
             }
         }
@@ -2177,10 +2176,10 @@ mod unify {
     // Unifies two mutability flags.
     fn unify_mut(ast::mutability expected, ast::mutability actual) ->
        option::t[ast::mutability] {
-        if (expected == actual) { ret some[ast::mutability](expected); }
-        if (expected == ast::maybe_mut) { ret some[ast::mutability](actual); }
-        if (actual == ast::maybe_mut) { ret some[ast::mutability](expected); }
-        ret none[ast::mutability];
+        if (expected == actual) { ret some(expected); }
+        if (expected == ast::maybe_mut) { ret some(actual); }
+        if (actual == ast::maybe_mut) { ret some(expected); }
+        ret none;
     }
     tag fn_common_res {
         fn_common_res_err(result);
@@ -2332,8 +2331,8 @@ mod unify {
                 }
                 auto root_id = ufindivec::find(vb.sets, vid as uint);
                 alt (smallintmap::find[t](vb.types, root_id)) {
-                    case (none[t]) { ret fix_err(vid); }
-                    case (some[t](?rt)) { ret fix_ok(rt); }
+                    case (none) { ret fix_err(vid); }
+                    case (some(?rt)) { ret fix_ok(rt); }
                 }
             }
             case (_) { ret fix_ok(typ); }
@@ -2778,8 +2777,8 @@ mod unify {
             }
             auto typespec;
             alt (smallintmap::find[t](vb.types, i)) {
-                case (none[t]) { typespec = ""; }
-                case (some[t](?typ)) {
+                case (none) { typespec = ""; }
+                case (some(?typ)) {
                     typespec = " =" + ty_to_str(tcx, typ);
                 }
             }
@@ -2793,16 +2792,16 @@ mod unify {
         fn subst_vars(ty_ctxt tcx, @var_bindings vb,
                       @mutable option::t[int] unresolved, int vid) -> t {
             if (vid as uint >= ufindivec::set_count(vb.sets)) {
-                *unresolved = some[int](vid);
+                *unresolved = some(vid);
                 ret ty::mk_var(tcx, vid);
             }
             auto root_id = ufindivec::find(vb.sets, vid as uint);
             alt (smallintmap::find[t](vb.types, root_id)) {
-                case (none[t]) {
-                    *unresolved = some[int](vid);
+                case (none) {
+                    *unresolved = some(vid);
                     ret ty::mk_var(tcx, vid);
                 }
-                case (some[t](?rt)) {
+                case (some(?rt)) {
                     ret fold_ty(tcx,
                                 fm_var(bind subst_vars(tcx, vb, unresolved,
                                                        _)), rt);
@@ -2815,8 +2814,8 @@ mod unify {
                     typ);
         auto ur = *unresolved;
         alt (ur) {
-            case (none[int]) { ret fix_ok(rty); }
-            case (some[int](?var_id)) { ret fix_err(var_id); }
+            case (none) { ret fix_ok(rty); }
+            case (some(?var_id)) { ret fix_err(var_id); }
         }
     }
     fn resolve_type_var(&ty_ctxt tcx, &@var_bindings vb, int vid) ->
@@ -2826,8 +2825,8 @@ mod unify {
         }
         auto root_id = ufindivec::find(vb.sets, vid as uint);
         alt (smallintmap::find[t](vb.types, root_id)) {
-            case (none[t]) { ret fix_err(vid); }
-            case (some[t](?rt)) { ret fixup_vars(tcx, vb, rt); }
+            case (none) { ret fix_err(vid); }
+            case (some(?rt)) { ret fixup_vars(tcx, vb, rt); }
         }
     }
 }
