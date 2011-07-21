@@ -6340,7 +6340,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, ~[]);
 
         // Tuple type for body:
-        // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
+        // [tydesc, [typaram, ...], [field, ...], with_obj]
         let ty::t body_ty =
             ty::mk_imm_tup(ccx.tcx, ~[tydesc_ty, typarams_ty,
                                       fields_ty, with_obj_ty]);
@@ -6352,7 +6352,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
         // mk_imm_box throws a refcount into the type we're synthesizing,
         // so that it looks like:
-        // [rc, [tydesc_ty, [typaram, ...], [field, ...], with_obj]]
+        // [rc, [tydesc, [typaram, ...], [field, ...], with_obj]]
         let ty::t boxed_body_ty = ty::mk_imm_box(ccx.tcx, body_ty);
 
         // Grab onto the refcount and body parts of the box we allocated.
@@ -6374,7 +6374,6 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         // the user of the object.  So the tydesc is needed to keep track of
         // the types of the object's fields, so that the fields can be freed
         // later.
-
         auto body_tydesc =
             GEP_tup_like(bcx, body_ty, body.val,
                          ~[0, abi::obj_body_elt_tydesc]);
@@ -7153,7 +7152,7 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     let ty::t typarams_ty = ty::mk_imm_tup(cx.ccx.tcx, ~[]);
 
     // Tuple type for body:
-    // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
+    // [tydesc, [typaram, ...], [field, ...], with_obj]
     let ty::t body_ty =
         ty::mk_imm_tup(cx.ccx.tcx, ~[tydesc_ty, typarams_ty,
                                      fields_ty, with_obj_ty]);
