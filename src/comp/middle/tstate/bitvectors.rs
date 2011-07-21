@@ -233,6 +233,10 @@ fn set_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
     ret set_in_poststate_(bit_num(fcx, ninit(id, ident)), t);
 }
 
+fn set_in_prestate_constr(&fn_ctxt fcx, &tsconstr c, &prestate t) -> bool {
+    ret set_in_poststate_(bit_num(fcx, c), t);
+}
+
 fn clear_in_poststate_ident(&fn_ctxt fcx, &node_id id, &ident ident,
                             &node_id parent) -> bool {
     ret kill_poststate(fcx, parent, ninit(id, ident));

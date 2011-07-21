@@ -1,4 +1,5 @@
-
+import std::uint;
+import std::int;
 import std::ivec;
 import syntax::ast::*;
 import util::ppaux::fn_ident_to_string;
@@ -96,6 +97,7 @@ fn add_constraint(&ty::ctxt tcx, sp_constr c, uint next, constr_map tbl) ->
    to a bit number in the precondition/postcondition vectors */
 fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ty_param[] tp,
               &span f_sp, &fn_ident f_name, node_id id) {
+    auto name = fn_ident_to_string(id, f_name);
     auto res_map = @new_def_hash[constraint]();
     let uint next = 0u;
 
@@ -106,15 +108,23 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ty_param[] tp,
     for (sp_constr c in { *cx.cs }) {
         next = add_constraint(cx.tcx, c, next, res_map);
     }
+    /* if this function has any constraints, instantiate them to the
+       argument names and add them */
+    auto sc;
+    for (@constr c in f.decl.constraints) {
+        sc = ast_constr_to_sp_constr(cx.tcx, f.decl.inputs, c);
+        next = add_constraint(cx.tcx, sc, next, res_map);
+    }
+
     /* add a pseudo-entry for the function's return value
        we can safely use the function's name itself for this purpose */
 
-    auto name = fn_ident_to_string(id, f_name);
     add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next, res_map);
     let @mutable node_id[] v = @mutable ~[];
     auto rslt =
         rec(constrs=res_map,
-            num_constraints=ivec::len(*cx.cs) + 1u,
+            num_constraints=ivec::len(*cx.cs) + ivec::len(f.decl.constraints)
+                            + 1u,
             cf=f.decl.cf,
             used_vars=v);
     ccx.fm.insert(id, rslt);

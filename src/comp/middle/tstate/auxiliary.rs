@@ -1053,6 +1053,29 @@ fn op_to_oper_ty(init_op io) -> oper_type {
 fn do_nothing[T](&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
               node_id iid, &T cx, &visit::vt[T] v) {
 }
+
+
+fn args_to_constr_args(&span sp, &arg[] args) -> (@constr_arg_use)[] {
+    let (@constr_arg_use)[] actuals = ~[];
+    for (arg a in args) {
+        actuals += ~[@respan(sp, carg_ident(tup(a.ident, a.id)))];
+    }
+    ret actuals;
+}
+
+fn ast_constr_to_ts_constr(&ty::ctxt tcx, &arg[] args, &@constr c)
+    -> tsconstr {
+    auto tconstr = ty::ast_constr_to_constr(tcx, c);
+    ret npred(tconstr.node.path, tconstr.node.id,
+               args_to_constr_args(tconstr.span, args));
+}
+
+fn ast_constr_to_sp_constr(&ty::ctxt tcx, &arg[] args, &@constr c)
+    -> sp_constr {
+    auto tconstr = ast_constr_to_ts_constr(tcx, args, c);
+    ret respan(c.span, tconstr);
+}
+
 //
 // Local Variables:
 // mode: rust

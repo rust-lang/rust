@@ -1,3 +1,4 @@
+import syntax::print::pprust::path_to_str;
 import std::ivec;
 import std::option;
 import std::option::get;
@@ -25,6 +26,8 @@ import tritv::tritv_clone;
 import tritv::tritv_set;
 import tritv::ttrue;
 
+import bitvectors::*;
+/*
 import bitvectors::set_in_poststate_ident;
 import bitvectors::clear_in_poststate_expr;
 import bitvectors::clear_in_prestate_ident;
@@ -33,6 +36,7 @@ import bitvectors::gen_poststate;
 import bitvectors::kill_poststate;
 import bitvectors::clear_in_poststate_ident;
 import bitvectors::intersect_states;
+*/
 import syntax::ast::*;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
@@ -731,9 +735,15 @@ fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
     auto num_local_vars = num_constraints(fcx.enclosing);
     // make sure the return bit starts out False
     clear_in_prestate_ident(fcx, fcx.id, fcx.name, f.body.node.id);
-    auto changed =
-        find_pre_post_state_block(fcx, block_prestate(fcx.ccx, f.body),
-                                  f.body);
+    // Instantiate any constraints on the arguments so we can use them
+    auto block_pre = block_prestate(fcx.ccx, f.body);
+    auto tsc;
+    for (@constr c in f.decl.constraints) {
+        tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);
+        set_in_prestate_constr(fcx, tsc, block_pre);
+    }
+
+    auto changed = find_pre_post_state_block(fcx, block_pre, f.body);
     // Treat the tail expression as a return statement
 
     alt (f.body.node.expr) {
