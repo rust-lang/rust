@@ -207,20 +207,20 @@ type mt = rec(t ty, ast::mutability mut);
 type creader_cache = hashmap[tup(int, uint, uint), ty::t];
 
 type ctxt =
-    rec(@type_store ts,
-        session::session sess,
-        resolve::def_map def_map,
-        node_type_table node_types,
-        ast_map::map items,
-        freevars::freevar_map freevars,
+    @rec(@type_store ts,
+         session::session sess,
+         resolve::def_map def_map,
+         node_type_table node_types,
+         ast_map::map items,
+         freevars::freevar_map freevars,
 
-        //        constr_table fn_constrs,
-        type_cache tcache,
-        creader_cache rcache,
-        hashmap[t, str] short_names_cache,
-        hashmap[t, bool] has_pointer_cache,
-        hashmap[t, bool] owns_heap_mem_cache,
-        hashmap[@ast::ty, option::t[t]] ast_ty_to_ty_cache);
+         //        constr_table fn_constrs,
+         type_cache tcache,
+         creader_cache rcache,
+         hashmap[t, str] short_names_cache,
+         hashmap[t, bool] has_pointer_cache,
+         hashmap[t, bool] owns_heap_mem_cache,
+         hashmap[@ast::ty, option::t[t]] ast_ty_to_ty_cache);
 
 type ty_ctxt = ctxt;
 
@@ -405,23 +405,18 @@ fn mk_ctxt(session::session s, resolve::def_map dm,
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
     auto ts = @interner::mk[@raw_t](hash_raw_ty, eq_raw_ty);
     auto cx =
-        rec(ts=ts,
-            sess=s,
-            def_map=dm,
-            node_types=ntt,
-            items=amap,
-            freevars=freevars,
-            tcache=tcache,
-            rcache=mk_rcache(),
-            short_names_cache=map::mk_hashmap[ty::t,
-                                              str](ty::hash_ty, ty::eq_ty),
-            has_pointer_cache=map::mk_hashmap[ty::t,
-                                              bool](ty::hash_ty, ty::eq_ty),
-            owns_heap_mem_cache=map::mk_hashmap[ty::t,
-                                                bool](ty::hash_ty, ty::eq_ty),
-            ast_ty_to_ty_cache=map::mk_hashmap[@ast::ty,
-                                               option::t[t]](ast::hash_ty,
-                                                             ast::eq_ty));
+        @rec(ts=ts,
+             sess=s,
+             def_map=dm,
+             node_types=ntt,
+             items=amap,
+             freevars=freevars,
+             tcache=tcache,
+             rcache=mk_rcache(),
+             short_names_cache=map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+             has_pointer_cache=map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+             owns_heap_mem_cache=map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+             ast_ty_to_ty_cache=map::mk_hashmap(ast::hash_ty, ast::eq_ty));
     populate_type_store(cx);
     ret cx;
 }

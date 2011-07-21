@@ -36,10 +36,10 @@ type scope = @restrict[];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
-type ctx = rec(@ty::ctxt tcx,
+type ctx = rec(ty::ctxt tcx,
                std::map::hashmap[node_id, local_info] local_map);
 
-fn check_crate(@ty::ctxt tcx, &@ast::crate crate) {
+fn check_crate(ty::ctxt tcx, &@ast::crate crate) {
     auto cx = @rec(tcx=tcx,
                    // Stores information about object fields and function
                    // arguments that's otherwise not easily available.
@@ -149,7 +149,7 @@ fn visit_decl(&@ctx cx, &@ast::decl d, &scope sc, &vt[scope] v) {
 
 fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
    rec(node_id[] root_vars, ty::t[] unsafe_ts) {
-    auto fty = ty::expr_ty(*cx.tcx, f);
+    auto fty = ty::expr_ty(cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
     let node_id[] roots = ~[];
     let tup(uint, node_id)[] mut_roots = ~[];
@@ -248,7 +248,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
             case (ast::expr_call(?f, ?args_)) { args = args_; f }
         };
     auto i = 0u;
-    for (ty::arg arg_t in fty_args(cx, ty::expr_ty(*cx.tcx, f))) {
+    for (ty::arg arg_t in fty_args(cx, ty::expr_ty(cx.tcx, f))) {
         if (arg_t.mode != ty::mo_val) {
             auto mut_a = arg_t.mode == ty::mo_alias(true);
             auto ok = true;
@@ -354,15 +354,15 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
     auto unsafe = alt (inner_mut(root.ds)) { some(?t) { ~[t] } _ { ~[] } };
 
     // If this is a mutable vector, don't allow it to be touched.
-    auto seq_t = ty::expr_ty(*cx.tcx, seq);
-    alt (ty::struct(*cx.tcx, seq_t)) {
+    auto seq_t = ty::expr_ty(cx.tcx, seq);
+    alt (ty::struct(cx.tcx, seq_t)) {
         ty::ty_vec(?mt) | ty::ty_ivec(?mt) {
             if (mt.mut != ast::imm) { unsafe = ~[seq_t]; }
         }
         ty::ty_str | ty::ty_istr { /* no-op */ }
         _ {
             cx.tcx.sess.span_unimpl(seq.span, "unknown seq type " +
-                                    util::ppaux::ty_to_str(*cx.tcx, seq_t));
+                                    util::ppaux::ty_to_str(cx.tcx, seq_t));
         }
     }
     auto new_sc =
@@ -380,7 +380,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
     auto def = cx.tcx.def_map.get(id);
     if (!def_is_local(def, true)) { ret; }
     auto my_defnum = ast::def_id_of_def(def)._1;
-    auto var_t = ty::expr_ty(*cx.tcx, ex);
+    auto var_t = ty::expr_ty(cx.tcx, ex);
     for (restrict r in *sc) {
         // excludes variables introduced since the alias was made
         if (my_defnum < r.block_defnum) {
@@ -523,7 +523,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
    rec(@ast::expr ex, @deref[] ds) {
     fn maybe_auto_unbox(&ctx cx, &ty::t t) ->
        rec(ty::t t, option::t[deref] d) {
-        alt (ty::struct(*cx.tcx, t)) {
+        alt (ty::struct(cx.tcx, t)) {
             case (ty::ty_box(?mt)) {
                 ret rec(t=mt.ty,
                         d=some(@rec(mut=mt.mut != ast::imm,
@@ -541,9 +541,9 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
         alt ({ ex.node }) {
             case (ast::expr_field(?base, ?ident)) {
                 auto auto_unbox =
-                    maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, base));
+                    maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, base));
                 auto mut = false;
-                alt (ty::struct(*cx.tcx, auto_unbox.t)) {
+                alt (ty::struct(cx.tcx, auto_unbox.t)) {
                     case (ty::ty_tup(?fields)) {
                         auto fnm = ty::field_num(cx.tcx.sess, ex.span, ident);
                         mut = fields.(fnm).mut != ast::imm;
@@ -564,8 +564,8 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
             }
             case (ast::expr_index(?base, _)) {
                 auto auto_unbox =
-                    maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, base));
-                alt (ty::struct(*cx.tcx, auto_unbox.t)) {
+                    maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, base));
+                alt (ty::struct(cx.tcx, auto_unbox.t)) {
                     case (ty::ty_vec(?mt)) {
                         ds += ~[@rec(mut=mt.mut != ast::imm,
                                     kind=index,
@@ -582,9 +582,9 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
             }
             case (ast::expr_unary(?op, ?base)) {
                 if (op == ast::deref) {
-                    auto base_t = ty::expr_ty(*cx.tcx, base);
+                    auto base_t = ty::expr_ty(cx.tcx, base);
                     auto mut = false;
-                    alt (ty::struct(*cx.tcx, base_t)) {
+                    alt (ty::struct(cx.tcx, base_t)) {
                         case (ty::ty_box(?mt)) { mut = mt.mut != ast::imm; }
                         case (ty::ty_res(_, _, _)) {}
                         case (ty::ty_tag(_, _)) {}
@@ -598,7 +598,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
         }
     }
     if (autoderef) {
-        auto auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(*cx.tcx, ex));
+        auto auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, ex));
         maybe_push_auto_unbox(auto_unbox.d, ds);
     }
     ret rec(ex=ex, ds=@ds);
@@ -669,7 +669,7 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
             _ { ret false; }
         }
     }
-    ret helper(*cx.tcx, needle, haystack, mut);
+    ret helper(cx.tcx, needle, haystack, mut);
 }
 
 fn def_is_local(&ast::def d, bool objfields_count) -> bool {
@@ -681,7 +681,7 @@ fn def_is_local(&ast::def d, bool objfields_count) -> bool {
 }
 
 fn fty_args(&ctx cx, ty::t fty) -> ty::arg[] {
-    ret alt (ty::struct(*cx.tcx, ty::type_autoderef(*cx.tcx, fty))) {
+    ret alt (ty::struct(cx.tcx, ty::type_autoderef(cx.tcx, fty))) {
         ty::ty_fn(_, ?args, _, _, _) | ty::ty_native_fn(_, ?args, _) { args }
     };
 }

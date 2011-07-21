@@ -143,7 +143,7 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
              bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
     time(time_passes, "alias checking",
-         bind middle::alias::check_crate(@ty_cx, crate));
+         bind middle::alias::check_crate(ty_cx, crate));
     auto llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
                                     bind trans::trans_crate
