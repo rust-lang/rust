@@ -352,7 +352,7 @@ const uint idx_bot = 20u;
 
 const uint idx_first_others = 21u;
 
-type type_store = interner::interner[raw_t];
+type type_store = interner::interner[@raw_t];
 
 type ty_param_substs_opt_and_ty = tup(option::t[ty::t[]], ty::t);
 
@@ -403,7 +403,7 @@ fn mk_ctxt(session::session s, resolve::def_map dm,
     let node_type_table ntt =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
     auto tcache = new_def_hash[ty::ty_param_count_and_ty]();
-    auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
+    auto ts = @interner::mk[@raw_t](hash_raw_ty, eq_raw_ty);
     auto cx =
         rec(ts=ts,
             sess=s,
@@ -428,14 +428,14 @@ fn mk_ctxt(session::session s, resolve::def_map dm,
 
 
 // Type constructors
-fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] in_cname) -> raw_t {
+fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] in_cname) -> @raw_t {
     auto cname = none;
     auto h = hash_type_info(st, cname);
     let bool has_params = false;
     let bool has_vars = false;
     fn derive_flags_t(&ctxt cx, &mutable bool has_params,
                       &mutable bool has_vars, &t tt) {
-        auto rt = interner::get[raw_t](*cx.ts, tt);
+        auto rt = interner::get[@raw_t](*cx.ts, tt);
         has_params = has_params || rt.has_params;
         has_vars = has_vars || rt.has_vars;
     }
@@ -511,20 +511,20 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] in_cname) -> raw_t {
             derive_flags_t(cx, has_params, has_vars, tt);
         }
     }
-    ret rec(struct=st,
-            cname=cname,
-            hash=h,
-            has_params=has_params,
-            has_vars=has_vars);
+    ret @rec(struct=st,
+             cname=cname,
+             hash=h,
+             has_params=has_params,
+             has_vars=has_vars);
 }
 
 fn intern(&ctxt cx, &sty st, &option::t[str] cname) {
-    interner::intern[raw_t](*cx.ts, mk_raw_ty(cx, st, cname));
+    interner::intern(*cx.ts, mk_raw_ty(cx, st, cname));
 }
 
 fn gen_ty_full(&ctxt cx, &sty st, &option::t[str] cname) -> t {
     auto raw_type = mk_raw_ty(cx, st, cname);
-    ret interner::intern[raw_t](*cx.ts, raw_type);
+    ret interner::intern(*cx.ts, raw_type);
 }
 
 
@@ -635,13 +635,13 @@ fn mk_native(&ctxt cx, &def_id did) -> t { ret gen_ty(cx, ty_native(did)); }
 
 // Returns the one-level-deep type structure of the given type.
 fn struct(&ctxt cx, &t typ) -> sty {
-    ret interner::get[raw_t](*cx.ts, typ).struct;
+    ret interner::get(*cx.ts, typ).struct;
 }
 
 
 // Returns the canonical name of the given type.
 fn cname(&ctxt cx, &t typ) -> option::t[str] {
-    ret interner::get[raw_t](*cx.ts, typ).cname;
+    ret interner::get(*cx.ts, typ).cname;
 }
 
 
@@ -1434,7 +1434,7 @@ fn hash_type_info(&sty st, &option::t[str] cname_opt) -> uint {
     ret h;
 }
 
-fn hash_raw_ty(&raw_t rt) -> uint { ret rt.hash; }
+fn hash_raw_ty(&@raw_t rt) -> uint { ret rt.hash; }
 
 fn hash_ty(&t typ) -> uint { ret typ; }
 
@@ -1728,7 +1728,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
 // module.
 //
 // FIXME: Use structural comparison, but this loops forever and segfaults.
-fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
+fn eq_raw_ty(&@raw_t a, &@raw_t b) -> bool {
     // Check hashes (fast path).
 
     if (a.hash != b.hash) { ret false; }
@@ -1830,11 +1830,11 @@ fn count_ty_params(&ctxt cx, t ty) -> uint {
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
-    ret interner::get[raw_t](*cx.ts, typ).has_vars;
+    ret interner::get(*cx.ts, typ).has_vars;
 }
 
 fn type_contains_params(&ctxt cx, &t typ) -> bool {
-    ret interner::get[raw_t](*cx.ts, typ).has_params;
+    ret interner::get(*cx.ts, typ).has_params;
 }
 
 
