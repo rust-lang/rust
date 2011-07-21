@@ -1,5 +1,5 @@
 // xfail-stage0
-//error-pattern:expanded as an identifier
+//error-pattern:is an expr, expected an identifier
 fn main() {
   #macro([#mylambda(x, body), {fn f(int x) -> int {ret body}; f}]);
 

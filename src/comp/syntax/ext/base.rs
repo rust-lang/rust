@@ -28,6 +28,7 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
 }
 
 type span_msg_fn = fn(span, str) -> !  ;
+type msg_fn = fn(str) -> !  ;
 
 type next_id_fn = fn() -> ast::node_id ;
 
@@ -38,6 +39,8 @@ type ext_ctxt =
     rec(str crate_file_name_hack,
         span_msg_fn span_fatal,
         span_msg_fn span_unimpl,
+        span_msg_fn span_bug,
+        msg_fn bug,
         next_id_fn next_id);
 
 fn mk_ctxt(&session sess) -> ext_ctxt {
@@ -50,6 +53,18 @@ fn mk_ctxt(&session sess) -> ext_ctxt {
         sess.span_err(sp, "unimplemented " + msg);
         fail;
     }
+    auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+    fn ext_span_bug_(&session sess, span sp, str msg) -> ! {
+        sess.span_bug(sp, msg);
+        fail;
+    }
+    auto ext_span_bug = bind ext_span_bug_(sess, _, _);
+    fn ext_bug_(&session sess, str msg) -> ! {
+        sess.bug(msg);
+        fail;
+    }
+    auto ext_bug = bind ext_bug_(sess, _);
+
 
     // FIXME: Some extensions work by building ASTs with paths to functions
     // they need to call at runtime. As those functions live in the std crate,
@@ -59,7 +74,7 @@ fn mk_ctxt(&session sess) -> ext_ctxt {
     // use it to guess whether paths should be prepended with "std::". This is
     // super-ugly and needs a better solution.
     auto crate_file_name_hack = sess.get_codemap().files.(0).name;
-    auto ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+
     fn ext_next_id_(&session sess) -> ast::node_id {
         ret sess.next_node_id(); // temporary, until bind works better
     }
@@ -67,6 +82,8 @@ fn mk_ctxt(&session sess) -> ext_ctxt {
     ret rec(crate_file_name_hack=crate_file_name_hack,
             span_fatal=ext_span_fatal,
             span_unimpl=ext_span_unimpl,
+            span_bug=ext_span_bug,
+            bug=ext_bug,
             next_id=ext_next_id);
 }
 

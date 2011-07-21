@@ -42,7 +42,8 @@ type ast_fold_precursor =
         fn (&variant_, ast_fold) -> variant_              fold_variant,
         fn (&ident, ast_fold) -> ident                    fold_ident,
         fn (&path_, ast_fold) -> path_                    fold_path,
-        fn (&local_, ast_fold) -> local_                  fold_local
+        fn (&local_, ast_fold) -> local_                  fold_local,
+        fn (fn(&@expr)->@expr, (@expr)[] es) -> (@expr)[] map_exprs
         );
 
 type a_f =
@@ -67,7 +68,8 @@ type a_f =
         fn (&variant) -> variant                      fold_variant,
         fn (&ident) -> ident                          fold_ident,
         fn (&path) -> path                            fold_path,
-        fn (&@local) -> @local                        fold_local
+        fn (&@local) -> @local                        fold_local,
+        fn (fn(&@expr)->@expr, (@expr)[] es) -> (@expr)[] map_exprs
         );
 
 //fn nf_dummy[T](&T node) -> T { fail; }
@@ -131,7 +133,7 @@ fn fold_mac_(&mac m, ast_fold fld) -> mac {
             alt(m.node) {
                 case (mac_invoc(?pth,?args,?body)) {
                     mac_invoc(fld.fold_path(pth),
-                              ivec::map(fld.fold_expr, args), body)
+                              fld.map_exprs(fld.fold_expr, args), body)
                 }
                 case (mac_embed_type(?ty)) {
                     mac_embed_type(fld.fold_ty(ty))
@@ -341,7 +343,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
 
     ret alt (e) {
         case (expr_vec(?exprs, ?mut, ?seq_kind)) {
-            expr_vec(ivec::map(fld.fold_expr, exprs), mut, seq_kind)
+            expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut, seq_kind)
                 }
         case (expr_tup(?elts)) {
             expr_tup(ivec::map(fold_elt, elts))
@@ -351,7 +353,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
                      option::map(fld.fold_expr, maybe_expr))
                 }
         case (expr_call(?f, ?args)) {
-            expr_call(fld.fold_expr(f), ivec::map(fld.fold_expr, args))
+            expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args))
                 }
         case (expr_self_method(?id)) {
             expr_self_method(fld.fold_ident(id))
@@ -362,7 +364,7 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
                 }
         case (expr_spawn(?spawn_dom, ?name, ?f, ?args)) {
             expr_spawn(spawn_dom, name, fld.fold_expr(f),
-                       ivec::map(fld.fold_expr, args))
+                       fld.map_exprs(fld.fold_expr, args))
                 }
         case (expr_binary(?binop, ?lhs, ?rhs)) {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
@@ -537,6 +539,12 @@ fn noop_fold_local(&local_ l, ast_fold fld) -> local_ {
             id=l.id);
 }
 
+/* temporarily eta-expand because of a compiler bug with using `fn[T]` as a
+   value */
+fn noop_map_exprs(fn(&@expr)->@expr f, (@expr)[] es) -> (@expr)[] {
+    ret ivec::map(f,es);
+}
+
 
 fn default_ast_fold() -> @ast_fold_precursor {
     ret @rec(fold_crate = noop_fold_crate,
@@ -560,32 +568,34 @@ fn default_ast_fold() -> @ast_fold_precursor {
              fold_variant = noop_fold_variant,
              fold_ident = noop_fold_ident,
              fold_path = noop_fold_path,
-             fold_local = noop_fold_local);
+             fold_local = noop_fold_local,
+             map_exprs = noop_map_exprs);
 }
 
 fn dummy_out(ast_fold a) {
     *a = rec(fold_crate = nf_crate_dummy,
-                     fold_crate_directive = nf_crate_directive_dummy,
-                     fold_view_item = nf_view_item_dummy,
-                     fold_native_item = nf_native_item_dummy,
-                     fold_item = nf_item_dummy,
-                     fold_item_underscore = nf_item_underscore_dummy,
-                     fold_method = nf_method_dummy,
-                     fold_block = nf_block_dummy,
-                     fold_stmt = nf_stmt_dummy,
-                     fold_arm = nf_arm_dummy,
-                     fold_pat = nf_pat_dummy,
-                     fold_decl = nf_decl_dummy,
-                     fold_expr = nf_expr_dummy,
-                     fold_ty = nf_ty_dummy,
-                     fold_constr = nf_constr_dummy,
-                     fold_fn = nf_fn_dummy,
-                     fold_mod = nf_mod_dummy,
-                     fold_native_mod = nf_native_mod_dummy,
-                     fold_variant = nf_variant_dummy,
-                     fold_ident = nf_ident_dummy,
-                     fold_path = nf_path_dummy,
-                     fold_local = nf_local_dummy);
+             fold_crate_directive = nf_crate_directive_dummy,
+             fold_view_item = nf_view_item_dummy,
+             fold_native_item = nf_native_item_dummy,
+             fold_item = nf_item_dummy,
+             fold_item_underscore = nf_item_underscore_dummy,
+             fold_method = nf_method_dummy,
+             fold_block = nf_block_dummy,
+             fold_stmt = nf_stmt_dummy,
+             fold_arm = nf_arm_dummy,
+             fold_pat = nf_pat_dummy,
+             fold_decl = nf_decl_dummy,
+             fold_expr = nf_expr_dummy,
+             fold_ty = nf_ty_dummy,
+             fold_constr = nf_constr_dummy,
+             fold_fn = nf_fn_dummy,
+             fold_mod = nf_mod_dummy,
+             fold_native_mod = nf_native_mod_dummy,
+             fold_variant = nf_variant_dummy,
+             fold_ident = nf_ident_dummy,
+             fold_path = nf_path_dummy,
+             fold_local = nf_local_dummy,
+             map_exprs = noop_map_exprs);
 }
 
 
@@ -612,7 +622,8 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
                      fold_variant = nf_variant_dummy,
                      fold_ident = nf_ident_dummy,
                      fold_path = nf_path_dummy,
-                     fold_local = nf_local_dummy);
+                     fold_local = nf_local_dummy,
+                     map_exprs = noop_map_exprs);
 
     /* naturally, a macro to write these would be nice */
     fn f_crate(&ast_fold_precursor afp, ast_fold f, &crate c) -> crate {
@@ -712,7 +723,8 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
                   fold_variant = bind f_variant(afp,result,_),
                   fold_ident = bind f_ident(afp,result,_),
                   fold_path = bind f_path(afp,result,_),
-                  fold_local = bind f_local(afp,result,_));
+                  fold_local = bind f_local(afp,result,_),
+                  map_exprs = afp.map_exprs);
     ret result;
 }
 

@@ -807,6 +807,9 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         p.bump();
         auto blk = ast::mac_embed_block(parse_block_tail(p));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
+    } else if (p.peek() == token::ELLIPSIS) {
+        p.bump();
+        ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_ellipsis)
     } else if (p.peek() == token::TILDE) {
         p.bump();
         alt (p.peek()) {

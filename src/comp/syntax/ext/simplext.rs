@@ -6,6 +6,8 @@ import std::vec;
 import std::option;
 import vec::map;
 import vec::len;
+import std::map::hashmap;
+import std::map::new_str_hash;
 import option::some;
 import option::none;
 
@@ -19,6 +21,10 @@ import fold::*;
 import ast::respan;
 import ast::ident;
 import ast::path;
+import ast::ty;
+import ast::block;
+import ast::expr;
+import ast::expr_;
 import ast::path_;
 import ast::expr_path;
 import ast::expr_vec;
@@ -26,85 +32,6 @@ import ast::expr_mac;
 import ast::mac_invoc;
 
 export add_new_extension;
-
-fn lookup(&(invk_binding)[] ibs, ident i) -> option::t[invk_binding] {
-    for (invk_binding ib in ibs) {
-        alt (ib) {
-            case (ident_binding(?p_id, _)) { if (i == p_id) { ret some(ib); }}
-            case (path_binding(?p_id, _)) { if (i == p_id) { ret some(ib); }}
-            case (expr_binding(?p_id, _)) { if (i == p_id) { ret some(ib); }}
-        }
-    }
-    ret none;
-}
-
-// substitute, in a position that's required to be an ident
-fn subst_ident(&ext_ctxt cx, &(invk_binding)[] ibs, &ident i, ast_fold fld)
-    -> ident {
-    ret alt (lookup(ibs, i)) {
-        case (some(ident_binding(_, ?a_id))) { a_id.node }
-        case (some(path_binding(_, ?pth))) {
-            cx.span_fatal(pth.span, "This argument is expanded as an "
-                          + "identifier; it must be one.")
-        }
-        case (some(expr_binding(_, ?expr))) {
-            cx.span_fatal(expr.span, "This argument is expanded as an "
-                          + "identifier; it must be one.")
-        }
-        case (none) { i }
-    }
-}
-
-
-fn subst_path(&ext_ctxt cx, &(invk_binding)[] ibs, &path_ p, ast_fold fld)
-    -> path_ {
-    // Don't substitute into qualified names.
-    if (ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u) { ret p; }
-    ret alt (lookup(ibs, p.idents.(0))) {
-        case (some(ident_binding(_, ?id))) {
-            rec(global=false, idents=~[id.node], types=~[])
-        }
-        case (some(path_binding(_, ?a_pth))) { a_pth.node }
-        case (some(expr_binding(_, ?expr))) {
-            cx.span_fatal(expr.span, "This argument is expanded as an "
-                          + "path; it must be one.")
-        }
-        case (none) { p }
-    }
-}
-
-
-fn subst_expr(&ext_ctxt cx, &(invk_binding)[] ibs, &ast::expr_ e,
-              ast_fold fld, fn(&ast::expr_, ast_fold) -> ast::expr_ orig)
-    -> ast::expr_ {
-    ret alt(e) {
-        case (expr_path(?p)){
-            // Don't substitute into qualified names.
-            if (ivec::len(p.node.types) > 0u ||
-                ivec::len(p.node.idents) != 1u) { e }
-            alt (lookup(ibs, p.node.idents.(0))) {
-                case (some(ident_binding(_, ?id))) {
-                    expr_path(respan(id.span,
-                                     rec(global=false,
-                                         idents=~[id.node],types=~[])))
-                }
-                case (some(path_binding(_, ?a_pth))) { expr_path(*a_pth) }
-                case (some(expr_binding(_, ?a_exp))) { a_exp.node }
-                case (none) { orig(e,fld) }
-            }
-        }
-        case (_) { orig(e,fld) }
-    }
-}
-
-type pat_ext = rec((@ast::expr)[] invk, @ast::expr body);
-
-// maybe box?
-tag invk_binding {
-    expr_binding(ident, @ast::expr);
-    path_binding(ident, @ast::path);
-    ident_binding(ident, ast::spanned[ident]);
-}
 
 fn path_to_ident(&path pth) -> option::t[ident] {
     if (ivec::len(pth.node.idents) == 1u
@@ -114,156 +41,596 @@ fn path_to_ident(&path pth) -> option::t[ident] {
     ret none;
 }
 
-fn process_clause(&ext_ctxt cx, &mutable vec[pat_ext] pes,
-                  &mutable option::t[str] macro_name, &path pth,
-                  &(@ast::expr)[] invoc_args, @ast::expr body) {
-    let str clause_name = alt(path_to_ident(pth)) {
-        case (some(?id)) { id }
-        case (none) {
-            cx.span_fatal(pth.span, "macro name must not be a path")
-        }
-    };
-    if (macro_name == none) {
-        macro_name = some(clause_name);
-    } else if (macro_name != some(clause_name)) {
-        cx.span_fatal(pth.span, "#macro can only introduce one name");
-    }
-    pes += [rec(invk=invoc_args, body=body)];
+//an ivec of binders might be a little big.
+type clause = rec((binders)[] params, @expr body);
+
+/* logically, an arb_depth should contain only one kind of matchable */
+tag arb_depth[T] {
+    leaf(T);
+    seq(vec[arb_depth[T]], span);
 }
 
 
-fn add_new_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
+tag matchable {
+    match_expr(@expr);
+    match_path(path);
+    match_ident(ast::spanned[ident]);
+    match_ty(@ty);
+    match_block(block);
+    match_exact; /* don't bind anything, just verify the AST traversal */
+}
+
+/* for when given an incompatible bit of AST */
+fn match_error(&ext_ctxt cx, &matchable m, &str expected) -> ! {
+    alt(m) {
+      case (match_expr(?x)) {
+        cx.span_fatal(x.span, "this argument is an expr, expected "
+                      + expected);
+      }
+      case (match_path(?x)) {
+        cx.span_fatal(x.span, "this argument is a path, expected "
+                      + expected);
+      }
+      case (match_ident(?x)) {
+        cx.span_fatal(x.span, "this argument is an ident, expected "
+                      + expected);
+      }
+      case (match_ty(?x)) {
+        cx.span_fatal(x.span, "this argument is a type, expected "
+                      + expected);
+      }
+      case (match_block(?x)) {
+        cx.span_fatal(x.span, "this argument is a block, expected "
+                      + expected);
+      }
+      case (match_exact) {
+        cx.bug("what is a match_exact doing in a bindings?");
+      }
+    }
+}
+
+// We can't make all the matchables in a match_result the same type because
+// idents can be paths, which can be exprs.
+
+// If we want better match failure error messages (like in Fortifying Syntax),
+// we'll want to return something indicating amount of progress and location
+// of failure instead of `none`.
+type match_result = option::t[arb_depth[matchable]];
+type selector = fn(&matchable) -> match_result;
+
+fn elts_to_ell(&ext_ctxt cx, &(@expr)[] elts) -> option::t[@expr] {
+    let uint idx = 0u;
+    for (@expr elt in elts) {
+        alt (elt.node) {
+          case (expr_mac(?m)) {
+            alt (m.node) {
+              case (ast::mac_ellipsis) {
+                if (idx != 1u || ivec::len(elts) != 2u) {
+                    cx.span_fatal(m.span,
+                                  "Ellpisis may only appear"
+                                  +" after exactly 1 item.");
+                }
+                ret some(elts.(0));
+              }
+            }
+          }
+          case (_) { }
+        }
+        idx += 1u;
+    }
+    ret none;
+}
+
+fn option_flatten_map[T,U](&fn(&T)->option::t[U] f, &vec[T] v)
+    -> option::t[vec[U]] {
+    auto res = vec::alloc[U](vec::len(v));
+    for (T elem in v) {
+        alt (f(elem)) {
+          case (none) { ret none; }
+          case (some(?fv)) { res += [fv]; }
+        }
+    }
+    ret some(res);
+}
+
+fn a_d_map(&arb_depth[matchable] ad, &selector f)
+    -> match_result {
+    alt (ad) {
+      case (leaf(?x)) { ret f(x); }
+      case (seq(?ads,?span)) {
+        alt (option_flatten_map(bind a_d_map(_, f), ads)) {
+          case (none) { ret none; }
+          case (some(?ts)) { ret some(seq(ts,span)); }
+        }
+      }
+    }
+}
+
+fn compose_sels(selector s1, selector s2) -> selector {
+    fn scomp(selector s1, selector s2, &matchable m) ->
+        match_result {
+        ret alt (s1(m)) {
+          case (none) { none }
+          case (some(?matches)) { a_d_map(matches, s2) }
+        }
+    }
+    ret bind scomp(s1, s2, _);
+}
+
+
+
+type binders = rec(hashmap[ident,selector] real_binders,
+                   mutable (selector)[] literal_ast_matchers);
+type bindings = hashmap[ident, arb_depth[matchable]];
+
+fn acumm_bindings(&ext_ctxt cx, &bindings b_dest, &bindings b_src) {
+}
+
+/* these three functions are the big moving parts */
+
+/* create the selectors needed to bind and verify the pattern */
+
+fn pattern_to_selectors(&ext_ctxt cx, @expr e) -> binders {
+    let binders res = rec(real_binders=new_str_hash[selector](),
+                          mutable literal_ast_matchers=~[]);
+    //this oughta return binders instead, but macro args are a sequence of
+    //expressions, rather than a single expression
+    fn trivial_selector(&matchable m) -> match_result {
+        ret some(leaf(m));
+    }
+    p_t_s_rec(cx, match_expr(e), trivial_selector, res);
+    ret res;
+}
+
+
+
+/* use the selectors on the actual arguments to the macro to extract
+bindings. Most of the work is done in p_t_s, which generates the
+selectors. */
+
+fn use_selectors_to_bind(&binders b, @expr e) -> option::t[bindings] {
+    auto res = new_str_hash[arb_depth[matchable]]();
+    let bool never_mind = false;
+    for each(@tup(ident, selector) pair in b.real_binders.items()) {
+        alt (pair._1(match_expr(e))) {
+          case (none) { never_mind = true; }
+          case (some(?mtc)) { res.insert(pair._0, mtc); }
+        }
+    }
+    if (never_mind) { ret none; } //HACK: `ret` doesn't work in `for each`
+    for (selector sel in b.literal_ast_matchers) {
+        alt (sel(match_expr(e))) {
+          case (none) { ret none; }
+          case (_) { }
+        }
+    }
+    ret some(res);
+}
+
+/* use the bindings on the body to generate the expanded code */
+
+fn transcribe(&ext_ctxt cx, &bindings b, @expr body) -> @expr {
+    let @mutable vec[uint] idx_path = @mutable [];
+    auto afp = default_ast_fold();
+    auto f_pre =
+        rec(fold_ident = bind transcribe_ident(cx, b, idx_path, _, _),
+            fold_path = bind transcribe_path(cx, b, idx_path, _, _),
+            fold_expr = bind transcribe_expr(cx, b, idx_path, _, _,
+                                             afp.fold_expr),
+            map_exprs = bind transcribe_exprs(cx, b, idx_path, _, _)
+            with *afp);
+    auto f = make_fold(f_pre);
+    auto result = f.fold_expr(body);
+    dummy_out(f);  //temporary: kill circular reference
+    ret result;
+}
+
+
+
+/* helper: descend into a matcher */
+fn follow(&arb_depth[matchable] m, @mutable vec[uint] idx_path)
+    -> arb_depth[matchable] {
+    let arb_depth[matchable] res = m;
+    for (uint idx in *idx_path) {
+        alt(res) {
+          case (leaf(_)) { ret res; /* end of the line */ }
+          case (seq(?new_ms,_)) { res = new_ms.(idx); }
+        }
+    }
+    ret res;
+}
+
+fn follow_for_trans(&ext_ctxt cx, &option::t[arb_depth[matchable]] mmaybe,
+                    @mutable vec[uint] idx_path) -> option::t[matchable] {
+    alt(mmaybe) {
+      case (none) { ret none }
+      case (some(?m)) {
+        ret alt(follow(m, idx_path)) {
+          case (seq(_,?sp)) {
+            cx.span_fatal(sp, "syntax matched under ... but not "
+                          + "used that way.")
+          }
+          case (leaf(?m)) {
+            ret some(m)
+          }
+        }
+      }
+    }
+
+}
+
+/* helper for transcribe_exprs: what vars from `b` occur in `e`? */
+iter free_vars(&bindings b, @expr e) -> ident {
+    let hashmap[ident,()] idents = new_str_hash[()]();
+    fn mark_ident(&ident i, ast_fold fld, &bindings b,
+                  &hashmap[ident,()] idents) -> ident {
+        if(b.contains_key(i)) { idents.insert(i,()); }
+        ret i;
+    }
+    // using fold is a hack: we want visit, but it doesn't hit idents ) :
+    // solve this with macros
+    auto f_pre = rec(fold_ident=bind mark_ident(_, _, b, idents)
+                     with *default_ast_fold());
+    auto f = make_fold(f_pre);
+    f.fold_expr(e); // ignore result
+    dummy_out(f);
+    for each(@tup(ast::ident, ()) it in idents.items()) {
+        put it._0;
+    }
+}
+
+
+/* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
+fn transcribe_exprs(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                    fn(&@expr)->@expr recur, (@expr)[] exprs) -> (@expr)[] {
+    alt (elts_to_ell(cx, exprs)) {
+      case (some(?repeat_me)) {
+        let option::t[rec(uint rep_count, ident name)] repeat = none;
+        /* we need to walk over all the free vars in lockstep, except for
+        the leaves, which are just duplicated */
+        for each (ident fv in free_vars(b, repeat_me)) {
+            auto cur_pos = follow(b.get(fv), idx_path);
+            alt (cur_pos) {
+              case (leaf(_)) { }
+              case (seq(?ms,_)) {
+                alt (repeat) {
+                  case (none) {
+                    repeat = some
+                        (rec(rep_count=vec::len(ms), name=fv));
+                  }
+                  case (some({rep_count: ?old_len,
+                              name: ?old_name})) {
+                    auto len = vec::len(ms);
+                    if (old_len != len) {
+                        cx.span_fatal
+                            (repeat_me.span,
+                             #fmt("'%s' occurs %u times, but ",
+                                  fv, len)+
+                             #fmt("'%s' occurs %u times",
+                                  old_name, old_len));
+                    }
+                  }
+                }
+              }
+            }
+        }
+        auto res = ~[];
+        alt (repeat) {
+          case (none) {
+            cx.span_fatal(repeat_me.span,
+                          "'...' surrounds an expression without any"
+                          + " repeating syntax variables");
+          }
+          case (some({rep_count: ?rc, _})) {
+            /* Whew, we now know how how many times to repeat */
+            let uint idx = 0u;
+            while (idx < rc) {
+                vec::push(*idx_path, idx);
+                res += ~[recur(repeat_me)]; // whew!
+                vec::pop(*idx_path);
+                idx += 1u;
+            }
+          }
+        }
+        ret res;
+      }
+      case (none) { ret ivec::map(recur, exprs); }
+    }
+}
+
+
+
+// substitute, in a position that's required to be an ident
+fn transcribe_ident(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                    &ident i, ast_fold fld) -> ident {
+    ret alt (follow_for_trans(cx, b.find(i), idx_path)) {
+      case (some(match_ident(?a_id))) { a_id.node }
+      case (some(?m)) { match_error(cx, m, "an identifier") }
+      case (none) { i }
+    }
+}
+
+
+fn transcribe_path(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                   &path_ p, ast_fold fld) -> path_ {
+    // Don't substitute into qualified names.
+    if (ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u) { ret p; }
+    ret alt (follow_for_trans(cx, b.find(p.idents.(0)), idx_path)) {
+      case (some(match_ident(?id))) {
+        rec(global=false, idents=~[id.node], types=~[])
+      }
+      case (some(match_path(?a_pth))) { a_pth.node }
+      case (some(?m)) { match_error(cx, m, "a path") }
+      case (none) { p }
+    }
+}
+
+
+fn transcribe_expr(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                   &ast::expr_ e, ast_fold fld,
+                   fn(&ast::expr_, ast_fold) -> ast::expr_ orig)
+    -> ast::expr_ {
+    ret alt(e) {
+      case (expr_path(?p)){
+        // Don't substitute into qualified names.
+        if (ivec::len(p.node.types) > 0u ||
+            ivec::len(p.node.idents) != 1u) { e }
+        alt (follow_for_trans(cx, b.find(p.node.idents.(0)), idx_path)) {
+          case (some(match_ident(?id))) {
+            expr_path(respan(id.span,
+                             rec(global=false,
+                                 idents=~[id.node],types=~[])))
+          }
+          case (some(match_path(?a_pth))) { expr_path(a_pth) }
+          case (some(match_expr(?a_exp))) { a_exp.node }
+          case (some(?m)) { match_error(cx, m, "an expression")}
+          case (none) { orig(e,fld) }
+        }
+      }
+      case (_) { orig(e,fld) }
+    }
+}
+
+
+
+
+
+/* traverse the pattern, building instructions on how to bind the actual
+argument. ps accumulates instructions on navigating the tree.*/
+fn p_t_s_rec(&ext_ctxt cx, &matchable m, &selector s, &binders b) {
+    //it might be possible to traverse only exprs, not matchables
+    alt (m) {
+      case (match_expr(?e)) {
+        alt (e.node) {
+          case (expr_path(?p_pth)) {
+            p_t_s_r_path(cx,p_pth, s, b);
+          }
+          case (expr_vec(?p_elts, _, _)) {
+            alt (elts_to_ell(cx, p_elts)) {
+              case (some(?repeat_me)) {
+                p_t_s_r_ellipses(cx, repeat_me, s, b);
+              }
+              case (none) {
+                p_t_s_r_actual_vector(cx, p_elts, s, b);
+              }
+            }
+          }
+          /* TODO: handle embedded types and blocks, at least */
+          case (_) {
+            fn select(&ext_ctxt cx, &matchable m, @expr pat)
+                -> match_result {
+                ret alt(m) {
+                  case (match_expr(?e)) {
+                    if (e==pat) { some(leaf(match_exact)) } else { none }
+                  }
+                }
+            }
+            b.literal_ast_matchers += ~[bind select(cx,_,e)];
+          }
+        }
+      }
+    }
+}
+
+
+/* make a match more precise */
+fn specialize_match(&matchable m) -> matchable {
+    ret alt (m) {
+      case (match_expr(?e)) {
+        alt (e.node) {
+          case (expr_path(?pth)) {
+            alt (path_to_ident(pth)) {
+              case (some(?id)) {
+                match_ident(respan(pth.span,id))
+              }
+              case (none) {
+                match_path(pth)
+              }
+            }
+          }
+          case (_) { m }
+        }
+      }
+      case (_) { m }
+    }
+}
+
+/* Too much indentation, had to pull these out */
+fn p_t_s_r_path(&ext_ctxt cx, &path p, &selector s, &binders b) {
+    alt (path_to_ident(p)) {
+      case (some(?p_id)) {
+        fn select(&ext_ctxt cx, &matchable m) -> match_result {
+            ret alt (m) {
+              case (match_expr(?e)) { some(leaf(specialize_match(m))) }
+              case (_) { cx.bug("broken traversal in p_t_s_r"); fail }
+            }
+        }
+        if (b.real_binders.contains_key(p_id)) {
+            cx.span_fatal(p.span, "duplicate binding identifier");
+        }
+        b.real_binders.insert(p_id, compose_sels(s, bind select(cx,_)));
+      }
+      case (none) { }
+    }
+}
+
+/* TODO: move this to vec.rs */
+
+fn ivec_to_vec[T](&(T)[] v) -> vec[T] {
+    let vec[T] rs = vec::alloc[T](ivec::len(v));
+    for (T ve in v) { rs += [ve]; }
+    ret rs;
+}
+
+fn p_t_s_r_ellipses(&ext_ctxt cx, @expr repeat_me, &selector s, &binders b) {
+    fn select(&ext_ctxt cx, @expr repeat_me, &matchable m) -> match_result {
+        ret alt (m) {
+          case (match_expr(?e)) {
+            alt (e.node) {
+              case (expr_vec(?arg_elts, _, _)) {
+                auto elts = ivec::map(leaf, ivec::map(match_expr,
+                                                      arg_elts));
+                // using repeat_me.span is a little wacky, but the
+                // error we want to report is one in the macro def
+                some(seq(ivec_to_vec(elts), repeat_me.span))
+              }
+              case (_) { none }
+            }
+          }
+          case (_) { cx.bug("broken traversal in p_t_s_r"); fail }
+        }
+    }
+    p_t_s_rec(cx, match_expr(repeat_me),
+              compose_sels(s, bind select(cx, repeat_me, _)), b);
+}
+
+fn p_t_s_r_actual_vector(&ext_ctxt cx, (@expr)[] elts, &selector s,
+                         &binders b) {
+    fn len_select(&ext_ctxt cx, &matchable m, uint len) -> match_result {
+        ret alt (m) {
+          case (match_expr(?e)) {
+            alt (e.node) {
+              case (expr_vec(?arg_elts, _, _)) {
+                if (ivec::len(arg_elts) == len) { some(leaf(match_exact)) }
+                else { none }
+              }
+              case (_) { none }
+            }
+          }
+          case (_) { none }
+        }
+    }
+    b.literal_ast_matchers +=
+        ~[compose_sels(s, bind len_select(cx, _, ivec::len(elts)))];
+
+
+    let uint idx = 0u;
+    while (idx < ivec::len(elts)) {
+        fn select(&ext_ctxt cx, &matchable m, uint idx) -> match_result {
+            ret alt (m) {
+              case (match_expr(?e)) {
+                alt (e.node) {
+                  case (expr_vec(?arg_elts, _, _)) {
+                    some(leaf(match_expr(arg_elts.(idx))))
+                  }
+                  case (_) { none }
+                }
+              }
+              case (_) { cx.bug("broken traversal in p_t_s_r"); fail}
+            }
+        }
+        p_t_s_rec(cx, match_expr(elts.(idx)),
+                  compose_sels(s, bind select(cx, _, idx)), b);
+        idx += 1u;
+    }
+}
+
+fn add_new_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
                      option::t[str] body) -> tup(str, syntax_extension) {
     let option::t[str] macro_name = none;
-    let vec[pat_ext] pat_exts = [];
-    for (@ast::expr arg in args) {
+    let (clause)[] clauses = ~[];
+    for (@expr arg in args) {
         alt(arg.node) {
-            case(expr_vec(?elts, ?mut, ?seq_kind)) {
+          case(expr_vec(?elts, ?mut, ?seq_kind)) {
+            if (ivec::len(elts) != 2u) {
+                cx.span_fatal((*arg).span,
+                              "extension clause must consist of [" +
+                              "macro invocation, expansion body]");
+            }
 
-                if (ivec::len(elts) != 2u) {
-                    cx.span_fatal((*arg).span,
-                                  "extension clause must consist of [" +
-                                  "macro invocation, expansion body]");
-                }
-                alt(elts.(0u).node) {
-                    case(expr_mac(?mac)) {
-                        alt (mac.node) {
-                            case (mac_invoc(?pth, ?invoc_args, ?body)) {
-                                process_clause(cx, pat_exts, macro_name,
-                                               pth, invoc_args, elts.(1u));
-                            }
-                        }
+            alt(elts.(0u).node) {
+              case(expr_mac(?mac)) {
+                alt (mac.node) {
+                  case (mac_invoc(?pth, ?invoc_args, ?body)) {
+                    alt (path_to_ident(pth)) {
+                      case (some(?id)) { macro_name=some(id); }
+                      case (none) {
+                        cx.span_fatal(pth.span, "macro name "
+                                      + "must not be a path");
+                      }
                     }
-                    case(_) {
-                        cx.span_fatal(elts.(0u).span, "extension clause must"
-                                      + " start with a macro invocation.");
+                    auto bdrses = ~[];
+                    for(@expr arg in invoc_args) {
+                        bdrses +=
+                            ~[pattern_to_selectors(cx, arg)];
                     }
+                    clauses +=
+                        ~[rec(params=bdrses, body=elts.(1u))];
+                    // FIXME: check duplicates (or just simplify
+                    // the macro arg situation)
+                  }
                 }
+              }
+              case(_) {
+                cx.span_fatal(elts.(0u).span, "extension clause must"
+                              + " start with a macro invocation.");
+              }
             }
-            case(_) {
-                    cx.span_fatal((*arg).span, "extension must be [clause, "
-                                  + " ...]");
-            }
+          }
+          case(_) {
+            cx.span_fatal((*arg).span, "extension must be [clause, "
+                          + " ...]");
+          }
         }
     }
 
-    auto ext = bind generic_extension(_,_,_,_,@pat_exts);
+    auto ext = bind generic_extension(_,_,_,_,clauses);
 
     ret tup(alt (macro_name) {
-                case (some(?id)) { id }
-                case (none) {
-                    cx.span_fatal(sp, "macro definition must have "
-                                  + "at least one clause")
-                }
-            },
+      case (some(?id)) { id }
+      case (none) {
+        cx.span_fatal(sp, "macro definition must have "
+                      + "at least one clause")
+      }
+    },
             normal(ext));
 
 
-    fn generic_extension(&ext_ctxt cx, span sp, &(@ast::expr)[] args,
-                         option::t[str] body, @vec[pat_ext] clauses)
-        -> @ast::expr {
+    fn generic_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
+                         option::t[str] body, (clause)[] clauses)
+        -> @expr {
 
-        /* returns a list of bindings, or none if the match fails. */
-        fn match_invk(@ast::expr pattern, @ast::expr argument)
-            -> option::t[(invk_binding)[]] {
-            auto pat = pattern.node;
-            auto arg = argument.node;
-            ret alt (pat) {
-                case (expr_vec(?p_elts, _, _)) {
-                    alt (arg) {
-                        case (expr_vec(?a_elts, _, _)) {
-                            if (ivec::len(p_elts) != ivec::len(a_elts)) {
-                                none[vec[invk_binding]]
-                            }
-                            let uint i = 0u;
-                            let (invk_binding)[] res = ~[];
-                            while (i < ivec::len(p_elts)) {
-                                alt (match_invk(p_elts.(i), a_elts.(i))) {
-                                    case (some(?v)) { res += v; }
-                                    case (none) { ret none; }
-                                }
-                                i += 1u;
-                            }
-                            some(res)
-                        }
-                        case (_) { none }
-                    }
-                }
-                case (expr_path(?p_pth)) {
-                    alt (path_to_ident(p_pth)) {
-                        case (some(?p_id)) {
-                            /* let's bind! */
-                            alt (arg) {
-                                case (expr_path(?a_pth)) {
-                                    alt (path_to_ident(a_pth)) {
-                                        case (some(?a_id)) {
-                                            some(~[ident_binding
-                                                   (p_id,
-                                                    respan(argument.span,
-                                                                 a_id))])
-                                        }
-                                        case (none) {
-                                            some(~[path_binding(p_id,
-                                                                @a_pth)])
-                                        }
-                                    }
-                                }
-                                case (_) {
-                                    some(~[expr_binding(p_id, argument)])
-                                }
-                            }
-                        }
-                        // FIXME this still compares on internal spans
-                        case (_) { if(pat == arg) { some(~[]) } else { none }}
-                    }
-                }
-                // FIXME this still compares on internal spans
-                case (_) { if (pat == arg) { some(~[]) } else { none }}
-            }
-        }
 
-        for (pat_ext pe in *clauses) {
-            if (ivec::len(args) != ivec::len(pe.invk)) { cont; }
+        for (clause c in clauses) {
+            if (ivec::len(args) != ivec::len(c.params)) { cont; }
             let uint i = 0u;
-            let (invk_binding)[] bindings = ~[];
+            let bindings bdgs = new_str_hash[arb_depth[matchable]]();
+            let bool abort = false;
             while (i < ivec::len(args)) {
-                alt (match_invk(pe.invk.(i), args.(i))) {
-                    case (some(?v)) { bindings += v; }
-                    case (none) { cont }
+                alt (use_selectors_to_bind(c.params.(i), args.(i))) {
+                  case (some(?new_bindings)) {
+                    /* ick; I wish macros just took one expr */
+                    for each (@tup(ident,arb_depth[matchable]) it
+                              in new_bindings.items()) {
+                        bdgs.insert(it._0, it._1);
+                    }
+                  }
+                  case (none) { abort = true; }
                 }
                 i += 1u;
             }
-            auto afp = default_ast_fold();
-            auto f_pre =
-                rec(fold_ident = bind subst_ident(cx, bindings, _, _),
-                    fold_path = bind subst_path(cx, bindings, _, _),
-                    fold_expr = bind subst_expr(cx, bindings, _, _,
-                                                afp.fold_expr)
-                with *afp);
-            auto f = make_fold(f_pre);
-            auto result = f.fold_expr(pe.body);
-            dummy_out(f); //temporary: kill circular reference
-            ret result;
+            if (abort) { cont; }
+            ret transcribe(cx, bdgs, c.body);
         }
         cx.span_fatal(sp, "no clauses match macro invocation");
     }
