@@ -136,7 +136,6 @@ type crate_ctxt =
         hashmap[ast::node_id, str] item_symbols,
         mutable option::t[ValueRef] main_fn,
         link::link_meta link_meta,
-        str link_meta_hash,
 
         // TODO: hashmap[tup(tag_id,subtys), @tag_info]
         hashmap[ty::t, uint] tag_sizes,
@@ -151,6 +150,7 @@ type crate_ctxt =
         @glue_fns glues,
         namegen names,
         std::sha1::sha1 sha,
+        hashmap[ty::t, str] type_sha1s,
         hashmap[ty::t, str] type_short_names,
         ty::ctxt tcx,
         stats stats,
@@ -8601,9 +8601,9 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
     auto tag_sizes = map::mk_hashmap[ty::t, uint](hasher, eqer);
     auto tydescs = map::mk_hashmap[ty::t, @tydesc_info](hasher, eqer);
     auto lltypes = map::mk_hashmap[ty::t, TypeRef](hasher, eqer);
+    auto sha1s = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto short_names = map::mk_hashmap[ty::t, str](hasher, eqer);
     auto sha = std::sha1::mk_sha1();
-    auto link_meta = link::build_link_meta(sess, *crate, output, sha);
     auto ccx =
         @rec(sess=sess,
              llmod=llmod,
@@ -8615,8 +8615,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              ast_map=amap,
              item_symbols=new_int_hash[str](),
              mutable main_fn=none[ValueRef],
-             link_meta=link_meta,
-             link_meta_hash=link::hash_link_meta(sha, link_meta),
+             link_meta=link::build_link_meta(sess, *crate, output, sha),
              tag_sizes=tag_sizes,
              discrims=new_int_hash[ValueRef](),
              discrim_symbols=new_int_hash[str](),
@@ -8629,6 +8628,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
              glues=glues,
              names=namegen(0),
              sha=sha,
+             type_sha1s=sha1s,
              type_short_names=short_names,
              tcx=tcx,
              stats=rec(mutable n_static_tydescs=0u,
