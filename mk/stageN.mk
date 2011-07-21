@@ -96,10 +96,6 @@ stage$(2)/lib/$$(CFG_LIBRUSTC): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 
 endef
 
-# Instantiate template for building initial stdlib
-SREQpre = stage0/lib/main.o $(MKFILES)
-$(eval $(call STDLIBGEN,pre,0))
-
 # Instantiate template for 0->1, 1->2, 2->3 build dirs
 
 $(eval $(call STAGEN,0,1))
