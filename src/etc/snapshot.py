@@ -17,6 +17,14 @@ download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
     "linux": ["rustc", "lib/glue.o", "lib/libstd.so",
+              "librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
+    "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib",
+              "librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
+    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll",
+              "rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
+    }
+old_snapshot_files = {
+    "linux": ["rustc", "lib/glue.o", "lib/libstd.so",
               "lib/librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
     "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib",
               "lib/librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
