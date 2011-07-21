@@ -4285,7 +4285,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto decl_id = local.node.id;
     auto upvars = cx.fcx.lcx.ccx.tcx.freevars.get(body.node.id);
 
-    auto environment_data = build_environment(cx, upvars);
+    auto environment_data = build_environment(cx, *upvars);
     auto llenvptr = environment_data._0;
     auto llenvptrty = environment_data._1;
 
@@ -4308,7 +4308,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Generate code to load the environment out of the
     // environment pointer.
-    load_environment(cx, fcx, llenvptrty, upvars);
+    load_environment(cx, fcx, llenvptrty, *upvars);
 
     // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));

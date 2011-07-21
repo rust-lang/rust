@@ -13,7 +13,7 @@ export annotate_freevars;
 export freevar_set;
 export freevar_map;
 
-type freevar_set = ast::node_id[];
+type freevar_set = @ast::node_id[];
 type freevar_map = hashmap[ast::node_id, freevar_set];
 
 // Searches through part of the AST for all references to locals or
@@ -23,7 +23,7 @@ type freevar_map = hashmap[ast::node_id, freevar_set];
 // in order to start the search.
 fn collect_freevars(&resolve::def_map def_map, &session::session sess,
                     &fn (&walk::ast_visitor) walker,
-                    ast::node_id[] initial_decls) -> ast::node_id[] {
+                    ast::node_id[] initial_decls) -> freevar_set {
     type env =
         @rec(mutable ast::node_id[] refs,
              hashmap[ast::node_id, ()] decls,
@@ -79,12 +79,12 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
     walker(*visitor);
 
     // Calculate (refs - decls). This is the set of captured upvars.
-    let ast::node_id[] result = ~[];
+    auto result = ~[];
     for (ast::node_id ref_id_ in e.refs) {
         auto ref_id = ref_id_;
         if (!decls.contains_key(ref_id)) { result += ~[ref_id]; }
     }
-    ret result;
+    ret @result;
 }
 
 // Build a map from every function and for-each body to a set of the
