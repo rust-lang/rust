@@ -399,38 +399,18 @@ fn truncated_sha1_result(sha1 sha) -> str {
     ret str::substr(sha.result_str(), 0u, 16u);
 }
 
-
-// This calculates STH for a symbol, as defined above
-fn symbol_hash(ty::ctxt tcx, sha1 sha, &ty::t t,
-               &link_meta link_meta) -> str {
-    // NB: do *not* use abbrevs here as we want the symbol names
-    // to be independent of one another in the crate.
-
+fn hash_link_meta(sha1 sha, &link_meta link_meta) -> str {
     sha.reset();
     sha.input_str(link_meta.name);
     sha.input_str("-");
-    // FIXME: This wants to be link_meta.meta_hash
-    sha.input_str(link_meta.name);
+    sha.input_str(link_meta.vers);
     sha.input_str("-");
-    sha.input_str(encoder::encoded_ty(tcx, t));
-    auto hash = truncated_sha1_result(sha);
-    // Prefix with _ so that it never blends into adjacent digits
-
-    ret "_" + hash;
+    sha.input_str(link_meta.extras_hash);
+    ret truncated_sha1_result(sha);
 }
 
 fn get_symbol_hash(&@crate_ctxt ccx, &ty::t t) -> str {
-    auto hash = "";
-    alt (ccx.type_sha1s.find(t)) {
-        case (some(?h)) { hash = h; }
-        case (none) {
-            hash =
-                symbol_hash(ccx.tcx, ccx.sha, t,
-                            ccx.link_meta);
-            ccx.type_sha1s.insert(t, hash);
-        }
-    }
-    ret hash;
+    ret #fmt("_%s_%u", ccx.link_meta_hash, t);
 }
 
 fn mangle(&str[] ss) -> str {
