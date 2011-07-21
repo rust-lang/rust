@@ -207,7 +207,6 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto data = trans_lval(bcx, rhs);
     bcx = data.res.bcx;
     auto chan_ty = node_id_type(cx.fcx.lcx.ccx, id);
-    auto unit_ty;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, chan_ty)) {
         case (ty::ty_chan(?t)) { unit_ty = t; }
         case (_) { bcx.fcx.lcx.ccx.sess.bug("non-chan type in trans_send"); }
@@ -223,6 +222,7 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.send,
                    ~[bcx.fcx.lltaskptr, llchanval, lldataptr]);
     ret rslt(bcx, chn.val);
+    auto unit_ty;
 }
 
 fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
@@ -234,20 +234,16 @@ fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto unit_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     // FIXME: calculate copy init-ness in typestate.
 
-    ret recv_val(bcx, data.res.val, lhs, unit_ty, DROP_EXISTING);
-}
-
-fn recv_val(&@block_ctxt cx, ValueRef to, &@ast::expr from, &ty::t unit_ty,
-            copy_action action) -> result {
-    auto bcx = cx;
-    auto prt = trans_expr(bcx, from);
+    auto prt = trans_expr(bcx, lhs);
     bcx = prt.bcx;
-    auto lldataptr = bcx.build.PointerCast(to, T_ptr(T_ptr(T_i8())));
+    auto lldataptr = bcx.build.PointerCast(data.res.val,
+                                           T_ptr(T_ptr(T_i8())));
     auto llportptr = bcx.build.PointerCast(prt.val, T_opaque_port_ptr());
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.recv,
                    ~[bcx.fcx.lltaskptr, lldataptr, llportptr]);
-    auto data_load = load_if_immediate(bcx, to, unit_ty);
-    //auto cp = copy_val(bcx, action, to, data_load, unit_ty);
+    auto data_load = load_if_immediate(bcx, data.res.val, unit_ty);
+    //auto cp = copy_val(bcx, DROP_EXISTING,
+    //                   data.res.val, data_load, unit_ty);
     //bcx = cp.bcx;
 
     add_clean_temp(cx, data_load, unit_ty);
