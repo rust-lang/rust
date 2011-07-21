@@ -3793,7 +3793,7 @@ fn find_variable(&@fn_ctxt fcx, ast::node_id nid) -> ValueRef {
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
 fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
-    tup(ValueRef, TypeRef) {
+    rec(ValueRef ptr, TypeRef ptrty) {
     auto upvar_count = std::ivec::len(upvars);
     auto has_iterbody = !option::is_none(cx.fcx.lliterbody);
     if (has_iterbody) { upvar_count += 1u; }
@@ -3852,7 +3852,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
         i += 1u;
     }
 
-    ret tup(llenvptr, llenvptrty);
+    ret rec(ptr=llenvptr, ptrty=llenvptrty);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -3943,9 +3943,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto decl_id = local.node.id;
     auto upvars = get_freevars(lcx.ccx.tcx, body.node.id);
 
-    auto environment_data = build_environment(cx, *upvars);
-    auto llenvptr = environment_data._0;
-    auto llenvptrty = environment_data._1;
+    auto llenv = build_environment(cx, *upvars);
 
     // Step 2: Declare foreach body function.
     let str s =
@@ -3966,7 +3964,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Generate code to load the environment out of the
     // environment pointer.
-    load_environment(cx, fcx, llenvptrty, *upvars);
+    load_environment(cx, fcx, llenv.ptrty, *upvars);
 
     // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));
@@ -3984,7 +3982,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     alt (seq.node) {
         case (ast::expr_call(?f, ?args)) {
             auto pair = create_real_fn_pair(cx, iter_body_llty,
-                                            lliterbody, llenvptr);
+                                            lliterbody, llenv.ptr);
             r = trans_call(cx, f, some[ValueRef](cx.build.Load(pair)),
                            args, seq.id);
             ret rslt(r.bcx, C_nil());
