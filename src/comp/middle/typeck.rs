@@ -2395,7 +2395,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                 }
             }
         }
-        case (ast::expr_anon_obj(?ao, ?tps)) {
+        case (ast::expr_anon_obj(?ao)) {
 
             let ast::anon_obj_field[] fields = ~[];
             alt (ao.fields) {
@@ -2432,8 +2432,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
             fn get_anon_obj_method_types(@fn_ctxt fcx,
                                          &ast::anon_obj ao,
-                                         &ast::anon_obj_field[] fields,
-                                         &ast::ty_param[] tps)
+                                         &ast::anon_obj_field[] fields)
                 -> ty::method[] {
 
                 let ty::method[] methods = ~[];
@@ -2495,7 +2494,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
 
             auto method_types = get_anon_obj_method_types(fcx, ao,
-                                                          fields, tps);
+                                                          fields);
             auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
 
             write::ty_only_fixup(fcx, id, ot);

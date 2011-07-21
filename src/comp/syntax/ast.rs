@@ -325,7 +325,7 @@ tag expr_ {
     expr_if_check(@expr, block, option::t[@expr]);
     expr_port(option::t[@ty]);
     expr_chan(@expr);
-    expr_anon_obj(anon_obj, ty_param[]);
+    expr_anon_obj(anon_obj);
     expr_mac(mac);
 }
 

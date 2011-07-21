@@ -395,7 +395,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
         case (expr_assert(?x)) { v.visit_expr(x, e, v); }
         case (expr_port(?t)) { visit_ty_opt(t, e, v); }
         case (expr_chan(?x)) { v.visit_expr(x, e, v); }
-        case (expr_anon_obj(?anon_obj, _)) {
+        case (expr_anon_obj(?anon_obj)) {
             alt (anon_obj.fields) {
                 case (none) { }
                 case (some(?fields)) {

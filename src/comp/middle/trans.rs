@@ -5847,8 +5847,8 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_spawn(?dom, ?name, ?func, ?args)) {
             ret trans_spawn(cx, dom, name, func, args, e.id);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
-            ret trans_anon_obj(cx, e.span, anon_obj, tps, e.id);
+        case (ast::expr_anon_obj(?anon_obj)) {
+            ret trans_anon_obj(cx, e.span, anon_obj, e.id);
         }
         case (_) {
             // The expression is an lvalue. Fall through.
@@ -6222,15 +6222,9 @@ fn trans_be(&@block_ctxt cx, &@ast::expr e) -> result {
 // instead "inlining" the construction of the object and returning the object
 // itself.
 fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
-                  &ast::ty_param[] ty_params, ast::node_id id) -> result {
+                  ast::node_id id) -> result {
 
-    // Right now, we're assuming that anon objs don't take ty params, even
-    // though the AST supports it.  It's nonsensical to write an expression
-    // like "obj[T](){ ... with ... }", since T is never instantiated;
-    // nevertheless, such an expression will parse.  Idea for the future:
-    // support typarams.
 
-    assert (std::ivec::len(ty_params) == 0u);
     auto ccx = bcx.fcx.lcx.ccx;
 
     // Fields.
@@ -6286,7 +6280,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // is that, since *all* of the methods are "additional", we can
             // get away with acting like none of them are.
             vtbl = create_vtbl(bcx.fcx.lcx, sp, outer_obj_ty,
-                               wrapper_obj, ty_params, none,
+                               wrapper_obj, ~[], none,
                                additional_field_tys);
         }
         case (some(?e)) {
@@ -6304,8 +6298,7 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
             // create a forwarding slot.  And, of course, we need to create a
             // normal vtable entry for every method being added.
             vtbl = create_vtbl(bcx.fcx.lcx, sp, outer_obj_ty,
-                               wrapper_obj, ty_params,
-                               some(with_obj_ty),
+                               wrapper_obj, ~[], some(with_obj_ty),
                                additional_field_tys);
         }
     }
@@ -6333,27 +6326,22 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
     // typarams, fields, and a pointer to our with_obj.
     let TypeRef llbox_ty = T_ptr(T_empty_struct());
 
-    if (std::ivec::len[ast::ty_param](ty_params) == 0u &&
-        std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
+    if (std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
         anon_obj.with_obj == none) {
-        // If the object we're translating has no fields or type parameters
-        // and no with_obj, there's not much to do.
+        // If the object we're translating has no fields and no with_obj,
+        // there's not much to do.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
 
         // Synthesize a tuple type for fields: [field, ...]
         let ty::t fields_ty = ty::mk_imm_tup(ccx.tcx, additional_field_tys);
 
-        // Tydescs are run-time instantiations of typarams.  We're not
-        // actually supporting typarams for anon objs yet, but let's
-        // create space for them in case we ever want them.
+        // Type for tydescs.
         let ty::t tydesc_ty = ty::mk_type(ccx.tcx);
-        let ty::t[] tps = ~[];
-        for (ast::ty_param tp in ty_params) {
-            tps += ~[tydesc_ty];
-        }
-        // Synthesize a tuple type for typarams: [typaram, ...]
-        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
+
+        // Placeholder for non-existent typarams, since anon objs don't have
+        // them.
+        let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, ~[]);
 
         // Tuple type for body:
         // [tydesc_ty, [typaram, ...], [field, ...], with_obj]
@@ -6402,35 +6390,15 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
         bcx = body_td.bcx;
         bcx.build.Store(body_td.val, body_tydesc.val);
 
-        // Copy the object's type parameters and fields into the space we
-        // allocated for the object body.  (This is something like saving the
-        // lexical environment of a function in its closure: the "captured
-        // typarams" are any type parameters that are passed to the object
-        // constructor and are then available to the object's methods.
-        // Likewise for the object's fields.)
-
-        // Copy typarams into captured typarams.
-        auto body_typarams =
-            GEP_tup_like(bcx, body_ty, body.val,
-                         ~[0, abi::obj_body_elt_typarams]);
-        bcx = body_typarams.bcx;
-        let int i = 0;
-        for (ast::ty_param tp in ty_params) {
-            auto typaram = bcx.fcx.lltydescs.(i);
-            auto capture =
-                GEP_tup_like(bcx, typarams_ty, body_typarams.val, ~[0, i]);
-            bcx = capture.bcx;
-            bcx = copy_val(bcx, INIT, capture.val, typaram,
-                           tydesc_ty).bcx;
-            i += 1;
-        }
-
-        // Copy additional fields into the object's body.
+        // Copy the object's fields into the space we allocated for the object
+        // body.  (This is something like saving the lexical environment of a
+        // function in its closure: the fields were passed to the object
+        // constructor and are now available to the object's methods.
         auto body_fields =
             GEP_tup_like(bcx, body_ty, body.val,
                          ~[0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
-        i = 0;
+        let int i = 0;
         for (ast::anon_obj_field f in additional_fields) {
             // FIXME (part of issue #538): make this work eventually, when we
             // have additional field exprs in the AST.
@@ -7182,16 +7150,11 @@ fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
     // Synthesize a tuple type for fields: [field, ...]
     let ty::t fields_ty = ty::mk_imm_tup(cx.ccx.tcx, additional_field_tys);
 
-    // Tydescs are run-time instantiations of typarams.  We're not
-    // actually supporting typarams for anon objs yet, but let's
-    // create space for them in case we ever want them.
+    // Type for tydescs.
     let ty::t tydesc_ty = ty::mk_type(cx.ccx.tcx);
-    let ty::t[] tps = ~[];
-    for (ast::ty_param tp in ty_params) {
-        tps += ~[tydesc_ty];
-    }
-    // Synthesize a tuple type for typarams: [typaram, ...]
-    let ty::t typarams_ty = ty::mk_imm_tup(cx.ccx.tcx, tps);
+
+    // Placeholder for non-existent typarams, since anon objs don't have them.
+    let ty::t typarams_ty = ty::mk_imm_tup(cx.ccx.tcx, ~[]);
 
     // Tuple type for body:
     // [tydesc_ty, [typaram, ...], [field, ...], with_obj]

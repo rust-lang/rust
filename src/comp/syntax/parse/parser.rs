@@ -833,9 +833,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
     } else if (eat_word(p, "obj")) {
         // Anonymous object
 
-        // FIXME: Can anonymous objects have ty params?
-        auto ty_params = parse_ty_params(p);
-
         // Only make people type () if they're actually adding new fields
         let option::t[ast::anon_obj_field[]] fields = none;
         if (p.peek() == token::LPAREN) {
@@ -864,7 +861,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         // "spanned".
         let ast::anon_obj ob =
             rec(fields=fields, methods=meths, with_obj=with_obj);
-        ex = ast::expr_anon_obj(ob, ty_params);
+        ex = ast::expr_anon_obj(ob);
     } else if (eat_word(p, "rec")) {
         expect(p, token::LPAREN);
         auto fields = ~[parse_field(p)];
@@ -1686,7 +1683,7 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
                 case (ast::expr_if_check(_, _, _)) { false }
                 case (ast::expr_port(_)) { true }
                 case (ast::expr_chan(_)) { true }
-                case (ast::expr_anon_obj(_,_)) { false }
+                case (ast::expr_anon_obj(_)) { false }
                 case (ast::expr_assert(_)) { true }
             }
         }

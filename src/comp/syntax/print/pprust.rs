@@ -986,9 +986,8 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
-        case (ast::expr_anon_obj(?anon_obj, ?tps)) {
+        case (ast::expr_anon_obj(?anon_obj)) {
             head(s, "obj");
-            print_type_params(s, tps);
 
             // Fields
             popen(s);

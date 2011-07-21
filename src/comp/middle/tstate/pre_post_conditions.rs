@@ -567,7 +567,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_mac(_)) {
             fcx.ccx.tcx.sess.bug("unexpanded macro");
         }
-        case (expr_anon_obj(?anon_obj, _)) {
+        case (expr_anon_obj(?anon_obj)) {
             alt (anon_obj.with_obj) {
                 case (some(?ex)) {
                     find_pre_post_expr(fcx, ex);
