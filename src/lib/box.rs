@@ -1,8 +1,8 @@
 
 export ptr_eq;
 
-native "rust" mod rustrt {
-    fn rust_ptr_eq[T](@T a, @T b) -> int;
+fn ptr_eq[T](&@T a, &@T b) -> bool {
+    let uint a_ptr = unsafe::reinterpret_cast(a);
+    let uint b_ptr = unsafe::reinterpret_cast(b);
+    ret a_ptr == b_ptr;
 }
-
-fn ptr_eq[T](@T a, @T b) -> bool { ret rustrt::rust_ptr_eq[T](a, b) != 0; }
