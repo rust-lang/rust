@@ -664,6 +664,11 @@ fn block_from_expr(@expr e) -> block {
     ret rec(node=blk_, span=e.span);
 }
 
+
+fn obj_field_from_anon_obj_field(&anon_obj_field f) -> obj_field {
+    ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
+}
+
 // This is a convenience function to transfor ternary expressions to if
 // expressions so that they can be treated the same
 fn ternary_to_if(&@expr e) -> @ast::expr {

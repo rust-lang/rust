@@ -6252,12 +6252,8 @@ fn trans_anon_obj(@block_ctxt bcx, &span sp, &ast::anon_obj anon_obj,
 
     // create_vtbl() wants an ast::_obj and all we have is an ast::anon_obj,
     // so we need to roll our own.
-    fn anon_obj_field_to_obj_field(&ast::anon_obj_field f)
-        -> ast::obj_field {
-        ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
-    }
     let ast::_obj wrapper_obj = rec(
-        fields = std::ivec::map(anon_obj_field_to_obj_field,
+        fields = std::ivec::map(ast::obj_field_from_anon_obj_field,
                                 additional_fields),
         methods = anon_obj.methods,
         dtor = none[@ast::method]);

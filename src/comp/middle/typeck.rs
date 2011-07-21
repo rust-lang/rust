@@ -2481,12 +2481,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     }
                 }
 
-                fn ao_field_to_o_field(&ast::anon_obj_field f)
-                    -> ast::obj_field {
-                    ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
-                }
                 fcx.ccx.obj_infos +=
-                    ~[anon_obj(ivec::map(ao_field_to_o_field, fields),
+                    ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
+                                         fields),
                                with_obj_sty)];
 
                 methods += with_obj_methods;
