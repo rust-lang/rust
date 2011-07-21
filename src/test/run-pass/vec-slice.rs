@@ -1,6 +1,7 @@
 // xfail-stage0
 // xfail-stage1
 // xfail-stage2
+// xfail-stage3
 fn main() {
   let vec[int] v = [1,2,3,4,5];
   auto v2 = v.(1,2);

@@ -1,6 +1,7 @@
 // xfail-stage0
 // xfail-stage1
 // xfail-stage2
+// xfail-stage3
 // This test checks that destructors run in the right order.  Because
 // stateful objects can't have destructors, we have the destructors
 // record their expected order into a channel when they execute (so

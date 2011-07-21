@@ -4,6 +4,7 @@
 // xfail-stage0
 // xfail-stage1
 // xfail-stage2
+// xfail-stage3
 obj worker(chan[int] c) {drop { log "in dtor"; c <| 10; } }
 
 fn do_work(chan[int] c) {
