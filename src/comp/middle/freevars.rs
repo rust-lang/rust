@@ -3,6 +3,10 @@
 
 import std::map;
 import std::map::*;
+import std::ivec;
+import std::option;
+import std::int;
+import std::option::*;
 import syntax::ast;
 import syntax::walk;
 import driver::session;
@@ -12,6 +16,10 @@ import syntax::codemap::span;
 export annotate_freevars;
 export freevar_set;
 export freevar_map;
+export get_freevars;
+export has_freevars;
+export is_freevarof;
+
 
 type freevar_set = @ast::node_id[];
 type freevar_map = hashmap[ast::node_id, freevar_set];
@@ -126,6 +134,21 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
     walk::walk_crate(visitor, *crate);
 
     ret e.freevars;
+}
+
+fn get_freevars(&ty::ctxt tcx, ast::node_id fid) -> freevar_set {
+    alt (tcx.freevars.find(fid)) {
+        case (none) {
+            fail "get_freevars: " + int::str(fid) + " has no freevars";
+        }
+        case (some(?d)) { ret d; }
+    }
+}
+fn has_freevars(&ty::ctxt tcx, ast::node_id fid) -> bool {
+    ret ivec::len(*get_freevars(tcx, fid)) != 0u;
+}
+fn is_freevar_of(&ty::ctxt tcx, ast::node_id var, ast::node_id f) -> bool {
+    ret ivec::member(var, *get_freevars(tcx, f));
 }
 
 // Local Variables:

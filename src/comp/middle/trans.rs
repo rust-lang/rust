@@ -27,7 +27,7 @@ import syntax::ast;
 import syntax::walk;
 import driver::session;
 import middle::ty;
-import middle::freevars;
+import middle::freevars::*;
 import back::link;
 import back::x86;
 import back::abi;
@@ -3941,7 +3941,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     // FIXME: possibly support alias-mode here?
     auto decl_ty = node_id_type(lcx.ccx, local.node.id);
     auto decl_id = local.node.id;
-    auto upvars = cx.fcx.lcx.ccx.tcx.freevars.get(body.node.id);
+    auto upvars = get_freevars(lcx.ccx.tcx, body.node.id);
 
     auto environment_data = build_environment(cx, *upvars);
     auto llenvptr = environment_data._0;
