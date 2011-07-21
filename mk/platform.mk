@@ -77,7 +77,7 @@ ifdef CFG_UNIXY
 
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
-  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1) $(3)
+  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1) $(2)
   CFG_RUN_TEST=\
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)) \
       $(CFG_VALGRIND) $(1)
@@ -118,7 +118,7 @@ ifdef CFG_WINDOWSY
   CFG_LDPATH :=$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
-  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(2)/lib:$(CFG_LDPATH)" $(3)
+  CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(2)
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \

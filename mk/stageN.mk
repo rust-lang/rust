@@ -13,7 +13,7 @@ define STAGEN
 # for different directories, to handle cases where (say) a test relies on a
 # compiler that relies on a .o file.
 
-STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2),stage$(1), \
+STAGE$(2) := $$(Q)$$(call CFG_RUN_TARG,stage$(2), \
                 $$(CFG_VALGRIND_COMPILE) stage$(2)/rustc$$(X) \
                 $$(CFG_RUSTC_FLAGS))
 

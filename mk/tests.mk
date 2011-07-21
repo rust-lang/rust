@@ -351,15 +351,15 @@ test/stdtest.stage3$(X): $(STDTEST_CRATE) $(STDTEST_INPUTS) $(SREQ3)
 
 check-stage1-std:test/stdtest.stage1$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage1,stage1, $<)
+	$(Q)$(call CFG_RUN_TARG,stage1, $<)
 
 check-stage2-std:test/stdtest.stage2$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage2,stage2, $<)
+	$(Q)$(call CFG_RUN_TARG,stage2, $<)
 
 check-stage3-std:test/stdtest.stage3$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage3,stage3, $<)
+	$(Q)$(call CFG_RUN_TARG,stage3, $<)
 
 # Testing the rustctest crate
 
@@ -380,12 +380,12 @@ test/rustctest.stage3$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2) \
 
 check-stage1-rustc: test/rustctest.stage1$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage1,stage0, $<)
+	$(Q)$(call CFG_RUN_TARG,stage1, $<)
 
 check-stage2-rustc: test/rustctest.stage2$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage2,stage1, $<)
+	$(Q)$(call CFG_RUN_TARG,stage2, $<)
 
 check-stage3-rustc: test/rustctest.stage3$(X)
 	@$(call E, run: $<)
-	$(Q)$(call CFG_RUN_TARG,stage2,stage1, $<)
+	$(Q)$(call CFG_RUN_TARG,stage2, $<)

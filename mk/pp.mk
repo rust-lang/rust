@@ -9,7 +9,7 @@ PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L no-reformat)
 reformat: $(SREQ1)
 	@$(call E, reformat [stage1]: $@)
 	for i in $(PP_INPUTS_FILTERED);  \
-    do $(call CFG_RUN_TARG,stage0,stage0,stage1/rustc$(X)) \
+    do $(call CFG_RUN_TARG,stage0,stage1/rustc$(X)) \
        --pretty normal $$i >$$i.tmp; \
     if cmp --silent $$i.tmp $$i; \
         then echo no changes to $$i; rm $$i.tmp; \

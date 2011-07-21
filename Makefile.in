@@ -183,7 +183,7 @@ SREQ$(1) = stage$(1)/rustc$(X)          \
            $$(MKFILES)
 endif
 
-STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1),stage$(1), \
+STAGE$(1) := $$(Q)$$(call CFG_RUN_TARG,stage$(1), \
                 $$(CFG_VALGRIND_COMPILE) stage$(1)/rustc$$(X) \
                 $$(CFG_RUSTC_FLAGS))
 endef
