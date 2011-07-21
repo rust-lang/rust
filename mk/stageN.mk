@@ -2,6 +2,29 @@
 #
 # The easiest way to read this template is to assume we're building stage2
 # using stage1, and mentally gloss $(1) as 1, $(2) as 2.
+#
+# STDLIBGEN is pulled out seperately because we need to specially invoke
+# it to build stage0/lib/libstd using stage0/rustc.
+
+define STDLIBGEN
+stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
+                              stage$(2)/rustc$$(X)               \
+                              stage$(2)/$$(CFG_RUNTIME)          \
+                              stage$(2)/$$(CFG_RUSTLLVM)         \
+                              stage$(2)/lib/glue.o               \
+                              $$(SREQ$(1))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(2))  --lib -o $$@ $$<
+
+stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
+                           stage$(2)/rustc$$(X)               \
+                           stage$(2)/$$(CFG_RUNTIME)          \
+                           stage$(2)/$$(CFG_RUSTLLVM)         \
+                           stage$(2)/lib/glue.o               \
+                           $$(SREQ$(1))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(2)) --lib --static -o $$@ $$<
+endef
 
 define STAGEN
 
@@ -56,24 +79,7 @@ stage$(2)/lib/glue.o: stage$(2)/rustc$$(X)        \
 	@$$(call E, generate: $$@)
 	$$(STAGE$(2)) -c -o $$@ --glue
 
-stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-                              stage$(2)/rustc$$(X)               \
-                              stage$(2)/$$(CFG_RUNTIME)          \
-                              stage$(2)/$$(CFG_RUSTLLVM)         \
-                              stage$(2)/lib/glue.o               \
-                              $$(SREQ$(1))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2))  --lib -o $$@ $$<
-
-stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-                           stage$(2)/rustc$$(X)               \
-                           stage$(2)/$$(CFG_RUNTIME)          \
-                           stage$(2)/$$(CFG_RUSTLLVM)         \
-                           stage$(2)/lib/glue.o               \
-                           $$(SREQ$(1))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(2)) --lib --static -o $$@ $$<
-
+$(eval $(call STDLIBGEN,$(1),$(2)))
 
 stage$(2)/lib/main.o: rt/main.o
 	@$$(call E, cp: $$@)
