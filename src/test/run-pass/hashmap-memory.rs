@@ -41,7 +41,7 @@ mod map_reduce {
 
     fn map_task(chan[ctrl_proto] ctrl,
                 str input) {
-        
+
         auto intermediates = map::new_str_hash();
 
         fn emit(&map::hashmap[str, int] im,
@@ -85,7 +85,7 @@ mod map_reduce {
         while(num_mappers > 0) {
             auto m;
             ctrl |> m;
-            
+
             alt(m) {
                 case(mapper_done) { num_mappers -= 1; }
                 case(find_reducer(?k, ?cc)) {

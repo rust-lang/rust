@@ -850,6 +850,11 @@ unpin_task(rust_task *task) {
     task->unpin();
 }
 
+extern "C" CDECL rust_chan *
+clone_chan(rust_task *task, rust_chan *chan) {
+    return chan->clone(task);
+}
+
 //
 // Local Variables:
 // mode: C++

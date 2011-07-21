@@ -5,6 +5,9 @@ native "rust" mod rustrt {
     fn unsupervise();
     fn pin_task();
     fn unpin_task();
+    fn clone_chan(*rust_chan c) -> *rust_chan;
+
+    type rust_chan;
 }
 
 /**
@@ -42,6 +45,11 @@ fn pin() {
 
 fn unpin() {
     rustrt::unpin_task();
+}
+
+fn clone_chan[T](chan[T] c) -> chan[T] {
+    auto cloned = rustrt::clone_chan(unsafe::reinterpret_cast(c));
+    ret unsafe::reinterpret_cast(cloned);
 }
 
 // Local Variables:

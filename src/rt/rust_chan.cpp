@@ -71,9 +71,16 @@ void rust_chan::disassociate() {
  * Attempt to send data to the associated port.
  */
 void rust_chan::send(void *sptr) {
+    rust_scheduler *sched = kernel->sched;
+    I(sched, !port->is_proxy());
+
+    rust_port *target_port = port->referent();
+    // TODO: We can probably avoid this lock by using atomic operations in
+    // circular_buffer.
+    scoped_lock with(target_port->lock);
+
     buffer.enqueue(sptr);
 
-    rust_scheduler *sched = kernel->sched;
     if (!is_associated()) {
         W(sched, is_associated(),
           "rust_chan::transmit with no associated port.");
@@ -88,8 +95,6 @@ void rust_chan::send(void *sptr) {
                            task->get_handle(), port->as_proxy()->handle());
         buffer.dequeue(NULL);
     } else {
-        rust_port *target_port = port->referent();
-        scoped_lock with(target_port->lock);
         if (target_port->task->blocked_on(target_port)) {
             DLOG(sched, comm, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);

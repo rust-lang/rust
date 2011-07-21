@@ -1,5 +1,6 @@
 align_of
 check_claims
+clone_chan
 debug_box
 debug_fn
 debug_obj
