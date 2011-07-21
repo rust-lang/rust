@@ -23,14 +23,6 @@ snapshot_files = {
     "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll",
               "rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
     }
-old_snapshot_files = {
-    "linux": ["rustc", "lib/glue.o", "lib/libstd.so",
-              "lib/librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
-    "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib",
-              "lib/librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
-    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll",
-              "lib/rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
-    }
 
 def parse_line(n, line):
   global snapshotfile
