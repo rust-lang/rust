@@ -35,6 +35,8 @@ stage0/lib/main.o: rt/main.o
 stage0/lib/$(CFG_RUNTIME): stage0/rustc$(X)
 	$(Q)touch $@
 
-# stage0/lib/$(CFG_STDLIB) and stage0/lib/libstd.rlib rules are generated
-# in stageN.mk
+# Instantiate template (in stageN.mk) for building
+# stage0/lib/$(CFG_STDLIB) and stage0/lib/libstd.rlib.
+SREQpre = stage0/lib/main.o $(MKFILES)
+$(eval $(call STDLIBGEN,pre,0))
 

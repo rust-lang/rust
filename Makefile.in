@@ -226,8 +226,8 @@ config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 ######################################################################
 
 include $(CFG_SRC_DIR)/mk/intrinsics.mk
-include $(CFG_SRC_DIR)/mk/stage0.mk
 include $(CFG_SRC_DIR)/mk/stageN.mk
+include $(CFG_SRC_DIR)/mk/stage0.mk
 include $(CFG_SRC_DIR)/mk/rt.mk
 include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk
