@@ -6708,13 +6708,10 @@ fn trans_fn(@local_ctxt cx, &span sp, &ast::_fn f, ValueRef llfndecl,
 // vtable slot for method calls that "fall through" to an inner object.  A
 // helper function for create_vtbl.
 fn process_fwding_mthd(@local_ctxt cx, &span sp, @ty::method m,
-                       ty::t self_ty,
                        &ast::ty_param[] ty_params,
                        ty::t with_obj_ty,
                        &ty::t[] additional_field_tys) -> ValueRef {
 
-    // NB: self_ty (and llself_ty) is the type of the outer object;
-    // with_obj_ty is the type of the inner object.
 
     // The method m is being called on the outer object, but the outer object
     // doesn't have that method; only the inner object does.  So what we have
@@ -7083,9 +7080,7 @@ fn create_vtbl(@local_ctxt cx, &span sp, ty::t self_ty,
                     }
                     case (some(?t)) {
                         llmethods += ~[process_fwding_mthd(
-                                cx, sp, fm,
-                                self_ty, ty_params,
-                                t,
+                                cx, sp, fm, ty_params, t,
                                 additional_field_tys)];
                     }
                 }
