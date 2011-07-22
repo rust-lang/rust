@@ -99,12 +99,11 @@ fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
 
 fn time[T](do_it: bool, what: str, thunk: fn() -> T ) -> T {
     if !do_it { ret thunk(); }
-    let start = std::time::get_time();
+    let start = std::time::precise_time_s();
     let rv = thunk();
-    let end = std::time::get_time();
-    // FIXME: Actually do timeval math.
-
-    log_err #fmt("time: %s took %u s", what, end.sec - start.sec as uint);
+    let end = std::time::precise_time_s();
+    log_err #fmt("time: %s took %s s", what,
+                 common::float_to_str(end - start, 3u));
     ret rv;
 }
 

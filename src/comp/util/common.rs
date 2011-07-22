@@ -163,6 +163,28 @@ fn call_kind_str(c: call_kind) -> str {
 fn is_main_name(path: &str[]) -> bool {
     str::eq(option::get(std::ivec::last(path)), "main")
 }
+
+// FIXME mode this to std::float when editing the stdlib no longer
+// requires a snapshot
+fn float_to_str(num: float, digits: uint) -> str {
+    let accum = if num < 0.0 { num = -num; "-" }
+                else { "" };
+    let trunc = num as uint;
+    let frac = num - (trunc as float);
+    accum += uint::str(trunc);
+    if frac == 0.0 || digits == 0u { ret accum; }
+    accum += ".";
+    while digits > 0u && frac > 0.0 {
+        frac *= 10.0;
+        let digit = frac as uint;
+        accum += uint::str(digit);
+        frac -= digit as float;
+        digits -= 1u;
+    }
+    ret accum;
+}
+
+
 //
 // Local Variables:
 // mode: rust
