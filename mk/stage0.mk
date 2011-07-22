@@ -1,5 +1,5 @@
-# FIXME: temporary hack: stdlib comes in the lib/ directory, but we want it in
-# the base directory, so we move it out.
+# FIXME: temporary hack: stdlib and rustrt come in the lib/ directory,
+# but we want them in the base directory, so we move them out.
 stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 	@$(call E, fetch: $@)
 	$(Q)$(S)src/etc/get-snapshot.py
@@ -8,11 +8,8 @@ stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
 
 # Host libs will be made in the process of making rustc above.
 
-# FIXME: temporary hack: the runtime is currently carried in
-# lib/ directory only, so we copy it out.
-
-stage0/$(CFG_RUNTIME): stage0/lib/$(CFG_RUNTIME)
-	$(Q)cp $< $@
+stage0/$(CFG_RUNTIME): stage0/rustc$(X)
+	$(Q)touch $@
 
 stage0/$(CFG_STDLIB): stage0/rustc$(X)
 	$(Q)touch $@
@@ -31,12 +28,8 @@ stage0/lib/glue.o: stage0/rustc$(X)
 stage0/lib/main.o: rt/main.o
 	$(Q)cp $< $@
 
-
-stage0/lib/$(CFG_RUNTIME): stage0/rustc$(X)
-	$(Q)touch $@
-
 # Instantiate template (in stageN.mk) for building
 # stage0/lib/$(CFG_STDLIB) and stage0/lib/libstd.rlib.
 SREQpre = stage0/lib/main.o $(MKFILES)
-$(eval $(call STDLIBGEN,pre,0))
+$(eval $(call LIBGEN,pre,0))
 

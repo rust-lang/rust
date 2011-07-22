@@ -3,10 +3,11 @@
 # The easiest way to read this template is to assume we're building stage2
 # using stage1, and mentally gloss $(1) as 1, $(2) as 2.
 #
-# STDLIBGEN is pulled out seperately because we need to specially invoke
-# it to build stage0/lib/libstd using stage0/rustc.
+# LIBGEN is pulled out seperately because we need to specially invoke
+# it to build stage0/lib/libstd using stage0/rustc and to use the
+# new rustrt in stage0/lib/.
 
-define STDLIBGEN
+define LIBGEN
 stage$(2)/lib/$$(CFG_STDLIB): $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                               stage$(2)/rustc$$(X)               \
                               stage$(2)/$$(CFG_RUNTIME)          \
@@ -24,6 +25,11 @@ stage$(2)/lib/libstd.rlib: $$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
                            $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(2)) --lib --static -o $$@ $$<
+
+stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 endef
 
 define STAGEN
@@ -79,13 +85,9 @@ stage$(2)/lib/glue.o: stage$(2)/rustc$$(X)        \
 	@$$(call E, generate: $$@)
 	$$(STAGE$(2)) -c -o $$@ --glue
 
-$(eval $(call STDLIBGEN,$(1),$(2)))
+$(eval $(call LIBGEN,$(1),$(2)))
 
 stage$(2)/lib/main.o: rt/main.o
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-stage$(2)/lib/$$(CFG_RUNTIME): rt/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 

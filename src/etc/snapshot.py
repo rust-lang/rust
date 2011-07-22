@@ -17,11 +17,11 @@ download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
     "linux": ["rustc", "lib/glue.o", "lib/libstd.so",
-              "lib/librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
+              "librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
     "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib",
-              "lib/librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
+              "librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
     "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll",
-              "lib/rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
+              "rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
     }
 
 def parse_line(n, line):
