@@ -15,13 +15,13 @@ memory_region::alloc_header *memory_region::get_header(void *mem) {
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
     _srv(srv), _parent(NULL), _live_allocations(0),
     _detailed_leaks(getenv("RUST_DETAILED_LEAKS") != NULL),
-    _synchronized(synchronized) {
+    _synchronized(synchronized), _hack_allow_leaks(false) {
 }
 
 memory_region::memory_region(memory_region *parent) :
     _srv(parent->_srv), _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
-    _synchronized(parent->_synchronized) {
+    _synchronized(parent->_synchronized), _hack_allow_leaks(false) {
 }
 
 void memory_region::add_alloc() {
