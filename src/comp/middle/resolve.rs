@@ -27,6 +27,7 @@ import std::list::list;
 import std::list::nil;
 import std::list::cons;
 import std::option;
+import std::option::is_none;
 import std::option::some;
 import std::option::none;
 import std::str;
@@ -89,7 +90,6 @@ tag mod_index_entry {
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
     mie_tag_variant(@ast::item /* tag item */, uint /* variant index */);
-
 }
 
 type mod_index = hashmap[ident, list[mod_index_entry]];
@@ -117,6 +117,7 @@ type env =
         hashmap[ast::node_id, @indexed_mod] mod_map,
         hashmap[def_id, ident[]] ext_map,
         ext_hash ext_cache,
+        mutable tup(str, scope)[] reported,
         session sess);
 
 
@@ -136,6 +137,7 @@ fn resolve_crate(session sess, &ast_map::map amap, @ast::crate crate)
              mod_map=new_int_hash[@indexed_mod](),
              ext_map=new_def_hash[ident[]](),
              ext_cache=new_ext_hash(),
+             mutable reported=~[],
              sess=sess);
     map_crate(e, crate);
     resolve_imports(*e);
@@ -386,7 +388,7 @@ fn follow_import(&env e, &scopes sc, &ident[] path, &span sp)
     auto i = 1u;
     while (true && option::is_some(dcur)) {
         if (i == path_len) { break; }
-        dcur = lookup_in_mod_strict(e, option::get(dcur),
+        dcur = lookup_in_mod_strict(e, sc, option::get(dcur),
                                     sp, path.(i), ns_module, outside);
         i += 1u;
     }
@@ -424,7 +426,7 @@ fn resolve_constr(@env e, node_id id, &@ast::constr c, &scopes sc,
 }
 
 // Import resolution
-fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
+fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
     auto defid;
     auto ids;
     auto name;
@@ -439,11 +441,10 @@ fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
     auto n_idents = ivec::len(ids);
     auto end_id = ids.(n_idents - 1u);
     // Ignore the current scope if this import would shadow itself.
-    if (str::eq(name, ids.(0))) {
-        sc = std::list::cdr(sc);
-    }
+    auto sc = if str::eq(name, ids.(0)) { std::list::cdr(sc_in) }
+              else { sc_in };
     if (n_idents == 1u) {
-        register(e, defid, it.span, end_id,
+        register(e, defid, it.span, end_id, sc_in,
                  lookup_in_scope(e, sc, it.span, end_id, ns_value),
                  lookup_in_scope(e, sc, it.span, end_id, ns_type),
                  lookup_in_scope(e, sc, it.span, end_id, ns_module));
@@ -454,7 +455,7 @@ fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
                 dcur
             }
             case (none) {
-                unresolved_err(e, it.span, ids.(0), ns_name(ns_module));
+                unresolved_err(e, sc, it.span, ids.(0), ns_name(ns_module));
                 remove_if_unresolved(e.imports, defid._1);
                 ret () // FIXME (issue #521)
             }
@@ -462,7 +463,7 @@ fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
         auto i = 1u;
         while (true) {
             if (i == n_idents - 1u) {
-                register(e, defid, it.span, end_id,
+                register(e, defid, it.span, end_id, sc_in,
                          lookup_in_mod(e, dcur, it.span, end_id, ns_value,
                                        outside),
                          lookup_in_mod(e, dcur, it.span, end_id, ns_type,
@@ -478,7 +479,7 @@ fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
                         dcur
                     }
                     case (none) {
-                        unresolved_err(e, it.span, ids.(i),
+                        unresolved_err(e, sc, it.span, ids.(i),
                                        ns_name(ns_module));
                         remove_if_unresolved(e.imports, defid._1);
                         ret () // FIXME (issue #521)
@@ -488,12 +489,11 @@ fn resolve_import(&env e, &@ast::view_item it, scopes sc) {
             }
         }
     }
-    fn register(&env e, def_id defid, &span sp, &ident name,
+    fn register(&env e, def_id defid, &span sp, &ident name, &scopes sc,
                 &option::t[def] val, &option::t[def] typ,
                 &option::t[def] md) {
-        if (option::is_none(val) && option::is_none(typ) &&
-                option::is_none(md)) {
-            unresolved_err(e, sp, name, "import");
+        if is_none(val) && is_none(typ) && is_none(md) {
+            unresolved_err(e, sc, sp, name, "import");
         } else {
             e.imports.insert(defid._1, resolved(val, typ, md));
         }
@@ -524,7 +524,28 @@ fn ns_name(namespace ns) -> str {
     }
 }
 
-fn unresolved_err(&env e, &span sp, &ident name, &str kind) {
+fn unresolved_err(&env e, &scopes sc, &span sp, &ident name, &str kind) {
+    fn find_fn_or_mod_scope(scopes sc) -> scope {
+        while true {
+            alt sc {
+              cons(?cur, ?rest) {
+                alt cur {
+                  scope_crate | scope_fn(_, _) |
+                  scope_item(@{node: ast::item_mod(_), _}) {
+                    ret cur;
+                  }
+                  _ { sc = *rest; }
+                }
+              }
+            }
+        }
+        fail;
+    }
+    auto err_scope = find_fn_or_mod_scope(sc);
+    for (tup(str, scope) rs in e.reported) {
+        if str::eq(rs._0, name) && err_scope == rs._1 { ret; }
+    }
+    e.reported += ~[tup(name, err_scope)];
     e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
@@ -555,7 +576,7 @@ fn lookup_path_strict(&env e, &scopes sc, &span sp, &ast::path_ pth,
     auto i = 1u;
     while (i < n_idents && option::is_some(dcur)) {
         auto curns = if (n_idents == i + 1u) { ns } else { ns_module };
-        dcur = lookup_in_mod_strict(e, option::get(dcur),
+        dcur = lookup_in_mod_strict(e, sc, option::get(dcur),
                                     sp, pth.idents.(i), curns, outside);
         i += 1u;
     }
@@ -566,7 +587,7 @@ fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident name,
                           namespace ns) -> option::t[def] {
     alt (lookup_in_scope(e, sc, sp, name, ns)) {
         case (none) {
-            unresolved_err(e, sp, name, ns_name(ns));
+            unresolved_err(e, sc, sp, name, ns_name(ns));
             ret none;
         }
         case (some(?d)) { ret some(d); }
@@ -662,7 +683,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
             case (nil) { ret none[def]; }
             case (cons(?hd, ?tl)) {
                 auto fnd = in_scope(e, sp, name, hd, ns);
-                if (!option::is_none(fnd)) {
+                if (!is_none(fnd)) {
                     auto df = option::get(fnd);
                     if (left_fn && def_is_local(df) ||
                         left_fn_level2 && def_is_obj_field(df)
@@ -713,13 +734,13 @@ fn lookup_in_pat(&ident name, &ast::pat pat) -> option::t[def] {
         case (ast::pat_tag(_, ?pats)) {
             for (@ast::pat p in pats) {
                 auto found = lookup_in_pat(name, *p);
-                if (!option::is_none(found)) { ret found; }
+                if (!is_none(found)) { ret found; }
             }
         }
         case (ast::pat_rec(?fields, _)) {
             for (ast::field_pat f in fields) {
                 auto found = lookup_in_pat(name, *f.pat);
-                if (!option::is_none(found)) { ret found; }
+                if (!is_none(found)) { ret found; }
             }
         }
         case (ast::pat_box(?inner)) { ret lookup_in_pat(name, *inner); }
@@ -793,7 +814,7 @@ fn lookup_in_block(&ident name, &ast::block_ b, namespace ns) ->
                             case (_) {
                                 if (str::eq(it.ident, name)) {
                                     auto found = found_def_item(it, ns);
-                                    if (!option::is_none(found)) {
+                                    if (!is_none(found)) {
                                         ret found;
                                     }
                                 }
@@ -861,11 +882,11 @@ fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
     ret none[def];
 }
 
-fn lookup_in_mod_strict(&env e, def m, &span sp, &ident name, namespace ns,
-                        dir dr) -> option::t[def] {
+fn lookup_in_mod_strict(&env e, &scopes sc, def m, &span sp, &ident name,
+                        namespace ns, dir dr) -> option::t[def] {
     alt (lookup_in_mod(e, m, sp, name, ns, dr)) {
         case (none) {
-            unresolved_err(e, sp, name, ns_name(ns));
+            unresolved_err(e, sc, sp, name, ns_name(ns));
             ret none;
         }
         case (some(?d)) { ret some(d); }
@@ -879,11 +900,11 @@ fn lookup_in_mod(&env e, &def m, &span sp, &ident name, namespace ns,
         // examining a module in an external crate
 
         auto cached = e.ext_cache.find(tup(defid, name, ns));
-        if (!option::is_none(cached)) { ret cached; }
+        if (!is_none(cached)) { ret cached; }
         auto path = ~[name];
         if (defid._1 != -1) { path = e.ext_map.get(defid) + path; }
         auto fnd = lookup_external(e, defid._0, path, ns);
-        if (!option::is_none(fnd)) {
+        if (!is_none(fnd)) {
             e.ext_cache.insert(tup(defid, name, ns), option::get(fnd));
         }
         ret fnd;
@@ -958,7 +979,7 @@ fn lookup_in_local_mod(&env e, node_id node_id, &span sp, &ident id,
                     case (nil) { break; }
                     case (cons(?hd, ?tl)) {
                         auto found = lookup_in_mie(e, hd, ns);
-                        if (!option::is_none(found)) { ret found; }
+                        if (!is_none(found)) { ret found; }
                         lst = *tl;
                     }
                 }
@@ -1196,17 +1217,17 @@ fn check_mod_name(&env e, &ident name, list[mod_index_entry] entries) {
     while (true) {
         alt (entries) {
             case (cons(?entry, ?rest)) {
-                if (!option::is_none(lookup_in_mie(e, entry, ns_value))) {
+                if (!is_none(lookup_in_mie(e, entry, ns_value))) {
                     if (saw_value) {
                         dup(e, mie_span(entry), "", name);
                     } else { saw_value = true; }
                 }
-                if (!option::is_none(lookup_in_mie(e, entry, ns_type))) {
+                if (!is_none(lookup_in_mie(e, entry, ns_type))) {
                     if (saw_type) {
                         dup(e, mie_span(entry), "type ", name);
                     } else { saw_type = true; }
                 }
-                if (!option::is_none(lookup_in_mie(e, entry, ns_module))) {
+                if (!is_none(lookup_in_mie(e, entry, ns_module))) {
                     if (saw_mod) {
                         dup(e, mie_span(entry), "module ", name);
                     } else { saw_mod = true; }
@@ -1283,8 +1304,7 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
                             "inconsistent number of bindings");
         } else {
             for (ident name in ch.seen) {
-                if (option::is_none(ivec::find(bind str::eq(name, _),
-                                               seen0))) {
+                if (is_none(ivec::find(bind str::eq(name, _), seen0))) {
                     // Fight the alias checker
                     auto name_ = name;
                     e.sess.span_err
