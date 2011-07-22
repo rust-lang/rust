@@ -32,12 +32,12 @@ mod libc_constants {
     fn O_RDONLY() -> int { ret 0; }
     fn O_WRONLY() -> int { ret 1; }
     fn O_RDWR() -> int { ret 2; }
-    fn O_APPEND() -> int { ret 1024; }
-    fn O_CREAT() -> int { ret 64; }
-    fn O_EXCL() -> int { ret 128; }
-    fn O_TRUNC() -> int { ret 512; }
-    fn O_TEXT() -> int { ret 16384; }
-    fn O_BINARY() -> int { ret 32768; }
+    fn O_APPEND() -> int { ret 0x0008; }
+    fn O_CREAT() -> int { ret 0x0100; }
+    fn O_EXCL() -> int { ret 0x0400; }
+    fn O_TRUNC() -> int { ret 0x0200; }
+    fn O_TEXT() -> int { ret 0x4000; }
+    fn O_BINARY() -> int { ret 0x8000; }
     fn S_IRUSR() -> uint {
         ret 256u; // really _S_IREAD  in win32
 
