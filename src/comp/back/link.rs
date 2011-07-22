@@ -2,9 +2,9 @@
 import driver::session;
 import lib::llvm::llvm;
 import front::attr;
-import middle::trans;
 import middle::ty;
 import metadata::encoder;
+import middle::trans_common::crate_ctxt;
 import std::str;
 import std::fs;
 import std::ivec;
@@ -13,7 +13,6 @@ import option::some;
 import option::none;
 import std::sha1::sha1;
 import std::sort;
-import trans::crate_ctxt;
 import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::llvm::ModuleRef;

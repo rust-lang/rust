@@ -11,7 +11,7 @@ import std::ebmlivec;
 import std::map;
 import syntax::ast::*;
 import common::*;
-import middle::trans::crate_ctxt;
+import middle::trans_common::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_monotype;
 import front::attr;

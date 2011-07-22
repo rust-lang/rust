@@ -6,16 +6,12 @@ import back::link;
 import lib::llvm::llvm;
 import llvm::TypeRef;
 import llvm::ValueRef;
-import middle::trans;
+import middle::trans_common;
 import middle::ty;
 import syntax::ast;
 import syntax::codemap::span;
-import trans::block_ctxt;
-import trans::crate_ctxt;
-import trans::fn_ctxt;
-import trans::local_ctxt;
 import util::ppaux;
-
+import trans_common::*;
 import std::ivec;
 import std::option::none;
 import std::option::some;
@@ -25,7 +21,7 @@ import std::uint;
 import LLFalse = lib::llvm::False;
 import LLTrue = lib::llvm::True;
 import ll = lib::llvm;
-import lltype_of = trans::val_ty;
+import lltype_of = trans_common::val_ty;
 import option = std::option::t;
 import tc = trans_common;
 import type_of_node = trans::node_id_type;
@@ -47,7 +43,7 @@ fn llsize_of(&@crate_ctxt ccx, TypeRef llty) -> uint {
 
 fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
         -> ValueRef {
-    auto llglobal = llvm::LLVMAddGlobal(ccx.llmod, trans::val_ty(llval),
+    auto llglobal = llvm::LLVMAddGlobal(ccx.llmod, tc::val_ty(llval),
                                         str::buf(name));
 
     llvm::LLVMSetInitializer(llglobal, llval);
@@ -140,23 +136,12 @@ fn dest_is_alias(&dest dest) -> bool {
 }
 
 
-// Accessors
-// TODO: When we have overloading, simplify these names!
-
-fn bcx_tcx(&@block_ctxt bcx) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
-fn bcx_ccx(&@block_ctxt bcx) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
-fn bcx_lcx(&@block_ctxt bcx) -> @local_ctxt { ret bcx.fcx.lcx; }
-fn bcx_fcx(&@block_ctxt bcx) -> @fn_ctxt { ret bcx.fcx; }
-fn lcx_ccx(&@local_ctxt lcx) -> @crate_ctxt { ret lcx.ccx; }
-fn ccx_tcx(&@crate_ctxt ccx) -> ty::ctxt { ret ccx.tcx; }
-
-
 // Common operations
 
 fn memmove(&@block_ctxt bcx, ValueRef lldestptr, ValueRef llsrcptr,
            ValueRef llsz) {
-    auto lldestty = llelement_type(trans::val_ty(lldestptr));
-    auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
+    auto lldestty = llelement_type(tc::val_ty(lldestptr));
+    auto llsrcty = llelement_type(tc::val_ty(llsrcptr));
     auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
     auto src_align = llalign_of(bcx_ccx(bcx), llsrcty);
     auto align = uint::min(dest_align, src_align);
@@ -205,7 +190,7 @@ fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
         *box = some(llsrcptr);
       }
       dst_copy(?lldestptr) | dst_move(?lldestptr) {
-        auto llsrcty = llelement_type(trans::val_ty(llsrcptr));
+        auto llsrcty = llelement_type(tc::val_ty(llsrcptr));
         auto llsz = tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty));
         memmove(bcx, lldestptr, llsrcptr, llsz);
         ret bcx;
@@ -421,7 +406,7 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
                        ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llarg]);
 
     log_bcx = trans::trans_block_cleanups(log_bcx,
-                                          trans::find_scope_cx(log_bcx));
+                                          tc::find_scope_cx(log_bcx));
     log_bcx.build.Br(next_bcx.llbb);
     ret next_bcx;
 }
@@ -481,7 +466,7 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
       none { /* no-op */ }
     }
 
-    bcx = trans::trans_block_cleanups(bcx, trans::find_scope_cx(bcx));
+    bcx = trans::trans_block_cleanups(bcx, tc::find_scope_cx(bcx));
     ret bcx;
 }
 
@@ -583,7 +568,7 @@ fn trans_init_local(&@block_ctxt bcx, &@ast::local local) -> @block_ctxt {
     auto llptr = bcx_fcx(bcx).lllocals.get(local.node.id);
 
     auto t = type_of_node(bcx_ccx(bcx), local.node.id);
-    trans::add_clean(bcx, llptr, t);
+    tc::add_clean(bcx, llptr, t);
 
     alt (local.node.init) {
       some(?init) {
