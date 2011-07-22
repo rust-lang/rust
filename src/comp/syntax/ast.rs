@@ -52,6 +52,11 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
+
+    /* A "fake" def for upvars. This never appears in the def_map, but
+     * freevars::def_lookup will return it for a def that is an upvar.
+     * It contains the actual def. */
+    def_upvar(def_id, @def);
 }
 
 fn variant_def_ids(&def d) -> tup(def_id, def_id) {
@@ -76,6 +81,7 @@ fn def_id_of_def(def d) -> def_id {
         case (def_use(?id)) { ret id; }
         case (def_native_ty(?id)) { ret id; }
         case (def_native_fn(?id)) { ret id; }
+        case (def_upvar(?id, _)) { ret id; }
     }
     fail;
 }

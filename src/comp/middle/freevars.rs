@@ -18,8 +18,8 @@ export freevar_set;
 export freevar_map;
 export get_freevars;
 export has_freevars;
-export is_freevarof;
-
+export is_freevar_of;
+export def_lookup;
 
 type freevar_set = @ast::node_id[];
 type freevar_map = hashmap[ast::node_id, freevar_set];
@@ -138,10 +138,10 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
 
 fn get_freevars(&ty::ctxt tcx, ast::node_id fid) -> freevar_set {
     alt (tcx.freevars.find(fid)) {
-        case (none) {
+        none {
             fail "get_freevars: " + int::str(fid) + " has no freevars";
         }
-        case (some(?d)) { ret d; }
+        some(?d) { ret d; }
     }
 }
 fn has_freevars(&ty::ctxt tcx, ast::node_id fid) -> bool {
@@ -150,6 +150,19 @@ fn has_freevars(&ty::ctxt tcx, ast::node_id fid) -> bool {
 fn is_freevar_of(&ty::ctxt tcx, ast::node_id var, ast::node_id f) -> bool {
     ret ivec::member(var, *get_freevars(tcx, f));
 }
+fn def_lookup(&ty::ctxt tcx, ast::node_id f, ast::node_id id) ->
+    option::t[ast::def] {
+    alt (tcx.def_map.find(id)) {
+      none { ret none; }
+      some(?d) {
+        auto did = ast::def_id_of_def(d);
+        if is_freevar_of(tcx, did._1, f) {
+            ret some(ast::def_upvar(did, @d));
+        } else { ret some(d); }
+      }
+    }
+}
+
 
 // Local Variables:
 // mode: rust
