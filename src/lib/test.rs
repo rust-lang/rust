@@ -107,6 +107,8 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
     auto failed = 0u;
     auto ignored = 0u;
 
+    auto failures = ~[];
+
     for (test_desc test in filtered_tests) {
         out.write_str(#fmt("running %s ... ", test.name));
         alt (run_test(test)) {
@@ -119,6 +121,7 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
                 failed += 1u;
                 write_failed(out);
                 out.write_line("");
+                failures += ~[test];
             }
             tr_ignored {
                 ignored += 1u;
@@ -130,6 +133,13 @@ fn run_tests(&test_opts opts, &test_desc[] tests) -> bool {
 
     assert passed + failed + ignored == total;
     auto success = failed == 0u;
+
+    if (!success) {
+        out.write_line("\nfailures:");
+        for (test_desc test in failures) {
+            out.write_line(#fmt("    %s", test.name));
+        }
+    }
 
     out.write_str(#fmt("\nresult: "));
     if (success) {
