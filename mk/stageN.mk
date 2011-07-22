@@ -50,10 +50,10 @@ stage$(2)/%.o: stage$(2)/%.s
 	@$$(call E, assemble [gcc]: $$@)
 	$$(Q)gcc $$(CFG_GCCISH_CFLAGS) -o $$@ -c $$<
 
-stage$(2)/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-                      stage$(2)/$$(CFG_RUNTIME)              \
-                      stage$(1)/$$(CFG_STDLIB_DEFAULT)       \
-                      stage$(2)/$$(CFG_RUSTLLVM)             \
+stage$(2)/rustc$$(X): $$(COMPILER_CRATE) $$(COMPILER_INPUTS)          \
+                      stage$(2)/$$(CFG_RUNTIME)                       \
+                      $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(2)) \
+                      stage$(2)/$$(CFG_RUSTLLVM)                      \
                       $$(SREQ$(1))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)) -L stage$(2) -o $$@ $$<
