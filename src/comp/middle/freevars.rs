@@ -34,7 +34,7 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
                     ast::node_id[] initial_decls) -> freevar_set {
     type env =
         @rec(mutable ast::node_id[] refs,
-             hashmap[ast::node_id, ()] decls,
+             hashset[ast::node_id] decls,
              resolve::def_map def_map,
              session::session sess);
 
@@ -60,18 +60,18 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
         }
     }
     fn walk_local(env e, &@ast::local local) {
-        e.decls.insert(local.node.id, ());
+        set_add(e.decls, local.node.id);
     }
     fn walk_pat(env e, &@ast::pat p) {
         alt (p.node) {
             case (ast::pat_bind(_)) {
-                e.decls.insert(p.id, ());
+                set_add(e.decls, p.id);
             }
             case (_) {}
         }
     }
-    let hashmap[ast::node_id, ()] decls = new_int_hash[()]();
-    for (ast::node_id decl in initial_decls) { decls.insert(decl, ()); }
+    let hashset[ast::node_id] decls = new_int_hash();
+    for (ast::node_id decl in initial_decls) { set_add(decls, decl); }
 
     let env e =
         @rec(mutable refs=~[],
