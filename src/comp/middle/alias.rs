@@ -521,20 +521,32 @@ type deref = @rec(bool mut, deref_t kind, ty::t outer_t);
 // ds=[field(baz),field(bar)])
 fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
    rec(@ast::expr ex, @deref[] ds) {
-    fn maybe_auto_unbox(&ctx cx, &ty::t t) ->
-       rec(ty::t t, option::t[deref] d) {
-        alt (ty::struct(cx.tcx, t)) {
-            case (ty::ty_box(?mt)) {
-                ret rec(t=mt.ty,
-                        d=some(@rec(mut=mt.mut != ast::imm,
-                                    kind=unbox,
-                                    outer_t=t)));
+    fn maybe_auto_unbox(&ctx cx, ty::t t) -> rec(ty::t t, deref[] ds) {
+        auto ds = ~[];
+        while (true) {
+            alt (ty::struct(cx.tcx, t)) {
+              ty::ty_box(?mt) {
+                ds += ~[@rec(mut=mt.mut != ast::imm, kind=unbox, outer_t=t)];
+                t = mt.ty;
+              }
+              ty::ty_res(_, ?inner, ?tps) {
+                ds += ~[@rec(mut=false, kind=unbox, outer_t=t)];
+                t = ty::substitute_type_params(cx.tcx, tps, inner);
+              }
+              ty::ty_tag(?did, ?tps) {
+                auto variants = ty::tag_variants(cx.tcx, did);
+                if (ivec::len(variants) != 1u ||
+                    ivec::len(variants.(0).args) != 1u) {
+                    break;
+                }
+                ds += ~[@rec(mut=false, kind=unbox, outer_t=t)];
+                t = ty::substitute_type_params(cx.tcx, tps,
+                                               variants.(0).args.(0));
+              }
+              _ { break; }
             }
-            case (_) { ret rec(t=t, d=none); }
         }
-    }
-    fn maybe_push_auto_unbox(&option::t[deref] d, &mutable deref[] ds) {
-        alt (d) { case (some(?d)) { ds += ~[d]; } case (none) { } }
+        ret rec(t=t, ds=ds);
     }
     let deref[] ds = ~[];
     while (true) {
@@ -559,7 +571,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                     case (ty::ty_obj(_)) { }
                 }
                 ds += ~[@rec(mut=mut, kind=field, outer_t=auto_unbox.t)];
-                maybe_push_auto_unbox(auto_unbox.d, ds);
+                ds += auto_unbox.ds;
                 ex = base;
             }
             case (ast::expr_index(?base, _)) {
@@ -577,7 +589,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                                     outer_t=auto_unbox.t)];
                     }
                 }
-                maybe_push_auto_unbox(auto_unbox.d, ds);
+                ds += auto_unbox.ds;
                 ex = base;
             }
             case (ast::expr_unary(?op, ?base)) {
@@ -599,7 +611,7 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
     }
     if (autoderef) {
         auto auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, ex));
-        maybe_push_auto_unbox(auto_unbox.d, ds);
+        ds += auto_unbox.ds;
     }
     ret rec(ex=ex, ds=@ds);
 }
