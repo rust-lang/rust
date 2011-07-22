@@ -43,9 +43,9 @@ fn fib(int n) -> int {
 fn main(vec[str] argv) {
     if(vec::len(argv) == 1u) {
         assert (fib(8) == 21);
-        assert (fib(15) == 610);
+        //assert (fib(15) == 610);
         log fib(8);
-        log fib(15);
+        //log fib(15);
     }
     else {
         // Interactive mode! Wooo!!!!
