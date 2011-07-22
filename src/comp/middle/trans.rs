@@ -4465,8 +4465,7 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
         e_res.bcx.build.PointerCast(e_res.val, ll_t_out)
       }
       _ {
-        ccx.sess.bug("Translating unsupported cast.");
-        C_nil() // FIXME the typechecker doesn't seem to understand _|_ here
+        ccx.sess.bug("Translating unsupported cast.")
       }
     };
     ret rslt(e_res.bcx, newval);
