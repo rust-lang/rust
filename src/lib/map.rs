@@ -1,6 +1,5 @@
 /**
- * At the moment, this is a partial hashmap implementation, not yet fit for
- * use, but useful as a stress test for rustboot.
+ * Hashmap implementation.
  */
 type hashfn[K] = fn(&K) -> uint ;
 
@@ -16,7 +15,13 @@ type hashmap[K, V] =
         fn remove(&K) -> option::t[V] ;
         fn rehash() ;
         iter items() -> @tup(K, V) ;
+        iter keys() -> K ;
     };
+type hashset[K] = hashmap[K, ()];
+
+fn set_add[K](hashset[K] set, &K key) -> bool {
+    ret set.insert(key, ());
+}
 
 fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     let uint initial_capacity = 32u; // 2^5
@@ -184,6 +189,14 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             for (bucket[K, V] b in bkts) {
                 alt (b) {
                     case (some(?k, ?v)) { put @tup(k, v); }
+                    case (_) { }
+                }
+            }
+        }
+        iter keys() -> K {
+            for (bucket[K, V] b in bkts) {
+                alt (b) {
+                    case (some(?k, _)) { put k; }
                     case (_) { }
                 }
             }

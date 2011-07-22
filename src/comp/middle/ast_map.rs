@@ -105,6 +105,11 @@ fn new_smallintmap_adapter[K, V](fn(&K) -> uint key_idx,
                 idx += 1u;
             }
         }
+        iter keys() -> K {
+            for each (@tup(K, V) p in self.items()) {
+                put p._0;
+            }
+        }
     }
 
     auto map = smallintmap::mk[V]();
