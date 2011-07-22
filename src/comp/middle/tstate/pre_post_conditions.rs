@@ -585,7 +585,8 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
     alt (s.node) {
         case (stmt_decl(?adecl, ?id)) {
             alt (adecl.node) {
-                case (decl_local(?alocal)) {
+                case (decl_local(?alocals)) {
+                  for (@local alocal in alocals) {
                     alt (alocal.node.init) {
                         case (some(?an_init)) {
                             /* LHS always becomes initialized,
@@ -628,6 +629,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                                      .conditions);
                         }
                     }
+                  }
                 }
                 case (decl_item(?anitem)) {
                     clear_pp(node_id_to_ts_ann(fcx.ccx, id).conditions);

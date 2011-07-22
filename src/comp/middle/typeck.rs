@@ -2584,7 +2584,9 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
         case (ast::stmt_decl(?decl, ?id)) {
             node_id = id;
             alt (decl.node) {
-                case (ast::decl_local(?l)) { check_decl_local(fcx, l); }
+                case (ast::decl_local(?ls)) {
+                  for (@ast::local l in ls) { check_decl_local(fcx, l); }
+                }
                 case (ast::decl_item(_)) {/* ignore for now */ }
             }
         }

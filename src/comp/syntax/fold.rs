@@ -298,9 +298,8 @@ fn noop_fold_pat(&pat_ p, ast_fold fld) -> pat_ {
 
 fn noop_fold_decl(&decl_ d, ast_fold fld) -> decl_ {
     ret alt (d) {
-        // local really doesn't need its own fold...
-        case (decl_local(?l)) {
-            decl_local(fld.fold_local(l))
+        case (decl_local(?ls)) {
+            decl_local(ivec::map(fld.fold_local, ls))
         }
         case (decl_item(?it)) { decl_item(fld.fold_item(it)) }
     }

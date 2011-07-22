@@ -1543,14 +1543,22 @@ fn parse_auto_local(&parser p) -> @ast::local {
 
 fn parse_let(&parser p) -> @ast::decl {
     auto lo = p.get_last_lo_pos();
-    auto local = parse_typed_local(p);
-    ret @spanned(lo, p.get_hi_pos(), ast::decl_local(local));
+    auto locals = ~[parse_typed_local(p)];
+    while p.peek() == token::COMMA {
+        p.bump();
+        locals += ~[parse_typed_local(p)];
+    }
+    ret @spanned(lo, p.get_hi_pos(), ast::decl_local(locals));
 }
 
 fn parse_auto(&parser p) -> @ast::decl {
     auto lo = p.get_last_lo_pos();
-    auto local = parse_auto_local(p);
-    ret @spanned(lo, p.get_hi_pos(), ast::decl_local(local));
+    auto locals = ~[parse_auto_local(p)];
+    while p.peek() == token::COMMA {
+        p.bump();
+        locals += ~[parse_auto_local(p)];
+    }
+    ret @spanned(lo, p.get_hi_pos(), ast::decl_local(locals));
 }
 
 fn parse_stmt(&parser p) -> @ast::stmt {

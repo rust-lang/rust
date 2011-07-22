@@ -133,17 +133,19 @@ fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
 fn visit_decl(&@ctx cx, &@ast::decl d, &scope sc, &vt[scope] v) {
     visit::visit_decl(d, sc, v);
     alt (d.node) {
-        ast::decl_local(?loc) {
+      ast::decl_local(?locs) {
+        for (@ast::local loc in locs) {
             alt (loc.node.init) {
-                some(?init) {
-                    if (init.op == ast::init_move) {
-                        check_move_rhs(cx, init.expr, sc, v);
-                    }
+              some(?init) {
+                if (init.op == ast::init_move) {
+                    check_move_rhs(cx, init.expr, sc, v);
                 }
-                none {}
+              }
+              none {}
             }
         }
-        _ {}
+      }
+      _ {}
     }
 }
 

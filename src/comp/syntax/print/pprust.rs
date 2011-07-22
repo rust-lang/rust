@@ -1045,10 +1045,10 @@ fn print_expr(&ps s, &@ast::expr expr) {
 fn print_decl(&ps s, &@ast::decl decl) {
     maybe_print_comment(s, decl.span.lo);
     alt (decl.node) {
-        case (ast::decl_local(?loc)) {
+        case (ast::decl_local(?locs)) {
             space_if_not_hardbreak(s);
             ibox(s, indent_unit);
-            alt (loc.node.ty) {
+            alt (locs.(0).node.ty) {
                 case (some(?ty)) {
                     word_nbsp(s, "let");
                     print_type(s, *ty);
@@ -1058,19 +1058,23 @@ fn print_decl(&ps s, &@ast::decl decl) {
                     word_nbsp(s, "auto");
                 }
             }
-            word(s.s, loc.node.ident);
-            alt (loc.node.init) {
-                case (some(?init)) {
+            fn print_local(&ps s, &@ast::local loc) {
+                word(s.s, loc.node.ident);
+                alt loc.node.init {
+                  some(?init) {
                     space(s.s);
-                    alt (init.op) {
-                        case (ast::init_assign) { word_space(s, "="); }
-                        case (ast::init_move) { word_space(s, "<-"); }
-                        case (ast::init_recv) { word_space(s, "|>"); }
+                    alt init.op {
+                      ast::init_assign { word_space(s, "="); }
+                      ast::init_move { word_space(s, "<-"); }
+                      ast::init_recv { word_space(s, "|>"); }
                     }
                     print_expr(s, init.expr);
+                  }
+                  _ { }
                 }
-                case (_) { }
             }
+            fn local_span(&@ast::local loc) -> codemap::span { ret loc.span; }
+            commasep_cmnt(s, consistent, locs, print_local, local_span);
             end(s);
         }
         case (ast::decl_item(?item)) { print_item(s, item); }

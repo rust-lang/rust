@@ -6157,8 +6157,10 @@ fn trans_stmt(&@block_ctxt cx, &ast::stmt s) -> result {
         case (ast::stmt_expr(?e, _)) { bcx = trans_expr(cx, e).bcx; }
         case (ast::stmt_decl(?d, _)) {
             alt (d.node) {
-                case (ast::decl_local(?local)) {
-                    bcx = init_local(bcx, local).bcx;
+                case (ast::decl_local(?locals)) {
+                  for (@ast::local local in locals) {
+                      bcx = init_local(bcx, local).bcx;
+                  }
                 }
                 case (ast::decl_item(?i)) { trans_item(cx.fcx.lcx, *i); }
             }
@@ -6263,7 +6265,11 @@ iter block_locals(&ast::block b) -> @ast::local {
         alt (s.node) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
-                    case (ast::decl_local(?local)) { put local; }
+                    case (ast::decl_local(?locals)) {
+                      for (@ast::local local in locals) {
+                          put local;
+                      }
+                    }
                     case (_) {/* fall through */ }
                 }
             }

@@ -596,7 +596,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
     alt (s.node) {
         case (stmt_decl(?adecl, ?id)) {
             alt (adecl.node) {
-                case (decl_local(?alocal)) {
+                case (decl_local(?alocals)) {
+                  auto changed = false;
+                  for (@local alocal in alocals) {
                     alt (alocal.node.init) {
                         case (some(?an_init)) {
                             auto changed = set_prestate(stmt_ann, pres) |
@@ -646,9 +648,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                             /* important to do this in one step to ensure
                                termination (don't want to set changed to true
                                for intermediate changes) */
-                            ret changed | set_poststate(stmt_ann, post);
-
-
+                          changed |= set_poststate(stmt_ann, post);
                         }
                         case (none) {
                             // let int = x; => x is uninit in poststate
@@ -656,9 +656,10 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                             clear_in_poststate_ident(fcx, alocal.node.id,
                                                      alocal.node.ident, id);
                             set_prestate(stmt_ann, pres);
-                            ret false;
                         }
                     }
+                  }
+                  ret changed;
                 }
                 case (decl_item(?an_item)) {
                     ret set_prestate(stmt_ann, pres) |

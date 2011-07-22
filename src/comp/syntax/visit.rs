@@ -249,8 +249,8 @@ fn visit_stmt[E](&@stmt s, &E e, &vt[E] v) {
 
 fn visit_decl[E](&@decl d, &E e, &vt[E] v) {
     alt (d.node) {
-        case (decl_local(?loc)) {
-            v.visit_local(loc, e, v);
+        case (decl_local(?locs)) {
+          for (@ast::local loc in locs) { v.visit_local(loc, e, v); }
         }
         case (decl_item(?it)) { v.visit_item(it, e, v); }
     }

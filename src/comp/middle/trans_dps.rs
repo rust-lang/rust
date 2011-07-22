@@ -597,12 +597,16 @@ fn trans_stmt(&@block_ctxt cx, &@ast::stmt stmt) -> @block_ctxt {
       }
       ast::stmt_decl(?d, _) {
         alt (d.node) {
-          ast::decl_local(?local) { ret trans_init_local(bcx, local); }
+          ast::decl_local(?locals) {
+            for (@ast::local local in locals) {
+                bcx = trans_init_local(bcx, local);
+            }
+          }
           ast::decl_item(?item) {
             trans::trans_item(bcx_lcx(bcx), *item);
-            ret bcx;
           }
         }
+        ret bcx;
       }
     }
 }

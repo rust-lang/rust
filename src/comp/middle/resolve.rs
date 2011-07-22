@@ -787,10 +787,13 @@ fn lookup_in_block(&ident name, &ast::block_ b, namespace ns) ->
         alt (st.node) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
-                    case (ast::decl_local(?loc)) {
-                        if (ns == ns_value && str::eq(name, loc.node.ident)) {
-                            ret some(ast::def_local(local_def(loc.node.id)));
-                        }
+                    ast::decl_local(?locs) {
+                      for (@ast::local loc in locs) {
+                          if ns == ns_value && str::eq(name, loc.node.ident) {
+                              ret some(ast::def_local
+                                       (local_def(loc.node.id)));
+                          }
+                      }
                     }
                     case (ast::decl_item(?it)) {
                         alt (it.node) {
@@ -1325,8 +1328,10 @@ fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
         alt (st.node) {
             case (ast::stmt_decl(?d, _)) {
                 alt (d.node) {
-                    ast::decl_local(?loc) {
-                        add_name(values, d.span, loc.node.ident);
+                    ast::decl_local(?locs) {
+                        for (@ast::local loc in locs) {
+                            add_name(values, d.span, loc.node.ident);
+                        }
                     }
                     ast::decl_item(?it) {
                         alt (it.node) {
