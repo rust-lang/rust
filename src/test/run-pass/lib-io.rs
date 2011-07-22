@@ -4,6 +4,8 @@ use std;
 import std::io;
 import std::str;
 
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "win32")]
 fn test_simple() {
     let str tmpfile = "test/run-pass/lib-io-test-simple.tmp";
     log tmpfile;
@@ -19,6 +21,10 @@ fn test_simple() {
     log frood2;
     assert (str::eq(frood, frood2));
 }
+
+// FIXME (726)
+#[cfg(target_os = "macos")]
+fn test_simple() {}
 
 fn main() {
     test_simple();
