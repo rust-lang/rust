@@ -4403,60 +4403,73 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
 
 fn int_cast(&@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
             ValueRef llsrc, bool signed) -> ValueRef {
-    if (llvm::LLVMGetIntTypeWidth(lldsttype) >
-            llvm::LLVMGetIntTypeWidth(llsrctype)) {
-        if (signed) {
-            // Widening signed cast.
+    auto srcsz = llvm::LLVMGetIntTypeWidth(llsrctype);
+    auto dstsz = llvm::LLVMGetIntTypeWidth(lldsttype);
+    ret if dstsz == srcsz { bcx.build.BitCast(llsrc, lldsttype) }
+        else if srcsz > dstsz { bcx.build.TruncOrBitCast(llsrc, lldsttype) }
+        else if signed { bcx.build.SExtOrBitCast(llsrc, lldsttype) }
+        else { bcx.build.ZExtOrBitCast(llsrc, lldsttype) };
+}
 
-            ret bcx.build.SExtOrBitCast(llsrc, lldsttype);
-        }
-        // Widening unsigned cast.
-
-        ret bcx.build.ZExtOrBitCast(llsrc, lldsttype);
-    }
-    ret bcx.build.TruncOrBitCast(llsrc, lldsttype);
+fn float_cast(&@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
+              ValueRef llsrc) -> ValueRef {
+    auto srcsz = lib::llvm::float_width(llsrctype);
+    auto dstsz = lib::llvm::float_width(lldsttype);
+    ret if dstsz > srcsz { bcx.build.FPExt(llsrc, lldsttype) }
+        else if srcsz > dstsz { bcx.build.FPTrunc(llsrc, lldsttype) }
+        else { llsrc };
 }
 
 fn trans_cast(&@block_ctxt cx, &@ast::expr e, ast::node_id id) -> result {
+    auto ccx = cx.fcx.lcx.ccx;
     auto e_res = trans_expr(cx, e);
-    auto llsrctype = val_ty(e_res.val);
-    auto t = node_id_type(cx.fcx.lcx.ccx, id);
-    auto lldsttype = type_of(cx.fcx.lcx.ccx, e.span, t);
-    if (!ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
+    auto ll_t_in = val_ty(e_res.val);
+    auto t_in = ty::expr_ty(ccx.tcx, e);
+    auto t_out = node_id_type(ccx, id);
+    auto ll_t_out = type_of(ccx, e.span, t_out);
 
-        // TODO: native-to-native casts
-        if (ty::type_is_native(cx.fcx.lcx.ccx.tcx,
-                               ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
-            e_res =
-                rslt(e_res.bcx,
-                    e_res.bcx.build.PtrToInt(e_res.val, lldsttype));
-        } else if (ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
-            e_res =
-                rslt(e_res.bcx,
-                    e_res.bcx.build.IntToPtr(e_res.val, lldsttype));
-        } else {
-            e_res =
-                rslt(e_res.bcx,
-                    int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
-                             ty::type_is_signed(cx.fcx.lcx.ccx.tcx, t)));
-        }
+    tag kind { native_; integral; float; other; }
+    fn t_kind(&ty::ctxt tcx, ty::t t) -> kind {
+        ret if ty::type_is_fp(tcx, t) { float }
+            else if ty::type_is_native(tcx, t) { native_ }
+            else if ty::type_is_integral(tcx, t) { integral }
+            else { other };
     }
-    else {
-        if (ty::type_is_integral(cx.fcx.lcx.ccx.tcx,
-                                 ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
-            if (ty::type_is_signed(cx.fcx.lcx.ccx.tcx,
-                                   ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
-                e_res = rslt(e_res.bcx,
-                             e_res.bcx.build.SIToFP(e_res.val, lldsttype));
-            }
-            else {
-                e_res = rslt(e_res.bcx,
-                             e_res.bcx.build.UIToFP(e_res.val, lldsttype));
-            }
-        }
-        else { cx.fcx.lcx.ccx.sess.unimpl("fp cast"); }
-    }
-    ret e_res;
+    auto k_in = t_kind(ccx.tcx, t_in);
+    auto k_out = t_kind(ccx.tcx, t_out);
+    auto s_in = k_in == integral && ty::type_is_signed(ccx.tcx, t_in);
+
+    auto newval = alt rec(in=k_in, out=k_out) {
+      {in: integral, out: integral} {
+        int_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val, s_in)
+      }
+      {in: float, out: float} {
+        float_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val)
+      }
+      {in: integral, out: float} {
+        if s_in { e_res.bcx.build.SIToFP(e_res.val, ll_t_out) }
+        else { e_res.bcx.build.UIToFP(e_res.val, ll_t_out) }
+      }
+      {in: float, out: integral} {
+        if ty::type_is_signed(ccx.tcx, t_out) {
+            e_res.bcx.build.FPToSI(e_res.val, ll_t_out)
+        } else { e_res.bcx.build.FPToUI(e_res.val, ll_t_out) }
+      }
+      {in: integral, out: native_} {
+        e_res.bcx.build.IntToPtr(e_res.val, ll_t_out)
+      }
+      {in: native_, out: integral} {
+        e_res.bcx.build.PtrToInt(e_res.val, ll_t_out)
+      }
+      {in: native_, out: native_} {
+        e_res.bcx.build.PointerCast(e_res.val, ll_t_out)
+      }
+      _ {
+        ccx.sess.bug("Translating unsupported cast.");
+        C_nil() // FIXME the typechecker doesn't seem to understand _|_ here
+      }
+    };
+    ret rslt(e_res.bcx, newval);
 }
 
 fn trans_bind_thunk(&@local_ctxt cx, &span sp, &ty::t incoming_fty,

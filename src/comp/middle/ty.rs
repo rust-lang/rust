@@ -1158,6 +1158,7 @@ fn type_is_integral(&ctxt cx, &t ty) -> bool {
             }
         }
         case (ty_char) { ret true; }
+        case (ty_bool) { ret true; }
         case (_) { ret false; }
     }
 }

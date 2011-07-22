@@ -1543,6 +1543,16 @@ fn type_to_str_inner(type_names names, &TypeRef[] outer0, TypeRef ty) -> str {
     }
 }
 
+fn float_width(TypeRef llt) -> uint {
+    ret alt llvm::LLVMGetTypeKind(llt) {
+      1 { 32u }
+      2 { 64u }
+      3 { 80u }
+      4 | 5 { 128u }
+      _ { fail "llvm_float_width called on a non-float type"; 0u }
+    };
+}
+
 fn fn_ty_param_tys(TypeRef fn_ty) -> TypeRef[] {
     auto args = ivec::init_elt(0 as TypeRef,
                                llvm::LLVMCountParamTypes(fn_ty));

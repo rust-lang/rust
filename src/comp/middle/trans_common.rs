@@ -456,7 +456,6 @@ fn T_int() -> TypeRef {
 
 fn T_float() -> TypeRef {
     // FIXME: switch on target type.
-
     ret T_f64();
 }
 
