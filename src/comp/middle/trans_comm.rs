@@ -216,11 +216,14 @@ fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto data_tmp = move_val_if_temp(bcx, INIT, data_alloc.val,
                                      data, unit_ty);
     bcx = data_tmp.bcx;
-    add_clean_temp(bcx, data_alloc.val, unit_ty);
     auto llchanval = bcx.build.PointerCast(chn.val, T_opaque_chan_ptr());
     auto lldataptr = bcx.build.PointerCast(data_alloc.val, T_ptr(T_i8()));
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.send,
                    ~[bcx.fcx.lltaskptr, llchanval, lldataptr]);
+
+    // Deinit the stuff we sent.
+    bcx = zero_alloca(bcx, data_alloc.val, unit_ty).bcx;
+
     ret rslt(bcx, chn.val);
     auto unit_ty;
 }
@@ -231,7 +234,6 @@ fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto data = trans_lval(bcx, rhs);
     assert (data.is_mem);
     bcx = data.res.bcx;
-    auto unit_ty = node_id_type(bcx.fcx.lcx.ccx, id);
     // FIXME: calculate copy init-ness in typestate.
 
     auto prt = trans_expr(bcx, lhs);
@@ -241,13 +243,8 @@ fn trans_recv(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
     auto llportptr = bcx.build.PointerCast(prt.val, T_opaque_port_ptr());
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.recv,
                    ~[bcx.fcx.lltaskptr, lldataptr, llportptr]);
-    auto data_load = load_if_immediate(bcx, data.res.val, unit_ty);
-    //auto cp = copy_val(bcx, DROP_EXISTING,
-    //                   data.res.val, data_load, unit_ty);
-    //bcx = cp.bcx;
 
-    add_clean_temp(cx, data_load, unit_ty);
-    ret rslt(bcx, data_load);
+    ret rslt(bcx, data.res.val);
 }
 
 // Does a deep copy of a value. This is needed for passing arguments to child

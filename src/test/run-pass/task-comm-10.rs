@@ -23,11 +23,10 @@ fn main() {
 
     p = port();
     child = spawn start(chan(p));
+    auto c;
 
     p |> c;
     c <| "A";
     c <| "B";
     task::yield();
-
-    auto c;
 }
