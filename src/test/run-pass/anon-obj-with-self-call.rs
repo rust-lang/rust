@@ -22,4 +22,16 @@ fn main() {
 
     assert (my_b.baz() == 2);
 
+    auto my_c = obj {
+        fn foo() -> int {
+            ret 3;
+        }
+        fn baz() -> int {
+            ret self.foo();
+        }
+        with my_a
+    };
+
+    assert (my_c.baz() == 3);
+    assert (my_c.bar() == 3);
 }
