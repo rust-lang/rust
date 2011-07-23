@@ -153,7 +153,7 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
 }
 
 fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
-                      str input, pp_mode ppm) {
+                      str input, pp_mode ppm, bool expand) {
     fn ann_paren_for_expr(&pprust::ann_node node) {
         alt (node) {
             case (pprust::node_expr(?s, ?expr)) {
@@ -195,6 +195,7 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
     }
 
     auto crate = parse_input(sess, cfg, input);
+    if(expand) { crate = syntax::ext::expand::expand_crate(sess, crate); }
     auto ann;
     alt (ppm) {
         case (ppm_typed) {
@@ -238,6 +239,7 @@ options:
     --lib              compile a library crate
     --static           use or produce static libraries
     --pretty [type]    pretty-print the input instead of compiling
+    --expand [type]    expand and pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
@@ -395,15 +397,15 @@ fn parse_pretty(session::session sess, &str name) -> pp_mode {
     } else if (str::eq(name, "typed")) {
         ret ppm_typed;
     } else if (str::eq(name, "identified")) { ret ppm_identified; }
-    sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or " +
-                 "`identified`");
+    sess.fatal("argument to `pretty` or `expand` must be one of `normal`, "
+               + "`typed`, or `identified`");
 }
 
 fn opts() -> vec[getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
-         optflag("ls"), optflag("parse-only"), optflag("O"),
-         optopt("OptLevel"), optmulti("L"), optflag("S"),
+         optflagopt("expand"), optflag("ls"), optflag("parse-only"),
+         optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
          optflag("time-llvm-passes"), optflag("no-typestate"),
@@ -451,18 +453,29 @@ fn main(vec[str] args) {
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
     auto cfg = build_configuration(sess, binary, ifile);
-    auto pretty =
+    auto expand =
         option::map[str,
                     pp_mode](bind parse_pretty(sess, _),
-                             getopts::opt_default(match, "pretty", "normal"));
-    auto ls = opt_present(match, "ls");
-    alt (pretty) {
+                             getopts::opt_default(match, "expand", "normal"));
+    alt (expand) {
         case (some[pp_mode](?ppm)) {
-            pretty_print_input(sess, cfg, ifile, ppm);
+            pretty_print_input(sess, cfg, ifile, ppm, true);
             ret;
         }
         case (none[pp_mode]) {/* continue */ }
     }
+    auto pretty =
+        option::map[str,
+                    pp_mode](bind parse_pretty(sess, _),
+                             getopts::opt_default(match, "pretty", "normal"));
+    alt (pretty) {
+        case (some[pp_mode](?ppm)) {
+            pretty_print_input(sess, cfg, ifile, ppm, false);
+            ret;
+        }
+        case (none[pp_mode]) {/* continue */ }
+    }
+    auto ls = opt_present(match, "ls");
     if (ls) {
         metadata::creader::list_file_metadata(ifile, ioivec::stdout());
         ret;
