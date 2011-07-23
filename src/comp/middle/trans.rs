@@ -539,8 +539,8 @@ fn simplify_type(&@crate_ctxt ccx, &ty::t typ) -> ty::t {
 fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
     if (ty::type_has_dynamic_size(cx.tcx, t)) {
         cx.tcx.sess.span_fatal(sp,
-                             "dynamically sized type passed to " +
-                                 "static_size_of_tag()");
+                               "dynamically sized type passed to \
+                               static_size_of_tag()");
     }
     if (cx.tag_sizes.contains_key(t)) { ret cx.tag_sizes.get(t); }
     alt (ty::struct(cx.tcx, t)) {
@@ -565,8 +565,7 @@ fn static_size_of_tag(&@crate_ctxt cx, &span sp, &ty::t t) -> uint {
         }
         case (_) {
             cx.tcx.sess.span_fatal(sp,
-                                 "non-tag passed to " +
-                                     "static_size_of_tag()");
+                                   "non-tag passed to static_size_of_tag()");
         }
     }
 }
@@ -1683,7 +1682,7 @@ fn make_cmp_glue(&@block_ctxt cx, ValueRef lhs0, ValueRef rhs0, &ty::t t,
 
         trans_fail(cx, none[span],
                    "attempt to compare values of type " +
-                       ty_to_str(bcx_tcx(cx), t));
+                   ty_to_str(bcx_tcx(cx), t));
     }
 }
 
@@ -1740,8 +1739,8 @@ fn compare_scalar_types(@block_ctxt cx, ValueRef lhs, ValueRef rhs, &ty::t t,
         }
         case (_) {
             // Should never get here, because t is scalar.
-            bcx_ccx(cx).sess.bug("non-scalar type passed to " +
-                                    "compare_scalar_types");
+            bcx_ccx(cx).sess.bug("non-scalar type passed to \
+                                 compare_scalar_types");
         }
     }
 }
@@ -2188,9 +2187,9 @@ fn iter_sequence(@block_ctxt cx, ValueRef v, &ty::t t, &val_and_ty_fn f) ->
             ret iter_sequence_body(cx, v, et, f, true, true);
         }
         case (_) {
-            bcx_ccx(cx).sess.bug("unexpected type in " +
-                                        "trans::iter_sequence: " +
-                                        ty_to_str(bcx_tcx(cx), t));
+            bcx_ccx(cx).sess.bug("unexpected type in \
+                                 trans::iter_sequence: " +
+                                 ty_to_str(cx.fcx.lcx.ccx.tcx, t));
         }
     }
 }
@@ -2772,9 +2771,9 @@ fn trans_unary(&@block_ctxt cx, ast::unop op, &@ast::expr e,
             ret rslt(sub.bcx, box);
         }
         case (ast::deref) {
-            bcx_ccx(cx).sess.bug("deref expressions should have been " +
-                                        "translated using trans_lval(), not "
-                                        + "trans_unary()");
+            bcx_ccx(cx).sess.bug("deref expressions should have been \
+                                 translated using trans_lval(), not \
+                                 trans_unary()");
         }
     }
 }
@@ -4326,10 +4325,9 @@ fn trans_lval_gen(&@block_ctxt cx, &@ast::expr e) -> lval_result {
                 }
                 case (_) {
                     // Shouldn't happen.
-
-                    bcx_ccx(cx).sess.bug("trans_lval called on " +
-                                                "expr_self_method in " +
-                                                "a context without llself");
+                    bcx_ccx(cx).sess.bug("trans_lval called on \
+                                         expr_self_method in \
+                                         a context without llself");
                 }
             }
         }
@@ -5624,7 +5622,7 @@ fn trans_fail_expr(&@block_ctxt cx, &option::t[span] sp_opt,
             } else {
                 bcx_ccx(cx).sess.span_bug(expr.span,
                                              "fail called with unsupported \
-                                              type " + ty_to_str(tcx, e_ty));
+                                             type " + ty_to_str(tcx, e_ty));
             }
         }
         case (_) {
@@ -7422,7 +7420,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::node_id tag_id,
             }
             case (none) {
                 bcx_ccx(bcx).sess.bug("unbound argptr in \
-                   trans_tag_variant");
+                                      trans_tag_variant");
             }
         }
         auto arg_ty = arg_tys.(i).ty;
@@ -7639,8 +7637,8 @@ fn native_fn_ty_param_count(&@crate_ctxt cx, ast::node_id id) -> uint {
     };
     alt (native_item.node) {
         case (ast::native_item_ty) {
-            cx.sess.bug("decl_native_fn_and_pair(): native fn isn't " +
-                            "actually a fn");
+            cx.sess.bug("decl_native_fn_and_pair(): native fn isn't \
+                        actually a fn");
         }
         case (ast::native_item_fn(_, _, ?tps)) {
             count = std::ivec::len[ast::ty_param](tps);
