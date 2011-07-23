@@ -123,9 +123,6 @@ rust_task : public maybe_proxy<rust_task>,
     void die();
     void unblock();
 
-    void check_active() { I(sched, sched->curr_task == this); }
-    void check_suspended() { I(sched, sched->curr_task != this); }
-
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
 

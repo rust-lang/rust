@@ -16,8 +16,6 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
     cache(this),
-    root_task(NULL),
-    curr_task(NULL),
     rval(0),
     kernel(kernel),
     message_queue(message_queue)
@@ -29,7 +27,6 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     pthread_attr_setstacksize(&attr, 1024 * 1024);
     pthread_attr_setdetachstate(&attr, true);
 #endif
-    root_task = create_task(NULL, name);
 }
 
 rust_scheduler::~rust_scheduler() {

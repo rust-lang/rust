@@ -103,8 +103,8 @@ rust_task::~rust_task()
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
-    I(sched, ref_count == 0 ||
-      (ref_count == 1 && this == sched->root_task));
+    // I(sched, ref_count == 0 ||
+    //   (ref_count == 1 && this == sched->root_task));
 
     del_stk(this, stk);
 }
@@ -207,8 +207,8 @@ rust_task::kill() {
     // Unblock the task so it can unwind.
     unblock();
 
-    if (this == sched->root_task)
-        sched->fail();
+    // if (this == sched->root_task)
+    //     sched->fail();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
     // run_on_resume(rust_unwind_glue);
@@ -229,8 +229,6 @@ rust_task::fail() {
         supervisor->kill();
     }
     // FIXME: implement unwinding again.
-    if (this == sched->root_task)
-        sched->fail();
     failed = true;
 }
 

@@ -46,8 +46,6 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_crate_cache cache;
 
     randctx rctx;
-    rust_task *root_task;
-    rust_task *curr_task;
     int rval;
 
     rust_kernel *kernel;

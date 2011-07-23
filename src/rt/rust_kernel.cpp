@@ -261,6 +261,11 @@ int rust_kernel::start_task_threads(int num_threads)
     return sched->rval;
 }
 
+rust_task *
+rust_kernel::create_task(rust_task *spawner, const char *name) {
+    return sched->create_task(spawner, name);
+}
+
 #ifdef __WIN32__
 void
 rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {

@@ -45,9 +45,9 @@ void task_entry() {
 
 void
 rust_task_test::worker::run() {
-    rust_scheduler *scheduler = kernel->get_scheduler();
-    scheduler->root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL);
-    scheduler->start_main_loop(0);
+    rust_task *root_task = kernel->create_task(NULL, "main");
+    root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL);
+    root_task->sched->start_main_loop(0);
 }
 
 bool

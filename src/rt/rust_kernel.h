@@ -121,6 +121,8 @@ public:
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
+
+    rust_task *create_task(rust_task *spawner, const char *name);
 };
 
 class rust_task_thread : public rust_thread {
