@@ -144,10 +144,11 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
-    rust_scheduler *sched = kernel->get_scheduler();
+    rust_task *root_task = kernel->create_task(NULL, "main");
+    rust_scheduler *sched = root_task->sched;
     command_line_args *args
         = new (kernel, "main command line args")
-        command_line_args(sched->root_task, argc, argv);
+        command_line_args(root_task, argc, argv);
 
     DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
@@ -155,7 +156,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    sched->root_task->start(main_fn, (uintptr_t)args->args);
+    root_task->start(main_fn, (uintptr_t)args->args);
 
     int num_threads = get_num_threads();
 
