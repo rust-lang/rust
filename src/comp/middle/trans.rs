@@ -3792,14 +3792,12 @@ fn find_variable(&@fn_ctxt fcx, ast::node_id nid) -> ValueRef {
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
-fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
+fn build_environment(&@block_ctxt cx, &freevar_set upvars) ->
     rec(ValueRef ptr, TypeRef ptrty) {
-    auto upvar_count = std::ivec::len(upvars);
     auto has_iterbody = !option::is_none(cx.fcx.lliterbody);
-    if (has_iterbody) { upvar_count += 1u; }
     auto llbindingsptr;
 
-    if (upvar_count > 0u) {
+    if (upvars.size() > 0u || has_iterbody) {
         // Gather up the upvars.
         let ValueRef[] llbindings = ~[];
         let TypeRef[] llbindingtys = ~[];
@@ -3807,7 +3805,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
             llbindings += ~[option::get(cx.fcx.lliterbody)];
             llbindingtys += ~[val_ty(llbindings.(0))];
         }
-        for (ast::node_id nid in upvars) {
+        for each (ast::node_id nid in upvars.keys()) {
             auto llbinding = find_variable(cx.fcx, nid);
             llbindings += ~[llbinding];
             llbindingtys += ~[val_ty(llbinding)];
@@ -3815,6 +3813,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
 
         // Create an array of bindings and copy in aliases to the upvars.
         llbindingsptr = alloca(cx, T_struct(llbindingtys));
+        auto upvar_count = std::ivec::len(llbindings);
         auto i = 0u;
         while (i < upvar_count) {
             auto llbindingptr =
@@ -3859,7 +3858,7 @@ fn build_environment(&@block_ctxt cx, &ast::node_id[] upvars) ->
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
-                    TypeRef llenvptrty, &ast::node_id[] upvars) {
+                    TypeRef llenvptrty, &freevar_set upvars) {
     auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // Populate the upvars from the environment.
@@ -3871,22 +3870,20 @@ fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
                                   C_int(abi::closure_elt_bindings)]);
     auto llremotebindingsptr =
         copy_args_bcx.build.Load(llremotebindingsptrptr);
-    auto base = 0u;
+
     auto i = 0u;
-    auto end = std::ivec::len(upvars);
     if (!option::is_none(cx.fcx.lliterbody)) {
-        base += 1u;
+        i += 1u;
         auto lliterbodyptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
                                     ~[C_int(0), C_int(0)]);
         auto lliterbody = copy_args_bcx.build.Load(lliterbodyptr);
         fcx.lliterbody = some(lliterbody);
     }
-    while (i < end) {
-        auto upvar_id = upvars.(i);
+    for each (ast::node_id upvar_id in upvars.keys()) {
         auto llupvarptrptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
-                                    ~[C_int(0), C_int(base+i as int)]);
+                                    ~[C_int(0), C_int(i as int)]);
         auto llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
         fcx.llupvars.insert(upvar_id, llupvarptr);
         i += 1u;
@@ -3943,7 +3940,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     auto decl_id = local.node.id;
     auto upvars = get_freevars(lcx.ccx.tcx, body.node.id);
 
-    auto llenv = build_environment(cx, *upvars);
+    auto llenv = build_environment(cx, upvars);
 
     // Step 2: Declare foreach body function.
     let str s =
@@ -3964,7 +3961,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
 
     // Generate code to load the environment out of the
     // environment pointer.
-    load_environment(cx, fcx, llenv.ptrty, *upvars);
+    load_environment(cx, fcx, llenv.ptrty, upvars);
 
     // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));

@@ -16,13 +16,16 @@ import syntax::codemap::span;
 export annotate_freevars;
 export freevar_set;
 export freevar_map;
+export get_freevar_info;
 export get_freevars;
+export get_freevar_uses;
 export has_freevars;
 export is_freevar_of;
 export def_lookup;
 
-type freevar_set = @ast::node_id[];
-type freevar_map = hashmap[ast::node_id, freevar_set];
+type freevar_set = hashset[ast::node_id];
+type freevar_info = rec(freevar_set defs, @ast::node_id[] uses);
+type freevar_map = hashmap[ast::node_id, freevar_info];
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -31,7 +34,7 @@ type freevar_map = hashmap[ast::node_id, freevar_set];
 // in order to start the search.
 fn collect_freevars(&resolve::def_map def_map, &session::session sess,
                     &fn (&walk::ast_visitor) walker,
-                    ast::node_id[] initial_decls) -> freevar_set {
+                    ast::node_id[] initial_decls) -> freevar_info {
     type env =
         @rec(mutable ast::node_id[] refs,
              hashset[ast::node_id] decls,
@@ -50,9 +53,9 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
                        "internal error in collect_freevars");
                 }
                 alt (e.def_map.get(expr.id)) {
-                    case (ast::def_arg(?did)) { e.refs += ~[did._1]; }
-                    case (ast::def_local(?did)) { e.refs += ~[did._1]; }
-                    case (ast::def_binding(?did)) { e.refs += ~[did._1]; }
+                    case (ast::def_arg(?did)) { e.refs += ~[expr.id]; }
+                    case (ast::def_local(?did)) { e.refs += ~[expr.id]; }
+                    case (ast::def_binding(?did)) { e.refs += ~[expr.id]; }
                     case (_) { /* no-op */ }
                 }
             }
@@ -87,12 +90,19 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
     walker(*visitor);
 
     // Calculate (refs - decls). This is the set of captured upvars.
-    auto result = ~[];
+    // We build a vec of the node ids of the uses and a set of the
+    // node ids of the definitions.
+    auto uses = ~[];
+    auto defs = new_int_hash();
     for (ast::node_id ref_id_ in e.refs) {
         auto ref_id = ref_id_;
-        if (!decls.contains_key(ref_id)) { result += ~[ref_id]; }
+        auto def_id = ast::def_id_of_def(def_map.get(ref_id))._1;
+        if !decls.contains_key(def_id) {
+            uses += ~[ref_id];
+            set_add(defs, def_id);
+        }
     }
-    ret @result;
+    ret rec(defs=defs, uses=@uses);
 }
 
 // Build a map from every function and for-each body to a set of the
@@ -136,7 +146,7 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
     ret e.freevars;
 }
 
-fn get_freevars(&ty::ctxt tcx, ast::node_id fid) -> freevar_set {
+fn get_freevar_info(&ty::ctxt tcx, ast::node_id fid) -> freevar_info {
     alt (tcx.freevars.find(fid)) {
         none {
             fail "get_freevars: " + int::str(fid) + " has no freevars";
@@ -144,11 +154,17 @@ fn get_freevars(&ty::ctxt tcx, ast::node_id fid) -> freevar_set {
         some(?d) { ret d; }
     }
 }
+fn get_freevars(&ty::ctxt tcx, ast::node_id fid) -> freevar_set {
+    ret get_freevar_info(tcx, fid).defs;
+}
+fn get_freevar_uses(&ty::ctxt tcx, ast::node_id fid) -> @ast::node_id[] {
+    ret get_freevar_info(tcx, fid).uses;
+}
 fn has_freevars(&ty::ctxt tcx, ast::node_id fid) -> bool {
-    ret ivec::len(*get_freevars(tcx, fid)) != 0u;
+    ret get_freevars(tcx, fid).size() != 0u;
 }
 fn is_freevar_of(&ty::ctxt tcx, ast::node_id var, ast::node_id f) -> bool {
-    ret ivec::member(var, *get_freevars(tcx, f));
+    ret get_freevars(tcx, f).contains_key(var);
 }
 fn def_lookup(&ty::ctxt tcx, ast::node_id f, ast::node_id id) ->
     option::t[ast::def] {
