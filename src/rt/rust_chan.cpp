@@ -32,6 +32,7 @@ rust_chan::~rust_chan() {
 void rust_chan::associate(maybe_proxy<rust_port> *port) {
     this->port = port;
     if (port->is_proxy() == false) {
+        scoped_lock with(port->referent()->lock);
         DLOG(kernel->sched, task,
             "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
             this, port);
@@ -54,6 +55,7 @@ void rust_chan::disassociate() {
       "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
+        scoped_lock with(port->referent()->lock);
         DLOG(kernel->sched, task,
             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
             this, port->referent());
