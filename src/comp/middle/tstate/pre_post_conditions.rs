@@ -299,6 +299,18 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
     }
 }
 
+fn handle_var(&fn_ctxt fcx, &pre_and_post rslt, node_id id, ident name) {
+    auto df = node_id_to_def_upvar_strict(fcx, id);
+    alt (df) {
+        case (def_local(?d_id)) {
+            auto i = bit_num(fcx, ninit(d_id.node, name));
+            use_var(fcx, d_id.node);
+            require_and_preserve(i, rslt);
+        }
+        case (_) {/* nothing to check */ }
+    }
+}
+
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
     auto enclosing = fcx.enclosing;
@@ -337,17 +349,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_path(?p)) {
             auto rslt = expr_pp(fcx.ccx, e);
             clear_pp(rslt);
-            auto df = node_id_to_def_strict(fcx.ccx.tcx, e.id);
-            alt (df) {
-                case (def_local(?d_id)) {
-                    auto i =
-                        bit_num(fcx,
-                          ninit(d_id.node, path_to_ident(fcx.ccx.tcx, p)));
-                    use_var(fcx, d_id.node);
-                    require_and_preserve(i, rslt);
-                }
-                case (_) {/* nothing to check */ }
-            }
+            handle_var(fcx, rslt, e.id, path_to_ident(fcx.ccx.tcx, p));
         }
         case (expr_self_method(?v)) { clear_pp(expr_pp(fcx.ccx, e)); }
         case (expr_log(_, ?arg)) {
@@ -367,7 +369,14 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (none) { clear_pp(expr_pp(fcx.ccx, e)); }
             }
         }
-        case (expr_fn(?f)) { clear_pp(expr_pp(fcx.ccx, e)); }
+        case (expr_fn(?f)) {
+            auto rslt = expr_pp(fcx.ccx, e);
+            clear_pp(rslt);
+            auto upvars = freevars::get_freevar_uses(fcx.ccx.tcx, e.id);
+            for (node_id id in *upvars) {
+                handle_var(fcx, rslt, id, "upvar");
+            }
+        }
         case (expr_block(?b)) {
             find_pre_post_block(fcx, b);
             auto p = block_pp(fcx.ccx, b);

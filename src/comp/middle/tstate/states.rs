@@ -208,7 +208,7 @@ fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
 fn gen_if_local(&fn_ctxt fcx, &poststate p, &@expr e) -> bool {
     alt (e.node) {
         case (expr_path(?pth)) {
-            alt (node_id_to_def(fcx.ccx, e.id)) {
+            alt (freevars::def_lookup(fcx.ccx.tcx, fcx.id, e.id)) {
                 case (some(def_local(?loc))) {
                     ret set_in_poststate_ident(fcx, loc.node,
                            path_to_ident(fcx.ccx.tcx, pth), p);

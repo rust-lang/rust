@@ -486,6 +486,15 @@ fn constraints_expr(&ty::ctxt cx, @expr e) -> (@ty::constr)[] {
     }
 }
 
+fn node_id_to_def_upvar_strict(&fn_ctxt cx, node_id id) -> def {
+    alt (freevars::def_lookup(cx.ccx.tcx, cx.id, id)) {
+        case (none) {
+            log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
+            fail;
+        }
+        case (some(?d)) { ret d; }
+    }
+}
 fn node_id_to_def_strict(&ty::ctxt cx, node_id id) -> def {
     alt (cx.def_map.find(id)) {
         case (none) {
