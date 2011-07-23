@@ -200,7 +200,7 @@ probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 probe_need CFG_CURL         curl
 
-probe CFG_GIT          git
+probe CFG_GIT              git
 probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
@@ -208,6 +208,7 @@ probe CFG_VALGRIND         valgrind
 probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 probe CFG_TEX              tex
+probe CFG_MAKENSIS         makensis
 
 if [ -z "$CFG_CLANG" -a -z "$CFG_GCC" ]
 then

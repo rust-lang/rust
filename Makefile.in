@@ -145,6 +145,7 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 ######################################################################
 
 export CFG_SRC_DIR
+export CFG_BUILD_DIR
 export CFG_VERSION
 export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS

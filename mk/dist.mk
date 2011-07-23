@@ -2,10 +2,16 @@
 # Distribution
 ######################################################################
 
+
 PKG_NAME := rust
 PKG_VER  = $(shell date +"%Y-%m-%d")-snap
 PKG_DIR = $(PKG_NAME)-$(PKG_VER)
 PKG_TAR = $(PKG_DIR).tar.gz
+
+ifdef CFG_MAKENSIS
+PKG_NSI = $(S)src/etc/pkg/rust.nsi
+PKG_EXE = $(PKG_DIR)-install.exe
+endif
 
 PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
                 rt/isaac/rand.h rt/isaac/standard.h \
@@ -29,9 +35,20 @@ PKG_FILES = \
     $(ALL_TEST_INPUTS)                         \
     $(GENERATED)
 
-dist: $(PKG_TAR)
+dist: $(PKG_TAR) $(PKG_EXE)
 
-$(PKG_TAR): $(GENERATED)
+nsis-dist: $(PKG_EXE)
+
+lic.txt: $(S)LICENSE.txt
+	@$(call E, crlf: $@)
+	@$(Q)perl -pe 's@\n@\r\n@go' <$< >$@
+
+$(PKG_EXE): $(PKG_NSI) $(PKG_FILES) $(DOCS) $(SREQ3) lic.txt
+	@$(call E, makensis: $@)
+	$(Q)makensis -NOCD -V1 "-XOutFile $@" "-XLicenseData lic.txt" $<
+	$(Q)rm -f lic.txt
+
+$(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
 	$(Q)rm -Rf dist
 	$(Q)mkdir -p dist/$(PKG_DIR)
