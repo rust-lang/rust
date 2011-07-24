@@ -34,6 +34,14 @@ fn test_join() {
 }
 
 #[test]
+fn test_send_recv() {
+    auto p = port[int]();
+    auto c = chan(p);
+    task::send(c, 10);
+    assert task::recv(p) == 10;
+}
+
+#[test]
 fn test_worker() {
     task::worker(fn(port[int] p) {
         auto x; p |> x;

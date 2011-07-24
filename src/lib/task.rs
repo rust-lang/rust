@@ -52,6 +52,14 @@ fn clone_chan[T](chan[T] c) -> chan[T] {
     ret unsafe::reinterpret_cast(cloned);
 }
 
+fn send[T](chan[T] c, &T v) {
+    c <| v;
+}
+
+fn recv[T](port[T] p) -> T {
+    auto v; p |> v; v
+}
+
 // Spawn a task and immediately return a channel for communicating to it
 fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
     // FIXME: This is frighteningly unsafe and only works for
