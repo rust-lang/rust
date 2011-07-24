@@ -83,7 +83,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     pinned_on(-1),
     local_region(&sched->srv->local_region),
     _on_wakeup(NULL),
-    failed(false)
+    failed(false),
+    propagate_failure(true)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -207,8 +208,8 @@ rust_task::kill() {
     // Unblock the task so it can unwind.
     unblock();
 
-    // if (this == sched->root_task)
-    //     sched->fail();
+    if (NULL == supervisor && propagate_failure)
+        sched->fail();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
     // run_on_resume(rust_unwind_glue);
@@ -229,6 +230,8 @@ rust_task::fail() {
         supervisor->kill();
     }
     // FIXME: implement unwinding again.
+    if (NULL == supervisor && propagate_failure)
+        sched->fail();
     failed = true;
 }
 
@@ -248,6 +251,7 @@ rust_task::unsupervise()
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
     supervisor = NULL;
+    propagate_failure = false;
 }
 
 void
@@ -397,8 +401,8 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(sched, !kernel->scheduler_lock.lock_held_by_current_thread());
-    scoped_lock with(kernel->scheduler_lock);
+    I(sched, !sched->lock.lock_held_by_current_thread());
+    scoped_lock with(sched->lock);
     DLOG(sched, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);

@@ -7,36 +7,40 @@
       }                                                    \
   } while (0)
 
-rust_kernel::rust_kernel(rust_srv *srv) :
+rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _region(srv, true),
     _log(srv, NULL),
-    _srv(srv),
-    _interrupt_kernel_loop(FALSE)
+    srv(srv),
+    _interrupt_kernel_loop(FALSE),
+    num_threads(num_threads),
+    rval(0),
+    live_tasks(0)
 {
-    sched = create_scheduler("main");
+    isaac_init(this, &rctx);
+    create_schedulers();
 }
 
 rust_scheduler *
-rust_kernel::create_scheduler(const char *name) {
+rust_kernel::create_scheduler(int id) {
     _kernel_lock.lock();
     rust_message_queue *message_queue =
-        new (this, "rust_message_queue") rust_message_queue(_srv, this);
-    rust_srv *srv = _srv->clone();
+        new (this, "rust_message_queue") rust_message_queue(srv, this);
+    rust_srv *srv = this->srv->clone();
     rust_scheduler *sched =
         new (this, "rust_scheduler")
-        rust_scheduler(this, message_queue, srv, name);
+        rust_scheduler(this, message_queue, srv, id);
     rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
     message_queue->associate(handle);
     message_queues.append(message_queue);
-    KLOG("created scheduler: " PTR ", name: %s, index: %d",
-         sched, name, sched->list_index);
+    KLOG("created scheduler: " PTR ", id: %d, index: %d",
+         sched, id, sched->list_index);
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return sched;
 }
 
 void
-rust_kernel::destroy_scheduler() {
+rust_kernel::destroy_scheduler(rust_scheduler *sched) {
     _kernel_lock.lock();
     KLOG("deleting scheduler: " PTR ", name: %s, index: %d",
         sched, sched->name, sched->list_index);
@@ -48,6 +52,18 @@ rust_kernel::destroy_scheduler() {
     _kernel_lock.unlock();
 }
 
+void rust_kernel::create_schedulers() {
+    for(int i = 0; i < num_threads; ++i) {
+        threads.push(create_scheduler(i));
+    }
+}
+
+void rust_kernel::destroy_schedulers() {
+    for(int i = 0; i < num_threads; ++i) {
+        destroy_scheduler(threads[i]);
+    }
+}
+
 rust_handle<rust_scheduler> *
 rust_kernel::internal_get_sched_handle(rust_scheduler *sched) {
     rust_handle<rust_scheduler> *handle = NULL;
@@ -56,14 +72,6 @@ rust_kernel::internal_get_sched_handle(rust_scheduler *sched) {
             rust_handle<rust_scheduler>(this, sched->message_queue, sched);
         _sched_handles.put(sched, handle);
     }
-    return handle;
-}
-
-rust_handle<rust_scheduler> *
-rust_kernel::get_sched_handle(rust_scheduler *sched) {
-    _kernel_lock.lock();
-    rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
-    _kernel_lock.unlock();
     return handle;
 }
 
@@ -98,7 +106,9 @@ rust_kernel::get_port_handle(rust_port *port) {
 
 void
 rust_kernel::log_all_scheduler_state() {
-    sched->log_state();
+    for(int i = 0; i < num_threads; ++i) {
+        threads[i]->log_state();
+    }
 }
 
 /**
@@ -170,7 +180,7 @@ rust_kernel::terminate_kernel_loop() {
 }
 
 rust_kernel::~rust_kernel() {
-    destroy_scheduler();
+    destroy_schedulers();
 
     terminate_kernel_loop();
 
@@ -193,7 +203,7 @@ rust_kernel::~rust_kernel() {
 
     rust_message_queue *queue = NULL;
     while (message_queues.pop(&queue)) {
-        K(_srv, queue->is_empty(), "Kernel message queue should be empty "
+        K(srv, queue->is_empty(), "Kernel message queue should be empty "
           "before killing the kernel.");
         delete queue;
     }
@@ -240,30 +250,25 @@ rust_kernel::signal_kernel_lock() {
     _kernel_lock.unlock();
 }
 
-int rust_kernel::start_task_threads(int num_threads)
+int rust_kernel::start_task_threads()
 {
-    rust_task_thread *thread = NULL;
-
-    // -1, because this thread will also be a thread.
-    for(int i = 0; i < num_threads - 1; ++i) {
-        thread = new rust_task_thread(i + 1, this);
+    for(int i = 0; i < num_threads; ++i) {
+        rust_scheduler *thread = threads[i];
         thread->start();
-        threads.push(thread);
     }
 
-    sched->start_main_loop(0);
-
-    while(threads.pop(&thread)) {
+    for(int i = 0; i < num_threads; ++i) {
+        rust_scheduler *thread = threads[i];
         thread->join();
-        delete thread;
     }
 
-    return sched->rval;
+    return rval;
 }
 
 rust_task *
 rust_kernel::create_task(rust_task *spawner, const char *name) {
-    return sched->create_task(spawner, name);
+    // TODO: use a different rand.
+    return threads[rand(&rctx) % num_threads]->create_task(spawner, name);
 }
 
 #ifdef __WIN32__
@@ -284,16 +289,6 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
     }
 }
 #endif
-
-rust_task_thread::rust_task_thread(int id, rust_kernel *owner)
-    : id(id), owner(owner)
-{
-}
-
-void rust_task_thread::run()
-{
-    owner->sched->start_main_loop(id);
-}
 
 //
 // Local Variables:

@@ -91,6 +91,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Indicates that the task ended in failure
     bool failed;
+    bool propagate_failure;
 
     lock_and_signal lock;
 

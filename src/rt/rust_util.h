@@ -126,8 +126,9 @@ next_power_of_two(size_t s)
 
 // Initialization helper for ISAAC RNG
 
+template <typename sched_or_kernel>
 static inline void
-isaac_init(rust_scheduler *sched, randctx *rctx)
+isaac_init(sched_or_kernel *sched, randctx *rctx)
 {
         memset(rctx, 0, sizeof(randctx));
 

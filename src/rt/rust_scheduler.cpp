@@ -4,21 +4,23 @@
 #include "globals.h"
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
-    rust_message_queue *message_queue, rust_srv *srv,
-    const char *name) :
+                               rust_message_queue *message_queue,
+                               rust_srv *srv,
+                               int id) :
     interrupt_flag(0),
     _log(srv, this),
     log_lvl(log_note),
     srv(srv),
-    name(name),
+    // TODO: calculate a per scheduler name.
+    name("main"),
     newborn_tasks(this, "newborn"),
     running_tasks(this, "running"),
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
     cache(this),
-    rval(0),
     kernel(kernel),
-    message_queue(message_queue)
+    message_queue(message_queue),
+    id(id)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(this, &rctx);
@@ -47,9 +49,9 @@ rust_scheduler::activate(rust_task *task) {
 
     task->ctx.next = &ctx;
     DLOG(this, task, "descheduling...");
-    kernel->scheduler_lock.unlock();
+    lock.unlock();
     task->ctx.swap(ctx);
-    kernel->scheduler_lock.lock();
+    lock.lock();
     DLOG(this, task, "task has returned");
 }
 
@@ -67,8 +69,8 @@ void
 rust_scheduler::fail() {
     log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
-    I(this, rval == 0);
-    rval = 1;
+    I(this, kernel->rval == 0);
+    kernel->rval = 1;
     exit(1);
 }
 
@@ -82,7 +84,7 @@ rust_scheduler::number_of_live_tasks() {
  */
 void
 rust_scheduler::reap_dead_tasks(int id) {
-    I(this, kernel->scheduler_lock.lock_held_by_current_thread());
+    I(this, lock.lock_held_by_current_thread());
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
         // Make sure this task isn't still running somewhere else...
@@ -93,6 +95,7 @@ rust_scheduler::reap_dead_tasks(int id) {
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
             delete task;
+            sync::decrement(kernel->live_tasks);
             continue;
         }
         ++i;
@@ -180,9 +183,9 @@ rust_scheduler::log_state() {
  * Returns once no more tasks can be scheduled and all task ref_counts
  * drop to zero.
  */
-int
-rust_scheduler::start_main_loop(int id) {
-    kernel->scheduler_lock.lock();
+void
+rust_scheduler::start_main_loop() {
+    lock.lock();
 
     // Make sure someone is watching, to pull us out of infinite loops.
     //
@@ -193,11 +196,11 @@ rust_scheduler::start_main_loop(int id) {
 
     DLOG(this, dom, "started domain loop %d", id);
 
-    while (number_of_live_tasks() > 0) {
+    while (kernel->live_tasks > 0) {
         A(this, kernel->is_deadlocked() == false, "deadlock");
 
-        DLOG(this, dom, "worker %d, number_of_live_tasks = %d",
-             id, number_of_live_tasks());
+        DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
+             id, number_of_live_tasks(), kernel->live_tasks);
 
         drain_incoming_message_queue(true);
 
@@ -212,11 +215,12 @@ rust_scheduler::start_main_loop(int id) {
             DLOG(this, task,
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
-            kernel->scheduler_lock.unlock();
+            lock.unlock();
             sync::sleep(100);
-            kernel->scheduler_lock.lock();
+            lock.lock();
             DLOG(this, task,
                 "scheduler resuming ...");
+            reap_dead_tasks(id);
             continue;
         }
 
@@ -264,19 +268,18 @@ rust_scheduler::start_main_loop(int id) {
                 "scheduler yielding ...",
                 dead_tasks.length());
             log_state();
-            kernel->scheduler_lock.unlock();
+            lock.unlock();
             sync::yield();
-            kernel->scheduler_lock.lock();
+            lock.lock();
         } else {
             drain_incoming_message_queue(true);
         }
         reap_dead_tasks(id);
     }
 
-    DLOG(this, dom, "finished main-loop %d (dom.rval = %d)", id, rval);
+    DLOG(this, dom, "finished main-loop %d", id);
 
-    kernel->scheduler_lock.unlock();
-    return rval;
+    lock.unlock();
 }
 
 rust_crate_cache *
@@ -296,7 +299,14 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         task->on_wakeup(spawner->_on_wakeup);
     }
     newborn_tasks.append(task);
+
+    sync::increment(kernel->live_tasks);
+
     return task;
+}
+
+void rust_scheduler::run() {
+    this->start_main_loop();
 }
 
 //

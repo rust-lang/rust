@@ -11,17 +11,16 @@ rust_test_runtime::~rust_test_runtime() {
 
 void
 rust_domain_test::worker::run() {
-    rust_scheduler *handle = kernel->get_scheduler();
     for (int i = 0; i < TASKS; i++) {
-        handle->create_task(NULL, "child");
+        kernel->create_task(NULL, "child");
     }
-    sync::sleep(rand(&handle->rctx) % 1000);
+    //sync::sleep(rand(&handle->rctx) % 1000);
 }
 
 bool
 rust_domain_test::run() {
     rust_srv srv;
-    rust_kernel kernel(&srv);
+    rust_kernel kernel(&srv, 1);
 
     array_list<worker *> workers;
     for (int i = 0; i < DOMAINS; i++) {
@@ -47,13 +46,13 @@ void
 rust_task_test::worker::run() {
     rust_task *root_task = kernel->create_task(NULL, "main");
     root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL);
-    root_task->sched->start_main_loop(0);
+    root_task->sched->start_main_loop();
 }
 
 bool
 rust_task_test::run() {
     rust_srv srv;
-    rust_kernel kernel(&srv);
+    rust_kernel kernel(&srv, 1);
 
     array_list<worker *> workers;
     for (int i = 0; i < DOMAINS; i++) {
@@ -62,6 +61,6 @@ rust_task_test::run() {
         worker->start();
     }
 
-    sync::sleep(rand(&kernel.sched->rctx) % 1000);
+    //sync::sleep(rand(&kernel.sched->rctx) % 1000);
     return true;
 }
