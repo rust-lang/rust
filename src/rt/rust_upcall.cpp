@@ -541,9 +541,9 @@ extern "C" CDECL rust_task *
 upcall_new_task(rust_task *spawner, rust_vec *name) {
     // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
-    scoped_lock with(spawner->kernel->scheduler_lock);
-    rust_scheduler *sched = spawner->sched;
-    rust_task *task = sched->create_task(spawner, (const char *)name->data);
+    scoped_lock with(spawner->sched->lock);
+    rust_task *task =
+        spawner->kernel->create_task(spawner, (const char *)name->data);
     return task;
 }
 
@@ -584,7 +584,7 @@ upcall_ivec_resize_shared(rust_task *task,
                           rust_ivec *v,
                           size_t newsz) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->kernel->scheduler_lock);
+    scoped_lock with(task->sched->lock);
     I(task->sched, !v->fill);
 
     size_t new_alloc = next_power_of_two(newsz);
@@ -604,7 +604,7 @@ upcall_ivec_spill_shared(rust_task *task,
                          rust_ivec *v,
                          size_t newsz) {
     LOG_UPCALL_ENTRY(task);
-    scoped_lock with(task->kernel->scheduler_lock);
+    scoped_lock with(task->sched->lock);
     size_t new_alloc = next_power_of_two(newsz);
 
     rust_ivec_heap *heap_part = (rust_ivec_heap *)

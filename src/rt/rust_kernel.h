@@ -45,7 +45,10 @@ class rust_task_thread;
 class rust_kernel : public rust_thread {
     memory_region _region;
     rust_log _log;
-    rust_srv *_srv;
+
+public:
+    rust_srv *srv;
+private:
 
     /**
      * Task proxy objects are kernel owned handles to Rust objects.
@@ -62,20 +65,29 @@ class rust_kernel : public rust_thread {
 
     lock_and_signal _kernel_lock;
 
+    const size_t num_threads;
+
     void terminate_kernel_loop();
     void pump_message_queues();
 
     rust_handle<rust_scheduler> *
     internal_get_sched_handle(rust_scheduler *sched);
 
-    array_list<rust_task_thread *> threads;
+    array_list<rust_scheduler *> threads;
 
-    rust_scheduler *create_scheduler(const char *name);
-    void destroy_scheduler();
+    randctx rctx;
+
+    rust_scheduler *create_scheduler(int id);
+    void destroy_scheduler(rust_scheduler *sched);
+
+    void create_schedulers();
+    void destroy_schedulers();
 
 public:
-    rust_scheduler *sched;
-    lock_and_signal scheduler_lock;
+
+    int rval;
+
+    volatile int live_tasks;
 
     /**
      * Message queues are kernel objects and are associated with domains.
@@ -86,11 +98,10 @@ public:
      */
     indexed_list<rust_message_queue> message_queues;
 
-    rust_handle<rust_scheduler> *get_sched_handle(rust_scheduler *sched);
     rust_handle<rust_task> *get_task_handle(rust_task *task);
     rust_handle<rust_port> *get_port_handle(rust_port *port);
 
-    rust_kernel(rust_srv *srv);
+    rust_kernel(rust_srv *srv, size_t num_threads);
 
     bool is_deadlocked();
 
@@ -113,26 +124,13 @@ public:
     void *realloc(void *mem, size_t size);
     void free(void *mem);
 
-    // FIXME: this should go away
-    inline rust_scheduler *get_scheduler() const { return sched; }
-
-    int start_task_threads(int num_threads);
+    int start_task_threads();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
 
     rust_task *create_task(rust_task *spawner, const char *name);
-};
-
-class rust_task_thread : public rust_thread {
-    int id;
-    rust_kernel *owner;
-
-public:
-    rust_task_thread(int id, rust_kernel *owner);
-
-    virtual void run();
 };
 
 #endif /* RUST_KERNEL_H */

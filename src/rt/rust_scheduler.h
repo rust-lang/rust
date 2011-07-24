@@ -27,7 +27,8 @@ public:
 };
 
 struct rust_scheduler : public kernel_owned<rust_scheduler>,
-                        rc_base<rust_scheduler>
+                        rc_base<rust_scheduler>,
+                        rust_thread
 {
     // Fields known to the compiler:
     uintptr_t interrupt_flag;
@@ -46,7 +47,6 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_crate_cache cache;
 
     randctx rctx;
-    int rval;
 
     rust_kernel *kernel;
     int32_t list_index;
@@ -57,6 +57,10 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     // Incoming messages from other domains.
     rust_message_queue *message_queue;
 
+    const int id;
+
+    lock_and_signal lock;
+
 #ifndef __WIN32__
     pthread_attr_t attr;
 #endif
@@ -64,8 +68,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_scheduler(rust_kernel *kernel,
-             rust_message_queue *message_queue, rust_srv *srv,
-             const char *name);
+                   rust_message_queue *message_queue, rust_srv *srv,
+                   int id);
     ~rust_scheduler();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
@@ -80,11 +84,13 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     void reap_dead_tasks(int id);
     rust_task *schedule_task(int id);
 
-    int start_main_loop(int id);
+    void start_main_loop();
 
     void log_state();
 
     rust_task *create_task(rust_task *spawner, const char *name);
+
+    virtual void run();
 };
 
 inline rust_log &
