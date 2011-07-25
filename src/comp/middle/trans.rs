@@ -4045,13 +4045,11 @@ fn lval_val(&@block_ctxt cx, ValueRef val) -> lval_result {
 }
 
 fn trans_external_path(&@block_ctxt cx, &ast::def_id did,
-                       &ty::ty_param_count_and_ty tpt) -> lval_result {
+                       &ty::ty_param_count_and_ty tpt) -> ValueRef {
     auto lcx = cx.fcx.lcx;
     auto name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
-    auto v =
-        get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
+    ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
                          type_of_ty_param_count_and_ty(lcx, cx.sp, tpt));
-    ret lval_val(cx, v);
 }
 
 fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
@@ -4063,7 +4061,7 @@ fn lval_generic_fn(&@block_ctxt cx, &ty::ty_param_count_and_ty tpt,
         lv = lval_val(cx, cx.fcx.lcx.ccx.fn_pairs.get(fn_id._1));
     } else {
         // External reference.
-        lv = trans_external_path(cx, fn_id, tpt);
+        lv = lval_val(cx, trans_external_path(cx, fn_id, tpt));
     }
     auto tys = ty::node_id_to_type_params(cx.fcx.lcx.ccx.tcx, id);
     if (std::ivec::len[ty::t](tys) != 0u) {
@@ -4176,9 +4174,15 @@ fn trans_path(&@block_ctxt cx, &ast::path p, ast::node_id id) -> lval_result {
             }
         }
         case (some(ast::def_const(?did))) {
-            // TODO: externals
-            assert (ccx.consts.contains_key(did._1));
-            ret lval_mem(cx, ccx.consts.get(did._1));
+          if (did._0 == ast::local_crate) {
+              assert (ccx.consts.contains_key(did._1));
+              ret lval_mem(cx, ccx.consts.get(did._1));
+          } else {
+              auto tp = ty::node_id_to_monotype(ccx.tcx, id);
+              ret lval_val(cx, load_if_immediate
+                           (cx, trans_external_path
+                            (cx, did, tup(0u, tp)), tp));
+          }
         }
         case (some(ast::def_native_fn(?did))) {
             auto tyt = ty::lookup_item_type(ccx.tcx, did);
@@ -7898,12 +7902,11 @@ fn collect_item_1(@crate_ctxt ccx, &@ast::item i, &str[] pt, &vt[str[]] v) {
     alt (i.node) {
         case (ast::item_const(_, _)) {
             auto typ = node_id_type(ccx, i.id);
-            auto g =
-                llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
-                                    str::buf(ccx.names.next(i.ident)));
-            llvm::LLVMSetLinkage(g,
-                                 lib::llvm::LLVMInternalLinkage as
-                                     llvm::Linkage);
+            auto s = mangle_exported_name(ccx, pt + ~[i.ident],
+                                          node_id_type(ccx, i.id));
+            auto g = llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, i.span, typ),
+                                         str::buf(s));
+            ccx.item_symbols.insert(i.id, s);
             ccx.consts.insert(i.id, g);
         }
         case (_) { }
@@ -7996,16 +7999,6 @@ fn trans_constant(@crate_ctxt ccx, &@ast::item it, &str[] pt, &vt[str[]] v) {
                 ccx.discrim_symbols.insert(variant.node.id, s);
                 i += 1u;
             }
-        }
-        case (ast::item_const(_, ?expr)) {
-            // FIXME: The whole expr-translation system needs cloning to deal
-            // with consts.
-
-            auto v = C_int(1);
-            ccx.item_ids.insert(it.id, v);
-            auto s = mangle_exported_name(ccx, new_pt + ~[it.ident],
-                                          node_id_type(ccx, it.id));
-            ccx.item_symbols.insert(it.id, s);
         }
         case (_) { }
     }
