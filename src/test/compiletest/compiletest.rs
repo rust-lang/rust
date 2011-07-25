@@ -162,7 +162,11 @@ fn make_tests(&config config) -> test::test_desc[] {
 }
 
 fn is_test(&str testfile) -> bool {
-    str::ends_with(testfile, ".rs") || str::ends_with(testfile, ".rc")
+    auto name = fs::basename(testfile);
+    (str::ends_with(name, ".rs") || str::ends_with(name, ".rc"))
+    && !(str::starts_with(name, ".")
+         || str::starts_with(name, "#")
+         || str::starts_with(name, "~"))
 }
 
 fn make_test(&config config, &str testfile) -> test::test_desc {
