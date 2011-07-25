@@ -174,6 +174,7 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("fn", ());
     words.insert("pred", ());
     words.insert("iter", ());
+    words.insert("block", ());
     words.insert("import", ());
     words.insert("export", ());
     words.insert("let", ());
@@ -1407,8 +1408,8 @@ fn parse_alt_expr(&parser p) -> @ast::expr {
         if (p.peek() == token::LPAREN) { parens = true; p.bump(); }
         auto pats = parse_pats(p);
         if (parens) { expect(p, token::RPAREN); }
-        auto block = parse_block(p);
-        arms += ~[rec(pats=pats, block=block)];
+        auto blk = parse_block(p);
+        arms += ~[rec(pats=pats, block=blk)];
     }
     auto hi = p.get_hi_pos();
     p.bump();

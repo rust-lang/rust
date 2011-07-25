@@ -1147,7 +1147,7 @@ mod writeback {
     }
     fn keep_going(@wb_ctxt wbcx) -> bool { !wbcx.ignore && wbcx.success }
 
-    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block block) -> bool {
+    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block blk) -> bool {
         auto wbcx = @rec(fcx = fcx,
                          mutable ignore = false,
                          mutable success = true);
@@ -1163,7 +1163,7 @@ mod writeback {
                 visit_pat_pre=bind visit_pat_pre(wbcx, _),
                 visit_local_pre=bind visit_local_pre(wbcx, _)
                 with walk::default_visitor());
-        walk::walk_block(visit, block);
+        walk::walk_block(visit, blk);
         ret wbcx.success;
     }
 }
@@ -2598,14 +2598,14 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
     write::nil_ty(fcx.ccx.tcx, node_id);
 }
 
-fn check_block(&@fn_ctxt fcx, &ast::block block) {
-    for (@ast::stmt s in block.node.stmts) { check_stmt(fcx, s); }
-    alt (block.node.expr) {
-        case (none) { write::nil_ty(fcx.ccx.tcx, block.node.id); }
+fn check_block(&@fn_ctxt fcx, &ast::block blk) {
+    for (@ast::stmt s in blk.node.stmts) { check_stmt(fcx, s); }
+    alt (blk.node.expr) {
+        case (none) { write::nil_ty(fcx.ccx.tcx, blk.node.id); }
         case (some(?e)) {
             check_expr(fcx, e);
             auto ety = expr_ty(fcx.ccx.tcx, e);
-            write::ty_only_fixup(fcx, block.node.id, ety);
+            write::ty_only_fixup(fcx, blk.node.id, ety);
         }
     }
 }

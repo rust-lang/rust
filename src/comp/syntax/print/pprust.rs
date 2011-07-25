@@ -601,7 +601,7 @@ fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded,
     s.ann.post(ann_node);
 }
 
-fn print_if(&ps s, &@ast::expr test, &ast::block block,
+fn print_if(&ps s, &@ast::expr test, &ast::block blk,
             &option::t[@ast::expr] elseopt, bool chk) {
     head(s, "if");
     if (chk) {
@@ -609,7 +609,7 @@ fn print_if(&ps s, &@ast::expr test, &ast::block block,
     }
     print_expr(s, test);
     space(s.s);
-    print_block(s, block);
+    print_block(s, blk);
     fn do_else(&ps s, option::t[@ast::expr] els) {
         alt (els) {
             case (some(?_else)) {
@@ -773,11 +773,11 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word_space(s, "as");
             print_type(s, *ty);
         }
-        case (ast::expr_if(?test, ?block, ?elseopt)) {
-            print_if(s, test, block, elseopt, false);
+        case (ast::expr_if(?test, ?blk, ?elseopt)) {
+            print_if(s, test, blk, elseopt, false);
         }
-        case (ast::expr_if_check(?test, ?block, ?elseopt)) {
-            print_if(s, test, block, elseopt, true);
+        case (ast::expr_if_check(?test, ?blk, ?elseopt)) {
+            print_if(s, test, blk, elseopt, true);
         }
         case (ast::expr_ternary(?test, ?then, ?els)) {
             print_expr(s, test);
@@ -788,13 +788,13 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word_space(s, ":");
             print_expr(s, els);
         }
-        case (ast::expr_while(?test, ?block)) {
+        case (ast::expr_while(?test, ?blk)) {
             head(s, "while");
             print_expr(s, test);
             space(s.s);
-            print_block(s, block);
+            print_block(s, blk);
         }
-        case (ast::expr_for(?decl, ?expr, ?block)) {
+        case (ast::expr_for(?decl, ?expr, ?blk)) {
             head(s, "for");
             popen(s);
             print_for_decl(s, decl);
@@ -803,9 +803,9 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
             space(s.s);
-            print_block(s, block);
+            print_block(s, blk);
         }
-        case (ast::expr_for_each(?decl, ?expr, ?block)) {
+        case (ast::expr_for_each(?decl, ?expr, ?blk)) {
             head(s, "for each");
             popen(s);
             print_for_decl(s, decl);
@@ -814,12 +814,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
             space(s.s);
-            print_block(s, block);
+            print_block(s, blk);
         }
-        case (ast::expr_do_while(?block, ?expr)) {
+        case (ast::expr_do_while(?blk, ?expr)) {
             head(s, "do");
             space(s.s);
-            print_block(s, block);
+            print_block(s, blk);
             space(s.s);
             word_space(s, "while");
             print_expr(s, expr);
@@ -853,14 +853,14 @@ fn print_expr(&ps s, &@ast::expr expr) {
             space(s.s);
             print_block(s, f.body);
         }
-        case (ast::expr_block(?block)) {
+        case (ast::expr_block(?blk)) {
             // containing cbox, will be closed by print-block at }
 
             cbox(s, indent_unit);
             // head-box, will be closed by print-block after {
 
             ibox(s, 0u);
-            print_block(s, block);
+            print_block(s, blk);
         }
         case (ast::expr_move(?lhs, ?rhs)) {
             print_expr(s, lhs);

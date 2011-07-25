@@ -446,14 +446,14 @@ fn trans_recv(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
     ret bcx;    // TODO
 }
 
-fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
+fn trans_block(&@block_ctxt cx, &dest dest, &ast::block blk)
         -> @block_ctxt {
     auto bcx = cx;
-    for each (@ast::local local in trans::block_locals(block)) {
+    for each (@ast::local local in trans::block_locals(blk)) {
         bcx = trans::alloc_local(bcx, local).bcx;
     }
 
-    for (@ast::stmt stmt in block.node.stmts) {
+    for (@ast::stmt stmt in blk.node.stmts) {
         bcx = trans_stmt(bcx, stmt);
 
         // If we hit a terminator, control won't go any further so
@@ -461,7 +461,7 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::block block)
         if trans::is_terminated(bcx) { ret bcx; }
     }
 
-    alt (block.node.expr) {
+    alt (blk.node.expr) {
       some(?e) { bcx = trans_expr(bcx, dest, e); }
       none { /* no-op */ }
     }

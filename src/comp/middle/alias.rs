@@ -103,11 +103,11 @@ fn visit_expr(&@ctx cx, &@ast::expr ex, &scope sc, &vt[scope] v) {
                 case (_) { }
             }
         }
-        ast::expr_for_each(?decl, ?call, ?block) {
-            check_for_each(*cx, decl, call, block, sc, v);
+        ast::expr_for_each(?decl, ?call, ?blk) {
+            check_for_each(*cx, decl, call, blk, sc, v);
         }
-        ast::expr_for(?decl, ?seq, ?block) {
-            check_for(*cx, decl, seq, block, sc, v);
+        ast::expr_for(?decl, ?seq, ?blk) {
+            check_for(*cx, decl, seq, blk, sc, v);
         }
         ast::expr_path(?pt) {
             check_var(*cx, ex, pt, ex.id, false, sc);
@@ -326,7 +326,7 @@ fn arm_defnums(&ast::arm arm) -> node_id[] {
 }
 
 fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
-                  &ast::block block, &scope sc, &vt[scope] v) {
+                  &ast::block blk, &scope sc, &vt[scope] v) {
     visit::visit_expr(call, sc, v);
     alt (call.node) {
         case (ast::expr_call(?f, ?args)) {
@@ -339,12 +339,12 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
                      tys=data.unsafe_ts,
                      depends_on=deps(sc, data.root_vars),
                      mutable ok=valid);
-            visit::visit_block(block, @(*sc + ~[new_sc]), v);
+            visit::visit_block(blk, @(*sc + ~[new_sc]), v);
         }
     }
 }
 
-fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
+fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block blk,
              &scope sc, &vt[scope] v) {
     visit::visit_expr(seq, sc, v);
     auto defnum = local.node.id;
@@ -374,7 +374,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block block,
              tys=unsafe,
              depends_on=deps(sc, root_def),
              mutable ok=valid);
-    visit::visit_block(block, @(*sc + ~[new_sc]), v);
+    visit::visit_block(blk, @(*sc + ~[new_sc]), v);
 }
 
 fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,

@@ -138,8 +138,8 @@ fn fold_mac_(&mac m, ast_fold fld) -> mac {
                 case (mac_embed_type(?ty)) {
                     mac_embed_type(fld.fold_ty(ty))
                 }
-                case (mac_embed_block(?block)) {
-                    mac_embed_block(fld.fold_block(block))
+                case (mac_embed_block(?blk)) {
+                    mac_embed_block(fld.fold_block(blk))
                 }
                 case (mac_ellipsis) { mac_ellipsis }
             },
@@ -388,16 +388,16 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_while(?cond, ?body)) {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
                 }
-        case (expr_for(?decl, ?expr, ?block)) {
+        case (expr_for(?decl, ?expr, ?blk)) {
             expr_for(fld.fold_local(decl), fld.fold_expr(expr),
-                     fld.fold_block(block))
+                     fld.fold_block(blk))
                 }
-        case (expr_for_each(?decl, ?expr, ?block)) {
+        case (expr_for_each(?decl, ?expr, ?blk)) {
             expr_for_each(fld.fold_local(decl), fld.fold_expr(expr),
-                          fld.fold_block(block))
+                          fld.fold_block(blk))
                 }
-        case (expr_do_while(?block, ?expr)) {
-            expr_do_while(fld.fold_block(block), fld.fold_expr(expr))
+        case (expr_do_while(?blk, ?expr)) {
+            expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
                 }
         case (expr_alt(?expr, ?arms)) {
             expr_alt(fld.fold_expr(expr), ivec::map(fld.fold_arm, arms))
@@ -405,8 +405,8 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
         case (expr_fn(?f)) {
             expr_fn(fld.fold_fn(f))
                 }
-        case (expr_block(?block)) {
-            expr_block(fld.fold_block(block))
+        case (expr_block(?blk)) {
+            expr_block(fld.fold_block(blk))
                 }
         case (expr_move(?el, ?er)) {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
