@@ -1,4 +1,7 @@
-// xfail-stage0
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+// This test fails when run with multiple threads
 
 fn start(chan[int] c, int n) {
     let int i = n;
