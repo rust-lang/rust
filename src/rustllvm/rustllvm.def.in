@@ -165,7 +165,6 @@ LLVMBuildUDiv
 LLVMBuildUIToFP
 LLVMBuildURem
 LLVMBuildUnreachable
-LLVMBuildUnwind
 LLVMBuildVAArg
 LLVMBuildXor
 LLVMBuildZExt
@@ -429,7 +428,6 @@ LLVMInt8TypeInContext
 LLVMIntPtrType
 LLVMIntType
 LLVMIntTypeInContext
-LLVMInvalidateStructLayout
 LLVMIsAAllocaInst
 LLVMIsAArgument
 LLVMIsABasicBlock

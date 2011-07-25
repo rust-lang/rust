@@ -79,15 +79,16 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   llvm::NoFramePointerElim = true;
 
   InitializeAllTargets();
+  InitializeAllTargetMCs();
   InitializeAllAsmPrinters();
   InitializeAllAsmParsers();
-  TargetMachine::setRelocationModel(Reloc::PIC_);
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
   std::string Trip(triple);
   std::string CPUStr = llvm::sys::getHostCPUName();
-  TargetMachine *Target = TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr);
+  TargetMachine *Target =
+    TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr, Reloc::PIC_);
   bool NoVerify = false;
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
