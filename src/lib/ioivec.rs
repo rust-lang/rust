@@ -220,8 +220,12 @@ obj byte_buf_reader(byte_buf bbuf) {
     fn tell() -> uint { ret bbuf.pos; }
 }
 
-fn new_byte_buf_reader(&u8[] buf) -> byte_buf_reader {
+fn new_byte_buf_reader(&u8[] buf) -> buf_reader {
     ret byte_buf_reader(@rec(buf=buf, mutable pos=0u));
+}
+
+fn string_reader(&str s) -> reader {
+    ret new_reader(new_byte_buf_reader(str::bytes_ivec(s)));
 }
 
 
