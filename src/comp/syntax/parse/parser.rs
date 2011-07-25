@@ -312,8 +312,8 @@ fn parse_ty_obj(&parser p, &mutable uint hi) -> ast::ty_ {
         }
         fail;
     }
-    auto f = parse_method_sig;
-    auto meths = parse_seq(token::LBRACE, token::RBRACE, none, f, p);
+    auto meths = parse_seq(token::LBRACE, token::RBRACE, none,
+                           parse_method_sig, p);
     hi = meths.span.hi;
     ret ast::ty_obj(meths.node);
 }
@@ -1505,9 +1505,8 @@ fn parse_pat(&parser p) -> @ast::pat {
                 let (@ast::pat)[] args;
                 alt (p.peek()) {
                     case (token::LPAREN) {
-                        auto f = parse_pat;
                         auto a = parse_seq(token::LPAREN, token::RPAREN,
-                                           some(token::COMMA), f, p);
+                                           some(token::COMMA), parse_pat, p);
                         args = a.node;
                         hi = a.span.hi;
                     }

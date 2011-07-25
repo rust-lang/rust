@@ -157,9 +157,8 @@ obj new_reader(buf_reader rdr) {
     }
 
     // FIXME deal with eof?
-    fn read_be_uint(uint size) -> uint {
+    fn read_be_uint(uint sz) -> uint {
         auto val = 0u;
-        auto sz = size; // FIXME: trans::ml bug workaround
 
         while (sz > 0u) {
             sz -= 1u;

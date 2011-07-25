@@ -209,25 +209,19 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 // Hash map constructors for basic types
 
 fn new_str_hash[V]() -> hashmap[str, V] {
-    let hashfn[str] hasher = str::hash;
-    let eqfn[str] eqer = str::eq;
-    ret mk_hashmap[str, V](hasher, eqer);
+    ret mk_hashmap(str::hash, str::eq);
 }
 
 fn new_int_hash[V]() -> hashmap[int, V] {
     fn hash_int(&int x) -> uint { ret x as uint; }
     fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-    ret mk_hashmap[int, V](hasher, eqer);
+    ret mk_hashmap[int, V](hash_int, eq_int);
 }
 
 fn new_uint_hash[V]() -> hashmap[uint, V] {
     fn hash_uint(&uint x) -> uint { ret x; }
     fn eq_uint(&uint a, &uint b) -> bool { ret a == b; }
-    auto hasher = hash_uint;
-    auto eqer = eq_uint;
-    ret mk_hashmap[uint, V](hasher, eqer);
+    ret mk_hashmap[uint, V](hash_uint, eq_uint);
 }
 
 // Local Variables:

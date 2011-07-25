@@ -2261,10 +2261,9 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                                                  T_glue_fn(*lcx.ccx),
                                                  "copy");
                         ti.copy_glue = some[ValueRef](glue_fn);
-                        auto tg = make_copy_glue;
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_single(tg), ti.ty_params,
-                                          "take");
+                                          mgghf_single(make_copy_glue),
+                                         ti.ty_params, "take");
                         log #fmt("--- lazily_emit_tydesc_glue TAKE %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
@@ -2300,10 +2299,9 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                                                  T_glue_fn(*lcx.ccx),
                                                  "free");
                         ti.free_glue = some[ValueRef](glue_fn);
-                        auto dg = make_free_glue;
                         make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                          mgghf_single(dg), ti.ty_params,
-                                          "free");
+                                          mgghf_single(make_free_glue),
+                                         ti.ty_params, "free");
                         log #fmt("--- lazily_emit_tydesc_glue FREE %s",
                                  ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }

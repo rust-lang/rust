@@ -585,19 +585,15 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 
     ebmlivec::start_tag(ebml_w, tag_paths);
     auto paths_index = encode_item_paths(ebml_w, crate);
-    auto str_writer = write_str;
-    auto path_hasher = hash_path;
-    auto paths_buckets = create_index[str](paths_index, path_hasher);
-    encode_index[str](ebml_w, paths_buckets, str_writer);
+    auto paths_buckets = create_index(paths_index, hash_path);
+    encode_index(ebml_w, paths_buckets, write_str);
     ebmlivec::end_tag(ebml_w);
     // Encode and index the items.
 
     ebmlivec::start_tag(ebml_w, tag_items);
     auto items_index = encode_info_for_items(ecx, ebml_w);
-    auto int_writer = write_int;
-    auto item_hasher = hash_node_id;
-    auto items_buckets = create_index[int](items_index, item_hasher);
-    encode_index[int](ebml_w, items_buckets, int_writer);
+    auto items_buckets = create_index(items_index, hash_node_id);
+    encode_index(ebml_w, items_buckets, write_int);
     ebmlivec::end_tag(ebml_w);
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes_ivec.

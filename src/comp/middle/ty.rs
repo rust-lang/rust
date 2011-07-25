@@ -392,9 +392,7 @@ fn mk_rcache() -> creader_cache {
        bool {
         ret a._0 == b._0 && a._1 == b._1 && a._2 == b._2;
     }
-    auto h = hash_cache_entry;
-    auto e = eq_cache_entries;
-    ret map::mk_hashmap[tup(int, uint, uint), t](h, e);
+    ret map::mk_hashmap(hash_cache_entry, eq_cache_entries);
 }
 
 
@@ -2618,8 +2616,7 @@ mod unify {
                             alt (unify_mut(expected_elem.mut,
                                            actual_elem.mut)) {
                                 case (none) {
-                                    auto err = terr_tuple_mutability;
-                                    ret ures_err(err);
+                                    ret ures_err(terr_tuple_mutability);
                                 }
                                 case (some(?m)) { mut = m; }
                             }
