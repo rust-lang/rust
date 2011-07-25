@@ -1,6 +1,3 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
 /**
    A parallel word-frequency counting program.
 
@@ -233,10 +230,19 @@ fn main(argv: vec[str]) {
         let out = io::stdout();
 
         out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
-        fail;
+
+        // TODO: run something just to make sure the code hasn't
+        // broken yet. This is the unit test mode of this program.
+
+        ret;
     }
 
+    // We can get by with 8k stacks, and we'll probably exhaust our
+    // address space otherwise.
+    task::set_min_stack(8192u);
+
     let start = time::precise_time_ns();
+
     map_reduce::map_reduce(vec::slice(argv, 1u, vec::len(argv)));
     let stop = time::precise_time_ns();
 

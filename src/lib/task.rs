@@ -8,6 +8,8 @@ native "rust" mod rustrt {
     fn clone_chan(c: *rust_chan) -> *rust_chan;
 
     type rust_chan;
+
+    fn set_min_stack(stack_size: uint);
 }
 
 /**
@@ -39,6 +41,10 @@ fn clone_chan[T](c: chan[T]) -> chan[T] {
 fn send[T](c: chan[T], v: &T) { c <| v; }
 
 fn recv[T](p: port[T]) -> T { let v; p |> v; v }
+
+fn set_min_stack(uint stack_size) {
+    rustrt::set_min_stack(stack_size);
+}
 
 // Local Variables:
 // mode: rust;
