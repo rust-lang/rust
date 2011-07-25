@@ -102,8 +102,8 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn look_ahead(uint distance) -> token::token {
             while ivec::len(buffer) < distance {
                 auto next = lexer::next_token(rdr);
-                buffer =
-                    ~[tup(next._0, rec(lo=next._1, hi=rdr.get_chpos()))] + buffer;
+                auto sp = rec(lo=next._1, hi=rdr.get_chpos());
+                buffer = ~[tup(next._0, sp)] + buffer;
             }
             ret buffer.(distance-1u)._0;
         }
@@ -344,6 +344,15 @@ fn parse_ty_field(&parser p) -> ast::ty_field {
     ret spanned(lo, mt.ty.span.hi, rec(ident=id, mt=mt));
 }
 
+// FIXME rename to parse_ty_field once the other one is dropped
+fn parse_ty_field_modern(&parser p) -> ast::ty_field {
+    auto lo = p.get_lo_pos();
+    auto mut = parse_mutability(p);
+    auto id = parse_ident(p);
+    expect(p, token::COLON);
+    auto ty = parse_ty(p);
+    ret spanned(lo, ty.span.hi, rec(ident=id, mt=rec(ty=ty, mut=mut)));
+}
 
 // if i is the jth ident in args, return j
 // otherwise, fail
@@ -540,6 +549,16 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto mt = parse_mt(p);
         hi = mt.ty.span.hi;
         t = ast::ty_ptr(mt);
+    } else if (p.peek() == token::LBRACE) {
+        auto elems = parse_seq(token::LBRACE, token::RBRACE,
+                               some(token::COMMA), parse_ty_field_modern, p);
+        hi = elems.span.hi;
+        t = ast::ty_rec(elems.node);
+        if (p.peek() == token::COLON) {
+            p.bump();
+            t = ast::ty_constr(@spanned(lo, hi, t),
+                               parse_type_constraints(p));
+        }
     } else if (eat_word(p, "vec")) {
         expect(p, token::LBRACKET);
         t = ast::ty_vec(parse_mt(p));
@@ -738,11 +757,11 @@ fn parse_mutability(&parser p) -> ast::mutability {
     ret ast::imm;
 }
 
-fn parse_field(&parser p) -> ast::field {
+fn parse_field(&parser p, &token::token sep) -> ast::field {
     auto lo = p.get_lo_pos();
     auto m = parse_mutability(p);
     auto i = parse_ident(p);
-    expect(p, token::EQ);
+    expect(p, sep);
     auto e = parse_expr(p);
     ret spanned(lo, e.span.hi, rec(mut=m, ident=i, expr=e));
 }
@@ -783,8 +802,27 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         expect(p, token::RPAREN);
         ret mk_expr(p, lo, hi, e.node);
     } else if (p.peek() == token::LBRACE) {
-        auto blk = parse_block(p);
-        ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
+        p.bump();
+        if (is_word(p, "mutable") ||
+            alt p.peek() { token::IDENT(_, false) { true } _ { false } } &&
+            p.look_ahead(1u) == token::COLON) {
+            auto fields = ~[parse_field(p, token::COLON)];
+            auto base = none;
+            while p.peek() != token::RBRACE {
+                if eat_word(p, "with") {
+                    base = some(parse_expr(p));
+                    break;
+                }
+                expect(p, token::COMMA);
+                fields += ~[parse_field(p, token::COLON)];
+            }
+            hi = p.get_hi_pos();
+            expect(p, token::RBRACE);
+            ex = ast::expr_rec(fields, base);
+        } else {
+            auto blk = parse_block_tail(p);
+            ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
+        }
     } else if (eat_word(p, "if")) {
         ret parse_if_expr(p);
     } else if (eat_word(p, "for")) {
@@ -883,7 +921,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ex = ast::expr_anon_obj(ob);
     } else if (eat_word(p, "rec")) {
         expect(p, token::LPAREN);
-        auto fields = ~[parse_field(p)];
+        auto fields = ~[parse_field(p, token::EQ)];
         auto more = true;
         auto base = none;
         while (more) {
@@ -898,7 +936,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
                 more = false;
             } else if (p.peek() == token::COMMA) {
                 p.bump();
-                fields += ~[parse_field(p)];
+                fields += ~[parse_field(p, token::EQ)];
             } else { unexpected(p, p.peek()); }
         }
         ex = ast::expr_rec(fields, base);
