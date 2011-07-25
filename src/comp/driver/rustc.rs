@@ -138,6 +138,8 @@ fn compile_input(session::session sess, ast::crate_cfg cfg, str input,
     auto ty_cx = ty::mk_ctxt(sess, d, ast_map, freevars);
     time[()](time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
+    time[()](time_passes, "alt checking",
+             bind middle::check_alt::check_crate(ty_cx, crate));
     if (sess.get_opts().run_typestate) {
         time(time_passes, "typestate checking",
              bind middle::tstate::ck::check_crate(ty_cx, crate));

@@ -1254,8 +1254,6 @@ fn type_owns_heap_mem(&ctxt cx, &t ty) -> bool {
         case (ty_port(_)) { result = false; }
         case (ty_chan(_)) { result = false; }
         case (ty_task) { result = false; }
-        case (ty_tup(_)) { result = false; }
-        case (ty_rec(_)) { result = false; }
         case (ty_var(_)) { fail "ty_var in type_owns_heap_mem"; }
         case (ty_param(_)) { result = false; }
     }
