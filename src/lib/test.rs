@@ -4,6 +4,7 @@
 // while providing a base that other test frameworks may build off of.
 
 import sort = sort::ivector;
+import getenv = generic_os::getenv;
 
 export test_name;
 export test_fn;
@@ -104,32 +105,52 @@ fn run_tests_console(&test_opts opts, &test_desc[] tests) -> bool {
     auto total = ivec::len(filtered_tests);
     out.write_line(#fmt("running %u tests", total));
 
+    auto futures = ~[];
+
     auto passed = 0u;
     auto failed = 0u;
     auto ignored = 0u;
 
     auto failures = ~[];
 
-    for (test_desc test in filtered_tests) {
-        out.write_str(#fmt("running %s ... ", test.name));
-        alt (run_test(test)) {
+    // It's tempting to just spawn all the tests at once but that doesn't
+    // provide a great user experience because you might sit waiting for the
+    // result of a particular test for an unusually long amount of time.
+    auto concurrency = get_concurrency();
+    log #fmt("using %u test tasks", concurrency);
+    auto run_idx = 0u;
+    auto wait_idx = 0u;
+
+    while (wait_idx < total) {
+        while (ivec::len(futures) < concurrency
+               && run_idx < total) {
+            futures += ~[run_test(filtered_tests.(run_idx))];
+            run_idx += 1u;
+        }
+
+        auto future = futures.(0);
+        out.write_str(#fmt("running %s ... ", future.test.name));
+        auto result = future.wait();
+        alt (result) {
             tr_ok {
                 passed += 1u;
-                write_ok(out);
+                write_ok(out, concurrency);
                 out.write_line("");
             }
             tr_failed {
                 failed += 1u;
-                write_failed(out);
+                write_failed(out, concurrency);
                 out.write_line("");
-                failures += ~[test];
+                failures += ~[future.test];
             }
             tr_ignored {
                 ignored += 1u;
-                write_ignored(out);
+                write_ignored(out, concurrency);
                 out.write_line("");
             }
         }
+        futures = ivec::slice(futures, 1u, ivec::len(futures));
+        wait_idx += 1u;
     }
 
     assert passed + failed + ignored == total;
@@ -144,35 +165,50 @@ fn run_tests_console(&test_opts opts, &test_desc[] tests) -> bool {
 
     out.write_str(#fmt("\nresult: "));
     if (success) {
-        write_ok(out);
+        write_ok(out, concurrency);
     } else {
-        write_failed(out);
+        write_failed(out, concurrency);
     }
     out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
                        passed, failed, ignored));
 
     ret success;
 
-    fn write_ok(&io::writer out) {
-        write_pretty(out, "ok", term::color_green);
+    fn write_ok(&io::writer out, uint concurrency) {
+        write_pretty(out, "ok", term::color_green, concurrency);
      }
 
-    fn write_failed(&io::writer out) {
-        write_pretty(out, "FAILED", term::color_red);
+    fn write_failed(&io::writer out, uint concurrency) {
+        write_pretty(out, "FAILED", term::color_red, concurrency);
     }
 
-    fn write_ignored(&io::writer out) {
-        write_pretty(out, "ignored", term::color_yellow);
+    fn write_ignored(&io::writer out, uint concurrency) {
+        write_pretty(out, "ignored", term::color_yellow, concurrency);
     }
 
-    fn write_pretty(&io::writer out, &str word, u8 color) {
-        if (term::color_supported()) {
+    fn write_pretty(&io::writer out, &str word, u8 color,
+                   uint concurrency) {
+        // In the presence of concurrency, outputing control characters
+        // can cause some crazy artifacting
+        if (concurrency == 1u && term::color_supported()) {
             term::fg(out.get_buf_writer(), color);
         }
         out.write_str(word);
-        if (term::color_supported()) {
+        if (concurrency == 1u && term::color_supported()) {
             term::reset(out.get_buf_writer());
         }
+    }
+}
+
+fn get_concurrency() -> uint {
+    alt getenv("RUST_THREADS") {
+      option::some(?t) {
+        auto threads = uint::parse_buf(str::bytes(t), 10u);
+        threads > 0u ? threads : 1u
+      }
+      option::none {
+        1u
+      }
     }
 }
 
@@ -226,15 +262,30 @@ fn filter_tests(&test_opts opts, &test_desc[] tests) -> test_desc[] {
     ret filtered;
 }
 
-fn run_test(&test_desc test) -> test_result {
+type test_future = rec(test_desc test,
+                       @fn() fnref,
+                       fn() -> test_result wait);
+
+fn run_test(&test_desc test) -> test_future {
+    // FIXME: Because of the unsafe way we're passing the test function
+    // to the test task, we need to make sure we keep a reference to that
+    // function around for longer than the lifetime of the task. To that end
+    // we keep the function boxed in the test future.
+    auto fnref = @test.fn;
     if (!test.ignore) {
-        if (run_test_fn_in_task(test.fn)) {
-            ret tr_ok;
-        } else {
-            ret tr_failed;
-        }
+        auto test_task = run_test_fn_in_task(*fnref);
+        ret rec(test = test,
+                fnref = fnref,
+                wait = bind fn(&task test_task) -> test_result {
+                    alt (task::join(test_task)) {
+                      task::tr_success { tr_ok }
+                      task::tr_failure { tr_failed }
+                    }
+                } (test_task));
     } else {
-        ret tr_ignored;
+        ret rec(test = test,
+                fnref = fnref,
+                wait = fn() -> test_result { tr_ignored });
     }
 }
 
@@ -245,7 +296,7 @@ native "rust" mod rustrt {
 // We need to run our tests in another task in order to trap test failures.
 // But, at least currently, functions can't be used as spawn arguments so
 // we've got to treat our test functions as unsafe pointers.
-fn run_test_fn_in_task(&fn() f) -> bool {
+fn run_test_fn_in_task(&fn() f) -> task {
     fn run_task(*mutable fn() fptr) {
         // If this task fails we don't want that failure to propagate to the
         // test runner or else we couldn't keep running tests
@@ -261,11 +312,7 @@ fn run_test_fn_in_task(&fn() f) -> bool {
         (*fptr)()
     }
     auto fptr = ptr::addr_of(f);
-    auto test_task = spawn run_task(fptr);
-    ret alt (task::join(test_task)) {
-        task::tr_success { true }
-        task::tr_failure { false }
-    }
+    ret spawn run_task(fptr);
 }
 
 

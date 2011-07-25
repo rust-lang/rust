@@ -26,7 +26,7 @@ fn ignored_tests_result_in_ignored() {
     auto desc = rec(name = "whatever",
                     fn = f,
                     ignore = true);
-    auto res = test::run_test(desc);
+    auto res = test::run_test(desc).wait();
     assert res == test::tr_ignored;
 }
 
