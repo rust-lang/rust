@@ -1512,6 +1512,87 @@ fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
     }
 }
 
+fn pat_equiv(&@ast::pat p1, &@ast::pat p2) -> bool {
+    alt (p1.node) {
+        ast::pat_wild {
+            alt (p2.node) {
+                ast::pat_wild { ret true }
+                _ { ret false }
+            }
+        }
+        ast::pat_bind(_) {
+            alt (p2.node) {
+                ast::pat_bind(_) { ret true }
+                _ { ret false }
+            }
+        }
+        ast::pat_lit(?l1) {
+            alt (p2.node) {
+                ast::pat_lit(?l2) { ret lit_eq(l1, l2) }
+                _ { ret false }
+            }
+        }
+        ast::pat_tag(?path1, ?sub1) {
+            alt (p2.node) {
+                ast::pat_tag(?path2, ?sub2) {
+                    if (ivec::len(path1.node.idents) !=
+                        ivec::len(path2.node.idents)) {
+                        ret false;
+                    }
+                    auto i = 0u;
+                    while (i < ivec::len(path1.node.idents)) {
+                        if (path1.node.idents.(i) !=
+                            path2.node.idents.(i)) {
+                            ret false;
+                        }
+                        i += 1u;
+                    }
+                    if (ivec::len(sub1) != ivec::len(sub2)) {
+                        ret false;
+                    }
+                    i = 0u;
+                    while (i < ivec::len(sub1)) {
+                        if (!pat_equiv(sub1.(i),
+                                       sub2.(i))) {
+                            ret false;
+                        }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                _ { ret false }
+            }
+        }
+        ast::pat_rec(?pats1, ?b1) {
+            alt (p2.node) {
+                ast::pat_rec(?pats2, ?b2) {
+                    if (b1 != b2 ||
+                        ivec::len(pats1) != ivec::len(pats2)) {
+                        ret false;
+                    }
+                    auto i = 0u;
+                    while (i < ivec::len(pats1)) {
+                        if (pats1.(i).ident != pats2.(i).ident ||
+                            !pat_equiv(pats1.(i).pat,
+                                       pats2.(i).pat)) {
+                            ret false;
+                        }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                _ { ret false }
+            }
+        }
+        ast::pat_box(?pat1) {
+            alt (p2.node) {
+                ast::pat_box(?pat2) { ret pat_equiv(pat1, pat2); }
+                _ { ret false }
+            }
+        }
+    }
+}
+
 fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
     //                            syntax::print::pprust::expr_to_str(expr));
@@ -2005,6 +2086,37 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
                     check_pat(fcx, id_map, p, pattern_ty);
                 }
             }
+
+            // Now check for any duplicate patterns
+            
+            iter all_arm_pats(ast::arm[] arms, uint start)
+                    -> tup(@ast::pat, uint) {
+                auto i = 0u;
+                for (ast::arm arm in arms) {
+                    for (@ast::pat pat in arm.pats) {
+                        if (i >= start) {
+                            put tup(pat, i);
+                        }
+                        i += 1u;
+                    }
+                }
+            }
+
+            for each (tup(@ast::pat, uint) _p1 in all_arm_pats(arms, 0u)) {
+                let uint i = _p1._1;
+                let @ast::pat p1 = _p1._0;
+                for each (tup(@ast::pat, uint) _p2 in all_arm_pats(arms, i)) {
+                    let @ast::pat p2 = _p2._0;
+                    if (p1.id != p2.id && pat_equiv(p1, p2)) {
+                        fcx.ccx.tcx.sess.span_err(p2.span,
+                                              "duplicate matching pattern \
+                                               found in alt block");
+                        fcx.ccx.tcx.sess.span_note(p1.span,
+                                              "earlier matching pattern:");
+                    }
+                }
+            }
+
             // Now typecheck the blocks.
 
             auto result_ty = next_ty_var(fcx);
