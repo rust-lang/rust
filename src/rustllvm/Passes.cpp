@@ -1,5 +1,6 @@
 #include "llvm/Analysis/Passes.h"
-#include "llvm/Support/PassManagerBuilder.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/PassManager.h"
 #include "llvm-c/Core.h"
 #include <cstdlib>
