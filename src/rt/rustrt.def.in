@@ -37,6 +37,7 @@ rust_ptr_eq
 rust_run_program
 rust_start
 rust_getcwd
+set_min_stack
 size_of
 squareroot
 str_alloc

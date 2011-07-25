@@ -14,6 +14,7 @@
 
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
+size_t g_min_stack_size = 0x300000;
 
 static size_t get_min_stk_size() {
     char *stack_size = getenv("RUST_MIN_STACK");
@@ -21,7 +22,7 @@ static size_t get_min_stk_size() {
         return strtol(stack_size, NULL, 0);
     }
     else {
-        return 0x300000;
+        return g_min_stack_size;
     }
 }
 
