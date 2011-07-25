@@ -34,26 +34,28 @@ fn next_node_id(&parse_sess sess) -> node_id {
 
 type parser =
     obj {
-        fn peek() -> token::token ;
-        fn bump() ;
-        fn fatal(str) -> !  ;
+        fn peek() -> token::token;
+        fn bump();
+        fn look_ahead(uint) -> token::token;
+        fn fatal(str) -> !;
         fn warn(str);
-        fn restrict(restriction) ;
-        fn get_restriction() -> restriction ;
-        fn get_file_type() -> file_type ;
+        fn restrict(restriction);
+        fn get_restriction() -> restriction;
+        fn get_file_type() -> file_type;
         fn get_cfg() -> ast::crate_cfg;
-        fn get_span() -> span ;
-        fn get_lo_pos() -> uint ;
-        fn get_hi_pos() -> uint ;
-        fn get_last_lo_pos() -> uint ;
-        fn get_prec_table() -> @op_spec[] ;
-        fn get_str(token::str_num) -> str ;
-        fn get_reader() -> lexer::reader ;
-        fn get_filemap() -> codemap::filemap ;
-        fn get_bad_expr_words() -> hashmap[str, ()] ;
-        fn get_chpos() -> uint ;
-        fn get_byte_pos() -> uint ;
-        fn get_id() -> node_id ;
+        fn get_span() -> span;
+        fn get_lo_pos() -> uint;
+        fn get_hi_pos() -> uint;
+        fn get_last_lo_pos() -> uint;
+        fn get_last_hi_pos() -> uint;
+        fn get_prec_table() -> @op_spec[];
+        fn get_str(token::str_num) -> str;
+        fn get_reader() -> lexer::reader;
+        fn get_filemap() -> codemap::filemap;
+        fn get_bad_expr_words() -> hashmap[str, ()];
+        fn get_chpos() -> uint;
+        fn get_byte_pos() -> uint;
+        fn get_id() -> node_id;
         fn get_sess() -> parse_sess;
     };
 
@@ -77,23 +79,33 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
                      ast::crate_cfg cfg,
                      file_type ftype,
                      mutable token::token tok,
-                     mutable uint lo,
-                     mutable uint hi,
-                     mutable uint last_lo,
+                     mutable span tok_span,
+                     mutable span last_tok_span,
+                     mutable tup(token::token, span)[] buffer,
                      mutable restriction restr,
                      lexer::reader rdr,
                      @op_spec[] precs,
                      hashmap[str, ()] bad_words) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
-            // log rdr.get_filename()
-            //   + ":" + common::istr(lo.line as int);
-
-            last_lo = lo;
-            auto next = lexer::next_token(rdr);
-            tok = next._0;
-            lo = next._1;
-            hi = rdr.get_chpos();
+            last_tok_span = tok_span;
+            if ivec::len(buffer) == 0u {
+                auto next = lexer::next_token(rdr);
+                tok = next._0;
+                tok_span = rec(lo=next._1, hi=rdr.get_chpos());
+            } else {
+                auto next = ivec::pop(buffer);
+                tok = next._0;
+                tok_span = next._1;
+            }
+        }
+        fn look_ahead(uint distance) -> token::token {
+            while ivec::len(buffer) < distance {
+                auto next = lexer::next_token(rdr);
+                buffer =
+                    ~[tup(next._0, rec(lo=next._1, hi=rdr.get_chpos()))] + buffer;
+            }
+            ret buffer.(distance-1u)._0;
         }
         fn fatal(str m) -> ! {
             codemap::emit_error(some(self.get_span()), m, sess.cm);
@@ -104,10 +116,11 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         }
         fn restrict(restriction r) { restr = r; }
         fn get_restriction() -> restriction { ret restr; }
-        fn get_span() -> span { ret rec(lo=lo, hi=hi); }
-        fn get_lo_pos() -> uint { ret lo; }
-        fn get_hi_pos() -> uint { ret hi; }
-        fn get_last_lo_pos() -> uint { ret last_lo; }
+        fn get_span() -> span { ret tok_span; }
+        fn get_lo_pos() -> uint { ret tok_span.lo; }
+        fn get_hi_pos() -> uint { ret tok_span.hi; }
+        fn get_last_lo_pos() -> uint { ret last_tok_span.lo; }
+        fn get_last_hi_pos() -> uint { ret last_tok_span.hi; }
         fn get_file_type() -> file_type { ret ftype; }
         fn get_cfg() -> ast::crate_cfg { ret cfg; }
         fn get_prec_table() -> @op_spec[] { ret precs; }
@@ -124,8 +137,9 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
     }
 
     auto tok0 = lexer::next_token(rdr);
+    auto span0 = rec(lo=tok0._1, hi=rdr.get_chpos());
     ret stdio_parser(sess, cfg, ftype, tok0._0,
-                     tok0._1, tok0._1, tok0._1, UNRESTRICTED, rdr,
+                     span0, span0, ~[], UNRESTRICTED, rdr,
                      prec_table(), bad_expr_word_table());
 }
 
