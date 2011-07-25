@@ -217,8 +217,9 @@ fn pretty_print_input(session::session sess, ast::crate_cfg cfg,
             ann = pprust::no_ann();
         }
     }
-    pprust::print_crate(sess.get_codemap(), crate, input, ioivec::stdout(),
-                        ann);
+    pprust::print_crate(sess.get_codemap(), crate, input,
+                        ioivec::file_reader(input),
+                        ioivec::stdout(), ann);
 }
 
 fn version(str argv0) {

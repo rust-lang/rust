@@ -73,10 +73,14 @@ const uint alt_indent_unit = 2u;
 
 const uint default_columns = 78u;
 
-fn print_crate(&codemap cm, @ast::crate crate, str filename,
+// Requires you to pass an input filename and reader so that
+// it can scan the input text for comments and literals to
+// copy forward.
+fn print_crate(&codemap cm, @ast::crate crate,
+               str filename, ioivec::reader in,
                ioivec::writer out, &pp_ann ann) {
     let pp::breaks[] boxes = ~[];
-    auto r = lexer::gather_comments_and_literals(cm, filename);
+    auto r = lexer::gather_comments_and_literals(cm, filename, in);
     auto s =
         @rec(s=pp::mk_printer(out, default_columns),
              cm=some(cm),

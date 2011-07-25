@@ -736,9 +736,9 @@ fn is_lit(&token::token t) -> bool {
 
 type lit = rec(str lit, uint pos);
 
-fn gather_comments_and_literals(&codemap::codemap cm, str path)
+fn gather_comments_and_literals(&codemap::codemap cm, str path,
+                                ioivec::reader srdr)
         -> rec(cmnt[] cmnts, lit[] lits) {
-    auto srdr = ioivec::file_reader(path);
     auto src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = new_reader(cm, src, codemap::new_filemap(path, 0u, 0u), itr);

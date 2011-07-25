@@ -50,7 +50,8 @@ fn read_whole_file(&str filename) -> str {
 }
 
 fn write_file(&str filename, &str content) {
-    ioivec::file_writer(filename, ~[ioivec::create]).write_str(content);
+    ioivec::file_writer(filename, ~[ioivec::create,
+                                    ioivec::truncate]).write_str(content);
 }
 
 fn file_contains(&str filename, &str needle) -> bool {
@@ -149,6 +150,7 @@ fn devnull() -> ioivec::writer { std::ioivec::string_writer().get_writer() }
 
 fn as_str(fn (ioivec::writer) f) -> str { auto w = std::ioivec::string_writer(); f(w.get_writer()); w.get_str() }
 
+/*
 fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
     auto exprs = steal_exprs(crate);
     auto exprsL = ivec::len(exprs);
@@ -163,26 +165,30 @@ fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
         }
     }
 }
+*/
 
-fn check_roundtrip(@ast::crate crate2, &codemap::codemap cmap, &str filename) {
-    auto str3 = as_str(bind pprust::print_crate(cmap, crate2, filename, _, pprust::no_ann()));
+fn check_roundtrip(@ast::crate cr1, &codemap::codemap cm1, &str filename, &str str1) {
+    auto str2 = as_str(bind pprust::print_crate(cm1, cr1, filename,
+                                                ioivec::string_reader(str1), _,
+                                                pprust::no_ann()));
     if (true
-      && !contains(str3, "][]") // https://github.com/graydon/rust/issues/669
-      && !contains(str3, "][mutable]") // https://github.com/graydon/rust/issues/669
-      && !contains(str3, "][mutable ]") // https://github.com/graydon/rust/issues/669
-      && !contains(str3, "self") // crazy rules enforced by parser rather than typechecker?
-      && !contains(str3, "spawn") // more precedence issues
-      && !contains(str3, "bind") // more precedence issues?
+      && !contains(str2, "][]") // https://github.com/graydon/rust/issues/669
+      && !contains(str2, "][mutable]") // https://github.com/graydon/rust/issues/669
+      && !contains(str2, "][mutable ]") // https://github.com/graydon/rust/issues/669
+      && !contains(str2, "self") // crazy rules enforced by parser rather than typechecker?
+      && !contains(str2, "spawn") // more precedence issues
+      && !contains(str2, "bind") // more precedence issues?
        ) {
-        auto cm4 = codemap::new_codemap();
-        auto crate4 = parser::parse_crate_from_source_str(filename, str3, ~[], cm4);
+        auto cm2 = codemap::new_codemap();
+        auto cr2 = parser::parse_crate_from_source_str(filename, str2, ~[], cm2);
         // should compare crates at this point, but it's easier to compare strings
-        auto str5 = as_str(bind pprust::print_crate(cm4, crate4, filename, _, pprust::no_ann()));
+        auto str3 = as_str(bind pprust::print_crate(cm2, cr2, filename, ioivec::string_reader(str2),
+                                                    _, pprust::no_ann()));
         if (!str::is_ascii(str3)) {
           log_err "Non-ASCII in " + filename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
-        } else if (str3 != str5) {
-            write_file("round-trip-a.rs", str3);
-            write_file("round-trip-b.rs", str5);
+        } else if (str2 != str3) {
+            write_file("round-trip-a.rs", str2);
+            write_file("round-trip-b.rs", str3);
             std::run::run_program("kdiff3", ["round-trip-a.rs", "round-trip-b.rs"]);
             fail "Mismatch";
         }
@@ -201,14 +207,14 @@ fn main(vec[str] args) {
 
     for (str file in files) {
         log_err "=== " + file + " ===";
-        auto cm = codemap::new_codemap();
-        auto src = read_whole_file(file);
-        auto crate = parser::parse_crate_from_source_str(file, src, ~[], cm);
-        if (!contains(src, "#macro") // https://github.com/graydon/rust/issues/671
+        auto cm1 = codemap::new_codemap();
+        auto str1 = read_whole_file(file);
+        auto cr1 = parser::parse_crate_from_source_str(file, str1, ~[], cm1);
+        if (!contains(str1, "#macro") // https://github.com/graydon/rust/issues/671
          && !str::ends_with(file, "block-expr-precedence.rs") // https://github.com/graydon/rust/issues/674
          && !str::ends_with(file, "syntax-extension-fmt.rs") // an issue where -2147483648 gains an extra negative sign each time through, which i can't reproduce using "rustc --pretty normal"???
 ) {
-            check_roundtrip(crate, cm, file);
+            check_roundtrip(cr1, cm1, file, str1);
         }
         //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
         // Currently hits https://github.com/graydon/rust/issues/675
