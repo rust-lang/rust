@@ -90,8 +90,9 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
             //   + ":" + common::istr(lo.line as int);
 
             last_lo = lo;
-            tok = lexer::next_token(rdr);
-            lo = rdr.get_mark_chpos();
+            auto next = lexer::next_token(rdr);
+            tok = next._0;
+            lo = next._1;
             hi = rdr.get_chpos();
         }
         fn fatal(str m) -> ! {
@@ -122,11 +123,9 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
         fn get_sess() -> parse_sess { ret sess; }
     }
 
-    // Make sure npos points at first actual token:
-    lexer::consume_whitespace_and_comments(rdr);
-    auto npos = rdr.get_chpos();
-    ret stdio_parser(sess, cfg, ftype, lexer::next_token(rdr),
-                     npos, npos, npos, UNRESTRICTED, rdr,
+    auto tok0 = lexer::next_token(rdr);
+    ret stdio_parser(sess, cfg, ftype, tok0._0,
+                     tok0._1, tok0._1, tok0._1, UNRESTRICTED, rdr,
                      prec_table(), bad_expr_word_table());
 }
 
@@ -693,13 +692,13 @@ fn parse_path(&parser p) -> ast::path {
             case (token::IDENT(?i, _)) {
                 hi = p.get_hi_pos();
                 ids += ~[p.get_str(i)];
+                hi = p.get_hi_pos();
                 p.bump();
                 if (p.peek() == token::MOD_SEP) { p.bump(); } else { break; }
             }
             case (_) { break; }
         }
     }
-    hi = p.get_hi_pos();
     ret spanned(lo, hi, rec(global=global, idents=ids, types=~[]));
 }
 

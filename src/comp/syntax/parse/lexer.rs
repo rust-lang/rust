@@ -19,9 +19,7 @@ type reader =
         fn next() -> char ;
         fn init() ;
         fn bump() ;
-        fn mark() ;
-        fn get_mark_chpos() -> uint ;
-        fn get_mark_str() -> str ;
+        fn get_str_from(uint) -> str ;
         fn get_interner() -> @interner::interner[str] ;
         fn get_chpos() -> uint ;
         fn get_byte_pos() -> uint ;
@@ -38,21 +36,16 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
                mutable uint col,
                mutable uint pos,
                mutable char ch,
-               mutable uint mark_pos,
-               mutable uint mark_chpos,
                mutable uint chpos,
                mutable str[] strs,
                codemap::filemap fm,
                @interner::interner[str] itr) {
         fn is_eof() -> bool { ret ch == -1 as char; }
-        fn mark() { mark_pos = pos; mark_chpos = chpos; }
-        fn get_mark_str() -> str {
+        fn get_str_from(uint start) -> str {
             // I'm pretty skeptical about this subtraction. What if there's a
             // multi-byte character before the mark?
-            ret str::slice(src, mark_pos - 1u,
-                           pos - 1u);
+            ret str::slice(src, start - 1u, pos - 1u);
         }
-        fn get_mark_chpos() -> uint { ret mark_chpos; }
         fn get_chpos() -> uint { ret chpos; }
         fn get_byte_pos() -> uint { ret pos; }
         fn curr() -> char { ret ch; }
@@ -90,9 +83,8 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
     }
     let str[] strs = ~[];
     auto rd =
-        reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char, 0u,
-               filemap.start_pos.ch, filemap.start_pos.ch, strs, filemap,
-               itr);
+        reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char,
+               filemap.start_pos.ch, strs, filemap, itr);
     rd.init();
     ret rd;
 }
@@ -346,11 +338,17 @@ fn scan_numeric_escape(&reader rdr, uint n_hex_digits) -> char {
     ret accum_int as char;
 }
 
-fn next_token(&reader rdr) -> token::token {
-    auto accum_str = "";
+fn next_token(&reader rdr) -> tup(token::token, uint, uint) {
     consume_whitespace_and_comments(rdr);
-    if (rdr.is_eof()) { ret token::EOF; }
-    rdr.mark();
+    auto start_chpos = rdr.get_chpos();
+    auto start_bpos = rdr.get_byte_pos();
+    auto tok = if rdr.is_eof() { token::EOF }
+               else { next_token_inner(rdr) };
+    ret tup(tok, start_chpos, start_bpos);
+}
+
+fn next_token_inner(&reader rdr) -> token::token {
+    auto accum_str = "";
     auto c = rdr.curr();
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
@@ -762,11 +760,10 @@ fn gather_comments_and_literals(&codemap::codemap cm, str path)
             break;
         }
         auto tok = next_token(rdr);
-        if (is_lit(tok)) {
-            literals += ~[rec(lit=rdr.get_mark_str(),
-                              pos=rdr.get_mark_chpos())];
+        if (is_lit(tok._0)) {
+            literals += ~[rec(lit=rdr.get_str_from(tok._2), pos=tok._1)];
         }
-        log "tok: " + token::to_str(rdr, tok);
+        log "tok: " + token::to_str(rdr, tok._0);
         first_read = false;
     }
     ret rec(cmnts=comments, lits=literals);
