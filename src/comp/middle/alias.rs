@@ -326,7 +326,7 @@ fn arm_defnums(&ast::arm arm) -> node_id[] {
 }
 
 fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
-                  &ast::block blk, &scope sc, &vt[scope] v) {
+                  &ast::blk blk, &scope sc, &vt[scope] v) {
     visit::visit_expr(call, sc, v);
     alt (call.node) {
         case (ast::expr_call(?f, ?args)) {
@@ -344,7 +344,7 @@ fn check_for_each(&ctx cx, &@ast::local local, &@ast::expr call,
     }
 }
 
-fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::block blk,
+fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::blk blk,
              &scope sc, &vt[scope] v) {
     visit::visit_expr(seq, sc, v);
     auto defnum = local.node.id;

@@ -52,7 +52,7 @@ tag scope {
     scope_fn(ast::fn_decl, ast::ty_param[]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
-    scope_block(ast::block);
+    scope_block(ast::blk);
     scope_arm(ast::arm);
 }
 
@@ -361,7 +361,7 @@ fn visit_fn_with_scope(&@env e, &ast::_fn f, &ast::ty_param[] tp, &span sp,
                     cons(scope_fn(f.decl, tp), @sc), v);
 }
 
-fn visit_block_with_scope(&ast::block b, &scopes sc, &vt[scopes] v) {
+fn visit_block_with_scope(&ast::blk b, &scopes sc, &vt[scopes] v) {
     visit::visit_block(b, cons(scope_block(b), @sc), v);
 }
 
@@ -781,7 +781,7 @@ fn lookup_in_obj(&ident name, &ast::_obj ob, &ast::ty_param[] ty_params,
     }
 }
 
-fn lookup_in_block(&ident name, &ast::block_ b, namespace ns) ->
+fn lookup_in_block(&ident name, &ast::blk_ b, namespace ns) ->
    option::t[def] {
     for (@ast::stmt st in b.stmts) {
         alt (st.node) {
@@ -1319,7 +1319,7 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
     }
 }
 
-fn check_block(@env e, &ast::block b, &() x, &vt[()] v) {
+fn check_block(@env e, &ast::blk b, &() x, &vt[()] v) {
     visit::visit_block(b, x, v);
     auto values = checker(*e, "value");
     auto types = checker(*e, "type");

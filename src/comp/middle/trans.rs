@@ -3696,7 +3696,7 @@ fn join_branches(&@block_ctxt parent_cx, &result[] ins) -> @block_ctxt {
 
 tag out_method { return; save_in(ValueRef); }
 
-fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
+fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::blk thn,
             &option::t[@ast::expr] els, ast::node_id id, &out_method output)
     -> result {
     auto cond_res = trans_expr(cx, cond);
@@ -3731,11 +3731,11 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond, &ast::block thn,
 }
 
 fn trans_for(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
-             &ast::block body) -> result {
+             &ast::blk body) -> result {
     // FIXME: We bind to an alias here to avoid a segfault... this is
     // obviously a bug.
     fn inner(&@block_ctxt cx, @ast::local local, ValueRef curr, ty::t t,
-             &ast::block body, @block_ctxt outer_next_cx) -> result {
+             &ast::blk body, @block_ctxt outer_next_cx) -> result {
         auto next_cx = new_sub_block_ctxt(cx, "next");
         auto scope_cx =
             new_loop_scope_block_ctxt(cx, option::some[@block_ctxt](next_cx),
@@ -3906,7 +3906,7 @@ fn load_environment(&@block_ctxt cx, &@fn_ctxt fcx,
 }
 
 fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
-                  &ast::block body) -> result {
+                  &ast::blk body) -> result {
     /*
      * The translation is a little .. complex here. Code like:
      *
@@ -3985,7 +3985,7 @@ fn trans_for_each(&@block_ctxt cx, &@ast::local local, &@ast::expr seq,
     }
 }
 
-fn trans_while(&@block_ctxt cx, &@ast::expr cond, &ast::block body) ->
+fn trans_while(&@block_ctxt cx, &@ast::expr cond, &ast::blk body) ->
    result {
     auto cond_cx = new_scope_block_ctxt(cx, "while cond");
     auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -4001,7 +4001,7 @@ fn trans_while(&@block_ctxt cx, &@ast::expr cond, &ast::block body) ->
     ret rslt(next_cx, C_nil());
 }
 
-fn trans_do_while(&@block_ctxt cx, &ast::block body, &@ast::expr cond) ->
+fn trans_do_while(&@block_ctxt cx, &ast::blk body, &@ast::expr cond) ->
    result {
     auto next_cx = new_sub_block_ctxt(cx, "next");
     auto body_cx =
@@ -6256,7 +6256,7 @@ fn trans_block_cleanups(&@block_ctxt cx, &@block_ctxt cleanup_cx)
     ret bcx;
 }
 
-iter block_locals(&ast::block b) -> @ast::local {
+iter block_locals(&ast::blk b) -> @ast::local {
     // FIXME: putting from inside an iter block doesn't work, so we can't
     // use the index here.
     for (@ast::stmt s in b.node.stmts) {
@@ -6343,7 +6343,7 @@ fn alloc_local(&@block_ctxt cx, &@ast::local local) -> result {
     ret r;
 }
 
-fn trans_block(&@block_ctxt cx, &ast::block b, &out_method output) -> result {
+fn trans_block(&@block_ctxt cx, &ast::blk b, &out_method output) -> result {
     auto bcx = cx;
     for each (@ast::local local in block_locals(b)) {
         // FIXME Update bcx.sp

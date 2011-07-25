@@ -131,7 +131,7 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &(@expr)[] args, node_id id) {
                      seq_postconds(fcx, ivec::map(get_post, pps)));
 }
 
-fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
+fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &blk body,
                       node_id id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
@@ -152,7 +152,7 @@ fn find_pre_post_loop(&fn_ctxt fcx, &@local l, &@expr index, &block body,
 // Generates a pre/post assuming that a is the
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
-fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
+fn join_then_else(&fn_ctxt fcx, &@expr antec, &blk conseq,
                   &option::t[@expr] maybe_alt, node_id id, &if_ty chck) {
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
@@ -644,7 +644,7 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
     }
 }
 
-fn find_pre_post_block(&fn_ctxt fcx, block b) {
+fn find_pre_post_block(&fn_ctxt fcx, blk b) {
     /* Want to say that if there is a break or cont in this
      block, then that invalidates the poststate upheld by
     any of the stmts after it.

@@ -1105,7 +1105,7 @@ mod writeback {
     fn visit_expr_pre(@wb_ctxt wbcx, &@ast::expr e) {
         resolve_type_vars_for_node(wbcx, e.span, e.id);
     }
-    fn visit_block_pre(@wb_ctxt wbcx, &ast::block b) {
+    fn visit_block_pre(@wb_ctxt wbcx, &ast::blk b) {
         resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     }
     fn visit_pat_pre(@wb_ctxt wbcx, &@ast::pat p) {
@@ -1147,7 +1147,7 @@ mod writeback {
     }
     fn keep_going(@wb_ctxt wbcx) -> bool { !wbcx.ignore && wbcx.success }
 
-    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::block blk) -> bool {
+    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::blk blk) -> bool {
         auto wbcx = @rec(fcx = fcx,
                          mutable ignore = false,
                          mutable success = true);
@@ -1628,7 +1628,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     // A generic function for checking for or for-each loops
 
     fn check_for_or_for_each(&@fn_ctxt fcx, &@ast::local local,
-                             &ty::t element_ty, &ast::block body,
+                             &ty::t element_ty, &ast::blk body,
                              ast::node_id node_id) {
         check_decl_local(fcx, local);
         check_block(fcx, body);
@@ -1687,7 +1687,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
     // A generic function for checking the then and else in an if
     // or if-check
-    fn check_then_else(&@fn_ctxt fcx, &ast::block thn,
+    fn check_then_else(&@fn_ctxt fcx, &ast::blk thn,
                        &option::t[@ast::expr] elsopt,
                        ast::node_id id, &span sp) {
         check_block(fcx, thn);
@@ -2598,7 +2598,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
     write::nil_ty(fcx.ccx.tcx, node_id);
 }
 
-fn check_block(&@fn_ctxt fcx, &ast::block blk) {
+fn check_block(&@fn_ctxt fcx, &ast::blk blk) {
     for (@ast::stmt s in blk.node.stmts) { check_stmt(fcx, s); }
     alt (blk.node.expr) {
         case (none) { write::nil_ty(fcx.ccx.tcx, blk.node.id); }

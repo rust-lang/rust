@@ -22,7 +22,7 @@ import ast::respan;
 import ast::ident;
 import ast::path;
 import ast::ty;
-import ast::block;
+import ast::blk;
 import ast::expr;
 import ast::expr_;
 import ast::path_;
@@ -56,7 +56,7 @@ tag matchable {
     match_path(path);
     match_ident(ast::spanned[ident]);
     match_ty(@ty);
-    match_block(block);
+    match_block(ast::blk);
     match_exact; /* don't bind anything, just verify the AST traversal */
 }
 

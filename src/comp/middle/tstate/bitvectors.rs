@@ -153,7 +153,7 @@ fn declare_var(&fn_ctxt fcx, &tsconstr c, prestate pre) -> prestate {
     ret rslt;
 }
 
-fn relax_precond_block_non_recursive(&fn_ctxt fcx, node_id i, &block b) {
+fn relax_precond_block_non_recursive(&fn_ctxt fcx, node_id i, &blk b) {
     relax_precond(i as uint, block_precond(fcx.ccx, b));
 }
 
@@ -165,7 +165,7 @@ fn relax_precond_stmt(&fn_ctxt fcx, node_id i, &@stmt s) {
     relax_precond(i as uint, stmt_precond(fcx.ccx, *s));
 }
 
-fn relax_precond_block(&fn_ctxt fcx, node_id i, &block b) {
+fn relax_precond_block(&fn_ctxt fcx, node_id i, &blk b) {
     relax_precond_block_non_recursive(fcx, i, b);
     // FIXME: should use visit instead
     // could at least generalize this pattern

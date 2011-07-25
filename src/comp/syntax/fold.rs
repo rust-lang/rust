@@ -28,14 +28,14 @@ type ast_fold_precursor =
         //unlike the others, item_ is non-trivial
         fn (&item_ i, ast_fold) -> item_        fold_item_underscore,
         fn (&method_ m, ast_fold) -> method_              fold_method,
-        fn (&block_ b, ast_fold) -> block_                fold_block,
+        fn (&blk_ b, ast_fold) -> blk_                    fold_block,
         fn (&stmt_ s, ast_fold) -> stmt_                  fold_stmt,
         fn (&arm a, ast_fold) -> arm                      fold_arm,
         fn (&pat_ p, ast_fold) -> pat_                    fold_pat,
         fn (&decl_ d, ast_fold) -> decl_                  fold_decl,
         fn (&expr_ e, ast_fold) -> expr_                  fold_expr,
         fn (&ty_ t, ast_fold) -> ty_                      fold_ty,
-        fn (&ast::constr_ c, ast_fold) -> constr_              fold_constr,
+        fn (&ast::constr_ c, ast_fold) -> constr_         fold_constr,
         fn (&_fn f, ast_fold) -> _fn                      fold_fn,
         fn (&_mod m, ast_fold) -> _mod                    fold_mod,
         fn (&native_mod, ast_fold) -> native_mod          fold_native_mod,
@@ -54,7 +54,7 @@ type a_f =
         fn (&@item i) -> @item                        fold_item,
         fn (&item_ i) -> item_                        fold_item_underscore,
         fn (&@method m) -> @method                    fold_method,
-        fn (&block b) -> block                        fold_block,
+        fn (&blk b) -> blk                            fold_block,
         fn (&@stmt s) -> @stmt                        fold_stmt,
         fn (&arm a) -> arm                            fold_arm,
         fn (&@pat p) -> @pat                          fold_pat,
@@ -81,7 +81,7 @@ fn nf_native_item_dummy(&@native_item n) -> @native_item { fail; }
 fn nf_item_dummy(&@item i) -> @item { fail; }
 fn nf_item_underscore_dummy(&item_ i) -> item_ { fail; }
 fn nf_method_dummy(&@method m) -> @method { fail; }
-fn nf_block_dummy(&block b) -> block { fail; }
+fn nf_blk_dummy(&blk b) -> blk { fail; }
 fn nf_stmt_dummy(&@stmt s) -> @stmt { fail; }
 fn nf_arm_dummy(&arm a) -> arm { fail; }
 fn nf_pat_dummy(&@pat p) -> @pat { fail; }
@@ -259,7 +259,7 @@ fn noop_fold_method(&method_ m, ast_fold fld) -> method_ {
 }
 
 
-fn noop_fold_block(&block_ b, ast_fold fld) -> block_ {
+fn noop_fold_block(&blk_ b, ast_fold fld) -> blk_ {
     ret rec(stmts=ivec::map(fld.fold_stmt, b.stmts),
             expr=option::map(fld.fold_expr, b.expr), id=b.id);
 }
@@ -580,7 +580,7 @@ fn dummy_out(ast_fold a) {
              fold_item = nf_item_dummy,
              fold_item_underscore = nf_item_underscore_dummy,
              fold_method = nf_method_dummy,
-             fold_block = nf_block_dummy,
+             fold_block = nf_blk_dummy,
              fold_stmt = nf_stmt_dummy,
              fold_arm = nf_arm_dummy,
              fold_pat = nf_pat_dummy,
@@ -608,7 +608,7 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
                      fold_item = nf_item_dummy,
                      fold_item_underscore = nf_item_underscore_dummy,
                      fold_method = nf_method_dummy,
-                     fold_block = nf_block_dummy,
+                     fold_block = nf_blk_dummy,
                      fold_stmt = nf_stmt_dummy,
                      fold_arm = nf_arm_dummy,
                      fold_pat = nf_pat_dummy,
@@ -653,7 +653,7 @@ fn make_fold(&ast_fold_precursor afp) -> ast_fold {
     fn f_method(&ast_fold_precursor afp, ast_fold f, &@method x) -> @method {
         ret @rec(node=afp.fold_method(x.node, f), span=x.span);
     }
-    fn f_block(&ast_fold_precursor afp, ast_fold f, &block x) -> block {
+    fn f_block(&ast_fold_precursor afp, ast_fold f, &blk x) -> blk {
         ret rec(node=afp.fold_block(x.node, f), span=x.span);
     }
     fn f_stmt(&ast_fold_precursor afp, ast_fold f, &@stmt x) -> @stmt {

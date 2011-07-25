@@ -1309,7 +1309,7 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
 }
 
 fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
-                                     ast::block, option::t[@ast::expr],
+                                     ast::blk, option::t[@ast::expr],
                                      uint, uint) {
     auto lo = p.get_last_lo_pos();
     auto cond = parse_expr(p);
@@ -1754,13 +1754,13 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
     }
 }
 
-fn parse_block(&parser p) -> ast::block {
+fn parse_block(&parser p) -> ast::blk {
     expect(p, token::LBRACE);
     be parse_block_tail(p);
 }
 
 // some blocks start with "#{"...
-fn parse_block_tail(&parser p) -> ast::block {
+fn parse_block_tail(&parser p) -> ast::blk {
     auto lo = p.get_lo_pos();
     let (@ast::stmt)[] stmts = ~[];
     let option::t[@ast::expr] expr = none;
@@ -1912,7 +1912,7 @@ fn parse_method(&parser p) -> @ast::method {
 
 fn parse_dtor(&parser p) -> @ast::method {
     auto lo = p.get_last_lo_pos();
-    let ast::block b = parse_block(p);
+    let ast::blk b = parse_block(p);
     let ast::arg[] inputs = ~[];
     let @ast::ty output = @spanned(lo, lo, ast::ty_nil);
     let ast::fn_decl d =

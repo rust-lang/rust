@@ -446,7 +446,7 @@ fn trans_recv(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
     ret bcx;    // TODO
 }
 
-fn trans_block(&@block_ctxt cx, &dest dest, &ast::block blk)
+fn trans_block(&@block_ctxt cx, &dest dest, &ast::blk blk)
         -> @block_ctxt {
     auto bcx = cx;
     for each (@ast::local local in trans::block_locals(blk)) {

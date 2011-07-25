@@ -23,7 +23,7 @@ type visitor[E] =
          fn(&@native_item, &E, &vt[E])  visit_native_item,
          fn(&@item, &E, &vt[E])  visit_item,
          fn(&@local, &E, &vt[E])  visit_local,
-         fn(&block, &E, &vt[E])  visit_block,
+         fn(&ast::blk, &E, &vt[E])  visit_block,
          fn(&@stmt, &E, &vt[E])  visit_stmt,
          fn(&arm, &E, &vt[E])  visit_arm,
          fn(&@pat, &E, &vt[E])  visit_pat,
@@ -234,7 +234,7 @@ fn visit_fn[E](&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
     v.visit_block(f.body, e, v);
 }
 
-fn visit_block[E](&block b, &E e, &vt[E] v) {
+fn visit_block[E](&ast::blk b, &E e, &vt[E] v) {
     for (@stmt s in b.node.stmts) { v.visit_stmt(s, e, v); }
     visit_expr_opt(b.node.expr, e, v);
 }

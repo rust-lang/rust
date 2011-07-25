@@ -177,7 +177,8 @@ fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
 }
 
 fn find_pre_post_state_loop(&fn_ctxt fcx, prestate pres, &@local l,
-                            &@expr index, &block body, node_id id) -> bool {
+                            &@expr index, &blk body, node_id id)
+    -> bool {
     auto loop_pres = intersect_states(pres,
                                       block_poststate(fcx.ccx, body));
 
@@ -217,7 +218,7 @@ fn gen_if_local(&fn_ctxt fcx, &poststate p, &@expr e) -> bool {
     }
 }
 
-fn join_then_else(&fn_ctxt fcx, &@expr antec, &block conseq,
+fn join_then_else(&fn_ctxt fcx, &@expr antec, &blk conseq,
                   &option::t[@expr] maybe_alt, node_id id, &if_ty chk,
                   &prestate pres) -> bool {
     auto changed = set_prestate_ann(fcx.ccx, id, pres) |
@@ -692,7 +693,7 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
 
 /* Updates the pre- and post-states of statements in the block,
    returns a boolean flag saying whether any pre- or poststates changed */
-fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
+fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &blk b)
     -> bool {
     /* First, set the pre-states and post-states for every expression */
 

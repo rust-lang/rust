@@ -1874,7 +1874,7 @@ fn ty_var_id(&ctxt cx, t typ) -> int {
 
 
 // Type accessors for AST nodes
-fn block_ty(&ctxt cx, &ast::block b) -> t {
+fn block_ty(&ctxt cx, &ast::blk b) -> t {
     ret node_id_to_type(cx, b.node.id);
 }
 

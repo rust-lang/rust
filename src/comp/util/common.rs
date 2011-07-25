@@ -71,9 +71,9 @@ fn log_ty_err(&ty t) { log_err print::pprust::ty_to_str(t); }
 
 fn log_pat_err(&@pat p) { log_err print::pprust::pat_to_str(p); }
 
-fn log_block(&ast::block b) { log print::pprust::block_to_str(b); }
+fn log_block(&ast::blk b) { log print::pprust::block_to_str(b); }
 
-fn log_block_err(&ast::block b) { log_err print::pprust::block_to_str(b); }
+fn log_block_err(&ast::blk b) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(&@ast::item i) { log_err print::pprust::item_to_str(i); }
 
@@ -89,7 +89,7 @@ fn log_stmt(&ast::stmt st) { log print::pprust::stmt_to_str(st); }
 
 fn log_stmt_err(&ast::stmt st) { log_err print::pprust::stmt_to_str(st); }
 
-fn has_nonlocal_exits(&ast::block b) -> bool {
+fn has_nonlocal_exits(&ast::blk b) -> bool {
     auto has_exits = @mutable false;
     fn visit_expr(@mutable bool flag, &@ast::expr e) {
         alt (e.node) {

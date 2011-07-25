@@ -27,7 +27,7 @@ fn collect_ids_expr(&@expr e, @mutable node_id[] rs) {
     *rs += ~[e.id];
 }
 
-fn collect_ids_block(&block b, @mutable node_id[] rs) {
+fn collect_ids_block(&blk b, @mutable node_id[] rs) {
     *rs += ~[b.node.id];
 }
 

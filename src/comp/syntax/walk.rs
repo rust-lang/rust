@@ -22,8 +22,8 @@ type ast_visitor =
         fn(&@ast::item)  visit_item_post,
         fn(&@ast::method)  visit_method_pre,
         fn(&@ast::method)  visit_method_post,
-        fn(&ast::block)  visit_block_pre,
-        fn(&ast::block)  visit_block_post,
+        fn(&ast::blk)  visit_block_pre,
+        fn(&ast::blk)  visit_block_post,
         fn(&@ast::stmt)  visit_stmt_pre,
         fn(&@ast::stmt)  visit_stmt_post,
         fn(&ast::arm)  visit_arm_pre,
@@ -231,7 +231,7 @@ fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::ty_param[] tps,
     v.visit_fn_post(f, tps, sp, i, d);
 }
 
-fn walk_block(&ast_visitor v, &ast::block b) {
+fn walk_block(&ast_visitor v, &ast::blk b) {
     if (!v.keep_going()) { ret; }
     v.visit_block_pre(b);
     for (@ast::stmt s in b.node.stmts) { walk_stmt(v, s); }
@@ -440,7 +440,7 @@ fn def_visit_item(&@ast::item i) { }
 
 fn def_visit_method(&@ast::method m) { }
 
-fn def_visit_block(&ast::block b) { }
+fn def_visit_block(&ast::blk b) { }
 
 fn def_visit_stmt(&@ast::stmt s) { }
 

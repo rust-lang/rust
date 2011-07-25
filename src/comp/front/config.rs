@@ -78,8 +78,8 @@ fn filter_stmt(&ast::crate_cfg cfg,
     }
 }
 
-fn fold_block(&ast::crate_cfg cfg, &ast::block_ b,
-              fold::ast_fold fld) -> ast::block_  {
+fn fold_block(&ast::crate_cfg cfg, &ast::blk_ b,
+              fold::ast_fold fld) -> ast::blk_  {
     auto filter = bind filter_stmt(cfg, _);
     auto filtered_stmts = ivec::filter_map(filter, b.stmts);
     ret rec(stmts=ivec::map(fld.fold_stmt, filtered_stmts),

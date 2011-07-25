@@ -186,7 +186,7 @@ fn mk_tests(&test_ctxt cx) -> @ast::item {
     // The vector of test_descs for this crate
     auto test_descs = mk_test_desc_vec(cx);
 
-    let ast::block_ body_= rec(stmts = ~[],
+    let ast::blk_ body_= rec(stmts = ~[],
                                expr = option::some(test_descs),
                                id = cx.next_node_id());
     auto body = nospan(body_);
@@ -313,7 +313,7 @@ fn mk_main(&test_ctxt cx) -> @ast::item {
 
     auto test_main_call_expr = mk_test_main_call(cx);
 
-    let ast::block_ body_ = rec(stmts = ~[],
+    let ast::blk_ body_ = rec(stmts = ~[],
                                 expr = option::some(test_main_call_expr),
                                 id = cx.next_node_id());
     auto body = rec(node = body_, span = rec(lo=0u, hi=0u));

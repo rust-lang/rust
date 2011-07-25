@@ -116,9 +116,9 @@ tag meta_item_ {
     meta_name_value(ident, lit);
 }
 
-type block = spanned[block_];
+type blk = spanned[blk_];
 
-type block_ = rec((@stmt)[] stmts, option::t[@expr] expr, node_id id);
+type blk_ = rec((@stmt)[] stmts, option::t[@expr] expr, node_id id);
 
 type pat = rec(node_id id,
                pat_ node,
@@ -260,7 +260,7 @@ type decl = spanned[decl_];
 
 tag decl_ { decl_local((@local)[]); decl_item(@item); }
 
-type arm = rec((@pat)[] pats, block block);
+type arm = rec((@pat)[] pats, blk block);
 
 type elt = rec(mutability mut, @expr expr);
 
@@ -291,15 +291,15 @@ tag expr_ {
     expr_unary(unop, @expr);
     expr_lit(@lit);
     expr_cast(@expr, @ty);
-    expr_if(@expr, block, option::t[@expr]);
+    expr_if(@expr, blk, option::t[@expr]);
     expr_ternary(@expr, @expr, @expr);
-    expr_while(@expr, block);
-    expr_for(@local, @expr, block);
-    expr_for_each(@local, @expr, block);
-    expr_do_while(block, @expr);
+    expr_while(@expr, blk);
+    expr_for(@local, @expr, blk);
+    expr_for_each(@local, @expr, blk);
+    expr_do_while(blk, @expr);
     expr_alt(@expr, arm[]);
     expr_fn(_fn);
-    expr_block(block);
+    expr_block(blk);
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
@@ -328,7 +328,7 @@ tag expr_ {
     expr_check(check_mode, @expr);
    /* FIXME Would be nice if expr_check desugared
       to expr_if_check. */
-    expr_if_check(@expr, block, option::t[@expr]);
+    expr_if_check(@expr, blk, option::t[@expr]);
     expr_port(option::t[@ty]);
     expr_chan(@expr);
     expr_anon_obj(anon_obj);
@@ -340,7 +340,7 @@ type mac = spanned[mac_];
 tag mac_ {
     mac_invoc(path, (@expr)[], option::t[str]);
     mac_embed_type(@ty);
-    mac_embed_block(block);
+    mac_embed_block(blk);
     mac_ellipsis;
 }
 
@@ -513,7 +513,7 @@ tag controlflow {
 
 }
 
-type _fn = rec(fn_decl decl, proto proto, block body);
+type _fn = rec(fn_decl decl, proto proto, blk body);
 
 type method_ = rec(ident ident, _fn meth, node_id id);
 
@@ -662,8 +662,8 @@ fn eq_ty(&@ty a, &@ty b) -> bool { ret std::box::ptr_eq(a, b); }
 
 fn hash_ty(&@ty t) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
-fn block_from_expr(@expr e) -> block {
-    let block_ blk_ =
+fn block_from_expr(@expr e) -> blk {
+    auto blk_ =
         rec(stmts=~[],
             expr=option::some[@expr](e),
             id=e.id);

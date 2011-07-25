@@ -26,7 +26,7 @@ import pp::eof;
 // The ps is stored here to prevent recursive type.
 // FIXME use a nominal tag instead
 tag ann_node {
-    node_block(ps, ast::block);
+    node_block(ps, ast::blk);
     node_item(ps, @ast::item);
     node_expr(ps, @ast::expr);
     node_pat(ps, @ast::pat);
@@ -115,7 +115,7 @@ fn fun_to_str(&ast::_fn f, str name, &ast::ty_param[] params) -> str {
     ret writer.get_str();
 }
 
-fn block_to_str(&ast::block blk) -> str {
+fn block_to_str(&ast::blk blk) -> str {
     auto writer = ioivec::string_writer();
     auto s = rust_printer(writer.get_writer());
     // containing cbox, will be closed by print-block at }
@@ -578,11 +578,11 @@ fn print_stmt(&ps s, &ast::stmt st) {
     maybe_print_trailing_comment(s, st.span, none[uint]);
 }
 
-fn print_block(&ps s, &ast::block blk) {
+fn print_block(&ps s, &ast::blk blk) {
     print_possibly_embedded_block(s, blk, false, indent_unit);
 }
 
-fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded,
+fn print_possibly_embedded_block(&ps s, &ast::blk blk, bool embedded,
                                  uint indented) {
     maybe_print_comment(s, blk.span.lo);
     auto ann_node = node_block(s, blk);
@@ -605,7 +605,7 @@ fn print_possibly_embedded_block(&ps s, &ast::block blk, bool embedded,
     s.ann.post(ann_node);
 }
 
-fn print_if(&ps s, &@ast::expr test, &ast::block blk,
+fn print_if(&ps s, &@ast::expr test, &ast::blk blk,
             &option::t[@ast::expr] elseopt, bool chk) {
     head(s, "if");
     if (chk) {

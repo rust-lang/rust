@@ -332,7 +332,7 @@ fn stmt_pp(&crate_ctxt ccx, &stmt s) -> pre_and_post {
 
 
 /* fails if b has no annotation */
-fn block_pp(&crate_ctxt ccx, &block b) -> pre_and_post {
+fn block_pp(&crate_ctxt ccx, &blk b) -> pre_and_post {
     log "block_pp";
     ret node_id_to_ts_ann(ccx, b.node.id).conditions;
 }
@@ -347,7 +347,7 @@ fn clear_precond(&crate_ctxt ccx, node_id id) {
     ann::clear(pp.conditions.precondition);
 }
 
-fn block_states(&crate_ctxt ccx, &block b) -> pre_and_post_state {
+fn block_states(&crate_ctxt ccx, &blk b) -> pre_and_post_state {
     log "block_states";
     ret node_id_to_ts_ann(ccx, b.node.id).states;
 }
@@ -392,19 +392,19 @@ fn stmt_poststate(&crate_ctxt ccx, &stmt s) -> poststate {
     ret stmt_states(ccx, s).poststate;
 }
 
-fn block_precond(&crate_ctxt ccx, &block b) -> precond {
+fn block_precond(&crate_ctxt ccx, &blk b) -> precond {
     ret block_pp(ccx, b).precondition;
 }
 
-fn block_postcond(&crate_ctxt ccx, &block b) -> postcond {
+fn block_postcond(&crate_ctxt ccx, &blk b) -> postcond {
     ret block_pp(ccx, b).postcondition;
 }
 
-fn block_prestate(&crate_ctxt ccx, &block b) -> prestate {
+fn block_prestate(&crate_ctxt ccx, &blk b) -> prestate {
     ret block_states(ccx, b).prestate;
 }
 
-fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
+fn block_poststate(&crate_ctxt ccx, &blk b) -> poststate {
     ret block_states(ccx, b).poststate;
 }
 
