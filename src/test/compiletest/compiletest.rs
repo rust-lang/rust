@@ -207,9 +207,39 @@ iter iter_header(&str testfile) -> str {
 }
 
 fn make_test_fn(&cx cx, &str testfile) -> test::test_fn {
-    auto testcx = rec(config = cx.config,
-                      procsrv = procsrv::clone(cx.procsrv));
-    bind run_test(testcx, testfile)
+    // We're doing some ferociously unsafe nonsense here by creating a closure
+    // and letting the test runner spawn it into a task. To avoid having
+    // different tasks fighting over their refcounts and then the wrong task
+    // freeing a box we need to clone everything, and make sure our closure
+    // outlives all the tasks.
+    fn clonestr(&str s) -> str {
+        str::unsafe_from_bytes(str::bytes(s))
+    }
+
+    fn cloneoptstr(&option::t[str] s) -> option::t[str] {
+        alt s {
+          option::some(?s) { option::some(clonestr(s)) }
+          option::none { option::none }
+        }
+    }
+
+    auto configclone = rec(
+        compile_lib_path = clonestr(cx.config.compile_lib_path),
+        run_lib_path = clonestr(cx.config.run_lib_path),
+        rustc_path = clonestr(cx.config.rustc_path),
+        src_base = clonestr(cx.config.src_base),
+        build_base = clonestr(cx.config.build_base),
+        stage_id = clonestr(cx.config.stage_id),
+        mode = cx.config.mode,
+        run_ignored = cx.config.run_ignored,
+        filter = cloneoptstr(cx.config.filter),
+        runtool = cloneoptstr(cx.config.runtool),
+        rustcflags = cloneoptstr(cx.config.rustcflags),
+        verbose = cx.config.verbose);
+    auto cxclone = rec(config = configclone,
+                       procsrv = procsrv::clone(cx.procsrv));
+    auto testfileclone = clonestr(testfile);
+    ret bind run_test(cxclone, testfileclone);
 }
 
 fn run_test(cx cx, str testfile) {
