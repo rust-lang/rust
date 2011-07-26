@@ -301,18 +301,18 @@ fn print_type(&ps s, &ast::ty ty) {
             pclose(s);
         }
         case (ast::ty_rec(?fields)) {
-            word(s.s, "rec");
-            popen(s);
+            word(s.s, "{");
             fn print_field(&ps s, &ast::ty_field f) {
                 cbox(s, indent_unit);
-                print_mt(s, f.node.mt);
-                space(s.s);
+                print_mutability(s, f.node.mt.mut);
                 word(s.s, f.node.ident);
+                word_space(s, ":");
+                print_type(s, *f.node.mt.ty);
                 end(s);
             }
             fn get_span(&ast::ty_field f) -> codemap::span { ret f.span; }
             commasep_cmnt(s, consistent, fields, print_field, get_span);
-            pclose(s);
+            word(s.s, "}");
         }
         case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
             print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
@@ -707,15 +707,14 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 ibox(s, indent_unit);
                 if (field.node.mut == ast::mut) { word_nbsp(s, "mutable"); }
                 word(s.s, field.node.ident);
-                word(s.s, "=");
+                word_space(s, ":");
                 print_expr(s, field.node.expr);
                 end(s);
             }
             fn get_span(&ast::field field) -> codemap::span {
                 ret field.span;
             }
-            word(s.s, "rec");
-            popen(s);
+            word(s.s, "{");
             commasep_cmnt(s, consistent, fields, print_field, get_span);
             alt (wth) {
                 case (some(?expr)) {
@@ -727,7 +726,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
                 }
                 case (_) { }
             }
-            pclose(s);
+            word(s.s, "}");
         }
         case (ast::expr_call(?func, ?args)) {
             print_expr(s, func);
