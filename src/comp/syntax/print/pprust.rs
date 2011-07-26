@@ -147,7 +147,9 @@ fn box(&ps s, uint u, pp::breaks b) {
     pp::box(s.s, u, b);
 }
 
-fn word_nbsp(&ps s, str w) { word(s.s, w); word(s.s, " "); }
+fn nbsp(&ps s) { word(s.s, " "); }
+
+fn word_nbsp(&ps s, str w) { word(s.s, w); nbsp(s); }
 
 fn word_space(&ps s, str w) { word(s.s, w); space(s.s); }
 
@@ -1064,7 +1066,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                 }
                 alt loc.node.init {
                   some(?init) {
-                    space(s.s);
+                    nbsp(s);
                     alt init.op {
                       ast::init_assign { word_space(s, "="); }
                       ast::init_move { word_space(s, "<-"); }
