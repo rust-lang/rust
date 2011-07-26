@@ -1209,7 +1209,9 @@ fn check_for_collisions(&@env e, &ast::crate c) {
     auto v =
         @rec(visit_item=bind check_item(e, _, _, _),
              visit_block=bind check_block(e, _, _, _),
-             visit_arm=bind check_arm(e, _, _, _)
+             visit_arm=bind check_arm(e, _, _, _),
+             visit_expr=bind check_expr(e, _, _, _),
+             visit_ty=bind check_ty(e, _, _, _)
              with *visit::default_visitor());
     visit::visit_crate(c, (), visit::mk_vt(v));
 }
@@ -1255,33 +1257,33 @@ fn mie_span(&mod_index_entry mie) -> span {
     };
 }
 
-fn check_item(@env e, &@ast::item i, &() x, &vt[()] v) {
+fn check_item(&@env e, &@ast::item i, &() x, &vt[()] v) {
     visit::visit_item(i, x, v);
     alt (i.node) {
         case (ast::item_fn(?f, ?ty_params)) {
             check_fn(*e, i.span, f);
-            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+            ensure_unique(*e, i.span, ty_params, ident_id,
                                "type parameter");
         }
         case (ast::item_obj(?ob, ?ty_params, _)) {
             fn field_name(&ast::obj_field field) -> ident { ret field.ident; }
-            ensure_unique_ivec(*e, i.span, ob.fields, field_name,
+            ensure_unique(*e, i.span, ob.fields, field_name,
                                "object field");
             for (@ast::method m in ob.methods) {
                 check_fn(*e, m.span, m.node.meth);
             }
-            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+            ensure_unique(*e, i.span, ty_params, ident_id,
                                "type parameter");
         }
         case (ast::item_tag(_, ?ty_params)) {
-            ensure_unique_ivec(*e, i.span, ty_params, ident_id,
+            ensure_unique(*e, i.span, ty_params, ident_id,
                                "type parameter");
         }
         case (_) { }
     }
 }
 
-fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
+fn check_arm(&@env e, &ast::arm a, &() x, &vt[()] v) {
     visit::visit_arm(a, x, v);
     fn walk_pat(checker ch, &@ast::pat p) {
         alt (p.node) {
@@ -1323,7 +1325,7 @@ fn check_arm(@env e, &ast::arm a, &() x, &vt[()] v) {
     }
 }
 
-fn check_block(@env e, &ast::blk b, &() x, &vt[()] v) {
+fn check_block(&@env e, &ast::blk b, &() x, &vt[()] v) {
     visit::visit_block(b, x, v);
     auto values = checker(*e, "value");
     auto types = checker(*e, "type");
@@ -1371,7 +1373,29 @@ fn check_block(@env e, &ast::blk b, &() x, &vt[()] v) {
 
 fn check_fn(&env e, &span sp, &ast::_fn f) {
     fn arg_name(&ast::arg a) -> ident { ret a.ident; }
-    ensure_unique_ivec(e, sp, f.decl.inputs, arg_name, "argument");
+    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
+}
+
+fn check_expr(&@env e, &@ast::expr ex, &() x, &vt[()] v) {
+    alt ex.node {
+      ast::expr_rec(?fields, _) {
+        fn field_name(&ast::field f) -> ident { ret f.node.ident; }
+        ensure_unique(*e, ex.span, fields, field_name, "field name");
+      }
+      _ {}
+    }
+    visit::visit_expr(ex, x, v);
+}
+
+fn check_ty(&@env e, &@ast::ty ty, &() x, &vt[()] v) {
+    alt ty.node {
+      ast::ty_rec(?fields) {
+        fn field_name(&ast::ty_field f) -> ident { ret f.node.ident; }
+        ensure_unique(*e, ty.span, fields, field_name, "field name");
+      }
+      _ {}
+    }
+    visit::visit_ty(ty, x, v);
 }
 
 type checker = @rec(mutable ident[] seen, str kind, session sess);
@@ -1394,13 +1418,6 @@ fn ident_id(&ident i) -> ident { ret i; }
 
 fn ensure_unique[T](&env e, &span sp, &T[] elts, fn(&T) -> ident  id,
                     &str kind) {
-    auto ch = checker(e, kind);
-    for (T elt in elts) { add_name(ch, sp, id(elt)); }
-}
-
-// FIXME: Remove me.
-fn ensure_unique_ivec[T](&env e, &span sp, &T[] elts, fn(&T) -> ident  id,
-                         &str kind) {
     auto ch = checker(e, kind);
     for (T elt in elts) { add_name(ch, sp, id(elt)); }
 }
