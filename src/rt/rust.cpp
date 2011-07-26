@@ -75,6 +75,46 @@ command_line_args : public kernel_owned<command_line_args>
     }
 };
 
+
+#if defined(__WIN32__)
+int get_num_cpus() {
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+
+    return (int) sysinfo.dwNumberOfProcessors;
+}
+#elif defined(__BSD__)
+int get_num_cpus() {
+    /* swiped from http://stackoverflow.com/questions/150355/
+       programmatically-find-the-number-of-cores-on-a-machine */
+
+    unsigned int numCPU;
+    int mib[4];
+    size_t len = sizeof(numCPU);
+
+    /* set the mib for hw.ncpu */
+    mib[0] = CTL_HW;
+    mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+    /* get the number of CPUs from the system */
+    sysctl(mib, 2, &numCPU, &len, NULL, 0);
+
+    if( numCPU < 1 ) {
+        mib[1] = HW_NCPU;
+        sysctl( mib, 2, &numCPU, &len, NULL, 0 );
+
+        if( numCPU < 1 ) {
+            numCPU = 1;
+        }
+    }
+    return numCPU;
+}
+#elif defined(__GNUC__)
+int get_num_cpus() {
+    return sysconf(_SC_NPROCESSORS_ONLN);
+}
+#endif
+
 int get_num_threads()
 {
     char *env = getenv("RUST_THREADS");
@@ -83,9 +123,7 @@ int get_num_threads()
         if(num > 0)
             return num;
     }
-    // FIXME: in this case, determine the number of CPUs present on the
-    // machine.
-    return 1;
+    return get_num_cpus();
 }
 
 /**
