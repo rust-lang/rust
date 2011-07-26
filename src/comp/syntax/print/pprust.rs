@@ -246,14 +246,24 @@ fn commasep_exprs(&ps s, breaks b, &(@ast::expr)[] exprs) {
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(&ps s, ast::_mod _mod, &ast::attribute[] attrs) {
+fn print_mod(&ps s, &ast::_mod _mod, &ast::attribute[] attrs) {
     print_inner_attributes(s, attrs);
     for (@ast::view_item vitem in _mod.view_items) {
         print_view_item(s, vitem);
     }
     for (@ast::item item in _mod.items) {
-        hardbreak_if_not_bol(s);
         print_item(s, item);
+    }
+}
+
+fn print_native_mod(&ps s, &ast::native_mod nmod,
+                    &ast::attribute[] attrs) {
+    print_inner_attributes(s, attrs);
+    for (@ast::view_item vitem in nmod.view_items) {
+        print_view_item(s, vitem);
+    }
+    for (@ast::native_item item in nmod.items) {
+        print_native_item(s, item);
     }
 }
 
@@ -347,6 +357,40 @@ fn print_type(&ps s, &ast::ty ty) {
     end(s);
 }
 
+fn print_native_item(&ps s, &@ast::native_item item) {
+    hardbreak_if_not_bol(s);
+    maybe_print_comment(s, item.span.lo);
+    print_outer_attributes(s, item.attrs);
+    alt (item.node) {
+      ast::native_item_ty {
+        ibox(s, indent_unit);
+        ibox(s, 0u);
+        word_nbsp(s, "type");
+        word(s.s, item.ident);
+        end(s); // end the inner ibox
+        word(s.s, ";");
+        end(s); // end the outer ibox
+
+      }
+
+      ast::native_item_fn(?lname, ?decl, ?typarams) {
+        print_fn(s, decl, ast::proto_fn, item.ident,
+                 typarams);
+        alt (lname) {
+          none { }
+          some(?ss) {
+            space(s.s);
+            word_space(s, "=");
+            print_string(s, ss);
+          }
+        }
+        end(s); // end head-ibox
+        word(s.s, ";");
+        end(s); // end the outer fn box
+      }
+    }
+}
+
 fn print_item(&ps s, &@ast::item item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
@@ -392,37 +436,7 @@ fn print_item(&ps s, &@ast::item item) {
             word_nbsp(s, "mod");
             word_nbsp(s, item.ident);
             bopen(s);
-            print_inner_attributes(s, item.attrs);
-            for (@ast::native_item item in nmod.items) {
-                hardbreak_if_not_bol(s);
-                print_outer_attributes(s, item.attrs);
-                ibox(s, indent_unit);
-                maybe_print_comment(s, item.span.lo);
-                alt (item.node) {
-                    case (ast::native_item_ty) {
-                        word_nbsp(s, "type");
-                        word(s.s, item.ident);
-                    }
-                    case (ast::native_item_fn(?lname, ?decl, ?typarams)) {
-                        print_fn(s, decl, ast::proto_fn, item.ident,
-                                 typarams);
-                        alt (lname) {
-                            case (none) { }
-                            case (some(?ss)) {
-                                space(s.s);
-                                word_space(s, "=");
-                                print_string(s, ss);
-                            }
-                        }
-                        end(s); // end head-ibox
-
-                        end(s); // end the outer fn box
-
-                    }
-                }
-                word(s.s, ";");
-                end(s);
-            }
+            print_native_mod(s, nmod, item.attrs);
             bclose(s, item.span);
         }
         case (ast::item_ty(?ty, ?params)) {
