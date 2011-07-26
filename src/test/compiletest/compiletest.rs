@@ -500,11 +500,21 @@ fn dump_output(&config config, &str testfile, &str out) {
     auto outfile = make_out_name(config, testfile);
     auto writer = io::file_writer(outfile, [io::create, io::truncate]);
     writer.write_str(out);
+    maybe_dump_to_stdout(config, out);
 }
 
 // FIXME (726): Can't use file_writer on mac
 #[cfg(target_os = "macos")]
 fn dump_output(&config config, &str testfile, &str out) {
+    maybe_dump_to_stdout(config, out);
+}
+
+fn maybe_dump_to_stdout(&config config, &str out) {
+    if (config.verbose) {
+        io::stdout().write_line("------------------------------------------");
+        io::stdout().write_line(out);
+        io::stdout().write_line("------------------------------------------");
+    }
 }
 
 fn make_out_name(&config config, &str testfile) -> str {
