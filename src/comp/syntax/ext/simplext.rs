@@ -221,7 +221,7 @@ fn transcribe(&ext_ctxt cx, &bindings b, @expr body) -> @expr {
                                              afp.fold_expr),
             fold_ty = bind transcribe_type(cx, b, idx_path, _, _,
                                            afp.fold_ty),
-            fold_block = bind transcribe_block(cx, b, idx_path, _, _, 
+            fold_block = bind transcribe_block(cx, b, idx_path, _, _,
                                                afp.fold_block),
             map_exprs = bind transcribe_exprs(cx, b, idx_path, _, _)
             with *afp);
