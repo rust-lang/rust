@@ -1354,7 +1354,7 @@ fn parse_else_expr(&parser p) -> @ast::expr {
 }
 
 fn parse_head_local(&parser p) -> @ast::local {
-    if (is_word(p, "auto")) {
+    if (eat_word(p, "auto")) {
         ret parse_auto_local(p);
     } else {
         ret parse_typed_local(p);
