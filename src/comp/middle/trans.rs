@@ -4616,187 +4616,177 @@ fn trans_bind_1(&@block_ctxt cx, &@ast::expr f, &lval_result f_res,
                 &(option::t[@ast::expr])[] args, ast::node_id id) -> result {
     if (f_res.is_mem) {
         bcx_ccx(cx).sess.unimpl("re-binding existing function");
-    } else {
-        let (@ast::expr)[] bound = ~[];
-        for (option::t[@ast::expr] argopt in args) {
-            alt (argopt) {
-                case (none) { }
-                case (some(?e)) { bound += ~[e]; }
-            }
-        }
+    }
 
-        // Figure out which tydescs we need to pass, if any.
-        let ty::t outgoing_fty;
-        let ValueRef[] lltydescs;
-        alt (f_res.generic) {
-            case (none) {
-                outgoing_fty = ty::expr_ty(bcx_tcx(cx), f);
-                lltydescs = ~[];
-            }
-            case (some(?ginfo)) {
-                lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
-                outgoing_fty = ginfo.item_type;
-                lltydescs = ginfo.tydescs;
-            }
-        }
-        auto ty_param_count = std::ivec::len[ValueRef](lltydescs);
-        if (std::ivec::len[@ast::expr](bound) == 0u && ty_param_count == 0u) {
-
-            // Trivial 'binding': just return the static pair-ptr.
-            ret f_res.res;
-        } else {
-            auto bcx = f_res.res.bcx;
-            auto pair_t = node_type(bcx_ccx(cx), cx.sp, id);
-            auto pair_v = alloca(bcx, pair_t);
-
-            // Translate the bound expressions.
-            let ty::t[] bound_tys = ~[];
-            let lval_result[] bound_vals = ~[];
-            for (@ast::expr e in bound) {
-                auto lv = trans_lval(bcx, e);
-                bcx = lv.res.bcx;
-                bound_vals += ~[lv];
-                bound_tys += ~[ty::expr_ty(bcx_tcx(cx), e)];
-            }
-
-            // Synthesize a closure type.
-
-            // First, synthesize a tuple type containing the types of all the
-            // bound expressions.
-            // bindings_ty = ~[bound_ty1, bound_ty2, ...]
-
-            let ty::t bindings_ty = ty::mk_imm_tup(bcx_tcx(cx),
-                                                   bound_tys);
-
-            // NB: keep this in sync with T_closure_ptr; we're making
-            // a ty::t structure that has the same "shape" as the LLVM type
-            // it constructs.
-
-            // Make a vector that contains ty_param_count copies of tydesc_ty.
-            // (We'll need room for that many tydescs in the closure.)
-            let ty::t tydesc_ty = ty::mk_type(bcx_tcx(cx));
-            let ty::t[] captured_tys =
-                std::ivec::init_elt[ty::t](tydesc_ty, ty_param_count);
-
-            // Get all the types we've got (some of which we synthesized
-            // ourselves) into a vector.  The whole things ends up looking
-            // like:
-
-            // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
-            // ...], [tydesc_ty, tydesc_ty, ...]]
-            let ty::t[] closure_tys =
-                ~[tydesc_ty, outgoing_fty, bindings_ty,
-                  ty::mk_imm_tup(bcx_tcx(cx), captured_tys)];
-
-            // Finally, synthesize a type for that whole vector.
-            let ty::t closure_ty =
-                ty::mk_imm_tup(bcx_tcx(cx), closure_tys);
-
-            // Allocate a box that can hold something closure-sized, including
-            // space for a refcount.
-            auto r = trans_malloc_boxed(bcx, closure_ty);
-            auto box = r.val;
-            bcx = r.bcx;
-
-            // Grab onto the refcount and body parts of the box we allocated.
-            auto rc =
-                bcx.build.GEP(box,
-                              ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
-            auto closure =
-                bcx.build.GEP(box, ~[C_int(0),
-                                     C_int(abi::box_rc_field_body)]);
-            bcx.build.Store(C_int(1), rc);
-
-            // Store bindings tydesc.
-            auto bound_tydesc =
-                bcx.build.GEP(closure,
-                              ~[C_int(0), C_int(abi::closure_elt_tydesc)]);
-            auto ti = none[@tydesc_info];
-            auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
-            lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-            lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-            bcx = bindings_tydesc.bcx;
-            bcx.build.Store(bindings_tydesc.val, bound_tydesc);
-
-            // Determine the LLVM type for the outgoing function type. This
-            // may be different from the type returned by trans_malloc_boxed()
-            // since we have more information than that function does;
-            // specifically, we know how many type descriptors the outgoing
-            // function has, which type_of() doesn't, as only we know which
-            // item the function refers to.
-            auto llfnty =
-                type_of_fn(bcx_ccx(bcx), cx.sp,
-                           ty::ty_fn_proto(bcx_tcx(bcx), outgoing_fty),
-                           ty::ty_fn_args(bcx_tcx(bcx), outgoing_fty),
-                           ty::ty_fn_ret(bcx_tcx(bcx), outgoing_fty),
-                           ty_param_count);
-            auto llclosurety = T_ptr(T_fn_pair(*bcx_ccx(bcx), llfnty));
-
-            // Store thunk-target.
-            auto bound_target =
-                bcx.build.GEP(closure,
-                              ~[C_int(0), C_int(abi::closure_elt_target)]);
-            auto src = bcx.build.Load(f_res.res.val);
-            bound_target = bcx.build.PointerCast(bound_target, llclosurety);
-            bcx.build.Store(src, bound_target);
-
-            // Copy expr values into boxed bindings.
-            auto i = 0u;
-            auto bindings =
-                bcx.build.GEP(closure,
-                              ~[C_int(0), C_int(abi::closure_elt_bindings)]);
-            for (lval_result lv in bound_vals) {
-                auto bound =
-                    bcx.build.GEP(bindings, ~[C_int(0), C_int(i as int)]);
-                bcx = move_val_if_temp(bcx, INIT, bound, lv,
-                                       bound_tys.(i)).bcx;
-                i += 1u;
-            }
-
-            // If necessary, copy tydescs describing type parameters into the
-            // appropriate slot in the closure.
-            alt (f_res.generic) {
-                case (none) {/* nothing to do */ }
-                case (some(?ginfo)) {
-                    lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
-                    auto ty_params_slot =
-                        bcx.build.GEP(closure,
-                                      ~[C_int(0),
-                                        C_int(abi::closure_elt_ty_params)]);
-                    auto i = 0;
-                    for (ValueRef td in ginfo.tydescs) {
-                        auto ty_param_slot =
-                            bcx.build.GEP(ty_params_slot,
-                                          ~[C_int(0), C_int(i)]);
-                        bcx.build.Store(td, ty_param_slot);
-                        i += 1;
-                    }
-                    outgoing_fty = ginfo.item_type;
-                }
-            }
-
-            // Make thunk and store thunk-ptr in outer pair's code slot.
-            auto pair_code =
-                bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_code)]);
-            // The type of the entire bind expression.
-            let ty::t pair_ty = node_id_type(bcx_ccx(cx), id);
-
-            let ValueRef llthunk =
-                trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
-                                 args, closure_ty, bound_tys, ty_param_count);
-            bcx.build.Store(llthunk, pair_code);
-
-            // Store box ptr in outer pair's box slot.
-            auto ccx = *bcx_ccx(bcx);
-            auto pair_box =
-                bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_box)]);
-            bcx.build.Store(bcx.build.PointerCast(box,
-                                                  T_opaque_closure_ptr(ccx)),
-                            pair_box);
-            add_clean_temp(cx, pair_v, pair_ty);
-            ret rslt(bcx, pair_v);
+    let (@ast::expr)[] bound = ~[];
+    for (option::t[@ast::expr] argopt in args) {
+        alt (argopt) {
+          case (none) { }
+          case (some(?e)) { bound += ~[e]; }
         }
     }
+
+    // Figure out which tydescs we need to pass, if any.
+    let ty::t outgoing_fty;
+    let ValueRef[] lltydescs;
+    alt (f_res.generic) {
+      case (none) {
+        outgoing_fty = ty::expr_ty(bcx_tcx(cx), f);
+        lltydescs = ~[];
+      }
+      case (some(?ginfo)) {
+        lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
+        outgoing_fty = ginfo.item_type;
+        lltydescs = ginfo.tydescs;
+      }
+    }
+    auto ty_param_count = std::ivec::len[ValueRef](lltydescs);
+    if (std::ivec::len[@ast::expr](bound) == 0u && ty_param_count == 0u) {
+
+        // Trivial 'binding': just return the static pair-ptr.
+        ret f_res.res;
+    }
+    auto bcx = f_res.res.bcx;
+    auto pair_t = node_type(bcx_ccx(cx), cx.sp, id);
+    auto pair_v = alloca(bcx, pair_t);
+
+    // Translate the bound expressions.
+    let ty::t[] bound_tys = ~[];
+    let lval_result[] bound_vals = ~[];
+    for (@ast::expr e in bound) {
+        auto lv = trans_lval(bcx, e);
+        bcx = lv.res.bcx;
+        bound_vals += ~[lv];
+        bound_tys += ~[ty::expr_ty(bcx_tcx(cx), e)];
+    }
+
+    // Synthesize a closure type.
+
+    // First, synthesize a tuple type containing the types of all the
+    // bound expressions.
+    // bindings_ty = ~[bound_ty1, bound_ty2, ...]
+
+    let ty::t bindings_ty = ty::mk_imm_tup(bcx_tcx(cx), bound_tys);
+
+    // NB: keep this in sync with T_closure_ptr; we're making
+    // a ty::t structure that has the same "shape" as the LLVM type
+    // it constructs.
+
+    // Make a vector that contains ty_param_count copies of tydesc_ty.
+    // (We'll need room for that many tydescs in the closure.)
+    let ty::t tydesc_ty = ty::mk_type(bcx_tcx(cx));
+    let ty::t[] captured_tys = std::ivec::init_elt(tydesc_ty, ty_param_count);
+
+    // Get all the types we've got (some of which we synthesized
+    // ourselves) into a vector.  The whole things ends up looking
+    // like:
+
+    // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
+    // ...], [tydesc_ty, tydesc_ty, ...]]
+    let ty::t[] closure_tys =
+        ~[tydesc_ty, outgoing_fty, bindings_ty,
+          ty::mk_imm_tup(bcx_tcx(cx), captured_tys)];
+
+    // Finally, synthesize a type for that whole vector.
+    let ty::t closure_ty =
+        ty::mk_imm_tup(bcx_tcx(cx), closure_tys);
+
+    // Allocate a box that can hold something closure-sized, including
+    // space for a refcount.
+    auto r = trans_malloc_boxed(bcx, closure_ty);
+    auto box = r.val;
+    bcx = r.bcx;
+
+    // Grab onto the refcount and body parts of the box we allocated.
+    auto rc =
+        bcx.build.GEP(box, ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
+    auto closure =
+        bcx.build.GEP(box, ~[C_int(0), C_int(abi::box_rc_field_body)]);
+    bcx.build.Store(C_int(1), rc);
+
+    // Store bindings tydesc.
+    auto bound_tydesc =
+        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_tydesc)]);
+    auto ti = none;
+    auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+    bcx = bindings_tydesc.bcx;
+    bcx.build.Store(bindings_tydesc.val, bound_tydesc);
+
+    // Determine the LLVM type for the outgoing function type. This
+    // may be different from the type returned by trans_malloc_boxed()
+    // since we have more information than that function does;
+    // specifically, we know how many type descriptors the outgoing
+    // function has, which type_of() doesn't, as only we know which
+    // item the function refers to.
+    auto llfnty =
+        type_of_fn(bcx_ccx(bcx), cx.sp,
+                   ty::ty_fn_proto(bcx_tcx(bcx), outgoing_fty),
+                   ty::ty_fn_args(bcx_tcx(bcx), outgoing_fty),
+                   ty::ty_fn_ret(bcx_tcx(bcx), outgoing_fty),
+                   ty_param_count);
+    auto llclosurety = T_ptr(T_fn_pair(*bcx_ccx(bcx), llfnty));
+
+    // Store thunk-target.
+    auto bound_target =
+        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_target)]);
+    auto src = bcx.build.Load(f_res.res.val);
+    bound_target = bcx.build.PointerCast(bound_target, llclosurety);
+    bcx.build.Store(src, bound_target);
+
+    // Copy expr values into boxed bindings.
+    auto i = 0u;
+    auto bindings =
+        bcx.build.GEP(closure,
+                      ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+    for (lval_result lv in bound_vals) {
+        auto bound =
+            bcx.build.GEP(bindings, ~[C_int(0), C_int(i as int)]);
+        bcx = move_val_if_temp(bcx, INIT, bound, lv, bound_tys.(i)).bcx;
+        i += 1u;
+    }
+
+    // If necessary, copy tydescs describing type parameters into the
+    // appropriate slot in the closure.
+    alt (f_res.generic) {
+      case (none) {/* nothing to do */ }
+      case (some(?ginfo)) {
+        lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
+        auto ty_params_slot =
+            bcx.build.GEP(closure,
+                          ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+        auto i = 0;
+        for (ValueRef td in ginfo.tydescs) {
+            auto ty_param_slot = bcx.build.GEP(ty_params_slot,
+                                               ~[C_int(0), C_int(i)]);
+            bcx.build.Store(td, ty_param_slot);
+            i += 1;
+        }
+        outgoing_fty = ginfo.item_type;
+      }
+    }
+
+    // Make thunk and store thunk-ptr in outer pair's code slot.
+    auto pair_code =
+        bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_code)]);
+    // The type of the entire bind expression.
+    let ty::t pair_ty = node_id_type(bcx_ccx(cx), id);
+
+    let ValueRef llthunk =
+        trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
+                         args, closure_ty, bound_tys, ty_param_count);
+    bcx.build.Store(llthunk, pair_code);
+
+    // Store box ptr in outer pair's box slot.
+    auto ccx = *bcx_ccx(bcx);
+    auto pair_box =
+        bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_box)]);
+    bcx.build.Store(
+        bcx.build.PointerCast(box, T_opaque_closure_ptr(ccx)),
+        pair_box);
+    add_clean_temp(cx, pair_v, pair_ty);
+    ret rslt(bcx, pair_v);
 }
 
 fn trans_arg_expr(&@block_ctxt cx, &ty::arg arg, TypeRef lldestty0,
