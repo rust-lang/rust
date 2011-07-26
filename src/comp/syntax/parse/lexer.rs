@@ -623,7 +623,7 @@ fn push_blank_line_comment(&reader rdr,
 fn consume_whitespace_counting_blank_lines(&reader rdr,
                                            &mutable cmnt[] comments) {
     while (is_whitespace(rdr.curr()) && !rdr.is_eof()) {
-        if rdr.curr() == '\n' && rdr.next() == '\n' {
+        if rdr.get_col() == 0u && rdr.curr() == '\n' {
             push_blank_line_comment(rdr, comments);
         }
         rdr.bump();
@@ -758,9 +758,6 @@ fn gather_comments_and_literals(&codemap::codemap cm, str path,
             auto code_to_the_left = !first_read;
             consume_non_eol_whitespace(rdr);
             if (rdr.curr() == '\n') {
-                if first_read {
-                    push_blank_line_comment(rdr, comments);
-                }
                 code_to_the_left = false;
                 consume_whitespace_counting_blank_lines(rdr, comments);
             }
