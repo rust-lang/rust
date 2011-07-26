@@ -170,7 +170,6 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("state", ());
     words.insert("gc", ());
     words.insert("native", ());
-    words.insert("auto", ());
     words.insert("fn", ());
     words.insert("pred", ());
     words.insert("iter", ());

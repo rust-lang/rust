@@ -1052,18 +1052,16 @@ fn print_decl(&ps s, &@ast::decl decl) {
         case (ast::decl_local(?locs)) {
             space_if_not_hardbreak(s);
             ibox(s, indent_unit);
-            alt (locs.(0).node.ty) {
-                case (some(?ty)) {
-                    word_nbsp(s, "let");
-                    print_type(s, *ty);
-                    space(s.s);
-                }
-                case (_) {
-                    word_nbsp(s, "auto");
-                }
-            }
+            word_nbsp(s, "let");
             fn print_local(&ps s, &@ast::local loc) {
                 word(s.s, loc.node.ident);
+                alt (loc.node.ty) {
+                  some(?ty) {
+                    word_space(s, ":");
+                    print_type(s, *ty);
+                  }
+                  _ {}
+                }
                 alt loc.node.init {
                   some(?init) {
                     space(s.s);
