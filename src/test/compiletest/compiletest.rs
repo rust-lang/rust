@@ -525,7 +525,8 @@ mod procsrv {
     export run;
     export close;
 
-    type handle = chan[request];
+    type handle = rec(option::t[task] task,
+                      chan[request] chan);
 
     tag request {
         exec(str, str, vec[str], chan[response]);
@@ -535,22 +536,28 @@ mod procsrv {
     type response = rec(int pid, int outfd);
 
     fn mk() -> handle {
-        task::worker(worker).chan
+        auto res = task::worker(worker);
+        ret rec(task = option::some(res.task),
+                chan = res.chan);
     }
 
     fn clone(&handle handle) -> handle {
-        task::clone_chan(handle)
+        // Sharing tasks across tasks appears to be (yet another) recipe for
+        // disaster, so our handle clones will not get the task pointer.
+        rec(task = option::none,
+            chan = task::clone_chan(handle.chan))
     }
 
     fn close(&handle handle) {
-        task::send(handle, stop);
+        task::send(handle.chan, stop);
+        task::join(option::get(handle.task));
     }
 
     fn run(&handle handle, &str lib_path,
            &str prog, &vec[str] args) -> rec(int status, str out) {
         auto p = port[response]();
         auto ch = chan(p);
-        task::send(handle,
+        task::send(handle.chan,
                    exec(lib_path, prog, args, ch));
 
         auto resp = task::recv(p);
