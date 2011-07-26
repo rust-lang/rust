@@ -239,13 +239,6 @@ fn type_of_inner(&@crate_ctxt cx, &span sp, &ty::t t) -> TypeRef {
             llty = T_ptr(T_chan(type_of_inner(cx, sp, t)));
         }
         case (ty::ty_task) { llty = T_taskptr(*cx); }
-        case (ty::ty_tup(?elts)) {
-            let TypeRef[] tys = ~[];
-            for (ty::mt elt in elts) {
-                tys += ~[type_of_inner(cx, sp, elt.ty)];
-            }
-            llty = T_struct(tys);
-        }
         case (ty::ty_rec(?fields)) {
             let TypeRef[] tys = ~[];
             for (ty::field f in fields) {
@@ -610,11 +603,6 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
                 field_of_tydesc(cx, t, false, abi::tydesc_field_size);
             ret rslt(szptr.bcx, szptr.bcx.build.Load(szptr.val));
         }
-        case (ty::ty_tup(?elts)) {
-            let ty::t[] tys = ~[];
-            for (ty::mt mt in elts) { tys += ~[mt.ty]; }
-            ret align_elements(cx, tys);
-        }
         case (ty::ty_rec(?flds)) {
             let ty::t[] tys = ~[];
             for (ty::field f in flds) { tys += ~[f.mt.ty]; }
@@ -666,16 +654,6 @@ fn dynamic_align_of(&@block_ctxt cx, &ty::t t) -> result {
             auto aptr =
                 field_of_tydesc(cx, t, false, abi::tydesc_field_align);
             ret rslt(aptr.bcx, aptr.bcx.build.Load(aptr.val));
-        }
-        case (ty::ty_tup(?elts)) {
-            auto a = C_int(1);
-            auto bcx = cx;
-            for (ty::mt e in elts) {
-                auto align = align_of(bcx, e.ty);
-                bcx = align.bcx;
-                a = umax(bcx, a, align.val);
-            }
-            ret rslt(bcx, a);
         }
         case (ty::ty_rec(?flds)) {
             auto a = C_int(1);
@@ -2003,18 +1981,6 @@ fn iter_structural_ty_full(&@block_ctxt cx, ValueRef av, ValueRef bv,
 
     let result r = rslt(cx, C_nil());
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-        case (ty::ty_tup(?args)) {
-            let int i = 0;
-            for (ty::mt arg in args) {
-                r = GEP_tup_like(r.bcx, t, av, ~[0, i]);
-                auto elt_a = r.val;
-                r = GEP_tup_like(r.bcx, t, bv, ~[0, i]);
-                auto elt_b = r.val;
-                r = f(r.bcx, load_if_immediate(r.bcx, elt_a, arg.ty),
-                      load_if_immediate(r.bcx, elt_b, arg.ty), arg.ty);
-                i += 1;
-            }
-        }
         case (ty::ty_rec(?fields)) {
             let int i = 0;
             for (ty::field fld in fields) {
@@ -4196,11 +4162,6 @@ fn trans_field(&@block_ctxt cx, &span sp, ValueRef v, &ty::t t0,
     auto r = autoderef(cx, v, t0);
     auto t = r.ty;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
-        case (ty::ty_tup(_)) {
-            let uint ix = ty::field_num(cx.fcx.lcx.ccx.sess, sp, field);
-            auto v = GEP_tup_like(r.bcx, t, r.val, ~[0, ix as int]);
-            ret lval_mem(v.bcx, v.val);
-        }
         case (ty::ty_rec(?fields)) {
             let uint ix =
                 ty::field_idx(cx.fcx.lcx.ccx.sess, sp, field, fields);
@@ -5082,25 +5043,6 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f, &option::t[ValueRef] lliterbody,
     ret rslt(bcx, retval);
 }
 
-fn trans_tup(&@block_ctxt cx, &ast::elt[] elts, ast::node_id id) -> result {
-    auto bcx = cx;
-    auto t = node_id_type(bcx.fcx.lcx.ccx, id);
-    auto tup_res = alloc_ty(bcx, t);
-    auto tup_val = tup_res.val;
-    bcx = tup_res.bcx;
-    add_clean_temp(cx, tup_val, t);
-    let int i = 0;
-    for (ast::elt e in elts) {
-        auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e.expr);
-        auto src = trans_lval(bcx, e.expr);
-        bcx = src.res.bcx;
-        auto dst_res = GEP_tup_like(bcx, t, tup_val, ~[0, i]);
-        bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty).bcx;
-        i += 1;
-    }
-    ret rslt(bcx, tup_val);
-}
-
 fn trans_vec(&@block_ctxt cx, &(@ast::expr)[] args, ast::node_id id) ->
    result {
     auto t = node_id_type(cx.fcx.lcx.ccx, id);
@@ -5457,7 +5399,6 @@ fn trans_expr_out(&@block_ctxt cx, &@ast::expr e, out_method output) ->
         case (ast::expr_vec(?args, _, ast::sk_unique)) {
             ret trans_ivec(cx, args, e.id);
         }
-        case (ast::expr_tup(?args)) { ret trans_tup(cx, args, e.id); }
         case (ast::expr_rec(?args, ?base)) {
             ret trans_rec(cx, args, base, e.id);
         }

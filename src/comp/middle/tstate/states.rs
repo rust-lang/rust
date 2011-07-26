@@ -293,10 +293,6 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         case (expr_vec(?elts, _, _)) {
             ret find_pre_post_state_exprs(fcx, pres, e.id, elts, return);
         }
-        case (expr_tup(?elts)) {
-            ret find_pre_post_state_exprs(fcx, pres, e.id,
-                                          elt_exprs(elts), return);
-        }
         case (expr_call(?operator, ?operands)) {
             ret find_pre_post_state_call
                 (fcx, pres, operator, e.id, operands,

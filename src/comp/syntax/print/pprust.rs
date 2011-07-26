@@ -294,12 +294,6 @@ fn print_type(&ps s, &ast::ty ty) {
             print_type(s, *t);
             word(s.s, "]");
         }
-        case (ast::ty_tup(?elts)) {
-            word(s.s, "tup");
-            popen(s);
-            commasep(s, inconsistent, elts, print_mt);
-            pclose(s);
-        }
         case (ast::ty_rec(?fields)) {
             word(s.s, "{");
             fn print_field(&ps s, &ast::ty_field f) {
@@ -688,19 +682,6 @@ fn print_expr(&ps s, &@ast::expr expr) {
             commasep_exprs(s, inconsistent, exprs);
             word(s.s, "]");
             end(s);
-        }
-        case (ast::expr_tup(?exprs)) {
-            fn printElt(&ps s, &ast::elt elt) {
-                ibox(s, indent_unit);
-                if (elt.mut == ast::mut) { word_nbsp(s, "mutable"); }
-                print_expr(s, elt.expr);
-                end(s);
-            }
-            fn get_span(&ast::elt elt) -> codemap::span { ret elt.expr.span; }
-            word(s.s, "tup");
-            popen(s);
-            commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
-            pclose(s);
         }
         case (ast::expr_rec(?fields, ?wth)) {
             fn print_field(&ps s, &ast::field field) {

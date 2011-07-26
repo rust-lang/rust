@@ -334,9 +334,6 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
         case (expr_vec(?args, _, _)) {
             find_pre_post_exprs(fcx, args, e.id);
         }
-        case (expr_tup(?elts)) {
-            find_pre_post_exprs(fcx, elt_exprs(elts), e.id);
-        }
         case (expr_path(?p)) {
             auto rslt = expr_pp(fcx.ccx, e);
             clear_pp(rslt);

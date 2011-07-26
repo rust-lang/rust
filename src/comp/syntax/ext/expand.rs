@@ -40,7 +40,7 @@ fn expand_expr(&hashmap[str, base::syntax_extension] exts,
                                 = ext(ext_cx, pth.span, args, body);
                             exts.insert(named_extension.ident,
                                         named_extension.ext);
-                            ast::expr_tup(~[])
+                            ast::expr_rec(~[], none)
                         }
                     }
                 }

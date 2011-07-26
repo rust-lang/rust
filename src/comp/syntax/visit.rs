@@ -154,9 +154,6 @@ fn visit_ty[E](&@ty t, &E e, &vt[E] v) {
         case (ty_port(?t))      { v.visit_ty(t, e, v); }
         case (ty_chan(?t))      { v.visit_ty(t, e, v); }
         case (ty_task)          { /* no-op */ }
-        case (ty_tup(?mts)) {
-            for (mt mt in mts) { v.visit_ty(mt.ty, e, v); }
-        }
         case (ty_rec(?flds)) {
             for (ty_field f in flds) { v.visit_ty(f.node.mt.ty, e, v); }
         }
@@ -279,9 +276,6 @@ fn visit_mac[E](mac m, &E e, &vt[E] v) {
 fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
     alt (ex.node) {
         case (expr_vec(?es, _, _)) { visit_exprs(es, e, v); }
-        case (expr_tup(?elts)) {
-            for (elt el in elts) { v.visit_expr(el.expr, e, v); }
-        }
         case (expr_rec(?flds, ?base)) {
             for (field f in flds) { v.visit_expr(f.node.expr, e, v); }
             visit_expr_opt(base, e, v);

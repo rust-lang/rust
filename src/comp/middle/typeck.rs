@@ -329,10 +329,6 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         case (ast::ty_chan(?t)) {
             typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
         }
-        case (ast::ty_tup(?fields)) {
-            auto flds = ivec::map(bind ast_mt_to_mt(tcx, getter, _), fields);
-            typ = ty::mk_tup(tcx, flds);
-        }
         case (ast::ty_rec(?fields)) {
             let field[] flds = ~[];
             for (ast::ty_field f in fields) {
@@ -2208,17 +2204,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             }
             write::ty_only_fixup(fcx, id, typ);
         }
-        case (ast::expr_tup(?elts)) {
-            let ty::mt[] elts_mt = ~[];
-            ivec::reserve(elts_mt, ivec::len(elts));
-            for (ast::elt e in elts) {
-                check_expr(fcx, e.expr);
-                auto ety = expr_ty(fcx.ccx.tcx, e.expr);
-                elts_mt += ~[rec(ty=ety, mut=e.mut)];
-            }
-            auto typ = ty::mk_tup(fcx.ccx.tcx, elts_mt);
-            write::ty_only_fixup(fcx, id, typ);
-        }
         case (ast::expr_rec(?fields, ?base)) {
             alt (base) {
                 case (none) {/* no-op */ }
@@ -2278,15 +2263,6 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto base_t = expr_ty(fcx.ccx.tcx, base);
             base_t = do_autoderef(fcx, expr.span, base_t);
             alt (structure_of(fcx, expr.span, base_t)) {
-                case (ty::ty_tup(?args)) {
-                    let uint ix =
-                        ty::field_num(fcx.ccx.tcx.sess, expr.span, field);
-                    if (ix >= ivec::len[ty::mt](args)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  "bad index on tuple");
-                    }
-                    write::ty_only_fixup(fcx, id, args.(ix).ty);
-                }
                 case (ty::ty_rec(?fields)) {
                     let uint ix =
                         ty::field_idx(fcx.ccx.tcx.sess, expr.span, field,

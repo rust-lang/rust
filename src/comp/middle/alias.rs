@@ -558,10 +558,6 @@ fn expr_root(&ctx cx, @ast::expr ex, bool autoderef) ->
                     maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, base));
                 auto mut = false;
                 alt (ty::struct(cx.tcx, auto_unbox.t)) {
-                    case (ty::ty_tup(?fields)) {
-                        auto fnm = ty::field_num(cx.tcx.sess, ex.span, ident);
-                        mut = fields.(fnm).mut != ast::imm;
-                    }
                     case (ty::ty_rec(?fields)) {
                         for (ty::field fld in fields) {
                             if (str::eq(ident, fld.ident)) {
@@ -653,14 +649,6 @@ fn ty_can_unsafely_include(&ctx cx, ty::t needle, ty::t haystack, bool mut) ->
             }
             ty::ty_box(?mt) | ty::ty_vec(?mt) | ty::ty_ptr(?mt) {
                 ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
-            }
-            ty::ty_tup(?mts) {
-                for (ty::mt mt in mts) {
-                    if (helper(tcx, needle, mt.ty, get_mut(mut, mt))) {
-                        ret true;
-                    }
-                }
-                ret false;
             }
             ty::ty_rec(?fields) {
                 for (ty::field f in fields) {

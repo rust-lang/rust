@@ -103,11 +103,6 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_chan(?t)) { s += "chan[" + ty_to_str(cx, t) + "]"; }
         case (ty_type) { s += "type"; }
         case (ty_task) { s += "task"; }
-        case (ty_tup(?elems)) {
-            let str[] strs = ~[];
-            for (mt tm in elems) { strs += ~[mt_to_str(cx, tm)]; }
-            s += "tup(" + str::connect_ivec(strs, ",") + ")";
-        }
         case (ty_rec(?elems)) {
             let str[] strs = ~[];
             for (field fld in elems) { strs += ~[field_to_str(cx, fld)]; }

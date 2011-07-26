@@ -128,11 +128,6 @@ fn enc_sty(&ioivec::writer w, &@ctxt cx, &ty::sty st) {
         case (ty::ty_ivec(?mt)) { w.write_char('I'); enc_mt(w, cx, mt); }
         case (ty::ty_port(?t)) { w.write_char('P'); enc_ty(w, cx, t); }
         case (ty::ty_chan(?t)) { w.write_char('C'); enc_ty(w, cx, t); }
-        case (ty::ty_tup(?mts)) {
-            w.write_str("T[");
-            for (ty::mt mt in mts) { enc_mt(w, cx, mt); }
-            w.write_char(']');
-        }
         case (ty::ty_rec(?fields)) {
             w.write_str("R[");
             for (ty::field field in fields) {

@@ -564,12 +564,6 @@ fn parse_ty(&parser p) -> @ast::ty {
         t = ast::ty_vec(parse_mt(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
-    } else if (eat_word(p, "tup")) {
-        auto elems =
-            parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                           parse_mt, p);
-        hi = elems.span.hi;
-        t = ast::ty_tup(elems.node);
     } else if (eat_word(p, "rec")) {
         auto elems =
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
@@ -837,16 +831,6 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ret parse_spawn_expr(p);
     } else if (eat_word(p, "fn")) {
         ret parse_fn_expr(p);
-    } else if (eat_word(p, "tup")) {
-        fn parse_elt(&parser p) -> ast::elt {
-            auto m = parse_mutability(p);
-            auto e = parse_expr(p);
-            ret rec(mut=m, expr=e);
-        }
-        auto es = parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                            parse_elt, p);
-        hi = es.span.hi;
-        ex = ast::expr_tup(es.node);
     } else if (p.peek() == token::LBRACKET) {
         p.bump();
         auto mut = parse_mutability(p);
@@ -1737,7 +1721,6 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
         case (ast::stmt_expr(?e, _)) {
             ret alt (e.node) {
                 case (ast::expr_vec(_, _, _)) { true }
-                case (ast::expr_tup(_)) { true }
                 case (ast::expr_rec(_, _)) { true }
                 case (ast::expr_call(_, _)) { true }
                 case (ast::expr_self_method(_)) { false }

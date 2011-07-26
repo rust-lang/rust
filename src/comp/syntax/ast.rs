@@ -283,7 +283,6 @@ type expr = rec(node_id id,
 
 tag expr_ {
     expr_vec((@expr)[], mutability, seq_kind);
-    expr_tup(elt[]);
     expr_rec(field[], option::t[@expr]);
     expr_call(@expr, (@expr)[]);
     expr_self_method(ident);
@@ -446,7 +445,6 @@ tag ty_ {
     ty_task;
     ty_port(@ty);
     ty_chan(@ty);
-    ty_tup(mt[]);
     ty_rec(ty_field[]);
     ty_fn(proto, ty_arg[], @ty, controlflow, (@constr)[]);
     ty_obj(ty_method[]);

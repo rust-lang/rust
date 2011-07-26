@@ -154,9 +154,6 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
         case (ast::ty_task) { }
         case (ast::ty_port(?t)) { walk_ty(v, t); }
         case (ast::ty_chan(?t)) { walk_ty(v, t); }
-        case (ast::ty_tup(?mts)) {
-            for (ast::mt mt in mts) { walk_ty(v, mt.ty); }
-        }
         case (ast::ty_rec(?flds)) {
             for (ast::ty_field f in flds) { walk_ty(v, f.node.mt.ty); }
         }
@@ -286,9 +283,6 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
     v.visit_expr_pre(e);
     alt (e.node) {
         case (ast::expr_vec(?es, _, _)) { walk_exprs(v, es); }
-        case (ast::expr_tup(?elts)) {
-            for (ast::elt e in elts) { walk_expr(v, e.expr); }
-        }
         case (ast::expr_rec(?flds, ?base)) {
             for (ast::field f in flds) { walk_expr(v, f.node.expr); }
             walk_expr_opt(v, base);

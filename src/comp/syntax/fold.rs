@@ -308,10 +308,6 @@ fn noop_fold_decl(&decl_ d, ast_fold fld) -> decl_ {
 }
 
 fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
-    fn fold_elt_(&elt elt, ast_fold fld) -> elt {
-        ret rec(mut=elt.mut, expr=fld.fold_expr(elt.expr));
-    }
-    auto fold_elt = bind fold_elt_(_,fld);
     fn fold_field_(&field field, ast_fold fld) -> field {
         ret rec(node=rec(mut=field.node.mut,
                          ident=fld.fold_ident(field.node.ident),
@@ -344,9 +340,6 @@ fn noop_fold_expr(&expr_ e, ast_fold fld) -> expr_ {
     ret alt (e) {
         case (expr_vec(?exprs, ?mut, ?seq_kind)) {
             expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut, seq_kind)
-                }
-        case (expr_tup(?elts)) {
-            expr_tup(ivec::map(fold_elt, elts))
                 }
         case (expr_rec(?fields, ?maybe_expr)) {
             expr_rec(ivec::map(fold_field, fields),

@@ -175,9 +175,9 @@ fn mk_spawn_wrapper(&@block_ctxt cx, &@ast::expr func, &ty::t args_ty) ->
     // unpack the arguments
 
     alt (ty::struct(fcx.lcx.ccx.tcx, args_ty)) {
-        case (ty::ty_tup(?elements)) {
+        case (ty::ty_rec(?fields)) {
             auto i = 0;
-            for (ty::mt m in elements) {
+            for (ty::field f in fields) {
                 auto src = fbcx.build.GEP(arg, ~[C_int(0), C_int(i)]);
                 i += 1;
                 auto child_arg = fbcx.build.Load(src);
