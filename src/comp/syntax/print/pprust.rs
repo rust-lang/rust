@@ -1056,13 +1056,17 @@ fn print_decl(&ps s, &@ast::decl decl) {
             ibox(s, indent_unit);
             word_nbsp(s, "let");
             fn print_local(&ps s, &@ast::local loc) {
-                word(s.s, loc.node.ident);
-                alt (loc.node.ty) {
+                alt loc.node.ty {
                   some(?ty) {
+                    ibox(s, indent_unit);
+                    word(s.s, loc.node.ident);
                     word_space(s, ":");
                     print_type(s, *ty);
+                    end(s);
                   }
-                  _ {}
+                  _ {
+                    word(s.s, loc.node.ident);
+                  }
                 }
                 alt loc.node.init {
                   some(?init) {
