@@ -6,6 +6,7 @@ export program;
 export run_program;
 export start_program;
 export program_output;
+export spawn_process;
 
 native "rust" mod rustrt {
     fn rust_run_program(vbuf argv, int in_fd, int out_fd, int err_fd) -> int;

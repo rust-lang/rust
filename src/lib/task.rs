@@ -73,10 +73,12 @@ fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
     type wordsz2 = rec(int a, int b);
     type wordsz3 = rec(int a, int b, int c);
     type wordsz4 = rec(int a, int b, int c, int d);
+    type wordsz5 = rec(int a, int b, int c, int d, int e);
     type opaquechan_1wordsz = chan[chan[wordsz1]];
     type opaquechan_2wordsz = chan[chan[wordsz2]];
     type opaquechan_3wordsz = chan[chan[wordsz3]];
     type opaquechan_4wordsz = chan[chan[wordsz4]];
+    type opaquechan_5wordsz = chan[chan[wordsz5]];
 
     fn worktask1(opaquechan_1wordsz setupch, opaque fptr) {
         let *fn(port[wordsz1]) f = unsafe::reinterpret_cast(fptr);
@@ -106,6 +108,13 @@ fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
         (*f)(p);
     }
 
+    fn worktask5(opaquechan_5wordsz setupch, opaque fptr) {
+        let *fn(port[wordsz5]) f = unsafe::reinterpret_cast(fptr);
+        auto p = port[wordsz5]();
+        setupch <| chan(p);
+        (*f)(p);
+    }
+
     auto p = port[chan[T]]();
     auto setupch = chan(p);
     auto fptr = unsafe::reinterpret_cast(ptr::addr_of(f));
@@ -123,6 +132,9 @@ fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
     } else if Tsz == sys::size_of[wordsz4]() {
         auto setupchptr = unsafe::reinterpret_cast(setupch);
         spawn worktask4(setupchptr, fptr)
+    } else if Tsz == sys::size_of[wordsz5]() {
+        auto setupchptr = unsafe::reinterpret_cast(setupch);
+        spawn worktask5(setupchptr, fptr)
     } else {
         fail #fmt("unhandled type size %u in task::worker", Tsz)
     };

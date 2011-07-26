@@ -10,6 +10,7 @@ import std::generic_os::setenv;
 import std::generic_os::getenv;
 import std::os;
 import std::run;
+import std::task;
 
 tag mode {
     mode_compile_fail;
@@ -138,10 +139,16 @@ fn mode_str(mode mode) -> str {
     }
 }
 
+type cx = rec(config config,
+              procsrv::handle procsrv);
+
 fn run_tests(&config config) {
     auto opts = test_opts(config);
-    auto tests = make_tests(config);
+    auto cx = rec(config = config,
+                  procsrv = procsrv::mk());
+    auto tests = make_tests(cx);
     test::run_tests_console(opts, tests);
+    procsrv::close(cx.procsrv);
 }
 
 fn test_opts(&config config) -> test::test_opts {
@@ -149,13 +156,13 @@ fn test_opts(&config config) -> test::test_opts {
         run_ignored = config.run_ignored)
 }
 
-fn make_tests(&config config) -> test::test_desc[] {
-    log #fmt("making tests from %s", config.src_base);
+fn make_tests(&cx cx) -> test::test_desc[] {
+    log #fmt("making tests from %s", cx.config.src_base);
     auto tests = ~[];
-    for (str file in fs::list_dir(config.src_base)) {
+    for (str file in fs::list_dir(cx.config.src_base)) {
         log #fmt("inspecting file %s", file);
         if (is_test(file)) {
-            tests += ~[make_test(config, file)];
+            tests += ~[make_test(cx, file)];
         }
     }
     ret tests;
@@ -169,10 +176,10 @@ fn is_test(&str testfile) -> bool {
          || str::starts_with(name, "~"))
 }
 
-fn make_test(&config config, &str testfile) -> test::test_desc {
+fn make_test(&cx cx, &str testfile) -> test::test_desc {
     rec(name = testfile,
-        fn = make_test_fn(config, testfile),
-        ignore = is_test_ignored(config, testfile))
+        fn = make_test_fn(cx, testfile),
+        ignore = is_test_ignored(cx.config, testfile))
 }
 
 fn is_test_ignored(&config config, &str testfile) -> bool {
@@ -199,22 +206,24 @@ iter iter_header(&str testfile) -> str {
     }
 }
 
-fn make_test_fn(&config config, &str testfile) -> test::test_fn {
-    bind run_test(config, testfile)
+fn make_test_fn(&cx cx, &str testfile) -> test::test_fn {
+    auto testcx = rec(config = cx.config,
+                      procsrv = procsrv::clone(cx.procsrv));
+    bind run_test(testcx, testfile)
 }
 
-fn run_test(config config, str testfile) {
+fn run_test(cx cx, str testfile) {
     log #fmt("running %s", testfile);
     auto props = load_props(testfile);
-    alt (config.mode) {
+    alt (cx.config.mode) {
         mode_compile_fail {
-            run_cfail_test(config, props, testfile);
+            run_cfail_test(cx, props, testfile);
         }
         mode_run_fail {
-            run_rfail_test(config, props, testfile);
+            run_rfail_test(cx, props, testfile);
         }
         mode_run_pass {
-            run_rpass_test(config, props, testfile);
+            run_rpass_test(cx, props, testfile);
         }
     }
 }
@@ -266,8 +275,8 @@ fn parse_name_value_directive(&str line, &str directive) -> option::t[str] {
     }
 }
 
-fn run_cfail_test(&config config, &test_props props, &str testfile) {
-    auto procres = compile_test(config, props, testfile);
+fn run_cfail_test(&cx cx, &test_props props, &str testfile) {
+    auto procres = compile_test(cx, props, testfile);
 
     if (procres.status == 0) {
         fatal_procres("compile-fail test compiled successfully!", procres);
@@ -276,14 +285,14 @@ fn run_cfail_test(&config config, &test_props props, &str testfile) {
     check_error_patterns(props, testfile, procres);
 }
 
-fn run_rfail_test(&config config, &test_props props, &str testfile) {
-    auto procres = compile_test(config, props, testfile);
+fn run_rfail_test(&cx cx, &test_props props, &str testfile) {
+    auto procres = compile_test(cx, props, testfile);
 
     if (procres.status != 0) {
         fatal_procres("compilation failed!", procres);
     }
 
-    procres = exec_compiled_test(config, testfile);
+    procres = exec_compiled_test(cx, testfile);
 
     if (procres.status == 0) {
         fatal_procres("run-fail test didn't produce an error!",
@@ -293,14 +302,14 @@ fn run_rfail_test(&config config, &test_props props, &str testfile) {
     check_error_patterns(props, testfile, procres);
 }
 
-fn run_rpass_test(&config config, &test_props props, &str testfile) {
-    auto procres = compile_test(config, props, testfile);
+fn run_rpass_test(&cx cx, &test_props props, &str testfile) {
+    auto procres = compile_test(cx, props, testfile);
 
     if (procres.status != 0) {
         fatal_procres("compilation failed!", procres);
     }
 
-    procres = exec_compiled_test(config, testfile);
+    procres = exec_compiled_test(cx, testfile);
 
     if (procres.status != 0) {
         fatal_procres("test run failed!", procres);
@@ -346,26 +355,26 @@ type procargs = rec(str prog, vec[str] args);
 
 type procres = rec(int status, str out, str cmdline);
 
-fn compile_test(&config config, &test_props props,
+fn compile_test(&cx cx, &test_props props,
                 &str testfile) -> procres {
-    compose_and_run(config,
+    compose_and_run(cx,
                     testfile,
                     bind make_compile_args(_, props, _),
-                    config.compile_lib_path)
+                    cx.config.compile_lib_path)
 }
 
-fn exec_compiled_test(&config config, &str testfile) -> procres {
-    compose_and_run(config,
+fn exec_compiled_test(&cx cx, &str testfile) -> procres {
+    compose_and_run(cx,
                     testfile,
                     make_run_args,
-                    config.run_lib_path)
+                    cx.config.run_lib_path)
 }
 
-fn compose_and_run(&config config, &str testfile,
+fn compose_and_run(&cx cx, &str testfile,
                    fn(&config, &str) -> procargs make_args,
                    &str lib_path) -> procres {
-    auto procargs = make_args(config, testfile);
-    ret program_output(config, testfile, lib_path,
+    auto procargs = make_args(cx.config, testfile);
+    ret program_output(cx, testfile, lib_path,
                        procargs.prog, procargs.args);
 }
 
@@ -396,16 +405,15 @@ fn split_maybe_args(&option::t[str] argstr) -> vec[str] {
     }
 }
 
-fn program_output(&config config, &str testfile,
+fn program_output(&cx cx, &str testfile,
                   &str lib_path, &str prog, &vec[str] args) -> procres {
     auto cmdline = {
         auto cmdline = make_cmdline(lib_path, prog, args);
-        logv(config, #fmt("running %s", cmdline));
+        logv(cx.config, #fmt("running %s", cmdline));
         cmdline
     };
-    auto res = with_lib_path(lib_path,
-                             bind run::program_output(prog, args));
-    dump_output(config, testfile, res.out);
+    auto res = procsrv::run(cx.procsrv, lib_path, prog, args);
+    dump_output(cx.config, testfile, res.out);
     ret rec(status = res.status,
             out = res.out,
             cmdline = cmdline);
@@ -424,23 +432,6 @@ fn lib_path_cmd_prefix(&str path) -> str {
     #fmt("%s=\"%s\"", lib_path_env_var(), make_new_path(path))
 }
 
-fn with_lib_path[T](&str path, fn() -> T f) -> T {
-    auto maybe_oldpath = getenv(lib_path_env_var());
-    append_lib_path(path);
-    auto res = f();
-    if option::is_some(maybe_oldpath) {
-        export_lib_path(option::get(maybe_oldpath));
-    } else {
-        // FIXME: This should really be unset but we don't have that yet
-        export_lib_path("");
-    }
-    ret res;
-}
-
-fn append_lib_path(&str path) {
-    export_lib_path(make_new_path(path));
-}
-
 fn make_new_path(&str path) -> str {
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
@@ -448,10 +439,6 @@ fn make_new_path(&str path) -> str {
         option::some(?curr) { #fmt("%s:%s", path, curr) }
         option::none { path }
     }
-}
-
-fn export_lib_path(&str path) {
-    setenv(lib_path_env_var(), path);
 }
 
 #[cfg(target_os = "linux")]
@@ -521,6 +508,107 @@ fn logv(&config config, &str s) {
     log s;
     if (config.verbose) {
         io::stdout().write_line(s);
+    }
+}
+
+
+// So when running tests in parallel there's a potential race on environment
+// variables if we let each task spawn its own children - between the time the
+// environment is set and the process is spawned another task could spawn its
+// child process. Because of that we have to use a complicated scheme with a
+// dedicated server for spawning processes.
+mod procsrv {
+
+    export handle;
+    export mk;
+    export clone;
+    export run;
+    export close;
+
+    type handle = chan[request];
+
+    tag request {
+        exec(str, str, vec[str], chan[response]);
+        stop;
+    }
+
+    type response = rec(int pid, int outfd);
+
+    fn mk() -> handle {
+        task::worker(worker).chan
+    }
+
+    fn clone(&handle handle) -> handle {
+        task::clone_chan(handle)
+    }
+
+    fn close(&handle handle) {
+        task::send(handle, stop);
+    }
+
+    fn run(&handle handle, &str lib_path,
+           &str prog, &vec[str] args) -> rec(int status, str out) {
+        auto p = port[response]();
+        auto ch = chan(p);
+        task::send(handle,
+                   exec(lib_path, prog, args, ch));
+
+        auto resp = task::recv(p);
+        // Copied from run::program_output
+        auto outfile = os::fd_FILE(resp.outfd);
+        auto reader = io::new_reader(io::FILE_buf_reader(outfile, false));
+        auto buf = "";
+        while (!reader.eof()) {
+            auto bytes = reader.read_bytes(4096u);
+            buf += str::unsafe_from_bytes(bytes);
+        }
+        os::libc::fclose(outfile);
+        ret rec(status = os::waitpid(resp.pid), out = buf);
+    }
+
+    fn worker(port[request] p) {
+        while (true) {
+            alt task::recv(p) {
+              exec(?lib_path, ?prog, ?args, ?respchan) {
+                // This is copied from run::start_program
+                auto pipe_in = os::pipe();
+                auto pipe_out = os::pipe();
+                auto spawnproc = bind run::spawn_process(
+                    prog, args, pipe_in.in, pipe_out.out, 0);
+                auto pid = with_lib_path(lib_path, spawnproc);
+                if (pid == -1) { fail; }
+                os::libc::close(pipe_in.in);
+                os::libc::close(pipe_in.out);
+                os::libc::close(pipe_out.out);
+                task::send(respchan, rec(pid = pid,
+                                         outfd = pipe_out.in));
+              }
+              stop {
+                ret;
+              }
+            }
+        }
+    }
+
+    fn with_lib_path[T](&str path, fn() -> T f) -> T {
+        auto maybe_oldpath = getenv(lib_path_env_var());
+        append_lib_path(path);
+        auto res = f();
+        if option::is_some(maybe_oldpath) {
+            export_lib_path(option::get(maybe_oldpath));
+        } else {
+            // FIXME: This should really be unset but we don't have that yet
+            export_lib_path("");
+        }
+        ret res;
+    }
+
+    fn append_lib_path(&str path) {
+        export_lib_path(make_new_path(path));
+    }
+
+    fn export_lib_path(&str path) {
+        setenv(lib_path_env_var(), path);
     }
 }
 
