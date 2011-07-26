@@ -49,7 +49,7 @@ export def_map;
 tag scope {
     scope_crate;
     scope_item(@ast::item);
-    scope_fn(ast::fn_decl, ast::ty_param[]);
+    scope_fn(ast::fn_decl, ast::proto, ast::ty_param[]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
     scope_block(ast::blk);
@@ -358,7 +358,7 @@ fn visit_fn_with_scope(&@env e, &ast::_fn f, &ast::ty_param[] tp, &span sp,
         resolve_constr(e, id, c, sc, v);
     }
     visit::visit_fn(f, tp, sp, name, id,
-                    cons(scope_fn(f.decl, tp), @sc), v);
+                    cons(scope_fn(f.decl, f.proto, tp), @sc), v);
 }
 
 fn visit_block_with_scope(&ast::blk b, &scopes sc, &vt[scopes] v) {
@@ -375,7 +375,7 @@ fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
             ast::expr_for(?d, _, _) | ast::expr_for_each(?d, _, _) {
                 cons[scope](scope_loop(d), @sc)
             }
-            ast::expr_fn(?f) { cons(scope_fn(f.decl, ~[]), @sc) }
+            ast::expr_fn(?f) { cons(scope_fn(f.decl, f.proto, ~[]), @sc) }
             _ { sc }
         };
     visit::visit_expr(x, new_sc, v);
@@ -530,7 +530,7 @@ fn unresolved_err(&env e, &scopes sc, &span sp, &ident name, &str kind) {
             alt sc {
               cons(?cur, ?rest) {
                 alt cur {
-                  scope_crate | scope_fn(_, _) |
+                  scope_crate | scope_fn(_, _, _) |
                   scope_item(@{node: ast::item_mod(_), _}) {
                     ret cur;
                   }
@@ -596,9 +596,11 @@ fn lookup_in_scope_strict(&env e, scopes sc, &span sp, &ident name,
 
 fn scope_is_fn(&scope sc) -> bool {
     ret alt (sc) {
-            scope_fn(_, _) | scope_native_item(_) { true }
-            _ { false }
-        };
+        scope_fn(_, ast::proto_iter, _) |
+            scope_fn(_, ast::proto_fn, _) |
+            scope_native_item(_) { true }
+        _ { false }
+    };
 }
 
 fn def_is_local(&def d) -> bool {
@@ -657,7 +659,7 @@ fn lookup_in_scope(&env e, scopes sc, &span sp, &ident name, namespace ns) ->
                     }
                 }
             }
-            case (scope_fn(?decl, ?ty_params)) {
+            case (scope_fn(?decl, _, ?ty_params)) {
                 ret lookup_in_fn(name, decl, ty_params, ns);
             }
             case (scope_loop(?local)) {
