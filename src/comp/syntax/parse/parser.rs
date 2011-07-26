@@ -1593,7 +1593,17 @@ fn parse_auto_local(&parser p) -> @ast::local {
     ret parse_local_full(none, p);
 }
 
+// FIXME simplify when old syntax is no longer supported
 fn parse_let(&parser p) -> @ast::decl {
+    if alt p.peek() { token::IDENT(_, false) { true } _ { false } } {
+        alt p.look_ahead(1u) {
+          token::COLON | token::SEMI | token::COMMA | token::EQ |
+          token::LARROW {
+            ret parse_let_modern(p);
+          }
+          _ {}
+        }
+    }
     auto lo = p.get_last_lo_pos();
     auto locals = ~[parse_typed_local(p)];
     while p.peek() == token::COMMA {
@@ -1601,6 +1611,29 @@ fn parse_let(&parser p) -> @ast::decl {
         locals += ~[parse_typed_local(p)];
     }
     ret @spanned(lo, p.get_hi_pos(), ast::decl_local(locals));
+}
+
+fn parse_let_modern(&parser p) -> @ast::decl {
+    fn parse_local(&parser p) -> @ast::local {
+        auto lo = p.get_lo_pos();
+        auto ident = parse_value_ident(p);
+        auto ty = none;
+        if p.peek() == token::COLON {
+            p.bump();
+            ty = some(parse_ty(p));
+        }
+        auto init = parse_initializer(p);
+        ret @spanned(lo, p.get_last_hi_pos(),
+                     rec(ty=ty, infer=false, ident=ident,
+                         init=init, id=p.get_id()));
+    }
+    auto lo = p.get_lo_pos();
+    auto locals = ~[parse_local(p)];
+    while p.peek() == token::COMMA {
+        p.bump();
+        locals += ~[parse_local(p)];
+    }
+    ret @spanned(lo, p.get_last_hi_pos(), ast::decl_local(locals));
 }
 
 fn parse_auto(&parser p) -> @ast::decl {
