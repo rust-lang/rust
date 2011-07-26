@@ -239,6 +239,11 @@ obj printer(ioivec::writer out,
         ret token.(right);
     }
 
+    // be very careful with this!
+    fn replace_last_token(token t) {
+        token.(right) = t;
+    }
+
     fn pretty_print(token t) {
         log #fmt("pp [%u,%u]", left, right);
         alt (t) {
@@ -516,9 +521,14 @@ fn space(printer p) { spaces(p, 1u); }
 
 fn hardbreak(printer p) { spaces(p, size_infinity as uint); }
 
-fn hardbreak_tok() -> token {
-    ret BREAK(rec(offset=0, blank_space=size_infinity));
+fn hardbreak_tok_offset(int off) -> token {
+    ret BREAK(rec(offset=off, blank_space=size_infinity));
 }
+
+fn hardbreak_tok() -> token {
+    ret hardbreak_tok_offset(0);
+}
+
 
 //
 // Local Variables:

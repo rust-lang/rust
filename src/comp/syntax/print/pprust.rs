@@ -172,7 +172,7 @@ fn bopen(&ps s) {
 
 fn bclose_(&ps s, codemap::span span, uint indented) {
     maybe_print_comment(s, span.hi);
-    break_offset(s.s, 1u, -(indented as int));
+    break_offset_if_not_bol(s, 1u, -(indented as int));
     word(s.s, "}");
     end(s); // close the outer-box
 }
@@ -180,16 +180,24 @@ fn bclose(&ps s, codemap::span span) {
     bclose_(s, span, indent_unit);
 }
 
-fn hardbreak_if_not_bol(&ps s) {
-    if (s.s.last_token() != pp::EOF &&
-        s.s.last_token() != pp::hardbreak_tok()) {
-        hardbreak(s.s);
-    }
+fn is_bol(&ps s) -> bool {
+    ret (s.s.last_token() == pp::EOF ||
+         s.s.last_token() == pp::hardbreak_tok());
 }
 
-fn space_if_not_hardbreak(&ps s) {
-    if (s.s.last_token() != pp::hardbreak_tok()) {
-        space(s.s);
+fn hardbreak_if_not_bol(&ps s) { if ! is_bol(s) { hardbreak(s.s); } }
+fn space_if_not_bol(&ps s) { if ! is_bol(s) { space(s.s); } }
+fn break_offset_if_not_bol(&ps s, uint n, int off) {
+    if ! is_bol(s) {
+        break_offset(s.s, n, off);
+    } else {
+        if off != 0 && 
+            s.s.last_token() == pp::hardbreak_tok() {
+            // We do something pretty sketchy here: tuck the nonzero
+            // offset-adjustment we were going to deposit along with the
+            // break into the previous hardbreak.
+            s.s.replace_last_token(pp::hardbreak_tok_offset(off));
+        }
     }
 }
 
@@ -227,7 +235,7 @@ fn commasep_cmnt[IN](&ps s, breaks b, &IN[] elts, fn(&ps, &IN)  op,
             word(s.s, ",");
             maybe_print_trailing_comment(s, get_span(elt),
                                          some(get_span(elts.(i)).hi));
-            space_if_not_hardbreak(s);
+            space_if_not_bol(s);
         }
     }
     end(s);
@@ -430,8 +438,6 @@ fn print_item(&ps s, &@ast::item item) {
             print_type(s, *ty);
             word(s.s, ";");
             end(s); // end the outer ibox
-
-            break_offset(s.s, 0u, 0);
         }
         case (ast::item_tag(?variants, ?params)) {
             auto newtype = ivec::len(variants) == 1u &&
@@ -564,7 +570,7 @@ fn print_stmt(&ps s, &ast::stmt st) {
     alt (st.node) {
         case (ast::stmt_decl(?decl, _)) { print_decl(s, decl); }
         case (ast::stmt_expr(?expr, _)) {
-            space_if_not_hardbreak(s);
+            space_if_not_bol(s);
             print_expr(s, expr);
         }
     }
@@ -589,7 +595,7 @@ fn print_possibly_embedded_block(&ps s, &ast::blk blk, bool embedded,
     for (@ast::stmt st in blk.node.stmts) { print_stmt(s, *st) }
     alt (blk.node.expr) {
         case (some(?expr)) {
-            space_if_not_hardbreak(s);
+            space_if_not_bol(s);
             print_expr(s, expr);
             maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
         }
@@ -1030,7 +1036,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
     maybe_print_comment(s, decl.span.lo);
     alt (decl.node) {
         case (ast::decl_local(?locs)) {
-            space_if_not_hardbreak(s);
+            space_if_not_bol(s);
             ibox(s, indent_unit);
             word_nbsp(s, "let");
             fn print_local(&ps s, &@ast::local loc) {
@@ -1155,7 +1161,7 @@ fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
     if (decl.output.node != ast::ty_nil) {
-        space_if_not_hardbreak(s);
+        space_if_not_bol(s);
         word_space(s, "->");
         print_type(s, *decl.output);
     }
@@ -1306,7 +1312,7 @@ fn print_ty_fn(&ps s, &ast::proto proto, &option::t[str] id,
     pclose(s);
     maybe_print_comment(s, output.span.lo);
     if (output.node != ast::ty_nil) {
-        space_if_not_hardbreak(s);
+        space_if_not_bol(s);
         ibox(s, indent_unit);
         word_space(s, "->");
         alt (cf) {
