@@ -372,15 +372,19 @@ fn visit_arm_with_scope(&ast::arm a, &scopes sc, &vt[scopes] v) {
 }
 
 fn visit_expr_with_scope(&@ast::expr x, &scopes sc, &vt[scopes] v) {
-    auto new_sc =
-        alt (x.node) {
-            ast::expr_for(?d, _, _) | ast::expr_for_each(?d, _, _) {
-                cons[scope](scope_loop(d), @sc)
-            }
-            ast::expr_fn(?f) { cons(scope_fn(f.decl, ~[]), @sc) }
-            _ { sc }
-        };
-    visit::visit_expr(x, new_sc, v);
+    alt (x.node) {
+      ast::expr_for(?decl, ?coll, ?blk) |
+      ast::expr_for_each(?decl, ?coll, ?blk) {
+        auto new_sc = cons[scope](scope_loop(decl), @sc);
+        v.visit_expr(coll, sc, v);
+        v.visit_local(decl, new_sc, v);
+        v.visit_block(blk, new_sc, v);
+      }
+      ast::expr_fn(?f) {
+        visit::visit_expr(x, cons(scope_fn(f.decl, ~[]), @sc), v);
+      }
+      _ { visit::visit_expr(x, sc, v); }
+    };
 }
 
 fn follow_import(&env e, &scopes sc, &ident[] path, &span sp)
@@ -1380,7 +1384,7 @@ fn check_expr(&@env e, &@ast::expr ex, &() x, &vt[()] v) {
     alt ex.node {
       ast::expr_rec(?fields, _) {
         fn field_name(&ast::field f) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ex.span, fields, field_name, "field name");
+        ensure_unique(*e, ex.span, fields, field_name, "field");
       }
       _ {}
     }
@@ -1391,7 +1395,7 @@ fn check_ty(&@env e, &@ast::ty ty, &() x, &vt[()] v) {
     alt ty.node {
       ast::ty_rec(?fields) {
         fn field_name(&ast::ty_field f) -> ident { ret f.node.ident; }
-        ensure_unique(*e, ty.span, fields, field_name, "field name");
+        ensure_unique(*e, ty.span, fields, field_name, "field");
       }
       _ {}
     }

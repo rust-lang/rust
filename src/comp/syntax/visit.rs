@@ -322,12 +322,7 @@ fn visit_expr[E](&@expr ex, &E e, &vt[E] v) {
             v.visit_expr(x, e, v);
             v.visit_block(b, e, v);
         }
-        case (expr_for(?dcl, ?x, ?b)) {
-            v.visit_local(dcl, e, v);
-            v.visit_expr(x, e, v);
-            v.visit_block(b, e, v);
-        }
-        case (expr_for_each(?dcl, ?x, ?b)) {
+        expr_for(?dcl, ?x, ?b) | expr_for_each(?dcl, ?x, ?b) {
             v.visit_local(dcl, e, v);
             v.visit_expr(x, e, v);
             v.visit_block(b, e, v);
