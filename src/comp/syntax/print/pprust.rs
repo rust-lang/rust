@@ -1086,7 +1086,10 @@ fn print_decl(&ps s, &@ast::decl decl) {
 fn print_ident(&ps s, &ast::ident ident) { word(s.s, ident); }
 
 fn print_for_decl(&ps s, @ast::local loc) {
-    print_type(s, *option::get(loc.node.ty));
+    alt (loc.node.ty) {
+      none { word(s.s, "auto"); }
+      some (?t) { print_type(s, *t); }
+    }
     space(s.s);
     word(s.s, loc.node.ident);
 }
