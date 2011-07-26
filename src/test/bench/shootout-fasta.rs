@@ -65,7 +65,7 @@ fn make_repeat_fasta(str id, str desc, str s, int n) {
     if (str::byte_len(op) > 0u) { log op; }
 }
 
-fn acid(char ch, u32 prob) { ret rec(ch=ch, prob=prob); }
+fn acid(char ch, u32 prob) -> aminoacids { ret rec(ch=ch, prob=prob); }
 
 fn main(vec[str] args) {
     let vec[aminoacids] iub =
