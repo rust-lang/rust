@@ -23,6 +23,7 @@ import ast::ident;
 import ast::path;
 import ast::ty;
 import ast::blk;
+import ast::blk_;
 import ast::expr;
 import ast::expr_;
 import ast::path_;
@@ -218,6 +219,10 @@ fn transcribe(&ext_ctxt cx, &bindings b, @expr body) -> @expr {
             fold_path = bind transcribe_path(cx, b, idx_path, _, _),
             fold_expr = bind transcribe_expr(cx, b, idx_path, _, _,
                                              afp.fold_expr),
+            fold_ty = bind transcribe_type(cx, b, idx_path, _, _,
+                                           afp.fold_ty),
+            fold_block = bind transcribe_block(cx, b, idx_path, _, _, 
+                                               afp.fold_block),
             map_exprs = bind transcribe_exprs(cx, b, idx_path, _, _)
             with *afp);
     auto f = make_fold(f_pre);
@@ -390,8 +395,45 @@ fn transcribe_expr(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
     }
 }
 
+fn transcribe_type(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                   &ast::ty_ t, ast_fold fld,
+                   fn(&ast::ty_, ast_fold) -> ast::ty_ orig) -> ast::ty_ {
+    ret alt(t) {
+      case (ast::ty_path(?pth,_)) {
+        alt (path_to_ident(pth)) {
+          case (some(?id)) {
+            alt (follow_for_trans(cx, b.find(id), idx_path)) {
+              case (some(match_ty(?ty))) { ty.node }
+              case (some(?m)) { match_error(cx, m, "a type") }
+              case (none) { orig(t, fld) }
+            }
+          }
+          case (none) { orig(t, fld) }
+        }
+      }
+      case (_) { orig(t, fld) }
+    }
+}
 
 
+/* for parsing reasons, syntax variables bound to blocks must be used like
+`{v}` */
+
+fn transcribe_block(&ext_ctxt cx, &bindings b, @mutable vec[uint] idx_path,
+                    &blk_ blk, ast_fold fld,
+                    fn(&blk_, ast_fold) -> blk_ orig) -> blk_ {
+    ret alt (block_to_ident(blk)) {
+      case (some(?id)) {
+        alt (follow_for_trans(cx, b.find(id), idx_path)) {
+          case (some(match_block(?new_blk))) { new_blk.node }
+          // possibly allow promotion of ident/path/expr to blocks?
+          case (some(?m)) { match_error(cx, m, "a block")}
+          case (none) { orig(blk, fld) }
+        }
+      }
+      case (none) { orig(blk, fld) }
+    }
+}
 
 
 /* traverse the pattern, building instructions on how to bind the actual
@@ -415,6 +457,9 @@ fn p_t_s_rec(&ext_ctxt cx, &matchable m, &selector s, &binders b) {
             }
           }
           /* TODO: handle embedded types and blocks, at least */
+          case (expr_mac(?mac)) {
+            p_t_s_r_mac(cx, mac, s, b);
+          }
           case (_) {
             fn select(&ext_ctxt cx, &matchable m, @expr pat)
                 -> match_result {
@@ -422,6 +467,7 @@ fn p_t_s_rec(&ext_ctxt cx, &matchable m, &selector s, &binders b) {
                   case (match_expr(?e)) {
                     if (e==pat) { some(leaf(match_exact)) } else { none }
                   }
+                  case (_) { cx.bug("broken traversal in p_t_s_r"); fail }
                 }
             }
             b.literal_ast_matchers += ~[bind select(cx,_,e)];
@@ -439,12 +485,8 @@ fn specialize_match(&matchable m) -> matchable {
         alt (e.node) {
           case (expr_path(?pth)) {
             alt (path_to_ident(pth)) {
-              case (some(?id)) {
-                match_ident(respan(pth.span,id))
-              }
-              case (none) {
-                match_path(pth)
-              }
+              case (some(?id)) { match_ident(respan(pth.span,id)) }
+              case (none) { match_path(pth) }
             }
           }
           case (_) { m }
@@ -454,7 +496,7 @@ fn specialize_match(&matchable m) -> matchable {
     }
 }
 
-/* Too much indentation, had to pull these out */
+/* pattern_to_selectors helper functions */
 fn p_t_s_r_path(&ext_ctxt cx, &path p, &selector s, &binders b) {
     alt (path_to_ident(p)) {
       case (some(?p_id)) {
@@ -470,6 +512,80 @@ fn p_t_s_r_path(&ext_ctxt cx, &path p, &selector s, &binders b) {
         b.real_binders.insert(p_id, compose_sels(s, bind select(cx,_)));
       }
       case (none) { }
+    }
+}
+
+fn block_to_ident(&blk_ blk) -> option::t[ident] {
+    if(ivec::len(blk.stmts) != 0u) { ret none; }
+    ret alt (blk.expr) {
+      case (some(?expr)) {
+        alt (expr.node) {
+          case (expr_path(?pth)) { path_to_ident(pth) }
+          case (_) { none }
+        }
+      }
+      case(none) { none }
+    }
+}
+
+fn p_t_s_r_mac(&ext_ctxt cx, &ast::mac mac, &selector s, &binders b) {
+    fn select_pt_1(&ext_ctxt cx, &matchable m, fn(&ast::mac) ->
+                   match_result fn_m) -> match_result {
+        ret alt(m) {
+          case (match_expr(?e)) {
+            alt(e.node) {
+              case (expr_mac(?mac)) { fn_m(mac) }
+              case (_) { none }
+            }
+          }
+          case (_) { cx.bug("broken traversal in p_t_s_r"); fail }
+        }
+    }
+    fn no_des(&ext_ctxt cx, &span sp, &str syn) -> ! {
+        cx.span_fatal(sp, "destructuring "+syn+" is not yet supported");
+    }
+    alt (mac.node) {
+      case (ast::mac_ellipsis) { cx.span_fatal(mac.span, "misused `...`"); }
+      case (ast::mac_invoc(_,_, _)) { no_des(cx, mac.span, "macro calls"); }
+      case (ast::mac_embed_type(?ty)) {
+        alt (ty.node) {
+          case ast::ty_path(?pth, _) {
+            alt (path_to_ident(pth)) {
+              case (some(?id)) {
+                /* look for an embedded type */
+                fn select_pt_2(&ast::mac m) -> match_result {
+                    ret alt (m.node) {
+                      case (ast::mac_embed_type(?t)) {
+                        some(leaf(match_ty(t)))
+                      }
+                      case (_) { none }
+                    }
+                }
+                b.real_binders.insert(id,
+                                      bind select_pt_1(cx, _, select_pt_2));
+              }
+              case (none) { no_des(cx, pth.span, "under `#<>`"); }
+            }
+          }
+          case (_) { no_des(cx, ty.span, "under `#<>`"); }
+        }
+      }
+      case (ast::mac_embed_block(?blk)) {
+        alt (block_to_ident(blk.node)) {
+          case (some(?id)) {
+            fn select_pt_2(&ast::mac m) -> match_result {
+                ret alt (m.node) {
+                  case (ast::mac_embed_block(?blk)) {
+                    some(leaf(match_block(blk)))
+                  }
+                  case (_) { none }
+                }
+            }
+            b.real_binders.insert(id, bind select_pt_1(cx, _, select_pt_2));
+          }
+          case (none) { no_des(cx, blk.span, "under `#{}`"); }
+        }
+      }
     }
 }
 

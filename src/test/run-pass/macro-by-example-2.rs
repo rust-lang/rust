@@ -20,5 +20,9 @@ fn main() {
     assert(#dup([1,[1,2,3,4]]) == [[1,1], [1,2], [1,3], [1,4]]);
 
 
+    #macro([#lambda(x, #<t>, body, #<s>),
+            {fn result(t x) -> s { ret body }; result}]);
+
+    assert(#lambda(i, #<uint>, i+4u, #<uint>)(12u) == 16u)
 
 }
