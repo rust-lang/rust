@@ -53,13 +53,13 @@ rust_kernel::destroy_scheduler(rust_scheduler *sched) {
 }
 
 void rust_kernel::create_schedulers() {
-    for(int i = 0; i < num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         threads.push(create_scheduler(i));
     }
 }
 
 void rust_kernel::destroy_schedulers() {
-    for(int i = 0; i < num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         destroy_scheduler(threads[i]);
     }
 }
@@ -106,7 +106,7 @@ rust_kernel::get_port_handle(rust_port *port) {
 
 void
 rust_kernel::log_all_scheduler_state() {
-    for(int i = 0; i < num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         threads[i]->log_state();
     }
 }
@@ -252,12 +252,12 @@ rust_kernel::signal_kernel_lock() {
 
 int rust_kernel::start_task_threads()
 {
-    for(int i = 0; i < num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         rust_scheduler *thread = threads[i];
         thread->start();
     }
 
-    for(int i = 0; i < num_threads; ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         rust_scheduler *thread = threads[i];
         thread->join();
     }
@@ -269,6 +269,12 @@ rust_task *
 rust_kernel::create_task(rust_task *spawner, const char *name) {
     // TODO: use a different rand.
     return threads[rand(&rctx) % num_threads]->create_task(spawner, name);
+}
+
+void rust_kernel::wakeup_schedulers() {
+    for(size_t i = 0; i < num_threads; ++i) {
+        threads[i]->lock.signal_all();
+    }
 }
 
 #ifdef __WIN32__

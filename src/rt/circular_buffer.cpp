@@ -123,7 +123,7 @@ circular_buffer::dequeue(void *dst) {
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
     }
-    DLOG(sched, mem, "shifted data from index %d", _next);
+    //DLOG(sched, mem, "shifted data from index %d", _next);
     _unread -= unit_sz;
     _next += unit_sz;
     if (_next == _buffer_sz) {

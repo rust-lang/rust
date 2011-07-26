@@ -105,7 +105,7 @@ rust_task::~rust_task()
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
-    // I(sched, ref_count == 0 ||
+    I(sched, ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
 
     del_stk(this, stk);
@@ -167,6 +167,7 @@ rust_task::start(uintptr_t spawnee_fn,
 
     yield_timer.reset_us(0);
     transition(&sched->newborn_tasks, &sched->running_tasks);
+    sched->lock.signal();
 }
 
 void
@@ -211,6 +212,8 @@ rust_task::kill() {
 
     if (NULL == supervisor && propagate_failure)
         sched->fail();
+
+    sched->lock.signal();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
     // run_on_resume(rust_unwind_glue);
@@ -442,12 +445,15 @@ rust_task::wakeup(rust_cond *from) {
     if(_on_wakeup) {
         _on_wakeup->on_wakeup();
     }
+
+    sched->lock.signal();
 }
 
 void
 rust_task::die() {
     scoped_lock with(lock);
     transition(&sched->running_tasks, &sched->dead_tasks);
+    sched->lock.signal();
 }
 
 void
