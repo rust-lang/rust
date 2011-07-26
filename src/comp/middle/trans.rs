@@ -7985,7 +7985,9 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let intrinsics = declare_intrinsics(llmod);
     let task_type = T_task();
     let taskptr_type = T_ptr(task_type);
+    tn.associate("taskptr", taskptr_type);
     let tydesc_type = T_tydesc(taskptr_type);
+    tn.associate("tydesc", tydesc_type);
     let glues = make_glues(llmod, taskptr_type);
     let hasher = ty::hash_ty;
     let eqer = ty::eq_ty;
