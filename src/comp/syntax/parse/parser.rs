@@ -821,7 +821,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
         } else {
-            auto blk = parse_block_tail(p);
+            auto blk = parse_block_tail(p, lo);
             ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
     } else if (eat_word(p, "if")) {
@@ -862,7 +862,7 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         ret mk_mac_expr(p, lo, p.get_hi_pos(), ast::mac_embed_type(ty))
     } else if (p.peek() == token::POUND_LBRACE) {
         p.bump();
-        auto blk = ast::mac_embed_block(parse_block_tail(p));
+        auto blk = ast::mac_embed_block(parse_block_tail(p, lo));
         ret mk_mac_expr(p, lo, p.get_hi_pos(), blk);
     } else if (p.peek() == token::ELLIPSIS) {
         p.bump();
@@ -1755,13 +1755,13 @@ fn stmt_ends_with_semi(&ast::stmt stmt) -> bool {
 }
 
 fn parse_block(&parser p) -> ast::blk {
+    auto lo = p.get_lo_pos();
     expect(p, token::LBRACE);
-    be parse_block_tail(p);
+    be parse_block_tail(p, lo);
 }
 
 // some blocks start with "#{"...
-fn parse_block_tail(&parser p) -> ast::blk {
-    auto lo = p.get_lo_pos();
+fn parse_block_tail(&parser p, uint lo) -> ast::blk {
     let (@ast::stmt)[] stmts = ~[];
     let option::t[@ast::expr] expr = none;
     while (p.peek() != token::RBRACE) {
