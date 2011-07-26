@@ -1,8 +1,8 @@
 
 
-fn box[T](&tup(T, T, T) x) -> @tup(T, T, T) { ret @x; }
+fn box[T](&rec(T x, T y, T z) x) -> @rec(T x, T y, T z) { ret @x; }
 
 fn main() {
-    let @tup(int, int, int) x = box[int](tup(1, 2, 3));
-    assert (x._1 == 2);
+    let @rec(int x, int y, int z) x = box[int](rec(x=1, y=2, z=3));
+    assert (x.y == 2);
 }

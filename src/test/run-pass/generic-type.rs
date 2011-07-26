@@ -1,9 +1,9 @@
 
 
-type pair[T] = tup(T, T);
+type pair[T] = rec(T x, T y);
 
 fn main() {
-    let pair[int] x = tup(10, 12);
-    assert (x._0 == 10);
-    assert (x._1 == 12);
+    let pair[int] x = rec(x=10, y=12);
+    assert (x.x == 10);
+    assert (x.y == 12);
 }

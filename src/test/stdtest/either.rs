@@ -78,11 +78,11 @@ fn test_partition() {
                  right(13),
                  left(14)];
   auto result = partition(input);
-  assert (result._0.(0) == 10);
-  assert (result._0.(1) == 12);
-  assert (result._0.(2) == 14);
-  assert (result._1.(0) == 11);
-  assert (result._1.(1) == 13);
+  assert (result.lefts.(0) == 10);
+  assert (result.lefts.(1) == 12);
+  assert (result.lefts.(2) == 14);
+  assert (result.rights.(0) == 11);
+  assert (result.rights.(1) == 13);
 }
 
 #[test]
@@ -90,8 +90,8 @@ fn test_partition_no_lefts() {
   let (t[int, int])[] input = ~[right(10),
                                 right(11)];
   auto result = partition(input);
-  assert (len(result._0) == 0u);
-  assert (len(result._1) == 2u);
+  assert (len(result.lefts) == 0u);
+  assert (len(result.rights) == 2u);
 }
 
 #[test]
@@ -99,14 +99,14 @@ fn test_partition_no_rights() {
   let (t[int, int])[] input = ~[left(10),
                                 left(11)];
   auto result = partition(input);
-  assert (len(result._0) == 2u);
-  assert (len(result._1) == 0u);
+  assert (len(result.lefts) == 2u);
+  assert (len(result.rights) == 0u);
 }
 
 #[test]
 fn test_partition_empty() {
   let (t[int, int])[] input = ~[];
   auto result = partition(input);
-  assert (len(result._0) == 0u);
-  assert (len(result._1) == 0u);
+  assert (len(result.lefts) == 0u);
+  assert (len(result.rights) == 0u);
 }

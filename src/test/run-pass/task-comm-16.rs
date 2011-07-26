@@ -40,20 +40,6 @@ fn test_str() {
     assert (s1.(3) as u8 == 't' as u8);
 }
 
-fn test_tup() {
-    type t = tup(int, u8, char);
-
-    let port[t] po = port();
-    let chan[t] ch = chan(po);
-    let t t0 = tup(0, 1u8, '2');
-    ch <| t0;
-    let t t1;
-    po |> t1;
-    assert (t0._0 == 0);
-    assert (t0._1 == 1u8);
-    assert (t0._2 == '2');
-}
-
 fn test_tag() {
     tag t { tag1; tag2(int); tag3(int, u8, char); }
     let port[t] po = port();
@@ -90,7 +76,6 @@ fn main() {
     test_rec();
     test_vec();
     test_str();
-    test_tup();
     test_tag();
     test_chan();
 }

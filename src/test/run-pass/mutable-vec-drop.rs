@@ -1,8 +1,6 @@
 
-
 fn main() {
     // This just tests whether the vec leaks its members.
-
-    let vec[mutable @tup(int, int)] pvec =
-        [mutable @tup(1, 2), @tup(3, 4), @tup(5, 6)];
+    let vec[mutable @rec(int a, int b)] pvec =
+        [mutable @rec(a=1, b=2), @rec(a=3, b=4), @rec(a=5, b=6)];
 }

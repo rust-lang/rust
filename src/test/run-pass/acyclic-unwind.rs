@@ -4,12 +4,11 @@
 // xfail-stage3
 // -*- rust -*-
 
-fn f(chan[int] c)
-{
-  type t = tup(int,int,int);
+fn f(chan[int] c) {
+  type t = rec(int _0, int _1, int _2);
 
   // Allocate a box.
-  let @t x = @tup(1,2,3);
+  let @t x = @rec(_0=1, _1=2, _2=3);
 
   // Signal parent that we've allocated a box.
   c <| 1;

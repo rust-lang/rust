@@ -105,7 +105,7 @@ fn sort_tests() {
 
     auto pairs = ivec::zip(expected, filtered);
 
-    for (tup(str, test::test_desc) p in pairs) {
+    for (rec(str _0, test::test_desc _1) p in pairs) {
         assert p._0 == p._1.name;
     }
 }

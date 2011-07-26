@@ -1,6 +1,6 @@
 
 
-type foo[T] = tup(T);
+type foo[T] = rec(T a);
 
 type bar[T] = foo[T];
 

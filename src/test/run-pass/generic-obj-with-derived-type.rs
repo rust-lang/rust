@@ -5,14 +5,16 @@ obj handle[T](T data) {
 }
 
 fn main() {
-    type rgb = tup(u8, u8, u8);
+    type rgb = rec(u8 x, u8 y, u8 z);
 
-    let handle[rgb] h = handle[rgb](tup(1 as u8, 2 as u8, 3 as u8));
+    let handle[rgb] h = handle[rgb](rec(x=1 as u8,
+                                        y=2 as u8,
+                                        z=3 as u8));
     log "constructed object";
-    log h.get()._0;
-    log h.get()._1;
-    log h.get()._2;
-    assert (h.get()._0 == 1 as u8);
-    assert (h.get()._1 == 2 as u8);
-    assert (h.get()._2 == 3 as u8);
+    log h.get().x;
+    log h.get().y;
+    log h.get().z;
+    assert (h.get().x == 1 as u8);
+    assert (h.get().y == 2 as u8);
+    assert (h.get().z == 3 as u8);
 }

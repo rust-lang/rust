@@ -4,7 +4,7 @@
 
 mod foo {
   fn bar[T](T f) -> int { ret 17; }
-  type bar[U, T] = tup(int, U, T);
+  type bar[U, T] = rec(int a, U b, T c);
 }
 
 fn main() {}

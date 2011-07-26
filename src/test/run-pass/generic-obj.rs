@@ -1,6 +1,6 @@
 
 
-obj buf[T](tup(T, T, T) data) {
+obj buf[T](rec(T _0, T _1, T _2) data) {
     fn get(int i) -> T {
         if (i == 0) {
             ret data._0;
@@ -11,7 +11,7 @@ obj buf[T](tup(T, T, T) data) {
 }
 
 fn main() {
-    let buf[int] b = buf[int](tup(1, 2, 3));
+    let buf[int] b = buf[int](rec(_0=1, _1=2, _2=3));
     log "constructed object";
     log b.get(0);
     log b.get(1);

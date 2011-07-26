@@ -17,12 +17,12 @@ fn test_bool() {
     test_generic[bool](true, eq);
 }
 
-fn test_tup() {
-    type t = tup(int, int);
+fn test_rec() {
+    type t = rec(int a, int b);
 
-    fn compare_tup(&t t1, &t t2) -> bool { ret t1 == t2; }
-    auto eq = bind compare_tup(_, _);
-    test_generic[t](tup(1, 2), eq);
+    fn compare_rec(&t t1, &t t2) -> bool { ret t1 == t2; }
+    auto eq = bind compare_rec(_, _);
+    test_generic[t](rec(a=1, b=2), eq);
 }
 
-fn main() { test_bool(); test_tup(); }
+fn main() { test_bool(); test_rec(); }

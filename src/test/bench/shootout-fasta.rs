@@ -21,24 +21,24 @@ obj myrandom(mutable u32 last) {
     }
 }
 
-type aminoacids = tup(char, u32);
+type aminoacids = rec(char ch, u32 prob);
 
 fn make_cumulative(vec[aminoacids] aa) -> vec[aminoacids] {
     let u32 cp = 0u32;
     let vec[aminoacids] ans = [];
-    for (aminoacids a in aa) { cp += a._1; ans += [tup(a._0, cp)]; }
+    for (aminoacids a in aa) { cp += a.prob; ans += [rec(ch=a.ch, prob=cp)]; }
     ret ans;
 }
 
 fn select_random(u32 r, vec[aminoacids] genelist) -> char {
-    if (r < genelist.(0)._1) { ret genelist.(0)._0; }
+    if (r < genelist.(0).prob) { ret genelist.(0).ch; }
     fn bisect(vec[aminoacids] v, uint lo, uint hi, u32 target) -> char {
         if (hi > lo + 1u) {
             let uint mid = lo + (hi - lo) / 2u;
-            if (target < v.(mid)._1) {
+            if (target < v.(mid).prob) {
                 be bisect(v, lo, mid, target);
             } else { be bisect(v, mid, hi, target); }
-        } else { ret v.(hi)._0; }
+        } else { ret v.(hi).ch; }
     }
     ret bisect(genelist, 0u, vec::len[aminoacids](genelist) - 1u, r);
 }
@@ -65,16 +65,18 @@ fn make_repeat_fasta(str id, str desc, str s, int n) {
     if (str::byte_len(op) > 0u) { log op; }
 }
 
+fn acid(char ch, u32 prob) { ret rec(ch=ch, prob=prob); }
+
 fn main(vec[str] args) {
     let vec[aminoacids] iub =
-        make_cumulative([tup('a', 27u32), tup('c', 12u32), tup('g', 12u32),
-                         tup('t', 27u32), tup('B', 2u32), tup('D', 2u32),
-                         tup('H', 2u32), tup('K', 2u32), tup('M', 2u32),
-                         tup('N', 2u32), tup('R', 2u32), tup('S', 2u32),
-                         tup('V', 2u32), tup('W', 2u32), tup('Y', 2u32)]);
+        make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
+                         acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
+                         acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
+                         acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
+                         acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
     let vec[aminoacids] homosapiens =
-        make_cumulative([tup('a', 30u32), tup('c', 20u32), tup('g', 20u32),
-                         tup('t', 30u32)]);
+        make_cumulative([acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
+                         acid('t', 30u32)]);
     let str alu =
         "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
             "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +

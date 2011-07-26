@@ -1,19 +1,19 @@
 use std;
 import std::uint;
 
-fn test(bool x, @tup(int, int, int) foo) -> int {
+fn test(bool x, @rec(int x, int y, int z) foo) -> int {
     auto bar = foo;
-    let @tup(int,int,int) y;
+    let @rec(int x, int y, int z) y;
     if (x) {
         y <- bar;
     } else {
-        y = @tup(4,5,6);
+        y = @rec(x=4, y=5, z=6);
     }
-    ret y._1;
+    ret y.y;
 }
 
 fn main() {
-    auto x = @tup(1,2,3);
+    auto x = @rec(x=1, y=2, z=3);
     for each (uint i in uint::range(0u, 10000u)) {
         assert (test(true, x) == 2);
     }

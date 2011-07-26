@@ -54,7 +54,7 @@ fn test_char() {
 fn test_box() {
   assert @10 == 10;
   assert 0xFF & @0xF0 == 0xF0;
-  assert tup(1, 3) < @tup(1, 4);
+  assert rec(a=1, b=3) < @rec(a=1, b=4);
   assert @rec(a = 'x') != @rec(a = 'y');
 }
 

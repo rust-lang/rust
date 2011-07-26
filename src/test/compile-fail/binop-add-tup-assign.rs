@@ -1,7 +1,7 @@
 // xfail-stage0
-// error-pattern:+ cannot be applied to type `tup(bool)`
+// error-pattern:+ cannot be applied to type `rec(bool x)`
 
 fn main() {
-  auto x = tup(true);
-  x += tup(false);
+  auto x = rec(x=true);
+  x += rec(x=false);
 }

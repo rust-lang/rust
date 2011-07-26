@@ -14,7 +14,7 @@ fn test_qsort() {
     sort::ivector::quick_sort(lteq, names);
 
     auto pairs = ivec::zip(expected, ivec::from_mut(names));
-    for (tup(int, int) p in pairs) {
+    for (rec(int _0, int _1) p in pairs) {
         log_err #fmt("%d %d", p._0, p._1);
         assert p._0 == p._1;
     }

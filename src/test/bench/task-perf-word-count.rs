@@ -134,9 +134,10 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each(@tup(str, chan[reduce_proto]) kv in intermediates.items()) {
+        for each(@rec(str key, chan[reduce_proto] val) kv
+                 in intermediates.items()) {
             // log_err "sending done to reducer for " + kv._0;
-            kv._1 <| release;
+            kv.val <| release;
         }
 
         ctrl <| mapper_done;
@@ -228,9 +229,10 @@ mod map_reduce {
             }
         }
 
-        for each(@tup(str, chan[reduce_proto]) kv in reducers.items()) {
+        for each(@rec(str key, chan[reduce_proto] val) kv
+                 in reducers.items()) {
             // log_err "sending done to reducer for " + kv._0;
-            kv._1 <| done;
+            kv.val <| done;
         }
 
         // log_err #fmt("joining %u tasks", ivec::len(tasks));

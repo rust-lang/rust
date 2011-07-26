@@ -285,15 +285,15 @@ fn test_zip_unzip() {
     auto v2 = ~[4, 5, 6];
     auto z1 = ivec::zip(v1, v2);
 
-    assert tup(1, 4) == z1.(0);
-    assert tup(2, 5) == z1.(1);
-    assert tup(3, 6) == z1.(2);
+    assert rec(_0=1, _1=4) == z1.(0);
+    assert rec(_0=2, _1=5) == z1.(1);
+    assert rec(_0=3, _1=6) == z1.(2);
 
     auto u1 = ivec::unzip(z1);
 
-    assert tup(1, 4) == tup(u1._0.(0), u1._1.(0));
-    assert tup(2, 5) == tup(u1._0.(1), u1._1.(1));
-    assert tup(3, 6) == tup(u1._0.(2), u1._1.(2));
+    assert rec(_0=1, _1=4) == rec(_0=u1._0.(0), _1=u1._1.(0));
+    assert rec(_0=2, _1=5) == rec(_0=u1._0.(1), _1=u1._1.(1));
+    assert rec(_0=3, _1=6) == rec(_0=u1._0.(2), _1=u1._1.(2));
 }
 
 // Local Variables:
