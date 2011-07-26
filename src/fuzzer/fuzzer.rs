@@ -204,6 +204,8 @@ fn file_is_confusing(&str filename) -> bool {
 
         "block-expr-precedence.rs",  // https://github.com/graydon/rust/issues/674
 
+        "nil-pattern.rs",            // something to do with () as a lone pattern
+
         "syntax-extension-fmt.rs"    // an issue where -2147483648 gains an
                                      // extra negative sign each time through,
                                      // which i can't reproduce using "rustc
@@ -228,8 +230,11 @@ fn check_roundtrip_convergence(&str code) {
     while (i < 10) {
         old = new;
         new = parse_and_print(old);
+        if content_is_confusing(new) {
+            ret;
+        }
         i += 1;
-        log_err #fmt("cycle %d", i);
+        log #fmt("cycle %d", i);
     }
 
     if old != new {
@@ -239,19 +244,13 @@ fn check_roundtrip_convergence(&str code) {
         fail "Mismatch";
     }
 }
+    
+fn check_convergence(&str[] files) {
+    
+    log_err #fmt("pp convergence tests: %u files", ivec::len(files));
+    for (str file in files)  {
 
-fn main(vec[str] args) {
-    if (vec::len(args) != 2u) {
-        log_err #fmt("usage: %s <testdir>", args.(0));
-        ret;
-    }
-    auto files = ~[];
-    auto root = args.(1);
-    find_rust_files(files, root); // not using time here because that currently screws with passing-a-mutable-array
-    log_err #fmt("%u files", ivec::len(files));
-
-    for (str file in files) {
-        log_err "=== " + file + " ===";
+        log_err #fmt("pp converge: %s", file);
         if ! file_is_confusing(file) {
             auto s = read_whole_file(file);
             if ! content_is_confusing(s) {
@@ -263,6 +262,18 @@ fn main(vec[str] args) {
         // Currently hits https://github.com/graydon/rust/issues/675
         //pp_variants(*crate, cm, file);
     }
+    }
+
+fn main(vec[str] args) {
+    if (vec::len(args) != 2u) {
+        log_err #fmt("usage: %s <testdir>", args.(0));
+        ret;
+    }
+    auto files = ~[];
+    auto root = args.(1);
+
+    find_rust_files(files, root);
+    check_convergence(files);
 }
 
 // Local Variables:
