@@ -8,7 +8,7 @@ import lib::llvm::mk_object_file;
 import lib::llvm::mk_section_iter;
 import front::attr;
 import middle::resolve;
-import syntax::walk;
+import syntax::visit;
 import syntax::codemap::span;
 import back::x86;
 import util::common;
@@ -36,11 +36,11 @@ fn read_crates(session::session sess,
              crate_cache=@std::map::new_str_hash[int](),
              library_search_paths=sess.get_opts().library_search_paths,
              mutable next_crate_num=1);
-    auto v =
-        rec(visit_view_item_pre=bind visit_view_item(e, _),
-            visit_item_pre=bind visit_item(e, _)
-            with walk::default_visitor());
-    walk::walk_crate(v, crate);
+    auto v = visit::mk_simple_visitor
+        (@rec(visit_view_item=bind visit_view_item(e, _),
+              visit_item=bind visit_item(e, _)
+              with *visit::default_simple_visitor()));
+    visit::visit_crate(crate, (), v);
 }
 
 type env =

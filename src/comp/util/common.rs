@@ -13,7 +13,7 @@ import syntax::codemap::codemap;
 import syntax::codemap::span;
 import ast::lit;
 import ast::path;
-import syntax::walk;
+import syntax::visit;
 import std::ioivec::stdout;
 import std::ioivec::str_writer;
 import std::ioivec::string_writer;
@@ -98,10 +98,10 @@ fn has_nonlocal_exits(&ast::blk b) -> bool {
             case (_) { }
         }
     }
-    auto v =
-        rec(visit_expr_pre=bind visit_expr(has_exits, _)
-            with walk::default_visitor());
-    walk::walk_block(v, b);
+    auto v = visit::mk_simple_visitor
+        (@rec(visit_expr=bind visit_expr(has_exits, _)
+              with *visit::default_simple_visitor()));
+    visit::visit_block(b, (), v);
     ret *has_exits;
 }
 

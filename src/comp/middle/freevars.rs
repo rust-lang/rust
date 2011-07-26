@@ -8,7 +8,7 @@ import std::option;
 import std::int;
 import std::option::*;
 import syntax::ast;
-import syntax::walk;
+import syntax::visit;
 import driver::session;
 import middle::resolve;
 import syntax::codemap::span;
@@ -33,7 +33,7 @@ type freevar_map = hashmap[ast::node_id, freevar_info];
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
 fn collect_freevars(&resolve::def_map def_map, &session::session sess,
-                    &fn (&walk::ast_visitor) walker,
+                    &fn (&visit::vt[()]) walker,
                     ast::node_id[] initial_decls) -> freevar_info {
     type env =
         @rec(mutable ast::node_id[] refs,
@@ -76,18 +76,16 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
     let hashset[ast::node_id] decls = new_int_hash();
     for (ast::node_id decl in initial_decls) { set_add(decls, decl); }
 
-    let env e =
-        @rec(mutable refs=~[],
-             decls=decls,
-             def_map=def_map,
-             sess=sess);
-    auto visitor =
-        @rec(visit_fn_pre=bind walk_fn(e, _, _, _, _, _),
-             visit_local_pre=bind walk_local(e, _),
-             visit_expr_pre=bind walk_expr(e, _),
-             visit_pat_pre=bind walk_pat(e, _)
-             with walk::default_visitor());
-    walker(*visitor);
+    let env e = @rec(mutable refs=~[],
+                     decls=decls,
+                     def_map=def_map,
+                     sess=sess);
+    walker(visit::mk_simple_visitor(
+        @rec(visit_local=bind walk_local(e, _),
+             visit_pat=bind walk_pat(e, _),
+             visit_expr=bind walk_expr(e, _),
+             visit_fn=bind walk_fn(e, _, _, _, _, _)
+             with *visit::default_simple_visitor())));
 
     // Calculate (refs - decls). This is the set of captured upvars.
     // We build a vec of the node ids of the uses and a set of the
@@ -119,16 +117,16 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
 
     fn walk_fn(env e, &ast::_fn f, &ast::ty_param[] tps, &span sp,
                &ast::fn_ident i, ast::node_id nid) {
-        auto walker = bind walk::walk_fn(_, f, tps, sp, i, nid);
+        auto walker = bind visit::visit_fn(f, tps, sp, i, nid, (), _);
         auto vars = collect_freevars(e.def_map, e.sess, walker, ~[]);
         e.freevars.insert(nid, vars);
     }
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
             ast::expr_for_each(?local, _, ?body) {
-                auto vars = collect_freevars(e.def_map, e.sess,
-                                             bind walk::walk_block(_, body),
-                                             ~[local.node.id]);
+                auto vars = collect_freevars
+                    (e.def_map, e.sess, bind visit::visit_block(body, (), _),
+                     ~[local.node.id]);
                 e.freevars.insert(body.node.id, vars);
             }
             _ {}
@@ -137,11 +135,11 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
 
     let env e =
         rec(freevars = new_int_hash(), def_map=def_map, sess=sess);
-    auto visitor =
-        rec(visit_fn_pre=bind walk_fn(e, _, _, _, _, _),
-            visit_expr_pre=bind walk_expr(e, _)
-            with walk::default_visitor());
-    walk::walk_crate(visitor, *crate);
+    auto visitor = visit::mk_simple_visitor
+        (@rec(visit_fn=bind walk_fn(e, _, _, _, _, _),
+              visit_expr=bind walk_expr(e, _)
+              with *visit::default_simple_visitor()));
+    visit::visit_crate(*crate, (), visitor);
 
     ret e.freevars;
 }

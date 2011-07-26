@@ -853,11 +853,11 @@ mod collect {
 
         auto abi = @mutable none[ast::native_abi];
         auto cx = @rec(tcx=tcx);
-        auto visit =
-            rec(visit_item_pre=bind convert(cx, abi, _),
-                visit_native_item_pre=bind convert_native(cx, abi, _)
-                with walk::default_visitor());
-        walk::walk_crate(visit, *crate);
+        auto visit = visit::mk_simple_visitor
+            (@rec(visit_item=bind convert(cx, abi, _),
+                  visit_native_item=bind convert_native(cx, abi, _)
+                  with *visit::default_simple_visitor()));
+        visit::visit_crate(*crate, (), visit);
     }
 }
 

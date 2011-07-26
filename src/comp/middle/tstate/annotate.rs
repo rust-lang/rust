@@ -5,7 +5,7 @@ import std::option::none;
 import std::int;
 import std::uint;
 import syntax::ast::*;
-import syntax::walk;
+import syntax::visit;
 import syntax::codemap::span;
 import std::map::new_str_hash;
 import util::common::log_expr_err;
@@ -53,13 +53,13 @@ fn collect_ids_local(&@local l, @mutable node_id[] rs) {
 
 fn node_ids_in_fn(&_fn f, &ty_param[] tps, &span sp, &fn_ident i,
                   node_id id, @mutable node_id[] rs) {
-    auto collect_ids = walk::default_visitor();
-    collect_ids =
-        rec(visit_expr_pre=bind collect_ids_expr(_, rs),
-            visit_block_pre=bind collect_ids_block(_, rs),
-            visit_stmt_pre=bind collect_ids_stmt(_, rs),
-            visit_local_pre=bind collect_ids_local(_, rs) with collect_ids);
-    walk::walk_fn(collect_ids, f, tps, sp, i, id);
+    auto collect_ids = visit::mk_simple_visitor
+        (@rec(visit_expr=bind collect_ids_expr(_, rs),
+              visit_block=bind collect_ids_block(_, rs),
+              visit_stmt=bind collect_ids_stmt(_, rs),
+              visit_local=bind collect_ids_local(_, rs)
+              with *visit::default_simple_visitor()));
+    visit::visit_fn(f, tps, sp, i, id, (), collect_ids);
 }
 
 fn init_vecs(&crate_ctxt ccx, &node_id[] node_ids, uint len) {
@@ -84,10 +84,10 @@ fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &ty_param[] tps,
 }
 
 fn annotate_crate(&crate_ctxt ccx, &crate crate) {
-    auto do_ann = walk::default_visitor();
-    do_ann =
-        rec(visit_fn_pre=bind annotate_in_fn(ccx, _, _, _, _, _) with do_ann);
-    walk::walk_crate(do_ann, crate);
+    auto do_ann = visit::mk_simple_visitor
+        (@rec(visit_fn=bind annotate_in_fn(ccx, _, _, _, _, _)
+              with *visit::default_simple_visitor()));
+    visit::visit_crate(crate, (), do_ann);
 }
 //
 // Local Variables:

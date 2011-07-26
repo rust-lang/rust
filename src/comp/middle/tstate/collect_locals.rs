@@ -4,11 +4,7 @@ import std::ivec;
 import syntax::ast::*;
 import util::ppaux::fn_ident_to_string;
 import std::option::*;
-import syntax::walk;
 import syntax::visit;
-import walk::walk_crate;
-import walk::walk_fn;
-import walk::ast_visitor;
 import aux::*;
 import std::map::new_int_hash;
 import util::common::new_def_hash;
@@ -137,11 +133,10 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ty_param[] tp,
    nested locally defined functions, onto a mapping from local variable name
    to bit number) */
 fn mk_f_to_fn_info(&crate_ctxt ccx, @crate c) {
-    let ast_visitor vars_visitor = walk::default_visitor();
-    vars_visitor =
-        rec(visit_fn_pre=bind mk_fn_info(ccx, _, _, _, _, _)
-            with vars_visitor);
-    walk_crate(vars_visitor, *c);
+    auto visitor = visit::mk_simple_visitor
+        (@rec(visit_fn=bind mk_fn_info(ccx, _, _, _, _, _)
+              with *visit::default_simple_visitor()));
+    visit::visit_crate(*c, (), visitor);
 }
 //
 // Local Variables:
