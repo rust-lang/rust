@@ -102,8 +102,8 @@ fn item_type(&ebmlivec::doc item, ast::crate_num this_cnum,
 
         // This item was defined in the crate we're searching if it's has the
         // local crate number, otherwise we need to search a different crate
-        if (external_def_id._0 == ast::local_crate) {
-            ret tup(this_cnum, external_def_id._1);
+        if (external_def_id.crate == ast::local_crate) {
+            ret rec(crate=this_cnum, node=external_def_id.node);
         } else {
             ret extres(external_def_id);
         }
@@ -118,7 +118,7 @@ fn item_ty_param_count(&ebmlivec::doc item) -> uint {
     let uint ty_param_count = 0u;
     auto tp = tag_items_data_item_ty_param_count;
     for each (ebmlivec::doc p in ebmlivec::tagged_docs(item, tp)) {
-        ty_param_count = ebmlivec::vint_at(ebmlivec::doc_data(p), 0u)._0;
+        ty_param_count = ebmlivec::vint_at(ebmlivec::doc_data(p), 0u).val;
     }
     ret ty_param_count;
 }
@@ -129,7 +129,7 @@ fn tag_variant_ids(&ebmlivec::doc item,
     auto v = tag_items_data_item_variant;
     for each (ebmlivec::doc p in ebmlivec::tagged_docs(item, v)) {
         auto ext = parse_def_id(ebmlivec::doc_data(p));
-        ids += ~[tup(this_cnum, ext._1)];
+        ids += ~[rec(crate=this_cnum, node=ext.node)];
     }
     ret ids;
 }
@@ -162,9 +162,9 @@ fn lookup_defs(&@u8[] data, ast::crate_num cnum, &ast::ident[] path)
 // FIXME doesn't yet handle re-exported externals
 fn lookup_def(ast::crate_num cnum, @u8[] data, &ast::def_id did_)
         -> ast::def {
-    auto item = lookup_item(did_._1, data);
+    auto item = lookup_item(did_.node, data);
     auto kind_ch = item_kind(item);
-    auto did = tup(cnum, did_._1);
+    auto did = rec(crate=cnum, node=did_.node);
     auto def =
         alt (kind_ch as char) {
             case ('c') { ast::def_const(did) }
@@ -179,7 +179,7 @@ fn lookup_def(ast::crate_num cnum, @u8[] data, &ast::def_id did_)
             case ('n') { ast::def_native_mod(did) }
             case ('v') {
                 auto tid = variant_tag_id(item);
-                tid = tup(cnum, tid._1);
+                tid = rec(crate=cnum, node=tid.node);
                 ast::def_variant(tid, did)
             }
         };
@@ -188,8 +188,8 @@ fn lookup_def(ast::crate_num cnum, @u8[] data, &ast::def_id did_)
 
 fn get_type(@u8[] data, ast::def_id def, &ty::ctxt tcx,
             &external_resolver extres) -> ty::ty_param_count_and_ty {
-    auto this_cnum = def._0;
-    auto node_id = def._1;
+    auto this_cnum = def.crate;
+    auto node_id = def.node;
     auto item = lookup_item(node_id, data);
     auto t = item_type(item, this_cnum, tcx, extres);
     auto tp_count;
@@ -198,7 +198,7 @@ fn get_type(@u8[] data, ast::def_id def, &ty::ctxt tcx,
     if (has_ty_params) {
         tp_count = item_ty_param_count(item);
     } else { tp_count = 0u; }
-    ret tup(tp_count, t);
+    ret rec(count=tp_count, ty=t);
 }
 
 fn get_type_param_count(@u8[] data, ast::node_id id) -> uint {
@@ -212,15 +212,15 @@ fn get_symbol(@u8[] data, ast::node_id id) -> str {
 fn get_tag_variants(&@u8[] data, ast::def_id def,
                     &ty::ctxt tcx,
                     &external_resolver extres) -> ty::variant_info[] {
-    auto external_crate_id = def._0;
+    auto external_crate_id = def.crate;
     auto data = cstore::get_crate_data(tcx.sess.get_cstore(),
                                        external_crate_id).data;
     auto items = ebmlivec::get_doc(ebmlivec::new_doc(data), tag_items);
-    auto item = find_item(def._1, items);
+    auto item = find_item(def.node, items);
     let ty::variant_info[] infos = ~[];
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast::def_id did in variant_ids) {
-        auto item = find_item(did._1, items);
+        auto item = find_item(did.node, items);
         auto ctor_ty = item_type(item, external_crate_id, tcx, extres);
         let ty::t[] arg_tys = ~[];
         alt (ty::struct(tcx, ctor_ty)) {
@@ -252,17 +252,17 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
         };
 }
 
-fn read_path(&ebmlivec::doc d) -> tup(str, uint) {
+fn read_path(&ebmlivec::doc d) -> rec(str path, uint pos) {
     auto desc = ebmlivec::doc_data(d);
     auto pos = ebmlivec::be_uint_from_bytes(@desc, 0u, 4u);
     auto pathbytes = ivec::slice[u8](desc, 4u, ivec::len[u8](desc));
     auto path = str::unsafe_from_bytes_ivec(pathbytes);
-    ret tup(path, pos);
+    ret rec(path=path, pos=pos);
 }
 
 fn describe_def(&ebmlivec::doc items, ast::def_id id) -> str {
-    if (id._0 != 0) { ret "external"; }
-    ret item_kind_to_str(item_kind(find_item(id._1, items)));
+    if (id.crate != ast::local_crate) { ret "external"; }
+    ret item_kind_to_str(item_kind(find_item(id.node, items)));
 }
 
 fn item_kind_to_str(u8 kind) -> str {
@@ -349,7 +349,7 @@ fn get_crate_attributes(@u8[] data) -> ast::attribute[] {
     ret get_attributes(ebmlivec::new_doc(data));
 }
 
-type crate_dep = tup(ast::crate_num, str);
+type crate_dep = rec(ast::crate_num cnum, str ident);
 
 fn get_crate_deps(@u8[] data) -> crate_dep[] {
     let crate_dep[] deps = ~[];
@@ -360,7 +360,7 @@ fn get_crate_deps(@u8[] data) -> crate_dep[] {
               ebmlivec::tagged_docs(depsdoc, tag_crate_dep)) {
         auto depname =
             str::unsafe_from_bytes_ivec(ebmlivec::doc_data(depdoc));
-        deps += ~[tup(crate_num, depname)];
+        deps += ~[rec(cnum=crate_num, ident=depname)];
         crate_num += 1;
     }
     ret deps;
@@ -370,7 +370,7 @@ fn list_crate_deps(@u8[] data, ioivec::writer out) {
     out.write_str("=External Dependencies=\n");
 
     for (crate_dep dep in get_crate_deps(data)) {
-        out.write_str(#fmt("%d %s\n", dep._0, dep._1));
+        out.write_str(#fmt("%d %s\n", dep.cnum, dep.ident));
     }
 
     out.write_str("\n");
@@ -387,10 +387,10 @@ fn list_crate_items(&@u8[] bytes, &ebmlivec::doc md, ioivec::writer out) {
         auto et = tag_index_buckets_bucket_elt;
         for each (ebmlivec::doc elt in ebmlivec::tagged_docs(bucket, et)) {
             auto data = read_path(elt);
-            auto def = ebmlivec::doc_at(bytes, data._1);
+            auto def = ebmlivec::doc_at(bytes, data.pos);
             auto did_doc = ebmlivec::get_doc(def, tag_def_id);
             auto did = parse_def_id(ebmlivec::doc_data(did_doc));
-            out.write_str(#fmt("%s (%s)\n", data._0,
+            out.write_str(#fmt("%s (%s)\n", data.path,
                                describe_def(items, did)));
         }
     }

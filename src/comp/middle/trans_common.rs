@@ -101,7 +101,7 @@ type stats =
         mutable uint n_glues_created,
         mutable uint n_null_glues,
         mutable uint n_real_glues,
-        @mutable (tup(str,int)[]) fn_times);
+        @mutable (rec(str ident, int time)[]) fn_times);
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt =

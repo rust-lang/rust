@@ -128,7 +128,7 @@ fn default_native_lib_naming(session::session sess, bool static) ->
 fn find_library_crate(&session::session sess, &ast::ident ident,
                       &(@ast::meta_item)[] metas,
                       &str[] library_search_paths)
-        -> option::t[tup(str, @u8[])] {
+        -> option::t[rec(str ident, @u8[] data)] {
 
     attr::require_unique_names(sess, metas);
 
@@ -161,8 +161,8 @@ fn find_library_crate(&session::session sess, &ast::ident ident,
 
 fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
                           &(@ast::meta_item)[] metas,
-                          &str[] library_search_paths) ->
-                          option::t[tup(str, @u8[])] {
+                          &str[] library_search_paths)
+    -> option::t[rec(str ident, @u8[] data)] {
     let str prefix = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
@@ -188,7 +188,7 @@ fn find_library_crate_aux(&rec(str prefix, str suffix) nn, str crate_name,
                         cont;
                     }
                     log #fmt("found %s with matching metadata", path);
-                    ret some(tup(path, cvec));
+                    ret some(rec(ident=path, data=cvec));
                 }
                 case (_) { }
             }
@@ -219,7 +219,8 @@ fn get_metadata_section(str filename) -> option::t[@u8[]] {
 
 fn load_library_crate(&session::session sess, span span,
                       &ast::ident ident, &(@ast::meta_item)[] metas,
-                      &str[] library_search_paths) -> tup(str, @u8[]) {
+                      &str[] library_search_paths)
+    -> rec(str ident, @u8[] data) {
 
     alt (find_library_crate(sess, ident, metas, library_search_paths)) {
         case (some(?t)) {
@@ -237,8 +238,8 @@ fn resolve_crate(env e, ast::ident ident, (@ast::meta_item)[] metas,
         auto cinfo = load_library_crate(e.sess, span, ident, metas,
                                         e.library_search_paths);
 
-        auto cfilename = cinfo._0;
-        auto cdata = cinfo._1;
+        auto cfilename = cinfo.ident;
+        auto cdata = cinfo.data;
 
         // Claim this crate number and cache it
         auto cnum = e.next_crate_num;
@@ -268,8 +269,8 @@ fn resolve_crate_deps(env e, &@u8[] cdata) -> cstore::cnum_map {
     // numbers
     auto cnum_map = new_int_hash[ast::crate_num]();
     for (decoder::crate_dep dep in decoder::get_crate_deps(cdata)) {
-        auto extrn_cnum = dep._0;
-        auto cname = dep._1;
+        auto extrn_cnum = dep.cnum;
+        auto cname = dep.ident;
         log #fmt("resolving dep %s", cname);
         if (e.crate_cache.contains_key(cname)) {
             log "already have it";

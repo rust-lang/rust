@@ -23,7 +23,7 @@ import trans_common::*;
 // An option identifying a branch (either a literal or a tag variant)
 tag opt {
     lit(@ast::lit);
-    var(uint /* variant id */, tup(def_id, def_id) /* variant def ids */);
+    var(uint /* variant id */, rec(def_id tg, def_id var) /* variant dids */);
 }
 fn opt_eq(&opt a, &opt b) -> bool {
     alt (a) {
@@ -44,16 +44,16 @@ fn trans_opt(&@block_ctxt bcx, &opt o) -> result {
 
 fn variant_opt(&@crate_ctxt ccx, ast::node_id pat_id) -> opt {
     auto vdef = ast::variant_def_ids(ccx.tcx.def_map.get(pat_id));
-    auto variants = ty::tag_variants(ccx.tcx, vdef._0);
+    auto variants = ty::tag_variants(ccx.tcx, vdef.tg);
     auto i = 0u;
     for (ty::variant_info v in variants) {
-        if (vdef._1 == v.id) { ret var(i, vdef); }
+        if (vdef.var == v.id) { ret var(i, vdef); }
         i += 1u;
     }
     fail;
 }
 
-type bind_map = tup(ast::ident, ValueRef)[];
+type bind_map = rec(ast::ident ident, ValueRef val)[];
 type match_branch = @rec((@ast::pat)[] pats,
                          BasicBlockRef body,
                          mutable bind_map bound);
@@ -72,7 +72,7 @@ fn matches_always(&@ast::pat p) -> bool {
 fn bind_for_pat(&@ast::pat p, &match_branch br, ValueRef val) {
     alt p.node {
         ast::pat_bind(?name) {
-            br.bound += ~[tup(name, val)];
+            br.bound += ~[rec(ident=name, val=val)];
         }
         _ {}
     }
@@ -184,15 +184,15 @@ fn get_options(&@crate_ctxt ccx, &match m, uint col) -> opt[] {
 }
 
 fn extract_variant_args(@block_ctxt bcx, ast::node_id pat_id,
-                        &tup(def_id, def_id) vdefs, ValueRef val)
-    -> tup(ValueRef[], @block_ctxt) {
+                        &rec(def_id tg, def_id var) vdefs, ValueRef val)
+    -> rec(ValueRef[] vals, @block_ctxt bcx) {
     auto ccx = bcx.fcx.lcx.ccx;
     auto ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     auto blobptr = val;
-    auto variants = ty::tag_variants(ccx.tcx, vdefs._0);
+    auto variants = ty::tag_variants(ccx.tcx, vdefs.tg);
     auto args = ~[];
     auto size = ivec::len(ty::tag_variant_with_id
-                          (ccx.tcx, vdefs._0, vdefs._1).args);
+                          (ccx.tcx, vdefs.tg, vdefs.var).args);
     if (size > 0u && ivec::len(variants) != 1u) {
         auto tagptr = bcx.build.PointerCast
             (val, trans_common::T_opaque_tag_ptr(ccx.tn));
@@ -200,13 +200,13 @@ fn extract_variant_args(@block_ctxt bcx, ast::node_id pat_id,
     }
     auto i = 0u;
     while (i < size) {
-        auto r = trans::GEP_tag(bcx, blobptr, vdefs._0, vdefs._1,
+        auto r = trans::GEP_tag(bcx, blobptr, vdefs.tg, vdefs.var,
                                 ty_param_substs, i as int);
         bcx = r.bcx;
         args += ~[r.val];
         i += 1u;
     }
-    ret tup(args, bcx);
+    ret rec(vals=args, bcx=bcx);
 }
 
 fn collect_record_fields(&match m, uint col) -> ast::ident[] {
@@ -305,7 +305,7 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
     if (ivec::len(opts) > 0u) {
         alt (opts.(0)) {
             var(_, ?vdef) {
-                if (ivec::len(ty::tag_variants(ccx.tcx, vdef._0)) == 1u) {
+                if (ivec::len(ty::tag_variants(ccx.tcx, vdef.tg)) == 1u) {
                     kind = single;
                 } else {
                     auto tagptr = bcx.build.PointerCast
@@ -359,9 +359,9 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
         alt opt {
              var(_, ?vdef) {
                  auto args = extract_variant_args(opt_cx, pat_id, vdef, val);
-                 size = ivec::len(args._0);
-                 unpacked = args._0;
-                 opt_cx = args._1;
+                 size = ivec::len(args.vals);
+                 unpacked = args.vals;
+                 opt_cx = args.bcx;
              }
              lit(_) { }
         }
@@ -380,21 +380,23 @@ fn compile_submatch(@block_ctxt bcx, &match m, ValueRef[] vals, &mk_fail f,
 // Returns false for unreachable blocks
 fn make_phi_bindings(&@block_ctxt bcx, &exit_node[] map,
                      &ast::pat_id_map ids) -> bool {
-    fn assoc(str key, &tup(str, ValueRef)[] list) -> option::t[ValueRef] {
-        for (tup(str, ValueRef) elt in list) {
-            if (str::eq(elt._0, key)) { ret some(elt._1); }
+    fn assoc(str key, &bind_map list)
+        -> option::t[ValueRef] {
+        for (rec(ast::ident ident, ValueRef val) elt in list) {
+            if (str::eq(elt.ident, key)) { ret some(elt.val); }
         }
         ret none;
     }
 
     auto our_block = bcx.llbb as uint;
     auto success = true;
-    for each (@tup(ast::ident, ast::node_id) item in ids.items()) {
+    for each (@rec(ast::ident key, ast::node_id val) item
+              in ids.items()) {
         auto llbbs = ~[];
         auto vals = ~[];
         for (exit_node ex in map) {
             if (ex.to as uint == our_block) {
-                alt (assoc(item._0, ex.bound)) {
+                alt (assoc(item.key, ex.bound)) {
                     some(?val) {
                         llbbs += ~[ex.from];
                         vals += ~[val];
@@ -405,7 +407,7 @@ fn make_phi_bindings(&@block_ctxt bcx, &exit_node[] map,
         }
         if (ivec::len(vals) > 0u) {
             auto phi = bcx.build.Phi(val_ty(vals.(0)), vals, llbbs);
-            bcx.fcx.lllocals.insert(item._1, phi);
+            bcx.fcx.lllocals.insert(item.val, phi);
         } else { success = false; }
     }
     ret success;

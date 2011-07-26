@@ -257,29 +257,29 @@ fn find[T](fn(&T) -> bool  f, &T[] v) -> option::t[T] {
     ret none[T];
 }
 
-fn unzip[T, U](&tup(T, U)[] v) -> tup(T[], U[]) {
-    auto sz = len[tup(T, U)](v);
+fn unzip[T, U](&rec(T _0, U _1)[] v) -> rec(T[] _0, U[] _1) {
+    auto sz = len(v);
     if (sz == 0u) {
-        ret tup(~[], ~[]);
+        ret rec(_0=~[], _1=~[]);
     } else {
-        auto rest = slice[tup(T, U)](v, 1u, sz);
-        auto tl = unzip[T, U](rest);
+        auto rest = slice(v, 1u, sz);
+        auto tl = unzip(rest);
         auto a = ~[v.(0)._0];
         auto b = ~[v.(0)._1];
-        ret tup(a + tl._0, b + tl._1);
+        ret rec(_0=a + tl._0, _1=b + tl._1);
     }
 }
 
 
 // FIXME make the lengths being equal a constraint
-fn zip[T, U](&T[] v, &U[] u) -> tup(T, U)[] {
-    auto sz = len[T](v);
-    assert (sz == len[U](u));
+fn zip[T, U](&T[] v, &U[] u) -> rec(T _0, U _1)[] {
+    auto sz = len(v);
+    assert (sz == len(u));
     if (sz == 0u) {
         ret ~[];
     } else {
-        auto rest = zip[T, U](slice[T](v, 1u, sz), slice[U](u, 1u, sz));
-        ret ~[tup(v.(0), u.(0))] + rest;
+        auto rest = zip(slice(v, 1u, sz), slice(u, 1u, sz));
+        ret ~[rec(_0=v.(0), _1=u.(0))] + rest;
     }
 }
 

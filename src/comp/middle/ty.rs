@@ -204,7 +204,7 @@ type mt = rec(t ty, ast::mutability mut);
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type creader_cache = hashmap[tup(int, uint, uint), ty::t];
+type creader_cache = hashmap[rec(int cnum, uint pos, uint len), ty::t];
 
 type ctxt =
     @rec(@type_store ts,
@@ -304,7 +304,7 @@ tag type_err {
     terr_constr_mismatch(@type_constr, @type_constr);
 }
 
-type ty_param_count_and_ty = tup(uint, t);
+type ty_param_count_and_ty = rec(uint count, t ty);
 
 type type_cache = hashmap[ast::def_id, ty_param_count_and_ty];
 
@@ -354,7 +354,7 @@ const uint idx_first_others = 21u;
 
 type type_store = interner::interner[@raw_t];
 
-type ty_param_substs_opt_and_ty = tup(option::t[ty::t[]], ty::t);
+type ty_param_substs_opt_and_ty = rec(option::t[ty::t[]] substs, ty::t ty);
 
 type node_type_table =
     @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
@@ -385,12 +385,13 @@ fn populate_type_store(&ctxt cx) {
 }
 
 fn mk_rcache() -> creader_cache {
-    fn hash_cache_entry(&tup(int, uint, uint) k) -> uint {
-        ret (k._0 as uint) + k._1 + k._2;
+    type val = rec(int cnum, uint pos, uint len);
+    fn hash_cache_entry(&val k) -> uint {
+        ret (k.cnum as uint) + k.pos + k.len;
     }
-    fn eq_cache_entries(&tup(int, uint, uint) a, &tup(int, uint, uint) b) ->
+    fn eq_cache_entries(&val a, &val b) ->
        bool {
-        ret a._0 == b._0 && a._1 == b._1 && a._2 == b._2;
+        ret a.cnum == b.cnum && a.pos == b.pos && a.len == b.len;
     }
     ret map::mk_hashmap(hash_cache_entry, eq_cache_entries);
 }
@@ -1300,8 +1301,8 @@ fn hash_type_structure(&sty st) -> uint {
     }
     fn hash_def(uint id, ast::def_id did) -> uint {
         auto h = id;
-        h += h << 5u + (did._0 as uint);
-        h += h << 5u + (did._1 as uint);
+        h += h << 5u + (did.crate as uint);
+        h += h << 5u + (did.node as uint);
         ret h;
     }
     fn hash_subty(uint id, &t subty) -> uint {
@@ -1505,7 +1506,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         ret true;
     }
     fn equal_def(&ast::def_id did_a, &ast::def_id did_b) -> bool {
-        ret did_a._0 == did_b._0 && did_a._1 == did_b._1;
+        ret did_a.crate == did_b.crate && did_a.node == did_b.node;
     }
     alt (a) {
         case (ty_nil) {
@@ -1708,7 +1709,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_native(?a_id)) {
             alt (b) {
                 case (ty_native(?b_id)) {
-                    ret a_id._0 == b_id._0 && a_id._1 == b_id._1;
+                    ret a_id.crate == b_id.crate && a_id.node == b_id.node;
                 }
                 case (_) { ret false; } }
         }
@@ -1766,11 +1767,11 @@ fn node_id_to_ty_param_substs_opt_and_ty(&ctxt cx, &ast::node_id id) ->
 }
 
 fn node_id_to_type(&ctxt cx, &ast::node_id id) -> t {
-    ret node_id_to_ty_param_substs_opt_and_ty(cx, id)._1;
+    ret node_id_to_ty_param_substs_opt_and_ty(cx, id).ty;
 }
 
 fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> t[] {
-    alt (node_id_to_ty_param_substs_opt_and_ty(cx, id)._0) {
+    alt (node_id_to_ty_param_substs_opt_and_ty(cx, id).substs) {
         case (none)       { ret ~[]; }
         case (some(?tps)) { ret tps; }
     }
@@ -1778,17 +1779,16 @@ fn node_id_to_type_params(&ctxt cx, &ast::node_id id) -> t[] {
 
 fn node_id_has_type_params(&ctxt cx, &ast::node_id id) -> bool {
     auto tpt = node_id_to_ty_param_substs_opt_and_ty(cx, id);
-    ret !option::is_none[t[]](tpt._0);
+    ret !option::is_none[t[]](tpt.substs);
 }
 
 
 // Returns a type with type parameter substitutions performed if applicable.
-fn ty_param_substs_opt_and_ty_to_monotype(&ctxt cx,
-                                          &ty_param_substs_opt_and_ty tpot) ->
-   t {
-    alt (tpot._0) {
-        case (none) { ret tpot._1; }
-        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot._1); }
+fn ty_param_substs_opt_and_ty_to_monotype
+    (&ctxt cx, &ty_param_substs_opt_and_ty tpot) -> t {
+    alt (tpot.substs) {
+        case (none) { ret tpot.ty; }
+        case (some(?tps)) { ret substitute_type_params(cx, tps, tpot.ty); }
     }
 }
 
@@ -1896,9 +1896,10 @@ fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
     ret node_id_to_monotype(cx, expr.id);
 }
 
-fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(t[], t) {
-    ret tup(node_id_to_type_params(cx, expr.id),
-            node_id_to_type(cx, expr.id));
+fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr)
+    -> rec(t[] params, t ty) {
+    ret rec(params=node_id_to_type_params(cx, expr.id),
+            ty=node_id_to_type(cx, expr.id));
 }
 
 fn expr_has_ty_params(&ctxt cx, &@ast::expr expr) -> bool {
@@ -2409,7 +2410,8 @@ mod unify {
             case (ty::ty_native(?ex_id)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty_native(?act_id)) {
-                        if (ex_id._0 == act_id._0 && ex_id._1 == act_id._1) {
+                        if (ex_id.crate == act_id.crate &&
+                            ex_id.node == act_id.node) {
                             ret ures_ok(actual);
                         } else {
                             ret ures_err(terr_mismatch);
@@ -2422,8 +2424,8 @@ mod unify {
             case (ty::ty_tag(?expected_id, ?expected_tps)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_tag(?actual_id, ?actual_tps)) {
-                        if (expected_id._0 != actual_id._0 ||
-                                expected_id._1 != actual_id._1) {
+                        if (expected_id.crate != actual_id.crate ||
+                            expected_id.node != actual_id.node) {
                             ret ures_err(terr_mismatch);
                         }
                         // TODO: factor this cruft out, see the TODO in the
@@ -2551,7 +2553,8 @@ mod unify {
             case (ty::ty_res(?ex_id, ?ex_inner, ?ex_tps)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_res(?act_id, ?act_inner, ?act_tps)) {
-                        if (ex_id._0 != act_id._0 || ex_id._1 != act_id._1) {
+                        if (ex_id.crate != act_id.crate ||
+                            ex_id.node != act_id.node) {
                             ret ures_err(terr_mismatch);
                         }
                         auto result = unify_step(cx, ex_inner, act_inner);
@@ -2883,7 +2886,7 @@ fn type_err_to_str(&ty::type_err err) -> str {
 // Converts type parameters in a type to type variables and returns the
 // resulting type along with a list of type variable IDs.
 fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
-                       uint ty_param_count) -> tup(int[], t) {
+                       uint ty_param_count) -> rec(int[] ids, t ty) {
     let @mutable int[] param_var_ids = @mutable ~[];
     auto i = 0u;
     while (i < ty_param_count) {
@@ -2902,7 +2905,7 @@ fn bind_params_in_type(&span sp, &ctxt cx, fn() -> int  next_ty_var, t typ,
     auto new_typ =
         fold_ty(cx, fm_param(bind binder(sp, cx, param_var_ids,
                                          next_ty_var, _)), typ);
-    ret tup(*param_var_ids, new_typ);
+    ret rec(ids=*param_var_ids, ty=new_typ);
 }
 
 
@@ -2940,8 +2943,10 @@ fn def_has_ty_params(&ast::def def) -> bool {
 type variant_info = rec(ty::t[] args, ty::t ctor_ty, ast::def_id id);
 
 fn tag_variants(&ctxt cx, &ast::def_id id) -> variant_info[] {
-    if (ast::local_crate != id._0) { ret csearch::get_tag_variants(cx, id); }
-    auto item = alt (cx.items.find(id._1)) {
+    if (ast::local_crate != id.crate) {
+        ret csearch::get_tag_variants(cx, id);
+    }
+    auto item = alt (cx.items.find(id.node)) {
         case (some(?i)) { i }
         case (none) {
             cx.sess.bug("expected to find cached node_item")
@@ -2992,7 +2997,7 @@ fn tag_variant_with_id(&ctxt cx, &ast::def_id tag_id, &ast::def_id variant_id)
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
-    if (did._0 == ast::local_crate) {
+    if (did.crate == ast::local_crate) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
 

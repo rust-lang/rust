@@ -55,7 +55,7 @@ tag oper_type {
 
 /* logging funs */
 fn def_id_to_str(def_id d) -> str {
-    ret int::str(d._0) + "," + int::str(d._1);
+    ret int::str(d.crate) + "," + int::str(d.node);
 }
 
 fn comma_str(&(@constr_arg_use)[] args) -> str {
@@ -65,7 +65,7 @@ fn comma_str(&(@constr_arg_use)[] args) -> str {
         if (comma) { rslt += ", "; } else { comma = true; }
         alt (a.node) {
             case (carg_base) { rslt += "*"; }
-            case (carg_ident(?i)) { rslt += i._0; }
+            case (carg_ident(?i)) { rslt += i.ident; }
             case (carg_lit(?l)) { rslt += lit_to_str(l); }
         }
     }
@@ -503,7 +503,7 @@ fn node_id_to_def(&crate_ctxt ccx, node_id id) -> option::t[def] {
 fn norm_a_constraint(def_id id, &constraint c) -> norm_constraint[] {
     alt (c) {
         case (cinit(?n, ?sp, ?i)) {
-            ret ~[rec(bit_num=n, c=respan(sp, ninit(id._1, i)))];
+            ret ~[rec(bit_num=n, c=respan(sp, ninit(id.node, i)))];
         }
         case (cpred(?p, ?descs)) {
             let norm_constraint[] rslt = ~[];
@@ -522,8 +522,9 @@ fn norm_a_constraint(def_id id, &constraint c) -> norm_constraint[] {
 // non-exhaustive match in trans.
 fn constraints(&fn_ctxt fcx) -> norm_constraint[] {
     let norm_constraint[] rslt = ~[];
-    for each (@tup(def_id, constraint) p in fcx.enclosing.constrs.items()) {
-        rslt += norm_a_constraint(p._0, p._1);
+    for each (@rec(def_id key, constraint val) p
+              in fcx.enclosing.constrs.items()) {
+        rslt += norm_a_constraint(p.key, p.val);
     }
     ret rslt;
 }
@@ -535,11 +536,11 @@ fn match_args(&fn_ctxt fcx, &(@mutable pred_args[]) occs,
               &(@constr_arg_use)[] occ) ->
    uint {
     log "match_args: looking at " +
-        constr_args_to_str(std::util::fst[ident, node_id], occ);
+        constr_args_to_str(fn(&inst i) -> str { ret i.ident; }, occ);
     for (pred_args pd in *occs) {
         log "match_args: candidate " + pred_args_to_str(pd);
         fn eq(&inst p, &inst q) -> bool {
-            ret p._1 == q._1;
+            ret p.node == q.node;
         }
         if (ty::args_eq(eq, pd.node.args, occ)) { ret pd.node.bit_num; }
     }
@@ -563,12 +564,14 @@ fn expr_to_constr_arg(ty::ctxt tcx, &@expr e) -> @constr_arg_use {
         case (expr_path(?p)) {
             alt (tcx.def_map.find(e.id)) {
                 case (some(def_local(?l_id))) {
-                    ret @respan(p.span, carg_ident(tup(p.node.idents.(0),
-                                                       l_id._1)));
+                    ret @respan(p.span,
+                                carg_ident(rec(ident=p.node.idents.(0),
+                                               node=l_id.node)));
                 }
                 case (some(def_arg(?a_id))) {
-                    ret @respan(p.span, carg_ident(tup(p.node.idents.(0),
-                                                       a_id._1)));
+                    ret @respan(p.span,
+                                carg_ident(rec(ident=p.node.idents.(0),
+                                               node=a_id.node)));
                 }
                 case (_) {
                     tcx.sess.bug("exprs_to_constr_args: non-local variable " +
@@ -625,7 +628,7 @@ fn expr_to_constr(ty::ctxt tcx, &@expr e) -> sp_constr {
 
 fn pred_args_to_str(&pred_args p) -> str {
     "<" + uint::str(p.node.bit_num) + ", " +
-        constr_args_to_str(std::util::fst[ident, node_id],
+        constr_args_to_str(fn(&inst i) -> str { ret i.ident; },
                            p.node.args) + ">"
 }
 
@@ -664,7 +667,7 @@ fn pred_args_matches(&(constr_arg_general_[inst])[] pattern,
             case (carg_ident(?p)) {
                 alt (n) {
                     case (carg_ident(?q)) {
-                        if (p._1 != q._1) {
+                        if (p.node != q.node) {
                             ret false;
                         }
                     }
@@ -702,13 +705,13 @@ fn find_instance_(&(constr_arg_general_[inst])[] pattern,
     ret none;
 }
 
-type inst = tup(ident, node_id);
-type subst = tup(inst, inst)[];
+type inst = rec(ident ident, node_id node);
+type subst = rec(inst from, inst to)[];
 
 fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
-        -> (tup(uint, uint))[] {
+        -> (rec(uint from, uint to))[] {
 
-    let (tup(uint, uint))[] rslt = ~[];
+    auto rslt = ~[];
     if (ivec::len(subst) == 0u) {
         ret rslt;
     }
@@ -722,7 +725,7 @@ fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
                     auto new = replace(subst, d);
                     alt (find_instance_(new, *descs)) {
                         case (some(?d1)) {
-                            rslt += ~[tup(old_bit_num, d1)];
+                            rslt += ~[rec(from=old_bit_num, to=d1)];
                         }
                         case (_) { }
                     }
@@ -734,9 +737,9 @@ fn find_instances(&fn_ctxt fcx, &subst subst, &constraint c)
 }
 
 fn find_in_subst(node_id id, &subst s) -> option::t[inst] {
-    for (tup(inst, inst) p in s) {
-        if (id == p._0._1) {
-            ret some(p._1);
+    for (rec(inst from, inst to) p in s) {
+        if (id == p.from.node) {
+            ret some(p.to);
         }
     }
     ret none;
@@ -750,7 +753,7 @@ fn insts_to_str(&(constr_arg_general_[inst])[] stuff) -> str {
     auto rslt = "<";
     for (constr_arg_general_[inst] i in stuff) {
         rslt += " " + alt(i) {
-            case (carg_ident(?p)) { p._0 }
+            case (carg_ident(?p)) { p.ident }
             case (carg_base) { "*" }
             case (carg_lit(_)) { "[lit]" } } + " ";
     }
@@ -763,7 +766,7 @@ fn replace(subst subst, pred_args d) -> (constr_arg_general_[inst])[] {
     for (@constr_arg_use c in d.node.args) {
         alt (c.node) {
             case (carg_ident(?p)) {
-                alt (find_in_subst(p._1, subst)) {
+                alt (find_in_subst(p.node, subst)) {
                     case (some(?new)) {
                         rslt += ~[carg_ident(new)];
                     }
@@ -840,8 +843,8 @@ fn local_node_id_to_def_id(&fn_ctxt fcx, &node_id i) -> option::t[def_id] {
 fn local_node_id_to_local_def_id(&fn_ctxt fcx, &node_id i)
     -> option::t[node_id] {
     alt (local_node_id_to_def(fcx, i)) {
-        case (some (def_local(?d_id))) { some(d_id._1) }
-        case (some (def_arg(?a_id)))  { some(a_id._1) }
+        case (some (def_local(?d_id))) { some(d_id.node) }
+        case (some (def_arg(?a_id)))  { some(a_id.node) }
         case (_)                      { none }
     }
 }
@@ -870,26 +873,25 @@ fn copy_in_poststate_two(&fn_ctxt fcx, &poststate src_post,
     auto subst;
     alt (ty) {
         case (oper_swap) {
-            subst = ~[tup(dest, src),
-                     tup(src, dest)];
+            subst = ~[rec(from=dest, to=src),
+                      rec(from=src, to=dest)];
         }
         case (oper_assign_op) {
             ret; // Don't do any propagation
         }
         case (_) {
-            subst = ~[tup(src, dest)];
+            subst = ~[rec(from=src, to=dest)];
         }
     }
 
-    for each (@tup(def_id, constraint) p in
+    for each (@rec(def_id key, constraint val) p in
               fcx.enclosing.constrs.items()) {
         // replace any occurrences of the src def_id with the
         // dest def_id
-        auto instances = find_instances(fcx, subst, p._1);
-
-        for (tup(uint,uint) p in instances) {
-            if (promises_(p._0, src_post)) {
-                set_in_poststate_(p._1, target_post);
+        auto insts = find_instances(fcx, subst, p.val);
+        for (rec(uint from, uint to) p in insts) {
+            if (promises_(p.from, src_post)) {
+                set_in_poststate_(p.to, target_post);
             }
         }
     }
@@ -1020,7 +1022,7 @@ fn args_mention[T](&(@constr_arg_use)[] args, fn(&(T)[], node_id) -> bool q,
     for (@constr_arg_use a in args) {
         alt (a.node) {
             case (carg_ident(?p1)) {
-                if (q(s, p1._1)) {
+                if (q(s, p1.node)) {
                     ret true;
                 }
             }
@@ -1058,7 +1060,7 @@ fn do_nothing[T](&_fn f, &ty_param[] tp, &span sp, &fn_ident i,
 fn args_to_constr_args(&span sp, &arg[] args) -> (@constr_arg_use)[] {
     let (@constr_arg_use)[] actuals = ~[];
     for (arg a in args) {
-        actuals += ~[@respan(sp, carg_ident(tup(a.ident, a.id)))];
+        actuals += ~[@respan(sp, carg_ident(rec(ident=a.ident, node=a.id)))];
     }
     ret actuals;
 }

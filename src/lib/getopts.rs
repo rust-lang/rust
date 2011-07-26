@@ -165,8 +165,8 @@ fn getopts_ivec(&str[] args, &opt[] opts) -> result {
                 names = ~[];
                 while (j < curlen) {
                     auto range = str::char_range_at(cur, j);
-                    names += ~[short(range._0)];
-                    j = range._1;
+                    names += ~[short(range.ch)];
+                    j = range.next;
                 }
             }
             auto name_pos = 0u;

@@ -44,11 +44,11 @@ type program =
 fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os::pipe();
     auto pipe_output = os::pipe();
-    auto pid = spawn_process(prog, args, pipe_input._0, pipe_output._1, 0);
+    auto pid = spawn_process(prog, args, pipe_input.in, pipe_output.out, 0);
 
     if (pid == -1) { fail; }
-    os::libc::close(pipe_input._0);
-    os::libc::close(pipe_output._1);
+    os::libc::close(pipe_input.in);
+    os::libc::close(pipe_output.out);
     obj new_program(int pid,
                     mutable int in_fd,
                     os::libc::FILE out_file,
@@ -80,7 +80,7 @@ fn start_program(str prog, vec[str] args) -> @program {
              os::libc::fclose(out_file);
          }
     }
-    ret @new_program(pid, pipe_input._1, os::fd_FILE(pipe_output._0), false);
+    ret @new_program(pid, pipe_input.out, os::fd_FILE(pipe_output.in), false);
 }
 
 fn program_output(str prog, vec[str] args) -> rec(int status, str out) {

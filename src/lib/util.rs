@@ -15,10 +15,6 @@ fn rational_leq(&rational x, &rational y) -> bool {
     ret x.num * y.den <= y.num * x.den;
 }
 
-fn fst[T, U](&tup(T, U) x) -> T { ret x._0; }
-
-fn snd[T, U](&tup(T, U) x) -> U { ret x._1; }
-
 fn orb(&bool a, &bool b) -> bool { ret a || b; }
 // Local Variables:
 // mode: rust;

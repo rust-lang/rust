@@ -96,66 +96,71 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     auto rs = parse_conversion(s, i, lim, error);
-                    pieces += [rs._0];
-                    i = rs._1;
+                    pieces += [rs.piece];
+                    i = rs.next;
                 }
             } else { buf += curr; i += 1u; }
         }
         buf = flush_buf(buf, pieces);
         ret pieces;
     }
-    fn peek_num(str s, uint i, uint lim) -> option::t[tup(uint, uint)] {
-        if (i >= lim) { ret none[tup(uint, uint)]; }
+    fn peek_num(str s, uint i, uint lim)
+        -> option::t[rec(uint num, uint next)] {
+        if (i >= lim) { ret none; }
         auto c = s.(i);
         if (!('0' as u8 <= c && c <= '9' as u8)) {
-            ret option::none[tup(uint, uint)];
+            ret option::none;
         }
         auto n = c - ('0' as u8) as uint;
         ret alt (peek_num(s, i + 1u, lim)) {
-                case (none) { some[tup(uint, uint)](tup(n, i + 1u)) }
+                case (none) { some(rec(num=n, next=i + 1u)) }
                 case (some(?next)) {
-                    auto m = next._0;
-                    auto j = next._1;
-                    some[tup(uint, uint)](tup(n * 10u + m, j))
+                    auto m = next.num;
+                    auto j = next.next;
+                    some(rec(num=n * 10u + m, next=j))
                 }
             };
     }
-    fn parse_conversion(str s, uint i, uint lim, error_fn error) ->
-       tup(piece, uint) {
+    fn parse_conversion(str s, uint i, uint lim, error_fn error)
+        -> rec(piece piece, uint next) {
         auto parm = parse_parameter(s, i, lim);
-        auto flags = parse_flags(s, parm._1, lim);
-        auto width = parse_count(s, flags._1, lim);
-        auto prec = parse_precision(s, width._1, lim);
-        auto ty = parse_type(s, prec._1, lim, error);
-        ret tup(piece_conv(rec(param=parm._0,
-                               flags=flags._0,
-                               width=width._0,
-                               precision=prec._0,
-                               ty=ty._0)), ty._1);
+        auto flags = parse_flags(s, parm.next, lim);
+        auto width = parse_count(s, flags.next, lim);
+        auto prec = parse_precision(s, width.next, lim);
+        auto ty = parse_type(s, prec.next, lim, error);
+        ret rec(piece=piece_conv(rec(param=parm.param,
+                                     flags=flags.flags,
+                                     width=width.count,
+                                     precision=prec.count,
+                                     ty=ty.ty)),
+                next=ty.next);
     }
-    fn parse_parameter(str s, uint i, uint lim) -> tup(option::t[int], uint) {
-        if (i >= lim) { ret tup(none[int], i); }
+    fn parse_parameter(str s, uint i, uint lim)
+        -> rec(option::t[int] param, uint next) {
+        if (i >= lim) { ret rec(param=none, next=i); }
         auto num = peek_num(s, i, lim);
         ret alt (num) {
-                case (none) { tup(none[int], i) }
+                case (none) { rec(param=none, next=i) }
                 case (some(?t)) {
-                    auto n = t._0;
-                    auto j = t._1;
+                    auto n = t.num;
+                    auto j = t.next;
                     if (j < lim && s.(j) == '$' as u8) {
-                        tup(some[int](n as int), j + 1u)
-                    } else { tup(none[int], i) }
+                        rec(param=some(n as int), next=j + 1u)
+                    } else { rec(param=none, next=i) }
                 }
             };
     }
-    fn parse_flags(str s, uint i, uint lim) -> tup(vec[flag], uint) {
+    fn parse_flags(str s, uint i, uint lim)
+        -> rec(vec[flag] flags, uint next) {
         let vec[flag] noflags = [];
-        if (i >= lim) { ret tup(noflags, i); }
-        fn more_(flag f, str s, uint i, uint lim) -> tup(vec[flag], uint) {
+        if (i >= lim) { ret rec(flags=noflags, next=i); }
+        fn more_(flag f, str s, uint i, uint lim)
+            -> rec(vec[flag] flags, uint next) {
             auto next = parse_flags(s, i + 1u, lim);
-            auto rest = next._0;
-            auto j = next._1;
+            auto rest = next.flags;
+            auto j = next.next;
             let vec[flag] curr = [f];
-            ret tup(curr + rest, j);
+            ret rec(flags=curr + rest, next=j);
         }
         auto more = bind more_(_, s, i, lim);
         auto f = s.(i);
@@ -169,41 +174,46 @@ mod ct {
                 more(flag_sign_always)
             } else if (f == '#' as u8) {
                 more(flag_alternate)
-            } else { tup(noflags, i) };
+            } else { rec(flags=noflags, next=i) };
     }
-    fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
+    fn parse_count(str s, uint i, uint lim)
+        -> rec(count count, uint next) {
         ret if (i >= lim) {
-                tup(count_implied, i)
+                rec(count=count_implied, next=i)
             } else if (s.(i) == '*' as u8) {
                 auto param = parse_parameter(s, i + 1u, lim);
-                auto j = param._1;
-                alt (param._0) {
-                    case (none) { tup(count_is_next_param, j) }
-                    case (some(?n)) { tup(count_is_param(n), j) }
+                auto j = param.next;
+                alt (param.param) {
+                    case (none) { rec(count=count_is_next_param, next=j) }
+                    case (some(?n)) { rec(count=count_is_param(n), next=j) }
                 }
             } else {
                 auto num = peek_num(s, i, lim);
                 alt (num) {
-                    case (none) { tup(count_implied, i) }
-                    case (some(?num)) { tup(count_is(num._0 as int), num._1) }
+                    case (none) { rec(count=count_implied, next=i) }
+                    case (some(?num)) { rec(count=count_is(num.num as int),
+                                            next=num.next) }
                 }
             };
     }
-    fn parse_precision(str s, uint i, uint lim) -> tup(count, uint) {
+    fn parse_precision(str s, uint i, uint lim)
+        -> rec(count count, uint next) {
         ret if (i >= lim) {
-                tup(count_implied, i)
+                rec(count=count_implied, next=i)
             } else if (s.(i) == '.' as u8) {
                 auto count = parse_count(s, i + 1u, lim);
 
                 // If there were no digits specified, i.e. the precision
                 // was ".", then the precision is 0
-                alt (count._0) {
-                    case (count_implied) { tup(count_is(0), count._1) }
+                alt (count.count) {
+                    case (count_implied) { rec(count=count_is(0),
+                                               next=count.next) }
                     case (_) { count }
                 }
-            } else { tup(count_implied, i) };
+            } else { rec(count=count_implied, next=i) };
     }
-    fn parse_type(str s, uint i, uint lim, error_fn error) -> tup(ty, uint) {
+    fn parse_type(str s, uint i, uint lim, error_fn error)
+        -> rec(ty ty, uint next) {
         if (i >= lim) { error("missing type in conversion"); }
         auto tstr = str::substr(s, i, 1u);
         auto t =
@@ -229,7 +239,7 @@ mod ct {
             } else if (str::eq(tstr, "o")) {
                 ty_octal
             } else { error("unknown type in conversion: " + tstr) };
-        ret tup(t, i + 1u);
+        ret rec(ty=t, next=i + 1u);
     }
 }
 

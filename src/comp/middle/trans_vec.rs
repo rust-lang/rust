@@ -39,7 +39,7 @@ import tc = middle::trans_common;
 // TODO: We can optimize this in the cases in which we statically know the
 // vector must be on the stack.
 fn get_len_and_data(&@block_ctxt cx, ty::t t, ValueRef llvecptr)
-        -> tup(@block_ctxt, ValueRef, ValueRef) {
+        -> rec(@block_ctxt bcx, ValueRef len, ValueRef data) {
     auto bcx = cx;
 
     // If this interior vector has dynamic size, we can't assume anything
@@ -115,7 +115,7 @@ fn get_len_and_data(&@block_ctxt cx, ty::t t, ValueRef llvecptr)
                           ~[stack_elem, zero_elem, heap_elem],
                           ~[bcx.llbb, zero_len_cx.llbb,
                             nonzero_len_cx.llbb]);
-    ret tup(next_cx, len, elem);
+    ret rec(bcx=next_cx, len=len, data=elem);
 }
 
 fn trans_concat(&@block_ctxt cx, &dest in_dest, &span sp, ty::t t,
@@ -139,15 +139,15 @@ fn trans_concat(&@block_ctxt cx, &dest in_dest, &span sp, ty::t t,
     auto llrhsptr = trans_dps::dest_ptr(rhs_tmp);
 
     auto r0 = get_len_and_data(bcx, t, lllhsptr);
-    bcx = r0._0; auto lllhslen = r0._1; auto lllhsdata = r0._2;
+    bcx = r0.bcx; auto lllhslen = r0.len; auto lllhsdata = r0.data;
     r0 = get_len_and_data(bcx, t, llrhsptr);
-    bcx = r0._0; auto llrhslen = r0._1; auto llrhsdata = r0._2;
+    bcx = r0.bcx; auto llrhslen = r0.len; auto llrhsdata = r0.data;
 
     if skip_null { lllhslen = bcx.build.Sub(lllhslen, C_int(1)); }
 
     // Allocate the destination.
     auto r1 = trans_dps::spill_alias(bcx, in_dest, t);
-    bcx = r1._0; auto dest = r1._1;
+    bcx = r1.bcx; auto dest = r1.dest;
 
     auto unit_t = ty::sequence_element_type(bcx_tcx(bcx), t);
     auto unit_sz = trans_dps::size_of(bcx_ccx(bcx), sp, unit_t);

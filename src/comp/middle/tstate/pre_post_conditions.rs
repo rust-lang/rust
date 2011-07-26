@@ -219,7 +219,7 @@ fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, node_id larger_id,
                     set_pre_and_post(fcx.ccx, larger_id, p.precondition,
                                      p.postcondition);
                     gen(fcx, larger_id,
-                        ninit(d_id._1, path_to_ident(fcx.ccx.tcx, pth)));
+                        ninit(d_id.node, path_to_ident(fcx.ccx.tcx, pth)));
                 }
                 case (_) { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
             }
@@ -255,7 +255,7 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
                     alt (df) {
                         case (def_local(?d_id)) {
                             auto i =
-                                bit_num(fcx, ninit(d_id._1,
+                                bit_num(fcx, ninit(d_id.node,
                                         path_to_ident(fcx.ccx.tcx, p)));
                             require_and_preserve(i, expr_pp(fcx.ccx, lhs));
                         }
@@ -274,11 +274,13 @@ fn handle_update(&fn_ctxt fcx, &@expr parent,
                             alt (d1) {
                                 case (some(?id1)) {
                                     auto instlhs =
-                                        tup(path_to_ident(fcx.ccx.tcx,
-                                                          p), id);
+                                        rec(ident=path_to_ident
+                                            (fcx.ccx.tcx, p),
+                                            node=id);
                                     auto instrhs =
-                                        tup(path_to_ident(fcx.ccx.tcx,
-                                                          p1), id1);
+                                        rec(ident=path_to_ident
+                                            (fcx.ccx.tcx, p1),
+                                            node=id1);
                                     copy_in_poststate_two(fcx, tmp,
                                         post, instlhs, instrhs, ty);
                                 }
@@ -343,8 +345,8 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) {
                 case (def_local(?d_id)) {
                     auto i =
                         bit_num(fcx,
-                          ninit(d_id._1, path_to_ident(fcx.ccx.tcx, p)));
-                    use_var(fcx, d_id._1);
+                          ninit(d_id.node, path_to_ident(fcx.ccx.tcx, p)));
+                    use_var(fcx, d_id.node);
                     require_and_preserve(i, rslt);
                 }
                 case (_) {/* nothing to check */ }
@@ -603,10 +605,10 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s) {
                             alt (an_init.expr.node) {
                                 case (expr_path(?p)) {
                                     copy_in_postcond(fcx, id,
-                                      tup(alocal.node.ident,
-                                          alocal.node.id),
-                                      tup(path_to_ident(fcx.ccx.tcx, p),
-                                          an_init.expr.id),
+                                      rec(ident=alocal.node.ident,
+                                          node=alocal.node.id),
+                                      rec(ident=path_to_ident(fcx.ccx.tcx, p),
+                                          node=an_init.expr.id),
                                        op_to_oper_ty(an_init.op));
                                 }
                                 case (_) {}

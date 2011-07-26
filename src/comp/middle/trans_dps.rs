@@ -234,7 +234,7 @@ fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
 // If the supplied destination is an alias, spills to a temporary. Returns the
 // new destination.
 fn spill_alias(&@block_ctxt cx, &dest dest, ty::t t)
-        -> tup(@block_ctxt, dest) {
+        -> rec(@block_ctxt bcx, dest dest) {
     auto bcx = cx;
     alt (dest) {
       dst_alias(?box) {
@@ -243,22 +243,22 @@ fn spill_alias(&@block_ctxt cx, &dest dest, ty::t t)
         auto r = trans::alloc_ty(cx, t);
         bcx = r.bcx; auto llptr = r.val;
         *box = some(llptr);
-        ret tup(bcx, dst_move(llptr));
+        ret rec(bcx=bcx, dest=dst_move(llptr));
       }
-      _ { ret tup(bcx, dest); }
+      _ { ret rec(bcx=bcx, dest=dest); }
     }
 }
 
-fn mk_temp(&@block_ctxt cx, ty::t t) -> tup(@block_ctxt, dest) {
+fn mk_temp(&@block_ctxt cx, ty::t t) -> rec(@block_ctxt bcx, dest dest) {
     auto bcx = cx;
-    if ty::type_is_nil(bcx_tcx(bcx), t) { ret tup(bcx, dst_nil); }
+    if ty::type_is_nil(bcx_tcx(bcx), t) { ret rec(bcx=bcx, dest=dst_nil); }
     if trans::type_is_immediate(bcx_ccx(bcx), t) {
-        ret tup(bcx, dst_imm(@mutable none));
+        ret rec(bcx=bcx, dest=dst_imm(@mutable none));
     }
 
     auto r = trans::alloc_ty(cx, t);
     bcx = r.bcx; auto llptr = r.val;
-    ret tup(bcx, dst_copy(llptr));
+    ret rec(bcx=bcx, dest=dst_copy(llptr));
 }
 
 
@@ -269,7 +269,7 @@ fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
     alt (lit.node) {
       ast::lit_str(?s, ast::sk_unique) {
         auto r = trans_lit_str_common(bcx_ccx(bcx), s, dest_is_alias(dest));
-        auto llstackpart = r._0; auto llheappartopt = r._1;
+        auto llstackpart = r.stack; auto llheappartopt = r.heap;
         bcx = store_ptr(bcx, dest, llstackpart);
         alt (llheappartopt) {
           none { /* no-op */ }
@@ -336,27 +336,27 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
 
     tag upcall_style { us_imm; us_imm_i32_zext; us_alias; us_alias_istr; }
     fn get_upcall(&@crate_ctxt ccx, &span sp, ty::t t)
-            -> tup(ValueRef, upcall_style) {
+            -> rec(ValueRef val, upcall_style st) {
         alt (ty::struct(ccx_tcx(ccx), t)) {
           ty::ty_machine(ast::ty_f32) {
-            ret tup(ccx.upcalls.log_float, us_imm);
+            ret rec(val=ccx.upcalls.log_float, st=us_imm);
           }
           ty::ty_machine(ast::ty_f64) | ty::ty_float {
             // TODO: We have to spill due to legacy calling conventions that
             // should probably be modernized.
-            ret tup(ccx.upcalls.log_double, us_alias);
+            ret rec(val=ccx.upcalls.log_double, st=us_alias);
           }
           ty::ty_bool | ty::ty_machine(ast::ty_i8) |
                 ty::ty_machine(ast::ty_i16) | ty::ty_machine(ast::ty_u8) |
                 ty::ty_machine(ast::ty_u16) {
-            ret tup(ccx.upcalls.log_int, us_imm_i32_zext);
+            ret rec(val=ccx.upcalls.log_int, st=us_imm_i32_zext);
           }
           ty::ty_int | ty::ty_machine(ast::ty_i32) |
                 ty::ty_machine(ast::ty_u32) {
-            ret tup(ccx.upcalls.log_int, us_imm);
+            ret rec(val=ccx.upcalls.log_int, st=us_imm);
           }
           ty::ty_istr {
-            ret tup(ccx.upcalls.log_istr, us_alias_istr);
+            ret rec(val=ccx.upcalls.log_istr, st=us_alias_istr);
           }
           _ {
             ccx.sess.span_unimpl(sp, "logging for values of type " +
@@ -379,7 +379,7 @@ fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
 
     auto expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
     auto r = get_upcall(bcx_ccx(bcx), sp, expr_t);
-    auto llupcall = r._0; auto style = r._1;
+    auto llupcall = r.val; auto style = r.st;
 
     auto arg_dest;
     alt (style) {
@@ -415,7 +415,7 @@ fn trans_path(&@block_ctxt bcx, &dest dest, &ast::path path, ast::node_id id)
         -> @block_ctxt {
     alt (bcx_tcx(bcx).def_map.get(id)) {
       ast::def_local(?def_id) {
-        alt (bcx_fcx(bcx).lllocals.find(def_id._1)) {
+        alt (bcx_fcx(bcx).lllocals.find(def_id.node)) {
           none { bcx_ccx(bcx).sess.unimpl("upvar in trans_path"); }
           some(?llptr) {
             // TODO: Copy hooks.
@@ -481,7 +481,7 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::blk blk)
 // If |expand| is true, we never spill to the heap. This should be used
 // whenever the destination size isn't fixed.
 fn trans_lit_str_common(&@crate_ctxt ccx, &str s, bool expand)
-        -> tup(ValueRef, option[ValueRef]) {
+        -> rec(ValueRef stack, option[ValueRef] heap) {
     auto llstackpart; auto llheappartopt;
 
     auto len = str::byte_len(s);
@@ -515,8 +515,8 @@ fn trans_lit_str_common(&@crate_ctxt ccx, &str s, bool expand)
                                       llheappart));
     }
 
-    ret tup(mk_const(ccx, "const_istr_stack", false, llstackpart),
-            llheappartopt);
+    ret rec(stack=mk_const(ccx, "const_istr_stack", false, llstackpart),
+            heap=llheappartopt);
 }
 
 // As above, we don't use destination-passing style here.

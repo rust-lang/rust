@@ -191,10 +191,11 @@ selectors. */
 fn use_selectors_to_bind(&binders b, @expr e) -> option::t[bindings] {
     auto res = new_str_hash[arb_depth[matchable]]();
     let bool never_mind = false;
-    for each(@tup(ident, selector) pair in b.real_binders.items()) {
-        alt (pair._1(match_expr(e))) {
+    for each(@rec(ident key, selector val) pair
+             in b.real_binders.items()) {
+        alt (pair.val(match_expr(e))) {
           case (none) { never_mind = true; }
-          case (some(?mtc)) { res.insert(pair._0, mtc); }
+          case (some(?mtc)) { res.insert(pair.key, mtc); }
         }
     }
     if (never_mind) { ret none; } //HACK: `ret` doesn't work in `for each`
@@ -274,9 +275,7 @@ iter free_vars(&bindings b, @expr e) -> ident {
     auto f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     dummy_out(f);
-    for each(@tup(ast::ident, ()) it in idents.items()) {
-        put it._0;
-    }
+    for each(ident id in idents.keys()) { put id; }
 }
 
 
@@ -546,7 +545,7 @@ fn p_t_s_r_actual_vector(&ext_ctxt cx, (@expr)[] elts, &selector s,
 }
 
 fn add_new_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
-                     option::t[str] body) -> tup(str, syntax_extension) {
+                     option::t[str] body) -> base::macro_def {
     let option::t[str] macro_name = none;
     let (clause)[] clauses = ~[];
     for (@expr arg in args) {
@@ -596,14 +595,13 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
 
     auto ext = bind generic_extension(_,_,_,_,clauses);
 
-    ret tup(alt (macro_name) {
+    ret rec(ident=alt (macro_name) {
       case (some(?id)) { id }
       case (none) {
         cx.span_fatal(sp, "macro definition must have "
                       + "at least one clause")
       }
-    },
-            normal(ext));
+    }, ext=normal(ext));
 
 
     fn generic_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
@@ -620,9 +618,9 @@ fn add_new_extension(&ext_ctxt cx, span sp, &(@expr)[] args,
                 alt (use_selectors_to_bind(c.params.(i), args.(i))) {
                   case (some(?new_bindings)) {
                     /* ick; I wish macros just took one expr */
-                    for each (@tup(ident,arb_depth[matchable]) it
+                    for each (@rec(ident key, arb_depth[matchable] val) it
                               in new_bindings.items()) {
-                        bdgs.insert(it._0, it._1);
+                        bdgs.insert(it.key, it.val);
                     }
                   }
                   case (none) { abort = true; }

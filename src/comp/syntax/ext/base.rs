@@ -8,8 +8,9 @@ import codemap;
 
 type syntax_expander =
     fn(&ext_ctxt, span, &(@ast::expr)[], option::t[str]) -> @ast::expr;
+type macro_def = rec(str ident, syntax_extension ext);
 type macro_definer = fn(&ext_ctxt, span, &(@ast::expr)[],
-                        option::t[str]) -> tup(str, syntax_extension);
+                        option::t[str]) -> macro_def;
 
 tag syntax_extension {
     normal(syntax_expander);

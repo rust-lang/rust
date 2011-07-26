@@ -60,8 +60,8 @@ fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
                 new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
                                      cx.byte_pos);
             auto inner_attrs = parse_inner_attrs_and_next(p0);
-            auto mod_attrs = attrs + inner_attrs._0;
-            auto first_item_outer_attrs = inner_attrs._1;
+            auto mod_attrs = attrs + inner_attrs.inner;
+            auto first_item_outer_attrs = inner_attrs.next;
             auto m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
 
             auto i = syntax::parse::parser::mk_item

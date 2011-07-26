@@ -66,10 +66,10 @@ fn target_os() -> str { ret "linux"; }
 
 fn dylib_filename(str base) -> str { ret "lib" + base + ".so"; }
 
-fn pipe() -> tup(int, int) {
-    auto fds = tup(mutable 0, 0);
-    assert (os::libc::pipe(ptr::addr_of(fds._0)) == 0);
-    ret tup(fds._0, fds._1);
+fn pipe() -> rec(int in, int out) {
+    auto fds = rec(mutable in=0, mutable out=0);
+    assert (os::libc::pipe(ptr::addr_of(fds.in)) == 0);
+    ret rec(in=fds.in, out=fds.out);
 }
 
 fn fd_FILE(int fd) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }

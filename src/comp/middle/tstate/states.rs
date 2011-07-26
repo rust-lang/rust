@@ -54,7 +54,7 @@ import util::common::log_stmt_err;
 import util::common::log_expr_err;
 
 fn seq_states(&fn_ctxt fcx, prestate pres, &(@expr)[] exprs) ->
-   tup(bool, poststate) {
+   rec(bool changed, poststate post) {
     auto changed = false;
     auto post = pres;
     for (@expr e in exprs) {
@@ -63,7 +63,7 @@ fn seq_states(&fn_ctxt fcx, prestate pres, &(@expr)[] exprs) ->
         // log_err changed;
         post = expr_poststate(fcx.ccx, e);
     }
-    ret tup(changed, post);
+    ret rec(changed=changed, post=post);
 }
 
 fn find_pre_post_state_sub(&fn_ctxt fcx, &prestate pres, &@expr e,
@@ -128,11 +128,13 @@ fn find_pre_post_state_two(&fn_ctxt fcx, &prestate pres, &@expr lhs,
                             alt (d1) {
                                 case (some(?id1)) {
                                     auto instlhs =
-                                        tup(path_to_ident(fcx.ccx.tcx,
-                                                          p), id);
+                                        rec(ident=path_to_ident
+                                            (fcx.ccx.tcx, p),
+                                            node=id);
                                     auto instrhs =
-                                        tup(path_to_ident(fcx.ccx.tcx,
-                                                          p1), id1);
+                                        rec(ident=path_to_ident
+                                            (fcx.ccx.tcx, p1),
+                                            node=id1);
                                     copy_in_poststate_two(fcx, tmp,
                                             post, instlhs, instrhs, ty);
                                 }
@@ -162,7 +164,7 @@ fn find_pre_post_state_call(&fn_ctxt fcx, &prestate pres, &@expr a,
 fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
                              &(@expr)[] es, controlflow cf) -> bool {
     auto rs = seq_states(fcx, pres, es);
-    auto changed = rs._0 | set_prestate_ann(fcx.ccx, id, pres);
+    auto changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt (cf) {
         case (noreturn) {
@@ -170,7 +172,7 @@ fn find_pre_post_state_exprs(&fn_ctxt fcx, &prestate pres, node_id id,
                 (fcx.ccx, id, false_postcond(num_constraints(fcx.enclosing)));
         }
         case (_) {
-            changed |= set_poststate_ann(fcx.ccx, id, rs._1);
+            changed |= set_poststate_ann(fcx.ccx, id, rs.post);
         }
     }
     ret changed;
@@ -208,7 +210,7 @@ fn gen_if_local(&fn_ctxt fcx, &poststate p, &@expr e) -> bool {
         case (expr_path(?pth)) {
             alt (node_id_to_def(fcx.ccx, e.id)) {
                 case (some(def_local(?loc))) {
-                    ret set_in_poststate_ident(fcx, loc._1,
+                    ret set_in_poststate_ident(fcx, loc.node,
                            path_to_ident(fcx.ccx.tcx, pth), p);
                 }
             case (_) { ret false; }
@@ -612,15 +614,16 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                                 case (expr_path(?p)) {
 
                                     auto instlhs =
-                                        tup(alocal.node.ident,
-                                            alocal.node.id);
+                                        rec(ident=alocal.node.ident,
+                                            node=alocal.node.id);
                                     auto rhs_d = local_node_id_to_local_def_id
                                         (fcx, an_init.expr.id);
                                     alt (rhs_d) {
                                         case (some(?rhsid)) {
                                             auto instrhs =
-                                                tup(path_to_ident(fcx.ccx.tcx,
-                                                                  p), rhsid);
+                                                rec(ident=path_to_ident
+                                                    (fcx.ccx.tcx, p),
+                                                    node=rhsid);
                                             copy_in_poststate(fcx, post,
                                                instlhs, instrhs,
                                                op_to_oper_ty(an_init.op));

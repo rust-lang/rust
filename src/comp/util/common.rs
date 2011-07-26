@@ -31,13 +31,13 @@ import print::pp::mk_printer;
 type flag = hashmap[str, ()];
 
 fn def_eq(&ast::def_id a, &ast::def_id b) -> bool {
-    ret a._0 == b._0 && a._1 == b._1;
+    ret a.crate == b.crate && a.node == b.node;
 }
 
 fn hash_def(&ast::def_id d) -> uint {
     auto h = 5381u;
-    h = (h << 5u) + h ^ (d._0 as uint);
-    h = (h << 5u) + h ^ (d._1 as uint);
+    h = (h << 5u) + h ^ (d.crate as uint);
+    h = (h << 5u) + h ^ (d.node as uint);
     ret h;
 }
 

@@ -66,23 +66,24 @@ tag import_state {
              option::t[def]); /* module */
 }
 
-type ext_hash = hashmap[tup(def_id, str, namespace), def];
+type ext_hash = hashmap[rec(def_id did, str ident, namespace ns), def];
 
 fn new_ext_hash() -> ext_hash {
-    fn hash(&tup(def_id, str, namespace) v) -> uint {
-        ret str::hash(v._1) + util::common::hash_def(v._0) +
-                alt (v._2) {
+    type key = rec(def_id did, str ident, namespace ns);
+    fn hash(&key v) -> uint {
+        ret str::hash(v.ident) + util::common::hash_def(v.did) +
+                alt (v.ns) {
                     case (ns_value) { 1u }
                     case (ns_type) { 2u }
                     case (ns_module) { 3u }
                 };
     }
-    fn eq(&tup(def_id, str, namespace) v1, &tup(def_id, str, namespace) v2) ->
+    fn eq(&key v1, &key v2) ->
        bool {
-        ret util::common::def_eq(v1._0, v2._0) && str::eq(v1._1, v2._1) &&
-                v1._2 == v2._2;
+        ret util::common::def_eq(v1.did, v2.did) &&
+            str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
-    ret std::map::mk_hashmap[tup(def_id, str, namespace), def](hash, eq);
+    ret std::map::mk_hashmap[key, def](hash, eq);
 }
 
 tag mod_index_entry {
@@ -95,7 +96,7 @@ tag mod_index_entry {
 type mod_index = hashmap[ident, list[mod_index_entry]];
 
 // A tuple of an imported def and the import stmt that brung it
-type glob_imp_def = tup(def, @ast::view_item);
+type glob_imp_def = rec(def def, @ast::view_item item);
 
 type indexed_mod =
     rec(option::t[ast::_mod] m,
@@ -117,7 +118,7 @@ type env =
         hashmap[ast::node_id, @indexed_mod] mod_map,
         hashmap[def_id, ident[]] ext_map,
         ext_hash ext_cache,
-        mutable tup(str, scope)[] reported,
+        mutable rec(str ident, scope sc)[] reported,
         session sess);
 
 
@@ -226,7 +227,7 @@ fn map_crate(&@env e, &@ast::crate c) {
                 auto imp = follow_import(*e, sc, path, vi.span);
                 if (option::is_some(imp)) {
                     find_mod(e, sc).glob_imports +=
-                        ~[tup(option::get(imp), vi)];
+                        ~[rec(def=option::get(imp), item=vi)];
                 }
             }
             case (_) { }
@@ -235,8 +236,9 @@ fn map_crate(&@env e, &@ast::crate c) {
 }
 
 fn resolve_imports(&env e) {
-    for each (@tup(ast::node_id, import_state) it in e.imports.items()) {
-        alt (it._1) {
+    for each (@rec(ast::node_id key, import_state val) it
+              in e.imports.items()) {
+        alt (it.val) {
             case (todo(?item, ?sc)) { resolve_import(e, item, sc); }
             case (resolved(_, _, _)) { }
         }
@@ -437,7 +439,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
             name = _name;
         }
     }
-    e.imports.insert(defid._1, resolving(it.span));
+    e.imports.insert(defid.node, resolving(it.span));
     auto n_idents = ivec::len(ids);
     auto end_id = ids.(n_idents - 1u);
     // Ignore the current scope if this import would shadow itself.
@@ -448,7 +450,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
                  lookup_in_scope(e, sc, it.span, end_id, ns_value),
                  lookup_in_scope(e, sc, it.span, end_id, ns_type),
                  lookup_in_scope(e, sc, it.span, end_id, ns_module));
-        remove_if_unresolved(e.imports, defid._1);
+        remove_if_unresolved(e.imports, defid.node);
     } else {
         auto dcur = alt(lookup_in_scope(e, sc, it.span, ids.(0), ns_module)) {
             case (some(?dcur)) {
@@ -456,7 +458,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
             }
             case (none) {
                 unresolved_err(e, sc, it.span, ids.(0), ns_name(ns_module));
-                remove_if_unresolved(e.imports, defid._1);
+                remove_if_unresolved(e.imports, defid.node);
                 ret () // FIXME (issue #521)
             }
         };
@@ -470,7 +472,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
                                        outside),
                          lookup_in_mod(e, dcur, it.span, end_id, ns_module,
                                        outside));
-                remove_if_unresolved(e.imports, defid._1);
+                remove_if_unresolved(e.imports, defid.node);
                 break;
             } else {
                 dcur = alt (lookup_in_mod(e, dcur, it.span, ids.(i),
@@ -481,7 +483,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
                     case (none) {
                         unresolved_err(e, sc, it.span, ids.(i),
                                        ns_name(ns_module));
-                        remove_if_unresolved(e.imports, defid._1);
+                        remove_if_unresolved(e.imports, defid.node);
                         ret () // FIXME (issue #521)
                     }
                 };
@@ -495,7 +497,7 @@ fn resolve_import(&env e, &@ast::view_item it, &scopes sc_in) {
         if is_none(val) && is_none(typ) && is_none(md) {
             unresolved_err(e, sc, sp, name, "import");
         } else {
-            e.imports.insert(defid._1, resolved(val, typ, md));
+            e.imports.insert(defid.node, resolved(val, typ, md));
         }
     }
     fn remove_if_unresolved(hashmap[ast::node_id, import_state] imports,
@@ -542,10 +544,10 @@ fn unresolved_err(&env e, &scopes sc, &span sp, &ident name, &str kind) {
         fail;
     }
     auto err_scope = find_fn_or_mod_scope(sc);
-    for (tup(str, scope) rs in e.reported) {
-        if str::eq(rs._0, name) && err_scope == rs._1 { ret; }
+    for (rec(str ident, scope sc) rs in e.reported) {
+        if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
     }
-    e.reported += ~[tup(name, err_scope)];
+    e.reported += ~[rec(ident=name, sc=err_scope)];
     e.sess.span_err(sp, mk_unresolved_msg(name, kind));
 }
 
@@ -899,25 +901,26 @@ fn lookup_in_mod_strict(&env e, &scopes sc, def m, &span sp, &ident name,
 fn lookup_in_mod(&env e, &def m, &span sp, &ident name, namespace ns,
                  dir dr) -> option::t[def] {
     auto defid = ast::def_id_of_def(m);
-    if (defid._0 != ast::local_crate) {
+    if (defid.crate != ast::local_crate) {
         // examining a module in an external crate
 
-        auto cached = e.ext_cache.find(tup(defid, name, ns));
+        auto cached = e.ext_cache.find(rec(did=defid, ident=name, ns=ns));
         if (!is_none(cached)) { ret cached; }
         auto path = ~[name];
-        if (defid._1 != -1) { path = e.ext_map.get(defid) + path; }
-        auto fnd = lookup_external(e, defid._0, path, ns);
+        if (defid.node != -1) { path = e.ext_map.get(defid) + path; }
+        auto fnd = lookup_external(e, defid.crate, path, ns);
         if (!is_none(fnd)) {
-            e.ext_cache.insert(tup(defid, name, ns), option::get(fnd));
+            e.ext_cache.insert(rec(did=defid, ident=name, ns=ns),
+                               option::get(fnd));
         }
         ret fnd;
     }
     alt (m) {
         case (ast::def_mod(?defid)) {
-            ret lookup_in_local_mod(e, defid._1, sp, name, ns, dr);
+            ret lookup_in_local_mod(e, defid.node, sp, name, ns, dr);
         }
         case (ast::def_native_mod(?defid)) {
-            ret lookup_in_local_native_mod(e, defid._1, sp, name, ns);
+            ret lookup_in_local_native_mod(e, defid.node, sp, name, ns);
         }
     }
 }
@@ -927,7 +930,7 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns) ->
     alt (vi.node) {
         case (ast::view_item_use(_, _, ?id)) {
             auto cnum = cstore::get_use_stmt_cnum(e.cstore, id);
-            ret some(ast::def_mod(tup(cnum, -1)));
+            ret some(ast::def_mod(rec(crate=cnum, node=-1)));
         }
         case (ast::view_item_import(_, _, ?id)) {
             ret lookup_import(e, local_def(id), ns);
@@ -940,7 +943,7 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns) ->
 }
 
 fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
-    alt (e.imports.get(defid._1)) {
+    alt (e.imports.get(defid.node)) {
         case (todo(?item, ?sc)) {
             resolve_import(e, item, sc);
             ret lookup_import(e, defid, ns);
@@ -1002,9 +1005,9 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
         fn lookup_in_mod_(&env e, &glob_imp_def def, &span sp,
                           &ident name, namespace ns,
                           dir dr) -> option::t[glob_imp_def] {
-            alt (lookup_in_mod(e, def._0, sp, name, ns, dr)) {
+            alt (lookup_in_mod(e, def.def, sp, name, ns, dr)) {
                 case (option::some(?d)) {
-                    option::some(tup(d, def._1))
+                    option::some(rec(def=d, item=def.item))
                 }
                 case (option::none) {
                     option::none
@@ -1016,12 +1019,12 @@ fn lookup_glob_in_mod(&env e, @indexed_mod info, &span sp, &ident id,
             ivec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
                              { info.glob_imports });
         if (ivec::len(matches) == 0u) {
-            ret none[def];
+            ret none;
         } else if (ivec::len(matches) == 1u) {
-            ret some[def](matches.(0)._0);
+            ret some(matches.(0).def);
         } else {
             for (glob_imp_def match in matches) {
-                auto sp = match._1.span;
+                auto sp = match.item.span;
                 e.sess.span_note(sp, #fmt("'%s' is imported here", id));
             }
             e.sess.span_fatal(sp,
@@ -1194,10 +1197,11 @@ fn check_for_collisions(&@env e, &ast::crate c) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
 
-    for each (@tup(ast::node_id, @indexed_mod) m in e.mod_map.items()) {
-        for each (@tup(ident, list[mod_index_entry]) name in
-                 m._1.index.items()) {
-            check_mod_name(*e, name._0, name._1);
+    for each (@rec(ast::node_id key, @indexed_mod val) m
+              in e.mod_map.items()) {
+        for each (@rec(ident key, list[mod_index_entry] val) name
+                  in m.val.index.items()) {
+            check_mod_name(*e, name.key, name.val);
         }
     }
     // Other scopes have to be checked the hard way.

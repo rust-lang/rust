@@ -26,11 +26,11 @@ fn path_name_i(&ident[] idents) -> str { str::connect_ivec(idents, "::") }
 
 type crate_num = int;
 type node_id = int;
-type def_id = tup(crate_num, node_id);
+type def_id = rec(crate_num crate, node_id node);
 
 const crate_num local_crate = 0;
 fn local_def(node_id id) -> def_id {
-    ret tup(local_crate, id);
+    ret rec(crate=local_crate, node=id);
 }
 
 type ty_param = ident;
@@ -59,9 +59,11 @@ tag def {
     def_upvar(def_id, @def);
 }
 
-fn variant_def_ids(&def d) -> tup(def_id, def_id) {
+fn variant_def_ids(&def d) -> rec(def_id tg, def_id var) {
     alt (d) {
-        case (def_variant(?tag_id, ?var_id)) { ret tup(tag_id, var_id); }
+        case (def_variant(?tag_id, ?var_id)) {
+          ret rec(tg=tag_id, var=var_id);
+        }
     }
 }
 

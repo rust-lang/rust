@@ -96,7 +96,7 @@ fn collect_freevars(&resolve::def_map def_map, &session::session sess,
     auto defs = new_int_hash();
     for (ast::node_id ref_id_ in e.refs) {
         auto ref_id = ref_id_;
-        auto def_id = ast::def_id_of_def(def_map.get(ref_id))._1;
+        auto def_id = ast::def_id_of_def(def_map.get(ref_id)).node;
         if !decls.contains_key(def_id) {
             uses += ~[ref_id];
             set_add(defs, def_id);
@@ -172,7 +172,7 @@ fn def_lookup(&ty::ctxt tcx, ast::node_id f, ast::node_id id) ->
       none { ret none; }
       some(?d) {
         auto did = ast::def_id_of_def(d);
-        if is_freevar_of(tcx, did._1, f) {
+        if is_freevar_of(tcx, did.node, f) {
             ret some(ast::def_upvar(did, @d));
         } else { ret some(d); }
       }

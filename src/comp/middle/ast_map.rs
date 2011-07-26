@@ -91,14 +91,14 @@ fn new_smallintmap_adapter[K, V](fn(&K) -> uint key_idx,
 
         fn rehash() { fail }
 
-        iter items() -> @tup(K, V) {
+        iter items() -> @rec(K key, V val) {
             auto idx = 0u;
             for (option::t[V] item in map.v) {
                 alt (item) {
                     case (option::some(?elt)) {
                         auto value = elt;
                         auto key = idx_key(idx);
-                        put @tup(key, value);
+                        put @rec(key=key, val=value);
                     }
                     case (option::none) { }
                 }
@@ -106,8 +106,8 @@ fn new_smallintmap_adapter[K, V](fn(&K) -> uint key_idx,
             }
         }
         iter keys() -> K {
-            for each (@tup(K, V) p in self.items()) {
-                put p._0;
+            for each (@rec(K key, V val) p in self.items()) {
+                put p.key;
             }
         }
     }

@@ -59,11 +59,11 @@ fn target_os() -> str { ret "win32"; }
 
 fn dylib_filename(str base) -> str { ret base + ".dll"; }
 
-fn pipe() -> tup(int, int) {
-    auto fds = tup(mutable 0, 0);
-    assert (os::libc::_pipe(ptr::addr_of(fds._0), 1024u,
+fn pipe() -> rec(int in, int out) {
+    auto fds = rec(mutable int=0, mutable out=0);
+    assert (os::libc::_pipe(ptr::addr_of(fds.in), 1024u,
                             libc_constants::O_BINARY()) == 0);
-    ret tup(fds._0, fds._1);
+    ret rec(in=fds.in, out=fds.out);
 }
 
 fn fd_FILE(int fd) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }

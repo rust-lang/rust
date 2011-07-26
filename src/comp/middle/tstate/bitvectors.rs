@@ -213,7 +213,7 @@ fn clear_in_poststate_expr(&fn_ctxt fcx, &@expr e, &poststate t) {
                     alt (local_node_id_to_def(fcx, e.id)) {
                         case (some(def_local(?d_id))) {
                             clear_in_poststate_(
-                               bit_num(fcx,ninit(d_id._1, i)), t);
+                               bit_num(fcx,ninit(d_id.node, i)), t);
                         }
                         case (some(_)) { /* ignore args (for now...) */ }
                         case (_) {

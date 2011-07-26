@@ -12,17 +12,13 @@ export get_tag_variants;
 export get_type;
 
 fn get_symbol(&cstore::cstore cstore, ast::def_id def) -> str {
-    auto cnum = def._0;
-    auto node_id = def._1;
-    auto cdata = cstore::get_crate_data(cstore, cnum).data;
-    ret decoder::get_symbol(cdata, node_id);
+    auto cdata = cstore::get_crate_data(cstore, def.crate).data;
+    ret decoder::get_symbol(cdata, def.node);
 }
 
 fn get_type_param_count(&cstore::cstore cstore, &ast::def_id def) -> uint {
-    auto cnum = def._0;
-    auto node_id = def._1;
-    auto cdata = cstore::get_crate_data(cstore, cnum).data;
-    ret decoder::get_type_param_count(cdata, node_id);
+    auto cdata = cstore::get_crate_data(cstore, def.crate).data;
+    ret decoder::get_type_param_count(cdata, def.node);
 }
 
 fn lookup_defs(&cstore::cstore cstore, ast::crate_num cnum,
@@ -33,7 +29,7 @@ fn lookup_defs(&cstore::cstore cstore, ast::crate_num cnum,
 
 fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
     auto cstore = tcx.sess.get_cstore();
-    auto cnum = def._0;
+    auto cnum = def.crate;
     auto cdata = cstore::get_crate_data(cstore, cnum).data;
     auto resolver = bind translate_def_id(tcx.sess, cnum, _);
     ret decoder::get_tag_variants(cdata, def, tcx, resolver)
@@ -41,7 +37,7 @@ fn get_tag_variants(ty::ctxt tcx, ast::def_id def) -> ty::variant_info[] {
 
 fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
     auto cstore = tcx.sess.get_cstore();
-    auto cnum = def._0;
+    auto cnum = def.crate;
     auto cdata = cstore::get_crate_data(cstore, cnum).data;
     auto resolver = bind translate_def_id(tcx.sess, cnum, _);
     decoder::get_type(cdata, def, tcx, resolver)
@@ -56,8 +52,8 @@ fn translate_def_id(&session::session sess,
                     ast::crate_num searched_crate,
                     &ast::def_id def_id) -> ast::def_id {
 
-    auto ext_cnum = def_id._0;
-    auto node_id = def_id._1;
+    auto ext_cnum = def_id.crate;
+    auto node_id = def_id.node;
 
     assert searched_crate != ast::local_crate;
     assert ext_cnum != ast::local_crate;
@@ -72,7 +68,7 @@ fn translate_def_id(&session::session sess,
         }
     };
 
-    ret tup(local_cnum, node_id);
+    ret rec(crate=local_cnum, node=node_id);
 }
 
 // Local Variables:

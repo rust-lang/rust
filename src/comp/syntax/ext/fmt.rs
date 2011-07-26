@@ -80,11 +80,12 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
         ret @rec(id=cx.next_id(), node=callexpr, span=sp);
     }
     fn make_rec_expr(&ext_ctxt cx, span sp,
-                     vec[tup(ast::ident, @ast::expr)] fields) -> @ast::expr {
+                     vec[rec(ast::ident ident, @ast::expr ex)] fields)
+        -> @ast::expr {
         let ast::field[] astfields = ~[];
-        for (tup(ast::ident, @ast::expr) field in fields) {
-            auto ident = field._0;
-            auto val = field._1;
+        for (rec(ast::ident ident, @ast::expr ex) field in fields) {
+            auto ident = field.ident;
+            auto val = field.ex;
             auto astfield =
                 rec(node=rec(mut=ast::imm, ident=ident, expr=val), span=sp);
             astfields += ~[astfield];
@@ -173,10 +174,10 @@ fn pieces_to_expr(&ext_ctxt cx, span sp, vec[piece] pieces,
                          @ast::expr width_expr, @ast::expr precision_expr,
                          @ast::expr ty_expr) -> @ast::expr {
             ret make_rec_expr(cx, sp,
-                              [tup("flags", flags_expr),
-                               tup("width", width_expr),
-                               tup("precision", precision_expr),
-                               tup("ty", ty_expr)]);
+                              [rec(ident="flags", ex=flags_expr),
+                               rec(ident="width", ex=width_expr),
+                               rec(ident="precision", ex=precision_expr),
+                               rec(ident="ty", ex=ty_expr)]);
         }
         auto rt_conv_flags = make_flags(cx, sp, cnv.flags);
         auto rt_conv_width = make_count(cx, sp, cnv.width);

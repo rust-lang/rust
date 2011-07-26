@@ -38,7 +38,8 @@ fn rights[T, U](&(t[T, U])[] eithers) -> U[] {
     ret result;
 }
 
-fn partition[T, U](&(t[T, U])[] eithers) -> tup(T[], U[]) {
+fn partition[T, U](&(t[T, U])[] eithers)
+    -> rec(T[] lefts, U[] rights) {
     let T[] lefts = ~[];
     let U[] rights = ~[];
     for (t[T, U] elt in eithers) {
@@ -47,7 +48,7 @@ fn partition[T, U](&(t[T, U])[] eithers) -> tup(T[], U[]) {
             case (right(?r)) { rights += ~[r] }
         }
     }
-    ret tup(lefts, rights);
+    ret rec(lefts=lefts, rights=rights);
 }
 //
 // Local Variables:

@@ -81,7 +81,7 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
                      mutable token::token tok,
                      mutable span tok_span,
                      mutable span last_tok_span,
-                     mutable tup(token::token, span)[] buffer,
+                     mutable rec(token::token tok, span span)[] buffer,
                      mutable restriction restr,
                      lexer::reader rdr,
                      @op_spec[] precs,
@@ -91,21 +91,21 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
             last_tok_span = tok_span;
             if ivec::len(buffer) == 0u {
                 auto next = lexer::next_token(rdr);
-                tok = next._0;
-                tok_span = rec(lo=next._1, hi=rdr.get_chpos());
+                tok = next.tok;
+                tok_span = rec(lo=next.chpos, hi=rdr.get_chpos());
             } else {
                 auto next = ivec::pop(buffer);
-                tok = next._0;
-                tok_span = next._1;
+                tok = next.tok;
+                tok_span = next.span;
             }
         }
         fn look_ahead(uint distance) -> token::token {
             while ivec::len(buffer) < distance {
                 auto next = lexer::next_token(rdr);
-                auto sp = rec(lo=next._1, hi=rdr.get_chpos());
-                buffer = ~[tup(next._0, sp)] + buffer;
+                auto sp = rec(lo=next.chpos, hi=rdr.get_chpos());
+                buffer = ~[rec(tok=next.tok, span=sp)] + buffer;
             }
-            ret buffer.(distance-1u)._0;
+            ret buffer.(distance-1u).tok;
         }
         fn fatal(str m) -> ! {
             codemap::emit_error(some(self.get_span()), m, sess.cm);
@@ -137,8 +137,8 @@ fn new_parser(parse_sess sess, ast::crate_cfg cfg, lexer::reader rdr,
     }
 
     auto tok0 = lexer::next_token(rdr);
-    auto span0 = rec(lo=tok0._1, hi=rdr.get_chpos());
-    ret stdio_parser(sess, cfg, ftype, tok0._0,
+    auto span0 = rec(lo=tok0.chpos, hi=rdr.get_chpos());
+    ret stdio_parser(sess, cfg, ftype, tok0.tok,
                      span0, span0, ~[], UNRESTRICTED, rdr,
                      prec_table(), bad_expr_word_table());
 }
@@ -1307,9 +1307,10 @@ fn parse_assign_expr(&parser p) -> @ast::expr {
     ret lhs;
 }
 
-fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
-                                     ast::blk, option::t[@ast::expr],
-                                     uint, uint) {
+fn parse_if_expr_1(&parser p) -> rec(@ast::expr cond,
+                                     ast::blk then,
+                                     option::t[@ast::expr] els,
+                                     uint lo, uint hi) {
     auto lo = p.get_last_lo_pos();
     auto cond = parse_expr(p);
     auto thn = parse_block(p);
@@ -1320,17 +1321,18 @@ fn parse_if_expr_1(&parser p) -> tup(@ast::expr,
         els = some(elexpr);
         hi = elexpr.span.hi;
     }
-    ret tup(cond, thn, els, lo, hi);
+    ret rec(cond=cond, then=thn, els=els, lo=lo, hi=hi);
 }
 
 fn parse_if_expr(&parser p) -> @ast::expr {
     if (eat_word(p, "check")) {
             auto q = parse_if_expr_1(p);
-            ret mk_expr(p, q._3, q._4, ast::expr_if_check(q._0, q._1, q._2));
+            ret mk_expr(p, q.lo, q.hi,
+                        ast::expr_if_check(q.cond, q.then, q.els));
     }
     else {
         auto q = parse_if_expr_1(p);
-        ret mk_expr(p, q._3, q._4, ast::expr_if(q._0, q._1, q._2));
+        ret mk_expr(p, q.lo, q.hi, ast::expr_if(q.cond, q.then, q.els));
     }
 }
 
@@ -1894,10 +1896,10 @@ fn parse_fn(&parser p, ast::proto proto, ast::purity purity) -> ast::_fn {
     ret rec(decl=decl, proto=proto, body=body);
 }
 
-fn parse_fn_header(&parser p) -> tup(ast::ident, ast::ty_param[]) {
+fn parse_fn_header(&parser p) -> rec(ast::ident ident, ast::ty_param[] tps) {
     auto id = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
-    ret tup(id, ty_params);
+    ret rec(ident=id, tps=ty_params);
 }
 
 fn mk_item(&parser p, uint lo, uint hi, &ast::ident ident, &ast::item_ node,
@@ -1914,7 +1916,8 @@ fn parse_item_fn_or_iter(&parser p, ast::purity purity, ast::proto proto,
     auto lo = p.get_last_lo_pos();
     auto t = parse_fn_header(p);
     auto f = parse_fn(p, proto, purity);
-    ret mk_item(p, lo, f.body.span.hi, t._0, ast::item_fn(f, t._1), attrs);
+    ret mk_item(p, lo, f.body.span.hi, t.ident,
+                ast::item_fn(f, t.tps), attrs);
 }
 
 fn parse_obj_field(&parser p) -> ast::obj_field {
@@ -2045,11 +2048,11 @@ fn parse_item_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
     auto id = parse_ident(p);
     expect(p, token::LBRACE);
     auto inner_attrs = parse_inner_attrs_and_next(p);
-    auto first_item_outer_attrs = inner_attrs._1;
+    auto first_item_outer_attrs = inner_attrs.next;
     auto m = parse_mod_items(p, token::RBRACE, first_item_outer_attrs);
     auto hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs._0);
+    ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs.inner);
 }
 
 fn parse_item_native_type(&parser p, &ast::attribute[] attrs)
@@ -2057,11 +2060,11 @@ fn parse_item_native_type(&parser p, &ast::attribute[] attrs)
     auto t = parse_type_decl(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    ret @rec(ident=t._1,
+    ret @rec(ident=t.ident,
              attrs=attrs,
              node=ast::native_item_ty,
              id=p.get_id(),
-             span=rec(lo=t._0, hi=hi));
+             span=rec(lo=t.lo, hi=hi));
 }
 
 fn parse_item_native_fn(&parser p, &ast::attribute[] attrs)
@@ -2076,9 +2079,9 @@ fn parse_item_native_fn(&parser p, &ast::attribute[] attrs)
     }
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    ret @rec(ident=t._0,
+    ret @rec(ident=t.ident,
              attrs=attrs,
-             node=ast::native_item_fn(link_name, decl, t._1),
+             node=ast::native_item_fn(link_name, decl, t.tps),
              id=p.get_id(),
              span=rec(lo=lo, hi=hi));
 }
@@ -2142,8 +2145,8 @@ fn parse_item_native_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
     }
     expect(p, token::LBRACE);
     auto more_attrs = parse_inner_attrs_and_next(p);
-    auto inner_attrs = more_attrs._0;
-    auto first_item_outer_attrs = more_attrs._1;
+    auto inner_attrs = more_attrs.inner;
+    auto first_item_outer_attrs = more_attrs.next;
     auto m = parse_native_mod_items(p, native_name, abi,
                                     first_item_outer_attrs);
     auto hi = p.get_hi_pos();
@@ -2151,10 +2154,10 @@ fn parse_item_native_mod(&parser p, &ast::attribute[] attrs) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs + inner_attrs);
 }
 
-fn parse_type_decl(&parser p) -> tup(uint, ast::ident) {
+fn parse_type_decl(&parser p) -> rec(uint lo, ast::ident ident) {
     auto lo = p.get_last_lo_pos();
     auto id = parse_ident(p);
-    ret tup(lo, id);
+    ret rec(lo=lo, ident=id);
 }
 
 fn parse_item_type(&parser p, &ast::attribute[] attrs) -> @ast::item {
@@ -2164,7 +2167,7 @@ fn parse_item_type(&parser p, &ast::attribute[] attrs) -> @ast::item {
     auto ty = parse_ty(p);
     auto hi = p.get_hi_pos();
     expect(p, token::SEMI);
-    ret mk_item(p, t._0, hi, t._1, ast::item_ty(ty, tps), attrs);
+    ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps), attrs);
 }
 
 fn parse_item_tag(&parser p, &ast::attribute[] attrs) -> @ast::item {
@@ -2330,8 +2333,8 @@ fn parse_attribute_naked(&parser p, ast::attr_style style,
 // next item (since we can't know whether the attribute is an inner attribute
 // of the containing item or an outer attribute of the first contained item
 // until we see the semi).
-fn parse_inner_attrs_and_next(&parser p) -> tup(ast::attribute[],
-                                                ast::attribute[]) {
+fn parse_inner_attrs_and_next(&parser p) -> rec(ast::attribute[] inner,
+                                                ast::attribute[] next) {
     let ast::attribute[] inner_attrs = ~[];
     let ast::attribute[] next_outer_attrs = ~[];
     while (p.peek() == token::POUND) {
@@ -2349,7 +2352,7 @@ fn parse_inner_attrs_and_next(&parser p) -> tup(ast::attribute[],
             break;
         }
     }
-    ret tup(inner_attrs, next_outer_attrs);
+    ret rec(inner=inner_attrs, next=next_outer_attrs);
 }
 
 fn parse_meta_item(&parser p) -> @ast::meta_item {
@@ -2527,12 +2530,12 @@ fn parse_crate_mod(&parser p, &ast::crate_cfg cfg, parse_sess sess)
     -> @ast::crate {
     auto lo = p.get_lo_pos();
     auto crate_attrs = parse_inner_attrs_and_next(p);
-    auto first_item_outer_attrs = crate_attrs._1;
+    auto first_item_outer_attrs = crate_attrs.next;
     auto m = parse_mod_items(p, token::EOF,
                              first_item_outer_attrs);
     ret @spanned(lo, p.get_lo_pos(), rec(directives=~[],
                                          module=m,
-                                         attrs=crate_attrs._0,
+                                         attrs=crate_attrs.inner,
                                          config=p.get_cfg()));
 }
 
@@ -2585,8 +2588,8 @@ fn parse_crate_directive(&parser p, &ast::attribute[] first_outer_attr)
                  token::LBRACE) {
                 p.bump();
                 auto inner_attrs = parse_inner_attrs_and_next(p);
-                auto mod_attrs = outer_attrs + inner_attrs._0;
-                auto next_outer_attr = inner_attrs._1;
+                auto mod_attrs = outer_attrs + inner_attrs.inner;
+                auto next_outer_attr = inner_attrs.next;
                 auto cdirs = parse_crate_directives(p, token::RBRACE,
                                                     next_outer_attr);
                 auto hi = p.get_hi_pos();
@@ -2636,8 +2639,8 @@ fn parse_crate_from_crate_file(&str input, &ast::crate_cfg cfg,
     auto lo = p.get_lo_pos();
     auto prefix = std::fs::dirname(p.get_filemap().name);
     auto leading_attrs = parse_inner_attrs_and_next(p);
-    auto crate_attrs = leading_attrs._0;
-    auto first_cdir_attr = leading_attrs._1;
+    auto crate_attrs = leading_attrs.inner;
+    auto first_cdir_attr = leading_attrs.next;
     auto cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
     let str[] deps = ~[];
     auto cx = @rec(p=p,

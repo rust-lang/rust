@@ -262,11 +262,11 @@ fn utf8_char_width(u8 b) -> uint {
     ret 6u;
 }
 
-fn char_range_at(str s, uint i) -> tup(char, uint) {
+fn char_range_at(str s, uint i) -> rec(char ch, uint next) {
     auto b0 = s.(i);
     auto w = utf8_char_width(b0);
     assert (w != 0u);
-    if (w == 1u) { ret tup(b0 as char, i + 1u); }
+    if (w == 1u) { ret rec(ch=b0 as char, next=i + 1u); }
     auto val = 0u;
     auto end = i + w;
     i += 1u;
@@ -282,10 +282,10 @@ fn char_range_at(str s, uint i) -> tup(char, uint) {
     // a second (as uint) to get it to the right position.
 
     val += (b0 << (w + 1u as u8) as uint) << (w - 1u) * 6u - w - 1u;
-    ret tup(val as char, i);
+    ret rec(ch=val as char, next=i);
 }
 
-fn char_at(str s, uint i) -> char { ret char_range_at(s, i)._0; }
+fn char_at(str s, uint i) -> char { ret char_range_at(s, i).ch; }
 
 fn char_len(str s) -> uint {
     auto i = 0u;
@@ -307,8 +307,8 @@ fn to_chars(str s) -> vec[char] {
     auto len = byte_len(s);
     while (i < len) {
         auto cur = char_range_at(s, i);
-        vec::push[char](buf, cur._0);
-        i = cur._1;
+        vec::push[char](buf, cur.ch);
+        i = cur.next;
     }
     ret buf;
 }
@@ -326,8 +326,8 @@ fn pop_char(&mutable str s) -> char {
 
 fn shift_char(&mutable str s) -> char {
     auto r = char_range_at(s, 0u);
-    s = substr(s, r._1, byte_len(s) - r._1);
-    ret r._0;
+    s = substr(s, r.next, byte_len(s) - r.next);
+    ret r.ch;
 }
 
 fn unshift_char(&mutable str s, char ch) {

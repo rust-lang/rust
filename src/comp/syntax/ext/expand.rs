@@ -38,8 +38,8 @@ fn expand_expr(&hashmap[str, base::syntax_extension] exts,
                         case (some(base::macro_defining(?ext))) {
                             auto named_extension
                                 = ext(ext_cx, pth.span, args, body);
-                            exts.insert(named_extension._0,
-                                        named_extension._1);
+                            exts.insert(named_extension.ident,
+                                        named_extension.ext);
                             ast::expr_tup(~[])
                         }
                     }

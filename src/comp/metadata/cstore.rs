@@ -78,8 +78,9 @@ fn have_crate_data(&cstore cstore, ast::crate_num cnum) -> bool {
     ret p(cstore).metas.contains_key(cnum);
 }
 
-iter iter_crate_data(&cstore cstore) -> @tup(ast::crate_num, crate_metadata) {
-    for each (@tup(ast::crate_num, crate_metadata) kv
+iter iter_crate_data(&cstore cstore)
+    -> @rec(ast::crate_num key, crate_metadata val) {
+    for each (@rec(ast::crate_num key, crate_metadata val) kv
               in p(cstore).metas.items()) {
         put kv;
     }

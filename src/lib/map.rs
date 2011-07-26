@@ -14,7 +14,7 @@ type hashmap[K, V] =
         fn find(&K) -> option::t[V] ;
         fn remove(&K) -> option::t[V] ;
         fn rehash() ;
-        iter items() -> @tup(K, V) ;
+        iter items() -> @rec(K key, V val);
         iter keys() -> K ;
     };
 type hashset[K] = hashmap[K, ()];
@@ -185,10 +185,10 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nbkts);
             bkts = newbkts;
         }
-        iter items() -> @tup(K, V) {
+        iter items() -> @rec(K key, V val) {
             for (bucket[K, V] b in bkts) {
                 alt (b) {
-                    case (some(?k, ?v)) { put @tup(k, v); }
+                    case (some(?k, ?v)) { put @rec(key=k, val=v); }
                     case (_) { }
                 }
             }

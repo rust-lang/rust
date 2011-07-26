@@ -154,7 +154,7 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
     auto fty = ty::expr_ty(cx.tcx, f);
     auto arg_ts = fty_args(cx, fty);
     let node_id[] roots = ~[];
-    let tup(uint, node_id)[] mut_roots = ~[];
+    let rec(uint arg, node_id node)[] mut_roots = ~[];
     let ty::t[] unsafe_ts = ~[];
     let uint[] unsafe_t_offsets = ~[];
     auto i = 0u;
@@ -164,7 +164,7 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
             auto root = expr_root(cx, arg, false);
             if (arg_t.mode == ty::mo_alias(true)) {
                 alt (path_def_id(cx, arg)) {
-                  some(?did) { mut_roots += ~[tup(i, did._1)]; }
+                  some(?did) { mut_roots += ~[rec(arg=i, node=did.node)]; }
                   _ {
                     if (!mut_field(root.ds)) {
                         auto m = "passing a temporary value or \
@@ -175,7 +175,7 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
                 }
             }
             alt (path_def_id(cx, root.ex)) {
-              some(?did) { roots += ~[did._1]; }
+              some(?did) { roots += ~[did.node]; }
               _ { }
             }
             alt (inner_mut(root.ds)) {
@@ -221,11 +221,11 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
     }
     // Ensure we're not passing a root by mutable alias.
 
-    for (tup(uint, node_id) root in mut_roots) {
+    for (rec(uint arg, node_id node) root in mut_roots) {
         auto mut_alias_to_root = false;
         auto mut_alias_to_root_count = 0u;
         for (node_id r in roots) {
-            if root._1 == r {
+            if root.node == r {
                 mut_alias_to_root_count += 1u;
                 if mut_alias_to_root_count > 1u {
                     mut_alias_to_root = true;
@@ -235,7 +235,7 @@ fn check_call(&ctx cx, &@ast::expr f, &(@ast::expr)[] args, &scope sc) ->
         }
 
         if (mut_alias_to_root) {
-            cx.tcx.sess.span_err(args.(root._0).span,
+            cx.tcx.sess.span_err(args.(root.arg).span,
                                  "passing a mutable alias to a \
                  variable that roots another alias");
         }
@@ -257,7 +257,7 @@ fn check_tail_call(&ctx cx, &@ast::expr call) {
             alt (args.(i).node) {
                 case (ast::expr_path(_)) {
                     auto def = cx.tcx.def_map.get(args.(i).id);
-                    auto dnum = ast::def_id_of_def(def)._1;
+                    auto dnum = ast::def_id_of_def(def).node;
                     alt (cx.local_map.find(dnum)) {
                         case (some(arg(ast::alias(?mut)))) {
                             if (mut_a && !mut) {
@@ -286,7 +286,7 @@ fn check_alt(&ctx cx, &@ast::expr input, &ast::arm[] arms, &scope sc,
     visit::visit_expr(input, sc, v);
     auto root = expr_root(cx, input, true);
     auto roots = alt (path_def_id(cx, root.ex)) {
-      some(?did) { ~[did._1] }
+      some(?did) { ~[did.node] }
       _ { ~[] }
     };
     let ty::t[] forbidden_tp =
@@ -350,7 +350,7 @@ fn check_for(&ctx cx, &@ast::local local, &@ast::expr seq, &ast::blk blk,
     auto defnum = local.node.id;
     auto root = expr_root(cx, seq, false);
     auto root_def = alt (path_def_id(cx, root.ex)) {
-      some(?did) { ~[did._1] }
+      some(?did) { ~[did.node] }
       _ { ~[] }
     };
     auto unsafe = alt (inner_mut(root.ds)) { some(?t) { ~[t] } _ { ~[] } };
@@ -381,7 +381,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
              bool assign, &scope sc) {
     auto def = cx.tcx.def_map.get(id);
     if (!def_is_local(def, true)) { ret; }
-    auto my_defnum = ast::def_id_of_def(def)._1;
+    auto my_defnum = ast::def_id_of_def(def).node;
     auto var_t = ty::expr_ty(cx.tcx, ex);
     for (restrict r in *sc) {
         // excludes variables introduced since the alias was made
@@ -400,7 +400,7 @@ fn check_var(&ctx cx, &@ast::expr ex, &ast::path p, ast::node_id id,
 fn check_lval(&@ctx cx, &@ast::expr dest, &scope sc, &vt[scope] v) {
     alt (dest.node) {
         case (ast::expr_path(?p)) {
-            auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id))._1;
+            auto dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
             if (is_immutable_alias(cx, sc, dnum)) {
                 cx.tcx.sess.span_err(dest.span,
                                      "assigning to immutable alias");
@@ -488,15 +488,15 @@ fn test_scope(&ctx cx, &scope sc, &restrict r, &ast::path p) {
         auto msg =
             alt (prob) {
                 case (overwritten(?sp, ?wpt)) {
-                    tup(sp, "overwriting " + ast::path_name(wpt))
+                    rec(span=sp, msg="overwriting " + ast::path_name(wpt))
                 }
                 case (val_taken(?sp, ?vpt)) {
-                    tup(sp, "taking the value of " + ast::path_name(vpt))
+                    rec(span=sp, msg="taking the value of " +
+                        ast::path_name(vpt))
                 }
             };
-        cx.tcx.sess.span_err(msg._0,
-                             msg._1 + " will invalidate alias " +
-                                 ast::path_name(p) + ", which is still used");
+        cx.tcx.sess.span_err(msg.span, msg.msg + " will invalidate alias " +
+                             ast::path_name(p) + ", which is still used");
     }
 }
 

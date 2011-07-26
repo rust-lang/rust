@@ -116,7 +116,7 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
 
-            s += "<tag#" + int::str(id._0) + ":" + int::str(id._1) + ">";
+            s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
             if (ivec::len[t](tps) > 0u) {
                 let str[] strs = ~[];
                 for (t typ in tps) { strs += ~[ty_to_str(cx, typ)]; }
@@ -136,7 +136,8 @@ fn ty_to_str(&ctxt cx, &t typ) -> str {
             s += "obj {\n\t" + str::connect_ivec(strs, "\n\t") + "\n}";
         }
         case (ty_res(?id, _, _)) {
-            s += "<resource#" + int::str(id._0) + ":" + int::str(id._1) + ">";
+            s += "<resource#" + int::str(id.node) + ":" +
+                int::str(id.crate) + ">";
         }
         case (ty_var(?v)) { s += "<T" + int::str(v) + ">"; }
         case (ty_param(?id)) {

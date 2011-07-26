@@ -57,8 +57,8 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
         fn init() {
             if (pos < len) {
                 auto next = str::char_range_at(src, pos);
-                pos = next._1;
-                ch = next._0;
+                pos = next.next;
+                ch = next.ch;
             }
         }
         fn bump() {
@@ -70,8 +70,8 @@ fn new_reader(&codemap::codemap cm, str src, codemap::filemap filemap,
                     col = 0u;
                 }
                 auto next = str::char_range_at(src, pos);
-                pos = next._1;
-                ch = next._0;
+                pos = next.next;
+                ch = next.ch;
             } else { ch = -1 as char; }
         }
         fn get_interner() -> @interner::interner[str] { ret itr; }
@@ -338,13 +338,13 @@ fn scan_numeric_escape(&reader rdr, uint n_hex_digits) -> char {
     ret accum_int as char;
 }
 
-fn next_token(&reader rdr) -> tup(token::token, uint, uint) {
+fn next_token(&reader rdr) -> rec(token::token tok, uint chpos, uint bpos) {
     consume_whitespace_and_comments(rdr);
     auto start_chpos = rdr.get_chpos();
     auto start_bpos = rdr.get_byte_pos();
     auto tok = if rdr.is_eof() { token::EOF }
                else { next_token_inner(rdr) };
-    ret tup(tok, start_chpos, start_bpos);
+    ret rec(tok=tok, chpos=start_chpos, bpos=start_bpos);
 }
 
 fn next_token_inner(&reader rdr) -> token::token {
@@ -768,10 +768,10 @@ fn gather_comments_and_literals(&codemap::codemap cm, str path,
             break;
         }
         auto tok = next_token(rdr);
-        if (is_lit(tok._0)) {
-            literals += ~[rec(lit=rdr.get_str_from(tok._2), pos=tok._1)];
+        if (is_lit(tok.tok)) {
+            literals += ~[rec(lit=rdr.get_str_from(tok.bpos), pos=tok.chpos)];
         }
-        log "tok: " + token::to_str(rdr, tok._0);
+        log "tok: " + token::to_str(rdr, tok.tok);
         first_read = false;
     }
     ret rec(cmnts=comments, lits=literals);

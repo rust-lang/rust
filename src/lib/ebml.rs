@@ -17,21 +17,25 @@ type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
 // ebml reading
 type doc = rec(vec[u8] data, uint start, uint end);
 
-fn vint_at(vec[u8] data, uint start) -> tup(uint, uint) {
+fn vint_at(vec[u8] data, uint start) -> rec(uint val, uint next) {
     auto a = data.(start);
-    if (a & 0x80u8 != 0u8) { ret tup(a & 0x7fu8 as uint, start + 1u); }
+    if (a & 0x80u8 != 0u8) {
+        ret rec(val=a & 0x7fu8 as uint, next=start + 1u);
+    }
     if (a & 0x40u8 != 0u8) {
-        ret tup((a & 0x3fu8 as uint) << 8u | (data.(start + 1u) as uint),
-                start + 2u);
+        ret rec(val=(a & 0x3fu8 as uint) << 8u | (data.(start + 1u) as uint),
+                next=start + 2u);
     } else if (a & 0x20u8 != 0u8) {
-        ret tup((a & 0x1fu8 as uint) << 16u |
+        ret rec(val=(a & 0x1fu8 as uint) << 16u |
                     (data.(start + 1u) as uint) << 8u |
-                    (data.(start + 2u) as uint), start + 3u);
+                    (data.(start + 2u) as uint),
+                next=start + 3u);
     } else if (a & 0x10u8 != 0u8) {
-        ret tup((a & 0x0fu8 as uint) << 24u |
+        ret rec(val=(a & 0x0fu8 as uint) << 24u |
                     (data.(start + 1u) as uint) << 16u |
                     (data.(start + 2u) as uint) << 8u |
-                    (data.(start + 3u) as uint), start + 4u);
+                    (data.(start + 3u) as uint),
+                next=start + 4u);
     } else { log_err "vint too big"; fail; }
 }
 
@@ -41,19 +45,19 @@ fn new_doc(vec[u8] data) -> doc {
 
 fn doc_at(vec[u8] data, uint start) -> doc {
     auto elt_tag = vint_at(data, start);
-    auto elt_size = vint_at(data, elt_tag._1);
-    auto end = elt_size._1 + elt_size._0;
-    ret rec(data=data, start=elt_size._1, end=end);
+    auto elt_size = vint_at(data, elt_tag.next);
+    auto end = elt_size.next + elt_size.val;
+    ret rec(data=data, start=elt_size.next, end=end);
 }
 
 fn maybe_get_doc(doc d, uint tg) -> option::t[doc] {
     auto pos = d.start;
     while (pos < d.end) {
         auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
-        pos = elt_size._1 + elt_size._0;
-        if (elt_tag._0 == tg) {
-            ret some[doc](rec(data=d.data, start=elt_size._1, end=pos));
+        auto elt_size = vint_at(d.data, elt_tag.next);
+        pos = elt_size.next + elt_size.val;
+        if (elt_tag.val == tg) {
+            ret some[doc](rec(data=d.data, start=elt_size.next, end=pos));
         }
     }
     ret none[doc];
@@ -69,13 +73,14 @@ fn get_doc(doc d, uint tg) -> doc {
     }
 }
 
-iter docs(doc d) -> tup(uint, doc) {
+iter docs(doc d) -> rec(uint tag, doc doc) {
     auto pos = d.start;
     while (pos < d.end) {
         auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
-        pos = elt_size._1 + elt_size._0;
-        put tup(elt_tag._0, rec(data=d.data, start=elt_size._1, end=pos));
+        auto elt_size = vint_at(d.data, elt_tag.next);
+        pos = elt_size.next + elt_size.val;
+        put rec(tag=elt_tag.val,
+                doc=rec(data=d.data, start=elt_size.next, end=pos));
     }
 }
 
@@ -83,10 +88,10 @@ iter tagged_docs(doc d, uint tg) -> doc {
     auto pos = d.start;
     while (pos < d.end) {
         auto elt_tag = vint_at(d.data, pos);
-        auto elt_size = vint_at(d.data, elt_tag._1);
-        pos = elt_size._1 + elt_size._0;
-        if (elt_tag._0 == tg) {
-            put rec(data=d.data, start=elt_size._1, end=pos);
+        auto elt_size = vint_at(d.data, elt_tag.next);
+        pos = elt_size.next + elt_size.val;
+        if (elt_tag.val == tg) {
+            put rec(data=d.data, start=elt_size.next, end=pos);
         }
     }
 }

@@ -249,13 +249,13 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('F') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_fn, func._0, func._1, func._2,
-                          func._3);
+            ret ty::mk_fn(st.tcx, ast::proto_fn, func.args, func.ty, func.cf,
+                          func.cs);
         }
         case ('W') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_iter, func._0, func._1, func._2,
-                          func._3);
+            ret ty::mk_fn(st.tcx, ast::proto_iter, func.args, func.ty,
+                          func.cf, func.cs);
         }
         case ('N') {
             auto abi;
@@ -267,7 +267,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 case ('s') { abi = ast::native_abi_x86stdcall; }
             }
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_native_fn(st.tcx, abi, func._0, func._1);
+            ret ty::mk_native_fn(st.tcx, abi, func.args, func.ty);
         }
         case ('O') {
             assert (next(st) as char == '[');
@@ -286,10 +286,10 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 methods +=
                     ~[rec(proto=proto,
                           ident=name,
-                          inputs=func._0,
-                          output=func._1,
-                          cf=func._2,
-                          constrs=func._3)];
+                          inputs=func.args,
+                          output=func.ty,
+                          cf=func.cf,
+                          constrs=func.cs)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
@@ -314,12 +314,13 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             assert (next(st) as char == ':');
             auto len = parse_hex(st);
             assert (next(st) as char == '#');
-            alt (st.tcx.rcache.find(tup(st.crate, pos, len))) {
+            alt (st.tcx.rcache.find(rec(cnum=st.crate, pos=pos, len=len))) {
                 case (some(?tt)) { ret tt; }
                 case (none) {
                     auto ps = @rec(pos=pos, len=len with *st);
                     auto tt = parse_ty(ps, sd);
-                    st.tcx.rcache.insert(tup(st.crate, pos, len), tt);
+                    st.tcx.rcache.insert(rec(cnum=st.crate, pos=pos, len=len),
+                                         tt);
                     ret tt;
                 }
             }
@@ -385,7 +386,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) ->
-   tup(ty::arg[], ty::t, ast::controlflow, (@ty::constr)[]) {
+    rec(ty::arg[] args, ty::t ty, ast::controlflow cf, (@ty::constr)[] cs) {
     assert (next(st) as char == '[');
     let ty::arg[] inputs = ~[];
     while (peek(st) as char != ']') {
@@ -404,9 +405,12 @@ fn parse_ty_fn(@pstate st, str_def sd) ->
     auto cs = parse_constrs(st, sd);
     alt (parse_ty_or_bang(st, sd)) {
         case (a_bang) {
-            ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn, cs);
+            ret rec(args=inputs, ty=ty::mk_bot(st.tcx),
+                    cf=ast::noreturn, cs=cs);
         }
-        case (a_ty(?t)) { ret tup(inputs, t, ast::return, cs); }
+        case (a_ty(?t)) {
+          ret rec(args=inputs, ty=t, cf=ast::return, cs=cs);
+        }
     }
 }
 
@@ -431,8 +435,8 @@ fn parse_def_id(&u8[] buf) -> ast::def_id {
     for (u8 b in def_part) { def_part_vec += [b]; }
 
     auto crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
-    auto def_id = uint::parse_buf(def_part_vec, 10u) as int;
-    ret tup(crate_num, def_id);
+    auto def_num = uint::parse_buf(def_part_vec, 10u) as int;
+    ret rec(crate=crate_num, node=def_num);
 }
 
 //

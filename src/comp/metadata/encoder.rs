@@ -37,9 +37,11 @@ fn encode_def_id(&ebmlivec::writer ebml_w, &def_id id) {
     ebmlivec::end_tag(ebml_w);
 }
 
+type entry[T] = rec(T val, uint pos);
+
 fn encode_tag_variant_paths(&ebmlivec::writer ebml_w, &variant[] variants,
                             &str[] path,
-                            &mutable (tup(str, uint))[] index) {
+                            &mutable (entry[str])[] index) {
     for (variant variant in variants) {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
@@ -50,14 +52,15 @@ fn encode_tag_variant_paths(&ebmlivec::writer ebml_w, &variant[] variants,
 }
 
 fn add_to_index(&ebmlivec::writer ebml_w, &str[] path,
-                &mutable (tup(str, uint))[] index, &str name) {
+                &mutable (entry[str])[] index, &str name) {
     auto full_path = path + ~[name];
-    index += ~[tup(str::connect_ivec(full_path, "::"), ebml_w.writer.tell())];
+    index += ~[rec(val=str::connect_ivec(full_path, "::"),
+                   pos=ebml_w.writer.tell())];
 }
 
-fn encode_native_module_item_paths(&ebmlivec::writer ebml_w,
-                                   &native_mod nmod, &str[] path,
-                                   &mutable (tup(str, uint))[] index) {
+fn encode_native_module_item_paths
+    (&ebmlivec::writer ebml_w, &native_mod nmod, &str[] path,
+     &mutable (entry[str])[] index) {
     for (@native_item nitem in nmod.items) {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
@@ -69,7 +72,7 @@ fn encode_native_module_item_paths(&ebmlivec::writer ebml_w,
 
 fn encode_module_item_paths(&ebmlivec::writer ebml_w, &_mod module,
                             &str[] path,
-                            &mutable (tup(str, uint))[] index) {
+                            &mutable (entry[str])[] index) {
     for (@item it in module.items) {
         if (!is_exported(it.ident, module)) { cont; }
         alt (it.node) {
@@ -149,8 +152,8 @@ fn encode_module_item_paths(&ebmlivec::writer ebml_w, &_mod module,
 }
 
 fn encode_item_paths(&ebmlivec::writer ebml_w, &@crate crate)
-        -> (tup(str, uint))[] {
-    let (tup(str, uint))[] index = ~[];
+        -> (entry[str])[] {
+    let (entry[str])[] index = ~[];
     let str[] path = ~[];
     ebmlivec::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
@@ -166,7 +169,7 @@ fn encode_kind(&ebmlivec::writer ebml_w, u8 c) {
     ebmlivec::end_tag(ebml_w);
 }
 
-fn def_to_str(&def_id did) -> str { ret #fmt("%d:%d", did._0, did._1); }
+fn def_to_str(&def_id did) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
 fn encode_type_param_count(&ebmlivec::writer ebml_w, &ty_param[] tps) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_ty_param_count);
@@ -212,10 +215,10 @@ fn encode_tag_id(&ebmlivec::writer ebml_w, &def_id id) {
 
 fn encode_tag_variant_info(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
                            node_id id, &variant[] variants,
-                           &mutable (tup(int, uint))[] index,
+                           &mutable (entry[int])[] index,
                            &ty_param[] ty_params) {
     for (variant variant in variants) {
-        index += ~[tup(variant.node.id, ebml_w.writer.tell())];
+        index += ~[rec(val=variant.node.id, pos=ebml_w.writer.tell())];
         ebmlivec::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_kind(ebml_w, 'v' as u8);
@@ -232,7 +235,7 @@ fn encode_tag_variant_info(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
 }
 
 fn encode_info_for_item(@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                        @item item, &mutable (tup(int, uint))[] index) {
+                        @item item, &mutable (entry[int])[] index) {
     alt (item.node) {
         case (item_const(_, _)) {
             ebmlivec::start_tag(ebml_w, tag_items_data_item);
@@ -301,7 +304,7 @@ fn encode_info_for_item(@encode_ctxt ecx, &ebmlivec::writer ebml_w,
             encode_symbol(ecx, ebml_w, item.id);
             ebmlivec::end_tag(ebml_w);
 
-            index += ~[tup(ctor_id, ebml_w.writer.tell())];
+            index += ~[rec(val=ctor_id, pos=ebml_w.writer.tell())];
             ebmlivec::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(ctor_id));
             encode_kind(ebml_w, 'f' as u8);
@@ -320,7 +323,7 @@ fn encode_info_for_item(@encode_ctxt ecx, &ebmlivec::writer ebml_w,
             encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
             ebmlivec::end_tag(ebml_w);
 
-            index += ~[tup(ctor_id, ebml_w.writer.tell())];
+            index += ~[rec(val=ctor_id, pos=ebml_w.writer.tell())];
             ebmlivec::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(ctor_id));
             encode_kind(ebml_w, 'f' as u8);
@@ -355,18 +358,18 @@ fn encode_info_for_native_item(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
 }
 
 fn encode_info_for_items(&@encode_ctxt ecx, &ebmlivec::writer ebml_w)
-        -> (tup(int, uint))[] {
-    let (tup(int, uint))[] index = ~[];
+        -> (entry[int])[] {
+    let (entry[int])[] index = ~[];
     ebmlivec::start_tag(ebml_w, tag_items_data);
-    for each (@tup(node_id, middle::ast_map::ast_node) kvp in
-              ecx.ccx.ast_map.items()) {
-        alt (kvp._1) {
+    for each (@rec(node_id key, middle::ast_map::ast_node val) kvp
+              in ecx.ccx.ast_map.items()) {
+        alt (kvp.val) {
             case (middle::ast_map::node_item(?i)) {
-                index += ~[tup(kvp._0, ebml_w.writer.tell())];
+                index += ~[rec(val=kvp.key, pos=ebml_w.writer.tell())];
                 encode_info_for_item(ecx, ebml_w, i, index);
             }
             case (middle::ast_map::node_native_item(?i)) {
-                index += ~[tup(kvp._0, ebml_w.writer.tell())];
+                index += ~[rec(val=kvp.key, pos=ebml_w.writer.tell())];
                 encode_info_for_native_item(ecx, ebml_w, i);
             }
             case (_) {}
@@ -379,35 +382,35 @@ fn encode_info_for_items(&@encode_ctxt ecx, &ebmlivec::writer ebml_w)
 
 // Path and definition ID indexing
 
-fn create_index[T](&(tup(T, uint))[] index, fn(&T) -> uint  hash_fn)
-        -> (@(tup(T, uint))[])[] {
-    let (@mutable (tup(T,uint))[])[] buckets = ~[];
+fn create_index[T](&(entry[T])[] index, fn(&T) -> uint  hash_fn)
+        -> (@(entry[T])[])[] {
+    let (@mutable (entry[T])[])[] buckets = ~[];
     for each (uint i in uint::range(0u, 256u)) { buckets += ~[@mutable ~[]]; }
-    for (tup(T, uint) elt in index) {
-        auto h = hash_fn(elt._0);
+    for (entry[T] elt in index) {
+        auto h = hash_fn(elt.val);
         *(buckets.(h % 256u)) += ~[elt];
     }
 
     auto buckets_frozen = ~[];
-    for (@mutable (tup(T, uint))[] bucket in buckets) {
+    for (@mutable (entry[T])[] bucket in buckets) {
         buckets_frozen += ~[@*bucket];
     }
     ret buckets_frozen;
 }
 
-fn encode_index[T](&ebmlivec::writer ebml_w, &(@(tup(T, uint))[])[] buckets,
+fn encode_index[T](&ebmlivec::writer ebml_w, &(@(entry[T])[])[] buckets,
                    fn(&ioivec::writer, &T)  write_fn) {
     auto writer = ioivec::new_writer_(ebml_w.writer);
     ebmlivec::start_tag(ebml_w, tag_index);
     let uint[] bucket_locs = ~[];
     ebmlivec::start_tag(ebml_w, tag_index_buckets);
-    for (@(tup(T, uint))[] bucket in buckets) {
+    for (@(entry[T])[] bucket in buckets) {
         bucket_locs += ~[ebml_w.writer.tell()];
         ebmlivec::start_tag(ebml_w, tag_index_buckets_bucket);
-        for (tup(T, uint) elt in *bucket) {
+        for (entry[T] elt in *bucket) {
             ebmlivec::start_tag(ebml_w, tag_index_buckets_bucket_elt);
-            writer.write_be_uint(elt._1, 4u);
-            write_fn(writer, elt._0);
+            writer.write_be_uint(elt.pos, 4u);
+            write_fn(writer, elt.val);
             ebmlivec::end_tag(ebml_w);
         }
         ebmlivec::end_tag(ebml_w);
@@ -527,28 +530,28 @@ fn synthesize_crate_attrs(&@encode_ctxt ecx,
 fn encode_crate_deps(&ebmlivec::writer ebml_w, &cstore::cstore cstore) {
 
     fn get_ordered_names(&cstore::cstore cstore) -> str[] {
-        type hashkv = @tup(crate_num, cstore::crate_metadata);
-        type numname = tup(crate_num, str);
+        type hashkv = @rec(crate_num key, cstore::crate_metadata val);
+        type numname = rec(crate_num crate, str ident);
 
         // Pull the cnums and names out of cstore
         let numname[mutable] pairs = ~[mutable];
         for each (hashkv hashkv in cstore::iter_crate_data(cstore)) {
-            pairs += ~[mutable tup(hashkv._0, hashkv._1.name)];
+            pairs += ~[mutable rec(crate=hashkv.key, ident=hashkv.val.name)];
         }
 
         // Sort by cnum
-        fn lteq(&numname kv1, &numname kv2) -> bool { kv1._0 <= kv2._0 }
+        fn lteq(&numname kv1, &numname kv2) -> bool { kv1.crate <= kv2.crate }
         std::sort::ivector::quick_sort(lteq, pairs);
 
         // Sanity-check the crate numbers
         auto expected_cnum = 1;
         for (numname n in pairs) {
-            assert n._0 == expected_cnum;
+            assert n.crate == expected_cnum;
             expected_cnum += 1;
         }
 
         // Return just the names
-        fn name(&numname kv) -> str { kv._1 }
+        fn name(&numname kv) -> str { kv.ident }
         // mutable -> immutable hack for ivec::map
         auto immpairs = ivec::slice(pairs, 0u, ivec::len(pairs));
         ret ivec::map(name, immpairs);
