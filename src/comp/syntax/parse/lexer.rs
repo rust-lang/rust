@@ -590,6 +590,9 @@ fn read_to_eol(&reader rdr) -> str {
         str::push_char(val, rdr.curr());
         rdr.bump();
     }
+    if rdr.curr() == '\n' {
+        rdr.bump();
+    }
     ret val;
 }
 
