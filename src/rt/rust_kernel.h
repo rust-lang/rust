@@ -16,8 +16,6 @@ public:
 private:
     lock_and_signal _kernel_lock;
 
-    const size_t num_threads;
-
     array_list<rust_scheduler *> threads;
 
     randctx rctx;
@@ -30,10 +28,10 @@ private:
 
 public:
 
+    const size_t num_threads;
     int rval;
 
     volatile int live_tasks;
-
     struct rust_env *env;
 
     rust_kernel(rust_srv *srv, size_t num_threads);

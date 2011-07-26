@@ -38,6 +38,7 @@ rust_run_program
 rust_start
 rust_getcwd
 set_min_stack
+sched_threads
 size_of
 squareroot
 str_alloc

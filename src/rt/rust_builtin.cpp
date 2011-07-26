@@ -863,6 +863,11 @@ set_min_stack(rust_task *task, uintptr_t stack_size) {
     g_custom_min_stack_size = stack_size;
 }
 
+extern "C" CDECL int
+sched_threads(rust_task *task) {
+    return task->kernel->num_threads;
+}
+
 //
 // Local Variables:
 // mode: C++
