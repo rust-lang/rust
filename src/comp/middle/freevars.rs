@@ -117,15 +117,22 @@ fn annotate_freevars(&session::session sess, &resolve::def_map def_map,
 
     fn walk_fn(env e, &ast::_fn f, &ast::ty_param[] tps, &span sp,
                &ast::fn_ident i, ast::node_id nid) {
-        auto walker = bind visit::visit_fn(f, tps, sp, i, nid, (), _);
+        fn start_walk(&ast::_fn f, &ast::ty_param[] tps, &span sp,
+                      &ast::fn_ident i, ast::node_id nid, &visit::vt[()] v) {
+            v.visit_fn(f, tps, sp, i, nid, (), v);
+        }
+        auto walker = bind start_walk(f, tps, sp, i, nid, _);
         auto vars = collect_freevars(e.def_map, e.sess, walker, ~[]);
         e.freevars.insert(nid, vars);
     }
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
             ast::expr_for_each(?local, _, ?body) {
+                fn start_walk(&ast::blk b, &visit::vt[()] v) {
+                    v.visit_block(b, (), v);
+                }
                 auto vars = collect_freevars
-                    (e.def_map, e.sess, bind visit::visit_block(body, (), _),
+                    (e.def_map, e.sess, bind start_walk(body, _),
                      ~[local.node.id]);
                 e.freevars.insert(body.node.id, vars);
             }
