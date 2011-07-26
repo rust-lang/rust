@@ -24,6 +24,12 @@ export test_to_task;
 export default_test_to_task;
 export configure_test_task;
 
+native "rust" mod rustrt {
+    fn hack_allow_leaks();
+    fn sched_threads() -> uint;
+}
+
+
 // The name of a test. By convention this follows the rules for rust
 // paths, i.e it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
@@ -236,15 +242,7 @@ fn run_tests(opts: &test_opts, tests: &test_desc[],
     }
 }
 
-fn get_concurrency() -> uint {
-    alt getenv("RUST_THREADS") {
-      option::some(t) {
-        let threads = uint::parse_buf(str::bytes(t), 10u);
-        threads > 0u ? threads : 1u
-      }
-      option::none. { 1u }
-    }
-}
+fn get_concurrency() -> uint { rustrt::sched_threads() }
 
 fn filter_tests(opts: &test_opts, tests: &test_desc[]) -> test_desc[] {
     let filtered = tests;
@@ -327,10 +325,6 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
              fnref: fnref,
              wait: fn () -> test_result { tr_ignored }};
     }
-}
-
-native "rust" mod rustrt {
-    fn hack_allow_leaks();
 }
 
 // We need to run our tests in another task in order to trap test failures.
