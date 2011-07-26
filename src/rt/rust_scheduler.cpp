@@ -87,6 +87,7 @@ rust_scheduler::reap_dead_tasks(int id) {
     I(this, lock.lock_held_by_current_thread());
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
+        task->lock.lock();
         // Make sure this task isn't still running somewhere else...
         if (task->ref_count == 0 && task->can_schedule(id)) {
             I(this, task->tasks_waiting_to_join.is_empty());
@@ -94,10 +95,13 @@ rust_scheduler::reap_dead_tasks(int id) {
             DLOG(this, task,
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
+            task->lock.unlock();
             delete task;
             sync::decrement(kernel->live_tasks);
+            kernel->wakeup_schedulers();
             continue;
         }
+        task->lock.unlock();
         ++i;
     }
 }
@@ -206,21 +210,15 @@ rust_scheduler::start_main_loop() {
 
         rust_task *scheduled_task = schedule_task(id);
 
-        // The scheduler busy waits until a task is available for scheduling.
-        // Eventually we'll want a smarter way to do this, perhaps sleep
-        // for a minimum amount of time.
-
         if (scheduled_task == NULL) {
             log_state();
             DLOG(this, task,
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
-            lock.unlock();
-            sync::sleep(100);
-            lock.lock();
-            DLOG(this, task,
-                "scheduler resuming ...");
+            lock.timed_wait(100000);
             reap_dead_tasks(id);
+            DLOG(this, task,
+                 "scheduler %d resuming ...", id);
             continue;
         }
 

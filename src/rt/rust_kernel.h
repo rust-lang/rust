@@ -106,6 +106,7 @@ public:
     bool is_deadlocked();
 
     void signal_kernel_lock();
+    void wakeup_schedulers();
 
     /**
      * Notifies the kernel whenever a message has been enqueued . This gives

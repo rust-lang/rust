@@ -184,7 +184,6 @@ mod map_reduce {
             let m;
             ctrl |> m;
 
-
             alt m {
               mapper_done. {
                 // log_err "received mapper terminated.";

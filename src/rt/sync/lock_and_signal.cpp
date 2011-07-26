@@ -10,7 +10,9 @@
 #include "lock_and_signal.h"
 
 #if defined(__WIN32__)
-lock_and_signal::lock_and_signal() {
+lock_and_signal::lock_and_signal() 
+    : alive(true)
+{
     // FIXME: In order to match the behavior of pthread_cond_broadcast on
     // Windows, we create manual reset events. This however breaks the
     // behavior of pthread_cond_signal, fixing this is quite involved:
@@ -22,7 +24,7 @@ lock_and_signal::lock_and_signal() {
 
 #else
 lock_and_signal::lock_and_signal()
-    : _locked(false)
+    : _locked(false), alive(true)
 {
     CHECKED(pthread_cond_init(&_cond, NULL));
     CHECKED(pthread_mutex_init(&_mutex, NULL));
@@ -36,6 +38,7 @@ lock_and_signal::~lock_and_signal() {
     CHECKED(pthread_cond_destroy(&_cond));
     CHECKED(pthread_mutex_destroy(&_mutex));
 #endif
+    alive = false;
 }
 
 void lock_and_signal::lock() {
@@ -65,11 +68,14 @@ void lock_and_signal::wait() {
     timed_wait(0);
 }
 
-void lock_and_signal::timed_wait(size_t timeout_in_ns) {
+bool lock_and_signal::timed_wait(size_t timeout_in_ns) {
+    _locked = false;
+    bool rv = true;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
     WaitForSingleObject(_event, INFINITE);
     EnterCriticalSection(&_cs);
+    _holding_thread = GetCurrentThreadId();
 #else
     if (timeout_in_ns == 0) {
         CHECKED(pthread_cond_wait(&_cond, &_mutex));
@@ -79,9 +85,29 @@ void lock_and_signal::timed_wait(size_t timeout_in_ns) {
         timespec time_spec;
         time_spec.tv_sec = time_val.tv_sec + 0;
         time_spec.tv_nsec = time_val.tv_usec * 1000 + timeout_in_ns;
-        CHECKED(pthread_cond_timedwait(&_cond, &_mutex, &time_spec));
+        if(time_spec.tv_nsec >= 1000000000) {
+            time_spec.tv_sec++;
+            time_spec.tv_nsec -= 1000000000;
+        }
+        int cond_wait_status
+            = pthread_cond_timedwait(&_cond, &_mutex, &time_spec);
+        switch(cond_wait_status) {
+        case 0:
+            // successfully grabbed the lock.
+            break;
+        case ETIMEDOUT:
+            // Oops, we timed out.
+            rv = false;
+            break;
+        default:
+            // Error
+            CHECKED(cond_wait_status);
+        }
     }
+    _holding_thread = pthread_self();
 #endif
+    _locked = true;
+    return rv;
 }
 
 /**

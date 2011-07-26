@@ -14,6 +14,9 @@ class lock_and_signal {
     pthread_t _holding_thread;
 #endif
     bool _locked;
+
+    bool alive;
+
 public:
     lock_and_signal();
     virtual ~lock_and_signal();
@@ -21,7 +24,7 @@ public:
     void lock();
     void unlock();
     void wait();
-    void timed_wait(size_t timeout_in_ns);
+    bool timed_wait(size_t timeout_in_ns);
     void signal();
     void signal_all();
 
