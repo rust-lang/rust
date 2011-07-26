@@ -60,7 +60,7 @@ fn target_os() -> str { ret "win32"; }
 fn dylib_filename(str base) -> str { ret base + ".dll"; }
 
 fn pipe() -> rec(int in, int out) {
-    auto fds = rec(mutable int=0, mutable out=0);
+    auto fds = rec(mutable in=0, mutable out=0);
     assert (os::libc::_pipe(ptr::addr_of(fds.in), 1024u,
                             libc_constants::O_BINARY()) == 0);
     ret rec(in=fds.in, out=fds.out);
