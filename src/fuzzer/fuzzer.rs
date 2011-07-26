@@ -148,7 +148,11 @@ iter under(uint n) -> uint { let uint i = 0u; while (i < n) { put i; i += 1u; } 
 
 fn devnull() -> ioivec::writer { std::ioivec::string_writer().get_writer() }
 
-fn as_str(fn (ioivec::writer) f) -> str { auto w = std::ioivec::string_writer(); f(w.get_writer()); w.get_str() }
+fn as_str(fn (ioivec::writer) f) -> str {
+    auto w = std::ioivec::string_writer();
+    f(w.get_writer());
+    ret w.get_str();
+}
 
 /*
 fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
@@ -167,32 +171,73 @@ fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
 }
 */
 
-fn check_roundtrip(@ast::crate cr1, &codemap::codemap cm1, &str filename, &str str1) {
-    auto str2 = as_str(bind pprust::print_crate(cm1, cr1, filename,
-                                                ioivec::string_reader(str1), _,
-                                                pprust::no_ann()));
-    if (true
-      && !contains(str2, "][]") // https://github.com/graydon/rust/issues/669
-      && !contains(str2, "][mutable]") // https://github.com/graydon/rust/issues/669
-      && !contains(str2, "][mutable ]") // https://github.com/graydon/rust/issues/669
-      && !contains(str2, "self") // crazy rules enforced by parser rather than typechecker?
-      && !contains(str2, "spawn") // more precedence issues
-      && !contains(str2, "bind") // more precedence issues?
-       ) {
-        auto cm2 = codemap::new_codemap();
-        auto cr2 = parser::parse_crate_from_source_str(filename, str2, ~[], cm2);
-        // should compare crates at this point, but it's easier to compare strings
-        auto str3 = as_str(bind pprust::print_crate(cm2, cr2, filename, ioivec::string_reader(str2),
-                                                    _, pprust::no_ann()));
-        if (!str::is_ascii(str3)) {
-          log_err "Non-ASCII in " + filename; // why does non-ASCII work correctly with "rustc --pretty normal" but not here???
-        } else if (str2 != str3) {
-            write_file("round-trip-a.rs", str2);
-            write_file("round-trip-b.rs", str3);
-            std::run::run_program("kdiff3", ["round-trip-a.rs", "round-trip-b.rs"]);
-            fail "Mismatch";
+fn parse_and_print(&str code) -> str {
+    auto filename = "";
+    auto codemap = codemap::new_codemap();
+    auto crate = parser::parse_crate_from_source_str(filename, code, ~[], codemap);
+    ret as_str(bind pprust::print_crate(codemap, crate, filename,
+                                        ioivec::string_reader(code),
+                                        _, pprust::no_ann()));
+}
+
+fn content_is_confusing(&str code) -> bool {
+    auto confusing_patterns = [
+        "#macro",      // https://github.com/graydon/rust/issues/671
+        "][]",         // https://github.com/graydon/rust/issues/669
+        "][mutable]",  // https://github.com/graydon/rust/issues/669
+        "][mutable ]", // https://github.com/graydon/rust/issues/669
+        "self",        // crazy rules enforced by parser rather than typechecker?
+        "spawn",       // more precedence issues
+        "bind"         // more precedence issues?
+    ];
+
+    for (str p in confusing_patterns) {
+        if contains(code, p) {
+            ret true;
         }
-   }
+    }
+    ret false;
+}
+
+fn file_is_confusing(&str filename) -> bool {
+    auto confusing_files = [
+
+        "block-expr-precedence.rs",  // https://github.com/graydon/rust/issues/674
+
+        "syntax-extension-fmt.rs"    // an issue where -2147483648 gains an
+                                     // extra negative sign each time through,
+                                     // which i can't reproduce using "rustc
+                                     // --pretty normal"???
+    ];
+
+    for (str f in confusing_files) {
+        if contains(filename, f) {
+            ret true;
+        }
+    }
+
+    ret false;
+}
+
+fn check_roundtrip_convergence(&str code) {
+
+    auto i = 0;
+    auto new = code;
+    auto old = code;
+
+    while (i < 10) {
+        old = new;
+        new = parse_and_print(old);
+        i += 1;
+        log_err #fmt("cycle %d", i);
+    }
+
+    if old != new {
+        write_file("round-trip-a.rs", old);
+        write_file("round-trip-b.rs", new);
+        std::run::run_program("kdiff3", ["round-trip-a.rs", "round-trip-b.rs"]);
+        fail "Mismatch";
+    }
 }
 
 fn main(vec[str] args) {
@@ -207,15 +252,13 @@ fn main(vec[str] args) {
 
     for (str file in files) {
         log_err "=== " + file + " ===";
-        auto cm1 = codemap::new_codemap();
-        auto str1 = read_whole_file(file);
-        auto cr1 = parser::parse_crate_from_source_str(file, str1, ~[], cm1);
-        if (!contains(str1, "#macro") // https://github.com/graydon/rust/issues/671
-         && !str::ends_with(file, "block-expr-precedence.rs") // https://github.com/graydon/rust/issues/674
-         && !str::ends_with(file, "syntax-extension-fmt.rs") // an issue where -2147483648 gains an extra negative sign each time through, which i can't reproduce using "rustc --pretty normal"???
-) {
-            check_roundtrip(cr1, cm1, file, str1);
+        if ! file_is_confusing(file) {
+            auto s = read_whole_file(file);
+            if ! content_is_confusing(s) {
+                check_roundtrip_convergence(s);
+            }
         }
+
         //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
         // Currently hits https://github.com/graydon/rust/issues/675
         //pp_variants(*crate, cm, file);
