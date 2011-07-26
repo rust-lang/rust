@@ -191,7 +191,7 @@ fn break_offset_if_not_bol(&ps s, uint n, int off) {
     if ! is_bol(s) {
         break_offset(s.s, n, off);
     } else {
-        if off != 0 && 
+        if off != 0 &&
             s.s.last_token() == pp::hardbreak_tok() {
             // We do something pretty sketchy here: tuck the nonzero
             // offset-adjustment we were going to deposit along with the
