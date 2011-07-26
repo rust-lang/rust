@@ -4350,7 +4350,7 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     outgoing_fty: &ty::t, args: &(option::t[@ast::expr])[],
                     closure_ty: &ty::t, bound_tys: &ty::t[],
-                    ty_param_count: uint) -> ValueRef {
+                    ty_param_count: uint) -> {val: ValueRef, ty: TypeRef} {
 
     // Here we're not necessarily constructing a thunk in the sense of
     // "function with no arguments".  The result of compiling 'bind f(foo,
@@ -4520,7 +4520,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     bcx.build.FastCall(lltargetfn, llargs);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
-    ret llthunk;
+    ret {val: llthunk, ty: llthunk_ty};
 }
 
 fn trans_bind(cx: &@block_ctxt, f: &@ast::expr,
@@ -4552,15 +4552,13 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
         lltydescs = ginfo.tydescs;
       }
     }
-    let ty_param_count = std::ivec::len[ValueRef](lltydescs);
-    if std::ivec::len[@ast::expr](bound) == 0u && ty_param_count == 0u {
 
+    let ty_param_count = std::ivec::len(lltydescs);
+    if std::ivec::len(bound) == 0u && ty_param_count == 0u {
         // Trivial 'binding': just return the static pair-ptr.
         ret f_res.res;
     }
     let bcx = f_res.res.bcx;
-    let pair_t = node_type(bcx_ccx(cx), cx.sp, id);
-    let pair_v = alloca(bcx, pair_t);
 
     // Translate the bound expressions.
     let bound_tys: ty::t[] = ~[];
@@ -4675,23 +4673,15 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
       }
     }
 
-    // Make thunk and store thunk-ptr in outer pair's code slot.
-    let pair_code =
-        bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_code)]);
+    // Make thunk
     // The type of the entire bind expression.
-    let pair_ty: ty::t = node_id_type(bcx_ccx(cx), id);
+    let pair_ty = node_id_type(bcx_ccx(cx), id);
+    let llthunk =
+        trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
+                         args, closure_ty, bound_tys, ty_param_count);
 
-    let llthunk: ValueRef =
-        trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty, args,
-                         closure_ty, bound_tys, ty_param_count);
-    bcx.build.Store(llthunk, pair_code);
-
-    // Store box ptr in outer pair's box slot.
-    let ccx = *bcx_ccx(bcx);
-    let pair_box =
-        bcx.build.GEP(pair_v, ~[C_int(0), C_int(abi::fn_field_box)]);
-    bcx.build.Store(bcx.build.PointerCast(box, T_opaque_closure_ptr(ccx)),
-                    pair_box);
+    // Construct the function pair
+    let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val, box);
     add_clean_temp(cx, pair_v, pair_ty);
     ret rslt(bcx, pair_v);
 }
