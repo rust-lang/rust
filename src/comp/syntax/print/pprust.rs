@@ -105,7 +105,7 @@ fn path_to_str(p: &ast::path) -> str { be to_str(p, print_path); }
 fn fun_to_str(f: &ast::_fn, name: str, params: &ast::ty_param[]) -> str {
     let writer = ioivec::string_writer();
     let s = rust_printer(writer.get_writer());
-    print_fn(s, f.decl, f.proto, name, params);
+    print_fn(s, f.decl, f.proto, name, params, f.decl.constraints);
     eof(s.s);
     ret writer.get_str();
 }
@@ -337,8 +337,6 @@ fn print_type(s: &ps, ty: &ast::ty) {
       ast::ty_constr(t, cs) {
         print_type(s, *t);
         space(s.s);
-        word(s.s, ":");
-        space(s.s);
         word(s.s, ast_ty_constrs_str(cs));
       }
     }
@@ -363,7 +361,8 @@ fn print_native_item(s: &ps, item: &@ast::native_item) {
 
 
       ast::native_item_fn(lname, decl, typarams) {
-        print_fn(s, decl, ast::proto_fn, item.ident, typarams);
+        print_fn(s, decl, ast::proto_fn, item.ident, typarams,
+                 decl.constraints);
         alt lname {
           none. { }
           some(ss) { space(s.s); word_space(s, "="); print_string(s, ss); }
@@ -396,7 +395,8 @@ fn print_item(s: &ps, item: &@ast::item) {
 
       }
       ast::item_fn(_fn, typarams) {
-        print_fn(s, _fn.decl, _fn.proto, item.ident, typarams);
+        print_fn(s, _fn.decl, _fn.proto, item.ident, typarams,
+                 _fn.decl.constraints);
         word(s.s, " ");
         print_block(s, _fn.body);
       }
@@ -502,7 +502,7 @@ fn print_item(s: &ps, item: &@ast::item) {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
-                     meth.node.ident, typarams);
+                     meth.node.ident, typarams, ~[]);
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
@@ -821,7 +821,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
       }
       ast::expr_fn(f) {
         head(s, proto_to_str(f.proto));
-        print_fn_args_and_ret(s, f.decl);
+        print_fn_args_and_ret(s, f.decl, ~[]);
         space(s.s);
         print_block(s, f.body);
       }
@@ -970,12 +970,12 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         bopen(s);
 
         // Methods
-        for meth: @ast::method  in anon_obj.methods {
+        for meth: @ast::method in anon_obj.methods {
             let typarams: ast::ty_param[] = ~[];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
-                     meth.node.ident, typarams);
+                     meth.node.ident, typarams, ~[]);
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
@@ -1102,17 +1102,18 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
 }
 
 fn print_fn(s: &ps, decl: ast::fn_decl, proto: ast::proto, name: str,
-            typarams: &ast::ty_param[]) {
+            typarams: &ast::ty_param[], constrs: (@ast::constr)[]) {
     alt decl.purity {
       ast::impure_fn. { head(s, proto_to_str(proto)); }
       _ { head(s, "pred"); }
     }
     word(s.s, name);
     print_type_params(s, typarams);
-    print_fn_args_and_ret(s, decl);
+    print_fn_args_and_ret(s, decl, constrs);
 }
 
-fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl) {
+fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
+                        constrs: (@ast::constr)[]) {
     popen(s);
     fn print_arg(s: &ps, x: &ast::arg) {
         ibox(s, indent_unit);
@@ -1123,6 +1124,7 @@ fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl) {
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
+    word(s.s, ast_constrs_str(constrs));
     maybe_print_comment(s, decl.output.span.lo);
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
@@ -1275,7 +1277,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
         }
         end(s);
     }
-    word_space(s, ast_constrs_str(constrs));
+    word(s.s, ast_constrs_str(constrs));
     end(s);
 }
 
