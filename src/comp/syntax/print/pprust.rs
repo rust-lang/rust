@@ -286,7 +286,11 @@ fn print_type(s: &ps, ty: &ast::ty) {
         print_type(s, *mt.ty);
         if parens { pclose(s); }
         word(s.s, "[");
-        print_mutability(s, mt.mut);
+        alt mt.mut {
+          ast::mut. { word(s.s, "mutable"); }
+          ast::maybe_mut. { word(s.s, "mutable?"); }
+          ast::imm. {}
+        }
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
@@ -673,7 +677,10 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
           ast::sk_rc. { word(s.s, "["); }
           ast::sk_unique. { word(s.s, "~["); }
         }
-        if mut == ast::mut { word_nbsp(s, "mutable"); }
+        if mut == ast::mut {
+            word(s.s, "mutable");
+            if ivec::len(exprs) > 0u { nbsp(s); }
+        }
         commasep_exprs(s, inconsistent, exprs);
         word(s.s, "]");
         end(s);
