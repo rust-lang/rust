@@ -52,7 +52,7 @@ d.write("use std;\n")
 d.write("use run_pass_stage2;\n")
 d.write("import run_pass_stage2::*;\n")
 d.write("fn main() {\n");
-d.write("    auto out = std::io::stdout();\n");
+d.write("    let out = std::io::stdout();\n");
 i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
