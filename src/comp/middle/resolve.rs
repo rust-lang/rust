@@ -1117,17 +1117,12 @@ fn index_mod(&ast::_mod md) -> mod_index {
     auto index = new_str_hash[list[mod_index_entry]]();
     for (@ast::view_item it in md.view_items) {
         alt (it.node) {
-            case (ast::view_item_use(?ident, _, _)) {
-                add_to_index(index, ident, mie_view_item(it));
-            }
-            case (ast::view_item_import(?def_ident, _, _)) {
-                add_to_index(index, def_ident, mie_view_item(it));
-            }
-            case (
-                 //globbed imports have to be resolved lazily.
-                 ast::view_item_import_glob(_, _)) {
-            }
-            case (ast::view_item_export(_, _)) { }
+          ast::view_item_import(?ident, _, _) |
+          ast::view_item_use(?ident, _, _) {
+            add_to_index(index, ident, mie_view_item(it));
+          }
+          //globbed imports have to be resolved lazily.
+          ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) {}
         }
     }
     for (@ast::item it in md.items) {
@@ -1155,11 +1150,11 @@ fn index_nmod(&ast::native_mod md) -> mod_index {
     auto index = new_str_hash[list[mod_index_entry]]();
     for (@ast::view_item it in md.view_items) {
         alt (it.node) {
-            case (ast::view_item_import(?def_ident, _, _)) {
-                add_to_index(index, def_ident, mie_view_item(it));
-            }
-            case (ast::view_item_import_glob(_, _)) { }
-            case (ast::view_item_export(_, _)) { }
+          ast::view_item_use(?ident, _, _) |
+          ast::view_item_import(?ident, _, _) {
+            add_to_index(index, ident, mie_view_item(it));
+          }
+          ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) {}
         }
     }
     for (@ast::native_item it in md.items) {
