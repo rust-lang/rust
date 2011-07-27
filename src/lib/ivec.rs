@@ -90,10 +90,12 @@ pred is_not_empty[T](v: &T[mutable? ]) -> bool { ret !is_empty(v); }
 // Accessors
 
 /// Returns the first element of a vector
-fn head[T](v: &T[mutable? ]) -> T { ret v.(0); }
+fn head[T](v: &T[mutable?]) : is_not_empty(v) -> T { ret v.(0); }
 
 /// Returns all but the first element of a vector
-fn tail[T](v: &T[mutable? ]) -> T[mutable? ] { ret slice(v, 1u, len(v)); }
+fn tail[T](v: &T[mutable? ]) : is_not_empty(v)  -> T[mutable?] {
+    ret slice(v, 1u, len(v));
+}
 
 /// Returns the last element of `v`.
 fn last[T](v: &T[mutable? ]) -> option::t[T] {

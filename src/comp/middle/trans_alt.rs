@@ -294,9 +294,8 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
             if ivec::len(ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
                 kind = single;
             } else {
-                let tagptr =
-                    bcx.build.PointerCast(val,
-                                          trans_common::T_opaque_tag_ptr(ccx.tn));
+                let tagptr = bcx.build.PointerCast
+                    (val, trans_common::T_opaque_tag_ptr(ccx.tn));
                 let discrimptr = bcx.build.GEP(tagptr, ~[C_int(0), C_int(0)]);
                 test_val = bcx.build.Load(discrimptr);
                 kind = switch;

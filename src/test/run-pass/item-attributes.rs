@@ -83,7 +83,7 @@ mod test_stmt_single_attr_outer {
         #[attr = "val"]
         mod mod1 {
         }
-        
+
         #[attr = "val"]
         native "rust" mod rustrt {
         }
@@ -115,7 +115,7 @@ mod test_stmt_multi_attr_outer {
         #[attr2 = "val"]
         mod mod1 {
         }
-        
+
         #[attr1 = "val"]
         #[attr2 = "val"]
         native "rust" mod rustrt {

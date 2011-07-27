@@ -1812,15 +1812,14 @@ fn parse_dtor(p: &parser) -> @ast::method {
     let b: ast::blk = parse_block(p);
     let inputs: ast::arg[] = ~[];
     let output: @ast::ty = @spanned(lo, lo, ast::ty_nil);
-    let 
-
-        // I guess dtors can't have constraints?
-        d: ast::fn_decl =
-        {inputs: inputs,
-         output: output,
-         purity: ast::impure_fn,
-         cf: ast::return,
-         constraints: ~[]};
+    // I guess dtors can't have constraints?
+    let d: ast::fn_decl = {
+        inputs: inputs,
+        output: output,
+        purity: ast::impure_fn,
+        cf: ast::return,
+        constraints: ~[]
+    };
     let f: ast::_fn = {decl: d, proto: ast::proto_fn, body: b};
     let m: ast::method_ = {ident: "drop", meth: f, id: p.get_id()};
     ret @spanned(lo, f.body.span.hi, m);
@@ -1877,9 +1876,8 @@ fn parse_item_res(p: &parser, lyr: ast::layer, attrs: &ast::attribute[]) ->
 
 fn parse_mod_items(p: &parser, term: token::token,
                    first_item_attrs: &ast::attribute[]) -> ast::_mod {
-    let 
-        // Shouldn't be any view items since we've already parsed an item attr
-        view_items =
+    // Shouldn't be any view items since we've already parsed an item attr
+    let view_items =
         if ivec::len(first_item_attrs) == 0u { parse_view(p) } else { ~[] };
     let items: (@ast::item)[] = ~[];
     let initial_attrs = first_item_attrs;
@@ -1960,11 +1958,10 @@ fn parse_native_item(p: &parser, attrs: &ast::attribute[]) ->
 }
 
 fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
-                          first_item_attrs: &ast::attribute[]) ->
-   ast::native_mod {
-    let 
-        // Shouldn't be any view items since we've already parsed an item attr
-        view_items =
+                          first_item_attrs: &ast::attribute[])
+    -> ast::native_mod {
+    // Shouldn't be any view items since we've already parsed an item attr
+    let view_items =
         if ivec::len(first_item_attrs) == 0u {
             parse_native_view(p)
         } else { ~[] };

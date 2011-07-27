@@ -2,7 +2,7 @@
 // xfail-stage0
 // error-pattern: Non-predicate in constraint: lt
 
-fn f(a: int, b: int) { }
+fn f(a: int, b: int) : lt(a,b) { }
 
 obj lt(a: int, b: int) { }
 

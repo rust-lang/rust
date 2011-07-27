@@ -215,11 +215,9 @@ mod ct {
        {ty: ty, next: uint} {
         if i >= lim { error("missing type in conversion"); }
         let tstr = str::substr(s, i, 1u);
-        let 
-
-            // TODO: Do we really want two signed types here?
-            // How important is it to be printf compatible?
-            t =
+        // TODO: Do we really want two signed types here?
+        // How important is it to be printf compatible?
+        let t =
             if str::eq(tstr, "b") {
                 ty_bool
             } else if (str::eq(tstr, "s")) {
@@ -305,13 +303,11 @@ mod rt {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
     fn conv_str(cv: &conv, s: str) -> str {
-        let 
+        // For strings, precision is the maximum characters
+        // displayed
 
-            // For strings, precision is the maximum characters
-            // displayed
-
-            // FIXME: substr works on bytes, not chars!
-            unpadded =
+        // FIXME: substr works on bytes, not chars!
+        let unpadded =
             alt cv.precision {
               count_implied. { s }
               count_is(max) {

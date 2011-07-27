@@ -6,16 +6,13 @@ native "llvm" mod llvm {
 }
 
 fn main() {
-
-    let 
-        //
-        // Leave these commented out to
-        // finish in a reasonable time
-        // during 'make check' under valgrind
-        // 5000000
-        // 50000000
-        inputs: vec[int] =
-        [50000, 500000];
+    //
+    // Leave these commented out to
+    // finish in a reasonable time
+    // during 'make check' under valgrind
+    // 5000000
+    // 50000000
+    let inputs: vec[int] = [50000, 500000];
 
     let bodies: vec[Body::props] = NBodySystem::MakeNBodySystem();
 
@@ -35,9 +32,8 @@ fn main() {
 mod NBodySystem {
 
     fn MakeNBodySystem() -> vec[Body::props] {
-        let 
-            // these each return a Body::props
-            bodies: vec[Body::props] =
+        // these each return a Body::props
+        let bodies: vec[Body::props] =
             [Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
              Body::neptune()];
 

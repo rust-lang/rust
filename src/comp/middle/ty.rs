@@ -1987,8 +1987,9 @@ mod unify {
 
             let result_mode;
             if expected_input.mode != actual_input.mode {
-                ret fn_common_res_err(ures_err(terr_mode_mismatch(expected_input.mode,
-                                                                  actual_input.mode)));
+                ret fn_common_res_err
+                    (ures_err(terr_mode_mismatch(expected_input.mode,
+                                                 actual_input.mode)));
             } else { result_mode = expected_input.mode; }
             let result = unify_step(cx, expected_input.ty, actual_input.ty);
             alt result {
@@ -2817,10 +2818,10 @@ fn ast_constr_to_constr[T](tcx: ty::ctxt, c: &@ast::constr_general[T]) ->
                     {path: c.node.path, args: c.node.args, id: pred_id});
       }
       _ {
-        tcx.sess.span_fatal(c.span,
-                            "Predicate " + path_to_str(c.node.path) +
-                                " is unbound or bound to a non-function or an \
-                        impure function");
+        tcx.sess.span_fatal
+            (c.span, "Predicate " + path_to_str(c.node.path) +
+             " is unbound or bound to a non-function or an \
+              impure function");
       }
     }
 }

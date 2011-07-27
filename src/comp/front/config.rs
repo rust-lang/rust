@@ -101,9 +101,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &ast::attribute[]) -> bool {
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
-    let 
-
-        item_cfg_metas =
+    let item_cfg_metas =
         {
             fn extract_metas(inner_items: &(@ast::meta_item)[],
                              cfg_item: &@ast::meta_item) ->

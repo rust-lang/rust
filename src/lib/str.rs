@@ -396,7 +396,7 @@ fn slice(s: str, begin: uint, end: uint) -> str {
     ret rustrt::str_slice(s, begin, end);
 }
 
-fn safe_slice(s: str, begin: uint, end: uint) -> str {
+fn safe_slice(s: str, begin: uint, end: uint): le(begin, end) -> str {
     assert (end <=
                 str::byte_len(s)); // would need some magic to
                                    // make this a precondition
@@ -505,7 +505,7 @@ fn to_upper(s: str) -> str {
 }
 
 // FIXME: This is super-inefficient
-fn replace(s: str, from: str, to: str) -> str {
+fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
     // FIXME (694): Shouldn't have to check this
     check (is_not_empty(from));
     if byte_len(s) == 0u {

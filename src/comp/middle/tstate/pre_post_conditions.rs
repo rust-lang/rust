@@ -641,7 +641,7 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
      This will mean that:
      x = 0;
      break;
-    
+
      won't have a postcondition that says x is initialized, but that's ok.
      */
 

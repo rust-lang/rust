@@ -1,2 +1,2 @@
 // xfail-stage0
-fn main() { let x = (); alt x { () { } } }
+fn main() { let x = (); alt x { (()) { } } }

@@ -1,6 +1,20 @@
-./src/test/run-pass/threads.rs:11:17:11:24: [1;31merror:[0m expecting (, found "child"
-./src/test/run-pass/threads.rs:11     spawn thread "child" child(i);
-                                                   ^~~~~~~
-rt: ---
-rt: f00e:main:main:                   upcall fail 'explicit failure', src/comp/syntax/parse/parser.rs:112
-rt: f00e:main:                        domain main @0x999804c root task failed
+// xfail-stage0
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+
+// -*- rust -*-
+
+fn main() {
+  let int i = 10;
+  while (i > 0) {
+    spawn thread "child" child(i);
+    i = i - 1;
+  }
+  log "main thread exiting";
+}
+
+fn child(int x) {
+  log x;
+}
+

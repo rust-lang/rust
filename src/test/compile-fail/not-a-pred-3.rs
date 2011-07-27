@@ -8,5 +8,6 @@ obj f() {
 
 fn main() {
     let z = f();
-    check (z.g(42)); // should fail to typecheck, as z.g isn't an explicit name
+    // should fail to typecheck, as z.g isn't an explicit name
+    check (z.g(42));
 }

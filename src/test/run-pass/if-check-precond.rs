@@ -5,7 +5,7 @@ pred even(x: uint) -> bool {
     } else if (x == 2u) { ret true; } else { ret even(x - 2u); }
 }
 
-fn print_even(x: uint) { log x; }
+fn print_even(x: uint) : even(x) { log x; }
 
 fn foo(x: uint) { if check even(x) { print_even(x); } else { fail; } }
 

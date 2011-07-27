@@ -122,22 +122,20 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
 
     attr::require_unique_names(sess, metas);
 
-    let 
-        // FIXME: Probably want a warning here since the user
-        // is using the wrong type of meta item
-        crate_name =
-        {
-            let name_items = attr::find_meta_items_by_name(metas, "name");
-            alt ivec::last(name_items) {
-              some(i) {
-                alt attr::get_meta_item_value_str(i) {
-                  some(n) { n }
-                  _ { ident }
-                }
-              }
-              none. { ident }
+    // FIXME: Probably want a warning here since the user
+    // is using the wrong type of meta item
+    let crate_name = {
+        let name_items = attr::find_meta_items_by_name(metas, "name");
+        alt ivec::last(name_items) {
+          some(i) {
+            alt attr::get_meta_item_value_str(i) {
+              some(n) { n }
+              _ { ident }
             }
-        };
+          }
+          none. { ident }
+        }
+    };
 
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =

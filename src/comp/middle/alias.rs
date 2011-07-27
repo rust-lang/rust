@@ -39,10 +39,9 @@ tag local_info { arg(ast::mode); objfield(ast::mutability); }
 type ctx = {tcx: ty::ctxt, local_map: std::map::hashmap[node_id, local_info]};
 
 fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
-    let 
-        // Stores information about object fields and function
-        // arguments that's otherwise not easily available.
-        cx =
+    // Stores information about object fields and function
+    // arguments that's otherwise not easily available.
+    let cx =
         @{tcx: tcx, local_map: std::map::new_int_hash()};
     let v =
         @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),

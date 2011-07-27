@@ -164,14 +164,14 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
     if ty_substs_len > 0u {
         let param_var_len = ivec::len(ty_param_vars);
         if param_var_len == 0u {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        "this item does not take type parameters");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "this item does not take type parameters");
         } else if (ty_substs_len > param_var_len) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        "too many type parameter provided for this item");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "too many type parameter provided for this item");
         } else if (ty_substs_len < param_var_len) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        "not enough type parameters provided for this item");
+            fcx.ccx.tcx.sess.span_fatal
+                (sp, "not enough type parameters provided for this item");
         }
         let ty_substs: ty::t[] = ~[];
         let i = 0u;
@@ -868,11 +868,10 @@ mod collect {
         let abi = @mutable none[ast::native_abi];
         let cx = @{tcx: tcx};
         let visit =
-            visit::mk_simple_visitor(@{visit_item: bind convert(cx, abi, _),
-                                       visit_native_item:
-                                           bind convert_native(cx, abi, _)
-                                          with
-                                              *visit::default_simple_visitor()});
+            visit::mk_simple_visitor
+            (@{visit_item: bind convert(cx, abi, _),
+               visit_native_item: bind convert_native(cx, abi, _)
+               with *visit::default_simple_visitor()});
         visit::visit_crate(*crate, (), visit);
     }
 }
@@ -1426,14 +1425,13 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                 // TODO (issue #448): Wrap a #fmt string over multiple
                 // lines...
 
-                fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                            #fmt("this pattern has %u field%s, \
-                                                but the corresponding \
-                                                variant has no fields",
-                                                 subpats_len,
-                                                 if subpats_len == 1u {
-                                                     ""
-                                                 } else { "s" }));
+                fcx.ccx.tcx.sess.span_fatal
+                    (pat.span, #fmt("this pattern has %u field%s, \
+                                     but the corresponding \
+                                     variant has no fields",
+                                    subpats_len,
+                                    if subpats_len == 1u { "" }
+                                    else { "s" }));
             }
             write::ty_fixup(fcx, pat.id, path_tpot);
           }
@@ -1464,11 +1462,10 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
         let f_count = ivec::len(fields);
         let ex_f_count = ivec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
-            fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                        #fmt("mismatched types: expected a record \
-                                     with %u fields, found one with %u \
-                                     fields",
-                                             ex_f_count, f_count));
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt("mismatched types: expected a record \
+                                 with %u fields, found one with %u \
+                                 fields", ex_f_count, f_count));
         }
         fn matches(name: &str, f: &ty::field) -> bool {
             ret str::eq(name, f.ident);
@@ -1521,8 +1518,8 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: &ast::purity,
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn.)) { ret; }
           _ {
-            ccx.tcx.sess.span_fatal(sp,
-                                    "Pure function calls function not known to be pure");
+            ccx.tcx.sess.span_fatal
+                (sp, "Pure function calls function not known to be pure");
           }
         }
       }
@@ -1614,10 +1611,10 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                        arg_tys.(i).mode == mo_val {
                     // For why the check is necessary, see the
                     // none case in trans_bind_thunk
-                    fcx.ccx.tcx.sess.span_fatal(sp,
-                                                call_kind_str(call_kind) +
-                                                    " arguments with types containing parameters \
-                             must be passed by alias");
+                    fcx.ccx.tcx.sess.span_fatal
+                        (sp, call_kind_str(call_kind) +
+                         " arguments with types containing parameters \
+                          must be passed by alias");
                 }
               }
             }
@@ -1785,10 +1782,10 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                 let variants = ty::tag_variants(fcx.ccx.tcx, id);
                 if ivec::len(variants) != 1u ||
                        ivec::len(variants.(0).args) != 1u {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                "can only dereference tags " +
-                                                    "with a single variant which has a "
-                                                    + "single argument");
+                    fcx.ccx.tcx.sess.span_fatal
+                        (expr.span, "can only dereference tags " +
+                         "with a single variant which has a "
+                         + "single argument");
                 }
                 oper_t =
                     ty::substitute_type_params(fcx.ccx.tcx, tps,
@@ -1983,10 +1980,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
           ty::ty_ivec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
           ty::ty_istr. { elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8); }
           _ {
-            fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                        "mismatched types: expected vector or string but "
-                                            + "found " +
-                                            ty_to_str(fcx.ccx.tcx, ety));
+            fcx.ccx.tcx.sess.span_fatal
+                (expr.span, "mismatched types: expected vector or string but "
+                 + "found " + ty_to_str(fcx.ccx.tcx, ety));
           }
         }
         check_for_or_for_each(fcx, decl, elt_ty, body, id);
@@ -2440,10 +2436,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                       _ {
                         // The user is trying to extend a
                         // non-object.
-                        fcx.ccx.tcx.sess.span_fatal(e.span,
-                                                    syntax::print::pprust::expr_to_str(e)
-                                                        +
-                                                        " does not have object type");
+                        fcx.ccx.tcx.sess.span_fatal
+                            (e.span, syntax::print::pprust::expr_to_str(e) +
+                             " does not have object type");
                       }
                     }
                   }

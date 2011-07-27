@@ -830,10 +830,9 @@ fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) -> result {
     // size of; box_ptr is the type that's converted to a TypeRef and used as
     // the pointer cast target in trans_raw_malloc.
 
-    let 
-        // The mk_int here is the space being
-        // reserved for the refcount.
-        boxed_body =
+    // The mk_int here is the space being
+    // reserved for the refcount.
+    let boxed_body =
         ty::mk_imm_tup(bcx_tcx(cx), ~[ty::mk_int(bcx_tcx(cx)), t]);
     let box_ptr = ty::mk_imm_box(bcx_tcx(cx), t);
     let sz = size_of(cx, boxed_body);
@@ -1243,21 +1242,20 @@ fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> result {
 fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
 
-    let 
-        // FIXME: switch gc/non-gc on layer of the type.
-        // FIXME: switch gc/non-gc on layer of the type.
-        // TODO: call upcall_kill
+    // FIXME: switch gc/non-gc on layer of the type.
+    // FIXME: switch gc/non-gc on layer of the type.
+    // TODO: call upcall_kill
 
 
-        // Call through the obj's own fields-drop glue first.
+    // Call through the obj's own fields-drop glue first.
 
-        // Then free the body.
-        // FIXME: switch gc/non-gc on layer of the type.
-        // Call through the closure's own fields-drop glue first.
+    // Then free the body.
+    // FIXME: switch gc/non-gc on layer of the type.
+    // Call through the closure's own fields-drop glue first.
 
-        // Then free the body.
-        // FIXME: switch gc/non-gc on layer of the type.
-        rs =
+    // Then free the body.
+    // FIXME: switch gc/non-gc on layer of the type.
+    let rs =
         alt ty::struct(bcx_tcx(cx), t) {
           ty::ty_str. { let v = cx.build.Load(v0); trans_non_gc_free(cx, v) }
           ty::ty_vec(_) {
@@ -1361,9 +1359,7 @@ fn maybe_free_ivec_heap_part(cx: &@block_ctxt, v0: ValueRef, unit_ty: ty::t)
 fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let ccx = bcx_ccx(cx);
-    let 
-
-        rs =
+    let rs =
         alt ty::struct(ccx.tcx, t) {
           ty::ty_str. { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_vec(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
@@ -1453,7 +1449,9 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
     // value here, but the dtor expects a type that still has opaque pointers
     // for type variables.
     let val_llty =
-        lib::llvm::fn_ty_param_tys(llvm::LLVMGetElementType(llvm::LLVMTypeOf(dtor_addr))).(std::ivec::len(args));
+        lib::llvm::fn_ty_param_tys(llvm::LLVMGetElementType
+                                   (llvm::LLVMTypeOf(dtor_addr)))
+                                    .(std::ivec::len(args));
     let val_cast = cx.build.BitCast(val.val, val_llty);
     cx.build.FastCall(dtor_addr, args + ~[val_cast]);
 
@@ -3345,9 +3343,8 @@ mod ivec {
             maybe_on_heap_cx.build.PointerCast(vptr,
                                                T_ptr(T_ivec_heap(llunitty)));
         let heap_ptr_ptr =
-            maybe_on_heap_cx.build.InBoundsGEP(stub_ptr,
-                                               ~[C_int(0),
-                                                 C_uint(abi::ivec_heap_stub_elt_ptr)]);
+            maybe_on_heap_cx.build.InBoundsGEP
+            (stub_ptr, ~[C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)]);
         let heap_ptr = maybe_on_heap_cx.build.Load(heap_ptr_ptr);
         let heap_ptr_is_nonnull =
             maybe_on_heap_cx.build.ICmp(lib::llvm::LLVMIntNE, heap_ptr,
@@ -3358,9 +3355,8 @@ mod ivec {
 
         // Ok, the vector is on the heap. Copy the heap part.
         let alen_ptr =
-            on_heap_cx.build.InBoundsGEP(stub_ptr,
-                                         ~[C_int(0),
-                                           C_uint(abi::ivec_heap_stub_elt_alen)]);
+            on_heap_cx.build.InBoundsGEP
+            (stub_ptr, ~[C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)]);
         let alen = on_heap_cx.build.Load(alen_ptr);
 
         let heap_part_sz =
@@ -3598,17 +3594,15 @@ fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
     let then_cx = new_scope_block_ctxt(cx, "then");
     let then_res = trans_block(then_cx, thn, output);
     let else_cx = new_scope_block_ctxt(cx, "else");
-    let 
-        // Synthesize a block here to act as the else block
-        // containing an if expression. Needed in order for the
-        // else scope to behave like a normal block scope. A tad
-        // ugly.
-        // Calling trans_block directly instead of trans_expr
-        // because trans_expr will create another scope block
-        // context for the block, but we've already got the
-        // 'else' context
-
-        else_res =
+    // Synthesize a block here to act as the else block
+    // containing an if expression. Needed in order for the
+    // else scope to behave like a normal block scope. A tad
+    // ugly.
+    // Calling trans_block directly instead of trans_expr
+    // because trans_expr will create another scope block
+    // context for the block, but we've already got the
+    // 'else' context
+    let else_res =
         alt els {
           some(elexpr) {
             alt elexpr.node {
@@ -4908,7 +4902,7 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
     let llretslot = args_res.retslot;
     /*
     log "calling: " + val_str(bcx_ccx(cx).tn, faddr);
-    
+
     for (ValueRef arg in llargs) {
         log "arg: " + val_str(bcx_ccx(cx).tn, arg);
     }
@@ -5334,9 +5328,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       }
       _ {
         // The expression is an lvalue. Fall through.
-        assert (ty::is_lval(e)); // make sure it really is and that we
-                                 // didn't forget to add a case for a new expr!
-
+        assert (ty::is_lval(e));
+        // make sure it really is and that we
+        // didn't forget to add a case for a new expr!
       }
     }
     // lval cases fall through to trans_lval and then
@@ -6352,8 +6346,8 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &ast::arg[],
             alt bcx.fcx.llargs.find(aarg.id) {
               some(x) { argval = x; }
               _ {
-                bcx_ccx(bcx).sess.span_fatal(aarg.ty.span,
-                                             "unbound arg ID in copy_args_to_allocas");
+                bcx_ccx(bcx).sess.span_fatal
+                    (aarg.ty.span, "unbound arg ID in copy_args_to_allocas");
               }
             }
             bcx.build.Store(argval, a);
@@ -6374,8 +6368,8 @@ fn add_cleanups_for_args(bcx: &@block_ctxt, args: &ast::arg[],
             alt bcx.fcx.llargs.find(aarg.id) {
               some(x) { argval = x; }
               _ {
-                bcx_ccx(bcx).sess.span_fatal(aarg.ty.span,
-                                             "unbound arg ID in copy_args_to_allocas");
+                bcx_ccx(bcx).sess.span_fatal
+                    (aarg.ty.span, "unbound arg ID in copy_args_to_allocas");
               }
             }
             add_clean(bcx, argval, arg_tys.(arg_n).ty);
@@ -7227,9 +7221,8 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
 
-    let 
-        // Cast the tag to a type we can GEP into.
-        llblobptr =
+    // Cast the tag to a type we can GEP into.
+    let llblobptr =
         if is_degen {
             fcx.llretptr
         } else {

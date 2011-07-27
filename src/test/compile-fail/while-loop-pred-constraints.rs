@@ -1,7 +1,7 @@
 // xfail-stage0
 // error-pattern: Unsatisfied precondition constraint (for example, even(y
 
-fn print_even(y: int) { log y; }
+fn print_even(y: int) : even(y) { log y; }
 
 pred even(y: int) -> bool { true }
 

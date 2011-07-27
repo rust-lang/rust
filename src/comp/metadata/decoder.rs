@@ -164,9 +164,8 @@ fn lookup_def(cnum: ast::crate_num, data: @u8[], did_: &ast::def_id) ->
     let item = lookup_item(did_.node, data);
     let kind_ch = item_kind(item);
     let did = {crate: cnum, node: did_.node};
-    let 
-        // We treat references to tags as references to types.
-        def =
+    // We treat references to tags as references to types.
+    let def =
         alt kind_ch as char {
           'c' { ast::def_const(did) }
           'f' { ast::def_fn(did, ast::impure_fn) }

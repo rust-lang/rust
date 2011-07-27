@@ -73,12 +73,12 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
 
     let e: env =
         @{mutable refs: ~[], decls: decls, def_map: def_map, sess: sess};
-    walker(visit::mk_simple_visitor(@{visit_local: bind walk_local(e, _),
-                                      visit_pat: bind walk_pat(e, _),
-                                      visit_expr: bind walk_expr(e, _),
-                                      visit_fn: bind walk_fn(e, _, _, _, _, _)
-                                         with
-                                             *visit::default_simple_visitor()}));
+    walker(visit::mk_simple_visitor
+           (@{visit_local: bind walk_local(e, _),
+              visit_pat: bind walk_pat(e, _),
+              visit_expr: bind walk_expr(e, _),
+              visit_fn: bind walk_fn(e, _, _, _, _, _)
+              with *visit::default_simple_visitor()}));
 
     // Calculate (refs - decls). This is the set of captured upvars.
     // We build a vec of the node ids of the uses and a set of the

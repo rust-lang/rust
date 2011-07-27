@@ -159,9 +159,7 @@ fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b: &blk) {
     fn quit(keepgoing: @mutable bool, i: &@item) { *keepgoing = false; }
     fn kg(keepgoing: @mutable bool) -> bool { ret *keepgoing; }
 
-    let 
-
-        v =
+    let v =
         {visit_block_pre: bind relax_precond_block_non_recursive(fcx, i, _),
          visit_expr_pre: bind relax_precond_expr(fcx, i, _),
          visit_stmt_pre: bind relax_precond_stmt(fcx, i, _),

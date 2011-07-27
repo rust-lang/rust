@@ -43,7 +43,7 @@
 
 fn main() {
 
-  auto num = 12;
+  let num = 12;
 
   assert if (true) { 12 } else { 12 } - num == 0;
   assert 12 - if (true) { 12 } else { 12 } == 0;

@@ -197,7 +197,7 @@ fn test_removal() {
         /**
          * FIXME (issue #150): we want to check the removed value as in the
          * following:
-        
+
         let util.option[uint] v = hm.remove(i);
         alt (v) {
           case (util.some[uint](u)) {
@@ -205,7 +205,7 @@ fn test_removal() {
           }
           case (util.none[uint]()) { fail; }
         }
-        
+
          * but we util.option is a tag type so util.some and util.none are
          * off limits until we parse the dwarf for tag types.
          */

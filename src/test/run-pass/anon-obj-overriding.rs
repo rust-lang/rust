@@ -10,9 +10,7 @@ fn main() {
     let my_a = a();
 
     // An anonymous object that overloads the 'foo' method.
-    let 
-
-        my_b =
+    let my_b =
         obj () {
             fn foo() -> int { ret 3; }
             with

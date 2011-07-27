@@ -1395,11 +1395,10 @@ obj builder(B: BuilderRef, terminated: @mutable bool) {
 
     fn is_terminated() -> bool {
         ret *terminated;
-    }drop 
-
-          {
+    }
+    drop {
          llvm::LLVMDisposeBuilder(B);
-     }
+    }
 }
 
 /* Memory-managed object interface to type handles. */

@@ -317,10 +317,9 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
 
         ret {fields:
                  alt ao.fields {
-                   option::none[anon_obj_field[]]. { ao.fields }
-                   option::some[anon_obj_field[]](v) {
-                     option::some[anon_obj_field[]](ivec::map(fold_anon_obj_field,
-                                                              v))
+                   option::none. { ao.fields }
+                   option::some(v) {
+                     option::some(ivec::map(fold_anon_obj_field, v))
                    }
                  },
              methods: ivec::map(fld.fold_method, ao.methods),

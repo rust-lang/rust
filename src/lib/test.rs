@@ -58,7 +58,7 @@ type test_opts = {filter: option::t[str], run_ignored: bool};
 type opt_res = either::t[test_opts, str];
 
 // Parses command line arguments into test options
-fn parse_opts(args: &str[]) -> opt_res {
+fn parse_opts(args: &str[]) : ivec::is_not_empty(args) -> opt_res {
 
     // FIXME (#649): Shouldn't have to check here
     check (ivec::is_not_empty(args));

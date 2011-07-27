@@ -65,9 +65,8 @@ fn build_configuration(sess: session::session, argv0: str, input: str) ->
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
     let user_cfg = sess.get_opts().cfg;
-    let 
-        // If the user wants a test runner, then add the test cfg
-        gen_cfg =
+    // If the user wants a test runner, then add the test cfg
+    let gen_cfg =
         {
             if sess.get_opts().test && !attr::contains_name(user_cfg, "test")
                {

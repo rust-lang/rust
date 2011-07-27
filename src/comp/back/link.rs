@@ -340,10 +340,8 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
         ret alt metas.name {
               some(v) { v }
               none. {
-                let 
-                    // FIXME: Remove this vec->ivec conversion.
-
-                    name =
+                // FIXME: Remove this vec->ivec conversion.
+                let name =
                     {
                         let os_vec =
                             str::split(fs::basename(output), '.' as u8);
