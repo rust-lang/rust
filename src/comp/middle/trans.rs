@@ -163,6 +163,16 @@ fn type_of_fn(cx: &@crate_ctxt, sp: &span, proto: ast::proto,
     ret type_of_fn_full(cx, sp, proto, false, inputs, output, ty_param_count);
 }
 
+// Given a function type and a count of ty params, construct an llvm type
+fn type_of_fn_from_ty(cx: &@crate_ctxt, sp: &span,
+                      fty: &ty::t, ty_param_count: uint) -> TypeRef {
+    ret type_of_fn(cx, sp,
+                   ty::ty_fn_proto(cx.tcx, fty),
+                   ty::ty_fn_args(cx.tcx, fty),
+                   ty::ty_fn_ret(cx.tcx, fty),
+                   ty_param_count);
+}
+
 fn type_of_native_fn(cx: &@crate_ctxt, sp: &span, abi: ast::native_abi,
                      inputs: &ty::arg[], output: &ty::t, ty_param_count: uint)
    -> TypeRef {
@@ -231,8 +241,8 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
         }
         llty = T_struct(tys);
       }
-      ty::ty_fn(proto, args, out, _, _) {
-        llty = T_fn_pair(*cx, type_of_fn(cx, sp, proto, args, out, 0u));
+      ty::ty_fn(_, _, _, _, _) {
+        llty = T_fn_pair(*cx, type_of_fn_from_ty(cx, sp, t, 0u));
       }
       ty::ty_native_fn(abi, args, out) {
         let nft = native_fn_wrapper_type(cx, sp, 0u, t);
@@ -276,7 +286,6 @@ fn type_of_arg(cx: @local_ctxt, sp: &span, arg: &ty::arg) -> TypeRef {
       }
       _ {
         // fall through
-
       }
     }
     let typ;
@@ -289,14 +298,12 @@ fn type_of_arg(cx: @local_ctxt, sp: &span, arg: &ty::arg) -> TypeRef {
 fn type_of_ty_param_count_and_ty(lcx: @local_ctxt, sp: &span,
                                  tpt: &ty::ty_param_count_and_ty) -> TypeRef {
     alt ty::struct(lcx.ccx.tcx, tpt.ty) {
-      ty::ty_fn(proto, inputs, output, _, _) {
-        let llfnty =
-            type_of_fn(lcx.ccx, sp, proto, inputs, output, tpt.count);
+      ty::ty_fn(_, _, _, _, _) {
+        let llfnty = type_of_fn_from_ty(lcx.ccx, sp, tpt.ty, tpt.count);
         ret T_fn_pair(*lcx.ccx, llfnty);
       }
       _ {
         // fall through
-
       }
     }
     ret type_of(lcx.ccx, sp, tpt.ty);
@@ -3967,9 +3974,7 @@ fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_count_and_ty,
             tydescs += ~[td.val];
         }
         let gen = {item_type: tpt.ty, static_tis: tis, tydescs: tydescs};
-        lv =
-            {res: rslt(bcx, lv.res.val), generic: some[generic_info](gen)
-                with lv};
+        lv = {res: rslt(bcx, lv.res.val), generic: some(gen) with lv};
     }
     ret lv;
 }
@@ -4512,9 +4517,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     // Cast the outgoing function to the appropriate type (see the comments in
     // trans_bind below for why this is necessary).
     let lltargetty =
-        type_of_fn(bcx_ccx(bcx), sp,
-                   ty::ty_fn_proto(bcx_tcx(bcx), outgoing_fty), outgoing_args,
-                   outgoing_ret_ty, ty_param_count);
+        type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
     bcx.build.FastCall(lltargetfn, llargs);
@@ -4575,7 +4578,6 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     // First, synthesize a tuple type containing the types of all the
     // bound expressions.
     // bindings_ty = ~[bound_ty1, bound_ty2, ...]
-
     let bindings_ty: ty::t = ty::mk_imm_tup(bcx_tcx(cx), bound_tys);
 
     // NB: keep this in sync with T_closure_ptr; we're making
@@ -4629,11 +4631,8 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     // specifically, we know how many type descriptors the outgoing
     // function has, which type_of() doesn't, as only we know which
     // item the function refers to.
-    let llfnty =
-        type_of_fn(bcx_ccx(bcx), cx.sp,
-                   ty::ty_fn_proto(bcx_tcx(bcx), outgoing_fty),
-                   ty::ty_fn_args(bcx_tcx(bcx), outgoing_fty),
-                   ty::ty_fn_ret(bcx_tcx(bcx), outgoing_fty), ty_param_count);
+    let llfnty = type_of_fn_from_ty(bcx_ccx(bcx), cx.sp,
+                                    outgoing_fty, ty_param_count);
     let llclosurety = T_ptr(T_fn_pair(*bcx_ccx(bcx), llfnty));
 
     // Store thunk-target.
@@ -4658,7 +4657,6 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     alt f_res.generic {
       none. {/* nothing to do */ }
       some(ginfo) {
-        lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
         let ty_params_slot =
             bcx.build.GEP(closure,
                           ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
@@ -5163,11 +5161,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
         let llfnty: TypeRef =
-            alt ty::struct(ccx.tcx, node_id_type(ccx, e.id)) {
-              ty::ty_fn(proto, inputs, output, _, _) {
-                type_of_fn_full(ccx, e.span, proto, false, inputs, output, 0u)
-              }
-            };
+            type_of_fn_from_ty(ccx, e.span, node_id_type(ccx, e.id), 0u);
         let sub_cx = extend_path(cx.fcx.lcx, ccx.names.next("anon"));
         let s = mangle_internal_name_by_path(ccx, sub_cx.path);
         let llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfnty);
@@ -7362,7 +7356,8 @@ fn decl_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &str[], flav: str,
 fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &str[],
                          flav: str, ty_params: &ast::ty_param[],
                          node_id: ast::node_id, node_type: ty::t) {
-    let llfty;
+    let llfty = type_of_fn_from_ty(ccx, sp, node_type,
+                                   std::ivec::len(ty_params));
     alt ty::struct(ccx.tcx, node_type) {
       ty::ty_fn(proto, inputs, output, _, _) {
         llfty =
