@@ -292,7 +292,15 @@ fn print_type(&ps s, &ast::ty ty) {
             word(s.s, "]");
         }
         case (ast::ty_ivec(?mt)) {
+            auto parens = alt mt.ty.node {
+              ast::ty_box(_) | ast::ty_vec(_) | ast::ty_ptr(_) |
+              ast::ty_port(_) | ast::ty_chan(_) { true }
+              ast::ty_path(?pt, _) { ivec::len(pt.node.types) > 0u }
+              _ { false }
+            };
+            if parens { popen(s); }
             print_type(s, *mt.ty);
+            if parens { pclose(s); }
             word(s.s, "[");
             print_mutability(s, mt.mut);
             word(s.s, "]");
