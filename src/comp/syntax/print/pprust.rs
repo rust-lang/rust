@@ -410,9 +410,9 @@ fn print_item(&ps s, &@ast::item item) {
     alt (item.node) {
         case (ast::item_const(?ty, ?expr)) {
             head(s, "const");
+            word_space(s, item.ident + ":");
             print_type(s, *ty);
             space(s.s);
-            word_space(s, item.ident);
             end(s); // end the head-ibox
 
             word_space(s, "=");
@@ -441,6 +441,9 @@ fn print_item(&ps s, &@ast::item item) {
                 case (ast::native_abi_cdecl) { word_nbsp(s, "\"cdecl\""); }
                 case (ast::native_abi_rust_intrinsic) {
                     word_nbsp(s, "\"rust-intrinsic\"");
+                }
+                case (ast::native_abi_x86stdcall) {
+                    word_nbsp(s, "\"x86stdcall\"");
                 }
             }
             word_nbsp(s, "mod");
@@ -510,9 +513,8 @@ fn print_item(&ps s, &@ast::item item) {
             fn print_field(&ps s, &ast::obj_field field) {
                 ibox(s, indent_unit);
                 print_mutability(s, field.mut);
+                word_space(s, field.ident + ":");
                 print_type(s, *field.ty);
-                space(s.s);
-                word(s.s, field.ident);
                 end(s);
             }
             fn get_span(&ast::obj_field f) -> codemap::span { ret f.ty.span; }
@@ -544,9 +546,8 @@ fn print_item(&ps s, &@ast::item item) {
             word(s.s, item.ident);
             print_type_params(s, tps);
             popen(s);
+            word_space(s, dt.decl.inputs.(0).ident + ":");
             print_type(s, *dt.decl.inputs.(0).ty);
-            space(s.s);
-            word(s.s, dt.decl.inputs.(0).ident);
             pclose(s);
             space(s.s);
             print_block(s, dt.body);
@@ -810,23 +811,19 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_for(?decl, ?expr, ?blk)) {
             head(s, "for");
-            popen(s);
             print_for_decl(s, decl);
             space(s.s);
             word_space(s, "in");
             print_expr(s, expr);
-            pclose(s);
             space(s.s);
             print_block(s, blk);
         }
         case (ast::expr_for_each(?decl, ?expr, ?blk)) {
             head(s, "for each");
-            popen(s);
             print_for_decl(s, decl);
             space(s.s);
             word_space(s, "in");
             print_expr(s, expr);
-            pclose(s);
             space(s.s);
             print_block(s, blk);
         }
@@ -869,10 +866,8 @@ fn print_expr(&ps s, &@ast::expr expr) {
         }
         case (ast::expr_block(?blk)) {
             // containing cbox, will be closed by print-block at }
-
             cbox(s, indent_unit);
             // head-box, will be closed by print-block after {
-
             ibox(s, 0u);
             print_block(s, blk);
         }
@@ -1008,9 +1003,9 @@ fn print_expr(&ps s, &@ast::expr expr) {
             fn print_field(&ps s, &ast::anon_obj_field field) {
                 ibox(s, indent_unit);
                 print_mutability(s, field.mut);
+                word_space(s, field.ident + ":");
                 print_type(s, *field.ty);
                 space(s.s);
-                word(s.s, field.ident);
                 word_space(s, "=");
                 print_expr(s, field.expr);
                 end(s);
@@ -1067,8 +1062,7 @@ fn print_decl(&ps s, &@ast::decl decl) {
                 alt loc.node.ty {
                   some(?ty) {
                     ibox(s, indent_unit);
-                    word(s.s, loc.node.ident);
-                    word_space(s, ":");
+                    word_space(s, loc.node.ident + ":");
                     print_type(s, *ty);
                     end(s);
                   }
@@ -1100,16 +1094,20 @@ fn print_decl(&ps s, &@ast::decl decl) {
 fn print_ident(&ps s, &ast::ident ident) { word(s.s, ident); }
 
 fn print_for_decl(&ps s, @ast::local loc) {
+    word(s.s, loc.node.ident);
     alt (loc.node.ty) {
-      none { word(s.s, "auto"); }
-      some (?t) { print_type(s, *t); }
+      some (?t) {
+        word_space(s, ":");
+        print_type(s, *t);
+      }
+      none {}
     }
     space(s.s);
-    word(s.s, loc.node.ident);
 }
 
 fn print_path(&ps s, &ast::path path) {
     maybe_print_comment(s, path.span.lo);
+    if path.node.global { word(s.s, "::"); }
     auto first = true;
     for (str id in path.node.idents) {
         if (first) { first = false; } else { word(s.s, "::"); }
@@ -1128,7 +1126,7 @@ fn print_pat(&ps s, &@ast::pat pat) {
     s.ann.pre(ann_node);
     alt (pat.node) {
         case (ast::pat_wild) { word(s.s, "_"); }
-        case (ast::pat_bind(?id)) { word(s.s, "?" + id); }
+        case (ast::pat_bind(?id)) { word(s.s, id); }
         case (ast::pat_lit(?lit)) { print_literal(s, lit); }
         case (ast::pat_tag(?path, ?args)) {
             print_path(s, path);
@@ -1136,6 +1134,8 @@ fn print_pat(&ps s, &@ast::pat pat) {
                 popen(s);
                 commasep(s, inconsistent, args, print_pat);
                 pclose(s);
+            } else {
+                word(s.s, ".");
             }
         }
         case (ast::pat_rec(?fields, ?etc)) {
@@ -1182,10 +1182,9 @@ fn print_fn_args_and_ret(&ps s, &ast::fn_decl decl) {
     popen(s);
     fn print_arg(&ps s, &ast::arg x) {
         ibox(s, indent_unit);
+        word_space(s, x.ident + ":");
         print_alias(s, x.mode);
         print_type(s, *x.ty);
-        space(s.s);
-        word(s.s, x.ident);
         end(s);
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
