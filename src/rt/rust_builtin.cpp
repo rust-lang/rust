@@ -857,10 +857,10 @@ clone_chan(rust_task *task, rust_chan *chan) {
 }
 
 // defined in rust_task.cpp
-extern size_t g_min_stack_size;
+extern size_t g_custom_min_stack_size;
 extern "C" CDECL void
 set_min_stack(rust_task *task, uintptr_t stack_size) {
-    g_min_stack_size = stack_size;
+    g_custom_min_stack_size = stack_size;
 }
 
 //

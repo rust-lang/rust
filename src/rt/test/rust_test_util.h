@@ -17,10 +17,13 @@ public:
 
 class rust_synchronized_indexed_list_test : public rust_test {
 public:
+    rust_env env;
     rust_srv srv;
     synchronized_indexed_list<indexed_list_element<int> > list;
 
-    rust_synchronized_indexed_list_test() {
+    rust_synchronized_indexed_list_test() :
+        srv(&env)
+    {
     }
 
     class worker : public rust_thread {

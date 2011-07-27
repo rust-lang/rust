@@ -1,7 +1,8 @@
 #include "rust_internal.h"
 #include "rust_srv.h"
 
-rust_srv::rust_srv() :
+rust_srv::rust_srv(rust_env *env) :
+    env(env),
     local_region(this, false) {
 }
 
@@ -72,7 +73,7 @@ rust_srv::warning(char const *expression,
 
 rust_srv *
 rust_srv::clone() {
-    return new rust_srv();
+    return new rust_srv(env);
 }
 
 //

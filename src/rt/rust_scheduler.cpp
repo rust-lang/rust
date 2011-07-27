@@ -20,7 +20,9 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     cache(this),
     kernel(kernel),
     message_queue(message_queue),
-    id(id)
+    id(id),
+    min_stack_size(kernel->env->min_stack_size),
+    env(kernel->env)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(this, &rctx);

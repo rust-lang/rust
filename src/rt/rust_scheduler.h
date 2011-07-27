@@ -60,10 +60,13 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     const int id;
 
     lock_and_signal lock;
+    size_t min_stack_size;
 
 #ifndef __WIN32__
     pthread_attr_t attr;
 #endif
+
+    rust_env *env;
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.

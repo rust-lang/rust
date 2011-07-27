@@ -6,6 +6,7 @@
 
 class rust_srv {
 public:
+    rust_env *env;
     memory_region local_region;
     virtual void log(char const *msg);
     virtual void fatal(char const *expression,
@@ -21,7 +22,7 @@ public:
     virtual void free(void *);
     virtual void *malloc(size_t);
     virtual void *realloc(void *, size_t);
-    rust_srv();
+    rust_srv(rust_env *);
     virtual ~rust_srv();
     virtual rust_srv *clone();
 };

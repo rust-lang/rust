@@ -19,7 +19,8 @@ rust_domain_test::worker::run() {
 
 bool
 rust_domain_test::run() {
-    rust_srv srv;
+    rust_env env;
+    rust_srv srv(&env);
     rust_kernel kernel(&srv, 1);
 
     array_list<worker *> workers;
@@ -51,7 +52,8 @@ rust_task_test::worker::run() {
 
 bool
 rust_task_test::run() {
-    rust_srv srv;
+    rust_env env;
+    rust_srv srv(&env);
     rust_kernel kernel(&srv, 1);
 
     array_list<worker *> workers;

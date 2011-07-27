@@ -10,6 +10,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_run_program.cpp \
               rt/rust_crate_cache.cpp \
               rt/rust_comm.cpp \
+              rt/rust_env.cpp \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
               rt/rust_task_list.cpp \
@@ -38,6 +39,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_internal.h \
                rt/rust_util.h \
                rt/rust_chan.h \
+               rt/rust_env.h \
                rt/rust_port.h \
                rt/rust_scheduler.h \
                rt/rust_task.h \

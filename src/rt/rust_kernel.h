@@ -98,6 +98,8 @@ public:
      */
     indexed_list<rust_message_queue> message_queues;
 
+    struct rust_env *env;
+
     rust_handle<rust_task> *get_task_handle(rust_task *task);
     rust_handle<rust_port> *get_port_handle(rust_port *port);
 

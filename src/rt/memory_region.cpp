@@ -14,7 +14,7 @@ memory_region::alloc_header *memory_region::get_header(void *mem) {
 
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
     _srv(srv), _parent(NULL), _live_allocations(0),
-    _detailed_leaks(getenv("RUST_DETAILED_LEAKS") != NULL),
+    _detailed_leaks(srv->env->detailed_leaks),
     _synchronized(synchronized), _hack_allow_leaks(false) {
 }
 

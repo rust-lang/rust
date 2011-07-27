@@ -24,6 +24,7 @@
 #include "rust.h"
 #include "rand.h"
 #include "uthash.h"
+#include "rust_env.h"
 
 #if defined(__WIN32__)
 extern "C" {

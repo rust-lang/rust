@@ -12,7 +12,8 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _interrupt_kernel_loop(FALSE),
     num_threads(num_threads),
     rval(0),
-    live_tasks(0)
+    live_tasks(0),
+    env(srv->env)
 {
     isaac_init(this, &rctx);
     create_schedulers();
@@ -51,6 +52,8 @@ rust_kernel::destroy_scheduler(rust_scheduler *sched) {
 }
 
 void rust_kernel::create_schedulers() {
+    KLOG_("Using %d scheduler threads.", num_threads);
+
     for(size_t i = 0; i < num_threads; ++i) {
         threads.push(create_scheduler(i));
     }

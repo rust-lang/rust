@@ -148,7 +148,7 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
                  CryptReleaseContext(hProv, 0));
         }
 #else
-        char *rust_seed = getenv("RUST_SEED");
+        char *rust_seed = sched->env->rust_seed;
         if (rust_seed != NULL) {
             ub4 seed = (ub4) atoi(rust_seed);
             for (size_t i = 0; i < RANDSIZ; i ++) {

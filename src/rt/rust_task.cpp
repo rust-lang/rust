@@ -10,28 +10,25 @@
 
 #include "globals.h"
 
-// Stacks
+// Stack size
+size_t g_custom_min_stack_size = 0;
 
-// FIXME (issue #151): This should be 0x300; the change here is for
-// practicality's sake until stack growth is working.
-size_t g_min_stack_size = 0x300000;
-
-static size_t get_min_stk_size() {
-    char *stack_size = getenv("RUST_MIN_STACK");
-    if(stack_size) {
-        return strtol(stack_size, NULL, 0);
-    }
-    else {
-        return g_min_stack_size;
+static size_t
+get_min_stk_size(size_t default_size) {
+    if (g_custom_min_stack_size != 0) {
+        return g_custom_min_stack_size;
+    } else {
+        return default_size;
     }
 }
+
 
 // Task stack segments. Heap allocated and chained together.
 
 static stk_seg*
-new_stk(rust_task *task, size_t minsz)
+new_stk(rust_scheduler *sched, rust_task *task, size_t minsz)
 {
-    size_t min_stk_bytes = get_min_stk_size();
+    size_t min_stk_bytes = get_min_stk_size(sched->min_stack_size);
     if (minsz < min_stk_bytes)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
@@ -90,7 +87,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
-    stk = new_stk(this, 0);
+    stk = new_stk(sched, this, 0);
     rust_sp = stk->limit;
 }
 

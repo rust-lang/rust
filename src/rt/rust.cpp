@@ -76,56 +76,6 @@ command_line_args : public kernel_owned<command_line_args>
 };
 
 
-#if defined(__WIN32__)
-int get_num_cpus() {
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-
-    return (int) sysinfo.dwNumberOfProcessors;
-}
-#elif defined(__BSD__)
-int get_num_cpus() {
-    /* swiped from http://stackoverflow.com/questions/150355/
-       programmatically-find-the-number-of-cores-on-a-machine */
-
-    unsigned int numCPU;
-    int mib[4];
-    size_t len = sizeof(numCPU);
-
-    /* set the mib for hw.ncpu */
-    mib[0] = CTL_HW;
-    mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
-
-    /* get the number of CPUs from the system */
-    sysctl(mib, 2, &numCPU, &len, NULL, 0);
-
-    if( numCPU < 1 ) {
-        mib[1] = HW_NCPU;
-        sysctl( mib, 2, &numCPU, &len, NULL, 0 );
-
-        if( numCPU < 1 ) {
-            numCPU = 1;
-        }
-    }
-    return numCPU;
-}
-#elif defined(__GNUC__)
-int get_num_cpus() {
-    return sysconf(_SC_NPROCESSORS_ONLN);
-}
-#endif
-
-int get_num_threads()
-{
-    char *env = getenv("RUST_THREADS");
-    if(env) {
-        int num = atoi(env);
-        if(num > 0)
-            return num;
-    }
-    return get_num_cpus();
-}
-
 /**
  * Main entry point into the Rust runtime. Here we create a Rust service,
  * initialize the kernel, create the root domain and run it.
@@ -133,17 +83,16 @@ int get_num_threads()
 
 int check_claims = 0;
 
-void enable_claims(void* ck) { check_claims = (ck != 0); }
-
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
-    update_log_settings(crate_map, getenv("RUST_LOG"));
-    enable_claims(getenv("CHECK_CLAIMS"));
-    int num_threads = get_num_threads();
+    rust_env *env = load_env();
 
-    rust_srv *srv = new rust_srv();
-    rust_kernel *kernel = new rust_kernel(srv, num_threads);
+    update_log_settings(crate_map, env->logspec);
+    check_claims = env->check_claims;
+
+    rust_srv *srv = new rust_srv(env);
+    rust_kernel *kernel = new rust_kernel(srv, env->num_sched_threads);
     kernel->start();
     rust_task *root_task = kernel->create_task(NULL, "main");
     rust_scheduler *sched = root_task->sched;
@@ -159,12 +108,12 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     root_task->start(main_fn, (uintptr_t)args->args);
 
-    DLOG(sched, dom, "Using %d worker threads.", num_threads);
-
     int ret = kernel->start_task_threads();
     delete args;
     delete kernel;
     delete srv;
+
+    free_env(env);
 
 #if !defined(__WIN32__)
     // Don't take down the process if the main thread exits without an
