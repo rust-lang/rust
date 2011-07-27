@@ -4458,7 +4458,6 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     }
 
     let a: uint = 3u; // retptr, task ptr, env come first
-
     let b: int = 1;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: TypeRef[] =
@@ -4466,8 +4465,8 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     for arg: option::t[@ast::expr]  in args {
         let out_arg = outgoing_args.(outgoing_arg_index);
         let llout_arg_ty = llout_arg_tys.(outgoing_arg_index);
+        let is_val = out_arg.mode == ty::mo_val;
         alt arg {
-
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
@@ -4478,7 +4477,14 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                                abi::closure_elt_bindings, b]);
             bcx = bound_arg.bcx;
             let val = bound_arg.val;
-            if out_arg.mode == ty::mo_val {
+            // If the type is parameterized, then we need to cast the
+            // type we actually have to the parameterized out type.
+            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
+                let ty = if is_val
+                         { T_ptr(llout_arg_ty) } else { llout_arg_ty };
+                val = bcx.build.PointerCast(val, ty);
+            }
+            if is_val {
                 if type_is_immediate(cx.ccx, e_ty) {
                     val = bcx.build.Load(val);
                     bcx = copy_ty(bcx, val, e_ty).bcx;
@@ -4486,13 +4492,6 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     bcx = copy_ty(bcx, val, e_ty).bcx;
                     val = bcx.build.Load(val);
                 }
-            }
-            // If the type is parameterized, then we need to cast the
-            // type we actually have to the parameterized out type.
-            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                // FIXME: (#642) This works for boxes and alias params
-                // but does not work for bare functions.
-                val = bcx.build.PointerCast(val, llout_arg_ty);
             }
             llargs += ~[val];
             b += 1;
@@ -4502,7 +4501,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
           none. {
             let passed_arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                assert (out_arg.mode != ty::mo_val);
+                assert (!is_val);
                 passed_arg = bcx.build.PointerCast(passed_arg, llout_arg_ty);
             }
             llargs += ~[passed_arg];
