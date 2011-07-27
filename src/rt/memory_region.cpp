@@ -139,9 +139,6 @@ memory_region::~memory_region() {
     if (!_hack_allow_leaks) {
         _srv->fatal(msg, __FILE__, __LINE__,
                     "%d objects", _live_allocations);
-    } else {
-        _srv->warning(msg, __FILE__, __LINE__,
-                      "%d objects", _live_allocations);
     }
     if (_synchronized) { _lock.unlock(); }
 }
