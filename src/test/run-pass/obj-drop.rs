@@ -1,8 +1,8 @@
 
 
 fn main() {
-    obj handle(@int i) { }
+    obj handle(i: @int) { }
     // This just tests whether the obj leaks its box state members.
 
-    auto ob = handle(@0xf00f00);
+    let ob = handle(@0xf00f00);
 }

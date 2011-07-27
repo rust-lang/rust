@@ -2,18 +2,18 @@
 
 
 // -*- rust -*-
-fn f(int x) -> int {
+fn f(x: int) -> int {
     // log "in f:";
 
     log x;
-    if (x == 1) {
+    if x == 1 {
         // log "bottoming out";
 
         ret 1;
     } else {
         // log "recurring";
 
-        let int y = x * f(x - 1);
+        let y: int = x * f(x - 1);
         // log "returned";
 
         log y;

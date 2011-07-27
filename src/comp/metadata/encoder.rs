@@ -21,28 +21,26 @@ export encoded_ty;
 
 type abbrev_map = map::hashmap[ty::t, tyencode::ty_abbrev];
 
-type encode_ctxt = rec(@crate_ctxt ccx,
-                       abbrev_map type_abbrevs);
+type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
 
 // Path table encoding
-fn encode_name(&ebmlivec::writer ebml_w, &str name) {
+fn encode_name(ebml_w: &ebmlivec::writer, name: &str) {
     ebmlivec::start_tag(ebml_w, tag_paths_data_name);
     ebml_w.writer.write(str::bytes_ivec(name));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_def_id(&ebmlivec::writer ebml_w, &def_id id) {
+fn encode_def_id(ebml_w: &ebmlivec::writer, id: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_def_id);
     ebml_w.writer.write(str::bytes_ivec(def_to_str(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
-type entry[T] = rec(T val, uint pos);
+type entry[T] = {val: T, pos: uint};
 
-fn encode_tag_variant_paths(&ebmlivec::writer ebml_w, &variant[] variants,
-                            &str[] path,
-                            &mutable (entry[str])[] index) {
-    for (variant variant in variants) {
+fn encode_tag_variant_paths(ebml_w: &ebmlivec::writer, variants: &variant[],
+                            path: &str[], index: &mutable (entry[str])[]) {
+    for variant: variant  in variants {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, variant.node.name);
@@ -51,17 +49,18 @@ fn encode_tag_variant_paths(&ebmlivec::writer ebml_w, &variant[] variants,
     }
 }
 
-fn add_to_index(&ebmlivec::writer ebml_w, &str[] path,
-                &mutable (entry[str])[] index, &str name) {
-    auto full_path = path + ~[name];
-    index += ~[rec(val=str::connect_ivec(full_path, "::"),
-                   pos=ebml_w.writer.tell())];
+fn add_to_index(ebml_w: &ebmlivec::writer, path: &str[],
+                index: &mutable (entry[str])[], name: &str) {
+    let full_path = path + ~[name];
+    index +=
+        ~[{val: str::connect_ivec(full_path, "::"),
+           pos: ebml_w.writer.tell()}];
 }
 
-fn encode_native_module_item_paths
-    (&ebmlivec::writer ebml_w, &native_mod nmod, &str[] path,
-     &mutable (entry[str])[] index) {
-    for (@native_item nitem in nmod.items) {
+fn encode_native_module_item_paths(ebml_w: &ebmlivec::writer,
+                                   nmod: &native_mod, path: &str[],
+                                   index: &mutable (entry[str])[]) {
+    for nitem: @native_item  in nmod.items {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, nitem.ident);
@@ -70,91 +69,89 @@ fn encode_native_module_item_paths
     }
 }
 
-fn encode_module_item_paths(&ebmlivec::writer ebml_w, &_mod module,
-                            &str[] path,
-                            &mutable (entry[str])[] index) {
-    for (@item it in module.items) {
-        if (!is_exported(it.ident, module)) { cont; }
-        alt (it.node) {
-            case (item_const(_, _)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_fn(_, ?tps)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_mod(?_mod)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_mod);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                encode_module_item_paths(ebml_w, _mod, path + ~[it.ident],
-                                         index);
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_native_mod(?nmod)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_mod);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                encode_native_module_item_paths(ebml_w, nmod,
-                                                path + ~[it.ident], index);
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_ty(_, ?tps)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_res(_, _, ?tps, ?ctor_id)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(ctor_id));
-                ebmlivec::end_tag(ebml_w);
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-            }
-            case (item_tag(?variants, ?tps)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-                encode_tag_variant_paths(ebml_w, variants, path, index);
-            }
-            case (item_obj(_, ?tps, ?ctor_id)) {
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(ctor_id));
-                ebmlivec::end_tag(ebml_w);
-                add_to_index(ebml_w, path, index, it.ident);
-                ebmlivec::start_tag(ebml_w, tag_paths_data_item);
-                encode_name(ebml_w, it.ident);
-                encode_def_id(ebml_w, local_def(it.id));
-                ebmlivec::end_tag(ebml_w);
-            }
+fn encode_module_item_paths(ebml_w: &ebmlivec::writer, module: &_mod,
+                            path: &str[], index: &mutable (entry[str])[]) {
+    for it: @item  in module.items {
+        if !is_exported(it.ident, module) { cont; }
+        alt it.node {
+          item_const(_, _) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_fn(_, tps) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_mod(_mod) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_mod);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            encode_module_item_paths(ebml_w, _mod, path + ~[it.ident], index);
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_native_mod(nmod) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_mod);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            encode_native_module_item_paths(ebml_w, nmod, path + ~[it.ident],
+                                            index);
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_ty(_, tps) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_res(_, _, tps, ctor_id) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(ctor_id));
+            ebmlivec::end_tag(ebml_w);
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+          }
+          item_tag(variants, tps) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+            encode_tag_variant_paths(ebml_w, variants, path, index);
+          }
+          item_obj(_, tps, ctor_id) {
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(ctor_id));
+            ebmlivec::end_tag(ebml_w);
+            add_to_index(ebml_w, path, index, it.ident);
+            ebmlivec::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, it.ident);
+            encode_def_id(ebml_w, local_def(it.id));
+            ebmlivec::end_tag(ebml_w);
+          }
         }
     }
 }
 
-fn encode_item_paths(&ebmlivec::writer ebml_w, &@crate crate)
-        -> (entry[str])[] {
-    let (entry[str])[] index = ~[];
-    let str[] path = ~[];
+fn encode_item_paths(ebml_w: &ebmlivec::writer, crate: &@crate) ->
+   (entry[str])[] {
+    let index: (entry[str])[] = ~[];
+    let path: str[] = ~[];
     ebmlivec::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
     ebmlivec::end_tag(ebml_w);
@@ -163,69 +160,69 @@ fn encode_item_paths(&ebmlivec::writer ebml_w, &@crate crate)
 
 
 // Item info table encoding
-fn encode_kind(&ebmlivec::writer ebml_w, u8 c) {
+fn encode_kind(ebml_w: &ebmlivec::writer, c: u8) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_kind);
     ebml_w.writer.write(~[c]);
     ebmlivec::end_tag(ebml_w);
 }
 
-fn def_to_str(&def_id did) -> str { ret #fmt("%d:%d", did.crate, did.node); }
+fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
-fn encode_type_param_count(&ebmlivec::writer ebml_w, &ty_param[] tps) {
+fn encode_type_param_count(ebml_w: &ebmlivec::writer, tps: &ty_param[]) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_ty_param_count);
     ebmlivec::write_vint(ebml_w.writer, ivec::len[ty_param](tps));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_variant_id(&ebmlivec::writer ebml_w, &def_id vid) {
+fn encode_variant_id(ebml_w: &ebmlivec::writer, vid: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_variant);
     ebml_w.writer.write(str::bytes_ivec(def_to_str(vid)));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_type(&@encode_ctxt ecx, &ebmlivec::writer ebml_w, &ty::t typ) {
+fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer, typ: &ty::t) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_type);
-    auto f = def_to_str;
-    auto ty_str_ctxt =
-        @rec(ds=f, tcx=ecx.ccx.tcx,
-             abbrevs=tyencode::ac_use_abbrevs(ecx.type_abbrevs));
+    let f = def_to_str;
+    let ty_str_ctxt =
+        @{ds: f,
+          tcx: ecx.ccx.tcx,
+          abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ioivec::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_symbol(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                 node_id id) {
+fn encode_symbol(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer, id: node_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(str::bytes_ivec(ecx.ccx.item_symbols.get(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_discriminant(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                       node_id id) {
+fn encode_discriminant(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
+                       id: node_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(str::bytes_ivec(ecx.ccx.discrim_symbols.get(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_tag_id(&ebmlivec::writer ebml_w, &def_id id) {
+fn encode_tag_id(ebml_w: &ebmlivec::writer, id: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_tag_id);
     ebml_w.writer.write(str::bytes_ivec(def_to_str(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_tag_variant_info(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                           node_id id, &variant[] variants,
-                           &mutable (entry[int])[] index,
-                           &ty_param[] ty_params) {
-    for (variant variant in variants) {
-        index += ~[rec(val=variant.node.id, pos=ebml_w.writer.tell())];
+fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
+                           id: node_id, variants: &variant[],
+                           index: &mutable (entry[int])[],
+                           ty_params: &ty_param[]) {
+    for variant: variant  in variants {
+        index += ~[{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebmlivec::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_monotype(ecx.ccx.tcx, variant.node.id));
-        if (ivec::len[variant_arg](variant.node.args) > 0u) {
+        if ivec::len[variant_arg](variant.node.args) > 0u {
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
@@ -234,145 +231,139 @@ fn encode_tag_variant_info(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
     }
 }
 
-fn encode_info_for_item(@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                        @item item, &mutable (entry[int])[] index) {
-    alt (item.node) {
-        case (item_const(_, _)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'c' as u8);
-            encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, item.id));
-            encode_symbol(ecx, ebml_w, item.id);
-            ebmlivec::end_tag(ebml_w);
+fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebmlivec::writer,
+                        item: @item, index: &mutable (entry[int])[]) {
+    alt item.node {
+      item_const(_, _) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 'c' as u8);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_symbol(ecx, ebml_w, item.id);
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_fn(fd, tps) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w,
+                    alt fd.decl.purity { pure_fn. { 'p' } impure_fn. { 'f' } }
+                        as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        encode_symbol(ecx, ebml_w, item.id);
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_mod(_) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 'm' as u8);
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_native_mod(_) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 'n' as u8);
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_ty(_, tps) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 'y' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_tag(variants, tps) {
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 't' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
+        for v: variant  in variants {
+            encode_variant_id(ebml_w, local_def(v.node.id));
         }
-        case (item_fn(?fd, ?tps)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, alt (fd.decl.purity) {
-                                  case (pure_fn) { 'p' }
-                                  case (impure_fn) { 'f' } } as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, item.id));
-            encode_symbol(ecx, ebml_w, item.id);
-            ebmlivec::end_tag(ebml_w);
-        }
-        case (item_mod(_)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'm' as u8);
-            ebmlivec::end_tag(ebml_w);
-        }
-        case (item_native_mod(_)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'n' as u8);
-            ebmlivec::end_tag(ebml_w);
-        }
-        case (item_ty(_, ?tps)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'y' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, item.id));
-            ebmlivec::end_tag(ebml_w);
-        }
-        case (item_tag(?variants, ?tps)) {
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 't' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, item.id));
-            for (variant v in variants) {
-                encode_variant_id(ebml_w, local_def(v.node.id));
-            }
-            ebmlivec::end_tag(ebml_w);
-            encode_tag_variant_info(ecx, ebml_w, item.id, variants, index,
-                                    tps);
-        }
-        case (item_res(_, _, ?tps, ?ctor_id)) {
-            auto fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
+        ebmlivec::end_tag(ebml_w);
+        encode_tag_variant_info(ecx, ebml_w, item.id, variants, index, tps);
+      }
+      item_res(_, _, tps, ctor_id) {
+        let fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
 
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(ctor_id));
-            encode_kind(ebml_w, 'y' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
-            encode_symbol(ecx, ebml_w, item.id);
-            ebmlivec::end_tag(ebml_w);
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(ctor_id));
+        encode_kind(ebml_w, 'y' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        encode_symbol(ecx, ebml_w, item.id);
+        ebmlivec::end_tag(ebml_w);
 
-            index += ~[rec(val=ctor_id, pos=ebml_w.writer.tell())];
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(ctor_id));
-            encode_kind(ebml_w, 'f' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w, fn_ty);
-            encode_symbol(ecx, ebml_w, ctor_id);
-            ebmlivec::end_tag(ebml_w);
-        }
-        case (item_obj(_, ?tps, ?ctor_id)) {
-            auto fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
+        index += ~[{val: ctor_id, pos: ebml_w.writer.tell()}];
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(ctor_id));
+        encode_kind(ebml_w, 'f' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, fn_ty);
+        encode_symbol(ecx, ebml_w, ctor_id);
+        ebmlivec::end_tag(ebml_w);
+      }
+      item_obj(_, tps, ctor_id) {
+        let fn_ty = node_id_to_monotype(ecx.ccx.tcx, ctor_id);
 
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(item.id));
-            encode_kind(ebml_w, 'y' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
-            ebmlivec::end_tag(ebml_w);
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_kind(ebml_w, 'y' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, ty::ty_fn_ret(ecx.ccx.tcx, fn_ty));
+        ebmlivec::end_tag(ebml_w);
 
-            index += ~[rec(val=ctor_id, pos=ebml_w.writer.tell())];
-            ebmlivec::start_tag(ebml_w, tag_items_data_item);
-            encode_def_id(ebml_w, local_def(ctor_id));
-            encode_kind(ebml_w, 'f' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w, fn_ty);
-            encode_symbol(ecx, ebml_w, ctor_id);
-            ebmlivec::end_tag(ebml_w);
-        }
+        index += ~[{val: ctor_id, pos: ebml_w.writer.tell()}];
+        ebmlivec::start_tag(ebml_w, tag_items_data_item);
+        encode_def_id(ebml_w, local_def(ctor_id));
+        encode_kind(ebml_w, 'f' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, fn_ty);
+        encode_symbol(ecx, ebml_w, ctor_id);
+        ebmlivec::end_tag(ebml_w);
+      }
     }
 }
 
-fn encode_info_for_native_item(&@encode_ctxt ecx, &ebmlivec::writer ebml_w,
-                               &@native_item nitem) {
+fn encode_info_for_native_item(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
+                               nitem: &@native_item) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item);
-    alt (nitem.node) {
-        case (native_item_ty) {
-            encode_def_id(ebml_w, local_def(nitem.id));
-            encode_kind(ebml_w, 'T' as u8);
-            encode_type(ecx, ebml_w,
-                        ty::mk_native(ecx.ccx.tcx, local_def(nitem.id)));
-        }
-        case (native_item_fn(_, _, ?tps)) {
-            encode_def_id(ebml_w, local_def(nitem.id));
-            encode_kind(ebml_w, 'F' as u8);
-            encode_type_param_count(ebml_w, tps);
-            encode_type(ecx, ebml_w,
-                        node_id_to_monotype(ecx.ccx.tcx, nitem.id));
-            encode_symbol(ecx, ebml_w, nitem.id);
-        }
+    alt nitem.node {
+      native_item_ty. {
+        encode_def_id(ebml_w, local_def(nitem.id));
+        encode_kind(ebml_w, 'T' as u8);
+        encode_type(ecx, ebml_w,
+                    ty::mk_native(ecx.ccx.tcx, local_def(nitem.id)));
+      }
+      native_item_fn(_, _, tps) {
+        encode_def_id(ebml_w, local_def(nitem.id));
+        encode_kind(ebml_w, 'F' as u8);
+        encode_type_param_count(ebml_w, tps);
+        encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, nitem.id));
+        encode_symbol(ecx, ebml_w, nitem.id);
+      }
     }
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_info_for_items(&@encode_ctxt ecx, &ebmlivec::writer ebml_w)
-        -> (entry[int])[] {
-    let (entry[int])[] index = ~[];
+fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer) ->
+   (entry[int])[] {
+    let index: (entry[int])[] = ~[];
     ebmlivec::start_tag(ebml_w, tag_items_data);
-    for each (@rec(node_id key, middle::ast_map::ast_node val) kvp
-              in ecx.ccx.ast_map.items()) {
-        alt (kvp.val) {
-            case (middle::ast_map::node_item(?i)) {
-                index += ~[rec(val=kvp.key, pos=ebml_w.writer.tell())];
-                encode_info_for_item(ecx, ebml_w, i, index);
-            }
-            case (middle::ast_map::node_native_item(?i)) {
-                index += ~[rec(val=kvp.key, pos=ebml_w.writer.tell())];
-                encode_info_for_native_item(ecx, ebml_w, i);
-            }
-            case (_) {}
+    for each kvp: @{key: node_id, val: middle::ast_map::ast_node}  in
+             ecx.ccx.ast_map.items() {
+        alt kvp.val {
+          middle::ast_map::node_item(i) {
+            index += ~[{val: kvp.key, pos: ebml_w.writer.tell()}];
+            encode_info_for_item(ecx, ebml_w, i, index);
+          }
+          middle::ast_map::node_native_item(i) {
+            index += ~[{val: kvp.key, pos: ebml_w.writer.tell()}];
+            encode_info_for_native_item(ecx, ebml_w, i);
+          }
+          _ { }
         }
     }
     ebmlivec::end_tag(ebml_w);
@@ -382,32 +373,32 @@ fn encode_info_for_items(&@encode_ctxt ecx, &ebmlivec::writer ebml_w)
 
 // Path and definition ID indexing
 
-fn create_index[T](&(entry[T])[] index, fn(&T) -> uint  hash_fn)
-        -> (@(entry[T])[])[] {
-    let (@mutable (entry[T])[])[] buckets = ~[];
-    for each (uint i in uint::range(0u, 256u)) { buckets += ~[@mutable ~[]]; }
-    for (entry[T] elt in index) {
-        auto h = hash_fn(elt.val);
-        *(buckets.(h % 256u)) += ~[elt];
+fn create_index[T](index: &(entry[T])[], hash_fn: fn(&T) -> uint ) ->
+   (@(entry[T])[])[] {
+    let buckets: (@mutable (entry[T])[])[] = ~[];
+    for each i: uint  in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
+    for elt: entry[T]  in index {
+        let h = hash_fn(elt.val);
+        *buckets.(h % 256u) += ~[elt];
     }
 
-    auto buckets_frozen = ~[];
-    for (@mutable (entry[T])[] bucket in buckets) {
+    let buckets_frozen = ~[];
+    for bucket: @mutable (entry[T])[]  in buckets {
         buckets_frozen += ~[@*bucket];
     }
     ret buckets_frozen;
 }
 
-fn encode_index[T](&ebmlivec::writer ebml_w, &(@(entry[T])[])[] buckets,
-                   fn(&ioivec::writer, &T)  write_fn) {
-    auto writer = ioivec::new_writer_(ebml_w.writer);
+fn encode_index[T](ebml_w: &ebmlivec::writer, buckets: &(@(entry[T])[])[],
+                   write_fn: fn(&ioivec::writer, &T) ) {
+    let writer = ioivec::new_writer_(ebml_w.writer);
     ebmlivec::start_tag(ebml_w, tag_index);
-    let uint[] bucket_locs = ~[];
+    let bucket_locs: uint[] = ~[];
     ebmlivec::start_tag(ebml_w, tag_index_buckets);
-    for (@(entry[T])[] bucket in buckets) {
+    for bucket: @(entry[T])[]  in buckets {
         bucket_locs += ~[ebml_w.writer.tell()];
         ebmlivec::start_tag(ebml_w, tag_index_buckets_bucket);
-        for (entry[T] elt in *bucket) {
+        for elt: entry[T]  in *bucket {
             ebmlivec::start_tag(ebml_w, tag_index_buckets_bucket_elt);
             writer.write_be_uint(elt.pos, 4u);
             write_fn(writer, elt.val);
@@ -417,57 +408,57 @@ fn encode_index[T](&ebmlivec::writer ebml_w, &(@(entry[T])[])[] buckets,
     }
     ebmlivec::end_tag(ebml_w);
     ebmlivec::start_tag(ebml_w, tag_index_table);
-    for (uint pos in bucket_locs) { writer.write_be_uint(pos, 4u); }
+    for pos: uint  in bucket_locs { writer.write_be_uint(pos, 4u); }
     ebmlivec::end_tag(ebml_w);
     ebmlivec::end_tag(ebml_w);
 }
 
-fn write_str(&ioivec::writer writer, &str s) { writer.write_str(s); }
+fn write_str(writer: &ioivec::writer, s: &str) { writer.write_str(s); }
 
-fn write_int(&ioivec::writer writer, &int n) {
+fn write_int(writer: &ioivec::writer, n: &int) {
     writer.write_be_uint(n as uint, 4u);
 }
 
-fn encode_meta_item(&ebmlivec::writer ebml_w, &meta_item mi) {
-    alt (mi.node) {
-        case (meta_word(?name)) {
-            ebmlivec::start_tag(ebml_w, tag_meta_item_word);
+fn encode_meta_item(ebml_w: &ebmlivec::writer, mi: &meta_item) {
+    alt mi.node {
+      meta_word(name) {
+        ebmlivec::start_tag(ebml_w, tag_meta_item_word);
+        ebmlivec::start_tag(ebml_w, tag_meta_item_name);
+        ebml_w.writer.write(str::bytes_ivec(name));
+        ebmlivec::end_tag(ebml_w);
+        ebmlivec::end_tag(ebml_w);
+      }
+      meta_name_value(name, value) {
+        alt value.node {
+          lit_str(value, _) {
+            ebmlivec::start_tag(ebml_w, tag_meta_item_name_value);
             ebmlivec::start_tag(ebml_w, tag_meta_item_name);
             ebml_w.writer.write(str::bytes_ivec(name));
             ebmlivec::end_tag(ebml_w);
+            ebmlivec::start_tag(ebml_w, tag_meta_item_value);
+            ebml_w.writer.write(str::bytes_ivec(value));
             ebmlivec::end_tag(ebml_w);
-        }
-        case (meta_name_value(?name, ?value)) {
-            alt (value.node) {
-                case (lit_str(?value, _)) {
-                    ebmlivec::start_tag(ebml_w, tag_meta_item_name_value);
-                    ebmlivec::start_tag(ebml_w, tag_meta_item_name);
-                    ebml_w.writer.write(str::bytes_ivec(name));
-                    ebmlivec::end_tag(ebml_w);
-                    ebmlivec::start_tag(ebml_w, tag_meta_item_value);
-                    ebml_w.writer.write(str::bytes_ivec(value));
-                    ebmlivec::end_tag(ebml_w);
-                    ebmlivec::end_tag(ebml_w);
-                }
-                case (_) { /* FIXME (#611) */ }
-            }
-        }
-        case (meta_list(?name, ?items)) {
-            ebmlivec::start_tag(ebml_w, tag_meta_item_list);
-            ebmlivec::start_tag(ebml_w, tag_meta_item_name);
-            ebml_w.writer.write(str::bytes_ivec(name));
             ebmlivec::end_tag(ebml_w);
-            for (@meta_item inner_item in items) {
-                encode_meta_item(ebml_w, *inner_item);
-            }
-            ebmlivec::end_tag(ebml_w);
+          }
+          _ {/* FIXME (#611) */ }
         }
+      }
+      meta_list(name, items) {
+        ebmlivec::start_tag(ebml_w, tag_meta_item_list);
+        ebmlivec::start_tag(ebml_w, tag_meta_item_name);
+        ebml_w.writer.write(str::bytes_ivec(name));
+        ebmlivec::end_tag(ebml_w);
+        for inner_item: @meta_item  in items {
+            encode_meta_item(ebml_w, *inner_item);
+        }
+        ebmlivec::end_tag(ebml_w);
+      }
     }
 }
 
-fn encode_attributes(&ebmlivec::writer ebml_w, &attribute[] attrs) {
+fn encode_attributes(ebml_w: &ebmlivec::writer, attrs: &attribute[]) {
     ebmlivec::start_tag(ebml_w, tag_attributes);
-    for (attribute attr in attrs) {
+    for attr: attribute  in attrs {
         ebmlivec::start_tag(ebml_w, tag_attribute);
         encode_meta_item(ebml_w, attr.node.value);
         ebmlivec::end_tag(ebml_w);
@@ -479,81 +470,82 @@ fn encode_attributes(&ebmlivec::writer ebml_w, &attribute[] attrs) {
 // metadata that Rust cares about for linking crates. This attribute requires
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
-fn synthesize_crate_attrs(&@encode_ctxt ecx,
-                          &@crate crate) -> attribute[] {
+fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> attribute[] {
 
-    fn synthesize_link_attr(&@encode_ctxt ecx, &(@meta_item)[] items)
-            -> attribute {
+    fn synthesize_link_attr(ecx: &@encode_ctxt, items: &(@meta_item)[]) ->
+       attribute {
 
-        assert ecx.ccx.link_meta.name != "";
-        assert ecx.ccx.link_meta.vers != "";
+        assert (ecx.ccx.link_meta.name != "");
+        assert (ecx.ccx.link_meta.vers != "");
 
-        auto name_item = attr::mk_name_value_item_str("name",
-                                                      ecx.ccx.link_meta.name);
-        auto vers_item = attr::mk_name_value_item_str("vers",
-                                                      ecx.ccx.link_meta.vers);
+        let name_item =
+            attr::mk_name_value_item_str("name", ecx.ccx.link_meta.name);
+        let vers_item =
+            attr::mk_name_value_item_str("vers", ecx.ccx.link_meta.vers);
 
-        auto other_items = {
-            auto tmp = attr::remove_meta_items_by_name(items, "name");
-            attr::remove_meta_items_by_name(tmp, "vers")
-        };
+        let other_items =
+            {
+                let tmp = attr::remove_meta_items_by_name(items, "name");
+                attr::remove_meta_items_by_name(tmp, "vers")
+            };
 
-        auto meta_items = ~[name_item, vers_item] + other_items;
-        auto link_item = attr::mk_list_item("link", meta_items);
+        let meta_items = ~[name_item, vers_item] + other_items;
+        let link_item = attr::mk_list_item("link", meta_items);
 
         ret attr::mk_attr(link_item);
     }
 
-    let attribute[] attrs = ~[];
-    auto found_link_attr = false;
-    for (attribute attr in crate.node.attrs) {
-        attrs += if (attr::get_attr_name(attr) != "link") {
-            ~[attr]
-        } else {
-            alt (attr.node.value.node) {
-                case (meta_list(?n, ?l)) {
+    let attrs: attribute[] = ~[];
+    let found_link_attr = false;
+    for attr: attribute  in crate.node.attrs {
+        attrs +=
+            if attr::get_attr_name(attr) != "link" {
+                ~[attr]
+            } else {
+                alt attr.node.value.node {
+                  meta_list(n, l) {
                     found_link_attr = true;
                     ~[synthesize_link_attr(ecx, l)]
+                  }
+                  _ { ~[attr] }
                 }
-                case (_) { ~[attr] }
             }
-        }
     }
 
-    if (!found_link_attr) {
-        attrs += ~[synthesize_link_attr(ecx, ~[])];
-    }
+    if !found_link_attr { attrs += ~[synthesize_link_attr(ecx, ~[])]; }
 
     ret attrs;
 }
 
-fn encode_crate_deps(&ebmlivec::writer ebml_w, &cstore::cstore cstore) {
+fn encode_crate_deps(ebml_w: &ebmlivec::writer, cstore: &cstore::cstore) {
 
-    fn get_ordered_names(&cstore::cstore cstore) -> str[] {
-        type hashkv = @rec(crate_num key, cstore::crate_metadata val);
-        type numname = rec(crate_num crate, str ident);
+    fn get_ordered_names(cstore: &cstore::cstore) -> str[] {
+        type hashkv = @{key: crate_num, val: cstore::crate_metadata};
+        type numname = {crate: crate_num, ident: str};
 
         // Pull the cnums and names out of cstore
-        let numname[mutable] pairs = ~[mutable];
-        for each (hashkv hashkv in cstore::iter_crate_data(cstore)) {
-            pairs += ~[mutable rec(crate=hashkv.key, ident=hashkv.val.name)];
+        let pairs: numname[mutable ] = ~[mutable ];
+        for each hashkv: hashkv  in cstore::iter_crate_data(cstore) {
+            pairs += ~[mutable {crate: hashkv.key, ident: hashkv.val.name}];
         }
 
         // Sort by cnum
-        fn lteq(&numname kv1, &numname kv2) -> bool { kv1.crate <= kv2.crate }
+        fn lteq(kv1: &numname, kv2: &numname) -> bool {
+            kv1.crate <= kv2.crate
+        }
         std::sort::ivector::quick_sort(lteq, pairs);
 
         // Sanity-check the crate numbers
-        auto expected_cnum = 1;
-        for (numname n in pairs) {
-            assert n.crate == expected_cnum;
+        let expected_cnum = 1;
+        for n: numname  in pairs {
+            assert (n.crate == expected_cnum);
             expected_cnum += 1;
         }
 
         // Return just the names
-        fn name(&numname kv) -> str { kv.ident }
+        fn name(kv: &numname) -> str { kv.ident }
         // mutable -> immutable hack for ivec::map
-        auto immpairs = ivec::slice(pairs, 0u, ivec::len(pairs));
+        let immpairs = ivec::slice(pairs, 0u, ivec::len(pairs));
         ret ivec::map(name, immpairs);
     }
 
@@ -562,7 +554,7 @@ fn encode_crate_deps(&ebmlivec::writer ebml_w, &cstore::cstore cstore) {
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebmlivec::start_tag(ebml_w, tag_crate_deps);
-    for (str cname in get_ordered_names(cstore)) {
+    for cname: str  in get_ordered_names(cstore) {
         ebmlivec::start_tag(ebml_w, tag_crate_dep);
         ebml_w.writer.write(str::bytes_ivec(cname));
         ebmlivec::end_tag(ebml_w);
@@ -570,16 +562,16 @@ fn encode_crate_deps(&ebmlivec::writer ebml_w, &cstore::cstore cstore) {
     ebmlivec::end_tag(ebml_w);
 }
 
-fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
+fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
 
-    auto abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
-    auto ecx = @rec(ccx = cx, type_abbrevs = abbrevs);
+    let abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
+    let ecx = @{ccx: cx, type_abbrevs: abbrevs};
 
-    auto string_w = ioivec::string_writer();
-    auto buf_w = string_w.get_writer().get_buf_writer();
-    auto ebml_w = ebmlivec::create_writer(buf_w);
+    let string_w = ioivec::string_writer();
+    let buf_w = string_w.get_writer().get_buf_writer();
+    let ebml_w = ebmlivec::create_writer(buf_w);
 
-    auto crate_attrs = synthesize_crate_attrs(ecx, crate);
+    let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
 
     encode_crate_deps(ebml_w, cx.sess.get_cstore());
@@ -587,15 +579,15 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
     // Encode and index the paths.
 
     ebmlivec::start_tag(ebml_w, tag_paths);
-    auto paths_index = encode_item_paths(ebml_w, crate);
-    auto paths_buckets = create_index(paths_index, hash_path);
+    let paths_index = encode_item_paths(ebml_w, crate);
+    let paths_buckets = create_index(paths_index, hash_path);
     encode_index(ebml_w, paths_buckets, write_str);
     ebmlivec::end_tag(ebml_w);
     // Encode and index the items.
 
     ebmlivec::start_tag(ebml_w, tag_items);
-    auto items_index = encode_info_for_items(ecx, ebml_w);
-    auto items_buckets = create_index(items_index, hash_node_id);
+    let items_index = encode_info_for_items(ecx, ebml_w);
+    let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
     ebmlivec::end_tag(ebml_w);
     // Pad this, since something (LLVM, presumably) is cutting off the
@@ -606,11 +598,9 @@ fn encode_metadata(&@crate_ctxt cx, &@crate crate) -> str {
 }
 
 // Get the encoded string for a type
-fn encoded_ty(&ty::ctxt tcx, &ty::t t) -> str {
-    auto cx = @rec(ds = def_to_str,
-                   tcx = tcx,
-                   abbrevs = tyencode::ac_no_abbrevs);
-    auto sw = ioivec::string_writer();
+fn encoded_ty(tcx: &ty::ctxt, t: &ty::t) -> str {
+    let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
+    let sw = ioivec::string_writer();
     tyencode::enc_ty(sw.get_writer(), cx, t);
     ret sw.get_str();
 }

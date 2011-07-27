@@ -1,9 +1,7 @@
 fn main() {
-  #macro([#apply(f,[x,...]), f(x, ...)]);
+    #macro([#apply(f, [x, ...]), f(x, ...)]);
 
-  fn add(int a, int b) -> int {
-    ret a+b;
-  }
+    fn add(a: int, b: int) -> int { ret a + b; }
 
-  assert(#apply(add, [1, 15]) == 16);
+    assert (#apply(add, [1, 15]) == 16);
 }

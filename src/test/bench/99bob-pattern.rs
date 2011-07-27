@@ -10,53 +10,50 @@ import std::str;
 
 tag bottle { none; dual; single; multiple(int); }
 
-fn show(bottle b) {
-    alt (b) {
-        case (none) {
-            log "No more bottles of beer on the wall, " +
-              "no more bottles of beer,";
-            log "Go to the store and buy some more, " +
-                    "99 bottles of beer on the wall.";
-        }
-        case (single) {
-            log "1 bottle of beer on the wall, 1 bottle of beer,";
-            log "Take one down and pass it around, " +
-                    "no more bottles of beer on the wall.";
-        }
-        case (dual) {
-            log "2 bottles of beer on the wall, 2 bottles of beer,";
-            log "Take one down and pass it around, " +
-              "1 bottle of beer on the wall.";
-        }
-        case (multiple(?n)) {
-            let str nb = int::to_str(n, 10u);
-            let str mb = int::to_str(n - 1, 10u);
-            log nb + " bottles of beer on the wall, " + nb +
-                    " bottles of beer,";
-            log "Take one down and pass it around, " + mb +
-                    " bottles of beer on the wall.";
-        }
+fn show(b: bottle) {
+    alt b {
+      none. {
+        log "No more bottles of beer on the wall, " +
+                "no more bottles of beer,";
+        log "Go to the store and buy some more, " +
+                "99 bottles of beer on the wall.";
+      }
+      single. {
+        log "1 bottle of beer on the wall, 1 bottle of beer,";
+        log "Take one down and pass it around, " +
+                "no more bottles of beer on the wall.";
+      }
+      dual. {
+        log "2 bottles of beer on the wall, 2 bottles of beer,";
+        log "Take one down and pass it around, " +
+                "1 bottle of beer on the wall.";
+      }
+      multiple(n) {
+        let nb: str = int::to_str(n, 10u);
+        let mb: str = int::to_str(n - 1, 10u);
+        log nb + " bottles of beer on the wall, " + nb + " bottles of beer,";
+        log "Take one down and pass it around, " + mb +
+                " bottles of beer on the wall.";
+      }
     }
 }
 
-fn next(bottle b) -> bottle {
-    alt (b) {
-        case (none) { ret none; }
-        case (single) { ret none; }
-        case (dual) { ret single; }
-        case (multiple(3)) { ret dual; }
-        case (multiple(?n)) { ret multiple(n - 1); }
+fn next(b: bottle) -> bottle {
+    alt b {
+      none. { ret none; }
+      single. { ret none; }
+      dual. { ret single; }
+      multiple(3) { ret dual; }
+      multiple(n) { ret multiple(n - 1); }
     }
 }
 
 
 // Won't need this when tags can be compared with ==
-fn more(bottle b) -> bool {
-    alt (b) { case (none) { ret false; } case (_) { ret true; } }
-}
+fn more(b: bottle) -> bool { alt b { none. { ret false; } _ { ret true; } } }
 
 fn main() {
-    let bottle b = multiple(99);
-    let bool running = true;
-    while (running) { show(b); log ""; running = more(b); b = next(b); }
+    let b: bottle = multiple(99);
+    let running: bool = true;
+    while running { show(b); log ""; running = more(b); b = next(b); }
 }

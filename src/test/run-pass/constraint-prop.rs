@@ -4,9 +4,9 @@ import std::str::*;
 import std::uint::*;
 
 fn main() {
-  let uint a = 1u;
-  let uint b = 4u;
-  check le(a, b);
-  auto c = b;
-  log (safe_slice("kitties", a, c));
+    let a: uint = 1u;
+    let b: uint = 4u;
+    check (le(a, b));
+    let c = b;
+    log safe_slice("kitties", a, c);
 }

@@ -3,9 +3,6 @@
 
 fn main() {
     // Typestate should work even in a lambda. we should reject this program.
-    auto f = fn () -> int {
-        let int i;
-        ret i;
-    };
+    let f = fn () -> int { let i: int; ret i; };
     log_err f();
 }

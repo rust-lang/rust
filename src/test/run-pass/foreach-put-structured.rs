@@ -1,15 +1,15 @@
 
 
-iter pairs() -> rec(int _0, int _1) {
-    let int i = 0;
-    let int j = 0;
-    while (i < 10) { put rec(_0=i, _1=j); i += 1; j += i; }
+iter pairs() -> {_0: int, _1: int} {
+    let i: int = 0;
+    let j: int = 0;
+    while i < 10 { put {_0: i, _1: j}; i += 1; j += i; }
 }
 
 fn main() {
-    let int i = 10;
-    let int j = 0;
-    for each (rec(int _0, int _1) p in pairs()) {
+    let i: int = 10;
+    let j: int = 0;
+    for each p: {_0: int, _1: int}  in pairs() {
         log p._0;
         log p._1;
         assert (p._0 + 10 == i);

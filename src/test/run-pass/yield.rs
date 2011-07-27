@@ -6,7 +6,7 @@ use std;
 import std::task::*;
 
 fn main() {
-    auto other = spawn child();
+    let other = spawn child();
     log_err "1";
     yield();
     log_err "2";

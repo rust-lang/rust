@@ -4,18 +4,18 @@
 // -*- rust -*-
 iter two() -> int { put 0; put 1; }
 
-iter range(int start, int stop) -> int {
-    let int i = start;
-    while (i < stop) { put i; i += 1; }
+iter range(start: int, stop: int) -> int {
+    let i: int = start;
+    while i < stop { put i; i += 1; }
 }
 
 fn main() {
-    let vec[mutable int] a = [mutable -1, -1, -1, -1, -1, -1, -1, -1];
-    let int p = 0;
-    for each (int i in two()) {
-        for each (int j in range(0, 2)) {
-            let int tmp = 10 * i + j;
-            for each (int k in range(0, 2)) { a.(p) = 10 * tmp + k; p += 1; }
+    let a: vec[mutable int] = [mutable -1, -1, -1, -1, -1, -1, -1, -1];
+    let p: int = 0;
+    for each i: int  in two() {
+        for each j: int  in range(0, 2) {
+            let tmp: int = 10 * i + j;
+            for each k: int  in range(0, 2) { a.(p) = 10 * tmp + k; p += 1; }
         }
     }
     assert (a.(0) == 0);

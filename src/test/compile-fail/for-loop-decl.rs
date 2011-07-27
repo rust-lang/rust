@@ -3,22 +3,17 @@ use std;
 import std::map::hashmap;
 import std::bitv;
 
-type fn_info = rec(hashmap[uint, var_info] vars);
-type var_info = rec(uint a, uint b);
+type fn_info = {vars: hashmap[uint, var_info]};
+type var_info = {a: uint, b: uint};
 
-fn bitv_to_str(fn_info enclosing, bitv::t v) -> str {
-  auto s = "";
+fn bitv_to_str(enclosing: fn_info, v: bitv::t) -> str {
+    let s = "";
 
-  // error is that the value type in the hash map is var_info, not a box
-  for each (@rec(uint key, @uint val) p
-            in enclosing.vars.items()) {
-    if (bitv::get(v, *p.val)) {
-      s += "foo";
+    // error is that the value type in the hash map is var_info, not a box
+    for each p: @{key: uint, val: @uint}  in enclosing.vars.items() {
+        if bitv::get(v, *p.val) { s += "foo"; }
     }
-  }
-  ret s;
+    ret s;
 }
 
-fn main() {
-  log "OK";
-}
+fn main() { log "OK"; }

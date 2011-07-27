@@ -1,14 +1,11 @@
 // xfail-stage0
 
-type foo = rec(int a, uint b);
-tag bar {
-    u(@foo);
-    w(int);
-}
+type foo = {a: int, b: uint};
+tag bar { u(@foo); w(int); }
 
 fn main() {
-    assert alt (u(@rec(a=10, b=40u))) {
-        u(@{a, b}) { a + (b as int) }
-        _ { 66 }
-    } == 50;
+    assert (alt u(@{a: 10, b: 40u}) {
+              u(@{a: a, b: b}) { a + (b as int) }
+              _ { 66 }
+            } == 50);
 }

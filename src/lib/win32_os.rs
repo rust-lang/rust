@@ -3,41 +3,41 @@ import str::sbuf;
 import vec::vbuf;
 
 native "cdecl" mod libc = "" {
-    fn open(sbuf s, int flags, uint mode) -> int = "_open";
-    fn read(int fd, vbuf buf, uint count) -> int = "_read";
-    fn write(int fd, vbuf buf, uint count) -> int = "_write";
-    fn close(int fd) -> int = "_close";
+    fn open(s: sbuf, flags: int, mode: uint) -> int = "_open";
+    fn read(fd: int, buf: vbuf, count: uint) -> int = "_read";
+    fn write(fd: int, buf: vbuf, count: uint) -> int = "_write";
+    fn close(fd: int) -> int = "_close";
     type FILE;
-    fn fopen(sbuf path, sbuf mode) -> FILE;
-    fn _fdopen(int fd, sbuf mode) -> FILE;
-    fn fclose(FILE f);
-    fn fgetc(FILE f) -> int;
-    fn ungetc(int c, FILE f);
-    fn feof(FILE f) -> int;
-    fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
-    fn fwrite(vbuf buf, uint size, uint n, FILE f) -> uint;
-    fn fseek(FILE f, int offset, int whence) -> int;
-    fn ftell(FILE f) -> int;
-    fn _pipe(*mutable int fds, uint size, int mode) -> int;
+    fn fopen(path: sbuf, mode: sbuf) -> FILE;
+    fn _fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fclose(f: FILE);
+    fn fgetc(f: FILE) -> int;
+    fn ungetc(c: int, f: FILE);
+    fn feof(f: FILE) -> int;
+    fn fread(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
+    fn fwrite(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
+    fn fseek(f: FILE, offset: int, whence: int) -> int;
+    fn ftell(f: FILE) -> int;
+    fn _pipe(fds: *mutable int, size: uint, mode: int) -> int;
 }
 
 native "cdecl" mod libc_ivec = "" {
-    fn read(int fd, *u8 buf, uint count) -> int;
-    fn write(int fd, *u8 buf, uint count) -> int;
-    fn fread(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
-    fn fwrite(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
+    fn read(fd: int, buf: *u8, count: uint) -> int;
+    fn write(fd: int, buf: *u8, count: uint) -> int;
+    fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
+    fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
 }
 
 mod libc_constants {
     fn O_RDONLY() -> int { ret 0; }
     fn O_WRONLY() -> int { ret 1; }
     fn O_RDWR() -> int { ret 2; }
-    fn O_APPEND() -> int { ret 0x0008; }
-    fn O_CREAT() -> int { ret 0x0100; }
-    fn O_EXCL() -> int { ret 0x0400; }
-    fn O_TRUNC() -> int { ret 0x0200; }
-    fn O_TEXT() -> int { ret 0x4000; }
-    fn O_BINARY() -> int { ret 0x8000; }
+    fn O_APPEND() -> int { ret 8; }
+    fn O_CREAT() -> int { ret 256; }
+    fn O_EXCL() -> int { ret 1024; }
+    fn O_TRUNC() -> int { ret 512; }
+    fn O_TEXT() -> int { ret 16384; }
+    fn O_BINARY() -> int { ret 32768; }
     fn S_IRUSR() -> uint {
         ret 256u; // really _S_IREAD  in win32
 
@@ -49,31 +49,31 @@ mod libc_constants {
 }
 
 native "x86stdcall" mod kernel32 {
-    fn GetEnvironmentVariableA(sbuf n, sbuf v, uint nsize) -> uint;
-    fn SetEnvironmentVariableA(sbuf n, sbuf v) -> int;
+    fn GetEnvironmentVariableA(n: sbuf, v: sbuf, nsize: uint) -> uint;
+    fn SetEnvironmentVariableA(n: sbuf, v: sbuf) -> int;
 }
 
 fn exec_suffix() -> str { ret ".exe"; }
 
 fn target_os() -> str { ret "win32"; }
 
-fn dylib_filename(str base) -> str { ret base + ".dll"; }
+fn dylib_filename(base: str) -> str { ret base + ".dll"; }
 
-fn pipe() -> rec(int in, int out) {
-    auto fds = rec(mutable in=0, mutable out=0);
+fn pipe() -> {in: int, out: int} {
+    let fds = {mutable in: 0, mutable out: 0};
     assert (os::libc::_pipe(ptr::addr_of(fds.in), 1024u,
                             libc_constants::O_BINARY()) == 0);
-    ret rec(in=fds.in, out=fds.out);
+    ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(int fd) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE { ret libc::_fdopen(fd, str::buf("r")); }
 
 native "rust" mod rustrt {
-    fn rust_process_wait(int handle) -> int;
+    fn rust_process_wait(handle: int) -> int;
     fn rust_getcwd() -> str;
 }
 
-fn waitpid(int pid) -> int { ret rustrt::rust_process_wait(pid); }
+fn waitpid(pid: int) -> int { ret rustrt::rust_process_wait(pid); }
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 

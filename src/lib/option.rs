@@ -6,38 +6,31 @@ tag t[T] { none; some(T); }
 
 type operator[T, U] = fn(&T) -> U ;
 
-fn get[T](&t[T] opt) -> T {
-    ret alt (opt) { case (some(?x)) { x } case (none) { fail } };
+fn get[T](opt: &t[T]) -> T { ret alt opt { some(x) { x } none. { fail } }; }
+
+fn map[T, U](f: &operator[T, U], opt: &t[T]) -> t[U] {
+    ret alt opt { some(x) { some[U](f(x)) } none. { none[U] } };
 }
 
-fn map[T, U](&operator[T, U] f, &t[T] opt) -> t[U] {
-    ret alt (opt) {
-            case (some(?x)) { some[U](f(x)) }
-            case (none) { none[U] }
-        };
+fn is_none[T](opt: &t[T]) -> bool {
+    ret alt opt { none. { true } some(_) { false } };
 }
 
-fn is_none[T](&t[T] opt) -> bool {
-    ret alt (opt) { case (none) { true } case (some(_)) { false } };
-}
+fn is_some[T](opt: &t[T]) -> bool { ret !is_none(opt); }
 
-fn is_some[T](&t[T] opt) -> bool {
-    ret !is_none(opt);
-}
-
-fn from_maybe[T](&T def, &t[T] opt) -> T {
-    auto f = bind util::id[T](_);
+fn from_maybe[T](def: &T, opt: &t[T]) -> T {
+    let f = bind util::id[T](_);
     ret maybe[T, T](def, f, opt);
 }
 
-fn maybe[T, U](&U def, fn(&T) -> U  f, &t[T] opt) -> U {
-    ret alt (opt) { case (none) { def } case (some(?t)) { f(t) } };
+fn maybe[T, U](def: &U, f: fn(&T) -> U , opt: &t[T]) -> U {
+    ret alt opt { none. { def } some(t) { f(t) } };
 }
 
 
 // Can be defined in terms of the above when/if we have const bind.
-fn may[T](fn(&T)  f, &t[T] opt) {
-    alt (opt) { case (none) {/* nothing */ } case (some(?t)) { f(t); } }
+fn may[T](f: fn(&T) , opt: &t[T]) {
+    alt opt { none. {/* nothing */ } some(t) { f(t); } }
 }
 // Local Variables:
 // mode: rust;

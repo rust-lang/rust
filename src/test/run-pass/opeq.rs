@@ -3,7 +3,7 @@
 
 // -*- rust -*-
 fn main() {
-    let int x = 1;
+    let x: int = 1;
     x *= 2;
     log x;
     assert (x == 2);

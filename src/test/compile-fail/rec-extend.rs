@@ -3,7 +3,7 @@
 
 fn main() {
 
-  auto a = rec(foo = 0);
+    let a = {foo: 0};
 
-  auto b = rec(foo = true with a);
+    let b = {foo: true with a};
 }

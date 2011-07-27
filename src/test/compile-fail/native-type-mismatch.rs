@@ -2,6 +2,6 @@
 use std;
 
 fn main() {
-    let std::os::libc::FILE f = std::io::rustrt::rust_get_stdin();
+    let f: std::os::libc::FILE = std::io::rustrt::rust_get_stdin();
     std::os::libc::fopen(f, f);
 }

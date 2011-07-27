@@ -60,42 +60,42 @@ mod ct {
 
     // A formatted conversion from an expression to a string
     type conv =
-        rec(option::t[int] param,
-            vec[flag] flags,
-            count width,
-            count precision,
-            ty ty);
+        {param: option::t[int],
+         flags: vec[flag],
+         width: count,
+         precision: count,
+         ty: ty};
 
 
     // A fragment of the output sequence
     tag piece { piece_string(str); piece_conv(conv); }
     type error_fn = fn(str) -> !  ;
 
-    fn parse_fmt_string(str s, error_fn error) -> vec[piece] {
-        let vec[piece] pieces = [];
-        auto lim = str::byte_len(s);
-        auto buf = "";
-        fn flush_buf(str buf, &mutable vec[piece] pieces) -> str {
-            if (str::byte_len(buf) > 0u) {
-                auto piece = piece_string(buf);
+    fn parse_fmt_string(s: str, error: error_fn) -> vec[piece] {
+        let pieces: vec[piece] = [];
+        let lim = str::byte_len(s);
+        let buf = "";
+        fn flush_buf(buf: str, pieces: &mutable vec[piece]) -> str {
+            if str::byte_len(buf) > 0u {
+                let piece = piece_string(buf);
                 pieces += [piece];
             }
             ret "";
         }
-        auto i = 0u;
-        while (i < lim) {
-            auto curr = str::substr(s, i, 1u);
-            if (str::eq(curr, "%")) {
+        let i = 0u;
+        while i < lim {
+            let curr = str::substr(s, i, 1u);
+            if str::eq(curr, "%") {
                 i += 1u;
-                if (i >= lim) {
+                if i >= lim {
                     error("unterminated conversion at end of string");
                 }
-                auto curr2 = str::substr(s, i, 1u);
-                if (str::eq(curr2, "%")) {
+                let curr2 = str::substr(s, i, 1u);
+                if str::eq(curr2, "%") {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
-                    auto rs = parse_conversion(s, i, lim, error);
+                    let rs = parse_conversion(s, i, lim, error);
                     pieces += [rs.piece];
                     i = rs.next;
                 }
@@ -104,67 +104,66 @@ mod ct {
         buf = flush_buf(buf, pieces);
         ret pieces;
     }
-    fn peek_num(str s, uint i, uint lim)
-        -> option::t[rec(uint num, uint next)] {
-        if (i >= lim) { ret none; }
-        auto c = s.(i);
-        if (!('0' as u8 <= c && c <= '9' as u8)) {
-            ret option::none;
-        }
-        auto n = c - ('0' as u8) as uint;
-        ret alt (peek_num(s, i + 1u, lim)) {
-                case (none) { some(rec(num=n, next=i + 1u)) }
-                case (some(?next)) {
-                    auto m = next.num;
-                    auto j = next.next;
-                    some(rec(num=n * 10u + m, next=j))
-                }
+    fn peek_num(s: str, i: uint, lim: uint) ->
+       option::t[{num: uint, next: uint}] {
+        if i >= lim { ret none; }
+        let c = s.(i);
+        if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
+        let n = c - ('0' as u8) as uint;
+        ret alt peek_num(s, i + 1u, lim) {
+              none. { some({num: n, next: i + 1u}) }
+              some(next) {
+                let m = next.num;
+                let j = next.next;
+                some({num: n * 10u + m, next: j})
+              }
             };
     }
-    fn parse_conversion(str s, uint i, uint lim, error_fn error)
-        -> rec(piece piece, uint next) {
-        auto parm = parse_parameter(s, i, lim);
-        auto flags = parse_flags(s, parm.next, lim);
-        auto width = parse_count(s, flags.next, lim);
-        auto prec = parse_precision(s, width.next, lim);
-        auto ty = parse_type(s, prec.next, lim, error);
-        ret rec(piece=piece_conv(rec(param=parm.param,
-                                     flags=flags.flags,
-                                     width=width.count,
-                                     precision=prec.count,
-                                     ty=ty.ty)),
-                next=ty.next);
+    fn parse_conversion(s: str, i: uint, lim: uint, error: error_fn) ->
+       {piece: piece, next: uint} {
+        let parm = parse_parameter(s, i, lim);
+        let flags = parse_flags(s, parm.next, lim);
+        let width = parse_count(s, flags.next, lim);
+        let prec = parse_precision(s, width.next, lim);
+        let ty = parse_type(s, prec.next, lim, error);
+        ret {piece:
+                 piece_conv({param: parm.param,
+                             flags: flags.flags,
+                             width: width.count,
+                             precision: prec.count,
+                             ty: ty.ty}),
+             next: ty.next};
     }
-    fn parse_parameter(str s, uint i, uint lim)
-        -> rec(option::t[int] param, uint next) {
-        if (i >= lim) { ret rec(param=none, next=i); }
-        auto num = peek_num(s, i, lim);
-        ret alt (num) {
-                case (none) { rec(param=none, next=i) }
-                case (some(?t)) {
-                    auto n = t.num;
-                    auto j = t.next;
-                    if (j < lim && s.(j) == '$' as u8) {
-                        rec(param=some(n as int), next=j + 1u)
-                    } else { rec(param=none, next=i) }
-                }
+    fn parse_parameter(s: str, i: uint, lim: uint) ->
+       {param: option::t[int], next: uint} {
+        if i >= lim { ret {param: none, next: i}; }
+        let num = peek_num(s, i, lim);
+        ret alt num {
+              none. { {param: none, next: i} }
+              some(t) {
+                let n = t.num;
+                let j = t.next;
+                if j < lim && s.(j) == '$' as u8 {
+                    {param: some(n as int), next: j + 1u}
+                } else { {param: none, next: i} }
+              }
             };
     }
-    fn parse_flags(str s, uint i, uint lim)
-        -> rec(vec[flag] flags, uint next) {
-        let vec[flag] noflags = [];
-        if (i >= lim) { ret rec(flags=noflags, next=i); }
-        fn more_(flag f, str s, uint i, uint lim)
-            -> rec(vec[flag] flags, uint next) {
-            auto next = parse_flags(s, i + 1u, lim);
-            auto rest = next.flags;
-            auto j = next.next;
-            let vec[flag] curr = [f];
-            ret rec(flags=curr + rest, next=j);
+    fn parse_flags(s: str, i: uint, lim: uint) ->
+       {flags: vec[flag], next: uint} {
+        let noflags: vec[flag] = [];
+        if i >= lim { ret {flags: noflags, next: i}; }
+        fn more_(f: flag, s: str, i: uint, lim: uint) ->
+           {flags: vec[flag], next: uint} {
+            let next = parse_flags(s, i + 1u, lim);
+            let rest = next.flags;
+            let j = next.next;
+            let curr: vec[flag] = [f];
+            ret {flags: curr + rest, next: j};
         }
-        auto more = bind more_(_, s, i, lim);
-        auto f = s.(i);
-        ret if (f == '-' as u8) {
+        let more = bind more_(_, s, i, lim);
+        let f = s.(i);
+        ret if f == '-' as u8 {
                 more(flag_left_justify)
             } else if (f == '0' as u8) {
                 more(flag_left_zero_pad)
@@ -174,59 +173,60 @@ mod ct {
                 more(flag_sign_always)
             } else if (f == '#' as u8) {
                 more(flag_alternate)
-            } else { rec(flags=noflags, next=i) };
+            } else { {flags: noflags, next: i} };
     }
-    fn parse_count(str s, uint i, uint lim)
-        -> rec(count count, uint next) {
-        ret if (i >= lim) {
-                rec(count=count_implied, next=i)
+    fn parse_count(s: str, i: uint, lim: uint) -> {count: count, next: uint} {
+        ret if i >= lim {
+                {count: count_implied, next: i}
             } else if (s.(i) == '*' as u8) {
-                auto param = parse_parameter(s, i + 1u, lim);
-                auto j = param.next;
-                alt (param.param) {
-                    case (none) { rec(count=count_is_next_param, next=j) }
-                    case (some(?n)) { rec(count=count_is_param(n), next=j) }
+                let param = parse_parameter(s, i + 1u, lim);
+                let j = param.next;
+                alt param.param {
+                  none. { {count: count_is_next_param, next: j} }
+                  some(n) { {count: count_is_param(n), next: j} }
                 }
             } else {
-                auto num = peek_num(s, i, lim);
-                alt (num) {
-                    case (none) { rec(count=count_implied, next=i) }
-                    case (some(?num)) { rec(count=count_is(num.num as int),
-                                            next=num.next) }
+                let num = peek_num(s, i, lim);
+                alt num {
+                  none. { {count: count_implied, next: i} }
+                  some(num) {
+                    {count: count_is(num.num as int), next: num.next}
+                  }
                 }
             };
     }
-    fn parse_precision(str s, uint i, uint lim)
-        -> rec(count count, uint next) {
-        ret if (i >= lim) {
-                rec(count=count_implied, next=i)
+    fn parse_precision(s: str, i: uint, lim: uint) ->
+       {count: count, next: uint} {
+        ret if i >= lim {
+                {count: count_implied, next: i}
             } else if (s.(i) == '.' as u8) {
-                auto count = parse_count(s, i + 1u, lim);
+                let count = parse_count(s, i + 1u, lim);
+
 
                 // If there were no digits specified, i.e. the precision
                 // was ".", then the precision is 0
-                alt (count.count) {
-                    case (count_implied) { rec(count=count_is(0),
-                                               next=count.next) }
-                    case (_) { count }
+                alt count.count {
+                  count_implied. { {count: count_is(0), next: count.next} }
+                  _ { count }
                 }
-            } else { rec(count=count_implied, next=i) };
+            } else { {count: count_implied, next: i} };
     }
-    fn parse_type(str s, uint i, uint lim, error_fn error)
-        -> rec(ty ty, uint next) {
-        if (i >= lim) { error("missing type in conversion"); }
-        auto tstr = str::substr(s, i, 1u);
-        auto t =
-            if (str::eq(tstr, "b")) {
+    fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
+       {ty: ty, next: uint} {
+        if i >= lim { error("missing type in conversion"); }
+        let tstr = str::substr(s, i, 1u);
+        let 
+
+            // TODO: Do we really want two signed types here?
+            // How important is it to be printf compatible?
+            t =
+            if str::eq(tstr, "b") {
                 ty_bool
             } else if (str::eq(tstr, "s")) {
                 ty_str
             } else if (str::eq(tstr, "c")) {
                 ty_char
             } else if (str::eq(tstr, "d") || str::eq(tstr, "i")) {
-
-                // TODO: Do we really want two signed types here?
-                // How important is it to be printf compatible?
                 ty_int(signed)
             } else if (str::eq(tstr, "u")) {
                 ty_int(unsigned)
@@ -239,7 +239,7 @@ mod ct {
             } else if (str::eq(tstr, "o")) {
                 ty_octal
             } else { error("unknown type in conversion: " + tstr) };
-        ret rec(ty=t, next=i + 1u);
+        ret {ty: t, next: i + 1u};
     }
 }
 
@@ -256,6 +256,7 @@ mod rt {
         flag_sign_always;
         flag_alternate;
 
+
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
         // comments in front::extfmt::make_flags
@@ -266,14 +267,14 @@ mod rt {
 
     // FIXME: May not want to use a vector here for flags;
     // instead just use a bool per flag
-    type conv = rec(vec[flag] flags, count width, count precision, ty ty);
+    type conv = {flags: vec[flag], width: count, precision: count, ty: ty};
 
-    fn conv_int(&conv cv, int i) -> str {
-        auto radix = 10u;
-        auto prec = get_int_precision(cv);
-        auto s = int_to_str_prec(i, radix, prec);
-        if (0 <= i) {
-            if (have_flag(cv.flags, flag_sign_always)) {
+    fn conv_int(cv: &conv, i: int) -> str {
+        let radix = 10u;
+        let prec = get_int_precision(cv);
+        let s = int_to_str_prec(i, radix, prec);
+        if 0 <= i {
+            if have_flag(cv.flags, flag_sign_always) {
                 s = "+" + s;
             } else if (have_flag(cv.flags, flag_space_for_sign)) {
                 s = " " + s;
@@ -281,52 +282,51 @@ mod rt {
         }
         ret pad(cv, s, pad_signed);
     }
-    fn conv_uint(&conv cv, uint u) -> str {
-        auto prec = get_int_precision(cv);
-        auto rs =
-            alt (cv.ty) {
-                case (ty_default) { uint_to_str_prec(u, 10u, prec) }
-                case (ty_hex_lower) { uint_to_str_prec(u, 16u, prec) }
-                case (ty_hex_upper) {
-                    str::to_upper(uint_to_str_prec(u, 16u, prec))
-                }
-                case (ty_bits) { uint_to_str_prec(u, 2u, prec) }
-                case (ty_octal) { uint_to_str_prec(u, 8u, prec) }
+    fn conv_uint(cv: &conv, u: uint) -> str {
+        let prec = get_int_precision(cv);
+        let rs =
+            alt cv.ty {
+              ty_default. { uint_to_str_prec(u, 10u, prec) }
+              ty_hex_lower. { uint_to_str_prec(u, 16u, prec) }
+              ty_hex_upper. { str::to_upper(uint_to_str_prec(u, 16u, prec)) }
+              ty_bits. { uint_to_str_prec(u, 2u, prec) }
+              ty_octal. { uint_to_str_prec(u, 8u, prec) }
             };
         ret pad(cv, rs, pad_unsigned);
     }
-    fn conv_bool(&conv cv, bool b) -> str {
-        auto s = if (b) { "true" } else { "false" };
+    fn conv_bool(cv: &conv, b: bool) -> str {
+        let s = if b { "true" } else { "false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
 
         ret conv_str(cv, s);
     }
-    fn conv_char(&conv cv, char c) -> str {
+    fn conv_char(cv: &conv, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
-    fn conv_str(&conv cv, str s) -> str {
-        auto unpadded =
-            alt (cv.precision) {
-                case (count_implied) { s }
-                case (count_is(?max)) {
+    fn conv_str(cv: &conv, s: str) -> str {
+        let 
 
-                    // For strings, precision is the maximum characters
-                    // displayed
-                    if (max as uint < str::char_len(s)) {
+            // For strings, precision is the maximum characters
+            // displayed
 
-                        // FIXME: substr works on bytes, not chars!
-                        str::substr(s, 0u, max as uint)
-                    } else { s }
-                }
+            // FIXME: substr works on bytes, not chars!
+            unpadded =
+            alt cv.precision {
+              count_implied. { s }
+              count_is(max) {
+                if max as uint < str::char_len(s) {
+                    str::substr(s, 0u, max as uint)
+                } else { s }
+              }
             };
         ret pad(cv, unpadded, pad_nozero);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
-    fn int_to_str_prec(int num, uint radix, uint prec) -> str {
-        ret if (num < 0) {
+    fn int_to_str_prec(num: int, radix: uint, prec: uint) -> str {
+        ret if num < 0 {
                 "-" + uint_to_str_prec(-num as uint, radix, prec)
             } else { uint_to_str_prec(num as uint, radix, prec) };
     }
@@ -334,92 +334,89 @@ mod rt {
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
-    fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
-        ret if (prec == 0u && num == 0u) {
+    fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> str {
+        ret if prec == 0u && num == 0u {
                 ""
             } else {
-                auto s = uint::to_str(num, radix);
-                auto len = str::char_len(s);
-                if (len < prec) {
-                    auto diff = prec - len;
-                    auto pad = str_init_elt('0', diff);
+                let s = uint::to_str(num, radix);
+                let len = str::char_len(s);
+                if len < prec {
+                    let diff = prec - len;
+                    let pad = str_init_elt('0', diff);
                     pad + s
                 } else { s }
             };
     }
-    fn get_int_precision(&conv cv) -> uint {
-        ret alt (cv.precision) {
-                case (count_is(?c)) { c as uint }
-                case (count_implied) { 1u }
+    fn get_int_precision(cv: &conv) -> uint {
+        ret alt cv.precision {
+              count_is(c) { c as uint }
+              count_implied. { 1u }
             };
     }
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
-    fn str_init_elt(char c, uint n_elts) -> str {
-        auto svec = vec::init_elt[u8](c as u8, n_elts);
+    fn str_init_elt(c: char, n_elts: uint) -> str {
+        let svec = vec::init_elt[u8](c as u8, n_elts);
 
         ret str::from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
-    fn pad(&conv cv, str s, pad_mode mode) -> str {
-        auto uwidth;
-        alt (cv.width) {
-            case (count_implied) { ret s; }
-            case (count_is(?width)) {
-                // FIXME: Maybe width should be uint
+    fn pad(cv: &conv, s: str, mode: pad_mode) -> str {
+        let uwidth;
+        alt cv.width {
+          count_implied. { ret s; }
+          count_is(width) {
+            // FIXME: Maybe width should be uint
 
-                uwidth = width as uint;
-            }
+            uwidth = width as uint;
+          }
         }
-        auto strlen = str::char_len(s);
-        if (uwidth <= strlen) { ret s; }
-        auto padchar = ' ';
-        auto diff = uwidth - strlen;
-        if (have_flag(cv.flags, flag_left_justify)) {
-            auto padstr = str_init_elt(padchar, diff);
+        let strlen = str::char_len(s);
+        if uwidth <= strlen { ret s; }
+        let padchar = ' ';
+        let diff = uwidth - strlen;
+        if have_flag(cv.flags, flag_left_justify) {
+            let padstr = str_init_elt(padchar, diff);
             ret s + padstr;
         }
-        auto might_zero_pad = false;
-        auto signed = false;
-        alt (mode) {
-            case (pad_nozero) {
-                // fallthrough
+        let might_zero_pad = false;
+        let signed = false;
+        alt mode {
+          pad_nozero. {
+            // fallthrough
 
-            }
-            case (pad_signed) { might_zero_pad = true; signed = true; }
-            case (pad_unsigned) { might_zero_pad = true; }
+          }
+          pad_signed. { might_zero_pad = true; signed = true; }
+          pad_unsigned. { might_zero_pad = true; }
         }
-        fn have_precision(&conv cv) -> bool {
-            ret alt (cv.precision) {
-                    case (count_implied) { false }
-                    case (_) { true }
-                };
+        fn have_precision(cv: &conv) -> bool {
+            ret alt cv.precision { count_implied. { false } _ { true } };
         }
-        auto zero_padding = false;
-        if (might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
-                !have_precision(cv)) {
+        let zero_padding = false;
+        if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
+               !have_precision(cv) {
             padchar = '0';
             zero_padding = true;
         }
-        auto padstr = str_init_elt(padchar, diff);
+        let padstr = str_init_elt(padchar, diff);
         // This is completely heinous. If we have a signed value then
         // potentially rip apart the intermediate result and insert some
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if (signed && zero_padding && str::byte_len(s) > 0u) {
-            auto head = s.(0);
-            if (head == '+' as u8 || head == '-' as u8 || head == ' ' as u8) {
-                auto headstr = str::unsafe_from_bytes([head]);
-                auto bytelen = str::byte_len(s);
-                auto numpart = str::substr(s, 1u, bytelen - 1u);
+        if signed && zero_padding && str::byte_len(s) > 0u {
+            let head = s.(0);
+            if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
+                let headstr = str::unsafe_from_bytes([head]);
+                let bytelen = str::byte_len(s);
+                let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
             }
         }
         ret padstr + s;
     }
-    fn have_flag(vec[flag] flags, flag f) -> bool {
-        for (flag candidate in flags) { if (candidate == f) { ret true; } }
+    fn have_flag(flags: vec[flag], f: flag) -> bool {
+        for candidate: flag  in flags { if candidate == f { ret true; } }
         ret false;
     }
 }

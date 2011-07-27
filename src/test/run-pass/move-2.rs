@@ -1,7 +1,3 @@
 
 
-fn main() {
-    auto x = @rec(x=1, y=2, z=3);
-    auto y <- x;
-    assert (y.y == 2);
-}
+fn main() { let x = @{x: 1, y: 2, z: 3}; let y <- x; assert (y.y == 2); }

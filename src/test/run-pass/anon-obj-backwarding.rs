@@ -7,28 +7,20 @@ use std;
 fn main() {
 
     obj inner() {
-        fn a() -> int {
-            ret 2;
-        }
-        fn m() -> uint {
-            ret 3u;
-        }
-        fn z() -> uint {
-            ret self.m();
-        }
+        fn a() -> int { ret 2; }
+        fn m() -> uint { ret 3u; }
+        fn z() -> uint { ret self.m(); }
     }
 
-    auto my_inner = inner();
+    let my_inner = inner();
 
-    auto my_outer = obj() {
-        fn b() -> uint {
-            ret 5u;
-        }
-        fn n() -> str {
-            ret "world!";
-        }
-        with my_inner
-    };
+    let my_outer =
+        obj () {
+            fn b() -> uint { ret 5u; }
+            fn n() -> str { ret "world!"; }
+            with
+            my_inner
+        };
 
     log_err my_inner.z();
     assert (my_inner.z() == 3u);

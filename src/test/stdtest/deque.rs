@@ -6,7 +6,7 @@ import std::deque;
 
 #[test]
 fn test_simple() {
-    let deque::t[int] d = deque::create[int]();
+    let d: deque::t[int] = deque::create[int]();
     assert (d.size() == 0u);
     d.add_front(17);
     d.add_front(42);
@@ -18,7 +18,7 @@ fn test_simple() {
     assert (d.peek_front() == 42);
     log d.peek_back();
     assert (d.peek_back() == 137);
-    let int i = d.pop_front();
+    let i: int = d.pop_front();
     log i;
     assert (i == 42);
     i = d.pop_back();
@@ -49,8 +49,8 @@ fn test_simple() {
     assert (d.get(3) == 4);
 }
 
-fn test_boxes(@int a, @int b, @int c, @int d) {
-    let deque::t[@int] deq = deque::create[@int]();
+fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
+    let deq: deque::t[@int] = deque::create[@int]();
     assert (deq.size() == 0u);
     deq.add_front(a);
     deq.add_front(b);
@@ -81,8 +81,8 @@ fn test_boxes(@int a, @int b, @int c, @int d) {
 
 type eqfn[T] = fn(&T, &T) -> bool ;
 
-fn test_parameterized[T](eqfn[T] e, &T a, &T b, &T c, &T d) {
-    let deque::t[T] deq = deque::create[T]();
+fn test_parameterized[T](e: eqfn[T], a: &T, b: &T, c: &T, d: &T) {
+    let deq: deque::t[T] = deque::create[T]();
     assert (deq.size() == 0u);
     deq.add_front(a);
     deq.add_front(b);
@@ -115,80 +115,70 @@ tag taggy { one(int); two(int, int); three(int, int, int); }
 
 tag taggypar[T] { onepar(int); twopar(int, int); threepar(int, int, int); }
 
-type reccy = rec(int x, int y, taggy t);
+type reccy = {x: int, y: int, t: taggy};
 
 #[test]
 fn test() {
-    fn inteq(&int a, &int b) -> bool { ret a == b; }
-    fn intboxeq(&@int a, &@int b) -> bool { ret a == b; }
-    fn taggyeq(&taggy a, &taggy b) -> bool {
-        alt (a) {
-            case (one(?a1)) {
-                alt (b) {
-                    case (one(?b1)) { ret a1 == b1; }
-                    case (_) { ret false; }
-                }
+    fn inteq(a: &int, b: &int) -> bool { ret a == b; }
+    fn intboxeq(a: &@int, b: &@int) -> bool { ret a == b; }
+    fn taggyeq(a: &taggy, b: &taggy) -> bool {
+        alt a {
+          one(a1) { alt b { one(b1) { ret a1 == b1; } _ { ret false; } } }
+          two(a1, a2) {
+            alt b {
+              two(b1, b2) { ret a1 == b1 && a2 == b2; }
+              _ { ret false; }
             }
-            case (two(?a1, ?a2)) {
-                alt (b) {
-                    case (two(?b1, ?b2)) { ret a1 == b1 && a2 == b2; }
-                    case (_) { ret false; }
-                }
+          }
+          three(a1, a2, a3) {
+            alt b {
+              three(b1, b2, b3) { ret a1 == b1 && a2 == b2 && a3 == b3; }
+              _ { ret false; }
             }
-            case (three(?a1, ?a2, ?a3)) {
-                alt (b) {
-                    case (three(?b1, ?b2, ?b3)) {
-                        ret a1 == b1 && a2 == b2 && a3 == b3;
-                    }
-                    case (_) { ret false; }
-                }
-            }
+          }
         }
     }
-    fn taggypareq[T](&taggypar[T] a, &taggypar[T] b) -> bool {
-        alt (a) {
-            case (onepar[T](?a1)) {
-                alt (b) {
-                    case (onepar[T](?b1)) { ret a1 == b1; }
-                    case (_) { ret false; }
-                }
+    fn taggypareq[T](a: &taggypar[T], b: &taggypar[T]) -> bool {
+        alt a {
+          onepar[T](a1) {
+            alt b { onepar[T](b1) { ret a1 == b1; } _ { ret false; } }
+          }
+          twopar[T](a1, a2) {
+            alt b {
+              twopar[T](b1, b2) { ret a1 == b1 && a2 == b2; }
+              _ { ret false; }
             }
-            case (twopar[T](?a1, ?a2)) {
-                alt (b) {
-                    case (twopar[T](?b1, ?b2)) { ret a1 == b1 && a2 == b2; }
-                    case (_) { ret false; }
-                }
+          }
+          threepar[T](a1, a2, a3) {
+            alt b {
+              threepar[T](b1, b2, b3) {
+                ret a1 == b1 && a2 == b2 && a3 == b3;
+              }
+              _ { ret false; }
             }
-            case (threepar[T](?a1, ?a2, ?a3)) {
-                alt (b) {
-                    case (threepar[T](?b1, ?b2, ?b3)) {
-                        ret a1 == b1 && a2 == b2 && a3 == b3;
-                    }
-                    case (_) { ret false; }
-                }
-            }
+          }
         }
     }
-    fn reccyeq(&reccy a, &reccy b) -> bool {
+    fn reccyeq(a: &reccy, b: &reccy) -> bool {
         ret a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
     }
     log "*** test boxes";
     test_boxes(@5, @72, @64, @175);
     log "*** end test boxes";
     log "test parameterized: int";
-    let eqfn[int] eq1 = inteq;
+    let eq1: eqfn[int] = inteq;
     test_parameterized[int](eq1, 5, 72, 64, 175);
     log "*** test parameterized: @int";
-    let eqfn[@int] eq2 = intboxeq;
+    let eq2: eqfn[@int] = intboxeq;
     test_parameterized[@int](eq2, @5, @72, @64, @175);
     log "*** end test parameterized @int";
     log "test parameterized: taggy";
-    let eqfn[taggy] eq3 = taggyeq;
+    let eq3: eqfn[taggy] = taggyeq;
     test_parameterized[taggy](eq3, one(1), two(1, 2), three(1, 2, 3),
                               two(17, 42));
     /*
      * FIXME: Segfault.  Also appears to be caused only after upcall_grow_task
-
+    
     log "*** test parameterized: taggypar[int]";
     let eqfn[taggypar[int]] eq4 = taggypareq[int];
     test_parameterized[taggypar[int]](eq4,
@@ -197,15 +187,15 @@ fn test() {
                                       threepar[int](1, 2, 3),
                                       twopar[int](17, 42));
     log "*** end test parameterized: taggypar[int]";
-
+    
      */
 
     log "*** test parameterized: reccy";
-    let reccy reccy1 = rec(x=1, y=2, t=one(1));
-    let reccy reccy2 = rec(x=345, y=2, t=two(1, 2));
-    let reccy reccy3 = rec(x=1, y=777, t=three(1, 2, 3));
-    let reccy reccy4 = rec(x=19, y=252, t=two(17, 42));
-    let eqfn[reccy] eq5 = reccyeq;
+    let reccy1: reccy = {x: 1, y: 2, t: one(1)};
+    let reccy2: reccy = {x: 345, y: 2, t: two(1, 2)};
+    let reccy3: reccy = {x: 1, y: 777, t: three(1, 2, 3)};
+    let reccy4: reccy = {x: 19, y: 252, t: two(17, 42)};
+    let eq5: eqfn[reccy] = reccyeq;
     test_parameterized[reccy](eq5, reccy1, reccy2, reccy3, reccy4);
     log "*** end test parameterized: reccy";
     log "*** done";

@@ -1,10 +1,5 @@
 // error-pattern: precondition constraint
 
-fn f() -> int {
-   let int x;
-   ret x;
-}
+fn f() -> int { let x: int; ret x; }
 
-fn main() {
-   f();
-}
+fn main() { f(); }

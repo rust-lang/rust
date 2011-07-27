@@ -1,8 +1,5 @@
 // error-pattern: unresolved name: a
 
-mod m1 {
-}
+mod m1 { }
 
-fn main(vec[str] args) {
-  log m1::a;
-}
+fn main(args: vec[str]) { log m1::a; }

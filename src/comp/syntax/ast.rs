@@ -6,8 +6,8 @@ import std::str;
 import codemap::span;
 import codemap::filename;
 
-type spanned[T] = rec(T node, span span);
-fn respan[T](&span sp, &T t) -> spanned[T] { ret rec(node=t, span=sp); }
+type spanned[T] = {node: T, span: span};
+fn respan[T](sp: &span, t: &T) -> spanned[T] { ret {node: t, span: sp}; }
 
 type ident = str;
 // Functions may or may not have names.
@@ -16,22 +16,20 @@ type fn_ident = option::t[ident];
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
-type path_ = rec(bool global, ident[] idents, (@ty)[] types);
+type path_ = {global: bool, idents: ident[], types: (@ty)[]};
 
 type path = spanned[path_];
 
-fn path_name(&path p) -> str { path_name_i(p.node.idents) }
+fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
 
-fn path_name_i(&ident[] idents) -> str { str::connect_ivec(idents, "::") }
+fn path_name_i(idents: &ident[]) -> str { str::connect_ivec(idents, "::") }
 
 type crate_num = int;
 type node_id = int;
-type def_id = rec(crate_num crate, node_id node);
+type def_id = {crate: crate_num, node: node_id};
 
-const crate_num local_crate = 0;
-fn local_def(node_id id) -> def_id {
-    ret rec(crate=local_crate, node=id);
-}
+const local_crate: crate_num = 0;
+fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
 type ty_param = ident;
 
@@ -45,6 +43,7 @@ tag def {
     def_local(def_id);
     def_variant(def_id, /* tag */def_id);
 
+
     /* variant */
     def_ty(def_id);
     def_ty_arg(uint);
@@ -53,37 +52,34 @@ tag def {
     def_native_ty(def_id);
     def_native_fn(def_id);
 
+
     /* A "fake" def for upvars. This never appears in the def_map, but
      * freevars::def_lookup will return it for a def that is an upvar.
      * It contains the actual def. */
     def_upvar(def_id, @def);
 }
 
-fn variant_def_ids(&def d) -> rec(def_id tg, def_id var) {
-    alt (d) {
-        case (def_variant(?tag_id, ?var_id)) {
-          ret rec(tg=tag_id, var=var_id);
-        }
-    }
+fn variant_def_ids(d: &def) -> {tg: def_id, var: def_id} {
+    alt d { def_variant(tag_id, var_id) { ret {tg: tag_id, var: var_id}; } }
 }
 
-fn def_id_of_def(def d) -> def_id {
-    alt (d) {
-        case (def_fn(?id,_)) { ret id; }
-        case (def_obj_field(?id)) { ret id; }
-        case (def_mod(?id)) { ret id; }
-        case (def_native_mod(?id)) { ret id; }
-        case (def_const(?id)) { ret id; }
-        case (def_arg(?id)) { ret id; }
-        case (def_local(?id)) { ret id; }
-        case (def_variant(_, ?id)) { ret id; }
-        case (def_ty(?id)) { ret id; }
-        case (def_ty_arg(_)) { fail; }
-        case (def_binding(?id)) { ret id; }
-        case (def_use(?id)) { ret id; }
-        case (def_native_ty(?id)) { ret id; }
-        case (def_native_fn(?id)) { ret id; }
-        case (def_upvar(?id, _)) { ret id; }
+fn def_id_of_def(d: def) -> def_id {
+    alt d {
+      def_fn(id, _) { ret id; }
+      def_obj_field(id) { ret id; }
+      def_mod(id) { ret id; }
+      def_native_mod(id) { ret id; }
+      def_const(id) { ret id; }
+      def_arg(id) { ret id; }
+      def_local(id) { ret id; }
+      def_variant(_, id) { ret id; }
+      def_ty(id) { ret id; }
+      def_ty_arg(_) { fail; }
+      def_binding(id) { ret id; }
+      def_use(id) { ret id; }
+      def_native_ty(id) { ret id; }
+      def_native_fn(id) { ret id; }
+      def_upvar(id, _) { ret id; }
     }
     fail;
 }
@@ -94,15 +90,18 @@ type crate_cfg = (@meta_item)[];
 
 type crate = spanned[crate_];
 
-type crate_ = rec((@crate_directive)[] directives,
-                  _mod module,
-                  attribute[] attrs,
-                  crate_cfg config);
+type crate_ =
+    {directives: (@crate_directive)[],
+     module: _mod,
+     attrs: attribute[],
+     config: crate_cfg};
 
 tag crate_directive_ {
     cdir_src_mod(ident, option::t[filename], attribute[]);
-    cdir_dir_mod(ident, option::t[filename],
-                 (@crate_directive)[], attribute[]);
+    cdir_dir_mod(ident,
+                 option::t[filename],
+                 (@crate_directive)[],
+                 attribute[]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);
@@ -120,13 +119,11 @@ tag meta_item_ {
 
 type blk = spanned[blk_];
 
-type blk_ = rec((@stmt)[] stmts, option::t[@expr] expr, node_id id);
+type blk_ = {stmts: (@stmt)[], expr: option::t[@expr], id: node_id};
 
-type pat = rec(node_id id,
-               pat_ node,
-               span span);
+type pat = {id: node_id, node: pat_, span: span};
 
-type field_pat = rec(ident ident, @pat pat);
+type field_pat = {ident: ident, pat: @pat};
 
 tag pat_ {
     pat_wild;
@@ -141,19 +138,17 @@ type pat_id_map = std::map::hashmap[str, ast::node_id];
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
-fn pat_id_map(&@pat pat) -> pat_id_map {
-    auto map = std::map::new_str_hash[node_id]();
-    fn walk(&pat_id_map map, &@pat pat) {
-        alt (pat.node) {
-            pat_bind(?name) { map.insert(name, pat.id); }
-            pat_tag(_, ?sub) {
-                for (@pat p in sub) { walk(map, p); }
-            }
-            pat_rec(?fields, _) {
-                for (field_pat f in fields) { walk(map, f.pat); }
-            }
-            pat_box(?inner) { walk(map, inner); }
-            _ {}
+fn pat_id_map(pat: &@pat) -> pat_id_map {
+    let map = std::map::new_str_hash[node_id]();
+    fn walk(map: &pat_id_map, pat: &@pat) {
+        alt pat.node {
+          pat_bind(name) { map.insert(name, pat.id); }
+          pat_tag(_, sub) { for p: @pat  in sub { walk(map, p); } }
+          pat_rec(fields, _) {
+            for f: field_pat  in fields { walk(map, f.pat); }
+          }
+          pat_box(inner) { walk(map, inner); }
+          _ { }
         }
     }
     walk(map, pat);
@@ -190,46 +185,42 @@ tag binop {
     gt;
 }
 
-fn binop_to_str(binop op) -> str {
-    alt (op) {
-        case (add) { ret "+"; }
-        case (sub) { ret "-"; }
-        case (mul) { ret "*"; }
-        case (div) { ret "/"; }
-        case (rem) { ret "%"; }
-        case (and) { ret "&&"; }
-        case (or) { ret "||"; }
-        case (bitxor) { ret "^"; }
-        case (bitand) { ret "&"; }
-        case (bitor) { ret "|"; }
-        case (lsl) { ret "<<"; }
-        case (lsr) { ret ">>"; }
-        case (asr) { ret ">>>"; }
-        case (eq) { ret "=="; }
-        case (lt) { ret "<"; }
-        case (le) { ret "<="; }
-        case (ne) { ret "!="; }
-        case (ge) { ret ">="; }
-        case (gt) { ret ">"; }
+fn binop_to_str(op: binop) -> str {
+    alt op {
+      add. { ret "+"; }
+      sub. { ret "-"; }
+      mul. { ret "*"; }
+      div. { ret "/"; }
+      rem. { ret "%"; }
+      and. { ret "&&"; }
+      or. { ret "||"; }
+      bitxor. { ret "^"; }
+      bitand. { ret "&"; }
+      bitor. { ret "|"; }
+      lsl. { ret "<<"; }
+      lsr. { ret ">>"; }
+      asr. { ret ">>>"; }
+      eq. { ret "=="; }
+      lt. { ret "<"; }
+      le. { ret "<="; }
+      ne. { ret "!="; }
+      ge. { ret ">="; }
+      gt. { ret ">"; }
     }
 }
 
-pred lazy_binop(binop b) -> bool {
-    alt (b) {
-        case (and) { true }
-        case (or)  { true }
-        case (_)   { false }
-    }
+pred lazy_binop(b: binop) -> bool {
+    alt b { and. { true } or. { true } _ { false } }
 }
 
 tag unop { box(mutability); deref; not; neg; }
 
-fn unop_to_str(unop op) -> str {
-    alt (op) {
-        case (box(?mt)) { if (mt == mut) { ret "@mutable "; } ret "@"; }
-        case (deref) { ret "*"; }
-        case (not) { ret "!"; }
-        case (neg) { ret "-"; }
+fn unop_to_str(op: unop) -> str {
+    alt op {
+      box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
+      deref. { ret "*"; }
+      not. { ret "!"; }
+      neg. { ret "-"; }
     }
 }
 
@@ -241,20 +232,21 @@ tag stmt_ {
     stmt_decl(@decl, node_id);
     stmt_expr(@expr, node_id);
 
+
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
 }
 
 tag init_op { init_assign; init_recv; init_move; }
 
-type initializer = rec(init_op op, @expr expr);
+type initializer = {op: init_op, expr: @expr};
 
 type local_ =
-    rec(option::t[@ty] ty,
-        bool infer,
-        ident ident,
-        option::t[initializer] init,
-        node_id id);
+    {ty: option::t[@ty],
+     infer: bool,
+     ident: ident,
+     init: option::t[initializer],
+     id: node_id};
 
 type local = spanned[local_];
 
@@ -262,11 +254,11 @@ type decl = spanned[decl_];
 
 tag decl_ { decl_local((@local)[]); decl_item(@item); }
 
-type arm = rec((@pat)[] pats, blk block);
+type arm = {pats: (@pat)[], block: blk};
 
-type elt = rec(mutability mut, @expr expr);
+type elt = {mut: mutability, expr: @expr};
 
-type field_ = rec(mutability mut, ident ident, @expr expr);
+type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned[field_];
 
@@ -277,9 +269,7 @@ tag check_mode { checked; unchecked; }
 // FIXME: temporary
 tag seq_kind { sk_unique; sk_rc; }
 
-type expr = rec(node_id id,
-                expr_ node,
-                span span);
+type expr = {id: node_id, node: expr_, span: span};
 
 tag expr_ {
     expr_vec((@expr)[], mutability, seq_kind);
@@ -301,12 +291,13 @@ tag expr_ {
     expr_alt(@expr, arm[]);
     expr_fn(_fn);
     expr_block(blk);
+
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
      */
     expr_move(@expr, @expr);
-    expr_assign(@expr,@expr);
+    expr_assign(@expr, @expr);
     expr_swap(@expr, @expr);
     expr_assign_op(binop, @expr, @expr);
     expr_send(@expr, @expr);
@@ -322,13 +313,16 @@ tag expr_ {
     expr_be(@expr);
     expr_log(int, @expr);
 
+
     /* just an assert, no significance to typestate */
     expr_assert(@expr);
 
+
     /* preds that typestate is aware of */
     expr_check(check_mode, @expr);
-   /* FIXME Would be nice if expr_check desugared
-      to expr_if_check. */
+
+    /* FIXME Would be nice if expr_check desugared
+       to expr_if_check. */
     expr_if_check(@expr, blk, option::t[@expr]);
     expr_port(option::t[@ty]);
     expr_chan(@expr);
@@ -359,29 +353,26 @@ tag lit_ {
     lit_bool(bool);
 }
 
-fn is_path(&@expr e) -> bool {
-    ret alt (e.node) {
-        case (expr_path(_)) { true }
-        case (_) { false }
-    };
+fn is_path(e: &@expr) -> bool {
+    ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
-type mt = rec(@ty ty, mutability mut);
+type mt = {ty: @ty, mut: mutability};
 
-type ty_field_ = rec(ident ident, mt mt);
+type ty_field_ = {ident: ident, mt: mt};
 
-type ty_arg_ = rec(mode mode, @ty ty);
+type ty_arg_ = {mode: mode, ty: @ty};
 
 type ty_method_ =
-    rec(proto proto,
-        ident ident,
-        ty_arg[] inputs,
-        @ty output,
-        controlflow cf,
-        (@constr)[] constrs);
+    {proto: proto,
+     ident: ident,
+     inputs: ty_arg[],
+     output: @ty,
+     cf: controlflow,
+     constrs: (@constr)[]};
 
 type ty_field = spanned[ty_field_];
 
@@ -402,18 +393,18 @@ tag ty_mach {
     ty_f64;
 }
 
-fn ty_mach_to_str(ty_mach tm) -> str {
-    alt (tm) {
-        case (ty_u8) { ret "u8"; }
-        case (ty_u16) { ret "u16"; }
-        case (ty_u32) { ret "u32"; }
-        case (ty_u64) { ret "u64"; }
-        case (ty_i8) { ret "i8"; }
-        case (ty_i16) { ret "i16"; }
-        case (ty_i32) { ret "i32"; }
-        case (ty_i64) { ret "i64"; }
-        case (ty_f32) { ret "f32"; }
-        case (ty_f64) { ret "f64"; }
+fn ty_mach_to_str(tm: ty_mach) -> str {
+    alt tm {
+      ty_u8. { ret "u8"; }
+      ty_u16. { ret "u16"; }
+      ty_u32. { ret "u32"; }
+      ty_u64. { ret "u64"; }
+      ty_i8. { ret "i8"; }
+      ty_i16. { ret "i16"; }
+      ty_i32. { ret "i32"; }
+      ty_i64. { ret "i64"; }
+      ty_f32. { ret "f32"; }
+      ty_f64. { ret "f64"; }
     }
 }
 
@@ -425,10 +416,12 @@ tag ty_ {
              ret/fail/break/cont. there is no syntax
              for this type. */
 
+
+
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-    ty_bool;
+     ty_bool;
     ty_int;
     ty_uint;
     ty_float;
@@ -437,9 +430,13 @@ tag ty_ {
     ty_str;
     ty_istr; // interior string
 
+
+
     ty_box(mt);
     ty_vec(mt);
     ty_ivec(mt); // interior vector
+
+
 
     ty_ptr(mt);
     ty_task;
@@ -475,8 +472,8 @@ type constr_arg = spanned[fn_constr_arg];
 // The implicit root of such path, in the constraint-list for a
 // constrained type, is * (referring to the base record)
 
-type constr_general_[ARG, ID] = rec(path path,
-     (@(spanned[constr_arg_general_[ARG]]))[] args, ID id);
+type constr_general_[ARG, ID] =
+    {path: path, args: (@spanned[constr_arg_general_[ARG]])[], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
@@ -489,17 +486,19 @@ type ty_constr = spanned[ty_constr_];
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
  corresponding to these. */
-type arg = rec(mode mode, @ty ty, ident ident, node_id id);
+type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
 type fn_decl =
-    rec(arg[] inputs,
-        @ty output,
-        purity purity,
-        controlflow cf,
-        (@constr)[] constraints);
+    {inputs: arg[],
+     output: @ty,
+     purity: purity,
+     cf: controlflow,
+     constraints: (@constr)[]};
 
 tag purity {
     pure_fn; // declared with "pred"
+
+
 
     impure_fn; // declared with "fn"
 
@@ -509,33 +508,34 @@ tag controlflow {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
 
+
+
     return; // everything else
 
 }
 
-type _fn = rec(fn_decl decl, proto proto, blk body);
+type _fn = {decl: fn_decl, proto: proto, body: blk};
 
-type method_ = rec(ident ident, _fn meth, node_id id);
+type method_ = {ident: ident, meth: _fn, id: node_id};
 
 type method = spanned[method_];
 
-type obj_field = rec(mutability mut, @ty ty, ident ident, node_id id);
-type anon_obj_field = rec(mutability mut, @ty ty, @expr expr, ident ident,
-                          node_id id);
+type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
+type anon_obj_field =
+    {mut: mutability, ty: @ty, expr: @expr, ident: ident, id: node_id};
 
 type _obj =
-    rec(obj_field[] fields, (@method)[] methods, option::t[@method] dtor);
+    {fields: obj_field[], methods: (@method)[], dtor: option::t[@method]};
 
 type anon_obj =
-    rec(
-        // New fields and methods, if they exist.
-        option::t[anon_obj_field[]] fields,
-        (@method)[] methods,
+    // New fields and methods, if they exist.
 
-        // with_obj: the original object being extended, if it exists.
-        option::t[@expr] with_obj);
+    // with_obj: the original object being extended, if it exists.
+    {fields: option::t[anon_obj_field[]],
+     methods: (@method)[],
+     with_obj: option::t[@expr]};
 
-type _mod = rec((@view_item)[] view_items, (@item)[] items);
+type _mod = {view_items: (@view_item)[], items: (@item)[]};
 
 tag native_abi {
     native_abi_rust;
@@ -546,14 +546,14 @@ tag native_abi {
 }
 
 type native_mod =
-    rec(str native_name,
-        native_abi abi,
-        (@view_item)[] view_items,
-        (@native_item)[] items);
+    {native_name: str,
+     abi: native_abi,
+     view_items: (@view_item)[],
+     items: (@native_item)[]};
 
-type variant_arg = rec(@ty ty, node_id id);
+type variant_arg = {ty: @ty, id: node_id};
 
-type variant_ = rec(str name, (variant_arg)[] args, node_id id);
+type variant_ = {name: str, args: variant_arg[], id: node_id};
 
 type variant = spanned[variant_];
 
@@ -566,7 +566,7 @@ tag view_item_ {
     view_item_export(ident, node_id);
 }
 
-type obj_def_ids = rec(node_id ty, node_id ctor);
+type obj_def_ids = {ty: node_id, ctor: node_id};
 
 
 // Meta-data associated with an item
@@ -578,13 +578,10 @@ type attribute = spanned[attribute_];
 // distinguished for pretty-printing.
 tag attr_style { attr_outer; attr_inner; }
 
-type attribute_ = rec(attr_style style, meta_item value);
+type attribute_ = {style: attr_style, value: meta_item};
 
-type item = rec(ident ident,
-                attribute[] attrs,
-                node_id id, // For objs and resources, this is the type def_id
-                item_ node,
-                span span);
+type item =  // For objs and resources, this is the type def_id
+    {ident: ident, attrs: attribute[], id: node_id, node: item_, span: span};
 
 tag item_ {
     item_const(@ty, @expr);
@@ -593,48 +590,57 @@ tag item_ {
     item_native_mod(native_mod);
     item_ty(@ty, ty_param[]);
     item_tag(variant[], ty_param[]);
-    item_obj(_obj, ty_param[], node_id /* constructor id */);
-    item_res(_fn /* dtor */, node_id /* dtor id */,
-             ty_param[], node_id /* ctor id */);
+    item_obj(_obj, ty_param[], /* constructor id */node_id);
+    item_res(
+             /* dtor */
+             _fn,
+
+             /* dtor id */
+             node_id,
+             ty_param[],
+
+             /* ctor id */
+             node_id);
 }
 
-type native_item = rec(ident ident,
-                       attribute[] attrs,
-                       native_item_ node,
-                       node_id id,
-                       span span);
+type native_item =
+    {ident: ident,
+     attrs: attribute[],
+     node: native_item_,
+     id: node_id,
+     span: span};
 
 tag native_item_ {
     native_item_ty;
     native_item_fn(option::t[str], fn_decl, ty_param[]);
 }
 
-fn is_exported(ident i, _mod m) -> bool {
-    auto nonlocal = true;
-    for (@ast::item it in m.items) {
-        if (it.ident == i) { nonlocal = false; }
-        alt (it.node) {
-            case (item_tag(?variants, _)) {
-                for (variant v in variants) {
-                    if (v.node.name == i) { nonlocal = false; }
-                }
+fn is_exported(i: ident, m: _mod) -> bool {
+    let nonlocal = true;
+    for it: @ast::item  in m.items {
+        if it.ident == i { nonlocal = false; }
+        alt it.node {
+          item_tag(variants, _) {
+            for v: variant  in variants {
+                if v.node.name == i { nonlocal = false; }
             }
-            case (_) { }
+          }
+          _ { }
         }
-        if (!nonlocal) { break; }
+        if !nonlocal { break; }
     }
-    auto count = 0u;
-    for (@ast::view_item vi in m.view_items) {
-        alt (vi.node) {
-            case (ast::view_item_export(?id, _)) {
-                if (str::eq(i, id)) {
-                    // even if it's nonlocal (since it's explicit)
+    let count = 0u;
+    for vi: @ast::view_item  in m.view_items {
+        alt vi.node {
+          ast::view_item_export(id, _) {
+            if str::eq(i, id) {
+                // even if it's nonlocal (since it's explicit)
 
-                    ret true;
-                }
-                count += 1u;
+                ret true;
             }
-            case (_) {/* fall through */ }
+            count += 1u;
+          }
+          _ {/* fall through */ }
         }
     }
     // If there are no declared exports then
@@ -643,52 +649,46 @@ fn is_exported(ident i, _mod m) -> bool {
     ret count == 0u && !nonlocal;
 }
 
-fn is_call_expr(@expr e) -> bool {
-    alt (e.node) {
-        case (expr_call(_, _)) { ret true; }
-        case (_) { ret false; }
+fn is_call_expr(e: @expr) -> bool {
+    alt e.node { expr_call(_, _) { ret true; } _ { ret false; } }
+}
+
+fn is_constraint_arg(e: @expr) -> bool {
+    alt e.node {
+      expr_lit(_) { ret true; }
+      expr_path(_) { ret true; }
+      _ { ret false; }
     }
 }
 
-fn is_constraint_arg(@expr e) -> bool {
-    alt (e.node) {
-        case (expr_lit(_)) { ret true; }
-        case (expr_path(_)) { ret true; }
-        case (_) { ret false; }
-    }
-}
+fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
 
-fn eq_ty(&@ty a, &@ty b) -> bool { ret std::box::ptr_eq(a, b); }
+fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
-fn hash_ty(&@ty t) -> uint { ret t.span.lo << 16u + t.span.hi; }
-
-fn block_from_expr(@expr e) -> blk {
-    auto blk_ =
-        rec(stmts=~[],
-            expr=option::some[@expr](e),
-            id=e.id);
-    ret rec(node=blk_, span=e.span);
+fn block_from_expr(e: @expr) -> blk {
+    let blk_ = {stmts: ~[], expr: option::some[@expr](e), id: e.id};
+    ret {node: blk_, span: e.span};
 }
 
 
-fn obj_field_from_anon_obj_field(&anon_obj_field f) -> obj_field {
-    ret rec(mut=f.mut, ty=f.ty, ident=f.ident, id=f.id);
+fn obj_field_from_anon_obj_field(f: &anon_obj_field) -> obj_field {
+    ret {mut: f.mut, ty: f.ty, ident: f.ident, id: f.id};
 }
 
 // This is a convenience function to transfor ternary expressions to if
 // expressions so that they can be treated the same
-fn ternary_to_if(&@expr e) -> @ast::expr {
-    alt (e.node) {
-        case (expr_ternary(?cond, ?then, ?els)) {
-            auto then_blk = block_from_expr(then);
-            auto els_blk = block_from_expr(els);
-            auto els_expr = @rec(id=els.id, node=expr_block(els_blk),
-                                 span=els.span);
-            ret @rec(id=e.id,
-                     node=expr_if(cond, then_blk, option::some(els_expr)),
-                     span=e.span);
-        }
-        case (_) { fail; }
+fn ternary_to_if(e: &@expr) -> @ast::expr {
+    alt e.node {
+      expr_ternary(cond, then, els) {
+        let then_blk = block_from_expr(then);
+        let els_blk = block_from_expr(els);
+        let els_expr =
+            @{id: els.id, node: expr_block(els_blk), span: els.span};
+        ret @{id: e.id,
+              node: expr_if(cond, then_blk, option::some(els_expr)),
+              span: e.span};
+      }
+      _ { fail; }
     }
 }
 

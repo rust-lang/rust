@@ -11,19 +11,14 @@
 use std;
 import std::task::join;
 
-fn loop(int n) {
-  let task t1;
-  let task t2;
+fn loop(n: int) {
+    let t1: task;
+    let t2: task;
 
-  if(n > 0) {
-    t1 = spawn loop(n - 1);
-    t2 = spawn loop(n - 1);
-  }
+    if n > 0 { t1 = spawn loop(n - 1); t2 = spawn loop(n - 1); }
 
-  while(true) {}
+
+    while true { }
 }
 
-fn main() {
-  let task t = spawn loop(5);
-  join(t);
-}
+fn main() { let t: task = spawn loop(5); join(t); }

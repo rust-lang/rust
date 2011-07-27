@@ -5,13 +5,13 @@
 
 // Tests for if as expressions returning structural types
 fn test_rec() {
-    auto rs = if (true) { rec(i=100) } else { rec(i=101) };
-    assert (rs == rec(i=100));
+    let rs = if true { {i: 100} } else { {i: 101} };
+    assert (rs == {i: 100});
 }
 
 fn test_tag() {
     tag mood { happy; sad; }
-    auto rs = if (true) { happy } else { sad };
+    let rs = if true { happy } else { sad };
     assert (rs == happy);
 }
 

@@ -7,10 +7,10 @@ import std::option::none;
 
 tag sty { ty_nil; }
 
-type raw_t = rec(sty struct, option::t[str] cname, uint hash);
+type raw_t = {struct: sty, cname: option::t[str], hash: uint};
 
-fn mk_raw_ty(sty st, &option::t[str] cname) -> raw_t {
-    ret rec(struct=st, cname=cname, hash=0u);
+fn mk_raw_ty(st: sty, cname: &option::t[str]) -> raw_t {
+    ret {struct: st, cname: cname, hash: 0u};
 }
 
 fn main() { mk_raw_ty(ty_nil, none[str]); }

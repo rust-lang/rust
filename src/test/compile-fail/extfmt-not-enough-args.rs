@@ -3,6 +3,4 @@
 
 use std;
 
-fn main() {
-  auto s = #fmt("%s%s%s", "test", "test");
-}
+fn main() { let s = #fmt("%s%s%s", "test", "test"); }

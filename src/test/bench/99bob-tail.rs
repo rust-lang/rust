@@ -7,14 +7,14 @@ import std::int;
 import std::str;
 
 fn main() {
-    fn multiple(int n) {
-        let str nb = int::to_str(n, 10u);
-        let str mb = int::to_str(n - 1, 10u);
+    fn multiple(n: int) {
+        let nb: str = int::to_str(n, 10u);
+        let mb: str = int::to_str(n - 1, 10u);
         log nb + " bottles of beer on the wall, " + nb + " bottles of beer,";
         log "Take one down and pass it around, " + mb +
                 " bottles of beer on the wall.";
         log "";
-        if (n > 3) { be multiple(n - 1); } else { be dual(); }
+        if n > 3 { be multiple(n - 1); } else { be dual(); }
     }
     fn dual() {
         log "2 bottles of beer on the wall, 2 bottles of beer,";
@@ -32,7 +32,7 @@ fn main() {
     fn none() {
         log "No more bottles of beer on the wall, no more bottles of beer,";
         log "Go to the store and buy some more, " +
-          "99 bottles of beer on the wall.";
+                "99 bottles of beer on the wall.";
         log "";
     }
     multiple(99);

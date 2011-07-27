@@ -3,7 +3,7 @@ use std;
 import std::vec;
 
 fn main() {
-    auto v = [1, 2, 3];
+    let v = [1, 2, 3];
     log_err vec::refcount[int](v);
     log_err vec::refcount[int](v);
     log_err vec::refcount[int](v);

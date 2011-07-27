@@ -5,15 +5,15 @@ type adder =
         fn add() ;
     };
 
-obj leaf_adder(int x) {
+obj leaf_adder(x: int) {
     fn add() { log "leaf"; log x; }
 }
 
-obj delegate_adder(adder a) {
+obj delegate_adder(a: adder) {
     fn add() { a.add(); }
 }
 
 fn main() {
-    auto x = delegate_adder(delegate_adder(delegate_adder(leaf_adder(10))));
+    let x = delegate_adder(delegate_adder(delegate_adder(leaf_adder(10))));
     x.add();
 }

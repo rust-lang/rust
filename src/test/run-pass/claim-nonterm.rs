@@ -5,11 +5,6 @@ use std;
 import std::str::*;
 import std::uint::*;
 
-pred fails(uint a) -> bool {
-  fail;
-}
+pred fails(a: uint) -> bool { fail; }
 
-fn main() {
-  let uint b = 4u;
-  claim fails(b);
-}
+fn main() { let b: uint = 4u; claim (fails(b)); }

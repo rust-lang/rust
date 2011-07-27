@@ -4,5 +4,4 @@
 // xfail-stage3
 // error-pattern: bad type signature
 
-fn main(int x) {
-}
+fn main(x: int) { }

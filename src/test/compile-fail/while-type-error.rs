@@ -1,7 +1,4 @@
 // error-pattern: mismatched types
 
-fn main() {
-  while (main) {
-  }
-}
+fn main() { while main { } }
 

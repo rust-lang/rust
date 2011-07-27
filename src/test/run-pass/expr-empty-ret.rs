@@ -1,11 +1,6 @@
 // xfail-stage0
 // Issue #521
 
-fn f() {
-  auto x = alt (true) {
-    case (true) { 10 }
-    case (false) { ret }
-  };
-}
+fn f() { let x = alt true { true { 10 } false { ret } }; }
 
 fn main() { }

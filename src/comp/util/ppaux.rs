@@ -19,155 +19,150 @@ import pp::hardbreak;
 import ast::ty_mach_to_str;
 import syntax::ast;
 
-fn mode_str(&ty::mode m) -> str {
-    alt (m) {
-        case (mo_val) { "" }
-        case (mo_alias(false)) { "&" }
-        case (mo_alias(true)) { "&mutable " }
+fn mode_str(m: &ty::mode) -> str {
+    alt m {
+      mo_val. { "" }
+      mo_alias(false) { "&" }
+      mo_alias(true) { "&mutable " }
     }
 }
 
-fn mode_str_1(&ty::mode m) -> str {
-    alt (m) {
-        case (mo_val) { "val" }
-        case (_)      { mode_str(m) }
-    }
+fn mode_str_1(m: &ty::mode) -> str {
+    alt m { mo_val. { "val" } _ { mode_str(m) } }
 }
 
-fn fn_ident_to_string(ast::node_id id, &ast::fn_ident i) -> str {
-    ret alt (i) {
-        case (none) { "anon" + int::str(id) }
-        case (some(?s)) { s }
-    };
+fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {
+    ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
 }
 
-fn ty_to_str(&ctxt cx, &t typ) -> str {
-    fn fn_input_to_str(&ctxt cx, &rec(middle::ty::mode mode, t ty) input) ->
+fn ty_to_str(cx: &ctxt, typ: &t) -> str {
+    fn fn_input_to_str(cx: &ctxt, input: &{mode: middle::ty::mode, ty: t}) ->
        str {
-        auto s = mode_str(input.mode);
+        let s = mode_str(input.mode);
         ret s + ty_to_str(cx, input.ty);
     }
-    fn fn_to_str(&ctxt cx, ast::proto proto, option::t[ast::ident] ident,
-                 &arg[] inputs, t output, ast::controlflow cf,
-                 &(@constr)[] constrs) -> str {
-        auto s = proto_to_str(proto);
-        alt (ident) { case (some(?i)) { s += " "; s += i; } case (_) { } }
+    fn fn_to_str(cx: &ctxt, proto: ast::proto, ident: option::t[ast::ident],
+                 inputs: &arg[], output: t, cf: ast::controlflow,
+                 constrs: &(@constr)[]) -> str {
+        let s = proto_to_str(proto);
+        alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
-        auto strs = [];
-        for (arg a in inputs) { strs += [fn_input_to_str(cx, a)]; }
+        let strs = [];
+        for a: arg  in inputs { strs += [fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
-        if (struct(cx, output) != ty_nil) {
-            alt (cf) {
-                case (ast::noreturn) { s += " -> !"; }
-                case (ast::return) { s += " -> " + ty_to_str(cx, output); }
+        if struct(cx, output) != ty_nil {
+            alt cf {
+              ast::noreturn. { s += " -> !"; }
+              ast::return. { s += " -> " + ty_to_str(cx, output); }
             }
         }
         s += constrs_str(constrs);
         ret s;
     }
-    fn method_to_str(&ctxt cx, &method m) -> str {
+    fn method_to_str(cx: &ctxt, m: &method) -> str {
         ret fn_to_str(cx, m.proto, some[ast::ident](m.ident), m.inputs,
                       m.output, m.cf, m.constrs) + ";";
     }
-    fn field_to_str(&ctxt cx, &field f) -> str {
+    fn field_to_str(cx: &ctxt, f: &field) -> str {
         ret mt_to_str(cx, f.mt) + " " + f.ident;
     }
-    fn mt_to_str(&ctxt cx, &mt m) -> str {
-        auto mstr;
-        alt (m.mut) {
-            case (ast::mut) { mstr = "mutable "; }
-            case (ast::imm) { mstr = ""; }
-            case (ast::maybe_mut) { mstr = "mutable? "; }
+    fn mt_to_str(cx: &ctxt, m: &mt) -> str {
+        let mstr;
+        alt m.mut {
+          ast::mut. { mstr = "mutable "; }
+          ast::imm. { mstr = ""; }
+          ast::maybe_mut. { mstr = "mutable? "; }
         }
         ret mstr + ty_to_str(cx, m.ty);
     }
-    alt (cname(cx, typ)) { case (some(?cs)) { ret cs; } case (_) { } }
-    auto s = "";
-    alt (struct(cx, typ)) {
-        case (ty_native(_)) { s += "native"; }
-        case (ty_nil) { s += "()"; }
-        case (ty_bot) { s += "_|_"; }
-        case (ty_bool) { s += "bool"; }
-        case (ty_int) { s += "int"; }
-        case (ty_float) { s += "float"; }
-        case (ty_uint) { s += "uint"; }
-        case (ty_machine(?tm)) { s += ty_mach_to_str(tm); }
-        case (ty_char) { s += "char"; }
-        case (ty_str) { s += "str"; }
-        case (ty_istr) { s += "istr"; }
-        case (ty_box(?tm)) { s += "@" + mt_to_str(cx, tm); }
-        case (ty_vec(?tm)) { s += "vec[" + mt_to_str(cx, tm) + "]"; }
-        case (ty_ivec(?tm)) { s += "ivec[" + mt_to_str(cx, tm) + "]"; }
-        case (ty_port(?t)) { s += "port[" + ty_to_str(cx, t) + "]"; }
-        case (ty_chan(?t)) { s += "chan[" + ty_to_str(cx, t) + "]"; }
-        case (ty_type) { s += "type"; }
-        case (ty_task) { s += "task"; }
-        case (ty_rec(?elems)) {
-            let str[] strs = ~[];
-            for (field fld in elems) { strs += ~[field_to_str(cx, fld)]; }
-            s += "rec(" + str::connect_ivec(strs, ",") + ")";
-        }
-        case (ty_tag(?id, ?tps)) {
-            // The user should never see this if the cname is set properly!
+    alt cname(cx, typ) { some(cs) { ret cs; } _ { } }
+    let s = "";
+    alt struct(cx, typ) {
+      ty_native(_) { s += "native"; }
+      ty_nil. { s += "()"; }
+      ty_bot. { s += "_|_"; }
+      ty_bool. { s += "bool"; }
+      ty_int. { s += "int"; }
+      ty_float. { s += "float"; }
+      ty_uint. { s += "uint"; }
+      ty_machine(tm) { s += ty_mach_to_str(tm); }
+      ty_char. { s += "char"; }
+      ty_str. { s += "str"; }
+      ty_istr. { s += "istr"; }
+      ty_box(tm) { s += "@" + mt_to_str(cx, tm); }
+      ty_vec(tm) { s += "vec[" + mt_to_str(cx, tm) + "]"; }
+      ty_ivec(tm) { s += "ivec[" + mt_to_str(cx, tm) + "]"; }
+      ty_port(t) { s += "port[" + ty_to_str(cx, t) + "]"; }
+      ty_chan(t) { s += "chan[" + ty_to_str(cx, t) + "]"; }
+      ty_type. { s += "type"; }
+      ty_task. { s += "task"; }
+      ty_rec(elems) {
+        let strs: str[] = ~[];
+        for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
+        s += "rec(" + str::connect_ivec(strs, ",") + ")";
+      }
+      ty_tag(id, tps) {
+        // The user should never see this if the cname is set properly!
 
-            s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
-            if (ivec::len[t](tps) > 0u) {
-                let str[] strs = ~[];
-                for (t typ in tps) { strs += ~[ty_to_str(cx, typ)]; }
-                s += "[" + str::connect_ivec(strs, ",") + "]";
-            }
+        s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
+        if ivec::len[t](tps) > 0u {
+            let strs: str[] = ~[];
+            for typ: t  in tps { strs += ~[ty_to_str(cx, typ)]; }
+            s += "[" + str::connect_ivec(strs, ",") + "]";
         }
-        case (ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
-            s += fn_to_str(cx, proto, none, inputs, output, cf, constrs);
-        }
-        case (ty_native_fn(_, ?inputs, ?output)) {
-            s += fn_to_str(cx, ast::proto_fn, none, inputs, output,
-                           ast::return, ~[]);
-        }
-        case (ty_obj(?meths)) {
-            auto strs = ~[];
-            for (method m in meths) { strs += ~[method_to_str(cx, m)]; }
-            s += "obj {\n\t" + str::connect_ivec(strs, "\n\t") + "\n}";
-        }
-        case (ty_res(?id, _, _)) {
-            s += "<resource#" + int::str(id.node) + ":" +
-                int::str(id.crate) + ">";
-        }
-        case (ty_var(?v)) { s += "<T" + int::str(v) + ">"; }
-        case (ty_param(?id)) {
-            s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
-        }
-        case (_) { s += ty_to_short_str(cx, typ); }
+      }
+      ty_fn(proto, inputs, output, cf, constrs) {
+        s += fn_to_str(cx, proto, none, inputs, output, cf, constrs);
+      }
+      ty_native_fn(_, inputs, output) {
+        s +=
+            fn_to_str(cx, ast::proto_fn, none, inputs, output, ast::return,
+                      ~[]);
+      }
+      ty_obj(meths) {
+        let strs = ~[];
+        for m: method  in meths { strs += ~[method_to_str(cx, m)]; }
+        s += "obj {\n\t" + str::connect_ivec(strs, "\n\t") + "\n}";
+      }
+      ty_res(id, _, _) {
+        s +=
+            "<resource#" + int::str(id.node) + ":" + int::str(id.crate) + ">";
+      }
+      ty_var(v) { s += "<T" + int::str(v) + ">"; }
+      ty_param(id) {
+        s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
+      }
+      _ { s += ty_to_short_str(cx, typ); }
     }
     ret s;
 }
 
-fn ty_to_short_str(&ctxt cx, t typ) -> str {
-    auto s = encoder::encoded_ty(cx, typ);
-    if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
+fn ty_to_short_str(cx: &ctxt, typ: t) -> str {
+    let s = encoder::encoded_ty(cx, typ);
+    if str::byte_len(s) >= 32u { s = str::substr(s, 0u, 32u); }
     ret s;
 }
 
-fn constr_to_str(&@constr c) -> str {
+fn constr_to_str(c: &@constr) -> str {
     ret path_to_str(c.node.path) +
-        pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
+            pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(&(@constr)[] constrs) -> str {
-    auto s = "";
-    auto colon = true;
-    for (@constr c in constrs) {
-        if (colon) { s += " : "; colon = false; } else { s += ", "; }
+fn constrs_str(constrs: &(@constr)[]) -> str {
+    let s = "";
+    let colon = true;
+    for c: @constr  in constrs {
+        if colon { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }
     ret s;
 }
 
-fn ty_constr_to_str[Q](&@ast::spanned[ast::constr_general_[ast::path,Q]]
-                       c) -> str {
+fn ty_constr_to_str[Q](c: &@ast::spanned[ast::constr_general_[ast::path, Q]])
+   -> str {
     ret path_to_str(c.node.path) +
-          constr_args_to_str[ast::path](path_to_str, c.node.args);
+            constr_args_to_str[ast::path](path_to_str, c.node.args);
 }
 
 // Local Variables:

@@ -1,10 +1,5 @@
 // error-pattern:Unsatisfied precondition
 
-fn foo(int x) {
-  log x;
-}
+fn foo(x: int) { log x; }
 
-fn main() {
-  let int x;
-  foo(x);
-}
+fn main() { let x: int; foo(x); }

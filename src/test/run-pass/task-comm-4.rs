@@ -3,10 +3,10 @@
 fn main() { test00(); }
 
 fn test00() {
-    let int r = 0;
-    let int sum = 0;
-    let port[int] p = port();
-    let chan[int] c = chan(p);
+    let r: int = 0;
+    let sum: int = 0;
+    let p: port[int] = port();
+    let c: chan[int] = chan(p);
     c <| 1;
     c <| 2;
     c <| 3;

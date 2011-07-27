@@ -2,17 +2,13 @@
 
 // error-pattern: attempted dynamic environment-capture
 
-fn f(bool x) {
+fn f(x: bool) { }
+
+obj foobar(x: bool)
+    {drop {
+         let y = x;
+         fn test() { f(y); }
+     }
 }
 
-state obj foobar(bool x) {
-  drop {
-    auto y = x;
-    fn test() {
-      f(y);
-    }
-  }
-}
-
-fn main() {
-}
+fn main() { }

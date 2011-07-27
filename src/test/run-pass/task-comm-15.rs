@@ -3,21 +3,20 @@
 // xfail-stage3
 // This test fails when run with multiple threads
 
-fn start(chan[int] c, int n) {
-    let int i = n;
+fn start(c: chan[int], n: int) {
+    let i: int = n;
 
-    while(i > 0) {
-        c <| 0;
-        i = i - 1;
-    }
+
+    while i > 0 { c <| 0; i = i - 1; }
 }
 
 fn main() {
-    let port[int] p = port();
+    let p: port[int] = port();
     // Spawn a task that sends us back messages. The parent task
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
-    auto child = spawn start(chan(p), 10);
-    auto c; p |> c;
+    let child = spawn start(chan(p), 10);
+    let c;
+    p |> c;
 }

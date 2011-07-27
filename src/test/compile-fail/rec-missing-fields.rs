@@ -4,9 +4,6 @@
 
 // Issue #51.
 
-type point = rec(int x, int y);
+type point = {x: int, y: int};
 
-fn main() {
-  let point p = rec(x=10);
-  log p.y;
-}
+fn main() { let p: point = {x: 10}; log p.y; }

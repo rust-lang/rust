@@ -4,9 +4,6 @@
 // xfail-stage3
 // error-pattern: iterator function
 
-fn f() -> int {
-  put 10;
-}
+fn f() -> int { put 10; }
 
-fn main() {
-}
+fn main() { }

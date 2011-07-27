@@ -13,44 +13,43 @@ tag ast_node {
 
 type map = std::map::hashmap[node_id, ast_node];
 
-fn map_crate(&crate c) -> map {
+fn map_crate(c: &crate) -> map {
     // FIXME: This is using an adapter to convert the smallintmap
     // interface to the hashmap interface. It would be better to just
     // convert everything to use the smallintmap.
-    auto map = new_smallintmap_int_adapter[ast_node]();
+    let map = new_smallintmap_int_adapter[ast_node]();
 
-    auto v_map = @rec(visit_item=bind map_item(map, _, _, _),
-                      visit_native_item=bind map_native_item(map, _, _, _),
-                      visit_expr=bind map_expr(map, _, _, _)
-                      with *visit::default_visitor[()]());
+    let v_map =
+        @{visit_item: bind map_item(map, _, _, _),
+          visit_native_item: bind map_native_item(map, _, _, _),
+          visit_expr: bind map_expr(map, _, _, _)
+             with *visit::default_visitor[()]()};
     visit::visit_crate(c, (), visit::mk_vt(v_map));
     ret map;
 }
 
-fn map_item(&map map, &@item i, &() e, &vt[()] v) {
+fn map_item(map: &map, i: &@item, e: &(), v: &vt[()]) {
     map.insert(i.id, node_item(i));
-    alt (i.node) {
-        case (item_obj(_, _, ?ctor_id)) {
-            map.insert(ctor_id, node_obj_ctor(i));
-        }
-        case (_) {}
+    alt i.node {
+      item_obj(_, _, ctor_id) { map.insert(ctor_id, node_obj_ctor(i)); }
+      _ { }
     }
     visit::visit_item(i, e, v);
 }
 
-fn map_native_item(&map map, &@native_item i, &() e, &vt[()] v) {
+fn map_native_item(map: &map, i: &@native_item, e: &(), v: &vt[()]) {
     map.insert(i.id, node_native_item(i));
     visit::visit_native_item(i, e, v);
 }
 
-fn map_expr(&map map, &@expr ex, &() e, &vt[()] v) {
+fn map_expr(map: &map, ex: &@expr, e: &(), v: &vt[()]) {
     map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, e, v);
 }
 
 fn new_smallintmap_int_adapter[V]() -> std::map::hashmap[int, V] {
-    auto key_idx = fn(&int key) -> uint { key as uint };
-    auto idx_key = fn(&uint idx) -> int { idx as int };
+    let key_idx = fn (key: &int) -> uint { key as uint };
+    let idx_key = fn (idx: &uint) -> int { idx as int };
     ret new_smallintmap_adapter(key_idx, idx_key);
 }
 
@@ -59,60 +58,58 @@ fn new_smallintmap_int_adapter[V]() -> std::map::hashmap[int, V] {
 // the entire codebase adapting all the callsites to the different
 // interface.
 // FIXME: hashmap and smallintmap should support the same interface.
-fn new_smallintmap_adapter[K, V](fn(&K) -> uint key_idx,
-                                 fn(&uint) -> K idx_key)
-    -> std::map::hashmap[K, V] {
+fn new_smallintmap_adapter[K,
+                           V](key_idx: fn(&K) -> uint ,
+                              idx_key: fn(&uint) -> K ) ->
+   std::map::hashmap[K, V] {
 
-    obj adapter[K, V](smallintmap::smallintmap[V] map,
-                      fn(&K) -> uint key_idx,
-                      fn(&uint) -> K idx_key) {
+    obj adapter[K,
+                V](map: smallintmap::smallintmap[V],
+                   key_idx: fn(&K) -> uint ,
+                   idx_key: fn(&uint) -> K ) {
 
         fn size() -> uint { fail }
 
-        fn insert(&K key, &V value) -> bool {
-            auto exists = smallintmap::contains_key(map, key_idx(key));
+        fn insert(key: &K, value: &V) -> bool {
+            let exists = smallintmap::contains_key(map, key_idx(key));
             smallintmap::insert(map, key_idx(key), value);
             ret !exists;
         }
 
-        fn contains_key(&K key) -> bool {
+        fn contains_key(key: &K) -> bool {
             ret smallintmap::contains_key(map, key_idx(key));
         }
 
-        fn get(&K key) -> V {
-            ret smallintmap::get(map, key_idx(key));
-        }
+        fn get(key: &K) -> V { ret smallintmap::get(map, key_idx(key)); }
 
-        fn find(&K key) -> option::t[V] {
+        fn find(key: &K) -> option::t[V] {
             ret smallintmap::find(map, key_idx(key));
         }
 
-        fn remove(&K key) -> option::t[V] { fail }
+        fn remove(key: &K) -> option::t[V] { fail }
 
         fn rehash() { fail }
 
-        iter items() -> @rec(K key, V val) {
-            auto idx = 0u;
-            for (option::t[V] item in map.v) {
-                alt (item) {
-                    case (option::some(?elt)) {
-                        auto value = elt;
-                        auto key = idx_key(idx);
-                        put @rec(key=key, val=value);
-                    }
-                    case (option::none) { }
+        iter items() -> @{key: K, val: V} {
+            let idx = 0u;
+            for item: option::t[V]  in map.v {
+                alt item {
+                  option::some(elt) {
+                    let value = elt;
+                    let key = idx_key(idx);
+                    put @{key: key, val: value};
+                  }
+                  option::none. { }
                 }
                 idx += 1u;
             }
         }
         iter keys() -> K {
-            for each (@rec(K key, V val) p in self.items()) {
-                put p.key;
-            }
+            for each p: @{key: K, val: V}  in self.items() { put p.key; }
         }
     }
 
-    auto map = smallintmap::mk[V]();
+    let map = smallintmap::mk[V]();
     ret adapter(map, key_idx, idx_key);
 }
 

@@ -1,7 +1,7 @@
 
 
 fn main() {
-    auto s = "a";
+    let s = "a";
     s += "b";
     assert (s.(0) == 'a' as u8);
     assert (s.(1) == 'b' as u8);

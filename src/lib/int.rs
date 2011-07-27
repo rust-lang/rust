@@ -1,63 +1,63 @@
 
 
-fn add(int x, int y) -> int { ret x + y; }
+fn add(x: int, y: int) -> int { ret x + y; }
 
-fn sub(int x, int y) -> int { ret x - y; }
+fn sub(x: int, y: int) -> int { ret x - y; }
 
-fn mul(int x, int y) -> int { ret x * y; }
+fn mul(x: int, y: int) -> int { ret x * y; }
 
-fn div(int x, int y) -> int { ret x / y; }
+fn div(x: int, y: int) -> int { ret x / y; }
 
-fn rem(int x, int y) -> int { ret x % y; }
+fn rem(x: int, y: int) -> int { ret x % y; }
 
-fn lt(int x, int y) -> bool { ret x < y; }
+fn lt(x: int, y: int) -> bool { ret x < y; }
 
-fn le(int x, int y) -> bool { ret x <= y; }
+fn le(x: int, y: int) -> bool { ret x <= y; }
 
-fn eq(int x, int y) -> bool { ret x == y; }
+fn eq(x: int, y: int) -> bool { ret x == y; }
 
-fn ne(int x, int y) -> bool { ret x != y; }
+fn ne(x: int, y: int) -> bool { ret x != y; }
 
-fn ge(int x, int y) -> bool { ret x >= y; }
+fn ge(x: int, y: int) -> bool { ret x >= y; }
 
-fn gt(int x, int y) -> bool { ret x > y; }
+fn gt(x: int, y: int) -> bool { ret x > y; }
 
-fn positive(int x) -> bool { ret x > 0; }
+fn positive(x: int) -> bool { ret x > 0; }
 
-fn negative(int x) -> bool { ret x < 0; }
+fn negative(x: int) -> bool { ret x < 0; }
 
-fn nonpositive(int x) -> bool { ret x <= 0; }
+fn nonpositive(x: int) -> bool { ret x <= 0; }
 
-fn nonnegative(int x) -> bool { ret x >= 0; }
+fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
-fn hash(&int x) -> uint { ret x as uint; }
+fn hash(x: &int) -> uint { ret x as uint; }
 
-fn eq_alias(&int x, &int y) -> bool { ret x == y; }
+fn eq_alias(x: &int, y: &int) -> bool { ret x == y; }
 
-iter range(int lo, int hi) -> int {
-    let int lo_ = lo;
-    while (lo_ < hi) { put lo_; lo_ += 1; }
+iter range(lo: int, hi: int) -> int {
+    let lo_: int = lo;
+    while lo_ < hi { put lo_; lo_ += 1; }
 }
 
-fn to_str(int n, uint radix) -> str {
+fn to_str(n: int, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
-    ret if (n < 0) {
+    ret if n < 0 {
             "-" + uint::to_str(-n as uint, radix)
         } else { uint::to_str(n as uint, radix) };
 }
-fn str(int i) -> str { ret to_str(i, 10u); }
+fn str(i: int) -> str { ret to_str(i, 10u); }
 
-fn pow(int base, uint exponent) -> int {
-    ret if (exponent == 0u) {
+fn pow(base: int, exponent: uint) -> int {
+    ret if exponent == 0u {
             1
         } else if (base == 0) {
             0
         } else {
-            auto accum = base;
-            auto count = exponent;
-            while (count > 1u) { accum *= base; count -= 1u; }
+            let accum = base;
+            let count = exponent;
+            while count > 1u { accum *= base; count -= 1u; }
             accum
         };
 }

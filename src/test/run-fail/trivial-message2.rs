@@ -10,9 +10,9 @@
   This program should hang on the po |> r line.
  */
 fn main() {
-    let port[int] po = port();
-    let chan[int] ch = chan(po);
-    auto r;
+    let po: port[int] = port();
+    let ch: chan[int] = chan(po);
+    let r;
     po |> r;
     ch <| 42;
     log_err r;

@@ -1,25 +1,15 @@
 // -*- rust -*-
 // error-pattern:src/test/compile-fail/shadow.rs
-fn foo(vec[int] c) {
-  let int a = 5;
-  let vec[int] b = [];
+fn foo(c: vec[int]) {
+    let a: int = 5;
+    let b: vec[int] = [];
 
-  alt (none[int]) {
-    case (some[int](_)) {
-      for (int i in c) {
-        log a;
-        auto a = 17;
-        b += [a];
-      }
+
+    alt none[int] {
+      some[int](_) { for i: int  in c { log a; let a = 17; b += [a]; } }
     }
-  }
 }
 
-tag t[T] {
-  none;
-  some(T);
-}
+tag t[T] { none; some(T); }
 
-fn main() {
-  foo([]);
-}
+fn main() { foo([]); }

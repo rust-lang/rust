@@ -1,3 +1,3 @@
 
 
-fn main() { let @int x = @10; let int y = *x; }
+fn main() { let x: @int = @10; let y: int = *x; }

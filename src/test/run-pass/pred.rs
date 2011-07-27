@@ -3,14 +3,14 @@
 
 // xfail-stage0
 // -*- rust -*-
-fn f(int a, int b) { }
+fn f(a: int, b: int) { }
 
-pred lt(int a, int b) -> bool { ret a < b; }
+pred lt(a: int, b: int) -> bool { ret a < b; }
 
 fn main() {
-    let int a = 10;
-    let int b = 23;
-    let int c = 77;
+    let a: int = 10;
+    let b: int = 23;
+    let c: int = 77;
     check (lt(a, b));
     check (lt(a, c));
     f(a, b);

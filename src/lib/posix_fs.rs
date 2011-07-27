@@ -1,11 +1,11 @@
 
 native "rust" mod rustrt {
-    fn rust_list_files(str path) -> vec[str];
-    fn rust_list_files_ivec(str path) -> @str[];
-    fn rust_dirent_filename(os::libc::dirent ent) -> str;
+    fn rust_list_files(path: str) -> vec[str];
+    fn rust_list_files_ivec(path: str) -> @str[];
+    fn rust_dirent_filename(ent: os::libc::dirent) -> str;
 }
 
-fn list_dir(str path) -> str[] {
+fn list_dir(path: str) -> str[] {
     ret *rustrt::rust_list_files_ivec(path);
     // TODO ensure this is always closed
 
@@ -33,13 +33,11 @@ fn list_dir(str path) -> str[] {
 
 }
 
-fn path_is_absolute(str p) -> bool {
-    ret str::char_at(p, 0u) == '/';
-}
+fn path_is_absolute(p: str) -> bool { ret str::char_at(p, 0u) == '/'; }
 
-const char path_sep = '/';
+const path_sep: char = '/';
 
-const char alt_path_sep = '/';
+const alt_path_sep: char = '/';
 
 // Local Variables:
 // mode: rust;

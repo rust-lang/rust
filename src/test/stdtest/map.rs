@@ -10,19 +10,19 @@ import std::util;
 #[test]
 fn test_simple() {
     log "*** starting test_simple";
-    fn eq_uint(&uint x, &uint y) -> bool { ret x == y; }
-    fn hash_uint(&uint u) -> uint {
+    fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
+    fn hash_uint(u: &uint) -> uint {
         // FIXME: can't use std::util::id since we'd be capturing a type
         // param, and presently we can't close items over type params.
 
         ret u;
     }
-    let map::hashfn[uint] hasher_uint = hash_uint;
-    let map::eqfn[uint] eqer_uint = eq_uint;
-    let map::hashfn[str] hasher_str = str::hash;
-    let map::eqfn[str] eqer_str = str::eq;
+    let hasher_uint: map::hashfn[uint] = hash_uint;
+    let eqer_uint: map::eqfn[uint] = eq_uint;
+    let hasher_str: map::hashfn[str] = str::hash;
+    let eqer_str: map::eqfn[str] = str::eq;
     log "uint -> uint";
-    let map::hashmap[uint, uint] hm_uu =
+    let hm_uu: map::hashmap[uint, uint] =
         map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
     assert (hm_uu.insert(10u, 12u));
     assert (hm_uu.insert(11u, 13u));
@@ -34,11 +34,11 @@ fn test_simple() {
     assert (hm_uu.get(12u) == 14u);
     assert (!hm_uu.insert(12u, 12u));
     assert (hm_uu.get(12u) == 12u);
-    let str ten = "ten";
-    let str eleven = "eleven";
-    let str twelve = "twelve";
+    let ten: str = "ten";
+    let eleven: str = "eleven";
+    let twelve: str = "twelve";
     log "str -> uint";
-    let map::hashmap[str, uint] hm_su =
+    let hm_su: map::hashmap[str, uint] =
         map::mk_hashmap[str, uint](hasher_str, eqer_str);
     assert (hm_su.insert("ten", 12u));
     assert (hm_su.insert(eleven, 13u));
@@ -52,7 +52,7 @@ fn test_simple() {
     assert (!hm_su.insert("twelve", 12u));
     assert (hm_su.get("twelve") == 12u);
     log "uint -> str";
-    let map::hashmap[uint, str] hm_us =
+    let hm_us: map::hashmap[uint, str] =
         map::mk_hashmap[uint, str](hasher_uint, eqer_uint);
     assert (hm_us.insert(10u, "twelve"));
     assert (hm_us.insert(11u, "thirteen"));
@@ -65,7 +65,7 @@ fn test_simple() {
     assert (!hm_us.insert(12u, "twelve"));
     assert (str::eq(hm_us.get(12u), "twelve"));
     log "str -> str";
-    let map::hashmap[str, str] hm_ss =
+    let hm_ss: map::hashmap[str, str] =
         map::mk_hashmap[str, str](hasher_str, eqer_str);
     assert (hm_ss.insert(ten, "twelve"));
     assert (hm_ss.insert(eleven, "thirteen"));
@@ -87,21 +87,21 @@ fn test_simple() {
 #[test]
 fn test_growth() {
     log "*** starting test_growth";
-    let uint num_to_insert = 64u;
-    fn eq_uint(&uint x, &uint y) -> bool { ret x == y; }
-    fn hash_uint(&uint u) -> uint {
+    let num_to_insert: uint = 64u;
+    fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
+    fn hash_uint(u: &uint) -> uint {
         // FIXME: can't use std::util::id since we'd be capturing a type
         // param, and presently we can't close items over type params.
 
         ret u;
     }
     log "uint -> uint";
-    let map::hashfn[uint] hasher_uint = hash_uint;
-    let map::eqfn[uint] eqer_uint = eq_uint;
-    let map::hashmap[uint, uint] hm_uu =
+    let hasher_uint: map::hashfn[uint] = hash_uint;
+    let eqer_uint: map::eqfn[uint] = eq_uint;
+    let hm_uu: map::hashmap[uint, uint] =
         map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
-    let uint i = 0u;
-    while (i < num_to_insert) {
+    let i: uint = 0u;
+    while i < num_to_insert {
         assert (hm_uu.insert(i, i * i));
         log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
@@ -109,7 +109,7 @@ fn test_growth() {
     }
     log "-----";
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
@@ -120,19 +120,19 @@ fn test_growth() {
     log "-----";
     hm_uu.rehash();
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
         i += 1u;
     }
     log "str -> str";
-    let map::hashfn[str] hasher_str = str::hash;
-    let map::eqfn[str] eqer_str = str::eq;
-    let map::hashmap[str, str] hm_ss =
+    let hasher_str: map::hashfn[str] = str::hash;
+    let eqer_str: map::eqfn[str] = str::eq;
+    let hm_ss: map::hashmap[str, str] =
         map::mk_hashmap[str, str](hasher_str, eqer_str);
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
         log "inserting \"" + uint::to_str(i, 2u) + "\" -> \"" +
                 uint::to_str(i * i, 2u) + "\"";
@@ -140,7 +140,7 @@ fn test_growth() {
     }
     log "-----";
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
                 hm_ss.get(uint::to_str(i, 2u)) + "\"";
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
@@ -154,7 +154,7 @@ fn test_growth() {
     log "-----";
     hm_ss.rehash();
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
                 hm_ss.get(uint::to_str(i, 2u)) + "\"";
         assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
@@ -167,9 +167,9 @@ fn test_growth() {
 #[test]
 fn test_removal() {
     log "*** starting test_removal";
-    let uint num_to_insert = 64u;
-    fn eq(&uint x, &uint y) -> bool { ret x == y; }
-    fn hash(&uint u) -> uint {
+    let num_to_insert: uint = 64u;
+    fn eq(x: &uint, y: &uint) -> bool { ret x == y; }
+    fn hash(u: &uint) -> uint {
         // This hash function intentionally causes collisions between
         // consecutive integer pairs.
 
@@ -178,12 +178,12 @@ fn test_removal() {
     assert (hash(0u) == hash(1u));
     assert (hash(2u) == hash(3u));
     assert (hash(0u) != hash(2u));
-    let map::hashfn[uint] hasher = hash;
-    let map::eqfn[uint] eqer = eq;
-    let map::hashmap[uint, uint] hm =
+    let hasher: map::hashfn[uint] = hash;
+    let eqer: map::eqfn[uint] = eq;
+    let hm: map::hashmap[uint, uint] =
         map::mk_hashmap[uint, uint](hasher, eqer);
-    let uint i = 0u;
-    while (i < num_to_insert) {
+    let i: uint = 0u;
+    while i < num_to_insert {
         assert (hm.insert(i, i * i));
         log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
@@ -193,11 +193,11 @@ fn test_removal() {
     log "-----";
     log "removing evens";
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         /**
          * FIXME (issue #150): we want to check the removed value as in the
          * following:
-
+        
         let util.option[uint] v = hm.remove(i);
         alt (v) {
           case (util.some[uint](u)) {
@@ -205,7 +205,7 @@ fn test_removal() {
           }
           case (util.none[uint]()) { fail; }
         }
-
+        
          * but we util.option is a tag type so util.some and util.none are
          * off limits until we parse the dwarf for tag types.
          */
@@ -216,7 +216,7 @@ fn test_removal() {
     assert (hm.size() == num_to_insert / 2u);
     log "-----";
     i = 1u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
@@ -227,7 +227,7 @@ fn test_removal() {
     hm.rehash();
     log "-----";
     i = 1u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
@@ -235,7 +235,7 @@ fn test_removal() {
     }
     log "-----";
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         assert (hm.insert(i, i * i));
         log "inserting " + uint::to_str(i, 10u) + " -> " +
                 uint::to_str(i * i, 10u);
@@ -244,7 +244,7 @@ fn test_removal() {
     assert (hm.size() == num_to_insert);
     log "-----";
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
@@ -256,7 +256,7 @@ fn test_removal() {
     log "-----";
     assert (hm.size() == num_to_insert);
     i = 0u;
-    while (i < num_to_insert) {
+    while i < num_to_insert {
         log "get(" + uint::to_str(i, 10u) + ") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
@@ -267,8 +267,8 @@ fn test_removal() {
 
 #[test]
 fn test_contains_key() {
-    auto key = "k";
-    auto map = map::mk_hashmap[str, str](str::hash, str::eq);
+    let key = "k";
+    let map = map::mk_hashmap[str, str](str::hash, str::eq);
     assert (!map.contains_key(key));
     map.insert(key, "val");
     assert (map.contains_key(key));
@@ -276,8 +276,8 @@ fn test_contains_key() {
 
 #[test]
 fn test_find() {
-    auto key = "k";
-    auto map = map::mk_hashmap[str, str](str::hash, str::eq);
+    let key = "k";
+    let map = map::mk_hashmap[str, str](str::hash, str::eq);
     assert (std::option::is_none(map.find(key)));
     map.insert(key, "val");
     assert (std::option::get(map.find(key)) == "val");

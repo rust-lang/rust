@@ -1,3 +1,3 @@
 
 
-fn main() { if (false) { log_err "foo" + "bar"; } }
+fn main() { if false { log_err "foo" + "bar"; } }

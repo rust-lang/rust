@@ -16,82 +16,79 @@ export mode_parse;
 tag eval_mode { mode_depend; mode_parse; }
 
 type ctx =
-    @rec(parser p,
-         eval_mode mode,
-         mutable str[] deps,
-         parser::parse_sess sess,
-         mutable uint chpos,
-         mutable uint byte_pos,
-         ast::crate_cfg cfg);
+    @{p: parser,
+      mode: eval_mode,
+      mutable deps: str[],
+      sess: parser::parse_sess,
+      mutable chpos: uint,
+      mutable byte_pos: uint,
+      cfg: ast::crate_cfg};
 
-fn eval_crate_directives(ctx cx, &(@ast::crate_directive)[] cdirs,
-                         str prefix, &mutable (@ast::view_item)[] view_items,
-                         &mutable (@ast::item)[] items) {
-    for (@ast::crate_directive sub_cdir in cdirs) {
+fn eval_crate_directives(cx: ctx, cdirs: &(@ast::crate_directive)[],
+                         prefix: str,
+                         view_items: &mutable (@ast::view_item)[],
+                         items: &mutable (@ast::item)[]) {
+    for sub_cdir: @ast::crate_directive  in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }
 
-fn eval_crate_directives_to_mod(ctx cx, &(@ast::crate_directive)[] cdirs,
-                                str prefix) -> ast::_mod {
-    let (@ast::view_item)[] view_items = ~[];
-    let (@ast::item)[] items = ~[];
+fn eval_crate_directives_to_mod(cx: ctx, cdirs: &(@ast::crate_directive)[],
+                                prefix: str) -> ast::_mod {
+    let view_items: (@ast::view_item)[] = ~[];
+    let items: (@ast::item)[] = ~[];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
-    ret rec(view_items=view_items, items=items);
+    ret {view_items: view_items, items: items};
 }
 
-fn eval_crate_directive(ctx cx, @ast::crate_directive cdir, str prefix,
-                        &mutable (@ast::view_item)[] view_items,
-                        &mutable (@ast::item)[] items) {
-    alt (cdir.node) {
-        case (ast::cdir_src_mod(?id, ?file_opt, ?attrs)) {
-            auto file_path = id + ".rs";
-            alt (file_opt) {
-                case (some(?f)) { file_path = f; }
-                case (none) { }
-            }
-            auto full_path = if (std::fs::path_is_absolute(file_path)) {
+fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
+                        view_items: &mutable (@ast::view_item)[],
+                        items: &mutable (@ast::item)[]) {
+    alt cdir.node {
+      ast::cdir_src_mod(id, file_opt, attrs) {
+        let file_path = id + ".rs";
+        alt file_opt { some(f) { file_path = f; } none. { } }
+        let full_path =
+            if std::fs::path_is_absolute(file_path) {
                 file_path
-            } else {
-                prefix + std::fs::path_sep() + file_path
-            };
-            if (cx.mode == mode_depend) { cx.deps += ~[full_path]; ret; }
-            auto p0 =
-                new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
-                                     cx.byte_pos);
-            auto inner_attrs = parse_inner_attrs_and_next(p0);
-            auto mod_attrs = attrs + inner_attrs.inner;
-            auto first_item_outer_attrs = inner_attrs.next;
-            auto m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
+            } else { prefix + std::fs::path_sep() + file_path };
+        if cx.mode == mode_depend { cx.deps += ~[full_path]; ret; }
+        let p0 =
+            new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
+                                 cx.byte_pos);
+        let inner_attrs = parse_inner_attrs_and_next(p0);
+        let mod_attrs = attrs + inner_attrs.inner;
+        let first_item_outer_attrs = inner_attrs.next;
+        let m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
 
-            auto i = syntax::parse::parser::mk_item
-                (p0, cdir.span.lo, cdir.span.hi, id, ast::item_mod(m0),
-                 mod_attrs);
-            // Thread defids, chpos and byte_pos through the parsers
-            cx.chpos = p0.get_chpos();
-            cx.byte_pos = p0.get_byte_pos();
-            items += ~[i];
-        }
-        case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs, ?attrs)) {
-            auto path = id;
-            alt (dir_opt) { case (some(?d)) { path = d; } case (none) { } }
-            auto full_path = if (std::fs::path_is_absolute(path)) {
+        let i =
+            syntax::parse::parser::mk_item(p0, cdir.span.lo, cdir.span.hi, id,
+                                           ast::item_mod(m0), mod_attrs);
+        // Thread defids, chpos and byte_pos through the parsers
+        cx.chpos = p0.get_chpos();
+        cx.byte_pos = p0.get_byte_pos();
+        items += ~[i];
+      }
+      ast::cdir_dir_mod(id, dir_opt, cdirs, attrs) {
+        let path = id;
+        alt dir_opt { some(d) { path = d; } none. { } }
+        let full_path =
+            if std::fs::path_is_absolute(path) {
                 path
-            } else {
-                prefix + std::fs::path_sep() + path
-            };
-            auto m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
-            auto i = @rec(ident=id,
-                          attrs=attrs,
-                          id=cx.sess.next_id,
-                          node=ast::item_mod(m0),
-                          span=cdir.span);
-            cx.sess.next_id += 1;
-            items += ~[i];
-        }
-        case (ast::cdir_view_item(?vi)) { view_items += ~[vi]; }
-        case (ast::cdir_syntax(?pth)) { }
-        case (ast::cdir_auth(?pth, ?eff)) { }
+            } else { prefix + std::fs::path_sep() + path };
+        let m0 = eval_crate_directives_to_mod(cx, cdirs, full_path);
+        let i =
+            @{ident: id,
+              attrs: attrs,
+              id: cx.sess.next_id,
+              node: ast::item_mod(m0),
+              span: cdir.span};
+        cx.sess.next_id += 1;
+        items += ~[i];
+      }
+      ast::cdir_view_item(vi) { view_items += ~[vi]; }
+      ast::cdir_syntax(pth) { }
+      ast::cdir_auth(pth, eff) { }
     }
 }
 //

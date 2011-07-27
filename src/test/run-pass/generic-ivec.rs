@@ -1,7 +1,5 @@
 // xfail-stage0
 
-fn f[T](@T v) {}
-fn main() {
-    f(@~[ 1, 2, 3, 4, 5 ]);
-}
+fn f[T](v: @T) { }
+fn main() { f(@~[1, 2, 3, 4, 5]); }
 

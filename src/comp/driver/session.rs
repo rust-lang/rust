@@ -17,104 +17,97 @@ tag os { os_win32; os_macos; os_linux; }
 tag arch { arch_x86; arch_x64; arch_arm; }
 
 type config =
-    rec(os os,
-        arch arch,
-        ty_mach int_type,
-        ty_mach uint_type,
-        ty_mach float_type);
+    {os: os,
+     arch: arch,
+     int_type: ty_mach,
+     uint_type: ty_mach,
+     float_type: ty_mach};
 
 type options =
-    rec(bool library,
-        bool static,
-        uint optimize,
-        bool debuginfo,
-        bool verify,
-        bool run_typestate,
-        bool save_temps,
-        bool stats,
-        bool time_passes,
-        bool time_llvm_passes,
-        back::link::output_type output_type,
-        str[] library_search_paths,
-        str sysroot,
-        // The crate config requested for the session, which may be combined
-        // with additional crate configurations during the compile process
-        ast::crate_cfg cfg,
-        bool test,
-        bool dps);
+    // The crate config requested for the session, which may be combined
+    // with additional crate configurations during the compile process
+    {library: bool,
+     static: bool,
+     optimize: uint,
+     debuginfo: bool,
+     verify: bool,
+     run_typestate: bool,
+     save_temps: bool,
+     stats: bool,
+     time_passes: bool,
+     time_llvm_passes: bool,
+     output_type: back::link::output_type,
+     library_search_paths: str[],
+     sysroot: str,
+     cfg: ast::crate_cfg,
+     test: bool,
+     dps: bool};
 
-type crate_metadata = rec(str name, u8[] data);
+type crate_metadata = {name: str, data: u8[]};
 
-obj session(@config targ_cfg,
-            @options opts,
-            metadata::cstore::cstore cstore,
-            parse_sess parse_sess,
+obj session(targ_cfg: @config,
+            opts: @options,
+            cstore: metadata::cstore::cstore,
+            parse_sess: parse_sess,
+
             // For a library crate, this is always none
-            mutable option::t[node_id] main_fn,
-            mutable uint err_count) {
+            mutable main_fn: option::t[node_id],
+            mutable err_count: uint) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
     fn get_cstore() -> metadata::cstore::cstore { cstore }
-    fn span_fatal(span sp, str msg) -> ! {
+    fn span_fatal(sp: span, msg: str) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_error(some(sp), msg, parse_sess.cm);
         fail;
     }
-    fn fatal(str msg) -> ! {
+    fn fatal(msg: str) -> ! {
         codemap::emit_error(none, msg, parse_sess.cm);
         fail;
     }
-    fn span_err(span sp, str msg) {
+    fn span_err(sp: span, msg: str) {
         codemap::emit_error(some(sp), msg, parse_sess.cm);
         err_count += 1u;
     }
-    fn err(str msg) {
+    fn err(msg: str) {
         codemap::emit_error(none, msg, parse_sess.cm);
         err_count += 1u;
     }
     fn abort_if_errors() {
-        if (err_count > 0u) {
-            self.fatal("aborting due to previous errors");
-        }
+        if err_count > 0u { self.fatal("aborting due to previous errors"); }
     }
-    fn span_warn(span sp, str msg) {
+    fn span_warn(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_warning(some(sp), msg, parse_sess.cm);
     }
-    fn warn(str msg) {
-        codemap::emit_warning(none, msg, parse_sess.cm);
-    }
-    fn span_note(span sp, str msg) {
+    fn warn(msg: str) { codemap::emit_warning(none, msg, parse_sess.cm); }
+    fn span_note(sp: span, msg: str) {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         codemap::emit_note(some(sp), msg, parse_sess.cm);
     }
-    fn note(str msg) {
-        codemap::emit_note(none, msg, parse_sess.cm);
-    }
-    fn span_bug(span sp, str msg) -> ! {
+    fn note(msg: str) { codemap::emit_note(none, msg, parse_sess.cm); }
+    fn span_bug(sp: span, msg: str) -> ! {
         self.span_fatal(sp, #fmt("internal compiler error %s", msg));
     }
-    fn bug(str msg) -> ! {
+    fn bug(msg: str) -> ! {
         self.fatal(#fmt("internal compiler error %s", msg));
     }
-    fn span_unimpl(span sp, str msg) -> ! {
+    fn span_unimpl(sp: span, msg: str) -> ! {
         self.span_bug(sp, "unimplemented " + msg);
     }
-    fn unimpl(str msg) -> ! { self.bug("unimplemented " + msg); }
+    fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
     fn get_codemap() -> codemap::codemap { ret parse_sess.cm; }
-    fn lookup_pos(uint pos) -> codemap::loc {
+    fn lookup_pos(pos: uint) -> codemap::loc {
         ret codemap::lookup_char_pos(parse_sess.cm, pos);
     }
     fn get_parse_sess() -> parse_sess { ret parse_sess; }
     fn next_node_id() -> ast::node_id {
         ret syntax::parse::parser::next_node_id(parse_sess);
     }
-    fn span_str(span sp) -> str {
+    fn span_str(sp: span) -> str {
         ret codemap::span_to_str(sp, self.get_codemap());
     }
-    fn set_main_id(node_id d) {
-        main_fn = some(d);
-    }
+    fn set_main_id(d: node_id) { main_fn = some(d); }
     fn get_main_id() -> option::t[node_id] { main_fn }
 }
 // Local Variables:

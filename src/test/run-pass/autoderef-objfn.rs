@@ -6,6 +6,6 @@ obj clam() {
     fn chowder() { log "in clam chowder"; }
 }
 
-fn foo(@clam c) { c.chowder(); }
+fn foo(c: @clam) { c.chowder(); }
 
-fn main() { let clam c = clam(); foo(@c); }
+fn main() { let c: clam = clam(); foo(@c); }

@@ -24,12 +24,12 @@ fn test_index_and_rindex() {
 
 #[test]
 fn test_split() {
-    fn t(&str s, char c, int i, &str k) {
+    fn t(s: &str, c: char, i: int, k: &str) {
         log "splitting: " + s;
         log i;
-        auto v = str::split(s, c as u8);
+        let v = str::split(s, c as u8);
         log "split to: ";
-        for (str z in v) { log z; }
+        for z: str  in v { log z; }
         log "comparing: " + v.(i) + " vs. " + k;
         assert (str::eq(v.(i), k));
     }
@@ -44,8 +44,8 @@ fn test_split() {
 
 #[test]
 fn test_find() {
-    fn t(&str haystack, &str needle, int i) {
-        let int j = str::find(haystack, needle);
+    fn t(haystack: &str, needle: &str, i: int) {
+        let j: int = str::find(haystack, needle);
         log "searched for " + needle;
         log j;
         assert (i == j);
@@ -59,7 +59,7 @@ fn test_find() {
 
 #[test]
 fn test_substr() {
-    fn t(&str a, &str b, int start) {
+    fn t(a: &str, b: &str, start: int) {
         assert (str::eq(str::substr(a, start as uint, str::byte_len(b)), b));
     }
     t("hello", "llo", 2);
@@ -69,20 +69,20 @@ fn test_substr() {
 
 #[test]
 fn test_concat() {
-    fn t(&vec[str] v, &str s) { assert (str::eq(str::concat(v), s)); }
+    fn t(v: &vec[str], s: &str) { assert (str::eq(str::concat(v), s)); }
     t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
-    let vec[str] v = [];
+    let v: vec[str] = [];
     t(v, "");
     t(["hi"], "hi");
 }
 
 #[test]
 fn test_connect() {
-    fn t(&vec[str] v, &str sep, &str s) {
+    fn t(v: &vec[str], sep: &str, s: &str) {
         assert (str::eq(str::connect(v, sep), s));
     }
     t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
-    let vec[str] v = [];
+    let v: vec[str] = [];
     t(v, " ", "");
     t(["hi"], " ", "hi");
 }
@@ -92,10 +92,10 @@ fn test_to_upper() {
     // to_upper doesn't understand unicode yet,
     // but we need to at least preserve it
 
-    auto unicode = "\u65e5\u672c";
-    auto input = "abcDEF" + unicode + "xyz:.;";
-    auto expected = "ABCDEF" + unicode + "XYZ:.;";
-    auto actual = str::to_upper(input);
+    let unicode = "\u65e5\u672c";
+    let input = "abcDEF" + unicode + "xyz:.;";
+    let expected = "ABCDEF" + unicode + "XYZ:.;";
+    let actual = str::to_upper(input);
     assert (str::eq(expected, actual));
 }
 
@@ -105,15 +105,15 @@ fn test_slice() {
     assert (str::eq("bc", str::slice("abc", 1u, 3u)));
     assert (str::eq("", str::slice("abc", 1u, 1u)));
     fn a_million_letter_a() -> str {
-        auto i = 0;
-        auto rs = "";
-        while (i < 100000) { rs += "aaaaaaaaaa"; i += 1; }
+        let i = 0;
+        let rs = "";
+        while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
         ret rs;
     }
     fn half_a_million_letter_a() -> str {
-        auto i = 0;
-        auto rs = "";
-        while (i < 100000) { rs += "aaaaa"; i += 1; }
+        let i = 0;
+        let rs = "";
+        while i < 100000 { rs += "aaaaa"; i += 1; }
         ret rs;
     }
     assert (str::eq(half_a_million_letter_a(),
@@ -131,28 +131,27 @@ fn test_ends_with() {
 
 #[test]
 fn test_is_empty() {
-  assert str::is_empty("");
-  assert !str::is_empty("a");
+    assert (str::is_empty(""));
+    assert (!str::is_empty("a"));
 }
 
 #[test]
 fn test_is_not_empty() {
-  assert str::is_not_empty("a");
-  assert !str::is_not_empty("");
+    assert (str::is_not_empty("a"));
+    assert (!str::is_not_empty(""));
 }
 
 #[test]
 fn test_replace() {
-    auto a = "a";
-    check str::is_not_empty(a);
-    assert str::replace("", a, "b") == "";
-    assert str::replace("a", a, "b") == "b";
-    assert str::replace("ab", a, "b") == "bb";
-    auto test = "test";
-    check str::is_not_empty(test);
-    assert str::replace(" test test ", test, "toast")
-        == " toast toast ";
-    assert str::replace(" test test ", test, "") == "   ";
+    let a = "a";
+    check (str::is_not_empty(a));
+    assert (str::replace("", a, "b") == "");
+    assert (str::replace("a", a, "b") == "b");
+    assert (str::replace("ab", a, "b") == "bb");
+    let test = "test";
+    check (str::is_not_empty(test));
+    assert (str::replace(" test test ", test, "toast") == " toast toast ");
+    assert (str::replace(" test test ", test, "") == "   ");
 }
 
 

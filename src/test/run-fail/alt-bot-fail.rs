@@ -4,13 +4,9 @@
 use std;
 import std::option::*;
 
-fn foo(str s) { }
+fn foo(s: str) { }
 
 fn main() {
-    auto i =
-        alt (some[int](3)) {
-            case (none[int]) { fail }
-            case (some[int](_)) { fail }
-        };
+    let i = alt some[int](3) { none[int]. { fail } some[int](_) { fail } };
     foo(i);
 }

@@ -1,23 +1,19 @@
 // xfail-stage0
 // -*- rust -*-
 
-fn a(chan[int] c) {
-    log "task a0";
-    log "task a1";
-    c <| 10;
-}
+fn a(c: chan[int]) { log "task a0"; log "task a1"; c <| 10; }
 
 fn main() {
-    let port[int] p = port();
+    let p: port[int] = port();
     spawn a(chan(p));
     spawn b(chan(p));
-    let int n = 0;
+    let n: int = 0;
     p |> n;
     p |> n;
     log "Finished.";
 }
 
-fn b(chan[int] c) {
+fn b(c: chan[int]) {
     log "task b0";
     log "task b1";
     log "task b2";

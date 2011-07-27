@@ -1,9 +1,5 @@
 // error-pattern: attempted dynamic environment-capture
-fn foo(int x) {
-  fn bar() {
-    log x;
-  }
+fn foo(x: int) {
+    fn bar() { log x; }
 }
-fn main() {
-  foo(2);
-}
+fn main() { foo(2); }

@@ -1,7 +1,7 @@
 
 
 fn main() {
-    let vec[int] later;
-    if (true) { later = [1]; } else { later = [2]; }
+    let later: vec[int];
+    if true { later = [1]; } else { later = [2]; }
     log later.(0);
 }

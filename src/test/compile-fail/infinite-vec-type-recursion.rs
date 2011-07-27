@@ -4,6 +4,4 @@
 
 type x = vec[x];
 
-fn main() {
-  let x b = [];
-}
+fn main() { let b: x = []; }

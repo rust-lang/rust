@@ -5,8 +5,8 @@
 
 // error-pattern:bounds check
 fn main() {
-    let str s = "hello";
-    let int x = 0;
+    let s: str = "hello";
+    let x: int = 0;
     assert (s.(x) == 0x68 as u8);
     // NB: at the moment a string always has a trailing NULL,
     // so the largest index value on the string above is 5, not

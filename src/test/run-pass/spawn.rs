@@ -3,15 +3,9 @@
 
 use std;
 
-fn main() {
-    auto t = spawn child(10);
-    std::task::join(t);
-}
+fn main() { let t = spawn child(10); std::task::join(t); }
 
-fn child(int i) {
-    log_err i;
-    assert(i == 10);
-}
+fn child(i: int) { log_err i; assert (i == 10); }
 
 // Local Variables:
 // mode: rust;

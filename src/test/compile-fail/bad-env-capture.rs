@@ -1,10 +1,6 @@
 // error-pattern: attempted dynamic environment-capture
 fn foo() {
-  let int x;
-  fn bar() {
-    log x;
-  }
+    let x: int;
+    fn bar() { log x; }
 }
-fn main() {
-  foo();
-}
+fn main() { foo(); }

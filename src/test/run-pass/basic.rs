@@ -1,36 +1,29 @@
 // xfail-stage0
 // -*- rust -*-
 
-fn a(chan[int] c) {
-  if (true) {
-    log "task a";
-    log "task a";
-    log "task a";
-    log "task a";
-    log "task a";
-  }
-  c <| 10;
+fn a(c: chan[int]) {
+    if true {
+        log "task a";
+        log "task a";
+        log "task a";
+        log "task a";
+        log "task a";
+    }
+    c <| 10;
 }
 
-fn k(int x) -> int {
-  ret 15;
-}
+fn k(x: int) -> int { ret 15; }
 
-fn g(int x, str y) -> int {
-  log x;
-  log y;
-  let int z = k(1);
-  ret z;
-}
+fn g(x: int, y: str) -> int { log x; log y; let z: int = k(1); ret z; }
 
 fn main() {
-    let int n = 2 + 3 * 7;
-    let str s = "hello there";
-    let port[int] p = port();
+    let n: int = 2 + 3 * 7;
+    let s: str = "hello there";
+    let p: port[int] = port();
     spawn a(chan(p));
     spawn b(chan(p));
-    let int x = 10;
-    x = g(n,s);
+    let x: int = 10;
+    x = g(n, s);
     log x;
     p |> n;
     p |> n;
@@ -38,14 +31,14 @@ fn main() {
     log "children finished, root finishing";
 }
 
-fn b(chan[int] c) {
-  if (true) {
-    log "task b";
-    log "task b";
-    log "task b";
-    log "task b";
-    log "task b";
-    log "task b";
-  }
-  c <| 10;
+fn b(c: chan[int]) {
+    if true {
+        log "task b";
+        log "task b";
+        log "task b";
+        log "task b";
+        log "task b";
+        log "task b";
+    }
+    c <| 10;
 }

@@ -7,5 +7,4 @@ mod y {
     export x;
 }
 
-fn main() {
-}
+fn main() { }

@@ -1,9 +1,5 @@
 // xfail-stage0
 // error-pattern:meep
-fn f(int a, int b, @int c) {
-  fail "moop";
-}
+fn f(a: int, b: int, c: @int) { fail "moop"; }
 
-fn main() {
-  f(1, fail "meep", @42);
-}
+fn main() { f(1, fail "meep", @42); }

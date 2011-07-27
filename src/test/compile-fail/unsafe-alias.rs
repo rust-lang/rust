@@ -1,14 +1,7 @@
 // error-pattern:may alias with argument
 
-fn foo(&int x, fn() f) {
-    log x;
-}
+fn foo(x: &int, f: fn() ) { log x; }
 
-fn whoknows(@mutable int x) {
-    *x = 10;
-}
+fn whoknows(x: @mutable int) { *x = 10; }
 
-fn main() {
-    auto box = @mutable 1;
-    foo(*box, bind whoknows(box));
-}
+fn main() { let box = @mutable 1; foo(*box, bind whoknows(box)); }

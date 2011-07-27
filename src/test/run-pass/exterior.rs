@@ -2,13 +2,13 @@
 
 
 // -*- rust -*-
-type point = rec(int x, int y, mutable int z);
+type point = {x: int, y: int, mutable z: int};
 
-fn f(@point p) { assert (p.z == 12); p.z = 13; assert (p.z == 13); }
+fn f(p: @point) { assert (p.z == 12); p.z = 13; assert (p.z == 13); }
 
 fn main() {
-    let point a = rec(x=10, y=11, mutable z=12);
-    let @point b = @a;
+    let a: point = {x: 10, y: 11, mutable z: 12};
+    let b: @point = @a;
     assert (b.z == 12);
     f(b);
     assert (a.z == 12);

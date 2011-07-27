@@ -4,9 +4,7 @@
 
 fn main() {
 
-    fn foo() -> int {
-        ret bar;
-    }
+    fn foo() -> int { ret bar; }
 
-    let int bar = 5;
+    let bar: int = 5;
 }

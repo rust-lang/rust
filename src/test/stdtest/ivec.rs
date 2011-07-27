@@ -5,21 +5,21 @@ import std::option;
 import std::option::none;
 import std::option::some;
 
-fn square(uint n) -> uint { ret n * n; }
+fn square(n: uint) -> uint { ret n * n; }
 
-fn square_alias(&uint n) -> uint { ret n * n; }
+fn square_alias(n: &uint) -> uint { ret n * n; }
 
-pred is_three(&uint n) -> bool { ret n == 3u; }
+pred is_three(n: &uint) -> bool { ret n == 3u; }
 
-fn square_if_odd(&uint n) -> option::t[uint] {
-    ret if (n % 2u == 1u) { some(n * n) } else { none };
+fn square_if_odd(n: &uint) -> option::t[uint] {
+    ret if n % 2u == 1u { some(n * n) } else { none };
 }
 
-fn add(&uint x, &uint y) -> uint { ret x + y; }
+fn add(x: &uint, y: &uint) -> uint { ret x + y; }
 
 #[test]
 fn test_reserve_and_on_heap() {
-    let int[] v = ~[ 1, 2 ];
+    let v: int[] = ~[1, 2];
     assert (!ivec::on_heap(v));
     ivec::reserve(v, 8u);
     assert (ivec::on_heap(v));
@@ -28,9 +28,9 @@ fn test_reserve_and_on_heap() {
 #[test]
 fn test_unsafe_ptrs() {
     // Test on-stack copy-from-buf.
-    auto a = ~[ 1, 2, 3 ];
-    auto ptr = ivec::to_ptr(a);
-    auto b = ~[];
+    let a = ~[1, 2, 3];
+    let ptr = ivec::to_ptr(a);
+    let b = ~[];
     ivec::unsafe::copy_from_buf(b, ptr, 3u);
     assert (ivec::len(b) == 3u);
     assert (b.(0) == 1);
@@ -38,9 +38,9 @@ fn test_unsafe_ptrs() {
     assert (b.(2) == 3);
 
     // Test on-heap copy-from-buf.
-    auto c = ~[ 1, 2, 3, 4, 5 ];
+    let c = ~[1, 2, 3, 4, 5];
     ptr = ivec::to_ptr(c);
-    auto d = ~[];
+    let d = ~[];
     ivec::unsafe::copy_from_buf(d, ptr, 5u);
     assert (ivec::len(d) == 5u);
     assert (d.(0) == 1);
@@ -53,7 +53,7 @@ fn test_unsafe_ptrs() {
 #[test]
 fn test_init_fn() {
     // Test on-stack init_fn.
-    auto v = ivec::init_fn(square, 3u);
+    let v = ivec::init_fn(square, 3u);
     assert (ivec::len(v) == 3u);
     assert (v.(0) == 0u);
     assert (v.(1) == 1u);
@@ -72,7 +72,7 @@ fn test_init_fn() {
 #[test]
 fn test_init_elt() {
     // Test on-stack init_elt.
-    auto v = ivec::init_elt(10u, 2u);
+    let v = ivec::init_elt(10u, 2u);
     assert (ivec::len(v) == 2u);
     assert (v.(0) == 10u);
     assert (v.(1) == 10u);
@@ -89,61 +89,61 @@ fn test_init_elt() {
 
 #[test]
 fn test_is_empty() {
-    assert ivec::is_empty[int](~[]);
-    assert !ivec::is_empty(~[0]);
+    assert (ivec::is_empty[int](~[]));
+    assert (!ivec::is_empty(~[0]));
 }
 
 #[test]
 fn test_is_not_empty() {
-    assert ivec::is_not_empty(~[0]);
-    assert !ivec::is_not_empty[int](~[]);
+    assert (ivec::is_not_empty(~[0]));
+    assert (!ivec::is_not_empty[int](~[]));
 }
 
 #[test]
 fn test_head() {
-    auto a = ~[11, 12];
-    check ivec::is_not_empty(a);
-    assert ivec::head(a) == 11;
+    let a = ~[11, 12];
+    check (ivec::is_not_empty(a));
+    assert (ivec::head(a) == 11);
 }
 
 #[test]
 fn test_tail() {
-    auto a = ~[11];
-    check ivec::is_not_empty(a);
-    assert ivec::tail(a) == ~[];
+    let a = ~[11];
+    check (ivec::is_not_empty(a));
+    assert (ivec::tail(a) == ~[]);
 
     a = ~[11, 12];
-    check ivec::is_not_empty(a);
-    assert ivec::tail(a) == ~[12];
+    check (ivec::is_not_empty(a));
+    assert (ivec::tail(a) == ~[12]);
 }
 
 #[test]
 fn test_last() {
-    auto n = ivec::last(~[]);
+    let n = ivec::last(~[]);
     assert (n == none);
-    n = ivec::last(~[ 1, 2, 3 ]);
+    n = ivec::last(~[1, 2, 3]);
     assert (n == some(3));
-    n = ivec::last(~[ 1, 2, 3, 4, 5 ]);
+    n = ivec::last(~[1, 2, 3, 4, 5]);
     assert (n == some(5));
 }
 
 #[test]
 fn test_slice() {
     // Test on-stack -> on-stack slice.
-    auto v = ivec::slice(~[ 1, 2, 3 ], 1u, 3u);
+    let v = ivec::slice(~[1, 2, 3], 1u, 3u);
     assert (ivec::len(v) == 2u);
     assert (v.(0) == 2);
     assert (v.(1) == 3);
 
     // Test on-heap -> on-stack slice.
-    v = ivec::slice(~[ 1, 2, 3, 4, 5 ], 0u, 3u);
+    v = ivec::slice(~[1, 2, 3, 4, 5], 0u, 3u);
     assert (ivec::len(v) == 3u);
     assert (v.(0) == 1);
     assert (v.(1) == 2);
     assert (v.(2) == 3);
 
     // Test on-heap -> on-heap slice.
-    v = ivec::slice(~[ 1, 2, 3, 4, 5, 6 ], 1u, 6u);
+    v = ivec::slice(~[1, 2, 3, 4, 5, 6], 1u, 6u);
     assert (ivec::len(v) == 5u);
     assert (v.(0) == 2);
     assert (v.(1) == 3);
@@ -155,15 +155,15 @@ fn test_slice() {
 #[test]
 fn test_pop() {
     // Test on-stack pop.
-    auto v = ~[ 1, 2, 3 ];
-    auto e = ivec::pop(v);
+    let v = ~[1, 2, 3];
+    let e = ivec::pop(v);
     assert (ivec::len(v) == 2u);
     assert (v.(0) == 1);
     assert (v.(1) == 2);
     assert (e == 3);
 
     // Test on-heap pop.
-    v = ~[ 1, 2, 3, 4, 5 ];
+    v = ~[1, 2, 3, 4, 5];
     e = ivec::pop(v);
     assert (ivec::len(v) == 4u);
     assert (v.(0) == 1);
@@ -176,7 +176,7 @@ fn test_pop() {
 #[test]
 fn test_grow() {
     // Test on-stack grow().
-    auto v = ~[];
+    let v = ~[];
     ivec::grow(v, 2u, 1);
     assert (ivec::len(v) == 2u);
     assert (v.(0) == 1);
@@ -194,7 +194,7 @@ fn test_grow() {
 
 #[test]
 fn test_grow_fn() {
-    auto v = ~[];
+    let v = ~[];
     ivec::grow_fn(v, 3u, square);
     assert (ivec::len(v) == 3u);
     assert (v.(0) == 0u);
@@ -204,7 +204,7 @@ fn test_grow_fn() {
 
 #[test]
 fn test_grow_set() {
-    auto v = ~[ mutable 1, 2, 3 ];
+    let v = ~[mutable 1, 2, 3];
     ivec::grow_set(v, 4u, 4, 5);
     assert (ivec::len(v) == 5u);
     assert (v.(0) == 1);
@@ -217,15 +217,15 @@ fn test_grow_set() {
 #[test]
 fn test_map() {
     // Test on-stack map.
-    auto v = ~[ 1u, 2u, 3u ];
-    auto w = ivec::map(square_alias, v);
+    let v = ~[1u, 2u, 3u];
+    let w = ivec::map(square_alias, v);
     assert (ivec::len(w) == 3u);
     assert (w.(0) == 1u);
     assert (w.(1) == 4u);
     assert (w.(2) == 9u);
 
     // Test on-heap map.
-    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    v = ~[1u, 2u, 3u, 4u, 5u];
     w = ivec::map(square_alias, v);
     assert (ivec::len(w) == 5u);
     assert (w.(0) == 1u);
@@ -238,14 +238,14 @@ fn test_map() {
 #[test]
 fn test_filter_map() {
     // Test on-stack filter-map.
-    auto v = ~[ 1u, 2u, 3u ];
-    auto w = ivec::filter_map(square_if_odd, v);
+    let v = ~[1u, 2u, 3u];
+    let w = ivec::filter_map(square_if_odd, v);
     assert (ivec::len(w) == 2u);
     assert (w.(0) == 1u);
     assert (w.(1) == 9u);
 
     // Test on-heap filter-map.
-    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    v = ~[1u, 2u, 3u, 4u, 5u];
     w = ivec::filter_map(square_if_odd, v);
     assert (ivec::len(w) == 3u);
     assert (w.(0) == 1u);
@@ -256,44 +256,44 @@ fn test_filter_map() {
 #[test]
 fn test_foldl() {
     // Test on-stack fold.
-    auto v = ~[ 1u, 2u, 3u ];
-    auto sum = ivec::foldl(add, 0u, v);
+    let v = ~[1u, 2u, 3u];
+    let sum = ivec::foldl(add, 0u, v);
     assert (sum == 6u);
 
     // Test on-heap fold.
-    v = ~[ 1u, 2u, 3u, 4u, 5u ];
+    v = ~[1u, 2u, 3u, 4u, 5u];
     sum = ivec::foldl(add, 0u, v);
     assert (sum == 15u);
 }
 
 #[test]
 fn test_any_and_all() {
-    assert (ivec::any(is_three, ~[ 1u, 2u, 3u ]));
-    assert (!ivec::any(is_three, ~[ 0u, 1u, 2u ]));
-    assert (ivec::any(is_three, ~[ 1u, 2u, 3u, 4u, 5u ]));
-    assert (!ivec::any(is_three, ~[ 1u, 2u, 4u, 5u, 6u ]));
+    assert (ivec::any(is_three, ~[1u, 2u, 3u]));
+    assert (!ivec::any(is_three, ~[0u, 1u, 2u]));
+    assert (ivec::any(is_three, ~[1u, 2u, 3u, 4u, 5u]));
+    assert (!ivec::any(is_three, ~[1u, 2u, 4u, 5u, 6u]));
 
-    assert (ivec::all(is_three, ~[ 3u, 3u, 3u ]));
-    assert (!ivec::all(is_three, ~[ 3u, 3u, 2u ]));
-    assert (ivec::all(is_three, ~[ 3u, 3u, 3u, 3u, 3u ]));
-    assert (!ivec::all(is_three, ~[ 3u, 3u, 0u, 1u, 2u ]));
+    assert (ivec::all(is_three, ~[3u, 3u, 3u]));
+    assert (!ivec::all(is_three, ~[3u, 3u, 2u]));
+    assert (ivec::all(is_three, ~[3u, 3u, 3u, 3u, 3u]));
+    assert (!ivec::all(is_three, ~[3u, 3u, 0u, 1u, 2u]));
 }
 
 #[test]
 fn test_zip_unzip() {
-    auto v1 = ~[1, 2, 3];
-    auto v2 = ~[4, 5, 6];
-    auto z1 = ivec::zip(v1, v2);
+    let v1 = ~[1, 2, 3];
+    let v2 = ~[4, 5, 6];
+    let z1 = ivec::zip(v1, v2);
 
-    assert rec(_0=1, _1=4) == z1.(0);
-    assert rec(_0=2, _1=5) == z1.(1);
-    assert rec(_0=3, _1=6) == z1.(2);
+    assert ({_0: 1, _1: 4} == z1.(0));
+    assert ({_0: 2, _1: 5} == z1.(1));
+    assert ({_0: 3, _1: 6} == z1.(2));
 
-    auto u1 = ivec::unzip(z1);
+    let u1 = ivec::unzip(z1);
 
-    assert rec(_0=1, _1=4) == rec(_0=u1._0.(0), _1=u1._1.(0));
-    assert rec(_0=2, _1=5) == rec(_0=u1._0.(1), _1=u1._1.(1));
-    assert rec(_0=3, _1=6) == rec(_0=u1._0.(2), _1=u1._1.(2));
+    assert ({_0: 1, _1: 4} == {_0: u1._0.(0), _1: u1._1.(0)});
+    assert ({_0: 2, _1: 5} == {_0: u1._0.(1), _1: u1._1.(1)});
+    assert ({_0: 3, _1: 6} == {_0: u1._0.(2), _1: u1._1.(2)});
 }
 
 // Local Variables:

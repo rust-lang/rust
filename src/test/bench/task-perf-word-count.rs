@@ -28,34 +28,29 @@ import std::u64;
 import std::task;
 import clone = std::task::clone_chan;
 
-fn map(str filename, map_reduce::putter emit) {
+fn map(filename: str, emit: map_reduce::putter) {
     // log_err "mapping " + filename;
-    auto f = io::file_reader(filename);
+    let f = io::file_reader(filename);
 
-    while(true) {
-        alt(read_word(f)) {
-            case (some(?w)) {
-                emit(w, 1);
-            }
-            case (none) {
-                break;
-            }
-        }
+
+    while true {
+        alt read_word(f) { some(w) { emit(w, 1); } none. { break; } }
     }
     // log_err "done mapping " + filename;
 }
 
-fn reduce(str word, map_reduce::getter get) {
+fn reduce(word: str, get: map_reduce::getter) {
     // log_err "reducing " + word;
-    auto count = 0;
+    let count = 0;
 
-    while(true) {
-        alt(get()) {
-            some(_) {
-                // log_err "received word " + word;
-                count += 1;
-            }
-            none { break }
+
+    while true {
+        alt get() {
+          some(_) {
+            // log_err "received word " + word;
+            count += 1;
+          }
+          none. { break }
         }
     }
 
@@ -72,31 +67,25 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn(str, int) -> ();
+    type putter = fn(str, int) ;
 
-    type mapper = fn(str, putter);
+    type mapper = fn(str, putter) ;
 
-    type getter = fn() -> option[int];
+    type getter = fn() -> option[int] ;
 
-    type reducer = fn(str, getter);
+    type reducer = fn(str, getter) ;
 
     tag ctrl_proto {
         find_reducer(u8[], chan[chan[reduce_proto]]);
         mapper_done;
     }
 
-    tag reduce_proto {
-        emit_val(int);
-        done;
-        ref;
-        release;
-    }
+    tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(chan[ctrl_proto] ctrl,
-                     vec[str] inputs) -> task[] {
-        auto tasks = ~[];
+    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) -> task[] {
+        let tasks = ~[];
         // log_err "starting mappers";
-        for(str i in inputs) {
+        for i: str  in inputs {
             // log_err "starting mapper for " + i;
             tasks += ~[spawn map_task(ctrl, i)];
         }
@@ -104,38 +93,37 @@ mod map_reduce {
         ret tasks;
     }
 
-    fn map_task(chan[ctrl_proto] ctrl,
-                str input) {
+    fn map_task(ctrl: chan[ctrl_proto], input: str) {
         // log_err "map_task " + input;
-        auto intermediates = map::new_str_hash();
+        let intermediates = map::new_str_hash();
 
-        fn emit(&map::hashmap[str, chan[reduce_proto]] im,
-                chan[ctrl_proto] ctrl,
-                str key, int val) {
+        fn emit(im: &map::hashmap[str, chan[reduce_proto]],
+                ctrl: chan[ctrl_proto], key: str, val: int) {
             // log_err "emitting " + key;
-            auto c;
-            alt(im.find(key)) {
-                some(?_c) {
-                    // log_err "reusing saved channel for " + key;
-                    c = _c
-                }
-                none {
-                    // log_err "fetching new channel for " + key;
-                    auto p = port[chan[reduce_proto]]();
-                    auto keyi = str::bytes_ivec(key);
-                    ctrl <| find_reducer(keyi, chan(p));
-                    p |> c;
-                    im.insert(key, clone(c));
-                    c <| ref;
-                }
+            let c;
+            alt im.find(key) {
+              some(_c) {
+
+                // log_err "reusing saved channel for " + key;
+                c = _c
+              }
+              none. {
+                // log_err "fetching new channel for " + key;
+                let p = port[chan[reduce_proto]]();
+                let keyi = str::bytes_ivec(key);
+                ctrl <| find_reducer(keyi, chan(p));
+                p |> c;
+                im.insert(key, clone(c));
+                c <| ref;
+              }
             }
             c <| emit_val(val);
         }
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each(@rec(str key, chan[reduce_proto] val) kv
-                 in intermediates.items()) {
+        for each kv: @{key: str, val: chan[reduce_proto]}  in
+                 intermediates.items() {
             // log_err "sending done to reducer for " + kv._0;
             kv.val <| release;
         }
@@ -145,36 +133,33 @@ mod map_reduce {
         // log_err "~map_task " + input;
     }
 
-    fn reduce_task(str key, chan[chan[reduce_proto]] out) {
+    fn reduce_task(key: str, out: chan[chan[reduce_proto]]) {
         // log_err "reduce_task " + key;
-        auto p = port();
+        let p = port();
 
         out <| chan(p);
 
-        auto ref_count = 0;
-        auto is_done = false;
+        let ref_count = 0;
+        let is_done = false;
 
-        fn get(&port[reduce_proto] p, &mutable int ref_count,
-               &mutable bool is_done) -> option[int] {
-            while (!is_done || ref_count > 0) {
-                auto m;
+        fn get(p: &port[reduce_proto], ref_count: &mutable int,
+               is_done: &mutable bool) -> option[int] {
+            while !is_done || ref_count > 0 {
+                let m;
                 p |> m;
 
-                alt(m) {
-                    emit_val(?v) {
-                        // log_err #fmt("received %d", v);
-                        ret some(v);
-                    }
-                    done {
-                        // log_err "all done";
-                        is_done = true;
-                    }
-                    ref {
-                        ref_count += 1;
-                    }
-                    release {
-                        ref_count -= 1;
-                    }
+
+                alt m {
+                  emit_val(v) {
+                    // log_err #fmt("received %d", v);
+                    ret some(v);
+                  }
+                  done. {
+                    // log_err "all done";
+                    is_done = true;
+                  }
+                  ref. { ref_count += 1; }
+                  release. { ref_count -= 1; }
                 }
             }
             ret none;
@@ -184,185 +169,177 @@ mod map_reduce {
         // log_err "~reduce_task " + key;
     }
 
-    fn map_reduce (vec[str] inputs) {
-        auto ctrl = port[ctrl_proto]();
+    fn map_reduce(inputs: vec[str]) {
+        let ctrl = port[ctrl_proto]();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let map::hashmap[str, chan[reduce_proto]] reducers;
+        let reducers: map::hashmap[str, chan[reduce_proto]];
 
         reducers = map::new_str_hash();
 
-        auto tasks = start_mappers(chan(ctrl), inputs);
+        let tasks = start_mappers(chan(ctrl), inputs);
 
-        auto num_mappers = vec::len(inputs) as int;
+        let num_mappers = vec::len(inputs) as int;
 
-        while(num_mappers > 0) {
-            auto m;
+        while num_mappers > 0 {
+            let m;
             ctrl |> m;
 
-            alt(m) {
-                mapper_done {
-                    // log_err "received mapper terminated.";
-                    num_mappers -= 1;
+
+            alt m {
+              mapper_done. {
+                // log_err "received mapper terminated.";
+                num_mappers -= 1;
+              }
+              find_reducer(ki, cc) {
+                let c;
+                let k = str::unsafe_from_bytes_ivec(ki);
+                // log_err "finding reducer for " + k;
+                alt reducers.find(k) {
+                  some(_c) {
+                    // log_err "reusing existing reducer for " + k;
+                    c = _c;
+                  }
+                  none. {
+                    // log_err "creating new reducer for " + k;
+                    let p = port();
+                    tasks += ~[spawn reduce_task(k, chan(p))];
+                    p |> c;
+                    reducers.insert(k, c);
+                  }
                 }
-                find_reducer(?ki, ?cc) {
-                    auto c;
-                    auto k = str::unsafe_from_bytes_ivec(ki);
-                    // log_err "finding reducer for " + k;
-                    alt(reducers.find(k)) {
-                        some(?_c) {
-                            // log_err "reusing existing reducer for " + k;
-                            c = _c;
-                        }
-                        none {
-                            // log_err "creating new reducer for " + k;
-                            auto p = port();
-                            tasks += ~[spawn reduce_task(k, chan(p))];
-                            p |> c;
-                            reducers.insert(k, c);
-                        }
-                    }
-                    cc <| clone(c);
-                }
+                cc <| clone(c);
+              }
             }
         }
 
-        for each(@rec(str key, chan[reduce_proto] val) kv
-                 in reducers.items()) {
+        for each kv: @{key: str, val: chan[reduce_proto]}  in reducers.items()
+                 {
             // log_err "sending done to reducer for " + kv._0;
             kv.val <| done;
         }
 
+
         // log_err #fmt("joining %u tasks", ivec::len(tasks));
-        for (task t in tasks) {
-            task::join(t);
-        }
+        for t: task  in tasks { task::join(t); }
         // log_err "control task done.";
     }
 }
 
-fn main(vec[str] argv) {
-    if(vec::len(argv) < 2u) {
-        auto out = io::stdout();
+fn main(argv: vec[str]) {
+    if vec::len(argv) < 2u {
+        let out = io::stdout();
 
         out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
         fail;
     }
 
-    auto start = time::precise_time_ns();
+    let start = time::precise_time_ns();
     map_reduce::map_reduce(vec::slice(argv, 1u, vec::len(argv)));
-    auto stop = time::precise_time_ns();
+    let stop = time::precise_time_ns();
 
-    auto elapsed = stop - start;
+    let elapsed = stop - start;
     elapsed /= 1000000u64;
 
     log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
 }
 
-fn read_word(io::reader r) -> option[str] {
-    auto w = "";
+fn read_word(r: io::reader) -> option[str] {
+    let w = "";
 
-    while(!r.eof()) {
-        auto c = r.read_char();
+    while !r.eof() {
+        let c = r.read_char();
 
-        if(is_word_char(c)) {
+
+        if is_word_char(c) {
             w += str::from_char(c);
-        }
-        else {
-            if(w != "") {
-                ret some(w);
-            }
-        }
+        } else { if w != "" { ret some(w); } }
     }
     ret none;
 }
 
-fn is_digit(char c) -> bool {
-    alt(c) {
-        case ('0') { true }
-        case ('1') { true }
-        case ('2') { true }
-        case ('3') { true }
-        case ('4') { true }
-        case ('5') { true }
-        case ('6') { true }
-        case ('7') { true }
-        case ('8') { true }
-        case ('9') { true }
-        case (_) { false }
+fn is_digit(c: char) -> bool {
+    alt c {
+      '0' { true }
+      '1' { true }
+      '2' { true }
+      '3' { true }
+      '4' { true }
+      '5' { true }
+      '6' { true }
+      '7' { true }
+      '8' { true }
+      '9' { true }
+      _ { false }
     }
 }
 
-fn is_alpha_lower (char c) -> bool {
-    alt(c) {
-        case ('a') { true }
-        case ('b') { true }
-        case ('c') { true }
-        case ('d') { true }
-        case ('e') { true }
-        case ('f') { true }
-        case ('g') { true }
-        case ('h') { true }
-        case ('i') { true }
-        case ('j') { true }
-        case ('k') { true }
-        case ('l') { true }
-        case ('m') { true }
-        case ('n') { true }
-        case ('o') { true }
-        case ('p') { true }
-        case ('q') { true }
-        case ('r') { true }
-        case ('s') { true }
-        case ('t') { true }
-        case ('u') { true }
-        case ('v') { true }
-        case ('w') { true }
-        case ('x') { true }
-        case ('y') { true }
-        case ('z') { true }
-        case (_) { false }
+fn is_alpha_lower(c: char) -> bool {
+    alt c {
+      'a' { true }
+      'b' { true }
+      'c' { true }
+      'd' { true }
+      'e' { true }
+      'f' { true }
+      'g' { true }
+      'h' { true }
+      'i' { true }
+      'j' { true }
+      'k' { true }
+      'l' { true }
+      'm' { true }
+      'n' { true }
+      'o' { true }
+      'p' { true }
+      'q' { true }
+      'r' { true }
+      's' { true }
+      't' { true }
+      'u' { true }
+      'v' { true }
+      'w' { true }
+      'x' { true }
+      'y' { true }
+      'z' { true }
+      _ { false }
     }
 }
 
-fn is_alpha_upper (char c) -> bool {
-    alt(c) {
-        case ('A') { true }
-        case ('B') { true }
-        case ('C') { true }
-        case ('D') { true }
-        case ('E') { true }
-        case ('F') { true }
-        case ('G') { true }
-        case ('H') { true }
-        case ('I') { true }
-        case ('J') { true }
-        case ('K') { true }
-        case ('L') { true }
-        case ('M') { true }
-        case ('N') { true }
-        case ('O') { true }
-        case ('P') { true }
-        case ('Q') { true }
-        case ('R') { true }
-        case ('S') { true }
-        case ('T') { true }
-        case ('U') { true }
-        case ('V') { true }
-        case ('W') { true }
-        case ('X') { true }
-        case ('Y') { true }
-        case ('Z') { true }
-        case (_) { false }
+fn is_alpha_upper(c: char) -> bool {
+    alt c {
+      'A' { true }
+      'B' { true }
+      'C' { true }
+      'D' { true }
+      'E' { true }
+      'F' { true }
+      'G' { true }
+      'H' { true }
+      'I' { true }
+      'J' { true }
+      'K' { true }
+      'L' { true }
+      'M' { true }
+      'N' { true }
+      'O' { true }
+      'P' { true }
+      'Q' { true }
+      'R' { true }
+      'S' { true }
+      'T' { true }
+      'U' { true }
+      'V' { true }
+      'W' { true }
+      'X' { true }
+      'Y' { true }
+      'Z' { true }
+      _ { false }
     }
 }
 
-fn is_alpha(char c) -> bool {
-    is_alpha_upper(c) || is_alpha_lower(c)
-}
+fn is_alpha(c: char) -> bool { is_alpha_upper(c) || is_alpha_lower(c) }
 
-fn is_word_char(char c) -> bool {
-    is_alpha(c) || is_digit(c) || c == '_'
-}
+fn is_word_char(c: char) -> bool { is_alpha(c) || is_digit(c) || c == '_' }

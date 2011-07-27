@@ -3,38 +3,38 @@ import str::sbuf;
 import vec::vbuf;
 
 native "cdecl" mod libc = "" {
-    fn open(sbuf s, int flags, uint mode) -> int;
-    fn read(int fd, vbuf buf, uint count) -> int;
-    fn write(int fd, vbuf buf, uint count) -> int;
-    fn close(int fd) -> int;
+    fn open(s: sbuf, flags: int, mode: uint) -> int;
+    fn read(fd: int, buf: vbuf, count: uint) -> int;
+    fn write(fd: int, buf: vbuf, count: uint) -> int;
+    fn close(fd: int) -> int;
     type FILE;
-    fn fopen(sbuf path, sbuf mode) -> FILE;
-    fn fdopen(int fd, sbuf mode) -> FILE;
-    fn fclose(FILE f);
-    fn fgetc(FILE f) -> int;
-    fn ungetc(int c, FILE f);
-    fn feof(FILE f) -> int;
-    fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
-    fn fwrite(vbuf buf, uint size, uint n, FILE f) -> uint;
-    fn fseek(FILE f, int offset, int whence) -> int;
-    fn ftell(FILE f) -> int;
+    fn fopen(path: sbuf, mode: sbuf) -> FILE;
+    fn fdopen(fd: int, mode: sbuf) -> FILE;
+    fn fclose(f: FILE);
+    fn fgetc(f: FILE) -> int;
+    fn ungetc(c: int, f: FILE);
+    fn feof(f: FILE) -> int;
+    fn fread(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
+    fn fwrite(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
+    fn fseek(f: FILE, offset: int, whence: int) -> int;
+    fn ftell(f: FILE) -> int;
     type dir;
-    fn opendir(sbuf d) -> dir;
-    fn closedir(dir d) -> int;
+    fn opendir(d: sbuf) -> dir;
+    fn closedir(d: dir) -> int;
     type dirent;
-    fn readdir(dir d) -> dirent;
-    fn getenv(sbuf n) -> sbuf;
-    fn setenv(sbuf n, sbuf v, int overwrite) -> int;
-    fn unsetenv(sbuf n) -> int;
-    fn pipe(*mutable int buf) -> int;
-    fn waitpid(int pid, &mutable int status, int options) -> int;
+    fn readdir(d: dir) -> dirent;
+    fn getenv(n: sbuf) -> sbuf;
+    fn setenv(n: sbuf, v: sbuf, overwrite: int) -> int;
+    fn unsetenv(n: sbuf) -> int;
+    fn pipe(buf: *mutable int) -> int;
+    fn waitpid(pid: int, status: &mutable int, options: int) -> int;
 }
 
 native "cdecl" mod libc_ivec = "" {
-    fn read(int fd, *u8 buf, uint count) -> int;
-    fn write(int fd, *u8 buf, uint count) -> int;
-    fn fread(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
-    fn fwrite(*u8 buf, uint size, uint n, libc::FILE f) -> uint;
+    fn read(fd: int, buf: *u8, count: uint) -> int;
+    fn write(fd: int, buf: *u8, count: uint) -> int;
+    fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
+    fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
 }
 
 mod libc_constants {
@@ -61,18 +61,18 @@ fn exec_suffix() -> str { ret ""; }
 
 fn target_os() -> str { ret "macos"; }
 
-fn dylib_filename(str base) -> str { ret "lib" + base + ".dylib"; }
+fn dylib_filename(base: str) -> str { ret "lib" + base + ".dylib"; }
 
-fn pipe() -> rec(int in, int out) {
-    auto fds = rec(mutable in=0, mutable out=0);
+fn pipe() -> {in: int, out: int} {
+    let fds = {mutable in: 0, mutable out: 0};
     assert (os::libc::pipe(ptr::addr_of(fds.in)) == 0);
-    ret rec(in=fds.in, out=fds.out);
+    ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(int fd) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
+fn fd_FILE(fd: int) -> libc::FILE { ret libc::fdopen(fd, str::buf("r")); }
 
-fn waitpid(int pid) -> int {
-    auto status = 0;
+fn waitpid(pid: int) -> int {
+    let status = 0;
     assert (os::libc::waitpid(pid, status, 0) != -1);
     ret status;
 }

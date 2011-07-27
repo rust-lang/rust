@@ -1,16 +1,12 @@
 // xfail-stage0
 // -*- rust -*-
 
-tag list {
-  cons(int,@list);
-  nil();
-}
+tag list { cons(int, @list); nil; }
 
-type bubu = rec(int x, int y);
+type bubu = {x: int, y: int};
 
-pred less_than(int x, int y) -> bool { ret x < y; }
+pred less_than(x: int, y: int) -> bool { ret x < y; }
 
-type ordered_range = rec(int low, int high) : less_than(*.low, *.high);
+type ordered_range = {low: int, high: int} :  : less_than(low, high);
 
-fn main() {
-}
+fn main() { }

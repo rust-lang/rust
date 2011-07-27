@@ -1,8 +1,6 @@
-type quux = rec(int bar);
+type quux = {bar: int};
 
-fn g(&int i) { }
-fn f(@@quux foo) {
-    g(foo.bar);
-}
+fn g(i: &int) { }
+fn f(foo: @@quux) { g(foo.bar); }
 
-fn main() {}
+fn main() { }

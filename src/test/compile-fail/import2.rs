@@ -1,12 +1,7 @@
 // error-pattern: unresolved modulename
 import baz::zed::bar;
-mod baz {
-}
+mod baz { }
 mod zed {
-  fn bar() {
-    log "bar3";
-  }
+    fn bar() { log "bar3"; }
 }
-fn main(vec[str] args) {
-  bar();
-}
+fn main(args: vec[str]) { bar(); }

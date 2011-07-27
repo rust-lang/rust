@@ -1,9 +1,5 @@
 // error-pattern: mismatched types
 
-fn f() {
-}
+fn f() { }
 
-fn main() {
-  let int i;
-  i = f();
-}
+fn main() { let i: int; i = f(); }

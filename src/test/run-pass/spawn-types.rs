@@ -12,11 +12,6 @@ import std::str;
 
 type ctx = chan[int];
 
-fn iotask(ctx cx, str ip) {
-  assert(str::eq(ip, "localhost"));
-}
+fn iotask(cx: ctx, ip: str) { assert (str::eq(ip, "localhost")); }
 
-fn main() {
-  let port[int] p = port();
-  spawn iotask(chan(p), "localhost");
-}
+fn main() { let p: port[int] = port(); spawn iotask(chan(p), "localhost"); }

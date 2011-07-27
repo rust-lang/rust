@@ -6,13 +6,11 @@ use std;
 import std::task::*;
 
 fn main() {
-  auto other = spawn child();
-  log_err "1";
-  yield();
-  join(other);
-  log_err "3";
+    let other = spawn child();
+    log_err "1";
+    yield();
+    join(other);
+    log_err "3";
 }
 
-fn child() {
-  log_err "2";
-}
+fn child() { log_err "2"; }

@@ -3,17 +3,13 @@
 use std;
 import std::task;
 
-fn main() -> () {
-    test00();
-}
+fn main() { test00(); }
 
-fn start(int task_number) {
-    log "Started / Finished task.";
-}
+fn start(task_number: int) { log "Started / Finished task."; }
 
 fn test00() {
-    let int i = 0;
-    let task t = spawn start(i);
+    let i: int = 0;
+    let t: task = spawn start(i);
 
     // Sleep long enough for the task to finish.
     task::sleep(10000u);

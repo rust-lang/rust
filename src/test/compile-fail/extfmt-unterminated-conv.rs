@@ -1,5 +1,3 @@
 // error-pattern:unterminated conversion
 
-fn main() {
-  #fmt("%");
-}
+fn main() { #fmt("%"); }

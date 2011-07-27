@@ -6,15 +6,11 @@
 
 mod foo {
 
-  export bar;
+    export bar;
 
-  fn bar() {
-    foo::baz();
-  }
+    fn bar() { foo::baz(); }
 
-  fn baz() {
-  }
+    fn baz() { }
 }
 
-fn main() {
-}
+fn main() { }

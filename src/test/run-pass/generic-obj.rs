@@ -1,17 +1,17 @@
 
 
-obj buf[T](rec(T _0, T _1, T _2) data) {
-    fn get(int i) -> T {
-        if (i == 0) {
+obj buf[T](data: {_0: T, _1: T, _2: T}) {
+    fn get(i: int) -> T {
+        if i == 0 {
             ret data._0;
-        } else { if (i == 1) { ret data._1; } else { ret data._2; } }
+        } else { if i == 1 { ret data._1; } else { ret data._2; } }
     }
-    fn take(&T t) { }
-    fn take2(&T t) { }
+    fn take(t: &T) { }
+    fn take2(t: &T) { }
 }
 
 fn main() {
-    let buf[int] b = buf[int](rec(_0=1, _1=2, _2=3));
+    let b: buf[int] = buf[int]({_0: 1, _1: 2, _2: 3});
     log "constructed object";
     log b.get(0);
     log b.get(1);

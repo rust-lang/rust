@@ -1,9 +1,9 @@
 
 
 fn foo() {
-    fn zed(bar z) { }
+    fn zed(z: bar) { }
     tag bar { nil; }
     fn baz() { zed(nil); }
 }
 
-fn main(vec[str] args) { }
+fn main(args: vec[str]) { }

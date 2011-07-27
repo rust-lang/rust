@@ -29,22 +29,22 @@ import type_of_node = trans::node_id_type;
 
 // LLVM utilities
 
-fn llelement_type(TypeRef llty) -> TypeRef {
+fn llelement_type(llty: TypeRef) -> TypeRef {
     lib::llvm::llvm::LLVMGetElementType(llty)
 }
 
-fn llalign_of(&@crate_ctxt ccx, TypeRef llty) -> uint {
+fn llalign_of(ccx: &@crate_ctxt, llty: TypeRef) -> uint {
     ret llvm::LLVMPreferredAlignmentOfType(ccx.td.lltd, llty);
 }
 
-fn llsize_of(&@crate_ctxt ccx, TypeRef llty) -> uint {
+fn llsize_of(ccx: &@crate_ctxt, llty: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(ccx.td.lltd, llty);
 }
 
-fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
-        -> ValueRef {
-    auto llglobal = llvm::LLVMAddGlobal(ccx.llmod, tc::val_ty(llval),
-                                        str::buf(name));
+fn mk_const(ccx: &@crate_ctxt, name: &str, exported: bool, llval: ValueRef) ->
+   ValueRef {
+    let llglobal =
+        llvm::LLVMAddGlobal(ccx.llmod, tc::val_ty(llval), str::buf(name));
 
     llvm::LLVMSetInitializer(llglobal, llval);
     llvm::LLVMSetGlobalConstant(llglobal, LLTrue);
@@ -60,10 +60,10 @@ fn mk_const(&@crate_ctxt ccx, &str name, bool exported, ValueRef llval)
 
 // Type utilities
 
-fn size_of(&@crate_ctxt ccx, &span sp, ty::t t) -> uint {
+fn size_of(ccx: &@crate_ctxt, sp: &span, t: ty::t) -> uint {
     if ty::type_has_dynamic_size(ccx.tcx, t) {
         ccx.sess.bug("trans_dps::size_of() called on a type with dynamic " +
-                     "size");
+                         "size");
     }
     ret llsize_of(ccx, trans::type_of_inner(ccx, sp, t));
 }
@@ -72,105 +72,109 @@ fn size_of(&@crate_ctxt ccx, &span sp, ty::t t) -> uint {
 // Destination utilities
 
 tag dest {
-    dst_nil;                                // Unit destination; ignore.
-    dst_imm(@mutable option[ValueRef]);     // Fill with an immediate value.
-    dst_alias(@mutable option[ValueRef]);   // Fill with an alias pointer.
-    dst_copy(ValueRef);                     // Copy to the given address.
-    dst_move(ValueRef);                     // Move to the given address.
+    dst_nil; // Unit destination; ignore.
+
+    dst_imm(@mutable option[ValueRef]); // Fill with an immediate value.
+
+    dst_alias(@mutable option[ValueRef]); // Fill with an alias pointer.
+
+    dst_copy(ValueRef); // Copy to the given address.
+
+    dst_move(ValueRef); // Move to the given address.
 }
 
-fn dest_imm(&ty::ctxt tcx, ty::t t) -> dest {
+fn dest_imm(tcx: &ty::ctxt, t: ty::t) -> dest {
     if ty::type_is_nil(tcx, t) { dst_nil } else { dst_imm(@mutable none) }
 }
 
-fn dest_alias(&ty::ctxt tcx, ty::t t) -> dest {
+fn dest_alias(tcx: &ty::ctxt, t: ty::t) -> dest {
     if ty::type_is_nil(tcx, t) { dst_nil } else { dst_alias(@mutable none) }
 }
 
-fn dest_copy(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
+fn dest_copy(tcx: &ty::ctxt, llptr: ValueRef, t: ty::t) -> dest {
     if ty::type_is_nil(tcx, t) { dst_nil } else { dst_copy(llptr) }
 }
 
-fn dest_move(&ty::ctxt tcx, ValueRef llptr, ty::t t) -> dest {
+fn dest_move(tcx: &ty::ctxt, llptr: ValueRef, t: ty::t) -> dest {
     if ty::type_is_nil(tcx, t) { dst_nil } else { dst_move(llptr) }
 }
 
 // Invariant: the type of the destination must be structural (non-immediate).
-fn dest_ptr(&dest dest) -> ValueRef {
-    alt (dest) {
-      dst_nil { fail "nil dest in dest_ptr" }
+fn dest_ptr(dest: &dest) -> ValueRef {
+    alt dest {
+      dst_nil. { fail "nil dest in dest_ptr" }
       dst_imm(_) { fail "immediate dest in dest_ptr" }
-      dst_alias(?box) {
-        alt (*box) {
-          none { fail "alias wasn't filled in prior to dest_ptr" }
-          some(?llval) { llval }
+      dst_alias(box) {
+        alt *box {
+          none. { fail "alias wasn't filled in prior to dest_ptr" }
+          some(llval) { llval }
         }
       }
-      dst_copy(?llptr) { llptr }
-      dst_move(?llptr) { llptr }
+      dst_copy(llptr) { llptr }
+      dst_move(llptr) { llptr }
     }
 }
 
-fn dest_llval(&dest dest) -> ValueRef {
-    alt (dest) {
-      dst_nil { ret tc::C_nil(); }
-      dst_imm(?box) {
-        alt (*box) {
-          none { fail "immediate wasn't filled in prior to dest_llval"; }
-          some(?llval) { ret llval; }
+fn dest_llval(dest: &dest) -> ValueRef {
+    alt dest {
+      dst_nil. { ret tc::C_nil(); }
+      dst_imm(box) {
+        alt *box {
+          none. { fail "immediate wasn't filled in prior to dest_llval"; }
+          some(llval) { ret llval; }
         }
       }
-      dst_alias(?box) {
-        alt (*box) {
-          none { fail "alias wasn't filled in prior to dest_llval"; }
-          some(?llval) { ret llval; }
+      dst_alias(box) {
+        alt *box {
+          none. { fail "alias wasn't filled in prior to dest_llval"; }
+          some(llval) { ret llval; }
         }
       }
-      dst_copy(?llptr) { ret llptr; }
-      dst_move(?llptr) { ret llptr; }
+      dst_copy(llptr) { ret llptr; }
+      dst_move(llptr) { ret llptr; }
     }
 }
 
-fn dest_is_alias(&dest dest) -> bool {
-    alt (dest) { dst_alias(_) { true } _ { false } }
+fn dest_is_alias(dest: &dest) -> bool {
+    alt dest { dst_alias(_) { true } _ { false } }
 }
 
 
 // Common operations
 
-fn memmove(&@block_ctxt bcx, ValueRef lldestptr, ValueRef llsrcptr,
-           ValueRef llsz) {
-    auto lldestty = llelement_type(tc::val_ty(lldestptr));
-    auto llsrcty = llelement_type(tc::val_ty(llsrcptr));
-    auto dest_align = llalign_of(bcx_ccx(bcx), lldestty);
-    auto src_align = llalign_of(bcx_ccx(bcx), llsrcty);
-    auto align = uint::min(dest_align, src_align);
-    auto llfn = bcx_ccx(bcx).intrinsics.get("llvm.memmove.p0i8.p0i8.i32");
-    auto lldestptr_i8 = bcx.build.PointerCast(lldestptr,
-                                              tc::T_ptr(tc::T_i8()));
-    auto llsrcptr_i8 = bcx.build.PointerCast(llsrcptr,
-                                             tc::T_ptr(tc::T_i8()));
-    bcx.build.Call(llfn, ~[lldestptr_i8, llsrcptr_i8, llsz, tc::C_uint(align),
-                           tc::C_bool(false)]);
+fn memmove(bcx: &@block_ctxt, lldestptr: ValueRef, llsrcptr: ValueRef,
+           llsz: ValueRef) {
+    let lldestty = llelement_type(tc::val_ty(lldestptr));
+    let llsrcty = llelement_type(tc::val_ty(llsrcptr));
+    let dest_align = llalign_of(bcx_ccx(bcx), lldestty);
+    let src_align = llalign_of(bcx_ccx(bcx), llsrcty);
+    let align = uint::min(dest_align, src_align);
+    let llfn = bcx_ccx(bcx).intrinsics.get("llvm.memmove.p0i8.p0i8.i32");
+    let lldestptr_i8 =
+        bcx.build.PointerCast(lldestptr, tc::T_ptr(tc::T_i8()));
+    let llsrcptr_i8 = bcx.build.PointerCast(llsrcptr, tc::T_ptr(tc::T_i8()));
+    bcx.build.Call(llfn,
+                   ~[lldestptr_i8, llsrcptr_i8, llsz, tc::C_uint(align),
+                     tc::C_bool(false)]);
 }
 
 // If "cast" is true, casts dest appropriately before the store.
-fn store_imm(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
-        -> @block_ctxt {
-    alt (dest) {
-      dst_nil { /* no-op */ }
-      dst_imm(?box) {
+fn store_imm(bcx: &@block_ctxt, dest: &dest, llsrc: ValueRef, cast: bool) ->
+   @block_ctxt {
+    alt dest {
+      dst_nil. {/* no-op */ }
+      dst_imm(box) {
         assert (std::option::is_none(*box));
         *box = some(llsrc);
       }
-      dst_alias(?box) {
+      dst_alias(box) {
         bcx_ccx(bcx).sess.unimpl("dst_alias spill in store_imm");
       }
-      dst_copy(?lldestptr_orig) | dst_move(?lldestptr_orig) {
-        auto lldestptr = lldestptr_orig;
+      dst_copy(lldestptr_orig) | dst_move(lldestptr_orig) {
+        let lldestptr = lldestptr_orig;
         if cast {
-            lldestptr = bcx.build.PointerCast(lldestptr,
-                                              tc::T_ptr(lltype_of(llsrc)));
+            lldestptr =
+                bcx.build.PointerCast(lldestptr, tc::T_ptr(lltype_of(llsrc)));
         }
         bcx.build.Store(llsrc, lldestptr);
       }
@@ -178,20 +182,21 @@ fn store_imm(&@block_ctxt bcx, &dest dest, ValueRef llsrc, bool cast)
     ret bcx;
 }
 
-fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
-    alt (dest) {
-      dst_nil { /* no-op */ }
-      dst_imm(?box) {
+fn store_ptr(bcx: &@block_ctxt, dest: &dest, llsrcptr: ValueRef) ->
+   @block_ctxt {
+    alt dest {
+      dst_nil. {/* no-op */ }
+      dst_imm(box) {
         assert (std::option::is_none(*box));
         *box = some(bcx.build.Load(llsrcptr));
       }
-      dst_alias(?box) {
+      dst_alias(box) {
         assert (std::option::is_none(*box));
         *box = some(llsrcptr);
       }
-      dst_copy(?lldestptr) | dst_move(?lldestptr) {
-        auto llsrcty = llelement_type(tc::val_ty(llsrcptr));
-        auto llsz = tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty));
+      dst_copy(lldestptr) | dst_move(lldestptr) {
+        let llsrcty = llelement_type(tc::val_ty(llsrcptr));
+        let llsz = tc::C_uint(llsize_of(bcx_ccx(bcx), llsrcty));
         memmove(bcx, lldestptr, llsrcptr, llsz);
         ret bcx;
       }
@@ -205,27 +210,28 @@ fn store_ptr(&@block_ctxt bcx, &dest dest, ValueRef llsrcptr) -> @block_ctxt {
 // TODO: This should *not* use destination-passing style, because doing so
 // makes callers incur an extra load.
 tag heap { hp_task; hp_shared; }
-fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
-          option[ValueRef] llcustom_size_opt) -> @block_ctxt {
-    auto llptrty = llelement_type(lltype_of(lldest));
-    auto llty = llelement_type(llptrty);
+fn malloc(bcx: &@block_ctxt, lldest: ValueRef, heap: heap,
+          llcustom_size_opt: option[ValueRef]) -> @block_ctxt {
+    let llptrty = llelement_type(lltype_of(lldest));
+    let llty = llelement_type(llptrty);
 
-    auto lltydescptr = tc::C_null(tc::T_ptr(bcx_ccx(bcx).tydesc_type));
+    let lltydescptr = tc::C_null(tc::T_ptr(bcx_ccx(bcx).tydesc_type));
 
-    auto llsize;
-    alt (llcustom_size_opt) {
-      none { llsize = trans::llsize_of(llty); }
-      some(?llcustom_size) { llsize = llcustom_size; }
+    let llsize;
+    alt llcustom_size_opt {
+      none. { llsize = trans::llsize_of(llty); }
+      some(llcustom_size) { llsize = llcustom_size; }
     }
 
-    auto llupcall;
-    alt (heap) {
-      hp_task { llupcall = bcx_ccx(bcx).upcalls.malloc; }
-      hp_shared { llupcall = bcx_ccx(bcx).upcalls.shared_malloc; }
+    let llupcall;
+    alt heap {
+      hp_task. { llupcall = bcx_ccx(bcx).upcalls.malloc; }
+      hp_shared. { llupcall = bcx_ccx(bcx).upcalls.shared_malloc; }
     }
 
-    auto llresult = bcx.build.Call(llupcall, ~[bcx_fcx(bcx).lltaskptr, llsize,
-                                               lltydescptr]);
+    let llresult =
+        bcx.build.Call(llupcall,
+                       ~[bcx_fcx(bcx).lltaskptr, llsize, lltydescptr]);
     llresult = bcx.build.PointerCast(llresult, llptrty);
     bcx.build.Store(llresult, lldest);
     ret bcx;
@@ -233,191 +239,195 @@ fn malloc(&@block_ctxt bcx, ValueRef lldest, heap heap,
 
 // If the supplied destination is an alias, spills to a temporary. Returns the
 // new destination.
-fn spill_alias(&@block_ctxt cx, &dest dest, ty::t t)
-        -> rec(@block_ctxt bcx, dest dest) {
-    auto bcx = cx;
-    alt (dest) {
-      dst_alias(?box) {
+fn spill_alias(cx: &@block_ctxt, dest: &dest, t: ty::t) ->
+   {bcx: @block_ctxt, dest: dest} {
+    let bcx = cx;
+    alt dest {
+      dst_alias(box) {
         // TODO: Mark the alias as needing a cleanup.
         assert (std::option::is_none(*box));
-        auto r = trans::alloc_ty(cx, t);
-        bcx = r.bcx; auto llptr = r.val;
+        let r = trans::alloc_ty(cx, t);
+        bcx = r.bcx;
+        let llptr = r.val;
         *box = some(llptr);
-        ret rec(bcx=bcx, dest=dst_move(llptr));
+        ret {bcx: bcx, dest: dst_move(llptr)};
       }
-      _ { ret rec(bcx=bcx, dest=dest); }
+      _ { ret {bcx: bcx, dest: dest}; }
     }
 }
 
-fn mk_temp(&@block_ctxt cx, ty::t t) -> rec(@block_ctxt bcx, dest dest) {
-    auto bcx = cx;
-    if ty::type_is_nil(bcx_tcx(bcx), t) { ret rec(bcx=bcx, dest=dst_nil); }
+fn mk_temp(cx: &@block_ctxt, t: ty::t) -> {bcx: @block_ctxt, dest: dest} {
+    let bcx = cx;
+    if ty::type_is_nil(bcx_tcx(bcx), t) { ret {bcx: bcx, dest: dst_nil}; }
     if trans::type_is_immediate(bcx_ccx(bcx), t) {
-        ret rec(bcx=bcx, dest=dst_imm(@mutable none));
+        ret {bcx: bcx, dest: dst_imm(@mutable none)};
     }
 
-    auto r = trans::alloc_ty(cx, t);
-    bcx = r.bcx; auto llptr = r.val;
-    ret rec(bcx=bcx, dest=dst_copy(llptr));
+    let r = trans::alloc_ty(cx, t);
+    bcx = r.bcx;
+    let llptr = r.val;
+    ret {bcx: bcx, dest: dst_copy(llptr)};
 }
 
 
 // AST substructure translation, with destinations
 
-fn trans_lit(&@block_ctxt cx, &dest dest, &ast::lit lit) -> @block_ctxt {
-    auto bcx = cx;
-    alt (lit.node) {
-      ast::lit_str(?s, ast::sk_unique) {
-        auto r = trans_lit_str_common(bcx_ccx(bcx), s, dest_is_alias(dest));
-        auto llstackpart = r.stack; auto llheappartopt = r.heap;
+fn trans_lit(cx: &@block_ctxt, dest: &dest, lit: &ast::lit) -> @block_ctxt {
+    let bcx = cx;
+    alt lit.node {
+      ast::lit_str(s, ast::sk_unique.) {
+        let r = trans_lit_str_common(bcx_ccx(bcx), s, dest_is_alias(dest));
+        let llstackpart = r.stack;
+        let llheappartopt = r.heap;
         bcx = store_ptr(bcx, dest, llstackpart);
-        alt (llheappartopt) {
-          none { /* no-op */ }
-          some(?llheappart) {
-            auto lldestptrptr =
+        alt llheappartopt {
+          none. {/* no-op */ }
+          some(llheappart) {
+            let lldestptrptr =
                 bcx.build.InBoundsGEP(dest_ptr(dest),
                                       ~[tc::C_int(0),
                                         tc::C_uint(abi::ivec_elt_elems)]);
-            auto llheappartty = lltype_of(llheappart);
+            let llheappartty = lltype_of(llheappart);
             lldestptrptr =
                 bcx.build.PointerCast(lldestptrptr,
                                       tc::T_ptr(tc::T_ptr(llheappartty)));
             malloc(bcx, lldestptrptr, hp_shared, none);
-            auto lldestptr = bcx.build.Load(lldestptrptr);
+            let lldestptr = bcx.build.Load(lldestptrptr);
             store_ptr(bcx, dst_copy(lldestptr), llheappart);
           }
         }
       }
       _ {
-        bcx = store_imm(bcx, dest, trans_lit_common(bcx_ccx(bcx), lit),
-                        false);
+        bcx =
+            store_imm(bcx, dest, trans_lit_common(bcx_ccx(bcx), lit), false);
       }
     }
 
     ret bcx;
 }
 
-fn trans_binary(&@block_ctxt cx, &dest dest, &span sp, ast::binop op,
-                &@ast::expr lhs, &@ast::expr rhs) -> @block_ctxt {
-    auto bcx = cx;
-    alt (op) {
-      ast::add {
-        bcx = trans_vec::trans_concat(bcx, dest, sp,
-                                      ty::expr_ty(bcx_tcx(bcx), rhs), lhs,
-                                      rhs);
+fn trans_binary(cx: &@block_ctxt, dest: &dest, sp: &span, op: ast::binop,
+                lhs: &@ast::expr, rhs: &@ast::expr) -> @block_ctxt {
+    let bcx = cx;
+    alt op {
+      ast::add. {
+        bcx =
+            trans_vec::trans_concat(bcx, dest, sp,
+                                    ty::expr_ty(bcx_tcx(bcx), rhs), lhs, rhs);
       }
-      // TODO: Many more to add here.
     }
+    // TODO: Many more to add here.
     ret bcx;
 }
 
-fn trans_log(&@block_ctxt cx, &span sp, int level, &@ast::expr expr)
-        -> @block_ctxt {
-    fn trans_log_level(&@local_ctxt lcx) -> ValueRef {
-        auto modname = str::connect_ivec(lcx.module_path, "::");
+fn trans_log(cx: &@block_ctxt, sp: &span, level: int, expr: &@ast::expr) ->
+   @block_ctxt {
+    fn trans_log_level(lcx: &@local_ctxt) -> ValueRef {
+        let modname = str::connect_ivec(lcx.module_path, "::");
 
-        if (lcx_ccx(lcx).module_data.contains_key(modname)) {
+        if lcx_ccx(lcx).module_data.contains_key(modname) {
             ret lcx_ccx(lcx).module_data.get(modname);
         }
 
-        auto s =
+        let s =
             link::mangle_internal_name_by_path_and_seq(lcx_ccx(lcx),
                                                        lcx.module_path,
                                                        "loglevel");
-        auto lllevelptr = llvm::LLVMAddGlobal(lcx.ccx.llmod, tc::T_int(),
-                                              str::buf(s));
+        let lllevelptr =
+            llvm::LLVMAddGlobal(lcx.ccx.llmod, tc::T_int(), str::buf(s));
         llvm::LLVMSetGlobalConstant(lllevelptr, LLFalse);
         llvm::LLVMSetInitializer(lllevelptr, tc::C_int(0));
-        llvm::LLVMSetLinkage(lllevelptr, lib::llvm::LLVMInternalLinkage as
-                             llvm::Linkage);
+        llvm::LLVMSetLinkage(lllevelptr,
+                             lib::llvm::LLVMInternalLinkage as llvm::Linkage);
         lcx_ccx(lcx).module_data.insert(modname, lllevelptr);
         ret lllevelptr;
     }
 
     tag upcall_style { us_imm; us_imm_i32_zext; us_alias; us_alias_istr; }
-    fn get_upcall(&@crate_ctxt ccx, &span sp, ty::t t)
-            -> rec(ValueRef val, upcall_style st) {
-        alt (ty::struct(ccx_tcx(ccx), t)) {
-          ty::ty_machine(ast::ty_f32) {
-            ret rec(val=ccx.upcalls.log_float, st=us_imm);
+    fn get_upcall(ccx: &@crate_ctxt, sp: &span, t: ty::t) ->
+       {val: ValueRef, st: upcall_style} {
+        alt ty::struct(ccx_tcx(ccx), t) {
+          ty::ty_machine(ast::ty_f32.) {
+            ret {val: ccx.upcalls.log_float, st: us_imm};
           }
-          ty::ty_machine(ast::ty_f64) | ty::ty_float {
+          ty::ty_machine(ast::ty_f64.) | ty::ty_float. {
             // TODO: We have to spill due to legacy calling conventions that
             // should probably be modernized.
-            ret rec(val=ccx.upcalls.log_double, st=us_alias);
+            ret {val: ccx.upcalls.log_double, st: us_alias};
           }
-          ty::ty_bool | ty::ty_machine(ast::ty_i8) |
-                ty::ty_machine(ast::ty_i16) | ty::ty_machine(ast::ty_u8) |
-                ty::ty_machine(ast::ty_u16) {
-            ret rec(val=ccx.upcalls.log_int, st=us_imm_i32_zext);
+          ty::ty_bool. | ty::ty_machine(ast::ty_i8.) |
+          ty::ty_machine(ast::ty_i16.) | ty::ty_machine(ast::ty_u8.) |
+          ty::ty_machine(ast::ty_u16.) {
+            ret {val: ccx.upcalls.log_int, st: us_imm_i32_zext};
           }
-          ty::ty_int | ty::ty_machine(ast::ty_i32) |
-                ty::ty_machine(ast::ty_u32) {
-            ret rec(val=ccx.upcalls.log_int, st=us_imm);
+          ty::ty_int. | ty::ty_machine(ast::ty_i32.) |
+          ty::ty_machine(ast::ty_u32.) {
+            ret {val: ccx.upcalls.log_int, st: us_imm};
           }
-          ty::ty_istr {
-            ret rec(val=ccx.upcalls.log_istr, st=us_alias_istr);
-          }
+          ty::ty_istr. { ret {val: ccx.upcalls.log_istr, st: us_alias_istr}; }
           _ {
-            ccx.sess.span_unimpl(sp, "logging for values of type " +
-                                 ppaux::ty_to_str(ccx_tcx(ccx), t));
+            ccx.sess.span_unimpl(sp,
+                                 "logging for values of type " +
+                                     ppaux::ty_to_str(ccx_tcx(ccx), t));
           }
         }
     }
 
-    auto bcx = cx;
+    let bcx = cx;
 
-    auto lllevelptr = trans_log_level(bcx_lcx(bcx));
+    let lllevelptr = trans_log_level(bcx_lcx(bcx));
 
-    auto log_bcx = trans::new_scope_block_ctxt(bcx, "log");
-    auto next_bcx = trans::new_scope_block_ctxt(bcx, "next_log");
+    let log_bcx = trans::new_scope_block_ctxt(bcx, "log");
+    let next_bcx = trans::new_scope_block_ctxt(bcx, "next_log");
 
-    auto should_log = bcx.build.ICmp(ll::LLVMIntSGE,
-                                     bcx.build.Load(lllevelptr),
-                                     tc::C_int(level));
+    let should_log =
+        bcx.build.ICmp(ll::LLVMIntSGE, bcx.build.Load(lllevelptr),
+                       tc::C_int(level));
     bcx.build.CondBr(should_log, log_bcx.llbb, next_bcx.llbb);
 
-    auto expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
-    auto r = get_upcall(bcx_ccx(bcx), sp, expr_t);
-    auto llupcall = r.val; auto style = r.st;
+    let expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
+    let r = get_upcall(bcx_ccx(bcx), sp, expr_t);
+    let llupcall = r.val;
+    let style = r.st;
 
-    auto arg_dest;
-    alt (style) {
-      us_imm | us_imm_i32_zext {
+    let arg_dest;
+    alt style {
+      us_imm. | us_imm_i32_zext. {
         arg_dest = dest_imm(bcx_tcx(log_bcx), expr_t);
       }
-      us_alias | us_alias_istr {
+      us_alias. | us_alias_istr. {
         arg_dest = dest_alias(bcx_tcx(log_bcx), expr_t);
       }
     }
     log_bcx = trans_expr(log_bcx, arg_dest, expr);
 
-    auto llarg = dest_llval(arg_dest);
-    alt (style) {
-      us_imm | us_alias { /* no-op */ }
-      us_imm_i32_zext { llarg = log_bcx.build.ZExt(llarg, tc::T_i32()); }
-      us_alias_istr {
-        llarg = log_bcx.build.PointerCast(llarg,
-                                          tc::T_ptr(tc::T_ivec(tc::T_i8())));
+    let llarg = dest_llval(arg_dest);
+    alt style {
+      us_imm. | us_alias. {/* no-op */ }
+      us_imm_i32_zext. { llarg = log_bcx.build.ZExt(llarg, tc::T_i32()); }
+      us_alias_istr. {
+        llarg =
+            log_bcx.build.PointerCast(llarg,
+                                      tc::T_ptr(tc::T_ivec(tc::T_i8())));
       }
     }
 
     log_bcx.build.Call(llupcall,
                        ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llarg]);
 
-    log_bcx = trans::trans_block_cleanups(log_bcx,
-                                          tc::find_scope_cx(log_bcx));
+    log_bcx =
+        trans::trans_block_cleanups(log_bcx, tc::find_scope_cx(log_bcx));
     log_bcx.build.Br(next_bcx.llbb);
     ret next_bcx;
 }
 
-fn trans_path(&@block_ctxt bcx, &dest dest, &ast::path path, ast::node_id id)
-        -> @block_ctxt {
-    alt (bcx_tcx(bcx).def_map.get(id)) {
-      ast::def_local(?def_id) {
-        alt (bcx_fcx(bcx).lllocals.find(def_id.node)) {
-          none { bcx_ccx(bcx).sess.unimpl("upvar in trans_path"); }
-          some(?llptr) {
+fn trans_path(bcx: &@block_ctxt, dest: &dest, path: &ast::path,
+              id: ast::node_id) -> @block_ctxt {
+    alt bcx_tcx(bcx).def_map.get(id) {
+      ast::def_local(def_id) {
+        alt bcx_fcx(bcx).lllocals.find(def_id.node) {
+          none. { bcx_ccx(bcx).sess.unimpl("upvar in trans_path"); }
+          some(llptr) {
             // TODO: Copy hooks.
             store_ptr(bcx, dest, llptr);
           }
@@ -428,42 +438,44 @@ fn trans_path(&@block_ctxt bcx, &dest dest, &ast::path path, ast::node_id id)
     ret bcx;
 }
 
-fn trans_expr(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
-    alt (expr.node) {
-      ast::expr_lit(?lit) { trans_lit(bcx, dest, *lit); ret bcx; }
-      ast::expr_log(?level, ?operand) {
+fn trans_expr(bcx: &@block_ctxt, dest: &dest, expr: &@ast::expr) ->
+   @block_ctxt {
+    alt expr.node {
+      ast::expr_lit(lit) { trans_lit(bcx, dest, *lit); ret bcx; }
+      ast::expr_log(level, operand) {
         ret trans_log(bcx, expr.span, level, operand);
       }
-      ast::expr_binary(?op, ?lhs, ?rhs) {
+      ast::expr_binary(op, lhs, rhs) {
         ret trans_binary(bcx, dest, expr.span, op, lhs, rhs);
       }
-      ast::expr_path(?path) { ret trans_path(bcx, dest, path, expr.id); }
+      ast::expr_path(path) { ret trans_path(bcx, dest, path, expr.id); }
       _ { fail "unhandled expr type in trans_expr"; }
     }
 }
 
-fn trans_recv(&@block_ctxt bcx, &dest dest, &@ast::expr expr) -> @block_ctxt {
-    ret bcx;    // TODO
+fn trans_recv(bcx: &@block_ctxt, dest: &dest, expr: &@ast::expr) ->
+   @block_ctxt {
+    ret bcx; // TODO
 }
 
-fn trans_block(&@block_ctxt cx, &dest dest, &ast::blk blk)
-        -> @block_ctxt {
-    auto bcx = cx;
-    for each (@ast::local local in trans::block_locals(blk)) {
+fn trans_block(cx: &@block_ctxt, dest: &dest, blk: &ast::blk) -> @block_ctxt {
+    let bcx = cx;
+    for each local: @ast::local  in trans::block_locals(blk) {
         bcx = trans::alloc_local(bcx, local).bcx;
     }
 
-    for (@ast::stmt stmt in blk.node.stmts) {
+    for stmt: @ast::stmt  in blk.node.stmts {
         bcx = trans_stmt(bcx, stmt);
+
 
         // If we hit a terminator, control won't go any further so
         // we're in dead-code land. Stop here.
         if trans::is_terminated(bcx) { ret bcx; }
     }
 
-    alt (blk.node.expr) {
-      some(?e) { bcx = trans_expr(bcx, dest, e); }
-      none { /* no-op */ }
+    alt blk.node.expr {
+      some(e) { bcx = trans_expr(bcx, dest, e); }
+      none. {/* no-op */ }
     }
 
     bcx = trans::trans_block_cleanups(bcx, tc::find_scope_cx(bcx));
@@ -480,131 +492,133 @@ fn trans_block(&@block_ctxt cx, &dest dest, &ast::blk blk)
 //
 // If |expand| is true, we never spill to the heap. This should be used
 // whenever the destination size isn't fixed.
-fn trans_lit_str_common(&@crate_ctxt ccx, &str s, bool expand)
-        -> rec(ValueRef stack, option[ValueRef] heap) {
-    auto llstackpart; auto llheappartopt;
+fn trans_lit_str_common(ccx: &@crate_ctxt, s: &str, expand: bool) ->
+   {stack: ValueRef, heap: option[ValueRef]} {
+    let llstackpart;
+    let llheappartopt;
 
-    auto len = str::byte_len(s);
+    let len = str::byte_len(s);
 
-    auto array = ~[];
-    for (u8 ch in s) { array += ~[tc::C_u8(ch as uint)]; }
+    let array = ~[];
+    for ch: u8  in s { array += ~[tc::C_u8(ch as uint)]; }
     array += ~[tc::C_u8(0u)];
 
     if expand {
-        llstackpart = tc::C_struct(~[tc::C_uint(len + 1u),
-                                     tc::C_uint(len + 1u),
-                                     tc::C_array(tc::T_i8(), array)]);
+        llstackpart =
+            tc::C_struct(~[tc::C_uint(len + 1u), tc::C_uint(len + 1u),
+                           tc::C_array(tc::T_i8(), array)]);
         llheappartopt = none;
-    } else if len < abi::ivec_default_length - 1u { // minus one for the null
-        while (ivec::len(array) < abi::ivec_default_length) {
+    } else if (len < abi::ivec_default_length - 1u)
+     { // minus one for the null
+        while ivec::len(array) < abi::ivec_default_length {
             array += ~[tc::C_u8(0u)];
         }
 
-        llstackpart = tc::C_struct(~[tc::C_uint(len + 1u),
-                                     tc::C_uint(abi::ivec_default_length),
-                                     tc::C_array(tc::T_i8(), array)]);
+        llstackpart =
+            tc::C_struct(~[tc::C_uint(len + 1u),
+                           tc::C_uint(abi::ivec_default_length),
+                           tc::C_array(tc::T_i8(), array)]);
         llheappartopt = none;
     } else {
-        auto llheappart = tc::C_struct(~[tc::C_uint(len),
-                                         tc::C_array(tc::T_i8(), array)]);
+        let llheappart =
+            tc::C_struct(~[tc::C_uint(len), tc::C_array(tc::T_i8(), array)]);
         llstackpart =
             tc::C_struct(~[tc::C_uint(0u),
                            tc::C_uint(abi::ivec_default_length),
                            tc::C_null(tc::T_ptr(lltype_of(llheappart)))]);
-        llheappartopt = some(mk_const(ccx, "const_istr_heap", false,
-                                      llheappart));
+        llheappartopt =
+            some(mk_const(ccx, "const_istr_heap", false, llheappart));
     }
 
-    ret rec(stack=mk_const(ccx, "const_istr_stack", false, llstackpart),
-            heap=llheappartopt);
+    ret {stack: mk_const(ccx, "const_istr_stack", false, llstackpart),
+         heap: llheappartopt};
 }
 
 // As above, we don't use destination-passing style here.
-fn trans_lit_common(&@crate_ctxt ccx, &ast::lit lit) -> ValueRef {
-    alt (lit.node) {
-      ast::lit_int(?i) { ret tc::C_int(i); }
-      ast::lit_uint(?u) { ret tc::C_int(u as int); }
-      ast::lit_mach_int(?tm, ?i) {
+fn trans_lit_common(ccx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
+    alt lit.node {
+      ast::lit_int(i) { ret tc::C_int(i); }
+      ast::lit_uint(u) { ret tc::C_int(u as int); }
+      ast::lit_mach_int(tm, i) {
         // FIXME: the entire handling of mach types falls apart
         // if target int width is larger than host, at the moment;
         // re-do the mach-int types using 'big' when that works.
 
-        auto t = tc::T_int();
-        auto s = LLTrue;
-        alt (tm) {
-          ast::ty_u8 { t = tc::T_i8(); s = LLFalse; }
-          ast::ty_u16 { t = tc::T_i16(); s = LLFalse; }
-          ast::ty_u32 { t = tc::T_i32(); s = LLFalse; }
-          ast::ty_u64 { t = tc::T_i64(); s = LLFalse; }
-          ast::ty_i8 { t = tc::T_i8(); }
-          ast::ty_i16 { t = tc::T_i16(); }
-          ast::ty_i32 { t = tc::T_i32(); }
-          ast::ty_i64 { t = tc::T_i64(); }
+        let t = tc::T_int();
+        let s = LLTrue;
+        alt tm {
+          ast::ty_u8. { t = tc::T_i8(); s = LLFalse; }
+          ast::ty_u16. { t = tc::T_i16(); s = LLFalse; }
+          ast::ty_u32. { t = tc::T_i32(); s = LLFalse; }
+          ast::ty_u64. { t = tc::T_i64(); s = LLFalse; }
+          ast::ty_i8. { t = tc::T_i8(); }
+          ast::ty_i16. { t = tc::T_i16(); }
+          ast::ty_i32. { t = tc::T_i32(); }
+          ast::ty_i64. { t = tc::T_i64(); }
         }
         ret tc::C_integral(t, i as uint, s);
       }
-      ast::lit_float(?fs) { ret tc::C_float(fs); }
-      ast::lit_mach_float(?tm, ?s) {
-        auto t = tc::T_float();
-        alt (tm) {
-          ast::ty_f32 { t = tc::T_f32(); }
-          ast::ty_f64 { t = tc::T_f64(); }
+      ast::lit_float(fs) { ret tc::C_float(fs); }
+      ast::lit_mach_float(tm, s) {
+        let t = tc::T_float();
+        alt tm {
+          ast::ty_f32. { t = tc::T_f32(); }
+          ast::ty_f64. { t = tc::T_f64(); }
         }
         ret tc::C_floating(s, t);
       }
-      ast::lit_char(?c) {
+      ast::lit_char(c) {
         ret tc::C_integral(tc::T_char(), c as uint, LLFalse);
       }
-      ast::lit_bool(?b) { ret tc::C_bool(b); }
-      ast::lit_nil { ret tc::C_nil(); }
-      ast::lit_str(?s, ast::sk_rc) { ret tc::C_str(ccx, s); }
-      ast::lit_str(?s, ast::sk_unique) {
+      ast::lit_bool(b) { ret tc::C_bool(b); }
+      ast::lit_nil. { ret tc::C_nil(); }
+      ast::lit_str(s, ast::sk_rc.) { ret tc::C_str(ccx, s); }
+      ast::lit_str(s, ast::sk_unique.) {
         fail "unique str in trans_lit_common";
       }
     }
 }
 
-fn trans_init_local(&@block_ctxt bcx, &@ast::local local) -> @block_ctxt {
-    auto llptr = bcx_fcx(bcx).lllocals.get(local.node.id);
+fn trans_init_local(bcx: &@block_ctxt, local: &@ast::local) -> @block_ctxt {
+    let llptr = bcx_fcx(bcx).lllocals.get(local.node.id);
 
-    auto t = type_of_node(bcx_ccx(bcx), local.node.id);
+    let t = type_of_node(bcx_ccx(bcx), local.node.id);
     tc::add_clean(bcx, llptr, t);
 
-    alt (local.node.init) {
-      some(?init) {
-        alt (init.op) {
-          ast::init_assign {
+
+    alt local.node.init {
+      some(init) {
+        alt init.op {
+          ast::init_assign. {
             ret trans_expr(bcx, dest_copy(bcx_tcx(bcx), llptr, t), init.expr);
           }
-          ast::init_move {
+          ast::init_move. {
             ret trans_expr(bcx, dest_move(bcx_tcx(bcx), llptr, t), init.expr);
           }
-          ast::init_recv {
+          ast::init_recv. {
             ret trans_recv(bcx, dest_copy(bcx_tcx(bcx), llptr, t), init.expr);
           }
         }
       }
-      none { ret bcx; }
+      none. { ret bcx; }
     }
 }
 
-fn trans_stmt(&@block_ctxt cx, &@ast::stmt stmt) -> @block_ctxt {
-    auto bcx = cx;
-    alt (stmt.node) {
-      ast::stmt_expr(?e, _) {
-        auto tmp = dest_alias(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
+fn trans_stmt(cx: &@block_ctxt, stmt: &@ast::stmt) -> @block_ctxt {
+    let bcx = cx;
+    alt stmt.node {
+      ast::stmt_expr(e, _) {
+        let tmp = dest_alias(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
         ret trans_expr(bcx, tmp, e);
       }
-      ast::stmt_decl(?d, _) {
-        alt (d.node) {
-          ast::decl_local(?locals) {
-            for (@ast::local local in locals) {
+      ast::stmt_decl(d, _) {
+        alt d.node {
+          ast::decl_local(locals) {
+            for local: @ast::local  in locals {
                 bcx = trans_init_local(bcx, local);
             }
           }
-          ast::decl_item(?item) {
-            trans::trans_item(bcx_lcx(bcx), *item);
-          }
+          ast::decl_item(item) { trans::trans_item(bcx_lcx(bcx), *item); }
         }
         ret bcx;
       }

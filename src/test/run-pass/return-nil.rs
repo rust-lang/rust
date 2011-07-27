@@ -1,5 +1,5 @@
 
 
-fn f() { let () x = (); ret x; }
+fn f() { let x: () = (); ret x; }
 
-fn main() { auto x = f(); }
+fn main() { let x = f(); }

@@ -1,5 +1,2 @@
 // error-pattern: assignment to immutable field
-fn main() {
-  let rec(int x) r = rec(x=1);
-  r.x = 6;
-}
+fn main() { let r: {x: int} = {x: 1}; r.x = 6; }

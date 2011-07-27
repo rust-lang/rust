@@ -5,7 +5,7 @@
 fn f() -> int { ret 42; }
 
 fn main() {
-    let fn() -> int  g = bind f();
-    let int i = g();
+    let g: fn() -> int  = bind f();
+    let i: int = g();
     assert (i == 42);
 }

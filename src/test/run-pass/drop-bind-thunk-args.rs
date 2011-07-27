@@ -1,5 +1,5 @@
 
 
-fn f(@int x) { }
+fn f(x: @int) { }
 
-fn main() { auto x = @10; auto ff = bind f(_); ff(x); ff(x); }
+fn main() { let x = @10; let ff = bind f(_); ff(x); ff(x); }

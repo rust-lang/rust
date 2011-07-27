@@ -1,17 +1,8 @@
 // error-pattern:invalidate alias i
 
-tag foo {
-    left(int);
-    right(bool);
-}
+tag foo { left(int); right(bool); }
 
 fn main() {
-    auto x = left(10);
-    alt (x) {
-        case (left(?i)) {
-            x = right(false);
-            log i;
-        }
-        case (_) {}
-    }
+    let x = left(10);
+    alt x { left(i) { x = right(false); log i; } _ { } }
 }

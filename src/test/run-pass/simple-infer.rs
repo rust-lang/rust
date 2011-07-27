@@ -1,3 +1,3 @@
 
 
-fn main() { auto n; n = 1; log n; }
+fn main() { let n; n = 1; log n; }

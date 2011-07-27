@@ -1,5 +1,5 @@
 
 
-fn altsimple(int f) { alt (f) { case (?x) { } } }
+fn altsimple(f: int) { alt f { x { } } }
 
 fn main() { }

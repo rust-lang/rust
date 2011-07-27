@@ -4,21 +4,21 @@ fn ret_int_i() -> int { ret 10; }
 
 fn ret_ext_i() -> @int { ret @10; }
 
-fn ret_int_rec() -> rec(int a, int b) { ret rec(a=10, b=10); }
+fn ret_int_rec() -> {a: int, b: int} { ret {a: 10, b: 10}; }
 
-fn ret_ext_rec() -> @rec(int a, int b) { ret @rec(a=10, b=10); }
+fn ret_ext_rec() -> @{a: int, b: int} { ret @{a: 10, b: 10}; }
 
-fn ret_ext_mem() -> rec(@int a, @int b) { ret rec(a=@10, b=@10); }
+fn ret_ext_mem() -> {a: @int, b: @int} { ret {a: @10, b: @10}; }
 
-fn ret_ext_ext_mem() -> @rec(@int a, @int b) { ret @rec(a=@10, b=@10); }
+fn ret_ext_ext_mem() -> @{a: @int, b: @int} { ret @{a: @10, b: @10}; }
 
 fn main() {
-    let int int_i;
-    let @int ext_i;
-    let rec(int a, int b) int_rec;
-    let @rec(int a, int b) ext_rec;
-    let rec(@int a, @int b) ext_mem;
-    let @rec(@int a, @int b) ext_ext_mem;
+    let int_i: int;
+    let ext_i: @int;
+    let int_rec: {a: int, b: int};
+    let ext_rec: @{a: int, b: int};
+    let ext_mem: {a: @int, b: @int};
+    let ext_ext_mem: @{a: @int, b: @int};
     int_i = ret_int_i(); // initializing
 
     int_i = ret_int_i(); // non-initializing

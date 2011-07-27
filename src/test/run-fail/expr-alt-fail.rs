@@ -2,4 +2,4 @@
 
 
 // error-pattern:explicit failure
-fn main() { auto x = alt (true) { case (false) { 0 } case (true) { fail } }; }
+fn main() { let x = alt true { false { 0 } true { fail } }; }

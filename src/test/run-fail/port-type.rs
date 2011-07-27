@@ -1,16 +1,14 @@
 // xfail-stage0
 // error-pattern:meep
-fn echo[T](chan[T] c, chan[chan[T]] oc) {
-  // Tests that the type argument in port gets
-  // visited
-        auto p = port[T]();
-        oc <| chan(p);
+fn echo[T](c: chan[T], oc: chan[chan[T]]) {
+    // Tests that the type argument in port gets
+    // visited
+    let p = port[T]();
+    oc <| chan(p);
 
-        auto x;
-        p |> x;
-        c <| x;
+    let x;
+    p |> x;
+    c <| x;
 }
 
-fn main() {
-  fail "meep";
-}
+fn main() { fail "meep"; }

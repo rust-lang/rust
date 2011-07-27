@@ -1,15 +1,13 @@
 
 
-obj handle[T](T data) {
+obj handle[T](data: T) {
     fn get() -> T { ret data; }
 }
 
 fn main() {
-    type rgb = rec(u8 x, u8 y, u8 z);
+    type rgb = {x: u8, y: u8, z: u8};
 
-    let handle[rgb] h = handle[rgb](rec(x=1 as u8,
-                                        y=2 as u8,
-                                        z=3 as u8));
+    let h: handle[rgb] = handle[rgb]({x: 1 as u8, y: 2 as u8, z: 3 as u8});
     log "constructed object";
     log h.get().x;
     log h.get().y;

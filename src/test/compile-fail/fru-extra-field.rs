@@ -2,10 +2,10 @@
 
 // error-pattern: record
 
-type point = rec(int x, int y);
+type point = {x: int, y: int};
 
 fn main() {
-  let point origin = rec(x=0, y=0);
+    let origin: point = {x: 0, y: 0};
 
-  let point origin3d = rec(z=0 with origin);
+    let origin3d: point = {z: 0 with origin};
 }

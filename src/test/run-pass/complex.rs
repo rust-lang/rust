@@ -6,23 +6,23 @@ type t = int;
 
 fn nothing() { }
 
-fn putstr(str s) { }
+fn putstr(s: str) { }
 
-fn putint(int i) {
-    let int i = 33;
-    while (i < 36) { putstr("hi"); i = i + 1; }
+fn putint(i: int) {
+    let i: int = 33;
+    while i < 36 { putstr("hi"); i = i + 1; }
 }
 
-fn zerg(int i) -> int { ret i; }
+fn zerg(i: int) -> int { ret i; }
 
-fn foo(int x) -> int {
-    let t y = x + 2;
+fn foo(x: int) -> int {
+    let y: t = x + 2;
     putstr("hello");
-    while (y < 10) { putint(y); if (y * 3 == 4) { y = y + 2; nothing(); } }
-    let t z;
+    while y < 10 { putint(y); if y * 3 == 4 { y = y + 2; nothing(); } }
+    let z: t;
     z = 0x55;
     foo(z);
     ret 0;
 }
 
-fn main() { let int x = 2 + 2; log x; log "hello, world"; log 10; }
+fn main() { let x: int = 2 + 2; log x; log "hello, world"; log 10; }

@@ -1,6 +1,4 @@
 // error-pattern: unresolved modulename
 import main::bar;
 
-fn main(vec[str] args) {
-  log "foo";
-}
+fn main(args: vec[str]) { log "foo"; }

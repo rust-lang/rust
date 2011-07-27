@@ -1,5 +1,5 @@
 
 
-fn leaky[T](&T t) { }
+fn leaky[T](t: &T) { }
 
-fn main() { auto x = @10; leaky[@int](x); }
+fn main() { let x = @10; leaky[@int](x); }

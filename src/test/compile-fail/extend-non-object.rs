@@ -2,12 +2,12 @@
 use std;
 
 fn main() {
-    auto x = 3;
+    let x = 3;
 
-    auto anon_obj = obj {
-        fn foo() -> int {
-            ret 3;
-        }
-        with x
-    };
+    let anon_obj =
+        obj () {
+            fn foo() -> int { ret 3; }
+            with
+            x
+        };
 }

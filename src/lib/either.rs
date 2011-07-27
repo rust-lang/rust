@@ -8,47 +8,34 @@ tag t[T, U] { left(T); right(U); }
 type operator[T, U] = fn(&T) -> U ;
 
 fn either[T, U,
-          V](&operator[T, V] f_left, &operator[U, V] f_right, &t[T, U] value)
-   -> V {
-    alt (value) {
-        case (left(?l)) { f_left(l) }
-        case (right(?r)) { f_right(r) }
-    }
+          V](f_left: &operator[T, V], f_right: &operator[U, V],
+             value: &t[T, U]) -> V {
+    alt value { left(l) { f_left(l) } right(r) { f_right(r) } }
 }
 
-fn lefts[T, U](&(t[T, U])[] eithers) -> T[] {
-    let T[] result = ~[];
-    for (t[T, U] elt in eithers) {
-        alt (elt) {
-            case (left(?l)) { result += ~[l] }
-            case (_) {/* fallthrough */ }
-        }
+fn lefts[T, U](eithers: &(t[T, U])[]) -> T[] {
+    let result: T[] = ~[];
+    for elt: t[T, U]  in eithers {
+        alt elt { left(l) { result += ~[l] } _ {/* fallthrough */ } }
     }
     ret result;
 }
 
-fn rights[T, U](&(t[T, U])[] eithers) -> U[] {
-    let U[] result = ~[];
-    for (t[T, U] elt in eithers) {
-        alt (elt) {
-            case (right(?r)) { result += ~[r] }
-            case (_) {/* fallthrough */ }
-        }
+fn rights[T, U](eithers: &(t[T, U])[]) -> U[] {
+    let result: U[] = ~[];
+    for elt: t[T, U]  in eithers {
+        alt elt { right(r) { result += ~[r] } _ {/* fallthrough */ } }
     }
     ret result;
 }
 
-fn partition[T, U](&(t[T, U])[] eithers)
-    -> rec(T[] lefts, U[] rights) {
-    let T[] lefts = ~[];
-    let U[] rights = ~[];
-    for (t[T, U] elt in eithers) {
-        alt (elt) {
-            case (left(?l)) { lefts += ~[l] }
-            case (right(?r)) { rights += ~[r] }
-        }
+fn partition[T, U](eithers: &(t[T, U])[]) -> {lefts: T[], rights: U[]} {
+    let lefts: T[] = ~[];
+    let rights: U[] = ~[];
+    for elt: t[T, U]  in eithers {
+        alt elt { left(l) { lefts += ~[l] } right(r) { rights += ~[r] } }
     }
-    ret rec(lefts=lefts, rights=rights);
+    ret {lefts: lefts, rights: rights};
 }
 //
 // Local Variables:

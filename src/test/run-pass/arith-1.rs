@@ -1,7 +1,7 @@
 
 
 fn main() {
-    let int i32_a = 10;
+    let i32_a: int = 10;
     assert (i32_a == 10);
     assert (i32_a - 10 == 0);
     assert (i32_a / 10 == 1);
@@ -13,7 +13,7 @@ fn main() {
     assert (i32_a * i32_a * i32_a * i32_a == 10000);
     assert (i32_a * i32_a / i32_a * i32_a == 100);
     assert (i32_a * (i32_a - 1) << 2 + i32_a == 368640);
-    let int i32_b = 0x10101010;
+    let i32_b: int = 0x10101010;
     assert (i32_b + 1 - 1 == i32_b);
     assert (i32_b << 1 == i32_b << 1);
     assert (i32_b >> 1 == i32_b >> 1);

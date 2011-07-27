@@ -2,7 +2,7 @@
 use std;
 import std::str;
 
-fn test(str actual, str expected) {
+fn test(actual: str, expected: str) {
     log actual;
     log expected;
     assert (str::eq(actual, expected));
@@ -183,7 +183,7 @@ fn part5() {
     test(#fmt("%-05c", 'A'), "A    ");
     test(#fmt("%-05b", true), "true ");
 }
-fn part6(){
+fn part6() {
     // Precision overrides 0-padding
 
     test(#fmt("%06.5d", 0), " 00000");

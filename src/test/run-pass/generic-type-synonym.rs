@@ -1,9 +1,9 @@
 
 
-type foo[T] = rec(T a);
+type foo[T] = {a: T};
 
 type bar[T] = foo[T];
 
-fn takebar[T](&bar[T] b) { }
+fn takebar[T](b: &bar[T]) { }
 
 fn main() { }

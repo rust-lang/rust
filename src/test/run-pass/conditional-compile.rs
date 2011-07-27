@@ -1,19 +1,18 @@
 // xfail-stage0
 
 #[cfg(bogus)]
-const bool b = false;
+const b: bool = false;
 
-const bool b = true;
+const b: bool = true;
 
 #[cfg(bogus)]
 native "rust" mod rustrt {
-  // This symbol doesn't exist and would be a link error if this
-  // module was translated
-  fn bogus();
+    // This symbol doesn't exist and would be a link error if this
+    // module was translated
+    fn bogus();
 }
 
-native "rust" mod rustrt {
-}
+native "rust" mod rustrt { }
 
 #[cfg(bogus)]
 type t = int;
@@ -21,42 +20,37 @@ type t = int;
 type t = bool;
 
 #[cfg(bogus)]
-tag tg {
-  foo;
-}
+tag tg { foo; }
 
-tag tg {
-  bar;
-}
+tag tg { bar; }
 
 #[cfg(bogus)]
 obj o() {
-  fn f() { ret bogus; }
+    fn f() { ret bogus; }
 }
 
-obj o() {
-}
+obj o() { }
 
 #[cfg(bogus)]
-resource r(int i) {}
+resource r(i: int) { }
 
-resource r(int i) {}
+resource r(i: int) { }
 
 #[cfg(bogus)]
 mod m {
-  // This needs to parse but would fail in typeck. Since it's not in
-  // the current config it should not be typechecked.
-  fn bogus() { ret 0; }
+    // This needs to parse but would fail in typeck. Since it's not in
+    // the current config it should not be typechecked.
+    fn bogus() { ret 0; }
 }
 
 mod m {
 
-  // Submodules have slightly different code paths than the top-level
-  // module, so let's make sure this jazz works here as well
-  #[cfg(bogus)]
-  fn f() {}
+    // Submodules have slightly different code paths than the top-level
+    // module, so let's make sure this jazz works here as well
+    #[cfg(bogus)]
+    fn f() { }
 
-  fn f() {}
+    fn f() { }
 }
 
 // Since the bogus configuration isn't defined main will just be
@@ -65,31 +59,31 @@ mod m {
 fn main() { fail }
 
 fn main() {
-  // Exercise some of the configured items in ways that wouldn't be possible
-  // if they had the bogus definition
-  assert b;
-  let t x = true;
-  let tg y = bar;
+    // Exercise some of the configured items in ways that wouldn't be possible
+    // if they had the bogus definition
+    assert (b);
+    let x: t = true;
+    let y: tg = bar;
 
-  test_in_fn_ctxt();
+    test_in_fn_ctxt();
 }
 
 fn test_in_fn_ctxt() {
-  #[cfg(bogus)]
-  fn f() { fail }
-  fn f() {}
-  f();
+    #[cfg(bogus)]
+    fn f() { fail }
+    fn f() { }
+    f();
 
-  #[cfg(bogus)]
-  const int i = 0;
-  const int i = 1;
-  assert i == 1;
+    #[cfg(bogus)]
+    const i: int = 0;
+    const i: int = 1;
+    assert (i == 1);
 }
 
 mod test_native_items {
-  native "rust" mod rustrt {
-    #[cfg(bogus)]
-    fn str_vec(str s) -> vec[u8];
-    fn str_vec(str s) -> vec[u8];
-  }
+    native "rust" mod rustrt {
+        #[cfg(bogus)]
+        fn str_vec(s: str) -> vec[u8];
+        fn str_vec(s: str) -> vec[u8];
+    }
 }

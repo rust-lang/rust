@@ -1,7 +1,3 @@
 // error-pattern: precondition constraint
 
-fn main() {
-  let bool x;
-  while(x) {
-  }
-}
+fn main() { let x: bool; while x { } }

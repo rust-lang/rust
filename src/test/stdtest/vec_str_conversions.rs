@@ -7,7 +7,7 @@ import std::vec;
 
 #[test]
 fn test_simple() {
-    let str s1 = "All mimsy were the borogoves";
+    let s1: str = "All mimsy were the borogoves";
     /*
      * FIXME from_bytes(vec[u8] v) has constraint is_utf(v), which is
      * unimplemented and thereby just fails.  This doesn't stop us from
@@ -15,15 +15,15 @@ fn test_simple() {
      * working, but we should implement is_utf8 before that happens.
      */
 
-    let vec[u8] v = str::bytes(s1);
-    let str s2 = str::from_bytes(v);
-    let uint i = 0u;
-    let uint n1 = str::byte_len(s1);
-    let uint n2 = vec::len[u8](v);
+    let v: vec[u8] = str::bytes(s1);
+    let s2: str = str::from_bytes(v);
+    let i: uint = 0u;
+    let n1: uint = str::byte_len(s1);
+    let n2: uint = vec::len[u8](v);
     assert (n1 == n2);
-    while (i < n1) {
-        let u8 a = s1.(i);
-        let u8 b = s2.(i);
+    while i < n1 {
+        let a: u8 = s1.(i);
+        let b: u8 = s2.(i);
         log a;
         log b;
         assert (a == b);

@@ -5,6 +5,6 @@
 use std;
 
 fn main() {
-    let int i = 0;
-    while (i < 100) { i = i + 1; log_err i; std::task::yield(); }
+    let i: int = 0;
+    while i < 100 { i = i + 1; log_err i; std::task::yield(); }
 }

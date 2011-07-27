@@ -24,168 +24,168 @@ export eq_vec;
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
 
-type t = @rec(uint[mutable] storage, uint nbits);
+type t = @{storage: uint[mutable ], nbits: uint};
 
 
 // FIXME: this should be a constant once they work
 fn uint_bits() -> uint { ret 32u + (1u << 32u >> 27u); }
 
-fn create(uint nbits, bool init) -> t {
-    auto elt = if (init) { !0u } else { 0u };
-    auto storage = ivec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
-    ret @rec(storage=storage, nbits=nbits);
+fn create(nbits: uint, init: bool) -> t {
+    let elt = if init { !0u } else { 0u };
+    let storage = ivec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
+    ret @{storage: storage, nbits: nbits};
 }
 
-fn process(&fn(uint, uint) -> uint  op, &t v0, &t v1) -> bool {
-    auto len = ivec::len(v1.storage);
+fn process(op: &fn(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
+    let len = ivec::len(v1.storage);
     assert (ivec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
-    auto changed = false;
-    for each (uint i in uint::range(0u, len)) {
-        auto w0 = v0.storage.(i);
-        auto w1 = v1.storage.(i);
-        auto w = op(w0, w1);
-        if (w0 != w) { changed = true; v0.storage.(i) = w; }
+    let changed = false;
+    for each i: uint  in uint::range(0u, len) {
+        let w0 = v0.storage.(i);
+        let w1 = v1.storage.(i);
+        let w = op(w0, w1);
+        if w0 != w { changed = true; v0.storage.(i) = w; }
     }
     ret changed;
 }
 
-fn lor(uint w0, uint w1) -> uint { ret w0 | w1; }
+fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
 
-fn union(&t v0, &t v1) -> bool { auto sub = lor; ret process(sub, v0, v1); }
+fn union(v0: &t, v1: &t) -> bool { let sub = lor; ret process(sub, v0, v1); }
 
-fn land(uint w0, uint w1) -> uint { ret w0 & w1; }
+fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
-fn intersect(&t v0, &t v1) -> bool {
-    auto sub = land;
+fn intersect(v0: &t, v1: &t) -> bool {
+    let sub = land;
     ret process(sub, v0, v1);
 }
 
-fn right(uint w0, uint w1) -> uint { ret w1; }
+fn right(w0: uint, w1: uint) -> uint { ret w1; }
 
-fn copy(&t v0, t v1) -> bool { auto sub = right; ret process(sub, v0, v1); }
+fn copy(v0: &t, v1: t) -> bool { let sub = right; ret process(sub, v0, v1); }
 
-fn clone(t v) -> t {
-    auto storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
-    auto len = ivec::len(v.storage);
-    for each (uint i in uint::range(0u, len)) { storage.(i) = v.storage.(i); }
-    ret @rec(storage=storage, nbits=v.nbits);
+fn clone(v: t) -> t {
+    let storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
+    let len = ivec::len(v.storage);
+    for each i: uint  in uint::range(0u, len) { storage.(i) = v.storage.(i); }
+    ret @{storage: storage, nbits: v.nbits};
 }
 
-fn get(&t v, uint i) -> bool {
+fn get(v: &t, i: uint) -> bool {
     assert (i < v.nbits);
-    auto bits = uint_bits();
-    auto w = i / bits;
-    auto b = i % bits;
-    auto x = 1u & v.storage.(w) >> b;
+    let bits = uint_bits();
+    let w = i / bits;
+    let b = i % bits;
+    let x = 1u & v.storage.(w) >> b;
     ret x == 1u;
 }
 
-fn equal(&t v0, &t v1) -> bool {
+fn equal(v0: &t, v1: &t) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
 
-    auto len = ivec::len(v1.storage);
-    auto i = 0u;
-    while (i < len) {
-        if (v0.storage.(i) != v1.storage.(i)) { ret false; }
+    let len = ivec::len(v1.storage);
+    let i = 0u;
+    while i < len {
+        if v0.storage.(i) != v1.storage.(i) { ret false; }
         i = i + 1u;
     }
     ret true;
 }
 
-fn clear(&t v) {
-    for each (uint i in uint::range(0u, ivec::len(v.storage))) {
+fn clear(v: &t) {
+    for each i: uint  in uint::range(0u, ivec::len(v.storage)) {
         v.storage.(i) = 0u;
     }
 }
 
-fn set_all(&t v) {
-    for each (uint i in uint::range(0u, v.nbits)) { set(v, i, true); }
+fn set_all(v: &t) {
+    for each i: uint  in uint::range(0u, v.nbits) { set(v, i, true); }
 }
 
-fn invert(&t v) {
-    for each (uint i in uint::range(0u, ivec::len(v.storage))) {
+fn invert(v: &t) {
+    for each i: uint  in uint::range(0u, ivec::len(v.storage)) {
         v.storage.(i) = !v.storage.(i);
     }
 }
 
 
 /* v0 = v0 - v1 */
-fn difference(&t v0, &t v1) -> bool {
+fn difference(v0: &t, v1: &t) -> bool {
     invert(v1);
-    auto b = intersect(v0, v1);
+    let b = intersect(v0, v1);
     invert(v1);
     ret b;
 }
 
-fn set(&t v, uint i, bool x) {
+fn set(v: &t, i: uint, x: bool) {
     assert (i < v.nbits);
-    auto bits = uint_bits();
-    auto w = i / bits;
-    auto b = i % bits;
-    auto flag = 1u << b;
+    let bits = uint_bits();
+    let w = i / bits;
+    let b = i % bits;
+    let flag = 1u << b;
     v.storage.(w) =
-        if (x) { v.storage.(w) | flag } else { v.storage.(w) & !flag };
+        if x { v.storage.(w) | flag } else { v.storage.(w) & !flag };
 }
 
 
 /* true if all bits are 1 */
-fn is_true(&t v) -> bool {
-    for (uint i in to_ivec(v)) { if (i != 1u) { ret false; } }
+fn is_true(v: &t) -> bool {
+    for i: uint  in to_ivec(v) { if i != 1u { ret false; } }
     ret true;
 }
 
 
 /* true if all bits are non-1 */
-fn is_false(&t v) -> bool {
-    for (uint i in to_ivec(v)) { if (i == 1u) { ret false; } }
+fn is_false(v: &t) -> bool {
+    for i: uint  in to_ivec(v) { if i == 1u { ret false; } }
     ret true;
 }
 
-fn init_to_vec(t v, uint i) -> uint { ret if (get(v, i)) { 1u } else { 0u }; }
+fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
 
-fn to_vec(&t v) -> vec[uint] {
-    auto sub = bind init_to_vec(v, _);
+fn to_vec(v: &t) -> vec[uint] {
+    let sub = bind init_to_vec(v, _);
     ret vec::init_fn[uint](sub, v.nbits);
 }
 
-fn to_ivec(&t v) -> uint[] {
-    auto sub = bind init_to_vec(v, _);
+fn to_ivec(v: &t) -> uint[] {
+    let sub = bind init_to_vec(v, _);
     ret ivec::init_fn[uint](sub, v.nbits);
 }
 
-fn to_str(&t v) -> str {
-    auto rs = "";
-    for (uint i in bitv::to_vec(v)) {
-        if (i == 1u) { rs += "1"; } else { rs += "0"; }
+fn to_str(v: &t) -> str {
+    let rs = "";
+    for i: uint  in bitv::to_vec(v) {
+        if i == 1u { rs += "1"; } else { rs += "0"; }
     }
     ret rs;
 }
 
 
 // FIXME: can we just use structural equality on to_vec?
-fn eq_vec(&t v0, &vec[uint] v1) -> bool {
+fn eq_vec(v0: &t, v1: &vec[uint]) -> bool {
     assert (v0.nbits == vec::len[uint](v1));
-    auto len = v0.nbits;
-    auto i = 0u;
-    while (i < len) {
-        auto w0 = get(v0, i);
-        auto w1 = v1.(i);
-        if (!w0 && w1 != 0u || w0 && w1 == 0u) { ret false; }
+    let len = v0.nbits;
+    let i = 0u;
+    while i < len {
+        let w0 = get(v0, i);
+        let w1 = v1.(i);
+        if !w0 && w1 != 0u || w0 && w1 == 0u { ret false; }
         i = i + 1u;
     }
     ret true;
 }
 
-fn eq_ivec(&t v0, &uint[] v1) -> bool {
+fn eq_ivec(v0: &t, v1: &uint[]) -> bool {
     assert (v0.nbits == ivec::len[uint](v1));
-    auto len = v0.nbits;
-    auto i = 0u;
-    while (i < len) {
-        auto w0 = get(v0, i);
-        auto w1 = v1.(i);
-        if (!w0 && w1 != 0u || w0 && w1 == 0u) { ret false; }
+    let len = v0.nbits;
+    let i = 0u;
+    while i < len {
+        let w0 = get(v0, i);
+        let w1 = v1.(i);
+        if !w0 && w1 != 0u || w0 && w1 == 0u { ret false; }
         i = i + 1u;
     }
     ret true;

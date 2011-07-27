@@ -28,21 +28,18 @@ export to_str;
  have the same length; 11 should never appear in a given position)
 */
 
-type t = rec(bitv::t uncertain, bitv::t val, uint nbits);
-tag trit {
-    ttrue;
-    tfalse;
-    dont_care;
-}
+type t = {uncertain: bitv::t, val: bitv::t, nbits: uint};
+tag trit { ttrue; tfalse; dont_care; }
 
-fn create_tritv(uint len) -> t {
-  ret rec(uncertain=bitv::create(len, true),
-          val=bitv::create(len, false),
-          nbits=len);
+fn create_tritv(len: uint) -> t {
+    ret {uncertain: bitv::create(len, true),
+         val: bitv::create(len, false),
+         nbits: len};
 }
 
 
-fn trit_minus(trit a, trit b) -> trit {
+fn trit_minus(a: trit, b: trit) -> trit {
+
     /*   2 - anything = 2
          1 - 1 = 2
          1 - 0 is an error
@@ -50,36 +47,45 @@ fn trit_minus(trit a, trit b) -> trit {
          0 - 1 is an error
          0 - anything else - 0
      */
-  alt (a) {
-    case (dont_care) { dont_care }
-    case (ttrue) {
-      alt (b) {
-        case (ttrue)     { dont_care }
-        case (tfalse)    { ttrue } /* internally contradictory, but
-                                      I guess it'll get flagged? */
-        case (dont_care) { ttrue }
+    alt a {
+      dont_care. { dont_care }
+      ttrue. {
+        alt b {
+          ttrue. { dont_care }
+          tfalse. { ttrue }
+           /* internally contradictory, but
+              I guess it'll get flagged? */
+           dont_care. {
+            ttrue
+          }
+        }
+      }
+      tfalse. {
+        alt b {
+          ttrue. { tfalse }
+           /* see above comment */
+          _ {
+            tfalse
+          }
+        }
       }
     }
-    case (tfalse) {
-      alt (b) {
-        case (ttrue) { tfalse } /* see above comment */
-        case (_)     { tfalse }
-      }
-    }
-  }
 }
 
-fn trit_or(trit a, trit b) -> trit {
-  alt (a) {
-    case (dont_care) { b }
-    case (ttrue)     { ttrue }
-    case (tfalse)    {
-      alt (b) {
-        case (ttrue)  { dont_care } /* FIXME: ?????? */
-        case (_)      { tfalse }
+fn trit_or(a: trit, b: trit) -> trit {
+    alt a {
+      dont_care. { b }
+      ttrue. { ttrue }
+      tfalse. {
+        alt b {
+          ttrue. { dont_care }
+           /* FIXME: ?????? */
+          _ {
+            tfalse
+          }
+        }
       }
     }
-  }
 }
 
 // FIXME: This still seems kind of dodgy to me (that is,
@@ -87,170 +93,174 @@ fn trit_or(trit a, trit b) -> trit {
 // all variables start out in a 0 state. Probably I need
 // to make it so that all constraints start out in a 0 state
 // (we consider a constraint false until proven true), too.
-fn trit_and(trit a, trit b) -> trit {
-  alt (a) {
-      case (dont_care) { b }  // also seems wrong for case b = ttrue
-      case (ttrue)     {
-          alt (b) {
-              case (dont_care) { ttrue } // ??? Seems wrong
-              case (ttrue)     { ttrue }
-              // false wins, since if something is uninit
-              // on one path, we care
-              // (Rationale: it's always safe to assume that
-         // a var is uninitialized or that a constraint
-         // needs to be re-established)
-              case (tfalse)    { tfalse }
+fn trit_and(a: trit, b: trit) -> trit {
+    alt a {
+      dont_care. { b }
+       // also seems wrong for case b = ttrue
+      ttrue. {
+        alt b {
+          dont_care. { ttrue }
+           // ??? Seems wrong
+          ttrue. {
+            ttrue
           }
+
+          // false wins, since if something is uninit
+          // on one path, we care
+          // (Rationale: it's always safe to assume that
+          // a var is uninitialized or that a constraint
+          // needs to be re-established)
+          tfalse. {
+            tfalse
+          }
+        }
       }
+
       // Rationale: if it's uninit on one path,
       // we can consider it as uninit on all paths
-    case (tfalse) { tfalse }
-  }
-  // if the result is dont_care, that means
-  // a and b were both dont_care
+      tfalse. {
+        tfalse
+      }
+    }
+    // if the result is dont_care, that means
+    // a and b were both dont_care
 }
 
-fn change(bool changed, trit old, trit new) -> bool { changed || new != old }
+fn change(changed: bool, old: trit, new: trit) -> bool {
+    changed || new != old
+}
 
-fn tritv_difference(&t p1, &t p2) -> bool {
-    let uint i = 0u;
+fn tritv_difference(p1: &t, p2: &t) -> bool {
+    let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
-    let uint sz = p1.nbits;
-    auto changed = false;
-    while (i < sz) {
-      auto old = tritv_get(p1, i);
-      auto new = trit_minus(old, tritv_get(p2, i));
-      changed = change(changed, old, new);
-      tritv_set(i, p1, new);
-      i += 1u;
+    let sz: uint = p1.nbits;
+    let changed = false;
+    while i < sz {
+        let old = tritv_get(p1, i);
+        let new = trit_minus(old, tritv_get(p2, i));
+        changed = change(changed, old, new);
+        tritv_set(i, p1, new);
+        i += 1u;
     }
     ret changed;
 }
 
-fn tritv_union(&t p1, &t p2) -> bool {
-    let uint i = 0u;
+fn tritv_union(p1: &t, p2: &t) -> bool {
+    let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
-    let uint sz = p1.nbits;
-    auto changed = false;
-    while (i < sz) {
-      auto old = tritv_get(p1, i);
-      auto new = trit_or(old, tritv_get(p2, i));
-      changed = change(changed, old, new);
-      tritv_set(i, p1, new);
-      i += 1u;
+    let sz: uint = p1.nbits;
+    let changed = false;
+    while i < sz {
+        let old = tritv_get(p1, i);
+        let new = trit_or(old, tritv_get(p2, i));
+        changed = change(changed, old, new);
+        tritv_set(i, p1, new);
+        i += 1u;
     }
     ret changed;
 }
 
-fn tritv_intersect(&t p1, &t p2) -> bool {
-    let uint i = 0u;
+fn tritv_intersect(p1: &t, p2: &t) -> bool {
+    let i: uint = 0u;
     assert (p1.nbits == p2.nbits);
-    let uint sz = p1.nbits;
-    auto changed = false;
-    while (i < sz) {
-      auto old = tritv_get(p1, i);
-      auto new = trit_and(old, tritv_get(p2, i));
-      changed = change(changed, old, new);
-      tritv_set(i, p1, new);
-      i += 1u;
+    let sz: uint = p1.nbits;
+    let changed = false;
+    while i < sz {
+        let old = tritv_get(p1, i);
+        let new = trit_and(old, tritv_get(p2, i));
+        changed = change(changed, old, new);
+        tritv_set(i, p1, new);
+        i += 1u;
     }
     ret changed;
 }
 
-fn tritv_get(&t v, uint i) -> trit {
-  auto b1 = bitv::get(v.uncertain, i);
-  auto b2 = bitv::get(v.val, i);
-  assert (! (b1 && b2));
-  if (b1)      { dont_care }
-  else if (b2) { ttrue }
-  else         { tfalse}
+fn tritv_get(v: &t, i: uint) -> trit {
+    let b1 = bitv::get(v.uncertain, i);
+    let b2 = bitv::get(v.val, i);
+    assert (!(b1 && b2));
+    if b1 { dont_care } else if (b2) { ttrue } else { tfalse }
 }
 
-fn tritv_set(uint i, &t v, trit t) -> bool {
-  auto old = tritv_get(v, i);
-  alt (t) {
-    case (dont_care) {
-      bitv::set(v.uncertain, i, true);
-      bitv::set(v.val, i, false);
+fn tritv_set(i: uint, v: &t, t: trit) -> bool {
+    let old = tritv_get(v, i);
+    alt t {
+      dont_care. {
+        bitv::set(v.uncertain, i, true);
+        bitv::set(v.val, i, false);
+      }
+      ttrue. { bitv::set(v.uncertain, i, false); bitv::set(v.val, i, true); }
+      tfalse. {
+        bitv::set(v.uncertain, i, false);
+        bitv::set(v.val, i, false);
+      }
     }
-    case (ttrue) {
-      bitv::set(v.uncertain, i, false);
-      bitv::set(v.val, i, true);
+    ret change(false, old, t);
+}
+
+fn tritv_copy(target: &t, source: &t) -> bool {
+    assert (target.nbits == source.nbits);
+    let changed =
+        !bitv::equal(target.uncertain, source.uncertain) ||
+            !bitv::equal(target.val, source.val);
+    bitv::copy(target.uncertain, source.uncertain);
+    bitv::copy(target.val, source.val);
+    ret changed;
+}
+
+fn tritv_set_all(v: &t) {
+    let i: uint = 0u;
+    while i < v.nbits { tritv_set(i, v, ttrue); i += 1u; }
+}
+
+fn tritv_clear(v: &t) {
+    let i: uint = 0u;
+    while i < v.nbits { tritv_set(i, v, dont_care); i += 1u; }
+}
+
+fn tritv_clone(v: &t) -> t {
+    ret {uncertain: bitv::clone(v.uncertain),
+         val: bitv::clone(v.val),
+         nbits: v.nbits};
+}
+
+fn tritv_doesntcare(v: &t) -> bool {
+    let i: uint = 0u;
+    while i < v.nbits {
+        if tritv_get(v, i) != dont_care { ret false; }
+        i += 1u;
     }
-    case (tfalse) {
-      bitv::set(v.uncertain, i, false);
-      bitv::set(v.val, i, false);
+    ret true;
+}
+
+fn to_vec(v: &t) -> uint[] {
+    let i: uint = 0u;
+    let rslt: uint[] = ~[];
+    while i < v.nbits {
+        rslt +=
+            ~[alt tritv_get(v, i) {
+                dont_care. { 2u }
+                ttrue. { 1u }
+                tfalse. { 0u }
+              }];
+        i += 1u;
     }
-  }
-  ret change(false, old, t);
+    ret rslt;
 }
 
-fn tritv_copy(&t target, &t source) -> bool {
-  assert (target.nbits == source.nbits);
-  auto changed = !bitv::equal(target.uncertain, source.uncertain) ||
-    !bitv::equal(target.val, source.val);
-  bitv::copy(target.uncertain, source.uncertain);
-  bitv::copy(target.val, source.val);
-  ret changed;
-}
-
-fn tritv_set_all(&t v) {
-  let uint i = 0u;
-  while (i < v.nbits) {
-    tritv_set(i, v, ttrue);
-    i += 1u;
-  }
-}
-
-fn tritv_clear(&t v) {
-  let uint i = 0u;
-  while (i < v.nbits) {
-    tritv_set(i, v, dont_care);
-    i += 1u;
-  }
-}
-
-fn tritv_clone(&t v) -> t {
-  ret rec(uncertain=bitv::clone(v.uncertain),
-          val=bitv::clone(v.val),
-          nbits=v.nbits);
-}
-
-fn tritv_doesntcare(&t v) -> bool {
-  let uint i = 0u;
-  while (i < v.nbits) {
-    if (tritv_get(v, i) != dont_care) {
-      ret false;
+fn to_str(v: &t) -> str {
+    let i: uint = 0u;
+    let rs: str = "";
+    while i < v.nbits {
+        rs +=
+            alt tritv_get(v, i) {
+              dont_care. { "?" }
+              ttrue. { "1" }
+              tfalse. { "0" }
+            };
+        i += 1u;
     }
-    i += 1u;
-  }
-  ret true;
-}
-
-fn to_vec(&t v) -> uint[] {
-  let uint i = 0u;
-  let uint[] rslt = ~[];
-  while (i < v.nbits) {
-    rslt += ~[alt (tritv_get(v, i)) {
-        case (dont_care) { 2u }
-        case (ttrue)     { 1u }
-        case (tfalse)    { 0u } }];
-    i += 1u;
-  }
-  ret rslt;
-}
-
-fn to_str(&t v) -> str {
-  let uint i = 0u;
-  let str rs = "";
-  while (i < v.nbits) {
-    rs += alt (tritv_get(v, i)) {
-        case (dont_care) { "?" }
-        case (ttrue)     { "1" }
-        case (tfalse)    { "0" } };
-    i += 1u;
-  }
-  ret rs;
+    ret rs;
 }
 
 //

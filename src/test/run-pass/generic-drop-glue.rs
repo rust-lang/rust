@@ -1,5 +1,5 @@
 
 
-fn f[T](&T t) { let T t1 = t; }
+fn f[T](t: &T) { let t1: T = t; }
 
-fn main() { auto x = rec(x=@10, y=@12); f(x); }
+fn main() { let x = {x: @10, y: @12}; f(x); }

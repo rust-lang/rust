@@ -1,11 +1,11 @@
 native "rust" mod rustrt {
-    fn task_sleep(uint time_in_us);
+    fn task_sleep(time_in_us: uint);
     fn task_yield();
-    fn task_join(task t) -> int;
+    fn task_join(t: task) -> int;
     fn unsupervise();
     fn pin_task();
     fn unpin_task();
-    fn clone_chan(*rust_chan c) -> *rust_chan;
+    fn clone_chan(c: *rust_chan) -> *rust_chan;
 
     type rust_chan;
 }
@@ -15,53 +15,33 @@ native "rust" mod rustrt {
  *
  * arg: time_in_us maximum number of microseconds to yield control for
  */
-fn sleep(uint time_in_us) {
-    ret rustrt::task_sleep(time_in_us);
+fn sleep(time_in_us: uint) { ret rustrt::task_sleep(time_in_us); }
+
+fn yield() { ret rustrt::task_yield(); }
+
+tag task_result { tr_success; tr_failure; }
+
+fn join(t: task) -> task_result {
+    alt rustrt::task_join(t) { 0 { tr_success } _ { tr_failure } }
 }
 
-fn yield() {
-    ret rustrt::task_yield();
-}
+fn unsupervise() { ret rustrt::unsupervise(); }
 
-tag task_result {
-    tr_success;
-    tr_failure;
-}
+fn pin() { rustrt::pin_task(); }
 
-fn join(task t) -> task_result {
-    alt (rustrt::task_join(t)) {
-        0 { tr_success }
-        _ { tr_failure }
-    }
-}
+fn unpin() { rustrt::unpin_task(); }
 
-fn unsupervise() {
-    ret rustrt::unsupervise();
-}
-
-fn pin() {
-    rustrt::pin_task();
-}
-
-fn unpin() {
-    rustrt::unpin_task();
-}
-
-fn clone_chan[T](chan[T] c) -> chan[T] {
-    auto cloned = rustrt::clone_chan(unsafe::reinterpret_cast(c));
+fn clone_chan[T](c: chan[T]) -> chan[T] {
+    let cloned = rustrt::clone_chan(unsafe::reinterpret_cast(c));
     ret unsafe::reinterpret_cast(cloned);
 }
 
-fn send[T](chan[T] c, &T v) {
-    c <| v;
-}
+fn send[T](c: chan[T], v: &T) { c <| v; }
 
-fn recv[T](port[T] p) -> T {
-    auto v; p |> v; v
-}
+fn recv[T](p: port[T]) -> T { let v; p |> v; v }
 
 // Spawn a task and immediately return a channel for communicating to it
-fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
+fn worker[T](f: fn(port[T]) ) -> {task: task, chan: chan[T]} {
     // FIXME: This is frighteningly unsafe and only works for
     // a few cases
 
@@ -70,76 +50,76 @@ fn worker[T](fn(port[T]) f) -> rec(task task, chan[T] chan) {
     // FIXME: This terrible hackery is because worktask can't currently
     // have type params
     type wordsz1 = int;
-    type wordsz2 = rec(int a, int b);
-    type wordsz3 = rec(int a, int b, int c);
-    type wordsz4 = rec(int a, int b, int c, int d);
-    type wordsz5 = rec(int a, int b, int c, int d, int e);
+    type wordsz2 = {a: int, b: int};
+    type wordsz3 = {a: int, b: int, c: int};
+    type wordsz4 = {a: int, b: int, c: int, d: int};
+    type wordsz5 = {a: int, b: int, c: int, d: int, e: int};
     type opaquechan_1wordsz = chan[chan[wordsz1]];
     type opaquechan_2wordsz = chan[chan[wordsz2]];
     type opaquechan_3wordsz = chan[chan[wordsz3]];
     type opaquechan_4wordsz = chan[chan[wordsz4]];
     type opaquechan_5wordsz = chan[chan[wordsz5]];
 
-    fn worktask1(opaquechan_1wordsz setupch, opaque fptr) {
-        let *fn(port[wordsz1]) f = unsafe::reinterpret_cast(fptr);
-        auto p = port[wordsz1]();
+    fn worktask1(setupch: opaquechan_1wordsz, fptr: opaque) {
+        let f: *fn(port[wordsz1])  = unsafe::reinterpret_cast(fptr);
+        let p = port[wordsz1]();
         setupch <| chan(p);
         (*f)(p);
     }
 
-    fn worktask2(opaquechan_2wordsz setupch, opaque fptr) {
-        let *fn(port[wordsz2]) f = unsafe::reinterpret_cast(fptr);
-        auto p = port[wordsz2]();
+    fn worktask2(setupch: opaquechan_2wordsz, fptr: opaque) {
+        let f: *fn(port[wordsz2])  = unsafe::reinterpret_cast(fptr);
+        let p = port[wordsz2]();
         setupch <| chan(p);
         (*f)(p);
     }
 
-    fn worktask3(opaquechan_3wordsz setupch, opaque fptr) {
-        let *fn(port[wordsz3]) f = unsafe::reinterpret_cast(fptr);
-        auto p = port[wordsz3]();
+    fn worktask3(setupch: opaquechan_3wordsz, fptr: opaque) {
+        let f: *fn(port[wordsz3])  = unsafe::reinterpret_cast(fptr);
+        let p = port[wordsz3]();
         setupch <| chan(p);
         (*f)(p);
     }
 
-    fn worktask4(opaquechan_4wordsz setupch, opaque fptr) {
-        let *fn(port[wordsz4]) f = unsafe::reinterpret_cast(fptr);
-        auto p = port[wordsz4]();
+    fn worktask4(setupch: opaquechan_4wordsz, fptr: opaque) {
+        let f: *fn(port[wordsz4])  = unsafe::reinterpret_cast(fptr);
+        let p = port[wordsz4]();
         setupch <| chan(p);
         (*f)(p);
     }
 
-    fn worktask5(opaquechan_5wordsz setupch, opaque fptr) {
-        let *fn(port[wordsz5]) f = unsafe::reinterpret_cast(fptr);
-        auto p = port[wordsz5]();
+    fn worktask5(setupch: opaquechan_5wordsz, fptr: opaque) {
+        let f: *fn(port[wordsz5])  = unsafe::reinterpret_cast(fptr);
+        let p = port[wordsz5]();
         setupch <| chan(p);
         (*f)(p);
     }
 
-    auto p = port[chan[T]]();
-    auto setupch = chan(p);
-    auto fptr = unsafe::reinterpret_cast(ptr::addr_of(f));
+    let p = port[chan[T]]();
+    let setupch = chan(p);
+    let fptr = unsafe::reinterpret_cast(ptr::addr_of(f));
 
-    auto Tsz = sys::size_of[T]();
-    auto t = if Tsz == sys::size_of[wordsz1]() {
-        auto setupchptr = unsafe::reinterpret_cast(setupch);
-        spawn worktask1(setupchptr, fptr)
-    } else if Tsz == sys::size_of[wordsz2]() {
-        auto setupchptr = unsafe::reinterpret_cast(setupch);
-        spawn worktask2(setupchptr, fptr)
-    } else if Tsz == sys::size_of[wordsz3]() {
-        auto setupchptr = unsafe::reinterpret_cast(setupch);
-        spawn worktask3(setupchptr, fptr)
-    } else if Tsz == sys::size_of[wordsz4]() {
-        auto setupchptr = unsafe::reinterpret_cast(setupch);
-        spawn worktask4(setupchptr, fptr)
-    } else if Tsz == sys::size_of[wordsz5]() {
-        auto setupchptr = unsafe::reinterpret_cast(setupch);
-        spawn worktask5(setupchptr, fptr)
-    } else {
-        fail #fmt("unhandled type size %u in task::worker", Tsz)
-    };
-    auto ch; p |> ch;
-    ret rec(task = t, chan = ch);
+    let Tsz = sys::size_of[T]();
+    let t =
+        if Tsz == sys::size_of[wordsz1]() {
+            let setupchptr = unsafe::reinterpret_cast(setupch);
+            spawn worktask1(setupchptr, fptr)
+        } else if (Tsz == sys::size_of[wordsz2]()) {
+            let setupchptr = unsafe::reinterpret_cast(setupch);
+            spawn worktask2(setupchptr, fptr)
+        } else if (Tsz == sys::size_of[wordsz3]()) {
+            let setupchptr = unsafe::reinterpret_cast(setupch);
+            spawn worktask3(setupchptr, fptr)
+        } else if (Tsz == sys::size_of[wordsz4]()) {
+            let setupchptr = unsafe::reinterpret_cast(setupch);
+            spawn worktask4(setupchptr, fptr)
+        } else if (Tsz == sys::size_of[wordsz5]()) {
+            let setupchptr = unsafe::reinterpret_cast(setupch);
+            spawn worktask5(setupchptr, fptr)
+        } else { fail #fmt("unhandled type size %u in task::worker", Tsz) };
+    let ch;
+    p |> ch;
+    ret {task: t, chan: ch};
 }
 
 // Local Variables:

@@ -1,20 +1,15 @@
 import bar::baz;
 import foo::zed;
 mod foo {
-  mod zed {
-    fn baz() {
-      log "baz";
+    mod zed {
+        fn baz() { log "baz"; }
     }
-  }
 }
 mod bar {
-  import zed::baz;
-  export baz;
-  mod foo {
-    mod zed {
+    import zed::baz;
+    export baz;
+    mod foo {
+        mod zed { }
     }
-  }
 }
-fn main(vec[str] args) {
-  baz();
-}
+fn main(args: vec[str]) { baz(); }

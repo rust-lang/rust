@@ -58,32 +58,32 @@ import std::str;
  */
 tag breaks { consistent; inconsistent; }
 
-type break_t = rec(int offset, int blank_space);
+type break_t = {offset: int, blank_space: int};
 
-type begin_t = rec(int offset, breaks breaks);
+type begin_t = {offset: int, breaks: breaks};
 
 tag token { STRING(str, int); BREAK(break_t); BEGIN(begin_t); END; EOF; }
 
-fn tok_str(token t) -> str {
-    alt (t) {
-        case (STRING(?s, ?len)) { ret #fmt("STR(%s,%d)", s, len); }
-        case (BREAK(_)) { ret "BREAK"; }
-        case (BEGIN(_)) { ret "BEGIN"; }
-        case (END) { ret "END"; }
-        case (EOF) { ret "EOF"; }
+fn tok_str(t: token) -> str {
+    alt t {
+      STRING(s, len) { ret #fmt("STR(%s,%d)", s, len); }
+      BREAK(_) { ret "BREAK"; }
+      BEGIN(_) { ret "BEGIN"; }
+      END. { ret "END"; }
+      EOF. { ret "EOF"; }
     }
 }
 
-fn buf_str(&token[mutable] toks, &int[mutable] szs, uint left, uint right,
-           uint lim) -> str {
-    auto n = ivec::len(toks);
+fn buf_str(toks: &token[mutable ], szs: &int[mutable ], left: uint,
+           right: uint, lim: uint) -> str {
+    let n = ivec::len(toks);
     assert (n == ivec::len(szs));
-    auto i = left;
-    auto L = lim;
-    auto s = "[";
-    while (i != right && L != 0u) {
+    let i = left;
+    let L = lim;
+    let s = "[";
+    while i != right && L != 0u {
         L -= 1u;
-        if (i != left) { s += ", "; }
+        if i != left { s += ", "; }
         s += #fmt("%d=%s", szs.(i), tok_str(toks.(i)));
         i += 1u;
         i %= n;
@@ -94,30 +94,30 @@ fn buf_str(&token[mutable] toks, &int[mutable] szs, uint left, uint right,
 
 tag print_stack_break { fits; broken(breaks); }
 
-type print_stack_elt = rec(int offset, print_stack_break pbreak);
+type print_stack_elt = {offset: int, pbreak: print_stack_break};
 
-const int size_infinity = 0xffff;
+const size_infinity: int = 0xffff;
 
-fn mk_printer(ioivec::writer out, uint linewidth) -> printer {
+fn mk_printer(out: ioivec::writer, linewidth: uint) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
 
-    let uint n = 3u * linewidth;
+    let n: uint = 3u * linewidth;
     log #fmt("mk_printer %u", linewidth);
-    let token[mutable] token = ivec::init_elt_mut(EOF, n);
-    let int[mutable] size = ivec::init_elt_mut(0, n);
-    let uint[mutable] scan_stack = ivec::init_elt_mut(0u, n);
-    let print_stack_elt[] print_stack = ~[];
+    let token: token[mutable ] = ivec::init_elt_mut(EOF, n);
+    let size: int[mutable ] = ivec::init_elt_mut(0, n);
+    let scan_stack: uint[mutable ] = ivec::init_elt_mut(0u, n);
+    let print_stack: print_stack_elt[] = ~[];
     ret printer(out, n, linewidth as int, // margin
-                 linewidth as int, // space
-                 0u, // left
-                 0u, // right
-                 token, size, 0, // left_total
-                 0, // right_total
-                 scan_stack, true, // scan_stack_empty
-                 0u, // top
-                 0u, // bottom
-                 print_stack, 0);
+                linewidth as int, // space
+                0u, // left
+                0u, // right
+                token, size, 0, // left_total
+                0, // right_total
+                scan_stack, true, // scan_stack_empty
+                0u, // top
+                0u, // bottom
+                print_stack, 0);
 }
 
 
@@ -198,23 +198,24 @@ fn mk_printer(ioivec::writer out, uint linewidth) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-obj printer(ioivec::writer out,
-            uint buf_len,
-            mutable int margin, // width of lines we're constrained to
+obj printer(out: ioivec::writer,
+            buf_len: uint,
+            mutable margin: int, // width of lines we're constrained to
 
-            mutable int space, // number of spaces left on line
+            mutable space: int, // number of spaces left on line
 
-            mutable uint left, // index of left side of input stream
+            mutable left: uint, // index of left side of input stream
 
-            mutable uint right, // index of right side of input stream
+            mutable right: uint, // index of right side of input stream
 
-            mutable token[mutable] token,
-             // ring-buffr stream goes through
-            mutable int[mutable] size, // ring-buffer of calculated sizes
+            mutable token: token[mutable ],
 
-            mutable int left_total, // running size of stream "...left"
+            // ring-buffr stream goes through
+            mutable size: int[mutable ], // ring-buffer of calculated sizes
 
-            mutable int right_total, // running size of stream "...right"
+            mutable left_total: int, // running size of stream "...left"
+
+            mutable right_total: int, // running size of stream "...right"
 
              // pseudo-stack, really a ring too. Holds the
              // primary-ring-buffers index of the BEGIN that started the
@@ -222,118 +223,115 @@ obj printer(ioivec::writer out,
              // BEGIN (if there is any) on top of it. Stuff is flushed off the
              // bottom as it becomes irrelevant due to the primary ring-buffer
              // advancing.
-             mutable uint[mutable] scan_stack,
-            mutable bool scan_stack_empty, // top==bottom disambiguator
+             mutable scan_stack: uint[mutable ],
+            mutable scan_stack_empty: bool, // top==bottom disambiguator
 
-            mutable uint top, // index of top of scan_stack
+            mutable top: uint, // index of top of scan_stack
 
-            mutable uint bottom, // index of bottom of scan_stack
+            mutable bottom: uint, // index of bottom of scan_stack
 
              // stack of blocks-in-progress being flushed by print
-            mutable print_stack_elt[] print_stack,
+            mutable print_stack: print_stack_elt[],
+
 
             // buffered indentation to avoid writing trailing whitespace
-            mutable int pending_indentation) {
+            mutable pending_indentation: int) {
 
-    fn last_token() -> token {
-        ret token.(right);
-    }
+    fn last_token() -> token { ret token.(right); }
 
     // be very careful with this!
-    fn replace_last_token(token t) {
-        token.(right) = t;
-    }
+    fn replace_last_token(t: token) { token.(right) = t; }
 
-    fn pretty_print(token t) {
+    fn pretty_print(t: token) {
         log #fmt("pp [%u,%u]", left, right);
-        alt (t) {
-            case (EOF) {
-                if (!scan_stack_empty) {
-                    self.check_stack(0);
-                    self.advance_left(token.(left), size.(left));
-                }
-                self.indent(0);
-            }
-            case (BEGIN(?b)) {
-                if (scan_stack_empty) {
-                    left_total = 1;
-                    right_total = 1;
-                    left = 0u;
-                    right = 0u;
-                } else { self.advance_right(); }
-                log #fmt("pp BEGIN/buffer [%u,%u]", left, right);
-                token.(right) = t;
-                size.(right) = -right_total;
-                self.scan_push(right);
-            }
-            case (END) {
-                if (scan_stack_empty) {
-                    log #fmt("pp END/print [%u,%u]", left, right);
-                    self.print(t, 0);
-                } else {
-                    log #fmt("pp END/buffer [%u,%u]", left, right);
-                    self.advance_right();
-                    token.(right) = t;
-                    size.(right) = -1;
-                    self.scan_push(right);
-                }
-            }
-            case (BREAK(?b)) {
-                if (scan_stack_empty) {
-                    left_total = 1;
-                    right_total = 1;
-                    left = 0u;
-                    right = 0u;
-                } else { self.advance_right(); }
-                log #fmt("pp BREAK/buffer [%u,%u]", left, right);
+        alt t {
+          EOF. {
+            if !scan_stack_empty {
                 self.check_stack(0);
-                self.scan_push(right);
+                self.advance_left(token.(left), size.(left));
+            }
+            self.indent(0);
+          }
+          BEGIN(b) {
+            if scan_stack_empty {
+                left_total = 1;
+                right_total = 1;
+                left = 0u;
+                right = 0u;
+            } else { self.advance_right(); }
+            log #fmt("pp BEGIN/buffer [%u,%u]", left, right);
+            token.(right) = t;
+            size.(right) = -right_total;
+            self.scan_push(right);
+          }
+          END. {
+            if scan_stack_empty {
+                log #fmt("pp END/print [%u,%u]", left, right);
+                self.print(t, 0);
+            } else {
+                log #fmt("pp END/buffer [%u,%u]", left, right);
+                self.advance_right();
                 token.(right) = t;
-                size.(right) = -right_total;
-                right_total += b.blank_space;
+                size.(right) = -1;
+                self.scan_push(right);
             }
-            case (STRING(?s, ?len)) {
-                if (scan_stack_empty) {
-                    log #fmt("pp STRING/print [%u,%u]", left, right);
-                    self.print(t, len);
-                } else {
-                    log #fmt("pp STRING/buffer [%u,%u]", left, right);
-                    self.advance_right();
-                    token.(right) = t;
-                    size.(right) = len;
-                    right_total += len;
-                    self.check_stream();
-                }
+          }
+          BREAK(b) {
+            if scan_stack_empty {
+                left_total = 1;
+                right_total = 1;
+                left = 0u;
+                right = 0u;
+            } else { self.advance_right(); }
+            log #fmt("pp BREAK/buffer [%u,%u]", left, right);
+            self.check_stack(0);
+            self.scan_push(right);
+            token.(right) = t;
+            size.(right) = -right_total;
+            right_total += b.blank_space;
+          }
+          STRING(s, len) {
+            if scan_stack_empty {
+                log #fmt("pp STRING/print [%u,%u]", left, right);
+                self.print(t, len);
+            } else {
+                log #fmt("pp STRING/buffer [%u,%u]", left, right);
+                self.advance_right();
+                token.(right) = t;
+                size.(right) = len;
+                right_total += len;
+                self.check_stream();
             }
+          }
         }
     }
     fn check_stream() {
         log #fmt("check_stream [%u, %u] with left_total=%d, right_total=%d",
                  left, right, left_total, right_total);
-        if (right_total - left_total > space) {
+        if right_total - left_total > space {
             log #fmt("scan window is %d, longer than space on line (%d)",
                      right_total - left_total, space);
-            if (!scan_stack_empty) {
-                if (left == scan_stack.(bottom)) {
+            if !scan_stack_empty {
+                if left == scan_stack.(bottom) {
                     log #fmt("setting %u to infinity and popping", left);
                     size.(self.scan_pop_bottom()) = size_infinity;
                 }
             }
             self.advance_left(token.(left), size.(left));
-            if (left != right) { self.check_stream(); }
+            if left != right { self.check_stream(); }
         }
     }
-    fn scan_push(uint x) {
+    fn scan_push(x: uint) {
         log #fmt("scan_push %u", x);
-        if (scan_stack_empty) {
+        if scan_stack_empty {
             scan_stack_empty = false;
         } else { top += 1u; top %= buf_len; assert (top != bottom); }
         scan_stack.(top) = x;
     }
     fn scan_pop() -> uint {
         assert (!scan_stack_empty);
-        auto x = scan_stack.(top);
-        if (top == bottom) {
+        let x = scan_stack.(top);
+        if top == bottom {
             scan_stack_empty = true;
         } else { top += buf_len - 1u; top %= buf_len; }
         ret x;
@@ -344,8 +342,8 @@ obj printer(ioivec::writer out,
     }
     fn scan_pop_bottom() -> uint {
         assert (!scan_stack_empty);
-        auto x = scan_stack.(bottom);
-        if (top == bottom) {
+        let x = scan_stack.(bottom);
+        if top == bottom {
             scan_stack_empty = true;
         } else { bottom += 1u; bottom %= buf_len; }
         ret x;
@@ -355,179 +353,172 @@ obj printer(ioivec::writer out,
         right %= buf_len;
         assert (right != left);
     }
-    fn advance_left(token x, int L) {
+    fn advance_left(x: token, L: int) {
         log #fmt("advnce_left [%u,%u], sizeof(%u)=%d", left, right, left, L);
-        if (L >= 0) {
+        if L >= 0 {
             self.print(x, L);
-            alt (x) {
-                case (BREAK(?b)) { left_total += b.blank_space; }
-                case (STRING(_, ?len)) {
-                    assert (len == L);
-                    left_total += len;
-                }
-                case (_) { }
+            alt x {
+              BREAK(b) { left_total += b.blank_space; }
+              STRING(_, len) { assert (len == L); left_total += len; }
+              _ { }
             }
-            if (left != right) {
+            if left != right {
                 left += 1u;
                 left %= buf_len;
                 self.advance_left(token.(left), size.(left));
             }
         }
     }
-    fn check_stack(int k) {
-        if (!scan_stack_empty) {
-            auto x = self.scan_top();
-            alt (token.(x)) {
-                case (BEGIN(?b)) {
-                    if (k > 0) {
-                        size.(self.scan_pop()) = size.(x) + right_total;
-                        self.check_stack(k - 1);
-                    }
-                }
-                case (END) {
-                    // paper says + not =, but that makes no sense.
-
-                    size.(self.scan_pop()) = 1;
-                    self.check_stack(k + 1);
-                }
-                case (_) {
+    fn check_stack(k: int) {
+        if !scan_stack_empty {
+            let x = self.scan_top();
+            alt token.(x) {
+              BEGIN(b) {
+                if k > 0 {
                     size.(self.scan_pop()) = size.(x) + right_total;
-                    if (k > 0) { self.check_stack(k); }
+                    self.check_stack(k - 1);
                 }
+              }
+              END. {
+                // paper says + not =, but that makes no sense.
+
+                size.(self.scan_pop()) = 1;
+                self.check_stack(k + 1);
+              }
+              _ {
+                size.(self.scan_pop()) = size.(x) + right_total;
+                if k > 0 { self.check_stack(k); }
+              }
             }
         }
     }
-    fn print_newline(int amount) {
+    fn print_newline(amount: int) {
         log #fmt("NEWLINE %d", amount);
         out.write_str("\n");
         pending_indentation = 0;
         self.indent(amount);
     }
-    fn indent(int amount) {
+    fn indent(amount: int) {
         log #fmt("INDENT %d", amount);
         pending_indentation += amount;
     }
     fn top() -> print_stack_elt {
-        auto n = ivec::len(print_stack);
-        let print_stack_elt top = rec(offset=0, pbreak=broken(inconsistent));
-        if (n != 0u) { top = print_stack.(n - 1u); }
+        let n = ivec::len(print_stack);
+        let top: print_stack_elt = {offset: 0, pbreak: broken(inconsistent)};
+        if n != 0u { top = print_stack.(n - 1u); }
         ret top;
     }
-    fn write_str(str s) {
-        while (pending_indentation > 0) {
+    fn write_str(s: str) {
+        while pending_indentation > 0 {
             out.write_str(" ");
             pending_indentation -= 1;
         }
         out.write_str(s);
     }
-    fn print(token x, int L) {
+    fn print(x: token, L: int) {
         log #fmt("print %s %d (remaining line space=%d)", tok_str(x), L,
                  space);
         log buf_str(token, size, left, right, 6u);
-        alt (x) {
-            case (BEGIN(?b)) {
-                if (L > space) {
-                    auto col = margin - space + b.offset;
-                    log #fmt("print BEGIN -> push broken block at col %d",
-                             col);
-                    print_stack += ~[rec(offset=col,
-                                         pbreak=broken(b.breaks))];
+        alt x {
+          BEGIN(b) {
+            if L > space {
+                let col = margin - space + b.offset;
+                log #fmt("print BEGIN -> push broken block at col %d", col);
+                print_stack += ~[{offset: col, pbreak: broken(b.breaks)}];
+            } else {
+                log "print BEGIN -> push fitting block";
+                print_stack += ~[{offset: 0, pbreak: fits}];
+            }
+          }
+          END. {
+            log "print END -> pop END";
+            assert (ivec::len(print_stack) != 0u);
+            ivec::pop(print_stack);
+          }
+          BREAK(b) {
+            let top = self.top();
+            alt top.pbreak {
+              fits. {
+                log "print BREAK in fitting block";
+                space -= b.blank_space;
+                self.indent(b.blank_space);
+              }
+              broken(consistent.) {
+                log "print BREAK in consistent block";
+                self.print_newline(top.offset + b.offset);
+                space = margin - (top.offset + b.offset);
+              }
+              broken(inconsistent.) {
+                if L > space {
+                    log "print BREAK w/ newline in inconsistent";
+                    self.print_newline(top.offset + b.offset);
+                    space = margin - (top.offset + b.offset);
                 } else {
-                    log "print BEGIN -> push fitting block";
-                    print_stack += ~[rec(offset=0, pbreak=fits)];
+                    log "print BREAK w/o newline in inconsistent";
+                    self.indent(b.blank_space);
+                    space -= b.blank_space;
                 }
+              }
             }
-            case (END) {
-                log "print END -> pop END";
-                assert (ivec::len(print_stack) != 0u);
-                ivec::pop(print_stack);
-            }
-            case (BREAK(?b)) {
-                auto top = self.top();
-                alt (top.pbreak) {
-                    case (fits) {
-                        log "print BREAK in fitting block";
-                        space -= b.blank_space;
-                        self.indent(b.blank_space);
-                    }
-                    case (broken(consistent)) {
-                        log "print BREAK in consistent block";
-                        self.print_newline(top.offset + b.offset);
-                        space = margin - (top.offset + b.offset);
-                    }
-                    case (broken(inconsistent)) {
-                        if (L > space) {
-                            log "print BREAK w/ newline in inconsistent";
-                            self.print_newline(top.offset + b.offset);
-                            space = margin - (top.offset + b.offset);
-                        } else {
-                            log "print BREAK w/o newline in inconsistent";
-                            self.indent(b.blank_space);
-                            space -= b.blank_space;
-                        }
-                    }
-                }
-            }
-            case (STRING(?s, ?len)) {
-                log "print STRING";
-                assert (L == len);
-                // assert L <= space;
+          }
+          STRING(s, len) {
+            log "print STRING";
+            assert (L == len);
+            // assert L <= space;
 
-                space -= len;
-                self.write_str(s);
-            }
-            case (EOF) {
-                // EOF should never get here.
+            space -= len;
+            self.write_str(s);
+          }
+          EOF. {
+            // EOF should never get here.
 
-                fail;
-            }
+            fail;
+          }
         }
     }
 }
 
 
 // Convenience functions to talk to the printer.
-fn box(printer p, uint indent, breaks b) {
-    p.pretty_print(BEGIN(rec(offset=indent as int, breaks=b)));
+fn box(p: printer, indent: uint, b: breaks) {
+    p.pretty_print(BEGIN({offset: indent as int, breaks: b}));
 }
 
-fn ibox(printer p, uint indent) { box(p, indent, inconsistent); }
+fn ibox(p: printer, indent: uint) { box(p, indent, inconsistent); }
 
-fn cbox(printer p, uint indent) { box(p, indent, consistent); }
+fn cbox(p: printer, indent: uint) { box(p, indent, consistent); }
 
-fn break_offset(printer p, uint n, int off) {
-    p.pretty_print(BREAK(rec(offset=off, blank_space=n as int)));
+fn break_offset(p: printer, n: uint, off: int) {
+    p.pretty_print(BREAK({offset: off, blank_space: n as int}));
 }
 
-fn end(printer p) { p.pretty_print(END); }
+fn end(p: printer) { p.pretty_print(END); }
 
-fn eof(printer p) { p.pretty_print(EOF); }
+fn eof(p: printer) { p.pretty_print(EOF); }
 
-fn word(printer p, str wrd) {
+fn word(p: printer, wrd: str) {
     p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
 }
 
-fn huge_word(printer p, str wrd) {
+fn huge_word(p: printer, wrd: str) {
     p.pretty_print(STRING(wrd, size_infinity));
 }
 
-fn zero_word(printer p, str wrd) { p.pretty_print(STRING(wrd, 0)); }
+fn zero_word(p: printer, wrd: str) { p.pretty_print(STRING(wrd, 0)); }
 
-fn spaces(printer p, uint n) { break_offset(p, n, 0); }
+fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
 
-fn zerobreak(printer p) { spaces(p, 0u); }
+fn zerobreak(p: printer) { spaces(p, 0u); }
 
-fn space(printer p) { spaces(p, 1u); }
+fn space(p: printer) { spaces(p, 1u); }
 
-fn hardbreak(printer p) { spaces(p, size_infinity as uint); }
+fn hardbreak(p: printer) { spaces(p, size_infinity as uint); }
 
-fn hardbreak_tok_offset(int off) -> token {
-    ret BREAK(rec(offset=off, blank_space=size_infinity));
+fn hardbreak_tok_offset(off: int) -> token {
+    ret BREAK({offset: off, blank_space: size_infinity});
 }
 
-fn hardbreak_tok() -> token {
-    ret hardbreak_tok_offset(0);
-}
+fn hardbreak_tok() -> token { ret hardbreak_tok_offset(0); }
 
 
 //

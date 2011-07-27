@@ -3,26 +3,23 @@
 use std;
 import std::ivec;
 
-tag msg {
-    closed;
-    received(u8[]);
-}
+tag msg { closed; received(u8[]); }
 
-fn producer(chan[u8[]] c) {
+fn producer(c: chan[u8[]]) {
     c <| ~[1u8, 2u8, 3u8, 4u8];
-    let u8[] empty = ~[];
+    let empty: u8[] = ~[];
     c <| empty;
 }
 
-fn packager(chan[chan[u8[]]] cb, chan[msg] msg) {
-    let port[u8[]] p = port();
+fn packager(cb: chan[chan[u8[]]], msg: chan[msg]) {
+    let p: port[u8[]] = port();
     cb <| chan(p);
-    while (true) {
+    while true {
         log "waiting for bytes";
-        let u8[] data;
+        let data: u8[];
         p |> data;
         log "got bytes";
-        if (ivec::len[u8](data) == 0u) {
+        if ivec::len[u8](data) == 0u {
             log "got empty bytes, quitting";
             break;
         }
@@ -37,26 +34,24 @@ fn packager(chan[chan[u8[]]] cb, chan[msg] msg) {
 }
 
 fn main() {
-    let port[msg] p = port();
-    let port[chan[u8[]]] recv_reader = port();
-    auto pack = spawn packager(chan(recv_reader), chan(p));
+    let p: port[msg] = port();
+    let recv_reader: port[chan[u8[]]] = port();
+    let pack = spawn packager(chan(recv_reader), chan(p));
 
-    let chan[u8[]] source_chan;
+    let source_chan: chan[u8[]];
     recv_reader |> source_chan;
-    let task prod = spawn producer(source_chan);
+    let prod: task = spawn producer(source_chan);
 
-    while (true) {
-        let msg msg;
+
+    while true {
+        let msg: msg;
         p |> msg;
-        alt (msg) {
-            case (closed) {
-                log "Got close message";
-                break;
-            }
-            case (received(?data)) {
-                log "Got data. Length is:";
-                log ivec::len[u8](data);
-            }
+        alt msg {
+          closed. { log "Got close message"; break; }
+          received(data) {
+            log "Got data. Length is:";
+            log ivec::len[u8](data);
+          }
         }
     }
 }

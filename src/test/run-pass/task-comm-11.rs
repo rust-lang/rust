@@ -1,13 +1,11 @@
 // xfail-stage0
 // xfail-stage3
 
-fn start(chan[chan[str]] c) {
-    let port[str] p = port();
-    c <| chan(p);
-}
+fn start(c: chan[chan[str]]) { let p: port[str] = port(); c <| chan(p); }
 
 fn main() {
-    let port[chan[str]] p = port();
-    auto child = spawn start(chan(p));
-    auto c; p |> c;
+    let p: port[chan[str]] = port();
+    let child = spawn start(chan(p));
+    let c;
+    p |> c;
 }

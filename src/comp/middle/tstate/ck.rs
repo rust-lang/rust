@@ -46,26 +46,27 @@ import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
 
-fn check_unused_vars(&fn_ctxt fcx) {
+fn check_unused_vars(fcx: &fn_ctxt) {
+
     // FIXME: could be more efficient
-    for (norm_constraint c in constraints(fcx)) {
-        alt (c.c.node) {
-            case (ninit(?id, ?v)) {
-                if (!vec_contains(fcx.enclosing.used_vars, id)) {
-                    fcx.ccx.tcx.sess.span_warn(c.c.span,
-                                               "Unused variable " + v);
-                }
+    for c: norm_constraint  in constraints(fcx) {
+        alt c.c.node {
+          ninit(id, v) {
+            if !vec_contains(fcx.enclosing.used_vars, id) {
+                fcx.ccx.tcx.sess.span_warn(c.c.span, "Unused variable " + v);
             }
-            case (_) { /* ignore pred constraints */ }
+          }
+          _ {/* ignore pred constraints */ }
         }
     }
 }
 
-fn check_states_expr(&@expr e, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
+fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
     visit::visit_expr(e, fcx, v);
 
-    let precond prec = expr_precond(fcx.ccx, e);
-    let prestate pres = expr_prestate(fcx.ccx, e);
+    let prec: precond = expr_precond(fcx.ccx, e);
+    let pres: prestate = expr_prestate(fcx.ccx, e);
+
 
     /*
     log_err("check_states_expr:");
@@ -76,9 +77,9 @@ fn check_states_expr(&@expr e, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
       log_tritv_err(fcx, pres);
     */
 
-    if (!implies(pres, prec)) {
-        auto s = "";
-        auto diff = first_difference_string(fcx, prec, pres);
+    if !implies(pres, prec) {
+        let s = "";
+        let diff = first_difference_string(fcx, prec, pres);
         s +=
             "Unsatisfied precondition constraint (for example, " + diff +
                 ") for expression:\n";
@@ -91,12 +92,13 @@ fn check_states_expr(&@expr e, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
     }
 }
 
-fn check_states_stmt(&@stmt s, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
+fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
     visit::visit_stmt(s, fcx, v);
 
-    auto a = stmt_to_ann(fcx.ccx, *s);
-    let precond prec = ann_precond(a);
-    let prestate pres = ann_prestate(a);
+    let a = stmt_to_ann(fcx.ccx, *s);
+    let prec: precond = ann_precond(a);
+    let pres: prestate = ann_prestate(a);
+
 
     /*
       log_err("check_states_stmt:");
@@ -107,9 +109,9 @@ fn check_states_stmt(&@stmt s, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
       log_tritv_err(fcx, pres);
     */
 
-    if (!implies(pres, prec)) {
-        auto ss = "";
-        auto diff = first_difference_string(fcx, prec, pres);
+    if !implies(pres, prec) {
+        let ss = "";
+        let diff = first_difference_string(fcx, prec, pres);
         ss +=
             "Unsatisfied precondition constraint (for example, " + diff +
                 ") for statement:\n";
@@ -122,44 +124,45 @@ fn check_states_stmt(&@stmt s, &fn_ctxt fcx, &visit::vt[fn_ctxt] v) {
     }
 }
 
-fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
-                                   &ast::ty_param[] tps,
-                                   node_id id, &span sp, &fn_ident i) {
+fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
+                                   tps: &ast::ty_param[], id: node_id,
+                                   sp: &span, i: &fn_ident) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
 
-    auto visitor = visit::default_visitor[fn_ctxt]();
+    let visitor = visit::default_visitor[fn_ctxt]();
 
-    visitor = @rec(visit_stmt=check_states_stmt,
-                 visit_expr=check_states_expr,
-                 visit_fn=do_nothing
-                 with *visitor);
+    visitor =
+        @{visit_stmt: check_states_stmt,
+          visit_expr: check_states_expr,
+          visit_fn: do_nothing with *visitor};
     visit::visit_fn(f, tps, sp, i, id, fcx, visit::mk_vt(visitor));
 
     /* Check that the return value is initialized */
-    auto post = aux::block_poststate(fcx.ccx, f.body);
-    let tsconstr ret_c = ninit(fcx.id, fcx.name);
-    if (f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
-            !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-            f.decl.cf == return) {
+    let post = aux::block_poststate(fcx.ccx, f.body);
+    let ret_c: tsconstr = ninit(fcx.id, fcx.name);
+    if f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
+           !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+           f.decl.cf == return {
         fcx.ccx.tcx.sess.span_note(f.body.span,
                                    "In function " + fcx.name +
                                        ", not all control paths \
                                         return a value");
         fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
-                                  "see declared return type of '" +
-                                      ty_to_str(*f.decl.output) + "'");
+                                    "see declared return type of '" +
+                                        ty_to_str(*f.decl.output) + "'");
     } else if (f.decl.cf == noreturn) {
+
 
         // check that this really always fails
         // the fcx.id bit means "returns" for a returning fn,
         // "diverges" for a non-returning fn
-        if (!promises(fcx, post, ret_c)) {
+        if !promises(fcx, post, ret_c) {
             fcx.ccx.tcx.sess.span_fatal(f.body.span,
-                                      "In non-returning function " + fcx.name
-                                          +
-                                          ", some control paths may \
+                                        "In non-returning function " +
+                                            fcx.name +
+                                            ", some control paths may \
                                            return to the caller");
         }
     }
@@ -168,12 +171,12 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f,
     check_unused_vars(fcx);
 }
 
-fn check_fn_states(&fn_ctxt fcx, &_fn f, &ast::ty_param[] tps,
-                   node_id id, &span sp, &fn_ident i) {
+fn check_fn_states(fcx: &fn_ctxt, f: &_fn, tps: &ast::ty_param[], id: node_id,
+                   sp: &span, i: &fn_ident) {
     /* Compute the pre- and post-states for this function */
 
     // Fixpoint iteration
-    while (find_pre_post_state_fn(fcx, f)) {}
+    while find_pre_post_state_fn(fcx, f) { }
 
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
@@ -181,21 +184,20 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ast::ty_param[] tps,
     check_states_against_conditions(fcx, f, tps, id, sp, i);
 }
 
-fn fn_states(&_fn f, &ast::ty_param[] tps,
-             &span sp, &fn_ident i, node_id id, &crate_ctxt ccx,
-             &visit::vt[crate_ctxt] v) {
+fn fn_states(f: &_fn, tps: &ast::ty_param[], sp: &span, i: &fn_ident,
+             id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
     visit::visit_fn(f, tps, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
-    auto f_info = ccx.fm.get(id);
-    auto name = option::from_maybe("anon", i);
-    auto fcx = rec(enclosing=f_info, id=id, name=name, ccx=ccx);
+    let f_info = ccx.fm.get(id);
+    let name = option::from_maybe("anon", i);
+    let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
     check_fn_states(fcx, f, tps, id, sp, i);
 }
 
-fn check_crate(ty::ctxt cx, @crate crate) {
-    let crate_ctxt ccx = new_crate_ctxt(cx);
+fn check_crate(cx: ty::ctxt, crate: @crate) {
+    let ccx: crate_ctxt = new_crate_ctxt(cx);
     /* Build the global map from function id to var-to-bit-num-map */
 
     mk_f_to_fn_info(ccx, crate);
@@ -204,13 +206,13 @@ fn check_crate(ty::ctxt cx, @crate crate) {
     annotate_crate(ccx, *crate);
     /* Compute the pre and postcondition for every subexpression */
 
-    auto vtor = visit::default_visitor[crate_ctxt]();
-    vtor = @rec(visit_fn=fn_pre_post with *vtor);
+    let vtor = visit::default_visitor[crate_ctxt]();
+    vtor = @{visit_fn: fn_pre_post with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
-    vtor = @rec(visit_fn=fn_states with *vtor);
+    vtor = @{visit_fn: fn_states with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 }
 //

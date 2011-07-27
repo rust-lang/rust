@@ -1,8 +1,7 @@
-pred p(int i) -> bool { true }
+pred p(i: int) -> bool { true }
 
-fn f(int i) : p(i) -> int { i }
+fn f(i: int) -> int { i }
 
-fn g(int i) : p(i) -> int { f(i) }
+fn g(i: int) -> int { f(i) }
 
-fn main() {
-}
+fn main() { }

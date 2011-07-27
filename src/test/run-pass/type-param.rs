@@ -2,4 +2,4 @@
 
 type lteq[T] = fn(&T) -> bool ;
 
-fn main(vec[str] args) { }
+fn main(args: vec[str]) { }

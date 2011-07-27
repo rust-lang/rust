@@ -1,9 +1,6 @@
 // error-pattern: return
 
-fn f() -> int {
-}
+fn f() -> int { }
 
-fn main() {
-  f();
-}
+fn main() { f(); }
 

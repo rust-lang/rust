@@ -5,4 +5,4 @@
 // as a _|_-typed thing, not a str-typed thing
 // xfail-stage0
 // error-pattern:bye
-fn main() { auto pth = fail"bye"; let rec(str t) rs = rec(t=pth); }
+fn main() { let pth = fail "bye"; let rs: {t: str} = {t: pth}; }

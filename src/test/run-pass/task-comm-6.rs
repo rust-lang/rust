@@ -3,16 +3,16 @@
 fn main() { test00(); }
 
 fn test00() {
-    let int r = 0;
-    let int sum = 0;
-    let port[int] p = port();
-    let chan[int] c0 = chan(p);
-    let chan[int] c1 = chan(p);
-    let chan[int] c2 = chan(p);
-    let chan[int] c3 = chan(p);
-    let int number_of_messages = 1000;
-    let int i = 0;
-    while (i < number_of_messages) {
+    let r: int = 0;
+    let sum: int = 0;
+    let p: port[int] = port();
+    let c0: chan[int] = chan(p);
+    let c1: chan[int] = chan(p);
+    let c2: chan[int] = chan(p);
+    let c3: chan[int] = chan(p);
+    let number_of_messages: int = 1000;
+    let i: int = 0;
+    while i < number_of_messages {
         c0 <| i;
         c1 <| i;
         c2 <| i;
@@ -20,7 +20,7 @@ fn test00() {
         i += 1;
     }
     i = 0;
-    while (i < number_of_messages) {
+    while i < number_of_messages {
         p |> r;
         sum += r;
         p |> r;

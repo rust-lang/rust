@@ -3,8 +3,8 @@
 // issue #367
 
 fn f() {
-  auto v = [1];
-  log v.some_field_name; //type error
+    let v = [1];
+    log v.some_field_name; //type error
 }
 
-fn main() {}
+fn main() { }

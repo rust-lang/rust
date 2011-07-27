@@ -3,8 +3,8 @@
 
 // xfail-boot
 fn main() {
-    obj foo(mutable int i) {
-        fn inc_by(int incr) -> int { i += incr; ret i; }
+    obj foo(mutable i: int) {
+        fn inc_by(incr: int) -> int { i += incr; ret i; }
         fn inc_by_5() -> int { ret self.inc_by(5); }
 
         // A test case showing that issue #324 is resolved.  (It used to
@@ -15,8 +15,8 @@ fn main() {
         // }
         fn get() -> int { ret i; }
     }
-    let int rs;
-    auto o = foo(5);
+    let rs: int;
+    let o = foo(5);
     rs = o.get();
     assert (rs == 5);
     rs = o.inc_by(3);

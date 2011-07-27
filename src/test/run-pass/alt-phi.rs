@@ -5,10 +5,10 @@ tag thing { a; b; c; }
 iter foo() -> int { put 10; }
 
 fn main() {
-    auto x = true;
-    alt (a) {
-        case (a) { x = true; for each (int i in foo()) { } }
-        case (b) { x = false; }
-        case (c) { x = false; }
+    let x = true;
+    alt a {
+      a. { x = true; for each i: int  in foo() { } }
+      b. { x = false; }
+      c. { x = false; }
     }
 }

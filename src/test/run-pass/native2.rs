@@ -2,7 +2,7 @@
 
 native "rust" mod rustrt {
     type vbuf;
-    fn vec_buf[T](vec[T] v, uint offset) -> vbuf;
+    fn vec_buf[T](v: vec[T], offset: uint) -> vbuf;
 }
 
 native "rust" mod bar = "" { }
@@ -10,9 +10,9 @@ native "rust" mod bar = "" { }
 native "cdecl" mod zed = "" { }
 
 native "cdecl" mod libc = "" {
-    fn write(int fd, rustrt::vbuf buf, uint count) -> int;
+    fn write(fd: int, buf: rustrt::vbuf, count: uint) -> int;
 }
 
 native "cdecl" mod baz = "" { }
 
-fn main(vec[str] args) { }
+fn main(args: vec[str]) { }

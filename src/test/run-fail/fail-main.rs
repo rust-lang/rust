@@ -2,6 +2,4 @@
 // error-pattern:moop
 use std;
 import std::uint;
-fn main() {
-  fail "moop";
-}
+fn main() { fail "moop"; }

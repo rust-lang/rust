@@ -5,11 +5,9 @@
 // begin failing.
 
 mod m {
-  use std;
-  import std::vec;
-  fn f() -> vec[int] { vec::empty[int]() }
+    use std;
+    import std::vec;
+    fn f() -> vec[int] { vec::empty[int]() }
 }
 
-fn main() {
-  auto x = m::f();
-}
+fn main() { let x = m::f(); }

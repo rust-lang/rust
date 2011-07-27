@@ -1,16 +1,12 @@
 import bar::baz;
 import foo::zed;
 mod foo {
-  mod zed {
-    fn baz() {
-      log "baz";
+    mod zed {
+        fn baz() { log "baz"; }
     }
-  }
 }
 mod bar {
-  import zed::baz;
-  export baz;
+    import zed::baz;
+    export baz;
 }
-fn main() {
-  baz();
-}
+fn main() { baz(); }

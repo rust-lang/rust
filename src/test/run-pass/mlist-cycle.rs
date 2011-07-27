@@ -7,14 +7,14 @@
 // -*- rust -*-
 use std;
 
-type cell = rec(mutable @list c);
+type cell = {mutable c: @list};
 
 tag list { link(@cell); nil; }
 
 fn main() {
-    let @cell first = @rec(mutable c=@nil());
-    let @cell second = @rec(mutable c=@link(first));
+    let first: @cell = @{mutable c: @nil()};
+    let second: @cell = @{mutable c: @link(first)};
     first._0 = @link(second);
     std::sys.rustrt.gc();
-    let @cell third = @rec(mutable c=@nil());
+    let third: @cell = @{mutable c: @nil()};
 }

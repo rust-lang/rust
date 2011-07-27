@@ -1,8 +1,8 @@
 
 
-fn foo[T](&myoption[T] o) -> int {
-    let int x = 5;
-    alt (o) { case (none[T]) { } case (some[T](?t)) { x += 1; } }
+fn foo[T](o: &myoption[T]) -> int {
+    let x: int = 5;
+    alt o { none[T]. { } some[T](t) { x += 1; } }
     ret x;
 }
 

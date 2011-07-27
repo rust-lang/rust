@@ -17,256 +17,237 @@ export ac_no_abbrevs;
 export ac_use_abbrevs;
 export enc_ty;
 
-type ctxt =
-    rec(fn(&def_id) -> str  ds, // Def -> str Callback:
-        ty::ctxt tcx, // The type context.
-        abbrev_ctxt abbrevs);
+type ctxt =  // Def -> str Callback:
+     // The type context.
+    {ds: fn(&def_id) -> str , tcx: ty::ctxt, abbrevs: abbrev_ctxt};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
-type ty_abbrev = rec(uint pos, uint len, str s);
+type ty_abbrev = {pos: uint, len: uint, s: str};
 
 tag abbrev_ctxt { ac_no_abbrevs; ac_use_abbrevs(hashmap[ty::t, ty_abbrev]); }
 
-fn cx_uses_abbrevs(&@ctxt cx) -> bool {
-    alt (cx.abbrevs) {
-        case (ac_no_abbrevs) { ret false; }
-        case (ac_use_abbrevs(_)) { ret true; }
+fn cx_uses_abbrevs(cx: &@ctxt) -> bool {
+    alt cx.abbrevs {
+      ac_no_abbrevs. { ret false; }
+      ac_use_abbrevs(_) { ret true; }
     }
 }
 
-fn enc_ty(&ioivec::writer w, &@ctxt cx, &ty::t t) {
-    alt (cx.abbrevs) {
-        case (ac_no_abbrevs) {
-            auto result_str;
-            alt (cx.tcx.short_names_cache.find(t)) {
-                case (some(?s)) { result_str = s; }
-                case (none) {
-                    auto sw = ioivec::string_writer();
-                    enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
-                    result_str = sw.get_str();
-                    cx.tcx.short_names_cache.insert(t, result_str);
-                }
-            }
-            w.write_str(result_str);
+fn enc_ty(w: &ioivec::writer, cx: &@ctxt, t: &ty::t) {
+    alt cx.abbrevs {
+      ac_no_abbrevs. {
+        let result_str;
+        alt cx.tcx.short_names_cache.find(t) {
+          some(s) { result_str = s; }
+          none. {
+            let sw = ioivec::string_writer();
+            enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
+            result_str = sw.get_str();
+            cx.tcx.short_names_cache.insert(t, result_str);
+          }
         }
-        case (ac_use_abbrevs(?abbrevs)) {
-            alt (abbrevs.find(t)) {
-                case (some(?a)) { w.write_str(a.s); ret; }
-                case (none) {
-                    auto pos = w.get_buf_writer().tell();
-                    enc_sty(w, cx, ty::struct(cx.tcx, t));
-                    auto end = w.get_buf_writer().tell();
-                    auto len = end - pos;
-                    fn estimate_sz(uint u) -> uint {
-                        auto n = u;
-                        auto len = 0u;
-                        while (n != 0u) { len += 1u; n = n >> 4u; }
-                        ret len;
-                    }
-                    auto abbrev_len =
-                        3u + estimate_sz(pos) + estimate_sz(len);
-                    if (abbrev_len < len) {
-                        // I.e. it's actually an abbreviation.
+        w.write_str(result_str);
+      }
+      ac_use_abbrevs(abbrevs) {
+        alt abbrevs.find(t) {
+          some(a) { w.write_str(a.s); ret; }
+          none. {
+            let pos = w.get_buf_writer().tell();
+            enc_sty(w, cx, ty::struct(cx.tcx, t));
+            let end = w.get_buf_writer().tell();
+            let len = end - pos;
+            fn estimate_sz(u: uint) -> uint {
+                let n = u;
+                let len = 0u;
+                while n != 0u { len += 1u; n = n >> 4u; }
+                ret len;
+            }
+            let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
+            if abbrev_len < len {
+                // I.e. it's actually an abbreviation.
 
-                        auto s =
-                            "#" + uint::to_str(pos, 16u) + ":" +
-                            uint::to_str(len, 16u) + "#";
-                        auto a = rec(pos=pos, len=len, s=s);
-                        abbrevs.insert(t, a);
-                    }
-                    ret;
-                }
+                let s =
+                    "#" + uint::to_str(pos, 16u) + ":" +
+                        uint::to_str(len, 16u) + "#";
+                let a = {pos: pos, len: len, s: s};
+                abbrevs.insert(t, a);
             }
+            ret;
+          }
         }
+      }
     }
 }
-fn enc_mt(&ioivec::writer w, &@ctxt cx, &ty::mt mt) {
-    alt (mt.mut) {
-        case (imm) { }
-        case (mut) { w.write_char('m'); }
-        case (maybe_mut) { w.write_char('?'); }
+fn enc_mt(w: &ioivec::writer, cx: &@ctxt, mt: &ty::mt) {
+    alt mt.mut {
+      imm. { }
+      mut. { w.write_char('m'); }
+      maybe_mut. { w.write_char('?'); }
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_sty(&ioivec::writer w, &@ctxt cx, &ty::sty st) {
-    alt (st) {
-        case (ty::ty_nil) { w.write_char('n'); }
-        case (ty::ty_bot) { w.write_char('z'); }
-        case (ty::ty_bool) { w.write_char('b'); }
-        case (ty::ty_int) { w.write_char('i'); }
-        case (ty::ty_uint) { w.write_char('u'); }
-        case (ty::ty_float) { w.write_char('l'); }
-        case (ty::ty_machine(?mach)) {
-            alt (mach) {
-                case (ty_u8) { w.write_str("Mb"); }
-                case (ty_u16) { w.write_str("Mw"); }
-                case (ty_u32) { w.write_str("Ml"); }
-                case (ty_u64) { w.write_str("Md"); }
-                case (ty_i8) { w.write_str("MB"); }
-                case (ty_i16) { w.write_str("MW"); }
-                case (ty_i32) { w.write_str("ML"); }
-                case (ty_i64) { w.write_str("MD"); }
-                case (ty_f32) { w.write_str("Mf"); }
-                case (ty_f64) { w.write_str("MF"); }
-            }
+fn enc_sty(w: &ioivec::writer, cx: &@ctxt, st: &ty::sty) {
+    alt st {
+      ty::ty_nil. { w.write_char('n'); }
+      ty::ty_bot. { w.write_char('z'); }
+      ty::ty_bool. { w.write_char('b'); }
+      ty::ty_int. { w.write_char('i'); }
+      ty::ty_uint. { w.write_char('u'); }
+      ty::ty_float. { w.write_char('l'); }
+      ty::ty_machine(mach) {
+        alt mach {
+          ty_u8. { w.write_str("Mb"); }
+          ty_u16. { w.write_str("Mw"); }
+          ty_u32. { w.write_str("Ml"); }
+          ty_u64. { w.write_str("Md"); }
+          ty_i8. { w.write_str("MB"); }
+          ty_i16. { w.write_str("MW"); }
+          ty_i32. { w.write_str("ML"); }
+          ty_i64. { w.write_str("MD"); }
+          ty_f32. { w.write_str("Mf"); }
+          ty_f64. { w.write_str("MF"); }
         }
-        case (ty::ty_char) { w.write_char('c'); }
-        case (ty::ty_str) { w.write_char('s'); }
-        case (ty::ty_istr) { w.write_char('S'); }
-        case (ty::ty_tag(?def, ?tys)) {
-            w.write_str("t[");
-            w.write_str(cx.ds(def));
-            w.write_char('|');
-            for (ty::t t in tys) { enc_ty(w, cx, t); }
-            w.write_char(']');
+      }
+      ty::ty_char. { w.write_char('c'); }
+      ty::ty_str. { w.write_char('s'); }
+      ty::ty_istr. { w.write_char('S'); }
+      ty::ty_tag(def, tys) {
+        w.write_str("t[");
+        w.write_str(cx.ds(def));
+        w.write_char('|');
+        for t: ty::t  in tys { enc_ty(w, cx, t); }
+        w.write_char(']');
+      }
+      ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }
+      ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
+      ty::ty_vec(mt) { w.write_char('V'); enc_mt(w, cx, mt); }
+      ty::ty_ivec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
+      ty::ty_port(t) { w.write_char('P'); enc_ty(w, cx, t); }
+      ty::ty_chan(t) { w.write_char('C'); enc_ty(w, cx, t); }
+      ty::ty_rec(fields) {
+        w.write_str("R[");
+        for field: ty::field  in fields {
+            w.write_str(field.ident);
+            w.write_char('=');
+            enc_mt(w, cx, field.mt);
         }
-        case (ty::ty_box(?mt)) { w.write_char('@'); enc_mt(w, cx, mt); }
-        case (ty::ty_ptr(?mt)) { w.write_char('*'); enc_mt(w, cx, mt); }
-        case (ty::ty_vec(?mt)) { w.write_char('V'); enc_mt(w, cx, mt); }
-        case (ty::ty_ivec(?mt)) { w.write_char('I'); enc_mt(w, cx, mt); }
-        case (ty::ty_port(?t)) { w.write_char('P'); enc_ty(w, cx, t); }
-        case (ty::ty_chan(?t)) { w.write_char('C'); enc_ty(w, cx, t); }
-        case (ty::ty_rec(?fields)) {
-            w.write_str("R[");
-            for (ty::field field in fields) {
-                w.write_str(field.ident);
-                w.write_char('=');
-                enc_mt(w, cx, field.mt);
-            }
-            w.write_char(']');
+        w.write_char(']');
+      }
+      ty::ty_fn(proto, args, out, cf, constrs) {
+        enc_proto(w, proto);
+        enc_ty_fn(w, cx, args, out, cf, constrs);
+      }
+      ty::ty_native_fn(abi, args, out) {
+        w.write_char('N');
+        alt abi {
+          native_abi_rust. { w.write_char('r'); }
+          native_abi_rust_intrinsic. { w.write_char('i'); }
+          native_abi_cdecl. { w.write_char('c'); }
+          native_abi_llvm. { w.write_char('l'); }
+          native_abi_x86stdcall. { w.write_char('s'); }
         }
-        case (ty::ty_fn(?proto, ?args, ?out, ?cf, ?constrs)) {
-            enc_proto(w, proto);
-            enc_ty_fn(w, cx, args, out, cf, constrs);
+        enc_ty_fn(w, cx, args, out, return, ~[]);
+      }
+      ty::ty_obj(methods) {
+        w.write_str("O[");
+        for m: ty::method  in methods {
+            enc_proto(w, m.proto);
+            w.write_str(m.ident);
+            enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
         }
-        case (ty::ty_native_fn(?abi, ?args, ?out)) {
-            w.write_char('N');
-            alt (abi) {
-                case (native_abi_rust) { w.write_char('r'); }
-                case (native_abi_rust_intrinsic) {
-                    w.write_char('i');
-                }
-                case (native_abi_cdecl) { w.write_char('c'); }
-                case (native_abi_llvm) { w.write_char('l'); }
-                case (native_abi_x86stdcall) { w.write_char('s'); }
-            }
-            enc_ty_fn(w, cx, args, out, return, ~[]);
-        }
-        case (ty::ty_obj(?methods)) {
-            w.write_str("O[");
-            for (ty::method m in methods) {
-                enc_proto(w, m.proto);
-                w.write_str(m.ident);
-                enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
-            }
-            w.write_char(']');
-        }
-        case (ty::ty_res(?def, ?ty, ?tps)) {
-            w.write_str("r[");
-            w.write_str(cx.ds(def));
-            w.write_char('|');
-            enc_ty(w, cx, ty);
-            for (ty::t t in tps) { enc_ty(w, cx, t); }
-            w.write_char(']');
-        }
-        case (ty::ty_var(?id)) {
-            w.write_char('X');
-            w.write_str(int::str(id));
-        }
-        case (ty::ty_native(?def)) {
-            w.write_char('E');
-            w.write_str(cx.ds(def));
-            w.write_char('|');
-        }
-        case (ty::ty_param(?id)) {
-            w.write_char('p');
-            w.write_str(uint::str(id));
-        }
-        case (ty::ty_type) { w.write_char('Y'); }
-        case (ty::ty_task) { w.write_char('a'); }
-        case (ty::ty_constr(?ty, ?cs)) {
-            w.write_str("A[");
-            enc_ty(w, cx, ty);
-            for (@ty::type_constr tc in cs) {
-                enc_ty_constr(w, cx, tc);
-            }
-            w.write_char(']');
-        }
+        w.write_char(']');
+      }
+      ty::ty_res(def, ty, tps) {
+        w.write_str("r[");
+        w.write_str(cx.ds(def));
+        w.write_char('|');
+        enc_ty(w, cx, ty);
+        for t: ty::t  in tps { enc_ty(w, cx, t); }
+        w.write_char(']');
+      }
+      ty::ty_var(id) { w.write_char('X'); w.write_str(int::str(id)); }
+      ty::ty_native(def) {
+        w.write_char('E');
+        w.write_str(cx.ds(def));
+        w.write_char('|');
+      }
+      ty::ty_param(id) { w.write_char('p'); w.write_str(uint::str(id)); }
+      ty::ty_type. { w.write_char('Y'); }
+      ty::ty_task. { w.write_char('a'); }
+      ty::ty_constr(ty, cs) {
+        w.write_str("A[");
+        enc_ty(w, cx, ty);
+        for tc: @ty::type_constr  in cs { enc_ty_constr(w, cx, tc); }
+        w.write_char(']');
+      }
     }
 }
-fn enc_proto(&ioivec::writer w, proto proto) {
-    alt (proto) {
-        case (proto_iter) { w.write_char('W'); }
-        case (proto_fn) { w.write_char('F'); }
-        case (proto_block) { w.write_char('B'); }
+fn enc_proto(w: &ioivec::writer, proto: proto) {
+    alt proto {
+      proto_iter. { w.write_char('W'); }
+      proto_fn. { w.write_char('F'); }
+      proto_block. { w.write_char('B'); }
     }
 }
 
-fn enc_ty_fn(&ioivec::writer w, &@ctxt cx, &ty::arg[] args, &ty::t out,
-             &controlflow cf, &(@ty::constr)[] constrs) {
+fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &ty::arg[], out: &ty::t,
+             cf: &controlflow, constrs: &(@ty::constr)[]) {
     w.write_char('[');
-    for (ty::arg arg in args) {
-        alt (arg.mode) {
-            case (ty::mo_alias(?mut)) {
-                w.write_char('&');
-                if (mut) { w.write_char('m'); }
-            }
-            case (ty::mo_val) { }
+    for arg: ty::arg  in args {
+        alt arg.mode {
+          ty::mo_alias(mut) {
+            w.write_char('&');
+            if mut { w.write_char('m'); }
+          }
+          ty::mo_val. { }
         }
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
-    auto colon = true;
-    for (@ty::constr c in constrs) {
-        if (colon) {
+    let colon = true;
+    for c: @ty::constr  in constrs {
+        if colon {
             w.write_char(':');
             colon = false;
         } else { w.write_char(';'); }
         enc_constr(w, cx, c);
     }
-    alt (cf) {
-        case (noreturn) { w.write_char('!'); }
-        case (_) { enc_ty(w, cx, out); }
-    }
+    alt cf { noreturn. { w.write_char('!'); } _ { enc_ty(w, cx, out); } }
 
 }
 
 // FIXME less copy-and-paste
-fn enc_constr(&ioivec::writer w, &@ctxt cx, &@ty::constr c) {
+fn enc_constr(w: &ioivec::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
-    auto semi = false;
-    for (@constr_arg a in c.node.args) {
-        if (semi) { w.write_char(';'); } else { semi = true; }
-        alt (a.node) {
-            case (carg_base) { w.write_char('*'); }
-            case (carg_ident(?i)) {
-                w.write_uint(i);
-            }
-            case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }
+    let semi = false;
+    for a: @constr_arg  in c.node.args {
+        if semi { w.write_char(';'); } else { semi = true; }
+        alt a.node {
+          carg_base. { w.write_char('*'); }
+          carg_ident(i) { w.write_uint(i); }
+          carg_lit(l) { w.write_str(lit_to_str(l)); }
         }
     }
     w.write_char(')');
 }
 
-fn enc_ty_constr(&ioivec::writer w, &@ctxt cx, &@ty::type_constr c) {
+fn enc_ty_constr(w: &ioivec::writer, cx: &@ctxt, c: &@ty::type_constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
-    auto semi = false;
-    for (@ty::ty_constr_arg a in c.node.args) {
-        if (semi) { w.write_char(';'); } else { semi = true; }
-        alt (a.node) {
-            case (carg_base) { w.write_char('*'); }
-            case (carg_ident(?p)) {
-                w.write_str(path_to_str(p));
-            }
-            case (carg_lit(?l)) { w.write_str(lit_to_str(l)); }
+    let semi = false;
+    for a: @ty::ty_constr_arg  in c.node.args {
+        if semi { w.write_char(';'); } else { semi = true; }
+        alt a.node {
+          carg_base. { w.write_char('*'); }
+          carg_ident(p) { w.write_str(path_to_str(p)); }
+          carg_lit(l) { w.write_str(lit_to_str(l)); }
         }
     }
     w.write_char(')');

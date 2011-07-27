@@ -5,9 +5,9 @@ use std;
 import std::str;
 
 fn main() {
-    let str a = "this \
+    let a: str = "this \
 is a test";
-    let str b =
+    let b: str =
         "this \
                is \
                another \

@@ -6,22 +6,16 @@
 fn main() {
 
     obj a() {
-        fn foo() -> int {
-            ret 2;
-        }
+        fn foo() -> int { ret 2; }
     }
 
-    auto my_a = a();
+    let my_a = a();
 
-    auto my_b = obj() {
-        with my_a
-    };
+    let my_b = obj () { with my_a };
 
     assert (my_b.foo() == 2);
 
-    auto my_c = obj() {
-        with my_b
-    };
+    let my_c = obj () { with my_b };
 
     assert (my_c.foo() == 2);
 }

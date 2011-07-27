@@ -3,13 +3,8 @@
 
 // error-pattern:assignment to immutable field
 
-type point = rec(int x, int y, int z);
+type point = {x: int, y: int, z: int};
 
-fn f(&point p) {
-  p.x = 13;
-}
+fn f(p: &point) { p.x = 13; }
 
-fn main() {
-  let point x = rec(x=10, y=11, z=12);
-  f(x);
-}
+fn main() { let x: point = {x: 10, y: 11, z: 12}; f(x); }

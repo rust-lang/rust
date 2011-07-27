@@ -14,21 +14,19 @@ type hashmap[K, V] =
         fn find(&K) -> option::t[V] ;
         fn remove(&K) -> option::t[V] ;
         fn rehash() ;
-        iter items() -> @rec(K key, V val);
+        iter items() -> @{key: K, val: V} ;
         iter keys() -> K ;
     };
 type hashset[K] = hashmap[K, ()];
 
-fn set_add[K](hashset[K] set, &K key) -> bool {
-    ret set.insert(key, ());
-}
+fn set_add[K](set: hashset[K], key: &K) -> bool { ret set.insert(key, ()); }
 
-fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
-    let uint initial_capacity = 32u; // 2^5
+fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
+    let initial_capacity: uint = 32u; // 2^5
 
-    let util::rational load_factor = rec(num=3, den=4);
+    let load_factor: util::rational = {num: 3, den: 4};
     tag bucket[K, V] { nil; deleted; some(K, V); }
-    fn make_buckets[K, V](uint nbkts) -> (bucket[K, V])[mutable] {
+    fn make_buckets[K, V](nbkts: uint) -> (bucket[K, V])[mutable ] {
         ret ivec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
     // Derive two hash functions from the one given by taking the upper
@@ -45,9 +43,9 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     // is always a power of 2), so that all buckets are probed for a
     // fixed key.
 
-    fn hashl(uint n, uint nbkts) -> uint { ret (n >>> 16u) * 2u + 1u; }
-    fn hashr(uint n, uint nbkts) -> uint { ret 0x0000_ffff_u & n; }
-    fn hash(uint h, uint nbkts, uint i) -> uint {
+    fn hashl(n: uint, nbkts: uint) -> uint { ret (n >>> 16u) * 2u + 1u; }
+    fn hashr(n: uint, nbkts: uint) -> uint { ret 0x0000_ffff_u & n; }
+    fn hash(h: uint, nbkts: uint, i: uint) -> uint {
         ret (hashl(h, nbkts) * i + hashr(h, nbkts)) % nbkts;
     }
     /**
@@ -56,153 +54,146 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
      */
 
     fn insert_common[K,
-                     V](&hashfn[K] hasher, &eqfn[K] eqer,
-                        &(bucket[K, V])[mutable] bkts, uint nbkts, &K key,
-                        &V val) -> bool {
-        let uint i = 0u;
-        let uint h = hasher(key);
-        while (i < nbkts) {
-            let uint j = hash(h, nbkts, i);
-            alt (bkts.(j)) {
-                case (some(?k, _)) {
-                    // Copy key to please alias analysis.
+                     V](hasher: &hashfn[K], eqer: &eqfn[K],
+                        bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K,
+                        val: &V) -> bool {
+        let i: uint = 0u;
+        let h: uint = hasher(key);
+        while i < nbkts {
+            let j: uint = hash(h, nbkts, i);
+            alt bkts.(j) {
+              some(k, _) {
+                // Copy key to please alias analysis.
 
-                    auto k_ = k;
-                    if (eqer(key, k_)) {
-                        bkts.(j) = some[K, V](k_, val);
-                        ret false;
-                    }
-                    i += 1u;
+                let k_ = k;
+                if eqer(key, k_) {
+                    bkts.(j) = some[K, V](k_, val);
+                    ret false;
                 }
-                case (_) { bkts.(j) = some[K, V](key, val); ret true; }
+                i += 1u;
+              }
+              _ { bkts.(j) = some[K, V](key, val); ret true; }
             }
         }
         fail; // full table
 
     }
     fn find_common[K,
-                   V](&hashfn[K] hasher, &eqfn[K] eqer,
-                      &(bucket[K, V])[mutable] bkts, uint nbkts, &K key) ->
-       option::t[V] {
-        let uint i = 0u;
-        let uint h = hasher(key);
-        while (i < nbkts) {
-            let uint j = hash(h, nbkts, i);
-            alt (bkts.(j)) {
-                case (some(?k, ?v)) {
-                    // Copy to please alias analysis.
+                   V](hasher: &hashfn[K], eqer: &eqfn[K],
+                      bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K)
+       -> option::t[V] {
+        let i: uint = 0u;
+        let h: uint = hasher(key);
+        while i < nbkts {
+            let j: uint = hash(h, nbkts, i);
+            alt bkts.(j) {
+              some(k, v) {
+                // Copy to please alias analysis.
 
-                    auto k_ = k;
-                    auto v_ = v;
-                    if (eqer(key, k_)) { ret option::some[V](v_); }
-                }
-                case (nil) { ret option::none[V]; }
-                case (deleted[K, V]) { }
+                let k_ = k;
+                let v_ = v;
+                if eqer(key, k_) { ret option::some[V](v_); }
+              }
+              nil. { ret option::none[V]; }
+              deleted[K, V]. { }
             }
             i += 1u;
         }
         ret option::none[V];
     }
     fn rehash[K,
-              V](&hashfn[K] hasher, &eqfn[K] eqer,
-                 &(bucket[K, V])[mutable] oldbkts, uint noldbkts,
-                 &(bucket[K, V])[mutable] newbkts, uint nnewbkts) {
-        for (bucket[K, V] b in oldbkts) {
-            alt (b) {
-                case (some(?k_, ?v_)) {
-                    auto k = k_;
-                    auto v = v_;
-                    insert_common[K,
-                                  V](hasher, eqer, newbkts, nnewbkts, k, v);
-                }
-                case (_) { }
+              V](hasher: &hashfn[K], eqer: &eqfn[K],
+                 oldbkts: &(bucket[K, V])[mutable ], noldbkts: uint,
+                 newbkts: &(bucket[K, V])[mutable ], nnewbkts: uint) {
+        for b: bucket[K, V]  in oldbkts {
+            alt b {
+              some(k_, v_) {
+                let k = k_;
+                let v = v_;
+                insert_common[K, V](hasher, eqer, newbkts, nnewbkts, k, v);
+              }
+              _ { }
             }
         }
     }
     obj hashmap[K,
-                V](hashfn[K] hasher,
-                   eqfn[K] eqer,
-                   mutable (bucket[K, V])[mutable] bkts,
-                   mutable uint nbkts,
-                   mutable uint nelts,
-                   util::rational lf) {
+                V](hasher: hashfn[K],
+                   eqer: eqfn[K],
+                   mutable bkts: (bucket[K, V])[mutable ],
+                   mutable nbkts: uint,
+                   mutable nelts: uint,
+                   lf: util::rational) {
         fn size() -> uint { ret nelts; }
-        fn insert(&K key, &V val) -> bool {
-            let util::rational load =
-                rec(num=nelts + 1u as int, den=nbkts as int);
-            if (!util::rational_leq(load, lf)) {
-                let uint nnewbkts = uint::next_power_of_two(nbkts + 1u);
-                auto newbkts = make_buckets[K, V](nnewbkts);
+        fn insert(key: &K, val: &V) -> bool {
+            let load: util::rational =
+                {num: nelts + 1u as int, den: nbkts as int};
+            if !util::rational_leq(load, lf) {
+                let nnewbkts: uint = uint::next_power_of_two(nbkts + 1u);
+                let newbkts = make_buckets[K, V](nnewbkts);
                 rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nnewbkts);
                 bkts = newbkts;
                 nbkts = nnewbkts;
             }
-            if (insert_common[K, V](hasher, eqer, bkts, nbkts, key, val)) {
+            if insert_common[K, V](hasher, eqer, bkts, nbkts, key, val) {
                 nelts += 1u;
                 ret true;
             }
             ret false;
         }
-        fn contains_key(&K key) -> bool {
-            ret alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (option::some(_)) { true }
-                    case (_) { false }
+        fn contains_key(key: &K) -> bool {
+            ret alt find_common[K, V](hasher, eqer, bkts, nbkts, key) {
+                  option::some(_) { true }
+                  _ { false }
                 };
         }
-        fn get(&K key) -> V {
-            ret alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (option::some(?val)) { val }
-                    case (_) { fail }
+        fn get(key: &K) -> V {
+            ret alt find_common[K, V](hasher, eqer, bkts, nbkts, key) {
+                  option::some(val) { val }
+                  _ { fail }
                 };
         }
-        fn find(&K key) -> option::t[V] {
+        fn find(key: &K) -> option::t[V] {
             be find_common[K, V](hasher, eqer, bkts, nbkts, key);
         }
-        fn remove(&K key) -> option::t[V] {
-            let uint i = 0u;
-            let uint h = hasher(key);
-            while (i < nbkts) {
-                let uint j = hash(h, nbkts, i);
-                alt (bkts.(j)) {
-                    case (some(?k, ?v)) {
-                        auto k_ = k;
-                        auto vo = option::some(v);
-                        if (eqer(key, k_)) {
-                            bkts.(j) = deleted[K, V];
-                            nelts -= 1u;
-                            ret vo;
-                        }
+        fn remove(key: &K) -> option::t[V] {
+            let i: uint = 0u;
+            let h: uint = hasher(key);
+            while i < nbkts {
+                let j: uint = hash(h, nbkts, i);
+                alt bkts.(j) {
+                  some(k, v) {
+                    let k_ = k;
+                    let vo = option::some(v);
+                    if eqer(key, k_) {
+                        bkts.(j) = deleted[K, V];
+                        nelts -= 1u;
+                        ret vo;
                     }
-                    case (deleted) { }
-                    case (nil) { ret option::none[V]; }
+                  }
+                  deleted. { }
+                  nil. { ret option::none[V]; }
                 }
                 i += 1u;
             }
             ret option::none[V];
         }
         fn rehash() {
-            auto newbkts = make_buckets[K, V](nbkts);
+            let newbkts = make_buckets[K, V](nbkts);
             rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nbkts);
             bkts = newbkts;
         }
-        iter items() -> @rec(K key, V val) {
-            for (bucket[K, V] b in bkts) {
-                alt (b) {
-                    case (some(?k, ?v)) { put @rec(key=k, val=v); }
-                    case (_) { }
-                }
+        iter items() -> @{key: K, val: V} {
+            for b: bucket[K, V]  in bkts {
+                alt b { some(k, v) { put @{key: k, val: v}; } _ { } }
             }
         }
         iter keys() -> K {
-            for (bucket[K, V] b in bkts) {
-                alt (b) {
-                    case (some(?k, _)) { put k; }
-                    case (_) { }
-                }
+            for b: bucket[K, V]  in bkts {
+                alt b { some(k, _) { put k; } _ { } }
             }
         }
     }
-    auto bkts = make_buckets[K, V](initial_capacity);
+    let bkts = make_buckets[K, V](initial_capacity);
     ret hashmap[K, V](hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }
 
@@ -213,14 +204,14 @@ fn new_str_hash[V]() -> hashmap[str, V] {
 }
 
 fn new_int_hash[V]() -> hashmap[int, V] {
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    fn hash_int(x: &int) -> uint { ret x as uint; }
+    fn eq_int(a: &int, b: &int) -> bool { ret a == b; }
     ret mk_hashmap[int, V](hash_int, eq_int);
 }
 
 fn new_uint_hash[V]() -> hashmap[uint, V] {
-    fn hash_uint(&uint x) -> uint { ret x; }
-    fn eq_uint(&uint a, &uint b) -> bool { ret a == b; }
+    fn hash_uint(x: &uint) -> uint { ret x; }
+    fn eq_uint(a: &uint, b: &uint) -> bool { ret a == b; }
     ret mk_hashmap[uint, V](hash_uint, eq_uint);
 }
 

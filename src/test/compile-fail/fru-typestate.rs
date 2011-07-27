@@ -2,11 +2,11 @@
 
 // error-pattern: precondition
 
-type point = rec(int x, int y);
+type point = {x: int, y: int};
 
 fn main() {
-  let point origin;
+    let origin: point;
 
-  let point right = rec(x=10 with origin);
-  origin = rec(x=0, y=0);
+    let right: point = {x: 10 with origin};
+    origin = {x: 0, y: 0};
 }

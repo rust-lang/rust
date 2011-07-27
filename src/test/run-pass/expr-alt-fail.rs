@@ -3,12 +3,12 @@
 
 // xfail-stage0
 fn test_simple() {
-    auto r = alt (true) { case (true) { true } case (false) { fail } };
+    let r = alt true { true { true } false { fail } };
     assert (r == true);
 }
 
 fn test_box() {
-    auto r = alt (true) { case (true) { [10] } case (false) { fail } };
+    let r = alt true { true { [10] } false { fail } };
     assert (r.(0) == 10);
 }
 

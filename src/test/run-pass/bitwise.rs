@@ -3,8 +3,8 @@
 
 // -*- rust -*-
 fn main() {
-    let int a = 1;
-    let int b = 2;
+    let a: int = 1;
+    let b: int = 2;
     a ^= b;
     b ^= a;
     a = a ^ b;

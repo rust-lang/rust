@@ -3,8 +3,8 @@
 
 // -*- rust -*-
 fn main() {
-    let u8 x = 12u8;
-    let u8 y = 12u8;
+    let x: u8 = 12u8;
+    let y: u8 = 12u8;
     x = x + 1u8;
     x = x - 1u8;
     assert (x == y);

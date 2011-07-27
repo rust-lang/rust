@@ -17,10 +17,10 @@ type small =
     };
 
 fn main() {
-    let big b = big();
+    let b: big = big();
     assert (b.one() == 1);
     assert (b.two() == 2);
     assert (b.three() == 3);
-    let small s = b as small;
+    let s: small = b as small;
     assert (s.one() == 1);
 }

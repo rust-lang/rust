@@ -8,13 +8,10 @@ import std::option::none;
 
 tag t { foo(int, uint); bar(int, option::t[int]); }
 
-fn nested(t o) {
-    alt (o) {
-        case (bar(?i, some[int](_))) {
-            log_err "wrong pattern matched";
-            fail;
-        }
-        case (_) { log_err "succeeded"; }
+fn nested(o: t) {
+    alt o {
+      bar(i, some[int](_)) { log_err "wrong pattern matched"; fail; }
+      _ { log_err "succeeded"; }
     }
 }
 

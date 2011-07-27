@@ -5,22 +5,19 @@
 // xfail-stage3
 // error-pattern:Unsatisfied precondition
 
-tag list {
-  cons(int,@list);
-  nil();
-}
+tag list { cons(int, @list); nil; }
 
-type bubu = rec(int x, int y);
+type bubu = {x: int, y: int};
 
-pred less_than(int x, int y) -> bool { ret x < y; }
+pred less_than(x: int, y: int) -> bool { ret x < y; }
 
-type ordered_range = rec(int low, int high) : less_than(*.low, *.high);
+type ordered_range = {low: int, high: int} :  : less_than(low, high);
 
 fn main() {
-// Should fail to compile, b/c we're not doing the check
-// explicitly that a < b
-  let int a = 1;
-  let int b = 2;
-  let ordered_range c = rec(low=a, high=b);
-  log c.low;
+    // Should fail to compile, b/c we're not doing the check
+    // explicitly that a < b
+    let a: int = 1;
+    let b: int = 2;
+    let c: ordered_range = {low: a, high: b};
+    log c.low;
 }

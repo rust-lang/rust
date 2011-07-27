@@ -3,9 +3,9 @@
 
 // -*- rust -*-
 fn main() {
-    let str a = "hello";
-    let str b = "world";
-    let str s = a + b;
+    let a: str = "hello";
+    let b: str = "world";
+    let s: str = a + b;
     log s;
     assert (s.(9) == 'd' as u8);
 }

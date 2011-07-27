@@ -2,13 +2,14 @@
 
 
 // -*- rust -*-
-fn fib(int n) -> int {
+fn fib(n: int) -> int {
+
 
     // Several of the posted 'benchmark' versions of this compute the
     // wrong Fibonacci numbers, of course.
-    if (n == 0) {
+    if n == 0 {
         ret 0;
-    } else { if (n <= 2) { ret 1; } else { ret fib(n - 1) + fib(n - 2); } }
+    } else { if n <= 2 { ret 1; } else { ret fib(n - 1) + fib(n - 2); } }
 }
 
 fn main() {

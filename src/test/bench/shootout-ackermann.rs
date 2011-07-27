@@ -2,11 +2,11 @@
 
 
 // -*- rust -*-
-fn ack(int m, int n) -> int {
-    if (m == 0) {
+fn ack(m: int, n: int) -> int {
+    if m == 0 {
         ret n + 1;
     } else {
-        if (n == 0) {
+        if n == 0 {
             ret ack(m - 1, 1);
         } else { ret ack(m - 1, ack(m, n - 1)); }
     }

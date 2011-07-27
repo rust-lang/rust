@@ -1,7 +1,3 @@
 // error-pattern:Unsatisfied precondition
 
-fn main() {
-    auto x = 3;
-    auto y;
-    x <-> y;
-}
+fn main() { let x = 3; let y; x <-> y; }

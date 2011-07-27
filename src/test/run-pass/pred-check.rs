@@ -3,6 +3,6 @@
 
 // -*- rust -*-
 // xfail-stage0
-pred f(int q) -> bool { ret true; }
+pred f(q: int) -> bool { ret true; }
 
-fn main() { auto x = 0; check (f(x)); }
+fn main() { let x = 0; check (f(x)); }

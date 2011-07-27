@@ -5,10 +5,8 @@
 // xfail-stage0
 
 native "rust" mod rustrt {
-  fn task_yield();
+    fn task_yield();
 }
 
-fn main() {
-  spawn rustrt::task_yield();
-}
+fn main() { spawn rustrt::task_yield(); }
 

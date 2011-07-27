@@ -9,26 +9,24 @@ use std;
 
 import std::task::join;
 
-fn grandchild(chan[int] c) {
-  c <| 42;
-}
+fn grandchild(c: chan[int]) { c <| 42; }
 
-fn child(chan[int] c) {
-  auto _grandchild = spawn grandchild(c);
-  join(_grandchild);
+fn child(c: chan[int]) {
+    let _grandchild = spawn grandchild(c);
+    join(_grandchild);
 }
 
 fn main() {
-  let port[int] p = port();
+    let p: port[int] = port();
 
-  auto _child = spawn child(chan(p));
+    let _child = spawn child(chan(p));
 
-  let int x;
-  p |> x;
+    let x: int;
+    p |> x;
 
-  log x;
+    log x;
 
-  assert(x == 42);
+    assert (x == 42);
 
-  join(_child);
+    join(_child);
 }

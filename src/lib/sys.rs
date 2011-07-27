@@ -6,13 +6,13 @@ export size_of;
 
 native "rust" mod rustrt {
 
-        // Explicitly re-export native stuff we want to be made
-        // available outside this crate. Otherwise it's
-        // visible-in-crate, but not re-exported.
-        fn last_os_error() -> str;
+    // Explicitly re-export native stuff we want to be made
+    // available outside this crate. Otherwise it's
+    // visible-in-crate, but not re-exported.
+    fn last_os_error() -> str;
     fn size_of[T]() -> uint;
     fn align_of[T]() -> uint;
-    fn refcount[T](@T t) -> uint;
+    fn refcount[T](t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
 }

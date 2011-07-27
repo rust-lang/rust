@@ -1,3 +1,3 @@
 
 
-fn main() { let vec[mutable int] v = [mutable ]; }
+fn main() { let v: vec[mutable int] = [mutable ]; }

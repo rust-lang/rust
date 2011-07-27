@@ -5,8 +5,8 @@ import std::bitv;
 
 #[test]
 fn test_0_elements() {
-    auto act;
-    auto exp;
+    let act;
+    let exp;
     act = bitv::create(0u, false);
     exp = vec::init_elt[uint](0u, 0u);
     // FIXME: why can't I write vec[uint]()?
@@ -16,7 +16,7 @@ fn test_0_elements() {
 
 #[test]
 fn test_1_element() {
-    auto act;
+    let act;
     act = bitv::create(1u, false);
     assert (bitv::eq_vec(act, [0u]));
     act = bitv::create(1u, true);
@@ -25,7 +25,7 @@ fn test_1_element() {
 
 #[test]
 fn test_10_elements() {
-    auto act;
+    let act;
     // all 0
 
     act = bitv::create(10u, false);
@@ -64,7 +64,7 @@ fn test_10_elements() {
 
 #[test]
 fn test_31_elements() {
-    auto act;
+    let act;
     // all 0
 
     act = bitv::create(31u, false);
@@ -137,7 +137,7 @@ fn test_31_elements() {
 
 #[test]
 fn test_32_elements() {
-    auto act;
+    let act;
     // all 0
 
     act = bitv::create(32u, false);
@@ -212,7 +212,7 @@ fn test_32_elements() {
 
 #[test]
 fn test_33_elements() {
-    auto act;
+    let act;
     // all 0
 
     act = bitv::create(33u, false);

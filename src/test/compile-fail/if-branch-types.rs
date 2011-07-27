@@ -1,9 +1,3 @@
 // error-pattern:mismatched types
 
-fn main() {
-  auto x = if (true) {
-    10
-  } else {
-    10u
-  };
-}
+fn main() { let x = if true { 10 } else { 10u }; }

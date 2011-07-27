@@ -1,10 +1,9 @@
 // xfail-stage0
 // error-pattern:Bind arguments with types containing parameters must be
 fn main() {
-  fn echo[T](int c, vec[T] x) {
-  }
+    fn echo[T](c: int, x: vec[T]) { }
 
-  let fn(vec[int]) -> () y = bind echo(42, _);
+    let y: fn(vec[int])  = bind echo(42, _);
 
-  y([1]);
+    y([1]);
 }

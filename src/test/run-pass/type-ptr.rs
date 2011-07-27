@@ -1,12 +1,5 @@
-fn f(*int a) -> *int {
-   ret a;
-}
+fn f(a: *int) -> *int { ret a; }
 
-fn g(*int a) -> *int {
-   auto b = f(a);
-   ret b;
-}
+fn g(a: *int) -> *int { let b = f(a); ret b; }
 
-fn main(vec[str] args) {
-  ret;
-}
+fn main(args: vec[str]) { ret; }

@@ -25,6 +25,7 @@ tag binop {
 
 tag token {
 
+
     /* Expression-operator symbols. */
     EQ;
     LT;
@@ -39,6 +40,7 @@ tag token {
     TILDE;
     BINOP(binop);
     BINOPEQ(binop);
+
 
     /* Structural symbols */
     AT;
@@ -64,6 +66,7 @@ tag token {
     POUND_LBRACE;
     POUND_LT;
 
+
     /* Literals */
     LIT_INT(int);
     LIT_UINT(uint);
@@ -74,6 +77,7 @@ tag token {
     LIT_CHAR(char);
     LIT_BOOL(bool);
 
+
     /* Name components */
     IDENT(str_num, bool);
     IDX(int);
@@ -82,113 +86,122 @@ tag token {
     EOF;
 }
 
-fn binop_to_str(binop o) -> str {
-    alt (o) {
-        case (PLUS) { ret "+"; }
-        case (MINUS) { ret "-"; }
-        case (STAR) { ret "*"; }
-        case (SLASH) { ret "/"; }
-        case (PERCENT) { ret "%"; }
-        case (CARET) { ret "^"; }
-        case (AND) { ret "&"; }
-        case (OR) { ret "|"; }
-        case (LSL) { ret "<<"; }
-        case (LSR) { ret ">>"; }
-        case (ASR) { ret ">>>"; }
+fn binop_to_str(o: binop) -> str {
+    alt o {
+      PLUS. { ret "+"; }
+      MINUS. { ret "-"; }
+      STAR. { ret "*"; }
+      SLASH. { ret "/"; }
+      PERCENT. { ret "%"; }
+      CARET. { ret "^"; }
+      AND. { ret "&"; }
+      OR. { ret "|"; }
+      LSL. { ret "<<"; }
+      LSR. { ret ">>"; }
+      ASR. { ret ">>>"; }
     }
 }
 
-fn to_str(lexer::reader r, token t) -> str {
-    alt (t) {
-        case (EQ) { ret "="; }
-        case (LT) { ret "<"; }
-        case (LE) { ret "<="; }
-        case (EQEQ) { ret "=="; }
-        case (NE) { ret "!="; }
-        case (GE) { ret ">="; }
-        case (GT) { ret ">"; }
-        case (NOT) { ret "!"; }
-        case (TILDE) { ret "~"; }
-        case (OROR) { ret "||"; }
-        case (ANDAND) { ret "&&"; }
-        case (BINOP(?op)) { ret binop_to_str(op); }
-        case (BINOPEQ(?op)) { ret binop_to_str(op) + "="; }
-             /* Structural symbols */
-        case (AT) { ret "@"; }
-        case (DOT) { ret "."; }
-        case (ELLIPSIS) { ret "..."; }
-        case (COMMA) { ret ","; }
-        case (SEMI) { ret ";"; }
-        case (COLON) { ret ":"; }
-        case (MOD_SEP) { ret "::"; }
-        case (QUES) { ret "?"; }
-        case (RARROW) { ret "->"; }
-        case (SEND) { ret "<|"; }
-        case (RECV) { ret "|>"; }
-        case (LARROW) { ret "<-"; }
-        case (DARROW) { ret "<->"; }
-        case (LPAREN) { ret "("; }
-        case (RPAREN) { ret ")"; }
-        case (LBRACKET) { ret "["; }
-        case (RBRACKET) { ret "]"; }
-        case (LBRACE) { ret "{"; }
-        case (RBRACE) { ret "}"; }
-        case (POUND) { ret "#"; }
-        case (POUND_LBRACE) { ret "#{"; }
-        case (POUND_LT) { ret "#<"; }
-             /* Literals */
-        case (LIT_INT(?i)) { ret int::to_str(i, 10u); }
-        case (LIT_UINT(?u)) { ret uint::to_str(u, 10u); }
-        case (LIT_MACH_INT(?tm, ?i)) {
-            ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
-        }
-        case (LIT_MACH_FLOAT(?tm, ?s)) {
-            ret interner::get[str](*r.get_interner(), s) + "_" +
-                    ty_mach_to_str(tm);
-        }
-        case (LIT_FLOAT(?s)) { ret interner::get[str](*r.get_interner(), s); }
-        case (LIT_STR(?s)) { // FIXME: escape.
-            ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
-        }
-        case (LIT_CHAR(?c)) {
-            // FIXME: escape.
-            auto tmp = "'";
-            str::push_char(tmp, c);
-            str::push_byte(tmp, '\'' as u8);
-            ret tmp;
-        }
-        case (LIT_BOOL(?b)) { if (b) { ret "true"; } else { ret "false"; } }
-             /* Name components */
-        case (IDENT(?s, _)) { ret interner::get[str](*r.get_interner(), s); }
-        case (IDX(?i)) { ret "_" + int::to_str(i, 10u); }
-        case (UNDERSCORE) { ret "_"; }
-        case (BRACEQUOTE(_)) { ret "<bracequote>"; }
-        case (EOF) { ret "<eof>"; }
+fn to_str(r: lexer::reader, t: token) -> str {
+    alt t {
+      EQ. { ret "="; }
+      LT. { ret "<"; }
+      LE. { ret "<="; }
+      EQEQ. { ret "=="; }
+      NE. { ret "!="; }
+      GE. { ret ">="; }
+      GT. { ret ">"; }
+      NOT. { ret "!"; }
+      TILDE. { ret "~"; }
+      OROR. { ret "||"; }
+      ANDAND. { ret "&&"; }
+      BINOP(op) { ret binop_to_str(op); }
+      BINOPEQ(op) { ret binop_to_str(op) + "="; }
+
+      /* Structural symbols */
+      AT. {
+        ret "@";
+      }
+      DOT. { ret "."; }
+      ELLIPSIS. { ret "..."; }
+      COMMA. { ret ","; }
+      SEMI. { ret ";"; }
+      COLON. { ret ":"; }
+      MOD_SEP. { ret "::"; }
+      QUES. { ret "?"; }
+      RARROW. { ret "->"; }
+      SEND. { ret "<|"; }
+      RECV. { ret "|>"; }
+      LARROW. { ret "<-"; }
+      DARROW. { ret "<->"; }
+      LPAREN. { ret "("; }
+      RPAREN. { ret ")"; }
+      LBRACKET. { ret "["; }
+      RBRACKET. { ret "]"; }
+      LBRACE. { ret "{"; }
+      RBRACE. { ret "}"; }
+      POUND. { ret "#"; }
+      POUND_LBRACE. { ret "#{"; }
+      POUND_LT. { ret "#<"; }
+
+      /* Literals */
+      LIT_INT(i) {
+        ret int::to_str(i, 10u);
+      }
+      LIT_UINT(u) { ret uint::to_str(u, 10u); }
+      LIT_MACH_INT(tm, i) {
+        ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
+      }
+      LIT_MACH_FLOAT(tm, s) {
+        ret interner::get[str](*r.get_interner(), s) + "_" +
+                ty_mach_to_str(tm);
+      }
+      LIT_FLOAT(s) { ret interner::get[str](*r.get_interner(), s); }
+      LIT_STR(s) { // FIXME: escape.
+        ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
+      }
+      LIT_CHAR(c) {
+        // FIXME: escape.
+        let tmp = "'";
+        str::push_char(tmp, c);
+        str::push_byte(tmp, '\'' as u8);
+        ret tmp;
+      }
+      LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
+
+      /* Name components */
+      IDENT(s, _) {
+        ret interner::get[str](*r.get_interner(), s);
+      }
+      IDX(i) { ret "_" + int::to_str(i, 10u); }
+      UNDERSCORE. { ret "_"; }
+      BRACEQUOTE(_) { ret "<bracequote>"; }
+      EOF. { ret "<eof>"; }
     }
 }
 
 
-pred can_begin_expr(token t) -> bool {
-    alt (t) {
-        case (LPAREN) { true }
-        case (LBRACE) { true }
-        case (LBRACKET) { true }
-        case (IDENT(_,_)) { true }
-        case (UNDERSCORE) { true }
-        case (TILDE) { true }
-        case (LIT_INT(_)) { true }
-        case (LIT_UINT(_)) { true }
-        case (LIT_MACH_INT(_,_)) { true }
-        case (LIT_FLOAT(_)) { true }
-        case (LIT_MACH_FLOAT(_,_)) { true }
-        case (LIT_STR(_)) { true }
-        case (LIT_CHAR(_)) { true }
-        case (POUND) { true }
-        case (AT) { true }
-        case (NOT) { true }
-        case (BINOP(MINUS)) { true }
-        case (BINOP(STAR)) { true }
-        case (_) { false }
+pred can_begin_expr(t: token) -> bool {
+    alt t {
+      LPAREN. { true }
+      LBRACE. { true }
+      LBRACKET. { true }
+      IDENT(_, _) { true }
+      UNDERSCORE. { true }
+      TILDE. { true }
+      LIT_INT(_) { true }
+      LIT_UINT(_) { true }
+      LIT_MACH_INT(_, _) { true }
+      LIT_FLOAT(_) { true }
+      LIT_MACH_FLOAT(_, _) { true }
+      LIT_STR(_) { true }
+      LIT_CHAR(_) { true }
+      POUND. { true }
+      AT. { true }
+      NOT. { true }
+      BINOP(MINUS.) { true }
+      BINOP(STAR.) { true }
+      _ { false }
     }
 }
 // Local Variables:

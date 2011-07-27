@@ -1,7 +1,1 @@
-fn main() {
-    auto x = 3;
-    auto y = 7;
-    x <-> y;
-    assert (x == 7);
-    assert (y == 3);
-}
+fn main() { let x = 3; let y = 7; x <-> y; assert (x == 7); assert (y == 3); }

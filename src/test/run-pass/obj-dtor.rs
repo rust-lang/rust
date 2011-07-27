@@ -5,13 +5,13 @@
 // xfail-stage1
 // xfail-stage2
 // xfail-stage3
-obj worker(chan[int] c) {drop { log "in dtor"; c <| 10; } }
+obj worker(c: chan[int]) {drop { log "in dtor"; c <| 10; } }
 
-fn do_work(chan[int] c) {
+fn do_work(c: chan[int]) {
     log "in child task";
-    { let worker w = worker(c); log "constructed worker"; }
+    { let w: worker = worker(c); log "constructed worker"; }
     log "destructed worker";
-    while (true) {
+    while true {
         // Deadlock-condition not handled properly yet, need to avoid
         // exiting the child early.
 
@@ -21,10 +21,10 @@ fn do_work(chan[int] c) {
 }
 
 fn main() {
-    let port[int] p = port();
+    let p: port[int] = port();
     log "spawning worker";
-    auto w = spawn do_work(chan(p));
-    let int i;
+    let w = spawn do_work(chan(p));
+    let i: int;
     log "parent waiting for shutdown";
     p |> i;
     log "received int";

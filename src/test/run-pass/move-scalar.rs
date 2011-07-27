@@ -1,7 +1,7 @@
 fn main() {
 
-  let int y = 42;
-  let int x;
-  x <- y;
-  assert (x == 42);
+    let y: int = 42;
+    let x: int;
+    x <- y;
+    assert (x == 42);
 }

@@ -3,8 +3,8 @@
 
 // This is a testcase for issue #94.
 fn main() {
-    let vec[int] v = [0, 1, 2, 3, 4, 5];
-    let str s = "abcdef";
+    let v: vec[int] = [0, 1, 2, 3, 4, 5];
+    let s: str = "abcdef";
     assert (v.(3u) == 3);
     assert (v.(3u8) == 3);
     assert (v.(3i8) == 3);

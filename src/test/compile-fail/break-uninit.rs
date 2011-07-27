@@ -1,20 +1,14 @@
 // error-pattern:Unsatisfied precondition
 
 fn foo() -> int {
-  let int x;
-  let int i;
+    let x: int;
+    let i: int;
 
-  do {
-    i = 0;
-    break;
-    x = 0;
-  } while (x != 0);
+    do  { i = 0; break; x = 0; } while x != 0
 
-  log(x);
+    log x;
 
-  ret 17;
+    ret 17;
 }
 
-fn main() {
-  log(foo());
-}
+fn main() { log foo(); }

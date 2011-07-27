@@ -1,6 +1,2 @@
 // error-pattern: Unsatisfied precondition constraint (for example, init(x
-fn main() {
-  auto x = @5;
-  auto y <- x;
-  log *x;
-}
+fn main() { let x = @5; let y <- x; log *x; }

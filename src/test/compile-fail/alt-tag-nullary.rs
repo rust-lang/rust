@@ -3,10 +3,5 @@
 tag a { A; }
 tag b { B; }
 
-fn main() {
-    let a x = A;
-    alt (x) {
-        case (B) {}
-    }
-}
+fn main() { let x: a = A; alt x { B. { } } }
 

@@ -4,8 +4,6 @@
 // xfail-stage3
 // error-pattern: binding alias slot
 
-fn f(&int x) {}
+fn f(x: &int) { }
 
-fn main() {
-  bind f(10);
-}
+fn main() { bind f(10); }

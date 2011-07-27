@@ -2,8 +2,4 @@
 // error-pattern:expected bool but found int
 // issue #516
 
-fn main() {
-  auto x = true;
-  auto y = 1;
-  auto z = x + y;
-}
+fn main() { let x = true; let y = 1; let z = x + y; }

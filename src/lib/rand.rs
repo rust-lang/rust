@@ -7,8 +7,8 @@
 native "rust" mod rustrt {
     type rctx;
     fn rand_new() -> rctx;
-    fn rand_next(rctx c) -> u32;
-    fn rand_free(rctx c);
+    fn rand_next(c: rctx) -> u32;
+    fn rand_free(c: rctx);
 }
 
 type rng =
@@ -17,7 +17,7 @@ type rng =
     };
 
 fn mk_rng() -> rng {
-    obj rt_rng(rustrt::rctx c) {
+    obj rt_rng(c: rustrt::rctx) {
         fn next() -> u32 {
             ret rustrt::rand_next(c);
         }drop { rustrt::rand_free(c); }

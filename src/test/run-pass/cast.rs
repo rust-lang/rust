@@ -3,9 +3,9 @@
 
 // -*- rust -*-
 fn main() {
-    let int i = 'Q' as int;
+    let i: int = 'Q' as int;
     assert (i == 0x51);
-    let u32 u = i as u32;
+    let u: u32 = i as u32;
     assert (u == 0x51 as u32);
     assert (u == 'Q' as u32);
     assert (i as u8 == 'Q' as u8);

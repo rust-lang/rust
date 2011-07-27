@@ -1,15 +1,8 @@
 // error-pattern:invalidate alias x
 
-fn whoknows(@mutable int x) {
-    *x = 10;
-}
+fn whoknows(x: @mutable int) { *x = 10; }
 
 fn main() {
-    auto box = @mutable 1;
-    alt (*box) {
-        case (?x) {
-            whoknows(box);
-            log_err x;
-        }
-    }
+    let box = @mutable 1;
+    alt *box { x { whoknows(box); log_err x; } }
 }

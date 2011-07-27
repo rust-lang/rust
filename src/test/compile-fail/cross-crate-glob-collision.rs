@@ -8,7 +8,7 @@ import std::vec::*;
 import alternate_supplier::*;
 
 mod alternate_supplier {
-  fn swap() {}
+    fn swap() { }
 }
 
 fn main() { swap() }

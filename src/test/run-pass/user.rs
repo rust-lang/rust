@@ -1,18 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-// -*- rust -*-
-
-use std (name = "std",
-         url = "http://rust-lang.org/src/std",
-         uuid = _, ver = _);
-
-fn main() {
-  auto s = std::str.alloc(10 as uint);
-  s += "hello ";
-  log s;
-  s += "there";
-  log s;
-  auto z = std::vec.alloc[int](10 as uint);
-}
+./src/test/run-pass/user.rs:9:16:9:17: [1;31merror:[0m unexpected token: _
+./src/test/run-pass/user.rs:9          uuid = _, ver = _);
+                                              ^
+rt: ---
+rt: f00e:main:main:                   upcall fail 'explicit failure', src/comp/syntax/parse/parser.rs:112
+rt: f00e:main:                        domain main @0x907604c root task failed

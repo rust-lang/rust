@@ -17,20 +17,18 @@
 // These are are attributes of the following mod
 #[attr1 = "val"]
 #[attr2 = "val"]
-mod test_first_item_in_file_mod {
-}
+mod test_first_item_in_file_mod { }
 
 mod test_single_attr_outer {
 
     #[attr = "val"]
-    const int x = 10;
+    const x: int = 10;
 
     #[attr = "val"]
-    fn f() {}
+    fn f() { }
 
     #[attr = "val"]
-    mod mod1 {
-    }
+    mod mod1 { }
 
     #[attr = "val"]
     native "rust" mod rustrt { }
@@ -47,16 +45,15 @@ mod test_multi_attr_outer {
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    const int x = 10;
+    const x: int = 10;
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    fn f() {}
+    fn f() { }
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    mod mod1 {
-    }
+    mod mod1 { }
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -77,16 +74,16 @@ mod test_stmt_single_attr_outer {
     fn f() {
 
         #[attr = "val"]
-        const int x = 10;
+        const x: int = 10;
 
         #[attr = "val"]
-        fn f() {}
+        fn f() { }
 
         /* FIXME: Issue #493
         #[attr = "val"]
         mod mod1 {
         }
-
+        
         #[attr = "val"]
         native "rust" mod rustrt {
         }
@@ -107,18 +104,18 @@ mod test_stmt_multi_attr_outer {
 
         #[attr1 = "val"]
         #[attr2 = "val"]
-        const int x = 10;
+        const x: int = 10;
 
         #[attr1 = "val"]
         #[attr2 = "val"]
-        fn f() {}
+        fn f() { }
 
         /* FIXME: Issue #493
         #[attr1 = "val"]
         #[attr2 = "val"]
         mod mod1 {
         }
-
+        
         #[attr1 = "val"]
         #[attr2 = "val"]
         native "rust" mod rustrt {
@@ -151,8 +148,7 @@ mod test_attr_inner_then_outer {
         #[attr = "val"];
         // This is an attribute of fn f
         #[attr = "val"]
-        fn f() {
-        }
+        fn f() { }
     }
 }
 
@@ -164,8 +160,7 @@ mod test_attr_inner_then_outer_multi {
         // This is an attribute of fn f
         #[attr1 = "val"]
         #[attr2 = "val"]
-        fn f() {
-        }
+        fn f() { }
     }
 }
 
@@ -176,8 +171,7 @@ mod test_distinguish_syntax_ext {
     fn f() {
         #fmt("test%s", "s");
         #[attr = "val"]
-        fn g() {
-        }
+        fn g() { }
     }
 }
 
@@ -185,11 +179,8 @@ mod test_other_forms {
     #[attr]
     #[attr(word)]
     #[attr(attr(word))]
-    #[attr(key1 = "val",
-           key2 = "val",
-           attr)]
-    fn f() {
-    }
+    #[attr(key1 = "val", key2 = "val", attr)]
+    fn f() { }
 }
 
 mod test_native_items {
@@ -200,7 +191,7 @@ mod test_native_items {
         type vbuf;
 
         #[attr]
-        fn vec_len[T](vec[T] v) -> uint;
+        fn vec_len[T](v: vec[T]) -> uint;
     }
 }
 
@@ -215,11 +206,10 @@ mod test_literals {
     // FIXME (#622): Can't parse a nil literal here
     //#[nil = ()];
     #[bool = true];
-    mod m {}
+    mod m { }
 }
 
-fn main() {
-}
+fn main() { }
 
 //
 // Local Variables:

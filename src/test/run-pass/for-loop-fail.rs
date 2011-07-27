@@ -1,7 +1,2 @@
 // xfail-stage0
-fn main() {
-  let vec[int] x = [];
-  for (int i in x) {
-    fail "moop";
-  }
-}
+fn main() { let x: vec[int] = []; for i: int  in x { fail "moop"; } }

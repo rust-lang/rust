@@ -14,53 +14,41 @@ import std::str;
 import std::vec;
 import std::map;
 
-fn map(str filename, map_reduce::putter emit) {
-    emit(filename, "1");
-}
+fn map(filename: str, emit: map_reduce::putter) { emit(filename, "1"); }
 
 mod map_reduce {
     export putter;
     export mapper;
     export map_reduce;
 
-    type putter = fn(str, str) -> ();
+    type putter = fn(str, str) ;
 
-    type mapper = fn(str, putter);
+    type mapper = fn(str, putter) ;
 
-    tag ctrl_proto {
-        find_reducer(str, chan[int]);
-        mapper_done;
+    tag ctrl_proto { find_reducer(str, chan[int]); mapper_done; }
+
+    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) {
+        for i: str  in inputs { spawn map_task(ctrl, i); }
     }
 
-    fn start_mappers(chan[ctrl_proto] ctrl,
-                     vec[str] inputs) {
-        for(str i in inputs) {
-            spawn map_task(ctrl, i);
-        }
-    }
+    fn map_task(ctrl: chan[ctrl_proto], input: str) {
 
-    fn map_task(chan[ctrl_proto] ctrl,
-                str input) {
+        let intermediates = map::new_str_hash();
 
-        auto intermediates = map::new_str_hash();
-
-        fn emit(&map::hashmap[str, int] im,
-                chan[ctrl_proto] ctrl,
-                str key, str val) {
-            auto c;
-            alt(im.find(key)) {
-                case(some(?_c)) {
-                    c = _c
-                }
-                case(none) {
-                    auto p = port();
-                    log_err "sending find_reducer";
-                    ctrl <| find_reducer(key, chan(p));
-                    log_err "receiving";
-                    p |> c;
-                    log_err c;
-                    im.insert(key, c);
-                }
+        fn emit(im: &map::hashmap[str, int], ctrl: chan[ctrl_proto], key: str,
+                val: str) {
+            let c;
+            alt im.find(key) {
+              some(_c) { c = _c }
+              none. {
+                let p = port();
+                log_err "sending find_reducer";
+                ctrl <| find_reducer(key, chan(p));
+                log_err "receiving";
+                p |> c;
+                log_err c;
+                im.insert(key, c);
+              }
             }
         }
 
@@ -68,36 +56,33 @@ mod map_reduce {
         ctrl <| mapper_done;
     }
 
-    fn map_reduce (vec[str] inputs) {
-        auto ctrl = port[ctrl_proto]();
+    fn map_reduce(inputs: vec[str]) {
+        let ctrl = port[ctrl_proto]();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let map::hashmap[str, int] reducers;
+        let reducers: map::hashmap[str, int];
 
         reducers = map::new_str_hash();
 
         start_mappers(chan(ctrl), inputs);
 
-        auto num_mappers = vec::len(inputs) as int;
+        let num_mappers = vec::len(inputs) as int;
 
-        while(num_mappers > 0) {
-            auto m;
+
+        while num_mappers > 0 {
+            let m;
             ctrl |> m;
 
-            alt(m) {
-                case(mapper_done) { num_mappers -= 1; }
-                case(find_reducer(?k, ?cc)) {
-                    auto c;
-                    alt(reducers.find(k)) {
-                        case(some(?_c)) { c = _c; }
-                        case(none) {
-                            c = 0;
-                        }
-                    }
-                    cc <| c;
-                }
+
+            alt m {
+              mapper_done. { num_mappers -= 1; }
+              find_reducer(k, cc) {
+                let c;
+                alt reducers.find(k) { some(_c) { c = _c; } none. { c = 0; } }
+                cc <| c;
+              }
             }
         }
     }

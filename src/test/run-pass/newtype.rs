@@ -1,10 +1,8 @@
-tag mytype = rec(fn (&mytype i) -> int compute, int val);
+tag mytype = {compute: fn(&mytype) -> int , val: int};
 
-fn compute(&mytype i) -> int {
-    ret i.val + 20;
-}
+fn compute(i: &mytype) -> int { ret i.val + 20; }
 
 fn main() {
-    auto myval = mytype(rec(compute=compute, val=30));
-    assert(myval.compute(myval) == 50);
+    let myval = mytype({compute: compute, val: 30});
+    assert (myval.compute(myval) == 50);
 }

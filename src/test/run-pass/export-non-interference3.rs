@@ -1,19 +1,13 @@
 mod foo {
-  export x;
+    export x;
 
-  fn x() {
-    bar::x();
-  }
+    fn x() { bar::x(); }
 }
 
 mod bar {
-  export x;
+    export x;
 
-  fn x() {
-    log "x";
-  }
+    fn x() { log "x"; }
 }
 
-fn main() {
-  foo::x();
-}
+fn main() { foo::x(); }

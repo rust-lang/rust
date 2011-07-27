@@ -29,106 +29,102 @@ export get_use_stmt_cnum;
 // own crate numbers.
 type cnum_map = map::hashmap[ast::crate_num, ast::crate_num];
 
-type crate_metadata = rec(str name, @u8[] data, cnum_map cnum_map);
+type crate_metadata = {name: str, data: @u8[], cnum_map: cnum_map};
 
 // This is a bit of an experiment at encapsulating the data in cstore. By
 // keeping all the data in a non-exported tag variant, it's impossible for
 // other modules to access the cstore's private data. This could also be
 // achieved with an obj, but at the expense of a vtable. Not sure if this is a
 // good pattern or not.
-tag cstore {
-    private(cstore_private);
-}
+tag cstore { private(cstore_private); }
 
-type cstore_private = @rec(map::hashmap[ast::crate_num, crate_metadata] metas,
-                           use_crate_map use_crate_map,
-                           mutable str[] used_crate_files,
-                           mutable str[] used_libraries,
-                           mutable str[] used_link_args);
+type cstore_private =
+    @{metas: map::hashmap[ast::crate_num, crate_metadata],
+      use_crate_map: use_crate_map,
+      mutable used_crate_files: str[],
+      mutable used_libraries: str[],
+      mutable used_link_args: str[]};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
 
 // Internal method to retrieve the data from the cstore
-fn p(&cstore cstore) -> cstore_private {
-    alt (cstore) {
-        case (private(?p)) { p }
-    }
-}
+fn p(cstore: &cstore) -> cstore_private { alt cstore { private(p) { p } } }
 
 fn mk_cstore() -> cstore {
-    auto meta_cache = map::new_int_hash[crate_metadata]();
-    auto crate_map = map::new_int_hash[ast::crate_num]();
-    ret private(@rec(metas = meta_cache,
-                     use_crate_map = crate_map,
-                     mutable used_crate_files = ~[],
-                     mutable used_libraries = ~[],
-                     mutable used_link_args = ~[]));
+    let meta_cache = map::new_int_hash[crate_metadata]();
+    let crate_map = map::new_int_hash[ast::crate_num]();
+    ret private(@{metas: meta_cache,
+                  use_crate_map: crate_map,
+                  mutable used_crate_files: ~[],
+                  mutable used_libraries: ~[],
+                  mutable used_link_args: ~[]});
 }
 
-fn get_crate_data(&cstore cstore, ast::crate_num cnum) -> crate_metadata {
+fn get_crate_data(cstore: &cstore, cnum: ast::crate_num) -> crate_metadata {
     ret p(cstore).metas.get(cnum);
 }
 
-fn set_crate_data(&cstore cstore, ast::crate_num cnum, &crate_metadata data) {
+fn set_crate_data(cstore: &cstore, cnum: ast::crate_num,
+                  data: &crate_metadata) {
     p(cstore).metas.insert(cnum, data);
 }
 
-fn have_crate_data(&cstore cstore, ast::crate_num cnum) -> bool {
+fn have_crate_data(cstore: &cstore, cnum: ast::crate_num) -> bool {
     ret p(cstore).metas.contains_key(cnum);
 }
 
-iter iter_crate_data(&cstore cstore)
-    -> @rec(ast::crate_num key, crate_metadata val) {
-    for each (@rec(ast::crate_num key, crate_metadata val) kv
-              in p(cstore).metas.items()) {
+iter iter_crate_data(cstore: &cstore) ->
+     @{key: ast::crate_num, val: crate_metadata} {
+    for each kv: @{key: ast::crate_num, val: crate_metadata}  in
+             p(cstore).metas.items() {
         put kv;
     }
 }
 
-fn add_used_crate_file(&cstore cstore, &str lib) {
-    if (!ivec::member(lib, p(cstore).used_crate_files)) {
+fn add_used_crate_file(cstore: &cstore, lib: &str) {
+    if !ivec::member(lib, p(cstore).used_crate_files) {
         p(cstore).used_crate_files += ~[lib];
     }
 }
 
-fn get_used_crate_files(&cstore cstore) -> str[] {
+fn get_used_crate_files(cstore: &cstore) -> str[] {
     ret p(cstore).used_crate_files;
 }
 
-fn add_used_library(&cstore cstore, &str lib) -> bool {
-    if (lib == "") { ret false; }
+fn add_used_library(cstore: &cstore, lib: &str) -> bool {
+    if lib == "" { ret false; }
 
-    if (ivec::member(lib, p(cstore).used_libraries)) {
-        ret false;
-    }
+    if ivec::member(lib, p(cstore).used_libraries) { ret false; }
 
     p(cstore).used_libraries += ~[lib];
     ret true;
 }
 
-fn get_used_libraries(&cstore cstore) -> str[] {
+fn get_used_libraries(cstore: &cstore) -> str[] {
     ret p(cstore).used_libraries;
 }
 
-fn add_used_link_args(&cstore cstore, &str args) {
-    auto used_link_args_vec = str::split(args, ' ' as u8);
+fn add_used_link_args(cstore: &cstore, args: &str) {
+    let used_link_args_vec = str::split(args, ' ' as u8);
+
     // TODO: Remove this vec->ivec conversion.
-    for (str ula in used_link_args_vec) {
+    for ula: str  in used_link_args_vec {
         p(cstore).used_link_args += ~[ula];
     }
 }
 
-fn get_used_link_args(&cstore cstore) -> str[] {
+fn get_used_link_args(cstore: &cstore) -> str[] {
     ret p(cstore).used_link_args;
 }
 
-fn add_use_stmt_cnum(&cstore cstore, ast::node_id use_id,
-                     ast::crate_num cnum) {
+fn add_use_stmt_cnum(cstore: &cstore, use_id: ast::node_id,
+                     cnum: ast::crate_num) {
     p(cstore).use_crate_map.insert(use_id, cnum);
 }
 
-fn get_use_stmt_cnum(&cstore cstore, ast::node_id use_id) -> ast::crate_num {
+fn get_use_stmt_cnum(cstore: &cstore, use_id: ast::node_id) ->
+   ast::crate_num {
     ret p(cstore).use_crate_map.get(use_id);
 }
 

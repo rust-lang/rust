@@ -8,10 +8,10 @@ import std::vec;
 
 // FIXME: import std::dbg::const_refcount. Currently
 // cross-crate const references don't work.
-const uint const_refcount = 0x7bad_face_u;
+const const_refcount: uint = 0x7bad_face_u;
 
 fn fast_growth() {
-    let vec[int] v = [1, 2, 3, 4, 5];
+    let v: vec[int] = [1, 2, 3, 4, 5];
     v += [6, 7, 8, 9, 0];
     log v.(9);
     assert (v.(0) == 1);
@@ -20,21 +20,21 @@ fn fast_growth() {
 }
 
 fn slow_growth() {
-    let vec[int] v = [];
-    let vec[int] u = v;
+    let v: vec[int] = [];
+    let u: vec[int] = v;
     v += [17];
     log v.(0);
     assert (v.(0) == 17);
 }
 
-fn slow_growth2_helper(str s) { // ref up: s
+fn slow_growth2_helper(s: str) { // ref up: s
 
-    obj acc(mutable vec[str] v) {
-        fn add(&str s) { v += [s]; }
+    obj acc(mutable v: vec[str]) {
+        fn add(s: &str) { v += [s]; }
     }
-    let str ss = s; // ref up: s
+    let ss: str = s; // ref up: s
 
-    let str mumble = "mrghrm"; // ref up: mumble
+    let mumble: str = "mrghrm"; // ref up: mumble
 
     {
         /**
@@ -47,10 +47,10 @@ fn slow_growth2_helper(str s) { // ref up: s
          * mumble, the existing str in the originally- shared vec.
          */
 
-        let vec[str] v = [mumble]; // ref up: v, mumble
+        let v: vec[str] = [mumble]; // ref up: v, mumble
 
         log vec::refcount[str](v);
-        let acc a = acc(v); // ref up: a, v
+        let a: acc = acc(v); // ref up: a, v
 
         log vec::refcount[str](v);
         assert (vec::refcount[str](v) == 2u);
@@ -76,9 +76,9 @@ fn slow_growth2_helper(str s) { // ref up: s
     log ss;
 }
 
- // ref down
+// ref down
 fn slow_growth2() {
-    let str s = "hi"; // ref up: s
+    let s: str = "hi"; // ref up: s
 
     slow_growth2_helper(s);
     log str::refcount(s);

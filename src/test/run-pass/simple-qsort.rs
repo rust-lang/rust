@@ -6,20 +6,18 @@ import std::int;
 import std::sort;
 
 fn test_qsort() {
-    auto names = ~[mutable 2, 1, 3];
+    let names = ~[mutable 2, 1, 3];
 
-    auto expected = ~[1, 2, 3];
+    let expected = ~[1, 2, 3];
 
-    fn lteq(&int a, &int b) -> bool { int::le(a, b) }
+    fn lteq(a: &int, b: &int) -> bool { int::le(a, b) }
     sort::ivector::quick_sort(lteq, names);
 
-    auto pairs = ivec::zip(expected, ivec::from_mut(names));
-    for (rec(int _0, int _1) p in pairs) {
+    let pairs = ivec::zip(expected, ivec::from_mut(names));
+    for p: {_0: int, _1: int}  in pairs {
         log_err #fmt("%d %d", p._0, p._1);
-        assert p._0 == p._1;
+        assert (p._0 == p._1);
     }
 }
 
-fn main() {
-    test_qsort();
-}
+fn main() { test_qsort(); }

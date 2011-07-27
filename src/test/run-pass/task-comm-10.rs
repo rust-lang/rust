@@ -3,8 +3,8 @@
 use std;
 import std::task;
 
-fn start(chan[chan[str]] c) {
-    let port[str] p;
+fn start(c: chan[chan[str]]) {
+    let p: port[str];
 
     p = port();
     c <| chan(p);
@@ -13,17 +13,17 @@ fn start(chan[chan[str]] c) {
     p |> b;
     log_err b;
 
-    auto a;
-    auto b;
+    let a;
+    let b;
 }
 
 fn main() {
-    let port[chan[str]] p;
-    auto child;
+    let p: port[chan[str]];
+    let child;
 
     p = port();
     child = spawn start(chan(p));
-    auto c;
+    let c;
 
     p |> c;
     c <| "A";

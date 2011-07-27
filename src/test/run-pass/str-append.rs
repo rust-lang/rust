@@ -5,7 +5,7 @@ use std;
 import std::str;
 
 fn test1() {
-    let str s = "hello";
+    let s: str = "hello";
     s += "world";
     log s;
     assert (s.(9) == 'd' as u8);
@@ -14,9 +14,9 @@ fn test1() {
 fn test2() {
     // This tests for issue #163
 
-    let str ff = "abc";
-    let str a = ff + "ABC" + ff;
-    let str b = "ABC" + ff + "ABC";
+    let ff: str = "abc";
+    let a: str = ff + "ABC" + ff;
+    let b: str = "ABC" + ff + "ABC";
     log a;
     log b;
     assert (str::eq(a, "abcABCabc"));

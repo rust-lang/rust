@@ -1,8 +1,8 @@
 
 
 fn main() {
-    fn foo(float n) -> float { ret n + 0.12345; }
-    let float n = 0.1;
-    let float m = foo(n);
+    fn foo(n: float) -> float { ret n + 0.12345; }
+    let n: float = 0.1;
+    let m: float = foo(n);
     log m;
 }

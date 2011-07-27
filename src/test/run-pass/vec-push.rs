@@ -1,5 +1,5 @@
 
 
-fn push[T](&mutable vec[mutable? T] v, &T t) { v += [t]; }
+fn push[T](v: &mutable vec[mutable? T], t: &T) { v += [t]; }
 
-fn main() { auto v = [1, 2, 3]; push(v, 1); }
+fn main() { let v = [1, 2, 3]; push(v, 1); }

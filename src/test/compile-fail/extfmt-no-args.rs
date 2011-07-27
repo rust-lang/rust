@@ -1,5 +1,3 @@
 // error-pattern:format string
 
-fn main() {
-  #fmt();
-}
+fn main() { #fmt; }

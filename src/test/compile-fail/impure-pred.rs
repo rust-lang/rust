@@ -1,15 +1,12 @@
 // -*- rust -*-
 // error-pattern: Pure function calls function not known to be pure
 
-fn g() -> () {}
+fn g() { }
 
-pred f(int q) -> bool {
-  g();
-  ret true;
-}
+pred f(q: int) -> bool { g(); ret true; }
 
 fn main() {
-  auto x = 0;
+    let x = 0;
 
-  check f(x);
+    check (f(x));
 }

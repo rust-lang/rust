@@ -1,11 +1,11 @@
 
 
-type recbox[T] = rec(@T x);
+type recbox[T] = {x: @T};
 
-fn reclift[T](&T t) -> recbox[T] { ret rec(x=@t); }
+fn reclift[T](t: &T) -> recbox[T] { ret {x: @t}; }
 
 fn main() {
-    let int foo = 17;
-    let recbox[int] rbfoo = reclift[int](foo);
+    let foo: int = 17;
+    let rbfoo: recbox[int] = reclift[int](foo);
     assert (rbfoo.x == foo);
 }

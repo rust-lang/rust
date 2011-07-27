@@ -1,6 +1,3 @@
 // error-pattern: duplicate value name: x
 
-fn main() {
-    auto x = 10;
-    let int x = 20;
-}
+fn main() { let x = 10; let x: int = 20; }

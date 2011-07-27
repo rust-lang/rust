@@ -1,12 +1,12 @@
 
 
-type box[T] = rec(@T c);
+type box[T] = {c: @T};
 
-fn unbox[T](&box[T] b) -> T { ret *b.c; }
+fn unbox[T](b: &box[T]) -> T { ret *b.c; }
 
 fn main() {
-    let int foo = 17;
-    let box[int] bfoo = rec(c=@foo);
+    let foo: int = 17;
+    let bfoo: box[int] = {c: @foo};
     log "see what's in our box";
     assert (unbox[int](bfoo) == foo);
 }

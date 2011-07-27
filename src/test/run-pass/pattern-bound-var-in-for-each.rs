@@ -6,19 +6,18 @@ use std;
 import std::option::*;
 import std::uint;
 
-fn foo(uint src) {
+fn foo(src: uint) {
 
-    alt (some(src)) {
-        case (some(?src_id)) {
-          for each (uint i in uint::range(0u, 10u)) {
-            auto yyy = src_id;
+
+    alt some(src) {
+      some(src_id) {
+        for each i: uint  in uint::range(0u, 10u) {
+            let yyy = src_id;
             assert (yyy == 0u);
-          }
         }
-        case (_) {}
+      }
+      _ { }
     }
 }
 
-fn main() {
-  foo(0u);
-}
+fn main() { foo(0u); }

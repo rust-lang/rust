@@ -2,8 +2,8 @@
 
 
 // -*- rust -*-
-fn foo(fn(int) -> int  f) { }
+fn foo(f: fn(int) -> int ) { }
 
-fn id(int x) -> int { ret x; }
+fn id(x: int) -> int { ret x; }
 
 fn main() { foo(id); }

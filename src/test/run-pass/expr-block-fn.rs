@@ -4,7 +4,7 @@ fn test_fn() {
     type t = fn() -> int ;
 
     fn ten() -> int { ret 10; }
-    let t rs = { ten };
+    let rs: t = { ten };
     assert (rs() == 10);
 }
 

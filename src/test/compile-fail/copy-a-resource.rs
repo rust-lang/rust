@@ -1,8 +1,5 @@
 // error-pattern:Copying a non-copyable type
 
-resource foo(int i) {}
+resource foo(i: int) { }
 
-fn main() {
-    auto x <- foo(10);
-    auto y = x;
-}
+fn main() { let x <- foo(10); let y = x; }

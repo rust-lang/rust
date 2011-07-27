@@ -2,17 +2,17 @@
 
 
 // -*- rust -*-
-fn id[T](&T x) -> T { ret x; }
+fn id[T](x: &T) -> T { ret x; }
 
-type triple = rec(int x, int y, int z);
+type triple = {x: int, y: int, z: int};
 
 fn main() {
-    auto x = 62;
-    auto y = 63;
-    auto a = 'a';
-    auto b = 'b';
-    let triple p = rec(x=65, y=66, z=67);
-    let triple q = rec(x=68, y=69, z=70);
+    let x = 62;
+    let y = 63;
+    let a = 'a';
+    let b = 'b';
+    let p: triple = {x: 65, y: 66, z: 67};
+    let q: triple = {x: 68, y: 69, z: 70};
     y = id[int](x);
     log y;
     assert (x == y);

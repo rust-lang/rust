@@ -1,21 +1,15 @@
 // Issue #53
 
 fn main() {
-  alt ("test") {
-    case ("not-test") { fail; }
-    case ("test") { }
-    case (_) { fail; }
-  }
+    alt "test" { "not-test" { fail; } "test" { } _ { fail; } }
 
-  tag t {
-    tag1(str);
-    tag2;
-  }
+    tag t { tag1(str); tag2; }
 
-  alt (tag1("test")) {
-    case (tag2) { fail; }
-    case (tag1("not-test")) { fail; }
-    case (tag1("test")) { }
-    case (_) { fail; }
-  }
+
+    alt tag1("test") {
+      tag2. { fail; }
+      tag1("not-test") { fail; }
+      tag1("test") { }
+      _ { fail; }
+    }
 }

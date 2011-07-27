@@ -3,13 +3,12 @@
 use std;
 import std::vec;
 
-fn main()
-{
+fn main() {
     // Make sure we properly handle repeated self-appends.
-    let vec[int] a = [0];
-    auto i = 20;
-    auto expected_len = 1u;
-    while (i > 0) {
+    let a: vec[int] = [0];
+    let i = 20;
+    let expected_len = 1u;
+    while i > 0 {
         log_err vec::len(a);
         assert (vec::len(a) == expected_len);
         a += a;

@@ -1,24 +1,17 @@
 // error-pattern: unresolved name
 
 mod foo {
-  export x;
+    export x;
 
-  fn x() {
-    bar::x();
-  }
+    fn x() { bar::x(); }
 }
 
 mod bar {
-  export y;
+    export y;
 
-  fn x() {
-    log "x";
-  }
+    fn x() { log "x"; }
 
-  fn y() {
-  }
+    fn y() { }
 }
 
-fn main() {
-  foo::x();
-}
+fn main() { foo::x(); }

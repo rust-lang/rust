@@ -8,76 +8,69 @@ import option::none;
 // our recursion rules do not permit that.
 tag list[T] { cons(T, @list[T]); nil; }
 
-fn from_vec[T](vec[T] v) -> list[T] {
-    auto l = nil[T];
+fn from_vec[T](v: vec[T]) -> list[T] {
+    let l = nil[T];
     // FIXME: This would be faster and more space efficient if it looped over
     // a reverse vector iterator. Unfortunately generic iterators seem not to
     // work yet.
 
-    for (T item in vec::reversed(v)) { l = cons[T](item, @l); }
+    for item: T  in vec::reversed(v) { l = cons[T](item, @l); }
     ret l;
 }
 
-fn foldl[T, U](&list[T] ls_, &U u, fn(&T, &U) -> U  f) -> U {
-    let U accum = u;
-    auto ls = ls_;
-    while (true) {
-        alt (ls) {
-            case (cons(?hd, ?tl)) { accum = f(hd, accum); ls = *tl; }
-            case (nil) { break; }
+fn foldl[T, U](ls_: &list[T], u: &U, f: fn(&T, &U) -> U ) -> U {
+    let accum: U = u;
+    let ls = ls_;
+    while true {
+        alt ls {
+          cons(hd, tl) { accum = f(hd, accum); ls = *tl; }
+          nil. { break; }
         }
     }
     ret accum;
 }
 
-fn find[T, U](&list[T] ls_, fn(&T) -> option::t[U]  f) -> option::t[U] {
-    auto ls = ls_;
-    while (true) {
-        alt (ls) {
-            case (cons(?hd, ?tl)) {
-                alt (f(hd)) {
-                    case (none) { ls = *tl; }
-                    case (some(?rs)) { ret some(rs); }
-                }
-            }
-            case (nil) { break; }
+fn find[T, U](ls_: &list[T], f: fn(&T) -> option::t[U] ) -> option::t[U] {
+    let ls = ls_;
+    while true {
+        alt ls {
+          cons(hd, tl) {
+            alt f(hd) { none. { ls = *tl; } some(rs) { ret some(rs); } }
+          }
+          nil. { break; }
         }
     }
     ret none;
 }
 
-fn has[T](&list[T] ls_, &T elt) -> bool {
-    auto ls = ls_;
-    while (true) {
-        alt (ls) {
-            case (cons(?hd, ?tl)) {
-                if (elt == hd) { ret true; } else { ls = *tl; }
-            }
-            case (nil) { ret false; }
+fn has[T](ls_: &list[T], elt: &T) -> bool {
+    let ls = ls_;
+    while true {
+        alt ls {
+          cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
+          nil. { ret false; }
         }
     }
     ret false; // Typestate checker doesn't understand infinite loops
 
 }
 
-fn length[T](&list[T] ls) -> uint {
-    fn count[T](&T t, &uint u) -> uint { ret u + 1u; }
+fn length[T](ls: &list[T]) -> uint {
+    fn count[T](t: &T, u: &uint) -> uint { ret u + 1u; }
     ret foldl[T, uint](ls, 0u, bind count[T](_, _));
 }
 
-fn cdr[T](&list[T] ls) -> list[T] {
-    alt (ls) { case (cons(_, ?tl)) { ret *tl; } }
-}
+fn cdr[T](ls: &list[T]) -> list[T] { alt ls { cons(_, tl) { ret *tl; } } }
 
-fn car[T](&list[T] ls) -> T { alt (ls) { case (cons(?hd, _)) { ret hd; } } }
+fn car[T](ls: &list[T]) -> T { alt ls { cons(hd, _) { ret hd; } } }
 
-fn append[T](&list[T] l, &list[T] m) -> list[T] {
-    alt (l) {
-        case (nil) { ret m; }
-        case (cons(?x, ?xs)) {
-            let list[T] rest = append[T](*xs, m);
-            ret cons[T](x, @rest);
-        }
+fn append[T](l: &list[T], m: &list[T]) -> list[T] {
+    alt l {
+      nil. { ret m; }
+      cons(x, xs) {
+        let rest: list[T] = append[T](*xs, m);
+        ret cons[T](x, @rest);
+      }
     }
 }
 // Local Variables:

@@ -2,18 +2,20 @@
 
 
 // -*- rust -*-
-fn ho(fn(int) -> int  f) -> int { let int n = f(3); ret n; }
+fn ho(f: fn(int) -> int ) -> int { let n: int = f(3); ret n; }
 
-fn direct(int x) -> int { ret x + 1; }
+fn direct(x: int) -> int { ret x + 1; }
 
 fn main() {
-    let int a =
+    let a: int =
         direct(3); // direct
                    //let int b = ho(direct); // indirect unbound
 
-    let int c =
+
+    let c: int =
         ho(bind direct(_)); // indirect bound
                             //assert (a == b);
                             //assert (b == c);
+
 
 }

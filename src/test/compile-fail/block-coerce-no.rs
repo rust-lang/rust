@@ -4,17 +4,11 @@
 // Make sure that fn-to-block coercion isn't incorrectly lifted over
 // other tycons.
 
-fn coerce(&block() b) -> fn() {
-    fn lol(&fn(&block()) -> fn() f, &block() g) -> fn() {
-        ret f(g);
-    }
-    fn fn_id (&fn() f) -> fn() { ret f }
+fn coerce(b: &block() ) -> fn()  {
+    fn lol(f: &fn(&block() ) -> fn()  , g: &block() ) -> fn()  { ret f(g); }
+    fn fn_id(f: &fn() ) -> fn()  { ret f }
     ret lol(fn_id, b);
 }
 
 
-fn main() {
-    auto i = 8;
-    auto f = coerce(block() { log_err i; } );
-    f();
-}
+fn main() { let i = 8; let f = coerce(block () { log_err i; }); f(); }

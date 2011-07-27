@@ -1,6 +1,6 @@
 fn main() {
-    auto x = ~[10, 20, 30];
-    auto sum = 0;
-    for (auto x in x) { sum += x; }
-    assert sum == 60;
+    let x = ~[10, 20, 30];
+    let sum = 0;
+    for x  in x { sum += x; }
+    assert (sum == 60);
 }

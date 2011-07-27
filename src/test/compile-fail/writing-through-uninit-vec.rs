@@ -1,10 +1,5 @@
 // error-pattern: Unsatisfied precondition constraint
 
-fn test() {
-    let vec[int] w;
-    w.(5) = 0;
-}
+fn test() { let w: vec[int]; w.(5) = 0; }
 
-fn main() {
-  test();
-}
+fn main() { test(); }

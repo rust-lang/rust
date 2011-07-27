@@ -3,7 +3,7 @@ use std;
 import std::vec::map;
 
 fn main() {
-  fn f(uint i) -> bool { true }
+    fn f(i: uint) -> bool { true }
 
-  auto a = map(f, [5u]);
+    let a = map(f, [5u]);
 }

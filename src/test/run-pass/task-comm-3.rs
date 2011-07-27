@@ -3,55 +3,47 @@
 use std;
 import std::task;
 
-fn main() -> () {
-   log "===== WITHOUT THREADS =====";
-   test00();
-}
+fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 
-fn test00_start(chan[int] ch, int message, int count) {
+fn test00_start(ch: chan[int], message: int, count: int) {
     log "Starting test00_start";
-    let int i = 0;
-    while (i < count) {
-        log "Sending Message";
-        ch <| message;
-        i = i + 1;
-    }
+    let i: int = 0;
+    while i < count { log "Sending Message"; ch <| message; i = i + 1; }
     log "Ending test00_start";
 }
 
 fn test00() {
-    let int number_of_tasks = 16;
-    let int number_of_messages = 4;
+    let number_of_tasks: int = 16;
+    let number_of_messages: int = 4;
 
     log "Creating tasks";
 
-    let port[int] po = port();
-    let chan[int] ch = chan(po);
+    let po: port[int] = port();
+    let ch: chan[int] = chan(po);
 
-    let int i = 0;
+    let i: int = 0;
 
     // Create and spawn tasks...
-    let vec[task] tasks = [];
-    while (i < number_of_tasks) {
+    let tasks: vec[task] = [];
+    while i < number_of_tasks {
         tasks += [spawn test00_start(ch, i, number_of_messages)];
         i = i + 1;
     }
 
     // Read from spawned tasks...
-    let int sum = 0;
-    for (task t in tasks) {
+    let sum: int = 0;
+    for t: task  in tasks {
         i = 0;
-        while (i < number_of_messages) {
-            let int value; po |> value;
+        while i < number_of_messages {
+            let value: int;
+            po |> value;
             sum += value;
             i = i + 1;
         }
     }
 
     // Join spawned tasks...
-    for (task t in tasks) {
-        task::join(t);
-    }
+    for t: task  in tasks { task::join(t); }
 
     log "Completed: Final number is: ";
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *

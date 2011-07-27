@@ -1,16 +1,11 @@
 // error-pattern: unresolved name
 
 mod foo {
-  export x;
+    export x;
 
-  fn x() {
-  }
+    fn x() { }
 
-  tag y {
-    y1;
-  }
+    tag y { y1; }
 }
 
-fn main() {
-  auto z = foo::y1;
-}
+fn main() { let z = foo::y1; }

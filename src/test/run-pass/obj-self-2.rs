@@ -2,11 +2,11 @@
 
 fn main() {
     obj foo() {
-        fn m1(int i) { i += 1; log "hi!"; }
-        fn m2(int i) { i += 1; self.m1(i); }
+        fn m1(i: int) { i += 1; log "hi!"; }
+        fn m2(i: int) { i += 1; self.m1(i); }
     }
-    auto a = foo();
-    let int i = 0;
+    let a = foo();
+    let i: int = 0;
     a.m1(i);
     a.m2(i);
 }

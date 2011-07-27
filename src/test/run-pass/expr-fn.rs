@@ -13,17 +13,17 @@ fn test_vec() {
 }
 
 fn test_generic() {
-    fn f[T](&T t) -> T { t }
+    fn f[T](t: &T) -> T { t }
     assert (f(10) == 10);
 }
 
 fn test_alt() {
-    fn f() -> int { alt (true) { case (false) { 10 } case (true) { 20 } } }
+    fn f() -> int { alt true { false { 10 } true { 20 } } }
     assert (f() == 20);
 }
 
 fn test_if() {
-    fn f() -> int { if (true) { 10 } else { 20 } }
+    fn f() -> int { if true { 10 } else { 20 } }
     assert (f() == 10);
 }
 
@@ -43,7 +43,7 @@ fn test_ret() {
 
 // From issue #372
 fn test_372() {
-    fn f() -> int { auto x = { 3 }; x }
+    fn f() -> int { let x = { 3 }; x }
     assert (f() == 3);
 }
 

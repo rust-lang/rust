@@ -4,13 +4,9 @@
 // simple sort of ADT.
 
 mod foo {
-  export t;
+    export t;
 
-  tag t {
-    t1;
-  }
+    tag t { t1; }
 }
 
-fn main() {
-  auto x = foo::t1;
-}
+fn main() { let x = foo::t1; }

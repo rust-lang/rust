@@ -4,23 +4,23 @@
 // -*- rust -*-
 type compare[T] = fn(&T, &T) -> bool ;
 
-fn test_generic[T](&T expected, &compare[T] eq) {
-    let T actual = alt (true) { case (true) { expected } };
+fn test_generic[T](expected: &T, eq: &compare[T]) {
+    let actual: T = alt true { true { expected } };
     assert (eq(expected, actual));
 }
 
 fn test_bool() {
-    fn compare_bool(&bool b1, &bool b2) -> bool { ret b1 == b2; }
-    auto eq = bind compare_bool(_, _);
+    fn compare_bool(b1: &bool, b2: &bool) -> bool { ret b1 == b2; }
+    let eq = bind compare_bool(_, _);
     test_generic[bool](true, eq);
 }
 
 fn test_rec() {
-    type t = rec(int a, int b);
+    type t = {a: int, b: int};
 
-    fn compare_rec(&t t1, &t t2) -> bool { ret t1 == t2; }
-    auto eq = bind compare_rec(_, _);
-    test_generic[t](rec(a=1, b=2), eq);
+    fn compare_rec(t1: &t, t2: &t) -> bool { ret t1 == t2; }
+    let eq = bind compare_rec(_, _);
+    test_generic[t]({a: 1, b: 2}, eq);
 }
 
 fn main() { test_bool(); test_rec(); }

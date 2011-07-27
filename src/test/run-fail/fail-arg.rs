@@ -1,9 +1,5 @@
 // xfail-stage0
 // error-pattern:woe
-fn f(int a) {
-  log a;
-}
+fn f(a: int) { log a; }
 
-fn main() {
-  f(fail "woe");
-}
+fn main() { f(fail "woe"); }

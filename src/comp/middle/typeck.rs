@@ -53,212 +53,206 @@ type ty_table = hashmap[ast::def_id, ty::t];
 
 // Used for typechecking the methods of an object.
 tag obj_info {
+
     // Regular objects have a node_id at compile time.
     regular_obj(ast::obj_field[], ast::node_id);
+
     // Anonymous objects only have a type at compile time.  It's optional
     // because not all anonymous objects have a with_obj to attach to.
     anon_obj(ast::obj_field[], option::t[ty::sty]);
 }
 
-type crate_ctxt = rec(mutable obj_info[] obj_infos, ty::ctxt tcx);
+type crate_ctxt = {mutable obj_infos: obj_info[], tcx: ty::ctxt};
 
 type fn_ctxt =
-    rec(ty::t ret_ty,
-        ast::purity purity,
-        // var_bindings, locals, local_names, and next_var_id are shared
-        // with any nested functions that capture the environment
-        // (and with any functions whose environment is being captured).
-        @ty::unify::var_bindings var_bindings,
-        hashmap[ast::node_id, int] locals,
-        hashmap[ast::node_id, ast::ident] local_names,
-        @mutable int next_var_id,
-        mutable ast::node_id[] fixups,
-        @crate_ctxt ccx);
+    // var_bindings, locals, local_names, and next_var_id are shared
+    // with any nested functions that capture the environment
+    // (and with any functions whose environment is being captured).
+    {ret_ty: ty::t,
+     purity: ast::purity,
+     var_bindings: @ty::unify::var_bindings,
+     locals: hashmap[ast::node_id, int],
+     local_names: hashmap[ast::node_id, ast::ident],
+     next_var_id: @mutable int,
+     mutable fixups: ast::node_id[],
+     ccx: @crate_ctxt};
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty;
+type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty ;
 
-fn lookup_local(&@fn_ctxt fcx, &span sp, ast::node_id id) -> int {
-    alt (fcx.locals.find(id)) {
-        case (some(?x)) { x }
-        case (_) {
-            fcx.ccx.tcx.sess.span_fatal(sp, "internal error looking up a \
+fn lookup_local(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> int {
+    alt fcx.locals.find(id) {
+      some(x) { x }
+      _ {
+        fcx.ccx.tcx.sess.span_fatal(sp,
+                                    "internal error looking up a \
               local var")
-        }
+      }
     }
 }
 
-fn lookup_def(&@fn_ctxt fcx, &span sp, ast::node_id id) -> ast::def {
-    alt (fcx.ccx.tcx.def_map.find(id)) {
-        case (some(?x)) { x }
-        case (_) {
-            fcx.ccx.tcx.sess.span_fatal(sp, "internal error looking up \
+fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
+    alt fcx.ccx.tcx.def_map.find(id) {
+      some(x) { x }
+      _ {
+        fcx.ccx.tcx.sess.span_fatal(sp,
+                                    "internal error looking up \
               a definition")
-        }
+      }
     }
 }
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &span sp, &ast::def defn) ->
-   ty_param_count_and_ty {
-    alt (defn) {
-        case (ast::def_arg(?id)) {
-            assert (fcx.locals.contains_key(id.node));
-            auto typ = ty::mk_var(fcx.ccx.tcx,
-                                  lookup_local(fcx, sp, id.node));
-            ret rec(count=0u, ty=typ);
-        }
-        case (ast::def_local(?id)) {
-            assert (fcx.locals.contains_key(id.node));
-            auto typ = ty::mk_var(fcx.ccx.tcx,
-                                  lookup_local(fcx, sp, id.node));
-            ret rec(count=0u, ty=typ);
-        }
-        case (ast::def_obj_field(?id)) {
-            assert (fcx.locals.contains_key(id.node));
-            auto typ = ty::mk_var(fcx.ccx.tcx,
-                                  lookup_local(fcx, sp, id.node));
-            ret rec(count=0u, ty=typ);
-        }
-        case (ast::def_fn(?id, _)) {
-            ret ty::lookup_item_type(fcx.ccx.tcx, id);
-        }
-        case (ast::def_native_fn(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.tcx, id);
-        }
-        case (ast::def_const(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.tcx, id);
-        }
-        case (ast::def_variant(_, ?vid)) {
-            ret ty::lookup_item_type(fcx.ccx.tcx, vid);
-        }
-        case (ast::def_binding(?id)) {
-            assert (fcx.locals.contains_key(id.node));
-            auto typ = ty::mk_var(fcx.ccx.tcx,
-                                  lookup_local(fcx, sp, id.node));
-            ret rec(count=0u, ty=typ);
-        }
-        case (ast::def_mod(_)) {
-            // Hopefully part of a path.
-            // TODO: return a type that's more poisonous, perhaps?
+fn ty_param_count_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
+   -> ty_param_count_and_ty {
+    alt defn {
+      ast::def_arg(id) {
+        assert (fcx.locals.contains_key(id.node));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+        ret {count: 0u, ty: typ};
+      }
+      ast::def_local(id) {
+        assert (fcx.locals.contains_key(id.node));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+        ret {count: 0u, ty: typ};
+      }
+      ast::def_obj_field(id) {
+        assert (fcx.locals.contains_key(id.node));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+        ret {count: 0u, ty: typ};
+      }
+      ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+      ast::def_native_fn(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+      ast::def_const(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+      ast::def_variant(_, vid) { ret ty::lookup_item_type(fcx.ccx.tcx, vid); }
+      ast::def_binding(id) {
+        assert (fcx.locals.contains_key(id.node));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+        ret {count: 0u, ty: typ};
+      }
+      ast::def_mod(_) {
+        // Hopefully part of a path.
+        // TODO: return a type that's more poisonous, perhaps?
 
-            ret rec(count=0u, ty=ty::mk_nil(fcx.ccx.tcx));
-        }
-        case (ast::def_ty(_)) {
-            fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
-        }
-        case (_) {
-            // FIXME: handle other names.
+        ret {count: 0u, ty: ty::mk_nil(fcx.ccx.tcx)};
+      }
+      ast::def_ty(_) {
+        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
+      }
+      _ {
+        // FIXME: handle other names.
 
-            fcx.ccx.tcx.sess.unimpl("definition variant");
-        }
+        fcx.ccx.tcx.sess.unimpl("definition variant");
+      }
     }
 }
 
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
-fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
-                    &span sp) -> ty_param_substs_opt_and_ty {
-    auto ty_param_count = tpt.count;
-    auto bind_result =
+fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
+                    tpt: &ty_param_count_and_ty, sp: &span) ->
+   ty_param_substs_opt_and_ty {
+    let ty_param_count = tpt.count;
+    let bind_result =
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt.ty,
                             ty_param_count);
-    auto ty_param_vars = bind_result.ids;
-    auto ty_substs_opt;
-    auto ty_substs_len = ivec::len[@ast::ty](pth.node.types);
-    if (ty_substs_len > 0u) {
-        auto param_var_len = ivec::len(ty_param_vars);
-        if (param_var_len == 0u) {
-            fcx.ccx.tcx.sess.span_fatal
-                (sp, "this item does not take type parameters");
+    let ty_param_vars = bind_result.ids;
+    let ty_substs_opt;
+    let ty_substs_len = ivec::len[@ast::ty](pth.node.types);
+    if ty_substs_len > 0u {
+        let param_var_len = ivec::len(ty_param_vars);
+        if param_var_len == 0u {
+            fcx.ccx.tcx.sess.span_fatal(sp,
+                                        "this item does not take type parameters");
         } else if (ty_substs_len > param_var_len) {
-            fcx.ccx.tcx.sess.span_fatal
-                (sp, "too many type parameter provided for this item");
+            fcx.ccx.tcx.sess.span_fatal(sp,
+                                        "too many type parameter provided for this item");
         } else if (ty_substs_len < param_var_len) {
-            fcx.ccx.tcx.sess.span_fatal
-                (sp, "not enough type parameters provided for this item");
+            fcx.ccx.tcx.sess.span_fatal(sp,
+                                        "not enough type parameters provided for this item");
         }
-        let ty::t[] ty_substs = ~[];
-        auto i = 0u;
-        while (i < ty_substs_len) {
-            auto ty_var = ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i));
-            auto ty_subst = ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i));
-            auto res_ty = demand::simple(fcx, pth.span, ty_var, ty_subst);
+        let ty_substs: ty::t[] = ~[];
+        let i = 0u;
+        while i < ty_substs_len {
+            let ty_var = ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i));
+            let ty_subst = ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i));
+            let res_ty = demand::simple(fcx, pth.span, ty_var, ty_subst);
             ty_substs += ~[res_ty];
             i += 1u;
         }
         ty_substs_opt = some[ty::t[]](ty_substs);
-        if (ty_param_count == 0u) {
+        if ty_param_count == 0u {
             fcx.ccx.tcx.sess.span_fatal(sp,
-                                      "this item does not take type \
+                                        "this item does not take type \
                                       parameters");
             fail;
         }
     } else {
         // We will acquire the type parameters through unification.
 
-        let ty::t[] ty_substs = ~[];
-        auto i = 0u;
-        while (i < ty_param_count) {
+        let ty_substs: ty::t[] = ~[];
+        let i = 0u;
+        while i < ty_param_count {
             ty_substs += ~[ty::mk_var(fcx.ccx.tcx, ty_param_vars.(i))];
             i += 1u;
         }
         ty_substs_opt = some[ty::t[]](ty_substs);
     }
-    ret rec(substs=ty_substs_opt, ty=tpt.ty);
+    ret {substs: ty_substs_opt, ty: tpt.ty};
 }
 
-fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
-    auto ty_mode;
-    alt (mode) {
-        case (ast::val) { ty_mode = mo_val; }
-        case (ast::alias(?mut)) { ty_mode = mo_alias(mut); }
+fn ast_mode_to_mode(mode: ast::mode) -> ty::mode {
+    let ty_mode;
+    alt mode {
+      ast::val. { ty_mode = mo_val; }
+      ast::alias(mut) { ty_mode = mo_alias(mut); }
     }
     ret ty_mode;
 }
 
 
 // Type tests
-fn structurally_resolved_type(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::t {
-    auto r =
+fn structurally_resolved_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+   ty::t {
+    let r =
         ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
-    alt (r) {
-        case (fix_ok(?typ_s)) { ret typ_s; }
-        case (fix_err(_)) {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        "the type of this value must be \
+    alt r {
+      fix_ok(typ_s) { ret typ_s; }
+      fix_err(_) {
+        fcx.ccx.tcx.sess.span_fatal(sp,
+                                    "the type of this value must be \
                                         known in this context");
-        }
+      }
     }
 }
 
 
 // Returns the one-level-deep structure of the given type.
-fn structure_of(&@fn_ctxt fcx, &span sp, ty::t typ) -> ty::sty {
+fn structure_of(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> ty::sty {
     ret ty::struct(fcx.ccx.tcx, structurally_resolved_type(fcx, sp, typ));
 }
 
 // Returns the one-level-deep structure of the given type or none if it
 // is not known yet.
-fn structure_of_maybe(&@fn_ctxt fcx, &span sp, ty::t typ)
-    -> option::t[ty::sty] {
-    auto r =
+fn structure_of_maybe(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+   option::t[ty::sty] {
+    let r =
         ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
-    ret alt (r) {
-      case (fix_ok(?typ_s)) { some(ty::struct(fcx.ccx.tcx, typ_s)) }
-      case (fix_err(_)) { none }
-    }
+    ret alt r {
+          fix_ok(typ_s) { some(ty::struct(fcx.ccx.tcx, typ_s)) }
+          fix_err(_) { none }
+        }
 }
 
-fn type_is_integral(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
-    auto typ_s = structurally_resolved_type(fcx, sp, typ);
+fn type_is_integral(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
     ret ty::type_is_integral(fcx.ccx.tcx, typ_s);
 }
 
-fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
-    auto typ_s = structurally_resolved_type(fcx, sp, typ);
+fn type_is_scalar(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
     ret ty::type_is_scalar(fcx.ccx.tcx, typ_s);
 }
 
@@ -266,161 +260,159 @@ fn type_is_scalar(&@fn_ctxt fcx, &span sp, ty::t typ) -> bool {
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
-    alt (tcx.ast_ty_to_ty_cache.find(ast_ty)) {
-        case (some(some(?ty))) { ret ty; }
-        case (some(none)) {
-            tcx.sess.span_fatal(ast_ty.span,
-                              "illegal recursive type \
+fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
+   ty::t {
+    alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
+      some(some(ty)) { ret ty; }
+      some(none.) {
+        tcx.sess.span_fatal(ast_ty.span,
+                            "illegal recursive type \
                               insert a tag in the cycle, \
                               if this is desired)");
-        }
-        case (none) { }
+      }
+      none. { }
     } /* go on */
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none[ty::t]);
-    fn ast_arg_to_arg(&ty::ctxt tcx, &ty_getter getter, &ast::ty_arg arg) ->
-       rec(ty::mode mode, ty::t ty) {
-        auto ty_mode = ast_mode_to_mode(arg.node.mode);
-        ret rec(mode=ty_mode, ty=ast_ty_to_ty(tcx, getter, arg.node.ty));
+    fn ast_arg_to_arg(tcx: &ty::ctxt, getter: &ty_getter, arg: &ast::ty_arg)
+       -> {mode: ty::mode, ty: ty::t} {
+        let ty_mode = ast_mode_to_mode(arg.node.mode);
+        ret {mode: ty_mode, ty: ast_ty_to_ty(tcx, getter, arg.node.ty)};
     }
-    fn ast_mt_to_mt(&ty::ctxt tcx, &ty_getter getter, &ast::mt mt) -> ty::mt {
-        ret rec(ty=ast_ty_to_ty(tcx, getter, mt.ty), mut=mt.mut);
+    fn ast_mt_to_mt(tcx: &ty::ctxt, getter: &ty_getter, mt: &ast::mt) ->
+       ty::mt {
+        ret {ty: ast_ty_to_ty(tcx, getter, mt.ty), mut: mt.mut};
     }
-    fn instantiate(&ty::ctxt tcx, &span sp, &ty_getter getter,
-                   &ast::def_id id, &(@ast::ty)[] args) -> ty::t {
+    fn instantiate(tcx: &ty::ctxt, sp: &span, getter: &ty_getter,
+                   id: &ast::def_id, args: &(@ast::ty)[]) -> ty::t {
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
 
-        auto params_opt_and_ty = getter(id);
-        if (params_opt_and_ty.count == 0u) { ret params_opt_and_ty.ty; }
+        let params_opt_and_ty = getter(id);
+        if params_opt_and_ty.count == 0u { ret params_opt_and_ty.ty; }
         // The typedef is type-parametric. Do the type substitution.
         //
 
-        let ty::t[] param_bindings = ~[];
-        for (@ast::ty ast_ty in args) {
+        let param_bindings: ty::t[] = ~[];
+        for ast_ty: @ast::ty  in args {
             param_bindings += ~[ast_ty_to_ty(tcx, getter, ast_ty)];
         }
-        if (ivec::len(param_bindings) !=
-            ty::count_ty_params(tcx, params_opt_and_ty.ty)) {
+        if ivec::len(param_bindings) !=
+               ty::count_ty_params(tcx, params_opt_and_ty.ty) {
             tcx.sess.span_fatal(sp,
                                 "Wrong number of type arguments for a \
                                 polymorphic tag");
         }
-        auto typ =
+        let typ =
             ty::substitute_type_params(tcx, param_bindings,
                                        params_opt_and_ty.ty);
         ret typ;
     }
-    auto typ;
-    auto cname = none[str];
-    alt (ast_ty.node) {
-        case (ast::ty_nil) { typ = ty::mk_nil(tcx); }
-        case (ast::ty_bot) { typ = ty::mk_bot(tcx); }
-        case (ast::ty_bool) { typ = ty::mk_bool(tcx); }
-        case (ast::ty_int) { typ = ty::mk_int(tcx); }
-        case (ast::ty_uint) { typ = ty::mk_uint(tcx); }
-        case (ast::ty_float) { typ = ty::mk_float(tcx); }
-        case (ast::ty_machine(?tm)) { typ = ty::mk_mach(tcx, tm); }
-        case (ast::ty_char) { typ = ty::mk_char(tcx); }
-        case (ast::ty_str) { typ = ty::mk_str(tcx); }
-        case (ast::ty_istr) { typ = ty::mk_istr(tcx); }
-        case (ast::ty_box(?mt)) {
-            typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
+    let typ;
+    let cname = none[str];
+    alt ast_ty.node {
+      ast::ty_nil. { typ = ty::mk_nil(tcx); }
+      ast::ty_bot. { typ = ty::mk_bot(tcx); }
+      ast::ty_bool. { typ = ty::mk_bool(tcx); }
+      ast::ty_int. { typ = ty::mk_int(tcx); }
+      ast::ty_uint. { typ = ty::mk_uint(tcx); }
+      ast::ty_float. { typ = ty::mk_float(tcx); }
+      ast::ty_machine(tm) { typ = ty::mk_mach(tcx, tm); }
+      ast::ty_char. { typ = ty::mk_char(tcx); }
+      ast::ty_str. { typ = ty::mk_str(tcx); }
+      ast::ty_istr. { typ = ty::mk_istr(tcx); }
+      ast::ty_box(mt) {
+        typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
+      }
+      ast::ty_vec(mt) {
+        typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
+      }
+      ast::ty_ivec(mt) {
+        typ = ty::mk_ivec(tcx, ast_mt_to_mt(tcx, getter, mt));
+      }
+      ast::ty_ptr(mt) {
+        typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
+      }
+      ast::ty_task. { typ = ty::mk_task(tcx); }
+      ast::ty_port(t) {
+        typ = ty::mk_port(tcx, ast_ty_to_ty(tcx, getter, t));
+      }
+      ast::ty_chan(t) {
+        typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
+      }
+      ast::ty_rec(fields) {
+        let flds: field[] = ~[];
+        for f: ast::ty_field  in fields {
+            let tm = ast_mt_to_mt(tcx, getter, f.node.mt);
+            flds += ~[{ident: f.node.ident, mt: tm}];
         }
-        case (ast::ty_vec(?mt)) {
-            typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
+        typ = ty::mk_rec(tcx, flds);
+      }
+      ast::ty_fn(proto, inputs, output, cf, constrs) {
+        let i = ~[];
+        for ta: ast::ty_arg  in inputs {
+            i += ~[ast_arg_to_arg(tcx, getter, ta)];
         }
-        case (ast::ty_ivec(?mt)) {
-            typ = ty::mk_ivec(tcx, ast_mt_to_mt(tcx, getter, mt));
-        }
-        case (ast::ty_ptr(?mt)) {
-            typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
-        }
-        case (ast::ty_task) { typ = ty::mk_task(tcx); }
-        case (ast::ty_port(?t)) {
-            typ = ty::mk_port(tcx, ast_ty_to_ty(tcx, getter, t));
-        }
-        case (ast::ty_chan(?t)) {
-            typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
-        }
-        case (ast::ty_rec(?fields)) {
-            let field[] flds = ~[];
-            for (ast::ty_field f in fields) {
-                auto tm = ast_mt_to_mt(tcx, getter, f.node.mt);
-                flds += ~[rec(ident=f.node.ident, mt=tm)];
-            }
-            typ = ty::mk_rec(tcx, flds);
-        }
-        case (ast::ty_fn(?proto, ?inputs, ?output, ?cf, ?constrs)) {
-            auto i = ~[];
-            for (ast::ty_arg ta in inputs) {
-                i += ~[ast_arg_to_arg(tcx, getter, ta)];
-            }
-            auto out_ty = ast_ty_to_ty(tcx, getter, output);
+        let out_ty = ast_ty_to_ty(tcx, getter, output);
 
-            auto out_constrs = ~[];
-            for (@ast::constr constr in constrs) {
+        let out_constrs = ~[];
+        for constr: @ast::constr  in constrs {
+            out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
+        }
+        typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
+      }
+      ast::ty_path(path, id) {
+        alt tcx.def_map.find(id) {
+          some(ast::def_ty(id)) {
+            typ = instantiate(tcx, ast_ty.span, getter, id, path.node.types);
+          }
+          some(ast::def_native_ty(id)) { typ = getter(id).ty; }
+          some(ast::def_ty_arg(id)) { typ = ty::mk_param(tcx, id); }
+          some(_) {
+            tcx.sess.span_fatal(ast_ty.span,
+                                "found type name used as a variable");
+          }
+          _ {
+            tcx.sess.span_fatal(ast_ty.span, "internal error in instantiate");
+          }
+        }
+        cname = some(path_to_str(path));
+      }
+      ast::ty_obj(meths) {
+        let tmeths: ty::method[] = ~[];
+        for m: ast::ty_method  in meths {
+            let ins = ~[];
+            for ta: ast::ty_arg  in m.node.inputs {
+                ins += ~[ast_arg_to_arg(tcx, getter, ta)];
+            }
+            let out = ast_ty_to_ty(tcx, getter, m.node.output);
+
+            let out_constrs = ~[];
+            for constr: @ast::constr  in m.node.constrs {
                 out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
             }
-            typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
+            let new_m: ty::method =
+                {proto: m.node.proto,
+                 ident: m.node.ident,
+                 inputs: ins,
+                 output: out,
+                 cf: m.node.cf,
+                 constrs: out_constrs};
+            tmeths += ~[new_m];
         }
-        case (ast::ty_path(?path, ?id)) {
-            alt (tcx.def_map.find(id)) {
-                case (some(ast::def_ty(?id))) {
-                    typ = instantiate(tcx, ast_ty.span, getter, id,
-                                      path.node.types);
-                }
-                case (some(ast::def_native_ty(?id))) { typ = getter(id).ty; }
-                case (some(ast::def_ty_arg(?id))) {
-                    typ = ty::mk_param(tcx, id);
-                }
-                case (some(_)) {
-                    tcx.sess.span_fatal(ast_ty.span,
-                                      "found type name used as a variable");
-                }
-                case (_) {
-                    tcx.sess.span_fatal(ast_ty.span,
-                                       "internal error in instantiate");
-                }
-            }
-            cname = some(path_to_str(path));
+        typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
+      }
+      ast::ty_constr(t, cs) {
+        let out_cs = ~[];
+        for constr: @ast::ty_constr  in cs {
+            out_cs += ~[ty::ast_constr_to_constr(tcx, constr)];
         }
-        case (ast::ty_obj(?meths)) {
-            let ty::method[] tmeths = ~[];
-            for (ast::ty_method m in meths) {
-                auto ins = ~[];
-                for (ast::ty_arg ta in m.node.inputs) {
-                    ins += ~[ast_arg_to_arg(tcx, getter, ta)];
-                }
-                auto out = ast_ty_to_ty(tcx, getter, m.node.output);
-
-                auto out_constrs = ~[];
-                for (@ast::constr constr in m.node.constrs) {
-                    out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
-                }
-                let ty::method new_m =
-                    rec(proto=m.node.proto,
-                        ident=m.node.ident,
-                        inputs=ins,
-                        output=out,
-                        cf=m.node.cf,
-                        constrs=out_constrs);
-                tmeths += ~[new_m];
-            }
-            typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
-        }
-        case (ast::ty_constr(?t, ?cs)) {
-            auto out_cs = ~[];
-            for (@ast::ty_constr constr in cs) {
-                out_cs += ~[ty::ast_constr_to_constr(tcx, constr)];
-            }
-            typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
-        }
+        typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
+      }
     }
-    alt (cname) {
-        case (none) {/* no-op */ }
-        case (some(?cname_str)) { typ = ty::rename(tcx, typ, cname_str); }
+    alt cname {
+      none. {/* no-op */ }
+      some(cname_str) { typ = ty::rename(tcx, typ, cname_str); }
     }
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
@@ -429,25 +421,26 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
 
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
-fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
-    fn getter(@crate_ctxt ccx, &ast::def_id id) -> ty::ty_param_count_and_ty {
+fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: &@ast::ty) -> ty::t {
+    fn getter(ccx: @crate_ctxt, id: &ast::def_id) ->
+       ty::ty_param_count_and_ty {
         ret ty::lookup_item_type(ccx.tcx, id);
     }
-    auto f = bind getter(ccx, _);
+    let f = bind getter(ccx, _);
     ret ast_ty_to_ty(ccx.tcx, f, ast_ty);
 }
 
 
 // Functions that write types into the node type table.
 mod write {
-    fn inner(&node_type_table ntt, ast::node_id node_id,
-             &ty_param_substs_opt_and_ty tpot) {
+    fn inner(ntt: &node_type_table, node_id: ast::node_id,
+             tpot: &ty_param_substs_opt_and_ty) {
         smallintmap::insert(*ntt, node_id as uint, tpot);
     }
 
     // Writes a type parameter count and type pair into the node type table.
-    fn ty(&ty::ctxt tcx, ast::node_id node_id,
-          &ty_param_substs_opt_and_ty tpot) {
+    fn ty(tcx: &ty::ctxt, node_id: ast::node_id,
+          tpot: &ty_param_substs_opt_and_ty) {
         assert (!ty::type_contains_vars(tcx, tpot.ty));
         inner(tcx.node_types, node_id, tpot);
     }
@@ -455,44 +448,44 @@ mod write {
     // Writes a type parameter count and type pair into the node type table.
     // This function allows for the possibility of type variables, which will
     // be rewritten later during the fixup phase.
-    fn ty_fixup(@fn_ctxt fcx, ast::node_id node_id,
-                &ty_param_substs_opt_and_ty tpot) {
+    fn ty_fixup(fcx: @fn_ctxt, node_id: ast::node_id,
+                tpot: &ty_param_substs_opt_and_ty) {
         inner(fcx.ccx.tcx.node_types, node_id, tpot);
-        if (ty::type_contains_vars(fcx.ccx.tcx, tpot.ty)) {
+        if ty::type_contains_vars(fcx.ccx.tcx, tpot.ty) {
             fcx.fixups += ~[node_id];
         }
     }
 
     // Writes a type with no type parameters into the node type table.
-    fn ty_only(&ty::ctxt tcx, ast::node_id node_id, ty::t typ) {
-        ty(tcx, node_id, rec(substs=none[ty::t[]], ty=typ));
+    fn ty_only(tcx: &ty::ctxt, node_id: ast::node_id, typ: ty::t) {
+        ty(tcx, node_id, {substs: none[ty::t[]], ty: typ});
     }
 
     // Writes a type with no type parameters into the node type table. This
     // function allows for the possibility of type variables.
-    fn ty_only_fixup(@fn_ctxt fcx, ast::node_id node_id, ty::t typ) {
-        ret ty_fixup(fcx, node_id, rec(substs=none[ty::t[]], ty=typ));
+    fn ty_only_fixup(fcx: @fn_ctxt, node_id: ast::node_id, typ: ty::t) {
+        ret ty_fixup(fcx, node_id, {substs: none[ty::t[]], ty: typ});
     }
 
     // Writes a nil type into the node type table.
-    fn nil_ty(&ty::ctxt tcx, ast::node_id node_id) {
-        ret ty(tcx, node_id, rec(substs=none[ty::t[]], ty=ty::mk_nil(tcx)));
+    fn nil_ty(tcx: &ty::ctxt, node_id: ast::node_id) {
+        ret ty(tcx, node_id, {substs: none[ty::t[]], ty: ty::mk_nil(tcx)});
     }
 
     // Writes the bottom type into the node type table.
-    fn bot_ty(&ty::ctxt tcx, ast::node_id node_id) {
-        ret ty(tcx, node_id, rec(substs=none[ty::t[]], ty=ty::mk_bot(tcx)));
+    fn bot_ty(tcx: &ty::ctxt, node_id: ast::node_id) {
+        ret ty(tcx, node_id, {substs: none[ty::t[]], ty: ty::mk_bot(tcx)});
     }
 }
 
 // Determine the proto for a fn type given the proto for its associated
 // code. This is needed because fn and lambda have fn type while iter
 // has iter type and block has block type. This may end up changing.
-fn proto_to_ty_proto(&ast::proto proto) -> ast::proto {
-    ret alt (proto) {
-        ast::proto_iter | ast::proto_block { proto }
-        _ { ast::proto_fn }
-    };
+fn proto_to_ty_proto(proto: &ast::proto) -> ast::proto {
+    ret alt proto {
+          ast::proto_iter. | ast::proto_block. { proto }
+          _ { ast::proto_fn }
+        };
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -510,377 +503,376 @@ fn proto_to_ty_proto(&ast::proto proto) -> ast::proto {
 // actually wrote types directly into the AST and didn't have a type cache.
 // Could use some cleanup. Consider topologically sorting in phase (1) above.
 mod collect {
-    type ctxt = rec(ty::ctxt tcx);
+    type ctxt = {tcx: ty::ctxt};
 
-    fn mk_ty_params(&@ctxt cx, uint n) -> ty::t[] {
-        auto tps = ~[];
-        auto i = 0u;
-        while (i < n) {
-            tps += ~[ty::mk_param(cx.tcx, i)];
-            i += 1u;
-        }
+    fn mk_ty_params(cx: &@ctxt, n: uint) -> ty::t[] {
+        let tps = ~[];
+        let i = 0u;
+        while i < n { tps += ~[ty::mk_param(cx.tcx, i)]; i += 1u; }
         ret tps;
     }
-    fn ty_of_fn_decl(&@ctxt cx, &fn(&@ast::ty) -> ty::t  convert,
-                     &fn(&ast::arg) -> arg  ty_of_arg, &ast::fn_decl decl,
-                     ast::proto proto, &ast::ty_param[] ty_params,
-                     &option::t[ast::def_id] def_id) ->
+    fn ty_of_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t ,
+                     ty_of_arg: &fn(&ast::arg) -> arg , decl: &ast::fn_decl,
+                     proto: ast::proto, ty_params: &ast::ty_param[],
+                     def_id: &option::t[ast::def_id]) ->
        ty::ty_param_count_and_ty {
-        auto input_tys = ~[];
-        for (ast::arg a in decl.inputs) { input_tys += ~[ty_of_arg(a)]; }
-        auto output_ty = convert(decl.output);
+        let input_tys = ~[];
+        for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
+        let output_ty = convert(decl.output);
 
-        auto out_constrs = ~[];
-        for (@ast::constr constr in decl.constraints) {
+        let out_constrs = ~[];
+        for constr: @ast::constr  in decl.constraints {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
-        auto t_fn =
-            ty::mk_fn(cx.tcx, proto_to_ty_proto(proto), input_tys,
-                      output_ty, decl.cf, out_constrs);
-        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
-        auto tpt = rec(count=ty_param_count, ty=t_fn);
-        alt (def_id) {
-            case (some(?did)) { cx.tcx.tcache.insert(did, tpt); }
-            case (_) { }
-        }
+        let t_fn =
+            ty::mk_fn(cx.tcx, proto_to_ty_proto(proto), input_tys, output_ty,
+                      decl.cf, out_constrs);
+        let ty_param_count = ivec::len[ast::ty_param](ty_params);
+        let tpt = {count: ty_param_count, ty: t_fn};
+        alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
-    fn ty_of_native_fn_decl(&@ctxt cx, &fn(&@ast::ty) -> ty::t  convert,
-                            &fn(&ast::arg) -> arg  ty_of_arg,
-                            &ast::fn_decl decl, ast::native_abi abi,
-                            &ast::ty_param[] ty_params,
-                            &ast::def_id def_id) ->
-       ty::ty_param_count_and_ty {
-        auto input_tys = ~[];
-        for (ast::arg a in decl.inputs) { input_tys += ~[ty_of_arg(a)]; }
-        auto output_ty = convert(decl.output);
+    fn ty_of_native_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t ,
+                            ty_of_arg: &fn(&ast::arg) -> arg ,
+                            decl: &ast::fn_decl, abi: ast::native_abi,
+                            ty_params: &ast::ty_param[], def_id: &ast::def_id)
+       -> ty::ty_param_count_and_ty {
+        let input_tys = ~[];
+        for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
+        let output_ty = convert(decl.output);
 
-        auto t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
-        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
-        auto tpt = rec(count=ty_param_count, ty=t_fn);
+        let t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
+        let ty_param_count = ivec::len[ast::ty_param](ty_params);
+        let tpt = {count: ty_param_count, ty: t_fn};
         cx.tcx.tcache.insert(def_id, tpt);
         ret tpt;
     }
-    fn getter(@ctxt cx, &ast::def_id id) -> ty::ty_param_count_and_ty {
-        if (id.crate != ast::local_crate) {
+    fn getter(cx: @ctxt, id: &ast::def_id) -> ty::ty_param_count_and_ty {
+        if id.crate != ast::local_crate {
             // This is a type we need to load in from the crate reader.
             ret csearch::get_type(cx.tcx, id);
         }
-        auto it = cx.tcx.items.find(id.node);
-        auto tpt;
-        alt (it) {
-            case (some(ast_map::node_item(?item))) {
-                tpt = ty_of_item(cx, item);
-            }
-            case (some(ast_map::node_native_item(?native_item))) {
-                tpt = ty_of_native_item(cx, native_item,
-                                        ast::native_abi_cdecl);
-            }
-            case (_) {
-                cx.tcx.sess.fatal("internal error " +
-                                  std::int::str(id.node));
-            }
+        let it = cx.tcx.items.find(id.node);
+        let tpt;
+        alt it {
+          some(ast_map::node_item(item)) { tpt = ty_of_item(cx, item); }
+          some(ast_map::node_native_item(native_item)) {
+            tpt = ty_of_native_item(cx, native_item, ast::native_abi_cdecl);
+          }
+          _ { cx.tcx.sess.fatal("internal error " + std::int::str(id.node)); }
         }
         ret tpt;
     }
-    fn ty_of_arg(@ctxt cx, &ast::arg a) -> ty::arg {
-        auto ty_mode = ast_mode_to_mode(a.mode);
-        auto f = bind getter(cx, _);
-        auto tt = ast_ty_to_ty(cx.tcx, f, a.ty);
-        if (ty::type_has_dynamic_size(cx.tcx, tt)) {
-            alt (ty_mode) {
-                case (mo_val) {
-                    cx.tcx.sess.span_fatal(a.ty.span,
-                                         "Dynamically sized arguments \
+    fn ty_of_arg(cx: @ctxt, a: &ast::arg) -> ty::arg {
+        let ty_mode = ast_mode_to_mode(a.mode);
+        let f = bind getter(cx, _);
+        let tt = ast_ty_to_ty(cx.tcx, f, a.ty);
+        if ty::type_has_dynamic_size(cx.tcx, tt) {
+            alt ty_mode {
+              mo_val. {
+                cx.tcx.sess.span_fatal(a.ty.span,
+                                       "Dynamically sized arguments \
                                           must be passed by alias");
-                }
-                case (_) { }
+              }
+              _ { }
             }
         }
-        ret rec(mode=ty_mode, ty=tt);
+        ret {mode: ty_mode, ty: tt};
     }
-    fn ty_of_method(@ctxt cx, &@ast::method m) -> ty::method {
-        auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
+    fn ty_of_method(cx: @ctxt, m: &@ast::method) -> ty::method {
+        let get = bind getter(cx, _);
+        let convert = bind ast_ty_to_ty(cx.tcx, get, _);
 
-        auto inputs = ~[];
-        for (ast::arg a in m.node.meth.decl.inputs) {
+        let inputs = ~[];
+        for a: ast::arg  in m.node.meth.decl.inputs {
             inputs += ~[ty_of_arg(cx, a)];
         }
 
-        auto output = convert(m.node.meth.decl.output);
+        let output = convert(m.node.meth.decl.output);
 
-        auto out_constrs = ~[];
-        for (@ast::constr constr in m.node.meth.decl.constraints) {
+        let out_constrs = ~[];
+        for constr: @ast::constr  in m.node.meth.decl.constraints {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
-        ret rec(proto=proto_to_ty_proto(m.node.meth.proto),
-                ident=m.node.ident, inputs=inputs, output=output,
-                cf=m.node.meth.decl.cf, constrs=out_constrs);
+        ret {proto: proto_to_ty_proto(m.node.meth.proto),
+             ident: m.node.ident,
+             inputs: inputs,
+             output: output,
+             cf: m.node.meth.decl.cf,
+             constrs: out_constrs};
     }
-    fn ty_of_obj(@ctxt cx, &ast::ident id, &ast::_obj ob,
-                 &ast::ty_param[] ty_params) -> ty::ty_param_count_and_ty {
-        auto methods = get_obj_method_types(cx, ob);
-        auto t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
+    fn ty_of_obj(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
+                 ty_params: &ast::ty_param[]) -> ty::ty_param_count_and_ty {
+        let methods = get_obj_method_types(cx, ob);
+        let t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
-        ret rec(count=ivec::len(ty_params), ty=t_obj);
+        ret {count: ivec::len(ty_params), ty: t_obj};
     }
-    fn ty_of_obj_ctor(@ctxt cx, &ast::ident id, &ast::_obj ob,
-                      ast::node_id ctor_id, &ast::ty_param[] ty_params) ->
+    fn ty_of_obj_ctor(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
+                      ctor_id: ast::node_id, ty_params: &ast::ty_param[]) ->
        ty::ty_param_count_and_ty {
-        auto t_obj = ty_of_obj(cx, id, ob, ty_params);
+        let t_obj = ty_of_obj(cx, id, ob, ty_params);
 
-        let arg[] t_inputs = ~[];
-        for (ast::obj_field f in ob.fields) {
-            auto g = bind getter(cx, _);
-            auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            t_inputs += ~[rec(mode=ty::mo_alias(false), ty=t_field)];
+        let t_inputs: arg[] = ~[];
+        for f: ast::obj_field  in ob.fields {
+            let g = bind getter(cx, _);
+            let t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
+            t_inputs += ~[{mode: ty::mo_alias(false), ty: t_field}];
         }
 
-        auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty,
-                              ast::return, ~[]);
-        auto tpt = rec(count=t_obj.count, ty=t_fn);
+        let t_fn =
+            ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty, ast::return,
+                      ~[]);
+        let tpt = {count: t_obj.count, ty: t_fn};
         cx.tcx.tcache.insert(local_def(ctor_id), tpt);
         ret tpt;
     }
-    fn ty_of_item(&@ctxt cx, &@ast::item it) -> ty::ty_param_count_and_ty {
-        auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
-        alt (it.node) {
-            case (ast::item_const(?t, _)) {
-                auto typ = convert(t);
-                auto tpt = rec(count=0u, ty=typ);
-                cx.tcx.tcache.insert(local_def(it.id), tpt);
-                ret tpt;
+    fn ty_of_item(cx: &@ctxt, it: &@ast::item) -> ty::ty_param_count_and_ty {
+        let get = bind getter(cx, _);
+        let convert = bind ast_ty_to_ty(cx.tcx, get, _);
+        alt it.node {
+          ast::item_const(t, _) {
+            let typ = convert(t);
+            let tpt = {count: 0u, ty: typ};
+            cx.tcx.tcache.insert(local_def(it.id), tpt);
+            ret tpt;
+          }
+          ast::item_fn(fn_info, tps) {
+            let f = bind ty_of_arg(cx, _);
+            ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
+                              tps, some(local_def(it.id)));
+          }
+          ast::item_obj(ob, tps, _) {
+            let t_obj = ty_of_obj(cx, it.ident, ob, tps);
+            cx.tcx.tcache.insert(local_def(it.id), t_obj);
+            ret t_obj;
+          }
+          ast::item_ty(t, tps) {
+            alt cx.tcx.tcache.find(local_def(it.id)) {
+              some(tpt) { ret tpt; }
+              none. { }
             }
-            case (ast::item_fn(?fn_info, ?tps)) {
-                auto f = bind ty_of_arg(cx, _);
-                ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
-                                  tps, some(local_def(it.id)));
-            }
-            case (ast::item_obj(?ob, ?tps, _)) {
-                auto t_obj = ty_of_obj(cx, it.ident, ob, tps);
-                cx.tcx.tcache.insert(local_def(it.id), t_obj);
-                ret t_obj;
-            }
-            case (ast::item_ty(?t, ?tps)) {
-                alt (cx.tcx.tcache.find(local_def(it.id))) {
-                    case (some(?tpt)) { ret tpt; }
-                    case (none) { }
-                }
-                // Tell ast_ty_to_ty() that we want to perform a recursive
-                // call to resolve any named types.
+            // Tell ast_ty_to_ty() that we want to perform a recursive
+            // call to resolve any named types.
 
-                auto typ = convert(t);
-                auto ty_param_count = ivec::len[ast::ty_param](tps);
-                auto tpt = rec(count=ty_param_count, ty=typ);
-                cx.tcx.tcache.insert(local_def(it.id), tpt);
-                ret tpt;
-            }
-            case (ast::item_res(?f, _, ?tps, _)) {
-                auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
-                auto t_res = rec(count=ivec::len(tps),
-                                 ty=ty::mk_res
-                                 (cx.tcx, local_def(it.id), t_arg.ty,
-                                  mk_ty_params(cx, ivec::len(tps))));
-                cx.tcx.tcache.insert(local_def(it.id), t_res);
-                ret t_res;
-            }
-            case (ast::item_tag(_, ?tps)) {
-                // Create a new generic polytype.
+            let typ = convert(t);
+            let ty_param_count = ivec::len[ast::ty_param](tps);
+            let tpt = {count: ty_param_count, ty: typ};
+            cx.tcx.tcache.insert(local_def(it.id), tpt);
+            ret tpt;
+          }
+          ast::item_res(f, _, tps, _) {
+            let t_arg = ty_of_arg(cx, f.decl.inputs.(0));
+            let t_res =
+                {count: ivec::len(tps),
+                 ty:
+                     ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
+                                mk_ty_params(cx, ivec::len(tps)))};
+            cx.tcx.tcache.insert(local_def(it.id), t_res);
+            ret t_res;
+          }
+          ast::item_tag(_, tps) {
+            // Create a new generic polytype.
 
-                auto ty_param_count = ivec::len[ast::ty_param](tps);
+            let ty_param_count = ivec::len[ast::ty_param](tps);
 
-                let ty::t[] subtys = mk_ty_params(cx, ty_param_count);
-                auto t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
-                auto tpt = rec(count=ty_param_count, ty=t);
-                cx.tcx.tcache.insert(local_def(it.id), tpt);
-                ret tpt;
-            }
-            case (ast::item_mod(_)) { fail; }
-            case (ast::item_native_mod(_)) { fail; }
+            let subtys: ty::t[] = mk_ty_params(cx, ty_param_count);
+            let t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
+            let tpt = {count: ty_param_count, ty: t};
+            cx.tcx.tcache.insert(local_def(it.id), tpt);
+            ret tpt;
+          }
+          ast::item_mod(_) { fail; }
+          ast::item_native_mod(_) { fail; }
         }
     }
-    fn ty_of_native_item(&@ctxt cx, &@ast::native_item it,
-                         ast::native_abi abi) -> ty::ty_param_count_and_ty {
-        alt (it.node) {
-            case (ast::native_item_fn(_, ?fn_decl, ?params)) {
-                auto get = bind getter(cx, _);
-                auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
-                auto f = bind ty_of_arg(cx, _);
-                ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
-                                         ast::local_def(it.id));
+    fn ty_of_native_item(cx: &@ctxt, it: &@ast::native_item,
+                         abi: ast::native_abi) -> ty::ty_param_count_and_ty {
+        alt it.node {
+          ast::native_item_fn(_, fn_decl, params) {
+            let get = bind getter(cx, _);
+            let convert = bind ast_ty_to_ty(cx.tcx, get, _);
+            let f = bind ty_of_arg(cx, _);
+            ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
+                                     ast::local_def(it.id));
+          }
+          ast::native_item_ty. {
+            alt cx.tcx.tcache.find(local_def(it.id)) {
+              some(tpt) { ret tpt; }
+              none. { }
             }
-            case (ast::native_item_ty) {
-                alt (cx.tcx.tcache.find(local_def(it.id))) {
-                    case (some(?tpt)) { ret tpt; }
-                    case (none) { }
-                }
-                auto t = ty::mk_native(cx.tcx, ast::local_def(it.id));
-                auto tpt = rec(count=0u, ty=t);
-                cx.tcx.tcache.insert(local_def(it.id), tpt);
-                ret tpt;
-            }
+            let t = ty::mk_native(cx.tcx, ast::local_def(it.id));
+            let tpt = {count: 0u, ty: t};
+            cx.tcx.tcache.insert(local_def(it.id), tpt);
+            ret tpt;
+          }
         }
     }
-    fn get_tag_variant_types(&@ctxt cx, &ast::def_id tag_id,
-                             &ast::variant[] variants,
-                             &ast::ty_param[] ty_params) {
+    fn get_tag_variant_types(cx: &@ctxt, tag_id: &ast::def_id,
+                             variants: &ast::variant[],
+                             ty_params: &ast::ty_param[]) {
         // Create a set of parameter types shared among all the variants.
 
-        auto ty_param_count = ivec::len[ast::ty_param](ty_params);
-        let ty::t[] ty_param_tys = mk_ty_params(cx, ty_param_count);
-        for (ast::variant variant in variants) {
+        let ty_param_count = ivec::len[ast::ty_param](ty_params);
+        let ty_param_tys: ty::t[] = mk_ty_params(cx, ty_param_count);
+        for variant: ast::variant  in variants {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
 
-            auto result_ty;
-            if (ivec::len[ast::variant_arg](variant.node.args) == 0u) {
+            let result_ty;
+            if ivec::len[ast::variant_arg](variant.node.args) == 0u {
                 result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
 
-                auto f = bind getter(cx, _);
-                let arg[] args = ~[];
-                for (ast::variant_arg va in variant.node.args) {
-                    auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += ~[rec(mode=ty::mo_alias(false), ty=arg_ty)];
+                let f = bind getter(cx, _);
+                let args: arg[] = ~[];
+                for va: ast::variant_arg  in variant.node.args {
+                    let arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
+                    args += ~[{mode: ty::mo_alias(false), ty: arg_ty}];
                 }
-                auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
+                let tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 // FIXME: this will be different for constrained types
-                result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
-                                      ast::return, ~[]);
+                result_ty =
+                    ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t, ast::return,
+                              ~[]);
             }
-            auto tpt = rec(count=ty_param_count, ty=result_ty);
+            let tpt = {count: ty_param_count, ty: result_ty};
             cx.tcx.tcache.insert(local_def(variant.node.id), tpt);
             write::ty_only(cx.tcx, variant.node.id, result_ty);
         }
     }
-    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> ty::method[] {
-        auto meths = ~[];
-        for (@ast::method m in object.methods) {
+    fn get_obj_method_types(cx: &@ctxt, object: &ast::_obj) -> ty::method[] {
+        let meths = ~[];
+        for m: @ast::method  in object.methods {
             meths += ~[ty_of_method(cx, m)];
         }
         ret meths;
     }
-    fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
-               &@ast::item it) {
-        alt (it.node) {
-            case (ast::item_mod(_)) {
-                // ignore item_mod, it has no type.
+    fn convert(cx: @ctxt, abi: @mutable option::t[ast::native_abi],
+               it: &@ast::item) {
+        alt it.node {
+          ast::item_mod(_) {
+            // ignore item_mod, it has no type.
 
+          }
+          ast::item_native_mod(native_mod) {
+            // Propagate the native ABI down to convert_native() below,
+            // but otherwise do nothing, as native modules have no types.
+
+            *abi = some[ast::native_abi](native_mod.abi);
+          }
+          ast::item_tag(variants, ty_params) {
+            let tpt = ty_of_item(cx, it);
+            write::ty_only(cx.tcx, it.id, tpt.ty);
+            get_tag_variant_types(cx, local_def(it.id), variants, ty_params);
+          }
+          ast::item_obj(object, ty_params, ctor_id) {
+            // Now we need to call ty_of_obj_ctor(); this is the type that
+            // we write into the table for this item.
+
+            ty_of_item(cx, it);
+
+            let tpt =
+                ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
+            write::ty_only(cx.tcx, ctor_id, tpt.ty);
+            // Write the methods into the type table.
+            //
+            // FIXME: Inefficient; this ends up calling
+            // get_obj_method_types() twice. (The first time was above in
+            // ty_of_obj().)
+
+            let method_types = get_obj_method_types(cx, object);
+            let i = 0u;
+            while i < ivec::len[@ast::method](object.methods) {
+                write::ty_only(cx.tcx, object.methods.(i).node.id,
+                               ty::method_ty_to_fn_ty(cx.tcx,
+                                                      method_types.(i)));
+                i += 1u;
             }
-            case (ast::item_native_mod(?native_mod)) {
-                // Propagate the native ABI down to convert_native() below,
-                // but otherwise do nothing, as native modules have no types.
+            // Write in the types of the object fields.
+            //
+            // FIXME: We want to use uint::range() here, but that causes
+            // an assertion in trans.
 
-                *abi = some[ast::native_abi](native_mod.abi);
+            let args = ty::ty_fn_args(cx.tcx, tpt.ty);
+            i = 0u;
+            while i < ivec::len[ty::arg](args) {
+                let fld = object.fields.(i);
+                write::ty_only(cx.tcx, fld.id, args.(i).ty);
+                i += 1u;
             }
-            case (ast::item_tag(?variants, ?ty_params)) {
-                auto tpt = ty_of_item(cx, it);
-                write::ty_only(cx.tcx, it.id, tpt.ty);
-                get_tag_variant_types(cx, local_def(it.id), variants,
-                                      ty_params);
+
+
+            // Finally, write in the type of the destructor.
+            alt object.dtor {
+              none. {/* nothing to do */ }
+              some(m) {
+                let t =
+                    ty::mk_fn(cx.tcx, ast::proto_fn, ~[], ty::mk_nil(cx.tcx),
+                              ast::return, ~[]);
+                write::ty_only(cx.tcx, m.node.id, t);
+              }
             }
-            case (ast::item_obj(?object, ?ty_params, ?ctor_id)) {
-                // Now we need to call ty_of_obj_ctor(); this is the type that
-                // we write into the table for this item.
+          }
+          ast::item_res(f, dtor_id, tps, ctor_id) {
+            let t_arg = ty_of_arg(cx, f.decl.inputs.(0));
+            let t_res =
+                ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
+                           mk_ty_params(cx, ivec::len(tps)));
+            let t_ctor =
+                ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg], t_res, ast::return,
+                          ~[]);
+            let t_dtor =
+                ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg], ty::mk_nil(cx.tcx),
+                          ast::return, ~[]);
+            write::ty_only(cx.tcx, it.id, t_res);
+            write::ty_only(cx.tcx, ctor_id, t_ctor);
+            cx.tcx.tcache.insert(local_def(ctor_id),
+                                 {count: ivec::len(tps), ty: t_ctor});
+            write::ty_only(cx.tcx, dtor_id, t_dtor);
+          }
+          _ {
+            // This call populates the type cache with the converted type
+            // of the item in passing. All we have to do here is to write
+            // it into the node type table.
 
-                ty_of_item(cx, it);
-
-                auto tpt =
-                    ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
-                write::ty_only(cx.tcx, ctor_id, tpt.ty);
-                // Write the methods into the type table.
-                //
-                // FIXME: Inefficient; this ends up calling
-                // get_obj_method_types() twice. (The first time was above in
-                // ty_of_obj().)
-
-                auto method_types = get_obj_method_types(cx, object);
-                auto i = 0u;
-                while (i < ivec::len[@ast::method](object.methods)) {
-                    write::ty_only(cx.tcx, object.methods.(i).node.id,
-                                   ty::method_ty_to_fn_ty(cx.tcx,
-                                                          method_types.(i)));
-                    i += 1u;
-                }
-                // Write in the types of the object fields.
-                //
-                // FIXME: We want to use uint::range() here, but that causes
-                // an assertion in trans.
-
-                auto args = ty::ty_fn_args(cx.tcx, tpt.ty);
-                i = 0u;
-                while (i < ivec::len[ty::arg](args)) {
-                    auto fld = object.fields.(i);
-                    write::ty_only(cx.tcx, fld.id, args.(i).ty);
-                    i += 1u;
-                }
-
-                // Finally, write in the type of the destructor.
-                alt (object.dtor) {
-                    case (none) {/* nothing to do */ }
-                    case (some(?m)) {
-                        auto t = ty::mk_fn(cx.tcx, ast::proto_fn, ~[],
-                                   ty::mk_nil(cx.tcx), ast::return, ~[]);
-                        write::ty_only(cx.tcx, m.node.id, t);
-                    }
-                }
-            }
-            case (ast::item_res(?f, ?dtor_id, ?tps, ?ctor_id)) {
-                auto t_arg = ty_of_arg(cx, f.decl.inputs.(0));
-                auto t_res = ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
-                                        mk_ty_params(cx, ivec::len(tps)));
-                auto t_ctor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
-                                        t_res, ast::return, ~[]);
-                auto t_dtor = ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg],
-                                        ty::mk_nil(cx.tcx), ast::return, ~[]);
-                write::ty_only(cx.tcx, it.id, t_res);
-                write::ty_only(cx.tcx, ctor_id, t_ctor);
-                cx.tcx.tcache.insert(local_def(ctor_id),
-                                     rec(count=ivec::len(tps), ty=t_ctor));
-                write::ty_only(cx.tcx, dtor_id, t_dtor);
-            }
-            case (_) {
-                // This call populates the type cache with the converted type
-                // of the item in passing. All we have to do here is to write
-                // it into the node type table.
-
-                auto tpt = ty_of_item(cx, it);
-                write::ty_only(cx.tcx, it.id, tpt.ty);
-            }
+            let tpt = ty_of_item(cx, it);
+            write::ty_only(cx.tcx, it.id, tpt.ty);
+          }
         }
     }
-    fn convert_native(@ctxt cx, @mutable option::t[ast::native_abi] abi,
-                      &@ast::native_item i) {
+    fn convert_native(cx: @ctxt, abi: @mutable option::t[ast::native_abi],
+                      i: &@ast::native_item) {
         // As above, this call populates the type table with the converted
         // type of the native item. We simply write it into the node type
         // table.
 
-        auto tpt =
+        let tpt =
             ty_of_native_item(cx, i, option::get[ast::native_abi]({ *abi }));
-        alt (i.node) {
-            case (ast::native_item_ty) {
-                // FIXME: Native types have no annotation. Should they? --pcw
+        alt i.node {
+          ast::native_item_ty. {
+            // FIXME: Native types have no annotation. Should they? --pcw
 
-            }
-            case (ast::native_item_fn(_, _, _)) {
-                write::ty_only(cx.tcx, i.id, tpt.ty);
-            }
+          }
+          ast::native_item_fn(_, _, _) {
+            write::ty_only(cx.tcx, i.id, tpt.ty);
+          }
         }
     }
-    fn collect_item_types(&ty::ctxt tcx, &@ast::crate crate) {
+    fn collect_item_types(tcx: &ty::ctxt, crate: &@ast::crate) {
         // We have to propagate the surrounding ABI to the native items
         // contained within the native module.
 
-        auto abi = @mutable none[ast::native_abi];
-        auto cx = @rec(tcx=tcx);
-        auto visit = visit::mk_simple_visitor
-            (@rec(visit_item=bind convert(cx, abi, _),
-                  visit_native_item=bind convert_native(cx, abi, _)
-                  with *visit::default_simple_visitor()));
+        let abi = @mutable none[ast::native_abi];
+        let cx = @{tcx: tcx};
+        let visit =
+            visit::mk_simple_visitor(@{visit_item: bind convert(cx, abi, _),
+                                       visit_native_item:
+                                           bind convert_native(cx, abi, _)
+                                          with
+                                              *visit::default_simple_visitor()});
         visit::visit_crate(*crate, (), visit);
     }
 }
@@ -890,7 +882,7 @@ mod collect {
 
 // TODO: rename to just "unify"
 mod unify {
-    fn simple(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) ->
+    fn simple(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) ->
        ty::unify::result {
         ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
     }
@@ -900,183 +892,184 @@ tag autoderef_kind { AUTODEREF_OK; NO_AUTODEREF; AUTODEREF_BLOCK_COERCE; }
 
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
-fn do_autoderef(&@fn_ctxt fcx, &span sp, &ty::t t) -> ty::t {
-    auto t1 = t;
-    while (true) {
-        alt (structure_of(fcx, sp, t1)) {
-            case (ty::ty_box(?inner)) { t1 = inner.ty; }
-            case (ty::ty_res(_, ?inner, ?tps)) {
-                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
+fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
+    let t1 = t;
+    while true {
+        alt structure_of(fcx, sp, t1) {
+          ty::ty_box(inner) { t1 = inner.ty; }
+          ty::ty_res(_, inner, tps) {
+            t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
+          }
+          ty::ty_tag(did, tps) {
+            let variants = ty::tag_variants(fcx.ccx.tcx, did);
+            if ivec::len(variants) != 1u || ivec::len(variants.(0).args) != 1u
+               {
+                ret t1;
             }
-            case (ty::ty_tag(?did, ?tps)) {
-                auto variants = ty::tag_variants(fcx.ccx.tcx, did);
-                if (ivec::len(variants) != 1u ||
-                        ivec::len(variants.(0).args) != 1u) {
-                    ret t1;
-                }
-                t1 = ty::substitute_type_params(fcx.ccx.tcx, tps,
-                                                variants.(0).args.(0));
-            }
-            case (_) { ret t1; }
+            t1 =
+                ty::substitute_type_params(fcx.ccx.tcx, tps,
+                                           variants.(0).args.(0));
+          }
+          _ { ret t1; }
         }
     }
     fail;
 }
 
-fn add_boxes(&@crate_ctxt ccx, uint n, &ty::t t) -> ty::t {
-    auto t1 = t;
-    while (n != 0u) { t1 = ty::mk_imm_box(ccx.tcx, t1); n -= 1u; }
+fn add_boxes(ccx: &@crate_ctxt, n: uint, t: &ty::t) -> ty::t {
+    let t1 = t;
+    while n != 0u { t1 = ty::mk_imm_box(ccx.tcx, t1); n -= 1u; }
     ret t1;
 }
 
-fn count_boxes(&@fn_ctxt fcx, &span sp, &ty::t t) -> uint {
-    auto n = 0u;
-    auto t1 = t;
-    while (true) {
-        alt (structure_of(fcx, sp, t1)) {
-            case (ty::ty_box(?inner)) { n += 1u; t1 = inner.ty; }
-            case (_) { ret n; }
+fn count_boxes(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> uint {
+    let n = 0u;
+    let t1 = t;
+    while true {
+        alt structure_of(fcx, sp, t1) {
+          ty::ty_box(inner) { n += 1u; t1 = inner.ty; }
+          _ { ret n; }
         }
     }
     fail;
 }
 
-fn do_fn_block_coerce(&@fn_ctxt fcx, &span sp,
-                      &ty::t actual, &ty::t expected) -> ty::t {
+fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: &ty::t,
+                      expected: &ty::t) -> ty::t {
+
     // fns can be silently coerced to blocks when being used as
     // function call or bind arguments, but not the reverse.
     // If our actual type is a fn and our expected type is a block,
     // build up a new expected type that is identical to the old one
     // except for its proto. If we don't know the expected or actual
     // types, that's fine, but we can't do the coercion.
-    ret alt (structure_of_maybe(fcx, sp, actual)) {
-      some(ty::ty_fn(ast::proto_fn, ?args, ?ret_ty, ?cf, ?constrs)) {
-        alt (structure_of_maybe(fcx, sp, expected)) {
-          some(ty::ty_fn(ast::proto_block, _, _, _, _)) {
-            ty::mk_fn(fcx.ccx.tcx,
-                      ast::proto_block, args, ret_ty, cf, constrs)
+    ret alt structure_of_maybe(fcx, sp, actual) {
+          some(ty::ty_fn(ast::proto_fn., args, ret_ty, cf, constrs)) {
+            alt structure_of_maybe(fcx, sp, expected) {
+              some(ty::ty_fn(ast::proto_block., _, _, _, _)) {
+                ty::mk_fn(fcx.ccx.tcx, ast::proto_block, args, ret_ty, cf,
+                          constrs)
+              }
+              _ { actual }
+            }
           }
           _ { actual }
         }
-      }
-      _ { actual }
-    }
 }
 
 
-fn resolve_type_vars_if_possible(&@fn_ctxt fcx, ty::t typ) -> ty::t {
-    alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
-        case (fix_ok(?new_type)) { ret new_type; }
-        case (fix_err(_)) { ret typ; }
+fn resolve_type_vars_if_possible(fcx: &@fn_ctxt, typ: ty::t) -> ty::t {
+    alt ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ) {
+      fix_ok(new_type) { ret new_type; }
+      fix_err(_) { ret typ; }
     }
 }
 
 
 // Demands - procedures that require that two types unify and emit an error
 // message if they don't.
-type ty_param_substs_and_ty = rec(ty::t[] substs, ty::t ty);
+type ty_param_substs_and_ty = {substs: ty::t[], ty: ty::t};
 
 mod demand {
-    fn simple(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual) ->
+    fn simple(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t) ->
        ty::t {
         ret full(fcx, sp, expected, actual, ~[], NO_AUTODEREF).ty;
     }
-    fn autoderef(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
-                 autoderef_kind adk) -> ty::t {
+    fn autoderef(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t,
+                 adk: autoderef_kind) -> ty::t {
         ret full(fcx, sp, expected, actual, ~[], adk).ty;
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
-    fn full(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
-            &ty::t[] ty_param_substs_0, autoderef_kind adk) ->
+    fn full(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t,
+            ty_param_substs_0: &ty::t[], adk: autoderef_kind) ->
        ty_param_substs_and_ty {
-        auto expected_1 = expected;
-        auto actual_1 = actual;
-        auto implicit_boxes = 0u;
-        if (adk == AUTODEREF_OK) {
+        let expected_1 = expected;
+        let actual_1 = actual;
+        let implicit_boxes = 0u;
+        if adk == AUTODEREF_OK {
             expected_1 = do_autoderef(fcx, sp, expected_1);
             actual_1 = do_autoderef(fcx, sp, actual_1);
             implicit_boxes = count_boxes(fcx, sp, actual);
         } else if (adk == AUTODEREF_BLOCK_COERCE) {
             actual_1 = do_fn_block_coerce(fcx, sp, actual, expected);
         }
-        let ty::t[mutable] ty_param_substs = ~[mutable];
-        let int[] ty_param_subst_var_ids = ~[];
-        for (ty::t ty_param_subst in ty_param_substs_0) {
+        let ty_param_substs: ty::t[mutable ] = ~[mutable ];
+        let ty_param_subst_var_ids: int[] = ~[];
+        for ty_param_subst: ty::t  in ty_param_substs_0 {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
 
-            auto t_0 = next_ty_var(fcx);
+            let t_0 = next_ty_var(fcx);
             ty_param_substs += ~[mutable t_0];
             ty_param_subst_var_ids += ~[ty::ty_var_id(fcx.ccx.tcx, t_0)];
             simple(fcx, sp, ty_param_subst, t_0);
         }
 
-        fn mk_result(&@fn_ctxt fcx, &ty::t result_ty,
-                     &int[] ty_param_subst_var_ids,
-                     uint implicit_boxes) -> ty_param_substs_and_ty {
-            let ty::t[] result_ty_param_substs = ~[];
-            for (int var_id in ty_param_subst_var_ids) {
-                auto tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
+        fn mk_result(fcx: &@fn_ctxt, result_ty: &ty::t,
+                     ty_param_subst_var_ids: &int[], implicit_boxes: uint) ->
+           ty_param_substs_and_ty {
+            let result_ty_param_substs: ty::t[] = ~[];
+            for var_id: int  in ty_param_subst_var_ids {
+                let tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
                 result_ty_param_substs += ~[tp_subst];
             }
-            ret rec(substs=result_ty_param_substs,
-                    ty=add_boxes(fcx.ccx, implicit_boxes, result_ty));
+            ret {substs: result_ty_param_substs,
+                 ty: add_boxes(fcx.ccx, implicit_boxes, result_ty)};
         }
 
-        alt (unify::simple(fcx, expected_1, actual_1)) {
-            case (ures_ok(?t)) {
-                ret mk_result(fcx, t, ty_param_subst_var_ids,
-                              implicit_boxes);
-            }
-            case (ures_err(?err)) {
-                auto e_err = resolve_type_vars_if_possible(fcx, expected_1);
-                auto a_err = resolve_type_vars_if_possible(fcx, actual_1);
-                fcx.ccx.tcx.sess.span_err(sp,
-                                          "mismatched types: expected " +
+
+        alt unify::simple(fcx, expected_1, actual_1) {
+          ures_ok(t) {
+            ret mk_result(fcx, t, ty_param_subst_var_ids, implicit_boxes);
+          }
+          ures_err(err) {
+            let e_err = resolve_type_vars_if_possible(fcx, expected_1);
+            let a_err = resolve_type_vars_if_possible(fcx, actual_1);
+            fcx.ccx.tcx.sess.span_err(sp,
+                                      "mismatched types: expected " +
                                           ty_to_str(fcx.ccx.tcx, e_err) +
                                           " but found " +
-                                          ty_to_str(fcx.ccx.tcx, a_err) +
-                                          " (" + ty::type_err_to_str(err)
-                                          + ")");
-                ret mk_result(fcx, expected_1,
-                              ty_param_subst_var_ids, implicit_boxes);
-            }
+                                          ty_to_str(fcx.ccx.tcx, a_err) + " ("
+                                          + ty::type_err_to_str(err) + ")");
+            ret mk_result(fcx, expected_1, ty_param_subst_var_ids,
+                          implicit_boxes);
+          }
         }
     }
 }
 
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
-    alt (unify::simple(fcx, expected, actual)) {
-        case (ures_ok(_)) { ret true; }
-        case (ures_err(_)) { ret false; }
+fn are_compatible(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) -> bool {
+    alt unify::simple(fcx, expected, actual) {
+      ures_ok(_) { ret true; }
+      ures_err(_) { ret false; }
     }
 }
 
 
 // Returns the types of the arguments to a tag variant.
-fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
-                     &ty::t[] tag_ty_params) -> ty::t[] {
-    let ty::t[] result = ~[];
-    auto tpt = ty::lookup_item_type(ccx.tcx, vid);
-    alt (ty::struct(ccx.tcx, tpt.ty)) {
-        case (ty::ty_fn(_, ?ins, _, _, _)) {
+fn variant_arg_types(ccx: &@crate_ctxt, sp: &span, vid: &ast::def_id,
+                     tag_ty_params: &ty::t[]) -> ty::t[] {
+    let result: ty::t[] = ~[];
+    let tpt = ty::lookup_item_type(ccx.tcx, vid);
+    alt ty::struct(ccx.tcx, tpt.ty) {
+      ty::ty_fn(_, ins, _, _, _) {
 
-            // N-ary variant.
-            for (ty::arg arg in ins) {
-                auto arg_ty =
-                    ty::substitute_type_params(ccx.tcx, tag_ty_params,
-                                               arg.ty);
-                result += ~[arg_ty];
-            }
-        }
-        case (_) {
-            // Nullary variant. Do nothing, as there are no arguments.
 
+        // N-ary variant.
+        for arg: ty::arg  in ins {
+            let arg_ty =
+                ty::substitute_type_params(ccx.tcx, tag_ty_params, arg.ty);
+            result += ~[arg_ty];
         }
+      }
+      _ {
+        // Nullary variant. Do nothing, as there are no arguments.
+
+      }
     }
     /* result is a vector of the *expected* types of all the fields */
 
@@ -1094,124 +1087,108 @@ mod writeback {
 
     export resolve_type_vars_in_block;
 
-    fn resolve_type_vars_in_type(&@fn_ctxt fcx, &span sp, ty::t typ) ->
-        option::t[ty::t] {
-        if (!ty::type_contains_vars(fcx.ccx.tcx, typ)) { ret some(typ); }
-        alt (ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ)) {
-            case (fix_ok(?new_type)) { ret some(new_type); }
-            case (fix_err(?vid)) {
-                fcx.ccx.tcx.sess.span_err(sp,
-                                          "cannot determine a type \
+    fn resolve_type_vars_in_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+       option::t[ty::t] {
+        if !ty::type_contains_vars(fcx.ccx.tcx, typ) { ret some(typ); }
+        alt ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ) {
+          fix_ok(new_type) { ret some(new_type); }
+          fix_err(vid) {
+            fcx.ccx.tcx.sess.span_err(sp,
+                                      "cannot determine a type \
                                            for this expression");
-                ret none;
-            }
+            ret none;
+          }
         }
     }
-    fn resolve_type_vars_for_node(&@wb_ctxt wbcx,
-                                  &span sp, ast::node_id id) {
-        auto fcx = wbcx.fcx;
-        auto tpot = ty::node_id_to_ty_param_substs_opt_and_ty
-            (fcx.ccx.tcx, id);
-        auto new_ty = alt (resolve_type_vars_in_type(fcx, sp, tpot.ty)) {
-            case (some(?t)) { t }
-            case (none) {
-                wbcx.success = false;
-                ret
-            }
-        };
-        auto new_substs_opt;
-        alt (tpot.substs) {
-            case (none[ty::t[]]) { new_substs_opt = none[ty::t[]]; }
-            case (some[ty::t[]](?substs)) {
-                let ty::t[] new_substs = ~[];
-                for (ty::t subst in substs) {
-                    alt (resolve_type_vars_in_type(fcx, sp, subst)) {
-                        case (some(?t)) {
-                            new_substs += ~[t];
-                        }
-                        case (none) {
-                            wbcx.success = false;
-                            ret;
-                        }
-                    }
+    fn resolve_type_vars_for_node(wbcx: &@wb_ctxt, sp: &span,
+                                  id: ast::node_id) {
+        let fcx = wbcx.fcx;
+        let tpot = ty::node_id_to_ty_param_substs_opt_and_ty(fcx.ccx.tcx, id);
+        let new_ty =
+            alt resolve_type_vars_in_type(fcx, sp, tpot.ty) {
+              some(t) { t }
+              none. { wbcx.success = false; ret }
+            };
+        let new_substs_opt;
+        alt tpot.substs {
+          none[ty::t[]]. { new_substs_opt = none[ty::t[]]; }
+          some[ty::t[]](substs) {
+            let new_substs: ty::t[] = ~[];
+            for subst: ty::t  in substs {
+                alt resolve_type_vars_in_type(fcx, sp, subst) {
+                  some(t) { new_substs += ~[t]; }
+                  none. { wbcx.success = false; ret; }
                 }
-                new_substs_opt = some[ty::t[]](new_substs);
             }
+            new_substs_opt = some[ty::t[]](new_substs);
+          }
         }
-        write::ty(fcx.ccx.tcx, id, rec(substs=new_substs_opt, ty=new_ty));
+        write::ty(fcx.ccx.tcx, id, {substs: new_substs_opt, ty: new_ty});
     }
 
-    type wb_ctxt = rec(@fn_ctxt fcx,
-                       // A flag to ignore contained items and lambdas
-                       mutable bool ignore,
-                       // As soon as we hit an error we have to stop resolving
-                       // the entire function
-                       mutable bool success);
+    type wb_ctxt =
+        // A flag to ignore contained items and lambdas
+        // As soon as we hit an error we have to stop resolving
+        // the entire function
+        {fcx: @fn_ctxt, mutable ignore: bool, mutable success: bool};
 
-    fn visit_stmt_pre(@wb_ctxt wbcx, &@ast::stmt s) {
+    fn visit_stmt_pre(wbcx: @wb_ctxt, s: &@ast::stmt) {
         resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     }
-    fn visit_expr_pre(@wb_ctxt wbcx, &@ast::expr e) {
+    fn visit_expr_pre(wbcx: @wb_ctxt, e: &@ast::expr) {
         resolve_type_vars_for_node(wbcx, e.span, e.id);
     }
-    fn visit_block_pre(@wb_ctxt wbcx, &ast::blk b) {
+    fn visit_block_pre(wbcx: @wb_ctxt, b: &ast::blk) {
         resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     }
-    fn visit_pat_pre(@wb_ctxt wbcx, &@ast::pat p) {
+    fn visit_pat_pre(wbcx: @wb_ctxt, p: &@ast::pat) {
         resolve_type_vars_for_node(wbcx, p.span, p.id);
     }
-    fn visit_local_pre(@wb_ctxt wbcx, &@ast::local l) {
-        auto var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-        auto fix_rslt =
+    fn visit_local_pre(wbcx: @wb_ctxt, l: &@ast::local) {
+        let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
+        let fix_rslt =
             ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx,
-                                        wbcx.fcx.var_bindings,
-                                        var_id);
-        alt (fix_rslt) {
-            case (fix_ok(?lty)) {
-                write::ty_only(wbcx.fcx.ccx.tcx, l.node.id, lty);
-            }
-            case (fix_err(_)) {
-                wbcx.fcx.ccx.tcx.sess.span_err(l.span,
-                                               "cannot determine a type \
+                                        wbcx.fcx.var_bindings, var_id);
+        alt fix_rslt {
+          fix_ok(lty) { write::ty_only(wbcx.fcx.ccx.tcx, l.node.id, lty); }
+          fix_err(_) {
+            wbcx.fcx.ccx.tcx.sess.span_err(l.span,
+                                           "cannot determine a type \
                                                 for this local variable");
-                wbcx.success = false;
-            }
+            wbcx.success = false;
+          }
         }
     }
-    fn visit_item_pre(@wb_ctxt wbcx, &@ast::item item) {
+    fn visit_item_pre(wbcx: @wb_ctxt, item: &@ast::item) {
         wbcx.ignore = true;
     }
-    fn visit_item_post(@wb_ctxt wbcx, &@ast::item item) {
+    fn visit_item_post(wbcx: @wb_ctxt, item: &@ast::item) {
         wbcx.ignore = false;
     }
-    fn visit_fn_pre(@wb_ctxt wbcx, &ast::_fn f,
-                    &ast::ty_param[] tps, &span sp,
-                    &ast::fn_ident i, ast::node_id d) {
+    fn visit_fn_pre(wbcx: @wb_ctxt, f: &ast::_fn, tps: &ast::ty_param[],
+                    sp: &span, i: &ast::fn_ident, d: ast::node_id) {
         wbcx.ignore = true;
     }
-    fn visit_fn_post(@wb_ctxt wbcx, &ast::_fn f,
-                     &ast::ty_param[] tps, &span sp,
-                     &ast::fn_ident i, ast::node_id d) {
+    fn visit_fn_post(wbcx: @wb_ctxt, f: &ast::_fn, tps: &ast::ty_param[],
+                     sp: &span, i: &ast::fn_ident, d: ast::node_id) {
         wbcx.ignore = false;
     }
-    fn keep_going(@wb_ctxt wbcx) -> bool { !wbcx.ignore && wbcx.success }
+    fn keep_going(wbcx: @wb_ctxt) -> bool { !wbcx.ignore && wbcx.success }
 
-    fn resolve_type_vars_in_block(&@fn_ctxt fcx, &ast::blk blk) -> bool {
-        auto wbcx = @rec(fcx = fcx,
-                         mutable ignore = false,
-                         mutable success = true);
-        auto visit =
-            rec(keep_going=bind keep_going(wbcx),
-                visit_item_pre=bind visit_item_pre(wbcx, _),
-                visit_item_post=bind visit_item_post(wbcx, _),
-                visit_fn_pre=bind visit_fn_pre(wbcx, _, _, _, _, _),
-                visit_fn_post=bind visit_fn_post(wbcx, _, _, _, _, _),
-                visit_stmt_pre=bind visit_stmt_pre(wbcx, _),
-                visit_expr_pre=bind visit_expr_pre(wbcx, _),
-                visit_block_pre=bind visit_block_pre(wbcx, _),
-                visit_pat_pre=bind visit_pat_pre(wbcx, _),
-                visit_local_pre=bind visit_local_pre(wbcx, _)
-                with walk::default_visitor());
+    fn resolve_type_vars_in_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
+        let wbcx = @{fcx: fcx, mutable ignore: false, mutable success: true};
+        let visit =
+            {keep_going: bind keep_going(wbcx),
+             visit_item_pre: bind visit_item_pre(wbcx, _),
+             visit_item_post: bind visit_item_post(wbcx, _),
+             visit_fn_pre: bind visit_fn_pre(wbcx, _, _, _, _, _),
+             visit_fn_post: bind visit_fn_post(wbcx, _, _, _, _, _),
+             visit_stmt_pre: bind visit_stmt_pre(wbcx, _),
+             visit_expr_pre: bind visit_expr_pre(wbcx, _),
+             visit_block_pre: bind visit_block_pre(wbcx, _),
+             visit_pat_pre: bind visit_pat_pre(wbcx, _),
+             visit_local_pre: bind visit_local_pre(wbcx, _)
+                with walk::default_visitor()};
         walk::walk_block(visit, blk);
         ret wbcx.success;
     }
@@ -1221,439 +1198,436 @@ mod writeback {
 // Local variable gathering. We gather up all locals and create variable IDs
 // for them before typechecking the function.
 type gather_result =
-    rec(@ty::unify::var_bindings var_bindings,
-        hashmap[ast::node_id, int] locals,
-        hashmap[ast::node_id, ast::ident] local_names,
-        @mutable int next_var_id);
+    {var_bindings: @ty::unify::var_bindings,
+     locals: hashmap[ast::node_id, int],
+     local_names: hashmap[ast::node_id, ast::ident],
+     next_var_id: @mutable int};
 
 // Used only as a helper for check_fn.
-fn gather_locals(&@crate_ctxt ccx, &ast::_fn f,
-                 &ast::node_id id, &option::t[@fn_ctxt] old_fcx)
-    -> gather_result {
-    fn next_var_id(@mutable int nvi) -> int {
-        auto rv = *nvi;
+fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
+                 old_fcx: &option::t[@fn_ctxt]) -> gather_result {
+    fn next_var_id(nvi: @mutable int) -> int {
+        let rv = *nvi;
         *nvi += 1;
         ret rv;
     }
-    fn assign(&ty::ctxt tcx, &@ty::unify::var_bindings var_bindings,
-              &hashmap[ast::node_id, int] locals,
-              &hashmap[ast::node_id, ast::ident] local_names,
-              @mutable int nvi,
-              ast::node_id nid, &ast::ident ident, option::t[ty::t] ty_opt) {
-        auto var_id = next_var_id(nvi);
+    fn assign(tcx: &ty::ctxt, var_bindings: &@ty::unify::var_bindings,
+              locals: &hashmap[ast::node_id, int],
+              local_names: &hashmap[ast::node_id, ast::ident],
+              nvi: @mutable int, nid: ast::node_id, ident: &ast::ident,
+              ty_opt: option::t[ty::t]) {
+        let var_id = next_var_id(nvi);
         locals.insert(nid, var_id);
         local_names.insert(nid, ident);
-        alt (ty_opt) {
-            case (none[ty::t]) {/* nothing to do */ }
-            case (some[ty::t](?typ)) {
-                ty::unify::unify(ty::mk_var(tcx, var_id), typ, var_bindings,
-                                 tcx);
-            }
+        alt ty_opt {
+          none[ty::t]. {/* nothing to do */ }
+          some[ty::t](typ) {
+            ty::unify::unify(ty::mk_var(tcx, var_id), typ, var_bindings, tcx);
+          }
         }
     }
 
-    auto vb; auto locals; auto local_names; auto nvi;
-    alt (old_fcx) {
-        none {
-            vb = ty::unify::mk_var_bindings();
-            locals = new_int_hash[int]();
-            local_names = new_int_hash[ast::ident]();
-            nvi = @mutable 0;
-        }
-        some(?fcx) {
-            vb = fcx.var_bindings;
-            locals = fcx.locals;
-            local_names = fcx.local_names;
-            nvi = fcx.next_var_id;
-        }
+    let vb;
+    let locals;
+    let local_names;
+    let nvi;
+    alt old_fcx {
+      none. {
+        vb = ty::unify::mk_var_bindings();
+        locals = new_int_hash[int]();
+        local_names = new_int_hash[ast::ident]();
+        nvi = @mutable 0;
+      }
+      some(fcx) {
+        vb = fcx.var_bindings;
+        locals = fcx.locals;
+        local_names = fcx.local_names;
+        nvi = fcx.next_var_id;
+      }
     }
 
     // Add object fields, if any.
-    auto obj_fields = ~[];
-    alt (get_obj_info(ccx)) {
-        some(?oinfo) {
-            alt (oinfo) {
-                regular_obj(?ofs, _) { obj_fields = ofs; }
-                anon_obj(?ofs, _) { obj_fields = ofs; }
-            }
+    let obj_fields = ~[];
+    alt get_obj_info(ccx) {
+      some(oinfo) {
+        alt oinfo {
+          regular_obj(ofs, _) { obj_fields = ofs; }
+          anon_obj(ofs, _) { obj_fields = ofs; }
         }
-        none { /* no fields */ }
+      }
+      none. {/* no fields */ }
     }
-    for (ast::obj_field f in obj_fields) {
-        auto field_ty = ty::node_id_to_type(ccx.tcx, f.id);
+    for f: ast::obj_field  in obj_fields {
+        let field_ty = ty::node_id_to_type(ccx.tcx, f.id);
         assign(ccx.tcx, vb, locals, local_names, nvi, f.id, f.ident,
                some(field_ty));
     }
 
     // Add formal parameters.
-    auto args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
-    auto i = 0u;
-    for (ty::arg arg in args) {
+    let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
+    let i = 0u;
+    for arg: ty::arg  in args {
         assign(ccx.tcx, vb, locals, local_names, nvi, f.decl.inputs.(i).id,
                f.decl.inputs.(i).ident, some[ty::t](arg.ty));
         i += 1u;
     }
 
     // Add explicitly-declared locals.
-    fn visit_local(@crate_ctxt ccx, @ty::unify::var_bindings vb,
-                   hashmap[ast::node_id, int] locals,
-                   hashmap[ast::node_id, ast::ident] local_names,
-                   @mutable int nvi, &@ast::local local,
-                   &() e, &visit::vt[()] v) {
-        alt (local.node.ty) {
-            case (none) {
-                // Auto slot.
-                assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                       local.node.ident, none);
-            }
-            case (some(?ast_ty)) {
-                // Explicitly typed slot.
-                auto local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
-                assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                       local.node.ident, some[ty::t](local_ty));
-            }
+    fn visit_local(ccx: @crate_ctxt, vb: @ty::unify::var_bindings,
+                   locals: hashmap[ast::node_id, int],
+                   local_names: hashmap[ast::node_id, ast::ident],
+                   nvi: @mutable int, local: &@ast::local, e: &(),
+                   v: &visit::vt[()]) {
+        alt local.node.ty {
+          none. {
+            // Auto slot.
+            assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
+                   local.node.ident, none);
+          }
+          some(ast_ty) {
+            // Explicitly typed slot.
+            let local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
+            assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
+                   local.node.ident, some[ty::t](local_ty));
+          }
         }
         visit::visit_local(local, e, v);
     }
 
     // Add pattern bindings.
-    fn visit_pat(@crate_ctxt ccx, @ty::unify::var_bindings vb,
-                 hashmap[ast::node_id, int] locals,
-                 hashmap[ast::node_id, ast::ident] local_names,
-                 @mutable int nvi, &@ast::pat p,
-                 &() e, &visit::vt[()] v) {
-        alt (p.node) {
-            case (ast::pat_bind(?ident)) {
-                assign(ccx.tcx, vb, locals, local_names, nvi,
-                       p.id, ident, none);
-            }
-            case (_) {/* no-op */ }
+    fn visit_pat(ccx: @crate_ctxt, vb: @ty::unify::var_bindings,
+                 locals: hashmap[ast::node_id, int],
+                 local_names: hashmap[ast::node_id, ast::ident],
+                 nvi: @mutable int, p: &@ast::pat, e: &(),
+                 v: &visit::vt[()]) {
+        alt p.node {
+          ast::pat_bind(ident) {
+            assign(ccx.tcx, vb, locals, local_names, nvi, p.id, ident, none);
+          }
+          _ {/* no-op */ }
         }
         visit::visit_pat(p, e, v);
     }
 
     // Don't descend into fns and items
-    fn visit_fn[E](&ast::_fn f, &ast::ty_param[] tp, &span sp,
-                   &ast::fn_ident i, ast::node_id id, &E e,
-                   &visit::vt[E] v) {}
-    fn visit_item[E](&@ast::item i, &E e, &visit::vt[E] v) {}
+    fn visit_fn[E](f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
+                   i: &ast::fn_ident, id: ast::node_id, e: &E,
+                   v: &visit::vt[E]) {
+    }
+    fn visit_item[E](i: &@ast::item, e: &E, v: &visit::vt[E]) { }
 
-    auto visit =
-        @rec(visit_local=bind visit_local(ccx, vb, locals, local_names,
-                                          nvi, _, _, _),
-             visit_pat=bind visit_pat(ccx, vb, locals, local_names,
-                                      nvi, _, _, _),
-             visit_fn=visit_fn,
-             visit_item=visit_item
-             with *visit::default_visitor());
+    let visit =
+        @{visit_local:
+              bind visit_local(ccx, vb, locals, local_names, nvi, _, _, _),
+          visit_pat:
+              bind visit_pat(ccx, vb, locals, local_names, nvi, _, _, _),
+          visit_fn: visit_fn,
+          visit_item: visit_item with *visit::default_visitor()};
     visit::visit_block(f.body, (), visit::mk_vt(visit));
-    ret rec(var_bindings=vb,
-            locals=locals,
-            local_names=local_names,
-            next_var_id=nvi);
+    ret {var_bindings: vb,
+         locals: locals,
+         local_names: local_names,
+         next_var_id: nvi};
 }
 
 // AST fragment checking
-fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
-    alt (lit.node) {
-        case (ast::lit_str(_, ast::sk_rc)) { ret ty::mk_str(ccx.tcx); }
-        case (ast::lit_str(_, ast::sk_unique)) { ret ty::mk_istr(ccx.tcx); }
-        case (ast::lit_char(_)) { ret ty::mk_char(ccx.tcx); }
-        case (ast::lit_int(_)) { ret ty::mk_int(ccx.tcx); }
-        case (ast::lit_float(_)) { ret ty::mk_float(ccx.tcx); }
-        case (ast::lit_mach_float(?tm, _)) { ret ty::mk_mach(ccx.tcx, tm); }
-        case (ast::lit_uint(_)) { ret ty::mk_uint(ccx.tcx); }
-        case (ast::lit_mach_int(?tm, _)) { ret ty::mk_mach(ccx.tcx, tm); }
-        case (ast::lit_nil) { ret ty::mk_nil(ccx.tcx); }
-        case (ast::lit_bool(_)) { ret ty::mk_bool(ccx.tcx); }
+fn check_lit(ccx: @crate_ctxt, lit: &@ast::lit) -> ty::t {
+    alt lit.node {
+      ast::lit_str(_, ast::sk_rc.) { ret ty::mk_str(ccx.tcx); }
+      ast::lit_str(_, ast::sk_unique.) { ret ty::mk_istr(ccx.tcx); }
+      ast::lit_char(_) { ret ty::mk_char(ccx.tcx); }
+      ast::lit_int(_) { ret ty::mk_int(ccx.tcx); }
+      ast::lit_float(_) { ret ty::mk_float(ccx.tcx); }
+      ast::lit_mach_float(tm, _) { ret ty::mk_mach(ccx.tcx, tm); }
+      ast::lit_uint(_) { ret ty::mk_uint(ccx.tcx); }
+      ast::lit_mach_int(tm, _) { ret ty::mk_mach(ccx.tcx, tm); }
+      ast::lit_nil. { ret ty::mk_nil(ccx.tcx); }
+      ast::lit_bool(_) { ret ty::mk_bool(ccx.tcx); }
     }
 }
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(&@fn_ctxt fcx, &ast::pat_id_map map, &@ast::pat pat,
-             ty::t expected) {
-    alt (pat.node) {
-        case (ast::pat_wild) {
-            write::ty_only_fixup(fcx, pat.id, expected);
+fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
+             expected: ty::t) {
+    alt pat.node {
+      ast::pat_wild. { write::ty_only_fixup(fcx, pat.id, expected); }
+      ast::pat_lit(lt) {
+        let typ = check_lit(fcx.ccx, lt);
+        typ = demand::simple(fcx, pat.span, expected, typ);
+        write::ty_only_fixup(fcx, pat.id, typ);
+      }
+      ast::pat_bind(name) {
+        let vid = lookup_local(fcx, pat.span, pat.id);
+        let typ = ty::mk_var(fcx.ccx.tcx, vid);
+        typ = demand::simple(fcx, pat.span, expected, typ);
+        let canon_id = map.get(name);
+        if canon_id != pat.id {
+            let ct =
+                ty::mk_var(fcx.ccx.tcx,
+                           lookup_local(fcx, pat.span, canon_id));
+            typ = demand::simple(fcx, pat.span, ct, typ);
         }
-        case (ast::pat_lit(?lt)) {
-            auto typ = check_lit(fcx.ccx, lt);
-            typ = demand::simple(fcx, pat.span, expected, typ);
-            write::ty_only_fixup(fcx, pat.id, typ);
-        }
-        case (ast::pat_bind(?name)) {
-            auto vid = lookup_local(fcx, pat.span, pat.id);
-            auto typ = ty::mk_var(fcx.ccx.tcx, vid);
-            typ = demand::simple(fcx, pat.span, expected, typ);
-            auto canon_id = map.get(name);
-            if (canon_id != pat.id) {
-                auto ct = ty::mk_var(fcx.ccx.tcx,
-                                     lookup_local(fcx, pat.span, canon_id));
-                typ = demand::simple(fcx, pat.span, ct, typ);
-            }
-            write::ty_only_fixup(fcx, pat.id, typ);
-        }
-        case (ast::pat_tag(?path, ?subpats)) {
-            // Typecheck the path.
-            auto v_def = lookup_def(fcx, path.span, pat.id);
-            auto v_def_ids = ast::variant_def_ids(v_def);
-            auto tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
-            auto path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
-            // Take the tag type params out of `expected`.
+        write::ty_only_fixup(fcx, pat.id, typ);
+      }
+      ast::pat_tag(path, subpats) {
+        // Typecheck the path.
+        let v_def = lookup_def(fcx, path.span, pat.id);
+        let v_def_ids = ast::variant_def_ids(v_def);
+        let tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
+        let path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
+        // Take the tag type params out of `expected`.
 
-            alt (structure_of(fcx, pat.span, expected)) {
-              case (ty::ty_tag(_, ?expected_tps)) {
-                // Unify with the expected tag type.
+        alt structure_of(fcx, pat.span, expected) {
+          ty::ty_tag(_, expected_tps) {
+            // Unify with the expected tag type.
 
-                auto ctor_ty =
-                    ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
-                                                               path_tpot);
+            let ctor_ty =
+                ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
+                                                           path_tpot);
 
-                auto path_tpt =
-                    demand::full(fcx, pat.span, expected, ctor_ty,
-                                 expected_tps, NO_AUTODEREF);
-                path_tpot = rec(substs=some[ty::t[]](path_tpt.substs),
-                                ty=path_tpt.ty);
-                // Get the number of arguments in this tag variant.
+            let path_tpt =
+                demand::full(fcx, pat.span, expected, ctor_ty, expected_tps,
+                             NO_AUTODEREF);
+            path_tpot =
+                {substs: some[ty::t[]](path_tpt.substs), ty: path_tpt.ty};
+            // Get the number of arguments in this tag variant.
 
-                auto arg_types =
-                    variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
-                                      expected_tps);
-                auto subpats_len = std::ivec::len[@ast::pat](subpats);
-                if (std::ivec::len[ty::t](arg_types) > 0u) {
-                    // N-ary variant.
+            let arg_types =
+                variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
+                                  expected_tps);
+            let subpats_len = std::ivec::len[@ast::pat](subpats);
+            if std::ivec::len[ty::t](arg_types) > 0u {
+                // N-ary variant.
 
-                    auto arg_len = ivec::len[ty::t](arg_types);
-                    if (arg_len != subpats_len) {
-                        // TODO: note definition of tag variant
-                        // TODO (issue #448): Wrap a #fmt string over multiple
-                        // lines...
-                        auto s = #fmt("this pattern has %u field%s, but the \
-                                       corresponding variant has %u field%s",
-                                      subpats_len,
-                                      if (subpats_len == 1u) {
-                                          ""
-                                      } else { "s" }, arg_len,
-                                      if (arg_len == 1u) {
-                                          ""
-                                      } else { "s" });
-                        fcx.ccx.tcx.sess.span_fatal(pat.span, s);
-                    }
-
-                    // TODO: ivec::iter2
-
-                    auto i = 0u;
-                    for (@ast::pat subpat in subpats) {
-                        check_pat(fcx, map, subpat, arg_types.(i));
-                        i += 1u;
-                    }
-                } else if (subpats_len > 0u) {
+                let arg_len = ivec::len[ty::t](arg_types);
+                if arg_len != subpats_len {
                     // TODO: note definition of tag variant
                     // TODO (issue #448): Wrap a #fmt string over multiple
                     // lines...
+                    let s =
+                        #fmt("this pattern has %u field%s, but the \
+                                       corresponding variant has %u field%s",
+                             subpats_len,
+                             if subpats_len == 1u { "" } else { "s" },
+                             arg_len, if arg_len == 1u { "" } else { "s" });
+                    fcx.ccx.tcx.sess.span_fatal(pat.span, s);
+                }
 
-                    fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                          #fmt("this pattern has %u field%s, \
+                // TODO: ivec::iter2
+
+                let i = 0u;
+                for subpat: @ast::pat  in subpats {
+                    check_pat(fcx, map, subpat, arg_types.(i));
+                    i += 1u;
+                }
+            } else if (subpats_len > 0u) {
+                // TODO: note definition of tag variant
+                // TODO (issue #448): Wrap a #fmt string over multiple
+                // lines...
+
+                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                            #fmt("this pattern has %u field%s, \
                                                 but the corresponding \
                                                 variant has no fields",
-                                               subpats_len,
-                                               if (subpats_len == 1u) {
-                                                   ""
-                                               } else { "s" }));
-                }
-                write::ty_fixup(fcx, pat.id, path_tpot);
-              }
-              case (_) {
-                // FIXME: Switch expected and actual in this message? I
-                // can never tell.
-                fcx.ccx.tcx.sess.span_fatal(pat.span,
-                                            #fmt("mismatched types: \
-                                                  expected %s, found tag",
-                                                 ty_to_str(fcx.ccx.tcx,
-                                                           expected)));
-              }
+                                                 subpats_len,
+                                                 if subpats_len == 1u {
+                                                     ""
+                                                 } else { "s" }));
             }
             write::ty_fixup(fcx, pat.id, path_tpot);
+          }
+          _ {
+            // FIXME: Switch expected and actual in this message? I
+            // can never tell.
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        #fmt("mismatched types: \
+                                                  expected %s, found tag",
+                                             ty_to_str(fcx.ccx.tcx,
+                                                       expected)));
+          }
         }
-        case (ast::pat_rec(?fields, ?etc)) {
-            auto ex_fields;
-            alt (structure_of(fcx, pat.span, expected)) {
-                case (ty::ty_rec(?fields)) { ex_fields = fields; }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal
-                        (pat.span, #fmt("mismatched types: expected %s, \
+        write::ty_fixup(fcx, pat.id, path_tpot);
+      }
+      ast::pat_rec(fields, etc) {
+        let ex_fields;
+        alt structure_of(fcx, pat.span, expected) {
+          ty::ty_rec(fields) { ex_fields = fields; }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        #fmt("mismatched types: expected %s, \
                                          found record",
-                                        ty_to_str(fcx.ccx.tcx, expected)));
-                }
-            };
-            auto f_count = ivec::len(fields);
-            auto ex_f_count = ivec::len(ex_fields);
-            if (ex_f_count < f_count || (!etc && ex_f_count > f_count)) {
-                fcx.ccx.tcx.sess.span_fatal
-                    (pat.span, #fmt("mismatched types: expected a record \
+                                             ty_to_str(fcx.ccx.tcx,
+                                                       expected)));
+          }
+        }
+        let f_count = ivec::len(fields);
+        let ex_f_count = ivec::len(ex_fields);
+        if ex_f_count < f_count || !etc && ex_f_count > f_count {
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        #fmt("mismatched types: expected a record \
                                      with %u fields, found one with %u \
-                                     fields", ex_f_count, f_count));
-            }
-            fn matches(&str name, &ty::field f) -> bool {
-                ret str::eq(name, f.ident);
-            }
-            for (ast::field_pat f in fields) {
-                alt (ivec::find(bind matches(f.ident, _), ex_fields)) {
-                    some(?field) {
-                        check_pat(fcx, map, f.pat, field.mt.ty);
-                    }
-                    none {
-                        fcx.ccx.tcx.sess.span_fatal
-                            (pat.span, #fmt("mismatched types: did not \
+                                     fields",
+                                             ex_f_count, f_count));
+        }
+        fn matches(name: &str, f: &ty::field) -> bool {
+            ret str::eq(name, f.ident);
+        }
+        for f: ast::field_pat  in fields {
+            alt ivec::find(bind matches(f.ident, _), ex_fields) {
+              some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
+              none. {
+                fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                            #fmt("mismatched types: did not \
                                              expect a record with a field %s",
-                                            f.ident));
-                    }
-                }
+                                                 f.ident));
+              }
             }
+        }
+        write::ty_only_fixup(fcx, pat.id, expected);
+      }
+      ast::pat_box(inner) {
+        alt structure_of(fcx, pat.span, expected) {
+          ty::ty_box(e_inner) {
+            check_pat(fcx, map, inner, e_inner.ty);
             write::ty_only_fixup(fcx, pat.id, expected);
+          }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        "mismatched types: expected " +
+                                            ty_to_str(fcx.ccx.tcx, expected) +
+                                            " found box");
+          }
         }
-        case (ast::pat_box(?inner)) {
-            alt (structure_of(fcx, pat.span, expected)) {
-                case (ty::ty_box(?e_inner)) {
-                    check_pat(fcx, map, inner, e_inner.ty);
-                    write::ty_only_fixup(fcx, pat.id, expected);
-                }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal
-                        (pat.span, "mismatched types: expected " +
-                         ty_to_str(fcx.ccx.tcx, expected) +
-                         " found box");
-                }
-            }
-        }
+      }
     }
 }
 
-fn require_impure(&session::session sess, &ast::purity f_purity, &span sp) {
-    alt (f_purity) {
-        case (ast::impure_fn) { ret; }
-        case (ast::pure_fn) {
-            sess.span_fatal(sp,
-                          "Found impure expression in pure function decl");
-        }
+fn require_impure(sess: &session::session, f_purity: &ast::purity,
+                  sp: &span) {
+    alt f_purity {
+      ast::impure_fn. { ret; }
+      ast::pure_fn. {
+        sess.span_fatal(sp, "Found impure expression in pure function decl");
+      }
     }
 }
 
-fn require_pure_call(@crate_ctxt ccx, &ast::purity caller_purity,
-                     &@ast::expr callee, &span sp) {
-    alt (caller_purity) {
-        case (ast::impure_fn) { ret; }
-        case (ast::pure_fn) {
-            alt (ccx.tcx.def_map.find(callee.id)) {
-                case (some(ast::def_fn(_, ast::pure_fn))) {
-                    ret;
-                }
-                case (_) {
-                    ccx.tcx.sess.span_fatal(sp,
-                     "Pure function calls function not known to be pure");
-                }
-            }
+fn require_pure_call(ccx: @crate_ctxt, caller_purity: &ast::purity,
+                     callee: &@ast::expr, sp: &span) {
+    alt caller_purity {
+      ast::impure_fn. { ret; }
+      ast::pure_fn. {
+        alt ccx.tcx.def_map.find(callee.id) {
+          some(ast::def_fn(_, ast::pure_fn.)) { ret; }
+          _ {
+            ccx.tcx.sess.span_fatal(sp,
+                                    "Pure function calls function not known to be pure");
+          }
         }
+      }
     }
 }
 
-fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
+fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
     // fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
     //                            syntax::print::pprust::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.
 
-    fn check_call_or_bind(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-               &(option::t[@ast::expr])[] args, call_kind call_kind) {
+    fn check_call_or_bind(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
+                          args: &(option::t[@ast::expr])[],
+                          call_kind: call_kind) {
         // Check the function.
         check_expr(fcx, f);
 
         // Get the function type.
-        auto fty = expr_ty(fcx.ccx.tcx, f);
+        let fty = expr_ty(fcx.ccx.tcx, f);
 
         // We want to autoderef calls but not binds
-        auto fty_stripped = alt (call_kind) {
-            case (kind_call) { do_autoderef(fcx, sp, fty) }
-            case (_)         { fty } };
+        let fty_stripped =
+            alt call_kind {
+              kind_call. { do_autoderef(fcx, sp, fty) }
+              _ { fty }
+            };
 
         // Grab the argument types and the return type.
-        auto arg_tys;
-        alt (structure_of(fcx, sp, fty_stripped)) {
-            case (ty::ty_fn(_, ?arg_tys_0, _, _, _)) { arg_tys = arg_tys_0; }
-            case (ty::ty_native_fn(_, ?arg_tys_0, _)) { arg_tys = arg_tys_0; }
-            case (_) {
-                fcx.ccx.tcx.sess.span_fatal(f.span,
-                                          "mismatched types: \
+        let arg_tys;
+        alt structure_of(fcx, sp, fty_stripped) {
+          ty::ty_fn(_, arg_tys_0, _, _, _) { arg_tys = arg_tys_0; }
+          ty::ty_native_fn(_, arg_tys_0, _) { arg_tys = arg_tys_0; }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(f.span,
+                                        "mismatched types: \
                                            expected function or native \
                                            function but found "
-                                          + ty_to_str(fcx.ccx.tcx, fty));
-            }
+                                            + ty_to_str(fcx.ccx.tcx, fty));
+          }
         }
 
         // Check that the correct number of arguments were supplied.
-        auto expected_arg_count = ivec::len[ty::arg](arg_tys);
-        auto supplied_arg_count = ivec::len[option::t[@ast::expr]](args);
-        if (expected_arg_count != supplied_arg_count) {
+        let expected_arg_count = ivec::len[ty::arg](arg_tys);
+        let supplied_arg_count = ivec::len[option::t[@ast::expr]](args);
+        if expected_arg_count != supplied_arg_count {
             fcx.ccx.tcx.sess.span_fatal(sp,
-                                      #fmt("this function takes %u \
+                                        #fmt("this function takes %u \
                                             parameter%s but %u parameter%s \
                                             supplied",
-                                           expected_arg_count,
-                                           if (expected_arg_count == 1u) {
-                                               ""
-                                           } else { "s" }, supplied_arg_count,
-                                           if (supplied_arg_count == 1u) {
-                                               " was"
-                                           } else { "s were" }));
+                                             expected_arg_count,
+                                             if expected_arg_count == 1u {
+                                                 ""
+                                             } else { "s" },
+                                             supplied_arg_count,
+                                             if supplied_arg_count == 1u {
+                                                 " was"
+                                             } else { "s were" }));
         }
 
         // Check the arguments.
         // TODO: iter2
-        auto i = 0u;
-        for (option::t[@ast::expr] a_opt in args) {
-            auto check_ty_vars = call_kind == kind_spawn;
-            alt (a_opt) {
-                case (some(?a)) {
-                    check_expr(fcx, a);
-                    demand::full(fcx, a.span, arg_tys.(i).ty,
-                                 expr_ty(fcx.ccx.tcx, a), ~[],
-                                 AUTODEREF_BLOCK_COERCE);
-                }
-                case (none) {
-                    check_ty_vars = true;
-                }
+        let i = 0u;
+        for a_opt: option::t[@ast::expr]  in args {
+            let check_ty_vars = call_kind == kind_spawn;
+            alt a_opt {
+              some(a) {
+                check_expr(fcx, a);
+                demand::full(fcx, a.span, arg_tys.(i).ty,
+                             expr_ty(fcx.ccx.tcx, a), ~[],
+                             AUTODEREF_BLOCK_COERCE);
+              }
+              none. { check_ty_vars = true; }
             }
             /* If this argument is going to be a thunk argument
                (that is, it's an underscore-bind thing or a spawn
                argument), then it has to be either passed by reference,
                or have a statically known size. */
-            alt (call_kind) {
-                case (kind_call) { }
-                case (_) { /* bind or spawn */
-                    if (check_ty_vars &&
-                        ((ty::type_contains_params(fcx.ccx.tcx,
-                                                   arg_tys.(i).ty))
-                        || ty::type_contains_vars(fcx.ccx.tcx,
-                                                  arg_tys.(i).ty))
-                        && arg_tys.(i).mode == mo_val) {
-                        // For why the check is necessary, see the
-                        // none case in trans_bind_thunk
-                        fcx.ccx.tcx.sess.span_fatal(sp,
-                           call_kind_str(call_kind) +
-                           " arguments with types containing parameters \
+            alt call_kind {
+              kind_call. { }
+              _ {
+                 /* bind or spawn */
+                if check_ty_vars &&
+                       (ty::type_contains_params(fcx.ccx.tcx, arg_tys.(i).ty)
+                            ||
+                            ty::type_contains_vars(fcx.ccx.tcx,
+                                                   arg_tys.(i).ty)) &&
+                       arg_tys.(i).mode == mo_val {
+                    // For why the check is necessary, see the
+                    // none case in trans_bind_thunk
+                    fcx.ccx.tcx.sess.span_fatal(sp,
+                                                call_kind_str(call_kind) +
+                                                    " arguments with types containing parameters \
                              must be passed by alias");
-                    }
                 }
+              }
             }
             i += 1u;
         }
     }
     // A generic function for checking assignment expressions
 
-    fn check_assignment(&@fn_ctxt fcx, &span sp, &@ast::expr lhs,
-                        &@ast::expr rhs, &ast::node_id id) {
+    fn check_assignment(fcx: &@fn_ctxt, sp: &span, lhs: &@ast::expr,
+                        rhs: &@ast::expr, id: &ast::node_id) {
         check_expr(fcx, lhs);
         check_expr(fcx, rhs);
         demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
@@ -1662,10 +1636,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     }
     // A generic function for checking call expressions
 
-    fn check_call(&@fn_ctxt fcx, &span sp, &@ast::expr f,
-                  &(@ast::expr)[] args, call_kind call_kind) {
-        let (option::t[@ast::expr])[] args_opt_0 = ~[];
-        for (@ast::expr arg in args) {
+    fn check_call(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
+                  args: &(@ast::expr)[], call_kind: call_kind) {
+        let args_opt_0: (option::t[@ast::expr])[] = ~[];
+        for arg: @ast::expr  in args {
             args_opt_0 += ~[some[@ast::expr](arg)];
         }
         // Call the generic checker.
@@ -1674,1121 +1648,1066 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
     }
     // A generic function for checking for or for-each loops
 
-    fn check_for_or_for_each(&@fn_ctxt fcx, &@ast::local local,
-                             &ty::t element_ty, &ast::blk body,
-                             ast::node_id node_id) {
+    fn check_for_or_for_each(fcx: &@fn_ctxt, local: &@ast::local,
+                             element_ty: &ty::t, body: &ast::blk,
+                             node_id: ast::node_id) {
         check_decl_local(fcx, local);
         check_block(fcx, body);
         // Unify type of decl with element type of the seq
-        demand::simple(fcx, local.span,
-                       ty::decl_local_ty(fcx.ccx.tcx, local),
+        demand::simple(fcx, local.span, ty::decl_local_ty(fcx.ccx.tcx, local),
                        element_ty);
-        auto typ = ty::mk_nil(fcx.ccx.tcx);
+        let typ = ty::mk_nil(fcx.ccx.tcx);
         write::ty_only_fixup(fcx, node_id, typ);
     }
 
     // A generic function for checking the pred in a check
     // or if-check
-    fn check_pred_expr(&@fn_ctxt fcx, &@ast::expr e) {
+    fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) {
         check_expr(fcx, e);
         demand::simple(fcx, e.span, ty::mk_bool(fcx.ccx.tcx),
                        expr_ty(fcx.ccx.tcx, e));
 
+
         /* e must be a call expr where all arguments are either
            literals or slots */
-            alt (e.node) {
-                case (ast::expr_call(?operator, ?operands)) {
-                    alt (operator.node) {
-                        case (ast::expr_path(?oper_name)) {
-                            alt (fcx.ccx.tcx.def_map.find(operator.id)) {
-                                case (some(ast::def_fn(_, ast::pure_fn))) {
-                                    // do nothing
-                                }
-                                case (_) {
-                                    fcx.ccx.tcx.sess.span_fatal(operator.span,
-                                      "non-predicate as operator \
+        alt e.node {
+          ast::expr_call(operator, operands) {
+            alt operator.node {
+              ast::expr_path(oper_name) {
+                alt fcx.ccx.tcx.def_map.find(operator.id) {
+                  some(ast::def_fn(_, ast::pure_fn.)) {
+                    // do nothing
+                  }
+                  _ {
+                    fcx.ccx.tcx.sess.span_fatal(operator.span,
+                                                "non-predicate as operator \
                                        in constraint");
-                                }
-                            }
-                            for (@ast::expr operand in operands) {
-                                if (!ast::is_constraint_arg(operand)) {
-                                    auto s = "Constraint args must be \
+                  }
+                }
+                for operand: @ast::expr  in operands {
+                    if !ast::is_constraint_arg(operand) {
+                        let s =
+                            "Constraint args must be \
                                               slot variables or literals";
-                                    fcx.ccx.tcx.sess.span_fatal(e.span, s);
-                                }
-                            }
-                        }
-                        case (_) {
-                            auto s = "In a constraint, expected the \
-                                      constraint name to be an explicit name";
-                            fcx.ccx.tcx.sess.span_fatal(e.span,s);
-                        }
+                        fcx.ccx.tcx.sess.span_fatal(e.span, s);
                     }
                 }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(e.span,
-                                              "check on non-predicate");
-                }
+              }
+              _ {
+                let s =
+                    "In a constraint, expected the \
+                                      constraint name to be an explicit name";
+                fcx.ccx.tcx.sess.span_fatal(e.span, s);
+              }
             }
+          }
+          _ { fcx.ccx.tcx.sess.span_fatal(e.span, "check on non-predicate"); }
+        }
     }
 
     // A generic function for checking the then and else in an if
     // or if-check
-    fn check_then_else(&@fn_ctxt fcx, &ast::blk thn,
-                       &option::t[@ast::expr] elsopt,
-                       ast::node_id id, &span sp) {
+    fn check_then_else(fcx: &@fn_ctxt, thn: &ast::blk,
+                       elsopt: &option::t[@ast::expr], id: ast::node_id,
+                       sp: &span) {
         check_block(fcx, thn);
-        auto if_t =
-            alt (elsopt) {
-                case (some(?els)) {
-                    check_expr(fcx, els);
-                    auto thn_t = block_ty(fcx.ccx.tcx, thn);
-                    auto elsopt_t = expr_ty(fcx.ccx.tcx, els);
-                    demand::simple(fcx, sp, thn_t, elsopt_t);
-                    if (!ty::type_is_bot(fcx.ccx.tcx, elsopt_t)) {
-                        elsopt_t
-                            } else { thn_t }
-                }
-                case (none) { ty::mk_nil(fcx.ccx.tcx) }
+        let if_t =
+            alt elsopt {
+              some(els) {
+                check_expr(fcx, els);
+                let thn_t = block_ty(fcx.ccx.tcx, thn);
+                let elsopt_t = expr_ty(fcx.ccx.tcx, els);
+                demand::simple(fcx, sp, thn_t, elsopt_t);
+                if !ty::type_is_bot(fcx.ccx.tcx, elsopt_t) {
+                    elsopt_t
+                } else { thn_t }
+              }
+              none. { ty::mk_nil(fcx.ccx.tcx) }
             };
         write::ty_only_fixup(fcx, id, if_t);
     }
 
     // Checks the compatibility
-    fn check_binop_type_compat(&@fn_ctxt fcx, span span,
-                               ty::t ty, ast::binop binop) {
-        auto resolved_t = resolve_type_vars_if_possible(fcx, ty);
-        if (!ty::is_binopable(fcx.ccx.tcx, resolved_t, binop)) {
-            auto binopstr = ast::binop_to_str(binop);
-            auto t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
-            auto errmsg = "binary operation " + binopstr
-                + " cannot be applied to type `" + t_str + "`";
+    fn check_binop_type_compat(fcx: &@fn_ctxt, span: span, ty: ty::t,
+                               binop: ast::binop) {
+        let resolved_t = resolve_type_vars_if_possible(fcx, ty);
+        if !ty::is_binopable(fcx.ccx.tcx, resolved_t, binop) {
+            let binopstr = ast::binop_to_str(binop);
+            let t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
+            let errmsg =
+                "binary operation " + binopstr +
+                    " cannot be applied to type `" + t_str + "`";
             fcx.ccx.tcx.sess.span_fatal(span, errmsg);
         }
     }
 
-    auto id = expr.id;
-    alt (expr.node) {
-        case (ast::expr_lit(?lit)) {
-            auto typ = check_lit(fcx.ccx, lit);
-            write::ty_only_fixup(fcx, id, typ);
-        }
-        case (ast::expr_binary(?binop, ?lhs, ?rhs)) {
-            check_expr(fcx, lhs);
-            check_expr(fcx, rhs);
+    let id = expr.id;
+    alt expr.node {
+      ast::expr_lit(lit) {
+        let typ = check_lit(fcx.ccx, lit);
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_binary(binop, lhs, rhs) {
+        check_expr(fcx, lhs);
+        check_expr(fcx, rhs);
 
-            auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
-            auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
+        let lhs_t = expr_ty(fcx.ccx.tcx, lhs);
+        let rhs_t = expr_ty(fcx.ccx.tcx, rhs);
 
-            demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
-            auto deref_t = do_autoderef(fcx, expr.span, lhs_t);
-            check_binop_type_compat(fcx, expr.span, deref_t, binop);
+        demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
+        let deref_t = do_autoderef(fcx, expr.span, lhs_t);
+        check_binop_type_compat(fcx, expr.span, deref_t, binop);
 
-            auto t = alt (binop) {
-                case (ast::eq) { ty::mk_bool(fcx.ccx.tcx) }
-                case (ast::lt) { ty::mk_bool(fcx.ccx.tcx) }
-                case (ast::le) { ty::mk_bool(fcx.ccx.tcx) }
-                case (ast::ne) { ty::mk_bool(fcx.ccx.tcx) }
-                case (ast::ge) { ty::mk_bool(fcx.ccx.tcx) }
-                case (ast::gt) { ty::mk_bool(fcx.ccx.tcx) }
-                case (_) { deref_t }
+        let t =
+            alt binop {
+              ast::eq. { ty::mk_bool(fcx.ccx.tcx) }
+              ast::lt. { ty::mk_bool(fcx.ccx.tcx) }
+              ast::le. { ty::mk_bool(fcx.ccx.tcx) }
+              ast::ne. { ty::mk_bool(fcx.ccx.tcx) }
+              ast::ge. { ty::mk_bool(fcx.ccx.tcx) }
+              ast::gt. { ty::mk_bool(fcx.ccx.tcx) }
+              _ { deref_t }
             };
-            write::ty_only_fixup(fcx, id, t);
-        }
-        case (ast::expr_unary(?unop, ?oper)) {
-            check_expr(fcx, oper);
-            auto oper_t = expr_ty(fcx.ccx.tcx, oper);
-            alt (unop) {
-                case (ast::box(?mut)) {
-                    oper_t = ty::mk_box(fcx.ccx.tcx, rec(ty=oper_t, mut=mut));
+        write::ty_only_fixup(fcx, id, t);
+      }
+      ast::expr_unary(unop, oper) {
+        check_expr(fcx, oper);
+        let oper_t = expr_ty(fcx.ccx.tcx, oper);
+        alt unop {
+          ast::box(mut) {
+            oper_t = ty::mk_box(fcx.ccx.tcx, {ty: oper_t, mut: mut});
+          }
+          ast::deref. {
+            alt structure_of(fcx, expr.span, oper_t) {
+              ty::ty_box(inner) { oper_t = inner.ty; }
+              ty::ty_res(_, inner, _) { oper_t = inner; }
+              ty::ty_tag(id, tps) {
+                let variants = ty::tag_variants(fcx.ccx.tcx, id);
+                if ivec::len(variants) != 1u ||
+                       ivec::len(variants.(0).args) != 1u {
+                    fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                                "can only dereference tags " +
+                                                    "with a single variant which has a "
+                                                    + "single argument");
                 }
-                case (ast::deref) {
-                    alt (structure_of(fcx, expr.span, oper_t)) {
-                        case (ty::ty_box(?inner)) { oper_t = inner.ty; }
-                        case (ty::ty_res(_, ?inner, _)) { oper_t = inner; }
-                        case (ty::ty_tag(?id, ?tps)) {
-                            auto variants = ty::tag_variants(fcx.ccx.tcx, id);
-                            if (ivec::len(variants) != 1u ||
-                                    ivec::len(variants.(0).args) != 1u) {
-                                fcx.ccx.tcx.sess.span_fatal
-                                    (expr.span, "can only dereference tags " +
-                                     "with a single variant which has a " +
-                                     "single argument");
-                            }
-                            oper_t = ty::substitute_type_params
-                                (fcx.ccx.tcx, tps, variants.(0).args.(0));
-                        }
-                        case (ty::ty_ptr(?inner)) { oper_t = inner.ty; }
-                        case (_) {
-                            fcx.ccx.tcx.sess.span_fatal
-                                (expr.span, "dereferencing non-" +
-                                 "dereferenceable type: " +
-                                 ty_to_str(fcx.ccx.tcx, oper_t));
-                        }
-                    }
-                }
-                case (ast::not) {
-                    if (!type_is_integral(fcx, oper.span, oper_t) &&
-                            structure_of(fcx, oper.span, oper_t) !=
-                                ty::ty_bool) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  #fmt("mismatched types: \
+                oper_t =
+                    ty::substitute_type_params(fcx.ccx.tcx, tps,
+                                               variants.(0).args.(0));
+              }
+              ty::ty_ptr(inner) { oper_t = inner.ty; }
+              _ {
+                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                            "dereferencing non-" +
+                                                "dereferenceable type: " +
+                                                ty_to_str(fcx.ccx.tcx,
+                                                          oper_t));
+              }
+            }
+          }
+          ast::not. {
+            if !type_is_integral(fcx, oper.span, oper_t) &&
+                   structure_of(fcx, oper.span, oper_t) != ty::ty_bool {
+                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                            #fmt("mismatched types: \
                                                         expected bool or \
                                                         integer but found %s",
-                                                       ty_to_str(fcx.ccx.tcx,
-                                                                 oper_t)));
-                    }
-                }
-                case (_) { oper_t = do_autoderef(fcx, expr.span, oper_t); }
+                                                 ty_to_str(fcx.ccx.tcx,
+                                                           oper_t)));
             }
-            write::ty_only_fixup(fcx, id, oper_t);
+          }
+          _ { oper_t = do_autoderef(fcx, expr.span, oper_t); }
         }
-        case (ast::expr_path(?pth)) {
-            auto defn = lookup_def(fcx, pth.span, id);
-            auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
-            if (ty::def_has_ty_params(defn)) {
-                auto path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
-                write::ty_fixup(fcx, id, path_tpot);
-                ret;
-            }
-            // The definition doesn't take type parameters. If the programmer
-            // supplied some, that's an error.
+        write::ty_only_fixup(fcx, id, oper_t);
+      }
+      ast::expr_path(pth) {
+        let defn = lookup_def(fcx, pth.span, id);
+        let tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
+        if ty::def_has_ty_params(defn) {
+            let path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
+            write::ty_fixup(fcx, id, path_tpot);
+            ret;
+        }
+        // The definition doesn't take type parameters. If the programmer
+        // supplied some, that's an error.
 
-            if (ivec::len[@ast::ty](pth.node.types) > 0u) {
-                fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                          "this kind of value does not \
+        if ivec::len[@ast::ty](pth.node.types) > 0u {
+            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                        "this kind of value does not \
                                            take type parameters");
-            }
-            write::ty_only_fixup(fcx, id, tpt.ty);
         }
-        case (ast::expr_mac(_)) {
-            fcx.ccx.tcx.sess.bug("unexpanded macro");
+        write::ty_only_fixup(fcx, id, tpt.ty);
+      }
+      ast::expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
+      ast::expr_fail(expr_opt) {
+        alt expr_opt {
+          none. {/* do nothing */ }
+          some(e) {
+            check_expr(fcx, e);
+            let tcx = fcx.ccx.tcx;
+            let ety = expr_ty(tcx, e);
+            demand::simple(fcx, e.span, ty::mk_str(tcx), ety);
+          }
         }
-        case (ast::expr_fail(?expr_opt)) {
-            alt (expr_opt) {
-                case (none) { /* do nothing */ }
-                case (some(?e)) {
-                    check_expr(fcx, e);
-                    auto tcx = fcx.ccx.tcx;
-                    auto ety = expr_ty(tcx, e);
-                    demand::simple(fcx, e.span, ty::mk_str(tcx), ety);
-                }
+        write::bot_ty(fcx.ccx.tcx, id);
+      }
+      ast::expr_break. { write::bot_ty(fcx.ccx.tcx, id); }
+      ast::expr_cont. { write::bot_ty(fcx.ccx.tcx, id); }
+      ast::expr_ret(expr_opt) {
+        alt expr_opt {
+          none. {
+            let nil = ty::mk_nil(fcx.ccx.tcx);
+            if !are_compatible(fcx, fcx.ret_ty, nil) {
+                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                            "ret; in function \
+                                                   returning non-nil");
             }
             write::bot_ty(fcx.ccx.tcx, id);
-        }
-        case (ast::expr_break) { write::bot_ty(fcx.ccx.tcx, id); }
-        case (ast::expr_cont) { write::bot_ty(fcx.ccx.tcx, id); }
-        case (ast::expr_ret(?expr_opt)) {
-            alt (expr_opt) {
-                case (none) {
-                    auto nil = ty::mk_nil(fcx.ccx.tcx);
-                    if (!are_compatible(fcx, fcx.ret_ty, nil)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  "ret; in function \
-                                                   returning non-nil");
-                    }
-                    write::bot_ty(fcx.ccx.tcx, id);
-                }
-                case (some(?e)) {
-                    check_expr(fcx, e);
-                    demand::simple(fcx, expr.span, fcx.ret_ty,
-                                   expr_ty(fcx.ccx.tcx, e));
-                    write::bot_ty(fcx.ccx.tcx, id);
-                }
-            }
-        }
-        case (ast::expr_put(?expr_opt)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            alt (expr_opt) {
-                case (none) {
-                    auto nil = ty::mk_nil(fcx.ccx.tcx);
-                    if (!are_compatible(fcx, fcx.ret_ty, nil)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  "put; in iterator \
-                                                   yielding non-nil");
-                    }
-                    write::nil_ty(fcx.ccx.tcx, id);
-                }
-                case (some(?e)) {
-                    check_expr(fcx, e);
-                    demand::simple(fcx, expr.span, fcx.ret_ty,
-                                   expr_ty(fcx.ccx.tcx, e));
-                    write::nil_ty(fcx.ccx.tcx, id);
-                }
-            }
-        }
-        case (ast::expr_be(?e)) {
-            // FIXME: prove instead of assert
-
-            assert (ast::is_call_expr(e));
+          }
+          some(e) {
             check_expr(fcx, e);
-            demand::simple(fcx, e.span, fcx.ret_ty, expr_ty(fcx.ccx.tcx, e));
-            write::nil_ty(fcx.ccx.tcx, id);
+            demand::simple(fcx, expr.span, fcx.ret_ty,
+                           expr_ty(fcx.ccx.tcx, e));
+            write::bot_ty(fcx.ccx.tcx, id);
+          }
         }
-        case (ast::expr_log(?l, ?e)) {
-            check_expr(fcx, e);
-            write::nil_ty(fcx.ccx.tcx, id);
-        }
-        case (ast::expr_check(_, ?e)) {
-            check_pred_expr(fcx, e);
-            write::nil_ty(fcx.ccx.tcx, id);
-        }
-        case (ast::expr_if_check(?cond, ?thn, ?elsopt)) {
-            check_pred_expr(fcx, cond);
-            check_then_else(fcx, thn, elsopt, id, expr.span);
-        }
-        case (ast::expr_ternary(_, _, _)) {
-            check_expr(fcx, ast::ternary_to_if(expr));
-        }
-        case (ast::expr_assert(?e)) {
-            check_expr(fcx, e);
-            auto ety = expr_ty(fcx.ccx.tcx, e);
-            demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx), ety);
-            write::nil_ty(fcx.ccx.tcx, id);
-        }
-        case (ast::expr_move(?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_assignment(fcx, expr.span, lhs, rhs, id);
-        }
-        case (ast::expr_assign(?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_assignment(fcx, expr.span, lhs, rhs, id);
-        }
-        case (ast::expr_swap(?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_assignment(fcx, expr.span, lhs, rhs, id);
-        }
-        case (ast::expr_assign_op(?op, ?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_assignment(fcx, expr.span, lhs, rhs, id);
-            check_binop_type_compat(fcx, expr.span,
-                                    expr_ty(fcx.ccx.tcx, lhs), op);
-        }
-        case (ast::expr_send(?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_expr(fcx, lhs);
-            check_expr(fcx, rhs);
-            auto rhs_t = expr_ty(fcx.ccx.tcx, rhs);
-            auto chan_t = ty::mk_chan(fcx.ccx.tcx, rhs_t);
-            auto lhs_t = expr_ty(fcx.ccx.tcx, lhs);
-            alt (structure_of(fcx, expr.span, lhs_t)) {
-                case (ty::ty_chan(?it)) { }
-                case (_) {
-                    auto s = #fmt("mismatched types: expected chan \
-                                   but found %s",
-                                  ty_to_str(fcx.ccx.tcx,
-                                            lhs_t));
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,s);
-                }
-            }
-            demand::simple(fcx, expr.span, chan_t, lhs_t);
-            write::ty_only_fixup(fcx, id, chan_t);
-        }
-        case (ast::expr_recv(?lhs, ?rhs)) {
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-            check_expr(fcx, lhs);
-            check_expr(fcx, rhs);
-            auto item_t = expr_ty(fcx.ccx.tcx, rhs);
-            auto port_t = ty::mk_port(fcx.ccx.tcx, item_t);
-            demand::simple(fcx, expr.span, port_t, expr_ty(fcx.ccx.tcx, lhs));
-            write::ty_only_fixup(fcx, id, item_t);
-        }
-        case (ast::expr_if(?cond, ?thn, ?elsopt)) {
-            check_expr(fcx, cond);
-            demand::simple(fcx, cond.span,
-                           ty::mk_bool(fcx.ccx.tcx),
-                           expr_ty(fcx.ccx.tcx, cond));
-            check_then_else(fcx, thn, elsopt, id, expr.span);
-        }
-        case (ast::expr_for(?decl, ?seq, ?body)) {
-            check_expr(fcx, seq);
-            auto elt_ty;
-            auto ety = expr_ty(fcx.ccx.tcx, seq);
-            alt (structure_of(fcx, expr.span, ety)) {
-                case (ty::ty_vec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
-                case (ty::ty_str) {
-                    elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
-                }
-                case (ty::ty_ivec(?vec_elt_ty)) { elt_ty = vec_elt_ty.ty; }
-                case (ty::ty_istr) {
-                    elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
-                }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
-                        "mismatched types: expected vector or string but " +
-                        "found " + ty_to_str(fcx.ccx.tcx, ety));
-                }
-            }
-            check_for_or_for_each(fcx, decl, elt_ty, body, id);
-        }
-        case (ast::expr_for_each(?decl, ?seq, ?body)) {
-            check_expr(fcx, seq);
-            check_for_or_for_each(fcx, decl, expr_ty(fcx.ccx.tcx, seq), body,
-                                  id);
-        }
-        case (ast::expr_while(?cond, ?body)) {
-            check_expr(fcx, cond);
-            check_block(fcx, body);
-            demand::simple(fcx, cond.span, ty::mk_bool(fcx.ccx.tcx),
-                           expr_ty(fcx.ccx.tcx, cond));
-            auto typ = ty::mk_nil(fcx.ccx.tcx);
-            write::ty_only_fixup(fcx, id, typ);
-        }
-        case (ast::expr_do_while(?body, ?cond)) {
-            check_expr(fcx, cond);
-            check_block(fcx, body);
-            auto typ = block_ty(fcx.ccx.tcx, body);
-            write::ty_only_fixup(fcx, id, typ);
-        }
-        case (ast::expr_alt(?expr, ?arms)) {
-            check_expr(fcx, expr);
-            // Typecheck the patterns first, so that we get types for all the
-            // bindings.
-
-            auto pattern_ty = ty::expr_ty(fcx.ccx.tcx, expr);
-            for (ast::arm arm in arms) {
-                auto id_map = ast::pat_id_map(arm.pats.(0));
-                for (@ast::pat p in arm.pats) {
-                    check_pat(fcx, id_map, p, pattern_ty);
-                }
-            }
-            // Now typecheck the blocks.
-
-            auto result_ty = next_ty_var(fcx);
-            for (ast::arm arm in arms) {
-                check_block(fcx, arm.block);
-                auto bty = block_ty(fcx.ccx.tcx, arm.block);
-
-                // Failing alt arms don't need to have a matching type
-                if (!ty::type_is_bot(fcx.ccx.tcx, bty)) {
-                    result_ty =
-                        demand::simple(fcx, arm.block.span, result_ty, bty);
-                }
-            }
-            write::ty_only_fixup(fcx, id, result_ty);
-        }
-        case (ast::expr_fn(?f)) {
-            auto cx = @rec(tcx=fcx.ccx.tcx);
-            auto convert =
-                bind ast_ty_to_ty(cx.tcx, bind collect::getter(cx, _), _);
-            auto ty_of_arg = bind collect::ty_of_arg(cx, _);
-            auto fty =
-                collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl,
-                                       f.proto, ~[], none).ty;
-            write::ty_only_fixup(fcx, id, fty);
-            check_fn(fcx.ccx, f, id, some(fcx));
-        }
-        case (ast::expr_block(?b)) {
-            check_block(fcx, b);
-            alt (b.node.expr) {
-                case (some(?expr)) {
-                    auto typ = expr_ty(fcx.ccx.tcx, expr);
-                    write::ty_only_fixup(fcx, id, typ);
-                }
-                case (none) {
-                    auto typ = ty::mk_nil(fcx.ccx.tcx);
-                    write::ty_only_fixup(fcx, id, typ);
-                }
-            }
-        }
-        case (ast::expr_bind(?f, ?args)) {
-            // Call the generic checker.
-
-            check_call_or_bind(fcx, expr.span, f, args, kind_bind);
-            // Pull the argument and return types out.
-
-            auto proto_1;
-            let ty::arg[] arg_tys_1 = ~[];
-            auto rt_1;
-            auto fty = expr_ty(fcx.ccx.tcx, f);
-            auto t_1;
-            alt (structure_of(fcx, expr.span, fty)) {
-                case (ty::ty_fn(?proto, ?arg_tys, ?rt, ?cf, ?constrs)) {
-                    proto_1 = proto;
-                    rt_1 = rt;
-                    // FIXME:
-                    // probably need to munge the constrs to drop constraints
-                    // for any bound args
-
-                    // For each blank argument, add the type of that argument
-                    // to the resulting function type.
-
-                    auto i = 0u;
-                    while (i < ivec::len[option::t[@ast::expr]](args)) {
-                        alt (args.(i)) {
-                            case (some(_)) {/* no-op */ }
-                            case (none) { arg_tys_1 += ~[arg_tys.(i)]; }
-                        }
-                        i += 1u;
-                    }
-                    t_1 =
-                        ty::mk_fn(fcx.ccx.tcx, proto_1, arg_tys_1, rt_1, cf,
-                                  constrs);
-                }
-                case (_) {
-                    log_err "LHS of bind expr didn't have a function type?!";
-                    fail;
-                }
-            }
-            write::ty_only_fixup(fcx, id, t_1);
-        }
-        case (ast::expr_call(?f, ?args)) {
-            /* here we're kind of hosed, as f can be any expr
-             need to restrict it to being an explicit expr_path if we're
-            inside a pure function, and need an environment mapping from
-            function name onto purity-designation */
-
-            require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
-            check_call(fcx, expr.span, f, args, kind_call);
-            // Pull the return type out of the type of the function.
-
-            auto rt_1;
-            auto fty = do_autoderef(fcx, expr.span,
-                                   ty::expr_ty(fcx.ccx.tcx, f));
-            alt (structure_of(fcx, expr.span, fty)) {
-                case (ty::ty_fn(_, _, ?rt, _, _)) { rt_1 = rt; }
-                case (ty::ty_native_fn(_, _, ?rt)) { rt_1 = rt; }
-                case (_) {
-                    log_err "LHS of call expr didn't have a function type?!";
-                    fail;
-                }
-            }
-            write::ty_only_fixup(fcx, id, rt_1);
-        }
-        case (ast::expr_self_method(?ident)) {
-            auto t = ty::mk_nil(fcx.ccx.tcx);
-            let option::t[ty::sty] this_obj_sty =
-                some(structure_of(fcx, expr.span, ty::mk_nil(fcx.ccx.tcx)));
-            let option::t[obj_info] this_obj_info = get_obj_info(fcx.ccx);
-            alt (this_obj_info) {
-                case (some(?oinfo)) {
-                    alt (oinfo) {
-                        case (regular_obj(_, ?obj_id)) {
-                            auto did = local_def(obj_id);
-                            // Try looking up the current object in the type
-                            // cache.
-                            alt (fcx.ccx.tcx.tcache.find(did)) {
-                                case (some(?tpt)) {
-                                    // If we're typechecking a self-method on
-                                    // a regular object, this lookup should
-                                    // succeed.
-                                    this_obj_sty =
-                                        some(structure_of(fcx,
-                                                          expr.span,
-                                                          tpt.ty));
-                                }
-                                case (none) {
-                                    fcx.ccx.tcx.sess.bug(
-                                        "didn't find " + int::str(did.node) +
-                                        " in type cache");
-                                }
-                            }
-                        }
-                        case (anon_obj(_, ?obj_sty)) {
-                            this_obj_sty = obj_sty;
-                        }
-                    }
-                }
-                case (none) {
-                    // Shouldn't happen.
-                    fcx.ccx.tcx.sess.span_err(expr.span,
-                                              "self-call in non-object \
-                                               context");
-                }
-            }
-
-            // Grab this method's type out of the current object type.
-            alt (this_obj_sty) {
-                case (some(?sty)) {
-                    alt (sty) {
-                        case (ty::ty_obj(?methods)) {
-                            for (ty::method method in methods) {
-                                if (method.ident == ident) {
-                                    t = ty::method_ty_to_fn_ty(fcx.ccx.tcx,
-                                                               method);
-                                }
-                            }
-                        }
-                        case (_) { fail; }
-                    }
-                }
-                case (none) { }
-            }
-            write::ty_only_fixup(fcx, id, t);
-            require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
-        }
-        case (ast::expr_spawn(_, _, ?f, ?args)) {
-            check_call(fcx, expr.span, f, args, kind_spawn);
-            auto fty = expr_ty(fcx.ccx.tcx, f);
-            auto ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
-            demand::simple(fcx, f.span, ty::mk_nil(fcx.ccx.tcx), ret_ty);
-            // FIXME: Other typechecks needed
-
-            auto typ = ty::mk_task(fcx.ccx.tcx);
-            write::ty_only_fixup(fcx, id, typ);
-        }
-        case (ast::expr_cast(?e, ?t)) {
-            check_expr(fcx, e);
-            auto t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
-            // FIXME: there are more forms of cast to support, eventually.
-
-            if (!(type_is_scalar(fcx, expr.span, expr_ty(fcx.ccx.tcx, e)) &&
-                      type_is_scalar(fcx, expr.span, t_1))) {
+      }
+      ast::expr_put(expr_opt) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        alt expr_opt {
+          none. {
+            let nil = ty::mk_nil(fcx.ccx.tcx);
+            if !are_compatible(fcx, fcx.ret_ty, nil) {
                 fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                          "non-scalar cast: " +
-                                              ty_to_str(fcx.ccx.tcx,
-                                                        expr_ty(fcx.ccx.tcx,
-                                                                e)) + " as " +
-                                              ty_to_str(fcx.ccx.tcx, t_1));
+                                            "put; in iterator \
+                                                   yielding non-nil");
             }
-            write::ty_only_fixup(fcx, id, t_1);
+            write::nil_ty(fcx.ccx.tcx, id);
+          }
+          some(e) {
+            check_expr(fcx, e);
+            demand::simple(fcx, expr.span, fcx.ret_ty,
+                           expr_ty(fcx.ccx.tcx, e));
+            write::nil_ty(fcx.ccx.tcx, id);
+          }
         }
-        case (ast::expr_vec(?args, ?mut, ?kind)) {
-            let ty::t t;
-            if (ivec::len[@ast::expr](args) == 0u) {
-                t = next_ty_var(fcx);
-            } else {
-                check_expr(fcx, args.(0));
-                t = expr_ty(fcx.ccx.tcx, args.(0));
+      }
+      ast::expr_be(e) {
+        // FIXME: prove instead of assert
+
+        assert (ast::is_call_expr(e));
+        check_expr(fcx, e);
+        demand::simple(fcx, e.span, fcx.ret_ty, expr_ty(fcx.ccx.tcx, e));
+        write::nil_ty(fcx.ccx.tcx, id);
+      }
+      ast::expr_log(l, e) {
+        check_expr(fcx, e);
+        write::nil_ty(fcx.ccx.tcx, id);
+      }
+      ast::expr_check(_, e) {
+        check_pred_expr(fcx, e);
+        write::nil_ty(fcx.ccx.tcx, id);
+      }
+      ast::expr_if_check(cond, thn, elsopt) {
+        check_pred_expr(fcx, cond);
+        check_then_else(fcx, thn, elsopt, id, expr.span);
+      }
+      ast::expr_ternary(_, _, _) {
+        check_expr(fcx, ast::ternary_to_if(expr));
+      }
+      ast::expr_assert(e) {
+        check_expr(fcx, e);
+        let ety = expr_ty(fcx.ccx.tcx, e);
+        demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx), ety);
+        write::nil_ty(fcx.ccx.tcx, id);
+      }
+      ast::expr_move(lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_assignment(fcx, expr.span, lhs, rhs, id);
+      }
+      ast::expr_assign(lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_assignment(fcx, expr.span, lhs, rhs, id);
+      }
+      ast::expr_swap(lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_assignment(fcx, expr.span, lhs, rhs, id);
+      }
+      ast::expr_assign_op(op, lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_assignment(fcx, expr.span, lhs, rhs, id);
+        check_binop_type_compat(fcx, expr.span, expr_ty(fcx.ccx.tcx, lhs),
+                                op);
+      }
+      ast::expr_send(lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_expr(fcx, lhs);
+        check_expr(fcx, rhs);
+        let rhs_t = expr_ty(fcx.ccx.tcx, rhs);
+        let chan_t = ty::mk_chan(fcx.ccx.tcx, rhs_t);
+        let lhs_t = expr_ty(fcx.ccx.tcx, lhs);
+        alt structure_of(fcx, expr.span, lhs_t) {
+          ty::ty_chan(it) { }
+          _ {
+            let s =
+                #fmt("mismatched types: expected chan \
+                                   but found %s",
+                     ty_to_str(fcx.ccx.tcx, lhs_t));
+            fcx.ccx.tcx.sess.span_fatal(expr.span, s);
+          }
+        }
+        demand::simple(fcx, expr.span, chan_t, lhs_t);
+        write::ty_only_fixup(fcx, id, chan_t);
+      }
+      ast::expr_recv(lhs, rhs) {
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+        check_expr(fcx, lhs);
+        check_expr(fcx, rhs);
+        let item_t = expr_ty(fcx.ccx.tcx, rhs);
+        let port_t = ty::mk_port(fcx.ccx.tcx, item_t);
+        demand::simple(fcx, expr.span, port_t, expr_ty(fcx.ccx.tcx, lhs));
+        write::ty_only_fixup(fcx, id, item_t);
+      }
+      ast::expr_if(cond, thn, elsopt) {
+        check_expr(fcx, cond);
+        demand::simple(fcx, cond.span, ty::mk_bool(fcx.ccx.tcx),
+                       expr_ty(fcx.ccx.tcx, cond));
+        check_then_else(fcx, thn, elsopt, id, expr.span);
+      }
+      ast::expr_for(decl, seq, body) {
+        check_expr(fcx, seq);
+        let elt_ty;
+        let ety = expr_ty(fcx.ccx.tcx, seq);
+        alt structure_of(fcx, expr.span, ety) {
+          ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
+          ty::ty_str. { elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8); }
+          ty::ty_ivec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
+          ty::ty_istr. { elt_ty = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8); }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                        "mismatched types: expected vector or string but "
+                                            + "found " +
+                                            ty_to_str(fcx.ccx.tcx, ety));
+          }
+        }
+        check_for_or_for_each(fcx, decl, elt_ty, body, id);
+      }
+      ast::expr_for_each(decl, seq, body) {
+        check_expr(fcx, seq);
+        check_for_or_for_each(fcx, decl, expr_ty(fcx.ccx.tcx, seq), body, id);
+      }
+      ast::expr_while(cond, body) {
+        check_expr(fcx, cond);
+        check_block(fcx, body);
+        demand::simple(fcx, cond.span, ty::mk_bool(fcx.ccx.tcx),
+                       expr_ty(fcx.ccx.tcx, cond));
+        let typ = ty::mk_nil(fcx.ccx.tcx);
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_do_while(body, cond) {
+        check_expr(fcx, cond);
+        check_block(fcx, body);
+        let typ = block_ty(fcx.ccx.tcx, body);
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_alt(expr, arms) {
+        check_expr(fcx, expr);
+        // Typecheck the patterns first, so that we get types for all the
+        // bindings.
+
+        let pattern_ty = ty::expr_ty(fcx.ccx.tcx, expr);
+        for arm: ast::arm  in arms {
+            let id_map = ast::pat_id_map(arm.pats.(0));
+            for p: @ast::pat  in arm.pats {
+                check_pat(fcx, id_map, p, pattern_ty);
             }
-            for (@ast::expr e in args) {
-                check_expr(fcx, e);
-                auto expr_t = expr_ty(fcx.ccx.tcx, e);
-                demand::simple(fcx, expr.span, t, expr_t);
+        }
+        // Now typecheck the blocks.
+
+        let result_ty = next_ty_var(fcx);
+        for arm: ast::arm  in arms {
+            check_block(fcx, arm.block);
+            let bty = block_ty(fcx.ccx.tcx, arm.block);
+
+
+            // Failing alt arms don't need to have a matching type
+            if !ty::type_is_bot(fcx.ccx.tcx, bty) {
+                result_ty =
+                    demand::simple(fcx, arm.block.span, result_ty, bty);
             }
-            auto typ;
-            alt (kind) {
-                case (ast::sk_rc) {
-                    typ = ty::mk_vec(fcx.ccx.tcx, rec(ty=t, mut=mut));
-                }
-                case (ast::sk_unique) {
-                    typ = ty::mk_ivec(fcx.ccx.tcx, rec(ty=t, mut=mut));
-                }
-            }
+        }
+        write::ty_only_fixup(fcx, id, result_ty);
+      }
+      ast::expr_fn(f) {
+        let cx = @{tcx: fcx.ccx.tcx};
+        let convert =
+            bind ast_ty_to_ty(cx.tcx, bind collect::getter(cx, _), _);
+        let ty_of_arg = bind collect::ty_of_arg(cx, _);
+        let fty =
+            collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl, f.proto,
+                                   ~[], none).ty;
+        write::ty_only_fixup(fcx, id, fty);
+        check_fn(fcx.ccx, f, id, some(fcx));
+      }
+      ast::expr_block(b) {
+        check_block(fcx, b);
+        alt b.node.expr {
+          some(expr) {
+            let typ = expr_ty(fcx.ccx.tcx, expr);
             write::ty_only_fixup(fcx, id, typ);
+          }
+          none. {
+            let typ = ty::mk_nil(fcx.ccx.tcx);
+            write::ty_only_fixup(fcx, id, typ);
+          }
         }
-        case (ast::expr_rec(?fields, ?base)) {
-            alt (base) {
-                case (none) {/* no-op */ }
-                case (some(?b_0)) { check_expr(fcx, b_0); }
-            }
-            let (spanned[field])[] fields_t = ~[];
-            for (ast::field f in fields) {
-                check_expr(fcx, f.node.expr);
-                auto expr_t = expr_ty(fcx.ccx.tcx, f.node.expr);
-                auto expr_mt = rec(ty=expr_t, mut=f.node.mut);
-                // for the most precise error message,
-                // should be f.node.expr.span, not f.span
-                fields_t += ~[respan(f.node.expr.span,
-                                     rec(ident=f.node.ident, mt=expr_mt))];
-            }
-            alt (base) {
-                case (none) {
-                    fn get_node(&spanned[field] f) -> field { f.node }
-                    auto typ = ty::mk_rec(fcx.ccx.tcx,
-                                          ivec::map(get_node, fields_t));
-                    write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_bind(f, args) {
+        // Call the generic checker.
+
+        check_call_or_bind(fcx, expr.span, f, args, kind_bind);
+        // Pull the argument and return types out.
+
+        let proto_1;
+        let arg_tys_1: ty::arg[] = ~[];
+        let rt_1;
+        let fty = expr_ty(fcx.ccx.tcx, f);
+        let t_1;
+        alt structure_of(fcx, expr.span, fty) {
+          ty::ty_fn(proto, arg_tys, rt, cf, constrs) {
+            proto_1 = proto;
+            rt_1 = rt;
+            // FIXME:
+            // probably need to munge the constrs to drop constraints
+            // for any bound args
+
+            // For each blank argument, add the type of that argument
+            // to the resulting function type.
+
+            let i = 0u;
+            while i < ivec::len[option::t[@ast::expr]](args) {
+                alt args.(i) {
+                  some(_) {/* no-op */ }
+                  none. { arg_tys_1 += ~[arg_tys.(i)]; }
                 }
-                case (some(?bexpr)) {
-                    check_expr(fcx, bexpr);
-                    auto bexpr_t = expr_ty(fcx.ccx.tcx, bexpr);
-                    let field[] base_fields = ~[];
-                    alt (structure_of(fcx, expr.span, bexpr_t)) {
-                        case (ty::ty_rec(?flds)) { base_fields = flds; }
-                        case (_) {
-                            fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                      "record update \
-                                                       non-record base");
-                        }
-                    }
-                    write::ty_only_fixup(fcx, id, bexpr_t);
-                    for (spanned[ty::field] f in fields_t) {
-                        auto found = false;
-                        for (ty::field bf in base_fields) {
-                            if (str::eq(f.node.ident, bf.ident)) {
-                                demand::simple(fcx, f.span, bf.mt.ty,
-                                               f.node.mt.ty);
-                                found = true;
-                            }
-                        }
-                        if (!found) {
-                            fcx.ccx.tcx.sess.span_fatal(f.span,
-                                                      "unknown field in \
-                                                       record update: "
-                                                      + f.node.ident);
-                        }
-                    }
-                }
-            }
-        }
-        case (ast::expr_field(?base, ?field)) {
-            check_expr(fcx, base);
-            auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = do_autoderef(fcx, expr.span, base_t);
-            alt (structure_of(fcx, expr.span, base_t)) {
-                case (ty::ty_rec(?fields)) {
-                    let uint ix =
-                        ty::field_idx(fcx.ccx.tcx.sess, expr.span, field,
-                                      fields);
-                    if (ix >= ivec::len[ty::field](fields)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  "bad index on record");
-                    }
-                    write::ty_only_fixup(fcx, id, fields.(ix).mt.ty);
-                }
-                case (ty::ty_obj(?methods)) {
-                    let uint ix =
-                        ty::method_idx(fcx.ccx.tcx.sess, expr.span, field,
-                                       methods);
-                    if (ix >= ivec::len[ty::method](methods)) {
-                        fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                                  "bad index on obj");
-                    }
-                    auto meth = methods.(ix);
-                    auto t =
-                        ty::mk_fn(fcx.ccx.tcx, meth.proto, meth.inputs,
-                                  meth.output, meth.cf, meth.constrs);
-                    write::ty_only_fixup(fcx, id, t);
-                }
-                case (_) {
-                    auto t_err = resolve_type_vars_if_possible(fcx, base_t);
-                    auto msg = #fmt("attempted field access on type %s",
-                                    ty_to_str(fcx.ccx.tcx, t_err));
-                    fcx.ccx.tcx.sess.span_fatal(expr.span, msg);
-                }
-            }
-        }
-        case (ast::expr_index(?base, ?idx)) {
-            check_expr(fcx, base);
-            auto base_t = expr_ty(fcx.ccx.tcx, base);
-            base_t = do_autoderef(fcx, expr.span, base_t);
-            check_expr(fcx, idx);
-            auto idx_t = expr_ty(fcx.ccx.tcx, idx);
-            if (!type_is_integral(fcx, idx.span, idx_t)) {
-                fcx.ccx.tcx.sess.span_fatal(idx.span,
-                                          "mismatched types: expected \
-                                           integer but found "
-                                          + ty_to_str(fcx.ccx.tcx, idx_t));
-            }
-            alt (structure_of(fcx, expr.span, base_t)) {
-                case (ty::ty_vec(?mt)) {
-                    write::ty_only_fixup(fcx, id, mt.ty);
-                }
-                case (ty::ty_ivec(?mt)) {
-                    write::ty_only_fixup(fcx, id, mt.ty);
-                }
-                case (ty::ty_str) {
-                    auto typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
-                    write::ty_only_fixup(fcx, id, typ);
-                }
-                case (ty::ty_istr) {
-                    auto typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
-                    write::ty_only_fixup(fcx, id, typ);
-                }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                              "vector-indexing bad type: " +
-                                                  ty_to_str(fcx.ccx.tcx,
-                                                            base_t));
-                }
-            }
-        }
-        case (ast::expr_port(?typ)) {
-            auto t = next_ty_var(fcx);
-            alt(typ) {
-                case (some(?_t)) {
-                    demand::simple(fcx, expr.span,
-                                   ast_ty_to_ty_crate(fcx.ccx, _t),
-                                   t);
-                }
-                case (none) {}
-            }
-            auto pt = ty::mk_port(fcx.ccx.tcx, t);
-            write::ty_only_fixup(fcx, id, pt);
-        }
-        case (ast::expr_chan(?x)) {
-            check_expr(fcx, x);
-            auto port_t = expr_ty(fcx.ccx.tcx, x);
-            alt (structure_of(fcx, expr.span, port_t)) {
-                case (ty::ty_port(?subtype)) {
-                    auto ct = ty::mk_chan(fcx.ccx.tcx, subtype);
-                    write::ty_only_fixup(fcx, id, ct);
-                }
-                case (_) {
-                    fcx.ccx.tcx.sess.span_fatal(expr.span,
-                                              "bad port type: " +
-                                                  ty_to_str(fcx.ccx.tcx,
-                                                            port_t));
-                }
-            }
-        }
-        case (ast::expr_anon_obj(?ao)) {
-
-            let ast::anon_obj_field[] fields = ~[];
-            alt (ao.fields) {
-                case (none) { }
-                case (some(?v)) { fields = v; }
-            }
-
-            // FIXME: These next three functions are largely ripped off from
-            // similar ones in collect::.  Is there a better way to do this?
-            fn ty_of_arg(@crate_ctxt ccx, &ast::arg a) -> ty::arg {
-                auto ty_mode = ast_mode_to_mode(a.mode);
-                ret rec(mode=ty_mode, ty=ast_ty_to_ty_crate(ccx, a.ty));
-            }
-
-            fn ty_of_method(@crate_ctxt ccx, &@ast::method m) -> ty::method {
-                auto convert = bind ast_ty_to_ty_crate(ccx, _);
-
-                auto inputs = ~[];
-                for (ast::arg aa in m.node.meth.decl.inputs) {
-                    inputs += ~[ty_of_arg(ccx, aa)];
-                }
-
-                auto output = convert(m.node.meth.decl.output);
-
-                auto out_constrs = ~[];
-                for (@ast::constr constr in m.node.meth.decl.constraints) {
-                    out_constrs +=
-                      ~[ty::ast_constr_to_constr(ccx.tcx, constr)];
-                }
-
-                ret rec(proto=m.node.meth.proto, ident=m.node.ident,
-                        inputs=inputs, output=output, cf=m.node.meth.decl.cf,
-                        constrs=out_constrs);
-            }
-
-            fn get_anon_obj_method_types(@fn_ctxt fcx,
-                                         &ast::anon_obj ao,
-                                         &ast::anon_obj_field[] fields)
-                -> ty::method[] {
-
-                let ty::method[] methods = ~[];
-
-                // Outer methods.
-                for (@ast::method m in ao.methods) {
-                    methods += ~[ty_of_method(fcx.ccx, m)];
-                }
-
-                // Inner methods.
-
-                // Typecheck 'with_obj'.  If it exists, it had better have
-                // object type.
-                let ty::method[] with_obj_methods = ~[];
-                let ty::t with_obj_ty = ty::mk_nil(fcx.ccx.tcx);
-                let option::t[ty::sty] with_obj_sty = none;
-                alt (ao.with_obj) {
-                    case (none) { }
-                    case (some(?e)) {
-                        // If there's a with_obj, we push it onto the
-                        // obj_infos stack so that self-calls can be checked
-                        // within its context later.
-                        check_expr(fcx, e);
-                        with_obj_ty = expr_ty(fcx.ccx.tcx, e);
-                        with_obj_sty = some(structure_of(fcx, e.span,
-                                                         with_obj_ty));
-
-                        alt (with_obj_sty) {
-                            case (none) { }
-                            case (some(?sty)) {
-                                alt (sty) {
-                                    case (ty::ty_obj(?ms)) {
-                                        with_obj_methods = ms;
-                                    }
-                                    case (_) {
-                                        // The user is trying to extend a
-                                        // non-object.
-                                        fcx.ccx.tcx.sess.span_fatal(
-                                            e.span,
-                                      syntax::print::pprust::expr_to_str(e) +
-                                            " does not have object type");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                fcx.ccx.obj_infos +=
-                    ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
-                                         fields),
-                               with_obj_sty)];
-
-                methods += with_obj_methods;
-                ret methods;
-            }
-
-            auto method_types = get_anon_obj_method_types(fcx, ao,
-                                                          fields);
-            auto ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
-
-            write::ty_only_fixup(fcx, id, ot);
-
-            // Write the methods into the node type table.  (This happens in
-            // collect::convert for regular objects.)
-            auto i = 0u;
-            while (i < ivec::len[@ast::method](ao.methods)) {
-                write::ty_only(fcx.ccx.tcx, ao.methods.(i).node.id,
-                               ty::method_ty_to_fn_ty(fcx.ccx.tcx,
-                                                      method_types.(i)));
                 i += 1u;
             }
+            t_1 =
+                ty::mk_fn(fcx.ccx.tcx, proto_1, arg_tys_1, rt_1, cf, constrs);
+          }
+          _ {
+            log_err "LHS of bind expr didn't have a function type?!";
+            fail;
+          }
+        }
+        write::ty_only_fixup(fcx, id, t_1);
+      }
+      ast::expr_call(f, args) {
+        /* here we're kind of hosed, as f can be any expr
+         need to restrict it to being an explicit expr_path if we're
+        inside a pure function, and need an environment mapping from
+        function name onto purity-designation */
 
-            // Typecheck the methods.
-            for (@ast::method method in ao.methods) {
-                check_method(fcx.ccx, method);
+        require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
+        check_call(fcx, expr.span, f, args, kind_call);
+        // Pull the return type out of the type of the function.
+
+        let rt_1;
+        let fty = do_autoderef(fcx, expr.span, ty::expr_ty(fcx.ccx.tcx, f));
+        alt structure_of(fcx, expr.span, fty) {
+          ty::ty_fn(_, _, rt, _, _) { rt_1 = rt; }
+          ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
+          _ {
+            log_err "LHS of call expr didn't have a function type?!";
+            fail;
+          }
+        }
+        write::ty_only_fixup(fcx, id, rt_1);
+      }
+      ast::expr_self_method(ident) {
+        let t = ty::mk_nil(fcx.ccx.tcx);
+        let this_obj_sty: option::t[ty::sty] =
+            some(structure_of(fcx, expr.span, ty::mk_nil(fcx.ccx.tcx)));
+        let this_obj_info: option::t[obj_info] = get_obj_info(fcx.ccx);
+        alt this_obj_info {
+          some(oinfo) {
+            alt oinfo {
+              regular_obj(_, obj_id) {
+                let did = local_def(obj_id);
+
+                // Try looking up the current object in the type
+                // cache.
+                alt fcx.ccx.tcx.tcache.find(did) {
+                  some(tpt) {
+                    // If we're typechecking a self-method on
+                    // a regular object, this lookup should
+                    // succeed.
+                    this_obj_sty = some(structure_of(fcx, expr.span, tpt.ty));
+                  }
+                  none. {
+                    fcx.ccx.tcx.sess.bug("didn't find " + int::str(did.node) +
+                                             " in type cache");
+                  }
+                }
+              }
+              anon_obj(_, obj_sty) { this_obj_sty = obj_sty; }
             }
-            next_ty_var(fcx);
+          }
+          none. {
+            // Shouldn't happen.
+            fcx.ccx.tcx.sess.span_err(expr.span,
+                                      "self-call in non-object \
+                                               context");
+          }
+        }
 
-            // Now remove the info from the stack.
-            ivec::pop[obj_info](fcx.ccx.obj_infos);
+        // Grab this method's type out of the current object type.
+        alt this_obj_sty {
+          some(sty) {
+            alt sty {
+              ty::ty_obj(methods) {
+                for method: ty::method  in methods {
+                    if method.ident == ident {
+                        t = ty::method_ty_to_fn_ty(fcx.ccx.tcx, method);
+                    }
+                }
+              }
+              _ { fail; }
+            }
+          }
+          none. { }
         }
-        case (_) {
-            fcx.ccx.tcx.sess.unimpl("expr type in typeck::check_expr");
+        write::ty_only_fixup(fcx, id, t);
+        require_impure(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+      }
+      ast::expr_spawn(_, _, f, args) {
+        check_call(fcx, expr.span, f, args, kind_spawn);
+        let fty = expr_ty(fcx.ccx.tcx, f);
+        let ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
+        demand::simple(fcx, f.span, ty::mk_nil(fcx.ccx.tcx), ret_ty);
+        // FIXME: Other typechecks needed
+
+        let typ = ty::mk_task(fcx.ccx.tcx);
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_cast(e, t) {
+        check_expr(fcx, e);
+        let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
+        // FIXME: there are more forms of cast to support, eventually.
+
+        if !(type_is_scalar(fcx, expr.span, expr_ty(fcx.ccx.tcx, e)) &&
+                 type_is_scalar(fcx, expr.span, t_1)) {
+            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                        "non-scalar cast: " +
+                                            ty_to_str(fcx.ccx.tcx,
+                                                      expr_ty(fcx.ccx.tcx, e))
+                                            + " as " +
+                                            ty_to_str(fcx.ccx.tcx, t_1));
         }
+        write::ty_only_fixup(fcx, id, t_1);
+      }
+      ast::expr_vec(args, mut, kind) {
+        let t: ty::t;
+        if ivec::len[@ast::expr](args) == 0u {
+            t = next_ty_var(fcx);
+        } else {
+            check_expr(fcx, args.(0));
+            t = expr_ty(fcx.ccx.tcx, args.(0));
+        }
+        for e: @ast::expr  in args {
+            check_expr(fcx, e);
+            let expr_t = expr_ty(fcx.ccx.tcx, e);
+            demand::simple(fcx, expr.span, t, expr_t);
+        }
+        let typ;
+        alt kind {
+          ast::sk_rc. { typ = ty::mk_vec(fcx.ccx.tcx, {ty: t, mut: mut}); }
+          ast::sk_unique. {
+            typ = ty::mk_ivec(fcx.ccx.tcx, {ty: t, mut: mut});
+          }
+        }
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_rec(fields, base) {
+        alt base { none. {/* no-op */ } some(b_0) { check_expr(fcx, b_0); } }
+        let fields_t: (spanned[field])[] = ~[];
+        for f: ast::field  in fields {
+            check_expr(fcx, f.node.expr);
+            let expr_t = expr_ty(fcx.ccx.tcx, f.node.expr);
+            let expr_mt = {ty: expr_t, mut: f.node.mut};
+            // for the most precise error message,
+            // should be f.node.expr.span, not f.span
+            fields_t +=
+                ~[respan(f.node.expr.span,
+                         {ident: f.node.ident, mt: expr_mt})];
+        }
+        alt base {
+          none. {
+            fn get_node(f: &spanned[field]) -> field { f.node }
+            let typ = ty::mk_rec(fcx.ccx.tcx, ivec::map(get_node, fields_t));
+            write::ty_only_fixup(fcx, id, typ);
+          }
+          some(bexpr) {
+            check_expr(fcx, bexpr);
+            let bexpr_t = expr_ty(fcx.ccx.tcx, bexpr);
+            let base_fields: field[] = ~[];
+            alt structure_of(fcx, expr.span, bexpr_t) {
+              ty::ty_rec(flds) { base_fields = flds; }
+              _ {
+                fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                            "record update \
+                                                       non-record base");
+              }
+            }
+            write::ty_only_fixup(fcx, id, bexpr_t);
+            for f: spanned[ty::field]  in fields_t {
+                let found = false;
+                for bf: ty::field  in base_fields {
+                    if str::eq(f.node.ident, bf.ident) {
+                        demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
+                        found = true;
+                    }
+                }
+                if !found {
+                    fcx.ccx.tcx.sess.span_fatal(f.span,
+                                                "unknown field in \
+                                                       record update: "
+                                                    + f.node.ident);
+                }
+            }
+          }
+        }
+      }
+      ast::expr_field(base, field) {
+        check_expr(fcx, base);
+        let base_t = expr_ty(fcx.ccx.tcx, base);
+        base_t = do_autoderef(fcx, expr.span, base_t);
+        alt structure_of(fcx, expr.span, base_t) {
+          ty::ty_rec(fields) {
+            let ix: uint =
+                ty::field_idx(fcx.ccx.tcx.sess, expr.span, field, fields);
+            if ix >= ivec::len[ty::field](fields) {
+                fcx.ccx.tcx.sess.span_fatal(expr.span, "bad index on record");
+            }
+            write::ty_only_fixup(fcx, id, fields.(ix).mt.ty);
+          }
+          ty::ty_obj(methods) {
+            let ix: uint =
+                ty::method_idx(fcx.ccx.tcx.sess, expr.span, field, methods);
+            if ix >= ivec::len[ty::method](methods) {
+                fcx.ccx.tcx.sess.span_fatal(expr.span, "bad index on obj");
+            }
+            let meth = methods.(ix);
+            let t =
+                ty::mk_fn(fcx.ccx.tcx, meth.proto, meth.inputs, meth.output,
+                          meth.cf, meth.constrs);
+            write::ty_only_fixup(fcx, id, t);
+          }
+          _ {
+            let t_err = resolve_type_vars_if_possible(fcx, base_t);
+            let msg =
+                #fmt("attempted field access on type %s",
+                     ty_to_str(fcx.ccx.tcx, t_err));
+            fcx.ccx.tcx.sess.span_fatal(expr.span, msg);
+          }
+        }
+      }
+      ast::expr_index(base, idx) {
+        check_expr(fcx, base);
+        let base_t = expr_ty(fcx.ccx.tcx, base);
+        base_t = do_autoderef(fcx, expr.span, base_t);
+        check_expr(fcx, idx);
+        let idx_t = expr_ty(fcx.ccx.tcx, idx);
+        if !type_is_integral(fcx, idx.span, idx_t) {
+            fcx.ccx.tcx.sess.span_fatal(idx.span,
+                                        "mismatched types: expected \
+                                           integer but found "
+                                            + ty_to_str(fcx.ccx.tcx, idx_t));
+        }
+        alt structure_of(fcx, expr.span, base_t) {
+          ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
+          ty::ty_ivec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
+          ty::ty_str. {
+            let typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
+            write::ty_only_fixup(fcx, id, typ);
+          }
+          ty::ty_istr. {
+            let typ = ty::mk_mach(fcx.ccx.tcx, ast::ty_u8);
+            write::ty_only_fixup(fcx, id, typ);
+          }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                        "vector-indexing bad type: " +
+                                            ty_to_str(fcx.ccx.tcx, base_t));
+          }
+        }
+      }
+      ast::expr_port(typ) {
+        let t = next_ty_var(fcx);
+        alt typ {
+          some(_t) {
+            demand::simple(fcx, expr.span, ast_ty_to_ty_crate(fcx.ccx, _t),
+                           t);
+          }
+          none. { }
+        }
+        let pt = ty::mk_port(fcx.ccx.tcx, t);
+        write::ty_only_fixup(fcx, id, pt);
+      }
+      ast::expr_chan(x) {
+        check_expr(fcx, x);
+        let port_t = expr_ty(fcx.ccx.tcx, x);
+        alt structure_of(fcx, expr.span, port_t) {
+          ty::ty_port(subtype) {
+            let ct = ty::mk_chan(fcx.ccx.tcx, subtype);
+            write::ty_only_fixup(fcx, id, ct);
+          }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(expr.span,
+                                        "bad port type: " +
+                                            ty_to_str(fcx.ccx.tcx, port_t));
+          }
+        }
+      }
+      ast::expr_anon_obj(ao) {
+
+        let fields: ast::anon_obj_field[] = ~[];
+        alt ao.fields { none. { } some(v) { fields = v; } }
+
+        // FIXME: These next three functions are largely ripped off from
+        // similar ones in collect::.  Is there a better way to do this?
+        fn ty_of_arg(ccx: @crate_ctxt, a: &ast::arg) -> ty::arg {
+            let ty_mode = ast_mode_to_mode(a.mode);
+            ret {mode: ty_mode, ty: ast_ty_to_ty_crate(ccx, a.ty)};
+        }
+
+        fn ty_of_method(ccx: @crate_ctxt, m: &@ast::method) -> ty::method {
+            let convert = bind ast_ty_to_ty_crate(ccx, _);
+
+            let inputs = ~[];
+            for aa: ast::arg  in m.node.meth.decl.inputs {
+                inputs += ~[ty_of_arg(ccx, aa)];
+            }
+
+            let output = convert(m.node.meth.decl.output);
+
+            let out_constrs = ~[];
+            for constr: @ast::constr  in m.node.meth.decl.constraints {
+                out_constrs += ~[ty::ast_constr_to_constr(ccx.tcx, constr)];
+            }
+
+            ret {proto: m.node.meth.proto,
+                 ident: m.node.ident,
+                 inputs: inputs,
+                 output: output,
+                 cf: m.node.meth.decl.cf,
+                 constrs: out_constrs};
+        }
+
+        fn get_anon_obj_method_types(fcx: @fn_ctxt, ao: &ast::anon_obj,
+                                     fields: &ast::anon_obj_field[]) ->
+           ty::method[] {
+
+            let methods: ty::method[] = ~[];
+
+            // Outer methods.
+            for m: @ast::method  in ao.methods {
+                methods += ~[ty_of_method(fcx.ccx, m)];
+            }
+
+            // Inner methods.
+
+            // Typecheck 'with_obj'.  If it exists, it had better have
+            // object type.
+            let with_obj_methods: ty::method[] = ~[];
+            let with_obj_ty: ty::t = ty::mk_nil(fcx.ccx.tcx);
+            let with_obj_sty: option::t[ty::sty] = none;
+            alt ao.with_obj {
+              none. { }
+              some(e) {
+                // If there's a with_obj, we push it onto the
+                // obj_infos stack so that self-calls can be checked
+                // within its context later.
+                check_expr(fcx, e);
+                with_obj_ty = expr_ty(fcx.ccx.tcx, e);
+                with_obj_sty = some(structure_of(fcx, e.span, with_obj_ty));
+
+
+                alt with_obj_sty {
+                  none. { }
+                  some(sty) {
+                    alt sty {
+                      ty::ty_obj(ms) { with_obj_methods = ms; }
+                      _ {
+                        // The user is trying to extend a
+                        // non-object.
+                        fcx.ccx.tcx.sess.span_fatal(e.span,
+                                                    syntax::print::pprust::expr_to_str(e)
+                                                        +
+                                                        " does not have object type");
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            fcx.ccx.obj_infos +=
+                ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
+                                     fields), with_obj_sty)];
+
+            methods += with_obj_methods;
+            ret methods;
+        }
+
+        let method_types = get_anon_obj_method_types(fcx, ao, fields);
+        let ot = ty::mk_obj(fcx.ccx.tcx, ty::sort_methods(method_types));
+
+        write::ty_only_fixup(fcx, id, ot);
+
+        // Write the methods into the node type table.  (This happens in
+        // collect::convert for regular objects.)
+        let i = 0u;
+        while i < ivec::len[@ast::method](ao.methods) {
+            write::ty_only(fcx.ccx.tcx, ao.methods.(i).node.id,
+                           ty::method_ty_to_fn_ty(fcx.ccx.tcx,
+                                                  method_types.(i)));
+            i += 1u;
+        }
+
+        // Typecheck the methods.
+        for method: @ast::method  in ao.methods {
+            check_method(fcx.ccx, method);
+        }
+        next_ty_var(fcx);
+
+        // Now remove the info from the stack.
+        ivec::pop[obj_info](fcx.ccx.obj_infos);
+      }
+      _ { fcx.ccx.tcx.sess.unimpl("expr type in typeck::check_expr"); }
     }
 }
 
-fn next_ty_var_id(@fn_ctxt fcx) -> int {
-    auto id = *fcx.next_var_id;
+fn next_ty_var_id(fcx: @fn_ctxt) -> int {
+    let id = *fcx.next_var_id;
     *fcx.next_var_id = fcx.next_var_id + 1;
     ret id;
 }
 
-fn next_ty_var(&@fn_ctxt fcx) -> ty::t {
+fn next_ty_var(fcx: &@fn_ctxt) -> ty::t {
     ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
 }
 
-fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
+fn get_obj_info(ccx: &@crate_ctxt) -> option::t[obj_info] {
     ret ivec::last[obj_info](ccx.obj_infos);
 }
 
-fn check_decl_initializer(&@fn_ctxt fcx, ast::node_id nid,
-                          &ast::initializer init) {
+fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
+                          init: &ast::initializer) {
     check_expr(fcx, init.expr);
-    auto lty = ty::mk_var(fcx.ccx.tcx,
-                          lookup_local(fcx, init.expr.span, nid));
-    alt (init.op) {
-        case (ast::init_assign) {
-            demand::simple(fcx, init.expr.span, lty,
-                           expr_ty(fcx.ccx.tcx, init.expr));
-        }
-        case (ast::init_move) {
-            demand::simple(fcx, init.expr.span, lty,
-                           expr_ty(fcx.ccx.tcx, init.expr));
-        }
-        case (ast::init_recv) {
-            auto port_ty = ty::mk_port(fcx.ccx.tcx, lty);
-            demand::simple(fcx, init.expr.span, port_ty,
-                           expr_ty(fcx.ccx.tcx, init.expr));
-        }
+    let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.expr.span, nid));
+    alt init.op {
+      ast::init_assign. {
+        demand::simple(fcx, init.expr.span, lty,
+                       expr_ty(fcx.ccx.tcx, init.expr));
+      }
+      ast::init_move. {
+        demand::simple(fcx, init.expr.span, lty,
+                       expr_ty(fcx.ccx.tcx, init.expr));
+      }
+      ast::init_recv. {
+        let port_ty = ty::mk_port(fcx.ccx.tcx, lty);
+        demand::simple(fcx, init.expr.span, port_ty,
+                       expr_ty(fcx.ccx.tcx, init.expr));
+      }
     }
 }
 
-fn check_decl_local(&@fn_ctxt fcx, &@ast::local local) {
-    auto a_id = local.node.id;
-    alt (fcx.locals.find(a_id)) {
-        case (none) {
-            fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
+fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) {
+    let a_id = local.node.id;
+    alt fcx.locals.find(a_id) {
+      none. {
+        fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
                                  local.node.ident);
+      }
+      some(i) {
+        let t = ty::mk_var(fcx.ccx.tcx, i);
+        write::ty_only_fixup(fcx, a_id, t);
+        alt local.node.init {
+          some(init) { check_decl_initializer(fcx, local.node.id, init); }
+          _ {/* fall through */ }
         }
-        case (some(?i)) {
-            auto t = ty::mk_var(fcx.ccx.tcx, i);
-            write::ty_only_fixup(fcx, a_id, t);
-            alt (local.node.init) {
-                case (some(?init)) {
-                    check_decl_initializer(fcx, local.node.id, init);
-                }
-                case (_) {/* fall through */ }
-            }
-        }
+      }
     }
 }
 
-fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
-    auto node_id;
-    alt (stmt.node) {
-        case (ast::stmt_decl(?decl, ?id)) {
-            node_id = id;
-            alt (decl.node) {
-                case (ast::decl_local(?ls)) {
-                  for (@ast::local l in ls) { check_decl_local(fcx, l); }
-                }
-                case (ast::decl_item(_)) {/* ignore for now */ }
-            }
+fn check_stmt(fcx: &@fn_ctxt, stmt: &@ast::stmt) {
+    let node_id;
+    alt stmt.node {
+      ast::stmt_decl(decl, id) {
+        node_id = id;
+        alt decl.node {
+          ast::decl_local(ls) {
+            for l: @ast::local  in ls { check_decl_local(fcx, l); }
+          }
+          ast::decl_item(_) {/* ignore for now */ }
         }
-        case (ast::stmt_expr(?expr, ?id)) {
-            node_id = id;
-            check_expr(fcx, expr);
-        }
+      }
+      ast::stmt_expr(expr, id) { node_id = id; check_expr(fcx, expr); }
     }
     write::nil_ty(fcx.ccx.tcx, node_id);
 }
 
-fn check_block(&@fn_ctxt fcx, &ast::blk blk) {
-    for (@ast::stmt s in blk.node.stmts) { check_stmt(fcx, s); }
-    alt (blk.node.expr) {
-        case (none) { write::nil_ty(fcx.ccx.tcx, blk.node.id); }
-        case (some(?e)) {
-            check_expr(fcx, e);
-            auto ety = expr_ty(fcx.ccx.tcx, e);
-            write::ty_only_fixup(fcx, blk.node.id, ety);
-        }
+fn check_block(fcx: &@fn_ctxt, blk: &ast::blk) {
+    for s: @ast::stmt  in blk.node.stmts { check_stmt(fcx, s); }
+    alt blk.node.expr {
+      none. { write::nil_ty(fcx.ccx.tcx, blk.node.id); }
+      some(e) {
+        check_expr(fcx, e);
+        let ety = expr_ty(fcx.ccx.tcx, e);
+        write::ty_only_fixup(fcx, blk.node.id, ety);
+      }
     }
 }
 
-fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::node_id id) {
+fn check_const(ccx: &@crate_ctxt, sp: &span, e: &@ast::expr,
+               id: &ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
 
-    auto rty = node_id_to_type(ccx.tcx, id);
-    let ast::node_id[] fixups = ~[];
-    let @fn_ctxt fcx =
-        @rec(ret_ty=rty,
-             purity=ast::pure_fn,
-             var_bindings=ty::unify::mk_var_bindings(),
-             locals=new_int_hash[int](),
-             local_names=new_int_hash[ast::ident](),
-             next_var_id=@mutable 0,
-             mutable fixups=fixups,
-             ccx=ccx);
+    let rty = node_id_to_type(ccx.tcx, id);
+    let fixups: ast::node_id[] = ~[];
+    let fcx: @fn_ctxt =
+        @{ret_ty: rty,
+          purity: ast::pure_fn,
+          var_bindings: ty::unify::mk_var_bindings(),
+          locals: new_int_hash[int](),
+          local_names: new_int_hash[ast::ident](),
+          next_var_id: @mutable 0,
+          mutable fixups: fixups,
+          ccx: ccx};
     check_expr(fcx, e);
 }
 
-fn check_fn(&@crate_ctxt ccx, &ast::_fn f, &ast::node_id id,
-            &option::t[@fn_ctxt] old_fcx) {
-    auto decl = f.decl;
-    auto body = f.body;
-    auto gather_result = gather_locals(ccx, f, id, old_fcx);
-    let ast::node_id[] fixups = ~[];
-    let @fn_ctxt fcx =
-        @rec(ret_ty=ast_ty_to_ty_crate(ccx, decl.output),
-             purity=decl.purity,
-             var_bindings=gather_result.var_bindings,
-             locals=gather_result.locals,
-             local_names=gather_result.local_names,
-             next_var_id=gather_result.next_var_id,
-             mutable fixups=fixups,
-             ccx=ccx);
+fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
+            old_fcx: &option::t[@fn_ctxt]) {
+    let decl = f.decl;
+    let body = f.body;
+    let gather_result = gather_locals(ccx, f, id, old_fcx);
+    let fixups: ast::node_id[] = ~[];
+    let fcx: @fn_ctxt =
+        @{ret_ty: ast_ty_to_ty_crate(ccx, decl.output),
+          purity: decl.purity,
+          var_bindings: gather_result.var_bindings,
+          locals: gather_result.locals,
+          local_names: gather_result.local_names,
+          next_var_id: gather_result.next_var_id,
+          mutable fixups: fixups,
+          ccx: ccx};
 
     check_block(fcx, body);
-    alt (decl.purity) {
-        case (ast::pure_fn) {
-            // This just checks that the declared type is bool, and trusts
-            // that that's the actual return type.
-            if (!ty::type_is_bool(ccx.tcx, fcx.ret_ty)) {
-                ccx.tcx.sess.span_fatal(body.span,
-                                        "Non-boolean return type in pred");
-            }
+    alt decl.purity {
+      ast::pure_fn. {
+
+        // This just checks that the declared type is bool, and trusts
+        // that that's the actual return type.
+        if !ty::type_is_bool(ccx.tcx, fcx.ret_ty) {
+            ccx.tcx.sess.span_fatal(body.span,
+                                    "Non-boolean return type in pred");
         }
-        case (_) { }
+      }
+      _ { }
     }
 
-    if (option::is_some(body.node.expr)) {
-        auto tail_expr = option::get(body.node.expr);
-        auto tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
+    if option::is_some(body.node.expr) {
+        let tail_expr = option::get(body.node.expr);
+        let tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
         // Have to exclude ty_nil to allow functions to end in
         // while expressions, etc.
-        auto nil = ty::mk_nil(fcx.ccx.tcx);
-        if (!are_compatible(fcx, nil, tail_expr_ty)) {
-            demand::simple(fcx, tail_expr.span,
-                           fcx.ret_ty, tail_expr_ty);
+        let nil = ty::mk_nil(fcx.ccx.tcx);
+        if !are_compatible(fcx, nil, tail_expr_ty) {
+            demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
         }
     }
 
     writeback::resolve_type_vars_in_block(fcx, body);
 }
 
-fn check_method(&@crate_ctxt ccx, &@ast::method method) {
+fn check_method(ccx: &@crate_ctxt, method: &@ast::method) {
     check_fn(ccx, method.node.meth, method.node.id, none);
 }
 
-fn check_item(@crate_ctxt ccx, &@ast::item it) {
-    alt (it.node) {
-        case (ast::item_const(_, ?e)) {
-            check_const(ccx, it.span, e, it.id);
-        }
-        case (ast::item_fn(?f, _)) {
-            check_fn(ccx, f, it.id, none);
-        }
-        case (ast::item_res(?f, ?dtor_id, _, _)) {
-            check_fn(ccx, f, dtor_id, none);
-        }
-        case (ast::item_obj(?ob, _, _)) {
-            // We're entering an object, so gather up the info we need.
-            ccx.obj_infos += ~[regular_obj(ob.fields, it.id)];
+fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
+    alt it.node {
+      ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
+      ast::item_fn(f, _) { check_fn(ccx, f, it.id, none); }
+      ast::item_res(f, dtor_id, _, _) { check_fn(ccx, f, dtor_id, none); }
+      ast::item_obj(ob, _, _) {
+        // We're entering an object, so gather up the info we need.
+        ccx.obj_infos += ~[regular_obj(ob.fields, it.id)];
 
-            // Typecheck the methods.
-            for (@ast::method method in ob.methods) {
-                check_method(ccx, method);
-            }
-            option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
+        // Typecheck the methods.
+        for method: @ast::method  in ob.methods { check_method(ccx, method); }
+        option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
 
-            // Now remove the info from the stack.
-            ivec::pop[obj_info](ccx.obj_infos);
-        }
-        case (_) {/* nothing to do */ }
+        // Now remove the info from the stack.
+        ivec::pop[obj_info](ccx.obj_infos);
+      }
+      _ {/* nothing to do */ }
     }
 }
 
-fn arg_is_argv_ty(&ty::ctxt tcx, &ty::arg a) -> bool {
-    alt (ty::struct(tcx, a.ty)) {
-        case (ty::ty_vec(?mt)) {
-            if (mt.mut != ast::imm) { ret false; }
-            alt (ty::struct(tcx, mt.ty)) {
-                case (ty::ty_str) { ret true; }
-                case (_) { ret false; }
-            }
+fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
+    alt ty::struct(tcx, a.ty) {
+      ty::ty_vec(mt) {
+        if mt.mut != ast::imm { ret false; }
+        alt ty::struct(tcx, mt.ty) {
+          ty::ty_str. { ret true; }
+          _ { ret false; }
         }
-        case (_) { ret false; }
+      }
+      _ { ret false; }
     }
 }
 
-fn check_main_fn_ty(&ty::ctxt tcx, &ast::node_id main_id) {
-    auto main_t = ty::node_id_to_monotype(tcx, main_id);
-    alt (ty::struct(tcx, main_t)) {
-        case (ty::ty_fn(ast::proto_fn, ?args, ?rs, ast::return, ?constrs)) {
-            auto ok = ivec::len(constrs) == 0u;
-            ok &= ty::type_is_nil(tcx, rs);
-            auto num_args = ivec::len(args);
-            ok &= num_args == 0u || (num_args == 1u &&
-                                     arg_is_argv_ty(tcx, args.(0)));
-            if (!ok) {
-                    tcx.sess.err("Wrong type in main function: found "
-                         + ty_to_str(tcx, main_t));
-            }
+fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
+    let main_t = ty::node_id_to_monotype(tcx, main_id);
+    alt ty::struct(tcx, main_t) {
+      ty::ty_fn(ast::proto_fn., args, rs, ast::return., constrs) {
+        let ok = ivec::len(constrs) == 0u;
+        ok &= ty::type_is_nil(tcx, rs);
+        let num_args = ivec::len(args);
+        ok &=
+            num_args == 0u || num_args == 1u && arg_is_argv_ty(tcx, args.(0));
+        if !ok {
+            tcx.sess.err("Wrong type in main function: found " +
+                             ty_to_str(tcx, main_t));
         }
-        case (_) {
-            tcx.sess.err("Main has a non-function type: found"
-                         + ty_to_str(tcx, main_t));
-        }
+      }
+      _ {
+        tcx.sess.err("Main has a non-function type: found" +
+                         ty_to_str(tcx, main_t));
+      }
     }
 }
 
-fn check_for_main_fn(&ty::ctxt tcx, &@ast::crate crate) {
-    if (!tcx.sess.get_opts().library) {
-        alt (tcx.sess.get_main_id()) {
-            case (some(?id)) {
-                check_main_fn_ty(tcx, id);
-            }
-            case (none) {
-                tcx.sess.span_err(crate.span,
-                                  "Main function not found");
-            }
+fn check_for_main_fn(tcx: &ty::ctxt, crate: &@ast::crate) {
+    if !tcx.sess.get_opts().library {
+        alt tcx.sess.get_main_id() {
+          some(id) { check_main_fn_ty(tcx, id); }
+          none. { tcx.sess.span_err(crate.span, "Main function not found"); }
         }
     }
 }
 
-fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
+fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
     collect::collect_item_types(tcx, crate);
 
-    let obj_info[] obj_infos = ~[];
+    let obj_infos: obj_info[] = ~[];
 
-    auto ccx =
-        @rec(mutable obj_infos=obj_infos, tcx=tcx);
-    auto visit =
-        rec(visit_item_pre=bind check_item(ccx, _)
-            with walk::default_visitor());
+    let ccx = @{mutable obj_infos: obj_infos, tcx: tcx};
+    let visit =
+        {visit_item_pre: bind check_item(ccx, _)
+            with walk::default_visitor()};
     walk::walk_crate(visit, *crate);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();

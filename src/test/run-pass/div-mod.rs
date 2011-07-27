@@ -3,8 +3,8 @@
 
 // -*- rust -*-
 fn main() {
-    let int x = 15;
-    let int y = 5;
+    let x: int = 15;
+    let y: int = 5;
     assert (x / 5 == 3);
     assert (x / 4 == 3);
     assert (x / 3 == 5);

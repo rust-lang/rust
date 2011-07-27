@@ -9,7 +9,4 @@ use std;
 
 import std::task;
 
-fn main() {
-    task::pin();
-    task::unpin();
-}
+fn main() { task::pin(); task::unpin(); }

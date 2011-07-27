@@ -6,12 +6,7 @@
 
 // error-pattern: dead
 
-fn f(str caller) {
-  log caller;
-}
+fn f(caller: str) { log caller; }
 
-fn main() {
-  ret f("main");
-  log "Paul is dead";
-}
+fn main() { ret f("main"); log "Paul is dead"; }
 

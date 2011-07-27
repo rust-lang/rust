@@ -3,16 +3,12 @@
 import m::unexported;
 
 mod m {
-  export exported;
+    export exported;
 
-  fn exported() {
-  }
+    fn exported() { }
 
-  fn unexported() {
-  }
+    fn unexported() { }
 }
 
 
-fn main() {
-  unexported();
-}
+fn main() { unexported(); }

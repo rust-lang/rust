@@ -1,18 +1,18 @@
 
 
 native "rust" mod rustrt {
-    fn rust_list_files(str path) -> vec[str];
-    fn rust_list_files_ivec(str path) -> @str[];
-    fn rust_file_is_dir(str path) -> int;
+    fn rust_list_files(path: str) -> vec[str];
+    fn rust_list_files_ivec(path: str) -> @str[];
+    fn rust_file_is_dir(path: str) -> int;
 }
 
-fn list_dir(str path) -> str[] {
+fn list_dir(path: str) -> str[] {
     ret *rustrt::rust_list_files_ivec(path + "*");
 }
 
-fn path_is_absolute(str p) -> bool {
-    ret str::char_at(p, 0u) == '/'
-        || (str::char_at(p, 1u) == ':' && str::char_at(p, 2u) == '\\');
+fn path_is_absolute(p: str) -> bool {
+    ret str::char_at(p, 0u) == '/' ||
+            str::char_at(p, 1u) == ':' && str::char_at(p, 2u) == '\\';
 }
 
 /* FIXME: win32 path handling actually accepts '/' or '\' and has subtly
@@ -21,9 +21,9 @@ fn path_is_absolute(str p) -> bool {
  * joining pathnames needs a bit more abstraction on win32. Possibly a vec or
  * tag type.
  */
-const char path_sep = '/';
+const path_sep: char = '/';
 
-const char alt_path_sep = '\\';
+const alt_path_sep: char = '\\';
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

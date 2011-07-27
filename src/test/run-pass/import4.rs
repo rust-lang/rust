@@ -5,4 +5,4 @@ mod zed {
     fn bar() { log "bar"; }
 }
 
-fn main(vec[str] args) { auto zed = 42; bar(); }
+fn main(args: vec[str]) { let zed = 42; bar(); }

@@ -8,9 +8,7 @@ mod a {
 
 mod c {
     import a::b::a;
-    fn bar() { assert a::foo() == 1; }
+    fn bar() { assert (a::foo() == 1); }
 }
 
-fn main() {
-    c::bar();
-}
+fn main() { c::bar(); }

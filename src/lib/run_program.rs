@@ -9,27 +9,27 @@ export program_output;
 export spawn_process;
 
 native "rust" mod rustrt {
-    fn rust_run_program(vbuf argv, int in_fd, int out_fd, int err_fd) -> int;
+    fn rust_run_program(argv: vbuf, in_fd: int, out_fd: int, err_fd: int) ->
+       int;
 }
 
-fn arg_vec(str prog, vec[str] args) -> vec[sbuf] {
-    auto argptrs = [str::buf(prog)];
-    for (str arg in args) { vec::push[sbuf](argptrs, str::buf(arg)); }
+fn arg_vec(prog: str, args: vec[str]) -> vec[sbuf] {
+    let argptrs = [str::buf(prog)];
+    for arg: str  in args { vec::push[sbuf](argptrs, str::buf(arg)); }
     vec::push[sbuf](argptrs, 0 as sbuf);
     ret argptrs;
 }
 
-fn spawn_process(str prog, vec[str] args,
-                 int in_fd, int out_fd, int err_fd) -> int {
+fn spawn_process(prog: str, args: vec[str], in_fd: int, out_fd: int,
+                 err_fd: int) -> int {
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
-    auto argv = arg_vec(prog, args);
-    auto pid = rustrt::rust_run_program(vec::buf(argv),
-                                        in_fd, out_fd, err_fd);
+    let argv = arg_vec(prog, args);
+    let pid = rustrt::rust_run_program(vec::buf(argv), in_fd, out_fd, err_fd);
     ret pid;
 }
 
-fn run_program(str prog, vec[str] args) -> int {
+fn run_program(prog: str, args: vec[str]) -> int {
     ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
@@ -42,18 +42,18 @@ type program =
         fn finish() -> int ;
     };
 
-fn start_program(str prog, vec[str] args) -> @program {
-    auto pipe_input = os::pipe();
-    auto pipe_output = os::pipe();
-    auto pid = spawn_process(prog, args, pipe_input.in, pipe_output.out, 0);
+fn start_program(prog: str, args: vec[str]) -> @program {
+    let pipe_input = os::pipe();
+    let pipe_output = os::pipe();
+    let pid = spawn_process(prog, args, pipe_input.in, pipe_output.out, 0);
 
-    if (pid == -1) { fail; }
+    if pid == -1 { fail; }
     os::libc::close(pipe_input.in);
     os::libc::close(pipe_output.out);
-    obj new_program(int pid,
-                    mutable int in_fd,
-                    os::libc::FILE out_file,
-                    mutable bool finished) {
+    obj new_program(pid: int,
+                    mutable in_fd: int,
+                    out_file: os::libc::FILE,
+                    mutable finished: bool) {
         fn get_id() -> int { ret pid; }
         fn input() -> io::writer {
             ret io::new_writer(io::fd_buf_writer(in_fd, false));
@@ -62,38 +62,36 @@ fn start_program(str prog, vec[str] args) -> @program {
             ret io::new_reader(io::FILE_buf_reader(out_file, false));
         }
         fn close_input() {
-            auto invalid_fd = -1;
-            if (in_fd != invalid_fd) {
+            let invalid_fd = -1;
+            if in_fd != invalid_fd {
                 os::libc::close(in_fd);
                 in_fd = invalid_fd;
             }
         }
         fn finish() -> int {
-            if (finished) { ret 0; }
+            if finished { ret 0; }
             finished = true;
             self.close_input();
             ret os::waitpid(pid);
         }drop {
-            self.close_input();
-            if (!finished) {
-                os::waitpid(pid);
-            }
+             self.close_input();
+             if !finished { os::waitpid(pid); }
              os::libc::fclose(out_file);
          }
     }
     ret @new_program(pid, pipe_input.out, os::fd_FILE(pipe_output.in), false);
 }
 
-fn program_output(str prog, vec[str] args) -> rec(int status, str out) {
-    auto pr = start_program(prog, args);
+fn program_output(prog: str, args: vec[str]) -> {status: int, out: str} {
+    let pr = start_program(prog, args);
     pr.close_input();
-    auto out = pr.output();
-    auto buf = "";
-    while (!out.eof()) {
-        auto bytes = out.read_bytes(4096u);
+    let out = pr.output();
+    let buf = "";
+    while !out.eof() {
+        let bytes = out.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
     }
-    ret rec(status=pr.finish(), out=buf);
+    ret {status: pr.finish(), out: buf};
 }
 // Local Variables:
 // mode: rust
