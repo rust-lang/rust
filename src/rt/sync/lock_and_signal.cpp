@@ -10,7 +10,7 @@
 #include "lock_and_signal.h"
 
 #if defined(__WIN32__)
-lock_and_signal::lock_and_signal() 
+lock_and_signal::lock_and_signal()
     : alive(true)
 {
     // FIXME: In order to match the behavior of pthread_cond_broadcast on

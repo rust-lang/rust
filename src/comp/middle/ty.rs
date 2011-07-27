@@ -162,6 +162,7 @@ export type_is_bot;
 export type_is_box;
 export type_is_boxed;
 export type_is_chan;
+export type_is_task;
 export type_is_fp;
 export type_is_integral;
 export type_is_native;
@@ -840,6 +841,10 @@ fn type_is_bool(cx: &ctxt, ty: &t) -> bool {
 
 fn type_is_chan(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) { ty_chan(_) { ret true; } _ { ret false; } }
+}
+
+fn type_is_task(cx: &ctxt, ty: &t) -> bool {
+    alt struct(cx, ty) { ty_task. { ret true; } _ { ret false; } }
 }
 
 fn type_is_structural(cx: &ctxt, ty: &t) -> bool {
