@@ -4,15 +4,17 @@ import std::option;
 
 #[test]
 fn test_setenv() {
-    setenv("NAME", "VALUE");
-    assert getenv("NAME") == option::some("VALUE");
+    // NB: Each test of setenv needs to use different variable names or the
+    // tests will not be threadsafe
+    setenv("NAME1", "VALUE");
+    assert getenv("NAME1") == option::some("VALUE");
 }
 
 #[test]
 fn test_setenv_overwrite() {
-    setenv("NAME", "1");
-    setenv("NAME", "2");
-    assert getenv("NAME") == option::some("2");
+    setenv("NAME2", "1");
+    setenv("NAME2", "2");
+    assert getenv("NAME2") == option::some("2");
 }
 
 // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -25,8 +27,8 @@ fn test_getenv_big() {
         s += "aaaaaaaaaa";
         i += 1;
     }
-    setenv("NAME", s);
-    assert getenv("NAME") == option::some(s);
+    setenv("NAME3", s);
+    assert getenv("NAME3") == option::some(s);
 }
 
 // Local Variables:
