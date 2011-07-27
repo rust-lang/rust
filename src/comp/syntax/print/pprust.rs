@@ -741,7 +741,7 @@ fn print_expr(&ps s, &@ast::expr expr) {
             word(s.s, "}");
         }
         case (ast::expr_call(?func, ?args)) {
-            print_expr(s, func);
+            print_expr_parens_if_unary(s, func);
             popen(s);
             commasep_exprs(s, inconsistent, args);
             pclose(s);
@@ -909,12 +909,12 @@ fn print_expr(&ps s, &@ast::expr expr) {
             print_expr(s, rhs);
         }
         case (ast::expr_field(?expr, ?id)) {
-            print_expr(s, expr);
+            print_expr_parens_if_unary(s, expr);
             word(s.s, ".");
             word(s.s, id);
         }
         case (ast::expr_index(?expr, ?index)) {
-            print_expr(s, expr);
+            print_expr_parens_if_unary(s, expr);
             word(s.s, ".");
             popen(s);
             print_expr(s, index);
@@ -1049,6 +1049,16 @@ fn print_expr(&ps s, &@ast::expr expr) {
     }
     s.ann.post(ann_node);
     end(s);
+}
+
+fn print_expr_parens_if_unary(&ps s, &@ast::expr ex) {
+    auto parens = alt ex.node {
+      ast::expr_unary(_, _) { true }
+      _ { false }
+    };
+    if parens { popen(s); }
+    print_expr(s, ex);
+    if parens { pclose(s); }
 }
 
 fn print_decl(&ps s, &@ast::decl decl) {
