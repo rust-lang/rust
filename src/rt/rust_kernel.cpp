@@ -267,7 +267,6 @@ int rust_kernel::start_task_threads()
 
 rust_task *
 rust_kernel::create_task(rust_task *spawner, const char *name) {
-    // TODO: use a different rand.
     return threads[rand(&rctx) % num_threads]->create_task(spawner, name);
 }
 
