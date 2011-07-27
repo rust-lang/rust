@@ -4538,10 +4538,6 @@ fn trans_bind(cx: &@block_ctxt, f: &@ast::expr,
 fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
                 args: &(option::t[@ast::expr])[], id: ast::node_id) ->
    result {
-    if f_res.is_mem {
-        bcx_ccx(cx).sess.unimpl("re-binding existing function");
-    }
-
     let bound: (@ast::expr)[] = ~[];
     for argopt: option::t[@ast::expr]  in args {
         alt argopt { none. { } some(e) { bound += ~[e]; } }
