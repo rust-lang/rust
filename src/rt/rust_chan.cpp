@@ -22,8 +22,8 @@ rust_chan::~rust_chan() {
     KLOG(kernel, comm, "del rust_chan(task=0x%" PRIxPTR ")",
          (uintptr_t) this);
 
-    // A(kernel->sched, is_associated() == false,
-    //   "Channel must be disassociated before being freed.");
+    A(kernel, is_associated() == false,
+      "Channel must be disassociated before being freed.");
 }
 
 /**
@@ -51,8 +51,8 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
-    // A(kernel->sched, is_associated(),
-    //   "Channel must be associated with a port.");
+    A(kernel, is_associated(),
+      "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
         scoped_lock with(port->referent()->lock);
@@ -73,8 +73,7 @@ void rust_chan::disassociate() {
  * Attempt to send data to the associated port.
  */
 void rust_chan::send(void *sptr) {
-    // rust_scheduler *sched = kernel->sched;
-    // I(sched, !port->is_proxy());
+    I(kernel, !port->is_proxy());
 
     rust_port *target_port = port->referent();
     // TODO: We can probably avoid this lock by using atomic operations in
@@ -84,13 +83,13 @@ void rust_chan::send(void *sptr) {
     buffer.enqueue(sptr);
 
     if (!is_associated()) {
-        // W(sched, is_associated(),
-        //   "rust_chan::transmit with no associated port.");
+        W(kernel, is_associated(),
+          "rust_chan::transmit with no associated port.");
         return;
     }
 
-    // A(sched, !buffer.is_empty(),
-    //   "rust_chan::transmit with nothing to send.");
+    A(kernel, !buffer.is_empty(),
+      "rust_chan::transmit with nothing to send.");
 
     if (port->is_proxy()) {
         data_message::send(buffer.peek(), buffer.unit_sz, "send data",
@@ -121,8 +120,8 @@ rust_chan *rust_chan::clone(rust_task *target) {
  * appear to be live, causing modify-after-free errors.
  */
 void rust_chan::destroy() {
-    // A(kernel->sched, ref_count == 0,
-    //   "Channel's ref count should be zero.");
+    A(kernel, ref_count == 0,
+      "Channel's ref count should be zero.");
 
     if (is_associated()) {
         if (port->is_proxy()) {
