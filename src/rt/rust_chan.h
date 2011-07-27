@@ -22,7 +22,7 @@ public:
 
     void send(void *sptr);
 
-    rust_chan *clone(maybe_proxy<rust_task> *target);
+    rust_chan *clone(rust_task *target);
 
     // Called whenever the channel's ref count drops to zero.
     void destroy();

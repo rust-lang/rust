@@ -64,7 +64,7 @@ size_t const callee_save_fp = 0;
 
 rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
                      rust_task *spawner, const char *name) :
-    maybe_proxy<rust_task>(this),
+    ref_count(1),
     stk(NULL),
     runtime_sp(0),
     rust_sp(0),
@@ -92,10 +92,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
     stk = new_stk(this, 0);
     rust_sp = stk->limit;
-
-    if (spawner == NULL) {
-        ref_count = 0;
-    }
 }
 
 rust_task::~rust_task()
@@ -131,10 +127,6 @@ void task_start_wrapper(spawn_args *a)
 
     LOG(task, task, "task exited with value %d", rval);
 
-
-    LOG(task, task, "task ref_count: %d", task->ref_count);
-    A(task->sched, task->ref_count >= 0,
-      "Task ref_count should not be negative on exit!");
     task->die();
     task->lock.lock();
     task->notify_tasks_waiting_to_join();
@@ -263,17 +255,10 @@ rust_task::notify_tasks_waiting_to_join() {
     while (tasks_waiting_to_join.is_empty() == false) {
         LOG(this, task, "notify_tasks_waiting_to_join: %d",
             tasks_waiting_to_join.size());
-        maybe_proxy<rust_task> *waiting_task = 0;
+        rust_task *waiting_task = 0;
         tasks_waiting_to_join.pop(&waiting_task);
-        if (waiting_task->is_proxy()) {
-            notify_message::send(notify_message::WAKEUP, "wakeup",
-                get_handle(), waiting_task->as_proxy()->handle());
-            delete waiting_task;
-        } else {
-            rust_task *task = waiting_task->referent();
-            if (task->blocked() == true) {
-                task->wakeup(this);
-            }
+        if (waiting_task->blocked() == true) {
+            waiting_task->wakeup(this);
         }
     }
 }

@@ -60,7 +60,7 @@ void rust_chan::disassociate() {
         //     "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
         //     this, port->referent());
         --this->ref_count;
-        --this->task->ref_count;
+        task->deref();
         this->task = NULL;
         port->referent()->chans.swap_delete(this);
     }
@@ -109,22 +109,10 @@ void rust_chan::send(void *sptr) {
     return;
 }
 
-rust_chan *rust_chan::clone(maybe_proxy<rust_task> *target) {
+rust_chan *rust_chan::clone(rust_task *target) {
     size_t unit_sz = buffer.unit_sz;
     maybe_proxy<rust_port> *port = this->port;
-    rust_task *target_task = NULL;
-    if (target->is_proxy() == false) {
-        port = this->port;
-        target_task = target->referent();
-    } else {
-        rust_handle<rust_port> *handle =
-            task->sched->kernel->get_port_handle(port->as_referent());
-        maybe_proxy<rust_port> *proxy = new rust_proxy<rust_port> (handle);
-        DLOG(task->sched, mem, "new proxy: " PTR, proxy);
-        port = proxy;
-        target_task = target->as_proxy()->handle()->referent();
-    }
-    return new (target_task->kernel, "cloned chan")
+    return new (target->kernel, "cloned chan")
         rust_chan(kernel, port, unit_sz);
 }
 

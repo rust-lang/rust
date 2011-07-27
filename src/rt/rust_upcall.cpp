@@ -6,12 +6,10 @@
 #define LOG_UPCALL_ENTRY(task)                            \
     LOG(task, upcall,                                     \
         "> UPCALL %s - task: %s 0x%" PRIxPTR              \
-        " retpc: x%" PRIxPTR                              \
-        " ref_count: %d",                                 \
+        " retpc: x%" PRIxPTR,                             \
         __FUNCTION__,                                     \
         (task)->name, (task),                             \
-        __builtin_return_address(0),                      \
-        (task->ref_count));
+        __builtin_return_address(0));
 #else
 #define LOG_UPCALL_ENTRY(task)                            \
     LOG(task, upcall, "> UPCALL task: %s @x%" PRIxPTR,    \
@@ -114,8 +112,8 @@ upcall_del_port(rust_task *task, rust_port *port) {
     I(task->sched, !port->ref_count);
     delete port;
 
-    // FIXME: We shouldn't ever directly manipulate the ref count.
-    --task->ref_count;
+    // FIXME: this should happen in the port.
+    task->deref();
 }
 
 /**
@@ -162,7 +160,7 @@ void upcall_del_chan(rust_task *task, rust_chan *chan) {
  * has its own copy of the channel.
  */
 extern "C" CDECL rust_chan *
-upcall_clone_chan(rust_task *task, maybe_proxy<rust_task> *target,
+upcall_clone_chan(rust_task *task, rust_task *target,
                   rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
     return chan->clone(target);
@@ -247,18 +245,10 @@ upcall_fail(rust_task *task,
  * Called whenever a task's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
+upcall_kill(rust_task *task, rust_task *target) {
     LOG_UPCALL_ENTRY(task);
 
-    if (target->is_proxy()) {
-        notify_message::
-        send(notify_message::KILL, "kill", task->get_handle(),
-             target->as_proxy()->handle());
-        // The proxy ref_count dropped to zero, delete it here.
-        delete target->as_proxy();
-    } else {
-        target->referent()->kill();
-    }
+    target->kill();
 }
 
 /**
@@ -267,9 +257,6 @@ upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
 extern "C" CDECL void
 upcall_exit(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
-    LOG(task, task, "task ref_count: %d", task->ref_count);
-    A(task->sched, task->ref_count >= 0,
-      "Task ref_count should not be negative on exit!");
     task->die();
     task->notify_tasks_waiting_to_join();
     task->yield(1);
@@ -544,6 +531,7 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     scoped_lock with(spawner->sched->lock);
     rust_task *task =
         spawner->kernel->create_task(spawner, (const char *)name->data);
+    task->ref();
     return task;
 }
 
@@ -559,8 +547,7 @@ extern "C" CDECL void
 upcall_drop_task(rust_task *task, rust_task *target) {
     LOG_UPCALL_ENTRY(task);
     if(target) {
-        //target->deref();
-        --target->ref_count;
+        target->deref();
     }
 }
 
