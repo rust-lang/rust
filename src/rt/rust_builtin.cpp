@@ -312,8 +312,9 @@ str_byte_len(rust_task *task, rust_str *s)
 extern "C" CDECL rust_str *
 str_from_ivec(rust_task *task, rust_ivec *v)
 {
-    uintptr_t fill = v->fill ? v->fill : v->payload.ptr->fill;
-    void *data = v->fill ? v->payload.data : v->payload.ptr->data;
+    bool is_interior = v->fill || !v->payload.ptr;
+    uintptr_t fill = is_interior ? v->fill : v->payload.ptr->fill;
+    void *data = is_interior ? v->payload.data : v->payload.ptr->data;
 
     rust_str *st =
         vec_alloc_with_data(task,
