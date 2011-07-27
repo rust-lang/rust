@@ -573,8 +573,16 @@ mod procsrv {
     type response = {pid: int, outfd: int};
 
     fn mk() -> handle {
-        let res = task::worker(worker);
-        ret {task: option::some(res.task), chan: res.chan};
+        auto setupport = port();
+        auto task = spawn fn(chan[chan[request]] setupchan) {
+            auto reqport = port();
+            auto reqchan = chan(reqport);
+            task::send(setupchan, reqchan);
+            worker(reqport);
+        } (chan(setupport));
+        ret {task: option::some(task),
+                chan: task::recv(setupport)
+                };
     }
 
     fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }

@@ -34,26 +34,3 @@ fn test_send_recv() {
     assert (task::recv(p) == 10);
 }
 
-#[test]
-fn test_worker() {
-    task::worker(fn (p: port[int]) { let x; p |> x; assert (x == 10); }).chan
-        <| 10;
-
-    task::worker(fn (p: port[{x: int, y: int}]) {
-                     let x;
-                     p |> x;
-                     assert (x.y == 20);
-                 }).chan <| {x: 10, y: 20};
-
-    task::worker(fn (p: port[{x: int, y: int, z: int}]) {
-                     let x;
-                     p |> x;
-                     assert (x.z == 30);
-                 }).chan <| {x: 10, y: 20, z: 30};
-
-    task::worker(fn (p: port[{a: int, b: int, c: int, d: int}]) {
-                     let x;
-                     p |> x;
-                     assert (x.d == 40);
-                 }).chan <| {a: 10, b: 20, c: 30, d: 40};
-}
