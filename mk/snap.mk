@@ -1,6 +1,5 @@
 
-snap-stage1: stage1/rustc$(X) stage1/lib/glue.o stage1/lib/$(CFG_STDLIB) \
-	stage1/lib/libstd.rlib stage1/lib/$(CFG_RUNTIME) \
+snap-stage1: stage1/rustc$(X) stage1/lib/glue.o stage1/lib/$(CFG_RUNTIME) \
 	stage1/$(CFG_RUSTLLVM)
 	$(S)src/etc/make-snapshot.py stage1
 

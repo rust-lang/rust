@@ -120,7 +120,10 @@ def make_snapshot(stage):
 
     tar = tarfile.open(file0, "w:bz2")
     for name in snapshot_files[kernel]:
-      tar.add(os.path.join(stage, name),
+      dir = stage
+      if stage == "stage1" and re.match(r"^lib/(lib)?std.*", name):
+        dir = "stage0"
+      tar.add(os.path.join(dir, name),
               "rust-stage0/" + name)
     tar.close()
 
