@@ -1336,11 +1336,7 @@ fn parse_alt_expr(p: &parser) -> @ast::expr {
         // Optionally eat the case keyword.
         // FIXME remove this (and the optional parens) once we've updated our
         // code to not use the old syntax
-        eat_word(p, "case");
-        let parens = false;
-        if p.peek() == token::LPAREN { parens = true; p.bump(); }
         let pats = parse_pats(p);
-        if parens { expect(p, token::RPAREN); }
         let blk = parse_block(p);
         arms += ~[{pats: pats, block: blk}];
     }
