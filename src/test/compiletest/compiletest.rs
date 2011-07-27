@@ -14,31 +14,33 @@ import std::task;
 
 tag mode { mode_compile_fail; mode_run_fail; mode_run_pass; }
 
-type config =  // The library paths required for running the compiler
-    // The library paths required for running compiled programs
-    // The rustc executable
-    // The directory containing the tests to run
-    // The directory where programs should be built
-    // The name of the stage being built (stage1, etc)
-    // The test mode, compile-fail, run-fail, run-pass
-    // Run ignored tests
-    // Only run tests that match this filter
-    // A command line to prefix program execution with,
-    // for running under valgrind
-    // Flags to pass to the compiler
-    // Explain what's going on
-    {compile_lib_path: str,
-     run_lib_path: str,
-     rustc_path: str,
-     src_base: str,
-     build_base: str,
-     stage_id: str,
-     mode: mode,
-     run_ignored: bool,
-     filter: option::t[str],
-     runtool: option::t[str],
-     rustcflags: option::t[str],
-     verbose: bool};
+type config = {
+ // The library paths required for running the compiler
+ compile_lib_path: str,
+ // The library paths required for running compiled programs
+ run_lib_path: str,
+ // The rustc executable
+ rustc_path: str,
+ // The directory containing the tests to run
+ src_base: str,
+ // The directory where programs should be built
+ build_base: str,
+ // The name of the stage being built (stage1, etc)
+ stage_id: str,
+ // The test mode, compile-fail, run-fail, run-pass
+ mode: mode,
+ // Run ignored tests
+ run_ignored: bool,
+ // Only run tests that match this filter
+ filter: option::t[str],
+ // A command line to prefix program execution with,
+ // for running under valgrind
+ runtool: option::t[str],
+ // Flags to pass to the compiler
+ rustcflags: option::t[str],
+ // Explain what's going on
+ verbose: bool
+};
 
 fn main(args: vec[str]) {
 
@@ -230,7 +232,8 @@ So actually shuttling structural data across tasks isn't possible at this
 time, but we can send strings! Sadly, I need the whole config record, in the
 test task so, instead of fixing the mechanism in the compiler I'm going to
 break up the config record and pass everything individually to the spawned
-function.  */
+function.
+*/
 
 fn closure_to_task(cx: cx, configport: port[str], testfn: &fn() ) -> task {
     testfn();
