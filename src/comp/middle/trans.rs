@@ -4514,8 +4514,10 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     let lltargetfn =
         bcx.build.GEP(lltarget.val, ~[C_int(0), C_int(abi::fn_field_code)]);
 
-    // Cast the outgoing function to the appropriate type (see the comments in
-    // trans_bind below for why this is necessary).
+    // Cast the outgoing function to the appropriate type.
+    // This is necessary because the type of the function that we have
+    // in the closure does not know how many type descriptors the function
+    // needs to take.
     let lltargetty =
         type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
@@ -4625,21 +4627,12 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     bcx = bindings_tydesc.bcx;
     bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
-    // Determine the LLVM type for the outgoing function type. This
-    // may be different from the type returned by trans_malloc_boxed()
-    // since we have more information than that function does;
-    // specifically, we know how many type descriptors the outgoing
-    // function has, which type_of() doesn't, as only we know which
-    // item the function refers to.
-    let llfnty = type_of_fn_from_ty(bcx_ccx(bcx), cx.sp,
-                                    outgoing_fty, ty_param_count);
-    let llclosurety = T_ptr(T_fn_pair(*bcx_ccx(bcx), llfnty));
-
     // Store thunk-target.
     let bound_target =
         bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_target)]);
-    let src = bcx.build.Load(f_res.res.val);
-    bound_target = bcx.build.PointerCast(bound_target, llclosurety);
+    let llclosurety = T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
+    let src_loc = bcx.build.PointerCast(f_res.res.val, llclosurety);
+    let src = bcx.build.Load(src_loc);
     bcx.build.Store(src, bound_target);
 
     // Copy expr values into boxed bindings.
