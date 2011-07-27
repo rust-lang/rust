@@ -20,7 +20,8 @@ fn mk_rng() -> rng {
     obj rt_rng(c: rustrt::rctx) {
         fn next() -> u32 {
             ret rustrt::rand_next(c);
-        }drop { rustrt::rand_free(c); }
+        }
+        drop { rustrt::rand_free(c); }
     }
     ret rt_rng(rustrt::rand_new());
 }
