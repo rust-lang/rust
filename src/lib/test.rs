@@ -16,9 +16,12 @@ export tr_ok;
 export tr_failed;
 export tr_ignored;
 export run_tests_console;
+export run_tests_console_;
 export run_test;
 export filter_tests;
 export parse_opts;
+export test_to_task;
+export default_test_to_task;
 
 // The name of a test. By convention this follows the rules for rust
 // paths, i.e it should be a series of identifiers seperated by double
@@ -95,8 +98,21 @@ tag test_result {
     tr_ignored;
 }
 
+// To get isolation and concurrency tests have to be run in their own tasks.
+// In cases where test functions and closures it is not ok to just dump them
+// into a task and run them, so this transformation gives the caller a chance
+// to create the test task.
+type test_to_task = fn(&fn()) -> task;
+
 // A simple console test runner
-fn run_tests_console(&test_opts opts, &test_desc[] tests) -> bool {
+fn run_tests_console(&test_opts opts,
+                     &test_desc[] tests) -> bool {
+    run_tests_console_(opts, tests, default_test_to_task)
+}
+
+fn run_tests_console_(&test_opts opts,
+                     &test_desc[] tests,
+                     &test_to_task to_task) -> bool {
 
     auto filtered_tests = filter_tests(opts, tests);
 
@@ -124,7 +140,7 @@ fn run_tests_console(&test_opts opts, &test_desc[] tests) -> bool {
     while (wait_idx < total) {
         while (ivec::len(futures) < concurrency
                && run_idx < total) {
-            futures += ~[run_test(filtered_tests.(run_idx))];
+            futures += ~[run_test(filtered_tests.(run_idx), to_task)];
             run_idx += 1u;
         }
 
@@ -266,14 +282,14 @@ type test_future = rec(test_desc test,
                        @fn() fnref,
                        fn() -> test_result wait);
 
-fn run_test(&test_desc test) -> test_future {
+fn run_test(&test_desc test, &test_to_task to_task) -> test_future {
     // FIXME: Because of the unsafe way we're passing the test function
     // to the test task, we need to make sure we keep a reference to that
     // function around for longer than the lifetime of the task. To that end
     // we keep the function boxed in the test future.
     auto fnref = @test.fn;
     if (!test.ignore) {
-        auto test_task = run_test_fn_in_task(*fnref);
+        auto test_task = to_task(*fnref);
         ret rec(test = test,
                 fnref = fnref,
                 wait = bind fn(&task test_task) -> test_result {
@@ -295,8 +311,9 @@ native "rust" mod rustrt {
 
 // We need to run our tests in another task in order to trap test failures.
 // But, at least currently, functions can't be used as spawn arguments so
-// we've got to treat our test functions as unsafe pointers.
-fn run_test_fn_in_task(&fn() f) -> task {
+// we've got to treat our test functions as unsafe pointers.  This function
+// only works with functions that don't contain closures.
+fn default_test_to_task(&fn() f) -> task {
     fn run_task(*mutable fn() fptr) {
         // If this task fails we don't want that failure to propagate to the
         // test runner or else we couldn't keep running tests

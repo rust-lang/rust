@@ -15,7 +15,7 @@ fn do_not_run_ignored_tests() {
                     fn = f,
                     ignore = true);
 
-    test::run_test(desc);
+    test::run_test(desc, test::default_test_to_task);
 
     assert ran == false;
 }
@@ -26,7 +26,7 @@ fn ignored_tests_result_in_ignored() {
     auto desc = rec(name = "whatever",
                     fn = f,
                     ignore = true);
-    auto res = test::run_test(desc).wait();
+    auto res = test::run_test(desc, test::default_test_to_task).wait();
     assert res == test::tr_ignored;
 }
 

@@ -87,12 +87,7 @@ fn parse_config(&str[] args) -> config {
             src_base = getopts::opt_str(match, "src-base"),
             build_base = getopts::opt_str(match, "build-base"),
             stage_id = getopts::opt_str(match, "stage-id"),
-            mode = alt getopts::opt_str(match, "mode") {
-                "compile-fail" { mode_compile_fail }
-                "run-fail" { mode_run_fail }
-                "run-pass" { mode_run_pass }
-                _ { fail "invalid mode" }
-            },
+            mode = str_mode(getopts::opt_str(match, "mode")),
             run_ignored = getopts::opt_present(match, "ignored"),
             filter = if vec::len(match.free) > 0u {
                 option::some(match.free.(0))
@@ -115,20 +110,35 @@ fn log_config(&config config) {
     logv(c, #fmt("stage_id: %s", config.stage_id));
     logv(c, #fmt("mode: %s", mode_str(config.mode)));
     logv(c, #fmt("run_ignored: %b", config.run_ignored));
-    logv(c, #fmt("filter: %s", alt (config.filter) {
-      option::some(?f) { f }
-      option::none { "(none)" }
-    }));
-    logv(c, #fmt("runtool: %s", alt (config.runtool) {
-      option::some(?s) { s }
-      option::none { "(none)" }
-    }));
-    logv(c, #fmt("rustcflags: %s", alt (config.rustcflags) {
-      option::some(?s) { s }
-      option::none { "(none)" }
-    }));
+    logv(c, #fmt("filter: %s", opt_str(config.filter)));
+    logv(c, #fmt("runtool: %s", opt_str(config.runtool)));
+    logv(c, #fmt("rustcflags: %s", opt_str(config.rustcflags)));
     logv(c, #fmt("verbose: %b", config.verbose));
     logv(c, #fmt("\n"));
+}
+
+fn opt_str(option::t[str] maybestr) -> str {
+    alt maybestr {
+      option::some(?s) { s }
+      option::none { "(none)" }
+    }
+}
+
+fn str_opt(str maybestr) -> option::t[str] {
+    if maybestr != "(none)" {
+        option::some(maybestr)
+    } else {
+        option::none
+    }
+}
+
+fn str_mode(str s) -> mode {
+    alt s {
+      "compile-fail" { mode_compile_fail }
+      "run-fail" { mode_run_fail }
+      "run-pass" { mode_run_pass }
+      _ { fail "invalid mode" }
+    }
 }
 
 fn mode_str(mode mode) -> str {
@@ -147,7 +157,7 @@ fn run_tests(&config config) {
     auto cx = rec(config = config,
                   procsrv = procsrv::mk());
     auto tests = make_tests(cx);
-    test::run_tests_console(opts, tests);
+    test::run_tests_console_(opts, tests.tests, tests.to_task);
     procsrv::close(cx.procsrv);
 }
 
@@ -156,16 +166,21 @@ fn test_opts(&config config) -> test::test_opts {
         run_ignored = config.run_ignored)
 }
 
-fn make_tests(&cx cx) -> test::test_desc[] {
+type tests_and_conv_fn = rec(test::test_desc[] tests,
+                             fn(&fn()) -> task to_task);
+
+fn make_tests(&cx cx) -> tests_and_conv_fn {
     log #fmt("making tests from %s", cx.config.src_base);
+    auto configport = port[str]();
     auto tests = ~[];
     for (str file in fs::list_dir(cx.config.src_base)) {
         log #fmt("inspecting file %s", file);
         if (is_test(file)) {
-            tests += ~[make_test(cx, file)];
+            tests += ~[make_test(cx, file, configport)];
         }
     }
-    ret tests;
+    ret rec(tests = tests,
+            to_task = bind closure_to_task(cx, configport, _));
 }
 
 fn is_test(&str testfile) -> bool {
@@ -176,9 +191,10 @@ fn is_test(&str testfile) -> bool {
          || str::starts_with(name, "~"))
 }
 
-fn make_test(&cx cx, &str testfile) -> test::test_desc {
+fn make_test(&cx cx, &str testfile,
+             &port[str] configport) -> test::test_desc {
     rec(name = testfile,
-        fn = make_test_fn(cx, testfile),
+        fn = make_test_closure(testfile, chan(configport)),
         ignore = is_test_ignored(cx.config, testfile))
 }
 
@@ -206,44 +222,97 @@ iter iter_header(&str testfile) -> str {
     }
 }
 
-fn make_test_fn(&cx cx, &str testfile) -> test::test_fn {
-    // We're doing some ferociously unsafe nonsense here by creating a closure
-    // and letting the test runner spawn it into a task. To avoid having
-    // different tasks fighting over their refcounts and then the wrong task
-    // freeing a box we need to clone everything, and make sure our closure
-    // outlives all the tasks.
-    fn clonestr(&str s) -> str {
-        str::unsafe_from_bytes(str::bytes(s))
-    }
+/*
+So this is kind of crappy:
 
-    fn cloneoptstr(&option::t[str] s) -> option::t[str] {
-        alt s {
-          option::some(?s) { option::some(clonestr(s)) }
-          option::none { option::none }
-        }
-    }
+A test is just defined as a function, as you might expect, but tests have to
+run their own tasks. Unfortunately, if your test needs dynamic data then it
+needs to be a closure, and transferring closures across tasks without
+committing a host of memory management transgressions is just impossible.
 
-    auto configclone = rec(
-        compile_lib_path = clonestr(cx.config.compile_lib_path),
-        run_lib_path = clonestr(cx.config.run_lib_path),
-        rustc_path = clonestr(cx.config.rustc_path),
-        src_base = clonestr(cx.config.src_base),
-        build_base = clonestr(cx.config.build_base),
-        stage_id = clonestr(cx.config.stage_id),
-        mode = cx.config.mode,
-        run_ignored = cx.config.run_ignored,
-        filter = cloneoptstr(cx.config.filter),
-        runtool = cloneoptstr(cx.config.runtool),
-        rustcflags = cloneoptstr(cx.config.rustcflags),
-        verbose = cx.config.verbose);
-    auto cxclone = rec(config = configclone,
-                       procsrv = procsrv::clone(cx.procsrv));
-    auto testfileclone = clonestr(testfile);
-    ret bind run_test(cxclone, testfileclone);
+To get around this, the standard test runner allows you the opportunity do
+your own conversion from a test function to a task. It gives you your function
+and you give it back a task.
+
+So that's what we're going to do. Here's where it gets stupid. To get the
+the data out of the test function we are going to run the test function,
+which will do nothing but send the data for that test to a port we've set
+up. Then we'll spawn that data into another task and return the task.
+Really convoluted. Need to think up of a better definition for tests.
+*/
+
+fn make_test_closure(&str testfile,
+                     chan[str] configchan) -> test::test_fn {
+    bind send_config(testfile, configchan)
 }
 
-fn run_test(cx cx, str testfile) {
+fn send_config(str testfile, chan[str] configchan) {
+    task::send(configchan, testfile);
+}
+
+/*
+FIXME: Good god forgive me.
+
+So actually shuttling structural data across tasks isn't possible at this
+time, but we can send strings! Sadly, I need the whole config record, in the
+test task so, instead of fixing the mechanism in the compiler I'm going to
+break up the config record and pass everything individually to the spawned
+function.  */
+
+fn closure_to_task(cx cx, port[str] configport, &fn() testfn) -> task{
+    testfn();
+    auto testfile = task::recv(configport);
+    ret spawn run_test_task(cx.config.compile_lib_path,
+                            cx.config.run_lib_path,
+                            cx.config.rustc_path,
+                            cx.config.src_base,
+                            cx.config.build_base,
+                            cx.config.stage_id,
+                            mode_str(cx.config.mode),
+                            cx.config.run_ignored,
+                            opt_str(cx.config.filter),
+                            opt_str(cx.config.runtool),
+                            opt_str(cx.config.rustcflags),
+                            cx.config.verbose,
+                            procsrv::clone(cx.procsrv).chan,
+                            testfile);
+}
+
+fn run_test_task(str compile_lib_path,
+                 str run_lib_path,
+                 str rustc_path,
+                 str src_base,
+                 str build_base,
+                 str stage_id,
+                 str mode,
+                 bool run_ignored,
+                 str opt_filter,
+                 str opt_runtool,
+                 str opt_rustcflags,
+                 bool verbose,
+                 procsrv::reqchan procsrv_chan,
+                 str testfile) {
+
+    auto config = rec(compile_lib_path = compile_lib_path,
+                      run_lib_path = run_lib_path,
+                      rustc_path = rustc_path,
+                      src_base = src_base,
+                      build_base = build_base,
+                      stage_id = stage_id,
+                      mode = str_mode(mode),
+                      run_ignored = run_ignored,
+                      filter = str_opt(opt_filter),
+                      runtool = str_opt(opt_runtool),
+                      rustcflags = str_opt(opt_rustcflags),
+                      verbose = verbose);
+
+    auto procsrv = procsrv::from_chan(procsrv_chan);
+
+    auto cx = rec(config = config,
+                  procsrv = procsrv);
+
     log #fmt("running %s", testfile);
+    task::unsupervise();
     auto props = load_props(testfile);
     alt (cx.config.mode) {
         mode_compile_fail {
@@ -561,12 +630,16 @@ mod procsrv {
 
     export handle;
     export mk;
+    export from_chan;
     export clone;
     export run;
     export close;
+    export reqchan;
+
+    type reqchan = chan[request];
 
     type handle = rec(option::t[task] task,
-                      chan[request] chan);
+                      reqchan chan);
 
     tag request {
         exec(str, str, vec[str], chan[response]);
@@ -579,6 +652,11 @@ mod procsrv {
         auto res = task::worker(worker);
         ret rec(task = option::some(res.task),
                 chan = res.chan);
+    }
+
+    fn from_chan(&reqchan ch) -> handle {
+        rec(task = option::none,
+            chan = ch)
     }
 
     fn clone(&handle handle) -> handle {
