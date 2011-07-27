@@ -448,6 +448,11 @@ fn print_item(&ps s, &@ast::item item) {
             }
             word_nbsp(s, "mod");
             word_nbsp(s, item.ident);
+            if !str::eq(nmod.native_name, item.ident) {
+                word_space(s, "=");
+                print_string(s, nmod.native_name);
+                nbsp(s);
+            }
             bopen(s);
             print_native_mod(s, nmod, item.attrs);
             bclose(s, item.span);
