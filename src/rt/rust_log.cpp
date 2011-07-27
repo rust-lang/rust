@@ -1,6 +1,5 @@
 /*
- * Logging infrastructure that aims to support multi-threading,
- * and ansi colors.
+ * Logging infrastructure that aims to support multi-threading
  */
 
 #include "rust_internal.h"
@@ -9,13 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char * _foreground_colors[] = { "[37m",
-                                             "[31m", "[1;31m",
-                                             "[32m", "[1;32m",
-                                             "[33m", "[1;33m",
-                                             "[31m", "[1;31m",
-                                             "[35m", "[1;35m",
-                                             "[36m", "[1;36m" };
 
 /**
  * Synchronizes access to the underlying logging mechanism.
@@ -25,8 +17,7 @@ static uint32_t _last_thread_id;
 
 rust_log::rust_log(rust_srv *srv, rust_scheduler *sched) :
     _srv(srv),
-    _sched(sched),
-    _use_colors(getenv("RUST_COLOR_LOG")) {
+    _sched(sched) {
 }
 
 rust_log::~rust_log() {
@@ -45,11 +36,6 @@ hash(uintptr_t ptr) {
     return (uint16_t) ptr;
 }
 
-const char *
-get_color(uintptr_t ptr) {
-    return _foreground_colors[hash(ptr) % rust_log::LIGHTTEAL];
-}
-
 char *
 copy_string(char *dst, const char *src, size_t length) {
     return strncpy(dst, src, length) + length;
@@ -63,21 +49,6 @@ append_string(char *buffer, const char *format, ...) {
         size_t off = strlen(buffer);
         vsnprintf(buffer + off, BUF_BYTES - off, format, args);
         va_end(args);
-    }
-    return buffer;
-}
-
-char *
-append_string(char *buffer, rust_log::ansi_color color,
-              const char *format, ...) {
-    if (buffer != NULL && format) {
-        append_string(buffer, "\x1b%s", _foreground_colors[color]);
-        va_list args;
-        va_start(args, format);
-        size_t off = strlen(buffer);
-        vsnprintf(buffer + off, BUF_BYTES - off, format, args);
-        va_end(args);
-        append_string(buffer, "\x1b[0m");
     }
     return buffer;
 }

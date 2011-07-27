@@ -41,22 +41,6 @@ public:
     rust_log(rust_srv *srv, rust_scheduler *sched);
     virtual ~rust_log();
 
-    enum ansi_color {
-        WHITE,
-        RED,
-        LIGHTRED,
-        GREEN,
-        LIGHTGREEN,
-        YELLOW,
-        LIGHTYELLOW,
-        BLUE,
-        LIGHTBLUE,
-        MAGENTA,
-        LIGHTMAGENTA,
-        TEAL,
-        LIGHTTEAL
-    };
-
     void trace_ln(rust_task *task, uint32_t level, char *message);
     void trace_ln(uint32_t thread_id, char *prefix, char *message);
     bool is_tracing(uint32_t type_bits);
@@ -65,7 +49,6 @@ private:
     rust_srv *_srv;
     rust_scheduler *_sched;
     bool _use_labels;
-    bool _use_colors;
     void trace_ln(rust_task *task, char *message);
 };
 
