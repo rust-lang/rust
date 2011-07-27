@@ -573,10 +573,10 @@ mod procsrv {
     type response = {pid: int, outfd: int};
 
     fn mk() -> handle {
-        auto setupport = port();
-        auto task = spawn fn(chan[chan[request]] setupchan) {
-            auto reqport = port();
-            auto reqchan = chan(reqport);
+        let setupport = port();
+        let task = spawn fn(setupchan: chan[chan[request]]) {
+            let reqport = port();
+            let reqchan = chan(reqport);
             task::send(setupchan, reqchan);
             worker(reqport);
         } (chan(setupport));
