@@ -174,7 +174,7 @@ fn bclose(s: &ps, span: codemap::span) { bclose_(s, span, indent_unit); }
 
 fn is_bol(s: &ps) -> bool {
     ret s.s.last_token() == pp::EOF ||
-            s.s.last_token() == pp::hardbreak_tok();
+        s.s.last_token() == pp::hardbreak_tok();
 }
 
 fn hardbreak_if_not_bol(s: &ps) { if !is_bol(s) { hardbreak(s.s); } }
@@ -1030,8 +1030,7 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
               _ { }
             }
         }
-        fn local_span(loc: &@ast::local) -> codemap::span { ret loc.span; }
-        commasep_cmnt(s, consistent, locs, print_local, local_span);
+        commasep(s, consistent, locs, print_local);
         end(s);
       }
       ast::decl_item(item) { print_item(s, item); }
