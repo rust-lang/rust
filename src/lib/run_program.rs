@@ -73,11 +73,12 @@ fn start_program(prog: str, args: vec[str]) -> @program {
             finished = true;
             self.close_input();
             ret os::waitpid(pid);
-        }drop {
-             self.close_input();
-             if !finished { os::waitpid(pid); }
-             os::libc::fclose(out_file);
-         }
+        }
+        drop {
+            self.close_input();
+            if !finished { os::waitpid(pid); }
+            os::libc::fclose(out_file);
+        }
     }
     ret @new_program(pid, pipe_input.out, os::fd_FILE(pipe_output.in), false);
 }

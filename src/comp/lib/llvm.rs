@@ -1554,8 +1554,8 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> TypeRef[] {
 
 /* Memory-managed interface to target data. */
 
-obj target_data_dtor(TD: TargetDataRef)
-    {drop { llvm::LLVMDisposeTargetData(TD); }
+obj target_data_dtor(TD: TargetDataRef) {
+    drop { llvm::LLVMDisposeTargetData(TD); }
 }
 
 type target_data = {lltd: TargetDataRef, dtor: target_data_dtor};
@@ -1567,8 +1567,8 @@ fn mk_target_data(string_rep: str) -> target_data {
 
 /* Memory-managed interface to pass managers. */
 
-obj pass_manager_dtor(PM: PassManagerRef)
-    {drop { llvm::LLVMDisposePassManager(PM); }
+obj pass_manager_dtor(PM: PassManagerRef) {
+    drop { llvm::LLVMDisposePassManager(PM); }
 }
 
 type pass_manager = {llpm: PassManagerRef, dtor: pass_manager_dtor};
@@ -1580,8 +1580,8 @@ fn mk_pass_manager() -> pass_manager {
 
 /* Memory-managed interface to object files. */
 
-obj object_file_dtor(ObjectFile: ObjectFileRef)
-    {drop { llvm::LLVMDisposeObjectFile(ObjectFile); }
+obj object_file_dtor(ObjectFile: ObjectFileRef) {
+    drop { llvm::LLVMDisposeObjectFile(ObjectFile); }
 }
 
 type object_file = {llof: ObjectFileRef, dtor: object_file_dtor};
@@ -1593,8 +1593,8 @@ fn mk_object_file(llmb: MemoryBufferRef) -> object_file {
 
 /* Memory-managed interface to section iterators. */
 
-obj section_iter_dtor(SI: SectionIteratorRef)
-    {drop { llvm::LLVMDisposeSectionIterator(SI); }
+obj section_iter_dtor(SI: SectionIteratorRef) {
+    drop { llvm::LLVMDisposeSectionIterator(SI); }
 }
 
 type section_iter = {llsi: SectionIteratorRef, dtor: section_iter_dtor};

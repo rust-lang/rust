@@ -70,7 +70,8 @@ obj FILE_buf_reader(f: os::libc::FILE, must_close: bool) {
     }
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
-    }drop { if must_close { os::libc::fclose(f); } }
+    }
+    drop { if must_close { os::libc::fclose(f); } }
 }
 
 
@@ -248,7 +249,8 @@ obj FILE_writer(f: os::libc::FILE, must_close: bool) {
     }
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
-    }drop { if must_close { os::libc::fclose(f); } }
+    }
+    drop { if must_close { os::libc::fclose(f); } }
 }
 
 obj fd_buf_writer(fd: int, must_close: bool) {
@@ -274,7 +276,8 @@ obj fd_buf_writer(fd: int, must_close: bool) {
     fn tell() -> uint {
         log_err "need 64-bit native calls for tell, sorry";
         fail;
-    }drop { if must_close { os::libc::close(fd); } }
+    }
+    drop { if must_close { os::libc::close(fd); } }
 }
 
 fn file_buf_writer(path: str, flags: vec[fileflag]) -> buf_writer {
