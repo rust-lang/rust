@@ -28,7 +28,7 @@ for t in os.listdir(run_pass):
         if not ("xfail-stage2" in s or
                 "xfail-fast" in s):
             stage2_tests.append(t)
-            if "main(vec[str] args)" in s:
+            if "main(args: vec[str])" in s:
                 take_args[t] = True
         f.close()
 
