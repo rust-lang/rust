@@ -190,7 +190,7 @@ fn grow_init_fn[T](v: &mutable array[T], n: uint, init_fn: fn() -> T ) {
     while i > 0u { i -= 1u; v += [init_fn()]; }
 }
 
-fn grow_init_fn_set[T](v: &array[T], index: uint, init_fn: fn() -> T ,
+fn grow_init_fn_set[T](v: &mutable array[T], index: uint, init_fn: fn() -> T,
                        val: &T) {
     let length = vec::len(v);
     if index >= length { grow_init_fn(v, index - length + 1u, init_fn); }

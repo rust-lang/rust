@@ -88,7 +88,7 @@ tag test_result { tr_ok; tr_failed; tr_ignored; }
 // In cases where test functions and closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task = fn(&fn() ) -> task ;
+type test_to_task = fn(&fn()) -> task ;
 
 // A simple console test runner
 fn run_tests_console(opts: &test_opts, tests: &test_desc[]) -> bool {
@@ -298,7 +298,7 @@ native "rust" mod rustrt {
 // But, at least currently, functions can't be used as spawn arguments so
 // we've got to treat our test functions as unsafe pointers.  This function
 // only works with functions that don't contain closures.
-fn default_test_to_task(f: &fn() ) -> task {
+fn default_test_to_task(f: &fn()) -> task {
     fn run_task(fptr: *mutable fn() ) {
         // If this task fails we don't want that failure to propagate to the
         // test runner or else we couldn't keep running tests

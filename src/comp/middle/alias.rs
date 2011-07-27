@@ -41,14 +41,12 @@ type ctx = {tcx: ty::ctxt, local_map: std::map::hashmap[node_id, local_info]};
 fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
-    let cx =
-        @{tcx: tcx, local_map: std::map::new_int_hash()};
-    let v =
-        @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
-          visit_item: bind visit_item(cx, _, _, _),
-          visit_expr: bind visit_expr(cx, _, _, _),
-          visit_decl: bind visit_decl(cx, _, _, _)
-             with *visit::default_visitor[scope]()};
+    let cx = @{tcx: tcx, local_map: std::map::new_int_hash()};
+    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
+              visit_item: bind visit_item(cx, _, _, _),
+              visit_expr: bind visit_expr(cx, _, _, _),
+              visit_decl: bind visit_decl(cx, _, _, _)
+              with *visit::default_visitor[scope]()};
     visit::visit_crate(*crate, @~[], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
@@ -158,12 +156,29 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &(@ast::expr)[], sc: &scope) ->
             let arg = args.(i);
             let root = expr_root(cx, arg, false);
             if arg_t.mode == ty::mo_alias(true) {
-                alt path_def_id(cx, arg) {
-                  some(did) { mut_roots += ~[{arg: i, node: did.node}]; }
+                alt path_def(cx, arg) {
+                  some(def) {
+                    let dnum = ast::def_id_of_def(def).node;
+                    if def_is_local(def, true) {
+                        if is_immutable_alias(cx, sc, dnum) {
+                            cx.tcx.sess.span_err
+                                (arg.span, "passing an immutable alias \
+                                            by mutable alias");
+                        } else if is_immutable_objfield(cx, dnum) {
+                            cx.tcx.sess.span_err
+                                (arg.span, "passing an immutable object \
+                                            field by mutable alias");
+                        }
+                    } else {
+                        cx.tcx.sess.span_err
+                            (arg.span,
+                             "passing a static item by mutable alias");
+                    }
+                    mut_roots += ~[{arg: i, node: dnum}];
+                  }
                   _ {
                     if !mut_field(root.ds) {
-                        let m =
-                            "passing a temporary value or \
+                        let m = "passing a temporary value or \
                                  immutable field by mutable alias";
                         cx.tcx.sess.span_err(arg.span, m);
                     }
@@ -391,13 +406,13 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt[scope]) {
     alt dest.node {
       ast::expr_path(p) {
         let dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
-        if is_immutable_alias(cx, sc, dnum) {
+        if is_immutable_alias(*cx, sc, dnum) {
             cx.tcx.sess.span_err(dest.span, "assigning to immutable alias");
-        } else if (is_immutable_objfield(cx, dnum)) {
+        } else if (is_immutable_objfield(*cx, dnum)) {
             cx.tcx.sess.span_err(dest.span,
                                  "assigning to immutable obj field");
         }
-        for r: restrict  in *sc {
+        for r: restrict in *sc {
             if ivec::member(dnum, r.root_vars) {
                 r.ok = overwritten(dest.span, p);
             }
@@ -452,7 +467,7 @@ fn check_assign(cx: &@ctx, dest: &@ast::expr, src: &@ast::expr, sc: &scope,
 }
 
 
-fn is_immutable_alias(cx: &@ctx, sc: &scope, dnum: node_id) -> bool {
+fn is_immutable_alias(cx: &ctx, sc: &scope, dnum: node_id) -> bool {
     alt cx.local_map.find(dnum) {
       some(arg(ast::alias(false))) { ret true; }
       _ { }
@@ -463,7 +478,7 @@ fn is_immutable_alias(cx: &@ctx, sc: &scope, dnum: node_id) -> bool {
     ret false;
 }
 
-fn is_immutable_objfield(cx: &@ctx, dnum: node_id) -> bool {
+fn is_immutable_objfield(cx: &ctx, dnum: node_id) -> bool {
     ret cx.local_map.find(dnum) == some(objfield(ast::imm));
 }
 
@@ -612,6 +627,13 @@ fn mut_field(ds: &@deref[]) -> bool {
 fn inner_mut(ds: &@deref[]) -> option::t[ty::t] {
     for d: deref  in *ds { if d.mut { ret some(d.outer_t); } }
     ret none;
+}
+
+fn path_def(cx: &ctx, ex: &@ast::expr) -> option::t[ast::def] {
+    ret alt ex.node {
+      ast::expr_path(_) { some(cx.tcx.def_map.get(ex.id)) }
+      _ { none }
+    }
 }
 
 fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t[ast::def_id] {
