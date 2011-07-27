@@ -4411,10 +4411,12 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     // "target", in this context, means the function that's having some of its
     // arguments bound and that will be called inside the thunk we're
     // creating.  (In our running example, target is the function f.)  Pick
-    // out the pointer to the target function from the environment.
+    // out the pointer to the target function from the environment. The
+    // target function lives in the first binding spot.
     let lltarget =
         GEP_tup_like(bcx, closure_ty, llclosure,
-                     ~[0, abi::box_rc_field_body, abi::closure_elt_target]);
+                     ~[0, abi::box_rc_field_body,
+                       abi::closure_elt_bindings, 0]);
     bcx = lltarget.bcx;
 
     // And then, pick out the target function's own environment.  That's what
@@ -4457,7 +4459,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
 
     let a: uint = 3u; // retptr, task ptr, env come first
 
-    let b: int = 0;
+    let b: int = 1;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: TypeRef[] =
         type_of_explicit_args(cx.ccx, sp, outgoing_args);
@@ -4547,13 +4549,14 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     }
 
     // Figure out which tydescs we need to pass, if any.
-    let outgoing_fty: ty::t;
+    let outgoing_fty: ty::t = ty::expr_ty(bcx_tcx(cx), f);
+    let outgoing_fty_real; // the type with typarams still in it
     let lltydescs: ValueRef[];
     alt f_res.generic {
-      none. { outgoing_fty = ty::expr_ty(bcx_tcx(cx), f); lltydescs = ~[]; }
+      none. { outgoing_fty_real = outgoing_fty; lltydescs = ~[]; }
       some(ginfo) {
         lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
-        outgoing_fty = ginfo.item_type;
+        outgoing_fty_real = ginfo.item_type;
         lltydescs = ginfo.tydescs;
       }
     }
@@ -4565,9 +4568,17 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     }
     let bcx = f_res.res.bcx;
 
+    // Cast the function we are binding to be the type that the closure
+    // will expect it to have. The type the closure knows about has the
+    // type parameters substituted with the real types.
+    let llclosurety = T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
+    let src_loc = bcx.build.PointerCast(f_res.res.val, llclosurety);
+    let bound_f = {res: {bcx: bcx, val: src_loc} with f_res};
+
+    // Arrange for the bound function to live in the first binding spot.
+    let bound_tys: ty::t[] = ~[outgoing_fty];
+    let bound_vals: lval_result[] = ~[bound_f];
     // Translate the bound expressions.
-    let bound_tys: ty::t[] = ~[];
-    let bound_vals: lval_result[] = ~[];
     for e: @ast::expr  in bound {
         let lv = trans_lval(bcx, e);
         bcx = lv.res.bcx;
@@ -4627,14 +4638,6 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     bcx = bindings_tydesc.bcx;
     bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
-    // Store thunk-target.
-    let bound_target =
-        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_target)]);
-    let llclosurety = T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
-    let src_loc = bcx.build.PointerCast(f_res.res.val, llclosurety);
-    let src = bcx.build.Load(src_loc);
-    bcx.build.Store(src, bound_target);
-
     // Copy expr values into boxed bindings.
     let i = 0u;
     let bindings =
@@ -4647,28 +4650,24 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
-    alt f_res.generic {
-      none. {/* nothing to do */ }
-      some(ginfo) {
+    if ty_param_count > 0u {
         let ty_params_slot =
             bcx.build.GEP(closure,
                           ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
         let i = 0;
-        for td: ValueRef  in ginfo.tydescs {
+        for td: ValueRef  in lltydescs {
             let ty_param_slot =
                 bcx.build.GEP(ty_params_slot, ~[C_int(0), C_int(i)]);
             bcx.build.Store(td, ty_param_slot);
             i += 1;
         }
-        outgoing_fty = ginfo.item_type;
-      }
     }
 
     // Make thunk
     // The type of the entire bind expression.
     let pair_ty = node_id_type(bcx_ccx(cx), id);
     let llthunk =
-        trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty,
+        trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real,
                          args, closure_ty, bound_tys, ty_param_count);
 
     // Construct the function pair
