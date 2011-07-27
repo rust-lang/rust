@@ -23,6 +23,15 @@ const uint32_t log_note = 1;
         }                                                       \
     } while (0)
 
+#define KLOG(k, field, ...) \
+    KLOG_LVL(k, field, log_note, __VA_ARGS__)
+#define KLOG_LVL(k, field, lvl, ...)                          \
+    do {                                                      \
+        if (log_rt_##field >= lvl) {                          \
+            (k)->log(lvl, __VA_ARGS__);                       \
+        }                                                     \
+    } while (0)
+
 struct rust_scheduler;
 struct rust_task;
 

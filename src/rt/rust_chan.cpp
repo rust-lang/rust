@@ -13,14 +13,14 @@ rust_chan::rust_chan(rust_kernel *kernel, maybe_proxy<rust_port> *port,
     if (port) {
         associate(port);
     }
-    // DLOG(task->sched, comm, "new rust_chan(task=0x%" PRIxPTR
-    //     ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
-    //     (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
+    KLOG(kernel, comm, "new rust_chan(task=0x%" PRIxPTR
+        ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
+        (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
 }
 
 rust_chan::~rust_chan() {
-    // DLOG(kernel->sched, comm, "del rust_chan(task=0x%" PRIxPTR ")",
-    //      (uintptr_t) this);
+    KLOG(kernel, comm, "del rust_chan(task=0x%" PRIxPTR ")",
+         (uintptr_t) this);
 
     // A(kernel->sched, is_associated() == false,
     //   "Channel must be disassociated before being freed.");
@@ -33,9 +33,9 @@ void rust_chan::associate(maybe_proxy<rust_port> *port) {
     this->port = port;
     if (port->is_proxy() == false) {
         scoped_lock with(port->referent()->lock);
-        // DLOG(kernel->sched, task,
-        //     "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
-        //     this, port);
+        KLOG(kernel, task,
+            "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
+            this, port);
         ++this->ref_count;
         this->task = port->referent()->task;
         this->task->ref();
@@ -56,9 +56,9 @@ void rust_chan::disassociate() {
 
     if (port->is_proxy() == false) {
         scoped_lock with(port->referent()->lock);
-        // DLOG(kernel->sched, task,
-        //     "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
-        //     this, port->referent());
+        KLOG(kernel, task,
+             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
+             this, port->referent());
         --this->ref_count;
         task->deref();
         this->task = NULL;
@@ -98,7 +98,7 @@ void rust_chan::send(void *sptr) {
         buffer.dequeue(NULL);
     } else {
         if (target_port->task->blocked_on(target_port)) {
-            // DLOG(sched, comm, "dequeued in rendezvous_ptr");
+            KLOG(kernel, comm, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);
             target_port->task->rendezvous_ptr = 0;
             target_port->task->wakeup(target_port);

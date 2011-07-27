@@ -1,11 +1,7 @@
 #include "rust_internal.h"
 
-#define KLOG(...)                                          \
-  do {                                                     \
-      if (log_rt_kern >= log_note) {                       \
-          log(log_note, __VA_ARGS__);                      \
-      }                                                    \
-  } while (0)
+#define KLOG_(...) \
+    KLOG(this, kern, __VA_ARGS__)
 
 rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _region(srv, true),
@@ -32,8 +28,8 @@ rust_kernel::create_scheduler(int id) {
     rust_handle<rust_scheduler> *handle = internal_get_sched_handle(sched);
     message_queue->associate(handle);
     message_queues.append(message_queue);
-    KLOG("created scheduler: " PTR ", id: %d, index: %d",
-         sched, id, sched->list_index);
+    KLOG_("created scheduler: " PTR ", id: %d, index: %d",
+          sched, id, sched->list_index);
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return sched;
@@ -42,7 +38,7 @@ rust_kernel::create_scheduler(int id) {
 void
 rust_kernel::destroy_scheduler(rust_scheduler *sched) {
     _kernel_lock.lock();
-    KLOG("deleting scheduler: " PTR ", name: %s, index: %d",
+    KLOG_("deleting scheduler: " PTR ", name: %s, index: %d",
         sched, sched->name, sched->list_index);
     sched->message_queue->disassociate();
     rust_srv *srv = sched->srv;
@@ -166,14 +162,14 @@ rust_kernel::start_kernel_loop() {
 
 void
 rust_kernel::run() {
-    KLOG("started kernel loop");
+    KLOG_("started kernel loop");
     start_kernel_loop();
-    KLOG("finished kernel loop");
+    KLOG_("finished kernel loop");
 }
 
 void
 rust_kernel::terminate_kernel_loop() {
-    KLOG("terminating kernel loop");
+    KLOG_("terminating kernel loop");
     _interrupt_kernel_loop = true;
     signal_kernel_lock();
     join();
@@ -190,16 +186,16 @@ rust_kernel::~rust_kernel() {
     // messages.
     pump_message_queues();
 
-    KLOG("freeing handles");
+    KLOG_("freeing handles");
 
     free_handles(_task_handles);
-    KLOG("..task handles freed");
+    KLOG_("..task handles freed");
     free_handles(_port_handles);
-    KLOG("..port handles freed");
+    KLOG_("..port handles freed");
     free_handles(_sched_handles);
-    KLOG("..sched handles freed");
+    KLOG_("..sched handles freed");
 
-    KLOG("freeing queues");
+    KLOG_("freeing queues");
 
     rust_message_queue *queue = NULL;
     while (message_queues.pop(&queue)) {
@@ -228,7 +224,7 @@ rust_kernel::free_handles(hash_map<T*, rust_handle<T>* > &map) {
     T* key;
     rust_handle<T> *value;
     while (map.pop(&key, &value)) {
-        KLOG("...freeing " PTR, value);
+        KLOG_("...freeing " PTR, value);
         delete value;
     }
 }
