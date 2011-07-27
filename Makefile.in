@@ -166,7 +166,6 @@ define SREQ
 ifdef CFG_DISABLE_SHAREDSTD
 SREQ$(1) = stage$(1)/rustc$(X)          \
            stage$(1)/$$(CFG_RUNTIME)     \
-           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
            stage$(1)/$$(CFG_RUSTLLVM)    \
            stage$(1)/lib/glue.o          \
            stage$(1)/lib/main.o          \
@@ -175,12 +174,10 @@ SREQ$(1) = stage$(1)/rustc$(X)          \
 else
 SREQ$(1) = stage$(1)/rustc$(X)          \
            stage$(1)/$$(CFG_RUNTIME)     \
-           $$(call CFG_STDLIB_DEFAULT,stage$(1),stage$(1)) \
            stage$(1)/$$(CFG_RUSTLLVM)    \
            stage$(1)/lib/glue.o          \
            stage$(1)/lib/main.o          \
            stage$(1)/lib/$$(CFG_RUNTIME) \
-           stage$(1)/lib/$$(CFG_STDLIB)  \
            $$(MKFILES)
 endif
 
@@ -207,7 +204,7 @@ CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
-all: $(SREQ0) $(SREQ1) $(GENERATED) $(DOCS) $(FUZZ)
+all: $(SREQ0) $(SREQ1)
 else
 all: $(SREQ0) $(SREQ1) $(SREQ2) $(SREQ3) $(GENERATED) $(DOCS) $(FUZZ)
 endif
