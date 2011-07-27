@@ -3721,14 +3721,14 @@ fn build_environment(cx: &@block_ctxt, upvars: &freevar_set) ->
     }
 
     // Create an environment and populate it with the bindings.
-    let tydesc_count = std::ivec::len[ValueRef](cx.fcx.lltydescs);
+    let tydesc_count = std::ivec::len(cx.fcx.lltydescs);
     let llenvptrty =
-        T_closure_ptr(*bcx_ccx(cx), T_ptr(T_nil()), val_ty(llbindingsptr),
-                      tydesc_count);
+        T_closure_ptr(*bcx_ccx(cx), val_ty(llbindingsptr), tydesc_count);
     let llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
     let llbindingsptrptr =
         cx.build.GEP(llenvptr,
-                     ~[C_int(0), C_int(abi::box_rc_field_body), C_int(2)]);
+                     ~[C_int(0), C_int(abi::box_rc_field_body),
+                       C_int(abi::closure_elt_bindings)]);
     cx.build.Store(llbindingsptr, llbindingsptrptr);
 
     // Copy in our type descriptors, in case the iterator body needs to refer
@@ -4610,8 +4610,7 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
     // ...], [tydesc_ty, tydesc_ty, ...]]
     let closure_tys: ty::t[] =
-        ~[tydesc_ty, outgoing_fty, bindings_ty,
-          ty::mk_imm_tup(bcx_tcx(cx), captured_tys)];
+        ~[tydesc_ty, bindings_ty, ty::mk_imm_tup(bcx_tcx(cx), captured_tys)];
 
     // Finally, synthesize a type for that whole vector.
     let closure_ty: ty::t = ty::mk_imm_tup(bcx_tcx(cx), closure_tys);

@@ -97,11 +97,9 @@ const fn_field_box: int = 1;
 
 const closure_elt_tydesc: int = 0;
 
-const closure_elt_target: int = 1;
+const closure_elt_bindings: int = 1;
 
-const closure_elt_bindings: int = 2;
-
-const closure_elt_ty_params: int = 3;
+const closure_elt_ty_params: int = 2;
 
 const ivec_default_length: uint = 4u;
 
