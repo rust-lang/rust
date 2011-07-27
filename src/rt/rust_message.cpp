@@ -61,8 +61,8 @@ void notify_message::process() {
         break;
     case JOIN: {
         if (task->dead() == false) {
-            rust_proxy<rust_task> *proxy = new rust_proxy<rust_task>(_source);
-            task->tasks_waiting_to_join.append(proxy);
+            // FIXME: this should be dead code.
+            assert(false);
         } else {
             send(WAKEUP, "wakeup", _target, _source);
         }

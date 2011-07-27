@@ -89,14 +89,14 @@ rust_scheduler::reap_dead_tasks(int id) {
         rust_task *task = dead_tasks[i];
         task->lock.lock();
         // Make sure this task isn't still running somewhere else...
-        if (task->ref_count == 0 && task->can_schedule(id)) {
+        if (task->can_schedule(id)) {
             I(this, task->tasks_waiting_to_join.is_empty());
             dead_tasks.remove(task);
             DLOG(this, task,
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
             task->lock.unlock();
-            delete task;
+            task->deref();
             sync::decrement(kernel->live_tasks);
             kernel->wakeup_schedulers();
             continue;
@@ -174,9 +174,8 @@ rust_scheduler::log_state() {
     if (!dead_tasks.is_empty()) {
         log(NULL, log_note, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(NULL, log_note, "\t task: %s 0x%" PRIxPTR ", ref_count: %d",
-                dead_tasks[i]->name, dead_tasks[i],
-                dead_tasks[i]->ref_count);
+            log(NULL, log_note, "\t task: %s 0x%" PRIxPTR,
+                dead_tasks[i]->name, dead_tasks[i]);
         }
     }
 }
@@ -225,15 +224,13 @@ rust_scheduler::start_main_loop() {
         I(this, scheduled_task->running());
 
         DLOG(this, task,
-            "activating task %s 0x%" PRIxPTR
-            ", sp=0x%" PRIxPTR
-            ", ref_count=%d"
-            ", state: %s",
-            scheduled_task->name,
-            (uintptr_t)scheduled_task,
-            scheduled_task->rust_sp,
-            scheduled_task->ref_count,
-            scheduled_task->state->name);
+             "activating task %s 0x%" PRIxPTR
+             ", sp=0x%" PRIxPTR
+             ", state: %s",
+             scheduled_task->name,
+             (uintptr_t)scheduled_task,
+             scheduled_task->rust_sp,
+             scheduled_task->state->name);
 
         interrupt_flag = 0;
 

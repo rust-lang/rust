@@ -34,10 +34,19 @@ struct gc_alloc {
     }
 };
 
+
 struct
-rust_task : public maybe_proxy<rust_task>,
-            public kernel_owned<rust_task>
+rust_task : public kernel_owned<rust_task>, rust_cond
 {
+    // This block could be pulled out into something like a
+    // RUST_ATOMIC_REFCOUNTED macro.
+private:
+    intptr_t ref_count;
+public:
+    void ref() { sync::increment(ref_count); }
+    void deref() { if(0 == sync::decrement(ref_count)) { delete this; } }
+
+
     // Fields known to the compiler.
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
@@ -69,7 +78,7 @@ rust_task : public maybe_proxy<rust_task>,
     uintptr_t* rendezvous_ptr;
 
     // List of tasks waiting for this task to finish.
-    array_list<maybe_proxy<rust_task> *> tasks_waiting_to_join;
+    array_list<rust_task *> tasks_waiting_to_join;
 
     rust_handle<rust_task> *handle;
 
