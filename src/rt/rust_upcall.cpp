@@ -547,6 +547,23 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     return task;
 }
 
+extern "C" CDECL void
+upcall_take_task(rust_task *task, rust_task *target) {
+    LOG_UPCALL_ENTRY(task);
+    if(target) {
+        target->ref();
+    }
+}
+
+extern "C" CDECL void
+upcall_drop_task(rust_task *task, rust_task *target) {
+    LOG_UPCALL_ENTRY(task);
+    if(target) {
+        //target->deref();
+        --target->ref_count;
+    }
+}
+
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,

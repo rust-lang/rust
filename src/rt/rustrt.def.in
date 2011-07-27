@@ -59,6 +59,7 @@ upcall_chan_target_task
 upcall_clone_chan
 upcall_del_chan
 upcall_del_port
+upcall_drop_task
 upcall_dup_str
 upcall_exit
 upcall_fail
@@ -87,6 +88,7 @@ upcall_shared_malloc
 upcall_shared_free
 upcall_sleep
 upcall_start_task
+upcall_take_task
 upcall_trace_str
 upcall_trace_word
 upcall_vec_append

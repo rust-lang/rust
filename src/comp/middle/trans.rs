@@ -1221,7 +1221,13 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
 
     let bcx;
-    if ty::type_is_boxed(bcx_tcx(cx), t) {
+
+    if ty::type_is_task(bcx_tcx(cx), t) {
+        let task_ptr = cx.build.Load(v);
+        cx.build.Call(bcx_ccx(cx).upcalls.take_task,
+                      ~[cx.fcx.lltaskptr, task_ptr]);
+        bcx = cx;
+    } else if ty::type_is_boxed(bcx_tcx(cx), t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(bcx_tcx(cx), t)) {
         bcx = duplicate_heap_parts_if_necessary(cx, v, t).bcx;
@@ -1381,7 +1387,12 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_port(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_chan(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_task. { decr_refcnt_maybe_free(cx, v0, v0, t) }
+          ty::ty_task. {
+            let task_ptr = cx.build.Load(v0);
+            {bcx: cx,
+             val: cx.build.Call(bcx_ccx(cx).upcalls.drop_task,
+                                ~[cx.fcx.lltaskptr, task_ptr])}
+          }
           ty::ty_obj(_) {
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::obj_field_box)]);
