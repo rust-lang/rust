@@ -615,9 +615,7 @@ fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
                 cbox(s, indent_unit - 1u);
                 ibox(s, 0u);
                 word(s.s, " else if ");
-                popen(s);
                 print_expr(s, i);
-                pclose(s);
                 space(s.s);
                 print_block(s, t);
                 do_else(s, e);
@@ -775,19 +773,13 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
       }
       ast::expr_for(decl, expr, blk) {
         head(s, "for");
-        print_for_decl(s, decl);
-        space(s.s);
-        word_space(s, "in");
-        print_expr(s, expr);
+        print_for_decl(s, decl, expr);
         space(s.s);
         print_block(s, blk);
       }
       ast::expr_for_each(decl, expr, blk) {
         head(s, "for each");
-        print_for_decl(s, decl);
-        space(s.s);
-        word_space(s, "in");
-        print_expr(s, expr);
+        print_for_decl(s, decl, expr);
         space(s.s);
         print_block(s, blk);
       }
@@ -1043,13 +1035,15 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
 
 fn print_ident(s: &ps, ident: &ast::ident) { word(s.s, ident); }
 
-fn print_for_decl(s: &ps, loc: @ast::local) {
+fn print_for_decl(s: &ps, loc: &@ast::local, coll: &@ast::expr) {
     word(s.s, loc.node.ident);
     alt loc.node.ty {
       some(t) { word_space(s, ":"); print_type(s, *t); }
       none. { }
     }
     space(s.s);
+    word_space(s, "in");
+    print_expr(s, coll);
 }
 
 fn print_path(s: &ps, path: &ast::path) {
