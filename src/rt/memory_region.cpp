@@ -4,7 +4,7 @@
 // NB: please do not commit code with this uncommented. It's
 // hugely expensive and should only be used as a last resort.
 //
-#define TRACK_ALLOCATIONS
+//#define TRACK_ALLOCATIONS
 
 #define MAGIC 0xbadc0ffe
 
