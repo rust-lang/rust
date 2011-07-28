@@ -379,6 +379,8 @@ fn buffered_file_buf_writer(path: str) -> buf_writer {
 // FIXME it would be great if this could be a const
 fn stdout() -> writer { ret new_writer(fd_buf_writer(1, false)); }
 
+fn stderr() -> writer { ret new_writer(fd_buf_writer(2, false)); }
+
 type str_writer =
     obj {
         fn get_writer() -> writer ;
