@@ -483,7 +483,6 @@ fn parse_ty(p: &parser) -> @ast::ty {
     let t: ast::ty_;
     // FIXME: do something with this
 
-    parse_layer(p);
     if eat_word(p, "bool") {
         t = ast::ty_bool;
     } else if (eat_word(p, "int")) {
@@ -1821,7 +1820,7 @@ fn parse_dtor(p: &parser) -> @ast::method {
     ret @spanned(lo, f.body.span.hi, m);
 }
 
-fn parse_item_obj(p: &parser, lyr: ast::layer, attrs: &ast::attribute[]) ->
+fn parse_item_obj(p: &parser, attrs: &ast::attribute[]) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
@@ -1844,7 +1843,7 @@ fn parse_item_obj(p: &parser, lyr: ast::layer, attrs: &ast::attribute[]) ->
                 attrs);
 }
 
-fn parse_item_res(p: &parser, lyr: ast::layer, attrs: &ast::attribute[]) ->
+fn parse_item_res(p: &parser, attrs: &ast::attribute[]) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
@@ -1945,7 +1944,6 @@ fn parse_item_native_fn(p: &parser, attrs: &ast::attribute[]) ->
 
 fn parse_native_item(p: &parser, attrs: &ast::attribute[]) ->
    @ast::native_item {
-    parse_layer(p);
     if eat_word(p, "type") {
         ret parse_item_native_type(p, attrs);
     } else if (eat_word(p, "fn")) {
@@ -2084,15 +2082,6 @@ fn parse_item_tag(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_tag(variants, ty_params), attrs);
 }
 
-fn parse_layer(p: &parser) -> ast::layer {
-    if eat_word(p, "state") {
-        ret ast::layer_state;
-    } else if (eat_word(p, "gc")) {
-        ret ast::layer_gc;
-    } else { ret ast::layer_value; }
-    fail;
-}
-
 fn parse_auth(p: &parser) -> ast::_auth {
     if eat_word(p, "unsafe") {
         ret ast::auth_unsafe;
@@ -2122,15 +2111,14 @@ fn parse_item(p: &parser, attrs: &ast::attribute[]) -> parsed_item {
     } else if (eat_word(p, "native")) {
         ret got_item(parse_item_native_mod(p, attrs));
     }
-    let lyr = parse_layer(p);
     if eat_word(p, "type") {
         ret got_item(parse_item_type(p, attrs));
     } else if (eat_word(p, "tag")) {
         ret got_item(parse_item_tag(p, attrs));
     } else if (eat_word(p, "obj")) {
-        ret got_item(parse_item_obj(p, lyr, attrs));
+        ret got_item(parse_item_obj(p, attrs));
     } else if (eat_word(p, "resource")) {
-        ret got_item(parse_item_res(p, lyr, attrs));
+        ret got_item(parse_item_res(p, attrs));
     } else { ret no_item; }
 }
 

@@ -152,6 +152,7 @@ export ty_fn_args;
 export type_constr;
 export type_contains_params;
 export type_contains_vars;
+export type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
@@ -216,6 +217,7 @@ type ctxt =
       rcache: creader_cache,
       short_names_cache: hashmap[t, str],
       has_pointer_cache: hashmap[t, bool],
+      kind_cache: hashmap[t, ast::kind],
       owns_heap_mem_cache: hashmap[t, bool],
       ast_ty_to_ty_cache: hashmap[@ast::ty, option::t[t]]};
 
@@ -409,6 +411,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           rcache: mk_rcache(),
           short_names_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           has_pointer_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
+          kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           owns_heap_mem_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           ast_ty_to_ty_cache: map::mk_hashmap(ast::hash_ty, ast::eq_ty)};
     populate_type_store(cx);
@@ -981,7 +984,10 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
       ty_native(_) {/* no-op */ }
       ty_rec(flds) {
         for f: field  in flds {
-            if type_has_pointers(cx, f.mt.ty) { result = true; }
+            if type_has_pointers(cx, f.mt.ty) {
+                result = true;
+                break;
+            }
         }
       }
       ty_tag(did, tps) {
@@ -990,8 +996,12 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
             for aty: t  in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
-                if type_has_pointers(cx, arg_ty) { result = true; }
+                if type_has_pointers(cx, arg_ty) {
+                    result = true;
+                    break;
+                }
             }
+            if result { break; }
         }
       }
       ty_res(did, inner, tps) {
@@ -1002,6 +1012,122 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
     }
 
     cx.has_pointer_cache.insert(ty, result);
+    ret result;
+}
+
+fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
+    alt cx.kind_cache.find(ty) {
+      some(result) { ret result; }
+      none. {/* fall through */ }
+    }
+
+    let result = ast::kind_unique;
+
+    // Insert a default in case we loop back on self recursively.
+    cx.kind_cache.insert(ty, result);
+
+    alt struct(cx, ty) {
+
+      // Scalar types are unique-kind, no substructure.
+      ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_uint. | ty_float.
+      | ty_machine(_) | ty_char. | ty_native(_) {
+        // no-op
+      }
+
+      // A handful of other built-in are unique too.
+      ty_type. | ty_istr. | ty_native_fn(_, _, _) {
+        // no-op
+      }
+
+      // Those things with refcounts-to-interior are just shared.
+      ty_str. | ty_task. {
+        result = kind_shared;
+      }
+
+      // FIXME: obj is broken for now, since we aren't asserting
+      // anything about its fields.
+      ty_obj(_) { result = kind_shared; }
+
+      // FIXME: the environment capture mode is not fully encoded
+      // here yet, leading to weirdness around closure.
+      ty_fn(proto, _, _, _, _) {
+        result = alt proto {
+          ast::proto_block. { ast::kind_pinned }
+          ast::proto_closure. { ast::kind_shared }
+          _ { ast::kind_unique }
+        }
+      }
+
+      // Those with refcounts-to-inner are the lower of their
+      // inner and shared.
+      ty_box(mt) | ty_vec(mt) {
+        result = kind::lower_kind(ast::kind_shared,
+                                  type_kind(cx, mt.ty));
+
+      }
+
+      // FIXME: remove ports. Ports currently contribute 'shared'
+      ty_port(t) {
+        result = kind::lower_kind(ast::kind_shared,
+                                  type_kind(cx, t));
+      }
+
+      // FIXME: remove chans. Chans currently contribute only
+      // their inner.
+      ty_chan(t) {
+        result = type_kind(cx, t);
+      }
+
+      // Pointers and unique boxes / vecs lower to whatever they point to.
+      ty_ptr(tm) | ty_ivec(tm) {
+        result = type_kind(cx, tm.ty);
+      }
+
+      // Records lower to the lowest of their members.
+      ty_rec(flds) {
+        for f: field  in flds {
+            result = kind::lower_kind(result, type_kind(cx, f.mt.ty));
+            if result == ast::kind_pinned { break; }
+        }
+      }
+
+      // Tags lower to the lowest of their variants.
+      ty_tag(did, tps) {
+        let variants = tag_variants(cx, did);
+        for variant: variant_info  in variants {
+            for aty: t  in variant.args {
+                // Perform any type parameter substitutions.
+                let arg_ty = substitute_type_params(cx, tps, aty);
+                result = kind::lower_kind(result, type_kind(cx, arg_ty));
+                if result == ast::kind_pinned { break; }
+            }
+            if result == ast::kind_pinned { break; }
+        }
+      }
+
+      // Resources are always pinned.
+      ty_res(did, inner, tps) {
+        result = ast::kind_pinned;
+      }
+
+      ty_var(_) { fail; }
+
+      ty_param(_) {
+        // FIXME: this should contribute the kind-bound of the typaram,
+        // when those exist.
+      }
+
+      ty_constr(t, _) {
+        result = type_kind(cx, t);
+      }
+
+        _ {
+            cx.sess.bug("missed case: " + ty_to_str(cx, ty));
+        }
+
+    }
+
+    cx.kind_cache.insert(ty, result);
     ret result;
 }
 

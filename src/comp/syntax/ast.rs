@@ -157,7 +157,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
 
 tag mutability { mut; imm; maybe_mut; }
 
-tag layer { layer_value; layer_state; layer_gc; }
+tag kind { kind_pinned; kind_shared; kind_unique; }
 
 tag _auth { auth_unsafe; }
 

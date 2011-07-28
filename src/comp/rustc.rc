@@ -27,6 +27,7 @@ mod middle {
     mod typeck;
     mod check_alt;
     mod alias;
+    mod kind;
     mod freevars;
 
     mod tstate {

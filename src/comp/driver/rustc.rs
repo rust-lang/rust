@@ -11,6 +11,7 @@ import front::attr;
 import middle::trans;
 import middle::resolve;
 import middle::freevars;
+import middle::kind;
 import middle::ty;
 import middle::typeck;
 import middle::tstate::ck;
@@ -147,6 +148,8 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     }
     time(time_passes, "alias checking",
          bind middle::alias::check_crate(ty_cx, crate));
+    time[()](time_passes, "kind checking",
+             bind kind::check_crate(ty_cx, crate));
     let llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
                                     bind trans::trans_crate(sess, crate,
