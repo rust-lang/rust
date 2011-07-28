@@ -130,7 +130,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
             "<resource#" + int::str(id.node) + ":" + int::str(id.crate) + ">";
       }
       ty_var(v) { s += "<T" + int::str(v) + ">"; }
-      ty_param(id) {
+      ty_param(id,_) {
         s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
       }
       _ { s += ty_to_short_str(cx, typ); }

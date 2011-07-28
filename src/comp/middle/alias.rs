@@ -682,7 +682,7 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
           // treated as opaque downstream, and is thus safe unless we
           // saw mutable fields, in which case the whole thing can be
           // overwritten.
-          ty::ty_param(_) {
+          ty::ty_param(_,_) {
             ret mut;
           }
           _ { ret false; }

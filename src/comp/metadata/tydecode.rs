@@ -202,7 +202,18 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_tag(st.tcx, def, params);
       }
-      'p' { ret ty::mk_param(st.tcx, parse_int(st) as uint); }
+      'p' {
+        let k = alt next(st) as char {
+          'u' { kind_unique }
+          's' { kind_shared }
+          'p' { kind_pinned }
+          c {
+            log_err "unexpected char in encoded type param: ";
+            log_err c; fail
+          }
+        };
+        ret ty::mk_param(st.tcx, parse_int(st) as uint, k);
+      }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
       '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, sd)); }
       'V' { ret ty::mk_vec(st.tcx, parse_mt(st, sd)); }

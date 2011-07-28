@@ -173,7 +173,14 @@ fn enc_sty(w: &ioivec::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
       }
-      ty::ty_param(id) { w.write_char('p'); w.write_str(uint::str(id)); }
+      ty::ty_param(id,k) {
+        alt k {
+          kind_unique. { w.write_str("pu"); }
+          kind_shared. { w.write_str("ps"); }
+          kind_pinned. { w.write_str("pp"); }
+        }
+        w.write_str(uint::str(id));
+      }
       ty::ty_type. { w.write_char('Y'); }
       ty::ty_task. { w.write_char('a'); }
       ty::ty_constr(ty, cs) {

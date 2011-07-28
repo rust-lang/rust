@@ -272,7 +272,7 @@ tag sty {
     ty_res(def_id, t, t[]);
     ty_var(int); // type variable
 
-    ty_param(uint); // fn/tag type param
+    ty_param(uint, ast::kind); // fn/tag type param
 
     ty_type;
     ty_native(def_id);
@@ -459,7 +459,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
       ty_task. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
-      ty_param(_) { has_params = true; }
+      ty_param(_,_) { has_params = true; }
       ty_var(_) { has_vars = true; }
       ty_tag(_, tys) {
         for tt: t  in tys { derive_flags_t(cx, has_params, has_vars, tt); }
@@ -605,7 +605,9 @@ fn mk_res(cx: &ctxt, did: &ast::def_id, inner: &t, tps: &t[]) -> t {
 
 fn mk_var(cx: &ctxt, v: int) -> t { ret gen_ty(cx, ty_var(v)); }
 
-fn mk_param(cx: &ctxt, n: uint) -> t { ret gen_ty(cx, ty_param(n)); }
+fn mk_param(cx: &ctxt, n: uint, k: ast::kind) -> t {
+    ret gen_ty(cx, ty_param(n, k));
+}
 
 fn mk_type(cx: &ctxt) -> t { ret idx_type; }
 
@@ -672,14 +674,14 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
         for tp: t  in tps { walk_ty(cx, walker, tp); }
       }
       ty_var(_) {/* no-op */ }
-      ty_param(_) {/* no-op */ }
+      ty_param(_,_) {/* no-op */ }
     }
     walker(ty);
 }
 
 tag fold_mode {
     fm_var(fn(int) -> t );
-    fm_param(fn(uint) -> t );
+    fm_param(fn(uint,ast::kind) -> t );
     fm_general(fn(t) -> t );
 }
 
@@ -800,8 +802,8 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_var(id) {
         alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
       }
-      ty_param(id) {
-        alt fld { fm_param(folder) { ty = folder(id); } _ {/* no-op */ } }
+      ty_param(id,k) {
+        alt fld { fm_param(folder) { ty = folder(id,k); } _ {/* no-op */ } }
       }
     }
 
@@ -1118,9 +1120,11 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
 
       ty_var(_) { fail; }
 
-      ty_param(_) {
-        // FIXME: this should contribute the kind-bound of the typaram,
-        // when those exist.
+      ty_param(_,k) {
+        // FIXME: when you turn this on, the stdlib will break; be sure
+        // to have a snapshot done that understands kinds before doing so.
+
+        // result = kind::lower_kind(result, k);
       }
 
       ty_constr(t, _) {
@@ -1187,7 +1191,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
         ret type_has_dynamic_size(cx, sub);
       }
       ty_var(_) { fail "ty_var in type_has_dynamic_size()"; }
-      ty_param(_) { ret true; }
+      ty_param(_,_) { ret true; }
       ty_type. { ret false; }
       ty_native(_) { ret false; }
     }
@@ -1313,7 +1317,7 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
       ty_chan(_) { result = false; }
       ty_task. { result = false; }
       ty_var(_) { fail "ty_var in type_owns_heap_mem"; }
-      ty_param(_) { result = false; }
+      ty_param(_,_) { result = false; }
     }
 
     cx.owns_heap_mem_cache.insert(ty, result);
@@ -1322,7 +1326,7 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
 
 fn type_param(cx: &ctxt, ty: &t) -> option::t[uint] {
     alt struct(cx, ty) {
-      ty_param(id) { ret some(id); }
+      ty_param(id,_) { ret some(id); }
       _ {/* fall through */ }
     }
     ret none;
@@ -1450,7 +1454,7 @@ fn hash_type_structure(st: &sty) -> uint {
         ret h;
       }
       ty_var(v) { ret hash_uint(30u, v as uint); }
-      ty_param(pid) { ret hash_uint(31u, pid); }
+      ty_param(pid,_) { ret hash_uint(31u, pid); }
       ty_type. { ret 32u; }
       ty_native(did) { ret hash_def(33u, did); }
       ty_bot. { ret 34u; }
@@ -1676,8 +1680,9 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_var(v_a) {
         alt b { ty_var(v_b) { ret v_a == v_b; } _ { ret false; } }
       }
-      ty_param(pid_a) {
-        alt b { ty_param(pid_b) { ret pid_a == pid_b; } _ { ret false; } }
+      ty_param(pid_a,k_a) {
+        alt b { ty_param(pid_b,k_b) { ret pid_a == pid_b && k_a == k_b; }
+               _ { ret false; } }
       }
       ty_type. { alt b { ty_type. { ret true; } _ { ret false; } } }
       ty_native(a_id) {
@@ -1777,7 +1782,7 @@ fn node_id_to_monotype(cx: &ctxt, id: ast::node_id) -> t {
 fn count_ty_params(cx: &ctxt, ty: t) -> uint {
     fn counter(cx: &ctxt, param_indices: @mutable uint[], ty: t) {
         alt struct(cx, ty) {
-          ty_param(param_idx) {
+          ty_param(param_idx,_) {
             let seen = false;
             for other_param_idx: uint  in *param_indices {
                 if param_idx == other_param_idx { seen = true; }
@@ -2333,7 +2338,7 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_param(_) { ret struct_cmp(cx, expected, actual); }
+          ty::ty_param(_,_) { ret struct_cmp(cx, expected, actual); }
           ty::ty_tag(expected_id, expected_tps) {
             alt struct(cx.tcx, actual) {
               ty::ty_tag(actual_id, actual_tps) {
@@ -2719,7 +2724,7 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
     let i = 0u;
     while i < ty_param_count { *param_var_ids += ~[next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable int[],
-              next_ty_var: fn() -> int , index: uint) -> t {
+              next_ty_var: fn() -> int , index: uint, kind: ast::kind) -> t {
         if index < ivec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids.(index));
         } else {
@@ -2728,7 +2733,8 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
     }
     let new_typ =
         fold_ty(cx,
-                fm_param(bind binder(sp, cx, param_var_ids, next_ty_var, _)),
+                fm_param(bind binder(sp, cx, param_var_ids, next_ty_var,
+                                     _, _)),
                 typ);
     ret {ids: *param_var_ids, ty: new_typ};
 }
@@ -2738,11 +2744,12 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
 // substitions.
 fn substitute_type_params(cx: &ctxt, substs: &ty::t[], typ: t) -> t {
     if !type_contains_params(cx, typ) { ret typ; }
-    fn substituter(cx: ctxt, substs: @ty::t[], idx: uint) -> t {
+    fn substituter(cx: ctxt, substs: @ty::t[], idx: uint,
+                   kind: ast::kind) -> t {
         // FIXME: bounds check can fail
         ret substs.(idx);
     }
-    ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _)), typ);
+    ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _, _)), typ);
 }
 
 fn def_has_ty_params(def: &ast::def) -> bool {
@@ -2755,7 +2762,7 @@ fn def_has_ty_params(def: &ast::def) -> bool {
       ast::def_local(_) { ret false; }
       ast::def_variant(_, _) { ret true; }
       ast::def_ty(_) { ret false; }
-      ast::def_ty_arg(_) { ret false; }
+      ast::def_ty_arg(_,_) { ret false; }
       ast::def_binding(_) { ret false; }
       ast::def_use(_) { ret false; }
       ast::def_native_ty(_) { ret false; }

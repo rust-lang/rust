@@ -46,7 +46,7 @@ tag def {
 
     /* variant */
     def_ty(def_id);
-    def_ty_arg(uint);
+    def_ty_arg(uint, kind);
     def_binding(def_id);
     def_use(def_id);
     def_native_ty(def_id);
@@ -74,7 +74,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_local(id) { ret id; }
       def_variant(_, id) { ret id; }
       def_ty(id) { ret id; }
-      def_ty_arg(_) { fail; }
+      def_ty_arg(_,_) { fail; }
       def_binding(id) { ret id; }
       def_use(id) { ret id; }
       def_native_ty(id) { ret id; }

@@ -367,7 +367,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
             typ = instantiate(tcx, ast_ty.span, getter, id, path.node.types);
           }
           some(ast::def_native_ty(id)) { typ = getter(id).ty; }
-          some(ast::def_ty_arg(id)) { typ = ty::mk_param(tcx, id); }
+          some(ast::def_ty_arg(id,k)) { typ = ty::mk_param(tcx, id, k); }
           some(_) {
             tcx.sess.span_fatal(ast_ty.span,
                                 "found type name used as a variable");
@@ -505,10 +505,13 @@ fn proto_to_ty_proto(proto: &ast::proto) -> ast::proto {
 mod collect {
     type ctxt = {tcx: ty::ctxt};
 
-    fn mk_ty_params(cx: &@ctxt, n: uint) -> ty::t[] {
+    fn mk_ty_params(cx: &@ctxt, atps: &ast::ty_param[]) -> ty::t[] {
         let tps = ~[];
         let i = 0u;
-        while i < n { tps += ~[ty::mk_param(cx.tcx, i)]; i += 1u; }
+        for atp: ast::ty_param in atps {
+            tps += ~[ty::mk_param(cx.tcx, i, atp.kind)];
+            i += 1u;
+        }
         ret tps;
     }
     fn ty_of_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t ,
@@ -667,7 +670,7 @@ mod collect {
                 {count: ivec::len(tps),
                  ty:
                      ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
-                                mk_ty_params(cx, ivec::len(tps)))};
+                                mk_ty_params(cx, tps))};
             cx.tcx.tcache.insert(local_def(it.id), t_res);
             ret t_res;
           }
@@ -676,7 +679,7 @@ mod collect {
 
             let ty_param_count = ivec::len[ast::ty_param](tps);
 
-            let subtys: ty::t[] = mk_ty_params(cx, ty_param_count);
+            let subtys: ty::t[] = mk_ty_params(cx, tps);
             let t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
             let tpt = {count: ty_param_count, ty: t};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
@@ -714,7 +717,7 @@ mod collect {
         // Create a set of parameter types shared among all the variants.
 
         let ty_param_count = ivec::len[ast::ty_param](ty_params);
-        let ty_param_tys: ty::t[] = mk_ty_params(cx, ty_param_count);
+        let ty_param_tys: ty::t[] = mk_ty_params(cx, ty_params);
         for variant: ast::variant  in variants {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
@@ -820,7 +823,7 @@ mod collect {
             let t_arg = ty_of_arg(cx, f.decl.inputs.(0));
             let t_res =
                 ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
-                           mk_ty_params(cx, ivec::len(tps)));
+                           mk_ty_params(cx, tps));
             let t_ctor =
                 ty::mk_fn(cx.tcx, ast::proto_fn, ~[t_arg], t_res, ast::return,
                           ~[]);

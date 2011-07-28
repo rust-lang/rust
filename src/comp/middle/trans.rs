@@ -256,7 +256,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_var(_) {
         cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
       }
-      ty::ty_param(_) { llty = T_i8(); }
+      ty::ty_param(_, _) { llty = T_i8(); }
       ty::ty_type. { llty = T_ptr(cx.tydesc_type); }
     }
     assert (llty as int != 0);
@@ -281,7 +281,7 @@ fn type_of_tag(cx: &@crate_ctxt, sp: &span, did: &ast::def_id, t: &ty::t) ->
 
 fn type_of_arg(cx: @local_ctxt, sp: &span, arg: &ty::arg) -> TypeRef {
     alt ty::struct(cx.ccx.tcx, arg.ty) {
-      ty::ty_param(_) {
+      ty::ty_param(_, _) {
         if arg.mode != ty::mo_val { ret T_typaram_ptr(cx.ccx.tn); }
       }
       _ {
@@ -581,7 +581,7 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
         ret rslt(bcx, off);
     }
     alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_param(p) {
+      ty::ty_param(p,_) {
         let szptr = field_of_tydesc(cx, t, false, abi::tydesc_field_size);
         ret rslt(szptr.bcx, szptr.bcx.build.Load(szptr.val));
       }
@@ -634,7 +634,7 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
 
 fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
     alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_param(p) {
+      ty::ty_param(p,_) {
         let aptr = field_of_tydesc(cx, t, false, abi::tydesc_field_align);
         ret rslt(aptr.bcx, aptr.bcx.build.Load(aptr.val));
       }
@@ -878,7 +878,7 @@ fn linearize_ty_params(cx: &@block_ctxt, t: &ty::t) ->
 
     fn linearizer(r: @rr, t: ty::t) {
         alt ty::struct(bcx_tcx(r.cx), t) {
-          ty::ty_param(pid) {
+          ty::ty_param(pid,_) {
             let seen: bool = false;
             for d: uint  in r.defs { if d == pid { seen = true; } }
             if !seen {
@@ -7279,7 +7279,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     let ty_param_substs: ty::t[] = ~[];
     i = 0u;
     for tp: ast::ty_param  in ty_params {
-        ty_param_substs += ~[ty::mk_param(cx.ccx.tcx, i)];
+        ty_param_substs += ~[ty::mk_param(cx.ccx.tcx, i, tp.kind)];
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
