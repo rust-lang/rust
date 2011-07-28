@@ -22,7 +22,8 @@ stage2_tests = []
 take_args = {}
 
 for t in os.listdir(run_pass):
-    if t.endswith(".rs"):
+    if t.endswith(".rs") and not (
+      t.startswith(".") or t.startswith("#") or t.startswith("~")):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
         if not ("xfail-stage2" in s or
