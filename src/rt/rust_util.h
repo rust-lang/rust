@@ -135,15 +135,15 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
 #ifdef __WIN32__
         {
             HCRYPTPROV hProv;
-            sched->kernel->win32_require
+            sched->win32_require
                 (_T("CryptAcquireContext"),
                  CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
                                      CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-            sched->kernel->win32_require
+            sched->win32_require
                 (_T("CryptGenRandom"),
                  CryptGenRandom(hProv, sizeof(rctx->randrsl),
                                 (BYTE*)(&rctx->randrsl)));
-            sched->kernel->win32_require
+            sched->win32_require
                 (_T("CryptReleaseContext"),
                  CryptReleaseContext(hProv, 0));
         }

@@ -73,7 +73,8 @@ bool lock_and_signal::timed_wait(size_t timeout_in_ns) {
     bool rv = true;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
-    WaitForSingleObject(_event, INFINITE);
+    DWORD timeout = timeout_in_ns == 0 ? INFINITE : timeout_in_ns / 1000000;
+    rv = WaitForSingleObject(_event, timeout) != WAIT_TIMEOUT;
     EnterCriticalSection(&_cs);
     _holding_thread = GetCurrentThreadId();
 #else
