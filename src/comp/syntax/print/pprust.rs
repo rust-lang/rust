@@ -1002,15 +1002,16 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
         ibox(s, indent_unit);
         word_nbsp(s, "let");
         fn print_local(s: &ps, loc: &@ast::local) {
+            ibox(s, indent_unit);
+            print_pat(s, loc.node.pat);
             alt loc.node.ty {
               some(ty) {
-                ibox(s, indent_unit);
-                word_space(s, loc.node.ident + ":");
+                word_space(s, ":");
                 print_type(s, *ty);
-                end(s);
               }
-              _ { word(s.s, loc.node.ident); }
+              _ { }
             }
+            end(s);
             alt loc.node.init {
               some(init) {
                 nbsp(s);
@@ -1034,7 +1035,7 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
 fn print_ident(s: &ps, ident: &ast::ident) { word(s.s, ident); }
 
 fn print_for_decl(s: &ps, loc: &@ast::local, coll: &@ast::expr) {
-    word(s.s, loc.node.ident);
+    print_pat(s, loc.node.pat);
     alt loc.node.ty {
       some(t) { word_space(s, ":"); print_type(s, *t); }
       none. { }

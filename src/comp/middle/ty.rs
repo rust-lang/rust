@@ -39,7 +39,6 @@ export constr_general;
 export constr_table;
 export count_ty_params;
 export ctxt;
-export decl_local_ty;
 export def_has_ty_params;
 export eq_ty;
 export expr_has_ty_params;
@@ -1891,10 +1890,6 @@ fn expr_ty_params_and_ty(cx: &ctxt, expr: &@ast::expr) ->
 
 fn expr_has_ty_params(cx: &ctxt, expr: &@ast::expr) -> bool {
     ret node_id_has_type_params(cx, expr.id);
-}
-
-fn decl_local_ty(cx: &ctxt, l: &@ast::local) -> t {
-    ret node_id_to_type(cx, l.node.id);
 }
 
 fn stmt_node_id(s: &@ast::stmt) -> ast::node_id {

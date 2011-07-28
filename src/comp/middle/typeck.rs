@@ -52,10 +52,8 @@ type ty_table = hashmap[ast::def_id, ty::t];
 
 // Used for typechecking the methods of an object.
 tag obj_info {
-
     // Regular objects have a node_id at compile time.
     regular_obj(ast::obj_field[], ast::node_id);
-
     // Anonymous objects only have a type at compile time.  It's optional
     // because not all anonymous objects have a inner_obj to attach to.
     anon_obj(ast::obj_field[], option::t[ty::sty]);
@@ -84,9 +82,8 @@ fn lookup_local(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
       some(x) { x }
       _ {
-        fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "internal error looking up a \
-              local var")
+        fcx.ccx.tcx.sess.span_fatal
+            (sp, "internal error looking up a local var")
       }
     }
 }
@@ -95,11 +92,17 @@ fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
     alt fcx.ccx.tcx.def_map.find(id) {
       some(x) { x }
       _ {
-        fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "internal error looking up \
-              a definition")
+        fcx.ccx.tcx.sess.span_fatal
+            (sp, "internal error looking up a definition")
       }
     }
+}
+
+fn ident_for_local(loc: &@ast::local) -> ast::ident {
+    ret alt loc.node.pat.node {
+      ast::pat_bind(name) { name }
+      _ { "local" } // FIXME DESTR
+    };
 }
 
 // Returns the type parameter count and the type for the given definition.
@@ -134,7 +137,6 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
       ast::def_mod(_) {
         // Hopefully part of a path.
         // TODO: return a type that's more poisonous, perhaps?
-
         ret {kinds: no_kinds, ty: ty::mk_nil(fcx.ccx.tcx)};
       }
       ast::def_ty(_) {
@@ -142,7 +144,6 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
       }
       _ {
         // FIXME: handle other names.
-
         fcx.ccx.tcx.sess.unimpl("definition variant");
       }
     }
@@ -190,7 +191,6 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
         }
     } else {
         // We will acquire the type parameters through unification.
-
         let ty_substs: ty::t[] = ~[];
         let i = 0u;
         while i < ty_param_count {
@@ -213,16 +213,13 @@ fn ast_mode_to_mode(mode: ast::mode) -> ty::mode {
 
 
 // Type tests
-fn structurally_resolved_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+fn structurally_resolved_type(fcx: &@fn_ctxt, sp: &span, tp: ty::t) ->
    ty::t {
-    let r =
-        ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
-    alt r {
+    alt ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, tp) {
       fix_ok(typ_s) { ret typ_s; }
       fix_err(_) {
-        fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "the type of this value must be \
-                                        known in this context");
+        fcx.ccx.tcx.sess.span_fatal
+            (sp, "the type of this value must be known in this context");
       }
     }
 }
@@ -763,12 +760,10 @@ mod collect {
         alt it.node {
           ast::item_mod(_) {
             // ignore item_mod, it has no type.
-
           }
           ast::item_native_mod(native_mod) {
             // Propagate the native ABI down to convert_native() below,
             // but otherwise do nothing, as native modules have no types.
-
             *abi = some[ast::native_abi](native_mod.abi);
           }
           ast::item_tag(variants, ty_params) {
@@ -779,18 +774,16 @@ mod collect {
           ast::item_obj(object, ty_params, ctor_id) {
             // Now we need to call ty_of_obj_ctor(); this is the type that
             // we write into the table for this item.
-
             ty_of_item(cx, it);
 
-            let tpt =
-                ty_of_obj_ctor(cx, it.ident, object, ctor_id, ty_params);
+            let tpt = ty_of_obj_ctor(cx, it.ident, object,
+                                     ctor_id, ty_params);
             write::ty_only(cx.tcx, ctor_id, tpt.ty);
             // Write the methods into the type table.
             //
             // FIXME: Inefficient; this ends up calling
             // get_obj_method_types() twice. (The first time was above in
             // ty_of_obj().)
-
             let method_types = get_obj_method_types(cx, object);
             let i = 0u;
             while i < ivec::len[@ast::method](object.methods) {
@@ -803,7 +796,6 @@ mod collect {
             //
             // FIXME: We want to use uint::range() here, but that causes
             // an assertion in trans.
-
             let args = ty::ty_fn_args(cx.tcx, tpt.ty);
             i = 0u;
             while i < ivec::len[ty::arg](args) {
@@ -833,7 +825,6 @@ mod collect {
             // This call populates the type cache with the converted type
             // of the item in passing. All we have to do here is to write
             // it into the node type table.
-
             let tpt = ty_of_item(cx, it);
             write::ty_only(cx.tcx, it.id, tpt.ty);
           }
@@ -844,13 +835,11 @@ mod collect {
         // As above, this call populates the type table with the converted
         // type of the native item. We simply write it into the node type
         // table.
-
         let tpt =
             ty_of_native_item(cx, i, option::get[ast::native_abi]({ *abi }));
         alt i.node {
           ast::native_item_ty. {
             // FIXME: Native types have no annotation. Should they? --pcw
-
           }
           ast::native_item_fn(_, _, _) {
             write::ty_only(cx.tcx, i.id, tpt.ty);
@@ -860,11 +849,9 @@ mod collect {
     fn collect_item_types(tcx: &ty::ctxt, crate: &@ast::crate) {
         // We have to propagate the surrounding ABI to the native items
         // contained within the native module.
-
         let abi = @mutable none[ast::native_abi];
         let cx = @{tcx: tcx};
-        let visit =
-            visit::mk_simple_visitor
+        let visit = visit::mk_simple_visitor
             (@{visit_item: bind convert(cx, abi, _),
                visit_native_item: bind convert_native(cx, abi, _)
                with *visit::default_simple_visitor()});
@@ -1211,6 +1198,8 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
               local_names: &hashmap[ast::node_id, ast::ident],
               nvi: @mutable int, nid: ast::node_id, ident: &ast::ident,
               ty_opt: option::t[ty::t]) {
+        // FIXME DESTR
+        if locals.contains_key(nid) { ret; }
         let var_id = next_var_id(nvi);
         locals.insert(nid, var_id);
         local_names.insert(nid, ident);
@@ -1277,13 +1266,13 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
           none. {
             // Auto slot.
             assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                   local.node.ident, none);
+                   ident_for_local(local), none);
           }
           some(ast_ty) {
             // Explicitly typed slot.
             let local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
             assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                   local.node.ident, some[ty::t](local_ty));
+                   ident_for_local(local), some(local_ty));
           }
         }
         visit::visit_local(local, e, v);
@@ -1623,7 +1612,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         let bot = check_decl_local(fcx, local);
         check_block(fcx, body);
         // Unify type of decl with element type of the seq
-        demand::simple(fcx, local.span, ty::decl_local_ty(fcx.ccx.tcx, local),
+        demand::simple(fcx, local.span,
+                       ty::node_id_to_type(fcx.ccx.tcx, local.node.id),
                        element_ty);
         let typ = ty::mk_nil(fcx.ccx.tcx);
         write::ty_only_fixup(fcx, node_id, typ);
@@ -1807,7 +1797,6 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         }
         // The definition doesn't take type parameters. If the programmer
         // supplied some, that's an error.
-
         if ivec::len[@ast::ty](pth.node.types) > 0u {
             fcx.ccx.tcx.sess.span_fatal(expr.span,
                                         "this kind of value does not \
@@ -2532,22 +2521,24 @@ fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
 }
 
 fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
-    let a_id = local.node.id;
     let bot = false;
-    alt fcx.locals.find(a_id) {
+
+    alt fcx.locals.find(local.node.id) {
       none. {
         fcx.ccx.tcx.sess.bug("check_decl_local: local id not found " +
-                                 local.node.ident);
+                             ident_for_local(local));
       }
       some(i) {
         let t = ty::mk_var(fcx.ccx.tcx, i);
-        write::ty_only_fixup(fcx, a_id, t);
+        write::ty_only_fixup(fcx, local.node.id, t);
         alt local.node.init {
           some(init) {
             bot = check_decl_initializer(fcx, local.node.id, init);
           }
           _ {/* fall through */ }
         }
+        let id_map = ast::pat_id_map(local.node.pat);
+        check_pat(fcx, id_map, local.node.pat, t);
       }
     }
     ret bot;

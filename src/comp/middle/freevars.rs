@@ -69,7 +69,9 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
         }
     }
     fn walk_local(e: env, local: &@ast::local) {
-        set_add(e.decls, local.node.id);
+        for b: @ast::pat in ast::pat_bindings(local.node.pat) {
+            set_add(e.decls, b.id);
+        }
     }
     fn walk_pat(e: env, p: &@ast::pat) {
         alt p.node { ast::pat_bind(_) { set_add(e.decls, p.id); } _ { } }
@@ -131,9 +133,13 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
             fn start_walk(b: &ast::blk, v: &visit::vt[()]) {
                 v.visit_block(b, (), v);
             }
+            let bound = ~[];
+            for b: @ast::pat in ast::pat_bindings(local.node.pat){
+                bound += ~[b.id];
+            }
             let vars =
                 collect_freevars(e.def_map, e.sess, bind start_walk(body, _),
-                                 ~[local.node.id]);
+                                 bound);
             e.freevars.insert(body.node.id, vars);
           }
           _ { }

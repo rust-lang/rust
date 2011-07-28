@@ -1037,15 +1037,20 @@ fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &arg[], c: &@constr) ->
     ret respan(c.span, tconstr);
 }
 
-type binding = {lhs: option::t[inst], rhs: option::t[initializer]};
+type binding = {lhs: inst[], rhs: option::t[initializer]};
 
-fn local_to_binding(loc : &@local) -> binding {
-    {lhs: some({ident: loc.node.ident, node: loc.node.id}),
+fn local_to_bindings(loc : &@local) -> binding {
+    let lhs = ~[];
+    for p: @pat in pat_bindings(loc.node.pat) {
+        let ident = alt p.node { pat_bind(name) { name } };
+        lhs += ~[{ident: ident, node: p.id}];
+    }
+    {lhs: lhs,
      rhs: loc.node.init}
 }
 
 fn locals_to_bindings(locals : &(@local)[]) -> binding[] {
-    ivec::map(local_to_binding, locals)
+    ivec::map(local_to_bindings, locals)
 }
 
 fn anon_bindings(es : &(@expr)[]) -> binding[] {
@@ -1053,8 +1058,8 @@ fn anon_bindings(es : &(@expr)[]) -> binding[] {
         {op: init_assign, expr: e}
     }
     ret ivec::map(fn (e : &@expr) -> binding {
-                    {lhs: none,
-                     rhs: some(expr_to_initializer(e)) } },
+        {lhs: ~[],
+         rhs: some(expr_to_initializer(e)) } },
                   es);
 }
 

@@ -142,7 +142,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     fn walk(map: &pat_id_map, pat: &@pat) {
         alt pat.node {
           pat_bind(name) { map.insert(name, pat.id); }
-          pat_tag(_, sub) { for p: @pat  in sub { walk(map, p); } }
+          pat_tag(_, sub) { for p: @pat in sub { walk(map, p); } }
           pat_rec(fields, _) {
             for f: field_pat  in fields { walk(map, f.pat); }
           }
@@ -152,6 +152,26 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     }
     walk(map, pat);
     ret map;
+}
+
+// FIXME This wanted to be an iter, but bug #791 got in the way.
+fn pat_bindings(pat: &@pat) -> (@pat)[] {
+    let found = ~[];
+    fn recur(found: &mutable (@pat)[], pat: &@pat) {
+        alt pat.node {
+          pat_bind(_) { found += ~[pat]; }
+          pat_tag(_, sub) {
+            for p in sub { recur(found, p); }
+          }
+          pat_rec(fields, _) {
+            for f: field_pat in fields { recur(found, f.pat); }
+          }
+          pat_box(sub) { recur(found, sub); }
+          pat_wild. | pat_lit(_) {}
+        }
+    }
+    recur(found, pat);
+    ret found;
 }
 
 tag mutability { mut; imm; maybe_mut; }
@@ -240,12 +260,10 @@ tag init_op { init_assign; init_recv; init_move; }
 
 type initializer = {op: init_op, expr: @expr};
 
-type local_ =
-    {ty: option::t[@ty],
-     infer: bool,
-     ident: ident,
-     init: option::t[initializer],
-     id: node_id};
+type local_ = {ty: option::t[@ty],
+               pat: @pat,
+               init: option::t[initializer],
+               id: node_id};
 
 type local = spanned[local_];
 

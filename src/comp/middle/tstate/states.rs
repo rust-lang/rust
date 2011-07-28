@@ -74,8 +74,7 @@ fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
             changed |= find_pre_post_state_expr(fcx, post, an_init.expr)
                 || changed;
             post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
-            alt (b.lhs) {
-              some(i) {
+            for i: inst in b.lhs {
                 alt (an_init.expr.node) {
                   expr_path(p) {
                     handle_move_or_copy(fcx, post, p, an_init.expr.id, i,
@@ -84,22 +83,12 @@ fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
                   _ {}
                 }
                 set_in_poststate_ident(fcx, i.node, i.ident, post);
-              }
-              _ {
-                //This is an expression that doesn't get named.
-                // So, nothing more to do.
-              }
             }
-           }
-         none {
-            alt (b.lhs) {
-              some(i) {
-                // variable w/o an initializer
-                 clear_in_poststate_ident_(fcx, i.node, i.ident, post);
-               }
-              none { fcx.ccx.tcx.sess.bug("seq_states: binding has \
-                               neither an lhs nor an rhs");
-              }
+          }
+          none {
+            for i: inst in b.lhs {
+                // variables w/o an initializer
+                clear_in_poststate_ident_(fcx, i.node, i.ident, post);
             }
           }
         }
@@ -217,10 +206,13 @@ fn find_pre_post_state_loop(fcx: &fn_ctxt, pres: prestate, l: &@local,
         set_prestate_ann(fcx.ccx, id, loop_pres) |
             find_pre_post_state_expr(fcx, pres, index);
 
-    // Make sure the index var is considered initialized
+    // Make sure the index vars are considered initialized
     // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    set_in_poststate_ident(fcx, l.node.id, l.node.ident, index_post);
+    for p: @pat in pat_bindings(l.node.pat) {
+        let ident = alt p.node { pat_bind(name) { name } };
+        set_in_poststate_ident(fcx, p.id, ident, index_post);
+    }
 
     changed |= find_pre_post_state_block(fcx, index_post, body);
 

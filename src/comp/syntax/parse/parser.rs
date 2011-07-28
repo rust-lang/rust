@@ -1337,9 +1337,6 @@ fn parse_alt_expr(p: &parser) -> @ast::expr {
     expect(p, token::LBRACE);
     let arms: ast::arm[] = ~[];
     while p.peek() != token::RBRACE {
-        // Optionally eat the case keyword.
-        // FIXME remove this (and the optional parens) once we've updated our
-        // code to not use the old syntax
         let pats = parse_pats(p);
         let blk = parse_block(p);
         arms += ~[{pats: pats, block: blk}];
@@ -1472,7 +1469,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
                          _ { true }
                        }) {
             hi = p.get_hi_pos();
-            pat = ast::pat_bind(parse_ident(p));
+            pat = ast::pat_bind(parse_value_ident(p));
         } else {
             let tag_path = parse_path_and_ty_param_substs(p);
             hi = tag_path.span.hi;
@@ -1497,14 +1494,13 @@ fn parse_pat(p: &parser) -> @ast::pat {
 
 fn parse_local(p: &parser, allow_init: bool) -> @ast::local {
     let lo = p.get_lo_pos();
-    let ident = parse_value_ident(p);
+    let pat = parse_pat(p);
     let ty = none;
     if eat(p, token::COLON) { ty = some(parse_ty(p)); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.get_last_hi_pos(),
                  {ty: ty,
-                  infer: false,
-                  ident: ident,
+                  pat: pat,
                   init: init,
                   id: p.get_id()});
 }

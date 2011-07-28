@@ -580,9 +580,9 @@ fn trans_lit_common(ccx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
 }
 
 fn trans_init_local(bcx: &@block_ctxt, local: &@ast::local) -> @block_ctxt {
-    let llptr = bcx_fcx(bcx).lllocals.get(local.node.id);
+    let llptr = bcx_fcx(bcx).lllocals.get(local.node.pat.id); // FIXME DESTR
 
-    let t = type_of_node(bcx_ccx(bcx), local.node.id);
+    let t = type_of_node(bcx_ccx(bcx), local.node.pat.id);
     tc::add_clean(bcx, llptr, t);
 
 

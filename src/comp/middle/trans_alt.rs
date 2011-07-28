@@ -176,8 +176,8 @@ fn get_options(ccx: &@crate_ctxt, m: &match, col: uint) -> opt[] {
 }
 
 fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
-                        vdefs: &{tg: def_id, var: def_id}, val: ValueRef) ->
-   {vals: ValueRef[], bcx: @block_ctxt} {
+                        vdefs: &{tg: def_id, var: def_id}, val: ValueRef)
+    -> {vals: ValueRef[], bcx: @block_ctxt} {
     let ccx = bcx.fcx.lcx.ccx;
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     let blobptr = val;
@@ -246,7 +246,6 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
     let ccx = bcx.fcx.lcx.ccx;
     let pat_id = 0;
     for br: match_branch  in m {
-
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 { pat_id = br.pats.(col).id; }
@@ -259,7 +258,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
         let fields =
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
         let rec_vals = ~[];
-        for field_name: ast::ident  in rec_fields {
+        for field_name: ast::ident in rec_fields {
             let ix: uint =
                 ty::field_idx(ccx.sess, {lo: 0u, hi: 0u}, field_name, fields);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
@@ -434,6 +433,47 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &ast::arm[],
         i += 1u;
     }
     ret rslt(trans::join_branches(cx, arm_results), C_nil());
+}
+
+// Not alt-related, but similar to the pattern-munging code above
+fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
+                        table: hashmap[ast::node_id, ValueRef])
+    -> @block_ctxt {
+    let ccx = bcx.fcx.lcx.ccx;
+    alt pat.node {
+      ast::pat_bind(_) {
+        table.insert(pat.id, val);
+      }
+      ast::pat_tag(_, sub) {
+        if ivec::len(sub) == 0u { ret bcx; }
+        let vdefs = ast::variant_def_ids(ccx.tcx.def_map.get(pat.id));
+        let args = extract_variant_args(bcx, pat.id, vdefs, val);
+        let i = 0;
+        for argval: ValueRef in args.vals {
+            bcx = bind_irrefutable_pat(bcx, sub.(i), argval, table);
+            i += 1;
+        }
+      }
+      ast::pat_rec(fields, _) {
+        let rec_ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+        let rec_fields =
+            alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
+        for f: ast::field_pat in fields {
+            let ix: uint =
+                ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
+            let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
+            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table);
+        }
+      }
+      ast::pat_box(inner) {
+        let box = bcx.build.Load(val);
+        let unboxed = bcx.build.InBoundsGEP
+            (box, ~[C_int(0), C_int(back::abi::box_rc_field_body)]);
+        bcx = bind_irrefutable_pat(bcx, inner, unboxed, table);
+      }
+      ast::pat_wild. | ast::pat_lit(_) {}
+    }
+    ret bcx;
 }
 
 // Local Variables:

@@ -14,8 +14,11 @@ import syntax::ast::respan;
 type ctxt = {cs: @mutable sp_constr[], tcx: ty::ctxt};
 
 fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt[ctxt]) {
-    log "collect_local: pushing " + loc.node.ident;
-    *cx.cs += ~[respan(loc.span, ninit(loc.node.id, loc.node.ident))];
+    for p: @pat in pat_bindings(loc.node.pat) {
+        let ident = alt p.node { pat_bind(id) { id } };
+        log "collect_local: pushing " + ident;
+        *cx.cs += ~[respan(loc.span, ninit(p.id, ident))];
+    }
     visit::visit_local(loc, cx, v);
 }
 

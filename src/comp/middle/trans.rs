@@ -956,9 +956,8 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
     bcx = align.bcx;
     let v;
     if escapes {
-        let  /* for root*/
-
-            tydescs =
+        /* for root*/
+        let tydescs =
             alloca(bcx,
                    T_array(T_ptr(bcx_ccx(bcx).tydesc_type), 1u + n_params));
         let i = 0;
@@ -3620,8 +3619,10 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
                                       outer_next_cx, "for loop scope");
         cx.build.Br(scope_cx.llbb);
         let local_res = alloc_local(scope_cx, local);
-        let bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t).bcx;
+        let loc_r = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
         add_clean(scope_cx, local_res.val, t);
+        let bcx = trans_alt::bind_irrefutable_pat
+            (loc_r.bcx, local.node.pat, local_res.val, cx.fcx.lllocals);
         bcx = trans_block(bcx, body, return).bcx;
         if !bcx.build.is_terminated() {
             bcx.build.Br(next_cx.llbb);
@@ -3915,7 +3916,6 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
     // FIXME: possibly support alias-mode here?
     let decl_ty = node_id_type(lcx.ccx, local.node.id);
-    let decl_id = local.node.id;
     let upvars = get_freevars(lcx.ccx.tcx, body.node.id);
 
     let llenv = build_environment(cx, upvars);
@@ -3941,9 +3941,11 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // environment pointer.
     load_environment(cx, fcx, llenv.ptrty, upvars);
 
-    // Add an upvar for the loop variable alias.
-    fcx.llupvars.insert(decl_id, llvm::LLVMGetParam(fcx.llfn, 3u));
     let bcx = new_top_block_ctxt(fcx);
+    // Add bindings for the loop variable alias.
+    bcx = trans_alt::bind_irrefutable_pat
+        (bcx, local.node.pat, llvm::LLVMGetParam(fcx.llfn, 3u),
+         bcx.fcx.llupvars);
     let lltop = bcx.llbb;
     let r = trans_block(bcx, body, return);
     finish_fn(fcx, lltop);
@@ -5884,14 +5886,11 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     ret rslt(bcx, pair);
 }
 
-fn init_local(cx: &@block_ctxt, local: &@ast::local) -> result {
+fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
+    let ty = node_id_type(bcx_ccx(bcx), local.node.id);
+    let llptr = bcx.fcx.lllocals.get(local.node.id);
     // Make a note to drop this slot on the way out.
-
-    assert (cx.fcx.lllocals.contains_key(local.node.id));
-    let llptr = cx.fcx.lllocals.get(local.node.id);
-    let ty = node_id_type(bcx_ccx(cx), local.node.id);
-    let bcx = cx;
-    add_clean(cx, llptr, ty);
+    add_clean(bcx, llptr, ty);
     alt local.node.init {
       some(init) {
         alt init.op {
@@ -5899,8 +5898,7 @@ fn init_local(cx: &@block_ctxt, local: &@ast::local) -> result {
             // Use the type of the RHS because if it's _|_, the LHS
             // type might be something else, but we don't want to copy
             // the value.
-
-            ty = node_id_type(bcx_ccx(cx), init.expr.id);
+            ty = node_id_type(bcx_ccx(bcx), init.expr.id);
             let sub = trans_lval(bcx, init.expr);
             bcx = move_val_if_temp(sub.res.bcx, INIT, llptr, sub, ty).bcx;
           }
@@ -5912,6 +5910,8 @@ fn init_local(cx: &@block_ctxt, local: &@ast::local) -> result {
       }
       _ { bcx = zero_alloca(bcx, llptr, ty).bcx; }
     }
+    bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
+                                          bcx.fcx.lllocals);
     ret rslt(bcx, llptr);
 }
 
@@ -6032,7 +6032,6 @@ fn trans_block_cleanups(cx: &@block_ctxt, cleanup_cx: &@block_ctxt) ->
 }
 
 iter block_locals(b: &ast::blk) -> @ast::local {
-
     // FIXME: putting from inside an iter block doesn't work, so we can't
     // use the index here.
     for s: @ast::stmt  in b.node.stmts {
@@ -6040,7 +6039,7 @@ iter block_locals(b: &ast::blk) -> @ast::local {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
-                for local: @ast::local  in locals { put local; }
+                for local: @ast::local in locals { put local; }
               }
               _ {/* fall through */ }
             }
@@ -6110,25 +6109,30 @@ fn alloc_ty(cx: &@block_ctxt, t: &ty::t) -> result {
 fn alloc_local(cx: &@block_ctxt, local: &@ast::local) -> result {
     let t = node_id_type(bcx_ccx(cx), local.node.id);
     let r = alloc_ty(cx, t);
-    if bcx_ccx(cx).sess.get_opts().debuginfo {
-        llvm::LLVMSetValueName(r.val, str::buf(local.node.ident));
+    alt local.node.pat.node {
+      ast::pat_bind(ident) {
+        if bcx_ccx(cx).sess.get_opts().debuginfo {
+            llvm::LLVMSetValueName(r.val, str::buf(ident));
+        }
+      }
+      _ {}
     }
-    r.bcx.fcx.lllocals.insert(local.node.id, r.val);
     ret r;
 }
 
 fn trans_block(cx: &@block_ctxt, b: &ast::blk, output: &out_method) ->
    result {
     let bcx = cx;
-    for each local: @ast::local  in block_locals(b) {
+    for each local: @ast::local in block_locals(b) {
         // FIXME Update bcx.sp
-        bcx = alloc_local(bcx, local).bcx;
+        let r = alloc_local(bcx, local);
+        bcx = r.bcx;
+        bcx.fcx.lllocals.insert(local.node.id, r.val);
     }
     let r = rslt(bcx, C_nil());
     for s: @ast::stmt  in b.node.stmts {
         r = trans_stmt(bcx, *s);
         bcx = r.bcx;
-
 
         // If we hit a terminator, control won't go any further so
         // we're in dead-code land. Stop here.

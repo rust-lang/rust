@@ -44,7 +44,9 @@ fn collect_ids_stmt(s: &@stmt, rs: @mutable node_id[]) {
 }
 
 fn collect_ids_local(l: &@local, rs: @mutable node_id[]) {
-    *rs += ~[l.node.id];
+    for p: @pat in pat_bindings(l.node.pat) {
+        *rs += ~[p.id];
+    }
 }
 
 fn node_ids_in_fn(f: &_fn, tps: &ty_param[], sp: &span, i: &fn_ident,

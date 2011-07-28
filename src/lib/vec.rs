@@ -237,7 +237,7 @@ fn position_pred[T](f: fn(&T) -> bool , v: &vec[T]) -> option::t[uint] {
 }
 
 fn member[T](x: &T, v: &array[T]) -> bool {
-    for elt: T  in v { if x == elt { ret true; } }
+    for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
 

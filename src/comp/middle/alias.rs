@@ -127,7 +127,7 @@ fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt[scope]) {
     visit::visit_decl(d, sc, v);
     alt d.node {
       ast::decl_local(locs) {
-        for loc: @ast::local  in locs {
+        for loc: @ast::local in locs {
             alt loc.node.init {
               some(init) {
                 if init.op == ast::init_move {
@@ -298,14 +298,12 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &ast::arm[], sc: &scope,
         let dnums = arm_defnums(a);
         let new_sc = sc;
         if ivec::len(dnums) > 0u {
-            new_sc =
-                @(*sc +
-                      ~[@{root_vars: roots,
-                          block_defnum: dnums.(0),
-                          bindings: dnums,
-                          tys: forbidden_tp,
-                          depends_on: deps(sc, roots),
-                          mutable ok: valid}]);
+            new_sc = @(*sc + ~[@{root_vars: roots,
+                                 block_defnum: dnums.(ivec::len(dnums) - 1u),
+                                 bindings: dnums,
+                                 tys: forbidden_tp,
+                                 depends_on: deps(sc, roots),
+                                 mutable ok: valid}]);
         }
         visit::visit_arm(a, new_sc, v);
     }
@@ -336,14 +334,16 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
     alt call.node {
       ast::expr_call(f, args) {
         let data = check_call(cx, f, args, sc);
-        let defnum = local.node.id;
-        let new_sc =
-            @{root_vars: data.root_vars,
-              block_defnum: defnum,
-              bindings: ~[defnum],
-              tys: data.unsafe_ts,
-              depends_on: deps(sc, data.root_vars),
-              mutable ok: valid};
+        let bindings = ~[];
+        for p: @ast::pat in ast::pat_bindings(local.node.pat) {
+            bindings += ~[p.id];
+        }
+        let new_sc = @{root_vars: data.root_vars,
+                       block_defnum: bindings.(ivec::len(bindings) - 1u),
+                       bindings: bindings,
+                       tys: data.unsafe_ts,
+                       depends_on: deps(sc, data.root_vars),
+                       mutable ok: valid};
         visit::visit_block(blk, @(*sc + ~[new_sc]), v);
       }
     }
@@ -352,7 +352,6 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
 fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
              sc: &scope, v: &vt[scope]) {
     visit::visit_expr(seq, sc, v);
-    let defnum = local.node.id;
     let root = expr_root(cx, seq, false);
     let root_def =
         alt path_def_id(cx, root.ex) { some(did) { ~[did.node] } _ { ~[] } };
@@ -371,13 +370,16 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
                                     util::ppaux::ty_to_str(cx.tcx, seq_t));
       }
     }
-    let new_sc =
-        @{root_vars: root_def,
-          block_defnum: defnum,
-          bindings: ~[defnum],
-          tys: unsafe,
-          depends_on: deps(sc, root_def),
-          mutable ok: valid};
+    let bindings = ~[];
+    for p: @ast::pat in ast::pat_bindings(local.node.pat) {
+        bindings += ~[p.id];
+    }
+    let new_sc = @{root_vars: root_def,
+                   block_defnum: bindings.(ivec::len(bindings) - 1u),
+                   bindings: bindings,
+                   tys: unsafe,
+                   depends_on: deps(sc, root_def),
+                   mutable ok: valid};
     visit::visit_block(blk, @(*sc + ~[new_sc]), v);
 }
 
@@ -388,10 +390,10 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
     let my_defnum = ast::def_id_of_def(def).node;
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict  in *sc {
-
         // excludes variables introduced since the alias was made
+        // FIXME This does not work anymore, now that we have macros.
         if my_defnum < r.block_defnum {
-            for t: ty::t  in r.tys {
+            for t: ty::t in r.tys {
                 if ty_can_unsafely_include(cx, t, var_t, assign) {
                     r.ok = val_taken(ex.span, p);
                 }
@@ -489,15 +491,14 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
         prob = sc.(dep).ok;
     }
     if prob != valid {
-        let msg =
-            alt prob {
-              overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " + ast::path_name(wpt)}
-              }
-              val_taken(sp, vpt) {
-                {span: sp, msg: "taking the value of " + ast::path_name(vpt)}
-              }
-            };
+        let msg = alt prob {
+          overwritten(sp, wpt) {
+            {span: sp, msg: "overwriting " + ast::path_name(wpt)}
+          }
+          val_taken(sp, vpt) {
+            {span: sp, msg: "taking the value of " + ast::path_name(vpt)}
+          }
+        };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate alias " +
                                  ast::path_name(p) + ", which is still used");

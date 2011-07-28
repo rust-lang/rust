@@ -255,6 +255,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
           visit_item: visit_item_with_scope,
           visit_block: visit_block_with_scope,
           visit_arm: bind walk_arm(e, _, _, _),
+          visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
@@ -289,33 +290,23 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
         maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_value));
     }
     fn walk_arm(e: @env, a: &ast::arm, sc: &scopes, v: &vt[scopes]) {
-        for p: @ast::pat  in a.pats { walk_pat(*e, sc, p); }
         visit_arm_with_scope(a, sc, v);
     }
-    fn walk_pat(e: &env, sc: &scopes, pat: &@ast::pat) {
+    fn walk_pat(e: &@env, pat: &@ast::pat, sc: &scopes, v: &vt[scopes]) {
+        visit::visit_pat(pat, sc, v);
         alt pat.node {
-          ast::pat_tag(p, children) {
-            let fnd = lookup_path_strict(e, sc, p.span, p.node, ns_value);
-            if option::is_some(fnd) {
-                alt option::get(fnd) {
-                  ast::def_variant(did, vid) {
-                    e.def_map.insert(pat.id, option::get(fnd));
-                    for child: @ast::pat  in children {
-                        walk_pat(e, sc, child);
-                    }
-                  }
-                  _ {
-                    e.sess.span_err(p.span,
-                                    "not a tag variant: " +
-                                        ast::path_name(p));
-                  }
-                }
+          ast::pat_tag(p, _) {
+            let fnd = lookup_path_strict(*e, sc, p.span, p.node, ns_value);
+            alt option::get(fnd) {
+              ast::def_variant(did, vid) {
+                e.def_map.insert(pat.id, option::get(fnd));
+              }
+              _ {
+                e.sess.span_err
+                    (p.span, "not a tag variant: " + ast::path_name(p));
+              }
             }
           }
-          ast::pat_rec(fields, _) {
-            for f: ast::field_pat  in fields { walk_pat(e, sc, f.pat); }
-          }
-          ast::pat_box(inner) { walk_pat(e, sc, inner); }
           _ { }
         }
     }
@@ -653,14 +644,18 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           }
           scope_loop(local) {
             if ns == ns_value {
-                if str::eq(local.node.ident, name) {
-                    ret some(ast::def_local(local_def(local.node.id)));
+                alt lookup_in_pat(name, *local.node.pat) {
+                  some(did) { ret some(ast::def_local(did)); }
+                  _ {}
                 }
             }
           }
           scope_block(b) { ret lookup_in_block(name, b.node, ns); }
           scope_arm(a) {
-            if ns == ns_value { ret lookup_in_pat(name, *a.pats.(0)); }
+            if ns == ns_value {
+                ret option::map(ast::def_binding,
+                                lookup_in_pat(name, *a.pats.(0)));
+            }
           }
         }
         ret none[def];
@@ -716,11 +711,11 @@ fn lookup_in_ty_params(name: &ident, ty_params: &ast::ty_param[]) ->
     ret none[def];
 }
 
-fn lookup_in_pat(name: &ident, pat: &ast::pat) -> option::t[def] {
+fn lookup_in_pat(name: &ident, pat: &ast::pat) -> option::t[def_id] {
     alt pat.node {
       ast::pat_bind(p_name) {
         if str::eq(p_name, name) {
-            ret some(ast::def_binding(local_def(pat.id)));
+            ret some(local_def(pat.id));
         }
       }
       ast::pat_wild. { }
@@ -739,7 +734,7 @@ fn lookup_in_pat(name: &ident, pat: &ast::pat) -> option::t[def] {
       }
       ast::pat_box(inner) { ret lookup_in_pat(name, *inner); }
     }
-    ret none[def];
+    ret none;
 }
 
 fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
@@ -777,14 +772,17 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &ast::ty_param[],
 
 fn lookup_in_block(name: &ident, b: &ast::blk_, ns: namespace) ->
    option::t[def] {
-    for st: @ast::stmt  in b.stmts {
+    for st: @ast::stmt in b.stmts {
         alt st.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                for loc: @ast::local  in locs {
-                    if ns == ns_value && str::eq(name, loc.node.ident) {
-                        ret some(ast::def_local(local_def(loc.node.id)));
+                for loc: @ast::local in locs {
+                    if ns == ns_value {
+                        alt lookup_in_pat(name, *loc.node.pat) {
+                          some(did) { ret some(ast::def_local(did)); }
+                          _ {}
+                        }
                     }
                 }
               }
@@ -1154,22 +1152,20 @@ fn lookup_external(e: &env, cnum: int, ids: &ident[], ns: namespace) ->
 fn check_for_collisions(e: &@env, c: &ast::crate) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
-
-    for each m: @{key: ast::node_id, val: @indexed_mod}  in e.mod_map.items()
-             {
-        for each name: @{key: ident, val: list[mod_index_entry]}  in
-                 m.val.index.items() {
+    for each m: @{key: ast::node_id, val: @indexed_mod}
+        in e.mod_map.items() {
+        for each name: @{key: ident, val: list[mod_index_entry]}
+            in m.val.index.items() {
             check_mod_name(*e, name.key, name.val);
         }
     }
     // Other scopes have to be checked the hard way.
-
-    let v =
-        @{visit_item: bind check_item(e, _, _, _),
-          visit_block: bind check_block(e, _, _, _),
-          visit_arm: bind check_arm(e, _, _, _),
-          visit_expr: bind check_expr(e, _, _, _),
-          visit_ty: bind check_ty(e, _, _, _) with *visit::default_visitor()};
+    let v = @{visit_item: bind check_item(e, _, _, _),
+              visit_block: bind check_block(e, _, _, _),
+              visit_arm: bind check_arm(e, _, _, _),
+              visit_expr: bind check_expr(e, _, _, _),
+              visit_ty: bind check_ty(e, _, _, _)
+              with *visit::default_visitor()};
     visit::visit_crate(c, (), visit::mk_vt(v));
 }
 
@@ -1244,29 +1240,30 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
     }
 }
 
+fn check_pat(ch: checker, p: &@ast::pat) {
+    alt p.node {
+      ast::pat_bind(name) { add_name(ch, p.span, name); }
+      ast::pat_tag(_, children) {
+        for child: @ast::pat in children { check_pat(ch, child); }
+      }
+      ast::pat_rec(fields, _) {
+        for f: ast::field_pat  in fields { check_pat(ch, f.pat); }
+      }
+      ast::pat_box(inner) { check_pat(ch, inner); }
+      _ { }
+    }
+}
+
 fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt[()]) {
     visit::visit_arm(a, x, v);
-    fn walk_pat(ch: checker, p: &@ast::pat) {
-        alt p.node {
-          ast::pat_bind(name) { add_name(ch, p.span, name); }
-          ast::pat_tag(_, children) {
-            for child: @ast::pat  in children { walk_pat(ch, child); }
-          }
-          ast::pat_rec(fields, _) {
-            for f: ast::field_pat  in fields { walk_pat(ch, f.pat); }
-          }
-          ast::pat_box(inner) { walk_pat(ch, inner); }
-          _ { }
-        }
-    }
     let ch0 = checker(*e, "binding");
-    walk_pat(ch0, a.pats.(0));
+    check_pat(ch0, a.pats.(0));
     let seen0 = ch0.seen;
     let i = ivec::len(a.pats);
     while i > 1u {
         i -= 1u;
         let ch = checker(*e, "binding");
-        walk_pat(ch, a.pats.(i));
+        check_pat(ch, a.pats.(i));
 
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
@@ -1297,8 +1294,8 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt[()]) {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                for loc: @ast::local  in locs {
-                    add_name(values, d.span, loc.node.ident);
+                for loc: @ast::local in locs {
+                    check_pat(values, loc.node.pat);
                 }
               }
               ast::decl_item(it) {

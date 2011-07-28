@@ -78,6 +78,7 @@ fn visit_mod[E](m: &_mod, sp: &span, e: &E, v: &vt[E]) {
 fn visit_view_item[E](vi: &@view_item, e: &E, v: &vt[E]) { }
 
 fn visit_local[E](loc: &@local, e: &E, v: &vt[E]) {
+    v.visit_pat(loc.node.pat, e, v);
     alt loc.node.ty { none. { } some(t) { v.visit_ty(t, e, v); } }
     alt loc.node.init { none. { } some(i) { v.visit_expr(i.expr, e, v); } }
 }
