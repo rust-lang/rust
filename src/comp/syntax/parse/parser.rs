@@ -1696,7 +1696,14 @@ fn parse_block_tail(p: &parser, lo: uint) -> ast::blk {
     ret spanned(lo, hi, bloc);
 }
 
-fn parse_ty_param(p: &parser) -> ast::ty_param { ret parse_ident(p); }
+fn parse_ty_param(p: &parser) -> ast::ty_param {
+    let k = alt p.peek() {
+      token::TILDE. { p.bump(); ast::kind_unique }
+      token::AT. { p.bump(); ast::kind_shared }
+      _ { ast::kind_pinned }
+    };
+    ret {ident: parse_ident(p), kind: k};
+}
 
 fn parse_ty_params(p: &parser) -> ast::ty_param[] {
     let ty_params: ast::ty_param[] = ~[];

@@ -31,7 +31,7 @@ type def_id = {crate: crate_num, node: node_id};
 const local_crate: crate_num = 0;
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
-type ty_param = ident;
+type ty_param = {ident: ident, kind: kind};
 
 tag def {
     def_fn(def_id, purity);

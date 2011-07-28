@@ -710,7 +710,7 @@ fn lookup_in_ty_params(name: &ident, ty_params: &ast::ty_param[]) ->
    option::t[def] {
     let i = 0u;
     for tp: ast::ty_param  in ty_params {
-        if str::eq(tp, name) { ret some(ast::def_ty_arg(i)); }
+        if str::eq(tp.ident, name) { ret some(ast::def_ty_arg(i)); }
         i += 1u;
     }
     ret none[def];
@@ -1215,11 +1215,17 @@ fn mie_span(mie: &mod_index_entry) -> span {
 }
 
 fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
+    fn typaram_names(tps: &ast::ty_param[]) -> ident[] {
+        let x: ast::ident[] = ~[];
+        for tp: ast::ty_param in tps { x += ~[tp.ident] }
+        ret x;
+    }
     visit::visit_item(i, x, v);
     alt i.node {
       ast::item_fn(f, ty_params) {
         check_fn(*e, i.span, f);
-        ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        ensure_unique(*e, i.span, typaram_names(ty_params),
+                      ident_id, "type parameter");
       }
       ast::item_obj(ob, ty_params, _) {
         fn field_name(field: &ast::obj_field) -> ident { ret field.ident; }
@@ -1227,10 +1233,12 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
         for m: @ast::method  in ob.methods {
             check_fn(*e, m.span, m.node.meth);
         }
-        ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        ensure_unique(*e, i.span, typaram_names(ty_params),
+                      ident_id, "type parameter");
       }
       ast::item_tag(_, ty_params) {
-        ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        ensure_unique(*e, i.span, typaram_names(ty_params),
+                      ident_id, "type parameter");
       }
       _ { }
     }
