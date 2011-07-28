@@ -51,7 +51,9 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
-    // Precondition: port->referent()->lock must be held
+    A(kernel,
+      port->referent()->lock.lock_held_by_current_thread(),
+      "Port referent lock must be held to call rust_chan::disassociate");
     A(kernel, is_associated(),
       "Channel must be associated with a port.");
     if (port->is_proxy() == false) {
