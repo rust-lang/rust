@@ -388,6 +388,10 @@ mod runtest {
     export run;
 
     fn run(cx: &cx, testfile: &str) {
+        if (cx.config.verbose) {
+            // We're going to be dumping a lot of info. Start on a new line.
+            io::stdout().write_str("\n\n");
+        }
         log #fmt("running %s", testfile);
         task::unsupervise();
         let props = load_props(testfile);
@@ -523,7 +527,7 @@ mod runtest {
         let cmdline =
             {
                 let cmdline = make_cmdline(lib_path, prog, args);
-                logv(cx.config, #fmt("running %s", cmdline));
+                logv(cx.config, #fmt("executing %s", cmdline));
                 cmdline
             };
         let res = procsrv::run(cx.procsrv, lib_path, prog, args);
@@ -562,9 +566,9 @@ mod runtest {
     fn maybe_dump_to_stdout(config: &config,
                             out: &str, err: &str) {
         if config.verbose {
-            let sep1 = #fmt("-%s-----------------------------------",
+            let sep1 = #fmt("------%s------------------------------",
                             "stdout");
-            let sep2 = #fmt("-%s-----------------------------------",
+            let sep2 = #fmt("------%s------------------------------",
                             "stderr");
             let sep3 = "------------------------------------------";
             io::stdout().write_line(sep1);
