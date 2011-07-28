@@ -87,12 +87,11 @@ copyenv(const char* name) {
     if (!envvar) {
         return NULL;
     } else {
-        const size_t maxlen = 4096;
-        size_t strlen = strnlen(envvar, maxlen);
-        size_t buflen = strlen + 1;
+        size_t slen = strlen(envvar);
+        size_t buflen = slen + 1;
         char *var = (char*)malloc(buflen);
         memset(var, 0, buflen);
-        strncpy(var, envvar, strlen);
+        strncpy(var, envvar, slen);
         return var;
     }
 }
