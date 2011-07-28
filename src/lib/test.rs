@@ -103,7 +103,7 @@ fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
     let out = io::stdout();
 
     let total = ivec::len(filtered_tests);
-    out.write_line(#fmt("running %u tests", total));
+    out.write_line(#fmt("\nrunning %u tests", total));
 
     let futures = ~[];
 
