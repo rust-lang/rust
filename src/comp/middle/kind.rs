@@ -4,7 +4,7 @@
 * Every type has a kind. Every type parameter has a set of kind-capabilities
 * saying which kind of type may be passed as the parameter.
 *
-* The kinds are based on two capabilities: copy and send. These may each be
+* The kinds are based on two capabilities: move and send. These may each be
 * present or absent, though only three of the four combinations can actually
 * occur:
 *
@@ -26,7 +26,7 @@
 *
 * Since this forms a lattice, we denote the capabilites in terms of a
 * worst-case requirement.  That is, if your function needs to move-and-send
-* (or copy) your T, you write fn<~T>(...). If you need to copy but not send,
+* (or copy) your T, you write fn<~T>(...). If you need to move but not send,
 * you write fn<@T>(...). And if you need neither -- can work with any sort of
 * pinned data at all -- then you write fn<T>(...).
 *
