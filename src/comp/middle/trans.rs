@@ -825,10 +825,10 @@ fn trans_shared_malloc(cx: &@block_ctxt, llptr_ty: TypeRef, llsize: ValueRef)
     ret rslt(cx, cx.build.PointerCast(rval, llptr_ty));
 }
 
-// trans_malloc_boxed: expects an unboxed type and returns a pointer to enough
-// space for something of that type, along with space for a reference count;
-// in other words, it allocates a box for something of that type.
-fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) -> result {
+// trans_malloc_boxed_raw: expects an unboxed type and returns a pointer to
+// enough space for something of that type, along with space for a reference
+// count; in other words, it allocates a box for something of that type.
+fn trans_malloc_boxed_raw(cx: &@block_ctxt, t: ty::t) -> result {
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
 
@@ -843,13 +843,26 @@ fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) -> result {
         ty::mk_imm_tup(bcx_tcx(cx), ~[ty::mk_int(bcx_tcx(cx)), t]);
     let box_ptr = ty::mk_imm_box(bcx_tcx(cx), t);
     let sz = size_of(cx, boxed_body);
+
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
-
     let llty = type_of(bcx_ccx(cx), cx.sp, box_ptr);
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
 }
 
+// trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
+// initializes the reference count to 1, and pulls out the body and rc
+fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) ->
+    {bcx: @block_ctxt, box: ValueRef, rc: ValueRef, body: ValueRef} {
+    let res = trans_malloc_boxed_raw(cx, t);
+    let box = res.val;
+    let rc = res.bcx.build.GEP(box,
+                               ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
+    res.bcx.build.Store(C_int(1), rc);
+    let body = res.bcx.build.GEP(box,
+                                 ~[C_int(0), C_int(abi::box_rc_field_body)]);
+    ret {bcx: res.bcx, box: res.val, rc: rc, body: body};
+}
 
 // Type descriptor and type glue stuff
 
@@ -2701,25 +2714,18 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
         let lv = trans_lval(cx, e);
         let box_ty = node_id_type(bcx_ccx(lv.res.bcx), id);
         let sub = trans_malloc_boxed(lv.res.bcx, e_ty);
-        add_clean_temp(cx, sub.val, box_ty);
-        let box = sub.val;
-        let rc =
-            sub.bcx.build.GEP(box,
-                              ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
-        let body =
-            sub.bcx.build.GEP(box,
-                              ~[C_int(0), C_int(abi::box_rc_field_body)]);
-        sub.bcx.build.Store(C_int(1), rc);
+        let body = sub.body;
+        add_clean_temp(cx, sub.box, box_ty);
+
         // Cast the body type to the type of the value. This is needed to
         // make tags work, since tags have a different LLVM type depending
         // on whether they're boxed or not.
-
         if !ty::type_has_dynamic_size(bcx_tcx(cx), e_ty) {
             let llety = T_ptr(type_of(bcx_ccx(sub.bcx), e.span, e_ty));
             body = sub.bcx.build.PointerCast(body, llety);
         }
-        sub = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
-        ret rslt(sub.bcx, box);
+        let res = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
+        ret rslt(res.bcx, sub.box);
       }
       ast::deref. {
         bcx_ccx(cx).sess.bug("deref expressions should have been \
@@ -4629,17 +4635,10 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     // Finally, synthesize a type for that whole vector.
     let closure_ty: ty::t = ty::mk_imm_tup(bcx_tcx(cx), closure_tys);
 
-    // Allocate a box that can hold something closure-sized, including
-    // space for a refcount.
+    // Allocate a box that can hold something closure-sized.
     let r = trans_malloc_boxed(bcx, closure_ty);
-    let box = r.val;
     bcx = r.bcx;
-
-    // Grab onto the refcount and body parts of the box we allocated.
-    let rc = bcx.build.GEP(box, ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
-    let closure =
-        bcx.build.GEP(box, ~[C_int(0), C_int(abi::box_rc_field_body)]);
-    bcx.build.Store(C_int(1), rc);
+    let closure = r.body;
 
     // Store bindings tydesc.
     let bound_tydesc =
@@ -4684,7 +4683,7 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
                          args, closure_ty, bound_tys, ty_param_count);
 
     // Construct the function pair
-    let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val, box);
+    let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val, r.box);
     add_clean_temp(cx, pair_v, pair_ty);
     ret rslt(bcx, pair_v);
 }
@@ -5801,22 +5800,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         // allocates a box, including space for a refcount.
         let box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
-
-        // mk_imm_box throws a refcount into the type we're synthesizing,
-        // so that it looks like:
-        // [rc, [tydesc, [typaram, ...], [field, ...], inner_obj]]
-        let boxed_body_ty: ty::t = ty::mk_imm_box(ccx.tcx, body_ty);
-
-        // Grab onto the refcount and body parts of the box we allocated.
-        let rc =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         ~[0, abi::box_rc_field_refcnt]);
-        bcx = rc.bcx;
-        let body =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         ~[0, abi::box_rc_field_body]);
-        bcx = body.bcx;
-        bcx.build.Store(C_int(1), rc.val);
+        let body = box.body;
 
         // Put together a tydesc for the body, so that the object can later be
         // freed by calling through its tydesc.
@@ -5827,7 +5811,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         // the types of the object's fields, so that the fields can be freed
         // later.
         let body_tydesc =
-            GEP_tup_like(bcx, body_ty, body.val,
+            GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none[@tydesc_info];
@@ -5842,7 +5826,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         // function in its closure: the fields were passed to the object
         // constructor and are now available to the object's methods.
         let body_fields =
-            GEP_tup_like(bcx, body_ty, body.val,
+            GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
         let i: int = 0;
@@ -5872,7 +5856,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             let inner_obj_val: result = trans_expr(bcx, e);
 
             let body_inner_obj =
-                GEP_tup_like(bcx, body_ty, body.val,
+                GEP_tup_like(bcx, body_ty, body,
                              ~[0, abi::obj_body_elt_inner_obj]);
             bcx = body_inner_obj.bcx;
             bcx =
@@ -5882,7 +5866,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         }
 
         // Store box ptr in outer pair.
-        let p = bcx.build.PointerCast(box.val, llbox_ty);
+        let p = bcx.build.PointerCast(box.box, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
 
@@ -7120,21 +7104,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         // allocates a box, including space for a refcount.
         let box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
-
-        // mk_imm_box throws a refcount into the type we're synthesizing, so
-        // that it looks like: [rc, [tydesc_ty, [typaram, ...], [field, ...]]]
-        let boxed_body_ty: ty::t = ty::mk_imm_box(ccx.tcx, body_ty);
-
-        // Grab onto the refcount and body parts of the box we allocated.
-        let rc =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         ~[0, abi::box_rc_field_refcnt]);
-        bcx = rc.bcx;
-        let body =
-            GEP_tup_like(bcx, boxed_body_ty, box.val,
-                         ~[0, abi::box_rc_field_body]);
-        bcx = body.bcx;
-        bcx.build.Store(C_int(1), rc.val);
+        let body = box.body;
 
         // Put together a tydesc for the body, so that the object can later be
         // freed by calling through its tydesc.
@@ -7146,7 +7116,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         // later.
 
         let body_tydesc =
-            GEP_tup_like(bcx, body_ty, body.val,
+            GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none[@tydesc_info];
@@ -7165,7 +7135,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
 
         // Copy typarams into captured typarams.
         let body_typarams =
-            GEP_tup_like(bcx, body_ty, body.val,
+            GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_typarams]);
         bcx = body_typarams.bcx;
         let i: int = 0;
@@ -7180,7 +7150,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
 
         // Copy args into body fields.
         let body_fields =
-            GEP_tup_like(bcx, body_ty, body.val,
+            GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
         i = 0;
@@ -7202,7 +7172,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         }
 
         // Store box ptr in outer pair.
-        let p = bcx.build.PointerCast(box.val, llbox_ty);
+        let p = bcx.build.PointerCast(box.box, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
     bcx.build.RetVoid();
