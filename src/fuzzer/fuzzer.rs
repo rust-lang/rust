@@ -21,29 +21,6 @@ import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
-/*
-// Imports for "the rest of driver::compile_input"
-import driver = rustc::driver::rustc; // see https://github.com/graydon/rust/issues/624
-import rustc::back::link;
-import rustc::driver::rustc::time;
-import rustc::driver::session;
-
-import rustc::metadata::creader;
-import rustc::metadata::cstore;
-import rustc::syntax::parse::parser;
-import rustc::syntax::parse::token;
-import rustc::front;
-import rustc::front::attr;
-import rustc::middle;
-import rustc::middle::trans;
-import rustc::middle::resolve;
-import rustc::middle::ty;
-import rustc::middle::typeck;
-import rustc::middle::tstate::ck;
-import rustc::syntax::print::pp;
-import rustc::util::ppaux;
-import rustc::lib::llvm;
-*/
 
 fn read_whole_file(filename: &str) -> str {
     str::unsafe_from_bytes_ivec(ioivec::file_reader(filename).read_whole_stream())
@@ -53,6 +30,8 @@ fn write_file(filename: &str, content: &str) {
     ioivec::file_writer(filename,
                         ~[ioivec::create,
                           ioivec::truncate]).write_str(content);
+    // Work around https://github.com/graydon/rust/issues/726
+    std::run::run_program("chmod", ["644", filename]);
 }
 
 fn file_contains(filename: &str, needle: &str) -> bool {
@@ -71,7 +50,7 @@ fn find_rust_files(files: &mutable str[], path: str) {
         } else { files += ~[path]; }
     } else if (fs::file_is_dir(path) && str::find(path, "compile-fail") == -1)
      {
-        for p: str  in fs::list_dir(path) { find_rust_files(files, p); }
+        for p in fs::list_dir(path) { find_rust_files(files, p); }
     }
 }
 
@@ -102,14 +81,9 @@ fn safe_to_steal(e: ast::expr_) -> bool {
       ast::expr_binary(_, _, _) { false }
       ast::expr_assign(_, _) { false }
       ast::expr_assign_op(_, _, _) { false }
-
-
-      // https://github.com/graydon/rust/issues/676
-      ast::expr_ret(option::none.) {
-        false
-      }
+      ast::expr_fail(option::none.) { false /* https://github.com/graydon/rust/issues/764 */ }
+      ast::expr_ret(option::none.) { false }
       ast::expr_put(option::none.) { false }
-
 
       _ {
         true
@@ -175,31 +149,48 @@ fn as_str(f: fn(ioivec::writer) ) -> str {
     ret w.get_str();
 }
 
-/*
-fn pp_variants(&ast::crate crate, &codemap::codemap cmap, &str filename) {
-    auto exprs = steal_exprs(crate);
-    auto exprsL = ivec::len(exprs);
+fn pp_variants(crate: &ast::crate, codemap: &codemap::codemap, filename: &str) {
+    let exprs = steal_exprs(crate);
+    let exprsL = ivec::len(exprs);
     if (exprsL < 100u) {
-        for each (uint i in under(uint::min(exprsL, 20u))) {
+        for each i: uint in under(uint::min(exprsL, 20u)) {
             log_err "Replacing... " + pprust::expr_to_str(@exprs.(i));
-            for each (uint j in under(uint::min(exprsL, 5u))) {
+            for each j: uint in under(uint::min(exprsL, 5u)) {
                 log_err "With... " + pprust::expr_to_str(@exprs.(j));
-                auto crate2 = @replace_expr_in_crate(crate, i, exprs.(j).node);
-                check_roundtrip(crate2, cmap, filename + ".4.rs");
+                let crate2 = @replace_expr_in_crate(crate, i, exprs.(j).node);
+                // It would be best to test the *crate* for stability, but testing the
+                // string for stability is easier and ok for now.
+                let str3 = as_str(bind pprust::print_crate(codemap, crate2, filename,
+                                  ioivec::string_reader(""), _,
+                                  pprust::no_ann()));
+                // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
+                // and https://github.com/graydon/rust/issues/766 is hilarious.
+                check_roundtrip_convergence(str3, 7u);
             }
         }
     }
 }
-*/
 
 fn parse_and_print(code: &str) -> str {
-    let filename = "";
+    let filename = "tmp.rs";
     let codemap = codemap::new_codemap();
+    //write_file(filename, code);
     let crate =
         parser::parse_crate_from_source_str(filename, code, ~[], codemap);
     ret as_str(bind pprust::print_crate(codemap, crate, filename,
                                         ioivec::string_reader(code), _,
                                         pprust::no_ann()));
+}
+
+fn content_is_dangerous_to_modify(code: &str) -> bool {
+    let dangerous_patterns = [
+         "obj", // not safe to steal; https://github.com/graydon/rust/issues/761
+         "#macro", // not safe to steal things inside of it, because they have a special syntax
+         " be " // don't want to replace its child with a non-call: "Non-call expression in tail call"
+    ];
+
+    for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
+    ret false;
 }
 
 fn content_is_confusing(code: &str) -> bool {
@@ -212,14 +203,21 @@ fn content_is_confusing(code: &str) -> bool {
          // more precedence issues?
         confusing_patterns =
         ["#macro", "][]", "][mutable]", "][mutable ]", "self", "spawn",
-         "bind"];
+         "bind",
+         "\n\n\n\n\n", // https://github.com/graydon/rust/issues/759
+         " : ", // https://github.com/graydon/rust/issues/760
+         "if ret",
+         "alt ret",
+         "if fail",
+         "alt fail"
+         ];
 
-    for p: str  in confusing_patterns { if contains(code, p) { ret true; } }
+    for p: str in confusing_patterns { if contains(code, p) { ret true; } }
     ret false;
 }
 
 fn file_is_confusing(filename: &str) -> bool {
-    let 
+    let
 
          // https://github.com/graydon/rust/issues/674
 
@@ -231,49 +229,67 @@ fn file_is_confusing(filename: &str) -> bool {
          // --pretty normal"???
          confusing_files =
         ["block-expr-precedence.rs", "nil-pattern.rs",
-         "syntax-extension-fmt.rs"];
+         "syntax-extension-fmt.rs",
+         "newtype.rs" // modifying it hits something like https://github.com/graydon/rust/issues/670
+         ];
 
-    for f: str  in confusing_files { if contains(filename, f) { ret true; } }
+    for f in confusing_files { if contains(filename, f) { ret true; } }
 
     ret false;
 }
 
-fn check_roundtrip_convergence(code: &str) {
+fn check_roundtrip_convergence(code: &str, maxIters: uint) {
 
-    let i = 0;
+    let i = 0u;
     let new = code;
     let old = code;
 
-    while i < 10 {
+    while i < maxIters {
         old = new;
+        if content_is_confusing(old) { ret; }
         new = parse_and_print(old);
-        if content_is_confusing(new) { ret; }
-        i += 1;
-        log #fmt("cycle %d", i);
+        if old == new { break; }
+        i += 1u;
     }
 
-
-    if old != new {
+    if old == new {
+        log_err #fmt("Converged after %u iterations", i);
+    } else {
+        log_err #fmt("Did not converge after %u iterations!", i);
         write_file("round-trip-a.rs", old);
         write_file("round-trip-b.rs", new);
-        std::run::run_program("kdiff3",
-                              ["round-trip-a.rs", "round-trip-b.rs"]);
+        std::run::run_program("diff", ["-w", "-u", "round-trip-a.rs", "round-trip-b.rs"]);
         fail "Mismatch";
     }
 }
+
 fn check_convergence(files: &str[]) {
     log_err #fmt("pp convergence tests: %u files", ivec::len(files));
-    for file: str  in files {
-
-        log_err #fmt("pp converge: %s", file);
+    for file in files {
         if !file_is_confusing(file) {
             let s = read_whole_file(file);
-            if !content_is_confusing(s) { check_roundtrip_convergence(s); }
+            if !content_is_confusing(s) {
+                log_err #fmt("pp converge: %s", file);
+                // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
+                check_roundtrip_convergence(s, 7u);
+            }
         }
+    }
+}
 
-        //pprust::print_crate(cm, crate, file, devnull(), pprust::no_ann());
-        // Currently hits https://github.com/graydon/rust/issues/675
-        //pp_variants(*crate, cm, file);
+fn check_convergence_of_variants(files: &str[]) {
+    for file in files {
+        if !file_is_confusing(file) {
+            let s = read_whole_file(file);
+            if content_is_dangerous_to_modify(s) || content_is_confusing(s) { cont; }
+            log_err "check_convergence_of_variants: " + file;
+            let codemap = codemap::new_codemap();
+            let crate = parser::parse_crate_from_source_str(file, s, ~[], codemap);
+            log_err as_str(bind pprust::print_crate(codemap, crate, file,
+                                        ioivec::string_reader(s), _,
+                                        pprust::no_ann()));
+            pp_variants(*crate, codemap, file);
+        }
     }
 }
 
@@ -287,6 +303,7 @@ fn main(args: vec[str]) {
 
     find_rust_files(files, root);
     check_convergence(files);
+    check_convergence_of_variants(files);
 }
 
 // Local Variables:
