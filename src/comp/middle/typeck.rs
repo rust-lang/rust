@@ -1099,7 +1099,7 @@ mod writeback {
           }
         }
     }
-    fn resolve_type_vars_for_node(wbcx: &@wb_ctxt, sp: &span,
+    fn resolve_type_vars_for_node(wbcx: &wb_ctxt, sp: &span,
                                   id: ast::node_id) {
         let fcx = wbcx.fcx;
         let tpot = ty::node_id_to_ty_param_substs_opt_and_ty(fcx.ccx.tcx, id);
@@ -1126,24 +1126,33 @@ mod writeback {
     }
 
     type wb_ctxt =
-        // A flag to ignore contained items and lambdas
         // As soon as we hit an error we have to stop resolving
         // the entire function
-        {fcx: @fn_ctxt, mutable ignore: bool, mutable success: bool};
+        {fcx: @fn_ctxt, mutable success: bool};
+    type wb_vt = visit::vt[wb_ctxt];
 
-    fn visit_stmt_pre(wbcx: @wb_ctxt, s: &@ast::stmt) {
+    fn visit_stmt(s: &@ast::stmt, wbcx: &wb_ctxt, v: &wb_vt) {
+        if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
+        visit::visit_stmt(s, wbcx, v);
     }
-    fn visit_expr_pre(wbcx: @wb_ctxt, e: &@ast::expr) {
+    fn visit_expr(e: &@ast::expr, wbcx: &wb_ctxt, v: &wb_vt) {
+        if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, e.span, e.id);
+        visit::visit_expr(e, wbcx, v);
     }
-    fn visit_block_pre(wbcx: @wb_ctxt, b: &ast::blk) {
+    fn visit_block(b: &ast::blk, wbcx: &wb_ctxt, v: &wb_vt) {
+        if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, b.span, b.node.id);
+        visit::visit_block(b, wbcx, v);
     }
-    fn visit_pat_pre(wbcx: @wb_ctxt, p: &@ast::pat) {
+    fn visit_pat(p: &@ast::pat, wbcx: &wb_ctxt, v: &wb_vt) {
+        if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, p.span, p.id);
+        visit::visit_pat(p, wbcx, v);
     }
-    fn visit_local_pre(wbcx: @wb_ctxt, l: &@ast::local) {
+    fn visit_local(l: &@ast::local, wbcx: &wb_ctxt, v: &wb_vt) {
+        if !wbcx.success { ret; }
         let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
         let fix_rslt =
             ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx,
@@ -1157,38 +1166,29 @@ mod writeback {
             wbcx.success = false;
           }
         }
+        visit::visit_local(l, wbcx, v);
     }
-    fn visit_item_pre(wbcx: @wb_ctxt, item: &@ast::item) {
-        wbcx.ignore = true;
+    fn visit_item(item: &@ast::item, wbcx: &wb_ctxt, v: &wb_vt) {
+        // Ignore items
     }
-    fn visit_item_post(wbcx: @wb_ctxt, item: &@ast::item) {
-        wbcx.ignore = false;
+    fn visit_fn(f: &ast::_fn, tps: &ast::ty_param[],
+                    sp: &span, i: &ast::fn_ident, d: ast::node_id,
+                    wbcx: &wb_ctxt, v: &wb_vt) {
+        // Ignore fns
     }
-    fn visit_fn_pre(wbcx: @wb_ctxt, f: &ast::_fn, tps: &ast::ty_param[],
-                    sp: &span, i: &ast::fn_ident, d: ast::node_id) {
-        wbcx.ignore = true;
-    }
-    fn visit_fn_post(wbcx: @wb_ctxt, f: &ast::_fn, tps: &ast::ty_param[],
-                     sp: &span, i: &ast::fn_ident, d: ast::node_id) {
-        wbcx.ignore = false;
-    }
-    fn keep_going(wbcx: @wb_ctxt) -> bool { !wbcx.ignore && wbcx.success }
 
     fn resolve_type_vars_in_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
-        let wbcx = @{fcx: fcx, mutable ignore: false, mutable success: true};
-        let visit =
-            {keep_going: bind keep_going(wbcx),
-             visit_item_pre: bind visit_item_pre(wbcx, _),
-             visit_item_post: bind visit_item_post(wbcx, _),
-             visit_fn_pre: bind visit_fn_pre(wbcx, _, _, _, _, _),
-             visit_fn_post: bind visit_fn_post(wbcx, _, _, _, _, _),
-             visit_stmt_pre: bind visit_stmt_pre(wbcx, _),
-             visit_expr_pre: bind visit_expr_pre(wbcx, _),
-             visit_block_pre: bind visit_block_pre(wbcx, _),
-             visit_pat_pre: bind visit_pat_pre(wbcx, _),
-             visit_local_pre: bind visit_local_pre(wbcx, _)
-             with walk::default_visitor()};
-        walk::walk_block(visit, blk);
+        let wbcx = {fcx: fcx, mutable success: true};
+        let visit = visit::mk_vt
+            (@{visit_item: visit_item,
+               visit_fn: visit_fn,
+               visit_stmt: visit_stmt,
+               visit_expr: visit_expr,
+               visit_block: visit_block,
+               visit_pat: visit_pat,
+               visit_local: visit_local
+               with *visit::default_visitor()});
+        visit::visit_block(blk, wbcx, visit);
         ret wbcx.success;
     }
 }
