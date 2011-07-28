@@ -172,31 +172,9 @@ fn make_test(cx: &cx, testfile: &str, configport: &port[str]) ->
    test::test_desc {
     {name: testfile,
      fn: make_test_closure(testfile, chan(configport)),
-     ignore: is_test_ignored(cx.config, testfile)}
+            ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
-fn is_test_ignored(config: &config, testfile: &str) -> bool {
-    let found = false;
-    for each ln: str  in iter_header(testfile) {
-        // FIXME: Can't return or break from iterator
-        found = found || parse_name_directive(ln, "xfail-" + config.stage_id);
-    }
-    ret found;
-}
-
-iter iter_header(testfile: &str) -> str {
-    let rdr = io::file_reader(testfile);
-    while !rdr.eof() {
-        let ln = rdr.read_line();
-
-        // Assume that any directives will be found before the
-        // first module or function. This doesn't seem to be an optimization
-        // with a warm page cache. Maybe with a cold one.
-        if str::starts_with(ln, "fn") || str::starts_with(ln, "mod") {
-            break;
-        } else { put ln; }
-    }
-}
 
 /*
 So this is kind of crappy:
@@ -272,185 +250,9 @@ fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,
 
     let cx = {config: config, procsrv: procsrv};
 
-    log #fmt("running %s", testfile);
-    task::unsupervise();
-    let props = load_props(testfile);
-    alt cx.config.mode {
-      mode_compile_fail. { run_cfail_test(cx, props, testfile); }
-      mode_run_fail. { run_rfail_test(cx, props, testfile); }
-      mode_run_pass. { run_rpass_test(cx, props, testfile); }
-    }
+    runtest::run(cx, testfile);
 }
 
-type test_props = {error_patterns: str[], compile_flags: option::t[str]};
-
-// Load any test directives embedded in the file
-fn load_props(testfile: &str) -> test_props {
-    let error_patterns = ~[];
-    let compile_flags = option::none;
-    for each ln: str  in iter_header(testfile) {
-        alt parse_error_pattern(ln) {
-          option::some(ep) { error_patterns += ~[ep]; }
-          option::none. { }
-        }
-
-
-        if option::is_none(compile_flags) {
-            compile_flags = parse_compile_flags(ln);
-        }
-    }
-    ret {error_patterns: error_patterns, compile_flags: compile_flags};
-}
-
-fn parse_error_pattern(line: &str) -> option::t[str] {
-    parse_name_value_directive(line, "error-pattern")
-}
-
-fn parse_compile_flags(line: &str) -> option::t[str] {
-    parse_name_value_directive(line, "compile-flags")
-}
-
-fn parse_name_directive(line: &str, directive: &str) -> bool {
-    str::find(line, directive) >= 0
-}
-
-fn parse_name_value_directive(line: &str, directive: &str) -> option::t[str] {
-    let keycolon = directive + ":";
-    if str::find(line, keycolon) >= 0 {
-        let colon = str::find(line, keycolon) as uint;
-        let value =
-            str::slice(line, colon + str::byte_len(keycolon),
-                       str::byte_len(line));
-        log #fmt("%s: %s", directive, value);
-        option::some(value)
-    } else { option::none }
-}
-
-fn run_cfail_test(cx: &cx, props: &test_props, testfile: &str) {
-    let procres = compile_test(cx, props, testfile);
-
-    if procres.status == 0 {
-        fatal_procres("compile-fail test compiled successfully!", procres);
-    }
-
-    check_error_patterns(props, testfile, procres);
-}
-
-fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
-    let procres = compile_test(cx, props, testfile);
-
-    if procres.status != 0 { fatal_procres("compilation failed!", procres); }
-
-    procres = exec_compiled_test(cx, testfile);
-
-    if procres.status == 0 {
-        fatal_procres("run-fail test didn't produce an error!", procres);
-    }
-
-    check_error_patterns(props, testfile, procres);
-}
-
-fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
-    let procres = compile_test(cx, props, testfile);
-
-    if procres.status != 0 { fatal_procres("compilation failed!", procres); }
-
-    procres = exec_compiled_test(cx, testfile);
-
-
-    if procres.status != 0 { fatal_procres("test run failed!", procres); }
-}
-
-fn check_error_patterns(props: &test_props, testfile: &str,
-                        procres: &procres) {
-    if ivec::is_empty(props.error_patterns) {
-        fatal("no error pattern specified in " + testfile);
-    }
-
-    let next_err_idx = 0u;
-    let next_err_pat = props.error_patterns.(next_err_idx);
-    for line: str  in str::split(procres.out, '\n' as u8) {
-        if str::find(line, next_err_pat) > 0 {
-            log #fmt("found error pattern %s", next_err_pat);
-            next_err_idx += 1u;
-            if next_err_idx == ivec::len(props.error_patterns) {
-                log "found all error patterns";
-                ret;
-            }
-            next_err_pat = props.error_patterns.(next_err_idx);
-        }
-    }
-
-    let missing_patterns =
-        ivec::slice(props.error_patterns, next_err_idx,
-                    ivec::len(props.error_patterns));
-    if ivec::len(missing_patterns) == 1u {
-        fatal_procres(#fmt("error pattern '%s' not found!",
-                           missing_patterns.(0)), procres);
-    } else {
-        for pattern: str  in missing_patterns {
-            error(#fmt("error pattern '%s' not found!", pattern));
-        }
-        fatal_procres("multiple error patterns not found", procres);
-    }
-}
-
-type procargs = {prog: str, args: vec[str]};
-
-type procres = {status: int, out: str, cmdline: str};
-
-fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
-    compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
-                    cx.config.compile_lib_path)
-}
-
-fn exec_compiled_test(cx: &cx, testfile: &str) -> procres {
-    compose_and_run(cx, testfile, make_run_args, cx.config.run_lib_path)
-}
-
-fn compose_and_run(cx: &cx, testfile: &str,
-                   make_args: fn(&config, &str) -> procargs , lib_path: &str)
-   -> procres {
-    let procargs = make_args(cx.config, testfile);
-    ret program_output(cx, testfile, lib_path, procargs.prog, procargs.args);
-}
-
-fn make_compile_args(config: &config, props: &test_props, testfile: &str) ->
-   procargs {
-    let prog = config.rustc_path;
-    let args = [testfile, "-o", make_exe_name(config, testfile)];
-    args += split_maybe_args(config.rustcflags);
-    args += split_maybe_args(props.compile_flags);
-    ret {prog: prog, args: args};
-}
-
-fn make_run_args(config: &config, testfile: &str) -> procargs {
-    // If we've got another tool to run under (valgrind),
-    // then split apart its command
-    let args =
-        split_maybe_args(config.runtool) + [make_exe_name(config, testfile)];
-    ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
-}
-
-fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
-    alt argstr {
-      option::some(s) { str::split(s, ' ' as u8) }
-      option::none. { [] }
-    }
-}
-
-fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
-                  args: &vec[str]) -> procres {
-    let cmdline =
-        {
-            let cmdline = make_cmdline(lib_path, prog, args);
-            logv(cx.config, #fmt("running %s", cmdline));
-            cmdline
-        };
-    let res = procsrv::run(cx.procsrv, lib_path, prog, args);
-    dump_output(cx.config, testfile, res.out);
-    ret {status: res.status, out: res.out, cmdline: cmdline};
-}
 
 fn make_cmdline(libpath: &str, prog: &str, args: &vec[str]) -> str {
     #fmt("%s %s %s", lib_path_cmd_prefix(libpath), prog,
@@ -524,30 +326,257 @@ fn make_out_name(config: &config, testfile: &str) -> str {
     output_base_name(config, testfile) + ".out"
 }
 
-fn error(err: &str) { io::stdout().write_line(#fmt("\nerror: %s", err)); }
-
-fn fatal(err: &str) -> ! { error(err); fail; }
-
-fn fatal_procres(err: &str, procres: procres) -> ! {
-    let msg =
-        #fmt("\n\
-                     error: %s\n\
-                     command: %s\n\
-                     output:\n\
-                     ------------------------------------------\n\
-                     %s\n\
-                     ------------------------------------------\n\
-                     \n",
-             err, procres.cmdline, procres.out);
-    io::stdout().write_str(msg);
-    fail;
-}
-
 fn logv(config: &config, s: &str) {
     log s;
     if config.verbose { io::stdout().write_line(s); }
 }
 
+mod header {
+
+    export test_props;
+    export load_props;
+    export is_test_ignored;
+
+    type test_props = {error_patterns: str[], compile_flags: option::t[str]};
+
+    // Load any test directives embedded in the file
+    fn load_props(testfile: &str) -> test_props {
+        let error_patterns = ~[];
+        let compile_flags = option::none;
+        for each ln: str  in iter_header(testfile) {
+                alt parse_error_pattern(ln) {
+                        option::some(ep) { error_patterns += ~[ep]; }
+                        option::none. { }
+                    }
+
+
+                if option::is_none(compile_flags) {
+                        compile_flags = parse_compile_flags(ln);
+                    }
+            }
+        ret {error_patterns: error_patterns, compile_flags: compile_flags};
+    }
+
+    fn is_test_ignored(config: &config, testfile: &str) -> bool {
+        let found = false;
+        for each ln: str  in iter_header(testfile) {
+                // FIXME: Can't return or break from iterator
+                found = found
+                    || parse_name_directive(ln, "xfail-" + config.stage_id);
+            }
+        ret found;
+    }
+
+    iter iter_header(testfile: &str) -> str {
+        let rdr = io::file_reader(testfile);
+        while !rdr.eof() {
+                let ln = rdr.read_line();
+
+                // Assume that any directives will be found before the first
+                // module or function. This doesn't seem to be an optimization
+                // with a warm page cache. Maybe with a cold one.
+                if str::starts_with(ln, "fn") || str::starts_with(ln, "mod") {
+                        break;
+                    } else { put ln; }
+            }
+    }
+
+    fn parse_error_pattern(line: &str) -> option::t[str] {
+        parse_name_value_directive(line, "error-pattern")
+            }
+
+    fn parse_compile_flags(line: &str) -> option::t[str] {
+        parse_name_value_directive(line, "compile-flags")
+            }
+
+    fn parse_name_directive(line: &str, directive: &str) -> bool {
+        str::find(line, directive) >= 0
+            }
+
+    fn parse_name_value_directive(line: &str,
+                                  directive: &str) -> option::t[str] {
+        let keycolon = directive + ":";
+        if str::find(line, keycolon) >= 0 {
+                let colon = str::find(line, keycolon) as uint;
+                let value =
+                    str::slice(line, colon + str::byte_len(keycolon),
+                               str::byte_len(line));
+                log #fmt("%s: %s", directive, value);
+                option::some(value)
+                    } else { option::none }
+    }
+}
+
+mod runtest {
+
+    import header::load_props;
+    import header::test_props;
+
+    export run;
+
+    fn run(cx: &cx, testfile: &str) {
+        log #fmt("running %s", testfile);
+        task::unsupervise();
+        let props = load_props(testfile);
+        alt cx.config.mode {
+                mode_compile_fail. { run_cfail_test(cx, props, testfile); }
+                mode_run_fail. { run_rfail_test(cx, props, testfile); }
+                mode_run_pass. { run_rpass_test(cx, props, testfile); }
+            }
+    }
+
+    fn run_cfail_test(cx: &cx, props: &test_props, testfile: &str) {
+        let procres = compile_test(cx, props, testfile);
+
+        if procres.status == 0 {
+            fatal_procres("compile-fail test compiled successfully!",
+                          procres);
+        }
+
+        check_error_patterns(props, testfile, procres);
+    }
+
+    fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
+        let procres = compile_test(cx, props, testfile);
+
+        if procres.status != 0 {
+                fatal_procres("compilation failed!", procres); }
+
+        procres = exec_compiled_test(cx, testfile);
+
+        if procres.status == 0 {
+            fatal_procres("run-fail test didn't produce an error!",
+                          procres);
+            }
+
+        check_error_patterns(props, testfile, procres);
+    }
+
+    fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
+        let procres = compile_test(cx, props, testfile);
+
+        if procres.status != 0 {
+                fatal_procres("compilation failed!", procres); }
+
+        procres = exec_compiled_test(cx, testfile);
+
+
+        if procres.status != 0 { fatal_procres("test run failed!", procres); }
+    }
+
+    fn check_error_patterns(props: &test_props, testfile: &str,
+                            procres: &procres) {
+        if ivec::is_empty(props.error_patterns) {
+                fatal("no error pattern specified in " + testfile);
+            }
+
+        let next_err_idx = 0u;
+        let next_err_pat = props.error_patterns.(next_err_idx);
+        for line: str  in str::split(procres.out, '\n' as u8) {
+                if str::find(line, next_err_pat) > 0 {
+                        log #fmt("found error pattern %s", next_err_pat);
+                        next_err_idx += 1u;
+                        if next_err_idx == ivec::len(props.error_patterns) {
+                                log "found all error patterns";
+                                ret;
+                            }
+                        next_err_pat = props.error_patterns.(next_err_idx);
+                    }
+            }
+
+        let missing_patterns =
+            ivec::slice(props.error_patterns, next_err_idx,
+                        ivec::len(props.error_patterns));
+        if ivec::len(missing_patterns) == 1u {
+                fatal_procres(#fmt("error pattern '%s' not found!",
+                                   missing_patterns.(0)), procres);
+            } else {
+            for pattern: str  in missing_patterns {
+                    error(#fmt("error pattern '%s' not found!", pattern));
+                }
+            fatal_procres("multiple error patterns not found", procres);
+        }
+    }
+
+    type procargs = {prog: str, args: vec[str]};
+
+    type procres = {status: int, out: str, cmdline: str};
+
+    fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
+        compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
+                        cx.config.compile_lib_path)
+            }
+
+    fn exec_compiled_test(cx: &cx, testfile: &str) -> procres {
+        compose_and_run(cx, testfile, make_run_args, cx.config.run_lib_path)
+            }
+
+    fn compose_and_run(cx: &cx, testfile: &str,
+                       make_args: fn(&config, &str) -> procargs ,
+                       lib_path: &str) -> procres {
+        let procargs = make_args(cx.config, testfile);
+        ret program_output(cx, testfile, lib_path,
+                           procargs.prog, procargs.args);
+    }
+
+    fn make_compile_args(config: &config,
+                         props: &test_props, testfile: &str) ->
+        procargs {
+        let prog = config.rustc_path;
+        let args = [testfile, "-o", make_exe_name(config, testfile)];
+        args += split_maybe_args(config.rustcflags);
+        args += split_maybe_args(props.compile_flags);
+        ret {prog: prog, args: args};
+    }
+
+    fn make_run_args(config: &config, testfile: &str) -> procargs {
+        // If we've got another tool to run under (valgrind),
+        // then split apart its command
+        let args =
+            split_maybe_args(config.runtool)
+            + [make_exe_name(config, testfile)];
+        ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
+    }
+
+    fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
+        alt argstr {
+                option::some(s) { str::split(s, ' ' as u8) }
+                option::none. { [] }
+            }
+    }
+
+    fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
+                      args: &vec[str]) -> procres {
+        let cmdline =
+            {
+                let cmdline = make_cmdline(lib_path, prog, args);
+                logv(cx.config, #fmt("running %s", cmdline));
+                cmdline
+            };
+        let res = procsrv::run(cx.procsrv, lib_path, prog, args);
+        dump_output(cx.config, testfile, res.out);
+        ret {status: res.status, out: res.out, cmdline: cmdline};
+    }
+
+    fn error(err: &str) { io::stdout().write_line(#fmt("\nerror: %s", err)); }
+
+    fn fatal(err: &str) -> ! { error(err); fail; }
+
+    fn fatal_procres(err: &str, procres: procres) -> ! {
+        let msg =
+            #fmt("\n\
+                  error: %s\n\
+                  command: %s\n\
+                  output:\n\
+                  ------------------------------------------\n\
+                  %s\n\
+                  ------------------------------------------\n\
+                  \n",
+                 err, procres.cmdline, procres.out);
+        io::stdout().write_str(msg);
+        fail;
+    }
+}
 
 // So when running tests in parallel there's a potential race on environment
 // variables if we let each task spawn its own children - between the time the
