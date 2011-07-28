@@ -333,7 +333,7 @@ tag expr_ {
 type mac = spanned[mac_];
 
 tag mac_ {
-    mac_invoc(path, (@expr)[], option::t[str]);
+    mac_invoc(path, @expr, option::t[str]);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;

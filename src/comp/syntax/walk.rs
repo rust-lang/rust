@@ -262,7 +262,7 @@ fn walk_exprs(v: &ast_visitor, exprs: &(@ast::expr)[]) {
 
 fn walk_mac(v: &ast_visitor, mac: ast::mac) {
     alt mac.node {
-      ast::mac_invoc(pth, args, body) { walk_exprs(v, args); }
+      ast::mac_invoc(pth, arg, body) { walk_expr(v, arg); }
       ast::mac_embed_type(ty) { walk_ty(v, ty); }
       ast::mac_embed_block(blk) { walk_block(v, blk); }
       ast::mac_ellipsis. { }

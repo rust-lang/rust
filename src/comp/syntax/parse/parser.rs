@@ -1021,11 +1021,18 @@ fn parse_syntax_ext_naked(p: &parser, lo: uint) -> @ast::expr {
     if ivec::len(pth.node.idents) == 0u {
         p.fatal("expected a syntax expander name");
     }
-    let es =
+    //temporary for a backwards-compatible cycle:
+    let es = if p.peek() == token::LPAREN {
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                  parse_expr, p);
+                  parse_expr, p)
+    } else {
+        parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
+                  parse_expr, p)
+    };
     let hi = es.span.hi;
-    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, es.node, none));
+    let e = mk_expr(p, es.span.lo, hi,
+                    ast::expr_vec(es.node, ast::imm, ast::sk_rc));
+    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, e, none));
 }
 
 fn parse_self_method(p: &parser) -> @ast::expr {

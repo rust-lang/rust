@@ -42,7 +42,7 @@ fn path_to_ident(pth: &path) -> option::t[ident] {
 }
 
 //an ivec of binders might be a little big.
-type clause = {params: binders[], body: @expr};
+type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */
 tag arb_depth[T] { leaf(T); seq(vec[arb_depth[T]], span); }
@@ -107,6 +107,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &(@expr)[]) -> option::t[@expr] {
                 }
                 ret some(elts.(0));
               }
+              _ { }
             }
           }
           _ { }
@@ -179,6 +180,10 @@ selectors. */
 
 fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
     let res = new_str_hash[arb_depth[matchable]]();
+    //need to do this first, to check vec lengths.
+    for sel: selector  in b.literal_ast_matchers {
+        alt sel(match_expr(e)) { none. { ret none; } _ { } }
+    }
     let never_mind: bool = false;
     for each pair: @{key: ident, val: selector}  in b.real_binders.items() {
         alt pair.val(match_expr(e)) {
@@ -186,12 +191,8 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
           some(mtc) { res.insert(pair.key, mtc); }
         }
     }
-    if never_mind {
-        ret none; //HACK: `ret` doesn't work in `for each`
-    }
-    for sel: selector  in b.literal_ast_matchers {
-        alt sel(match_expr(e)) { none. { ret none; } _ { } }
-    }
+    //HACK: `ret` doesn't work in `for each`
+    if never_mind { ret none; }
     ret some(res);
 }
 
@@ -537,8 +538,8 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                           _ { none }
                         }
                 }
-                b.real_binders.insert(id,
-                                      bind select_pt_1(cx, _, select_pt_2));
+                let final_step = bind select_pt_1(cx, _, select_pt_2);
+                b.real_binders.insert(id, compose_sels(s, final_step));
               }
               none. { no_des(cx, pth.span, "under `#<>`"); }
             }
@@ -557,7 +558,8 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
                       _ { none }
                     }
             }
-            b.real_binders.insert(id, bind select_pt_1(cx, _, select_pt_2));
+            let final_step = bind select_pt_1(cx, _, select_pt_2);
+            b.real_binders.insert(id, compose_sels(s, final_step));
           }
           none. { no_des(cx, blk.span, "under `#{}`"); }
         }
@@ -576,7 +578,7 @@ fn ivec_to_vec[T](v: &T[]) -> vec[T] {
 fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, s: &selector,
                     b: &binders) {
     fn select(cx: &ext_ctxt, repeat_me: @expr, m: &matchable) ->
-       match_result {
+        match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node {
@@ -640,8 +642,15 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], s: &selector,
     }
 }
 
-fn add_new_extension(cx: &ext_ctxt, sp: span, args: &(@expr)[],
+fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                      body: option::t[str]) -> base::macro_def {
+    let args: (@ast::expr)[] = alt arg.node {
+      ast::expr_vec(elts, _, _) { elts }
+      _ {
+        cx.span_fatal(sp, "#macro requires arguments of the form `[...]`.")
+      }
+    };
+
     let macro_name: option::t[str] = none;
     let clauses: clause[] = ~[];
     for arg: @expr  in args {
@@ -657,19 +666,16 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, args: &(@expr)[],
             alt elts.(0u).node {
               expr_mac(mac) {
                 alt mac.node {
-                  mac_invoc(pth, invoc_args, body) {
+                  mac_invoc(pth, invoc_arg, body) {
                     alt path_to_ident(pth) {
                       some(id) { macro_name = some(id); }
                       none. {
                         cx.span_fatal(pth.span,
-                                      "macro name " + "must not be a path");
+                                      "macro name must not be a path");
                       }
                     }
-                    let bdrses = ~[];
-                    for arg: @expr  in invoc_args {
-                        bdrses += ~[pattern_to_selectors(cx, arg)];
-                    }
-                    clauses += ~[{params: bdrses, body: elts.(1u)}];
+                    clauses += ~[{params: pattern_to_selectors(cx, invoc_arg),
+                                  body: elts.(1u)}];
                     // FIXME: check duplicates (or just simplify
                     // the macro arg situation)
                   }
@@ -702,32 +708,15 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, args: &(@expr)[],
              },
          ext: normal(ext)};
 
-
-    fn generic_extension(cx: &ext_ctxt, sp: span, args: &(@expr)[],
+    fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                          body: option::t[str], clauses: clause[]) -> @expr {
-
-
         for c: clause  in clauses {
-            if ivec::len(args) != ivec::len(c.params) { cont; }
-            let i: uint = 0u;
-            let bdgs: bindings = new_str_hash[arb_depth[matchable]]();
-            let abort: bool = false;
-            while i < ivec::len(args) {
-                alt use_selectors_to_bind(c.params.(i), args.(i)) {
-                  some(new_bindings) {
-
-                    /* ick; I wish macros just took one expr */
-                    for each it: @{key: ident, val: arb_depth[matchable]}  in
-                             new_bindings.items() {
-                        bdgs.insert(it.key, it.val);
-                    }
-                  }
-                  none. { abort = true; }
-                }
-                i += 1u;
+            alt use_selectors_to_bind(c.params, arg) {
+              some(bindings) {
+                ret transcribe(cx, bindings, c.body)
+              }
+              none. { cont; }
             }
-            if abort { cont; }
-            ret transcribe(cx, bdgs, c.body);
         }
         cx.span_fatal(sp, "no clauses match macro invocation");
     }

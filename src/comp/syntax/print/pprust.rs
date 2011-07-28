@@ -642,16 +642,15 @@ fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
 
 fn print_mac(s: &ps, m: &ast::mac) {
     alt m.node {
-      ast::mac_invoc(path, args, body) {
+      ast::mac_invoc(path, arg, body) {
         word(s.s, "#");
         print_path(s, path);
-        if ivec::len(args) > 0u {
-            popen(s);
-            commasep_exprs(s, inconsistent, args);
-            pclose(s);
+        alt (arg.node) {
+          ast::expr_vec(_,_,_) {}
+          _ { word(s.s, " "); }
         }
+        print_expr(s, arg);
         // FIXME: extension 'body'
-
       }
       ast::mac_embed_type(ty) {
         word(s.s, "#<");
