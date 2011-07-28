@@ -3679,25 +3679,103 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
 // Finds the ValueRef associated with a variable in a function
 // context. It checks locals, upvars, and args.
-fn find_variable(fcx: &@fn_ctxt, nid: ast::node_id) -> ValueRef {
-    ret alt fcx.lllocals.find(nid) {
+fn find_variable(cx: &@block_ctxt, nid: ast::node_id) -> lval_result {
+    let fcx = cx.fcx;
+    let llval = alt fcx.lllocals.find(nid) {
+      none. {
+        alt fcx.llupvars.find(nid) {
           none. {
-            alt fcx.llupvars.find(nid) {
-              none. {
-                alt fcx.llargs.find(nid) {
-                  some(llval) { llval }
-                  _ {
-                    fcx.lcx.ccx.sess.bug("unbound var \
-                                      in build_environment "
-                                             + int::str(nid))
-                  }
-                }
-              }
+            alt fcx.llargs.find(nid) {
               some(llval) { llval }
+              _ {
+                fcx.lcx.ccx.sess.bug("unbound var in build_environment "
+                                     + int::str(nid))
+              }
             }
           }
           some(llval) { llval }
         }
+      }
+      some(llval) { llval }
+    };
+    ret lval_mem(cx, llval);
+}
+
+// build_environment_heap and build_environment are very similar. It
+// would be nice to unify them.
+
+fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
+                          bound_tys: ty::t[], bound_vals: lval_result[])
+    -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+    // Synthesize a closure type.
+
+    // First, synthesize a tuple type containing the types of all the
+    // bound expressions.
+    // bindings_ty = ~[bound_ty1, bound_ty2, ...]
+    let bindings_ty: ty::t = ty::mk_imm_tup(bcx_tcx(bcx), bound_tys);
+
+    // NB: keep this in sync with T_closure_ptr; we're making
+    // a ty::t structure that has the same "shape" as the LLVM type
+    // it constructs.
+
+    // Make a vector that contains ty_param_count copies of tydesc_ty.
+    // (We'll need room for that many tydescs in the closure.)
+    let ty_param_count = std::ivec::len(lltydescs);
+    let tydesc_ty: ty::t = ty::mk_type(bcx_tcx(bcx));
+    let captured_tys: ty::t[] =
+        std::ivec::init_elt(tydesc_ty, ty_param_count);
+
+    // Get all the types we've got (some of which we synthesized
+    // ourselves) into a vector.  The whole things ends up looking
+    // like:
+
+    // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
+    // ...], [tydesc_ty, tydesc_ty, ...]]
+    let closure_tys: ty::t[] =
+        ~[tydesc_ty, bindings_ty, ty::mk_imm_tup(bcx_tcx(bcx), captured_tys)];
+
+    // Finally, synthesize a type for that whole vector.
+    let closure_ty: ty::t = ty::mk_imm_tup(bcx_tcx(bcx), closure_tys);
+
+    // Allocate a box that can hold something closure-sized.
+    let r = trans_malloc_boxed(bcx, closure_ty);
+    bcx = r.bcx;
+    let closure = r.body;
+
+    // Store bindings tydesc.
+    let bound_tydesc =
+        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_tydesc)]);
+    let ti = none;
+    let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+    bcx = bindings_tydesc.bcx;
+    bcx.build.Store(bindings_tydesc.val, bound_tydesc);
+
+    // Copy expr values into boxed bindings.
+    let i = 0u;
+    let bindings =
+        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+    for lv: lval_result  in bound_vals {
+        let bound = bcx.build.GEP(bindings, ~[C_int(0), C_int(i as int)]);
+        bcx = move_val_if_temp(bcx, INIT, bound, lv, bound_tys.(i)).bcx;
+        i += 1u;
+    }
+
+    // If necessary, copy tydescs describing type parameters into the
+    // appropriate slot in the closure.
+    let ty_params_slot =
+        bcx.build.GEP(closure,
+                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+    i = 0u;
+    for td: ValueRef  in lltydescs {
+        let ty_param_slot =
+            bcx.build.GEP(ty_params_slot, ~[C_int(0), C_int(i as int)]);
+        bcx.build.Store(td, ty_param_slot);
+        i += 1u;
+    }
+
+    ret {ptr: r.box, ptrty: closure_ty, bcx: bcx};
 }
 
 // Given a block context and a list of upvars, construct a closure that
@@ -3717,7 +3795,7 @@ fn build_environment(cx: &@block_ctxt, upvars: &freevar_set) ->
             llbindingtys += ~[val_ty(llbindings.(0))];
         }
         for each nid: ast::node_id  in upvars.keys() {
-            let llbinding = find_variable(cx.fcx, nid);
+            let llbinding = find_variable(cx, nid).res.val;
             llbindings += ~[llbinding];
             llbindingtys += ~[val_ty(llbinding)];
         }
@@ -4606,84 +4684,21 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
         bound_tys += ~[ty::expr_ty(bcx_tcx(cx), e)];
     }
 
-    // Synthesize a closure type.
-
-    // First, synthesize a tuple type containing the types of all the
-    // bound expressions.
-    // bindings_ty = ~[bound_ty1, bound_ty2, ...]
-    let bindings_ty: ty::t = ty::mk_imm_tup(bcx_tcx(cx), bound_tys);
-
-    // NB: keep this in sync with T_closure_ptr; we're making
-    // a ty::t structure that has the same "shape" as the LLVM type
-    // it constructs.
-
-    // Make a vector that contains ty_param_count copies of tydesc_ty.
-    // (We'll need room for that many tydescs in the closure.)
-    let tydesc_ty: ty::t = ty::mk_type(bcx_tcx(cx));
-    let captured_tys: ty::t[] =
-        std::ivec::init_elt(tydesc_ty, ty_param_count);
-
-    // Get all the types we've got (some of which we synthesized
-    // ourselves) into a vector.  The whole things ends up looking
-    // like:
-
-    // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
-    // ...], [tydesc_ty, tydesc_ty, ...]]
-    let closure_tys: ty::t[] =
-        ~[tydesc_ty, bindings_ty, ty::mk_imm_tup(bcx_tcx(cx), captured_tys)];
-
-    // Finally, synthesize a type for that whole vector.
-    let closure_ty: ty::t = ty::mk_imm_tup(bcx_tcx(cx), closure_tys);
-
-    // Allocate a box that can hold something closure-sized.
-    let r = trans_malloc_boxed(bcx, closure_ty);
-    bcx = r.bcx;
-    let closure = r.body;
-
-    // Store bindings tydesc.
-    let bound_tydesc =
-        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_tydesc)]);
-    let ti = none;
-    let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-    bcx = bindings_tydesc.bcx;
-    bcx.build.Store(bindings_tydesc.val, bound_tydesc);
-
-    // Copy expr values into boxed bindings.
-    let i = 0u;
-    let bindings =
-        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_bindings)]);
-    for lv: lval_result  in bound_vals {
-        let bound = bcx.build.GEP(bindings, ~[C_int(0), C_int(i as int)]);
-        bcx = move_val_if_temp(bcx, INIT, bound, lv, bound_tys.(i)).bcx;
-        i += 1u;
-    }
-
-    // If necessary, copy tydescs describing type parameters into the
-    // appropriate slot in the closure.
-    if ty_param_count > 0u {
-        let ty_params_slot =
-            bcx.build.GEP(closure,
-                          ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
-        let i = 0;
-        for td: ValueRef  in lltydescs {
-            let ty_param_slot =
-                bcx.build.GEP(ty_params_slot, ~[C_int(0), C_int(i)]);
-            bcx.build.Store(td, ty_param_slot);
-            i += 1;
-        }
-    }
+    // Actually construct the closure
+    let closure = build_environment_heap(bcx, lltydescs,
+                                         bound_tys, bound_vals);
+    bcx = closure.bcx;
 
     // Make thunk
     // The type of the entire bind expression.
     let pair_ty = node_id_type(bcx_ccx(cx), id);
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real,
-                         args, closure_ty, bound_tys, ty_param_count);
+                         args, closure.ptrty, bound_tys, ty_param_count);
 
     // Construct the function pair
-    let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val, r.box);
+    let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val,
+                                     closure.ptr);
     add_clean_temp(cx, pair_v, pair_ty);
     ret rslt(bcx, pair_v);
 }
