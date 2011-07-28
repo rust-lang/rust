@@ -1744,8 +1744,7 @@ fn node_id_to_type_params(cx: &ctxt, id: &ast::node_id) -> t[] {
 }
 
 fn node_id_has_type_params(cx: &ctxt, id: &ast::node_id) -> bool {
-    let tpt = node_id_to_ty_param_substs_opt_and_ty(cx, id);
-    ret !option::is_none[t[]](tpt.substs);
+    ret ivec::len(node_id_to_type_params(cx, id)) > 0u;
 }
 
 

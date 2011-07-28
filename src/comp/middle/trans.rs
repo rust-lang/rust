@@ -4499,12 +4499,20 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
 
           // Arg will be provided when the thunk is invoked.
           none. {
-            let passed_arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
+            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-                assert (!is_val);
-                passed_arg = bcx.build.PointerCast(passed_arg, llout_arg_ty);
+                // If the argument was passed by value and isn't a
+                // pointer type, we need to spill it to an alloca in
+                // order to do a pointer cast. Argh.
+                if is_val && !ty::type_is_boxed(cx.ccx.tcx, out_arg.ty) {
+                    let argp = do_spill(bcx, arg);
+                    argp = bcx.build.PointerCast(argp, T_ptr(llout_arg_ty));
+                    arg = bcx.build.Load(argp);
+                } else {
+                    arg = bcx.build.PointerCast(arg, llout_arg_ty);
+                }
             }
-            llargs += ~[passed_arg];
+            llargs += ~[arg];
             a += 1u;
           }
         }
@@ -5348,7 +5356,6 @@ fn type_is_immediate(ccx: &@crate_ctxt, t: &ty::t) -> bool {
 
 fn do_spill(cx: &@block_ctxt, v: ValueRef) -> ValueRef {
     // We have a value but we have to spill it to pass by alias.
-
     let llptr = alloca(cx, val_ty(v));
     cx.build.Store(v, llptr);
     ret llptr;
@@ -6310,8 +6317,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &ast::arg[],
     let arg_n: uint = 0u;
     for aarg: ast::arg  in args {
         if aarg.mode == ast::val {
-            let arg_t = type_of_arg(bcx.fcx.lcx, fcx.sp, arg_tys.(arg_n));
-            let a = alloca(bcx, arg_t);
             let argval;
             alt bcx.fcx.llargs.find(aarg.id) {
               some(x) { argval = x; }
@@ -6320,9 +6325,9 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &ast::arg[],
                     (aarg.ty.span, "unbound arg ID in copy_args_to_allocas");
               }
             }
-            bcx.build.Store(argval, a);
-            // Overwrite the llargs entry for this arg with its alloca.
+            let a = do_spill(bcx, argval);
 
+            // Overwrite the llargs entry for this arg with its alloca.
             bcx.fcx.llargs.insert(aarg.id, a);
         }
         arg_n += 1u;

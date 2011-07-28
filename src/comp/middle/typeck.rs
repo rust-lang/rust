@@ -1532,7 +1532,6 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-
     fn check_call_or_bind(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
                           args: &(option::t[@ast::expr])[],
                           call_kind: call_kind) {
@@ -1585,7 +1584,6 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
         // TODO: iter2
         let i = 0u;
         for a_opt: option::t[@ast::expr]  in args {
-            let check_ty_vars = call_kind == kind_spawn;
             alt a_opt {
               some(a) {
                 check_expr(fcx, a);
@@ -1593,30 +1591,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                              expr_ty(fcx.ccx.tcx, a), ~[],
                              AUTODEREF_BLOCK_COERCE);
               }
-              none. { check_ty_vars = true; }
-            }
-            /* If this argument is going to be a thunk argument
-               (that is, it's an underscore-bind thing or a spawn
-               argument), then it has to be either passed by reference,
-               or have a statically known size. */
-            alt call_kind {
-              kind_call. { }
-              _ {
-                 /* bind or spawn */
-                if check_ty_vars &&
-                       (ty::type_contains_params(fcx.ccx.tcx, arg_tys.(i).ty)
-                            ||
-                            ty::type_contains_vars(fcx.ccx.tcx,
-                                                   arg_tys.(i).ty)) &&
-                       arg_tys.(i).mode == mo_val {
-                    // For why the check is necessary, see the
-                    // none case in trans_bind_thunk
-                    fcx.ccx.tcx.sess.span_fatal
-                        (sp, call_kind_str(call_kind) +
-                         " arguments with types containing parameters \
-                          must be passed by alias");
-                }
-              }
+              none. { }
             }
             i += 1u;
         }
@@ -1639,8 +1614,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
         for arg: @ast::expr  in args {
             args_opt_0 += ~[some[@ast::expr](arg)];
         }
-        // Call the generic checker.
 
+        // Call the generic checker.
         check_call_or_bind(fcx, sp, f, args_opt_0, call_kind);
     }
     // A generic function for checking for or for-each loops
@@ -2059,10 +2034,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
       }
       ast::expr_bind(f, args) {
         // Call the generic checker.
-
         check_call_or_bind(fcx, expr.span, f, args, kind_bind);
-        // Pull the argument and return types out.
 
+        // Pull the argument and return types out.
         let proto_1;
         let arg_tys_1: ty::arg[] = ~[];
         let rt_1;
@@ -2078,7 +2052,6 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
 
             // For each blank argument, add the type of that argument
             // to the resulting function type.
-
             let i = 0u;
             while i < ivec::len[option::t[@ast::expr]](args) {
                 alt args.(i) {
@@ -2180,8 +2153,15 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
         let fty = expr_ty(fcx.ccx.tcx, f);
         let ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
         demand::simple(fcx, f.span, ty::mk_nil(fcx.ccx.tcx), ret_ty);
-        // FIXME: Other typechecks needed
 
+        // make sure they aren't spawning a function with type params
+        if ty::expr_has_ty_params(fcx.ccx.tcx, f) {
+            fcx.ccx.tcx.sess.span_fatal(
+                f.span,
+                "spawning functions with type params not allowed (for now)");
+        }
+
+        // FIXME: Other typechecks needed
         let typ = ty::mk_task(fcx.ccx.tcx);
         write::ty_only_fixup(fcx, id, typ);
       }

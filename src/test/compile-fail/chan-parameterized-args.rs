@@ -1,7 +1,6 @@
 // xfail-stage0
-// error-pattern:Spawn arguments with types containing parameters must be
+// error-pattern:spawning functions with type params not allowed
 fn main() {
-    // Similar to bind-parameterized-args
     fn echo[T](c: chan[T], oc: chan[chan[T]]) {
         let p: port[T] = port();
         oc <| chan(p);
