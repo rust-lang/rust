@@ -201,6 +201,7 @@ pred can_begin_expr(t: token) -> bool {
       NOT. { true }
       BINOP(MINUS.) { true }
       BINOP(STAR.) { true }
+      MOD_SEP. { true }
       _ { false }
     }
 }
