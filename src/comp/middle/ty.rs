@@ -1058,12 +1058,10 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
         }
       }
 
-      // Those with refcounts-to-inner are the lower of their
-      // inner and shared.
+      // Those with refcounts-to-inner raise pinned to shared,
+      // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) | ty_vec(mt) {
-        result = kind::lower_kind(ast::kind_shared,
-                                  type_kind(cx, mt.ty));
-
+        result = ast::kind_shared;
       }
 
       // FIXME: remove ports. Ports currently contribute 'shared'
@@ -1078,9 +1076,12 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
         result = type_kind(cx, t);
       }
 
-      // Pointers and unique boxes / vecs lower to whatever they point to.
+      // Pointers and unique boxes / vecs raise pinned to shared,
+      // otherwise pass through their pointee kind.
       ty_ptr(tm) | ty_ivec(tm) {
-        result = type_kind(cx, tm.ty);
+        let k = type_kind(cx, tm.ty);
+        if k == ast::kind_pinned { k = ast::kind_shared }
+        result = kind::lower_kind(result, k);
       }
 
       // Records lower to the lowest of their members.

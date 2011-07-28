@@ -10,24 +10,25 @@
 *
 *
 *
-*    COPY +   SEND  =  "Unique": no shared substructures or pins, only
+*    MOVE +   SEND  =  "Unique": no shared substructures or pins, only
 *                                interiors and ~ boxes.
 *
-*    COPY + NOSEND  =  "Shared": structures containing @, fixed to the local
-*                                task heap/pool.
+*    MOVE + NOSEND  =  "Shared": structures containing @, fixed to the local
+*                                task heap/pool; or ~ structures pointing to
+*                                pinned values.
 *
-*  NOCOPY + NOSEND  =  "Pinned": structures containing resources or
+*  NOMOVE + NOSEND  =  "Pinned": structures directly containing resources, or
 *                                by-alias closures as interior or
 *                                uniquely-boxed members.
 *
-*  NOCOPY +   SEND  =  --      : no types are like this.
+*  NOMOVE +   SEND  =  --      : no types are like this.
 *
 *
 * Since this forms a lattice, we denote the capabilites in terms of a
-* worst-case requirement.  That is, if your function needs to copy-and-send
-* your T, you write fn<~T>(...). If you need to copy but not send, you write
-* fn<@T>(...). And if you need neither -- can work with any sort of pinned
-* data at all -- then you write fn<T>(...).
+* worst-case requirement.  That is, if your function needs to move-and-send
+* (or copy) your T, you write fn<~T>(...). If you need to copy but not send,
+* you write fn<@T>(...). And if you need neither -- can work with any sort of
+* pinned data at all -- then you write fn<T>(...).
 *
 *
 * Most types are unique or shared. Other possible name combinations for these
@@ -54,21 +55,18 @@
 *   A copy is made any time you pass-by-value or execute the = operator in a
 *   non-init expression.
 *
-*   ~ copies deep
-*   @ copies shallow
+*   @ copies shallow, is always legal
+*   ~ copies deep, is only legal if pointee is unique.
 *     pinned values (pinned resources, alias-closures) can't be copied
-*     all other interiors copy shallow
+*     all other unique (eg. interior) values copy shallow
+*
+*   Note this means that only type parameters constrained to ~T can be copied.
 *
 * MOVING:
 * -------
 *
 *  A move is made any time you pass-by-move (that is, with 'move' mode) or
 *  execute the <- operator.
-*
-*  Anything you can copy, you can move. Move is (semantically) just
-*  shallow-copy + deinit.  Note that: ~ moves shallow even though it copies
-*  deep. Move is the operator that lets ~ copy shallow: by pairing it with a
-*  deinit.
 *
 */
 
@@ -101,11 +99,47 @@ fn kind_to_str(k: kind) -> str {
     }
 }
 
-fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
+fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr)
+    -> {ty: ty::t, kind: ast::kind} {
     let t = ty::expr_ty(tcx, e);
     let k = ty::type_kind(tcx, t);
-    log #fmt("%s type: %s", kind_to_str(k),
-             util::ppaux::ty_to_str(tcx, t));
+    {ty: t, kind: k}
+}
+
+fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr,
+                  k_need: ast::kind, descr: &str) {
+    let tk = type_and_kind(tcx, e);
+    log #fmt("for %s: want %s type, got %s type %s",
+             descr,
+             kind_to_str(k_need),
+             kind_to_str(tk.kind),
+             util::ppaux::ty_to_str(tcx, tk.ty));
+
+    if ! kind_lteq(k_need, tk.kind) {
+        let s =
+            #fmt("mismatched kinds for %s: needed %s type, got %s type %s",
+                 descr,
+                 kind_to_str(k_need),
+                 kind_to_str(tk.kind),
+                 util::ppaux::ty_to_str(tcx, tk.ty));
+        tcx.sess.span_err(e.span, s);
+    }
+}
+
+fn need_shared_lhs_rhs(tcx: &ty::ctxt,
+                       a: &@ast::expr, b: &@ast::expr,
+                       op: &str) {
+    need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
+    need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
+}
+
+fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
+    alt e.node {
+      ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
+      ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
+      ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
+      _ { }
+    }
 }
 
 fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
