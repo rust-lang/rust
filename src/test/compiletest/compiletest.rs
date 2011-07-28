@@ -299,33 +299,6 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     #fmt("%s%s.%s", base, filename, config.stage_id)
 }
 
-#[cfg(target_os = "win32")]
-#[cfg(target_os = "linux")]
-fn dump_output(config: &config, testfile: &str, out: &str) {
-    let outfile = make_out_name(config, testfile);
-    let writer = io::file_writer(outfile, [io::create, io::truncate]);
-    writer.write_str(out);
-    maybe_dump_to_stdout(config, out);
-}
-
-// FIXME (726): Can't use file_writer on mac
-#[cfg(target_os = "macos")]
-fn dump_output(config: &config, testfile: &str, out: &str) {
-    maybe_dump_to_stdout(config, out);
-}
-
-fn maybe_dump_to_stdout(config: &config, out: &str) {
-    if config.verbose {
-        io::stdout().write_line("------------------------------------------");
-        io::stdout().write_line(out);
-        io::stdout().write_line("------------------------------------------");
-    }
-}
-
-fn make_out_name(config: &config, testfile: &str) -> str {
-    output_base_name(config, testfile) + ".out"
-}
-
 fn logv(config: &config, s: &str) {
     log s;
     if config.verbose { io::stdout().write_line(s); }
@@ -472,7 +445,7 @@ mod runtest {
 
         let next_err_idx = 0u;
         let next_err_pat = props.error_patterns.(next_err_idx);
-        for line: str  in str::split(procres.out, '\n' as u8) {
+        for line: str  in str::split(procres.stdout, '\n' as u8) {
                 if str::find(line, next_err_pat) > 0 {
                         log #fmt("found error pattern %s", next_err_pat);
                         next_err_idx += 1u;
@@ -500,7 +473,7 @@ mod runtest {
 
     type procargs = {prog: str, args: vec[str]};
 
-    type procres = {status: int, out: str, cmdline: str};
+    type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
     fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
         compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
@@ -554,8 +527,52 @@ mod runtest {
                 cmdline
             };
         let res = procsrv::run(cx.procsrv, lib_path, prog, args);
-        dump_output(cx.config, testfile, res.out);
-        ret {status: res.status, out: res.out, cmdline: cmdline};
+        dump_output(cx.config, testfile, res.out, res.err);
+        ret {status: res.status, stdout: res.out,
+             stderr: res.err, cmdline: cmdline};
+    }
+
+    fn dump_output(config: &config, testfile: &str,
+                   out: &str, err: &str) {
+        dump_output_file(config, testfile, out, "out");
+        dump_output_file(config, testfile, err, "err");
+        maybe_dump_to_stdout(config, out, err);
+    }
+
+    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "linux")]
+    fn dump_output_file(config: &config, testfile: &str,
+                        out: &str, extension: &str) {
+        let outfile = make_out_name(config, testfile, extension);
+        let writer = io::file_writer(outfile, [io::create, io::truncate]);
+        writer.write_str(out);
+    }
+
+    // FIXME (726): Can't use file_writer on mac
+    #[cfg(target_os = "macos")]
+    fn dump_output_file(config: &config, testfile: &str,
+                        out: &str, extension: &str) {
+    }
+
+    fn make_out_name(config: &config, testfile: &str,
+                     extension: &str) -> str {
+        output_base_name(config, testfile) + "." + extension
+    }
+
+    fn maybe_dump_to_stdout(config: &config,
+                            out: &str, err: &str) {
+        if config.verbose {
+            let sep1 = #fmt("-%s-----------------------------------",
+                            "stdout");
+            let sep2 = #fmt("-%s-----------------------------------",
+                            "stderr");
+            let sep3 = "------------------------------------------";
+            io::stdout().write_line(sep1);
+            io::stdout().write_line(out);
+            io::stdout().write_line(sep2);
+            io::stdout().write_line(err);
+            io::stdout().write_line(sep3);
+        }
     }
 
     fn error(err: &str) { io::stdout().write_line(#fmt("\nerror: %s", err)); }
@@ -567,12 +584,16 @@ mod runtest {
             #fmt("\n\
                   error: %s\n\
                   command: %s\n\
-                  output:\n\
+                  stdout:\n\
+                  ------------------------------------------\n\
+                  %s\n\
+                  ------------------------------------------\n\
+                  stderr:\n\
                   ------------------------------------------\n\
                   %s\n\
                   ------------------------------------------\n\
                   \n",
-                 err, procres.cmdline, procres.out);
+                 err, procres.cmdline, procres.stdout, procres.stderr);
         io::stdout().write_str(msg);
         fail;
     }
@@ -599,7 +620,7 @@ mod procsrv {
 
     tag request { exec(str, str, vec[str], chan[response]); stop; }
 
-    type response = {pid: int, outfd: int};
+    type response = {pid: int, outfd: int, errfd: int};
 
     fn mk() -> handle {
         let setupport = port();
@@ -629,22 +650,28 @@ mod procsrv {
     }
 
     fn run(handle: &handle, lib_path: &str, prog: &str, args: &vec[str]) ->
-       {status: int, out: str} {
+        {status: int, out: str, err: str} {
         let p = port[response]();
         let ch = chan(p);
         task::send(handle.chan, exec(lib_path, prog, args, ch));
-
         let resp = task::recv(p);
+        let output = readclose(resp.outfd);
+        let errput = readclose(resp.errfd);
+        let status = os::waitpid(resp.pid);
+        ret {status: status, out: output, err: errput};
+    }
+
+    fn readclose(fd: int) -> str {
         // Copied from run::program_output
-        let outfile = os::fd_FILE(resp.outfd);
-        let reader = io::new_reader(io::FILE_buf_reader(outfile, false));
+        let file = os::fd_FILE(fd);
+        let reader = io::new_reader(io::FILE_buf_reader(file, false));
         let buf = "";
         while !reader.eof() {
             let bytes = reader.read_bytes(4096u);
             buf += str::unsafe_from_bytes(bytes);
         }
-        os::libc::fclose(outfile);
-        ret {status: os::waitpid(resp.pid), out: buf};
+        os::libc::fclose(file);
+        ret buf;
     }
 
     fn worker(p: port[request]) {
@@ -654,15 +681,20 @@ mod procsrv {
                 // This is copied from run::start_program
                 let pipe_in = os::pipe();
                 let pipe_out = os::pipe();
+                let pipe_err = os::pipe();
                 let spawnproc =
                     bind run::spawn_process(prog, args, pipe_in.in,
-                                            pipe_out.out, 0);
+                                            pipe_out.out, pipe_err.out);
                 let pid = with_lib_path(lib_path, spawnproc);
                 if pid == -1 { fail; }
                 os::libc::close(pipe_in.in);
                 os::libc::close(pipe_in.out);
                 os::libc::close(pipe_out.out);
-                task::send(respchan, {pid: pid, outfd: pipe_out.in});
+                os::libc::close(pipe_err.out);
+                task::send(respchan,
+                           {pid: pid,
+                            outfd: pipe_out.in,
+                            errfd: pipe_err.in});
               }
               stop. { ret; }
             }
