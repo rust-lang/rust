@@ -21,6 +21,7 @@ rust_port::~rust_port() {
 
     // Disassociate channels from this port.
     while (chans.is_empty() == false) {
+        scoped_lock with(referent()->lock);
         rust_chan *chan = chans.peek();
         chan->disassociate();
 

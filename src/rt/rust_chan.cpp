@@ -51,9 +51,9 @@ bool rust_chan::is_associated() {
  * Unlink this channel from its associated port.
  */
 void rust_chan::disassociate() {
+    // Precondition: port->referent()->lock must be held
     A(kernel, is_associated(),
       "Channel must be associated with a port.");
-    scoped_lock with(port->referent()->lock);
     if (port->is_proxy() == false) {
         KLOG(kernel, task,
              "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
@@ -127,6 +127,7 @@ void rust_chan::destroy() {
             // Here is a good place to delete the port proxy we allocated
             // in upcall_clone_chan.
             rust_proxy<rust_port> *proxy = port->as_proxy();
+            scoped_lock with(port->referent()->lock);
             disassociate();
             delete proxy;
         } else {
@@ -143,6 +144,7 @@ void rust_chan::destroy() {
             if (buffer.is_empty() == false) {
                 return;
             }
+            scoped_lock with(port->referent()->lock);
             disassociate();
         }
     }
