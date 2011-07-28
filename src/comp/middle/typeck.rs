@@ -58,7 +58,7 @@ tag obj_info {
     regular_obj(ast::obj_field[], ast::node_id);
 
     // Anonymous objects only have a type at compile time.  It's optional
-    // because not all anonymous objects have a with_obj to attach to.
+    // because not all anonymous objects have a inner_obj to attach to.
     anon_obj(ast::obj_field[], option::t[ty::sty]);
 }
 
@@ -2395,27 +2395,27 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
 
             // Inner methods.
 
-            // Typecheck 'with_obj'.  If it exists, it had better have
+            // Typecheck 'inner_obj'.  If it exists, it had better have
             // object type.
-            let with_obj_methods: ty::method[] = ~[];
-            let with_obj_ty: ty::t = ty::mk_nil(fcx.ccx.tcx);
-            let with_obj_sty: option::t[ty::sty] = none;
-            alt ao.with_obj {
+            let inner_obj_methods: ty::method[] = ~[];
+            let inner_obj_ty: ty::t = ty::mk_nil(fcx.ccx.tcx);
+            let inner_obj_sty: option::t[ty::sty] = none;
+            alt ao.inner_obj {
               none. { }
               some(e) {
-                // If there's a with_obj, we push it onto the
+                // If there's a inner_obj, we push it onto the
                 // obj_infos stack so that self-calls can be checked
                 // within its context later.
                 check_expr(fcx, e);
-                with_obj_ty = expr_ty(fcx.ccx.tcx, e);
-                with_obj_sty = some(structure_of(fcx, e.span, with_obj_ty));
+                inner_obj_ty = expr_ty(fcx.ccx.tcx, e);
+                inner_obj_sty = some(structure_of(fcx, e.span, inner_obj_ty));
 
 
-                alt with_obj_sty {
+                alt inner_obj_sty {
                   none. { }
                   some(sty) {
                     alt sty {
-                      ty::ty_obj(ms) { with_obj_methods = ms; }
+                      ty::ty_obj(ms) { inner_obj_methods = ms; }
                       _ {
                         // The user is trying to extend a
                         // non-object.
@@ -2431,9 +2431,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
 
             fcx.ccx.obj_infos +=
                 ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
-                                     fields), with_obj_sty)];
+                                     fields), inner_obj_sty)];
 
-            methods += with_obj_methods;
+            methods += inner_obj_methods;
             ret methods;
         }
 

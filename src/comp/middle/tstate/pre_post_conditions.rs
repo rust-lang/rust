@@ -555,7 +555,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_port(_) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_anon_obj(anon_obj) {
-        alt anon_obj.with_obj {
+        alt anon_obj.inner_obj {
           some(ex) {
             find_pre_post_expr(fcx, ex);
             copy_pre_post(fcx.ccx, e.id, ex);

@@ -868,23 +868,23 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
                                       parse_anon_obj_field, p));
         }
         let meths: (@ast::method)[] = ~[];
-        let with_obj: option::t[@ast::expr] = none;
+        let inner_obj: option::t[@ast::expr] = none;
         expect(p, token::LBRACE);
         while p.peek() != token::RBRACE {
             if eat_word(p, "with") {
-                with_obj = some(parse_expr(p));
+                inner_obj = some(parse_expr(p));
             } else { meths += ~[parse_method(p)]; }
         }
         hi = p.get_hi_pos();
         expect(p, token::RBRACE);
         // fields and methods may be *additional* or *overriding* fields
-        // and methods if there's a with_obj, or they may be the *only*
-        // fields and methods if there's no with_obj.
+        // and methods if there's a inner_obj, or they may be the *only*
+        // fields and methods if there's no inner_obj.
 
         // We don't need to pull ".node" out of fields because it's not a
         // "spanned".
         let ob: ast::anon_obj =
-            {fields: fields, methods: meths, with_obj: with_obj};
+            {fields: fields, methods: meths, inner_obj: inner_obj};
         ex = ast::expr_anon_obj(ob);
     } else if (eat_word(p, "bind")) {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);

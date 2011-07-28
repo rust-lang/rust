@@ -331,7 +331,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
             }
           }
         }
-        alt anon_obj.with_obj {
+        alt anon_obj.inner_obj {
           none. { }
           some(ex) { v.visit_expr(ex, e, v); }
         }

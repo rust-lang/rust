@@ -5709,18 +5709,18 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
          methods: anon_obj.methods,
          dtor: none[@ast::method]};
 
-    let with_obj_ty: ty::t;
+    let inner_obj_ty: ty::t;
     let vtbl;
-    alt anon_obj.with_obj {
+    alt anon_obj.inner_obj {
       none. {
-        // If there's no with_obj -- that is, if we're just adding new
+        // If there's no inner_obj -- that is, if we're just adding new
         // fields rather than extending an existing object -- then we just
         // pass the outer object to create_vtbl().  Our vtable won't need
         // to have any forwarding slots.
 
-        // We need a dummy with_obj_ty for setting up the object body
+        // We need a dummy inner_obj_ty for setting up the object body
         // later.
-        with_obj_ty = ty::mk_type(ccx.tcx);
+        inner_obj_ty = ty::mk_type(ccx.tcx);
 
         // This seems a little strange, because it'll come into
         // create_vtbl() with no "additional methods".  What's happening
@@ -5734,10 +5734,10 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         // TODO: What makes more sense to get the type of an expr --
         // calling ty::expr_ty(ccx.tcx, e) on it or calling
         // ty::node_id_to_type(ccx.tcx, id) on its id?
-        with_obj_ty = ty::expr_ty(ccx.tcx, e);
-        //with_obj_ty = ty::node_id_to_type(ccx.tcx, e.id);
+        inner_obj_ty = ty::expr_ty(ccx.tcx, e);
+        //inner_obj_ty = ty::node_id_to_type(ccx.tcx, e.id);
 
-        // If there's a with_obj, we pass its type along to create_vtbl().
+        // If there's a inner_obj, we pass its type along to create_vtbl().
         // Part of what create_vtbl() will do is take the set difference
         // of methods defined on the original and methods being added.
         // For every method defined on the original that does *not* have
@@ -5746,7 +5746,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         // normal vtable entry for every method being added.
         vtbl =
             create_vtbl(bcx.fcx.lcx, sp, outer_obj_ty, wrapper_obj, ~[],
-                        some(with_obj_ty), additional_field_tys);
+                        some(inner_obj_ty), additional_field_tys);
       }
     }
 
@@ -5770,12 +5770,12 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
 
     // Next we have to take care of the other half of the pair we're
     // returning: a boxed (reference-counted) tuple containing a tydesc,
-    // typarams, fields, and a pointer to our with_obj.
+    // typarams, fields, and a pointer to our inner_obj.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
     if std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
-           anon_obj.with_obj == none {
-        // If the object we're translating has no fields and no with_obj,
+           anon_obj.inner_obj == none {
+        // If the object we're translating has no fields and no inner_obj,
         // there's not much to do.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
@@ -5791,10 +5791,11 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         let typarams_ty: ty::t = ty::mk_imm_tup(ccx.tcx, ~[]);
 
         // Tuple type for body:
-        // [tydesc, [typaram, ...], [field, ...], with_obj]
+        // [tydesc, [typaram, ...], [field, ...], inner_obj]
         let body_ty: ty::t =
             ty::mk_imm_tup(ccx.tcx,
-                           ~[tydesc_ty, typarams_ty, fields_ty, with_obj_ty]);
+                           ~[tydesc_ty, typarams_ty, fields_ty,
+                             inner_obj_ty]);
 
         // Hand this type we've synthesized off to trans_malloc_boxed, which
         // allocates a box, including space for a refcount.
@@ -5803,7 +5804,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
 
         // mk_imm_box throws a refcount into the type we're synthesizing,
         // so that it looks like:
-        // [rc, [tydesc, [typaram, ...], [field, ...], with_obj]]
+        // [rc, [tydesc, [typaram, ...], [field, ...], inner_obj]]
         let boxed_body_ty: ty::t = ty::mk_imm_box(ccx.tcx, body_ty);
 
         // Grab onto the refcount and body parts of the box we allocated.
@@ -5860,22 +5861,23 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             i += 1;
         }
 
-        // If there's a with_obj, copy a pointer to it into the object's body.
-        alt anon_obj.with_obj {
+        // If there's a inner_obj, copy a pointer to it into the object's
+        // body.
+        alt anon_obj.inner_obj {
           none. { }
           some(e) {
-            // If with_obj (the object being extended) exists, translate
-            // it.  Translating with_obj returns a ValueRef (pointer to a
-            // 2-word value) wrapped in a result.
-            let with_obj_val: result = trans_expr(bcx, e);
+            // If inner_obj (the object being extended) exists, translate it.
+            // Translating inner_obj returns a ValueRef (pointer to a 2-word
+            // value) wrapped in a result.
+            let inner_obj_val: result = trans_expr(bcx, e);
 
-            let body_with_obj =
+            let body_inner_obj =
                 GEP_tup_like(bcx, body_ty, body.val,
-                             ~[0, abi::obj_body_elt_with_obj]);
-            bcx = body_with_obj.bcx;
+                             ~[0, abi::obj_body_elt_inner_obj]);
+            bcx = body_inner_obj.bcx;
             bcx =
-                copy_val(bcx, INIT, body_with_obj.val, with_obj_val.val,
-                         with_obj_ty).bcx;
+                copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
+                         inner_obj_ty).bcx;
           }
         }
 
@@ -6544,7 +6546,7 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
 // vtable slot for method calls that "fall through" to an inner object.  A
 // helper function for create_vtbl.
 fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
-                       ty_params: &ast::ty_param[], with_obj_ty: ty::t,
+                       ty_params: &ast::ty_param[], inner_obj_ty: ty::t,
                        backwarding_vtbl: option::t[ValueRef],
                        additional_field_tys: &ty::t[]) -> ValueRef {
 
@@ -6619,7 +6621,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.ccx.tn));
     }
 
-    // Now, we have to get the the with_obj's vtbl out of the self_obj.  This
+    // Now, we have to get the the inner_obj's vtbl out of the self_obj.  This
     // is a multi-step process:
 
     // First, grab the box out of the self_obj.  It contains a refcount and a
@@ -6653,51 +6655,51 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     let typarams_ty: ty::t = ty::mk_imm_tup(cx.ccx.tcx, ~[]);
 
     // Tuple type for body:
-    // [tydesc, [typaram, ...], [field, ...], with_obj]
+    // [tydesc, [typaram, ...], [field, ...], inner_obj]
     let body_ty: ty::t =
         ty::mk_imm_tup(cx.ccx.tcx,
-                       ~[tydesc_ty, typarams_ty, fields_ty, with_obj_ty]);
+                       ~[tydesc_ty, typarams_ty, fields_ty, inner_obj_ty]);
 
     // And cast to that type.
     llself_obj_body =
         bcx.build.PointerCast(llself_obj_body,
                               T_ptr(type_of(cx.ccx, sp, body_ty)));
 
-    // Now, reach into the body and grab the with_obj.
-    let llwith_obj =
+    // Now, reach into the body and grab the inner_obj.
+    let llinner_obj =
         GEP_tup_like(bcx, body_ty, llself_obj_body,
-                     ~[0, abi::obj_body_elt_with_obj]);
-    bcx = llwith_obj.bcx;
+                     ~[0, abi::obj_body_elt_inner_obj]);
+    bcx = llinner_obj.bcx;
 
-    // And, now, somewhere in with_obj is a vtable with an entry for the
+    // And, now, somewhere in inner_obj is a vtable with an entry for the
     // method we want.  First, pick out the vtable, and then pluck that
     // method's entry out of the vtable so that the forwarding function can
     // call it.
-    let llwith_obj_vtbl =
-        bcx.build.GEP(llwith_obj.val,
+    let llinner_obj_vtbl =
+        bcx.build.GEP(llinner_obj.val,
                       ~[C_int(0), C_int(abi::obj_field_vtbl)]);
-    llwith_obj_vtbl = bcx.build.Load(llwith_obj_vtbl);
+    llinner_obj_vtbl = bcx.build.Load(llinner_obj_vtbl);
 
     // Get the index of the method we want.
     let ix: uint = 0u;
-    alt ty::struct(bcx_tcx(bcx), with_obj_ty) {
+    alt ty::struct(bcx_tcx(bcx), inner_obj_ty) {
       ty::ty_obj(methods) {
         ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
       }
       _ {
         // Shouldn't happen.
-        cx.ccx.sess.bug("process_fwding_mthd(): non-object type passed " +
-                            "as with_obj_ty");
+        cx.ccx.sess.bug("process_fwding_mthd(): non-object type passed \
+                        as inner_obj_ty");
       }
     }
 
     // Pick out the original method from the vtable.  The +1 is because slot
     // #0 contains the destructor.
     let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 2u));
-    llwith_obj_vtbl = bcx.build.PointerCast(llwith_obj_vtbl, vtbl_type);
+    llinner_obj_vtbl = bcx.build.PointerCast(llinner_obj_vtbl, vtbl_type);
 
     let llorig_mthd =
-        bcx.build.GEP(llwith_obj_vtbl, ~[C_int(0), C_int(ix + 1u as int)]);
+        bcx.build.GEP(llinner_obj_vtbl, ~[C_int(0), C_int(ix + 1u as int)]);
 
     // Set up the original method to be called.
     let orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
@@ -6776,14 +6778,15 @@ tag vtbl_mthd {
 
 // Create a vtable for an object being translated.  Returns a pointer into
 // read-only memory.
-fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
-               ty_params: &ast::ty_param[], with_obj_ty: option::t[ty::t],
+fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
+               ob: &ast::_obj, ty_params: &ast::ty_param[],
+               inner_obj_ty: option::t[ty::t],
                additional_field_tys: &ty::t[]) -> ValueRef {
 
     let dtor = C_null(T_ptr(T_i8()));
     alt ob.dtor {
       some(d) {
-        let dtor_1 = trans_dtor(cx, self_ty, ty_params, d);
+        let dtor_1 = trans_dtor(cx, outer_obj_ty, ty_params, d);
         dtor = llvm::LLVMConstBitCast(dtor_1, val_ty(dtor));
       }
       none. { }
@@ -6793,14 +6796,14 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
     let meths: vtbl_mthd[] = ~[];
     let backwarding_vtbl: option::t[ValueRef] = none;
 
-    alt with_obj_ty {
+    alt inner_obj_ty {
       none. {
 
-        // If there's no with_obj, then we don't need any forwarding
+        // If there's no inner_obj, then we don't need any forwarding
         // slots.  Just use the object's regular methods.
         for m: @ast::method  in ob.methods { meths += ~[normal_mthd(m)]; }
       }
-      some(with_obj_ty) {
+      some(inner_obj_ty) {
         // Handle forwarding slots.
 
         // If this vtable is being created for an extended object, then
@@ -6808,19 +6811,19 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
         // were on the original object and are not being overloaded by the
         // extended one.  So, to find the set of methods that we need
         // forwarding slots for, we need to take the set difference of
-        // with_obj_methods (methods on the original object) and
+        // inner_obj_methods (methods on the original object) and
         // ob.methods (methods on the object being added).
 
-        // If we're here, then with_obj_ty and llwith_obj_ty are the type
+        // If we're here, then inner_obj_ty and llinner_obj_ty are the type
         // of the inner object, and "ob" is the wrapper object.  We need
-        // to take apart with_obj_ty (it had better have an object type
+        // to take apart inner_obj_ty (it had better have an object type
         // with methods!) and put those original methods onto the list of
         // methods we need forwarding methods for.
 
         // Gather up methods on the original object in 'meths'.
-        alt ty::struct(cx.ccx.tcx, with_obj_ty) {
-          ty::ty_obj(with_obj_methods) {
-            for m: ty::method  in with_obj_methods {
+        alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
+          ty::ty_obj(inner_obj_methods) {
+            for m: ty::method  in inner_obj_methods {
                 meths += ~[fwding_mthd(@m)];
             }
           }
@@ -6857,8 +6860,8 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
               }
               normal_mthd(_) {
                 // Should never happen.
-                cx.ccx.sess.bug("create_vtbl(): shouldn't be any" +
-                                    " normal_mthds in meths here");
+                cx.ccx.sess.bug("create_vtbl(): shouldn't be any \
+                                normal_mthds in meths here");
               }
             }
         }
@@ -6897,17 +6900,18 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
     for m: vtbl_mthd in meths {
         alt m {
           normal_mthd(nm) {
-            llmethods += ~[process_normal_mthd(cx, nm, self_ty, ty_params)];
+            llmethods += ~[process_normal_mthd(cx, nm, outer_obj_ty,
+                                               ty_params)];
           }
 
           // If we have to process a forwarding method, then we need to know
-          // about the with_obj's type as well as the outer object's type.
+          // about the inner_obj's type as well as the outer object's type.
           fwding_mthd(fm) {
-            alt with_obj_ty {
+            alt inner_obj_ty {
               none. {
                 // This shouldn't happen; if we're trying to process a
                 // forwarding method, then we should always have a
-                // with_obj_ty.
+                // inner_obj_ty.
                 cx.ccx.sess.bug("create_vtbl(): trying to create \
                                 forwarding method without a type \
                                 of object to forward to");
@@ -6934,19 +6938,20 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, self_ty: ty::t, ob: &ast::_obj,
     ret gvar;
 }
 
-fn trans_dtor(cx: @local_ctxt, self_ty: ty::t, ty_params: &ast::ty_param[],
+fn trans_dtor(cx: @local_ctxt, outer_obj_ty: ty::t,
+              ty_params: &ast::ty_param[],
               dtor: &@ast::method) -> ValueRef {
     let llfnty = T_dtor(cx.ccx, dtor.span);
     let s: str = mangle_internal_name_by_path(cx.ccx, cx.path + ~["drop"]);
     let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
-    trans_fn(cx, dtor.span, dtor.node.meth, llfn, some(self_ty), ty_params,
-             dtor.node.id);
+    trans_fn(cx, dtor.span, dtor.node.meth, llfn, some(outer_obj_ty),
+             ty_params, dtor.node.id);
     ret llfn;
 }
 
-fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, with_obj_ty: ty::t,
+fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
                            outer_obj_ty: ty::t) -> ValueRef {
 
     // This vtbl needs to have slots for all of the methods on an inner
@@ -6958,9 +6963,9 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, with_obj_ty: ty::t,
     let meths: vtbl_mthd[]= ~[];
 
     // Gather up methods on the inner object.
-    alt ty::struct(cx.ccx.tcx, with_obj_ty) {
-        ty::ty_obj(with_obj_methods) {
-            for m: ty::method in with_obj_methods {
+    alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
+        ty::ty_obj(inner_obj_methods) {
+            for m: ty::method in inner_obj_methods {
                 meths += ~[fwding_mthd(@m)];
             }
         }
@@ -7076,7 +7081,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     // returning: a boxed (reference-counted) tuple containing a tydesc,
     // typarams, and fields.
 
-    // FIXME: What about with_obj?  Do we have to think about it here?
+    // FIXME: What about inner_obj?  Do we have to think about it here?
     // (Pertains to issues #538/#539/#540/#543.)
 
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());

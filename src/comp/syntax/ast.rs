@@ -529,11 +529,10 @@ type _obj =
 
 type anon_obj =
     // New fields and methods, if they exist.
-
-    // with_obj: the original object being extended, if it exists.
     {fields: option::t[anon_obj_field[]],
      methods: (@method)[],
-     with_obj: option::t[@expr]};
+     // inner_obj: the original object being extended, if it exists.
+     inner_obj: option::t[@expr]};
 
 type _mod = {view_items: (@view_item)[], items: (@item)[]};
 

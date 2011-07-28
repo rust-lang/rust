@@ -89,7 +89,7 @@ const obj_body_elt_typarams: int = 1;
 const obj_body_elt_fields: int = 2;
 
 // The base object to which an anonymous object is attached.
-const obj_body_elt_with_obj: int = 3;
+const obj_body_elt_inner_obj: int = 3;
 
 // The two halves of a closure: code and environment.
 const fn_field_code: int = 0;

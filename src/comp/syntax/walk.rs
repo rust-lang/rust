@@ -356,8 +356,8 @@ fn walk_expr(v: &ast_visitor, e: @ast::expr) {
       ast::expr_port(_) { }
       ast::expr_chan(x) { walk_expr(v, x); }
       ast::expr_anon_obj(anon_obj) {
-        // Fields
 
+        // Fields
         alt anon_obj.fields {
           none. { }
           some(fields) {
@@ -367,10 +367,9 @@ fn walk_expr(v: &ast_visitor, e: @ast::expr) {
             }
           }
         }
-        // with_obj
 
-        alt anon_obj.with_obj { none. { } some(e) { walk_expr(v, e); } }
-
+        // inner_obj
+        alt anon_obj.inner_obj { none. { } some(e) { walk_expr(v, e); } }
 
         // Methods
         for m: @ast::method  in anon_obj.methods {

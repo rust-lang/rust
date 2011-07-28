@@ -322,7 +322,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
                    }
                  },
              methods: ivec::map(fld.fold_method, ao.methods),
-             with_obj: option::map(fld.fold_expr, ao.with_obj)}
+             inner_obj: option::map(fld.fold_expr, ao.inner_obj)}
     }
     let fold_anon_obj = bind fold_anon_obj_(_, fld);
 

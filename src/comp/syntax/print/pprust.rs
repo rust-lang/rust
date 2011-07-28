@@ -984,7 +984,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         space(s.s);
 
         // With object
-        alt anon_obj.with_obj {
+        alt anon_obj.inner_obj {
           none. { }
           some(e) { word_space(s, "with"); print_expr(s, e); }
         }
