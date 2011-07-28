@@ -91,6 +91,12 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_task *create_task(rust_task *spawner, const char *name);
 
     virtual void run();
+
+#ifdef __WIN32__
+    inline void win32_require(LPCTSTR fn, BOOL ok) {
+        kernel->win32_require(fn, ok);
+    }
+#endif
 };
 
 inline rust_log &

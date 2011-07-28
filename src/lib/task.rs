@@ -42,7 +42,7 @@ fn send[T](c: chan[T], v: &T) { c <| v; }
 
 fn recv[T](p: port[T]) -> T { let v; p |> v; v }
 
-fn set_min_stack(uint stack_size) {
+fn set_min_stack(stack_size : uint) {
     rustrt::set_min_stack(stack_size);
 }
 

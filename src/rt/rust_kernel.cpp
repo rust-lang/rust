@@ -2,6 +2,8 @@
 
 #define KLOG_(...) \
     KLOG(this, kern, __VA_ARGS__)
+#define KLOG_ERR_(field, ...)                    \
+    KLOG_LVL(this, field, log_err, __VA_ARGS__)
 
 rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _region(srv, true),
@@ -284,9 +286,9 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
                       NULL, err,
                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                       (LPTSTR) &buf, 0, NULL );
-        DLOG_ERR(sched, dom, "%s failed with error %ld: %s", fn, err, buf);
+        KLOG_ERR_(dom, "%s failed with error %ld: %s", fn, err, buf);
         LocalFree((HLOCAL)buf);
-        I(sched, ok);
+        I(this, ok);
     }
 }
 #endif
