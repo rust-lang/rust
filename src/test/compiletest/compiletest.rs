@@ -388,12 +388,12 @@ mod runtest {
     export run;
 
     fn run(cx: &cx, testfile: &str) {
+        test::configure_test_task();
         if (cx.config.verbose) {
             // We're going to be dumping a lot of info. Start on a new line.
             io::stdout().write_str("\n\n");
         }
         log #fmt("running %s", testfile);
-        task::unsupervise();
         let props = load_props(testfile);
         alt cx.config.mode {
                 mode_compile_fail. { run_cfail_test(cx, props, testfile); }

@@ -22,6 +22,7 @@ export filter_tests;
 export parse_opts;
 export test_to_task;
 export default_test_to_task;
+export configure_test_task;
 
 // The name of a test. By convention this follows the rules for rust
 // paths, i.e it should be a series of identifiers seperated by double
@@ -300,17 +301,7 @@ native "rust" mod rustrt {
 // only works with functions that don't contain closures.
 fn default_test_to_task(f: &fn()) -> task {
     fn run_task(fptr: *mutable fn() ) {
-        // If this task fails we don't want that failure to propagate to the
-        // test runner or else we couldn't keep running tests
-        task::unsupervise();
-
-        // FIXME (236): Hack supreme - unwinding doesn't work yet so if this
-        // task fails memory will not be freed correctly. This turns off the
-        // sanity checks in the runtime's memory region for the task, so that
-        // the test runner can continue.
-        rustrt::hack_allow_leaks();
-
-
+        configure_test_task();
         // Run the test
         (*fptr)()
     }
@@ -318,6 +309,18 @@ fn default_test_to_task(f: &fn()) -> task {
     ret spawn run_task(fptr);
 }
 
+// Call from within a test task to make sure it's set up correctly
+fn configure_test_task() {
+    // If this task fails we don't want that failure to propagate to the
+    // test runner or else we couldn't keep running tests
+    task::unsupervise();
+
+    // FIXME (236): Hack supreme - unwinding doesn't work yet so if this
+    // task fails memory will not be freed correctly. This turns off the
+    // sanity checks in the runtime's memory region for the task, so that
+    // the test runner can continue.
+    rustrt::hack_allow_leaks();
+}
 
 // Local Variables:
 // mode: rust;
