@@ -72,7 +72,7 @@
 
 
 import syntax::ast;
-import syntax::walk;
+import syntax::visit;
 
 import ast::kind;
 import ast::kind_unique;
@@ -143,10 +143,10 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
 }
 
 fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
-    let visit =
-        {visit_expr_pre: bind check_expr(tcx, _)
-         with walk::default_visitor()};
-    walk::walk_crate(visit, *crate);
+    let visit = visit::mk_simple_visitor
+        (@{visit_expr: bind check_expr(tcx, _)
+           with *visit::default_simple_visitor()});
+    visit::visit_crate(*crate, (), visit);
     tcx.sess.abort_if_errors();
 }
 

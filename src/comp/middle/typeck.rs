@@ -1187,7 +1187,7 @@ mod writeback {
              visit_block_pre: bind visit_block_pre(wbcx, _),
              visit_pat_pre: bind visit_pat_pre(wbcx, _),
              visit_local_pre: bind visit_local_pre(wbcx, _)
-                with walk::default_visitor()};
+             with walk::default_visitor()};
         walk::walk_block(visit, blk);
         ret wbcx.success;
     }
