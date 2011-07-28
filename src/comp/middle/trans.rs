@@ -6595,17 +6595,17 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Do backwarding if necessary.
     alt (backwarding_vtbl) {
-        none. { /* fall through */ }
-        some(bv) {
-            // Grab the vtable out of the self-object.
-            let llself_obj_vtbl =
-                bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
-                                                C_int(abi::obj_field_vtbl)]);
+      none. { /* fall through */ }
+      some(bv) {
+        // Grab the vtable out of the self-object.
+        let llself_obj_vtbl =
+            bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
+                                            C_int(abi::obj_field_vtbl)]);
 
-            // And replace it with the backwarding vtbl.
-            let llbv = bcx.build.PointerCast(bv, T_ptr(T_empty_struct()));
-            bcx.build.Store(llbv, llself_obj_vtbl);
-        }
+        // And replace it with the backwarding vtbl.
+        let llbv = bcx.build.PointerCast(bv, T_ptr(T_empty_struct()));
+        bcx.build.Store(llbv, llself_obj_vtbl);
+      }
     }
 
     // Grab hold of the outer object so we can pass it into the inner object,
