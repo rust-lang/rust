@@ -255,7 +255,11 @@ obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
     }
 }
 
-obj fd_buf_writer(fd: int, must_close: bool) {
+resource fd_res(fd: int) {
+    os::libc::close(fd);
+}
+
+obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
     fn write(v: vec[u8]) {
         let len = vec::len[u8](v);
         let count = 0u;
@@ -279,7 +283,6 @@ obj fd_buf_writer(fd: int, must_close: bool) {
         log_err "need 64-bit native calls for tell, sorry";
         fail;
     }
-    drop { if must_close { os::libc::close(fd); } }
 }
 
 fn file_buf_writer(path: str, flags: vec[fileflag]) -> buf_writer {
@@ -302,7 +305,7 @@ fn file_buf_writer(path: str, flags: vec[fileflag]) -> buf_writer {
         log_err sys::rustrt::last_os_error();
         fail;
     }
-    ret fd_buf_writer(fd, true);
+    ret fd_buf_writer(fd, option::some(@fd_res(fd)));
 }
 
 type writer =
@@ -379,9 +382,9 @@ fn buffered_file_buf_writer(path: str) -> buf_writer {
 
 
 // FIXME it would be great if this could be a const
-fn stdout() -> writer { ret new_writer(fd_buf_writer(1, false)); }
+fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 
-fn stderr() -> writer { ret new_writer(fd_buf_writer(2, false)); }
+fn stderr() -> writer { ret new_writer(fd_buf_writer(2, option::none)); }
 
 type str_writer =
     obj {

@@ -41,6 +41,7 @@ import std::map::new_str_hash;
 import syntax::codemap::span;
 import lib::llvm::llvm;
 import lib::llvm::builder;
+import lib::llvm::new_builder;
 import lib::llvm::target_data;
 import lib::llvm::type_names;
 import lib::llvm::mk_target_data;
@@ -5933,13 +5934,6 @@ fn trans_stmt(cx: &@block_ctxt, s: &ast::stmt) -> result {
     }
     ret rslt(bcx, C_nil());
 }
-
-fn new_builder(llbb: BasicBlockRef) -> builder {
-    let llbuild: BuilderRef = llvm::LLVMCreateBuilder();
-    llvm::LLVMPositionBuilderAtEnd(llbuild, llbb);
-    ret builder(llbuild, @mutable false);
-}
-
 
 // You probably don't want to use this one. See the
 // next three functions instead.

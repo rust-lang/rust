@@ -889,9 +889,13 @@ native "cdecl" mod llvm = "rustllvm" {
  * it's attached to.
  */
 
-// FIXME: Do we want to support mutable object fields?
-obj builder(B: BuilderRef, terminated: @mutable bool) {
+resource BuilderRef_res(B: BuilderRef) {
+    llvm::LLVMDisposeBuilder(B);
+}
 
+obj builder(B: BuilderRef, terminated: @mutable bool,
+            // Stored twice so that we don't have to constantly deref
+            res: @BuilderRef_res) {
     /* Terminators */
     fn RetVoid() -> ValueRef {
         assert (!*terminated);
@@ -1396,9 +1400,12 @@ obj builder(B: BuilderRef, terminated: @mutable bool) {
     fn is_terminated() -> bool {
         ret *terminated;
     }
-    drop {
-         llvm::LLVMDisposeBuilder(B);
-    }
+}
+
+fn new_builder(llbb: BasicBlockRef) -> builder {
+    let llbuild: BuilderRef = llvm::LLVMCreateBuilder();
+    llvm::LLVMPositionBuilderAtEnd(llbuild, llbb);
+    ret builder(llbuild, @mutable false, @BuilderRef_res(llbuild));
 }
 
 /* Memory-managed object interface to type handles. */
@@ -1554,54 +1561,54 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> TypeRef[] {
 
 /* Memory-managed interface to target data. */
 
-obj target_data_dtor(TD: TargetDataRef) {
-    drop { llvm::LLVMDisposeTargetData(TD); }
+resource target_data_res(TD: TargetDataRef) {
+    llvm::LLVMDisposeTargetData(TD);
 }
 
-type target_data = {lltd: TargetDataRef, dtor: target_data_dtor};
+type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
 fn mk_target_data(string_rep: str) -> target_data {
     let lltd = llvm::LLVMCreateTargetData(str::buf(string_rep));
-    ret {lltd: lltd, dtor: target_data_dtor(lltd)};
+    ret {lltd: lltd, dtor: @target_data_res(lltd)};
 }
 
 /* Memory-managed interface to pass managers. */
 
-obj pass_manager_dtor(PM: PassManagerRef) {
-    drop { llvm::LLVMDisposePassManager(PM); }
+resource pass_manager_res(PM: PassManagerRef) {
+    llvm::LLVMDisposePassManager(PM);
 }
 
-type pass_manager = {llpm: PassManagerRef, dtor: pass_manager_dtor};
+type pass_manager = {llpm: PassManagerRef, dtor: @pass_manager_res};
 
 fn mk_pass_manager() -> pass_manager {
     let llpm = llvm::LLVMCreatePassManager();
-    ret {llpm: llpm, dtor: pass_manager_dtor(llpm)};
+    ret {llpm: llpm, dtor: @pass_manager_res(llpm)};
 }
 
 /* Memory-managed interface to object files. */
 
-obj object_file_dtor(ObjectFile: ObjectFileRef) {
-    drop { llvm::LLVMDisposeObjectFile(ObjectFile); }
+resource object_file_res(ObjectFile: ObjectFileRef) {
+    llvm::LLVMDisposeObjectFile(ObjectFile);
 }
 
-type object_file = {llof: ObjectFileRef, dtor: object_file_dtor};
+type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
 fn mk_object_file(llmb: MemoryBufferRef) -> object_file {
     let llof = llvm::LLVMCreateObjectFile(llmb);
-    ret {llof: llof, dtor: object_file_dtor(llof)};
+    ret {llof: llof, dtor: @object_file_res(llof)};
 }
 
 /* Memory-managed interface to section iterators. */
 
-obj section_iter_dtor(SI: SectionIteratorRef) {
-    drop { llvm::LLVMDisposeSectionIterator(SI); }
+resource section_iter_res(SI: SectionIteratorRef) {
+    llvm::LLVMDisposeSectionIterator(SI);
 }
 
-type section_iter = {llsi: SectionIteratorRef, dtor: section_iter_dtor};
+type section_iter = {llsi: SectionIteratorRef, dtor: @section_iter_res};
 
 fn mk_section_iter(llof: ObjectFileRef) -> section_iter {
     let llsi = llvm::LLVMGetSections(llof);
-    ret {llsi: llsi, dtor: section_iter_dtor(llsi)};
+    ret {llsi: llsi, dtor: @section_iter_res(llsi)};
 }
 
 //

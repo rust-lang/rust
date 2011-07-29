@@ -35,15 +35,20 @@ fn run_program(prog: str, args: vec[str]) -> int {
 
 type program =
     obj {
-        fn get_id() -> int ;
-        fn input() -> io::writer ;
-        fn output() -> io::reader ;
-        fn err() -> io::reader ;
-        fn close_input() ;
-        fn finish() -> int ;
+        fn get_id() -> int;
+        fn input() -> io::writer;
+        fn output() -> io::reader;
+        fn err() -> io::reader;
+        fn close_input();
+        fn finish() -> int;
+        fn destroy();
     };
 
-fn start_program(prog: str, args: vec[str]) -> @program {
+resource program_res(p: program) {
+    p.destroy();
+}
+
+fn start_program(prog: str, args: vec[str]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -61,7 +66,7 @@ fn start_program(prog: str, args: vec[str]) -> @program {
                     mutable finished: bool) {
         fn get_id() -> int { ret pid; }
         fn input() -> io::writer {
-            ret io::new_writer(io::fd_buf_writer(in_fd, false));
+            ret io::new_writer(io::fd_buf_writer(in_fd, option::none));
         }
         fn output() -> io::reader {
             ret io::new_reader(io::FILE_buf_reader(out_file, option::none));
@@ -82,18 +87,17 @@ fn start_program(prog: str, args: vec[str]) -> @program {
             self.close_input();
             ret os::waitpid(pid);
         }
-        drop {
-            self.close_input();
-            if !finished { os::waitpid(pid); }
+        fn destroy() {
+            self.finish();
             os::libc::fclose(out_file);
             os::libc::fclose(err_file);
         }
     }
-    ret @new_program(pid,
-                     pipe_input.out,
-                     os::fd_FILE(pipe_output.in),
-                     os::fd_FILE(pipe_err.in),
-                     false);
+    ret @program_res(new_program(pid,
+                                 pipe_input.out,
+                                 os::fd_FILE(pipe_output.in),
+                                 os::fd_FILE(pipe_err.in),
+                                 false));
 }
 
 fn read_all(rd: &io::reader) -> str {

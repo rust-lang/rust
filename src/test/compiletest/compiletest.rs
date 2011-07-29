@@ -668,7 +668,7 @@ mod procsrv {
     fn readclose(fd: int) -> str {
         // Copied from run::program_output
         let file = os::fd_FILE(fd);
-        let reader = io::new_reader(io::FILE_buf_reader(file, false));
+        let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
         let buf = "";
         while !reader.eof() {
             let bytes = reader.read_bytes(4096u);

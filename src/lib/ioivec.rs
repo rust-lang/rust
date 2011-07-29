@@ -55,7 +55,11 @@ fn convert_whence(whence: seek_style) -> int {
     ret alt whence { seek_set. { 0 } seek_cur. { 1 } seek_end. { 2 } };
 }
 
-obj FILE_buf_reader(f: os::libc::FILE, must_close: bool) {
+resource FILE_res(f: os::libc::FILE) {
+    os::libc::fclose(f);
+}
+
+obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn read(len: uint) -> u8[] {
         let buf = ~[];
         ivec::reserve[u8](buf, len);
@@ -72,7 +76,6 @@ obj FILE_buf_reader(f: os::libc::FILE, must_close: bool) {
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
     }
-    drop { if must_close { os::libc::fclose(f); } }
 }
 
 
@@ -172,13 +175,13 @@ obj new_reader(rdr: buf_reader) {
 }
 
 fn stdin() -> reader {
-    ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), false));
+    ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), option::none));
 }
 
 fn file_reader(path: str) -> reader {
     let f = os::libc::fopen(str::buf(path), str::buf("r"));
     if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret new_reader(FILE_buf_reader(f, true));
+    ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
 }
 
 
@@ -240,7 +243,7 @@ type buf_writer =
         fn tell() -> uint ;
     };
 
-obj FILE_writer(f: os::libc::FILE, must_close: bool) {
+obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn write(v: &u8[]) {
         let len = ivec::len[u8](v);
         let vbuf = ivec::to_ptr[u8](v);
@@ -253,10 +256,13 @@ obj FILE_writer(f: os::libc::FILE, must_close: bool) {
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
     }
-    drop { if must_close { os::libc::fclose(f); } }
 }
 
-obj fd_buf_writer(fd: int, must_close: bool) {
+resource fd_res(fd: int) {
+    os::libc::close(fd);
+}
+
+obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
     fn write(v: &u8[]) {
         let len = ivec::len[u8](v);
         let count = 0u;
@@ -280,7 +286,6 @@ obj fd_buf_writer(fd: int, must_close: bool) {
         log_err "need 64-bit native calls for tell, sorry";
         fail;
     }
-    drop { if must_close { os::libc::close(fd); } }
 }
 
 fn file_buf_writer(path: str, flags: &fileflag[]) -> buf_writer {
@@ -303,7 +308,7 @@ fn file_buf_writer(path: str, flags: &fileflag[]) -> buf_writer {
         log_err sys::rustrt::last_os_error();
         fail;
     }
-    ret fd_buf_writer(fd, true);
+    ret fd_buf_writer(fd, option::some(@fd_res(fd)));
 }
 
 type writer =
@@ -377,12 +382,12 @@ fn file_writer(path: str, flags: &fileflag[]) -> writer {
 fn buffered_file_buf_writer(path: str) -> buf_writer {
     let f = os::libc::fopen(str::buf(path), str::buf("w"));
     if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret FILE_writer(f, true);
+    ret FILE_writer(f, option::some(@FILE_res(f)));
 }
 
 
 // FIXME it would be great if this could be a const
-fn stdout() -> writer { ret new_writer(fd_buf_writer(1, false)); }
+fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 
 type str_writer =
     obj {
