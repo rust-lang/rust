@@ -1649,8 +1649,7 @@ fn make_cmp_glue(cx: &@block_ctxt, lhs0: ValueRef, rhs0: ValueRef, t: &ty::t,
             ret rslt(cnt_cx, C_nil());
         }
         if ty::type_is_structural(bcx_tcx(cx), t) {
-            r =
-                iter_structural_ty_full(r.bcx, lhs, rhs, t,
+            r = iter_structural_ty_full(r.bcx, lhs, rhs, t,
                                         bind inner(next, false, flag, llop, _,
                                                    _, _, _));
         } else {
@@ -1661,8 +1660,7 @@ fn make_cmp_glue(cx: &@block_ctxt, lhs0: ValueRef, rhs0: ValueRef, t: &ty::t,
             let rhs_lim = r.bcx.build.GEP(rhs_p0, ~[min_len]);
             let elt_ty = ty::sequence_element_type(bcx_tcx(cx), t);
             r = size_of(r.bcx, elt_ty);
-            r =
-                iter_sequence_raw(r.bcx, lhs_p0, rhs_p0, rhs_lim, r.val,
+            r = iter_sequence_raw(r.bcx, lhs_p0, rhs_p0, rhs_lim, r.val,
                                   bind inner(next, true, flag, llop, _, _, _,
                                              elt_ty));
         }
@@ -1982,13 +1980,16 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
         }
       }
       ty::ty_res(_, inner, tps) {
-        let inner1 = ty::substitute_type_params(bcx_tcx(cx), tps, inner);
-        r = GEP_tup_like(r.bcx, t, av, ~[0, 1]);
+        let tcx = bcx_tcx(cx);
+        let inner1 = ty::substitute_type_params(tcx, tps, inner);
+        let inner_t_s = ty::substitute_type_params(tcx, tps, inner);
+        let tup_t = ty::mk_imm_tup(tcx, ~[ty::mk_int(tcx), inner_t_s]);
+        r = GEP_tup_like(r.bcx, tup_t, av, ~[0, 1]);
         let llfld_a = r.val;
-        r = GEP_tup_like(r.bcx, t, bv, ~[0, 1]);
+        r = GEP_tup_like(r.bcx, tup_t, bv, ~[0, 1]);
         let llfld_b = r.val;
-        f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner1),
-          load_if_immediate(r.bcx, llfld_b, inner1), inner1);
+        r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner1),
+              load_if_immediate(r.bcx, llfld_b, inner1), inner1);
       }
       ty::ty_tag(tid, tps) {
         let variants = ty::tag_variants(bcx_tcx(cx), tid);
@@ -2059,18 +2060,12 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
 
 // Iterates through a pointer range, until the src* hits the src_lim*.
 fn iter_sequence_raw(cx: @block_ctxt, dst: ValueRef,
-                     src:
-
-                         // elt*
-                         ValueRef,
-                     src_lim:
-
-                         // elt*
-                         ValueRef,
-                     elt_sz:
-
-                         // elt*
-                         ValueRef, f: &val_pair_fn) -> result {
+                     // elt*
+                     src: ValueRef,
+                     // elt*
+                     src_lim: ValueRef,
+                     // elt*
+                     elt_sz: ValueRef, f: &val_pair_fn) -> result {
     let bcx = cx;
     let dst_int: ValueRef = vp2i(bcx, dst);
     let src_int: ValueRef = vp2i(bcx, src);
