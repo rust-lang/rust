@@ -85,6 +85,9 @@ fn safe_to_steal(e: ast::expr_) -> bool {
       ast::expr_ret(option::none.) { false }
       ast::expr_put(option::none.) { false }
 
+      ast::expr_ret(_) { false /* lots of code generation issues, such as https://github.com/graydon/rust/issues/770 */ }
+      ast::expr_fail(_) { false }
+
       _ {
         true
       }
@@ -149,7 +152,7 @@ fn as_str(f: fn(ioivec::writer) ) -> str {
     ret w.get_str();
 }
 
-fn pp_variants(crate: &ast::crate, codemap: &codemap::codemap, filename: &str) {
+fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap, filename: &str) {
     let exprs = steal_exprs(crate);
     let exprsL = ivec::len(exprs);
     if (exprsL < 100u) {
@@ -166,8 +169,61 @@ fn pp_variants(crate: &ast::crate, codemap: &codemap::codemap, filename: &str) {
                 // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
                 // and https://github.com/graydon/rust/issues/766 is hilarious.
                 check_roundtrip_convergence(str3, 7u);
+                //check_whole_compiler(str3);
             }
         }
+    }
+}
+
+// We'd find more bugs if we could take an AST here, but
+// - that would find many "false positives" or unimportant bugs
+// - that would be tricky, requiring use of tasks or serialization or randomness.
+// This seems to find plenty of bugs as it is :)
+fn check_whole_compiler(code: &str) {
+    let filename = "test.rs";
+    write_file(filename, code);
+    let p = std::run::program_output("/Users/jruderman/code/rust/build/stage1/rustc", ["-c", filename]);
+    //log_err #fmt("Status: %d", p.status);
+    //log_err "Output: " + p.out;
+    if p.err != "" {
+        if contains(p.err, "argument of incompatible type") {
+            log_err "https://github.com/graydon/rust/issues/769";
+        } else if contains(p.err, "Cannot create binary operator with two operands of differing type") {
+            log_err "https://github.com/graydon/rust/issues/770";
+        } else if contains(p.err, "May only branch on boolean predicates!") {
+            log_err "https://github.com/graydon/rust/issues/770 or https://github.com/graydon/rust/issues/776";
+        } else if contains(p.err, "Invalid constantexpr cast!") && contains(code, "!") {
+            log_err "https://github.com/graydon/rust/issues/777";
+        } else if contains(p.err, "Both operands to ICmp instruction are not of the same type!") && contains(code, "!") {
+            log_err "https://github.com/graydon/rust/issues/777 #issuecomment-1678487";
+        } else if contains(p.err, "Ptr must be a pointer to Val type!") && contains(code, "!") {
+            log_err "https://github.com/graydon/rust/issues/779";
+        } else if contains(p.err, "Calling a function with bad signature!") && (contains(code, "iter") || contains(code, "range")) {
+            log_err "https://github.com/graydon/rust/issues/771 - calling an iter fails";
+        } else if contains(p.err, "Calling a function with a bad signature!") && contains(code, "empty") {
+            log_err "https://github.com/graydon/rust/issues/775 - possibly a modification of run-pass/import-glob-crate.rs";
+        } else if contains(p.err, "Invalid type for pointer element!") && contains(code, "put") {
+            log_err "https://github.com/graydon/rust/issues/773 - put put ()";
+        } else if contains(p.err, "pointer being freed was not allocated") && contains(p.out, "Out of stack space, sorry") {
+            log_err "https://github.com/graydon/rust/issues/768 + https://github.com/graydon/rust/issues/778"
+        } else {
+            log_err "Stderr: " + p.err;
+            fail "Unfamiliar error message";
+        }
+    } else if contains(p.out, "non-exhaustive match failure") && contains(p.out, "alias.rs") {
+        log_err "https://github.com/graydon/rust/issues/772";
+    } else if contains(p.out, "non-exhaustive match failure") && contains(p.out, "trans.rs") && contains(code, "put") {
+        log_err "https://github.com/graydon/rust/issues/774";
+    } else if contains(p.out, "Out of stack space, sorry") {
+        log_err "Possibly a variant of https://github.com/graydon/rust/issues/768";
+    } else if p.status == 256 {
+        if !contains(p.out, "error:") {
+            fail "Exited with status 256 without a span-error";
+        }
+    } else if p.status == 11 {
+        log_err "What is this I don't even";
+    } else if p.status != 0 {
+        fail "Unfamiliar status code";
     }
 }
 
@@ -186,7 +242,9 @@ fn content_is_dangerous_to_modify(code: &str) -> bool {
     let dangerous_patterns = [
          "obj", // not safe to steal; https://github.com/graydon/rust/issues/761
          "#macro", // not safe to steal things inside of it, because they have a special syntax
-         " be " // don't want to replace its child with a non-call: "Non-call expression in tail call"
+         "#", // strange representation of the arguments to #fmt, for example
+         " be ", // don't want to replace its child with a non-call: "Non-call expression in tail call"
+         "@" // hangs when compiling: https://github.com/graydon/rust/issues/768
     ];
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
@@ -277,18 +335,18 @@ fn check_convergence(files: &str[]) {
     }
 }
 
-fn check_convergence_of_variants(files: &str[]) {
+fn check_variants(files: &str[]) {
     for file in files {
         if !file_is_confusing(file) {
             let s = read_whole_file(file);
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) { cont; }
-            log_err "check_convergence_of_variants: " + file;
+            log_err "check_variants: " + file;
             let codemap = codemap::new_codemap();
             let crate = parser::parse_crate_from_source_str(file, s, ~[], codemap);
             log_err as_str(bind pprust::print_crate(codemap, crate, file,
                                         ioivec::string_reader(s), _,
                                         pprust::no_ann()));
-            pp_variants(*crate, codemap, file);
+            check_variants_of_ast(*crate, codemap, file);
         }
     }
 }
@@ -303,7 +361,8 @@ fn main(args: vec[str]) {
 
     find_rust_files(files, root);
     check_convergence(files);
-    check_convergence_of_variants(files);
+    check_variants(files);
+    log_err "Fuzzer done";
 }
 
 // Local Variables:
