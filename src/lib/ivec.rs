@@ -81,7 +81,7 @@ fn from_mut[T](v: &T[mutable ]) -> T[] {
 // Predicates
 pred is_empty[T](v: &T[mutable? ]) -> bool {
     // FIXME: This would be easier if we could just call len
-    for t: T  in v { ret false; }
+    for t: T in v { ret false; }
     ret true;
 }
 
