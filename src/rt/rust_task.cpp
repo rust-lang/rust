@@ -76,7 +76,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     supervisor(spawner),
     list_index(-1),
     rendezvous_ptr(0),
-    handle(NULL),
     running_on(-1),
     pinned_on(-1),
     local_region(&sched->srv->local_region),
@@ -462,14 +461,6 @@ rust_task::backtrace() {
     int nframes = ::backtrace(call_stack, 256);
     backtrace_symbols_fd(call_stack + 1, nframes - 1, 2);
 #endif
-}
-
-rust_handle<rust_task> *
-rust_task::get_handle() {
-    if (handle == NULL) {
-        handle = sched->kernel->get_task_handle(this);
-    }
-    return handle;
 }
 
 bool rust_task::can_schedule(int id)

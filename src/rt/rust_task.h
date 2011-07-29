@@ -80,8 +80,6 @@ public:
     // List of tasks waiting for this task to finish.
     array_list<rust_task *> tasks_waiting_to_join;
 
-    rust_handle<rust_task> *handle;
-
     context ctx;
 
     // This flag indicates that a worker is either currently running the task
@@ -156,8 +154,6 @@ public:
 
     // Notify tasks waiting for us that we are about to die.
     void notify_tasks_waiting_to_join();
-
-    rust_handle<rust_task> * get_handle();
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();

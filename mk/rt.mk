@@ -18,7 +18,6 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_log.cpp \
-              rt/rust_message.cpp \
               rt/rust_timer.cpp \
               rt/circular_buffer.cpp \
               rt/isaac/randport.cpp \
@@ -44,9 +43,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_scheduler.h \
                rt/rust_task.h \
                rt/rust_task_list.h \
-               rt/rust_proxy.h \
                rt/rust_log.h \
-               rt/rust_message.h \
                rt/circular_buffer.h \
                rt/util/array_list.h \
                rt/util/indexed_list.h \
