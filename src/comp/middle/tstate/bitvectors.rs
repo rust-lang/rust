@@ -208,6 +208,11 @@ fn clear_in_poststate_expr(fcx: &fn_ctxt, e: &@expr, t: &poststate) {
     }
 }
 
+fn kill_poststate_(fcx : &fn_ctxt, c : &tsconstr, post : &poststate) -> bool {
+    log "kill_poststate_";
+    ret clear_in_poststate_(bit_num(fcx, c), post);
+}
+
 fn set_in_poststate_ident(fcx: &fn_ctxt, id: &node_id, ident: &ident,
                           t: &poststate) -> bool {
     ret set_in_poststate_(bit_num(fcx, ninit(id, ident)), t);
@@ -225,6 +230,11 @@ fn clear_in_poststate_ident(fcx: &fn_ctxt, id: &node_id, ident: &ident,
 fn clear_in_prestate_ident(fcx: &fn_ctxt, id: &node_id, ident: &ident,
                            parent: &node_id) -> bool {
     ret kill_prestate(fcx, parent, ninit(id, ident));
+}
+
+fn clear_in_poststate_ident_(fcx : &fn_ctxt, id : &node_id, ident : &ident,
+                             post : &poststate) -> bool {
+    ret kill_poststate_(fcx, ninit(id, ident), post);
 }
 
 //

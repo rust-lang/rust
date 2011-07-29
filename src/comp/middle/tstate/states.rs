@@ -27,16 +27,6 @@ import tritv::tritv_set;
 import tritv::ttrue;
 
 import bitvectors::*;
-/*
-import bitvectors::set_in_poststate_ident;
-import bitvectors::clear_in_poststate_expr;
-import bitvectors::clear_in_prestate_ident;
-import bitvectors::bit_num;
-import bitvectors::gen_poststate;
-import bitvectors::kill_poststate;
-import bitvectors::clear_in_poststate_ident;
-import bitvectors::intersect_states;
-*/
 import syntax::ast::*;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
@@ -53,15 +43,66 @@ import util::common::log_stmt;
 import util::common::log_stmt_err;
 import util::common::log_expr_err;
 
-fn seq_states(fcx: &fn_ctxt, pres: prestate, exprs: &(@expr)[]) ->
-   {changed: bool, post: poststate} {
+fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
+      rhs_id: &node_id, instlhs: &inst, init_op: &init_op) {
+    let rhs_d = local_node_id_to_def_id(fcx, rhs_id);
+    alt (rhs_d) {
+      some(rhsid) {
+        // RHS is a local var
+        let instrhs =
+            {ident: path_to_ident(fcx.ccx.tcx, rhs_path), node: rhsid.node};
+        copy_in_poststate(fcx, post, instlhs, instrhs,
+                          op_to_oper_ty(init_op));
+      }
+      _ {
+        // not a local -- do nothing
+      }
+    }
+    if (init_op == init_move) {
+        forget_in_poststate(fcx, post, rhs_id);
+    }
+}
+
+fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
+    -> {changed: bool, post: poststate} {
     let changed = false;
-    let post = pres;
-    for e: @expr  in exprs {
-        changed |= find_pre_post_state_expr(fcx, post, e) || changed;
-        // log_err("Seq_states: changed =");
-        // log_err changed;
-        post = expr_poststate(fcx.ccx, e);
+    let post = tritv_clone(pres);
+    for b:binding in bindings {
+        alt (b.rhs) {
+          some(an_init) {
+            // an expression, with or without a destination
+            changed |= find_pre_post_state_expr(fcx, post, an_init.expr)
+                || changed;
+            post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
+            alt (b.lhs) {
+              some(i) {
+                alt (an_init.expr.node) {
+                  expr_path(p) {
+                    handle_move_or_copy(fcx, post, p, an_init.expr.id, i,
+                                        an_init.op);
+                  }
+                  _ {}
+                }
+                set_in_poststate_ident(fcx, i.node, i.ident, post);
+              }
+              _ {
+                //This is an expression that doesn't get named.
+                // So, nothing more to do.
+              }
+            }
+           }
+         none {
+            alt (b.lhs) {
+              some(i) {
+                // variable w/o an initializer
+                 clear_in_poststate_ident_(fcx, i.node, i.ident, post);
+               }
+              none { fcx.ccx.tcx.sess.bug("seq_states: binding has \
+                               neither an lhs nor an rhs");
+              }
+            }
+          }
+        }
     }
     ret {changed: changed, post: post};
 }
@@ -154,7 +195,7 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
 
 fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
                              es: &(@expr)[], cf: controlflow) -> bool {
-    let rs = seq_states(fcx, pres, es);
+    let rs = seq_states(fcx, pres, anon_bindings(es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
@@ -561,91 +602,50 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
     }
 }
 
-fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt) ->
-   bool {
+fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
+    -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
-
-
-    /*
+/*
     log_err "*At beginning: stmt = ";
     log_stmt_err(*s);
     log_err "*prestate = ";
-    log_err tritv::to_str(stmt_ann.states.prestate);
+    log_tritv_err(fcx, stmt_ann.states.prestate);
     log_err "*poststate =";
-    log_err tritv::to_str(stmt_ann.states.poststate);
+    log_tritv_err(fcx, stmt_ann.states.poststate);
     log_err "pres = ";
-    log_err tritv::to_str(pres);
-    */
+    log_tritv_err(fcx, pres);
+*/
 
-    alt s.node {
+    alt (s.node) {
       stmt_decl(adecl, id) {
-        alt adecl.node {
+        alt (adecl.node) {
           decl_local(alocals) {
-            let changed = false;
-            for alocal: @local  in alocals {
-                alt alocal.node.init {
-                  some(an_init) {
-                    let changed =
-                        set_prestate(stmt_ann, pres) |
-                            find_pre_post_state_expr(fcx, pres, an_init.expr);
+            set_prestate(stmt_ann, pres);
+            let c_and_p = seq_states(fcx, pres,
+                                     locals_to_bindings(alocals));
+            /* important to do this in one step to ensure
+            termination (don't want to set changed to true
+            for intermediate changes) */
 
-                    let post =
-                        tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
-                    alt an_init.expr.node {
-                      expr_path(p) {
+            let changed = (set_poststate(stmt_ann, c_and_p.post)
+                           | c_and_p.changed);
+            /*
+                log_err "Summary: stmt = ";
+                log_stmt_err(*s);
+                log_err "prestate = ";
+                log_tritv_err(fcx, stmt_ann.states.prestate);
+                log_err "poststate =";
+                log_tritv_err(fcx, stmt_ann.states.poststate);
+                log_err "changed =";
+                log_err changed;
+*/
 
-                        let instlhs =
-                            {ident: alocal.node.ident, node: alocal.node.id};
-                        let rhs_d =
-                            local_node_id_to_local_def_id(fcx,
-                                                          an_init.expr.id);
-                        alt rhs_d {
-                          some(rhsid) {
-                            let instrhs =
-                                {ident: path_to_ident(fcx.ccx.tcx, p),
-                                 node: rhsid};
-                            copy_in_poststate(fcx, post, instlhs, instrhs,
-                                              op_to_oper_ty(an_init.op));
-                          }
-                          _ { }
-                        }
-                      }
-                      _ { }
-                    }
-                    if an_init.op == init_move {
-                        forget_in_poststate(fcx, post, an_init.expr.id);
-                    }
-                    set_in_poststate_ident(fcx, alocal.node.id,
-                                           alocal.node.ident, post);
-                    /*
-                    log_err "Summary: stmt = ";
-                    log_stmt_err(*s);
-                    log_err "prestate = ";
-                    log_tritv_err(fcx, stmt_ann.states.prestate);
-                    log_err "poststate =";
-                    log_tritv_err(fcx, post);
-                    log_err "changed =";
-                    log_err changed;
-                    */
-                    /* important to do this in one step to ensure
-                       termination (don't want to set changed to true
-                       for intermediate changes) */
-                    changed |= set_poststate(stmt_ann, post);
-                  }
-                  none. {
-                    // let int = x; => x is uninit in poststate
-                    set_poststate_ann(fcx.ccx, id, pres);
-                    clear_in_poststate_ident(fcx, alocal.node.id,
-                                             alocal.node.ident, id);
-                    set_prestate(stmt_ann, pres);
-                  }
-                }
-            }
             ret changed;
           }
           decl_item(an_item) {
-            ret set_prestate(stmt_ann, pres) | set_poststate(stmt_ann, pres);
-            /* the outer "walk" will recurse into the item */
+            ret set_prestate(stmt_ann, pres) |
+                set_poststate(stmt_ann, pres);
+            /* the outer visitor will recurse into the item */
           }
         }
       }
@@ -699,7 +699,8 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
     set_prestate_ann(fcx.ccx, b.node.id, pres0);
     set_poststate_ann(fcx.ccx, b.node.id, post);
 
-    /*
+
+/*
     log_err "For block:";
     log_block_err(b);
     log_err "poststate = ";
@@ -708,12 +709,15 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
     log_tritv_err(fcx, pres0);
     log_err "post:";
     log_tritv_err(fcx, post);
-    */
+    log_err "changed = ";
+    log_err changed;
+*/
 
     ret changed;
 }
 
 fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
+
     let num_local_vars = num_constraints(fcx.enclosing);
     // make sure the return bit starts out False
     clear_in_prestate_ident(fcx, fcx.id, fcx.name, f.body.node.id);
