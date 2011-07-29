@@ -3787,52 +3787,45 @@ fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment(cx: &@block_ctxt, fcx: &@fn_ctxt, llenvptrty: TypeRef,
-                    upvars: &@ast::node_id[]) {
-    let copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
+                    llenvptrty: TypeRef, upvars: &@ast::node_id[]) {
+    let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // Populate the upvars from the environment.
-    let llremoteenvptr =
-        copy_args_bcx.build.PointerCast(fcx.llenv, llenvptrty);
-    let llremotebindingsptrptr =
-        copy_args_bcx.build.GEP(llremoteenvptr,
-                                ~[C_int(0), C_int(abi::box_rc_field_body),
-                                  C_int(abi::closure_elt_bindings)]);
-    let llremotebindingsptr =
-        copy_args_bcx.build.Load(llremotebindingsptrptr);
+    let llenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
+    llenvptr =
+        bcx.build.GEP(llenvptr, ~[C_int(0), C_int(abi::box_rc_field_body)]);
+    let llbindingsptrptr =
+        bcx.build.GEP(llenvptr,
+                      ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+    let llbindingsptr = bcx.build.Load(llbindingsptrptr);
 
     let i = 0u;
-    if !option::is_none(cx.fcx.lliterbody) {
+    if !option::is_none(enclosing_cx.fcx.lliterbody) {
         i += 1u;
         let lliterbodyptr =
-            copy_args_bcx.build.GEP(llremotebindingsptr,
-                                    ~[C_int(0), C_int(0)]);
-        let lliterbody = copy_args_bcx.build.Load(lliterbodyptr);
-        fcx.lliterbody = some(lliterbody);
+            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(0)]);
+        fcx.lliterbody = some(bcx.build.Load(lliterbodyptr));
     }
     for upvar_id: ast::node_id  in *upvars {
         let llupvarptrptr =
-            copy_args_bcx.build.GEP(llremotebindingsptr,
-                                    ~[C_int(0), C_int(i as int)]);
-        let llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
-        let def_id = ast::def_id_of_def(bcx_tcx(cx).def_map.get(upvar_id));
+            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(i as int)]);
+        let llupvarptr = bcx.build.Load(llupvarptrptr);
+        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
         fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
     }
 
     // Populate the type parameters from the environment.
-    let llremotetydescsptr =
-        copy_args_bcx.build.GEP(llremoteenvptr,
-                                ~[C_int(0), C_int(abi::box_rc_field_body),
-                                  C_int(abi::closure_elt_ty_params)]);
-    let tydesc_count = std::ivec::len(cx.fcx.lltydescs);
+    let lltydescsptr =
+        bcx.build.GEP(llenvptr,
+                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+    let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
     i = 0u;
     while i < tydesc_count {
-        let llremotetydescptr =
-            copy_args_bcx.build.GEP(llremotetydescsptr,
-                                    ~[C_int(0), C_int(i as int)]);
-        let llremotetydesc = copy_args_bcx.build.Load(llremotetydescptr);
-        fcx.lltydescs += ~[llremotetydesc];
+        let lltydescptr =
+            bcx.build.GEP(lltydescsptr, ~[C_int(0), C_int(i as int)]);
+        fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
         i += 1u;
     }
 
