@@ -510,6 +510,9 @@ fn node_id_to_def_strict(cx: &ty::ctxt, id: node_id) -> def {
 fn node_id_to_def(ccx: &crate_ctxt, id: node_id) -> option::t[def] {
     ret ccx.tcx.def_map.find(id);
 }
+fn node_id_to_def_upvar(cx: &fn_ctxt, id: node_id) -> option::t[def] {
+    ret freevars::def_lookup(cx.ccx.tcx, cx.id, id);
+}
 
 fn norm_a_constraint(id: def_id, c: &constraint) -> norm_constraint[] {
     alt c {

@@ -218,7 +218,7 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
 
 fn gen_if_local(fcx: &fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
                 new_var: node_id, pth: &path) {
-    alt node_id_to_def(fcx.ccx, new_var) {
+    alt node_id_to_def_upvar(fcx, new_var) {
       some(d) {
         alt d {
           def_local(d_id) {
@@ -257,7 +257,7 @@ fn handle_update(fcx: &fn_ctxt, parent: &@expr, lhs: &@expr, rhs: &@expr,
           }
           _ {
             // pure and assign_op require the lhs to be init'd
-            let df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
+            let df = node_id_to_def_upvar_strict(fcx, lhs.id);
             alt df {
               def_local(d_id) {
                 let i =
