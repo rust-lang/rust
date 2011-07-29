@@ -19,6 +19,22 @@ native "rust" mod rustrt {
                                     count: uint);
 }
 
+fn from_vec[T](v: &vec[T]) -> T[] {
+    let iv: T[] = ~[];
+    for e in v {
+        iv += ~[e];
+    }
+    ret iv;
+}
+
+fn to_vec[T](iv: &T[]) -> vec[T] {
+    let v: vec[T] = [];
+    for e in iv {
+        v += [e];
+    }
+    ret v;
+}
+
 /// Reserves space for `n` elements in the given vector.
 fn reserve[T](v: &mutable T[mutable? ], n: uint) {
     rustrt::ivec_reserve_shared(v, n);
