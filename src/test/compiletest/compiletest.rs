@@ -719,9 +719,9 @@ mod procsrv {
             // everything and let the originals go out of scope before sending
             // a response.
             execparms = {
-                // FIXME (785): The 'discriminant' of an alt expression has the
-                // same scope as the alt expression itself, so we have to put
-                // the entire alt in another block to make sure the exec
+                // FIXME (785): The 'discriminant' of an alt expression has
+                // the same scope as the alt expression itself, so we have to
+                // put the entire alt in another block to make sure the exec
                 // message goes out of scope. Seems like the scoping rules for
                 // the alt discriminant are wrong.
                 alt task::recv(p) {
