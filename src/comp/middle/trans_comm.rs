@@ -229,19 +229,32 @@ fn trans_send(cx: &@block_ctxt, lhs: &@ast::expr, rhs: &@ast::expr,
 fn trans_recv(cx: &@block_ctxt, lhs: &@ast::expr, rhs: &@ast::expr,
               id: ast::node_id) -> result {
     let bcx = cx;
-    let data = trans_lval(bcx, rhs);
-    assert (data.is_mem);
-    bcx = data.res.bcx;
     // FIXME: calculate copy init-ness in typestate.
+
+    let unit_ty = node_id_type(cx.fcx.lcx.ccx, id);
+    let tmp_alloc = alloc_ty(bcx, unit_ty);
+    bcx = tmp_alloc.bcx;
 
     let prt = trans_expr(bcx, lhs);
     bcx = prt.bcx;
-    let lldataptr = bcx.build.PointerCast(data.res.val, T_ptr(T_ptr(T_i8())));
+    let lldataptr = bcx.build.PointerCast(tmp_alloc.val,
+                                          T_ptr(T_ptr(T_i8())));
     let llportptr = bcx.build.PointerCast(prt.val, T_opaque_port_ptr());
     bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.recv,
                    ~[bcx.fcx.lltaskptr, lldataptr, llportptr]);
 
-    ret rslt(bcx, data.res.val);
+    let tmp = load_if_immediate(bcx, tmp_alloc.val, unit_ty);
+
+    let data = trans_lval(bcx, rhs);
+    assert (data.is_mem);
+    bcx = data.res.bcx;
+
+    let tmp_lval = lval_val(bcx, tmp);
+
+    let recv_res =
+        move_val(bcx, DROP_EXISTING, data.res.val, tmp_lval, unit_ty);
+
+    ret rslt(recv_res.bcx, recv_res.val);
 }
 
 // Does a deep copy of a value. This is needed for passing arguments to child
