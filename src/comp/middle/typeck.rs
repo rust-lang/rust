@@ -2417,6 +2417,26 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                 ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
                                      fields), inner_obj_sty)];
 
+            // Whenever an outer method overrides an inner, we need to remove
+            // that inner from the type.  Filter inner_obj_methods to remove
+            // any methods that share a name with an outer method.
+            fn filtering_fn(m: &ty::method,
+                            outer_obj_methods: (@ast::method)[]) ->
+                option::t[ty::method] {
+
+                for om: @ast::method in outer_obj_methods {
+                    if str::eq(om.node.ident, m.ident) {
+                        ret none;
+                    }
+                }
+                ret some(m);
+            }
+
+            let f = bind filtering_fn(_, ao.methods);
+            inner_obj_methods =
+                std::ivec::filter_map[ty::method,
+                                      ty::method](f, inner_obj_methods);
+
             methods += inner_obj_methods;
             ret methods;
         }
