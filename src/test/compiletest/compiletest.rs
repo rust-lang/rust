@@ -748,11 +748,15 @@ mod procsrv {
                                         pipe_out.out,
                                         pipe_err.out);
             let pid = with_lib_path(execparms.lib_path, spawnproc);
-            if pid == -1 { fail; }
             os::libc::close(pipe_in.in);
             os::libc::close(pipe_in.out);
             os::libc::close(pipe_out.out);
             os::libc::close(pipe_err.out);
+            if pid == -1 {
+                os::libc::close(pipe_out.in);
+                os::libc::close(pipe_err.in);
+                fail;
+            }
             task::send(execparms.respchan,
                        {pid: pid,
                         outfd: pipe_out.in,
