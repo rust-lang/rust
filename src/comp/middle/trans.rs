@@ -6482,23 +6482,42 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
 }
 
 // process_fwding_mthd: Create the forwarding function that appears in a
-// vtable slot for method calls that "fall through" to an inner object.  A
+// vtable slot for method calls that need to forward to another object.  A
 // helper function for create_vtbl.
+//
+// We use forwarding functions in two situations:
+//
+//  (1) Forwarding: For method calls that fall through to an inner object, For
+//      example, suppose an inner object has method foo and we extend it with
+//      a method bar.  The only version of 'foo' we have is on the inner
+//      object, but we would like to be able to call outer.foo().  So we use a
+//      forwarding function to make the foo method available on the outer
+//      object.  It takes all the same arguments as the foo method on the
+//      inner object does, calls inner.foo() with those arguments, and then
+//      returns the value returned from that call.  (The inner object won't
+//      exist until run-time, but we know its type statically.)
+//
+//  (2) Backwarding: For method calls that dispatch back through an outer
+//      object.  For example, suppose an inner object has methods foo and bar,
+//      and bar contains the call self.foo().  We extend that object with a
+//      foo method that overrides the inner foo.  Now, a call to outer.bar()
+//      should send us to to inner.bar() via a normal forwarding function, and
+//      then to self.foo().  But inner.bar() was already compiled under the
+//      assumption that self.foo() is inner.foo(), when we really want to
+//      reach outer.foo().  So, we give 'self' a vtable of backwarding
+//      functions, one for each method on inner, each of which takes all the
+//      same arguments as the corresponding method on inner does, calls that
+//      method on outer, and returns the value returned from that call.
+
 fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
-                       ty_params: &ast::ty_param[], inner_obj_ty: ty::t,
+                       ty_params: &ast::ty_param[], target_obj_ty: ty::t,
                        backwarding_vtbl: option::t[ValueRef],
                        additional_field_tys: &ty::t[]) -> ValueRef {
 
-
-    // The method m is being called on the outer object, but the outer object
-    // doesn't have that method; only the inner object does.  So what we have
-    // to do is synthesize that method on the outer object.  It has to take
-    // all the same arguments as the method on the inner object does, then
-    // call m with those arguments on the inner object, and then return the
-    // value returned from that call.  It's like an eta-expansion around m,
-    // except we also have to pass the inner object that m should be called
-    // on.  That object won't exist until run-time, but we know its type
-    // statically.
+    // NB: target_obj_ty is the type of the object being forwarded to.
+    // Depending on whether this is a forwarding or backwarding function, it
+    // will be either the inner obj's type or the outer obj's type,
+    // respectively.
 
     // Create a local context that's aware of the name of the method we're
     // creating.
@@ -6534,16 +6553,24 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Do backwarding if necessary.
     alt (backwarding_vtbl) {
-      none. { /* fall through */ }
+      none. {
+        // NB: As before, this means that we are processing a backwarding fn
+        // right now.
+      }
       some(bv) {
-        // Grab the vtable out of the self-object.
+        // NB: As before, this means that we are processing a forwarding fn
+        // right now.
+
+        // Grab the vtable out of the self-object and replace it with the
+        // backwarding vtable.
         let llself_obj_vtbl =
             bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
                                             C_int(abi::obj_field_vtbl)]);
-
-        // And replace it with the backwarding vtbl.
         let llbv = bcx.build.PointerCast(bv, T_ptr(T_empty_struct()));
         bcx.build.Store(llbv, llself_obj_vtbl);
+
+        // NB: llself_obj is now a freakish combination of outer object body
+        // and backwarding (inner-object) vtable.
       }
     }
 
@@ -6595,6 +6622,15 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Tuple type for body:
     // [tydesc, [typaram, ...], [field, ...], inner_obj]
+
+    // NB: When we're creating a forwarding fn, target_obj_ty is indeed the
+    // type of the inner object, so it makes sense to have 'target_obj_ty'
+    // appear here.  When we're creating a backwarding fn, though,
+    // target_obj_ty is the outer object's type, so instead, we need to use
+    // the extra inner type we passed along.
+
+    let inner_obj_ty = target_obj_ty;
+
     let body_ty: ty::t =
         ty::mk_imm_tup(cx.ccx.tcx,
                        ~[tydesc_ty, typarams_ty, fields_ty, inner_obj_ty]);
@@ -6621,14 +6657,14 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Get the index of the method we want.
     let ix: uint = 0u;
-    alt ty::struct(bcx_tcx(bcx), inner_obj_ty) {
+    alt ty::struct(bcx_tcx(bcx), target_obj_ty) {
       ty::ty_obj(methods) {
         ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
       }
       _ {
         // Shouldn't happen.
         cx.ccx.sess.bug("process_fwding_mthd(): non-object type passed \
-                        as inner_obj_ty");
+                        as target_obj_ty");
       }
     }
 
@@ -6652,7 +6688,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
-    let llorig_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, llself_obj];
+    let self_arg = llself_obj;
+    let llorig_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, self_arg];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llorig_mthd_args.
