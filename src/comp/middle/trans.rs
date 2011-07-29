@@ -1684,21 +1684,15 @@ tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
 
 fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
                         t: &ty::t, llop: ValueRef) -> result {
-    // FIXME: this could be a lot shorter if we could combine multiple cases
-    // of alt expressions (issue #449).
-
     let f = bind compare_scalar_values(cx, lhs, rhs, _, llop);
-
 
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_nil. { ret f(nil_type); }
-      ty::ty_bool. { ret f(unsigned_int); }
+      ty::ty_bool. | ty::ty_uint. | ty::ty_ptr(_) |
+      ty::ty_char. { ret f(unsigned_int); }
       ty::ty_int. { ret f(signed_int); }
       ty::ty_float. { ret f(floating_point); }
-      ty::ty_uint. { ret f(unsigned_int); }
       ty::ty_machine(_) {
-
-
         if ty::type_is_fp(bcx_tcx(cx), t) {
             // Floating point machine types
             ret f(floating_point);
@@ -1710,7 +1704,6 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
             ret f(unsigned_int);
         }
       }
-      ty::ty_char. { ret f(unsigned_int); }
       ty::ty_type. {
         trans_fail(cx, none[span], "attempt to compare values of type type");
 
@@ -1724,7 +1717,6 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
                    "attempt to compare values of type native");
         ret rslt(new_sub_block_ctxt(cx, "after_fail_dummy"), C_bool(false));
       }
-      ty::ty_ptr(_) { ret f(unsigned_int); }
       _ {
         // Should never get here, because t is scalar.
         bcx_ccx(cx).sess.bug("non-scalar type passed to \
