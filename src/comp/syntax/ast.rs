@@ -81,7 +81,6 @@ fn def_id_of_def(d: def) -> def_id {
       def_native_fn(id) { ret id; }
       def_upvar(id, _) { ret id; }
     }
-    fail;
 }
 
 // The set of meta_items that define the compilation environment of the crate,

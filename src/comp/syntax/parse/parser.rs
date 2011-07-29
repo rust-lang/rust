@@ -211,7 +211,7 @@ fn spanned[T](lo: uint, hi: uint, node: &T) -> spanned[T] {
 fn parse_ident(p: &parser) -> ast::ident {
     alt p.peek() {
       token::IDENT(i, _) { p.bump(); ret p.get_str(i); }
-      _ { p.fatal("expecting ident"); fail; }
+      _ { p.fatal("expecting ident"); }
     }
 }
 
@@ -331,7 +331,6 @@ fn parse_ty_obj(p: &parser, hi: &mutable uint) -> ast::ty_ {
                          constrs: constrs});
           }
         }
-        fail;
     }
     let meths =
         parse_seq(token::LBRACE, token::RBRACE, none, parse_method_sig, p);
@@ -589,7 +588,7 @@ fn parse_ty(p: &parser) -> @ast::ty {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());
         hi = path.span.hi;
-    } else { p.fatal("expecting type"); t = ast::ty_nil; fail; }
+    } else { p.fatal("expecting type"); }
     ret parse_ty_postfix(t, p);
 }
 
@@ -1570,10 +1569,9 @@ fn parse_source_stmt(p: &parser) -> @ast::stmt {
             let e = parse_expr(p);
             ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
           }
+          _ { p.fatal("expected statement"); }
         }
     }
-    p.fatal("expected statement");
-    fail;
 }
 
 fn stmt_to_expr(stmt: @ast::stmt) -> option::t[@ast::expr] {
@@ -1669,7 +1667,6 @@ fn parse_block_tail(p: &parser, lo: uint) -> ast::blk {
                         p.fatal("expected ';' or '}' after " +
                                     "expression but found " +
                                     token::to_str(p.get_reader(), t));
-                        fail;
                     }
                     stmts += ~[stmt];
                   }
@@ -1933,7 +1930,7 @@ fn parse_native_item(p: &parser, attrs: &ast::attribute[]) ->
         ret parse_item_native_type(p, attrs);
     } else if (eat_word(p, "fn")) {
         ret parse_item_native_fn(p, attrs);
-    } else { unexpected(p, p.peek()); fail; }
+    } else { unexpected(p, p.peek()); }
 }
 
 fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
@@ -1971,7 +1968,7 @@ fn parse_item_native_mod(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
             abi = ast::native_abi_rust_intrinsic;
         } else if (str::eq(t, "x86stdcall")) {
             abi = ast::native_abi_x86stdcall;
-        } else { p.fatal("unsupported abi: " + t); fail; }
+        } else { p.fatal("unsupported abi: " + t); }
     }
     expect_word(p, "mod");
     let id = parse_ident(p);
@@ -2071,7 +2068,6 @@ fn parse_auth(p: &parser) -> ast::_auth {
     if eat_word(p, "unsafe") {
         ret ast::auth_unsafe;
     } else { unexpected(p, p.peek()); }
-    fail;
 }
 
 fn parse_item(p: &parser, attrs: &ast::attribute[]) -> option::t[@ast::item] {
@@ -2260,7 +2256,6 @@ fn parse_full_import_name(p: &parser, def_ident: ast::ident) ->
       }
       _ { p.fatal("expecting an identifier"); }
     }
-    fail;
 }
 
 fn parse_import(p: &parser) -> ast::view_item_ {
@@ -2277,7 +2272,6 @@ fn parse_import(p: &parser) -> ast::view_item_ {
       }
       _ { p.fatal("expecting an identifier"); }
     }
-    fail;
 }
 
 fn parse_export(p: &parser) -> ast::view_item_ {
@@ -2307,7 +2301,6 @@ fn is_view_item(p: &parser) -> bool {
       }
       _ { ret false; }
     }
-    ret false;
 }
 
 fn parse_view(p: &parser) -> (@ast::view_item)[] {

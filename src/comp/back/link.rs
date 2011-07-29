@@ -36,7 +36,6 @@ fn llvm_err(sess: session::session, msg: str) {
     if buf as uint == 0u {
         sess.fatal(msg);
     } else { sess.fatal(msg + ": " + str::str_from_cstr(buf)); }
-    fail;
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {

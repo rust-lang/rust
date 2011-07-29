@@ -541,7 +541,6 @@ fn next_token_inner(rdr: &reader) -> token::token {
       '%' { ret binop(rdr, token::PERCENT); }
       c { rdr.err(#fmt("unkown start of token: %d", c as int)); fail; }
     }
-    fail;
 }
 
 tag cmnt_style {

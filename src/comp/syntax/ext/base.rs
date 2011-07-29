@@ -54,13 +54,12 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
         sess.span_err(sp, "unimplemented " + msg);
         fail;
     }
-    let ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+    let ext_span_bug = bind ext_span_bug_(sess, _, _);
     fn ext_span_bug_(sess: &session, sp: span, msg: str) -> ! {
         sess.span_bug(sp, msg);
-        fail;
     }
-    let ext_span_bug = bind ext_span_bug_(sess, _, _);
-    fn ext_bug_(sess: &session, msg: str) -> ! { sess.bug(msg); fail; }
+    let ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
+    fn ext_bug_(sess: &session, msg: str) -> ! { sess.bug(msg); }
     let ext_bug = bind ext_bug_(sess, _);
 
 

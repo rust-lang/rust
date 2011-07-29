@@ -94,7 +94,7 @@ fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
         } else if (str::ends_with(input, ".rs")) {
             parser::parse_crate_from_source_file(input, cfg,
                                                  sess.get_parse_sess())
-        } else { sess.fatal("unknown input file type: " + input); fail };
+        } else { sess.fatal("unknown input file type: " + input) };
 }
 
 fn time[T](do_it: bool, what: str, thunk: fn() -> T ) -> T {

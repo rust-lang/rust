@@ -1820,26 +1820,30 @@ fn ty_fn_args(cx: &ctxt, fty: &t) -> arg[] {
     alt struct(cx, fty) {
       ty::ty_fn(_, a, _, _, _) { ret a; }
       ty::ty_native_fn(_, a, _) { ret a; }
+      _ { cx.sess.bug("ty_fn_args() called on non-fn type"); }
     }
-    cx.sess.bug("ty_fn_args() called on non-fn type");
 }
 
 fn ty_fn_proto(cx: &ctxt, fty: &t) -> ast::proto {
-    alt struct(cx, fty) { ty::ty_fn(p, _, _, _, _) { ret p; } }
-    cx.sess.bug("ty_fn_proto() called on non-fn type");
+    alt struct(cx, fty) {
+      ty::ty_fn(p, _, _, _, _) { ret p; }
+      _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
+    }
 }
 
 fn ty_fn_abi(cx: &ctxt, fty: &t) -> ast::native_abi {
-    alt struct(cx, fty) { ty::ty_native_fn(a, _, _) { ret a; } }
-    cx.sess.bug("ty_fn_abi() called on non-native-fn type");
+    alt struct(cx, fty) {
+      ty::ty_native_fn(a, _, _) { ret a; }
+      _ { cx.sess.bug("ty_fn_abi() called on non-native-fn type"); }
+    }
 }
 
 fn ty_fn_ret(cx: &ctxt, fty: &t) -> t {
     alt struct(cx, fty) {
       ty::ty_fn(_, _, r, _, _) { ret r; }
       ty::ty_native_fn(_, _, r) { ret r; }
+      _ { cx.sess.bug("ty_fn_ret() called on non-fn type"); }
     }
-    cx.sess.bug("ty_fn_ret() called on non-fn type");
 }
 
 fn is_fn_ty(cx: &ctxt, fty: &t) -> bool {
@@ -2707,7 +2711,6 @@ fn type_err_to_str(err: &ty::type_err) -> str {
       terr_mode_mismatch(e_mode, a_mode) {
         ret "expected argument mode " + mode_str_1(e_mode) + " but found " +
                 mode_str_1(a_mode);
-        fail;
       }
       terr_constr_len(e_len, a_len) {
         ret "Expected a type with " + uint::str(e_len) +

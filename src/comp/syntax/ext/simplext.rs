@@ -452,7 +452,7 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
                       match_expr(e) {
                         if e == pat { some(leaf(match_exact)) } else { none }
                       }
-                      _ { cx.bug("broken traversal in p_t_s_r"); fail }
+                      _ { cx.bug("broken traversal in p_t_s_r") }
                     }
             }
             b.literal_ast_matchers += ~[bind select(cx, _, e)];
@@ -488,7 +488,7 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
         fn select(cx: &ext_ctxt, m: &matchable) -> match_result {
             ret alt m {
                   match_expr(e) { some(leaf(specialize_match(m))) }
-                  _ { cx.bug("broken traversal in p_t_s_r"); fail }
+                  _ { cx.bug("broken traversal in p_t_s_r") }
                 }
         }
         if b.real_binders.contains_key(p_id) {
@@ -517,7 +517,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
               match_expr(e) {
                 alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }
               }
-              _ { cx.bug("broken traversal in p_t_s_r"); fail }
+              _ { cx.bug("broken traversal in p_t_s_r") }
             }
     }
     fn no_des(cx: &ext_ctxt, sp: &span, syn: &str) -> ! {
@@ -593,7 +593,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, s: &selector,
                   _ { none }
                 }
               }
-              _ { cx.bug("broken traversal in p_t_s_r"); fail }
+              _ { cx.bug("broken traversal in p_t_s_r") }
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
@@ -633,7 +633,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], s: &selector,
                       _ { none }
                     }
                   }
-                  _ { cx.bug("broken traversal in p_t_s_r"); fail }
+                  _ { cx.bug("broken traversal in p_t_s_r") }
                 }
         }
         p_t_s_rec(cx, match_expr(elts.(idx)),

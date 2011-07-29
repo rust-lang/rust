@@ -206,6 +206,7 @@ fn trans_send(cx: &@block_ctxt, lhs: &@ast::expr, rhs: &@ast::expr,
     let data = trans_lval(bcx, rhs);
     bcx = data.res.bcx;
     let chan_ty = node_id_type(cx.fcx.lcx.ccx, id);
+    let unit_ty;
     alt ty::struct(cx.fcx.lcx.ccx.tcx, chan_ty) {
       ty::ty_chan(t) { unit_ty = t; }
       _ { bcx.fcx.lcx.ccx.sess.bug("non-chan type in trans_send"); }
@@ -223,7 +224,6 @@ fn trans_send(cx: &@block_ctxt, lhs: &@ast::expr, rhs: &@ast::expr,
     bcx = zero_alloca(bcx, data_alloc.val, unit_ty).bcx;
 
     ret rslt(bcx, chn.val);
-    let unit_ty;
 }
 
 fn trans_recv(cx: &@block_ctxt, lhs: &@ast::expr, rhs: &@ast::expr,
