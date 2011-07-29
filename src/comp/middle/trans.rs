@@ -2403,7 +2403,7 @@ fn drop_slot(cx: &@block_ctxt, slot: ValueRef, t: &ty::t) -> result {
 }
 
 fn drop_ty(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
-    if ty::type_has_pointers(bcx_tcx(cx), t) {
+    if ty::type_needs_drop(bcx_tcx(cx), t) {
         ret call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
     ret rslt(cx, C_nil());

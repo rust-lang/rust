@@ -157,6 +157,7 @@ export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
 export type_has_pointers;
+export type_needs_drop;
 export type_is_bool;
 export type_is_bot;
 export type_is_box;
@@ -1020,6 +1021,13 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
 
     cx.has_pointer_cache.insert(ty, result);
     ret result;
+}
+
+fn type_needs_drop(cx: &ctxt, ty: &t) -> bool {
+    ret alt struct(cx, ty) {
+      ty_res(_, _, _) { true }
+      _ { type_has_pointers(cx, ty) }
+    };
 }
 
 fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
