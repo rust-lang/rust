@@ -2382,21 +2382,19 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
 
             // Inner methods.
 
-            // Typecheck 'inner_obj'.  If it exists, it had better have
-            // object type.
+            // Typecheck 'inner_obj'.  If it exists, it had better have object
+            // type.
             let inner_obj_methods: ty::method[] = ~[];
             let inner_obj_ty: ty::t = ty::mk_nil(fcx.ccx.tcx);
             let inner_obj_sty: option::t[ty::sty] = none;
             alt ao.inner_obj {
               none. { }
               some(e) {
-                // If there's a inner_obj, we push it onto the
-                // obj_infos stack so that self-calls can be checked
-                // within its context later.
+                // If there's a inner_obj, we push it onto the obj_infos stack
+                // so that self-calls can be checked within its context later.
                 check_expr(fcx, e);
                 inner_obj_ty = expr_ty(fcx.ccx.tcx, e);
                 inner_obj_sty = some(structure_of(fcx, e.span, inner_obj_ty));
-
 
                 alt inner_obj_sty {
                   none. { }
@@ -2404,8 +2402,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) {
                     alt sty {
                       ty::ty_obj(ms) { inner_obj_methods = ms; }
                       _ {
-                        // The user is trying to extend a
-                        // non-object.
+                        // The user is trying to extend a non-object.
                         fcx.ccx.tcx.sess.span_fatal
                             (e.span, syntax::print::pprust::expr_to_str(e) +
                              " does not have object type");
