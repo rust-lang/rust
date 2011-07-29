@@ -138,6 +138,11 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
+      ast::expr_call(callee, args) {
+        // FIXME: when ready, start checking param kinds against args.
+        // This will break stdlib again.
+        // let tpt = ty::expr_ty_params_and_ty(tcx, callee);
+      }
       _ { }
     }
 }

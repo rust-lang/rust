@@ -20,9 +20,9 @@ const tag_items_data: uint = 0x08u;
 
 const tag_items_data_item: uint = 0x09u;
 
-const tag_items_data_item_kind: uint = 0x0au;
+const tag_items_data_item_family: uint = 0x0au;
 
-const tag_items_data_item_ty_param_count: uint = 0x0bu;
+const tag_items_data_item_ty_param_kinds: uint = 0x0bu;
 
 const tag_items_data_item_type: uint = 0x0cu;
 

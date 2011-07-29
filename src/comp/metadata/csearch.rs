@@ -35,7 +35,7 @@ fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> ty::variant_info[] {
     ret decoder::get_tag_variants(cdata, def, tcx, resolver)
 }
 
-fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_count_and_ty {
+fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_kinds_and_ty {
     let cstore = tcx.sess.get_cstore();
     let cnum = def.crate;
     let cdata = cstore::get_crate_data(cstore, cnum).data;

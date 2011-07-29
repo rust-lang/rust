@@ -296,11 +296,12 @@ fn type_of_arg(cx: @local_ctxt, sp: &span, arg: &ty::arg) -> TypeRef {
     ret typ;
 }
 
-fn type_of_ty_param_count_and_ty(lcx: @local_ctxt, sp: &span,
-                                 tpt: &ty::ty_param_count_and_ty) -> TypeRef {
+fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: &span,
+                                 tpt: &ty::ty_param_kinds_and_ty) -> TypeRef {
     alt ty::struct(lcx.ccx.tcx, tpt.ty) {
       ty::ty_fn(_, _, _, _, _) {
-        let llfnty = type_of_fn_from_ty(lcx.ccx, sp, tpt.ty, tpt.count);
+        let llfnty = type_of_fn_from_ty(lcx.ccx, sp, tpt.ty,
+                                        std::ivec::len(tpt.kinds));
         ret T_fn_pair(*lcx.ccx, llfnty);
       }
       _ {
@@ -3970,14 +3971,14 @@ fn lval_val(cx: &@block_ctxt, val: ValueRef) -> lval_result {
 }
 
 fn trans_external_path(cx: &@block_ctxt, did: &ast::def_id,
-                       tpt: &ty::ty_param_count_and_ty) -> ValueRef {
+                       tpt: &ty::ty_param_kinds_and_ty) -> ValueRef {
     let lcx = cx.fcx.lcx;
     let name = csearch::get_symbol(lcx.ccx.sess.get_cstore(), did);
     ret get_extern_const(lcx.ccx.externs, lcx.ccx.llmod, name,
-                         type_of_ty_param_count_and_ty(lcx, cx.sp, tpt));
+                         type_of_ty_param_kinds_and_ty(lcx, cx.sp, tpt));
 }
 
-fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_count_and_ty,
+fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_kinds_and_ty,
                    fn_id: &ast::def_id, id: ast::node_id) -> lval_result {
     let lv;
     if fn_id.crate == ast::local_crate {
@@ -4101,10 +4102,11 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) ->
             ret lval_mem(cx, ccx.consts.get(did.node));
         } else {
             let tp = ty::node_id_to_monotype(ccx.tcx, id);
+            let k: ast::kind[] = ~[];
             ret lval_val(cx,
                          load_if_immediate(cx,
                                            trans_external_path(cx, did,
-                                                               {count: 0u,
+                                                               {kinds: k,
                                                                 ty: tp}),
                                            tp));
         }

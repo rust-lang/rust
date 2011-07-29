@@ -44,6 +44,7 @@ export def_has_ty_params;
 export eq_ty;
 export expr_has_ty_params;
 export expr_ty;
+export expr_ty_params_and_ty;
 export fold_ty;
 export field;
 export field_idx;
@@ -113,7 +114,7 @@ export t;
 export tag_variants;
 export tag_variant_with_id;
 export ty_param_substs_opt_and_ty;
-export ty_param_count_and_ty;
+export ty_param_kinds_and_ty;
 export ty_native_fn;
 export ty_bool;
 export ty_bot;
@@ -304,9 +305,9 @@ tag type_err {
     terr_constr_mismatch(@type_constr, @type_constr);
 }
 
-type ty_param_count_and_ty = {count: uint, ty: t};
+type ty_param_kinds_and_ty = {kinds: ast::kind[], ty: t};
 
-type type_cache = hashmap[ast::def_id, ty_param_count_and_ty];
+type type_cache = hashmap[ast::def_id, ty_param_kinds_and_ty];
 
 const idx_nil: uint = 0u;
 
@@ -400,7 +401,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
-    let tcache = new_def_hash[ty::ty_param_count_and_ty]();
+    let tcache = new_def_hash[ty::ty_param_kinds_and_ty]();
     let ts = @interner::mk[@raw_t](hash_raw_ty, eq_raw_ty);
     let cx =
         @{ts: ts,
@@ -2832,7 +2833,7 @@ fn tag_variant_with_id(cx: &ctxt, tag_id: &ast::def_id,
 
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
-fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_count_and_ty {
+fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_kinds_and_ty {
     if did.crate == ast::local_crate {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.

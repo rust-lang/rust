@@ -25,7 +25,7 @@ import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::ty_param_substs_opt_and_ty;
 import util::ppaux::ty_to_str;
-import middle::ty::ty_param_count_and_ty;
+import middle::ty::ty_param_kinds_and_ty;
 import middle::ty::ty_nil;
 import middle::ty::unify::ures_ok;
 import middle::ty::unify::ures_err;
@@ -78,7 +78,7 @@ type fn_ctxt =
 
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(&ast::def_id) -> ty::ty_param_count_and_ty ;
+type ty_getter = fn(&ast::def_id) -> ty::ty_param_kinds_and_ty ;
 
 fn lookup_local(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
@@ -103,23 +103,24 @@ fn lookup_def(fcx: &@fn_ctxt, sp: &span, id: ast::node_id) -> ast::def {
 }
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
-   -> ty_param_count_and_ty {
+fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
+   -> ty_param_kinds_and_ty {
+    let no_kinds: ast::kind[] = ~[];
     alt defn {
       ast::def_arg(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {count: 0u, ty: typ};
+        ret {kinds: no_kinds, ty: typ};
       }
       ast::def_local(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {count: 0u, ty: typ};
+        ret {kinds: no_kinds, ty: typ};
       }
       ast::def_obj_field(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {count: 0u, ty: typ};
+        ret {kinds: no_kinds, ty: typ};
       }
       ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_native_fn(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
@@ -128,13 +129,13 @@ fn ty_param_count_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
       ast::def_binding(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
-        ret {count: 0u, ty: typ};
+        ret {kinds: no_kinds, ty: typ};
       }
       ast::def_mod(_) {
         // Hopefully part of a path.
         // TODO: return a type that's more poisonous, perhaps?
 
-        ret {count: 0u, ty: ty::mk_nil(fcx.ccx.tcx)};
+        ret {kinds: no_kinds, ty: ty::mk_nil(fcx.ccx.tcx)};
       }
       ast::def_ty(_) {
         fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
@@ -151,9 +152,9 @@ fn ty_param_count_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
-                    tpt: &ty_param_count_and_ty, sp: &span) ->
+                    tpt: &ty_param_kinds_and_ty, sp: &span) ->
    ty_param_substs_opt_and_ty {
-    let ty_param_count = tpt.count;
+    let ty_param_count = ivec::len(tpt.kinds);
     let bind_result =
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt.ty,
                             ty_param_count);
@@ -287,7 +288,9 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         // "foo = int" like OCaml?
 
         let params_opt_and_ty = getter(id);
-        if params_opt_and_ty.count == 0u { ret params_opt_and_ty.ty; }
+        if ivec::len(params_opt_and_ty.kinds) == 0u {
+            ret params_opt_and_ty.ty;
+        }
         // The typedef is type-parametric. Do the type substitution.
         //
 
@@ -421,7 +424,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: &@ast::ty) -> ty::t {
     fn getter(ccx: @crate_ctxt, id: &ast::def_id) ->
-       ty::ty_param_count_and_ty {
+       ty::ty_param_kinds_and_ty {
         ret ty::lookup_item_type(ccx.tcx, id);
     }
     let f = bind getter(ccx, _);
@@ -512,11 +515,20 @@ mod collect {
         }
         ret tps;
     }
+
+    fn ty_param_kinds(tps: &ast::ty_param[]) -> ast::kind[] {
+        let k: ast::kind[] = ~[];
+        for p: ast::ty_param in tps {
+            k += ~[p.kind]
+        }
+        ret k;
+    }
+
     fn ty_of_fn_decl(cx: &@ctxt, convert: &fn(&@ast::ty) -> ty::t ,
                      ty_of_arg: &fn(&ast::arg) -> arg , decl: &ast::fn_decl,
                      proto: ast::proto, ty_params: &ast::ty_param[],
                      def_id: &option::t[ast::def_id]) ->
-       ty::ty_param_count_and_ty {
+       ty::ty_param_kinds_and_ty {
         let input_tys = ~[];
         for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
         let output_ty = convert(decl.output);
@@ -528,8 +540,7 @@ mod collect {
         let t_fn =
             ty::mk_fn(cx.tcx, proto_to_ty_proto(proto), input_tys, output_ty,
                       decl.cf, out_constrs);
-        let ty_param_count = ivec::len[ast::ty_param](ty_params);
-        let tpt = {count: ty_param_count, ty: t_fn};
+        let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         alt def_id { some(did) { cx.tcx.tcache.insert(did, tpt); } _ { } }
         ret tpt;
     }
@@ -537,18 +548,17 @@ mod collect {
                             ty_of_arg: &fn(&ast::arg) -> arg ,
                             decl: &ast::fn_decl, abi: ast::native_abi,
                             ty_params: &ast::ty_param[], def_id: &ast::def_id)
-       -> ty::ty_param_count_and_ty {
+       -> ty::ty_param_kinds_and_ty {
         let input_tys = ~[];
         for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
         let output_ty = convert(decl.output);
 
         let t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
-        let ty_param_count = ivec::len[ast::ty_param](ty_params);
-        let tpt = {count: ty_param_count, ty: t_fn};
+        let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         cx.tcx.tcache.insert(def_id, tpt);
         ret tpt;
     }
-    fn getter(cx: @ctxt, id: &ast::def_id) -> ty::ty_param_count_and_ty {
+    fn getter(cx: @ctxt, id: &ast::def_id) -> ty::ty_param_kinds_and_ty {
         if id.crate != ast::local_crate {
             // This is a type we need to load in from the crate reader.
             ret csearch::get_type(cx.tcx, id);
@@ -603,15 +613,15 @@ mod collect {
              constrs: out_constrs};
     }
     fn ty_of_obj(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
-                 ty_params: &ast::ty_param[]) -> ty::ty_param_count_and_ty {
+                 ty_params: &ast::ty_param[]) -> ty::ty_param_kinds_and_ty {
         let methods = get_obj_method_types(cx, ob);
         let t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
-        ret {count: ivec::len(ty_params), ty: t_obj};
+        ret {kinds: ty_param_kinds(ty_params), ty: t_obj};
     }
     fn ty_of_obj_ctor(cx: @ctxt, id: &ast::ident, ob: &ast::_obj,
                       ctor_id: ast::node_id, ty_params: &ast::ty_param[]) ->
-       ty::ty_param_count_and_ty {
+       ty::ty_param_kinds_and_ty {
         let t_obj = ty_of_obj(cx, id, ob, ty_params);
 
         let t_inputs: arg[] = ~[];
@@ -624,17 +634,18 @@ mod collect {
         let t_fn =
             ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj.ty, ast::return,
                       ~[]);
-        let tpt = {count: t_obj.count, ty: t_fn};
+        let tpt = {kinds: ty_param_kinds(ty_params), ty: t_fn};
         cx.tcx.tcache.insert(local_def(ctor_id), tpt);
         ret tpt;
     }
-    fn ty_of_item(cx: &@ctxt, it: &@ast::item) -> ty::ty_param_count_and_ty {
+    fn ty_of_item(cx: &@ctxt, it: &@ast::item) -> ty::ty_param_kinds_and_ty {
         let get = bind getter(cx, _);
         let convert = bind ast_ty_to_ty(cx.tcx, get, _);
+        let no_kinds: ast::kind[] = ~[];
         alt it.node {
           ast::item_const(t, _) {
             let typ = convert(t);
-            let tpt = {count: 0u, ty: typ};
+            let tpt = {kinds: no_kinds, ty: typ};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
           }
@@ -657,15 +668,14 @@ mod collect {
             // call to resolve any named types.
 
             let typ = convert(t);
-            let ty_param_count = ivec::len[ast::ty_param](tps);
-            let tpt = {count: ty_param_count, ty: typ};
+            let tpt = {kinds: ty_param_kinds(tps), ty: typ};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
           }
           ast::item_res(f, _, tps, _) {
             let t_arg = ty_of_arg(cx, f.decl.inputs.(0));
             let t_res =
-                {count: ivec::len(tps),
+                {kinds: ty_param_kinds(tps),
                  ty:
                      ty::mk_res(cx.tcx, local_def(it.id), t_arg.ty,
                                 mk_ty_params(cx, tps))};
@@ -674,12 +684,9 @@ mod collect {
           }
           ast::item_tag(_, tps) {
             // Create a new generic polytype.
-
-            let ty_param_count = ivec::len[ast::ty_param](tps);
-
             let subtys: ty::t[] = mk_ty_params(cx, tps);
             let t = ty::mk_tag(cx.tcx, local_def(it.id), subtys);
-            let tpt = {count: ty_param_count, ty: t};
+            let tpt = {kinds: ty_param_kinds(tps), ty: t};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
           }
@@ -688,7 +695,8 @@ mod collect {
         }
     }
     fn ty_of_native_item(cx: &@ctxt, it: &@ast::native_item,
-                         abi: ast::native_abi) -> ty::ty_param_count_and_ty {
+                         abi: ast::native_abi) -> ty::ty_param_kinds_and_ty {
+        let no_kinds: ast::kind[] = ~[];
         alt it.node {
           ast::native_item_fn(_, fn_decl, params) {
             let get = bind getter(cx, _);
@@ -703,7 +711,7 @@ mod collect {
               none. { }
             }
             let t = ty::mk_native(cx.tcx, ast::local_def(it.id));
-            let tpt = {count: 0u, ty: t};
+            let tpt = {kinds: no_kinds, ty: t};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
           }
@@ -714,7 +722,6 @@ mod collect {
                              ty_params: &ast::ty_param[]) {
         // Create a set of parameter types shared among all the variants.
 
-        let ty_param_count = ivec::len[ast::ty_param](ty_params);
         let ty_param_tys: ty::t[] = mk_ty_params(cx, ty_params);
         for variant: ast::variant  in variants {
             // Nullary tag constructors get turned into constants; n-ary tag
@@ -739,7 +746,7 @@ mod collect {
                     ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t, ast::return,
                               ~[]);
             }
-            let tpt = {count: ty_param_count, ty: result_ty};
+            let tpt = {kinds: ty_param_kinds(ty_params), ty: result_ty};
             cx.tcx.tcache.insert(local_def(variant.node.id), tpt);
             write::ty_only(cx.tcx, variant.node.id, result_ty);
         }
@@ -819,7 +826,7 @@ mod collect {
             write::ty_only(cx.tcx, it.id, t_res);
             write::ty_only(cx.tcx, ctor_id, t_ctor);
             cx.tcx.tcache.insert(local_def(ctor_id),
-                                 {count: ivec::len(tps), ty: t_ctor});
+                                 {kinds: ty_param_kinds(tps), ty: t_ctor});
             write::ty_only(cx.tcx, dtor_id, t_dtor);
           }
           _ {
@@ -1792,7 +1799,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);
-        let tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
+        let tpt = ty_param_kinds_and_ty_for_def(fcx, expr.span, defn);
         if ty::def_has_ty_params(defn) {
             let path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
             write::ty_fixup(fcx, id, path_tpot);

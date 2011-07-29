@@ -20,6 +20,7 @@ export get_symbol;
 export get_tag_variants;
 export get_type;
 export get_type_param_count;
+export get_type_param_kinds;
 export lookup_defs;
 export get_crate_attributes;
 export list_crate_metadata;
@@ -77,9 +78,9 @@ fn lookup_item(item_id: int, data: &@u8[]) -> ebmlivec::doc {
     ret find_item(item_id, items);
 }
 
-fn item_kind(item: &ebmlivec::doc) -> u8 {
-    let kind = ebmlivec::get_doc(item, tag_items_data_item_kind);
-    ret ebmlivec::doc_as_uint(kind) as u8;
+fn item_family(item: &ebmlivec::doc) -> u8 {
+    let fam = ebmlivec::get_doc(item, tag_items_data_item_family);
+    ret ebmlivec::doc_as_uint(fam) as u8;
 }
 
 fn item_symbol(item: &ebmlivec::doc) -> str {
@@ -113,13 +114,24 @@ fn item_type(item: &ebmlivec::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
                       def_parser, tcx);
 }
 
-fn item_ty_param_count(item: &ebmlivec::doc) -> uint {
-    let ty_param_count: uint = 0u;
-    let tp = tag_items_data_item_ty_param_count;
-    for each p: ebmlivec::doc  in ebmlivec::tagged_docs(item, tp) {
-        ty_param_count = ebmlivec::vint_at(ebmlivec::doc_data(p), 0u).val;
+fn item_ty_param_kinds(item: &ebmlivec::doc) -> ast::kind[] {
+    let ks: ast::kind[] = ~[];
+    let tp = tag_items_data_item_ty_param_kinds;
+    for each p: ebmlivec::doc in ebmlivec::tagged_docs(item, tp) {
+        let dat : u8[] = ebmlivec::doc_data(p);
+        let vi = ebmlivec::vint_at(dat, 0u);
+        let i = 0u;
+        while i < vi.val {
+            let k = alt dat.(vi.next + i) as char {
+              'u' { ast::kind_unique }
+              's' { ast::kind_shared }
+              'p' { ast::kind_pinned }
+            };
+            ks += ~[k];
+            i += 1u;
+        }
     }
-    ret ty_param_count;
+    ret ks;
 }
 
 fn tag_variant_ids(item: &ebmlivec::doc, this_cnum: ast::crate_num) ->
@@ -162,11 +174,11 @@ fn lookup_defs(data: &@u8[], cnum: ast::crate_num, path: &ast::ident[]) ->
 fn lookup_def(cnum: ast::crate_num, data: @u8[], did_: &ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);
-    let kind_ch = item_kind(item);
+    let fam_ch = item_family(item);
     let did = {crate: cnum, node: did_.node};
     // We treat references to tags as references to types.
     let def =
-        alt kind_ch as char {
+        alt fam_ch as char {
           'c' { ast::def_const(did) }
           'f' { ast::def_fn(did, ast::impure_fn) }
           'p' { ast::def_fn(did, ast::pure_fn) }
@@ -186,22 +198,26 @@ fn lookup_def(cnum: ast::crate_num, data: @u8[], did_: &ast::def_id) ->
 }
 
 fn get_type(data: @u8[], def: ast::def_id, tcx: &ty::ctxt,
-            extres: &external_resolver) -> ty::ty_param_count_and_ty {
+            extres: &external_resolver) -> ty::ty_param_kinds_and_ty {
     let this_cnum = def.crate;
     let node_id = def.node;
     let item = lookup_item(node_id, data);
     let t = item_type(item, this_cnum, tcx, extres);
-    let tp_count;
-    let kind_ch = item_kind(item);
-    let has_ty_params = kind_has_type_params(kind_ch);
+    let tp_kinds : ast::kind[];
+    let fam_ch = item_family(item);
+    let has_ty_params = family_has_type_params(fam_ch);
     if has_ty_params {
-        tp_count = item_ty_param_count(item);
-    } else { tp_count = 0u; }
-    ret {count: tp_count, ty: t};
+        tp_kinds = item_ty_param_kinds(item);
+    } else { tp_kinds = ~[]; }
+    ret {kinds: tp_kinds, ty: t};
 }
 
 fn get_type_param_count(data: @u8[], id: ast::node_id) -> uint {
-    ret item_ty_param_count(lookup_item(id, data));
+    ret ivec::len(get_type_param_kinds(data, id));
+}
+
+fn get_type_param_kinds(data: @u8[], id: ast::node_id) -> ast::kind[] {
+    ret item_ty_param_kinds(lookup_item(id, data));
 }
 
 fn get_symbol(data: @u8[], id: ast::node_id) -> str {
@@ -235,8 +251,8 @@ fn get_tag_variants(data: &@u8[], def: ast::def_id, tcx: &ty::ctxt,
     ret infos;
 }
 
-fn kind_has_type_params(kind_ch: u8) -> bool {
-    ret alt kind_ch as char {
+fn family_has_type_params(fam_ch: u8) -> bool {
+    ret alt fam_ch as char {
           'c' { false }
           'f' { true }
           'p' { true }
@@ -260,11 +276,11 @@ fn read_path(d: &ebmlivec::doc) -> {path: str, pos: uint} {
 
 fn describe_def(items: &ebmlivec::doc, id: ast::def_id) -> str {
     if id.crate != ast::local_crate { ret "external"; }
-    ret item_kind_to_str(item_kind(find_item(id.node, items)));
+    ret item_family_to_str(item_family(find_item(id.node, items)));
 }
 
-fn item_kind_to_str(kind: u8) -> str {
-    alt kind as char {
+fn item_family_to_str(fam: u8) -> str {
+    alt fam as char {
       'c' { ret "const"; }
       'f' { ret "fn"; }
       'p' { ret "pred"; }
