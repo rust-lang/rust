@@ -805,18 +805,6 @@ mod collect {
                 write::ty_only(cx.tcx, fld.id, args.(i).ty);
                 i += 1u;
             }
-
-
-            // Finally, write in the type of the destructor.
-            alt object.dtor {
-              none. {/* nothing to do */ }
-              some(m) {
-                let t =
-                    ty::mk_fn(cx.tcx, ast::proto_fn, ~[], ty::mk_nil(cx.tcx),
-                              ast::return, ~[]);
-                write::ty_only(cx.tcx, m.node.id, t);
-              }
-            }
           }
           ast::item_res(f, dtor_id, tps, ctor_id) {
             let t_arg = ty_of_arg(cx, f.decl.inputs.(0));
@@ -2624,7 +2612,6 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
 
         // Typecheck the methods.
         for method: @ast::method  in ob.methods { check_method(ccx, method); }
-        option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
 
         // Now remove the info from the stack.
         ivec::pop[obj_info](ccx.obj_infos);

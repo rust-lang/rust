@@ -1327,11 +1327,10 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
                 cx.build.GEP(body,
                              ~[C_int(0), C_int(abi::obj_body_elt_tydesc)]);
             let tydesc = cx.build.Load(tydescptr);
-            let cx_ = maybe_call_dtor(cx, v0);
             let ti = none[@tydesc_info];
-            call_tydesc_glue_full(cx_, body, tydesc,
+            call_tydesc_glue_full(cx, body, tydesc,
                                   abi::tydesc_field_drop_glue, ti);
-            trans_non_gc_free(cx_, b)
+            trans_non_gc_free(cx, b)
           }
           ty::ty_fn(_, _, _, _, _) {
             let box_cell =
@@ -2316,28 +2315,6 @@ fn call_tydesc_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t, field: int) ->
     call_tydesc_glue_full(td.bcx, spill_if_immediate(td.bcx, v, t), td.val,
                           field, ti);
     ret rslt(td.bcx, C_nil());
-}
-
-fn maybe_call_dtor(cx: &@block_ctxt, v: ValueRef) -> @block_ctxt {
-    let vtbl = cx.build.GEP(v, ~[C_int(0), C_int(abi::obj_field_vtbl)]);
-    vtbl = cx.build.Load(vtbl);
-    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), 1u));
-    vtbl = cx.build.PointerCast(vtbl, vtbl_type);
-
-    let dtor_ptr = cx.build.GEP(vtbl, ~[C_int(0), C_int(0)]);
-    dtor_ptr = cx.build.Load(dtor_ptr);
-    dtor_ptr = cx.build.BitCast(dtor_ptr, T_ptr(T_dtor(bcx_ccx(cx), cx.sp)));
-    let dtor_cx = new_sub_block_ctxt(cx, "dtor");
-    let after_cx = new_sub_block_ctxt(cx, "after_dtor");
-    let test =
-        cx.build.ICmp(lib::llvm::LLVMIntNE, dtor_ptr,
-                      C_null(val_ty(dtor_ptr)));
-    cx.build.CondBr(test, dtor_cx.llbb, after_cx.llbb);
-    let me = dtor_cx.build.Load(v);
-    dtor_cx.build.FastCall(dtor_ptr,
-                           ~[C_null(T_ptr(T_nil())), cx.fcx.lltaskptr, me]);
-    dtor_cx.build.Br(after_cx.llbb);
-    ret after_cx;
 }
 
 fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
@@ -3943,8 +3920,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
       ast::expr_call(f, args) {
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        r =
-            trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
+        r = trans_call(cx, f, some[ValueRef](cx.build.Load(pair)), args,
                        seq.id);
         ret rslt(r.bcx, C_nil());
       }
@@ -4177,11 +4153,10 @@ fn trans_field(cx: &@block_ctxt, sp: &span, v: ValueRef, t0: &ty::t,
             r.bcx.build.GEP(r.val, ~[C_int(0), C_int(abi::obj_field_vtbl)]);
         vtbl = r.bcx.build.Load(vtbl);
 
-        let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 2u));
+        let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
         vtbl = cx.build.PointerCast(vtbl, vtbl_type);
 
-        // +1 because slot #0 contains the destructor
-        let v = r.bcx.build.GEP(vtbl, ~[C_int(0), C_int(ix + 1u as int)]);
+        let v = r.bcx.build.GEP(vtbl, ~[C_int(0), C_int(ix as int)]);
         let fn_ty: ty::t = ty::method_ty_to_fn_ty(bcx_tcx(cx), methods.(ix));
         let tcx = bcx_tcx(cx);
         let ll_fn_ty =
@@ -5701,8 +5676,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
         {fields:
              std::ivec::map(ast::obj_field_from_anon_obj_field,
                             additional_fields),
-         methods: anon_obj.methods,
-         dtor: none[@ast::method]};
+         methods: anon_obj.methods};
 
     let inner_obj_ty: ty::t;
     let vtbl;
@@ -6666,13 +6640,12 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
     }
 
-    // Pick out the original method from the vtable.  The +1 is because slot
-    // #0 contains the destructor.
-    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 2u));
+    // Pick out the original method from the vtable.
+    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
     llinner_obj_vtbl = bcx.build.PointerCast(llinner_obj_vtbl, vtbl_type);
 
     let llorig_mthd =
-        bcx.build.GEP(llinner_obj_vtbl, ~[C_int(0), C_int(ix + 1u as int)]);
+        bcx.build.GEP(llinner_obj_vtbl, ~[C_int(0), C_int(ix as int)]);
 
     // Set up the original method to be called.
     let orig_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
@@ -6756,16 +6729,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
                inner_obj_ty: option::t[ty::t],
                additional_field_tys: &ty::t[]) -> ValueRef {
 
-    let dtor = C_null(T_ptr(T_i8()));
-    alt ob.dtor {
-      some(d) {
-        let dtor_1 = trans_dtor(cx, outer_obj_ty, ty_params, d);
-        dtor = llvm::LLVMConstBitCast(dtor_1, val_ty(dtor));
-      }
-      none. { }
-    }
-
-    let llmethods: ValueRef[] = ~[dtor];
+    let llmethods: ValueRef[] = ~[];
     let meths: vtbl_mthd[] = ~[];
     let backwarding_vtbl: option::t[ValueRef] = none;
 
@@ -6911,19 +6875,6 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
     ret gvar;
 }
 
-fn trans_dtor(cx: @local_ctxt, outer_obj_ty: ty::t,
-              ty_params: &ast::ty_param[],
-              dtor: &@ast::method) -> ValueRef {
-    let llfnty = T_dtor(cx.ccx, dtor.span);
-    let s: str = mangle_internal_name_by_path(cx.ccx, cx.path + ~["drop"]);
-    let llfn: ValueRef = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
-    cx.ccx.item_ids.insert(dtor.node.id, llfn);
-    cx.ccx.item_symbols.insert(dtor.node.id, s);
-    trans_fn(cx, dtor.span, dtor.node.meth, llfn, some(outer_obj_ty),
-             ty_params, dtor.node.id);
-    ret llfn;
-}
-
 fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
                            outer_obj_ty: ty::t) -> ValueRef {
 
@@ -6931,8 +6882,7 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
     // object, and it needs to forward them to the corresponding slots on the
     // outer object.  All we know about either one are their types.
 
-    let dtor = C_null(T_ptr(T_i8()));
-    let llmethods: ValueRef[] = ~[dtor];
+    let llmethods: ValueRef[] = ~[];
     let meths: vtbl_mthd[]= ~[];
 
     // Gather up methods on the inner object.

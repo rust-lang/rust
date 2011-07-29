@@ -67,7 +67,6 @@ fn find_pre_post_obj(ccx: &crate_ctxt, o: _obj) {
         find_pre_post_fn(fcx, m.node.meth);
     }
     for m: @method  in o.methods { do_a_method(ccx, m); }
-    option::map[@method, ()](bind do_a_method(ccx, _), o.dtor);
 }
 
 fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {

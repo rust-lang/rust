@@ -106,13 +106,6 @@ fn visit_item[E](i: &@item, e: &E, v: &vt[E]) {
             v.visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
                        m.node.id, e, v);
         }
-        alt ob.dtor {
-          none. { }
-          some(m) {
-            v.visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
-                       m.node.id, e, v);
-          }
-        }
       }
     }
 }

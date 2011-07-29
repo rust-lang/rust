@@ -1816,24 +1816,6 @@ fn parse_method(p: &parser) -> @ast::method {
     ret @spanned(lo, f.body.span.hi, meth);
 }
 
-fn parse_dtor(p: &parser) -> @ast::method {
-    let lo = p.get_last_lo_pos();
-    let b: ast::blk = parse_block(p);
-    let inputs: ast::arg[] = ~[];
-    let output: @ast::ty = @spanned(lo, lo, ast::ty_nil);
-    // I guess dtors can't have constraints?
-    let d: ast::fn_decl = {
-        inputs: inputs,
-        output: output,
-        purity: ast::impure_fn,
-        cf: ast::return,
-        constraints: ~[]
-    };
-    let f: ast::_fn = {decl: d, proto: ast::proto_fn, body: b};
-    let m: ast::method_ = {ident: "drop", meth: f, id: p.get_id()};
-    ret @spanned(lo, f.body.span.hi, m);
-}
-
 fn parse_item_obj(p: &parser, attrs: &ast::attribute[]) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
@@ -1843,16 +1825,13 @@ fn parse_item_obj(p: &parser, attrs: &ast::attribute[]) ->
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_obj_field, p);
     let meths: (@ast::method)[] = ~[];
-    let dtor: option::t[@ast::method] = none;
     expect(p, token::LBRACE);
     while p.peek() != token::RBRACE {
-        if eat_word(p, "drop") {
-            dtor = some(parse_dtor(p));
-        } else { meths += ~[parse_method(p)]; }
+        meths += ~[parse_method(p)];
     }
     let hi = p.get_hi_pos();
     expect(p, token::RBRACE);
-    let ob: ast::_obj = {fields: fields.node, methods: meths, dtor: dtor};
+    let ob: ast::_obj = {fields: fields.node, methods: meths};
     ret mk_item(p, lo, hi, ident, ast::item_obj(ob, ty_params, p.get_id()),
                 attrs);
 }

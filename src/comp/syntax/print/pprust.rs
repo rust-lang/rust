@@ -510,14 +510,6 @@ fn print_item(s: &ps, item: &@ast::item) {
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
-        alt _obj.dtor {
-          some(dtor) {
-            space(s.s);
-            head(s, "drop");
-            print_block(s, dtor.node.meth.body);
-          }
-          _ { }
-        }
         bclose(s, item.span);
       }
       ast::item_res(dt, dt_id, tps, ct_id) {

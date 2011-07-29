@@ -118,13 +118,6 @@ fn walk_item(v: &ast_visitor, i: @ast::item) {
                     m.node.id);
             v.visit_method_post(m);
         }
-        alt ob.dtor {
-          none. { }
-          some(m) {
-            walk_fn(v, m.node.meth, ~[], m.span, some(m.node.ident),
-                    m.node.id);
-          }
-        }
       }
     }
     v.visit_item_post(i);

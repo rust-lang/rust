@@ -542,11 +542,6 @@ fn T_glue_fn(cx: &crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_dtor(ccx: &@crate_ctxt, sp: &span) -> TypeRef {
-    ret type_of_fn_full(ccx, sp, ast::proto_fn, true, ~[],
-                        ty::mk_nil(ccx.tcx), 0u);
-}
-
 fn T_cmp_glue_fn(cx: &crate_ctxt) -> TypeRef {
     let s = "cmp_glue_fn";
     if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }

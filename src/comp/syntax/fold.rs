@@ -232,8 +232,8 @@ fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
           }
           item_obj(o, typms, d) {
             item_obj({fields: ivec::map(fold_obj_field, o.fields),
-                      methods: ivec::map(fld.fold_method, o.methods),
-                      dtor: option::map(fld.fold_method, o.dtor)}, typms, d)
+                      methods: ivec::map(fld.fold_method, o.methods)},
+                     typms, d)
           }
           item_res(dtor, did, typms, cid) {
             item_res(fld.fold_fn(dtor), did, typms, cid)

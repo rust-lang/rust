@@ -524,8 +524,7 @@ type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
 type anon_obj_field =
     {mut: mutability, ty: @ty, expr: @expr, ident: ident, id: node_id};
 
-type _obj =
-    {fields: obj_field[], methods: (@method)[], dtor: option::t[@method]};
+type _obj = {fields: obj_field[], methods: (@method)[]};
 
 type anon_obj =
     // New fields and methods, if they exist.
@@ -590,16 +589,10 @@ tag item_ {
     item_ty(@ty, ty_param[]);
     item_tag(variant[], ty_param[]);
     item_obj(_obj, ty_param[], /* constructor id */node_id);
-    item_res(
-             /* dtor */
-             _fn,
-
-             /* dtor id */
-             node_id,
+    item_res(_fn, /* dtor */
+             node_id, /* dtor id */
              ty_param[],
-
-             /* ctor id */
-             node_id);
+             node_id /* ctor id */);
 }
 
 type native_item =
