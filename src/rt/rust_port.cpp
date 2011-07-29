@@ -2,7 +2,7 @@
 #include "rust_port.h"
 
 rust_port::rust_port(rust_task *task, size_t unit_sz)
-    : maybe_proxy<rust_port>(this), kernel(task->kernel), task(task),
+    : ref_count(1), kernel(task->kernel), task(task),
       unit_sz(unit_sz), writers(task), chans(task) {
 
     LOG(task, comm,
@@ -17,11 +17,9 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
 rust_port::~rust_port() {
     LOG(task, comm, "~rust_port 0x%" PRIxPTR, (uintptr_t) this);
 
-    //    log_state();
-
     // Disassociate channels from this port.
     while (chans.is_empty() == false) {
-        scoped_lock with(referent()->lock);
+        scoped_lock with(lock);
         rust_chan *chan = chans.peek();
         chan->disassociate();
 

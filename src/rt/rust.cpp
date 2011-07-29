@@ -93,7 +93,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     rust_srv *srv = new rust_srv(env);
     rust_kernel *kernel = new rust_kernel(srv, env->num_sched_threads);
-    kernel->start();
     rust_task *root_task = kernel->create_task(NULL, "main");
     rust_scheduler *sched = root_task->sched;
     command_line_args *args

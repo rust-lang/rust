@@ -5,18 +5,18 @@ class rust_chan : public kernel_owned<rust_chan>,
                   public rust_cond {
 public:
     RUST_REFCOUNTED_WITH_DTOR(rust_chan, destroy())
-    rust_chan(rust_kernel *kernel, maybe_proxy<rust_port> *port,
+    rust_chan(rust_kernel *kernel, rust_port *port,
               size_t unit_sz);
 
     ~rust_chan();
 
     rust_kernel *kernel;
     rust_task *task;
-    maybe_proxy<rust_port> *port;
+    rust_port *port;
     size_t idx;
     circular_buffer buffer;
 
-    void associate(maybe_proxy<rust_port> *port);
+    void associate(rust_port *port);
     void disassociate();
     bool is_associated();
 

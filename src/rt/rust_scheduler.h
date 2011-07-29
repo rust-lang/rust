@@ -51,11 +51,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_kernel *kernel;
     int32_t list_index;
 
-    hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
-    hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;
-
-    // Incoming messages from other domains.
-    rust_message_queue *message_queue;
+    hash_map<rust_task *, rust_task *> _task_proxies;
+    hash_map<rust_port *, rust_port *> _port_proxies;
 
     const int id;
 
@@ -70,16 +67,12 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_scheduler(rust_kernel *kernel,
-                   rust_message_queue *message_queue, rust_srv *srv,
-                   int id);
+    rust_scheduler(rust_kernel *kernel, rust_srv *srv, int id);
     ~rust_scheduler();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
     void fail();
-
-    void drain_incoming_message_queue(bool process);
 
     rust_crate_cache *get_cache();
     size_t number_of_live_tasks();
