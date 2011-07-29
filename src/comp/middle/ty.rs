@@ -1129,10 +1129,7 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
       ty_var(_) { fail; }
 
       ty_param(_,k) {
-        // FIXME: when you turn this on, the stdlib will break; be sure
-        // to have a snapshot done that understands kinds before doing so.
-
-        // result = kind::lower_kind(result, k);
+        result = kind::lower_kind(result, k);
       }
 
       ty_constr(t, _) {

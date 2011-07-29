@@ -150,7 +150,7 @@ fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
     }
 }
 
-fn parse_constr[T](st: @pstate, sd: str_def, pser: arg_parser[T]) ->
+fn parse_constr[@T](st: @pstate, sd: str_def, pser: arg_parser[T]) ->
    @ty::constr_general[T] {
     let sp = {lo: 0u, hi: 0u}; // FIXME: use a real span
     let args: (@sp_constr_arg[T])[] = ~[];

@@ -16,7 +16,7 @@ type t[T] =
         fn get(int) -> T ;
     };
 
-fn create[T]() -> t[T] {
+fn create[@T]() -> t[T] {
     type cell[T] = option::t[T];
 
     let initial_capacity: uint = 32u; // 2^5
@@ -26,7 +26,7 @@ fn create[T]() -> t[T] {
       */
 
 
-    fn grow[T](nelts: uint, lo: uint, elts: &(cell[T])[mutable ]) ->
+    fn grow[@T](nelts: uint, lo: uint, elts: &(cell[T])[mutable ]) ->
        (cell[T])[mutable ] {
         assert (nelts == ivec::len(elts));
         let rv = ~[mutable ];
@@ -42,13 +42,13 @@ fn create[T]() -> t[T] {
 
         ret rv;
     }
-    fn get[T](elts: &(cell[T])[mutable ], i: uint) -> T {
+    fn get[@T](elts: &(cell[T])[mutable ], i: uint) -> T {
         ret alt elts.(i) { option::some(t) { t } _ { fail } };
     }
-    obj deque[T](mutable nelts: uint,
-                 mutable lo: uint,
-                 mutable hi: uint,
-                 mutable elts: (cell[T])[mutable ]) {
+    obj deque[@T](mutable nelts: uint,
+                  mutable lo: uint,
+                  mutable hi: uint,
+                  mutable elts: (cell[T])[mutable ]) {
         fn size() -> uint { ret nelts; }
         fn add_front(t: &T) {
             let oldlo: uint = lo;

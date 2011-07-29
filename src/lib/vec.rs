@@ -60,14 +60,14 @@ fn empty_mut[T]() -> vec[mutable T] { ret alloc_mut[T](0u); }
 
 type init_op[T] = fn(uint) -> T ;
 
-fn init_fn[T](op: &init_op[T], n_elts: uint) -> vec[T] {
+fn init_fn[@T](op: &init_op[T], n_elts: uint) -> vec[T] {
     let v: vec[T] = alloc[T](n_elts);
     let i: uint = 0u;
     while i < n_elts { v += [op(i)]; i += 1u; }
     ret v;
 }
 
-fn init_fn_mut[T](op: &init_op[T], n_elts: uint) -> vec[mutable T] {
+fn init_fn_mut[@T](op: &init_op[T], n_elts: uint) -> vec[mutable T] {
     let v: vec[mutable T] = alloc_mut[T](n_elts);
     let i: uint = 0u;
     while i < n_elts { v += [mutable op(i)]; i += 1u; }
@@ -76,7 +76,7 @@ fn init_fn_mut[T](op: &init_op[T], n_elts: uint) -> vec[mutable T] {
 
 // init_elt: creates and returns a vector of length n_elts, filled with
 // that many copies of element t.
-fn init_elt[T](t: &T, n_elts: uint) -> vec[T] {
+fn init_elt[@T](t: &T, n_elts: uint) -> vec[T] {
     /**
      * FIXME (issue #81): should be:
      *
@@ -91,7 +91,7 @@ fn init_elt[T](t: &T, n_elts: uint) -> vec[T] {
     ret v;
 }
 
-fn init_elt_mut[T](t: &T, n_elts: uint) -> vec[mutable T] {
+fn init_elt_mut[@T](t: &T, n_elts: uint) -> vec[mutable T] {
     let v: vec[mutable T] = alloc_mut[T](n_elts);
     let i: uint = n_elts;
     while i > 0u { i -= 1u; v += [mutable t]; }
@@ -113,7 +113,7 @@ fn print_debug_info[T](v: array[T]) { rustrt::vec_print_debug_info[T](v); }
 
 // FIXME: typestate precondition (list is non-empty)
 // Returns the last element of v.
-fn last[T](v: array[T]) -> option::t[T] {
+fn last[@T](v: array[T]) -> option::t[T] {
     let l = len[T](v);
     if l == 0u { ret none[T]; }
     ret some[T](v.(l - 1u));
@@ -121,7 +121,7 @@ fn last[T](v: array[T]) -> option::t[T] {
 
 
 // Returns elements from [start..end) from v.
-fn slice[T](v: array[T], start: uint, end: uint) -> vec[T] {
+fn slice[@T](v: array[T], start: uint, end: uint) -> vec[T] {
     assert (start <= end);
     assert (end <= len[T](v));
     let result = alloc[T](end - start);
@@ -132,7 +132,7 @@ fn slice[T](v: array[T], start: uint, end: uint) -> vec[T] {
 
 
 // FIXME: Should go away eventually.
-fn slice_mut[T](v: array[T], start: uint, end: uint) -> vec[mutable T] {
+fn slice_mut[@T](v: array[T], start: uint, end: uint) -> vec[mutable T] {
     assert (start <= end);
     assert (end <= len[T](v));
     let result = alloc_mut[T](end - start);
@@ -141,7 +141,7 @@ fn slice_mut[T](v: array[T], start: uint, end: uint) -> vec[mutable T] {
     ret result;
 }
 
-fn shift[T](v: &mutable array[T]) -> T {
+fn shift[@T](v: &mutable array[T]) -> T {
     let ln = len[T](v);
     assert (ln > 0u);
     let e = v.(0);
@@ -149,7 +149,7 @@ fn shift[T](v: &mutable array[T]) -> T {
     ret e;
 }
 
-fn pop[T](v: &mutable array[T]) -> T {
+fn pop[@T](v: &mutable array[T]) -> T {
     let ln = len[T](v);
     assert (ln > 0u);
     ln -= 1u;
@@ -158,58 +158,59 @@ fn pop[T](v: &mutable array[T]) -> T {
     ret e;
 }
 
-fn top[T](v: &array[T]) -> T {
+fn top[@T](v: &array[T]) -> T {
     let ln = len[T](v);
     assert (ln > 0u);
     ret v.(ln - 1u);
 }
 
-fn push[T](v: &mutable array[T], t: &T) { v += [t]; }
+fn push[@T](v: &mutable array[T], t: &T) { v += [t]; }
 
-fn unshift[T](v: &mutable array[T], t: &T) {
+fn unshift[@T](v: &mutable array[T], t: &T) {
     let rs = alloc[T](len[T](v) + 1u);
     rs += [t];
     rs += v;
     v = rs;
 }
 
-fn grow[T](v: &mutable array[T], n: uint, initval: &T) {
+fn grow[@T](v: &mutable array[T], n: uint, initval: &T) {
     let i: uint = n;
     while i > 0u { i -= 1u; v += [initval]; }
 }
 
-fn grow_set[T](v: &mutable vec[mutable T], index: uint, initval: &T,
+fn grow_set[@T](v: &mutable vec[mutable T], index: uint, initval: &T,
                val: &T) {
     let length = vec::len(v);
     if index >= length { grow(v, index - length + 1u, initval); }
     v.(index) = val;
 }
 
-fn grow_init_fn[T](v: &mutable array[T], n: uint, init_fn: fn() -> T ) {
+fn grow_init_fn[@T](v: &mutable array[T], n: uint, init_fn: fn() -> T ) {
     let i: uint = n;
     while i > 0u { i -= 1u; v += [init_fn()]; }
 }
 
-fn grow_init_fn_set[T](v: &mutable array[T], index: uint, init_fn: fn() -> T,
+fn grow_init_fn_set[@T](v: &mutable array[T], index: uint, init_fn: fn() -> T,
                        val: &T) {
     let length = vec::len(v);
     if index >= length { grow_init_fn(v, index - length + 1u, init_fn); }
     v.(index) = val;
 }
 
-fn map[T, U](f: &fn(&T) -> U , v: &vec[T]) -> vec[U] {
+fn map[@T, @U](f: &fn(&T) -> U , v: &vec[T]) -> vec[U] {
     let rs: vec[U] = alloc[U](len[T](v));
     for ve: T  in v { rs += [f(ve)]; }
     ret rs;
 }
 
-fn filter_map[T, U](f: &fn(&T) -> option::t[U] , v: &vec[T]) -> vec[U] {
+fn filter_map[@T, @U](f: &fn(&T) -> option::t[U] , v: &vec[T]) -> vec[U] {
     let rs: vec[U] = [];
     for ve: T  in v { alt f(ve) { some(elt) { rs += [elt]; } none. { } } }
     ret rs;
 }
 
-fn map2[T, U, V](f: &operator2[T, U, V], v0: &vec[T], v1: &vec[U]) -> vec[V] {
+fn map2[@T, @U, @V](f: &operator2[T, U, V], v0: &vec[T], v1: &vec[U])
+    -> vec[V] {
     let v0_len = len[T](v0);
     if v0_len != len[U](v1) { fail; }
     let u: vec[V] = alloc[V](v0_len);
@@ -218,12 +219,12 @@ fn map2[T, U, V](f: &operator2[T, U, V], v0: &vec[T], v1: &vec[U]) -> vec[V] {
     ret u;
 }
 
-fn find[T](f: fn(&T) -> bool , v: &vec[T]) -> option::t[T] {
+fn find[@T](f: fn(&T) -> bool , v: &vec[T]) -> option::t[T] {
     for elt: T  in v { if f(elt) { ret some[T](elt); } }
     ret none[T];
 }
 
-fn position[T](x: &T, v: &array[T]) -> option::t[uint] {
+fn position[@T](x: &T, v: &array[T]) -> option::t[uint] {
     let i: uint = 0u;
     while i < len(v) { if x == v.(i) { ret some[uint](i); } i += 1u; }
     ret none[uint];
@@ -246,7 +247,7 @@ fn count[T](x: &T, v: &array[T]) -> uint {
     ret cnt;
 }
 
-fn foldl[T, U](p: fn(&U, &T) -> U , z: &U, v: &vec[T]) -> U {
+fn foldl[@T, @U](p: fn(&U, &T) -> U , z: &U, v: &vec[T]) -> U {
     let sz = len[T](v);
     if sz == 0u {
         ret z;
@@ -256,7 +257,7 @@ fn foldl[T, U](p: fn(&U, &T) -> U , z: &U, v: &vec[T]) -> U {
     }
 }
 
-fn unzip[T, U](v: &vec[{_0: T, _1: U}]) -> {_0: vec[T], _1: vec[U]} {
+fn unzip[@T, @U](v: &vec[{_0: T, _1: U}]) -> {_0: vec[T], _1: vec[U]} {
     let sz = len(v);
     if sz == 0u {
         ret {_0: alloc[T](0u), _1: alloc[U](0u)};
@@ -271,7 +272,7 @@ fn unzip[T, U](v: &vec[{_0: T, _1: U}]) -> {_0: vec[T], _1: vec[U]} {
 
 
 // FIXME make the lengths being equal a constraint
-fn zip[T, U](v: &vec[T], u: &vec[U]) -> vec[{_0: T, _1: U}] {
+fn zip[@T, @U](v: &vec[T], u: &vec[U]) -> vec[{_0: T, _1: U}] {
     let sz = len(v);
     assert (sz == len(u));
     if sz == 0u {
@@ -297,13 +298,13 @@ fn all[T](f: &fn(&T) -> bool , v: &vec[T]) -> bool {
     ret true;
 }
 
-fn clone[T](v: &vec[T]) -> vec[T] { ret slice[T](v, 0u, len[T](v)); }
+fn clone[@T](v: &vec[T]) -> vec[T] { ret slice[T](v, 0u, len[T](v)); }
 
-fn plus_option[T](v: &mutable vec[T], o: &option::t[T]) {
+fn plus_option[@T](v: &mutable vec[T], o: &option::t[T]) {
     alt o { none. { } some(x) { v += [x]; } }
 }
 
-fn cat_options[T](v: &vec[option::t[T]]) -> vec[T] {
+fn cat_options[@T](v: &vec[option::t[T]]) -> vec[T] {
     let rs: vec[T] = [];
     for o: option::t[T]  in v { alt o { none. { } some(t) { rs += [t]; } } }
     ret rs;
@@ -311,7 +312,7 @@ fn cat_options[T](v: &vec[option::t[T]]) -> vec[T] {
 
 
 // TODO: Remove in favor of built-in "freeze" operation when it's implemented.
-fn freeze[T](v: vec[mutable T]) -> vec[T] {
+fn freeze[@T](v: vec[mutable T]) -> vec[T] {
     let result: vec[T] = [];
     for elem: T  in v { result += [elem]; }
     ret result;
@@ -319,7 +320,7 @@ fn freeze[T](v: vec[mutable T]) -> vec[T] {
 
 
 // Swaps two elements in a vector
-fn swap[T](v: &vec[mutable T], a: uint, b: uint) {
+fn swap[@T](v: &vec[mutable T], a: uint, b: uint) {
     let t: T = v.(a);
     v.(a) = v.(b);
     v.(b) = t;
@@ -327,7 +328,7 @@ fn swap[T](v: &vec[mutable T], a: uint, b: uint) {
 
 
 // In place vector reversal
-fn reverse[T](v: &vec[mutable T]) {
+fn reverse[@T](v: &vec[mutable T]) {
     let i: uint = 0u;
     let ln = len[T](v);
     while i < ln / 2u { swap(v, i, ln - i - 1u); i += 1u; }
@@ -335,7 +336,7 @@ fn reverse[T](v: &vec[mutable T]) {
 
 
 // Functional vector reversal. Returns a reversed copy of v.
-fn reversed[T](v: vec[T]) -> vec[T] {
+fn reversed[@T](v: vec[T]) -> vec[T] {
     let rs: vec[T] = [];
     let i = len[T](v);
     if i == 0u { ret rs; } else { i -= 1u; }
@@ -347,7 +348,7 @@ fn reversed[T](v: vec[T]) -> vec[T] {
 
 /// Truncates the vector to length `new_len`.
 /// FIXME: This relies on a typechecker bug (covariance vs. invariance).
-fn truncate[T](v: &mutable vec[mutable? T], new_len: uint) {
+fn truncate[@T](v: &mutable vec[mutable? T], new_len: uint) {
     v = slice[T](v, 0u, new_len);
 }
 // Local Variables:

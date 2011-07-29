@@ -19,9 +19,9 @@ type hashmap[K, V] =
     };
 type hashset[K] = hashmap[K, ()];
 
-fn set_add[K](set: hashset[K], key: &K) -> bool { ret set.insert(key, ()); }
+fn set_add[@K](set: hashset[K], key: &K) -> bool { ret set.insert(key, ()); }
 
-fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
+fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     let initial_capacity: uint = 32u; // 2^5
 
     let load_factor: util::rational = {num: 3, den: 4};
@@ -53,10 +53,10 @@ fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
      * will fail.
      */
 
-    fn insert_common[K,
-                     V](hasher: &hashfn[K], eqer: &eqfn[K],
-                        bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K,
-                        val: &V) -> bool {
+    fn insert_common[@K,
+                     @V](hasher: &hashfn[K], eqer: &eqfn[K],
+                         bkts: &(bucket[K, V])[mutable ], nbkts: uint,
+                         key: &K, val: &V) -> bool {
         let i: uint = 0u;
         let h: uint = hasher(key);
         while i < nbkts {
@@ -78,9 +78,9 @@ fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
         fail; // full table
 
     }
-    fn find_common[K,
-                   V](hasher: &hashfn[K], eqer: &eqfn[K],
-                      bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K)
+    fn find_common[@K,
+                   @V](hasher: &hashfn[K], eqer: &eqfn[K],
+                       bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K)
        -> option::t[V] {
         let i: uint = 0u;
         let h: uint = hasher(key);
@@ -101,10 +101,10 @@ fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
         }
         ret option::none[V];
     }
-    fn rehash[K,
-              V](hasher: &hashfn[K], eqer: &eqfn[K],
-                 oldbkts: &(bucket[K, V])[mutable ], noldbkts: uint,
-                 newbkts: &(bucket[K, V])[mutable ], nnewbkts: uint) {
+    fn rehash[@K,
+              @V](hasher: &hashfn[K], eqer: &eqfn[K],
+                  oldbkts: &(bucket[K, V])[mutable ], noldbkts: uint,
+                  newbkts: &(bucket[K, V])[mutable ], nnewbkts: uint) {
         for b: bucket[K, V]  in oldbkts {
             alt b {
               some(k_, v_) {
@@ -116,13 +116,13 @@ fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
             }
         }
     }
-    obj hashmap[K,
-                V](hasher: hashfn[K],
-                   eqer: eqfn[K],
-                   mutable bkts: (bucket[K, V])[mutable ],
-                   mutable nbkts: uint,
-                   mutable nelts: uint,
-                   lf: util::rational) {
+    obj hashmap[@K,
+                @V](hasher: hashfn[K],
+                    eqer: eqfn[K],
+                    mutable bkts: (bucket[K, V])[mutable ],
+                    mutable nbkts: uint,
+                    mutable nelts: uint,
+                    lf: util::rational) {
         fn size() -> uint { ret nelts; }
         fn insert(key: &K, val: &V) -> bool {
             let load: util::rational =
@@ -199,17 +199,17 @@ fn mk_hashmap[K, V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
 
 // Hash map constructors for basic types
 
-fn new_str_hash[V]() -> hashmap[str, V] {
+fn new_str_hash[@V]() -> hashmap[str, V] {
     ret mk_hashmap(str::hash, str::eq);
 }
 
-fn new_int_hash[V]() -> hashmap[int, V] {
+fn new_int_hash[@V]() -> hashmap[int, V] {
     fn hash_int(x: &int) -> uint { ret x as uint; }
     fn eq_int(a: &int, b: &int) -> bool { ret a == b; }
     ret mk_hashmap[int, V](hash_int, eq_int);
 }
 
-fn new_uint_hash[V]() -> hashmap[uint, V] {
+fn new_uint_hash[@V]() -> hashmap[uint, V] {
     fn hash_uint(x: &uint) -> uint { ret x; }
     fn eq_uint(a: &uint, b: &uint) -> bool { ret a == b; }
     ret mk_hashmap[uint, V](hash_uint, eq_uint);

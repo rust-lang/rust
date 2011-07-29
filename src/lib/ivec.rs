@@ -168,7 +168,7 @@ fn grow_fn[T](v: &mutable T[], n: uint, init_fn: fn(uint) -> T ) {
 /// Sets the element at position `index` to `val`. If `index` is past the end
 /// of the vector, expands the vector by replicating `initval` to fill the
 /// intervening space.
-fn grow_set[T](v: &mutable T[mutable ], index: uint, initval: &T, val: &T) {
+fn grow_set[@T](v: &mutable T[mutable ], index: uint, initval: &T, val: &T) {
     if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
     v.(index) = val;
 }
