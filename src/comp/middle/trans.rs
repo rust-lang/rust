@@ -3677,30 +3677,6 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
 // Iterator translation
 
-// Finds the ValueRef associated with a variable in a function
-// context. It checks locals, upvars, and args.
-fn find_variable(cx: &@block_ctxt, nid: ast::node_id) -> lval_result {
-    let fcx = cx.fcx;
-    let llval = alt fcx.lllocals.find(nid) {
-      none. {
-        alt fcx.llupvars.find(nid) {
-          none. {
-            alt fcx.llargs.find(nid) {
-              some(llval) { llval }
-              _ {
-                fcx.lcx.ccx.sess.bug("unbound var in build_environment "
-                                     + int::str(nid))
-              }
-            }
-          }
-          some(llval) { llval }
-        }
-      }
-      some(llval) { llval }
-    };
-    ret lval_mem(cx, llval);
-}
-
 // build_environment_heap and build_environment are very similar. It
 // would be nice to unify them.
 
@@ -3781,12 +3757,12 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
-fn build_environment(cx: &@block_ctxt, upvars: &freevar_set) ->
+fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
    {ptr: ValueRef, ptrty: TypeRef} {
     let has_iterbody = !option::is_none(cx.fcx.lliterbody);
     let llbindingsptr;
 
-    if upvars.size() > 0u || has_iterbody {
+    if std::ivec::len(*upvars) > 0u || has_iterbody {
         // Gather up the upvars.
         let llbindings: ValueRef[] = ~[];
         let llbindingtys: TypeRef[] = ~[];
@@ -3794,8 +3770,8 @@ fn build_environment(cx: &@block_ctxt, upvars: &freevar_set) ->
             llbindings += ~[option::get(cx.fcx.lliterbody)];
             llbindingtys += ~[val_ty(llbindings.(0))];
         }
-        for each nid: ast::node_id  in upvars.keys() {
-            let llbinding = find_variable(cx, nid).res.val;
+        for nid: ast::node_id  in *upvars {
+            let llbinding = trans_var(cx, cx.sp, nid).res.val;
             llbindings += ~[llbinding];
             llbindingtys += ~[val_ty(llbinding)];
         }
@@ -3847,7 +3823,7 @@ fn build_environment(cx: &@block_ctxt, upvars: &freevar_set) ->
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(cx: &@block_ctxt, fcx: &@fn_ctxt, llenvptrty: TypeRef,
-                    upvars: &freevar_set) {
+                    upvars: &@ast::node_id[]) {
     let copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // Populate the upvars from the environment.
@@ -3869,12 +3845,13 @@ fn load_environment(cx: &@block_ctxt, fcx: &@fn_ctxt, llenvptrty: TypeRef,
         let lliterbody = copy_args_bcx.build.Load(lliterbodyptr);
         fcx.lliterbody = some(lliterbody);
     }
-    for each upvar_id: ast::node_id  in upvars.keys() {
+    for upvar_id: ast::node_id  in *upvars {
         let llupvarptrptr =
             copy_args_bcx.build.GEP(llremotebindingsptr,
                                     ~[C_int(0), C_int(i as int)]);
         let llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
-        fcx.llupvars.insert(upvar_id, llupvarptr);
+        let def_id = ast::def_id_of_def(bcx_tcx(cx).def_map.get(upvar_id));
+        fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
     }
 
@@ -4092,9 +4069,12 @@ fn lookup_discriminant(lcx: &@local_ctxt, tid: &ast::def_id,
     }
 }
 
-fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
+fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) ->
    lval_result {
     let ccx = bcx_ccx(cx);
+    // If we had a good way to get at the node_id for the function we
+    // are in, we could do a freevars::def_lookup and avoid having to
+    // check the llupvars case in all of the other cases...
     alt bcx_tcx(cx).def_map.find(id) {
       some(ast::def_arg(did)) {
         alt cx.fcx.llargs.find(did.node) {
@@ -4144,7 +4124,7 @@ fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
             let tag_ty = node_id_type(ccx, id);
             let alloc_result = alloc_ty(cx, tag_ty);
             let lltagblob = alloc_result.val;
-            let lltagty = type_of_tag(ccx, p.span, tid, tag_ty);
+            let lltagty = type_of_tag(ccx, sp, tid, tag_ty);
             let bcx = alloc_result.bcx;
             let lltagptr = bcx.build.PointerCast(lltagblob, T_ptr(lltagty));
             if std::ivec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
@@ -4178,6 +4158,11 @@ fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
       }
       _ { ccx.sess.span_unimpl(cx.sp, "def variant in trans"); }
     }
+}
+
+fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
+   lval_result {
+    ret trans_var(cx, p.span, id);
 }
 
 fn trans_field(cx: &@block_ctxt, sp: &span, v: ValueRef, t0: &ty::t,

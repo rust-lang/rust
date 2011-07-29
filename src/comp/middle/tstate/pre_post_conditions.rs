@@ -371,7 +371,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_fn(f) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        let upvars = freevars::get_freevar_uses(fcx.ccx.tcx, e.id);
+        let upvars = freevars::get_freevars(fcx.ccx.tcx, e.id);
         for id: node_id  in *upvars { handle_var(fcx, rslt, id, "upvar"); }
       }
       expr_block(b) {

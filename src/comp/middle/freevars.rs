@@ -18,13 +18,19 @@ export freevar_set;
 export freevar_map;
 export get_freevar_info;
 export get_freevars;
-export get_freevar_uses;
+export get_freevar_refs;
 export has_freevars;
 export is_freevar_of;
 export def_lookup;
 
+// Throughout the compiler, variables are generally dealt with using the
+// node_ids of the reference sites and not the def_id of the definition
+// site. Thus we store a set are the definitions along with a vec of one
+// referencing node_id per free variable. The set is useful for testing
+// membership, the list of referencing sites is what you want for most
+// other things.
 type freevar_set = hashset[ast::node_id];
-type freevar_info = {defs: freevar_set, uses: @ast::node_id[]};
+type freevar_info = {defs: freevar_set, refs: @ast::node_id[]};
 type freevar_map = hashmap[ast::node_id, freevar_info];
 
 // Searches through part of the AST for all references to locals or
@@ -83,17 +89,17 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
     // Calculate (refs - decls). This is the set of captured upvars.
     // We build a vec of the node ids of the uses and a set of the
     // node ids of the definitions.
-    let uses = ~[];
+    let refs = ~[];
     let defs = new_int_hash();
     for ref_id_: ast::node_id  in e.refs {
         let ref_id = ref_id_;
         let def_id = ast::def_id_of_def(def_map.get(ref_id)).node;
-        if !decls.contains_key(def_id) {
-            uses += ~[ref_id];
+        if !decls.contains_key(def_id) && !defs.contains_key(def_id) {
+            refs += ~[ref_id];
             set_add(defs, def_id);
         }
     }
-    ret {defs: defs, uses: @uses};
+    ret {defs: defs, refs: @refs};
 }
 
 // Build a map from every function and for-each body to a set of the
@@ -150,17 +156,17 @@ fn get_freevar_info(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
       some(d) { ret d; }
     }
 }
-fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_set {
+fn get_freevar_refs(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_set {
     ret get_freevar_info(tcx, fid).defs;
 }
-fn get_freevar_uses(tcx: &ty::ctxt, fid: ast::node_id) -> @ast::node_id[] {
-    ret get_freevar_info(tcx, fid).uses;
+fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> @ast::node_id[] {
+    ret get_freevar_info(tcx, fid).refs;
 }
 fn has_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> bool {
-    ret get_freevars(tcx, fid).size() != 0u;
+    ret get_freevar_refs(tcx, fid).size() != 0u;
 }
-fn is_freevar_of(tcx: &ty::ctxt, var: ast::node_id, f: ast::node_id) -> bool {
-    ret get_freevars(tcx, f).contains_key(var);
+fn is_freevar_of(tcx: &ty::ctxt, def: ast::node_id, f: ast::node_id) -> bool {
+    ret get_freevar_refs(tcx, f).contains_key(def);
 }
 fn def_lookup(tcx: &ty::ctxt, f: ast::node_id, id: ast::node_id) ->
    option::t[ast::def] {
