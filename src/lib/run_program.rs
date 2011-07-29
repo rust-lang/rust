@@ -38,6 +38,7 @@ type program =
         fn get_id() -> int ;
         fn input() -> io::writer ;
         fn output() -> io::reader ;
+        fn err() -> io::reader ;
         fn close_input() ;
         fn finish() -> int ;
     };
@@ -45,14 +46,18 @@ type program =
 fn start_program(prog: str, args: vec[str]) -> @program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
-    let pid = spawn_process(prog, args, pipe_input.in, pipe_output.out, 0);
+    let pipe_err = os::pipe();
+    let pid = spawn_process(prog, args, pipe_input.in, pipe_output.out,
+                            pipe_err.out);
 
     if pid == -1 { fail; }
     os::libc::close(pipe_input.in);
     os::libc::close(pipe_output.out);
+    os::libc::close(pipe_err.out);
     obj new_program(pid: int,
                     mutable in_fd: int,
                     out_file: os::libc::FILE,
+                    err_file: os::libc::FILE,
                     mutable finished: bool) {
         fn get_id() -> int { ret pid; }
         fn input() -> io::writer {
@@ -60,6 +65,9 @@ fn start_program(prog: str, args: vec[str]) -> @program {
         }
         fn output() -> io::reader {
             ret io::new_reader(io::FILE_buf_reader(out_file, false));
+        }
+        fn err() -> io::reader {
+            ret io::new_reader(io::FILE_buf_reader(err_file, false));
         }
         fn close_input() {
             let invalid_fd = -1;
@@ -78,21 +86,32 @@ fn start_program(prog: str, args: vec[str]) -> @program {
             self.close_input();
             if !finished { os::waitpid(pid); }
             os::libc::fclose(out_file);
+            os::libc::fclose(err_file);
         }
     }
-    ret @new_program(pid, pipe_input.out, os::fd_FILE(pipe_output.in), false);
+    ret @new_program(pid,
+                     pipe_input.out,
+                     os::fd_FILE(pipe_output.in),
+                     os::fd_FILE(pipe_err.in),
+                     false);
 }
 
-fn program_output(prog: str, args: vec[str]) -> {status: int, out: str} {
-    let pr = start_program(prog, args);
-    pr.close_input();
-    let out = pr.output();
+fn read_all(rd: &io::reader) -> str {
     let buf = "";
-    while !out.eof() {
-        let bytes = out.read_bytes(4096u);
+    while !rd.eof() {
+        let bytes = rd.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
     }
-    ret {status: pr.finish(), out: buf};
+    ret buf;
+}
+
+fn program_output(prog: str, args: vec[str])
+    -> {status: int, out: str, err: str} {
+    let pr = start_program(prog, args);
+    pr.close_input();
+    ret {status: pr.finish(),
+         out: read_all(pr.output()),
+         err: read_all(pr.err())};
 }
 // Local Variables:
 // mode: rust
