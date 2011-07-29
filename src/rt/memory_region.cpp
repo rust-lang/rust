@@ -130,8 +130,10 @@ memory_region::~memory_region() {
     if (_detailed_leaks) {
         for (size_t i = 0; i < _allocation_list.size(); i++) {
             if (_allocation_list[i] != NULL) {
-                printf("allocation 0x%" PRIxPTR " was not freed\n",
-                       (uintptr_t) _allocation_list[i]);
+                alloc_header *header = (alloc_header*)_allocation_list[i];
+                printf("allocation (%s) 0x%" PRIxPTR " was not freed\n",
+                       header->tag,
+                       (uintptr_t) &header->data);
             }
         }
     }
