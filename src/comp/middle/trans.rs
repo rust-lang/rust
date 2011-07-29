@@ -6996,9 +6996,6 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
 
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    // FIXME: we should probably also allocate a box for empty objs that have
-    // a dtor, since otherwise they are never dropped, and the dtor never
-    // runs.
     if std::ivec::len[ast::ty_param](ty_params) == 0u &&
            std::ivec::len[ty::arg](arg_tys) == 0u {
         // If the object we're translating has no fields or type parameters,
