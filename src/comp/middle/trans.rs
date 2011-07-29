@@ -6777,11 +6777,6 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
                 // member of addtl_meths.  Instead, we have to go
                 // through addtl_meths and see if there's some method
                 // in it that has the same name as fm.
-
-                // FIXME (part of #543): We're only checking names
-                // here.  If a method is replacing another, it also
-                // needs to have the same type, but this should
-                // probably be enforced in typechecking.
                 for am: @ast::method  in addtl_meths {
                     if str::eq(am.node.ident, fm.ident) { ret none; }
                 }

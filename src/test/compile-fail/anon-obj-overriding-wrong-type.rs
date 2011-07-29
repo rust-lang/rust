@@ -1,7 +1,4 @@
-//xfail-stage0
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
+//error-pattern: with one of a different type
 use std;
 
 fn main() {
@@ -13,8 +10,7 @@ fn main() {
 
     let my_a = a();
 
-    // This compiles and shouldn't.  You should only be able to
-    // overload a method with one of the same type.  Issue #703.
+    // Attempting to override a method with one of a different type.
     let my_b =
         obj () {
             fn foo() -> str { ret "hello"; }
