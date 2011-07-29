@@ -3,7 +3,6 @@ import ast::mutability;
 import ast::local_def;
 import ast::respan;
 import ast::spanned;
-import syntax::walk;
 import syntax::visit;
 import metadata::csearch;
 import driver::session;
@@ -2683,10 +2682,10 @@ fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
     let obj_infos: obj_info[] = ~[];
 
     let ccx = @{mutable obj_infos: obj_infos, tcx: tcx};
-    let visit =
-        {visit_item_pre: bind check_item(ccx, _)
-            with walk::default_visitor()};
-    walk::walk_crate(visit, *crate);
+    let visit = visit::mk_simple_visitor
+        (@{visit_item: bind check_item(ccx, _)
+           with *visit::default_simple_visitor()});
+    visit::visit_crate(*crate, (), visit);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
 }
