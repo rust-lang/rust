@@ -6524,10 +6524,14 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     let mcx: @local_ctxt = @{path: cx.path + ~["method", m.ident] with *cx};
 
     // Make up a name for the forwarding function.
-    let fn_name: str;
+    let fn_name: str = "";
     alt (backwarding_vtbl) {
-        none. { fn_name = "forwarding_fn"; }
-        some(_) { fn_name = "backwarding_fn"; }
+      // NB: If we have a backwarding_vtbl, that *doesn't* mean that we're
+      // currently processing a backwarding fn.  It's the opposite: it means
+      // that we have already processed them, and now we're creating
+      // forwarding fns that *use* a vtable full of them.
+      none. { fn_name = "backwarding_fn"; }
+      some(_) { fn_name = "forwarding_fn"; }
     }
 
     let s: str = mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path,
