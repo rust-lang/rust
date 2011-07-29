@@ -3720,6 +3720,19 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     ret {ptr: r.box, ptrty: closure_ty, bcx: bcx};
 }
 
+fn build_copying_closure(cx: &@block_ctxt, upvars: &@ast::node_id[])
+    -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
+        let closure_vals: lval_result[] = ~[];
+        let closure_tys: ty::t[] = ~[];
+        for nid: ast::node_id  in *upvars {
+            closure_vals += ~[trans_var(cx, cx.sp, nid)];
+            closure_tys += ~[ty::node_id_to_monotype(bcx_tcx(cx), nid)];
+        }
+
+        ret build_environment_heap(cx, cx.fcx.lltydescs,
+                                   closure_tys, closure_vals);
+}
+
 // Given a block context and a list of upvars, construct a closure that
 // contains pointers to all of the upvars and all of the tydescs in
 // scope. Return the ValueRef and TypeRef corresponding to the closure.
@@ -3784,6 +3797,43 @@ fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
 
     ret {ptr: llenvptr, ptrty: llenvptrty};
 }
+
+fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
+                         envty: &ty::t, upvars: &@ast::node_id[]) {
+    let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+
+    let llenvptr =
+        bcx.build.GEP(fcx.llenv, ~[C_int(0), C_int(abi::box_rc_field_body)]);
+    let llenvptrty = T_ptr(type_of(bcx_ccx(bcx), bcx.sp, envty));;
+    llenvptr = bcx.build.PointerCast(llenvptr, llenvptrty);
+
+    // Populate the upvars from the environment.
+    let llbindingsptr =
+        bcx.build.GEP(llenvptr,
+                      ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+    let i = 0u;
+    for upvar_id: ast::node_id  in *upvars {
+        let llupvarptr =
+            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(i as int)]);
+        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
+        fcx.llupvars.insert(def_id.node, llupvarptr);
+        i += 1u;
+    }
+
+    // Populate the type parameters from the environment.
+    let lltydescsptr =
+        bcx.build.GEP(llenvptr,
+                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+    let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
+    i = 0u;
+    while i < tydesc_count {
+        let lltydescptr =
+            bcx.build.GEP(lltydescsptr, ~[C_int(0), C_int(i as int)]);
+        fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
+        i += 1u;
+    }
+}
+
 
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
@@ -6399,21 +6449,24 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     // Figure out if we need to build a closure and act accordingly
     let closure = none;
     alt f.proto {
-      ast::proto_block. {
+      ast::proto_block. | ast::proto_closure. {
         let bcx = option::get(bcx_maybe);
         let upvars = get_freevars(cx.ccx.tcx, id);
 
-        let llenv = build_environment(bcx, upvars);
+        let llenvptr = if (f.proto == ast::proto_block) {
+            let llenv = build_environment(bcx, upvars);
+            load_environment(bcx, fcx, llenv.ptrty, upvars);
+            llenv.ptr
+        } else {
+            let llenv = build_copying_closure(bcx, upvars);
+            load_environment_heap(bcx, fcx, llenv.ptrty, upvars);
+            llenv.ptr
+        };
 
-        // Generate code to load the environment out of the
-        // environment pointer.
-        load_environment(bcx, fcx, llenv.ptrty, upvars);
-        // Build the closure.
         closure =
             some(create_real_fn_pair(bcx, option::get(llfnty), llfndecl,
-                                     llenv.ptr));
+                                     llenvptr));
       }
-      ast::proto_closure. { fail "copy capture not implemented yet"; }
       _ { }
     }
 
