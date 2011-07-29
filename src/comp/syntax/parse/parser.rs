@@ -883,8 +883,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
 
         // We don't need to pull ".node" out of fields because it's not a
         // "spanned".
-        let ob: ast::anon_obj =
-            {fields: fields, methods: meths, inner_obj: inner_obj};
+        let ob = {fields: fields, methods: meths, inner_obj: inner_obj};
         ex = ast::expr_anon_obj(ob);
     } else if (eat_word(p, "bind")) {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
@@ -1554,27 +1553,20 @@ fn parse_source_stmt(p: &parser) -> @ast::stmt {
         // If we have attributes then we should have an item
         if ivec::len(item_attrs) > 0u {
             alt maybe_item {
-              got_item(_) {/* fallthrough */ }
+              some(_) {/* fallthrough */ }
               _ { ret p.fatal("expected item"); }
             }
         }
 
 
         alt maybe_item {
-          got_item(i) {
+          some(i) {
             let hi = i.span.hi;
             let decl = @spanned(lo, hi, ast::decl_item(i));
             ret @spanned(lo, hi, ast::stmt_decl(decl, p.get_id()));
           }
-          fn_no_item. { // parse_item will have already skipped "fn"
-
-            let e = parse_fn_expr(p, ast::proto_fn);
-            e = parse_dot_or_call_expr_with(p, e);
-            ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
-          }
-          no_item. {
+          none. {
             // Remainder are line-expr stmts.
-
             let e = parse_expr(p);
             ret @spanned(lo, e.span.hi, ast::stmt_expr(e, p.get_id()));
           }
@@ -1873,7 +1865,7 @@ fn parse_mod_items(p: &parser, term: token::token,
         let attrs = initial_attrs + parse_outer_attributes(p);
         initial_attrs = ~[];
         alt parse_item(p, attrs) {
-          got_item(i) { items += ~[i]; }
+          some(i) { items += ~[i]; }
           _ {
             p.fatal("expected item but found " +
                         token::to_str(p.get_reader(), p.peek()));
@@ -2082,37 +2074,34 @@ fn parse_auth(p: &parser) -> ast::_auth {
     fail;
 }
 
-tag parsed_item { got_item(@ast::item); no_item; fn_no_item; }
-
-fn parse_item(p: &parser, attrs: &ast::attribute[]) -> parsed_item {
+fn parse_item(p: &parser, attrs: &ast::attribute[]) -> option::t[@ast::item] {
     if eat_word(p, "const") {
-        ret got_item(parse_item_const(p, attrs));
-    } else if (eat_word(p, "fn")) {
-        // This is an anonymous function
-
-        if p.peek() == token::LPAREN { ret fn_no_item; }
-        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn,
+        ret some(parse_item_const(p, attrs));
+    } else if (is_word(p, "fn") && p.look_ahead(1u) != token::LPAREN) {
+        p.bump();
+        ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn,
                                            attrs));
     } else if (eat_word(p, "pred")) {
-        ret got_item(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn,
+        ret some(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn,
                                            attrs));
     } else if (eat_word(p, "iter")) {
-        ret got_item(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,
+        ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,
                                            attrs));
     } else if (eat_word(p, "mod")) {
-        ret got_item(parse_item_mod(p, attrs));
+        ret some(parse_item_mod(p, attrs));
     } else if (eat_word(p, "native")) {
-        ret got_item(parse_item_native_mod(p, attrs));
+        ret some(parse_item_native_mod(p, attrs));
     }
     if eat_word(p, "type") {
-        ret got_item(parse_item_type(p, attrs));
+        ret some(parse_item_type(p, attrs));
     } else if (eat_word(p, "tag")) {
-        ret got_item(parse_item_tag(p, attrs));
-    } else if (eat_word(p, "obj")) {
-        ret got_item(parse_item_obj(p, attrs));
+        ret some(parse_item_tag(p, attrs));
+    } else if (is_word(p, "obj") && p.look_ahead(1u) != token::LPAREN) {
+        p.bump();
+        ret some(parse_item_obj(p, attrs));
     } else if (eat_word(p, "resource")) {
-        ret got_item(parse_item_res(p, attrs));
-    } else { ret no_item; }
+        ret some(parse_item_res(p, attrs));
+    } else { ret none; }
 }
 
 // A type to distingush between the parsing of item attributes or syntax
