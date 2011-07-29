@@ -55,7 +55,11 @@ fn convert_whence(whence: seek_style) -> int {
     ret alt whence { seek_set. { 0 } seek_cur. { 1 } seek_end. { 2 } };
 }
 
-obj FILE_buf_reader(f: os::libc::FILE, must_close: bool) {
+resource FILE_res(f: os::libc::FILE) {
+    os::libc::fclose(f);
+}
+
+obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn read(len: uint) -> vec[u8] {
         let buf = vec::alloc[u8](len);
         let read = os::libc::fread(vec::buf[u8](buf), 1u, len, f);
@@ -71,7 +75,6 @@ obj FILE_buf_reader(f: os::libc::FILE, must_close: bool) {
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
     }
-    drop { if must_close { os::libc::fclose(f); } }
 }
 
 
@@ -173,13 +176,13 @@ obj new_reader(rdr: buf_reader) {
 }
 
 fn stdin() -> reader {
-    ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), false));
+    ret new_reader(FILE_buf_reader(rustrt::rust_get_stdin(), option::none));
 }
 
 fn file_reader(path: str) -> reader {
     let f = os::libc::fopen(str::buf(path), str::buf("r"));
     if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret new_reader(FILE_buf_reader(f, true));
+    ret new_reader(FILE_buf_reader(f, option::some(@FILE_res(f))));
 }
 
 
@@ -237,7 +240,7 @@ type buf_writer =
         fn tell() -> uint ;
     };
 
-obj FILE_writer(f: os::libc::FILE, must_close: bool) {
+obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn write(v: vec[u8]) {
         let len = vec::len[u8](v);
         let vbuf = vec::buf[u8](v);
@@ -250,7 +253,6 @@ obj FILE_writer(f: os::libc::FILE, must_close: bool) {
     fn tell() -> uint {
         ret os::libc::ftell(f) as uint;
     }
-    drop { if must_close { os::libc::fclose(f); } }
 }
 
 obj fd_buf_writer(fd: int, must_close: bool) {
@@ -372,7 +374,7 @@ fn file_writer(path: str, flags: vec[fileflag]) -> writer {
 fn buffered_file_buf_writer(path: str) -> buf_writer {
     let f = os::libc::fopen(str::buf(path), str::buf("w"));
     if f as uint == 0u { log_err "error opening " + path; fail; }
-    ret FILE_writer(f, true);
+    ret FILE_writer(f, option::some(@FILE_res(f)));
 }
 
 

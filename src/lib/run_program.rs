@@ -64,10 +64,10 @@ fn start_program(prog: str, args: vec[str]) -> @program {
             ret io::new_writer(io::fd_buf_writer(in_fd, false));
         }
         fn output() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(out_file, false));
+            ret io::new_reader(io::FILE_buf_reader(out_file, option::none));
         }
         fn err() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(err_file, false));
+            ret io::new_reader(io::FILE_buf_reader(err_file, option::none));
         }
         fn close_input() {
             let invalid_fd = -1;
