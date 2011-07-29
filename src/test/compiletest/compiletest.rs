@@ -700,7 +700,7 @@ mod procsrv {
 
     fn worker(p: port[request]) {
 
-        // FIXME: If we declare this inside of the while loop and then
+        // FIXME (787): If we declare this inside of the while loop and then
         // break out of it before it's ever initialized (i.e. we don't run
         // any tests), then the cleanups will puke, so we're initializing it
         // here with defaults.
@@ -719,7 +719,7 @@ mod procsrv {
             // everything and let the originals go out of scope before sending
             // a response.
             execparms = {
-                // FIXME: The 'discriminant' of an alt expression has the
+                // FIXME (785): The 'discriminant' of an alt expression has the
                 // same scope as the alt expression itself, so we have to put
                 // the entire alt in another block to make sure the exec
                 // message goes out of scope. Seems like the scoping rules for
