@@ -287,9 +287,9 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
 
-        let params_opt_and_ty = getter(id);
-        if ivec::len(params_opt_and_ty.kinds) == 0u {
-            ret params_opt_and_ty.ty;
+        let ty_param_kinds_and_ty = getter(id);
+        if ivec::len(ty_param_kinds_and_ty.kinds) == 0u {
+            ret ty_param_kinds_and_ty.ty;
         }
         // The typedef is type-parametric. Do the type substitution.
         //
@@ -299,14 +299,14 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
             param_bindings += ~[ast_ty_to_ty(tcx, getter, ast_ty)];
         }
         if ivec::len(param_bindings) !=
-               ty::count_ty_params(tcx, params_opt_and_ty.ty) {
+            ivec::len(ty_param_kinds_and_ty.kinds) {
             tcx.sess.span_fatal(sp,
                                 "Wrong number of type arguments for a \
-                                polymorphic tag");
+                                 polymorphic type");
         }
         let typ =
             ty::substitute_type_params(tcx, param_bindings,
-                                       params_opt_and_ty.ty);
+                                       ty_param_kinds_and_ty.ty);
         ret typ;
     }
     let typ;
