@@ -105,7 +105,7 @@ check-stage$(2)-std: test/stdtest.stage$(2).out \
 test/stdtest.stage$(2)$$(X): $$(STDTEST_CRATE) $$(STDTEST_INPUTS) \
                              $$(SREQ$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE1) -o $$@ $$< --test
+	$$(STAGE$(2)) -o $$@ $$< --test
 
 test/stdtest.stage$(2).out.tmp: test/stdtest.stage$(2)$$(X)
 	@$$(call E, run: $$<)
