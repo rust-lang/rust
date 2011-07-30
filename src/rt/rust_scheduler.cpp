@@ -4,7 +4,6 @@
 #include "globals.h"
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
-                               rust_message_queue *message_queue,
                                rust_srv *srv,
                                int id) :
     interrupt_flag(0),
@@ -19,7 +18,6 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     dead_tasks(this, "dead"),
     cache(this),
     kernel(kernel),
-    message_queue(message_queue),
     id(id),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env)
@@ -109,21 +107,6 @@ rust_scheduler::reap_dead_tasks(int id) {
 }
 
 /**
- * Drains and processes incoming pending messages.
- */
-void rust_scheduler::drain_incoming_message_queue(bool process) {
-    rust_message *message;
-    while (message_queue->dequeue(&message)) {
-        DLOG(this, comm, "<== receiving \"%s\" " PTR,
-            message->label, message);
-        if (process) {
-            message->process();
-        }
-        delete message;
-    }
-}
-
-/**
  * Schedules a running task for execution. Only running tasks can be
  * activated.  Blocked tasks have to be unblocked before they can be
  * activated.
@@ -207,8 +190,6 @@ rust_scheduler::start_main_loop() {
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
              id, number_of_live_tasks(), kernel->live_tasks);
 
-        drain_incoming_message_queue(true);
-
         rust_task *scheduled_task = schedule_task(id);
 
         if (scheduled_task == NULL) {
@@ -259,18 +240,14 @@ rust_scheduler::start_main_loop() {
          "terminated scheduler loop, reaping dead tasks ...");
 
     while (dead_tasks.length() > 0) {
-        if (message_queue->is_empty()) {
-            DLOG(this, dom,
-                "waiting for %d dead tasks to become dereferenced, "
-                "scheduler yielding ...",
-                dead_tasks.length());
-            log_state();
-            lock.unlock();
-            sync::yield();
-            lock.lock();
-        } else {
-            drain_incoming_message_queue(true);
-        }
+        DLOG(this, dom,
+             "waiting for %d dead tasks to become dereferenced, "
+             "scheduler yielding ...",
+             dead_tasks.length());
+        log_state();
+        lock.unlock();
+        sync::yield();
+        lock.lock();
         reap_dead_tasks(id);
     }
 

@@ -169,9 +169,7 @@ upcall_clone_chan(rust_task *task, rust_task *target,
 extern "C" CDECL rust_task *
 upcall_chan_target_task(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
-    I(task->sched, !chan->port->is_proxy());
-
-    return chan->port->referent()->task;
+    return chan->port->task;
 }
 
 extern "C" CDECL void
@@ -204,9 +202,9 @@ upcall_send(rust_task *task, rust_chan *chan, void *sptr) {
 
 extern "C" CDECL void
 upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
+    LOG_UPCALL_ENTRY(task);
     {
         scoped_lock with(port->lock);
-        LOG_UPCALL_ENTRY(task);
 
         LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
             ", size: 0x%" PRIxPTR ", chan_no: %d",

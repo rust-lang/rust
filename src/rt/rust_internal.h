@@ -219,9 +219,7 @@ public:
 #include "memory_region.h"
 #include "rust_srv.h"
 #include "rust_log.h"
-#include "rust_proxy.h"
 #include "rust_kernel.h"
-#include "rust_message.h"
 #include "rust_scheduler.h"
 
 struct rust_timer {

@@ -1,10 +1,11 @@
 #ifndef RUST_PORT_H
 #define RUST_PORT_H
 
-class rust_port : public maybe_proxy<rust_port>,
-                  public kernel_owned<rust_port> {
+class rust_port : public kernel_owned<rust_port>, public rust_cond {
 
 public:
+    RUST_REFCOUNTED(rust_port);
+
     rust_kernel *kernel;
     rust_task *task;
     size_t unit_sz;
