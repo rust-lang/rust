@@ -526,7 +526,6 @@ extern "C" CDECL rust_task *
 upcall_new_task(rust_task *spawner, rust_vec *name) {
     // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
-    scoped_lock with(spawner->sched->lock);
     rust_task *task =
         spawner->kernel->create_task(spawner, (const char *)name->data);
     task->ref();
