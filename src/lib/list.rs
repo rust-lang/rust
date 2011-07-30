@@ -55,7 +55,7 @@ fn has[@T](ls_: &list[T], elt: &T) -> bool {
 
 }
 
-fn length[T](ls: &list[T]) -> uint {
+fn length[@T](ls: &list[T]) -> uint {
     fn count[T](t: &T, u: &uint) -> uint { ret u + 1u; }
     ret foldl[T, uint](ls, 0u, bind count[T](_, _));
 }

@@ -25,8 +25,8 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     let initial_capacity: uint = 32u; // 2^5
 
     let load_factor: util::rational = {num: 3, den: 4};
-    tag bucket[K, V] { nil; deleted; some(K, V); }
-    fn make_buckets[K, V](nbkts: uint) -> (bucket[K, V])[mutable ] {
+    tag bucket[@K, @V] { nil; deleted; some(K, V); }
+    fn make_buckets[@K, @V](nbkts: uint) -> (bucket[K, V])[mutable ] {
         ret ivec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
     // Derive two hash functions from the one given by taking the upper

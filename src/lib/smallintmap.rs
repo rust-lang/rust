@@ -9,32 +9,32 @@ import option::some;
 // to be.
 type smallintmap[T] = @{mutable v: (option::t[T])[mutable ]};
 
-fn mk[T]() -> smallintmap[T] {
+fn mk[@T]() -> smallintmap[T] {
     let v: (option::t[T])[mutable ] = ~[mutable ];
     ret @{mutable v: v};
 }
 
-fn insert[T](m: &smallintmap[T], key: uint, val: &T) {
+fn insert[@T](m: &smallintmap[T], key: uint, val: &T) {
     ivec::grow_set[option::t[T]](m.v, key, none[T], some[T](val));
 }
 
-fn find[T](m: &smallintmap[T], key: uint) -> option::t[T] {
+fn find[@T](m: &smallintmap[T], key: uint) -> option::t[T] {
     if key < ivec::len[option::t[T]](m.v) { ret m.v.(key); }
     ret none[T];
 }
 
-fn get[T](m: &smallintmap[T], key: uint) -> T {
+fn get[@T](m: &smallintmap[T], key: uint) -> T {
     alt find[T](m, key) {
       none[T]. { log_err "smallintmap::get(): key not present"; fail; }
       some[T](v) { ret v; }
     }
 }
 
-fn contains_key[T](m: &smallintmap[T], key: uint) -> bool {
+fn contains_key[@T](m: &smallintmap[T], key: uint) -> bool {
     ret !option::is_none(find[T](m, key));
 }
 
-fn truncate[T](m: &smallintmap[T], len: uint) {
+fn truncate[@T](m: &smallintmap[T], len: uint) {
     m.v = ivec::slice_mut[option::t[T]](m.v, 0u, len);
 }
 

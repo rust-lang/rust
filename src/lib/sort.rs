@@ -12,7 +12,7 @@ export quick_sort3;
 type lteq[T] = fn(&T, &T) -> bool ;
 
 fn merge_sort[@T](le: lteq[T], v: vec[T]) -> vec[T] {
-    fn merge[T](le: lteq[T], a: vec[T], b: vec[T]) -> vec[T] {
+    fn merge[@T](le: lteq[T], a: vec[T], b: vec[T]) -> vec[T] {
         let rs: vec[T] = [];
         let a_len: uint = len[T](a);
         let a_ix: uint = 0u;

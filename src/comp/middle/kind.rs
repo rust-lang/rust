@@ -74,6 +74,8 @@
 import syntax::ast;
 import syntax::visit;
 
+import std::ivec;
+
 import ast::kind;
 import ast::kind_unique;
 import ast::kind_shared;
@@ -138,10 +140,31 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
-      ast::expr_call(callee, args) {
-        // FIXME: when ready, start checking param kinds against args.
-        // This will break stdlib again.
-        // let tpt = ty::expr_ty_params_and_ty(tcx, callee);
+      ast::expr_call(callee, _) {
+        let tpt = ty::expr_ty_params_and_ty(tcx, callee);
+        // If we have typarams, we're calling an item; we need to check
+        // that all the types we're supplying as typarams conform to the
+        // typaram kind constraints on that item.
+        if ivec::len(tpt.params) != 0u {
+            let callee_def = ast::def_id_of_def(tcx.def_map.get(callee.id));
+            let item_tk = ty::lookup_item_type(tcx, callee_def);
+            let i = 0;
+            assert ivec::len(item_tk.kinds) == ivec::len(tpt.params);
+            for k_need: ast::kind in item_tk.kinds {
+                let t = tpt.params.(i);
+                let k = ty::type_kind(tcx, t);
+                if ! kind_lteq(k_need, k) {
+                    let s = #fmt("mismatched kinds for typaram %d: \
+                                  needed %s type, got %s type %s",
+                                 i,
+                                 kind_to_str(k_need),
+                                 kind_to_str(k),
+                                 util::ppaux::ty_to_str(tcx, t));
+                    tcx.sess.span_err(e.span, s);
+                }
+                i += 1;
+            }
+        }
       }
       _ { }
     }

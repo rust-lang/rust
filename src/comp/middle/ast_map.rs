@@ -47,7 +47,7 @@ fn map_expr(map: &map, ex: &@expr, e: &(), v: &vt[()]) {
     visit::visit_expr(ex, e, v);
 }
 
-fn new_smallintmap_int_adapter[V]() -> std::map::hashmap[int, V] {
+fn new_smallintmap_int_adapter[@V]() -> std::map::hashmap[int, V] {
     let key_idx = fn (key: &int) -> uint { key as uint };
     let idx_key = fn (idx: &uint) -> int { idx as int };
     ret new_smallintmap_adapter(key_idx, idx_key);
@@ -58,15 +58,15 @@ fn new_smallintmap_int_adapter[V]() -> std::map::hashmap[int, V] {
 // the entire codebase adapting all the callsites to the different
 // interface.
 // FIXME: hashmap and smallintmap should support the same interface.
-fn new_smallintmap_adapter[K,
-                           V](key_idx: fn(&K) -> uint ,
-                              idx_key: fn(&uint) -> K ) ->
+fn new_smallintmap_adapter[@K,
+                           @V](key_idx: fn(&K) -> uint ,
+                               idx_key: fn(&uint) -> K ) ->
    std::map::hashmap[K, V] {
 
-    obj adapter[K,
-                V](map: smallintmap::smallintmap[V],
-                   key_idx: fn(&K) -> uint ,
-                   idx_key: fn(&uint) -> K ) {
+    obj adapter[@K,
+                @V](map: smallintmap::smallintmap[V],
+                    key_idx: fn(&K) -> uint ,
+                    idx_key: fn(&uint) -> K ) {
 
         fn size() -> uint { fail }
 
