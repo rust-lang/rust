@@ -3671,8 +3671,8 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     // ourselves) into a vector.  The whole things ends up looking
     // like:
 
-    // closure_tys = [tydesc_ty, outgoing_fty, [bound_ty1, bound_ty2,
-    // ...], [tydesc_ty, tydesc_ty, ...]]
+    // closure_tys = [tydesc_ty, [bound_ty1, bound_ty2, ...], [tydesc_ty,
+    // tydesc_ty, ...]]
     let closure_tys: ty::t[] =
         ~[tydesc_ty, bindings_ty, ty::mk_imm_tup(bcx_tcx(bcx), captured_tys)];
 
@@ -3697,22 +3697,27 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     // Copy expr values into boxed bindings.
     let i = 0u;
     let bindings =
-        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+        GEP_tup_like(bcx, closure_ty, closure,
+                     ~[0, abi::closure_elt_bindings]);
+    bcx = bindings.bcx;
     for lv: lval_result  in bound_vals {
-        let bound = bcx.build.GEP(bindings, ~[C_int(0), C_int(i as int)]);
-        bcx = move_val_if_temp(bcx, INIT, bound, lv, bound_tys.(i)).bcx;
+        let bound = GEP_tup_like(bcx, bindings_ty, bindings.val,
+                                 ~[0, i as int]);
+        bcx = move_val_if_temp(bound.bcx, INIT,
+                               bound.val, lv, bound_tys.(i)).bcx;
         i += 1u;
     }
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
     let ty_params_slot =
-        bcx.build.GEP(closure,
-                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+        GEP_tup_like(bcx, closure_ty, closure,
+                     ~[0, abi::closure_elt_ty_params]);
+    bcx = ty_params_slot.bcx;
     i = 0u;
     for td: ValueRef  in lltydescs {
         let ty_param_slot =
-            bcx.build.GEP(ty_params_slot, ~[C_int(0), C_int(i as int)]);
+            bcx.build.GEP(ty_params_slot.val, ~[C_int(0), C_int(i as int)]);
         bcx.build.Store(td, ty_param_slot);
         i += 1u;
     }
@@ -3802,34 +3807,33 @@ fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
                          envty: &ty::t, upvars: &@ast::node_id[]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
-    let llenvptr =
-        bcx.build.GEP(fcx.llenv, ~[C_int(0), C_int(abi::box_rc_field_body)]);
-    let llenvptrty = T_ptr(type_of(bcx_ccx(bcx), bcx.sp, envty));;
-    llenvptr = bcx.build.PointerCast(llenvptr, llenvptrty);
+    let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
+    let llty = type_of(bcx_ccx(bcx), bcx.sp, ty);
+    let llclosure = bcx.build.PointerCast(fcx.llenv, llty);
+
+    let path = ~[0, abi::box_rc_field_body];
 
     // Populate the upvars from the environment.
-    let llbindingsptr =
-        bcx.build.GEP(llenvptr,
-                      ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+    let bindings_path = path + ~[abi::closure_elt_bindings];
     let i = 0u;
     for upvar_id: ast::node_id  in *upvars {
         let llupvarptr =
-            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(i as int)]);
+            GEP_tup_like(bcx, ty, llclosure, bindings_path + ~[i as int]);
+        bcx = llupvarptr.bcx;
         let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
-        fcx.llupvars.insert(def_id.node, llupvarptr);
+        fcx.llupvars.insert(def_id.node, llupvarptr.val);
         i += 1u;
     }
 
     // Populate the type parameters from the environment.
-    let lltydescsptr =
-        bcx.build.GEP(llenvptr,
-                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
     let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
+    let tydesc_path = path + ~[abi::closure_elt_ty_params];
     i = 0u;
     while i < tydesc_count {
         let lltydescptr =
-            bcx.build.GEP(lltydescsptr, ~[C_int(0), C_int(i as int)]);
-        fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
+            GEP_tup_like(bcx, ty, llclosure, tydesc_path + ~[i as int]);
+        bcx = lltydescptr.bcx;
+        fcx.lltydescs += ~[bcx.build.Load(lltydescptr.val)];
         i += 1u;
     }
 }
@@ -4442,7 +4446,7 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 
 fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     outgoing_fty: &ty::t, args: &(option::t[@ast::expr])[],
-                    closure_ty: &ty::t, bound_tys: &ty::t[],
+                    env_ty: &ty::t, bound_tys: &ty::t[],
                     ty_param_count: uint) -> {val: ValueRef, ty: TypeRef} {
 
     // Here we're not necessarily constructing a thunk in the sense of
@@ -4491,8 +4495,8 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
 
     // The llenv pointer needs to be the correct size.  That size is
     // 'closure_ty', which was determined by trans_bind.
-    let llclosure_ptr_ty =
-        type_of(cx.ccx, sp, ty::mk_imm_box(cx.ccx.tcx, closure_ty));
+    let closure_ty = ty::mk_imm_box(cx.ccx.tcx, env_ty);
+    let llclosure_ptr_ty = type_of(cx.ccx, sp, closure_ty);
     let llclosure =
         copy_args_bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
 
