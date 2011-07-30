@@ -5,11 +5,15 @@ debug_box
 debug_fn
 debug_obj
 debug_opaque
+del_chan
+del_port
 debug_ptrcast
 debug_tag
 debug_trap
 debug_tydesc
 do_gc
+drop_chan
+drop_port
 get_time
 hack_allow_leaks
 ivec_copy_from_buf
@@ -20,6 +24,8 @@ ivec_reserve_shared
 ivec_to_ptr
 last_os_error
 nano_time
+new_chan
+new_port
 pin_task
 unpin_task
 rand_free

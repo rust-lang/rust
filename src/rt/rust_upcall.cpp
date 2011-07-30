@@ -96,39 +96,32 @@ upcall_trace_str(rust_task *task, char const *c) {
 }
 
 extern "C" CDECL rust_port*
+new_port(rust_task *task, size_t unit_sz);
+extern "C" CDECL rust_port*
 upcall_new_port(rust_task *task, size_t unit_sz) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, comm, "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
-    // take a reference on behalf of the port
-    task->ref();
-    return new (task->kernel, "rust_port") rust_port(task, unit_sz);
+    return new_port(task, unit_sz);
 }
 
 extern "C" CDECL void
+del_port(rust_task *task, rust_port *port);
+extern "C" CDECL void
 upcall_del_port(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
-    LOG(task, comm, "upcall del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    I(task->sched, !port->ref_count);
-    delete port;
-
-    // FIXME: this should happen in the port.
-    task->deref();
+    return del_port(task, port);
 }
 
 /**
  * Creates a new channel pointing to a given port.
  */
 extern "C" CDECL rust_chan*
+new_chan(rust_task *task, rust_port *port);
+extern "C" CDECL rust_chan*
 upcall_new_chan(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
-    rust_scheduler *sched = task->sched;
-    LOG(task, comm, "upcall_new_chan("
-        "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
-        (uintptr_t) task, task->name, port);
-    I(sched, port);
-    return new (task->kernel, "rust_chan")
-        rust_chan(task->kernel, port, port->unit_sz);
+    return new_chan(task, port);
 }
 
 /**
@@ -148,11 +141,11 @@ upcall_flush_chan(rust_task *task, rust_chan *chan) {
  * appear to be live, causing modify-after-free errors.
  */
 extern "C" CDECL
+void del_chan(rust_task *task, rust_chan *chan);
+extern "C" CDECL
 void upcall_del_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
-
-    LOG(task, comm, "upcall del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
-    chan->destroy();
+    del_chan(task, chan);
 }
 
 /**

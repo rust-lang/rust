@@ -868,6 +868,53 @@ sched_threads(rust_task *task) {
     return task->kernel->num_threads;
 }
 
+extern "C" CDECL rust_port*
+new_port(rust_task *task, size_t unit_sz) {
+    LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
+        (uintptr_t) task, task->name, unit_sz);
+    // take a reference on behalf of the port
+    task->ref();
+    return new (task->kernel, "rust_port") rust_port(task, unit_sz);
+}
+
+extern "C" CDECL void
+del_port(rust_task *task, rust_port *port) {
+    LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
+    I(task->sched, !port->ref_count);
+    delete port;
+
+    // FIXME: this should happen in the port.
+    task->deref();
+}
+
+extern "C" CDECL rust_chan*
+new_chan(rust_task *task, rust_port *port) {
+    rust_scheduler *sched = task->sched;
+    LOG(task, comm, "new_chan("
+        "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
+        (uintptr_t) task, task->name, port);
+    I(sched, port);
+    return new (task->kernel, "rust_chan")
+        rust_chan(task->kernel, port, port->unit_sz);
+}
+
+extern "C" CDECL
+void del_chan(rust_task *task, rust_chan *chan) {
+    LOG(task, comm, "del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
+    chan->destroy();
+}
+
+extern "C" CDECL
+void drop_chan(rust_task *task, rust_chan *chan) {
+    chan->ref_count--;
+}
+
+extern "C" CDECL
+void drop_port(rust_task *, rust_port *port) {
+    port->ref_count--;
+>>>>>>> Started working on a library-based comm system. Creating and deleting ports work.
+}
+
 //
 // Local Variables:
 // mode: C++

@@ -23,6 +23,7 @@ mod io;
 mod ioivec;
 mod sys;
 mod task;
+mod comm;
 
 // Utility modules.
 

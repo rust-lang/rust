@@ -2,6 +2,7 @@ use std;
 
 mod bitv;
 mod box;
+mod comm;
 mod deque;
 mod either;
 mod fs;
