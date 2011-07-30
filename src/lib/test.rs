@@ -99,28 +99,128 @@ fn run_tests_console(opts: &test_opts, tests: &test_desc[]) -> bool {
 fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
                       to_task: &test_to_task) -> bool {
 
+    type test_state = @{
+        out: io::writer,
+        use_color: bool,
+        mutable total: uint,
+        mutable passed: uint,
+        mutable failed: uint,
+        mutable ignored: uint,
+        mutable failures: test_desc[]
+    };
+
+    fn callback(event: testevent, st: test_state) {
+        alt event {
+          te_filtered(filtered_tests) {
+            st.total = ivec::len(filtered_tests);
+            st.out.write_line(#fmt("\nrunning %u tests", st.total));
+          }
+          te_result(test, result) {
+            st.out.write_str(#fmt("test %s ... ", test.name));
+            alt result {
+              tr_ok. {
+                st.passed += 1u;
+                write_ok(st.out, st.use_color);
+                st.out.write_line("");
+              }
+              tr_failed. {
+                st.failed += 1u;
+                write_failed(st.out, st.use_color);
+                st.out.write_line("");
+                st.failures += ~[test];
+              }
+              tr_ignored. {
+                st.ignored += 1u;
+                write_ignored(st.out, st.use_color);
+                st.out.write_line("");
+              }
+            }
+          }
+        }
+    }
+
+    let st = @{
+        out: io::stdout(),
+        use_color: use_color(),
+        mutable total: 0u,
+        mutable passed: 0u,
+        mutable failed: 0u,
+        mutable ignored: 0u,
+        mutable failures: ~[]
+    };
+
+    run_tests(opts, tests, to_task,
+              bind callback(_, st));
+
+    assert st.passed + st.failed + st.ignored == st.total;
+    let success = st.failed == 0u;
+
+    if !success {
+        st.out.write_line("\nfailures:");
+        for test: test_desc in st.failures {
+            let testname = test.name; // Satisfy alias analysis
+            st.out.write_line(#fmt("    %s", testname));
+        }
+    }
+
+    st.out.write_str(#fmt("\nresult: "));
+    if success {
+        write_ok(st.out, st.use_color);
+    } else { write_failed(st.out, st.use_color); }
+    st.out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
+                       st.passed, st.failed, st.ignored));
+
+    ret success;
+
+    fn write_ok(out: &io::writer, use_color: bool) {
+        write_pretty(out, "ok", term::color_green, use_color);
+    }
+
+    fn write_failed(out: &io::writer, use_color: bool) {
+        write_pretty(out, "FAILED", term::color_red, use_color);
+    }
+
+    fn write_ignored(out: &io::writer, use_color: bool) {
+        write_pretty(out, "ignored", term::color_yellow, use_color);
+    }
+
+    fn write_pretty(out: &io::writer, word: &str, color: u8,
+                    use_color: bool) {
+        if use_color && term::color_supported() {
+            term::fg(out.get_buf_writer(), color);
+        }
+        out.write_str(word);
+        if use_color && term::color_supported() {
+            term::reset(out.get_buf_writer());
+        }
+    }
+}
+
+fn use_color() -> bool {
+    ret get_concurrency() == 1u;
+}
+
+tag testevent {
+    te_filtered(test_desc[]);
+    te_result(test_desc, test_result);
+}
+
+fn run_tests(opts: &test_opts, tests: &test_desc[],
+             to_task: &test_to_task, callback: fn(testevent)) {
+
     let filtered_tests = filter_tests(opts, tests);
 
-    let out = io::stdout();
-
-    let total = ivec::len(filtered_tests);
-    out.write_line(#fmt("\nrunning %u tests", total));
-
-    let futures = ~[];
-
-    let passed = 0u;
-    let failed = 0u;
-    let ignored = 0u;
-
-    let failures = ~[];
+    callback(te_filtered(filtered_tests));
 
     // It's tempting to just spawn all the tests at once but that doesn't
     // provide a great user experience because you might sit waiting for the
     // result of a particular test for an unusually long amount of time.
     let concurrency = get_concurrency();
     log #fmt("using %u test tasks", concurrency);
+    let total = ivec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;
+    let futures = ~[];
 
     while wait_idx < total {
         while ivec::len(futures) < concurrency && run_idx < total {
@@ -129,72 +229,10 @@ fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
         }
 
         let future = futures.(0);
-        out.write_str(#fmt("running %s ... ", future.test.name));
         let result = future.wait();
-        alt result {
-          tr_ok. {
-            passed += 1u;
-            write_ok(out, concurrency);
-            out.write_line("");
-          }
-          tr_failed. {
-            failed += 1u;
-            write_failed(out, concurrency);
-            out.write_line("");
-            failures += ~[future.test];
-          }
-          tr_ignored. {
-            ignored += 1u;
-            write_ignored(out, concurrency);
-            out.write_line("");
-          }
-        }
+        callback(te_result(future.test, result));
         futures = ivec::slice(futures, 1u, ivec::len(futures));
         wait_idx += 1u;
-    }
-
-    assert (passed + failed + ignored == total);
-    let success = failed == 0u;
-
-    if !success {
-        out.write_line("\nfailures:");
-        for test: test_desc  in failures {
-            out.write_line(#fmt("    %s", test.name));
-        }
-    }
-
-    out.write_str(#fmt("\nresult: "));
-    if success {
-        write_ok(out, concurrency);
-    } else { write_failed(out, concurrency); }
-    out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n", passed,
-                       failed, ignored));
-
-    ret success;
-
-    fn write_ok(out: &io::writer, concurrency: uint) {
-        write_pretty(out, "ok", term::color_green, concurrency);
-    }
-
-    fn write_failed(out: &io::writer, concurrency: uint) {
-        write_pretty(out, "FAILED", term::color_red, concurrency);
-    }
-
-    fn write_ignored(out: &io::writer, concurrency: uint) {
-        write_pretty(out, "ignored", term::color_yellow, concurrency);
-    }
-
-    fn write_pretty(out: &io::writer, word: &str, color: u8,
-                    concurrency: uint) {
-        // In the presence of concurrency, outputing control characters
-        // can cause some crazy artifacting
-        if concurrency == 1u && term::color_supported() {
-            term::fg(out.get_buf_writer(), color);
-        }
-        out.write_str(word);
-        if concurrency == 1u && term::color_supported() {
-            term::reset(out.get_buf_writer());
-        }
     }
 }
 
