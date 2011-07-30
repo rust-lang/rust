@@ -136,7 +136,6 @@ int rust_kernel::start_task_threads()
 rust_task *
 rust_kernel::create_task(rust_task *spawner, const char *name) {
     rust_scheduler *thread = threads[rand(&rctx) % num_threads];
-    scoped_lock with(thread->lock);
     return thread->create_task(spawner, name);
 }
 
