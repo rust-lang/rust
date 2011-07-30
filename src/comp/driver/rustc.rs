@@ -86,15 +86,24 @@ fn parse_cfgspecs(cfgspecs: &vec[str]) -> ast::crate_cfg {
     ret words;
 }
 
+fn input_is_stdin(filename: str) -> bool { filename == "-" }
+
 fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
    @ast::crate {
-    ret if str::ends_with(input, ".rc") {
-            parser::parse_crate_from_crate_file(input, cfg,
-                                                sess.get_parse_sess())
-        } else if (str::ends_with(input, ".rs")) {
-            parser::parse_crate_from_source_file(input, cfg,
-                                                 sess.get_parse_sess())
-        } else { sess.fatal("unknown input file type: " + input) };
+    if !input_is_stdin(input) {
+        parser::parse_crate_from_file(input, cfg, sess.get_parse_sess())
+    } else {
+        parse_input_src(sess, cfg, input).crate
+    }
+}
+
+fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
+                   infile: str) -> {crate: @ast::crate, src: str} {
+    let srcbytes = ioivec::stdin().read_whole_stream();
+    let src = str::unsafe_from_bytes_ivec(srcbytes);
+    let crate = parser::parse_crate_from_source_str(infile, src, cfg,
+                                                    sess.get_codemap());
+    ret {crate: crate, src: src};
 }
 
 fn time[T](do_it: bool, what: str, thunk: fn() -> T ) -> T {
@@ -195,7 +204,14 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         }
     }
 
-    let crate = parse_input(sess, cfg, input);
+    // Because the pretty printer needs to make a pass over the source
+    // to collect comments and literals, and we need to support reading
+    // from stdin, we're going to just suck the source into a string
+    // so both the parser and pretty-printer can use it.
+    let crate_src = parse_input_src(sess, cfg, input);
+    let crate = crate_src.crate;
+    let src = crate_src.src;
+
     if expand { crate = syntax::ext::expand::expand_crate(sess, crate); }
     let ann;
     alt ppm {
@@ -213,7 +229,7 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       ppm_normal. { ann = pprust::no_ann(); }
     }
     pprust::print_crate(sess.get_codemap(), crate, input,
-                        ioivec::file_reader(input), ioivec::stdout(), ann);
+                        ioivec::string_reader(src), ioivec::stdout(), ann);
 }
 
 fn version(argv0: str) {
@@ -484,7 +500,13 @@ fn main(args: vec[str]) {
 
     alt output_file {
       none. {
-        let parts: vec[str] = str::split(ifile, '.' as u8);
+        // "-" as input file will cause the parser to read from stdin so we
+        // have to make up a name
+        let parts: vec[str] = if !input_is_stdin(ifile) {
+            str::split(ifile, '.' as u8)
+        } else {
+            ["default", "rs"]
+        };
         vec::pop[str](parts);
         saved_out_filename = parts.(0);
         alt sopts.output_type {

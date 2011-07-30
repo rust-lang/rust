@@ -9,6 +9,7 @@ import syntax::parse::parser::parser;
 import syntax::parse::parser::new_parser_from_file;
 import syntax::parse::parser::parse_inner_attrs_and_next;
 import syntax::parse::parser::parse_mod_items;
+import syntax::parse::parser::SOURCE_FILE;
 
 export eval_crate_directives_to_mod;
 export mode_parse;
@@ -55,7 +56,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         if cx.mode == mode_depend { cx.deps += ~[full_path]; ret; }
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
-                                 cx.byte_pos);
+                                 cx.byte_pos, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);
         let mod_attrs = attrs + inner_attrs.inner;
         let first_item_outer_attrs = inner_attrs.next;

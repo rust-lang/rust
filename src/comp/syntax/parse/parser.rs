@@ -58,10 +58,10 @@ type parser =
         fn get_sess() -> parse_sess ;
     };
 
-fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
-                        chpos: uint, byte_pos: uint) -> parser {
-    let ftype = SOURCE_FILE;
-    if str::ends_with(path, ".rc") { ftype = CRATE_FILE; }
+fn new_parser_from_file(sess: parse_sess, cfg:
+                        ast::crate_cfg, path: str,
+                        chpos: uint, byte_pos: uint,
+                        ftype: file_type) -> parser {
     let srdr = ioivec::file_reader(path);
     let src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
@@ -2313,7 +2313,7 @@ fn parse_native_view(p: &parser) -> (@ast::view_item)[] {
 
 fn parse_crate_from_source_file(input: &str, cfg: &ast::crate_cfg,
                                 sess: &parse_sess) -> @ast::crate {
-    let p = new_parser_from_file(sess, cfg, input, 0u, 0u);
+    let p = new_parser_from_file(sess, cfg, input, 0u, 0u, SOURCE_FILE);
     ret parse_crate_mod(p, cfg, sess);
 }
 
@@ -2430,7 +2430,7 @@ fn parse_crate_directives(p: &parser, term: token::token,
 
 fn parse_crate_from_crate_file(input: &str, cfg: &ast::crate_cfg,
                                sess: &parse_sess) -> @ast::crate {
-    let p = new_parser_from_file(sess, cfg, input, 0u, 0u);
+    let p = new_parser_from_file(sess, cfg, input, 0u, 0u, CRATE_FILE);
     let lo = p.get_lo_pos();
     let prefix = std::fs::dirname(p.get_filemap().name);
     let leading_attrs = parse_inner_attrs_and_next(p);
@@ -2455,6 +2455,21 @@ fn parse_crate_from_crate_file(input: &str, cfg: &ast::crate_cfg,
                   attrs: crate_attrs,
                   config: p.get_cfg()});
 }
+
+fn parse_crate_from_file(input: &str, cfg: &ast::crate_cfg,
+                         sess: &parse_sess) -> @ast::crate {
+    if str::ends_with(input, ".rc") {
+        parse_crate_from_crate_file(input, cfg, sess)
+    } else if str::ends_with(input, ".rs") {
+        parse_crate_from_source_file(input, cfg, sess)
+    } else {
+        codemap::emit_error(none,
+                            "unknown input file type: " + input,
+                            sess.cm);
+        fail
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

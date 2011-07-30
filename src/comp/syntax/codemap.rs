@@ -93,8 +93,19 @@ fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,
         termivec::reset(ioivec::stdout().get_buf_writer());
     }
     ioivec::stdout().write_str(#fmt(" %s\n", msg));
+
+    maybe_highlight_lines(sp, cm, maybe_lines);
+}
+
+fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
+                         maybe_lines: option::t[@file_lines]) {
+
     alt maybe_lines {
       some(lines) {
+        // If we're not looking at a real file then we can't re-open it to
+        // pull out the lines
+        if lines.name == "-" { ret; }
+
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
         let rdr = ioivec::file_reader(lines.name);
