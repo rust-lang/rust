@@ -204,8 +204,9 @@ test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
 
 endef
 
-# Instantiate the template for stage 1, 2, 3
+# Instantiate the template for stage 0, 1, 2, 3
 
+$(eval $(call TEST_STAGEN,0,0))
 $(eval $(call TEST_STAGEN,0,1))
 $(eval $(call TEST_STAGEN,1,2))
 $(eval $(call TEST_STAGEN,2,3))
