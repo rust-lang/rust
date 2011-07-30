@@ -4,7 +4,6 @@ export _chan;
 export _port;
 
 export mk_port;
-export mk_chan;
 
 native "rust" mod rustrt {
     type rust_chan;
@@ -26,23 +25,27 @@ resource chan_ptr(ch: *rustrt::rust_chan) {
     rustrt::del_chan(ch);
 }
 
-tag _chan[T] { _chan(@chan_dtor); }
-
 resource port_ptr(po: *rustrt::rust_port) {
     rustrt::drop_port(po);
     rustrt::del_port(po);
 }
 
-tag _port[T] { _port(@port_dtor); }
+obj _chan[T](raw_chan : @chan_ptr) {
+    fn send(v : &T) {
 
-fn mk_port[T]() -> _port[T] {
-    _port(@port_dtor(rustrt::new_port(sys::size_of[T]())))
+    }
 }
 
-fn mk_chan[T](po : &_port[T]) -> _chan[T] {
-    alt po {
-      _port(_po) {
-        _chan(@chan_dtor(rustrt::new_chan(**_po)))
-      }
+obj _port[T](raw_port : @port_ptr) {
+    fn mk_chan() -> _chan[T] {
+        _chan(@chan_ptr(rustrt::new_chan(**raw_port)))
     }
+
+    fn recv_into(v : &T) {
+
+    }
+}
+
+fn mk_port[T]() -> _port[T] {
+    _port(@port_ptr(rustrt::new_port(sys::size_of[T]())))
 }

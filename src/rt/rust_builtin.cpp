@@ -912,7 +912,6 @@ void drop_chan(rust_task *task, rust_chan *chan) {
 extern "C" CDECL
 void drop_port(rust_task *, rust_port *port) {
     port->ref_count--;
->>>>>>> Started working on a library-based comm system. Creating and deleting ports work.
 }
 
 //
