@@ -47,7 +47,6 @@ mod middle {
 mod syntax {
     mod ast;
     mod fold;
-    mod walk;
     mod visit;
     mod codemap;
     mod parse {
