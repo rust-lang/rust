@@ -16,7 +16,7 @@ import std::option;
 
 import rustc::syntax::ast;
 import rustc::syntax::fold;
-import rustc::syntax::walk;
+import rustc::syntax::visit;
 import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
@@ -102,10 +102,10 @@ fn steal_exprs(crate: &ast::crate) -> ast::expr[] {
             *es += ~[*e];
         } else {/* now my indices are wrong :( */ }
     }
-    let v =
-        {visit_expr_pre: bind stash_expr(exprs, _)
-            with walk::default_visitor()};
-    walk::walk_crate(v, crate);
+    let v = visit::mk_simple_visitor
+        (@{visit_expr: bind stash_expr(exprs, _)
+           with *visit::default_simple_visitor()});
+    visit::visit_crate(crate, (), v);
     *exprs
 }
 
