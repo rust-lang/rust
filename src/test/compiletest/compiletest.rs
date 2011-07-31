@@ -17,12 +17,7 @@ import util::logv;
 
 fn main(args: vec[str]) {
 
-    let ivec_args =
-        {
-            let ivec_args = ~[];
-            for arg: str  in args { ivec_args += ~[arg]; }
-            ivec_args
-        };
+    let ivec_args = ivec::from_vec(args);
 
     let config = parse_config(ivec_args);
     log_config(config);
