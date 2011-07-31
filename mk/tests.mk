@@ -142,6 +142,8 @@ check-stage$(2)-rpass: test/run-pass.stage$(2).out \
 
 check-stage$(2)-bench: test/bench.stage$(2).out \
 
+check-stage$(2)-pretty: test/pretty.stage$(2).out \
+
 CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2) \
                          --run-lib-path stage$(2)/lib \
                          --rustc-path stage$(2)/rustc$$(X) \
@@ -172,6 +174,11 @@ BENCH_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --mode run-pass \
                   $$(CTEST_RUNTOOL) \
 
+PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                   --src-base $$(S)src/test/run-pass/ \
+                   --build-base test/run-pass/ \
+                   --mode pretty \
+
 test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
                                  $$(COMPILETEST_INPUTS) \
                                  $$(SREQ$(2))
@@ -200,6 +207,12 @@ test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                             $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(BENCH_ARGS$(2))
+	$$(Q)touch $$@
+
+test/pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                            $$(RPASS_TESTS)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(PRETTY_ARGS$(2))
 	$$(Q)touch $$@
 
 endef

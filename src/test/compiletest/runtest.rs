@@ -10,6 +10,7 @@ import std::test;
 import common::mode_run_pass;
 import common::mode_run_fail;
 import common::mode_compile_fail;
+import common::mode_pretty;
 import common::cx;
 import common::config;
 import header::load_props;
@@ -30,6 +31,7 @@ fn run(cx: &cx, testfile: &str) {
       mode_compile_fail. { run_cfail_test(cx, props, testfile); }
       mode_run_fail. { run_rfail_test(cx, props, testfile); }
       mode_run_pass. { run_rpass_test(cx, props, testfile); }
+      mode_pretty. { run_pretty_test(cx, props, testfile); }
     }
 }
 
@@ -70,6 +72,9 @@ fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
 
 
     if procres.status != 0 { fatal_procres("test run failed!", procres); }
+}
+
+fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
 }
 
 fn check_error_patterns(props: &test_props, testfile: &str,

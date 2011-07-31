@@ -12,6 +12,7 @@ import common::config;
 import common::mode_run_pass;
 import common::mode_run_fail;
 import common::mode_compile_fail;
+import common::mode_pretty;
 import common::mode;
 import util::logv;
 
@@ -89,6 +90,7 @@ fn str_mode(s: str) -> mode {
       "compile-fail" { mode_compile_fail }
       "run-fail" { mode_run_fail }
       "run-pass" { mode_run_pass }
+      "pretty" { mode_pretty }
       _ { fail "invalid mode" }
     }
 }
@@ -98,6 +100,7 @@ fn mode_str(mode: mode) -> str {
       mode_compile_fail. { "compile-fail" }
       mode_run_fail. { "run-fail" }
       mode_run_pass. { "run-pass" }
+      mode_pretty. { "pretty" }
     }
 }
 
@@ -136,9 +139,13 @@ fn is_test(testfile: &str) -> bool {
 
 fn make_test(cx: &cx, testfile: &str, configport: &port[str]) ->
    test::test_desc {
-    {name: testfile,
+    {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
             ignore: header::is_test_ignored(cx.config.stage_id, testfile)}
+}
+
+fn make_test_name(config: &config, testfile: &str) -> str {
+    #fmt("[%s] %s", mode_str(config.mode), testfile)
 }
 
 /*
