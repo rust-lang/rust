@@ -169,7 +169,7 @@ fn make_test_name(config: &config, testfile: &str) -> str {
 So this is kind of crappy:
 
 A test is just defined as a function, as you might expect, but tests have to
-run their own tasks. Unfortunately, if your test needs dynamic data then it
+run in their own tasks. Unfortunately, if your test needs dynamic data then it
 needs to be a closure, and transferring closures across tasks without
 committing a host of memory management transgressions is just impossible.
 
