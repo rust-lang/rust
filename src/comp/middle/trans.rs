@@ -24,7 +24,6 @@ import std::option::none;
 import std::fs;
 import std::time;
 import syntax::ast;
-import syntax::walk;
 import driver::session;
 import middle::ty;
 import middle::freevars::*;

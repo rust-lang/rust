@@ -14,7 +14,6 @@ import std::option::some;
 import std::option::none;
 import std::fs;
 import syntax::ast;
-import syntax::walk;
 import driver::session;
 import middle::ty;
 import back::link;
