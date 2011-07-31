@@ -125,16 +125,33 @@ fn make_tests(cx: &cx) -> tests_and_conv_fn {
     let tests = ~[];
     for file: str  in fs::list_dir(cx.config.src_base) {
         log #fmt("inspecting file %s", file);
-        if is_test(file) { tests += ~[make_test(cx, file, configport)]; }
+        if is_test(cx.config, file) {
+            tests += ~[make_test(cx, file, configport)];
+        }
     }
     ret {tests: tests, to_task: bind closure_to_task(cx, configport, _)};
 }
 
-fn is_test(testfile: &str) -> bool {
+fn is_test(config: &config, testfile: &str) -> bool {
+    // Pretty-printer does not work with .rc files yet
+    let valid_extensions = alt config.mode {
+      mode_pretty. { ~[".rs"] }
+      _ { ~[".rc", ".rs"] }
+    };
+    let invalid_prefixes = ~[".", "#", "~"];
     let name = fs::basename(testfile);
-    (str::ends_with(name, ".rs") || str::ends_with(name, ".rc")) &&
-        !(str::starts_with(name, ".") || str::starts_with(name, "#") ||
-              str::starts_with(name, "~"))
+
+    let valid = false;
+
+    for ext in valid_extensions {
+        if str::ends_with(name, ext) { valid = true }
+    }
+
+    for pre in invalid_prefixes {
+        if str::starts_with(name, pre) { valid = false }
+    }
+
+    ret valid;
 }
 
 fn make_test(cx: &cx, testfile: &str, configport: &port[str]) ->
