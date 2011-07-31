@@ -121,7 +121,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     let time_passes = sess.get_opts().time_passes;
     let crate =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
-    if sess.get_opts().output_type == link::output_type_none { ret; }
+    if sess.get_opts().parse_only { ret; }
     crate =
         time(time_passes, "configuration",
              bind front::config::strip_unconfigured_items(crate));
@@ -158,6 +158,7 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
          bind middle::alias::check_crate(ty_cx, crate));
     time[()](time_passes, "kind checking",
              bind kind::check_crate(ty_cx, crate));
+    if sess.get_opts().no_trans { ret; }
     let llmod =
         time[llvm::llvm::ModuleRef](time_passes, "translation",
                                     bind trans::trans_crate(sess, crate,
@@ -258,6 +259,7 @@ options:
     --noverify         suppress LLVM verification step (slight speedup)
     --depend           print dependencies, in makefile-rule form
     --parse-only       parse only; do not compile, assemble, or link
+    --no-trans         run all passes except translation; no output
     -g                 produce debug info
     --OptLevel=        optimize with possible levels 0-3
     -O                 equivalent to --OptLevel=2
@@ -330,8 +332,11 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
     let lsp_vec = getopts::opt_strs(match, "L");
     for lsp: str  in lsp_vec { library_search_paths += ~[lsp]; }
 
+    let parse_only = opt_present(match, "parse-only");
+    let no_trans = opt_present(match, "no-trans");
+
     let output_type =
-        if opt_present(match, "parse-only") {
+        if parse_only || no_trans {
             link::output_type_none
         } else if (opt_present(match, "S")) {
             link::output_type_assembly
@@ -392,7 +397,9 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           sysroot: sysroot,
           cfg: cfg,
           test: test,
-          dps: dps};
+          dps: dps,
+          parse_only: parse_only,
+          no_trans: no_trans};
     ret sopts;
 }
 
@@ -418,6 +425,7 @@ fn opts() -> vec[getopts::opt] {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
          optflagopt("expand"), optflag("ls"), optflag("parse-only"),
+         optflag("no-trans"),
          optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
@@ -510,7 +518,7 @@ fn main(args: vec[str]) {
         vec::pop[str](parts);
         saved_out_filename = parts.(0);
         alt sopts.output_type {
-          link::output_type_none. { parts += ["pp"]; }
+          link::output_type_none. { parts += ["none"]; }
           link::output_type_bitcode. { parts += ["bc"]; }
           link::output_type_assembly. { parts += ["s"]; }
 
