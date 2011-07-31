@@ -1,6 +1,11 @@
 use std;
 
 mod compiletest;
+mod procsrv;
+mod util;
+mod header;
+mod runtest;
+mod common;
 
 // Local Variables:
 // fill-column: 78;
