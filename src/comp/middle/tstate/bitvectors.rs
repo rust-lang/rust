@@ -1,5 +1,5 @@
 import syntax::ast::*;
-import syntax::walk;
+import syntax::visit;
 import std::ivec;
 import std::option::*;
 import aux::*;
@@ -25,6 +25,7 @@ import tstate::ann::clear_in_poststate;
 import tstate::ann::clear_in_prestate;
 import tstate::ann::clear_in_poststate_;
 import tritv::*;
+import util::common::*;
 
 fn bit_num(fcx: &fn_ctxt, c: &tsconstr) -> uint {
     let d = tsconstr_to_def_id(c);
@@ -137,35 +138,38 @@ fn declare_var(fcx: &fn_ctxt, c: &tsconstr, pre: prestate) -> prestate {
     ret rslt;
 }
 
-fn relax_precond_block_non_recursive(fcx: &fn_ctxt, i: node_id, b: &blk) {
-    relax_precond(i as uint, block_precond(fcx.ccx, b));
+fn relax_precond_expr(e: &@expr, cx: &relax_ctxt,
+                      vt: &visit::vt[relax_ctxt]) {
+    relax_precond(cx.i as uint, expr_precond(cx.fcx.ccx, e));
+    visit::visit_expr(e, cx, vt);
 }
 
-fn relax_precond_expr(fcx: &fn_ctxt, i: node_id, e: &@expr) {
-    relax_precond(i as uint, expr_precond(fcx.ccx, e));
+fn relax_precond_stmt(s: &@stmt, cx: &relax_ctxt,
+                      vt: &visit::vt[relax_ctxt]) {
+    relax_precond(cx.i as uint, stmt_precond(cx.fcx.ccx, *s));
+    visit::visit_stmt(s, cx, vt);
 }
 
-fn relax_precond_stmt(fcx: &fn_ctxt, i: node_id, s: &@stmt) {
-    relax_precond(i as uint, stmt_precond(fcx.ccx, *s));
+type relax_ctxt = {fcx:fn_ctxt, i:node_id};
+
+fn relax_precond_block_inner(b: &blk, cx: &relax_ctxt,
+                             vt: &visit::vt[relax_ctxt]) {
+    relax_precond(cx.i as uint, block_precond(cx.fcx.ccx, b));
+    visit::visit_block(b, cx, vt);
 }
 
-fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b: &blk) {
-    relax_precond_block_non_recursive(fcx, i, b);
-    // FIXME: should use visit instead
-    // could at least generalize this pattern
-    // (also seen in ck::check_states_against_conditions)
-    let keepgoing: @mutable bool = @mutable true;
-
-    fn quit(keepgoing: @mutable bool, i: &@item) { *keepgoing = false; }
-    fn kg(keepgoing: @mutable bool) -> bool { ret *keepgoing; }
-
-    let v =
-        {visit_block_pre: bind relax_precond_block_non_recursive(fcx, i, _),
-         visit_expr_pre: bind relax_precond_expr(fcx, i, _),
-         visit_stmt_pre: bind relax_precond_stmt(fcx, i, _),
-         visit_item_pre: bind quit(keepgoing, _),
-         keep_going: bind kg(keepgoing) with walk::default_visitor()};
-    walk::walk_block(v, b);
+fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b:&blk) {
+    let cx = {fcx: fcx, i: i};
+    let visitor = visit::default_visitor[relax_ctxt]();
+    visitor =
+        @{visit_block: relax_precond_block_inner,
+          visit_expr: relax_precond_expr,
+          visit_stmt: relax_precond_stmt,
+          visit_item: (fn (i: &@item, cx: &relax_ctxt,
+                           vt: &visit::vt[relax_ctxt]) {})
+          with *visitor};
+    let v1 = visit::mk_vt(visitor);
+    v1.visit_block(b, cx, v1);
 }
 
 fn gen_poststate(fcx: &fn_ctxt, id: node_id, c: &tsconstr) -> bool {
