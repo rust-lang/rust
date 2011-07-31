@@ -75,6 +75,74 @@ fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
 }
 
 fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
+    const rounds: int = 2;
+
+    let srcs = ~[str::unsafe_from_bytes(
+        io::file_reader(testfile).read_whole_stream())];
+
+    let round = 0;
+    while round < rounds {
+        logv(cx.config, #fmt("pretty-printing round %d", round));
+        let procres = print_source(cx, testfile, srcs.(round));
+
+        if procres.status != 0 {
+            fatal_procres(#fmt("pretty-printing failed in round %d", round),
+                          procres);
+        }
+
+        srcs += ~[procres.stdout];
+        round += 1;
+    }
+
+    let expected = srcs.(ivec::len(srcs) - 2u);
+    let actual = srcs.(ivec::len(srcs) - 1u);
+
+    compare_source(expected, actual);
+
+    // Finally, let's make sure it actually appears to remain valid code
+    let procres = typecheck_source(cx, actual);
+
+    if procres.status != 0 {
+        fatal_procres("pretty-printed source does not typecheck",
+                      procres);
+    }
+
+    ret;
+
+    fn print_source(cx: &cx, testfile: &str, src: &str) -> procres {
+        compose_and_run(cx, testfile, make_pp_args,
+                        cx.config.compile_lib_path, option::some(src))
+    }
+
+    fn make_pp_args(config: &config, testfile: &str) -> procargs {
+        let prog = config.rustc_path;
+        let args = ["-", "--pretty", "normal"];
+        ret {prog: prog, args: args};
+    }
+
+    fn compare_source(expected: &str, actual: &str) {
+        if expected != actual {
+            error("pretty-printed source does not converge");
+            let msg = #fmt("\n\
+expected:\n\
+------------------------------------------\n\
+%s\n\
+------------------------------------------\n\
+actual:\n\
+------------------------------------------\n\
+%s\n\
+------------------------------------------\n\
+\n",
+                          expected, actual);
+            io::stdout().write_str(msg);
+            fail;
+        }
+    }
+
+    fn typecheck_source(cx: &cx, src: &str) -> procres {
+        // FIXME
+        ret {status: 0, stdout: src, stderr: "", cmdline: ""};
+    }
 }
 
 fn check_error_patterns(props: &test_props, testfile: &str,
@@ -117,19 +185,22 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
     compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
-                    cx.config.compile_lib_path)
+                    cx.config.compile_lib_path, option::none)
 }
 
 fn exec_compiled_test(cx: &cx, testfile: &str) -> procres {
-    compose_and_run(cx, testfile, make_run_args, cx.config.run_lib_path)
+    compose_and_run(cx, testfile, make_run_args,
+                    cx.config.run_lib_path, option::none)
 }
 
 fn compose_and_run(cx: &cx, testfile: &str,
                    make_args: fn(&config, &str) -> procargs ,
-                   lib_path: &str) -> procres {
+                   lib_path: &str,
+                   input: option::t[str]) -> procres {
     let procargs = make_args(cx.config, testfile);
     ret program_output(cx, testfile, lib_path,
-                       procargs.prog, procargs.args);
+                       procargs.prog, procargs.args,
+                       input);
 }
 
 fn make_compile_args(config: &config,
@@ -182,14 +253,15 @@ fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
 }
 
 fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
-                  args: &vec[str]) -> procres {
+                  args: &vec[str], input: option::t[str]) -> procres {
     let cmdline =
     {
         let cmdline = make_cmdline(lib_path, prog, args);
         logv(cx.config, #fmt("executing %s", cmdline));
         cmdline
     };
-    let res = procsrv::run(cx.procsrv, lib_path, prog, args);
+    let res = procsrv::run(cx.procsrv, lib_path,
+                           prog, args, input);
     dump_output(cx.config, testfile, res.out, res.err);
     ret {status: res.status, stdout: res.out,
          stderr: res.err, cmdline: cmdline};

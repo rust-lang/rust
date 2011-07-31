@@ -26,9 +26,12 @@ type reqchan = chan[request];
 
 type handle = {task: option::t[task], chan: reqchan};
 
-tag request { exec(str, str, str[], chan[response]); stop; }
+tag request {
+    exec(str, str, str[], chan[response]);
+    stop;
+}
 
-type response = {pid: int, outfd: int, errfd: int};
+type response = {pid: int, infd: int, outfd: int, errfd: int};
 
 fn mk() -> handle {
     let setupport = port();
@@ -50,7 +53,8 @@ fn close(handle: &handle) {
     task::join(option::get(handle.task));
 }
 
-fn run(handle: &handle, lib_path: &str, prog: &str, args: &vec[str]) ->
+fn run(handle: &handle, lib_path: &str,
+       prog: &str, args: &vec[str], input: &option::t[str]) ->
 {status: int, out: str, err: str} {
     let p = port[response]();
     let ch = chan(p);
@@ -59,10 +63,22 @@ fn run(handle: &handle, lib_path: &str, prog: &str, args: &vec[str]) ->
                                  clone_ivecstr(ivec::from_vec(args)),
                                  task::clone_chan(ch)));
     let resp = task::recv(p);
+
+    writeclose(resp.infd, input);
     let output = readclose(resp.outfd);
     let errput = readclose(resp.errfd);
     let status = os::waitpid(resp.pid);
     ret {status: status, out: output, err: errput};
+}
+
+fn writeclose(fd: int, s: &option::t[str]) {
+    if option::is_some(s) {
+        let writer = io::new_writer(
+            io::fd_buf_writer(fd, option::none));
+        writer.write_str(option::get(s));
+    }
+
+    os::libc::close(fd);
 }
 
 fn readclose(fd: int) -> str {
@@ -128,17 +144,20 @@ fn worker(p: port[request]) {
                                     pipe_out.out,
                                     pipe_err.out);
         let pid = with_lib_path(execparms.lib_path, spawnproc);
+
         os::libc::close(pipe_in.in);
-        os::libc::close(pipe_in.out);
         os::libc::close(pipe_out.out);
         os::libc::close(pipe_err.out);
         if pid == -1 {
+            os::libc::close(pipe_in.out);
             os::libc::close(pipe_out.in);
             os::libc::close(pipe_err.in);
             fail;
         }
+
         task::send(execparms.respchan,
                    {pid: pid,
+                    infd: pipe_in.out,
                     outfd: pipe_out.in,
                     errfd: pipe_err.in});
     }
