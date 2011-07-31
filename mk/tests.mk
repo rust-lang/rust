@@ -51,6 +51,12 @@ COMPILETEST_INPUTS := $(wildcard $(S)src/test/compiletest/*rs)
 STDTEST_CRATE := $(S)src/test/stdtest/stdtest.rc
 STDTEST_INPUTS := $(wildcard $(S)src/test/stdtest/*rs)
 
+# Run the compiletest runner itself under valgrind
+ifdef CTEST_VALGRIND
+  CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2))
+else
+  CFG_RUN_CTEST=$(call CFG_RUN,stage$(1)/lib,$(2))
+endif
 
 ######################################################################
 # Main test targets
@@ -188,31 +194,31 @@ test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
 test/compile-fail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                                    $$(CFAIL_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(CFAIL_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(CFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
 test/run-fail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                                $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(RFAIL_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(RFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
 test/run-pass.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                                $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(RPASS_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(RPASS_ARGS$(2))
 	$$(Q)touch $$@
 
 test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                             $$(BENCH_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(BENCH_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(BENCH_ARGS$(2))
 	$$(Q)touch $$@
 
 test/pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                             $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<) $$(PRETTY_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_ARGS$(2))
 	$$(Q)touch $$@
 
 endef
