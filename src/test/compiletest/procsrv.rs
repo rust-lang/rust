@@ -45,13 +45,6 @@ fn mk() -> handle {
 
 fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }
 
-fn clone(handle: &handle) -> handle {
-
-    // Sharing tasks across tasks appears to be (yet another) recipe for
-    // disaster, so our handle clones will not get the task pointer.
-    {task: option::none, chan: task::clone_chan(handle.chan)}
-}
-
 fn close(handle: &handle) {
     task::send(handle.chan, stop);
     task::join(option::get(handle.task));
