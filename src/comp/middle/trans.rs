@@ -809,7 +809,6 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
     ret rslt(rs.bcx, val);
 }
 
-
 // trans_raw_malloc: expects a type indicating which pointer type we want and
 // a size indicating how much space we want malloc'd.
 fn trans_raw_malloc(cx: &@block_ctxt, llptr_ty: TypeRef, llsize: ValueRef) ->
@@ -3813,6 +3812,36 @@ fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
     ret {ptr: llenvptr, ptrty: llenvptrty};
 }
 
+// Return a pointer to the stored typarams in a closure.
+// This is awful. Since the size of the bindings stored in the closure might
+// be dynamically sized, we can't skip past them to get to the tydescs until
+// we have loaded the tydescs. Thus we use the stored size of the bindings
+// in the tydesc for the closure to skip over them. Ugh.
+fn find_environment_tydescs(bcx: &@block_ctxt, envty: &ty::t,
+                            closure: ValueRef) -> ValueRef {
+    ret if !ty::type_has_dynamic_size(bcx_tcx(bcx), envty) {
+        // If we can find the typarams statically, do it
+        GEPi(bcx, closure,
+             ~[0, abi::box_rc_field_body, abi::closure_elt_ty_params])
+    } else {
+        // Ugh. We need to load the size of the bindings out of the
+        // closure's tydesc and use that to skip over the bindings.
+        let descsty =
+            ty::get_element_type(bcx_tcx(bcx), envty,
+                                 abi::closure_elt_ty_params as uint);
+        let llenv = GEPi(bcx, closure, ~[0, abi::box_rc_field_body]);
+        // Load the tydesc and find the size of the body
+        let lldesc =
+            bcx.build.Load(GEPi(bcx, llenv, ~[0, abi::closure_elt_tydesc]));
+        let llsz = bcx.build.Load(
+            GEPi(bcx, lldesc, ~[0, abi::tydesc_field_size]));
+
+        // Get the bindings pointer and add the size to it
+        let llbinds = GEPi(bcx, llenv, ~[0, abi::closure_elt_bindings]);
+        bump_ptr(bcx, descsty, llbinds, llsz)
+    }
+}
+
 fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
                          envty: &ty::t, upvars: &@ast::node_id[]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
@@ -3821,29 +3850,27 @@ fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
     let llty = type_of(bcx_ccx(bcx), bcx.sp, ty);
     let llclosure = bcx.build.PointerCast(fcx.llenv, llty);
 
-    let path = ~[0, abi::box_rc_field_body];
-
-    // Populate the upvars from the environment.
-    let bindings_path = path + ~[abi::closure_elt_bindings];
+    // Populate the type parameters from the environment. We need to
+    // do this first because the tydescs are needed to index into
+    // the bindings if they are dynamically sized.
+    let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
+    let lltydescs = find_environment_tydescs(bcx, envty, llclosure);
     let i = 0u;
-    for upvar_id: ast::node_id  in *upvars {
-        let llupvarptr =
-            GEP_tup_like(bcx, ty, llclosure, bindings_path + ~[i as int]);
-        bcx = llupvarptr.bcx;
-        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
-        fcx.llupvars.insert(def_id.node, llupvarptr.val);
+    while i < tydesc_count {
+        let lltydescptr = GEPi(bcx, lltydescs, ~[0, i as int]);
+        fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
         i += 1u;
     }
 
-    // Populate the type parameters from the environment.
-    let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
-    let tydesc_path = path + ~[abi::closure_elt_ty_params];
+    // Populate the upvars from the environment.
+    let path = ~[0, abi::box_rc_field_body, abi::closure_elt_bindings];
     i = 0u;
-    while i < tydesc_count {
-        let lltydescptr =
-            GEP_tup_like(bcx, ty, llclosure, tydesc_path + ~[i as int]);
-        bcx = lltydescptr.bcx;
-        fcx.lltydescs += ~[bcx.build.Load(lltydescptr.val)];
+    for upvar_id: ast::node_id  in *upvars {
+        let llupvarptr =
+            GEP_tup_like(bcx, ty, llclosure, path + ~[i as int]);
+        bcx = llupvarptr.bcx;
+        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
+        fcx.llupvars.insert(def_id.node, llupvarptr.val);
         i += 1u;
     }
 }
