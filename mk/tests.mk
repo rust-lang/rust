@@ -113,6 +113,7 @@ check-stage$(2): tidy \
 	check-stage$(2)-rfail \
 	check-stage$(2)-cfail \
 	check-stage$(2)-bench \
+	check-stage$(2)-pretty \
 
 
 # Rules for the standard library test runner
