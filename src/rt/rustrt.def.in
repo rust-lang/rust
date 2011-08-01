@@ -1,4 +1,5 @@
 align_of
+chan_send
 check_claims
 clone_chan
 debug_box
@@ -27,6 +28,7 @@ nano_time
 new_chan
 new_port
 pin_task
+port_recv
 unpin_task
 rand_free
 rand_new

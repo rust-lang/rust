@@ -914,6 +914,36 @@ void drop_port(rust_task *, rust_port *port) {
     port->ref_count--;
 }
 
+extern "C" CDECL void
+chan_send(rust_task *task, rust_chan *chan, void *sptr) {
+    chan->send(sptr);
+}
+
+extern "C" CDECL void
+port_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
+    {
+        scoped_lock with(port->lock);
+
+        LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
+            ", size: 0x%" PRIxPTR ", chan_no: %d",
+            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz,
+            port->chans.length());
+
+        if (port->receive(dptr)) {
+            return;
+        }
+
+        // No data was buffered on any incoming channel, so block this task on
+        // the port. Remember the rendezvous location so that any sender task
+        // can write to it before waking up this task.
+
+        LOG(task, comm, "<=== waiting for rendezvous data ===");
+        task->rendezvous_ptr = dptr;
+        task->block(port, "waiting for rendezvous data");
+    }
+    task->yield(3);
+}
+
 //
 // Local Variables:
 // mode: C++

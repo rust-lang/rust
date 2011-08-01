@@ -1,4 +1,6 @@
 import sys;
+import ptr;
+import unsafe;
 
 export _chan;
 export _port;
@@ -6,16 +8,19 @@ export _port;
 export mk_port;
 
 native "rust" mod rustrt {
+    type void;
     type rust_chan;
     type rust_port;
 
     fn new_chan(po : *rust_port) -> *rust_chan;
     fn del_chan(ch : *rust_chan);
     fn drop_chan(ch : *rust_chan);
+    fn chan_send(ch: *rust_chan, v : *void);
 
     fn new_port(unit_sz : uint) -> *rust_port;
     fn del_port(po : *rust_port);
     fn drop_port(po : *rust_port);
+    fn port_recv(dp : *void, po : *rust_port);
 }
 
 resource chan_ptr(ch: *rustrt::rust_chan) {
@@ -32,7 +37,8 @@ resource port_ptr(po: *rustrt::rust_port) {
 
 obj _chan[T](raw_chan : @chan_ptr) {
     fn send(v : &T) {
-
+        rustrt::chan_send(**raw_chan,
+                          unsafe::reinterpret_cast(ptr::addr_of(v)));
     }
 }
 
@@ -42,7 +48,8 @@ obj _port[T](raw_port : @port_ptr) {
     }
 
     fn recv_into(v : &T) {
-
+        rustrt::port_recv(unsafe::reinterpret_cast(ptr::addr_of(v)),
+                          **raw_port);
     }
 }
 
