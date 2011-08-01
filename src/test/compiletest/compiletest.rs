@@ -533,8 +533,27 @@ mod runtest {
     }
 
     fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
+        fn rm_whitespace(v: vec[str]) -> vec[str] {
+            fn flt(s: &str) -> option::t[str] {
+                if !is_whitespace(s) {
+                    option::some(s)
+                } else {
+                    option::none
+                }
+            }
+
+            // FIXME: This should be in std
+            fn is_whitespace(s: str) -> bool {
+                for c: u8 in s {
+                    if c != (' ' as u8) { ret false; }
+                }
+                ret true;
+            }
+            vec::filter_map(flt, v)
+        }
+
         alt argstr {
-                option::some(s) { str::split(s, ' ' as u8) }
+                option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
                 option::none. { [] }
             }
     }
