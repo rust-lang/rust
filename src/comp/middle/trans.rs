@@ -662,6 +662,26 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
     }
 }
 
+// Simple wrapper around GEP that takes an array of ints and wraps them
+// in C_int()
+fn GEPi(cx: &@block_ctxt, base: ValueRef, ixs: &int[]) -> ValueRef {
+    let v: ValueRef[] = ~[];
+    for i: int  in ixs { v += ~[C_int(i)]; }
+    ret cx.build.GEP(base, v);
+}
+
+// Increment a pointer by a given amount and then cast it to be a pointer
+// to a given type.
+fn bump_ptr(bcx: &@block_ctxt, t: &ty::t, base: ValueRef, sz: ValueRef)
+    -> ValueRef {
+    let raw = bcx.build.PointerCast(base, T_ptr(T_i8()));
+    let bumped = bcx.build.GEP(raw, ~[sz]);
+    if ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
+        ret bumped;
+    }
+    let typ = T_ptr(type_of(bcx_ccx(bcx), bcx.sp, t));
+    ret bcx.build.PointerCast(bumped, typ);
+}
 
 // Replacement for the LLVM 'GEP' instruction when field-indexing into a
 // tuple-like structure (tup, rec) with a static index. This one is driven off
@@ -672,11 +692,8 @@ fn GEP_tup_like(cx: &@block_ctxt, t: &ty::t, base: ValueRef, ixs: &int[]) ->
    result {
     assert (ty::type_is_tup_like(bcx_tcx(cx), t));
     // It might be a static-known type. Handle this.
-
     if !ty::type_has_dynamic_size(bcx_tcx(cx), t) {
-        let v: ValueRef[] = ~[];
-        for i: int  in ixs { v += ~[C_int(i)]; }
-        ret rslt(cx, cx.build.GEP(base, v));
+        ret rslt(cx, GEPi(cx, base, ixs));
     }
     // It is a dynamic-containing type that, if we convert directly to an LLVM
     // TypeRef, will be all wrong; there's no proper LLVM type to represent
@@ -745,14 +762,7 @@ fn GEP_tup_like(cx: &@block_ctxt, t: &ty::t, base: ValueRef, ixs: &int[]) ->
 
     let bcx = cx;
     let sz = size_of(bcx, prefix_ty);
-    bcx = sz.bcx;
-    let raw = bcx.build.PointerCast(base, T_ptr(T_i8()));
-    let bumped = bcx.build.GEP(raw, ~[sz.val]);
-    if ty::type_has_dynamic_size(bcx_tcx(cx), s.target) {
-        ret rslt(bcx, bumped);
-    }
-    let typ = T_ptr(type_of(bcx_ccx(bcx), bcx.sp, s.target));
-    ret rslt(bcx, bcx.build.PointerCast(bumped, typ));
+    ret rslt(sz.bcx, bump_ptr(sz.bcx, s.target, base, sz.val));
 }
 
 
