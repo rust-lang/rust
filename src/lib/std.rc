@@ -9,6 +9,7 @@
 
 // Built-in types support modules.
 
+mod char;
 mod int;
 mod uint;
 mod u8;
