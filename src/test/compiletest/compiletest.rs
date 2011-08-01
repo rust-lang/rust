@@ -158,7 +158,7 @@ fn make_test(cx: &cx, testfile: &str, configport: &port[str]) ->
    test::test_desc {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, chan(configport)),
-            ignore: header::is_test_ignored(cx.config.stage_id, testfile)}
+            ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
 fn make_test_name(config: &config, testfile: &str) -> str {

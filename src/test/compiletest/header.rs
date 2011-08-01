@@ -2,6 +2,8 @@ import std::option;
 import std::str;
 import std::io;
 
+import common::config;
+
 export test_props;
 export load_props;
 export is_test_ignored;
@@ -26,12 +28,16 @@ fn load_props(testfile: &str) -> test_props {
     ret {error_patterns: error_patterns, compile_flags: compile_flags};
 }
 
-fn is_test_ignored(stage_id: &str, testfile: &str) -> bool {
+fn is_test_ignored(config: &config, testfile: &str) -> bool {
     let found = false;
     for each ln: str  in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
         found = found
-            || parse_name_directive(ln, "xfail-" + stage_id);
+            || parse_name_directive(ln, "xfail-" + config.stage_id);
+        if (config.mode == common::mode_pretty) {
+            found = found
+                || parse_name_directive(ln, "xfail-pretty");
+        }
     }
     ret found;
 }
