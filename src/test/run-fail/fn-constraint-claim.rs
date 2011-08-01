@@ -1,5 +1,6 @@
 // xfail-stage0
 // xfail-stage1
+// xfail-pretty
 // error-pattern:quux
 use std;
 import std::str::*;

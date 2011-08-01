@@ -150,6 +150,10 @@ check-stage$(2)-bench: test/bench.stage$(2).out \
 
 check-stage$(2)-pretty: test/pretty.stage$(2).out \
 
+check-stage$(2)-pretty-rpass: test/pretty-rpass.stage$(2).out \
+
+check-stage$(2)-pretty-rfail: test/pretty-rfail.stage$(2).out \
+
 CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2) \
                          --run-lib-path stage$(2)/lib \
                          --rustc-path stage$(2)/rustc$$(X) \
@@ -180,10 +184,15 @@ BENCH_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --mode run-pass \
                   $$(CTEST_RUNTOOL) \
 
-PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
-                   --src-base $$(S)src/test/run-pass/ \
-                   --build-base test/run-pass/ \
-                   --mode pretty \
+PRETTY_RPASS_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                         --src-base $$(S)src/test/run-pass/ \
+                         --build-base test/run-pass/ \
+                         --mode pretty \
+
+PRETTY_RFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                         --src-base $$(S)src/test/run-fail/ \
+                         --build-base test/run-fail/ \
+                         --mode pretty \
 
 test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
                                  $$(COMPILETEST_INPUTS) \
@@ -215,10 +224,20 @@ test/bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(BENCH_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
-                            $$(RPASS_TESTS)
+test/pretty-rpass.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                                     $$(RPASS_TESTS)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_ARGS$(2))
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RPASS_ARGS$(2))
+	$$(Q)touch $$@
+
+test/pretty-rfail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                                     $$(RFAIL_TESTS)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RFAIL_ARGS$(2))
+	$$(Q)touch $$@
+
+test/pretty.stage$(2).out.tmp: test/pretty-rpass.stage$(2).out.tmp \
+                               test/pretty-rfail.stage$(2).out.tmp
 	$$(Q)touch $$@
 
 endef
