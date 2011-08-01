@@ -272,9 +272,11 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         task->pin(spawner->pinned_on);
         task->on_wakeup(spawner->_on_wakeup);
     }
-    lock.lock();
-    newborn_tasks.append(task);
-    lock.unlock();
+
+    {
+        scoped_lock with(lock);
+        newborn_tasks.append(task);
+    }
 
     sync::increment(kernel->live_tasks);
 
