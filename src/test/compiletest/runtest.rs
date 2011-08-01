@@ -100,7 +100,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     compare_source(expected, actual);
 
     // Finally, let's make sure it actually appears to remain valid code
-    let procres = typecheck_source(cx, actual);
+    let procres = typecheck_source(cx, testfile, actual);
 
     if procres.status != 0 {
         fatal_procres("pretty-printed source does not typecheck",
@@ -139,9 +139,15 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(cx: &cx, src: &str) -> procres {
-        // FIXME
-        ret {status: 0, stdout: src, stderr: "", cmdline: ""};
+    fn typecheck_source(cx: &cx, testfile: &str, src: &str) -> procres {
+        compose_and_run(cx, testfile, make_typecheck_args,
+                        cx.config.compile_lib_path, option::some(src))
+    }
+
+    fn make_typecheck_args(config: &config, testfile: &str) -> procargs {
+        let prog = config.rustc_path;
+        let args = ["-", "--no-trans"];
+        ret {prog: prog, args: args};
     }
 }
 
