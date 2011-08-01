@@ -1,3 +1,4 @@
+// xfail-pretty
 
 use std;
 import std::str;

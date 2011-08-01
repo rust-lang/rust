@@ -1,3 +1,4 @@
+// xfail-pretty
 // Issue #53
 
 fn main() {

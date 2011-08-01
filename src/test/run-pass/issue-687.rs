@@ -1,4 +1,5 @@
 // xfail-stage0
+// xfail-pretty
 
 use std;
 import std::ivec;

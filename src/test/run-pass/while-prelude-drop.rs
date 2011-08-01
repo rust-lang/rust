@@ -1,4 +1,4 @@
-
+// xfail-pretty
 
 tag t { a; b(str); }
 

@@ -1,3 +1,5 @@
+// xfail-pretty
+
 fn swap[@T](v: &vec[mutable T], i: int, j: int) { v.(i) <-> v.(j); }
 
 fn main() {

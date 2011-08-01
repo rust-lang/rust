@@ -1,4 +1,4 @@
-
+// xfail-pretty
 
 
 // -*- rust -*-
