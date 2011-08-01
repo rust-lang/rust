@@ -3687,8 +3687,7 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     let closure = r.body;
 
     // Store bindings tydesc.
-    let bound_tydesc =
-        bcx.build.GEP(closure, ~[C_int(0), C_int(abi::closure_elt_tydesc)]);
+    let bound_tydesc = GEPi(bcx, closure, ~[0, abi::closure_elt_tydesc]);
     let ti = none;
     let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
@@ -3718,8 +3717,7 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     bcx = ty_params_slot.bcx;
     i = 0u;
     for td: ValueRef  in lltydescs {
-        let ty_param_slot =
-            bcx.build.GEP(ty_params_slot.val, ~[C_int(0), C_int(i as int)]);
+        let ty_param_slot = GEPi(bcx, ty_params_slot.val, ~[0, i as int]);
         bcx.build.Store(td, ty_param_slot);
         i += 1u;
     }
@@ -3767,8 +3765,7 @@ fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
         let upvar_count = std::ivec::len(llbindings);
         let i = 0u;
         while i < upvar_count {
-            let llbindingptr =
-                cx.build.GEP(llbindingsptr, ~[C_int(0), C_int(i as int)]);
+            let llbindingptr = GEPi(cx, llbindingsptr, ~[0, i as int]);
             cx.build.Store(llbindings.(i), llbindingptr);
             i += 1u;
         }
@@ -3783,21 +3780,18 @@ fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
         T_closure_ptr(*bcx_ccx(cx), val_ty(llbindingsptr), tydesc_count);
     let llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
     let llbindingsptrptr =
-        cx.build.GEP(llenvptr,
-                     ~[C_int(0), C_int(abi::box_rc_field_body),
-                       C_int(abi::closure_elt_bindings)]);
+        GEPi(cx, llenvptr,
+             ~[0, abi::box_rc_field_body, abi::closure_elt_bindings]);
     cx.build.Store(llbindingsptr, llbindingsptrptr);
 
     // Copy in our type descriptors, in case the iterator body needs to refer
     // to them.
     let lltydescsptr =
-        cx.build.GEP(llenvptr,
-                     ~[C_int(0), C_int(abi::box_rc_field_body),
-                       C_int(abi::closure_elt_ty_params)]);
+        GEPi(cx, llenvptr,
+             ~[0, abi::box_rc_field_body, abi::closure_elt_ty_params]);
     let i = 0u;
     while i < tydesc_count {
-        let lltydescptr =
-            cx.build.GEP(lltydescsptr, ~[C_int(0), C_int(i as int)]);
+        let lltydescptr = GEPi(cx, lltydescsptr, ~[0, i as int]);
         cx.build.Store(cx.fcx.lltydescs.(i), lltydescptr);
         i += 1u;
     }
@@ -3878,23 +3872,19 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
 
     // Populate the upvars from the environment.
     let llenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
-    llenvptr =
-        bcx.build.GEP(llenvptr, ~[C_int(0), C_int(abi::box_rc_field_body)]);
+    llenvptr = GEPi(bcx, llenvptr, ~[0, abi::box_rc_field_body]);
     let llbindingsptrptr =
-        bcx.build.GEP(llenvptr,
-                      ~[C_int(0), C_int(abi::closure_elt_bindings)]);
+        GEPi(bcx, llenvptr, ~[0, abi::closure_elt_bindings]);
     let llbindingsptr = bcx.build.Load(llbindingsptrptr);
 
     let i = 0u;
     if !option::is_none(enclosing_cx.fcx.lliterbody) {
         i += 1u;
-        let lliterbodyptr =
-            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(0)]);
+        let lliterbodyptr = GEPi(bcx, llbindingsptr, ~[0, 0]);
         fcx.lliterbody = some(bcx.build.Load(lliterbodyptr));
     }
     for upvar_id: ast::node_id  in *upvars {
-        let llupvarptrptr =
-            bcx.build.GEP(llbindingsptr, ~[C_int(0), C_int(i as int)]);
+        let llupvarptrptr = GEPi(bcx, llbindingsptr, ~[0, i as int]);
         let llupvarptr = bcx.build.Load(llupvarptrptr);
         let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
         fcx.llupvars.insert(def_id.node, llupvarptr);
@@ -3902,18 +3892,14 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
     }
 
     // Populate the type parameters from the environment.
-    let lltydescsptr =
-        bcx.build.GEP(llenvptr,
-                      ~[C_int(0), C_int(abi::closure_elt_ty_params)]);
+    let lltydescsptr = GEPi(bcx, llenvptr, ~[0, abi::closure_elt_ty_params]);
     let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
     i = 0u;
     while i < tydesc_count {
-        let lltydescptr =
-            bcx.build.GEP(lltydescsptr, ~[C_int(0), C_int(i as int)]);
+        let lltydescptr = GEPi(bcx, lltydescsptr, ~[0, i as int]);
         fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
         i += 1u;
     }
-
 }
 
 fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
