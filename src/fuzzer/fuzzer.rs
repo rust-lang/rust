@@ -21,11 +21,6 @@ import rustc::syntax::codemap;
 import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
-
-fn read_whole_file(filename: &str) -> str {
-    str::unsafe_from_bytes_ivec(ioivec::file_reader(filename).read_whole_stream())
-}
-
 fn write_file(filename: &str, content: &str) {
     ioivec::file_writer(filename,
                         ~[ioivec::create,
@@ -35,7 +30,7 @@ fn write_file(filename: &str, content: &str) {
 }
 
 fn file_contains(filename: &str, needle: &str) -> bool {
-    let contents = read_whole_file(filename);
+    let contents = ioivec::read_whole_file_str(filename);
     ret str::find(contents, needle) != -1;
 }
 
@@ -325,7 +320,7 @@ fn check_convergence(files: &str[]) {
     log_err #fmt("pp convergence tests: %u files", ivec::len(files));
     for file in files {
         if !file_is_confusing(file) {
-            let s = read_whole_file(file);
+            let s = ioivec::read_whole_file_str(file);
             if !content_is_confusing(s) {
                 log_err #fmt("pp converge: %s", file);
                 // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
@@ -338,7 +333,7 @@ fn check_convergence(files: &str[]) {
 fn check_variants(files: &str[]) {
     for file in files {
         if !file_is_confusing(file) {
-            let s = read_whole_file(file);
+            let s = ioivec::read_whole_file_str(file);
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) { cont; }
             log_err "check_variants: " + file;
             let codemap = codemap::new_codemap();

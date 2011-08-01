@@ -62,8 +62,7 @@ fn new_parser_from_file(sess: parse_sess, cfg:
                         ast::crate_cfg, path: str,
                         chpos: uint, byte_pos: uint,
                         ftype: file_type) -> parser {
-    let srdr = ioivec::file_reader(path);
-    let src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
+    let src = ioivec::read_whole_file_str(path);
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += ~[filemap];
     let itr = @interner::mk(str::hash, str::eq);

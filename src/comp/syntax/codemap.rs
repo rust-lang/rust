@@ -108,8 +108,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
 
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
-        let rdr = ioivec::file_reader(lines.name);
-        let file = str::unsafe_from_bytes_ivec(rdr.read_whole_stream());
+        let file = ioivec::read_whole_file_str(lines.name);
         let fm = get_filemap(cm, lines.name);
 
         // arbitrarily only print up to six lines of the error

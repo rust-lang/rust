@@ -1,4 +1,5 @@
 import std::io;
+import std::ioivec;
 import std::str;
 import std::option;
 import std::vec;
@@ -86,8 +87,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
       option::none. { 2 }
     };
 
-    let srcs = ~[str::unsafe_from_bytes(
-        io::file_reader(testfile).read_whole_stream())];
+    let srcs = ~[ioivec::read_whole_file_str(testfile)];
 
     let round = 0;
     while round < rounds {
@@ -106,8 +106,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     let expected = alt props.pp_exact {
       option::some(file) {
         let filepath = fs::connect(fs::dirname(testfile), file);
-        str::unsafe_from_bytes(
-            io::file_reader(filepath).read_whole_stream())
+        ioivec::read_whole_file_str(filepath)
       }
       option::none. {
         srcs.(ivec::len(srcs) - 2u)
