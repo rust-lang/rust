@@ -75,7 +75,16 @@ fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
 }
 
 fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
-    const rounds: int = 2;
+    if option::is_some(props.pp_exact) {
+        logv(cx.config, "testing for exact pretty-printing");
+    } else {
+        logv(cx.config, "testing for converging pretty-printing");
+    }
+
+    let rounds = alt props.pp_exact {
+      option::some(_) { 1 }
+      option::none. { 2 }
+    };
 
     let srcs = ~[str::unsafe_from_bytes(
         io::file_reader(testfile).read_whole_stream())];
@@ -94,7 +103,16 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
         round += 1;
     }
 
-    let expected = srcs.(ivec::len(srcs) - 2u);
+    let expected = alt props.pp_exact {
+      option::some(file) {
+        let filepath = fs::connect(fs::dirname(testfile), file);
+        str::unsafe_from_bytes(
+            io::file_reader(filepath).read_whole_stream())
+      }
+      option::none. {
+        srcs.(ivec::len(srcs) - 2u)
+      }
+    };
     let actual = srcs.(ivec::len(srcs) - 1u);
 
     compare_source(expected, actual);
@@ -122,7 +140,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
 
     fn compare_source(expected: &str, actual: &str) {
         if expected != actual {
-            error("pretty-printed source does not converge");
+            error("pretty-printed source does match expected source");
             let msg = #fmt("\n\
 expected:\n\
 ------------------------------------------\n\

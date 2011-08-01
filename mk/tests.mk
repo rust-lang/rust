@@ -6,18 +6,20 @@ ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
                               $(S)src/test/*/*/*.rs \
                               $(S)src/test/*/*.rc)
 
-BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
 RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
+BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
+PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
+PRETTY_TESTS := $(PRETTY_RS)
 
 FT := run_pass_stage2
 FT_LIB := $(call CFG_LIB_NAME,$(FT))
@@ -157,11 +159,15 @@ check-stage$(2)-rpass: test/run-pass.stage$(2).out \
 
 check-stage$(2)-bench: test/bench.stage$(2).out \
 
-check-stage$(2)-pretty: test/pretty.stage$(2).out \
-
 check-stage$(2)-pretty-rpass: test/pretty-rpass.stage$(2).out \
 
 check-stage$(2)-pretty-rfail: test/pretty-rfail.stage$(2).out \
+
+check-stage$(2)-pretty-pretty: test/pretty-pretty.stage$(2).out \
+
+check-stage$(2)-pretty: check-stage$(2)-pretty-rpass \
+                        check-stage$(2)-pretty-rfail \
+                        check-stage$(2)-pretty-pretty \
 
 CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2) \
                          --run-lib-path stage$(2)/lib \
@@ -202,6 +208,11 @@ PRETTY_RFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                          --src-base $$(S)src/test/run-fail/ \
                          --build-base test/run-fail/ \
                          --mode pretty \
+
+PRETTY_PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                          --src-base $$(S)src/test/pretty/ \
+                          --build-base test/pretty/ \
+                          --mode pretty \
 
 test/compiletest.stage$(2)$$(X): $$(COMPILETEST_CRATE) \
                                  $$(COMPILETEST_INPUTS) \
@@ -245,8 +256,10 @@ test/pretty-rfail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RFAIL_ARGS$(2))
 	$$(Q)touch $$@
 
-test/pretty.stage$(2).out.tmp: test/pretty-rpass.stage$(2).out.tmp \
-                               test/pretty-rfail.stage$(2).out.tmp
+test/pretty-pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                                     $$(PRETTY_TESTS)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_PRETTY_ARGS$(2))
 	$$(Q)touch $$@
 
 endef

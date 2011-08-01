@@ -1,6 +1,7 @@
 import std::option;
 import std::str;
 import std::io;
+import std::fs;
 
 import common::config;
 
@@ -8,24 +9,40 @@ export test_props;
 export load_props;
 export is_test_ignored;
 
-type test_props = {error_patterns: str[], compile_flags: option::t[str]};
+type test_props = {
+    // Lines that should be expected, in order, on standard out
+    error_patterns: str[],
+    // Extra flags to pass to the compiler
+    compile_flags: option::t[str],
+    // If present, the name of a file that this test should match when
+    // pretty-printed
+    pp_exact: option::t[str]
+};
 
 // Load any test directives embedded in the file
 fn load_props(testfile: &str) -> test_props {
     let error_patterns = ~[];
     let compile_flags = option::none;
+    let pp_exact = option::none;
     for each ln: str  in iter_header(testfile) {
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += ~[ep]; }
           option::none. { }
         }
 
-
         if option::is_none(compile_flags) {
             compile_flags = parse_compile_flags(ln);
         }
+
+        if option::is_none(pp_exact) {
+            pp_exact = parse_pp_exact(ln, testfile);
+        }
     }
-    ret {error_patterns: error_patterns, compile_flags: compile_flags};
+    ret {
+        error_patterns: error_patterns,
+        compile_flags: compile_flags,
+        pp_exact: pp_exact
+    };
 }
 
 fn is_test_ignored(config: &config, testfile: &str) -> bool {
@@ -62,6 +79,19 @@ fn parse_error_pattern(line: &str) -> option::t[str] {
 
 fn parse_compile_flags(line: &str) -> option::t[str] {
     parse_name_value_directive(line, "compile-flags")
+}
+
+fn parse_pp_exact(line: &str, testfile: &str) -> option::t[str] {
+    alt parse_name_value_directive(line, "pp-exact") {
+      option::some(s) { option::some(s) }
+      option::none. {
+        if parse_name_directive(line, "pp-exact") {
+            option::some(fs::basename(testfile))
+        } else {
+            option::none
+        }
+      }
+    }
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
