@@ -5199,9 +5199,10 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let fn_pair =
             alt fn_res {
               some(fn_pair) { fn_pair }
-              none. { create_fn_pair(ccx, s, llfnty, llfn, false) }
+              none. { {fn_pair: create_fn_pair(ccx, s, llfnty, llfn, false),
+                       bcx: cx} }
             };
-        ret rslt(cx, fn_pair);
+        ret rslt(fn_pair.bcx, fn_pair.fn_pair);
       }
       ast::expr_block(blk) {
         let sub_cx = new_scope_block_ctxt(cx, "block-expr body");
@@ -6446,8 +6447,8 @@ fn finish_fn(fcx: &@fn_ctxt, lltop: BasicBlockRef) {
 fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
                  llfnty: &option::t[TypeRef], cx: @local_ctxt, sp: &span,
                  f: &ast::_fn, llfndecl: ValueRef, ty_self: option::t[ty::t],
-                 ty_params: &ast::ty_param[], id: ast::node_id) ->
-   option::t[ValueRef] {
+                 ty_params: &ast::ty_param[], id: ast::node_id)
+    -> option::t[{fn_pair: ValueRef, bcx: @block_ctxt}] {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
@@ -6464,28 +6465,27 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
     // Figure out if we need to build a closure and act accordingly
-    let closure = none;
-    alt f.proto {
+    let res = alt f.proto {
       ast::proto_block. | ast::proto_closure. {
         let bcx = option::get(bcx_maybe);
         let upvars = get_freevars(cx.ccx.tcx, id);
 
-        let llenvptr = if (f.proto == ast::proto_block) {
+        let env = if (f.proto == ast::proto_block) {
             let llenv = build_environment(bcx, upvars);
             load_environment(bcx, fcx, llenv.ptrty, upvars);
-            llenv.ptr
+            {ptr: llenv.ptr, bcx: bcx}
         } else {
             let llenv = build_copying_closure(bcx, upvars);
             load_environment_heap(bcx, fcx, llenv.ptrty, upvars);
-            llenv.ptr
+            {ptr: llenv.ptr, bcx: llenv.bcx}
         };
 
-        closure =
-            some(create_real_fn_pair(bcx, option::get(llfnty), llfndecl,
-                                     llenvptr));
+        let closure = create_real_fn_pair(env.bcx, option::get(llfnty),
+                                          llfndecl, env.ptr);
+        some({fn_pair: closure, bcx: env.bcx})
       }
-      _ { }
-    }
+      _ { none }
+    };
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -6520,7 +6520,7 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 
-    ret closure;
+    ret res;
 }
 
 fn trans_fn_inner(cx: @local_ctxt, sp: &span, f: &ast::_fn,
