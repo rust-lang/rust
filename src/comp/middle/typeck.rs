@@ -1198,8 +1198,6 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
               local_names: &hashmap[ast::node_id, ast::ident],
               nvi: @mutable int, nid: ast::node_id, ident: &ast::ident,
               ty_opt: option::t[ty::t]) {
-        // FIXME DESTR
-        if locals.contains_key(nid) { ret; }
         let var_id = next_var_id(nvi);
         locals.insert(nid, var_id);
         local_names.insert(nid, ident);
