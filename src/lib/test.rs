@@ -121,8 +121,10 @@ fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
             st.total = ivec::len(filtered_tests);
             st.out.write_line(#fmt("\nrunning %u tests", st.total));
           }
-          te_result(test, result) {
+          te_wait(test) {
             st.out.write_str(#fmt("test %s ... ", test.name));
+          }
+          te_result(test, result) {
             alt result {
               tr_ok. {
                 st.passed += 1u;
@@ -209,6 +211,7 @@ fn use_color() -> bool {
 
 tag testevent {
     te_filtered(test_desc[]);
+    te_wait(test_desc);
     te_result(test_desc, test_result);
 }
 
@@ -236,6 +239,7 @@ fn run_tests(opts: &test_opts, tests: &test_desc[],
         }
 
         let future = futures.(0);
+        callback(te_wait(future.test));
         let result = future.wait();
         callback(te_result(future.test, result));
         futures = ivec::slice(futures, 1u, ivec::len(futures));
