@@ -10,8 +10,6 @@ circular_buffer : public kernel_owned<circular_buffer> {
     static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
     static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
-    rust_scheduler *sched;
-
 public:
     rust_kernel *kernel;
     // Size of the data unit in bytes.
