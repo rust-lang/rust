@@ -454,6 +454,18 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     if bpos < 0 { bpos = 0; } else if (bpos > blen) { bpos = blen; }
     ret bpos as uint;
 }
+
+fn read_whole_file_str(file: &str) -> str {
+    str::unsafe_from_bytes_ivec(read_whole_file(file))
+}
+
+fn read_whole_file(file: &str) -> u8[] {
+    // FIXME: There's a lot of copying here
+    file_reader(file).read_whole_stream()
+}
+
+
+
 //
 // Local Variables:
 // mode: rust
