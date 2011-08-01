@@ -95,6 +95,14 @@ tidy:
 
 define TEST_STAGEN
 
+# FIXME: These rules are complicated by a scheme to produce .out files
+# for each test, with the idea that if the targets produce actual
+# output, subsequent "make check's" will just exit successfully
+# without re-running the tests. Unfortunately this scheme is currently
+# broken and the tests rerun with every invocation of "make check"
+# anyway. Nobody seems to have noticed, so it would be simpler to just
+# remove all the code here involved with producing .out files.
+
 check-stage$(2): tidy \
 	check-stage$(2)-rustc \
 	check-stage$(2)-std \
