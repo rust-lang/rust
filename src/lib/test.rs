@@ -171,8 +171,9 @@ fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
 
     st.out.write_str(#fmt("\nresult: "));
     if success {
-        write_ok(st.out, st.use_color);
-    } else { write_failed(st.out, st.use_color); }
+        // There's no parallelism at this point so it's safe to use color
+        write_ok(st.out, true);
+    } else { write_failed(st.out, true); }
     st.out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
                        st.passed, st.failed, st.ignored));
 
