@@ -6,7 +6,7 @@ ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
                               $(S)src/test/*/*/*.rs \
                               $(S)src/test/*/*.rc)
 
-BENCH_RS := $(wildcard $(S)src/test/bench/*.rs) \
+BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
 RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
@@ -17,6 +17,7 @@ CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
+BENCH_TESTS := $(BENCH_RS)
 
 FT := run_pass_stage2
 FT_LIB := $(call CFG_LIB_NAME,$(FT))
