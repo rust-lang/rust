@@ -164,7 +164,7 @@ actual:\n\
 
     fn make_typecheck_args(config: &config, testfile: &str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--no-trans"];
+        let args = ["-", "--no-trans", "--lib"];
         ret {prog: prog, args: args};
     }
 }
