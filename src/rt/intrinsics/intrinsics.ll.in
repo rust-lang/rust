@@ -133,10 +133,9 @@ entry:
   ret void
 }
 
-define linkonce_odr void @rust_intrinsic_recv(%struct.rust_task* %task, i8** nocapture %retptr, %struct.type_desc* nocapture %ty, %class.rust_port* %port) {
+define linkonce_odr void @rust_intrinsic_recv(%struct.rust_task* %task, i8** %retptr, %struct.type_desc* nocapture %ty, %class.rust_port* %port) {
 entry:
-  %tmp2 = load i8** %retptr, align 4, !tbaa !3
-  %0 = bitcast i8* %tmp2 to i32*
+  %0 = bitcast i8** %retptr to i32*
   tail call void @port_recv(%struct.rust_task* %task, i32* %0, %class.rust_port* %port)
   ret void
 }

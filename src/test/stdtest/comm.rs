@@ -13,8 +13,7 @@ fn send_recv() {
     let c = p.mk_chan();
 
     c.send(42);
-    let v = 0;
-    p.recv_into(v);
-
+    let v = p.recv();
+    log_err v;
     assert(42 == v);
 }

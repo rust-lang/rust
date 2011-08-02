@@ -20,7 +20,10 @@ native "rust" mod rustrt {
     fn new_port(unit_sz : uint) -> *rust_port;
     fn del_port(po : *rust_port);
     fn drop_port(po : *rust_port);
-    fn port_recv(dp : *void, po : *rust_port);
+}
+
+native "rust-intrinsic" mod rusti {
+    fn recv[T](port : *rustrt::rust_port) -> T;
 }
 
 resource chan_ptr(ch: *rustrt::rust_chan) {
@@ -47,9 +50,8 @@ obj _port[T](raw_port : @port_ptr) {
         _chan(@chan_ptr(rustrt::new_chan(**raw_port)))
     }
 
-    fn recv_into(v : &T) {
-        rustrt::port_recv(unsafe::reinterpret_cast(ptr::addr_of(v)),
-                          **raw_port);
+    fn recv() -> T {
+        ret rusti::recv(**raw_port)
     }
 }
 
