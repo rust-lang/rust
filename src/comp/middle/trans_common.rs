@@ -205,6 +205,12 @@ type fn_ctxt =
     // If this function is actually a iter, a block containing the code
     // called whenever the iter calls 'put'.
 
+    // If this function is actually a iter, the type of the function
+    // that that we call when we call 'put'. Having to track this is
+    // pretty irritating. We have to do it because we need the type if
+    // we are going to put the iterbody into a closure (if it appears
+    // in a for-each inside of an iter).
+
     // The next four items: hash tables mapping from AST def_ids to
     // LLVM-stuff-in-the-frame.
 
@@ -253,6 +259,7 @@ type fn_ctxt =
      mutable lldynamicallocas: BasicBlockRef,
      mutable llself: option::t[val_self_pair],
      mutable lliterbody: option::t[ValueRef],
+     mutable iterbodyty: option::t[ty::t],
      llargs: hashmap[ast::node_id, ValueRef],
      llobjfields: hashmap[ast::node_id, ValueRef],
      lllocals: hashmap[ast::node_id, ValueRef],
@@ -412,6 +419,7 @@ fn bcx_tcx(bcx: &@block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
 fn bcx_ccx(bcx: &@block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
 fn bcx_lcx(bcx: &@block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
 fn bcx_fcx(bcx: &@block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
+fn fcx_tcx(fcx: &@fn_ctxt)    -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
 fn lcx_ccx(lcx: &@local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
 fn ccx_tcx(ccx: &@crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
 

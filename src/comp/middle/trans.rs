@@ -145,11 +145,7 @@ fn type_of_fn_full(cx: &@crate_ctxt, sp: &span, proto: ast::proto,
         // *input* type of the function we're given as our iter-block
         // argument.
         atys +=
-            ~[T_fn_pair(*cx,
-                        type_of_fn_full(cx, sp, ast::proto_fn, false,
-                                        ~[{mode: ty::mo_alias(false),
-                                           ty: output}], ty::mk_nil(cx.tcx),
-                                        0u))];
+            ~[type_of_inner(cx, sp, ty::mk_iter_body_fn(cx.tcx, output))];
     }
 
     // ... then explicit args.
@@ -863,15 +859,13 @@ fn trans_malloc_boxed_raw(cx: &@block_ctxt, t: ty::t) -> result {
 // trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
 // initializes the reference count to 1, and pulls out the body and rc
 fn trans_malloc_boxed(cx: &@block_ctxt, t: ty::t) ->
-    {bcx: @block_ctxt, box: ValueRef, rc: ValueRef, body: ValueRef} {
+    {bcx: @block_ctxt, box: ValueRef, body: ValueRef} {
     let res = trans_malloc_boxed_raw(cx, t);
     let box = res.val;
-    let rc = res.bcx.build.GEP(box,
-                               ~[C_int(0), C_int(abi::box_rc_field_refcnt)]);
+    let rc = GEPi(res.bcx, box, ~[0, abi::box_rc_field_refcnt]);
     res.bcx.build.Store(C_int(1), rc);
-    let body = res.bcx.build.GEP(box,
-                                 ~[C_int(0), C_int(abi::box_rc_field_body)]);
-    ret {bcx: res.bcx, box: res.val, rc: rc, body: body};
+    let body = GEPi(res.bcx, box, ~[0, abi::box_rc_field_body]);
+    ret {bcx: res.bcx, box: res.val, body: body};
 }
 
 // Type descriptor and type glue stuff
@@ -3645,11 +3639,13 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
 // Iterator translation
 
-// build_environment_heap and build_environment are very similar. It
-// would be nice to unify them.
-
-fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
-                          bound_tys: ty::t[], bound_vals: lval_result[])
+// Given a block context and a list of tydescs and values to bind
+// construct a closure out of them. If copying is true, it is a
+// heap allocated closure that copies the upvars into environment.
+// Otherwise, it is stack allocated and copies pointers to the upvars.
+fn build_environment(bcx: @block_ctxt, lltydescs: ValueRef[],
+                     bound_tys: ty::t[], bound_vals: lval_result[],
+                     copying: bool)
     -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
     // Synthesize a closure type.
 
@@ -3682,18 +3678,29 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     let closure_ty: ty::t = ty::mk_imm_tup(bcx_tcx(bcx), closure_tys);
 
     // Allocate a box that can hold something closure-sized.
-    let r = trans_malloc_boxed(bcx, closure_ty);
+    let r = if copying {
+        trans_malloc_boxed(bcx, closure_ty)
+    } else {
+        // We need to dummy up a box on the stack
+        let ty = ty::mk_imm_tup(bcx_tcx(bcx),
+                                ~[ty::mk_int(bcx_tcx(bcx)), closure_ty]);
+        let r = alloc_ty(bcx, ty);
+        let body = GEPi(bcx, r.val, ~[0, abi::box_rc_field_body]);
+        {bcx: r.bcx, box: r.val, body: body}
+    };
     bcx = r.bcx;
     let closure = r.body;
 
     // Store bindings tydesc.
-    let bound_tydesc = GEPi(bcx, closure, ~[0, abi::closure_elt_tydesc]);
-    let ti = none;
-    let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
-    bcx = bindings_tydesc.bcx;
-    bcx.build.Store(bindings_tydesc.val, bound_tydesc);
+    if copying {
+        let bound_tydesc = GEPi(bcx, closure, ~[0, abi::closure_elt_tydesc]);
+        let ti = none;
+        let bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+        bcx = bindings_tydesc.bcx;
+        bcx.build.Store(bindings_tydesc.val, bound_tydesc);
+    }
 
     // Copy expr values into boxed bindings.
     let i = 0u;
@@ -3704,8 +3711,13 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     for lv: lval_result  in bound_vals {
         let bound = GEP_tup_like(bcx, bindings_ty, bindings.val,
                                  ~[0, i as int]);
-        bcx = move_val_if_temp(bound.bcx, INIT,
-                               bound.val, lv, bound_tys.(i)).bcx;
+        bcx = bound.bcx;
+        if copying {
+            bcx = move_val_if_temp(bcx, INIT,
+                                   bound.val, lv, bound_tys.(i)).bcx;
+        } else {
+            bcx.build.Store(lv.res.val, bound.val);
+        }
         i += 1u;
     }
 
@@ -3725,78 +3737,27 @@ fn build_environment_heap(bcx: @block_ctxt, lltydescs: ValueRef[],
     ret {ptr: r.box, ptrty: closure_ty, bcx: bcx};
 }
 
-fn build_copying_closure(cx: &@block_ctxt, upvars: &@ast::node_id[])
+// Given a context and a list of upvars, build a closure. This just
+// collects the upvars and packages them up for build_environment.
+fn build_closure(cx: &@block_ctxt, upvars: &@ast::node_id[], copying: bool)
     -> {ptr: ValueRef, ptrty: ty::t, bcx: @block_ctxt} {
         let closure_vals: lval_result[] = ~[];
         let closure_tys: ty::t[] = ~[];
+        // If we need to, package up the iterator body to call
+        if !copying && !option::is_none(cx.fcx.lliterbody) {
+            closure_vals += ~[lval_mem(cx, option::get(cx.fcx.lliterbody))];
+            closure_tys += ~[option::get(cx.fcx.iterbodyty)];
+        }
+        // Package up the upvars
         for nid: ast::node_id  in *upvars {
             closure_vals += ~[trans_var(cx, cx.sp, nid)];
-            closure_tys += ~[ty::node_id_to_monotype(bcx_tcx(cx), nid)];
+            let ty = ty::node_id_to_monotype(bcx_tcx(cx), nid);
+            if !copying { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
+            closure_tys += ~[ty];
         }
 
-        ret build_environment_heap(cx, cx.fcx.lltydescs,
-                                   closure_tys, closure_vals);
-}
-
-// Given a block context and a list of upvars, construct a closure that
-// contains pointers to all of the upvars and all of the tydescs in
-// scope. Return the ValueRef and TypeRef corresponding to the closure.
-fn build_environment(cx: &@block_ctxt, upvars: &@ast::node_id[]) ->
-   {ptr: ValueRef, ptrty: TypeRef} {
-    let has_iterbody = !option::is_none(cx.fcx.lliterbody);
-    let llbindingsptr;
-
-    if std::ivec::len(*upvars) > 0u || has_iterbody {
-        // Gather up the upvars.
-        let llbindings: ValueRef[] = ~[];
-        let llbindingtys: TypeRef[] = ~[];
-        if has_iterbody {
-            llbindings += ~[option::get(cx.fcx.lliterbody)];
-            llbindingtys += ~[val_ty(llbindings.(0))];
-        }
-        for nid: ast::node_id  in *upvars {
-            let llbinding = trans_var(cx, cx.sp, nid).res.val;
-            llbindings += ~[llbinding];
-            llbindingtys += ~[val_ty(llbinding)];
-        }
-
-        // Create an array of bindings and copy in aliases to the upvars.
-        llbindingsptr = alloca(cx, T_struct(llbindingtys));
-        let upvar_count = std::ivec::len(llbindings);
-        let i = 0u;
-        while i < upvar_count {
-            let llbindingptr = GEPi(cx, llbindingsptr, ~[0, i as int]);
-            cx.build.Store(llbindings.(i), llbindingptr);
-            i += 1u;
-        }
-    } else {
-        // Null bindings.
-        llbindingsptr = C_null(T_ptr(T_i8()));
-    }
-
-    // Create an environment and populate it with the bindings.
-    let tydesc_count = std::ivec::len(cx.fcx.lltydescs);
-    let llenvptrty =
-        T_closure_ptr(*bcx_ccx(cx), val_ty(llbindingsptr), tydesc_count);
-    let llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
-    let llbindingsptrptr =
-        GEPi(cx, llenvptr,
-             ~[0, abi::box_rc_field_body, abi::closure_elt_bindings]);
-    cx.build.Store(llbindingsptr, llbindingsptrptr);
-
-    // Copy in our type descriptors, in case the iterator body needs to refer
-    // to them.
-    let lltydescsptr =
-        GEPi(cx, llenvptr,
-             ~[0, abi::box_rc_field_body, abi::closure_elt_ty_params]);
-    let i = 0u;
-    while i < tydesc_count {
-        let lltydescptr = GEPi(cx, lltydescsptr, ~[0, i as int]);
-        cx.build.Store(cx.fcx.lltydescs.(i), lltydescptr);
-        i += 1u;
-    }
-
-    ret {ptr: llenvptr, ptrty: llenvptrty};
+        ret build_environment(cx, cx.fcx.lltydescs,
+                              closure_tys, closure_vals, copying);
 }
 
 // Return a pointer to the stored typarams in a closure.
@@ -3829,8 +3790,12 @@ fn find_environment_tydescs(bcx: &@block_ctxt, envty: &ty::t,
     }
 }
 
-fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
-                         envty: &ty::t, upvars: &@ast::node_id[]) {
+// Given an enclosing block context, a new function context, a closure type,
+// and a list of upvars, generate code to load and populate the environment
+// with the upvars and type descriptors.
+fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
+                    envty: &ty::t, upvars: &@ast::node_id[],
+                    copying: bool) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     let ty = ty::mk_imm_box(bcx_tcx(bcx), envty);
@@ -3852,52 +3817,23 @@ fn load_environment_heap(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
     // Populate the upvars from the environment.
     let path = ~[0, abi::box_rc_field_body, abi::closure_elt_bindings];
     i = 0u;
+    // If this is an aliasing closure/for-each body, we need to load
+    // the iterbody.
+    if !copying && !option::is_none(enclosing_cx.fcx.lliterbody) {
+        let iterbodyptr = GEP_tup_like(bcx, ty, llclosure, path + ~[0]);
+        fcx.lliterbody = some(bcx.build.Load(iterbodyptr.val));
+        bcx = iterbodyptr.bcx;
+        i += 1u;
+    }
+    // Load the acutal upvars.
     for upvar_id: ast::node_id  in *upvars {
-        let llupvarptr =
+        let upvarptr =
             GEP_tup_like(bcx, ty, llclosure, path + ~[i as int]);
-        bcx = llupvarptr.bcx;
-        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
-        fcx.llupvars.insert(def_id.node, llupvarptr.val);
-        i += 1u;
-    }
-}
-
-
-// Given an enclosing block context, a new function context, a closure type,
-// and a list of upvars, generate code to load and populate the environment
-// with the upvars and type descriptors.
-fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
-                    llenvptrty: TypeRef, upvars: &@ast::node_id[]) {
-    let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
-
-    // Populate the upvars from the environment.
-    let llenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
-    llenvptr = GEPi(bcx, llenvptr, ~[0, abi::box_rc_field_body]);
-    let llbindingsptrptr =
-        GEPi(bcx, llenvptr, ~[0, abi::closure_elt_bindings]);
-    let llbindingsptr = bcx.build.Load(llbindingsptrptr);
-
-    let i = 0u;
-    if !option::is_none(enclosing_cx.fcx.lliterbody) {
-        i += 1u;
-        let lliterbodyptr = GEPi(bcx, llbindingsptr, ~[0, 0]);
-        fcx.lliterbody = some(bcx.build.Load(lliterbodyptr));
-    }
-    for upvar_id: ast::node_id  in *upvars {
-        let llupvarptrptr = GEPi(bcx, llbindingsptr, ~[0, i as int]);
-        let llupvarptr = bcx.build.Load(llupvarptrptr);
+        bcx = upvarptr.bcx;
+        let llupvarptr = upvarptr.val;
+        if !copying { llupvarptr = bcx.build.Load(llupvarptr); }
         let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
         fcx.llupvars.insert(def_id.node, llupvarptr);
-        i += 1u;
-    }
-
-    // Populate the type parameters from the environment.
-    let lltydescsptr = GEPi(bcx, llenvptr, ~[0, abi::closure_elt_ty_params]);
-    let tydesc_count = std::ivec::len(enclosing_cx.fcx.lltydescs);
-    i = 0u;
-    while i < tydesc_count {
-        let lltydescptr = GEPi(bcx, lltydescsptr, ~[0, i as int]);
-        fcx.lltydescs += ~[bcx.build.Load(lltydescptr)];
         i += 1u;
     }
 }
@@ -3934,7 +3870,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     let decl_ty = node_id_type(lcx.ccx, local.node.id);
     let upvars = get_freevars(lcx.ccx.tcx, body.node.id);
 
-    let llenv = build_environment(cx, upvars);
+    let llenv = build_closure(cx, upvars, false);
 
     // Step 2: Declare foreach body function.
     let s: str =
@@ -3946,16 +3882,16 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
     let iter_body_llty =
-        type_of_fn_full(lcx.ccx, cx.sp, ast::proto_fn, false,
-                        ~[{mode: ty::mo_alias(false), ty: decl_ty}],
-                        ty::mk_nil(lcx.ccx.tcx), 0u);
+        type_of_fn_from_ty(lcx.ccx, cx.sp,
+                           ty::mk_iter_body_fn(lcx.ccx.tcx, decl_ty), 0u);
     let lliterbody: ValueRef =
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
     let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id);
+    fcx.iterbodyty = cx.fcx.iterbodyty;
 
     // Generate code to load the environment out of the
     // environment pointer.
-    load_environment(cx, fcx, llenv.ptrty, upvars);
+    load_environment(cx, fcx, llenv.ptrty, upvars, false);
 
     let bcx = new_top_block_ctxt(fcx);
     // Add bindings for the loop variable alias.
@@ -4684,8 +4620,8 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     }
 
     // Actually construct the closure
-    let closure = build_environment_heap(bcx, lltydescs,
-                                         bound_tys, bound_vals);
+    let closure = build_environment(bcx, lltydescs,
+                                    bound_tys, bound_vals, true);
     bcx = closure.bcx;
 
     // Make thunk
@@ -6236,6 +6172,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
           mutable lldynamicallocas: llbbs.da,
           mutable llself: none[val_self_pair],
           mutable lliterbody: none[ValueRef],
+          mutable iterbodyty: none[ty::t],
           llargs: llargs,
           llobjfields: llobjfields,
           lllocals: lllocals,
@@ -6271,7 +6208,6 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
     // Skip the implicit arguments 0, 1, and 2.  TODO: Pull out 3u and define
     // it as a constant, since we're using it in several places in trans this
     // way.
-
     let arg_n = 3u;
     alt ty_self {
       some(tt) { cx.llself = some[val_self_pair]({v: cx.llenv, t: tt}); }
@@ -6286,17 +6222,17 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
         }
       }
     }
+
     // If the function is actually an iter, populate the lliterbody field of
     // the function context with the ValueRef that we get from
     // llvm::LLVMGetParam for the iter's body.
-
     if proto == ast::proto_iter {
+        cx.iterbodyty = some(ty::mk_iter_body_fn(fcx_tcx(cx), ret_ty));
         let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
         assert (llarg as int != 0);
         cx.lliterbody = some[ValueRef](llarg);
         arg_n += 1u;
     }
-
 
     // Populate the llargs field of the function context with the ValueRefs
     // that we get from llvm::LLVMGetParam for each argument.
@@ -6468,15 +6404,9 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
         let bcx = option::get(bcx_maybe);
         let upvars = get_freevars(cx.ccx.tcx, id);
 
-        let env = if (f.proto == ast::proto_block) {
-            let llenv = build_environment(bcx, upvars);
-            load_environment(bcx, fcx, llenv.ptrty, upvars);
-            {ptr: llenv.ptr, bcx: bcx}
-        } else {
-            let llenv = build_copying_closure(bcx, upvars);
-            load_environment_heap(bcx, fcx, llenv.ptrty, upvars);
-            {ptr: llenv.ptr, bcx: llenv.bcx}
-        };
+        let copying = f.proto == ast::proto_closure;
+        let env = build_closure(bcx, upvars, copying);
+        load_environment(bcx, fcx, env.ptrty, upvars, copying);
 
         let closure = create_real_fn_pair(env.bcx, option::get(llfnty),
                                           llfndecl, env.ptr);

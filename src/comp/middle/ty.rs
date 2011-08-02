@@ -68,6 +68,7 @@ export mk_ctxt;
 export mk_float;
 export mk_fn;
 export mk_imm_box;
+export mk_mut_ptr;
 export mk_imm_vec;
 export mk_int;
 export mk_istr;
@@ -90,6 +91,7 @@ export mk_type;
 export mk_uint;
 export mk_var;
 export mk_vec;
+export mk_iter_body_fn;
 export mode;
 export mo_val;
 export mo_alias;
@@ -559,6 +561,10 @@ fn mk_imm_box(cx: &ctxt, ty: &t) -> t {
     ret mk_box(cx, {ty: ty, mut: ast::imm});
 }
 
+fn mk_mut_ptr(cx: &ctxt, ty: &t) -> t {
+    ret mk_ptr(cx, {ty: ty, mut: ast::mut});
+}
+
 fn mk_vec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_vec(tm)); }
 
 fn mk_ivec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_ivec(tm)); }
@@ -614,6 +620,11 @@ fn mk_type(cx: &ctxt) -> t { ret idx_type; }
 
 fn mk_native(cx: &ctxt, did: &def_id) -> t { ret gen_ty(cx, ty_native(did)); }
 
+fn mk_iter_body_fn(cx: &ctxt, output: &t) -> t {
+    ret mk_fn(cx, ast::proto_block,
+              ~[{mode: ty::mo_alias(false), ty: output}],
+              ty::mk_nil(cx), ast::return, ~[]);
+}
 
 // Returns the one-level-deep type structure of the given type.
 fn struct(cx: &ctxt, typ: &t) -> sty {
