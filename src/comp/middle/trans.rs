@@ -6899,13 +6899,13 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
     // outer object.  All we know about either one are their types.
 
     let llmethods: ValueRef[] = ~[];
-    let meths: vtbl_mthd[]= ~[];
+    let meths: ty::method[]= ~[];
 
     // Gather up methods on the inner object.
     alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
         ty::ty_obj(inner_obj_methods) {
             for m: ty::method in inner_obj_methods {
-                meths += ~[fwding_mthd(@m)];
+                meths += ~[m];
             }
         }
         _ {
@@ -6916,22 +6916,11 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
     }
 
     // Methods should have already been sorted, so no need to do so again.
-
-    for m: vtbl_mthd in meths {
-        alt m {
-            normal_mthd(nm) {
-                cx.ccx.sess.bug("backwarding vtables shouldn't contain \
-                                 normal methods");
-            }
-            fwding_mthd(fm) {
-                // We pass outer_obj_ty to process_fwding_mthd() because it's
-                // the one being forwarded to.
-                llmethods += ~[process_fwding_mthd(
-                        cx, sp, fm, ~[], outer_obj_ty,
-                        none,
-                        ~[])];
-            }
-        }
+    for m: ty::method in meths {
+        // We pass outer_obj_ty to process_fwding_mthd() because it's
+        // the one being forwarded to.
+        llmethods += ~[process_fwding_mthd(
+            cx, sp, @m, ~[], outer_obj_ty, none, ~[])];
     }
 
     let vtbl = C_struct(llmethods);
