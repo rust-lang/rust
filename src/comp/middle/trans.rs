@@ -2720,29 +2720,22 @@ fn trans_compare(cx0: &@block_ctxt, op: ast::binop, t0: &ty::t,
     let rhs = rhs_r.val;
     cx = rhs_r.bcx;
     // Determine the operation we need.
-    // FIXME: Use or-patterns when we have them.
 
     let llop;
     alt op {
-      ast::eq. { llop = C_u8(abi::cmp_glue_op_eq); }
-      ast::lt. { llop = C_u8(abi::cmp_glue_op_lt); }
-      ast::le. { llop = C_u8(abi::cmp_glue_op_le); }
-      ast::ne. { llop = C_u8(abi::cmp_glue_op_eq); }
-      ast::ge. { llop = C_u8(abi::cmp_glue_op_lt); }
-      ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
+      ast::eq. | ast::ne. { llop = C_u8(abi::cmp_glue_op_eq); }
+      ast::lt. | ast::ge. { llop = C_u8(abi::cmp_glue_op_lt); }
+      ast::le. | ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
     }
     let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
 
 
     // Invert the result if necessary.
-    // FIXME: Use or-patterns when we have them.
     alt op {
-      ast::eq. { ret rslt(rs.bcx, rs.val); }
-      ast::lt. { ret rslt(rs.bcx, rs.val); }
-      ast::le. { ret rslt(rs.bcx, rs.val); }
-      ast::ne. { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
-      ast::ge. { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
-      ast::gt. { ret rslt(rs.bcx, rs.bcx.build.Not(rs.val)); }
+      ast::eq. | ast::lt. | ast::le. { ret rslt(rs.bcx, rs.val); }
+      ast::ne. | ast::ge. | ast::gt. {
+        ret rslt(rs.bcx, rs.bcx.build.Not(rs.val));
+      }
     }
 }
 
