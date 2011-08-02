@@ -186,9 +186,9 @@ fn is_whitespace(s: str) -> bool {
 // way to implement those.
 fn byte_len(s: str) -> uint { ret rustrt::str_byte_len(s); }
 
-fn buf(s: str) -> sbuf { ret rustrt::str_buf(s); }
+fn buf(s: &str) -> sbuf { ret rustrt::str_buf(s); }
 
-fn bytes(s: str) -> vec[u8] { ret rustrt::str_vec(s); }
+fn bytes(s: &str) -> vec[u8] { ret rustrt::str_vec(s); }
 
 fn bytes_ivec(s: str) -> u8[] {
     let sbuffer = buf(s);
