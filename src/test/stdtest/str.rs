@@ -154,6 +154,13 @@ fn test_replace() {
     assert (str::replace(" test test ", test, "") == "   ");
 }
 
+#[test]
+fn test_char_slice() {
+    assert (str::eq("ab", str::char_slice("abc", 0u, 2u)));
+    assert (str::eq("bc", str::char_slice("abc", 1u, 3u)));
+    assert (str::eq("", str::char_slice("abc", 1u, 1u)));
+    assert (str::eq("\u65e5", str::char_slice("\u65e5\u672c", 0u, 1u)));
+}
 
 // Local Variables:
 // mode: rust;

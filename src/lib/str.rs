@@ -53,6 +53,7 @@ export unsafe_from_bytes_ivec;
 export is_empty;
 export is_not_empty;
 export replace;
+export char_slice;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -516,6 +517,11 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
         ret unsafe_from_byte(s.(0)) +
                 replace(slice(s, 1u, byte_len(s)), from, to);
     }
+}
+
+// FIXME: Also not efficient
+fn char_slice(s: &str, begin: uint, end: uint) -> str {
+    from_chars(vec::slice(to_chars(s), begin, end))
 }
 
 // Local Variables:
