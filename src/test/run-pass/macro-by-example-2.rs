@@ -31,6 +31,16 @@ fn main() {
             }]);
 
 
-    assert ((#lambda[i, #<uint>, i + 4u, #<uint>])(12u) == 16u)
+    assert ((#lambda[i, #<uint>, i + 4u, #<uint>])(12u) == 16u);
+
+    #macro[[#sum[x, xs, ...], x + #sum[xs, ...]],
+           [#sum[], 0]];
+
+    assert (#sum[1,2,3,4] == 10);
+
+
+    #macro[[#transcr_mixed[a, as, ...], #sum[6, as, ...] * a]];
+
+    assert (#transcr_mixed[10, 5, 4, 3, 2, 1] == 210);
 
 }

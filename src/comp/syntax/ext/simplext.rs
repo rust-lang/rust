@@ -93,19 +93,20 @@ fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
 type match_result = option::t[arb_depth[matchable]];
 type selector = fn(&matchable) -> match_result ;
 
-fn elts_to_ell(cx: &ext_ctxt, elts: &(@expr)[]) -> option::t[@expr] {
+fn elts_to_ell(cx: &ext_ctxt, elts: &(@expr)[])
+    -> {fixed: (@expr)[], rep: option::t[@expr]} {
     let idx: uint = 0u;
     for elt: @expr  in elts {
         alt elt.node {
           expr_mac(m) {
             alt m.node {
               ast::mac_ellipsis. {
-                if idx != 1u || ivec::len(elts) != 2u {
-                    cx.span_fatal(m.span,
-                                  "Ellpisis may only appear" +
-                                      " after exactly 1 item.");
+                let last = ivec::len(elts) - 1u;
+                if idx != last {
+                    cx.span_fatal(m.span, "ellipses must occur last");
                 }
-                ret some(elts.(0));
+                ret {fixed: ivec::slice(elts, 0u, last - 1u),
+                     rep: some(elts.(last - 1u))};
               }
               _ { }
             }
@@ -114,7 +115,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &(@expr)[]) -> option::t[@expr] {
         }
         idx += 1u;
     }
-    ret none;
+    ret {fixed: elts, rep: none};
 }
 
 fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &vec[T]) ->
@@ -271,57 +272,60 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
 fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
-                    recur: fn(&@expr) -> @expr , exprs: (@expr)[]) ->
-   (@expr)[] {
+                    recur: fn(&@expr) -> @expr , exprs: (@expr)[])
+    -> (@expr)[] {
     alt elts_to_ell(cx, exprs) {
-      some(repeat_me) {
-        let repeat: option::t[{rep_count: uint, name: ident}] = none;
-        /* we need to walk over all the free vars in lockstep, except for
-        the leaves, which are just duplicated */
-        for each fv: ident  in free_vars(b, repeat_me) {
-            let cur_pos = follow(b.get(fv), idx_path);
-            alt cur_pos {
-              leaf(_) { }
-              seq(ms, _) {
-                alt repeat {
-                  none. {
-                    repeat = some({rep_count: vec::len(ms), name: fv});
-                  }
-                  some({rep_count: old_len, name: old_name}) {
-                    let len = vec::len(ms);
-                    if old_len != len {
-                        cx.span_fatal(repeat_me.span,
-                                      #fmt("'%s' occurs %u times, but ", fv,
-                                           len) +
-                                          #fmt("'%s' occurs %u times",
-                                               old_name, old_len));
+      {fixed: fixed, rep: repeat_me_maybe} {
+        let res = ivec::map(recur, fixed);
+        alt repeat_me_maybe {
+          none. {}
+          some(repeat_me) {
+            let repeat: option::t[{rep_count: uint, name: ident}] = none;
+            /* we need to walk over all the free vars in lockstep, except for
+            the leaves, which are just duplicated */
+            for each fv: ident  in free_vars(b, repeat_me) {
+                let cur_pos = follow(b.get(fv), idx_path);
+                alt cur_pos {
+                  leaf(_) { }
+                  seq(ms, _) {
+                    alt repeat {
+                      none. {
+                        repeat = some({rep_count: vec::len(ms), name: fv});
+                      }
+                      some({rep_count: old_len, name: old_name}) {
+                        let len = vec::len(ms);
+                        if old_len != len {
+                            let msg = #fmt("'%s' occurs %u times, but ", fv,
+                                           len) + #fmt("'%s' occurs %u times",
+                                                       old_name, old_len);
+                            cx.span_fatal(repeat_me.span, msg);
+                        }
+                      }
                     }
                   }
                 }
-              }
             }
-        }
-        let res = ~[];
-        alt repeat {
-          none. {
-            cx.span_fatal(repeat_me.span,
-                          "'...' surrounds an expression without any" +
+            alt repeat {
+              none. {
+                cx.span_fatal(repeat_me.span,
+                              "'...' surrounds an expression without any" +
                               " repeating syntax variables");
-          }
-          some({rep_count: rc, _}) {
-            /* Whew, we now know how how many times to repeat */
-            let idx: uint = 0u;
-            while idx < rc {
-                vec::push(*idx_path, idx);
-                res += ~[recur(repeat_me)]; // whew!
-                vec::pop(*idx_path);
-                idx += 1u;
+              }
+              some({rep_count: rc, _}) {
+                /* Whew, we now know how how many times to repeat */
+                let idx: uint = 0u;
+                while idx < rc {
+                    vec::push(*idx_path, idx);
+                    res += ~[recur(repeat_me)]; // whew!
+                    vec::pop(*idx_path);
+                    idx += 1u;
+                }
+              }
             }
           }
         }
         ret res;
       }
-      none. { ret ivec::map(recur, exprs); }
     }
 }
 
@@ -436,8 +440,15 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
           expr_path(p_pth) { p_t_s_r_path(cx, p_pth, s, b); }
           expr_vec(p_elts, _, _) {
             alt elts_to_ell(cx, p_elts) {
-              some(repeat_me) { p_t_s_r_ellipses(cx, repeat_me, s, b); }
-              none. { p_t_s_r_actual_vector(cx, p_elts, s, b); }
+              {fixed: fixed, rep: some(repeat_me)} {
+                if(ivec::len(fixed) > 0u) {
+                    p_t_s_r_actual_vector(cx, fixed, true, s, b);
+                }
+                p_t_s_r_ellipses(cx, repeat_me, ivec::len(fixed), s, b);
+              }
+              {fixed: fixed, rep: none.} {
+                p_t_s_r_actual_vector(cx, fixed, false, s, b);
+              }
             }
           }
 
@@ -575,20 +586,23 @@ fn ivec_to_vec[T](v: &T[]) -> vec[T] {
     ret rs;
 }
 
-fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, s: &selector,
-                    b: &binders) {
-    fn select(cx: &ext_ctxt, repeat_me: @expr, m: &matchable) ->
+fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
+                    s: &selector, b: &binders) {
+    fn select(cx: &ext_ctxt, repeat_me: @expr, offset: uint, m: &matchable) ->
         match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _, _) {
-                    let elts =
-                        ivec::map(leaf, ivec::map(match_expr, arg_elts));
-
+                    let elts = [];
+                    let idx = offset;
+                    while idx < ivec::len(arg_elts) {
+                        elts += [leaf(match_expr(arg_elts.(idx)))];
+                        idx += 1u;
+                    }
                     // using repeat_me.span is a little wacky, but the
                     // error we want to report is one in the macro def
-                    some(seq(ivec_to_vec(elts), repeat_me.span))
+                    some(seq(elts, repeat_me.span))
                   }
                   _ { none }
                 }
@@ -597,17 +611,20 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, s: &selector,
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
-              compose_sels(s, bind select(cx, repeat_me, _)), b);
+              compose_sels(s, bind select(cx, repeat_me, offset, _)), b);
 }
 
-fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], s: &selector,
-                         b: &binders) {
-    fn len_select(cx: &ext_ctxt, m: &matchable, len: uint) -> match_result {
+fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], repeat_after: bool,
+                         s: &selector, b: &binders) {
+    fn len_select(cx: &ext_ctxt, m: &matchable, repeat_after: bool, len: uint)
+        -> match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _, _) {
-                    if ivec::len(arg_elts) == len {
+                    let actual_len = ivec::len(arg_elts);
+                    if (repeat_after && actual_len >= len)
+                        || actual_len == len {
                         some(leaf(match_exact))
                     } else { none }
                   }
@@ -618,7 +635,8 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], s: &selector,
             }
     }
     b.literal_ast_matchers +=
-        ~[compose_sels(s, bind len_select(cx, _, ivec::len(elts)))];
+        ~[compose_sels(s, bind len_select(cx, _, repeat_after,
+                                          ivec::len(elts)))];
 
 
     let idx: uint = 0u;
