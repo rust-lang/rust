@@ -54,6 +54,9 @@ export is_empty;
 export is_not_empty;
 export replace;
 export char_slice;
+export trim_left;
+export trim_right;
+export trim;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -522,6 +525,42 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
 // FIXME: Also not efficient
 fn char_slice(s: &str, begin: uint, end: uint) -> str {
     from_chars(vec::slice(to_chars(s), begin, end))
+}
+
+fn trim_left(s: &str) -> str {
+    fn count_whities(s: &vec[char]) -> uint {
+        let i = 0u;
+        while i < vec::len(s) {
+            if !char::is_whitespace(s.(i)) {
+                break;
+            }
+            i += 1u;
+        }
+        ret i;
+    }
+    let chars = to_chars(s);
+    let whities = count_whities(chars);
+    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
+}
+
+fn trim_right(s: &str) -> str {
+    fn count_whities(s: &vec[char]) -> uint {
+        let i = vec::len(s);
+        while 0u < i {
+            if !char::is_whitespace(s.(i - 1u)) {
+                break;
+            }
+            i -= 1u;
+        }
+        ret i;
+    }
+    let chars = to_chars(s);
+    let whities = count_whities(chars);
+    ret from_chars(vec::slice(chars, 0u, whities));
+}
+
+fn trim(s: &str) -> str {
+    trim_left(trim_right(s))
 }
 
 // Local Variables:

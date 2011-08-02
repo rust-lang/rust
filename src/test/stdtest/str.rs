@@ -162,6 +162,36 @@ fn test_char_slice() {
     assert (str::eq("\u65e5", str::char_slice("\u65e5\u672c", 0u, 1u)));
 }
 
+#[test]
+fn trim_left() {
+    assert str::trim_left("") == "";
+    assert str::trim_left("a") == "a";
+    assert str::trim_left("    ") == "";
+    assert str::trim_left("     blah") == "blah";
+    assert str::trim_left("   \u3000  wut") == "wut";
+    assert str::trim_left("hey ") == "hey ";
+}
+
+#[test]
+fn trim_right() {
+    assert str::trim_right("") == "";
+    assert str::trim_right("a") == "a";
+    assert str::trim_right("    ") == "";
+    assert str::trim_right("blah     ") == "blah";
+    assert str::trim_right("wut   \u3000  ") == "wut";
+    assert str::trim_right(" hey") == " hey";
+}
+
+#[test]
+fn trim() {
+    assert str::trim("") == "";
+    assert str::trim("a") == "a";
+    assert str::trim("    ") == "";
+    assert str::trim("    blah     ") == "blah";
+    assert str::trim("\nwut   \u3000  ") == "wut";
+    assert str::trim(" hey dude ") == "hey dude";
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
