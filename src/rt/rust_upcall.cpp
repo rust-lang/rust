@@ -194,8 +194,6 @@ upcall_send(rust_task *task, rust_chan *chan, void *sptr) {
 }
 
 extern "C" CDECL void
-port_recv(rust_task *task, uintptr_t *dptr, rust_port *port);
-extern "C" CDECL void
 upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
     port_recv(task, dptr, port);

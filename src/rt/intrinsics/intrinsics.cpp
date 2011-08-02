@@ -55,3 +55,8 @@ rust_intrinsic_addr_of(rust_task *task, void **retptr, type_desc *ty,
     *retptr = valptr;
 }
 
+extern "C" void
+rust_intrinsic_recv(rust_task *task, void **retptr, type_desc *ty,
+                    rust_port *port) {
+    port_recv(task, (uintptr_t*)*retptr, port);
+}
