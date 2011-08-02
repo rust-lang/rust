@@ -3951,7 +3951,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
                         ty::mk_nil(lcx.ccx.tcx), 0u);
     let lliterbody: ValueRef =
         decl_internal_fastcall_fn(lcx.ccx.llmod, s, iter_body_llty);
-    let fcx = new_fn_ctxt(lcx, cx.sp, lliterbody);
+    let fcx = new_fn_ctxt_w_id(lcx, cx.sp, lliterbody, body.node.id);
 
     // Generate code to load the environment out of the
     // environment pointer.
@@ -3961,7 +3961,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // Add bindings for the loop variable alias.
     bcx = trans_alt::bind_irrefutable_pat
         (bcx, local.node.pat, llvm::LLVMGetParam(fcx.llfn, 3u),
-         bcx.fcx.llupvars, false);
+         bcx.fcx.lllocals, false);
     let lltop = bcx.llbb;
     let r = trans_block(bcx, body, return);
     finish_fn(fcx, lltop);
@@ -3970,7 +3970,6 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
         // if terminated is true, no need for the ret-fail
         r.bcx.build.RetVoid();
     }
-
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
     alt seq.node {
@@ -4101,36 +4100,22 @@ fn lookup_discriminant(lcx: &@local_ctxt, tid: &ast::def_id,
 fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) ->
    lval_result {
     let ccx = bcx_ccx(cx);
-    // If we had a good way to get at the node_id for the function we
-    // are in, we could do a freevars::def_lookup and avoid having to
-    // check the llupvars case in all of the other cases...
-    alt bcx_tcx(cx).def_map.find(id) {
+    alt freevars::def_lookup(bcx_tcx(cx), cx.fcx.id, id) {
+      some(ast::def_upvar(did, _)) {
+        assert (cx.fcx.llupvars.contains_key(did.node));
+        ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
+      }
       some(ast::def_arg(did)) {
-        alt cx.fcx.llargs.find(did.node) {
-          none. {
-            assert (cx.fcx.llupvars.contains_key(did.node));
-            ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
-          }
-          some(llval) { ret lval_mem(cx, llval); }
-        }
+        assert (cx.fcx.llargs.contains_key(did.node));
+        ret lval_mem(cx, cx.fcx.llargs.get(did.node));
       }
       some(ast::def_local(did)) {
-        alt cx.fcx.lllocals.find(did.node) {
-          none. {
-            assert (cx.fcx.llupvars.contains_key(did.node));
-            ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
-          }
-          some(llval) { ret lval_mem(cx, llval); }
-        }
+        assert (cx.fcx.lllocals.contains_key(did.node));
+        ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
       some(ast::def_binding(did)) {
-        alt cx.fcx.lllocals.find(did.node) {
-          none. {
-            assert (cx.fcx.llupvars.contains_key(did.node));
-            ret lval_mem(cx, cx.fcx.llupvars.get(did.node));
-          }
-          some(llval) { ret lval_mem(cx, llval); }
-        }
+        assert (cx.fcx.lllocals.contains_key(did.node));
+        ret lval_mem(cx, cx.fcx.lllocals.get(did.node));
       }
       some(ast::def_obj_field(did)) {
         assert (cx.fcx.llobjfields.contains_key(did.node));
@@ -6227,7 +6212,8 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn new_fn_ctxt(cx: @local_ctxt, sp: &span, llfndecl: ValueRef) -> @fn_ctxt {
+fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
+                    id: ast::node_id) -> @fn_ctxt {
     let llretptr: ValueRef = llvm::LLVMGetParam(llfndecl, 0u);
     let lltaskptr: ValueRef = llvm::LLVMGetParam(llfndecl, 1u);
     let llenv: ValueRef = llvm::LLVMGetParam(llfndecl, 2u);
@@ -6256,10 +6242,14 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: &span, llfndecl: ValueRef) -> @fn_ctxt {
           llupvars: llupvars,
           mutable lltydescs: ~[],
           derived_tydescs: derived_tydescs,
+          id: id,
           sp: sp,
           lcx: cx};
 }
 
+fn new_fn_ctxt(cx: @local_ctxt, sp: &span, llfndecl: ValueRef) -> @fn_ctxt {
+    be new_fn_ctxt_w_id(cx, sp, llfndecl, -1);
+}
 
 // NB: must keep 4 fns in sync:
 //
@@ -6460,7 +6450,7 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt(cx, sp, llfndecl);
+    let fcx = new_fn_ctxt_w_id(cx, sp, llfndecl, id);
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
                               ty::ret_ty_of_fn(cx.ccx.tcx, id), f.decl.inputs,
                               ty_params);

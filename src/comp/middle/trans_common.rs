@@ -235,6 +235,9 @@ type fn_ctxt =
     // a tydesc is created, we cache it in the derived_tydescs table for
     // the next time that such a tydesc is needed.
 
+    // The node_id of the function, or -1 if it doesn't correspond to a
+    // user defined function.
+
     // The source span where this function comes from, for error
     // reporting.
 
@@ -256,6 +259,7 @@ type fn_ctxt =
      llupvars: hashmap[ast::node_id, ValueRef],
      mutable lltydescs: ValueRef[],
      derived_tydescs: hashmap[ty::t, derived_tydesc_info],
+     id: ast::node_id,
      sp: span,
      lcx: @local_ctxt};
 

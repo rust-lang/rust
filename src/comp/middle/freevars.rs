@@ -180,7 +180,7 @@ fn def_lookup(tcx: &ty::ctxt, f: ast::node_id, id: ast::node_id) ->
       none. { ret none; }
       some(d) {
         let did = ast::def_id_of_def(d);
-        if is_freevar_of(tcx, did.node, f) {
+        if f != -1 && is_freevar_of(tcx, did.node, f) {
             ret some(ast::def_upvar(did, @d));
         } else { ret some(d); }
       }
