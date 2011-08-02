@@ -228,7 +228,37 @@ fn any_box_pat(m: &match, col: uint) -> bool {
 }
 
 type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
-type mk_fail = fn() -> BasicBlockRef ;
+type mk_fail = fn() -> BasicBlockRef;
+
+fn pick_col(m: &match) -> uint {
+    let scores = ivec::init_elt_mut(0u, ivec::len(m.(0).pats));
+    for br: match_branch in m {
+        let i = 0u;
+        for p: @ast::pat in br.pats {
+            alt p.node {
+              ast::pat_lit(_) | ast::pat_tag(_, _) { scores.(i) += 1u; }
+              _ {}
+            }
+            i += 1u;
+        }
+    }
+    let max_score = 0u;
+    let best_col = 0u;
+    let i = 0u;
+    for score: uint in scores {
+        // Irrefutable columns always go first, they'd only be duplicated in
+        // the branches.
+        if score == 0u { ret i; }
+        // If no irrefutable ones are found, we pick the one with the biggest
+        // branching factor.
+        if score > max_score {
+            max_score = score;
+            best_col = i;
+        }
+        i += 1u;
+    }
+    ret best_col;
+}
 
 fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
                     f: &mk_fail, exits: &mutable exit_node[]) {
@@ -239,10 +269,10 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
         ret;
     }
 
-    // FIXME maybe be clever about picking a column.
-    let col = 0u;
+    let col = pick_col(m);
     let val = vals.(col);
-    let vals_left = ivec::slice(vals, 1u, ivec::len(vals));
+    let vals_left = ivec::slice(vals, 0u, col) +
+        ivec::slice(vals, col + 1u, ivec::len(vals));
     let ccx = bcx.fcx.lcx.ccx;
     let pat_id = 0;
     for br: match_branch  in m {
