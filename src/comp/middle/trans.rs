@@ -1680,7 +1680,7 @@ fn make_cmp_glue(cx: &@block_ctxt, lhs0: ValueRef, rhs0: ValueRef, t: &ty::t,
 }
 
 
-// Used only for creating scalar comparsion glue.
+// Used only for creating scalar comparison glue.
 tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
 
 
@@ -5662,19 +5662,14 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     let vtbl;
     alt anon_obj.inner_obj {
       none. {
-        // If there's no inner_obj -- that is, if we're just adding new
-        // fields rather than extending an existing object -- then we just
-        // pass the outer object to create_vtbl().  Our vtable won't need
-        // to have any forwarding slots.
-
         // We need a dummy inner_obj_ty for setting up the object body
         // later.
         inner_obj_ty = ty::mk_type(ccx.tcx);
 
-        // This seems a little strange, because it'll come into
-        // create_vtbl() with no "additional methods".  What's happening
-        // is that, since *all* of the methods are "additional", we can
-        // get away with acting like none of them are.
+        // If there's no inner_obj -- that is, if we're just adding new
+        // fields rather than extending an existing object -- then we just
+        // pass the outer object to create_vtbl().  Our vtable won't need
+        // to have any forwarding slots.
         vtbl =
             create_vtbl(bcx.fcx.lcx, sp, outer_obj_ty, wrapper_obj, ~[], none,
                         additional_field_tys);
@@ -6770,19 +6765,19 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
       some(inner_obj_ty) {
         // Handle forwarding slots.
 
-        // If this vtable is being created for an extended object, then
-        // the vtable needs to contain 'forwarding slots' for methods that
-        // were on the original object and are not being overloaded by the
-        // extended one.  So, to find the set of methods that we need
-        // forwarding slots for, we need to take the set difference of
-        // inner_obj_methods (methods on the original object) and
-        // ob.methods (methods on the object being added).
+        // If this vtable is being created for an extended object, then the
+        // vtable needs to contain 'forwarding slots' for methods that were on
+        // the original object and are not being overloaded by the extended
+        // one.  So, to find the set of methods that we need forwarding slots
+        // for, we need to take the set difference of inner_obj_methods
+        // (methods on the original object) and ob.methods (methods on the
+        // object being added).
 
-        // If we're here, then inner_obj_ty and llinner_obj_ty are the type
-        // of the inner object, and "ob" is the wrapper object.  We need
-        // to take apart inner_obj_ty (it had better have an object type
-        // with methods!) and put those original methods onto the list of
-        // methods we need forwarding methods for.
+        // If we're here, then inner_obj_ty and llinner_obj_ty are the type of
+        // the inner object, and "ob" is the wrapper object.  We need to take
+        // apart inner_obj_ty (it had better have an object type with
+        // methods!) and put those original methods onto the list of methods
+        // we need forwarding methods for.
 
         // Gather up methods on the original object in 'meths'.
         alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
@@ -6806,12 +6801,11 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
 
             alt m {
               fwding_mthd(fm) {
-                // Since fm is a fwding_mthd, and we're checking to
-                // see if it's in addtl_meths (which only contains
-                // normal_mthds), we can't just check if fm is a
-                // member of addtl_meths.  Instead, we have to go
-                // through addtl_meths and see if there's some method
-                // in it that has the same name as fm.
+                // Since fm is a fwding_mthd, and we're checking to see if
+                // it's in addtl_meths (which only contains normal_mthds), we
+                // can't just check if fm is a member of addtl_meths.
+                // Instead, we have to go through addtl_meths and see if
+                // there's some method in it that has the same name as fm.
                 for am: @ast::method  in addtl_meths {
                     if str::eq(am.node.ident, fm.ident) { ret none; }
                 }
@@ -6828,8 +6822,8 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
         meths = std::ivec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
 
 
-        // And now add the additional ones (both replacements and entirely
-        // new ones).  These'll just be normal methods.
+        // And now add the additional ones (both replacements and entirely new
+        // ones).  These'll just be normal methods.
         for m: @ast::method  in ob.methods { meths += ~[normal_mthd(m)]; }
       }
     }
