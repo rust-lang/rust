@@ -3631,7 +3631,7 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
         let loc_r = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
         add_clean(scope_cx, local_res.val, t);
         let bcx = trans_alt::bind_irrefutable_pat
-            (loc_r.bcx, local.node.pat, local_res.val, cx.fcx.lllocals);
+           (loc_r.bcx, local.node.pat, local_res.val, cx.fcx.lllocals, false);
         bcx = trans_block(bcx, body, return).bcx;
         if !bcx.build.is_terminated() {
             bcx.build.Br(next_cx.llbb);
@@ -3982,7 +3982,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
     // Add bindings for the loop variable alias.
     bcx = trans_alt::bind_irrefutable_pat
         (bcx, local.node.pat, llvm::LLVMGetParam(fcx.llfn, 3u),
-         bcx.fcx.llupvars);
+         bcx.fcx.llupvars, false);
     let lltop = bcx.llbb;
     let r = trans_block(bcx, body, return);
     finish_fn(fcx, lltop);
@@ -5949,7 +5949,7 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
       _ { bcx = zero_alloca(bcx, llptr, ty).bcx; }
     }
     bcx = trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
-                                          bcx.fcx.lllocals);
+                                          bcx.fcx.lllocals, false);
     ret rslt(bcx, llptr);
 }
 

@@ -437,12 +437,23 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &ast::arm[],
 
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
-                        table: hashmap[ast::node_id, ValueRef])
+                        table: hashmap[ast::node_id, ValueRef], copy: bool)
     -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx;
     alt pat.node {
       ast::pat_bind(_) {
-        table.insert(pat.id, val);
+        if copy {
+            let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+            let llty = trans::type_of(ccx, pat.span, ty);
+            let alloc = trans::alloca(bcx, llty);
+            bcx = trans::memmove_ty(bcx, alloc, val, ty).bcx;
+            let loaded = trans::load_if_immediate(bcx, alloc, ty);
+            bcx = trans::copy_ty(bcx, loaded, ty).bcx;
+            table.insert(pat.id, alloc);
+            trans_common::add_clean(bcx, alloc, ty);
+        } else {
+            table.insert(pat.id, val);
+        }
       }
       ast::pat_tag(_, sub) {
         if ivec::len(sub) == 0u { ret bcx; }
@@ -450,7 +461,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;
         for argval: ValueRef in args.vals {
-            bcx = bind_irrefutable_pat(bcx, sub.(i), argval, table);
+            bcx = bind_irrefutable_pat(bcx, sub.(i), argval, table, copy);
             i += 1;
         }
       }
@@ -462,14 +473,14 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
             let ix: uint =
                 ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
-            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table);
+            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, copy);
         }
       }
       ast::pat_box(inner) {
         let box = bcx.build.Load(val);
         let unboxed = bcx.build.InBoundsGEP
             (box, ~[C_int(0), C_int(back::abi::box_rc_field_body)]);
-        bcx = bind_irrefutable_pat(bcx, inner, unboxed, table);
+        bcx = bind_irrefutable_pat(bcx, inner, unboxed, table, true);
       }
       ast::pat_wild. | ast::pat_lit(_) {}
     }
