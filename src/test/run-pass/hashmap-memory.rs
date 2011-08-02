@@ -1,4 +1,3 @@
-// xfail-pretty
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 

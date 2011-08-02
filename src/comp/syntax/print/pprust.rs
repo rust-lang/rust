@@ -172,6 +172,20 @@ fn bclose_(s: &ps, span: codemap::span, indented: uint) {
 }
 fn bclose(s: &ps, span: codemap::span) { bclose_(s, span, indent_unit); }
 
+fn is_begin(s: &ps) -> bool {
+    alt s.s.last_token() {
+      pp::BEGIN(_) { true }
+      _ { false }
+    }
+}
+
+fn is_end(s: &ps) -> bool {
+    alt s.s.last_token() {
+      pp::END. { true }
+      _ { false }
+    }
+}
+
 fn is_bol(s: &ps) -> bool {
     ret s.s.last_token() == pp::EOF ||
         s.s.last_token() == pp::hardbreak_tok();
@@ -1403,7 +1417,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       }
       lexer::blank_line. {
         // We need to do at least one, possibly two hardbreaks.
-        pprust::hardbreak_if_not_bol(s);
+        if is_begin(s) || is_end(s) { hardbreak(s.s) }
         hardbreak(s.s);
       }
     }

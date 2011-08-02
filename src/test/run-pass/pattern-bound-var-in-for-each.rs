@@ -1,5 +1,4 @@
 // xfail-stage0
-// xfail-pretty
 // Tests that trans_path checks whether a
 // pattern-bound var is an upvar (when translating
 // the for-each body)
