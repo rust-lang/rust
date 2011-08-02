@@ -40,7 +40,7 @@ import std::option::none;
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import util::common::log_stmt_err;
-import bitvectors::promises;
+import bitvectors::*;
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
@@ -141,11 +141,11 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f.body);
-    let ret_c: tsconstr = ninit(fcx.id, fcx.name);
-    if f.proto == ast::proto_fn && !promises(fcx, post, ret_c) &&
-           !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-           f.decl.cf == return {
-        fcx.ccx.tcx.sess.span_note(f.body.span,
+    if f.proto == ast::proto_fn &&
+        !promises(fcx, post, fcx.enclosing.i_return) &&
+        !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+        f.decl.cf == return {
+        fcx.ccx.tcx.sess.span_err(f.body.span,
                                    "In function " + fcx.name +
                                        ", not all control paths \
                                         return a value");
@@ -153,12 +153,11 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
                                     "see declared return type of '" +
                                         ty_to_str(*f.decl.output) + "'");
     } else if (f.decl.cf == noreturn) {
-
-
         // check that this really always fails
-        // the fcx.id bit means "returns" for a returning fn,
-        // "diverges" for a non-returning fn
-        if !promises(fcx, post, ret_c) {
+        // Note that it's ok for i_diverge and i_return to both be true.
+        // In fact, i_diverge implies i_return. (But not vice versa!)
+
+        if !promises(fcx, post, fcx.enclosing.i_diverge) {
             fcx.ccx.tcx.sess.span_fatal(f.body.span,
                                         "In non-returning function " +
                                             fcx.name +

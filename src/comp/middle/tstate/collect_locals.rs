@@ -109,16 +109,28 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], f_sp: &span,
         next = add_constraint(cx.tcx, sc, next, res_map);
     }
 
-    /* add a pseudo-entry for the function's return value
-       we can safely use the function's name itself for this purpose */
+    /* add the special i_diverge and i_return constraints
+    (see the type definition for auxiliary::fn_info for an explanation) */
 
-    add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next, res_map);
+    // use the name of the function for the "return" constraint
+    next = add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next,
+                          res_map);
+    // and the name of the function, with a '!' appended to it, for the
+    // "diverges" constraint
+    let diverges_id = ccx.tcx.sess.next_node_id();
+    let diverges_name = name + "!";
+    add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id, diverges_name)),
+                   next, res_map);
+
     let v: @mutable node_id[] = @mutable ~[];
     let rslt =
         {constrs: res_map,
          num_constraints:
-             ivec::len(*cx.cs) + ivec::len(f.decl.constraints) + 1u,
+         // add 2 to account for the i_return and i_diverge constraints
+             ivec::len(*cx.cs) + ivec::len(f.decl.constraints) + 2u,
          cf: f.decl.cf,
+         i_return: ninit(id, name),
+         i_diverge: ninit(diverges_id, diverges_name),
          used_vars: v};
     ccx.fm.insert(id, rslt);
     log name + " has " + std::uint::str(num_constraints(rslt)) +

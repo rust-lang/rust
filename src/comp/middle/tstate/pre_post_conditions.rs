@@ -79,6 +79,9 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
                  {constrs: @new_def_hash[constraint](),
                   num_constraints: 0u,
                   cf: return,
+                  // just bogus
+                  i_return: ninit(0, ""),
+                  i_diverge: ninit(0, ""),
                   used_vars: v},
              id: 0,
              name: "",
@@ -692,7 +695,8 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
 
 fn find_pre_post_fn(fcx: &fn_ctxt, f: &_fn) {
     // hack
-    use_var(fcx, fcx.id);
+    use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_return));
+    use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_diverge));
 
     find_pre_post_block(fcx, f.body);
 

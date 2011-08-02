@@ -1,4 +1,5 @@
 import syntax::print::pprust::path_to_str;
+import util::ppaux::ty_to_str;
 import std::ivec;
 import std::option;
 import std::option::get;
@@ -6,21 +7,7 @@ import std::option::is_none;
 import std::option::none;
 import std::option::some;
 import std::option::maybe;
-import tstate::ann::set_in_poststate_;
-import tstate::ann::pre_and_post;
-import tstate::ann::get_post;
-import tstate::ann::postcond;
-import tstate::ann::empty_pre_post;
-import tstate::ann::empty_poststate;
-import tstate::ann::clear_in_poststate;
-import tstate::ann::intersect;
-import tstate::ann::empty_prestate;
-import tstate::ann::prestate;
-import tstate::ann::poststate;
-import tstate::ann::false_postcond;
-import tstate::ann::ts_ann;
-import tstate::ann::set_prestate;
-import tstate::ann::set_poststate;
+import ann::*;
 import aux::*;
 import tritv::tritv_clone;
 import tritv::tritv_set;
@@ -189,9 +176,8 @@ fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
       noreturn. {
-        changed |=
-            set_poststate_ann(fcx.ccx, id,
-                              false_postcond(num_constraints(fcx.enclosing)));
+        let post = false_postcond(num_constraints(fcx.enclosing));
+        changed |= set_poststate_ann(fcx.ccx, id, post);
       }
       _ { changed |= set_poststate_ann(fcx.ccx, id, rs.post); }
     }
@@ -403,15 +389,14 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         /* normally, everything is true if execution continues after
            a ret expression (since execution never continues locally
            after a ret expression */
+// FIXME should factor this out
+        let post = false_postcond(num_constrs);
+        // except for the "diverges" bit...
+        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
 
-        set_poststate_ann(fcx.ccx, e.id, false_postcond(num_constrs));
-        /* return from an always-failing function clears the return bit */
+        set_poststate_ann(fcx.ccx, e.id, post);
 
-        alt fcx.enclosing.cf {
-          noreturn. { kill_poststate(fcx, e.id, ninit(fcx.id, fcx.name)); }
-          _ { }
-        }
-        alt maybe_ret_val {
+       alt maybe_ret_val {
           none. {/* do nothing */ }
           some(ret_val) {
             changed |= find_pre_post_state_expr(fcx, pres, ret_val);
@@ -421,7 +406,10 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       }
       expr_be(val) {
         let changed = set_prestate_ann(fcx.ccx, e.id, pres);
-        set_poststate_ann(fcx.ccx, e.id, false_postcond(num_constrs));
+        let post = false_postcond(num_constrs);
+        // except for the "diverges" bit...
+        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
+        set_poststate_ann(fcx.ccx, e.id, post);
         ret changed | find_pre_post_state_expr(fcx, pres, val);
       }
       expr_if(antec, conseq, maybe_alt) {
@@ -558,12 +546,20 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
       }
       expr_fail(maybe_fail_val) {
+        // FIXME Should factor out this code,
+        // which also appears in find_pre_post_state_exprs
+        /* if execution continues after fail, then everything is true!
+        woo! */
+        let post = false_postcond(num_constrs);
+        alt fcx.enclosing.cf {
+          noreturn. {
+            kill_poststate_(fcx, ninit(fcx.id, fcx.name), post);
+          }
+          _ {}
+        }
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
-                /* if execution continues after fail, then everything is true!
-                   woo! */
-                set_poststate_ann(fcx.ccx, e.id, false_postcond(num_constrs))
-                |
-                alt maybe_fail_val {
+            set_poststate_ann(fcx.ccx, e.id, post)
+                | alt maybe_fail_val {
                   none. { false }
                   some(fail_val) {
                     find_pre_post_state_expr(fcx, pres, fail_val)
@@ -710,9 +706,11 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
 
 fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
 
-    let num_local_vars = num_constraints(fcx.enclosing);
-    // make sure the return bit starts out False
-    clear_in_prestate_ident(fcx, fcx.id, fcx.name, f.body.node.id);
+    let num_constrs = num_constraints(fcx.enclosing);
+    // make sure the return and diverge bits start out False
+    kill_prestate(fcx, f.body.node.id, fcx.enclosing.i_return);
+    kill_prestate(fcx, f.body.node.id, fcx.enclosing.i_diverge);
+
     // Instantiate any constraints on the arguments so we can use them
     let block_pre = block_prestate(fcx.ccx, f.body);
     let tsc;
@@ -728,15 +726,16 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
       some(tailexpr) {
         let tailty = expr_ty(fcx.ccx.tcx, tailexpr);
 
-
         // Since blocks and alts and ifs that don't have results
         // implicitly result in nil, we have to be careful to not
         // interpret nil-typed block results as the result of a
         // function with some other return type
         if !type_is_nil(fcx.ccx.tcx, tailty) &&
                !type_is_bot(fcx.ccx.tcx, tailty) {
-            let p = false_postcond(num_local_vars);
-            set_poststate_ann(fcx.ccx, f.body.node.id, p);
+            let post = false_postcond(num_constrs);
+            // except for the "diverges" bit...
+            kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
+            set_poststate_ann(fcx.ccx, f.body.node.id, post);
         }
       }
       none. {/* fallthrough */ }

@@ -238,19 +238,56 @@ type norm_constraint = {bit_num: uint, c: sp_constr};
 
 type constr_map = @std::map::hashmap[def_id, constraint];
 
+/* Contains stuff that has to be computed up front */
 type fn_info =
-    /* list, accumulated during pre/postcondition
-     computation, of all local variables that may be
-     used*/
-    // Doesn't seem to work without the @ --
-    // bug?
     {constrs: constr_map,
      num_constraints: uint,
      cf: controlflow,
+/* For easy access, the fn_info stores two special constraints for each
+   function.  i_return holds if all control paths in this function terminate
+   in either a return expression, or an appropriate tail expression.
+   i_diverge holds if all control paths in this function terminate in a fail
+   or diverging call.
+
+   It might be tempting to use a single constraint C for both properties,
+   where C represents i_return and !C represents i_diverge. This is
+   inadvisable, because then the sense of the bit depends on context. If we're
+   inside a ! function, that reverses the sense of the bit: C would be
+   i_diverge and !C would be i_return.  That's awkward, because we have to
+   pass extra context around to functions that shouldn't care.
+
+   Okay, suppose C represents i_return and !C represents i_diverge, regardless
+   of context. Consider this code:
+
+     if (foo) { ret; } else { fail; }
+
+   C is true in the consequent and false in the alternative. What's T `join`
+   F, then?  ? doesn't work, because this code should definitely-return if the
+   context is a returning function (and be definitely-rejected if the context
+   is a ! function).  F doesn't work, because then the code gets incorrectly
+   rejected if the context is a returning function. T would work, but it
+   doesn't make sense for T `join` F to be T (consider init constraints, for
+   example).;
+
+   So we need context. And so it seems clearer to just have separate
+   constraints.
+*/
+     i_return: tsconstr,
+     i_diverge: tsconstr,
+    /* list, accumulated during pre/postcondition
+     computation, of all local variables that may be
+     used */
+// Doesn't seem to work without the @ -- bug
      used_vars: @mutable node_id[]};
 
 fn tsconstr_to_def_id(t: &tsconstr) -> def_id {
     alt t { ninit(id, _) { local_def(id) } npred(_, id, _) { id } }
+}
+
+fn tsconstr_to_node_id(t: &tsconstr) -> node_id {
+    alt t { ninit(id, _) { id }
+            npred(_, id, _) {
+              fail "tsconstr_to_node_id called on pred constraint" } }
 }
 
 /* mapping from node ID to typestate annotation */
@@ -261,7 +298,10 @@ type node_ann_table = @mutable ts_ann[mutable ];
 type fn_info_map = @std::map::hashmap[node_id, fn_info];
 
 type fn_ctxt =
-    {enclosing: fn_info, id: node_id, name: ident, ccx: crate_ctxt};
+    {enclosing: fn_info,
+     id: node_id,
+     name: ident,
+     ccx: crate_ctxt};
 
 type crate_ctxt = {tcx: ty::ctxt, node_anns: node_ann_table, fm: fn_info_map};
 
