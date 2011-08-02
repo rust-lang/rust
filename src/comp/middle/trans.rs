@@ -5993,9 +5993,11 @@ fn new_block_ctxt(cx: &@fn_ctxt, parent: &block_parent, kind: block_kind,
                   name: &str) -> @block_ctxt {
     let cleanups: cleanup[] = ~[];
     let s = str::buf("");
+    let held_name; //HACK for str::buf, which doesn't keep its value alive
     if cx.lcx.ccx.sess.get_opts().save_temps ||
            cx.lcx.ccx.sess.get_opts().debuginfo {
-        s = str::buf(cx.lcx.ccx.names.next(name));
+        held_name = cx.lcx.ccx.names.next(name);
+        s = str::buf(held_name);
     }
     let llbb: BasicBlockRef = llvm::LLVMAppendBasicBlock(cx.llfn, s);
     ret @{llbb: llbb,
@@ -8001,11 +8003,14 @@ fn make_common_glue(sess: &session::session, output: &str) {
     let llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
-    llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
-    llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
+    let dat_layt = x86::get_data_layout(); //HACK (buf lifetime issue)
+    llvm::LLVMSetDataLayout(llmod, str::buf(dat_layt));
+    let targ_trip = x86::get_target_triple(); //HACK (buf lifetime issue)
+    llvm::LLVMSetTarget(llmod, str::buf(targ_trip));
     mk_target_data(x86::get_data_layout());
     declare_intrinsics(llmod);
-    llvm::LLVMSetModuleInlineAsm(llmod, str::buf(x86::get_module_asm()));
+    let modl_asm = x86::get_module_asm(); //HACK (buf lifetime issue)
+    llvm::LLVMSetModuleInlineAsm(llmod, str::buf(modl_asm));
     make_glues(llmod, taskptr_type);
     link::write::run_passes(sess, llmod, output);
 }
@@ -8035,10 +8040,9 @@ fn create_crate_map(ccx: &@crate_ctxt) -> ValueRef {
     let i = 1;
     let cstore = ccx.sess.get_cstore();
     while cstore::have_crate_data(cstore, i) {
-        let name = cstore::get_crate_data(cstore, i).name;
+        let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
         let cr =
-            llvm::LLVMAddGlobal(ccx.llmod, T_int(),
-                                str::buf("_rust_crate_map_" + name));
+            llvm::LLVMAddGlobal(ccx.llmod, T_int(), str::buf(nm));
         subcrates += ~[p2i(cr)];
         i += 1;
     }
@@ -8067,7 +8071,8 @@ fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst),
                             str::buf("rust_metadata"));
     llvm::LLVMSetInitializer(llglobal, llconst);
-    llvm::LLVMSetSection(llglobal, str::buf(x86::get_meta_sect_name()));
+    let met_sct_nm = x86::get_meta_sect_name(); //HACK (buf lifetime issue)
+    llvm::LLVMSetSection(llglobal, str::buf(met_sct_nm));
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
 
@@ -8086,9 +8091,11 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     let llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
-    llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
-    llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
-    let td = mk_target_data(x86::get_data_layout());
+    let dat_layt = x86::get_data_layout(); //HACK (buf lifetime issue)
+    llvm::LLVMSetDataLayout(llmod, str::buf(dat_layt));
+    let targ_trip = x86::get_target_triple(); //HACK (buf lifetime issue)
+    llvm::LLVMSetTarget(llmod, str::buf(targ_trip));
+    let td = mk_target_data(dat_layt);
     let tn = mk_type_names();
     let intrinsics = declare_intrinsics(llmod);
     let task_type = T_task();
