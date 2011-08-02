@@ -1605,8 +1605,11 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
     // A generic function for checking for or for-each loops
 
     fn check_for_or_for_each(fcx: &@fn_ctxt, local: &@ast::local,
-                                 element_ty: &ty::t, body: &ast::blk,
-                                 node_id: ast::node_id) -> bool {
+                             element_ty: ty::t, body: &ast::blk,
+                             node_id: ast::node_id) -> bool {
+        let locid = lookup_local(fcx, local.span, local.node.id);
+        element_ty = demand::simple(fcx, local.span, element_ty,
+                                    ty::mk_var(fcx.ccx.tcx, locid));
         let bot = check_decl_local(fcx, local);
         check_block(fcx, body);
         // Unify type of decl with element type of the seq
