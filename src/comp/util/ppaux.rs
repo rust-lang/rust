@@ -65,7 +65,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
                       m.output, m.cf, m.constrs) + ";";
     }
     fn field_to_str(cx: &ctxt, f: &field) -> str {
-        ret mt_to_str(cx, f.mt) + " " + f.ident;
+        ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
     fn mt_to_str(cx: &ctxt, m: &mt) -> str {
         let mstr;
@@ -100,7 +100,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_rec(elems) {
         let strs: str[] = ~[];
         for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
-        s += "rec(" + str::connect_ivec(strs, ",") + ")";
+        s += "{" + str::connect_ivec(strs, ",") + "}";
       }
       ty_tag(id, tps) {
         // The user should never see this if the cname is set properly!
