@@ -2000,6 +2000,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
             }
         }
         bot |= !arm_non_bot;
+        if !arm_non_bot { result_ty = ty::mk_bot(fcx.ccx.tcx); }
         write::ty_only_fixup(fcx, id, result_ty);
       }
       ast::expr_fn(f) {
