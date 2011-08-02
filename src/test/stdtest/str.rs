@@ -192,6 +192,15 @@ fn trim() {
     assert str::trim(" hey dude ") == "hey dude";
 }
 
+#[test]
+fn is_whitespace() {
+    assert str::is_whitespace("");
+    assert str::is_whitespace(" ");
+    assert str::is_whitespace("\u2009"); // Thin space
+    assert str::is_whitespace("  \n\t   ");
+    assert !str::is_whitespace("   _   ");
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

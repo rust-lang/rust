@@ -52,6 +52,7 @@ export bytes_ivec;
 export unsafe_from_bytes_ivec;
 export is_empty;
 export is_not_empty;
+export is_whitespace;
 export replace;
 export char_slice;
 export trim_left;
@@ -165,6 +166,18 @@ pred is_empty(s: str) -> bool { for c: u8  in s { ret false; } ret true; }
 
 /// Returns true if the string has length greater than 0
 pred is_not_empty(s: str) -> bool { !is_empty(s) }
+
+fn is_whitespace(s: str) -> bool {
+    let i = 0u;
+    let len = char_len(s);
+    while i < len {
+        if !char::is_whitespace(char_at(s, i)) {
+            ret false;
+        }
+        i += 1u
+    }
+    ret true;
+}
 
 // Returns the number of bytes (a.k.a. UTF-8 code units) in s.
 // Contrast with a function that would return the number of code
