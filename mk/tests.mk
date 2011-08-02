@@ -164,10 +164,13 @@ check-stage$(2)-pretty-rpass: test/pretty-rpass.stage$(2).out \
 
 check-stage$(2)-pretty-rfail: test/pretty-rfail.stage$(2).out \
 
+check-stage$(2)-pretty-bench: test/pretty-bench.stage$(2).out \
+
 check-stage$(2)-pretty-pretty: test/pretty-pretty.stage$(2).out \
 
 check-stage$(2)-pretty: check-stage$(2)-pretty-rpass \
                         check-stage$(2)-pretty-rfail \
+                        check-stage$(2)-pretty-bench \
                         check-stage$(2)-pretty-pretty \
 
 CTEST_COMMON_ARGS$(2) := --compile-lib-path stage$(2) \
@@ -208,6 +211,11 @@ PRETTY_RPASS_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
 PRETTY_RFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                          --src-base $$(S)src/test/run-fail/ \
                          --build-base test/run-fail/ \
+                         --mode pretty \
+
+PRETTY_BENCH_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
+                         --src-base $$(S)src/test/bench/ \
+                         --build-base test/bench/ \
                          --mode pretty \
 
 PRETTY_PRETTY_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
@@ -255,6 +263,12 @@ test/pretty-rfail.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
                                      $$(RFAIL_TESTS)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_RFAIL_ARGS$(2))
+	$$(Q)touch $$@
+
+test/pretty-bench.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \
+                                     $$(BENCH_TESTS)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(2),$$<) $$(PRETTY_BENCH_ARGS$(2))
 	$$(Q)touch $$@
 
 test/pretty-pretty.stage$(2).out.tmp: test/compiletest.stage$(2)$$(X) \

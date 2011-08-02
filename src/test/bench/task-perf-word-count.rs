@@ -1,3 +1,4 @@
+// xfail-pretty
 /**
    A parallel word-frequency counting program.
 

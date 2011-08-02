@@ -1,4 +1,4 @@
-
+// xfail-pretty
 
 // Based on Isaac Gouy's fannkuchredux.csharp
 use std;
