@@ -1,5 +1,4 @@
 // xfail-stage0
-// xfail-pretty
 pred even(x: uint) -> bool {
     if x < 2u {
         ret false;
