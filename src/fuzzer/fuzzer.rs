@@ -224,11 +224,11 @@ fn check_whole_compiler(code: &str) {
 
 fn parse_and_print(code: &str) -> str {
     let filename = "tmp.rs";
-    let codemap = codemap::new_codemap();
+    let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
     //write_file(filename, code);
     let crate =
-        parser::parse_crate_from_source_str(filename, code, ~[], codemap);
-    ret as_str(bind pprust::print_crate(codemap, crate, filename,
+        parser::parse_crate_from_source_str(filename, code, ~[], sess);
+    ret as_str(bind pprust::print_crate(sess.cm, crate, filename,
                                         ioivec::string_reader(code), _,
                                         pprust::no_ann()));
 }
@@ -336,12 +336,12 @@ fn check_variants(files: &str[]) {
             let s = ioivec::read_whole_file_str(file);
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) { cont; }
             log_err "check_variants: " + file;
-            let codemap = codemap::new_codemap();
-            let crate = parser::parse_crate_from_source_str(file, s, ~[], codemap);
-            log_err as_str(bind pprust::print_crate(codemap, crate, file,
+            let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
+            let crate = parser::parse_crate_from_source_str(file, s, ~[], sess);
+            log_err as_str(bind pprust::print_crate(sess.cm, crate, file,
                                         ioivec::string_reader(s), _,
                                         pprust::no_ann()));
-            check_variants_of_ast(*crate, codemap, file);
+            check_variants_of_ast(*crate, sess.cm, file);
         }
     }
 }

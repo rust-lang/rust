@@ -2317,8 +2317,7 @@ fn parse_crate_from_source_file(input: &str, cfg: &ast::crate_cfg,
 }
 
 fn parse_crate_from_source_str(name: &str, source: &str, cfg: &ast::crate_cfg,
-                               cm: &codemap::codemap) -> @ast::crate {
-    let sess = @{cm: cm, mutable next_id: 0};
+                               sess: &parse_sess) -> @ast::crate {
     let ftype = SOURCE_FILE;
     let filemap = codemap::new_filemap(name, 0u, 0u);
     sess.cm.files += ~[filemap];
