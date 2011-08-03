@@ -68,12 +68,12 @@ void lock_and_signal::wait() {
     timed_wait(0);
 }
 
-bool lock_and_signal::timed_wait(size_t timeout_in_ns) {
+bool lock_and_signal::timed_wait(size_t timeout_in_ms) {
     _locked = false;
     bool rv = true;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
-    DWORD timeout = timeout_in_ns == 0 ? INFINITE : timeout_in_ns / 1000000;
+    DWORD timeout = timeout_in_ms == 0 ? INFINITE : timeout_in_ms;
     rv = WaitForSingleObject(_event, timeout) != WAIT_TIMEOUT;
     EnterCriticalSection(&_cs);
     _holding_thread = GetCurrentThreadId();
@@ -85,7 +85,7 @@ bool lock_and_signal::timed_wait(size_t timeout_in_ns) {
         gettimeofday(&time_val, NULL);
         timespec time_spec;
         time_spec.tv_sec = time_val.tv_sec + 0;
-        time_spec.tv_nsec = time_val.tv_usec * 1000 + timeout_in_ns;
+        time_spec.tv_nsec = time_val.tv_usec * 1000 + timeout_in_ms * 1000000;
         if(time_spec.tv_nsec >= 1000000000) {
             time_spec.tv_sec++;
             time_spec.tv_nsec -= 1000000000;
