@@ -1531,9 +1531,27 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
               _ { fty }
             };
 
-        // Grab the argument types and the return type.
+        let sty = structure_of(fcx, sp, fty_stripped);
+
+        // Check that we aren't confusing iter calls and fn calls
+        alt sty {
+          ty::ty_fn(ast::proto_iter., _, _, _, _) {
+            if call_kind != kind_for_each {
+                fcx.ccx.tcx.sess.span_err(
+                    sp, "calling iter outside of for each loop");
+            }
+          }
+          _ {
+              if call_kind == kind_for_each {
+                fcx.ccx.tcx.sess.span_err(
+                    sp, "calling non-iter as sequence of for each loop");
+            }
+          }
+        }
+
+        // Grab the argument types
         let arg_tys;
-        alt structure_of(fcx, sp, fty_stripped) {
+        alt sty {
           ty::ty_fn(_, arg_tys_0, _, _, _) |
           ty::ty_native_fn(_, arg_tys_0, _) { arg_tys = arg_tys_0; }
           _ {
@@ -1590,8 +1608,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         write::ty_only_fixup(fcx, id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
     }
-    // A generic function for checking call expressions
 
+    // A generic function for checking call expressions
     fn check_call(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
                   args: &(@ast::expr)[], call_kind: call_kind) -> bool {
         let args_opt_0: (option::t[@ast::expr])[] = ~[];
@@ -1602,8 +1620,34 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         // Call the generic checker.
         ret check_call_or_bind(fcx, sp, f, args_opt_0, call_kind);
     }
-    // A generic function for checking for or for-each loops
 
+    // A generic function for doing all of the checking for call expressions
+    fn check_call_full(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
+                       args: &(@ast::expr)[], call_kind: call_kind,
+                       id: ast::node_id) -> bool {
+        /* here we're kind of hosed, as f can be any expr
+        need to restrict it to being an explicit expr_path if we're
+        inside a pure function, and need an environment mapping from
+        function name onto purity-designation */
+        require_pure_call(fcx.ccx, fcx.purity, f, sp);
+        let bot = check_call(fcx, sp, f, args, call_kind);
+
+        // Pull the return type out of the type of the function.
+        let rt_1;
+        let fty = do_autoderef(fcx, sp, ty::expr_ty(fcx.ccx.tcx, f));
+        alt structure_of(fcx, sp, fty) {
+          ty::ty_fn(_, _, rt, cf, _) {
+            bot |= cf == ast::noreturn;
+            rt_1 = rt;
+          }
+          ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
+          _ { fail "LHS of call expr didn't have a function type?!"; }
+        }
+        write::ty_only_fixup(fcx, id, rt_1);
+        ret bot;
+    }
+
+    // A generic function for checking for or for-each loops
     fn check_for_or_for_each(fcx: &@fn_ctxt, local: &@ast::local,
                              element_ty: ty::t, body: &ast::blk,
                              node_id: ast::node_id) -> bool {
@@ -1952,9 +1996,16 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         bot |= check_for_or_for_each(fcx, decl, elt_ty, body, id);
       }
       ast::expr_for_each(decl, seq, body) {
-        bot = check_expr(fcx, seq) |
-              check_for_or_for_each(fcx, decl, expr_ty(tcx, seq),
-                                    body, id);
+        alt (seq.node) {
+          ast::expr_call(f, args) {
+            bot = check_call_full(fcx, seq.span, f, args,
+                                  kind_for_each, seq.id);
+          }
+          _ { tcx.sess.span_fatal(
+              expr.span, "sequence in for each loop not a call"); }
+        }
+        bot |= check_for_or_for_each(fcx, decl, expr_ty(tcx, seq),
+                                     body, id);
       }
       ast::expr_while(cond, body) {
         bot = check_expr(fcx, cond);
@@ -1973,7 +2024,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       ast::expr_alt(expr, arms) {
         bot = check_expr(fcx, expr);
         // Typecheck the patterns first, so that we get types for all the
-        // bindings.
+       // bindings.
 
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm  in arms {
@@ -2060,28 +2111,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         write::ty_only_fixup(fcx, id, t_1);
       }
       ast::expr_call(f, args) {
-        /* here we're kind of hosed, as f can be any expr
-         need to restrict it to being an explicit expr_path if we're
-        inside a pure function, and need an environment mapping from
-        function name onto purity-designation */
-
-        require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
-        bot = check_call(fcx, expr.span, f, args, kind_call);
-        // Pull the return type out of the type of the function.
-
-        let rt_1;
-        let fty = do_autoderef(fcx, expr.span, ty::expr_ty(tcx, f));
-        alt structure_of(fcx, expr.span, fty) {
-          ty::ty_fn(_, _, rt, cf, _) {
-            bot |= cf == ast::noreturn;
-            rt_1 = rt;
-          }
-          ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
-          _ {
-            fail "LHS of call expr didn't have a function type?!";
-          }
-        }
-        write::ty_only_fixup(fcx, id, rt_1);
+        bot = check_call_full(fcx, expr.span, f, args, kind_call, expr.id);
       }
       ast::expr_self_method(ident) {
         let t = ty::mk_nil(tcx);
