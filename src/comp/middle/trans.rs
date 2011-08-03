@@ -92,17 +92,12 @@ fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &ty::arg[]) ->
    TypeRef[] {
     let atys: TypeRef[] = ~[];
     for arg: ty::arg  in inputs {
-        if ty::type_has_dynamic_size(cx.tcx, arg.ty) {
-            assert (arg.mode != ty::mo_val);
-            atys += ~[T_typaram_ptr(cx.tn)];
-        } else {
-            let t: TypeRef;
-            alt arg.mode {
-              ty::mo_alias(_) { t = T_ptr(type_of_inner(cx, sp, arg.ty)); }
-              _ { t = type_of_inner(cx, sp, arg.ty); }
-            }
-            atys += ~[t];
-        }
+        let t: TypeRef = type_of_inner(cx, sp, arg.ty);
+        t = alt arg.mode {
+          ty::mo_alias(_) { T_ptr(t) }
+          _ { t }
+        };
+        atys += ~[t];
     }
     ret atys;
 }
@@ -120,9 +115,7 @@ fn type_of_fn_full(cx: &@crate_ctxt, sp: &span, proto: ast::proto,
     let atys: TypeRef[] = ~[];
 
     // Arg 0: Output pointer.
-    if ty::type_has_dynamic_size(cx.tcx, output) {
-        atys += ~[T_typaram_ptr(cx.tn)];
-    } else { atys += ~[T_ptr(type_of_inner(cx, sp, output))]; }
+    atys += ~[T_ptr(type_of_inner(cx, sp, output))];
 
     // Arg 1: task pointer.
     atys += ~[T_taskptr(*cx)];
@@ -252,7 +245,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_var(_) {
         cx.tcx.sess.span_fatal(sp, "trans::type_of called on ty_var");
       }
-      ty::ty_param(_, _) { llty = T_i8(); }
+      ty::ty_param(_, _) { llty = T_typaram(cx.tn); }
       ty::ty_type. { llty = T_ptr(cx.tydesc_type); }
     }
     assert (llty as int != 0);
@@ -272,23 +265,6 @@ fn type_of_tag(cx: &@crate_ctxt, sp: &span, did: &ast::def_id, t: &ty::t) ->
         if size == 0u { size = 1u; }
         ret T_array(T_i8(), size);
     }
-}
-
-
-fn type_of_arg(cx: @local_ctxt, sp: &span, arg: &ty::arg) -> TypeRef {
-    alt ty::struct(cx.ccx.tcx, arg.ty) {
-      ty::ty_param(_, _) {
-        if arg.mode != ty::mo_val { ret T_typaram_ptr(cx.ccx.tn); }
-      }
-      _ {
-        // fall through
-      }
-    }
-    let typ;
-    if arg.mode != ty::mo_val {
-        typ = T_ptr(type_of_inner(cx.ccx, sp, arg.ty));
-    } else { typ = type_of_inner(cx.ccx, sp, arg.ty); }
-    ret typ;
 }
 
 fn type_of_ty_param_kinds_and_ty(lcx: @local_ctxt, sp: &span,
@@ -4492,13 +4468,10 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     let outgoing_args = ty::ty_fn_args(cx.ccx.tcx, outgoing_fty);
 
     // The 'llretptr' that will arrive in the thunk we're creating also needs
-    // to be the correct size.  Cast it to the size of f's return type, if
-    // necessary.
+    // to be the correct type.  Cast it to f's return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_has_dynamic_size(cx.ccx.tcx, outgoing_ret_ty) {
-        llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.ccx.tn));
-    } else if ty::type_contains_params(cx.ccx.tcx, outgoing_ret_ty) {
-        let llretty = type_of(cx.ccx, sp, outgoing_ret_ty);
+    if ty::type_contains_params(cx.ccx.tcx, outgoing_ret_ty) {
+        let llretty = type_of_inner(cx.ccx, sp, outgoing_ret_ty);
         llretptr = bcx.build.PointerCast(llretptr, T_ptr(llretty));
     }
 
@@ -4765,27 +4738,20 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef, llobj: &option::t[ValueRef],
       }
       _ { }
     }
-    if ty::type_has_dynamic_size(bcx_tcx(cx), retty) {
-        llargs +=
-            ~[bcx.build.PointerCast(llretslot,
-                                    T_typaram_ptr(bcx_ccx(cx).tn))];
-    } else if (ty::type_contains_params(bcx_tcx(cx), retty)) {
+    if (ty::type_contains_params(bcx_tcx(cx), retty)) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
         // type deep in a structure -- which the caller has a concrete view
         // of. If so, cast the caller's view of the restlot to the callee's
         // view, for the sake of making a type-compatible call.
-
-        llargs +=
-            ~[cx.build.PointerCast(llretslot,
-                                   T_ptr(type_of(bcx_ccx(bcx), bcx.sp,
-                                                 retty)))];
+        let llretty = T_ptr(type_of_inner(bcx_ccx(bcx), bcx.sp, retty));
+        llargs += ~[cx.build.PointerCast(llretslot, llretty)];
     } else { llargs += ~[llretslot]; }
+
     // Arg 1: task pointer.
-
     llargs += ~[bcx.fcx.lltaskptr];
-    // Arg 2: Env (closure-bindings / self-obj)
 
+    // Arg 2: Env (closure-bindings / self-obj)
     alt llobj {
       some(ob) {
         // Every object is always found in memory,
@@ -4796,18 +4762,18 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef, llobj: &option::t[ValueRef],
       }
       _ { llargs += ~[llenv]; }
     }
+
     // Args >3: ty_params ...
-
     llargs += lltydescs;
-    // ... then possibly an lliterbody argument.
 
+    // ... then possibly an lliterbody argument.
     alt lliterbody { none. { } some(lli) { llargs += ~[lli]; } }
+
     // ... then explicit args.
 
     // First we figure out the caller's view of the types of the arguments.
     // This will be needed if this is a generic call, because the callee has
     // to cast her view of the arguments to the caller's view.
-
     let arg_tys = type_of_explicit_args(bcx_ccx(cx), cx.sp, args);
     let i = 0u;
     for e: @ast::expr  in es {
@@ -6605,11 +6571,12 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     let llself_obj = bcx.build.Load(llself_obj_ptr);
 
     // The 'llretptr' that will arrive in the forwarding function we're
-    // creating also needs to be the correct size.  Cast it to the size of the
-    // method's return type, if necessary.
+    // creating also needs to be the correct type.  Cast it to the method's
+    // return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_has_dynamic_size(cx.ccx.tcx, m.output) {
-        llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.ccx.tn));
+    if ty::type_contains_params(cx.ccx.tcx, m.output) {
+        let llretty = type_of_inner(cx.ccx, sp, m.output);
+        llretptr = bcx.build.PointerCast(llretptr, T_ptr(llretty));
     }
 
     // Now, we have to get the the inner_obj's vtbl out of the self_obj.  This
