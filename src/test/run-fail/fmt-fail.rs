@@ -1,5 +1,4 @@
 // xfail-stage0
-// xfail-pretty
 // error-pattern:meh
 use std;
 import std::str;

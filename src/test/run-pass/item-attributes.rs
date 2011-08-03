@@ -1,5 +1,4 @@
 // xfail-stage0
-// xfail-pretty
 
 // These are attributes of the implicit crate. Really this just needs to parse
 // for completeness since .rs files linked from .rc files support this
