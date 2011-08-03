@@ -67,6 +67,7 @@ type fn_ctxt =
     // (and with any functions whose environment is being captured).
     {ret_ty: ty::t,
      purity: ast::purity,
+     proto: ast::proto,
      var_bindings: @ty::unify::var_bindings,
      locals: hashmap[ast::node_id, int],
      local_names: hashmap[ast::node_id, ast::ident],
@@ -1883,6 +1884,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       }
       ast::expr_put(expr_opt) {
         require_impure(tcx.sess, fcx.purity, expr.span);
+        if (fcx.proto != ast::proto_iter) {
+            tcx.sess.span_fatal(expr.span, "put in non-iterator");
+        }
         alt expr_opt {
           none. {
             let nil = ty::mk_nil(tcx);
@@ -1890,15 +1894,14 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
                 tcx.sess.span_fatal(expr.span,
                                     "put; in iterator yielding non-nil");
             }
-            write::nil_ty(tcx, id);
           }
           some(e) {
             bot = check_expr(fcx, e);
             demand::simple(fcx, expr.span, fcx.ret_ty,
                            expr_ty(tcx, e));
-            write::nil_ty(tcx, id);
           }
         }
+        write::nil_ty(tcx, id);
       }
       ast::expr_be(e) {
         // FIXME: prove instead of assert
@@ -2619,12 +2622,12 @@ fn check_const(ccx: &@crate_ctxt, sp: &span, e: &@ast::expr,
                id: &ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
-
     let rty = node_id_to_type(ccx.tcx, id);
     let fixups: ast::node_id[] = ~[];
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
+          proto: ast::proto_fn,
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash[int](),
           local_names: new_int_hash[ast::ident](),
@@ -2643,13 +2646,13 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     let fcx: @fn_ctxt =
         @{ret_ty: ast_ty_to_ty_crate(ccx, decl.output),
           purity: decl.purity,
+          proto: f.proto,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,
           local_names: gather_result.local_names,
           next_var_id: gather_result.next_var_id,
           mutable fixups: fixups,
           ccx: ccx};
-
     check_block(fcx, body);
     alt decl.purity {
       ast::pure_fn. {
