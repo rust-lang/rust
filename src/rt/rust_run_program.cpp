@@ -43,7 +43,7 @@ rust_run_program(void* task, const char* argv[],
     PROCESS_INFORMATION pi;
     BOOL created = CreateProcess(NULL, cmd, NULL, NULL, TRUE,
                                  0, NULL, NULL, &si, &pi);
-                                 
+
     CloseHandle(si.hStdInput);
     CloseHandle(si.hStdOutput);
     CloseHandle(si.hStdError);

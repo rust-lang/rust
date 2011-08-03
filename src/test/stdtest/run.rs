@@ -31,19 +31,19 @@ fn test_pipes() {
        pipe_in.in, pipe_out.out, pipe_err.out);
     os::libc::close(pipe_in.in);
     os::libc::close(pipe_out.out);
-    os::libc::close(pipe_err.out);    
-    
+    os::libc::close(pipe_err.out);
+
     if pid == -1 { fail; }
     let expected = "test";
     writeclose(pipe_in.out, expected);
     let actual = readclose(pipe_out.in);
     readclose(pipe_err.in);
     os::waitpid(pid);
-    
+
     log expected;
     log actual;
     assert expected == actual;
-    
+
     fn writeclose(fd: int, s: &str) {
         let writer = io::new_writer(
             io::fd_buf_writer(fd, option::none));

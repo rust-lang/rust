@@ -113,7 +113,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
       }
     };
     let actual = srcs.(ivec::len(srcs) - 1u);
-    
+
     if option::is_some(props.pp_exact) {
         // Now we have to care about line endings
         let cr = "\r";
