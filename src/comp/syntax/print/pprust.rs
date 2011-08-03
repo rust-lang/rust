@@ -1195,10 +1195,19 @@ fn print_alias(s: &ps, m: ast::mode) {
     }
 }
 
+fn print_kind(s: &ps, kind: ast::kind) {
+    alt kind {
+      ast::kind_unique. { word(s.s, "~"); }
+      ast::kind_shared. { word(s.s, "@"); }
+      _ { /* fallthrough */ }
+    }
+}
+
 fn print_type_params(s: &ps, params: &ast::ty_param[]) {
     if ivec::len(params) > 0u {
         word(s.s, "[");
         fn printParam(s: &ps, param: &ast::ty_param) {
+            print_kind(s, param.kind);
             word(s.s, param.ident);
         }
         commasep(s, inconsistent, params, printParam);
