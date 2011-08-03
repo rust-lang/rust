@@ -1081,7 +1081,7 @@ type binding = {lhs: inst[], rhs: option::t[initializer]};
 
 fn local_to_bindings(loc : &@local) -> binding {
     let lhs = ~[];
-    for p: @pat in pat_bindings(loc.node.pat) {
+    for each p: @pat in pat_bindings(loc.node.pat) {
         let ident = alt p.node { pat_bind(name) { name } };
         lhs += ~[{ident: ident, node: p.id}];
     }

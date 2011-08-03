@@ -1241,16 +1241,9 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
 }
 
 fn check_pat(ch: checker, p: &@ast::pat) {
-    alt p.node {
-      ast::pat_bind(name) { add_name(ch, p.span, name); }
-      ast::pat_tag(_, children) {
-        for child: @ast::pat in children { check_pat(ch, child); }
-      }
-      ast::pat_rec(fields, _) {
-        for f: ast::field_pat  in fields { check_pat(ch, f.pat); }
-      }
-      ast::pat_box(inner) { check_pat(ch, inner); }
-      _ { }
+    for each p in ast::pat_bindings(p) {
+        let ident = alt p.node { pat_bind(n) { n } };
+        add_name(ch, p.span, ident);
     }
 }
 

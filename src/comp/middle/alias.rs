@@ -310,22 +310,7 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &ast::arm[], sc: &scope,
 }
 
 fn arm_defnums(arm: &ast::arm) -> node_id[] {
-    let dnums = ~[];
-    fn walk_pat(found: &mutable node_id[], p: &@ast::pat) {
-        alt p.node {
-          ast::pat_bind(_) { found += ~[p.id]; }
-          ast::pat_tag(_, children) {
-            for child: @ast::pat  in children { walk_pat(found, child); }
-          }
-          ast::pat_rec(fields, _) {
-            for f: ast::field_pat  in fields { walk_pat(found, f.pat); }
-          }
-          ast::pat_box(inner) { walk_pat(found, inner); }
-          _ { }
-        }
-    }
-    walk_pat(dnums, arm.pats.(0));
-    ret dnums;
+    ret ast::pat_binding_ids(arm.pats.(0));
 }
 
 fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
@@ -334,10 +319,7 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
     alt call.node {
       ast::expr_call(f, args) {
         let data = check_call(cx, f, args, sc);
-        let bindings = ~[];
-        for p: @ast::pat in ast::pat_bindings(local.node.pat) {
-            bindings += ~[p.id];
-        }
+        let bindings = ast::pat_binding_ids(local.node.pat);
         let new_sc = @{root_vars: data.root_vars,
                        block_defnum: bindings.(ivec::len(bindings) - 1u),
                        bindings: bindings,
@@ -370,10 +352,7 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
                                     util::ppaux::ty_to_str(cx.tcx, seq_t));
       }
     }
-    let bindings = ~[];
-    for p: @ast::pat in ast::pat_bindings(local.node.pat) {
-        bindings += ~[p.id];
-    }
+    let bindings = ast::pat_binding_ids(local.node.pat);
     let new_sc = @{root_vars: root_def,
                    block_defnum: bindings.(ivec::len(bindings) - 1u),
                    bindings: bindings,

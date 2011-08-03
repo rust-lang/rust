@@ -136,7 +136,7 @@ fn find_pre_post_loop(fcx: &fn_ctxt, l: &@local, index: &@expr, body: &blk,
                       id: node_id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    for p: @pat in pat_bindings(l.node.pat) {
+    for each p: @pat in pat_bindings(l.node.pat) {
         let ident = alt p.node { pat_bind(id) { id } };
         let v_init = ninit(p.id, ident);
         relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
@@ -578,37 +578,38 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
         alt adecl.node {
           decl_local(alocals) {
             for alocal: @local  in alocals {
-                let bindings = pat_bindings(alocal.node.pat);
                 alt alocal.node.init {
                   some(an_init) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
-                    for p: @pat in bindings {
+                    for each p: @pat in pat_bindings(alocal.node.pat) {
                         copy_pre_post(fcx.ccx, p.id, an_init.expr);
                     }
                     /* Inherit ann from initializer, and add var being
                        initialized to the postcondition */
                     copy_pre_post(fcx.ccx, id, an_init.expr);
 
+                    let p = none;
                     alt an_init.expr.node {
-                      expr_path(p) {
-                        for pat: @pat in bindings {
-                            let ident = alt pat.node { pat_bind(n) { n } };
+                      expr_path(_p) { p = some(_p); }
+                      _ { }
+                    }
+
+                    for each pat: @pat in pat_bindings(alocal.node.pat) {
+                        let ident = alt pat.node { pat_bind(n) { n } };
+                        alt p {
+                          some(p) {
                             copy_in_postcond(fcx, id,
                                              {ident: ident, node: pat.id},
                                              {ident:
                                               path_to_ident(fcx.ccx.tcx, p),
                                               node: an_init.expr.id},
                                              op_to_oper_ty(an_init.op));
+                          }
+                          none. {}
                         }
-                      }
-                      _ { }
-                    }
-
-                    for p: @pat in bindings {
-                      let ident = alt p.node { pat_bind(name) { name } };
-                      gen(fcx, id, ninit(p.id, ident));
+                        gen(fcx, id, ninit(pat.id, ident));
                     }
 
                     if an_init.op == init_move && is_path(an_init.expr) {
@@ -616,7 +617,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                     }
                   }
                   none. {
-                    for p: @pat in bindings {
+                    for each p: @pat in pat_bindings(alocal.node.pat) {
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p.id).conditions);
                     }
                     clear_pp(node_id_to_ts_ann(fcx.ccx, id).conditions);

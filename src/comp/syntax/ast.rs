@@ -154,23 +154,29 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     ret map;
 }
 
-// FIXME This wanted to be an iter, but bug #791 got in the way.
-fn pat_bindings(pat: &@pat) -> (@pat)[] {
-    let found = ~[];
-    fn recur(found: &mutable (@pat)[], pat: &@pat) {
-        alt pat.node {
-          pat_bind(_) { found += ~[pat]; }
-          pat_tag(_, sub) {
-            for p in sub { recur(found, p); }
-          }
-          pat_rec(fields, _) {
-            for f: field_pat in fields { recur(found, f.pat); }
-          }
-          pat_box(sub) { recur(found, sub); }
-          pat_wild. | pat_lit(_) {}
+iter pat_bindings(pat: &@pat) -> @pat {
+    alt pat.node {
+      pat_bind(_) { put pat; }
+      pat_tag(_, sub) {
+        for p in sub {
+            for each b in pat_bindings(p) { put b; }
         }
+      }
+      pat_rec(fields, _) {
+        for f in fields {
+            for each b in pat_bindings(f.pat) { put b; }
+        }
+      }
+      pat_box(sub) {
+        for each b in pat_bindings(sub) { put b; }
+      }
+      pat_wild. | pat_lit(_) {}
     }
-    recur(found, pat);
+}
+
+fn pat_binding_ids(pat: &@pat) -> node_id[] {
+    let found = ~[];
+    for each b in pat_bindings(pat) { found += ~[b.id]; }
     ret found;
 }
 
