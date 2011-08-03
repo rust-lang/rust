@@ -25,6 +25,10 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
     syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));
     syntax_expanders.insert("macro",
                             macro_defining(ext::simplext::add_new_extension));
+    syntax_expanders.insert("concat_idents",
+                            normal(ext::concat_idents::expand_syntax_ext));
+    syntax_expanders.insert("ident_to_str",
+                            normal(ext::ident_to_str::expand_syntax_ext));
     ret syntax_expanders;
 }
 
@@ -105,6 +109,12 @@ fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
       }
       _ { cx.span_fatal(expr.span, error); }
     }
+}
+
+fn make_new_lit(cx: &ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
+   @ast::expr {
+    let sp_lit = @{node: lit, span: sp};
+    ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 
 

@@ -1,12 +1,10 @@
 
-
 /*
  * The compiler code necessary to support the #env extension.  Eventually this
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
 import std::ivec;
-import std::str;
 import std::option;
 import std::generic_os;
 import base::*;
@@ -29,12 +27,6 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
       option::none. { ret make_new_str(cx, sp, ""); }
       option::some(s) { ret make_new_str(cx, sp, s); }
     }
-}
-
-fn make_new_lit(cx: &ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
-   @ast::expr {
-    let sp_lit = @{node: lit, span: sp};
-    ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 
 fn make_new_str(cx: &ext_ctxt, sp: codemap::span, s: str) -> @ast::expr {

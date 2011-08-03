@@ -57,10 +57,13 @@ mod syntax {
     }
     mod ext {
         mod base;
+        mod expand;
+
         mod fmt;
         mod env;
         mod simplext;
-        mod expand;
+        mod concat_idents;
+        mod ident_to_str;
     }
     mod print {
         mod pprust;
