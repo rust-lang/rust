@@ -4497,6 +4497,9 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     let llretptr = fcx.llretptr;
     if ty::type_has_dynamic_size(cx.ccx.tcx, outgoing_ret_ty) {
         llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.ccx.tn));
+    } else if ty::type_contains_params(cx.ccx.tcx, outgoing_ret_ty) {
+        let llretty = type_of(cx.ccx, sp, outgoing_ret_ty);
+        llretptr = bcx.build.PointerCast(llretptr, T_ptr(llretty));
     }
 
     // Set up the three implicit arguments to the thunk.
@@ -4578,7 +4581,6 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
         outgoing_arg_index += 1u;
     }
     // FIXME: turn this call + ret into a tail call.
-
     let lltargetfn =
         bcx.build.GEP(lltarget.val, ~[C_int(0), C_int(abi::fn_field_code)]);
 
