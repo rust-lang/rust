@@ -2062,8 +2062,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
                 ty::mk_fn(fcx.ccx.tcx, proto_1, arg_tys_1, rt_1, cf, constrs);
           }
           _ {
-            log_err "LHS of bind expr didn't have a function type?!";
-            fail;
+            fail "LHS of bind expr didn't have a function type?!";
           }
         }
         write::ty_only_fixup(fcx, id, t_1);
@@ -2087,8 +2086,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
           }
           ty::ty_native_fn(_, _, rt) { rt_1 = rt; }
           _ {
-            log_err "LHS of call expr didn't have a function type?!";
-            fail;
+            fail "LHS of call expr didn't have a function type?!";
           }
         }
         write::ty_only_fixup(fcx, id, rt_1);
@@ -2114,7 +2112,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
                   }
                   none. {
                     fcx.ccx.tcx.sess.bug("didn't find " + int::str(did.node) +
-                                             " in type cache");
+                                         " in type cache");
                   }
                 }
               }
@@ -2124,8 +2122,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
           none. {
             // Shouldn't happen.
             fcx.ccx.tcx.sess.span_err(expr.span,
-                                      "self-call in non-object \
-                                               context");
+                                      "self-call in non-object context");
           }
         }
 
@@ -2151,7 +2148,12 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       ast::expr_spawn(_, _, f, args) {
         bot = check_call(fcx, expr.span, f, args, kind_spawn);
         let fty = expr_ty(fcx.ccx.tcx, f);
-        let ret_ty = ty::ret_ty_of_fn_ty(fcx.ccx.tcx, fty);
+        let ret_ty = alt structure_of(fcx, expr.span, fty) {
+          ty::ty_fn(_, _, rt, _, _) { rt }
+          ty::ty_native_fn(_, _, rt) { rt }
+          _ { fail "LHS of spawn expr didn't have a function type?!" }
+        };
+
         demand::simple(fcx, f.span, ty::mk_nil(fcx.ccx.tcx), ret_ty);
 
         // make sure they aren't spawning a function with type params
