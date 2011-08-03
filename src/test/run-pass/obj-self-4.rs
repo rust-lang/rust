@@ -1,7 +1,3 @@
-
-
-
-// xfail-boot
 fn main() {
     obj foo(mutable i: int) {
         fn inc_by(incr: int) -> int { i += incr; ret i; }
