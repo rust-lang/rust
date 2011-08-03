@@ -2702,8 +2702,6 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
     }
 }
 
-// Important to get types for both lhs and rhs, because one might be _|_
-// and the other not.
 fn trans_compare(cx0: &@block_ctxt, op: ast::binop,
                  lhs0: ValueRef, lhs_t: ty::t, rhs0: ValueRef,
                 rhs_t: ty::t) -> result {
@@ -2725,22 +2723,14 @@ fn trans_compare(cx0: &@block_ctxt, op: ast::binop,
       ast::le. | ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
     }
 
-    if (! ty::type_is_bot(bcx_tcx(cx0), rhs_r.ty) &&
-        ! ty::type_is_bot(bcx_tcx(cx0), lhs_r.ty)) {
-        let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
+    let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
 
-        // Invert the result if necessary.
-        alt op {
-          ast::eq. | ast::lt. | ast::le. { ret rslt(rs.bcx, rs.val); }
-          ast::ne. | ast::ge. | ast::gt. {
-            ret rslt(rs.bcx, rs.bcx.build.Not(rs.val));
-          }
-        }
-    }
-    else {
-        // If either is bottom, it diverges. So no need to do the
-        // actual comparison.
-        ret rslt(cx, cx.build.Unreachable());
+    // Invert the result if necessary.
+    alt op {
+      ast::eq. | ast::lt. | ast::le. { ret rslt(rs.bcx, rs.val); }
+      ast::ne. | ast::ge. | ast::gt. {
+        ret rslt(rs.bcx, rs.bcx.build.Not(rs.val));
+      }
     }
 }
 
@@ -3387,6 +3377,14 @@ fn trans_vec_add(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef) ->
 // and the other not.
 fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
                      lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> result {
+
+    // If either is bottom, it diverges. So no need to do the
+    // operation.
+    if (ty::type_is_bot(bcx_tcx(cx), lhs_t) ||
+        ty::type_is_bot(bcx_tcx(cx), rhs_t)) {
+        ret rslt(cx, cx.build.Unreachable());
+    }
+
     let is_float = false;
     let intype = lhs_t;
     if ty::type_is_bot(bcx_tcx(cx), intype) {

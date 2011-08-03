@@ -2880,6 +2880,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
     const tycat_str: int = 4;
     const tycat_vec: int = 5;
     const tycat_struct: int = 6;
+    const tycat_bot: int = 7;
 
     const opcat_add: int = 0;
     const opcat_sub: int = 1;
@@ -2938,6 +2939,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_ivec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tag(_, _) { tycat_struct }
+          ty_bot.    { tycat_bot }
           _ { tycat_other }
         }
     }
@@ -2954,11 +2956,13 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
          /*float*/
          /*str*/
          /*vec*/
+         /*bot*/
         tbl =
         [[f, f, f, f, t, t, f, f], [f, f, f, f, t, t, t, t],
          [t, t, t, t, t, t, t, f], [t, t, t, f, t, t, f, f],
          [t, f, f, f, t, t, f, f], [t, f, f, f, t, t, f, f],
-         [f, f, f, f, t, t, f, f]]; /*struct*/
+         [f, f, f, f, t, t, f, f],
+         [t, t, t, t, t, t, t, t]]; /*struct*/
 
     ret tbl.(tycat(cx, ty)).(opcat(op));
 }
