@@ -595,9 +595,16 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: bool,
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
     if embedded { word(s.s, "#{"); end(s); } else { bopen(s); }
-    for st: @ast::stmt  in blk.node.stmts { print_stmt(s, *st) }
+
+    let last_stmt = option::none;
+    for st: @ast::stmt  in blk.node.stmts {
+        maybe_protect_unop(s, last_stmt, stmt_(st));
+        print_stmt(s, *st);
+        last_stmt = option::some(st);
+    }
     alt blk.node.expr {
       some(expr) {
+        maybe_protect_unop(s, last_stmt, expr_(expr));
         space_if_not_bol(s);
         print_expr(s, expr);
         maybe_print_trailing_comment(s, expr.span, some(blk.span.hi));
@@ -606,6 +613,42 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: bool,
     }
     bclose_(s, blk.span, indented);
     s.ann.post(ann_node);
+
+    tag expr_or_stmt { stmt_(@ast::stmt); expr_(@ast::expr); }
+
+    // The Rust syntax has an ambiguity when an if, alt, or block statement is
+    // followed by a unary op statement. In those cases we have to add an
+    // extra semi to make sure the unop is not parsed as a binop with the
+    // if/alt/block expression.
+    fn maybe_protect_unop(s: &ps, last: &option::t[@ast::stmt],
+                          next: &expr_or_stmt) {
+        let last_expr_is_block = alt last {
+          option::some(@{node: ast::stmt_expr(e, _), _}) {
+            alt e.node {
+              ast::expr_if(_ ,_ ,_)
+              | ast::expr_alt(_, _)
+              | ast::expr_block(_) { true }
+              _ { false }
+            }
+            true
+          }
+          _ { false }
+        };
+        let next_expr_is_unnop = alt next {
+          expr_(@{node: ast::expr_unary(_, _), _}) { true }
+          stmt_(@{node: ast::stmt_expr(e, _), _}) {
+            alt e.node {
+              ast::expr_unary(_, _) { true }
+              _ { false }
+            }
+          }
+          _ { false }
+        };
+
+        if last_expr_is_block && next_expr_is_unnop {
+            word(s.s, ";");
+        }
+    }
 }
 
 fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
