@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 tag maybe[T] { nothing; just(T); }
 
 fn foo(x: maybe[int]) {

@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:spawning functions with type params not allowed
 fn main() {
     fn echo[T](c: chan[T], oc: chan[chan[T]]) {

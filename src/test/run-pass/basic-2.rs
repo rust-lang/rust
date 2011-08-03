@@ -1,4 +1,3 @@
-// xfail-stage0
 // -*- rust -*-
 
 fn a(c: chan[int]) { log "task a0"; log "task a1"; c <| 10; }

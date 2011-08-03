@@ -1,4 +1,3 @@
-// xfail-stage0
 fn main() {
 
     let y: int = 42;

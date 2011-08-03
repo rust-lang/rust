@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:expected int but found bool
 
 fn main() {

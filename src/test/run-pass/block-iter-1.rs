@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn iter_vec[T](v: &vec[T], f: &block(&T) ) { for x: T  in v { f(x); } }
 
 fn main() {

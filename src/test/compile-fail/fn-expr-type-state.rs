@@ -1,5 +1,4 @@
 // error-pattern:Unsatisfied precondition
-// xfail-stage0
 
 fn main() {
     // Typestate should work even in a lambda. we should reject this program.

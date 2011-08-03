@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:expected fn() but found fn(int)
 
 fn main() {

@@ -1,5 +1,3 @@
-// xfail-stage0
-
 type foo = {a: int, b: uint};
 tag bar { u(@foo); w(int); }
 

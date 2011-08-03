@@ -1,4 +1,3 @@
-// xfail-stage0
 // xfail-stage3
 
 fn start(c: chan[chan[str]]) { let p: port[str] = port(); c <| chan(p); }

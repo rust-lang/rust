@@ -1,4 +1,3 @@
-// xfail-stage0
 // tests that ctrl's type gets inferred properly
 type command[K, V] = {key: K, val: V};
 

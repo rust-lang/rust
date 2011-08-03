@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:Break outside a loop
 fn main() {
     let pth = break;

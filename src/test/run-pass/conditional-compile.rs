@@ -1,5 +1,3 @@
-// xfail-stage0
-
 #[cfg(bogus)]
 const b: bool = false;
 

@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:only valid in signed #fmt conversion
 
 fn main() {

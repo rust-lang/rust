@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:'swap' is glob-imported from multiple different modules
 // issue #482
 

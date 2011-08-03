@@ -1,4 +1,3 @@
-// xfail-stage0
 // -*- rust -*-
 
 // error-pattern: lt(a, c)

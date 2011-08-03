@@ -1,5 +1,3 @@
-// xfail-stage0
-
 tag option[T] { some(T); none; }
 
 type r[T] = {mutable v: (option[T])[]};

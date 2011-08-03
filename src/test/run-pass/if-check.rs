@@ -1,4 +1,3 @@
-// xfail-stage0
 pred even(x: uint) -> bool {
     if x < 2u {
         ret false;

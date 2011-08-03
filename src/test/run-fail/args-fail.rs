@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:meep
 fn f(a: int, b: int, c: @int) { fail "moop"; }
 

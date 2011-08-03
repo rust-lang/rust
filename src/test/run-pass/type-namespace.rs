@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 type a = {a: int};
 
 fn a(a: a) -> int { ret a.a; }

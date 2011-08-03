@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 fn test_simple() {
     let r = alt true { true { true } false { fail } };
     assert (r == true);

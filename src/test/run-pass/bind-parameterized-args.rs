@@ -1,4 +1,3 @@
-// xfail-stage0
 fn main() {
     fn echo[T](c: int, x: vec[T]) { }
 

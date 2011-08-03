@@ -1,4 +1,3 @@
-// xfail-stage0
 // Tests that trans_path checks whether a
 // pattern-bound var is an upvar (when translating
 // the for-each body)

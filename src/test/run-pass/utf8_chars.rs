@@ -1,5 +1,3 @@
-// xfail-stage0
-
 use std;
 import std::str;
 import std::vec;

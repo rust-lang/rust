@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 fn test_if_fail() { let x = if false { fail } else { 10 }; assert (x == 10); }
 
 fn test_else_fail() {

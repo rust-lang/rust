@@ -1,4 +1,3 @@
-// xfail-stage0
 fn add(i: int, j: int) -> int { ret i + j; }
 fn binder(n: int) -> fn() -> int {
     let f = bind add(n, _);

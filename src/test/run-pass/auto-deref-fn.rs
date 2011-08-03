@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn add1(i: int) -> int { ret i + 1; }
 fn main() {
     let f = @add1;

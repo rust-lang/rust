@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:moop
 use std;
 import std::uint;

@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:woe
 fn f(a: int) { log a; }
 

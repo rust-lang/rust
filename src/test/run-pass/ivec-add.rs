@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn double[T](a: &T) -> T[] { ret ~[a] + ~[a]; }
 
 fn double_int(a: int) -> int[] { ret ~[a] + ~[a]; }

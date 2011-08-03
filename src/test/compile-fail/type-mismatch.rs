@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:expected bool but found int
 // issue #516
 

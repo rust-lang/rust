@@ -4,8 +4,6 @@
   Arnold.
  */
 
-// xfail-stage0
-
 use std;
 
 import std::str;

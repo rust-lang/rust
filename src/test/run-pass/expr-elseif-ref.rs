@@ -1,8 +1,3 @@
-
-
-
-// xfail-stage0
-
 // Make sure we drop the refs of the temporaries needed to return the
 // values from the else if branch
 fn main() {

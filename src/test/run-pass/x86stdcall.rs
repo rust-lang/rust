@@ -1,5 +1,3 @@
-// xfail-stage0
-
 #[cfg(target_os = "win32")]
 native "x86stdcall" mod kernel32 {
     fn SetLastError(err: uint);

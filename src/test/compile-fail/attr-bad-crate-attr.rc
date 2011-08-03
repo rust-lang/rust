@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: expecting mod
 
 #[attr = "val"];

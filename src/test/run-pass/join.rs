@@ -1,4 +1,3 @@
-// xfail-stage0
 // -*- rust -*-
 
 use std;

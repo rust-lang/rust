@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:not enough arguments
 
 use std;

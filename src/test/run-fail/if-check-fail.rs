@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:Number is odd
 pred even(x: uint) -> bool {
     if x < 2u {

@@ -1,4 +1,3 @@
-// xfail-stage0
 fn main() { test05(); }
 
 fn test05_start(ch: chan[int]) { ch <| 10; ch <| 20; ch <| 30; }

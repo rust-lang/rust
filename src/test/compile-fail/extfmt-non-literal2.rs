@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: literal
 
 fn main() {

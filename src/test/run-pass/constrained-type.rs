@@ -1,4 +1,3 @@
-// xfail-stage0
 // xfail-pretty
 // -*- rust -*-
 

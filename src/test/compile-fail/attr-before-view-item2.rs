@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:expected item
 
 mod m {

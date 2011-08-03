@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn test_simple() { let x = true ? 10 : 11; assert (x == 10); }
 
 fn test_precedence() {

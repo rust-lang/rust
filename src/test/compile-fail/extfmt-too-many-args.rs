@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:too many arguments
 
 use std;

@@ -1,4 +1,3 @@
-// xfail-stage0
 // Reported as issue #126, child leaks the string.
 fn child2(s: str) { }
 

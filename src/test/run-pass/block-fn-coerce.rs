@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn force(f: &block() -> int ) -> int { ret f(); }
 fn main() {
     let f = fn () -> int { ret 7 };

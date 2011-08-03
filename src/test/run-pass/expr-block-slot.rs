@@ -1,8 +1,3 @@
-
-
-
-// xfail-stage0
-
 // Regression test for issue #377
 fn main() {
     let a = { let b = {a: 3}; b };

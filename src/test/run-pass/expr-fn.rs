@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 fn test_int() {
     fn f() -> int { 10 }
     assert (f() == 10);

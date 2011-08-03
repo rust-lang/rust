@@ -1,5 +1,3 @@
-// xfail-stage0
-
 tag t1 { a(int); b(uint); }
 type t2 = {x: t1, y: int};
 tag t3 { c(t2, uint); }

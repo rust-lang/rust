@@ -1,5 +1,4 @@
 // error-pattern:Unsatisfied precondition constraint (for example, le(b, d
-// xfail-stage0
 use std;
 import std::str::*;
 import std::uint::*;

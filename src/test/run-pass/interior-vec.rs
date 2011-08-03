@@ -1,4 +1,3 @@
-// xfail-stage0
 // xfail-pretty
 
 import rusti::ivec_len;

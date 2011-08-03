@@ -1,8 +1,4 @@
-
-
-
 // -*- rust -*-
-// xfail-stage0
 // error-pattern:Predicate lt(b, a) failed
 fn f(a: int, b: int) { }
 

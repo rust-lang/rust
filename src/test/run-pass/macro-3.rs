@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn main() {
   #macro([#trivial[], 1*2*4*2*1]);
 

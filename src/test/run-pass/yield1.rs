@@ -1,6 +1,3 @@
-
-
-// xfail-stage0
 // -*- rust -*-
 use std;
 import std::task::*;

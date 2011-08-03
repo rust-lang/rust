@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
 // error-pattern: Dynamically sized arguments must be passed by alias
 
 mod foo {

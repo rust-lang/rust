@@ -1,7 +1,3 @@
-
-
-
-// xfail-stage0
 // -*- rust -*-
 fn f(a: int, b: int) { }
 

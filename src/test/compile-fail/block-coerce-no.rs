@@ -1,5 +1,4 @@
 // error-pattern: mismatched types
-// xfail-stage0
 
 // Make sure that fn-to-block coercion isn't incorrectly lifted over
 // other tycons.
