@@ -12,9 +12,20 @@ rust_run_program(void* task, const char* argv[],
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
     si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdInput = (HANDLE)_get_osfhandle(in_fd ? in_fd : 0);
-    si.hStdOutput = (HANDLE)_get_osfhandle(out_fd ? out_fd : 1);
-    si.hStdError = (HANDLE)_get_osfhandle(err_fd ? err_fd : 2);
+
+    HANDLE curproc = GetCurrentProcess();
+    HANDLE origStdin = (HANDLE)_get_osfhandle(in_fd ? in_fd : 0);
+    if (!DuplicateHandle(curproc, origStdin,
+        curproc, &si.hStdInput, 0, 1, DUPLICATE_SAME_ACCESS))
+        return -1;
+    HANDLE origStdout = (HANDLE)_get_osfhandle(out_fd ? out_fd : 1);
+    if (!DuplicateHandle(curproc, origStdout,
+        curproc, &si.hStdOutput, 0, 1, DUPLICATE_SAME_ACCESS))
+        return -1;
+    HANDLE origStderr = (HANDLE)_get_osfhandle(err_fd ? err_fd : 2);
+    if (!DuplicateHandle(curproc, origStderr,
+        curproc, &si.hStdError, 0, 1, DUPLICATE_SAME_ACCESS))
+        return -1;
 
     size_t cmd_len = 0;
     for (const char** arg = argv; *arg; arg++) {
@@ -32,6 +43,10 @@ rust_run_program(void* task, const char* argv[],
     PROCESS_INFORMATION pi;
     BOOL created = CreateProcess(NULL, cmd, NULL, NULL, TRUE,
                                  0, NULL, NULL, &si, &pi);
+                                 
+    CloseHandle(si.hStdInput);
+    CloseHandle(si.hStdOutput);
+    CloseHandle(si.hStdError);
     free(cmd);
 
     if (!created) return -1;
