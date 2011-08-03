@@ -103,44 +103,44 @@ type stats =
      fn_times: @mutable {ident: str, time: int}[]};
 
 // Crate context.  Every crate we compile has one of these.
-type crate_ctxt =
+type crate_ctxt = {
+    sess: session::session,
+    llmod: ModuleRef,
+    td: target_data,
+    tn: type_names,
+    externs: hashmap[str, ValueRef],
+    intrinsics: hashmap[str, ValueRef],
 
     // A mapping from the def_id of each item in this crate to the address
     // of the first instruction of the item's definition in the executable
     // we're generating.
-
+    item_ids: hashmap[ast::node_id, ValueRef],
+    ast_map: ast_map::map,
+    item_symbols: hashmap[ast::node_id, str],
+    mutable main_fn: option::t[ValueRef],
+    link_meta: link::link_meta,
     // TODO: hashmap[tup(tag_id,subtys), @tag_info]
-    {sess: session::session,
-     llmod: ModuleRef,
-     td: target_data,
-     tn: type_names,
-     externs: hashmap[str, ValueRef],
-     intrinsics: hashmap[str, ValueRef],
-     item_ids: hashmap[ast::node_id, ValueRef],
-     ast_map: ast_map::map,
-     item_symbols: hashmap[ast::node_id, str],
-     mutable main_fn: option::t[ValueRef],
-     link_meta: link::link_meta,
-     tag_sizes: hashmap[ty::t, uint],
-     discrims: hashmap[ast::node_id, ValueRef],
-     discrim_symbols: hashmap[ast::node_id, str],
-     fn_pairs: hashmap[ast::node_id, ValueRef],
-     consts: hashmap[ast::node_id, ValueRef],
-     obj_methods: hashmap[ast::node_id, ()],
-     tydescs: hashmap[ty::t, @tydesc_info],
-     module_data: hashmap[str, ValueRef],
-     lltypes: hashmap[ty::t, TypeRef],
-     glues: @glue_fns,
-     names: namegen,
-     sha: std::sha1::sha1,
-     type_sha1s: hashmap[ty::t, str],
-     type_short_names: hashmap[ty::t, str],
-     tcx: ty::ctxt,
-     stats: stats,
-     upcalls: @upcall::upcalls,
-     rust_object_type: TypeRef,
-     tydesc_type: TypeRef,
-     task_type: TypeRef};
+    tag_sizes: hashmap[ty::t, uint],
+    discrims: hashmap[ast::node_id, ValueRef],
+    discrim_symbols: hashmap[ast::node_id, str],
+    fn_pairs: hashmap[ast::node_id, ValueRef],
+    consts: hashmap[ast::node_id, ValueRef],
+    obj_methods: hashmap[ast::node_id, ()],
+    tydescs: hashmap[ty::t, @tydesc_info],
+    module_data: hashmap[str, ValueRef],
+    lltypes: hashmap[ty::t, TypeRef],
+    glues: @glue_fns,
+    names: namegen,
+    sha: std::sha1::sha1,
+    type_sha1s: hashmap[ty::t, str],
+    type_short_names: hashmap[ty::t, str],
+    tcx: ty::ctxt,
+    stats: stats,
+    upcalls: @upcall::upcalls,
+    rust_object_type: TypeRef,
+    tydesc_type: TypeRef,
+    task_type: TypeRef
+};
 
 type local_ctxt =
     {path: str[],
@@ -152,123 +152,127 @@ type local_ctxt =
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
 
-// Function context.  Every LLVM function we create will have one of these.
-type fn_ctxt =
+// Function context.  Every LLVM function we create will have one of
+// these.
+type fn_ctxt = {
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
-    // address of the first instruction in the sequence of instructions
-    // for this function that will go in the .text section of the
-    // executable we're generating.
+    // address of the first instruction in the sequence of
+    // instructions for this function that will go in the .text
+    // section of the executable we're generating.
+    llfn: ValueRef,
 
     // The three implicit arguments that arrive in the function we're
-    // creating.  For instance, foo(int, int) is really foo(ret*, task*,
-    // env*, int, int).  These are also available via
-    // llvm::LLVMGetParam(llfn, uint) where uint = 1, 2, 0 respectively,
-    // but we unpack them into these fields for convenience.
+    // creating.  For instance, foo(int, int) is really foo(ret*,
+    // task*, env*, int, int).  These are also available via
+    // llvm::LLVMGetParam(llfn, uint) where uint = 1, 2, 0
+    // respectively, but we unpack them into these fields for
+    // convenience.
 
     // Points to the current task.
+    lltaskptr: ValueRef,
 
     // Points to the current environment (bindings of variables to
     // values), if this is a regular function; points to the current
     // object, if this is a method.
+    llenv: ValueRef,
 
-    // Points to where the return value of this function should end up.
+    // Points to where the return value of this function should end
+    // up.
+    llretptr: ValueRef,
 
     // The next three elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
 
-    // A block for all the function's static allocas, so that LLVM will
-    // coalesce them into a single alloca call.
+    // A block for all the function's static allocas, so that LLVM
+    // will coalesce them into a single alloca call.
+    mutable llstaticallocas: BasicBlockRef,
 
     // A block containing code that copies incoming arguments to space
-    // already allocated by code in one of the llallocas blocks.  (LLVM
-    // requires that arguments be copied to local allocas before allowing
-    // most any operation to be performed on them.)
+    // already allocated by code in one of the llallocas blocks.
+    // (LLVM requires that arguments be copied to local allocas before
+    // allowing most any operation to be performed on them.)
+    mutable llcopyargs: BasicBlockRef,
 
     // The first block containing derived tydescs received from the
     // runtime.  See description of derived_tydescs, below.
+    mutable llderivedtydescs_first: BasicBlockRef,
 
     // The last block of the llderivedtydescs group.
+    mutable llderivedtydescs: BasicBlockRef,
 
     // A block for all of the dynamically sized allocas.  This must be
     // after llderivedtydescs, because these sometimes depend on
     // information computed from derived tydescs.
 
-    // FIXME: Is llcopyargs actually the block containing the allocas for
-    // incoming function arguments?  Or is it merely the block containing
-    // code that copies incoming args to space already alloca'd by code in
-    // llallocas?
+    // FIXME: Is llcopyargs actually the block containing the allocas
+    // for incoming function arguments?  Or is it merely the block
+    // containing code that copies incoming args to space already
+    // alloca'd by code in llallocas?
+    mutable lldynamicallocas: BasicBlockRef,
 
-    // The 'self' object currently in use in this function, if there is
-    // one.
+    // The 'self' object currently in use in this function, if there
+    // is one.
+    mutable llself: option::t[val_self_pair],
 
-    // If this function is actually a iter, a block containing the code
-    // called whenever the iter calls 'put'.
+    // If this function is actually a iter, a block containing the
+    // code called whenever the iter calls 'put'.
+    mutable lliterbody: option::t[ValueRef],
 
     // If this function is actually a iter, the type of the function
     // that that we call when we call 'put'. Having to track this is
     // pretty irritating. We have to do it because we need the type if
     // we are going to put the iterbody into a closure (if it appears
     // in a for-each inside of an iter).
+    mutable iterbodyty: option::t[ty::t],
 
     // The next four items: hash tables mapping from AST def_ids to
     // LLVM-stuff-in-the-frame.
 
     // Maps arguments to allocas created for them in llallocas.
+    llargs: hashmap[ast::node_id, ValueRef],
 
-    // Maps fields in objects to pointers into the interior of llself's
-    // body.
+    // Maps fields in objects to pointers into the interior of
+    // llself's body.
+    llobjfields: hashmap[ast::node_id, ValueRef],
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
+    lllocals: hashmap[ast::node_id, ValueRef],
 
-    // The same as above, but for variables accessed via the frame pointer
-    // we pass into an iter, for access to the static environment of the
-    // iter-calling frame.
+    // The same as above, but for variables accessed via the frame
+    // pointer we pass into an iter, for access to the static
+    // environment of the iter-calling frame.
+    llupvars: hashmap[ast::node_id, ValueRef],
 
-    // For convenience, a vector of the incoming tydescs for each of this
-    // functions type parameters, fetched via llvm::LLVMGetParam.  For
-    // example, for a function foo[A, B, C](), lltydescs contains the
-    // ValueRefs for the tydescs for A, B, and C.
+    // For convenience, a vector of the incoming tydescs for each of
+    // this functions type parameters, fetched via llvm::LLVMGetParam.
+    // For example, for a function foo[A, B, C](), lltydescs contains
+    // the ValueRefs for the tydescs for A, B, and C.
+    mutable lltydescs: ValueRef[],
 
     // Derived tydescs are tydescs created at runtime, for types that
     // involve type parameters inside type constructors.  For example,
     // suppose a function parameterized by T creates a vector of type
-    // [T].  The function doesn't know what T is until runtime, and the
-    // function's caller knows T but doesn't know that a vector is
+    // [T].  The function doesn't know what T is until runtime, and
+    // the function's caller knows T but doesn't know that a vector is
     // involved.  So a tydesc for [T] can't be created until runtime,
-    // when information about both "[T]" and "T" are available.  When such
-    // a tydesc is created, we cache it in the derived_tydescs table for
-    // the next time that such a tydesc is needed.
+    // when information about both "[T]" and "T" are available.  When
+    // such a tydesc is created, we cache it in the derived_tydescs
+    // table for the next time that such a tydesc is needed.
+    derived_tydescs: hashmap[ty::t, derived_tydesc_info],
 
-    // The node_id of the function, or -1 if it doesn't correspond to a
-    // user defined function.
+    // The node_id of the function, or -1 if it doesn't correspond to
+    // a user-defined function.
+    id: ast::node_id,
 
     // The source span where this function comes from, for error
     // reporting.
+    sp: span,
 
     // This function's enclosing local context.
-    {llfn: ValueRef,
-     lltaskptr: ValueRef,
-     llenv: ValueRef,
-     llretptr: ValueRef,
-     mutable llstaticallocas: BasicBlockRef,
-     mutable llcopyargs: BasicBlockRef,
-     mutable llderivedtydescs_first: BasicBlockRef,
-     mutable llderivedtydescs: BasicBlockRef,
-     mutable lldynamicallocas: BasicBlockRef,
-     mutable llself: option::t[val_self_pair],
-     mutable lliterbody: option::t[ValueRef],
-     mutable iterbodyty: option::t[ty::t],
-     llargs: hashmap[ast::node_id, ValueRef],
-     llobjfields: hashmap[ast::node_id, ValueRef],
-     lllocals: hashmap[ast::node_id, ValueRef],
-     llupvars: hashmap[ast::node_id, ValueRef],
-     mutable lltydescs: ValueRef[],
-     derived_tydescs: hashmap[ty::t, derived_tydesc_info],
-     id: ast::node_id,
-     sp: span,
-     lcx: @local_ctxt};
+    lcx: @local_ctxt
+};
 
 tag cleanup {
     clean(fn(&@block_ctxt) -> result );
@@ -340,34 +344,36 @@ tag block_kind {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-type block_ctxt =
+type block_ctxt = {
     // The BasicBlockRef returned from a call to
-    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic block to
-    // the function pointed to by llfn.  We insert instructions into that
-    // block by way of this block context.
+    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
+    // block to the function pointed to by llfn.  We insert
+    // instructions into that block by way of this block context.
+    llbb: BasicBlockRef,
 
     // The llvm::builder object serving as an interface to LLVM's
     // LLVMBuild* functions.
+    build: builder,
 
     // The block pointing to this one in the function's digraph.
+    parent: block_parent,
 
     // The 'kind' of basic block this is.
+    kind: block_kind,
 
-    // A list of functions that run at the end of translating this block,
-    // cleaning up any variables that were introduced in the block and
-    // need to go out of scope at the end of it.
+    // A list of functions that run at the end of translating this
+    // block, cleaning up any variables that were introduced in the
+    // block and need to go out of scope at the end of it.
+    mutable cleanups: cleanup[],
 
-    // The source span where this block comes from, for error reporting.
+    // The source span where this block comes from, for error
+    // reporting.
+    sp: span,
 
     // The function context for the function to which this block is
     // attached.
-    {llbb: BasicBlockRef,
-     build: builder,
-     parent: block_parent,
-     kind: block_kind,
-     mutable cleanups: cleanup[],
-     sp: span,
-     fcx: @fn_ctxt};
+    fcx: @fn_ctxt
+};
 
 // FIXME: we should be able to use option::t[@block_parent] here but
 // the infinite-tag check in rustboot gets upset.
