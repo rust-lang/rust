@@ -425,6 +425,18 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &ast::arm[],
              id: ast::node_id, output: &trans::out_method) -> result {
     let bodies = ~[];
     let match: match = ~[];
+    let er = trans::trans_expr(cx, expr);
+    if (ty::type_is_bot(bcx_tcx(cx), ty::expr_ty(bcx_tcx(cx), expr))) {
+        // No need to generate code for alt,
+        // since the disc diverges.
+        if (!cx.build.is_terminated()) {
+            ret rslt(cx, cx.build.Unreachable());
+        }
+        else {
+            ret rslt(cx, C_nil());
+        }
+    }
+
     for a: ast::arm  in arms {
         let body = new_scope_block_ctxt(cx, "case_body");
         bodies += ~[body];
@@ -445,7 +457,6 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &ast::arm[],
     }
 
     let exit_map = ~[];
-    let er = trans::trans_expr(cx, expr);
     let t = trans::node_id_type(cx.fcx.lcx.ccx, expr.id);
     let v = trans::spill_if_immediate(er.bcx, er.val, t);
     compile_submatch(er.bcx, match, ~[v],
