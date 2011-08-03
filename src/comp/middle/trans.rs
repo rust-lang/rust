@@ -1707,7 +1707,7 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         }
       }
       ty::ty_type. {
-        trans_fail(cx, none[span], "attempt to compare values of type type");
+        trans_fail(cx, none, "attempt to compare values of type type");
 
         // This is a bit lame, because we return a dummy block to the
         // caller that's actually unreachable, but I don't think it
@@ -2702,15 +2702,18 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
     }
 }
 
-fn trans_compare(cx0: &@block_ctxt, op: ast::binop, t0: &ty::t,
-                 lhs0: ValueRef, rhs0: ValueRef) -> result {
+// Important to get types for both lhs and rhs, because one might be _|_
+// and the other not.
+fn trans_compare(cx0: &@block_ctxt, op: ast::binop,
+                 lhs0: ValueRef, lhs_t: ty::t, rhs0: ValueRef,
+                rhs_t: ty::t) -> result {
     // Autoderef both sides.
 
     let cx = cx0;
-    let lhs_r = autoderef(cx, lhs0, t0);
+    let lhs_r = autoderef(cx, lhs0, lhs_t);
     let lhs = lhs_r.val;
     cx = lhs_r.bcx;
-    let rhs_r = autoderef(cx, rhs0, t0);
+    let rhs_r = autoderef(cx, rhs0, rhs_t);
     let rhs = rhs_r.val;
     cx = rhs_r.bcx;
     // Determine the operation we need.
@@ -2721,15 +2724,23 @@ fn trans_compare(cx0: &@block_ctxt, op: ast::binop, t0: &ty::t,
       ast::lt. | ast::ge. { llop = C_u8(abi::cmp_glue_op_lt); }
       ast::le. | ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
     }
-    let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
 
+    if (! ty::type_is_bot(bcx_tcx(cx0), rhs_r.ty) &&
+        ! ty::type_is_bot(bcx_tcx(cx0), lhs_r.ty)) {
+        let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
 
-    // Invert the result if necessary.
-    alt op {
-      ast::eq. | ast::lt. | ast::le. { ret rslt(rs.bcx, rs.val); }
-      ast::ne. | ast::ge. | ast::gt. {
-        ret rslt(rs.bcx, rs.bcx.build.Not(rs.val));
-      }
+        // Invert the result if necessary.
+        alt op {
+          ast::eq. | ast::lt. | ast::le. { ret rslt(rs.bcx, rs.val); }
+          ast::ne. | ast::ge. | ast::gt. {
+            ret rslt(rs.bcx, rs.bcx.build.Not(rs.val));
+          }
+        }
+    }
+    else {
+        // If either is bottom, it diverges. So no need to do the
+        // actual comparison.
+        ret rslt(cx, cx.build.Unreachable());
     }
 }
 
@@ -3372,9 +3383,16 @@ fn trans_vec_add(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef) ->
     ret rslt(bcx, tmp);
 }
 
-fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, intype: &ty::t,
-                     lhs: ValueRef, rhs: ValueRef) -> result {
+// Important to get types for both lhs and rhs, because one might be _|_
+// and the other not.
+fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
+                     lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> result {
     let is_float = false;
+    let intype = lhs_t;
+    if ty::type_is_bot(bcx_tcx(cx), intype) {
+        intype = rhs_t;
+    }
+
     alt ty::struct(bcx_tcx(cx), intype) {
       ty::ty_float. { is_float = true; }
       _ { is_float = false; }
@@ -3419,7 +3437,7 @@ fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, intype: &ty::t,
       ast::lsl. { ret rslt(cx, cx.build.Shl(lhs, rhs)); }
       ast::lsr. { ret rslt(cx, cx.build.LShr(lhs, rhs)); }
       ast::asr. { ret rslt(cx, cx.build.AShr(lhs, rhs)); }
-      _ { ret trans_compare(cx, op, intype, lhs, rhs); }
+      _ { ret trans_compare(cx, op, lhs, lhs_t, rhs, rhs_t); }
     }
 }
 
@@ -3525,7 +3543,8 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
         let rhs_expr = trans_expr(lhs.bcx, b);
         let rhty = ty::expr_ty(bcx_tcx(cx), b);
         let rhs = autoderef(rhs_expr.bcx, rhs_expr.val, rhty);
-        ret trans_eager_binop(rhs.bcx, op, lhs.ty, lhs.val, rhs.val);
+
+        ret trans_eager_binop(rhs.bcx, op, lhs.val, lhs.ty, rhs.val, rhs.ty);
       }
     }
 }
@@ -5206,7 +5225,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
             }
         }
         let lhs_val = load_if_immediate(rhs_res.bcx, lhs_res.res.val, t);
-        let v = trans_eager_binop(rhs_res.bcx, op, t, lhs_val, rhs_res.val);
+        let v = trans_eager_binop(rhs_res.bcx, op, lhs_val, t,
+                                  rhs_res.val, t);
         // FIXME: calculate copy init-ness in typestate.
         // This is always a temporary, so can always be safely moved
         let move_res =

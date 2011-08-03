@@ -360,7 +360,8 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: ValueRef[],
             let r = trans_opt(bcx, opt);
             bcx = r.bcx;
             let t = ty::node_id_to_type(ccx.tcx, pat_id);
-            let eq = trans::trans_compare(bcx, ast::eq, t, test_val, r.val);
+            let eq = trans::trans_compare(bcx, ast::eq, test_val, t,
+                                          r.val, t);
             bcx = new_sub_block_ctxt(bcx, "next");
             eq.bcx.build.CondBr(eq.val, opt_cx.llbb, bcx.llbb);
           }
