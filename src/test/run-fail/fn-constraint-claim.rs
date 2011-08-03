@@ -1,4 +1,3 @@
-// xfail-pretty
 // error-pattern:quux
 use std;
 import std::str::*;

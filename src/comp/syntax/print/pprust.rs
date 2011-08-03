@@ -1135,7 +1135,7 @@ fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
-    word(s.s, ast_constrs_str(constrs));
+    word(s.s, ast_fn_constrs_str(decl, constrs));
     maybe_print_comment(s, decl.output.span.lo);
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
@@ -1290,7 +1290,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
         }
         end(s);
     }
-    word(s.s, ast_constrs_str(constrs));
+    word(s.s, ast_ty_fn_constrs_str(constrs));
     end(s);
 }
 
@@ -1498,18 +1498,40 @@ fn constr_arg_to_str[T](f: &fn(&T) -> str , c: &ast::constr_arg_general_[T])
 // (argh)
 fn uint_to_str(i: &uint) -> str { ret uint::str(i); }
 
-fn ast_constr_to_str(c: &@ast::constr) -> str {
+fn ast_ty_fn_constr_to_str(c: &@ast::constr) -> str {
     ret path_to_str(c.node.path) +
             constr_args_to_str(uint_to_str, c.node.args);
 }
 
 // FIXME: fix repeated code
-fn ast_constrs_str(constrs: &(@ast::constr)[]) -> str {
+fn ast_ty_fn_constrs_str(constrs: &(@ast::constr)[]) -> str {
     let s = "";
     let colon = true;
     for c: @ast::constr  in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
-        s += ast_constr_to_str(c);
+        s += ast_ty_fn_constr_to_str(c);
+    }
+    ret s;
+}
+
+fn fn_arg_idx_to_str(decl: &ast::fn_decl, idx: &uint) -> str {
+    decl.inputs.(idx).ident
+}
+
+fn ast_fn_constr_to_str(decl: &ast::fn_decl, c: &@ast::constr) -> str {
+    let arg_to_str = bind fn_arg_idx_to_str(decl, _);
+    ret path_to_str(c.node.path) +
+            constr_args_to_str(arg_to_str, c.node.args);
+}
+
+// FIXME: fix repeated code
+fn ast_fn_constrs_str(decl: &ast::fn_decl,
+                      constrs: &(@ast::constr)[]) -> str {
+    let s = "";
+    let colon = true;
+    for c: @ast::constr  in constrs {
+        if colon { s += " : "; colon = false; } else { s += ", "; }
+        s += ast_fn_constr_to_str(decl, c);
     }
     ret s;
 }
