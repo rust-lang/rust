@@ -3592,6 +3592,18 @@ fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
             els: &option::t[@ast::expr], id: ast::node_id,
             output: &out_method) -> result {
     let cond_res = trans_expr(cx, cond);
+
+    if (ty::type_is_bot(bcx_tcx(cx), ty::expr_ty(bcx_tcx(cx), cond))) {
+        // No need to generate code for comparison,
+        // since the cond diverges.
+        if (!cx.build.is_terminated()) {
+            ret rslt(cx, cx.build.Unreachable());
+        }
+        else {
+            ret cond_res;
+        }
+    }
+
     let then_cx = new_scope_block_ctxt(cx, "then");
     let then_res = trans_block(then_cx, thn, output);
     let else_cx = new_scope_block_ctxt(cx, "else");
