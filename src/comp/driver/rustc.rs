@@ -99,7 +99,11 @@ fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
 
 fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
                    infile: str) -> {crate: @ast::crate, src: str} {
-    let srcbytes = ioivec::stdin().read_whole_stream();
+    let srcbytes = if infile != "-" {
+        ioivec::file_reader(infile)
+    } else {
+        ioivec::stdin()
+    }.read_whole_stream();
     let src = str::unsafe_from_bytes_ivec(srcbytes);
     let crate = parser::parse_crate_from_source_str(infile, src, cfg,
                                                     sess.get_codemap());
