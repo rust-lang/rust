@@ -276,7 +276,15 @@ static void write_complete(request *req, int status) {
 extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
                                     char *buf, size_t size, rust_chan *chan) {
   LOG_UPCALL_ENTRY(task);
+
+  // uv_buf_t is defined backwards on win32...
+  // maybe an indication we shouldn't be building directly?
+#if defined(__WIN32__)
+  uv_buf_t buffer = { size, buf };
+#else
   uv_buf_t buffer = { buf, size };
+#endif
+
   request *req = new (data->task, "write request")
     request(data, chan, write_complete);
   if (!req) {
