@@ -1,6 +1,6 @@
 tag option[T] { some(T); none; }
 
-type r[T] = {mutable v: (option[T])[]};
+type r[T] = {mutable v: [option[T]]};
 
 fn f[T]() -> [T] { ret ~[]; }
 

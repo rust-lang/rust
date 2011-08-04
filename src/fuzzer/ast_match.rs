@@ -1,7 +1,7 @@
 use std;
 import std::ivec;
 
-fn ivec_equal[T](v: &T[], u: &T[], element_equality_test: fn(&T, &T) -> bool )
+fn ivec_equal[T](v: &[T], u: &[T], element_equality_test: fn(&T, &T) -> bool )
    -> bool {
     let Lv = ivec::len(v);
     if Lv != ivec::len(u) { ret false; }

@@ -38,7 +38,7 @@ fn contains(haystack: &str, needle: &str) -> bool {
     str::find(haystack, needle) != -1
 }
 
-fn find_rust_files(files: &mutable str[], path: str) {
+fn find_rust_files(files: &mutable [str], path: str) {
     if str::ends_with(path, ".rs") {
         if file_contains(path, "xfail-stage1") {
             //log_err "Skipping " + path + " because it is marked as xfail-stage1";
@@ -89,10 +89,10 @@ fn safe_to_steal(e: ast::expr_) -> bool {
     }
 }
 
-fn steal_exprs(crate: &ast::crate) -> ast::expr[] {
-    let exprs: @mutable ast::expr[] = @mutable ~[];
+fn steal_exprs(crate: &ast::crate) -> [ast::expr] {
+    let exprs: @mutable [ast::expr] = @mutable ~[];
     // "Stash" is not type-parameterized because of the need for safe_to_steal
-    fn stash_expr(es: @mutable ast::expr[], e: &@ast::expr) {
+    fn stash_expr(es: @mutable [ast::expr], e: &@ast::expr) {
         if safe_to_steal(e.node) {
             *es += ~[*e];
         } else {/* now my indices are wrong :( */ }
@@ -316,7 +316,7 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
     }
 }
 
-fn check_convergence(files: &str[]) {
+fn check_convergence(files: &[str]) {
     log_err #fmt("pp convergence tests: %u files", ivec::len(files));
     for file in files {
         if !file_is_confusing(file) {
@@ -330,7 +330,7 @@ fn check_convergence(files: &str[]) {
     }
 }
 
-fn check_variants(files: &str[]) {
+fn check_variants(files: &[str]) {
     for file in files {
         if !file_is_confusing(file) {
             let s = ioivec::read_whole_file_str(file);
