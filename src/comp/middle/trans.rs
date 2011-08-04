@@ -5493,7 +5493,8 @@ fn trans_put(cx: &@block_ctxt, e: &option::t[@ast::expr]) -> result {
         llargs += ~[r.val];
       }
     }
-    ret rslt(bcx, bcx.build.FastCall(llcallee, llargs));
+    bcx.build.FastCall(llcallee, llargs);
+    ret rslt(bcx, C_nil());
 }
 
 fn trans_break_cont(sp: &span, cx: &@block_ctxt, to_end: bool) -> result {
