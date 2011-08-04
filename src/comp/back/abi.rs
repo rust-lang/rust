@@ -47,30 +47,21 @@ const vec_elt_pad: int = 3;
 const vec_elt_data: int = 4;
 
 const tydesc_field_first_param: int = 0;
-
 const tydesc_field_size: int = 1;
-
 const tydesc_field_align: int = 2;
-
 const tydesc_field_copy_glue: int = 3;
-
 const tydesc_field_drop_glue: int = 4;
-
 const tydesc_field_free_glue: int = 5;
-
 const tydesc_field_sever_glue: int = 6;
-
 const tydesc_field_mark_glue: int = 7;
-
-
 // FIXME no longer used in rustc, drop when rustboot is gone
 const tydesc_field_obj_drop_glue: int = 8;
-
 const tydesc_field_is_stateful: int = 9;
-
 const tydesc_field_cmp_glue: int = 10;
-
-const n_tydesc_fields: int = 11;
+const tydesc_field_shape: int = 11;
+const tydesc_field_shape_tables: int = 12;
+const tydesc_field_n_params: int = 13;
+const n_tydesc_fields: int = 14;
 
 const cmp_glue_op_eq: uint = 0u;
 

@@ -597,22 +597,13 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
         T_ptr(T_fn(~[T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
                      pvoid], T_void()));
     let cmp_glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_i1()), taskptr_type, T_ptr(T_nil()), tydescpp,
+        T_ptr(T_fn(~[T_ptr(T_i1()), taskptr_type, T_ptr(tydesc), tydescpp,
                      pvoid, pvoid, T_i8()], T_void()));
 
-    let  // first_param
-         // size
-         // align
-         // copy_glue
-         // drop_glue
-         // free_glue
-         // sever_glue
-         // mark_glue
-         // obj_drop_glue
-         // is_stateful
-        elems =
+    let elems =
         ~[tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
-          glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty];
+          glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
+          T_ptr(T_i8()), T_ptr(T_i8()), T_int()];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }
@@ -872,5 +863,16 @@ fn C_array(ty: TypeRef, elts: &ValueRef[]) -> ValueRef {
 fn C_bytes(bytes : &u8[]) -> ValueRef {
     ret llvm::LLVMConstString(unsafe::reinterpret_cast(ivec::to_ptr(bytes)),
                               ivec::len(bytes), False);
+}
+
+fn C_shape(ccx : &@crate_ctxt, bytes : &u8[]) -> ValueRef {
+    let llshape = C_bytes(bytes);
+    let llglobal = llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
+                                       str::buf(ccx.names.next("shape")));
+    llvm::LLVMSetInitializer(llglobal, llshape);
+    llvm::LLVMSetGlobalConstant(llglobal, True);
+    llvm::LLVMSetLinkage(llglobal,
+                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
