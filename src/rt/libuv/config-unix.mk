@@ -22,7 +22,7 @@ CC ?= $(PREFIX)gcc
 AR ?= $(PREFIX)ar
 E=
 CSTDFLAG=--std=c89 -pedantic
-CFLAGS=-g
+CFLAGS+=-g
 CPPFLAGS += -Isrc/ev
 LINKFLAGS=-lm
 
