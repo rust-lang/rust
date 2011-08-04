@@ -4710,7 +4710,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: &@block_ctxt, llenv: ValueRef, llobj: &option::t[ValueRef],
+fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
               gen: &option::t[generic_info], lliterbody: &option::t[ValueRef],
               es: &(@ast::expr)[], fn_ty: &ty::t) ->
    {bcx: @block_ctxt, args: ValueRef[], retslot: ValueRef} {
@@ -4829,8 +4829,7 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
-        trans_args(bcx, llenv, f_res.llobj, f_res.generic, lliterbody, args,
-                   fn_ty);
+        trans_args(bcx, llenv, f_res.generic, lliterbody, args, fn_ty);
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;
