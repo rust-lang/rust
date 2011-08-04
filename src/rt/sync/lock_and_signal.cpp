@@ -78,7 +78,7 @@ bool lock_and_signal::timed_wait(size_t timeout_in_ms) {
     EnterCriticalSection(&_cs);
     _holding_thread = GetCurrentThreadId();
 #else
-    if (timeout_in_ns == 0) {
+    if (timeout_in_ms == 0) {
         CHECKED(pthread_cond_wait(&_cond, &_mutex));
     } else {
         timeval time_val;
