@@ -47,7 +47,7 @@ type parser =
         fn get_hi_pos() -> uint ;
         fn get_last_lo_pos() -> uint ;
         fn get_last_hi_pos() -> uint ;
-        fn get_prec_table() -> @op_spec[] ;
+        fn get_prec_table() -> @[op_spec] ;
         fn get_str(token::str_num) -> str ;
         fn get_reader() -> lexer::reader ;
         fn get_filemap() -> codemap::filemap ;
@@ -79,10 +79,10 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
                      mutable tok: token::token,
                      mutable tok_span: span,
                      mutable last_tok_span: span,
-                     mutable buffer: {tok: token::token, span: span}[],
+                     mutable buffer: [{tok: token::token, span: span}],
                      mutable restr: restriction,
                      rdr: lexer::reader,
-                     precs: @op_spec[],
+                     precs: @[op_spec],
                      bad_words: hashmap[str, ()]) {
         fn peek() -> token::token { ret tok; }
         fn bump() {
@@ -121,7 +121,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         fn get_last_hi_pos() -> uint { ret last_tok_span.hi; }
         fn get_file_type() -> file_type { ret ftype; }
         fn get_cfg() -> ast::crate_cfg { ret cfg; }
-        fn get_prec_table() -> @op_spec[] { ret precs; }
+        fn get_prec_table() -> @[op_spec] { ret precs; }
         fn get_str(i: token::str_num) -> str {
             ret interner::get(*rdr.get_interner(), i);
         }
@@ -283,7 +283,7 @@ fn parse_ty_fn(proto: ast::proto, p: &parser, lo: uint) -> ast::ty_ {
                   parse_fn_input_ty, p);
     // FIXME: there's no syntax for this right now anyway
     //  auto constrs = parse_constrs(~[], p);
-    let constrs: (@ast::constr)[] = ~[];
+    let constrs: [@ast::constr] = ~[];
     let output: @ast::ty;
     let cf = ast::return;
     if p.peek() == token::RARROW {
@@ -354,7 +354,7 @@ fn parse_ty_field(p: &parser) -> ast::ty_field {
 
 // if i is the jth ident in args, return j
 // otherwise, fail
-fn ident_index(p: &parser, args: &ast::arg[], i: &ast::ident) -> uint {
+fn ident_index(p: &parser, args: &[ast::arg], i: &ast::ident) -> uint {
     let j = 0u;
     for a: ast::arg  in args { if a.ident == i { ret j; } j += 1u; }
     p.fatal("Unbound variable " + i + " in constraint arg");
@@ -374,7 +374,7 @@ fn parse_type_constr_arg(p: &parser) -> @ast::ty_constr_arg {
     ret @{node: carg, span: sp};
 }
 
-fn parse_constr_arg(args: &ast::arg[], p: &parser) -> @ast::constr_arg {
+fn parse_constr_arg(args: &[ast::arg], p: &parser) -> @ast::constr_arg {
     let sp = p.get_span();
     let carg = ast::carg_base;
     if p.peek() == token::BINOP(token::STAR) {
@@ -386,11 +386,11 @@ fn parse_constr_arg(args: &ast::arg[], p: &parser) -> @ast::constr_arg {
     ret @{node: carg, span: sp};
 }
 
-fn parse_ty_constr(fn_args: &ast::arg[], p: &parser) -> @ast::constr {
+fn parse_ty_constr(fn_args: &[ast::arg], p: &parser) -> @ast::constr {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
     let pf = bind parse_constr_arg(fn_args, _);
-    let args: {node: (@ast::constr_arg)[], span: span} =
+    let args: {node: [@ast::constr_arg], span: span} =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), pf, p);
     ret @spanned(lo, args.span.hi,
                  {path: path, args: args.node, id: p.get_id()});
@@ -399,7 +399,7 @@ fn parse_ty_constr(fn_args: &ast::arg[], p: &parser) -> @ast::constr {
 fn parse_constr_in_type(p: &parser) -> @ast::ty_constr {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
-    let args: (@ast::ty_constr_arg)[] =
+    let args: [@ast::ty_constr_arg] =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_type_constr_arg, p).node;
     let hi = p.get_lo_pos();
@@ -409,8 +409,8 @@ fn parse_constr_in_type(p: &parser) -> @ast::ty_constr {
 
 
 fn parse_constrs[T](pser: fn(&parser) -> @ast::constr_general[T] , p: &parser)
-   -> (@ast::constr_general[T])[] {
-    let constrs: (@ast::constr_general[T])[] = ~[];
+   -> [@ast::constr_general[T]] {
+    let constrs: [@ast::constr_general[T]] = ~[];
     while true {
         let constr = pser(p);
         constrs += ~[constr];
@@ -419,13 +419,14 @@ fn parse_constrs[T](pser: fn(&parser) -> @ast::constr_general[T] , p: &parser)
     constrs
 }
 
-fn parse_type_constraints(p: &parser) -> (@ast::ty_constr)[] {
+fn parse_type_constraints(p: &parser) -> [@ast::ty_constr] {
     ret parse_constrs(parse_constr_in_type, p);
 }
 
 fn parse_ty_postfix(orig_t: ast::ty_, p: &parser) -> @ast::ty {
     let lo = p.get_lo_pos();
     if p.peek() == token::LBRACKET {
+        // This is explicit type parameter instantiation.
         p.bump();
 
         let mut;
@@ -610,16 +611,16 @@ fn parse_arg(p: &parser) -> ast::arg {
 }
 
 fn parse_seq_to_end[T](ket: token::token, sep: option::t[token::token],
-                       f: fn(&parser) -> T , p: &parser) -> T[] {
+                       f: fn(&parser) -> T , p: &parser) -> [T] {
     let val = parse_seq_to_before_end(ket, sep, f, p);
     p.bump();
     ret val;
 }
 
 fn parse_seq_to_before_end[T](ket: token::token, sep: option::t[token::token],
-                              f: fn(&parser) -> T , p: &parser) -> T[] {
+                              f: fn(&parser) -> T , p: &parser) -> [T] {
     let first: bool = true;
-    let v: T[] = ~[];
+    let v: [T] = ~[];
     while p.peek() != ket {
         alt sep {
           some(t) { if first { first = false; } else { expect(p, t); } }
@@ -633,7 +634,7 @@ fn parse_seq_to_before_end[T](ket: token::token, sep: option::t[token::token],
 
 fn parse_seq[T](bra: token::token, ket: token::token,
                 sep: option::t[token::token], f: fn(&parser) -> T ,
-                p: &parser) -> spanned[T[]] {
+                p: &parser) -> spanned[[T]] {
     let lo = p.get_lo_pos();
     expect(p, bra);
     let result = parse_seq_to_before_end[T](ket, sep, f, p);
@@ -701,7 +702,7 @@ fn parse_path(p: &parser) -> ast::path {
         p.bump();
     } else { global = false; }
 
-    let ids: ast::ident[] = ~[];
+    let ids: [ast::ident] = ~[];
     while true {
         alt p.peek() {
           token::IDENT(i, _) {
@@ -865,14 +866,14 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         // Anonymous object
 
         // Only make people type () if they're actually adding new fields
-        let fields: option::t[ast::anon_obj_field[]] = none;
+        let fields: option::t[[ast::anon_obj_field]] = none;
         if p.peek() == token::LPAREN {
             p.bump();
             fields =
                 some(parse_seq_to_end(token::RPAREN, some(token::COMMA),
                                       parse_anon_obj_field, p));
         }
-        let meths: (@ast::method)[] = ~[];
+        let meths: [@ast::method] = ~[];
         let inner_obj: option::t[@ast::expr] = none;
         expect(p, token::LBRACE);
         while p.peek() != token::RBRACE {
@@ -1154,7 +1155,7 @@ type op_spec = {tok: token::token, op: ast::binop, prec: int};
 
 
 // FIXME make this a const, don't store it in parser state
-fn prec_table() -> @op_spec[] {
+fn prec_table() -> @[op_spec] {
     ret @~[{tok: token::BINOP(token::STAR), op: ast::mul, prec: 11},
            {tok: token::BINOP(token::SLASH), op: ast::div, prec: 11},
            {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 11},
@@ -1341,7 +1342,7 @@ fn parse_alt_expr(p: &parser) -> @ast::expr {
     let lo = p.get_last_lo_pos();
     let discriminant = parse_expr(p);
     expect(p, token::LBRACE);
-    let arms: ast::arm[] = ~[];
+    let arms: [ast::arm] = ~[];
     while p.peek() != token::RBRACE {
         let pats = parse_pats(p);
         let blk = parse_block(p);
@@ -1403,7 +1404,7 @@ fn parse_initializer(p: &parser) -> option::t[ast::initializer] {
     }
 }
 
-fn parse_pats(p: &parser) -> (@ast::pat)[] {
+fn parse_pats(p: &parser) -> [@ast::pat] {
     let pats = ~[];
     while true {
         pats += ~[parse_pat(p)];
@@ -1479,7 +1480,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
         } else {
             let tag_path = parse_path_and_ty_param_substs(p);
             hi = tag_path.span.hi;
-            let args: (@ast::pat)[];
+            let args: [@ast::pat];
             alt p.peek() {
               token::LPAREN. {
                 let a =
@@ -1650,7 +1651,7 @@ fn parse_block(p: &parser) -> ast::blk {
 
 // some blocks start with "#{"...
 fn parse_block_tail(p: &parser, lo: uint) -> ast::blk {
-    let stmts: (@ast::stmt)[] = ~[];
+    let stmts: [@ast::stmt] = ~[];
     let expr: option::t[@ast::expr] = none;
     while p.peek() != token::RBRACE {
         alt p.peek() {
@@ -1703,8 +1704,8 @@ fn parse_ty_param(p: &parser) -> ast::ty_param {
     ret {ident: parse_ident(p), kind: k};
 }
 
-fn parse_ty_params(p: &parser) -> ast::ty_param[] {
-    let ty_params: ast::ty_param[] = ~[];
+fn parse_ty_params(p: &parser) -> [ast::ty_param] {
+    let ty_params: [ast::ty_param] = ~[];
     if p.peek() == token::LBRACKET {
         ty_params =
             parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
@@ -1715,7 +1716,7 @@ fn parse_ty_params(p: &parser) -> ast::ty_param[] {
 
 fn parse_fn_decl(p: &parser, purity: ast::purity, il: ast::inlineness)
         -> ast::fn_decl {
-    let inputs: ast::spanned[ast::arg[]] =
+    let inputs: ast::spanned[[ast::arg]] =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
     let rslt: ty_or_bang;
@@ -1760,14 +1761,14 @@ fn parse_fn(p: &parser, proto: ast::proto, purity: ast::purity,
     ret {decl: decl, proto: proto, body: body};
 }
 
-fn parse_fn_header(p: &parser) -> {ident: ast::ident, tps: ast::ty_param[]} {
+fn parse_fn_header(p: &parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
     let id = parse_value_ident(p);
     let ty_params = parse_ty_params(p);
     ret {ident: id, tps: ty_params};
 }
 
 fn mk_item(p: &parser, lo: uint, hi: uint, ident: &ast::ident,
-           node: &ast::item_, attrs: &ast::attribute[]) -> @ast::item {
+           node: &ast::item_, attrs: &[ast::attribute]) -> @ast::item {
     ret @{ident: ident,
           attrs: attrs,
           id: p.get_id(),
@@ -1776,7 +1777,7 @@ fn mk_item(p: &parser, lo: uint, hi: uint, ident: &ast::ident,
 }
 
 fn parse_item_fn_or_iter(p: &parser, purity: ast::purity, proto: ast::proto,
-                         attrs: &ast::attribute[], il: ast::inlineness)
+                         attrs: &[ast::attribute], il: ast::inlineness)
         -> @ast::item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
@@ -1812,15 +1813,15 @@ fn parse_method(p: &parser) -> @ast::method {
     ret @spanned(lo, f.body.span.hi, meth);
 }
 
-fn parse_item_obj(p: &parser, attrs: &ast::attribute[]) ->
+fn parse_item_obj(p: &parser, attrs: &[ast::attribute]) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
     let ty_params = parse_ty_params(p);
-    let fields: ast::spanned[ast::obj_field[]] =
+    let fields: ast::spanned[[ast::obj_field]] =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_obj_field, p);
-    let meths: (@ast::method)[] = ~[];
+    let meths: [@ast::method] = ~[];
     expect(p, token::LBRACE);
     while p.peek() != token::RBRACE {
         meths += ~[parse_method(p)];
@@ -1832,7 +1833,7 @@ fn parse_item_obj(p: &parser, attrs: &ast::attribute[]) ->
                 attrs);
 }
 
-fn parse_item_res(p: &parser, attrs: &ast::attribute[]) ->
+fn parse_item_res(p: &parser, attrs: &[ast::attribute]) ->
    @ast::item {
     let lo = p.get_last_lo_pos();
     let ident = parse_value_ident(p);
@@ -1860,11 +1861,11 @@ fn parse_item_res(p: &parser, attrs: &ast::attribute[]) ->
 }
 
 fn parse_mod_items(p: &parser, term: token::token,
-                   first_item_attrs: &ast::attribute[]) -> ast::_mod {
+                   first_item_attrs: &[ast::attribute]) -> ast::_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items =
         if ivec::len(first_item_attrs) == 0u { parse_view(p) } else { ~[] };
-    let items: (@ast::item)[] = ~[];
+    let items: [@ast::item] = ~[];
     let initial_attrs = first_item_attrs;
     while p.peek() != term {
         let attrs = initial_attrs + parse_outer_attributes(p);
@@ -1880,7 +1881,7 @@ fn parse_mod_items(p: &parser, term: token::token,
     ret {view_items: view_items, items: items};
 }
 
-fn parse_item_const(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
+fn parse_item_const(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let id = parse_value_ident(p);
     expect(p, token::COLON);
@@ -1892,7 +1893,7 @@ fn parse_item_const(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_const(ty, e), attrs);
 }
 
-fn parse_item_mod(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
+fn parse_item_mod(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let id = parse_ident(p);
     expect(p, token::LBRACE);
@@ -1904,7 +1905,7 @@ fn parse_item_mod(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs.inner);
 }
 
-fn parse_item_native_type(p: &parser, attrs: &ast::attribute[]) ->
+fn parse_item_native_type(p: &parser, attrs: &[ast::attribute]) ->
    @ast::native_item {
     let t = parse_type_decl(p);
     let hi = p.get_hi_pos();
@@ -1916,7 +1917,7 @@ fn parse_item_native_type(p: &parser, attrs: &ast::attribute[]) ->
           span: {lo: t.lo, hi: hi}};
 }
 
-fn parse_item_native_fn(p: &parser, attrs: &ast::attribute[]) ->
+fn parse_item_native_fn(p: &parser, attrs: &[ast::attribute]) ->
    @ast::native_item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
@@ -1932,7 +1933,7 @@ fn parse_item_native_fn(p: &parser, attrs: &ast::attribute[]) ->
           span: {lo: lo, hi: hi}};
 }
 
-fn parse_native_item(p: &parser, attrs: &ast::attribute[]) ->
+fn parse_native_item(p: &parser, attrs: &[ast::attribute]) ->
    @ast::native_item {
     if eat_word(p, "type") {
         ret parse_item_native_type(p, attrs);
@@ -1942,14 +1943,14 @@ fn parse_native_item(p: &parser, attrs: &ast::attribute[]) ->
 }
 
 fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
-                          first_item_attrs: &ast::attribute[])
+                          first_item_attrs: &[ast::attribute])
     -> ast::native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items =
         if ivec::len(first_item_attrs) == 0u {
             parse_native_view(p)
         } else { ~[] };
-    let items: (@ast::native_item)[] = ~[];
+    let items: [@ast::native_item] = ~[];
     let initial_attrs = first_item_attrs;
     while p.peek() != token::RBRACE {
         let attrs = initial_attrs + parse_outer_attributes(p);
@@ -1962,7 +1963,7 @@ fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
          items: items};
 }
 
-fn parse_item_native_mod(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
+fn parse_item_native_mod(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let abi = ast::native_abi_cdecl;
     if !is_word(p, "mod") {
@@ -2002,7 +2003,7 @@ fn parse_type_decl(p: &parser) -> {lo: uint, ident: ast::ident} {
     ret {lo: lo, ident: id};
 }
 
-fn parse_item_type(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
+fn parse_item_type(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let t = parse_type_decl(p);
     let tps = parse_ty_params(p);
     expect(p, token::EQ);
@@ -2012,11 +2013,11 @@ fn parse_item_type(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
     ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps), attrs);
 }
 
-fn parse_item_tag(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
+fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let id = parse_ident(p);
     let ty_params = parse_ty_params(p);
-    let variants: ast::variant[] = ~[];
+    let variants: [ast::variant] = ~[];
     // Newtype syntax
     if p.peek() == token::EQ {
         if p.get_bad_expr_words().contains_key(id) {
@@ -2041,7 +2042,7 @@ fn parse_item_tag(p: &parser, attrs: &ast::attribute[]) -> @ast::item {
             check_bad_word(p);
             let vlo = p.get_lo_pos();
             p.bump();
-            let args: ast::variant_arg[] = ~[];
+            let args: [ast::variant_arg] = ~[];
             let vhi = p.get_hi_pos();
             alt p.peek() {
               token::LPAREN. {
@@ -2078,7 +2079,7 @@ fn parse_auth(p: &parser) -> ast::_auth {
     } else { unexpected(p, p.peek()); }
 }
 
-fn parse_item(p: &parser, attrs: &ast::attribute[]) -> option::t[@ast::item] {
+fn parse_item(p: &parser, attrs: &[ast::attribute]) -> option::t[@ast::item] {
     if eat_word(p, "const") {
         ret some(parse_item_const(p, attrs));
     } else if (eat_word(p, "inline")) {
@@ -2114,7 +2115,7 @@ fn parse_item(p: &parser, attrs: &ast::attribute[]) -> option::t[@ast::item] {
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option::t[either::t[ast::attribute[], @ast::expr]];
+type attr_or_ext = option::t[either::t[[ast::attribute], @ast::expr]];
 
 fn parse_outer_attrs_or_ext(p: &parser) -> attr_or_ext {
     if p.peek() == token::POUND {
@@ -2130,8 +2131,8 @@ fn parse_outer_attrs_or_ext(p: &parser) -> attr_or_ext {
 }
 
 // Parse attributes that appear before an item
-fn parse_outer_attributes(p: &parser) -> ast::attribute[] {
-    let attrs: ast::attribute[] = ~[];
+fn parse_outer_attributes(p: &parser) -> [ast::attribute] {
+    let attrs: [ast::attribute] = ~[];
     while p.peek() == token::POUND {
         attrs += ~[parse_attribute(p, ast::attr_outer)];
     }
@@ -2160,9 +2161,9 @@ fn parse_attribute_naked(p: &parser, style: ast::attr_style, lo: uint) ->
 // of the containing item or an outer attribute of the first contained item
 // until we see the semi).
 fn parse_inner_attrs_and_next(p: &parser) ->
-   {inner: ast::attribute[], next: ast::attribute[]} {
-    let inner_attrs: ast::attribute[] = ~[];
-    let next_outer_attrs: ast::attribute[] = ~[];
+   {inner: [ast::attribute], next: [ast::attribute]} {
+    let inner_attrs: [ast::attribute] = ~[];
+    let next_outer_attrs: [ast::attribute] = ~[];
     while p.peek() == token::POUND {
         let attr = parse_attribute(p, ast::attr_inner);
         if p.peek() == token::SEMI {
@@ -2202,12 +2203,12 @@ fn parse_meta_item(p: &parser) -> @ast::meta_item {
     }
 }
 
-fn parse_meta_seq(p: &parser) -> (@ast::meta_item)[] {
+fn parse_meta_seq(p: &parser) -> [@ast::meta_item] {
     ret parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
                   parse_meta_item, p).node;
 }
 
-fn parse_optional_meta(p: &parser) -> (@ast::meta_item)[] {
+fn parse_optional_meta(p: &parser) -> [@ast::meta_item] {
     alt p.peek() { token::LPAREN. { ret parse_meta_seq(p); } _ { ret ~[]; } }
 }
 
@@ -2220,7 +2221,7 @@ fn parse_use(p: &parser) -> ast::view_item_ {
 fn parse_rest_import_name(p: &parser, first: ast::ident,
                           def_ident: option::t[ast::ident]) ->
    ast::view_item_ {
-    let identifiers: ast::ident[] = ~[first];
+    let identifiers: [ast::ident] = ~[first];
     let glob: bool = false;
     while true {
         alt p.peek() {
@@ -2315,14 +2316,14 @@ fn is_view_item(p: &parser) -> bool {
     }
 }
 
-fn parse_view(p: &parser) -> (@ast::view_item)[] {
-    let items: (@ast::view_item)[] = ~[];
+fn parse_view(p: &parser) -> [@ast::view_item] {
+    let items: [@ast::view_item] = ~[];
     while is_view_item(p) { items += ~[parse_view_item(p)]; }
     ret items;
 }
 
-fn parse_native_view(p: &parser) -> (@ast::view_item)[] {
-    let items: (@ast::view_item)[] = ~[];
+fn parse_native_view(p: &parser) -> [@ast::view_item] {
+    let items: [@ast::view_item] = ~[];
     while is_view_item(p) { items += ~[parse_view_item(p)]; }
     ret items;
 }
@@ -2370,7 +2371,7 @@ fn parse_str(p: &parser) -> ast::ident {
 // Each crate file is a sequence of directives.
 //
 // Each directive imperatively extends its environment with 0 or more items.
-fn parse_crate_directive(p: &parser, first_outer_attr: &ast::attribute[]) ->
+fn parse_crate_directive(p: &parser, first_outer_attr: &[ast::attribute]) ->
    ast::crate_directive {
 
     // Collect the next attributes
@@ -2425,8 +2426,8 @@ fn parse_crate_directive(p: &parser, first_outer_attr: &ast::attribute[]) ->
 }
 
 fn parse_crate_directives(p: &parser, term: token::token,
-                          first_outer_attr: &ast::attribute[]) ->
-   (@ast::crate_directive)[] {
+                          first_outer_attr: &[ast::attribute]) ->
+   [@ast::crate_directive] {
 
     // This is pretty ugly. If we have an outer attribute then we can't accept
     // seeing the terminator next, so if we do see it then fail the same way
@@ -2435,7 +2436,7 @@ fn parse_crate_directives(p: &parser, term: token::token,
         expect_word(p, "mod");
     }
 
-    let cdirs: (@ast::crate_directive)[] = ~[];
+    let cdirs: [@ast::crate_directive] = ~[];
     while p.peek() != term {
         let cdir = @parse_crate_directive(p, first_outer_attr);
         cdirs += ~[cdir];
@@ -2452,7 +2453,7 @@ fn parse_crate_from_crate_file(input: &str, cfg: &ast::crate_cfg,
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
     let cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
-    let deps: str[] = ~[];
+    let deps: [str] = ~[];
     let cx =
         @{p: p,
           mode: eval::mode_parse,

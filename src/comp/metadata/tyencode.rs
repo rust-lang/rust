@@ -199,8 +199,8 @@ fn enc_proto(w: &ioivec::writer, proto: proto) {
     }
 }
 
-fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &ty::arg[], out: &ty::t,
-             cf: &controlflow, constrs: &(@ty::constr)[]) {
+fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
+             cf: &controlflow, constrs: &[@ty::constr]) {
     w.write_char('[');
     for arg: ty::arg  in args {
         alt arg.mode {

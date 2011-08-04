@@ -37,7 +37,7 @@ type options =
      time_passes: bool,
      time_llvm_passes: bool,
      output_type: back::link::output_type,
-     library_search_paths: str[],
+     library_search_paths: [str],
      sysroot: str,
      cfg: ast::crate_cfg,
      test: bool,
@@ -46,7 +46,7 @@ type options =
      no_trans: bool
      };
 
-type crate_metadata = {name: str, data: u8[]};
+type crate_metadata = {name: str, data: [u8]};
 
 obj session(targ_cfg: @config,
             opts: @options,

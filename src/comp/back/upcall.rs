@@ -71,9 +71,9 @@ type upcalls =
 
 fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
-    fn decl(tn: type_names, llmod: ModuleRef, name: str, tys: TypeRef[],
+    fn decl(tn: type_names, llmod: ModuleRef, name: str, tys: [TypeRef],
           rv: TypeRef) -> ValueRef {
-        let arg_tys: TypeRef[] = ~[];
+        let arg_tys: [TypeRef] = ~[];
         for t: TypeRef  in tys { arg_tys += ~[t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
@@ -87,7 +87,7 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
     let d = bind decl_with_taskptr(taskptr_type, tn, llmod, _, _, _);
     let dr = bind decl(tn, llmod, _, _, _);
 
-    let empty_vec: TypeRef[] = ~[];
+    let empty_vec: [TypeRef] = ~[];
     ret @{grow_task: dv("grow_task", ~[T_size_t()]),
           log_int: dv("log_int", ~[T_i32(), T_i32()]),
           log_float: dv("log_float", ~[T_i32(), T_f32()]),

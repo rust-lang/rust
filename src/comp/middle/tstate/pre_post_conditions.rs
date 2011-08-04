@@ -73,7 +73,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
     alt i.node {
       item_const(_, e) {
         // make a fake fcx
-        let v: @mutable node_id[] = @mutable ~[];
+        let v: @mutable [node_id] = @mutable ~[];
         let fake_fcx =
             {enclosing:
                  {constrs: @new_def_hash[constraint](),
@@ -115,7 +115,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
    sets the precondition in a to be the result of combining
    the preconditions for <args>, and the postcondition in a to
    be the union of all postconditions for <args> */
-fn find_pre_post_exprs(fcx: &fn_ctxt, args: &(@expr)[], id: node_id) {
+fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
     if ivec::len[@expr](args) > 0u {
         log "find_pre_post_exprs: oper =";
         log_expr(*args.(0));
@@ -692,7 +692,7 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
     let do_inner = bind do_inner_(fcx, _);
     option::map[@expr, ()](do_inner, b.node.expr);
 
-    let pps: pre_and_post[] = ~[];
+    let pps: [pre_and_post] = ~[];
     for s: @stmt  in b.node.stmts { pps += ~[stmt_pp(fcx.ccx, *s)]; }
     alt b.node.expr {
       none. {/* no-op */ }
@@ -732,7 +732,7 @@ fn find_pre_post_fn(fcx: &fn_ctxt, f: &_fn) {
     }
 }
 
-fn fn_pre_post(f: &_fn, tps: &ty_param[], sp: &span, i: &fn_ident,
+fn fn_pre_post(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
                id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
     visit::visit_fn(f, tps, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));

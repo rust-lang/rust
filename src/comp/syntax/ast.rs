@@ -16,13 +16,13 @@ type fn_ident = option::t[ident];
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
-type path_ = {global: bool, idents: ident[], types: (@ty)[]};
+type path_ = {global: bool, idents: [ident], types: [@ty]};
 
 type path = spanned[path_];
 
 fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
 
-fn path_name_i(idents: &ident[]) -> str { str::connect_ivec(idents, "::") }
+fn path_name_i(idents: &[ident]) -> str { str::connect_ivec(idents, "::") }
 
 type crate_num = int;
 type node_id = int;
@@ -85,22 +85,22 @@ fn def_id_of_def(d: def) -> def_id {
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
-type crate_cfg = (@meta_item)[];
+type crate_cfg = [@meta_item];
 
 type crate = spanned[crate_];
 
 type crate_ =
-    {directives: (@crate_directive)[],
+    {directives: [@crate_directive],
      module: _mod,
-     attrs: attribute[],
+     attrs: [attribute],
      config: crate_cfg};
 
 tag crate_directive_ {
-    cdir_src_mod(ident, option::t[filename], attribute[]);
+    cdir_src_mod(ident, option::t[filename], [attribute]);
     cdir_dir_mod(ident,
                  option::t[filename],
-                 (@crate_directive)[],
-                 attribute[]);
+                 [@crate_directive],
+                 [attribute]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);
@@ -112,13 +112,13 @@ type meta_item = spanned[meta_item_];
 
 tag meta_item_ {
     meta_word(ident);
-    meta_list(ident, (@meta_item)[]);
+    meta_list(ident, [@meta_item]);
     meta_name_value(ident, lit);
 }
 
 type blk = spanned[blk_];
 
-type blk_ = {stmts: (@stmt)[], expr: option::t[@expr], id: node_id};
+type blk_ = {stmts: [@stmt], expr: option::t[@expr], id: node_id};
 
 type pat = {id: node_id, node: pat_, span: span};
 
@@ -128,8 +128,8 @@ tag pat_ {
     pat_wild;
     pat_bind(ident);
     pat_lit(@lit);
-    pat_tag(path, (@pat)[]);
-    pat_rec(field_pat[], bool);
+    pat_tag(path, [@pat]);
+    pat_rec([field_pat], bool);
     pat_box(@pat);
 }
 
@@ -174,7 +174,7 @@ iter pat_bindings(pat: &@pat) -> @pat {
     }
 }
 
-fn pat_binding_ids(pat: &@pat) -> node_id[] {
+fn pat_binding_ids(pat: &@pat) -> [node_id] {
     let found = ~[];
     for each b in pat_bindings(pat) { found += ~[b.id]; }
     ret found;
@@ -275,9 +275,9 @@ type local = spanned[local_];
 
 type decl = spanned[decl_];
 
-tag decl_ { decl_local((@local)[]); decl_item(@item); }
+tag decl_ { decl_local([@local]); decl_item(@item); }
 
-type arm = {pats: (@pat)[], block: blk};
+type arm = {pats: [@pat], block: blk};
 
 type elt = {mut: mutability, expr: @expr};
 
@@ -295,12 +295,12 @@ tag seq_kind { sk_unique; sk_rc; }
 type expr = {id: node_id, node: expr_, span: span};
 
 tag expr_ {
-    expr_vec((@expr)[], mutability, seq_kind);
-    expr_rec(field[], option::t[@expr]);
-    expr_call(@expr, (@expr)[]);
+    expr_vec([@expr], mutability, seq_kind);
+    expr_rec([field], option::t[@expr]);
+    expr_call(@expr, [@expr]);
     expr_self_method(ident);
-    expr_bind(@expr, (option::t[@expr])[]);
-    expr_spawn(spawn_dom, option::t[str], @expr, (@expr)[]);
+    expr_bind(@expr, [option::t[@expr]]);
+    expr_spawn(spawn_dom, option::t[str], @expr, [@expr]);
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
@@ -311,7 +311,7 @@ tag expr_ {
     expr_for(@local, @expr, blk);
     expr_for_each(@local, @expr, blk);
     expr_do_while(blk, @expr);
-    expr_alt(@expr, arm[]);
+    expr_alt(@expr, [arm]);
     expr_fn(_fn);
     expr_block(blk);
 
@@ -392,10 +392,10 @@ type ty_arg_ = {mode: mode, ty: @ty};
 type ty_method_ =
     {proto: proto,
      ident: ident,
-     inputs: ty_arg[],
+     inputs: [ty_arg],
      output: @ty,
      cf: controlflow,
-     constrs: (@constr)[]};
+     constrs: [@constr]};
 
 type ty_field = spanned[ty_field_];
 
@@ -465,12 +465,12 @@ tag ty_ {
     ty_task;
     ty_port(@ty);
     ty_chan(@ty);
-    ty_rec(ty_field[]);
-    ty_fn(proto, ty_arg[], @ty, controlflow, (@constr)[]);
-    ty_obj(ty_method[]);
+    ty_rec([ty_field]);
+    ty_fn(proto, [ty_arg], @ty, controlflow, [@constr]);
+    ty_obj([ty_method]);
     ty_path(path, node_id);
     ty_type;
-    ty_constr(@ty, (@ty_constr)[]);
+    ty_constr(@ty, [@ty_constr]);
     ty_mac(mac);
 }
 
@@ -496,7 +496,7 @@ type constr_arg = spanned[fn_constr_arg];
 // constrained type, is * (referring to the base record)
 
 type constr_general_[ARG, ID] =
-    {path: path, args: (@spanned[constr_arg_general_[ARG]])[], id: ID};
+    {path: path, args: [@spanned[constr_arg_general_[ARG]]], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
@@ -514,12 +514,12 @@ type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 tag inlineness { il_normal; il_inline; }
 
 type fn_decl =
-    {inputs: arg[],
+    {inputs: [arg],
      output: @ty,
      purity: purity,
      il: inlineness,
      cf: controlflow,
-     constraints: (@constr)[]};
+     constraints: [@constr]};
 
 tag purity {
     pure_fn; // declared with "pred"
@@ -550,16 +550,16 @@ type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
 type anon_obj_field =
     {mut: mutability, ty: @ty, expr: @expr, ident: ident, id: node_id};
 
-type _obj = {fields: obj_field[], methods: (@method)[]};
+type _obj = {fields: [obj_field], methods: [@method]};
 
 type anon_obj =
     // New fields and methods, if they exist.
-    {fields: option::t[anon_obj_field[]],
-     methods: (@method)[],
+    {fields: option::t[[anon_obj_field]],
+     methods: [@method],
      // inner_obj: the original object being extended, if it exists.
      inner_obj: option::t[@expr]};
 
-type _mod = {view_items: (@view_item)[], items: (@item)[]};
+type _mod = {view_items: [@view_item], items: [@item]};
 
 tag native_abi {
     native_abi_rust;
@@ -572,21 +572,21 @@ tag native_abi {
 type native_mod =
     {native_name: str,
      abi: native_abi,
-     view_items: (@view_item)[],
-     items: (@native_item)[]};
+     view_items: [@view_item],
+     items: [@native_item]};
 
 type variant_arg = {ty: @ty, id: node_id};
 
-type variant_ = {name: str, args: variant_arg[], id: node_id};
+type variant_ = {name: str, args: [variant_arg], id: node_id};
 
 type variant = spanned[variant_];
 
 type view_item = spanned[view_item_];
 
 tag view_item_ {
-    view_item_use(ident, (@meta_item)[], node_id);
-    view_item_import(ident, ident[], node_id);
-    view_item_import_glob(ident[], node_id);
+    view_item_use(ident, [@meta_item], node_id);
+    view_item_import(ident, [ident], node_id);
+    view_item_import_glob([ident], node_id);
     view_item_export(ident, node_id);
 }
 
@@ -605,32 +605,32 @@ tag attr_style { attr_outer; attr_inner; }
 type attribute_ = {style: attr_style, value: meta_item};
 
 type item =  // For objs and resources, this is the type def_id
-    {ident: ident, attrs: attribute[], id: node_id, node: item_, span: span};
+    {ident: ident, attrs: [attribute], id: node_id, node: item_, span: span};
 
 tag item_ {
     item_const(@ty, @expr);
-    item_fn(_fn, ty_param[]);
+    item_fn(_fn, [ty_param]);
     item_mod(_mod);
     item_native_mod(native_mod);
-    item_ty(@ty, ty_param[]);
-    item_tag(variant[], ty_param[]);
-    item_obj(_obj, ty_param[], /* constructor id */node_id);
+    item_ty(@ty, [ty_param]);
+    item_tag([variant], [ty_param]);
+    item_obj(_obj, [ty_param], /* constructor id */node_id);
     item_res(_fn, /* dtor */
              node_id, /* dtor id */
-             ty_param[],
+             [ty_param],
              node_id /* ctor id */);
 }
 
 type native_item =
     {ident: ident,
-     attrs: attribute[],
+     attrs: [attribute],
      node: native_item_,
      id: node_id,
      span: span};
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t[str], fn_decl, ty_param[]);
+    native_item_fn(option::t[str], fn_decl, [ty_param]);
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {

@@ -37,7 +37,7 @@ fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
                mutable pos: uint,
                mutable ch: char,
                mutable chpos: uint,
-               mutable strs: str[],
+               mutable strs: [str],
                fm: codemap::filemap,
                itr: @interner::interner[str]) {
         fn is_eof() -> bool { ret ch == -1 as char; }
@@ -81,7 +81,7 @@ fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
             codemap::emit_error(some({lo: chpos, hi: chpos}), m, cm);
         }
     }
-    let strs: str[] = ~[];
+    let strs: [str] = ~[];
     let rd =
         reader(cm, src, str::byte_len(src), 0u, 0u, -1 as char,
                filemap.start_pos.ch, strs, filemap, itr);
@@ -550,7 +550,7 @@ tag cmnt_style {
     blank_line; // Just a manual blank line "\n\n", for layout
 }
 
-type cmnt = {style: cmnt_style, lines: str[], pos: uint};
+type cmnt = {style: cmnt_style, lines: [str], pos: uint};
 
 fn read_to_eol(rdr: &reader) -> str {
     let val = "";
@@ -578,14 +578,14 @@ fn consume_non_eol_whitespace(rdr: &reader) {
     }
 }
 
-fn push_blank_line_comment(rdr: &reader, comments: &mutable cmnt[]) {
+fn push_blank_line_comment(rdr: &reader, comments: &mutable [cmnt]) {
     log ">>> blank-line comment";
-    let v: str[] = ~[];
+    let v: [str] = ~[];
     comments += ~[{style: blank_line, lines: v, pos: rdr.get_chpos()}];
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: &reader,
-                                           comments: &mutable cmnt[]) {
+                                           comments: &mutable [cmnt]) {
     while is_whitespace(rdr.curr()) && !rdr.is_eof() {
         if rdr.get_col() == 0u && rdr.curr() == '\n' {
             push_blank_line_comment(rdr, comments);
@@ -597,7 +597,7 @@ fn consume_whitespace_counting_blank_lines(rdr: &reader,
 fn read_line_comments(rdr: &reader, code_to_the_left: bool) -> cmnt {
     log ">>> line comments";
     let p = rdr.get_chpos();
-    let lines: str[] = ~[];
+    let lines: [str] = ~[];
     while rdr.curr() == '/' && rdr.next() == '/' {
         let line = read_one_line_comment(rdr);
         log line;
@@ -619,7 +619,7 @@ fn all_whitespace(s: &str, begin: uint, end: uint) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(lines: &mutable str[], s: &str,
+fn trim_whitespace_prefix_and_push_line(lines: &mutable [str], s: &str,
                                         col: uint) {
     let s1;
     if all_whitespace(s, 0u, col) {
@@ -634,7 +634,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mutable str[], s: &str,
 fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
     log ">>> block comment";
     let p = rdr.get_chpos();
-    let lines: str[] = ~[];
+    let lines: [str] = ~[];
     let col: uint = rdr.get_col();
     rdr.bump();
     rdr.bump();
@@ -682,7 +682,7 @@ fn peeking_at_comment(rdr: &reader) -> bool {
 }
 
 fn consume_comment(rdr: &reader, code_to_the_left: bool,
-                   comments: &mutable cmnt[]) {
+                   comments: &mutable [cmnt]) {
     log ">>> consume comment";
     if rdr.curr() == '/' && rdr.next() == '/' {
         comments += ~[read_line_comments(rdr, code_to_the_left)];
@@ -710,12 +710,12 @@ type lit = {lit: str, pos: uint};
 
 fn gather_comments_and_literals(cm: &codemap::codemap, path: str,
                                 srdr: ioivec::reader) ->
-   {cmnts: cmnt[], lits: lit[]} {
+   {cmnts: [cmnt], lits: [lit]} {
     let src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
     let itr = @interner::mk[str](str::hash, str::eq);
     let rdr = new_reader(cm, src, codemap::new_filemap(path, 0u, 0u), itr);
-    let comments: cmnt[] = ~[];
-    let literals: lit[] = ~[];
+    let comments: [cmnt] = ~[];
+    let literals: [lit] = ~[];
     let first_read: bool = true;
     while !rdr.is_eof() {
         while true {

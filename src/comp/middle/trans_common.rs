@@ -79,7 +79,7 @@ type tydesc_info =
      mutable drop_glue: option::t[ValueRef],
      mutable free_glue: option::t[ValueRef],
      mutable cmp_glue: option::t[ValueRef],
-     ty_params: uint[]};
+     ty_params: [uint]};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -102,7 +102,7 @@ type stats =
      mutable n_glues_created: uint,
      mutable n_null_glues: uint,
      mutable n_real_glues: uint,
-     fn_times: @mutable {ident: str, time: int}[]};
+     fn_times: @mutable [{ident: str, time: int}]};
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = {
@@ -146,10 +146,10 @@ type crate_ctxt = {
 };
 
 type local_ctxt =
-    {path: str[],
-     module_path: str[],
-     obj_typarams: ast::ty_param[],
-     obj_fields: ast::obj_field[],
+    {path: [str],
+     module_path: [str],
+     obj_typarams: [ast::ty_param],
+     obj_fields: [ast::obj_field],
      ccx: @crate_ctxt};
 
 // Types used for llself.
@@ -252,7 +252,7 @@ type fn_ctxt = {
     // this functions type parameters, fetched via llvm::LLVMGetParam.
     // For example, for a function foo[A, B, C](), lltydescs contains
     // the ValueRefs for the tydescs for A, B, and C.
-    mutable lltydescs: ValueRef[],
+    mutable lltydescs: [ValueRef],
 
     // Derived tydescs are tydescs created at runtime, for types that
     // involve type parameters inside type constructors.  For example,
@@ -386,7 +386,7 @@ type block_ctxt = {
     // A list of functions that run at the end of translating this
     // block, cleaning up any variables that were introduced in the
     // block and need to go out of scope at the end of it.
-    mutable cleanups: cleanup[],
+    mutable cleanups: [cleanup],
 
     // The source span where this block comes from, for error
     // reporting.
@@ -508,7 +508,7 @@ fn T_size_t() -> TypeRef {
     ret T_i32();
 }
 
-fn T_fn(inputs: &TypeRef[], output: TypeRef) -> TypeRef {
+fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     ret llvm::LLVMFunctionType(output, std::ivec::to_ptr(inputs),
                                std::ivec::len[TypeRef](inputs), False);
 }
@@ -519,7 +519,7 @@ fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
 
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
 
-fn T_struct(elts: &TypeRef[]) -> TypeRef {
+fn T_struct(elts: &[TypeRef]) -> TypeRef {
     ret llvm::LLVMStructType(std::ivec::to_ptr(elts), std::ivec::len(elts),
                              False);
 }
@@ -529,7 +529,7 @@ fn T_named_struct(name: &str) -> TypeRef {
     ret llvm::LLVMStructCreateNamed(c, str::buf(name));
 }
 
-fn set_struct_body(t: TypeRef, elts: &TypeRef[]) {
+fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
     llvm::LLVMStructSetBody(t, std::ivec::to_ptr(elts), std::ivec::len(elts),
                             False);
 }
@@ -569,7 +569,7 @@ fn T_task() -> TypeRef {
 fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
-    let tydesc_elts: TypeRef[] =
+    let tydesc_elts: [TypeRef] =
         std::ivec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
                                     std::ivec::to_ptr[TypeRef](tydesc_elts));
@@ -843,33 +843,33 @@ fn C_postr(s: &str) -> ValueRef {
 
 fn C_zero_byte_arr(size: uint) -> ValueRef {
     let i = 0u;
-    let elts: ValueRef[] = ~[];
+    let elts: [ValueRef] = ~[];
     while i < size { elts += ~[C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), std::ivec::to_ptr(elts),
                              std::ivec::len(elts));
 }
 
-fn C_struct(elts: &ValueRef[]) -> ValueRef {
+fn C_struct(elts: &[ValueRef]) -> ValueRef {
     ret llvm::LLVMConstStruct(std::ivec::to_ptr(elts), std::ivec::len(elts),
                               False);
 }
 
-fn C_named_struct(T: TypeRef, elts: &ValueRef[]) -> ValueRef {
+fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
     ret llvm::LLVMConstNamedStruct(T, std::ivec::to_ptr(elts),
                                    std::ivec::len(elts));
 }
 
-fn C_array(ty: TypeRef, elts: &ValueRef[]) -> ValueRef {
+fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
     ret llvm::LLVMConstArray(ty, std::ivec::to_ptr(elts),
                              std::ivec::len(elts));
 }
 
-fn C_bytes(bytes : &u8[]) -> ValueRef {
+fn C_bytes(bytes : &[u8]) -> ValueRef {
     ret llvm::LLVMConstString(unsafe::reinterpret_cast(ivec::to_ptr(bytes)),
                               ivec::len(bytes), False);
 }
 
-fn C_shape(ccx : &@crate_ctxt, bytes : &u8[]) -> ValueRef {
+fn C_shape(ccx : &@crate_ctxt, bytes : &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
     let llglobal = llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
                                        str::buf(ccx.names.next("shape")));

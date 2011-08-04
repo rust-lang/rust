@@ -41,11 +41,11 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option::t[codemap],
-      comments: option::t[lexer::cmnt[]],
-      literals: option::t[lexer::lit[]],
+      comments: option::t[[lexer::cmnt]],
+      literals: option::t[[lexer::lit]],
       mutable cur_cmnt: uint,
       mutable cur_lit: uint,
-      mutable boxes: pp::breaks[],
+      mutable boxes: [pp::breaks],
       ann: pp_ann};
 
 fn ibox(s: &ps, u: uint) { s.boxes += ~[pp::inconsistent]; pp::ibox(s.s, u); }
@@ -53,11 +53,11 @@ fn ibox(s: &ps, u: uint) { s.boxes += ~[pp::inconsistent]; pp::ibox(s.s, u); }
 fn end(s: &ps) { ivec::pop(s.boxes); pp::end(s.s); }
 
 fn rust_printer(writer: ioivec::writer) -> ps {
-    let boxes: pp::breaks[] = ~[];
+    let boxes: [pp::breaks] = ~[];
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none[codemap],
-          comments: none[lexer::cmnt[]],
-          literals: none[lexer::lit[]],
+          comments: none[[lexer::cmnt]],
+          literals: none[[lexer::lit]],
           mutable cur_cmnt: 0u,
           mutable cur_lit: 0u,
           mutable boxes: boxes,
@@ -74,7 +74,7 @@ const default_columns: uint = 78u;
 // copy forward.
 fn print_crate(cm: &codemap, crate: @ast::crate, filename: str,
                in: ioivec::reader, out: ioivec::writer, ann: &pp_ann) {
-    let boxes: pp::breaks[] = ~[];
+    let boxes: [pp::breaks] = ~[];
     let r = lexer::gather_comments_and_literals(cm, filename, in);
     let s =
         @{s: pp::mk_printer(out, default_columns),
@@ -102,7 +102,7 @@ fn item_to_str(i: &@ast::item) -> str { be to_str(i, print_item); }
 
 fn path_to_str(p: &ast::path) -> str { be to_str(p, print_path); }
 
-fn fun_to_str(f: &ast::_fn, name: str, params: &ast::ty_param[]) -> str {
+fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
     let writer = ioivec::string_writer();
     let s = rust_printer(writer.get_writer());
     print_fn(s, f.decl, f.proto, name, params, f.decl.constraints);
@@ -216,7 +216,7 @@ fn synth_comment(s: &ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep[IN](s: &ps, b: breaks, elts: &IN[], op: fn(&ps, &IN) ) {
+fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
     box(s, 0u, b);
     let first = true;
     for elt: IN  in elts {
@@ -227,7 +227,7 @@ fn commasep[IN](s: &ps, b: breaks, elts: &IN[], op: fn(&ps, &IN) ) {
 }
 
 
-fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &IN[], op: fn(&ps, &IN) ,
+fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
                      get_span: fn(&IN) -> codemap::span ) {
     box(s, 0u, b);
     let len = ivec::len[IN](elts);
@@ -246,12 +246,12 @@ fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &IN[], op: fn(&ps, &IN) ,
     end(s);
 }
 
-fn commasep_exprs(s: &ps, b: breaks, exprs: &(@ast::expr)[]) {
+fn commasep_exprs(s: &ps, b: breaks, exprs: &[@ast::expr]) {
     fn expr_span(expr: &@ast::expr) -> codemap::span { ret expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(s: &ps, _mod: &ast::_mod, attrs: &ast::attribute[]) {
+fn print_mod(s: &ps, _mod: &ast::_mod, attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for vitem: @ast::view_item  in _mod.view_items {
         print_view_item(s, vitem);
@@ -260,7 +260,7 @@ fn print_mod(s: &ps, _mod: &ast::_mod, attrs: &ast::attribute[]) {
 }
 
 fn print_native_mod(s: &ps, nmod: &ast::native_mod,
-                    attrs: &ast::attribute[]) {
+                    attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for vitem: @ast::view_item  in nmod.view_items {
         print_view_item(s, vitem);
@@ -505,7 +505,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         space(s.s);
         bopen(s);
         for meth: @ast::method  in _obj.methods {
-            let typarams: ast::ty_param[] = ~[];
+            let typarams: [ast::ty_param] = ~[];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
@@ -530,7 +530,7 @@ fn print_item(s: &ps, item: &@ast::item) {
     s.ann.post(ann_node);
 }
 
-fn print_outer_attributes(s: &ps, attrs: &ast::attribute[]) {
+fn print_outer_attributes(s: &ps, attrs: &[ast::attribute]) {
     let count = 0;
     for attr: ast::attribute  in attrs {
         alt attr.node.style {
@@ -541,7 +541,7 @@ fn print_outer_attributes(s: &ps, attrs: &ast::attribute[]) {
     if count > 0 { hardbreak_if_not_bol(s); }
 }
 
-fn print_inner_attributes(s: &ps, attrs: &ast::attribute[]) {
+fn print_inner_attributes(s: &ps, attrs: &[ast::attribute]) {
     let count = 0;
     for attr: ast::attribute  in attrs {
         alt attr.node.style {
@@ -1011,7 +1011,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
 
         // Methods
         for meth: @ast::method in anon_obj.methods {
-            let typarams: ast::ty_param[] = ~[];
+            let typarams: [ast::ty_param] = ~[];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
             print_fn(s, meth.node.meth.decl, meth.node.meth.proto,
@@ -1145,7 +1145,7 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
 }
 
 fn print_fn(s: &ps, decl: ast::fn_decl, proto: ast::proto, name: str,
-            typarams: &ast::ty_param[], constrs: (@ast::constr)[]) {
+            typarams: &[ast::ty_param], constrs: [@ast::constr]) {
     alt decl.purity {
       ast::impure_fn. { head(s, proto_to_str(proto)); }
       _ { head(s, "pred"); }
@@ -1156,7 +1156,7 @@ fn print_fn(s: &ps, decl: ast::fn_decl, proto: ast::proto, name: str,
 }
 
 fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
-                        constrs: (@ast::constr)[]) {
+                        constrs: [@ast::constr]) {
     popen(s);
     fn print_arg(s: &ps, x: &ast::arg) {
         ibox(s, indent_unit);
@@ -1193,7 +1193,7 @@ fn print_kind(s: &ps, kind: ast::kind) {
     }
 }
 
-fn print_type_params(s: &ps, params: &ast::ty_param[]) {
+fn print_type_params(s: &ps, params: &[ast::ty_param]) {
     if ivec::len(params) > 0u {
         word(s.s, "[");
         fn printParam(s: &ps, param: &ast::ty_param) {
@@ -1308,8 +1308,8 @@ fn print_mt(s: &ps, mt: &ast::mt) {
 }
 
 fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
-               inputs: &ast::ty_arg[], output: &@ast::ty,
-               cf: &ast::controlflow, constrs: &(@ast::constr)[]) {
+               inputs: &[ast::ty_arg], output: &@ast::ty,
+               cf: &ast::controlflow, constrs: &[@ast::constr]) {
     ibox(s, indent_unit);
     word(s.s, proto_to_str(proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
@@ -1518,7 +1518,7 @@ fn next_comment(s: &ps) -> option::t[lexer::cmnt] {
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
 fn constr_args_to_str[T](f: &fn(&T) -> str ,
-                         args: &(@ast::sp_constr_arg[T])[]) -> str {
+                         args: &[@ast::sp_constr_arg[T]]) -> str {
     let comma = false;
     let s = "(";
     for a: @ast::sp_constr_arg[T]  in args {
@@ -1549,7 +1549,7 @@ fn ast_ty_fn_constr_to_str(c: &@ast::constr) -> str {
 }
 
 // FIXME: fix repeated code
-fn ast_ty_fn_constrs_str(constrs: &(@ast::constr)[]) -> str {
+fn ast_ty_fn_constrs_str(constrs: &[@ast::constr]) -> str {
     let s = "";
     let colon = true;
     for c: @ast::constr  in constrs {
@@ -1571,7 +1571,7 @@ fn ast_fn_constr_to_str(decl: &ast::fn_decl, c: &@ast::constr) -> str {
 
 // FIXME: fix repeated code
 fn ast_fn_constrs_str(decl: &ast::fn_decl,
-                      constrs: &(@ast::constr)[]) -> str {
+                      constrs: &[@ast::constr]) -> str {
     let s = "";
     let colon = true;
     for c: @ast::constr  in constrs {
@@ -1596,7 +1596,7 @@ fn ty_constr_to_str(c: &@ast::ty_constr) -> str {
 }
 
 
-fn ast_ty_constrs_str(constrs: &(@ast::ty_constr)[]) -> str {
+fn ast_ty_constrs_str(constrs: &[@ast::ty_constr]) -> str {
     let s = "";
     let colon = true;
     for c: @ast::ty_constr  in constrs {

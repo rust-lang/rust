@@ -58,7 +58,7 @@ fn def_id_to_str(d: def_id) -> str {
     ret int::str(d.crate) + "," + int::str(d.node);
 }
 
-fn comma_str(args: &(@constr_arg_use)[]) -> str {
+fn comma_str(args: &[@constr_arg_use]) -> str {
     let rslt = "";
     let comma = false;
     for a: @constr_arg_use  in args {
@@ -117,7 +117,7 @@ fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
 
 fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) { log_err tritv_to_str(fcx, v); }
 
-fn tos(v: &uint[]) -> str {
+fn tos(v: &[uint]) -> str {
     let rslt = "";
     for i: uint  in v {
         if i == 0u {
@@ -127,9 +127,9 @@ fn tos(v: &uint[]) -> str {
     ret rslt;
 }
 
-fn log_cond(v: &uint[]) { log tos(v); }
+fn log_cond(v: &[uint]) { log tos(v); }
 
-fn log_cond_err(v: &uint[]) { log_err tos(v); }
+fn log_cond_err(v: &[uint]) { log_err tos(v); }
 
 fn log_pp(pp: &pre_and_post) {
     let p1 = tritv::to_vec(pp.precondition);
@@ -169,7 +169,7 @@ fn log_states_err(pp: &pre_and_post_state) {
 
 fn print_ident(i: &ident) { log " " + i + " "; }
 
-fn print_idents(idents: &mutable ident[]) {
+fn print_idents(idents: &mutable [ident]) {
     if ivec::len[ident](idents) == 0u { ret; }
     log "an ident: " + ivec::pop[ident](idents);
     print_idents(idents);
@@ -206,7 +206,7 @@ to represent predicate *arguments* however. This type
 
 Both types store an ident and span, for error-logging purposes.
 */
-type pred_args_ = {args: (@constr_arg_use)[], bit_num: uint};
+type pred_args_ = {args: [@constr_arg_use], bit_num: uint};
 
 type pred_args = spanned[pred_args_];
 
@@ -219,7 +219,7 @@ tag constraint {
 
     // FIXME: really only want it to be mutable during collect_locals.
     // freeze it after that.
-    cpred(path, @mutable pred_args[]);
+    cpred(path, @mutable [pred_args]);
 }
 
 // An ninit variant has a node_id because it refers to a local var.
@@ -229,7 +229,7 @@ tag constraint {
 // and give ninit a constraint saying it's local.
 tag tsconstr {
     ninit(node_id, ident);
-    npred(path, def_id, (@constr_arg_use)[]);
+    npred(path, def_id, [@constr_arg_use]);
 }
 
 type sp_constr = spanned[tsconstr];
@@ -278,7 +278,7 @@ type fn_info =
      computation, of all local variables that may be
      used */
 // Doesn't seem to work without the @ -- bug
-     used_vars: @mutable node_id[]};
+     used_vars: @mutable [node_id]};
 
 fn tsconstr_to_def_id(t: &tsconstr) -> def_id {
     alt t { ninit(id, _) { local_def(id) } npred(_, id, _) { id } }
@@ -291,7 +291,7 @@ fn tsconstr_to_node_id(t: &tsconstr) -> node_id {
 }
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @mutable ts_ann[mutable ];
+type node_ann_table = @mutable [mutable ts_ann];
 
 
 /* mapping from function name to fn_info map */
@@ -507,7 +507,7 @@ fn pure_exp(ccx: &crate_ctxt, id: node_id, p: &prestate) -> bool {
 fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
-    let na: ts_ann[mutable ] = ~[mutable ];
+    let na: [mutable ts_ann] = ~[mutable];
     ret {tcx: cx, node_anns: @mutable na, fm: @new_int_hash[fn_info]()};
 }
 
@@ -521,7 +521,7 @@ fn controlflow_expr(ccx: &crate_ctxt, e: @expr) -> controlflow {
     }
 }
 
-fn constraints_expr(cx: &ty::ctxt, e: @expr) -> (@ty::constr)[] {
+fn constraints_expr(cx: &ty::ctxt, e: @expr) -> [@ty::constr] {
     alt ty::struct(cx, ty::node_id_to_type(cx, e.id)) {
       ty::ty_fn(_, _, _, _, cs) { ret cs; }
       _ { ret ~[]; }
@@ -554,13 +554,13 @@ fn node_id_to_def_upvar(cx: &fn_ctxt, id: node_id) -> option::t[def] {
     ret freevars::def_lookup(cx.ccx.tcx, cx.id, id);
 }
 
-fn norm_a_constraint(id: def_id, c: &constraint) -> norm_constraint[] {
+fn norm_a_constraint(id: def_id, c: &constraint) -> [norm_constraint] {
     alt c {
       cinit(n, sp, i) {
         ret ~[{bit_num: n, c: respan(sp, ninit(id.node, i))}];
       }
       cpred(p, descs) {
-        let rslt: norm_constraint[] = ~[];
+        let rslt: [norm_constraint] = ~[];
         for pd: pred_args  in *descs {
             rslt +=
                 ~[{bit_num: pd.node.bit_num,
@@ -574,8 +574,8 @@ fn norm_a_constraint(id: def_id, c: &constraint) -> norm_constraint[] {
 
 // Tried to write this as an iterator, but I got a
 // non-exhaustive match in trans.
-fn constraints(fcx: &fn_ctxt) -> norm_constraint[] {
-    let rslt: norm_constraint[] = ~[];
+fn constraints(fcx: &fn_ctxt) -> [norm_constraint] {
+    let rslt: [norm_constraint] = ~[];
     for each p: @{key: def_id, val: constraint}  in
              fcx.enclosing.constrs.items() {
         rslt += norm_a_constraint(p.key, p.val);
@@ -586,8 +586,8 @@ fn constraints(fcx: &fn_ctxt) -> norm_constraint[] {
 // FIXME
 // Would rather take an immutable vec as an argument,
 // should freeze it at some earlier point.
-fn match_args(fcx: &fn_ctxt, occs: &@mutable pred_args[],
-              occ: &(@constr_arg_use)[]) -> uint {
+fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
+              occ: &[@constr_arg_use]) -> uint {
     log "match_args: looking at " +
             constr_args_to_str(fn (i: &inst) -> str { ret i.ident; }, occ);
     for pd: pred_args  in *occs {
@@ -638,10 +638,10 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: &@expr) -> @constr_arg_use {
     }
 }
 
-fn exprs_to_constr_args(tcx: ty::ctxt, args: &(@expr)[]) ->
-   (@constr_arg_use)[] {
+fn exprs_to_constr_args(tcx: ty::ctxt, args: &[@expr]) ->
+   [@constr_arg_use] {
     let f = bind expr_to_constr_arg(tcx, _);
-    let rslt: (@constr_arg_use)[] = ~[];
+    let rslt: [@constr_arg_use] = ~[];
     for e: @expr  in args { rslt += ~[f(e)]; }
     rslt
 }
@@ -679,16 +679,16 @@ fn pred_args_to_str(p: &pred_args) -> str {
         + ">"
 }
 
-fn substitute_constr_args(cx: &ty::ctxt, actuals: &(@expr)[], c: &@ty::constr)
+fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)
    -> tsconstr {
-    let rslt: (@constr_arg_use)[] = ~[];
+    let rslt: [@constr_arg_use] = ~[];
     for a: @constr_arg  in c.node.args {
         rslt += ~[substitute_arg(cx, actuals, a)];
     }
     ret npred(c.node.path, c.node.id, rslt);
 }
 
-fn substitute_arg(cx: &ty::ctxt, actuals: &(@expr)[], a: @constr_arg) ->
+fn substitute_arg(cx: &ty::ctxt, actuals: &[@expr], a: @constr_arg) ->
    @constr_arg_use {
     let num_actuals = ivec::len(actuals);
     alt a.node {
@@ -704,7 +704,7 @@ fn substitute_arg(cx: &ty::ctxt, actuals: &(@expr)[], a: @constr_arg) ->
     }
 }
 
-fn pred_args_matches(pattern: &(constr_arg_general_[inst])[],
+fn pred_args_matches(pattern: &[constr_arg_general_[inst]],
                      desc: &pred_args) -> bool {
     let i = 0u;
     for c: @constr_arg_use  in desc.node.args {
@@ -729,8 +729,8 @@ fn pred_args_matches(pattern: &(constr_arg_general_[inst])[],
     ret true;
 }
 
-fn find_instance_(pattern: &(constr_arg_general_[inst])[],
-                  descs: &pred_args[]) -> option::t[uint] {
+fn find_instance_(pattern: &[constr_arg_general_[inst]],
+                  descs: &[pred_args]) -> option::t[uint] {
     for d: pred_args  in descs {
         if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
     }
@@ -738,10 +738,10 @@ fn find_instance_(pattern: &(constr_arg_general_[inst])[],
 }
 
 type inst = {ident: ident, node: node_id};
-type subst = {from: inst, to: inst}[];
+type subst = [{from: inst, to: inst}];
 
 fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
-   {from: uint, to: uint}[] {
+   [{from: uint, to: uint}] {
 
     let rslt = ~[];
     if ivec::len(subst) == 0u { ret rslt; }
@@ -775,7 +775,7 @@ fn find_in_subst_bool(s: &subst, id: node_id) -> bool {
     is_some(find_in_subst(id, s))
 }
 
-fn insts_to_str(stuff: &(constr_arg_general_[inst])[]) -> str {
+fn insts_to_str(stuff: &[constr_arg_general_[inst]]) -> str {
     let rslt = "<";
     for i: constr_arg_general_[inst]  in stuff {
         rslt +=
@@ -790,8 +790,8 @@ fn insts_to_str(stuff: &(constr_arg_general_[inst])[]) -> str {
     rslt
 }
 
-fn replace(subst: subst, d: pred_args) -> (constr_arg_general_[inst])[] {
-    let rslt: (constr_arg_general_[inst])[] = ~[];
+fn replace(subst: subst, d: pred_args) -> [constr_arg_general_[inst]] {
+    let rslt: [constr_arg_general_[inst]] = ~[];
     for c: @constr_arg_use  in d.node.args {
         alt c.node {
           carg_ident(p) {
@@ -991,7 +991,7 @@ fn forget_in_poststate_still_init(fcx: &fn_ctxt, p: &poststate,
     ret changed;
 }
 
-fn any_eq(v: &node_id[], d: node_id) -> bool {
+fn any_eq(v: &[node_id], d: node_id) -> bool {
     for i: node_id  in v { if i == d { ret true; } }
     false
 }
@@ -1012,13 +1012,13 @@ fn non_init_constraint_mentions(fcx: &fn_ctxt, c: &norm_constraint,
         };
 }
 
-fn args_mention[T](args: &(@constr_arg_use)[], q: fn(&T[], node_id) -> bool ,
-                   s: &T[]) -> bool {
+fn args_mention[T](args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
+                   s: &[T]) -> bool {
     /*
       FIXME
       The following version causes an assertion in trans to fail
       (something about type_is_tup_like)
-    fn mentions[T](&(T)[] s, &fn(&(T)[], def_id) -> bool q,
+    fn mentions[T](&[T] s, &fn(&[T], def_id) -> bool q,
                             &@constr_arg_use a) -> bool {
         alt (a.node) {
             case (carg_ident(?p1)) {
@@ -1041,7 +1041,7 @@ fn args_mention[T](args: &(@constr_arg_use)[], q: fn(&T[], node_id) -> bool ,
 fn use_var(fcx: &fn_ctxt, v: &node_id) { *fcx.enclosing.used_vars += ~[v]; }
 
 // FIXME: This should be a function in std::ivec::.
-fn vec_contains(v: &@mutable node_id[], i: &node_id) -> bool {
+fn vec_contains(v: &@mutable [node_id], i: &node_id) -> bool {
     for d: node_id  in *v { if d == i { ret true; } }
     ret false;
 }
@@ -1051,33 +1051,33 @@ fn op_to_oper_ty(io: init_op) -> oper_type {
 }
 
 // default function visitor
-fn do_nothing[T](f: &_fn, tp: &ty_param[], sp: &span, i: &fn_ident,
+fn do_nothing[T](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
                  iid: node_id, cx: &T, v: &visit::vt[T]) {
 }
 
 
-fn args_to_constr_args(sp: &span, args: &arg[]) -> (@constr_arg_use)[] {
-    let actuals: (@constr_arg_use)[] = ~[];
+fn args_to_constr_args(sp: &span, args: &[arg]) -> [@constr_arg_use] {
+    let actuals: [@constr_arg_use] = ~[];
     for a: arg  in args {
         actuals += ~[@respan(sp, carg_ident({ident: a.ident, node: a.id}))];
     }
     ret actuals;
 }
 
-fn ast_constr_to_ts_constr(tcx: &ty::ctxt, args: &arg[], c: &@constr) ->
+fn ast_constr_to_ts_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
    tsconstr {
     let tconstr = ty::ast_constr_to_constr(tcx, c);
     ret npred(tconstr.node.path, tconstr.node.id,
               args_to_constr_args(tconstr.span, args));
 }
 
-fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &arg[], c: &@constr) ->
+fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
    sp_constr {
     let tconstr = ast_constr_to_ts_constr(tcx, args, c);
     ret respan(c.span, tconstr);
 }
 
-type binding = {lhs: inst[], rhs: option::t[initializer]};
+type binding = {lhs: [inst], rhs: option::t[initializer]};
 
 fn local_to_bindings(loc : &@local) -> binding {
     let lhs = ~[];
@@ -1089,11 +1089,11 @@ fn local_to_bindings(loc : &@local) -> binding {
      rhs: loc.node.init}
 }
 
-fn locals_to_bindings(locals : &(@local)[]) -> binding[] {
+fn locals_to_bindings(locals : &[@local]) -> [binding] {
     ivec::map(local_to_bindings, locals)
 }
 
-fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> ty::mode[] {
+fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> [ty::mode] {
     let ty = ty::type_autoderef(fcx.ccx.tcx,
                                 ty::node_id_to_type(fcx.ccx.tcx, callee));
     alt ty::struct(fcx.ccx.tcx, ty) {
@@ -1113,7 +1113,7 @@ fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> ty::mode[] {
    }
 }
 
-fn callee_arg_init_ops(fcx: &fn_ctxt, callee: node_id) -> init_op[] {
+fn callee_arg_init_ops(fcx: &fn_ctxt, callee: node_id) -> [init_op] {
     fn mode_to_op(m: &ty::mode) -> init_op {
         alt m {
           ty::mo_move. { init_move }
@@ -1123,8 +1123,8 @@ fn callee_arg_init_ops(fcx: &fn_ctxt, callee: node_id) -> init_op[] {
     ivec::map(mode_to_op, callee_modes(fcx, callee))
 }
 
-fn anon_bindings(ops: &init_op[], es : &(@expr)[]) -> binding[] {
-    let bindings: binding[] = ~[];
+fn anon_bindings(ops: &[init_op], es : &[@expr]) -> [binding] {
+    let bindings: [binding] = ~[];
     let i = 0;
     for op: init_op in ops {
         bindings += ~[{lhs: ~[],

@@ -17,9 +17,9 @@ type file_pos = {ch: uint, byte: uint};
  * compiler.
  */
 type filemap =
-    @{name: filename, start_pos: file_pos, mutable lines: file_pos[]};
+    @{name: filename, start_pos: file_pos, mutable lines: [file_pos]};
 
-type codemap = @{mutable files: filemap[]};
+type codemap = @{mutable files: [filemap]};
 
 type loc = {filename: filename, line: uint, col: uint};
 
@@ -175,7 +175,7 @@ fn emit_note(sp: &option::t[span], msg: &str, cm: &codemap) {
     emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 
-type file_lines = {name: str, lines: uint[]};
+type file_lines = {name: str, lines: [uint]};
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);

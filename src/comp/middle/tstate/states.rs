@@ -47,7 +47,7 @@ fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
     }
 }
 
-fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
+fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &[binding])
     -> {changed: bool, post: poststate} {
     let changed = false;
     let post = tritv_clone(pres);
@@ -163,7 +163,7 @@ fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
 }
 
 fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
-                            id: node_id, ops: &init_op[], bs: &(@expr)[],
+                            id: node_id, ops: &[init_op], bs: &[@expr],
                             cf: controlflow) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
     if ivec::len(bs) != ivec::len(ops) {
@@ -178,7 +178,7 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
 }
 
 fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
-                             ops: &init_op[], es: &(@expr)[],
+                             ops: &[init_op], es: &[@expr],
                              cf: controlflow) -> bool {
     let rs = seq_states(fcx, pres, anon_bindings(ops, es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);

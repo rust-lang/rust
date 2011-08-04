@@ -49,7 +49,7 @@ fn new_def_hash[@V]() -> std::map::hashmap[ast::def_id, V] {
 
 fn elt_expr(e: &ast::elt) -> @ast::expr { ret e.expr; }
 
-fn elt_exprs(elts: &ast::elt[]) -> (@ast::expr)[] {
+fn elt_exprs(elts: &[ast::elt]) -> [@ast::expr] {
     let es = ~[];
     for e: ast::elt  in elts { es += ~[e.expr]; }
     ret es;
@@ -57,7 +57,7 @@ fn elt_exprs(elts: &ast::elt[]) -> (@ast::expr)[] {
 
 fn field_expr(f: &ast::field) -> @ast::expr { ret f.node.expr; }
 
-fn field_exprs(fields: &ast::field[]) -> (@ast::expr)[] {
+fn field_exprs(fields: &[ast::field]) -> [@ast::expr] {
     let es = ~[];
     for f: ast::field  in fields { es += ~[f.node.expr]; }
     ret es;
@@ -77,11 +77,11 @@ fn log_block_err(b: &ast::blk) { log_err print::pprust::block_to_str(b); }
 
 fn log_item_err(i: &@ast::item) { log_err print::pprust::item_to_str(i); }
 
-fn log_fn(f: &ast::_fn, name: str, params: &ast::ty_param[]) {
+fn log_fn(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
     log print::pprust::fun_to_str(f, name, params);
 }
 
-fn log_fn_err(f: &ast::_fn, name: str, params: &ast::ty_param[]) {
+fn log_fn_err(f: &ast::_fn, name: str, params: &[ast::ty_param]) {
     log_err print::pprust::fun_to_str(f, name, params);
 }
 
@@ -161,7 +161,7 @@ fn call_kind_str(c: call_kind) -> str {
     }
 }
 
-fn is_main_name(path: &str[]) -> bool {
+fn is_main_name(path: &[str]) -> bool {
     str::eq(option::get(std::ivec::last(path)), "main")
 }
 

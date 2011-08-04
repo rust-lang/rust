@@ -25,14 +25,14 @@ import std::option::is_none;
 tag valid { valid; overwritten(span, ast::path); val_taken(span, ast::path); }
 
 type restrict =
-    @{root_vars: node_id[],
+    @{root_vars: [node_id],
       block_defnum: node_id,
-      bindings: node_id[],
-      tys: ty::t[],
-      depends_on: uint[],
+      bindings: [node_id],
+      tys: [ty::t],
+      depends_on: [uint],
       mutable ok: valid};
 
-type scope = @restrict[];
+type scope = @[restrict];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
@@ -51,7 +51,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
+fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
             name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt[scope]) {
     visit::visit_fn_decl(f.decl, sc, v);
     for arg_: ast::arg  in f.decl.inputs {
@@ -164,14 +164,14 @@ fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt[scope]) {
     }
 }
 
-fn check_call(cx: &ctx, f: &@ast::expr, args: &(@ast::expr)[], sc: &scope) ->
-   {root_vars: node_id[], unsafe_ts: ty::t[]} {
+fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
+   {root_vars: [node_id], unsafe_ts: [ty::t]} {
     let fty = ty::expr_ty(cx.tcx, f);
     let arg_ts = fty_args(cx, fty);
-    let roots: node_id[] = ~[];
-    let mut_roots: {arg: uint, node: node_id}[] = ~[];
-    let unsafe_ts: ty::t[] = ~[];
-    let unsafe_t_offsets: uint[] = ~[];
+    let roots: [node_id] = ~[];
+    let mut_roots: [{arg: uint, node: node_id}] = ~[];
+    let unsafe_ts: [ty::t] = ~[];
+    let unsafe_t_offsets: [uint] = ~[];
     let i = 0u;
     for arg_t: ty::arg  in arg_ts {
         if arg_t.mode != ty::mo_val {
@@ -308,13 +308,13 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
     }
 }
 
-fn check_alt(cx: &ctx, input: &@ast::expr, arms: &ast::arm[], sc: &scope,
+fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
              v: &vt[scope]) {
     visit::visit_expr(input, sc, v);
     let root = expr_root(cx, input, true);
     let roots =
         alt path_def_id(cx, root.ex) { some(did) { ~[did.node] } _ { ~[] } };
-    let forbidden_tp: ty::t[] =
+    let forbidden_tp: [ty::t] =
         alt inner_mut(root.ds) { some(t) { ~[t] } _ { ~[] } };
     for a: ast::arm  in arms {
         let dnums = arm_defnums(a);
@@ -331,7 +331,7 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &ast::arm[], sc: &scope,
     }
 }
 
-fn arm_defnums(arm: &ast::arm) -> node_id[] {
+fn arm_defnums(arm: &ast::arm) -> [node_id] {
     ret ast::pat_binding_ids(arm.pats.(0));
 }
 
@@ -506,7 +506,7 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
     }
 }
 
-fn deps(sc: &scope, roots: &node_id[]) -> uint[] {
+fn deps(sc: &scope, roots: &[node_id]) -> [uint] {
     let i = 0u;
     let result = ~[];
     for r: restrict  in *sc {
@@ -528,8 +528,8 @@ type deref = @{mut: bool, kind: deref_t, outer_t: ty::t};
 // the inner derefs come in front, so foo.bar.baz becomes rec(ex=foo,
 // ds=[field(baz),field(bar)])
 fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
-   {ex: @ast::expr, ds: @deref[]} {
-    fn maybe_auto_unbox(cx: &ctx, t: ty::t) -> {t: ty::t, ds: deref[]} {
+   {ex: @ast::expr, ds: @[deref]} {
+    fn maybe_auto_unbox(cx: &ctx, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let ds = ~[];
         while true {
             alt ty::struct(cx.tcx, t) {
@@ -557,7 +557,7 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
         }
         ret {t: t, ds: ds};
     }
-    let ds: deref[] = ~[];
+    let ds: [deref] = ~[];
     while true {
         alt { ex.node } {
           ast::expr_field(base, ident) {
@@ -621,12 +621,12 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
     ret {ex: ex, ds: @ds};
 }
 
-fn mut_field(ds: &@deref[]) -> bool {
+fn mut_field(ds: &@[deref]) -> bool {
     for d: deref  in *ds { if d.mut { ret true; } }
     ret false;
 }
 
-fn inner_mut(ds: &@deref[]) -> option::t[ty::t] {
+fn inner_mut(ds: &@[deref]) -> option::t[ty::t] {
     for d: deref  in *ds { if d.mut { ret some(d.outer_t); } }
     ret none;
 }
@@ -701,7 +701,7 @@ fn def_is_local(d: &ast::def, objfields_count: bool) -> bool {
         };
 }
 
-fn fty_args(cx: &ctx, fty: ty::t) -> ty::arg[] {
+fn fty_args(cx: &ctx, fty: ty::t) -> [ty::arg] {
     ret alt ty::struct(cx.tcx, ty::type_autoderef(cx.tcx, fty)) {
           ty::ty_fn(_, args, _, _, _) | ty::ty_native_fn(_, args, _) { args }
         };
