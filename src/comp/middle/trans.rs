@@ -122,7 +122,7 @@ fn type_of_fn_full(cx: &@crate_ctxt, sp: &span, proto: ast::proto,
 
     // Arg 2: Env (closure-bindings / self-obj)
     if is_method {
-        atys += ~[cx.rust_object_type];
+        atys += ~[T_ptr(cx.rust_object_type)];
     } else { atys += ~[T_opaque_closure_ptr(*cx)]; }
 
     // Args >3: ty params, if not acquired via capture...
@@ -4273,6 +4273,7 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
       ast::expr_self_method(ident) {
         alt { cx.fcx.llself } {
           some(pair) {
+            // TODO: do we actually need cx.build.Load(pair.v)?
             let r = pair.v;
             let t = pair.t;
             ret trans_field(cx, e.span, r, t, ident, e.id);
@@ -4752,16 +4753,7 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef, llobj: &option::t[ValueRef],
     llargs += ~[bcx.fcx.lltaskptr];
 
     // Arg 2: Env (closure-bindings / self-obj)
-    alt llobj {
-      some(ob) {
-        // Every object is always found in memory,
-        // and not-yet-loaded (as part of an lval x.y
-        // doted method-call).
-
-        llargs += ~[bcx.build.Load(ob)];
-      }
-      _ { llargs += ~[llenv]; }
-    }
+    llargs += ~[llenv];
 
     // Args >3: ty_params ...
     llargs += lltydescs;
@@ -4812,9 +4804,10 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
     let faddr = f_res.res.val;
     let llenv = C_null(T_opaque_closure_ptr(*bcx_ccx(cx)));
     alt f_res.llobj {
-      some(_) {
+      some(ob) {
         // It's a vtbl entry.
         faddr = bcx.build.Load(faddr);
+        llenv = ob;
       }
       none. {
         // It's a closure. We have to autoderef.
@@ -6238,22 +6231,6 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
     }
 }
 
-
-// Recommended LLVM style, strange though this is, is to copy from args to
-// allocas immediately upon entry; this permits us to GEP into structures we
-// were passed and whatnot. Apparently mem2reg will mop up.
-fn copy_any_self_to_alloca(fcx: @fn_ctxt) {
-    let bcx = llstaticallocas_block_ctxt(fcx);
-    alt { fcx.llself } {
-      some(pair) {
-        let a = alloca(bcx, fcx.lcx.ccx.rust_object_type);
-        bcx.build.Store(pair.v, a);
-        fcx.llself = some[val_self_pair]({v: a, t: pair.t});
-      }
-      _ { }
-    }
-}
-
 fn copy_args_to_allocas(fcx: @fn_ctxt, args: &ast::arg[],
                         arg_tys: &ty::arg[]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
@@ -6384,7 +6361,6 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     create_llargs_for_fn_args(fcx, f.proto, ty_self,
                               ty::ret_ty_of_fn(cx.ccx.tcx, id), f.decl.inputs,
                               ty_params);
-    copy_any_self_to_alloca(fcx);
     alt { fcx.llself } {
       some(llself) { populate_fn_ctxt_from_llself(fcx, llself); }
       _ { }
@@ -6539,9 +6515,8 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     let lltop = bcx.llbb;
 
     // The outer object will arrive in the forwarding function via the llenv
-    // argument.  Put it in an alloca so that we can GEP into it later.
-    let llself_obj_ptr = alloca(bcx, fcx.lcx.ccx.rust_object_type);
-    bcx.build.Store(fcx.llenv, llself_obj_ptr);
+    // argument.
+    let llself_obj_ptr = fcx.llenv;
 
     // Do backwarding if necessary.
     alt (backwarding_vtbl) {
@@ -6565,11 +6540,6 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         // and backwarding (inner-object) vtable.
       }
     }
-
-    // Grab hold of the outer object so we can pass it into the inner object,
-    // in case that inner object needs to make any self-calls.  (Such calls
-    // will need to dispatch back through the outer object.)
-    let llself_obj = bcx.build.Load(llself_obj_ptr);
 
     // The 'llretptr' that will arrive in the forwarding function we're
     // creating also needs to be the correct type.  Cast it to the method's
@@ -6681,7 +6651,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
-    let self_arg = llself_obj;
+    let self_arg = llself_obj_ptr;
     let llorig_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, self_arg];
 
     // Copy the explicit arguments that are being passed into the forwarding
