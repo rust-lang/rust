@@ -2380,7 +2380,7 @@ fn call_memmove(cx: &@block_ctxt, dst: ValueRef, src: ValueRef,
     let src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     let dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     let size = cx.build.IntCast(n_bytes, T_i32());
-    let align = C_int(0);
+    let align = C_int(1);
     let volatile = C_bool(false);
     ret rslt(cx,
              cx.build.Call(memmove,
@@ -2411,7 +2411,12 @@ fn memmove_ty(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: &ty::t) ->
     if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
         let llsz = size_of(cx, t);
         ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    } else { ret rslt(cx, cx.build.Store(cx.build.Load(src), dst)); }
+    } else if ty::type_is_structural(bcx_tcx(cx), t) {
+        let llsz = llsize_of(type_of(bcx_ccx(cx), cx.sp, t));
+        ret call_memmove(cx, dst, src, llsz);
+    } else {
+        ret rslt(cx, cx.build.Store(cx.build.Load(src), dst));
+    }
 }
 
 // Duplicates any heap-owned memory owned by a value of the given type.
