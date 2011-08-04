@@ -2349,7 +2349,7 @@ fn drop_slot(cx: &@block_ctxt, slot: ValueRef, t: &ty::t) -> result {
     let re = drop_ty(cx, llptr, t);
     let llty = val_ty(slot);
     let llelemty = lib::llvm::llvm::LLVMGetElementType(llty);
-    re.bcx.build.Store(C_null(llelemty), slot);
+    call_bzero(cx, slot, llsize_of(llelemty), C_uint(1u));
     ret re;
 }
 
