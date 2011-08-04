@@ -6886,7 +6886,7 @@ fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
 // Used by create_vtbl to filter a list of methods to remove the ones that we
 // don't need forwarding slots for.
 fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd,
-                addtl_meths: (@ast::method)[]) ->
+                addtl_meths: [@ast::method]) ->
     option::t[vtbl_mthd] {
 
     // Since m is a fwding_mthd, and we're checking to see if it's in

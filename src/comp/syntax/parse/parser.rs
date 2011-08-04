@@ -429,42 +429,23 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: &parser) -> @ast::ty {
         // This is explicit type parameter instantiation.
         p.bump();
 
-        let mut;
-        if eat_word(p, "mutable") {
-            if p.peek() == token::QUES {
-                p.bump();
-                mut = ast::maybe_mut;
-            } else { mut = ast::mut; }
-        } else { mut = ast::imm; }
+        let seq =
+            parse_seq_to_end(token::RBRACKET, some(token::COMMA),
+                             parse_ty, p);
 
-        if mut == ast::imm && p.peek() != token::RBRACKET {
-            // This is explicit type parameter instantiation.
-            let seq =
-                parse_seq_to_end(token::RBRACKET, some(token::COMMA),
-                                 parse_ty, p);
-
-
-            alt orig_t {
-              ast::ty_path(pth, ann) {
-                let hi = p.get_hi_pos();
-                ret @spanned(lo, hi,
-                             ast::ty_path(spanned(lo, hi,
-                                                  {global: pth.node.global,
-                                                   idents: pth.node.idents,
-                                                   types: seq}), ann));
-              }
-              _ {
-                p.fatal("type parameter instantiation only allowed for " +
-                            "paths");
-              }
-            }
+        alt orig_t {
+          ast::ty_path(pth, ann) {
+            let hi = p.get_hi_pos();
+            ret @spanned(lo, hi,
+                         ast::ty_path(spanned(lo, hi,
+                                              {global: pth.node.global,
+                                               idents: pth.node.idents,
+                                               types: seq}), ann));
+          }
+          _ {
+            p.fatal("type parameter instantiation only allowed for paths");
+          }
         }
-
-        expect(p, token::RBRACKET);
-        let hi = p.get_hi_pos();
-        // FIXME: spans are probably wrong
-        let t = ast::ty_ivec({ty: @spanned(lo, hi, orig_t), mut: mut});
-        ret parse_ty_postfix(t, p);
     }
     ret @spanned(lo, p.get_lo_pos(), orig_t);
 }
