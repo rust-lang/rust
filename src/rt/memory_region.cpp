@@ -42,8 +42,8 @@ void memory_region::free(void *mem) {
     assert(alloc->magic == MAGIC);
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list[alloc->index] != alloc) {
-        printf("free: ptr 0x%" PRIxPTR " is not in allocation_list\n",
-               (uintptr_t) mem);
+        printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
+               (uintptr_t) &alloc->data, alloc->tag);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
     else {
@@ -73,8 +73,8 @@ memory_region::realloc(void *mem, size_t size) {
     if (_allocation_list[newMem->index] != alloc) {
         printf("at index %d, found %p, expected %p\n",
                alloc->index, _allocation_list[alloc->index], alloc);
-        printf("realloc: ptr 0x%" PRIxPTR " is not in allocation_list\n",
-            (uintptr_t) mem);
+        printf("realloc: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
+            (uintptr_t) &alloc->data, alloc->tag);
         _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
     }
     else {
