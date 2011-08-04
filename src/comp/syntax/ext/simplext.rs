@@ -93,8 +93,8 @@ fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
 type match_result = option::t[arb_depth[matchable]];
 type selector = fn(&matchable) -> match_result ;
 
-fn elts_to_ell(cx: &ext_ctxt, elts: &(@expr)[])
-    -> {fixed: (@expr)[], rep: option::t[@expr]} {
+fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
+    -> {fixed: [@expr], rep: option::t[@expr]} {
     let idx: uint = 0u;
     for elt: @expr  in elts {
         alt elt.node {
@@ -153,7 +153,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 type binders =
     {real_binders: hashmap[ident, selector],
-     mutable literal_ast_matchers: selector[]};
+     mutable literal_ast_matchers: [selector]};
 type bindings = hashmap[ident, arb_depth[matchable]];
 
 fn acumm_bindings(cx: &ext_ctxt, b_dest: &bindings, b_src: &bindings) { }
@@ -272,8 +272,8 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
 fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
-                    recur: fn(&@expr) -> @expr , exprs: (@expr)[])
-    -> (@expr)[] {
+                    recur: fn(&@expr) -> @expr , exprs: [@expr])
+    -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {fixed: fixed, rep: repeat_me_maybe} {
         let res = ivec::map(recur, fixed);
@@ -580,7 +580,7 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
 
 /* TODO: move this to vec.rs */
 
-fn ivec_to_vec[T](v: &T[]) -> vec[T] {
+fn ivec_to_vec[T](v: &[T]) -> vec[T] {
     let rs: vec[T] = vec::alloc[T](ivec::len(v));
     for ve: T  in v { rs += [ve]; }
     ret rs;
@@ -614,7 +614,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
               compose_sels(s, bind select(cx, repeat_me, offset, _)), b);
 }
 
-fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], repeat_after: bool,
+fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
                          s: &selector, b: &binders) {
     fn len_select(cx: &ext_ctxt, m: &matchable, repeat_after: bool, len: uint)
         -> match_result {
@@ -662,7 +662,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: (@expr)[], repeat_after: bool,
 
 fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                      body: option::t[str]) -> base::macro_def {
-    let args: (@ast::expr)[] = alt arg.node {
+    let args: [@ast::expr] = alt arg.node {
       ast::expr_vec(elts, _, _) { elts }
       _ {
         cx.span_fatal(sp, "#macro requires arguments of the form `[...]`.")
@@ -670,7 +670,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
     };
 
     let macro_name: option::t[str] = none;
-    let clauses: clause[] = ~[];
+    let clauses: [clause] = ~[];
     for arg: @expr  in args {
         alt arg.node {
           expr_vec(elts, mut, seq_kind) {
@@ -727,7 +727,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         body: option::t[str], clauses: clause[]) -> @expr {
+                         body: option::t[str], clauses: [clause]) -> @expr {
         for c: clause  in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) {

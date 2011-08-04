@@ -22,12 +22,12 @@ fn get_type_param_count(cstore: &cstore::cstore, def: &ast::def_id) -> uint {
 }
 
 fn lookup_defs(cstore: &cstore::cstore, cnum: ast::crate_num,
-               path: &ast::ident[]) -> ast::def[] {
+               path: &[ast::ident]) -> [ast::def] {
     let cdata = cstore::get_crate_data(cstore, cnum).data;
     ret decoder::lookup_defs(cdata, cnum, path);
 }
 
-fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> ty::variant_info[] {
+fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
     let cstore = tcx.sess.get_cstore();
     let cnum = def.crate;
     let cdata = cstore::get_crate_data(cstore, cnum).data;

@@ -272,13 +272,13 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
     type provided_metas =
         {name: option::t[str],
          vers: option::t[str],
-         cmh_items: (@ast::meta_item)[]};
+         cmh_items: [@ast::meta_item]};
 
     fn provided_link_metas(sess: &session::session, c: &ast::crate) ->
        provided_metas {
         let name: option::t[str] = none;
         let vers: option::t[str] = none;
-        let cmh_items: (@ast::meta_item)[] = ~[];
+        let cmh_items: [@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for meta: @ast::meta_item  in linkage_metas {
@@ -412,7 +412,7 @@ fn get_symbol_hash(ccx: &@crate_ctxt, t: &ty::t) -> str {
     ret hash;
 }
 
-fn mangle(ss: &str[]) -> str {
+fn mangle(ss: &[str]) -> str {
     // Follow C++ namespace-mangling style
 
     let n = "_ZN"; // Begin name-sequence.
@@ -423,14 +423,14 @@ fn mangle(ss: &str[]) -> str {
     ret n;
 }
 
-fn exported_name(path: &str[], hash: &str, vers: &str) -> str {
+fn exported_name(path: &[str], hash: &str, vers: &str) -> str {
     // FIXME: versioning isn't working yet
 
     ret mangle(path + ~[hash]); //  + "@" + vers;
 
 }
 
-fn mangle_exported_name(ccx: &@crate_ctxt, path: &str[], t: &ty::t) -> str {
+fn mangle_exported_name(ccx: &@crate_ctxt, path: &[str], t: &ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
@@ -442,12 +442,12 @@ fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: &ty::t, name: &str)
     ret mangle(~[name, s, hash]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &str[],
+fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[str],
                                         flav: &str) -> str {
     ret mangle(path + ~[ccx.names.next(flav)]);
 }
 
-fn mangle_internal_name_by_path(ccx: &@crate_ctxt, path: &str[]) -> str {
+fn mangle_internal_name_by_path(ccx: &@crate_ctxt, path: &[str]) -> str {
     ret mangle(path);
 }
 

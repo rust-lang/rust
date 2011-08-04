@@ -49,7 +49,7 @@ export def_map;
 tag scope {
     scope_crate;
     scope_item(@ast::item);
-    scope_fn(ast::fn_decl, ast::proto, ast::ty_param[]);
+    scope_fn(ast::fn_decl, ast::proto, [ast::ty_param]);
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
 
@@ -104,7 +104,7 @@ type glob_imp_def = {def: def, item: @ast::view_item};
 type indexed_mod =
     {m: option::t[ast::_mod],
      index: mod_index,
-     mutable glob_imports: glob_imp_def[],
+     mutable glob_imports: [glob_imp_def],
      glob_imported_names: hashmap[str, import_state]};
 
 
@@ -119,9 +119,9 @@ type env =
      ast_map: ast_map::map,
      imports: hashmap[ast::node_id, import_state],
      mod_map: hashmap[ast::node_id, @indexed_mod],
-     ext_map: hashmap[def_id, ident[]],
+     ext_map: hashmap[def_id, [ident]],
      ext_cache: ext_hash,
-     mutable reported: {ident: str, sc: scope}[],
+     mutable reported: [{ident: str, sc: scope}],
      sess: session};
 
 
@@ -139,7 +139,7 @@ fn resolve_crate(sess: session, amap: &ast_map::map, crate: @ast::crate) ->
           ast_map: amap,
           imports: new_int_hash[import_state](),
           mod_map: new_int_hash[@indexed_mod](),
-          ext_map: new_def_hash[ident[]](),
+          ext_map: new_def_hash[[ident]](),
           ext_cache: new_ext_hash(),
           mutable reported: ~[],
           sess: sess};
@@ -327,7 +327,7 @@ fn visit_native_item_with_scope(ni: &@ast::native_item, sc: &scopes,
     visit::visit_native_item(ni, cons(scope_native_item(ni), @sc), v);
 }
 
-fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &ast::ty_param[],
+fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &[ast::ty_param],
                        sp: &span, name: &fn_ident, id: node_id, sc: &scopes,
                        v: &vt[scopes]) {
     // is this a main fn declaration?
@@ -375,7 +375,7 @@ fn visit_expr_with_scope(x: &@ast::expr, sc: &scopes, v: &vt[scopes]) {
     }
 }
 
-fn follow_import(e: &env, sc: &scopes, path: &ident[], sp: &span) ->
+fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
    option::t[def] {
     let path_len = ivec::len(path);
     let dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
@@ -701,7 +701,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
 
 }
 
-fn lookup_in_ty_params(name: &ident, ty_params: &ast::ty_param[]) ->
+fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
    option::t[def] {
     let i = 0u;
     for tp: ast::ty_param  in ty_params {
@@ -738,7 +738,7 @@ fn lookup_in_pat(name: &ident, pat: &ast::pat) -> option::t[def_id] {
 }
 
 fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
-                ty_params: &ast::ty_param[], ns: namespace) ->
+                ty_params: &[ast::ty_param], ns: namespace) ->
    option::t[def] {
     alt ns {
       ns_value. {
@@ -754,7 +754,7 @@ fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
     }
 }
 
-fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &ast::ty_param[],
+fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
                  ns: namespace) -> option::t[def] {
     alt ns {
       ns_value. {
@@ -1138,7 +1138,7 @@ fn ns_for_def(d: def) -> namespace {
         };
 }
 
-fn lookup_external(e: &env, cnum: int, ids: &ident[], ns: namespace) ->
+fn lookup_external(e: &env, cnum: int, ids: &[ident], ns: namespace) ->
    option::t[def] {
     for d: def  in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
@@ -1211,8 +1211,8 @@ fn mie_span(mie: &mod_index_entry) -> span {
 }
 
 fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
-    fn typaram_names(tps: &ast::ty_param[]) -> ident[] {
-        let x: ast::ident[] = ~[];
+    fn typaram_names(tps: &[ast::ty_param]) -> [ident] {
+        let x: [ast::ident] = ~[];
         for tp: ast::ty_param in tps { x += ~[tp.ident] }
         ret x;
     }
@@ -1347,10 +1347,10 @@ fn check_ty(e: &@env, ty: &@ast::ty, x: &(), v: &vt[()]) {
     visit::visit_ty(ty, x, v);
 }
 
-type checker = @{mutable seen: ident[], kind: str, sess: session};
+type checker = @{mutable seen: [ident], kind: str, sess: session};
 
 fn checker(e: &env, kind: str) -> checker {
-    let seen: ident[] = ~[];
+    let seen: [ident] = ~[];
     ret @{mutable seen: seen, kind: kind, sess: e.sess};
 }
 
@@ -1365,7 +1365,7 @@ fn add_name(ch: &checker, sp: &span, name: &ident) {
 
 fn ident_id(i: &ident) -> ident { ret i; }
 
-fn ensure_unique[T](e: &env, sp: &span, elts: &T[], id: fn(&T) -> ident ,
+fn ensure_unique[T](e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident ,
                     kind: &str) {
     let ch = checker(e, kind);
     for elt: T  in elts { add_name(ch, sp, id(elt)); }

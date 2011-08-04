@@ -18,7 +18,7 @@ export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
                      body: option::t[str]) -> @ast::expr {
-    let args: (@ast::expr)[] = alt arg.node {
+    let args: [@ast::expr] = alt arg.node {
       ast::expr_vec(elts, _, _) { elts }
       _ { cx.span_fatal(sp, "#fmt requires arguments of the form `[...]`.") }
     };
@@ -43,7 +43,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
 fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
-                  args: &(@ast::expr)[]) -> @ast::expr {
+                  args: &[@ast::expr]) -> @ast::expr {
     fn make_new_lit(cx: &ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
         let sp_lit = @{node: lit, span: sp};
         ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
@@ -65,20 +65,20 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
         let binexpr = ast::expr_binary(ast::add, lhs, rhs);
         ret @{id: cx.next_id(), node: binexpr, span: sp};
     }
-    fn make_path_expr(cx: &ext_ctxt, sp: span, idents: &ast::ident[]) ->
+    fn make_path_expr(cx: &ext_ctxt, sp: span, idents: &[ast::ident]) ->
        @ast::expr {
         let path = {global: false, idents: idents, types: ~[]};
         let sp_path = {node: path, span: sp};
         let pathexpr = ast::expr_path(sp_path);
         ret @{id: cx.next_id(), node: pathexpr, span: sp};
     }
-    fn make_vec_expr(cx: &ext_ctxt, sp: span, exprs: &(@ast::expr)[]) ->
+    fn make_vec_expr(cx: &ext_ctxt, sp: span, exprs: &[@ast::expr]) ->
        @ast::expr {
         let vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_rc);
         ret @{id: cx.next_id(), node: vecexpr, span: sp};
     }
-    fn make_call(cx: &ext_ctxt, sp: span, fn_path: &ast::ident[],
-                 args: &(@ast::expr)[]) -> @ast::expr {
+    fn make_call(cx: &ext_ctxt, sp: span, fn_path: &[ast::ident],
+                 args: &[@ast::expr]) -> @ast::expr {
         let pathexpr = make_path_expr(cx, sp, fn_path);
         let callexpr = ast::expr_call(pathexpr, args);
         ret @{id: cx.next_id(), node: callexpr, span: sp};
@@ -86,7 +86,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
     fn make_rec_expr(cx: &ext_ctxt, sp: span,
                      fields: vec[{ident: ast::ident, ex: @ast::expr}]) ->
        @ast::expr {
-        let astfields: ast::field[] = ~[];
+        let astfields: [ast::field] = ~[];
         for field: {ident: ast::ident, ex: @ast::expr}  in fields {
             let ident = field.ident;
             let val = field.ex;
@@ -97,7 +97,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
         let recexpr = ast::expr_rec(astfields, option::none[@ast::expr]);
         ret @{id: cx.next_id(), node: recexpr, span: sp};
     }
-    fn make_path_vec(cx: &ext_ctxt, ident: str) -> str[] {
+    fn make_path_vec(cx: &ext_ctxt, ident: str) -> [str] {
         fn compiling_std(cx: &ext_ctxt) -> bool {
             ret str::find(cx.crate_file_name_hack, "std.rc") >= 0;
         }
@@ -115,7 +115,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
     fn make_rt_conv_expr(cx: &ext_ctxt, sp: span, cnv: &conv) -> @ast::expr {
         fn make_flags(cx: &ext_ctxt, sp: span, flags: vec[flag]) ->
            @ast::expr {
-            let flagexprs: (@ast::expr)[] = ~[];
+            let flagexprs: [@ast::expr] = ~[];
             for f: flag  in flags {
                 let fstr;
                 alt f {

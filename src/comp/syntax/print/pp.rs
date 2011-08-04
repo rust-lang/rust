@@ -74,7 +74,7 @@ fn tok_str(t: token) -> str {
     }
 }
 
-fn buf_str(toks: &token[mutable ], szs: &int[mutable ], left: uint,
+fn buf_str(toks: &[mutable token], szs: &[mutable int], left: uint,
            right: uint, lim: uint) -> str {
     let n = ivec::len(toks);
     assert (n == ivec::len(szs));
@@ -104,10 +104,10 @@ fn mk_printer(out: ioivec::writer, linewidth: uint) -> printer {
 
     let n: uint = 3u * linewidth;
     log #fmt("mk_printer %u", linewidth);
-    let token: token[mutable ] = ivec::init_elt_mut(EOF, n);
-    let size: int[mutable ] = ivec::init_elt_mut(0, n);
-    let scan_stack: uint[mutable ] = ivec::init_elt_mut(0u, n);
-    let print_stack: print_stack_elt[] = ~[];
+    let token: [mutable token] = ivec::init_elt_mut(EOF, n);
+    let size: [mutable int] = ivec::init_elt_mut(0, n);
+    let scan_stack: [mutable uint] = ivec::init_elt_mut(0u, n);
+    let print_stack: [print_stack_elt] = ~[];
     ret printer(out, n, linewidth as int, // margin
                 linewidth as int, // space
                 0u, // left
@@ -208,10 +208,10 @@ obj printer(out: ioivec::writer,
 
             mutable right: uint, // index of right side of input stream
 
-            mutable token: token[mutable ],
+            mutable token: [mutable token],
 
             // ring-buffr stream goes through
-            mutable size: int[mutable ], // ring-buffer of calculated sizes
+            mutable size: [mutable int], // ring-buffer of calculated sizes
 
             mutable left_total: int, // running size of stream "...left"
 
@@ -223,7 +223,7 @@ obj printer(out: ioivec::writer,
              // BEGIN (if there is any) on top of it. Stuff is flushed off the
              // bottom as it becomes irrelevant due to the primary ring-buffer
              // advancing.
-             mutable scan_stack: uint[mutable ],
+             mutable scan_stack: [mutable uint],
             mutable scan_stack_empty: bool, // top==bottom disambiguator
 
             mutable top: uint, // index of top of scan_stack
@@ -231,7 +231,7 @@ obj printer(out: ioivec::writer,
             mutable bottom: uint, // index of bottom of scan_stack
 
              // stack of blocks-in-progress being flushed by print
-            mutable print_stack: print_stack_elt[],
+            mutable print_stack: [print_stack_elt],
 
 
             // buffered indentation to avoid writing trailing whitespace

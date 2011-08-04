@@ -39,7 +39,7 @@ type ctxt = {
     mutable next_tag_id: u16,
     pad: u16,
     tag_id_to_index: hashmap[ast::def_id,u16],
-    mutable tag_order: ast::def_id[],
+    mutable tag_order: [ast::def_id],
     resources: interner::interner[res_info],
     llshapetablesty: TypeRef,
     llshapetables: ValueRef
@@ -102,7 +102,7 @@ fn mk_global(ccx : &@crate_ctxt, name : &str, llval : ValueRef) -> ValueRef {
 //
 // TODO: Use this in dynamic_size_of() as well.
 
-fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> uint[] {
+fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> [uint] {
     // Compute the minimum and maximum size and alignment for each variant.
     //
     // TODO: We could do better here; e.g. we know that any variant that
@@ -186,7 +186,7 @@ fn round_up(size : u16, align : u8) -> u16 {
 
 type size_align = { size: u16, align: u8 };
 
-fn compute_static_tag_size(ccx : &@crate_ctxt, largest_variants : &uint[],
+fn compute_static_tag_size(ccx : &@crate_ctxt, largest_variants : &[uint],
                            did : &ast::def_id) -> size_align {
     let max_size = 0u16; let max_align = 1u8;
     let variants = ty::tag_variants(ccx.tcx, did);
@@ -263,20 +263,20 @@ fn mk_ctxt(llmod : ModuleRef) -> ctxt {
     };
 }
 
-fn add_bool(dest : &mutable u8[], val : bool) {
+fn add_bool(dest : &mutable [u8], val : bool) {
     dest += ~[if val { 1u8 } else { 0u8 }];
 }
 
-fn add_u16(dest : &mutable u8[], val : u16) {
+fn add_u16(dest : &mutable [u8], val : u16) {
     dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
-fn add_substr(dest : &mutable u8[], src : &u8[]) {
+fn add_substr(dest : &mutable [u8], src : &[u8]) {
     add_u16(dest, ivec::len(src) as u16);
     dest += src;
 }
 
-fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> u8[] {
+fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
     let s = ~[];
 
     alt ty::struct(ccx.tcx, t) {
@@ -395,7 +395,7 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> u8[] {
     ret s;
 }
 
-fn add_size_hint(ccx : &@crate_ctxt, s : &mutable u8[], typ : ty::t) {
+fn add_size_hint(ccx : &@crate_ctxt, s : &mutable [u8], typ : ty::t) {
     if (ty::type_has_dynamic_size(ccx.tcx, typ)) {
         s += ~[ 0u8, 0u8, 0u8 ];
         ret;
@@ -407,7 +407,7 @@ fn add_size_hint(ccx : &@crate_ctxt, s : &mutable u8[], typ : ty::t) {
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
-fn shape_of_variant(ccx : &@crate_ctxt, v : &ty::variant_info) -> u8[] {
+fn shape_of_variant(ccx : &@crate_ctxt, v : &ty::variant_info) -> [u8] {
     let s = ~[];
     for t : ty::t in v.args { s += shape_of(ccx, t); }
     ret s;

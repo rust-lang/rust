@@ -15,7 +15,7 @@ fn check_expr(tcx: &ty::ctxt, ex: &@expr, s: &(), v: &visit::vt[()]) {
     alt ex.node { expr_alt(_, arms) { check_arms(tcx, arms); } _ { } }
 }
 
-fn check_arms(tcx: &ty::ctxt, arms: &arm[]) {
+fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
     let i = 0;
     for arm: arm  in arms {
         for arm_pat: @pat  in arm.pats {
@@ -38,7 +38,7 @@ fn check_arms(tcx: &ty::ctxt, arms: &arm[]) {
 }
 
 fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
-    fn patterns_supersede(tcx: &ty::ctxt, as: &(@pat)[], bs: &(@pat)[]) ->
+    fn patterns_supersede(tcx: &ty::ctxt, as: &[@pat], bs: &[@pat]) ->
        bool {
         let i = 0;
         for a: @pat  in as {
@@ -47,8 +47,8 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
         }
         ret true;
     }
-    fn field_patterns_supersede(tcx: &ty::ctxt, fas: &field_pat[],
-                                fbs: &field_pat[]) -> bool {
+    fn field_patterns_supersede(tcx: &ty::ctxt, fas: &[field_pat],
+                                fbs: &[field_pat]) -> bool {
         let wild = @{id: 0, node: pat_wild, span: {lo: 0u, hi: 0u}};
         for fa: field_pat  in fas {
             let pb = wild;
