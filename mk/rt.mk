@@ -23,6 +23,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/isaac/randport.cpp \
               rt/rust_srv.cpp \
               rt/rust_kernel.cpp \
+              rt/rust_shape.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \

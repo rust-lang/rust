@@ -251,6 +251,10 @@ typedef void CDECL (cmp_glue_fn)(void *, rust_task *, void *,
                                  const type_desc **,
                                  void *, void *, int8_t);
 
+struct rust_shape_tables {
+    uint8_t *tags;
+    uint8_t *resources;
+};
 
 struct type_desc {
     // First part of type_desc is known to compiler.
@@ -266,6 +270,9 @@ struct type_desc {
     glue_fn *obj_drop_glue; // For custom destructors.
     uintptr_t is_stateful;
     cmp_glue_fn *cmp_glue;
+    const uint8_t *shape;
+    const rust_shape_tables *shape_tables;
+    uint32_t n_params;
 
     // Residual fields past here are known only to runtime.
     UT_hash_handle hh;
