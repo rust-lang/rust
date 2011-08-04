@@ -84,6 +84,7 @@ ifdef CFG_UNIXY
   CFG_RUN_TARG=$(call CFG_RUN,$(CFG_BUILD_DIR)/$(1),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),\
       $(CFG_VALGRIND) $(1))
+  CFG_LIBUV_LINK_FLAGS=-lpthread
 
   ifdef CFG_ENABLE_MINGW_CROSS
     CFG_WINDOWSY := 1
@@ -123,6 +124,7 @@ ifdef CFG_WINDOWSY
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
   CFG_RUN_TARG=$(call CFG_RUN,,$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1)),$(1))
+  CFG_LIBUV_LINK_FLAGS=-lWs2_32
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \

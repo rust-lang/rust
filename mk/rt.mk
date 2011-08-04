@@ -70,7 +70,6 @@ RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
 RUNTIME_LIBS := $(S)src/rt/libuv/uv.a
 
-
 rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
@@ -96,10 +95,14 @@ rt/%.o: rt/%.ll $(MKFILES)
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RUNTIME_LIBS)
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@, $(RUNTIME_OBJS) \
-	  $(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) -lpthread,$(RUNTIME_DEF))
+	  $(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) \
+	  $(CFG_LIBUV_LINK_FLAGS),$(RUNTIME_DEF))
 
+# FIXME: For some reason libuv's makefiles can't figure out the correct definition
+# of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
+# have to list environment variables first on windows... mysterious
 $(S)src/rt/libuv/uv.a: $(S)src/rt/libuv/LIBUV_REVISION
-	$(Q)$(MAKE) -C $(S)src/rt/libuv CFLAGS=\"-m32\" LDFLAGS=\"-m32\"
+	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=gcc $(MAKE) -C $(S)src/rt/libuv
 	$(Q)mkdir -p rt/libuv
 	$(Q)cp $(S)src/rt/libuv/uv.a rt/libuv/uv.a
 
