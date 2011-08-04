@@ -426,6 +426,11 @@ fn llsize_of_real(cx: &@crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t);
 }
 
+// Returns the real alignment of the given type for the current target.
+fn llalign_of_real(cx: &@crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t);
+}
+
 fn llsize_of(t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), T_int(),
                                False);
@@ -1424,23 +1429,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
     let val = GEP_tup_like(cx, tup_ty, rs, ~[0, 1]);
     cx = val.bcx;
     // Find and call the actual destructor.
-    let dtor_pair =
-        if did.crate == ast::local_crate {
-            alt ccx.fn_pairs.find(did.node) {
-              some(x) { x }
-              _ { ccx.tcx.sess.bug("internal error in trans_res_drop") }
-            }
-        } else {
-            let params =
-                csearch::get_type_param_count(ccx.sess.get_cstore(), did);
-            let f_t =
-                type_of_fn(ccx, cx.sp, ast::proto_fn,
-                           ~[{mode: ty::mo_alias(false), ty: inner_t}],
-                           ty::mk_nil(ccx.tcx), params);
-            get_extern_const(ccx.externs, ccx.llmod,
-                             csearch::get_symbol(ccx.sess.get_cstore(), did),
-                             T_fn_pair(*ccx, f_t))
-        };
+    let dtor_pair = trans_common::get_res_dtor(ccx, cx.sp, did, inner_t);
     let dtor_addr =
         cx.build.Load(cx.build.GEP(dtor_pair,
                                    ~[C_int(0), C_int(abi::fn_field_code)]));
@@ -8002,7 +7991,8 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
               upcall::declare_upcalls(tn, tydesc_type, taskptr_type, llmod),
           rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
-          task_type: task_type};
+          task_type: task_type,
+          shape_cx: shape::mk_ctxt(llmod)};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     collect_tag_ctors(ccx, crate);
