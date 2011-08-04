@@ -2015,6 +2015,10 @@ fn is_lval(expr: &@ast::expr) -> bool {
 
 fn occurs_check_fails(tcx: &ctxt, sp: &option::t[span], vid: int, rt: &t)
     -> bool {
+    if (!type_contains_vars(tcx, rt)) {
+        // Fast path
+        ret false;
+    }
     // Occurs check!
     if ivec::member(vid, vars_in_type(tcx, rt)) {
         alt sp {
@@ -2754,7 +2758,7 @@ mod unify {
               none. { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
               some(rt) {
                 if occurs_check_fails(tcx, sp, vid, rt) {
-                 // Return the type unchanged, so we can error out downstream
+      // Return the type unchanged, so we can error out downstream
                     ret rt;
                 }
                 ret fold_ty(tcx,
