@@ -675,7 +675,17 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                 alt mac.node {
                   mac_invoc(pth, invoc_arg, body) {
                     alt path_to_ident(pth) {
-                      some(id) { macro_name = some(id); }
+                      some(id) { 
+                        alt macro_name {
+                          none. { macro_name = some(id); }
+                          some(other_id) {
+                            if id != other_id {
+                                cx.span_fatal(pth.span, "macro name must be "
+                                              + "consistent");
+                            }
+                          }
+                        }
+                      }
                       none. {
                         cx.span_fatal(pth.span,
                                       "macro name must not be a path");
