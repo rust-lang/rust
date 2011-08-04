@@ -170,6 +170,7 @@ export type_is_fp;
 export type_is_integral;
 export type_is_native;
 export type_is_nil;
+export type_is_pod;
 export type_is_scalar;
 export type_is_sequence;
 export type_is_signed;
@@ -1337,6 +1338,50 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
     }
 
     cx.owns_heap_mem_cache.insert(ty, result);
+    ret result;
+}
+
+// Whether a type is Plain Old Data (i.e. can be safely memmoved).
+fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
+    let result = true;
+    alt struct(cx, ty) {
+        // Scalar types
+        ty_nil. | ty_bot. | ty_bool. | ty_int. | ty_float. | ty_uint. |
+        ty_machine(_) | ty_char. | ty_type. | ty_native(_) | ty_ptr(_) {
+            result = true;
+        }
+
+        // Boxed types
+        ty_str. | ty_istr. | ty_box(_) | ty_vec(_) | ty_ivec(_) |
+        ty_fn(_,_,_,_,_) | ty_native_fn(_,_,_) | ty_obj(_) | ty_port(_) |
+        ty_chan(_) | ty_task. { result = false; }
+
+        // Structural types
+        ty_tag(did, tps) {
+            let variants = tag_variants(cx, did);
+            for variant : variant_info in variants {
+                let tup_ty = mk_imm_tup(cx, variant.args);
+
+                // Perform any type parameter substitutions.
+                tup_ty = substitute_type_params(cx, tps, tup_ty);
+                if !type_is_pod(cx, tup_ty) { result = false; }
+            }
+        }
+        ty_rec(flds) {
+            for f : field in flds {
+                if !type_is_pod(cx, f.mt.ty) { result = false; }
+            }
+        }
+        ty_res(_, inner, tps) {
+            result = type_is_pod(cx,
+                substitute_type_params(cx, tps, inner));
+        }
+        ty_constr(subt, _) { result = type_is_pod(cx, subt); }
+
+        ty_var(_) { fail "ty_var in type_is_pod"; }
+        ty_param(_,_) { result = false; }
+    }
+
     ret result;
 }
 

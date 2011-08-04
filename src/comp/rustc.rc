@@ -29,6 +29,7 @@ mod middle {
     mod alias;
     mod kind;
     mod freevars;
+    mod shape;
 
     mod tstate {
         mod ck;

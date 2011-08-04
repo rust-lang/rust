@@ -4,6 +4,7 @@
 */
 
 import std::int;
+import std::ivec;
 import std::str;
 import std::uint;
 import std::str::rustrt::sbuf;
@@ -13,6 +14,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::fs;
+import std::unsafe;
 import syntax::ast;
 import driver::session;
 import middle::ty;
@@ -139,7 +141,8 @@ type crate_ctxt = {
     upcalls: @upcall::upcalls,
     rust_object_type: TypeRef,
     tydesc_type: TypeRef,
-    task_type: TypeRef
+    task_type: TypeRef,
+    shape_cx: shape::ctxt
 };
 
 type local_ctxt =
@@ -312,6 +315,25 @@ fn revoke_clean(cx: &@block_ctxt, val: ValueRef) {
         std::ivec::slice(sc_cx.cleanups, 0u, found as uint) +
             std::ivec::slice(sc_cx.cleanups, (found as uint) + 1u,
                              std::ivec::len(sc_cx.cleanups));
+}
+
+fn get_res_dtor(ccx : &@crate_ctxt, sp : &span, did : &ast::def_id,
+                inner_t : ty::t) -> ValueRef {
+    if did.crate == ast::local_crate {
+        alt ccx.fn_pairs.find(did.node) {
+            some(x) { ret x; }
+            _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
+        }
+    }
+
+    let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
+    let f_t = trans::type_of_fn(ccx, sp, ast::proto_fn,
+                                ~[{ mode: ty::mo_alias(false), ty: inner_t }],
+                                ty::mk_nil(ccx.tcx), params);
+    ret trans::get_extern_const(ccx.externs, ccx.llmod,
+                                csearch::get_symbol(ccx.sess.get_cstore(),
+                                                    did),
+                                T_fn_pair(*ccx, f_t));
 }
 
 tag block_kind {
@@ -846,3 +868,9 @@ fn C_array(ty: TypeRef, elts: &ValueRef[]) -> ValueRef {
     ret llvm::LLVMConstArray(ty, std::ivec::to_ptr(elts),
                              std::ivec::len(elts));
 }
+
+fn C_bytes(bytes : &u8[]) -> ValueRef {
+    ret llvm::LLVMConstString(unsafe::reinterpret_cast(ivec::to_ptr(bytes)),
+                              ivec::len(bytes), False);
+}
+
