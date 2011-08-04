@@ -230,7 +230,7 @@ struct type_param {
             return NULL;
 
         type_param *ptrs = arena.alloc<type_param>(n_params);
-        for (int i = 0; i < n_params; i++) {
+        for (uint32_t i = 0; i < n_params; i++) {
             const type_desc *subtydesc = tydesc->first_param[i];
             ptrs[i].shape = subtydesc->shape;
             ptrs[i].tables = subtydesc->shape_tables;
