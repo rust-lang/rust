@@ -4273,7 +4273,6 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
       ast::expr_self_method(ident) {
         alt { cx.fcx.llself } {
           some(pair) {
-            // TODO: do we actually need cx.build.Load(pair.v)?
             let r = pair.v;
             let t = pair.t;
             ret trans_field(cx, e.span, r, t, ident, e.id);
