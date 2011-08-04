@@ -1368,6 +1368,9 @@ fn maybe_print_trailing_comment(s: &ps, span: codemap::span,
 }
 
 fn print_remaining_comments(s: &ps) {
+    // If there aren't any remaining comments, then we need to manually
+    // make sure there is a line break at the end.
+    if option::is_none(next_comment(s)) { hardbreak(s.s); }
     while true {
         alt next_comment(s) {
           some(cmnt) { print_comment(s, cmnt); s.cur_cmnt += 1u; }
