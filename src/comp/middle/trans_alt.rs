@@ -433,7 +433,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &ast::arm[],
             ret rslt(cx, cx.build.Unreachable());
         }
         else {
-            ret rslt(cx, C_nil());
+            ret er;
         }
     }
 

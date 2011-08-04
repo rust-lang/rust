@@ -879,7 +879,18 @@ fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
     let t1 = t;
     while true {
         alt structure_of(fcx, sp, t1) {
-          ty::ty_box(inner) { t1 = inner.ty; }
+          ty::ty_box(inner) {
+            alt ty::struct(fcx.ccx.tcx, t1) {
+              ty::ty_var(v1) {
+                if ty::occurs_check_fails(fcx.ccx.tcx, some(sp), v1,
+                                          ty::mk_box(fcx.ccx.tcx, inner)) {
+                    break;
+                }
+              }
+              _ {}
+            }
+            t1 = inner.ty;
+          }
           ty::ty_res(_, inner, tps) {
             t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
           }
@@ -942,7 +953,7 @@ fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: &ty::t,
 
 
 fn resolve_type_vars_if_possible(fcx: &@fn_ctxt, typ: ty::t) -> ty::t {
-    alt ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ) {
+    alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
       fix_ok(new_type) { ret new_type; }
       fix_err(_) { ret typ; }
     }
@@ -1073,7 +1084,8 @@ mod writeback {
     fn resolve_type_vars_in_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
        option::t[ty::t] {
         if !ty::type_contains_vars(fcx.ccx.tcx, typ) { ret some(typ); }
-        alt ty::unify::fixup_vars(fcx.ccx.tcx, fcx.var_bindings, typ) {
+        alt ty::unify::fixup_vars(fcx.ccx.tcx, some(sp),
+                                  fcx.var_bindings, typ) {
           fix_ok(new_type) { ret some(new_type); }
           fix_err(vid) {
             fcx.ccx.tcx.sess.span_err(sp,
@@ -1139,7 +1151,7 @@ mod writeback {
         if !wbcx.success { ret; }
         let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
         let fix_rslt =
-            ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx,
+            ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx, some(l.span),
                                         wbcx.fcx.var_bindings, var_id);
         alt fix_rslt {
           fix_ok(lty) { write::ty_only(wbcx.fcx.ccx.tcx, l.node.id, lty); }

@@ -895,7 +895,8 @@ fn linearize_ty_params(cx: &@block_ctxt, t: &ty::t) ->
 
 fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
                                     llalign: ValueRef, llroottydesc: ValueRef,
-                                    llparamtydescs: ValueRef) -> ValueRef {
+                                    llparamtydescs: ValueRef,
+                                    n_params: uint) -> ValueRef {
     let llmyroottydesc = alloca(cx, bcx_ccx(cx).tydesc_type);
     // By convention, desc 0 is the root descriptor.
 
@@ -904,11 +905,14 @@ fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
     // Store a pointer to the rest of the descriptors.
 
     let llfirstparam = cx.build.GEP(llparamtydescs, ~[C_int(0), C_int(0)]);
-    cx.build.Store(llfirstparam,
-                   cx.build.GEP(llmyroottydesc, ~[C_int(0), C_int(0)]));
-    cx.build.Store(llsz, cx.build.GEP(llmyroottydesc, ~[C_int(0), C_int(1)]));
-    cx.build.Store(llalign,
-                   cx.build.GEP(llmyroottydesc, ~[C_int(0), C_int(2)]));
+    store_inbounds(cx, llfirstparam, llmyroottydesc,
+                   ~[C_int(0), C_int(abi::tydesc_field_first_param)]);
+    store_inbounds(cx, C_uint(n_params), llmyroottydesc,
+                   ~[C_int(0), C_int(abi::tydesc_field_n_params)]);
+    store_inbounds(cx, llsz, llmyroottydesc,
+                   ~[C_int(0), C_int(abi::tydesc_field_size)]);
+    store_inbounds(cx, llalign, llmyroottydesc,
+                   ~[C_int(0), C_int(abi::tydesc_field_align)]);
     ret llmyroottydesc;
 }
 
@@ -964,7 +968,8 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
         v = td_val;
     } else {
         let llparamtydescs =
-            alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type), n_params));
+            alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type),
+                                n_params + 1u));
         let i = 0;
         for td: ValueRef  in tys.descs {
             let tdp = bcx.build.GEP(llparamtydescs, ~[C_int(0), C_int(i)]);
@@ -973,7 +978,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
         }
         v =
             trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
-                                             llparamtydescs);
+                                             llparamtydescs, n_params);
     }
     bcx.fcx.derived_tydescs.insert(t, {lltydesc: v, escapes: escapes});
     ret rslt(cx, v);
@@ -1191,20 +1196,28 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
               none. { ccx.stats.n_null_glues += 1u; C_null(cmp_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
-        let  // copy_glue
-             // drop_glue
-             // free_glue
-             // sever_glue
-             // mark_glue
-             // obj_drop_glue
-             // is_stateful
-            tydesc =
+
+        let shape = shape::shape_of(ccx, pair.key);
+        let shape_tables =
+            llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
+                                       T_ptr(T_i8()));
+
+        let tydesc =
             C_named_struct(ccx.tydesc_type,
-                           ~[C_null(T_ptr(T_ptr(ccx.tydesc_type))), ti.size,
-                             ti.align, copy_glue, drop_glue, free_glue,
-                             C_null(glue_fn_ty), C_null(glue_fn_ty),
-                             C_null(glue_fn_ty), C_null(glue_fn_ty),
-                             cmp_glue]); // cmp_glue
+                           ~[C_null(T_ptr(T_ptr(ccx.tydesc_type))),
+                             ti.size,               // size
+                             ti.align,              // align
+                             copy_glue,             // copy_glue
+                             drop_glue,             // drop_glue
+                             free_glue,             // free_glue
+                             C_null(glue_fn_ty),    // sever_glue
+                             C_null(glue_fn_ty),    // mark_glue
+                             C_null(glue_fn_ty),    // obj_drop_glue
+                             C_null(glue_fn_ty),    // is_stateful
+                             cmp_glue,              // cmp_glue
+                             C_shape(ccx, shape),   // shape
+                             shape_tables,          // shape_tables
+                             C_int(0)]);            // n_params
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -2288,8 +2301,9 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
     let ti = none[@tydesc_info];
     let r = get_tydesc(cx, t, false, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, ti);
+    let lltydesc = r.val;
     let lltydescs =
-        r.bcx.build.GEP(r.val,
+        r.bcx.build.GEP(lltydesc,
                         ~[C_int(0), C_int(abi::tydesc_field_first_param)]);
     lltydescs = r.bcx.build.Load(lltydescs);
 
@@ -2297,7 +2311,7 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
     alt ti {
       none. {
         let llfnptr =
-            r.bcx.build.GEP(r.val,
+            r.bcx.build.GEP(lltydesc,
                             ~[C_int(0), C_int(abi::tydesc_field_cmp_glue)]);
         llfn = r.bcx.build.Load(llfnptr);
       }
@@ -2306,7 +2320,7 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
 
     let llcmpresultptr = alloca(r.bcx, T_i1());
     let llargs: ValueRef[] =
-        ~[llcmpresultptr, r.bcx.fcx.lltaskptr, C_null(T_ptr(T_nil())),
+        ~[llcmpresultptr, r.bcx.fcx.lltaskptr, lltydesc,
           lltydescs, llrawlhsptr, llrawrhsptr, llop];
     r.bcx.build.Call(llfn, llargs);
     ret rslt(r.bcx, r.bcx.build.Load(llcmpresultptr));
@@ -2366,7 +2380,7 @@ fn call_memmove(cx: &@block_ctxt, dst: ValueRef, src: ValueRef,
     let src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     let dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     let size = cx.build.IntCast(n_bytes, T_i32());
-    let align = C_int(0);
+    let align = C_int(1);
     let volatile = C_bool(false);
     ret rslt(cx,
              cx.build.Call(memmove,
@@ -2397,7 +2411,12 @@ fn memmove_ty(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: &ty::t) ->
     if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
         let llsz = size_of(cx, t);
         ret call_memmove(llsz.bcx, dst, src, llsz.val);
-    } else { ret rslt(cx, cx.build.Store(cx.build.Load(src), dst)); }
+    } else if ty::type_is_structural(bcx_tcx(cx), t) {
+        let llsz = llsize_of(type_of(bcx_ccx(cx), cx.sp, t));
+        ret call_memmove(cx, dst, src, llsz);
+    } else {
+        ret rslt(cx, cx.build.Store(cx.build.Load(src), dst));
+    }
 }
 
 // Duplicates any heap-owned memory owned by a value of the given type.
@@ -4696,7 +4715,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: &@block_ctxt, llenv: ValueRef, llobj: &option::t[ValueRef],
+fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
               gen: &option::t[generic_info], lliterbody: &option::t[ValueRef],
               es: &(@ast::expr)[], fn_ty: &ty::t) ->
    {bcx: @block_ctxt, args: ValueRef[], retslot: ValueRef} {
@@ -4815,8 +4834,7 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
 
     let ret_ty = ty::node_id_to_type(bcx_tcx(cx), id);
     let args_res =
-        trans_args(bcx, llenv, f_res.llobj, f_res.generic, lliterbody, args,
-                   fn_ty);
+        trans_args(bcx, llenv, f_res.generic, lliterbody, args, fn_ty);
     bcx = args_res.bcx;
     let llargs = args_res.args;
     let llretslot = args_res.retslot;
@@ -8000,8 +8018,9 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     trans_mod(cx, crate.node.module);
     create_crate_map(ccx);
     emit_tydescs(ccx);
-    // Translate the metadata:
+    shape::gen_shape_tables(ccx);
 
+    // Translate the metadata.
     write_metadata(cx.ccx, crate);
     if ccx.sess.get_opts().stats {
         log_err "--- trans stats ---";

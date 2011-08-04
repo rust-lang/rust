@@ -184,6 +184,7 @@ export type_param;
 export unify;
 export variant_info;
 export walk_ty;
+export occurs_check_fails;
 
 // Data types
 tag mode { mo_val; mo_alias(bool); }
@@ -655,6 +656,7 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
+      ty_task. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) { walk_ty(cx, walker, tm.ty); }
       ty_vec(tm) { walk_ty(cx, walker, tm.ty); }
@@ -685,6 +687,9 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_res(_, sub, tps) {
         walk_ty(cx, walker, sub);
         for tp: t  in tps { walk_ty(cx, walker, tp); }
+      }
+      ty_constr(sub, _) {
+        walk_ty(cx, walker, sub);
       }
       ty_var(_) {/* no-op */ }
       ty_param(_,_) {/* no-op */ }
@@ -1393,6 +1398,24 @@ fn type_param(cx: &ctxt, ty: &t) -> option::t[uint] {
     ret none;
 }
 
+// Returns an ivec of all the type variables
+// occurring in t. It may contain duplicates.
+fn vars_in_type(cx:&ctxt, ty: &t) -> int[] {
+    fn collect_var(cx:&ctxt, vars: &@mutable int[], ty: t) {
+        alt struct(cx, ty) {
+          ty_var(v) {
+            *vars += ~[v];
+          }
+          _ {}
+        }
+    }
+    let rslt: @mutable int[] = @mutable (~[]);
+    walk_ty(cx, bind collect_var(cx, rslt, _), ty);
+    // Works because of a "convenient" bug that lets us
+    // return a mutable ivec as if it's immutable
+    ret *rslt;
+}
+
 fn type_autoderef(cx: &ctxt, t: &ty::t) -> ty::t {
     let t1: ty::t = t;
     while true {
@@ -1990,6 +2013,32 @@ fn is_lval(expr: &@ast::expr) -> bool {
     }
 }
 
+fn occurs_check_fails(tcx: &ctxt, sp: &option::t[span], vid: int, rt: &t)
+    -> bool {
+    if (!type_contains_vars(tcx, rt)) {
+        // Fast path
+        ret false;
+    }
+    // Occurs check!
+    if ivec::member(vid, vars_in_type(tcx, rt)) {
+        alt sp {
+          some (s) {
+            // Maybe this should be span_err -- however, there's an
+            // assertion later on that the type doesn't contain
+            // variables, so in this case we have to be sure to die.
+            tcx.sess.span_fatal(s,
+                                "Type inference failed because I \
+               could not find a type\n that's both of the form " +
+               ty_to_str(tcx, ty::mk_var(tcx, (vid)))
+              + " and of the form " + ty_to_str(tcx, rt)
+              + ". Such a type would have to be infinitely \
+               large.");
+          }
+          _ { ret true; }
+        }
+    }
+    else { ret false; }
+}
 
 // Type unification via Robinson's algorithm (Robinson 1965). Implemented as
 // described in Hoder and Voronkov:
@@ -2317,9 +2366,6 @@ mod unify {
     fn unify_step(cx: &@ctxt, expected: &t, actual: &t) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
-
-        // TODO: occurs check, to make sure we don't loop forever when
-        // unifying e.g. 'a and option['a]
 
         // Fast path.
 
@@ -2694,9 +2740,15 @@ mod unify {
     }
 
     // Fixups and substitutions
-    fn fixup_vars(tcx: ty_ctxt, vb: @var_bindings, typ: t) -> fixup_result {
-        fn subst_vars(tcx: ty_ctxt, vb: @var_bindings,
+    //    Takes an optional span - complain about occurs check violations
+    //    iff the span is present (so that if we already know we're going
+    //    to error anyway, we don't complain)
+    fn fixup_vars(tcx: ty_ctxt, sp: &option::t[span],
+                  vb: @var_bindings, typ: t) -> fixup_result {
+        fn subst_vars(tcx: ty_ctxt, sp: &option::t[span], vb: @var_bindings,
                       unresolved: @mutable option::t[int], vid: int) -> t {
+            // Should really return a fixup_result instead of a t, but fold_ty
+            // doesn't allow returning anything but a t.
             if vid as uint >= ufindivec::set_count(vb.sets) {
                 *unresolved = some(vid);
                 ret ty::mk_var(tcx, vid);
@@ -2705,15 +2757,18 @@ mod unify {
             alt smallintmap::find[t](vb.types, root_id) {
               none. { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
               some(rt) {
+                if occurs_check_fails(tcx, sp, vid, rt) {
+      // Return the type unchanged, so we can error out downstream
+                    ret rt;
+                }
                 ret fold_ty(tcx,
-                            fm_var(bind subst_vars(tcx, vb, unresolved, _)),
-                            rt);
+                  fm_var(bind subst_vars(tcx, sp, vb, unresolved, _)), rt);
               }
             }
         }
         let unresolved = @mutable none[int];
         let rty =
-            fold_ty(tcx, fm_var(bind subst_vars(tcx, vb, unresolved, _)),
+            fold_ty(tcx, fm_var(bind subst_vars(tcx, sp, vb, unresolved, _)),
                     typ);
         let ur = *unresolved;
         alt ur {
@@ -2721,13 +2776,14 @@ mod unify {
           some(var_id) { ret fix_err(var_id); }
         }
     }
-    fn resolve_type_var(tcx: &ty_ctxt, vb: &@var_bindings, vid: int) ->
+    fn resolve_type_var(tcx: &ty_ctxt, sp: &option::t[span],
+                        vb: &@var_bindings, vid: int) ->
        fixup_result {
         if vid as uint >= ufindivec::set_count(vb.sets) { ret fix_err(vid); }
         let root_id = ufindivec::find(vb.sets, vid as uint);
         alt smallintmap::find[t](vb.types, root_id) {
           none. { ret fix_err(vid); }
-          some(rt) { ret fixup_vars(tcx, vb, rt); }
+          some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
     }
 }
