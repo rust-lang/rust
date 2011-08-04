@@ -95,7 +95,8 @@ rt/%.o: rt/%.ll $(MKFILES)
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RUNTIME_LIBS)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
+	$(Q)$(call CFG_LINK_C,$@, $(RUNTIME_OBJS) \
+	  $(CFG_GCCISH_POST_LIB_FLAGS) $(RUNTIME_LIBS) -lpthread,$(RUNTIME_DEF))
 
 $(S)src/rt/libuv/uv.a: $(S)src/rt/libuv/LIBUV_REVISION
 	$(Q)$(MAKE) -C $(S)src/rt/libuv CFLAGS=\"-m32\" LDFLAGS=\"-m32\"
