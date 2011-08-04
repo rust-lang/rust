@@ -1201,45 +1201,39 @@ type gather_result =
 // Used only as a helper for check_fn.
 fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
                  old_fcx: &option::t[@fn_ctxt]) -> gather_result {
-    fn next_var_id(nvi: @mutable int) -> int {
+    let {vb, locals, local_names, nvi} = alt old_fcx {
+      none. {
+        { vb: ty::unify::mk_var_bindings(),
+          locals: new_int_hash[int](),
+          local_names: new_int_hash[ast::ident](),
+          nvi: @mutable 0 }
+      }
+      some(fcx) {
+        { vb: fcx.var_bindings,
+          locals: fcx.locals,
+          local_names: fcx.local_names,
+          nvi: fcx.next_var_id }
+      }
+    };
+    let tcx = ccx.tcx;
+
+    let next_var_id = lambda(nvi: @mutable int) -> int {
         let rv = *nvi;
         *nvi += 1;
         ret rv;
-    }
-    fn assign(tcx: &ty::ctxt, var_bindings: &@ty::unify::var_bindings,
-              locals: &hashmap[ast::node_id, int],
-              local_names: &hashmap[ast::node_id, ast::ident],
-              nvi: @mutable int, nid: ast::node_id, ident: &ast::ident,
-              ty_opt: option::t[ty::t]) {
+    };
+    let assign = lambda(nid: ast::node_id, ident: &ast::ident,
+                        ty_opt: option::t[ty::t]) {
         let var_id = next_var_id(nvi);
         locals.insert(nid, var_id);
         local_names.insert(nid, ident);
         alt ty_opt {
-          none[ty::t]. {/* nothing to do */ }
-          some[ty::t](typ) {
-            ty::unify::unify(ty::mk_var(tcx, var_id), typ, var_bindings, tcx);
+          none. {/* nothing to do */ }
+          some(typ) {
+            ty::unify::unify(ty::mk_var(tcx, var_id), typ, vb, tcx);
           }
         }
-    }
-
-    let vb;
-    let locals;
-    let local_names;
-    let nvi;
-    alt old_fcx {
-      none. {
-        vb = ty::unify::mk_var_bindings();
-        locals = new_int_hash[int]();
-        local_names = new_int_hash[ast::ident]();
-        nvi = @mutable 0;
-      }
-      some(fcx) {
-        vb = fcx.var_bindings;
-        locals = fcx.locals;
-        local_names = fcx.local_names;
-        nvi = fcx.next_var_id;
-      }
-    }
+    };
 
     // Add object fields, if any.
     let obj_fields = ~[];
@@ -1254,68 +1248,53 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     }
     for f: ast::obj_field  in obj_fields {
         let field_ty = ty::node_id_to_type(ccx.tcx, f.id);
-        assign(ccx.tcx, vb, locals, local_names, nvi, f.id, f.ident,
-               some(field_ty));
+        assign(f.id, f.ident, some(field_ty));
     }
 
     // Add formal parameters.
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     let i = 0u;
     for arg: ty::arg  in args {
-        assign(ccx.tcx, vb, locals, local_names, nvi, f.decl.inputs.(i).id,
-               f.decl.inputs.(i).ident, some[ty::t](arg.ty));
+        assign(f.decl.inputs.(i).id, f.decl.inputs.(i).ident, some(arg.ty));
         i += 1u;
     }
 
     // Add explicitly-declared locals.
-    fn visit_local(ccx: @crate_ctxt, vb: @ty::unify::var_bindings,
-                   locals: hashmap[ast::node_id, int],
-                   local_names: hashmap[ast::node_id, ast::ident],
-                   nvi: @mutable int, local: &@ast::local, e: &(),
-                   v: &visit::vt[()]) {
+    let visit_local = lambda(local: &@ast::local, e: &(), v: &visit::vt[()]) {
         alt local.node.ty {
           none. {
             // Auto slot.
-            assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                   ident_for_local(local), none);
+            assign(local.node.id, ident_for_local(local), none);
           }
           some(ast_ty) {
             // Explicitly typed slot.
             let local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
-            assign(ccx.tcx, vb, locals, local_names, nvi, local.node.id,
-                   ident_for_local(local), some(local_ty));
+            assign(local.node.id, ident_for_local(local), some(local_ty));
           }
         }
         visit::visit_local(local, e, v);
-    }
+    };
 
     // Add pattern bindings.
-    fn visit_pat(ccx: @crate_ctxt, vb: @ty::unify::var_bindings,
-                 locals: hashmap[ast::node_id, int],
-                 local_names: hashmap[ast::node_id, ast::ident],
-                 nvi: @mutable int, p: &@ast::pat, e: &(),
-                 v: &visit::vt[()]) {
+    let visit_pat = lambda(p: &@ast::pat, e: &(), v: &visit::vt[()]) {
         alt p.node {
           ast::pat_bind(ident) {
-            assign(ccx.tcx, vb, locals, local_names, nvi, p.id, ident, none);
+            assign(p.id, ident, none);
           }
           _ {/* no-op */ }
         }
         visit::visit_pat(p, e, v);
-    }
+    };
 
     // Don't descend into fns and items
     fn visit_fn[E](f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
                    i: &ast::fn_ident, id: ast::node_id, e: &E,
-                   v: &visit::vt[E]) {
-    }
+                   v: &visit::vt[E]) { }
     fn visit_item[E](i: &@ast::item, e: &E, v: &visit::vt[E]) { }
 
     let visit =
-        @{visit_local:
-              bind visit_local(ccx, vb, locals, local_names, nvi, _, _, _),
-          visit_pat:
-              bind visit_pat(ccx, vb, locals, local_names, nvi, _, _, _),
+        @{visit_local: visit_local,
+          visit_pat: visit_pat,
           visit_fn: visit_fn,
           visit_item: visit_item with *visit::default_visitor()};
     visit::visit_block(f.body, (), visit::mk_vt(visit));
