@@ -11,12 +11,12 @@ export modify_for_testing;
 
 type node_id_gen = @fn() -> ast::node_id ;
 
-type test = {path: ast::ident[], ignore: bool};
+type test = {path: [ast::ident], ignore: bool};
 
 type test_ctxt =
     @{next_node_id: node_id_gen,
-      mutable path: ast::ident[],
-      mutable testfns: test[]};
+      mutable path: [ast::ident],
+      mutable testfns: [test]};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -139,7 +139,7 @@ mod __test {
     std::test::test_main(args, tests())
   }
 
-  fn tests() -> std::test::test_desc[] {
+  fn tests() -> [std::test::test_desc] {
     ... the list of tests in the crate ...
   }
 }
@@ -211,7 +211,7 @@ fn empty_fn_ty() -> ast::ty {
     ret nospan(ast::ty_fn(proto, input_ty, ret_ty, cf, constrs));
 }
 
-// The ast::ty of std::test::test_desc[]
+// The ast::ty of [std::test::test_desc]
 fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
     let test_desc_ty_path: ast::path =
         nospan({global: false,

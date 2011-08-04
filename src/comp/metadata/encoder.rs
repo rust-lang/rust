@@ -38,8 +38,8 @@ fn encode_def_id(ebml_w: &ebmlivec::writer, id: &def_id) {
 
 type entry[T] = {val: T, pos: uint};
 
-fn encode_tag_variant_paths(ebml_w: &ebmlivec::writer, variants: &variant[],
-                            path: &str[], index: &mutable (entry[str])[]) {
+fn encode_tag_variant_paths(ebml_w: &ebmlivec::writer, variants: &[variant],
+                            path: &[str], index: &mutable [entry[str]]) {
     for variant: variant  in variants {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
@@ -49,8 +49,8 @@ fn encode_tag_variant_paths(ebml_w: &ebmlivec::writer, variants: &variant[],
     }
 }
 
-fn add_to_index(ebml_w: &ebmlivec::writer, path: &str[],
-                index: &mutable (entry[str])[], name: &str) {
+fn add_to_index(ebml_w: &ebmlivec::writer, path: &[str],
+                index: &mutable [entry[str]], name: &str) {
     let full_path = path + ~[name];
     index +=
         ~[{val: str::connect_ivec(full_path, "::"),
@@ -58,8 +58,8 @@ fn add_to_index(ebml_w: &ebmlivec::writer, path: &str[],
 }
 
 fn encode_native_module_item_paths(ebml_w: &ebmlivec::writer,
-                                   nmod: &native_mod, path: &str[],
-                                   index: &mutable (entry[str])[]) {
+                                   nmod: &native_mod, path: &[str],
+                                   index: &mutable [entry[str]]) {
     for nitem: @native_item  in nmod.items {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebmlivec::start_tag(ebml_w, tag_paths_data_item);
@@ -70,7 +70,7 @@ fn encode_native_module_item_paths(ebml_w: &ebmlivec::writer,
 }
 
 fn encode_module_item_paths(ebml_w: &ebmlivec::writer, module: &_mod,
-                            path: &str[], index: &mutable (entry[str])[]) {
+                            path: &[str], index: &mutable [entry[str]]) {
     for it: @item  in module.items {
         if !is_exported(it.ident, module) { cont; }
         alt it.node {
@@ -149,9 +149,9 @@ fn encode_module_item_paths(ebml_w: &ebmlivec::writer, module: &_mod,
 }
 
 fn encode_item_paths(ebml_w: &ebmlivec::writer, crate: &@crate) ->
-   (entry[str])[] {
-    let index: (entry[str])[] = ~[];
-    let path: str[] = ~[];
+   [entry[str]] {
+    let index: [entry[str]] = ~[];
+    let path: [str] = ~[];
     ebmlivec::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
     ebmlivec::end_tag(ebml_w);
@@ -174,7 +174,7 @@ fn encode_inlineness(ebml_w: &ebmlivec::writer, c: u8) {
 
 fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
-fn encode_type_param_kinds(ebml_w: &ebmlivec::writer, tps: &ty_param[]) {
+fn encode_type_param_kinds(ebml_w: &ebmlivec::writer, tps: &[ty_param]) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
     ebmlivec::write_vint(ebml_w.writer, ivec::len[ty_param](tps));
     for tp: ty_param in tps {
@@ -225,9 +225,9 @@ fn encode_tag_id(ebml_w: &ebmlivec::writer, id: &def_id) {
 }
 
 fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
-                           id: node_id, variants: &variant[],
-                           index: &mutable (entry[int])[],
-                           ty_params: &ty_param[]) {
+                           id: node_id, variants: &[variant],
+                           index: &mutable [entry[int]],
+                           ty_params: &[ty_param]) {
     for variant: variant  in variants {
         index += ~[{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebmlivec::start_tag(ebml_w, tag_items_data_item);
@@ -246,7 +246,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebmlivec::writer,
-                        item: @item, index: &mutable (entry[int])[]) {
+                        item: @item, index: &mutable [entry[int]]) {
     alt item.node {
       item_const(_, _) {
         ebmlivec::start_tag(ebml_w, tag_items_data_item);
@@ -368,8 +368,8 @@ fn encode_info_for_native_item(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
 }
 
 fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer) ->
-   (entry[int])[] {
-    let index: (entry[int])[] = ~[];
+   [entry[int]] {
+    let index: [entry[int]] = ~[];
     ebmlivec::start_tag(ebml_w, tag_items_data);
     for each kvp: @{key: node_id, val: middle::ast_map::ast_node}  in
              ecx.ccx.ast_map.items() {
@@ -392,9 +392,9 @@ fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer) ->
 
 // Path and definition ID indexing
 
-fn create_index[T](index: &(entry[T])[], hash_fn: fn(&T) -> uint ) ->
-   (@(entry[T])[])[] {
-    let buckets: (@mutable (entry[T])[])[] = ~[];
+fn create_index[T](index: &[entry[T]], hash_fn: fn(&T) -> uint ) ->
+   [@[entry[T]]] {
+    let buckets: [@mutable [entry[T]]] = ~[];
     for each i: uint  in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
     for elt: entry[T]  in index {
         let h = hash_fn(elt.val);
@@ -402,19 +402,19 @@ fn create_index[T](index: &(entry[T])[], hash_fn: fn(&T) -> uint ) ->
     }
 
     let buckets_frozen = ~[];
-    for bucket: @mutable (entry[T])[]  in buckets {
+    for bucket: @mutable [entry[T]]  in buckets {
         buckets_frozen += ~[@*bucket];
     }
     ret buckets_frozen;
 }
 
-fn encode_index[T](ebml_w: &ebmlivec::writer, buckets: &(@(entry[T])[])[],
+fn encode_index[T](ebml_w: &ebmlivec::writer, buckets: &[@[entry[T]]],
                    write_fn: fn(&ioivec::writer, &T) ) {
     let writer = ioivec::new_writer_(ebml_w.writer);
     ebmlivec::start_tag(ebml_w, tag_index);
-    let bucket_locs: uint[] = ~[];
+    let bucket_locs: [uint] = ~[];
     ebmlivec::start_tag(ebml_w, tag_index_buckets);
-    for bucket: @(entry[T])[]  in buckets {
+    for bucket: @[entry[T]]  in buckets {
         bucket_locs += ~[ebml_w.writer.tell()];
         ebmlivec::start_tag(ebml_w, tag_index_buckets_bucket);
         for elt: entry[T]  in *bucket {
@@ -475,7 +475,7 @@ fn encode_meta_item(ebml_w: &ebmlivec::writer, mi: &meta_item) {
     }
 }
 
-fn encode_attributes(ebml_w: &ebmlivec::writer, attrs: &attribute[]) {
+fn encode_attributes(ebml_w: &ebmlivec::writer, attrs: &[attribute]) {
     ebmlivec::start_tag(ebml_w, tag_attributes);
     for attr: attribute  in attrs {
         ebmlivec::start_tag(ebml_w, tag_attribute);
@@ -489,9 +489,9 @@ fn encode_attributes(ebml_w: &ebmlivec::writer, attrs: &attribute[]) {
 // metadata that Rust cares about for linking crates. This attribute requires
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
-fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> attribute[] {
+fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
 
-    fn synthesize_link_attr(ecx: &@encode_ctxt, items: &(@meta_item)[]) ->
+    fn synthesize_link_attr(ecx: &@encode_ctxt, items: &[@meta_item]) ->
        attribute {
 
         assert (ecx.ccx.link_meta.name != "");
@@ -514,7 +514,7 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> attribute[] {
         ret attr::mk_attr(link_item);
     }
 
-    let attrs: attribute[] = ~[];
+    let attrs: [attribute] = ~[];
     let found_link_attr = false;
     for attr: attribute  in crate.node.attrs {
         attrs +=
@@ -538,12 +538,12 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> attribute[] {
 
 fn encode_crate_deps(ebml_w: &ebmlivec::writer, cstore: &cstore::cstore) {
 
-    fn get_ordered_names(cstore: &cstore::cstore) -> str[] {
+    fn get_ordered_names(cstore: &cstore::cstore) -> [str] {
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};
         type numname = {crate: crate_num, ident: str};
 
         // Pull the cnums and names out of cstore
-        let pairs: numname[mutable ] = ~[mutable ];
+        let pairs: [mutable numname] = ~[mutable];
         for each hashkv: hashkv  in cstore::iter_crate_data(cstore) {
             pairs += ~[mutable {crate: hashkv.key, ident: hashkv.val.name}];
         }

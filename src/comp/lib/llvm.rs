@@ -909,7 +909,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret llvm::LLVMBuildRet(B, V);
     }
 
-    fn AggregateRet(RetVals: &ValueRef[]) -> ValueRef {
+    fn AggregateRet(RetVals: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         *terminated = true;
         ret llvm::LLVMBuildAggregateRet(B, ivec::to_ptr(RetVals),
@@ -941,7 +941,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret llvm::LLVMBuildIndirectBr(B, Addr, NumDests);
     }
 
-    fn Invoke(Fn: ValueRef, Args: &ValueRef[], Then: BasicBlockRef,
+    fn Invoke(Fn: ValueRef, Args: &[ValueRef], Then: BasicBlockRef,
               Catch: BasicBlockRef) -> ValueRef {
         assert (!*terminated);
         *terminated = true;
@@ -1151,13 +1151,13 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret llvm::LLVMBuildStore(B, Val, Ptr);
     }
 
-    fn GEP(Pointer: ValueRef, Indices: &ValueRef[]) -> ValueRef {
+    fn GEP(Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         ret llvm::LLVMBuildGEP(B, Pointer, ivec::to_ptr(Indices),
                                ivec::len(Indices), str::buf(""));
     }
 
-    fn InBoundsGEP(Pointer: ValueRef, Indices: &ValueRef[]) -> ValueRef {
+    fn InBoundsGEP(Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         ret llvm::LLVMBuildInBoundsGEP(B, Pointer, ivec::to_ptr(Indices),
                                        ivec::len(Indices), str::buf(""));
@@ -1289,7 +1289,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
 
 
     /* Miscellaneous instructions */
-    fn Phi(Ty: TypeRef, vals: &ValueRef[], bbs: &BasicBlockRef[]) ->
+    fn Phi(Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef]) ->
        ValueRef {
         assert (!*terminated);
         let phi = llvm::LLVMBuildPhi(B, Ty, str::buf(""));
@@ -1299,20 +1299,20 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret phi;
     }
 
-    fn AddIncomingToPhi(phi: ValueRef, vals: &ValueRef[],
-                        bbs: &BasicBlockRef[]) {
+    fn AddIncomingToPhi(phi: ValueRef, vals: &[ValueRef],
+                        bbs: &[BasicBlockRef]) {
         assert (ivec::len[ValueRef](vals) == ivec::len[BasicBlockRef](bbs));
         llvm::LLVMAddIncoming(phi, ivec::to_ptr(vals), ivec::to_ptr(bbs),
                               ivec::len(vals));
     }
 
-    fn Call(Fn: ValueRef, Args: &ValueRef[]) -> ValueRef {
+    fn Call(Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         ret llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
                                 str::buf(""));
     }
 
-    fn FastCall(Fn: ValueRef, Args: &ValueRef[]) -> ValueRef {
+    fn FastCall(Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         let v =
             llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
@@ -1321,7 +1321,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret v;
     }
 
-    fn CallWithConv(Fn: ValueRef, Args: &ValueRef[], Conv: uint) -> ValueRef {
+    fn CallWithConv(Fn: ValueRef, Args: &[ValueRef], Conv: uint) -> ValueRef {
         assert (!*terminated);
         let v =
             llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
@@ -1392,7 +1392,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         let T: ValueRef =
             llvm::LLVMGetNamedFunction(M, str::buf("llvm.trap"));
         assert (T as int != 0);
-        let Args: ValueRef[] = ~[];
+        let Args: [ValueRef] = ~[];
         ret llvm::LLVMBuildCall(B, T, ivec::to_ptr(Args), ivec::len(Args),
                                 str::buf(""));
     }
@@ -1447,7 +1447,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> str {
     ret type_to_str_inner(names, ~[], ty);
 }
 
-fn type_to_str_inner(names: type_names, outer0: &TypeRef[], ty: TypeRef) ->
+fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
    str {
 
     if names.type_has_name(ty) { ret names.get_name(ty); }
@@ -1456,7 +1456,7 @@ fn type_to_str_inner(names: type_names, outer0: &TypeRef[], ty: TypeRef) ->
 
     let kind: int = llvm::LLVMGetTypeKind(ty);
 
-    fn tys_str(names: type_names, outer: &TypeRef[], tys: &TypeRef[]) -> str {
+    fn tys_str(names: type_names, outer: &[TypeRef], tys: &[TypeRef]) -> str {
         let s: str = "";
         let first: bool = true;
         for t: TypeRef  in tys {
@@ -1493,7 +1493,7 @@ fn type_to_str_inner(names: type_names, outer0: &TypeRef[], ty: TypeRef) ->
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
-        let args: TypeRef[] = ivec::init_elt[TypeRef](0 as TypeRef, n_args);
+        let args: [TypeRef] = ivec::init_elt[TypeRef](0 as TypeRef, n_args);
         llvm::LLVMGetParamTypes(ty, ivec::to_ptr(args));
         s += tys_str(names, outer, args);
         s += ") -> ";
@@ -1505,7 +1505,7 @@ fn type_to_str_inner(names: type_names, outer0: &TypeRef[], ty: TypeRef) ->
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
-        let elts: TypeRef[] = ivec::init_elt[TypeRef](0 as TypeRef, n_elts);
+        let elts: [TypeRef] = ivec::init_elt[TypeRef](0 as TypeRef, n_elts);
         llvm::LLVMGetStructElementTypes(ty, ivec::to_ptr(elts));
         s += tys_str(names, outer, elts);
         s += "}";
@@ -1552,7 +1552,7 @@ fn float_width(llt: TypeRef) -> uint {
         };
 }
 
-fn fn_ty_param_tys(fn_ty: TypeRef) -> TypeRef[] {
+fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] {
     let args = ivec::init_elt(0 as TypeRef, llvm::LLVMCountParamTypes(fn_ty));
     llvm::LLVMGetParamTypes(fn_ty, ivec::to_ptr(args));
     ret args;

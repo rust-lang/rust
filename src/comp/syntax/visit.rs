@@ -33,7 +33,7 @@ type visitor[E] =
       visit_ty: fn(&@ty, &E, &vt[E]) ,
       visit_constr: fn(&path, &span, node_id, &E, &vt[E]) ,
       visit_fn:
-          fn(&_fn, &ty_param[], &span, &fn_ident, node_id, &E, &vt[E]) };
+          fn(&_fn, &[ty_param], &span, &fn_ident, node_id, &E, &vt[E]) };
 
 fn default_visitor[E]() -> visitor[E] {
     ret @{visit_mod: bind visit_mod[E](_, _, _, _),
@@ -195,7 +195,7 @@ fn visit_fn_decl[E](fd: &fn_decl, e: &E, v: &vt[E]) {
     v.visit_ty(fd.output, e, v);
 }
 
-fn visit_fn[E](f: &_fn, tp: &ty_param[], sp: &span, i: &fn_ident, id: node_id,
+fn visit_fn[E](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident, id: node_id,
                e: &E, v: &vt[E]) {
     visit_fn_decl(f.decl, e, v);
     v.visit_block(f.body, e, v);
@@ -227,7 +227,7 @@ fn visit_expr_opt[E](eo: option::t[@expr], e: &E, v: &vt[E]) {
     alt eo { none. { } some(ex) { v.visit_expr(ex, e, v); } }
 }
 
-fn visit_exprs[E](exprs: &(@expr)[], e: &E, v: &vt[E]) {
+fn visit_exprs[E](exprs: &[@expr], e: &E, v: &vt[E]) {
     for ex: @expr  in exprs { v.visit_expr(ex, e, v); }
 }
 
@@ -362,7 +362,7 @@ type simple_visitor =
       visit_expr: fn(&@expr) ,
       visit_ty: fn(&@ty) ,
       visit_constr: fn(&path, &span, node_id) ,
-      visit_fn: fn(&_fn, &ty_param[], &span, &fn_ident, node_id) };
+      visit_fn: fn(&_fn, &[ty_param], &span, &fn_ident, node_id) };
 
 fn default_simple_visitor() -> simple_visitor {
     ret @{visit_mod: fn (m: &_mod, sp: &span) { },
@@ -379,7 +379,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_ty: fn (t: &@ty) { },
           visit_constr: fn (p: &path, sp: &span, id: node_id) { },
           visit_fn:
-              fn (f: &_fn, tps: &ty_param[], sp: &span, ident: &fn_ident,
+              fn (f: &_fn, tps: &[ty_param], sp: &span, ident: &fn_ident,
                   id: node_id) {
               }};
 }
@@ -439,8 +439,8 @@ fn mk_simple_visitor(v: &simple_visitor) -> vt[()] {
         f(pt, sp, id);
         visit_constr(pt, sp, id, e, v);
     }
-    fn v_fn(f: fn(&_fn, &ty_param[], &span, &fn_ident, node_id) , ff: &_fn,
-            tps: &ty_param[], sp: &span, ident: &fn_ident, id: node_id,
+    fn v_fn(f: fn(&_fn, &[ty_param], &span, &fn_ident, node_id) , ff: &_fn,
+            tps: &[ty_param], sp: &span, ident: &fn_ident, id: node_id,
             e: &(), v: &vt[()]) {
         f(ff, tps, sp, ident, id);
         visit_fn(ff, tps, sp, ident, id, e, v);

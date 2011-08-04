@@ -43,7 +43,7 @@ type ast_fold_precursor =
      fold_ident: fn(&ident, ast_fold) -> ident ,
      fold_path: fn(&path_, ast_fold) -> path_ ,
      fold_local: fn(&local_, ast_fold) -> local_ ,
-     map_exprs: fn(fn(&@expr) -> @expr , (@expr)[]) -> (@expr)[] };
+     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr] };
 
 type a_f =
     {fold_crate: fn(&crate) -> crate ,
@@ -68,7 +68,7 @@ type a_f =
      fold_ident: fn(&ident) -> ident ,
      fold_path: fn(&path) -> path ,
      fold_local: fn(&@local) -> @local ,
-     map_exprs: fn(fn(&@expr) -> @expr , (@expr)[]) -> (@expr)[] };
+     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr] };
 
 //fn nf_dummy[T](&T node) -> T { fail; }
 fn nf_crate_dummy(c: &crate) -> crate { fail; }
@@ -501,7 +501,7 @@ fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
 
 /* temporarily eta-expand because of a compiler bug with using `fn[T]` as a
    value */
-fn noop_map_exprs(f: fn(&@expr) -> @expr , es: (@expr)[]) -> (@expr)[] {
+fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
     ret ivec::map(f, es);
 }
 

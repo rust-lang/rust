@@ -239,9 +239,9 @@ fn tritv_doesntcare(v: &t) -> bool {
     ret true;
 }
 
-fn to_vec(v: &t) -> uint[] {
+fn to_vec(v: &t) -> [uint] {
     let i: uint = 0u;
-    let rslt: uint[] = ~[];
+    let rslt: [uint] = ~[];
     while i < v.nbits {
         rslt +=
             ~[alt tritv_get(v, i) {
