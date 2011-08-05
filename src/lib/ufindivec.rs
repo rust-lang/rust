@@ -8,9 +8,9 @@ import option::some;
 // than the node itself.
 type node = option::t[uint];
 
-type ufind = {mutable nodes: node[mutable ]};
+type ufind = {mutable nodes: [mutable node]};
 
-fn make() -> ufind { ret {mutable nodes: ~[mutable ]}; }
+fn make() -> ufind { ret {mutable nodes: ~[mutable]}; }
 
 fn make_set(ufnd: &ufind) -> uint {
     let idx = ivec::len(ufnd.nodes);

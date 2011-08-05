@@ -10,7 +10,7 @@ type node = option::t[uint];
 
 type ufind = {mutable nodes: vec[mutable node]};
 
-fn make() -> ufind { ret {mutable nodes: [mutable ]}; }
+fn make() -> ufind { ret {mutable nodes: [mutable]}; }
 
 fn make_set(ufnd: &ufind) -> uint {
     let idx = vec::len(ufnd.nodes);

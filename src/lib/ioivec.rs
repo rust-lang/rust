@@ -19,7 +19,7 @@ type buf_reader =
     // FIXME: Seekable really should be orthogonal. We will need
     // inheritance.
     obj {
-        fn read(uint) -> u8[] ;
+        fn read(uint) -> [u8] ;
         fn read_byte() -> int ;
         fn unread_byte(int) ;
         fn eof() -> bool ;
@@ -38,7 +38,7 @@ type reader =
         fn get_buf_reader() -> buf_reader ;
         fn read_byte() -> int ;
         fn unread_byte(int) ;
-        fn read_bytes(uint) -> u8[] ;
+        fn read_bytes(uint) -> [u8] ;
         fn read_char() -> char ;
         fn eof() -> bool ;
         fn read_line() -> str ;
@@ -46,7 +46,7 @@ type reader =
         fn read_le_uint(uint) -> uint ;
         fn read_le_int(uint) -> int ;
         fn read_be_uint(uint) -> uint ;
-        fn read_whole_stream() -> u8[] ;
+        fn read_whole_stream() -> [u8] ;
         fn seek(int, seek_style) ;
         fn tell() -> uint ;
     };
@@ -60,7 +60,7 @@ resource FILE_res(f: os::libc::FILE) {
 }
 
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
-    fn read(len: uint) -> u8[] {
+    fn read(len: uint) -> [u8] {
         let buf = ~[];
         ivec::reserve[u8](buf, len);
         let read = os::libc_ivec::fread(ivec::to_ptr[u8](buf), 1u, len, f);
@@ -84,7 +84,7 @@ obj new_reader(rdr: buf_reader) {
     fn get_buf_reader() -> buf_reader { ret rdr; }
     fn read_byte() -> int { ret rdr.read_byte(); }
     fn unread_byte(byte: int) { ret rdr.unread_byte(byte); }
-    fn read_bytes(len: uint) -> u8[] { ret rdr.read(len); }
+    fn read_bytes(len: uint) -> [u8] { ret rdr.read(len); }
     fn read_char() -> char {
         let c0 = rdr.read_byte();
         if c0 == -1 {
@@ -111,7 +111,7 @@ obj new_reader(rdr: buf_reader) {
     }
     fn eof() -> bool { ret rdr.eof(); }
     fn read_line() -> str {
-        let buf: u8[] = ~[];
+        let buf: [u8] = ~[];
         // No break yet in rustc
 
         let go_on = true;
@@ -124,7 +124,7 @@ obj new_reader(rdr: buf_reader) {
         ret str::unsafe_from_bytes_ivec(buf);
     }
     fn read_c_str() -> str {
-        let buf: u8[] = ~[];
+        let buf: [u8] = ~[];
         let go_on = true;
         while go_on {
             let ch = rdr.read_byte();
@@ -165,8 +165,8 @@ obj new_reader(rdr: buf_reader) {
         }
         ret val;
     }
-    fn read_whole_stream() -> u8[] {
-        let buf: u8[] = ~[];
+    fn read_whole_stream() -> [u8] {
+        let buf: [u8] = ~[];
         while !rdr.eof() { buf += rdr.read(2048u); }
         ret buf;
     }
@@ -192,10 +192,10 @@ fn new_reader_(bufr: buf_reader) -> reader { ret new_reader(bufr); }
 // Byte buffer readers
 
 // TODO: mutable? u8, but this fails with rustboot.
-type byte_buf = @{buf: u8[], mutable pos: uint};
+type byte_buf = @{buf: [u8], mutable pos: uint};
 
 obj byte_buf_reader(bbuf: byte_buf) {
-    fn read(len: uint) -> u8[] {
+    fn read(len: uint) -> [u8] {
         let rest = ivec::len[u8](bbuf.buf) - bbuf.pos;
         let to_read = len;
         if rest < to_read { to_read = rest; }
@@ -219,7 +219,7 @@ obj byte_buf_reader(bbuf: byte_buf) {
     fn tell() -> uint { ret bbuf.pos; }
 }
 
-fn new_byte_buf_reader(buf: &u8[]) -> buf_reader {
+fn new_byte_buf_reader(buf: &[u8]) -> buf_reader {
     ret byte_buf_reader(@{buf: buf, mutable pos: 0u});
 }
 
@@ -238,13 +238,13 @@ type buf_writer =
      // FIXME: eventually u64
 
     obj {
-        fn write(&u8[]) ;
+        fn write(&[u8]) ;
         fn seek(int, seek_style) ;
         fn tell() -> uint ;
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
-    fn write(v: &u8[]) {
+    fn write(v: &[u8]) {
         let len = ivec::len[u8](v);
         let vbuf = ivec::to_ptr[u8](v);
         let nout = os::libc_ivec::fwrite(vbuf, len, 1u, f);
@@ -263,7 +263,7 @@ resource fd_res(fd: int) {
 }
 
 obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
-    fn write(v: &u8[]) {
+    fn write(v: &[u8]) {
         let len = ivec::len[u8](v);
         let count = 0u;
         let vbuf;
@@ -288,7 +288,7 @@ obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
     }
 }
 
-fn file_buf_writer(path: str, flags: &fileflag[]) -> buf_writer {
+fn file_buf_writer(path: str, flags: &[fileflag]) -> buf_writer {
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
     for f: fileflag  in flags {
@@ -322,20 +322,20 @@ type writer =
         fn write_char(char) ;
         fn write_int(int) ;
         fn write_uint(uint) ;
-        fn write_bytes(&u8[]) ;
+        fn write_bytes(&[u8]) ;
         fn write_le_uint(uint, uint) ;
         fn write_le_int(int, uint) ;
         fn write_be_uint(uint, uint) ;
     };
 
-fn uint_to_le_bytes(n: uint, size: uint) -> u8[] {
-    let bytes: u8[] = ~[];
+fn uint_to_le_bytes(n: uint, size: uint) -> [u8] {
+    let bytes: [u8] = ~[];
     while size > 0u { bytes += ~[n & 255u as u8]; n >>= 8u; size -= 1u; }
     ret bytes;
 }
 
-fn uint_to_be_bytes(n: uint, size: uint) -> u8[] {
-    let bytes: u8[] = ~[];
+fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
+    let bytes: [u8] = ~[];
     let i = size - 1u as int;
     while i >= 0 { bytes += ~[n >> (i * 8 as uint) & 255u as u8]; i -= 1; }
     ret bytes;
@@ -357,7 +357,7 @@ obj new_writer(out: buf_writer) {
     fn write_uint(n: uint) {
         out.write(str::bytes_ivec(uint::to_str(n, 10u)));
     }
-    fn write_bytes(bytes: &u8[]) { out.write(bytes); }
+    fn write_bytes(bytes: &[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));
     }
@@ -373,7 +373,7 @@ obj new_writer(out: buf_writer) {
 // FIXME: Remove me once objects are exported.
 fn new_writer_(out: buf_writer) -> writer { ret new_writer(out); }
 
-fn file_writer(path: str, flags: &fileflag[]) -> writer {
+fn file_writer(path: str, flags: &[fileflag]) -> writer {
     ret new_writer(file_buf_writer(path, flags));
 }
 
@@ -395,10 +395,10 @@ type str_writer =
         fn get_str() -> str ;
     };
 
-type mutable_byte_buf = @{mutable buf: u8[mutable ], mutable pos: uint};
+type mutable_byte_buf = @{mutable buf: [mutable u8], mutable pos: uint};
 
 obj byte_buf_writer(buf: mutable_byte_buf) {
-    fn write(v: &u8[]) {
+    fn write(v: &[u8]) {
         // Fast path.
 
         if buf.pos == ivec::len(buf.buf) {
@@ -430,7 +430,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
 
-    let b: u8[mutable ] = ~[mutable 0u8];
+    let b: [mutable u8] = ~[mutable 0u8];
     ivec::pop(b);
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
@@ -459,7 +459,7 @@ fn read_whole_file_str(file: &str) -> str {
     str::unsafe_from_bytes_ivec(read_whole_file(file))
 }
 
-fn read_whole_file(file: &str) -> u8[] {
+fn read_whole_file(file: &str) -> [u8] {
     // FIXME: There's a lot of copying here
     file_reader(file).read_whole_stream()
 }
