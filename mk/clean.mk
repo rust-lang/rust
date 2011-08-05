@@ -38,6 +38,9 @@ clean:
 	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)rm -f rt/main.o
 	$(Q)rm -f rt/main.ll
+	$(Q)rm -f rt/libuv/uv.a
+	$(Q)rm -Rf $(wildcard rt/libuv/src/*/*)
+	$(Q)rm -f $(wildcard rt/libuv/src/*.o)
 	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
