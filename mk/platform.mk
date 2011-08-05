@@ -139,23 +139,27 @@ endif
 
 CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
+  CC=clang
+  CXX=clang++
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_CFLAGS) \
+  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
     $(CFG_CLANG_CFLAGS) -c -o $(1) $(2)
-  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
+  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
-  CFG_LINK_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
+  CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
     $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
 else
 ifeq ($(CFG_C_COMPILER),gcc)
+  CC=gcc
+  CXX=g++
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_CFLAGS) \
+  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) \
     $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
-  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
+  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
     -MM $(2)
-  CFG_LINK_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
+  CFG_LINK_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
                $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
 else
   CFG_ERR := $(error please try on a system with gcc or clang)
