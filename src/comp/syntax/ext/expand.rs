@@ -1,11 +1,4 @@
-
-import codemap::emit_error;
 import driver::session;
-import syntax::ast::crate;
-import syntax::ast::expr_;
-import syntax::ast::expr_mac;
-import syntax::ast::mac_invoc;
-import syntax::fold::*;
 
 import std::option::none;
 import std::option::some;
@@ -13,40 +6,46 @@ import std::option::some;
 import std::map::hashmap;
 import std::ivec;
 
-fn expand_expr(exts: &hashmap[str, base::syntax_extension],
-               sess: &session::session, e: &expr_, fld: ast_fold,
-               orig: &fn(&ast::expr_, ast_fold) -> expr_ ) -> expr_ {
+import syntax::ast::crate;
+import syntax::ast::expr_;
+import syntax::ast::expr_mac;
+import syntax::ast::mac_invoc;
+import syntax::fold::*;
+import syntax::ext::base::*;
+
+
+fn expand_expr(exts: &hashmap[str, syntax_extension], cx: &ext_ctxt,
+               e: &expr_, fld: ast_fold,
+               orig: &fn(&expr_, ast_fold) -> expr_ ) -> expr_ {
     ret alt e {
           expr_mac(mac) {
             alt mac.node {
               mac_invoc(pth, args, body) {
                 assert (ivec::len(pth.node.idents) > 0u);
                 let extname = pth.node.idents.(0);
-                let ext_cx = base::mk_ctxt(sess);
                 alt exts.find(extname) {
                   none. {
-                    emit_error(some(pth.span),
-                               "unknown syntax expander: '" + extname + "'",
-                               sess.get_codemap());
-                    fail
+                    cx.span_fatal(pth.span,
+                                  #fmt["macro undefined: '%s'", extname])
                   }
-                  some(base::normal(ext)) {
+                  some(normal(ext)) {
+                    let expanded = ext(cx, pth.span, args, body);
 
+                    cx.bt_push(mac.span);
                     //keep going, outside-in
-                    fld.fold_expr(ext(ext_cx, pth.span, args, body)).node
+                    let fully_expanded = fld.fold_expr(expanded).node;
+                    cx.bt_pop();
+
+                    fully_expanded
                   }
-                  some(base::macro_defining(ext)) {
-                    let named_extension = ext(ext_cx, pth.span, args, body);
+                  some(macro_defining(ext)) {
+                    let named_extension = ext(cx, pth.span, args, body);
                     exts.insert(named_extension.ident, named_extension.ext);
                     ast::expr_rec(~[], none)
                   }
                 }
               }
-              _ {
-                emit_error(some(mac.span), "naked syntactic bit",
-                           sess.get_codemap());
-                fail
-              }
+              _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
           _ { orig(e, fld) }
@@ -54,10 +53,11 @@ fn expand_expr(exts: &hashmap[str, base::syntax_extension],
 }
 
 fn expand_crate(sess: &session::session, c: &@crate) -> @crate {
-    let exts = ext::base::syntax_expander_table();
+    let exts = syntax_expander_table();
     let afp = default_ast_fold();
+    let cx: ext_ctxt = mk_ctxt(sess);
     let f_pre =
-        {fold_expr: bind expand_expr(exts, sess, _, _, afp.fold_expr)
+        {fold_expr: bind expand_expr(exts, cx, _, _, afp.fold_expr)
             with *afp};
     let f = make_fold(f_pre);
     let res = @f.fold_crate(*c);

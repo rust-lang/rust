@@ -1,2 +1,2 @@
-// error-pattern:unknown syntax expander
+// error-pattern:macro undefined
 fn main() { #iamnotanextensionthatexists(""); }

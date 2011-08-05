@@ -32,41 +32,46 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
     ret syntax_expanders;
 }
 
-type span_msg_fn = fn(span, str) -> !  ;
-type msg_fn = fn(str) -> !  ;
+obj ext_ctxt(sess: @session, crate_file_name_hack: str, 
+             mutable backtrace: span[]) {
+    fn crate_file_name() -> str { ret crate_file_name_hack; }
 
-type next_id_fn = fn() -> ast::node_id ;
+    fn print_backtrace() {
+        for sp: span in backtrace {
+            sess.span_note(sp, "(while expanding this)")
+        }
+    }
+    
+    fn bt_push(sp: span) { backtrace += ~[sp]; }
+    fn bt_pop() { ivec::pop(backtrace); }
 
+    fn span_fatal(sp: span, msg: str) -> ! {
+        self.print_backtrace();
+        sess.span_fatal(sp, msg);
+    }
+    fn span_err(sp: span, msg: str) {
+        self.print_backtrace();
+        sess.span_err(sp, msg);
+    }
+    fn span_unimpl(sp:span, msg: str) -> ! {
+        self.print_backtrace();
+        sess.span_unimpl(sp, msg);
+    }
+    fn span_bug(sp:span, msg: str) -> ! {
+        self.print_backtrace();
+        sess.span_bug(sp, msg); 
+    }
+    fn bug(msg: str) -> ! {
+        self.print_backtrace();
+        sess.bug(msg);
+    }
+    fn next_id() -> ast::node_id {
+        ret sess.next_node_id();
+    }
 
-// Provides a limited set of services necessary for syntax extensions
-// to do their thing
-type ext_ctxt =
-    {crate_file_name_hack: str,
-     span_fatal: span_msg_fn,
-     span_unimpl: span_msg_fn,
-     span_bug: span_msg_fn,
-     bug: msg_fn,
-     next_id: next_id_fn};
+}
 
 fn mk_ctxt(sess: &session) -> ext_ctxt {
-    fn ext_span_fatal_(sess: &session, sp: span, msg: str) -> ! {
-        sess.span_err(sp, msg);
-        fail;
-    }
-    let ext_span_fatal = bind ext_span_fatal_(sess, _, _);
-    fn ext_span_unimpl_(sess: &session, sp: span, msg: str) -> ! {
-        sess.span_err(sp, "unimplemented " + msg);
-        fail;
-    }
-    let ext_span_bug = bind ext_span_bug_(sess, _, _);
-    fn ext_span_bug_(sess: &session, sp: span, msg: str) -> ! {
-        sess.span_bug(sp, msg);
-    }
-    let ext_span_unimpl = bind ext_span_unimpl_(sess, _, _);
-    fn ext_bug_(sess: &session, msg: str) -> ! { sess.bug(msg); }
-    let ext_bug = bind ext_bug_(sess, _);
-
-
     // FIXME: Some extensions work by building ASTs with paths to functions
     // they need to call at runtime. As those functions live in the std crate,
     // the paths are prefixed with "std::". Unfortunately, these paths can't
@@ -76,16 +81,7 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     // super-ugly and needs a better solution.
     let crate_file_name_hack = sess.get_codemap().files.(0).name;
 
-    fn ext_next_id_(sess: &session) -> ast::node_id {
-        ret sess.next_node_id(); // temporary, until bind works better
-    }
-    let ext_next_id = bind ext_next_id_(sess);
-    ret {crate_file_name_hack: crate_file_name_hack,
-         span_fatal: ext_span_fatal,
-         span_unimpl: ext_span_unimpl,
-         span_bug: ext_span_bug,
-         bug: ext_bug,
-         next_id: ext_next_id};
+    ret ext_ctxt(@sess, crate_file_name_hack, ~[]);
 }
 
 fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {
