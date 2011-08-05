@@ -1080,6 +1080,7 @@ fn variant_arg_types(ccx: &@crate_ctxt, sp: &span, vid: &ast::def_id,
 mod writeback {
 
     export resolve_type_vars_in_block;
+    export resolve_type_vars_in_expr;
 
     fn resolve_type_vars_in_type(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
        option::t[ty::t] {
@@ -1166,6 +1167,20 @@ mod writeback {
     }
     fn visit_item(item: &@ast::item, wbcx: &wb_ctxt, v: &wb_vt) {
         // Ignore items
+    }
+
+    fn resolve_type_vars_in_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
+        let wbcx = {fcx: fcx, mutable success: true};
+        let visit = visit::mk_vt
+            (@{visit_item: visit_item,
+               visit_stmt: visit_stmt,
+               visit_expr: visit_expr,
+               visit_block: visit_block,
+               visit_pat: visit_pat,
+               visit_local: visit_local
+               with *visit::default_visitor()});
+        visit::visit_expr(e, wbcx, visit);
+        ret wbcx.success;
     }
 
     fn resolve_type_vars_in_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
@@ -2651,13 +2666,23 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
       _ { }
     }
 
-    if option::is_some(body.node.expr) {
+// For non-iterator fns, we unify the tail expr's type with the
+// function result type, if there is a tail expr.
+// We don't do this check for an iterator, as the tail expr doesn't
+// have to have the result type of the iterator.
+    if option::is_some(body.node.expr) && f.proto != ast::proto_iter {
         let tail_expr = option::get(body.node.expr);
-        let tail_expr_ty = expr_ty(ccx.tcx, tail_expr);
-        // Have to exclude ty_nil to allow functions to end in
-        // while expressions, etc.
-        let nil = ty::mk_nil(fcx.ccx.tcx);
-        if !are_compatible(fcx, nil, tail_expr_ty) {
+        // The use of resolve_type_vars_if_possible makes me very
+        // afraid :-(
+        let tail_expr_ty = resolve_type_vars_if_possible(
+          fcx, expr_ty(ccx.tcx, tail_expr));
+        // Hacky compromise: use eq and not are_compatible
+        // This allows things like while loops and ifs with no
+        // else to appear in tail position without a trailing
+        // semicolon when the return type is non-nil, while
+        // making sure to unify the tailexpr-type with the result
+        // type when the tailexpr-type is just a type variable.
+        if !ty::eq_ty(tail_expr_ty, ty::mk_nil(ccx.tcx)) {
             demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
         }
     }
