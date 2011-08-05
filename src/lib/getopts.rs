@@ -209,24 +209,24 @@ fn getopts_ivec(args: &str[], opts: &opt[]) -> result {
     ret success({opts: opts, vals: vals, free: free});
 }
 
-fn opt_vals(m: match, nm: str) -> optval[] {
+fn opt_vals(m: &match, nm: str) -> optval[] {
     ret alt find_opt(m.opts, mkname(nm)) {
           some(id) { m.vals.(id) }
           none. { log_err "No option '" + nm + "' defined."; fail }
         };
 }
 
-fn opt_val(m: match, nm: str) -> optval { ret opt_vals(m, nm).(0); }
+fn opt_val(m: &match, nm: str) -> optval { ret opt_vals(m, nm).(0); }
 
-fn opt_present(m: match, nm: str) -> bool {
+fn opt_present(m: &match, nm: str) -> bool {
     ret ivec::len[optval](opt_vals(m, nm)) > 0u;
 }
 
-fn opt_str(m: match, nm: str) -> str {
+fn opt_str(m: &match, nm: str) -> str {
     ret alt opt_val(m, nm) { val(s) { s } _ { fail } };
 }
 
-fn opt_strs(m: match, nm: str) -> vec[str] {
+fn opt_strs(m: &match, nm: str) -> vec[str] {
     let acc: vec[str] = [];
     for v: optval  in opt_vals(m, nm) {
         alt v { val(s) { acc += [s]; } _ { } }
@@ -234,7 +234,7 @@ fn opt_strs(m: match, nm: str) -> vec[str] {
     ret acc;
 }
 
-fn opt_strs_ivec(m: match, nm: str) -> str[] {
+fn opt_strs_ivec(m: &match, nm: str) -> str[] {
     let acc: str[] = ~[];
     for v: optval  in opt_vals(m, nm) {
         alt v { val(s) { acc += ~[s]; } _ { } }
@@ -242,7 +242,7 @@ fn opt_strs_ivec(m: match, nm: str) -> str[] {
     ret acc;
 }
 
-fn opt_maybe_str(m: match, nm: str) -> option::t[str] {
+fn opt_maybe_str(m: &match, nm: str) -> option::t[str] {
     let vals = opt_vals(m, nm);
     if ivec::len[optval](vals) == 0u { ret none[str]; }
     ret alt vals.(0) { val(s) { some[str](s) } _ { none[str] } };
@@ -252,7 +252,7 @@ fn opt_maybe_str(m: match, nm: str) -> option::t[str] {
 /// Returns none if the option was not present, `def` if the option was
 /// present but no argument was provided, and the argument if the option was
 /// present and an argument was provided.
-fn opt_default(m: match, nm: str, def: str) -> option::t[str] {
+fn opt_default(m: &match, nm: str, def: str) -> option::t[str] {
     let vals = opt_vals(m, nm);
     if ivec::len[optval](vals) == 0u { ret none[str]; }
     ret alt vals.(0) { val(s) { some[str](s) } _ { some[str](def) } }

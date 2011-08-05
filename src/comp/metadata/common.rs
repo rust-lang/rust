@@ -62,6 +62,8 @@ const tag_crate_deps: uint = 0x25u;
 // A single crate dependency
 const tag_crate_dep: uint = 0x26u;
 
+const tag_items_data_item_inlineness: uint = 0x27u;
+
 // djb's cdb hashes.
 fn hash_node_id(node_id: &int) -> uint { ret 177573u ^ (node_id as uint); }
 

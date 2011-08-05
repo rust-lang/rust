@@ -197,6 +197,7 @@ size_t log_rt_gc;
 size_t log_rt_stdlib;
 size_t log_rt_kern;
 size_t log_rt_backtrace;
+size_t log_rt_callback;
 
 static const mod_entry _rt_module_map[] =
     {{"::rt::mem", &log_rt_mem},
@@ -211,6 +212,7 @@ static const mod_entry _rt_module_map[] =
      {"::rt::stdlib", &log_rt_stdlib},
      {"::rt::kern", &log_rt_kern},
      {"::rt::backtrace", &log_rt_backtrace},
+     {"::rt::callback", &log_rt_callback},
      {NULL, NULL}};
 
 void update_log_settings(void* crate_map, char* settings) {

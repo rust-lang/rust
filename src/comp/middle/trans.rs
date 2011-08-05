@@ -2349,7 +2349,7 @@ fn drop_slot(cx: &@block_ctxt, slot: ValueRef, t: &ty::t) -> result {
     let re = drop_ty(cx, llptr, t);
     let llty = val_ty(slot);
     let llelemty = lib::llvm::llvm::LLVMGetElementType(llty);
-    re.bcx.build.Store(C_null(llelemty), slot);
+    call_bzero(cx, slot, llsize_of(llelemty), C_uint(1u));
     ret re;
 }
 
@@ -5649,7 +5649,8 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     // Create a vtable for the anonymous object.
 
     // create_vtbl() wants an ast::_obj and all we have is an ast::anon_obj,
-    // so we need to roll our own.
+    // so we need to roll our own.  NB: wrapper_obj includes only outer
+    // methods, not inner ones.
     let wrapper_obj: ast::_obj =
         {fields:
              std::ivec::map(ast::obj_field_from_anon_obj_field,
@@ -5854,7 +5855,7 @@ fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
         bcx = call_bzero(llalign.bcx, llptr, llsz.val, llalign.val).bcx;
     } else {
         let llty = type_of(bcx_ccx(bcx), cx.sp, t);
-        bcx.build.Store(C_null(llty), llptr);
+        bcx = call_bzero(cx, llptr, llsize_of(llty), C_uint(1u)).bcx;
     }
     ret rslt(bcx, llptr);
 }
@@ -6386,6 +6387,9 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
 
         let closure = create_real_fn_pair(env.bcx, option::get(llfnty),
                                           llfndecl, env.ptr);
+        if copying {
+            add_clean_temp(bcx, closure, node_id_type(cx.ccx, id))
+        }
         some({fn_pair: closure, bcx: env.bcx})
       }
       _ { none }
@@ -6451,59 +6455,149 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
     log_fn_time(cx.ccx, str::connect_ivec(cx.path, "::"), start, end);
 }
 
+// process_bkwding_mthd: Create the backwarding function that appears in a
+// backwarding vtable slot.
+//
+// Backwarding functions are used in situations where method calls dispatch
+// back through an outer object.  For example, suppose an inner object has
+// methods foo and bar, and bar contains the call self.foo().  We extend that
+// object with a foo method that overrides the inner foo.  Now, a call to
+// outer.bar() should send us to to inner.bar() via a normal forwarding
+// function, and then to self.foo().  But inner.bar() was already compiled
+// under the assumption that self.foo() is inner.foo(), when we really want to
+// reach outer.foo().  So, we give 'self' a vtable of backwarding functions,
+// one for each method on inner, each of which takes all the same arguments as
+// the corresponding method on inner does, calls that method on outer, and
+// returns the value returned from that call.
+fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
+                       ty_params: &ast::ty_param[], outer_obj_ty: ty::t,
+                       additional_field_tys: &ty::t[]) -> ValueRef {
+
+    // Create a local context that's aware of the name of the method we're
+    // creating.
+    let mcx: @local_ctxt = @{path: cx.path + ~["method", m.ident] with *cx};
+
+    // Make up a name for the backwarding function.
+    let fn_name: str = "backwarding_fn";
+    let s: str = mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path,
+                                                      fn_name);
+
+    // Get the backwarding function's type and declare it.
+    let llbackwarding_fn_ty: TypeRef =
+        type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
+                        std::ivec::len[ast::ty_param](ty_params));
+    let llbackwarding_fn: ValueRef =
+        decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
+
+    // Create a new function context and block context for the backwarding
+    // function, holding onto a pointer to the first block.
+    let fcx = new_fn_ctxt(cx, sp, llbackwarding_fn);
+    let bcx = new_top_block_ctxt(fcx);
+    let lltop = bcx.llbb;
+
+    // The self-object will arrive in the backwarding function via the llenv
+    // argument.
+    let llself_obj_ptr = fcx.llenv;
+
+    // The 'llretptr' that will arrive in the backwarding function we're
+    // creating also needs to be the correct type.  Cast it to the method's
+    // return type, if necessary.
+    let llretptr = fcx.llretptr;
+    if ty::type_contains_params(cx.ccx.tcx, m.output) {
+        let llretty = type_of_inner(cx.ccx, sp, m.output);
+        llretptr = bcx.build.PointerCast(llretptr, T_ptr(llretty));
+    }
+
+    // Now we need the outer object's vtable.  Increment llself_obj_ptr to get
+    // at it.
+    let llouter_obj_vtbl =
+        bcx.build.GEP(llself_obj_ptr,
+                      ~[C_int(0), C_int(1)]);
+    llouter_obj_vtbl = bcx.build.Load(llouter_obj_vtbl);
+
+    // Get the index of the method we want.
+    let ix: uint = 0u;
+    alt ty::struct(bcx_tcx(bcx), outer_obj_ty) {
+      ty::ty_obj(methods) {
+        ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
+      }
+      _ {
+        // Shouldn't happen.
+        cx.ccx.sess.bug("process_bkwding_mthd(): non-object type passed \
+                        as outer_obj_ty");
+      }
+    }
+
+    // Pick out the method being backwarded to from the vtable.
+    let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
+    llouter_obj_vtbl = bcx.build.PointerCast(llouter_obj_vtbl, vtbl_type);
+
+    let llouter_mthd =
+        bcx.build.GEP(llouter_obj_vtbl, ~[C_int(0), C_int(ix as int)]);
+
+    // Set up the outer method to be called.
+    let outer_mthd_ty = ty::method_ty_to_fn_ty(cx.ccx.tcx, *m);
+    let llouter_mthd_ty =
+        type_of_fn_full(bcx_ccx(bcx), sp,
+                        ty::ty_fn_proto(bcx_tcx(bcx), outer_mthd_ty), true,
+                        m.inputs, m.output,
+                        std::ivec::len[ast::ty_param](ty_params));
+    llouter_mthd =
+        bcx.build.PointerCast(llouter_mthd, T_ptr(T_ptr(llouter_mthd_ty)));
+    llouter_mthd = bcx.build.Load(llouter_mthd);
+
+    // Set up the three implicit arguments to the outer method we'll need
+    // to call.
+    let self_arg = llself_obj_ptr;
+    let llouter_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, self_arg];
+
+    // Copy the explicit arguments that are being passed into the forwarding
+    // function (they're in fcx.llargs) to llouter_mthd_args.
+
+    let a: uint = 3u; // retptr, task ptr, env come first
+    let passed_arg: ValueRef = llvm::LLVMGetParam(llbackwarding_fn, a);
+    for arg: ty::arg  in m.inputs {
+        if arg.mode == ty::mo_val {
+            passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
+        }
+        llouter_mthd_args += ~[passed_arg];
+        a += 1u;
+    }
+
+    // And, finally, call the outer method.
+    bcx.build.FastCall(llouter_mthd, llouter_mthd_args);
+
+    bcx.build.RetVoid();
+    finish_fn(fcx, lltop);
+
+    ret llbackwarding_fn;
+
+}
+
 // process_fwding_mthd: Create the forwarding function that appears in a
 // vtable slot for method calls that need to forward to another object.  A
 // helper function for create_vtbl.
 //
-// We use forwarding functions in two situations:
-//
-//  (1) Forwarding: For method calls that fall through to an inner object, For
-//      example, suppose an inner object has method foo and we extend it with
-//      a method bar.  The only version of 'foo' we have is on the inner
-//      object, but we would like to be able to call outer.foo().  So we use a
-//      forwarding function to make the foo method available on the outer
-//      object.  It takes all the same arguments as the foo method on the
-//      inner object does, calls inner.foo() with those arguments, and then
-//      returns the value returned from that call.  (The inner object won't
-//      exist until run-time, but we know its type statically.)
-//
-//  (2) Backwarding: For method calls that dispatch back through an outer
-//      object.  For example, suppose an inner object has methods foo and bar,
-//      and bar contains the call self.foo().  We extend that object with a
-//      foo method that overrides the inner foo.  Now, a call to outer.bar()
-//      should send us to to inner.bar() via a normal forwarding function, and
-//      then to self.foo().  But inner.bar() was already compiled under the
-//      assumption that self.foo() is inner.foo(), when we really want to
-//      reach outer.foo().  So, we give 'self' a vtable of backwarding
-//      functions, one for each method on inner, each of which takes all the
-//      same arguments as the corresponding method on inner does, calls that
-//      method on outer, and returns the value returned from that call.
-
+// Forwarding functions are used for method calls that fall through to an
+// inner object.  For example, suppose an inner object has method foo and we
+// extend it with a method bar.  The only version of 'foo' we have is on the
+// inner object, but we would like to be able to call outer.foo().  So we use
+// a forwarding function to make the foo method available on the outer object.
+// It takes all the same arguments as the foo method on the inner object does,
+// calls inner.foo() with those arguments, and then returns the value returned
+// from that call.  (The inner object won't exist until run-time, but we know
+// its type statically.)
 fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
-                       ty_params: &ast::ty_param[], target_obj_ty: ty::t,
-                       backwarding_vtbl: option::t[ValueRef],
+                       ty_params: &ast::ty_param[], inner_obj_ty: ty::t,
+                       backwarding_vtbl: ValueRef,
                        additional_field_tys: &ty::t[]) -> ValueRef {
-
-    // NB: target_obj_ty is the type of the object being forwarded to.
-    // Depending on whether this is a forwarding or backwarding function, it
-    // will be either the inner obj's type or the outer obj's type,
-    // respectively.
 
     // Create a local context that's aware of the name of the method we're
     // creating.
     let mcx: @local_ctxt = @{path: cx.path + ~["method", m.ident] with *cx};
 
     // Make up a name for the forwarding function.
-    let fn_name: str = "";
-    alt (backwarding_vtbl) {
-      // NB: If we have a backwarding_vtbl, that *doesn't* mean that we're
-      // currently processing a backwarding fn.  It's the opposite: it means
-      // that we have already processed them, and now we're creating
-      // forwarding fns that *use* a vtable full of them.
-      none. { fn_name = "backwarding_fn"; }
-      some(_) { fn_name = "forwarding_fn"; }
-    }
-
+    let fn_name: str = "forwarding_fn";
     let s: str = mangle_internal_name_by_path_and_seq(mcx.ccx, mcx.path,
                                                       fn_name);
 
@@ -6524,28 +6618,19 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // argument.
     let llself_obj_ptr = fcx.llenv;
 
-    // Do backwarding if necessary.
-    alt (backwarding_vtbl) {
-      none. {
-        // NB: As before, this means that we are processing a backwarding fn
-        // right now.
-      }
-      some(bv) {
-        // NB: As before, this means that we are processing a forwarding fn
-        // right now.
+    // Grab the vtable out of the self-object and replace it with the
+    // backwarding vtable.  FIXME (issue #702): Not quite ready to turn this
+    // behavior on yet.
 
-        // Grab the vtable out of the self-object and replace it with the
-        // backwarding vtable.
-        let llself_obj_vtbl =
-            bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
-                                            C_int(abi::obj_field_vtbl)]);
-        let llbv = bcx.build.PointerCast(bv, T_ptr(T_empty_struct()));
-        bcx.build.Store(llbv, llself_obj_vtbl);
+    // let llself_obj_vtbl =
+    //     bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
+    //                                     C_int(abi::obj_field_vtbl)]);
+    // let llbv = bcx.build.PointerCast(backwarding_vtbl,
+    //                                  T_ptr(T_empty_struct()));
+    // bcx.build.Store(llbv, llself_obj_vtbl);
 
-        // NB: llself_obj is now a freakish combination of outer object body
-        // and backwarding (inner-object) vtable.
-      }
-    }
+    // NB: llself_obj is now a freakish combination of outer object body
+    // and backwarding (inner-object) vtable.
 
     // The 'llretptr' that will arrive in the forwarding function we're
     // creating also needs to be the correct type.  Cast it to the method's
@@ -6592,14 +6677,6 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Tuple type for body:
     // [tydesc, [typaram, ...], [field, ...], inner_obj]
 
-    // NB: When we're creating a forwarding fn, target_obj_ty is indeed the
-    // type of the inner object, so it makes sense to have 'target_obj_ty'
-    // appear here.  When we're creating a backwarding fn, though,
-    // target_obj_ty is the outer object's type, so instead, we need to use
-    // the extra inner type we passed along.
-
-    let inner_obj_ty = target_obj_ty;
-
     let body_ty: ty::t =
         ty::mk_imm_tup(cx.ccx.tcx,
                        ~[tydesc_ty, typarams_ty, fields_ty, inner_obj_ty]);
@@ -6626,7 +6703,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Get the index of the method we want.
     let ix: uint = 0u;
-    alt ty::struct(bcx_tcx(bcx), target_obj_ty) {
+    alt ty::struct(bcx_tcx(bcx), inner_obj_ty) {
       ty::ty_obj(methods) {
         ix = ty::method_idx(cx.ccx.sess, sp, m.ident, methods);
       }
@@ -6720,6 +6797,54 @@ tag vtbl_mthd {
     fwding_mthd(@ty::method);
 }
 
+// Alphabetize ast::methods by ident.  A helper for create_vtbl.
+fn ast_mthd_lteq(a: &@ast::method, b: &@ast::method) -> bool {
+    ret str::lteq(a.node.ident, b.node.ident);
+}
+
+// Alphabetize vtbl_mthds by ident.  A helper for create_vtbl.
+fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
+    alt a {
+      normal_mthd(ma) {
+        alt b {
+          normal_mthd(mb) { ret str::lteq(ma.node.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret str::lteq(ma.node.ident, mb.ident); }
+        }
+      }
+      fwding_mthd(ma) {
+        alt b {
+          normal_mthd(mb) { ret str::lteq(ma.ident, mb.node.ident); }
+          fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
+        }
+      }
+    }
+}
+
+// Used by create_vtbl to filter a list of methods to remove the ones that we
+// don't need forwarding slots for.
+fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd,
+                addtl_meths: (@ast::method)[]) ->
+    option::t[vtbl_mthd] {
+
+    // Since m is a fwding_mthd, and we're checking to see if it's in
+    // addtl_meths (which only contains normal_mthds), we can't just check if
+    // it's a member of addtl_meths.  Instead, we have to go through
+    // addtl_meths and see if there's some method in it that has the same name
+    // as m.
+    alt m {
+      fwding_mthd(fm) {
+        for am: @ast::method in addtl_meths {
+            if str::eq(am.node.ident, fm.ident) { ret none; }
+        }
+        ret some(fwding_mthd(fm));
+      }
+      normal_mthd(_) {
+        cx.ccx.sess.bug("create_vtbl(): shouldn't be any \
+                        normal_mthds in meths here");
+      }
+    }
+}
+
 // Create a vtable for an object being translated.  Returns a pointer into
 // read-only memory.
 fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
@@ -6728,32 +6853,36 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
                additional_field_tys: &ty::t[]) -> ValueRef {
 
     let llmethods: ValueRef[] = ~[];
-    let meths: vtbl_mthd[] = ~[];
-    let backwarding_vtbl: option::t[ValueRef] = none;
 
     alt inner_obj_ty {
       none. {
+        // Sort and process all the methods.
+        let meths =
+            std::sort::ivector::merge_sort[@ast::method]
+            (bind ast_mthd_lteq(_, _), ob.methods);
 
-        // If there's no inner_obj, then we don't need any forwarding
-        // slots.  Just use the object's regular methods.
-        for m: @ast::method  in ob.methods { meths += ~[normal_mthd(m)]; }
+        for m: @ast::method in meths {
+            llmethods += ~[process_normal_mthd(cx, m, outer_obj_ty,
+                                               ty_params)];
+        }
       }
       some(inner_obj_ty) {
-        // Handle forwarding slots.
-
         // If this vtable is being created for an extended object, then the
         // vtable needs to contain 'forwarding slots' for methods that were on
-        // the original object and are not being overloaded by the extended
+        // the original object and are not being overridden by the extended
         // one.  So, to find the set of methods that we need forwarding slots
         // for, we need to take the set difference of inner_obj_methods
-        // (methods on the original object) and ob.methods (methods on the
-        // object being added).
+        // (methods on the original object) and ob.methods (methods being
+        // added, whether entirely new or overriding).
 
-        // If we're here, then inner_obj_ty and llinner_obj_ty are the type of
-        // the inner object, and "ob" is the wrapper object.  We need to take
-        // apart inner_obj_ty (it had better have an object type with
-        // methods!) and put those original methods onto the list of methods
-        // we need forwarding methods for.
+        // inner_obj_ty is the type of the inner object being forwarded to,
+        // and "ob" is the wrapper object.  We need to take apart
+        // inner_obj_ty, which is the type of the object being forwarded to
+        // (it had better have an object type with methods!) and put those
+        // original methods onto the list of methods we need forwarding
+        // methods for.
+
+        let meths: vtbl_mthd[] = ~[];
 
         // Gather up methods on the original object in 'meths'.
         alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
@@ -6763,97 +6892,43 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
             }
           }
           _ {
-            // Shouldn't happen.
             cx.ccx.sess.bug("create_vtbl(): trying to extend a \
                             non-object");
           }
         }
 
         // Now, filter out any methods that we don't need forwarding slots
-        // for, because they're being replaced.
-        fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd,
-                        addtl_meths: (@ast::method)[]) ->
-           option::t[vtbl_mthd] {
-
-            alt m {
-              fwding_mthd(fm) {
-                // Since fm is a fwding_mthd, and we're checking to see if
-                // it's in addtl_meths (which only contains normal_mthds), we
-                // can't just check if fm is a member of addtl_meths.
-                // Instead, we have to go through addtl_meths and see if
-                // there's some method in it that has the same name as fm.
-                for am: @ast::method  in addtl_meths {
-                    if str::eq(am.node.ident, fm.ident) { ret none; }
-                }
-                ret some(fwding_mthd(fm));
-              }
-              normal_mthd(_) {
-                // Should never happen.
-                cx.ccx.sess.bug("create_vtbl(): shouldn't be any \
-                                normal_mthds in meths here");
-              }
-            }
-        }
+        // for, because they're being overridden.
         let f = bind filtering_fn(cx, _, ob.methods);
         meths = std::ivec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
 
+        // And now add the additional ones, both overriding ones and entirely
+        // new ones.  These will just be normal methods.
+        for m: @ast::method in ob.methods { meths += ~[normal_mthd(m)]; }
 
-        // And now add the additional ones (both replacements and entirely new
-        // ones).  These'll just be normal methods.
-        for m: @ast::method  in ob.methods { meths += ~[normal_mthd(m)]; }
-      }
-    }
+        // Sort all the methods and process them.
+        meths =
+            std::sort::ivector::merge_sort[vtbl_mthd]
+            (bind vtbl_mthd_lteq(_, _), meths);
 
-    // Sort all the methods.
-    fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
-        alt a {
-          normal_mthd(ma) {
-            alt b {
-              normal_mthd(mb) { ret str::lteq(ma.node.ident, mb.node.ident); }
-              fwding_mthd(mb) { ret str::lteq(ma.node.ident, mb.ident); }
-            }
-          }
-          fwding_mthd(ma) {
-            alt b {
-              normal_mthd(mb) { ret str::lteq(ma.ident, mb.node.ident); }
-              fwding_mthd(mb) { ret str::lteq(ma.ident, mb.ident); }
-            }
-          }
-        }
-    }
-    meths =
-        std::sort::ivector::merge_sort[vtbl_mthd](bind vtbl_mthd_lteq(_, _),
-                                                  meths);
+        let backwarding_vtbl: ValueRef =
+            create_backwarding_vtbl(cx, sp, inner_obj_ty, outer_obj_ty);
 
-    // Now that we have our list of methods, we can process them in order.
-    for m: vtbl_mthd in meths {
-        alt m {
-          normal_mthd(nm) {
-            llmethods += ~[process_normal_mthd(cx, nm, outer_obj_ty,
-                                               ty_params)];
-          }
-
-          // If we have to process a forwarding method, then we need to know
-          // about the inner_obj's type as well as the outer object's type.
-          fwding_mthd(fm) {
-            alt inner_obj_ty {
-              none. {
-                // This shouldn't happen; if we're trying to process a
-                // forwarding method, then we should always have a
-                // inner_obj_ty.
-                cx.ccx.sess.bug("create_vtbl(): trying to create \
-                                forwarding method without a type \
-                                of object to forward to");
-              }
-              some(t) {
+        for m: vtbl_mthd in meths {
+            alt m {
+              normal_mthd(nm) {
                 llmethods +=
-                    ~[process_fwding_mthd(cx, sp, fm, ty_params, t,
+                    ~[process_normal_mthd(cx, nm, outer_obj_ty, ty_params)];
+              }
+              fwding_mthd(fm) {
+                llmethods +=
+                    ~[process_fwding_mthd(cx, sp, fm, ty_params, inner_obj_ty,
                                           backwarding_vtbl,
                                           additional_field_tys)];
               }
             }
-          }
         }
+      }
     }
 
     let vtbl = C_struct(llmethods);
@@ -6895,8 +6970,8 @@ fn create_backwarding_vtbl(cx: @local_ctxt, sp: &span, inner_obj_ty: ty::t,
     for m: ty::method in meths {
         // We pass outer_obj_ty to process_fwding_mthd() because it's
         // the one being forwarded to.
-        llmethods += ~[process_fwding_mthd(
-            cx, sp, @m, ~[], outer_obj_ty, none, ~[])];
+        llmethods += ~[process_bkwding_mthd(
+            cx, sp, @m, ~[], outer_obj_ty, ~[])];
     }
 
     let vtbl = C_struct(llmethods);

@@ -179,6 +179,7 @@ step_msg "making directories"
 for i in \
     doc \
     rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
+    rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
     stage0/lib stage1/lib stage2/lib stage3/lib \
@@ -287,12 +288,17 @@ then
     case $CFG_CLANG_VERSION in
         (3.0svn | 3.0)
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+        CFG_C_COMPILER="clang"
         ;;
         (*)
-        err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+        msg "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn; disabling"
+        CFG_C_COMPILER="gcc"
         ;;
     esac
+else
+    CFG_C_COMPILER="gcc"
 fi
+putvar CFG_C_COMPILER
 
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_INCDIR
@@ -309,5 +315,9 @@ perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
 rm -f config.mk.bak
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
+
+copy ${CFG_SRC_DIR}src/rt/libuv/Makefile rt/libuv/Makefile
+copy ${CFG_SRC_DIR}src/rt/libuv/config-unix.mk rt/libuv/config-unix.mk
+copy ${CFG_SRC_DIR}src/rt/libuv/config-mingw.mk rt/libuv/config-mingw.mk
 
 step_msg "complete"

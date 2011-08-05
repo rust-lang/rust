@@ -1285,7 +1285,7 @@ fn parse_if_expr(p: &parser) -> @ast::expr {
 
 fn parse_fn_expr(p: &parser, proto: ast::proto) -> @ast::expr {
     let lo = p.get_last_lo_pos();
-    let decl = parse_fn_decl(p, ast::impure_fn);
+    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let body = parse_block(p);
     let _fn = {decl: decl, proto: proto, body: body};
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
@@ -1706,7 +1706,8 @@ fn parse_ty_params(p: &parser) -> ast::ty_param[] {
     ret ty_params;
 }
 
-fn parse_fn_decl(p: &parser, purity: ast::purity) -> ast::fn_decl {
+fn parse_fn_decl(p: &parser, purity: ast::purity, il: ast::inlineness)
+        -> ast::fn_decl {
     let inputs: ast::spanned[ast::arg[]] =
         parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA), parse_arg,
                   p);
@@ -1730,6 +1731,7 @@ fn parse_fn_decl(p: &parser, purity: ast::purity) -> ast::fn_decl {
         ret {inputs: inputs.node,
              output: t,
              purity: purity,
+             il: il,
              cf: ast::return,
              constraints: constrs};
       }
@@ -1737,14 +1739,16 @@ fn parse_fn_decl(p: &parser, purity: ast::purity) -> ast::fn_decl {
         ret {inputs: inputs.node,
              output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_bot),
              purity: purity,
+             il: il,
              cf: ast::noreturn,
              constraints: constrs};
       }
     }
 }
 
-fn parse_fn(p: &parser, proto: ast::proto, purity: ast::purity) -> ast::_fn {
-    let decl = parse_fn_decl(p, purity);
+fn parse_fn(p: &parser, proto: ast::proto, purity: ast::purity,
+            il: ast::inlineness) -> ast::_fn {
+    let decl = parse_fn_decl(p, purity, il);
     let body = parse_block(p);
     ret {decl: decl, proto: proto, body: body};
 }
@@ -1765,10 +1769,11 @@ fn mk_item(p: &parser, lo: uint, hi: uint, ident: &ast::ident,
 }
 
 fn parse_item_fn_or_iter(p: &parser, purity: ast::purity, proto: ast::proto,
-                         attrs: &ast::attribute[]) -> @ast::item {
+                         attrs: &ast::attribute[], il: ast::inlineness)
+        -> @ast::item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
-    let f = parse_fn(p, proto, purity);
+    let f = parse_fn(p, proto, purity, il);
     ret mk_item(p, lo, f.body.span.hi, t.ident, ast::item_fn(f, t.tps),
                 attrs);
 }
@@ -1795,7 +1800,7 @@ fn parse_method(p: &parser) -> @ast::method {
     let lo = p.get_lo_pos();
     let proto = parse_proto(p);
     let ident = parse_value_ident(p);
-    let f = parse_fn(p, proto, ast::impure_fn);
+    let f = parse_fn(p, proto, ast::impure_fn, ast::il_normal);
     let meth = {ident: ident, meth: f, id: p.get_id()};
     ret @spanned(lo, f.body.span.hi, meth);
 }
@@ -1839,6 +1844,7 @@ fn parse_item_res(p: &parser, attrs: &ast::attribute[]) ->
                 id: p.get_id()}],
          output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
+         il: ast::il_normal,
          cf: ast::return,
          constraints: ~[]};
     let f = {decl: decl, proto: ast::proto_fn, body: dtor};
@@ -1907,7 +1913,7 @@ fn parse_item_native_fn(p: &parser, attrs: &ast::attribute[]) ->
    @ast::native_item {
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, ast::impure_fn);
+    let decl = parse_fn_decl(p, ast::impure_fn, ast::il_normal);
     let link_name = none;
     if p.peek() == token::EQ { p.bump(); link_name = some(parse_str(p)); }
     let hi = p.get_hi_pos();
@@ -2068,16 +2074,20 @@ fn parse_auth(p: &parser) -> ast::_auth {
 fn parse_item(p: &parser, attrs: &ast::attribute[]) -> option::t[@ast::item] {
     if eat_word(p, "const") {
         ret some(parse_item_const(p, attrs));
+    } else if (eat_word(p, "inline")) {
+        expect_word(p, "fn");
+        ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn,
+                                       attrs, ast::il_inline));
     } else if (is_word(p, "fn") && p.look_ahead(1u) != token::LPAREN) {
         p.bump();
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_fn,
-                                           attrs));
+                                       attrs, ast::il_normal));
     } else if (eat_word(p, "pred")) {
         ret some(parse_item_fn_or_iter(p, ast::pure_fn, ast::proto_fn,
-                                           attrs));
+                                       attrs, ast::il_normal));
     } else if (eat_word(p, "iter")) {
         ret some(parse_item_fn_or_iter(p, ast::impure_fn, ast::proto_iter,
-                                           attrs));
+                                       attrs, ast::il_normal));
     } else if (eat_word(p, "mod")) {
         ret some(parse_item_mod(p, attrs));
     } else if (eat_word(p, "native")) {

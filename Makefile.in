@@ -4,6 +4,8 @@
 
 include config.mk
 MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
+MKFILES += $(CFG_SRC_DIR)/src/rt/libuv/Makefile
+MKFILES += $(wildcard $(CFG_SRC_DIR)/src/rt/libuv/*.mk)
 
 ifneq ($(MAKE_RESTARTS),)
 CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))

@@ -511,10 +511,13 @@ type ty_constr = spanned[ty_constr_];
  corresponding to these. */
 type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
+tag inlineness { il_normal; il_inline; }
+
 type fn_decl =
     {inputs: arg[],
      output: @ty,
      purity: purity,
+     il: inlineness,
      cf: controlflow,
      constraints: (@constr)[]};
 
