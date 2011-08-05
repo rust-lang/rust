@@ -59,7 +59,7 @@ fn fold_mod(cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // we want to be main.
     fn nomain(item: &@ast::item) -> option::t[@ast::item] {
         alt item.node {
-          ast::item_fn(f, _, _) {
+          ast::item_fn(f, _) {
             if item.ident == "main" {
                 option::none
             } else { option::some(item) }
@@ -107,7 +107,7 @@ fn is_test_fn(i: &@ast::item) -> bool {
 
     fn has_test_signature(i: &@ast::item) -> bool {
         alt i.node {
-          ast::item_fn(f, tps, _) {
+          ast::item_fn(f, tps) {
             let input_cnt = ivec::len(f.decl.inputs);
             let no_output = f.decl.output.node == ast::ty_nil;
             let tparm_cnt = ivec::len(tps);
@@ -191,7 +191,7 @@ fn mk_tests(cx: &test_ctxt) -> @ast::item {
 
     let fn_ = {decl: decl, proto: proto, body: body};
 
-    let item_ = ast::item_fn(fn_, ~[], ast::il_normal);
+    let item_ = ast::item_fn(fn_, ~[]);
     let item: ast::item =
         {ident: "tests",
          attrs: ~[],
@@ -309,7 +309,7 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
 
     let fn_ = {decl: decl, proto: proto, body: body};
 
-    let item_ = ast::item_fn(fn_, ~[], ast::il_normal);
+    let item_ = ast::item_fn(fn_, ~[]);
     let item: ast::item =
         {ident: "main",
          attrs: ~[],

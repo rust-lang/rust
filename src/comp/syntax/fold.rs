@@ -223,7 +223,7 @@ fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
 
     ret alt i {
           item_const(t, e) { item_const(fld.fold_ty(t), fld.fold_expr(e)) }
-          item_fn(f, typms, il) { item_fn(fld.fold_fn(f), typms, il) }
+          item_fn(f, typms) { item_fn(fld.fold_fn(f), typms) }
           item_mod(m) { item_mod(fld.fold_mod(m)) }
           item_native_mod(nm) { item_native_mod(fld.fold_native_mod(nm)) }
           item_ty(t, typms) { item_ty(fld.fold_ty(t), typms) }

@@ -88,7 +88,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
              ccx: ccx};
         find_pre_post_expr(fake_fcx, e);
       }
-      item_fn(f, _, _) {
+      item_fn(f, _) {
         assert (ccx.fm.contains_key(i.id));
         let fcx =
             {enclosing: ccx.fm.get(i.id), id: i.id, name: i.ident, ccx: ccx};
@@ -709,10 +709,9 @@ fn find_pre_post_fn(fcx: &fn_ctxt, f: &_fn) {
     }
 }
 
-fn fn_pre_post(f: &_fn, tps: &ty_param[], il: inlineness, sp: &span,
-               i: &fn_ident, id: node_id, ccx: &crate_ctxt,
-               v: &visit::vt[crate_ctxt]) {
-    visit::visit_fn(f, tps, il, sp, i, id, ccx, v);
+fn fn_pre_post(f: &_fn, tps: &ty_param[], sp: &span, i: &fn_ident,
+               id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
+    visit::visit_fn(f, tps, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     let fcx =
         {enclosing: ccx.fm.get(id),

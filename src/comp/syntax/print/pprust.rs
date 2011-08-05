@@ -412,7 +412,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         end(s); // end the outer cbox
 
       }
-      ast::item_fn(_fn, typarams, _) {
+      ast::item_fn(_fn, typarams) {
         print_fn(s, _fn.decl, _fn.proto, item.ident, typarams,
                  _fn.decl.constraints);
         word(s.s, " ");

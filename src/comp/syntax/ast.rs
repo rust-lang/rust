@@ -604,11 +604,9 @@ type attribute_ = {style: attr_style, value: meta_item};
 type item =  // For objs and resources, this is the type def_id
     {ident: ident, attrs: attribute[], id: node_id, node: item_, span: span};
 
-tag inlineness { il_normal; il_inline; }
-
 tag item_ {
     item_const(@ty, @expr);
-    item_fn(_fn, ty_param[], inlineness);
+    item_fn(_fn, ty_param[]);
     item_mod(_mod);
     item_native_mod(native_mod);
     item_ty(@ty, ty_param[]);

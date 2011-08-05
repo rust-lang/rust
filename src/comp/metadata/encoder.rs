@@ -81,7 +81,7 @@ fn encode_module_item_paths(ebml_w: &ebmlivec::writer, module: &_mod,
             encode_def_id(ebml_w, local_def(it.id));
             ebmlivec::end_tag(ebml_w);
           }
-          item_fn(_, tps, _) {
+          item_fn(_, tps) {
             add_to_index(ebml_w, path, index, it.ident);
             ebmlivec::start_tag(ebml_w, tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -250,7 +250,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebmlivec::writer,
         encode_symbol(ecx, ebml_w, item.id);
         ebmlivec::end_tag(ebml_w);
       }
-      item_fn(fd, tps, _) {
+      item_fn(fd, tps) {
         ebmlivec::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w,
