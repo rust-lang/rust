@@ -23,11 +23,11 @@ import aux::crate_ctxt;
 import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
-fn collect_ids_expr(e: &@expr, rs: @mutable node_id[]) { *rs += ~[e.id]; }
+fn collect_ids_expr(e: &@expr, rs: @mutable [node_id]) { *rs += ~[e.id]; }
 
-fn collect_ids_block(b: &blk, rs: @mutable node_id[]) { *rs += ~[b.node.id]; }
+fn collect_ids_block(b: &blk, rs: @mutable [node_id]) { *rs += ~[b.node.id]; }
 
-fn collect_ids_stmt(s: &@stmt, rs: @mutable node_id[]) {
+fn collect_ids_stmt(s: &@stmt, rs: @mutable [node_id]) {
     alt s.node {
       stmt_decl(_, id) {
         log "node_id " + int::str(id);
@@ -43,12 +43,12 @@ fn collect_ids_stmt(s: &@stmt, rs: @mutable node_id[]) {
     }
 }
 
-fn collect_ids_local(l: &@local, rs: @mutable node_id[]) {
+fn collect_ids_local(l: &@local, rs: @mutable [node_id]) {
     *rs += pat_binding_ids(l.node.pat);
 }
 
-fn node_ids_in_fn(f: &_fn, tps: &ty_param[], sp: &span, i: &fn_ident,
-                  id: node_id, rs: @mutable node_id[]) {
+fn node_ids_in_fn(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
+                  id: node_id, rs: @mutable [node_id]) {
     let collect_ids =
         visit::mk_simple_visitor(@{visit_expr: bind collect_ids_expr(_, rs),
                                    visit_block: bind collect_ids_block(_, rs),
@@ -58,7 +58,7 @@ fn node_ids_in_fn(f: &_fn, tps: &ty_param[], sp: &span, i: &fn_ident,
     visit::visit_fn(f, tps, sp, i, id, (), collect_ids);
 }
 
-fn init_vecs(ccx: &crate_ctxt, node_ids: &node_id[], len: uint) {
+fn init_vecs(ccx: &crate_ctxt, node_ids: &[node_id], len: uint) {
     for i: node_id  in node_ids {
         log int::str(i) + " |-> " + uint::str(len);
         add_node(ccx, i, empty_ann(len));
@@ -66,14 +66,14 @@ fn init_vecs(ccx: &crate_ctxt, node_ids: &node_id[], len: uint) {
 }
 
 fn visit_fn(ccx: &crate_ctxt, num_constraints: uint, f: &_fn,
-            tps: &ty_param[], sp: &span, i: &fn_ident, id: node_id) {
-    let node_ids: @mutable node_id[] = @mutable ~[];
+            tps: &[ty_param], sp: &span, i: &fn_ident, id: node_id) {
+    let node_ids: @mutable [node_id] = @mutable ~[];
     node_ids_in_fn(f, tps, sp, i, id, node_ids);
     let node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);
 }
 
-fn annotate_in_fn(ccx: &crate_ctxt, f: &_fn, tps: &ty_param[], sp: &span,
+fn annotate_in_fn(ccx: &crate_ctxt, f: &_fn, tps: &[ty_param], sp: &span,
                   i: &fn_ident, id: node_id) {
     let f_info = get_fn_info(ccx, id);
     visit_fn(ccx, num_constraints(f_info), f, tps, sp, i, id);

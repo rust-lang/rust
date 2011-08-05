@@ -42,8 +42,8 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         ret s + ty_to_str(cx, input.ty);
     }
     fn fn_to_str(cx: &ctxt, proto: ast::proto, ident: option::t[ast::ident],
-                 inputs: &arg[], output: t, cf: ast::controlflow,
-                 constrs: &(@constr)[]) -> str {
+                 inputs: &[arg], output: t, cf: ast::controlflow,
+                 constrs: &[@constr]) -> str {
         let s = proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
@@ -98,7 +98,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_type. { s += "type"; }
       ty_task. { s += "task"; }
       ty_rec(elems) {
-        let strs: str[] = ~[];
+        let strs: [str] = ~[];
         for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
         s += "{" + str::connect_ivec(strs, ",") + "}";
       }
@@ -107,7 +107,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
 
         s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
         if ivec::len[t](tps) > 0u {
-            let strs: str[] = ~[];
+            let strs: [str] = ~[];
             for typ: t  in tps { strs += ~[ty_to_str(cx, typ)]; }
             s += "[" + str::connect_ivec(strs, ",") + "]";
         }
@@ -149,7 +149,7 @@ fn constr_to_str(c: &@constr) -> str {
             pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(constrs: &(@constr)[]) -> str {
+fn constrs_str(constrs: &[@constr]) -> str {
     let s = "";
     let colon = true;
     for c: @constr  in constrs {

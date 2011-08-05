@@ -11,7 +11,7 @@ import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast::respan;
 
-type ctxt = {cs: @mutable sp_constr[], tcx: ty::ctxt};
+type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt[ctxt]) {
     for each p: @pat in pat_bindings(loc.node.pat) {
@@ -43,7 +43,7 @@ fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt[ctxt]) {
     visit::visit_expr(e, cx, v);
 }
 
-fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &ty_param[], sp: &span,
+fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &[ty_param], sp: &span,
                i: &fn_ident, id: node_id) -> ctxt {
     let cx: ctxt = {cs: @mutable ~[], tcx: tcx};
     let visitor = visit::default_visitor[ctxt]();
@@ -75,7 +75,7 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
             }
           }
           none. {
-            let rslt: @mutable pred_args[] =
+            let rslt: @mutable [pred_args] =
                 @mutable ~[respan(c.span, {args: args, bit_num: next})];
             tbl.insert(d_id, cpred(p, rslt));
           }
@@ -88,7 +88,7 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], f_sp: &span,
+fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
               f_name: &fn_ident, id: node_id) {
     let name = fn_ident_to_string(id, f_name);
     let res_map = @new_def_hash[constraint]();
@@ -122,7 +122,7 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], f_sp: &span,
     add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id, diverges_name)),
                    next, res_map);
 
-    let v: @mutable node_id[] = @mutable ~[];
+    let v: @mutable [node_id] = @mutable ~[];
     let rslt =
         {constrs: res_map,
          num_constraints:

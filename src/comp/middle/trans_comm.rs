@@ -63,7 +63,7 @@ fn trans_chan(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 }
 
 fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
-               func: &@ast::expr, args: &(@ast::expr)[], id: ast::node_id) ->
+               func: &@ast::expr, args: &[@ast::expr], id: ast::node_id) ->
    result {
     let bcx = cx;
     // Make the task name
@@ -107,8 +107,8 @@ fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
     // Translate the arguments, remembering their types and where the values
     // ended up.
 
-    let arg_tys: ty::t[] = ~[];
-    let arg_vals: ValueRef[] = ~[];
+    let arg_tys: [ty::t] = ~[];
+    let arg_vals: [ValueRef] = ~[];
     for e: @ast::expr  in args {
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
         let arg = trans_expr(bcx, e);
@@ -168,7 +168,7 @@ fn mk_spawn_wrapper(cx: &@block_ctxt, func: &@ast::expr, args_ty: &ty::t) ->
     // 3u to skip the three implicit args
 
     let arg: ValueRef = llvm::LLVMGetParam(fcx.llfn, 3u);
-    let child_args: ValueRef[] =
+    let child_args: [ValueRef] =
         ~[llvm::LLVMGetParam(fcx.llfn, 0u), llvm::LLVMGetParam(fcx.llfn, 1u),
           llvm::LLVMGetParam(fcx.llfn, 2u)];
     // unpack the arguments

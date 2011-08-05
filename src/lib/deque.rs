@@ -26,10 +26,10 @@ fn create[@T]() -> t[T] {
       */
 
 
-    fn grow[@T](nelts: uint, lo: uint, elts: &(cell[T])[mutable ]) ->
-       (cell[T])[mutable ] {
+    fn grow[@T](nelts: uint, lo: uint, elts: &[mutable cell[T]]) ->
+       [mutable cell[T]] {
         assert (nelts == ivec::len(elts));
-        let rv = ~[mutable ];
+        let rv = ~[mutable];
 
         let i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);
@@ -42,13 +42,13 @@ fn create[@T]() -> t[T] {
 
         ret rv;
     }
-    fn get[@T](elts: &(cell[T])[mutable ], i: uint) -> T {
+    fn get[@T](elts: &[mutable cell[T]], i: uint) -> T {
         ret alt elts.(i) { option::some(t) { t } _ { fail } };
     }
     obj deque[@T](mutable nelts: uint,
                   mutable lo: uint,
                   mutable hi: uint,
-                  mutable elts: (cell[T])[mutable ]) {
+                  mutable elts: [mutable cell[T]]) {
         fn size() -> uint { ret nelts; }
         fn add_front(t: &T) {
             let oldlo: uint = lo;
@@ -101,7 +101,7 @@ fn create[@T]() -> t[T] {
             ret get[T](elts, idx);
         }
     }
-    let v: (cell[T])[mutable ] =
+    let v: [mutable cell[T]] =
         ivec::init_elt_mut(option::none, initial_capacity);
     ret deque[T](0u, 0u, 0u, v);
 }

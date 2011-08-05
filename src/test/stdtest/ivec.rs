@@ -19,7 +19,7 @@ fn add(x: &uint, y: &uint) -> uint { ret x + y; }
 
 #[test]
 fn test_reserve_and_on_heap() {
-    let v: int[] = ~[1, 2];
+    let v: [int] = ~[1, 2];
     assert (!ivec::on_heap(v));
     ivec::reserve(v, 8u);
     assert (ivec::on_heap(v));

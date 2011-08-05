@@ -30,7 +30,7 @@ export def_lookup;
 // testing membership, the list of referencing sites is what you want for most
 // other things.
 type freevar_set = hashset[ast::node_id];
-type freevar_info = {defs: freevar_set, refs: @ast::node_id[]};
+type freevar_info = {defs: freevar_set, refs: @[ast::node_id]};
 type freevar_map = hashmap[ast::node_id, freevar_info];
 
 // Searches through part of the AST for all references to locals or
@@ -40,12 +40,12 @@ type freevar_map = hashmap[ast::node_id, freevar_info];
 // in order to start the search.
 fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
                     walker: &fn(&visit::vt[()]) ,
-                    initial_decls: ast::node_id[]) -> freevar_info {
+                    initial_decls: [ast::node_id]) -> freevar_info {
     let decls = new_int_hash();
     for decl: ast::node_id  in initial_decls { set_add(decls, decl); }
     let refs = @mutable ~[];
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], sp: &span,
+    let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
                          i: &ast::fn_ident, nid: ast::node_id) {
         for a: ast::arg  in f.decl.inputs { set_add(decls, a.id); }
     };
@@ -107,7 +107,7 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
                      crate: &@ast::crate) -> freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], sp: &span,
+    let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
                          i: &ast::fn_ident, nid: ast::node_id) {
         let start_walk = lambda(v: &visit::vt[()]) {
             v.visit_fn(f, tps, sp, i, nid, (), v);
@@ -148,7 +148,7 @@ fn get_freevar_info(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
 fn get_freevar_defs(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_set {
     ret get_freevar_info(tcx, fid).defs;
 }
-fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> @ast::node_id[] {
+fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> @[ast::node_id] {
     ret get_freevar_info(tcx, fid).refs;
 }
 fn has_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> bool {

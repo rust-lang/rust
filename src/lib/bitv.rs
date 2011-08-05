@@ -24,7 +24,7 @@ export eq_vec;
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
 
-type t = @{storage: uint[mutable ], nbits: uint};
+type t = @{storage: [mutable uint], nbits: uint};
 
 
 // FIXME: this should be a constant once they work
@@ -150,7 +150,7 @@ fn to_vec(v: &t) -> vec[uint] {
     ret vec::init_fn[uint](sub, v.nbits);
 }
 
-fn to_ivec(v: &t) -> uint[] {
+fn to_ivec(v: &t) -> [uint] {
     let sub = bind init_to_vec(v, _);
     ret ivec::init_fn[uint](sub, v.nbits);
 }
@@ -178,7 +178,7 @@ fn eq_vec(v0: &t, v1: &vec[uint]) -> bool {
     ret true;
 }
 
-fn eq_ivec(v0: &t, v1: &uint[]) -> bool {
+fn eq_ivec(v0: &t, v1: &[uint]) -> bool {
     assert (v0.nbits == ivec::len[uint](v1));
     let len = v0.nbits;
     let i = 0u;

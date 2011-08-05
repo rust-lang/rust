@@ -16,11 +16,11 @@ fn test_rec() {
 }
 
 fn test_vec() {
-    let po: port[int[]] = port();
-    let ch: chan[int[]] = chan(po);
-    let v0: int[] = ~[0, 1, 2];
+    let po: port[[int]] = port();
+    let ch: chan[[int]] = chan(po);
+    let v0: [int] = ~[0, 1, 2];
     ch <| v0;
-    let v1: int[];
+    let v1: [int];
     po |> v1;
     assert (v1.(0) == 0);
     assert (v1.(1) == 1);

@@ -50,7 +50,7 @@ fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
     }
 }
 
-fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
+fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &[binding])
     -> {changed: bool, post: poststate} {
     let changed = false;
     let post = tritv_clone(pres);
@@ -162,7 +162,7 @@ fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
 }
 
 fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
-                            id: node_id, bs: &(@expr)[], cf: controlflow) ->
+                            id: node_id, bs: &[@expr], cf: controlflow) ->
    bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
     ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id, bs, cf)
@@ -170,7 +170,7 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
 }
 
 fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
-                             es: &(@expr)[], cf: controlflow) -> bool {
+                             es: &[@expr], cf: controlflow) -> bool {
     let rs = seq_states(fcx, pres, anon_bindings(es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */

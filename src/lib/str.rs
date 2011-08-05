@@ -65,7 +65,7 @@ native "rust" mod rustrt {
     fn str_vec(s: str) -> vec[u8];
     fn str_byte_len(s: str) -> uint;
     fn str_alloc(n_bytes: uint) -> str;
-    fn str_from_ivec(b: &u8[mutable? ]) -> str;
+    fn str_from_ivec(b: &[mutable? u8]) -> str;
     fn str_from_vec(b: vec[mutable? u8]) -> str;
     fn str_from_cstr(cstr: sbuf) -> str;
     fn str_from_buf(buf: sbuf, len: uint) -> str;
@@ -190,7 +190,7 @@ fn buf(s: &str) -> sbuf { ret rustrt::str_buf(s); }
 
 fn bytes(s: &str) -> vec[u8] { ret rustrt::str_vec(s); }
 
-fn bytes_ivec(s: str) -> u8[] {
+fn bytes_ivec(s: str) -> [u8] {
     let sbuffer = buf(s);
     let ptr = unsafe::reinterpret_cast(sbuffer);
     ret ivec::unsafe::from_buf(ptr, byte_len(s));
@@ -204,7 +204,7 @@ fn unsafe_from_bytes(v: vec[mutable? u8]) -> str {
     ret rustrt::str_from_vec(v);
 }
 
-fn unsafe_from_bytes_ivec(v: &u8[mutable? ]) -> str {
+fn unsafe_from_bytes_ivec(v: &[mutable? u8]) -> str {
     ret rustrt::str_from_ivec(v);
 }
 
@@ -463,8 +463,8 @@ fn split(s: str, sep: u8) -> vec[str] {
     ret v;
 }
 
-fn split_ivec(s: str, sep: u8) -> str[] {
-    let v: str[] = ~[];
+fn split_ivec(s: str, sep: u8) -> [str] {
+    let v: [str] = ~[];
     let accum: str = "";
     let ends_with_sep: bool = false;
     for c: u8  in s {
@@ -494,7 +494,7 @@ fn connect(v: vec[str], sep: str) -> str {
     ret s;
 }
 
-fn connect_ivec(v: &str[], sep: str) -> str {
+fn connect_ivec(v: &[str], sep: str) -> str {
     let s: str = "";
     let first: bool = true;
     for ss: str  in v {

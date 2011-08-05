@@ -12,7 +12,7 @@ import std::option::some;
 
 type interner[T] =
     {map: hashmap[T, uint],
-     mutable vect: T[],
+     mutable vect: [T],
      hasher: hashfn[T],
      eqer: eqfn[T]};
 

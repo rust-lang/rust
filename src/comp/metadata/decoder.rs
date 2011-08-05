@@ -35,8 +35,8 @@ export external_resolver;
 // build.
 type external_resolver = fn(&ast::def_id) -> ast::def_id ;
 
-fn lookup_hash(d: &ebmlivec::doc, eq_fn: fn(&u8[]) -> bool , hash: uint) ->
-   ebmlivec::doc[] {
+fn lookup_hash(d: &ebmlivec::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
+   [ebmlivec::doc] {
     let index = ebmlivec::get_doc(d, tag_index);
     let table = ebmlivec::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
@@ -44,7 +44,7 @@ fn lookup_hash(d: &ebmlivec::doc, eq_fn: fn(&u8[]) -> bool , hash: uint) ->
     let bucket = ebmlivec::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
-    let result: ebmlivec::doc[] = ~[];
+    let result: [ebmlivec::doc] = ~[];
     let belt = tag_index_buckets_bucket_elt;
     for each elt: ebmlivec::doc  in ebmlivec::tagged_docs(bucket, belt) {
         let pos = ebmlivec::be_uint_from_bytes(elt.data, elt.start, 4u);
@@ -57,7 +57,7 @@ fn lookup_hash(d: &ebmlivec::doc, eq_fn: fn(&u8[]) -> bool , hash: uint) ->
 
 fn maybe_find_item(item_id: int, items: &ebmlivec::doc) ->
    option::t[ebmlivec::doc] {
-    fn eq_item(bytes: &u8[], item_id: int) -> bool {
+    fn eq_item(bytes: &[u8], item_id: int) -> bool {
         ret ebmlivec::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
     let eqer = bind eq_item(_, item_id);
@@ -73,7 +73,7 @@ fn find_item(item_id: int, items: &ebmlivec::doc) -> ebmlivec::doc {
 
 // Looks up an item in the given metadata and returns an ebmlivec doc pointing
 // to the item data.
-fn lookup_item(item_id: int, data: &@u8[]) -> ebmlivec::doc {
+fn lookup_item(item_id: int, data: &@[u8]) -> ebmlivec::doc {
     let items = ebmlivec::get_doc(ebmlivec::new_doc(data), tag_items);
     ret find_item(item_id, items);
 }
@@ -114,11 +114,11 @@ fn item_type(item: &ebmlivec::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
                       def_parser, tcx);
 }
 
-fn item_ty_param_kinds(item: &ebmlivec::doc) -> ast::kind[] {
-    let ks: ast::kind[] = ~[];
+fn item_ty_param_kinds(item: &ebmlivec::doc) -> [ast::kind] {
+    let ks: [ast::kind] = ~[];
     let tp = tag_items_data_item_ty_param_kinds;
     for each p: ebmlivec::doc in ebmlivec::tagged_docs(item, tp) {
-        let dat : u8[] = ebmlivec::doc_data(p);
+        let dat : [u8] = ebmlivec::doc_data(p);
         let vi = ebmlivec::vint_at(dat, 0u);
         let i = 0u;
         while i < vi.val {
@@ -135,8 +135,8 @@ fn item_ty_param_kinds(item: &ebmlivec::doc) -> ast::kind[] {
 }
 
 fn tag_variant_ids(item: &ebmlivec::doc, this_cnum: ast::crate_num) ->
-   ast::def_id[] {
-    let ids: ast::def_id[] = ~[];
+   [ast::def_id] {
+    let ids: [ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
     for each p: ebmlivec::doc  in ebmlivec::tagged_docs(item, v) {
         let ext = parse_def_id(ebmlivec::doc_data(p));
@@ -147,15 +147,15 @@ fn tag_variant_ids(item: &ebmlivec::doc, this_cnum: ast::crate_num) ->
 
 // Given a path and serialized crate metadata, returns the ID of the
 // definition the path refers to.
-fn resolve_path(path: &ast::ident[], data: @u8[]) -> ast::def_id[] {
-    fn eq_item(data: &u8[], s: str) -> bool {
+fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
+    fn eq_item(data: &[u8], s: str) -> bool {
         ret str::eq(str::unsafe_from_bytes_ivec(data), s);
     }
     let s = str::connect_ivec(path, "::");
     let md = ebmlivec::new_doc(data);
     let paths = ebmlivec::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
-    let result: ast::def_id[] = ~[];
+    let result: [ast::def_id] = ~[];
     for doc: ebmlivec::doc  in lookup_hash(paths, eqer, hash_path(s)) {
         let did_doc = ebmlivec::get_doc(doc, tag_def_id);
         result += ~[parse_def_id(ebmlivec::doc_data(did_doc))];
@@ -164,14 +164,14 @@ fn resolve_path(path: &ast::ident[], data: @u8[]) -> ast::def_id[] {
 }
 
 // Crate metadata queries
-fn lookup_defs(data: &@u8[], cnum: ast::crate_num, path: &ast::ident[]) ->
-   ast::def[] {
+fn lookup_defs(data: &@[u8], cnum: ast::crate_num, path: &[ast::ident]) ->
+   [ast::def] {
     ret ivec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
 
 // FIXME doesn't yet handle re-exported externals
-fn lookup_def(cnum: ast::crate_num, data: @u8[], did_: &ast::def_id) ->
+fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: &ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);
     let fam_ch = item_family(item);
@@ -197,13 +197,13 @@ fn lookup_def(cnum: ast::crate_num, data: @u8[], did_: &ast::def_id) ->
     ret def;
 }
 
-fn get_type(data: @u8[], def: ast::def_id, tcx: &ty::ctxt,
+fn get_type(data: @[u8], def: ast::def_id, tcx: &ty::ctxt,
             extres: &external_resolver) -> ty::ty_param_kinds_and_ty {
     let this_cnum = def.crate;
     let node_id = def.node;
     let item = lookup_item(node_id, data);
     let t = item_type(item, this_cnum, tcx, extres);
-    let tp_kinds : ast::kind[];
+    let tp_kinds : [ast::kind];
     let fam_ch = item_family(item);
     let has_ty_params = family_has_type_params(fam_ch);
     if has_ty_params {
@@ -212,31 +212,31 @@ fn get_type(data: @u8[], def: ast::def_id, tcx: &ty::ctxt,
     ret {kinds: tp_kinds, ty: t};
 }
 
-fn get_type_param_count(data: @u8[], id: ast::node_id) -> uint {
+fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
     ret ivec::len(get_type_param_kinds(data, id));
 }
 
-fn get_type_param_kinds(data: @u8[], id: ast::node_id) -> ast::kind[] {
+fn get_type_param_kinds(data: @[u8], id: ast::node_id) -> [ast::kind] {
     ret item_ty_param_kinds(lookup_item(id, data));
 }
 
-fn get_symbol(data: @u8[], id: ast::node_id) -> str {
+fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
-fn get_tag_variants(data: &@u8[], def: ast::def_id, tcx: &ty::ctxt,
-                    extres: &external_resolver) -> ty::variant_info[] {
+fn get_tag_variants(data: &@[u8], def: ast::def_id, tcx: &ty::ctxt,
+                    extres: &external_resolver) -> [ty::variant_info] {
     let external_crate_id = def.crate;
     let data =
         cstore::get_crate_data(tcx.sess.get_cstore(), external_crate_id).data;
     let items = ebmlivec::get_doc(ebmlivec::new_doc(data), tag_items);
     let item = find_item(def.node, items);
-    let infos: ty::variant_info[] = ~[];
+    let infos: [ty::variant_info] = ~[];
     let variant_ids = tag_variant_ids(item, external_crate_id);
     for did: ast::def_id  in variant_ids {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(item, external_crate_id, tcx, extres);
-        let arg_tys: ty::t[] = ~[];
+        let arg_tys: [ty::t] = ~[];
         alt ty::struct(tcx, ctor_ty) {
           ty::ty_fn(_, args, _, _, _) {
             for a: ty::arg  in args { arg_tys += ~[a.ty]; }
@@ -294,8 +294,8 @@ fn item_family_to_str(fam: u8) -> str {
     }
 }
 
-fn get_meta_items(md: &ebmlivec::doc) -> (@ast::meta_item)[] {
-    let items: (@ast::meta_item)[] = ~[];
+fn get_meta_items(md: &ebmlivec::doc) -> [@ast::meta_item] {
+    let items: [@ast::meta_item] = ~[];
     for each meta_item_doc: ebmlivec::doc  in
              ebmlivec::tagged_docs(md, tag_meta_item_word) {
         let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
@@ -322,8 +322,8 @@ fn get_meta_items(md: &ebmlivec::doc) -> (@ast::meta_item)[] {
     ret items;
 }
 
-fn get_attributes(md: &ebmlivec::doc) -> ast::attribute[] {
-    let attrs: ast::attribute[] = ~[];
+fn get_attributes(md: &ebmlivec::doc) -> [ast::attribute] {
+    let attrs: [ast::attribute] = ~[];
     alt ebmlivec::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
         for each attr_doc: ebmlivec::doc  in
@@ -359,14 +359,14 @@ fn list_crate_attributes(md: &ebmlivec::doc, out: ioivec::writer) {
     out.write_str("\n\n");
 }
 
-fn get_crate_attributes(data: @u8[]) -> ast::attribute[] {
+fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
     ret get_attributes(ebmlivec::new_doc(data));
 }
 
 type crate_dep = {cnum: ast::crate_num, ident: str};
 
-fn get_crate_deps(data: @u8[]) -> crate_dep[] {
-    let deps: crate_dep[] = ~[];
+fn get_crate_deps(data: @[u8]) -> [crate_dep] {
+    let deps: [crate_dep] = ~[];
     let cratedoc = ebmlivec::new_doc(data);
     let depsdoc = ebmlivec::get_doc(cratedoc, tag_crate_deps);
     let crate_num = 1;
@@ -379,7 +379,7 @@ fn get_crate_deps(data: @u8[]) -> crate_dep[] {
     ret deps;
 }
 
-fn list_crate_deps(data: @u8[], out: ioivec::writer) {
+fn list_crate_deps(data: @[u8], out: ioivec::writer) {
     out.write_str("=External Dependencies=\n");
 
     for dep: crate_dep  in get_crate_deps(data) {
@@ -389,7 +389,7 @@ fn list_crate_deps(data: @u8[], out: ioivec::writer) {
     out.write_str("\n");
 }
 
-fn list_crate_items(bytes: &@u8[], md: &ebmlivec::doc, out: ioivec::writer) {
+fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: ioivec::writer) {
     out.write_str("=Items=\n");
     let paths = ebmlivec::get_doc(md, tag_paths);
     let items = ebmlivec::get_doc(md, tag_items);
@@ -410,7 +410,7 @@ fn list_crate_items(bytes: &@u8[], md: &ebmlivec::doc, out: ioivec::writer) {
     out.write_str("\n");
 }
 
-fn list_crate_metadata(bytes: &@u8[], out: ioivec::writer) {
+fn list_crate_metadata(bytes: &@[u8], out: ioivec::writer) {
     let md = ebmlivec::new_doc(bytes);
     list_crate_attributes(md, out);
     list_crate_deps(bytes, out);

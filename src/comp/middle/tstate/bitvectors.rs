@@ -76,7 +76,7 @@ fn seq_tritv(p: &postcond, q: &postcond) {
     }
 }
 
-fn seq_postconds(fcx: &fn_ctxt, ps: &postcond[]) -> postcond {
+fn seq_postconds(fcx: &fn_ctxt, ps: &[postcond]) -> postcond {
     let sz = ivec::len(ps);
     if sz >= 1u {
         let prev = tritv_clone(ps.(0));
@@ -89,11 +89,11 @@ fn seq_postconds(fcx: &fn_ctxt, ps: &postcond[]) -> postcond {
 // return the precondition for evaluating each expr in order.
 // So, if e0's post is {x} and e1's pre is {x, y, z}, the entire
 // precondition shouldn't include x.
-fn seq_preconds(fcx: &fn_ctxt, pps: &pre_and_post[]) -> precond {
+fn seq_preconds(fcx: &fn_ctxt, pps: &[pre_and_post]) -> precond {
     let sz: uint = ivec::len(pps);
     let num_vars: uint = num_constraints(fcx.enclosing);
 
-    fn seq_preconds_go(fcx: &fn_ctxt, pps: &pre_and_post[],
+    fn seq_preconds_go(fcx: &fn_ctxt, pps: &[pre_and_post],
                        first: &pre_and_post) -> precond {
         let sz: uint = ivec::len(pps);
         if sz >= 1u {

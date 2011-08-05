@@ -91,7 +91,7 @@ fn native_item_in_cfg(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: &ast::crate_cfg, attrs: &ast::attribute[]) -> bool {
+fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
 
     // The "cfg" attributes on the item
     let item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
@@ -103,9 +103,9 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &ast::attribute[]) -> bool {
     // which the item is valid
     let item_cfg_metas =
         {
-            fn extract_metas(inner_items: &(@ast::meta_item)[],
+            fn extract_metas(inner_items: &[@ast::meta_item],
                              cfg_item: &@ast::meta_item) ->
-               (@ast::meta_item)[] {
+               [@ast::meta_item] {
                 alt cfg_item.node {
                   ast::meta_list(name, items) {
                     assert (name == "cfg");

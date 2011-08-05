@@ -1,3 +1,3 @@
-fn f(a: int[]) { }
+fn f(a: [int]) { }
 fn main() { f(~[1, 2, 3, 4, 5]); }
 
