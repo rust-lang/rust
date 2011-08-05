@@ -18,13 +18,30 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+include ../../config.mk
+CFLAGS=-m32
+LDFLAGS=-m32
+CC=gcc 
+
+S:=$(shell cd ../../; cd $(CFG_SRC_DIR)src/rt/libuv; pwd)
+
+ifdef VERBOSE
+  Q :=
+  EE =
+else
+  Q := @
+  EE = echo $(1)
+endif
+
+VPATH:=$(S)
+
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 ifdef MSVC
 uname_S := MINGW
 endif
 
-CPPFLAGS += -Iinclude
+CPPFLAGS += -I$(S)/include
 
 CARES_OBJS =
 CARES_OBJS += src/ares/ares__close_sockets.o
@@ -77,37 +94,8 @@ else
 include config-unix.mk
 endif
 
-TESTS=test/echo-server.c test/test-*.c
-BENCHMARKS=test/echo-server.c test/dns-server.c test/benchmark-*.c
-
-all: uv.a test/run-tests test/run-benchmarks
+all: uv.a
 
 $(CARES_OBJS): %.o: %.c
-	$(CC) -o $*.o -c $(CFLAGS) $(CPPFLAGS) $< -DHAVE_CONFIG_H
-
-test/run-tests$(E): test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) uv.a
-	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
-		test/runner.c $(RUNNER_SRC) $(TESTS) uv.a $(RUNNER_LIBS)
-
-test/run-benchmarks$(E): test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) uv.a
-	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
-		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) uv.a $(RUNNER_LIBS)
-
-test/echo.o: test/echo.c test/echo.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c test/echo.c -o test/echo.o
-
-
-.PHONY: clean clean-platform distclean distclean-platform test benchmark
-
-
-test: test/run-tests$(E)
-	test/run-tests
-
-bench: test/run-benchmarks$(E)
-	test/run-benchmarks
-
-clean: clean-platform
-	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
-
-distclean: distclean-platform
-	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
+	@$(call EE, compile: $@)
+	$(Q)$(CC) -o $*.o -c $(CFLAGS) $(CPPFLAGS) $< -DHAVE_CONFIG_H

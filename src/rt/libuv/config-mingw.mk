@@ -24,24 +24,22 @@ CC ?= $(PREFIX)gcc
 AR ?= $(PREFIX)ar
 E=.exe
 
-CFLAGS+=$(CPPFLAGS) -g --std=gnu89 -D_WIN32_WINNT=0x0501 -Isrc/ares/config_win32
+CFLAGS+=$(CPPFLAGS) -g --std=gnu89 -D_WIN32_WINNT=0x0501 -I$(S)src/ares/config_win32
 LINKFLAGS=-lm
 
 CARES_OBJS += src/ares/windows_port.o
 
-RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
-RUNNER_LINKFLAGS=$(LINKFLAGS)
-RUNNER_LIBS=-lws2_32
-RUNNER_SRC=test/runner-win.c
-
 uv.a: src/uv-win.o src/uv-common.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
-	$(AR) rcs uv.a src/uv-win.o src/uv-common.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
+	@$(call EE, ar: $@)
+	$(Q)$(AR) rcs uv.a $^
 
 src/uv-win.o: src/uv-win.c include/uv.h include/uv-win.h
-	$(CC) $(CFLAGS) -c src/uv-win.c -o src/uv-win.o
+	@$(call EE, compile: $@)
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 src/uv-common.o: src/uv-common.c include/uv.h include/uv-win.h
-	$(CC) $(CFLAGS) -c src/uv-common.c -o src/uv-common.o
+	@$(call EE, compile: $@)
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 EIO_CPPFLAGS += $(CPPFLAGS)
 EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
@@ -49,15 +47,10 @@ EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
 src/eio/eio.o: src/eio/eio.c
-	$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c src/eio/eio.c -o src/eio/eio.o
+	@$(call EE, compile: $@)
+	$(Q)$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/uv-eio.o: src/uv-eio.c
-	$(CC) $(CPPFLAGS) -Isrc/eio/ $(CFLAGS) -c src/uv-eio.c -o src/uv-eio.o
+	@$(call EE, compile: $@)
+	$(Q)$(CC) $(CPPFLAGS) -I$(S)src/eio/ $(CFLAGS) -c $< -o $@
 
-clean-platform:
-	-rm -f src/ares/*.o
-	-rm -f src/eio/*.o
-
-distclean-platform:
-	-rm -f src/ares/*.o
-	-rm -f src/eio/*.o

@@ -68,7 +68,7 @@ RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
                 -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv/include
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
-RUNTIME_LIBS := $(S)src/rt/libuv/uv.a
+RUNTIME_LIBS := rt/libuv/uv.a
 
 rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
@@ -101,10 +101,12 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF) $(RU
 # FIXME: For some reason libuv's makefiles can't figure out the correct definition
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
 # have to list environment variables first on windows... mysterious
-$(S)src/rt/libuv/uv.a: $(S)src/rt/libuv/LIBUV_REVISION
-	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=gcc $(MAKE) -C $(S)src/rt/libuv
-	$(Q)mkdir -p rt/libuv
-	$(Q)cp $(S)src/rt/libuv/uv.a rt/libuv/uv.a
+rt/libuv/uv.a: $(wildcard \
+                     $(S)src/rt/libuv/* \
+                     $(S)src/rt/libuv/*/* \
+                     $(S)src/rt/libuv/*/*/* \
+                     $(S)src/rt/libuv/*/*/*/*)
+	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=gcc $(MAKE) -C rt/libuv
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 

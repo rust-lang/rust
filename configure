@@ -179,6 +179,7 @@ step_msg "making directories"
 for i in \
     doc \
     rt rt/isaac rt/bigint rt/sync rt/test rt/arch/i386 \
+    rt/libuv rt/libuv/src/ares rt/libuv/src/eio rt/libuv/src/ev \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
     stage0/lib stage1/lib stage2/lib stage3/lib \
@@ -314,5 +315,9 @@ perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
 rm -f config.mk.bak
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
+
+copy ${CFG_SRC_DIR}src/rt/libuv/Makefile rt/libuv/Makefile
+copy ${CFG_SRC_DIR}src/rt/libuv/config-unix.mk rt/libuv/config-unix.mk
+copy ${CFG_SRC_DIR}src/rt/libuv/config-mingw.mk rt/libuv/config-mingw.mk
 
 step_msg "complete"
