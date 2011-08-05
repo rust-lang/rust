@@ -135,8 +135,8 @@ ifdef CFG_WINDOWSY
 endif
 
 
-ifdef CFG_CLANG
-  CFG_INFO := $(info cfg: using clang)
+CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
+ifeq ($(CFG_C_COMPILER),clang)
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_CFLAGS) \
@@ -146,8 +146,7 @@ ifdef CFG_CLANG
   CFG_LINK_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
     $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
 else
-ifdef CFG_GCC
-  CFG_INFO := $(info cfg: using gcc)
+ifeq ($(CFG_C_COMPILER),gcc)
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_CFLAGS) \

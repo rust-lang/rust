@@ -287,12 +287,17 @@ then
     case $CFG_CLANG_VERSION in
         (3.0svn | 3.0)
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+        CFG_C_COMPILER="clang"
         ;;
         (*)
-        err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+        msg "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn; disabling"
+        CFG_C_COMPILER="gcc"
         ;;
     esac
+else
+    CFG_C_COMPILER="gcc"
 fi
+putvar CFG_C_COMPILER
 
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_INCDIR
