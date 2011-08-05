@@ -30,7 +30,6 @@ resource chan_ptr(ch: *rustrt::rust_chan) {
     rustrt::drop_chan(ch);
     rustrt::drop_chan(ch); // FIXME: We shouldn't have to do this
                            // twice.
-    rustrt::del_chan(ch);
 }
 
 resource port_ptr(po: *rustrt::rust_port) {
