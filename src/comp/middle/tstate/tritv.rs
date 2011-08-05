@@ -16,6 +16,7 @@ export tritv_union;
 export tritv_intersect;
 export tritv_copy;
 export tritv_clear;
+export tritv_kill;
 export tritv_doesntcare;
 export to_str;
 
@@ -216,6 +217,11 @@ fn tritv_set_all(v: &t) {
 fn tritv_clear(v: &t) {
     let i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, dont_care); i += 1u; }
+}
+
+fn tritv_kill(v: &t) {
+    let i: uint = 0u;
+    while i < v.nbits { tritv_set(i, v, tfalse); i += 1u; }
 }
 
 fn tritv_clone(v: &t) -> t {

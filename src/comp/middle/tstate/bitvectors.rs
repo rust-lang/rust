@@ -183,6 +183,11 @@ fn kill_prestate(fcx: &fn_ctxt, id: node_id, c: &tsconstr) -> bool {
                           node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
+fn kill_all_prestate(fcx: &fn_ctxt, id: node_id) {
+    tritv::tritv_kill(node_id_to_ts_ann(fcx.ccx, id).states.prestate);
+}
+
+
 fn kill_poststate(fcx: &fn_ctxt, id: node_id, c: &tsconstr) -> bool {
     log "kill_poststate";
     ret clear_in_poststate(bit_num(fcx, c),
