@@ -594,6 +594,7 @@ fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
     -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 /*
+    log_err ("[" + fcx.name + "]");
     log_err "*At beginning: stmt = ";
     log_stmt_err(*s);
     log_err "*prestate = ";
@@ -617,7 +618,8 @@ fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
 
             let changed = (set_poststate(stmt_ann, c_and_p.post)
                            | c_and_p.changed);
-            /*
+
+/*
                 log_err "Summary: stmt = ";
                 log_stmt_err(*s);
                 log_err "prestate = ";
@@ -638,11 +640,12 @@ fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
         }
       }
       stmt_expr(ex, _) {
-        ret find_pre_post_state_expr(fcx, pres, ex) |
+        let changed = find_pre_post_state_expr(fcx, pres, ex) |
                 set_prestate(stmt_ann, expr_prestate(fcx.ccx, ex)) |
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
-        /*
-        log_err "Finally:";
+
+/*
+       log_err "Finally:";
           log_stmt_err(*s);
           log_err("prestate = ");
           //              log_err(bitv::to_str(stmt_ann.states.prestate));
@@ -651,8 +654,9 @@ fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
           //   log_err(bitv::to_str(stmt_ann.states.poststate));
           log_tritv_err(fcx, stmt_ann.states.poststate);
           log_err("changed =");
-          log_err(changed);
-        */
+*/
+
+          ret changed;
       }
       _ { ret false; }
     }
@@ -707,9 +711,9 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
 fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
 
     let num_constrs = num_constraints(fcx.enclosing);
-    // make sure the return and diverge bits start out False
-    kill_prestate(fcx, f.body.node.id, fcx.enclosing.i_return);
-    kill_prestate(fcx, f.body.node.id, fcx.enclosing.i_diverge);
+    // All constraints are considered false until proven otherwise.
+    // This ensures that intersect works correctly.
+    kill_all_prestate(fcx, f.body.node.id);
 
     // Instantiate any constraints on the arguments so we can use them
     let block_pre = block_prestate(fcx.ccx, f.body);
