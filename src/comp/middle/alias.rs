@@ -57,7 +57,29 @@ fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
     for arg_: ast::arg  in f.decl.inputs {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
     }
-    v.visit_block(f.body, @~[], v);
+    let scope = alt (f.proto) {
+      // Blocks need to obey any restrictions from the enclosing scope.
+      ast::proto_block. { sc }
+      // Closures need to prohibit writing to any of the upvars.
+      // This doesn't seem like a particularly clean way to do this.
+      ast::proto_closure. {
+        let dnums = ~[];
+        for each nid in freevars::get_freevar_defs(cx.tcx, id).keys() {
+            dnums += ~[nid];
+        }
+        @~[@{root_vars: ~[],
+             // I'm not sure if there is anything sensical to put here
+             block_defnum: 0,
+             bindings: dnums,
+             tys: ~[],
+             depends_on: ~[],
+             mutable ok: valid}]
+      }
+      // Non capturing functions start out fresh.
+      _ { @~[] }
+    };
+
+    v.visit_block(f.body, scope, v);
 }
 
 fn visit_item(cx: &@ctx, i: &@ast::item, sc: &scope, v: &vt[scope]) {

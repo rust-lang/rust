@@ -18,7 +18,7 @@ export freevar_set;
 export freevar_map;
 export get_freevar_info;
 export get_freevars;
-export get_freevar_refs;
+export get_freevar_defs;
 export has_freevars;
 export is_freevar_of;
 export def_lookup;
@@ -145,17 +145,17 @@ fn get_freevar_info(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
       some(d) { ret d; }
     }
 }
-fn get_freevar_refs(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_set {
+fn get_freevar_defs(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_set {
     ret get_freevar_info(tcx, fid).defs;
 }
 fn get_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> @ast::node_id[] {
     ret get_freevar_info(tcx, fid).refs;
 }
 fn has_freevars(tcx: &ty::ctxt, fid: ast::node_id) -> bool {
-    ret get_freevar_refs(tcx, fid).size() != 0u;
+    ret get_freevar_defs(tcx, fid).size() != 0u;
 }
 fn is_freevar_of(tcx: &ty::ctxt, def: ast::node_id, f: ast::node_id) -> bool {
-    ret get_freevar_refs(tcx, f).contains_key(def);
+    ret get_freevar_defs(tcx, f).contains_key(def);
 }
 fn def_lookup(tcx: &ty::ctxt, f: ast::node_id, id: ast::node_id) ->
    option::t[ast::def] {
