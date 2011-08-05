@@ -1167,17 +1167,11 @@ mod writeback {
     fn visit_item(item: &@ast::item, wbcx: &wb_ctxt, v: &wb_vt) {
         // Ignore items
     }
-    fn visit_fn(f: &ast::_fn, tps: &ast::ty_param[],
-                    sp: &span, i: &ast::fn_ident, d: ast::node_id,
-                    wbcx: &wb_ctxt, v: &wb_vt) {
-        // Ignore fns
-    }
 
     fn resolve_type_vars_in_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
         let wbcx = {fcx: fcx, mutable success: true};
         let visit = visit::mk_vt
             (@{visit_item: visit_item,
-               visit_fn: visit_fn,
                visit_stmt: visit_stmt,
                visit_expr: visit_expr,
                visit_block: visit_block,
@@ -2647,7 +2641,6 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     check_block(fcx, body);
     alt decl.purity {
       ast::pure_fn. {
-
         // This just checks that the declared type is bool, and trusts
         // that that's the actual return type.
         if !ty::type_is_bool(ccx.tcx, fcx.ret_ty) {
@@ -2669,7 +2662,13 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
         }
     }
 
-    writeback::resolve_type_vars_in_block(fcx, body);
+    // If we don't have any enclosing function scope, it is time to
+    // force any remaining type vars to be resolved.
+    // If we have an enclosing function scope, our type variables will be
+    // resolved when the enclosing scope finishes up.
+    if (option::is_none(old_fcx)) {
+        writeback::resolve_type_vars_in_block(fcx, body);
+    }
 }
 
 fn check_method(ccx: &@crate_ctxt, method: &@ast::method) {
