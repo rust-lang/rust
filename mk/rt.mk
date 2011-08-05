@@ -106,7 +106,7 @@ rt/libuv/uv.a: $(wildcard \
                      $(S)src/rt/libuv/*/* \
                      $(S)src/rt/libuv/*/*/* \
                      $(S)src/rt/libuv/*/*/*/*)
-	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=gcc $(MAKE) -C rt/libuv
+	$(Q)CFLAGS=\"-m32\" LDFLAGS=\"-m32\" CC=$(CC) $(MAKE) -C rt/libuv
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
