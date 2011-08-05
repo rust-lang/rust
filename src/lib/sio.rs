@@ -28,7 +28,7 @@ fn connect_to(ctx: ctx, ip: str, portnum: int) -> client {
     ret make_socket(ctx, p);
 }
 
-fn read(c: client) -> u8[] {
+fn read(c: client) -> [u8] {
     let evt: aio::socket_event;
     c.evt |> evt;
     alt evt {
@@ -62,7 +62,7 @@ fn accept_from(server: server) -> client {
     }
 }
 
-fn write_data(c: client, data: u8[]) -> bool {
+fn write_data(c: client, data: [u8]) -> bool {
     let p: port[bool] = port();
     c.ctx <| aio::write(c.client, data, chan(p));
     let success: bool;

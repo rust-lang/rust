@@ -48,7 +48,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &vec[str], tests: &test_desc[]) {
+fn test_main(args: &vec[str], tests: &[test_desc]) {
     let ivec_args =
         { let iargs = ~[]; for arg: str  in args { iargs += ~[arg] } iargs };
     check (ivec::is_not_empty(ivec_args));
@@ -65,7 +65,7 @@ type test_opts = {filter: option::t[str], run_ignored: bool};
 type opt_res = either::t[test_opts, str];
 
 // Parses command line arguments into test options
-fn parse_opts(args: &str[]) : ivec::is_not_empty(args) -> opt_res {
+fn parse_opts(args: &[str]) : ivec::is_not_empty(args) -> opt_res {
 
     // FIXME (#649): Shouldn't have to check here
     check (ivec::is_not_empty(args));
@@ -98,11 +98,11 @@ tag test_result { tr_ok; tr_failed; tr_ignored; }
 type test_to_task = fn(&fn()) -> task ;
 
 // A simple console test runner
-fn run_tests_console(opts: &test_opts, tests: &test_desc[]) -> bool {
+fn run_tests_console(opts: &test_opts, tests: &[test_desc]) -> bool {
     run_tests_console_(opts, tests, default_test_to_task)
 }
 
-fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
+fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
                       to_task: &test_to_task) -> bool {
 
     type test_state = @{
@@ -112,7 +112,7 @@ fn run_tests_console_(opts: &test_opts, tests: &test_desc[],
         mutable passed: uint,
         mutable failed: uint,
         mutable ignored: uint,
-        mutable failures: test_desc[]
+        mutable failures: [test_desc]
     };
 
     fn callback(event: testevent, st: test_state) {
@@ -210,12 +210,12 @@ fn use_color() -> bool {
 }
 
 tag testevent {
-    te_filtered(test_desc[]);
+    te_filtered([test_desc]);
     te_wait(test_desc);
     te_result(test_desc, test_result);
 }
 
-fn run_tests(opts: &test_opts, tests: &test_desc[],
+fn run_tests(opts: &test_opts, tests: &[test_desc],
              to_task: &test_to_task, callback: fn(testevent)) {
 
     let filtered_tests = filter_tests(opts, tests);
@@ -249,7 +249,7 @@ fn run_tests(opts: &test_opts, tests: &test_desc[],
 
 fn get_concurrency() -> uint { rustrt::sched_threads() }
 
-fn filter_tests(opts: &test_opts, tests: &test_desc[]) -> test_desc[] {
+fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
     let filtered = tests;
 
     // Remove tests that don't match the test filter

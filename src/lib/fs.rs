@@ -44,10 +44,10 @@ fn connect(pre: path, post: path) -> path {
 
 fn file_is_dir(p: path) -> bool { ret rustrt::rust_file_is_dir(p) != 0; }
 
-fn list_dir(p: path) -> str[] {
+fn list_dir(p: path) -> [str] {
     let pl = str::byte_len(p);
     if pl == 0u || p.(pl - 1u) as char != os_fs::path_sep { p += path_sep(); }
-    let full_paths: str[] = ~[];
+    let full_paths: [str] = ~[];
     for filename: str  in os_fs::list_dir(p) {
         if !str::eq(filename, ".") {
             if !str::eq(filename, "..") { full_paths += ~[p + filename]; }
