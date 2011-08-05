@@ -1,6 +1,3 @@
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
 use std;
 
 fn main() {
@@ -17,18 +14,10 @@ fn main() {
         with my_a
     };
 
-    // These should all be 2.
-    log_err my_a.foo();
-    log_err my_a.bar();
-    log_err my_b.foo();
-
-    // This works fine.  It sends us to foo on my_b, which forwards to
-    // foo on my_a.
-    log_err my_b.baz();
-
-    // Currently segfaults.  It forwards us to bar on my_a, which
-    // backwards us to foo on my_b, which forwards us to foo on my_a
-    // -- or, at least, that's how it should work.
-    log_err my_b.bar();
+    assert my_a.foo() == 2;
+    assert my_a.bar() == 2;
+    assert my_b.foo() == 2;
+    assert my_b.baz() == 2;
+    assert my_b.bar() == 2;
 
 }

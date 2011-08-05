@@ -6464,6 +6464,44 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
     log_fn_time(cx.ccx, str::connect_ivec(cx.path, "::"), start, end);
 }
 
+// Update a self-stack structure ([[wrapper_self_pair], self_pair*]) to
+// [[backwarding_vtbl*, inner_obj_body*], outer_obj*].
+//
+// We do this when we're receiving the outer object in a forwarding function
+// via the llenv argument, and we want the forwarding function to call a
+// method on a "self" that's inner-obj-shaped, but we also want to hold onto
+// the outer obj for potential use later by backwarding functions.
+fn populate_self_stack(bcx: @block_ctxt,
+                       self_stack: ValueRef, outer_obj: ValueRef,
+                       backwarding_vtbl: ValueRef, inner_obj_body: ValueRef)
+    -> ValueRef {
+
+    // Drop the outer obj into the second slot.
+    let self_pair_ptr = bcx.build.GEP(self_stack,
+                            ~[C_int(0),
+                              C_int(1)]);
+    bcx.build.Store(outer_obj, self_pair_ptr);
+
+    // Drop in the backwarding vtbl.
+    let wrapper_pair = bcx.build.GEP(self_stack,
+                                     ~[C_int(0),
+                                       C_int(0)]);
+    let wrapper_vtbl_ptr = bcx.build.GEP(wrapper_pair,
+                                         ~[C_int(0),
+                                           C_int(0)]);
+    let backwarding_vtbl_cast =
+        bcx.build.PointerCast(backwarding_vtbl, T_ptr(T_empty_struct()));
+    bcx.build.Store(backwarding_vtbl_cast, wrapper_vtbl_ptr);
+
+    // Drop in the inner obj body.
+    let wrapper_body_ptr = bcx.build.GEP(wrapper_pair,
+                                         ~[C_int(0),
+                                           C_int(1)]);
+    bcx.build.Store(inner_obj_body, wrapper_body_ptr);
+
+    ret self_stack;
+}
+
 // process_bkwding_mthd: Create the backwarding function that appears in a
 // backwarding vtable slot.
 //
@@ -6505,8 +6543,24 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     let lltop = bcx.llbb;
 
     // The self-object will arrive in the backwarding function via the llenv
-    // argument.
-    let llself_obj_ptr = fcx.llenv;
+    // argument, but we need to jump past the first item in the self-stack to
+    // get to the one we really want.
+
+    // Cast to self-stack's type.
+    let llenv = bcx.build.PointerCast(
+        fcx.llenv,
+        T_ptr(T_struct(~[cx.ccx.rust_object_type,
+                         T_ptr(cx.ccx.rust_object_type)])));
+
+    let llself_obj_ptr = bcx.build.GEP(llenv,
+                                       ~[C_int(0),
+                                         C_int(1)]);
+    llself_obj_ptr = bcx.build.Load(llself_obj_ptr);
+
+    // Cast it back to the type of fcx.llenv, tho, so LLVM won't complain.
+    // TODO: could we just cast this to T_ptr(cx.ccx.rust_object_type)?
+    llself_obj_ptr = bcx.build.PointerCast(llself_obj_ptr,
+                                           val_ty(fcx.llenv));
 
     // The 'llretptr' that will arrive in the backwarding function we're
     // creating also needs to be the correct type.  Cast it to the method's
@@ -6521,7 +6575,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // at it.
     let llouter_obj_vtbl =
         bcx.build.GEP(llself_obj_ptr,
-                      ~[C_int(0), C_int(1)]);
+                      ~[C_int(0), C_int(abi::obj_field_vtbl)]);
     llouter_obj_vtbl = bcx.build.Load(llouter_obj_vtbl);
 
     // Get the index of the method we want.
@@ -6627,20 +6681,6 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // argument.
     let llself_obj_ptr = fcx.llenv;
 
-    // Grab the vtable out of the self-object and replace it with the
-    // backwarding vtable.  FIXME (issue #702): Not quite ready to turn this
-    // behavior on yet.
-
-    // let llself_obj_vtbl =
-    //     bcx.build.GEP(llself_obj_ptr, ~[C_int(0),
-    //                                     C_int(abi::obj_field_vtbl)]);
-    // let llbv = bcx.build.PointerCast(backwarding_vtbl,
-    //                                  T_ptr(T_empty_struct()));
-    // bcx.build.Store(llbv, llself_obj_vtbl);
-
-    // NB: llself_obj is now a freakish combination of outer object body
-    // and backwarding (inner-object) vtable.
-
     // The 'llretptr' that will arrive in the forwarding function we're
     // creating also needs to be the correct type.  Cast it to the method's
     // return type, if necessary.
@@ -6710,6 +6750,11 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                       ~[C_int(0), C_int(abi::obj_field_vtbl)]);
     llinner_obj_vtbl = bcx.build.Load(llinner_obj_vtbl);
 
+    let llinner_obj_body =
+        bcx.build.GEP(llinner_obj.val,
+                      ~[C_int(0), C_int(abi::obj_field_box)]);
+    llinner_obj_body = bcx.build.Load(llinner_obj_body);
+
     // Get the index of the method we want.
     let ix: uint = 0u;
     alt ty::struct(bcx_tcx(bcx), inner_obj_ty) {
@@ -6741,10 +6786,23 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         bcx.build.PointerCast(llorig_mthd, T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = bcx.build.Load(llorig_mthd);
 
+    // Set up the self-stack.
+    let self_stack = alloca(bcx, T_struct(~[cx.ccx.rust_object_type,
+                                            T_ptr(cx.ccx.rust_object_type)]));
+    self_stack = populate_self_stack(bcx,
+                                     self_stack,
+                                     llself_obj_ptr,
+                                     backwarding_vtbl,
+                                     llinner_obj_body);
+
+    // Cast self_stack back to the type of fcx.llenv to make LLVM happy.
+    // TODO: could we just cast this to T_ptr(cx.ccx.rust_object_type)?
+    self_stack = bcx.build.PointerCast(self_stack,
+                                       val_ty(fcx.llenv));
+
     // Set up the three implicit arguments to the original method we'll need
     // to call.
-    let self_arg = llself_obj_ptr;
-    let llorig_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, self_arg];
+    let llorig_mthd_args: ValueRef[] = ~[llretptr, fcx.lltaskptr, self_stack];
 
     // Copy the explicit arguments that are being passed into the forwarding
     // function (they're in fcx.llargs) to llorig_mthd_args.
@@ -6759,7 +6817,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         a += 1u;
     }
 
-    // And, finally, call the original method.
+    // And, finally, call the original (inner) method.
     bcx.build.FastCall(llorig_mthd, llorig_mthd_args);
 
     bcx.build.RetVoid();

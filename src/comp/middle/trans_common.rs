@@ -536,6 +536,10 @@ fn set_struct_body(t: TypeRef, elts: &TypeRef[]) {
 
 fn T_empty_struct() -> TypeRef { ret T_struct(~[]); }
 
+// NB: This will return something different every time it's called. If
+// you need a generic object type that matches the type of your
+// existing objects, use ccx.rust_object_type.  Calling
+// T_rust_object() again will return a different one.
 fn T_rust_object() -> TypeRef {
     let t = T_named_struct("rust_object");
     let e = T_ptr(T_empty_struct());
