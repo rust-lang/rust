@@ -5867,7 +5867,7 @@ fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
         bcx = call_bzero(llalign.bcx, llptr, llsz.val, llalign.val).bcx;
     } else {
         let llty = type_of(bcx_ccx(bcx), cx.sp, t);
-        bcx = call_bzero(cx, llptr, llsize_of(llty), C_uint(1u)).bcx;
+        bcx.build.Store(C_null(llty), llptr);
     }
     ret rslt(bcx, llptr);
 }
