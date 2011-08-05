@@ -2349,12 +2349,7 @@ fn drop_slot(cx: &@block_ctxt, slot: ValueRef, t: &ty::t) -> result {
     let re = drop_ty(cx, llptr, t);
     let llty = val_ty(slot);
     let llelemty = lib::llvm::llvm::LLVMGetElementType(llty);
-    if ty::type_is_structural(bcx_tcx(cx), t) {
-        call_bzero(cx, slot, C_uint(llsize_of_real(bcx_ccx(cx), llelemty)),
-                   C_uint(llalign_of_real(bcx_ccx(cx), llelemty)));
-    } else {
-        cx.build.Store(C_null(llelemty), slot);
-    }
+    call_bzero(cx, slot, llsize_of(llelemty), C_uint(1u));
     ret re;
 }
 
@@ -5860,13 +5855,7 @@ fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
         bcx = call_bzero(llalign.bcx, llptr, llsz.val, llalign.val).bcx;
     } else {
         let llty = type_of(bcx_ccx(bcx), cx.sp, t);
-        if ty::type_is_structural(bcx_tcx(cx), t) {
-            bcx = call_bzero(cx, llptr,
-                             C_uint(llsize_of_real(bcx_ccx(cx), llty)),
-                             C_uint(llalign_of_real(bcx_ccx(cx), llty))).bcx;
-        } else {
-            bcx.build.Store(C_null(llty), llptr);
-        }
+        bcx = call_bzero(cx, llptr, llsize_of(llty), C_uint(1u)).bcx;
     }
     ret rslt(bcx, llptr);
 }
