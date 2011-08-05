@@ -8,6 +8,7 @@ import std::option;
 import std::int;
 import std::option::*;
 import syntax::ast;
+import syntax::ast::inlineness;
 import syntax::visit;
 import driver::session;
 import middle::resolve;
@@ -45,8 +46,8 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
     for decl: ast::node_id  in initial_decls { set_add(decls, decl); }
     let refs = @mutable ~[];
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], sp: &span,
-                         i: &ast::fn_ident, nid: ast::node_id) {
+    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], il: inlineness,
+                         sp: &span, i: &ast::fn_ident, nid: ast::node_id) {
         for a: ast::arg  in f.decl.inputs { set_add(decls, a.id); }
     };
     let walk_expr = lambda(expr: &@ast::expr) {
@@ -107,10 +108,10 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
                      crate: &@ast::crate) -> freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], sp: &span,
-                         i: &ast::fn_ident, nid: ast::node_id) {
+    let walk_fn = lambda(f: &ast::_fn, tps: &ast::ty_param[], il: inlineness,
+                         sp: &span, i: &ast::fn_ident, nid: ast::node_id) {
         let start_walk = lambda(v: &visit::vt[()]) {
-            v.visit_fn(f, tps, sp, i, nid, (), v);
+            v.visit_fn(f, tps, il, sp, i, nid, (), v);
         };
         let vars = collect_freevars(def_map, sess, start_walk, ~[]);
         freevars.insert(nid, vars);

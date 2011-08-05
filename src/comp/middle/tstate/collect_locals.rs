@@ -43,8 +43,8 @@ fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt[ctxt]) {
     visit::visit_expr(e, cx, v);
 }
 
-fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &ty_param[], sp: &span,
-               i: &fn_ident, id: node_id) -> ctxt {
+fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &ty_param[], il: inlineness,
+               sp: &span, i: &fn_ident, id: node_id) -> ctxt {
     let cx: ctxt = {cs: @mutable ~[], tcx: tcx};
     let visitor = visit::default_visitor[ctxt]();
 
@@ -52,7 +52,7 @@ fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &ty_param[], sp: &span,
         @{visit_local: collect_local,
           visit_expr: collect_pred,
           visit_fn: do_nothing with *visitor};
-    visit::visit_fn(f, tps, sp, i, id, cx, visit::mk_vt(visitor));
+    visit::visit_fn(f, tps, il, sp, i, id, cx, visit::mk_vt(visitor));
     ret cx;
 }
 
@@ -88,13 +88,13 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], f_sp: &span,
-              f_name: &fn_ident, id: node_id) {
+fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], il: inlineness,
+              f_sp: &span, f_name: &fn_ident, id: node_id) {
     let name = fn_ident_to_string(id, f_name);
     let res_map = @new_def_hash[constraint]();
     let next: uint = 0u;
 
-    let cx: ctxt = find_locals(ccx.tcx, f, tp, f_sp, f_name, id);
+    let cx: ctxt = find_locals(ccx.tcx, f, tp, il, f_sp, f_name, id);
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
@@ -144,7 +144,7 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &ty_param[], f_sp: &span,
 fn mk_f_to_fn_info(ccx: &crate_ctxt, c: @crate) {
     let visitor =
         visit::mk_simple_visitor(@{visit_fn:
-                                       bind mk_fn_info(ccx, _, _, _, _, _)
+                                       bind mk_fn_info(ccx, _, _, _, _, _, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }

@@ -4,6 +4,7 @@ import ast::ident;
 import ast::fn_ident;
 import ast::node_id;
 import ast::def_id;
+import ast::inlineness;
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -42,7 +43,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
     let cx = @{tcx: tcx, local_map: std::map::new_int_hash()};
-    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
+    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _, _),
               visit_item: bind visit_item(cx, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_decl: bind visit_decl(cx, _, _, _)
@@ -51,8 +52,9 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
-            name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt[scope]) {
+fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &ast::ty_param[], il: inlineness,
+            sp: &span, name: &fn_ident, id: ast::node_id, sc: &scope,
+            v: &vt[scope]) {
     visit::visit_fn_decl(f.decl, sc, v);
     for arg_: ast::arg  in f.decl.inputs {
         cx.local_map.insert(arg_.id, arg(arg_.mode));

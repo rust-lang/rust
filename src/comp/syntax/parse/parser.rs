@@ -1769,8 +1769,8 @@ fn parse_item_fn_or_iter(p: &parser, purity: ast::purity, proto: ast::proto,
     let lo = p.get_last_lo_pos();
     let t = parse_fn_header(p);
     let f = parse_fn(p, proto, purity);
-    ret mk_item(p, lo, f.body.span.hi, t.ident, ast::item_fn(f, t.tps),
-                attrs);
+    ret mk_item(p, lo, f.body.span.hi, t.ident,
+                ast::item_fn(f, t.tps, ast::il_normal), attrs);
 }
 
 fn parse_obj_field(p: &parser) -> ast::obj_field {

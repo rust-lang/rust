@@ -17,6 +17,7 @@ import ast::crate;
 import ast::return;
 import ast::noreturn;
 import ast::expr;
+import ast::inlineness;
 import syntax::visit;
 import syntax::codemap::span;
 import middle::ty::type_is_nil;
@@ -125,8 +126,8 @@ fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
 }
 
 fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
-                                   tps: &ast::ty_param[], id: node_id,
-                                   sp: &span, i: &fn_ident) {
+                                   tps: &ast::ty_param[], il: inlineness,
+                                   id: node_id, sp: &span, i: &fn_ident) {
     /* Postorder traversal instead of pre is important
        because we want the smallest possible erroneous statement
        or expression. */
@@ -137,7 +138,7 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
           visit_fn: do_nothing with *visitor};
-    visit::visit_fn(f, tps, sp, i, id, fcx, visit::mk_vt(visitor));
+    visit::visit_fn(f, tps, il, sp, i, id, fcx, visit::mk_vt(visitor));
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f.body);
@@ -170,8 +171,8 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
     check_unused_vars(fcx);
 }
 
-fn check_fn_states(fcx: &fn_ctxt, f: &_fn, tps: &ast::ty_param[], id: node_id,
-                   sp: &span, i: &fn_ident) {
+fn check_fn_states(fcx: &fn_ctxt, f: &_fn, tps: &ast::ty_param[],
+                   il: inlineness, id: node_id, sp: &span, i: &fn_ident) {
     /* Compute the pre- and post-states for this function */
 
     // Fixpoint iteration
@@ -180,19 +181,20 @@ fn check_fn_states(fcx: &fn_ctxt, f: &_fn, tps: &ast::ty_param[], id: node_id,
     /* Now compare each expr's pre-state to its precondition
        and post-state to its postcondition */
 
-    check_states_against_conditions(fcx, f, tps, id, sp, i);
+    check_states_against_conditions(fcx, f, tps, il, id, sp, i);
 }
 
-fn fn_states(f: &_fn, tps: &ast::ty_param[], sp: &span, i: &fn_ident,
-             id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
-    visit::visit_fn(f, tps, sp, i, id, ccx, v);
+fn fn_states(f: &_fn, tps: &ast::ty_param[], il: inlineness, sp: &span,
+             i: &fn_ident, id: node_id, ccx: &crate_ctxt,
+             v: &visit::vt[crate_ctxt]) {
+    visit::visit_fn(f, tps, il, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
     assert (ccx.fm.contains_key(id));
     let f_info = ccx.fm.get(id);
     let name = option::from_maybe("anon", i);
     let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
-    check_fn_states(fcx, f, tps, id, sp, i);
+    check_fn_states(fcx, f, tps, il, id, sp, i);
 }
 
 fn check_crate(cx: ty::ctxt, crate: @crate) {

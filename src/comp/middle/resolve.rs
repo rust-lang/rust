@@ -7,6 +7,7 @@ import ast::def;
 import ast::def_id;
 import ast::node_id;
 import ast::local_def;
+import ast::inlineness;
 
 import metadata::csearch;
 import metadata::cstore;
@@ -259,7 +260,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
           visit_constr: bind walk_constr(e, _, _, _, _, _),
-          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
+          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _, _)
              with *visit::default_visitor()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v));
     e.sess.abort_if_errors();
@@ -328,8 +329,8 @@ fn visit_native_item_with_scope(ni: &@ast::native_item, sc: &scopes,
 }
 
 fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &ast::ty_param[],
-                       sp: &span, name: &fn_ident, id: node_id, sc: &scopes,
-                       v: &vt[scopes]) {
+                       il: inlineness, sp: &span, name: &fn_ident,
+                       id: node_id, sc: &scopes, v: &vt[scopes]) {
     // is this a main fn declaration?
     alt name {
       some(nm) {
@@ -348,7 +349,7 @@ fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &ast::ty_param[],
     for c: @ast::constr  in f.decl.constraints {
         resolve_constr(e, id, c, sc, v);
     }
-    visit::visit_fn(f, tp, sp, name, id,
+    visit::visit_fn(f, tp, il, sp, name, id,
                     cons(scope_fn(f.decl, f.proto, tp), @sc), v);
 }
 
@@ -824,7 +825,7 @@ fn found_def_item(i: &@ast::item, ns: namespace) -> option::t[def] {
       ast::item_const(_, _) {
         if ns == ns_value { ret some(ast::def_const(local_def(i.id))); }
       }
-      ast::item_fn(f, _) {
+      ast::item_fn(f, _, _) {
         if ns == ns_value {
             ret some(ast::def_fn(local_def(i.id), f.decl.purity));
         }
@@ -1082,7 +1083,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
     }
     for it: @ast::item  in md.items {
         alt it.node {
-          ast::item_const(_, _) | ast::item_fn(_, _) | ast::item_mod(_) |
+          ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _) |
           ast::item_res(_, _, _, _) | ast::item_obj(_, _, _) {
             add_to_index(index, it.ident, mie_item(it));
@@ -1218,7 +1219,7 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
     }
     visit::visit_item(i, x, v);
     alt i.node {
-      ast::item_fn(f, ty_params) {
+      ast::item_fn(f, ty_params, _) {
         check_fn(*e, i.span, f);
         ensure_unique(*e, i.span, typaram_names(ty_params),
                       ident_id, "type parameter");
@@ -1302,7 +1303,7 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt[()]) {
                   ast::item_mod(_) | ast::item_native_mod(_) {
                     add_name(mods, it.span, it.ident);
                   }
-                  ast::item_const(_, _) | ast::item_fn(_, _) {
+                  ast::item_const(_, _) | ast::item_fn(_, _, _) {
                     add_name(values, it.span, it.ident);
                   }
                   ast::item_ty(_, _) { add_name(types, it.span, it.ident); }

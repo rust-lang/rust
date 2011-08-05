@@ -1,5 +1,6 @@
 import syntax::ast;
 import ast::mutability;
+import ast::inlineness;
 import ast::local_def;
 import ast::respan;
 import ast::spanned;
@@ -647,7 +648,7 @@ mod collect {
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
           }
-          ast::item_fn(fn_info, tps) {
+          ast::item_fn(fn_info, tps, _) {
             let f = bind ty_of_arg(cx, _);
             ret ty_of_fn_decl(cx, convert, f, fn_info.decl, fn_info.proto,
                               tps, some(local_def(it.id)));
@@ -1296,8 +1297,8 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     };
 
     // Don't descend into fns and items
-    fn visit_fn[E](f: &ast::_fn, tp: &ast::ty_param[], sp: &span,
-                   i: &ast::fn_ident, id: ast::node_id, e: &E,
+    fn visit_fn[E](f: &ast::_fn, tp: &ast::ty_param[], il: inlineness,
+                   sp: &span, i: &ast::fn_ident, id: ast::node_id, e: &E,
                    v: &visit::vt[E]) { }
     fn visit_item[E](i: &@ast::item, e: &E, v: &visit::vt[E]) { }
 
@@ -2703,7 +2704,7 @@ fn check_method(ccx: &@crate_ctxt, method: &@ast::method) {
 fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
-      ast::item_fn(f, _) { check_fn(ccx, f, it.id, none); }
+      ast::item_fn(f, _, _) { check_fn(ccx, f, it.id, none); }
       ast::item_res(f, dtor_id, _, _) { check_fn(ccx, f, dtor_id, none); }
       ast::item_obj(ob, _, _) {
         // We're entering an object, so gather up the info we need.

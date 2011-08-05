@@ -7329,7 +7329,7 @@ fn trans_const(cx: &@crate_ctxt, e: @ast::expr, id: ast::node_id) {
 
 fn trans_item(cx: @local_ctxt, item: &ast::item) {
     alt item.node {
-      ast::item_fn(f, tps) {
+      ast::item_fn(f, tps, _) {
         let sub_cx = extend_path(cx, item.ident);
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
@@ -7740,7 +7740,7 @@ fn collect_item_2(ccx: &@crate_ctxt, i: &@ast::item, pt: &str[],
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
-      ast::item_fn(f, tps) {
+      ast::item_fn(f, tps, _) {
         if !ccx.obj_methods.contains_key(i.id) {
             decl_fn_and_pair(ccx, i.span, new_pt, "fn", tps, i.id);
         }
