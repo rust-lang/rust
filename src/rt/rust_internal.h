@@ -108,6 +108,13 @@ static size_t const BUF_BYTES = 2048;
   void ref() { ++ref_count; } \
   void deref() { if (--ref_count == 0) { dtor; } }
 
+#define RUST_ATOMIC_REFCOUNT()                                          \
+    private:                                                            \
+    intptr_t ref_count;                                                 \
+public:                                                                 \
+ void ref() { sync::increment(ref_count); }                             \
+ void deref() { if(0 == sync::decrement(ref_count)) { delete this; } }
+
 template <typename T> struct rc_base {
     RUST_REFCOUNTED(T)
 

@@ -69,6 +69,7 @@ str_from_vec
 str_push_byte
 str_slice
 str_vec
+take_chan
 task_sleep
 task_yield
 task_join
@@ -78,6 +79,7 @@ upcall_chan_target_task
 upcall_clone_chan
 upcall_del_chan
 upcall_del_port
+upcall_drop_chan
 upcall_drop_task
 upcall_dup_str
 upcall_exit
@@ -108,6 +110,7 @@ upcall_shared_free
 upcall_sleep
 upcall_start_task
 upcall_take_task
+upcall_take_chan
 upcall_trace_str
 upcall_trace_word
 upcall_vec_append

@@ -1237,6 +1237,12 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
         cx.build.Call(bcx_ccx(cx).upcalls.take_task,
                       ~[cx.fcx.lltaskptr, task_ptr]);
         bcx = cx;
+    } else if ty::type_is_chan(bcx_tcx(cx), t) {
+        let ptr = cx.build.Load(v);
+        ptr = cx.build.PointerCast(ptr, T_opaque_chan_ptr());
+        cx.build.Call(bcx_ccx(cx).upcalls.take_chan,
+                      ~[cx.fcx.lltaskptr, ptr]);
+        bcx = cx;
     } else if ty::type_is_boxed(bcx_tcx(cx), t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(bcx_tcx(cx), t)) {
@@ -1395,7 +1401,13 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           }
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_port(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_chan(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+          ty::ty_chan(_) {
+            let ptr = cx.build.Load(v0);
+            ptr = cx.build.PointerCast(ptr, T_opaque_chan_ptr());
+            {bcx: cx,
+             val: cx.build.Call(bcx_ccx(cx).upcalls.drop_chan,
+                                ~[cx.fcx.lltaskptr, ptr])}
+          }
           ty::ty_task. {
             let task_ptr = cx.build.Load(v0);
             {bcx: cx,

@@ -905,8 +905,13 @@ void del_chan(rust_task *task, rust_chan *chan) {
 }
 
 extern "C" CDECL
+void take_chan(rust_task *task, rust_chan *chan) {
+    chan->ref();
+}
+
+extern "C" CDECL
 void drop_chan(rust_task *task, rust_chan *chan) {
-    chan->ref_count--;
+    chan->deref();
 }
 
 extern "C" CDECL

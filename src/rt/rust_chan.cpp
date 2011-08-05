@@ -22,6 +22,8 @@ rust_chan::~rust_chan() {
     KLOG(kernel, comm, "del rust_chan(task=0x%" PRIxPTR ")",
          (uintptr_t) this);
 
+    this->destroy();
+
     A(kernel, is_associated() == false,
       "Channel must be disassociated before being freed.");
 }
@@ -35,7 +37,7 @@ void rust_chan::associate(rust_port *port) {
     KLOG(kernel, task,
          "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
          this, port);
-    ++this->ref_count;
+    this->ref();
     this->task = port->task;
     this->task->ref();
     this->port->chans.push(this);
@@ -57,13 +59,14 @@ void rust_chan::disassociate() {
     KLOG(kernel, task,
          "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
          this, port);
-    --this->ref_count;
     task->deref();
     this->task = NULL;
     port->chans.swap_delete(this);
 
     // Delete reference to the port.
     port = NULL;
+
+    this->deref();
 }
 
 /**
@@ -101,9 +104,6 @@ rust_chan *rust_chan::clone(rust_task *target) {
  * appear to be live, causing modify-after-free errors.
  */
 void rust_chan::destroy() {
-    A(kernel, ref_count == 0,
-      "Channel's ref count should be zero.");
-
     if (is_associated()) {
         // We're trying to delete a channel that another task may be
         // reading from. We have two options:
@@ -121,7 +121,6 @@ void rust_chan::destroy() {
         scoped_lock with(port->lock);
         disassociate();
     }
-    delete this;
 }
 
 //

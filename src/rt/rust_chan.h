@@ -3,12 +3,12 @@
 
 class rust_chan : public kernel_owned<rust_chan>,
                   public rust_cond {
+    ~rust_chan();
+
 public:
-    RUST_REFCOUNTED_WITH_DTOR(rust_chan, destroy())
+    RUST_ATOMIC_REFCOUNT();
     rust_chan(rust_kernel *kernel, rust_port *port,
               size_t unit_sz);
-
-    ~rust_chan();
 
     rust_kernel *kernel;
     rust_task *task;

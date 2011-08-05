@@ -36,6 +36,8 @@ type upcalls =
      del_port: ValueRef,
      new_chan: ValueRef,
      flush_chan: ValueRef,
+     drop_chan: ValueRef,
+     take_chan: ValueRef,
      del_chan: ValueRef,
      clone_chan: ValueRef,
      chan_target_task: ValueRef,
@@ -94,6 +96,8 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
           new_chan:
               d("new_chan", ~[T_opaque_port_ptr()], T_opaque_chan_ptr()),
           flush_chan: dv("flush_chan", ~[T_opaque_chan_ptr()]),
+          drop_chan: dv("drop_chan", ~[T_opaque_chan_ptr()]),
+          take_chan: dv("take_chan", ~[T_opaque_chan_ptr()]),
           del_chan: dv("del_chan", ~[T_opaque_chan_ptr()]),
           clone_chan:
               d("clone_chan", ~[taskptr_type, T_opaque_chan_ptr()],

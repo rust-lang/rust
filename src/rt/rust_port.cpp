@@ -8,10 +8,6 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
     LOG(task, comm,
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
-
-    // Allocate a remote channel, for remote channel data.
-    remote_channel = new (kernel, "remote chan")
-        rust_chan(kernel, this, unit_sz);
 }
 
 rust_port::~rust_port() {
@@ -22,15 +18,7 @@ rust_port::~rust_port() {
         scoped_lock with(lock);
         rust_chan *chan = chans.peek();
         chan->disassociate();
-
-        if (chan->ref_count == 0) {
-            LOG(task, comm,
-                "chan: 0x%" PRIxPTR " is dormant, freeing", chan);
-            delete chan;
-        }
     }
-
-    delete remote_channel;
 }
 
 bool rust_port::receive(void *dptr) {
@@ -52,10 +40,9 @@ void rust_port::log_state() {
     for (uint32_t i = 0; i < chans.length(); i++) {
         rust_chan *chan = chans[i];
         LOG(task, comm,
-            "\tchan: 0x%" PRIxPTR ", size: %d, remote: %s",
+            "\tchan: 0x%" PRIxPTR ", size: %d",
             chan,
-            chan->buffer.size(),
-            chan == remote_channel ? "yes" : "no");
+            chan->buffer.size());
     }
 }
 

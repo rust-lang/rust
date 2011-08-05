@@ -508,6 +508,22 @@ upcall_drop_task(rust_task *task, rust_task *target) {
     }
 }
 
+extern "C" CDECL void
+upcall_take_chan(rust_task *task, rust_chan *target) {
+    LOG_UPCALL_ENTRY(task);
+    if(target) {
+        target->ref();
+    }
+}
+
+extern "C" CDECL void
+upcall_drop_chan(rust_task *task, rust_chan *target) {
+    LOG_UPCALL_ENTRY(task);
+    if(target) {
+        target->deref();
+    }
+}
+
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,

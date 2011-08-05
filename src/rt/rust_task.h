@@ -38,14 +38,7 @@ struct gc_alloc {
 struct
 rust_task : public kernel_owned<rust_task>, rust_cond
 {
-    // This block could be pulled out into something like a
-    // RUST_ATOMIC_REFCOUNTED macro.
-private:
-    intptr_t ref_count;
-public:
-    void ref() { sync::increment(ref_count); }
-    void deref() { if(0 == sync::decrement(ref_count)) { delete this; } }
-
+    RUST_ATOMIC_REFCOUNT();
 
     // Fields known to the compiler.
     stk_seg *stk;
