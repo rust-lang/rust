@@ -10,7 +10,7 @@ native "rust" mod rustrt {
     fn aio_connect(host: sbuf, port: int, connected: chan[socket]);
     fn aio_serve(host: sbuf, port: int, acceptChan: chan[socket]) -> server;
     fn aio_writedata(s: socket, buf: *u8, size: uint, status: chan[bool]);
-    fn aio_read(s: socket, reader: chan[u8[]]);
+    fn aio_read(s: socket, reader: chan[[u8]]);
     fn aio_close_server(s: server, status: chan[bool]);
     fn aio_close_socket(s: socket);
     fn aio_is_null_client(s: socket) -> bool;
@@ -26,7 +26,7 @@ tag pending_connection {
 tag socket_event {
     connected(client);
     closed;
-    received(u8[]);
+    received([u8]);
 }
 
 tag server_event {
@@ -37,7 +37,7 @@ tag request {
     quit;
     connect(pending_connection,chan[socket_event]);
     serve(str,int,chan[server_event],chan[server]);
-    write(client,u8[],chan[bool]);
+    write(client,[u8],chan[bool]);
     close_server(server, chan[bool]);
     close_client(client);
 }
@@ -56,14 +56,14 @@ fn new_client(client: client, evt: chan[socket_event]) {
     // Start the read before notifying about the connect.  This avoids a race
     // condition where the receiver can close the socket before we start
     // reading.
-    let reader: port[u8[]] = port();
+    let reader: port[[u8]] = port();
     rustrt::aio_read(client, chan(reader));
 
     evt <| connected(client);
 
     while (true) {
         log "waiting for bytes";
-        let data: u8[];
+        let data: [u8];
         reader |> data;
         log "got some bytes";
         log ivec::len[u8](data);

@@ -26,7 +26,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
 
     let load_factor: util::rational = {num: 3, den: 4};
     tag bucket[@K, @V] { nil; deleted; some(K, V); }
-    fn make_buckets[@K, @V](nbkts: uint) -> (bucket[K, V])[mutable ] {
+    fn make_buckets[@K, @V](nbkts: uint) -> [mutable (bucket[K, V])] {
         ret ivec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
     // Derive two hash functions from the one given by taking the upper
@@ -55,7 +55,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
 
     fn insert_common[@K,
                      @V](hasher: &hashfn[K], eqer: &eqfn[K],
-                         bkts: &(bucket[K, V])[mutable ], nbkts: uint,
+                         bkts: &[mutable bucket[K, V]], nbkts: uint,
                          key: &K, val: &V) -> bool {
         let i: uint = 0u;
         let h: uint = hasher(key);
@@ -80,7 +80,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     }
     fn find_common[@K,
                    @V](hasher: &hashfn[K], eqer: &eqfn[K],
-                       bkts: &(bucket[K, V])[mutable ], nbkts: uint, key: &K)
+                       bkts: &[mutable bucket[K, V]], nbkts: uint, key: &K)
        -> option::t[V] {
         let i: uint = 0u;
         let h: uint = hasher(key);
@@ -103,8 +103,8 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     }
     fn rehash[@K,
               @V](hasher: &hashfn[K], eqer: &eqfn[K],
-                  oldbkts: &(bucket[K, V])[mutable ], noldbkts: uint,
-                  newbkts: &(bucket[K, V])[mutable ], nnewbkts: uint) {
+                  oldbkts: &[mutable bucket[K, V]], noldbkts: uint,
+                  newbkts: &[mutable bucket[K, V]], nnewbkts: uint) {
         for b: bucket[K, V]  in oldbkts {
             alt b {
               some(k_, v_) {
@@ -119,7 +119,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     obj hashmap[@K,
                 @V](hasher: hashfn[K],
                     eqer: eqfn[K],
-                    mutable bkts: (bucket[K, V])[mutable ],
+                    mutable bkts: [mutable bucket[K, V]],
                     mutable nbkts: uint,
                     mutable nelts: uint,
                     lf: util::rational) {

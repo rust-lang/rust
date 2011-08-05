@@ -7,10 +7,10 @@ import option::some;
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
 // to be.
-type smallintmap[T] = @{mutable v: (option::t[T])[mutable ]};
+type smallintmap[T] = @{mutable v: [mutable option::t[T]]};
 
 fn mk[@T]() -> smallintmap[T] {
-    let v: (option::t[T])[mutable ] = ~[mutable ];
+    let v: [mutable option::t[T]] = ~[mutable];
     ret @{mutable v: v};
 }
 

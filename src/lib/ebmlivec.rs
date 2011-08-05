@@ -15,9 +15,9 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 // modules within this file.
 
 // ebml reading
-type doc = {data: @u8[], start: uint, end: uint};
+type doc = {data: @[u8], start: uint, end: uint};
 
-fn vint_at(data: &u8[], start: uint) -> {val: uint, next: uint} {
+fn vint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     let a = data.(start);
     if a & 0x80u8 != 0u8 { ret {val: a & 0x7fu8 as uint, next: start + 1u}; }
     if a & 0x40u8 != 0u8 {
@@ -39,11 +39,11 @@ fn vint_at(data: &u8[], start: uint) -> {val: uint, next: uint} {
     } else { log_err "vint too big"; fail; }
 }
 
-fn new_doc(data: &@u8[]) -> doc {
+fn new_doc(data: &@[u8]) -> doc {
     ret {data: data, start: 0u, end: ivec::len[u8](*data)};
 }
 
-fn doc_at(data: &@u8[], start: uint) -> doc {
+fn doc_at(data: &@[u8], start: uint) -> doc {
     let elt_tag = vint_at(*data, start);
     let elt_size = vint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
@@ -96,9 +96,9 @@ iter tagged_docs(d: doc, tg: uint) -> doc {
     }
 }
 
-fn doc_data(d: doc) -> u8[] { ret ivec::slice[u8](*d.data, d.start, d.end); }
+fn doc_data(d: doc) -> [u8] { ret ivec::slice[u8](*d.data, d.start, d.end); }
 
-fn be_uint_from_bytes(data: &@u8[], start: uint, size: uint) -> uint {
+fn be_uint_from_bytes(data: &@[u8], start: uint, size: uint) -> uint {
     let sz = size;
     assert (sz <= 4u);
     let val = 0u;
@@ -117,10 +117,10 @@ fn doc_as_uint(d: doc) -> uint {
 
 
 // ebml writing
-type writer = {writer: ioivec::buf_writer, mutable size_positions: uint[]};
+type writer = {writer: ioivec::buf_writer, mutable size_positions: [uint]};
 
 fn write_sized_vint(w: &ioivec::buf_writer, n: uint, size: uint) {
-    let buf: u8[];
+    let buf: [u8];
     alt size {
       1u { buf = ~[0x80u8 | (n as u8)]; }
       2u { buf = ~[0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
@@ -149,7 +149,7 @@ fn write_vint(w: &ioivec::buf_writer, n: uint) {
 }
 
 fn create_writer(w: &ioivec::buf_writer) -> writer {
-    let size_positions: uint[] = ~[];
+    let size_positions: [uint] = ~[];
     ret {writer: w, mutable size_positions: size_positions};
 }
 
@@ -162,7 +162,7 @@ fn start_tag(w: &writer, tag_id: uint) {
     // Write a placeholder four-byte size.
 
     w.size_positions += ~[w.writer.tell()];
-    let zeroes: u8[] = ~[0u8, 0u8, 0u8, 0u8];
+    let zeroes: [u8] = ~[0u8, 0u8, 0u8, 0u8];
     w.writer.write(zeroes);
 }
 

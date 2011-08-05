@@ -26,10 +26,10 @@ type sha1 =
     // automatically during construction
     obj {
         fn input(&vec[u8]) ;
-        fn input_ivec(&u8[]) ;
+        fn input_ivec(&[u8]) ;
         fn input_str(&str) ;
         fn result() -> vec[u8] ;
-        fn result_ivec() -> u8[] ;
+        fn result_ivec() -> [u8] ;
         fn result_str() -> str ;
         fn reset() ;
     };
@@ -54,15 +54,15 @@ const k3: u32 = 0xCA62C1D6u32;
 // Builds a sha1 object
 fn mk_sha1() -> sha1 {
     type sha1state =
-        {h: u32[mutable ],
+        {h: [mutable u32],
          mutable len_low: u32,
          mutable len_high: u32,
-         msg_block: u8[mutable ],
+         msg_block: [mutable u8],
          mutable msg_block_idx: uint,
          mutable computed: bool,
-         work_buf: u32[mutable ]};
+         work_buf: [mutable u32]};
 
-    fn add_input(st: &sha1state, msg: &u8[]) {
+    fn add_input(st: &sha1state, msg: &[u8]) {
         // FIXME: Should be typestate precondition
 
         assert (!st.computed);
@@ -164,9 +164,9 @@ fn mk_sha1() -> sha1 {
     fn circular_shift(bits: u32, word: u32) -> u32 {
         ret word << bits | word >> 32u32 - bits;
     }
-    fn mk_result(st: &sha1state) -> u8[] {
+    fn mk_result(st: &sha1state) -> [u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
-        let rs: u8[] = ~[];
+        let rs: [u8] = ~[];
         for hpart: u32  in st.h {
             let a = hpart >> 24u32 & 0xFFu32 as u8;
             let b = hpart >> 16u32 & 0xFFu32 as u8;
@@ -244,7 +244,7 @@ fn mk_sha1() -> sha1 {
             for b: u8  in msg { m += ~[b]; }
             add_input(st, m);
         }
-        fn input_ivec(msg: &u8[]) { add_input(st, msg); }
+        fn input_ivec(msg: &[u8]) { add_input(st, msg); }
         fn input_str(msg: &str) { add_input(st, str::bytes_ivec(msg)); }
         fn result() -> vec[u8] {
             let rivec = mk_result(st);
@@ -252,7 +252,7 @@ fn mk_sha1() -> sha1 {
             for b: u8  in rivec { rvec += [b]; }
             ret rvec;
         }
-        fn result_ivec() -> u8[] { ret mk_result(st); }
+        fn result_ivec() -> [u8] { ret mk_result(st); }
         fn result_str() -> str {
             let r = mk_result(st);
             let s = "";

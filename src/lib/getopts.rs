@@ -66,7 +66,7 @@ fn optmulti(name: str) -> opt {
 
 tag optval { val(str); given; }
 
-type match = {opts: opt[], vals: optval[][mutable ], free: vec[str]};
+type match = {opts: [opt], vals: [mutable [optval]], free: vec[str]};
 
 fn is_arg(arg: str) -> bool {
     ret str::byte_len(arg) > 1u && arg.(0) == '-' as u8;
@@ -76,7 +76,7 @@ fn name_str(nm: name) -> str {
     ret alt nm { short(ch) { str::from_char(ch) } long(s) { s } };
 }
 
-fn find_opt(opts: &opt[], nm: name) -> option::t[uint] {
+fn find_opt(opts: &[opt], nm: name) -> option::t[uint] {
     let i = 0u;
     let l = ivec::len[opt](opts);
     while i < l { if opts.(i).name == nm { ret some[uint](i); } i += 1u; }
@@ -116,10 +116,10 @@ fn getopts(args: vec[str], opts: vec[opt]) -> result {
     ret getopts_ivec(args_ivec, opts_ivec);
 }
 
-fn getopts_ivec(args: &str[], opts: &opt[]) -> result {
+fn getopts_ivec(args: &[str], opts: &[opt]) -> result {
     let n_opts = ivec::len[opt](opts);
-    fn f(x: uint) -> optval[] { ret ~[]; }
-    let vals = ivec::init_fn_mut[optval[]](f, n_opts);
+    fn f(x: uint) -> [optval] { ret ~[]; }
+    let vals = ivec::init_fn_mut[[optval]](f, n_opts);
     let free: vec[str] = [];
     let l = ivec::len[str](args);
     let i = 0u;
@@ -209,7 +209,7 @@ fn getopts_ivec(args: &str[], opts: &opt[]) -> result {
     ret success({opts: opts, vals: vals, free: free});
 }
 
-fn opt_vals(m: &match, nm: str) -> optval[] {
+fn opt_vals(m: &match, nm: str) -> [optval] {
     ret alt find_opt(m.opts, mkname(nm)) {
           some(id) { m.vals.(id) }
           none. { log_err "No option '" + nm + "' defined."; fail }
@@ -234,8 +234,8 @@ fn opt_strs(m: &match, nm: str) -> vec[str] {
     ret acc;
 }
 
-fn opt_strs_ivec(m: &match, nm: str) -> str[] {
-    let acc: str[] = ~[];
+fn opt_strs_ivec(m: &match, nm: str) -> [str] {
+    let acc: [str] = ~[];
     for v: optval  in opt_vals(m, nm) {
         alt v { val(s) { acc += ~[s]; } _ { } }
     }
