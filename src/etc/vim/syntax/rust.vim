@@ -16,10 +16,10 @@ endif
 
 syn keyword   rustKeyword     alt as assert auth be bind break chan check
 syn keyword   rustKeyword     claim cont do each else export fail fn for if
-syn keyword   rustKeyword     import in iter let log log_err macro meta mod
-syn keyword   rustKeyword     mutable native note obj port prove put resource
-syn keyword   rustKeyword     ret self spawn syntax tag type unsafe use while
-syn keyword   rustKeyword     with
+syn keyword   rustKeyword     import in inline iter lambda let log log_err
+syn keyword   rustKeyword     macro meta mod mutable native note obj port
+syn keyword   rustKeyword     prove put resource ret self spawn syntax tag
+syn keyword   rustKeyword     type unsafe use while with
 
 syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str task
