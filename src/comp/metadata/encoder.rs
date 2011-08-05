@@ -166,6 +166,12 @@ fn encode_family(ebml_w: &ebmlivec::writer, c: u8) {
     ebmlivec::end_tag(ebml_w);
 }
 
+fn encode_inlineness(ebml_w: &ebmlivec::writer, c: u8) {
+    ebmlivec::start_tag(ebml_w, tag_items_data_item_inlineness);
+    ebml_w.writer.write(~[c]);
+    ebmlivec::end_tag(ebml_w);
+}
+
 fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
 fn encode_type_param_kinds(ebml_w: &ebmlivec::writer, tps: &ty_param[]) {
@@ -256,6 +262,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebmlivec::writer,
         encode_family(ebml_w,
                     alt fd.decl.purity { pure_fn. { 'p' } impure_fn. { 'f' } }
                         as u8);
+        encode_inlineness(ebml_w,
+                          alt fd.decl.il {
+                            il_normal. { 'n' }
+                            il_inline. { 'i' }
+                          } as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
