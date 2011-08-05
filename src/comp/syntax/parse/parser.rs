@@ -1730,6 +1730,7 @@ fn parse_fn_decl(p: &parser, purity: ast::purity) -> ast::fn_decl {
         ret {inputs: inputs.node,
              output: t,
              purity: purity,
+             il: ast::il_normal,
              cf: ast::return,
              constraints: constrs};
       }
@@ -1737,6 +1738,7 @@ fn parse_fn_decl(p: &parser, purity: ast::purity) -> ast::fn_decl {
         ret {inputs: inputs.node,
              output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_bot),
              purity: purity,
+             il: ast::il_normal,
              cf: ast::noreturn,
              constraints: constrs};
       }
@@ -1839,6 +1841,7 @@ fn parse_item_res(p: &parser, attrs: &ast::attribute[]) ->
                 id: p.get_id()}],
          output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
+         il: ast::il_normal,
          cf: ast::return,
          constraints: ~[]};
     let f = {decl: decl, proto: ast::proto_fn, body: dtor};

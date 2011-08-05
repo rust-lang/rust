@@ -191,6 +191,7 @@ fn noop_fold_native_item(ni: &@native_item, fld: ast_fold) -> @native_item {
                                  {inputs: ivec::map(fold_arg, fdec.inputs),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
+                                  il: fdec.il,
                                   cf: fdec.cf,
                                   constraints:
                                       ivec::map(fld.fold_constr,
@@ -449,6 +450,7 @@ fn noop_fold_fn(f: &_fn, fld: ast_fold) -> _fn {
              {inputs: ivec::map(fold_arg, f.decl.inputs),
               output: fld.fold_ty(f.decl.output),
               purity: f.decl.purity,
+              il: f.decl.il,
               cf: f.decl.cf,
               constraints: ivec::map(fld.fold_constr, f.decl.constraints)},
          proto: f.proto,

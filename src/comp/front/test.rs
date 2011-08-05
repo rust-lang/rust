@@ -178,6 +178,7 @@ fn mk_tests(cx: &test_ctxt) -> @ast::item {
         {inputs: ~[],
          output: ret_ty,
          purity: ast::impure_fn,
+         il: ast::il_normal,
          cf: ast::return,
          constraints: ~[]};
     let proto = ast::proto_fn;
@@ -295,6 +296,7 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
         {inputs: ~[args_arg],
          output: @ret_ty,
          purity: ast::impure_fn,
+         il: ast::il_normal,
          cf: ast::return,
          constraints: ~[]};
     let proto = ast::proto_fn;
