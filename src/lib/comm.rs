@@ -6,6 +6,7 @@ export _chan;
 export _port;
 
 export mk_port;
+export chan_from_unsafe_ptr;
 
 native "rust" mod rustrt {
     type void;
@@ -13,7 +14,7 @@ native "rust" mod rustrt {
     type rust_port;
 
     fn new_chan(po : *rust_port) -> *rust_chan;
-    fn del_chan(ch : *rust_chan);
+    fn take_chan(ch : *rust_chan);
     fn drop_chan(ch : *rust_chan);
     fn chan_send(ch: *rust_chan, v : *void);
 
@@ -42,6 +43,16 @@ obj _chan[T](raw_chan : @chan_ptr) {
         rustrt::chan_send(**raw_chan,
                           unsafe::reinterpret_cast(ptr::addr_of(v)));
     }
+
+    // Use this to get something we can send over a channel.
+    fn unsafe_ptr() -> *u8 {
+        rustrt::take_chan(**raw_chan);
+        ret unsafe::reinterpret_cast(**raw_chan);
+    }
+}
+
+fn chan_from_unsafe_ptr[T](ch : *u8) -> _chan[T] {
+    _chan(@chan_ptr(unsafe::reinterpret_cast(ch)))
 }
 
 obj _port[T](raw_port : @port_ptr) {
