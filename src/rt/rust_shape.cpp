@@ -786,7 +786,7 @@ data<T,U>::walk_tag(bool align, uint16_t tag_id, const uint8_t *info_ptr,
     if (variant_count > 1) {
         if (align) dp.align(ALIGNOF(uint32_t));
         process_tag_variant_ids(
-        U::data<uint32_t> tag_variant = 
+        U::data<uint32_t> tag_variant =
 }
 
 #endif
