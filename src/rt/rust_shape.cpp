@@ -577,9 +577,16 @@ private:
 
 public:
     size_of(const size_of &other,
-            const uint8_t *in_sp,
-            const type_param *in_params,
-            const rust_shape_tables *in_tables)
+            const uint8_t *in_sp = NULL,
+            const type_param *in_params = NULL,
+            const rust_shape_tables *in_tables = NULL)
+    : ctxt<size_of>(other, in_sp, in_params, in_tables) {}
+
+    template<typename T>
+    size_of(const ctxt<T> &other,
+            const uint8_t *in_sp = NULL,
+            const type_param *in_params = NULL,
+            const rust_shape_tables *in_tables = NULL)
     : ctxt<size_of>(other, in_sp, in_params, in_tables) {}
 
     void walk_tag(bool align, tag_info &tinfo);
@@ -612,9 +619,17 @@ public:
     template<typename T>
     void walk_number(bool align) { sa.set(sizeof(T), ALIGNOF(T)); }
 
+    void compute_tag_size(tag_info &tinfo);
+
+    template<typename T>
+    static void compute_tag_size(const ctxt<T> &other_cx, tag_info &tinfo) {
+        size_of cx(other_cx);
+        cx.compute_tag_size(tinfo);
+    }
+
     template<typename T>
     static size_align get(const ctxt<T> &other_cx, unsigned back_up = 0) {
-        size_of cx(*other_cx, other_cx->sp - back_up);
+        size_of cx(other_cx, other_cx->sp - back_up);
         cx.walk(false);
         assert(cx.sa.alignment > 0);
         return cx.sa;
@@ -622,15 +637,13 @@ public:
 };
 
 void
-size_of::walk_tag(bool align, tag_info &tinfo) {
+size_of::compute_tag_size(tag_info &tinfo) {
     // If the precalculated size and alignment are good, use them.
-    if (tinfo.tag_sa.is_set()) {
-        sa = tinfo.tag_sa;
+    if (tinfo.tag_sa.is_set())
         return;
-    }
 
     uint16_t n_largest_variants = get_u16_bump(tinfo.largest_variants_ptr);
-    sa.set(0, 0);
+    tinfo.tag_sa.set(0, 0);
     for (uint16_t i = 0; i < n_largest_variants; i++) {
         uint16_t variant_id = get_u16_bump(tinfo.largest_variants_ptr);
         uint16_t variant_offset = get_u16(tinfo.info_ptr +
@@ -654,17 +667,23 @@ size_of::walk_tag(bool align, tag_info &tinfo) {
             variant_sa.add(sub.sa.size, sub.sa.alignment);
         }
 
-        if (sa.size < variant_sa.size)
-            sa = variant_sa;
+        if (tinfo.tag_sa.size < variant_sa.size)
+            tinfo.tag_sa = variant_sa;
     }
 
     if (tinfo.variant_count == 1) {
-        if (!sa.size)
-            sa.set(1, 1);
+        if (!tinfo.tag_sa.size)
+            tinfo.tag_sa.set(1, 1);
     } else {
         // Add in space for the tag.
-        sa.add(sizeof(uint32_t), ALIGNOF(uint32_t));
+        tinfo.tag_sa.add(sizeof(uint32_t), ALIGNOF(uint32_t));
     }
+}
+
+void
+size_of::walk_tag(bool align, tag_info &tinfo) {
+    compute_tag_size(*this, tinfo);
+    sa = tinfo.tag_sa;
 }
 
 void
@@ -696,32 +715,27 @@ size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 }
 
 
-#if 0
-
 // An abstract class (again using the curiously recurring template pattern)
 // for methods that actually manipulate the data involved.
 
 #define DATA_SIMPLE(ty, call) \
-    if (align) dp.align(sizeof(ty)); \
+    if (align) dp.align_to(sizeof(ty)); \
     static_cast<T *>(this)->call; \
     dp += sizeof(ty);
 
-template<typename T,typename U>
-class data : public ctxt<data> {
+template<typename T>
+class data : public ctxt< data<T> > {
 private:
-    U dp;
+    typename T::data_ptr dp;
 
 public:
-    void walk_tag(bool align, uint16_t tag_id, const uint8_t *info_ptr,
-                  uint16_t variant_count, const uint8_t *largest_variants_ptr,
-                  size_align &tag_sa, uint16_t n_params,
-                  const type_param *params);
+    void walk_tag(bool align, tag_info &tinfo);
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
     void walk_struct(bool align, const uint8_t *end_sp) {
-        while (sp != end_sp) {
+        while (this->sp != end_sp) {
             // TODO: Allow subclasses to optimize for POD if they want to.
-            walk(align);
+            this->walk(align);
             align = true;
         }
     }
@@ -736,14 +750,14 @@ public:
     void walk_task(bool align)  { DATA_SIMPLE(void *, walk_task(align)); }
 
     void walk_fn(bool align) {
-        if (align) dp.align(sizeof(void *));
-        static_cast<T *>(this)->walk_fn(args);
+        if (align) dp.align_to(sizeof(void *));
+        static_cast<T *>(this)->walk_fn(align);
         dp += sizeof(void *) * 2;
     }
 
     void walk_obj(bool align) {
-        if (align) dp.align(sizeof(void *));
-        static_cast<T *>(this)->walk_obj(args);
+        if (align) dp.align_to(sizeof(void *));
+        static_cast<T *>(this)->walk_obj(align);
         dp += sizeof(void *) * 2;
     }
 
@@ -757,17 +771,18 @@ public:
     }
 };
 
-template<typename T,typename U>
+template<typename T>
 void
-data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
+data<T>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     if (!elem_sa.is_set())
         elem_sa = size_of::get(*this);
     else if (elem_sa.alignment == 8)
         elem_sa.alignment = 4;  // FIXME: This is an awful hack.
 
     // Get a pointer to the interior vector, and skip over it.
-    if (align) dp.align(ALIGNOF(rust_ivec *));
-    U end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) + elem_sa.size * 4;
+    if (align) dp.align_to(ALIGNOF(rust_ivec *));
+    typename T::data_ptr end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) +
+        elem_sa.size * 4;
 
     // Call to the implementation.
     static_cast<T *>(this)->walk_ivec(align, is_pod, elem_sa);
@@ -775,28 +790,35 @@ data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     dp = end_dp;
 }
 
-template<typename T,typename U>
+template<typename T>
 void
-data<T,U>::walk_tag(bool align, uint16_t tag_id, const uint8_t *info_ptr,
-                    uint16_t variant_count,
-                    const uint8_t *largest_variants_ptr, size_align &tag_sa,
-                    uint16_t n_params, const type_param *params) {
-    uint32_t tag_variant;
-    U end_dp;
-    if (variant_count > 1) {
-        if (align) dp.align(ALIGNOF(uint32_t));
-        process_tag_variant_ids(
-        U::data<uint32_t> tag_variant =
-}
+data<T>::walk_tag(bool align, tag_info &tinfo) {
+    size_of::compute_tag_size(tinfo);
 
-#endif
+    if (tinfo.variant_count > 1 && align)
+        dp.align_to(ALIGNOF(uint32_t));
+
+    typename T::data_ptr end_dp = tinfo.tag_sa.size;
+
+    typename T::template data<uint32_t> tag_variant;
+    if (tinfo.variant_count > 1)
+        tag_variant = dp.template get_bump<uint32_t>();
+    else
+        tag_variant = 0;
+
+    static_cast<T *>(this)->walk_tag(align, tinfo, tag_variant);
+}
 
 
 // Copy constructors
 
-class copy : public ctxt<copy> {
+#if 0
+
+class copy : public data<copy> {
     // TODO
 };
+
+#endif
 
 } // end namespace shape
 
