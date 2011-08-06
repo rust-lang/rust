@@ -75,6 +75,14 @@ round_up(T size, size_t alignment) {
     return x;
 }
 
+template<typename T>
+static inline T
+bump_dp(uint8_t *dp) {
+    T x = *((T *)dp);
+    dp += sizeof(T);
+    return x;
+}
+
 
 // Utility classes
 
@@ -123,6 +131,34 @@ struct tag_info {
     size_align tag_sa;                      // Size and align of this tag.
     uint16_t n_params;                      // Number of type parameters.
     const type_param *params;               // Array of type parameters.
+};
+
+template<typename T>
+class data_pair {
+public:
+    T fst, snd;
+    inline void operator=(const T rhs) { fst = snd = rhs; }
+};
+
+class ptr_pair {
+public:
+    uint8_t *fst, *snd;
+
+    template<typename T>
+    class data { typedef data_pair<T> t; };
+
+    ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
+
+    inline void operator=(uint8_t *rhs) { fst = snd = rhs; }
+
+    inline ptr_pair operator+(size_t n) const {
+        return make(fst + n, snd + n);
+    }
+
+    static inline ptr_pair make(uint8_t *fst, uint8_t *snd) {
+        ptr_pair self(fst, snd);
+        return self;
+    }
 };
 
 
@@ -719,16 +755,15 @@ size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 // for methods that actually manipulate the data involved.
 
 #define DATA_SIMPLE(ty, call) \
-    if (align) dp.align_to(sizeof(ty)); \
+    if (align) dp = align_to(dp, sizeof(ty)); \
     static_cast<T *>(this)->call; \
     dp += sizeof(ty);
 
-template<typename T>
-class data : public ctxt< data<T> > {
-private:
-    typename T::data_ptr dp;
-
+template<typename T,typename U>
+class data : public ctxt< data<T,U> > {
 public:
+    U dp;
+
     void walk_tag(bool align, tag_info &tinfo);
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
@@ -750,13 +785,13 @@ public:
     void walk_task(bool align)  { DATA_SIMPLE(void *, walk_task(align)); }
 
     void walk_fn(bool align) {
-        if (align) dp.align_to(sizeof(void *));
+        if (align) dp = align_to(dp, sizeof(void *));
         static_cast<T *>(this)->walk_fn(align);
         dp += sizeof(void *) * 2;
     }
 
     void walk_obj(bool align) {
-        if (align) dp.align_to(sizeof(void *));
+        if (align) dp = align_to(dp, sizeof(void *));
         static_cast<T *>(this)->walk_obj(align);
         dp += sizeof(void *) * 2;
     }
@@ -766,23 +801,20 @@ public:
     }
 
     template<typename W>
-    void walk_number(bool align) {
-        DATA_SIMPLE(W, walk_number<W>(align));
-    }
+    void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>(align)); }
 };
 
-template<typename T>
+template<typename T,typename U>
 void
-data<T>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
+data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     if (!elem_sa.is_set())
         elem_sa = size_of::get(*this);
     else if (elem_sa.alignment == 8)
         elem_sa.alignment = 4;  // FIXME: This is an awful hack.
 
     // Get a pointer to the interior vector, and skip over it.
-    if (align) dp.align_to(ALIGNOF(rust_ivec *));
-    typename T::data_ptr end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) +
-        elem_sa.size * 4;
+    if (align) dp = align_to(dp, ALIGNOF(rust_ivec *));
+    U end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) + elem_sa.size * 4;
 
     // Call to the implementation.
     static_cast<T *>(this)->walk_ivec(align, is_pod, elem_sa);
@@ -790,19 +822,19 @@ data<T>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     dp = end_dp;
 }
 
-template<typename T>
+template<typename T,typename U>
 void
-data<T>::walk_tag(bool align, tag_info &tinfo) {
+data<T,U>::walk_tag(bool align, tag_info &tinfo) {
     size_of::compute_tag_size(tinfo);
 
     if (tinfo.variant_count > 1 && align)
-        dp.align_to(ALIGNOF(uint32_t));
+        dp = align_to(dp, ALIGNOF(uint32_t));
 
-    typename T::data_ptr end_dp = tinfo.tag_sa.size;
+    U end_dp = tinfo.tag_sa.size;
 
-    typename T::template data<uint32_t> tag_variant;
+    typename U::template data<uint32_t>::t tag_variant;
     if (tinfo.variant_count > 1)
-        tag_variant = dp.template get_bump<uint32_t>();
+        tag_variant = bump_dp<uint32_t>(dp);
     else
         tag_variant = 0;
 
@@ -819,6 +851,12 @@ class copy : public data<copy> {
 };
 
 #endif
+
+
+// Structural comparison glue.
+
+class cmp : public data<cmp,ptr_pair> {
+};
 
 } // end namespace shape
 
