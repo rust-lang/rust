@@ -1,33 +1,34 @@
-
+use std;
+import std::comm;
 
 fn main() { test00(); }
 
 fn test00() {
     let r: int = 0;
     let sum: int = 0;
-    let p: port[int] = port();
-    let c0: chan[int] = chan(p);
-    let c1: chan[int] = chan(p);
-    let c2: chan[int] = chan(p);
-    let c3: chan[int] = chan(p);
+    let p = comm::mk_port();
+    let c0 = p.mk_chan();
+    let c1 = p.mk_chan();
+    let c2 = p.mk_chan();
+    let c3 = p.mk_chan();
     let number_of_messages: int = 1000;
     let i: int = 0;
     while i < number_of_messages {
-        c0 <| i;
-        c1 <| i;
-        c2 <| i;
-        c3 <| i;
+        c0.send(i);
+        c1.send(i);
+        c2.send(i);
+        c3.send(i);
         i += 1;
     }
     i = 0;
     while i < number_of_messages {
-        p |> r;
+        r = p.recv();
         sum += r;
-        p |> r;
+        r = p.recv();
         sum += r;
-        p |> r;
+        r = p.recv();
         sum += r;
-        p |> r;
+        r = p.recv();
         sum += r;
         i += 1;
     }

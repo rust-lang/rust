@@ -1,29 +1,32 @@
 use std;
 import std::task;
+import std::comm;
 
-fn start(c: chan[chan[str]]) {
-    let p: port[str];
+fn start(pcc: *u8) {
+    let c = comm::chan_from_unsafe_ptr(pcc);
+    let p;
 
     let a;
     let b;
-    p = port();
-    c <| chan(p);
-    p |> a;
+    p = comm::mk_port[str]();
+    c.send(p.mk_chan().unsafe_ptr());
+    a = p.recv();
     log_err a;
-    p |> b;
+    b = p.recv();
     log_err b;
 }
 
 fn main() {
-    let p: port[chan[str]];
+    let p : comm::_port[*u8];
     let child;
 
-    p = port();
-    child = spawn start(chan(p));
-    let c;
+    p = comm::mk_port();
+    child = spawn start(p.mk_chan().unsafe_ptr());
+    let pc; let c;
 
-    p |> c;
-    c <| "A";
-    c <| "B";
+    pc = p.recv();
+    c = comm::chan_from_unsafe_ptr(pc);
+    c.send("A");
+    c.send("B");
     task::yield();
 }

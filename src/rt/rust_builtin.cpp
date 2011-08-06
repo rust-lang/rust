@@ -901,7 +901,7 @@ new_chan(rust_task *task, rust_port *port) {
 extern "C" CDECL
 void del_chan(rust_task *task, rust_chan *chan) {
     LOG(task, comm, "del_chan(0x%" PRIxPTR ")", (uintptr_t) chan);
-    chan->destroy();
+    I(task->sched, false);
 }
 
 extern "C" CDECL

@@ -29,8 +29,6 @@ native "rust-intrinsic" mod rusti {
 
 resource chan_ptr(ch: *rustrt::rust_chan) {
     rustrt::drop_chan(ch);
-    rustrt::drop_chan(ch); // FIXME: We shouldn't have to do this
-                           // twice.
 }
 
 resource port_ptr(po: *rustrt::rust_port) {
