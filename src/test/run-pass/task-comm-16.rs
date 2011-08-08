@@ -66,10 +66,10 @@ fn test_chan() {
     let ch = po.mk_chan();
     let po0 = comm::mk_port();
     let ch0 = po0.mk_chan();
-    ch0.unsafe_ptr(); // bump ref count to prevent valgrind errors.
-    ch.send(ch0);
-    let ch1;
-    ch1 = po.recv();
+    ch.send(ch0.unsafe_ptr());
+    let pch1;
+    pch1 = po.recv();
+    let ch1 = comm::chan_from_unsafe_ptr(pch1);
     // Does the transmitted channel still work?
 
     ch1.send(10);
@@ -83,5 +83,5 @@ fn main() {
     test_vec();
     test_str();
     test_tag();
-    //test_chan();
+    test_chan();
 }
