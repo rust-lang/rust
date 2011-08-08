@@ -659,7 +659,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
     };
 
     let macro_name: option::t[str] = none;
-    let clauses: [clause] = ~[];
+    let clauses: [@clause] = ~[];
     for arg: @expr  in args {
         alt arg.node {
           expr_vec(elts, mut, seq_kind) {
@@ -691,8 +691,9 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                                       "macro name must not be a path");
                       }
                     }
-                    clauses += ~[{params: pattern_to_selectors(cx, invoc_arg),
-                                  body: elts.(1u)}];
+                    clauses +=
+                        ~[@{params: pattern_to_selectors(cx, invoc_arg),
+                            body: elts.(1u)}];
                     // FIXME: check duplicates (or just simplify
                     // the macro arg situation)
                   }
@@ -726,8 +727,8 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         body: option::t[str], clauses: [clause]) -> @expr {
-        for c: clause  in clauses {
+                         body: option::t[str], clauses: [@clause]) -> @expr {
+        for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) {
                 ret transcribe(cx, bindings, c.body)
