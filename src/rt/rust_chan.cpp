@@ -73,15 +73,16 @@ void rust_chan::disassociate() {
  * Attempt to send data to the associated port.
  */
 void rust_chan::send(void *sptr) {
-    scoped_lock with(port->lock);
-
-    buffer.enqueue(sptr);
-
     if (!is_associated()) {
         W(kernel, is_associated(),
           "rust_chan::transmit with no associated port.");
         return;
     }
+
+    I(kernel, port != NULL);
+    scoped_lock with(port->lock);
+
+    buffer.enqueue(sptr);
 
     A(kernel, !buffer.is_empty(),
       "rust_chan::transmit with nothing to send.");

@@ -34,7 +34,6 @@ struct gc_alloc {
     }
 };
 
-
 struct
 rust_task : public kernel_owned<rust_task>, rust_cond
 {
@@ -58,6 +57,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     int32_t list_index;
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
+
+    rust_task_id id;
 
     // Keeps track of the last time this task yielded.
     timer yield_timer;

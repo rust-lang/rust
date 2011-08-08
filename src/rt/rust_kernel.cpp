@@ -9,6 +9,7 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _region(srv, true),
     _log(srv, NULL),
     srv(srv),
+    max_id(0),
     num_threads(num_threads),
     rval(0),
     live_tasks(0),
@@ -133,10 +134,31 @@ int rust_kernel::start_task_threads()
     return rval;
 }
 
-rust_task *
+rust_task_id
 rust_kernel::create_task(rust_task *spawner, const char *name) {
     rust_scheduler *thread = threads[rand(&rctx) % num_threads];
-    return thread->create_task(spawner, name);
+    rust_task *t = thread->create_task(spawner, name);
+    {
+        scoped_lock with(_kernel_lock);
+        t->id = max_id++;
+        task_table.put(t->id, t);
+    }
+    return t->id;
+}
+
+rust_task *
+rust_kernel::get_task_by_id(rust_task_id id) {
+    scoped_lock with(_kernel_lock);
+    rust_task *task = NULL;
+    // get leaves task unchanged if not found.
+    task_table.get(id, &task);
+    return task;
+}
+
+void
+rust_kernel::release_task_id(rust_task_id id) {
+    scoped_lock with(_kernel_lock);
+    task_table.remove(id);
 }
 
 void rust_kernel::wakeup_schedulers() {

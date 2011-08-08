@@ -408,8 +408,11 @@ task_yield(rust_task *task) {
 }
 
 extern "C" CDECL intptr_t
-task_join(rust_task *task, rust_task *join_task) {
+task_join(rust_task *task, rust_task_id tid) {
     // If the other task is already dying, we don't have to wait for it.
+    rust_task *join_task = task->kernel->get_task_by_id(tid);
+    // FIXME: find task exit status and return that.
+    if(!join_task) return 0;
     join_task->lock.lock();
     if (join_task->dead() == false) {
         join_task->tasks_waiting_to_join.push(task);

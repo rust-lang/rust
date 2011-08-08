@@ -26,8 +26,10 @@ private:
     void create_schedulers();
     void destroy_schedulers();
 
-public:
+    rust_task_id max_id;
+    hash_map<rust_task_id, rust_task *> task_table;
 
+public:
     const size_t num_threads;
     int rval;
 
@@ -56,7 +58,9 @@ public:
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
 
-    rust_task *create_task(rust_task *spawner, const char *name);
+    rust_task_id create_task(rust_task *spawner, const char *name);
+    rust_task *get_task_by_id(rust_task_id id);
+    void release_task_id(rust_task_id tid);
 };
 
 #endif /* RUST_KERNEL_H */

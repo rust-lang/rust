@@ -51,9 +51,6 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_kernel *kernel;
     int32_t list_index;
 
-    hash_map<rust_task *, rust_task *> _task_proxies;
-    hash_map<rust_port *, rust_port *> _port_proxies;
-
     const int id;
 
     lock_and_signal lock;

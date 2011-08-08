@@ -95,6 +95,8 @@ rust_task::~rust_task()
     DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
+    kernel->release_task_id(id);
+
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
     I(sched, ref_count == 0); // ||

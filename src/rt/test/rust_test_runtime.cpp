@@ -45,7 +45,8 @@ void task_entry() {
 
 void
 rust_task_test::worker::run() {
-    rust_task *root_task = kernel->create_task(NULL, "main");
+    rust_task_id root_id = kernel->create_task(NULL, "main");
+    rust_task *root_task = kernel->get_task_by_id(root_id);
     root_task->start((uintptr_t)&task_entry, (uintptr_t)NULL);
     root_task->sched->start_main_loop();
 }

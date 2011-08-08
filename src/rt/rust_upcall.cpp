@@ -140,9 +140,11 @@ void upcall_del_chan(rust_task *task, rust_chan *chan) {
  * has its own copy of the channel.
  */
 extern "C" CDECL rust_chan *
-upcall_clone_chan(rust_task *task, rust_task *target,
+upcall_clone_chan(rust_task *task, rust_task_id tid,
                   rust_chan *chan) {
+    // FIXME: This should be removed.
     LOG_UPCALL_ENTRY(task);
+    rust_task *target = task->kernel->get_task_by_id(tid);
     return chan->clone(target);
 }
 
@@ -203,9 +205,9 @@ upcall_fail(rust_task *task,
  * Called whenever a task's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_kill(rust_task *task, rust_task *target) {
+upcall_kill(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
-
+    rust_task *target = task->kernel->get_task_by_id(tid);
     target->kill();
 }
 
@@ -322,9 +324,9 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
 }
 
 extern "C" CDECL rust_str *
-upcall_dup_str(rust_task *task, rust_task *target, rust_str *str) {
+upcall_dup_str(rust_task *task, rust_task_id tid, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
-
+    rust_task *target = task->kernel->get_task_by_id(tid);
     return make_str(target, (char const *)str->data, str->fill);
 }
 
@@ -482,27 +484,30 @@ upcall_get_type_desc(rust_task *task,
     return td;
 }
 
-extern "C" CDECL rust_task *
+extern "C" CDECL rust_task_id
 upcall_new_task(rust_task *spawner, rust_vec *name) {
     // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
-    rust_task *task =
+    rust_task_id tid =
         spawner->kernel->create_task(spawner, (const char *)name->data);
+    rust_task *task = spawner->kernel->get_task_by_id(tid);
     task->ref();
-    return task;
+    return tid;
 }
 
 extern "C" CDECL void
-upcall_take_task(rust_task *task, rust_task *target) {
+upcall_take_task(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
+    rust_task *target = task->kernel->get_task_by_id(tid);
     if(target) {
         target->ref();
     }
 }
 
 extern "C" CDECL void
-upcall_drop_task(rust_task *task, rust_task *target) {
+upcall_drop_task(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
+    rust_task *target = task->kernel->get_task_by_id(tid);
     if(target) {
         target->deref();
     }
@@ -526,13 +531,14 @@ upcall_drop_chan(rust_task *task, rust_chan *target) {
 
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
-                  rust_task *task,
+                  rust_task_id tid,
                   uintptr_t spawnee_fn,
                   uintptr_t args,
                   size_t args_sz) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_scheduler *sched = spawner->sched;
+    rust_task *task = spawner->kernel->get_task_by_id(tid);
     DLOG(sched, task,
          "upcall start_task(task %s @0x%" PRIxPTR
          ", spawnee 0x%" PRIxPTR ")",

@@ -1,3 +1,4 @@
+// -*- c++ -*-
 /**
  * A C++ wrapper around uthash.
  */
