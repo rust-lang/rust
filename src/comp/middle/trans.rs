@@ -95,6 +95,7 @@ fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &ty::arg[]) ->
         let t: TypeRef = type_of_inner(cx, sp, arg.ty);
         t = alt arg.mode {
           ty::mo_alias(_) { T_ptr(t) }
+          ty::mo_move. { T_ptr(t) }
           _ { t }
         };
         atys += ~[t];

@@ -95,6 +95,7 @@ export mk_iter_body_fn;
 export mode;
 export mo_val;
 export mo_alias;
+export mo_move;
 export mt;
 export node_type_table;
 export pat_ty;
@@ -187,7 +188,7 @@ export walk_ty;
 export occurs_check_fails;
 
 // Data types
-tag mode { mo_val; mo_alias(bool); }
+tag mode { mo_val; mo_alias(bool); mo_move; }
 
 type arg = {mode: mode, ty: t};
 

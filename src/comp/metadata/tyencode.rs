@@ -208,6 +208,9 @@ fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &ty::arg[], out: &ty::t,
             w.write_char('&');
             if mut { w.write_char('m'); }
           }
+          ty::mo_move. {
+            w.write_char('-');
+          }
           ty::mo_val. { }
         }
         enc_ty(w, cx, arg.ty);

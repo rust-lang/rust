@@ -597,6 +597,8 @@ fn parse_arg(p: &parser) -> ast::arg {
     expect(p, token::COLON);
     if eat(p, token::BINOP(token::AND)) {
         m = ast::alias(eat_word(p, "mutable"));
+    } else if eat(p, token::BINOP(token::MINUS)) {
+        m = ast::move;
     }
     let t: @ast::ty = parse_ty(p);
     ret {mode: m, ty: t, ident: i, id: p.get_id()};

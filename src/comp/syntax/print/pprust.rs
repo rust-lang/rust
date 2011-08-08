@@ -1191,6 +1191,7 @@ fn print_alias(s: &ps, m: ast::mode) {
     alt m {
       ast::alias(true) { word_space(s, "&mutable"); }
       ast::alias(false) { word(s.s, "&"); }
+      ast::move. { word(s.s, "-"); }
       ast::val. { }
     }
 }

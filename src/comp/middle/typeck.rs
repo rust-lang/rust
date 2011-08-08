@@ -21,6 +21,7 @@ import middle::ty::field;
 import middle::ty::method;
 import middle::ty::mo_val;
 import middle::ty::mo_alias;
+import middle::ty::mo_move;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::ty_param_substs_opt_and_ty;
@@ -204,12 +205,11 @@ fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
 }
 
 fn ast_mode_to_mode(mode: ast::mode) -> ty::mode {
-    let ty_mode;
     alt mode {
-      ast::val. { ty_mode = mo_val; }
-      ast::alias(mut) { ty_mode = mo_alias(mut); }
+      ast::val. { mo_val }
+      ast::alias(mut) { mo_alias(mut) }
+      ast::move. { mo_move }
     }
-    ret ty_mode;
 }
 
 

@@ -381,6 +381,9 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
                 mode = ty::mo_alias(true);
                 st.pos += 1u;
             }
+        } else if peek(st) as char == '-' {
+            mode = ty::mo_move;
+            st.pos += 1u;
         }
         inputs += ~[{mode: mode, ty: parse_ty(st, sd)}];
     }
