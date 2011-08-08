@@ -69,7 +69,7 @@ const uint8_t CMP_LE = 2u;
 // of two.
 template<typename T>
 static inline T
-round_up(T size, size_t alignment) {
+align_to(T size, size_t alignment) {
     assert(alignment);
     T x = (T)(((uintptr_t)size + alignment - 1) & ~(alignment - 1));
     return x;
@@ -133,10 +133,17 @@ struct tag_info {
     const type_param *params;               // Array of type parameters.
 };
 
+
+// Pointer pairs for structural comparison
+
 template<typename T>
 class data_pair {
 public:
     T fst, snd;
+
+    data_pair() {}
+    data_pair(T &in_fst, T &in_snd) : fst(in_fst), snd(in_snd) {}
+
     inline void operator=(const T rhs) { fst = snd = rhs; }
 };
 
@@ -145,7 +152,7 @@ public:
     uint8_t *fst, *snd;
 
     template<typename T>
-    class data { typedef data_pair<T> t; };
+    struct data { typedef data_pair<T> t; };
 
     ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
 
@@ -155,11 +162,35 @@ public:
         return make(fst + n, snd + n);
     }
 
+    inline ptr_pair operator+=(size_t n) {
+        fst += n; snd += n;
+        return *this;
+    }
+
+    inline ptr_pair operator-(size_t n) const {
+        return make(fst - n, snd - n);
+    }
+
     static inline ptr_pair make(uint8_t *fst, uint8_t *snd) {
         ptr_pair self(fst, snd);
         return self;
     }
 };
+
+inline ptr_pair
+align_to(const ptr_pair const &pair, size_t n) {
+    return ptr_pair::make(align_to(pair.fst, n), align_to(pair.snd, n));
+}
+
+// NB: This function does not align.
+template<typename T>
+inline data_pair<T>
+bump_dp(ptr_pair &ptr) {
+    data_pair<T> data(*reinterpret_cast<T *>(ptr.fst),
+                      *reinterpret_cast<T *>(ptr.snd));
+    ptr += sizeof(T);
+    return data;
+}
 
 
 // Contexts
@@ -173,6 +204,12 @@ public:
     const type_param *params;           // shapes of type parameters
     const rust_shape_tables *tables;
     rust_task *task;
+
+    ctxt(rust_task *in_task,
+         const uint8_t *in_sp,
+         const type_param *in_params,
+         const rust_shape_tables *in_tables)
+    : sp(in_sp), params(in_params), tables(in_tables), task(in_task) {}
 
     template<typename U>
     ctxt(const ctxt<U> &other,
@@ -665,7 +702,7 @@ public:
 
     template<typename T>
     static size_align get(const ctxt<T> &other_cx, unsigned back_up = 0) {
-        size_of cx(other_cx, other_cx->sp - back_up);
+        size_of cx(other_cx, other_cx.sp - back_up);
         cx.walk(false);
         assert(cx.sa.alignment > 0);
         return cx.sa;
@@ -696,7 +733,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
         bool first = true;
         while (sub.sp != variant_end) {
             if (!first)
-                variant_sa.size = round_up(variant_sa.size, sub.sa.alignment);
+                variant_sa.size = align_to(variant_sa.size, sub.sa.alignment);
             sub.walk(!first);
             first = false;
 
@@ -729,7 +766,7 @@ size_of::walk_struct(bool align, const uint8_t *end_sp) {
     bool first = true;
     while (sp != end_sp) {
         if (!first)
-            struct_sa.size = round_up(struct_sa.size, sa.alignment);
+            struct_sa.size = align_to(struct_sa.size, sa.alignment);
         walk(!first);
         first = false;
 
@@ -764,6 +801,13 @@ class data : public ctxt< data<T,U> > {
 public:
     U dp;
 
+    data(rust_task *in_task,
+         const uint8_t *in_sp,
+         const type_param *in_params,
+         const rust_shape_tables *in_tables,
+         U const &in_dp)
+    : ctxt< data<T,U> >(in_task, in_sp, in_params, in_tables), dp(in_dp) {}
+
     void walk_tag(bool align, tag_info &tinfo);
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
@@ -796,12 +840,19 @@ public:
         dp += sizeof(void *) * 2;
     }
 
+    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+                  const uint8_t *ty_params_sp) {
+        // Delegate to the implementation.
+        static_cast<T *>(this)->walk_res(align, dtor, n_ty_params,
+                                         ty_params_sp);
+    }
+
     void walk_var(bool align, uint8_t param_index) {
         static_cast<T *>(this)->walk_var(align, param_index);
     }
 
     template<typename W>
-    void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>(align)); }
+    void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>()); }
 };
 
 template<typename T,typename U>
@@ -825,12 +876,12 @@ data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 template<typename T,typename U>
 void
 data<T,U>::walk_tag(bool align, tag_info &tinfo) {
-    size_of::compute_tag_size(tinfo);
+    size_of::compute_tag_size(*this, tinfo);
 
     if (tinfo.variant_count > 1 && align)
         dp = align_to(dp, ALIGNOF(uint32_t));
 
-    U end_dp = tinfo.tag_sa.size;
+    U end_dp = dp + tinfo.tag_sa.size;
 
     typename U::template data<uint32_t>::t tag_variant;
     if (tinfo.variant_count > 1)
@@ -846,7 +897,7 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
 
 #if 0
 
-class copy : public data<copy> {
+class copy : public data<copy,uint8_t *> {
     // TODO
 };
 
@@ -856,7 +907,67 @@ class copy : public data<copy> {
 // Structural comparison glue.
 
 class cmp : public data<cmp,ptr_pair> {
+private:
+    template<typename T>
+    int cmp_number(ptr_pair &ptrs);
+
+public:
+    int result;
+
+    cmp(rust_task *in_task,
+        const uint8_t *in_sp,
+        const type_param *in_params,
+        const rust_shape_tables *in_tables,
+        uint8_t *in_data_0,
+        uint8_t *in_data_1)
+    : data<cmp,ptr_pair>(in_task, in_sp, in_params, in_tables,
+                         ptr_pair::make(in_data_0, in_data_1)) {}
+
+    void walk_tag(bool align, tag_info &tinfo,
+                  data_pair<uint32_t> &tag_variants);
+    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+                  const uint8_t *ty_params_sp);
+
+    template<typename T>
+    void walk_number() { result = cmp_number<T>(dp); }
 };
 
+void
+cmp::walk_tag(bool align, tag_info &tinfo,
+              data_pair<uint32_t> &tag_variants) {
+    abort();    // TODO
+}
+
+void
+cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+              const uint8_t *ty_params_sp) {
+    abort();    // TODO
+}
+
+template<typename T>
+int
+cmp::cmp_number(ptr_pair &ptrs) {
+    T a = *(reinterpret_cast<T *>(dp.fst));
+    T b = *(reinterpret_cast<T *>(dp.snd));
+    return (a < b) ? -1 : (a == b) ? 0 : 1;
+}
+
 } // end namespace shape
+
+extern "C" void
+upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
+                const type_desc **subtydescs, uint8_t *data_0,
+                uint8_t *data_1, uint8_t cmp_type) {
+    shape::arena arena;
+    shape::type_param *params = shape::type_param::make(tydesc, arena);
+    shape::cmp cmp(task, tydesc->shape, params, tydesc->shape_tables, data_0,
+                   data_1);
+    cmp.walk(true);
+
+    switch (cmp_type) {
+    case shape::CMP_EQ: *result = cmp.result == 0;  break;
+    case shape::CMP_LT: *result = cmp.result < 0;   break;
+    case shape::CMP_LE: *result = cmp.result <= 0;  break;
+    }
+}
 

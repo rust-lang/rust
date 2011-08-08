@@ -77,6 +77,7 @@ unsafe_vec_to_mut
 unsupervise
 upcall_chan_target_task
 upcall_clone_chan
+upcall_cmp_type
 upcall_del_chan
 upcall_del_port
 upcall_drop_chan
