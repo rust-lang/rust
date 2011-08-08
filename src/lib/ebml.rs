@@ -15,9 +15,9 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 // modules within this file.
 
 // ebml reading
-type doc = {data: vec[u8], start: uint, end: uint};
+type doc = {data: @u8[], start: uint, end: uint};
 
-fn vint_at(data: vec[u8], start: uint) -> {val: uint, next: uint} {
+fn vint_at(data: &u8[], start: uint) -> {val: uint, next: uint} {
     let a = data.(start);
     if a & 0x80u8 != 0u8 { ret {val: a & 0x7fu8 as uint, next: start + 1u}; }
     if a & 0x40u8 != 0u8 {
@@ -39,13 +39,13 @@ fn vint_at(data: vec[u8], start: uint) -> {val: uint, next: uint} {
     } else { log_err "vint too big"; fail; }
 }
 
-fn new_doc(data: vec[u8]) -> doc {
-    ret {data: data, start: 0u, end: vec::len[u8](data)};
+fn new_doc(data: &@u8[]) -> doc {
+    ret {data: data, start: 0u, end: ivec::len[u8](*data)};
 }
 
-fn doc_at(data: vec[u8], start: uint) -> doc {
-    let elt_tag = vint_at(data, start);
-    let elt_size = vint_at(data, elt_tag.next);
+fn doc_at(data: &@u8[], start: uint) -> doc {
+    let elt_tag = vint_at(*data, start);
+    let elt_size = vint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
     ret {data: data, start: elt_size.next, end: end};
 }
@@ -53,8 +53,8 @@ fn doc_at(data: vec[u8], start: uint) -> doc {
 fn maybe_get_doc(d: doc, tg: uint) -> option::t[doc] {
     let pos = d.start;
     while pos < d.end {
-        let elt_tag = vint_at(d.data, pos);
-        let elt_size = vint_at(d.data, elt_tag.next);
+        let elt_tag = vint_at(*d.data, pos);
+        let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
             ret some[doc]({data: d.data, start: elt_size.next, end: pos});
@@ -76,8 +76,8 @@ fn get_doc(d: doc, tg: uint) -> doc {
 iter docs(d: doc) -> {tag: uint, doc: doc} {
     let pos = d.start;
     while pos < d.end {
-        let elt_tag = vint_at(d.data, pos);
-        let elt_size = vint_at(d.data, elt_tag.next);
+        let elt_tag = vint_at(*d.data, pos);
+        let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         put {tag: elt_tag.val,
              doc: {data: d.data, start: elt_size.next, end: pos}};
@@ -87,8 +87,8 @@ iter docs(d: doc) -> {tag: uint, doc: doc} {
 iter tagged_docs(d: doc, tg: uint) -> doc {
     let pos = d.start;
     while pos < d.end {
-        let elt_tag = vint_at(d.data, pos);
-        let elt_size = vint_at(d.data, elt_tag.next);
+        let elt_tag = vint_at(*d.data, pos);
+        let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
             put {data: d.data, start: elt_size.next, end: pos};
@@ -96,9 +96,9 @@ iter tagged_docs(d: doc, tg: uint) -> doc {
     }
 }
 
-fn doc_data(d: doc) -> vec[u8] { ret vec::slice[u8](d.data, d.start, d.end); }
+fn doc_data(d: doc) -> u8[] { ret ivec::slice[u8](*d.data, d.start, d.end); }
 
-fn be_uint_from_bytes(data: vec[u8], start: uint, size: uint) -> uint {
+fn be_uint_from_bytes(data: &@u8[], start: uint, size: uint) -> uint {
     let sz = size;
     assert (sz <= 4u);
     let val = 0u;
@@ -117,29 +117,29 @@ fn doc_as_uint(d: doc) -> uint {
 
 
 // ebml writing
-type writer = {writer: io::buf_writer, mutable size_positions: vec[uint]};
+type writer = {writer: ioivec::buf_writer, mutable size_positions: uint[]};
 
-fn write_sized_vint(w: &io::buf_writer, n: uint, size: uint) {
-    let buf: vec[u8];
+fn write_sized_vint(w: &ioivec::buf_writer, n: uint, size: uint) {
+    let buf: u8[];
     alt size {
-      1u { buf = [0x80u8 | (n as u8)]; }
-      2u { buf = [0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
+      1u { buf = ~[0x80u8 | (n as u8)]; }
+      2u { buf = ~[0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
       3u {
         buf =
-            [0x20u8 | (n >> 16u as u8), n >> 8u & 0xffu as u8,
-             n & 0xffu as u8];
+            ~[0x20u8 | (n >> 16u as u8), n >> 8u & 0xffu as u8,
+              n & 0xffu as u8];
       }
       4u {
         buf =
-            [0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
-             n >> 8u & 0xffu as u8, n & 0xffu as u8];
+            ~[0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
+              n >> 8u & 0xffu as u8, n & 0xffu as u8];
       }
       _ { log_err "vint to write too big"; fail; }
     }
     w.write(buf);
 }
 
-fn write_vint(w: &io::buf_writer, n: uint) {
+fn write_vint(w: &ioivec::buf_writer, n: uint) {
     if n < 0x7fu { write_sized_vint(w, n, 1u); ret; }
     if n < 0x4000u { write_sized_vint(w, n, 2u); ret; }
     if n < 0x200000u { write_sized_vint(w, n, 3u); ret; }
@@ -148,8 +148,8 @@ fn write_vint(w: &io::buf_writer, n: uint) {
     fail;
 }
 
-fn create_writer(w: &io::buf_writer) -> writer {
-    let size_positions: vec[uint] = [];
+fn create_writer(w: &ioivec::buf_writer) -> writer {
+    let size_positions: uint[] = ~[];
     ret {writer: w, mutable size_positions: size_positions};
 }
 
@@ -161,17 +161,17 @@ fn start_tag(w: &writer, tag_id: uint) {
     write_vint(w.writer, tag_id);
     // Write a placeholder four-byte size.
 
-    w.size_positions += [w.writer.tell()];
-    let zeroes: vec[u8] = [0u8, 0u8, 0u8, 0u8];
+    w.size_positions += ~[w.writer.tell()];
+    let zeroes: u8[] = ~[0u8, 0u8, 0u8, 0u8];
     w.writer.write(zeroes);
 }
 
 fn end_tag(w: &writer) {
-    let last_size_pos = vec::pop[uint](w.size_positions);
+    let last_size_pos = ivec::pop[uint](w.size_positions);
     let cur_pos = w.writer.tell();
-    w.writer.seek(last_size_pos as int, io::seek_set);
+    w.writer.seek(last_size_pos as int, ioivec::seek_set);
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
-    w.writer.seek(cur_pos as int, io::seek_set);
+    w.writer.seek(cur_pos as int, ioivec::seek_set);
 }
 // TODO: optionally perform "relaxations" on end_tag to more efficiently
 // encode sizes; this is a fixed point iteration
