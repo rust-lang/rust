@@ -158,7 +158,7 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
           cmp_type:
               dr("cmp_type", ~[T_ptr(T_i1()), taskptr_type,
                  T_ptr(tydesc_type), T_ptr(T_ptr(tydesc_type)),
-                 T_ptr(T_i8()), T_ptr(T_i8()), T_int()],
+                 T_ptr(T_i8()), T_ptr(T_i8()), T_i8()],
                  T_void())};
 }
 //
