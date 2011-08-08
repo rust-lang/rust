@@ -175,6 +175,11 @@ public:
         ptr_pair self(fst, snd);
         return self;
     }
+
+    static inline ptr_pair make(const data_pair<uint8_t *> &pair) {
+        ptr_pair self(pair.fst, pair.snd);
+        return self;
+    }
 };
 
 inline ptr_pair
@@ -812,11 +817,7 @@ public:
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
 
     void walk_struct(bool align, const uint8_t *end_sp) {
-        while (this->sp != end_sp) {
-            // TODO: Allow subclasses to optimize for POD if they want to.
-            this->walk(align);
-            align = true;
-        }
+        static_cast<T *>(this)->walk_struct(align, end_sp);
     }
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
@@ -921,8 +922,16 @@ public:
         uint8_t *in_data_0,
         uint8_t *in_data_1)
     : data<cmp,ptr_pair>(in_task, in_sp, in_params, in_tables,
-                         ptr_pair::make(in_data_0, in_data_1)) {}
+                         ptr_pair::make(in_data_0, in_data_1)),
+      result(0) {}
 
+    cmp(const cmp &other, const ptr_pair &in_dp)
+    : data<cmp,ptr_pair>(other.task, other.sp, other.params, other.tables,
+                         in_dp),
+      result(0) {}
+
+    void walk_box(bool align);
+    void walk_struct(bool align, const uint8_t *end_sp);
     void walk_tag(bool align, tag_info &tinfo,
                   data_pair<uint32_t> &tag_variants);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
@@ -931,6 +940,23 @@ public:
     template<typename T>
     void walk_number() { result = cmp_number<T>(dp); }
 };
+
+void
+cmp::walk_box(bool align) {
+    data_pair<uint8_t *> subdp = bump_dp<uint8_t *>(dp);
+    cmp subcx(*this, ptr_pair::make(subdp));
+    subcx.dp += sizeof(uint32_t);   // Skip over the reference count.
+    subcx.walk(false);
+    result = subcx.result;
+}
+
+void
+cmp::walk_struct(bool align, const uint8_t *end_sp) {
+    while (!result && this->sp != end_sp) {
+        this->walk(align);
+        align = true;
+    }
+}
 
 void
 cmp::walk_tag(bool align, tag_info &tinfo,
