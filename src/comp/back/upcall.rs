@@ -5,6 +5,7 @@ import middle::trans_common::T_f32;
 import middle::trans_common::T_f64;
 import middle::trans_common::T_fn;
 import middle::trans_common::T_bool;
+import middle::trans_common::T_i1;
 import middle::trans_common::T_i8;
 import middle::trans_common::T_i32;
 import middle::trans_common::T_int;
@@ -65,22 +66,26 @@ type upcalls =
      ivec_resize: ValueRef,
      ivec_spill: ValueRef,
      ivec_resize_shared: ValueRef,
-     ivec_spill_shared: ValueRef};
+     ivec_spill_shared: ValueRef,
+     cmp_type: ValueRef};
 
 fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
-    fn decl(tn: type_names, tydesc_type: TypeRef, taskptr_type: TypeRef,
-            llmod: ModuleRef, name: str, tys: TypeRef[], rv: TypeRef) ->
-       ValueRef {
-        let arg_tys: TypeRef[] = ~[taskptr_type];
+    fn decl(tn: type_names, llmod: ModuleRef, name: str, tys: TypeRef[],
+          rv: TypeRef) -> ValueRef {
+        let arg_tys: TypeRef[] = ~[];
         for t: TypeRef  in tys { arg_tys += ~[t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    let dv = bind decl(tn, tydesc_type, taskptr_type, llmod, _, _, T_void());
-    let d = bind decl(tn, tydesc_type, taskptr_type, llmod, _, _, _);
-    // FIXME: Sigh:.. remove this when I fix the typechecker pushdown.
-    // --pcwalton
+    fn decl_with_taskptr(taskptr_type: TypeRef, tn: type_names,
+                         llmod: ModuleRef, name: str, tys: TypeRef[],
+                         rv: TypeRef) -> ValueRef {
+        ret decl(tn, llmod, name, ~[taskptr_type] + tys, rv);
+    }
+    let dv = bind decl_with_taskptr(taskptr_type, tn, llmod, _, _, T_void());
+    let d = bind decl_with_taskptr(taskptr_type, tn, llmod, _, _, _);
+    let dr = bind decl(tn, llmod, _, _, _);
 
     let empty_vec: TypeRef[] = ~[];
     ret @{grow_task: dv("grow_task", ~[T_size_t()]),
@@ -149,7 +154,12 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
                 T_void()),
           ivec_spill_shared:
               d("ivec_spill_shared", ~[T_ptr(T_opaque_ivec()), T_int()],
-                T_void())};
+                T_void()),
+          cmp_type:
+              dr("cmp_type", ~[T_ptr(T_i1()), taskptr_type,
+                 T_ptr(tydesc_type), T_ptr(T_ptr(tydesc_type)),
+                 T_ptr(T_i8()), T_ptr(T_i8()), T_int()],
+                 T_void())};
 }
 //
 // Local Variables:
