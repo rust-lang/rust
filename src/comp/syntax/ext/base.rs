@@ -29,19 +29,23 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
                             normal(ext::concat_idents::expand_syntax_ext));
     syntax_expanders.insert("ident_to_str",
                             normal(ext::ident_to_str::expand_syntax_ext));
+    syntax_expanders.insert("log_syntax",
+                            normal(ext::log_syntax::expand_syntax_ext));
     ret syntax_expanders;
 }
 
-obj ext_ctxt(sess: @session, crate_file_name_hack: str, 
+obj ext_ctxt(sess: @session, crate_file_name_hack: str,
              mutable backtrace: span[]) {
     fn crate_file_name() -> str { ret crate_file_name_hack; }
+
+    fn session() -> @session { ret sess; }
 
     fn print_backtrace() {
         for sp: span in backtrace {
             sess.span_note(sp, "(while expanding this)")
         }
     }
-    
+
     fn bt_push(sp: span) { backtrace += ~[sp]; }
     fn bt_pop() { ivec::pop(backtrace); }
 
@@ -59,7 +63,7 @@ obj ext_ctxt(sess: @session, crate_file_name_hack: str,
     }
     fn span_bug(sp:span, msg: str) -> ! {
         self.print_backtrace();
-        sess.span_bug(sp, msg); 
+        sess.span_bug(sp, msg);
     }
     fn bug(msg: str) -> ! {
         self.print_backtrace();

@@ -49,6 +49,7 @@ mod middle {
 
 mod syntax {
     mod ast;
+
     mod fold;
     mod visit;
     mod codemap;
@@ -67,6 +68,7 @@ mod syntax {
         mod simplext;
         mod concat_idents;
         mod ident_to_str;
+        mod log_syntax;
     }
     mod print {
         mod pprust;
