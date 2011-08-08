@@ -178,7 +178,7 @@ public:
 };
 
 inline ptr_pair
-align_to(const ptr_pair const &pair, size_t n) {
+align_to(const ptr_pair &pair, size_t n) {
     return ptr_pair::make(align_to(pair.fst, n), align_to(pair.snd, n));
 }
 
