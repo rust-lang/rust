@@ -243,7 +243,7 @@ fn s_uint(tcx : &ty_ctxt) -> u8 {
 }
 
 fn s_float(tcx : &ty_ctxt) -> u8 {
-    ret shape_f32;      // TODO: x86-64
+    ret shape_f64;      // TODO: x86-64
 }
 
 fn mk_ctxt(llmod : ModuleRef) -> ctxt {
