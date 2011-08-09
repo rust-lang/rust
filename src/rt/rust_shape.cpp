@@ -77,12 +77,17 @@ align_to(T size, size_t alignment) {
 
 template<typename T>
 static inline T
-bump_dp(uint8_t *dp) {
+bump_dp(uint8_t *&dp) {
     T x = *((T *)dp);
     dp += sizeof(T);
     return x;
 }
 
+template<typename T>
+static inline T
+get_dp(uint8_t *dp) {
+    return *((T *)dp);
+}
 
 // Utility classes
 
@@ -145,6 +150,11 @@ public:
     data_pair(T &in_fst, T &in_snd) : fst(in_fst), snd(in_snd) {}
 
     inline void operator=(const T rhs) { fst = snd = rhs; }
+
+    static data_pair<T> make(T &fst, T &snd) {
+        data_pair<T> data(fst, snd);
+        return data;
+    }
 };
 
 class ptr_pair {
@@ -201,6 +211,14 @@ bump_dp(ptr_pair &ptr) {
     return data;
 }
 
+template<typename T>
+inline data_pair<T>
+get_dp(ptr_pair &ptr) {
+    data_pair<T> data(*reinterpret_cast<T *>(ptr.fst),
+                      *reinterpret_cast<T *>(ptr.snd));
+    return data;
+}
+
 
 // Contexts
 
@@ -231,6 +249,7 @@ public:
       task(other.task) {}
 
     void walk(bool align);
+    void walk_reset(bool align);
 
     std::pair<const uint8_t *,const uint8_t *>
     get_variant_sp(tag_info &info, uint32_t variant_id);
@@ -347,6 +366,8 @@ struct type_param {
 template<typename T>
 void
 ctxt<T>::walk(bool align) {
+    fprintf(stderr, "walking %d\n", *sp);
+
     switch (*sp++) {
     case SHAPE_U8:      WALK_NUMBER(uint8_t);   break;
     case SHAPE_U16:     WALK_NUMBER(uint16_t);  break;
@@ -372,6 +393,14 @@ ctxt<T>::walk(bool align) {
     case SHAPE_VAR:     walk_var(align);        break;
     default:            abort();
     }
+}
+
+template<typename T>
+void
+ctxt<T>::walk_reset(bool align) {
+    const uint8_t *old_sp = sp;
+    walk(align);
+    sp = old_sp;
 }
 
 template<typename T>
@@ -816,8 +845,9 @@ size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 
 #define DATA_SIMPLE(ty, call) \
     if (align) dp = align_to(dp, sizeof(ty)); \
+    U end_dp = dp + sizeof(ty); \
     static_cast<T *>(this)->call; \
-    dp += sizeof(ty);
+    dp = end_dp;
 
 template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
@@ -894,6 +924,7 @@ std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_ivec_data_range(uint8_t *dp) {
     size_t fill = bump_dp<size_t>(dp);
     bump_dp<size_t>(dp);    // Skip over alloc.
+    uint8_t *payload_dp = dp;
     rust_ivec_payload payload = bump_dp<rust_ivec_payload>(dp);
 
     uint8_t *start, *end;
@@ -906,7 +937,7 @@ data<T,U>::get_ivec_data_range(uint8_t *dp) {
             end = start + fill;
         }
     } else {                            // On stack.
-        start = payload.data;
+        start = payload_dp;
         end = start + fill;
     }
 
@@ -916,6 +947,7 @@ data<T,U>::get_ivec_data_range(uint8_t *dp) {
 template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
 data<T,U>::get_ivec_data_range(ptr_pair &dp) {
+    fprintf(stderr, "get_ivec_data_range %p/%p\n", dp.fst, dp.snd);
     std::pair<uint8_t *,uint8_t *> fst = get_ivec_data_range(dp.fst);
     std::pair<uint8_t *,uint8_t *> snd = get_ivec_data_range(dp.snd);
     ptr_pair start(fst.first, snd.first);
@@ -1021,19 +1053,43 @@ public:
                       variant_ptr_and_end);
 
     template<typename T>
-    void walk_number() { cmp_number(bump_dp<T>(dp)); }
+    void walk_number() { cmp_number(get_dp<T>(dp)); }
 };
+
+template<>
+void cmp::cmp_number<int32_t>(const data_pair<int32_t> &nums) {
+    fprintf(stderr, "cmp %d/%d\n", nums.fst, nums.snd);
+    result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
+}
 
 void
 cmp::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     std::pair<ptr_pair,ptr_pair> data_range = get_ivec_data_range(dp);
 
+    DPRINT("walk_ivec %p/%p\n", data_range.first.fst, data_range.first.snd);
+
     cmp sub(*this, data_range.first);
     ptr_pair data_end = data_range.second;
     while (!result && sub.dp < data_end) {
-        sub.walk(align);
+        DPRINT("walk_ivec elem %p/%p %p/%p\n", sub.dp.fst, sub.dp.snd,
+               data_end.fst, data_end.snd);
+        DPRINTCX(&sub);
+        DPRINT("\nend\n");
+
+        sub.walk_reset(align);
+        DPRINT("result = %d\n", sub.result);
         result = sub.result;
         align = true;
+
+        DPRINT("walk_ivec after elem %p/%p %p/%p\n", sub.dp.fst, sub.dp.snd,
+               data_end.fst, data_end.snd);
+    }
+
+    if (!result) {
+        // If we hit the end, the result comes down to length comparison.
+        int len_fst = data_range.second.fst - data_range.first.fst;
+        int len_snd = data_range.second.snd - data_range.first.snd;
+        cmp_number(data_pair<int>::make(len_fst, len_snd));
     }
 }
 
@@ -1090,6 +1146,8 @@ extern "C" void
 upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
+    fprintf(stderr, "cmp_type\n");
+
     shape::arena arena;
     shape::type_param *params = shape::type_param::make(tydesc, arena);
     shape::cmp cmp(task, tydesc->shape, params, tydesc->shape_tables, data_0,
