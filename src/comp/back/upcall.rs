@@ -79,7 +79,7 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
     fn decl_with_taskptr(taskptr_type: TypeRef, tn: type_names,
-                         llmod: ModuleRef, name: str, tys: TypeRef[],
+                         llmod: ModuleRef, name: str, tys: [TypeRef],
                          rv: TypeRef) -> ValueRef {
         ret decl(tn, llmod, name, ~[taskptr_type] + tys, rv);
     }

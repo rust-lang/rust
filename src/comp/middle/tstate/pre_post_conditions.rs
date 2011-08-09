@@ -317,8 +317,8 @@ fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
 }
 
 fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr,
-                        modes: &ty::mode[],
-                        operands: &(@expr)[]) {
+                        modes: &[ty::mode],
+                        operands: &[@expr]) {
     let i = 0;
     for mode: ty::mode in modes {
         if mode == ty::mo_move {
