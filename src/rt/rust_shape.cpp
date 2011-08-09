@@ -314,7 +314,6 @@ public:
     inline T *alloc(size_t count = 1) {
         // FIXME: align
         size_t sz = count * sizeof(T);
-        //DPRINT("size is %lu\n", sz);
         T *rv = (T *)ptr;
         ptr += sz;
         if (ptr > &data[ARENA_SIZE]) {
@@ -366,8 +365,6 @@ struct type_param {
 template<typename T>
 void
 ctxt<T>::walk(bool align) {
-    fprintf(stderr, "walking %d\n", *sp);
-
     switch (*sp++) {
     case SHAPE_U8:      WALK_NUMBER(uint8_t);   break;
     case SHAPE_U16:     WALK_NUMBER(uint16_t);  break;
@@ -778,7 +775,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
         const uint8_t *variant_ptr = variant_ptr_and_end.first;
         const uint8_t *variant_end = variant_ptr_and_end.second;
 
-        size_of sub(*this, variant_ptr, params, NULL);
+        size_of sub(*this, variant_ptr, tinfo.params, NULL);
 
         // Compute the size of this variant.
         size_align variant_sa;
@@ -903,7 +900,11 @@ public:
     }
 
     void walk_var(bool align, uint8_t param_index) {
-        static_cast<T *>(this)->walk_var(align, param_index);
+        const type_param *param = &this->params[param_index];
+        T sub(*static_cast<T *>(this), param->shape, param->params,
+              param->tables);
+        sub.walk(align);
+        static_cast<T *>(this)->walk_subcontext(align, sub);
     }
 
     template<typename W>
@@ -947,7 +948,6 @@ data<T,U>::get_ivec_data_range(uint8_t *dp) {
 template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
 data<T,U>::get_ivec_data_range(ptr_pair &dp) {
-    fprintf(stderr, "get_ivec_data_range %p/%p\n", dp.fst, dp.snd);
     std::pair<uint8_t *,uint8_t *> fst = get_ivec_data_range(dp.fst);
     std::pair<uint8_t *,uint8_t *> snd = get_ivec_data_range(dp.snd);
     ptr_pair start(fst.first, snd.first);
@@ -1007,10 +1007,17 @@ class copy : public data<copy,uint8_t *> {
 // Structural comparison glue.
 
 class cmp : public data<cmp,ptr_pair> {
+    friend class data<cmp,ptr_pair>;
+
 private:
     template<typename T>
     void cmp_number(const data_pair<T> &nums) {
         result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
+    }
+
+    void walk_subcontext(bool align, cmp &sub) {
+        sub.walk(align);
+        result = sub.result;
     }
 
 public:
@@ -1058,7 +1065,6 @@ public:
 
 template<>
 void cmp::cmp_number<int32_t>(const data_pair<int32_t> &nums) {
-    fprintf(stderr, "cmp %d/%d\n", nums.fst, nums.snd);
     result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
 }
 
@@ -1066,23 +1072,12 @@ void
 cmp::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     std::pair<ptr_pair,ptr_pair> data_range = get_ivec_data_range(dp);
 
-    DPRINT("walk_ivec %p/%p\n", data_range.first.fst, data_range.first.snd);
-
     cmp sub(*this, data_range.first);
     ptr_pair data_end = data_range.second;
     while (!result && sub.dp < data_end) {
-        DPRINT("walk_ivec elem %p/%p %p/%p\n", sub.dp.fst, sub.dp.snd,
-               data_end.fst, data_end.snd);
-        DPRINTCX(&sub);
-        DPRINT("\nend\n");
-
         sub.walk_reset(align);
-        DPRINT("result = %d\n", sub.result);
         result = sub.result;
         align = true;
-
-        DPRINT("walk_ivec after elem %p/%p %p/%p\n", sub.dp.fst, sub.dp.snd,
-               data_end.fst, data_end.snd);
     }
 
     if (!result) {
@@ -1130,7 +1125,7 @@ void
 cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
-    cmp sub(*this, variant_ptr_and_end.first);
+    cmp sub(*this, variant_ptr_and_end.first, tinfo.params);
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
     while (!result && sub.sp < variant_end) {
@@ -1146,8 +1141,6 @@ extern "C" void
 upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
-    fprintf(stderr, "cmp_type\n");
-
     shape::arena arena;
     shape::type_param *params = shape::type_param::make(tydesc, arena);
     shape::cmp cmp(task, tydesc->shape, params, tydesc->shape_tables, data_0,
