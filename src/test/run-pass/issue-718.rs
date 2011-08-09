@@ -1,7 +1,3 @@
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
-
 fn main() {
 
     obj a() {
@@ -17,5 +13,10 @@ fn main() {
     let my_c = obj () { with my_b };
 
     assert (my_c.foo() == 2);
+
+    // ...One more for good measure.
+    let my_d = obj () { with my_b };
+
+    assert (my_d.foo() == 2);
 }
 
