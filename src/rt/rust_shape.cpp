@@ -171,6 +171,10 @@ public:
         return make(fst - n, snd - n);
     }
 
+    inline bool operator<(const ptr_pair &other) const {
+        return fst < other.fst && snd < other.snd;
+    }
+
     static inline ptr_pair make(uint8_t *fst, uint8_t *snd) {
         ptr_pair self(fst, snd);
         return self;
@@ -817,6 +821,12 @@ size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 
 template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
+protected:
+    void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
+
+    static std::pair<uint8_t *,uint8_t *> get_ivec_data_range(uint8_t *dp);
+    static std::pair<ptr_pair,ptr_pair> get_ivec_data_range(ptr_pair &dp);
+
 public:
     U dp;
 
@@ -866,12 +876,52 @@ public:
         static_cast<T *>(this)->walk_var(align, param_index);
     }
 
-    // Called by derived classes only.
-    void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
-
     template<typename W>
     void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>()); }
 };
+
+template<typename T,typename U>
+void
+data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
+    std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
+        this->get_variant_sp(tinfo, variant_id);
+    static_cast<T *>(this)->walk_variant(align, tinfo, variant_id,
+                                         variant_ptr_and_end);
+}
+
+template<typename T,typename U>
+std::pair<uint8_t *,uint8_t *>
+data<T,U>::get_ivec_data_range(uint8_t *dp) {
+    size_t fill = bump_dp<size_t>(dp);
+    bump_dp<size_t>(dp);    // Skip over alloc.
+    rust_ivec_payload payload = bump_dp<rust_ivec_payload>(dp);
+
+    uint8_t *start, *end;
+    if (!fill) {
+        if (!payload.ptr) {             // Zero length.
+            start = end = NULL;
+        } else {                        // On heap.
+            fill = payload.ptr->fill;
+            start = payload.ptr->data;
+            end = start + fill;
+        }
+    } else {                            // On stack.
+        start = payload.data;
+        end = start + fill;
+    }
+
+    return std::make_pair(start, end);
+}
+
+template<typename T,typename U>
+std::pair<ptr_pair,ptr_pair>
+data<T,U>::get_ivec_data_range(ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst = get_ivec_data_range(dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd = get_ivec_data_range(dp.snd);
+    ptr_pair start(fst.first, snd.first);
+    ptr_pair end(fst.second, snd.second);
+    return std::make_pair(start, end);
+}
 
 template<typename T,typename U>
 void
@@ -881,7 +931,7 @@ data<T,U>::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
     else if (elem_sa.alignment == 8)
         elem_sa.alignment = 4;  // FIXME: This is an awful hack.
 
-    // Get a pointer to the interior vector, and skip over it.
+    // Get a pointer to the interior vector, and determine its size.
     if (align) dp = align_to(dp, ALIGNOF(rust_ivec *));
     U end_dp = dp + sizeof(rust_ivec) - sizeof(uintptr_t) + elem_sa.size * 4;
 
@@ -908,15 +958,6 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
         tag_variant = 0;
 
     static_cast<T *>(this)->walk_tag(align, tinfo, tag_variant);
-}
-
-template<typename T,typename U>
-void
-data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
-    std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
-        this->get_variant_sp(tinfo, variant_id);
-    static_cast<T *>(this)->walk_variant(align, tinfo, variant_id,
-                                         variant_ptr_and_end);
 }
 
 
@@ -968,10 +1009,11 @@ public:
                          in_dp),
       result(0) {}
 
-    void walk_box(bool align);
-    void walk_struct(bool align, const uint8_t *end_sp);
+    void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
     void walk_tag(bool align, tag_info &tinfo,
                   const data_pair<uint32_t> &tag_variants);
+    void walk_box(bool align);
+    void walk_struct(bool align, const uint8_t *end_sp);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
                   const uint8_t *ty_params_sp);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
@@ -983,18 +1025,14 @@ public:
 };
 
 void
-cmp::walk_box(bool align) {
-    data_pair<uint8_t *> subdp = bump_dp<uint8_t *>(dp);
-    cmp subcx(*this, ptr_pair::make(subdp));
-    subcx.dp += sizeof(uint32_t);   // Skip over the reference count.
-    subcx.walk(true);
-    result = subcx.result;
-}
+cmp::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
+    std::pair<ptr_pair,ptr_pair> data_range = get_ivec_data_range(dp);
 
-void
-cmp::walk_struct(bool align, const uint8_t *end_sp) {
-    while (!result && this->sp != end_sp) {
-        this->walk(align);
+    cmp sub(*this, data_range.first);
+    ptr_pair data_end = data_range.second;
+    while (!result && sub.dp < data_end) {
+        sub.walk(align);
+        result = sub.result;
         align = true;
     }
 }
@@ -1006,6 +1044,24 @@ cmp::walk_tag(bool align, tag_info &tinfo,
     if (result != 0)
         return;
     data<cmp,ptr_pair>::walk_variant(align, tinfo, tag_variants.fst);
+}
+
+void
+cmp::walk_box(bool align) {
+    data_pair<uint8_t *> subdp = bump_dp<uint8_t *>(dp);
+
+    cmp sub(*this, ptr_pair::make(subdp));
+    sub.dp += sizeof(uint32_t);     // Skip over the reference count.
+    sub.walk(true);
+    result = sub.result;
+}
+
+void
+cmp::walk_struct(bool align, const uint8_t *end_sp) {
+    while (!result && this->sp != end_sp) {
+        this->walk(align);
+        align = true;
+    }
 }
 
 void
@@ -1021,8 +1077,9 @@ cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
     cmp sub(*this, variant_ptr_and_end.first);
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
-    while (!sub.result && sub.sp < variant_end) {
+    while (!result && sub.sp < variant_end) {
         sub.walk(align);
+        result = sub.result;
         align = true;
     }
 }
