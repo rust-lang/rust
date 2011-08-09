@@ -1031,9 +1031,23 @@ private:
     void walk_vec(bool align, bool is_pod,
                   const std::pair<ptr_pair,ptr_pair> &data_range);
 
-    void walk_subcontext(bool align, cmp &sub) {
+    inline void walk_subcontext(bool align, cmp &sub) {
         sub.walk(align);
         result = sub.result;
+    }
+
+    inline void cmp_two_pointers(bool align) {
+        if (align) dp = align_to(dp, ALIGNOF(uint8_t *) * 2);
+        data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
+        data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
+        cmp_number(fst);
+        if (!result)
+            cmp_number(snd);
+    }
+
+    inline void cmp_pointer(bool align) {
+        if (align) dp = align_to(dp, ALIGNOF(uint8_t *));
+        cmp_number(bump_dp<uint8_t *>(dp));
     }
 
     template<typename T>
@@ -1077,6 +1091,12 @@ public:
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
         return walk_vec(align, is_pod, get_ivec_data_range(dp));
     }
+
+    void walk_fn(bool align) { return cmp_two_pointers(align); }
+    void walk_obj(bool align) { return cmp_two_pointers(align); }
+    void walk_port(bool align) { return cmp_pointer(align); }
+    void walk_chan(bool align) { return cmp_pointer(align); }
+    void walk_task(bool align) { return cmp_pointer(align); }
 
     void walk_tag(bool align, tag_info &tinfo,
                   const data_pair<uint32_t> &tag_variants);
