@@ -228,6 +228,9 @@ public:
 
     void walk(bool align);
 
+    std::pair<const uint8_t *,const uint8_t *>
+    get_variant_sp(tag_info &info, uint32_t variant_id);
+
 protected:
     static inline uint16_t get_u16(const uint8_t *addr);
     static inline uint16_t get_u16_bump(const uint8_t *&addr);
@@ -388,6 +391,19 @@ ctxt<T>::get_size_align(const uint8_t *&addr) {
     result.size = get_u16_bump(addr);
     result.alignment = *addr++;
     return result;
+}
+
+// Returns a pointer to the beginning and a pointer to the end of the shape of
+// the tag variant with the given ID.
+template<typename T>
+std::pair<const uint8_t *,const uint8_t *>
+ctxt<T>::get_variant_sp(tag_info &tinfo, uint32_t variant_id) {
+    uint16_t variant_offset = get_u16(tinfo.info_ptr +
+                                      variant_id * sizeof(uint16_t));
+    const uint8_t *variant_ptr = tables->tags + variant_offset;
+    uint16_t variant_len = get_u16_bump(variant_ptr);
+    const uint8_t *variant_end = variant_ptr + variant_len;
+    return std::make_pair(variant_ptr, variant_end);
 }
 
 template<typename T>
@@ -724,12 +740,10 @@ size_of::compute_tag_size(tag_info &tinfo) {
     tinfo.tag_sa.set(0, 0);
     for (uint16_t i = 0; i < n_largest_variants; i++) {
         uint16_t variant_id = get_u16_bump(tinfo.largest_variants_ptr);
-        uint16_t variant_offset = get_u16(tinfo.info_ptr +
-                                          variant_id * sizeof(uint16_t));
-        const uint8_t *variant_ptr = tables->tags + variant_offset;
-
-        uint16_t variant_len = get_u16_bump(variant_ptr);
-        const uint8_t *variant_end = variant_ptr + variant_len;
+        std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
+            get_variant_sp(tinfo, variant_id);
+        const uint8_t *variant_ptr = variant_ptr_and_end.first;
+        const uint8_t *variant_end = variant_ptr_and_end.second;
 
         size_of sub(*this, variant_ptr, params, NULL);
 
@@ -852,6 +866,9 @@ public:
         static_cast<T *>(this)->walk_var(align, param_index);
     }
 
+    // Called by derived classes only.
+    void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
+
     template<typename W>
     void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>()); }
 };
@@ -893,6 +910,15 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
     static_cast<T *>(this)->walk_tag(align, tinfo, tag_variant);
 }
 
+template<typename T,typename U>
+void
+data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
+    std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
+        this->get_variant_sp(tinfo, variant_id);
+    static_cast<T *>(this)->walk_variant(align, tinfo, variant_id,
+                                         variant_ptr_and_end);
+}
+
 
 // Copy constructors
 
@@ -927,6 +953,16 @@ public:
                          ptr_pair::make(in_data_0, in_data_1)),
       result(0) {}
 
+    cmp(const cmp &other,
+        const uint8_t *in_sp = NULL,
+        const type_param *in_params = NULL,
+        const rust_shape_tables *in_tables = NULL)
+    : data<cmp,ptr_pair>(other.task,
+                         in_sp ? in_sp : other.sp,
+                         in_params ? in_params : other.params,
+                         in_tables ? in_tables : other.tables,
+                         other.dp) {}
+
     cmp(const cmp &other, const ptr_pair &in_dp)
     : data<cmp,ptr_pair>(other.task, other.sp, other.params, other.tables,
                          in_dp),
@@ -938,6 +974,9 @@ public:
                   const data_pair<uint32_t> &tag_variants);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
                   const uint8_t *ty_params_sp);
+    void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+                      const std::pair<const uint8_t *,const uint8_t *>
+                      variant_ptr_and_end);
 
     template<typename T>
     void walk_number() { cmp_number(bump_dp<T>(dp)); }
@@ -966,13 +1005,26 @@ cmp::walk_tag(bool align, tag_info &tinfo,
     cmp_number(tag_variants);
     if (result != 0)
         return;
-    abort();    // TODO
+    data<cmp,ptr_pair>::walk_variant(align, tinfo, tag_variants.fst);
 }
 
 void
 cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
               const uint8_t *ty_params_sp) {
     abort();    // TODO
+}
+
+void
+cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+                  const std::pair<const uint8_t *,const uint8_t *>
+                  variant_ptr_and_end) {
+    cmp sub(*this, variant_ptr_and_end.first);
+
+    const uint8_t *variant_end = variant_ptr_and_end.second;
+    while (!sub.result && sub.sp < variant_end) {
+        sub.walk(align);
+        align = true;
+    }
 }
 
 } // end namespace shape
