@@ -19,6 +19,7 @@ private:
         uint32_t magic;
         int index;
         const char *tag;
+        uint32_t pad;       // To stay 16 byte aligned.
         char data[];
     };
 
