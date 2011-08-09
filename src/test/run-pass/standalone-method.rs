@@ -1,7 +1,3 @@
-//xfail-stage1
-//xfail-stage2
-//xfail-stage3
-
 // Test case for issue #435.
 obj foo() {
     fn add5(n: int) -> int {
