@@ -6557,10 +6557,9 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                                          C_int(1)]);
     llself_obj_ptr = bcx.build.Load(llself_obj_ptr);
 
-    // Cast it back to the type of fcx.llenv, tho, so LLVM won't complain.
-    // TODO: could we just cast this to T_ptr(cx.ccx.rust_object_type)?
+    // Cast it back to pointer-to-object-type, so LLVM won't complain.
     llself_obj_ptr = bcx.build.PointerCast(llself_obj_ptr,
-                                           val_ty(fcx.llenv));
+                                           T_ptr(cx.ccx.rust_object_type));
 
     // The 'llretptr' that will arrive in the backwarding function we're
     // creating also needs to be the correct type.  Cast it to the method's
@@ -6570,13 +6569,6 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         let llretty = type_of_inner(cx.ccx, sp, m.output);
         llretptr = bcx.build.PointerCast(llretptr, T_ptr(llretty));
     }
-
-    // Now we need the outer object's vtable.  Increment llself_obj_ptr to get
-    // at it.
-    let llouter_obj_vtbl =
-        bcx.build.GEP(llself_obj_ptr,
-                      ~[C_int(0), C_int(abi::obj_field_vtbl)]);
-    llouter_obj_vtbl = bcx.build.Load(llouter_obj_vtbl);
 
     // Get the index of the method we want.
     let ix: uint = 0u;
@@ -6591,8 +6583,13 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
       }
     }
 
-    // Pick out the method being backwarded to from the vtable.
+    // Pick out the method being backwarded to from the outer object's vtable.
     let vtbl_type = T_ptr(T_array(T_ptr(T_nil()), ix + 1u));
+
+    let llouter_obj_vtbl =
+        bcx.build.GEP(llself_obj_ptr,
+                      ~[C_int(0), C_int(abi::obj_field_vtbl)]);
+    llouter_obj_vtbl = bcx.build.Load(llouter_obj_vtbl);
     llouter_obj_vtbl = bcx.build.PointerCast(llouter_obj_vtbl, vtbl_type);
 
     let llouter_mthd =
@@ -6795,10 +6792,9 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                                      backwarding_vtbl,
                                      llinner_obj_body);
 
-    // Cast self_stack back to the type of fcx.llenv to make LLVM happy.
-    // TODO: could we just cast this to T_ptr(cx.ccx.rust_object_type)?
+    // Cast self_stack back to pointer-to-object-type to make LLVM happy.
     self_stack = bcx.build.PointerCast(self_stack,
-                                       val_ty(fcx.llenv));
+                                       T_ptr(cx.ccx.rust_object_type));
 
     // Set up the three implicit arguments to the original method we'll need
     // to call.
