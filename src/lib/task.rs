@@ -5,11 +5,18 @@ native "rust" mod rustrt {
     fn unsupervise();
     fn pin_task();
     fn unpin_task();
+    fn get_task_id() -> task_id;
     fn clone_chan(c: *rust_chan) -> *rust_chan;
 
     type rust_chan;
 
     fn set_min_stack(stack_size: uint);
+}
+
+type task_id = int;
+
+fn get_task_id() -> task_id {
+    rustrt::get_task_id()
 }
 
 /**
@@ -33,6 +40,7 @@ fn pin() { rustrt::pin_task(); }
 
 fn unpin() { rustrt::unpin_task(); }
 
+// FIXME: remove this
 fn clone_chan[T](c: chan[T]) -> chan[T] {
     let cloned = rustrt::clone_chan(unsafe::reinterpret_cast(c));
     ret unsafe::reinterpret_cast(cloned);

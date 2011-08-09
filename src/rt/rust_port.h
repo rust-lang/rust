@@ -5,12 +5,11 @@ class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
     RUST_REFCOUNTED(rust_port);
 
-private:
     rust_port_id id;
 
-public:
     rust_kernel *kernel;
     rust_task *task;
+    rust_chan *remote_chan;
     size_t unit_sz;
     ptr_vec<rust_token> writers;
     ptr_vec<rust_chan> chans;

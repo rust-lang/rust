@@ -32,6 +32,8 @@ fn test_vec() {
 }
 
 fn test_str() {
+    // FIXME: re-enable this once strings are unique and sendable
+/*
     let po = comm::mk_port();
     let ch = po.mk_chan();
     let s0: str = "test";
@@ -42,6 +44,7 @@ fn test_str() {
     assert (s1.(1) as u8 == 'e' as u8);
     assert (s1.(2) as u8 == 's' as u8);
     assert (s1.(3) as u8 == 't' as u8);
+*/
 }
 
 fn test_tag() {

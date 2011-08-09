@@ -9,6 +9,7 @@ aio_serve
 aio_stop
 aio_writedata
 align_of
+chan_id_send
 chan_send
 check_claims
 clone_chan
@@ -25,6 +26,8 @@ debug_tydesc
 do_gc
 drop_chan
 drop_port
+get_port_id
+get_task_id
 get_time
 hack_allow_leaks
 ivec_copy_from_buf

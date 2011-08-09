@@ -702,6 +702,11 @@ unpin_task(rust_task *task) {
     task->unpin();
 }
 
+extern "C" CDECL rust_task_id
+get_task_id(rust_task *task) {
+    return task->id;
+}
+
 extern "C" CDECL rust_chan *
 clone_chan(rust_task *task, rust_chan *chan) {
     return chan->clone(task);
@@ -736,6 +741,11 @@ del_port(rust_task *task, rust_port *port) {
 
     // FIXME: this should happen in the port.
     task->deref();
+}
+
+extern "C" CDECL rust_port_id
+get_port_id(rust_task *task, rust_port *port) {
+    return port->id;
 }
 
 extern "C" CDECL rust_chan*
@@ -773,6 +783,19 @@ void drop_port(rust_task *, rust_port *port) {
 extern "C" CDECL void
 chan_send(rust_task *task, rust_chan *chan, void *sptr) {
     chan->send(sptr);
+}
+
+extern "C" CDECL void
+chan_id_send(rust_task *task, type_desc *t, rust_task_id target_task_id,
+             rust_port_id target_port_id, void *sptr) {
+    // FIXME: make sure this is thread-safe
+    rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
+    if(target_task) {
+        rust_port *port = target_task->get_port_by_id(target_port_id);
+        if(port) {
+            port->remote_chan->send(sptr);
+        }
+    }
 }
 
 extern "C" CDECL void

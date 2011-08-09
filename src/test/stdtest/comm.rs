@@ -17,3 +17,14 @@ fn send_recv() {
     log_err v;
     assert(42 == v);
 }
+
+#[test]
+fn send_recv2() {
+    let p = comm::mk_port[int]();
+    let c = p.mk_chan2();
+
+    comm::send(c, 42);
+    let v = p.recv();
+    log_err v;
+    assert(42 == v);
+}
