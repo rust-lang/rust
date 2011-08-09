@@ -910,7 +910,9 @@ class copy : public data<copy,uint8_t *> {
 class cmp : public data<cmp,ptr_pair> {
 private:
     template<typename T>
-    int cmp_number(ptr_pair &ptrs);
+    void cmp_number(const data_pair<T> &nums) {
+        result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
+    }
 
 public:
     int result;
@@ -933,12 +935,12 @@ public:
     void walk_box(bool align);
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_tag(bool align, tag_info &tinfo,
-                  data_pair<uint32_t> &tag_variants);
+                  const data_pair<uint32_t> &tag_variants);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
                   const uint8_t *ty_params_sp);
 
     template<typename T>
-    void walk_number() { result = cmp_number<T>(dp); }
+    void walk_number() { cmp_number(bump_dp<T>(dp)); }
 };
 
 void
@@ -946,7 +948,7 @@ cmp::walk_box(bool align) {
     data_pair<uint8_t *> subdp = bump_dp<uint8_t *>(dp);
     cmp subcx(*this, ptr_pair::make(subdp));
     subcx.dp += sizeof(uint32_t);   // Skip over the reference count.
-    subcx.walk(false);
+    subcx.walk(true);
     result = subcx.result;
 }
 
@@ -960,7 +962,10 @@ cmp::walk_struct(bool align, const uint8_t *end_sp) {
 
 void
 cmp::walk_tag(bool align, tag_info &tinfo,
-              data_pair<uint32_t> &tag_variants) {
+              const data_pair<uint32_t> &tag_variants) {
+    cmp_number(tag_variants);
+    if (result != 0)
+        return;
     abort();    // TODO
 }
 
@@ -968,14 +973,6 @@ void
 cmp::walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
               const uint8_t *ty_params_sp) {
     abort();    // TODO
-}
-
-template<typename T>
-int
-cmp::cmp_number(ptr_pair &ptrs) {
-    T a = *(reinterpret_cast<T *>(dp.fst));
-    T b = *(reinterpret_cast<T *>(dp.snd));
-    return (a < b) ? -1 : (a == b) ? 0 : 1;
 }
 
 } // end namespace shape
