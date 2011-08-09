@@ -905,7 +905,6 @@ public:
         const type_param *param = &this->params[param_index];
         T sub(*static_cast<T *>(this), param->shape, param->params,
               param->tables);
-        sub.walk(align);
         static_cast<T *>(this)->walk_subcontext(align, sub);
     }
 
