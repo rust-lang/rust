@@ -851,7 +851,9 @@ class data : public ctxt< data<T,U> > {
 protected:
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
+    static std::pair<uint8_t *,uint8_t *> get_evec_data_range(uint8_t *dp);
     static std::pair<uint8_t *,uint8_t *> get_ivec_data_range(uint8_t *dp);
+    static std::pair<ptr_pair,ptr_pair> get_evec_data_range(ptr_pair &dp);
     static std::pair<ptr_pair,ptr_pair> get_ivec_data_range(ptr_pair &dp);
 
 public:
@@ -922,6 +924,13 @@ data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
+data<T,U>::get_evec_data_range(uint8_t *dp) {
+    rust_vec *vp = bump_dp<rust_vec *>(dp);
+    return std::make_pair(vp->data, vp->data + vp->fill);
+}
+
+template<typename T,typename U>
+std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_ivec_data_range(uint8_t *dp) {
     size_t fill = bump_dp<size_t>(dp);
     bump_dp<size_t>(dp);    // Skip over alloc.
@@ -942,6 +951,16 @@ data<T,U>::get_ivec_data_range(uint8_t *dp) {
         end = start + fill;
     }
 
+    return std::make_pair(start, end);
+}
+
+template<typename T,typename U>
+std::pair<ptr_pair,ptr_pair>
+data<T,U>::get_evec_data_range(ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst = get_evec_data_range(dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd = get_evec_data_range(dp.snd);
+    ptr_pair start(fst.first, snd.first);
+    ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
 }
 
@@ -1010,14 +1029,17 @@ class cmp : public data<cmp,ptr_pair> {
     friend class data<cmp,ptr_pair>;
 
 private:
-    template<typename T>
-    void cmp_number(const data_pair<T> &nums) {
-        result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
-    }
+    void walk_vec(bool align, bool is_pod,
+                  const std::pair<ptr_pair,ptr_pair> &data_range);
 
     void walk_subcontext(bool align, cmp &sub) {
         sub.walk(align);
         result = sub.result;
+    }
+
+    template<typename T>
+    void cmp_number(const data_pair<T> &nums) {
+        result = (nums.fst < nums.snd) ? -1 : (nums.fst == nums.snd) ? 0 : 1;
     }
 
 public:
@@ -1048,7 +1070,14 @@ public:
                          in_dp),
       result(0) {}
 
-    void walk_ivec(bool align, bool is_pod, size_align &elem_sa);
+    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
+        return walk_vec(align, is_pod, get_evec_data_range(dp));
+    }
+
+    void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
+        return walk_vec(align, is_pod, get_ivec_data_range(dp));
+    }
+
     void walk_tag(bool align, tag_info &tinfo,
                   const data_pair<uint32_t> &tag_variants);
     void walk_box(bool align);
@@ -1069,9 +1098,8 @@ void cmp::cmp_number<int32_t>(const data_pair<int32_t> &nums) {
 }
 
 void
-cmp::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-    std::pair<ptr_pair,ptr_pair> data_range = get_ivec_data_range(dp);
-
+cmp::walk_vec(bool align, bool is_pod,
+              const std::pair<ptr_pair,ptr_pair> &data_range) {
     cmp sub(*this, data_range.first);
     ptr_pair data_end = data_range.second;
     while (!result && sub.dp < data_end) {
