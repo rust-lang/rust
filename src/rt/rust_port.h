@@ -2,10 +2,13 @@
 #define RUST_PORT_H
 
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
-
 public:
     RUST_REFCOUNTED(rust_port);
 
+private:
+    rust_port_id id;
+
+public:
     rust_kernel *kernel;
     rust_task *task;
     size_t unit_sz;

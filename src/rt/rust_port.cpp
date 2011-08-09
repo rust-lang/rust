@@ -8,6 +8,8 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
     LOG(task, comm,
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
+
+    id = task->register_port(this);
 }
 
 rust_port::~rust_port() {
@@ -19,6 +21,8 @@ rust_port::~rust_port() {
         rust_chan *chan = chans.peek();
         chan->disassociate();
     }
+
+    task->release_port(id);
 }
 
 bool rust_port::receive(void *dptr) {

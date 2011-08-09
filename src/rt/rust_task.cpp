@@ -75,6 +75,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     cond_name("none"),
     supervisor(spawner),
     list_index(-1),
+    next_port_id(0),
     rendezvous_ptr(0),
     running_on(-1),
     pinned_on(-1),
@@ -104,8 +105,6 @@ rust_task::~rust_task()
 
     del_stk(this, stk);
 }
-
-extern "C" void rust_new_exit_task_glue();
 
 struct spawn_args {
     rust_task *task;
@@ -493,6 +492,26 @@ void rust_task::unpin() {
 
 void rust_task::on_wakeup(rust_task::wakeup_callback *callback) {
     _on_wakeup = callback;
+}
+
+rust_port_id rust_task::register_port(rust_port *port) {
+    scoped_lock with(lock);
+
+    rust_port_id id = next_port_id++;
+    port_table.put(id, port);
+    return id;
+}
+
+void rust_task::release_port(rust_port_id id) {
+    scoped_lock with(lock);
+    port_table.remove(id);
+}
+
+rust_port *rust_task::get_port_by_id(rust_port_id id) {
+    scoped_lock with(lock);
+    rust_port *port = NULL;
+    port_table.get(id, &port);
+    return port;
 }
 
 //

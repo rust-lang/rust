@@ -59,6 +59,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t gc_alloc_accum;
 
     rust_task_id id;
+    rust_port_id next_port_id;
 
     // Keeps track of the last time this task yielded.
     timer yield_timer;
@@ -95,6 +96,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     bool propagate_failure;
 
     lock_and_signal lock;
+
+    hash_map<rust_port_id, rust_port *> port_table;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,
@@ -161,6 +164,10 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     void unpin();
 
     void on_wakeup(wakeup_callback *callback);
+
+    rust_port_id register_port(rust_port *port);
+    void release_port(rust_port_id id);
+    rust_port *get_port_by_id(rust_port_id id);
 };
 
 //
