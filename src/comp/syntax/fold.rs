@@ -43,7 +43,8 @@ type ast_fold_precursor =
      fold_ident: fn(&ident, ast_fold) -> ident ,
      fold_path: fn(&path_, ast_fold) -> path_ ,
      fold_local: fn(&local_, ast_fold) -> local_ ,
-     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr] };
+     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
+     new_id: fn(node_id) -> node_id};
 
 type a_f =
     {fold_crate: fn(&crate) -> crate ,
@@ -68,7 +69,9 @@ type a_f =
      fold_ident: fn(&ident) -> ident ,
      fold_path: fn(&path) -> path ,
      fold_local: fn(&@local) -> @local ,
-     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr] };
+     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
+     new_id: fn(node_id) -> node_id};
+
 
 //fn nf_dummy[T](&T node) -> T { fail; }
 fn nf_crate_dummy(c: &crate) -> crate { fail; }
@@ -509,6 +512,8 @@ fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
     ret ivec::map(f, es);
 }
 
+fn noop_id(i: node_id) -> node_id { ret i; }
+
 
 fn default_ast_fold() -> @ast_fold_precursor {
     ret @{fold_crate: noop_fold_crate,
@@ -533,7 +538,8 @@ fn default_ast_fold() -> @ast_fold_precursor {
           fold_ident: noop_fold_ident,
           fold_path: noop_fold_path,
           fold_local: noop_fold_local,
-          map_exprs: noop_map_exprs};
+          map_exprs: noop_map_exprs,
+          new_id: noop_id};
 }
 
 fn dummy_out(a: ast_fold) {
@@ -560,7 +566,8 @@ fn dummy_out(a: ast_fold) {
          fold_ident: nf_ident_dummy,
          fold_path: nf_path_dummy,
          fold_local: nf_local_dummy,
-         map_exprs: noop_map_exprs};
+         map_exprs: noop_map_exprs,
+         new_id: noop_id};
 }
 
 
@@ -588,7 +595,8 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
                   fold_ident: nf_ident_dummy,
                   fold_path: nf_path_dummy,
                   fold_local: nf_local_dummy,
-                  map_exprs: noop_map_exprs};
+                  map_exprs: noop_map_exprs,
+                  new_id: noop_id};
 
     /* naturally, a macro to write these would be nice */
     fn f_crate(afp: &ast_fold_precursor, f: ast_fold, c: &crate) -> crate {
@@ -627,13 +635,15 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
         ret afp.fold_arm(x, f);
     }
     fn f_pat(afp: &ast_fold_precursor, f: ast_fold, x: &@pat) -> @pat {
-        ret @{id: x.id, node: afp.fold_pat(x.node, f), span: x.span};
+        ret @{id: afp.new_id(x.id),
+              node: afp.fold_pat(x.node, f), span: x.span};
     }
     fn f_decl(afp: &ast_fold_precursor, f: ast_fold, x: &@decl) -> @decl {
         ret @{node: afp.fold_decl(x.node, f), span: x.span};
     }
     fn f_expr(afp: &ast_fold_precursor, f: ast_fold, x: &@expr) -> @expr {
-        ret @{id: x.id, node: afp.fold_expr(x.node, f), span: x.span};
+        ret @{id: afp.new_id(x.id),
+              node: afp.fold_expr(x.node, f), span: x.span};
     }
     fn f_ty(afp: &ast_fold_precursor, f: ast_fold, x: &@ty) -> @ty {
         ret @{node: afp.fold_ty(x.node, f), span: x.span};
@@ -689,7 +699,8 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
          fold_ident: bind f_ident(afp, result, _),
          fold_path: bind f_path(afp, result, _),
          fold_local: bind f_local(afp, result, _),
-         map_exprs: afp.map_exprs};
+         map_exprs: afp.map_exprs,
+         new_id: afp.new_id};
     ret result;
 }
 

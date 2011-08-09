@@ -15,6 +15,7 @@ import base::expr_to_str;
 import base::expr_to_ident;
 
 import fold::*;
+import ast::node_id;
 import ast::respan;
 import ast::ident;
 import ast::path;
@@ -198,6 +199,7 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
 
 fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
     let idx_path: @mutable [uint] = @mutable ~[];
+    fn new_id(old: node_id, cx: &ext_ctxt) -> node_id { ret cx.next_id(); }
     let afp = default_ast_fold();
     let f_pre =
         {fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
@@ -207,7 +209,8 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
          fold_ty: bind transcribe_type(cx, b, idx_path, _, _, afp.fold_ty),
          fold_block:
              bind transcribe_block(cx, b, idx_path, _, _, afp.fold_block),
-         map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _) with *afp};
+         map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
+         new_id: bind new_id(_, cx) with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     dummy_out(f); //temporary: kill circular reference
