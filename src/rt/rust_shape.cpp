@@ -1063,7 +1063,8 @@ public:
                          in_sp ? in_sp : other.sp,
                          in_params ? in_params : other.params,
                          in_tables ? in_tables : other.tables,
-                         other.dp) {}
+                         other.dp),
+      result(0) {}
 
     cmp(const cmp &other, const ptr_pair &in_dp)
     : data<cmp,ptr_pair>(other.task, other.sp, other.params, other.tables,
