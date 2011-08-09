@@ -45,9 +45,6 @@ fn handle_move_or_copy(fcx: &fn_ctxt, post: &poststate, rhs_path: &path,
         // not a local -- do nothing
       }
     }
-    if (init_op == init_move) {
-        forget_in_poststate(fcx, post, rhs_id);
-    }
 }
 
 fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
@@ -67,9 +64,13 @@ fn seq_states(fcx: &fn_ctxt, pres: &prestate, bindings: &binding[])
                     handle_move_or_copy(fcx, post, p, an_init.expr.id, i,
                                         an_init.op);
                   }
-                  _ {}
+                  _ { }
                 }
                 set_in_poststate_ident(fcx, i.node, i.ident, post);
+            }
+            // Forget the RHS if we just moved it.
+            if an_init.op == init_move {
+                forget_in_poststate(fcx, post, an_init.expr.id);
             }
           }
           none {
@@ -162,16 +163,24 @@ fn find_pre_post_state_two(fcx: &fn_ctxt, pres: &prestate, lhs: &@expr,
 }
 
 fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
-                            id: node_id, bs: &(@expr)[], cf: controlflow) ->
-   bool {
+                            id: node_id, ops: &init_op[], bs: &(@expr)[],
+                            cf: controlflow) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
-    ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id, bs, cf)
+    if ivec::len(bs) != ivec::len(ops) {
+        fcx.ccx.tcx.sess.span_bug(a.span,
+                                  #fmt("mismatched arg lengths: \
+                                        %u exprs vs. %u ops",
+                                       ivec::len(bs), ivec::len(ops)));
+    }
+    ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id,
+                                  ops, bs, cf)
             || changed;
 }
 
 fn find_pre_post_state_exprs(fcx: &fn_ctxt, pres: &prestate, id: node_id,
-                             es: &(@expr)[], cf: controlflow) -> bool {
-    let rs = seq_states(fcx, pres, anon_bindings(es));
+                             ops: &init_op[], es: &(@expr)[],
+                             cf: controlflow) -> bool {
+    let rs = seq_states(fcx, pres, anon_bindings(ops, es));
     let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
@@ -304,23 +313,39 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
 
     alt e.node {
       expr_vec(elts, _, _) {
-        ret find_pre_post_state_exprs(fcx, pres, e.id, elts, return);
+        ret find_pre_post_state_exprs(fcx, pres, e.id,
+                                      ivec::init_elt(init_assign,
+                                                     ivec::len(elts)),
+                                      elts, return);
       }
       expr_call(operator, operands) {
-        ret find_pre_post_state_call(fcx, pres, operator, e.id, operands,
+        ret find_pre_post_state_call(fcx, pres, operator, e.id,
+                                     callee_arg_init_ops(fcx, operator.id),
+                                     operands,
                                      controlflow_expr(fcx.ccx, operator));
       }
       expr_spawn(_, _, operator, operands) {
-        ret find_pre_post_state_call(fcx, pres, operator, e.id, operands,
-                                     return);
+        ret find_pre_post_state_call(fcx, pres, operator, e.id,
+                                     callee_arg_init_ops(fcx, operator.id),
+                                     operands, return);
       }
       expr_bind(operator, maybe_args) {
         let args = ~[];
-        for a_opt: option::t[@expr]  in maybe_args {
-            alt a_opt { none. {/* no-op */ } some(a) { args += ~[a]; } }
+        let callee_ops = callee_arg_init_ops(fcx, operator.id);
+        let ops = ~[];
+        let i = 0;
+        for a_opt: option::t[@expr] in maybe_args {
+            alt a_opt {
+              none. {/* no-op */ }
+              some(a) {
+                ops += ~[callee_ops.(i)];
+                args += ~[a];
+              }
+            }
+            i += 1;
         }
-
-        ret find_pre_post_state_call(fcx, pres, operator, e.id, args, return);
+        ret find_pre_post_state_call(fcx, pres, operator, e.id, ops, args,
+                                     return);
       }
       expr_path(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_log(_, ex) {
@@ -347,7 +372,10 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       }
       expr_rec(fields, maybe_base) {
         let changed =
-            find_pre_post_state_exprs(fcx, pres, e.id, field_exprs(fields),
+            find_pre_post_state_exprs(fcx, pres, e.id,
+                                      ivec::init_elt(init_assign,
+                                                     ivec::len(fields)),
+                                      field_exprs(fields),
                                       return);
         alt maybe_base {
           none. {/* do nothing */ }

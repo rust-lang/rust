@@ -316,6 +316,18 @@ fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
     }
 }
 
+fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr,
+                        modes: &ty::mode[],
+                        operands: &(@expr)[]) {
+    let i = 0;
+    for mode: ty::mode in modes {
+        if mode == ty::mo_move {
+            forget_in_postcond(fcx, parent.id, operands.(i).id);
+        }
+        i += 1;
+    }
+}
+
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
     let enclosing = fcx.enclosing;
@@ -336,6 +348,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
             require(i, expr_pp(fcx.ccx, e));
         }
 
+        forget_args_moved_in(fcx, e, callee_modes(fcx, operator.id),
+                             operands);
 
         /* if this is a failing call, its postcondition sets everything */
         alt controlflow_expr(fcx.ccx, operator) {
@@ -347,6 +361,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let /* copy */args = operands;
         args += ~[operator];
         find_pre_post_exprs(fcx, args, e.id);
+        forget_args_moved_in(fcx, e, callee_modes(fcx, operator.id),
+                             operands);
       }
       expr_vec(args, _, _) { find_pre_post_exprs(fcx, args, e.id); }
       expr_path(p) {
@@ -544,14 +560,21 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
 
       expr_bind(operator, maybe_args) {
         let args = ~[];
-        for expr_opt: option::t[@expr]  in maybe_args {
+        let cmodes = callee_modes(fcx, operator.id);
+        let modes = ~[];
+        let i = 0;
+        for expr_opt: option::t[@expr] in maybe_args {
             alt expr_opt {
               none. {/* no-op */ }
-              some(expr) { args += ~[expr]; }
+              some(expr) {
+                modes += ~[cmodes.(i)];
+                args += ~[expr];
+              }
             }
+            i += 1;
         }
         args += ~[operator]; /* ??? order of eval? */
-
+        forget_args_moved_in(fcx, e, modes, args);
         find_pre_post_exprs(fcx, args, e.id);
       }
       expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }

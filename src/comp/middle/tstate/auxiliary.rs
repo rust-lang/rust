@@ -1093,14 +1093,45 @@ fn locals_to_bindings(locals : &(@local)[]) -> binding[] {
     ivec::map(local_to_bindings, locals)
 }
 
-fn anon_bindings(es : &(@expr)[]) -> binding[] {
-    fn expr_to_initializer(e : &@expr) -> initializer {
-        {op: init_assign, expr: e}
+fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> ty::mode[] {
+    let ty = ty::type_autoderef(fcx.ccx.tcx,
+                                ty::node_id_to_type(fcx.ccx.tcx, callee));
+    alt ty::struct(fcx.ccx.tcx, ty) {
+      ty::ty_fn(_, args, _, _, _)
+      | ty::ty_native_fn(_, args, _) {
+        let modes = ~[];
+        for arg: ty::arg in args {
+            modes += ~[arg.mode];
+        }
+        ret modes;
+      }
+      _ {
+        // Shouldn't happen; callee should be ty_fn.
+        fcx.ccx.tcx.sess.bug("non-fn callee type in callee_modes: "
+                             + util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
+      }
+   }
+}
+
+fn callee_arg_init_ops(fcx: &fn_ctxt, callee: node_id) -> init_op[] {
+    fn mode_to_op(m: &ty::mode) -> init_op {
+        alt m {
+          ty::mo_move. { init_move }
+          _ { init_assign }
+        }
     }
-    ret ivec::map(fn (e : &@expr) -> binding {
-        {lhs: ~[],
-         rhs: some(expr_to_initializer(e)) } },
-                  es);
+    ivec::map(mode_to_op, callee_modes(fcx, callee))
+}
+
+fn anon_bindings(ops: &init_op[], es : &(@expr)[]) -> binding[] {
+    let bindings: binding[] = ~[];
+    let i = 0;
+    for op: init_op in ops {
+        bindings += ~[{lhs: ~[],
+                       rhs: some({op:op, expr: es.(i)})}];
+        i += 1;
+    }
+    ret bindings;
 }
 
 //
