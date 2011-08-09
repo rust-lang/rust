@@ -101,7 +101,7 @@ fn test_fn() {
     assert (f1 == f2);
     assert (f1 == f);
 
-    assert (f1 == g1);
+    assert (f1 != g1);
     assert (h1 == h2);
     assert (!(f1 != f2));
     assert (!(h1 < h2));
@@ -125,12 +125,8 @@ fn test_obj() {
     let o1 = obj () {  };
     let o2 = obj () {  };
 
-    assert (o1 == o2);
-    assert (!(o1 != o2));
-    assert (!(o1 < o2));
-    assert (o1 <= o2);
-    assert (!(o1 > o2));
-    assert (o1 >= o2);
+    assert (o1 != o2);
+    assert (!(o1 == o2));
 
     obj constr1(i: int) { }
     obj constr2(i: int) { }
@@ -140,9 +136,9 @@ fn test_obj() {
     let o7 = constr1(11);
     let o8 = constr2(11);
 
-    assert (o5 == o6);
-    assert (o6 == o7);
-    assert (o7 == o8);
+    assert (o5 != o6);
+    assert (o6 != o7);
+    assert (o7 != o8);
 }
 
 fn main() {
