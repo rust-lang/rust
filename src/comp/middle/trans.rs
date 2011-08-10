@@ -1092,10 +1092,7 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: &ty::t, ty_params: &[uint])
     ret info;
 }
 
-tag make_generic_glue_helper_fn {
-    mgghf_single(fn(&@block_ctxt, ValueRef, &ty::t) );
-    mgghf_cmp;
-}
+type make_generic_glue_helper_fn = fn(&@block_ctxt, ValueRef, &ty::t);
 
 fn declare_generic_glue(cx: &@local_ctxt, t: &ty::t, llfnty: TypeRef,
                         name: &str) -> ValueRef {
@@ -1147,15 +1144,7 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: &ty::t,
     let lltop = bcx.llbb;
     let llrawptr0 = llvm::LLVMGetParam(llfn, 4u);
     let llval0 = bcx.build.BitCast(llrawptr0, llty);
-    alt helper {
-      mgghf_single(single_fn) { single_fn(bcx, llval0, t); }
-      mgghf_cmp. {
-        let llrawptr1 = llvm::LLVMGetParam(llfn, 5u);
-        let llval1 = bcx.build.BitCast(llrawptr1, llty);
-        let llcmpval = llvm::LLVMGetParam(llfn, 6u);
-        make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
-      }
-    }
+    helper(bcx, llval0, t);
     finish_fn(fcx, lltop);
     ret llfn;
 }
@@ -1532,147 +1521,6 @@ fn maybe_name_value(cx: &@crate_ctxt, v: ValueRef, s: &str) {
     }
 }
 
-fn make_cmp_glue(cx: &@block_ctxt, lhs0: ValueRef, rhs0: ValueRef, t: &ty::t,
-                 llop: ValueRef) {
-    let lhs = load_if_immediate(cx, lhs0, t);
-    let rhs = load_if_immediate(cx, rhs0, t);
-    if ty::type_is_scalar(bcx_tcx(cx), t) {
-        make_scalar_cmp_glue(cx, lhs, rhs, t, llop);
-    } else if (ty::type_is_box(bcx_tcx(cx), t)) {
-        lhs = cx.build.GEP(lhs, ~[C_int(0), C_int(abi::box_rc_field_body)]);
-        rhs = cx.build.GEP(rhs, ~[C_int(0), C_int(abi::box_rc_field_body)]);
-        let t_inner =
-            alt ty::struct(bcx_tcx(cx), t) { ty::ty_box(ti) { ti.ty } };
-        let rslt = compare(cx, lhs, rhs, t_inner, llop);
-        rslt.bcx.build.Store(rslt.val, cx.fcx.llretptr);
-        rslt.bcx.build.RetVoid();
-    } else if (ty::type_is_structural(bcx_tcx(cx), t) ||
-                   ty::type_is_sequence(bcx_tcx(cx), t)) {
-        let scx = new_sub_block_ctxt(cx, "structural compare start");
-        let next = new_sub_block_ctxt(cx, "structural compare end");
-        cx.build.Br(scx.llbb);
-        /*
-         * We're doing lexicographic comparison here. We start with the
-         * assumption that the two input elements are equal. Depending on
-         * operator, this means that the result is either true or false;
-         * equality produces 'true' for ==, <= and >=. It produces 'false' for
-         * !=, < and >.
-         *
-         * We then move one element at a time through the structure checking
-         * for pairwise element equality: If we have equality, our assumption
-         * about overall sequence equality is not modified, so we have to move
-         * to the next element.
-         *
-         * If we do not have pairwise element equality, we have reached an
-         * element that 'decides' the lexicographic comparison. So we exit the
-         * loop with a flag that indicates the true/false sense of that
-         * decision, by testing the element again with the operator we're
-         * interested in.
-         *
-         * When we're lucky, LLVM should be able to fold some of these two
-         * tests together (as they're applied to the same operands and in some
-         * cases are sometimes redundant). But we don't bother trying to
-         * optimize combinations like that, at this level.
-         */
-
-        let flag = alloca(scx, T_i1());
-        maybe_name_value(bcx_ccx(cx), flag, "flag");
-        let r;
-        if ty::type_is_sequence(bcx_tcx(cx), t) {
-            // If we hit == all the way through the minimum-shared-length
-            // section, default to judging the relative sequence lengths.
-
-            let lhs_fill;
-            let rhs_fill;
-            let bcx;
-            if ty::sequence_is_interior(bcx_tcx(cx), t) {
-                let st = ty::sequence_element_type(bcx_tcx(cx), t);
-                let lad = ivec::get_len_and_data(scx, lhs, st);
-                bcx = lad.bcx;
-                lhs_fill = lad.len;
-                lad = ivec::get_len_and_data(bcx, rhs, st);
-                bcx = lad.bcx;
-                rhs_fill = lad.len;
-            } else {
-                lhs_fill = vec_fill(scx, lhs);
-                rhs_fill = vec_fill(scx, rhs);
-                bcx = scx;
-            }
-            r =
-                compare_scalar_values(bcx, lhs_fill, rhs_fill, unsigned_int,
-                                      llop);
-            r.bcx.build.Store(r.val, flag);
-        } else {
-            // == and <= default to true if they find == all the way. <
-            // defaults to false if it finds == all the way.
-
-            let result_if_equal =
-                scx.build.ICmp(lib::llvm::LLVMIntNE, llop,
-                               C_u8(abi::cmp_glue_op_lt));
-            scx.build.Store(result_if_equal, flag);
-            r = rslt(scx, C_nil());
-        }
-        fn inner(last_cx: @block_ctxt, load_inner: bool, flag: ValueRef,
-                 llop: ValueRef, cx: &@block_ctxt, av0: ValueRef,
-                 bv0: ValueRef, t: ty::t) -> result {
-            let cnt_cx = new_sub_block_ctxt(cx, "continue_comparison");
-            let stop_cx = new_sub_block_ctxt(cx, "stop_comparison");
-            let av = av0;
-            let bv = bv0;
-            if load_inner {
-                // If `load_inner` is true, then the pointer type will always
-                // be i8, because the data part of a vector always has type
-                // [i8]. So we need to cast it to the proper type.
-
-                if !ty::type_has_dynamic_size(bcx_tcx(last_cx), t) {
-                    let llelemty =
-                        T_ptr(type_of(bcx_ccx(last_cx), last_cx.sp, t));
-                    av = cx.build.PointerCast(av, llelemty);
-                    bv = cx.build.PointerCast(bv, llelemty);
-                }
-                av = load_if_immediate(cx, av, t);
-                bv = load_if_immediate(cx, bv, t);
-            }
-
-            // First 'eq' comparison: if so, continue to next elts.
-            let eq_r = compare(cx, av, bv, t, C_u8(abi::cmp_glue_op_eq));
-            eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
-
-            // Second 'op' comparison: find out how this elt-pair decides.
-            let stop_r = compare(stop_cx, av, bv, t, llop);
-            stop_r.bcx.build.Store(stop_r.val, flag);
-            stop_r.bcx.build.Br(last_cx.llbb);
-            ret rslt(cnt_cx, C_nil());
-        }
-        if ty::type_is_structural(bcx_tcx(cx), t) {
-            r = iter_structural_ty_full(r.bcx, lhs, rhs, t,
-                                        bind inner(next, false, flag, llop, _,
-                                                   _, _, _));
-        } else {
-            let lhs_p0 = vec_p0(r.bcx, lhs);
-            let rhs_p0 = vec_p0(r.bcx, rhs);
-            let min_len =
-                umin(r.bcx, vec_fill(r.bcx, lhs), vec_fill(r.bcx, rhs));
-            let rhs_lim = r.bcx.build.GEP(rhs_p0, ~[min_len]);
-            let elt_ty = ty::sequence_element_type(bcx_tcx(cx), t);
-            r = size_of(r.bcx, elt_ty);
-            r = iter_sequence_raw(r.bcx, lhs_p0, rhs_p0, rhs_lim, r.val,
-                                  bind inner(next, true, flag, llop, _, _, _,
-                                             elt_ty));
-        }
-        r.bcx.build.Br(next.llbb);
-        let v = next.build.Load(flag);
-        next.build.Store(v, cx.fcx.llretptr);
-        next.build.RetVoid();
-    } else {
-        // FIXME: compare obj, fn by pointer?
-
-        trans_fail(cx, none[span],
-                   "attempt to compare values of type " +
-                       ty_to_str(bcx_tcx(cx), t));
-    }
-}
-
 
 // Used only for creating scalar comparison glue.
 tag scalar_type { nil_type; signed_int; unsigned_int; floating_point; }
@@ -1719,21 +1567,6 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
                                  compare_scalar_types");
       }
     }
-}
-
-// A helper function to create scalar comparison glue.
-fn make_scalar_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef,
-                        t: &ty::t, llop: ValueRef) {
-    assert (ty::type_is_scalar(bcx_tcx(cx), t));
-
-    // In most cases, we need to know whether to do signed, unsigned, or float
-    // comparison.
-
-    let rslt = compare_scalar_types(cx, lhs, rhs, t, llop);
-    let bcx = rslt.bcx;
-    let compare_result = rslt.val;
-    bcx.build.Store(compare_result, cx.fcx.llretptr);
-    bcx.build.RetVoid();
 }
 
 
@@ -2192,7 +2025,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                          "copy");
                 ti.copy_glue = some[ValueRef](glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  mgghf_single(make_copy_glue), ti.ty_params,
+                                  make_copy_glue, ti.ty_params,
                                   "take");
                 log #fmt("--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty));
@@ -2210,7 +2043,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                          "drop");
                 ti.drop_glue = some[ValueRef](glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  mgghf_single(make_drop_glue), ti.ty_params,
+                                  make_drop_glue, ti.ty_params,
                                   "drop");
                 log #fmt("--- lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty));
@@ -2228,7 +2061,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                                          "free");
                 ti.free_glue = some[ValueRef](glue_fn);
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
-                                  mgghf_single(make_free_glue), ti.ty_params,
+                                  make_free_glue, ti.ty_params,
                                   "free");
                 log #fmt("--- lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty));
