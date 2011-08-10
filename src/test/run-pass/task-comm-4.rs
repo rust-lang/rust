@@ -1,5 +1,6 @@
 use std;
 import std::comm;
+import std::comm::send;
 
 fn main() { test00(); }
 
@@ -7,11 +8,11 @@ fn test00() {
     let r: int = 0;
     let sum: int = 0;
     let p = comm::mk_port();
-    let c = p.mk_chan();
-    c.send(1);
-    c.send(2);
-    c.send(3);
-    c.send(4);
+    let c = p.mk_chan2();
+    send(c, 1);
+    send(c, 2);
+    send(c, 3);
+    send(c, 4);
     r = p.recv();
     sum += r;
     log r;
@@ -24,10 +25,10 @@ fn test00() {
     r = p.recv();
     sum += r;
     log r;
-    c.send(5);
-    c.send(6);
-    c.send(7);
-    c.send(8);
+    send(c, 5);
+    send(c, 6);
+    send(c, 7);
+    send(c, 8);
     r = p.recv();
     sum += r;
     log r;

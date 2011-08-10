@@ -4,6 +4,7 @@ import unsafe;
 import task;
 import task::task_id;
 
+export chan_t;
 export _chan;
 export _port;
 
@@ -20,10 +21,8 @@ native "rust" mod rustrt {
     fn take_chan(ch : *rust_chan);
     fn drop_chan(ch : *rust_chan);
     fn chan_send(ch: *rust_chan, v : *void);
-    // FIXME: data should be -T, not &T, but this doesn't seem to be
-    // supported yet.
     fn chan_id_send[~T](target_task : task_id, target_port : port_id,
-                        data : &T);
+                        data : -T);
 
     fn new_port(unit_sz : uint) -> *rust_port;
     fn del_port(po : *rust_port);
@@ -90,7 +89,6 @@ fn mk_port[~T]() -> _port[T] {
     _port(@port_ptr(rustrt::new_port(sys::size_of[T]())))
 }
 
-// FIXME: make data move-mode once the snapshot is updated.
-fn send[~T](ch : chan_t[T], data : &T) {
+fn send[~T](ch : chan_t[T], data : -T) {
     rustrt::chan_id_send(ch.task, ch.port, data);
 }

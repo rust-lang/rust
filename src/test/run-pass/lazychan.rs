@@ -2,16 +2,15 @@
 
 fn main() {
     let p: port[int] = port();
-    let c = chan(p);
     let y: int;
 
-    spawn child(c);
+    spawn child(chan(p));
     p |> y;
     log "received 1";
     log y;
     assert (y == 10);
 
-    spawn child(c);
+    spawn child(chan(p));
     p |> y;
     log "received 2";
     log y;
