@@ -421,11 +421,8 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             expr_if_check(fld.fold_expr(cond), fld.fold_block(tr),
                           option::map(fld.fold_expr, fl))
           }
-          expr_port(ot) {
-            expr_port(alt ot {
-                        option::some(t) { option::some(fld.fold_ty(t)) }
-                        option::none. { option::none }
-                      })
+          expr_port(t) {
+            expr_port(fld.fold_ty(t))
           }
           expr_chan(e) { expr_chan(fld.fold_expr(e)) }
           expr_anon_obj(ao) { expr_anon_obj(fold_anon_obj(ao)) }
@@ -487,7 +484,7 @@ fn noop_fold_path(p: &path_, fld: ast_fold) -> path_ {
 }
 
 fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
-    ret {ty: option::map(fld.fold_ty, l.ty),
+    ret {ty: fld.fold_ty(l.ty),
          pat: fld.fold_pat(l.pat),
          init: alt l.init {
            option::none[initializer]. { l.init }

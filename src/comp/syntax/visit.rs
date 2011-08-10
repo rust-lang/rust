@@ -79,7 +79,7 @@ fn visit_view_item[E](vi: &@view_item, e: &E, v: &vt[E]) { }
 
 fn visit_local[E](loc: &@local, e: &E, v: &vt[E]) {
     v.visit_pat(loc.node.pat, e, v);
-    alt loc.node.ty { none. { } some(t) { v.visit_ty(t, e, v); } }
+    v.visit_ty(loc.node.ty, e, v);
     alt loc.node.init { none. { } some(i) { v.visit_expr(i.expr, e, v); } }
 }
 
@@ -154,11 +154,8 @@ fn visit_ty[E](t: &@ty, e: &E, v: &vt[E]) {
             v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
         }
       }
+      ty_infer. {/* no-op */ }
     }
-}
-
-fn visit_ty_opt[E](ot: &option::t[@ty], e: &E, v: &vt[E]) {
-    alt ot { none. { } some(t) { v.visit_ty(t, e, v); } }
 }
 
 fn visit_constr[E](operator: &path, sp: &span, id: node_id, e: &E,
@@ -313,7 +310,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_log(_, x) { v.visit_expr(x, e, v); }
       expr_check(_, x) { v.visit_expr(x, e, v); }
       expr_assert(x) { v.visit_expr(x, e, v); }
-      expr_port(t) { visit_ty_opt(t, e, v); }
+      expr_port(t) { v.visit_ty(t, e, v); }
       expr_chan(x) { v.visit_expr(x, e, v); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.fields {

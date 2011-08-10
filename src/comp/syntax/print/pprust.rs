@@ -966,11 +966,11 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         pclose(s);
       }
       ast::expr_mac(m) { print_mac(s, m); }
-      ast::expr_port(ot) {
+      ast::expr_port(t) {
         word(s.s, "port");
-        alt ot {
-          some(t) { word(s.s, "["); print_type(s, *t); word(s.s, "]"); }
-          none. { }
+        alt t.node {
+          ast::ty_infer. { }
+          _ { word(s.s, "["); print_type(s, *t); word(s.s, "]"); }
         }
         popen(s);
         pclose(s);
@@ -1040,6 +1040,14 @@ fn print_expr_parens_if_unary(s: &ps, ex: &@ast::expr) {
     if parens { pclose(s); }
 }
 
+fn print_local_decl(s: &ps, loc: &@ast::local) {
+    print_pat(s, loc.node.pat);
+    alt loc.node.ty.node {
+      ast::ty_infer. { }
+      _ { word_space(s, ":"); print_type(s, *loc.node.ty); }
+    }
+}
+
 fn print_decl(s: &ps, decl: &@ast::decl) {
     maybe_print_comment(s, decl.span.lo);
     alt decl.node {
@@ -1049,14 +1057,7 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
         word_nbsp(s, "let");
         fn print_local(s: &ps, loc: &@ast::local) {
             ibox(s, indent_unit);
-            print_pat(s, loc.node.pat);
-            alt loc.node.ty {
-              some(ty) {
-                word_space(s, ":");
-                print_type(s, *ty);
-              }
-              _ { }
-            }
+            print_local_decl(s, loc);
             end(s);
             alt loc.node.init {
               some(init) {
@@ -1080,11 +1081,7 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
 fn print_ident(s: &ps, ident: &ast::ident) { word(s.s, ident); }
 
 fn print_for_decl(s: &ps, loc: &@ast::local, coll: &@ast::expr) {
-    print_pat(s, loc.node.pat);
-    alt loc.node.ty {
-      some(t) { word_space(s, ":"); print_type(s, *t); }
-      none. { }
-    }
+    print_local_decl(s, loc);
     space(s.s);
     word_space(s, "in");
     print_expr(s, coll);

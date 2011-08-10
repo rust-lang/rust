@@ -952,10 +952,10 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
             ex = ast::expr_be(e);
         } else { p.fatal("Non-call expression in tail call"); }
     } else if (eat_word(p, "port")) {
-        let ty = none;
+        let ty = @spanned(lo, hi, ast::ty_infer);
         if token::LBRACKET == p.peek() {
             expect(p, token::LBRACKET);
-            ty = some(parse_ty(p));
+            ty = parse_ty(p);
             expect(p, token::RBRACKET);
         }
         expect(p, token::LPAREN);
@@ -1481,8 +1481,8 @@ fn parse_pat(p: &parser) -> @ast::pat {
 fn parse_local(p: &parser, allow_init: bool) -> @ast::local {
     let lo = p.get_lo_pos();
     let pat = parse_pat(p);
-    let ty = none;
-    if eat(p, token::COLON) { ty = some(parse_ty(p)); }
+    let ty = @spanned(lo, lo, ast::ty_infer);
+    if eat(p, token::COLON) { ty = parse_ty(p); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.get_last_hi_pos(),
                  {ty: ty,

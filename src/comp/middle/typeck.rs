@@ -408,6 +408,10 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         }
         typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
       }
+      ast::ty_infer. {
+        tcx.sess.span_bug(ast_ty.span,
+                          "found ty_infer in unexpected place");
+      }
     }
     alt cname {
       none. {/* no-op */ }
@@ -427,6 +431,23 @@ fn ast_ty_to_ty_crate(ccx: @crate_ctxt, ast_ty: &@ast::ty) -> ty::t {
     }
     let f = bind getter(ccx, _);
     ret ast_ty_to_ty(ccx.tcx, f, ast_ty);
+}
+
+// A wrapper around ast_ty_to_ty_crate that handles ty_infer.
+fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, ast_ty: &@ast::ty)
+    -> option::t[ty::t] {
+    alt ast_ty.node {
+      ast::ty_infer. { none }
+      _ { some(ast_ty_to_ty_crate(ccx, ast_ty)) }
+    }
+}
+// A wrapper around ast_ty_to_ty_infer that generates a new type variable if
+// there isn't a fixed type.
+fn ast_ty_to_ty_crate_tyvar(fcx: &@fn_ctxt, ast_ty: &@ast::ty) -> ty::t {
+    alt ast_ty_to_ty_crate_infer(fcx.ccx, ast_ty) {
+      some(ty) { ty }
+      none. { next_ty_var(fcx) }
+    }
 }
 
 
@@ -1269,17 +1290,8 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
 
     // Add explicitly-declared locals.
     let visit_local = lambda(local: &@ast::local, e: &(), v: &visit::vt[()]) {
-        alt local.node.ty {
-          none. {
-            // Auto slot.
-            assign(local.node.id, ident_for_local(local), none);
-          }
-          some(ast_ty) {
-            // Explicitly typed slot.
-            let local_ty = ast_ty_to_ty_crate(ccx, ast_ty);
-            assign(local.node.id, ident_for_local(local), some(local_ty));
-          }
-        }
+        let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
+        assign(local.node.id, ident_for_local(local), local_ty);
         visit::visit_local(local, e, v);
     };
 
@@ -2339,10 +2351,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       }
       ast::expr_port(typ) {
         let t = next_ty_var(fcx);
-        alt typ {
+        alt ast_ty_to_ty_crate_infer(fcx.ccx, typ) {
           some(_t) {
-            demand::simple(fcx, expr.span, ast_ty_to_ty_crate(fcx.ccx, _t),
-                           t);
+            demand::simple(fcx, expr.span, _t, t);
           }
           none. { }
         }

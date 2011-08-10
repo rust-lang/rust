@@ -260,7 +260,7 @@ tag init_op { init_assign; init_move; }
 
 type initializer = {op: init_op, expr: @expr};
 
-type local_ = {ty: option::t[@ty],
+type local_ = {ty: @ty,
                pat: @pat,
                init: option::t[initializer],
                id: node_id};
@@ -335,7 +335,7 @@ tag expr_ {
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
     expr_if_check(@expr, blk, option::t[@expr]);
-    expr_port(option::t[@ty]);
+    expr_port(@ty);
     expr_chan(@expr);
     expr_anon_obj(anon_obj);
     expr_mac(mac);
@@ -451,6 +451,10 @@ tag ty_ {
     ty_type;
     ty_constr(@ty, [@ty_constr]);
     ty_mac(mac);
+    // ty_infer means the type should be inferred instead of it having been
+    // specified. This should only appear at the "top level" of a type and not
+    // nested in one.
+    ty_infer;
 }
 
 
