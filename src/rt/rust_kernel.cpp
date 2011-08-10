@@ -134,6 +134,14 @@ int rust_kernel::start_task_threads()
     return rval;
 }
 
+void
+rust_kernel::fail() {
+    for(size_t i = 0; i < num_threads; ++i) {
+        rust_scheduler *thread = threads[i];
+        thread->kill_all_tasks();
+    }
+}
+
 rust_task_id
 rust_kernel::create_task(rust_task *spawner, const char *name) {
     rust_scheduler *thread = threads[rand(&rctx) % num_threads];

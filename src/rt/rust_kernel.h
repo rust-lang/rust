@@ -52,6 +52,8 @@ public:
     void *realloc(void *mem, size_t size);
     void free(void *mem);
 
+    void fail();
+
     int start_task_threads();
 
 #ifdef __WIN32__

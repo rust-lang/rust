@@ -71,7 +71,21 @@ rust_scheduler::fail() {
         name, this);
     I(this, kernel->rval == 0);
     kernel->rval = 1;
-    exit(1);
+    kernel->fail();
+}
+
+void
+rust_scheduler::kill_all_tasks() {
+    I(this, !lock.lock_held_by_current_thread());
+    scoped_lock with(lock);
+
+    for (size_t i = 0; i < running_tasks.length(); i++) {
+        running_tasks[i]->kill();
+    }
+
+    for (size_t i = 0; i < blocked_tasks.length(); i++) {
+        blocked_tasks[i]->kill();
+    }
 }
 
 size_t

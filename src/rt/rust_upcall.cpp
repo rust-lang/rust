@@ -195,8 +195,8 @@ upcall_fail(rust_task *task,
             size_t line) {
     LOG_UPCALL_ENTRY(task);
     LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
-    task->fail();
     task->die();
+    task->fail();
     task->notify_tasks_waiting_to_join();
     task->yield(4);
 }

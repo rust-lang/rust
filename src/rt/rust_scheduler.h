@@ -81,6 +81,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 
     void log_state();
 
+    void kill_all_tasks();
+
     rust_task *create_task(rust_task *spawner, const char *name);
 
     virtual void run();
