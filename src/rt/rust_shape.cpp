@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <utility>
 #include <cassert>
 #include <cstdio>
@@ -74,20 +75,6 @@ align_to(T size, size_t alignment) {
     assert(alignment);
     T x = (T)(((uintptr_t)size + alignment - 1) & ~(alignment - 1));
     return x;
-}
-
-template<typename T>
-static inline T
-bump_dp(uint8_t *&dp) {
-    T x = *((T *)dp);
-    dp += sizeof(T);
-    return x;
-}
-
-template<typename T>
-static inline T
-get_dp(uint8_t *dp) {
-    return *((T *)dp);
 }
 
 // Utility classes
@@ -218,6 +205,52 @@ get_dp(ptr_pair &ptr) {
     data_pair<T> data(*reinterpret_cast<T *>(ptr.fst),
                       *reinterpret_cast<T *>(ptr.snd));
     return data;
+}
+
+// Pointer wrappers for data traversals
+
+class ptr {
+private:
+    uint8_t *p;
+
+public:
+    template<typename T>
+    struct data { typedef T t; };
+
+    ptr(uint8_t *in_p)
+    : p(in_p) {}
+
+    ptr(uintptr_t in_p)
+    : p((uint8_t *)in_p) {}
+
+    inline ptr operator+(const size_t amount) const {
+        return make(p + amount);
+    }
+    inline ptr &operator+=(const size_t amount) { p += amount; return *this; }
+
+    template<typename T>
+    inline operator T *() { return (T *)p; }
+
+    inline operator uintptr_t() { return (uintptr_t)p; }
+
+    static inline ptr make(uint8_t *in_p) {
+        ptr self(in_p);
+        return self;
+    }
+};
+
+template<typename T>
+static inline T
+bump_dp(ptr &dp) {
+    T x = *((T *)dp);
+    dp += sizeof(T);
+    return x;
+}
+
+template<typename T>
+static inline T
+get_dp(ptr dp) {
+    return *((T *)dp);
 }
 
 
@@ -852,8 +885,8 @@ class data : public ctxt< data<T,U> > {
 protected:
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
-    static std::pair<uint8_t *,uint8_t *> get_evec_data_range(uint8_t *dp);
-    static std::pair<uint8_t *,uint8_t *> get_ivec_data_range(uint8_t *dp);
+    static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
+    static std::pair<uint8_t *,uint8_t *> get_ivec_data_range(ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_evec_data_range(ptr_pair &dp);
     static std::pair<ptr_pair,ptr_pair> get_ivec_data_range(ptr_pair &dp);
 
@@ -924,14 +957,14 @@ data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
-data<T,U>::get_evec_data_range(uint8_t *dp) {
+data<T,U>::get_evec_data_range(ptr dp) {
     rust_vec *vp = bump_dp<rust_vec *>(dp);
     return std::make_pair(vp->data, vp->data + vp->fill);
 }
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
-data<T,U>::get_ivec_data_range(uint8_t *dp) {
+data<T,U>::get_ivec_data_range(ptr dp) {
     size_t fill = bump_dp<size_t>(dp);
     bump_dp<size_t>(dp);    // Skip over alloc.
     uint8_t *payload_dp = dp;
@@ -1009,6 +1042,8 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
         tag_variant = 0;
 
     static_cast<T *>(this)->walk_tag(align, tinfo, tag_variant);
+
+    dp = end_dp;
 }
 
 
@@ -1187,12 +1222,19 @@ cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
 
 // Polymorphic logging, for convenience
 
-class log : public data<log,uint8_t *> {
-    friend class data<log,uint8_t *>;
+class log : public data<log,ptr> {
+    friend class data<log,ptr>;
 
 private:
     std::ostream &out;
     bool in_string;
+
+    log(log &other,
+        const uint8_t *in_sp,
+        const type_param *in_params,
+        const rust_shape_tables *in_tables)
+    : data<log,ptr>(other.task, in_sp, in_params, in_tables, other.dp),
+      out(other.out) {}
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         walk_vec(align, is_pod, get_evec_data_range(dp));
@@ -1202,8 +1244,14 @@ private:
         walk_vec(align, is_pod, get_ivec_data_range(dp));
     }
 
-    void walk_vec(bool align, bool is_pod,
-                  const std::pair<uint8_t *,uint8_t *> &data);
+    void walk_tag(bool align, tag_info &tinfo, uint32_t tag_variant) {
+        out << "tag" << tag_variant;
+        // TODO: Print insides.
+    }
+
+    void walk_subcontext(bool align, log &sub) { sub.walk(align); }
+
+    void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
 
     template<typename T>
     void walk_number() { out << get_dp<T>(dp); }
@@ -1215,13 +1263,12 @@ public:
         const rust_shape_tables *in_tables,
         uint8_t *in_data,
         std::ostream &in_out)
-    : data<log,uint8_t *>(in_task, in_sp, in_params, in_tables, in_data),
+    : data<log,ptr>(in_task, in_sp, in_params, in_tables, in_data),
       out(in_out) {}
 };
 
 void
-log::walk_vec(bool align, bool is_pod,
-              const std::pair<uint8_t *,uint8_t *> &data) {
+log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
     // TODO: Check to see whether this is a string (contains u8). If so,
     // write the vector ""-style; otherwise [ ... , ... ] style.
 }
@@ -1243,5 +1290,23 @@ upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
     case shape::CMP_LT: *result = cmp.result < 0;   break;
     case shape::CMP_LE: *result = cmp.result <= 0;  break;
     }
+}
+
+extern "C" void
+upcall_log_type(rust_task *task, type_desc *tydesc, uint8_t *data,
+                uint32_t level) {
+    if (task->sched->log_lvl < level)
+        return;     // TODO: Don't evaluate at all?
+
+    shape::arena arena;
+    shape::type_param *params = shape::type_param::make(tydesc, arena);
+
+    std::stringstream ss;
+    shape::log log(task, tydesc->shape, params, tydesc->shape_tables, data,
+                   ss);
+
+    log.walk(true);
+
+    task->sched->log(task, level, "%s", ss.str().c_str());
 }
 

@@ -26,11 +26,6 @@ import lib::llvm::llvm::TypeRef;
 
 type upcalls =
     {grow_task: ValueRef,
-     log_int: ValueRef,
-     log_float: ValueRef,
-     log_double: ValueRef,
-     log_str: ValueRef,
-     log_istr: ValueRef,
      trace_word: ValueRef,
      trace_str: ValueRef,
      new_port: ValueRef,
@@ -67,7 +62,8 @@ type upcalls =
      ivec_spill: ValueRef,
      ivec_resize_shared: ValueRef,
      ivec_spill_shared: ValueRef,
-     cmp_type: ValueRef};
+     cmp_type: ValueRef,
+     log_type: ValueRef};
 
 fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
@@ -89,11 +85,6 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
 
     let empty_vec: [TypeRef] = ~[];
     ret @{grow_task: dv("grow_task", ~[T_size_t()]),
-          log_int: dv("log_int", ~[T_i32(), T_i32()]),
-          log_float: dv("log_float", ~[T_i32(), T_f32()]),
-          log_double: dv("log_double", ~[T_i32(), T_ptr(T_f64())]),
-          log_str: dv("log_str", ~[T_i32(), T_ptr(T_str())]),
-          log_istr: dv("log_istr", ~[T_i32(), T_ptr(T_ivec(T_i8()))]),
           trace_word: dv("trace_word", ~[T_int()]),
           trace_str: dv("trace_str", ~[T_ptr(T_i8())]),
           new_port: d("new_port", ~[T_size_t()], T_opaque_port_ptr()),
@@ -159,6 +150,10 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
               dr("cmp_type", ~[T_ptr(T_i1()), taskptr_type,
                  T_ptr(tydesc_type), T_ptr(T_ptr(tydesc_type)),
                  T_ptr(T_i8()), T_ptr(T_i8()), T_i8()],
+                 T_void()),
+          log_type:
+              dr("log_type", ~[taskptr_type, T_ptr(tydesc_type),
+                 T_ptr(T_i8()), T_i32()],
                  T_void())};
 }
 //

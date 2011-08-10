@@ -5190,48 +5190,18 @@ fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let sub = trans_expr(log_cx, e);
     let e_ty = ty::expr_ty(bcx_tcx(cx), e);
     let log_bcx = sub.bcx;
-    if ty::type_is_fp(bcx_tcx(cx), e_ty) {
-        let tr: TypeRef;
-        let is32bit: bool = false;
-        alt ty::struct(bcx_tcx(cx), e_ty) {
-          ty::ty_machine(ast::ty_f32.) { tr = T_f32(); is32bit = true; }
-          ty::ty_machine(ast::ty_f64.) { tr = T_f64(); }
-          _ { tr = T_float(); }
-        }
-        if is32bit {
-            log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_float,
-                               ~[log_bcx.fcx.lltaskptr, C_int(lvl), sub.val]);
-        } else {
-            // FIXME: Eliminate this level of indirection.
 
-            let tmp = alloca(log_bcx, tr);
-            sub.bcx.build.Store(sub.val, tmp);
-            log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_double,
-                               ~[log_bcx.fcx.lltaskptr, C_int(lvl), tmp]);
-        }
-    } else if (ty::type_is_integral(bcx_tcx(cx), e_ty) ||
-                   ty::type_is_bool(bcx_tcx(cx), e_ty)) {
-        // FIXME: Handle signedness properly.
+    let ti = none[@tydesc_info];
+    let r = get_tydesc(log_bcx, e_ty, false, ti);
+    log_bcx = r.bcx;
 
-        let llintval =
-            int_cast(log_bcx, T_int(), val_ty(sub.val), sub.val, false);
-        log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_int,
-                           ~[log_bcx.fcx.lltaskptr, C_int(lvl), llintval]);
-    } else {
-        alt ty::struct(bcx_tcx(cx), e_ty) {
-          ty::ty_str. {
-            log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_str,
-                               ~[log_bcx.fcx.lltaskptr, C_int(lvl), sub.val]);
-          }
-          _ {
-            // FIXME: Support these types.
+    // Call the polymorphic log function.
+    let llvalptr = spill_if_immediate(log_bcx, sub.val, e_ty);
+    let llval_i8 = log_bcx.build.PointerCast(llvalptr, T_ptr(T_i8()));
 
-            bcx_ccx(cx).sess.span_fatal(e.span,
-                                        "log called on unsupported type " +
-                                            ty_to_str(bcx_tcx(cx), e_ty));
-          }
-        }
-    }
+    log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_type,
+                       ~[log_bcx.fcx.lltaskptr, r.val, llval_i8, C_int(lvl)]);
+
     log_bcx = trans_block_cleanups(log_bcx, log_cx);
     log_bcx.build.Br(after_cx.llbb);
     ret rslt(after_cx, C_nil());

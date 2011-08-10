@@ -343,36 +343,6 @@ fn trans_log(cx: &@block_ctxt, sp: &span, level: int, expr: &@ast::expr) ->
         ret lllevelptr;
     }
 
-    tag upcall_style { us_imm; us_imm_i32_zext; us_alias; us_alias_istr; }
-    fn get_upcall(ccx: &@crate_ctxt, sp: &span, t: ty::t) ->
-       {val: ValueRef, st: upcall_style} {
-        alt ty::struct(ccx_tcx(ccx), t) {
-          ty::ty_machine(ast::ty_f32.) {
-            ret {val: ccx.upcalls.log_float, st: us_imm};
-          }
-          ty::ty_machine(ast::ty_f64.) | ty::ty_float. {
-            // TODO: We have to spill due to legacy calling conventions that
-            // should probably be modernized.
-            ret {val: ccx.upcalls.log_double, st: us_alias};
-          }
-          ty::ty_bool. | ty::ty_machine(ast::ty_i8.) |
-          ty::ty_machine(ast::ty_i16.) | ty::ty_machine(ast::ty_u8.) |
-          ty::ty_machine(ast::ty_u16.) {
-            ret {val: ccx.upcalls.log_int, st: us_imm_i32_zext};
-          }
-          ty::ty_int. | ty::ty_machine(ast::ty_i32.) |
-          ty::ty_machine(ast::ty_u32.) {
-            ret {val: ccx.upcalls.log_int, st: us_imm};
-          }
-          ty::ty_istr. { ret {val: ccx.upcalls.log_istr, st: us_alias_istr}; }
-          _ {
-            ccx.sess.span_unimpl(sp,
-                                 "logging for values of type " +
-                                     ppaux::ty_to_str(ccx_tcx(ccx), t));
-          }
-        }
-    }
-
     let bcx = cx;
 
     let lllevelptr = trans_log_level(bcx_lcx(bcx));
@@ -386,34 +356,20 @@ fn trans_log(cx: &@block_ctxt, sp: &span, level: int, expr: &@ast::expr) ->
     bcx.build.CondBr(should_log, log_bcx.llbb, next_bcx.llbb);
 
     let expr_t = ty::expr_ty(bcx_tcx(log_bcx), expr);
-    let r = get_upcall(bcx_ccx(bcx), sp, expr_t);
-    let llupcall = r.val;
-    let style = r.st;
-
-    let arg_dest;
-    alt style {
-      us_imm. | us_imm_i32_zext. {
-        arg_dest = dest_imm(bcx_tcx(log_bcx), expr_t);
-      }
-      us_alias. | us_alias_istr. {
-        arg_dest = dest_alias(bcx_tcx(log_bcx), expr_t);
-      }
-    }
+    let arg_dest = dest_alias(bcx_tcx(log_bcx), expr_t);
     log_bcx = trans_expr(log_bcx, arg_dest, expr);
 
     let llarg = dest_llval(arg_dest);
-    alt style {
-      us_imm. | us_alias. {/* no-op */ }
-      us_imm_i32_zext. { llarg = log_bcx.build.ZExt(llarg, tc::T_i32()); }
-      us_alias_istr. {
-        llarg =
-            log_bcx.build.PointerCast(llarg,
-                                      tc::T_ptr(tc::T_ivec(tc::T_i8())));
-      }
-    }
+    let llarg_i8 = bcx.build.PointerCast(llarg, T_ptr(T_i8()));
 
-    log_bcx.build.Call(llupcall,
-                       ~[bcx_fcx(bcx).lltaskptr, tc::C_int(level), llarg]);
+    let ti = none;
+    let r2 = trans::get_tydesc(bcx, expr_t, false, ti);
+    bcx = r2.bcx;
+    let lltydesc = r2.val;
+
+    log_bcx.build.Call(bcx_ccx(log_bcx).upcalls.log_type,
+                       ~[bcx_fcx(bcx).lltaskptr, lltydesc, llarg_i8,
+                         tc::C_int(level)]);
 
     log_bcx =
         trans::trans_block_cleanups(log_bcx, tc::find_scope_cx(log_bcx));

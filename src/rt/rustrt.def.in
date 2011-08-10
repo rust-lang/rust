@@ -97,6 +97,7 @@ upcall_log_float
 upcall_log_int
 upcall_log_istr
 upcall_log_str
+upcall_log_type
 upcall_malloc
 upcall_mark
 upcall_new_chan
