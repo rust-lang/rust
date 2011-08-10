@@ -2296,7 +2296,7 @@ assert (p._1 == "world");
 @cindex Vector types
 @cindex Array types, see @i{Vector types}
 
-The vector type-constructor @code{vec} represents a homogeneous array of
+The vector type-constructor represents a homogeneous array of
 values of a given type. A vector has a fixed size. The layer of a vector type
 is to the layer of its member type, like any type that contains a single
 member type.
@@ -2305,11 +2305,11 @@ Vectors can be sliced. A slice expression builds a new vector by copying a
 contiguous range -- given by a pair of indices representing a half-open
 interval -- out of the sliced vector.
 
-An example of a @code{vec} type and its use:
+An example of a vector type and its use:
 @example
-let vec[int] v = vec(7, 5, 3);
+let [int] v = [7, 5, 3];
 let int i = v.(2);
-let vec[int] v2 = v.(0,1); // Form a slice.
+let [int] v2 = v.(0,1); // Form a slice.
 @end example
 
 Vectors always @emph{allocate} a storage region sufficient to store the first
@@ -2318,8 +2318,8 @@ vector. This behaviour supports idiomatic in-place ``growth'' of a mutable
 slot holding a vector:
 
 @example
-let mutable vec[int] v = vec(1, 2, 3);
-v += vec(4, 5, 6);
+let mutable vec[int] v = [1, 2, 3];
+v += [4, 5, 6];
 @end example
 
 Normal vector concatenation causes the allocation of a fresh vector to hold
@@ -2451,7 +2451,7 @@ An example of a @code{chan} type:
 @example
 type chan[vec[str]] svc;
 let svc c = get_chan();
-let vec[str] v = vec("hello", "world");
+let vec[str] v = ["hello", "world"];
 c <| v;
 @end example
 
@@ -3346,7 +3346,7 @@ Executing a @code{cont} expression immediately terminates the current iteration
 of the innermost loop enclosing it, returning control to the loop
 @emph{head}. In the case of a @code{while} loop, the head is the conditional
 expression controlling the loop. In the case of a @code{for} or @code{for
-each} loop, the head is the iterator or vector-slice increment controlling the
+each} loop, the head is the iterator or vector-element increment controlling the
 loop.
 
 A @code{cont} expression is only permitted in the body of a loop.
@@ -3368,7 +3368,7 @@ run the loop over the slice.
 
 Example of 4 for loops, all identical:
 @example
-let vec[foo] v = vec(a, b, c);
+let vec[foo] v = [a, b, c];
 
 for (foo e in v.(0, _vec.len(v))) @{
     bar(e);
@@ -3718,17 +3718,12 @@ allocating and freeing boxed values.
 @c * Ref.Run.Mem::                 Runtime built-in type services.
 @cindex Built-in types
 
-The runtime provides C and Rust code to manage several built-in types:
-@itemize
-@item @code{vec}, the type of vectors.
-@item @code{str}, the type of UTF-8 strings.
-@item @code{big}, the type of arbitrary-precision integers.
-@item @code{chan}, the type of communication channels.
-@item @code{port}, the type of communication ports.
-@item @code{task}, the type of tasks.
-@end itemize
-Support for other built-in types such as simple types, tuples,
-records, and tags is open-coded by the Rust compiler.
+The runtime provides C and Rust code to assist with various built-in types,
+such as vectors, strings, bignums, and the low level communication system
+(ports, channels, tasks).
+
+Support for other built-in types such as simple types, tuples, records, and
+tags is open-coded by the Rust compiler.
 
 @node       Ref.Run.Comm
 @subsection Ref.Run.Comm
