@@ -2,6 +2,7 @@
 // actions, such as copying, freeing, comparing, and so on.
 
 #include <algorithm>
+#include <iostream>
 #include <utility>
 #include <cassert>
 #include <cstdio>
@@ -1085,11 +1086,11 @@ public:
       result(0) {}
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
-        return walk_vec(align, is_pod, get_evec_data_range(dp));
+        walk_vec(align, is_pod, get_evec_data_range(dp));
     }
 
     void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
-        return walk_vec(align, is_pod, get_ivec_data_range(dp));
+        walk_vec(align, is_pod, get_ivec_data_range(dp));
     }
 
     void walk_fn(bool align) { return cmp_two_pointers(align); }
@@ -1181,6 +1182,48 @@ cmp::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
         result = sub.result;
         align = true;
     }
+}
+
+
+// Polymorphic logging, for convenience
+
+class log : public data<log,uint8_t *> {
+    friend class data<log,uint8_t *>;
+
+private:
+    std::ostream &out;
+    bool in_string;
+
+    void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
+        walk_vec(align, is_pod, get_evec_data_range(dp));
+    }
+
+    void walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
+        walk_vec(align, is_pod, get_ivec_data_range(dp));
+    }
+
+    void walk_vec(bool align, bool is_pod,
+                  const std::pair<uint8_t *,uint8_t *> &data);
+
+    template<typename T>
+    void walk_number() { out << get_dp<T>(dp); }
+
+public:
+    log(rust_task *in_task,
+        const uint8_t *in_sp,
+        const type_param *in_params,
+        const rust_shape_tables *in_tables,
+        uint8_t *in_data,
+        std::ostream &in_out)
+    : data<log,uint8_t *>(in_task, in_sp, in_params, in_tables, in_data),
+      out(in_out) {}
+};
+
+void
+log::walk_vec(bool align, bool is_pod,
+              const std::pair<uint8_t *,uint8_t *> &data) {
+    // TODO: Check to see whether this is a string (contains u8). If so,
+    // write the vector ""-style; otherwise [ ... , ... ] style.
 }
 
 } // end namespace shape
