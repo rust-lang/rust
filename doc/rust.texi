@@ -550,7 +550,7 @@ Additional specific influences can be seen from the following languages:
 
 @menu
 * Ref.Lex::                     Lexical structure.
-* Ref.Path::                    References to slots and items.
+* Ref.Path::                    References to items.
 * Ref.Gram::                    Grammar.
 * Ref.Comp::                    Compilation and component model.
 * Ref.Mem::                     Semantic model of memory.
@@ -977,69 +977,43 @@ The special symbols are:
 @page
 @node    Ref.Path
 @section Ref.Path
-@c * Ref.Path::               References to slots and items.
+@c * Ref.Path::               References to items.
 @cindex Names of items or slots
 @cindex Path name
 @cindex Type parameters
 
-A @dfn{path} is a ubiquitous syntactic form in Rust that deserves special
-attention. A path denotes a slot or an
-item. @xref{Ref.Mem.Slot}. @xref{Ref.Item}. Every slot and item in a Rust
-crate has a @emph{canonical path} that refers to it from the crate top-level,
-as well as a number of shorter @emph{relative paths} that may also denote it
-in inner scopes of the crate. There is no way to define a slot or item without
-a canonical path within its crate (with the exception of the crate's implicit
-top-level module). Paths have meaning only within a specific
-crate. @xref{Ref.Comp.Crate}.
+A @dfn{path} is a sequence of one or more path components separated by a
+namespace qualifier (@code{::}). If a path consists of only one component, it
+may refer to either an item or a slot in a local control
+scope. @xref{Ref.Mem.Slot}. @xref{Ref.Item}. If a path has multiple
+components, it refers to an item.
 
-Paths consist of period-separated components. In the simplest form, path
-components are identifiers. @xref{Ref.Lex.Ident}.
+Every item has a @emph{canonical path} within its crate, but the path naming
+an item is only meaningful within a given crate. There is no global namespace
+across crates; an item's canonical path merely identifies it within the
+crate. @xref{Ref.Comp.Crate} 
+
+Path components are usually identifiers. @xref{Ref.Lex.Ident}. The last
+component of a path may also have trailing explicit type arguments.
 
 Two examples of simple paths consisting of only identifier components:
 @example
 x;
-x.y.z;
+x::y::z;
 @end example
 
-Paths fall into two important categories: @emph{names} and
-@emph{lvals}.
+In most contexts, the Rust grammar accepts a general @emph{path}, but
+subsequent passes pay restrict paths occurring in various contexts to refer to
+slots or items, depending on the semantics of the occurrence. In other words:
+in some contexts a slot is required (for example, on the left hand side of the
+copy operator, @pxref{Ref.Expr.Copy}) and in other contexts an item is
+required (for example, as a type parameter, @pxref{Ref.Item}). In no case is
+the grammar made ambiguous by accepting a general path and interpreting the
+reference in later passes. @xref{Ref.Gram}.
 
-A @dfn{name} denotes an item, and is statically resolved to its
-referent at compile time.
-
-An @dfn{lval} denotes a slot or some component of a value held within a slot,
-and is statically resolved at compile time to a sequence of memory operations
-and primitive (arithmetic) expressions that will be executed to load or store
-the associated value, starting from the task stack frame, at run time.
-
-In some contexts, the Rust grammar accepts a general @emph{path}, but a
-subsequent syntactic restriction requires the path to be an lval or a name. In
-other words: in some contexts an lval is required (for example, on the left
-hand side of the copy operator, @pxref{Ref.Expr.Copy}) and in other contexts a
-name is required (for example, as a type parameter, @pxref{Ref.Item}). In no
-case is the grammar made ambiguous by accepting a general path and restricting
-allowed paths to names or lvals after parsing. These restrictions are noted in
-the grammar. @xref{Ref.Gram}.
-
-A name component may include type parameters. Type parameters are denoted by
-square brackets. Square brackets are used @emph{only} to denote type
-parameters in Rust. If a name component includes a type parameter, the type
-parameter must also resolve statically to a type in the environment of the
-name. Type parameters are only part of the names of items. @xref{Ref.Item}.
-
-An example of a name with type parameters:
+An example of a path with type parameters:
 @example
-m.map[int,str];
-@end example
-
-An lval component may include an indexing operator. Index operators are
-enclosed in parentheses and can include any integral expression. Indexing
-operators can only be applied to vectors or strings, and imply a run-time
-bounds-check. @xref{Ref.Type.Vec}.
-
-An example of an lval with a dynamic indexing operator:
-@example
-x.y.(1 + v).z;
+m::map[int,str];
 @end example
 
 @page
@@ -1110,8 +1084,8 @@ all members of the crate have canonical path names. @xref{Ref.Path}. The
 the crate: these are either directory modules, corresponding to directories in
 the filesystem of the compilation environment, or file modules, corresponding
 to Rust source files. The names given to such modules in @code{mod} directives
-become prefixes of the paths of items and slots defined within any included
-Rust source files.
+become prefixes of the paths of items defined within any included Rust source
+files.
 
 The @code{use} directives within the crate specify @emph{other crates} to scan
 for, locate, import into the crate's module namespace during compilation, and
@@ -1381,7 +1355,7 @@ Some operations implicitly dereference boxes. Examples of such @dfn{implicit
 dereference} operations are:
 @itemize
 @item arithmetic operators (@code{x + y - z})
-@item name-component selection (@code{x.y.z})
+@item field selection (@code{x.y.z})
 @end itemize
 
 An example of an implicit-dereference operation performed on box values:
@@ -1731,9 +1705,9 @@ declarations. @xref{Ref.Comp.Crate}.
 
 An example of an import:
 @example
-import std.math.sin;
+import std::math::sin;
 fn main() @{
-    // Equivalent to 'log std.math.sin(1.0);'
+    // Equivalent to 'log std::math::sin(1.0);'
     log sin(1.0);
 @}
 @end example
@@ -1767,8 +1741,8 @@ mod foo @{
 @}
 
 fn main() @{
-    foo.primary();  // Will compile.
-    foo.helper(2,3) // ERROR: will not compile.
+    foo::primary();  // Will compile.
+    foo::helper(2,3) // ERROR: will not compile.
 @}
 @end example
 
@@ -3268,7 +3242,7 @@ fn read_file_lines(&str path) -> vec[str] @{
     vec[str] r;
     file f = open_read(path);
     for each (str s in lines(f)) @{
-        vec.append(r,s);
+        vec::append(r,s);
     @}
     ret r;
 @}
@@ -3368,7 +3342,7 @@ Example of 4 for loops, all identical:
 @example
 let v: vec[foo] = [a, b, c];
 
-for (foo e in v.(0, _vec.len(v))) @{
+for (foo e in v.(0, vec::len(v))) @{
     bar(e);
 @}
 
@@ -3400,8 +3374,8 @@ Example of a foreach loop:
 @example
 let txt: str;
 let lines: vec[str];
-for each (str s in _str.split(txt, "\n")) @{
-    vec.push(lines, s);
+for each (str s in str::split(txt, "\n")) @{
+    vec::push(lines, s);
 @}
 @end example
 
@@ -3477,7 +3451,7 @@ let strs: vec[str];
 
 alt @{
     case (str s <- p) @{
-        vec.append(strs, s);
+        vec::append(strs, s);
     @}
     case (c <| x) @{
         x++;
@@ -3762,16 +3736,16 @@ expressions can be enabled or disabled via a two-dimensional filtering process:
 By Item
 
 Each @emph{item} (module, function, iterator, object, type) in Rust has a
-static name-path within its crate module, and can have logging enabled or
-disabled on a name-path-prefix basis.
+static path within its crate module, and can have logging enabled or
+disabled on a path-prefix basis.
 
 @sp 1
 @item
 By Task
 
-Each @emph{task} in a running Rust program has a unique ownership-path through
-the task ownership tree, and can have logging enabled or disabled on an
-ownership-path-prefix basis.
+Each @emph{task} in a running Rust program has a unique ownership relation
+through the task ownership tree, and can have logging enabled or disabled on
+an ownership-ancestry basis.
 @end itemize
 
 Logging is integrated into the language for efficiency reasons, as well as the
