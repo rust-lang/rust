@@ -103,28 +103,18 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         // Store null into pair, if no args or typarams.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
-        // Otherwise, we have to synthesize a big structural type for the
-        // object body.
         let obj_fields: [ty::t] = ~[];
         for a: ty::arg  in arg_tys { obj_fields += ~[a.ty]; }
 
-        // Tuple type for fields: [field, ...]
-        let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx, obj_fields);
-
-        let tydesc_ty = ty::mk_type(ccx.tcx);
         let tps: [ty::t] = ~[];
+        let tydesc_ty = ty::mk_type(ccx.tcx);
         for tp: ast::ty_param  in ty_params { tps += ~[tydesc_ty]; }
 
-        // Tuple type for typarams: [typaram, ...]
-        let typarams_ty: ty::t = ty::mk_imm_tup(ccx.tcx, tps);
-
-        // Tuple type for body:
-        // [tydesc_ty, [typaram, ...], [field, ...]]
-        let body_ty: ty::t =
-            ty::mk_imm_tup(ccx.tcx, ~[tydesc_ty, typarams_ty, fields_ty]);
-
-        // Hand this type we've synthesized off to trans_malloc_boxed, which
-        // allocates a box, including space for a refcount.
+        // Synthesize an object body type and hand it off to
+        // trans_malloc_boxed, which allocates a box, including space for a
+        // refcount.
+        let body_ty: ty::t = create_object_body_type(ccx.tcx, obj_fields, tps,
+                                                     none);
         let box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
         let body = box.body;
@@ -161,6 +151,8 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
             GEP_tup_like(bcx, body_ty, body,
                          ~[0, abi::obj_body_elt_typarams]);
         bcx = body_typarams.bcx;
+        // TODO: can we just get typarams_ty out of body_ty instead?
+        let typarams_ty: ty::t = ty::mk_imm_tup(ccx.tcx, tps);
         let i: int = 0;
         for tp: ast::ty_param  in ty_params {
             let typaram = bcx.fcx.lltydescs.(i);
@@ -181,6 +173,8 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
             alt bcx.fcx.llargs.find(f.id) {
               some(arg1) {
                 let arg = load_if_immediate(bcx, arg1, arg_tys.(i).ty);
+                // TODO: can we just get fields_ty out of body_ty instead?
+                let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx, obj_fields);
                 let field =
                     GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
                 bcx = field.bcx;
@@ -303,30 +297,19 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
 
     if std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
            anon_obj.inner_obj == none {
+
         // If the object we're translating has no fields and no inner_obj,
         // there's not much to do.
         bcx.build.Store(C_null(llbox_ty), pair_box);
+
     } else {
 
-        // Synthesize a tuple type for fields: [field, ...]
-        let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx, additional_field_tys);
-
-        // Type for tydescs.
-        let tydesc_ty: ty::t = ty::mk_type(ccx.tcx);
-
-        // Placeholder for non-existent typarams, since anon objs don't have
-        // them.
-        let typarams_ty: ty::t = ty::mk_imm_tup(ccx.tcx, ~[]);
-
-        // Tuple type for body:
-        // [tydesc, [typaram, ...], [field, ...], inner_obj]
-        let body_ty: ty::t =
-            ty::mk_imm_tup(ccx.tcx,
-                           ~[tydesc_ty, typarams_ty, fields_ty,
-                             inner_obj_ty]);
-
-        // Hand this type we've synthesized off to trans_malloc_boxed, which
-        // allocates a box, including space for a refcount.
+        // Synthesize a type for the object body and hand it off to
+        // trans_malloc_boxed, which allocates a box, including space for a
+        // refcount.
+        let body_ty: ty::t = create_object_body_type(ccx.tcx,
+                                                     additional_field_tys,
+                                                     ~[], some(inner_obj_ty));
         let box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
         let body = box.body;
@@ -364,7 +347,8 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             // have additional field exprs in the AST.
             load_if_immediate(bcx, additional_field_vals.(i).val,
                               additional_field_tys.(i));
-
+            let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx,
+                                                  additional_field_tys);
             let field =
                 GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
             bcx = field.bcx;
@@ -806,25 +790,9 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     // Now, we need to figure out exactly what type the body is supposed to be
     // cast to.
-
-    // NB: This next part is almost flat-out copypasta from trans_anon_obj.
-    // It would be great to factor this out.
-
-    // Synthesize a tuple type for fields: [field, ...]
-    let fields_ty: ty::t = ty::mk_imm_tup(cx.ccx.tcx, additional_field_tys);
-
-    // Type for tydescs.
-    let tydesc_ty: ty::t = ty::mk_type(cx.ccx.tcx);
-
-    // Placeholder for non-existent typarams, since anon objs don't have them.
-    let typarams_ty: ty::t = ty::mk_imm_tup(cx.ccx.tcx, ~[]);
-
-    // Tuple type for body: [tydesc, [typaram, ...], [field, ...], inner_obj]
-
-    let body_ty: ty::t =
-        ty::mk_imm_tup(cx.ccx.tcx,
-                       ~[tydesc_ty, typarams_ty, fields_ty, inner_obj_ty]);
-
+    let body_ty: ty::t = create_object_body_type(cx.ccx.tcx,
+                                                 additional_field_tys, ~[],
+                                                 some(inner_obj_ty));
     // And cast to that type.
     llself_obj_body =
         bcx.build.PointerCast(llself_obj_body,
@@ -918,6 +886,31 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     finish_fn(fcx, lltop);
 
     ret llforwarding_fn;
+}
+
+// create_object_body_type: Synthesize a big structural tuple type for an
+// object body: [tydesc, [typaram, ...], [field, ...], inner_obj].
+fn create_object_body_type(tcx: &ty::ctxt, fields_ty: &[ty::t],
+                           typarams_ty: &[ty::t],
+                           maybe_inner_obj_ty: option::t[ty::t]) -> ty::t {
+
+    let tydesc_ty: ty::t = ty::mk_type(tcx);
+    let typarams_ty_tup: ty::t = ty::mk_imm_tup(tcx, typarams_ty);
+    let fields_ty_tup: ty::t = ty::mk_imm_tup(tcx, fields_ty);
+
+    let body_ty: ty::t;
+    alt maybe_inner_obj_ty {
+      some(inner_obj_ty) {
+        body_ty = ty::mk_imm_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
+                                        fields_ty_tup, inner_obj_ty]);
+      }
+      none {
+        body_ty = ty::mk_imm_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
+                                        fields_ty_tup]);
+      }
+    }
+
+    ret body_ty;
 }
 
 // process_normal_mthd: Create the contents of a normal vtable slot.  A helper
