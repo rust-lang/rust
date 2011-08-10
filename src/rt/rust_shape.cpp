@@ -1239,8 +1239,12 @@ private:
     log(log &other,
         const uint8_t *in_sp,
         const type_param *in_params,
-        const rust_shape_tables *in_tables)
-    : data<log,ptr>(other.task, in_sp, in_params, in_tables, other.dp),
+        const rust_shape_tables *in_tables = NULL)
+    : data<log,ptr>(other.task,
+                    in_sp,
+                    in_params,
+                    in_tables ? in_tables : other.tables,
+                    other.dp),
       out(other.out) {}
 
     log(log &other, ptr in_dp)
@@ -1259,12 +1263,15 @@ private:
 
     void walk_tag(bool align, tag_info &tinfo, uint32_t tag_variant) {
         out << "tag" << tag_variant;
-        // TODO: Print insides.
+        data<log,ptr>::walk_variant(align, tinfo, tag_variant);
     }
 
     void walk_subcontext(bool align, log &sub) { sub.walk(align); }
 
     void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
+    void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+                      const std::pair<const uint8_t *,const uint8_t *>
+                      variant_ptr_and_end);
 
     template<typename T>
     void walk_number() { out << get_dp<T>(dp); }
@@ -1321,6 +1328,27 @@ log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
     }
 
     out << "]";
+}
+
+void
+log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
+                  const std::pair<const uint8_t *,const uint8_t *>
+                  variant_ptr_and_end) {
+    log sub(*this, variant_ptr_and_end.first, tinfo.params);
+    const uint8_t *variant_end = variant_ptr_and_end.second;
+
+    bool first = true;
+    while (sub.sp < variant_end) {
+        out << (first ? "(" : ", ");
+
+        sub.walk(align);
+
+        align = true;
+        first = false;
+    }
+
+    if (!first)
+        out << ")";
 }
 
 } // end namespace shape
