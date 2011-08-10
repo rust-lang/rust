@@ -448,23 +448,17 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: &parser, colons_before_params: bool)
         -> @ast::ty {
     let lo = p.get_lo_pos();
 
-    let seq;
-    if p.peek() == token::LBRACKET {
-        p.bump();
-        seq = parse_seq_to_end(token::RBRACKET, some(token::COMMA),
-                               bind parse_ty(_, false), p);
-    } else if colons_before_params && p.peek() == token::MOD_SEP {
+    if colons_before_params && p.peek() == token::MOD_SEP {
         p.bump();
         expect(p, token::LT);
-        seq = parse_seq_to_gt(some(token::COMMA), bind parse_ty(_, false), p);
     } else if !colons_before_params && p.peek() == token::LT {
         p.bump();
-        seq = parse_seq_to_gt(some(token::COMMA), bind parse_ty(_, false), p);
     } else {
         ret @spanned(lo, p.get_lo_pos(), orig_t);
     }
 
     // If we're here, we have explicit type parameter instantiation.
+    let seq = parse_seq_to_gt(some(token::COMMA), bind parse_ty(_, false), p);
 
     alt orig_t {
       ast::ty_path(pth, ann) {
@@ -575,17 +569,10 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
                                parse_type_constraints(p));
         }
     } else if (eat_word(p, "vec")) {
-        if p.peek() == token::LBRACKET {
-            p.bump();
-            t = ast::ty_vec(parse_mt(p));
-            hi = p.get_hi_pos();
-            expect(p, token::RBRACKET);
-        } else {
-            expect(p, token::LT);
-            t = ast::ty_vec(parse_mt(p));
-            hi = p.get_hi_pos();
-            expect_gt(p);
-        }
+        expect(p, token::LT);
+        t = ast::ty_vec(parse_mt(p));
+        hi = p.get_hi_pos();
+        expect_gt(p);
     } else if (p.peek() == token::LBRACKET) {
         expect(p, token::LBRACKET);
         t = ast::ty_ivec(parse_mt(p));
