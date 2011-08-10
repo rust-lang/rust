@@ -1,11 +1,6 @@
-
 import option::some;
 import option::none;
 
-
-// FIXME: It would probably be more appealing to define this as
-// type list[T] = rec(T hd, option[@list[T]] tl), but at the moment
-// our recursion rules do not permit that.
 tag list[T] { cons(T, @list[T]); nil; }
 
 fn from_vec[@T](v: vec[T]) -> list[T] {
@@ -48,31 +43,41 @@ fn has[@T](ls_: &list[T], elt: &T) -> bool {
     while true {
         alt ls {
           cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
-          nil. { ret false; }
+          nil. { break; }
         }
     }
-    ret false; // Typestate checker doesn't understand infinite loops
-
+    ret false;
 }
 
 fn length[@T](ls: &list[T]) -> uint {
     fn count[T](t: &T, u: &uint) -> uint { ret u + 1u; }
-    ret foldl[T, uint](ls, 0u, bind count[T](_, _));
+    ret foldl(ls, 0u, count);
 }
 
-fn cdr[@T](ls: &list[T]) -> list[T] { alt ls { cons(_, tl) { ret *tl; } } }
+fn cdr[@T](ls: &list[T]) -> list[T] {
+    alt ls {
+      cons(_, tl) { ret *tl; }
+      nil. { fail "list empty" }
+    }
+}
 
-fn car[@T](ls: &list[T]) -> T { alt ls { cons(hd, _) { ret hd; } } }
+fn car[@T](ls: &list[T]) -> T {
+    alt ls {
+      cons(hd, _) { ret hd; }
+      nil. { fail "list empty" }
+    }
+}
 
 fn append[@T](l: &list[T], m: &list[T]) -> list[T] {
     alt l {
       nil. { ret m; }
       cons(x, xs) {
-        let rest: list[T] = append[T](*xs, m);
-        ret cons[T](x, @rest);
+        let rest = append(*xs, m);
+        ret cons(x, @rest);
       }
     }
 }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

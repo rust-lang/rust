@@ -17,9 +17,8 @@ fn make_socket(ctx: ctx, p: port[aio::socket_event]) -> client {
       aio::connected(client) {
         ret { ctx: ctx, client: client, evt: p };
       }
+      _ { fail "Could not connect to client"; }
     }
-    log_err ("Could not connect to client");
-    fail;
 }
 
 fn connect_to(ctx: ctx, ip: str, portnum: int) -> client {
