@@ -1226,14 +1226,14 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     };
     let tcx = ccx.tcx;
 
-    let next_var_id = lambda(nvi: @mutable int) -> int {
+    let next_var_id = lambda() -> int {
         let rv = *nvi;
         *nvi += 1;
         ret rv;
     };
     let assign = lambda(nid: ast::node_id, ident: &ast::ident,
                         ty_opt: option::t[ty::t]) {
-        let var_id = next_var_id(nvi);
+        let var_id = next_var_id();
         locals.insert(nid, var_id);
         local_names.insert(nid, ident);
         alt ty_opt {
@@ -2027,7 +2027,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       ast::expr_alt(expr, arms) {
         bot = check_expr(fcx, expr);
         // Typecheck the patterns first, so that we get types for all the
-       // bindings.
+        // bindings.
 
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm  in arms {

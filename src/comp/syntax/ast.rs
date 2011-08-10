@@ -42,8 +42,6 @@ tag def {
     def_arg(def_id);
     def_local(def_id);
     def_variant(def_id, /* tag */def_id);
-
-
     /* variant */
     def_ty(def_id);
     def_ty_arg(uint, kind);
@@ -51,8 +49,6 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
-
-
     /* A "fake" def for upvars. This never appears in the def_map, but
      * freevars::def_lookup will return it for a def that is an upvar.
      * It contains the actual def. */
@@ -256,8 +252,6 @@ type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl, node_id);
     stmt_expr(@expr, node_id);
-
-
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
 }
@@ -314,7 +308,6 @@ tag expr_ {
     expr_alt(@expr, [arm]);
     expr_fn(_fn);
     expr_block(blk);
-
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
@@ -335,15 +328,10 @@ tag expr_ {
     expr_put(option::t[@expr]);
     expr_be(@expr);
     expr_log(int, @expr);
-
-
     /* just an assert, no significance to typestate */
     expr_assert(@expr);
-
-
     /* preds that typestate is aware of */
     expr_check(check_mode, @expr);
-
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
     expr_if_check(@expr, blk, option::t[@expr]);
@@ -438,13 +426,10 @@ tag ty_ {
     ty_bot; /* return type of ! functions and type of
              ret/fail/break/cont. there is no syntax
              for this type. */
-
-
-
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-     ty_bool;
+    ty_bool;
     ty_int;
     ty_uint;
     ty_float;
@@ -452,15 +437,9 @@ tag ty_ {
     ty_char;
     ty_str;
     ty_istr; // interior string
-
-
-
     ty_box(mt);
     ty_vec(mt);
     ty_ivec(mt); // interior vector
-
-
-
     ty_ptr(mt);
     ty_task;
     ty_port(@ty);
@@ -523,21 +502,13 @@ type fn_decl =
 
 tag purity {
     pure_fn; // declared with "pred"
-
-
-
     impure_fn; // declared with "fn"
-
 }
 
 tag controlflow {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
-
-
-
     return; // everything else
-
 }
 
 type _fn = {decl: fn_decl, proto: proto, body: blk};
