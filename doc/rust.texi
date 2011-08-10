@@ -692,8 +692,7 @@ The keywords are:
 @tab @code{i32}
 @tab @code{i64}
 @tab @code{f64}
-@item @code{rec}
-@tab @code{tup}
+@item @code{tup}
 @tab @code{tag}
 @tab @code{vec}
 @tab @code{str}
@@ -1349,7 +1348,7 @@ Alias slots are indicated by the @emph{ampersand} sigil @code{&}.
 
 An example function that accepts an alias parameter:
 @example
-type point3d = rec(int x, int y, int z);
+type point3d = @{x: int, y: int, z: int@};
 
 fn extract_z(&point3d p) -> int @{
     ret p.z;
@@ -2006,7 +2005,7 @@ aspects of a value include:
 @item The storage layer the value resides in (immutable, state or gc).
 @end itemize
 
-For example, the type @code{rec(u8 x, u8 y)} defines the set of immutable
+For example, the type @code{@{x: u8, y: u8@}} defines the set of immutable
 values that are composite records, each containing two unsigned 8-bit integers
 accessed through the components @code{x} and @code{y}, and laid out in memory
 with the @code{x} component preceding the @code{y} component.
@@ -2257,17 +2256,17 @@ A value of type @code{str} is a Unicode string, represented as a vector of
 @cindex Record types
 @cindex Structure types, see @i{Record types}
 
-The record type-constructor @code{rec} forms a new heterogeneous product of
-values.@footnote{The @code{rec} type-constructor is analogous to the
-@code{struct} type-constructor in the Algol/C family, the @emph{record} types
-of the ML family, or the @emph{structure} types of the Lisp family.} Fields of
-a @code{rec} type are accessed by name and are arranged in memory in the order
-specified by the @code{rec} type.
+The record type-constructor forms a new heterogeneous product of
+values.@footnote{The record type-constructor is analogous to the @code{struct}
+type-constructor in the Algol/C family, the @emph{record} types of the ML
+family, or the @emph{structure} types of the Lisp family.} Fields of a record
+type are accessed by name and are arranged in memory in the order specified by
+the record type.
 
-An example of a @code{rec} type and its use:
+An example of a record type and its use:
 @example
-type point = rec(int x, int y);
-let point p = rec(x=10, y=11);
+type point = @{x: int, y: int@};
+let point p = @{x: 10, y: 11@};
 let int px = p.x;
 @end example
 
@@ -2276,7 +2275,7 @@ let int px = p.x;
 @cindex Tuple types
 
 The tuple type-constructor @code{tup} forms a new heterogeneous product of
-values exactly as the @code{rec} type-constructor does, with the difference
+values exactly as the record type-constructor does, with the difference
 that tuple members are automatically assigned implicit field names, given by
 ascending integers prefixed by the underscore character: @code{_0}, @code{_1},
 @code{_2}, etc. The members of a tuple are laid out in memory contiguously,
@@ -2553,12 +2552,12 @@ declared. @xref{Ref.Expr.Check}.
 
 An example of a constrained type with two separate instantiations:
 @example
-type ordered_range = rec(int low, int high) : less_than(*.low, *.high);
+type ordered_range = @{low: int, high: int@} : less_than(*.low, *.high);
 
-let ordered_range rng1 = rec(low=5, high=7);
+let ordered_range rng1 = @{low: 5, high: 7@};
 // implicit: 'check less_than(rng1.low, rng1.high);'
 
-let ordered_range rng2 = rec(low=15, high=17);
+let ordered_range rng2 = @{low: 15, high: 17@};
 // implicit: 'check less_than(rng2.low, rng2.high);'
 @end example
 
