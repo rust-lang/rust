@@ -1,3 +1,8 @@
+// xfail-stage0
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+
 // Binop corner cases
 
 fn test_nil() {
