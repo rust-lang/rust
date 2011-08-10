@@ -342,7 +342,7 @@ features of currying, in a smaller and simpler package.
 To save some quantity of programmer key-pressing, Rust supports local type
 inference: signatures of functions, objects and iterators always require type
 annotation, but within the body of a function or iterator many slots can be
-declared @code{auto} and Rust will infer the slot's type from its uses.
+declared without a type, and Rust will infer the slot's type from its uses.
 
 @sp 1
 @item Structural object system
@@ -662,7 +662,6 @@ The keywords are:
 @tab @code{import}
 @tab @code{export}
 @tab @code{let}
-@tab @code{auto}
 @item @code{state}
 @tab @code{gc}
 @tab @code{const}
@@ -1222,9 +1221,9 @@ mod foo = "foo.rs";
 
 // In the source file "foo.rs", use the #re syntax extension and
 // the re module at run-time.
-let str s = get_string();
-let regex pattern = #re.pat@{ aa+b? @};
-let bool matched = re.match(pattern, s);
+let s: str = get_string();
+let pattern: regex = #re.pat@{ aa+b? @};
+let matched: bool = re.match(pattern, s);
 @end example
 
 @page
@@ -1375,7 +1374,7 @@ Box types and values are constructed by the @emph{at} sigil @code{@@}.
 
 An example of constructing a box type and value:
 @example
-let @@int x = @@10;
+let x: @@int = @@10;
 @end example
 
 Some operations implicitly dereference boxes. Examples of such @dfn{implicit
@@ -1387,8 +1386,8 @@ dereference} operations are:
 
 An example of an implicit-dereference operation performed on box values:
 @example
-let @@int x = @@10;
-let @@int y = @@12;
+let x: @@int = @@10;
+let y: @@int = @@12;
 assert (x + y == 22);
 @end example
 
@@ -1412,7 +1411,7 @@ fn takes_unboxed(int b) @{
 @}
 
 fn main() @{
-    let @@int x = @@10;
+    let x: @@int = @@10;
     takes_boxed(x);
     takes_unboxed(*x);
 @}
@@ -1896,14 +1895,14 @@ each} loop or as the argument in a @code{put each} expression.
 An example of an iterator:
 @example
 iter range(int lo, int hi) -> int @{
-    let int i = lo;
+    let i: int = lo;
     while (i < hi) @{
         put i;
         i = i + 1;
     @}
 @}
 
-let int sum = 0;
+let sum: int = 0;
 for each (int x in range(0,100)) @{
     sum += x;
 @}
@@ -1936,7 +1935,7 @@ obj counter(int state) @{
     @}
 @}
 
-let counter c = counter(1);
+let c: counter = counter(1);
 
 c.incr();
 c.incr();
@@ -1952,7 +1951,7 @@ obj my_obj() @{
     ret 3;
   @}
   fn foo() @{
-    auto c = get();  // Fails
+    let c = get();  // Fails
   @}
 @}
 @end example
@@ -1976,7 +1975,7 @@ fn mk_my_obj() -> my_obj @{
       ret get_helper();
     @}
     fn foo() @{
-      auto c = get_helper();  // Works
+      let c = get_helper();  // Works
     @}
   @}
 
@@ -2040,7 +2039,7 @@ tag animal @{
   cat;
 @}
 
-let animal a = dog;
+let a: animal = dog;
 a = cat;
 @end example
 
@@ -2051,7 +2050,7 @@ tag list[T] @{
   cons(T, @@list[T]);
 @}
 
-let list[int] a = cons(7, cons(13, nil));
+let a: list[int] = cons(7, cons(13, nil));
 @end example
 
 
@@ -2266,8 +2265,8 @@ the record type.
 An example of a record type and its use:
 @example
 type point = @{x: int, y: int@};
-let point p = @{x: 10, y: 11@};
-let int px = p.x;
+let p: point = @{x: 10, y: 11@};
+let px: int = p.x;
 @end example
 
 @node       Ref.Type.Tup
@@ -2284,7 +2283,7 @@ like a record, in order specified by the tuple type.
 An example of a tuple type and its use:
 @example
 type pair = tup(int,str);
-let pair p = tup(10,"hello");
+let p: pair = tup(10,"hello");
 assert (p._0 == 10);
 p._1 = "world";
 assert (p._1 == "world");
@@ -2307,9 +2306,9 @@ interval -- out of the sliced vector.
 
 An example of a vector type and its use:
 @example
-let [int] v = [7, 5, 3];
-let int i = v.(2);
-let [int] v2 = v.(0,1); // Form a slice.
+let v: [int] = [7, 5, 3];
+let i: int = v.(2);
+let v2: [int] = v.(0,1); // Form a slice.
 @end example
 
 Vectors always @emph{allocate} a storage region sufficient to store the first
@@ -2318,7 +2317,7 @@ vector. This behaviour supports idiomatic in-place ``growth'' of a mutable
 slot holding a vector:
 
 @example
-let mutable vec[int] v = [1, 2, 3];
+let v: mutable vec[int] = [1, 2, 3];
 v += [4, 5, 6];
 @end example
 
@@ -2363,7 +2362,7 @@ fn add(int x, int y) -> int @{
 let int x = add(5,7);
 
 type binop = fn(int,int) -> int;
-let binop bo = add;
+let bo: binop = add;
 x = bo(5,7);
 @end example
 
@@ -2411,8 +2410,8 @@ mutable values can pass over a port or channel.
 An example of a @code{port} type:
 @example
 type port[vec[str]] svp;
-let svp p = get_port();
-let vec[str] v;
+let p: svp = get_port();
+let v: vec[str];
 v <- p;
 @end example
 
@@ -2450,8 +2449,8 @@ message is dropped.
 An example of a @code{chan} type:
 @example
 type chan[vec[str]] svc;
-let svc c = get_chan();
-let vec[str] v = ["hello", "world"];
+let c: svc = get_chan();
+let v: vec[str] = ["hello", "world"];
 c <| v;
 @end example
 
@@ -2523,10 +2522,10 @@ fn give_ints(taker t) @{
     t.take(3);
 @}
 
-let port[int] p = port();
+let p: port[int] = port();
 
-let taker t1 = adder(0);
-let taker t2 = sender(chan(p));
+let t1: taker = adder(0);
+let t2: taker = sender(chan(p));
 
 give_ints(t1);
 give_ints(t2);
@@ -2554,10 +2553,10 @@ An example of a constrained type with two separate instantiations:
 @example
 type ordered_range = @{low: int, high: int@} : less_than(*.low, *.high);
 
-let ordered_range rng1 = @{low: 5, high: 7@};
+let rng1: ordered_range = @{low: 5, high: 7@};
 // implicit: 'check less_than(rng1.low, rng1.high);'
 
-let ordered_range rng2 = @{low: 15, high: 17@};
+let rng2: ordered_range = @{low: 15, high: 17@};
 // implicit: 'check less_than(rng2.low, rng2.high);'
 @end example
 
@@ -2696,8 +2695,8 @@ pred is_less_than(int a, int b) -> bool @{
 @}
 
 fn test() @{
-   let int x = 10;
-   let int y = 20;
+   let x: int = 10;
+   let y: int = 20;
    check is_less_than(x,y);
 @}
 @end example
@@ -2890,27 +2889,27 @@ declaring a function-local item.
 @cindex Local slot
 @cindex Variable, see @i{Local slot}
 @cindex Type inference
-@cindex Automatic slot
 
 A @code{slot declaration statement} has one one of two forms:
 
 @itemize
-@item @code{let} @var{type} @var{slot} @var{optional-init};
-@item @code{auto} @var{slot} @var{optional-init};
+@item @code{let} @var{pattern} @var{optional-init};
+@item @code{let} @var{pattern} : @var{type} @var{optional-init};
 @end itemize
 
-Where @var{type} is a type expression, @var{slot} is the name of the slot
-being declared, and @var{optional-init} is either the empty string or an
-equals sign (@code{=}) followed by a primitive expression.
+Where @var{type} is a type expression, @var{pattern} is an irrefutable pattern
+(often just the name of a single slot), and @var{optional-init} is an optional
+initializer. If present, the initializer consists of either an equals sign
+(@code{=}) or move operator (@code{<-}), followed by an expression.
 
 Both forms introduce a new slot into the containing block scope. The new slot
 is visible across the entire scope, but is initialized only at the point
 following the declaration statement.
 
-The latter (@code{auto}) form of slot declaration causes the compiler to infer
-the static type of the slot through unification with the types of values
-assigned to the slot in the remaining code in the block scope. Inference only
-occurs on frame-local slots, not argument slots. Function, iterator and object
+The former form, with no type annotation, causes the compiler to infer the
+static type of the slot through unification with the types of values assigned
+to the slot in the remaining code in the block scope. Inference only occurs on
+frame-local slots, not argument slots. Function, iterator and object
 signatures must always declared types for all argument slots.
 @xref{Ref.Mem.Slot}.
 
@@ -2953,8 +2952,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
 * Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
-* Ref.Expr.Assert::              Expression for halting the program if a
-                                           boolean condition fails to hold.
+* Ref.Expr.Assert::             Expression for halting the program if a boolean condition fails to hold.
 * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
 @end menu
 
@@ -3012,11 +3010,11 @@ fn helper(chan[u8] out) @{
     out <| result;
 @}
 
-let port[u8] out;
-let task p = spawn helper(chan(out));
-let task p2 = spawn "my_helper" helper(chan(out));
+let out: port[u8];
+let p: task = spawn helper(chan(out));
+let p2: task = spawn "my_helper" helper(chan(out));
 // let task run, do other things.
-auto result <- out;
+let result <- out;
 
 @end example
 
@@ -3070,7 +3068,7 @@ un-blocks the receiving task. @xref{Ref.Run.Comm}.
 An example of a @emph{receive}:
 @example
 port[str] p = @dots{};
-let str s <- p;
+let s: str <- p;
 @end example
 
 @node       Ref.Expr.Call
@@ -3090,7 +3088,7 @@ typestates propagate through function boundaries. @xref{Ref.Typestate}.
 
 An example of a call expression:
 @example
-let int x = add(1, 2);
+let x: int = add(1, 2);
 @end example
 
 @node       Ref.Expr.Bind
@@ -3121,9 +3119,9 @@ fn add(int x, int y) -> int @{
 @}
 type single_param_fn = fn(int) -> int;
 
-let single_param_fn add4 = bind add(4, _);
+let add4: single_param_fn = bind add(4, _);
 
-let single_param_fn add5 = bind add(_, 5);
+let add5: single_param_fn = bind add(_, 5);
 
 assert (add(4,5) == add4(5));
 assert (add(4,5) == add5(4));
@@ -3368,7 +3366,7 @@ run the loop over the slice.
 
 Example of 4 for loops, all identical:
 @example
-let vec[foo] v = [a, b, c];
+let v: vec[foo] = [a, b, c];
 
 for (foo e in v.(0, _vec.len(v))) @{
     bar(e);
@@ -3400,8 +3398,8 @@ the iterator.  When the iterator returns or fails, the loop terminates.
 
 Example of a foreach loop:
 @example
-let str txt;
-let vec[str] lines;
+let txt: str;
+let lines: vec[str];
 for each (str s in _str.split(txt, "\n")) @{
     vec.push(lines, s);
 @}
@@ -3472,10 +3470,10 @@ branches to the block of that arm.
 
 An example of a communication @code{alt} expression:
 @example
-let chan c[int] = foo();
-let port p[str] = bar();
-let int x = 0;
-let vec[str] strs;
+let c: chan[int] = foo();
+let p: port[str] = bar();
+let x: int = 0;
+let strs: vec[str];
 
 alt @{
     case (str s <- p) @{
@@ -3504,15 +3502,15 @@ To execute a pattern @code{alt} expression, first the head expression is
 evaluated, then its value is sequentially compared to the patterns in the arms
 until a match is found. The first arm with a matching @code{case} pattern is
 chosen as the branch target of the @code{alt}, any variables bound by the
-pattern are assigned to local @emph{auto} slots in the arm's block, and
-control enters the block.
+pattern are assigned to local slots in the arm's block, and control enters the
+block.
 
 An example of a pattern @code{alt} expression:
 
 @example
 type list[X] = tag(nil, cons(X, @@list[X]));
 
-let list[int] x = cons(10, cons(11, nil));
+let x: list[int] = cons(10, cons(11, nil));
 
 alt (x) @{
     case (cons(a, cons(b, _))) @{
@@ -3544,7 +3542,7 @@ the value in the @code{any}.
 An example of an @code{alt type} expression:
 
 @example
-let any x = foo();
+let x: any = foo();
 
 alt type (x) @{
     case (int i) @{
@@ -3606,7 +3604,7 @@ fn print_even(int x) : even(x) @{
 @}
 
 fn test() @{
-    let int y = 8;
+    let y: int = 8;
 
     // Cannot call print_even(y) here.
 
