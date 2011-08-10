@@ -15,11 +15,11 @@ native "rust" mod rustrt {
     fn aio_init();
     fn aio_run();
     fn aio_stop();
-    fn aio_connect(host: *u8, port: int, connected: &_chan[socket]);
-    fn aio_serve(host: *u8, port: int, acceptChan: &_chan[socket]) -> server;
-    fn aio_writedata(s: socket, buf: *u8, size: uint, status: &_chan[bool]);
-    fn aio_read(s: socket, reader: &_chan[[u8]]);
-    fn aio_close_server(s: server, status: &_chan[bool]);
+    fn aio_connect(host: *u8, port: int, connected: &_chan<socket>);
+    fn aio_serve(host: *u8, port: int, acceptChan: &_chan<socket>) -> server;
+    fn aio_writedata(s: socket, buf: *u8, size: uint, status: &_chan<bool>);
+    fn aio_read(s: socket, reader: &_chan<[u8]>);
+    fn aio_close_server(s: server, status: &_chan<bool>);
     fn aio_close_socket(s: socket);
     fn aio_is_null_client(s: socket) -> bool;
 }
@@ -40,36 +40,36 @@ tag socket_event {
 }
 
 tag server_event {
-    pending(_chan[_chan[socket_event]]);
+    pending(_chan<_chan<socket_event>>);
 }
 
 tag request {
     quit;
-    connect(pending_connection,_chan[socket_event]);
-    serve(net::ip_addr,int,_chan[server_event],_chan[server]);
-    write(client,[u8],_chan[bool]);
-    close_server(server, _chan[bool]);
+    connect(pending_connection,_chan<socket_event>);
+    serve(net::ip_addr,int,_chan<server_event>,_chan<server>);
+    write(client,[u8],_chan<bool>);
+    close_server(server, _chan<bool>);
     close_client(client);
 }
 
-type ctx = _chan[request];
+type ctx = _chan<request>;
 
 fn ip_to_sbuf(ip: net::ip_addr) -> *u8 {
     vec::to_ptr(str::bytes(net::format_addr(ip)))
 }
 
-fn connect_task(ip: net::ip_addr, portnum: int, evt: _chan[socket_event]) {
-    let connecter: _port[client] = mk_port();
+fn connect_task(ip: net::ip_addr, portnum: int, evt: _chan<socket_event>) {
+    let connecter: _port<client> = mk_port();
     rustrt::aio_connect(ip_to_sbuf(ip), portnum, connecter.mk_chan());
     let client = connecter.recv();
     new_client(client, evt);
 }
 
-fn new_client(client: client, evt: _chan[socket_event]) {
+fn new_client(client: client, evt: _chan<socket_event>) {
     // Start the read before notifying about the connect.  This avoids a race
     // condition where the receiver can close the socket before we start
     // reading.
-    let reader: _port[[u8]] = mk_port();
+    let reader: _port<[u8]> = mk_port();
     rustrt::aio_read(client, reader.mk_chan());
 
     send(evt, connected(client));
@@ -92,18 +92,18 @@ fn new_client(client: client, evt: _chan[socket_event]) {
     log "close message sent";
 }
 
-fn accept_task(client: client, events: _chan[server_event]) {
+fn accept_task(client: client, events: _chan<server_event>) {
     log "accept task was spawned";
-    let p: _port[_chan[socket_event]] = mk_port();
+    let p: _port<_chan<socket_event>> = mk_port();
     send(events, pending(p.mk_chan()));
     let evt = p.recv();
     new_client(client, evt);
     log "done accepting";
 }
 
-fn server_task(ip: net::ip_addr, portnum: int, events: _chan[server_event],
-               server: _chan[server]) {
-    let accepter: _port[client] = mk_port();
+fn server_task(ip: net::ip_addr, portnum: int, events: _chan<server_event>,
+               server: _chan<server>) {
+    let accepter: _port<client> = mk_port();
     send(server, rustrt::aio_serve(ip_to_sbuf(ip), portnum,
                                    accepter.mk_chan()));
 
@@ -120,9 +120,9 @@ fn server_task(ip: net::ip_addr, portnum: int, events: _chan[server_event],
     }
 }
 
-fn request_task(c: _chan[ctx]) {
+fn request_task(c: _chan<ctx>) {
     // Create a port to accept IO requests on
-    let p: _port[request] = mk_port();
+    let p: _port<request> = mk_port();
     // Hand of its channel to our spawner
     send(c, p.mk_chan());
     log "uv run task spawned";
@@ -160,7 +160,7 @@ fn request_task(c: _chan[ctx]) {
     }
 }
 
-fn iotask(c: _chan[ctx]) {
+fn iotask(c: _chan<ctx>) {
     log "io task spawned";
     // Initialize before accepting requests
     rustrt::aio_init();
@@ -178,7 +178,7 @@ fn iotask(c: _chan[ctx]) {
 }
 
 fn new() -> ctx {
-    let p: _port[ctx] = mk_port();
+    let p: _port<ctx> = mk_port();
     task::_spawn(bind iotask(p.mk_chan()));
     ret p.recv();
 }

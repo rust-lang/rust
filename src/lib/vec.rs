@@ -17,7 +17,7 @@ native "rust" mod rustrt {
                                     count: uint);
 }
 
-fn from_vec[@T](v: &vec[mutable? T]) -> [T] {
+fn from_vec[@T](v: &vec<mutable? T>) -> [T] {
     let iv = ~[];
     for e in v {
         iv += ~[e];
@@ -38,7 +38,7 @@ fn len[T](v: &[mutable? T]) -> uint { ret rusti::ivec_len(v); }
 
 type init_op[T] = fn(uint) -> T ;
 
-fn init_fn[@T](op: &init_op[T], n_elts: uint) -> [T] {
+fn init_fn[@T](op: &init_op<T>, n_elts: uint) -> [T] {
     let v = ~[];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -47,7 +47,7 @@ fn init_fn[@T](op: &init_op[T], n_elts: uint) -> [T] {
 }
 
 // TODO: Remove me once we have slots.
-fn init_fn_mut[@T](op: &init_op[T], n_elts: uint) -> [mutable T] {
+fn init_fn_mut[@T](op: &init_op<T>, n_elts: uint) -> [mutable T] {
     let v = ~[mutable];
     reserve(v, n_elts);
     let i: uint = 0u;
@@ -104,7 +104,7 @@ fn tail[@T](v: &[mutable? T]) : is_not_empty(v) -> [mutable? T] {
 }
 
 /// Returns the last element of `v`.
-fn last[@T](v: &[mutable? T]) -> option::t[T] {
+fn last[@T](v: &[mutable? T]) -> option::t<T> {
     if len(v) == 0u { ret none; }
     ret some(v.(len(v) - 1u));
 }
@@ -210,7 +210,7 @@ fn map2[@T, @U, @V](f: &block(&T, &U) -> V, v0: &[T], v1: &[U])
     ret u;
 }
 
-fn filter_map[@T, @U](f: &block(&T) -> option::t[U],
+fn filter_map[@T, @U](f: &block(&T) -> option::t<U>,
                       v: &[mutable? T]) -> [U] {
     let result = ~[];
     for elem: T in v {
@@ -252,18 +252,18 @@ fn count[T](x: &T, v: &[mutable? T]) -> uint {
     ret cnt;
 }
 
-fn find[@T](f: &block(&T) -> bool , v: &[T]) -> option::t[T] {
+fn find[@T](f: &block(&T) -> bool, v: &[T]) -> option::t<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
 
-fn position[@T](x: &T, v: &[T]) -> option::t[uint] {
+fn position[@T](x: &T, v: &[T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if x == v.(i) { ret some[uint](i); } i += 1u; }
     ret none[uint];
 }
 
-fn position_pred[T](f: fn(&T) -> bool , v: &[T]) -> option::t[uint] {
+fn position_pred[T](f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v.(i)) { ret some[uint](i); } i += 1u; }
     ret none[uint];

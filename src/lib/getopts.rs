@@ -75,7 +75,7 @@ fn name_str(nm: name) -> str {
     ret alt nm { short(ch) { str::from_char(ch) } long(s) { s } };
 }
 
-fn find_opt(opts: &[opt], nm: name) -> option::t[uint] {
+fn find_opt(opts: &[opt], nm: name) -> option::t<uint> {
     let i = 0u;
     let l = vec::len[opt](opts);
     while i < l { if opts.(i).name == nm { ret some[uint](i); } i += 1u; }
@@ -224,7 +224,7 @@ fn opt_strs(m: &match, nm: str) -> [str] {
     ret acc;
 }
 
-fn opt_maybe_str(m: &match, nm: str) -> option::t[str] {
+fn opt_maybe_str(m: &match, nm: str) -> option::t<str> {
     let vals = opt_vals(m, nm);
     if vec::len[optval](vals) == 0u { ret none[str]; }
     ret alt vals.(0) { val(s) { some[str](s) } _ { none[str] } };
@@ -234,7 +234,7 @@ fn opt_maybe_str(m: &match, nm: str) -> option::t[str] {
 /// Returns none if the option was not present, `def` if the option was
 /// present but no argument was provided, and the argument if the option was
 /// present and an argument was provided.
-fn opt_default(m: &match, nm: str, def: str) -> option::t[str] {
+fn opt_default(m: &match, nm: str, def: str) -> option::t<str> {
     let vals = opt_vals(m, nm);
     if vec::len[optval](vals) == 0u { ret none[str]; }
     ret alt vals.(0) { val(s) { some[str](s) } _ { some[str](def) } }

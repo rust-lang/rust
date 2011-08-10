@@ -59,7 +59,7 @@ resource FILE_res(f: os::libc::FILE) {
     os::libc::fclose(f);
 }
 
-obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
+obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] {
         let buf = ~[];
         vec::reserve[u8](buf, len);
@@ -243,7 +243,7 @@ type buf_writer =
         fn tell() -> uint ;
     };
 
-obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
+obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn write(v: &[u8]) {
         let len = vec::len[u8](v);
         let vbuf = vec::to_ptr[u8](v);
@@ -262,7 +262,7 @@ resource fd_res(fd: int) {
     os::libc::close(fd);
 }
 
-obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
+obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     fn write(v: &[u8]) {
         let len = vec::len[u8](v);
         let count = 0u;
