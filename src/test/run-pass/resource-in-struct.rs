@@ -9,7 +9,7 @@ resource close_res(i: closable) {
 
 tag option[T] { none; some(T); }
 
-fn sink(res: option[close_res]) {}
+fn sink(res: option<close_res>) {}
 
 fn main() {
     let c = @mutable true;

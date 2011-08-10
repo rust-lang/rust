@@ -11,7 +11,7 @@ obj buf[T](data: {_0: T, _1: T, _2: T}) {
 }
 
 fn main() {
-    let b: buf[int] = buf[int]({_0: 1, _1: 2, _2: 3});
+    let b: buf<int> = buf[int]({_0: 1, _1: 2, _2: 3});
     log "constructed object";
     log b.get(0);
     log b.get(1);

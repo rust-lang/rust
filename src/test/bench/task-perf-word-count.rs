@@ -63,18 +63,18 @@ mod map_reduce {
 
     type mapper = fn(str, putter) ;
 
-    type getter = fn() -> option[int] ;
+    type getter = fn() -> option<int> ;
 
     type reducer = fn(str, getter) ;
 
     tag ctrl_proto {
-        find_reducer([u8], _chan[_chan[reduce_proto]]);
+        find_reducer([u8], _chan<_chan<reduce_proto>>);
         mapper_done;
     }
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: _chan[ctrl_proto], inputs: &[str]) -> [task_id] {
+    fn start_mappers(ctrl: _chan<ctrl_proto>, inputs: &[str]) -> [task_id] {
         let tasks = ~[];
         for i: str in inputs {
             tasks += ~[task::_spawn(bind map_task(ctrl, i))];
@@ -82,12 +82,12 @@ mod map_reduce {
         ret tasks;
     }
 
-    fn map_task(ctrl: _chan[ctrl_proto], input: str) {
+    fn map_task(ctrl: _chan<ctrl_proto>, input: str) {
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap[str, _chan[reduce_proto]],
-                ctrl: _chan[ctrl_proto], key: str, val: int) {
+        fn emit(im: &map::hashmap<str, _chan<reduce_proto>>,
+                ctrl: _chan<ctrl_proto>, key: str, val: int) {
             let c;
             alt im.find(key) {
               some(_c) {
@@ -95,7 +95,7 @@ mod map_reduce {
                 c = _c
               }
               none. {
-                let p = mk_port[_chan[reduce_proto]]();
+                let p = mk_port<_chan<reduce_proto>>();
                 let keyi = str::bytes(key);
                 send(ctrl, find_reducer(keyi, p.mk_chan()));
                 c = p.recv();
@@ -108,7 +108,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each kv: @{key: str, val: _chan[reduce_proto]}  in
+        for each kv: @{key: str, val: _chan<reduce_proto>}  in
                  intermediates.items() {
             send(kv.val, release);
         }
@@ -116,7 +116,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: str, out: _chan[_chan[reduce_proto]]) {
+    fn reduce_task(key: str, out: _chan<_chan<reduce_proto>>) {
         let p = mk_port();
 
         send(out, p.mk_chan());
@@ -124,8 +124,8 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get(p: &_port[reduce_proto], ref_count: &mutable int,
-               is_done: &mutable bool) -> option[int] {
+        fn get(p: &_port<reduce_proto>, ref_count: &mutable int,
+               is_done: &mutable bool) -> option<int> {
             while !is_done || ref_count > 0 {
                 alt p.recv() {
                   emit_val(v) {
@@ -147,12 +147,12 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: &[str]) {
-        let ctrl = mk_port[ctrl_proto]();
+        let ctrl = mk_port<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers: map::hashmap[str, _chan[reduce_proto]];
+        let reducers: map::hashmap<str, _chan<reduce_proto>>;
 
         reducers = map::new_str_hash();
 
@@ -189,7 +189,7 @@ mod map_reduce {
             }
         }
 
-        for each kv: @{key: str, val: _chan[reduce_proto]} in reducers.items()
+        for each kv: @{key: str, val: _chan<reduce_proto>} in reducers.items()
                  {
             send(kv.val, done);
         }
@@ -225,7 +225,7 @@ fn main(argv: [str]) {
     log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
 }
 
-fn read_word(r: io::reader) -> option[str] {
+fn read_word(r: io::reader) -> option<str> {
     let w = "";
 
     while !r.eof() {

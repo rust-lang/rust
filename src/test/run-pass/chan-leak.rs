@@ -9,12 +9,12 @@ import std::comm::mk_port;
 
 tag request {
   quit;
-  close(_chan[bool]);
+  close(_chan<bool>);
 }
 
-type ctx = _chan[request];
+type ctx = _chan<request>;
 
-fn request_task(c: _chan[ctx]) {
+fn request_task(c: _chan<ctx>) {
     let p = mk_port();
     send(c, p.mk_chan());
     let req: request;
@@ -34,7 +34,7 @@ fn new() -> ctx {
 fn main() {
     let cx = new();
 
-    let p = mk_port[bool]();
+    let p = mk_port<bool>();
     send(cx, close(p.mk_chan()));
     send(cx, quit);
 }

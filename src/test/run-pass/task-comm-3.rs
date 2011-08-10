@@ -9,7 +9,7 @@ import std::comm::send;
 
 fn main() { log "===== WITHOUT THREADS ====="; test00(); }
 
-fn test00_start(ch: _chan[int], message: int, count: int) {
+fn test00_start(ch: _chan<int>, message: int, count: int) {
     log "Starting test00_start";
     let i: int = 0;
     while i < count {

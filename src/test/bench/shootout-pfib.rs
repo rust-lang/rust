@@ -27,13 +27,13 @@ import std::comm::_chan;
 import std::comm::send;
 
 fn fib(n: int) -> int {
-    fn pfib(c: _chan[int], n: int) {
+    fn pfib(c: _chan<int>, n: int) {
         if n == 0 {
             send(c, 0);
         } else if (n <= 2) {
             send(c, 1);
         } else {
-            let p = mk_port[int]();
+            let p = mk_port<int>();
 
             let t1 = task::_spawn(bind pfib(p.mk_chan(), n - 1));
             let t2 = task::_spawn(bind pfib(p.mk_chan(), n - 2));

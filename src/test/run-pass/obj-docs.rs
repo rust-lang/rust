@@ -47,7 +47,7 @@ fn main() {
         }
     }
 
-    obj sender(c: _chan[int]) {
+    obj sender(c: _chan<int>) {
         fn take(z: int) {
             send(c, z);
         }
