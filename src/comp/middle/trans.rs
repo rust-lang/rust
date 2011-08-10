@@ -995,7 +995,16 @@ fn get_tydesc(cx: &@block_ctxt, orig_t: &ty::t, escapes: bool,
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt ty::type_param(bcx_tcx(cx), t) {
-      some(id) { ret rslt(cx, cx.fcx.lltydescs.(id)); }
+      some(id) {
+        if id < std::ivec::len(cx.fcx.lltydescs) {
+            ret rslt(cx, cx.fcx.lltydescs.(id));
+        }
+        else {
+            bcx_tcx(cx).sess.span_bug(cx.sp, "Unbound typaram in get_tydesc: "
+              + "orig_t = " + ty_to_str(bcx_tcx(cx), orig_t)
+              + " ty_param = " + std::uint::str(id));
+        }
+      }
       none. {/* fall through */ }
     }
 
@@ -4517,7 +4526,9 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg,
     // Collect arg for later if it happens to be one we've moving out.
     if arg.mode == ty::mo_move {
         if lv.is_mem {
-            to_zero += ~[{v: lv.res.val, t: arg.ty}];
+      // Use actual ty, not declared ty -- anything else doesn't make sense
+      // if declared ty is a ty param
+            to_zero += ~[{v: lv.res.val, t: e_ty}];
         } else {
             to_revoke += ~[lv.res.val];
         }
@@ -4668,7 +4679,7 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
     /*
     log "calling: " + val_str(bcx_ccx(cx).tn, faddr);
 
-    for (ValueRef arg in llargs) {
+    for arg: ValueRef in llargs {
         log "arg: " + val_str(bcx_ccx(cx).tn, arg);
     }
     */
