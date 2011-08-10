@@ -53,11 +53,20 @@ fn run_rfail_test(cx: &cx, props: &test_props, testfile: &str) {
     if procres.status != 0 {
         fatal_procres("compilation failed!", procres); }
 
-    procres = exec_compiled_test(cx, testfile);
+    procres = exec_compiled_test(cx, props, testfile);
 
     if procres.status == 0 {
         fatal_procres("run-fail test didn't produce an error!",
                       procres);
+    }
+
+    // This is the value valgrind returns on failure
+    // FIXME: Why is this value neither the value we pass to
+    // valgrind as --error-exitcode (1), nor the value we see as the
+    // exit code on the command-line (137)?
+    const valgrind_err: int = 9;
+    if procres.status == valgrind_err {
+        fatal_procres("run-fail test isn't valgrind-clean!", procres);
     }
 
     check_error_patterns(props, testfile, procres);
@@ -69,7 +78,7 @@ fn run_rpass_test(cx: &cx, props: &test_props, testfile: &str) {
     if procres.status != 0 {
         fatal_procres("compilation failed!", procres); }
 
-    procres = exec_compiled_test(cx, testfile);
+    procres = exec_compiled_test(cx, props, testfile);
 
 
     if procres.status != 0 { fatal_procres("test run failed!", procres); }
@@ -219,8 +228,9 @@ fn compile_test(cx: &cx, props: &test_props, testfile: &str) -> procres {
                     cx.config.compile_lib_path, option::none)
 }
 
-fn exec_compiled_test(cx: &cx, testfile: &str) -> procres {
-    compose_and_run(cx, testfile, make_run_args,
+fn exec_compiled_test(cx: &cx, props: &test_props,
+                      testfile: &str) -> procres {
+    compose_and_run(cx, testfile, bind make_run_args(_, props, _),
                     cx.config.run_lib_path, option::none)
 }
 
@@ -248,12 +258,17 @@ fn make_exe_name(config: &config, testfile: &str) -> str {
     output_base_name(config, testfile) + os::exec_suffix()
 }
 
-fn make_run_args(config: &config, testfile: &str) -> procargs {
-    // If we've got another tool to run under (valgrind),
-    // then split apart its command
-    let args =
+fn make_run_args(config: &config,
+                 props: &test_props, testfile: &str) -> procargs {
+    let toolargs = if !props.no_valgrind {
+        // If we've got another tool to run under (valgrind),
+        // then split apart its command
         split_maybe_args(config.runtool)
-        + [make_exe_name(config, testfile)];
+    } else {
+        []
+    };
+
+    let args = toolargs + [make_exe_name(config, testfile)];
     ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
 }
 

@@ -185,11 +185,11 @@ CFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --build-base test/compile-fail/ \
                   --mode compile-fail \
 
-# FIXME (236): run-fail should run under valgrind once unwinding works
 RFAIL_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --src-base $$(S)src/test/run-fail/ \
                   --build-base test/run-fail/ \
                   --mode run-fail \
+                  $$(CTEST_RUNTOOL) \
 
 RPASS_ARGS$(2) := $$(CTEST_COMMON_ARGS$(2)) \
                   --src-base $(S)src/test/run-pass/ \

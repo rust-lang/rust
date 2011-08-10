@@ -1,9 +1,7 @@
-
-
-
 // -*- rust -*-
 
 // error-pattern:bounds check
+// no-valgrind
 fn main() {
     let v: vec[int] = [10];
     let x: int = 0;

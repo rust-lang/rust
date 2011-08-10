@@ -1,4 +1,5 @@
 // error-pattern:meh
+// no-valgrind
 use std;
 import std::str;
 

@@ -1,6 +1,7 @@
 // -*- rust -*-
 
 // error-pattern:1 == 2
+// no-valgrind
 
 fn child() { assert (1 == 2); }
 
