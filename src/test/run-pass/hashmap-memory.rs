@@ -30,17 +30,17 @@ mod map_reduce {
 
     type mapper = fn(str, putter) ;
 
-    tag ctrl_proto { find_reducer([u8], _chan[int]); mapper_done; }
+    tag ctrl_proto { find_reducer([u8], _chan<int>); mapper_done; }
 
-    fn start_mappers(ctrl: _chan[ctrl_proto], inputs: &[str]) {
+    fn start_mappers(ctrl: _chan<ctrl_proto>, inputs: &[str]) {
         for i: str in inputs { task::_spawn(bind map_task(ctrl, i)); }
     }
 
-    fn map_task(ctrl: _chan[ctrl_proto], input: str) {
+    fn map_task(ctrl: _chan<ctrl_proto>, input: str) {
 
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap[str, int], ctrl: _chan[ctrl_proto],
+        fn emit(im: &map::hashmap<str, int>, ctrl: _chan<ctrl_proto>,
                 key: str, val: str) {
             let c;
             alt im.find(key) {
@@ -62,12 +62,12 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: &[str]) {
-        let ctrl = mk_port[ctrl_proto]();
+        let ctrl = mk_port<ctrl_proto>();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let reducers: map::hashmap[str, int];
+        let reducers: map::hashmap<str, int>;
 
         reducers = map::new_str_hash();
 

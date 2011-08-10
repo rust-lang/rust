@@ -81,11 +81,11 @@ fn log_config(config: &config) {
     logv(c, #fmt("\n"));
 }
 
-fn opt_str(maybestr: option::t[str]) -> str {
+fn opt_str(maybestr: option::t<str>) -> str {
     alt maybestr { option::some(s) { s } option::none. { "(none)" } }
 }
 
-fn str_opt(maybestr: str) -> option::t[str] {
+fn str_opt(maybestr: str) -> option::t<str> {
     if maybestr != "(none)" { option::some(maybestr) } else { option::none }
 }
 
@@ -125,7 +125,7 @@ type tests_and_conv_fn =
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt("making tests from %s", cx.config.src_base);
-    let configport = mk_port[[u8]]();
+    let configport = mk_port<[u8]>();
     let tests = ~[];
     for file: str in fs::list_dir(cx.config.src_base) {
         log #fmt("inspecting file %s", file);
@@ -158,7 +158,7 @@ fn is_test(config: &config, testfile: &str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: &cx, testfile: &str, configport: &_port[[u8]]) ->
+fn make_test(cx: &cx, testfile: &str, configport: &_port<[u8]>) ->
    test::test_desc {
     {name: make_test_name(cx.config, testfile),
      fn: make_test_closure(testfile, configport.mk_chan()),
@@ -188,12 +188,12 @@ up. Then we'll spawn that data into another task and return the task.
 Really convoluted. Need to think up of a better definition for tests.
 */
 
-fn make_test_closure(testfile: &str, configchan: _chan[[u8]]) -> test::test_fn
+fn make_test_closure(testfile: &str, configchan: _chan<[u8]>) -> test::test_fn
 {
     bind send_config(testfile, configchan)
 }
 
-fn send_config(testfile: str, configchan: _chan[[u8]]) {
+fn send_config(testfile: str, configchan: _chan<[u8]>) {
     send(configchan, str::bytes(testfile));
 }
 
@@ -207,7 +207,7 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: _port[[u8]], testfn: &fn() ) -> task_id
+fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn() ) -> task_id
 {
     testfn();
     let testfile = configport.recv();

@@ -15,7 +15,7 @@ fn main() {
     assert (y == 10);
 }
 
-fn child(c: _chan[int]) {
+fn child(c: _chan<int>) {
     log_err "sending";
     send(c, 10);
     log_err "value sent"

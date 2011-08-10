@@ -236,7 +236,7 @@ fn exec_compiled_test(cx: &cx, props: &test_props,
 fn compose_and_run(cx: &cx, testfile: &str,
                    make_args: fn(&config, &str) -> procargs ,
                    lib_path: &str,
-                   input: option::t[str]) -> procres {
+                   input: option::t<str>) -> procres {
     let procargs = make_args(cx.config, testfile);
     ret program_output(cx, testfile, lib_path,
                        procargs.prog, procargs.args,
@@ -271,9 +271,9 @@ fn make_run_args(config: &config,
     ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
 }
 
-fn split_maybe_args(argstr: &option::t[str]) -> [str] {
+fn split_maybe_args(argstr: &option::t<str>) -> [str] {
     fn rm_whitespace(v: &[str]) -> [str] {
-        fn flt(s: &str) -> option::t[str] {
+        fn flt(s: &str) -> option::t<str> {
             if !is_whitespace(s) {
                 option::some(s)
             } else {
@@ -298,7 +298,7 @@ fn split_maybe_args(argstr: &option::t[str]) -> [str] {
 }
 
 fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
-                  args: &[str], input: option::t[str]) -> procres {
+                  args: &[str], input: option::t<str>) -> procres {
     let cmdline =
     {
         let cmdline = make_cmdline(lib_path, prog, args);

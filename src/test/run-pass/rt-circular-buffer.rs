@@ -28,7 +28,7 @@ fn test_init() {
 // Dump lots of items into the channel so it has to grow.
 // Don't trigger any assertions.
 fn test_grow() {
-    let myport: comm::_port[record] = comm::mk_port();
+    let myport: comm::_port<record> = comm::mk_port();
     let mychan = myport.mk_chan();
     for each i: uint  in uint::range(0u, 100u) {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};

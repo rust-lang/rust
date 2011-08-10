@@ -25,12 +25,12 @@ type config = {
     // Run ignored tests
     run_ignored: bool,
     // Only run tests that match this filter
-    filter: option::t[str],
+    filter: option::t<str>,
     // A command line to prefix program execution with,
     // for running under valgrind
-    runtool: option::t[str],
+    runtool: option::t<str>,
     // Flags to pass to the compiler
-    rustcflags: option::t[str],
+    rustcflags: option::t<str>,
     // Explain what's going on
     verbose: bool
 };

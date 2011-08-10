@@ -26,12 +26,12 @@ export run;
 export close;
 export reqchan;
 
-type reqchan = _chan[request];
+type reqchan = _chan<request>;
 
-type handle = {task: option::t[task_id], chan: reqchan};
+type handle = {task: option::t<task_id>, chan: reqchan};
 
 tag request {
-    exec([u8], [u8], [[u8]], _chan[response]);
+    exec([u8], [u8], [[u8]], _chan<response>);
     stop;
 }
 
@@ -39,7 +39,7 @@ type response = {pid: int, infd: int, outfd: int, errfd: int};
 
 fn mk() -> handle {
     let setupport = mk_port();
-    let task = task::_spawn(bind fn(setupchan: _chan[_chan[request]]) {
+    let task = task::_spawn(bind fn(setupchan: _chan<_chan<request>>) {
         let reqport = mk_port();
         let reqchan = reqport.mk_chan();
         send(setupchan, reqchan);
@@ -58,9 +58,9 @@ fn close(handle: &handle) {
 }
 
 fn run(handle: &handle, lib_path: &str,
-       prog: &str, args: &[str], input: &option::t[str]) ->
+       prog: &str, args: &[str], input: &option::t<str>) ->
 {status: int, out: str, err: str} {
-    let p = mk_port[response]();
+    let p = mk_port<response>();
     let ch = p.mk_chan();
     send(handle.chan, exec(str::bytes(lib_path),
                            str::bytes(prog),
@@ -75,7 +75,7 @@ fn run(handle: &handle, lib_path: &str,
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: int, s: &option::t[str]) {
+fn writeclose(fd: int, s: &option::t<str>) {
     if option::is_some(s) {
         let writer = io::new_writer(
             io::fd_buf_writer(fd, option::none));
@@ -99,7 +99,7 @@ fn readclose(fd: int) -> str {
     ret buf;
 }
 
-fn worker(p: _port[request]) {
+fn worker(p: _port<request>) {
 
     // FIXME (787): If we declare this inside of the while loop and then
     // break out of it before it's ever initialized (i.e. we don't run

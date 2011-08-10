@@ -13,10 +13,10 @@ type test_props = {
     // Lines that should be expected, in order, on standard out
     error_patterns: [str],
     // Extra flags to pass to the compiler
-    compile_flags: option::t[str],
+    compile_flags: option::t<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option::t[str],
+    pp_exact: option::t<str>,
     // FIXME: no-valgrind is a temporary directive until all of run-fail
     // is valgrind-clean
     no_valgrind: bool
@@ -82,15 +82,15 @@ iter iter_header(testfile: &str) -> str {
     }
 }
 
-fn parse_error_pattern(line: &str) -> option::t[str] {
+fn parse_error_pattern(line: &str) -> option::t<str> {
     parse_name_value_directive(line, "error-pattern")
 }
 
-fn parse_compile_flags(line: &str) -> option::t[str] {
+fn parse_compile_flags(line: &str) -> option::t<str> {
     parse_name_value_directive(line, "compile-flags")
 }
 
-fn parse_pp_exact(line: &str, testfile: &str) -> option::t[str] {
+fn parse_pp_exact(line: &str, testfile: &str) -> option::t<str> {
     alt parse_name_value_directive(line, "pp-exact") {
       option::some(s) { option::some(s) }
       option::none. {
@@ -108,7 +108,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 }
 
 fn parse_name_value_directive(line: &str,
-                              directive: &str) -> option::t[str] {
+                              directive: &str) -> option::t<str> {
     let keycolon = directive + ":";
     if str::find(line, keycolon) >= 0 {
         let colon = str::find(line, keycolon) as uint;

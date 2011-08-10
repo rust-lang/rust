@@ -2,7 +2,7 @@
 // xfail-stage2
 // xfail-stage3
 io fn main() {
-    let port[int] po = port();
+    let port<int> po = port();
 
     // Spawn 10 tasks each sending us back one int.
     let int i = 10;
@@ -26,7 +26,7 @@ io fn main() {
     log "main thread exiting";
 }
 
-io fn child(int x, chan[int] ch) {
+io fn child(int x, chan<int> ch) {
     log x;
     ch <| x;
 }

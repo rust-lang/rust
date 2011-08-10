@@ -17,7 +17,7 @@ fn main() {
     test06();
 }
 
-fn test00_start(ch: _chan[int], message: int, count: int) {
+fn test00_start(ch: _chan<int>, message: int, count: int) {
     log "Starting test00_start";
     let i: int = 0;
     while i < count { log "Sending Message"; send(ch, message+0); i = i + 1; }
@@ -100,7 +100,7 @@ fn test04() {
     log "Finishing up.";
 }
 
-fn test05_start(ch: _chan[int]) {
+fn test05_start(ch: _chan<int>) {
     send(ch, 10);
     send(ch, 20);
     send(ch, 30);

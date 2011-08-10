@@ -12,7 +12,7 @@ fn square_alias(n: &uint) -> uint { ret n * n; }
 
 pred is_three(n: &uint) -> bool { ret n == 3u; }
 
-fn square_if_odd(n: &uint) -> option::t[uint] {
+fn square_if_odd(n: &uint) -> option::t<uint> {
     ret if n % 2u == 1u { some(n * n) } else { none };
 }
 
@@ -264,7 +264,7 @@ fn test_filter_map() {
     assert (w.(1) == 9u);
     assert (w.(2) == 25u);
 
-    fn halve(i: &int) -> option::t[int] {
+    fn halve(i: &int) -> option::t<int> {
         if i % 2 == 0 {
             ret option::some[int](i / 2);
         } else { ret option::none[int]; }

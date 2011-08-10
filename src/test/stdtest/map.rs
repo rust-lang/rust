@@ -17,12 +17,12 @@ fn test_simple() {
 
         ret u;
     }
-    let hasher_uint: map::hashfn[uint] = hash_uint;
-    let eqer_uint: map::eqfn[uint] = eq_uint;
-    let hasher_str: map::hashfn[str] = str::hash;
-    let eqer_str: map::eqfn[str] = str::eq;
+    let hasher_uint: map::hashfn<uint> = hash_uint;
+    let eqer_uint: map::eqfn<uint> = eq_uint;
+    let hasher_str: map::hashfn<str> = str::hash;
+    let eqer_str: map::eqfn<str> = str::eq;
     log "uint -> uint";
-    let hm_uu: map::hashmap[uint, uint] =
+    let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
     assert (hm_uu.insert(10u, 12u));
     assert (hm_uu.insert(11u, 13u));
@@ -38,7 +38,7 @@ fn test_simple() {
     let eleven: str = "eleven";
     let twelve: str = "twelve";
     log "str -> uint";
-    let hm_su: map::hashmap[str, uint] =
+    let hm_su: map::hashmap<str, uint> =
         map::mk_hashmap[str, uint](hasher_str, eqer_str);
     assert (hm_su.insert("ten", 12u));
     assert (hm_su.insert(eleven, 13u));
@@ -52,7 +52,7 @@ fn test_simple() {
     assert (!hm_su.insert("twelve", 12u));
     assert (hm_su.get("twelve") == 12u);
     log "uint -> str";
-    let hm_us: map::hashmap[uint, str] =
+    let hm_us: map::hashmap<uint, str> =
         map::mk_hashmap[uint, str](hasher_uint, eqer_uint);
     assert (hm_us.insert(10u, "twelve"));
     assert (hm_us.insert(11u, "thirteen"));
@@ -65,7 +65,7 @@ fn test_simple() {
     assert (!hm_us.insert(12u, "twelve"));
     assert (str::eq(hm_us.get(12u), "twelve"));
     log "str -> str";
-    let hm_ss: map::hashmap[str, str] =
+    let hm_ss: map::hashmap<str, str> =
         map::mk_hashmap[str, str](hasher_str, eqer_str);
     assert (hm_ss.insert(ten, "twelve"));
     assert (hm_ss.insert(eleven, "thirteen"));
@@ -96,9 +96,9 @@ fn test_growth() {
         ret u;
     }
     log "uint -> uint";
-    let hasher_uint: map::hashfn[uint] = hash_uint;
-    let eqer_uint: map::eqfn[uint] = eq_uint;
-    let hm_uu: map::hashmap[uint, uint] =
+    let hasher_uint: map::hashfn<uint> = hash_uint;
+    let eqer_uint: map::eqfn<uint> = eq_uint;
+    let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
     let i: uint = 0u;
     while i < num_to_insert {
@@ -127,9 +127,9 @@ fn test_growth() {
         i += 1u;
     }
     log "str -> str";
-    let hasher_str: map::hashfn[str] = str::hash;
-    let eqer_str: map::eqfn[str] = str::eq;
-    let hm_ss: map::hashmap[str, str] =
+    let hasher_str: map::hashfn<str> = str::hash;
+    let eqer_str: map::eqfn<str> = str::eq;
+    let hm_ss: map::hashmap<str, str> =
         map::mk_hashmap[str, str](hasher_str, eqer_str);
     i = 0u;
     while i < num_to_insert {
@@ -178,9 +178,9 @@ fn test_removal() {
     assert (hash(0u) == hash(1u));
     assert (hash(2u) == hash(3u));
     assert (hash(0u) != hash(2u));
-    let hasher: map::hashfn[uint] = hash;
-    let eqer: map::eqfn[uint] = eq;
-    let hm: map::hashmap[uint, uint] =
+    let hasher: map::hashfn<uint> = hash;
+    let eqer: map::eqfn<uint> = eq;
+    let hm: map::hashmap<uint, uint> =
         map::mk_hashmap[uint, uint](hasher, eqer);
     let i: uint = 0u;
     while i < num_to_insert {
@@ -198,7 +198,7 @@ fn test_removal() {
          * FIXME (issue #150): we want to check the removed value as in the
          * following:
 
-        let util.option[uint] v = hm.remove(i);
+        let v: util.option<uint> = hm.remove(i);
         alt (v) {
           case (util.some[uint](u)) {
             assert (u == (i * i));

@@ -6,7 +6,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
-tag t { foo(int, uint); bar(int, option::t[int]); }
+tag t { foo(int, uint); bar(int, option::t<int>); }
 
 fn nested(o: t) {
     alt o {
