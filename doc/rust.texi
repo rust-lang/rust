@@ -40,7 +40,7 @@ See accompanying LICENSE.txt for terms.
 @vskip 0pt plus 1filll
 
 
-@uref{http://github.com/graydon/rust}
+@uref{http://rust-lang.org}
 
 Version: @gitversion
 
@@ -48,7 +48,7 @@ Version: @gitversion
 
 Copyright @copyright{} 2006-2010 Graydon Hoare
 
-Copyright @copyright{} 2009-2010 Mozilla Foundation
+Copyright @copyright{} 2009-2011 Mozilla Foundation
 
 See accompanying LICENSE.txt for terms.
 
