@@ -156,6 +156,8 @@ public:
 
     ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
 
+    ptr_pair(data_pair<uint8_t *> &other) : fst(other.fst), snd(other.snd) {}
+
     inline void operator=(uint8_t *rhs) { fst = snd = rhs; }
 
     inline ptr_pair operator+(size_t n) const {
@@ -890,6 +892,7 @@ size_of::walk_ivec(bool align, bool is_pod, size_align &elem_sa) {
 template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
 protected:
+    void walk_box_contents(bool align);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
@@ -952,6 +955,16 @@ public:
     template<typename W>
     void walk_number(bool align) { DATA_SIMPLE(W, walk_number<W>()); }
 };
+
+template<typename T,typename U>
+void
+data<T,U>::walk_box_contents(bool align) {
+    typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
+
+    U ref_count_dp(box_ptr);
+    T sub(*static_cast<T *>(this), ref_count_dp + sizeof(uint32_t));
+    static_cast<T *>(this)->walk_box_contents(align, sub, ref_count_dp);
+}
 
 template<typename T,typename U>
 void
@@ -1079,6 +1092,12 @@ private:
         result = sub.result;
     }
 
+    inline void walk_box_contents(bool align, cmp &sub,
+                                  ptr_pair &ref_count_dp) {
+        sub.walk(true);
+        result = sub.result;
+    }
+
     inline void cmp_two_pointers(bool align) {
         if (align) dp = align_to(dp, ALIGNOF(uint8_t *) * 2);
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
@@ -1135,6 +1154,10 @@ public:
         walk_vec(align, is_pod, get_ivec_data_range(dp));
     }
 
+    void walk_box(bool align) {
+        data<cmp,ptr_pair>::walk_box_contents(align);
+    }
+
     void walk_fn(bool align) { return cmp_two_pointers(align); }
     void walk_obj(bool align) { return cmp_two_pointers(align); }
     void walk_port(bool align) { return cmp_pointer(align); }
@@ -1143,7 +1166,6 @@ public:
 
     void walk_tag(bool align, tag_info &tinfo,
                   const data_pair<uint32_t> &tag_variants);
-    void walk_box(bool align);
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
                   const uint8_t *ty_params_sp);
@@ -1186,16 +1208,6 @@ cmp::walk_tag(bool align, tag_info &tinfo,
     if (result != 0)
         return;
     data<cmp,ptr_pair>::walk_variant(align, tinfo, tag_variants.fst);
-}
-
-void
-cmp::walk_box(bool align) {
-    data_pair<uint8_t *> subdp = bump_dp<uint8_t *>(dp);
-
-    cmp sub(*this, ptr_pair::make(subdp));
-    sub.dp += sizeof(uint32_t);     // Skip over the reference count.
-    sub.walk(true);
-    result = sub.result;
 }
 
 void
@@ -1266,8 +1278,18 @@ private:
         data<log,ptr>::walk_variant(align, tinfo, tag_variant);
     }
 
+    void walk_box(bool align) {
+        out << "@";
+        data<log,ptr>::walk_box_contents(align);
+    }
+
     void walk_subcontext(bool align, log &sub) { sub.walk(align); }
 
+    void walk_box_contents(bool align, log &sub, ptr &ref_count_dp) {
+        sub.walk(true);
+    }
+
+    void walk_struct(bool align, const uint8_t *end_sp);
     void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
@@ -1302,6 +1324,21 @@ log::walk_string(const std::pair<ptr,ptr> &data) {
     }
 
     out << "\"" << std::dec;
+}
+
+void
+log::walk_struct(bool align, const uint8_t *end_sp) {
+    out << "(";
+
+    bool first = true;
+    while (sp != end_sp) {
+        if (!first)
+            out << ", ";
+        walk(align);
+        align = true, first = false;
+    }
+
+    out << ")";
 }
 
 void
