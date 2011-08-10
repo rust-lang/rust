@@ -504,8 +504,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_alt(ex, alts) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: &fn_ctxt, an_alt: &arm) -> pre_and_post {
-            find_pre_post_block(fcx, an_alt.block);
-            ret block_pp(fcx.ccx, an_alt.block);
+            find_pre_post_block(fcx, an_alt.body);
+            ret block_pp(fcx.ccx, an_alt.body);
         }
         let alt_pps = ~[];
         for a: arm  in alts { alt_pps += ~[do_an_alt(fcx, a)]; }

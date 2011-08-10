@@ -269,7 +269,7 @@ type decl = spanned[decl_];
 
 tag decl_ { decl_local([@local]); decl_item(@item); }
 
-type arm = {pats: [@pat], block: blk};
+type arm = {pats: [@pat], body: blk};
 
 type field_ = {mut: mutability, ident: ident, expr: @expr};
 

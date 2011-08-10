@@ -863,7 +863,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
                 print_pat(s, p);
             }
             space(s.s);
-            print_possibly_embedded_block(s, arm.block, false,
+            print_possibly_embedded_block(s, arm.body, false,
                                           alt_indent_unit);
         }
         bclose_(s, expr.span, alt_indent_unit);

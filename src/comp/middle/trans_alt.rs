@@ -504,7 +504,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
     for a: ast::arm  in arms {
         let body_cx = bodies.(i);
         if make_phi_bindings(body_cx, exit_map, ast::pat_id_map(a.pats.(0))) {
-            let block_res = trans::trans_block(body_cx, a.block, output);
+            let block_res = trans::trans_block(body_cx, a.body, output);
             arm_results += ~[block_res];
         } else { // Unreachable
             arm_results += ~[rslt(body_cx, C_nil())];

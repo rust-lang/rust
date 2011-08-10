@@ -2033,9 +2033,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         let result_ty = next_ty_var(fcx);
         let arm_non_bot = false;
         for arm: ast::arm  in arms {
-            if !check_block(fcx, arm.block) { arm_non_bot = true; }
-            let bty = block_ty(tcx, arm.block);
-            result_ty = demand::simple(fcx, arm.block.span, result_ty, bty);
+            if !check_block(fcx, arm.body) { arm_non_bot = true; }
+            let bty = block_ty(tcx, arm.body);
+            result_ty = demand::simple(fcx, arm.body.span, result_ty, bty);
         }
         bot |= !arm_non_bot;
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }

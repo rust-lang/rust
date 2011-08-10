@@ -1356,7 +1356,7 @@ fn parse_alt_expr(p: &parser) -> @ast::expr {
     while p.peek() != token::RBRACE {
         let pats = parse_pats(p);
         let blk = parse_block(p);
-        arms += ~[{pats: pats, block: blk}];
+        arms += ~[{pats: pats, body: blk}];
     }
     let hi = p.get_hi_pos();
     p.bump();
