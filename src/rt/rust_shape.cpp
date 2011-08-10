@@ -1243,6 +1243,10 @@ private:
     : data<log,ptr>(other.task, in_sp, in_params, in_tables, other.dp),
       out(other.out) {}
 
+    log(log &other, ptr in_dp)
+    : data<log,ptr>(other.task, other.sp, other.params, other.tables, in_dp),
+      out(other.out) {}
+
     void walk_string(const std::pair<ptr,ptr> &data);
 
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
@@ -1301,7 +1305,22 @@ log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
         return;
     }
 
-    // TODO: Write vectors [ ..., ..., ... ] style.
+    out << "[";
+
+    log sub(*this, data.first);
+
+    bool first = true;
+    while (sub.dp < data.second) {
+        if (!first)
+            out << ", ";
+
+        sub.walk_reset(align);
+
+        align = true;
+        first = false;
+    }
+
+    out << "]";
 }
 
 } // end namespace shape
