@@ -1639,21 +1639,18 @@ fn compare_scalar_values(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef,
 }
 
 type val_pair_fn = fn(&@block_ctxt, ValueRef, ValueRef) -> result ;
-
+type val_fn = fn(&@block_ctxt, ValueRef) -> result ;
 type val_and_ty_fn = fn(&@block_ctxt, ValueRef, ty::t) -> result ;
-
-type val_pair_and_ty_fn =
-    fn(&@block_ctxt, ValueRef, ValueRef, ty::t) -> result ;
 
 
 // Iterates through the elements of a structural type.
 fn iter_structural_ty(cx: &@block_ctxt, v: ValueRef, t: &ty::t,
                       f: val_and_ty_fn) -> result {
     fn adaptor_fn(f: val_and_ty_fn, cx: &@block_ctxt, av: ValueRef,
-                  bv: ValueRef, t: ty::t) -> result {
+                  t: ty::t) -> result {
         ret f(cx, av, t);
     }
-    ret iter_structural_ty_full(cx, v, v, t, bind adaptor_fn(f, _, _, _, _));
+    ret iter_structural_ty_full(cx, v, t, bind adaptor_fn(f, _, _, _));
 }
 
 fn load_inbounds(cx: &@block_ctxt, p: ValueRef, idxs: &[ValueRef]) ->
@@ -1672,74 +1669,63 @@ fn incr_ptr(cx: &@block_ctxt, p: ValueRef, incr: ValueRef, pp: ValueRef) {
     cx.build.Store(cx.build.InBoundsGEP(p, ~[incr]), pp);
 }
 
-fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
-                           t: &ty::t, f: &val_pair_and_ty_fn) -> result {
-    fn iter_boxpp(cx: @block_ctxt, box_a_cell: ValueRef, box_b_cell: ValueRef,
-                  f: &val_pair_and_ty_fn) -> result {
-        let box_a_ptr = cx.build.Load(box_a_cell);
-        let box_b_ptr = cx.build.Load(box_b_cell);
+fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: &ty::t,
+                           f: &val_and_ty_fn) -> result {
+    fn iter_boxpp(cx: @block_ctxt, box_cell: ValueRef, f: &val_and_ty_fn)
+            -> result {
+        let box_ptr = cx.build.Load(box_cell);
         let tnil = ty::mk_nil(bcx_tcx(cx));
         let tbox = ty::mk_imm_box(bcx_tcx(cx), tnil);
         let inner_cx = new_sub_block_ctxt(cx, "iter box");
         let next_cx = new_sub_block_ctxt(cx, "next");
-        let null_test = cx.build.IsNull(box_a_ptr);
+        let null_test = cx.build.IsNull(box_ptr);
         cx.build.CondBr(null_test, next_cx.llbb, inner_cx.llbb);
-        let r = f(inner_cx, box_a_ptr, box_b_ptr, tbox);
+        let r = f(inner_cx, box_ptr, tbox);
         r.bcx.build.Br(next_cx.llbb);
         ret rslt(next_cx, C_nil());
     }
 
-    fn iter_ivec(bcx: @block_ctxt, av: ValueRef, bv: ValueRef, unit_ty: ty::t,
-                 f: &val_pair_and_ty_fn) -> result {
+    fn iter_ivec(bcx: @block_ctxt, av: ValueRef, unit_ty: ty::t,
+                 f: &val_and_ty_fn) -> result {
         // FIXME: "unimplemented rebinding existing function" workaround
 
-        fn adapter(bcx: &@block_ctxt, av: ValueRef, bv: ValueRef,
-                   unit_ty: ty::t, f: val_pair_and_ty_fn) -> result {
-            ret f(bcx, av, bv, unit_ty);
+        fn adapter(bcx: &@block_ctxt, av: ValueRef, unit_ty: ty::t,
+                   f: val_and_ty_fn) -> result {
+            ret f(bcx, av, unit_ty);
         }
         let llunitty = type_of_or_i8(bcx, unit_ty);
         let rs = size_of(bcx, unit_ty);
         let unit_sz = rs.val;
         bcx = rs.bcx;
         let a_len_and_data = ivec::get_len_and_data(bcx, av, unit_ty);
-        let a_len = a_len_and_data.len;
+        let len = a_len_and_data.len;
         let a_elem = a_len_and_data.data;
         bcx = a_len_and_data.bcx;
-        let b_len_and_data = ivec::get_len_and_data(bcx, bv, unit_ty);
-        let b_len = b_len_and_data.len;
-        let b_elem = b_len_and_data.data;
-        bcx = b_len_and_data.bcx;
         // Calculate the last pointer address we want to handle.
         // TODO: Optimize this when the size of the unit type is statically
         // known to not use pointer casts, which tend to confuse LLVM.
 
-        let len = umin(bcx, a_len, b_len);
-        let b_elem_i8 = bcx.build.PointerCast(b_elem, T_ptr(T_i8()));
-        let b_end_i8 = bcx.build.GEP(b_elem_i8, ~[len]);
-        let b_end = bcx.build.PointerCast(b_end_i8, T_ptr(llunitty));
+        let a_elem_i8 = bcx.build.PointerCast(a_elem, T_ptr(T_i8()));
+        let a_end_i8 = bcx.build.GEP(a_elem_i8, ~[len]);
+        let a_end = bcx.build.PointerCast(a_end_i8, T_ptr(llunitty));
 
         let dest_elem_ptr = alloca(bcx, T_ptr(llunitty));
-        let src_elem_ptr = alloca(bcx, T_ptr(llunitty));
         bcx.build.Store(a_elem, dest_elem_ptr);
-        bcx.build.Store(b_elem, src_elem_ptr);
 
         // Now perform the iteration.
         let loop_header_cx = new_sub_block_ctxt(bcx, "iter_ivec_loop_header");
         bcx.build.Br(loop_header_cx.llbb);
         let dest_elem = loop_header_cx.build.Load(dest_elem_ptr);
-        let src_elem = loop_header_cx.build.Load(src_elem_ptr);
         let not_yet_at_end =
             loop_header_cx.build.ICmp(lib::llvm::LLVMIntULT, dest_elem,
-                                      b_end);
+                                      a_end);
         let loop_body_cx = new_sub_block_ctxt(bcx, "iter_ivec_loop_body");
         let next_cx = new_sub_block_ctxt(bcx, "iter_ivec_next");
         loop_header_cx.build.CondBr(not_yet_at_end, loop_body_cx.llbb,
                                     next_cx.llbb);
 
-        rs =
-            f(loop_body_cx,
-              load_if_immediate(loop_body_cx, dest_elem, unit_ty),
-              load_if_immediate(loop_body_cx, src_elem, unit_ty), unit_ty);
+        rs = f(loop_body_cx,
+               load_if_immediate(loop_body_cx, dest_elem, unit_ty), unit_ty);
 
         loop_body_cx = rs.bcx;
 
@@ -1749,15 +1735,14 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
         } else { increment = C_int(1); }
 
         incr_ptr(loop_body_cx, dest_elem, increment, dest_elem_ptr);
-        incr_ptr(loop_body_cx, src_elem, increment, src_elem_ptr);
         loop_body_cx.build.Br(loop_header_cx.llbb);
 
         ret rslt(next_cx, C_nil());
     }
 
-    fn iter_variant(cx: @block_ctxt, a_tup: ValueRef, b_tup: ValueRef,
+    fn iter_variant(cx: @block_ctxt, a_tup: ValueRef,
                     variant: &ty::variant_info, tps: &[ty::t],
-                    tid: &ast::def_id, f: &val_pair_and_ty_fn) -> result {
+                    tid: &ast::def_id, f: &val_and_ty_fn) -> result {
         if std::ivec::len[ty::t](variant.args) == 0u {
             ret rslt(cx, C_nil());
         }
@@ -1770,13 +1755,9 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
                 let rslt = GEP_tag(cx, a_tup, tid, variant.id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
-                rslt = GEP_tag(cx, b_tup, tid, variant.id, tps, j);
-                let llfldp_b = rslt.val;
-                cx = rslt.bcx;
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
                 let llfld_a = load_if_immediate(cx, llfldp_a, ty_subst);
-                let llfld_b = load_if_immediate(cx, llfldp_b, ty_subst);
-                rslt = f(cx, llfld_a, llfld_b, ty_subst);
+                rslt = f(cx, llfld_a, ty_subst);
                 cx = rslt.bcx;
                 j += 1;
             }
@@ -1792,11 +1773,8 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
         for fld: ty::field  in fields {
             r = GEP_tup_like(r.bcx, t, av, ~[0, i]);
             let llfld_a = r.val;
-            r = GEP_tup_like(r.bcx, t, bv, ~[0, i]);
-            let llfld_b = r.val;
-            r =
-                f(r.bcx, load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
-                  load_if_immediate(r.bcx, llfld_b, fld.mt.ty), fld.mt.ty);
+            r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
+                  fld.mt.ty);
             i += 1;
         }
       }
@@ -1807,10 +1785,7 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
         let tup_t = ty::mk_imm_tup(tcx, ~[ty::mk_int(tcx), inner_t_s]);
         r = GEP_tup_like(r.bcx, tup_t, av, ~[0, 1]);
         let llfld_a = r.val;
-        r = GEP_tup_like(r.bcx, tup_t, bv, ~[0, 1]);
-        let llfld_b = r.val;
-        r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner1),
-              load_if_immediate(r.bcx, llfld_b, inner1), inner1);
+        r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, inner1), inner1);
       }
       ty::ty_tag(tid, tps) {
         let variants = ty::tag_variants(bcx_tcx(cx), tid);
@@ -1818,23 +1793,19 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
 
         // Cast the tags to types we can GEP into.
         if n_variants == 1u {
-            ret iter_variant(cx, av, bv, variants.(0), tps, tid, f);
+            ret iter_variant(cx, av, variants.(0), tps, tid, f);
         }
 
         let lltagty = T_opaque_tag_ptr(bcx_ccx(cx).tn);
         let av_tag = cx.build.PointerCast(av, lltagty);
-        let bv_tag = cx.build.PointerCast(bv, lltagty);
         let lldiscrim_a_ptr = cx.build.GEP(av_tag, ~[C_int(0), C_int(0)]);
         let llunion_a_ptr = cx.build.GEP(av_tag, ~[C_int(0), C_int(1)]);
         let lldiscrim_a = cx.build.Load(lldiscrim_a_ptr);
-        let lldiscrim_b_ptr = cx.build.GEP(bv_tag, ~[C_int(0), C_int(0)]);
-        let llunion_b_ptr = cx.build.GEP(bv_tag, ~[C_int(0), C_int(1)]);
-        let lldiscrim_b = cx.build.Load(lldiscrim_b_ptr);
 
         // NB: we must hit the discriminant first so that structural
         // comparison know not to proceed when the discriminants differ.
         let bcx = cx;
-        bcx = f(bcx, lldiscrim_a, lldiscrim_b, ty::mk_int(bcx_tcx(cx))).bcx;
+        bcx = f(bcx, lldiscrim_a, ty::mk_int(bcx_tcx(cx))).bcx;
         let unr_cx = new_sub_block_ctxt(bcx, "tag-iter-unr");
         unr_cx.build.Unreachable();
         let llswitch = bcx.build.Switch(lldiscrim_a, unr_cx.llbb, n_variants);
@@ -1846,9 +1817,8 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
                                    "tag-iter-variant-" +
                                        uint::to_str(i, 10u));
             llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
-            variant_cx =
-                iter_variant(variant_cx, llunion_a_ptr, llunion_b_ptr,
-                             variant, tps, tid, f).bcx;
+            variant_cx = iter_variant(variant_cx, llunion_a_ptr, variant, tps,
+                                      tid, f).bcx;
             variant_cx.build.Br(next_cx.llbb);
             i += 1u;
         }
@@ -1857,21 +1827,17 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, bv: ValueRef,
       ty::ty_fn(_, _, _, _, _) {
         let box_cell_a =
             cx.build.GEP(av, ~[C_int(0), C_int(abi::fn_field_box)]);
-        let box_cell_b =
-            cx.build.GEP(bv, ~[C_int(0), C_int(abi::fn_field_box)]);
-        ret iter_boxpp(cx, box_cell_a, box_cell_b, f);
+        ret iter_boxpp(cx, box_cell_a, f);
       }
       ty::ty_obj(_) {
         let box_cell_a =
             cx.build.GEP(av, ~[C_int(0), C_int(abi::obj_field_box)]);
-        let box_cell_b =
-            cx.build.GEP(bv, ~[C_int(0), C_int(abi::obj_field_box)]);
-        ret iter_boxpp(cx, box_cell_a, box_cell_b, f);
+        ret iter_boxpp(cx, box_cell_a, f);
       }
-      ty::ty_ivec(unit_tm) { ret iter_ivec(cx, av, bv, unit_tm.ty, f); }
+      ty::ty_ivec(unit_tm) { ret iter_ivec(cx, av, unit_tm.ty, f); }
       ty::ty_istr. {
         let unit_ty = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
-        ret iter_ivec(cx, av, bv, unit_ty, f);
+        ret iter_ivec(cx, av, unit_ty, f);
       }
       _ { bcx_ccx(cx).sess.unimpl("type in iter_structural_ty_full"); }
     }
