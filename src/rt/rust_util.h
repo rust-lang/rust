@@ -119,7 +119,7 @@ next_power_of_two(size_t s)
     tmp |= tmp >> 4;
     tmp |= tmp >> 8;
     tmp |= tmp >> 16;
-#if SIZE_MAX == UINT64_MAX
+#ifdef _LP64
     tmp |= tmp >> 32;
 #endif
     return tmp + 1;
