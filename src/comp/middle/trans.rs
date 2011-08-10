@@ -2240,13 +2240,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
               none. {
                 log #fmt("+++ lazily_emit_tydesc_glue CMP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty));
-                let lcx = cx.fcx.lcx;
-                let glue_fn =
-                    declare_generic_glue(lcx, ti.ty, T_cmp_glue_fn(*lcx.ccx),
-                                         "cmp");
-                ti.cmp_glue = some[ValueRef](glue_fn);
-                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, mgghf_cmp,
-                                  ti.ty_params, "cmp");
+                ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
                 log #fmt("--- lazily_emit_tydesc_glue CMP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty));
               }
