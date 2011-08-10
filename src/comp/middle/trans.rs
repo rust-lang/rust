@@ -4656,7 +4656,10 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     ret rslt(bcx, pair_v);
 }
 
-fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
+fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg,
+                  lldestty0: TypeRef,
+                  to_zero: &mutable[{v:ValueRef, t: ty::t}],
+                  to_revoke: &mutable[ValueRef],
                   e: &@ast::expr) -> result {
     let ccx = bcx_ccx(cx);
     let e_ty = ty::expr_ty(ccx.tcx, e);
@@ -4711,6 +4714,15 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // we are now passing it as an arg, so need to load it.
         val = bcx.build.Load(val);
     }
+
+    // Collect arg for later if it happens to be one we've moving out.
+    if arg.mode == ty::mo_move {
+        if lv.is_mem {
+            to_zero += ~[{v: lv.res.val, t: arg.ty}];
+        } else {
+            to_revoke += ~[lv.res.val];
+        }
+    }
     ret rslt(bcx, val);
 }
 
@@ -4724,10 +4736,18 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
 fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
               gen: &option::t[generic_info], lliterbody: &option::t[ValueRef],
               es: &[@ast::expr], fn_ty: &ty::t) ->
-   {bcx: @block_ctxt, args: [ValueRef], retslot: ValueRef} {
+   {bcx: @block_ctxt,
+    args: [ValueRef],
+    retslot: ValueRef,
+    to_zero: [{v:ValueRef, t: ty::t}],
+    to_revoke: [ValueRef] } {
+
     let args: [ty::arg] = ty::ty_fn_args(bcx_tcx(cx), fn_ty);
     let llargs: [ValueRef] = ~[];
     let lltydescs: [ValueRef] = ~[];
+    let to_zero = ~[];
+    let to_revoke = ~[];
+
     let bcx: @block_ctxt = cx;
     // Arg 0: Output pointer.
 
@@ -4736,9 +4756,9 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
     if bcx.build.is_terminated() {
         // This means an earlier arg was divergent.
         // So this arg can't be evaluated.
-        ret {bcx: bcx, args: ~[], retslot: C_nil()};
+        ret {bcx: bcx, args: ~[], retslot: C_nil(),
+             to_zero: to_zero, to_revoke: to_revoke};
     }
-
     let retty = ty::ty_fn_ret(bcx_tcx(cx), fn_ty);
     let llretslot_res = alloc_ty(bcx, retty);
     bcx = llretslot_res.bcx;
@@ -4787,12 +4807,14 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
             // So this arg can't be evaluated.
             break;
         }
-        let r = trans_arg_expr(bcx, args.(i), arg_tys.(i), e);
+        let r = trans_arg_expr(bcx, args.(i), arg_tys.(i),
+                               to_zero, to_revoke, e);
         bcx = r.bcx;
         llargs += ~[r.val];
         i += 1u;
     }
-    ret {bcx: bcx, args: llargs, retslot: llretslot};
+    ret {bcx: bcx, args: llargs, retslot: llretslot,
+         to_zero: to_zero, to_revoke: to_revoke};
 }
 
 fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
@@ -4874,6 +4896,14 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
             // iter, and we are *not* the party using its 'output' value,
             // we should ignore llretslot.
           }
+        }
+
+        // Forget about anything we moved out.
+        for {v,t}: {v: ValueRef, t: ty::t} in args_res.to_zero {
+            zero_alloca(bcx, v, t)
+        }
+        for v: ValueRef in args_res.to_revoke {
+            revoke_clean(bcx, v)
         }
     }
     ret rslt(bcx, retval);
@@ -5493,7 +5523,9 @@ fn trans_put(cx: &@block_ctxt, e: &option::t[@ast::expr]) -> result {
         let e_ty = ty::expr_ty(bcx_tcx(cx), x);
         let arg = {mode: ty::mo_alias(false), ty: e_ty};
         let arg_tys = type_of_explicit_args(bcx_ccx(cx), x.span, ~[arg]);
-        let r = trans_arg_expr(bcx, arg, arg_tys.(0), x);
+        let z = ~[];
+        let k = ~[];
+        let r = trans_arg_expr(bcx, arg, arg_tys.(0), z, k, x);
         bcx = r.bcx;
         llargs += ~[r.val];
       }
@@ -6035,13 +6067,13 @@ fn add_cleanups_for_args(bcx: &@block_ctxt, args: &[ast::arg],
                          arg_tys: &[ty::arg]) {
     let arg_n: uint = 0u;
     for aarg: ast::arg  in args {
-        if aarg.mode == ast::val {
+        if aarg.mode == ast::val || aarg.mode == ast::move {
             let argval;
             alt bcx.fcx.llargs.find(aarg.id) {
               some(x) { argval = x; }
               _ {
                 bcx_ccx(bcx).sess.span_fatal
-                    (aarg.ty.span, "unbound arg ID in copy_args_to_allocas");
+                    (aarg.ty.span, "unbound arg ID in add_cleanups_for_args");
               }
             }
             add_clean(bcx, argval, arg_tys.(arg_n).ty);
