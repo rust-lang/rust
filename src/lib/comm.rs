@@ -59,7 +59,7 @@ obj _port[~T](raw_port : @port_ptr) {
     }
 }
 
-fn mk_port[~T]() -> _port[T] {
+fn mk_port[~T]() -> _port<T> {
     _port(@port_ptr(rustrt::new_port(sys::size_of[T]())))
 }
 

@@ -8,8 +8,8 @@ export quick_sort3;
 
 type lteq[T] = block(&T, &T) -> bool ;
 
-fn merge_sort[@T](le: &lteq[T], v: &[T]) -> [T] {
-    fn merge[@T](le: &lteq[T], a: &[T], b: &[T]) -> [T] {
+fn merge_sort[@T](le: &lteq<T>, v: &[T]) -> [T] {
+    fn merge[@T](le: &lteq<T>, a: &[T], b: &[T]) -> [T] {
         let rs: [T] = ~[];
         let a_len: uint = len[T](a);
         let a_ix: uint = 0u;
@@ -39,7 +39,7 @@ fn swap[@T](arr: &[mutable T], x: uint, y: uint) {
     arr.(y) = a;
 }
 
-fn part[@T](compare_func: &lteq[T], arr: &[mutable T], left: uint,
+fn part[@T](compare_func: &lteq<T>, arr: &[mutable T], left: uint,
             right: uint, pivot: uint) -> uint {
     let pivot_value = arr.(pivot);
     swap[T](arr, pivot, right);
@@ -56,7 +56,7 @@ fn part[@T](compare_func: &lteq[T], arr: &[mutable T], left: uint,
     ret storage_index;
 }
 
-fn qsort[@T](compare_func: &lteq[T], arr: &[mutable T], left: uint,
+fn qsort[@T](compare_func: &lteq<T>, arr: &[mutable T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -69,7 +69,7 @@ fn qsort[@T](compare_func: &lteq[T], arr: &[mutable T], left: uint,
     }
 }
 
-fn quick_sort[@T](compare_func: &lteq[T], arr: &[mutable T]) {
+fn quick_sort[@T](compare_func: &lteq<T>, arr: &[mutable T]) {
     if len[T](arr) == 0u { ret; }
     qsort[T](compare_func, arr, 0u, len[T](arr) - 1u);
 }
@@ -79,7 +79,7 @@ fn quick_sort[@T](compare_func: &lteq[T], arr: &[mutable T]) {
 // http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
 // According to these slides this is the algorithm of choice for
 // 'randomly ordered keys, abstract compare' & 'small number of key values'
-fn qsort3[@T](compare_func_lt: &lteq[T], compare_func_eq: &lteq[T],
+fn qsort3[@T](compare_func_lt: &lteq<T>, compare_func_eq: &lteq<T>,
               arr: &[mutable T], left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr.(right);
@@ -127,7 +127,7 @@ fn qsort3[@T](compare_func_lt: &lteq[T], compare_func_eq: &lteq[T],
     qsort3[T](compare_func_lt, compare_func_eq, arr, i, right);
 }
 
-fn quick_sort3[@T](compare_func_lt: &lteq[T], compare_func_eq: &lteq[T],
+fn quick_sort3[@T](compare_func_lt: &lteq<T>, compare_func_eq: &lteq<T>,
                    arr: &[mutable T]) {
     if len[T](arr) == 0u { ret; }
     qsort3[T](compare_func_lt, compare_func_eq, arr, 0,
