@@ -19,7 +19,7 @@ Version: @gitversion
 
 Copyright 2006-2010 Graydon Hoare
 
-Copyright 2009-2010 Mozilla Foundation
+Copyright 2009-2011 Mozilla Foundation
 
 See accompanying LICENSE.txt for terms.
 
@@ -192,12 +192,12 @@ subsumed into the more general facility of disjoint union types. A program
 must explicitly model its use of such types.
 
 @sp 1
-@item Lightweight tasks with no shared mutable state
+@item Lightweight tasks with no shared values
 
 Like many @emph{actor} languages, Rust provides an isolation (and concurrency)
 model based on lightweight tasks scheduled by the language runtime. These
-tasks are very inexpensive and statically unable to mutate one another's local
-memory. Breaking the rule of task isolation is only possible by calling
+tasks are very inexpensive and statically unable to manipulate one another's
+local memory. Breaking the rule of task isolation is only possible by calling
 external (C/C++) code.
 
 Inter-task communication is typed, asynchronous and simplex, based on passing
@@ -247,10 +247,11 @@ roles.
 @item Static control over memory allocation, packing and aliasing.
 
 Many values in Rust are allocated @emph{within} their containing stack-frame
-or parent structure. Numbers, records, tuples and tags are all allocated this
+or parent structure. Numbers, records and tags are all allocated this
 way. To allocate such values in the heap, they must be explicitly
 @emph{boxed}. A @dfn{box} is a pointer to a heap allocation that holds another
-value, its @emph{content}.
+value, its @emph{content}. Boxes may be either shared or unique, depending
+on which sort of storage management is desired.
 
 Boxing and unboxing in Rust is explicit, though in many cases (arithmetic
 operations, name-component dereferencing) Rust will automatically ``reach
@@ -273,42 +274,29 @@ still guaranteeing that every use of a slot occurs after it has been
 initialized.
 
 @sp 1
-@item Static control over mutability and garbage collection.
+@item Immutable data by default
 
-Types in Rust are classified into @emph{layers}. There is a layer of immutable
-values, a layer of state values, and a layer of GC values. By default, all
-types are immutable.
+All types in Rust are immutable by default. A field within a type must be
+declared as @code{mutable} in order to be modified.
 
-If a field within a type is declared as @code{mutable}, then the type is part
-of the @code{state} layer and must be declared as such. Any type directly
-marked as @code{state} @emph{or indirectly referring to} a state type is also
-a state type.
+@sp 1
+@item Move semantics and unique pointers
 
-If a field within a type is potentially cyclic (this is a narrow, but
-well-defined condition involving mutable recursive types) then it is part of
-the @code{gc} layer and must be declared as such.
+Rust differentiates copying values from moving them, and permits moving and
+swapping values explicitly rather than copying. Moving can be more efficient and,
+crucially, represents an indivisible transfer of ownership of a value from its
+source to its destination.
 
-This classification of data types in Rust interacts with the memory allocation,
-transmission and destruction rules. In particular:
+In addition, pointer types in Rust come in several varieties. One important
+type of pointer related to move semantics is the @emph{unique} pointer,
+denoted @code{~}, which is statically guaranteed to be the only pointer
+pointing to its referent at any given time.
 
-@itemize
-@item Only immutable values can be sent over channels.
-@item Only non-GC objects can have destructor functions.
-@end itemize
-
-Garbage collection, when present, operates per-task and does not interrupt
-other tasks while running. It is limited to types that need it and can be
-statically avoided altogether by limiting the types in a program to the state
-and immutable layers.
-
-Non-GC values are reference-counted and have a deterministic destruction
-order: top-down, immediately upon release of the last live reference.
-
-State values can refer to non-state values, but not vice-versa; likewise GC
-values can refer to non-GC values but not vice-versa. Rust therefore
-encourages the programmer to write in a style that consists primarily of
-immutable types, but also permits limited, local (per-task) mutability,
-and provides local (per-task) GC only when required.
+Combining move-semantics and unique pointers, Rust permits a very lightweight
+form of inter-task communication: values are sent between tasks by moving, and
+only types composed of unique pointers can be sent. This statically ensures
+there can never be sharing of data between tasks, while keeping the costs of
+transferring data between tasks as cheap as moving a pointer.
 
 @sp 1
 @item Stack-based iterators
