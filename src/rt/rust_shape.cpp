@@ -2,10 +2,12 @@
 // actions, such as copying, freeing, comparing, and so on.
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
 #include <cassert>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include "rust_internal.h"
@@ -227,6 +229,9 @@ public:
         return make(p + amount);
     }
     inline ptr &operator+=(const size_t amount) { p += amount; return *this; }
+    inline bool operator<(const ptr other) { return p < other.p; }
+    inline ptr operator++() { ptr rv(*this); p++; return rv; }
+    inline uint8_t operator*() { return *p; }
 
     template<typename T>
     inline operator T *() { return (T *)p; }
@@ -289,6 +294,8 @@ public:
     get_variant_sp(tag_info &info, uint32_t variant_id);
 
 protected:
+    inline uint8_t peek() { return *sp; }
+
     static inline uint16_t get_u16(const uint8_t *addr);
     static inline uint16_t get_u16_bump(const uint8_t *&addr);
     inline size_align get_size_align(const uint8_t *&addr);
@@ -1236,6 +1243,8 @@ private:
     : data<log,ptr>(other.task, in_sp, in_params, in_tables, other.dp),
       out(other.out) {}
 
+    void walk_string(const std::pair<ptr,ptr> &data);
+
     void walk_evec(bool align, bool is_pod, uint16_t sp_size) {
         walk_vec(align, is_pod, get_evec_data_range(dp));
     }
@@ -1268,9 +1277,31 @@ public:
 };
 
 void
+log::walk_string(const std::pair<ptr,ptr> &data) {
+    out << "\"" << std::hex;
+
+    ptr subdp = data.first;
+    while (subdp < data.second) {
+        char ch = *subdp;
+        if (isprint(ch))
+            out << ch;
+        else if (ch)
+            out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+        ++subdp;
+    }
+
+    out << "\"" << std::dec;
+}
+
+void
 log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
-    // TODO: Check to see whether this is a string (contains u8). If so,
-    // write the vector ""-style; otherwise [ ... , ... ] style.
+    if (peek() == SHAPE_U8) {
+        sp++;   // It's a string. We handle this ourselves.
+        walk_string(data);
+        return;
+    }
+
+    // TODO: Write vectors [ ..., ..., ... ] style.
 }
 
 } // end namespace shape
