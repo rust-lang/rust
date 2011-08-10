@@ -863,9 +863,8 @@ mod collect {
 
 // Type unification
 
-// TODO: rename to just "unify"
 mod unify {
-    fn simple(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) ->
+    fn unify(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) ->
        ty::unify::result {
         ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
     }
@@ -1014,7 +1013,7 @@ mod demand {
         }
 
 
-        alt unify::simple(fcx, expected_1, actual_1) {
+        alt unify::unify(fcx, expected_1, actual_1) {
           ures_ok(t) {
             ret mk_result(fcx, t, ty_param_subst_var_ids, implicit_boxes);
           }
@@ -1037,7 +1036,7 @@ mod demand {
 
 // Returns true if the two types unify and false if they don't.
 fn are_compatible(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) -> bool {
-    alt unify::simple(fcx, expected, actual) {
+    alt unify::unify(fcx, expected, actual) {
       ures_ok(_) { ret true; }
       ures_err(_) { ret false; }
     }
