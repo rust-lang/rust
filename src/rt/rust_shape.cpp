@@ -1284,6 +1284,17 @@ private:
         data<log,ptr>::walk_box_contents(align);
     }
 
+    void walk_fn(bool align) { out << "fn"; }
+    void walk_obj(bool align) { out << "obj"; }
+    void walk_port(bool align) { out << "port"; }
+    void walk_chan(bool align) { out << "chan"; }
+    void walk_task(bool align) { out << "task"; }
+
+    void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
+                  const uint8_t *ty_params_sp) {
+        out << "res";   // TODO
+    }
+
     void walk_subcontext(bool align, log &sub) { sub.walk(align); }
 
     void walk_box_contents(bool align, log &sub, ptr &ref_count_dp) {
