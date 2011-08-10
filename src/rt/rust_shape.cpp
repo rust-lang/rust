@@ -950,6 +950,7 @@ public:
         T sub(*static_cast<T *>(this), param->shape, param->params,
               param->tables);
         static_cast<T *>(this)->walk_subcontext(align, sub);
+        dp = sub.dp;
     }
 
     template<typename W>
