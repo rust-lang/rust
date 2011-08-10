@@ -2,6 +2,7 @@
 #define RUST_UTIL_H
 
 #include "rust_task.h"
+#include <limits.h>
 
 // Reference counted objects
 
