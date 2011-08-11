@@ -67,6 +67,7 @@ const shape_fn : u8 = 18u8;
 const shape_obj : u8 = 19u8;
 const shape_res : u8 = 20u8;
 const shape_var : u8 = 21u8;
+const shape_uniq : u8 = 22u8;
 
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n : u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
@@ -341,6 +342,10 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
       ty::ty_box(mt) {
         s += ~[shape_box];
         add_substr(s, shape_of(ccx, mt.ty));
+      }
+      ty::ty_uniq(subt) {
+        s += ~[shape_uniq];
+        add_substr(s, shape_of(ccx, subt));
       }
       ty::ty_vec(mt) {
         s += ~[shape_evec];

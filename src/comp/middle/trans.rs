@@ -217,6 +217,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_istr. { llty = T_ivec(T_i8()); }
       ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
       ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
+      ty::ty_uniq(t) { llty = T_ptr(type_of_inner(cx, sp, t)); }
       ty::ty_vec(mt) { llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty))); }
       ty::ty_ivec(mt) {
         if ty::type_has_dynamic_size(cx.tcx, mt.ty) {
@@ -476,6 +477,7 @@ fn simplify_type(ccx: &@crate_ctxt, typ: &ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
         alt ty::struct(ccx.tcx, typ) {
           ty::ty_box(_) { ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)); }
+          ty::ty_uniq(_) { ret ty::mk_uniq(ccx.tcx, ty::mk_nil(ccx.tcx)); }
           ty::ty_vec(_) { ret ty::mk_imm_vec(ccx.tcx, ty::mk_nil(ccx.tcx)); }
           ty::ty_fn(_, _, _, _, _) {
             ret ty::mk_imm_tup(ccx.tcx,
@@ -1303,6 +1305,9 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             let rs = drop_ty(cx, body_val, body_ty);
             trans_non_gc_free(rs.bcx, v)
           }
+          ty::ty_uniq(_) {
+            fail "free uniq unimplemented";
+          }
           ty::ty_port(_) {
             let v = cx.build.Load(v0);
             cx.build.Call(bcx_ccx(cx).upcalls.del_port,
@@ -1402,6 +1407,7 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty)
           }
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
+          ty::ty_uniq(_) { fail "drop uniq unimplemented"; }
           ty::ty_port(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_chan(_) {
             let ptr = cx.build.Load(v0);
@@ -3257,6 +3263,7 @@ fn autoderef(cx: &@block_ctxt, v: ValueRef, t: &ty::t) -> result_t {
                 v1 = cx.build.PointerCast(body, T_ptr(llty));
             } else { v1 = body; }
           }
+          ty::ty_uniq(t) { fail "autoderef uniq unimplemented"; }
           ty::ty_res(did, inner, tps) {
             t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
             v1 = cx.build.GEP(v1, ~[C_int(0), C_int(1)]);
@@ -4077,6 +4084,7 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
                                           ~[C_int(0),
                                             C_int(abi::box_rc_field_body)])
               }
+              ty::ty_uniq(_) { fail "uniq lval translation unimplemented" }
               ty::ty_res(_, _, _) {
                 sub.bcx.build.InBoundsGEP(sub.val, ~[C_int(0), C_int(1)])
               }

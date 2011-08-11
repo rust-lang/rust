@@ -537,6 +537,9 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
                 ds += ~[@{mut: mt.mut != ast::imm, kind: unbox, outer_t: t}];
                 t = mt.ty;
               }
+              ty::ty_uniq(mt) {
+                ds += ~[@{mut: false, kind: unbox, outer_t: t}];
+              }
               ty::ty_res(_, inner, tps) {
                 ds += ~[@{mut: false, kind: unbox, outer_t: t}];
                 t = ty::substitute_type_params(cx.tcx, tps, inner);
@@ -603,6 +606,7 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
                 let mut = false;
                 alt ty::struct(cx.tcx, base_t) {
                   ty::ty_box(mt) { mut = mt.mut != ast::imm; }
+                  ty::ty_uniq(_) { }
                   ty::ty_res(_, _, _) { }
                   ty::ty_tag(_, _) { }
                   ty::ty_ptr(mt) { mut = mt.mut != ast::imm; }
@@ -665,6 +669,7 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
           ty::ty_box(mt) | ty::ty_vec(mt) | ty::ty_ptr(mt) {
             ret helper(tcx, needle, mt.ty, get_mut(mut, mt));
           }
+          ty::ty_uniq(t) { ret helper(tcx, needle, t, false); }
           ty::ty_rec(fields) {
             for f: ty::field  in fields {
                 if helper(tcx, needle, f.mt.ty, get_mut(mut, f.mt)) {

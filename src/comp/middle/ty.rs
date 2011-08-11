@@ -89,6 +89,7 @@ export mk_tag;
 export mk_task;
 export mk_type;
 export mk_uint;
+export mk_uniq;
 export mk_var;
 export mk_vec;
 export mk_iter_body_fn;
@@ -147,6 +148,7 @@ export ty_tag;
 export ty_task;
 export ty_type;
 export ty_uint;
+export ty_uniq;
 export ty_var;
 export ty_var_id;
 export ty_vec;
@@ -265,6 +267,7 @@ tag sty {
     ty_istr;
     ty_tag(def_id, [t]);
     ty_box(mt);
+    ty_uniq(t);
     ty_vec(mt);
     ty_ivec(mt);
     ty_ptr(mt);
@@ -471,6 +474,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
         for tt: t  in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
+      ty_uniq(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
       ty_vec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ivec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ptr(m) { derive_flags_mt(cx, has_params, has_vars, m); }
@@ -557,6 +561,8 @@ fn mk_tag(cx: &ctxt, did: &ast::def_id, tys: &[t]) -> t {
 }
 
 fn mk_box(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_box(tm)); }
+
+fn mk_uniq(cx: &ctxt, typ: &t) -> t { ret gen_ty(cx, ty_uniq(typ)); }
 
 fn mk_ptr(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_ptr(tm)); }
 
@@ -728,36 +734,20 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_native(_) {/* no-op */ }
       ty_task. {/* no-op */ }
       ty_box(tm) {
-        ty =
-            copy_cname(cx,
-                       mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut}),
-                       ty);
+        ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
+      ty_uniq(subty) { ty = mk_uniq(cx, fold_ty(cx, fld, subty)); }
       ty_ptr(tm) {
-        ty =
-            copy_cname(cx,
-                       mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut}),
-                       ty);
+        ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_vec(tm) {
-        ty =
-            copy_cname(cx,
-                       mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut}),
-                       ty);
+        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_ivec(tm) {
-        ty =
-            copy_cname(cx,
-                       mk_ivec(cx,
-                               {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut}),
-                       ty);
+        ty = mk_ivec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
-      ty_port(subty) {
-        ty = copy_cname(cx, mk_port(cx, fold_ty(cx, fld, subty)), ty);
-      }
-      ty_chan(subty) {
-        ty = copy_cname(cx, mk_chan(cx, fold_ty(cx, fld, subty)), ty);
-      }
+      ty_port(subty) { ty = mk_port(cx, fold_ty(cx, fld, subty)); }
+      ty_chan(subty) { ty = mk_chan(cx, fold_ty(cx, fld, subty)); }
       ty_tag(tid, subtys) {
         let new_subtys: [t] = ~[];
         for subty: t  in subtys { new_subtys += ~[fold_ty(cx, fld, subty)]; }
@@ -2487,6 +2477,20 @@ mod unify {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
                     ret ures_ok(mk_box(cx.tcx, mt));
+                  }
+                  _ { ret result; }
+                }
+              }
+              _ { ret ures_err(terr_mismatch); }
+            }
+          }
+          ty::ty_uniq(expected_sub) {
+            alt struct(cx.tcx, actual) {
+              ty::ty_uniq(actual_sub) {
+                let result = unify_step(cx, expected_sub, actual_sub);
+                alt result {
+                  ures_ok(result_sub) {
+                    ret ures_ok(mk_uniq(cx.tcx, result_sub));
                   }
                   _ { ret result; }
                 }

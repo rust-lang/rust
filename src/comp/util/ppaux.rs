@@ -91,8 +91,9 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_str. { s += "str"; }
       ty_istr. { s += "istr"; }
       ty_box(tm) { s += "@" + mt_to_str(cx, tm); }
+      ty_uniq(t) { s += "~" + ty_to_str(cx, t); }
       ty_vec(tm) { s += "vec[" + mt_to_str(cx, tm) + "]"; }
-      ty_ivec(tm) { s += "ivec[" + mt_to_str(cx, tm) + "]"; }
+      ty_ivec(tm) { s += "[" + mt_to_str(cx, tm) + "]"; }
       ty_port(t) { s += "port[" + ty_to_str(cx, t) + "]"; }
       ty_chan(t) { s += "chan[" + ty_to_str(cx, t) + "]"; }
       ty_type. { s += "type"; }
