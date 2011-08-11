@@ -281,11 +281,9 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
     let s = ~[];
 
     alt ty::struct(ccx.tcx, t) {
-      ty::ty_nil. | ty::ty_bool. | ty::ty_machine(ast::ty_u8.) {
+      ty::ty_nil. | ty::ty_bool. | ty::ty_machine(ast::ty_u8.) | ty::ty_bot. {
         s += ~[shape_u8];
       }
-
-      ty::ty_bot. { fail "bot ty in shape_of"; }
 
       ty::ty_int. { s += ~[s_int(ccx.tcx)]; }
       ty::ty_float. { s += ~[s_float(ccx.tcx)]; }
@@ -299,6 +297,8 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
       ty::ty_machine(ast::ty_i16.) { s += ~[shape_i16]; }
       ty::ty_machine(ast::ty_u32.) | ty::ty_char. { s += ~[shape_u32]; }
       ty::ty_machine(ast::ty_i32.) { s += ~[shape_i32]; }
+      ty::ty_machine(ast::ty_u64.) { s += ~[shape_u64]; }
+      ty::ty_machine(ast::ty_i64.) { s += ~[shape_i64]; }
 
       ty::ty_str. { s += ~[shape_evec, 1u8, 1u8, 0u8, shape_u8]; }
       ty::ty_istr. { s += ~[shape_ivec, 1u8, 1u8, 0u8, shape_u8]; }

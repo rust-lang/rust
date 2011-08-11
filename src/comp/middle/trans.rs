@@ -27,6 +27,7 @@ import syntax::ast;
 import driver::session;
 import middle::ty;
 import middle::freevars::*;
+import middle::gc;
 import back::link;
 import back::x86;
 import back::abi;
@@ -5634,23 +5635,28 @@ fn lldynamicallocas_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
 
 
 fn alloc_ty(cx: &@block_ctxt, t: &ty::t) -> result {
+    let bcx = cx;
     let val = C_int(0);
-    if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
+    if ty::type_has_dynamic_size(bcx_tcx(bcx), t) {
         // NB: we have to run this particular 'size_of' in a
         // block_ctxt built on the llderivedtydescs block for the fn,
         // so that the size dominates the array_alloca that
         // comes next.
 
-        let n = size_of(llderivedtydescs_block_ctxt(cx.fcx), t);
-        cx.fcx.llderivedtydescs = n.bcx.llbb;
-        val = array_alloca(cx, T_i8(), n.val);
-    } else { val = alloca(cx, type_of(bcx_ccx(cx), cx.sp, t)); }
+        let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
+        bcx.fcx.llderivedtydescs = n.bcx.llbb;
+        val = array_alloca(bcx, T_i8(), n.val);
+    } else {
+        val = alloca(bcx, type_of(bcx_ccx(cx), cx.sp, t));
+    }
     // NB: since we've pushed all size calculations in this
     // function up to the alloca block, we actually return the
     // block passed into us unmodified; it doesn't really
     // have to be passed-and-returned here, but it fits
     // past caller conventions and may well make sense again,
     // so we leave it as-is.
+
+    bcx = gc::add_gc_root(bcx, val, t);
 
     ret rslt(cx, val);
 }
@@ -6756,9 +6762,6 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap[str, ValueRef] {
     let T_memset64_args: [TypeRef] =
         ~[T_ptr(T_i8()), T_i8(), T_i64(), T_i32(), T_i1()];
     let T_trap_args: [TypeRef] = ~[];
-    let gcroot =
-        decl_cdecl_fn(llmod, "llvm.gcroot",
-                      T_fn(~[T_ptr(T_ptr(T_i8())), T_ptr(T_i8())], T_void()));
     let gcread =
         decl_cdecl_fn(llmod, "llvm.gcread",
                       T_fn(~[T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))], T_void()));
@@ -6776,7 +6779,6 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap[str, ValueRef] {
                       T_fn(T_memset64_args, T_void()));
     let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
     let intrinsics = new_str_hash[ValueRef]();
-    intrinsics.insert("llvm.gcroot", gcroot);
     intrinsics.insert("llvm.gcread", gcread);
     intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
     intrinsics.insert("llvm.memmove.p0i8.p0i8.i64", memmove64);
