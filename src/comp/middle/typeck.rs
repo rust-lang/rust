@@ -2681,7 +2681,7 @@ fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
         ok &=
             num_args == 0u || num_args == 1u && arg_is_argv_ty(tcx, args.(0));
         if !ok {
-            tcx.sess.err("Wrong type in main function: found " +
+            tcx.sess.err("wrong type in main function: found " +
                              ty_to_str(tcx, main_t));
         }
       }
