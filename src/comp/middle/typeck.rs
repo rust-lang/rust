@@ -2686,7 +2686,7 @@ fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
         }
       }
       _ {
-        tcx.sess.err("Main has a non-function type: found" +
+        tcx.sess.bug("main has a non-function type: found" +
                          ty_to_str(tcx, main_t));
       }
     }
