@@ -1,9 +1,7 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-
 // Binop corner cases
+
+use std;
+import std::unsafe::reinterpret_cast;
 
 fn test_nil() {
     assert (() == ());
@@ -65,10 +63,8 @@ fn test_port() {
     let p1: port[int] = port();
     let p2: port[int] = port();
 
-    // FIXME (#577) comparison of ports
-    // assert (p1 != p2);
-    // assert !(p1 < p2);
-    // etc
+    assert p1 == p1;
+    assert p1 != p2;
 }
 
 fn test_chan() {
@@ -76,9 +72,8 @@ fn test_chan() {
     let ch1 = chan(p);
     let ch2 = chan(p);
 
-    // FIXME (#577) comparison of channels
-    // assert (ch1 != ch2);
-    // etc
+    assert ch1 == ch1;
+    assert ch1 != ch2;
 }
 
 fn test_ptr() {
@@ -90,8 +85,9 @@ fn test_task() {
     fn f() { }
     let t1 = spawn f();
     let t2 = spawn f();
-    // FIXME (#577) comparison of tasks
-    //assert t1 != t2;
+
+    assert t1 == t1;
+    assert t1 != t2;
 }
 
 fn test_fn() {
@@ -117,21 +113,26 @@ fn test_fn() {
 
 native "rust" mod native_mod = "" {
     fn str_byte_len(s: str) -> vec[u8];
-    fn str_alloc(n_bytes: uint) -> str;
+    // This isn't actually the signature of str_alloc, but since
+    // we're not calling it that shouldn't matter
+    fn str_alloc(s: str) -> vec[u8];
 }
 
 // FIXME: comparison of native fns
 fn test_native_fn() {
-    /*assert (native_mod::str_byte_len == native_mod::str_byte_len);
-      assert (native_mod::str_byte_len != native_mod::str_alloc);*/
+    assert (native_mod::str_byte_len == native_mod::str_byte_len);
+    assert (native_mod::str_byte_len != native_mod::str_alloc);
 }
 
 fn test_obj() {
     let o1 = obj () {  };
     let o2 = obj () {  };
 
-    assert (o1 != o2);
-    assert (!(o1 == o2));
+    assert (o1 == o1);
+
+    // FIXME (#815): This doesn't work on linux only. Wierd.
+    //assert (o1 != o2);
+    //assert (!(o1 == o2));
 
     obj constr1(i: int) { }
     obj constr2(i: int) { }
