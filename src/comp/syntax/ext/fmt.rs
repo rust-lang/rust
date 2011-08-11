@@ -35,14 +35,14 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
         cx.span_fatal(sp, msg);
     }
     let parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
-    let pieces = parse_fmt_string(fmt, parse_fmt_err);
+    let pieces = parse_fmt_string_ivec(fmt, parse_fmt_err);
     ret pieces_to_expr(cx, sp, pieces, args);
 }
 
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
-fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
+fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                   args: &[@ast::expr]) -> @ast::expr {
     fn make_new_lit(cx: &ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
         let sp_lit = @{node: lit, span: sp};
@@ -84,7 +84,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
         ret @{id: cx.next_id(), node: callexpr, span: sp};
     }
     fn make_rec_expr(cx: &ext_ctxt, sp: span,
-                     fields: vec[{ident: ast::ident, ex: @ast::expr}]) ->
+                     fields: &[{ident: ast::ident, ex: @ast::expr}]) ->
        @ast::expr {
         let astfields: [ast::field] = ~[];
         for field: {ident: ast::ident, ex: @ast::expr}  in fields {
@@ -113,7 +113,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
     // which tells the RT::conv* functions how to perform the conversion
 
     fn make_rt_conv_expr(cx: &ext_ctxt, sp: span, cnv: &conv) -> @ast::expr {
-        fn make_flags(cx: &ext_ctxt, sp: span, flags: vec[flag]) ->
+        fn make_flags(cx: &ext_ctxt, sp: span, flags: &[flag]) ->
            @ast::expr {
             let flagexprs: [@ast::expr] = ~[];
             for f: flag  in flags {
@@ -169,12 +169,12 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: vec[piece],
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             ret make_rec_expr(cx, sp,
-                              [{ident: "flags", ex: flags_expr},
-                               {ident: "width", ex: width_expr},
-                               {ident: "precision", ex: precision_expr},
-                               {ident: "ty", ex: ty_expr}]);
+                              ~[{ident: "flags", ex: flags_expr},
+                                {ident: "width", ex: width_expr},
+                                {ident: "precision", ex: precision_expr},
+                                {ident: "ty", ex: ty_expr}]);
         }
-        let rt_conv_flags = make_flags(cx, sp, cnv.flags);
+        let rt_conv_flags = make_flags(cx, sp, ivec::from_vec(cnv.flags));
         let rt_conv_width = make_count(cx, sp, cnv.width);
         let rt_conv_precision = make_count(cx, sp, cnv.precision);
         let rt_conv_ty = make_ty(cx, sp, cnv.ty);

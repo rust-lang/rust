@@ -239,6 +239,10 @@ mod ct {
             } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
     }
+
+    fn parse_fmt_string_ivec(s: str, error: error_fn) -> [piece] {
+        ivec::from_vec(parse_fmt_string(s, error))
+    }
 }
 
 
