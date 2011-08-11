@@ -28,6 +28,7 @@ import std::option::some;
 import std::option::none;
 import std::str;
 import std::vec;
+import std::ivec;
 import std::int;
 import std::ioivec;
 import std::run;
@@ -78,7 +79,7 @@ fn build_configuration(sess: session::session, argv0: str, input: str) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: &vec[str]) -> ast::crate_cfg {
+fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let words = ~[];
@@ -383,7 +384,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           none. { get_default_sysroot(binary) }
           some(s) { s }
         };
-    let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
+    let cfg = parse_cfgspecs(getopts::opt_strs_ivec(match, "cfg"));
     let test = opt_present(match, "test");
     let dps = opt_present(match, "dps");
     let do_gc = opt_present(match, "gc");
@@ -428,24 +429,25 @@ fn parse_pretty(sess: session::session, name: &str) -> pp_mode {
                    "`typed`, or `identified`");
 }
 
-fn opts() -> vec[getopts::opt] {
-    ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
-         optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
-         optflagopt("expand"), optflag("ls"), optflag("parse-only"),
-         optflag("no-trans"),
-         optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
-         optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
-         optopt("sysroot"), optflag("stats"), optflag("time-passes"),
-         optflag("time-llvm-passes"), optflag("no-typestate"),
-         optflag("noverify"), optmulti("cfg"), optflag("test"),
-         optflag("lib"), optflag("static"), optflag("dps"), optflag("gc")];
+fn opts() -> [getopts::opt] {
+    ret ~[optflag("h"), optflag("help"), optflag("v"), optflag("version"),
+          optflag("glue"), optflag("emit-llvm"), optflagopt("pretty"),
+          optflagopt("expand"), optflag("ls"), optflag("parse-only"),
+          optflag("no-trans"),
+          optflag("O"), optopt("OptLevel"), optmulti("L"), optflag("S"),
+          optflag("c"), optopt("o"), optflag("g"), optflag("save-temps"),
+          optopt("sysroot"), optflag("stats"), optflag("time-passes"),
+          optflag("time-llvm-passes"), optflag("no-typestate"),
+          optflag("noverify"), optmulti("cfg"), optflag("test"),
+          optflag("lib"), optflag("static"), optflag("dps"), optflag("gc")];
 }
 
 fn main(args: vec[str]) {
-    let binary = vec::shift(args);
+    let args_ivec = ivec::from_vec(args);
+    let binary = ivec::shift(args_ivec);
     let binary_dir = fs::dirname(binary);
     let match =
-        alt getopts::getopts(args, opts()) {
+        alt getopts::getopts_ivec(args_ivec, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
             log_err #fmt("error: %s", getopts::fail_str(f));
@@ -517,25 +519,25 @@ fn main(args: vec[str]) {
       none. {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
-        let parts: vec[str] = if !input_is_stdin(ifile) {
-            str::split(ifile, '.' as u8)
+        let parts = if !input_is_stdin(ifile) {
+            str::split_ivec(ifile, '.' as u8)
         } else {
-            ["default", "rs"]
+            ~["default", "rs"]
         };
-        vec::pop[str](parts);
+        ivec::pop(parts);
         saved_out_filename = parts.(0);
         alt sopts.output_type {
-          link::output_type_none. { parts += ["none"]; }
-          link::output_type_bitcode. { parts += ["bc"]; }
-          link::output_type_assembly. { parts += ["s"]; }
+          link::output_type_none. { parts += ~["none"]; }
+          link::output_type_bitcode. { parts += ~["bc"]; }
+          link::output_type_assembly. { parts += ~["s"]; }
 
           // Object and exe output both use the '.o' extension here
           link::output_type_object. {
-            parts += ["o"];
+            parts += ~["o"];
           }
-          link::output_type_exe. { parts += ["o"]; }
+          link::output_type_exe. { parts += ~["o"]; }
         }
-        let ofile = str::connect(parts, ".");
+        let ofile = str::connect_ivec(parts, ".");
         compile_input(sess, cfg, ifile, ofile);
       }
       some(ofile) {
@@ -562,9 +564,9 @@ fn main(args: vec[str]) {
     let prog: str = "gcc";
     // The invocations of gcc share some flags across platforms
 
-    let gcc_args: vec[str] =
-        [stage, "-Lrt", "-lrustrt", glu, "-m32", "-o", saved_out_filename,
-         saved_out_filename + ".o"];
+    let gcc_args =
+        ~[stage, "-Lrt", "-lrustrt", glu, "-m32", "-o", saved_out_filename,
+          saved_out_filename + ".o"];
     let lib_cmd;
 
     let os = sess.get_targ_cfg().os;
@@ -598,34 +600,34 @@ fn main(args: vec[str]) {
     let cstore = sess.get_cstore();
     for cratepath: str  in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [cratepath];
+            gcc_args += ~[cratepath];
             cont;
         }
         let dir = fs::dirname(cratepath);
-        if dir != "" { gcc_args += ["-L" + dir]; }
+        if dir != "" { gcc_args += ~["-L" + dir]; }
         let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
-        gcc_args += ["-l" + libarg];
+        gcc_args += ~["-l" + libarg];
     }
 
-    // FIXME: Remove this ivec->vec conversion.
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str  in ula { gcc_args += [arg]; }
+    for arg: str  in ula { gcc_args += ~[arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str  in used_libs { gcc_args += ["-l" + l]; }
+    for l: str  in used_libs { gcc_args += ~["-l" + l]; }
 
     if sopts.library {
-        gcc_args += [lib_cmd];
+        gcc_args += ~[lib_cmd];
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm", main];
+        gcc_args += ~["-lm", main];
     }
     // We run 'gcc' here
 
-    let err_code = run::run_program(prog, gcc_args);
+    let err_code = run::run_program(prog, ivec::to_vec(gcc_args));
     if 0 != err_code {
         sess.err(#fmt("linking with gcc failed with code %d", err_code));
-        sess.note(#fmt("gcc arguments: %s", str::connect(gcc_args, " ")));
+        sess.note(#fmt("gcc arguments: %s",
+                       str::connect_ivec(gcc_args, " ")));
         sess.abort_if_errors();
     }
     // Clean up on Darwin
@@ -650,7 +652,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let match =
-            alt getopts::getopts(["--test"], opts()) {
+            alt getopts::getopts_ivec(~["--test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");
@@ -664,7 +666,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let match =
-            alt getopts::getopts(["--test", "--cfg=test"], opts()) {
+            alt getopts::getopts_ivec(~["--test", "--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");

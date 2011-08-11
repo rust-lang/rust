@@ -27,6 +27,7 @@ export fail_str;
 export opt_present;
 export opt_str;
 export opt_strs;
+export opt_strs_ivec;
 export opt_maybe_str;
 export opt_default;
 

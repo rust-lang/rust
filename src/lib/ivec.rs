@@ -142,6 +142,14 @@ fn slice_mut[@T](v: &[mutable? T], start: uint, end: uint) -> [mutable T] {
 
 // Mutators
 
+fn shift[@T](v: &mutable [mutable? T]) -> T {
+    let ln = len[T](v);
+    assert (ln > 0u);
+    let e = v.(0);
+    v = slice[T](v, 1u, ln);
+    ret e;
+}
+
 // TODO: Write this, unsafely, in a way that's not O(n).
 fn pop[@T](v: &mutable [mutable? T]) -> T {
     let ln = len(v);

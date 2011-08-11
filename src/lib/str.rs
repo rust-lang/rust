@@ -43,6 +43,7 @@ export pop_byte;
 export push_byte;
 export unshift_byte;
 export split;
+export split_ivec;
 export concat;
 export connect;
 export connect_ivec;
