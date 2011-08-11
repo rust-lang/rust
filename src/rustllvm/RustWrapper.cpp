@@ -45,14 +45,6 @@ extern "C" const char *LLVMRustGetLastError(void) {
 }
 
 extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
-extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
-    unsigned int OptimizationLevel, bool OptimizeSize, bool UnitAtATime,
-    bool UnrollLoops, bool SimplifyLibCalls,
-    unsigned int InliningThreshold);
-
-int *RustHackToFetchPassesO = (int*)LLVMAddBasicAliasAnalysisPass;
-int *RustHackToFetchPasses2O = (int*)LLVMAddStandardModulePasses;
-
 
 extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   static std::string err;

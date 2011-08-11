@@ -141,6 +141,7 @@ native "cdecl" mod llvm = "rustllvm" {
     type ModuleProviderRef;
     type MemoryBufferRef;
     type PassManagerRef;
+    type PassManagerBuilderRef;
     type UseRef;
     type TargetDataRef;
 
@@ -798,13 +799,29 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMAddTypeBasedAliasAnalysisPass(PM: PassManagerRef);
     fn LLVMAddBasicAliasAnalysisPass(PM: PassManagerRef);
 
-    fn LLVMAddStandardFunctionPasses(PM: PassManagerRef,
-                                     OptimizationLevel: uint);
-    fn LLVMAddStandardModulePasses(PM: PassManagerRef,
-                                   OptimizationLevel: uint,
-                                   OptimizeSize: Bool, UnitAtATime: Bool,
-                                   UnrollLoops: Bool, SimplifyLibCalls: Bool,
-                                   InliningThreshold: uint);
+    fn LLVMPassManagerBuilderCreate() -> PassManagerBuilderRef;
+    fn LLVMPassManagerBuilderDispose(PMB: PassManagerBuilderRef);
+    fn LLVMPassManagerBuilderSetOptLevel(PMB: PassManagerBuilderRef,
+                                         OptimizationLevel: uint);
+    fn LLVMPassManagerBuilderSetSizeLevel(PMB: PassManagerBuilderRef,
+                                          Value: Bool);
+    fn LLVMPassManagerBuilderSetDisableUnitAtATime(PMB: PassManagerBuilderRef,
+                                                   Value: Bool);
+    fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef,
+                                                   Value: Bool);
+    fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls(PMB:
+                                                        PassManagerBuilderRef,
+                                                        Value: Bool);
+    fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB:
+                                                     PassManagerBuilderRef,
+                                                     threshold: uint);
+    fn LLVMPassManagerBuilderPopulateModulePassManager(PMB:
+                                                       PassManagerBuilderRef,
+                                                       PM: PassManagerRef);
+
+    fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB:
+                                                        PassManagerBuilderRef,
+                                                         PM: PassManagerRef);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);

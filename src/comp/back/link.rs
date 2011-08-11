@@ -117,19 +117,34 @@ mod write {
         if opts.optimize != 0u {
             let fpm = mk_pass_manager();
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
-            llvm::LLVMAddStandardFunctionPasses(fpm.llpm, 2u);
+
+            let FPMB = llvm::LLVMPassManagerBuilderCreate();
+            llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u);
+            llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(FPMB,
+                                                                    fpm.llpm);
+            llvm::LLVMPassManagerBuilderDispose(FPMB);
+
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
             let threshold: uint = 225u;
             if opts.optimize == 3u { threshold = 275u; }
-            llvm::LLVMAddStandardModulePasses(pm.llpm,
-                                              // optimization level
-                                              opts.optimize,
-                                              False, // optimize for size
-                                              True, // unit-at-a-time
-                                              True, // unroll loops
-                                              True, // simplify lib calls
-                                              threshold); // inline threshold
 
+            let MPMB = llvm::LLVMPassManagerBuilderCreate();
+            llvm::LLVMPassManagerBuilderSetOptLevel(MPMB, opts.optimize);
+            llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, 0);
+            llvm::LLVMPassManagerBuilderSetDisableUnitAtATime(MPMB, False);
+            llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(MPMB, False);
+            llvm::LLVMPassManagerBuilderSetDisableSimplifyLibCalls(MPMB,
+                                                                   False);
+
+            if threshold != 0u {
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(MPMB,
+                                                                    threshold);
+            }
+
+            llvm::LLVMPassManagerBuilderPopulateModulePassManager(MPMB,
+                                                                  pm.llpm);
+
+            llvm::LLVMPassManagerBuilderDispose(MPMB);
         }
         if opts.verify { llvm::LLVMAddVerifierPass(pm.llpm); }
         if is_object_or_assembly_or_exe(opts.output_type) {
