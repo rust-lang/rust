@@ -165,8 +165,6 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("assert", ());
     words.insert("claim", ());
     words.insert("prove", ());
-    words.insert("state", ());
-    words.insert("gc", ());
     words.insert("native", ());
     words.insert("fn", ());
     words.insert("block", ());
