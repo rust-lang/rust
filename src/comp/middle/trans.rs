@@ -342,7 +342,9 @@ fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef) -> ValueRef {
 }
 
 fn decl_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) -> ValueRef {
-    ret decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
+    let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
+    llvm::LLVMSetGC(llfn, str::buf("rust"));
+    ret llfn;
 }
 
 
