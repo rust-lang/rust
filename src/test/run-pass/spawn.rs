@@ -2,7 +2,12 @@
 
 use std;
 
-fn main() { let t = spawn child(10); std::task::join(t); }
+import std::task;
+
+fn main() {
+    let t = task::_spawn(bind child(10));
+    task::join_id(t);
+}
 
 fn child(i: int) { log_err i; assert (i == 10); }
 

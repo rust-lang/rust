@@ -99,6 +99,12 @@ align_of(rust_task *task, type_desc *t) {
   return t->align;
 }
 
+extern "C" CDECL void
+leak(rust_task *task, type_desc *t, void *thing) {
+    // Do nothing. Call this with move-mode in order to say "Don't worry rust,
+    // I'll take care of this."
+}
+
 extern "C" CDECL intptr_t
 refcount(rust_task *task, type_desc *t, intptr_t *v) {
 
@@ -283,7 +289,7 @@ task_yield(rust_task *task) {
 extern "C" CDECL intptr_t
 task_join(rust_task *task, rust_task_id tid) {
     // If the other task is already dying, we don't have to wait for it.
-    rust_task *join_task = task->kernel->get_task_by_id(tid);
+    smart_ptr<rust_task> join_task = task->kernel->get_task_by_id(tid);
     // FIXME: find task exit status and return that.
     if(!join_task) return 0;
     join_task->lock.lock();
@@ -728,7 +734,9 @@ get_task_pointer(rust_task *task, rust_task_id id) {
 
 extern "C" CDECL void
 start_task(rust_task *task, rust_task_id id) {
-    task->kernel->get_task_by_id(id)->start();
+    rust_task * target = task->kernel->get_task_by_id(id);
+
+    target->start();
 }
 
 extern "C" void *task_trampoline asm("task_trampoline");

@@ -38,3 +38,9 @@ fn test_lib_spawn() {
     fn foo() { log_err "Hello, World!"; }
     task::_spawn(foo);
 }
+
+#[test]
+fn test_lib_spawn2() {
+    fn foo(x : int) { assert(x == 42); }
+    task::_spawn(bind foo(42));
+}

@@ -145,13 +145,12 @@ template<class T>
 class smart_ptr {
     T *p;
 
-    smart_ptr(const smart_ptr &sp) : p(sp.p) {
-        if(p) { p->ref(); }
-    }
-
 public:
     smart_ptr() : p(NULL) {};
     smart_ptr(T *p) : p(p) { if(p) { p->ref(); } }
+    smart_ptr(const smart_ptr &sp) : p(sp.p) {
+        if(p) { p->ref(); }
+    }
 
     ~smart_ptr() {
         if(p) {

@@ -3,7 +3,7 @@ import cast = unsafe::reinterpret_cast;
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
     fn task_yield();
-    fn task_join(t: task) -> int;
+    fn task_join(t: task_id) -> int;
     fn unsupervise();
     fn pin_task();
     fn unpin_task();
@@ -20,6 +20,8 @@ native "rust" mod rustrt {
     fn get_task_context(id : task_id) -> *x86_registers;
     fn start_task(id : task_id);
     fn get_task_trampoline() -> u32;
+
+    fn leak[@T](thing : -T);
 }
 
 type task_id = int;
@@ -40,6 +42,10 @@ fn yield() { ret rustrt::task_yield(); }
 tag task_result { tr_success; tr_failure; }
 
 fn join(t: task) -> task_result {
+    join_id(cast(t))
+}
+
+fn join_id(t : task_id) -> task_result {
     alt rustrt::task_join(t) { 0 { tr_success } _ { tr_failure } }
 }
 
@@ -64,7 +70,7 @@ fn set_min_stack(stack_size : uint) {
 }
 
 // FIXME: make this a fn~ once those are supported.
-fn _spawn(thunk : -fn() -> ()) -> task_id {
+fn _spawn(thunk : fn() -> ()) -> task_id {
     let id = rustrt::new_task();
 
     // the order of arguments are outptr, taskptr, envptr.
@@ -79,8 +85,6 @@ fn _spawn(thunk : -fn() -> ()) -> task_id {
 
     let raw_thunk : { code: u32, env: u32 } = cast(thunk);
     (*regs).eip = raw_thunk.code;
-
-    log_err #fmt("{ %u, %u }", raw_thunk.code as uint, raw_thunk.env as uint);
 
     // okay, now we align the stack and add the environment pointer and a fake
     // return address.
@@ -101,6 +105,8 @@ fn _spawn(thunk : -fn() -> ()) -> task_id {
     *ra = rustrt::get_task_trampoline();
 
     rustrt::start_task(id);
+
+    rustrt::leak(thunk);
 
     ret id;
 }
