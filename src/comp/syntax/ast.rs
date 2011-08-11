@@ -256,7 +256,7 @@ tag stmt_ {
     stmt_crate_directive(@crate_directive);
 }
 
-tag init_op { init_assign; init_recv; init_move; }
+tag init_op { init_assign; init_move; }
 
 type initializer = {op: init_op, expr: @expr};
 

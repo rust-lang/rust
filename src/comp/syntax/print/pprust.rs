@@ -1064,7 +1064,6 @@ fn print_decl(s: &ps, decl: &@ast::decl) {
                 alt init.op {
                   ast::init_assign. { word_space(s, "="); }
                   ast::init_move. { word_space(s, "<-"); }
-                  ast::init_recv. { word_space(s, "|>"); }
                 }
                 print_expr(s, init.expr);
               }

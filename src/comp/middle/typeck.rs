@@ -2531,11 +2531,6 @@ fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
         demand::simple(fcx, init.expr.span, lty,
                        expr_ty(fcx.ccx.tcx, init.expr));
       }
-      ast::init_recv. {
-        let port_ty = ty::mk_port(fcx.ccx.tcx, lty);
-        demand::simple(fcx, init.expr.span, port_ty,
-                       expr_ty(fcx.ccx.tcx, init.expr));
-      }
     }
     ret bot;
 }

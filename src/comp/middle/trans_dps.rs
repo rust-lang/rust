@@ -551,9 +551,6 @@ fn trans_init_local(bcx: &@block_ctxt, local: &@ast::local) -> @block_ctxt {
           ast::init_move. {
             ret trans_expr(bcx, dest_move(bcx_tcx(bcx), llptr, t), init.expr);
           }
-          ast::init_recv. {
-            ret trans_recv(bcx, dest_copy(bcx_tcx(bcx), llptr, t), init.expr);
-          }
         }
       }
       none. { ret bcx; }
