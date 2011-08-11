@@ -1521,9 +1521,24 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: &ast::purity,
     }
 }
 
+type unifier = fn(fcx: &@fn_ctxt, sp: &span,
+                  expected: &ty::t, actual: &ty::t) -> ty::t;
+
 fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
-    // fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
-    //                            syntax::print::pprust::expr_to_str(expr));
+    fn dummy_unify(fcx: &@fn_ctxt, sp: &span,
+                   expected: &ty::t, actual: &ty::t) -> ty::t {
+        actual
+    }
+    ret check_expr_with_unifier(fcx, expr, dummy_unify, 0u);
+}
+fn check_expr_with(fcx: &@fn_ctxt, expr: &@ast::expr, expected: &ty::t)
+    -> bool {
+    ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
+}
+
+fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
+                           unify: &unifier, expected: &ty::t) -> bool {
+    //log_err "typechecking expr " + syntax::print::pprust::expr_to_str(expr);
 
     // A generic function to factor out common logic from call and bind
     // expressions.
@@ -1594,14 +1609,14 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         }
 
         // Check the arguments.
+        let unifier =
+            bind demand::autoderef(_, _, _, _, AUTODEREF_BLOCK_COERCE);
         let i = 0u;
         for a_opt: option::t[@ast::expr]  in args {
             alt a_opt {
               some(a) {
-                bot |= check_expr(fcx, a);
-                demand::autoderef(fcx, a.span, arg_tys.(i).ty,
-                                  expr_ty(fcx.ccx.tcx, a),
-                                  AUTODEREF_BLOCK_COERCE);
+                bot |= check_expr_with_unifier(fcx, a, unifier,
+                                               arg_tys.(i).ty);
               }
               none. { }
             }
@@ -1613,9 +1628,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
 
     fn check_assignment(fcx: &@fn_ctxt, sp: &span, lhs: &@ast::expr,
                         rhs: &@ast::expr, id: &ast::node_id) -> bool {
-        let bot = check_expr(fcx, lhs) | check_expr(fcx, rhs);
-        demand::simple(fcx, sp, expr_ty(fcx.ccx.tcx, lhs),
-                       expr_ty(fcx.ccx.tcx, rhs));
+        let t = next_ty_var(fcx);
+        let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
         write::ty_only_fixup(fcx, id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
     }
@@ -1671,18 +1685,14 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         demand::simple(fcx, local.span,
                        ty::node_id_to_type(fcx.ccx.tcx, local.node.id),
                        element_ty);
-        let typ = ty::mk_nil(fcx.ccx.tcx);
-        write::ty_only_fixup(fcx, node_id, typ);
+        write::nil_ty(fcx.ccx.tcx, node_id);
         ret bot;
     }
 
     // A generic function for checking the pred in a check
     // or if-check
     fn check_pred_expr(fcx: &@fn_ctxt, e: &@ast::expr) -> bool {
-        let bot = check_expr(fcx, e);
-        demand::simple(fcx, e.span, ty::mk_bool(fcx.ccx.tcx),
-                       expr_ty(fcx.ccx.tcx, e));
-
+        let bot = check_expr_with(fcx, e, ty::mk_bool(fcx.ccx.tcx));
 
         /* e must be a call expr where all arguments are either
            literals or slots */
@@ -1732,10 +1742,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         let if_t =
             alt elsopt {
               some(els) {
-                els_bot = check_expr(fcx, els);
                 let thn_t = block_ty(fcx.ccx.tcx, thn);
+                els_bot = check_expr_with(fcx, els, thn_t);
                 let elsopt_t = expr_ty(fcx.ccx.tcx, els);
-                demand::simple(fcx, sp, thn_t, elsopt_t);
                 if !ty::type_is_bot(fcx.ccx.tcx, elsopt_t) {
                     elsopt_t
                 } else { thn_t }
@@ -1769,17 +1778,13 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_binary(binop, lhs, rhs) {
-        bot = check_expr(fcx, lhs);
-        if ast::lazy_binop(binop) {
-            check_expr(fcx, rhs);
-        } else {
-            bot |= check_expr(fcx, rhs);
-        }
+        let lhs_t = next_ty_var(fcx);
+        bot = check_expr_with(fcx, lhs, lhs_t);
 
-        let lhs_t = expr_ty(tcx, lhs);
-        let rhs_t = expr_ty(tcx, rhs);
+        let unifier = bind demand::autoderef(_, _, _, _, AUTODEREF_OK);
+        let rhs_bot = check_expr_with_unifier(fcx, rhs, unifier, lhs_t);
+        if !ast::lazy_binop(binop) { bot |= rhs_bot; }
 
-        demand::autoderef(fcx, rhs.span, lhs_t, rhs_t, AUTODEREF_OK);
         let deref_t = do_autoderef(fcx, expr.span, lhs_t);
         check_binop_type_compat(fcx, expr.span, deref_t, binop);
 
@@ -1864,9 +1869,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         alt expr_opt {
           none. {/* do nothing */ }
           some(e) {
-            check_expr(fcx, e);
-            let ety = expr_ty(tcx, e);
-            demand::simple(fcx, e.span, ty::mk_str(tcx), ety);
+            check_expr_with(fcx, e, ty::mk_str(tcx));
           }
         }
         write::bot_ty(tcx, id);
@@ -1882,15 +1885,12 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
                 tcx.sess.span_fatal(expr.span,
                                     "ret; in function returning non-nil");
             }
-            write::bot_ty(tcx, id);
           }
           some(e) {
-            check_expr(fcx, e);
-            demand::simple(fcx, expr.span, fcx.ret_ty,
-                           expr_ty(tcx, e));
-            write::bot_ty(tcx, id);
+            check_expr_with(fcx, e, fcx.ret_ty);
           }
         }
+        write::bot_ty(tcx, id);
       }
       ast::expr_put(expr_opt) {
         require_impure(tcx.sess, fcx.purity, expr.span);
@@ -1906,9 +1906,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
             }
           }
           some(e) {
-            bot = check_expr(fcx, e);
-            demand::simple(fcx, expr.span, fcx.ret_ty,
-                           expr_ty(tcx, e));
+            bot = check_expr_with(fcx, e, fcx.ret_ty);
           }
         }
         write::nil_ty(tcx, id);
@@ -1916,9 +1914,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       ast::expr_be(e) {
         // FIXME: prove instead of assert
         assert (ast::is_call_expr(e));
-        check_expr(fcx, e);
+        check_expr_with(fcx, e, fcx.ret_ty);
         bot = true;
-        demand::simple(fcx, e.span, fcx.ret_ty, expr_ty(tcx, e));
         write::nil_ty(tcx, id);
       }
       ast::expr_log(l, e) {
@@ -1937,9 +1934,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         bot = check_expr(fcx, ast::ternary_to_if(expr));
       }
       ast::expr_assert(e) {
-        bot = check_expr(fcx, e);
-        let ety = expr_ty(tcx, e);
-        demand::simple(fcx, expr.span, ty::mk_bool(tcx), ety);
+        bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         write::nil_ty(tcx, id);
       }
       ast::expr_move(lhs, rhs) {
@@ -1962,34 +1957,23 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       }
       ast::expr_send(lhs, rhs) {
         require_impure(tcx.sess, fcx.purity, expr.span);
-        bot = check_expr(fcx, lhs) | check_expr(fcx, rhs);
-        let rhs_t = expr_ty(tcx, rhs);
+        let rhs_t = next_ty_var(fcx);
         let chan_t = ty::mk_chan(tcx, rhs_t);
-        let lhs_t = expr_ty(tcx, lhs);
-        alt structure_of(fcx, expr.span, lhs_t) {
-          ty::ty_chan(it) { }
-          _ {
-            let s = #fmt("mismatched types: expected chan but found %s",
-                         ty_to_str(tcx, lhs_t));
-            tcx.sess.span_fatal(expr.span, s);
-          }
-        }
-        demand::simple(fcx, expr.span, chan_t, lhs_t);
+        bot = check_expr_with(fcx, lhs, chan_t) |
+              check_expr_with(fcx, rhs, rhs_t);
         write::ty_only_fixup(fcx, id, chan_t);
       }
       ast::expr_recv(lhs, rhs) {
         require_impure(tcx.sess, fcx.purity, expr.span);
-        bot = check_expr(fcx, lhs) | check_expr(fcx, rhs);
-        let item_t = expr_ty(tcx, rhs);
-        let port_t = ty::mk_port(tcx, item_t);
-        demand::simple(fcx, expr.span, port_t, expr_ty(tcx, lhs));
-        write::ty_only_fixup(fcx, id, item_t);
+        let rhs_t = next_ty_var(fcx);
+        let port_t = ty::mk_port(tcx, rhs_t);
+        bot = check_expr_with(fcx, lhs, port_t) |
+              check_expr_with(fcx, rhs, rhs_t);
+        write::ty_only_fixup(fcx, id, rhs_t);
       }
       ast::expr_if(cond, thn, elsopt) {
-        bot = check_expr(fcx, cond) |
+        bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
               check_then_else(fcx, thn, elsopt, id, expr.span);
-        demand::simple(fcx, cond.span, ty::mk_bool(tcx),
-                       expr_ty(tcx, cond));
       }
       ast::expr_for(decl, seq, body) {
         bot = check_expr(fcx, seq);
@@ -2021,24 +2005,19 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
                                      body, id);
       }
       ast::expr_while(cond, body) {
-        bot = check_expr(fcx, cond);
+        bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
         check_block(fcx, body);
-        demand::simple(fcx, cond.span, ty::mk_bool(tcx),
-                       expr_ty(tcx, cond));
-        let typ = ty::mk_nil(tcx);
-        write::ty_only_fixup(fcx, id, typ);
+        write::ty_only_fixup(fcx, id, ty::mk_nil(tcx));
       }
       ast::expr_do_while(body, cond) {
-        bot = check_expr(fcx, cond);
-        check_block(fcx, body);
-        let typ = block_ty(tcx, body);
-        write::ty_only_fixup(fcx, id, typ);
+        bot = check_expr(fcx, cond) | check_block(fcx, body);
+        write::ty_only_fixup(fcx, id, block_ty(tcx, body));
       }
       ast::expr_alt(expr, arms) {
         bot = check_expr(fcx, expr);
+
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
-
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm  in arms {
             let id_map = ast::pat_id_map(arm.pats.(0));
@@ -2052,12 +2031,7 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         for arm: ast::arm  in arms {
             if !check_block(fcx, arm.block) { arm_non_bot = true; }
             let bty = block_ty(tcx, arm.block);
-
-            // Failing alt arms don't need to have a matching type
-            if !ty::type_is_bot(tcx, bty) {
-                result_ty =
-                    demand::simple(fcx, arm.block.span, result_ty, bty);
-            }
+            result_ty = demand::simple(fcx, arm.block.span, result_ty, bty);
         }
         bot |= !arm_non_bot;
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
@@ -2076,16 +2050,11 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
       }
       ast::expr_block(b) {
         bot = check_block(fcx, b);
-        alt b.node.expr {
-          some(expr) {
-            let typ = expr_ty(tcx, expr);
-            write::ty_only_fixup(fcx, id, typ);
-          }
-          none. {
-            let typ = ty::mk_nil(tcx);
-            write::ty_only_fixup(fcx, id, typ);
-          }
-        }
+        let typ = alt b.node.expr {
+          some(expr) { expr_ty(tcx, expr) }
+          none. { ty::mk_nil(tcx) }
+        };
+        write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_bind(f, args) {
         // Call the generic checker.
@@ -2216,17 +2185,9 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         write::ty_only_fixup(fcx, id, t_1);
       }
       ast::expr_vec(args, mut, kind) {
-        let t: ty::t;
-        if ivec::len[@ast::expr](args) == 0u {
-            t = next_ty_var(fcx);
-        } else {
-            bot |= check_expr(fcx, args.(0));
-            t = expr_ty(tcx, args.(0));
-        }
+        let t: ty::t = next_ty_var(fcx);;
         for e: @ast::expr in args {
-            bot |= check_expr(fcx, e);
-            let expr_t = expr_ty(tcx, e);
-            demand::simple(fcx, expr.span, t, expr_t);
+            bot |= check_expr_with(fcx, e, t);
         }
         let typ;
         alt kind {
@@ -2350,29 +2311,13 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         }
       }
       ast::expr_port(typ) {
-        let t = next_ty_var(fcx);
-        alt ast_ty_to_ty_crate_infer(fcx.ccx, typ) {
-          some(_t) {
-            demand::simple(fcx, expr.span, _t, t);
-          }
-          none. { }
-        }
-        let pt = ty::mk_port(tcx, t);
+        let pt = ty::mk_port(tcx, ast_ty_to_ty_crate_tyvar(fcx, typ));
         write::ty_only_fixup(fcx, id, pt);
       }
       ast::expr_chan(x) {
-        check_expr(fcx, x);
-        let port_t = expr_ty(tcx, x);
-        alt structure_of(fcx, expr.span, port_t) {
-          ty::ty_port(subtype) {
-            let ct = ty::mk_chan(tcx, subtype);
-            write::ty_only_fixup(fcx, id, ct);
-          }
-          _ {
-            tcx.sess.span_fatal(expr.span,
-                                "bad port type: " + ty_to_str(tcx, port_t));
-          }
-        }
+        let t = next_ty_var(fcx);
+        check_expr_with(fcx, x, ty::mk_port(tcx, t));
+        write::ty_only_fixup(fcx, id, ty::mk_chan(tcx, t));
       }
       ast::expr_anon_obj(ao) {
         let fields: [ast::anon_obj_field] = ~[];
@@ -2512,6 +2457,8 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
     if bot {
         write::ty_only_fixup(fcx, expr.id, ty::mk_bot(tcx));
     }
+
+    unify(fcx, expr.span, expected, expr_ty(tcx, expr));
     ret bot;
 }
 
@@ -2531,19 +2478,8 @@ fn get_obj_info(ccx: &@crate_ctxt) -> option::t[obj_info] {
 
 fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
                           init: &ast::initializer) -> bool {
-    let bot = check_expr(fcx, init.expr);
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.expr.span, nid));
-    alt init.op {
-      ast::init_assign. {
-        demand::simple(fcx, init.expr.span, lty,
-                       expr_ty(fcx.ccx.tcx, init.expr));
-      }
-      ast::init_move. {
-        demand::simple(fcx, init.expr.span, lty,
-                       expr_ty(fcx.ccx.tcx, init.expr));
-      }
-    }
-    ret bot;
+    ret check_expr_with(fcx, init.expr, lty);
 }
 
 fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
