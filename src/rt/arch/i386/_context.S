@@ -78,4 +78,8 @@ swap_registers:
 .globl task_trampoline
 task_trampoline:
     // This gets set up by std::task::_spawn.
+#ifdef __APPLE__
     call _task_exit
+#else
+    call task_exit
+#endif

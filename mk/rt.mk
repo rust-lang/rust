@@ -33,7 +33,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
 
 RUNTIME_LL :=
 
-RUNTIME_S := rt/arch/i386/_context.s
+RUNTIME_S := rt/arch/i386/_context.S
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
@@ -67,14 +67,14 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash \
                 -I $(S)src/rt/arch/i386 -I $(S)src/rt/libuv/include
-RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.s=.o)
+RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o) $(RUNTIME_LL:.ll=.o) $(RUNTIME_S:.S=.o)
 RUNTIME_LIBS := rt/libuv/uv.a
 
 rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
-rt/%.o: rt/%.s $(MKFILES)
+rt/%.o: rt/%.S $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
