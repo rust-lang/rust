@@ -45,7 +45,7 @@ fn path_to_ident(pth: &path) -> option::t[ident] {
 type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */
-tag arb_depth[T] { leaf(T); seq(vec[arb_depth[T]], span); }
+tag arb_depth[T] { leaf(T); seq(@[arb_depth[T]], span); }
 
 
 tag matchable {
@@ -118,11 +118,11 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
     ret {fixed: elts, rep: none};
 }
 
-fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &vec[T]) ->
-   option::t[vec[U]] {
-    let res = vec::alloc[U](vec::len(v));
+fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &[T]) ->
+   option::t[[U]] {
+    let res = ~[];
     for elem: T  in v {
-        alt f(elem) { none. { ret none; } some(fv) { res += [fv]; } }
+        alt f(elem) { none. { ret none; } some(fv) { res += ~[fv]; } }
     }
     ret some(res);
 }
@@ -131,9 +131,9 @@ fn a_d_map(ad: &arb_depth[matchable], f: &selector) -> match_result {
     alt ad {
       leaf(x) { ret f(x); }
       seq(ads, span) {
-        alt option_flatten_map(bind a_d_map(_, f), ads) {
+        alt option_flatten_map(bind a_d_map(_, f), *ads) {
           none. { ret none; }
-          some(ts) { ret some(seq(ts, span)); }
+          some(ts) { ret some(seq(@ts, span)); }
         }
       }
     }
@@ -200,7 +200,7 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
 /* use the bindings on the body to generate the expanded code */
 
 fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
-    let idx_path: @mutable vec[uint] = @mutable [];
+    let idx_path: @mutable [uint] = @mutable ~[];
     let afp = default_ast_fold();
     let f_pre =
         {fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
@@ -220,7 +220,7 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
 
 
 /* helper: descend into a matcher */
-fn follow(m: &arb_depth[matchable], idx_path: @mutable vec[uint]) ->
+fn follow(m: &arb_depth[matchable], idx_path: @mutable [uint]) ->
    arb_depth[matchable] {
     let res: arb_depth[matchable] = m;
     for idx: uint  in *idx_path {
@@ -233,7 +233,7 @@ fn follow(m: &arb_depth[matchable], idx_path: @mutable vec[uint]) ->
 }
 
 fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t[arb_depth[matchable]],
-                    idx_path: @mutable vec[uint]) -> option::t[matchable] {
+                    idx_path: @mutable [uint]) -> option::t[matchable] {
     alt mmaybe {
       none. { ret none }
       some(m) {
@@ -271,7 +271,7 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
 
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
-fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     recur: fn(&@expr) -> @expr , exprs: [@expr])
     -> [@expr] {
     alt elts_to_ell(cx, exprs) {
@@ -290,10 +290,10 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
                   seq(ms, _) {
                     alt repeat {
                       none. {
-                        repeat = some({rep_count: vec::len(ms), name: fv});
+                        repeat = some({rep_count: ivec::len(*ms), name: fv});
                       }
                       some({rep_count: old_len, name: old_name}) {
-                        let len = vec::len(ms);
+                        let len = ivec::len(*ms);
                         if old_len != len {
                             let msg = #fmt("'%s' occurs %u times, but ", fv,
                                            len) + #fmt("'%s' occurs %u times",
@@ -315,9 +315,9 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
                 /* Whew, we now know how how many times to repeat */
                 let idx: uint = 0u;
                 while idx < rc {
-                    vec::push(*idx_path, idx);
+                    *idx_path += ~[idx];
                     res += ~[recur(repeat_me)]; // whew!
-                    vec::pop(*idx_path);
+                    ivec::pop(*idx_path);
                     idx += 1u;
                 }
               }
@@ -332,7 +332,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
 
 
 // substitute, in a position that's required to be an ident
-fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     i: &ident, fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
@@ -342,7 +342,7 @@ fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
 }
 
 
-fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    p: &path_, fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
     if ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u { ret p; }
@@ -357,7 +357,7 @@ fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
 }
 
 
-fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    e: &ast::expr_, fld: ast_fold,
                    orig: fn(&ast::expr_, ast_fold) -> ast::expr_ ) ->
    ast::expr_ {
@@ -385,7 +385,7 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
         }
 }
 
-fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    t: &ast::ty_, fld: ast_fold,
                    orig: fn(&ast::ty_, ast_fold) -> ast::ty_ ) -> ast::ty_ {
     ret alt t {
@@ -409,7 +409,7 @@ fn transcribe_type(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
 /* for parsing reasons, syntax variables bound to blocks must be used like
 `{v}` */
 
-fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable vec[uint],
+fn transcribe_block(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     blk: &blk_, fld: ast_fold,
                     orig: fn(&blk_, ast_fold) -> blk_ ) -> blk_ {
     ret alt block_to_ident(blk) {
@@ -578,14 +578,6 @@ fn p_t_s_r_mac(cx: &ext_ctxt, mac: &ast::mac, s: &selector, b: &binders) {
     }
 }
 
-/* TODO: move this to vec.rs */
-
-fn ivec_to_vec[T](v: &[T]) -> vec[T] {
-    let rs: vec[T] = vec::alloc[T](ivec::len(v));
-    for ve: T  in v { rs += [ve]; }
-    ret rs;
-}
-
 fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
                     s: &selector, b: &binders) {
     fn select(cx: &ext_ctxt, repeat_me: @expr, offset: uint, m: &matchable) ->
@@ -602,7 +594,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
                     }
                     // using repeat_me.span is a little wacky, but the
                     // error we want to report is one in the macro def
-                    some(seq(elts, repeat_me.span))
+                    some(seq(@ivec::from_vec(elts), repeat_me.span))
                   }
                   _ { none }
                 }
