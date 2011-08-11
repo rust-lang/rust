@@ -973,7 +973,7 @@ components, it refers to an item.
 Every item has a @emph{canonical path} within its crate, but the path naming
 an item is only meaningful within a given crate. There is no global namespace
 across crates; an item's canonical path merely identifies it within the
-crate. @xref{Ref.Comp.Crate} 
+crate. @xref{Ref.Comp.Crate}.
 
 Path components are usually identifiers. @xref{Ref.Lex.Ident}. The last
 component of a path may also have trailing explicit type arguments.
