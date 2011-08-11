@@ -26,8 +26,6 @@ import lib::llvm::llvm::TypeRef;
 
 type upcalls =
     {grow_task: ValueRef,
-     trace_word: ValueRef,
-     trace_str: ValueRef,
      new_port: ValueRef,
      del_port: ValueRef,
      new_chan: ValueRef,
@@ -85,8 +83,6 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
 
     let empty_vec: [TypeRef] = ~[];
     ret @{grow_task: dv("grow_task", ~[T_size_t()]),
-          trace_word: dv("trace_word", ~[T_int()]),
-          trace_str: dv("trace_str", ~[T_ptr(T_i8())]),
           new_port: d("new_port", ~[T_size_t()], T_opaque_port_ptr()),
           del_port: dv("del_port", ~[T_opaque_port_ptr()]),
           new_chan:

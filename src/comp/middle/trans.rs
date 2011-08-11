@@ -6761,19 +6761,6 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap[str, ValueRef] {
     ret intrinsics;
 }
 
-fn trace_str(cx: &@block_ctxt, s: str) {
-    cx.build.Call(bcx_ccx(cx).upcalls.trace_str,
-                  ~[cx.fcx.lltaskptr, C_cstr(bcx_ccx(cx), s)]);
-}
-
-fn trace_word(cx: &@block_ctxt, v: ValueRef) {
-    cx.build.Call(bcx_ccx(cx).upcalls.trace_word, ~[cx.fcx.lltaskptr, v]);
-}
-
-fn trace_ptr(cx: &@block_ctxt, v: ValueRef) {
-    trace_word(cx, cx.build.PtrToInt(v, T_int()));
-}
-
 fn trap(bcx: &@block_ctxt) {
     let v: [ValueRef] = ~[];
     alt bcx_ccx(bcx).intrinsics.find("llvm.trap") {

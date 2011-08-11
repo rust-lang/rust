@@ -70,18 +70,6 @@ upcall_log_istr(rust_task *task, uint32_t level, rust_ivec *str) {
     task->sched->log(task, level, "rust: %s", buf);
 }
 
-extern "C" CDECL void
-upcall_trace_word(rust_task *task, uintptr_t i) {
-    LOG_UPCALL_ENTRY(task);
-    task->sched->log(task, 2, "trace: 0x%" PRIxPTR "", i, i, (char) i);
-}
-
-extern "C" CDECL void
-upcall_trace_str(rust_task *task, char const *c) {
-    LOG_UPCALL_ENTRY(task);
-    task->sched->log(task, 2, "trace: %s", c);
-}
-
 extern "C" CDECL rust_port*
 new_port(rust_task *task, size_t unit_sz);
 extern "C" CDECL rust_port*

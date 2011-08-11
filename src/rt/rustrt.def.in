@@ -113,8 +113,6 @@ upcall_sleep
 upcall_start_task
 upcall_take_task
 upcall_take_chan
-upcall_trace_str
-upcall_trace_word
 upcall_vec_append
 upcall_yield
 vec_alloc
