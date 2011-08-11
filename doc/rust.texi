@@ -1877,7 +1877,7 @@ iter range(int lo, int hi) -> int @{
 @}
 
 let sum: int = 0;
-for each (int x in range(0,100)) @{
+for each (x: int in range(0,100)) @{
     sum += x;
 @}
 @end example
