@@ -1305,14 +1305,14 @@ An example function that accepts an alias parameter:
 @example
 type point3d = @{x: int, y: int, z: int@};
 
-fn extract_z(&point3d p) -> int @{
+fn extract_z(p: &point3d) -> int @{
     ret p.z;
 @}
 @end example
 
 An example function that accepts an alias to a mutable value:
 @example
-fn incr(& mutable int i) @{
+fn incr(i: &mutable int) @{
     i = i + 1;
 @}
 @end example
@@ -1360,10 +1360,10 @@ indicated with the unary @emph{star} operator @code{*}. Examples of such
 
 An example of an explicit-dereference operation performed on box values:
 @example
-fn takes_boxed(@@int b) @{
+fn takes_boxed(b: @@int) @{
 @}
 
-fn takes_unboxed(int b) @{
+fn takes_unboxed(b: int) @{
 @}
 
 fn main() @{
@@ -1716,7 +1716,7 @@ mod foo @{
         helper(3, 4);
     @}
 
-    fn helper(int x, int y) @{
+    fn helper(x: int, y: int) @{
         @dots{}
     @}
 @}
@@ -1754,7 +1754,7 @@ during compilation, returning the implicit @code{()} value.
 
 An example of a function:
 @example
-fn add(int x, int y) -> int @{
+fn add(x: int, y: int) -> int @{
     ret x + y;
 @}
 @end example
@@ -1762,7 +1762,7 @@ fn add(int x, int y) -> int @{
 A special kind of function can be declared with a @code{!} character where the
 output slot type would normally be. For example:
 @example
-fn my_err(str s) -> ! @{
+fn my_err(s: str) -> ! @{
     log s;
     fail;
 @}
@@ -1781,7 +1781,7 @@ with a @code{ret}, @code{be}, or diverging expression. So, if @code{my_err}
 were declared without the @code{!} annotation, the following code would not
 typecheck:
 @example
-fn f(int i) -> int @{
+fn f(i: int) -> int @{
    if (i == 42) @{
      ret 42;
    @}
@@ -1849,7 +1849,7 @@ each} loop or as the argument in a @code{put each} expression.
 
 An example of an iterator:
 @example
-iter range(int lo, int hi) -> int @{
+iter range(lo: int, hi: int) -> int @{
     let i: int = lo;
     while (i < hi) @{
         put i;
@@ -1881,16 +1881,16 @@ constructor function when used in value context (such as a call).
 
 Example of an object item:
 @example
-obj counter(int state) @{
+obj counter(state: @@mutable int) @{
     fn incr() @{
-       state += 1;
+       *state += 1;
     @}
     fn get() -> int @{
-       ret state;
+       ret *state;
     @}
 @}
 
-let c: counter = counter(1);
+let c: counter = counter(@@mutable 1);
 
 c.incr();
 c.incr();
@@ -2287,7 +2287,7 @@ slot. @xref{Ref.Item.Fn}.
 
 An example of a @code{fn} type:
 @example
-fn add(int x, int y) -> int @{
+fn add(x: int, y: int) -> int @{
   ret x + y;
 @}
 
@@ -2308,7 +2308,7 @@ constraints and an output slot. @xref{Ref.Item.Iter}.
 
 An example of an @code{iter} type:
 @example
-iter range(int x, int y) -> int @{
+iter range(x: int, y: int) -> int @{
   while (x < y) @{
     put x;
     x += 1;
@@ -2433,23 +2433,23 @@ a client function using both items via the object type:
 @example
 
 type taker =
-    state obj @{
+    obj @{
         fn take(int);
     @};
 
-obj adder(mutable int x) @{
-    fn take(int y) @{
-        x += y;
+obj adder(x: @@mutable int) @{
+    fn take(y: int) @{
+        *x += y;
     @}
 @}
 
-obj sender(chan[int] c) @{
-    fn take(int z) @{
+obj sender(c: chan[int]) @{
+    fn take(z: int) @{
         c <| z;
     @}
 @}
 
-fn give_ints(taker t) @{
+fn give_ints(t: taker) @{
     t.take(1);
     t.take(2);
     t.take(3);
@@ -2457,7 +2457,7 @@ fn give_ints(taker t) @{
 
 let p: port[int] = port();
 
-let t1: taker = adder(0);
+let t1: taker = adder(@@mutable 0);
 let t2: taker = sender(chan(p));
 
 give_ints(t1);
@@ -2939,7 +2939,7 @@ The result of a @code{spawn} expression is a @code{task} value.
 
 An example of a @code{spawn} expression:
 @example
-fn helper(chan[u8] out) @{
+fn helper(out: chan[u8]) @{
     // do some work.
     out <| result;
 @}
@@ -3033,7 +3033,7 @@ and residual arguments that was specified during the binding.
 
 An example of a @code{bind} expression:
 @example
-fn add(int x, int y) -> int @{
+fn add(x: int, y: int) -> int @{
     ret x + y;
 @}
 type single_param_fn = fn(int) -> int;
@@ -3070,7 +3070,7 @@ and transfers control to the caller frame.
 
 An example of a @code{ret} expression:
 @example
-fn max(int a, int b) -> int @{
+fn max(a: int, b: int) -> int @{
    if (a > b) @{
       ret a;
    @}
@@ -3094,7 +3094,7 @@ last expression in a block.
 
 An example of a @code{be} expression:
 @example
-fn print_loop(int n) @{
+fn print_loop(n: int) @{
   if (n <= 0) @{
     ret;
   @} else @{
@@ -3182,7 +3182,7 @@ diagnostic buffer.
 
 An example of a @code{note} expression:
 @example
-fn read_file_lines(&str path) -> vec[str] @{
+fn read_file_lines(path: &str) -> vec[str] @{
     note path;
     let r: vec[str];
     let f: file = open_read(path);
@@ -3514,11 +3514,11 @@ and statically comparing implied states and their
 specifications. @xref{Ref.Typestate}.
 
 @example
-pred even(&int x) -> bool @{
+pred even(x: &int) -> bool @{
     ret x & 1 == 0;
 @}
 
-fn print_even(int x) : even(x) @{
+fn print_even(x: int) : even(x) @{
     print(x);
 @}
 
