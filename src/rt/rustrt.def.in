@@ -27,7 +27,10 @@ do_gc
 drop_chan
 drop_port
 get_port_id
+get_task_context
 get_task_id
+get_task_pointer
+get_task_trampoline
 get_time
 hack_allow_leaks
 ivec_copy_from_buf
@@ -40,6 +43,7 @@ last_os_error
 nano_time
 new_chan
 new_port
+new_task
 pin_task
 port_recv
 unpin_task
@@ -61,6 +65,7 @@ set_min_stack
 sched_threads
 size_of
 squareroot
+start_task
 str_alloc
 str_buf
 str_byte_len

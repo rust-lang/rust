@@ -18,9 +18,9 @@ struct registers_t {
 };
 
 class context {
+public:
   registers_t regs;
 
-public:
   context();
 
   context *next;

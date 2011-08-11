@@ -52,13 +52,6 @@ del_stk(rust_task *task, stk_seg *stk)
 }
 
 // Tasks
-
-// FIXME (issue #31): ifdef by platform. This is getting absurdly
-// x86-specific.
-
-size_t const n_callee_saves = 4;
-size_t const callee_save_fp = 0;
-
 rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
                      rust_task *spawner, const char *name) :
     ref_count(1),
@@ -115,21 +108,24 @@ struct spawn_args {
 };
 
 extern "C" CDECL
-void task_start_wrapper(spawn_args *a)
-{
-    rust_task *task = a->task;
-    int rval = 42;
-
-    a->f(&rval, task, a->a3, a->a4);
-
+void task_exit(void *env, int rval, rust_task *task) {
     LOG(task, task, "task exited with value %d", rval);
-
     task->die();
     task->lock.lock();
     task->notify_tasks_waiting_to_join();
     task->lock.unlock();
 
     task->yield(1);
+}
+
+extern "C" CDECL
+void task_start_wrapper(spawn_args *a)
+{
+    rust_task *task = a->task;
+    int rval = 42;
+
+    a->f(&rval, task, a->a3, a->a4);
+    task_exit(NULL, rval, task);
 }
 
 void
@@ -154,6 +150,11 @@ rust_task::start(uintptr_t spawnee_fn,
 
     ctx.call((void *)task_start_wrapper, a, sp);
 
+    this->start();
+}
+
+void rust_task::start()
+{
     yield_timer.reset_us(0);
     transition(&sched->newborn_tasks, &sched->running_tasks);
     sched->lock.signal();

@@ -707,6 +707,37 @@ get_task_id(rust_task *task) {
     return task->id;
 }
 
+extern "C" CDECL rust_task_id
+new_task(rust_task *task) {
+    return task->kernel->create_task(task, NULL);
+}
+
+extern "C" CDECL registers_t *
+get_task_context(rust_task *task, rust_task_id id) {
+    registers_t *regs = &task->kernel->get_task_by_id(id)->ctx.regs;
+    // This next line is a little dangerous.. It means we can only safely call
+    // this when starting a task.
+    regs->esp = task->rust_sp;
+    return regs;
+}
+
+extern "C" CDECL rust_task *
+get_task_pointer(rust_task *task, rust_task_id id) {
+    return task->kernel->get_task_by_id(id);
+}
+
+extern "C" CDECL void
+start_task(rust_task *task, rust_task_id id) {
+    task->kernel->get_task_by_id(id)->start();
+}
+
+extern "C" void *task_trampoline asm("task_trampoline");
+
+extern "C" CDECL void **
+get_task_trampoline(rust_task *task) {
+    return &task_trampoline;
+}
+
 extern "C" CDECL rust_chan *
 clone_chan(rust_task *task, rust_chan *chan) {
     return chan->clone(task);

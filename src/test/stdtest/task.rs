@@ -33,3 +33,8 @@ fn test_send_recv() {
     assert (task::recv(p) == 10);
 }
 
+#[test]
+fn test_lib_spawn() {
+    fn foo() { log_err "Hello, World!"; }
+    task::_spawn(foo);
+}
