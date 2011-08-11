@@ -571,7 +571,6 @@ native "cdecl" mod llvm = "rustllvm" {
     fn LLVMBuildInvoke(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
                        NumArgs: uint, Then: BasicBlockRef,
                        Catch: BasicBlockRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildUnwind(B: BuilderRef) -> ValueRef;
     fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
     /* Add a case to the switch instruction */
@@ -947,12 +946,6 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         *terminated = true;
         ret llvm::LLVMBuildInvoke(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
                                   Then, Catch, str::buf(""));
-    }
-
-    fn Unwind() -> ValueRef {
-        assert (!*terminated);
-        *terminated = true;
-        ret llvm::LLVMBuildUnwind(B);
     }
 
     fn Unreachable() -> ValueRef {
