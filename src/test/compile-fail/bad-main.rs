@@ -1,6 +1,3 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-// error-pattern: bad type signature
+// error-pattern:Wrong type in main function
 
 fn main(x: int) { }
