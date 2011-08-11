@@ -17,7 +17,7 @@ fn test_simple() {
      */
 
     let v: vec[u8] = ivec::to_vec(str::bytes(s1));
-    let s2: str = str::from_bytes(v);
+    let s2: str = str::unsafe_from_bytes(v);
     let i: uint = 0u;
     let n1: uint = str::byte_len(s1);
     let n2: uint = vec::len[u8](v);

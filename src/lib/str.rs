@@ -193,9 +193,6 @@ fn bytes(s: str) -> [u8] {
     ret ivec::unsafe::from_buf(ptr, byte_len(s));
 }
 
-fn from_bytes(v: vec[u8]) -> str { ret rustrt::str_from_vec(v); }
-
-
 // FIXME temp thing
 fn unsafe_from_bytes(v: vec[mutable? u8]) -> str {
     ret rustrt::str_from_vec(v);

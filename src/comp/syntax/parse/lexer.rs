@@ -177,11 +177,11 @@ fn scan_exponent(rdr: &reader) -> option::t[str] {
     let c = rdr.curr();
     let rslt = "";
     if c == 'e' || c == 'E' {
-        rslt += str::from_bytes([c as u8]);
+        rslt += str::unsafe_from_bytes([c as u8]);
         rdr.bump();
         c = rdr.curr();
         if c == '-' || c == '+' {
-            rslt += str::from_bytes([c as u8]);
+            rslt += str::unsafe_from_bytes([c as u8]);
             rdr.bump();
         }
         let exponent = scan_dec_digits(rdr);
@@ -195,7 +195,7 @@ fn scan_dec_digits(rdr: &reader) -> str {
     let c = rdr.curr();
     let rslt: str = "";
     while is_dec_digit(c) || c == '_' {
-        if c != '_' { rslt += str::from_bytes([c as u8]); }
+        if c != '_' { rslt += str::unsafe_from_bytes([c as u8]); }
         rdr.bump();
         c = rdr.curr();
     }

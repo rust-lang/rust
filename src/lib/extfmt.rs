@@ -358,7 +358,7 @@ mod rt {
     fn str_init_elt(c: char, n_elts: uint) -> str {
         let svec = vec::init_elt[u8](c as u8, n_elts);
 
-        ret str::from_bytes(svec);
+        ret str::unsafe_from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(cv: &conv, s: str, mode: pad_mode) -> str {
