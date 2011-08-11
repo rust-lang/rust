@@ -43,4 +43,9 @@ fn main() {
 
     assert (#transcr_mixed[10, 5, 4, 3, 2, 1] == 210);
 
+    #macro[[#surround[pre, [xs, ...], post],
+            [pre, xs, ..., post]]];
+
+    assert (#surround[1, [2,3,4], 5] == [1,2,3,4,5]);
+
 }

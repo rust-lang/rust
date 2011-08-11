@@ -92,19 +92,21 @@ type match_result = option::t[arb_depth[matchable]];
 type selector = fn(&matchable) -> match_result ;
 
 fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
-    -> {fixed: [@expr], rep: option::t[@expr]} {
+    -> {pre: [@expr], rep: option::t[@expr], post: [@expr]} {
     let idx: uint = 0u;
+    let res = none;
     for elt: @expr  in elts {
         alt elt.node {
           expr_mac(m) {
             alt m.node {
               ast::mac_ellipsis. {
-                let last = ivec::len(elts) - 1u;
-                if idx != last {
-                    cx.span_fatal(m.span, "ellipses must occur last");
+                if res != none {
+                    cx.span_fatal(m.span, "only one ellipsis allowed");
                 }
-                ret {fixed: ivec::slice(elts, 0u, last - 1u),
-                     rep: some(elts.(last - 1u))};
+                res = some({pre: ivec::slice(elts, 0u, idx - 1u),
+                            rep: some(elts.(idx - 1u)),
+                            post: ivec::slice(elts, idx + 1u,
+                                              ivec::len(elts))});
               }
               _ { }
             }
@@ -113,7 +115,10 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
         }
         idx += 1u;
     }
-    ret {fixed: elts, rep: none};
+    ret alt res {
+      some(val) { val }
+      none. { {pre: elts, rep: none, post: ~[]} }
+    }
 }
 
 fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &[T]) ->
@@ -275,8 +280,8 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                     recur: fn(&@expr) -> @expr , exprs: [@expr])
     -> [@expr] {
     alt elts_to_ell(cx, exprs) {
-      {fixed: fixed, rep: repeat_me_maybe} {
-        let res = ivec::map(recur, fixed);
+      {pre: pre, rep: repeat_me_maybe, post: post} {
+        let res = ivec::map(recur, pre);
         alt repeat_me_maybe {
           none. {}
           some(repeat_me) {
@@ -324,6 +329,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             }
           }
         }
+        res += ivec::map(recur, post);
         ret res;
       }
     }
@@ -440,14 +446,25 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
           expr_path(p_pth) { p_t_s_r_path(cx, p_pth, s, b); }
           expr_vec(p_elts, _, _) {
             alt elts_to_ell(cx, p_elts) {
-              {fixed: fixed, rep: some(repeat_me)} {
-                if(ivec::len(fixed) > 0u) {
-                    p_t_s_r_actual_vector(cx, fixed, true, s, b);
+              {pre: pre, rep: some(repeat_me), post: post} {
+                p_t_s_r_length(cx, ivec::len(pre) + ivec::len(post),
+                               true, s, b);
+                if(ivec::len(pre) > 0u) {
+                    p_t_s_r_actual_vector(cx, pre, true, s, b);
                 }
-                p_t_s_r_ellipses(cx, repeat_me, ivec::len(fixed), s, b);
+                p_t_s_r_ellipses(cx, repeat_me, ivec::len(pre), s, b);
+
+                if(ivec::len(post) > 0u) {
+                    cx.span_unimpl(e.span,
+                                   "matching after `...` not yet supported");
+                }
               }
-              {fixed: fixed, rep: none.} {
-                p_t_s_r_actual_vector(cx, fixed, false, s, b);
+              {pre: pre, rep: none., post: post} {
+                if post != ~[] {
+                    cx.bug("elts_to_ell provided an invalid result");
+                }
+                p_t_s_r_length(cx, ivec::len(pre), false, s, b);
+                p_t_s_r_actual_vector(cx, pre, false, s, b);
               }
             }
           }
@@ -606,17 +623,17 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
               compose_sels(s, bind select(cx, repeat_me, offset, _)), b);
 }
 
-fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
-                         s: &selector, b: &binders) {
-    fn len_select(cx: &ext_ctxt, m: &matchable, repeat_after: bool, len: uint)
+
+fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
+                  b: &binders) {
+    fn len_select(cx: &ext_ctxt, m: &matchable, at_least: bool, len: uint)
         -> match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _, _) {
                     let actual_len = ivec::len(arg_elts);
-                    if (repeat_after && actual_len >= len)
-                        || actual_len == len {
+                    if (at_least && actual_len >= len) || actual_len == len {
                         some(leaf(match_exact))
                     } else { none }
                   }
@@ -627,10 +644,11 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
             }
     }
     b.literal_ast_matchers +=
-        ~[compose_sels(s, bind len_select(cx, _, repeat_after,
-                                          ivec::len(elts)))];
+        ~[compose_sels(s, bind len_select(cx, _, at_least, len))];
+}
 
-
+fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
+                         s: &selector, b: &binders) {
     let idx: uint = 0u;
     while idx < ivec::len(elts) {
         fn select(cx: &ext_ctxt, m: &matchable, idx: uint) -> match_result {
@@ -678,7 +696,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                 alt mac.node {
                   mac_invoc(pth, invoc_arg, body) {
                     alt path_to_ident(pth) {
-                      some(id) { 
+                      some(id) {
                         alt macro_name {
                           none. { macro_name = some(id); }
                           some(other_id) {
