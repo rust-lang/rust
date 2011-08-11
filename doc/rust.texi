@@ -127,9 +127,9 @@ the large'', that is, of creating and maintaining @emph{boundaries} -- both
 abstract and operational -- that preserve large-system @emph{integrity},
 @emph{availability} and @emph{concurrency}.
 
-It supports a mixture of imperative procedural, concurrent actor, object
-oriented and pure functional styles. Rust also supports generic programming
-and metaprogramming, in both static and dynamic styles.
+It supports a mixture of imperative procedural, concurrent actor,
+object-oriented and pure functional styles. Rust also supports generic
+programming and metaprogramming, in both static and dynamic styles.
 
 @menu
 * Goals::                      Intentions, motivations.
@@ -1894,52 +1894,28 @@ let c: counter = counter(1);
 
 c.incr();
 c.incr();
-assert (c.get() == 3);
+assert c.get() == 3;
 @end example
 
-There is no @emph{this} or @emph{self} available inside an object's
-methods, either implicitly or explicitly, so you can't directly call
-other methods.  For example:
+Inside an object's methods, you can make @emph{self-calls} using the
+@code{self} keyword.
 @example
 obj my_obj() @{
   fn get() -> int @{
     ret 3;
   @}
-  fn foo() @{
-    let c = get();  // Fails
+  fn foo() -> int @{
+    let c = self.get();
+    ret c + 2;
   @}
 @}
+
+let o = my_obj();
+assert o.foo() == 5;
 @end example
 
-The current replacement is to write a factory function for your type,
-which provides any private helper functions:
-@example
-type my_obj =
-  obj @{
-    fn get() -> int;
-    fn foo();
-  @};
-
-fn mk_my_obj() -> my_obj @{
-  fn get_helper() -> int @{
-    ret 3;
-  @}
-
-  obj impl() @{
-    fn get() -> int @{
-      ret get_helper();
-    @}
-    fn foo() @{
-      let c = get_helper();  // Works
-    @}
-  @}
-
-  ret impl();
-@}
-@end example
-
-This factory function also allows you to bind the object's state
-variables to initial values.
+Rust objects are extendable with additional methods and fields using
+@emph{anonymous object} expressions.  @xref{Ref.Expr.AnonObj}.
 
 @node       Ref.Item.Type
 @subsection Ref.Item.Type
@@ -2911,6 +2887,7 @@ effects of the expression's evaluation.
 * Ref.Expr.Claim::              Expression for static (unsafe) or dynamic assertion of typestate.
 * Ref.Expr.Assert::             Expression for halting the program if a boolean condition fails to hold.
 * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
+* Ref.Expr.AnonObj::            Expression for extending objects with additional methods.
 @end menu
 
 
@@ -3631,6 +3608,13 @@ An @code{assert} expression is similar to a @code{check} expression, except
 the condition may be any boolean-typed expression, and the compiler makes no
 use of the knowledge that the condition holds if the program continues to
 execute after the @code{assert}.
+
+@node       Ref.Expr.AnonObj
+@subsection Ref.Expr.AnonObj
+@c * Ref.Expr.AnonObj::           Expression that extends an object with additional methods.
+@cindex Anonymous objects
+
+An @emph{anonymous object} expression extends an existing object with methods.
 
 @page
 @node    Ref.Run
