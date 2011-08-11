@@ -54,13 +54,13 @@ fn close(handle: &handle) {
 }
 
 fn run(handle: &handle, lib_path: &str,
-       prog: &str, args: &vec[str], input: &option::t[str]) ->
+       prog: &str, args: &[str], input: &option::t[str]) ->
 {status: int, out: str, err: str} {
     let p = port[response]();
     let ch = chan(p);
     task::send(handle.chan, exec(lib_path,
                                  prog,
-                                 clone_ivecstr(ivec::from_vec(args)),
+                                 clone_ivecstr(args),
                                  task::clone_chan(ch)));
     let resp = task::recv(p);
 

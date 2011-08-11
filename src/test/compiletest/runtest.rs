@@ -150,7 +150,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
 
     fn make_pp_args(config: &config, testfile: &str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--pretty", "normal"];
+        let args = ~["-", "--pretty", "normal"];
         ret {prog: prog, args: args};
     }
 
@@ -180,7 +180,7 @@ actual:\n\
 
     fn make_typecheck_args(config: &config, testfile: &str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--no-trans", "--lib"];
+        let args = ~["-", "--no-trans", "--lib"];
         ret {prog: prog, args: args};
     }
 }
@@ -219,7 +219,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
     }
 }
 
-type procargs = {prog: str, args: vec[str]};
+type procargs = {prog: str, args: [str]};
 
 type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
@@ -248,7 +248,7 @@ fn make_compile_args(config: &config,
                      props: &test_props, testfile: &str) ->
     procargs {
     let prog = config.rustc_path;
-    let args = [testfile, "-o", make_exe_name(config, testfile)];
+    let args = ~[testfile, "-o", make_exe_name(config, testfile)];
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
@@ -265,15 +265,15 @@ fn make_run_args(config: &config,
         // then split apart its command
         split_maybe_args(config.runtool)
     } else {
-        []
+        ~[]
     };
 
-    let args = toolargs + [make_exe_name(config, testfile)];
-    ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
+    let args = toolargs + ~[make_exe_name(config, testfile)];
+    ret {prog: args.(0), args: ivec::slice(args, 1u, ivec::len(args))};
 }
 
-fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
-    fn rm_whitespace(v: vec[str]) -> vec[str] {
+fn split_maybe_args(argstr: &option::t[str]) -> [str] {
+    fn rm_whitespace(v: &[str]) -> [str] {
         fn flt(s: &str) -> option::t[str] {
             if !is_whitespace(s) {
                 option::some(s)
@@ -289,17 +289,17 @@ fn split_maybe_args(argstr: &option::t[str]) -> vec[str] {
             }
             ret true;
         }
-        vec::filter_map(flt, v)
+        ivec::filter_map(flt, v)
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
-      option::none. { [] }
+      option::some(s) { rm_whitespace(str::split_ivec(s, ' ' as u8)) }
+      option::none. { ~[] }
     }
 }
 
 fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
-                  args: &vec[str], input: option::t[str]) -> procres {
+                  args: &[str], input: option::t[str]) -> procres {
     let cmdline =
     {
         let cmdline = make_cmdline(lib_path, prog, args);
@@ -313,9 +313,9 @@ fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
          stderr: res.err, cmdline: cmdline};
 }
 
-fn make_cmdline(libpath: &str, prog: &str, args: &vec[str]) -> str {
+fn make_cmdline(libpath: &str, prog: &str, args: &[str]) -> str {
     #fmt("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, " "))
+         str::connect_ivec(args, " "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
