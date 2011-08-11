@@ -915,8 +915,9 @@ The special symbols are:
 @tab @code{)}
 @item @code{=}
 @tab @code{<-}
+@tab @code{<->}
 @tab @code{<|}
-@tab @code{<+}
+@tab @code{|>}
 @tab @code{->}
 @item @code{+}
 @tab @code{++}
@@ -1464,21 +1465,20 @@ Each port and channel can carry only one type of message. The message type is
 encoded as a parameter of the channel or port type. The message type of a
 channel is equal to the message type of the port it is bound to.
 
-Messages are sent asynchronously or semi-synchronously. A channel contains a
-message queue and asynchronously sending a message merely inserts it into the
-sending channel's queue; message receipt is the responsibility of the
-receiving task.
+Messages are generally sent asynchronously, with optional rate-limiting on the
+transmit side. A channel contains a message queue and asynchronously sending a
+message merely inserts it into the sending channel's queue; message receipt is
+the responsibility of the receiving task.
 
 Queued messages in channels are charged to the domain of the @emph{sending}
 task. If too many messages are queued for transmission from a single sending
 task, without being received by a receiving task, the sending task may exceed
 its memory budget, which causes a run-time signal. To help control this
 possibility, a semi-synchronous send operation is possible, which blocks until
-there is room in the existing queue and then executes an asynchronous send.
+there is room in the existing queue before sending send.
 
-The asynchronous message-send operator is @code{<+}. The semi-synchronous
-message-send operator is @code{<|}. @xref{Ref.Expr.Send}. The message-receive
-operator is @code{<-}. @xref{Ref.Expr.Recv}.
+The message-send operator is @code{<|}. @xref{Ref.Expr.Send}. The
+message-receive operator is @code{|>}. @xref{Ref.Expr.Recv}.
 
 @node       Ref.Task.Life
 @subsection Ref.Task.Life
@@ -2344,7 +2344,7 @@ An example of a @code{port} type:
 type port[vec[str]] svp;
 let p: svp = get_port();
 let v: vec[str];
-v <- p;
+p |> v;
 @end example
 
 @node       Ref.Type.Chan
@@ -2948,7 +2948,7 @@ let out: port[u8];
 let p: task = spawn helper(chan(out));
 let p2: task = spawn "my_helper" helper(chan(out));
 // let task run, do other things.
-let result <- out;
+let out |> result;
 
 @end example
 
@@ -2958,27 +2958,11 @@ let result <- out;
 @cindex Send expression
 @cindex Communication
 
-Sending a value through a channel can be done via two different expressions.
-Both expressions take an @emph{lval}, denoting a channel, and a value to send
-into the channel. The action of @emph{sending} varies depending on the
-@dfn{send operator} employed.
+Sending a value into a channel is done by the send operator @code{<|}, which
+takes a channel and a value to send, and moves the value into the channel's
+outgoing buffer.
 
-The @emph{asynchronous send} operator @code{<+} adds a value to the channel's
-queue, without blocking. If the queue is full, it is extended, taking memory
-from the task's domain. If the task memory budget is exhausted, a signal is
-sent to the task.
-
-The @emph{semi-synchronous send} operator @code{<|} adds a value to the
-channel's queue @emph{only if} the queue has room; if the queue is full, the
-operation @emph{blocks} the sender until the queue has room.
-
-An example of an asynchronous send:
-@example
-chan[str] c = @dots{};
-c <+ "hello, world";
-@end example
-
-An example of a semi-synchronous send:
+An example of a send:
 @example
 chan[str] c = @dots{};
 c <| "hello, world";
@@ -2992,7 +2976,7 @@ c <| "hello, world";
 
 The @dfn{receive expression} takes an @var{lval} to receive into and an
 expression denoting a port, and applies the @emph{receive operator}
-(@code{<-}) to the pair, copying a value out of the port and into the
+(@code{|>}) to the pair, moving a value out of the port and into the
 @var{lval}. The expression causes the receiving task to enter the @emph{blocked
 reading} state until a task is sending a value to the port, at which point the
 runtime pseudo-randomly selects a sending task and copies a value from the
@@ -3002,7 +2986,8 @@ un-blocks the receiving task. @xref{Ref.Run.Comm}.
 An example of a @emph{receive}:
 @example
 port[str] p = @dots{};
-let s: str <- p;
+let s: str;
+p |> p;
 @end example
 
 @node       Ref.Expr.Call
@@ -3410,7 +3395,7 @@ let x: int = 0;
 let strs: vec[str];
 
 alt @{
-    case (str s <- p) @{
+    case (str s; p |> s) @{
         vec::append(strs, s);
     @}
     case (c <| x) @{
