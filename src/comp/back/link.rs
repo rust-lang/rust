@@ -138,7 +138,7 @@ mod write {
 
             if threshold != 0u {
                 llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(MPMB,
-                                                                    threshold);
+                                                                   threshold);
             }
 
             llvm::LLVMPassManagerBuilderPopulateModulePassManager(MPMB,
