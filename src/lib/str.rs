@@ -135,9 +135,9 @@ const max_five_b: uint = 67108864u;
 
 const tag_six_b: uint = 252u;
 
-fn is_utf8(v: vec[u8]) -> bool {
+fn is_utf8(v: &[u8]) -> bool {
     let i = 0u;
-    let total = vec::len[u8](v);
+    let total = ivec::len[u8](v);
     while i < total {
         let chsize = utf8_char_width(v.(i));
         if chsize == 0u { ret false; }
