@@ -351,7 +351,7 @@ Rust has a lightweight object system based on structural object types: there
 is no ``class hierarchy'' nor any concept of inheritance. Method overriding
 and object restriction are performed explicitly on object values, which are
 little more than order-insensitive records of methods sharing a common private
-value. Objects that reside outside the GC layer can have destructors.
+value.
 
 @sp 1
 @item Dynamic type
@@ -395,32 +395,16 @@ can designate other tasks to handle signals for them. This permits
 organizing tasks into mutually-supervising or mutually-failing groups.
 
 @sp 1
-@item Deterministic destruction
+@item Resource types with deterministic destruction
 
-Non-GC objects can have destructor functions, which are executed
-deterministically in top-down ownership order, as control frames are exited
-and/or objects are otherwise freed from data structures holding them. The same
-destructors are run in the same order whether the object is deleted by
-unwinding during failure or normal execution.
+Rust includes a type constructor for @emph{resource} types, which have an
+associated destructor and cannot be moved in memory. Resources types belong to
+the kind of @emph{pinned} types, and any value that directly contains a
+resource is implicitly pinned as well.
 
-Similarly, the rules for freeing non-GC values are deterministic and
-predictable: on scope-exit or structure-release, local slots are released
-immediately. Referenced boxes have their reference count decreased and are
-released if the count drops to zero. Aliases are silently forgotten.
-
-GC values are local to a task, and are subject to per-task garbage
-collection. As a result, unreferenced GC-layer boxes are not necessarily freed
-immediately; if an unreferenced GC box is part of an acyclic graph, it is
-freed when the last reference to it drops, but if it is part of a reference
-cycle it will be freed when the GC collects it (or when the owning task
-terminates, at the latest).
-
-GC values can point to non-GC values but not vice-versa. Doing so merely
-delays (to an undefined future time) the moment when the deterministic,
-top-down destruction sequence for the referenced non-GC values
-@emph{start}. In other words, the non-GC ``leaves'' of a GC value are released
-in a locally-predictable order, even if the ``interior'' cyclic part of the GC
-value is released in an unpredictable order.
+Resources can only contain types from the pinned or unique kinds of type,
+which means that unlike finalizers, there is always a deterministic, top-down
+order to run the destructors of a resource and its sub-resources.
 
 @sp 1
 @item Typestate system
@@ -662,10 +646,7 @@ The keywords are:
 @tab @code{import}
 @tab @code{export}
 @tab @code{let}
-@item @code{state}
-@tab @code{gc}
 @tab @code{const}
-@tab @code{thread}
 @item @code{auth}
 @tab @code{unsafe}
 @tab @code{as}
@@ -699,7 +680,7 @@ The keywords are:
 @tab @code{iter}
 @tab @code{pred}
 @tab @code{obj}
-@tab @code{drop}
+@tab @code{resource}
 @item @code{task}
 @tab @code{port}
 @tab @code{chan}
@@ -1975,13 +1956,15 @@ aspects of a value include:
 @item Whether the value represents textual or numerical information.
 @item Whether the value represents integral or floating-point information.
 @item The sequence of memory operations required to access the value.
-@item The storage layer the value resides in (immutable, state or gc).
+@item The @emph{kind} of the type (pinned, unique or shared).
 @end itemize
 
 For example, the type @code{@{x: u8, y: u8@}} defines the set of immutable
 values that are composite records, each containing two unsigned 8-bit integers
 accessed through the components @code{x} and @code{y}, and laid out in memory
-with the @code{x} component preceding the @code{y} component.
+with the @code{x} component preceding the @code{y} component. This type is of
+@emph{unique} kind, meaning that there is no shared substructure with other
+types, but it can be copied and moved freely.
 
 @node       Ref.Item.Tag
 @subsection Ref.Item.Tag
@@ -2269,10 +2252,9 @@ assert (p._1 == "world");
 @cindex Vector types
 @cindex Array types, see @i{Vector types}
 
-The vector type-constructor represents a homogeneous array of
-values of a given type. A vector has a fixed size. The layer of a vector type
-is to the layer of its member type, like any type that contains a single
-member type.
+The vector type-constructor represents a homogeneous array of values of a
+given type. A vector has a fixed size. The kind of a vector type depends on
+the kind of its member type, as with other simple structural types.
 
 Vectors can be sliced. A slice expression builds a new vector by copying a
 contiguous range -- given by a pair of indices representing a half-open
@@ -2378,8 +2360,8 @@ Ports are modeled as stateful native types, with built-in meaning to the
 language. They cannot be transmitted over channels or otherwise replicated,
 and are always local to the task that creates them.
 
-Ports (like channels) can only be carry types of the immutable layer. No
-mutable values can pass over a port or channel.
+Ports (like channels) can only be carry types of unique kind. No shared or
+pinned values can pass over a port or channel.
 
 An example of a @code{port} type:
 @example
@@ -2404,8 +2386,8 @@ Channels are immutable, and can be transmitted over channels to other
 tasks. They are modeled as immutable native types with built-in meaning to the
 language.
 
-Channels (like ports) can only be carry types of the immutable layer. No
-mutable values can pass over a port or channel.
+Channels (like ports) can only be carry types of unique kind. No
+pinned or shared values can pass over a port or channel.
 
 When a task sends a message into a channel, the task forms an outgoing queue
 associated with that channel. The per-task queue @emph{associated} with a
@@ -2465,20 +2447,21 @@ declaration. Such a ``plain'' object type can be used to describe an interface
 that a variety of particular objects may conform to, by supporting a superset
 of the methods.
 
-An object type that can contain fields of a given layer must be declared as
-residing in that layer (or lower), like any other type.
+The kind of an object type serves as a restriction to the kinds of fields that
+may be stored in it. Unique objects, for example, can only carry unique values
+in their fields.
 
 An example of an object type with two separate object items supporting it, and
 a client function using both items via the object type:
 
 @example
 
-state type taker =
+type taker =
     state obj @{
         fn take(int);
     @};
 
-state obj adder(mutable int x) @{
+obj adder(mutable int x) @{
     fn take(int y) @{
         x += y;
     @}
