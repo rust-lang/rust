@@ -2051,13 +2051,23 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
       }
       ast::expr_fn(f) {
         let cx = @{tcx: tcx};
-        let convert =
-            bind ast_ty_to_ty(cx.tcx, bind collect::getter(cx, _), _);
-        let ty_of_arg = bind collect::ty_of_arg(cx, _);
+        let convert = bind ast_ty_to_ty_crate_tyvar(fcx, _);
+        let ty_of_arg = lambda(a: &ast::arg) -> ty::arg {
+            let ty_mode = ast_mode_to_mode(a.mode);
+            let tt = ast_ty_to_ty_crate_tyvar(fcx, a.ty);
+            ret {mode: ty_mode, ty: tt};
+        };
         let fty =
             collect::ty_of_fn_decl(cx, convert, ty_of_arg, f.decl, f.proto,
                                    ~[], none).ty;
         write::ty_only_fixup(fcx, id, fty);
+
+        // Unify the type of the function with the expected type before we
+        // typecheck the body so that we have more information about the
+        // argument types in the body. This is needed to make binops and
+        // record projection work on type inferred arguments.
+        unify(fcx, expr.span, expected, fty);
+
         check_fn(fcx.ccx, f, id, some(fcx));
       }
       ast::expr_block(b) {
@@ -2611,7 +2621,7 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     let gather_result = gather_locals(ccx, f, id, old_fcx);
     let fixups: [ast::node_id] = ~[];
     let fcx: @fn_ctxt =
-        @{ret_ty: ast_ty_to_ty_crate(ccx, decl.output),
+        @{ret_ty: ty::ty_fn_ret(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)),
           purity: decl.purity,
           proto: f.proto,
           var_bindings: gather_result.var_bindings,
