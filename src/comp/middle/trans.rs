@@ -1292,11 +1292,22 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     // FIXME: switch gc/non-gc on layer of the type.
     let rs =
         alt ty::struct(bcx_tcx(cx), t) {
-          ty::ty_str. { let v = cx.build.Load(v0); trans_non_gc_free(cx, v) }
+          ty::ty_str. {
+            let v = cx.build.Load(v0);
+            if !bcx_ccx(cx).sess.get_opts().do_gc {
+                trans_non_gc_free(cx, v)
+            } else {
+                rslt(cx, C_nil())
+            }
+          }
           ty::ty_vec(_) {
             let v = cx.build.Load(v0);
             let rs = iter_sequence(cx, v, t, bind drop_ty(_, _, _));
-            trans_non_gc_free(rs.bcx, v)
+            if !bcx_ccx(cx).sess.get_opts().do_gc {
+                trans_non_gc_free(rs.bcx, v)
+            } else {
+                rslt(cx, C_nil())
+            }
           }
           ty::ty_box(body_mt) {
             let v = cx.build.Load(v0);
@@ -1305,7 +1316,11 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             let body_ty = body_mt.ty;
             let body_val = load_if_immediate(cx, body, body_ty);
             let rs = drop_ty(cx, body_val, body_ty);
-            trans_non_gc_free(rs.bcx, v)
+            if !bcx_ccx(cx).sess.get_opts().do_gc {
+                trans_non_gc_free(rs.bcx, v)
+            } else {
+                rslt(cx, C_nil())
+            }
           }
           ty::ty_uniq(_) {
             fail "free uniq unimplemented";
@@ -1341,7 +1356,11 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             let ti = none[@tydesc_info];
             call_tydesc_glue_full(cx, body, tydesc,
                                   abi::tydesc_field_drop_glue, ti);
-            trans_non_gc_free(cx, b)
+            if (!bcx_ccx(cx).sess.get_opts().do_gc) {
+                trans_non_gc_free(cx, b)
+            } else {
+                rslt(cx, C_nil())
+            }
           }
           ty::ty_fn(_, _, _, _, _) {
             let box_cell =
@@ -1358,7 +1377,11 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             let ti = none[@tydesc_info];
             call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
                                   abi::tydesc_field_drop_glue, ti);
-            trans_non_gc_free(cx, v)
+            if (!bcx_ccx(cx).sess.get_opts().do_gc) {
+                trans_non_gc_free(cx, v)
+            } else {
+                rslt(cx, C_nil())
+            }
           }
           _ { rslt(cx, C_nil()) }
         };
