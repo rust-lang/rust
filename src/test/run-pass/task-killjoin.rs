@@ -1,7 +1,3 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-
 // Create a task that is supervised by another task,
 // join the supervised task from the supervising task,
 // then fail the supervised task. The supervised task
@@ -9,25 +5,28 @@
 // supervising task no longer needs to be wakened when
 // the supervised task exits.
 
+use std;
+import std::task;
+
 fn supervised() {
     // Yield to make sure the supervisor joins before we
     // fail. This is currently not needed because the supervisor
     // runs first, but I can imagine that changing.
-    yield;
+    task::yield();
     fail;
 }
 
 fn supervisor() {
-    let task t = spawn "supervised" supervised();
-    join t;
+    // Unsupervise this task so the process doesn't return a failure status as
+    // a result of the main task being killed.
+    task::unsupervise();
+    let t = spawn supervised();
+    task::join(t);
 }
 
 fn main() {
-    // Start the test in another domain so that
-    // the process doesn't return a failure status as a result
-    // of the main task being killed.
-    let task dom2 = spawn thread "supervisor" supervisor();
-    join dom2;
+    let dom2 = spawn supervisor();
+    task::join(dom2);
 }
 
 // Local Variables:
