@@ -2357,7 +2357,7 @@ iter range(int x, int y) -> int @{
   @}
 @}
 
-for each (int i in range(5,7)) @{
+for each (i: int in range(5,7)) @{
   @dots{};
 @}
 @end example
@@ -3239,9 +3239,9 @@ An example of a @code{note} expression:
 @example
 fn read_file_lines(&str path) -> vec[str] @{
     note path;
-    vec[str] r;
-    file f = open_read(path);
-    for each (str s in lines(f)) @{
+    let r: vec[str];
+    let f: file = open_read(path);
+    for each (s: str in lines(f)) @{
         vec::append(r,s);
     @}
     ret r;
@@ -3374,7 +3374,7 @@ Example of a foreach loop:
 @example
 let txt: str;
 let lines: vec[str];
-for each (str s in str::split(txt, "\n")) @{
+for each (s: str in str::split(txt, "\n")) @{
     vec::push(lines, s);
 @}
 @end example
