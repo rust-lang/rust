@@ -2,7 +2,6 @@ use std;
 import std::task;
 
 #[test]
-#[ignore]
 fn test_sleep() { task::sleep(1000000u); }
 
 #[test]
