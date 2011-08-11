@@ -3802,6 +3802,11 @@ fn trans_do_while(cx: &@block_ctxt, body: &ast::blk, cond: &@ast::expr) ->
         new_loop_scope_block_ctxt(cx, option::none[@block_ctxt], next_cx,
                                   "do-while loop body");
     let body_res = trans_block(body_cx, body, return);
+    if is_terminated(body_res.bcx) {
+        // This is kind of ridiculous, but no permutations
+        // involving body_res or body_cx.val worked.
+        ret trans_block(cx, body, return);
+    }
     let cond_res = trans_expr(body_res.bcx, cond);
     cond_res.bcx.build.CondBr(cond_res.val, body_cx.llbb, next_cx.llbb);
     cx.build.Br(body_cx.llbb);
