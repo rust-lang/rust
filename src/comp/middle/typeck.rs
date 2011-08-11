@@ -1582,15 +1582,14 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         }
 
         // Check the arguments.
-        // TODO: iter2
         let i = 0u;
         for a_opt: option::t[@ast::expr]  in args {
             alt a_opt {
               some(a) {
                 bot |= check_expr(fcx, a);
-                demand::full(fcx, a.span, arg_tys.(i).ty,
-                             expr_ty(fcx.ccx.tcx, a), ~[],
-                             AUTODEREF_BLOCK_COERCE);
+                demand::autoderef(fcx, a.span, arg_tys.(i).ty,
+                                  expr_ty(fcx.ccx.tcx, a),
+                                  AUTODEREF_BLOCK_COERCE);
               }
               none. { }
             }
@@ -1836,16 +1835,16 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         if ty::def_has_ty_params(defn) {
             let path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
             write::ty_fixup(fcx, id, path_tpot);
-            ret false;
+        } else {
+            // The definition doesn't take type parameters. If the programmer
+            // supplied some, that's an error.
+            if ivec::len[@ast::ty](pth.node.types) > 0u {
+                tcx.sess.span_fatal(expr.span,
+                                    "this kind of value does not \
+                                     take type parameters");
+            }
+            write::ty_only_fixup(fcx, id, tpt.ty);
         }
-        // The definition doesn't take type parameters. If the programmer
-        // supplied some, that's an error.
-        if ivec::len[@ast::ty](pth.node.types) > 0u {
-            tcx.sess.span_fatal(expr.span,
-                                "this kind of value does not \
-                                 take type parameters");
-        }
-        write::ty_only_fixup(fcx, id, tpt.ty);
       }
       ast::expr_mac(_) { tcx.sess.bug("unexpanded macro"); }
       ast::expr_fail(expr_opt) {
@@ -2493,7 +2492,6 @@ fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
         for method: @ast::method  in ao.methods {
             check_method(fcx.ccx, method);
         }
-        next_ty_var(fcx);
 
         // Now remove the info from the stack.
         ivec::pop[obj_info](fcx.ccx.obj_infos);
