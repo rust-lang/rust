@@ -4,6 +4,7 @@
 use std;
 import std::str;
 import std::vec;
+import std::ivec;
 
 #[test]
 fn test_simple() {
@@ -15,7 +16,7 @@ fn test_simple() {
      * working, but we should implement is_utf8 before that happens.
      */
 
-    let v: vec[u8] = str::bytes(s1);
+    let v: vec[u8] = ivec::to_vec(str::bytes(s1));
     let s2: str = str::from_bytes(v);
     let i: uint = 0u;
     let n1: uint = str::byte_len(s1);

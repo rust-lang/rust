@@ -245,7 +245,7 @@ fn mk_sha1() -> sha1 {
             add_input(st, m);
         }
         fn input_ivec(msg: &[u8]) { add_input(st, msg); }
-        fn input_str(msg: &str) { add_input(st, str::bytes_ivec(msg)); }
+        fn input_str(msg: &str) { add_input(st, str::bytes(msg)); }
         fn result() -> vec[u8] {
             let rivec = mk_result(st);
             let rvec = [];

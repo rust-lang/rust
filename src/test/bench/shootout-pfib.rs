@@ -12,6 +12,7 @@
 use std;
 
 import std::vec;
+import std::ivec;
 import std::uint;
 import std::time;
 import std::str;
@@ -88,7 +89,8 @@ fn main(argv: vec[str]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(str::bytes(argv.(1)), 10u) as int;
+            let max = uint::parse_buf(ivec::to_vec(str::bytes(argv.(1))),
+                                      10u) as int;
 
             let num_trials = 10;
 

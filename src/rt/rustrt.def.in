@@ -68,7 +68,6 @@ str_from_ivec
 str_from_vec
 str_push_byte
 str_slice
-str_vec
 take_chan
 task_sleep
 task_yield

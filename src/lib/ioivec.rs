@@ -224,7 +224,7 @@ fn new_byte_buf_reader(buf: &[u8]) -> buf_reader {
 }
 
 fn string_reader(s: &str) -> reader {
-    ret new_reader(new_byte_buf_reader(str::bytes_ivec(s)));
+    ret new_reader(new_byte_buf_reader(str::bytes(s)));
 }
 
 
@@ -343,19 +343,19 @@ fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
 
 obj new_writer(out: buf_writer) {
     fn get_buf_writer() -> buf_writer { ret out; }
-    fn write_str(s: str) { out.write(str::bytes_ivec(s)); }
+    fn write_str(s: str) { out.write(str::bytes(s)); }
     fn write_line(s: str) {
-        out.write(str::bytes_ivec(s));
-        out.write(str::bytes_ivec("\n"));
+        out.write(str::bytes(s));
+        out.write(str::bytes("\n"));
     }
     fn write_char(ch: char) {
         // FIXME needlessly consy
 
-        out.write(str::bytes_ivec(str::from_char(ch)));
+        out.write(str::bytes(str::from_char(ch)));
     }
-    fn write_int(n: int) { out.write(str::bytes_ivec(int::to_str(n, 10u))); }
+    fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
     fn write_uint(n: uint) {
-        out.write(str::bytes_ivec(uint::to_str(n, 10u)));
+        out.write(str::bytes(uint::to_str(n, 10u)));
     }
     fn write_bytes(bytes: &[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {

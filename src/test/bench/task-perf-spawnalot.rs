@@ -1,5 +1,6 @@
 use std;
 import std::vec;
+import std::ivec;
 import std::task;
 import std::uint;
 import std::str;
@@ -19,7 +20,7 @@ fn main(args: vec[str]) {
     let n = if vec::len(args) < 2u {
         10u
     } else {
-        uint::parse_buf(str::bytes(args.(1)), 10u)
+        uint::parse_buf(ivec::to_vec(str::bytes(args.(1))), 10u)
     };
     let i = 0u;
     while i < n {

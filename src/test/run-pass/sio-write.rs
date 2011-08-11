@@ -18,7 +18,7 @@ fn main() {
   let srv: sio::server = sio::create_server(cx, "0.0.0.0", 9090);
   let child: task = spawn connectTask(cx, "127.0.0.1", 9090);
   let client: sio::client = sio::accept_from(srv);
-  sio::write_data(client, str::bytes_ivec("hello, world\n"));
+  sio::write_data(client, str::bytes("hello, world\n"));
   task::join(child);
   sio::close_client(client);
   sio::close_server(srv);

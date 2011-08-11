@@ -107,7 +107,7 @@ mod map_reduce {
               none. {
                 // log_err "fetching new channel for " + key;
                 let p = port[chan[reduce_proto]]();
-                let keyi = str::bytes_ivec(key);
+                let keyi = str::bytes(key);
                 ctrl <| find_reducer(keyi, chan(p));
                 p |> c;
                 im.insert(key, clone(c));

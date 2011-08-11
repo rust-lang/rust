@@ -98,7 +98,7 @@ fn item_type(item: &ebmlivec::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
     fn parse_external_def_id(this_cnum: ast::crate_num,
                              extres: &external_resolver, s: str) ->
        ast::def_id {
-        let buf = str::bytes_ivec(s);
+        let buf = str::bytes(s);
         let external_def_id = parse_def_id(buf);
 
 

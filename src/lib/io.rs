@@ -340,18 +340,22 @@ fn uint_to_be_bytes(n: uint, size: uint) -> vec[u8] {
 
 obj new_writer(out: buf_writer) {
     fn get_buf_writer() -> buf_writer { ret out; }
-    fn write_str(s: str) { out.write(str::bytes(s)); }
+    fn write_str(s: str) { out.write(ivec::to_vec(str::bytes(s))); }
     fn write_line(s: str) {
-        out.write(str::bytes(s));
-        out.write(str::bytes("\n"));
+        out.write(ivec::to_vec(str::bytes(s)));
+        out.write(ivec::to_vec(str::bytes("\n")));
     }
     fn write_char(ch: char) {
         // FIXME needlessly consy
 
-        out.write(str::bytes(str::from_char(ch)));
+        out.write(ivec::to_vec(str::bytes(str::from_char(ch))));
     }
-    fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
-    fn write_uint(n: uint) { out.write(str::bytes(uint::to_str(n, 10u))); }
+    fn write_int(n: int) {
+        out.write(ivec::to_vec(str::bytes(int::to_str(n, 10u))));
+    }
+    fn write_uint(n: uint) {
+        out.write(ivec::to_vec(str::bytes(uint::to_str(n, 10u))));
+    }
     fn write_bytes(bytes: vec[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));

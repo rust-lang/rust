@@ -26,13 +26,13 @@ type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
 // Path table encoding
 fn encode_name(ebml_w: &ebmlivec::writer, name: &str) {
     ebmlivec::start_tag(ebml_w, tag_paths_data_name);
-    ebml_w.writer.write(str::bytes_ivec(name));
+    ebml_w.writer.write(str::bytes(name));
     ebmlivec::end_tag(ebml_w);
 }
 
 fn encode_def_id(ebml_w: &ebmlivec::writer, id: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_def_id);
-    ebml_w.writer.write(str::bytes_ivec(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
@@ -190,7 +190,7 @@ fn encode_type_param_kinds(ebml_w: &ebmlivec::writer, tps: &[ty_param]) {
 
 fn encode_variant_id(ebml_w: &ebmlivec::writer, vid: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_variant);
-    ebml_w.writer.write(str::bytes_ivec(def_to_str(vid)));
+    ebml_w.writer.write(str::bytes(def_to_str(vid)));
     ebmlivec::end_tag(ebml_w);
 }
 
@@ -207,20 +207,20 @@ fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer, typ: &ty::t) {
 
 fn encode_symbol(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer, id: node_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(str::bytes_ivec(ecx.ccx.item_symbols.get(id)));
+    ebml_w.writer.write(str::bytes(ecx.ccx.item_symbols.get(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
 fn encode_discriminant(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer,
                        id: node_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(str::bytes_ivec(ecx.ccx.discrim_symbols.get(id)));
+    ebml_w.writer.write(str::bytes(ecx.ccx.discrim_symbols.get(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
 fn encode_tag_id(ebml_w: &ebmlivec::writer, id: &def_id) {
     ebmlivec::start_tag(ebml_w, tag_items_data_item_tag_id);
-    ebml_w.writer.write(str::bytes_ivec(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebmlivec::end_tag(ebml_w);
 }
 
@@ -443,7 +443,7 @@ fn encode_meta_item(ebml_w: &ebmlivec::writer, mi: &meta_item) {
       meta_word(name) {
         ebmlivec::start_tag(ebml_w, tag_meta_item_word);
         ebmlivec::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(str::bytes_ivec(name));
+        ebml_w.writer.write(str::bytes(name));
         ebmlivec::end_tag(ebml_w);
         ebmlivec::end_tag(ebml_w);
       }
@@ -452,10 +452,10 @@ fn encode_meta_item(ebml_w: &ebmlivec::writer, mi: &meta_item) {
           lit_str(value, _) {
             ebmlivec::start_tag(ebml_w, tag_meta_item_name_value);
             ebmlivec::start_tag(ebml_w, tag_meta_item_name);
-            ebml_w.writer.write(str::bytes_ivec(name));
+            ebml_w.writer.write(str::bytes(name));
             ebmlivec::end_tag(ebml_w);
             ebmlivec::start_tag(ebml_w, tag_meta_item_value);
-            ebml_w.writer.write(str::bytes_ivec(value));
+            ebml_w.writer.write(str::bytes(value));
             ebmlivec::end_tag(ebml_w);
             ebmlivec::end_tag(ebml_w);
           }
@@ -465,7 +465,7 @@ fn encode_meta_item(ebml_w: &ebmlivec::writer, mi: &meta_item) {
       meta_list(name, items) {
         ebmlivec::start_tag(ebml_w, tag_meta_item_list);
         ebmlivec::start_tag(ebml_w, tag_meta_item_name);
-        ebml_w.writer.write(str::bytes_ivec(name));
+        ebml_w.writer.write(str::bytes(name));
         ebmlivec::end_tag(ebml_w);
         for inner_item: @meta_item  in items {
             encode_meta_item(ebml_w, *inner_item);
@@ -575,7 +575,7 @@ fn encode_crate_deps(ebml_w: &ebmlivec::writer, cstore: &cstore::cstore) {
     ebmlivec::start_tag(ebml_w, tag_crate_deps);
     for cname: str  in get_ordered_names(cstore) {
         ebmlivec::start_tag(ebml_w, tag_crate_dep);
-        ebml_w.writer.write(str::bytes_ivec(cname));
+        ebml_w.writer.write(str::bytes(cname));
         ebmlivec::end_tag(ebml_w);
     }
     ebmlivec::end_tag(ebml_w);
@@ -610,7 +610,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
     encode_index(ebml_w, items_buckets, write_int);
     ebmlivec::end_tag(ebml_w);
     // Pad this, since something (LLVM, presumably) is cutting off the
-    // remaining % 4 bytes_ivec.
+    // remaining % 4 bytes.
 
     buf_w.write(~[0u8, 0u8, 0u8, 0u8]);
     ret string_w.get_str();

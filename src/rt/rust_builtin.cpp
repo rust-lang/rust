@@ -277,32 +277,6 @@ str_buf(rust_task *task, rust_str *s)
     return (char const *)&s->data[0];
 }
 
-extern "C" CDECL rust_vec*
-str_vec(rust_task *task, rust_str *s)
-{
-    // FIXME: this should just upref s and return it, but we
-    // accidentally made too much of the language and runtime know
-    // and care about the difference between str and vec (trailing null);
-    // eliminate these differences and then rewrite this back to just
-    // the following:
-    //
-    // if (s->ref_count != CONST_REFCOUNT)
-    //    s->ref();
-    // return s;
-
-    rust_str *v =
-        vec_alloc_with_data(task,
-                            s->fill - 1,
-                            s->fill - 1,
-                            1,
-                            (s->fill - 1) ? (void*)s->data : NULL);
-    if (!v) {
-        task->fail();
-        return NULL;
-    }
-    return v;
-}
-
 extern "C" CDECL size_t
 str_byte_len(rust_task *task, rust_str *s)
 {
