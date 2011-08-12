@@ -42,9 +42,9 @@ fn next_power_of_two(n: uint) -> uint {
     ret tmp + 1u;
 }
 
-fn parse_buf(buf: vec[u8], radix: uint) -> uint {
-    if vec::len[u8](buf) == 0u { log_err "parse_buf(): buf is empty"; fail; }
-    let i = vec::len[u8](buf) - 1u;
+fn parse_buf(buf: &[u8], radix: uint) -> uint {
+    if ivec::len[u8](buf) == 0u { log_err "parse_buf(): buf is empty"; fail; }
+    let i = ivec::len[u8](buf) - 1u;
     let power = 1u;
     let n = 0u;
     while true {

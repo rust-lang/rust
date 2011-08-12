@@ -411,11 +411,10 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let crate_part = ivec::slice[u8](buf, 0u, colon_idx);
     let def_part = ivec::slice[u8](buf, colon_idx + 1u, len);
 
-    // FIXME: Remove these ivec->vec conversions.
-    let crate_part_vec = [];
-    let def_part_vec = [];
-    for b: u8  in crate_part { crate_part_vec += [b]; }
-    for b: u8  in def_part { def_part_vec += [b]; }
+    let crate_part_vec = ~[];
+    let def_part_vec = ~[];
+    for b: u8  in crate_part { crate_part_vec += ~[b]; }
+    for b: u8  in def_part { def_part_vec += ~[b]; }
 
     let crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
     let def_num = uint::parse_buf(def_part_vec, 10u) as int;

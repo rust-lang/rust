@@ -20,7 +20,7 @@ fn main(args: vec[str]) {
     let n = if ivec::len(iargs) < 2u {
         10u
     } else {
-        uint::parse_buf(ivec::to_vec(str::bytes(iargs.(1))), 10u)
+        uint::parse_buf(str::bytes(iargs.(1)), 10u)
     };
     let i = 0u;
     while i < n {

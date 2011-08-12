@@ -89,8 +89,7 @@ fn main(argv: vec[str]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(ivec::to_vec(str::bytes(iargv.(1))),
-                                      10u) as int;
+            let max = uint::parse_buf(str::bytes(iargv.(1)), 10u) as int;
 
             let num_trials = 10;
 
