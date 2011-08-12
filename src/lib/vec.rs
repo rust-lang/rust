@@ -4,11 +4,8 @@ import option::some;
 import util::orb;
 
 export vbuf;
-export buf;
 
 type vbuf = rustrt::vbuf;
-
-type array[T] = vec[mutable? T];
 
 native "rust" mod rustrt {
     type vbuf;
@@ -33,8 +30,6 @@ native "rust" mod rustrt {
     fn vec_from_vbuf[T](v: vbuf, n_elts: uint) -> vec[T];
     fn unsafe_vec_to_mut[T](v: vec[T]) -> vec[mutable T];
 }
-
-fn buf[T](v: array[T]) -> vbuf { ret rustrt::vec_buf[T](v, 0u); }
 
 // Local Variables:
 // mode: rust;

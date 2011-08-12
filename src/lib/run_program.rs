@@ -9,7 +9,7 @@ export program_output;
 export spawn_process;
 
 native "rust" mod rustrt {
-    fn rust_run_program(argv: vbuf, in_fd: int, out_fd: int, err_fd: int) ->
+    fn rust_run_program(argv: *sbuf, in_fd: int, out_fd: int, err_fd: int) ->
        int;
 }
 
@@ -25,9 +25,8 @@ fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
     let argv = arg_vec(prog, args);
-    let argvv = ivec::to_vec(argv);
     let pid = rustrt::rust_run_program(
-        vec::buf(argvv), in_fd, out_fd, err_fd);
+        ivec::to_ptr(argv), in_fd, out_fd, err_fd);
     ret pid;
 }
 
