@@ -2472,7 +2472,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
 
 fn next_ty_var_id(fcx: @fn_ctxt) -> int {
     let id = *fcx.next_var_id;
-    *fcx.next_var_id = fcx.next_var_id + 1;
+    *fcx.next_var_id += 1;
     ret id;
 }
 

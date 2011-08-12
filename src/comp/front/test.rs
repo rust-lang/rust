@@ -30,7 +30,7 @@ fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
     let next_node_id_fn =
         @bind fn (next_node_id: @mutable ast::node_id) -> ast::node_id {
                   let this_node_id = *next_node_id;
-                  *next_node_id = next_node_id + 1;
+                  *next_node_id += 1;
                   ret this_node_id;
               }(next_node_id);
 

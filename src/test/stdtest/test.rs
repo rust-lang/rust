@@ -13,7 +13,7 @@ fn do_not_run_ignored_tests() {
 
     test::run_test(desc, test::default_test_to_task);
 
-    assert (ran == false);
+    assert (*ran == false);
 }
 
 #[test]
