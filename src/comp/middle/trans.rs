@@ -2497,15 +2497,13 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
     alt op {
       ast::not. {
         let sub = trans_expr(cx, e);
-        let dr = autoderef(sub.bcx, sub.val, ty::expr_ty(bcx_tcx(cx), e));
-        ret rslt(dr.bcx, dr.bcx.build.Not(dr.val));
+        ret rslt(sub.bcx, sub.bcx.build.Not(sub.val));
       }
       ast::neg. {
         let sub = trans_expr(cx, e);
-        let dr = autoderef(sub.bcx, sub.val, ty::expr_ty(bcx_tcx(cx), e));
         if ty::struct(bcx_tcx(cx), e_ty) == ty::ty_float {
-            ret rslt(dr.bcx, dr.bcx.build.FNeg(dr.val));
-        } else { ret rslt(dr.bcx, sub.bcx.build.Neg(dr.val)); }
+            ret rslt(sub.bcx, sub.bcx.build.FNeg(sub.val));
+        } else { ret rslt(sub.bcx, sub.bcx.build.Neg(sub.val)); }
       }
       ast::box(_) {
         let lv = trans_lval(cx, e);
@@ -2532,20 +2530,10 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
     }
 }
 
-fn trans_compare(cx0: &@block_ctxt, op: ast::binop,
-                 lhs0: ValueRef, lhs_t: ty::t, rhs0: ValueRef,
-                rhs_t: ty::t) -> result {
-    // Autoderef both sides.
-
-    let cx = cx0;
-    let lhs_r = autoderef(cx, lhs0, lhs_t);
-    let lhs = lhs_r.val;
-    cx = lhs_r.bcx;
-    let rhs_r = autoderef(cx, rhs0, rhs_t);
-    let rhs = rhs_r.val;
-    cx = rhs_r.bcx;
+fn trans_compare(cx: &@block_ctxt, op: ast::binop,
+                 lhs: ValueRef, lhs_t: ty::t, rhs: ValueRef,
+                 rhs_t: ty::t) -> result {
     // Determine the operation we need.
-
     let llop;
     alt op {
       ast::eq. | ast::ne. { llop = C_u8(abi::cmp_glue_op_eq); }
@@ -2553,7 +2541,7 @@ fn trans_compare(cx0: &@block_ctxt, op: ast::binop,
       ast::le. | ast::gt. { llop = C_u8(abi::cmp_glue_op_le); }
     }
 
-    let rs = compare(cx, lhs, rhs, rhs_r.ty, llop);
+    let rs = compare(cx, lhs, rhs, rhs_t, llop);
 
     // Invert the result if necessary.
     alt op {
@@ -3320,15 +3308,10 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
     alt op {
       ast::and. {
         // Lazy-eval and
-        let lhs_expr = trans_expr(cx, a);
-        let lhs_res =
-            autoderef(lhs_expr.bcx, lhs_expr.val,
-                      ty::expr_ty(bcx_tcx(cx), a));
+        let lhs_res = trans_expr(cx, a);
         let rhs_cx = new_scope_block_ctxt(cx, "rhs");
-        let rhs_expr = trans_expr(rhs_cx, b);
-        let rhs_res =
-            autoderef(rhs_expr.bcx, rhs_expr.val,
-                      ty::expr_ty(bcx_tcx(cx), b));
+        let rhs_res = trans_expr(rhs_cx, b);
+
         let lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
         let lhs_false_res = rslt(lhs_false_cx, C_bool(false));
 
@@ -3343,15 +3326,9 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
       }
       ast::or. {
         // Lazy-eval or
-        let lhs_expr = trans_expr(cx, a);
-        let lhs_res =
-            autoderef(lhs_expr.bcx, lhs_expr.val,
-                      ty::expr_ty(bcx_tcx(cx), a));
+        let lhs_res = trans_expr(cx, a);
         let rhs_cx = new_scope_block_ctxt(cx, "rhs");
-        let rhs_expr = trans_expr(rhs_cx, b);
-        let rhs_res =
-            autoderef(rhs_expr.bcx, rhs_expr.val,
-                      ty::expr_ty(bcx_tcx(cx), b));
+        let rhs_res = trans_expr(rhs_cx, b);
         let lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
         let lhs_true_res = rslt(lhs_true_cx, C_bool(true));
 
@@ -3363,15 +3340,12 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
       }
       _ {
         // Remaining cases are eager:
+        let lhs = trans_expr(cx, a);
+        let rhs = trans_expr(lhs.bcx, b);
 
-        let lhs_expr = trans_expr(cx, a);
-        let lhty = ty::expr_ty(bcx_tcx(cx), a);
-        let lhs = autoderef(lhs_expr.bcx, lhs_expr.val, lhty);
-        let rhs_expr = trans_expr(lhs.bcx, b);
-        let rhty = ty::expr_ty(bcx_tcx(cx), b);
-        let rhs = autoderef(rhs_expr.bcx, rhs_expr.val, rhty);
-
-        ret trans_eager_binop(rhs.bcx, op, lhs.val, lhs.ty, rhs.val, rhs.ty);
+        ret trans_eager_binop(rhs.bcx, op,
+                              lhs.val, ty::expr_ty(bcx_tcx(cx), a),
+                              rhs.val, ty::expr_ty(bcx_tcx(cx), b));
       }
     }
 }

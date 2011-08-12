@@ -890,7 +890,6 @@ mod unify {
     }
 }
 
-tag autoderef_kind { AUTODEREF_OK; NO_AUTODEREF; AUTODEREF_BLOCK_COERCE; }
 
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
@@ -929,27 +928,8 @@ fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
     fail;
 }
 
-fn add_boxes(ccx: &@crate_ctxt, n: uint, t: &ty::t) -> ty::t {
-    let t1 = t;
-    while n != 0u { t1 = ty::mk_imm_box(ccx.tcx, t1); n -= 1u; }
-    ret t1;
-}
-
-fn count_boxes(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> uint {
-    let n = 0u;
-    let t1 = t;
-    while true {
-        alt structure_of(fcx, sp, t1) {
-          ty::ty_box(inner) { n += 1u; t1 = inner.ty; }
-          _ { ret n; }
-        }
-    }
-    fail;
-}
-
 fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: &ty::t,
                       expected: &ty::t) -> ty::t {
-
     // fns can be silently coerced to blocks when being used as
     // function call or bind arguments, but not the reverse.
     // If our actual type is a fn and our expected type is a block,
@@ -986,27 +966,26 @@ type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 mod demand {
     fn simple(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t) ->
        ty::t {
-        ret full(fcx, sp, expected, actual, ~[], NO_AUTODEREF).ty;
+        full(fcx, sp, expected, actual, ~[], false).ty
     }
-    fn autoderef(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t,
-                 adk: autoderef_kind) -> ty::t {
-        ret full(fcx, sp, expected, actual, ~[], adk).ty;
+    fn block_coerce(fcx: &@fn_ctxt, sp: &span,
+                    expected: &ty::t, actual: &ty::t) -> ty::t {
+        full(fcx, sp, expected, actual, ~[], true).ty
+    }
+
+    fn with_substs(fcx: &@fn_ctxt, sp: &span, expected: &ty::t,
+                   actual: &ty::t, ty_param_substs_0: &[ty::t]) ->
+        ty_param_substs_and_ty {
+        full(fcx, sp, expected, actual, ty_param_substs_0, false)
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
-    fn full(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t,
-            ty_param_substs_0: &[ty::t], adk: autoderef_kind) ->
+    fn full(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t,
+            ty_param_substs_0: &[ty::t], do_block_coerece: bool) ->
        ty_param_substs_and_ty {
-        let expected_1 = expected;
-        let actual_1 = actual;
-        let implicit_boxes = 0u;
-        if adk == AUTODEREF_OK {
-            expected_1 = do_autoderef(fcx, sp, expected_1);
-            actual_1 = do_autoderef(fcx, sp, actual_1);
-            implicit_boxes = count_boxes(fcx, sp, actual);
-        } else if (adk == AUTODEREF_BLOCK_COERCE) {
-            actual_1 = do_fn_block_coerce(fcx, sp, actual, expected);
+        if do_block_coerece {
+            actual = do_fn_block_coerce(fcx, sp, actual, expected);
         }
 
         let ty_param_substs: [mutable ty::t] = ~[mutable];
@@ -1021,33 +1000,31 @@ mod demand {
         }
 
         fn mk_result(fcx: &@fn_ctxt, result_ty: &ty::t,
-                     ty_param_subst_var_ids: &[int], implicit_boxes: uint) ->
+                     ty_param_subst_var_ids: &[int]) ->
            ty_param_substs_and_ty {
             let result_ty_param_substs: [ty::t] = ~[];
             for var_id: int  in ty_param_subst_var_ids {
                 let tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
                 result_ty_param_substs += ~[tp_subst];
             }
-            ret {substs: result_ty_param_substs,
-                 ty: add_boxes(fcx.ccx, implicit_boxes, result_ty)};
+            ret {substs: result_ty_param_substs, ty: result_ty};
         }
 
 
-        alt unify::unify(fcx, expected_1, actual_1) {
+        alt unify::unify(fcx, expected, actual) {
           ures_ok(t) {
-            ret mk_result(fcx, t, ty_param_subst_var_ids, implicit_boxes);
+            ret mk_result(fcx, t, ty_param_subst_var_ids);
           }
           ures_err(err) {
-            let e_err = resolve_type_vars_if_possible(fcx, expected_1);
-            let a_err = resolve_type_vars_if_possible(fcx, actual_1);
+            let e_err = resolve_type_vars_if_possible(fcx, expected);
+            let a_err = resolve_type_vars_if_possible(fcx, actual);
             fcx.ccx.tcx.sess.span_err(sp,
                                       "mismatched types: expected " +
                                           ty_to_str(fcx.ccx.tcx, e_err) +
                                           " but found " +
                                           ty_to_str(fcx.ccx.tcx, a_err) + " ("
                                           + ty::type_err_to_str(err) + ")");
-            ret mk_result(fcx, expected_1, ty_param_subst_var_ids,
-                          implicit_boxes);
+            ret mk_result(fcx, expected, ty_param_subst_var_ids);
           }
         }
     }
@@ -1379,8 +1356,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                                                            path_tpot);
 
             let path_tpt =
-                demand::full(fcx, pat.span, expected, ctor_ty, expected_tps,
-                             NO_AUTODEREF);
+                demand::with_substs(fcx, pat.span, expected, ctor_ty,
+                                    expected_tps);
             path_tpot =
                 {substs: some[[ty::t]](path_tpt.substs), ty: path_tpt.ty};
 
@@ -1604,13 +1581,11 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Check the arguments.
-        let unifier =
-            bind demand::autoderef(_, _, _, _, AUTODEREF_BLOCK_COERCE);
         let i = 0u;
         for a_opt: option::t[@ast::expr]  in args {
             alt a_opt {
               some(a) {
-                bot |= check_expr_with_unifier(fcx, a, unifier,
+                bot |= check_expr_with_unifier(fcx, a, demand::block_coerce,
                                                arg_tys.(i).ty);
               }
               none. { }
@@ -1776,12 +1751,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         let lhs_t = next_ty_var(fcx);
         bot = check_expr_with(fcx, lhs, lhs_t);
 
-        let unifier = bind demand::autoderef(_, _, _, _, AUTODEREF_OK);
-        let rhs_bot = check_expr_with_unifier(fcx, rhs, unifier, lhs_t);
+        let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
         if !ast::lazy_binop(binop) { bot |= rhs_bot; }
 
-        let deref_t = do_autoderef(fcx, expr.span, lhs_t);
-        check_binop_type_compat(fcx, expr.span, deref_t, binop);
+        check_binop_type_compat(fcx, expr.span, lhs_t, binop);
 
         let t =
             alt binop {
@@ -1791,7 +1764,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
               ast::ne. { ty::mk_bool(tcx) }
               ast::ge. { ty::mk_bool(tcx) }
               ast::gt. { ty::mk_bool(tcx) }
-              _ { deref_t }
+              _ { lhs_t }
             };
         write::ty_only_fixup(fcx, id, t);
       }
@@ -1838,8 +1811,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             }
           }
           ast::neg. {
-            oper_t = structurally_resolved_type
-                (fcx, oper.span, do_autoderef(fcx, expr.span, oper_t));
+            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
                  ty::type_is_fp(tcx, oper_t)) {
                 tcx.sess.span_fatal(expr.span, "applying unary minus to \

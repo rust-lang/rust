@@ -1,7 +1,4 @@
-
-
-
-// -*- rust -*-
+// error-pattern: binary operation + cannot be applied to type
 type clam = {x: @int, y: @int};
 
 type fish = {a: @int};
