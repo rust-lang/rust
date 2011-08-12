@@ -25,7 +25,7 @@ fn list_dir(path: str) -> [str] {
             os::libc::closedir(dir);
             ret result;
         }
-        vec::push[str](result, rustrt::rust_dirent_filename(ent));
+        ivec::push[str](result, rustrt::rust_dirent_filename(ent));
     }
     os::libc::closedir(dir);
     ret result;

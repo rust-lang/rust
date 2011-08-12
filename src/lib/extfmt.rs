@@ -356,9 +356,9 @@ mod rt {
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
     fn str_init_elt(c: char, n_elts: uint) -> str {
-        let svec = ivec::from_vec(vec::init_elt[u8](c as u8, n_elts));
+        let svec = ivec::init_elt[u8](c as u8, n_elts);
 
-        ret str::unsafe_from_bytes((svec));
+        ret str::unsafe_from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(cv: &conv, s: str, mode: pad_mode) -> str {

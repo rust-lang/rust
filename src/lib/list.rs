@@ -3,13 +3,13 @@ import option::none;
 
 tag list[T] { cons(T, @list[T]); nil; }
 
-fn from_vec[@T](v: vec[T]) -> list[T] {
+fn from_vec[@T](v: &[T]) -> list[T] {
     let l = nil[T];
     // FIXME: This would be faster and more space efficient if it looped over
     // a reverse vector iterator. Unfortunately generic iterators seem not to
     // work yet.
 
-    for item: T  in vec::reversed(v) { l = cons[T](item, @l); }
+    for item: T  in ivec::reversed(v) { l = cons[T](item, @l); }
     ret l;
 }
 

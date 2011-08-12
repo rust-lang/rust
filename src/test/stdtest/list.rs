@@ -8,7 +8,7 @@ import std::option;
 
 #[test]
 fn test_from_vec() {
-    let l = from_vec([0, 1, 2]);
+    let l = from_vec(~[0, 1, 2]);
     assert (car(l) == 0);
     assert (car(cdr(l)) == 1);
     assert (car(cdr(cdr(l))) == 2);
@@ -16,7 +16,7 @@ fn test_from_vec() {
 
 #[test]
 fn test_foldl() {
-    let l = from_vec([0, 1, 2, 3, 4]);
+    let l = from_vec(~[0, 1, 2, 3, 4]);
     fn add(a: &int, b: &uint) -> uint { ret (a as uint) + b; }
     let rs = list::foldl(l, 0u, add);
     assert (rs == 10u);
@@ -24,7 +24,7 @@ fn test_foldl() {
 
 #[test]
 fn test_find_success() {
-    let l = from_vec([0, 1, 2]);
+    let l = from_vec(~[0, 1, 2]);
     fn match(i: &int) -> option::t[int] {
         ret if i == 2 { option::some(i) } else { option::none[int] };
     }
@@ -34,7 +34,7 @@ fn test_find_success() {
 
 #[test]
 fn test_find_fail() {
-    let l = from_vec([0, 1, 2]);
+    let l = from_vec(~[0, 1, 2]);
     fn match(i: &int) -> option::t[int] { ret option::none[int]; }
     let rs = list::find(l, match);
     assert (rs == option::none[int]);
@@ -42,7 +42,7 @@ fn test_find_fail() {
 
 #[test]
 fn test_has() {
-    let l = from_vec([5, 8, 6]);
+    let l = from_vec(~[5, 8, 6]);
     let empty = list::nil[int];
     assert (list::has(l, 5));
     assert (!list::has(l, 7));
@@ -52,7 +52,7 @@ fn test_has() {
 
 #[test]
 fn test_length() {
-    let l = from_vec([0, 1, 2]);
+    let l = from_vec(~[0, 1, 2]);
     assert (list::length(l) == 3u);
 }
 
