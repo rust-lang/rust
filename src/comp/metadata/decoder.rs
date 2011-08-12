@@ -151,7 +151,7 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: &[u8], s: str) -> bool {
         ret str::eq(str::unsafe_from_bytes(data), s);
     }
-    let s = str::connect_ivec(path, "::");
+    let s = str::connect(path, "::");
     let md = ebmlivec::new_doc(data);
     let paths = ebmlivec::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);

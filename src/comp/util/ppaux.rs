@@ -49,7 +49,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         s += "(";
         let strs = ~[];
         for a: arg  in inputs { strs += ~[fn_input_to_str(cx, a)]; }
-        s += str::connect_ivec(strs, ", ");
+        s += str::connect(strs, ", ");
         s += ")";
         if struct(cx, output) != ty_nil {
             alt cf {
@@ -101,7 +101,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_rec(elems) {
         let strs: [str] = ~[];
         for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
-        s += "{" + str::connect_ivec(strs, ",") + "}";
+        s += "{" + str::connect(strs, ",") + "}";
       }
       ty_tag(id, tps) {
         // The user should never see this if the cname is set properly!
@@ -110,7 +110,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         if ivec::len[t](tps) > 0u {
             let strs: [str] = ~[];
             for typ: t  in tps { strs += ~[ty_to_str(cx, typ)]; }
-            s += "[" + str::connect_ivec(strs, ",") + "]";
+            s += "[" + str::connect(strs, ",") + "]";
         }
       }
       ty_fn(proto, inputs, output, cf, constrs) {
@@ -124,7 +124,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_obj(meths) {
         let strs = ~[];
         for m: method  in meths { strs += ~[method_to_str(cx, m)]; }
-        s += "obj {\n\t" + str::connect_ivec(strs, "\n\t") + "\n}";
+        s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
       }
       ty_res(id, _, _) {
         s +=

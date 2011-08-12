@@ -5216,7 +5216,7 @@ fn load_if_immediate(cx: &@block_ctxt, v: ValueRef, t: &ty::t) -> ValueRef {
 
 fn trans_log(lvl: int, cx: &@block_ctxt, e: &@ast::expr) -> result {
     let lcx = cx.fcx.lcx;
-    let modname = str::connect_ivec(lcx.module_path, "::");
+    let modname = str::connect(lcx.module_path, "::");
     let global;
     if lcx.ccx.module_data.contains_key(modname) {
         global = lcx.ccx.module_data.get(modname);
@@ -6078,7 +6078,7 @@ fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
     let start = time::get_time();
     trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
     let end = time::get_time();
-    log_fn_time(cx.ccx, str::connect_ivec(cx.path, "::"), start, end);
+    log_fn_time(cx.ccx, str::connect(cx.path, "::"), start, end);
 }
 
 fn trans_res_ctor(cx: @local_ctxt, sp: &span, dtor: &ast::_fn,

@@ -323,7 +323,7 @@ fn trans_binary(cx: &@block_ctxt, dest: &dest, sp: &span, op: ast::binop,
 fn trans_log(cx: &@block_ctxt, sp: &span, level: int, expr: &@ast::expr) ->
    @block_ctxt {
     fn trans_log_level(lcx: &@local_ctxt) -> ValueRef {
-        let modname = str::connect_ivec(lcx.module_path, "::");
+        let modname = str::connect(lcx.module_path, "::");
 
         if lcx_ccx(lcx).module_data.contains_key(modname) {
             ret lcx_ccx(lcx).module_data.get(modname);

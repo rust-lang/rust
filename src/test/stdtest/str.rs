@@ -79,7 +79,7 @@ fn test_concat() {
 #[test]
 fn test_connect() {
     fn t(v: &[str], sep: &str, s: &str) {
-        assert (str::eq(str::connect_ivec(v, sep), s));
+        assert (str::eq(str::connect(v, sep), s));
     }
     t(~["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
     let v: [str] = ~[];

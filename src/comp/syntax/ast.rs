@@ -22,7 +22,7 @@ type path = spanned[path_];
 
 fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
 
-fn path_name_i(idents: &[ident]) -> str { str::connect_ivec(idents, "::") }
+fn path_name_i(idents: &[ident]) -> str { str::connect(idents, "::") }
 
 type crate_num = int;
 type node_id = int;

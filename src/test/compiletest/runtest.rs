@@ -315,7 +315,7 @@ fn program_output(cx: &cx, testfile: &str, lib_path: &str, prog: &str,
 
 fn make_cmdline(libpath: &str, prog: &str, args: &[str]) -> str {
     #fmt("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect_ivec(args, " "))
+         str::connect(args, " "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -357,7 +357,7 @@ fn output_base_name(config: &config, testfile: &str) -> str {
         {
             let parts = str::split(fs::basename(testfile), '.' as u8);
             parts = ivec::slice(parts, 0u, ivec::len(parts) - 1u);
-            str::connect_ivec(parts, ".")
+            str::connect(parts, ".")
         };
     #fmt("%s%s.%s", base, filename, config.stage_id)
 }

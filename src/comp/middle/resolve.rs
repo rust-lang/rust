@@ -392,7 +392,7 @@ fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
           ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
           _ {
             e.sess.span_err(sp,
-                            str::connect_ivec(path, "::") +
+                            str::connect(path, "::") +
                                 " does not name a module.");
             ret none;
           }

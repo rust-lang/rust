@@ -43,7 +43,7 @@ export push_byte;
 export unshift_byte;
 export split;
 export concat;
-export connect_ivec;
+export connect;
 export to_upper;
 export safe_slice;
 export unsafe_from_bytes;
@@ -454,7 +454,7 @@ fn concat(v: &[str]) -> str {
     ret s;
 }
 
-fn connect_ivec(v: &[str], sep: str) -> str {
+fn connect(v: &[str], sep: str) -> str {
     let s: str = "";
     let first: bool = true;
     for ss: str  in v {

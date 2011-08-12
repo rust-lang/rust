@@ -537,7 +537,7 @@ fn main(args: vec[str]) {
           }
           link::output_type_exe. { parts += ~["o"]; }
         }
-        let ofile = str::connect_ivec(parts, ".");
+        let ofile = str::connect(parts, ".");
         compile_input(sess, cfg, ifile, ofile);
       }
       some(ofile) {
@@ -588,7 +588,7 @@ fn main(args: vec[str]) {
         fn rmext(filename: str) -> str {
             let parts = str::split(filename, '.' as u8);
             ivec::pop(parts);
-            ret str::connect_ivec(parts, ".");
+            ret str::connect(parts, ".");
         }
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }
@@ -627,7 +627,7 @@ fn main(args: vec[str]) {
     if 0 != err_code {
         sess.err(#fmt("linking with gcc failed with code %d", err_code));
         sess.note(#fmt("gcc arguments: %s",
-                       str::connect_ivec(gcc_args, " ")));
+                       str::connect(gcc_args, " ")));
         sess.abort_if_errors();
     }
     // Clean up on Darwin

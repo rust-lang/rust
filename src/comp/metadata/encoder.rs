@@ -53,7 +53,7 @@ fn add_to_index(ebml_w: &ebmlivec::writer, path: &[str],
                 index: &mutable [entry[str]], name: &str) {
     let full_path = path + ~[name];
     index +=
-        ~[{val: str::connect_ivec(full_path, "::"),
+        ~[{val: str::connect(full_path, "::"),
            pos: ebml_w.writer.tell()}];
 }
 

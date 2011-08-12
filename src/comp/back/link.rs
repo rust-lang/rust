@@ -360,7 +360,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                             str::split(fs::basename(output), '.' as u8);
                         assert (ivec::len(os) >= 2u);
                         ivec::pop(os);
-                        str::connect_ivec(os, ".")
+                        str::connect(os, ".")
                     };
                 warn_missing(sess, "name", name);
                 name

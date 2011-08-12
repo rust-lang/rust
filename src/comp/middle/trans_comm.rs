@@ -72,7 +72,7 @@ fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
         alt name {
           none. {
             let argss = std::ivec::map(expr_to_str, args);
-            #fmt("%s(%s)", expr_to_str(func), str::connect_ivec(argss, ", "))
+            #fmt("%s(%s)", expr_to_str(func), str::connect(argss, ", "))
           }
           some(n) { n }
         };
