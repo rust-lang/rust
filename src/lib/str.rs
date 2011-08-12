@@ -41,7 +41,7 @@ export shift_byte;
 export pop_byte;
 export push_byte;
 export unshift_byte;
-export split_ivec;
+export split;
 export concat;
 export connect;
 export connect_ivec;
@@ -434,7 +434,7 @@ fn unshift_byte(s: &mutable str, b: u8) {
     s = rs;
 }
 
-fn split_ivec(s: str, sep: u8) -> [str] {
+fn split(s: str, sep: u8) -> [str] {
     let v: [str] = ~[];
     let accum: str = "";
     let ends_with_sep: bool = false;

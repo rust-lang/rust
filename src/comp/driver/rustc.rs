@@ -520,7 +520,7 @@ fn main(args: vec[str]) {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         let parts = if !input_is_stdin(ifile) {
-            str::split_ivec(ifile, '.' as u8)
+            str::split(ifile, '.' as u8)
         } else {
             ~["default", "rs"]
         };
@@ -586,7 +586,7 @@ fn main(args: vec[str]) {
                      } else { ret filename; }
                  }(config, _);
         fn rmext(filename: str) -> str {
-            let parts = str::split_ivec(filename, '.' as u8);
+            let parts = str::split(filename, '.' as u8);
             ivec::pop(parts);
             ret str::connect_ivec(parts, ".");
         }

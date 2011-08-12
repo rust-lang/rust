@@ -193,7 +193,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns.(next_err_idx);
-    for line: str  in str::split_ivec(procres.stdout, '\n' as u8) {
+    for line: str  in str::split(procres.stdout, '\n' as u8) {
         if str::find(line, next_err_pat) > 0 {
             log #fmt("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -293,7 +293,7 @@ fn split_maybe_args(argstr: &option::t[str]) -> [str] {
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(str::split_ivec(s, ' ' as u8)) }
+      option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
       option::none. { ~[] }
     }
 }
@@ -355,7 +355,7 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     let base = config.build_base;
     let filename =
         {
-            let parts = str::split_ivec(fs::basename(testfile), '.' as u8);
+            let parts = str::split(fs::basename(testfile), '.' as u8);
             parts = ivec::slice(parts, 0u, ivec::len(parts) - 1u);
             str::connect_ivec(parts, ".")
         };

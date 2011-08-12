@@ -27,7 +27,7 @@ fn test_split() {
     fn t(s: &str, c: char, i: int, k: &str) {
         log "splitting: " + s;
         log i;
-        let v = str::split_ivec(s, c as u8);
+        let v = str::split(s, c as u8);
         log "split to: ";
         for z: str  in v { log z; }
         log "comparing: " + v.(i) + " vs. " + k;

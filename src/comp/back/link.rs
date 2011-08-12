@@ -357,7 +357,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                 let name =
                     {
                         let os =
-                            str::split_ivec(fs::basename(output), '.' as u8);
+                            str::split(fs::basename(output), '.' as u8);
                         assert (ivec::len(os) >= 2u);
                         ivec::pop(os);
                         str::connect_ivec(os, ".")
