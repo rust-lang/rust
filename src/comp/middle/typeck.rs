@@ -883,7 +883,6 @@ mod collect {
 
 
 // Type unification
-
 mod unify {
     fn unify(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) ->
        ty::unify::result {
@@ -1009,12 +1008,12 @@ mod demand {
         } else if (adk == AUTODEREF_BLOCK_COERCE) {
             actual_1 = do_fn_block_coerce(fcx, sp, actual, expected);
         }
+
         let ty_param_substs: [mutable ty::t] = ~[mutable];
         let ty_param_subst_var_ids: [int] = ~[];
         for ty_param_subst: ty::t  in ty_param_substs_0 {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
-
             let t_0 = next_ty_var(fcx);
             ty_param_substs += ~[mutable t_0];
             ty_param_subst_var_ids += ~[ty::ty_var_id(fcx.ccx.tcx, t_0)];
@@ -1370,12 +1369,11 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
         let v_def_ids = ast::variant_def_ids(v_def);
         let tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
         let path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
-        // Take the tag type params out of `expected`.
 
+        // Take the tag type params out of `expected`.
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_tag(_, expected_tps) {
             // Unify with the expected tag type.
-
             let ctor_ty =
                 ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
                                                            path_tpot);
@@ -1385,8 +1383,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                              NO_AUTODEREF);
             path_tpot =
                 {substs: some[[ty::t]](path_tpt.substs), ty: path_tpt.ty};
-            // Get the number of arguments in this tag variant.
 
+            // Get the number of arguments in this tag variant.
             let arg_types =
                 variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
                                   expected_tps);
@@ -1417,9 +1415,6 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                 }
             } else if (subpats_len > 0u) {
                 // TODO: note definition of tag variant
-                // TODO (issue #448): Wrap a #fmt string over multiple
-                // lines...
-
                 fcx.ccx.tcx.sess.span_fatal
                     (pat.span, #fmt("this pattern has %u field%s, \
                                      but the corresponding \

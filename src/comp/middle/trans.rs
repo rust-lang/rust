@@ -3316,8 +3316,6 @@ fn autoderef(cx: &@block_ctxt, v: ValueRef, t: &ty::t) -> result_t {
 
 fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
                 b: &@ast::expr) -> result {
-
-
     // First couple cases are lazy:
     alt op {
       ast::and. {
@@ -3333,11 +3331,11 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
                       ty::expr_ty(bcx_tcx(cx), b));
         let lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
         let lhs_false_res = rslt(lhs_false_cx, C_bool(false));
+
         // The following line ensures that any cleanups for rhs
         // are done within the block for rhs. This is necessary
         // because and/or are lazy. So the rhs may never execute,
         // and the cleanups can't be pushed into later code.
-
         let rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
         lhs_res.bcx.build.CondBr(lhs_res.val, rhs_cx.llbb, lhs_false_cx.llbb);
         ret join_results(cx, T_bool(),
@@ -3356,8 +3354,8 @@ fn trans_binary(cx: &@block_ctxt, op: ast::binop, a: &@ast::expr,
                       ty::expr_ty(bcx_tcx(cx), b));
         let lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
         let lhs_true_res = rslt(lhs_true_cx, C_bool(true));
-        // see the and case for an explanation
 
+        // see the and case for an explanation
         let rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
         lhs_res.bcx.build.CondBr(lhs_res.val, lhs_true_cx.llbb, rhs_cx.llbb);
         ret join_results(cx, T_bool(),
