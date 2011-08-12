@@ -3805,7 +3805,14 @@ fn trans_do_while(cx: &@block_ctxt, body: &ast::blk, cond: &@ast::expr) ->
     if is_terminated(body_res.bcx) {
         // This is kind of ridiculous, but no permutations
         // involving body_res or body_cx.val worked.
-        ret trans_block(cx, body, return);
+        let rs = trans_block(cx, body, return);
+        if ! is_terminated (next_cx) {
+            next_cx.build.Unreachable();
+        }
+        if ! is_terminated (body_cx) {
+            body_cx.build.Unreachable();
+        }
+        ret rs;
     }
     let cond_res = trans_expr(body_res.bcx, cond);
     cond_res.bcx.build.CondBr(cond_res.val, body_cx.llbb, next_cx.llbb);
