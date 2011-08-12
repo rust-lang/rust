@@ -780,17 +780,7 @@ fn parse_path(p: &parser) -> ast::path {
 fn parse_path_and_ty_param_substs(p: &parser) -> ast::path {
     let lo = p.get_lo_pos();
     let path = parse_path(p);
-    if p.peek() == token::LBRACKET {
-        let seq =
-            parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
-                      bind parse_ty(_, false), p);
-        let hi = seq.span.hi;
-        path =
-            spanned(lo, hi,
-                    {global: path.node.global,
-                     idents: path.node.idents,
-                     types: seq.node});
-    } else if p.peek() == token::MOD_SEP {
+    if p.peek() == token::MOD_SEP {
         p.bump();
 
         let seq = parse_seq_lt_gt(some(token::COMMA), bind parse_ty(_, false),
