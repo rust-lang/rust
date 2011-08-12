@@ -5,8 +5,8 @@ import std::str;
 import codemap::span;
 import codemap::filename;
 
-type spanned[T] = {node: T, span: span};
-fn respan[T](sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
+type spanned<T> = {node: T, span: span};
+fn respan<T>(sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
@@ -468,10 +468,10 @@ so that the typestate pass doesn't have to map a function name onto its decl.
 So, the constr_arg type is parameterized: it's instantiated with uint for
 declarations, and ident for uses.
 */
-tag constr_arg_general_[T] { carg_base; carg_ident(T); carg_lit(@lit); }
+tag constr_arg_general_<T> { carg_base; carg_ident(T); carg_lit(@lit); }
 
 type fn_constr_arg = constr_arg_general_<uint>;
-type sp_constr_arg[T] = spanned<constr_arg_general_<T>>;
+type sp_constr_arg<T> = spanned<constr_arg_general_<T>>;
 type ty_constr_arg = sp_constr_arg<path>;
 type constr_arg = spanned<fn_constr_arg>;
 
@@ -480,12 +480,12 @@ type constr_arg = spanned<fn_constr_arg>;
 // The implicit root of such path, in the constraint-list for a
 // constrained type, is * (referring to the base record)
 
-type constr_general_[ARG, ID] =
+type constr_general_<ARG, ID> =
     {path: path, args: [@spanned<constr_arg_general_<ARG>>], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
-type constr_general[ARG] = spanned<constr_general_<ARG, node_id>>;
+type constr_general<ARG> = spanned<constr_general_<ARG, node_id>>;
 type constr_ = constr_general_<uint, node_id>;
 type constr = spanned<constr_general_<uint, node_id>>;
 type ty_constr_ = ast::constr_general_<ast::path, ast::node_id>;

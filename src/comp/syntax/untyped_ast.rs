@@ -370,7 +370,7 @@ fn dummy() {
          extract_fn(ctx, elts.(idx))]];
 }
 
-fn seq_cv[T](conversion: fn (&ctx, &@ast_node) -> T)
+fn seq_cv<T>(conversion: fn (&ctx, &@ast_node) -> T)
     -> fn (&ctx, @ast_node) -> T[] {
     ret lambda(ctx: &ctx, ut: @ast_node) -> T[] {
         ret alt *ut {
@@ -383,7 +383,7 @@ fn seq_cv[T](conversion: fn (&ctx, &@ast_node) -> T)
     }
 }
 
-fn opt_cv[T](conversion: fn (&ctx, &@ast_node) -> T)
+fn opt_cv<T>(conversion: fn (&ctx, &@ast_node) -> T)
     -> fn (&ctx, @ast_node) -> option::t<T> {
     ret lambda(ctx: &ctx, ut: @ast_node) -> option::t<T> {
         ret alt *ut {

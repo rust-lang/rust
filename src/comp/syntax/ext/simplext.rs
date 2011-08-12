@@ -43,7 +43,7 @@ fn path_to_ident(pth: &path) -> option::t<ident> {
 type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */
-tag arb_depth[T] { leaf(T); seq(@[arb_depth<T>], span); }
+tag arb_depth<T> { leaf(T); seq(@[arb_depth<T>], span); }
 
 
 tag matchable {
@@ -121,7 +121,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
     }
 }
 
-fn option_flatten_map[T, U](f: &fn(&T) -> option::t<U>, v: &[T]) ->
+fn option_flatten_map<T, U>(f: &fn(&T) -> option::t<U>, v: &[T]) ->
    option::t<[U]> {
     let res = ~[];
     for elem: T in v {

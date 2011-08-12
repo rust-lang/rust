@@ -36,7 +36,7 @@ fn encode_def_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::end_tag(ebml_w);
 }
 
-type entry[T] = {val: T, pos: uint};
+type entry<T> = {val: T, pos: uint};
 
 fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
                             path: &[str], index: &mutable [entry<str>]) {
@@ -392,7 +392,7 @@ fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebml::writer) ->
 
 // Path and definition ID indexing
 
-fn create_index[T](index: &[entry<T>], hash_fn: fn(&T) -> uint ) ->
+fn create_index<T>(index: &[entry<T>], hash_fn: fn(&T) -> uint ) ->
    [@[entry<T>]] {
     let buckets: [@mutable [entry<T>]] = ~[];
     for each i: uint in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
@@ -408,7 +408,7 @@ fn create_index[T](index: &[entry<T>], hash_fn: fn(&T) -> uint ) ->
     ret buckets_frozen;
 }
 
-fn encode_index[T](ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
+fn encode_index<T>(ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
                    write_fn: fn(&io::writer, &T) ) {
     let writer = io::new_writer_(ebml_w.writer);
     ebml::start_tag(ebml_w, tag_index);

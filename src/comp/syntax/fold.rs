@@ -75,7 +75,7 @@ type a_f =
      new_span: fn(&span) -> span};
 
 
-//fn nf_dummy[T](&T node) -> T { fail; }
+//fn nf_dummy<T>(&T node) -> T { fail; }
 fn nf_crate_dummy(c: &crate) -> crate { fail; }
 fn nf_crate_directive_dummy(c: &@crate_directive) -> @crate_directive {
     fail;

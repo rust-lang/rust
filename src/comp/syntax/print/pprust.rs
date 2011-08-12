@@ -217,7 +217,7 @@ fn synth_comment(s: &ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
+fn commasep<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
     box(s, 0u, b);
     let first = true;
     for elt: IN in elts {
@@ -228,7 +228,7 @@ fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
 }
 
 
-fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
+fn commasep_cmnt<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
                      get_span: fn(&IN) -> codemap::span ) {
     box(s, 0u, b);
     let len = vec::len[IN](elts);
@@ -1515,7 +1515,7 @@ fn escape_str(st: str, to_escape: char) -> str {
     ret out;
 }
 
-fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
+fn to_str<T>(t: &T, f: fn(&ps, &T) ) -> str {
     let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     f(s, t);
@@ -1536,7 +1536,7 @@ fn next_comment(s: &ps) -> option::t<lexer::cmnt> {
 
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
-fn constr_args_to_str[T](f: &fn(&T) -> str ,
+fn constr_args_to_str<T>(f: &fn(&T) -> str ,
                          args: &[@ast::sp_constr_arg<T>]) -> str {
     let comma = false;
     let s = "(";
@@ -1548,7 +1548,7 @@ fn constr_args_to_str[T](f: &fn(&T) -> str ,
     ret s;
 }
 
-fn constr_arg_to_str[T](f: &fn(&T) -> str, c: &ast::constr_arg_general_<T>)
+fn constr_arg_to_str<T>(f: &fn(&T) -> str, c: &ast::constr_arg_general_<T>)
    -> str {
     alt c {
       ast::carg_base. { ret "*"; }
