@@ -25,14 +25,6 @@ fn from_vec[@T](v: &vec[mutable? T]) -> [T] {
     ret iv;
 }
 
-fn to_vec[@T](iv: &[T]) -> vec[T] {
-    let v: vec[T] = [];
-    for e in iv {
-        v += [e];
-    }
-    ret v;
-}
-
 /// Reserves space for `n` elements in the given vector.
 fn reserve[@T](v: &mutable [mutable? T], n: uint) {
     rustrt::ivec_reserve_shared(v, n);
