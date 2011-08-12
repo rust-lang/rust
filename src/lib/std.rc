@@ -93,7 +93,7 @@ mod ptr;
 mod test;
 mod unsafe;
 mod ebmlivec = "ebml.rs";
-mod termivec;
+mod term;
 
 // Local Variables:
 // mode: rust;

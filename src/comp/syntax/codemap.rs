@@ -1,7 +1,7 @@
 import std::ivec;
 import std::uint;
 import std::str;
-import std::termivec;
+import std::term;
 import std::io;
 import std::option;
 import std::option::some;
@@ -85,12 +85,12 @@ fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,
       none. { }
     }
     io::stdout().write_str(ss + ": ");
-    if termivec::color_supported() {
-        termivec::fg(io::stdout().get_buf_writer(), color);
+    if term::color_supported() {
+        term::fg(io::stdout().get_buf_writer(), color);
     }
     io::stdout().write_str(#fmt("%s:", kind));
-    if termivec::color_supported() {
-        termivec::reset(io::stdout().get_buf_writer());
+    if term::color_supported() {
+        term::reset(io::stdout().get_buf_writer());
     }
     io::stdout().write_str(#fmt(" %s\n", msg));
 
