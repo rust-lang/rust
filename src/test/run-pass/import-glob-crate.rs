@@ -1,9 +1,9 @@
 
 use std;
-import std::vec::*;
+import std::ivec::*;
 
 fn main() {
-    let v = empty[int]();
-    v += [4, 2];
-    assert (reversed(v) == [2, 4]);
+    let v = init_elt(0, 0u);
+    v += ~[4, 2];
+    assert (reversed(v) == ~[2, 4]);
 }
