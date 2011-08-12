@@ -2,7 +2,7 @@
 
 tag colour { red; green; }
 
-obj foo[T]() {
+obj foo<T>() {
     fn meth(x: &T) { }
 }
 

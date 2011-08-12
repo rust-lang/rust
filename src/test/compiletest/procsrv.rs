@@ -167,7 +167,7 @@ fn worker(p: _port<request>) {
     }
 }
 
-fn with_lib_path[T](path: &str, f: fn() -> T ) -> T {
+fn with_lib_path<T>(path: &str, f: fn() -> T ) -> T {
     let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();

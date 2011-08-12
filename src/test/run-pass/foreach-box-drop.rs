@@ -1,6 +1,6 @@
 
 
-obj ob[K](k: K) {
+obj ob<K>(k: K) {
     iter foo() -> @{a: K} { put @{a: k}; }
 }
 

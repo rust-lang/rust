@@ -5,7 +5,7 @@ import std::option::t;
 import std::option::none;
 import std::option::some;
 
-fn foo[T](y: &option::t<T>) {
+fn foo<T>(y: &option::t<T>) {
     let x: int;
     let rs: [int] = ~[];
     /* tests that x doesn't get put in the precondition for the

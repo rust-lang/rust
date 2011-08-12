@@ -79,9 +79,9 @@ fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
     assert (deq.get(3) == d);
 }
 
-type eqfn[T] = fn(&T, &T) -> bool ;
+type eqfn<T> = fn(&T, &T) -> bool ;
 
-fn test_parameterized[@T](e: eqfn<T>, a: &T, b: &T, c: &T, d: &T) {
+fn test_parameterized<@T>(e: eqfn<T>, a: &T, b: &T, c: &T, d: &T) {
     let deq: deque::t<T> = deque::create[T]();
     assert (deq.size() == 0u);
     deq.add_front(a);
@@ -113,7 +113,7 @@ fn test_parameterized[@T](e: eqfn<T>, a: &T, b: &T, c: &T, d: &T) {
 
 tag taggy { one(int); two(int, int); three(int, int, int); }
 
-tag taggypar[@T] { onepar(int); twopar(int, int); threepar(int, int, int); }
+tag taggypar<@T> { onepar(int); twopar(int, int); threepar(int, int, int); }
 
 type reccy = {x: int, y: int, t: taggy};
 
@@ -138,7 +138,7 @@ fn test() {
           }
         }
     }
-    fn taggypareq[@T](a: &taggypar<T>, b: &taggypar<T>) -> bool {
+    fn taggypareq<@T>(a: &taggypar<T>, b: &taggypar<T>) -> bool {
         alt a {
           onepar[T](a1) {
             alt b { onepar[T](b1) { ret a1 == b1; } _ { ret false; } }
