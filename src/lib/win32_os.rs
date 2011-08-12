@@ -1,11 +1,12 @@
 
 import str::sbuf;
-import vec::vbuf;
 
 native "cdecl" mod libc = "" {
+    fn read(fd: int, buf: *u8, count: uint) -> int;
+    fn write(fd: int, buf: *u8, count: uint) -> int;
+    fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
+    fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
     fn open(s: sbuf, flags: int, mode: uint) -> int = "_open";
-    fn read(fd: int, buf: vbuf, count: uint) -> int = "_read";
-    fn write(fd: int, buf: vbuf, count: uint) -> int = "_write";
     fn close(fd: int) -> int = "_close";
     type FILE;
     fn fopen(path: sbuf, mode: sbuf) -> FILE;
@@ -14,18 +15,9 @@ native "cdecl" mod libc = "" {
     fn fgetc(f: FILE) -> int;
     fn ungetc(c: int, f: FILE);
     fn feof(f: FILE) -> int;
-    fn fread(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
-    fn fwrite(buf: vbuf, size: uint, n: uint, f: FILE) -> uint;
     fn fseek(f: FILE, offset: int, whence: int) -> int;
     fn ftell(f: FILE) -> int;
     fn _pipe(fds: *mutable int, size: uint, mode: int) -> int;
-}
-
-native "cdecl" mod libc_ivec = "" {
-    fn read(fd: int, buf: *u8, count: uint) -> int;
-    fn write(fd: int, buf: *u8, count: uint) -> int;
-    fn fread(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
-    fn fwrite(buf: *u8, size: uint, n: uint, f: libc::FILE) -> uint;
 }
 
 mod libc_constants {

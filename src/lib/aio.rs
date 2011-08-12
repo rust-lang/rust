@@ -1,5 +1,4 @@
 import str::sbuf;
-import vec::vbuf;
 
 native "rust" mod rustrt {
     type socket;

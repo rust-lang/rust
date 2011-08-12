@@ -186,10 +186,10 @@ mod test_native_items {
         #[attr];
 
         #[attr]
-        type vbuf;
+        type sbuf;
 
         #[attr]
-        fn vec_len[T](v: vec[T]) -> uint;
+        fn str_buf(s: str) -> sbuf;
     }
 }
 

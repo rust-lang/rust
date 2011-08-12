@@ -1,6 +1,5 @@
 
 import str::sbuf;
-import vec::vbuf;
 
 export program;
 export run_program;

@@ -63,7 +63,7 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn read(len: uint) -> [u8] {
         let buf = ~[];
         ivec::reserve[u8](buf, len);
-        let read = os::libc_ivec::fread(ivec::to_ptr[u8](buf), 1u, len, f);
+        let read = os::libc::fread(ivec::to_ptr[u8](buf), 1u, len, f);
         ivec::unsafe::set_len[u8](buf, read);
         ret buf;
     }
@@ -247,7 +247,7 @@ obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn write(v: &[u8]) {
         let len = ivec::len[u8](v);
         let vbuf = ivec::to_ptr[u8](v);
-        let nout = os::libc_ivec::fwrite(vbuf, len, 1u, f);
+        let nout = os::libc::fwrite(vbuf, len, 1u, f);
         if nout < 1u { log_err "error dumping buffer"; }
     }
     fn seek(offset: int, whence: seek_style) {
@@ -269,7 +269,7 @@ obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
         let vbuf;
         while count < len {
             vbuf = ptr::offset(ivec::to_ptr[u8](v), count);
-            let nout = os::libc_ivec::write(fd, vbuf, len);
+            let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";
                 log_err sys::rustrt::last_os_error();
