@@ -2,7 +2,8 @@
 # rustc LLVM-extensions (C++) library variables and rules
 ######################################################################
 
-RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustWrapper.cpp)
+RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
+    RustGCStrategy.cpp RustWrapper.cpp)
 
 RUSTLLVM_DEF := rustllvm/rustllvm$(CFG_DEF_SUFFIX)
 
