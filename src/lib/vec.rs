@@ -135,10 +135,10 @@ fn slice_mut<@T>(v: &[mutable? T], start: uint, end: uint) -> [mutable T] {
 // Mutators
 
 fn shift<@T>(v: &mutable [mutable? T]) -> T {
-    let ln = len[T](v);
+    let ln = len::<T>(v);
     assert (ln > 0u);
     let e = v.(0);
-    v = slice[T](v, 1u, ln);
+    v = slice::<T>(v, 1u, ln);
     ret e;
 }
 
@@ -202,8 +202,8 @@ fn map<@T, @U>(f: &block(&T) -> U , v: &[mutable? T]) -> [U] {
 
 fn map2<@T, @U, @V>(f: &block(&T, &U) -> V, v0: &[T], v1: &[U])
     -> [V] {
-    let v0_len = len[T](v0);
-    if v0_len != len[U](v1) { fail; }
+    let v0_len = len::<T>(v0);
+    if v0_len != len::<U>(v1) { fail; }
     let u: [V] = ~[];
     let i = 0u;
     while i < v0_len { u += ~[f({ v0.(i) }, { v1.(i) })]; i += 1u; }
@@ -259,14 +259,14 @@ fn find<@T>(f: &block(&T) -> bool, v: &[T]) -> option::t<T> {
 
 fn position<@T>(x: &T, v: &[T]) -> option::t<uint> {
     let i: uint = 0u;
-    while i < len(v) { if x == v.(i) { ret some[uint](i); } i += 1u; }
-    ret none[uint];
+    while i < len(v) { if x == v.(i) { ret some::<uint>(i); } i += 1u; }
+    ret none;
 }
 
 fn position_pred<T>(f: fn(&T) -> bool, v: &[T]) -> option::t<uint> {
     let i: uint = 0u;
-    while i < len(v) { if f(v.(i)) { ret some[uint](i); } i += 1u; }
-    ret none[uint];
+    while i < len(v) { if f(v.(i)) { ret some::<uint>(i); } i += 1u; }
+    ret none;
 }
 
 fn unzip<@T, @U>(v: &[(T, U)]) -> ([T], [U]) {
@@ -300,7 +300,7 @@ fn swap<@T>(v: &[mutable T], a: uint, b: uint) {
 // In place vector reversal
 fn reverse<@T>(v: &[mutable T]) {
     let i: uint = 0u;
-    let ln = len[T](v);
+    let ln = len::<T>(v);
     while i < ln / 2u { swap(v, i, ln - i - 1u); i += 1u; }
 }
 
@@ -308,7 +308,7 @@ fn reverse<@T>(v: &[mutable T]) {
 // Functional vector reversal. Returns a reversed copy of v.
 fn reversed<@T>(v: &[T]) -> [T] {
     let rs: [T] = ~[];
-    let i = len[T](v);
+    let i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
     while i != 0u { rs += ~[v.(i)]; i -= 1u; }
     rs += ~[v.(0)];
@@ -334,7 +334,7 @@ mod unsafe {
     }
 
     fn set_len<T>(v: &mutable [T], new_len: uint) {
-        let new_fill = new_len * sys::size_of[T]();
+        let new_fill = new_len * sys::size_of::<T>();
         let stack_part: *mutable ivec_repr =
             ::unsafe::reinterpret_cast(addr_of(v));
         if (*stack_part).fill == 0u {

@@ -62,9 +62,9 @@ resource FILE_res(f: os::libc::FILE) {
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] {
         let buf = ~[];
-        vec::reserve[u8](buf, len);
-        let read = os::libc::fread(vec::to_ptr[u8](buf), 1u, len, f);
-        vec::unsafe::set_len[u8](buf, read);
+        vec::reserve::<u8>(buf, len);
+        let read = os::libc::fread(vec::to_ptr::<u8>(buf), 1u, len, f);
+        vec::unsafe::set_len::<u8>(buf, read);
         ret buf;
     }
     fn read_byte() -> int { ret os::libc::fgetc(f); }
@@ -196,24 +196,24 @@ type byte_buf = @{buf: [u8], mutable pos: uint};
 
 obj byte_buf_reader(bbuf: byte_buf) {
     fn read(len: uint) -> [u8] {
-        let rest = vec::len[u8](bbuf.buf) - bbuf.pos;
+        let rest = vec::len::<u8>(bbuf.buf) - bbuf.pos;
         let to_read = len;
         if rest < to_read { to_read = rest; }
-        let range = vec::slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
+        let range = vec::slice::<u8>(bbuf.buf, bbuf.pos, bbuf.pos + to_read);
         bbuf.pos += to_read;
         ret range;
     }
     fn read_byte() -> int {
-        if bbuf.pos == vec::len[u8](bbuf.buf) { ret -1; }
+        if bbuf.pos == vec::len::<u8>(bbuf.buf) { ret -1; }
         let b = bbuf.buf.(bbuf.pos);
         bbuf.pos += 1u;
         ret b as int;
     }
     fn unread_byte(byte: int) { log_err "TODO: unread_byte"; fail; }
-    fn eof() -> bool { ret bbuf.pos == vec::len[u8](bbuf.buf); }
+    fn eof() -> bool { ret bbuf.pos == vec::len::<u8>(bbuf.buf); }
     fn seek(offset: int, whence: seek_style) {
         let pos = bbuf.pos;
-        let len = vec::len[u8](bbuf.buf);
+        let len = vec::len::<u8>(bbuf.buf);
         bbuf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret bbuf.pos; }
@@ -245,8 +245,8 @@ type buf_writer =
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn write(v: &[u8]) {
-        let len = vec::len[u8](v);
-        let vbuf = vec::to_ptr[u8](v);
+        let len = vec::len::<u8>(v);
+        let vbuf = vec::to_ptr::<u8>(v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
         if nout < 1u { log_err "error dumping buffer"; }
     }
@@ -264,11 +264,11 @@ resource fd_res(fd: int) {
 
 obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     fn write(v: &[u8]) {
-        let len = vec::len[u8](v);
+        let len = vec::len::<u8>(v);
         let count = 0u;
         let vbuf;
         while count < len {
-            vbuf = ptr::offset(vec::to_ptr[u8](v), count);
+            vbuf = ptr::offset(vec::to_ptr::<u8>(v), count);
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";
@@ -403,12 +403,12 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
 
         if buf.pos == vec::len(buf.buf) {
             for b: u8 in v { buf.buf += ~[mutable b]; }
-            buf.pos += vec::len[u8](v);
+            buf.pos += vec::len::<u8>(v);
             ret;
         }
         // FIXME: Optimize: These should be unique pointers.
 
-        let vlen = vec::len[u8](v);
+        let vlen = vec::len::<u8>(v);
         let vpos = 0u;
         while vpos < vlen {
             let b = v.(vpos);

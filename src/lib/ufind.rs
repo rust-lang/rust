@@ -14,7 +14,7 @@ fn make() -> ufind { ret {mutable nodes: ~[mutable]}; }
 
 fn make_set(ufnd: &ufind) -> uint {
     let idx = vec::len(ufnd.nodes);
-    ufnd.nodes += ~[mutable none[uint]];
+    ufnd.nodes += ~[mutable none::<uint>];
     ret idx;
 }
 
@@ -36,17 +36,19 @@ fn union(ufnd: &ufind, m: uint, n: uint) {
     let m_root = find(ufnd, m);
     let n_root = find(ufnd, n);
     if m_root < n_root {
-        ufnd.nodes.(n_root) = some[uint](m_root);
-    } else if (m_root > n_root) { ufnd.nodes.(m_root) = some[uint](n_root); }
+        ufnd.nodes.(n_root) = some::<uint>(m_root);
+    } else if (m_root > n_root) {
+        ufnd.nodes.(m_root) = some::<uint>(n_root);
+    }
 }
 
-fn set_count(ufnd: &ufind) -> uint { ret vec::len[node](ufnd.nodes); }
+fn set_count(ufnd: &ufind) -> uint { ret vec::len::<node>(ufnd.nodes); }
 
 
 // Removes all sets with IDs greater than or equal to the given value.
 fn prune(ufnd: &ufind, n: uint) {
     // TODO: Use "slice" once we get rid of "mutable?"
 
-    let len = vec::len[node](ufnd.nodes);
-    while len != n { vec::pop[node](ufnd.nodes); len -= 1u; }
+    let len = vec::len::<node>(ufnd.nodes);
+    while len != n { vec::pop::<node>(ufnd.nodes); len -= 1u; }
 }

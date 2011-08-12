@@ -53,24 +53,24 @@ fn create<@T>() -> t<T> {
         fn add_front(t: &T) {
             let oldlo: uint = lo;
             if lo == 0u {
-                lo = vec::len[cell<T>](elts) - 1u;
+                lo = vec::len::<cell<T>>(elts) - 1u;
             } else { lo -= 1u; }
             if lo == hi {
-                elts = grow[T](nelts, oldlo, elts);
-                lo = vec::len[cell<T>](elts) - 1u;
+                elts = grow::<T>(nelts, oldlo, elts);
+                lo = vec::len::<cell<T>>(elts) - 1u;
                 hi = nelts;
             }
-            elts.(lo) = option::some[T](t);
+            elts.(lo) = option::some::<T>(t);
             nelts += 1u;
         }
         fn add_back(t: &T) {
             if lo == hi && nelts != 0u {
-                elts = grow[T](nelts, lo, elts);
+                elts = grow::<T>(nelts, lo, elts);
                 lo = 0u;
                 hi = nelts;
             }
-            elts.(hi) = option::some[T](t);
-            hi = (hi + 1u) % vec::len[cell<T>](elts);
+            elts.(hi) = option::some::<T>(t);
+            hi = (hi + 1u) % vec::len::<cell<T>>(elts);
             nelts += 1u;
         }
 
@@ -79,31 +79,31 @@ fn create<@T>() -> t<T> {
          * that we don't keep anyone's refcount up unexpectedly.
          */
         fn pop_front() -> T {
-            let t: T = get[T](elts, lo);
-            elts.(lo) = option::none[T];
-            lo = (lo + 1u) % vec::len[cell<T>](elts);
+            let t: T = get::<T>(elts, lo);
+            elts.(lo) = option::none::<T>;
+            lo = (lo + 1u) % vec::len::<cell<T>>(elts);
             nelts -= 1u;
             ret t;
         }
         fn pop_back() -> T {
             if hi == 0u {
-                hi = vec::len[cell<T>](elts) - 1u;
+                hi = vec::len::<cell<T>>(elts) - 1u;
             } else { hi -= 1u; }
-            let t: T = get[T](elts, hi);
-            elts.(hi) = option::none[T];
+            let t: T = get::<T>(elts, hi);
+            elts.(hi) = option::none::<T>;
             nelts -= 1u;
             ret t;
         }
-        fn peek_front() -> T { ret get[T](elts, lo); }
-        fn peek_back() -> T { ret get[T](elts, hi - 1u); }
+        fn peek_front() -> T { ret get::<T>(elts, lo); }
+        fn peek_back() -> T { ret get::<T>(elts, hi - 1u); }
         fn get(i: int) -> T {
-            let idx: uint = (lo + (i as uint)) % vec::len[cell<T>](elts);
-            ret get[T](elts, idx);
+            let idx: uint = (lo + (i as uint)) % vec::len::<cell<T>>(elts);
+            ret get::<T>(elts, idx);
         }
     }
     let v: [mutable cell<T>] =
         vec::init_elt_mut(option::none, initial_capacity);
-    ret deque[T](0u, 0u, 0u, v);
+    ret deque::<T>(0u, 0u, 0u, v);
 }
 // Local Variables:
 // mode: rust;

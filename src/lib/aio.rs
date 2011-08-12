@@ -78,8 +78,8 @@ fn new_client(client: client, evt: _chan<socket_event>) {
         log "waiting for bytes";
         let data: [u8] = reader.recv();
         log "got some bytes";
-        log vec::len[u8](data);
-        if (vec::len[u8](data) == 0u) {
+        log vec::len::<u8>(data);
+        if (vec::len::<u8>(data) == 0u) {
             log "got empty buffer, bailing";
             break;
         }
@@ -145,7 +145,7 @@ fn request_task(c: _chan<ctx>) {
           }
           write(socket,v,status) {
             rustrt::aio_writedata(socket,
-                                  vec::to_ptr[u8](v), vec::len[u8](v),
+                                  vec::to_ptr::<u8>(v), vec::len::<u8>(v),
                                   status);
           }
           close_server(server,status) {

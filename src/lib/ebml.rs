@@ -40,7 +40,7 @@ fn vint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
 }
 
 fn new_doc(data: &@[u8]) -> doc {
-    ret {data: data, start: 0u, end: vec::len[u8](*data)};
+    ret {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
 fn doc_at(data: &@[u8], start: uint) -> doc {
@@ -57,10 +57,10 @@ fn maybe_get_doc(d: doc, tg: uint) -> option::t<doc> {
         let elt_size = vint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            ret some[doc]({data: d.data, start: elt_size.next, end: pos});
+            ret some::<doc>({data: d.data, start: elt_size.next, end: pos});
         }
     }
-    ret none[doc];
+    ret none::<doc>;
 }
 
 fn get_doc(d: doc, tg: uint) -> doc {
@@ -96,7 +96,7 @@ iter tagged_docs(d: doc, tg: uint) -> doc {
     }
 }
 
-fn doc_data(d: doc) -> [u8] { ret vec::slice[u8](*d.data, d.start, d.end); }
+fn doc_data(d: doc) -> [u8] { ret vec::slice::<u8>(*d.data, d.start, d.end); }
 
 fn be_uint_from_bytes(data: &@[u8], start: uint, size: uint) -> uint {
     let sz = size;
@@ -167,7 +167,7 @@ fn start_tag(w: &writer, tag_id: uint) {
 }
 
 fn end_tag(w: &writer) {
-    let last_size_pos = vec::pop[uint](w.size_positions);
+    let last_size_pos = vec::pop::<uint>(w.size_positions);
     let cur_pos = w.writer.tell();
     w.writer.seek(last_size_pos as int, io::seek_set);
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
