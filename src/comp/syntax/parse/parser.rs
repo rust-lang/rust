@@ -600,16 +600,28 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
     ret parse_ty_postfix(t, p, colons_before_params);
 }
 
-fn parse_arg(p: &parser) -> ast::arg {
-    let m: ast::mode = ast::val;
-    let i: ast::ident = parse_value_ident(p);
-    expect(p, token::COLON);
+fn parse_arg_mode(p: &parser) -> ast::mode {
     if eat(p, token::BINOP(token::AND)) {
-        m = ast::alias(eat_word(p, "mutable"));
+        ast::alias(eat_word(p, "mutable"))
     } else if eat(p, token::BINOP(token::MINUS)) {
-        m = ast::move;
+        ast::move
+    } else {
+        ast::val
     }
-    let t: @ast::ty = parse_ty(p, false);
+}
+
+fn parse_arg(p: &parser) -> ast::arg {
+    let i = parse_value_ident(p);
+    expect(p, token::COLON);
+    let m = parse_arg_mode(p);
+    let t = parse_ty(p, false);
+    ret {mode: m, ty: t, ident: i, id: p.get_id()};
+}
+
+fn parse_fn_block_arg(p: &parser) -> ast::arg {
+    let m = parse_arg_mode(p);
+    let i = parse_value_ident(p);
+    let t = @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer);
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
@@ -808,6 +820,8 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
             hi = p.get_hi_pos();
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
+        } else if p.peek() == token::BINOP(token::OR) {
+            ret parse_fn_block_expr(p);
         } else {
             let blk = parse_block_tail(p, lo);
             ret mk_expr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
@@ -1314,6 +1328,14 @@ fn parse_fn_expr(p: &parser, proto: ast::proto) -> @ast::expr {
     ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
 }
 
+fn parse_fn_block_expr(p: &parser) -> @ast::expr {
+    let lo = p.get_last_lo_pos();
+    let decl = parse_fn_block_decl(p);
+    let body = parse_block_tail(p, lo);
+    let _fn = {decl: decl, proto: ast::proto_block, body: body};
+    ret mk_expr(p, lo, body.span.hi, ast::expr_fn(_fn));
+}
+
 fn parse_else_expr(p: &parser) -> @ast::expr {
     if eat_word(p, "if") {
         ret parse_if_expr(p);
@@ -1792,6 +1814,18 @@ fn parse_fn_decl(p: &parser, purity: ast::purity, il: ast::inlineness)
              constraints: constrs};
       }
     }
+}
+
+fn parse_fn_block_decl(p: &parser) -> ast::fn_decl {
+    let inputs: ast::spanned[[ast::arg]] =
+        parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
+                  some(token::COMMA), parse_fn_block_arg, p);
+    ret {inputs: inputs.node,
+         output: @spanned(p.get_lo_pos(), p.get_hi_pos(), ast::ty_infer),
+         purity: ast::impure_fn,
+         il: ast::il_normal,
+         cf: ast::return,
+         constraints: ~[]};
 }
 
 fn parse_fn(p: &parser, proto: ast::proto, purity: ast::purity,
