@@ -8,7 +8,6 @@ import std::getopts::opt_present;
 import std::getopts::opt_str;
 import std::io;
 import std::io::stdout;
-import std::vec;
 import std::ivec;
 import std::str;
 import std::uint;
@@ -347,12 +346,13 @@ fn check_variants(files: &[str]) {
 }
 
 fn main(args: vec[str]) {
-    if vec::len(args) != 2u {
-        log_err #fmt("usage: %s <testdir>", args.(0));
+    let iargs = ivec::from_vec(args);
+    if ivec::len(iargs) != 2u {
+        log_err #fmt("usage: %s <testdir>", iargs.(0));
         ret;
     }
     let files = ~[];
-    let root = args.(1);
+    let root = iargs.(1);
 
     find_rust_files(files, root);
     check_convergence(files);

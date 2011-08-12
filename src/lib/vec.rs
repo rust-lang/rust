@@ -5,7 +5,6 @@ import util::orb;
 
 export vbuf;
 export buf;
-export len;
 
 type vbuf = rustrt::vbuf;
 
@@ -36,8 +35,6 @@ native "rust" mod rustrt {
 }
 
 fn buf[T](v: array[T]) -> vbuf { ret rustrt::vec_buf[T](v, 0u); }
-
-fn len[T](v: array[T]) -> uint { ret rustrt::vec_len[T](v); }
 
 // Local Variables:
 // mode: rust;

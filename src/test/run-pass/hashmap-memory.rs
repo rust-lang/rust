@@ -10,7 +10,7 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::vec;
+import std::ivec;
 import std::map;
 
 fn map(filename: str, emit: map_reduce::putter) { emit(filename, "1"); }
@@ -26,7 +26,7 @@ mod map_reduce {
 
     tag ctrl_proto { find_reducer(str, chan[int]); mapper_done; }
 
-    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) {
+    fn start_mappers(ctrl: chan[ctrl_proto], inputs: &[str]) {
         for i: str  in inputs { spawn map_task(ctrl, i); }
     }
 
@@ -55,7 +55,7 @@ mod map_reduce {
         ctrl <| mapper_done;
     }
 
-    fn map_reduce(inputs: vec[str]) {
+    fn map_reduce(inputs: &[str]) {
         let ctrl = port[ctrl_proto]();
 
         // This task becomes the master control task. It spawns others
@@ -67,7 +67,7 @@ mod map_reduce {
 
         start_mappers(chan(ctrl), inputs);
 
-        let num_mappers = vec::len(inputs) as int;
+        let num_mappers = ivec::len(inputs) as int;
 
 
         while num_mappers > 0 {
@@ -88,5 +88,5 @@ mod map_reduce {
 }
 
 fn main() {
-    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(~["../src/test/run-pass/hashmap-memory.rs"]);
 }
