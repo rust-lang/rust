@@ -1,9 +1,9 @@
 import option::some;
 import option::none;
 
-tag list[T] { cons(T, @list<T>); nil; }
+tag list<T> { cons(T, @list<T>); nil; }
 
-fn from_vec[@T](v: &[T]) -> list<T> {
+fn from_vec<@T>(v: &[T]) -> list<T> {
     let l = nil[T];
     // FIXME: This would be faster and more space efficient if it looped over
     // a reverse vector iterator. Unfortunately generic iterators seem not to
@@ -13,7 +13,7 @@ fn from_vec[@T](v: &[T]) -> list<T> {
     ret l;
 }
 
-fn foldl[@T, @U](ls_: &list<T>, u: &U, f: &block(&T, &U) -> U ) -> U {
+fn foldl<@T, @U>(ls_: &list<T>, u: &U, f: &block(&T, &U) -> U ) -> U {
     let accum: U = u;
     let ls = ls_;
     while true {
@@ -25,7 +25,7 @@ fn foldl[@T, @U](ls_: &list<T>, u: &U, f: &block(&T, &U) -> U ) -> U {
     ret accum;
 }
 
-fn find[@T, @U](ls_: &list<T>, f: &block(&T) -> option::t<U>)
+fn find<@T, @U>(ls_: &list<T>, f: &block(&T) -> option::t<U>)
     -> option::t<U> {
     let ls = ls_;
     while true {
@@ -39,7 +39,7 @@ fn find[@T, @U](ls_: &list<T>, f: &block(&T) -> option::t<U>)
     ret none;
 }
 
-fn has[@T](ls_: &list<T>, elt: &T) -> bool {
+fn has<@T>(ls_: &list<T>, elt: &T) -> bool {
     let ls = ls_;
     while true {
         alt ls {
@@ -50,26 +50,26 @@ fn has[@T](ls_: &list<T>, elt: &T) -> bool {
     ret false;
 }
 
-fn length[@T](ls: &list<T>) -> uint {
-    fn count[T](t: &T, u: &uint) -> uint { ret u + 1u; }
+fn length<@T>(ls: &list<T>) -> uint {
+    fn count<T>(t: &T, u: &uint) -> uint { ret u + 1u; }
     ret foldl(ls, 0u, count);
 }
 
-fn cdr[@T](ls: &list<T>) -> list<T> {
+fn cdr<@T>(ls: &list<T>) -> list<T> {
     alt ls {
       cons(_, tl) { ret *tl; }
       nil. { fail "list empty" }
     }
 }
 
-fn car[@T](ls: &list<T>) -> T {
+fn car<@T>(ls: &list<T>) -> T {
     alt ls {
       cons(hd, _) { ret hd; }
       nil. { fail "list empty" }
     }
 }
 
-fn append[@T](l: &list<T>, m: &list<T>) -> list<T> {
+fn append<@T>(l: &list<T>, m: &list<T>) -> list<T> {
     alt l {
       nil. { ret m; }
       cons(x, xs) {

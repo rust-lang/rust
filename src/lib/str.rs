@@ -65,7 +65,7 @@ native "rust" mod rustrt {
     fn str_from_buf(buf: sbuf, len: uint) -> str;
     fn str_push_byte(s: str, byte: uint) -> str;
     fn str_slice(s: str, begin: uint, end: uint) -> str;
-    fn refcount[T](s: str) -> uint;
+    fn refcount<T>(s: str) -> uint;
 }
 
 fn eq(a: &str, b: &str) -> bool {
