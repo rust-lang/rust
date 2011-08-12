@@ -1,6 +1,5 @@
 
 import rustrt::sbuf;
-import vec::rustrt::vbuf;
 import uint::le;
 export sbuf;
 export rustrt;
