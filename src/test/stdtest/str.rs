@@ -69,11 +69,11 @@ fn test_substr() {
 
 #[test]
 fn test_concat() {
-    fn t(v: &vec[str], s: &str) { assert (str::eq(str::concat(v), s)); }
-    t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
-    let v: vec[str] = [];
+    fn t(v: &[str], s: &str) { assert (str::eq(str::concat(v), s)); }
+    t(~["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+    let v: [str] = ~[];
     t(v, "");
-    t(["hi"], "hi");
+    t(~["hi"], "hi");
 }
 
 #[test]

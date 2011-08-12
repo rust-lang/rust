@@ -449,7 +449,7 @@ fn split(s: str, sep: u8) -> [str] {
     ret v;
 }
 
-fn concat(v: vec[str]) -> str {
+fn concat(v: &[str]) -> str {
     let s: str = "";
     for ss: str  in v { s += ss; }
     ret s;
