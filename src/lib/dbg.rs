@@ -22,8 +22,6 @@ native "rust" mod rustrt {
     fn debug_trap(msg: str);
 }
 
-fn debug_vec[T](v: vec[T]) { vec::print_debug_info[T](v); }
-
 fn debug_tydesc[T]() { rustrt::debug_tydesc[T](); }
 
 fn debug_opaque[T](x: &T) { rustrt::debug_opaque[T](x); }
