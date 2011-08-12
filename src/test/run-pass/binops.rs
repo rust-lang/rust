@@ -53,9 +53,8 @@ fn test_char() {
 }
 
 fn test_box() {
-    assert (@10 == 10);
-    assert (0xFF & @0xF0 == 0xF0);
-    assert ({a: 1, b: 3} < @{a: 1, b: 4});
+    assert (@10 == @10);
+    assert (@{a: 1, b: 3} < @{a: 1, b: 4});
     assert (@{a: 'x'} != @{a: 'y'});
 }
 
