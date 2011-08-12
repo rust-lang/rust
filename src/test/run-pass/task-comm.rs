@@ -29,10 +29,10 @@ fn test00() {
 
     let i: int = 0;
 
-    let tasks: vec[task] = [];
+    let tasks: [task] = ~[];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [spawn test00_start(ch, i, number_of_messages)];
+        tasks += ~[spawn test00_start(ch, i, number_of_messages)];
     }
 
     let sum: int = 0;
@@ -132,8 +132,9 @@ fn test06() {
 
     let i: int = 0;
 
-    let tasks: vec[task] = [];
-    while i < number_of_tasks { i = i + 1; tasks += [spawn test06_start(i)]; }
+    let tasks: [task] = ~[];
+    while i < number_of_tasks {
+        i = i + 1; tasks += ~[spawn test06_start(i)]; }
 
 
     for t: task  in tasks { task::join(t); }

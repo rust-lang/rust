@@ -10,7 +10,7 @@ iter range(start: int, stop: int) -> int {
 }
 
 fn main() {
-    let a: vec[mutable int] = [mutable -1, -1, -1, -1, -1, -1, -1, -1];
+    let a: [mutable int] = ~[mutable -1, -1, -1, -1, -1, -1, -1, -1];
     let p: int = 0;
     for each i: int  in two() {
         for each j: int  in range(0, 2) {

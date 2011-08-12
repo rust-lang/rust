@@ -1,7 +1,7 @@
-fn iter_vec[T](v: &vec[T], f: &block(&T) ) { for x: T  in v { f(x); } }
+fn iter_vec[T](v: &[T], f: &block(&T) ) { for x: T  in v { f(x); } }
 
 fn main() {
-    let v = [1, 2, 3, 4, 5];
+    let v = ~[1, 2, 3, 4, 5];
     let sum = 0;
     iter_vec(v,
              block (i: &int) {

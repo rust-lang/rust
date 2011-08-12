@@ -12,9 +12,9 @@ fn main() {
     // during 'make check' under valgrind
     // 5000000
     // 50000000
-    let inputs: vec[int] = [50000, 500000];
+    let inputs: [int] = ~[50000, 500000];
 
-    let bodies: vec[Body::props] = NBodySystem::MakeNBodySystem();
+    let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
 
 
     for n: int  in inputs {
@@ -31,10 +31,10 @@ fn main() {
 
 mod NBodySystem {
 
-    fn MakeNBodySystem() -> vec[Body::props] {
+    fn MakeNBodySystem() -> [Body::props] {
         // these each return a Body::props
-        let bodies: vec[Body::props] =
-            [Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
+        let bodies: [Body::props] =
+            ~[Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
              Body::neptune()];
 
         let px: float = 0.0;
@@ -56,7 +56,7 @@ mod NBodySystem {
         ret bodies;
     }
 
-    fn advance(bodies: vec[Body::props], dt: float) {
+    fn advance(bodies: &[Body::props], dt: float) {
 
         let i: int = 0;
         while i < 5 {
@@ -95,7 +95,7 @@ mod NBodySystem {
         b.z += dt * b.vz;
     }
 
-    fn energy(bodies: vec[Body::props]) -> float {
+    fn energy(bodies: &[Body::props]) -> float {
         let dx: float;
         let dy: float;
         let dz: float;

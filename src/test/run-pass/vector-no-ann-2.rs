@@ -1,1 +1,1 @@
-fn main() { let quux: @vec[uint] = @[]; }
+fn main() { let quux: @[uint] = @~[]; }

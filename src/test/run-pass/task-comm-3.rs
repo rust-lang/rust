@@ -24,9 +24,10 @@ fn test00() {
     let i: int = 0;
 
     // Create and spawn tasks...
-    let tasks: vec[task] = [];
+    let tasks: [task] = ~[];
     while i < number_of_tasks {
-        tasks += [spawn test00_start(ch.unsafe_ptr(), i, number_of_messages)];
+        tasks +=
+            ~[spawn test00_start(ch.unsafe_ptr(), i, number_of_messages)];
         i = i + 1;
     }
 

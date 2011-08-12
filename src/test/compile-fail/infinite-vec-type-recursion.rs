@@ -1,6 +1,6 @@
 // -*- rust -*-
 // error-pattern: illegal recursive type
 
-type x = vec[x];
+type x = [x];
 
-fn main() { let b: x = []; }
+fn main() { let b: x = ~[]; }

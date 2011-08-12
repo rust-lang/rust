@@ -15,8 +15,8 @@ fn test00() {
     let number_of_tasks: int = 8;
 
     let i: int = 0;
-    let tasks: vec[task] = [];
-    while i < number_of_tasks { i = i + 1; tasks += [spawn start(i)]; }
+    let tasks: [task] = ~[];
+    while i < number_of_tasks { i = i + 1; tasks += ~[spawn start(i)]; }
 
     for t: task  in tasks { task::join(t); }
 

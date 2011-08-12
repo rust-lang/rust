@@ -1,7 +1,7 @@
 fn main() {
-    fn echo[T](c: int, x: vec[T]) { }
+    fn echo[T](c: int, x: &[T]) { }
 
-    let y: fn(vec[int])  = bind echo(42, _);
+    let y: fn(&[int])  = bind echo(42, _);
 
-    y([1]);
+    y(~[1]);
 }

@@ -69,9 +69,9 @@ fn stress_task(id: int) {
 }
 
 fn stress(num_tasks: int) {
-    let tasks = [];
+    let tasks = ~[];
     for each i: int  in range(0, num_tasks) {
-        tasks += [spawn stress_task(i)];
+        tasks += ~[spawn stress_task(i)];
     }
     for each i: int  in range(0, num_tasks) { task::join(tasks.(i)); }
 }

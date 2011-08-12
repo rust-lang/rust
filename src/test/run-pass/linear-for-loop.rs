@@ -1,7 +1,7 @@
 
 
 fn main() {
-    let x = [1, 2, 3];
+    let x = ~[1, 2, 3];
     let y = 0;
     for i: int  in x { log i; y += i; }
     log y;
