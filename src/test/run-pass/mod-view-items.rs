@@ -6,8 +6,8 @@
 
 mod m {
     use std;
-    import std::vec;
-    fn f() -> vec[int] { vec::empty[int]() }
+    import std::ivec;
+    fn f() -> [int] { ivec::init_elt(0, 1u) }
 }
 
 fn main() { let x = m::f(); }
