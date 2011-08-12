@@ -92,7 +92,6 @@ mod smallintmap;
 mod ptr;
 mod test;
 mod unsafe;
-mod ebmlivec = "ebml.rs";
 mod term;
 
 // Local Variables:

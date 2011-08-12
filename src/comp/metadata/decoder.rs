@@ -1,6 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
-import std::ebmlivec;
+import std::ebml;
 import std::ivec;
 import std::option;
 import std::str;
@@ -35,65 +35,65 @@ export external_resolver;
 // build.
 type external_resolver = fn(&ast::def_id) -> ast::def_id ;
 
-fn lookup_hash(d: &ebmlivec::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
-   [ebmlivec::doc] {
-    let index = ebmlivec::get_doc(d, tag_index);
-    let table = ebmlivec::get_doc(index, tag_index_table);
+fn lookup_hash(d: &ebml::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
+   [ebml::doc] {
+    let index = ebml::get_doc(d, tag_index);
+    let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
-    let pos = ebmlivec::be_uint_from_bytes(d.data, hash_pos, 4u);
-    let bucket = ebmlivec::doc_at(d.data, pos);
+    let pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
+    let bucket = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
-    let result: [ebmlivec::doc] = ~[];
+    let result: [ebml::doc] = ~[];
     let belt = tag_index_buckets_bucket_elt;
-    for each elt: ebmlivec::doc  in ebmlivec::tagged_docs(bucket, belt) {
-        let pos = ebmlivec::be_uint_from_bytes(elt.data, elt.start, 4u);
+    for each elt: ebml::doc  in ebml::tagged_docs(bucket, belt) {
+        let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
         if eq_fn(ivec::slice[u8](*elt.data, elt.start + 4u, elt.end)) {
-            result += ~[ebmlivec::doc_at(d.data, pos)];
+            result += ~[ebml::doc_at(d.data, pos)];
         }
     }
     ret result;
 }
 
-fn maybe_find_item(item_id: int, items: &ebmlivec::doc) ->
-   option::t[ebmlivec::doc] {
+fn maybe_find_item(item_id: int, items: &ebml::doc) ->
+   option::t[ebml::doc] {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        ret ebmlivec::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
+        ret ebml::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
     let eqer = bind eq_item(_, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
     if ivec::len(found) == 0u {
-        ret option::none[ebmlivec::doc];
-    } else { ret option::some[ebmlivec::doc](found.(0)); }
+        ret option::none[ebml::doc];
+    } else { ret option::some[ebml::doc](found.(0)); }
 }
 
-fn find_item(item_id: int, items: &ebmlivec::doc) -> ebmlivec::doc {
+fn find_item(item_id: int, items: &ebml::doc) -> ebml::doc {
     ret option::get(maybe_find_item(item_id, items));
 }
 
-// Looks up an item in the given metadata and returns an ebmlivec doc pointing
+// Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
-fn lookup_item(item_id: int, data: &@[u8]) -> ebmlivec::doc {
-    let items = ebmlivec::get_doc(ebmlivec::new_doc(data), tag_items);
+fn lookup_item(item_id: int, data: &@[u8]) -> ebml::doc {
+    let items = ebml::get_doc(ebml::new_doc(data), tag_items);
     ret find_item(item_id, items);
 }
 
-fn item_family(item: &ebmlivec::doc) -> u8 {
-    let fam = ebmlivec::get_doc(item, tag_items_data_item_family);
-    ret ebmlivec::doc_as_uint(fam) as u8;
+fn item_family(item: &ebml::doc) -> u8 {
+    let fam = ebml::get_doc(item, tag_items_data_item_family);
+    ret ebml::doc_as_uint(fam) as u8;
 }
 
-fn item_symbol(item: &ebmlivec::doc) -> str {
-    let sym = ebmlivec::get_doc(item, tag_items_data_item_symbol);
-    ret str::unsafe_from_bytes(ebmlivec::doc_data(sym));
+fn item_symbol(item: &ebml::doc) -> str {
+    let sym = ebml::get_doc(item, tag_items_data_item_symbol);
+    ret str::unsafe_from_bytes(ebml::doc_data(sym));
 }
 
-fn variant_tag_id(d: &ebmlivec::doc) -> ast::def_id {
-    let tagdoc = ebmlivec::get_doc(d, tag_items_data_item_tag_id);
-    ret parse_def_id(ebmlivec::doc_data(tagdoc));
+fn variant_tag_id(d: &ebml::doc) -> ast::def_id {
+    let tagdoc = ebml::get_doc(d, tag_items_data_item_tag_id);
+    ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
-fn item_type(item: &ebmlivec::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
+fn item_type(item: &ebml::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
              extres: &external_resolver) -> ty::t {
     fn parse_external_def_id(this_cnum: ast::crate_num,
                              extres: &external_resolver, s: str) ->
@@ -108,18 +108,18 @@ fn item_type(item: &ebmlivec::doc, this_cnum: ast::crate_num, tcx: ty::ctxt,
             ret {crate: this_cnum, node: external_def_id.node};
         } else { ret extres(external_def_id); }
     }
-    let tp = ebmlivec::get_doc(item, tag_items_data_item_type);
+    let tp = ebml::get_doc(item, tag_items_data_item_type);
     let def_parser = bind parse_external_def_id(this_cnum, extres, _);
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
                       def_parser, tcx);
 }
 
-fn item_ty_param_kinds(item: &ebmlivec::doc) -> [ast::kind] {
+fn item_ty_param_kinds(item: &ebml::doc) -> [ast::kind] {
     let ks: [ast::kind] = ~[];
     let tp = tag_items_data_item_ty_param_kinds;
-    for each p: ebmlivec::doc in ebmlivec::tagged_docs(item, tp) {
-        let dat : [u8] = ebmlivec::doc_data(p);
-        let vi = ebmlivec::vint_at(dat, 0u);
+    for each p: ebml::doc in ebml::tagged_docs(item, tp) {
+        let dat : [u8] = ebml::doc_data(p);
+        let vi = ebml::vint_at(dat, 0u);
         let i = 0u;
         while i < vi.val {
             let k = alt dat.(vi.next + i) as char {
@@ -134,12 +134,12 @@ fn item_ty_param_kinds(item: &ebmlivec::doc) -> [ast::kind] {
     ret ks;
 }
 
-fn tag_variant_ids(item: &ebmlivec::doc, this_cnum: ast::crate_num) ->
+fn tag_variant_ids(item: &ebml::doc, this_cnum: ast::crate_num) ->
    [ast::def_id] {
     let ids: [ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
-    for each p: ebmlivec::doc  in ebmlivec::tagged_docs(item, v) {
-        let ext = parse_def_id(ebmlivec::doc_data(p));
+    for each p: ebml::doc  in ebml::tagged_docs(item, v) {
+        let ext = parse_def_id(ebml::doc_data(p));
         ids += ~[{crate: this_cnum, node: ext.node}];
     }
     ret ids;
@@ -152,13 +152,13 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
         ret str::eq(str::unsafe_from_bytes(data), s);
     }
     let s = str::connect(path, "::");
-    let md = ebmlivec::new_doc(data);
-    let paths = ebmlivec::get_doc(md, tag_paths);
+    let md = ebml::new_doc(data);
+    let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = ~[];
-    for doc: ebmlivec::doc  in lookup_hash(paths, eqer, hash_path(s)) {
-        let did_doc = ebmlivec::get_doc(doc, tag_def_id);
-        result += ~[parse_def_id(ebmlivec::doc_data(did_doc))];
+    for doc: ebml::doc  in lookup_hash(paths, eqer, hash_path(s)) {
+        let did_doc = ebml::get_doc(doc, tag_def_id);
+        result += ~[parse_def_id(ebml::doc_data(did_doc))];
     }
     ret result;
 }
@@ -229,7 +229,7 @@ fn get_tag_variants(data: &@[u8], def: ast::def_id, tcx: &ty::ctxt,
     let external_crate_id = def.crate;
     let data =
         cstore::get_crate_data(tcx.sess.get_cstore(), external_crate_id).data;
-    let items = ebmlivec::get_doc(ebmlivec::new_doc(data), tag_items);
+    let items = ebml::get_doc(ebml::new_doc(data), tag_items);
     let item = find_item(def.node, items);
     let infos: [ty::variant_info] = ~[];
     let variant_ids = tag_variant_ids(item, external_crate_id);
@@ -266,15 +266,15 @@ fn family_has_type_params(fam_ch: u8) -> bool {
         };
 }
 
-fn read_path(d: &ebmlivec::doc) -> {path: str, pos: uint} {
-    let desc = ebmlivec::doc_data(d);
-    let pos = ebmlivec::be_uint_from_bytes(@desc, 0u, 4u);
+fn read_path(d: &ebml::doc) -> {path: str, pos: uint} {
+    let desc = ebml::doc_data(d);
+    let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
     let pathbytes = ivec::slice[u8](desc, 4u, ivec::len[u8](desc));
     let path = str::unsafe_from_bytes(pathbytes);
     ret {path: path, pos: pos};
 }
 
-fn describe_def(items: &ebmlivec::doc, id: ast::def_id) -> str {
+fn describe_def(items: &ebml::doc, id: ast::def_id) -> str {
     if id.crate != ast::local_crate { ret "external"; }
     ret item_family_to_str(item_family(find_item(id.node, items)));
 }
@@ -294,40 +294,40 @@ fn item_family_to_str(fam: u8) -> str {
     }
 }
 
-fn get_meta_items(md: &ebmlivec::doc) -> [@ast::meta_item] {
+fn get_meta_items(md: &ebml::doc) -> [@ast::meta_item] {
     let items: [@ast::meta_item] = ~[];
-    for each meta_item_doc: ebmlivec::doc  in
-             ebmlivec::tagged_docs(md, tag_meta_item_word) {
-        let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
+    for each meta_item_doc: ebml::doc  in
+             ebml::tagged_docs(md, tag_meta_item_word) {
+        let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
+        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
         items += ~[attr::mk_word_item(n)];
     }
-    for each meta_item_doc: ebmlivec::doc  in
-             ebmlivec::tagged_docs(md, tag_meta_item_name_value) {
-        let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
-        let vd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
-        let v = str::unsafe_from_bytes(ebmlivec::doc_data(vd));
+    for each meta_item_doc: ebml::doc  in
+             ebml::tagged_docs(md, tag_meta_item_name_value) {
+        let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
+        let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
+        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let v = str::unsafe_from_bytes(ebml::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
         items += ~[attr::mk_name_value_item_str(n, v)];
     }
-    for each meta_item_doc: ebmlivec::doc  in
-             ebmlivec::tagged_docs(md, tag_meta_item_list) {
-        let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
+    for each meta_item_doc: ebml::doc  in
+             ebml::tagged_docs(md, tag_meta_item_list) {
+        let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
+        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items += ~[attr::mk_list_item(n, subitems)];
     }
     ret items;
 }
 
-fn get_attributes(md: &ebmlivec::doc) -> [ast::attribute] {
+fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
     let attrs: [ast::attribute] = ~[];
-    alt ebmlivec::maybe_get_doc(md, tag_attributes) {
+    alt ebml::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
-        for each attr_doc: ebmlivec::doc  in
-                 ebmlivec::tagged_docs(attrs_d, tag_attribute) {
+        for each attr_doc: ebml::doc  in
+                 ebml::tagged_docs(attrs_d, tag_attribute) {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -343,13 +343,13 @@ fn get_attributes(md: &ebmlivec::doc) -> [ast::attribute] {
     ret attrs;
 }
 
-fn list_meta_items(meta_items: &ebmlivec::doc, out: io::writer) {
+fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
     for mi: @ast::meta_item  in get_meta_items(meta_items) {
         out.write_str(#fmt("%s\n", pprust::meta_item_to_str(*mi)));
     }
 }
 
-fn list_crate_attributes(md: &ebmlivec::doc, out: io::writer) {
+fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
     out.write_str("=Crate Attributes=\n");
 
     for attr: ast::attribute  in get_attributes(md) {
@@ -360,19 +360,19 @@ fn list_crate_attributes(md: &ebmlivec::doc, out: io::writer) {
 }
 
 fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
-    ret get_attributes(ebmlivec::new_doc(data));
+    ret get_attributes(ebml::new_doc(data));
 }
 
 type crate_dep = {cnum: ast::crate_num, ident: str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let deps: [crate_dep] = ~[];
-    let cratedoc = ebmlivec::new_doc(data);
-    let depsdoc = ebmlivec::get_doc(cratedoc, tag_crate_deps);
+    let cratedoc = ebml::new_doc(data);
+    let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let crate_num = 1;
-    for each depdoc: ebmlivec::doc  in
-             ebmlivec::tagged_docs(depsdoc, tag_crate_dep) {
-        let depname = str::unsafe_from_bytes(ebmlivec::doc_data(depdoc));
+    for each depdoc: ebml::doc  in
+             ebml::tagged_docs(depsdoc, tag_crate_dep) {
+        let depname = str::unsafe_from_bytes(ebml::doc_data(depdoc));
         deps += ~[{cnum: crate_num, ident: depname}];
         crate_num += 1;
     }
@@ -389,20 +389,20 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("\n");
 }
 
-fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: io::writer) {
+fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
     out.write_str("=Items=\n");
-    let paths = ebmlivec::get_doc(md, tag_paths);
-    let items = ebmlivec::get_doc(md, tag_items);
-    let index = ebmlivec::get_doc(paths, tag_index);
-    let bs = ebmlivec::get_doc(index, tag_index_buckets);
-    for each bucket: ebmlivec::doc  in
-             ebmlivec::tagged_docs(bs, tag_index_buckets_bucket) {
+    let paths = ebml::get_doc(md, tag_paths);
+    let items = ebml::get_doc(md, tag_items);
+    let index = ebml::get_doc(paths, tag_index);
+    let bs = ebml::get_doc(index, tag_index_buckets);
+    for each bucket: ebml::doc  in
+             ebml::tagged_docs(bs, tag_index_buckets_bucket) {
         let et = tag_index_buckets_bucket_elt;
-        for each elt: ebmlivec::doc  in ebmlivec::tagged_docs(bucket, et) {
+        for each elt: ebml::doc  in ebml::tagged_docs(bucket, et) {
             let data = read_path(elt);
-            let def = ebmlivec::doc_at(bytes, data.pos);
-            let did_doc = ebmlivec::get_doc(def, tag_def_id);
-            let did = parse_def_id(ebmlivec::doc_data(did_doc));
+            let def = ebml::doc_at(bytes, data.pos);
+            let did_doc = ebml::get_doc(def, tag_def_id);
+            let did = parse_def_id(ebml::doc_data(did_doc));
             out.write_str(#fmt("%s (%s)\n", data.path,
                                describe_def(items, did)));
         }
@@ -411,7 +411,7 @@ fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: io::writer) {
 }
 
 fn list_crate_metadata(bytes: &@[u8], out: io::writer) {
-    let md = ebmlivec::new_doc(bytes);
+    let md = ebml::new_doc(bytes);
     list_crate_attributes(md, out);
     list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
