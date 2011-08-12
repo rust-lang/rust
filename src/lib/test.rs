@@ -181,25 +181,25 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     ret success;
 
     fn write_ok(out: &io::writer, use_color: bool) {
-        write_pretty(out, "ok", term::color_green, use_color);
+        write_pretty(out, "ok", termivec::color_green, use_color);
     }
 
     fn write_failed(out: &io::writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color_red, use_color);
+        write_pretty(out, "FAILED", termivec::color_red, use_color);
     }
 
     fn write_ignored(out: &io::writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color_yellow, use_color);
+        write_pretty(out, "ignored", termivec::color_yellow, use_color);
     }
 
     fn write_pretty(out: &io::writer, word: &str, color: u8,
                     use_color: bool) {
-        if use_color && term::color_supported() {
-            term::fg(out.get_buf_writer(), color);
+        if use_color && termivec::color_supported() {
+            termivec::fg(out.get_buf_writer(), color);
         }
         out.write_str(word);
-        if use_color && term::color_supported() {
-            term::reset(out.get_buf_writer());
+        if use_color && termivec::color_supported() {
+            termivec::reset(out.get_buf_writer());
         }
     }
 }

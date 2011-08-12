@@ -87,7 +87,6 @@ mod ufindivec;
 mod extfmt;
 mod box;
 mod getopts;
-mod term;
 mod time;
 mod smallintmap;
 mod ptr;
