@@ -32,7 +32,7 @@ import ast::mac_invoc;
 
 export add_new_extension;
 
-fn path_to_ident(pth: &path) -> option::t[ident] {
+fn path_to_ident(pth: &path) -> option::t<ident> {
     if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
         ret some(pth.node.idents.(0u));
     }
@@ -43,13 +43,13 @@ fn path_to_ident(pth: &path) -> option::t[ident] {
 type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */
-tag arb_depth[T] { leaf(T); seq(@[arb_depth[T]], span); }
+tag arb_depth[T] { leaf(T); seq(@[arb_depth<T>], span); }
 
 
 tag matchable {
     match_expr(@expr);
     match_path(path);
-    match_ident(ast::spanned[ident]);
+    match_ident(ast::spanned<ident>);
     match_ty(@ty);
     match_block(ast::blk);
     match_exact; /* don't bind anything, just verify the AST traversal */
@@ -88,11 +88,11 @@ fn match_error(cx: &ext_ctxt, m: &matchable, expected: &str) -> ! {
 // If we want better match failure error messages (like in Fortifying Syntax),
 // we'll want to return something indicating amount of progress and location
 // of failure instead of `none`.
-type match_result = option::t[arb_depth[matchable]];
+type match_result = option::t<arb_depth<matchable>>;
 type selector = fn(&matchable) -> match_result ;
 
 fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
-    -> {pre: [@expr], rep: option::t[@expr], post: [@expr]} {
+    -> {pre: [@expr], rep: option::t<@expr>, post: [@expr]} {
     let idx: uint = 0u;
     let res = none;
     for elt: @expr in elts {
@@ -121,8 +121,8 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
     }
 }
 
-fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &[T]) ->
-   option::t[[U]] {
+fn option_flatten_map[T, U](f: &fn(&T) -> option::t<U>, v: &[T]) ->
+   option::t<[U]> {
     let res = ~[];
     for elem: T in v {
         alt f(elem) { none. { ret none; } some(fv) { res += ~[fv]; } }
@@ -130,7 +130,7 @@ fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &[T]) ->
     ret some(res);
 }
 
-fn a_d_map(ad: &arb_depth[matchable], f: &selector) -> match_result {
+fn a_d_map(ad: &arb_depth<matchable>, f: &selector) -> match_result {
     alt ad {
       leaf(x) { ret f(x); }
       seq(ads, span) {
@@ -155,9 +155,9 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 
 type binders =
-    {real_binders: hashmap[ident, selector],
+    {real_binders: hashmap<ident, selector>,
      mutable literal_ast_matchers: [selector]};
-type bindings = hashmap[ident, arb_depth[matchable]];
+type bindings = hashmap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(cx: &ext_ctxt, b_dest: &bindings, b_src: &bindings) { }
 
@@ -182,8 +182,8 @@ fn pattern_to_selectors(cx: &ext_ctxt, e: @expr) -> binders {
 bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
-fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
-    let res = new_str_hash[arb_depth[matchable]]();
+fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
+    let res = new_str_hash[arb_depth<matchable>]();
     //need to do this first, to check vec lengths.
     for sel: selector in b.literal_ast_matchers {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
@@ -230,9 +230,9 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
 
 
 /* helper: descend into a matcher */
-fn follow(m: &arb_depth[matchable], idx_path: @mutable [uint]) ->
-   arb_depth[matchable] {
-    let res: arb_depth[matchable] = m;
+fn follow(m: &arb_depth<matchable>, idx_path: @mutable [uint]) ->
+   arb_depth<matchable> {
+    let res: arb_depth<matchable> = m;
     for idx: uint in *idx_path {
         alt res {
           leaf(_) { ret res;/* end of the line */ }
@@ -242,8 +242,8 @@ fn follow(m: &arb_depth[matchable], idx_path: @mutable [uint]) ->
     ret res;
 }
 
-fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t[arb_depth[matchable]],
-                    idx_path: @mutable [uint]) -> option::t[matchable] {
+fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
+                    idx_path: @mutable [uint]) -> option::t<matchable> {
     alt mmaybe {
       none. { ret none }
       some(m) {
@@ -262,9 +262,9 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t[arb_depth[matchable]],
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: &bindings, e: @expr) -> ident {
-    let idents: hashmap[ident, ()] = new_str_hash[()]();
+    let idents: hashmap<ident, ()> = new_str_hash[()]();
     fn mark_ident(i: &ident, fld: ast_fold, b: &bindings,
-                  idents: &hashmap[ident, ()]) -> ident {
+                  idents: &hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
         ret i;
     }
@@ -290,7 +290,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
         alt repeat_me_maybe {
           none. {}
           some(repeat_me) {
-            let repeat: option::t[{rep_count: uint, name: ident}] = none;
+            let repeat: option::t<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             for each fv: ident in free_vars(b, repeat_me) {
@@ -533,7 +533,7 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
     }
 }
 
-fn block_to_ident(blk: &blk_) -> option::t[ident] {
+fn block_to_ident(blk: &blk_) -> option::t<ident> {
     if vec::len(blk.stmts) != 0u { ret none; }
     ret alt blk.expr {
           some(expr) {
@@ -676,7 +676,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
 }
 
 fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                     body: option::t[str]) -> base::macro_def {
+                     body: option::t<str>) -> base::macro_def {
     let args: [@ast::expr] = alt arg.node {
       ast::expr_vec(elts, _, _) { elts }
       _ {
@@ -684,7 +684,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
       }
     };
 
-    let macro_name: option::t[str] = none;
+    let macro_name: option::t<str> = none;
     let clauses: [@clause] = ~[];
     for arg: @expr in args {
         alt arg.node {
@@ -753,7 +753,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         body: option::t[str], clauses: [@clause]) -> @expr {
+                         body: option::t<str>, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) {

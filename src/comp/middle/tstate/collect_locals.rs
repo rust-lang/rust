@@ -13,7 +13,7 @@ import syntax::ast::respan;
 
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
-fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt[ctxt]) {
+fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt<ctxt>) {
     for each p: @pat in pat_bindings(loc.node.pat) {
         let ident = alt p.node { pat_bind(id) { id } };
         log "collect_local: pushing " + ident;
@@ -22,7 +22,7 @@ fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt[ctxt]) {
     visit::visit_local(loc, cx, v);
 }
 
-fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt[ctxt]) {
+fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt<ctxt>) {
     alt e.node {
       expr_check(_, ch) { *cx.cs += ~[expr_to_constr(cx.tcx, ch)]; }
       expr_if_check(ex, _, _) { *cx.cs += ~[expr_to_constr(cx.tcx, ex)]; }

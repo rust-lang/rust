@@ -157,7 +157,7 @@ fn find_pre_post_loop(fcx: &fn_ctxt, l: &@local, index: &@expr, body: &blk,
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
 fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
-                  maybe_alt: &option::t[@expr], id: node_id, chck: &if_ty) {
+                  maybe_alt: &option::t<@expr>, id: node_id, chck: &if_ty) {
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     alt maybe_alt {
@@ -553,7 +553,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let cmodes = callee_modes(fcx, operator.id);
         let modes = ~[];
         let i = 0;
-        for expr_opt: option::t[@expr] in maybe_args {
+        for expr_opt: option::t<@expr> in maybe_args {
             alt expr_opt {
               none. {/* no-op */ }
               some(expr) {
@@ -723,7 +723,7 @@ fn find_pre_post_fn(fcx: &fn_ctxt, f: &_fn) {
 }
 
 fn fn_pre_post(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
-               id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
+               id: node_id, ccx: &crate_ctxt, v: &visit::vt<crate_ctxt>) {
     visit::visit_fn(f, tps, sp, i, id, ccx, v);
     assert (ccx.fm.contains_key(id));
     let fcx =

@@ -95,10 +95,10 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
     ret res;
 }
 
-fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,
+fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
                    cm: &codemap) {
     let ss = "<input>:0:0:0:0";
-    let maybe_lines: option::t[@file_lines] = none;
+    let maybe_lines: option::t<@file_lines> = none;
     alt sp {
       some(ssp) {
         ss = span_to_str(ssp, cm);
@@ -119,8 +119,8 @@ fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
 
-fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
-                         maybe_lines: option::t[@file_lines]) {
+fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
+                         maybe_lines: option::t<@file_lines>) {
 
     alt maybe_lines {
       some(lines) {
@@ -187,13 +187,13 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
     }
 }
 
-fn emit_warning(sp: &option::t[span], msg: &str, cm: &codemap) {
+fn emit_warning(sp: &option::t<span>, msg: &str, cm: &codemap) {
     emit_diagnostic(sp, msg, "warning", 11u8, cm);
 }
-fn emit_error(sp: &option::t[span], msg: &str, cm: &codemap) {
+fn emit_error(sp: &option::t<span>, msg: &str, cm: &codemap) {
     emit_diagnostic(sp, msg, "error", 9u8, cm);
 }
-fn emit_note(sp: &option::t[span], msg: &str, cm: &codemap) {
+fn emit_note(sp: &option::t<span>, msg: &str, cm: &codemap) {
     emit_diagnostic(sp, msg, "note", 10u8, cm);
 }
 

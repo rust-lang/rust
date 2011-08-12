@@ -208,11 +208,11 @@ Both types store an ident and span, for error-logging purposes.
 */
 type pred_args_ = {args: [@constr_arg_use], bit_num: uint};
 
-type pred_args = spanned[pred_args_];
+type pred_args = spanned<pred_args_>;
 
 // The attached node ID is the *defining* node ID
 // for this local.
-type constr_arg_use = spanned[constr_arg_general_[inst]];
+type constr_arg_use = spanned<constr_arg_general_<inst>>;
 
 tag constraint {
     cinit(uint, span, ident);
@@ -232,11 +232,11 @@ tag tsconstr {
     npred(path, def_id, [@constr_arg_use]);
 }
 
-type sp_constr = spanned[tsconstr];
+type sp_constr = spanned<tsconstr>;
 
 type norm_constraint = {bit_num: uint, c: sp_constr};
 
-type constr_map = @std::map::hashmap[def_id, constraint];
+type constr_map = @std::map::hashmap<def_id, constraint>;
 
 /* Contains stuff that has to be computed up front */
 type fn_info =
@@ -295,7 +295,7 @@ type node_ann_table = @mutable [mutable ts_ann];
 
 
 /* mapping from function name to fn_info map */
-type fn_info_map = @std::map::hashmap[node_id, fn_info];
+type fn_info_map = @std::map::hashmap<node_id, fn_info>;
 
 type fn_ctxt =
     {enclosing: fn_info,
@@ -318,7 +318,7 @@ fn add_node(ccx: &crate_ctxt, i: node_id, a: &ts_ann) {
     ccx.node_anns.(i) = a;
 }
 
-fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t[ts_ann] {
+fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t<ts_ann> {
     if i as uint < vec::len(*ccx.node_anns) {
         ret some[ts_ann](ccx.node_anns.(i));
     } else { ret none[ts_ann]; }
@@ -547,10 +547,10 @@ fn node_id_to_def_strict(cx: &ty::ctxt, id: node_id) -> def {
     }
 }
 
-fn node_id_to_def(ccx: &crate_ctxt, id: node_id) -> option::t[def] {
+fn node_id_to_def(ccx: &crate_ctxt, id: node_id) -> option::t<def> {
     ret ccx.tcx.def_map.find(id);
 }
-fn node_id_to_def_upvar(cx: &fn_ctxt, id: node_id) -> option::t[def] {
+fn node_id_to_def_upvar(cx: &fn_ctxt, id: node_id) -> option::t<def> {
     ret freevars::def_lookup(cx.ccx.tcx, cx.id, id);
 }
 
@@ -704,7 +704,7 @@ fn substitute_arg(cx: &ty::ctxt, actuals: &[@expr], a: @constr_arg) ->
     }
 }
 
-fn pred_args_matches(pattern: &[constr_arg_general_[inst]],
+fn pred_args_matches(pattern: &[constr_arg_general_<inst>],
                      desc: &pred_args) -> bool {
     let i = 0u;
     for c: @constr_arg_use in desc.node.args {
@@ -729,8 +729,8 @@ fn pred_args_matches(pattern: &[constr_arg_general_[inst]],
     ret true;
 }
 
-fn find_instance_(pattern: &[constr_arg_general_[inst]],
-                  descs: &[pred_args]) -> option::t[uint] {
+fn find_instance_(pattern: &[constr_arg_general_<inst>],
+                  descs: &[pred_args]) -> option::t<uint> {
     for d: pred_args in descs {
         if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
     }
@@ -764,7 +764,7 @@ fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
     rslt
 }
 
-fn find_in_subst(id: node_id, s: &subst) -> option::t[inst] {
+fn find_in_subst(id: node_id, s: &subst) -> option::t<inst> {
     for p: {from: inst, to: inst} in s {
         if id == p.from.node { ret some(p.to); }
     }
@@ -775,9 +775,9 @@ fn find_in_subst_bool(s: &subst, id: node_id) -> bool {
     is_some(find_in_subst(id, s))
 }
 
-fn insts_to_str(stuff: &[constr_arg_general_[inst]]) -> str {
+fn insts_to_str(stuff: &[constr_arg_general_<inst>]) -> str {
     let rslt = "<";
-    for i: constr_arg_general_[inst] in stuff {
+    for i: constr_arg_general_<inst> in stuff {
         rslt +=
             " " +
                 alt i {
@@ -790,8 +790,8 @@ fn insts_to_str(stuff: &[constr_arg_general_[inst]]) -> str {
     rslt
 }
 
-fn replace(subst: subst, d: pred_args) -> [constr_arg_general_[inst]] {
-    let rslt: [constr_arg_general_[inst]] = ~[];
+fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
+    let rslt: [constr_arg_general_<inst>] = ~[];
     for c: @constr_arg_use in d.node.args {
         alt c.node {
           carg_ident(p) {
@@ -808,7 +808,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_[inst]] {
     }
 
     /*
-    for (constr_arg_general_[tup(ident, def_id)] p in rslt) {
+    for (constr_arg_general_<tup(ident, def_id)> p in rslt) {
         alt (p) {
             case (carg_ident(?p)) {
                 log_err p._0;
@@ -849,11 +849,11 @@ fn local_node_id_to_def_id_strict(fcx: &fn_ctxt, sp: &span, i: &node_id) ->
     }
 }
 
-fn local_node_id_to_def(fcx: &fn_ctxt, i: &node_id) -> option::t[def] {
+fn local_node_id_to_def(fcx: &fn_ctxt, i: &node_id) -> option::t<def> {
     fcx.ccx.tcx.def_map.find(i)
 }
 
-fn local_node_id_to_def_id(fcx: &fn_ctxt, i: &node_id) -> option::t[def_id] {
+fn local_node_id_to_def_id(fcx: &fn_ctxt, i: &node_id) -> option::t<def_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(d_id)) { some(d_id) }
       some(def_arg(a_id)) { some(a_id) }
@@ -862,7 +862,7 @@ fn local_node_id_to_def_id(fcx: &fn_ctxt, i: &node_id) -> option::t[def_id] {
 }
 
 fn local_node_id_to_local_def_id(fcx: &fn_ctxt, i: &node_id) ->
-   option::t[node_id] {
+   option::t<node_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(d_id)) { some(d_id.node) }
       some(def_arg(a_id)) { some(a_id.node) }
@@ -1052,7 +1052,7 @@ fn op_to_oper_ty(io: init_op) -> oper_type {
 
 // default function visitor
 fn do_nothing[T](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
-                 iid: node_id, cx: &T, v: &visit::vt[T]) {
+                 iid: node_id, cx: &T, v: &visit::vt<T>) {
 }
 
 
@@ -1077,7 +1077,7 @@ fn ast_constr_to_sp_constr(tcx: &ty::ctxt, args: &[arg], c: &@constr) ->
     ret respan(c.span, tconstr);
 }
 
-type binding = {lhs: [inst], rhs: option::t[initializer]};
+type binding = {lhs: [inst], rhs: option::t<initializer>};
 
 fn local_to_bindings(loc : &@local) -> binding {
     let lhs = ~[];

@@ -28,7 +28,7 @@ import print::pprust::print_type;
 import print::pprust::print_literal;
 import print::pp::mk_printer;
 
-type flag = hashmap[str, ()];
+type flag = hashmap<str, ()>;
 
 fn def_eq(a: &ast::def_id, b: &ast::def_id) -> bool {
     ret a.crate == b.crate && a.node == b.node;
@@ -41,9 +41,9 @@ fn hash_def(d: &ast::def_id) -> uint {
     ret h;
 }
 
-fn new_def_hash[@V]() -> std::map::hashmap[ast::def_id, V] {
-    let hasher: std::map::hashfn[ast::def_id] = hash_def;
-    let eqer: std::map::eqfn[ast::def_id] = def_eq;
+fn new_def_hash[@V]() -> std::map::hashmap<ast::def_id, V> {
+    let hasher: std::map::hashfn<ast::def_id> = hash_def;
+    let eqer: std::map::eqfn<ast::def_id> = def_eq;
     ret std::map::mk_hashmap[ast::def_id, V](hasher, eqer);
 }
 

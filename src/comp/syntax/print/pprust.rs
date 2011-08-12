@@ -40,9 +40,9 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: option::t[codemap],
-      comments: option::t[[lexer::cmnt]],
-      literals: option::t[[lexer::lit]],
+      cm: option::t<codemap>,
+      comments: option::t<[lexer::cmnt]>,
+      literals: option::t<[lexer::lit]>,
       mutable cur_cmnt: uint,
       mutable cur_lit: uint,
       mutable boxes: [pp::breaks],
@@ -619,7 +619,7 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
     // followed by a unary op statement. In those cases we have to add an
     // extra semi to make sure the unop is not parsed as a binop with the
     // if/alt/block expression.
-    fn maybe_protect_unop(s: &ps, last: &option::t[@ast::stmt],
+    fn maybe_protect_unop(s: &ps, last: &option::t<@ast::stmt>,
                           next: &expr_or_stmt) {
         let last_expr_is_block = alt last {
           option::some(@{node: ast::stmt_expr(e, _), _}) {
@@ -651,13 +651,13 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
 }
 
 fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
-            elseopt: &option::t[@ast::expr], chk: bool) {
+            elseopt: &option::t<@ast::expr>, chk: bool) {
     head(s, "if");
     if chk { word_nbsp(s, "check"); }
     print_expr(s, test);
     space(s.s);
     print_block(s, blk);
-    fn do_else(s: &ps, els: option::t[@ast::expr]) {
+    fn do_else(s: &ps, els: option::t<@ast::expr>) {
         alt els {
           some(_else) {
             alt _else.node {
@@ -773,7 +773,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_ident(s, ident);
       }
       ast::expr_bind(func, args) {
-        fn print_opt(s: &ps, expr: &option::t[@ast::expr]) {
+        fn print_opt(s: &ps, expr: &option::t<@ast::expr>) {
             alt expr {
               some(expr) { print_expr(s, expr); }
               _ { word(s.s, "_"); }
@@ -1325,7 +1325,7 @@ fn print_mt(s: &ps, mt: &ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
+fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t<str>,
                inputs: &[ast::ty_arg], output: &@ast::ty,
                cf: &ast::controlflow, constrs: &[@ast::constr]) {
     ibox(s, indent_unit);
@@ -1355,7 +1355,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
 }
 
 fn maybe_print_trailing_comment(s: &ps, span: codemap::span,
-                                next_pos: option::t[uint]) {
+                                next_pos: option::t<uint>) {
     let cm;
     alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
     alt next_comment(s) {
@@ -1431,7 +1431,7 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
 
 fn lit_to_str(l: &@ast::lit) -> str { be to_str(l, print_literal); }
 
-fn next_lit(s: &ps) -> option::t[lexer::lit] {
+fn next_lit(s: &ps) -> option::t<lexer::lit> {
     alt s.literals {
       some(lits) {
         if s.cur_lit < vec::len(lits) {
@@ -1523,7 +1523,7 @@ fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
     ret writer.get_str();
 }
 
-fn next_comment(s: &ps) -> option::t[lexer::cmnt] {
+fn next_comment(s: &ps) -> option::t<lexer::cmnt> {
     alt s.comments {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {
@@ -1537,10 +1537,10 @@ fn next_comment(s: &ps) -> option::t[lexer::cmnt] {
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
 fn constr_args_to_str[T](f: &fn(&T) -> str ,
-                         args: &[@ast::sp_constr_arg[T]]) -> str {
+                         args: &[@ast::sp_constr_arg<T>]) -> str {
     let comma = false;
     let s = "(";
-    for a: @ast::sp_constr_arg[T] in args {
+    for a: @ast::sp_constr_arg<T> in args {
         if comma { s += ", "; } else { comma = true; }
         s += constr_arg_to_str[T](f, a.node);
     }
@@ -1548,7 +1548,7 @@ fn constr_args_to_str[T](f: &fn(&T) -> str ,
     ret s;
 }
 
-fn constr_arg_to_str[T](f: &fn(&T) -> str , c: &ast::constr_arg_general_[T])
+fn constr_arg_to_str[T](f: &fn(&T) -> str, c: &ast::constr_arg_general_<T>)
    -> str {
     alt c {
       ast::carg_base. { ret "*"; }

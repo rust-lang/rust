@@ -45,7 +45,7 @@ fn read_crates(sess: session::session, crate: &ast::crate) {
 
 type env =
     @{sess: session::session,
-      crate_cache: @hashmap[str, int],
+      crate_cache: @hashmap<str, int>,
       library_search_paths: [str],
       mutable next_crate_num: ast::crate_num};
 
@@ -118,7 +118,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 fn find_library_crate(sess: &session::session, ident: &ast::ident,
                       metas: &[@ast::meta_item],
                       library_search_paths: &[str]) ->
-   option::t[{ident: str, data: @[u8]}] {
+   option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
 
@@ -148,7 +148,7 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
 fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
                           metas: &[@ast::meta_item],
                           library_search_paths: &[str]) ->
-   option::t[{ident: str, data: @[u8]}] {
+   option::t<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
@@ -183,7 +183,7 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
     ret none;
 }
 
-fn get_metadata_section(filename: str) -> option::t[@[u8]] {
+fn get_metadata_section(filename: str) -> option::t<@[u8]> {
     let b = str::buf(filename);
     let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(b);
     if mb as int == 0 { ret option::none[@[u8]]; }

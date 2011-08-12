@@ -139,13 +139,13 @@ fn declare_var(fcx: &fn_ctxt, c: &tsconstr, pre: prestate) -> prestate {
 }
 
 fn relax_precond_expr(e: &@expr, cx: &relax_ctxt,
-                      vt: &visit::vt[relax_ctxt]) {
+                      vt: &visit::vt<relax_ctxt>) {
     relax_precond(cx.i as uint, expr_precond(cx.fcx.ccx, e));
     visit::visit_expr(e, cx, vt);
 }
 
 fn relax_precond_stmt(s: &@stmt, cx: &relax_ctxt,
-                      vt: &visit::vt[relax_ctxt]) {
+                      vt: &visit::vt<relax_ctxt>) {
     relax_precond(cx.i as uint, stmt_precond(cx.fcx.ccx, *s));
     visit::visit_stmt(s, cx, vt);
 }
@@ -153,7 +153,7 @@ fn relax_precond_stmt(s: &@stmt, cx: &relax_ctxt,
 type relax_ctxt = {fcx:fn_ctxt, i:node_id};
 
 fn relax_precond_block_inner(b: &blk, cx: &relax_ctxt,
-                             vt: &visit::vt[relax_ctxt]) {
+                             vt: &visit::vt<relax_ctxt>) {
     relax_precond(cx.i as uint, block_precond(cx.fcx.ccx, b));
     visit::visit_block(b, cx, vt);
 }
@@ -166,7 +166,7 @@ fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b:&blk) {
           visit_expr: relax_precond_expr,
           visit_stmt: relax_precond_stmt,
           visit_item: (fn (i: &@item, cx: &relax_ctxt,
-                           vt: &visit::vt[relax_ctxt]) {})
+                           vt: &visit::vt<relax_ctxt>) {})
           with *visitor};
     let v1 = visit::mk_vt(visitor);
     v1.visit_block(b, cx, v1);

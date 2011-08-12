@@ -9,9 +9,9 @@ import codemap::span;
 import codemap::filename;
 
 tag ast_node {
-    branch(node_name, option::t[span], (@ast_node)[]);
+    branch(node_name, option::t<span>, (@ast_node)[]);
     i_seq((@ast_node)[]);
-    i_opt(option::t[@ast_node]);
+    i_opt(option::t<@ast_node>);
     l_bool(bool);
     l_ident(ident);
     l_fn_ident(fn_ident);
@@ -44,8 +44,8 @@ tag ast_node {
     l_attr_style;
 
     // these could be avoided, at the cost of making #br_* more convoluted
-    l_optional_filename(option::t[filename]);
-    l_optional_string(option::t[str]);
+    l_optional_filename(option::t<filename>);
+    l_optional_string(option::t<str>);
     l_seq_ident(ident[]);
     l_seq_ty_param(ty_param[]);
 
@@ -245,7 +245,7 @@ type ctx = {
 
 /** Type of failure function: to be invoked if typification fails.
     It's hopefully a bug for this to be invoked without a span. */
-type ff = fn(sp: option::t[span], msg: str) -> !;
+type ff = fn(sp: option::t<span>, msg: str) -> !;
 
 fn dummy() {
 
@@ -384,8 +384,8 @@ fn seq_cv[T](conversion: fn (&ctx, &@ast_node) -> T)
 }
 
 fn opt_cv[T](conversion: fn (&ctx, &@ast_node) -> T)
-    -> fn (&ctx, @ast_node) -> option::t[T] {
-    ret lambda(ctx: &ctx, ut: @ast_node) -> option::t[T] {
+    -> fn (&ctx, @ast_node) -> option::t<T> {
+    ret lambda(ctx: &ctx, ut: @ast_node) -> option::t<T> {
         ret alt *ut {
           i_opt(ut_maybe) { option::map(bind conversion(ctx, _), ut_maybe) }
           branch(_, sp, _) {

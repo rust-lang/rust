@@ -115,7 +115,7 @@ fn parse_path(st: @pstate, sd: str_def) -> ast::path {
     fail "parse_path: ill-formed path";
 }
 
-type arg_parser[T] = fn(@pstate, str_def) -> ast::constr_arg_general_[T] ;
+type arg_parser[T] = fn(@pstate, str_def) -> ast::constr_arg_general_<T> ;
 
 fn parse_constr_arg(st: @pstate, sd: str_def) -> ast::fn_constr_arg {
     alt peek(st) as char {
@@ -143,22 +143,22 @@ fn parse_constr_arg(st: @pstate, sd: str_def) -> ast::fn_constr_arg {
 }
 
 fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
-   ast::constr_arg_general_[path] {
+   ast::constr_arg_general_<path> {
     alt peek(st) as char {
       '*' { st.pos += 1u; ret ast::carg_base; }
       c { ret ast::carg_ident(parse_path(st, sd)); }
     }
 }
 
-fn parse_constr[@T](st: @pstate, sd: str_def, pser: arg_parser[T]) ->
-   @ty::constr_general[T] {
+fn parse_constr[@T](st: @pstate, sd: str_def, pser: arg_parser<T>) ->
+   @ty::constr_general<T> {
     let sp = ast::dummy_sp(); // FIXME: use a real span
-    let args: [@sp_constr_arg[T]] = ~[];
+    let args: [@sp_constr_arg<T>] = ~[];
     let pth: path = parse_path(st, sd);
     let ignore: char = next(st) as char;
     assert (ignore as char == '(');
     let def = parse_def(st, sd);
-    let an_arg: constr_arg_general_[T];
+    let an_arg: constr_arg_general_<T>;
     do  {
         an_arg = pser(st, sd);
         // FIXME use a real span

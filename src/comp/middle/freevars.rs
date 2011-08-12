@@ -28,9 +28,9 @@ export def_lookup;
 // "canonical" referencing node_id per free variable. The set is useful for
 // testing membership, the list of referencing sites is what you want for most
 // other things.
-type freevar_set = hashset[ast::node_id];
+type freevar_set = hashset<ast::node_id>;
 type freevar_info = {defs: freevar_set, refs: @[ast::node_id]};
-type freevar_map = hashmap[ast::node_id, freevar_info];
+type freevar_map = hashmap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -38,7 +38,7 @@ type freevar_map = hashmap[ast::node_id, freevar_info];
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
 fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
-                    walker: &fn(&visit::vt[()]) ,
+                    walker: &fn(&visit::vt<()>) ,
                     initial_decls: [ast::node_id]) -> freevar_info {
     let decls = new_int_hash();
     for decl: ast::node_id in initial_decls { set_add(decls, decl); }
@@ -108,7 +108,7 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
 
     let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
                          i: &ast::fn_ident, nid: ast::node_id) {
-        let start_walk = lambda(v: &visit::vt[()]) {
+        let start_walk = lambda(v: &visit::vt<()>) {
             v.visit_fn(f, tps, sp, i, nid, (), v);
         };
         let vars = collect_freevars(def_map, sess, start_walk, ~[]);
@@ -117,7 +117,7 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
     let walk_expr = lambda(expr: &@ast::expr) {
         alt expr.node {
           ast::expr_for_each(local, _, body) {
-            let start_walk = lambda(v: &visit::vt[()]) {
+            let start_walk = lambda(v: &visit::vt<()>) {
                 v.visit_block(body, (), v);
             };
             let bound = ast::pat_binding_ids(local.node.pat);
@@ -157,7 +157,7 @@ fn is_freevar_of(tcx: &ty::ctxt, def: ast::node_id, f: ast::node_id) -> bool {
     ret get_freevar_defs(tcx, f).contains_key(def);
 }
 fn def_lookup(tcx: &ty::ctxt, f: ast::node_id, id: ast::node_id) ->
-   option::t[ast::def] {
+   option::t<ast::def> {
     alt tcx.def_map.find(id) {
       none. { ret none; }
       some(d) {
