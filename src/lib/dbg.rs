@@ -12,23 +12,23 @@
 const const_refcount: uint = 0x7bad_face_u;
 
 native "rust" mod rustrt {
-    fn debug_tydesc[T]();
-    fn debug_opaque[T](x: &T);
-    fn debug_box[T](x: @T);
-    fn debug_tag[T](x: &T);
-    fn debug_obj[T](x: &T, nmethods: uint, nbytes: uint);
-    fn debug_fn[T](x: &T);
-    fn debug_ptrcast[T, U](x: @T) -> @U;
+    fn debug_tydesc<T>();
+    fn debug_opaque<T>(x: &T);
+    fn debug_box<T>(x: @T);
+    fn debug_tag<T>(x: &T);
+    fn debug_obj<T>(x: &T, nmethods: uint, nbytes: uint);
+    fn debug_fn<T>(x: &T);
+    fn debug_ptrcast<T, U>(x: @T) -> @U;
     fn debug_trap(msg: str);
 }
 
 fn debug_tydesc[T]() { rustrt::debug_tydesc[T](); }
 
-fn debug_opaque[T](x: &T) { rustrt::debug_opaque[T](x); }
+fn debug_opaque<T>(x: &T) { rustrt::debug_opaque[T](x); }
 
-fn debug_box[T](x: @T) { rustrt::debug_box[T](x); }
+fn debug_box<T>(x: @T) { rustrt::debug_box[T](x); }
 
-fn debug_tag[T](x: &T) { rustrt::debug_tag[T](x); }
+fn debug_tag<T>(x: &T) { rustrt::debug_tag[T](x); }
 
 
 /**
@@ -40,13 +40,13 @@ fn debug_tag[T](x: &T) { rustrt::debug_tag[T](x); }
  * this to at least be 4u, since an implicit captured tydesc pointer sits in
  * the front of any obj's data tuple.x
  */
-fn debug_obj[T](x: &T, nmethods: uint, nbytes: uint) {
+fn debug_obj<T>(x: &T, nmethods: uint, nbytes: uint) {
     rustrt::debug_obj[T](x, nmethods, nbytes);
 }
 
-fn debug_fn[T](x: &T) { rustrt::debug_fn[T](x); }
+fn debug_fn<T>(x: &T) { rustrt::debug_fn[T](x); }
 
-fn ptr_cast[T, U](x: @T) -> @U { ret rustrt::debug_ptrcast[T, U](x); }
+fn ptr_cast<T, U>(x: @T) -> @U { ret rustrt::debug_ptrcast[T, U](x); }
 
 fn trap(s: str) { rustrt::debug_trap(s); }
 // Local Variables:

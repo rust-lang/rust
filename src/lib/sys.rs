@@ -10,9 +10,9 @@ native "rust" mod rustrt {
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
     fn last_os_error() -> str;
-    fn size_of[T]() -> uint;
-    fn align_of[T]() -> uint;
-    fn refcount[T](t: @T) -> uint;
+    fn size_of<T>() -> uint;
+    fn align_of<T>() -> uint;
+    fn refcount<T>(t: @T) -> uint;
     fn do_gc();
     fn unsupervise();
 }

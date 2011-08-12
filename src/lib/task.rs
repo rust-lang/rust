@@ -23,7 +23,7 @@ native "rust" mod rustrt {
 
     fn migrate_alloc(alloc : *u8, target : task_id);
 
-    fn leak[@T](thing : -T);
+    fn leak<@T>(thing : -T);
 }
 
 type task_id = int;

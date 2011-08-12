@@ -20,7 +20,7 @@ native "rust" mod rustrt {
     fn take_chan(ch : *rust_chan);
     fn drop_chan(ch : *rust_chan);
     fn chan_send(ch: *rust_chan, v : *void);
-    fn chan_id_send[~T](target_task : task_id, target_port : port_id,
+    fn chan_id_send<~T>(target_task : task_id, target_port : port_id,
                         data : -T);
 
     fn new_port(unit_sz : uint) -> *rust_port;
@@ -30,12 +30,12 @@ native "rust" mod rustrt {
 }
 
 native "rust-intrinsic" mod rusti {
-    fn recv[~T](port : *rustrt::rust_port) -> T;
+    fn recv<~T>(port : *rustrt::rust_port) -> T;
 }
 
 type port_id = int;
 
-type _chan[~T] = {
+type _chan<~T> = {
     task : task_id,
     port : port_id
 };
@@ -45,9 +45,9 @@ resource port_ptr(po: *rustrt::rust_port) {
     rustrt::del_port(po);
 }
 
-obj _port[~T](raw_port : @port_ptr) {
+obj _port<~T>(raw_port : @port_ptr) {
     // FIXME: rename this to chan once chan is not a keyword.
-    fn mk_chan() -> _chan[T] {
+    fn mk_chan() -> _chan<T> {
         {
             task: task::get_task_id(),
             port: rustrt::get_port_id(**raw_port)
@@ -59,10 +59,10 @@ obj _port[~T](raw_port : @port_ptr) {
     }
 }
 
-fn mk_port[~T]() -> _port<T> {
+fn mk_port<~T>() -> _port<T> {
     _port(@port_ptr(rustrt::new_port(sys::size_of[T]())))
 }
 
-fn send[~T](ch : _chan[T], data : -T) {
+fn send<~T>(ch : _chan<T>, data : -T) {
     rustrt::chan_id_send(ch.task, ch.port, data);
 }
