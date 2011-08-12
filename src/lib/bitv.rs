@@ -14,9 +14,9 @@ export difference;
 export set;
 export is_true;
 export is_false;
-export to_vec;
+export to_ivec;
 export to_str;
-export eq_vec;
+export eq_ivec;
 
 
 // FIXME: With recursive object types, we could implement binary methods like
@@ -145,11 +145,6 @@ fn is_false(v: &t) -> bool {
 
 fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
 
-fn to_vec(v: &t) -> vec[uint] {
-    let sub = bind init_to_vec(v, _);
-    ret vec::init_fn[uint](sub, v.nbits);
-}
-
 fn to_ivec(v: &t) -> [uint] {
     let sub = bind init_to_vec(v, _);
     ret ivec::init_fn[uint](sub, v.nbits);
@@ -157,25 +152,10 @@ fn to_ivec(v: &t) -> [uint] {
 
 fn to_str(v: &t) -> str {
     let rs = "";
-    for i: uint  in bitv::to_vec(v) {
+    for i: uint  in to_ivec(v) {
         if i == 1u { rs += "1"; } else { rs += "0"; }
     }
     ret rs;
-}
-
-
-// FIXME: can we just use structural equality on to_vec?
-fn eq_vec(v0: &t, v1: &vec[uint]) -> bool {
-    assert (v0.nbits == vec::len[uint](v1));
-    let len = v0.nbits;
-    let i = 0u;
-    while i < len {
-        let w0 = get(v0, i);
-        let w1 = v1.(i);
-        if !w0 && w1 != 0u || w0 && w1 == 0u { ret false; }
-        i = i + 1u;
-    }
-    ret true;
 }
 
 fn eq_ivec(v0: &t, v1: &[uint]) -> bool {
