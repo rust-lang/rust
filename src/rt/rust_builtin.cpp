@@ -443,7 +443,7 @@ rust_str* c_str_to_rust(rust_task *task, char const *str) {
 }
 
 extern "C" CDECL rust_box*
-rust_list_files_ivec(rust_task *task, rust_str *path) {
+rust_list_files(rust_task *task, rust_str *path) {
     array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
