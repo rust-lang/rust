@@ -41,7 +41,6 @@ export shift_byte;
 export pop_byte;
 export push_byte;
 export unshift_byte;
-export split;
 export split_ivec;
 export concat;
 export connect;
@@ -433,21 +432,6 @@ fn unshift_byte(s: &mutable str, b: u8) {
     rs += unsafe_from_byte(b);
     rs += s;
     s = rs;
-}
-
-fn split(s: str, sep: u8) -> vec[str] {
-    let v: vec[str] = [];
-    let accum: str = "";
-    let ends_with_sep: bool = false;
-    for c: u8  in s {
-        if c == sep {
-            v += [accum];
-            accum = "";
-            ends_with_sep = true;
-        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
-    }
-    if str::byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
-    ret v;
 }
 
 fn split_ivec(s: str, sep: u8) -> [str] {
