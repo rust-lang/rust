@@ -140,7 +140,7 @@ fn worker(p: port[request]) {
         let pipe_err = os::pipe();
         let spawnproc =
             bind run::spawn_process(execparms.prog,
-                                    ivec::to_vec(execparms.args),
+                                    execparms.args,
                                     pipe_in.in,
                                     pipe_out.out,
                                     pipe_err.out);

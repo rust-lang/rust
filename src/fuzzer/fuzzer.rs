@@ -26,7 +26,7 @@ fn write_file(filename: &str, content: &str) {
                         ~[io::create,
                           io::truncate]).write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
-    std::run::run_program("chmod", ["644", filename]);
+    std::run::run_program("chmod", ~["644", filename]);
 }
 
 fn file_contains(filename: &str, needle: &str) -> bool {
@@ -177,7 +177,7 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap, filenam
 fn check_whole_compiler(code: &str) {
     let filename = "test.rs";
     write_file(filename, code);
-    let p = std::run::program_output("/Users/jruderman/code/rust/build/stage1/rustc", ["-c", filename]);
+    let p = std::run::program_output("/Users/jruderman/code/rust/build/stage1/rustc", ~["-c", filename]);
     //log_err #fmt("Status: %d", p.status);
     //log_err "Output: " + p.out;
     if p.err != "" {
@@ -311,7 +311,7 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
         log_err #fmt("Did not converge after %u iterations!", i);
         write_file("round-trip-a.rs", old);
         write_file("round-trip-b.rs", new);
-        std::run::run_program("diff", ["-w", "-u", "round-trip-a.rs", "round-trip-b.rs"]);
+        std::run::run_program("diff", ~["-w", "-u", "round-trip-a.rs", "round-trip-b.rs"]);
         fail "Mismatch";
     }
 }

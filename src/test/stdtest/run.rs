@@ -11,9 +11,9 @@ import std::ivec;
 #[cfg(target_os = "macos")]
 #[test]
 fn test_leaks() {
-    run::run_program("echo", []);
-    run::start_program("echo", []);
-    run::program_output("echo", []);
+    run::run_program("echo", ~[]);
+    run::start_program("echo", ~[]);
+    run::program_output("echo", ~[]);
 }
 
 // FIXME
@@ -28,7 +28,7 @@ fn test_pipes() {
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
 
-    let pid = run::spawn_process("cat", [],
+    let pid = run::spawn_process("cat", ~[],
        pipe_in.in, pipe_out.out, pipe_err.out);
     os::libc::close(pipe_in.in);
     os::libc::close(pipe_out.out);

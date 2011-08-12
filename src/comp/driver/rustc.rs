@@ -623,7 +623,7 @@ fn main(args: vec[str]) {
     }
     // We run 'gcc' here
 
-    let err_code = run::run_program(prog, ivec::to_vec(gcc_args));
+    let err_code = run::run_program(prog, gcc_args);
     if 0 != err_code {
         sess.err(#fmt("linking with gcc failed with code %d", err_code));
         sess.note(#fmt("gcc arguments: %s",
@@ -633,13 +633,13 @@ fn main(args: vec[str]) {
     // Clean up on Darwin
 
     if sess.get_targ_cfg().os == session::os_macos {
-        run::run_program("dsymutil", [saved_out_filename]);
+        run::run_program("dsymutil", ~[saved_out_filename]);
     }
 
 
     // Remove the temporary object file if we aren't saving temps
     if !sopts.save_temps {
-        run::run_program("rm", [saved_out_filename + ".o"]);
+        run::run_program("rm", ~[saved_out_filename + ".o"]);
     }
 }
 

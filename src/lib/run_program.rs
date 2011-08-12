@@ -13,23 +13,25 @@ native "rust" mod rustrt {
        int;
 }
 
-fn arg_vec(prog: str, args: vec[str]) -> vec[sbuf] {
-    let argptrs = [str::buf(prog)];
-    for arg: str  in args { vec::push[sbuf](argptrs, str::buf(arg)); }
-    vec::push[sbuf](argptrs, 0 as sbuf);
+fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
+    let argptrs = ~[str::buf(prog)];
+    for arg: str  in args { argptrs += ~[str::buf(arg)]; }
+    argptrs += ~[0 as sbuf];
     ret argptrs;
 }
 
-fn spawn_process(prog: str, args: vec[str], in_fd: int, out_fd: int,
+fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
                  err_fd: int) -> int {
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
     let argv = arg_vec(prog, args);
-    let pid = rustrt::rust_run_program(vec::buf(argv), in_fd, out_fd, err_fd);
+    let argvv = ivec::to_vec(argv);
+    let pid = rustrt::rust_run_program(
+        vec::buf(argvv), in_fd, out_fd, err_fd);
     ret pid;
 }
 
-fn run_program(prog: str, args: vec[str]) -> int {
+fn run_program(prog: str, args: &[str]) -> int {
     ret os::waitpid(spawn_process(prog, args, 0, 0, 0));
 }
 
@@ -48,7 +50,7 @@ resource program_res(p: program) {
     p.destroy();
 }
 
-fn start_program(prog: str, args: vec[str]) -> @program_res {
+fn start_program(prog: str, args: &[str]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -112,7 +114,7 @@ fn read_all(rd: &io::reader) -> str {
     ret buf;
 }
 
-fn program_output(prog: str, args: vec[str])
+fn program_output(prog: str, args: [str])
     -> {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
     pr.close_input();
