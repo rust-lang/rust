@@ -61,7 +61,7 @@ mod ct {
     // A formatted conversion from an expression to a string
     type conv =
         {param: option::t[int],
-         flags: vec[flag],
+         flags: [flag],
          width: count,
          precision: count,
          ty: ty};
@@ -71,14 +71,14 @@ mod ct {
     tag piece { piece_string(str); piece_conv(conv); }
     type error_fn = fn(str) -> !  ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> vec[piece] {
-        let pieces: vec[piece] = [];
+    fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
+        let pieces: [piece] = ~[];
         let lim = str::byte_len(s);
         let buf = "";
-        fn flush_buf(buf: str, pieces: &mutable vec[piece]) -> str {
+        fn flush_buf(buf: str, pieces: &mutable [piece]) -> str {
             if str::byte_len(buf) > 0u {
                 let piece = piece_string(buf);
-                pieces += [piece];
+                pieces += ~[piece];
             }
             ret "";
         }
@@ -96,7 +96,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    pieces += [rs.piece];
+                    pieces += ~[rs.piece];
                     i = rs.next;
                 }
             } else { buf += curr; i += 1u; }
@@ -150,29 +150,32 @@ mod ct {
             };
     }
     fn parse_flags(s: str, i: uint, lim: uint) ->
-       {flags: vec[flag], next: uint} {
-        let noflags: vec[flag] = [];
+       {flags: [flag], next: uint} {
+        let noflags: [flag] = ~[];
         if i >= lim { ret {flags: noflags, next: i}; }
+
+        // FIXME: This recursion generates illegal instructions if the return
+        // value isn't boxed. Only started happening after the ivec conversion
         fn more_(f: flag, s: str, i: uint, lim: uint) ->
-           {flags: vec[flag], next: uint} {
+           @{flags: [flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
-            let curr: vec[flag] = [f];
-            ret {flags: curr + rest, next: j};
+            let curr: [flag] = ~[f];
+            ret @{flags: curr + rest, next: j};
         }
         let more = bind more_(_, s, i, lim);
         let f = s.(i);
         ret if f == '-' as u8 {
-                more(flag_left_justify)
+                *more(flag_left_justify)
             } else if (f == '0' as u8) {
-                more(flag_left_zero_pad)
+                *more(flag_left_zero_pad)
             } else if (f == ' ' as u8) {
-                more(flag_space_for_sign)
+                *more(flag_space_for_sign)
             } else if (f == '+' as u8) {
-                more(flag_sign_always)
+                *more(flag_sign_always)
             } else if (f == '#' as u8) {
-                more(flag_alternate)
+                *more(flag_alternate)
             } else { {flags: noflags, next: i} };
     }
     fn parse_count(s: str, i: uint, lim: uint) -> {count: count, next: uint} {
@@ -239,10 +242,6 @@ mod ct {
             } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
     }
-
-    fn parse_fmt_string_ivec(s: str, error: error_fn) -> [piece] {
-        ivec::from_vec(parse_fmt_string(s, error))
-    }
 }
 
 
@@ -271,7 +270,32 @@ mod rt {
     // instead just use a bool per flag
     type conv = {flags: vec[flag], width: count, precision: count, ty: ty};
 
+    type conv_ivec = {flags: [flag], width: count, precision: count, ty: ty};
+
+    fn to_conv_ivec(cv: &conv) -> conv_ivec {
+        {flags: ivec::from_vec(cv.flags),
+         width: cv.width,
+         precision: cv.precision,
+         ty: cv.ty}
+    }
+
     fn conv_int(cv: &conv, i: int) -> str {
+        conv_int_ivec(to_conv_ivec(cv), i)
+    }
+    fn conv_uint(cv: &conv, u: uint) -> str {
+        conv_uint_ivec(to_conv_ivec(cv), u)
+    }
+    fn conv_bool(cv: &conv, b: bool) -> str {
+        conv_bool_ivec(to_conv_ivec(cv), b)
+    }
+    fn conv_char(cv: &conv, c: char) -> str {
+        conv_char_ivec(to_conv_ivec(cv), c)
+    }
+    fn conv_str(cv: &conv, s: str) -> str {
+        conv_str_ivec(to_conv_ivec(cv), s)
+    }
+
+    fn conv_int_ivec(cv: &conv_ivec, i: int) -> str {
         let radix = 10u;
         let prec = get_int_precision(cv);
         let s = int_to_str_prec(i, radix, prec);
@@ -284,7 +308,7 @@ mod rt {
         }
         ret pad(cv, s, pad_signed);
     }
-    fn conv_uint(cv: &conv, u: uint) -> str {
+    fn conv_uint_ivec(cv: &conv_ivec, u: uint) -> str {
         let prec = get_int_precision(cv);
         let rs =
             alt cv.ty {
@@ -296,17 +320,17 @@ mod rt {
             };
         ret pad(cv, rs, pad_unsigned);
     }
-    fn conv_bool(cv: &conv, b: bool) -> str {
+    fn conv_bool_ivec(cv: &conv_ivec, b: bool) -> str {
         let s = if b { "true" } else { "false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
 
-        ret conv_str(cv, s);
+        ret conv_str_ivec(cv, s);
     }
-    fn conv_char(cv: &conv, c: char) -> str {
+    fn conv_char_ivec(cv: &conv_ivec, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
-    fn conv_str(cv: &conv, s: str) -> str {
+    fn conv_str_ivec(cv: &conv_ivec, s: str) -> str {
         // For strings, precision is the maximum characters
         // displayed
 
@@ -347,7 +371,7 @@ mod rt {
                 } else { s }
             };
     }
-    fn get_int_precision(cv: &conv) -> uint {
+    fn get_int_precision(cv: &conv_ivec) -> uint {
         ret alt cv.precision {
               count_is(c) { c as uint }
               count_implied. { 1u }
@@ -361,7 +385,7 @@ mod rt {
         ret str::unsafe_from_bytes(svec);
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
-    fn pad(cv: &conv, s: str, mode: pad_mode) -> str {
+    fn pad(cv: &conv_ivec, s: str, mode: pad_mode) -> str {
         let uwidth;
         alt cv.width {
           count_implied. { ret s; }
@@ -389,7 +413,7 @@ mod rt {
           pad_signed. { might_zero_pad = true; signed = true; }
           pad_unsigned. { might_zero_pad = true; }
         }
-        fn have_precision(cv: &conv) -> bool {
+        fn have_precision(cv: &conv_ivec) -> bool {
             ret alt cv.precision { count_implied. { false } _ { true } };
         }
         let zero_padding = false;
@@ -415,7 +439,7 @@ mod rt {
         }
         ret padstr + s;
     }
-    fn have_flag(flags: vec[flag], f: flag) -> bool {
+    fn have_flag(flags: &[flag], f: flag) -> bool {
         for candidate: flag  in flags { if candidate == f { ret true; } }
         ret false;
     }

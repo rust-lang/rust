@@ -34,7 +34,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
         cx.span_fatal(sp, msg);
     }
     let parse_fmt_err = bind parse_fmt_err_(cx, fmtspan, _);
-    let pieces = parse_fmt_string_ivec(fmt, parse_fmt_err);
+    let pieces = parse_fmt_string(fmt, parse_fmt_err);
     ret pieces_to_expr(cx, sp, pieces, args);
 }
 
@@ -73,7 +73,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_vec_expr(cx: &ext_ctxt, sp: span, exprs: &[@ast::expr]) ->
        @ast::expr {
-        let vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_rc);
+        let vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_unique);
         ret @{id: cx.next_id(), node: vecexpr, span: sp};
     }
     fn make_call(cx: &ext_ctxt, sp: span, fn_path: &[ast::ident],
@@ -173,7 +173,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                                 {ident: "precision", ex: precision_expr},
                                 {ident: "ty", ex: ty_expr}]);
         }
-        let rt_conv_flags = make_flags(cx, sp, ivec::from_vec(cnv.flags));
+        let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
         let rt_conv_precision = make_count(cx, sp, cnv.precision);
         let rt_conv_ty = make_ty(cx, sp, cnv.ty);
@@ -182,7 +182,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_conv_call(cx: &ext_ctxt, sp: span, conv_type: str, cnv: &conv,
                       arg: @ast::expr) -> @ast::expr {
-        let fname = "conv_" + conv_type;
+        let fname = "conv_" + conv_type + "_ivec";
         let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg];
