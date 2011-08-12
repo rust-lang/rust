@@ -5,11 +5,8 @@ import option::none;
 
 tag t[T, U] { left(T); right(U); }
 
-type operator[T, U] = fn(&T) -> U ;
-
-fn either[T, U,
-          V](f_left: &operator[T, V], f_right: &operator[U, V],
-             value: &t[T, U]) -> V {
+fn either[T, U, V](f_left: &block(&T) -> V, f_right: &block(&U) -> V,
+                   value: &t[T, U]) -> V {
     alt value { left(l) { f_left(l) } right(r) { f_right(r) } }
 }
 

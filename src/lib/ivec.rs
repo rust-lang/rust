@@ -5,8 +5,6 @@ import option::some;
 import uint::next_power_of_two;
 import ptr::addr_of;
 
-type operator2[T, U, V] = fn(&T, &U) -> V ;
-
 native "rust-intrinsic" mod rusti {
     fn ivec_len[T](v: &[T]) -> uint;
 }
@@ -192,7 +190,7 @@ fn grow_set[@T](v: &mutable [mutable T], index: uint, initval: &T, val: &T) {
 
 // Functional utilities
 
-fn map[@T, @U](f: fn(&T) -> U , v: &[mutable? T]) -> [U] {
+fn map[@T, @U](f: &block(&T) -> U , v: &[mutable? T]) -> [U] {
     let result = ~[];
     reserve(result, len(v));
     for elem: T  in v {
@@ -202,7 +200,8 @@ fn map[@T, @U](f: fn(&T) -> U , v: &[mutable? T]) -> [U] {
     ret result;
 }
 
-fn filter_map[@T, @U](f: fn(&T) -> option::t[U] , v: &[mutable? T]) -> [U] {
+fn filter_map[@T, @U](f: &block(&T) -> option::t[U],
+                      v: &[mutable? T]) -> [U] {
     let result = ~[];
     for elem: T  in v {
         let elem2 = elem; // satisfies alias checker
@@ -214,20 +213,20 @@ fn filter_map[@T, @U](f: fn(&T) -> option::t[U] , v: &[mutable? T]) -> [U] {
     ret result;
 }
 
-fn foldl[@T, @U](p: fn(&U, &T) -> U , z: &U, v: &[mutable? T]) -> U {
+fn foldl[@T, @U](p: &block(&U, &T) -> U , z: &U, v: &[mutable? T]) -> U {
     let sz = len(v);
     if sz == 0u { ret z; }
     let first = v.(0);
     let rest = slice(v, 1u, sz);
-    ret p(foldl[T, U](p, z, rest), first);
+    ret p(foldl(p, z, rest), first);
 }
 
-fn any[T](f: fn(&T) -> bool , v: &[T]) -> bool {
+fn any[T](f: &block(&T) -> bool , v: &[T]) -> bool {
     for elem: T  in v { if f(elem) { ret true; } }
     ret false;
 }
 
-fn all[T](f: fn(&T) -> bool , v: &[T]) -> bool {
+fn all[T](f: &block(&T) -> bool , v: &[T]) -> bool {
     for elem: T  in v { if !f(elem) { ret false; } }
     ret true;
 }
@@ -243,9 +242,9 @@ fn count[T](x: &T, v: &[mutable? T]) -> uint {
     ret cnt;
 }
 
-fn find[@T](f: fn(&T) -> bool , v: &[T]) -> option::t[T] {
-    for elt: T  in v { if f(elt) { ret some[T](elt); } }
-    ret none[T];
+fn find[@T](f: &block(&T) -> bool , v: &[T]) -> option::t[T] {
+    for elt: T  in v { if f(elt) { ret some(elt); } }
+    ret none;
 }
 
 fn unzip[@T, @U](v: &[{_0: T, _1: U}]) -> {_0: [T], _1: [U]} {

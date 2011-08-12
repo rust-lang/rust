@@ -36,7 +36,7 @@ fn create(nbits: uint, init: bool) -> t {
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(op: &fn(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
+fn process(op: &block(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
     let len = ivec::len(v1.storage);
     assert (ivec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);

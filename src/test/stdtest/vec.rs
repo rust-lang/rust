@@ -39,9 +39,8 @@ fn test_slice() {
 #[test]
 fn test_map() {
     fn square(x: &int) -> int { ret x * x; }
-    let op: option::operator[int, int] = square;
     let v: vec[int] = [1, 2, 3, 4, 5];
-    let s: vec[int] = map[int, int](op, v);
+    let s: vec[int] = map(square, v);
     let i: int = 0;
     while i < 5 { assert (v.(i) * v.(i) == s.(i)); i += 1; }
 }

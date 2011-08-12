@@ -13,7 +13,7 @@ fn from_vec[@T](v: vec[T]) -> list[T] {
     ret l;
 }
 
-fn foldl[@T, @U](ls_: &list[T], u: &U, f: fn(&T, &U) -> U ) -> U {
+fn foldl[@T, @U](ls_: &list[T], u: &U, f: &block(&T, &U) -> U ) -> U {
     let accum: U = u;
     let ls = ls_;
     while true {
@@ -25,7 +25,8 @@ fn foldl[@T, @U](ls_: &list[T], u: &U, f: fn(&T, &U) -> U ) -> U {
     ret accum;
 }
 
-fn find[@T, @U](ls_: &list[T], f: fn(&T) -> option::t[U] ) -> option::t[U] {
+fn find[@T, @U](ls_: &list[T], f: &block(&T) -> option::t[U])
+    -> option::t[U] {
     let ls = ls_;
     while true {
         alt ls {
