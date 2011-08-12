@@ -17,7 +17,6 @@ export optflag;
 export optflagopt;
 export optmulti;
 export getopts;
-export getopts_ivec;
 export result;
 export success;
 export failure;
@@ -27,7 +26,6 @@ export fail_str;
 export opt_present;
 export opt_str;
 export opt_strs;
-export opt_strs_ivec;
 export opt_maybe_str;
 export opt_default;
 
@@ -67,7 +65,7 @@ fn optmulti(name: str) -> opt {
 
 tag optval { val(str); given; }
 
-type match = {opts: [opt], vals: [mutable [optval]], free: vec[str]};
+type match = {opts: [opt], vals: [mutable [optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
     ret str::byte_len(arg) > 1u && arg.(0) == '-' as u8;
@@ -108,30 +106,21 @@ fn fail_str(f: fail_) -> str {
 
 tag result { success(match); failure(fail_); }
 
-fn getopts(args: vec[str], opts: vec[opt]) -> result {
-    // FIXME: Remove this vec->ivec conversion.
-    let args_ivec = ~[];
-    let opts_ivec = ~[];
-    for arg: str  in args { args_ivec += ~[arg]; }
-    for o: opt  in opts { opts_ivec += ~[o]; }
-    ret getopts_ivec(args_ivec, opts_ivec);
-}
-
-fn getopts_ivec(args: &[str], opts: &[opt]) -> result {
+fn getopts(args: &[str], opts: &[opt]) -> result {
     let n_opts = ivec::len[opt](opts);
     fn f(x: uint) -> [optval] { ret ~[]; }
     let vals = ivec::init_fn_mut[[optval]](f, n_opts);
-    let free: vec[str] = [];
+    let free: [str] = ~[];
     let l = ivec::len[str](args);
     let i = 0u;
     while i < l {
         let cur = args.(i);
         let curlen = str::byte_len(cur);
         if !is_arg(cur) {
-            free += [cur];
+            free += ~[cur];
         } else if (str::eq(cur, "--")) {
             let j = i + 1u;
-            while j < l { free += [args.(j)]; j += 1u; }
+            while j < l { free += ~[args.(j)]; j += 1u; }
             break;
         } else {
             let names;
@@ -227,15 +216,7 @@ fn opt_str(m: &match, nm: str) -> str {
     ret alt opt_val(m, nm) { val(s) { s } _ { fail } };
 }
 
-fn opt_strs(m: &match, nm: str) -> vec[str] {
-    let acc: vec[str] = [];
-    for v: optval  in opt_vals(m, nm) {
-        alt v { val(s) { acc += [s]; } _ { } }
-    }
-    ret acc;
-}
-
-fn opt_strs_ivec(m: &match, nm: str) -> [str] {
+fn opt_strs(m: &match, nm: str) -> [str] {
     let acc: [str] = ~[];
     for v: optval  in opt_vals(m, nm) {
         alt v { val(s) { acc += ~[s]; } _ { } }

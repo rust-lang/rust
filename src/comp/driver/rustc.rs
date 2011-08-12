@@ -334,7 +334,6 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
     let static = opt_present(match, "static");
 
     let library_search_paths = ~[binary_dir + "/lib"];
-    // FIXME: Remove this vec->ivec conversion.
     let lsp_vec = getopts::opt_strs(match, "L");
     for lsp: str  in lsp_vec { library_search_paths += ~[lsp]; }
 
@@ -384,7 +383,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           none. { get_default_sysroot(binary) }
           some(s) { s }
         };
-    let cfg = parse_cfgspecs(getopts::opt_strs_ivec(match, "cfg"));
+    let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let dps = opt_present(match, "dps");
     let do_gc = opt_present(match, "gc");
@@ -447,7 +446,7 @@ fn main(args: vec[str]) {
     let binary = ivec::shift(args_ivec);
     let binary_dir = fs::dirname(binary);
     let match =
-        alt getopts::getopts_ivec(args_ivec, opts()) {
+        alt getopts::getopts(args_ivec, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
             log_err #fmt("error: %s", getopts::fail_str(f));
@@ -464,7 +463,7 @@ fn main(args: vec[str]) {
     }
     let sopts = build_session_options(binary, match, binary_dir);
     let sess = build_session(sopts);
-    let n_inputs = vec::len[str](match.free);
+    let n_inputs = ivec::len[str](match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
     let glue = opt_present(match, "glue");
     if glue {
@@ -652,7 +651,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let match =
-            alt getopts::getopts_ivec(~["--test"], opts()) {
+            alt getopts::getopts(~["--test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");
@@ -666,7 +665,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let match =
-            alt getopts::getopts_ivec(~["--test", "--cfg=test"], opts()) {
+            alt getopts::getopts(~["--test", "--cfg=test"], opts()) {
               getopts::success(m) { m }
             };
         let sessopts = build_session_options("whatever", match, "whatever");

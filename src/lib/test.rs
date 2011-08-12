@@ -71,13 +71,13 @@ fn parse_opts(args: &[str]) : ivec::is_not_empty(args) -> opt_res {
     let args_ = ivec::tail(args);
     let opts = ~[getopts::optflag("ignored")];
     let match =
-        alt getopts::getopts_ivec(args_, opts) {
+        alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
           getopts::failure(f) { ret either::right(getopts::fail_str(f)) }
         };
 
     let filter =
-        if vec::len(match.free) > 0u {
+        if ivec::len(match.free) > 0u {
             option::some(match.free.(0))
         } else { option::none };
 

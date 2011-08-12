@@ -52,7 +52,7 @@ fn parse_opts(argv: [str]) -> config {
     let opt_args = ivec::slice(argv, 1u, ivec::len(argv));
 
 
-    alt getopts::getopts_ivec(opt_args, opts) {
+    alt getopts::getopts(opt_args, opts) {
       getopts::success(m) { ret {stress: getopts::opt_present(m, "stress")} }
       getopts::failure(_) { fail; }
     }

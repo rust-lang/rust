@@ -37,7 +37,7 @@ fn parse_config(args: &[str]) -> config {
     check (ivec::is_not_empty(args));
     let args_ = ivec::tail(args);
     let match =
-        alt getopts::getopts_ivec(args_, opts) {
+        alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
           getopts::failure(f) { fail getopts::fail_str(f) }
         };
@@ -51,7 +51,7 @@ fn parse_config(args: &[str]) -> config {
          mode: str_mode(getopts::opt_str(match, "mode")),
          run_ignored: getopts::opt_present(match, "ignored"),
          filter:
-             if vec::len(match.free) > 0u {
+             if ivec::len(match.free) > 0u {
                  option::some(match.free.(0))
              } else { option::none },
          runtool: getopts::opt_maybe_str(match, "runtool"),
