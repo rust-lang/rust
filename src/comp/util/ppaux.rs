@@ -47,9 +47,9 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         let s = proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
-        let strs = [];
-        for a: arg  in inputs { strs += [fn_input_to_str(cx, a)]; }
-        s += str::connect(strs, ", ");
+        let strs = ~[];
+        for a: arg  in inputs { strs += ~[fn_input_to_str(cx, a)]; }
+        s += str::connect_ivec(strs, ", ");
         s += ")";
         if struct(cx, output) != ty_nil {
             alt cf {

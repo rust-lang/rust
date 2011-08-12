@@ -78,13 +78,13 @@ fn test_concat() {
 
 #[test]
 fn test_connect() {
-    fn t(v: &vec[str], sep: &str, s: &str) {
-        assert (str::eq(str::connect(v, sep), s));
+    fn t(v: &[str], sep: &str, s: &str) {
+        assert (str::eq(str::connect_ivec(v, sep), s));
     }
-    t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
-    let v: vec[str] = [];
+    t(~["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
+    let v: [str] = ~[];
     t(v, " ", "");
-    t(["hi"], " ", "hi");
+    t(~["hi"], " ", "hi");
 }
 
 #[test]
