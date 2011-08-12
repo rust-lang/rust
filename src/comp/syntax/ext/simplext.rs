@@ -583,15 +583,15 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _, _) {
-                    let elts = [];
+                    let elts = ~[];
                     let idx = offset;
                     while idx < ivec::len(arg_elts) {
-                        elts += [leaf(match_expr(arg_elts.(idx)))];
+                        elts += ~[leaf(match_expr(arg_elts.(idx)))];
                         idx += 1u;
                     }
                     // using repeat_me.span is a little wacky, but the
                     // error we want to report is one in the macro def
-                    some(seq(@ivec::from_vec(elts), repeat_me.span))
+                    some(seq(@elts, repeat_me.span))
                   }
                   _ { none }
                 }

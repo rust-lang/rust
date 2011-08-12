@@ -3064,11 +3064,14 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
          /*vec*/
          /*bot*/
         tbl =
-        [[f, f, f, f, t, t, f, f], [f, f, f, f, t, t, t, t],
-         [t, t, t, t, t, t, t, f], [t, t, t, f, t, t, f, f],
-         [t, f, f, f, t, t, f, f], [t, f, f, f, t, t, f, f],
-         [f, f, f, f, t, t, f, f],
-         [t, t, t, t, t, t, t, t]]; /*struct*/
+        ~[~[f, f, f, f, t, t, f, f],
+          ~[f, f, f, f, t, t, t, t],
+          ~[t, t, t, t, t, t, t, f],
+          ~[t, t, t, f, t, t, f, f],
+          ~[t, f, f, f, t, t, f, f],
+          ~[t, f, f, f, t, t, f, f],
+          ~[f, f, f, f, t, t, f, f],
+          ~[t, t, t, t, t, t, t, t]]; /*struct*/
 
     ret tbl.(tycat(cx, ty)).(opcat(op));
 }
