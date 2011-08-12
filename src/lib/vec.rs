@@ -4,7 +4,6 @@ import option::some;
 import util::orb;
 
 export vbuf;
-export empty_mut;
 export init_fn;
 export init_fn_mut;
 export init_elt;
@@ -19,12 +18,6 @@ export foldl;
 export reversed;
 export member;
 export map;
-export map2;
-export filter_map;
-export empty;
-export position;
-export position_pred;
-export reverse;
 
 type vbuf = rustrt::vbuf;
 
