@@ -6,7 +6,6 @@
 
 use std;
 
-import std::io;
 import option = std::option::t;
 import std::option::some;
 import std::option::none;

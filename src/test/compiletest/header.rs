@@ -1,6 +1,6 @@
 import std::option;
 import std::str;
-import std::io;
+import std::ioivec;
 import std::fs;
 
 import common::config;
@@ -69,7 +69,7 @@ fn is_test_ignored(config: &config, testfile: &str) -> bool {
 }
 
 iter iter_header(testfile: &str) -> str {
-    let rdr = io::file_reader(testfile);
+    let rdr = ioivec::file_reader(testfile);
     while !rdr.eof() {
         let ln = rdr.read_line();
 

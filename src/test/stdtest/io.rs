@@ -1,6 +1,6 @@
 // -*- rust -*-
 use std;
-import std::io;
+import std::ioivec;
 import std::str;
 
 #[cfg(target_os = "linux")]
@@ -12,11 +12,11 @@ fn test_simple() {
     let frood: str = "A hoopy frood who really knows where his towel is.";
     log frood;
     {
-        let out: io::writer =
-            io::file_writer(tmpfile, [io::create, io::truncate]);
+        let out: ioivec::writer =
+            ioivec::file_writer(tmpfile, ~[ioivec::create, ioivec::truncate]);
         out.write_str(frood);
     }
-    let inp: io::reader = io::file_reader(tmpfile);
+    let inp: ioivec::reader = ioivec::file_reader(tmpfile);
     let frood2: str = inp.read_c_str();
     log frood2;
     assert (str::eq(frood, frood2));

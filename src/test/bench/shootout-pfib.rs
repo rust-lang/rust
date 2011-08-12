@@ -17,7 +17,7 @@ import std::uint;
 import std::time;
 import std::str;
 import std::int::range;
-import std::io;
+import std::ioivec;
 import std::getopts;
 import std::task;
 import std::u64;
@@ -94,7 +94,7 @@ fn main(argv: vec[str]) {
 
             let num_trials = 10;
 
-            let out = io::stdout();
+            let out = ioivec::stdout();
 
 
             for each n: int  in range(1, max + 1) {

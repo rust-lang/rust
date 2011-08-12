@@ -36,9 +36,9 @@ fn run_program(prog: str, args: vec[str]) -> int {
 type program =
     obj {
         fn get_id() -> int;
-        fn input() -> io::writer;
-        fn output() -> io::reader;
-        fn err() -> io::reader;
+        fn input() -> ioivec::writer;
+        fn output() -> ioivec::reader;
+        fn err() -> ioivec::reader;
         fn close_input();
         fn finish() -> int;
         fn destroy();
@@ -65,14 +65,17 @@ fn start_program(prog: str, args: vec[str]) -> @program_res {
                     err_file: os::libc::FILE,
                     mutable finished: bool) {
         fn get_id() -> int { ret pid; }
-        fn input() -> io::writer {
-            ret io::new_writer(io::fd_buf_writer(in_fd, option::none));
+        fn input() -> ioivec::writer {
+            ret ioivec::new_writer(
+                ioivec::fd_buf_writer(in_fd, option::none));
         }
-        fn output() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(out_file, option::none));
+        fn output() -> ioivec::reader {
+            ret ioivec::new_reader(
+                ioivec::FILE_buf_reader(out_file, option::none));
         }
-        fn err() -> io::reader {
-            ret io::new_reader(io::FILE_buf_reader(err_file, option::none));
+        fn err() -> ioivec::reader {
+            ret ioivec::new_reader(
+                ioivec::FILE_buf_reader(err_file, option::none));
         }
         fn close_input() {
             let invalid_fd = -1;
@@ -100,10 +103,10 @@ fn start_program(prog: str, args: vec[str]) -> @program_res {
                                  false));
 }
 
-fn read_all(rd: &io::reader) -> str {
+fn read_all(rd: &ioivec::reader) -> str {
     let buf = "";
     while !rd.eof() {
-        let bytes = ivec::from_vec(rd.read_bytes(4096u));
+        let bytes = rd.read_bytes(4096u);
         buf += str::unsafe_from_bytes(bytes);
     }
     ret buf;

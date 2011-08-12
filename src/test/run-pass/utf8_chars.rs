@@ -1,6 +1,5 @@
 use std;
 import std::str;
-import std::io;
 import std::ivec;
 
 fn main() {

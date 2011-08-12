@@ -106,7 +106,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
                       to_task: &test_to_task) -> bool {
 
     type test_state = @{
-        out: io::writer,
+        out: ioivec::writer,
         use_color: bool,
         mutable total: uint,
         mutable passed: uint,
@@ -148,7 +148,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     }
 
     let st = @{
-        out: io::stdout(),
+        out: ioivec::stdout(),
         use_color: use_color(),
         mutable total: 0u,
         mutable passed: 0u,
@@ -181,19 +181,19 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
 
     ret success;
 
-    fn write_ok(out: &io::writer, use_color: bool) {
+    fn write_ok(out: &ioivec::writer, use_color: bool) {
         write_pretty(out, "ok", term::color_green, use_color);
     }
 
-    fn write_failed(out: &io::writer, use_color: bool) {
+    fn write_failed(out: &ioivec::writer, use_color: bool) {
         write_pretty(out, "FAILED", term::color_red, use_color);
     }
 
-    fn write_ignored(out: &io::writer, use_color: bool) {
+    fn write_ignored(out: &ioivec::writer, use_color: bool) {
         write_pretty(out, "ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: &io::writer, word: &str, color: u8,
+    fn write_pretty(out: &ioivec::writer, word: &str, color: u8,
                     use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out.get_buf_writer(), color);

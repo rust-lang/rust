@@ -1,7 +1,7 @@
 use std;
 import std::run;
 import std::os;
-import std::io;
+import std::ioivec;
 import std::option;
 import std::str;
 import std::ivec;
@@ -46,8 +46,8 @@ fn test_pipes() {
     assert expected == actual;
 
     fn writeclose(fd: int, s: &str) {
-        let writer = io::new_writer(
-            io::fd_buf_writer(fd, option::none));
+        let writer = ioivec::new_writer(
+            ioivec::fd_buf_writer(fd, option::none));
         writer.write_str(s);
 
         os::libc::close(fd);
@@ -56,10 +56,11 @@ fn test_pipes() {
     fn readclose(fd: int) -> str {
         // Copied from run::program_output
         let file = os::fd_FILE(fd);
-        let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
+        let reader = ioivec::new_reader(
+            ioivec::FILE_buf_reader(file, option::none));
         let buf = "";
         while !reader.eof() {
-            let bytes = ivec::from_vec(reader.read_bytes(4096u));
+            let bytes = reader.read_bytes(4096u);
             buf += str::unsafe_from_bytes(bytes);
         }
         os::libc::fclose(file);

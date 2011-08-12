@@ -1,4 +1,3 @@
-import std::io;
 import std::ioivec;
 import std::str;
 import std::option;
@@ -24,7 +23,7 @@ fn run(cx: &cx, testfile: &str) {
     test::configure_test_task();
     if (cx.config.verbose) {
         // We're going to be dumping a lot of info. Start on a new line.
-        io::stdout().write_str("\n\n");
+        ioivec::stdout().write_str("\n\n");
     }
     log #fmt("running %s", testfile);
     let props = load_props(testfile);
@@ -168,7 +167,7 @@ actual:\n\
 ------------------------------------------\n\
 \n",
                           expected, actual);
-            io::stdout().write_str(msg);
+            ioivec::stdout().write_str(msg);
             fail;
         }
     }
@@ -336,7 +335,8 @@ fn dump_output(config: &config, testfile: &str,
 fn dump_output_file(config: &config, testfile: &str,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer = io::file_writer(outfile, [io::create, io::truncate]);
+    let writer = ioivec::file_writer(outfile,
+                                     ~[ioivec::create, ioivec::truncate]);
     writer.write_str(out);
 }
 
@@ -370,15 +370,15 @@ fn maybe_dump_to_stdout(config: &config,
         let sep2 = #fmt("------%s------------------------------",
                         "stderr");
         let sep3 = "------------------------------------------";
-        io::stdout().write_line(sep1);
-        io::stdout().write_line(out);
-        io::stdout().write_line(sep2);
-        io::stdout().write_line(err);
-        io::stdout().write_line(sep3);
+        ioivec::stdout().write_line(sep1);
+        ioivec::stdout().write_line(out);
+        ioivec::stdout().write_line(sep2);
+        ioivec::stdout().write_line(err);
+        ioivec::stdout().write_line(sep3);
     }
 }
 
-fn error(err: &str) { io::stdout().write_line(#fmt("\nerror: %s", err)); }
+fn error(err: &str) { ioivec::stdout().write_line(#fmt("\nerror: %s", err)); }
 
 fn fatal(err: &str) -> ! { error(err); fail; }
 
@@ -397,6 +397,6 @@ stderr:\n\
 ------------------------------------------\n\
 \n",
              err, procres.cmdline, procres.stdout, procres.stderr);
-    io::stdout().write_str(msg);
+    ioivec::stdout().write_str(msg);
     fail;
 }
