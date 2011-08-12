@@ -108,8 +108,13 @@ struct spawn_args {
 };
 
 extern "C" CDECL
-void task_exit(void *env, int rval, rust_task *task) {
+void task_exit(intptr_t *env, int rval, rust_task *task) {
     LOG(task, task, "task exited with value %d", rval);
+    if(env) {
+        // free the environment.
+        I(task->sched, 1 == *env); // the ref count better be 1
+        task->free(env);
+    }
     task->die();
     task->lock.lock();
     task->notify_tasks_waiting_to_join();

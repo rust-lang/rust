@@ -41,6 +41,7 @@ ivec_reserve_shared
 ivec_to_ptr
 last_os_error
 leak
+migrate_alloc
 nano_time
 new_chan
 new_port

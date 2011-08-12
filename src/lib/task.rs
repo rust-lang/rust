@@ -21,6 +21,8 @@ native "rust" mod rustrt {
     fn start_task(id : task_id);
     fn get_task_trampoline() -> u32;
 
+    fn migrate_alloc(alloc : *u8, target : task_id);
+
     fn leak[@T](thing : -T);
 }
 
@@ -104,6 +106,7 @@ fn _spawn(thunk : fn() -> ()) -> task_id {
     *env = raw_thunk.env;
     *ra = rustrt::get_task_trampoline();
 
+    rustrt::migrate_alloc(cast(raw_thunk.env), id);
     rustrt::start_task(id);
 
     rustrt::leak(thunk);

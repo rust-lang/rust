@@ -27,7 +27,7 @@ private:
 
     rust_srv *_srv;
     memory_region *_parent;
-    size_t _live_allocations;
+    int _live_allocations;
     array_list<alloc_header *> _allocation_list;
     const bool _detailed_leaks;
     const bool _synchronized;
@@ -48,6 +48,9 @@ public:
     // to not kill the entire process, which the test runner needs. Please
     // kill with prejudice once unwinding works.
     void hack_allow_leaks();
+
+    void release_alloc(void *mem);
+    void claim_alloc(void *mem);
 };
 
 inline void *operator new(size_t size, memory_region &region,

@@ -4,7 +4,7 @@
 // NB: please do not commit code with this uncommented. It's
 // hugely expensive and should only be used as a last resort.
 //
-#define TRACK_ALLOCATIONS
+// #define TRACK_ALLOCATIONS
 
 #define MAGIC 0xbadc0ffe
 
@@ -25,13 +25,13 @@ memory_region::memory_region(memory_region *parent) :
 }
 
 void memory_region::add_alloc() {
-    _live_allocations++;
-    //sync::increment(_live_allocations);
+    //_live_allocations++;
+    sync::increment(_live_allocations);
 }
 
 void memory_region::dec_alloc() {
-    _live_allocations--;
-    //sync::decrement(_live_allocations);
+    //_live_allocations--;
+    sync::decrement(_live_allocations);
 }
 
 void memory_region::free(void *mem) {
@@ -40,21 +40,10 @@ void memory_region::free(void *mem) {
     if (_synchronized) { _lock.lock(); }
     alloc_header *alloc = get_header(mem);
     assert(alloc->magic == MAGIC);
-#ifdef TRACK_ALLOCATIONS
-    if (_allocation_list[alloc->index] != alloc) {
-        printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
-               (uintptr_t) &alloc->data, alloc->tag);
-        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
-    }
-    else {
-        // printf("freed index %d\n", index);
-        _allocation_list[alloc->index] = NULL;
-    }
-#endif
     if (_live_allocations < 1) {
         _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
     }
-    dec_alloc();
+    release_alloc(mem);
     _srv->free(alloc);
     if (_synchronized) { _lock.unlock(); }
 }
@@ -90,18 +79,13 @@ memory_region::realloc(void *mem, size_t size) {
 void *
 memory_region::malloc(size_t size, const char *tag, bool zero) {
     if (_synchronized) { _lock.lock(); }
-    add_alloc();
     size_t old_size = size;
     size += sizeof(alloc_header);
     alloc_header *mem = (alloc_header *)_srv->malloc(size);
     mem->magic = MAGIC;
     mem->tag = tag;
-#ifdef TRACK_ALLOCATIONS
-    mem->index = _allocation_list.append(mem);
-    // printf("malloc: stored %p at index %d\n", mem, index);
-#endif
-    // printf("malloc: ptr 0x%" PRIxPTR " region=%p\n",
-    //        (uintptr_t) mem, this);
+    mem->index = -1;
+    claim_alloc(mem->data);
 
     if(zero) {
         memset(mem->data, 0, old_size);
@@ -118,27 +102,32 @@ memory_region::calloc(size_t size, const char *tag) {
 
 memory_region::~memory_region() {
     if (_synchronized) { _lock.lock(); }
-    if (_live_allocations == 0) {
+    if (_live_allocations == 0 && !_detailed_leaks) {
         if (_synchronized) { _lock.unlock(); }
         return;
     }
     char msg[128];
-    snprintf(msg, sizeof(msg),
-             "leaked memory in rust main loop (%" PRIuPTR " objects)",
-             _live_allocations);
+    if(_live_allocations > 0) {
+        snprintf(msg, sizeof(msg),
+                 "leaked memory in rust main loop (%d objects)",
+                 _live_allocations);
+    }
 #ifdef TRACK_ALLOCATIONS
     if (_detailed_leaks) {
+        unsigned int leak_count = 0;
         for (size_t i = 0; i < _allocation_list.size(); i++) {
             if (_allocation_list[i] != NULL) {
                 alloc_header *header = (alloc_header*)_allocation_list[i];
                 printf("allocation (%s) 0x%" PRIxPTR " was not freed\n",
                        header->tag,
                        (uintptr_t) &header->data);
+                ++leak_count;
             }
         }
+        assert(leak_count == _live_allocations);
     }
 #endif
-    if (!_hack_allow_leaks) {
+    if (!_hack_allow_leaks && _live_allocations > 0) {
         _srv->fatal(msg, __FILE__, __LINE__,
                     "%d objects", _live_allocations);
     }
@@ -148,6 +137,36 @@ memory_region::~memory_region() {
 void
 memory_region::hack_allow_leaks() {
     _hack_allow_leaks = true;
+}
+
+void
+memory_region::release_alloc(void *mem) {
+    alloc_header *alloc = get_header(mem);
+    assert(alloc->magic == MAGIC);
+
+#ifdef TRACK_ALLOCATIONS
+    if (_allocation_list[alloc->index] != alloc) {
+        printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
+               (uintptr_t) &alloc->data, alloc->tag);
+        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
+    }
+    else {
+        // printf("freed index %d\n", index);
+        _allocation_list[alloc->index] = NULL;
+        alloc->index = -1;
+    }
+#endif
+    dec_alloc();
+}
+
+void
+memory_region::claim_alloc(void *mem) {
+    alloc_header *alloc = get_header(mem);
+    assert(alloc->magic == MAGIC);
+#ifdef TRACK_ALLOCATIONS
+    alloc->index = _allocation_list.append(alloc);
+#endif
+    add_alloc();
 }
 
 //

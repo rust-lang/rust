@@ -289,7 +289,7 @@ task_yield(rust_task *task) {
 extern "C" CDECL intptr_t
 task_join(rust_task *task, rust_task_id tid) {
     // If the other task is already dying, we don't have to wait for it.
-    smart_ptr<rust_task> join_task = task->kernel->get_task_by_id(tid);
+    rust_task *join_task = task->kernel->get_task_by_id(tid);
     // FIXME: find task exit status and return that.
     if(!join_task) return 0;
     join_task->lock.lock();
@@ -720,10 +720,11 @@ new_task(rust_task *task) {
 
 extern "C" CDECL registers_t *
 get_task_context(rust_task *task, rust_task_id id) {
-    registers_t *regs = &task->kernel->get_task_by_id(id)->ctx.regs;
+    rust_task *target = task->kernel->get_task_by_id(id);
+    registers_t *regs = &target->ctx.regs;
     // This next line is a little dangerous.. It means we can only safely call
     // this when starting a task.
-    regs->esp = task->rust_sp;
+    regs->esp = target->rust_sp;
     return regs;
 }
 
@@ -744,6 +745,20 @@ extern "C" void *task_trampoline asm("task_trampoline");
 extern "C" CDECL void **
 get_task_trampoline(rust_task *task) {
     return &task_trampoline;
+}
+
+extern "C" CDECL void
+migrate_alloc(rust_task *task, void *alloc, rust_task_id tid) {
+    if(!alloc) return;
+    rust_task *target = task->kernel->get_task_by_id(tid);
+    if(target) {
+        task->local_region.release_alloc(alloc);
+        target->local_region.claim_alloc(alloc);
+    }
+    else {
+        // We couldn't find the target. Maybe we should just free?
+        task->fail();
+    }
 }
 
 extern "C" CDECL rust_chan *
