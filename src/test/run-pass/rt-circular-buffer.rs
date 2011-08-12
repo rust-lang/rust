@@ -7,7 +7,6 @@
 use std;
 import std::option;
 import std::uint;
-import std::vec;
 
 
 // A 12-byte unit to send over the channel

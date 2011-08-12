@@ -7,7 +7,6 @@
  */
 import std::ivec;
 import std::str;
-import std::vec;
 import std::option;
 import std::option::none;
 import std::option::some;

@@ -1,8 +1,6 @@
 
 
 // -*- rust -*-
-use std;
-import std::vec;
 
 fn some_vec(x: int) -> vec[int] { ret []; }
 

@@ -27,7 +27,6 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::vec;
 import std::ivec;
 import std::int;
 import std::io;

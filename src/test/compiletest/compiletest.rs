@@ -3,7 +3,6 @@ import std::getopts;
 import std::test;
 import std::fs;
 import std::str;
-import std::vec;
 import std::ivec;
 import std::task;
 

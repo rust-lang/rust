@@ -1,7 +1,6 @@
 import std::io;
 import std::str;
 import std::option;
-import std::vec;
 import std::fs;
 import std::os;
 import std::ivec;

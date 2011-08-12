@@ -2,7 +2,6 @@ use std;
 
 import codemap::span;
 import std::ivec;
-import std::vec;
 import std::option;
 import std::map::hashmap;
 import std::map::new_str_hash;
