@@ -305,23 +305,6 @@ str_from_ivec(rust_task *task, rust_ivec *v)
 }
 
 extern "C" CDECL rust_str *
-str_from_vec(rust_task *task, rust_vec *v)
-{
-    rust_str *st =
-        vec_alloc_with_data(task,
-                            v->fill + 1,  // +1 to fit at least '\0'
-                            v->fill,
-                            1,
-                            v->fill ? (void*)v->data : NULL);
-    if (!st) {
-        task->fail();
-        return NULL;
-    }
-    st->data[st->fill++] = '\0';
-    return st;
-}
-
-extern "C" CDECL rust_str *
 str_from_cstr(rust_task *task, char *sbuf)
 {
     size_t len = strlen(sbuf) + 1;

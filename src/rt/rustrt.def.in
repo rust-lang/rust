@@ -65,7 +65,6 @@ str_byte_len
 str_from_buf
 str_from_cstr
 str_from_ivec
-str_from_vec
 str_push_byte
 str_slice
 take_chan
