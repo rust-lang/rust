@@ -76,7 +76,7 @@ fn test() {
     let sh = sha1::mk_sha1();
     for t: test  in tests {
         sh.input_str(t.input);
-        let out = sh.result_ivec();
+        let out = sh.result();
         check_vec_eq(t.output, out);
         sh.reset();
     }
@@ -91,7 +91,7 @@ fn test() {
             sh.input_str(str::substr(t.input, len - left, take));
             left = left - take;
         }
-        let out = sh.result_ivec();
+        let out = sh.result();
         check_vec_eq(t.output, out);
         sh.reset();
     }

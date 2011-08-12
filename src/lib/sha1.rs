@@ -25,11 +25,9 @@ type sha1 =
     // Reset the sha1 state for reuse. This is called
     // automatically during construction
     obj {
-        fn input(&vec[u8]) ;
-        fn input_ivec(&[u8]) ;
+        fn input(&[u8]) ;
         fn input_str(&str) ;
-        fn result() -> vec[u8] ;
-        fn result_ivec() -> [u8] ;
+        fn result() -> [u8] ;
         fn result_str() -> str ;
         fn reset() ;
     };
@@ -239,20 +237,9 @@ fn mk_sha1() -> sha1 {
             st.h.(4) = 0xC3D2E1F0u32;
             st.computed = false;
         }
-        fn input(msg: &vec[u8]) {
-            let m = ~[];
-            for b: u8  in msg { m += ~[b]; }
-            add_input(st, m);
-        }
-        fn input_ivec(msg: &[u8]) { add_input(st, msg); }
+        fn input(msg: &[u8]) { add_input(st, msg); }
         fn input_str(msg: &str) { add_input(st, str::bytes(msg)); }
-        fn result() -> vec[u8] {
-            let rivec = mk_result(st);
-            let rvec = [];
-            for b: u8  in rivec { rvec += [b]; }
-            ret rvec;
-        }
-        fn result_ivec() -> [u8] { ret mk_result(st); }
+        fn result() -> [u8] { ret mk_result(st); }
         fn result_str() -> str {
             let r = mk_result(st);
             let s = "";
