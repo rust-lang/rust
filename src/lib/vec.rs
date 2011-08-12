@@ -25,8 +25,6 @@ export empty;
 export position;
 export position_pred;
 export reverse;
-export alloc;
-export refcount;
 
 type vbuf = rustrt::vbuf;
 
