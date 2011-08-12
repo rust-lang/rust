@@ -14,7 +14,6 @@ export byte_len;
 export buf;
 export bytes;
 export from_bytes;
-export unsafe_from_bytes;
 export unsafe_from_byte;
 export str_from_cstr;
 export str_from_buf;
@@ -191,11 +190,6 @@ fn bytes(s: str) -> [u8] {
     let sbuffer = buf(s);
     let ptr = unsafe::reinterpret_cast(sbuffer);
     ret ivec::unsafe::from_buf(ptr, byte_len(s));
-}
-
-// FIXME temp thing
-fn unsafe_from_bytes(v: vec[mutable? u8]) -> str {
-    ret rustrt::str_from_vec(v);
 }
 
 fn unsafe_from_bytes_ivec(v: &[mutable? u8]) -> str {
