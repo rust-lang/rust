@@ -4,16 +4,8 @@ import option::some;
 import util::orb;
 
 export vbuf;
-export init_fn;
-export init_elt;
 export buf;
 export len;
-export print_debug_info;
-export slice;
-export pop;
-export push;
-export reversed;
-export member;
 
 type vbuf = rustrt::vbuf;
 
@@ -291,7 +283,7 @@ fn zip[@T, @U](v: &vec[T], u: &vec[U]) -> vec[{_0: T, _1: U}] {
         ret alloc(0u);
     } else {
         let rest = zip(slice(v, 1u, sz), slice(u, 1u, sz));
-        vec::push(rest, {_0: v.(0), _1: u.(0)});
+        push(rest, {_0: v.(0), _1: u.(0)});
         ret rest;
     }
 }
