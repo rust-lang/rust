@@ -1,7 +1,6 @@
 
 
 native "rust" mod rustrt {
-    fn rust_list_files(path: str) -> vec[str];
     fn rust_list_files_ivec(path: str) -> @[str];
     fn rust_file_is_dir(path: str) -> int;
 }

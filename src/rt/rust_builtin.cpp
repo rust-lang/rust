@@ -442,31 +442,6 @@ rust_str* c_str_to_rust(rust_task *task, char const *str) {
     return vec_alloc_with_data(task, len, len, 1, (void*)str);
 }
 
-extern "C" CDECL rust_vec*
-rust_list_files(rust_task *task, rust_str *path) {
-    array_list<rust_str*> strings;
-#if defined(__WIN32__)
-    WIN32_FIND_DATA FindFileData;
-    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            strings.push(c_str_to_rust(task, FindFileData.cFileName));
-        } while (FindNextFile(hFind, &FindFileData));
-        FindClose(hFind);
-    }
-#else
-  DIR *dirp = opendir((char*)path->data);
-  if (dirp) {
-      struct dirent *dp;
-      while ((dp = readdir(dirp)))
-          strings.push(c_str_to_rust(task, dp->d_name));
-      closedir(dirp);
-  }
-#endif
-  return vec_alloc_with_data(task, strings.size(), strings.size(),
-                             sizeof(rust_str*), strings.data());
-}
-
 extern "C" CDECL rust_box*
 rust_list_files_ivec(rust_task *task, rust_str *path) {
     array_list<rust_str*> strings;
