@@ -106,12 +106,7 @@ fn get_used_libraries(cstore: &cstore) -> [str] {
 }
 
 fn add_used_link_args(cstore: &cstore, args: &str) {
-    let used_link_args_vec = str::split(args, ' ' as u8);
-
-    // TODO: Remove this vec->ivec conversion.
-    for ula: str  in used_link_args_vec {
-        p(cstore).used_link_args += ~[ula];
-    }
+    p(cstore).used_link_args += str::split_ivec(args, ' ' as u8);
 }
 
 fn get_used_link_args(cstore: &cstore) -> [str] {

@@ -586,9 +586,9 @@ fn main(args: vec[str]) {
                      } else { ret filename; }
                  }(config, _);
         fn rmext(filename: str) -> str {
-            let parts = str::split(filename, '.' as u8);
-            vec::pop(parts);
-            ret str::connect(parts, ".");
+            let parts = str::split_ivec(filename, '.' as u8);
+            ivec::pop(parts);
+            ret str::connect_ivec(parts, ".");
         }
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }

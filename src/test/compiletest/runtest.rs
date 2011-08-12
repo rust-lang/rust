@@ -193,7 +193,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns.(next_err_idx);
-    for line: str  in str::split(procres.stdout, '\n' as u8) {
+    for line: str  in str::split_ivec(procres.stdout, '\n' as u8) {
         if str::find(line, next_err_pat) > 0 {
             log #fmt("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -355,9 +355,9 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     let base = config.build_base;
     let filename =
         {
-            let parts = str::split(fs::basename(testfile), '.' as u8);
-            parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
-            str::connect(parts, ".")
+            let parts = str::split_ivec(fs::basename(testfile), '.' as u8);
+            parts = ivec::slice(parts, 0u, ivec::len(parts) - 1u);
+            str::connect_ivec(parts, ".")
         };
     #fmt("%s%s.%s", base, filename, config.stage_id)
 }
