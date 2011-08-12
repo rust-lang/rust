@@ -335,7 +335,7 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
             let meta_item = meta_items.(0);
             attrs +=
                 ~[{node: {style: ast::attr_outer, value: *meta_item},
-                   span: {lo: 0u, hi: 0u}}];
+                   span: ast::dummy_sp()}];
         }
       }
       option::none. { }

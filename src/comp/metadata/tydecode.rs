@@ -106,7 +106,7 @@ fn parse_path(st: @pstate, sd: str_def) -> ast::path {
           ':' { next(st); next(st); }
           c {
             if c == '(' {
-                ret respan({lo: 0u, hi: 0u},
+                ret respan(ast::dummy_sp(),
                            {global: false, idents: idents, types: ~[]});
             } else { idents += ~[parse_ident_(st, sd, is_last)]; }
           }
@@ -152,8 +152,8 @@ fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
 
 fn parse_constr[@T](st: @pstate, sd: str_def, pser: arg_parser[T]) ->
    @ty::constr_general[T] {
-    let sp = {lo: 0u, hi: 0u}; // FIXME: use a real span
-    let args: [@sp_constr_arg[T]] = ~[];
+    let sp = ast::dummy_sp(); // FIXME: use a real span
+    let args: [@sp_constr_arg[T]][] = ~[];
     let pth: path = parse_path(st, sd);
     let ignore: char = next(st) as char;
     assert (ignore as char == '(');

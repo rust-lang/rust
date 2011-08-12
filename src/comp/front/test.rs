@@ -160,7 +160,7 @@ fn mk_test_module(cx: &test_ctxt) -> @ast::item {
          attrs: ~[],
          id: cx.next_node_id(),
          node: item_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     log #fmt("Synthetic test module:\n%s\n", pprust::item_to_str(@item));
 
@@ -168,7 +168,7 @@ fn mk_test_module(cx: &test_ctxt) -> @ast::item {
 }
 
 fn nospan[T](t: &T) -> ast::spanned[T] {
-    ret {node: t, span: {lo: 0u, hi: 0u}};
+    ret {node: t, span: ast::dummy_sp()};
 }
 
 fn mk_tests(cx: &test_ctxt) -> @ast::item {
@@ -198,7 +198,7 @@ fn mk_tests(cx: &test_ctxt) -> @ast::item {
          attrs: ~[],
          id: cx.next_node_id(),
          node: item_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
     ret @item;
 }
 
@@ -236,7 +236,7 @@ fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
 
     ret @{id: cx.next_node_id(),
           node: ast::expr_vec(descs, ast::imm, ast::sk_unique),
-          span: {lo: 0u, hi: 0u}};
+          span: ast::dummy_sp()};
 }
 
 fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
@@ -249,7 +249,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let name_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@name_lit),
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     let name_field: ast::field =
         nospan({mut: ast::imm, ident: "name", expr: @name_expr});
@@ -260,7 +260,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let fn_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_path(fn_path),
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     let fn_field: ast::field =
         nospan({mut: ast::imm, ident: "fn", expr: @fn_expr});
@@ -270,7 +270,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let ignore_expr: ast::expr =
         {id: cx.next_node_id(),
          node: ast::expr_lit(@ignore_lit),
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     let ignore_field: ast::field =
         nospan({mut: ast::imm, ident: "ignore", expr: @ignore_expr});
@@ -278,7 +278,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
     let desc_rec_: ast::expr_ =
         ast::expr_rec(~[name_field, fn_field, ignore_field], option::none);
     let desc_rec: ast::expr =
-        {id: cx.next_node_id(), node: desc_rec_, span: {lo: 0u, hi: 0u}};
+        {id: cx.next_node_id(), node: desc_rec_, span: ast::dummy_sp()};
     ret @desc_rec;
 }
 
@@ -307,7 +307,7 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
         {stmts: ~[],
          expr: option::some(test_main_call_expr),
          id: cx.next_node_id()};
-    let body = {node: body_, span: {lo: 0u, hi: 0u}};
+    let body = {node: body_, span: ast::dummy_sp()};
 
     let fn_ = {decl: decl, proto: proto, body: body};
 
@@ -317,7 +317,7 @@ fn mk_main(cx: &test_ctxt) -> @ast::item {
          attrs: ~[],
          id: cx.next_node_id(),
          node: item_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
     ret @item;
 }
 
@@ -332,7 +332,7 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     let args_path_expr: ast::expr =
         {id: cx.next_node_id(),
          node: args_path_expr_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     // Call __test::test to generate the vector of test_descs
     let test_path: ast::path =
@@ -343,14 +343,14 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     let test_path_expr: ast::expr =
         {id: cx.next_node_id(),
          node: test_path_expr_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     let test_call_expr_: ast::expr_ = ast::expr_call(@test_path_expr, ~[]);
 
     let test_call_expr: ast::expr =
         {id: cx.next_node_id(),
          node: test_call_expr_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     // Call std::test::test_main
     let test_main_path: ast::path =
@@ -363,7 +363,7 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     let test_main_path_expr: ast::expr =
         {id: cx.next_node_id(),
          node: test_main_path_expr_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     let test_main_call_expr_: ast::expr_ =
         ast::expr_call(@test_main_path_expr,
@@ -372,7 +372,7 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     let test_main_call_expr: ast::expr =
         {id: cx.next_node_id(),
          node: test_main_call_expr_,
-         span: {lo: 0u, hi: 0u}};
+         span: ast::dummy_sp()};
 
     ret @test_main_call_expr;
 }

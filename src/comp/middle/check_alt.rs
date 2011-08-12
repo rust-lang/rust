@@ -49,7 +49,7 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
     }
     fn field_patterns_supersede(tcx: &ty::ctxt, fas: &[field_pat],
                                 fbs: &[field_pat]) -> bool {
-        let wild = @{id: 0, node: pat_wild, span: {lo: 0u, hi: 0u}};
+        let wild = @{id: 0, node: pat_wild, span: dummy_sp();
         for fa: field_pat  in fas {
             let pb = wild;
             for fb: field_pat  in fbs {

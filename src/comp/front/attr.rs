@@ -190,7 +190,7 @@ fn require_unique_names(sess: &session::session,
 }
 
 fn span[T](item: &T) -> ast::spanned[T] {
-    ret {node: item, span: {lo: 0u, hi: 0u}};
+    ret {node: item, span: ast::mk_sp(0u, 0u)};
 }
 
 fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {

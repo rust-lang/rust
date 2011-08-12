@@ -90,7 +90,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
             if ivec::len(buffer) == 0u {
                 let next = lexer::next_token(rdr);
                 tok = next.tok;
-                tok_span = {lo: next.chpos, hi: rdr.get_chpos()};
+                tok_span = ast::mk_sp(next.chpos, rdr.get_chpos());
             } else {
                 let next = ivec::pop(buffer);
                 tok = next.tok;
@@ -100,7 +100,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         fn look_ahead(distance: uint) -> token::token {
             while ivec::len(buffer) < distance {
                 let next = lexer::next_token(rdr);
-                let sp = {lo: next.chpos, hi: rdr.get_chpos()};
+                let sp = ast::mk_sp(next.chpos, rdr.get_chpos());
                 buffer = ~[{tok: next.tok, span: sp}] + buffer;
             }
             ret buffer.(distance - 1u).tok;
@@ -135,7 +135,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
     }
 
     let tok0 = lexer::next_token(rdr);
-    let span0 = {lo: tok0.chpos, hi: rdr.get_chpos()};
+    let span0 = ast::mk_sp(tok0.chpos, rdr.get_chpos());
     ret stdio_parser(sess, cfg, ftype, tok0.tok, span0, span0, ~[],
                      UNRESTRICTED, rdr, prec_table(), bad_expr_word_table());
 }
@@ -202,7 +202,7 @@ fn expect(p: &parser, t: token::token) {
 }
 
 fn spanned[T](lo: uint, hi: uint, node: &T) -> spanned[T] {
-    ret {node: node, span: {lo: lo, hi: hi}};
+    ret {node: node, span: ast::mk_sp(lo, hi)};
 }
 
 fn parse_ident(p: &parser) -> ast::ident {
@@ -759,13 +759,13 @@ fn parse_field(p: &parser, sep: &token::token) -> ast::field {
 }
 
 fn mk_expr(p: &parser, lo: uint, hi: uint, node: &ast::expr_) -> @ast::expr {
-    ret @{id: p.get_id(), node: node, span: {lo: lo, hi: hi}};
+    ret @{id: p.get_id(), node: node, span: ast::mk_sp(lo, hi)};
 }
 
 fn mk_mac_expr(p: &parser, lo: uint, hi: uint, m: &ast::mac_) -> @ast::expr {
     ret @{id: p.get_id(),
-          node: ast::expr_mac({node: m, span: {lo: lo, hi: hi}}),
-          span: {lo: lo, hi: hi}};
+          node: ast::expr_mac({node: m, span: ast::mk_sp(lo, hi)}),
+          span: ast::mk_sp(lo, hi)};
 }
 
 fn parse_bottom_expr(p: &parser) -> @ast::expr {
@@ -1465,7 +1465,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
                 subpat =
                     @{id: p.get_id(),
                       node: ast::pat_bind(fieldname),
-                      span: {lo: lo, hi: hi}};
+                      span: ast::mk_sp(lo, hi)};
             }
             fields += ~[{ident: fieldname, pat: subpat}];
         }
@@ -1524,7 +1524,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
         }
       }
     }
-    ret @{id: p.get_id(), node: pat, span: {lo: lo, hi: hi}};
+    ret @{id: p.get_id(), node: pat, span: ast::mk_sp(lo, hi)};
 }
 
 fn parse_local(p: &parser, allow_init: bool) -> @ast::local {
@@ -1807,7 +1807,7 @@ fn mk_item(p: &parser, lo: uint, hi: uint, ident: &ast::ident,
           attrs: attrs,
           id: p.get_id(),
           node: node,
-          span: {lo: lo, hi: hi}};
+          span: ast::mk_sp(lo, hi)};
 }
 
 fn parse_item_fn_or_iter(p: &parser, purity: ast::purity, proto: ast::proto,
@@ -1948,7 +1948,7 @@ fn parse_item_native_type(p: &parser, attrs: &[ast::attribute]) ->
           attrs: attrs,
           node: ast::native_item_ty,
           id: p.get_id(),
-          span: {lo: t.lo, hi: hi}};
+          span: ast::mk_sp(t.lo, hi)};
 }
 
 fn parse_item_native_fn(p: &parser, attrs: &[ast::attribute]) ->
@@ -1964,7 +1964,7 @@ fn parse_item_native_fn(p: &parser, attrs: &[ast::attribute]) ->
           attrs: attrs,
           node: ast::native_item_fn(link_name, decl, t.tps),
           id: p.get_id(),
-          span: {lo: lo, hi: hi}};
+          span: ast::mk_sp(lo, hi)};
 }
 
 fn parse_native_item(p: &parser, attrs: &[ast::attribute]) ->

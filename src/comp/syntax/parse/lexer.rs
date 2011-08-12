@@ -78,7 +78,7 @@ fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
         fn get_col() -> uint { ret col; }
         fn get_filemap() -> codemap::filemap { ret fm; }
         fn err(m: str) {
-            codemap::emit_error(some({lo: chpos, hi: chpos}), m, cm);
+            codemap::emit_error(some(ast::mk_sp(chpos, chpos)), m, cm);
         }
     }
     let strs: [str] = ~[];

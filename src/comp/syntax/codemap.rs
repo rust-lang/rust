@@ -65,12 +65,34 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
-type span = {lo: uint, hi: uint};
+tag opt_span { //hack (as opposed to option::t), to make `span` compile
+    os_none;
+    os_some(@span);
+}
+type span = {lo: uint, hi: uint, expanded_from: opt_span};
 
 fn span_to_str(sp: &span, cm: &codemap) -> str {
-    let lo = lookup_char_pos(cm, sp.lo);
-    let hi = lookup_char_pos(cm, sp.hi);
-    ret #fmt("%s:%u:%u:%u:%u", lo.filename, lo.line, lo.col, hi.line, hi.col);
+    let cur = sp;
+    let res = "";
+    let prev_file = none;
+    while(true) {
+        let lo = lookup_char_pos(cm, cur.lo);
+        let hi = lookup_char_pos(cm, cur.hi);
+        res += #fmt("%s:%u:%u:%u:%u",
+                    if some(lo.filename) == prev_file { "-" }
+                    else                              { lo.filename },
+                    lo.line, lo.col, hi.line, hi.col);
+        alt cur.expanded_from {
+          os_none. { break; }
+          os_some(new_sp) {
+            cur = *new_sp;
+            prev_file = some(lo.filename);
+            res += "<<";
+          }
+        }
+    }
+
+    ret res;
 }
 
 fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,

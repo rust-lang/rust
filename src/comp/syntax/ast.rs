@@ -9,6 +9,14 @@ import codemap::filename;
 type spanned[T] = {node: T, span: span};
 fn respan[T](sp: &span, t: &T) -> spanned[T] { ret {node: t, span: sp}; }
 
+/* assuming that we're not in macro expansion */
+fn mk_sp(lo: uint, hi: uint) -> span {
+    ret {lo: lo, hi: hi, expanded_from: codemap::os_none};
+}
+
+// make this a const, once the compiler supports it
+fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
+
 type ident = str;
 // Functions may or may not have names.
 type fn_ident = option::t[ident];

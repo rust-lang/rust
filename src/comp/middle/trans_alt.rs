@@ -14,6 +14,7 @@ import trans::new_scope_block_ctxt;
 import trans::load_if_immediate;
 import ty::pat_ty;
 import syntax::ast;
+import syntax::ast::dummy_sp;
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import util::common::lit_eq;
@@ -105,7 +106,7 @@ fn enter_default(m: &match, col: uint, val: ValueRef) -> match {
 
 fn enter_opt(ccx: &@crate_ctxt, m: &match, opt: &opt, col: uint,
              tag_size: uint, val: ValueRef) -> match {
-    let dummy = @{id: 0, node: ast::pat_wild, span: {lo: 0u, hi: 0u}};
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(ccx: &@crate_ctxt, dummy: &@ast::pat, opt: &opt, size: uint,
          p: &@ast::pat) -> option::t[[@ast::pat]] {
         alt p.node {
@@ -125,7 +126,7 @@ fn enter_opt(ccx: &@crate_ctxt, m: &match, opt: &opt, col: uint,
 
 fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
    match {
-    let dummy = @{id: 0, node: ast::pat_wild, span: {lo: 0u, hi: 0u}};
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp();
     fn e(dummy: &@ast::pat, fields: &[ast::ident], p: &@ast::pat) ->
        option::t[[@ast::pat]] {
         alt p.node {
@@ -159,7 +160,7 @@ fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
 }
 
 fn enter_box(m: &match, col: uint, val: ValueRef) -> match {
-    let dummy = @{id: 0, node: ast::pat_wild, span: {lo: 0u, hi: 0u}};
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(dummy: &@ast::pat, p: &@ast::pat) -> option::t[[@ast::pat]] {
         alt p.node {
           ast::pat_box(sub) { ret some(~[sub]); }
@@ -310,7 +311,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         let rec_vals = ~[];
         for field_name: ast::ident in rec_fields {
             let ix: uint =
-                ty::field_idx(ccx.sess, {lo: 0u, hi: 0u}, field_name, fields);
+                ty::field_idx(ccx.sess, dummy_sp(), field_name, fields);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
             rec_vals += ~[r.val];
             bcx = r.bcx;

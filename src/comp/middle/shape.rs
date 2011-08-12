@@ -21,6 +21,7 @@ import middle::ty;
 import middle::ty::field;
 import middle::ty::mt;
 import syntax::ast;
+import syntax::ast::dummy_sp;
 import syntax::codemap::span;
 import syntax::util::interner;
 import util::common;
@@ -72,8 +73,6 @@ const shape_uniq : u8 = 22u8;
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n : u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
 
-fn fake_span() -> span { ret { lo: 0u, hi: 0u }; }
-
 fn hash_res_info(ri : &res_info) -> uint {
     let h = 5381u;
     h *= 33u; h += (ri.did.crate as uint);
@@ -121,7 +120,7 @@ fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> [uint] {
                 // when in fact it has minimum size sizeof(int).
                 bounded = false;
             } else {
-                let llty = trans::type_of(ccx, fake_span(), elem_t);
+                let llty = trans::type_of(ccx, dummy_sp(), elem_t);
                 min_size += trans::llsize_of_real(ccx, llty);
                 min_align += trans::llalign_of_real(ccx, llty);
             }
@@ -195,7 +194,7 @@ fn compute_static_tag_size(ccx : &@crate_ctxt, largest_variants : &[uint],
         // We increment a "virtual data pointer" to compute the size.
         let lltys = ~[];
         for typ : ty::t in variants.(vid).args {
-            lltys += ~[trans::type_of(ccx, fake_span(), typ)];
+            lltys += ~[trans::type_of(ccx, dummy_sp(), typ)];
         }
 
         let llty = trans_common::T_struct(lltys);
@@ -412,7 +411,7 @@ fn add_size_hint(ccx : &@crate_ctxt, s : &mutable [u8], typ : ty::t) {
         ret;
     }
 
-    let llty = trans::type_of(ccx, fake_span(), typ);
+    let llty = trans::type_of(ccx, dummy_sp(), typ);
     add_u16(s, trans::llsize_of_real(ccx, llty) as u16);
     s += ~[ trans::llalign_of_real(ccx, llty) as u8 ];
 }
@@ -523,8 +522,7 @@ fn gen_resource_shapes(ccx : &@crate_ctxt) -> ValueRef {
     let len = interner::len(ccx.shape_cx.resources);
     while i < len {
         let ri = interner::get(ccx.shape_cx.resources, i);
-        dtors += ~[trans_common::get_res_dtor(ccx, fake_span(), ri.did,
-                                              ri.t)];
+        dtors += ~[trans_common::get_res_dtor(ccx, dummy_sp(), ri.did, ri.t)];
         i += 1u;
     }
 
