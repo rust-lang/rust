@@ -103,8 +103,8 @@ fn start_program(prog: str, args: vec[str]) -> @program_res {
 fn read_all(rd: &io::reader) -> str {
     let buf = "";
     while !rd.eof() {
-        let bytes = rd.read_bytes(4096u);
-        buf += str::unsafe_from_bytes(bytes);
+        let bytes = ivec::from_vec(rd.read_bytes(4096u));
+        buf += str::unsafe_from_bytes_ivec(bytes);
     }
     ret buf;
 }

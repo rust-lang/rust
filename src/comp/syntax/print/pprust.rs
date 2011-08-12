@@ -1385,8 +1385,8 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
         print_string(s, st);
       }
       ast::lit_char(ch) {
-        word(s.s, "'" +
-             escape_str(str::unsafe_from_bytes([ch as u8]), '\'') + "'");
+        word(s.s, "'" + escape_str(
+            str::unsafe_from_bytes_ivec(~[ch as u8]), '\'') + "'");
       }
       ast::lit_int(val) { word(s.s, int::str(val)); }
       ast::lit_uint(val) { word(s.s, uint::str(val) + "u"); }

@@ -17,7 +17,7 @@ native "rust" mod rustrt {
                                     count: uint);
 }
 
-fn from_vec[@T](v: &vec[T]) -> [T] {
+fn from_vec[@T](v: &vec[mutable? T]) -> [T] {
     let iv = ~[];
     for e in v {
         iv += ~[e];

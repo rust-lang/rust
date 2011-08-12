@@ -4,6 +4,7 @@ import std::os;
 import std::io;
 import std::option;
 import std::str;
+import std::ivec;
 
 // Regression test for memory leaks
 #[cfg(target_os = "linux")]
@@ -58,8 +59,8 @@ fn test_pipes() {
         let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
         let buf = "";
         while !reader.eof() {
-            let bytes = reader.read_bytes(4096u);
-            buf += str::unsafe_from_bytes(bytes);
+            let bytes = ivec::from_vec(reader.read_bytes(4096u));
+            buf += str::unsafe_from_bytes_ivec(bytes);
         }
         os::libc::fclose(file);
         ret buf;

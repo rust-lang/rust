@@ -120,7 +120,7 @@ obj new_reader(rdr: buf_reader) {
                 go_on = false;
             } else { vec::push[u8](buf, ch as u8); }
         }
-        ret str::unsafe_from_bytes(buf);
+        ret str::unsafe_from_bytes_ivec(ivec::from_vec(buf));
     }
     fn read_c_str() -> str {
         let buf: vec[u8] = [];
@@ -131,7 +131,7 @@ obj new_reader(rdr: buf_reader) {
                 go_on = false;
             } else { vec::push[u8](buf, ch as u8); }
         }
-        ret str::unsafe_from_bytes(buf);
+        ret str::unsafe_from_bytes_ivec(ivec::from_vec(buf));
     }
 
     // FIXME deal with eof?
@@ -440,7 +440,9 @@ fn string_writer() -> str_writer {
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }
-        fn get_str() -> str { ret str::unsafe_from_bytes(buf.buf); }
+        fn get_str() -> str {
+            ret str::unsafe_from_bytes_ivec(ivec::from_vec(buf.buf));
+        }
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }

@@ -311,8 +311,8 @@ fn sanitize(s: &str) -> str {
                     if c != 10u8 && c != '}' as u8 && c != ')' as u8 &&
                            c != ' ' as u8 && c != '\t' as u8 && c != ';' as u8
                        {
-                        let v = [c];
-                        result += str::unsafe_from_bytes(v);
+                        let v = ~[c];
+                        result += str::unsafe_from_bytes_ivec(v);
                     }
                 }
             }
