@@ -120,74 +120,6 @@ unsupervise(rust_task *task) {
     task->unsupervise();
 }
 
-extern "C" CDECL rust_vec*
-vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
-{
-    LOG(task, mem, "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
-        n_elts, elem_t->size);
-    size_t fill = n_elts * elem_t->size;
-    size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = task->malloc(alloc, "rust_vec", t->is_stateful ? t : NULL);
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-    rust_vec *vec = new (mem) rust_vec(alloc, 0, NULL);
-    return vec;
-}
-
-extern "C" CDECL rust_vec*
-vec_alloc_mut(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
-{
-    return vec_alloc(task, t, elem_t, n_elts);
-}
-
-extern "C" CDECL void *
-vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
-{
-    return (void *)&v->data[ty->size * offset];
-}
-
-extern "C" CDECL size_t
-vec_len(rust_task *task, type_desc *ty, rust_vec *v)
-{
-    return v->fill / ty->size;
-}
-
-extern "C" CDECL void
-vec_len_set(rust_task *task, type_desc *ty, rust_vec *v, size_t len)
-{
-    LOG(task, stdlib, "vec_len_set(0x%" PRIxPTR ", %" PRIdPTR ") on vec with "
-        "alloc = %" PRIdPTR
-        ", fill = %" PRIdPTR
-        ", len = %" PRIdPTR
-        ".  New fill is %" PRIdPTR,
-        v, len, v->alloc, v->fill, v->fill / ty->size, len * ty->size);
-    v->fill = len * ty->size;
-}
-
-extern "C" CDECL void
-vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
-{
-    LOG(task, stdlib,
-        "vec_print_debug_info(0x%" PRIxPTR ")"
-        " with tydesc 0x%" PRIxPTR
-        " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
-        " alloc = %" PRIdPTR ", fill = %" PRIdPTR ", len = %" PRIdPTR
-        " , data = ...",
-        v,
-        ty,
-        ty->size,
-        ty->align,
-        v->alloc,
-        v->fill,
-        v->fill / ty->size);
-
-    for (size_t i = 0; i < v->fill; ++i) {
-        LOG(task, stdlib, "  %" PRIdPTR ":    0x%" PRIxPTR, i, v->data[i]);
-    }
-}
-
 /* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
 static rust_vec*
 vec_alloc_with_data(rust_task *task,
@@ -200,22 +132,6 @@ vec_alloc_with_data(rust_task *task,
     void *mem = task->malloc(alloc, "rust_vec (with data)");
     if (!mem) return NULL;
     return new (mem) rust_vec(alloc, fill * elt_size, (uint8_t*)d);
-}
-
-extern "C" CDECL rust_vec*
-vec_from_vbuf(rust_task *task, type_desc *ty, void *vbuf, size_t n_elts)
-{
-    return vec_alloc_with_data(task, n_elts, n_elts * ty->size, ty->size,
-                               vbuf);
-}
-
-extern "C" CDECL rust_vec*
-unsafe_vec_to_mut(rust_task *task, type_desc *ty, rust_vec *v)
-{
-    if (v->ref_count != CONST_REFCOUNT) {
-        v->ref();
-    }
-    return v;
 }
 
 extern "C" CDECL rust_str*

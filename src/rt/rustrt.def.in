@@ -71,7 +71,6 @@ take_chan
 task_sleep
 task_yield
 task_join
-unsafe_vec_to_mut
 unsupervise
 upcall_chan_target_task
 upcall_clone_chan
@@ -113,11 +112,4 @@ upcall_take_task
 upcall_take_chan
 upcall_vec_append
 upcall_yield
-vec_alloc
-vec_alloc_mut
-vec_buf
-vec_from_vbuf
-vec_len
-vec_len_set
-vec_print_debug_info
 
