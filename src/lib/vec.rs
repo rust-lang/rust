@@ -3,9 +3,9 @@ import option::none;
 import option::some;
 import util::orb;
 
-export vbuf;
+export dummy;
 
-type vbuf = rustrt::vbuf;
+type dummy = int;
 
 native "rust" mod rustrt {
     type vbuf;
