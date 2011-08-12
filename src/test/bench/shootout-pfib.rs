@@ -11,7 +11,6 @@
 
 use std;
 
-import std::vec;
 import std::ivec;
 import std::uint;
 import std::time;
@@ -47,13 +46,13 @@ fn fib(n: int) -> int {
 
 type config = {stress: bool};
 
-fn parse_opts(argv: vec[str]) -> config {
-    let opts = [getopts::optflag("stress")];
+fn parse_opts(argv: [str]) -> config {
+    let opts = ~[getopts::optflag("stress")];
 
-    let opt_args = vec::slice(argv, 1u, vec::len(argv));
+    let opt_args = ivec::slice(argv, 1u, ivec::len(argv));
 
 
-    alt getopts::getopts(opt_args, opts) {
+    alt getopts::getopts_ivec(opt_args, opts) {
       getopts::success(m) { ret {stress: getopts::opt_present(m, "stress")} }
       getopts::failure(_) { fail; }
     }
@@ -78,18 +77,19 @@ fn stress(num_tasks: int) {
 }
 
 fn main(argv: vec[str]) {
-    if vec::len(argv) == 1u {
+    let iargv = ivec::from_vec(argv);
+    if ivec::len(iargv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
     } else {
         // Interactive mode! Wooo!!!!
-        let opts = parse_opts(argv);
+        let opts = parse_opts(iargv);
 
 
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(ivec::to_vec(str::bytes(argv.(1))),
+            let max = uint::parse_buf(ivec::to_vec(str::bytes(iargv.(1))),
                                       10u) as int;
 
             let num_trials = 10;

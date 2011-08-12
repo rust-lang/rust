@@ -14,7 +14,6 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::vec;
 import std::map;
 import std::ivec;
 import std::io;
@@ -79,7 +78,7 @@ mod map_reduce {
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: chan[ctrl_proto], inputs: vec[str]) -> [task] {
+    fn start_mappers(ctrl: chan[ctrl_proto], inputs: &[str]) -> [task] {
         let tasks = ~[];
         // log_err "starting mappers";
         for i: str  in inputs {
@@ -166,7 +165,7 @@ mod map_reduce {
         // log_err "~reduce_task " + key;
     }
 
-    fn map_reduce(inputs: vec[str]) {
+    fn map_reduce(inputs: &[str]) {
         let ctrl = port[ctrl_proto]();
 
         // This task becomes the master control task. It spawns others
@@ -178,7 +177,7 @@ mod map_reduce {
 
         let tasks = start_mappers(chan(ctrl), inputs);
 
-        let num_mappers = vec::len(inputs) as int;
+        let num_mappers = ivec::len(inputs) as int;
 
         while num_mappers > 0 {
             let m;
@@ -225,10 +224,11 @@ mod map_reduce {
 }
 
 fn main(argv: vec[str]) {
-    if vec::len(argv) < 2u {
+    let iargv = ivec::from_vec(argv);
+    if ivec::len(iargv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
+        out.write_line(#fmt("Usage: %s <filename> ...", iargv.(0)));
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -242,7 +242,7 @@ fn main(argv: vec[str]) {
 
     let start = time::precise_time_ns();
 
-    map_reduce::map_reduce(vec::slice(argv, 1u, vec::len(argv)));
+    map_reduce::map_reduce(ivec::slice(iargv, 1u, ivec::len(iargv)));
     let stop = time::precise_time_ns();
 
     let elapsed = stop - start;

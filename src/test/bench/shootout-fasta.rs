@@ -6,7 +6,7 @@
  * http://shootout.alioth.debian.org/
  */
 use std;
-import std::vec;
+import std::ivec;
 import std::str;
 import std::uint;
 import std::int;
@@ -23,16 +23,16 @@ obj myrandom(mutable last: u32) {
 
 type aminoacids = {ch: char, prob: u32};
 
-fn make_cumulative(aa: vec[aminoacids]) -> vec[aminoacids] {
+fn make_cumulative(aa: &[aminoacids]) -> [aminoacids] {
     let cp: u32 = 0u32;
-    let ans: vec[aminoacids] = [];
-    for a: aminoacids  in aa { cp += a.prob; ans += [{ch: a.ch, prob: cp}]; }
+    let ans: [aminoacids] = ~[];
+    for a: aminoacids  in aa { cp += a.prob; ans += ~[{ch: a.ch, prob: cp}]; }
     ret ans;
 }
 
-fn select_random(r: u32, genelist: vec[aminoacids]) -> char {
+fn select_random(r: u32, genelist: &[aminoacids]) -> char {
     if r < genelist.(0).prob { ret genelist.(0).ch; }
-    fn bisect(v: vec[aminoacids], lo: uint, hi: uint, target: u32) -> char {
+    fn bisect(v: &[aminoacids], lo: uint, hi: uint, target: u32) -> char {
         if hi > lo + 1u {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v.(mid).prob {
@@ -40,10 +40,10 @@ fn select_random(r: u32, genelist: vec[aminoacids]) -> char {
             } else { be bisect(v, mid, hi, target); }
         } else { ret v.(hi).ch; }
     }
-    ret bisect(genelist, 0u, vec::len[aminoacids](genelist) - 1u, r);
+    ret bisect(genelist, 0u, ivec::len[aminoacids](genelist) - 1u, r);
 }
 
-fn make_random_fasta(id: str, desc: str, genelist: vec[aminoacids], n: int) {
+fn make_random_fasta(id: str, desc: str, genelist: &[aminoacids], n: int) {
     log ">" + id + " " + desc;
     let rng = myrandom(std::rand::mk_rng().next());
     let op: str = "";
@@ -68,15 +68,17 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) {
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
 fn main(args: vec[str]) {
-    let iub: vec[aminoacids] =
-        make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
-                         acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
-                         acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
-                         acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
-                         acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
-    let homosapiens: vec[aminoacids] =
-        make_cumulative([acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
-                         acid('t', 30u32)]);
+    let iub: [aminoacids] =
+        make_cumulative(
+            ~[acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
+              acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
+              acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
+              acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
+              acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
+    let homosapiens: [aminoacids] =
+        make_cumulative(
+            ~[acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
+              acid('t', 30u32)]);
     let alu: str =
         "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
             "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
