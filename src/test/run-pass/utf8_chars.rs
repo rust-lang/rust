@@ -1,17 +1,16 @@
 use std;
 import std::str;
-import std::vec;
 import std::io;
 import std::ivec;
 
 fn main() {
     // Chars of 1, 2, 3, and 4 bytes
-    let chs: vec[char] = ['e', 'é', '€', 0x10000 as char];
+    let chs: [char] = ~['e', 'é', '€', 0x10000 as char];
     let s: str = str::from_chars(chs);
 
     assert (str::byte_len(s) == 10u);
     assert (str::char_len(s) == 4u);
-    assert (vec::len[char](str::to_chars(s)) == 4u);
+    assert (ivec::len[char](str::to_chars(s)) == 4u);
     assert (str::eq(str::from_chars(str::to_chars(s)), s));
     assert (str::char_at(s, 0u) == 'e');
     assert (str::char_at(s, 1u) == 'é');

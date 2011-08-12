@@ -241,7 +241,7 @@ fn from_char(ch: char) -> str {
     ret buf;
 }
 
-fn from_chars(chs: vec[char]) -> str {
+fn from_chars(chs: &[char]) -> str {
     let buf = "";
     for ch: char  in chs { push_utf8_bytes(buf, ch); }
     ret buf;
@@ -300,13 +300,13 @@ fn char_len(s: str) -> uint {
     ret len;
 }
 
-fn to_chars(s: str) -> vec[char] {
-    let buf: vec[char] = [];
+fn to_chars(s: str) -> [char] {
+    let buf: [char] = ~[];
     let i = 0u;
     let len = byte_len(s);
     while i < len {
         let cur = char_range_at(s, i);
-        vec::push[char](buf, cur.ch);
+        buf += ~[cur.ch];
         i = cur.next;
     }
     ret buf;
@@ -524,13 +524,13 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
 
 // FIXME: Also not efficient
 fn char_slice(s: &str, begin: uint, end: uint) -> str {
-    from_chars(vec::slice(to_chars(s), begin, end))
+    from_chars(ivec::slice(to_chars(s), begin, end))
 }
 
 fn trim_left(s: &str) -> str {
-    fn count_whities(s: &vec[char]) -> uint {
+    fn count_whities(s: &[char]) -> uint {
         let i = 0u;
-        while i < vec::len(s) {
+        while i < ivec::len(s) {
             if !char::is_whitespace(s.(i)) {
                 break;
             }
@@ -540,12 +540,12 @@ fn trim_left(s: &str) -> str {
     }
     let chars = to_chars(s);
     let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
+    ret from_chars(ivec::slice(chars, whities, ivec::len(chars)));
 }
 
 fn trim_right(s: &str) -> str {
-    fn count_whities(s: &vec[char]) -> uint {
-        let i = vec::len(s);
+    fn count_whities(s: &[char]) -> uint {
+        let i = ivec::len(s);
         while 0u < i {
             if !char::is_whitespace(s.(i - 1u)) {
                 break;
@@ -556,7 +556,7 @@ fn trim_right(s: &str) -> str {
     }
     let chars = to_chars(s);
     let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, 0u, whities));
+    ret from_chars(ivec::slice(chars, 0u, whities));
 }
 
 fn trim(s: &str) -> str {
