@@ -1,6 +1,7 @@
 
 use std;
 import std::ivec;
+import std::ivec::*;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -236,6 +237,17 @@ fn test_map() {
 }
 
 #[test]
+fn test_map2() {
+    fn times(x: &int, y: &int) -> int { ret x * y; }
+    let f = times;
+    let v0 = ~[1, 2, 3, 4, 5];
+    let v1 = ~[5, 4, 3, 2, 1];
+    let u = ivec::map2[int, int, int](f, v0, v1);
+    let i = 0;
+    while i < 5 { assert (v0.(i) * v1.(i) == u.(i)); i += 1; }
+}
+
+#[test]
 fn test_filter_map() {
     // Test on-stack filter-map.
     let v = ~[1u, 2u, 3u];
@@ -251,6 +263,23 @@ fn test_filter_map() {
     assert (w.(0) == 1u);
     assert (w.(1) == 9u);
     assert (w.(2) == 25u);
+
+    fn halve(i: &int) -> option::t[int] {
+        if i % 2 == 0 {
+            ret option::some[int](i / 2);
+        } else { ret option::none[int]; }
+    }
+    fn halve_for_sure(i: &int) -> int { ret i / 2; }
+    let all_even: [int] = ~[0, 2, 8, 6];
+    let all_odd1: [int] = ~[1, 7, 3];
+    let all_odd2: [int] = ~[];
+    let mix: [int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
+    let mix_dest: [int] = ~[1, 3, 0, 0];
+    assert (filter_map(halve, all_even) == map(halve_for_sure, all_even));
+    assert (filter_map(halve, all_odd1) == ~[]);
+    assert (filter_map(halve, all_odd2) == ~[]);
+    assert (filter_map(halve, mix) == mix_dest);
+
 }
 
 #[test]
@@ -294,6 +323,24 @@ fn test_zip_unzip() {
     assert ({_0: 1, _1: 4} == {_0: u1._0.(0), _1: u1._1.(0)});
     assert ({_0: 2, _1: 5} == {_0: u1._0.(1), _1: u1._1.(1)});
     assert ({_0: 3, _1: 6} == {_0: u1._0.(2), _1: u1._1.(2)});
+}
+
+#[test]
+fn test_position() {
+    let v1: [int] = ~[1, 2, 3, 3, 2, 5];
+    assert (position(1, v1) == option::some[uint](0u));
+    assert (position(2, v1) == option::some[uint](1u));
+    assert (position(5, v1) == option::some[uint](5u));
+    assert (position(4, v1) == option::none[uint]);
+}
+
+#[test]
+fn test_position_pred() {
+    fn less_than_three(i: &int) -> bool { ret i < 3; }
+    fn is_eighteen(i: &int) -> bool { ret i == 18; }
+    let v1: [int] = ~[5, 4, 3, 2, 1];
+    assert (position_pred(less_than_three, v1) == option::some[uint](3u));
+    assert (position_pred(is_eighteen, v1) == option::none[uint]);
 }
 
 // Local Variables:

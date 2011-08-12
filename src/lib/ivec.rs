@@ -208,6 +208,16 @@ fn map[@T, @U](f: &block(&T) -> U , v: &[mutable? T]) -> [U] {
     ret result;
 }
 
+fn map2[@T, @U, @V](f: &block(&T, &U) -> V, v0: &[T], v1: &[U])
+    -> [V] {
+    let v0_len = len[T](v0);
+    if v0_len != len[U](v1) { fail; }
+    let u: [V] = ~[];
+    let i = 0u;
+    while i < v0_len { u += ~[f({ v0.(i) }, { v1.(i) })]; i += 1u; }
+    ret u;
+}
+
 fn filter_map[@T, @U](f: &block(&T) -> option::t[U],
                       v: &[mutable? T]) -> [U] {
     let result = ~[];
@@ -253,6 +263,18 @@ fn count[T](x: &T, v: &[mutable? T]) -> uint {
 fn find[@T](f: &block(&T) -> bool , v: &[T]) -> option::t[T] {
     for elt: T  in v { if f(elt) { ret some(elt); } }
     ret none;
+}
+
+fn position[@T](x: &T, v: &[T]) -> option::t[uint] {
+    let i: uint = 0u;
+    while i < len(v) { if x == v.(i) { ret some[uint](i); } i += 1u; }
+    ret none[uint];
+}
+
+fn position_pred[T](f: fn(&T) -> bool , v: &[T]) -> option::t[uint] {
+    let i: uint = 0u;
+    while i < len(v) { if f(v.(i)) { ret some[uint](i); } i += 1u; }
+    ret none[uint];
 }
 
 fn unzip[@T, @U](v: &[{_0: T, _1: U}]) -> {_0: [T], _1: [U]} {
