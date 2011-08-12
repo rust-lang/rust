@@ -132,7 +132,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       }
       ty_var(v) { s += "<T" + int::str(v) + ">"; }
       ty_param(id,_) {
-        s += "'" + str::unsafe_from_bytes_ivec(~[('a' as u8) + (id as u8)]);
+        s += "'" + str::unsafe_from_bytes(~[('a' as u8) + (id as u8)]);
       }
       _ { s += ty_to_short_str(cx, typ); }
     }

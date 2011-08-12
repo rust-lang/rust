@@ -105,7 +105,7 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
     } else {
         ioivec::stdin()
     }.read_whole_stream();
-    let src = str::unsafe_from_bytes_ivec(srcbytes);
+    let src = str::unsafe_from_bytes(srcbytes);
     let crate = parser::parse_crate_from_source_str(infile, src, cfg,
                                                     sess.get_parse_sess());
     ret {crate: crate, src: src};

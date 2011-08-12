@@ -85,7 +85,7 @@ fn item_family(item: &ebmlivec::doc) -> u8 {
 
 fn item_symbol(item: &ebmlivec::doc) -> str {
     let sym = ebmlivec::get_doc(item, tag_items_data_item_symbol);
-    ret str::unsafe_from_bytes_ivec(ebmlivec::doc_data(sym));
+    ret str::unsafe_from_bytes(ebmlivec::doc_data(sym));
 }
 
 fn variant_tag_id(d: &ebmlivec::doc) -> ast::def_id {
@@ -149,7 +149,7 @@ fn tag_variant_ids(item: &ebmlivec::doc, this_cnum: ast::crate_num) ->
 // definition the path refers to.
 fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: &[u8], s: str) -> bool {
-        ret str::eq(str::unsafe_from_bytes_ivec(data), s);
+        ret str::eq(str::unsafe_from_bytes(data), s);
     }
     let s = str::connect_ivec(path, "::");
     let md = ebmlivec::new_doc(data);
@@ -270,7 +270,7 @@ fn read_path(d: &ebmlivec::doc) -> {path: str, pos: uint} {
     let desc = ebmlivec::doc_data(d);
     let pos = ebmlivec::be_uint_from_bytes(@desc, 0u, 4u);
     let pathbytes = ivec::slice[u8](desc, 4u, ivec::len[u8](desc));
-    let path = str::unsafe_from_bytes_ivec(pathbytes);
+    let path = str::unsafe_from_bytes(pathbytes);
     ret {path: path, pos: pos};
 }
 
@@ -299,15 +299,15 @@ fn get_meta_items(md: &ebmlivec::doc) -> [@ast::meta_item] {
     for each meta_item_doc: ebmlivec::doc  in
              ebmlivec::tagged_docs(md, tag_meta_item_word) {
         let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes_ivec(ebmlivec::doc_data(nd));
+        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
         items += ~[attr::mk_word_item(n)];
     }
     for each meta_item_doc: ebmlivec::doc  in
              ebmlivec::tagged_docs(md, tag_meta_item_name_value) {
         let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::unsafe_from_bytes_ivec(ebmlivec::doc_data(nd));
-        let v = str::unsafe_from_bytes_ivec(ebmlivec::doc_data(vd));
+        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
+        let v = str::unsafe_from_bytes(ebmlivec::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
         items += ~[attr::mk_name_value_item_str(n, v)];
@@ -315,7 +315,7 @@ fn get_meta_items(md: &ebmlivec::doc) -> [@ast::meta_item] {
     for each meta_item_doc: ebmlivec::doc  in
              ebmlivec::tagged_docs(md, tag_meta_item_list) {
         let nd = ebmlivec::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes_ivec(ebmlivec::doc_data(nd));
+        let n = str::unsafe_from_bytes(ebmlivec::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items += ~[attr::mk_list_item(n, subitems)];
     }
@@ -372,7 +372,7 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let crate_num = 1;
     for each depdoc: ebmlivec::doc  in
              ebmlivec::tagged_docs(depsdoc, tag_crate_dep) {
-        let depname = str::unsafe_from_bytes_ivec(ebmlivec::doc_data(depdoc));
+        let depname = str::unsafe_from_bytes(ebmlivec::doc_data(depdoc));
         deps += ~[{cnum: crate_num, ident: depname}];
         crate_num += 1;
     }

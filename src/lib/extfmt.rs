@@ -358,7 +358,7 @@ mod rt {
     fn str_init_elt(c: char, n_elts: uint) -> str {
         let svec = ivec::from_vec(vec::init_elt[u8](c as u8, n_elts));
 
-        ret str::unsafe_from_bytes_ivec((svec));
+        ret str::unsafe_from_bytes((svec));
     }
     tag pad_mode { pad_signed; pad_unsigned; pad_nozero; }
     fn pad(cv: &conv, s: str, mode: pad_mode) -> str {
@@ -407,7 +407,7 @@ mod rt {
         if signed && zero_padding && str::byte_len(s) > 0u {
             let head = s.(0);
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
-                let headstr = str::unsafe_from_bytes_ivec(~[head]);
+                let headstr = str::unsafe_from_bytes(~[head]);
                 let bytelen = str::byte_len(s);
                 let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;

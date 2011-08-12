@@ -60,7 +60,7 @@ fn test_pipes() {
         let buf = "";
         while !reader.eof() {
             let bytes = ivec::from_vec(reader.read_bytes(4096u));
-            buf += str::unsafe_from_bytes_ivec(bytes);
+            buf += str::unsafe_from_bytes(bytes);
         }
         os::libc::fclose(file);
         ret buf;

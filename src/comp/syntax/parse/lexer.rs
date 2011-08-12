@@ -177,11 +177,11 @@ fn scan_exponent(rdr: &reader) -> option::t[str] {
     let c = rdr.curr();
     let rslt = "";
     if c == 'e' || c == 'E' {
-        rslt += str::unsafe_from_bytes_ivec(~[c as u8]);
+        rslt += str::unsafe_from_bytes(~[c as u8]);
         rdr.bump();
         c = rdr.curr();
         if c == '-' || c == '+' {
-            rslt += str::unsafe_from_bytes_ivec(~[c as u8]);
+            rslt += str::unsafe_from_bytes(~[c as u8]);
             rdr.bump();
         }
         let exponent = scan_dec_digits(rdr);
@@ -195,7 +195,7 @@ fn scan_dec_digits(rdr: &reader) -> str {
     let c = rdr.curr();
     let rslt: str = "";
     while is_dec_digit(c) || c == '_' {
-        if c != '_' { rslt += str::unsafe_from_bytes_ivec(~[c as u8]); }
+        if c != '_' { rslt += str::unsafe_from_bytes(~[c as u8]); }
         rdr.bump();
         c = rdr.curr();
     }
@@ -711,7 +711,7 @@ type lit = {lit: str, pos: uint};
 fn gather_comments_and_literals(cm: &codemap::codemap, path: str,
                                 srdr: ioivec::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
-    let src = str::unsafe_from_bytes_ivec(srdr.read_whole_stream());
+    let src = str::unsafe_from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk[str](str::hash, str::eq);
     let rdr = new_reader(cm, src, codemap::new_filemap(path, 0u, 0u), itr);
     let comments: [cmnt] = ~[];

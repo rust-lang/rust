@@ -10,7 +10,7 @@ fn test_simple() {
     let s1: str = "All mimsy were the borogoves";
 
     let v: [u8] = str::bytes(s1);
-    let s2: str = str::unsafe_from_bytes_ivec(v);
+    let s2: str = str::unsafe_from_bytes(v);
     let i: uint = 0u;
     let n1: uint = str::byte_len(s1);
     let n2: uint = ivec::len[u8](v);

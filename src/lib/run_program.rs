@@ -104,7 +104,7 @@ fn read_all(rd: &io::reader) -> str {
     let buf = "";
     while !rd.eof() {
         let bytes = ivec::from_vec(rd.read_bytes(4096u));
-        buf += str::unsafe_from_bytes_ivec(bytes);
+        buf += str::unsafe_from_bytes(bytes);
     }
     ret buf;
 }

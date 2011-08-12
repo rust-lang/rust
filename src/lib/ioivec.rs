@@ -121,7 +121,7 @@ obj new_reader(rdr: buf_reader) {
                 go_on = false;
             } else { buf += ~[ch as u8]; }
         }
-        ret str::unsafe_from_bytes_ivec(buf);
+        ret str::unsafe_from_bytes(buf);
     }
     fn read_c_str() -> str {
         let buf: [u8] = ~[];
@@ -130,7 +130,7 @@ obj new_reader(rdr: buf_reader) {
             let ch = rdr.read_byte();
             if ch < 1 { go_on = false; } else { buf += ~[ch as u8]; }
         }
-        ret str::unsafe_from_bytes_ivec(buf);
+        ret str::unsafe_from_bytes(buf);
     }
 
     // FIXME deal with eof?
@@ -435,7 +435,7 @@ fn string_writer() -> str_writer {
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }
-        fn get_str() -> str { ret str::unsafe_from_bytes_ivec(buf.buf); }
+        fn get_str() -> str { ret str::unsafe_from_bytes(buf.buf); }
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }
@@ -456,7 +456,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
 }
 
 fn read_whole_file_str(file: &str) -> str {
-    str::unsafe_from_bytes_ivec(read_whole_file(file))
+    str::unsafe_from_bytes(read_whole_file(file))
 }
 
 fn read_whole_file(file: &str) -> [u8] {

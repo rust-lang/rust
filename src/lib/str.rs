@@ -48,7 +48,7 @@ export connect;
 export connect_ivec;
 export to_upper;
 export safe_slice;
-export unsafe_from_bytes_ivec;
+export unsafe_from_bytes;
 export is_empty;
 export is_not_empty;
 export is_whitespace;
@@ -192,7 +192,7 @@ fn bytes(s: str) -> [u8] {
     ret ivec::unsafe::from_buf(ptr, byte_len(s));
 }
 
-fn unsafe_from_bytes_ivec(v: &[mutable? u8]) -> str {
+fn unsafe_from_bytes(v: &[mutable? u8]) -> str {
     ret rustrt::str_from_ivec(v);
 }
 

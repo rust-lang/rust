@@ -191,7 +191,7 @@ mod map_reduce {
               }
               find_reducer(ki, cc) {
                 let c;
-                let k = str::unsafe_from_bytes_ivec(ki);
+                let k = str::unsafe_from_bytes(ki);
                 // log_err "finding reducer for " + k;
                 alt reducers.find(k) {
                   some(_c) {
