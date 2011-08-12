@@ -303,6 +303,32 @@ fn zip[@T, @U](v: &[T], u: &[U]) -> [{_0: T, _1: U}] {
     }
 }
 
+// Swaps two elements in a vector
+fn swap[@T](v: &[mutable T], a: uint, b: uint) {
+    let t: T = v.(a);
+    v.(a) = v.(b);
+    v.(b) = t;
+}
+
+// In place vector reversal
+fn reverse[@T](v: &[mutable T]) {
+    let i: uint = 0u;
+    let ln = len[T](v);
+    while i < ln / 2u { swap(v, i, ln - i - 1u); i += 1u; }
+}
+
+
+// Functional vector reversal. Returns a reversed copy of v.
+fn reversed[@T](v: &[T]) -> [T] {
+    let rs: [T] = ~[];
+    let i = len[T](v);
+    if i == 0u { ret rs; } else { i -= 1u; }
+    while i != 0u { rs += ~[v.(i)]; i -= 1u; }
+    rs += ~[v.(0)];
+    ret rs;
+}
+
+
 mod unsafe {
     type ivec_repr =
         {mutable fill: uint,
