@@ -28,7 +28,6 @@ mod str;
 mod task;
 mod test;
 mod uint;
-mod vec;
 mod vec_str_conversions;
 
 // Local Variables:
