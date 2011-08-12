@@ -5,19 +5,15 @@ import util::orb;
 
 export vbuf;
 export init_fn;
-export init_fn_mut;
 export init_elt;
-export init_elt_mut;
 export buf;
 export len;
 export print_debug_info;
 export slice;
 export pop;
 export push;
-export foldl;
 export reversed;
 export member;
-export map;
 
 type vbuf = rustrt::vbuf;
 
@@ -302,7 +298,7 @@ fn zip[@T, @U](v: &vec[T], u: &vec[U]) -> vec[{_0: T, _1: U}] {
 
 fn or(v: &vec[bool]) -> bool {
     let f = orb;
-    ret vec::foldl[bool, bool](f, false, v);
+    ret foldl[bool, bool](f, false, v);
 }
 
 fn any[T](f: &fn(&T) -> bool , v: &vec[T]) -> bool {
