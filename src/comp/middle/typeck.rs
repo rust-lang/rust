@@ -1281,10 +1281,10 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     };
 
     // Don't descend into fns and items
-    fn visit_fn[E](f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
+    fn visit_fn<E>(f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
                    i: &ast::fn_ident, id: ast::node_id, e: &E,
                    v: &visit::vt<E>) { }
-    fn visit_item[E](i: &@ast::item, e: &E, v: &visit::vt<E>) { }
+    fn visit_item<E>(i: &@ast::item, e: &E, v: &visit::vt<E>) { }
 
     let visit =
         @{visit_local: visit_local,

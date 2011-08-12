@@ -284,7 +284,7 @@ tag sty {
 
 // In the middle end, constraints have a def_id attached, referring
 // to the definition of the operator in the constraint.
-type constr_general[ARG] = spanned<constr_general_<ARG, def_id>>;
+type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
 type type_constr = constr_general<path>;
 type constr = constr_general<uint>;
 
@@ -1554,7 +1554,7 @@ fn hash_ty(typ: &t) -> uint { ret typ; }
 // users should use `eq_ty()` instead.
 fn eq_int(x: &uint, y: &uint) -> bool { ret x == y; }
 
-fn arg_eq[T](eq: &fn(&T, &T) -> bool , a: @sp_constr_arg<T>,
+fn arg_eq<T>(eq: &fn(&T, &T) -> bool , a: @sp_constr_arg<T>,
              b: @sp_constr_arg<T>) -> bool {
     alt a.node {
       ast::carg_base. {
@@ -1569,7 +1569,7 @@ fn arg_eq[T](eq: &fn(&T, &T) -> bool , a: @sp_constr_arg<T>,
     }
 }
 
-fn args_eq[T](eq: fn(&T, &T) -> bool , a: &[@sp_constr_arg<T>],
+fn args_eq<T>(eq: fn(&T, &T) -> bool , a: &[@sp_constr_arg<T>],
               b: &[@sp_constr_arg<T>]) -> bool {
     let i: uint = 0u;
     for arg: @sp_constr_arg<T> in a {
@@ -3090,7 +3090,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
     ret tbl.(tycat(cx, ty)).(opcat(op));
 }
 
-fn ast_constr_to_constr[T](tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
+fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
    @ty::constr_general<T> {
     alt tcx.def_map.find(c.node.id) {
       some(ast::def_fn(pred_id, ast::pure_fn.)) {

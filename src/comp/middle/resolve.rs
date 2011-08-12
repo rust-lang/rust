@@ -1392,7 +1392,7 @@ fn add_name(ch: &checker, sp: &span, name: &ident) {
 
 fn ident_id(i: &ident) -> ident { ret i; }
 
-fn ensure_unique[T](e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident ,
+fn ensure_unique<T>(e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident ,
                     kind: &str) {
     let ch = checker(e, kind);
     for elt: T in elts { add_name(ch, sp, id(elt)); }

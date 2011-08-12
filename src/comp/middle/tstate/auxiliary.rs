@@ -1012,13 +1012,13 @@ fn non_init_constraint_mentions(fcx: &fn_ctxt, c: &norm_constraint,
         };
 }
 
-fn args_mention[T](args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
+fn args_mention<T>(args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
                    s: &[T]) -> bool {
     /*
       FIXME
       The following version causes an assertion in trans to fail
       (something about type_is_tup_like)
-    fn mentions[T](&[T] s, &fn(&[T], def_id) -> bool q,
+    fn mentions<T>(&[T] s, &fn(&[T], def_id) -> bool q,
                             &@constr_arg_use a) -> bool {
         alt (a.node) {
             case (carg_ident(?p1)) {
@@ -1051,7 +1051,7 @@ fn op_to_oper_ty(io: init_op) -> oper_type {
 }
 
 // default function visitor
-fn do_nothing[T](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
+fn do_nothing<T>(f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
                  iid: node_id, cx: &T, v: &visit::vt<T>) {
 }
 

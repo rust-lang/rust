@@ -189,7 +189,7 @@ fn require_unique_names(sess: &session::session,
     }
 }
 
-fn span[T](item: &T) -> ast::spanned<T> {
+fn span<T>(item: &T) -> ast::spanned<T> {
     ret {node: item, span: ast::mk_sp(0u, 0u)};
 }
 
