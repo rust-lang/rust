@@ -1842,7 +1842,15 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
                                          ty_to_str(tcx, oper_t)));
             }
           }
-          _ { oper_t = do_autoderef(fcx, expr.span, oper_t); }
+          ast::neg. {
+            oper_t = structurally_resolved_type
+                (fcx, oper.span, do_autoderef(fcx, expr.span, oper_t));
+            if !(ty::type_is_integral(tcx, oper_t) ||
+                 ty::type_is_fp(tcx, oper_t)) {
+                tcx.sess.span_fatal(expr.span, "applying unary minus to \
+                    non-numeric type " + ty_to_str(tcx, oper_t));
+            }
+          }
         }
         write::ty_only_fixup(fcx, id, oper_t);
       }
