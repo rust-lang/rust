@@ -248,13 +248,13 @@ fn mk_sha1() -> sha1 {
         }
     }
     let st =
-        {h: vec::init_elt_mut[u32](0u32, digest_buf_len),
+        {h: vec::init_elt_mut::<u32>(0u32, digest_buf_len),
          mutable len_low: 0u32,
          mutable len_high: 0u32,
-         msg_block: vec::init_elt_mut[u8](0u8, msg_block_len),
+         msg_block: vec::init_elt_mut::<u8>(0u8, msg_block_len),
          mutable msg_block_idx: 0u,
          mutable computed: false,
-         work_buf: vec::init_elt_mut[u32](0u32, work_buf_len)};
+         work_buf: vec::init_elt_mut::<u32>(0u32, work_buf_len)};
     let sh = sha1(st);
     sh.reset();
     ret sh;

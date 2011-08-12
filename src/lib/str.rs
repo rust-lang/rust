@@ -132,7 +132,7 @@ const tag_six_b: uint = 252u;
 
 fn is_utf8(v: &[u8]) -> bool {
     let i = 0u;
-    let total = vec::len[u8](v);
+    let total = vec::len::<u8>(v);
     while i < total {
         let chsize = utf8_char_width(v.(i));
         if chsize == 0u { ret false; }
@@ -329,7 +329,7 @@ fn shift_char(s: &mutable str) -> char {
 fn unshift_char(s: &mutable str, ch: char) { s = from_char(ch) + s; }
 
 fn refcount(s: str) -> uint {
-    let r = rustrt::refcount[u8](s);
+    let r = rustrt::refcount::<u8>(s);
     if r == dbg::const_refcount { ret r; } else { ret r - 1u; }
 }
 
