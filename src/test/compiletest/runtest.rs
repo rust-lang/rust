@@ -1,4 +1,4 @@
-import std::ioivec;
+import std::io;
 import std::str;
 import std::option;
 import std::vec;
@@ -23,7 +23,7 @@ fn run(cx: &cx, testfile: &str) {
     test::configure_test_task();
     if (cx.config.verbose) {
         // We're going to be dumping a lot of info. Start on a new line.
-        ioivec::stdout().write_str("\n\n");
+        io::stdout().write_str("\n\n");
     }
     log #fmt("running %s", testfile);
     let props = load_props(testfile);
@@ -95,7 +95,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
       option::none. { 2 }
     };
 
-    let srcs = ~[ioivec::read_whole_file_str(testfile)];
+    let srcs = ~[io::read_whole_file_str(testfile)];
 
     let round = 0;
     while round < rounds {
@@ -114,7 +114,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     let expected = alt props.pp_exact {
       option::some(file) {
         let filepath = fs::connect(fs::dirname(testfile), file);
-        ioivec::read_whole_file_str(filepath)
+        io::read_whole_file_str(filepath)
       }
       option::none. {
         srcs.(ivec::len(srcs) - 2u)
@@ -167,7 +167,7 @@ actual:\n\
 ------------------------------------------\n\
 \n",
                           expected, actual);
-            ioivec::stdout().write_str(msg);
+            io::stdout().write_str(msg);
             fail;
         }
     }
@@ -335,8 +335,8 @@ fn dump_output(config: &config, testfile: &str,
 fn dump_output_file(config: &config, testfile: &str,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer = ioivec::file_writer(outfile,
-                                     ~[ioivec::create, ioivec::truncate]);
+    let writer = io::file_writer(outfile,
+                                     ~[io::create, io::truncate]);
     writer.write_str(out);
 }
 
@@ -370,15 +370,15 @@ fn maybe_dump_to_stdout(config: &config,
         let sep2 = #fmt("------%s------------------------------",
                         "stderr");
         let sep3 = "------------------------------------------";
-        ioivec::stdout().write_line(sep1);
-        ioivec::stdout().write_line(out);
-        ioivec::stdout().write_line(sep2);
-        ioivec::stdout().write_line(err);
-        ioivec::stdout().write_line(sep3);
+        io::stdout().write_line(sep1);
+        io::stdout().write_line(out);
+        io::stdout().write_line(sep2);
+        io::stdout().write_line(err);
+        io::stdout().write_line(sep3);
     }
 }
 
-fn error(err: &str) { ioivec::stdout().write_line(#fmt("\nerror: %s", err)); }
+fn error(err: &str) { io::stdout().write_line(#fmt("\nerror: %s", err)); }
 
 fn fatal(err: &str) -> ! { error(err); fail; }
 
@@ -397,6 +397,6 @@ stderr:\n\
 ------------------------------------------\n\
 \n",
              err, procres.cmdline, procres.stdout, procres.stderr);
-    ioivec::stdout().write_str(msg);
+    io::stdout().write_str(msg);
     fail;
 }

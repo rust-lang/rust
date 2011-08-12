@@ -1,6 +1,6 @@
 // Type encoding
 
-import std::ioivec;
+import std::io;
 import std::map::hashmap;
 import std::option::some;
 import std::option::none;
@@ -35,14 +35,14 @@ fn cx_uses_abbrevs(cx: &@ctxt) -> bool {
     }
 }
 
-fn enc_ty(w: &ioivec::writer, cx: &@ctxt, t: &ty::t) {
+fn enc_ty(w: &io::writer, cx: &@ctxt, t: &ty::t) {
     alt cx.abbrevs {
       ac_no_abbrevs. {
         let result_str;
         alt cx.tcx.short_names_cache.find(t) {
           some(s) { result_str = s; }
           none. {
-            let sw = ioivec::string_writer();
+            let sw = io::string_writer();
             enc_sty(sw.get_writer(), cx, ty::struct(cx.tcx, t));
             result_str = sw.get_str();
             cx.tcx.short_names_cache.insert(t, result_str);
@@ -80,7 +80,7 @@ fn enc_ty(w: &ioivec::writer, cx: &@ctxt, t: &ty::t) {
       }
     }
 }
-fn enc_mt(w: &ioivec::writer, cx: &@ctxt, mt: &ty::mt) {
+fn enc_mt(w: &io::writer, cx: &@ctxt, mt: &ty::mt) {
     alt mt.mut {
       imm. { }
       mut. { w.write_char('m'); }
@@ -88,7 +88,7 @@ fn enc_mt(w: &ioivec::writer, cx: &@ctxt, mt: &ty::mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_sty(w: &ioivec::writer, cx: &@ctxt, st: &ty::sty) {
+fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
     alt st {
       ty::ty_nil. { w.write_char('n'); }
       ty::ty_bot. { w.write_char('z'); }
@@ -192,7 +192,7 @@ fn enc_sty(w: &ioivec::writer, cx: &@ctxt, st: &ty::sty) {
       }
     }
 }
-fn enc_proto(w: &ioivec::writer, proto: proto) {
+fn enc_proto(w: &io::writer, proto: proto) {
     alt proto {
       proto_iter. { w.write_char('W'); }
       proto_fn. { w.write_char('F'); }
@@ -200,7 +200,7 @@ fn enc_proto(w: &ioivec::writer, proto: proto) {
     }
 }
 
-fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
+fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
              cf: &controlflow, constrs: &[@ty::constr]) {
     w.write_char('[');
     for arg: ty::arg  in args {
@@ -230,7 +230,7 @@ fn enc_ty_fn(w: &ioivec::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
 }
 
 // FIXME less copy-and-paste
-fn enc_constr(w: &ioivec::writer, cx: &@ctxt, c: &@ty::constr) {
+fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
@@ -247,7 +247,7 @@ fn enc_constr(w: &ioivec::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_char(')');
 }
 
-fn enc_ty_constr(w: &ioivec::writer, cx: &@ctxt, c: &@ty::type_constr) {
+fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));

@@ -117,9 +117,9 @@ fn doc_as_uint(d: doc) -> uint {
 
 
 // ebml writing
-type writer = {writer: ioivec::buf_writer, mutable size_positions: [uint]};
+type writer = {writer: io::buf_writer, mutable size_positions: [uint]};
 
-fn write_sized_vint(w: &ioivec::buf_writer, n: uint, size: uint) {
+fn write_sized_vint(w: &io::buf_writer, n: uint, size: uint) {
     let buf: [u8];
     alt size {
       1u { buf = ~[0x80u8 | (n as u8)]; }
@@ -139,7 +139,7 @@ fn write_sized_vint(w: &ioivec::buf_writer, n: uint, size: uint) {
     w.write(buf);
 }
 
-fn write_vint(w: &ioivec::buf_writer, n: uint) {
+fn write_vint(w: &io::buf_writer, n: uint) {
     if n < 0x7fu { write_sized_vint(w, n, 1u); ret; }
     if n < 0x4000u { write_sized_vint(w, n, 2u); ret; }
     if n < 0x200000u { write_sized_vint(w, n, 3u); ret; }
@@ -148,7 +148,7 @@ fn write_vint(w: &ioivec::buf_writer, n: uint) {
     fail;
 }
 
-fn create_writer(w: &ioivec::buf_writer) -> writer {
+fn create_writer(w: &io::buf_writer) -> writer {
     let size_positions: [uint] = ~[];
     ret {writer: w, mutable size_positions: size_positions};
 }
@@ -169,9 +169,9 @@ fn start_tag(w: &writer, tag_id: uint) {
 fn end_tag(w: &writer) {
     let last_size_pos = ivec::pop[uint](w.size_positions);
     let cur_pos = w.writer.tell();
-    w.writer.seek(last_size_pos as int, ioivec::seek_set);
+    w.writer.seek(last_size_pos as int, io::seek_set);
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
-    w.writer.seek(cur_pos as int, ioivec::seek_set);
+    w.writer.seek(cur_pos as int, io::seek_set);
 }
 // TODO: optionally perform "relaxations" on end_tag to more efficiently
 // encode sizes; this is a fixed point iteration

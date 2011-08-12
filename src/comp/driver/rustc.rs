@@ -30,7 +30,7 @@ import std::str;
 import std::vec;
 import std::ivec;
 import std::int;
-import std::ioivec;
+import std::io;
 import std::run;
 import std::getopts;
 import std::getopts::optopt;
@@ -101,9 +101,9 @@ fn parse_input(sess: session::session, cfg: &ast::crate_cfg, input: str) ->
 fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg,
                    infile: str) -> {crate: @ast::crate, src: str} {
     let srcbytes = if infile != "-" {
-        ioivec::file_reader(infile)
+        io::file_reader(infile)
     } else {
-        ioivec::stdin()
+        io::stdin()
     }.read_whole_stream();
     let src = str::unsafe_from_bytes(srcbytes);
     let crate = parser::parse_crate_from_source_str(infile, src, cfg,
@@ -235,18 +235,18 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
       ppm_normal. { ann = pprust::no_ann(); }
     }
     pprust::print_crate(sess.get_codemap(), crate, input,
-                        ioivec::string_reader(src), ioivec::stdout(), ann);
+                        io::string_reader(src), io::stdout(), ann);
 }
 
 fn version(argv0: str) {
     let vers = "unknown version";
     let env_vers = #env("CFG_VERSION");
     if str::byte_len(env_vers) != 0u { vers = env_vers; }
-    ioivec::stdout().write_str(#fmt("%s %s\n", argv0, vers));
+    io::stdout().write_str(#fmt("%s %s\n", argv0, vers));
 }
 
 fn usage(argv0: str) {
-    ioivec::stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) +
+    io::stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) +
                                    "
 options:
 
@@ -507,7 +507,7 @@ fn main(args: vec[str]) {
     }
     let ls = opt_present(match, "ls");
     if ls {
-        metadata::creader::list_file_metadata(ifile, ioivec::stdout());
+        metadata::creader::list_file_metadata(ifile, io::stdout());
         ret;
     }
 

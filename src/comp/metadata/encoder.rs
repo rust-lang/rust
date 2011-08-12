@@ -3,7 +3,7 @@
 import std::ivec;
 import std::str;
 import std::uint;
-import std::ioivec;
+import std::io;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -201,7 +201,7 @@ fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebmlivec::writer, typ: &ty::t) {
         @{ds: f,
           tcx: ecx.ccx.tcx,
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
-    tyencode::enc_ty(ioivec::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
+    tyencode::enc_ty(io::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebmlivec::end_tag(ebml_w);
 }
 
@@ -409,8 +409,8 @@ fn create_index[T](index: &[entry[T]], hash_fn: fn(&T) -> uint ) ->
 }
 
 fn encode_index[T](ebml_w: &ebmlivec::writer, buckets: &[@[entry[T]]],
-                   write_fn: fn(&ioivec::writer, &T) ) {
-    let writer = ioivec::new_writer_(ebml_w.writer);
+                   write_fn: fn(&io::writer, &T) ) {
+    let writer = io::new_writer_(ebml_w.writer);
     ebmlivec::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = ~[];
     ebmlivec::start_tag(ebml_w, tag_index_buckets);
@@ -432,9 +432,9 @@ fn encode_index[T](ebml_w: &ebmlivec::writer, buckets: &[@[entry[T]]],
     ebmlivec::end_tag(ebml_w);
 }
 
-fn write_str(writer: &ioivec::writer, s: &str) { writer.write_str(s); }
+fn write_str(writer: &io::writer, s: &str) { writer.write_str(s); }
 
-fn write_int(writer: &ioivec::writer, n: &int) {
+fn write_int(writer: &io::writer, n: &int) {
     writer.write_be_uint(n as uint, 4u);
 }
 
@@ -586,7 +586,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
     let abbrevs = map::mk_hashmap(ty::hash_ty, ty::eq_ty);
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
 
-    let string_w = ioivec::string_writer();
+    let string_w = io::string_writer();
     let buf_w = string_w.get_writer().get_buf_writer();
     let ebml_w = ebmlivec::create_writer(buf_w);
 
@@ -619,7 +619,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
 // Get the encoded string for a type
 fn encoded_ty(tcx: &ty::ctxt, t: &ty::t) -> str {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
-    let sw = ioivec::string_writer();
+    let sw = io::string_writer();
     tyencode::enc_ty(sw.get_writer(), cx, t);
     ret sw.get_str();
 }

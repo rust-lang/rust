@@ -1,5 +1,5 @@
 
-import std::ioivec;
+import std::io;
 import std::ivec;
 import std::str;
 import std::option;
@@ -62,7 +62,7 @@ fn new_parser_from_file(sess: parse_sess, cfg:
                         ast::crate_cfg, path: str,
                         chpos: uint, byte_pos: uint,
                         ftype: file_type) -> parser {
-    let src = ioivec::read_whole_file_str(path);
+    let src = io::read_whole_file_str(path);
     let filemap = codemap::new_filemap(path, chpos, byte_pos);
     sess.cm.files += ~[filemap];
     let itr = @interner::mk(str::hash, str::eq);

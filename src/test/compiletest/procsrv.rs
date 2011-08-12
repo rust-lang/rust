@@ -12,7 +12,7 @@ import std::ivec;
 import std::os;
 import std::run;
 import std::unsafe;
-import std::ioivec;
+import std::io;
 import std::str;
 
 export handle;
@@ -73,8 +73,8 @@ fn run(handle: &handle, lib_path: &str,
 
 fn writeclose(fd: int, s: &option::t[str]) {
     if option::is_some(s) {
-        let writer = ioivec::new_writer(
-            ioivec::fd_buf_writer(fd, option::none));
+        let writer = io::new_writer(
+            io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));
     }
 
@@ -84,8 +84,8 @@ fn writeclose(fd: int, s: &option::t[str]) {
 fn readclose(fd: int) -> str {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
-    let reader = ioivec::new_reader(
-        ioivec::FILE_buf_reader(file, option::none));
+    let reader = io::new_reader(
+        io::FILE_buf_reader(file, option::none));
     let buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);

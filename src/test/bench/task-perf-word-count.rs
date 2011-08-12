@@ -17,7 +17,7 @@ import std::str;
 import std::vec;
 import std::map;
 import std::ivec;
-import std::ioivec;
+import std::io;
 
 import std::time;
 import std::u64;
@@ -27,7 +27,7 @@ import clone = std::task::clone_chan;
 
 fn map(filename: str, emit: map_reduce::putter) {
     // log_err "mapping " + filename;
-    let f = ioivec::file_reader(filename);
+    let f = io::file_reader(filename);
 
 
     while true {
@@ -51,7 +51,7 @@ fn reduce(word: str, get: map_reduce::getter) {
         }
     }
 
-    // auto out = ioivec::stdout();
+    // auto out = io::stdout();
     // out.write_line(#fmt("%s: %d", word, count));
 
     // log_err "reduce " + word + " done.";
@@ -226,7 +226,7 @@ mod map_reduce {
 
 fn main(argv: vec[str]) {
     if vec::len(argv) < 2u {
-        let out = ioivec::stdout();
+        let out = io::stdout();
 
         out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
 
@@ -251,7 +251,7 @@ fn main(argv: vec[str]) {
     log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
 }
 
-fn read_word(r: ioivec::reader) -> option[str] {
+fn read_word(r: io::reader) -> option[str] {
     let w = "";
 
     while !r.eof() {

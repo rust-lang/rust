@@ -1,6 +1,6 @@
 import std::option;
 import std::generic_os::getenv;
-import std::ioivec;
+import std::io;
 
 import common::config;
 
@@ -25,5 +25,5 @@ fn lib_path_env_var() -> str { "PATH" }
 
 fn logv(config: &config, s: &str) {
     log s;
-    if config.verbose { ioivec::stdout().write_line(s); }
+    if config.verbose { io::stdout().write_line(s); }
 }

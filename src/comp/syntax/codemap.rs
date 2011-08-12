@@ -2,7 +2,7 @@ import std::ivec;
 import std::uint;
 import std::str;
 import std::termivec;
-import std::ioivec;
+import std::io;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -84,15 +84,15 @@ fn emit_diagnostic(sp: &option::t[span], msg: &str, kind: &str, color: u8,
       }
       none. { }
     }
-    ioivec::stdout().write_str(ss + ": ");
+    io::stdout().write_str(ss + ": ");
     if termivec::color_supported() {
-        termivec::fg(ioivec::stdout().get_buf_writer(), color);
+        termivec::fg(io::stdout().get_buf_writer(), color);
     }
-    ioivec::stdout().write_str(#fmt("%s:", kind));
+    io::stdout().write_str(#fmt("%s:", kind));
     if termivec::color_supported() {
-        termivec::reset(ioivec::stdout().get_buf_writer());
+        termivec::reset(io::stdout().get_buf_writer());
     }
-    ioivec::stdout().write_str(#fmt(" %s\n", msg));
+    io::stdout().write_str(#fmt(" %s\n", msg));
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -108,7 +108,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
 
         // FIXME: reading in the entire file is the worst possible way to
         //        get access to the necessary lines.
-        let file = ioivec::read_whole_file_str(lines.name);
+        let file = io::read_whole_file_str(lines.name);
         let fm = get_filemap(cm, lines.name);
 
         // arbitrarily only print up to six lines of the error
@@ -121,10 +121,10 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
         }
         // Print the offending lines
         for line: uint  in display_lines {
-            ioivec::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
+            io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, "\n") { s += "\n"; }
-            ioivec::stdout().write_str(s);
+            io::stdout().write_str(s);
         }
         if elided {
             let last_line = display_lines.(ivec::len(display_lines) - 1u);
@@ -133,7 +133,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
             let out = "";
             while indent > 0u { out += " "; indent -= 1u; }
             out += "...\n";
-            ioivec::stdout().write_str(out);
+            io::stdout().write_str(out);
         }
 
 
@@ -158,7 +158,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
                 let width = hi.col - lo.col - 1u;
                 while width > 0u { str::push_char(s, '~'); width -= 1u; }
             }
-            ioivec::stdout().write_str(s + "\n");
+            io::stdout().write_str(s + "\n");
         }
       }
       _ { }

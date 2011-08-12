@@ -6,8 +6,8 @@ import std::getopts;
 import std::getopts::optopt;
 import std::getopts::opt_present;
 import std::getopts::opt_str;
-import std::ioivec;
-import std::ioivec::stdout;
+import std::io;
+import std::io::stdout;
 import std::vec;
 import std::ivec;
 import std::str;
@@ -22,15 +22,15 @@ import rustc::syntax::parse::parser;
 import rustc::syntax::print::pprust;
 
 fn write_file(filename: &str, content: &str) {
-    ioivec::file_writer(filename,
-                        ~[ioivec::create,
-                          ioivec::truncate]).write_str(content);
+    io::file_writer(filename,
+                        ~[io::create,
+                          io::truncate]).write_str(content);
     // Work around https://github.com/graydon/rust/issues/726
     std::run::run_program("chmod", ["644", filename]);
 }
 
 fn file_contains(filename: &str, needle: &str) -> bool {
-    let contents = ioivec::read_whole_file_str(filename);
+    let contents = io::read_whole_file_str(filename);
     ret str::find(contents, needle) != -1;
 }
 
@@ -139,10 +139,10 @@ iter under(n: uint) -> uint {
     while i < n { put i; i += 1u; }
 }
 
-fn devnull() -> ioivec::writer { std::ioivec::string_writer().get_writer() }
+fn devnull() -> io::writer { std::io::string_writer().get_writer() }
 
-fn as_str(f: fn(ioivec::writer) ) -> str {
-    let w = std::ioivec::string_writer();
+fn as_str(f: fn(io::writer) ) -> str {
+    let w = std::io::string_writer();
     f(w.get_writer());
     ret w.get_str();
 }
@@ -159,7 +159,7 @@ fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap, filenam
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
                 let str3 = as_str(bind pprust::print_crate(codemap, crate2, filename,
-                                  ioivec::string_reader(""), _,
+                                  io::string_reader(""), _,
                                   pprust::no_ann()));
                 // 1u would be sane here, but the pretty-printer currently has lots of whitespace and paren issues,
                 // and https://github.com/graydon/rust/issues/766 is hilarious.
@@ -229,7 +229,7 @@ fn parse_and_print(code: &str) -> str {
     let crate =
         parser::parse_crate_from_source_str(filename, code, ~[], sess);
     ret as_str(bind pprust::print_crate(sess.cm, crate, filename,
-                                        ioivec::string_reader(code), _,
+                                        io::string_reader(code), _,
                                         pprust::no_ann()));
 }
 
@@ -320,7 +320,7 @@ fn check_convergence(files: &[str]) {
     log_err #fmt("pp convergence tests: %u files", ivec::len(files));
     for file in files {
         if !file_is_confusing(file) {
-            let s = ioivec::read_whole_file_str(file);
+            let s = io::read_whole_file_str(file);
             if !content_is_confusing(s) {
                 log_err #fmt("pp converge: %s", file);
                 // Change from 7u to 2u when https://github.com/graydon/rust/issues/759 is fixed
@@ -333,13 +333,13 @@ fn check_convergence(files: &[str]) {
 fn check_variants(files: &[str]) {
     for file in files {
         if !file_is_confusing(file) {
-            let s = ioivec::read_whole_file_str(file);
+            let s = io::read_whole_file_str(file);
             if content_is_dangerous_to_modify(s) || content_is_confusing(s) { cont; }
             log_err "check_variants: " + file;
             let sess = @{cm: codemap::new_codemap(), mutable next_id: 0};
             let crate = parser::parse_crate_from_source_str(file, s, ~[], sess);
             log_err as_str(bind pprust::print_crate(sess.cm, crate, file,
-                                        ioivec::string_reader(s), _,
+                                        io::string_reader(s), _,
                                         pprust::no_ann()));
             check_variants_of_ast(*crate, sess.cm, file);
         }

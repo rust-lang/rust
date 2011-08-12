@@ -1,5 +1,5 @@
 
-import std::ioivec;
+import std::io;
 import std::int;
 import std::ivec;
 import std::str;
@@ -709,7 +709,7 @@ fn is_lit(t: &token::token) -> bool {
 type lit = {lit: str, pos: uint};
 
 fn gather_comments_and_literals(cm: &codemap::codemap, path: str,
-                                srdr: ioivec::reader) ->
+                                srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
     let src = str::unsafe_from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk[str](str::hash, str::eq);

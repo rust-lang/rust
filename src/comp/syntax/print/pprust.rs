@@ -1,7 +1,7 @@
 
 import std::ivec;
 import std::int;
-import std::ioivec;
+import std::io;
 import std::str;
 import std::uint;
 import std::option;
@@ -52,7 +52,7 @@ fn ibox(s: &ps, u: uint) { s.boxes += ~[pp::inconsistent]; pp::ibox(s.s, u); }
 
 fn end(s: &ps) { ivec::pop(s.boxes); pp::end(s.s); }
 
-fn rust_printer(writer: ioivec::writer) -> ps {
+fn rust_printer(writer: io::writer) -> ps {
     let boxes: [pp::breaks] = ~[];
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none[codemap],
@@ -73,7 +73,7 @@ const default_columns: uint = 78u;
 // it can scan the input text for comments and literals to
 // copy forward.
 fn print_crate(cm: &codemap, crate: @ast::crate, filename: str,
-               in: ioivec::reader, out: ioivec::writer, ann: &pp_ann) {
+               in: io::reader, out: io::writer, ann: &pp_ann) {
     let boxes: [pp::breaks] = ~[];
     let r = lexer::gather_comments_and_literals(cm, filename, in);
     let s =
@@ -103,7 +103,7 @@ fn item_to_str(i: &@ast::item) -> str { be to_str(i, print_item); }
 fn path_to_str(p: &ast::path) -> str { be to_str(p, print_path); }
 
 fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
-    let writer = ioivec::string_writer();
+    let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     print_fn(s, f.decl, f.proto, name, params, f.decl.constraints);
     eof(s.s);
@@ -111,7 +111,7 @@ fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
 }
 
 fn block_to_str(blk: &ast::blk) -> str {
-    let writer = ioivec::string_writer();
+    let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     // containing cbox, will be closed by print-block at }
 
@@ -1494,7 +1494,7 @@ fn escape_str(st: str, to_escape: char) -> str {
 }
 
 fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
-    let writer = ioivec::string_writer();
+    let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     f(s, t);
     eof(s.s);

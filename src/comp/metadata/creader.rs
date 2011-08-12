@@ -15,7 +15,7 @@ import util::common;
 import std::ivec;
 import std::str;
 import std::fs;
-import std::ioivec;
+import std::io;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -80,7 +80,7 @@ fn visit_item(e: env, i: &@ast::item) {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(path: str, out: ioivec::writer) {
+fn list_file_metadata(path: str, out: io::writer) {
     alt get_metadata_section(path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none. {

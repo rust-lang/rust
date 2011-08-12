@@ -4,7 +4,7 @@ import std::ebmlivec;
 import std::ivec;
 import std::option;
 import std::str;
-import std::ioivec;
+import std::io;
 import std::map::hashmap;
 import syntax::ast;
 import front::attr;
@@ -343,13 +343,13 @@ fn get_attributes(md: &ebmlivec::doc) -> [ast::attribute] {
     ret attrs;
 }
 
-fn list_meta_items(meta_items: &ebmlivec::doc, out: ioivec::writer) {
+fn list_meta_items(meta_items: &ebmlivec::doc, out: io::writer) {
     for mi: @ast::meta_item  in get_meta_items(meta_items) {
         out.write_str(#fmt("%s\n", pprust::meta_item_to_str(*mi)));
     }
 }
 
-fn list_crate_attributes(md: &ebmlivec::doc, out: ioivec::writer) {
+fn list_crate_attributes(md: &ebmlivec::doc, out: io::writer) {
     out.write_str("=Crate Attributes=\n");
 
     for attr: ast::attribute  in get_attributes(md) {
@@ -379,7 +379,7 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     ret deps;
 }
 
-fn list_crate_deps(data: @[u8], out: ioivec::writer) {
+fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("=External Dependencies=\n");
 
     for dep: crate_dep  in get_crate_deps(data) {
@@ -389,7 +389,7 @@ fn list_crate_deps(data: @[u8], out: ioivec::writer) {
     out.write_str("\n");
 }
 
-fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: ioivec::writer) {
+fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: io::writer) {
     out.write_str("=Items=\n");
     let paths = ebmlivec::get_doc(md, tag_paths);
     let items = ebmlivec::get_doc(md, tag_items);
@@ -410,7 +410,7 @@ fn list_crate_items(bytes: &@[u8], md: &ebmlivec::doc, out: ioivec::writer) {
     out.write_str("\n");
 }
 
-fn list_crate_metadata(bytes: &@[u8], out: ioivec::writer) {
+fn list_crate_metadata(bytes: &@[u8], out: io::writer) {
     let md = ebmlivec::new_doc(bytes);
     list_crate_attributes(md, out);
     list_crate_deps(bytes, out);
