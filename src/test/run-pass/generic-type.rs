@@ -1,6 +1,6 @@
 
 
-type pair[T] = {x: T, y: T};
+type pair<T> = {x: T, y: T};
 
 fn main() {
     let x: pair<int> = {x: 10, y: 12};

@@ -1,4 +1,4 @@
-fn get_third[T](t: &(T, T, T)) -> T {
+fn get_third<T>(t: &(T, T, T)) -> T {
     let (_, _, x) = t;
     ret x;
 }

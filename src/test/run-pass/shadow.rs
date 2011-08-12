@@ -10,7 +10,7 @@ fn foo(c: [int]) {
     }
 }
 
-tag t[T] { none; some(T); }
+tag t<T> { none; some(T); }
 
 fn main() {
     let x = 10;

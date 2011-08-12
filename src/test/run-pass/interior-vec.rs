@@ -3,7 +3,7 @@
 import rusti::ivec_len;
 
 native "rust-intrinsic" mod rusti {
-    fn ivec_len[T](v: &[T]) -> uint;
+    fn ivec_len<T>(v: &[T]) -> uint;
 }
 
 fn main() {
