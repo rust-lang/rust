@@ -43,7 +43,6 @@ export push_byte;
 export unshift_byte;
 export split;
 export concat;
-export connect;
 export connect_ivec;
 export to_upper;
 export safe_slice;
@@ -452,16 +451,6 @@ fn split(s: str, sep: u8) -> [str] {
 fn concat(v: &[str]) -> str {
     let s: str = "";
     for ss: str  in v { s += ss; }
-    ret s;
-}
-
-fn connect(v: vec[str], sep: str) -> str {
-    let s: str = "";
-    let first: bool = true;
-    for ss: str  in v {
-        if first { first = false; } else { s += sep; }
-        s += ss;
-    }
     ret s;
 }
 
