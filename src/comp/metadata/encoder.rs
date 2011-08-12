@@ -552,7 +552,7 @@ fn encode_crate_deps(ebml_w: &ebmlivec::writer, cstore: &cstore::cstore) {
         fn lteq(kv1: &numname, kv2: &numname) -> bool {
             kv1.crate <= kv2.crate
         }
-        std::sort::ivector::quick_sort(lteq, pairs);
+        std::sort::quick_sort(lteq, pairs);
 
         // Sanity-check the crate numbers
         let expected_cnum = 1;

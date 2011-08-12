@@ -21,7 +21,6 @@ mod qsort;
 mod rand;
 mod run;
 mod sha1;
-mod sort_ivec;
 mod sort;
 mod str_buf;
 mod str;

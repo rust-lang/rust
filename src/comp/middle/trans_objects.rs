@@ -460,7 +460,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
 
         // Sort and process all the methods.
         let meths =
-            std::sort::ivector::merge_sort[@ast::method]
+            std::sort::merge_sort[@ast::method]
             (bind ast_mthd_lteq(_, _), ob.methods);
 
         for m: @ast::method in meths {
@@ -504,7 +504,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
 
         // Sort all the methods and process them.
         meths =
-            std::sort::ivector::merge_sort[vtbl_mthd]
+            std::sort::merge_sort[vtbl_mthd]
             (bind vtbl_mthd_lteq(_, _), meths);
 
         // To create forwarding methods, we'll need a "backwarding" vtbl.  See

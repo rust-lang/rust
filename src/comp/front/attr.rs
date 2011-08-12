@@ -155,7 +155,7 @@ fn sort_meta_items(items: &[@ast::meta_item]) -> [@ast::meta_item] {
     let v: [mutable @ast::meta_item] = ~[mutable];
     for mi: @ast::meta_item  in items { v += ~[mutable mi]; }
 
-    std::sort::ivector::quick_sort(lteq, v);
+    std::sort::quick_sort(lteq, v);
 
     let v2: [@ast::meta_item] = ~[];
     for mi: @ast::meta_item  in v { v2 += ~[mi]; }

@@ -1,8 +1,8 @@
 
 use std;
 
-fn check_sort(v1: vec[int], v2: vec[int]) {
-    let len = std::vec::len[int](v1);
+fn check_sort(v1: &[int], v2: &[int]) {
+    let len = std::ivec::len[int](v1);
     fn lteq(a: &int, b: &int) -> bool { ret a <= b; }
     let f = lteq;
     let v3 = std::sort::merge_sort[int](f, v1);
@@ -13,16 +13,16 @@ fn check_sort(v1: vec[int], v2: vec[int]) {
 #[test]
 fn test() {
     {
-        let v1 = [3, 7, 4, 5, 2, 9, 5, 8];
-        let v2 = [2, 3, 4, 5, 5, 7, 8, 9];
+        let v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+        let v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
         check_sort(v1, v2);
     }
-    { let v1 = [1, 1, 1]; let v2 = [1, 1, 1]; check_sort(v1, v2); }
-    { let v1: vec[int] = []; let v2: vec[int] = []; check_sort(v1, v2); }
-    { let v1 = [9]; let v2 = [9]; check_sort(v1, v2); }
+    { let v1 = ~[1, 1, 1]; let v2 = ~[1, 1, 1]; check_sort(v1, v2); }
+    { let v1: [int] = ~[]; let v2: [int] = ~[]; check_sort(v1, v2); }
+    { let v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
     {
-        let v1 = [9, 3, 3, 3, 9];
-        let v2 = [3, 3, 3, 9, 9];
+        let v1 = ~[9, 3, 3, 3, 9];
+        let v2 = ~[3, 3, 3, 9, 9];
         check_sort(v1, v2);
     }
 }

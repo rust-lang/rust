@@ -1991,7 +1991,7 @@ fn sort_methods(meths: &[method]) -> [method] {
     fn method_lteq(a: &method, b: &method) -> bool {
         ret str::lteq(a.ident, b.ident);
     }
-    ret std::sort::ivector::merge_sort[method](bind method_lteq(_, _), meths);
+    ret std::sort::merge_sort[method](bind method_lteq(_, _), meths);
 }
 
 fn is_lval(expr: &@ast::expr) -> bool {
