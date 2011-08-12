@@ -3,6 +3,31 @@ import option::none;
 import option::some;
 import util::orb;
 
+export vbuf;
+export empty_mut;
+export init_fn;
+export init_fn_mut;
+export init_elt;
+export init_elt_mut;
+export buf;
+export len;
+export print_debug_info;
+export slice;
+export pop;
+export push;
+export foldl;
+export reversed;
+export member;
+export map;
+export map2;
+export filter_map;
+export empty;
+export position;
+export position_pred;
+export reverse;
+export alloc;
+export refcount;
+
 type vbuf = rustrt::vbuf;
 
 type operator2[T, U, V] = fn(&T, &U) -> V ;
