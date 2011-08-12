@@ -593,3 +593,6 @@ LLVMX86MMXTypeInContext
 LLVMConstNamedStruct
 LLVMStructCreateNamed
 LLVMStructSetBody
+LLVMAddLowerSetJmpPass
+LLVMAddRaiseAllocationsPass
+LLVMIsAUnwindInst
