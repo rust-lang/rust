@@ -361,7 +361,7 @@ fn decl_glue(llmod: ModuleRef, cx: &crate_ctxt, s: &str) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn(~[T_taskptr(cx)], T_void()));
 }
 
-fn get_extern_fn(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
+fn get_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
                  name: &str, cc: uint, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { ret externs.get(name); }
     let f = decl_fn(llmod, name, cc, ty);
@@ -369,7 +369,7 @@ fn get_extern_fn(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
     ret f;
 }
 
-fn get_extern_const(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
+fn get_extern_const(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
                     name: &str, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { ret externs.get(name); }
     let c = llvm::LLVMAddGlobal(llmod, ty, str::buf(name));
@@ -377,7 +377,7 @@ fn get_extern_const(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
     ret c;
 }
 
-fn get_simple_extern_fn(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
+fn get_simple_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
                         name: &str, n_args: int) -> ValueRef {
     let inputs = std::vec::init_elt[TypeRef](T_int(), n_args as uint);
     let output = T_int();
@@ -386,7 +386,7 @@ fn get_simple_extern_fn(externs: &hashmap[str, ValueRef], llmod: ModuleRef,
 }
 
 fn trans_native_call(b: &builder, glues: @glue_fns, lltaskptr: ValueRef,
-                     externs: &hashmap[str, ValueRef], tn: &type_names,
+                     externs: &hashmap<str, ValueRef>, tn: &type_names,
                      llmod: ModuleRef, name: &str, pass_task: bool,
                      args: &[ValueRef]) -> ValueRef {
     let n: int = std::vec::len[ValueRef](args) as int;
@@ -939,7 +939,7 @@ fn trans_stack_local_derived_tydesc(cx: &@block_ctxt, llsz: ValueRef,
 }
 
 fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
-                      static_ti: &mutable option::t[@tydesc_info]) -> result {
+                      static_ti: &mutable option::t<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
 
@@ -1007,7 +1007,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
 }
 
 fn get_tydesc(cx: &@block_ctxt, orig_t: &ty::t, escapes: bool,
-              static_ti: &mutable option::t[@tydesc_info]) -> result {
+              static_ti: &mutable option::t<@tydesc_info>) -> result {
 
     let t = ty::strip_cname(bcx_tcx(cx), orig_t);
 
@@ -1470,7 +1470,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
                                    ~[C_int(0), C_int(abi::fn_field_box)]));
     let args = ~[cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env];
     for tp: ty::t in tps {
-        let ti: option::t[@tydesc_info] = none;
+        let ti: option::t<@tydesc_info> = none;
         let td = get_tydesc(cx, tp, false, ti);
         args += ~[td.val];
         cx = td.bcx;
@@ -1983,7 +1983,7 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: &ty::t, f: &val_and_ty_fn)
 }
 
 fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
-                               static_ti: &option::t[@tydesc_info]) {
+                               static_ti: &option::t<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
@@ -1992,13 +1992,13 @@ fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
 
 fn lazily_emit_all_generic_info_tydesc_glues(cx: &@block_ctxt,
                                              gi: &generic_info) {
-    for ti: option::t[@tydesc_info] in gi.static_tis {
+    for ti: option::t<@tydesc_info> in gi.static_tis {
         lazily_emit_all_tydesc_glue(cx, ti);
     }
 }
 
 fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
-                           static_ti: &option::t[@tydesc_info]) {
+                           static_ti: &option::t<@tydesc_info>) {
     alt static_ti {
       none. { }
       some(ti) {
@@ -2073,7 +2073,7 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
 }
 
 fn call_tydesc_glue_full(cx: &@block_ctxt, v: ValueRef, tydesc: ValueRef,
-                         field: int, static_ti: &option::t[@tydesc_info]) {
+                         field: int, static_ti: &option::t<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx, field, static_ti);
 
     let static_glue_fn = none;
@@ -2114,7 +2114,7 @@ fn call_tydesc_glue_full(cx: &@block_ctxt, v: ValueRef, tydesc: ValueRef,
 
 fn call_tydesc_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t, field: int) ->
    result {
-    let ti: option::t[@tydesc_info] = none[@tydesc_info];
+    let ti: option::t<@tydesc_info> = none[@tydesc_info];
     let td = get_tydesc(cx, t, false, ti);
     call_tydesc_glue_full(td.bcx, spill_if_immediate(td.bcx, v, t), td.val,
                           field, ti);
@@ -3376,7 +3376,7 @@ fn join_branches(parent_cx: &@block_ctxt, ins: &[result]) -> @block_ctxt {
 tag out_method { return; save_in(ValueRef); }
 
 fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
-            els: &option::t[@ast::expr], id: ast::node_id,
+            els: &option::t<@ast::expr>, id: ast::node_id,
             output: &out_method) -> result {
     let cond_res = trans_expr(cx, cond);
 
@@ -3778,15 +3778,15 @@ fn trans_do_while(cx: &@block_ctxt, body: &ast::blk, cond: &@ast::expr) ->
 
 type generic_info =
     {item_type: ty::t,
-     static_tis: [option::t[@tydesc_info]],
+     static_tis: [option::t<@tydesc_info>],
      tydescs: [ValueRef]};
 
 type lval_result =
     {res: result,
      is_mem: bool,
-     generic: option::t[generic_info],
-     llobj: option::t[ValueRef],
-     method_ty: option::t[ty::t]};
+     generic: option::t<generic_info>,
+     llobj: option::t<ValueRef>,
+     method_ty: option::t<ty::t>};
 
 fn lval_mem(cx: &@block_ctxt, val: ValueRef) -> lval_result {
     ret {res: rslt(cx, val),
@@ -3827,7 +3827,7 @@ fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_kinds_and_ty,
     if std::vec::len[ty::t](tys) != 0u {
         let bcx = lv.res.bcx;
         let tydescs: [ValueRef] = ~[];
-        let tis: [option::t[@tydesc_info]] = ~[];
+        let tis: [option::t<@tydesc_info>] = ~[];
         for t: ty::t in tys {
             // TODO: Doesn't always escape.
 
@@ -4213,10 +4213,10 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 }
 
 fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
-                    outgoing_fty: &ty::t, args: &[option::t[@ast::expr]],
+                    outgoing_fty: &ty::t, args: &[option::t<@ast::expr>],
                     env_ty: &ty::t, bound_tys: &[ty::t],
                     ty_param_count: uint,
-                    target_fn: &option::t[ValueRef]) ->
+                    target_fn: &option::t<ValueRef>) ->
     {val: ValueRef, ty: TypeRef} {
 
     // Here we're not necessarily constructing a thunk in the sense of
@@ -4330,7 +4330,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
         type_of_explicit_args(cx.ccx, sp, outgoing_args);
-    for arg: option::t[@ast::expr] in args {
+    for arg: option::t<@ast::expr> in args {
         let out_arg = outgoing_args.(outgoing_arg_index);
         let llout_arg_ty = llout_arg_tys.(outgoing_arg_index);
         let is_val = out_arg.mode == ty::mo_val;
@@ -4405,16 +4405,16 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
 }
 
 fn trans_bind(cx: &@block_ctxt, f: &@ast::expr,
-              args: &[option::t[@ast::expr]], id: ast::node_id) -> result {
+              args: &[option::t<@ast::expr>], id: ast::node_id) -> result {
     let f_res = trans_lval_gen(cx, f);
     ret trans_bind_1(cx, f, f_res, args, id);
 }
 
 fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
-                args: &[option::t[@ast::expr]], id: ast::node_id) ->
+                args: &[option::t<@ast::expr>], id: ast::node_id) ->
    result {
     let bound: [@ast::expr] = ~[];
-    for argopt: option::t[@ast::expr] in args {
+    for argopt: option::t<@ast::expr> in args {
         alt argopt { none. { } some(e) { bound += ~[e]; } }
     }
 
@@ -4561,7 +4561,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
-              gen: &option::t[generic_info], lliterbody: &option::t[ValueRef],
+              gen: &option::t<generic_info>, lliterbody: &option::t<ValueRef>,
               es: &[@ast::expr], fn_ty: &ty::t) ->
    {bcx: @block_ctxt,
     args: [ValueRef],
@@ -4645,7 +4645,7 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
 }
 
 fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
-              lliterbody: &option::t[ValueRef], args: &[@ast::expr],
+              lliterbody: &option::t<ValueRef>, args: &[@ast::expr],
               id: ast::node_id) -> result {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
@@ -4910,7 +4910,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
 }
 
 fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
-             base: &option::t[@ast::expr], id: ast::node_id) -> result {
+             base: &option::t<@ast::expr>, id: ast::node_id) -> result {
     let bcx = cx;
     let t = node_id_type(bcx_ccx(bcx), id);
     let rec_res = alloc_ty(bcx, t);
@@ -5263,8 +5263,8 @@ fn trans_check_expr(cx: &@block_ctxt, e: &@ast::expr, s: &str) -> result {
     ret rslt(next_cx, C_nil());
 }
 
-fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t[span],
-                   fail_expr: &option::t[@ast::expr]) -> result {
+fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t<span>,
+                   fail_expr: &option::t<@ast::expr>) -> result {
     let bcx = cx;
     alt fail_expr {
       some(expr) {
@@ -5290,13 +5290,13 @@ fn trans_fail_expr(cx: &@block_ctxt, sp_opt: &option::t[span],
     }
 }
 
-fn trans_fail(cx: &@block_ctxt, sp_opt: &option::t[span], fail_str: &str) ->
+fn trans_fail(cx: &@block_ctxt, sp_opt: &option::t<span>, fail_str: &str) ->
    result {
     let V_fail_str = C_cstr(bcx_ccx(cx), fail_str);
     ret trans_fail_value(cx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t[span],
+fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
                     V_fail_str: &ValueRef) -> result {
     let V_filename;
     let V_line;
@@ -5316,7 +5316,7 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t[span],
     ret rslt(cx, C_nil());
 }
 
-fn trans_put(cx: &@block_ctxt, e: &option::t[@ast::expr]) -> result {
+fn trans_put(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
     let llcallee = C_nil();
     let llenv = C_nil();
     alt { cx.fcx.lliterbody } {
@@ -5415,7 +5415,7 @@ fn trans_cont(sp: &span, cx: &@block_ctxt) -> result {
     ret trans_break_cont(sp, cx, false);
 }
 
-fn trans_ret(cx: &@block_ctxt, e: &option::t[@ast::expr]) -> result {
+fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
     let bcx = cx;
     alt e {
       some(x) {
@@ -5552,7 +5552,7 @@ fn new_scope_block_ctxt(bcx: &@block_ctxt, n: &str) -> @block_ctxt {
 }
 
 fn new_loop_scope_block_ctxt(bcx: &@block_ctxt,
-                             _cont: &option::t[@block_ctxt],
+                             _cont: &option::t<@block_ctxt>,
                              _break: &@block_ctxt, n: &str) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx),
                        LOOP_SCOPE_BLOCK(_cont, _break), n);
@@ -5788,11 +5788,11 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
     let llretptr: ValueRef = llvm::LLVMGetParam(llfndecl, 0u);
     let lltaskptr: ValueRef = llvm::LLVMGetParam(llfndecl, 1u);
     let llenv: ValueRef = llvm::LLVMGetParam(llfndecl, 2u);
-    let llargs: hashmap[ast::node_id, ValueRef] = new_int_hash[ValueRef]();
-    let llobjfields: hashmap[ast::node_id, ValueRef] =
+    let llargs: hashmap<ast::node_id, ValueRef> = new_int_hash[ValueRef]();
+    let llobjfields: hashmap<ast::node_id, ValueRef> =
         new_int_hash[ValueRef]();
-    let lllocals: hashmap[ast::node_id, ValueRef] = new_int_hash[ValueRef]();
-    let llupvars: hashmap[ast::node_id, ValueRef] = new_int_hash[ValueRef]();
+    let lllocals: hashmap<ast::node_id, ValueRef> = new_int_hash[ValueRef]();
+    let llupvars: hashmap<ast::node_id, ValueRef> = new_int_hash[ValueRef]();
     let derived_tydescs =
         map::mk_hashmap[ty::t, derived_tydesc_info](ty::hash_ty, ty::eq_ty);
     let llbbs = mk_standard_basic_blocks(llfndecl);
@@ -5838,7 +5838,7 @@ fn new_fn_ctxt(cx: @local_ctxt, sp: &span, llfndecl: ValueRef) -> @fn_ctxt {
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
 fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
-                             ty_self: option::t[ty::t], ret_ty: ty::t,
+                             ty_self: option::t<ty::t>, ret_ty: ty::t,
                              args: &[ast::arg], ty_params: &[ast::ty_param]) {
     // Skip the implicit arguments 0, 1, and 2.  TODO: Pull out 3u and define
     // it as a constant, since we're using it in several places in trans this
@@ -5997,11 +5997,11 @@ fn finish_fn(fcx: &@fn_ctxt, lltop: BasicBlockRef) {
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
-                 llfnty: &option::t[TypeRef], cx: @local_ctxt, sp: &span,
-                 f: &ast::_fn, llfndecl: ValueRef, ty_self: option::t[ty::t],
+fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
+                 llfnty: &option::t<TypeRef>, cx: @local_ctxt, sp: &span,
+                 f: &ast::_fn, llfndecl: ValueRef, ty_self: option::t<ty::t>,
                  ty_params: &[ast::ty_param], id: ast::node_id)
-    -> option::t[{fn_pair: ValueRef, bcx: @block_ctxt}] {
+    -> option::t<{fn_pair: ValueRef, bcx: @block_ctxt}> {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
@@ -6068,7 +6068,7 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
 }
 
 fn trans_fn_inner(cx: @local_ctxt, sp: &span, f: &ast::_fn,
-                  llfndecl: ValueRef, ty_self: option::t[ty::t],
+                  llfndecl: ValueRef, ty_self: option::t<ty::t>,
                   ty_params: &[ast::ty_param], id: ast::node_id) {
     trans_closure(none, none, cx, sp, f, llfndecl, ty_self, ty_params, id);
 }
@@ -6077,7 +6077,7 @@ fn trans_fn_inner(cx: @local_ctxt, sp: &span, f: &ast::_fn,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 fn trans_fn(cx: @local_ctxt, sp: &span, f: &ast::_fn, llfndecl: ValueRef,
-            ty_self: option::t[ty::t], ty_params: &[ast::ty_param],
+            ty_self: option::t<ty::t>, ty_params: &[ast::ty_param],
             id: ast::node_id) {
     if !cx.ccx.sess.get_opts().stats {
         trans_fn_inner(cx, sp, f, llfndecl, ty_self, ty_params, id);
@@ -6747,7 +6747,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 fn item_path(item: &@ast::item) -> [str] { ret ~[item.ident]; }
 
 fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[str],
-                       v: &vt[[str]]) {
+                       v: &vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {
@@ -6759,7 +6759,7 @@ fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[str],
 }
 
 fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
-                  v: &vt[[str]]) {
+                  v: &vt<[str]>) {
     visit::visit_item(i, pt + item_path(i), v);
     alt i.node {
       ast::item_const(_, _) {
@@ -6778,7 +6778,7 @@ fn collect_item_1(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
 }
 
 fn collect_item_2(ccx: &@crate_ctxt, i: &@ast::item, pt: &[str],
-                  v: &vt[[str]]) {
+                  v: &vt<[str]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
@@ -6818,7 +6818,7 @@ fn collect_items(ccx: &@crate_ctxt, crate: @ast::crate) {
 }
 
 fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
-                    v: &vt[[str]]) {
+                    v: &vt<[str]>) {
     let new_pt = pt + item_path(i);
     visit::visit_item(i, new_pt, v);
     alt i.node {
@@ -6844,7 +6844,7 @@ fn collect_tag_ctors(ccx: &@crate_ctxt, crate: @ast::crate) {
 
 // The constant translation pass.
 fn trans_constant(ccx: @crate_ctxt, it: &@ast::item, pt: &[str],
-                  v: &vt[[str]]) {
+                  v: &vt<[str]>) {
     let new_pt = pt + item_path(it);
     visit::visit_item(it, new_pt, v);
     alt it.node {
@@ -6891,7 +6891,7 @@ fn i2p(v: ValueRef, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntToPtr(v, t);
 }
 
-fn declare_intrinsics(llmod: ModuleRef) -> hashmap[str, ValueRef] {
+fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     let T_memmove32_args: [TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memmove64_args: [TypeRef] =

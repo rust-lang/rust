@@ -56,7 +56,7 @@ fn lookup_hash(d: &ebml::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
 }
 
 fn maybe_find_item(item_id: int, items: &ebml::doc) ->
-   option::t[ebml::doc] {
+   option::t<ebml::doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
         ret ebml::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }

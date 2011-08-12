@@ -7,10 +7,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn(&ext_ctxt, span, @ast::expr, option::t[str]) -> @ast::expr ;
+    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> @ast::expr ;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn(&ext_ctxt, span, @ast::expr, option::t[str]) -> macro_def ;
+    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def ;
 
 tag syntax_extension {
     normal(syntax_expander);
@@ -19,7 +19,7 @@ tag syntax_extension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> hashmap[str, syntax_extension] {
+fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     let syntax_expanders = new_str_hash[syntax_extension]();
     syntax_expanders.insert("fmt", normal(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));

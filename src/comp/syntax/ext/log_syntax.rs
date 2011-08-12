@@ -3,7 +3,7 @@ import base::*;
 import syntax::ast;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
-                     body: option::t[str]) -> @ast::expr {
+                     body: option::t<str>) -> @ast::expr {
 
     cx.print_backtrace();
     std::io::stdout().write_line(print::pprust::expr_to_str(arg));

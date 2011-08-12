@@ -6,7 +6,7 @@ import codemap::span;
 import codemap::filename;
 
 type spanned[T] = {node: T, span: span};
-fn respan[T](sp: &span, t: &T) -> spanned[T] { ret {node: t, span: sp}; }
+fn respan[T](sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
@@ -18,14 +18,14 @@ fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 type ident = str;
 // Functions may or may not have names.
-type fn_ident = option::t[ident];
+type fn_ident = option::t<ident>;
 
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
 // non-empty
 type path_ = {global: bool, idents: [ident], types: [@ty]};
 
-type path = spanned[path_];
+type path = spanned<path_>;
 
 fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
 
@@ -90,7 +90,7 @@ fn def_id_of_def(d: def) -> def_id {
 // used to drive conditional compilation
 type crate_cfg = [@meta_item];
 
-type crate = spanned[crate_];
+type crate = spanned<crate_>;
 
 type crate_ =
     {directives: [@crate_directive],
@@ -99,9 +99,9 @@ type crate_ =
      config: crate_cfg};
 
 tag crate_directive_ {
-    cdir_src_mod(ident, option::t[filename], [attribute]);
+    cdir_src_mod(ident, option::t<filename>, [attribute]);
     cdir_dir_mod(ident,
-                 option::t[filename],
+                 option::t<filename>,
                  [@crate_directive],
                  [attribute]);
     cdir_view_item(@view_item);
@@ -109,9 +109,9 @@ tag crate_directive_ {
     cdir_auth(path, _auth);
 }
 
-type crate_directive = spanned[crate_directive_];
+type crate_directive = spanned<crate_directive_>;
 
-type meta_item = spanned[meta_item_];
+type meta_item = spanned<meta_item_>;
 
 tag meta_item_ {
     meta_word(ident);
@@ -119,9 +119,9 @@ tag meta_item_ {
     meta_name_value(ident, lit);
 }
 
-type blk = spanned[blk_];
+type blk = spanned<blk_>;
 
-type blk_ = {stmts: [@stmt], expr: option::t[@expr], id: node_id};
+type blk_ = {stmts: [@stmt], expr: option::t<@expr>, id: node_id};
 
 type pat = {id: node_id, node: pat_, span: span};
 
@@ -137,7 +137,7 @@ tag pat_ {
     pat_box(@pat);
 }
 
-type pat_id_map = std::map::hashmap[str, ast::node_id];
+type pat_id_map = std::map::hashmap<str, ast::node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
@@ -252,7 +252,7 @@ fn unop_to_str(op: unop) -> str {
 
 tag mode { val; alias(bool); move; }
 
-type stmt = spanned[stmt_];
+type stmt = spanned<stmt_>;
 
 tag stmt_ {
     stmt_decl(@decl, node_id);
@@ -267,12 +267,12 @@ type initializer = {op: init_op, expr: @expr};
 
 type local_ = {ty: @ty,
                pat: @pat,
-               init: option::t[initializer],
+               init: option::t<initializer>,
                id: node_id};
 
-type local = spanned[local_];
+type local = spanned<local_>;
 
-type decl = spanned[decl_];
+type decl = spanned<decl_>;
 
 tag decl_ { decl_local([@local]); decl_item(@item); }
 
@@ -280,7 +280,7 @@ type arm = {pats: [@pat], body: blk};
 
 type field_ = {mut: mutability, ident: ident, expr: @expr};
 
-type field = spanned[field_];
+type field = spanned<field_>;
 
 tag spawn_dom { dom_implicit; dom_thread; }
 
@@ -293,16 +293,16 @@ type expr = {id: node_id, node: expr_, span: span};
 
 tag expr_ {
     expr_vec([@expr], mutability, seq_kind);
-    expr_rec([field], option::t[@expr]);
+    expr_rec([field], option::t<@expr>);
     expr_call(@expr, [@expr]);
     expr_tup([@expr]);
     expr_self_method(ident);
-    expr_bind(@expr, [option::t[@expr]]);
+    expr_bind(@expr, [option::t<@expr>]);
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
     expr_cast(@expr, @ty);
-    expr_if(@expr, blk, option::t[@expr]);
+    expr_if(@expr, blk, option::t<@expr>);
     expr_ternary(@expr, @expr, @expr);
     expr_while(@expr, blk);
     expr_for(@local, @expr, blk);
@@ -323,11 +323,11 @@ tag expr_ {
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_path(path);
-    expr_fail(option::t[@expr]);
+    expr_fail(option::t<@expr>);
     expr_break;
     expr_cont;
-    expr_ret(option::t[@expr]);
-    expr_put(option::t[@expr]);
+    expr_ret(option::t<@expr>);
+    expr_put(option::t<@expr>);
     expr_be(@expr);
     expr_log(int, @expr);
     /* just an assert, no significance to typestate */
@@ -336,22 +336,22 @@ tag expr_ {
     expr_check(check_mode, @expr);
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
-    expr_if_check(@expr, blk, option::t[@expr]);
+    expr_if_check(@expr, blk, option::t<@expr>);
     expr_anon_obj(anon_obj);
     expr_mac(mac);
     expr_uniq(@expr);
 }
 
-type mac = spanned[mac_];
+type mac = spanned<mac_>;
 
 tag mac_ {
-    mac_invoc(path, @expr, option::t[str]);
+    mac_invoc(path, @expr, option::t<str>);
     mac_embed_type(@ty);
     mac_embed_block(blk);
     mac_ellipsis;
 }
 
-type lit = spanned[lit_];
+type lit = spanned<lit_>;
 
 tag lit_ {
     lit_str(str, seq_kind);
@@ -386,11 +386,11 @@ type ty_method_ =
      cf: controlflow,
      constrs: [@constr]};
 
-type ty_field = spanned[ty_field_];
+type ty_field = spanned<ty_field_>;
 
-type ty_arg = spanned[ty_arg_];
+type ty_arg = spanned<ty_arg_>;
 
-type ty_method = spanned[ty_method_];
+type ty_method = spanned<ty_method_>;
 
 tag ty_mach {
     ty_i8;
@@ -420,7 +420,7 @@ fn ty_mach_to_str(tm: ty_mach) -> str {
     }
 }
 
-type ty = spanned[ty_];
+type ty = spanned<ty_>;
 
 tag ty_ {
     ty_nil;
@@ -470,10 +470,10 @@ declarations, and ident for uses.
 */
 tag constr_arg_general_[T] { carg_base; carg_ident(T); carg_lit(@lit); }
 
-type fn_constr_arg = constr_arg_general_[uint];
-type sp_constr_arg[T] = spanned[constr_arg_general_[T]];
-type ty_constr_arg = sp_constr_arg[path];
-type constr_arg = spanned[fn_constr_arg];
+type fn_constr_arg = constr_arg_general_<uint>;
+type sp_constr_arg[T] = spanned<constr_arg_general_<T>>;
+type ty_constr_arg = sp_constr_arg<path>;
+type constr_arg = spanned<fn_constr_arg>;
 
 // Constrained types' args are parameterized by paths, since
 // we refer to paths directly and not by indices.
@@ -481,15 +481,15 @@ type constr_arg = spanned[fn_constr_arg];
 // constrained type, is * (referring to the base record)
 
 type constr_general_[ARG, ID] =
-    {path: path, args: [@spanned[constr_arg_general_[ARG]]], id: ID};
+    {path: path, args: [@spanned<constr_arg_general_<ARG>>], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
-type constr_general[ARG] = spanned[constr_general_[ARG, node_id]];
-type constr_ = constr_general_[uint, node_id];
-type constr = spanned[constr_general_[uint, node_id]];
-type ty_constr_ = ast::constr_general_[ast::path, ast::node_id];
-type ty_constr = spanned[ty_constr_];
+type constr_general[ARG] = spanned<constr_general_<ARG, node_id>>;
+type constr_ = constr_general_<uint, node_id>;
+type constr = spanned<constr_general_<uint, node_id>>;
+type ty_constr_ = ast::constr_general_<ast::path, ast::node_id>;
+type ty_constr = spanned<ty_constr_>;
 
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
@@ -521,7 +521,7 @@ type _fn = {decl: fn_decl, proto: proto, body: blk};
 
 type method_ = {ident: ident, meth: _fn, id: node_id};
 
-type method = spanned[method_];
+type method = spanned<method_>;
 
 type obj_field = {mut: mutability, ty: @ty, ident: ident, id: node_id};
 type anon_obj_field =
@@ -531,10 +531,10 @@ type _obj = {fields: [obj_field], methods: [@method]};
 
 type anon_obj =
     // New fields and methods, if they exist.
-    {fields: option::t[[anon_obj_field]],
+    {fields: option::t<[anon_obj_field]>,
      methods: [@method],
      // inner_obj: the original object being extended, if it exists.
-     inner_obj: option::t[@expr]};
+     inner_obj: option::t<@expr>};
 
 type _mod = {view_items: [@view_item], items: [@item]};
 
@@ -556,9 +556,9 @@ type variant_arg = {ty: @ty, id: node_id};
 
 type variant_ = {name: str, args: [variant_arg], id: node_id};
 
-type variant = spanned[variant_];
+type variant = spanned<variant_>;
 
-type view_item = spanned[view_item_];
+type view_item = spanned<view_item_>;
 
 tag view_item_ {
     view_item_use(ident, [@meta_item], node_id);
@@ -571,7 +571,7 @@ type obj_def_ids = {ty: node_id, ctor: node_id};
 
 
 // Meta-data associated with an item
-type attribute = spanned[attribute_];
+type attribute = spanned<attribute_>;
 
 
 // Distinguishes between attributes that decorate items and attributes that
@@ -607,7 +607,7 @@ type native_item =
 
 tag native_item_ {
     native_item_ty;
-    native_item_fn(option::t[str], fn_decl, [ty_param]);
+    native_item_fn(option::t<str>, fn_decl, [ty_param]);
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {

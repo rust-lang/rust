@@ -437,7 +437,7 @@ fn opts() -> [getopts::opt] {
           optflag("lib"), optflag("static"), optflag("gc")];
 }
 
-fn main(args: vec[str]) {
+fn main(args: vec<str>) {
     let args_ivec = vec::from_vec(args);
     let binary = vec::shift(args_ivec);
     let binary_dir = fs::dirname(binary);

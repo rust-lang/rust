@@ -497,7 +497,7 @@ fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
          id: l.id};
 }
 
-/* temporarily eta-expand because of a compiler bug with using `fn[T]` as a
+/* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
 fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
     ret vec::map(f, es);

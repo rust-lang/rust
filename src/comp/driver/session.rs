@@ -54,7 +54,7 @@ obj session(targ_cfg: @config,
             parse_sess: parse_sess,
 
             // For a library crate, this is always none
-            mutable main_fn: option::t[node_id],
+            mutable main_fn: option::t<node_id>,
             mutable err_count: uint) {
     fn get_targ_cfg() -> @config { ret targ_cfg; }
     fn get_opts() -> @options { ret opts; }
@@ -111,7 +111,7 @@ obj session(targ_cfg: @config,
         ret codemap::span_to_str(sp, self.get_codemap());
     }
     fn set_main_id(d: node_id) { main_fn = some(d); }
-    fn get_main_id() -> option::t[node_id] { main_fn }
+    fn get_main_id() -> option::t<node_id> { main_fn }
 }
 // Local Variables:
 // fill-column: 78;

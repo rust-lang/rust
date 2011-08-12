@@ -1420,8 +1420,8 @@ fn new_builder(llbb: BasicBlockRef) -> builder {
 
 /* Memory-managed object interface to type handles. */
 
-obj type_names(type_names: std::map::hashmap[TypeRef, str],
-               named_types: std::map::hashmap[str, TypeRef]) {
+obj type_names(type_names: std::map::hashmap<TypeRef, str>,
+               named_types: std::map::hashmap<str, TypeRef>) {
 
     fn associate(s: str, t: TypeRef) {
         assert (!named_types.contains_key(s));
@@ -1446,8 +1446,8 @@ fn mk_type_names() -> type_names {
 
     fn eq(a: &TypeRef, b: &TypeRef) -> bool { ret a as uint == b as uint; }
 
-    let hasher: std::map::hashfn[TypeRef] = hash;
-    let eqer: std::map::eqfn[TypeRef] = eq;
+    let hasher: std::map::hashfn<TypeRef> = hash;
+    let eqer: std::map::eqfn<TypeRef> = eq;
     let tn = std::map::mk_hashmap[TypeRef, str](hasher, eqer);
 
     ret type_names(tn, nt);

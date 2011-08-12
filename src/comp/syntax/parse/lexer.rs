@@ -20,7 +20,7 @@ type reader =
         fn init() ;
         fn bump() ;
         fn get_str_from(uint) -> str ;
-        fn get_interner() -> @interner::interner[str] ;
+        fn get_interner() -> @interner::interner<str> ;
         fn get_chpos() -> uint ;
         fn get_byte_pos() -> uint ;
         fn get_col() -> uint ;
@@ -29,7 +29,7 @@ type reader =
     };
 
 fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
-              itr: @interner::interner[str]) -> reader {
+              itr: @interner::interner<str>) -> reader {
     obj reader(cm: codemap::codemap,
                src: str,
                len: uint,
@@ -39,7 +39,7 @@ fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
                mutable chpos: uint,
                mutable strs: [str],
                fm: codemap::filemap,
-               itr: @interner::interner[str]) {
+               itr: @interner::interner<str>) {
         fn is_eof() -> bool { ret ch == -1 as char; }
         fn get_str_from(start: uint) -> str {
             // I'm pretty skeptical about this subtraction. What if there's a
@@ -74,7 +74,7 @@ fn new_reader(cm: &codemap::codemap, src: str, filemap: codemap::filemap,
                 ch = next.ch;
             } else { ch = -1 as char; }
         }
-        fn get_interner() -> @interner::interner[str] { ret itr; }
+        fn get_interner() -> @interner::interner<str> { ret itr; }
         fn get_col() -> uint { ret col; }
         fn get_filemap() -> codemap::filemap { ret fm; }
         fn err(m: str) {
@@ -173,7 +173,7 @@ fn digits_to_string(s: str) -> int {
     ret accum_int;
 }
 
-fn scan_exponent(rdr: &reader) -> option::t[str] {
+fn scan_exponent(rdr: &reader) -> option::t<str> {
     let c = rdr.curr();
     let rslt = "";
     if c == 'e' || c == 'E' {

@@ -423,7 +423,7 @@ fn vtbl_mthd_lteq(a: &vtbl_mthd, b: &vtbl_mthd) -> bool {
 // ones that we don't need forwarding slots for.
 fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd,
                 addtl_meths: [@ast::method]) ->
-    option::t[vtbl_mthd] {
+    option::t<vtbl_mthd> {
 
     // Since m is a fwding_mthd, and we're checking to see if it's in
     // addtl_meths (which only contains normal_mthds), we can't just check if
@@ -448,7 +448,7 @@ fn filtering_fn(cx: @local_ctxt, m: &vtbl_mthd,
 // object, and return a pointer to it.
 fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
                ob: &ast::_obj, ty_params: &[ast::ty_param],
-               inner_obj_ty: option::t[ty::t],
+               inner_obj_ty: option::t<ty::t>,
                additional_field_tys: &[ty::t]) -> ValueRef {
 
     let llmethods: [ValueRef] = ~[];
@@ -892,7 +892,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 // object body: [tydesc, [typaram, ...], [field, ...], inner_obj].
 fn create_object_body_type(tcx: &ty::ctxt, fields_ty: &[ty::t],
                            typarams_ty: &[ty::t],
-                           maybe_inner_obj_ty: option::t[ty::t]) -> ty::t {
+                           maybe_inner_obj_ty: option::t<ty::t>) -> ty::t {
 
     let tydesc_ty: ty::t = ty::mk_type(tcx);
     let typarams_ty_tup: ty::t = ty::mk_tup(tcx, typarams_ty);

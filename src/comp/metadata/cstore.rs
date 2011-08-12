@@ -27,7 +27,7 @@ export get_use_stmt_cnum;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-type cnum_map = map::hashmap[ast::crate_num, ast::crate_num];
+type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 
 type crate_metadata = {name: str, data: @[u8], cnum_map: cnum_map};
 
@@ -39,14 +39,14 @@ type crate_metadata = {name: str, data: @[u8], cnum_map: cnum_map};
 tag cstore { private(cstore_private); }
 
 type cstore_private =
-    @{metas: map::hashmap[ast::crate_num, crate_metadata],
+    @{metas: map::hashmap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
       mutable used_crate_files: [str],
       mutable used_libraries: [str],
       mutable used_link_args: [str]};
 
 // Map from node_id's of local use statements to crate numbers
-type use_crate_map = map::hashmap[ast::node_id, ast::crate_num];
+type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
 
 // Internal method to retrieve the data from the cstore
 fn p(cstore: &cstore) -> cstore_private { alt cstore { private(p) { p } } }

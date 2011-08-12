@@ -36,7 +36,7 @@ type scope = @[restrict];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
-type ctx = {tcx: ty::ctxt, local_map: std::map::hashmap[node_id, local_info]};
+type ctx = {tcx: ty::ctxt, local_map: std::map::hashmap<node_id, local_info>};
 
 fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     // Stores information about object fields and function
@@ -52,7 +52,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
 }
 
 fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
-            name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt[scope]) {
+            name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
     for arg_: ast::arg in f.decl.inputs {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
@@ -82,7 +82,7 @@ fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
     v.visit_block(f.body, scope, v);
 }
 
-fn visit_item(cx: &@ctx, i: &@ast::item, sc: &scope, v: &vt[scope]) {
+fn visit_item(cx: &@ctx, i: &@ast::item, sc: &scope, v: &vt<scope>) {
     alt i.node {
       ast::item_obj(o, _, _) {
         for f: ast::obj_field in o.fields {
@@ -94,7 +94,7 @@ fn visit_item(cx: &@ctx, i: &@ast::item, sc: &scope, v: &vt[scope]) {
     visit::visit_item(i, sc, v);
 }
 
-fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt[scope]) {
+fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt<scope>) {
     let handled = true;
     alt ex.node {
       ast::expr_call(f, args) {
@@ -145,7 +145,7 @@ fn visit_expr(cx: &@ctx, ex: &@ast::expr, sc: &scope, v: &vt[scope]) {
     if !handled { visit::visit_expr(ex, sc, v); }
 }
 
-fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt[scope]) {
+fn visit_decl(cx: &@ctx, d: &@ast::decl, sc: &scope, v: &vt<scope>) {
     visit::visit_decl(d, sc, v);
     alt d.node {
       ast::decl_local(locs) {
@@ -309,7 +309,7 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
 }
 
 fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
-             v: &vt[scope]) {
+             v: &vt<scope>) {
     visit::visit_expr(input, sc, v);
     let root = expr_root(cx, input, true);
     let roots =
@@ -336,7 +336,7 @@ fn arm_defnums(arm: &ast::arm) -> [node_id] {
 }
 
 fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
-                  blk: &ast::blk, sc: &scope, v: &vt[scope]) {
+                  blk: &ast::blk, sc: &scope, v: &vt<scope>) {
     visit::visit_expr(call, sc, v);
     alt call.node {
       ast::expr_call(f, args) {
@@ -354,7 +354,7 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
 }
 
 fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
-             sc: &scope, v: &vt[scope]) {
+             sc: &scope, v: &vt<scope>) {
     visit::visit_expr(seq, sc, v);
     let root = expr_root(cx, seq, false);
     let root_def =
@@ -405,7 +405,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
     }
 }
 
-fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt[scope]) {
+fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
     alt dest.node {
       ast::expr_path(p) {
         let dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
@@ -440,7 +440,7 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt[scope]) {
     }
 }
 
-fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt[scope]) {
+fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt<scope>) {
     alt src.node {
       ast::expr_path(p) {
         alt cx.tcx.def_map.get(src.id) {
@@ -464,7 +464,7 @@ fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt[scope]) {
 }
 
 fn check_assign(cx: &@ctx, dest: &@ast::expr, src: &@ast::expr, sc: &scope,
-                v: &vt[scope]) {
+                v: &vt<scope>) {
     visit_expr(cx, src, sc, v);
     check_lval(cx, dest, sc, v);
 }
@@ -630,19 +630,19 @@ fn mut_field(ds: &@[deref]) -> bool {
     ret false;
 }
 
-fn inner_mut(ds: &@[deref]) -> option::t[ty::t] {
+fn inner_mut(ds: &@[deref]) -> option::t<ty::t> {
     for d: deref in *ds { if d.mut { ret some(d.outer_t); } }
     ret none;
 }
 
-fn path_def(cx: &ctx, ex: &@ast::expr) -> option::t[ast::def] {
+fn path_def(cx: &ctx, ex: &@ast::expr) -> option::t<ast::def> {
     ret alt ex.node {
       ast::expr_path(_) { some(cx.tcx.def_map.get(ex.id)) }
       _ { none }
     }
 }
 
-fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t[ast::def_id] {
+fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t<ast::def_id> {
     alt ex.node {
       ast::expr_path(_) {
         ret some(ast::def_id_of_def(cx.tcx.def_map.get(ex.id)));

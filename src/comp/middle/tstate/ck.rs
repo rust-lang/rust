@@ -61,7 +61,7 @@ fn check_unused_vars(fcx: &fn_ctxt) {
     }
 }
 
-fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
+fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     visit::visit_expr(e, fcx, v);
 
     let prec: precond = expr_precond(fcx.ccx, e);
@@ -92,7 +92,7 @@ fn check_states_expr(e: &@expr, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
     }
 }
 
-fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt[fn_ctxt]) {
+fn check_states_stmt(s: &@stmt, fcx: &fn_ctxt, v: &visit::vt<fn_ctxt>) {
     visit::visit_stmt(s, fcx, v);
 
     let a = stmt_to_ann(fcx.ccx, *s);
@@ -184,7 +184,7 @@ fn check_fn_states(fcx: &fn_ctxt, f: &_fn, tps: &[ast::ty_param], id: node_id,
 }
 
 fn fn_states(f: &_fn, tps: &[ast::ty_param], sp: &span, i: &fn_ident,
-             id: node_id, ccx: &crate_ctxt, v: &visit::vt[crate_ctxt]) {
+             id: node_id, ccx: &crate_ctxt, v: &visit::vt<crate_ctxt>) {
     visit::visit_fn(f, tps, sp, i, id, ccx, v);
     /* Look up the var-to-bit-num map for this function */
 
