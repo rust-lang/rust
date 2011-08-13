@@ -170,8 +170,8 @@ fn log_states_err(pp: &pre_and_post_state) {
 fn print_ident(i: &ident) { log " " + i + " "; }
 
 fn print_idents(idents: &mutable [ident]) {
-    if vec::len[ident](idents) == 0u { ret; }
-    log "an ident: " + vec::pop[ident](idents);
+    if vec::len::<ident>(idents) == 0u { ret; }
+    log "an ident: " + vec::pop::<ident>(idents);
     print_idents(idents);
 }
 
@@ -320,8 +320,8 @@ fn add_node(ccx: &crate_ctxt, i: node_id, a: &ts_ann) {
 
 fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t<ts_ann> {
     if i as uint < vec::len(*ccx.node_anns) {
-        ret some[ts_ann](ccx.node_anns.(i));
-    } else { ret none[ts_ann]; }
+        ret some::<ts_ann>(ccx.node_anns.(i));
+    } else { ret none::<ts_ann>; }
 }
 
 
@@ -508,7 +508,7 @@ fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
     let na: [mutable ts_ann] = ~[mutable];
-    ret {tcx: cx, node_anns: @mutable na, fm: @new_int_hash[fn_info]()};
+    ret {tcx: cx, node_anns: @mutable na, fm: @new_int_hash::<fn_info>()};
 }
 
 /* Use e's type to determine whether it returns.

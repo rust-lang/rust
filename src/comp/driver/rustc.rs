@@ -150,9 +150,9 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(sess, d, crate));
     let ty_cx = ty::mk_ctxt(sess, d, ast_map, freevars);
-    time[()](time_passes, "typechecking",
+    time::<()>(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
-    time[()](time_passes, "alt checking",
+    time::<()>(time_passes, "alt checking",
              bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {
         time(time_passes, "typestate checking",
@@ -160,15 +160,15 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     }
     time(time_passes, "alias checking",
          bind middle::alias::check_crate(ty_cx, crate));
-    time[()](time_passes, "kind checking",
+    time::<()>(time_passes, "kind checking",
              bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
     let llmod =
-        time[llvm::llvm::ModuleRef](time_passes, "translation",
+        time::<llvm::llvm::ModuleRef>(time_passes, "translation",
                                     bind trans::trans_crate(sess, crate,
                                                             ty_cx, output,
                                                             ast_map));
-    time[()](time_passes, "LLVM passes",
+    time::<()>(time_passes, "LLVM passes",
              bind link::write::run_passes(sess, llmod, output));
 }
 
@@ -459,14 +459,14 @@ fn main(args: vec<str>) {
     }
     let sopts = build_session_options(binary, match, binary_dir);
     let sess = build_session(sopts);
-    let n_inputs = vec::len[str](match.free);
+    let n_inputs = vec::len::<str>(match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
     let glue = opt_present(match, "glue");
     if glue {
         if n_inputs > 0u {
             sess.fatal("No input files allowed with --glue.");
         }
-        let out = option::from_maybe[str]("glue.bc", output_file);
+        let out = option::from_maybe::<str>("glue.bc", output_file);
         middle::trans::make_common_glue(sess, out);
         ret;
     }
@@ -479,26 +479,28 @@ fn main(args: vec<str>) {
     let saved_out_filename: str = "";
     let cfg = build_configuration(sess, binary, ifile);
     let expand =
-        option::map[str,
-                    pp_mode](bind parse_pretty(sess, _),
-                             getopts::opt_default(match, "expand", "normal"));
+        option::map::<str,
+                      pp_mode>(bind parse_pretty(sess, _),
+                               getopts::opt_default(match, "expand",
+                                                    "normal"));
     alt expand {
-      some[pp_mode](ppm) {
+      some::<pp_mode>(ppm) {
         pretty_print_input(sess, cfg, ifile, ppm, true);
         ret;
       }
-      none[pp_mode]. {/* continue */ }
+      none::<pp_mode>. {/* continue */ }
     }
     let pretty =
-        option::map[str,
-                    pp_mode](bind parse_pretty(sess, _),
-                             getopts::opt_default(match, "pretty", "normal"));
+        option::map::<str,
+                      pp_mode>(bind parse_pretty(sess, _),
+                               getopts::opt_default(match, "pretty",
+                                                    "normal"));
     alt pretty {
-      some[pp_mode](ppm) {
+      some::<pp_mode>(ppm) {
         pretty_print_input(sess, cfg, ifile, ppm, false);
         ret;
       }
-      none[pp_mode]. {/* continue */ }
+      none::<pp_mode>. {/* continue */ }
     }
     let ls = opt_present(match, "ls");
     if ls {

@@ -142,7 +142,7 @@ type pat_id_map = std::map::hashmap<str, ast::node_id>;
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(pat: &@pat) -> pat_id_map {
-    let map = std::map::new_str_hash[node_id]();
+    let map = std::map::new_str_hash::<node_id>();
     for each bound in pat_bindings(pat) {
         let name = alt bound.node { pat_bind(n) { n } };
         map.insert(name, bound.id);
@@ -661,7 +661,7 @@ fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
 fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = {stmts: ~[], expr: option::some[@expr](e), id: e.id};
+    let blk_ = {stmts: ~[], expr: option::some::<@expr>(e), id: e.id};
     ret {node: blk_, span: e.span};
 }
 

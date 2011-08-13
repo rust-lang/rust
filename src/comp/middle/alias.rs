@@ -46,7 +46,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
               visit_item: bind visit_item(cx, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_decl: bind visit_decl(cx, _, _, _)
-              with *visit::default_visitor[scope]()};
+              with *visit::default_visitor::<scope>()};
     visit::visit_crate(*crate, @~[], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }

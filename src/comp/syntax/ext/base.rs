@@ -20,7 +20,7 @@ tag syntax_extension {
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
 fn syntax_expander_table() -> hashmap<str, syntax_extension> {
-    let syntax_expanders = new_str_hash[syntax_extension]();
+    let syntax_expanders = new_str_hash::<syntax_extension>();
     syntax_expanders.insert("fmt", normal(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));
     syntax_expanders.insert("macro",

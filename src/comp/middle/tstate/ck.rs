@@ -131,7 +131,7 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
        because we want the smallest possible erroneous statement
        or expression. */
 
-    let visitor = visit::default_visitor[fn_ctxt]();
+    let visitor = visit::default_visitor::<fn_ctxt>();
 
     visitor =
         @{visit_stmt: check_states_stmt,
@@ -205,7 +205,7 @@ fn check_crate(cx: ty::ctxt, crate: @crate) {
     annotate_crate(ccx, *crate);
     /* Compute the pre and postcondition for every subexpression */
 
-    let vtor = visit::default_visitor[crate_ctxt]();
+    let vtor = visit::default_visitor::<crate_ctxt>();
     vtor = @{visit_fn: fn_pre_post with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 

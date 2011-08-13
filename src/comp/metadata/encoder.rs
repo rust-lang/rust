@@ -176,7 +176,7 @@ fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
 fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
-    ebml::write_vint(ebml_w.writer, vec::len[ty_param](tps));
+    ebml::write_vint(ebml_w.writer, vec::len::<ty_param>(tps));
     for tp: ty_param in tps {
         let c = alt tp.kind {
           kind_unique. { 'u' }
@@ -236,7 +236,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
         encode_tag_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_monotype(ecx.ccx.tcx, variant.node.id));
-        if vec::len[variant_arg](variant.node.args) > 0u {
+        if vec::len::<variant_arg>(variant.node.args) > 0u {
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);

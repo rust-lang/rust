@@ -55,9 +55,9 @@ fn end(s: &ps) { vec::pop(s.boxes); pp::end(s.s); }
 fn rust_printer(writer: io::writer) -> ps {
     let boxes: [pp::breaks] = ~[];
     ret @{s: pp::mk_printer(writer, default_columns),
-          cm: none[codemap],
-          comments: none[[lexer::cmnt]],
-          literals: none[[lexer::lit]],
+          cm: none::<codemap>,
+          comments: none::<[lexer::cmnt]>,
+          literals: none::<[lexer::lit]>,
           mutable cur_cmnt: 0u,
           mutable cur_lit: 0u,
           mutable boxes: boxes,
@@ -231,7 +231,7 @@ fn commasep<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
 fn commasep_cmnt<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
                      get_span: fn(&IN) -> codemap::span ) {
     box(s, 0u, b);
-    let len = vec::len[IN](elts);
+    let len = vec::len::<IN>(elts);
     let i = 0u;
     for elt: IN in elts {
         maybe_print_comment(s, get_span(elt).hi);
@@ -327,7 +327,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
           pclose(s);
       }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
-        print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
+        print_ty_fn(s, proto, none::<str>, inputs, output, cf, constrs);
       }
       ast::ty_obj(methods) {
         head(s, "obj");
@@ -486,7 +486,7 @@ fn print_item(s: &ps, item: &@ast::item) {
                     pclose(s);
                 }
                 word(s.s, ";");
-                maybe_print_trailing_comment(s, v.span, none[uint]);
+                maybe_print_trailing_comment(s, v.span, none::<uint>);
             }
             bclose(s, item.span);
         }
@@ -575,7 +575,7 @@ fn print_stmt(s: &ps, st: &ast::stmt) {
       ast::stmt_expr(expr, _) { space_if_not_bol(s); print_expr(s, expr); }
     }
     if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
-    maybe_print_trailing_comment(s, st.span, none[uint]);
+    maybe_print_trailing_comment(s, st.span, none::<uint>);
 }
 
 fn print_block(s: &ps, blk: &ast::blk) {
@@ -1436,9 +1436,9 @@ fn next_lit(s: &ps) -> option::t<lexer::lit> {
       some(lits) {
         if s.cur_lit < vec::len(lits) {
             ret some(lits.(s.cur_lit));
-        } else { ret none[lexer::lit]; }
+        } else { ret none::<lexer::lit>; }
       }
-      _ { ret none[lexer::lit]; }
+      _ { ret none::<lexer::lit>; }
     }
 }
 
@@ -1528,9 +1528,9 @@ fn next_comment(s: &ps) -> option::t<lexer::cmnt> {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {
             ret some(cmnts.(s.cur_cmnt));
-        } else { ret none[lexer::cmnt]; }
+        } else { ret none::<lexer::cmnt>; }
       }
-      _ { ret none[lexer::cmnt]; }
+      _ { ret none::<lexer::cmnt>; }
     }
 }
 
@@ -1542,7 +1542,7 @@ fn constr_args_to_str<T>(f: &fn(&T) -> str ,
     let s = "(";
     for a: @ast::sp_constr_arg<T> in args {
         if comma { s += ", "; } else { comma = true; }
-        s += constr_arg_to_str[T](f, a.node);
+        s += constr_arg_to_str::<T>(f, a.node);
     }
     s += ")";
     ret s;
@@ -1611,7 +1611,7 @@ fn proto_to_str(p: &ast::proto) -> str {
 
 fn ty_constr_to_str(c: &@ast::ty_constr) -> str {
     ret path_to_str(c.node.path) +
-            constr_args_to_str[ast::path](path_to_str, c.node.args);
+            constr_args_to_str::<ast::path>(path_to_str, c.node.args);
 }
 
 

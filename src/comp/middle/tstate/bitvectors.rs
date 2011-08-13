@@ -160,7 +160,7 @@ fn relax_precond_block_inner(b: &blk, cx: &relax_ctxt,
 
 fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b:&blk) {
     let cx = {fcx: fcx, i: i};
-    let visitor = visit::default_visitor[relax_ctxt]();
+    let visitor = visit::default_visitor::<relax_ctxt>();
     visitor =
         @{visit_block: relax_precond_block_inner,
           visit_expr: relax_precond_expr,

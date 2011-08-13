@@ -21,7 +21,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
       ast::expr_vec(elts, _, _) { elts }
       _ { cx.span_fatal(sp, "#fmt requires arguments of the form `[...]`.") }
     };
-    if vec::len[@ast::expr](args) == 0u {
+    if vec::len::<@ast::expr>(args) == 0u {
         cx.span_fatal(sp, "#fmt requires a format string");
     }
     let fmt =
@@ -93,7 +93,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                 {node: {mut: ast::imm, ident: ident, expr: val}, span: sp};
             astfields += ~[astfield];
         }
-        let recexpr = ast::expr_rec(astfields, option::none[@ast::expr]);
+        let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
         ret @{id: cx.next_id(), node: recexpr, span: sp};
     }
     fn make_path_vec(cx: &ext_ctxt, ident: str) -> [str] {
@@ -130,7 +130,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             // through the rec that these flags are a member of, so
             // this is a hack placeholder flag
 
-            if vec::len[@ast::expr](flagexprs) == 0u {
+            if vec::len::<@ast::expr>(flagexprs) == 0u {
                 flagexprs += ~[make_rt_path_expr(cx, sp, "flag_none")];
             }
             ret make_vec_expr(cx, sp, flagexprs);
@@ -307,7 +307,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     let fmt_sp = args.(0).span;
     let n = 0u;
     let tmp_expr = make_new_str(cx, sp, "");
-    let nargs = vec::len[@ast::expr](args);
+    let nargs = vec::len::<@ast::expr>(args);
     for pc: piece in pieces {
         alt pc {
           piece_string(s) {

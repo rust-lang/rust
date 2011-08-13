@@ -48,7 +48,7 @@ fn lookup_hash(d: &ebml::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     for each elt: ebml::doc in ebml::tagged_docs(bucket, belt) {
         let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
-        if eq_fn(vec::slice[u8](*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             result += ~[ebml::doc_at(d.data, pos)];
         }
     }
@@ -63,8 +63,8 @@ fn maybe_find_item(item_id: int, items: &ebml::doc) ->
     let eqer = bind eq_item(_, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
     if vec::len(found) == 0u {
-        ret option::none[ebml::doc];
-    } else { ret option::some[ebml::doc](found.(0)); }
+        ret option::none::<ebml::doc>;
+    } else { ret option::some::<ebml::doc>(found.(0)); }
 }
 
 fn find_item(item_id: int, items: &ebml::doc) -> ebml::doc {
@@ -269,7 +269,7 @@ fn family_has_type_params(fam_ch: u8) -> bool {
 fn read_path(d: &ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
     let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
-    let pathbytes = vec::slice[u8](desc, 4u, vec::len[u8](desc));
+    let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::unsafe_from_bytes(pathbytes);
     ret {path: path, pos: pos};
 }

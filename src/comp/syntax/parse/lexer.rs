@@ -188,7 +188,7 @@ fn scan_exponent(rdr: &reader) -> option::t<str> {
         if str::byte_len(exponent) > 0u {
             ret some(rslt + exponent);
         } else { rdr.err("scan_exponent: bad fp literal"); fail; }
-    } else { ret none[str]; }
+    } else { ret none::<str>; }
 }
 
 fn scan_dec_digits(rdr: &reader) -> str {
@@ -301,14 +301,14 @@ fn scan_number(c: char, rdr: &reader) -> token::token {
 
             }
         } else {
-            ret token::LIT_FLOAT(interner::intern[str](*rdr.get_interner(),
+            ret token::LIT_FLOAT(interner::intern::<str>(*rdr.get_interner(),
                                                        float_str));
         }
     }
     let maybe_exponent = scan_exponent(rdr);
     alt maybe_exponent {
       some(s) {
-        ret token::LIT_FLOAT(interner::intern[str](*rdr.get_interner(),
+        ret token::LIT_FLOAT(interner::intern::<str>(*rdr.get_interner(),
                                                    dec_str + s));
       }
       none. { ret token::LIT_INT(accum_int); }
@@ -350,7 +350,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
         }
         if str::eq(accum_str, "_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && rdr.next() == ':';
-        ret token::IDENT(interner::intern[str](*rdr.get_interner(),
+        ret token::IDENT(interner::intern::<str>(*rdr.get_interner(),
                                                accum_str), is_mod_name);
     }
     if is_dec_digit(c) { ret scan_number(c, rdr); }
@@ -510,7 +510,7 @@ fn next_token_inner(rdr: &reader) -> token::token {
             }
         }
         rdr.bump();
-        ret token::LIT_STR(interner::intern[str](*rdr.get_interner(),
+        ret token::LIT_STR(interner::intern::<str>(*rdr.get_interner(),
                                                  accum_str));
       }
       '-' {
@@ -712,7 +712,7 @@ fn gather_comments_and_literals(cm: &codemap::codemap, path: str,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
     let src = str::unsafe_from_bytes(srdr.read_whole_stream());
-    let itr = @interner::mk[str](str::hash, str::eq);
+    let itr = @interner::mk::<str>(str::hash, str::eq);
     let rdr = new_reader(cm, src, codemap::new_filemap(path, 0u, 0u), itr);
     let comments: [cmnt] = ~[];
     let literals: [lit] = ~[];

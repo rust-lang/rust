@@ -61,7 +61,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         ret s;
     }
     fn method_to_str(cx: &ctxt, m: &method) -> str {
-        ret fn_to_str(cx, m.proto, some[ast::ident](m.ident), m.inputs,
+        ret fn_to_str(cx, m.proto, some::<ast::ident>(m.ident), m.inputs,
                       m.output, m.cf, m.constrs) + ";";
     }
     fn field_to_str(cx: &ctxt, f: &field) -> str {
@@ -109,7 +109,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         // The user should never see this if the cname is set properly!
 
         s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
-        if vec::len[t](tps) > 0u {
+        if vec::len::<t>(tps) > 0u {
             let strs: [str] = ~[];
             for typ: t in tps { strs += ~[ty_to_str(cx, typ)]; }
             s += "[" + str::connect(strs, ",") + "]";
@@ -165,7 +165,7 @@ fn constrs_str(constrs: &[@constr]) -> str {
 fn ty_constr_to_str<Q>(c: &@ast::spanned<ast::constr_general_<ast::path, Q>>)
    -> str {
     ret path_to_str(c.node.path) +
-            constr_args_to_str[ast::path](path_to_str, c.node.args);
+            constr_args_to_str::<ast::path>(path_to_str, c.node.args);
 }
 
 // Local Variables:
