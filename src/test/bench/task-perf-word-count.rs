@@ -95,7 +95,7 @@ mod map_reduce {
                 c = _c
               }
               none. {
-                let p = mk_port<_chan<reduce_proto>>();
+                let p = mk_port::<_chan<reduce_proto>>();
                 let keyi = str::bytes(key);
                 send(ctrl, find_reducer(keyi, p.mk_chan()));
                 c = p.recv();
@@ -147,7 +147,7 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: &[str]) {
-        let ctrl = mk_port<ctrl_proto>();
+        let ctrl = mk_port::<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns
         // to do the rest.

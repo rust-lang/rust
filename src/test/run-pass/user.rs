@@ -13,5 +13,5 @@ fn main() {
   log s;
   s += "there";
   log s;
-  auto z = std::vec.alloc[int](10 as uint);
+  auto z = std::vec.alloc::<int>(10 as uint);
 }

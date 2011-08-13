@@ -6,4 +6,4 @@ obj ob<K>(k: K) {
 
 fn x(o: &ob<str>) { for each i: @{a: str} in o.foo() { } }
 
-fn main() { let o = ob[str]("hi" + "there"); x(o); }
+fn main() { let o = ob::<str>("hi" + "there"); x(o); }

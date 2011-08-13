@@ -24,8 +24,8 @@ fn main() {
     let p1;
     let p2;
 
-    p1 = comm::mk_port<int>();
-    p2 = comm::mk_port<int>();
+    p1 = comm::mk_port::<int>();
+    p2 = comm::mk_port::<int>();
 
     assert (p1 == p1);
     assert (p1 != p2);

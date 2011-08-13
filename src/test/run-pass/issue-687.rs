@@ -51,7 +51,7 @@ fn main() {
           closed. { log "Got close message"; break; }
           received(data) {
             log "Got data. Length is:";
-            log vec::len[u8](data);
+            log vec::len::<u8>(data);
           }
         }
     }

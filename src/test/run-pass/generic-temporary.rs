@@ -9,5 +9,5 @@ fn apply<T>(produce: fn() -> T , consume: fn(&T) ) { consume(produce()); }
 fn main() {
     let produce: fn() -> int  = mk;
     let consume: fn(&int)  = chk;
-    apply[int](produce, consume);
+    apply::<int>(produce, consume);
 }

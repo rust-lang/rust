@@ -6,4 +6,4 @@ obj foo<T>() {
     fn meth(x: &T) { }
 }
 
-fn main() { foo[colour]().meth(red); }
+fn main() { foo::<colour>().meth(red); }

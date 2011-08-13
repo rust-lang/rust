@@ -18,7 +18,7 @@ type record = {val1: u32, val2: u32, val3: u32};
 // power of two so needs to be rounded up. Don't trigger any
 // assertions.
 fn test_init() {
-    let myport = mk_port[record]();
+    let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
     let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
     send(mychan, val);
@@ -39,14 +39,14 @@ fn test_grow() {
 
 // Don't allow the buffer to shrink below it's original size
 fn test_shrink1() {
-    let myport = comm::mk_port[i8]();
+    let myport = comm::mk_port::<i8>();
     let mychan = myport.mk_chan();
     send(mychan, 0i8);
     let x = myport.recv();
 }
 
 fn test_shrink2() {
-    let myport = mk_port[record]();
+    let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
     for each i: uint  in uint::range(0u, 100u) {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
@@ -58,7 +58,7 @@ fn test_shrink2() {
 
 // Test rotating the buffer when the unit size is not a power of two
 fn test_rotate() {
-    let myport = mk_port[record]();
+    let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
     for each i: uint  in uint::range(0u, 100u) {
         let val = {val1: i as u32, val2: i as u32, val3: i as u32};
@@ -74,7 +74,7 @@ fn test_rotate() {
 // Test rotating and growing the buffer when
 // the unit size is not a power of two
 fn test_rotate_grow() {
-    let myport = mk_port[record]();
+    let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
     for each j: uint  in uint::range(0u, 10u) {
         for each i: uint  in uint::range(0u, 10u) {

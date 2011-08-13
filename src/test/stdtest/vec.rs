@@ -90,14 +90,14 @@ fn test_init_elt() {
 
 #[test]
 fn test_is_empty() {
-    assert (vec::is_empty[int](~[]));
+    assert (vec::is_empty::<int>(~[]));
     assert (!vec::is_empty(~[0]));
 }
 
 #[test]
 fn test_is_not_empty() {
     assert (vec::is_not_empty(~[0]));
-    assert (!vec::is_not_empty[int](~[]));
+    assert (!vec::is_not_empty::<int>(~[]));
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn test_map2() {
     let f = times;
     let v0 = ~[1, 2, 3, 4, 5];
     let v1 = ~[5, 4, 3, 2, 1];
-    let u = vec::map2[int, int, int](f, v0, v1);
+    let u = vec::map2::<int, int, int>(f, v0, v1);
     let i = 0;
     while i < 5 { assert (v0.(i) * v1.(i) == u.(i)); i += 1; }
 }
@@ -266,8 +266,8 @@ fn test_filter_map() {
 
     fn halve(i: &int) -> option::t<int> {
         if i % 2 == 0 {
-            ret option::some[int](i / 2);
-        } else { ret option::none[int]; }
+            ret option::some::<int>(i / 2);
+        } else { ret option::none::<int>; }
     }
     fn halve_for_sure(i: &int) -> int { ret i / 2; }
     let all_even: [int] = ~[0, 2, 8, 6];
@@ -328,10 +328,10 @@ fn test_zip_unzip() {
 #[test]
 fn test_position() {
     let v1: [int] = ~[1, 2, 3, 3, 2, 5];
-    assert (position(1, v1) == option::some[uint](0u));
-    assert (position(2, v1) == option::some[uint](1u));
-    assert (position(5, v1) == option::some[uint](5u));
-    assert (position(4, v1) == option::none[uint]);
+    assert (position(1, v1) == option::some::<uint>(0u));
+    assert (position(2, v1) == option::some::<uint>(1u));
+    assert (position(5, v1) == option::some::<uint>(5u));
+    assert (position(4, v1) == option::none::<uint>);
 }
 
 #[test]
@@ -339,8 +339,8 @@ fn test_position_pred() {
     fn less_than_three(i: &int) -> bool { ret i < 3; }
     fn is_eighteen(i: &int) -> bool { ret i == 18; }
     let v1: [int] = ~[5, 4, 3, 2, 1];
-    assert (position_pred(less_than_three, v1) == option::some[uint](3u));
-    assert (position_pred(is_eighteen, v1) == option::none[uint]);
+    assert (position_pred(less_than_three, v1) == option::some::<uint>(3u));
+    assert (position_pred(is_eighteen, v1) == option::none::<uint>);
 }
 
 #[test]
@@ -351,16 +351,16 @@ fn reverse_and_reversed() {
     vec::reverse(v);
     assert (v.(0) == 20);
     assert (v.(1) == 10);
-    let v2 = vec::reversed[int](~[10, 20]);
+    let v2 = vec::reversed::<int>(~[10, 20]);
     assert (v2.(0) == 20);
     assert (v2.(1) == 10);
     v.(0) = 30;
     assert (v2.(0) == 20);
     // Make sure they work with 0-length vectors too.
 
-    let v4 = vec::reversed[int](~[]);
+    let v4 = vec::reversed::<int>(~[]);
     let v3: [mutable int] = ~[mutable];
-    vec::reverse[int](v3);
+    vec::reverse::<int>(v3);
 }
 
 // Local Variables:

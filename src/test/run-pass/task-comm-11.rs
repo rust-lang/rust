@@ -9,7 +9,7 @@ fn start(c: comm::_chan<comm::_chan<int>>) {
 }
 
 fn main() {
-    let p = comm::mk_port<comm::_chan<int>>();
+    let p = comm::mk_port::<comm::_chan<int>>();
     let child = task::_spawn(bind start(p.mk_chan()));
     let c = p.recv();
 }

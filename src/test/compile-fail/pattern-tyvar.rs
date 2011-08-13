@@ -7,6 +7,6 @@ import std::option::some;
 
 tag bar { t1((), option::t<[int]>); t2; }
 
-fn foo(t: bar) { alt t { t1(_, some[int](x)) { log x; } _ { fail; } } }
+fn foo(t: bar) { alt t { t1(_, some::<int>(x)) { log x; } _ { fail; } } }
 
 fn main() { }

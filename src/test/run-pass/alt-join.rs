@@ -12,8 +12,8 @@ fn foo<T>(y: &option::t<T>) {
        entire if expression */
 
     if true {
-    } else { alt y { none[T]. { x = 17; } _ { x = 42; } } rs += ~[x]; }
+    } else { alt y { none::<T>. { x = 17; } _ { x = 42; } } rs += ~[x]; }
     ret;
 }
 
-fn main() { log "hello"; foo[int](some[int](5)); }
+fn main() { log "hello"; foo::<int>(some::<int>(5)); }

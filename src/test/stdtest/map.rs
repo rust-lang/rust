@@ -23,7 +23,7 @@ fn test_simple() {
     let eqer_str: map::eqfn<str> = str::eq;
     log "uint -> uint";
     let hm_uu: map::hashmap<uint, uint> =
-        map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
+        map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
     assert (hm_uu.insert(10u, 12u));
     assert (hm_uu.insert(11u, 13u));
     assert (hm_uu.insert(12u, 14u));
@@ -39,7 +39,7 @@ fn test_simple() {
     let twelve: str = "twelve";
     log "str -> uint";
     let hm_su: map::hashmap<str, uint> =
-        map::mk_hashmap[str, uint](hasher_str, eqer_str);
+        map::mk_hashmap::<str, uint>(hasher_str, eqer_str);
     assert (hm_su.insert("ten", 12u));
     assert (hm_su.insert(eleven, 13u));
     assert (hm_su.insert("twelve", 14u));
@@ -53,7 +53,7 @@ fn test_simple() {
     assert (hm_su.get("twelve") == 12u);
     log "uint -> str";
     let hm_us: map::hashmap<uint, str> =
-        map::mk_hashmap[uint, str](hasher_uint, eqer_uint);
+        map::mk_hashmap::<uint, str>(hasher_uint, eqer_uint);
     assert (hm_us.insert(10u, "twelve"));
     assert (hm_us.insert(11u, "thirteen"));
     assert (hm_us.insert(12u, "fourteen"));
@@ -66,7 +66,7 @@ fn test_simple() {
     assert (str::eq(hm_us.get(12u), "twelve"));
     log "str -> str";
     let hm_ss: map::hashmap<str, str> =
-        map::mk_hashmap[str, str](hasher_str, eqer_str);
+        map::mk_hashmap::<str, str>(hasher_str, eqer_str);
     assert (hm_ss.insert(ten, "twelve"));
     assert (hm_ss.insert(eleven, "thirteen"));
     assert (hm_ss.insert(twelve, "fourteen"));
@@ -99,7 +99,7 @@ fn test_growth() {
     let hasher_uint: map::hashfn<uint> = hash_uint;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hm_uu: map::hashmap<uint, uint> =
-        map::mk_hashmap[uint, uint](hasher_uint, eqer_uint);
+        map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm_uu.insert(i, i * i));
@@ -130,7 +130,7 @@ fn test_growth() {
     let hasher_str: map::hashfn<str> = str::hash;
     let eqer_str: map::eqfn<str> = str::eq;
     let hm_ss: map::hashmap<str, str> =
-        map::mk_hashmap[str, str](hasher_str, eqer_str);
+        map::mk_hashmap::<str, str>(hasher_str, eqer_str);
     i = 0u;
     while i < num_to_insert {
         assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
@@ -181,7 +181,7 @@ fn test_removal() {
     let hasher: map::hashfn<uint> = hash;
     let eqer: map::eqfn<uint> = eq;
     let hm: map::hashmap<uint, uint> =
-        map::mk_hashmap[uint, uint](hasher, eqer);
+        map::mk_hashmap::<uint, uint>(hasher, eqer);
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
@@ -200,10 +200,10 @@ fn test_removal() {
 
         let v: util.option<uint> = hm.remove(i);
         alt (v) {
-          case (util.some[uint](u)) {
+          case (util.some::<uint>(u)) {
             assert (u == (i * i));
           }
-          case (util.none[uint]()) { fail; }
+          case (util.none::<uint>()) { fail; }
         }
 
          * but we util.option is a tag type so util.some and util.none are
@@ -268,7 +268,7 @@ fn test_removal() {
 #[test]
 fn test_contains_key() {
     let key = "k";
-    let map = map::mk_hashmap[str, str](str::hash, str::eq);
+    let map = map::mk_hashmap::<str, str>(str::hash, str::eq);
     assert (!map.contains_key(key));
     map.insert(key, "val");
     assert (map.contains_key(key));
@@ -277,7 +277,7 @@ fn test_contains_key() {
 #[test]
 fn test_find() {
     let key = "k";
-    let map = map::mk_hashmap[str, str](str::hash, str::eq);
+    let map = map::mk_hashmap::<str, str>(str::hash, str::eq);
     assert (std::option::is_none(map.find(key)));
     map.insert(key, "val");
     assert (std::option::get(map.find(key)) == "val");

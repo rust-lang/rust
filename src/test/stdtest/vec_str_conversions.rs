@@ -13,7 +13,7 @@ fn test_simple() {
     let s2: str = str::unsafe_from_bytes(v);
     let i: uint = 0u;
     let n1: uint = str::byte_len(s1);
-    let n2: uint = vec::len[u8](v);
+    let n2: uint = vec::len::<u8>(v);
     assert (n1 == n2);
     while i < n1 {
         let a: u8 = s1.(i);

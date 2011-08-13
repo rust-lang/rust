@@ -10,7 +10,7 @@ import std::task;
 import std::comm;
 
 fn start(c: comm::_chan<str>) {
-    let p = comm::mk_port<str>();
+    let p = comm::mk_port::<str>();
     c.send(p.mk_chan().unsafe_ptr());
 
     let a;

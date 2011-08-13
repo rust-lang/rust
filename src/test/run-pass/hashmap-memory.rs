@@ -62,7 +62,7 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: &[str]) {
-        let ctrl = mk_port<ctrl_proto>();
+        let ctrl = mk_port::<ctrl_proto>();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
