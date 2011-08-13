@@ -86,7 +86,7 @@ fn new_ext_hash() -> ext_hash {
         ret util::common::def_eq(v1.did, v2.did) &&
                 str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
-    ret std::map::mk_hashmap[key, def](hash, eq);
+    ret std::map::mk_hashmap::<key, def>(hash, eq);
 }
 
 tag mod_index_entry {
@@ -135,11 +135,11 @@ fn resolve_crate(sess: session, amap: &ast_map::map, crate: @ast::crate) ->
    def_map {
     let e =
         @{cstore: sess.get_cstore(),
-          def_map: new_int_hash[def](),
+          def_map: new_int_hash::<def>(),
           ast_map: amap,
-          imports: new_int_hash[import_state](),
-          mod_map: new_int_hash[@indexed_mod](),
-          ext_map: new_def_hash[[ident]](),
+          imports: new_int_hash::<import_state>(),
+          mod_map: new_int_hash::<@indexed_mod>(),
+          ext_map: new_def_hash::<[ident]>(),
           ext_cache: new_ext_hash(),
           mutable reported: ~[],
           sess: sess};
@@ -159,7 +159,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
     let v_map_mod =
         @{visit_view_item: bind index_vi(e, _, _, _),
           visit_item: bind index_i(e, _, _, _)
-             with *visit::default_visitor[scopes]()};
+             with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil), visit::mk_vt(v_map_mod));
     // Register the top-level mod
 
@@ -167,7 +167,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
                        mutable glob_imports: ~[],
-                       glob_imported_names: new_str_hash[import_state]()});
+                       glob_imported_names: new_str_hash::<import_state>()});
     fn index_vi(e: @env, i: &@ast::view_item, sc: &scopes, v: &vt<scopes>) {
         alt i.node {
           ast::view_item_import(_, ids, id) {
@@ -180,7 +180,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
         visit_item_with_scope(i, sc, v);
         alt i.node {
           ast::item_mod(md) {
-            let s = new_str_hash[import_state]();
+            let s = new_str_hash::<import_state>();
             e.mod_map.insert(i.id,
                              @{m: some(md),
                                index: index_mod(md),
@@ -188,9 +188,9 @@ fn map_crate(e: &@env, c: &@ast::crate) {
                                glob_imported_names: s});
           }
           ast::item_native_mod(nmd) {
-            let s = new_str_hash[import_state]();
+            let s = new_str_hash::<import_state>();
             e.mod_map.insert(i.id,
-                             @{m: none[ast::_mod],
+                             @{m: none::<ast::_mod>,
                                index: index_nmod(nmd),
                                mutable glob_imports: ~[],
                                glob_imported_names: s});
@@ -203,7 +203,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
     let v_link_glob =
         @{visit_view_item: bind link_glob(e, _, _, _),
           visit_item: visit_item_with_scope
-             with *visit::default_visitor[scopes]()};
+             with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_link_glob));
     fn link_glob(e: @env, vi: &@ast::view_item, sc: &scopes, v: &vt<scopes>) {
@@ -387,7 +387,7 @@ fn visit_arm_with_scope(a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
 fn visit_expr_with_scope(x: &@ast::expr, sc: &scopes, v: &vt<scopes>) {
     alt x.node {
       ast::expr_for(decl, coll, blk) | ast::expr_for_each(decl, coll, blk) {
-        let new_sc = cons[scope](scope_loop(decl), @sc);
+        let new_sc = cons::<scope>(scope_loop(decl), @sc);
         v.visit_expr(coll, sc, v);
         v.visit_local(decl, new_sc, v);
         v.visit_block(blk, new_sc, v);
@@ -684,7 +684,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
             }
           }
         }
-        ret none[def];
+        ret none::<def>;
     }
     let left_fn = false;
     // Used to determine whether obj fields are in scope
@@ -692,7 +692,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
     let left_fn_level2 = false;
     while true {
         alt { sc } {
-          nil. { ret none[def]; }
+          nil. { ret none::<def>; }
           cons(hd, tl) {
             let fnd = in_scope(e, sp, name, hd, ns);
             if !is_none(fnd) {
@@ -734,7 +734,7 @@ fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
         if str::eq(tp.ident, name) { ret some(ast::def_ty_arg(i,tp.kind)); }
         i += 1u;
     }
-    ret none[def];
+    ret none::<def>;
 }
 
 fn lookup_in_pat(name: &ident, pat: &@ast::pat) -> option::t<def_id> {
@@ -758,10 +758,10 @@ fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
                 ret some(ast::def_arg(local_def(a.id)));
             }
         }
-        ret none[def];
+        ret none::<def>;
       }
       ns_type. { ret lookup_in_ty_params(name, ty_params); }
-      _ { ret none[def]; }
+      _ { ret none::<def>; }
     }
 }
 
@@ -774,10 +774,10 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
                 ret some(ast::def_obj_field(local_def(f.id)));
             }
         }
-        ret none[def];
+        ret none::<def>;
       }
       ns_type. { ret lookup_in_ty_params(name, ty_params); }
-      _ { ret none[def]; }
+      _ { ret none::<def>; }
     }
 }
 
@@ -835,7 +835,7 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
           _ { }
         }
     }
-    ret none[def];
+    ret none::<def>;
 }
 
 fn found_def_item(i: &@ast::item, ns: namespace) -> option::t<def> {
@@ -880,7 +880,7 @@ fn found_def_item(i: &@ast::item, ns: namespace) -> option::t<def> {
       }
       _ { }
     }
-    ret none[def];
+    ret none::<def>;
 }
 
 fn lookup_in_mod_strict(e: &env, sc: &scopes, m: def, sp: &span, name: &ident,
@@ -929,7 +929,7 @@ fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
         ret lookup_import(e, local_def(id), ns);
       }
       ast::view_item_import_glob(_, defid) {
-        ret none[def]; //will be handled in the fallback glob pass
+        ret none::<def>; //will be handled in the fallback glob pass
 
       }
     }
@@ -959,7 +959,7 @@ fn lookup_in_local_mod(e: &env, node_id: node_id, sp: &span, id: &ident,
     if dr == outside && !ast::is_exported(id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
 
-        ret none[def]; // name is not visible
+        ret none::<def>; // name is not visible
 
     }
     alt info.index.find(id) {
@@ -1027,7 +1027,7 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
     alt info.glob_imported_names.get(id) {
       todo(_, _) { e.sess.bug("Shouldn't've put a todo in."); }
       resolving(sp) {
-        ret none[def]; //circularity is okay in import globs
+        ret none::<def>; //circularity is okay in import globs
 
       }
       resolved(val, typ, md) {
@@ -1052,7 +1052,7 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
                 let vid = variants.(variant_idx).node.id;
                 ret some(ast::def_variant(local_def(item.id),
                                           local_def(vid)));
-            } else { ret none[def]; }
+            } else { ret none::<def>; }
           }
         }
       }
@@ -1072,7 +1072,7 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
       }
       _ { }
     }
-    ret none[def];
+    ret none::<def>;
 }
 
 
@@ -1080,13 +1080,13 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
 fn add_to_index(index: &hashmap<ident, list<mod_index_entry>>, id: &ident,
                 ent: &mod_index_entry) {
     alt index.find(id) {
-      none. { index.insert(id, cons(ent, @nil[mod_index_entry])); }
+      none. { index.insert(id, cons(ent, @nil::<mod_index_entry>)); }
       some(prev) { index.insert(id, cons(ent, @prev)); }
     }
 }
 
 fn index_mod(md: &ast::_mod) -> mod_index {
-    let index = new_str_hash[list<mod_index_entry>]();
+    let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
           ast::view_item_import(ident, _, _) | ast::view_item_use(ident, _, _)
@@ -1121,7 +1121,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
 }
 
 fn index_nmod(md: &ast::native_mod) -> mod_index {
-    let index = new_str_hash[list<mod_index_entry>]();
+    let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
           ast::view_item_use(ident, _, _) | ast::view_item_import(ident, _, _)
@@ -1163,7 +1163,7 @@ fn lookup_external(e: &env, cnum: int, ids: &[ident], ns: namespace) ->
         e.ext_map.insert(ast::def_id_of_def(d), ids);
         if ns == ns_for_def(d) { ret some(d); }
     }
-    ret none[def];
+    ret none::<def>;
 }
 
 

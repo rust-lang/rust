@@ -1303,7 +1303,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
        ValueRef {
         assert (!*terminated);
         let phi = llvm::LLVMBuildPhi(B, Ty, str::buf(""));
-        assert (vec::len[ValueRef](vals) == vec::len[BasicBlockRef](bbs));
+        assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
         llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
                               vec::len(vals));
         ret phi;
@@ -1311,7 +1311,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
 
     fn AddIncomingToPhi(phi: ValueRef, vals: &[ValueRef],
                         bbs: &[BasicBlockRef]) {
-        assert (vec::len[ValueRef](vals) == vec::len[BasicBlockRef](bbs));
+        assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
         llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
                               vec::len(vals));
     }
@@ -1440,7 +1440,7 @@ obj type_names(type_names: std::map::hashmap<TypeRef, str>,
 }
 
 fn mk_type_names() -> type_names {
-    let nt = std::map::new_str_hash[TypeRef]();
+    let nt = std::map::new_str_hash::<TypeRef>();
 
     fn hash(t: &TypeRef) -> uint { ret t as uint; }
 
@@ -1448,7 +1448,7 @@ fn mk_type_names() -> type_names {
 
     let hasher: std::map::hashfn<TypeRef> = hash;
     let eqer: std::map::eqfn<TypeRef> = eq;
-    let tn = std::map::mk_hashmap[TypeRef, str](hasher, eqer);
+    let tn = std::map::mk_hashmap::<TypeRef, str>(hasher, eqer);
 
     ret type_names(tn, nt);
 }
@@ -1503,7 +1503,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
-        let args: [TypeRef] = vec::init_elt[TypeRef](0 as TypeRef, n_args);
+        let args: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_args);
         llvm::LLVMGetParamTypes(ty, vec::to_ptr(args));
         s += tys_str(names, outer, args);
         s += ") -> ";
@@ -1515,7 +1515,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
-        let elts: [TypeRef] = vec::init_elt[TypeRef](0 as TypeRef, n_elts);
+        let elts: [TypeRef] = vec::init_elt::<TypeRef>(0 as TypeRef, n_elts);
         llvm::LLVMGetStructElementTypes(ty, vec::to_ptr(elts));
         s += tys_str(names, outer, elts);
         s += "}";
@@ -1534,7 +1534,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
         for tout: TypeRef in outer0 {
             i += 1u;
             if tout as int == ty as int {
-                let n: uint = vec::len[TypeRef](outer0) - i;
+                let n: uint = vec::len::<TypeRef>(outer0) - i;
                 ret "*\\" + std::int::str(n as int);
             }
         }

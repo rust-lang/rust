@@ -71,7 +71,7 @@ fn parse_constrs(st: @pstate, sd: str_def) -> [@ty::constr] {
         do  {
             next(st);
             let one: @ty::constr =
-                parse_constr[uint](st, sd, parse_constr_arg);
+                parse_constr::<uint>(st, sd, parse_constr_arg);
             rslt += ~[one];
         } while peek(st) as char == ';'
       }
@@ -88,7 +88,7 @@ fn parse_ty_constrs(st: @pstate, sd: str_def) -> [@ty::type_constr] {
         do  {
             next(st);
             let one: @ty::type_constr =
-                parse_constr[path](st, sd, parse_ty_constr_arg);
+                parse_constr::<path>(st, sd, parse_ty_constr_arg);
             rslt += ~[one];
         } while peek(st) as char == ';'
       }
@@ -406,14 +406,14 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
 // Rust metadata parsing
 fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let colon_idx = 0u;
-    let len = vec::len[u8](buf);
+    let len = vec::len::<u8>(buf);
     while colon_idx < len && buf.(colon_idx) != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
         log_err "didn't find ':' when parsing def id";
         fail;
     }
-    let crate_part = vec::slice[u8](buf, 0u, colon_idx);
-    let def_part = vec::slice[u8](buf, colon_idx + 1u, len);
+    let crate_part = vec::slice::<u8>(buf, 0u, colon_idx);
+    let def_part = vec::slice::<u8>(buf, colon_idx + 1u, len);
 
     let crate_part_vec = ~[];
     let def_part_vec = ~[];

@@ -250,7 +250,7 @@ type fn_ctxt = {
 
     // For convenience, a vector of the incoming tydescs for each of
     // this functions type parameters, fetched via llvm::LLVMGetParam.
-    // For example, for a function foo[A, B, C](), lltydescs contains
+    // For example, for a function foo::<A, B, C>(), lltydescs contains
     // the ValueRefs for the tydescs for A, B, and C.
     mutable lltydescs: [ValueRef],
 
@@ -510,7 +510,7 @@ fn T_size_t() -> TypeRef {
 
 fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     ret llvm::LLVMFunctionType(output, std::vec::to_ptr(inputs),
-                               std::vec::len[TypeRef](inputs), False);
+                               std::vec::len::<TypeRef>(inputs), False);
 }
 
 fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
@@ -570,9 +570,9 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        std::vec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
+        std::vec::init_elt::<TypeRef>(T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
-                                    std::vec::to_ptr[TypeRef](tydesc_elts));
+                                    std::vec::to_ptr::<TypeRef>(tydesc_elts));
     let t = llvm::LLVMGetElementType(tydesc_elts.(field));
     ret t;
 }
@@ -742,7 +742,7 @@ fn T_opaque_tag_ptr(tn: &type_names) -> TypeRef {
 }
 
 fn T_captured_tydescs(cx: &crate_ctxt, n: uint) -> TypeRef {
-    ret T_struct(std::vec::init_elt[TypeRef](T_ptr(cx.tydesc_type), n));
+    ret T_struct(std::vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
 }
 
 fn T_obj_ptr(cx: &crate_ctxt, n_captured_tydescs: uint) -> TypeRef {

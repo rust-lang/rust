@@ -16,7 +16,7 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
       ast::expr_vec(elts, _, _) { elts }
       _ { cx.span_fatal(sp, "#env requires arguments of the form `[...]`.") }
     };
-    if vec::len[@ast::expr](args) != 1u {
+    if vec::len::<@ast::expr>(args) != 1u {
         cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an

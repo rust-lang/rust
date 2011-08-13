@@ -167,7 +167,7 @@ fn acumm_bindings(cx: &ext_ctxt, b_dest: &bindings, b_src: &bindings) { }
 
 fn pattern_to_selectors(cx: &ext_ctxt, e: @expr) -> binders {
     let res: binders =
-        {real_binders: new_str_hash[selector](),
+        {real_binders: new_str_hash::<selector>(),
          mutable literal_ast_matchers: ~[]};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
@@ -183,7 +183,7 @@ bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
 fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
-    let res = new_str_hash[arb_depth<matchable>]();
+    let res = new_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for sel: selector in b.literal_ast_matchers {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
@@ -262,7 +262,7 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: &bindings, e: @expr) -> ident {
-    let idents: hashmap<ident, ()> = new_str_hash[()]();
+    let idents: hashmap<ident, ()> = new_str_hash::<()>();
     fn mark_ident(i: &ident, fld: ast_fold, b: &bindings,
                   idents: &hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }

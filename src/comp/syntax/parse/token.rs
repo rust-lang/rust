@@ -153,12 +153,12 @@ fn to_str(r: lexer::reader, t: token) -> str {
         ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
       }
       LIT_MACH_FLOAT(tm, s) {
-        ret interner::get[str](*r.get_interner(), s) + "_" +
+        ret interner::get::<str>(*r.get_interner(), s) + "_" +
                 ty_mach_to_str(tm);
       }
-      LIT_FLOAT(s) { ret interner::get[str](*r.get_interner(), s); }
+      LIT_FLOAT(s) { ret interner::get::<str>(*r.get_interner(), s); }
       LIT_STR(s) { // FIXME: escape.
-        ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
+        ret "\"" + interner::get::<str>(*r.get_interner(), s) + "\"";
       }
       LIT_CHAR(c) {
         // FIXME: escape.
@@ -171,7 +171,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
 
       /* Name components */
       IDENT(s, _) {
-        ret interner::get[str](*r.get_interner(), s);
+        ret interner::get::<str>(*r.get_interner(), s);
       }
       IDX(i) { ret "_" + int::to_str(i, 10u); }
       UNDERSCORE. { ret "_"; }

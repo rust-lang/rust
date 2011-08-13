@@ -75,7 +75,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
         let v: @mutable [node_id] = @mutable ~[];
         let fake_fcx =
             {enclosing:
-                 {constrs: @new_def_hash[constraint](),
+                 {constrs: @new_def_hash::<constraint>(),
                   num_constraints: 0u,
                   cf: return,
                   // just bogus
@@ -115,7 +115,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
    the preconditions for <args>, and the postcondition in a to
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
-    if vec::len[@expr](args) > 0u {
+    if vec::len::<@expr>(args) > 0u {
         log "find_pre_post_exprs: oper =";
         log_expr(*args.(0));
     }
@@ -125,7 +125,7 @@ fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
     fn get_pp(ccx: crate_ctxt, e: &@expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = vec::map[@expr, pre_and_post](bind get_pp(fcx.ccx, _), args);
+    let pps = vec::map::<@expr, pre_and_post>(bind get_pp(fcx.ccx, _), args);
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
                      seq_postconds(fcx, vec::map(get_post, pps)));
@@ -509,7 +509,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
               postcondition: false_postcond(num_local_vars)};
         let g = bind combine_pp(antec_pp, fcx, _, _);
         let alts_overall_pp =
-            vec::foldl[pre_and_post, pre_and_post](g, e_pp, alt_pps);
+            vec::foldl::<pre_and_post, pre_and_post>(g, e_pp, alt_pps);
         set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
                          alts_overall_pp.postcondition);
       }
@@ -680,7 +680,7 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
     for s: @stmt in b.node.stmts { do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }
     let do_inner = bind do_inner_(fcx, _);
-    option::map[@expr, ()](do_inner, b.node.expr);
+    option::map::<@expr, ()>(do_inner, b.node.expr);
 
     let pps: [pre_and_post] = ~[];
     for s: @stmt in b.node.stmts { pps += ~[stmt_pp(fcx.ccx, *s)]; }

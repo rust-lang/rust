@@ -18,13 +18,13 @@ fn map_crate(c: &crate) -> map {
     // FIXME: This is using an adapter to convert the smallintmap
     // interface to the hashmap interface. It would be better to just
     // convert everything to use the smallintmap.
-    let map = new_smallintmap_int_adapter[ast_node]();
+    let map = new_smallintmap_int_adapter::<ast_node>();
 
     let v_map =
         @{visit_item: bind map_item(map, _, _, _),
           visit_native_item: bind map_native_item(map, _, _, _),
           visit_expr: bind map_expr(map, _, _, _)
-             with *visit::default_visitor[()]()};
+             with *visit::default_visitor::<()>()};
     visit::visit_crate(c, (), visit::mk_vt(v_map));
     ret map;
 }
@@ -110,7 +110,7 @@ fn new_smallintmap_adapter<@K,
         }
     }
 
-    let map = smallintmap::mk[V]();
+    let map = smallintmap::mk::<V>();
     ret adapter(map, key_idx, idx_key);
 }
 

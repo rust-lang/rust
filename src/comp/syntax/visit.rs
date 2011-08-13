@@ -36,20 +36,20 @@ type visitor<E> =
           fn(&_fn, &[ty_param], &span, &fn_ident, node_id, &E, &vt<E>) };
 
 fn default_visitor<E>() -> visitor<E> {
-    ret @{visit_mod: bind visit_mod[E](_, _, _, _),
-          visit_view_item: bind visit_view_item[E](_, _, _),
-          visit_native_item: bind visit_native_item[E](_, _, _),
-          visit_item: bind visit_item[E](_, _, _),
-          visit_local: bind visit_local[E](_, _, _),
-          visit_block: bind visit_block[E](_, _, _),
-          visit_stmt: bind visit_stmt[E](_, _, _),
-          visit_arm: bind visit_arm[E](_, _, _),
-          visit_pat: bind visit_pat[E](_, _, _),
-          visit_decl: bind visit_decl[E](_, _, _),
-          visit_expr: bind visit_expr[E](_, _, _),
-          visit_ty: bind visit_ty[E](_, _, _),
-          visit_constr: bind visit_constr[E](_, _, _, _, _),
-          visit_fn: bind visit_fn[E](_, _, _, _, _, _, _)};
+    ret @{visit_mod: bind visit_mod::<E>(_, _, _, _),
+          visit_view_item: bind visit_view_item::<E>(_, _, _),
+          visit_native_item: bind visit_native_item::<E>(_, _, _),
+          visit_item: bind visit_item::<E>(_, _, _),
+          visit_local: bind visit_local::<E>(_, _, _),
+          visit_block: bind visit_block::<E>(_, _, _),
+          visit_stmt: bind visit_stmt::<E>(_, _, _),
+          visit_arm: bind visit_arm::<E>(_, _, _),
+          visit_pat: bind visit_pat::<E>(_, _, _),
+          visit_decl: bind visit_decl::<E>(_, _, _),
+          visit_expr: bind visit_expr::<E>(_, _, _),
+          visit_ty: bind visit_ty::<E>(_, _, _),
+          visit_constr: bind visit_constr::<E>(_, _, _, _, _),
+          visit_fn: bind visit_fn::<E>(_, _, _, _, _, _, _)};
 }
 
 fn visit_crate<E>(c: &crate, e: &E, v: &vt<E>) {

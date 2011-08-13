@@ -672,7 +672,7 @@ fn parse_seq_lt_gt<T>(sep: option::t<token::token>, f: fn(&parser) -> T,
                       p: &parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, token::LT);
-    let result = parse_seq_to_before_gt[T](sep, f, p);
+    let result = parse_seq_to_before_gt::<T>(sep, f, p);
     let hi = p.get_hi_pos();
     expect_gt(p);
     ret spanned(lo, hi, result);
@@ -705,7 +705,7 @@ fn parse_seq<T>(bra: token::token, ket: token::token,
                 p: &parser) -> spanned<[T]> {
     let lo = p.get_lo_pos();
     expect(p, bra);
-    let result = parse_seq_to_before_end[T](ket, sep, f, p);
+    let result = parse_seq_to_before_end::<T>(ket, sep, f, p);
     let hi = p.get_hi_pos();
     p.bump();
     ret spanned(lo, hi, result);

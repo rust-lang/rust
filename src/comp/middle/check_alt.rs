@@ -5,7 +5,7 @@ fn check_crate(tcx: &ty::ctxt, crate: &@crate) {
     let v =
         @{visit_expr: bind check_expr(tcx, _, _, _),
           visit_local: bind check_local(tcx, _, _, _)
-          with *visit::default_visitor[()]()};
+          with *visit::default_visitor::<()>()};
     visit::visit_crate(*crate, (), visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
