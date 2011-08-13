@@ -2,6 +2,7 @@
 
 use std;
 import std::unsafe::reinterpret_cast;
+import std::task;
 
 fn test_nil() {
     assert (() == ());
@@ -82,8 +83,8 @@ fn test_ptr() {
 
 fn test_task() {
     fn f() { }
-    let t1 = spawn f();
-    let t2 = spawn f();
+    let t1 = task::_spawn(bind f());
+    let t2 = task::_spawn(bind f());
 
     assert t1 == t1;
     assert t1 != t2;

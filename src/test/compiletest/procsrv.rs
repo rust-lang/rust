@@ -6,14 +6,18 @@
 
 import std::option;
 import std::task;
+import std::task::task_id;
 import std::generic_os::setenv;
 import std::generic_os::getenv;
 import std::ivec;
 import std::os;
 import std::run;
-import std::unsafe;
 import std::io;
 import std::str;
+import std::comm::_chan;
+import std::comm::mk_port;
+import std::comm::_port;
+import std::comm::send;
 
 export handle;
 export mk;
@@ -22,47 +26,47 @@ export run;
 export close;
 export reqchan;
 
-type reqchan = chan[request];
+type reqchan = _chan[request];
 
-type handle = {task: option::t[task], chan: reqchan};
+type handle = {task: option::t[task_id], chan: reqchan};
 
 tag request {
-    exec(str, str, [str], chan[response]);
+    exec([u8], [u8], [[u8]], _chan[response]);
     stop;
 }
 
 type response = {pid: int, infd: int, outfd: int, errfd: int};
 
 fn mk() -> handle {
-    let setupport = port();
-    let task = spawn fn(setupchan: chan[chan[request]]) {
-        let reqport = port();
-        let reqchan = chan(reqport);
-        task::send(setupchan, task::clone_chan(reqchan));
+    let setupport = mk_port();
+    let task = task::_spawn(bind fn(setupchan: _chan[_chan[request]]) {
+        let reqport = mk_port();
+        let reqchan = reqport.mk_chan();
+        send(setupchan, reqchan);
         worker(reqport);
-    } (chan(setupport));
+    } (setupport.mk_chan()));
     ret {task: option::some(task),
-         chan: task::recv(setupport)
+         chan: setupport.recv()
         };
 }
 
 fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }
 
 fn close(handle: &handle) {
-    task::send(handle.chan, stop);
-    task::join(option::get(handle.task));
+    send(handle.chan, stop);
+    task::join_id(option::get(handle.task));
 }
 
 fn run(handle: &handle, lib_path: &str,
        prog: &str, args: &[str], input: &option::t[str]) ->
 {status: int, out: str, err: str} {
-    let p = port[response]();
-    let ch = chan(p);
-    task::send(handle.chan, exec(lib_path,
-                                 prog,
-                                 clone_ivecstr(args),
-                                 task::clone_chan(ch)));
-    let resp = task::recv(p);
+    let p = mk_port[response]();
+    let ch = p.mk_chan();
+    send(handle.chan, exec(str::bytes(lib_path),
+                           str::bytes(prog),
+                           clone_ivecstr(args),
+                           ch));
+    let resp = p.recv();
 
     writeclose(resp.infd, input);
     let output = readclose(resp.outfd);
@@ -95,7 +99,7 @@ fn readclose(fd: int) -> str {
     ret buf;
 }
 
-fn worker(p: port[request]) {
+fn worker(p: _port[request]) {
 
     // FIXME (787): If we declare this inside of the while loop and then
     // break out of it before it's ever initialized (i.e. we don't run
@@ -105,8 +109,7 @@ fn worker(p: port[request]) {
         lib_path: "",
         prog: "",
         args: ~[],
-        // This works because a NULL box is ignored during cleanup
-        respchan: unsafe::reinterpret_cast(0)
+        respchan: p.mk_chan()
     };
 
     while true {
@@ -121,12 +124,12 @@ fn worker(p: port[request]) {
             // put the entire alt in another block to make sure the exec
             // message goes out of scope. Seems like the scoping rules for
             // the alt discriminant are wrong.
-            alt task::recv(p) {
+            alt p.recv() {
               exec(lib_path, prog, args, respchan) {
                 {
-                    lib_path: clone_str(lib_path),
-                    prog: clone_str(prog),
-                    args: clone_ivecstr(args),
+                    lib_path: str::unsafe_from_bytes(lib_path),
+                    prog: str::unsafe_from_bytes(prog),
+                    args: clone_ivecu8str(args),
                     respchan: respchan
                 }
               }
@@ -156,11 +159,11 @@ fn worker(p: port[request]) {
             fail;
         }
 
-        task::send(execparms.respchan,
-                   {pid: pid,
-                    infd: pipe_in.out,
-                    outfd: pipe_out.in,
-                    errfd: pipe_err.in});
+        send(execparms.respchan,
+             {pid: pid,
+              infd: pipe_in.out,
+              outfd: pipe_out.in,
+              errfd: pipe_err.in});
     }
 }
 
@@ -181,19 +184,18 @@ fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 
 fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
-fn clone_str(s: &str) -> str {
-    let new = s + "";
-    // new should be a different pointer
-    let sptr: int = unsafe::reinterpret_cast(s);
-    let newptr: int = unsafe::reinterpret_cast(new);
-    assert sptr != newptr;
-    new
+fn clone_ivecstr(v: &[str]) -> [[u8]] {
+    let r = [];
+    for t: str in ivec::slice(v, 0u, ivec::len(v)) {
+        r += [str::bytes(t)];
+    }
+    ret r;
 }
 
-fn clone_ivecstr(v: &[str]) -> [str] {
-    let r = ~[];
-    for t: str in ivec::slice(v, 0u, ivec::len(v)) {
-        r += ~[clone_str(t)];
+fn clone_ivecu8str(v: &[[u8]]) -> [str] {
+    let r = [];
+    for t in ivec::slice(v, 0u, ivec::len(v)) {
+        r += [str::unsafe_from_bytes(t)];
     }
     ret r;
 }

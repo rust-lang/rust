@@ -43,9 +43,12 @@ fn yield() { ret rustrt::task_yield(); }
 
 tag task_result { tr_success; tr_failure; }
 
+// FIXME: Re-enable this once the task type is removed from the compiler.
+/*
 fn join(t: task) -> task_result {
     join_id(cast(t))
 }
+*/
 
 fn join_id(t : task_id) -> task_result {
     alt rustrt::task_join(t) { 0 { tr_success } _ { tr_failure } }

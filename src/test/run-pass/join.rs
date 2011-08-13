@@ -5,10 +5,10 @@ use std;
 import std::task::*;
 
 fn main() {
-    let other = spawn child();
+    let other = _spawn(bind child());
     log_err "1";
     yield();
-    join(other);
+    join_id(other);
     log_err "3";
 }
 

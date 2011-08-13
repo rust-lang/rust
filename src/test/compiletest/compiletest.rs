@@ -5,6 +5,13 @@ import std::fs;
 import std::str;
 import std::ivec;
 import std::task;
+import std::task::task_id;
+
+import std::comm;
+import std::comm::_port;
+import std::comm::_chan;
+import std::comm::send;
+import std::comm::mk_port;
 
 import common::cx;
 import common::config;
@@ -116,11 +123,11 @@ fn test_opts(config: &config) -> test::test_opts {
 }
 
 type tests_and_conv_fn =
-    {tests: [test::test_desc], to_task: fn(&fn() ) -> task };
+    {tests: [test::test_desc], to_task: fn(&fn() ) -> task_id };
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt("making tests from %s", cx.config.src_base);
-    let configport = port[str]();
+    let configport = mk_port[[u8]]();
     let tests = ~[];
     for file: str  in fs::list_dir(cx.config.src_base) {
         log #fmt("inspecting file %s", file);
@@ -153,11 +160,11 @@ fn is_test(config: &config, testfile: &str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: &cx, testfile: &str, configport: &port[str]) ->
+fn make_test(cx: &cx, testfile: &str, configport: &_port[[u8]]) ->
    test::test_desc {
     {name: make_test_name(cx.config, testfile),
-     fn: make_test_closure(testfile, chan(configport)),
-            ignore: header::is_test_ignored(cx.config, testfile)}
+     fn: make_test_closure(testfile, configport.mk_chan()),
+     ignore: header::is_test_ignored(cx.config, testfile)}
 }
 
 fn make_test_name(config: &config, testfile: &str) -> str {
@@ -183,12 +190,13 @@ up. Then we'll spawn that data into another task and return the task.
 Really convoluted. Need to think up of a better definition for tests.
 */
 
-fn make_test_closure(testfile: &str, configchan: chan[str]) -> test::test_fn {
+fn make_test_closure(testfile: &str, configchan: _chan[[u8]]) -> test::test_fn
+{
     bind send_config(testfile, configchan)
 }
 
-fn send_config(testfile: str, configchan: chan[str]) {
-    task::send(configchan, testfile);
+fn send_config(testfile: str, configchan: _chan[[u8]]) {
+    send(configchan, str::bytes(testfile));
 }
 
 /*
@@ -201,24 +209,25 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: port[str], testfn: &fn() ) -> task {
+fn closure_to_task(cx: cx, configport: _port[[u8]], testfn: &fn() ) -> task_id
+{
     testfn();
-    let testfile = task::recv(configport);
-    ret spawn run_test_task(cx.config.compile_lib_path,
+    let testfile = configport.recv();
+    ret task::_spawn(bind run_test_task(cx.config.compile_lib_path,
                             cx.config.run_lib_path, cx.config.rustc_path,
                             cx.config.src_base, cx.config.build_base,
                             cx.config.stage_id, mode_str(cx.config.mode),
                             cx.config.run_ignored, opt_str(cx.config.filter),
                             opt_str(cx.config.runtool),
                             opt_str(cx.config.rustcflags), cx.config.verbose,
-                            task::clone_chan(cx.procsrv.chan), testfile);
+                            cx.procsrv.chan, testfile));
 }
 
 fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,
                  src_base: str, build_base: str, stage_id: str, mode: str,
                  run_ignored: bool, opt_filter: str, opt_runtool: str,
                  opt_rustcflags: str, verbose: bool,
-                 procsrv_chan: procsrv::reqchan, testfile: str) {
+                 procsrv_chan: procsrv::reqchan, testfile: -[u8]) {
 
     let config =
         {compile_lib_path: compile_lib_path,

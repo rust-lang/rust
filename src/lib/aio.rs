@@ -1,4 +1,5 @@
 import str::sbuf;
+import task;
 
 native "rust" mod rustrt {
     type socket;
@@ -102,7 +103,7 @@ fn server_task(ip: str, portnum: int, events: chan[server_event],
           log "client was actually null, returning";
           ret;
         } else {
-          spawn accept_task(client, events);
+          task::_spawn(bind accept_task(client, events));
         }
     }
 }
@@ -126,10 +127,10 @@ fn request_task(c: chan[ctx]) {
                 ret;
             }
             connect(remote(ip,portnum),client) {
-                spawn connect_task(ip, portnum, client);
+                task::_spawn(bind connect_task(ip, portnum, client));
             }
             serve(ip,portnum,events,server) {
-                spawn server_task(ip, portnum, events, server);
+                task::_spawn(bind server_task(ip, portnum, events, server));
             }
             write(socket,v,status) {
                 rustrt::aio_writedata(socket,
@@ -155,19 +156,19 @@ fn iotask(c: chan[ctx]) {
 
     log "io task init";
     // Spawn our request task
-    let reqtask: task = spawn request_task(c);
+    let reqtask = task::_spawn(bind request_task(c));
 
     log "uv run task init";
     // Enter IO loop. This never returns until aio_stop is called.
     rustrt::aio_run();
     log "waiting for request task to finish";
 
-    task::join(reqtask);
+    task::join_id(reqtask);
 }
 
 fn new() -> ctx {
     let p: port[ctx] = port();
-    let t: task = spawn iotask(chan(p));
+    let t = task::_spawn(bind iotask(chan(p)));
     let cx: ctx;
     p |> cx;
     ret cx;

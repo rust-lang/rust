@@ -3,14 +3,18 @@
 // xfail-stage3
 // -*- rust -*-
 
-fn f(c: chan[int]) {
+use std;
+import std::comm;
+import std::task;
+
+fn f(c: comm::_chan[int]) {
     type t = {_0: int, _1: int, _2: int};
 
     // Allocate a box.
     let x: @t = @{_0: 1, _1: 2, _2: 3};
 
     // Signal parent that we've allocated a box.
-    c <| 1;
+    comm::send(c, 1);
 
 
     while true {
@@ -21,18 +25,17 @@ fn f(c: chan[int]) {
         // sending to the channel are never received
         // by the parent, therefore this test cases drops
         // messages on the floor
-        c <| 1;
+        comm::send(c, 1);
     }
 }
 
-
 fn main() {
-    let p: port[int] = port();
-    spawn f(chan(p));
+    let p = comm::mk_port();
+    task::_spawn(bind f(p.mk_chan()));
     let i: int;
 
     // synchronize on event from child.
-    p |> i;
+    i = p.recv();
 
     log "parent exiting, killing child";
 }

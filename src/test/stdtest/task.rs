@@ -7,22 +7,22 @@ fn test_sleep() { task::sleep(1000000u); }
 #[test]
 fn test_unsupervise() {
     fn f() { task::unsupervise(); fail; }
-    spawn f();
+    task::_spawn(bind f());
 }
 
 #[test]
 fn test_join() {
     fn winner() { }
 
-    let wintask = spawn winner();
+    let wintask = task::_spawn(bind winner());
 
-    assert (task::join(wintask) == task::tr_success);
+    assert (task::join_id(wintask) == task::tr_success);
 
     fn failer() { task::unsupervise(); fail; }
 
-    let failtask = spawn failer();
+    let failtask = task::_spawn(bind failer());
 
-    assert (task::join(failtask) == task::tr_failure);
+    assert (task::join_id(failtask) == task::tr_failure);
 }
 
 #[test]

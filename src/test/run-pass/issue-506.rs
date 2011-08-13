@@ -2,9 +2,15 @@
   A reduced test case for Issue #506, provided by Rob Arnold.
 */
 
+use std;
+import std::task;
+
 native "rust" mod rustrt {
     fn task_yield();
 }
 
-fn main() { spawn rustrt::task_yield(); }
+fn yield_wrap() {
+    rustrt::task_yield();
+}
 
+fn main() { task::_spawn(bind yield_wrap()); }

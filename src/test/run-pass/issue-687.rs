@@ -1,49 +1,52 @@
 use std;
 import std::ivec;
+import std::task;
+import std::comm;
+import std::comm::_chan;
+import std::comm::_port;
+import std::comm::mk_port;
+import std::comm::send;
 
 tag msg { closed; received([u8]); }
 
-fn producer(c: chan[[u8]]) {
-    c <| ~[1u8, 2u8, 3u8, 4u8];
-    let empty: [u8] = ~[];
-    c <| empty;
+fn producer(c: _chan[[u8]]) {
+    send(c, [1u8, 2u8, 3u8, 4u8]);
+    let empty: [u8] = [];
+    send(c, empty);
 }
 
-fn packager(cb: chan[chan[[u8]]], msg: chan[msg]) {
-    let p: port[[u8]] = port();
-    cb <| chan(p);
+fn packager(cb: _chan[_chan[[u8]]], msg: _chan[msg]) {
+    let p: _port[[u8]] = mk_port();
+    send(cb, p.mk_chan());
     while true {
         log "waiting for bytes";
-        let data: [u8];
-        p |> data;
+        let data = p.recv();
         log "got bytes";
-        if ivec::len[u8](data) == 0u {
+        if ivec::len(data) == 0u {
             log "got empty bytes, quitting";
             break;
         }
         log "sending non-empty buffer of length";
-        log ivec::len[u8](data);
-        msg <| received(data);
+        log ivec::len(data);
+        send(msg, received(data));
         log "sent non-empty buffer";
     }
     log "sending closed message";
-    msg <| closed;
+    send(msg, closed);
     log "sent closed message";
 }
 
 fn main() {
-    let p: port[msg] = port();
-    let recv_reader: port[chan[[u8]]] = port();
-    let pack = spawn packager(chan(recv_reader), chan(p));
+    let p: _port[msg] = mk_port();
+    let recv_reader: _port[_chan[[u8]]] = mk_port();
+    let pack = task::_spawn(bind packager(recv_reader.mk_chan(),
+                                          p.mk_chan()));
 
-    let source_chan: chan[[u8]];
-    recv_reader |> source_chan;
-    let prod: task = spawn producer(source_chan);
-
+    let source_chan: _chan[[u8]] = recv_reader.recv();
+    let prod = task::_spawn(bind producer(source_chan));
 
     while true {
-        let msg: msg;
-        p |> msg;
+        let msg = p.recv();
         alt msg {
           closed. { log "Got close message"; break; }
           received(data) {

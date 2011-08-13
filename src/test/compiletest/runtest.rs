@@ -18,7 +18,8 @@ import util::logv;
 
 export run;
 
-fn run(cx: &cx, testfile: &str) {
+fn run(cx: &cx, _testfile: -[u8]) {
+    let testfile = str::unsafe_from_bytes(_testfile);
     test::configure_test_task();
     if (cx.config.verbose) {
         // We're going to be dumping a lot of info. Start on a new line.

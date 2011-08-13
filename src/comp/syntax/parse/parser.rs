@@ -475,8 +475,10 @@ fn parse_ty(p: &parser) -> @ast::ty {
         t = ast::ty_istr;
     } else if (eat_word(p, "char")) {
         t = ast::ty_char;
+/*
     } else if (eat_word(p, "task")) {
         t = ast::ty_task;
+*/
     } else if (eat_word(p, "i8")) {
         t = ast::ty_machine(ast::ty_i8);
     } else if (eat_word(p, "i16")) {
@@ -804,8 +806,10 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ret parse_do_while_expr(p);
     } else if (eat_word(p, "alt")) {
         ret parse_alt_expr(p);
+/*
     } else if (eat_word(p, "spawn")) {
         ret parse_spawn_expr(p);
+*/
     } else if (eat_word(p, "fn")) {
         ret parse_fn_expr(p, ast::proto_fn);
     } else if (eat_word(p, "block")) {

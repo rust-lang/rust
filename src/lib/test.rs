@@ -4,6 +4,7 @@
 // while providing a base that other test frameworks may build off of.
 
 import generic_os::getenv;
+import task::task_id;
 
 export test_name;
 export test_fn;
@@ -94,7 +95,7 @@ tag test_result { tr_ok; tr_failed; tr_ignored; }
 // In cases where test functions and closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task = fn(&fn()) -> task ;
+type test_to_task = fn(&fn()) -> task_id ;
 
 // A simple console test runner
 fn run_tests_console(opts: &test_opts, tests: &[test_desc]) -> bool {
@@ -318,12 +319,12 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
         ret {test: test,
              fnref: fnref,
              wait:
-                 bind fn (test_task: &task) -> test_result {
-                          alt task::join(test_task) {
-                            task::tr_success. { tr_ok }
-                            task::tr_failure. { tr_failed }
-                          }
-                      }(test_task)};
+             bind fn (test_task: task_id) -> test_result {
+                 alt task::join_id(test_task) {
+                   task::tr_success. { tr_ok }
+                   task::tr_failure. { tr_failed }
+                 }
+             }(test_task)};
     } else {
         ret {test: test,
              fnref: fnref,
@@ -335,14 +336,14 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
 // But, at least currently, functions can't be used as spawn arguments so
 // we've got to treat our test functions as unsafe pointers.  This function
 // only works with functions that don't contain closures.
-fn default_test_to_task(f: &fn()) -> task {
+fn default_test_to_task(f: &fn()) -> task_id {
     fn run_task(fptr: *mutable fn() ) {
         configure_test_task();
         // Run the test
         (*fptr)()
     }
     let fptr = ptr::addr_of(f);
-    ret spawn run_task(fptr);
+    ret task::_spawn(bind run_task(fptr));
 }
 
 // Call from within a test task to make sure it's set up correctly

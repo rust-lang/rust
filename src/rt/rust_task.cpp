@@ -107,12 +107,19 @@ struct spawn_args {
                        uintptr_t, uintptr_t);
 };
 
+struct rust_closure {
+    intptr_t ref_count;
+    type_desc *td;
+};
+
 extern "C" CDECL
-void task_exit(intptr_t *env, int rval, rust_task *task) {
+void task_exit(rust_closure *env, int rval, rust_task *task) {
     LOG(task, task, "task exited with value %d", rval);
     if(env) {
         // free the environment.
-        I(task->sched, 1 == *env); // the ref count better be 1
+        I(task->sched, 1 == env->ref_count); // the ref count better be 1
+        //env->td->drop_glue(NULL, task, NULL, env->td->first_param, env);
+        //env->td->free_glue(NULL, task, NULL, env->td->first_param, env);
         task->free(env);
     }
     task->die();

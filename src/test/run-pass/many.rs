@@ -1,20 +1,24 @@
 // -*- rust -*-
 
-fn sub(parent: chan[int], id: int) {
+use std;
+import std::task;
+import std::comm;
+
+fn sub(parent: comm::_chan[int], id: int) {
   if (id == 0) {
-    parent <| 0;
+      comm::send(parent, 0);
   } else {
-    let p: port[int] = port();
-    let child = spawn sub(chan(p), id-1);
-    let y: int; p |> y;
-    parent <| y + 1;
+      let p = comm::mk_port();
+      let child = task::_spawn(bind sub(p.mk_chan(), id-1));
+      let y = p.recv();
+      comm::send(parent, y + 1);
   }
 }
 
 fn main() {
-  let p: port[int] = port();
-  let child = spawn sub(chan(p), 200);
-  let y: int; p |> y;
+  let p = comm::mk_port();
+  let child = task::_spawn(bind sub(p.mk_chan(), 200));
+  let y = p.recv();
   log "transmission complete";
   log y;
   assert (y == 200);

@@ -1,23 +1,29 @@
 // -*- rust -*-
 
-fn a(c: chan[int]) { c <| 10; }
+use std;
+import std::comm::_chan;
+import std::comm::mk_port;
+import std::comm::send;
+import std::task;
+
+fn a(c: _chan[int]) { send(c, 10); }
 
 fn main() {
-    let p: port[int] = port();
-    spawn a(chan(p));
-    spawn b(chan(p));
+    let p = mk_port();
+    task::_spawn(bind a(p.mk_chan()));
+    task::_spawn(bind b(p.mk_chan()));
     let n: int = 0;
-    p |> n;
-    p |> n;
+    n = p.recv();
+    n = p.recv();
     //    log "Finished.";
 }
 
-fn b(c: chan[int]) {
+fn b(c: _chan[int]) {
     //    log "task b0";
     //    log "task b1";
     //    log "task b2";
     //    log "task b3";
     //    log "task b4";
     //    log "task b5";
-    c <| 10;
+    send(c, 10);
 }

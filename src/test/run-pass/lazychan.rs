@@ -1,20 +1,24 @@
 // -*- rust -*-
 
+use std;
+import std::task;
+import std::comm::*;
+
 fn main() {
-    let p: port[int] = port();
+    let p = mk_port();
     let y: int;
 
-    spawn child(chan(p));
-    p |> y;
+    task::_spawn(bind child(p.mk_chan()));
+    y = p.recv();
     log "received 1";
     log y;
     assert (y == 10);
 
-    spawn child(chan(p));
-    p |> y;
+    task::_spawn(bind child(p.mk_chan()));
+    y = p.recv();
     log "received 2";
     log y;
     assert (y == 10);
 }
 
-fn child(c: chan[int]) { c <| 10; }
+fn child(c: _chan[int]) { send(c, 10); }
