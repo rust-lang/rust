@@ -744,11 +744,8 @@ fn mk_mac_expr(p: &parser, lo: uint, hi: uint, m: &ast::mac_) -> @ast::expr {
 fn parse_bottom_expr(p: &parser) -> @ast::expr {
     let lo = p.get_lo_pos();
     let hi = p.get_hi_pos();
-    // FIXME: can only remove this sort of thing when both typestate and
-    // alt-exhaustive-match checking are co-operating.
 
-    let lit = @spanned(lo, hi, ast::lit_nil);
-    let ex: ast::expr_ = ast::expr_lit(lit);
+    let ex: ast::expr_;
     if p.peek() == token::LPAREN {
         p.bump();
         alt p.peek() {
