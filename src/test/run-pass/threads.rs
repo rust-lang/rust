@@ -1,19 +1,18 @@
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
-
 // -*- rust -*-
 
+use std;
+import std::task;
+
 fn main() {
-  let int i = 10;
+  let i = 10;
   while (i > 0) {
-    spawn thread "child" child(i);
+    task::_spawn(bind child(i));
     i = i - 1;
   }
   log "main thread exiting";
 }
 
-fn child(int x) {
+fn child(x : int) {
   log x;
 }
 

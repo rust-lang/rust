@@ -20,13 +20,13 @@ fn supervisor() {
     // Unsupervise this task so the process doesn't return a failure status as
     // a result of the main task being killed.
     task::unsupervise();
-    let t = spawn supervised();
-    task::join(t);
+    let t = task::_spawn(bind supervised());
+    task::join_id(t);
 }
 
 fn main() {
-    let dom2 = spawn supervisor();
-    task::join(dom2);
+    let dom2 = task::_spawn(bind supervisor());
+    task::join_id(dom2);
 }
 
 // Local Variables:

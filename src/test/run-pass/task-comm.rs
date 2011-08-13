@@ -1,6 +1,11 @@
 use std;
 
 import std::task;
+import std::task::task_id;
+import std::comm;
+import std::comm::_chan;
+import std::comm::_port;
+import std::comm::send;
 
 fn main() {
     test00();
@@ -12,10 +17,10 @@ fn main() {
     test06();
 }
 
-fn test00_start(ch: chan[int], message: int, count: int) {
+fn test00_start(ch: _chan[int], message: int, count: int) {
     log "Starting test00_start";
     let i: int = 0;
-    while i < count { log "Sending Message"; ch <| message; i = i + 1; }
+    while i < count { log "Sending Message"; send(ch, message+0); i = i + 1; }
     log "Ending test00_start";
 }
 
@@ -24,53 +29,48 @@ fn test00() {
     let number_of_messages: int = 4;
     log "Creating tasks";
 
-    let po: port[int] = port();
-    let ch: chan[int] = chan(po);
+    let po = comm::mk_port();
+    let ch = po.mk_chan();
 
     let i: int = 0;
 
-    let tasks: [task] = ~[];
+    let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += ~[spawn test00_start(ch, i, number_of_messages)];
+        tasks += [task::_spawn(bind test00_start(ch, i, number_of_messages))];
     }
 
     let sum: int = 0;
-    for t: task  in tasks {
+    for t: task_id in tasks {
         i = 0;
         while i < number_of_messages {
-            let value: int;
-            po |> value;
-            sum += value;
+            sum += po.recv();
             i = i + 1;
         }
     }
 
-    for t: task  in tasks { task::join(t); }
+    for t: task_id  in tasks { task::join_id(t); }
 
     log "Completed: Final number is: ";
     assert (sum ==
-                number_of_messages *
-                    (number_of_tasks * number_of_tasks + number_of_tasks) /
-                    2);
+            number_of_messages *
+            (number_of_tasks * number_of_tasks + number_of_tasks) / 2);
 }
 
 fn test01() {
-    let p: port[int] = port();
+    let p = comm::mk_port();
     log "Reading from a port that is never written to.";
-    let value: int;
-    p |> value;
+    let value: int = p.recv();
     log value;
 }
 
 fn test02() {
-    let p: port[int] = port();
-    let c: chan[int] = chan(p);
+    let p = comm::mk_port();
+    let c = p.mk_chan();
     log "Writing to a local task channel.";
-    c <| 42;
+    send(c, 42);
     log "Reading from a local task port.";
-    let value: int;
-    p |> value;
+    let value: int = p.recv();
     log value;
 }
 
@@ -96,26 +96,26 @@ fn test04_start() {
 fn test04() {
     log "Spawning lots of tasks.";
     let i: int = 4;
-    while i > 0 { i = i - 1; spawn test04_start(); }
+    while i > 0 { i = i - 1; task::_spawn(bind test04_start()); }
     log "Finishing up.";
 }
 
-fn test05_start(ch: chan[int]) {
-    ch <| 10;
-    ch <| 20;
-    ch <| 30;
-    ch <| 30;
-    ch <| 30;
+fn test05_start(ch: _chan[int]) {
+    send(ch, 10);
+    send(ch, 20);
+    send(ch, 30);
+    send(ch, 30);
+    send(ch, 30);
 }
 
 fn test05() {
-    let po: port[int] = port();
-    let ch: chan[int] = chan(po);
-    spawn test05_start(ch);
+    let po = comm::mk_port();
+    let ch = po.mk_chan();
+    task::_spawn(bind test05_start(ch));
     let value: int;
-    po |> value;
-    po |> value;
-    po |> value;
+    value = po.recv();
+    value = po.recv();
+    value = po.recv();
     log value;
 }
 
@@ -132,12 +132,12 @@ fn test06() {
 
     let i: int = 0;
 
-    let tasks: [task] = ~[];
+    let tasks = [];
     while i < number_of_tasks {
-        i = i + 1; tasks += ~[spawn test06_start(i)]; }
+        i = i + 1; tasks += [task::_spawn(bind test06_start(i))]; }
 
 
-    for t: task  in tasks { task::join(t); }
+    for t: task_id  in tasks { task::join_id(t); }
 }
 
 
