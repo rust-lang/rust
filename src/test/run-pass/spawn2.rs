@@ -1,6 +1,9 @@
 // -*- rust -*-
 
-fn main() { spawn child(10, 20, 30, 40, 50, 60, 70, 80, 90); }
+use std;
+import std::task::_spawn;
+
+fn main() { _spawn(bind child(10, 20, 30, 40, 50, 60, 70, 80, 90)); }
 
 fn child(i1: int, i2: int, i3: int, i4: int, i5: int, i6: int, i7: int,
          i8: int, i9: int) {
