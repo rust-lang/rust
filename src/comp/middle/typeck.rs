@@ -2715,7 +2715,15 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
 
 fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
     alt ty::struct(tcx, a.ty) {
+      // FIXME: Remove after main takes only ivec
       ty::ty_vec(mt) {
+        if mt.mut != ast::imm { ret false; }
+        alt ty::struct(tcx, mt.ty) {
+          ty::ty_str. { ret true; }
+          _ { ret false; }
+        }
+      }
+      ty::ty_ivec(mt) {
         if mt.mut != ast::imm { ret false; }
         alt ty::struct(tcx, mt.ty) {
           ty::ty_str. { ret true; }

@@ -6345,27 +6345,152 @@ fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
       }
       _ { ccx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type!"); }
     }
-    let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
-    // Declare the function itself.
 
-    let s: str =
-        if is_main {
-            "_rust_main"
-        } else { mangle_internal_name_by_path(ccx, path) };
+    let s: str =  mangle_internal_name_by_path(ccx, path);
     let llfn: ValueRef = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
     // Declare the global constant pair that points to it.
 
     let ps: str = mangle_exported_name(ccx, path, node_type);
     register_fn_pair(ccx, ps, llfty, llfn, node_id);
+
+    let is_main: bool = is_main_name(path) && !ccx.sess.get_opts().library;
     if is_main {
-        if ccx.main_fn != none[ValueRef] {
-            ccx.sess.span_fatal(sp, "multiple 'main' functions");
-        }
-        llvm::LLVMSetLinkage(llfn,
-                             lib::llvm::LLVMExternalLinkage as llvm::Linkage);
-        ccx.main_fn = some(llfn);
+        create_main_wrapper(ccx, sp, llfn, node_type);
     }
 }
+
+fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
+                       main_llfn: ValueRef, main_node_type: ty::t) {
+
+    if ccx.main_fn != none[ValueRef] {
+        ccx.sess.span_fatal(sp, "multiple 'main' functions");
+    }
+
+    tag main_mode {
+        mm_nil;
+        mm_vec;
+        mm_ivec;
+    };
+
+    let main_mode = alt ty::struct(ccx.tcx, main_node_type) {
+      ty::ty_fn(_, args, _ ,_ ,_) {
+        if std::ivec::len(args) == 0u {
+            mm_nil
+        } else {
+            alt ty::struct(ccx.tcx, args.(0).ty) {
+              ty::ty_ivec(_) { mm_ivec }
+              ty::ty_vec(_) { mm_vec }
+            }
+        }
+      }
+    };
+
+    // Have to create two different main functions depending on whether
+    // main was declared to take vec or ivec
+    let llfn_vec = create_main_wrapper_vec(ccx, sp, main_llfn, main_mode);
+    let llfn_ivec = create_main_wrapper_ivec(ccx, sp, main_llfn, main_mode);
+    let takes_ivec = main_mode == mm_ivec;
+    // Create a global to tell main.ll which main we want to use
+    create_main_type_indicator(ccx, takes_ivec);
+    ccx.main_fn = takes_ivec ? some(llfn_ivec) : some(llfn_vec);
+
+    fn create_main_wrapper_vec(ccx: &@crate_ctxt,
+                               sp: &span,
+                               main_llfn: ValueRef,
+                               main_mode: main_mode) -> ValueRef {
+
+        let vecarg = {
+            mode: ty::mo_val,
+            ty: ty::mk_vec(ccx.tcx, {
+                ty: ty::mk_str(ccx.tcx),
+                mut: ast::imm
+            })
+        };
+        let llfty = type_of_fn(ccx, sp,
+                               ast::proto_fn,
+                               ~[vecarg],
+                               ty::mk_nil(ccx.tcx),
+                               0u);
+        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
+
+        let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
+        let bcx = new_top_block_ctxt(fcx);
+
+        if main_mode != mm_ivec {
+            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
+            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
+            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
+            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
+            let args = alt main_mode {
+              mm_nil. { ~[lloutputarg,
+                          lltaskarg,
+                          llenvarg] }
+              mm_vec. { ~[lloutputarg,
+                          lltaskarg,
+                          llenvarg,
+                          llargvarg] }
+            };
+            bcx.build.FastCall(main_llfn, args);
+        }
+        bcx.build.RetVoid();
+
+        let lltop = bcx.llbb;
+        finish_fn(fcx, lltop);
+
+        ret llfdecl;
+    }
+
+    fn create_main_wrapper_ivec(ccx: &@crate_ctxt,
+                                sp: &span,
+                                main_llfn: ValueRef,
+                                main_mode: main_mode) -> ValueRef {
+        let ivecarg = {
+            mode: ty::mo_val,
+            ty: ty::mk_ivec(ccx.tcx, {
+                ty: ty::mk_str(ccx.tcx),
+                mut: ast::imm
+            })
+        };
+        let llfty = type_of_fn(ccx, sp,
+                               ast::proto_fn,
+                               ~[ivecarg],
+                               ty::mk_nil(ccx.tcx),
+                               0u);
+        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main_ivec", llfty);
+
+        let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
+        let bcx = new_top_block_ctxt(fcx);
+
+        if main_mode == mm_ivec {
+            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
+            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
+            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
+            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
+            let args = ~[lloutputarg,
+                         lltaskarg,
+                         llenvarg,
+                         llargvarg];
+            bcx.build.FastCall(main_llfn, args);
+        }
+        bcx.build.RetVoid();
+
+        let lltop = bcx.llbb;
+        finish_fn(fcx, lltop);
+
+        ret llfdecl;
+    }
+
+    // FIXME: Remove after main takes only ivec
+    // Sets a global value hinting to the runtime whether main takes
+    // a vec or an ivec
+    fn create_main_type_indicator(ccx: &@crate_ctxt, takes_ivec: bool) {
+        let i = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
+                                    str::buf("_rust_main_is_ivec"));
+        llvm::LLVMSetInitializer(i, C_int(takes_ivec as int));
+        llvm::LLVMSetGlobalConstant(i, True);
+    }
+}
+
 
 // Create a closure: a pair containing (1) a ValueRef, pointing to where the
 // fn's definition is in the executable we're creating, and (2) a pointer to
