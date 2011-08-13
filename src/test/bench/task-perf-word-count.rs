@@ -22,38 +22,34 @@ import std::time;
 import std::u64;
 
 import std::task;
-import clone = std::task::clone_chan;
+import std::task::task_id;
+import std::comm;
+import std::comm::_chan;
+import std::comm::_port;
+import std::comm::mk_port;
+import std::comm::send;
 
 fn map(filename: str, emit: map_reduce::putter) {
-    // log_err "mapping " + filename;
     let f = io::file_reader(filename);
 
 
     while true {
         alt read_word(f) { some(w) { emit(w, 1); } none. { break; } }
     }
-    // log_err "done mapping " + filename;
 }
 
 fn reduce(word: str, get: map_reduce::getter) {
-    // log_err "reducing " + word;
     let count = 0;
 
 
     while true {
         alt get() {
           some(_) {
-            // log_err "received word " + word;
             count += 1;
           }
           none. { break }
         }
     }
-
-    // auto out = io::stdout();
-    // out.write_line(#fmt("%s: %d", word, count));
-
-    // log_err "reduce " + word + " done.";
 }
 
 mod map_reduce {
@@ -72,80 +68,66 @@ mod map_reduce {
     type reducer = fn(str, getter) ;
 
     tag ctrl_proto {
-        find_reducer([u8], chan[chan[reduce_proto]]);
+        find_reducer([u8], _chan[_chan[reduce_proto]]);
         mapper_done;
     }
 
     tag reduce_proto { emit_val(int); done; ref; release; }
 
-    fn start_mappers(ctrl: chan[ctrl_proto], inputs: &[str]) -> [task] {
-        let tasks = ~[];
-        // log_err "starting mappers";
+    fn start_mappers(ctrl: _chan[ctrl_proto], inputs: &[str]) -> [task_id] {
+        let tasks = [];
         for i: str  in inputs {
-            // log_err "starting mapper for " + i;
-            tasks += ~[spawn map_task(ctrl, i)];
+            tasks += ~[task::_spawn(bind map_task(ctrl, i))];
         }
-        // log_err "done starting mappers";
         ret tasks;
     }
 
-    fn map_task(ctrl: chan[ctrl_proto], input: str) {
+    fn map_task(ctrl: _chan[ctrl_proto], input: str) {
         // log_err "map_task " + input;
         let intermediates = map::new_str_hash();
 
-        fn emit(im: &map::hashmap[str, chan[reduce_proto]],
-                ctrl: chan[ctrl_proto], key: str, val: int) {
-            // log_err "emitting " + key;
+        fn emit(im: &map::hashmap[str, _chan[reduce_proto]],
+                ctrl: _chan[ctrl_proto], key: str, val: int) {
             let c;
             alt im.find(key) {
               some(_c) {
 
-                // log_err "reusing saved channel for " + key;
                 c = _c
               }
               none. {
-                // log_err "fetching new channel for " + key;
-                let p = port[chan[reduce_proto]]();
+                let p = mk_port[_chan[reduce_proto]]();
                 let keyi = str::bytes(key);
-                ctrl <| find_reducer(keyi, chan(p));
-                p |> c;
-                im.insert(key, clone(c));
-                c <| ref;
+                send(ctrl, find_reducer(keyi, p.mk_chan()));
+                c = p.recv();
+                im.insert(key, c);
+                send(c, ref);
               }
             }
-            c <| emit_val(val);
+            send(c, emit_val(val));
         }
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each kv: @{key: str, val: chan[reduce_proto]}  in
+        for each kv: @{key: str, val: _chan[reduce_proto]}  in
                  intermediates.items() {
-            // log_err "sending done to reducer for " + kv._0;
-            kv.val <| release;
+            send(kv.val, release);
         }
 
-        ctrl <| mapper_done;
-
-        // log_err "~map_task " + input;
+        send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: str, out: chan[chan[reduce_proto]]) {
-        // log_err "reduce_task " + key;
-        let p = port();
+    fn reduce_task(key: str, out: _chan[_chan[reduce_proto]]) {
+        let p = mk_port();
 
-        out <| chan(p);
+        send(out, p.mk_chan());
 
         let ref_count = 0;
         let is_done = false;
 
-        fn get(p: &port[reduce_proto], ref_count: &mutable int,
+        fn get(p: &_port[reduce_proto], ref_count: &mutable int,
                is_done: &mutable bool) -> option[int] {
             while !is_done || ref_count > 0 {
-                let m;
-                p |> m;
-
-
-                alt m {
+                alt p.recv() {
                   emit_val(v) {
                     // log_err #fmt("received %d", v);
                     ret some(v);
@@ -162,28 +144,24 @@ mod map_reduce {
         }
 
         reduce(key, bind get(p, ref_count, is_done));
-        // log_err "~reduce_task " + key;
     }
 
     fn map_reduce(inputs: &[str]) {
-        let ctrl = port[ctrl_proto]();
+        let ctrl = mk_port[ctrl_proto]();
 
-        // This task becomes the master control task. It spawns others
+        // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers: map::hashmap[str, chan[reduce_proto]];
+        let reducers: map::hashmap[str, _chan[reduce_proto]];
 
         reducers = map::new_str_hash();
 
-        let tasks = start_mappers(chan(ctrl), inputs);
+        let tasks = start_mappers(ctrl.mk_chan(), inputs);
 
         let num_mappers = ivec::len(inputs) as int;
 
         while num_mappers > 0 {
-            let m;
-            ctrl |> m;
-
-            alt m {
+            alt ctrl.recv() {
               mapper_done. {
                 // log_err "received mapper terminated.";
                 num_mappers -= 1;
@@ -199,27 +177,23 @@ mod map_reduce {
                   }
                   none. {
                     // log_err "creating new reducer for " + k;
-                    let p = port();
-                    tasks += ~[spawn reduce_task(k, chan(p))];
-                    p |> c;
+                    let p = mk_port();
+                    tasks += [task::_spawn(bind reduce_task(k, p.mk_chan()))];
+                    c = p.recv();
                     reducers.insert(k, c);
                   }
                 }
-                cc <| clone(c);
+                send(cc, c);
               }
             }
         }
 
-        for each kv: @{key: str, val: chan[reduce_proto]}  in reducers.items()
+        for each kv: @{key: str, val: _chan[reduce_proto]} in reducers.items()
                  {
-            // log_err "sending done to reducer for " + kv._0;
-            kv.val <| done;
+            send(kv.val, done);
         }
 
-
-        // log_err #fmt("joining %u tasks", ivec::len(tasks));
-        for t: task  in tasks { task::join(t); }
-        // log_err "control task done.";
+        for t in tasks { task::join_id(t); }
     }
 }
 

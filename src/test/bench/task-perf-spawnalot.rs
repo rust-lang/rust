@@ -7,7 +7,7 @@ import std::str;
 fn f(n: uint) {
     let i = 0u;
     while i < n {
-        task::join(spawn g());
+        task::join_id(task::_spawn(bind g()));
         i += 1u;
     }
 }
@@ -24,7 +24,7 @@ fn main(args: vec[str]) {
     };
     let i = 0u;
     while i < n {
-        spawn f(n);
+        task::_spawn(bind f(n));
         i += 1u;
     }
 }
