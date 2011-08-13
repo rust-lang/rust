@@ -60,7 +60,7 @@ fn close(handle: &handle) {
 fn run(handle: &handle, lib_path: &str,
        prog: &str, args: &[str], input: &option::t<str>) ->
 {status: int, out: str, err: str} {
-    let p = mk_port<response>();
+    let p = mk_port::<response>();
     let ch = p.mk_chan();
     send(handle.chan, exec(str::bytes(lib_path),
                            str::bytes(prog),

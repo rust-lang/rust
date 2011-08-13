@@ -61,8 +61,8 @@ fn test() {
                 0x10u8, 0x0du8, 0xb4u8, 0xb3u8]}];
     let tests = fips_180_1_tests + wikipedia_tests;
     fn check_vec_eq(v0: &[u8], v1: &[u8]) {
-        assert (vec::len[u8](v0) == vec::len[u8](v1));
-        let len = vec::len[u8](v0);
+        assert (vec::len::<u8>(v0) == vec::len::<u8>(v1));
+        let len = vec::len::<u8>(v0);
         let i = 0u;
         while i < len {
             let a = v0.(i);

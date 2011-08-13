@@ -2,12 +2,12 @@
 use std;
 
 fn check_sort(v1: &[mutable int], v2: &[mutable int]) {
-    let len = std::vec::len[int](v1);
+    let len = std::vec::len::<int>(v1);
     fn lt(a: &int, b: &int) -> bool { ret a < b; }
     fn equal(a: &int, b: &int) -> bool { ret a == b; }
     let f1 = lt;
     let f2 = equal;
-    std::sort::quick_sort3[int](f1, f2, v1);
+    std::sort::quick_sort3::<int>(f1, f2, v1);
     let i = 0u;
     while i < len { log v2.(i); assert (v2.(i) == v1.(i)); i += 1u; }
 }

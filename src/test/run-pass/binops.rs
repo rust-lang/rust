@@ -61,8 +61,8 @@ fn test_box() {
 }
 
 fn test_port() {
-    let p1 = comm::mk_port[int]();
-    let p2 = comm::mk_port[int]();
+    let p1 = comm::mk_port::<int>();
+    let p2 = comm::mk_port::<int>();
 
     assert p1 == p1;
     assert p1 != p2;

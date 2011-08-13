@@ -14,7 +14,7 @@ fn test_generic<T>(expected: &T, eq: &compare<T>) {
 fn test_bool() {
     fn compare_bool(b1: &bool, b2: &bool) -> bool { ret b1 == b2; }
     let eq = bind compare_bool(_, _);
-    test_generic[bool](true, eq);
+    test_generic::<bool>(true, eq);
 }
 
 fn test_rec() {
@@ -22,7 +22,7 @@ fn test_rec() {
 
     fn compare_rec(t1: &t, t2: &t) -> bool { ret t1 == t2; }
     let eq = bind compare_rec(_, _);
-    test_generic[t]({a: 1, b: 2}, eq);
+    test_generic::<t>({a: 1, b: 2}, eq);
 }
 
 fn main() { test_bool(); test_rec(); }

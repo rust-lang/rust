@@ -13,4 +13,4 @@ fn mk_raw_ty(st: sty, cname: &option::t<str>) -> raw_t {
     ret {struct: st, cname: cname, hash: 0u};
 }
 
-fn main() { mk_raw_ty(ty_nil, none[str]); }
+fn main() { mk_raw_ty(ty_nil, none::<str>); }

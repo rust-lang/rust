@@ -6,7 +6,7 @@ import std::deque;
 
 #[test]
 fn test_simple() {
-    let d: deque::t<int> = deque::create[int]();
+    let d: deque::t<int> = deque::create::<int>();
     assert (d.size() == 0u);
     d.add_front(17);
     d.add_front(42);
@@ -50,7 +50,7 @@ fn test_simple() {
 }
 
 fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
-    let deq: deque::t<@int> = deque::create[@int]();
+    let deq: deque::t<@int> = deque::create::<@int>();
     assert (deq.size() == 0u);
     deq.add_front(a);
     deq.add_front(b);
@@ -82,7 +82,7 @@ fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
 type eqfn<T> = fn(&T, &T) -> bool ;
 
 fn test_parameterized<@T>(e: eqfn<T>, a: &T, b: &T, c: &T, d: &T) {
-    let deq: deque::t<T> = deque::create[T]();
+    let deq: deque::t<T> = deque::create::<T>();
     assert (deq.size() == 0u);
     deq.add_front(a);
     deq.add_front(b);
@@ -140,18 +140,18 @@ fn test() {
     }
     fn taggypareq<@T>(a: &taggypar<T>, b: &taggypar<T>) -> bool {
         alt a {
-          onepar[T](a1) {
-            alt b { onepar[T](b1) { ret a1 == b1; } _ { ret false; } }
+          onepar::<T>(a1) {
+            alt b { onepar::<T>(b1) { ret a1 == b1; } _ { ret false; } }
           }
-          twopar[T](a1, a2) {
+          twopar::<T>(a1, a2) {
             alt b {
-              twopar[T](b1, b2) { ret a1 == b1 && a2 == b2; }
+              twopar::<T>(b1, b2) { ret a1 == b1 && a2 == b2; }
               _ { ret false; }
             }
           }
-          threepar[T](a1, a2, a3) {
+          threepar::<T>(a1, a2, a3) {
             alt b {
-              threepar[T](b1, b2, b3) {
+              threepar::<T>(b1, b2, b3) {
                 ret a1 == b1 && a2 == b2 && a3 == b3;
               }
               _ { ret false; }
@@ -167,24 +167,24 @@ fn test() {
     log "*** end test boxes";
     log "test parameterized: int";
     let eq1: eqfn<int> = inteq;
-    test_parameterized[int](eq1, 5, 72, 64, 175);
+    test_parameterized::<int>(eq1, 5, 72, 64, 175);
     log "*** test parameterized: @int";
     let eq2: eqfn<@int> = intboxeq;
-    test_parameterized[@int](eq2, @5, @72, @64, @175);
+    test_parameterized::<@int>(eq2, @5, @72, @64, @175);
     log "*** end test parameterized @int";
     log "test parameterized: taggy";
     let eq3: eqfn<taggy> = taggyeq;
-    test_parameterized[taggy](eq3, one(1), two(1, 2), three(1, 2, 3),
+    test_parameterized::<taggy>(eq3, one(1), two(1, 2), three(1, 2, 3),
                               two(17, 42));
 
     log "*** test parameterized: taggypar<int>";
-    let eq4: eqfn<taggypar<int>> = taggypareq[int];
-    test_parameterized[taggypar<int>](eq4,
-                                      onepar[int](1),
-                                      twopar[int](1, 2),
-                                      threepar[int](1, 2, 3),
-                                      twopar[int](17, 42));
-    log "*** end test parameterized: taggypar[int]";
+    let eq4: eqfn<taggypar<int>> = taggypareq::<int>;
+    test_parameterized::<taggypar<int>>(eq4,
+                                      onepar::<int>(1),
+                                      twopar::<int>(1, 2),
+                                      threepar::<int>(1, 2, 3),
+                                      twopar::<int>(17, 42));
+    log "*** end test parameterized: taggypar::<int>";
 
     log "*** test parameterized: reccy";
     let reccy1: reccy = {x: 1, y: 2, t: one(1)};
@@ -192,7 +192,7 @@ fn test() {
     let reccy3: reccy = {x: 1, y: 777, t: three(1, 2, 3)};
     let reccy4: reccy = {x: 19, y: 252, t: two(17, 42)};
     let eq5: eqfn<reccy> = reccyeq;
-    test_parameterized[reccy](eq5, reccy1, reccy2, reccy3, reccy4);
+    test_parameterized::<reccy>(eq5, reccy1, reccy2, reccy3, reccy4);
     log "*** end test parameterized: reccy";
     log "*** done";
 }

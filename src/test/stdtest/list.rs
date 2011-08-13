@@ -26,7 +26,7 @@ fn test_foldl() {
 fn test_find_success() {
     let l = from_vec(~[0, 1, 2]);
     fn match(i: &int) -> option::t<int> {
-        ret if i == 2 { option::some(i) } else { option::none[int] };
+        ret if i == 2 { option::some(i) } else { option::none::<int> };
     }
     let rs = list::find(l, match);
     assert (rs == option::some(2));
@@ -35,15 +35,15 @@ fn test_find_success() {
 #[test]
 fn test_find_fail() {
     let l = from_vec(~[0, 1, 2]);
-    fn match(i: &int) -> option::t<int> { ret option::none[int]; }
+    fn match(i: &int) -> option::t<int> { ret option::none::<int>; }
     let rs = list::find(l, match);
-    assert (rs == option::none[int]);
+    assert (rs == option::none::<int>);
 }
 
 #[test]
 fn test_has() {
     let l = from_vec(~[5, 8, 6]);
-    let empty = list::nil[int];
+    let empty = list::nil::<int>;
     assert (list::has(l, 5));
     assert (!list::has(l, 7));
     assert (list::has(l, 8));

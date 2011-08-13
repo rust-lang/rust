@@ -34,7 +34,7 @@ fn new() -> ctx {
 fn main() {
     let cx = new();
 
-    let p = mk_port<bool>();
+    let p = mk_port::<bool>();
     send(cx, close(p.mk_chan()));
     send(cx, quit);
 }

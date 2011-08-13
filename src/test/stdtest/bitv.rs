@@ -8,8 +8,8 @@ fn test_0_elements() {
     let act;
     let exp;
     act = bitv::create(0u, false);
-    exp = vec::init_elt[uint](0u, 0u);
-    // FIXME: why can't I write vec[uint]()?
+    exp = vec::init_elt::<uint>(0u, 0u);
+    // FIXME: why can't I write vec::<uint>()?
 
     assert (bitv::eq_ivec(act, exp));
 }

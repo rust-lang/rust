@@ -7,7 +7,7 @@ import std::comm::send;
   message.
  */
 fn main() {
-    let po = mk_port[int]();
+    let po = mk_port::<int>();
     let ch = po.mk_chan();
     send(ch, 42);
     let r = po.recv();

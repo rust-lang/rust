@@ -33,7 +33,7 @@ fn fib(n: int) -> int {
         } else if (n <= 2) {
             send(c, 1);
         } else {
-            let p = mk_port<int>();
+            let p = mk_port::<int>();
 
             let t1 = task::_spawn(bind pfib(p.mk_chan(), n - 1));
             let t2 = task::_spawn(bind pfib(p.mk_chan(), n - 2));
