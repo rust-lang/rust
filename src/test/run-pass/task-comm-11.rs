@@ -1,16 +1,15 @@
 // xfail-stage3
 use std;
 import std::comm;
+import std::task;
 
-fn start(pcc: *u8) {
-    let c = comm::chan_from_unsafe_ptr(pcc);
+fn start(c: comm::_chan[comm::_chan[int]]) {
     let p : comm::_port[int] = comm::mk_port();
-    c.send(p.mk_chan().unsafe_ptr());
+    comm::send(c, p.mk_chan());
 }
 
 fn main() {
-    let p = comm::mk_port();
-    let child = spawn start(p.mk_chan().unsafe_ptr());
-    let pc = p.recv();
-    let c : comm::_chan[int] = comm::chan_from_unsafe_ptr(pc);
+    let p = comm::mk_port[comm::_chan[int]]();
+    let child = task::_spawn(bind start(p.mk_chan()));
+    let c = p.recv();
 }

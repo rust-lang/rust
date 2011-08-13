@@ -4,7 +4,6 @@ import unsafe;
 import task;
 import task::task_id;
 
-export chan_t;
 export _chan;
 export _port;
 
@@ -36,44 +35,19 @@ native "rust-intrinsic" mod rusti {
 
 type port_id = int;
 
-type chan_t[~T] = {
+type _chan[~T] = {
     task : task_id,
     port : port_id
 };
-
-resource chan_ptr(ch: *rustrt::rust_chan) {
-    rustrt::drop_chan(ch);
-}
 
 resource port_ptr(po: *rustrt::rust_port) {
     rustrt::drop_port(po);
     rustrt::del_port(po);
 }
 
-obj _chan[~T](raw_chan : @chan_ptr) {
-    fn send(v : &T) {
-        rustrt::chan_send(**raw_chan,
-                          unsafe::reinterpret_cast(ptr::addr_of(v)));
-    }
-
-    // Use this to get something we can send over a channel.
-    fn unsafe_ptr() -> *u8 {
-        rustrt::take_chan(**raw_chan);
-        ret unsafe::reinterpret_cast(**raw_chan);
-    }
-}
-
-fn chan_from_unsafe_ptr[~T](ch : *u8) -> _chan[T] {
-    _chan(@chan_ptr(unsafe::reinterpret_cast(ch)))
-}
-
 obj _port[~T](raw_port : @port_ptr) {
-    fn mk_chan() -> _chan[T] {
-        _chan(@chan_ptr(rustrt::new_chan(**raw_port)))
-    }
-
     // FIXME: rename this to chan once chan is not a keyword.
-    fn mk_chan2() -> chan_t[T] {
+    fn mk_chan() -> _chan[T] {
         {
             task: task::get_task_id(),
             port: rustrt::get_port_id(**raw_port)
@@ -89,6 +63,6 @@ fn mk_port[~T]() -> _port[T] {
     _port(@port_ptr(rustrt::new_port(sys::size_of[T]())))
 }
 
-fn send[~T](ch : chan_t[T], data : -T) {
+fn send[~T](ch : _chan[T], data : -T) {
     rustrt::chan_id_send(ch.task, ch.port, data);
 }

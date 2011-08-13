@@ -9,19 +9,8 @@ fn create_port_and_chan() {
 
 #[test]
 fn send_recv() {
-    let p = comm::mk_port();
-    let c = p.mk_chan();
-
-    c.send(42);
-    let v = p.recv();
-    log_err v;
-    assert(42 == v);
-}
-
-#[test]
-fn send_recv2() {
     let p = comm::mk_port[int]();
-    let c = p.mk_chan2();
+    let c = p.mk_chan();
 
     comm::send(c, 42);
     let v = p.recv();

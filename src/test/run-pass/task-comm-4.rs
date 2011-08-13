@@ -8,7 +8,7 @@ fn test00() {
     let r: int = 0;
     let sum: int = 0;
     let p = comm::mk_port();
-    let c = p.mk_chan2();
+    let c = p.mk_chan();
     send(c, 1);
     send(c, 2);
     send(c, 3);
