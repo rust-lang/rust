@@ -12,4 +12,4 @@ mod bar {
         mod zed { }
     }
 }
-fn main(args: vec[str]) { baz(); }
+fn main(args: [str]) { baz(); }

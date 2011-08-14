@@ -4,4 +4,4 @@ import zed::baz;
 mod zed {
     fn bar() { log "bar"; }
 }
-fn main(args: vec[str]) { bar(); }
+fn main(args: [str]) { bar(); }

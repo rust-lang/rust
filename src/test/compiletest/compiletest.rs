@@ -22,11 +22,9 @@ import common::mode_pretty;
 import common::mode;
 import util::logv;
 
-fn main(args: vec[str]) {
+fn main(args: [str]) {
 
-    let ivec_args = ivec::from_vec(args);
-
-    let config = parse_config(ivec_args);
+    let config = parse_config(args);
     log_config(config);
     run_tests(config);
 }

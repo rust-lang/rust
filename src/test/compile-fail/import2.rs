@@ -4,4 +4,4 @@ mod baz { }
 mod zed {
     fn bar() { log "bar3"; }
 }
-fn main(args: vec[str]) { bar(); }
+fn main(args: [str]) { bar(); }

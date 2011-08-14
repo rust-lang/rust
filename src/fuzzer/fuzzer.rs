@@ -345,14 +345,13 @@ fn check_variants(files: &[str]) {
     }
 }
 
-fn main(args: vec[str]) {
-    let iargs = ivec::from_vec(args);
-    if ivec::len(iargs) != 2u {
-        log_err #fmt("usage: %s <testdir>", iargs.(0));
+fn main(args: [str]) {
+    if ivec::len(args) != 2u {
+        log_err #fmt("usage: %s <testdir>", args.(0));
         ret;
     }
     let files = ~[];
-    let root = iargs.(1);
+    let root = args.(1);
 
     find_rust_files(files, root);
     check_convergence(files);

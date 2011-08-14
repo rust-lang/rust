@@ -29,7 +29,7 @@ for t in os.listdir(run_pass):
         if not ("xfail-stage2" in s or
                 "xfail-fast" in s):
             stage2_tests.append(t)
-            if "main(args: vec[str])" in s:
+            if "main(args: [str])" in s:
                 take_args[t] = True
         f.close()
 
@@ -60,7 +60,7 @@ for t in stage2_tests:
     p = p.replace("\\", "\\\\")
     d.write("    out.write_str(\"run-pass [stage2]: %s\\n\");\n" % p)
     if t in take_args:
-        d.write("    t_%d::main([\"arg0\"]);\n" % i)
+        d.write("    t_%d::main(~[\"arg0\"]);\n" % i)
     else:
         d.write("    t_%d::main();\n" % i)
     i += 1

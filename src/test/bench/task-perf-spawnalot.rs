@@ -14,13 +14,12 @@ fn f(n: uint) {
 
 fn g() {}
 
-fn main(args: vec[str]) {
+fn main(args: [str]) {
 
-    let iargs = ivec::from_vec(args);
-    let n = if ivec::len(iargs) < 2u {
+    let n = if ivec::len(args) < 2u {
         10u
     } else {
-        uint::parse_buf(str::bytes(iargs.(1)), 10u)
+        uint::parse_buf(str::bytes(args.(1)), 10u)
     };
     let i = 0u;
     while i < n {

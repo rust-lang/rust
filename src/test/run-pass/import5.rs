@@ -7,4 +7,4 @@ mod foo {
     }
 }
 
-fn main(args: vec[str]) { bar(); }
+fn main(args: [str]) { bar(); }

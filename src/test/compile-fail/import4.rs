@@ -3,4 +3,4 @@
 import zed::bar;
 import bar::zed;
 
-fn main(args: vec[str]) { log "loop"; }
+fn main(args: [str]) { log "loop"; }

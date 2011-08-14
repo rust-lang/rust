@@ -198,12 +198,11 @@ mod map_reduce {
     }
 }
 
-fn main(argv: vec[str]) {
-    let iargv = ivec::from_vec(argv);
-    if ivec::len(iargv) < 2u {
+fn main(argv: [str]) {
+    if ivec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt("Usage: %s <filename> ...", iargv.(0)));
+        out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
@@ -217,7 +216,7 @@ fn main(argv: vec[str]) {
 
     let start = time::precise_time_ns();
 
-    map_reduce::map_reduce(ivec::slice(iargv, 1u, ivec::len(iargv)));
+    map_reduce::map_reduce(ivec::slice(argv, 1u, ivec::len(argv)));
     let stop = time::precise_time_ns();
 
     let elapsed = stop - start;

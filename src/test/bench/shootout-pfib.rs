@@ -79,20 +79,19 @@ fn stress(num_tasks: int) {
     for t in tasks { task::join_id(t); }
 }
 
-fn main(argv: vec[str]) {
-    let iargv = ivec::from_vec(argv);
-    if ivec::len(iargv) == 1u {
+fn main(argv: [str]) {
+    if ivec::len(argv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
     } else {
         // Interactive mode! Wooo!!!!
-        let opts = parse_opts(iargv);
+        let opts = parse_opts(argv);
 
 
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(str::bytes(iargv.(1)), 10u) as int;
+            let max = uint::parse_buf(str::bytes(argv.(1)), 10u) as int;
 
             let num_trials = 10;
 
