@@ -303,8 +303,10 @@ task_join(rust_task *task, rust_task_id tid) {
         join_task->lock.unlock();
     }
     if (!join_task->failed) {
+        join_task->deref();
         return 0;
     } else {
+        join_task->deref();
         return -1;
     }
 }
@@ -728,16 +730,27 @@ get_task_context(rust_task *task, rust_task_id id) {
     return regs;
 }
 
+extern "C" CDECL void
+drop_task(rust_task *task, rust_task_id tid) {
+    rust_task *target = task->kernel->get_task_by_id(tid);
+    if(target) {
+        target->deref();
+        // Deref twice because get_task_by_id does once.
+        target->deref();
+    }
+}
+
 extern "C" CDECL rust_task *
 get_task_pointer(rust_task *task, rust_task_id id) {
-    return task->kernel->get_task_by_id(id);
+    rust_task *t = task->kernel->get_task_by_id(id);
+    return t;
 }
 
 extern "C" CDECL void
 start_task(rust_task *task, rust_task_id id) {
     rust_task * target = task->kernel->get_task_by_id(id);
-
     target->start();
+    target->deref();
 }
 
 extern "C" void *task_trampoline asm("task_trampoline");
@@ -754,6 +767,7 @@ migrate_alloc(rust_task *task, void *alloc, rust_task_id tid) {
     if(target) {
         task->local_region.release_alloc(alloc);
         target->local_region.claim_alloc(alloc);
+        target->deref();
     }
     else {
         // We couldn't find the target. Maybe we should just free?
@@ -849,6 +863,7 @@ chan_id_send(rust_task *task, type_desc *t, rust_task_id target_task_id,
         if(port) {
             port->remote_chan->send(sptr);
         }
+        target_task->deref();
     }
 }
 

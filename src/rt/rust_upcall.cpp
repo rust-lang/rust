@@ -133,7 +133,9 @@ upcall_clone_chan(rust_task *task, rust_task_id tid,
     // FIXME: This should be removed.
     LOG_UPCALL_ENTRY(task);
     rust_task *target = task->kernel->get_task_by_id(tid);
-    return chan->clone(target);
+    rust_chan *c = chan->clone(target);
+    target->deref();
+    return c;
 }
 
 extern "C" CDECL rust_task *
@@ -197,6 +199,7 @@ upcall_kill(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
     rust_task *target = task->kernel->get_task_by_id(tid);
     target->kill();
+    target->deref();
 }
 
 /**
@@ -315,7 +318,9 @@ extern "C" CDECL rust_str *
 upcall_dup_str(rust_task *task, rust_task_id tid, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
     rust_task *target = task->kernel->get_task_by_id(tid);
-    return make_str(target, (char const *)str->data, str->fill);
+    rust_str *s = make_str(target, (char const *)str->data, str->fill);
+    target->deref();
+    return s;
 }
 
 extern "C" CDECL rust_vec *
@@ -478,27 +483,25 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
     LOG_UPCALL_ENTRY(spawner);
     rust_task_id tid =
         spawner->kernel->create_task(spawner, (const char *)name->data);
-    rust_task *task = spawner->kernel->get_task_by_id(tid);
-    task->ref();
+    // let the kernel bump the ref count.
+    spawner->kernel->get_task_by_id(tid);
+    // no deref because we're letting the caller take ownership.
     return tid;
 }
 
 extern "C" CDECL void
 upcall_take_task(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
-    rust_task *target = task->kernel->get_task_by_id(tid);
-    if(target) {
-        target->ref();
-    }
+    // get_task_by_id increments the refcount.
+    task->kernel->get_task_by_id(tid);
 }
 
 extern "C" CDECL void
+drop_task(rust_task *task, rust_task_id tid);
+extern "C" CDECL void
 upcall_drop_task(rust_task *task, rust_task_id tid) {
     LOG_UPCALL_ENTRY(task);
-    rust_task *target = task->kernel->get_task_by_id(tid);
-    if(target) {
-        target->deref();
-    }
+    drop_task(task, tid);
 }
 
 extern "C" CDECL void
@@ -544,6 +547,7 @@ upcall_start_task(rust_task *spawner,
     memcpy((void*)task->rust_sp, (void*)args, args_sz);
 
     task->start(spawnee_fn, child_arg);
+    task->deref();
     return task;
 }
 

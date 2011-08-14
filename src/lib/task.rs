@@ -16,6 +16,7 @@ native "rust" mod rustrt {
     fn set_min_stack(stack_size: uint);
 
     fn new_task() -> task_id;
+    fn drop_task(id : task_id);
     fn get_task_pointer(id : task_id) -> *rust_task;
     fn get_task_context(id : task_id) -> *x86_registers;
     fn start_task(id : task_id);
@@ -113,6 +114,11 @@ fn _spawn(thunk : fn() -> ()) -> task_id {
     rustrt::start_task(id);
 
     rustrt::leak(thunk);
+
+    // Drop twice because get_task_context and get_task_pounter both bump the
+    // ref count and expect us to free it.
+    rustrt::drop_task(id);
+    rustrt::drop_task(id);
 
     ret id;
 }

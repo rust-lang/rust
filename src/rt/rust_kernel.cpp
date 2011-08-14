@@ -160,6 +160,7 @@ rust_kernel::get_task_by_id(rust_task_id id) {
     rust_task *task = NULL;
     // get leaves task unchanged if not found.
     task_table.get(id, &task);
+    if(task) task->ref();
     return task;
 }
 

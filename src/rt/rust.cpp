@@ -108,6 +108,8 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     }
 
     root_task->start(main_fn, (uintptr_t)args->args);
+    root_task->deref();
+    root_task = NULL;
 
     int ret = kernel->start_task_threads();
     delete args;
