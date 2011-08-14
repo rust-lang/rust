@@ -22,11 +22,8 @@ stage0/$(CFG_RUSTLLVM): stage0/rustc$(X)
 stage0/lib/glue.o: stage0/rustc$(X)
 	$(Q)touch $@
 
-# FIXME: temporary hack: currently not distributing main.o like we should;
-# copying from rt
-
-stage0/lib/main.o: rt/main.o
-	$(Q)cp $< $@
+stage0/lib/main.o: stage0/rustc$(X)
+	$(Q)touch $@
 
 # Instantiate template (in stageN.mk) for building
 # stage0/lib/$(CFG_STDLIB) and stage0/lib/libstd.rlib.
