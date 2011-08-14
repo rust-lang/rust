@@ -135,7 +135,7 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
 
-  fn main(vec[str] args) -> int {
+  fn main(args: [str]) -> int {
     std::test::test_main(args, tests())
   }
 
@@ -285,7 +285,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
 fn mk_main(cx: &test_ctxt) -> @ast::item {
 
     let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
-    let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
+    let args_ty: ast::ty = nospan(ast::ty_ivec(args_mt));
 
     let args_arg: ast::arg =
         {mode: ast::val, ty: @args_ty, ident: "args", id: cx.next_node_id()};
@@ -355,7 +355,7 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     // Call std::test::test_main
     let test_main_path: ast::path =
         nospan({global: false,
-                idents: ~["std", "test", "test_main"],
+                idents: ~["std", "test", "test_main_ivec"],
                 types: ~[]});
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);

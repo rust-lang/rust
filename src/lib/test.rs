@@ -10,6 +10,7 @@ export test_name;
 export test_fn;
 export test_desc;
 export test_main;
+export test_main_ivec;
 export test_result;
 export test_opts;
 export tr_ok;
@@ -48,16 +49,18 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &vec[str], tests: &[test_desc]) {
-    let ivec_args =
-        { let iargs = ~[]; for arg: str in args { iargs += ~[arg] } iargs };
-    check (ivec::is_not_empty(ivec_args));
+fn test_main_ivec(args: &[str], tests: &[test_desc]) {
+    check (ivec::is_not_empty(args));
     let opts =
-        alt parse_opts(ivec_args) {
+        alt parse_opts(args) {
           either::left(o) { o }
           either::right(m) { fail m }
         };
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
+}
+
+fn test_main(args: &vec[str], tests: &[test_desc]) {
+    test_main_ivec(ivec::from_vec(args), tests);
 }
 
 type test_opts = {filter: option::t[str], run_ignored: bool};
