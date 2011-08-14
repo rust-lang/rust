@@ -29,7 +29,7 @@ snapshot_files = {
               "librustrt.so", "librustllvm.so", "lib/intrinsics.bc"],
     "macos": ["rustc", "lib/glue.o", "lib/libstd.dylib", "lib/main.o",
               "librustrt.dylib", "librustllvm.dylib", "lib/intrinsics.bc"],
-    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll", "lib/main.o"
+    "winnt": ["rustc.exe", "lib/glue.o", "lib/std.dll", "lib/main.o",
               "rustrt.dll", "rustllvm.dll", "lib/intrinsics.bc"]
     }
 
