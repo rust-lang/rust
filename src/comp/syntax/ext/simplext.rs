@@ -205,6 +205,10 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
 fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
     let idx_path: @mutable [uint] = @mutable ~[];
     fn new_id(old: node_id, cx: &ext_ctxt) -> node_id { ret cx.next_id(); }
+    fn new_span(cx: &ext_ctxt, sp: &span) -> span {
+        /* this discards information in the case of macro-defining macros */
+        ret {lo: sp.lo, hi: sp.hi, expanded_from: cx.backtrace()};
+    }
     let afp = default_ast_fold();
     let f_pre =
         {fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
@@ -215,7 +219,8 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
          fold_block:
              bind transcribe_block(cx, b, idx_path, _, _, afp.fold_block),
          map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
-         new_id: bind new_id(_, cx) with *afp};
+         new_id: bind new_id(_, cx),
+         new_span: bind new_span(cx, _) with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     dummy_out(f); //temporary: kill circular reference

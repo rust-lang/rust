@@ -1478,7 +1478,8 @@ fn parse_pat(p: &parser) -> @ast::pat {
         if p.peek() == token::RPAREN {
             hi = p.get_hi_pos();
             p.bump();
-            pat = ast::pat_lit(@{node: ast::lit_nil, span: {lo: lo, hi: hi}});
+            pat = ast::pat_lit(@{node: ast::lit_nil,
+                                 span: ast::mk_sp(lo,hi)});
         } else {
             let fields = ~[parse_pat(p)];
             while p.peek() == token::COMMA {

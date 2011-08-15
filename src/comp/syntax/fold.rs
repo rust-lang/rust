@@ -44,7 +44,8 @@ type ast_fold_precursor =
      fold_path: fn(&path_, ast_fold) -> path_ ,
      fold_local: fn(&local_, ast_fold) -> local_ ,
      map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
-     new_id: fn(node_id) -> node_id};
+     new_id: fn(node_id) -> node_id,
+     new_span: fn(&span) -> span};
 
 type a_f =
     {fold_crate: fn(&crate) -> crate ,
@@ -70,7 +71,8 @@ type a_f =
      fold_path: fn(&path) -> path ,
      fold_local: fn(&@local) -> @local ,
      map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
-     new_id: fn(node_id) -> node_id};
+     new_id: fn(node_id) -> node_id,
+     new_span: fn(&span) -> span};
 
 
 //fn nf_dummy[T](&T node) -> T { fail; }
@@ -514,6 +516,8 @@ fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
 
 fn noop_id(i: node_id) -> node_id { ret i; }
 
+fn noop_span(sp: &span) -> span { ret sp; }
+
 
 fn default_ast_fold() -> @ast_fold_precursor {
     ret @{fold_crate: noop_fold_crate,
@@ -539,7 +543,8 @@ fn default_ast_fold() -> @ast_fold_precursor {
           fold_path: noop_fold_path,
           fold_local: noop_fold_local,
           map_exprs: noop_map_exprs,
-          new_id: noop_id};
+          new_id: noop_id,
+          new_span: noop_span};
 }
 
 fn dummy_out(a: ast_fold) {
@@ -567,7 +572,8 @@ fn dummy_out(a: ast_fold) {
          fold_path: nf_path_dummy,
          fold_local: nf_local_dummy,
          map_exprs: noop_map_exprs,
-         new_id: noop_id};
+         new_id: noop_id,
+         new_span: noop_span};
 }
 
 
@@ -596,19 +602,22 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
                   fold_path: nf_path_dummy,
                   fold_local: nf_local_dummy,
                   map_exprs: noop_map_exprs,
-                  new_id: noop_id};
+                  new_id: noop_id,
+                  new_span: noop_span};
 
     /* naturally, a macro to write these would be nice */
     fn f_crate(afp: &ast_fold_precursor, f: ast_fold, c: &crate) -> crate {
-        ret {node: afp.fold_crate(c.node, f), span: c.span};
+        ret {node: afp.fold_crate(c.node, f), span: afp.new_span(c.span)};
     }
     fn f_crate_directive(afp: &ast_fold_precursor, f: ast_fold,
                          c: &@crate_directive) -> @crate_directive {
-        ret @{node: afp.fold_crate_directive(c.node, f), span: c.span};
+        ret @{node: afp.fold_crate_directive(c.node, f),
+              span: afp.new_span(c.span)};
     }
     fn f_view_item(afp: &ast_fold_precursor, f: ast_fold, x: &@view_item) ->
        @view_item {
-        ret @{node: afp.fold_view_item(x.node, f), span: x.span};
+        ret @{node: afp.fold_view_item(x.node, f),
+              span: afp.new_span(x.span)};
     }
     fn f_native_item(afp: &ast_fold_precursor, f: ast_fold, x: &@native_item)
        -> @native_item {
@@ -623,34 +632,34 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
     }
     fn f_method(afp: &ast_fold_precursor, f: ast_fold, x: &@method) ->
        @method {
-        ret @{node: afp.fold_method(x.node, f), span: x.span};
+        ret @{node: afp.fold_method(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_block(afp: &ast_fold_precursor, f: ast_fold, x: &blk) -> blk {
-        ret {node: afp.fold_block(x.node, f), span: x.span};
+        ret {node: afp.fold_block(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_stmt(afp: &ast_fold_precursor, f: ast_fold, x: &@stmt) -> @stmt {
-        ret @{node: afp.fold_stmt(x.node, f), span: x.span};
+        ret @{node: afp.fold_stmt(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_arm(afp: &ast_fold_precursor, f: ast_fold, x: &arm) -> arm {
         ret afp.fold_arm(x, f);
     }
     fn f_pat(afp: &ast_fold_precursor, f: ast_fold, x: &@pat) -> @pat {
         ret @{id: afp.new_id(x.id),
-              node: afp.fold_pat(x.node, f), span: x.span};
+              node: afp.fold_pat(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_decl(afp: &ast_fold_precursor, f: ast_fold, x: &@decl) -> @decl {
-        ret @{node: afp.fold_decl(x.node, f), span: x.span};
+        ret @{node: afp.fold_decl(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_expr(afp: &ast_fold_precursor, f: ast_fold, x: &@expr) -> @expr {
         ret @{id: afp.new_id(x.id),
-              node: afp.fold_expr(x.node, f), span: x.span};
+              node: afp.fold_expr(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_ty(afp: &ast_fold_precursor, f: ast_fold, x: &@ty) -> @ty {
-        ret @{node: afp.fold_ty(x.node, f), span: x.span};
+        ret @{node: afp.fold_ty(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_constr(afp: &ast_fold_precursor, f: ast_fold, x: &@ast::constr) ->
        @ast::constr {
-        ret @{node: afp.fold_constr(x.node, f), span: x.span};
+        ret @{node: afp.fold_constr(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_fn(afp: &ast_fold_precursor, f: ast_fold, x: &_fn) -> _fn {
         ret afp.fold_fn(x, f);
@@ -664,16 +673,16 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
     }
     fn f_variant(afp: &ast_fold_precursor, f: ast_fold, x: &variant) ->
        variant {
-        ret {node: afp.fold_variant(x.node, f), span: x.span};
+        ret {node: afp.fold_variant(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_ident(afp: &ast_fold_precursor, f: ast_fold, x: &ident) -> ident {
         ret afp.fold_ident(x, f);
     }
     fn f_path(afp: &ast_fold_precursor, f: ast_fold, x: &path) -> path {
-        ret {node: afp.fold_path(x.node, f), span: x.span};
+        ret {node: afp.fold_path(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_local(afp: &ast_fold_precursor, f: ast_fold, x: &@local) -> @local {
-        ret @{node: afp.fold_local(x.node, f), span: x.span};
+        ret @{node: afp.fold_local(x.node, f), span: afp.new_span(x.span)};
     }
 
     *result =
@@ -700,7 +709,8 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
          fold_path: bind f_path(afp, result, _),
          fold_local: bind f_local(afp, result, _),
          map_exprs: afp.map_exprs,
-         new_id: afp.new_id};
+         new_id: afp.new_id,
+         new_span: afp.new_span};
     ret result;
 }
 

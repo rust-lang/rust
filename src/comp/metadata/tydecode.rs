@@ -153,7 +153,7 @@ fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
 fn parse_constr[@T](st: @pstate, sd: str_def, pser: arg_parser[T]) ->
    @ty::constr_general[T] {
     let sp = ast::dummy_sp(); // FIXME: use a real span
-    let args: [@sp_constr_arg[T]][] = ~[];
+    let args: [@sp_constr_arg[T]] = ~[];
     let pth: path = parse_path(st, sd);
     let ignore: char = next(st) as char;
     assert (ignore as char == '(');

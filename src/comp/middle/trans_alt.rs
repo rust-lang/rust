@@ -126,7 +126,7 @@ fn enter_opt(ccx: &@crate_ctxt, m: &match, opt: &opt, col: uint,
 
 fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
    match {
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp();
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(dummy: &@ast::pat, fields: &[ast::ident], p: &@ast::pat) ->
        option::t[[@ast::pat]] {
         alt p.node {
@@ -148,7 +148,7 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
 }
 
 fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
-    let dummy = @{id: 0, node: ast::pat_wild, span: {lo: 0u, hi: 0u}};
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(dummy: &@ast::pat, n_elts: uint, p: &@ast::pat)
         -> option::t[[@ast::pat]] {
         alt p.node {

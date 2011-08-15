@@ -35,19 +35,29 @@ fn syntax_expander_table() -> hashmap[str, syntax_extension] {
 }
 
 obj ext_ctxt(sess: @session, crate_file_name_hack: str,
-             mutable backtrace: span[]) {
+             mutable backtrace: codemap::opt_span) {
     fn crate_file_name() -> str { ret crate_file_name_hack; }
 
     fn session() -> @session { ret sess; }
 
     fn print_backtrace() {
-        for sp: span in backtrace {
-            sess.span_note(sp, "(while expanding this)")
-        }
     }
 
-    fn bt_push(sp: span) { backtrace += ~[sp]; }
-    fn bt_pop() { ivec::pop(backtrace); }
+    fn backtrace() -> codemap::opt_span { ret backtrace; }
+
+    fn bt_push(sp: span) {
+        backtrace = codemap::os_some(@{lo: sp.lo, hi: sp.hi,
+                                       expanded_from: backtrace});
+    }
+    fn bt_pop() {
+        alt backtrace {
+          codemap::os_some(@{expanded_from: pre, _}) {
+            let tmp = pre;
+            backtrace = tmp;
+          }
+          _ { self.bug("tried to pop without a push"); }
+        }
+    }
 
     fn span_fatal(sp: span, msg: str) -> ! {
         self.print_backtrace();
@@ -85,7 +95,7 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     // super-ugly and needs a better solution.
     let crate_file_name_hack = sess.get_codemap().files.(0).name;
 
-    ret ext_ctxt(@sess, crate_file_name_hack, ~[]);
+    ret ext_ctxt(@sess, crate_file_name_hack, codemap::os_none);
 }
 
 fn expr_to_str(cx: &ext_ctxt, expr: @ast::expr, error: str) -> str {
