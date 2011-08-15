@@ -517,35 +517,30 @@ fn main(args: vec[str]) {
       none. {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
+        // We want to toss everything after the final '.'
         let parts = if !input_is_stdin(ifile) {
             str::split(ifile, '.' as u8)
         } else {
             ~["default", "rs"]
         };
         ivec::pop(parts);
-        saved_out_filename = parts.(0);
-        alt sopts.output_type {
-          link::output_type_none. { parts += ~["none"]; }
-          link::output_type_bitcode. { parts += ~["bc"]; }
-          link::output_type_assembly. { parts += ~["s"]; }
-
+        saved_out_filename = str::connect(parts, ".");
+        let suffix = alt sopts.output_type {
+          link::output_type_none. { "none" }
+          link::output_type_bitcode. { "bc" }
+          link::output_type_assembly. { "s" }
           // Object and exe output both use the '.o' extension here
-          link::output_type_object. {
-            parts += ~["o"];
-          }
-          link::output_type_exe. { parts += ~["o"]; }
-        }
-        let ofile = str::connect(parts, ".");
+          link::output_type_object. | link::output_type_exe. { "o" }
+        };
+        let ofile = saved_out_filename + "." + suffix;
         compile_input(sess, cfg, ifile, ofile);
       }
       some(ofile) {
         // FIXME: what about windows? This will create a foo.exe.o.
-
         saved_out_filename = ofile;
-        let temp_filename;
-        if !stop_after_codegen {
-            temp_filename = ofile + ".o";
-        } else { temp_filename = ofile; }
+        let temp_filename = if !stop_after_codegen {
+            ofile + ".o"
+        } else { ofile };
         compile_input(sess, cfg, ifile, temp_filename);
       }
     }
