@@ -84,6 +84,12 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
           _ { ret false; }
         }
       }
+      pat_tup(suba) {
+        alt b.node {
+          pat_tup(subb) { ret patterns_supersede(tcx, suba, subb); }
+          _ { ret false; }
+        }
+      }
       pat_box(suba) {
         alt b.node {
           pat_box(subb) { ret pattern_supersedes(tcx, suba, subb); }
@@ -109,6 +115,12 @@ fn is_refutable(tcx: &ty::ctxt, pat: &@pat) -> bool {
       pat_rec(fields, _) {
         for field: field_pat in fields {
             if is_refutable(tcx, field.pat) { ret true; }
+        }
+        ret false;
+      }
+      pat_tup(elts) {
+        for elt in elts {
+            if is_refutable(tcx, elt) { ret true; }
         }
         ret false;
       }

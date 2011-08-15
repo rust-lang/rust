@@ -644,7 +644,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           }
           scope_loop(local) {
             if ns == ns_value {
-                alt lookup_in_pat(name, *local.node.pat) {
+                alt lookup_in_pat(name, local.node.pat) {
                   some(did) { ret some(ast::def_local(did)); }
                   _ {}
                 }
@@ -654,7 +654,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
           scope_arm(a) {
             if ns == ns_value {
                 ret option::map(ast::def_binding,
-                                lookup_in_pat(name, *a.pats.(0)));
+                                lookup_in_pat(name, a.pats.(0)));
             }
           }
         }
@@ -711,30 +711,15 @@ fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
     ret none[def];
 }
 
-fn lookup_in_pat(name: &ident, pat: &ast::pat) -> option::t[def_id] {
-    alt pat.node {
-      ast::pat_bind(p_name) {
+fn lookup_in_pat(name: &ident, pat: &@ast::pat) -> option::t[def_id] {
+    let found = none;
+    for each bound in ast::pat_bindings(pat) {
+        let p_name = alt bound.node { ast::pat_bind(n) { n } };
         if str::eq(p_name, name) {
-            ret some(local_def(pat.id));
+            found = some(local_def(bound.id));
         }
-      }
-      ast::pat_wild. { }
-      ast::pat_lit(_) { }
-      ast::pat_tag(_, pats) {
-        for p: @ast::pat  in pats {
-            let found = lookup_in_pat(name, *p);
-            if !is_none(found) { ret found; }
-        }
-      }
-      ast::pat_rec(fields, _) {
-        for f: ast::field_pat  in fields {
-            let found = lookup_in_pat(name, *f.pat);
-            if !is_none(found) { ret found; }
-        }
-      }
-      ast::pat_box(inner) { ret lookup_in_pat(name, *inner); }
     }
-    ret none;
+    ret found;
 }
 
 fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
@@ -779,7 +764,7 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, ns: namespace) ->
               ast::decl_local(locs) {
                 for loc: @ast::local in locs {
                     if ns == ns_value {
-                        alt lookup_in_pat(name, *loc.node.pat) {
+                        alt lookup_in_pat(name, loc.node.pat) {
                           some(did) { ret some(ast::def_local(did)); }
                           _ {}
                         }

@@ -126,6 +126,7 @@ tag pat_ {
     pat_lit(@lit);
     pat_tag(path, [@pat]);
     pat_rec([field_pat], bool);
+    pat_tup([@pat]);
     pat_box(@pat);
 }
 
@@ -135,18 +136,10 @@ type pat_id_map = std::map::hashmap[str, ast::node_id];
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(pat: &@pat) -> pat_id_map {
     let map = std::map::new_str_hash[node_id]();
-    fn walk(map: &pat_id_map, pat: &@pat) {
-        alt pat.node {
-          pat_bind(name) { map.insert(name, pat.id); }
-          pat_tag(_, sub) { for p: @pat in sub { walk(map, p); } }
-          pat_rec(fields, _) {
-            for f: field_pat  in fields { walk(map, f.pat); }
-          }
-          pat_box(inner) { walk(map, inner); }
-          _ { }
-        }
+    for each bound in pat_bindings(pat) {
+        let name = alt bound.node { pat_bind(n) { n } };
+        map.insert(name, bound.id);
     }
-    walk(map, pat);
     ret map;
 }
 
@@ -161,6 +154,11 @@ iter pat_bindings(pat: &@pat) -> @pat {
       pat_rec(fields, _) {
         for f in fields {
             for each b in pat_bindings(f.pat) { put b; }
+        }
+      }
+      pat_tup(elts) {
+        for elt in elts {
+            for each b in pat_bindings(elt) { put b; }
         }
       }
       pat_box(sub) {

@@ -63,6 +63,7 @@ fn matches_always(p: &@ast::pat) -> bool {
           ast::pat_wild. { true }
           ast::pat_bind(_) { true }
           ast::pat_rec(_, _) { true }
+          ast::pat_tup(_) { true }
           _ { false }
         };
 }
@@ -143,6 +144,18 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
         }
     }
     ret enter_match(m, col, val, bind e(dummy, fields, _));
+}
+
+fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
+    let dummy = @{id: 0, node: ast::pat_wild, span: {lo: 0u, hi: 0u}};
+    fn e(dummy: &@ast::pat, n_elts: uint, p: &@ast::pat)
+        -> option::t[[@ast::pat]] {
+        alt p.node {
+          ast::pat_tup(elts) { ret some(elts); }
+          _ { ret some(ivec::init_elt(dummy, n_elts)); }
+        }
+    }
+    ret enter_match(m, col, val, bind e(dummy, n_elts, _));
 }
 
 fn enter_box(m: &match, col: uint, val: ValueRef) -> match {
@@ -227,6 +240,13 @@ fn any_box_pat(m: &match, col: uint) -> bool {
     ret false;
 }
 
+fn any_tup_pat(m: &match, col: uint) -> bool {
+    for br: match_branch in m {
+        alt br.pats.(col).node { ast::pat_tup(_) { ret true; } _ { } }
+    }
+    ret false;
+}
+
 type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
 type mk_fail = fn() -> BasicBlockRef;
 
@@ -297,6 +317,23 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         }
         compile_submatch(bcx, enter_rec(m, col, rec_fields, val),
                          rec_vals + vals_left, f, exits);
+        ret;
+    }
+
+    if any_tup_pat(m, col) {
+        let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
+        let n_tup_elts = alt ty::struct(ccx.tcx, tup_ty) {
+          ty::ty_tup(elts) { ivec::len(elts) }
+        };
+        let tup_vals = ~[], i = 0u;
+        while i < n_tup_elts {
+            let r = trans::GEP_tup_like(bcx, tup_ty, val, ~[0, i as int]);
+            tup_vals += ~[r.val];
+            bcx = r.bcx;
+            i += 1u;
+        }
+        compile_submatch(bcx, enter_tup(m, col, val, n_tup_elts),
+                         tup_vals + vals_left, f, exits);
         ret;
     }
 
@@ -516,6 +553,15 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
                 ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
             bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, copy);
+        }
+      }
+      ast::pat_tup(elems) {
+        let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+        let i = 0u;
+        for elem in elems {
+            let r = trans::GEP_tup_like(bcx, tup_ty, val, ~[0, i as int]);
+            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, table, copy);
+            i += 1u;
         }
       }
       ast::pat_box(inner) {

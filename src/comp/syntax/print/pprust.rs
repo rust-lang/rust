@@ -1146,6 +1146,11 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
         }
         word(s.s, "}");
       }
+      ast::pat_tup(elts) {
+        popen(s);
+        commasep(s, inconsistent, elts, print_pat);
+        pclose(s);
+      }
       ast::pat_box(inner) { word(s.s, "@"); print_pat(s, inner); }
     }
     s.ann.post(ann_node);

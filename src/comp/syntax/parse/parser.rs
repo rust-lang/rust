@@ -1454,6 +1454,24 @@ fn parse_pat(p: &parser) -> @ast::pat {
         p.bump();
         pat = ast::pat_rec(fields, etc);
       }
+      token::LPAREN. {
+        p.bump();
+        if p.peek() == token::RPAREN {
+            hi = p.get_hi_pos();
+            p.bump();
+            pat = ast::pat_lit(@{node: ast::lit_nil, span: {lo: lo, hi: hi}});
+        } else {
+            let fields = ~[parse_pat(p)];
+            while p.peek() == token::COMMA {
+                p.bump();
+                fields += ~[parse_pat(p)];
+            }
+            if ivec::len(fields) == 1u { expect(p, token::COMMA); }
+            hi = p.get_hi_pos();
+            expect(p, token::RPAREN);
+            pat = ast::pat_tup(fields);
+        }
+      }
       tok {
         if !is_ident(tok) || is_word(p, "true") || is_word(p, "false") {
             let lit = parse_lit(p);

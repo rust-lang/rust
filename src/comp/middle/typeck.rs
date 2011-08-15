@@ -1454,6 +1454,31 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
         }
         write::ty_only_fixup(fcx, pat.id, expected);
       }
+      ast::pat_tup(elts) {
+        let ex_elts;
+        alt structure_of(fcx, pat.span, expected) {
+          ty::ty_tup(elts) { ex_elts = elts; }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(pat.span,
+                                        #fmt("mismatched types: expected %s, \
+                                         found tuple", ty_to_str(fcx.ccx.tcx,
+                                                                 expected)));
+          }
+        }
+        let e_count = ivec::len(elts);
+        if e_count != ivec::len(ex_elts) {
+            fcx.ccx.tcx.sess.span_fatal
+                (pat.span, #fmt("mismatched types: expected a tuple \
+                                 with %u fields, found one with %u \
+                                 fields", ivec::len(ex_elts), e_count));
+        }
+        let i = 0u;
+        for elt in elts {
+            check_pat(fcx, map, elt, ex_elts.(i));
+            i += 1u;
+        }
+        write::ty_only_fixup(fcx, pat.id, expected);
+      }
       ast::pat_box(inner) {
         alt structure_of(fcx, pat.span, expected) {
           ty::ty_box(e_inner) {

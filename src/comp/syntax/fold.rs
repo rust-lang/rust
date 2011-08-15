@@ -283,6 +283,9 @@ fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
             }
             pat_rec(fs, etc)
           }
+          pat_tup(elts) {
+            pat_tup(ivec::map(fld.fold_pat, elts))
+          }
           pat_box(inner) { pat_box(fld.fold_pat(inner)) }
         };
 }
