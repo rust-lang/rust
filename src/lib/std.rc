@@ -83,7 +83,6 @@ mod sort;
 mod sha1;
 mod ebml;
 mod ufind;
-mod ufindivec;
 mod extfmt;
 mod box;
 mod getopts;
