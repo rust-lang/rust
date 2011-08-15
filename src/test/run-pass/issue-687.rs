@@ -10,8 +10,8 @@ import std::comm::send;
 tag msg { closed; received([u8]); }
 
 fn producer(c: _chan[[u8]]) {
-    send(c, [1u8, 2u8, 3u8, 4u8]);
-    let empty: [u8] = [];
+    send(c, ~[1u8, 2u8, 3u8, 4u8]);
+    let empty: [u8] = ~[];
     send(c, empty);
 }
 

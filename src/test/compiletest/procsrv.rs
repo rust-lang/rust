@@ -185,17 +185,17 @@ fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
 fn clone_ivecstr(v: &[str]) -> [[u8]] {
-    let r = [];
+    let r = ~[];
     for t: str in ivec::slice(v, 0u, ivec::len(v)) {
-        r += [str::bytes(t)];
+        r += ~[str::bytes(t)];
     }
     ret r;
 }
 
 fn clone_ivecu8str(v: &[[u8]]) -> [str] {
-    let r = [];
+    let r = ~[];
     for t in ivec::slice(v, 0u, ivec::len(v)) {
-        r += [str::unsafe_from_bytes(t)];
+        r += ~[str::unsafe_from_bytes(t)];
     }
     ret r;
 }
