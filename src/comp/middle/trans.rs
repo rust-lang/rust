@@ -70,12 +70,6 @@ import syntax::print::pprust::path_to_str;
 
 import trans_common::*;
 
-import trans_comm::trans_port;
-import trans_comm::trans_chan;
-import trans_comm::trans_spawn;
-import trans_comm::trans_send;
-import trans_comm::trans_recv;
-
 import trans_objects::trans_anon_obj;
 import trans_objects::trans_obj;
 
@@ -5172,13 +5166,6 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       ast::expr_ret(ex) { ret trans_ret(cx, ex); }
       ast::expr_put(ex) { ret trans_put(cx, ex); }
       ast::expr_be(ex) { ret trans_be(cx, ex); }
-      ast::expr_port(_) { ret trans_port(cx, e.id); }
-      ast::expr_chan(ex) { ret trans_chan(cx, ex, e.id); }
-      ast::expr_send(lhs, rhs) { ret trans_send(cx, lhs, rhs, e.id); }
-      ast::expr_recv(lhs, rhs) { ret trans_recv(cx, lhs, rhs, e.id); }
-      ast::expr_spawn(dom, name, func, args) {
-        ret trans_spawn(cx, dom, name, func, args, e.id);
-      }
       ast::expr_anon_obj(anon_obj) {
         ret trans_anon_obj(cx, e.span, anon_obj, e.id);
       }

@@ -577,16 +577,6 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if (eat_word(p, "obj")) {
         t = parse_ty_obj(p, hi);
-    } else if (eat_word(p, "port")) {
-        expect(p, token::LBRACKET);
-        t = ast::ty_port(parse_ty(p, false));
-        hi = p.get_hi_pos();
-        expect(p, token::RBRACKET);
-    } else if (eat_word(p, "chan")) {
-        expect(p, token::LBRACKET);
-        t = ast::ty_chan(parse_ty(p, false));
-        hi = p.get_hi_pos();
-        expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {
         p.warn("ignoring deprecated 'mutable' type constructor");
         let typ = parse_ty(p, false);
@@ -990,30 +980,11 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         }
     } else if (eat_word(p, "be")) {
         let e = parse_expr(p);
-
-
         // FIXME: Is this the right place for this check?
         if /*check*/ast::is_call_expr(e) {
             hi = e.span.hi;
             ex = ast::expr_be(e);
         } else { p.fatal("Non-call expression in tail call"); }
-    } else if (eat_word(p, "port")) {
-        let ty = @spanned(lo, hi, ast::ty_infer);
-        if token::LBRACKET == p.peek() {
-            expect(p, token::LBRACKET);
-            ty = parse_ty(p, false);
-            expect(p, token::RBRACKET);
-        }
-        expect(p, token::LPAREN);
-        expect(p, token::RPAREN);
-        hi = p.get_hi_pos();
-        ex = ast::expr_port(ty);
-    } else if (eat_word(p, "chan")) {
-        expect(p, token::LPAREN);
-        let e = parse_expr(p);
-        hi = e.span.hi;
-        expect(p, token::RPAREN);
-        ex = ast::expr_chan(e);
     } else if (eat_word(p, "copy")) {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
@@ -1270,16 +1241,6 @@ fn parse_assign_expr(p: &parser) -> @ast::expr {
         p.bump();
         let rhs = parse_expr(p);
         ret mk_expr(p, lo, rhs.span.hi, ast::expr_move(lhs, rhs));
-      }
-      token::SEND. {
-        p.bump();
-        let rhs = parse_expr(p);
-        ret mk_expr(p, lo, rhs.span.hi, ast::expr_send(lhs, rhs));
-      }
-      token::RECV. {
-        p.bump();
-        let rhs = parse_expr(p);
-        ret mk_expr(p, lo, rhs.span.hi, ast::expr_recv(lhs, rhs));
       }
       token::DARROW. {
         p.bump();

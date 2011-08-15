@@ -12,6 +12,7 @@ mod io;
 mod ivec;
 mod list;
 mod map;
+mod net;
 mod option;
 mod os;
 mod path;

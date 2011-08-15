@@ -173,6 +173,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Use this function sparingly. Depending on the ref count is generally
     // not at all safe.
     intptr_t get_ref_count() const { return ref_count; }
+
+    rust_chan *get_chan_by_handle(chan_handle *handle);
 };
 
 //

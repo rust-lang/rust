@@ -56,6 +56,10 @@ fn parse_buf(buf: &[u8], radix: uint) -> uint {
     fail;
 }
 
+fn from_str(s : &str) -> uint {
+    parse_buf(str::bytes(s), 10u)
+}
+
 fn to_str(num: uint, radix: uint) -> str {
     let n = num;
     assert (0u < radix && radix <= 16u);

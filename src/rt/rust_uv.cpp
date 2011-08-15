@@ -170,8 +170,10 @@ static void new_connection(uv_handle_t *socket, int status) {
 }
 
 extern "C" CDECL socket_data *aio_serve(rust_task *task, const char *ip,
-                                        int port, rust_chan *chan) {
+                                        int port, chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
+  rust_chan *chan = task->get_chan_by_handle(_chan);
+  if(!chan) return NULL;
   struct sockaddr_in addr = uv_ip4_addr(const_cast<char*>(ip), port);
   socket_data *server = make_socket(iotask, chan);
   if (!server)
@@ -179,10 +181,13 @@ extern "C" CDECL socket_data *aio_serve(rust_task *task, const char *ip,
   if (uv_tcp_bind(&server->socket, addr) ||
       uv_tcp_listen(&server->socket, 128, new_connection)) {
     aio_close_socket(task, server);
+    chan->deref();
     return NULL;
   }
+  chan->deref();
   return server;
 oom:
+  chan->deref();
   task->fail();
   return NULL;
 }
@@ -218,8 +223,10 @@ extern "C" CDECL void aio_close_socket(rust_task *task, socket_data *client) {
 }
 
 extern "C" CDECL void aio_close_server(rust_task *task, socket_data *server,
-                                       rust_chan *chan) {
+                                       chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
+  rust_chan *chan = task->get_chan_by_handle(_chan);
+  if(!chan) return;
   // XXX: hax until rust_task::kill
   // send null and the receiver knows to call back into native code to check
   void* null_client = NULL;
@@ -227,6 +234,7 @@ extern "C" CDECL void aio_close_server(rust_task *task, socket_data *server,
   server->chan->deref();
   server->chan = chan->clone(iotask);
   aio_close_socket(task, server);
+  chan->deref();
 }
 
 extern "C" CDECL bool aio_is_null_client(rust_task *task,
@@ -243,8 +251,10 @@ static void connection_complete(request *req, int status) {
 }
 
 extern "C" CDECL void aio_connect(rust_task *task, const char *host,
-                                  int port, rust_chan *chan) {
+                                  int port, chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
+  rust_chan *chan = task->get_chan_by_handle(_chan);
+  if(!chan) return;
   struct sockaddr_in addr = uv_ip4_addr(const_cast<char*>(host), port);
   request *req;
   socket_data *client = make_socket(iotask, NULL);
@@ -257,11 +267,13 @@ extern "C" CDECL void aio_connect(rust_task *task, const char *host,
     goto oom_req;
   }
   if (0 == uv_tcp_connect(req, addr)) {
-    return;
+      chan->deref();
+      return;
   }
 oom_req:
   aio_close_socket(task, client);
 oom_client:
+  chan->deref();
   task->fail();
   return;
 }
@@ -274,8 +286,11 @@ static void write_complete(request *req, int status) {
 }
 
 extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
-                                    char *buf, size_t size, rust_chan *chan) {
+                                    char *buf, size_t size,
+                                    chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
+  rust_chan *chan = task->get_chan_by_handle(_chan);
+  if(!chan) return;
 
   // uv_buf_t is defined backwards on win32...
   // maybe an indication we shouldn't be building directly?
@@ -294,15 +309,20 @@ extern "C" CDECL void aio_writedata(rust_task *task, socket_data *data,
     delete req;
     goto fail;
   }
+  chan->deref();
   return;
 fail:
+  chan->deref();
   task->fail();
 }
 
 extern "C" CDECL void aio_read(rust_task *task, socket_data *data,
-                               rust_chan *reader) {
+                               chan_handle *_chan) {
   LOG_UPCALL_ENTRY(task);
+  rust_chan *reader = task->get_chan_by_handle(_chan);
+  if(!reader) return;
   I(task->sched, data->reader == NULL);
   data->reader = reader->clone(iotask);
   uv_read_start((uv_stream_t*)&data->socket, alloc_buffer, read_progress);
+  reader->deref();
 }

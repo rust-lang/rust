@@ -8,7 +8,6 @@ native "rust" mod rustrt {
     fn pin_task();
     fn unpin_task();
     fn get_task_id() -> task_id;
-    fn clone_chan(c: *rust_chan) -> *rust_chan;
 
     type rust_chan;
     type rust_task;
@@ -60,16 +59,6 @@ fn unsupervise() { ret rustrt::unsupervise(); }
 fn pin() { rustrt::pin_task(); }
 
 fn unpin() { rustrt::unpin_task(); }
-
-// FIXME: remove this
-fn clone_chan[T](c: chan[T]) -> chan[T] {
-    let cloned = rustrt::clone_chan(unsafe::reinterpret_cast(c));
-    ret unsafe::reinterpret_cast(cloned);
-}
-
-fn send[T](c: chan[T], v: &T) { c <| v; }
-
-fn recv[T](p: port[T]) -> T { let v; p |> v; v }
 
 fn set_min_stack(stack_size : uint) {
     rustrt::set_min_stack(stack_size);

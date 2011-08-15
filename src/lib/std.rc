@@ -70,6 +70,7 @@ mod run = "run_program.rs";
 mod fs;
 mod aio;
 mod sio;
+mod net;
 
 // FIXME: parametric
 mod map;

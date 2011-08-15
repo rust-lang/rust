@@ -1,16 +1,16 @@
-
-
-
 // -*- rust -*-
+
+use std;
+import std::comm::mk_port;
+import std::comm::send;
+
 fn main() {
-    let po: port[int] = port();
-    let ch: chan[int] = chan(po);
-    ch <| 10;
-    let i: int;
-    po |> i;
+    let po = mk_port();
+    let ch = po.mk_chan();
+    send(ch, 10);
+    let i = po.recv();
     assert (i == 10);
-    ch <| 11;
-    let j;
-    po |> j;
+    send(ch, 11);
+    let j = po.recv();
     assert (j == 11);
 }

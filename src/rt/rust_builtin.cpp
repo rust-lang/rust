@@ -775,11 +775,6 @@ migrate_alloc(rust_task *task, void *alloc, rust_task_id tid) {
     }
 }
 
-extern "C" CDECL rust_chan *
-clone_chan(rust_task *task, rust_chan *chan) {
-    return chan->clone(task);
-}
-
 // defined in rust_task.cpp
 extern size_t g_custom_min_stack_size;
 extern "C" CDECL void

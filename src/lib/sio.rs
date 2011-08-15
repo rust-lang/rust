@@ -1,18 +1,27 @@
+import comm::_port;
+import comm::_chan;
+import comm::mk_port;
+import comm::send;
+
+import str;
+import net;
+
 type ctx = aio::ctx;
-type client = { ctx: ctx, client: aio::client, evt: port[aio::socket_event] };
-type server = { ctx: ctx, server: aio::server, evt: port[aio::server_event] };
+type client = { ctx: ctx, client: aio::client,
+               evt: _port[aio::socket_event] };
+type server = { ctx: ctx, server: aio::server,
+               evt: _port[aio::server_event] };
 
 fn new() -> ctx {
     ret aio::new();
 }
 
 fn destroy(ctx: ctx) {
-    ctx <| aio::quit;
+    send(ctx, aio::quit);
 }
 
-fn make_socket(ctx: ctx, p: port[aio::socket_event]) -> client {
-    let evt: aio::socket_event;
-    p |> evt;
+fn make_socket(ctx: ctx, p: _port[aio::socket_event]) -> client {
+    let evt: aio::socket_event = p.recv();
     alt evt {
       aio::connected(client) {
         ret { ctx: ctx, client: client, evt: p };
@@ -21,16 +30,14 @@ fn make_socket(ctx: ctx, p: port[aio::socket_event]) -> client {
     }
 }
 
-fn connect_to(ctx: ctx, ip: str, portnum: int) -> client {
-    let p: port[aio::socket_event] = port();
-    ctx <| aio::connect(aio::remote(ip, portnum), chan(p));
+fn connect_to(ctx: ctx, ip: net::ip_addr, portnum: int) -> client {
+    let p: _port[aio::socket_event] = mk_port();
+    send(ctx, aio::connect(aio::remote(ip, portnum), p.mk_chan()));
     ret make_socket(ctx, p);
 }
 
 fn read(c: client) -> [u8] {
-    let evt: aio::socket_event;
-    c.evt |> evt;
-    alt evt {
+    alt c.evt.recv() {
         aio::closed. {
             ret ~[];
         }
@@ -40,55 +47,51 @@ fn read(c: client) -> [u8] {
     }
 }
 
-fn create_server(ctx: ctx, ip: str, portnum: int) -> server {
-    let evt: port[aio::server_event] = port();
-    let p: port[aio::server] = port();
-    ctx <| aio::serve(ip, portnum, chan(evt), chan(p));
-    let srv: aio::server;
-    p |> srv;
+fn create_server(ctx: ctx, ip: net::ip_addr, portnum: int) -> server {
+    let evt: _port[aio::server_event] = mk_port();
+    let p: _port[aio::server] = mk_port();
+    send(ctx, aio::serve(ip, portnum,
+                         evt.mk_chan(), p.mk_chan()));
+    let srv: aio::server = p.recv();
     ret { ctx: ctx, server: srv, evt: evt };
 }
 
 fn accept_from(server: server) -> client {
-    let evt: aio::server_event;
-    server.evt |> evt;
+    let evt: aio::server_event = server.evt.recv();
     alt evt {
-        aio::pending(callback) {
-            let p: port[aio::socket_event] = port();
-            callback <| chan(p);
-            ret make_socket(server.ctx, p);
-        }
+      aio::pending(callback) {
+        let p: _port[aio::socket_event] = mk_port();
+        send(callback, p.mk_chan());
+        ret make_socket(server.ctx, p);
+      }
     }
 }
 
 fn write_data(c: client, data: [u8]) -> bool {
-    let p: port[bool] = port();
-    c.ctx <| aio::write(c.client, data, chan(p));
-    let success: bool;
-    p |> success;
-    ret success;
+    let p: _port[bool] = mk_port();
+    send(c.ctx, aio::write(c.client, data, p.mk_chan()));
+    ret p.recv();
 }
 
 fn close_server(server: server) {
     // TODO: make this unit once we learn to send those from native code
-    let p: port[bool] = port();
-    server.ctx <| aio::close_server(server.server, chan(p));
-    let success: bool;
+    let p: _port[bool] = mk_port();
+    send(server.ctx, aio::close_server(server.server, p.mk_chan()));
     log "Waiting for close";
-    p |> success;
+    p.recv();
     log "Got close";
 }
 
 fn close_client(client: client) {
-    client.ctx <| aio::close_client(client.client);
+    send(client.ctx, aio::close_client(client.client));
     let evt: aio::socket_event;
     do {
-        client.evt |> evt;
+        evt = client.evt.recv();
         alt evt {
-            aio::closed. {
-                ret;
-            }
-            _ {}
+          aio::closed. {
+            ret;
+          }
+          _ {}
         }
     } while (true);
 }

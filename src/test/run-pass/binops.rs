@@ -3,6 +3,7 @@
 use std;
 import std::unsafe::reinterpret_cast;
 import std::task;
+import std::comm;
 
 fn test_nil() {
     assert (() == ());
@@ -60,20 +61,21 @@ fn test_box() {
 }
 
 fn test_port() {
-    let p1: port[int] = port();
-    let p2: port[int] = port();
+    let p1 = comm::mk_port[int]();
+    let p2 = comm::mk_port[int]();
 
     assert p1 == p1;
     assert p1 != p2;
 }
 
 fn test_chan() {
-    let p: port[int] = port();
-    let ch1 = chan(p);
-    let ch2 = chan(p);
+    let p: comm::_port[int] = comm::mk_port();
+    let ch1 = p.mk_chan();
+    let ch2 = p.mk_chan();
 
     assert ch1 == ch1;
-    assert ch1 != ch2;
+    // Chans are equal because they are just task:port addresses.
+    assert ch1 == ch2;
 }
 
 fn test_ptr() {

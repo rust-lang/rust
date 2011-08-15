@@ -527,6 +527,17 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
     return port;
 }
 
+rust_chan *rust_task::get_chan_by_handle(chan_handle *handle) {
+    rust_task *target_task = kernel->get_task_by_id(handle->task);
+    if(target_task) {
+        rust_port *port = target_task->get_port_by_id(handle->port);
+        target_task->deref();
+        port->remote_chan->ref();
+        return port->remote_chan;
+    }
+    return NULL;
+}
+
 //
 // Local Variables:
 // mode: C++

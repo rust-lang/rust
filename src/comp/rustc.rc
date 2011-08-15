@@ -1,4 +1,3 @@
-
 // -*- rust -*-
 
 #[link(name = "rustc",
@@ -18,7 +17,6 @@ mod middle {
     mod trans_common;
     mod trans;
     mod trans_alt;
-    mod trans_comm;
     mod trans_dps;
     mod trans_objects;
     mod trans_vec;

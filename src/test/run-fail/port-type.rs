@@ -1,13 +1,17 @@
 // error-pattern:meep
-fn echo[T](c: chan[T], oc: chan[chan[T]]) {
+use std;
+import std::comm::_chan;
+import std::comm::mk_port;
+import std::comm::send;
+
+fn echo[~T](c: _chan[T], oc: _chan[_chan[T]]) {
     // Tests that the type argument in port gets
     // visited
-    let p = port[T]();
-    oc <| chan(p);
+    let p = mk_port[T]();
+    send(oc, p.mk_chan());
 
-    let x;
-    p |> x;
-    c <| x;
+    let x = p.recv();
+    send(c, x);
 }
 
 fn main() { fail "meep"; }
