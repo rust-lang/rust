@@ -272,7 +272,7 @@ fn parse_ty_fn(proto: ast::proto, p: &parser, lo: uint) -> ast::ty_ {
             p.bump();
             mode = ast::alias(eat_word(p, "mutable"));
         }
-        let t = parse_ty(p);
+        let t = parse_ty(p, false);
         ret spanned(lo, t.span.hi, {mode: mode, ty: t});
     }
     let lo = p.get_lo_pos();
@@ -337,7 +337,7 @@ fn parse_ty_obj(p: &parser, hi: &mutable uint) -> ast::ty_ {
 
 fn parse_mt(p: &parser) -> ast::mt {
     let mut = parse_mutability(p);
-    let t = parse_ty(p);
+    let t = parse_ty(p, false);
     ret {ty: t, mut: mut};
 }
 
@@ -346,7 +346,7 @@ fn parse_ty_field(p: &parser) -> ast::ty_field {
     let mut = parse_mutability(p);
     let id = parse_ident(p);
     expect(p, token::COLON);
-    let ty = parse_ty(p);
+    let ty = parse_ty(p, false);
     ret spanned(lo, ty.span.hi, {ident: id, mt: {ty: ty, mut: mut}});
 }
 
@@ -421,46 +421,52 @@ fn parse_type_constraints(p: &parser) -> [@ast::ty_constr] {
     ret parse_constrs(parse_constr_in_type, p);
 }
 
-fn parse_ty_postfix(orig_t: ast::ty_, p: &parser) -> @ast::ty {
+fn parse_ty_postfix(orig_t: ast::ty_, p: &parser, colons_before_params: bool)
+        -> @ast::ty {
     let lo = p.get_lo_pos();
-    if p.peek() == token::LBRACKET || p.peek() == token::LT {
-        let end;
-        if p.peek() == token::LBRACKET {
-            end = token::RBRACKET;
-        } else {
-            end = token::GT;
-        }
 
-        // This is explicit type parameter instantiation.
+    let end;
+    if p.peek() == token::LBRACKET {
         p.bump();
-
-        let seq = parse_seq_to_end(end, some(token::COMMA), parse_ty, p);
-
-        alt orig_t {
-          ast::ty_path(pth, ann) {
-            let hi = p.get_hi_pos();
-            ret @spanned(lo, hi,
-                         ast::ty_path(spanned(lo, hi,
-                                              {global: pth.node.global,
-                                               idents: pth.node.idents,
-                                               types: seq}), ann));
-          }
-          _ {
-            p.fatal("type parameter instantiation only allowed for paths");
-          }
-        }
+        end = token::RBRACKET;
+    } else if colons_before_params && p.peek() == token::MOD_SEP {
+        p.bump();
+        expect(p, token::LT);
+        end = token::GT;
+    } else if !colons_before_params && p.peek() == token::LT {
+        p.bump();
+        end = token::GT;
+    } else {
+        ret @spanned(lo, p.get_lo_pos(), orig_t);
     }
-    ret @spanned(lo, p.get_lo_pos(), orig_t);
+
+    // If we're here, we have explicit type parameter instantiation.
+    let seq = parse_seq_to_end(end, some(token::COMMA),
+                               bind parse_ty(_, false), p);
+
+    alt orig_t {
+      ast::ty_path(pth, ann) {
+        let hi = p.get_hi_pos();
+        ret @spanned(lo, hi,
+                     ast::ty_path(spanned(lo, hi,
+                                          {global: pth.node.global,
+                                           idents: pth.node.idents,
+                                           types: seq}), ann));
+      }
+      _ {
+        p.fatal("type parameter instantiation only allowed for paths");
+      }
+    }
 }
 
 fn parse_ty_or_bang(p: &parser) -> ty_or_bang {
     alt p.peek() {
       token::NOT. { p.bump(); ret a_bang; }
-      _ { ret a_ty(parse_ty(p)); }
+      _ { ret a_ty(parse_ty(p, false)); }
     }
 }
 
-fn parse_ty(p: &parser) -> @ast::ty {
+fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.get_lo_pos();
     let hi = lo;
     let t: ast::ty_;
@@ -511,10 +517,10 @@ fn parse_ty(p: &parser) -> @ast::ty {
             p.bump();
             t = ast::ty_nil;
         } else {
-            let ts = ~[parse_ty(p)];
+            let ts = ~[parse_ty(p, false)];
             while p.peek() == token::COMMA {
                 p.bump();
-                ts += ~[parse_ty(p)];
+                ts += ~[parse_ty(p, false)];
             }
             if ivec::len(ts) == 1u {
                 t = ts.(0).node;
@@ -572,17 +578,17 @@ fn parse_ty(p: &parser) -> @ast::ty {
         t = parse_ty_obj(p, hi);
     } else if (eat_word(p, "port")) {
         expect(p, token::LBRACKET);
-        t = ast::ty_port(parse_ty(p));
+        t = ast::ty_port(parse_ty(p, false));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "chan")) {
         expect(p, token::LBRACKET);
-        t = ast::ty_chan(parse_ty(p));
+        t = ast::ty_chan(parse_ty(p, false));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "mutable")) {
         p.warn("ignoring deprecated 'mutable' type constructor");
-        let typ = parse_ty(p);
+        let typ = parse_ty(p, false);
         t = typ.node;
         hi = typ.span.hi;
     } else if (p.peek() == token::MOD_SEP || is_ident(p.peek())) {
@@ -590,7 +596,7 @@ fn parse_ty(p: &parser) -> @ast::ty {
         t = ast::ty_path(path, p.get_id());
         hi = path.span.hi;
     } else { p.fatal("expecting type"); }
-    ret parse_ty_postfix(t, p);
+    ret parse_ty_postfix(t, p, colons_before_params);
 }
 
 fn parse_arg(p: &parser) -> ast::arg {
@@ -602,7 +608,7 @@ fn parse_arg(p: &parser) -> ast::arg {
     } else if eat(p, token::BINOP(token::MINUS)) {
         m = ast::move;
     }
-    let t: @ast::ty = parse_ty(p);
+    let t: @ast::ty = parse_ty(p, false);
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
@@ -706,7 +712,11 @@ fn parse_path(p: &parser) -> ast::path {
             ids += ~[p.get_str(i)];
             hi = p.get_hi_pos();
             p.bump();
-            if p.peek() == token::MOD_SEP { p.bump(); } else { break; }
+            if p.peek() == token::MOD_SEP && p.look_ahead(1u) != token::LT {
+                p.bump();
+            } else {
+                break;
+            }
           }
           _ { break; }
         }
@@ -720,7 +730,7 @@ fn parse_path_and_ty_param_substs(p: &parser) -> ast::path {
     if p.peek() == token::LBRACKET {
         let seq =
             parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
-                      parse_ty, p);
+                      bind parse_ty(_, false), p);
         let hi = seq.span.hi;
         path =
             spanned(lo, hi,
@@ -830,7 +840,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ex = ast::expr_vec(es, mut, ast::sk_rc);
     } else if (p.peek() == token::POUND_LT) {
         p.bump();
-        let ty = parse_ty(p);
+        let ty = parse_ty(p, false);
         expect(p, token::GT);
 
         /* hack: early return to take advantage of specialized function */
@@ -976,7 +986,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         let ty = @spanned(lo, hi, ast::ty_infer);
         if token::LBRACKET == p.peek() {
             expect(p, token::LBRACKET);
-            ty = parse_ty(p);
+            ty = parse_ty(p, false);
             expect(p, token::RBRACKET);
         }
         expect(p, token::LPAREN);
@@ -1201,7 +1211,7 @@ fn parse_more_binops(p: &parser, lhs: @ast::expr, min_prec: int) ->
         }
     }
     if as_prec > min_prec && eat_word(p, "as") {
-        let rhs = parse_ty(p);
+        let rhs = parse_ty(p, true);
         let _as =
             mk_expr(p, lhs.span.lo, rhs.span.hi, ast::expr_cast(lhs, rhs));
         ret parse_more_binops(p, _as, min_prec);
@@ -1521,7 +1531,7 @@ fn parse_local(p: &parser, allow_init: bool) -> @ast::local {
     let lo = p.get_lo_pos();
     let pat = parse_pat(p);
     let ty = @spanned(lo, lo, ast::ty_infer);
-    if eat(p, token::COLON) { ty = parse_ty(p); }
+    if eat(p, token::COLON) { ty = parse_ty(p, false); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.get_last_hi_pos(),
                  {ty: ty,
@@ -1814,7 +1824,7 @@ fn parse_obj_field(p: &parser) -> ast::obj_field {
     let mut = parse_mutability(p);
     let ident = parse_value_ident(p);
     expect(p, token::COLON);
-    let ty = parse_ty(p);
+    let ty = parse_ty(p, false);
     ret {mut: mut, ty: ty, ident: ident, id: p.get_id()};
 }
 
@@ -1822,7 +1832,7 @@ fn parse_anon_obj_field(p: &parser) -> ast::anon_obj_field {
     let mut = parse_mutability(p);
     let ident = parse_value_ident(p);
     expect(p, token::COLON);
-    let ty = parse_ty(p);
+    let ty = parse_ty(p, false);
     expect(p, token::EQ);
     let expr = parse_expr(p);
     ret {mut: mut, ty: ty, expr: expr, ident: ident, id: p.get_id()};
@@ -1865,7 +1875,7 @@ fn parse_item_res(p: &parser, attrs: &[ast::attribute]) ->
     expect(p, token::LPAREN);
     let arg_ident = parse_value_ident(p);
     expect(p, token::COLON);
-    let t = parse_ty(p);
+    let t = parse_ty(p, false);
     expect(p, token::RPAREN);
     let dtor = parse_block(p);
     let decl =
@@ -1909,7 +1919,7 @@ fn parse_item_const(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let lo = p.get_last_lo_pos();
     let id = parse_value_ident(p);
     expect(p, token::COLON);
-    let ty = parse_ty(p);
+    let ty = parse_ty(p, false);
     expect(p, token::EQ);
     let e = parse_expr(p);
     let hi = p.get_hi_pos();
@@ -2031,7 +2041,7 @@ fn parse_item_type(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
     let t = parse_type_decl(p);
     let tps = parse_ty_params(p);
     expect(p, token::EQ);
-    let ty = parse_ty(p);
+    let ty = parse_ty(p, false);
     let hi = p.get_hi_pos();
     expect(p, token::SEMI);
     ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps), attrs);
@@ -2048,7 +2058,7 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
             p.fatal("found " + id + " in tag constructor position");
         }
         p.bump();
-        let ty = parse_ty(p);
+        let ty = parse_ty(p, false);
         expect(p, token::SEMI);
         let variant =
             spanned(ty.span.lo, ty.span.hi,
@@ -2072,7 +2082,7 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
               token::LPAREN. {
                 let arg_tys =
                     parse_seq(token::LPAREN, token::RPAREN,
-                              some(token::COMMA), parse_ty, p);
+                              some(token::COMMA), bind parse_ty(_, false), p);
                 for ty: @ast::ty  in arg_tys.node {
                     args += ~[{ty: ty, id: p.get_id()}];
                 }
