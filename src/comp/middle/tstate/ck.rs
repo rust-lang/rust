@@ -151,7 +151,7 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
                                         return a value");
         fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
                                     "see declared return type of '" +
-                                        ty_to_str(*f.decl.output) + "'");
+                                        ty_to_str(f.decl.output) + "'");
     } else if (f.decl.cf == noreturn) {
         // check that this really always fails
         // Note that it's ok for i_diverge and i_return to both be true.

@@ -90,7 +90,7 @@ fn print_crate(cm: &codemap, crate: @ast::crate, filename: str,
     eof(s.s);
 }
 
-fn ty_to_str(ty: &ast::ty) -> str { be to_str(ty, print_type); }
+fn ty_to_str(ty: &@ast::ty) -> str { be to_str(ty, print_type); }
 
 fn pat_to_str(pat: &@ast::pat) -> str { be to_str(pat, print_pat); }
 
@@ -268,9 +268,7 @@ fn print_native_mod(s: &ps, nmod: &ast::native_mod,
     for item: @ast::native_item  in nmod.items { print_native_item(s, item); }
 }
 
-fn print_boxed_type(s: &ps, ty: &@ast::ty) { print_type(s, *ty); }
-
-fn print_type(s: &ps, ty: &ast::ty) {
+fn print_type(s: &ps, ty: &@ast::ty) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     alt ty.node {
@@ -293,19 +291,19 @@ fn print_type(s: &ps, ty: &ast::ty) {
           ast::maybe_mut. { word_space(s, "mutable?"); }
           ast::imm. {}
         }
-        print_type(s, *mt.ty);
+        print_type(s, mt.ty);
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
       ast::ty_task. { word(s.s, "task"); }
       ast::ty_port(t) {
         word(s.s, "port[");
-        print_type(s, *t);
+        print_type(s, t);
         word(s.s, "]");
       }
       ast::ty_chan(t) {
         word(s.s, "chan[");
-        print_type(s, *t);
+        print_type(s, t);
         word(s.s, "]");
       }
       ast::ty_rec(fields) {
@@ -315,7 +313,7 @@ fn print_type(s: &ps, ty: &ast::ty) {
             print_mutability(s, f.node.mt.mut);
             word(s.s, f.node.ident);
             word_space(s, ":");
-            print_type(s, *f.node.mt.ty);
+            print_type(s, f.node.mt.ty);
             end(s);
         }
         fn get_span(f: &ast::ty_field) -> codemap::span { ret f.span; }
@@ -324,7 +322,7 @@ fn print_type(s: &ps, ty: &ast::ty) {
       }
       ast::ty_tup(elts) {
           popen(s);
-          commasep(s, inconsistent, elts, print_boxed_type);
+          commasep(s, inconsistent, elts, print_type);
           pclose(s);
       }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
@@ -347,7 +345,7 @@ fn print_type(s: &ps, ty: &ast::ty) {
       ast::ty_path(path, _) { print_path(s, path); }
       ast::ty_type. { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
-        print_type(s, *t);
+        print_type(s, t);
         space(s.s);
         word(s.s, ast_ty_constrs_str(cs));
       }
@@ -396,7 +394,7 @@ fn print_item(s: &ps, item: &@ast::item) {
       ast::item_const(ty, expr) {
         head(s, "const");
         word_space(s, item.ident + ":");
-        print_type(s, *ty);
+        print_type(s, ty);
         space(s.s);
         end(s); // end the head-ibox
 
@@ -451,7 +449,7 @@ fn print_item(s: &ps, item: &@ast::item) {
 
         space(s.s);
         word_space(s, "=");
-        print_type(s, *ty);
+        print_type(s, ty);
         word(s.s, ";");
         end(s); // end the outer ibox
       }
@@ -469,7 +467,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         space(s.s);
         if newtype {
             word_space(s, "=");
-            print_type(s, *variants.(0).node.args.(0).ty);
+            print_type(s, variants.(0).node.args.(0).ty);
             word(s.s, ";");
             end(s);
         } else {
@@ -481,7 +479,7 @@ fn print_item(s: &ps, item: &@ast::item) {
                 if ivec::len(v.node.args) > 0u {
                     popen(s);
                     fn print_variant_arg(s: &ps, arg: &ast::variant_arg) {
-                        print_type(s, *arg.ty);
+                        print_type(s, arg.ty);
                     }
                     commasep(s, consistent, v.node.args, print_variant_arg);
                     pclose(s);
@@ -501,7 +499,7 @@ fn print_item(s: &ps, item: &@ast::item) {
             ibox(s, indent_unit);
             print_mutability(s, field.mut);
             word_space(s, field.ident + ":");
-            print_type(s, *field.ty);
+            print_type(s, field.ty);
             end(s);
         }
         fn get_span(f: &ast::obj_field) -> codemap::span { ret f.ty.span; }
@@ -526,7 +524,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         print_type_params(s, tps);
         popen(s);
         word_space(s, dt.decl.inputs.(0).ident + ":");
-        print_type(s, *dt.decl.inputs.(0).ty);
+        print_type(s, dt.decl.inputs.(0).ty);
         pclose(s);
         space(s.s);
         print_block(s, dt.body);
@@ -697,7 +695,7 @@ fn print_mac(s: &ps, m: &ast::mac) {
       }
       ast::mac_embed_type(ty) {
         word(s.s, "#<");
-        print_type(s, *ty);
+        print_type(s, ty);
         word(s.s, ">");
       }
       ast::mac_embed_block(blk) {
@@ -803,7 +801,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_maybe_parens(s, expr, parse::parser::as_prec);
         space(s.s);
         word_space(s, "as");
-        print_type(s, *ty);
+        print_type(s, ty);
       }
       ast::expr_if(test, blk, elseopt) {
         print_if(s, test, blk, elseopt, false);
@@ -981,7 +979,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         word(s.s, "port");
         alt t.node {
           ast::ty_infer. { }
-          _ { word(s.s, "["); print_type(s, *t); word(s.s, "]"); }
+          _ { word(s.s, "["); print_type(s, t); word(s.s, "]"); }
         }
         popen(s);
         pclose(s);
@@ -1001,7 +999,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
             ibox(s, indent_unit);
             print_mutability(s, field.mut);
             word_space(s, field.ident + ":");
-            print_type(s, *field.ty);
+            print_type(s, field.ty);
             space(s.s);
             word_space(s, "=");
             print_expr(s, field.expr);
@@ -1055,7 +1053,7 @@ fn print_local_decl(s: &ps, loc: &@ast::local) {
     print_pat(s, loc.node.pat);
     alt loc.node.ty.node {
       ast::ty_infer. { }
-      _ { word_space(s, ":"); print_type(s, *loc.node.ty); }
+      _ { word_space(s, ":"); print_type(s, loc.node.ty); }
     }
 }
 
@@ -1108,7 +1106,7 @@ fn print_path(s: &ps, path: &ast::path) {
     }
     if ivec::len(path.node.types) > 0u {
         word(s.s, "[");
-        commasep(s, inconsistent, path.node.types, print_boxed_type);
+        commasep(s, inconsistent, path.node.types, print_type);
         word(s.s, "]");
     }
 }
@@ -1174,7 +1172,7 @@ fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
         ibox(s, indent_unit);
         word_space(s, x.ident + ":");
         print_alias(s, x.mode);
-        print_type(s, *x.ty);
+        print_type(s, x.ty);
         end(s);
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
@@ -1184,7 +1182,7 @@ fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
         word_space(s, "->");
-        print_type(s, *decl.output);
+        print_type(s, decl.output);
     }
 }
 
@@ -1316,7 +1314,7 @@ fn print_mutability(s: &ps, mut: &ast::mutability) {
 
 fn print_mt(s: &ps, mt: &ast::mt) {
     print_mutability(s, mt.mut);
-    print_type(s, *mt.ty);
+    print_type(s, mt.ty);
 }
 
 fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
@@ -1329,7 +1327,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
     popen(s);
     fn print_arg(s: &ps, input: &ast::ty_arg) {
         print_alias(s, input.node.mode);
-        print_type(s, *input.node.ty);
+        print_type(s, input.node.ty);
     }
     commasep(s, inconsistent, inputs, print_arg);
     pclose(s);
@@ -1339,7 +1337,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
         ibox(s, indent_unit);
         word_space(s, "->");
         alt cf {
-          ast::return. { print_type(s, *output); }
+          ast::return. { print_type(s, output); }
           ast::noreturn. { word_nbsp(s, "!"); }
         }
         end(s);

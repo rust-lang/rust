@@ -59,7 +59,7 @@ fn log_expr(e: &ast::expr) { log print::pprust::expr_to_str(@e); }
 
 fn log_expr_err(e: &ast::expr) { log_err print::pprust::expr_to_str(@e); }
 
-fn log_ty_err(t: &ty) { log_err print::pprust::ty_to_str(t); }
+fn log_ty_err(t: &@ty) { log_err print::pprust::ty_to_str(t); }
 
 fn log_pat_err(p: &@pat) { log_err print::pprust::pat_to_str(p); }
 
