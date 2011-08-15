@@ -161,7 +161,6 @@ fn head(s: &ps, w: str) {
 fn bopen(s: &ps) {
     word(s.s, "{");
     end(s); // close the head-box
-
 }
 
 fn bclose_(s: &ps, span: codemap::span, indented: uint) {
@@ -578,15 +577,21 @@ fn print_stmt(s: &ps, st: &ast::stmt) {
 }
 
 fn print_block(s: &ps, blk: &ast::blk) {
-    print_possibly_embedded_block(s, blk, false, indent_unit);
+    print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
-fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: bool,
+tag embed_type { block_macro; block_block_fn; block_normal; }
+
+fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
                                  indented: uint) {
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
-    if embedded { word(s.s, "#{"); end(s); } else { bopen(s); }
+    alt embedded {
+      block_macro. { word(s.s, "#{"); end(s); }
+      block_block_fn. { end(s); }
+      block_normal. { bopen(s); }
+    }
 
     let last_stmt = option::none;
     for st: @ast::stmt  in blk.node.stmts {
@@ -699,7 +704,7 @@ fn print_mac(s: &ps, m: &ast::mac) {
         word(s.s, ">");
       }
       ast::mac_embed_block(blk) {
-        print_possibly_embedded_block(s, blk, true, indent_unit);
+        print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis. { word(s.s, "..."); }
     }
@@ -863,16 +868,29 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
                 print_pat(s, p);
             }
             space(s.s);
-            print_possibly_embedded_block(s, arm.body, false,
+            print_possibly_embedded_block(s, arm.body, block_normal,
                                           alt_indent_unit);
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
       ast::expr_fn(f) {
-        head(s, proto_to_str(f.proto));
-        print_fn_args_and_ret(s, f.decl, ~[]);
-        space(s.s);
-        print_block(s, f.body);
+        // If the return type is the magic ty_infer, then we need to
+        // pretty print as a lambda-block
+        if f.decl.output.node == ast::ty_infer {
+            // containing cbox, will be closed by print-block at }
+            cbox(s, indent_unit);
+            // head-box, will be closed by print-block at start
+            ibox(s, 0u);
+            word(s.s, "{");
+            print_fn_block_args(s, f.decl);
+            print_possibly_embedded_block(s, f.body,
+                                          block_block_fn, indent_unit);
+        } else {
+            head(s, proto_to_str(f.proto));
+            print_fn_args_and_ret(s, f.decl, ~[]);
+            space(s.s);
+            print_block(s, f.body);
+        }
       }
       ast::expr_block(blk) {
         // containing cbox, will be closed by print-block at }
@@ -1192,6 +1210,19 @@ fn print_fn_args_and_ret(s: &ps, decl: &ast::fn_decl,
         word_space(s, "->");
         print_type(s, decl.output);
     }
+}
+
+fn print_fn_block_args(s: &ps, decl: &ast::fn_decl) {
+    word(s.s, "|");
+    fn print_arg(s: &ps, x: &ast::arg) {
+        ibox(s, indent_unit);
+        print_alias(s, x.mode);
+        word(s.s, x.ident);
+        end(s);
+    }
+    commasep(s, inconsistent, decl.inputs, print_arg);
+    word(s.s, "|");
+    maybe_print_comment(s, decl.output.span.lo);
 }
 
 fn print_alias(s: &ps, m: ast::mode) {
