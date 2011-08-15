@@ -675,7 +675,7 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
 fn GEPi(cx: &@block_ctxt, base: ValueRef, ixs: &[int]) -> ValueRef {
     let v: [ValueRef] = ~[];
     for i: int  in ixs { v += ~[C_int(i)]; }
-    ret cx.build.GEP(base, v);
+    ret cx.build.InBoundsGEP(base, v);
 }
 
 // Increment a pointer by a given amount and then cast it to be a pointer
