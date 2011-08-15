@@ -14,7 +14,7 @@ export difference;
 export set;
 export is_true;
 export is_false;
-export to_ivec;
+export to_vec;
 export to_str;
 export eq_ivec;
 
@@ -135,27 +135,27 @@ fn set(v: &t, i: uint, x: bool) {
 
 /* true if all bits are 1 */
 fn is_true(v: &t) -> bool {
-    for i: uint in to_ivec(v) { if i != 1u { ret false; } }
+    for i: uint in to_vec(v) { if i != 1u { ret false; } }
     ret true;
 }
 
 
 /* true if all bits are non-1 */
 fn is_false(v: &t) -> bool {
-    for i: uint in to_ivec(v) { if i == 1u { ret false; } }
+    for i: uint in to_vec(v) { if i == 1u { ret false; } }
     ret true;
 }
 
 fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
 
-fn to_ivec(v: &t) -> [uint] {
+fn to_vec(v: &t) -> [uint] {
     let sub = bind init_to_vec(v, _);
     ret ivec::init_fn[uint](sub, v.nbits);
 }
 
 fn to_str(v: &t) -> str {
     let rs = "";
-    for i: uint in to_ivec(v) {
+    for i: uint in to_vec(v) {
         if i == 1u { rs += "1"; } else { rs += "0"; }
     }
     ret rs;
