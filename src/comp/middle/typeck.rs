@@ -1611,21 +1611,38 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Check the arguments.
-        let i = 0u;
-        for a_opt: option::t[@ast::expr]  in args {
-            alt a_opt {
-              some(a) {
-                bot |= check_expr_with_unifier(fcx, a, demand::block_coerce,
-                                               arg_tys.(i).ty);
-              }
-              none. { }
+        // We do this in a pretty awful way: first we typecheck any arguments
+        // that are not anonymous functions, then we typecheck the anonymous
+        // functions. This is so that we have more information about the types
+        // of arguments when we typecheck the functions. This isn't really the
+        // right way to do this.
+        let check_args = lambda(check_blocks: bool) -> bool {
+            let i = 0u;
+            let bot = false;
+            for a_opt: option::t[@ast::expr]  in args {
+                alt a_opt {
+                  some(a) {
+                    let is_block =
+                        alt a.node { ast::expr_fn(_) { true } _ { false } };
+                    if is_block == check_blocks {
+                        bot |= check_expr_with_unifier(fcx, a,
+                                                       demand::block_coerce,
+                                                       arg_tys.(i).ty);
+                    }
+                  }
+                  none. {}
+                }
+                i += 1u;
             }
-            i += 1u;
-        }
+            ret bot;
+        };
+        bot |= check_args(false);
+        bot |= check_args(true);
+
         ret bot;
     }
-    // A generic function for checking assignment expressions
 
+    // A generic function for checking assignment expressions
     fn check_assignment(fcx: &@fn_ctxt, sp: &span, lhs: &@ast::expr,
                         rhs: &@ast::expr, id: &ast::node_id) -> bool {
         let t = next_ty_var(fcx);
