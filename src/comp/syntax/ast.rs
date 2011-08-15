@@ -1,6 +1,5 @@
 // The Rust abstract syntax tree.
 
-import std::ivec;
 import std::option;
 import std::str;
 import codemap::span;

@@ -1,7 +1,7 @@
 use std;
 
 import codemap::span;
-import std::ivec;
+import std::vec;
 import std::option;
 import std::map::hashmap;
 import std::map::new_str_hash;
@@ -33,7 +33,7 @@ import ast::mac_invoc;
 export add_new_extension;
 
 fn path_to_ident(pth: &path) -> option::t[ident] {
-    if ivec::len(pth.node.idents) == 1u && ivec::len(pth.node.types) == 0u {
+    if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
         ret some(pth.node.idents.(0u));
     }
     ret none;
@@ -103,10 +103,10 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
                 if res != none {
                     cx.span_fatal(m.span, "only one ellipsis allowed");
                 }
-                res = some({pre: ivec::slice(elts, 0u, idx - 1u),
+                res = some({pre: vec::slice(elts, 0u, idx - 1u),
                             rep: some(elts.(idx - 1u)),
-                            post: ivec::slice(elts, idx + 1u,
-                                              ivec::len(elts))});
+                            post: vec::slice(elts, idx + 1u,
+                                              vec::len(elts))});
               }
               _ { }
             }
@@ -286,7 +286,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
     -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
-        let res = ivec::map(recur, pre);
+        let res = vec::map(recur, pre);
         alt repeat_me_maybe {
           none. {}
           some(repeat_me) {
@@ -300,10 +300,10 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                   seq(ms, _) {
                     alt repeat {
                       none. {
-                        repeat = some({rep_count: ivec::len(*ms), name: fv});
+                        repeat = some({rep_count: vec::len(*ms), name: fv});
                       }
                       some({rep_count: old_len, name: old_name}) {
-                        let len = ivec::len(*ms);
+                        let len = vec::len(*ms);
                         if old_len != len {
                             let msg = #fmt("'%s' occurs %u times, but ", fv,
                                            len) + #fmt("'%s' occurs %u times",
@@ -327,14 +327,14 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                 while idx < rc {
                     *idx_path += ~[idx];
                     res += ~[recur(repeat_me)]; // whew!
-                    ivec::pop(*idx_path);
+                    vec::pop(*idx_path);
                     idx += 1u;
                 }
               }
             }
           }
         }
-        res += ivec::map(recur, post);
+        res += vec::map(recur, post);
         ret res;
       }
     }
@@ -356,7 +356,7 @@ fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
                    p: &path_, fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
-    if ivec::len(p.types) > 0u || ivec::len(p.idents) != 1u { ret p; }
+    if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
     ret alt follow_for_trans(cx, b.find(p.idents.(0)), idx_path) {
           some(match_ident(id)) {
             {global: false, idents: ~[id.node], types: ~[]}
@@ -375,7 +375,7 @@ fn transcribe_expr(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
     ret alt e {
           expr_path(p) {
             // Don't substitute into qualified names.
-            if ivec::len(p.node.types) > 0u || ivec::len(p.node.idents) != 1u
+            if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u
                {
                 e
             }
@@ -452,14 +452,14 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
           expr_vec(p_elts, _, _) {
             alt elts_to_ell(cx, p_elts) {
               {pre: pre, rep: some(repeat_me), post: post} {
-                p_t_s_r_length(cx, ivec::len(pre) + ivec::len(post),
+                p_t_s_r_length(cx, vec::len(pre) + vec::len(post),
                                true, s, b);
-                if(ivec::len(pre) > 0u) {
+                if(vec::len(pre) > 0u) {
                     p_t_s_r_actual_vector(cx, pre, true, s, b);
                 }
-                p_t_s_r_ellipses(cx, repeat_me, ivec::len(pre), s, b);
+                p_t_s_r_ellipses(cx, repeat_me, vec::len(pre), s, b);
 
-                if(ivec::len(post) > 0u) {
+                if(vec::len(post) > 0u) {
                     cx.span_unimpl(e.span,
                                    "matching after `...` not yet supported");
                 }
@@ -468,7 +468,7 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
                 if post != ~[] {
                     cx.bug("elts_to_ell provided an invalid result");
                 }
-                p_t_s_r_length(cx, ivec::len(pre), false, s, b);
+                p_t_s_r_length(cx, vec::len(pre), false, s, b);
                 p_t_s_r_actual_vector(cx, pre, false, s, b);
               }
             }
@@ -534,7 +534,7 @@ fn p_t_s_r_path(cx: &ext_ctxt, p: &path, s: &selector, b: &binders) {
 }
 
 fn block_to_ident(blk: &blk_) -> option::t[ident] {
-    if ivec::len(blk.stmts) != 0u { ret none; }
+    if vec::len(blk.stmts) != 0u { ret none; }
     ret alt blk.expr {
           some(expr) {
             alt expr.node { expr_path(pth) { path_to_ident(pth) } _ { none } }
@@ -610,7 +610,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
                   expr_vec(arg_elts, _, _) {
                     let elts = ~[];
                     let idx = offset;
-                    while idx < ivec::len(arg_elts) {
+                    while idx < vec::len(arg_elts) {
                         elts += ~[leaf(match_expr(arg_elts.(idx)))];
                         idx += 1u;
                     }
@@ -637,7 +637,7 @@ fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _, _) {
-                    let actual_len = ivec::len(arg_elts);
+                    let actual_len = vec::len(arg_elts);
                     if (at_least && actual_len >= len) || actual_len == len {
                         some(leaf(match_exact))
                     } else { none }
@@ -655,7 +655,7 @@ fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
 fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
                          s: &selector, b: &binders) {
     let idx: uint = 0u;
-    while idx < ivec::len(elts) {
+    while idx < vec::len(elts) {
         fn select(cx: &ext_ctxt, m: &matchable, idx: uint) -> match_result {
             ret alt m {
                   match_expr(e) {
@@ -689,7 +689,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
     for arg: @expr in args {
         alt arg.node {
           expr_vec(elts, mut, seq_kind) {
-            if ivec::len(elts) != 2u {
+            if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
                               "extension clause must consist of [" +
                                   "macro invocation, expansion body]");

@@ -27,7 +27,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::ivec;
+import std::vec;
 import std::int;
 import std::io;
 import std::run;
@@ -441,8 +441,8 @@ fn opts() -> [getopts::opt] {
 }
 
 fn main(args: vec[str]) {
-    let args_ivec = ivec::from_vec(args);
-    let binary = ivec::shift(args_ivec);
+    let args_ivec = vec::from_vec(args);
+    let binary = vec::shift(args_ivec);
     let binary_dir = fs::dirname(binary);
     let match =
         alt getopts::getopts(args_ivec, opts()) {
@@ -462,7 +462,7 @@ fn main(args: vec[str]) {
     }
     let sopts = build_session_options(binary, match, binary_dir);
     let sess = build_session(sopts);
-    let n_inputs = ivec::len[str](match.free);
+    let n_inputs = vec::len[str](match.free);
     let output_file = getopts::opt_maybe_str(match, "o");
     let glue = opt_present(match, "glue");
     if glue {
@@ -523,7 +523,7 @@ fn main(args: vec[str]) {
         } else {
             ~["default", "rs"]
         };
-        ivec::pop(parts);
+        vec::pop(parts);
         saved_out_filename = str::connect(parts, ".");
         let suffix = alt sopts.output_type {
           link::output_type_none. { "none" }
@@ -580,7 +580,7 @@ fn main(args: vec[str]) {
                  }(config, _);
         fn rmext(filename: str) -> str {
             let parts = str::split(filename, '.' as u8);
-            ivec::pop(parts);
+            vec::pop(parts);
             ret str::connect(parts, ".");
         }
         ret alt config.os {
@@ -639,8 +639,6 @@ fn main(args: vec[str]) {
 #[cfg(test)]
 mod test {
 
-    import std::ivec;
-
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
@@ -666,7 +664,7 @@ mod test {
         let sess = build_session(sessopts);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
-        assert (ivec::len(test_items) == 1u);
+        assert (vec::len(test_items) == 1u);
     }
 }
 

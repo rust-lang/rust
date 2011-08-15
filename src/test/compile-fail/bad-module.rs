@@ -1,4 +1,4 @@
 // error-pattern: unresolved import: ivec
 import ivec;
 
-fn main() { let foo = ivec::len([]); }
+fn main() { let foo = vec::len([]); }

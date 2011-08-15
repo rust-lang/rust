@@ -1,7 +1,7 @@
 import syntax::codemap::span;
 import ast::*;
 
-import std::ivec;
+import std::vec;
 import std::option;
 
 export ast_fold_precursor;
@@ -111,7 +111,7 @@ fn fold_meta_item_(mi: &@meta_item, fld: ast_fold) -> @meta_item {
                 meta_word(id) { meta_word(fld.fold_ident(id)) }
                 meta_list(id, mis) {
                   let fold_meta_item = bind fold_meta_item_(_, fld);
-                  meta_list(id, ivec::map(fold_meta_item, mis))
+                  meta_list(id, vec::map(fold_meta_item, mis))
                 }
                 meta_name_value(id, s) {
                   meta_name_value(fld.fold_ident(id), s)
@@ -154,10 +154,10 @@ fn noop_fold_crate(c: &crate_, fld: ast_fold) -> crate_ {
     let fold_meta_item = bind fold_meta_item_(_, fld);
     let fold_attribute = bind fold_attribute_(_, fold_meta_item);
 
-    ret {directives: ivec::map(fld.fold_crate_directive, c.directives),
+    ret {directives: vec::map(fld.fold_crate_directive, c.directives),
          module: fld.fold_mod(c.module),
-         attrs: ivec::map(fold_attribute, c.attrs),
-         config: ivec::map(fold_meta_item, c.config)};
+         attrs: vec::map(fold_attribute, c.attrs),
+         config: vec::map(fold_meta_item, c.config)};
 }
 
 fn noop_fold_crate_directive(cd: &crate_directive_, fld: ast_fold) ->
@@ -168,7 +168,7 @@ fn noop_fold_crate_directive(cd: &crate_directive_, fld: ast_fold) ->
           }
           cdir_dir_mod(id, fname, cds, attrs) {
             cdir_dir_mod(fld.fold_ident(id), fname,
-                         ivec::map(fld.fold_crate_directive, cds), attrs)
+                         vec::map(fld.fold_crate_directive, cds), attrs)
           }
           cdir_view_item(vi) { cdir_view_item(fld.fold_view_item(vi)) }
           cdir_syntax(_) { cd }
@@ -187,19 +187,19 @@ fn noop_fold_native_item(ni: &@native_item, fld: ast_fold) -> @native_item {
     let fold_attribute = bind fold_attribute_(_, fold_meta_item);
 
     ret @{ident: fld.fold_ident(ni.ident),
-          attrs: ivec::map(fold_attribute, ni.attrs),
+          attrs: vec::map(fold_attribute, ni.attrs),
           node:
               alt ni.node {
                 native_item_ty. { native_item_ty }
                 native_item_fn(st, fdec, typms) {
                   native_item_fn(st,
-                                 {inputs: ivec::map(fold_arg, fdec.inputs),
+                                 {inputs: vec::map(fold_arg, fdec.inputs),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
                                   il: fdec.il,
                                   cf: fdec.cf,
                                   constraints:
-                                      ivec::map(fld.fold_constr,
+                                      vec::map(fld.fold_constr,
                                                 fdec.constraints)}, typms)
                 }
               },
@@ -212,7 +212,7 @@ fn noop_fold_item(i: &@item, fld: ast_fold) -> @item {
     let fold_attribute = bind fold_attribute_(_, fold_meta_item);
 
     ret @{ident: fld.fold_ident(i.ident),
-          attrs: ivec::map(fold_attribute, i.attrs),
+          attrs: vec::map(fold_attribute, i.attrs),
           id: i.id,
           node: fld.fold_item_underscore(i.node),
           span: i.span};
@@ -234,11 +234,11 @@ fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
           item_native_mod(nm) { item_native_mod(fld.fold_native_mod(nm)) }
           item_ty(t, typms) { item_ty(fld.fold_ty(t), typms) }
           item_tag(variants, typms) {
-            item_tag(ivec::map(fld.fold_variant, variants), typms)
+            item_tag(vec::map(fld.fold_variant, variants), typms)
           }
           item_obj(o, typms, d) {
-            item_obj({fields: ivec::map(fold_obj_field, o.fields),
-                      methods: ivec::map(fld.fold_method, o.methods)},
+            item_obj({fields: vec::map(fold_obj_field, o.fields),
+                      methods: vec::map(fld.fold_method, o.methods)},
                      typms, d)
           }
           item_res(dtor, did, typms, cid) {
@@ -253,7 +253,7 @@ fn noop_fold_method(m: &method_, fld: ast_fold) -> method_ {
 
 
 fn noop_fold_block(b: &blk_, fld: ast_fold) -> blk_ {
-    ret {stmts: ivec::map(fld.fold_stmt, b.stmts),
+    ret {stmts: vec::map(fld.fold_stmt, b.stmts),
          expr: option::map(fld.fold_expr, b.expr),
          id: b.id};
 }
@@ -269,7 +269,7 @@ fn noop_fold_stmt(s: &stmt_, fld: ast_fold) -> stmt_ {
 }
 
 fn noop_fold_arm(a: &arm, fld: ast_fold) -> arm {
-    ret {pats: ivec::map(fld.fold_pat, a.pats),
+    ret {pats: vec::map(fld.fold_pat, a.pats),
          body: fld.fold_block(a.body)};
 }
 
@@ -279,7 +279,7 @@ fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
           pat_bind(ident) { pat_bind(fld.fold_ident(ident)) }
           pat_lit(_) { p }
           pat_tag(pth, pats) {
-            pat_tag(fld.fold_path(pth), ivec::map(fld.fold_pat, pats))
+            pat_tag(fld.fold_path(pth), vec::map(fld.fold_pat, pats))
           }
           pat_rec(fields, etc) {
             let fs = ~[];
@@ -289,7 +289,7 @@ fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
             pat_rec(fs, etc)
           }
           pat_tup(elts) {
-            pat_tup(ivec::map(fld.fold_pat, elts))
+            pat_tup(vec::map(fld.fold_pat, elts))
           }
           pat_box(inner) { pat_box(fld.fold_pat(inner)) }
         };
@@ -297,7 +297,7 @@ fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
 
 fn noop_fold_decl(d: &decl_, fld: ast_fold) -> decl_ {
     ret alt d {
-          decl_local(ls) { decl_local(ivec::map(fld.fold_local, ls)) }
+          decl_local(ls) { decl_local(vec::map(fld.fold_local, ls)) }
           decl_item(it) { decl_item(fld.fold_item(it)) }
         }
 }
@@ -327,10 +327,10 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
                  alt ao.fields {
                    option::none. { ao.fields }
                    option::some(v) {
-                     option::some(ivec::map(fold_anon_obj_field, v))
+                     option::some(vec::map(fold_anon_obj_field, v))
                    }
                  },
-             methods: ivec::map(fld.fold_method, ao.methods),
+             methods: vec::map(fld.fold_method, ao.methods),
              inner_obj: option::map(fld.fold_expr, ao.inner_obj)}
     }
     let fold_anon_obj = bind fold_anon_obj_(_, fld);
@@ -343,11 +343,11 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut, seq_kind)
           }
           expr_rec(fields, maybe_expr) {
-            expr_rec(ivec::map(fold_field, fields),
+            expr_rec(vec::map(fold_field, fields),
                      option::map(fld.fold_expr, maybe_expr))
           }
           expr_tup(elts) {
-            expr_tup(ivec::map(fld.fold_expr, elts))
+            expr_tup(vec::map(fld.fold_expr, elts))
           }
           expr_call(f, args) {
             expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args))
@@ -355,7 +355,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
           expr_self_method(id) { expr_self_method(fld.fold_ident(id)) }
           expr_bind(f, args) {
             let opt_map_se = bind option::map(fld.fold_expr, _);
-            expr_bind(fld.fold_expr(f), ivec::map(opt_map_se, args))
+            expr_bind(fld.fold_expr(f), vec::map(opt_map_se, args))
           }
           expr_spawn(spawn_dom, name, f, args) {
             expr_spawn(spawn_dom, name, fld.fold_expr(f),
@@ -390,7 +390,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
           }
           expr_alt(expr, arms) {
-            expr_alt(fld.fold_expr(expr), ivec::map(fld.fold_arm, arms))
+            expr_alt(fld.fold_expr(expr), vec::map(fld.fold_arm, arms))
           }
           expr_fn(f) { expr_fn(fld.fold_fn(f)) }
           expr_block(blk) { expr_block(fld.fold_block(blk)) }
@@ -459,27 +459,27 @@ fn noop_fold_fn(f: &_fn, fld: ast_fold) -> _fn {
     let fold_arg = bind fold_arg_(_, fld);
 
     ret {decl:
-             {inputs: ivec::map(fold_arg, f.decl.inputs),
+             {inputs: vec::map(fold_arg, f.decl.inputs),
               output: fld.fold_ty(f.decl.output),
               purity: f.decl.purity,
               il: f.decl.il,
               cf: f.decl.cf,
-              constraints: ivec::map(fld.fold_constr, f.decl.constraints)},
+              constraints: vec::map(fld.fold_constr, f.decl.constraints)},
          proto: f.proto,
          body: fld.fold_block(f.body)};
 }
 
 // ...nor do modules
 fn noop_fold_mod(m: &_mod, fld: ast_fold) -> _mod {
-    ret {view_items: ivec::map(fld.fold_view_item, m.view_items),
-         items: ivec::map(fld.fold_item, m.items)};
+    ret {view_items: vec::map(fld.fold_view_item, m.view_items),
+         items: vec::map(fld.fold_item, m.items)};
 }
 
 fn noop_fold_native_mod(nm: &native_mod, fld: ast_fold) -> native_mod {
     ret {native_name: nm.native_name,
          abi: nm.abi,
-         view_items: ivec::map(fld.fold_view_item, nm.view_items),
-         items: ivec::map(fld.fold_native_item, nm.items)}
+         view_items: vec::map(fld.fold_view_item, nm.view_items),
+         items: vec::map(fld.fold_native_item, nm.items)}
 }
 
 fn noop_fold_variant(v: &variant_, fld: ast_fold) -> variant_ {
@@ -487,15 +487,15 @@ fn noop_fold_variant(v: &variant_, fld: ast_fold) -> variant_ {
         ret {ty: fld.fold_ty(va.ty), id: va.id};
     }
     let fold_variant_arg = bind fold_variant_arg_(_, fld);
-    ret {name: v.name, args: ivec::map(fold_variant_arg, v.args), id: v.id};
+    ret {name: v.name, args: vec::map(fold_variant_arg, v.args), id: v.id};
 }
 
 fn noop_fold_ident(i: &ident, fld: ast_fold) -> ident { ret i; }
 
 fn noop_fold_path(p: &path_, fld: ast_fold) -> path_ {
     ret {global: p.global,
-         idents: ivec::map(fld.fold_ident, p.idents),
-         types: ivec::map(fld.fold_ty, p.types)};
+         idents: vec::map(fld.fold_ident, p.idents),
+         types: vec::map(fld.fold_ty, p.types)};
 }
 
 fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
@@ -514,7 +514,7 @@ fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
 /* temporarily eta-expand because of a compiler bug with using `fn[T]` as a
    value */
 fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
-    ret ivec::map(f, es);
+    ret vec::map(f, es);
 }
 
 fn noop_id(i: node_id) -> node_id { ret i; }

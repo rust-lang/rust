@@ -1,7 +1,7 @@
 
 import std::io;
 import std::int;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::map;
 import std::map::hashmap;
@@ -669,7 +669,7 @@ fn read_block_comment(rdr: &reader, code_to_the_left: bool) -> cmnt {
     }
     let style = if code_to_the_left { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
-    if !rdr.is_eof() && rdr.curr() != '\n' && ivec::len(lines) == 1u {
+    if !rdr.is_eof() && rdr.curr() != '\n' && vec::len(lines) == 1u {
         style = mixed;
     }
     log "<<< block comment";

@@ -1,7 +1,7 @@
 // An "interner" is a data structure that associates values with uint tags and
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
-import std::ivec;
+import std::vec;
 import std::map;
 import std::map::hashmap;
 import std::map::hashfn;
@@ -25,7 +25,7 @@ fn intern[@T](itr: &interner[T], val: &T) -> uint {
     alt itr.map.find(val) {
       some(idx) { ret idx; }
       none. {
-        let new_idx = ivec::len[T](itr.vect);
+        let new_idx = vec::len[T](itr.vect);
         itr.map.insert(val, new_idx);
         itr.vect += ~[val];
         ret new_idx;
@@ -35,5 +35,5 @@ fn intern[@T](itr: &interner[T], val: &T) -> uint {
 
 fn get[T](itr: &interner[T], idx: uint) -> T { ret itr.vect.(idx); }
 
-fn len[T](itr : &interner[T]) -> uint { ret ivec::len(itr.vect); }
+fn len[T](itr : &interner[T]) -> uint { ret vec::len(itr.vect); }
 

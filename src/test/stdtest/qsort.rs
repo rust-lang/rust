@@ -2,11 +2,11 @@
 use std;
 
 import std::sort;
-import std::ivec;
+import std::vec;
 import std::int;
 
 fn check_sort(v1: &[mutable int], v2: &[mutable int]) {
-    let len = std::ivec::len[int](v1);
+    let len = std::vec::len[int](v1);
     fn ltequal(a: &int, b: &int) -> bool { ret a <= b; }
     let f = ltequal;
     std::sort::quick_sort[int](f, v1);
@@ -49,7 +49,7 @@ fn test_simple() {
     fn lteq(a: &int, b: &int) -> bool { int::le(a, b) }
     sort::quick_sort(lteq, names);
 
-    let pairs = ivec::zip(expected, ivec::from_mut(names));
+    let pairs = vec::zip(expected, vec::from_mut(names));
     for (a, b) in pairs {
         log #fmt("%d %d", a, b);
         assert (a == b);

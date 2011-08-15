@@ -1,6 +1,6 @@
 // error-pattern:expected argument mode
 use std;
-import std::ivec::map;
+import std::vec::map;
 
 fn main() {
     fn f(i: uint) -> bool { true }

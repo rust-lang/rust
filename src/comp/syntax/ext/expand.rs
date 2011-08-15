@@ -4,7 +4,7 @@ import std::option::none;
 import std::option::some;
 
 import std::map::hashmap;
-import std::ivec;
+import std::vec;
 
 import syntax::ast::crate;
 import syntax::ast::expr_;
@@ -21,7 +21,7 @@ fn expand_expr(exts: &hashmap[str, syntax_extension], cx: &ext_ctxt,
           expr_mac(mac) {
             alt mac.node {
               mac_invoc(pth, args, body) {
-                assert (ivec::len(pth.node.idents) > 0u);
+                assert (vec::len(pth.node.idents) > 0u);
                 let extname = pth.node.idents.(0);
                 alt exts.find(extname) {
                   none. {

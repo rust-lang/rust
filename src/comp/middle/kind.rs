@@ -74,7 +74,7 @@
 import syntax::ast;
 import syntax::visit;
 
-import std::ivec;
+import std::vec;
 
 import ast::kind;
 import ast::kind_unique;
@@ -145,11 +145,11 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
         // If we have typarams, we're calling an item; we need to check
         // that all the types we're supplying as typarams conform to the
         // typaram kind constraints on that item.
-        if ivec::len(tpt.params) != 0u {
+        if vec::len(tpt.params) != 0u {
             let callee_def = ast::def_id_of_def(tcx.def_map.get(callee.id));
             let item_tk = ty::lookup_item_type(tcx, callee_def);
             let i = 0;
-            assert ivec::len(item_tk.kinds) == ivec::len(tpt.params);
+            assert vec::len(item_tk.kinds) == vec::len(tpt.params);
             for k_need: ast::kind in item_tk.kinds {
                 let t = tpt.params.(i);
                 let k = ty::type_kind(tcx, t);

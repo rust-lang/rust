@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::str;
 import std::str::rustrt::sbuf;
 
@@ -928,8 +928,8 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
     fn AggregateRet(RetVals: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         *terminated = true;
-        ret llvm::LLVMBuildAggregateRet(B, ivec::to_ptr(RetVals),
-                                        ivec::len(RetVals));
+        ret llvm::LLVMBuildAggregateRet(B, vec::to_ptr(RetVals),
+                                        vec::len(RetVals));
     }
 
     fn Br(Dest: BasicBlockRef) -> ValueRef {
@@ -961,7 +961,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
               Catch: BasicBlockRef) -> ValueRef {
         assert (!*terminated);
         *terminated = true;
-        ret llvm::LLVMBuildInvoke(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
+        ret llvm::LLVMBuildInvoke(B, Fn, vec::to_ptr(Args), vec::len(Args),
                                   Then, Catch, str::buf(""));
     }
 
@@ -1163,14 +1163,14 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
 
     fn GEP(Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
-        ret llvm::LLVMBuildGEP(B, Pointer, ivec::to_ptr(Indices),
-                               ivec::len(Indices), str::buf(""));
+        ret llvm::LLVMBuildGEP(B, Pointer, vec::to_ptr(Indices),
+                               vec::len(Indices), str::buf(""));
     }
 
     fn InBoundsGEP(Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
-        ret llvm::LLVMBuildInBoundsGEP(B, Pointer, ivec::to_ptr(Indices),
-                                       ivec::len(Indices), str::buf(""));
+        ret llvm::LLVMBuildInBoundsGEP(B, Pointer, vec::to_ptr(Indices),
+                                       vec::len(Indices), str::buf(""));
     }
 
     fn StructGEP(Pointer: ValueRef, Idx: uint) -> ValueRef {
@@ -1303,29 +1303,29 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
        ValueRef {
         assert (!*terminated);
         let phi = llvm::LLVMBuildPhi(B, Ty, str::buf(""));
-        assert (ivec::len[ValueRef](vals) == ivec::len[BasicBlockRef](bbs));
-        llvm::LLVMAddIncoming(phi, ivec::to_ptr(vals), ivec::to_ptr(bbs),
-                              ivec::len(vals));
+        assert (vec::len[ValueRef](vals) == vec::len[BasicBlockRef](bbs));
+        llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
+                              vec::len(vals));
         ret phi;
     }
 
     fn AddIncomingToPhi(phi: ValueRef, vals: &[ValueRef],
                         bbs: &[BasicBlockRef]) {
-        assert (ivec::len[ValueRef](vals) == ivec::len[BasicBlockRef](bbs));
-        llvm::LLVMAddIncoming(phi, ivec::to_ptr(vals), ivec::to_ptr(bbs),
-                              ivec::len(vals));
+        assert (vec::len[ValueRef](vals) == vec::len[BasicBlockRef](bbs));
+        llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
+                              vec::len(vals));
     }
 
     fn Call(Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
-        ret llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
+        ret llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
                                 str::buf(""));
     }
 
     fn FastCall(Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
         assert (!*terminated);
         let v =
-            llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
+            llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
                                 str::buf(""));
         llvm::LLVMSetInstructionCallConv(v, LLVMFastCallConv);
         ret v;
@@ -1334,7 +1334,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
     fn CallWithConv(Fn: ValueRef, Args: &[ValueRef], Conv: uint) -> ValueRef {
         assert (!*terminated);
         let v =
-            llvm::LLVMBuildCall(B, Fn, ivec::to_ptr(Args), ivec::len(Args),
+            llvm::LLVMBuildCall(B, Fn, vec::to_ptr(Args), vec::len(Args),
                                 str::buf(""));
         llvm::LLVMSetInstructionCallConv(v, Conv);
         ret v;
@@ -1403,7 +1403,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
             llvm::LLVMGetNamedFunction(M, str::buf("llvm.trap"));
         assert (T as int != 0);
         let Args: [ValueRef] = ~[];
-        ret llvm::LLVMBuildCall(B, T, ivec::to_ptr(Args), ivec::len(Args),
+        ret llvm::LLVMBuildCall(B, T, vec::to_ptr(Args), vec::len(Args),
                                 str::buf(""));
     }
 
@@ -1503,8 +1503,8 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args: uint = llvm::LLVMCountParamTypes(ty);
-        let args: [TypeRef] = ivec::init_elt[TypeRef](0 as TypeRef, n_args);
-        llvm::LLVMGetParamTypes(ty, ivec::to_ptr(args));
+        let args: [TypeRef] = vec::init_elt[TypeRef](0 as TypeRef, n_args);
+        llvm::LLVMGetParamTypes(ty, vec::to_ptr(args));
         s += tys_str(names, outer, args);
         s += ") -> ";
         s += type_to_str_inner(names, outer, out_ty);
@@ -1515,8 +1515,8 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
-        let elts: [TypeRef] = ivec::init_elt[TypeRef](0 as TypeRef, n_elts);
-        llvm::LLVMGetStructElementTypes(ty, ivec::to_ptr(elts));
+        let elts: [TypeRef] = vec::init_elt[TypeRef](0 as TypeRef, n_elts);
+        llvm::LLVMGetStructElementTypes(ty, vec::to_ptr(elts));
         s += tys_str(names, outer, elts);
         s += "}";
         ret s;
@@ -1534,7 +1534,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
         for tout: TypeRef in outer0 {
             i += 1u;
             if tout as int == ty as int {
-                let n: uint = ivec::len[TypeRef](outer0) - i;
+                let n: uint = vec::len[TypeRef](outer0) - i;
                 ret "*\\" + std::int::str(n as int);
             }
         }
@@ -1563,8 +1563,8 @@ fn float_width(llt: TypeRef) -> uint {
 }
 
 fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] {
-    let args = ivec::init_elt(0 as TypeRef, llvm::LLVMCountParamTypes(fn_ty));
-    llvm::LLVMGetParamTypes(fn_ty, ivec::to_ptr(args));
+    let args = vec::init_elt(0 as TypeRef, llvm::LLVMCountParamTypes(fn_ty));
+    llvm::LLVMGetParamTypes(fn_ty, vec::to_ptr(args));
     ret args;
 }
 

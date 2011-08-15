@@ -1,5 +1,5 @@
 import std::int;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::box;
@@ -393,7 +393,7 @@ fn populate_type_store(cx: &ctxt) {
     intern(cx, ty_task, none);
     intern(cx, ty_type, none);
     intern(cx, ty_bot, none);
-    assert (ivec::len(cx.ts.vect) == idx_first_others);
+    assert (vec::len(cx.ts.vect) == idx_first_others);
 }
 
 fn mk_rcache() -> creader_cache {
@@ -1195,7 +1195,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_istr. { ret false; }
       ty_tag(_, subtys) {
         let i = 0u;
-        while i < ivec::len[t](subtys) {
+        while i < vec::len[t](subtys) {
             if type_has_dynamic_size(cx, subtys.(i)) { ret true; }
             i += 1u;
         }
@@ -1210,7 +1210,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_task. { ret false; }
       ty_rec(fields) {
         let i = 0u;
-        while i < ivec::len[field](fields) {
+        while i < vec::len[field](fields) {
             if type_has_dynamic_size(cx, fields.(i).mt.ty) { ret true; }
             i += 1u;
         }
@@ -1453,7 +1453,7 @@ fn type_autoderef(cx: &ctxt, t: &ty::t) -> ty::t {
           }
           ty::ty_tag(did, tps) {
             let variants = tag_variants(cx, did);
-            if ivec::len(variants) != 1u || ivec::len(variants.(0).args) != 1u
+            if vec::len(variants) != 1u || vec::len(variants.(0).args) != 1u
                {
                 break;
             }
@@ -1643,7 +1643,7 @@ fn constr_eq(c: &@constr, d: &@constr) -> bool {
 }
 
 fn constrs_eq(cs: &[@constr], ds: &[@constr]) -> bool {
-    if ivec::len(cs) != ivec::len(ds) { ret false; }
+    if vec::len(cs) != vec::len(ds) { ret false; }
     let i = 0u;
     for c: @constr in cs { if !constr_eq(c, ds.(i)) { ret false; } i += 1u; }
     ret true;
@@ -1656,8 +1656,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
     fn equal_fn(args_a: &[arg], rty_a: &t, args_b: &[arg], rty_b: &t) ->
        bool {
         if !eq_ty(rty_a, rty_b) { ret false; }
-        let len = ivec::len[arg](args_a);
-        if len != ivec::len[arg](args_b) { ret false; }
+        let len = vec::len[arg](args_a);
+        if len != vec::len[arg](args_b) { ret false; }
         let i = 0u;
         while i < len {
             let arg_a = args_a.(i);
@@ -1693,8 +1693,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
         alt b {
           ty_tag(id_b, tys_b) {
             if !equal_def(id_a, id_b) { ret false; }
-            let len = ivec::len[t](tys_a);
-            if len != ivec::len[t](tys_b) { ret false; }
+            let len = vec::len[t](tys_a);
+            if len != vec::len[t](tys_b) { ret false; }
             let i = 0u;
             while i < len {
                 if !eq_ty(tys_a.(i), tys_b.(i)) { ret false; }
@@ -1727,8 +1727,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_rec(flds_a) {
         alt b {
           ty_rec(flds_b) {
-            let len = ivec::len[field](flds_a);
-            if len != ivec::len[field](flds_b) { ret false; }
+            let len = vec::len[field](flds_a);
+            if len != vec::len[field](flds_b) { ret false; }
             let i = 0u;
             while i < len {
                 let fld_a = flds_a.(i);
@@ -1747,8 +1747,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_tup(ts_a) {
         alt (b) {
           ty_tup(ts_b) {
-            let len = ivec::len(ts_a);
-            if len != ivec::len(ts_b) { ret false; }
+            let len = vec::len(ts_a);
+            if len != vec::len(ts_b) { ret false; }
             let i = 0u;
             while i < len {
                 if !eq_ty(ts_a.(i), ts_b.(i)) { ret false; }
@@ -1780,8 +1780,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_obj(methods_a) {
         alt b {
           ty_obj(methods_b) {
-            let len = ivec::len[method](methods_a);
-            if len != ivec::len[method](methods_b) { ret false; }
+            let len = vec::len[method](methods_a);
+            if len != vec::len[method](methods_b) { ret false; }
             let i = 0u;
             while i < len {
                 let m_a = methods_a.(i);
@@ -1898,7 +1898,7 @@ fn node_id_to_type_params(cx: &ctxt, id: &ast::node_id) -> [t] {
 }
 
 fn node_id_has_type_params(cx: &ctxt, id: &ast::node_id) -> bool {
-    ret ivec::len(node_id_to_type_params(cx, id)) > 0u;
+    ret vec::len(node_id_to_type_params(cx, id)) > 0u;
 }
 
 
@@ -1938,7 +1938,7 @@ fn count_ty_params(cx: &ctxt, ty: t) -> uint {
     let param_indices: @mutable [uint] = @mutable ~[];
     let f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
-    ret ivec::len[uint](*param_indices);
+    ret vec::len[uint](*param_indices);
 }
 
 fn type_contains_vars(cx: &ctxt, typ: &t) -> bool {
@@ -2079,7 +2079,7 @@ fn occurs_check_fails(tcx: &ctxt, sp: &option::t[span], vid: int, rt: &t)
         ret false;
     }
     // Occurs check!
-    if ivec::member(vid, vars_in_type(tcx, rt)) {
+    if vec::member(vid, vars_in_type(tcx, rt)) {
         alt sp {
           some (s) {
             // Maybe this should be span_err -- however, there's an
@@ -2211,8 +2211,8 @@ mod unify {
     // pairwise equal.
     fn unify_constrs(base_t: &t, expected: [@type_constr],
                      actual: &[@type_constr]) -> result {
-        let expected_len = ivec::len(expected);
-        let actual_len = ivec::len(actual);
+        let expected_len = vec::len(expected);
+        let actual_len = vec::len(actual);
 
         if expected_len != actual_len {
             ret ures_err(terr_constr_len(expected_len, actual_len));
@@ -2231,8 +2231,8 @@ mod unify {
         let ok_res = ures_ok(base_t);
         let err_res = ures_err(terr_constr_mismatch(expected, actual_constr));
         if expected.node.id != actual_constr.node.id { ret err_res; }
-        let expected_arg_len = ivec::len(expected.node.args);
-        let actual_arg_len = ivec::len(actual_constr.node.args);
+        let expected_arg_len = vec::len(expected.node.args);
+        let actual_arg_len = vec::len(actual_constr.node.args);
         if expected_arg_len != actual_arg_len { ret err_res; }
         let i = 0u;
         let actual;
@@ -2276,8 +2276,8 @@ mod unify {
                        expected_inputs: &[arg], expected_output: &t,
                        actual_inputs: &[arg], actual_output: &t) ->
        fn_common_res {
-        let expected_len = ivec::len[arg](expected_inputs);
-        let actual_len = ivec::len[arg](actual_inputs);
+        let expected_len = vec::len[arg](expected_inputs);
+        let actual_len = vec::len[arg](actual_inputs);
         if expected_len != actual_len {
             ret fn_common_res_err(ures_err(terr_arg_count));
         }
@@ -2373,8 +2373,8 @@ mod unify {
        result {
         let result_meths: [method] = ~[];
         let i: uint = 0u;
-        let expected_len: uint = ivec::len[method](expected_meths);
-        let actual_len: uint = ivec::len[method](actual_meths);
+        let expected_len: uint = vec::len[method](expected_meths);
+        let actual_len: uint = vec::len[method](actual_meths);
         if expected_len != actual_len { ret ures_err(terr_meth_count); }
         while i < expected_len {
             let e_meth = expected_meths.(i);
@@ -2515,7 +2515,7 @@ mod unify {
                 // TODO: factor this cruft out
                 let result_tps: [t] = ~[];
                 let i = 0u;
-                let expected_len = ivec::len[t](expected_tps);
+                let expected_len = vec::len[t](expected_tps);
                 while i < expected_len {
                     let expected_tp = expected_tps.(i);
                     let actual_tp = actual_tps.(i);
@@ -2684,8 +2684,8 @@ mod unify {
           ty::ty_rec(expected_fields) {
             alt struct(cx.tcx, actual) {
               ty::ty_rec(actual_fields) {
-                let expected_len = ivec::len[field](expected_fields);
-                let actual_len = ivec::len[field](actual_fields);
+                let expected_len = vec::len[field](expected_fields);
+                let actual_len = vec::len[field](actual_fields);
                 if expected_len != actual_len {
                     let err = terr_record_size(expected_len, actual_len);
                     ret ures_err(err);
@@ -2730,8 +2730,8 @@ mod unify {
           ty::ty_tup(expected_elems) {
             alt struct(cx.tcx, actual) {
               ty::ty_tup(actual_elems) {
-                let expected_len = ivec::len(expected_elems);
-                let actual_len = ivec::len(actual_elems);
+                let expected_len = vec::len(expected_elems);
+                let actual_len = vec::len(actual_elems);
                 if (expected_len != actual_len) {
                     let err = terr_tuple_size(expected_len, actual_len);
                     ret ures_err(err);
@@ -2825,10 +2825,10 @@ mod unify {
     }
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
         let i = 0u;
-        while i < ivec::len[ufind::node](vb.sets.nodes) {
+        while i < vec::len[ufind::node](vb.sets.nodes) {
             let sets = "";
             let j = 0u;
-            while j < ivec::len[option::t[uint]](vb.sets.nodes) {
+            while j < vec::len[option::t[uint]](vb.sets.nodes) {
                 if ufind::find(vb.sets, j) == i {
                     sets += #fmt(" %u", j);
                 }
@@ -2951,7 +2951,7 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
     while i < ty_param_count { *param_var_ids += ~[next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
               next_ty_var: fn() -> int , index: uint, kind: ast::kind) -> t {
-        if index < ivec::len(*param_var_ids) {
+        if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids.(index));
         } else {
             cx.sess.span_fatal(sp, "Unbound type parameter in callee's type");
@@ -3015,7 +3015,7 @@ fn tag_variants(cx: &ctxt, id: &ast::def_id) -> [variant_info] {
             for variant: ast::variant in variants {
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
                 let arg_tys: [t] = ~[];
-                if std::ivec::len(variant.node.args) > 0u {
+                if std::vec::len(variant.node.args) > 0u {
                     for a: arg in ty_fn_args(cx, ctor_ty) {
                         arg_tys += ~[a.ty];
                     }
@@ -3039,7 +3039,7 @@ fn tag_variant_with_id(cx: &ctxt, tag_id: &ast::def_id,
                        variant_id: &ast::def_id) -> variant_info {
     let variants = tag_variants(cx, tag_id);
     let i = 0u;
-    while i < ivec::len[variant_info](variants) {
+    while i < vec::len[variant_info](variants) {
         let variant = variants.(i);
         if def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;

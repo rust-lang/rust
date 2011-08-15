@@ -82,8 +82,8 @@ fn mk_sha1() -> sha1 {
     fn process_msg_block(st: &sha1state) {
         // FIXME: Make precondition
 
-        assert (ivec::len(st.h) == digest_buf_len);
-        assert (ivec::len(st.work_buf) == work_buf_len);
+        assert (vec::len(st.h) == digest_buf_len);
+        assert (vec::len(st.work_buf) == work_buf_len);
         let t: int; // Loop counter
 
         let w = st.work_buf;
@@ -187,7 +187,7 @@ fn mk_sha1() -> sha1 {
     fn pad_msg(st: &sha1state) {
         // FIXME: Should be a precondition
 
-        assert (ivec::len(st.msg_block) == msg_block_len);
+        assert (vec::len(st.msg_block) == msg_block_len);
         /*
          * Check to see if the current message block is too small to hold
          * the initial padding bits and length.  If so, we will pad the
@@ -226,7 +226,7 @@ fn mk_sha1() -> sha1 {
         fn reset() {
             // FIXME: Should be typestate precondition
 
-            assert (ivec::len(st.h) == digest_buf_len);
+            assert (vec::len(st.h) == digest_buf_len);
             st.len_low = 0u32;
             st.len_high = 0u32;
             st.msg_block_idx = 0u;
@@ -248,13 +248,13 @@ fn mk_sha1() -> sha1 {
         }
     }
     let st =
-        {h: ivec::init_elt_mut[u32](0u32, digest_buf_len),
+        {h: vec::init_elt_mut[u32](0u32, digest_buf_len),
          mutable len_low: 0u32,
          mutable len_high: 0u32,
-         msg_block: ivec::init_elt_mut[u8](0u8, msg_block_len),
+         msg_block: vec::init_elt_mut[u8](0u8, msg_block_len),
          mutable msg_block_idx: 0u,
          mutable computed: false,
-         work_buf: ivec::init_elt_mut[u32](0u32, work_buf_len)};
+         work_buf: vec::init_elt_mut[u32](0u32, work_buf_len)};
     let sh = sha1(st);
     sh.reset();
     ret sh;

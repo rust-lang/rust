@@ -2,7 +2,7 @@
 use std;
 
 fn check_sort(v1: &[int], v2: &[int]) {
-    let len = std::ivec::len[int](v1);
+    let len = std::vec::len[int](v1);
     fn lteq(a: &int, b: &int) -> bool { ret a <= b; }
     let f = lteq;
     let v3 = std::sort::merge_sort[int](f, v1);

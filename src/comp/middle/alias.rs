@@ -7,7 +7,7 @@ import ast::def_id;
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::option;
 import std::option::some;
@@ -218,7 +218,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
         }
         i += 1u;
     }
-    if ivec::len(unsafe_ts) > 0u {
+    if vec::len(unsafe_ts) > 0u {
         alt f.node {
           ast::expr_path(_) {
             if def_is_local(cx.tcx.def_map.get(f.id), true) {
@@ -319,9 +319,9 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
     for a: ast::arm in arms {
         let dnums = arm_defnums(a);
         let new_sc = sc;
-        if ivec::len(dnums) > 0u {
+        if vec::len(dnums) > 0u {
             new_sc = @(*sc + ~[@{root_vars: roots,
-                                 block_defnum: dnums.(ivec::len(dnums) - 1u),
+                                 block_defnum: dnums.(vec::len(dnums) - 1u),
                                  bindings: dnums,
                                  tys: forbidden_tp,
                                  depends_on: deps(sc, roots),
@@ -343,7 +343,7 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
         let data = check_call(cx, f, args, sc);
         let bindings = ast::pat_binding_ids(local.node.pat);
         let new_sc = @{root_vars: data.root_vars,
-                       block_defnum: bindings.(ivec::len(bindings) - 1u),
+                       block_defnum: bindings.(vec::len(bindings) - 1u),
                        bindings: bindings,
                        tys: data.unsafe_ts,
                        depends_on: deps(sc, data.root_vars),
@@ -376,7 +376,7 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
     }
     let bindings = ast::pat_binding_ids(local.node.pat);
     let new_sc = @{root_vars: root_def,
-                   block_defnum: bindings.(ivec::len(bindings) - 1u),
+                   block_defnum: bindings.(vec::len(bindings) - 1u),
                    bindings: bindings,
                    tys: unsafe,
                    depends_on: deps(sc, root_def),
@@ -399,7 +399,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
                     r.ok = val_taken(ex.span, p);
                 }
             }
-        } else if (ivec::member(my_defnum, r.bindings)) {
+        } else if (vec::member(my_defnum, r.bindings)) {
             test_scope(cx, sc, r, p);
         }
     }
@@ -416,14 +416,14 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt[scope]) {
                                  "assigning to immutable obj field");
         }
         for r: restrict in *sc {
-            if ivec::member(dnum, r.root_vars) {
+            if vec::member(dnum, r.root_vars) {
                 r.ok = overwritten(dest.span, p);
             }
         }
       }
       _ {
         let root = expr_root(*cx, dest, false);
-        if ivec::len(*root.ds) == 0u {
+        if vec::len(*root.ds) == 0u {
             cx.tcx.sess.span_err(dest.span, "assignment to non-lvalue");
         } else if (!root.ds.(0).mut) {
             let name =
@@ -456,7 +456,7 @@ fn check_move_rhs(cx: &@ctx, src: &@ast::expr, sc: &scope, v: &vt[scope]) {
         let root = expr_root(*cx, src, false);
 
         // Not a path and no-derefs means this is a temporary.
-        if ivec::len(*root.ds) != 0u {
+        if vec::len(*root.ds) != 0u {
             cx.tcx.sess.span_err(src.span, "moving out of a data structure");
         }
       }
@@ -476,7 +476,7 @@ fn is_immutable_alias(cx: &ctx, sc: &scope, dnum: node_id) -> bool {
       _ { }
     }
     for r: restrict in *sc {
-        if ivec::member(dnum, r.bindings) { ret true; }
+        if vec::member(dnum, r.bindings) { ret true; }
     }
     ret false;
 }
@@ -511,7 +511,7 @@ fn deps(sc: &scope, roots: &[node_id]) -> [uint] {
     let result = ~[];
     for r: restrict in *sc {
         for dn: node_id in roots {
-            if ivec::member(dn, r.bindings) { result += ~[i]; }
+            if vec::member(dn, r.bindings) { result += ~[i]; }
         }
         i += 1u;
     }
@@ -546,8 +546,8 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
               }
               ty::ty_tag(did, tps) {
                 let variants = ty::tag_variants(cx.tcx, did);
-                if ivec::len(variants) != 1u ||
-                       ivec::len(variants.(0).args) != 1u {
+                if vec::len(variants) != 1u ||
+                       vec::len(variants.(0).args) != 1u {
                     break;
                 }
                 ds += ~[@{mut: false, kind: unbox, outer_t: t}];

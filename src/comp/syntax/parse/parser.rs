@@ -1,6 +1,6 @@
 
 import std::io;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::option;
 import std::option::some;
@@ -87,18 +87,18 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
         fn peek() -> token::token { ret tok; }
         fn bump() {
             last_tok_span = tok_span;
-            if ivec::len(buffer) == 0u {
+            if vec::len(buffer) == 0u {
                 let next = lexer::next_token(rdr);
                 tok = next.tok;
                 tok_span = ast::mk_sp(next.chpos, rdr.get_chpos());
             } else {
-                let next = ivec::pop(buffer);
+                let next = vec::pop(buffer);
                 tok = next.tok;
                 tok_span = next.span;
             }
         }
         fn look_ahead(distance: uint) -> token::token {
-            while ivec::len(buffer) < distance {
+            while vec::len(buffer) < distance {
                 let next = lexer::next_token(rdr);
                 let sp = ast::mk_sp(next.chpos, rdr.get_chpos());
                 buffer = ~[{tok: next.tok, span: sp}] + buffer;
@@ -523,7 +523,7 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
                 p.bump();
                 ts += ~[parse_ty(p, false)];
             }
-            if ivec::len(ts) == 1u {
+            if vec::len(ts) == 1u {
                 t = ts.(0).node;
             } else {
                 t = ast::ty_tup(ts);
@@ -791,7 +791,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         }
         hi = p.get_hi_pos();
         expect(p, token::RPAREN);
-        if ivec::len(es) == 1u {
+        if vec::len(es) == 1u {
             ret mk_expr(p, lo, hi, es.(0).node);
         } else {
             ret mk_expr(p, lo, hi, ast::expr_tup(es));
@@ -1023,7 +1023,7 @@ fn parse_syntax_ext(p: &parser) -> @ast::expr {
 
 fn parse_syntax_ext_naked(p: &parser, lo: uint) -> @ast::expr {
     let pth = parse_path(p);
-    if ivec::len(pth.node.idents) == 0u {
+    if vec::len(pth.node.idents) == 0u {
         p.fatal("expected a syntax expander name");
     }
     //temporary for a backwards-compatible cycle:
@@ -1474,7 +1474,7 @@ fn parse_pat(p: &parser) -> @ast::pat {
                 p.bump();
                 fields += ~[parse_pat(p)];
             }
-            if ivec::len(fields) == 1u { expect(p, token::COMMA); }
+            if vec::len(fields) == 1u { expect(p, token::COMMA); }
             hi = p.get_hi_pos();
             expect(p, token::RPAREN);
             pat = ast::pat_tup(fields);
@@ -1570,7 +1570,7 @@ fn parse_source_stmt(p: &parser) -> @ast::stmt {
         let maybe_item = parse_item(p, item_attrs);
 
         // If we have attributes then we should have an item
-        if ivec::len(item_attrs) > 0u {
+        if vec::len(item_attrs) > 0u {
             alt maybe_item {
               some(_) {/* fallthrough */ }
               _ { ret p.fatal("expected item"); }
@@ -1899,7 +1899,7 @@ fn parse_mod_items(p: &parser, term: token::token,
                    first_item_attrs: &[ast::attribute]) -> ast::_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items =
-        if ivec::len(first_item_attrs) == 0u { parse_view(p) } else { ~[] };
+        if vec::len(first_item_attrs) == 0u { parse_view(p) } else { ~[] };
     let items: [@ast::item] = ~[];
     let initial_attrs = first_item_attrs;
     while p.peek() != term {
@@ -1982,7 +1982,7 @@ fn parse_native_mod_items(p: &parser, native_name: &str, abi: ast::native_abi,
     -> ast::native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items =
-        if ivec::len(first_item_attrs) == 0u {
+        if vec::len(first_item_attrs) == 0u {
             parse_native_view(p)
         } else { ~[] };
     let items: [@ast::native_item] = ~[];
@@ -2287,7 +2287,7 @@ fn parse_rest_import_name(p: &parser, first: ast::ident,
         if glob {
             ret ast::view_item_import_glob(identifiers, p.get_id());
         } else {
-            let len = ivec::len(identifiers);
+            let len = vec::len(identifiers);
             ret ast::view_item_import(identifiers.(len - 1u), identifiers,
                                       p.get_id());
         }
@@ -2412,7 +2412,7 @@ fn parse_crate_directive(p: &parser, first_outer_attr: &[ast::attribute]) ->
     // Collect the next attributes
     let outer_attrs = first_outer_attr + parse_outer_attributes(p);
     // In a crate file outer attributes are only going to apply to mods
-    let expect_mod = ivec::len(outer_attrs) > 0u;
+    let expect_mod = vec::len(outer_attrs) > 0u;
 
     let lo = p.get_lo_pos();
     if expect_mod || is_word(p, "mod") {
@@ -2467,7 +2467,7 @@ fn parse_crate_directives(p: &parser, term: token::token,
     // This is pretty ugly. If we have an outer attribute then we can't accept
     // seeing the terminator next, so if we do see it then fail the same way
     // parse_crate_directive would
-    if ivec::len(first_outer_attr) > 0u && p.peek() == term {
+    if vec::len(first_outer_attr) > 0u && p.peek() == term {
         expect_word(p, "mod");
     }
 

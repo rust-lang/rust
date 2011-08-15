@@ -7,7 +7,7 @@ import metadata::encoder;
 import middle::trans_common::crate_ctxt;
 import std::str;
 import std::fs;
-import std::ivec;
+import std::vec;
 import std::option;
 import option::some;
 import option::none;
@@ -358,8 +358,8 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                     {
                         let os =
                             str::split(fs::basename(output), '.' as u8);
-                        assert (ivec::len(os) >= 2u);
-                        ivec::pop(os);
+                        assert (vec::len(os) >= 2u);
+                        vec::pop(os);
                         str::connect(os, ".")
                     };
                 warn_missing(sess, "name", name);

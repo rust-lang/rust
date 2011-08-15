@@ -4,7 +4,7 @@
 */
 
 import std::int;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::str::rustrt::sbuf;
@@ -312,9 +312,9 @@ fn revoke_clean(cx: &@block_ctxt, val: ValueRef) {
     if found == -1 { ret; }
     // We found the cleanup and remove it
     sc_cx.cleanups =
-        std::ivec::slice(sc_cx.cleanups, 0u, found as uint) +
-            std::ivec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                             std::ivec::len(sc_cx.cleanups));
+        std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
+            std::vec::slice(sc_cx.cleanups, (found as uint) + 1u,
+                             std::vec::len(sc_cx.cleanups));
 }
 
 fn get_res_dtor(ccx : &@crate_ctxt, sp : &span, did : &ast::def_id,
@@ -424,8 +424,8 @@ fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     let elt_count = llvm::LLVMCountStructElementTypes(llstructty);
     assert (n < elt_count);
-    let elt_tys = std::ivec::init_elt(T_nil(), elt_count);
-    llvm::LLVMGetStructElementTypes(llstructty, std::ivec::to_ptr(elt_tys));
+    let elt_tys = std::vec::init_elt(T_nil(), elt_count);
+    llvm::LLVMGetStructElementTypes(llstructty, std::vec::to_ptr(elt_tys));
     ret llvm::LLVMGetElementType(elt_tys.(n));
 }
 
@@ -509,8 +509,8 @@ fn T_size_t() -> TypeRef {
 }
 
 fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
-    ret llvm::LLVMFunctionType(output, std::ivec::to_ptr(inputs),
-                               std::ivec::len[TypeRef](inputs), False);
+    ret llvm::LLVMFunctionType(output, std::vec::to_ptr(inputs),
+                               std::vec::len[TypeRef](inputs), False);
 }
 
 fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
@@ -520,7 +520,7 @@ fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
 
 fn T_struct(elts: &[TypeRef]) -> TypeRef {
-    ret llvm::LLVMStructType(std::ivec::to_ptr(elts), std::ivec::len(elts),
+    ret llvm::LLVMStructType(std::vec::to_ptr(elts), std::vec::len(elts),
                              False);
 }
 
@@ -530,7 +530,7 @@ fn T_named_struct(name: &str) -> TypeRef {
 }
 
 fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
-    llvm::LLVMStructSetBody(t, std::ivec::to_ptr(elts), std::ivec::len(elts),
+    llvm::LLVMStructSetBody(t, std::vec::to_ptr(elts), std::vec::len(elts),
                             False);
 }
 
@@ -570,9 +570,9 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        std::ivec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
+        std::vec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
-                                    std::ivec::to_ptr[TypeRef](tydesc_elts));
+                                    std::vec::to_ptr[TypeRef](tydesc_elts));
     let t = llvm::LLVMGetElementType(tydesc_elts.(field));
     ret t;
 }
@@ -742,7 +742,7 @@ fn T_opaque_tag_ptr(tn: &type_names) -> TypeRef {
 }
 
 fn T_captured_tydescs(cx: &crate_ctxt, n: uint) -> TypeRef {
-    ret T_struct(std::ivec::init_elt[TypeRef](T_ptr(cx.tydesc_type), n));
+    ret T_struct(std::vec::init_elt[TypeRef](T_ptr(cx.tydesc_type), n));
 }
 
 fn T_obj_ptr(cx: &crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
@@ -845,28 +845,28 @@ fn C_zero_byte_arr(size: uint) -> ValueRef {
     let i = 0u;
     let elts: [ValueRef] = ~[];
     while i < size { elts += ~[C_u8(0u)]; i += 1u; }
-    ret llvm::LLVMConstArray(T_i8(), std::ivec::to_ptr(elts),
-                             std::ivec::len(elts));
+    ret llvm::LLVMConstArray(T_i8(), std::vec::to_ptr(elts),
+                             std::vec::len(elts));
 }
 
 fn C_struct(elts: &[ValueRef]) -> ValueRef {
-    ret llvm::LLVMConstStruct(std::ivec::to_ptr(elts), std::ivec::len(elts),
+    ret llvm::LLVMConstStruct(std::vec::to_ptr(elts), std::vec::len(elts),
                               False);
 }
 
 fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
-    ret llvm::LLVMConstNamedStruct(T, std::ivec::to_ptr(elts),
-                                   std::ivec::len(elts));
+    ret llvm::LLVMConstNamedStruct(T, std::vec::to_ptr(elts),
+                                   std::vec::len(elts));
 }
 
 fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
-    ret llvm::LLVMConstArray(ty, std::ivec::to_ptr(elts),
-                             std::ivec::len(elts));
+    ret llvm::LLVMConstArray(ty, std::vec::to_ptr(elts),
+                             std::vec::len(elts));
 }
 
 fn C_bytes(bytes : &[u8]) -> ValueRef {
-    ret llvm::LLVMConstString(unsafe::reinterpret_cast(ivec::to_ptr(bytes)),
-                              ivec::len(bytes), False);
+    ret llvm::LLVMConstString(unsafe::reinterpret_cast(vec::to_ptr(bytes)),
+                              vec::len(bytes), False);
 }
 
 fn C_shape(ccx : &@crate_ctxt, bytes : &[u8]) -> ValueRef {

@@ -15,7 +15,7 @@ import std::option::some;
 import std::option::none;
 import std::str;
 import std::map;
-import std::ivec;
+import std::vec;
 import std::io;
 
 import std::time;
@@ -158,7 +158,7 @@ mod map_reduce {
 
         let tasks = start_mappers(ctrl.mk_chan(), inputs);
 
-        let num_mappers = ivec::len(inputs) as int;
+        let num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
             alt ctrl.recv() {
@@ -199,7 +199,7 @@ mod map_reduce {
 }
 
 fn main(argv: [str]) {
-    if ivec::len(argv) < 2u {
+    if vec::len(argv) < 2u {
         let out = io::stdout();
 
         out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
@@ -216,7 +216,7 @@ fn main(argv: [str]) {
 
     let start = time::precise_time_ns();
 
-    map_reduce::map_reduce(ivec::slice(argv, 1u, ivec::len(argv)));
+    map_reduce::map_reduce(vec::slice(argv, 1u, vec::len(argv)));
     let stop = time::precise_time_ns();
 
     let elapsed = stop - start;

@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 import std::ebml;
-import std::ivec;
+import std::vec;
 import std::option;
 import std::str;
 import std::io;
@@ -48,7 +48,7 @@ fn lookup_hash(d: &ebml::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     for each elt: ebml::doc in ebml::tagged_docs(bucket, belt) {
         let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
-        if eq_fn(ivec::slice[u8](*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(vec::slice[u8](*elt.data, elt.start + 4u, elt.end)) {
             result += ~[ebml::doc_at(d.data, pos)];
         }
     }
@@ -62,7 +62,7 @@ fn maybe_find_item(item_id: int, items: &ebml::doc) ->
     }
     let eqer = bind eq_item(_, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
-    if ivec::len(found) == 0u {
+    if vec::len(found) == 0u {
         ret option::none[ebml::doc];
     } else { ret option::some[ebml::doc](found.(0)); }
 }
@@ -166,7 +166,7 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
 // Crate metadata queries
 fn lookup_defs(data: &@[u8], cnum: ast::crate_num, path: &[ast::ident]) ->
    [ast::def] {
-    ret ivec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
+    ret vec::map(bind lookup_def(cnum, data, _), resolve_path(path, data));
 }
 
 
@@ -213,7 +213,7 @@ fn get_type(data: @[u8], def: ast::def_id, tcx: &ty::ctxt,
 }
 
 fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
-    ret ivec::len(get_type_param_kinds(data, id));
+    ret vec::len(get_type_param_kinds(data, id));
 }
 
 fn get_type_param_kinds(data: @[u8], id: ast::node_id) -> [ast::kind] {
@@ -269,7 +269,7 @@ fn family_has_type_params(fam_ch: u8) -> bool {
 fn read_path(d: &ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
     let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
-    let pathbytes = ivec::slice[u8](desc, 4u, ivec::len[u8](desc));
+    let pathbytes = vec::slice[u8](desc, 4u, vec::len[u8](desc));
     let path = str::unsafe_from_bytes(pathbytes);
     ret {path: path, pos: pos};
 }
@@ -331,7 +331,7 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
-            assert (ivec::len(meta_items) == 1u);
+            assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items.(0);
             attrs +=
                 ~[{node: {style: ast::attr_outer, value: *meta_item},

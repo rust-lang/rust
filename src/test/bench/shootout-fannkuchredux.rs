@@ -1,15 +1,15 @@
 // Based on Isaac Gouy's fannkuchredux.csharp
 use std;
 import std::int;
-import std::ivec;
+import std::vec;
 
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }
     let perm1init_ = perm1init; // Rustboot workaround
 
-    let perm = ivec::init_elt_mut(0, n as uint);
-    let perm1 = ivec::init_fn_mut(perm1init_, n as uint);
-    let count = ivec::init_elt_mut(0, n as uint);
+    let perm = vec::init_elt_mut(0, n as uint);
+    let perm1 = vec::init_fn_mut(perm1init_, n as uint);
+    let count = vec::init_elt_mut(0, n as uint);
     let f = 0;
     let i = 0;
     let k = 0;

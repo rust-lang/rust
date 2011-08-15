@@ -1,5 +1,5 @@
 use std;
-import std::ivec;
+import std::vec;
 import std::task;
 import std::comm;
 import std::comm::_chan;
@@ -22,12 +22,12 @@ fn packager(cb: _chan[_chan[[u8]]], msg: _chan[msg]) {
         log "waiting for bytes";
         let data = p.recv();
         log "got bytes";
-        if ivec::len(data) == 0u {
+        if vec::len(data) == 0u {
             log "got empty bytes, quitting";
             break;
         }
         log "sending non-empty buffer of length";
-        log ivec::len(data);
+        log vec::len(data);
         send(msg, received(data));
         log "sent non-empty buffer";
     }
@@ -51,7 +51,7 @@ fn main() {
           closed. { log "Got close message"; break; }
           received(data) {
             log "Got data. Length is:";
-            log ivec::len[u8](data);
+            log vec::len[u8](data);
           }
         }
     }

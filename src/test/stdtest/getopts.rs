@@ -1,6 +1,6 @@
 
 use std;
-import std::ivec;
+import std::vec;
 import std::option;
 import opt = std::getopts;
 

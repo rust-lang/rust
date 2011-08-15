@@ -1,6 +1,6 @@
 // Functions dealing with attributes and meta_items
 
-import std::ivec;
+import std::vec;
 import std::str;
 import std::map;
 import std::option;
@@ -50,7 +50,7 @@ fn find_attrs_by_name(attrs: &[ast::attribute], name: ast::ident) ->
                      option::some(a)
                  } else { option::none }
              }(_, name);
-    ret ivec::filter_map(filter, attrs);
+    ret vec::filter_map(filter, attrs);
 }
 
 fn get_attr_name(attr: &ast::attribute) -> ast::ident {
@@ -66,7 +66,7 @@ fn find_meta_items_by_name(metas: &[@ast::meta_item], name: ast::ident) ->
                      option::some(m)
                  } else { option::none }
              }(_, name);
-    ret ivec::filter_map(filter, metas);
+    ret vec::filter_map(filter, metas);
 }
 
 fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
@@ -135,7 +135,7 @@ fn contains(haystack: &[@ast::meta_item], needle: @ast::meta_item) -> bool {
 
 fn contains_name(metas: &[@ast::meta_item], name: ast::ident) -> bool {
     let matches = find_meta_items_by_name(metas, name);
-    ret ivec::len(matches) > 0u;
+    ret vec::len(matches) > 0u;
 }
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
@@ -173,7 +173,7 @@ fn remove_meta_items_by_name(items: &[@ast::meta_item], name: str) ->
                  } else { option::none }
              }(_, name);
 
-    ret ivec::filter_map(filter, items);
+    ret vec::filter_map(filter, items);
 }
 
 fn require_unique_names(sess: &session::session,

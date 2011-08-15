@@ -9,7 +9,7 @@ import std::task;
 import std::task::task_id;
 import std::generic_os::setenv;
 import std::generic_os::getenv;
-import std::ivec;
+import std::vec;
 import std::os;
 import std::run;
 import std::io;
@@ -186,7 +186,7 @@ fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
 fn clone_ivecstr(v: &[str]) -> [[u8]] {
     let r = ~[];
-    for t: str in ivec::slice(v, 0u, ivec::len(v)) {
+    for t: str in vec::slice(v, 0u, vec::len(v)) {
         r += ~[str::bytes(t)];
     }
     ret r;
@@ -194,7 +194,7 @@ fn clone_ivecstr(v: &[str]) -> [[u8]] {
 
 fn clone_ivecu8str(v: &[[u8]]) -> [str] {
     let r = ~[];
-    for t in ivec::slice(v, 0u, ivec::len(v)) {
+    for t in vec::slice(v, 0u, vec::len(v)) {
         r += ~[str::unsafe_from_bytes(t)];
     }
     ret r;

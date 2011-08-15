@@ -34,7 +34,7 @@ import middle::ty::unify::fixup_result;
 import middle::ty::unify::fix_ok;
 import middle::ty::unify::fix_err;
 import std::int;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::map;
@@ -158,15 +158,15 @@ fn ty_param_kinds_and_ty_for_def(fcx: &@fn_ctxt, sp: &span, defn: &ast::def)
 fn instantiate_path(fcx: &@fn_ctxt, pth: &ast::path,
                     tpt: &ty_param_kinds_and_ty, sp: &span) ->
    ty_param_substs_opt_and_ty {
-    let ty_param_count = ivec::len(tpt.kinds);
+    let ty_param_count = vec::len(tpt.kinds);
     let bind_result =
         bind_params_in_type(sp, fcx.ccx.tcx, bind next_ty_var_id(fcx), tpt.ty,
                             ty_param_count);
     let ty_param_vars = bind_result.ids;
     let ty_substs_opt;
-    let ty_substs_len = ivec::len[@ast::ty](pth.node.types);
+    let ty_substs_len = vec::len[@ast::ty](pth.node.types);
     if ty_substs_len > 0u {
-        let param_var_len = ivec::len(ty_param_vars);
+        let param_var_len = vec::len(ty_param_vars);
         if param_var_len == 0u {
             fcx.ccx.tcx.sess.span_fatal
                 (sp, "this item does not take type parameters");
@@ -287,7 +287,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         // "foo = int" like OCaml?
 
         let ty_param_kinds_and_ty = getter(id);
-        if ivec::len(ty_param_kinds_and_ty.kinds) == 0u {
+        if vec::len(ty_param_kinds_and_ty.kinds) == 0u {
             ret ty_param_kinds_and_ty.ty;
         }
         // The typedef is type-parametric. Do the type substitution.
@@ -297,8 +297,8 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         for ast_ty: @ast::ty in args {
             param_bindings += ~[ast_ty_to_ty(tcx, getter, ast_ty)];
         }
-        if ivec::len(param_bindings) !=
-            ivec::len(ty_param_kinds_and_ty.kinds) {
+        if vec::len(param_bindings) !=
+            vec::len(ty_param_kinds_and_ty.kinds) {
             tcx.sess.span_fatal(sp,
                                 "Wrong number of type arguments for a \
                                  polymorphic type");
@@ -341,7 +341,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
       }
       ast::ty_tup(fields) {
-        let flds = ivec::map(bind ast_ty_to_ty(tcx, getter, _), fields);
+        let flds = vec::map(bind ast_ty_to_ty(tcx, getter, _), fields);
         typ = ty::mk_tup(tcx, flds);
       }
       ast::ty_rec(fields) {
@@ -752,7 +752,7 @@ mod collect {
             // constructors get turned into functions.
 
             let result_ty;
-            if ivec::len[ast::variant_arg](variant.node.args) == 0u {
+            if vec::len[ast::variant_arg](variant.node.args) == 0u {
                 result_ty = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
@@ -813,7 +813,7 @@ mod collect {
             // ty_of_obj().)
             let method_types = get_obj_method_types(cx, object);
             let i = 0u;
-            while i < ivec::len[@ast::method](object.methods) {
+            while i < vec::len[@ast::method](object.methods) {
                 write::ty_only(cx.tcx, object.methods.(i).node.id,
                                ty::method_ty_to_fn_ty(cx.tcx,
                                                       method_types.(i)));
@@ -825,7 +825,7 @@ mod collect {
             // an assertion in trans.
             let args = ty::ty_fn_args(cx.tcx, tpt.ty);
             i = 0u;
-            while i < ivec::len[ty::arg](args) {
+            while i < vec::len[ty::arg](args) {
                 let fld = object.fields.(i);
                 write::ty_only(cx.tcx, fld.id, args.(i).ty);
                 i += 1u;
@@ -919,7 +919,7 @@ fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
           }
           ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(fcx.ccx.tcx, did);
-            if ivec::len(variants) != 1u || ivec::len(variants.(0).args) != 1u
+            if vec::len(variants) != 1u || vec::len(variants.(0).args) != 1u
                {
                 ret t1;
             }
@@ -1370,11 +1370,11 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
             let arg_types =
                 variant_arg_types(fcx.ccx, pat.span, v_def_ids.var,
                                   expected_tps);
-            let subpats_len = std::ivec::len[@ast::pat](subpats);
-            if std::ivec::len[ty::t](arg_types) > 0u {
+            let subpats_len = std::vec::len[@ast::pat](subpats);
+            if std::vec::len[ty::t](arg_types) > 0u {
                 // N-ary variant.
 
-                let arg_len = ivec::len[ty::t](arg_types);
+                let arg_len = vec::len[ty::t](arg_types);
                 if arg_len != subpats_len {
                     // TODO: note definition of tag variant
                     // TODO (issue #448): Wrap a #fmt string over multiple
@@ -1388,7 +1388,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                     fcx.ccx.tcx.sess.span_fatal(pat.span, s);
                 }
 
-                // TODO: ivec::iter2
+                // TODO: vec::iter2
 
                 let i = 0u;
                 for subpat: @ast::pat in subpats {
@@ -1431,8 +1431,8 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                                                        expected)));
           }
         }
-        let f_count = ivec::len(fields);
-        let ex_f_count = ivec::len(ex_fields);
+        let f_count = vec::len(fields);
+        let ex_f_count = vec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span, #fmt("mismatched types: expected a record \
@@ -1443,7 +1443,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
             ret str::eq(name, f.ident);
         }
         for f: ast::field_pat in fields {
-            alt ivec::find(bind matches(f.ident, _), ex_fields) {
+            alt vec::find(bind matches(f.ident, _), ex_fields) {
               some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
               none. {
                 fcx.ccx.tcx.sess.span_fatal(pat.span,
@@ -1466,12 +1466,12 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                                                                  expected)));
           }
         }
-        let e_count = ivec::len(elts);
-        if e_count != ivec::len(ex_elts) {
+        let e_count = vec::len(elts);
+        if e_count != vec::len(ex_elts) {
             fcx.ccx.tcx.sess.span_fatal
                 (pat.span, #fmt("mismatched types: expected a tuple \
                                  with %u fields, found one with %u \
-                                 fields", ivec::len(ex_elts), e_count));
+                                 fields", vec::len(ex_elts), e_count));
         }
         let i = 0u;
         for elt in elts {
@@ -1593,8 +1593,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Check that the correct number of arguments were supplied.
-        let expected_arg_count = ivec::len[ty::arg](arg_tys);
-        let supplied_arg_count = ivec::len[option::t[@ast::expr]](args);
+        let expected_arg_count = vec::len[ty::arg](arg_tys);
+        let supplied_arg_count = vec::len[option::t[@ast::expr]](args);
         if expected_arg_count != supplied_arg_count {
             fcx.ccx.tcx.sess.span_fatal(sp,
                                         #fmt("this function takes %u \
@@ -1828,8 +1828,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
               ty::ty_res(_, inner, _) { oper_t = inner; }
               ty::ty_tag(id, tps) {
                 let variants = ty::tag_variants(tcx, id);
-                if ivec::len(variants) != 1u ||
-                       ivec::len(variants.(0).args) != 1u {
+                if vec::len(variants) != 1u ||
+                       vec::len(variants.(0).args) != 1u {
                     tcx.sess.span_fatal
                         (expr.span, "can only dereference tags " +
                          "with a single variant which has a "
@@ -1877,7 +1877,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         } else {
             // The definition doesn't take type parameters. If the programmer
             // supplied some, that's an error.
-            if ivec::len[@ast::ty](pth.node.types) > 0u {
+            if vec::len[@ast::ty](pth.node.types) > 0u {
                 tcx.sess.span_fatal(expr.span,
                                     "this kind of value does not \
                                      take type parameters");
@@ -2116,7 +2116,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             // For each blank argument, add the type of that argument
             // to the resulting function type.
             let i = 0u;
-            while i < ivec::len[option::t[@ast::expr]](args) {
+            while i < vec::len[option::t[@ast::expr]](args) {
                 alt args.(i) {
                   some(_) {/* no-op */ }
                   none. { arg_tys_1 += ~[arg_tys.(i)]; }
@@ -2239,7 +2239,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
       }
       ast::expr_tup(elts) {
         let elt_ts = ~[];
-        ivec::reserve(elt_ts, ivec::len(elts));
+        vec::reserve(elt_ts, vec::len(elts));
         for e in elts {
             check_expr(fcx, e);
             let ety = expr_ty(fcx.ccx.tcx, e);
@@ -2264,7 +2264,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         alt base {
           none. {
             fn get_node(f: &spanned[field]) -> field { f.node }
-            let typ = ty::mk_rec(tcx, ivec::map(get_node, fields_t));
+            let typ = ty::mk_rec(tcx, vec::map(get_node, fields_t));
             write::ty_only_fixup(fcx, id, typ);
           }
           some(bexpr) {
@@ -2304,7 +2304,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
           ty::ty_rec(fields) {
             let ix: uint =
                 ty::field_idx(tcx.sess, expr.span, field, fields);
-            if ix >= ivec::len[ty::field](fields) {
+            if ix >= vec::len[ty::field](fields) {
                 tcx.sess.span_fatal(expr.span, "bad index on record");
             }
             write::ty_only_fixup(fcx, id, fields.(ix).mt.ty);
@@ -2312,7 +2312,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
           ty::ty_obj(methods) {
             let ix: uint =
                 ty::method_idx(tcx.sess, expr.span, field, methods);
-            if ix >= ivec::len[ty::method](methods) {
+            if ix >= vec::len[ty::method](methods) {
                 tcx.sess.span_fatal(expr.span, "bad index on obj");
             }
             let meth = methods.(ix);
@@ -2444,7 +2444,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             }
 
             fcx.ccx.obj_infos +=
-                ~[anon_obj(ivec::map(ast::obj_field_from_anon_obj_field,
+                ~[anon_obj(vec::map(ast::obj_field_from_anon_obj_field,
                                      fields), inner_obj_sty)];
 
             // Whenever an outer method overrides an inner, we need to remove
@@ -2474,7 +2474,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
 
             let f = bind filtering_fn(fcx.ccx, _, ao.methods);
             inner_obj_methods =
-                std::ivec::filter_map[ty::method,
+                std::vec::filter_map[ty::method,
                                       ty::method](f, inner_obj_methods);
 
             method_types += inner_obj_methods;
@@ -2487,7 +2487,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         // Write the methods into the node type table.  (This happens in
         // collect::convert for regular objects.)
         let i = 0u;
-        while i < ivec::len[@ast::method](ao.methods) {
+        while i < vec::len[@ast::method](ao.methods) {
             write::ty_only(tcx, ao.methods.(i).node.id,
                            ty::method_ty_to_fn_ty(tcx,
                                                   method_types.(i)));
@@ -2500,7 +2500,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Now remove the info from the stack.
-        ivec::pop[obj_info](fcx.ccx.obj_infos);
+        vec::pop[obj_info](fcx.ccx.obj_infos);
       }
       ast::expr_uniq(x) {
         let t = next_ty_var(fcx);
@@ -2528,7 +2528,7 @@ fn next_ty_var(fcx: &@fn_ctxt) -> ty::t {
 }
 
 fn get_obj_info(ccx: &@crate_ctxt) -> option::t[obj_info] {
-    ret ivec::last[obj_info](ccx.obj_infos);
+    ret vec::last[obj_info](ccx.obj_infos);
 }
 
 fn check_decl_initializer(fcx: &@fn_ctxt, nid: ast::node_id,
@@ -2707,7 +2707,7 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
         for method: @ast::method in ob.methods { check_method(ccx, method); }
 
         // Now remove the info from the stack.
-        ivec::pop[obj_info](ccx.obj_infos);
+        vec::pop[obj_info](ccx.obj_infos);
       }
       _ {/* nothing to do */ }
     }
@@ -2738,9 +2738,9 @@ fn check_main_fn_ty(tcx: &ty::ctxt, main_id: &ast::node_id) {
     let main_t = ty::node_id_to_monotype(tcx, main_id);
     alt ty::struct(tcx, main_t) {
       ty::ty_fn(ast::proto_fn., args, rs, ast::return., constrs) {
-        let ok = ivec::len(constrs) == 0u;
+        let ok = vec::len(constrs) == 0u;
         ok &= ty::type_is_nil(tcx, rs);
-        let num_args = ivec::len(args);
+        let num_args = vec::len(args);
         ok &=
             num_args == 0u || num_args == 1u && arg_is_argv_ty(tcx, args.(0));
         if !ok {

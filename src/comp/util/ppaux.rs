@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::str;
 import std::int;
 import std::option;
@@ -112,7 +112,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         // The user should never see this if the cname is set properly!
 
         s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
-        if ivec::len[t](tps) > 0u {
+        if vec::len[t](tps) > 0u {
             let strs: [str] = ~[];
             for typ: t in tps { strs += ~[ty_to_str(cx, typ)]; }
             s += "[" + str::connect(strs, ",") + "]";

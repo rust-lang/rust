@@ -1,6 +1,6 @@
 import syntax::print::pprust::path_to_str;
 import util::ppaux::ty_to_str;
-import std::ivec;
+import std::vec;
 import std::option;
 import std::option::get;
 import std::option::is_none;
@@ -165,11 +165,11 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
                             id: node_id, ops: &[init_op], bs: &[@expr],
                             cf: controlflow) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
-    if ivec::len(bs) != ivec::len(ops) {
+    if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
                                   #fmt("mismatched arg lengths: \
                                         %u exprs vs. %u ops",
-                                       ivec::len(bs), ivec::len(ops)));
+                                       vec::len(bs), vec::len(ops)));
     }
     ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id,
                                   ops, bs, cf)
@@ -313,8 +313,8 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
     alt e.node {
       expr_vec(elts, _, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
-                                      ivec::init_elt(init_assign,
-                                                     ivec::len(elts)),
+                                      vec::init_elt(init_assign,
+                                                     vec::len(elts)),
                                       elts, return);
       }
       expr_call(operator, operands) {
@@ -372,8 +372,8 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       expr_rec(fields, maybe_base) {
         let changed =
             find_pre_post_state_exprs(fcx, pres, e.id,
-                                      ivec::init_elt(init_assign,
-                                                     ivec::len(fields)),
+                                      vec::init_elt(init_assign,
+                                                     vec::len(fields)),
                                       field_exprs(fields),
                                       return);
         alt maybe_base {
@@ -389,8 +389,8 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       }
       expr_tup(elts) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
-                                      ivec::init_elt(init_assign,
-                                                     ivec::len(elts)),
+                                      vec::init_elt(init_assign,
+                                                     vec::len(elts)),
                                       elts, return);
       }
       expr_copy(a) {
@@ -554,7 +554,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
                 find_pre_post_state_expr(fcx, pres, val);
         let e_post = expr_poststate(fcx.ccx, val);
         let a_post;
-        if ivec::len(alts) > 0u {
+        if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
             for an_alt: arm in alts {
                 changed |=

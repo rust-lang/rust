@@ -27,7 +27,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     let load_factor: util::rational = {num: 3, den: 4};
     tag bucket[@K, @V] { nil; deleted; some(K, V); }
     fn make_buckets[@K, @V](nbkts: uint) -> [mutable (bucket[K, V])] {
-        ret ivec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
+        ret vec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
     // Derive two hash functions from the one given by taking the upper
     // half and lower half of the uint bits.  Our bucket probing

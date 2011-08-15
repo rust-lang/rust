@@ -2,7 +2,7 @@ import std::test;
 import std::str;
 import std::option;
 import std::either;
-import std::ivec;
+import std::vec;
 
 #[test]
 fn do_not_run_ignored_tests() {
@@ -27,7 +27,7 @@ fn ignored_tests_result_in_ignored() {
 #[test]
 fn first_free_arg_should_be_a_filter() {
     let args = ~["progname", "filter"];
-    check (ivec::is_not_empty(args));
+    check (vec::is_not_empty(args));
     let opts = alt test::parse_opts(args) { either::left(o) { o } };
     assert (str::eq("filter", option::get(opts.filter)));
 }
@@ -35,7 +35,7 @@ fn first_free_arg_should_be_a_filter() {
 #[test]
 fn parse_ignored_flag() {
     let args = ~["progname", "filter", "--ignored"];
-    check (ivec::is_not_empty(args));
+    check (vec::is_not_empty(args));
     let opts = alt test::parse_opts(args) { either::left(o) { o } };
     assert (opts.run_ignored);
 }
@@ -51,7 +51,7 @@ fn filter_for_ignored_option() {
           {name: "2", fn: fn () { }, ignore: false}];
     let filtered = test::filter_tests(opts, tests);
 
-    assert (ivec::len(filtered) == 1u);
+    assert (vec::len(filtered) == 1u);
     assert (filtered.(0).name == "1");
     assert (filtered.(0).ignore == false);
 }
@@ -86,7 +86,7 @@ fn sort_tests() {
           "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
           "test::sort_tests"];
 
-    let pairs = ivec::zip(expected, filtered);
+    let pairs = vec::zip(expected, filtered);
 
 
     for (a, b) in pairs {

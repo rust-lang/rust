@@ -95,8 +95,8 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     // typarams, and fields.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    if std::ivec::len[ast::ty_param](ty_params) == 0u &&
-           std::ivec::len[ty::arg](arg_tys) == 0u {
+    if std::vec::len[ast::ty_param](ty_params) == 0u &&
+           std::vec::len[ty::arg](arg_tys) == 0u {
         // If the object we're translating has no fields or type parameters,
         // there's not much to do.
 
@@ -235,7 +235,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     // methods, not inner ones.
     let wrapper_obj: ast::_obj =
         {fields:
-             std::ivec::map(ast::obj_field_from_anon_obj_field,
+             std::vec::map(ast::obj_field_from_anon_obj_field,
                             additional_fields),
          methods: anon_obj.methods};
 
@@ -295,7 +295,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     // typarams, fields, and a pointer to our inner_obj.
     let llbox_ty: TypeRef = T_ptr(T_empty_struct());
 
-    if std::ivec::len[ast::anon_obj_field](additional_fields) == 0u &&
+    if std::vec::len[ast::anon_obj_field](additional_fields) == 0u &&
            anon_obj.inner_obj == none {
 
         // If the object we're translating has no fields and no inner_obj,
@@ -496,7 +496,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
         // Filter out any methods that we don't need forwarding slots for
         // because they're being overridden.
         let f = bind filtering_fn(cx, _, ob.methods);
-        meths = std::ivec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
+        meths = std::vec::filter_map[vtbl_mthd, vtbl_mthd](f, meths);
 
         // And now add the additional ones, both overriding ones and entirely
         // new ones.  These will just be normal methods.
@@ -615,7 +615,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Get the backwarding function's type and declare it.
     let llbackwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
-                        std::ivec::len[ast::ty_param](ty_params));
+                        std::vec::len[ast::ty_param](ty_params));
     let llbackwarding_fn: ValueRef =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llbackwarding_fn_ty);
 
@@ -684,7 +684,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         type_of_fn_full(bcx_ccx(bcx), sp,
                         ty::ty_fn_proto(bcx_tcx(bcx), outer_mthd_ty), true,
                         m.inputs, m.output,
-                        std::ivec::len[ast::ty_param](ty_params));
+                        std::vec::len[ast::ty_param](ty_params));
     llouter_mthd =
         bcx.build.PointerCast(llouter_mthd, T_ptr(T_ptr(llouter_mthd_ty)));
     llouter_mthd = bcx.build.Load(llouter_mthd);
@@ -747,7 +747,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // Get the forwarding function's type and declare it.
     let llforwarding_fn_ty: TypeRef =
         type_of_fn_full(cx.ccx, sp, m.proto, true, m.inputs, m.output,
-                        std::ivec::len[ast::ty_param](ty_params));
+                        std::vec::len[ast::ty_param](ty_params));
     let llforwarding_fn: ValueRef =
         decl_internal_fastcall_fn(cx.ccx.llmod, s, llforwarding_fn_ty);
 
@@ -844,7 +844,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
         type_of_fn_full(bcx_ccx(bcx), sp,
                         ty::ty_fn_proto(bcx_tcx(bcx), orig_mthd_ty), true,
                         m.inputs, m.output,
-                        std::ivec::len[ast::ty_param](ty_params));
+                        std::vec::len[ast::ty_param](ty_params));
     llorig_mthd =
         bcx.build.PointerCast(llorig_mthd, T_ptr(T_ptr(llorig_mthd_ty)));
     llorig_mthd = bcx.build.Load(llorig_mthd);
@@ -923,7 +923,7 @@ fn process_normal_mthd(cx: @local_ctxt, m: @ast::method, self_ty: ty::t,
       ty::ty_fn(proto, inputs, output, _, _) {
         llfnty =
             type_of_fn_full(cx.ccx, m.span, proto, true, inputs, output,
-                            std::ivec::len[ast::ty_param](ty_params));
+                            std::vec::len[ast::ty_param](ty_params));
       }
     }
     let mcx: @local_ctxt =

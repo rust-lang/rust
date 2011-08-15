@@ -1,6 +1,6 @@
 // Type decoding
 
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::option;
@@ -409,14 +409,14 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
 // Rust metadata parsing
 fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let colon_idx = 0u;
-    let len = ivec::len[u8](buf);
+    let len = vec::len[u8](buf);
     while colon_idx < len && buf.(colon_idx) != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
         log_err "didn't find ':' when parsing def id";
         fail;
     }
-    let crate_part = ivec::slice[u8](buf, 0u, colon_idx);
-    let def_part = ivec::slice[u8](buf, colon_idx + 1u, len);
+    let crate_part = vec::slice[u8](buf, 0u, colon_idx);
+    let def_part = vec::slice[u8](buf, colon_idx + 1u, len);
 
     let crate_part_vec = ~[];
     let def_part_vec = ~[];

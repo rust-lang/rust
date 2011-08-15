@@ -1,6 +1,6 @@
 use std;
 import std::either::*;
-import std::ivec::len;
+import std::vec::len;
 
 #[test]
 fn test_either_left() {

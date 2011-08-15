@@ -1,5 +1,5 @@
 
-import std::ivec;
+import std::vec;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -115,7 +115,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
    the preconditions for <args>, and the postcondition in a to
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
-    if ivec::len[@expr](args) > 0u {
+    if vec::len[@expr](args) > 0u {
         log "find_pre_post_exprs: oper =";
         log_expr(*args.(0));
     }
@@ -125,10 +125,10 @@ fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
     fn get_pp(ccx: crate_ctxt, e: &@expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = ivec::map[@expr, pre_and_post](bind get_pp(fcx.ccx, _), args);
+    let pps = vec::map[@expr, pre_and_post](bind get_pp(fcx.ccx, _), args);
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
-                     seq_postconds(fcx, ivec::map(get_post, pps)));
+                     seq_postconds(fcx, vec::map(get_post, pps)));
 }
 
 fn find_pre_post_loop(fcx: &fn_ctxt, l: &@local, index: &@expr, body: &blk,
@@ -525,7 +525,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
               postcondition: false_postcond(num_local_vars)};
         let g = bind combine_pp(antec_pp, fcx, _, _);
         let alts_overall_pp =
-            ivec::foldl[pre_and_post, pre_and_post](g, e_pp, alt_pps);
+            vec::foldl[pre_and_post, pre_and_post](g, e_pp, alt_pps);
         set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
                          alts_overall_pp.postcondition);
       }

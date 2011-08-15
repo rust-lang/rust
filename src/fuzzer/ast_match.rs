@@ -1,10 +1,10 @@
 use std;
-import std::ivec;
+import std::vec;
 
 fn ivec_equal[T](v: &[T], u: &[T], element_equality_test: fn(&T, &T) -> bool )
    -> bool {
-    let Lv = ivec::len(v);
-    if Lv != ivec::len(u) { ret false; }
+    let Lv = vec::len(v);
+    if Lv != vec::len(u) { ret false; }
     let i = 0u;
     while i < Lv {
         if !element_equality_test(v.(i), u.(i)) { ret false; }

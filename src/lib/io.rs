@@ -62,9 +62,9 @@ resource FILE_res(f: os::libc::FILE) {
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn read(len: uint) -> [u8] {
         let buf = ~[];
-        ivec::reserve[u8](buf, len);
-        let read = os::libc::fread(ivec::to_ptr[u8](buf), 1u, len, f);
-        ivec::unsafe::set_len[u8](buf, read);
+        vec::reserve[u8](buf, len);
+        let read = os::libc::fread(vec::to_ptr[u8](buf), 1u, len, f);
+        vec::unsafe::set_len[u8](buf, read);
         ret buf;
     }
     fn read_byte() -> int { ret os::libc::fgetc(f); }
@@ -196,24 +196,24 @@ type byte_buf = @{buf: [u8], mutable pos: uint};
 
 obj byte_buf_reader(bbuf: byte_buf) {
     fn read(len: uint) -> [u8] {
-        let rest = ivec::len[u8](bbuf.buf) - bbuf.pos;
+        let rest = vec::len[u8](bbuf.buf) - bbuf.pos;
         let to_read = len;
         if rest < to_read { to_read = rest; }
-        let range = ivec::slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
+        let range = vec::slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
         bbuf.pos += to_read;
         ret range;
     }
     fn read_byte() -> int {
-        if bbuf.pos == ivec::len[u8](bbuf.buf) { ret -1; }
+        if bbuf.pos == vec::len[u8](bbuf.buf) { ret -1; }
         let b = bbuf.buf.(bbuf.pos);
         bbuf.pos += 1u;
         ret b as int;
     }
     fn unread_byte(byte: int) { log_err "TODO: unread_byte"; fail; }
-    fn eof() -> bool { ret bbuf.pos == ivec::len[u8](bbuf.buf); }
+    fn eof() -> bool { ret bbuf.pos == vec::len[u8](bbuf.buf); }
     fn seek(offset: int, whence: seek_style) {
         let pos = bbuf.pos;
-        let len = ivec::len[u8](bbuf.buf);
+        let len = vec::len[u8](bbuf.buf);
         bbuf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret bbuf.pos; }
@@ -245,8 +245,8 @@ type buf_writer =
 
 obj FILE_writer(f: os::libc::FILE, res: option::t[@FILE_res]) {
     fn write(v: &[u8]) {
-        let len = ivec::len[u8](v);
-        let vbuf = ivec::to_ptr[u8](v);
+        let len = vec::len[u8](v);
+        let vbuf = vec::to_ptr[u8](v);
         let nout = os::libc::fwrite(vbuf, len, 1u, f);
         if nout < 1u { log_err "error dumping buffer"; }
     }
@@ -264,11 +264,11 @@ resource fd_res(fd: int) {
 
 obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
     fn write(v: &[u8]) {
-        let len = ivec::len[u8](v);
+        let len = vec::len[u8](v);
         let count = 0u;
         let vbuf;
         while count < len {
-            vbuf = ptr::offset(ivec::to_ptr[u8](v), count);
+            vbuf = ptr::offset(vec::to_ptr[u8](v), count);
             let nout = os::libc::write(fd, vbuf, len);
             if nout < 0 {
                 log_err "error dumping buffer";
@@ -401,18 +401,18 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
     fn write(v: &[u8]) {
         // Fast path.
 
-        if buf.pos == ivec::len(buf.buf) {
+        if buf.pos == vec::len(buf.buf) {
             for b: u8 in v { buf.buf += ~[mutable b]; }
-            buf.pos += ivec::len[u8](v);
+            buf.pos += vec::len[u8](v);
             ret;
         }
         // FIXME: Optimize: These should be unique pointers.
 
-        let vlen = ivec::len[u8](v);
+        let vlen = vec::len[u8](v);
         let vpos = 0u;
         while vpos < vlen {
             let b = v.(vpos);
-            if buf.pos == ivec::len(buf.buf) {
+            if buf.pos == vec::len(buf.buf) {
                 buf.buf += ~[mutable b];
             } else { buf.buf.(buf.pos) = b; }
             buf.pos += 1u;
@@ -421,7 +421,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
     }
     fn seek(offset: int, whence: seek_style) {
         let pos = buf.pos;
-        let len = ivec::len(buf.buf);
+        let len = vec::len(buf.buf);
         buf.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { ret buf.pos; }
@@ -431,7 +431,7 @@ fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
 
     let b: [mutable u8] = ~[mutable 0u8];
-    ivec::pop(b);
+    vec::pop(b);
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
         fn get_writer() -> writer { ret wr; }

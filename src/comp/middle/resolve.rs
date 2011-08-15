@@ -19,7 +19,7 @@ import syntax::ast::respan;
 import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
-import std::ivec;
+import std::vec;
 import std::int;
 import std::map::hashmap;
 import std::list;
@@ -401,7 +401,7 @@ fn visit_expr_with_scope(x: &@ast::expr, sc: &scopes, v: &vt[scopes]) {
 
 fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
    option::t[def] {
-    let path_len = ivec::len(path);
+    let path_len = vec::len(path);
     let dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
     let i = 1u;
     while true && option::is_some(dcur) {
@@ -455,7 +455,7 @@ fn resolve_import(e: &env, it: &@ast::view_item, sc_in: &scopes) {
       }
     }
     e.imports.insert(defid.node, resolving(it.span));
-    let n_idents = ivec::len(ids);
+    let n_idents = vec::len(ids);
     let end_id = ids.(n_idents - 1u);
     // Ignore the current scope if this import would shadow itself.
     let sc =
@@ -573,7 +573,7 @@ fn mk_unresolved_msg(id: &ident, kind: &str) -> str {
 // Lookup helpers
 fn lookup_path_strict(e: &env, sc: &scopes, sp: &span, pth: &ast::path_,
                       ns: namespace) -> option::t[def] {
-    let n_idents = ivec::len(pth.idents);
+    let n_idents = vec::len(pth.idents);
     let headns = if n_idents == 1u { ns } else { ns_module };
 
     let first_scope;
@@ -783,7 +783,7 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
 
 fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
                    ns: namespace) -> option::t[def] {
-    let i = ivec::len(b.stmts);
+    let i = vec::len(b.stmts);
     while i > 0u {
         i -= 1u;
         let st = b.stmts.(i);
@@ -792,7 +792,7 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
             alt d.node {
               ast::decl_local(locs) {
                 if i <= pos {
-                    let j = ivec::len(locs);
+                    let j = vec::len(locs);
                     while j > 0u {
                         j -= 1u;
                         let loc = locs.(j);
@@ -998,11 +998,11 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         }
 
         let matches =
-            ivec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
+            vec::filter_map(bind lookup_in_mod_(e, _, sp, id, ns, dr),
                              { info.glob_imports });
-        if ivec::len(matches) == 0u {
+        if vec::len(matches) == 0u {
             ret none;
-        } else if (ivec::len(matches) == 1u) {
+        } else if (vec::len(matches) == 1u) {
             ret some(matches.(0).def);
         } else {
             for match: glob_imp_def in matches {
@@ -1271,7 +1271,7 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt[()]) {
     let ch0 = checker(*e, "binding");
     check_pat(ch0, a.pats.(0));
     let seen0 = ch0.seen;
-    let i = ivec::len(a.pats);
+    let i = vec::len(a.pats);
     while i > 1u {
         i -= 1u;
         let ch = checker(*e, "binding");
@@ -1279,12 +1279,12 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt[()]) {
 
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
-        if ivec::len(ch.seen) != ivec::len(seen0) {
+        if vec::len(ch.seen) != vec::len(seen0) {
             e.sess.span_err(a.pats.(i).span,
                             "inconsistent number of bindings");
         } else {
             for name: ident in ch.seen {
-                if is_none(ivec::find(bind str::eq(name, _), seen0)) {
+                if is_none(vec::find(bind str::eq(name, _), seen0)) {
                     // Fight the alias checker
                     let name_ = name;
                     e.sess.span_err(a.pats.(i).span,

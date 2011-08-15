@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::option;
 import syntax::ast;
 import syntax::fold;
@@ -32,9 +32,9 @@ fn filter_item(cfg: &ast::crate_cfg, item: &@ast::item) ->
 fn fold_mod(cfg: &ast::crate_cfg, m: &ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
     let filter = bind filter_item(cfg, _);
-    let filtered_items = ivec::filter_map(filter, m.items);
-    ret {view_items: ivec::map(fld.fold_view_item, m.view_items),
-         items: ivec::map(fld.fold_item, filtered_items)};
+    let filtered_items = vec::filter_map(filter, m.items);
+    ret {view_items: vec::map(fld.fold_view_item, m.view_items),
+         items: vec::map(fld.fold_item, filtered_items)};
 }
 
 fn filter_native_item(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
@@ -47,10 +47,10 @@ fn filter_native_item(cfg: &ast::crate_cfg, item: &@ast::native_item) ->
 fn fold_native_mod(cfg: &ast::crate_cfg, nm: &ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
     let filter = bind filter_native_item(cfg, _);
-    let filtered_items = ivec::filter_map(filter, nm.items);
+    let filtered_items = vec::filter_map(filter, nm.items);
     ret {native_name: nm.native_name,
          abi: nm.abi,
-         view_items: ivec::map(fld.fold_view_item, nm.view_items),
+         view_items: vec::map(fld.fold_view_item, nm.view_items),
          items: filtered_items};
 }
 
@@ -74,8 +74,8 @@ fn filter_stmt(cfg: &ast::crate_cfg, stmt: &@ast::stmt) ->
 fn fold_block(cfg: &ast::crate_cfg, b: &ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filter = bind filter_stmt(cfg, _);
-    let filtered_stmts = ivec::filter_map(filter, b.stmts);
-    ret {stmts: ivec::map(fld.fold_stmt, filtered_stmts),
+    let filtered_stmts = vec::filter_map(filter, b.stmts);
+    ret {stmts: vec::map(fld.fold_stmt, filtered_stmts),
          expr: option::map(fld.fold_expr, b.expr),
          id: b.id};
 }
@@ -95,7 +95,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
 
     // The "cfg" attributes on the item
     let item_cfg_attrs = attr::find_attrs_by_name(attrs, "cfg");
-    let item_has_cfg_attrs = ivec::len(item_cfg_attrs) > 0u;
+    let item_has_cfg_attrs = vec::len(item_cfg_attrs) > 0u;
     if !item_has_cfg_attrs { ret true; }
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
@@ -115,7 +115,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
                 }
             }
             let cfg_metas = attr::attr_metas(item_cfg_attrs);
-            ivec::foldl(extract_metas, ~[], cfg_metas)
+            vec::foldl(extract_metas, ~[], cfg_metas)
         };
 
     for cfg_mi: @ast::meta_item in item_cfg_metas {

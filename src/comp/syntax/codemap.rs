@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::uint;
 import std::str;
 import std::term;
@@ -40,14 +40,14 @@ type lookup_fn = fn(file_pos) -> uint ;
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
     let a = 0u;
-    let b = ivec::len(map.files);
+    let b = vec::len(map.files);
     while b - a > 1u {
         let m = (a + b) / 2u;
         if lookup(map.files.(m).start_pos) > pos { b = m; } else { a = m; }
     }
     let f = map.files.(a);
     a = 0u;
-    b = ivec::len(f.lines);
+    b = vec::len(f.lines);
     while b - a > 1u {
         let m = (a + b) / 2u;
         if lookup(f.lines.(m)) > pos { b = m; } else { a = m; }
@@ -137,8 +137,8 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
         let max_lines = 6u;
         let elided = false;
         let display_lines = lines.lines;
-        if ivec::len(display_lines) > max_lines {
-            display_lines = ivec::slice(display_lines, 0u, max_lines);
+        if vec::len(display_lines) > max_lines {
+            display_lines = vec::slice(display_lines, 0u, max_lines);
             elided = true;
         }
         // Print the offending lines
@@ -149,7 +149,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
             io::stdout().write_str(s);
         }
         if elided {
-            let last_line = display_lines.(ivec::len(display_lines) - 1u);
+            let last_line = display_lines.(vec::len(display_lines) - 1u);
             let s = #fmt("%s:%u ", fm.name, last_line + 1u);
             let indent = str::char_len(s);
             let out = "";
@@ -160,7 +160,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
 
 
         // If there's one line at fault we can easily point to the problem
-        if ivec::len(lines.lines) == 1u {
+        if vec::len(lines.lines) == 1u {
             let lo = lookup_char_pos(cm, option::get(sp).lo);
             let digits = 0u;
             let num = lines.lines.(0) / 10u;
@@ -212,7 +212,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 fn get_line(fm: filemap, line: int, file: &str) -> str {
     let begin: uint = fm.lines.(line).byte - fm.start_pos.byte;
     let end: uint;
-    if line as uint < ivec::len(fm.lines) - 1u {
+    if line as uint < vec::len(fm.lines) - 1u {
         end = fm.lines.(line + 1).byte - fm.start_pos.byte;
     } else {
         // If we're not done parsing the file, we're at the limit of what's

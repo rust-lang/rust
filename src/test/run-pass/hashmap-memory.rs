@@ -10,7 +10,7 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
-import std::ivec;
+import std::vec;
 import std::map;
 import std::task;
 import std::comm::_chan;
@@ -73,7 +73,7 @@ mod map_reduce {
 
         start_mappers(ctrl.mk_chan(), inputs);
 
-        let num_mappers = ivec::len(inputs) as int;
+        let num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
             alt ctrl.recv() {

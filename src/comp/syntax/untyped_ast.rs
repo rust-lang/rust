@@ -1,5 +1,5 @@
 import std::ivec;
-import std::ivec::map;
+import std::vec::map;
 import std::option;
 import std::option::some;
 import std::option::none;

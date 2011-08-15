@@ -1,5 +1,5 @@
 
-import std::ivec;
+import std::vec;
 import std::int;
 import std::io;
 import std::str;
@@ -50,7 +50,7 @@ type ps =
 
 fn ibox(s: &ps, u: uint) { s.boxes += ~[pp::inconsistent]; pp::ibox(s.s, u); }
 
-fn end(s: &ps) { ivec::pop(s.boxes); pp::end(s.s); }
+fn end(s: &ps) { vec::pop(s.boxes); pp::end(s.s); }
 
 fn rust_printer(writer: io::writer) -> ps {
     let boxes: [pp::breaks] = ~[];
@@ -229,7 +229,7 @@ fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
 fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
                      get_span: fn(&IN) -> codemap::span ) {
     box(s, 0u, b);
-    let len = ivec::len[IN](elts);
+    let len = vec::len[IN](elts);
     let i = 0u;
     for elt: IN in elts {
         maybe_print_comment(s, get_span(elt).hi);
@@ -454,9 +454,9 @@ fn print_item(s: &ps, item: &@ast::item) {
       }
       ast::item_tag(variants, params) {
         let newtype =
-            ivec::len(variants) == 1u &&
+            vec::len(variants) == 1u &&
                 str::eq(item.ident, variants.(0).node.name) &&
-                ivec::len(variants.(0).node.args) == 1u;
+                vec::len(variants.(0).node.args) == 1u;
         if newtype {
             ibox(s, indent_unit);
             word_space(s, "tag");
@@ -475,7 +475,7 @@ fn print_item(s: &ps, item: &@ast::item) {
                 space(s.s);
                 maybe_print_comment(s, v.span.lo);
                 word(s.s, v.node.name);
-                if ivec::len(v.node.args) > 0u {
+                if vec::len(v.node.args) > 0u {
                     popen(s);
                     fn print_variant_arg(s: &ps, arg: &ast::variant_arg) {
                         print_type(s, arg.ty);
@@ -725,7 +725,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         }
         if mut == ast::mut {
             word(s.s, "mutable");
-            if ivec::len(exprs) > 0u { nbsp(s); }
+            if vec::len(exprs) > 0u { nbsp(s); }
         }
         commasep_exprs(s, inconsistent, exprs);
         word(s.s, "]");
@@ -745,7 +745,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         alt wth {
           some(expr) {
-            if ivec::len(fields) > 0u { space(s.s); }
+            if vec::len(fields) > 0u { space(s.s); }
             ibox(s, indent_unit);
             word_space(s, "with");
             print_expr(s, expr);
@@ -1130,7 +1130,7 @@ fn print_path(s: &ps, path: &ast::path) {
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
-    if ivec::len(path.node.types) > 0u {
+    if vec::len(path.node.types) > 0u {
         word(s.s, "[");
         commasep(s, inconsistent, path.node.types, print_type);
         word(s.s, "]");
@@ -1147,7 +1147,7 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
       ast::pat_lit(lit) { print_literal(s, lit); }
       ast::pat_tag(path, args) {
         print_path(s, path);
-        if ivec::len(args) > 0u {
+        if vec::len(args) > 0u {
             popen(s);
             commasep(s, inconsistent, args, print_pat);
             pclose(s);
@@ -1165,7 +1165,7 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
         fn get_span(f: &ast::field_pat) -> codemap::span { ret f.pat.span; }
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         if etc {
-            if ivec::len(fields) != 0u { word_space(s, ","); }
+            if vec::len(fields) != 0u { word_space(s, ","); }
             word(s.s, "_");
         }
         word(s.s, "}");
@@ -1243,7 +1243,7 @@ fn print_kind(s: &ps, kind: ast::kind) {
 }
 
 fn print_type_params(s: &ps, params: &[ast::ty_param]) {
-    if ivec::len(params) > 0u {
+    if vec::len(params) > 0u {
         word(s.s, "[");
         fn printParam(s: &ps, param: &ast::ty_param) {
             print_kind(s, param.kind);
@@ -1280,7 +1280,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
       ast::view_item_use(id, mta, _) {
         head(s, "use");
         word(s.s, id);
-        if ivec::len(mta) > 0u {
+        if vec::len(mta) > 0u {
             popen(s);
             commasep(s, consistent, mta, print_meta_item);
             pclose(s);
@@ -1288,7 +1288,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
       }
       ast::view_item_import(id, ids, _) {
         head(s, "import");
-        if !str::eq(id, ids.(ivec::len(ids) - 1u)) {
+        if !str::eq(id, ids.(vec::len(ids) - 1u)) {
             word_space(s, id);
             word_space(s, "=");
         }
@@ -1419,7 +1419,7 @@ fn print_remaining_comments(s: &ps) {
 }
 
 fn in_cbox(s: &ps) -> bool {
-    let len = ivec::len(s.boxes);
+    let len = vec::len(s.boxes);
     if len == 0u { ret false; }
     ret s.boxes.(len - 1u) == pp::consistent;
 }
@@ -1465,7 +1465,7 @@ fn lit_to_str(l: &@ast::lit) -> str { be to_str(l, print_literal); }
 fn next_lit(s: &ps) -> option::t[lexer::lit] {
     alt s.literals {
       some(lits) {
-        if s.cur_lit < ivec::len(lits) {
+        if s.cur_lit < vec::len(lits) {
             ret some(lits.(s.cur_lit));
         } else { ret none[lexer::lit]; }
       }
@@ -1490,7 +1490,7 @@ fn maybe_print_comment(s: &ps, pos: uint) {
 fn print_comment(s: &ps, cmnt: lexer::cmnt) {
     alt cmnt.style {
       lexer::mixed. {
-        assert (ivec::len(cmnt.lines) == 1u);
+        assert (vec::len(cmnt.lines) == 1u);
         zerobreak(s.s);
         word(s.s, cmnt.lines.(0));
         zerobreak(s.s);
@@ -1501,7 +1501,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       }
       lexer::trailing. {
         word(s.s, " ");
-        if ivec::len(cmnt.lines) == 1u {
+        if vec::len(cmnt.lines) == 1u {
             word(s.s, cmnt.lines.(0));
             hardbreak(s.s);
         } else {
@@ -1557,7 +1557,7 @@ fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
 fn next_comment(s: &ps) -> option::t[lexer::cmnt] {
     alt s.comments {
       some(cmnts) {
-        if s.cur_cmnt < ivec::len(cmnts) {
+        if s.cur_cmnt < vec::len(cmnts) {
             ret some(cmnts.(s.cur_cmnt));
         } else { ret none[lexer::cmnt]; }
       }

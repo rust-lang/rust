@@ -6,7 +6,7 @@
  * http://shootout.alioth.debian.org/
  */
 use std;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::int;
@@ -40,7 +40,7 @@ fn select_random(r: u32, genelist: &[aminoacids]) -> char {
             } else { be bisect(v, mid, hi, target); }
         } else { ret v.(hi).ch; }
     }
-    ret bisect(genelist, 0u, ivec::len[aminoacids](genelist) - 1u, r);
+    ret bisect(genelist, 0u, vec::len[aminoacids](genelist) - 1u, r);
 }
 
 fn make_random_fasta(id: str, desc: str, genelist: &[aminoacids], n: int) {

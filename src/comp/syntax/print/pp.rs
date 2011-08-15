@@ -1,6 +1,6 @@
 
 import std::io;
-import std::ivec;
+import std::vec;
 import std::str;
 
 
@@ -76,8 +76,8 @@ fn tok_str(t: token) -> str {
 
 fn buf_str(toks: &[mutable token], szs: &[mutable int], left: uint,
            right: uint, lim: uint) -> str {
-    let n = ivec::len(toks);
-    assert (n == ivec::len(szs));
+    let n = vec::len(toks);
+    assert (n == vec::len(szs));
     let i = left;
     let L = lim;
     let s = "[";
@@ -104,9 +104,9 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
 
     let n: uint = 3u * linewidth;
     log #fmt("mk_printer %u", linewidth);
-    let token: [mutable token] = ivec::init_elt_mut(EOF, n);
-    let size: [mutable int] = ivec::init_elt_mut(0, n);
-    let scan_stack: [mutable uint] = ivec::init_elt_mut(0u, n);
+    let token: [mutable token] = vec::init_elt_mut(EOF, n);
+    let size: [mutable int] = vec::init_elt_mut(0, n);
+    let scan_stack: [mutable uint] = vec::init_elt_mut(0u, n);
     let print_stack: [print_stack_elt] = ~[];
     ret printer(out, n, linewidth as int, // margin
                 linewidth as int, // space
@@ -403,7 +403,7 @@ obj printer(out: io::writer,
         pending_indentation += amount;
     }
     fn top() -> print_stack_elt {
-        let n = ivec::len(print_stack);
+        let n = vec::len(print_stack);
         let top: print_stack_elt = {offset: 0, pbreak: broken(inconsistent)};
         if n != 0u { top = print_stack.(n - 1u); }
         ret top;
@@ -432,8 +432,8 @@ obj printer(out: io::writer,
           }
           END. {
             log "print END -> pop END";
-            assert (ivec::len(print_stack) != 0u);
-            ivec::pop(print_stack);
+            assert (vec::len(print_stack) != 0u);
+            vec::pop(print_stack);
           }
           BREAK(b) {
             let top = self.top();

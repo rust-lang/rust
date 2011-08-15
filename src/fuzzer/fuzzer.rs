@@ -8,7 +8,7 @@ import std::getopts::opt_present;
 import std::getopts::opt_str;
 import std::io;
 import std::io::stdout;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::option;
@@ -148,7 +148,7 @@ fn as_str(f: fn(io::writer) ) -> str {
 
 fn check_variants_of_ast(crate: &ast::crate, codemap: &codemap::codemap, filename: &str) {
     let exprs = steal_exprs(crate);
-    let exprsL = ivec::len(exprs);
+    let exprsL = vec::len(exprs);
     if (exprsL < 100u) {
         for each i: uint in under(uint::min(exprsL, 20u)) {
             log_err "Replacing... " + pprust::expr_to_str(@exprs.(i));
@@ -316,7 +316,7 @@ fn check_roundtrip_convergence(code: &str, maxIters: uint) {
 }
 
 fn check_convergence(files: &[str]) {
-    log_err #fmt("pp convergence tests: %u files", ivec::len(files));
+    log_err #fmt("pp convergence tests: %u files", vec::len(files));
     for file in files {
         if !file_is_confusing(file) {
             let s = io::read_whole_file_str(file);
@@ -346,7 +346,7 @@ fn check_variants(files: &[str]) {
 }
 
 fn main(args: [str]) {
-    if ivec::len(args) != 2u {
+    if vec::len(args) != 2u {
         log_err #fmt("usage: %s <testdir>", args.(0));
         ret;
     }

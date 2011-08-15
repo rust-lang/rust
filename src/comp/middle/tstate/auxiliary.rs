@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::int::str;
 import std::str;
 import std::option;
@@ -170,8 +170,8 @@ fn log_states_err(pp: &pre_and_post_state) {
 fn print_ident(i: &ident) { log " " + i + " "; }
 
 fn print_idents(idents: &mutable [ident]) {
-    if ivec::len[ident](idents) == 0u { ret; }
-    log "an ident: " + ivec::pop[ident](idents);
+    if vec::len[ident](idents) == 0u { ret; }
+    log "an ident: " + vec::pop[ident](idents);
     print_idents(idents);
 }
 
@@ -311,15 +311,15 @@ fn get_fn_info(ccx: &crate_ctxt, id: node_id) -> fn_info {
 }
 
 fn add_node(ccx: &crate_ctxt, i: node_id, a: &ts_ann) {
-    let sz = ivec::len(*ccx.node_anns);
+    let sz = vec::len(*ccx.node_anns);
     if sz <= i as uint {
-        ivec::grow_mut(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
+        vec::grow_mut(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
     }
     ccx.node_anns.(i) = a;
 }
 
 fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t[ts_ann] {
-    if i as uint < ivec::len(*ccx.node_anns) {
+    if i as uint < vec::len(*ccx.node_anns) {
         ret some[ts_ann](ccx.node_anns.(i));
     } else { ret none[ts_ann]; }
 }
@@ -690,7 +690,7 @@ fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)
 
 fn substitute_arg(cx: &ty::ctxt, actuals: &[@expr], a: @constr_arg) ->
    @constr_arg_use {
-    let num_actuals = ivec::len(actuals);
+    let num_actuals = vec::len(actuals);
     alt a.node {
       carg_ident(i) {
         if i < num_actuals {
@@ -744,7 +744,7 @@ fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
    [{from: uint, to: uint}] {
 
     let rslt = ~[];
-    if ivec::len(subst) == 0u { ret rslt; }
+    if vec::len(subst) == 0u { ret rslt; }
 
     alt c {
       cinit(_, _, _) {/* this is dealt with separately */ }
@@ -822,7 +822,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_[inst]] {
 }
 
 fn path_to_ident(cx: &ty::ctxt, p: &path) -> ident {
-    alt ivec::last(p.node.idents) {
+    alt vec::last(p.node.idents) {
       none. { cx.sess.span_fatal(p.span, "Malformed path"); }
       some(i) { ret i; }
     }
@@ -1029,7 +1029,7 @@ fn args_mention[T](args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
             case (_)               { false }
         }
     }
-    ret ivec::any(bind mentions(s,q,_), args);
+    ret vec::any(bind mentions(s,q,_), args);
     */
 
     for a: @constr_arg_use in args {
@@ -1040,7 +1040,7 @@ fn args_mention[T](args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
 
 fn use_var(fcx: &fn_ctxt, v: &node_id) { *fcx.enclosing.used_vars += ~[v]; }
 
-// FIXME: This should be a function in std::ivec::.
+// FIXME: This should be a function in std::vec::.
 fn vec_contains(v: &@mutable [node_id], i: &node_id) -> bool {
     for d: node_id in *v { if d == i { ret true; } }
     ret false;
@@ -1090,7 +1090,7 @@ fn local_to_bindings(loc : &@local) -> binding {
 }
 
 fn locals_to_bindings(locals : &[@local]) -> [binding] {
-    ivec::map(local_to_bindings, locals)
+    vec::map(local_to_bindings, locals)
 }
 
 fn callee_modes(fcx: &fn_ctxt, callee: node_id) -> [ty::mode] {
@@ -1120,7 +1120,7 @@ fn callee_arg_init_ops(fcx: &fn_ctxt, callee: node_id) -> [init_op] {
           _ { init_assign }
         }
     }
-    ivec::map(mode_to_op, callee_modes(fcx, callee))
+    vec::map(mode_to_op, callee_modes(fcx, callee))
 }
 
 fn anon_bindings(ops: &[init_op], es : &[@expr]) -> [binding] {

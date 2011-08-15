@@ -154,7 +154,7 @@ fn call_kind_str(c: call_kind) -> str {
 }
 
 fn is_main_name(path: &[str]) -> bool {
-    str::eq(option::get(std::ivec::last(path)), "main")
+    str::eq(option::get(std::vec::last(path)), "main")
 }
 
 // FIXME mode this to std::float when editing the stdlib no longer

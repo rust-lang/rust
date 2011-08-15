@@ -1,6 +1,6 @@
 
 use std;
-import std::ivec;
+import std::vec;
 import std::bitv;
 
 #[test]
@@ -8,7 +8,7 @@ fn test_0_elements() {
     let act;
     let exp;
     act = bitv::create(0u, false);
-    exp = ivec::init_elt[uint](0u, 0u);
+    exp = vec::init_elt[uint](0u, 0u);
     // FIXME: why can't I write vec[uint]()?
 
     assert (bitv::eq_ivec(act, exp));

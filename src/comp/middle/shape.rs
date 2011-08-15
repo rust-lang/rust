@@ -26,7 +26,7 @@ import syntax::codemap::span;
 import syntax::util::interner;
 import util::common;
 
-import std::ivec;
+import std::vec;
 import std::map::hashmap;
 import std::option::none;
 import std::option::some;
@@ -138,10 +138,10 @@ fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> [uint] {
     // Throw out any variant that we know has size and alignment at least as
     // small as some other variant.
     let i = 0u;
-    while i < ivec::len(ranges) - 1u {
+    while i < vec::len(ranges) - 1u {
         if candidates.(i) {
             let j = i + 1u;
-            while (j < ivec::len(ranges)) {
+            while (j < vec::len(ranges)) {
                 if candidates.(j) {
                     if ranges.(i).size.bounded && ranges.(i).align.bounded &&
                             ranges.(j).size.bounded &&
@@ -166,7 +166,7 @@ fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> [uint] {
     // Return the resulting set.
     let result = ~[];
     i = 0u;
-    while i < ivec::len(candidates) {
+    while i < vec::len(candidates) {
         if candidates.(i) { result += ~[i]; }
         i += 1u;
     }
@@ -208,7 +208,7 @@ fn compute_static_tag_size(ccx : &@crate_ctxt, largest_variants : &[uint],
     // Add space for the tag if applicable.
     // FIXME (issue #792): This is wrong. If the tag starts with an 8 byte
     // aligned quantity, we don't align it.
-    if ivec::len(variants) > 1u {
+    if vec::len(variants) > 1u {
         max_size += 4u16;
         max_align = 4u8;
     }
@@ -224,11 +224,11 @@ tag tag_kind {
 
 fn tag_kind(ccx : &@crate_ctxt, did : &ast::def_id) -> tag_kind {
     let variants = ty::tag_variants(ccx.tcx, did);
-    if ivec::len(variants) == 0u { ret tk_complex; }
+    if vec::len(variants) == 0u { ret tk_complex; }
     for v : ty::variant_info in variants {
-        if ivec::len(v.args) > 0u { ret tk_complex; }
+        if vec::len(v.args) > 0u { ret tk_complex; }
     }
-    if ivec::len(variants) == 1u { ret tk_unit; }
+    if vec::len(variants) == 1u { ret tk_unit; }
     ret tk_enum;
 }
 
@@ -272,7 +272,7 @@ fn add_u16(dest : &mutable [u8], val : u16) {
 }
 
 fn add_substr(dest : &mutable [u8], src : &[u8]) {
-    add_u16(dest, ivec::len(src) as u16);
+    add_u16(dest, vec::len(src) as u16);
     dest += src;
 }
 
@@ -326,10 +326,10 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
             }
             add_u16(sub, id as u16);
 
-            add_u16(sub, ivec::len(tps) as u16);
+            add_u16(sub, vec::len(tps) as u16);
             for tp : ty::t in tps {
                 let subshape = shape_of(ccx, tp);
-                add_u16(sub, ivec::len(subshape) as u16);
+                add_u16(sub, vec::len(subshape) as u16);
                 sub += subshape;
             }
 
@@ -388,7 +388,7 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
 
         s += ~[shape_res];
         add_u16(s, id as u16);
-        add_u16(s, ivec::len(tps) as u16);
+        add_u16(s, vec::len(tps) as u16);
 
         let sub = ~[];
         for tp : ty::t in tps { add_substr(s, sub); }
@@ -429,12 +429,12 @@ fn gen_tag_shapes(ccx : &@crate_ctxt) -> ValueRef {
     // must do this first.
     let i = 0u;
     let data = ~[]; let offsets = ~[];
-    while (i < ivec::len(ccx.shape_cx.tag_order)) {
+    while (i < vec::len(ccx.shape_cx.tag_order)) {
         let did = ccx.shape_cx.tag_order.(i);
         let variants = ty::tag_variants(ccx.tcx, did);
 
         for v : ty::variant_info in variants {
-            offsets += ~[ivec::len(data) as u16];
+            offsets += ~[vec::len(data) as u16];
 
             let variant_shape = shape_of_variant(ccx, v);
             add_substr(data, variant_shape);
@@ -449,14 +449,14 @@ fn gen_tag_shapes(ccx : &@crate_ctxt) -> ValueRef {
 
     let header = ~[]; let info = ~[];
     let header_sz = 2u16 * ccx.shape_cx.next_tag_id;
-    let data_sz = ivec::len(data) as u16;
+    let data_sz = vec::len(data) as u16;
 
     let info_sz = 0u16;
     for did_ : ast::def_id in ccx.shape_cx.tag_order {
         let did = did_;    // Satisfy alias checker.
         let variants = ty::tag_variants(ccx.tcx, did);
         add_u16(header, header_sz + info_sz);
-        info_sz += 2u16 * ((ivec::len(variants) as u16) + 2u16) + 3u16;
+        info_sz += 2u16 * ((vec::len(variants) as u16) + 2u16) + 3u16;
     }
 
     // Construct the info tables, which contain offsets to the shape of each
@@ -468,14 +468,14 @@ fn gen_tag_shapes(ccx : &@crate_ctxt) -> ValueRef {
     for did_ : ast::def_id in ccx.shape_cx.tag_order {
         let did = did_;    // Satisfy alias checker.
         let variants = ty::tag_variants(ccx.tcx, did);
-        add_u16(info, ivec::len(variants) as u16);
+        add_u16(info, vec::len(variants) as u16);
 
         // Construct the largest-variants table.
         add_u16(info, header_sz + info_sz + data_sz +
-                (ivec::len(lv_table) as u16));
+                (vec::len(lv_table) as u16));
 
         let lv = largest_variants(ccx, did);
-        add_u16(lv_table, ivec::len(lv) as u16);
+        add_u16(lv_table, vec::len(lv) as u16);
         for v : uint in lv { add_u16(lv_table, v as u16); }
 
         // Determine whether the tag has dynamic size.
@@ -504,10 +504,10 @@ fn gen_tag_shapes(ccx : &@crate_ctxt) -> ValueRef {
         }
     }
 
-    assert (i == ivec::len(offsets));
-    assert (header_sz == (ivec::len(header) as u16));
-    assert (info_sz == (ivec::len(info) as u16));
-    assert (data_sz == (ivec::len(data) as u16));
+    assert (i == vec::len(offsets));
+    assert (header_sz == (vec::len(header) as u16));
+    assert (info_sz == (vec::len(info) as u16));
+    assert (data_sz == (vec::len(data) as u16));
 
     header += info;
     header += data;

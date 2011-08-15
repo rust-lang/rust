@@ -1,6 +1,6 @@
 import std::uint;
 import std::int;
-import std::ivec;
+import std::vec;
 import syntax::ast::*;
 import util::ppaux::fn_ident_to_string;
 import std::option::*;
@@ -127,7 +127,7 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
         {constrs: res_map,
          num_constraints:
          // add 2 to account for the i_return and i_diverge constraints
-             ivec::len(*cx.cs) + ivec::len(f.decl.constraints) + 2u,
+             vec::len(*cx.cs) + vec::len(f.decl.constraints) + 2u,
          cf: f.decl.cf,
          i_return: ninit(id, name),
          i_diverge: ninit(diverges_id, diverges_name),

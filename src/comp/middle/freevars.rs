@@ -3,7 +3,6 @@
 
 import std::map;
 import std::map::*;
-import std::ivec;
 import std::option;
 import std::int;
 import std::option::*;

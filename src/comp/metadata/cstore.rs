@@ -1,7 +1,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-import std::ivec;
+import std::vec;
 import std::map;
 import std::str;
 import syntax::ast;
@@ -83,7 +83,7 @@ iter iter_crate_data(cstore: &cstore) ->
 }
 
 fn add_used_crate_file(cstore: &cstore, lib: &str) {
-    if !ivec::member(lib, p(cstore).used_crate_files) {
+    if !vec::member(lib, p(cstore).used_crate_files) {
         p(cstore).used_crate_files += ~[lib];
     }
 }
@@ -95,7 +95,7 @@ fn get_used_crate_files(cstore: &cstore) -> [str] {
 fn add_used_library(cstore: &cstore, lib: &str) -> bool {
     if lib == "" { ret false; }
 
-    if ivec::member(lib, p(cstore).used_libraries) { ret false; }
+    if vec::member(lib, p(cstore).used_libraries) { ret false; }
 
     p(cstore).used_libraries += ~[lib];
     ret true;

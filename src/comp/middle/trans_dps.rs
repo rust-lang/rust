@@ -12,7 +12,7 @@ import syntax::ast;
 import syntax::codemap::span;
 import util::ppaux;
 import trans_common::*;
-import std::ivec;
+import std::vec;
 import std::option::none;
 import std::option::some;
 import std::str;
@@ -466,7 +466,7 @@ fn trans_lit_str_common(ccx: &@crate_ctxt, s: &str, expand: bool) ->
         llheappartopt = none;
     } else if (len < abi::ivec_default_length - 1u)
      { // minus one for the null
-        while ivec::len(array) < abi::ivec_default_length {
+        while vec::len(array) < abi::ivec_default_length {
             array += ~[tc::C_u8(0u)];
         }
 

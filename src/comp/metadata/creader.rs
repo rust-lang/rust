@@ -12,7 +12,7 @@ import syntax::visit;
 import syntax::codemap::span;
 import back::x86;
 import util::common;
-import std::ivec;
+import std::vec;
 import std::str;
 import std::fs;
 import std::io;
@@ -94,7 +94,7 @@ fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
     let linkage_metas = attr::find_linkage_metas(attrs);
 
     log #fmt("matching %u metadata requirements against %u items",
-             ivec::len(metas), ivec::len(linkage_metas));
+             vec::len(metas), vec::len(linkage_metas));
 
     for needed: @ast::meta_item in metas {
         if !attr::contains(linkage_metas, needed) {
@@ -126,7 +126,7 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
     // is using the wrong type of meta item
     let crate_name = {
         let name_items = attr::find_meta_items_by_name(metas, "name");
-        alt ivec::last(name_items) {
+        alt vec::last(name_items) {
           some(i) {
             alt attr::get_meta_item_value_str(i) {
               some(n) { n }
@@ -196,7 +196,7 @@ fn get_metadata_section(filename: str) -> option::t[@[u8]] {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
-            ret option::some[@[u8]](@ivec::unsafe::from_buf(cvbuf, csz));
+            ret option::some[@[u8]](@vec::unsafe::from_buf(cvbuf, csz));
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }

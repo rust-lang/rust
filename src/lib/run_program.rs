@@ -25,7 +25,7 @@ fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
     // pointer to its buffer
     let argv = arg_vec(prog, args);
     let pid = rustrt::rust_run_program(
-        ivec::to_ptr(argv), in_fd, out_fd, err_fd);
+        vec::to_ptr(argv), in_fd, out_fd, err_fd);
     ret pid;
 }
 

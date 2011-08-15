@@ -1,7 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
 import std::option;
-import std::ivec;
+import std::vec;
 import syntax::ast;
 import syntax::fold;
 import syntax::print::pprust;
@@ -69,7 +69,7 @@ fn fold_mod(cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     }
 
     let mod_nomain =
-        {view_items: m.view_items, items: ivec::filter_map(nomain, m.items)};
+        {view_items: m.view_items, items: vec::filter_map(nomain, m.items)};
     ret fold::noop_fold_mod(mod_nomain, fld);
 }
 
@@ -93,24 +93,24 @@ fn fold_item(cx: &test_ctxt, i: &@ast::item, fld: fold::ast_fold) ->
         log "this is a test function";
         let test = {path: cx.path, ignore: is_ignored(i)};
         cx.testfns += ~[test];
-        log #fmt("have %u test functions", ivec::len(cx.testfns));
+        log #fmt("have %u test functions", vec::len(cx.testfns));
     }
 
     let res = fold::noop_fold_item(i, fld);
-    ivec::pop(cx.path);
+    vec::pop(cx.path);
     ret res;
 }
 
 fn is_test_fn(i: &@ast::item) -> bool {
     let has_test_attr =
-        ivec::len(attr::find_attrs_by_name(i.attrs, "test")) > 0u;
+        vec::len(attr::find_attrs_by_name(i.attrs, "test")) > 0u;
 
     fn has_test_signature(i: &@ast::item) -> bool {
         alt i.node {
           ast::item_fn(f, tps) {
-            let input_cnt = ivec::len(f.decl.inputs);
+            let input_cnt = vec::len(f.decl.inputs);
             let no_output = f.decl.output.node == ast::ty_nil;
-            let tparm_cnt = ivec::len(tps);
+            let tparm_cnt = vec::len(tps);
             input_cnt == 0u && no_output && tparm_cnt == 0u
           }
           _ { false }
@@ -227,7 +227,7 @@ fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
 }
 
 fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
-    log #fmt("building test vector from %u tests", ivec::len(cx.testfns));
+    log #fmt("building test vector from %u tests", vec::len(cx.testfns));
     let descs = ~[];
     for test: test in cx.testfns {
         let test_ = test; // Satisfy alias analysis

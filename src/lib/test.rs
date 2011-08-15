@@ -50,7 +50,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main_ivec(args: &[str], tests: &[test_desc]) {
-    check (ivec::is_not_empty(args));
+    check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
@@ -60,7 +60,7 @@ fn test_main_ivec(args: &[str], tests: &[test_desc]) {
 }
 
 fn test_main(args: &vec[str], tests: &[test_desc]) {
-    test_main_ivec(ivec::from_vec(args), tests);
+    test_main_ivec(vec::from_vec(args), tests);
 }
 
 type test_opts = {filter: option::t[str], run_ignored: bool};
@@ -68,11 +68,11 @@ type test_opts = {filter: option::t[str], run_ignored: bool};
 type opt_res = either::t[test_opts, str];
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[str]) : ivec::is_not_empty(args) -> opt_res {
+fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
     // FIXME (#649): Shouldn't have to check here
-    check (ivec::is_not_empty(args));
-    let args_ = ivec::tail(args);
+    check (vec::is_not_empty(args));
+    let args_ = vec::tail(args);
     let opts = ~[getopts::optflag("ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
@@ -81,7 +81,7 @@ fn parse_opts(args: &[str]) : ivec::is_not_empty(args) -> opt_res {
         };
 
     let filter =
-        if ivec::len(match.free) > 0u {
+        if vec::len(match.free) > 0u {
             option::some(match.free.(0))
         } else { option::none };
 
@@ -121,7 +121,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     fn callback(event: testevent, st: test_state) {
         alt event {
           te_filtered(filtered_tests) {
-            st.total = ivec::len(filtered_tests);
+            st.total = vec::len(filtered_tests);
             st.out.write_line(#fmt("\nrunning %u tests", st.total));
           }
           te_wait(test) {
@@ -230,13 +230,13 @@ fn run_tests(opts: &test_opts, tests: &[test_desc],
     // result of a particular test for an unusually long amount of time.
     let concurrency = get_concurrency();
     log #fmt("using %u test tasks", concurrency);
-    let total = ivec::len(filtered_tests);
+    let total = vec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;
     let futures = ~[];
 
     while wait_idx < total {
-        while ivec::len(futures) < concurrency && run_idx < total {
+        while vec::len(futures) < concurrency && run_idx < total {
             futures += ~[run_test(filtered_tests.(run_idx), to_task)];
             run_idx += 1u;
         }
@@ -245,7 +245,7 @@ fn run_tests(opts: &test_opts, tests: &[test_desc],
         callback(te_wait(future.test));
         let result = future.wait();
         callback(te_result(future.test, result));
-        futures = ivec::slice(futures, 1u, ivec::len(futures));
+        futures = vec::slice(futures, 1u, vec::len(futures));
         wait_idx += 1u;
     }
 }
@@ -275,7 +275,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
                      }(_, filter_str);
 
 
-            ivec::filter_map(filter, filtered)
+            vec::filter_map(filter, filtered)
         };
 
     // Maybe pull out the ignored test and unignore them
@@ -293,7 +293,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
                 };
 
 
-            ivec::filter_map(filter, filtered)
+            vec::filter_map(filter, filtered)
         };
 
     // Sort the tests alphabetically

@@ -3,7 +3,7 @@
 // -*- rust -*-
 use std;
 import std::str;
-import std::ivec;
+import std::vec;
 
 // FIXME: import std::dbg::const_refcount. Currently
 // cross-crate const references don't work.
@@ -57,9 +57,9 @@ fn slow_growth2_helper(s: str) { // ref up: s
         assert (str::refcount(s) == const_refcount);
         assert (str::refcount(mumble) == const_refcount);
         log v.(0);
-        log ivec::len[str](v);
+        log vec::len[str](v);
         assert (str::eq(v.(0), mumble));
-        assert (ivec::len[str](v) == 1u);
+        assert (vec::len[str](v) == 1u);
     } // ref down: mumble, s,
 
     log str::refcount(s);

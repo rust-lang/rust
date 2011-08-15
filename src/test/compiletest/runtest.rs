@@ -3,7 +3,7 @@ import std::str;
 import std::option;
 import std::fs;
 import std::os;
-import std::ivec;
+import std::vec;
 import std::test;
 
 import common::mode_run_pass;
@@ -117,10 +117,10 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
         io::read_whole_file_str(filepath)
       }
       option::none. {
-        srcs.(ivec::len(srcs) - 2u)
+        srcs.(vec::len(srcs) - 2u)
       }
     };
-    let actual = srcs.(ivec::len(srcs) - 1u);
+    let actual = srcs.(vec::len(srcs) - 1u);
 
     if option::is_some(props.pp_exact) {
         // Now we have to care about line endings
@@ -186,7 +186,7 @@ actual:\n\
 
 fn check_error_patterns(props: &test_props, testfile: &str,
                         procres: &procres) {
-    if ivec::is_empty(props.error_patterns) {
+    if vec::is_empty(props.error_patterns) {
         fatal("no error pattern specified in " + testfile);
     }
 
@@ -196,7 +196,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
         if str::find(line, next_err_pat) > 0 {
             log #fmt("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
-            if next_err_idx == ivec::len(props.error_patterns) {
+            if next_err_idx == vec::len(props.error_patterns) {
                 log "found all error patterns";
                 ret;
             }
@@ -205,9 +205,9 @@ fn check_error_patterns(props: &test_props, testfile: &str,
     }
 
     let missing_patterns =
-        ivec::slice(props.error_patterns, next_err_idx,
-                    ivec::len(props.error_patterns));
-    if ivec::len(missing_patterns) == 1u {
+        vec::slice(props.error_patterns, next_err_idx,
+                    vec::len(props.error_patterns));
+    if vec::len(missing_patterns) == 1u {
         fatal_procres(#fmt("error pattern '%s' not found!",
                            missing_patterns.(0)), procres);
     } else {
@@ -268,7 +268,7 @@ fn make_run_args(config: &config,
     };
 
     let args = toolargs + ~[make_exe_name(config, testfile)];
-    ret {prog: args.(0), args: ivec::slice(args, 1u, ivec::len(args))};
+    ret {prog: args.(0), args: vec::slice(args, 1u, vec::len(args))};
 }
 
 fn split_maybe_args(argstr: &option::t[str]) -> [str] {
@@ -288,7 +288,7 @@ fn split_maybe_args(argstr: &option::t[str]) -> [str] {
             }
             ret true;
         }
-        ivec::filter_map(flt, v)
+        vec::filter_map(flt, v)
     }
 
     alt argstr {
@@ -356,7 +356,7 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     let filename =
         {
             let parts = str::split(fs::basename(testfile), '.' as u8);
-            parts = ivec::slice(parts, 0u, ivec::len(parts) - 1u);
+            parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
             str::connect(parts, ".")
         };
     #fmt("%s%s.%s", base, filename, config.stage_id)

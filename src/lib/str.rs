@@ -132,7 +132,7 @@ const tag_six_b: uint = 252u;
 
 fn is_utf8(v: &[u8]) -> bool {
     let i = 0u;
-    let total = ivec::len[u8](v);
+    let total = vec::len[u8](v);
     while i < total {
         let chsize = utf8_char_width(v.(i));
         if chsize == 0u { ret false; }
@@ -185,7 +185,7 @@ fn buf(s: &str) -> sbuf { ret rustrt::str_buf(s); }
 fn bytes(s: str) -> [u8] {
     let sbuffer = buf(s);
     let ptr = unsafe::reinterpret_cast(sbuffer);
-    ret ivec::unsafe::from_buf(ptr, byte_len(s));
+    ret vec::unsafe::from_buf(ptr, byte_len(s));
 }
 
 fn unsafe_from_bytes(v: &[mutable? u8]) -> str {
@@ -496,13 +496,13 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
 
 // FIXME: Also not efficient
 fn char_slice(s: &str, begin: uint, end: uint) -> str {
-    from_chars(ivec::slice(to_chars(s), begin, end))
+    from_chars(vec::slice(to_chars(s), begin, end))
 }
 
 fn trim_left(s: &str) -> str {
     fn count_whities(s: &[char]) -> uint {
         let i = 0u;
-        while i < ivec::len(s) {
+        while i < vec::len(s) {
             if !char::is_whitespace(s.(i)) {
                 break;
             }
@@ -512,12 +512,12 @@ fn trim_left(s: &str) -> str {
     }
     let chars = to_chars(s);
     let whities = count_whities(chars);
-    ret from_chars(ivec::slice(chars, whities, ivec::len(chars)));
+    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
 }
 
 fn trim_right(s: &str) -> str {
     fn count_whities(s: &[char]) -> uint {
-        let i = ivec::len(s);
+        let i = vec::len(s);
         while 0u < i {
             if !char::is_whitespace(s.(i - 1u)) {
                 break;
@@ -528,7 +528,7 @@ fn trim_right(s: &str) -> str {
     }
     let chars = to_chars(s);
     let whities = count_whities(chars);
-    ret from_chars(ivec::slice(chars, 0u, whities));
+    ret from_chars(vec::slice(chars, 0u, whities));
 }
 
 fn trim(s: &str) -> str {

@@ -1,6 +1,6 @@
 
-import ivec::len;
-import ivec::slice;
+import vec::len;
+import vec::slice;
 
 export merge_sort;
 export quick_sort;

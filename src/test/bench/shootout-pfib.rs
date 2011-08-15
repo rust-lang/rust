@@ -11,7 +11,7 @@
 
 use std;
 
-import std::ivec;
+import std::vec;
 import std::uint;
 import std::time;
 import std::str;
@@ -52,7 +52,7 @@ type config = {stress: bool};
 fn parse_opts(argv: [str]) -> config {
     let opts = ~[getopts::optflag("stress")];
 
-    let opt_args = ivec::slice(argv, 1u, ivec::len(argv));
+    let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
 
     alt getopts::getopts(opt_args, opts) {
@@ -80,7 +80,7 @@ fn stress(num_tasks: int) {
 }
 
 fn main(argv: [str]) {
-    if ivec::len(argv) == 1u {
+    if vec::len(argv) == 1u {
         assert (fib(8) == 21);
         log fib(8);
     } else {

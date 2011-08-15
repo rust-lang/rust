@@ -4,7 +4,7 @@ import std::os;
 import std::io;
 import std::option;
 import std::str;
-import std::ivec;
+import std::vec;
 
 // Regression test for memory leaks
 #[cfg(target_os = "linux")]

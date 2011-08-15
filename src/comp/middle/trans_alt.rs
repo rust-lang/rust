@@ -1,5 +1,5 @@
 import std::str;
-import std::ivec;
+import std::vec;
 import std::option;
 import option::some;
 import option::none;
@@ -85,8 +85,8 @@ fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
         alt e(br.pats.(col)) {
           some(sub) {
             let pats =
-                ivec::slice(br.pats, 0u, col) + sub +
-                    ivec::slice(br.pats, col + 1u, ivec::len(br.pats));
+                vec::slice(br.pats, 0u, col) + sub +
+                    vec::slice(br.pats, col + 1u, vec::len(br.pats));
             let new_br = @{pats: pats with *br};
             result += ~[new_br];
             bind_for_pat(br.pats.(col), new_br, val);
@@ -118,7 +118,7 @@ fn enter_opt(ccx: &@crate_ctxt, m: &match, opt: &opt, col: uint,
           ast::pat_lit(l) {
             ret if opt_eq(lit(l), opt) { some(~[]) } else { none };
           }
-          _ { ret some(ivec::init_elt(dummy, size)); }
+          _ { ret some(vec::init_elt(dummy, size)); }
         }
     }
     ret enter_match(m, col, val, bind e(ccx, dummy, opt, tag_size, _));
@@ -141,7 +141,7 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
             }
             ret some(pats);
           }
-          _ { ret some(ivec::init_elt(dummy, ivec::len(fields))); }
+          _ { ret some(vec::init_elt(dummy, vec::len(fields))); }
         }
     }
     ret enter_match(m, col, val, bind e(dummy, fields, _));
@@ -153,7 +153,7 @@ fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
         -> option::t[[@ast::pat]] {
         alt p.node {
           ast::pat_tup(elts) { ret some(elts); }
-          _ { ret some(ivec::init_elt(dummy, n_elts)); }
+          _ { ret some(vec::init_elt(dummy, n_elts)); }
         }
     }
     ret enter_match(m, col, val, bind e(dummy, n_elts, _));
@@ -198,8 +198,8 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     let variants = ty::tag_variants(ccx.tcx, vdefs.tg);
     let args = ~[];
     let size =
-        ivec::len(ty::tag_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
-    if size > 0u && ivec::len(variants) != 1u {
+        vec::len(ty::tag_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
+    if size > 0u && vec::len(variants) != 1u {
         let tagptr =
             bcx.build.PointerCast(val,
                                   trans_common::T_opaque_tag_ptr(ccx.tn));
@@ -223,7 +223,7 @@ fn collect_record_fields(m: &match, col: uint) -> [ast::ident] {
         alt br.pats.(col).node {
           ast::pat_rec(fs, _) {
             for f: ast::field_pat in fs {
-                if !ivec::any(bind str::eq(f.ident, _), fields) {
+                if !vec::any(bind str::eq(f.ident, _), fields) {
                     fields += ~[f.ident];
                 }
             }
@@ -252,7 +252,7 @@ type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
 type mk_fail = fn() -> BasicBlockRef;
 
 fn pick_col(m: &match) -> uint {
-    let scores = ivec::init_elt_mut(0u, ivec::len(m.(0).pats));
+    let scores = vec::init_elt_mut(0u, vec::len(m.(0).pats));
     for br: match_branch in m {
         let i = 0u;
         for p: @ast::pat in br.pats {
@@ -283,8 +283,8 @@ fn pick_col(m: &match) -> uint {
 
 fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
                     f: &mk_fail, exits: &mutable [exit_node]) {
-    if ivec::len(m) == 0u { bcx.build.Br(f()); ret; }
-    if ivec::len(m.(0).pats) == 0u {
+    if vec::len(m) == 0u { bcx.build.Br(f()); ret; }
+    if vec::len(m.(0).pats) == 0u {
         exits += ~[{bound: m.(0).bound, from: bcx.llbb, to: m.(0).body}];
         bcx.build.Br(m.(0).body);
         ret;
@@ -292,8 +292,8 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 
     let col = pick_col(m);
     let val = vals.(col);
-    let vals_left = ivec::slice(vals, 0u, col) +
-        ivec::slice(vals, col + 1u, ivec::len(vals));
+    let vals_left = vec::slice(vals, 0u, col) +
+        vec::slice(vals, col + 1u, vec::len(vals));
     let ccx = bcx.fcx.lcx.ccx;
     let pat_id = 0;
     for br: match_branch in m {
@@ -304,7 +304,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
-    if ivec::len(rec_fields) > 0u {
+    if vec::len(rec_fields) > 0u {
         let rec_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
         let fields =
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
@@ -324,7 +324,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
     if any_tup_pat(m, col) {
         let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
         let n_tup_elts = alt ty::struct(ccx.tcx, tup_ty) {
-          ty::ty_tup(elts) { ivec::len(elts) }
+          ty::ty_tup(elts) { vec::len(elts) }
         };
         let tup_vals = ~[], i = 0u;
         while i < n_tup_elts {
@@ -355,10 +355,10 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
     tag branch_kind { no_branch; single; switch; compare; }
     let kind = no_branch;
     let test_val = val;
-    if ivec::len(opts) > 0u {
+    if vec::len(opts) > 0u {
         alt opts.(0) {
           var(_, vdef) {
-            if ivec::len(ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
+            if vec::len(ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
                 kind = single;
             } else {
                 let tagptr = bcx.build.PointerCast
@@ -381,7 +381,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         };
     let sw =
         if kind == switch {
-            bcx.build.Switch(test_val, else_cx.llbb, ivec::len(opts))
+            bcx.build.Switch(test_val, else_cx.llbb, vec::len(opts))
         } else { C_int(0) }; // Placeholder for when not using a switch
 
      // Compile subtrees for each option
@@ -410,7 +410,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         alt opt {
           var(_, vdef) {
             let args = extract_variant_args(opt_cx, pat_id, vdef, val);
-            size = ivec::len(args.vals);
+            size = vec::len(args.vals);
             unpacked = args.vals;
             opt_cx = args.bcx;
           }
@@ -451,7 +451,7 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                 }
             }
         }
-        if ivec::len(vals) > 0u {
+        if vec::len(vals) > 0u {
             let phi = bcx.build.Phi(val_ty(vals.(0)), vals, llbbs);
             bcx.fcx.lllocals.insert(item.val, phi);
         } else { success = false; }
@@ -537,7 +537,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
         }
       }
       ast::pat_tag(_, sub) {
-        if ivec::len(sub) == 0u { ret bcx; }
+        if vec::len(sub) == 0u { ret bcx; }
         let vdefs = ast::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;

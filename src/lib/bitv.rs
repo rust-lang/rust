@@ -32,13 +32,13 @@ fn uint_bits() -> uint { ret 32u + (1u << 32u >> 27u); }
 
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
-    let storage = ivec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
+    let storage = vec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
     ret @{storage: storage, nbits: nbits};
 }
 
 fn process(op: &block(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
-    let len = ivec::len(v1.storage);
-    assert (ivec::len(v0.storage) == len);
+    let len = vec::len(v1.storage);
+    assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let changed = false;
     for each i: uint in uint::range(0u, len) {
@@ -69,8 +69,8 @@ fn assign(v0: &t, v1: t) -> bool {
 }
 
 fn clone(v: t) -> t {
-    let storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
-    let len = ivec::len(v.storage);
+    let storage = vec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
+    let len = vec::len(v.storage);
     for each i: uint in uint::range(0u, len) { storage.(i) = v.storage.(i); }
     ret @{storage: storage, nbits: v.nbits};
 }
@@ -88,7 +88,7 @@ fn equal(v0: &t, v1: &t) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
 
-    let len = ivec::len(v1.storage);
+    let len = vec::len(v1.storage);
     let i = 0u;
     while i < len {
         if v0.storage.(i) != v1.storage.(i) { ret false; }
@@ -98,7 +98,7 @@ fn equal(v0: &t, v1: &t) -> bool {
 }
 
 fn clear(v: &t) {
-    for each i: uint in uint::range(0u, ivec::len(v.storage)) {
+    for each i: uint in uint::range(0u, vec::len(v.storage)) {
         v.storage.(i) = 0u;
     }
 }
@@ -108,7 +108,7 @@ fn set_all(v: &t) {
 }
 
 fn invert(v: &t) {
-    for each i: uint in uint::range(0u, ivec::len(v.storage)) {
+    for each i: uint in uint::range(0u, vec::len(v.storage)) {
         v.storage.(i) = !v.storage.(i);
     }
 }
@@ -150,7 +150,7 @@ fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
 
 fn to_vec(v: &t) -> [uint] {
     let sub = bind init_to_vec(v, _);
-    ret ivec::init_fn[uint](sub, v.nbits);
+    ret vec::init_fn[uint](sub, v.nbits);
 }
 
 fn to_str(v: &t) -> str {
@@ -162,7 +162,7 @@ fn to_str(v: &t) -> str {
 }
 
 fn eq_ivec(v0: &t, v1: &[uint]) -> bool {
-    assert (v0.nbits == ivec::len[uint](v1));
+    assert (v0.nbits == vec::len[uint](v1));
     let len = v0.nbits;
     let i = 0u;
     while i < len {

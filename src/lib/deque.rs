@@ -28,7 +28,7 @@ fn create[@T]() -> t[T] {
 
     fn grow[@T](nelts: uint, lo: uint, elts: &[mutable cell[T]]) ->
        [mutable cell[T]] {
-        assert (nelts == ivec::len(elts));
+        assert (nelts == vec::len(elts));
         let rv = ~[mutable];
 
         let i = 0u;
@@ -53,11 +53,11 @@ fn create[@T]() -> t[T] {
         fn add_front(t: &T) {
             let oldlo: uint = lo;
             if lo == 0u {
-                lo = ivec::len[cell[T]](elts) - 1u;
+                lo = vec::len[cell[T]](elts) - 1u;
             } else { lo -= 1u; }
             if lo == hi {
                 elts = grow[T](nelts, oldlo, elts);
-                lo = ivec::len[cell[T]](elts) - 1u;
+                lo = vec::len[cell[T]](elts) - 1u;
                 hi = nelts;
             }
             elts.(lo) = option::some[T](t);
@@ -70,7 +70,7 @@ fn create[@T]() -> t[T] {
                 hi = nelts;
             }
             elts.(hi) = option::some[T](t);
-            hi = (hi + 1u) % ivec::len[cell[T]](elts);
+            hi = (hi + 1u) % vec::len[cell[T]](elts);
             nelts += 1u;
         }
 
@@ -81,13 +81,13 @@ fn create[@T]() -> t[T] {
         fn pop_front() -> T {
             let t: T = get[T](elts, lo);
             elts.(lo) = option::none[T];
-            lo = (lo + 1u) % ivec::len[cell[T]](elts);
+            lo = (lo + 1u) % vec::len[cell[T]](elts);
             nelts -= 1u;
             ret t;
         }
         fn pop_back() -> T {
             if hi == 0u {
-                hi = ivec::len[cell[T]](elts) - 1u;
+                hi = vec::len[cell[T]](elts) - 1u;
             } else { hi -= 1u; }
             let t: T = get[T](elts, hi);
             elts.(hi) = option::none[T];
@@ -97,12 +97,12 @@ fn create[@T]() -> t[T] {
         fn peek_front() -> T { ret get[T](elts, lo); }
         fn peek_back() -> T { ret get[T](elts, hi - 1u); }
         fn get(i: int) -> T {
-            let idx: uint = (lo + (i as uint)) % ivec::len[cell[T]](elts);
+            let idx: uint = (lo + (i as uint)) % vec::len[cell[T]](elts);
             ret get[T](elts, idx);
         }
     }
     let v: [mutable cell[T]] =
-        ivec::init_elt_mut(option::none, initial_capacity);
+        vec::init_elt_mut(option::none, initial_capacity);
     ret deque[T](0u, 0u, 0u, v);
 }
 // Local Variables:

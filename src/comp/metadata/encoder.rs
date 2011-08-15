@@ -1,6 +1,6 @@
 // Metadata encoding
 
-import std::ivec;
+import std::vec;
 import std::str;
 import std::uint;
 import std::io;
@@ -176,7 +176,7 @@ fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
 fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
-    ebml::write_vint(ebml_w.writer, ivec::len[ty_param](tps));
+    ebml::write_vint(ebml_w.writer, vec::len[ty_param](tps));
     for tp: ty_param in tps {
         let c = alt tp.kind {
           kind_unique. { 'u' }
@@ -236,7 +236,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
         encode_tag_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_monotype(ecx.ccx.tcx, variant.node.id));
-        if ivec::len[variant_arg](variant.node.args) > 0u {
+        if vec::len[variant_arg](variant.node.args) > 0u {
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
@@ -563,9 +563,9 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
 
         // Return just the names
         fn name(kv: &numname) -> str { kv.ident }
-        // mutable -> immutable hack for ivec::map
-        let immpairs = ivec::slice(pairs, 0u, ivec::len(pairs));
-        ret ivec::map(name, immpairs);
+        // mutable -> immutable hack for vec::map
+        let immpairs = vec::slice(pairs, 0u, vec::len(pairs));
+        ret vec::map(name, immpairs);
     }
 
     // We're just going to write a list of crate names, with the assumption

@@ -3,7 +3,7 @@ import std::getopts;
 import std::test;
 import std::fs;
 import std::str;
-import std::ivec;
+import std::vec;
 import std::task;
 import std::task::task_id;
 
@@ -38,8 +38,8 @@ fn parse_config(args: &[str]) -> config {
           getopts::optflag("ignored"), getopts::optopt("runtool"),
           getopts::optopt("rustcflags"), getopts::optflag("verbose")];
 
-    check (ivec::is_not_empty(args));
-    let args_ = ivec::tail(args);
+    check (vec::is_not_empty(args));
+    let args_ = vec::tail(args);
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
@@ -55,7 +55,7 @@ fn parse_config(args: &[str]) -> config {
          mode: str_mode(getopts::opt_str(match, "mode")),
          run_ignored: getopts::opt_present(match, "ignored"),
          filter:
-             if ivec::len(match.free) > 0u {
+             if vec::len(match.free) > 0u {
                  option::some(match.free.(0))
              } else { option::none },
          runtool: getopts::opt_maybe_str(match, "runtool"),

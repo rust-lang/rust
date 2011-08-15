@@ -1,4 +1,3 @@
-import std::ivec;
 import std::option;
 import base::*;
 import syntax::ast;

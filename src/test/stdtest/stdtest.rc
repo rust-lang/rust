@@ -9,7 +9,7 @@ mod fs;
 mod getopts;
 mod int;
 mod io;
-mod ivec;
+mod vec;
 mod list;
 mod map;
 mod net;
