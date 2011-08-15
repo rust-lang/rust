@@ -388,6 +388,12 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         }
         ret changed;
       }
+      expr_tup(elts) {
+        ret find_pre_post_state_exprs(fcx, pres, e.id,
+                                      ivec::init_elt(init_assign,
+                                                     ivec::len(elts)),
+                                      elt_exprs(elts), return);
+      }
       expr_move(lhs, rhs) {
         ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id, oper_move);
       }

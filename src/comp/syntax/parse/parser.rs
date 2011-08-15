@@ -1569,6 +1569,7 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
         ret alt e.node {
               ast::expr_vec(_, _, _) { true }
               ast::expr_rec(_, _) { true }
+              ast::expr_tup(_) { true }
               ast::expr_call(_, _) { true }
               ast::expr_self_method(_) { false }
               ast::expr_bind(_, _) { true }

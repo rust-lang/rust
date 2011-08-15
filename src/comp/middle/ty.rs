@@ -47,6 +47,7 @@ export expr_ty_params_and_ty;
 export fold_ty;
 export field;
 export field_idx;
+export field_num;
 export fm_general;
 export get_element_type;
 export hash_ty;
@@ -69,6 +70,7 @@ export mk_float;
 export mk_fn;
 export mk_imm_box;
 export mk_mut_ptr;
+export mk_imm_tup;
 export mk_imm_vec;
 export mk_int;
 export mk_istr;
@@ -83,10 +85,10 @@ export mk_param;
 export mk_port;
 export mk_ptr;
 export mk_rec;
-export mk_imm_tup;
 export mk_str;
 export mk_tag;
 export mk_task;
+export mk_tup;
 export mk_type;
 export mk_uint;
 export mk_uniq;
@@ -146,6 +148,7 @@ export ty_rec;
 export ty_str;
 export ty_tag;
 export ty_task;
+export ty_tup;
 export ty_type;
 export ty_uint;
 export ty_uniq;
@@ -279,6 +282,7 @@ tag sty {
     ty_native_fn(ast::native_abi, [arg], t);
     ty_obj([method]);
     ty_res(def_id, t, [t]);
+    ty_tup([mt]);
     ty_var(int); // type variable
 
     ty_param(uint, ast::kind); // fn/tag type param
@@ -301,6 +305,8 @@ tag type_err {
     terr_controlflow_mismatch;
     terr_box_mutability;
     terr_vec_mutability;
+    terr_tuple_size(uint, uint);
+    terr_tuple_mutability;
     terr_record_size(uint, uint);
     terr_record_mutability;
     terr_record_fields(ast::ident, ast::ident);
@@ -485,6 +491,11 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
             derive_flags_mt(cx, has_params, has_vars, f.mt);
         }
       }
+      ty_tup(mts) {
+        for m in mts {
+            derive_flags_mt(cx, has_params, has_vars, m);
+        }
+      }
       ty_fn(_, args, tt, _, _) {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
@@ -590,18 +601,17 @@ fn mk_task(cx: &ctxt) -> t { ret gen_ty(cx, ty_task); }
 
 fn mk_rec(cx: &ctxt, fs: &[field]) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
-fn mk_imm_tup(cx: &ctxt, tys: &[t]) -> t {
-    let fields = ~[];
-    let i = 0u;
-    for typ: t  in tys {
-        fields += ~[{ident: #fmt("_%u", i), mt: {ty: typ, mut: ast::imm}}];
-        i += 1u;
-    }
-    ret gen_ty(cx, ty_rec(fields));
-}
-
 fn mk_constr(cx: &ctxt, t: &t, cs: &[@type_constr]) -> t {
     ret gen_ty(cx, ty_constr(t, cs));
+}
+
+fn mk_tup(cx: &ctxt, tms: &[mt]) -> t { ret gen_ty(cx, ty_tup(tms)); }
+
+fn mk_imm_tup(cx: &ctxt, tys: &[t]) -> t {
+    // TODO: map
+    let mts = ~[];
+    for typ in tys { mts += ~[{ty: typ, mut: ast::imm}]; }
+    ret mk_tup(cx, mts);
 }
 
 fn mk_fn(cx: &ctxt, proto: &ast::proto, args: &[arg], ty: &t,
@@ -676,6 +686,9 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       }
       ty_rec(fields) {
         for fl: field  in fields { walk_ty(cx, walker, fl.mt.ty); }
+      }
+      ty_tup(mts) {
+        for tm in mts { walk_ty(cx, walker, tm.ty); }
       }
       ty_fn(proto, args, ret_ty, _, _) {
         for a: arg  in args { walk_ty(cx, walker, a.ty); }
@@ -761,6 +774,14 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
             new_fields += ~[{ident: fl.ident, mt: new_mt}];
         }
         ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
+      }
+      ty_tup(mts) {
+        let new_mts = ~[];
+        for tm in mts {
+            let new_subty = fold_ty(cx, fld, tm.ty);
+            new_mts += ~[{ty: new_subty, mut: tm.mut}];
+        }
+        ty = copy_cname(cx, mk_tup(cx, new_mts), ty);
       }
       ty_fn(proto, args, ret_ty, cf, constrs) {
         let new_args: [arg] = ~[];
@@ -861,6 +882,7 @@ fn type_is_task(cx: &ctxt, ty: &t) -> bool {
 fn type_is_structural(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_rec(_) { ret true; }
+      ty_tup(_) { ret true; }
       ty_tag(_, _) { ret true; }
       ty_fn(_, _, _, _, _) { ret true; }
       ty_obj(_) { ret true; }
@@ -925,6 +947,7 @@ fn type_is_tup_like(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_box(_) { ret true; }
       ty_rec(_) { ret true; }
+      ty_tup(_) { ret true; }
       ty_tag(_, _) { ret true; }
       _ { ret false; }
     }
@@ -933,6 +956,7 @@ fn type_is_tup_like(cx: &ctxt, ty: &t) -> bool {
 fn get_element_type(cx: &ctxt, ty: &t, i: uint) -> t {
     alt struct(cx, ty) {
       ty_rec(flds) { ret flds.(i).mt.ty; }
+      ty_tup(mts) { ret mts.(i).ty; }
       _ {
         cx.sess.bug("get_element_type called on type " + ty_to_str(cx, ty) +
                         " - expected a \
@@ -1004,6 +1028,11 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
                 result = true;
                 break;
             }
+        }
+      }
+      ty_tup(elts) {
+        for m in elts {
+            if type_has_pointers(cx, m.ty) { result = true; }
         }
       }
       ty_tag(did, tps) {
@@ -1196,6 +1225,14 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
         }
         ret false;
       }
+      ty_tup(mts) {
+        let i = 0u;
+        while i < ivec::len(mts) {
+            if type_has_dynamic_size(cx, mts.(i).ty) { ret true; }
+            i += 1u;
+        }
+        ret false;
+      }
       ty_fn(_, _, _, _, _) { ret false; }
       ty_native_fn(_, _, _) { ret false; }
       ty_obj(_) { ret false; }
@@ -1317,11 +1354,15 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
             if type_owns_heap_mem(cx, f.mt.ty) { result = true; }
         }
       }
+      ty_tup(elts) {
+        for m in elts {
+            if type_owns_heap_mem(cx, m.ty) { result = true; }
+        }
+      }
       ty_res(_, inner, tps) {
         result =
             type_owns_heap_mem(cx, substitute_type_params(cx, tps, inner));
       }
-
 
       ty_ptr(_) {
         result = false;
@@ -1366,6 +1407,11 @@ fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
         ty_rec(flds) {
             for f : field in flds {
                 if !type_is_pod(cx, f.mt.ty) { result = false; }
+            }
+        }
+        ty_tup(elts) {
+            for elt in elts {
+                if !type_is_pod(cx, elt.ty) { result = false; }
             }
         }
         ty_res(_, inner, tps) {
@@ -1515,6 +1561,11 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_rec(fields) {
         let h = 26u;
         for f: field  in fields { h += h << 5u + hash_ty(f.mt.ty); }
+        ret h;
+      }
+      ty_tup(mts) {
+        let h = 25u;
+        for tm in mts { h += h << 5u + hash_ty(tm.ty); }
         ret h;
       }
 
@@ -1698,6 +1749,22 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
           _ { ret false; }
         }
       }
+      ty_tup(mts_a) {
+        alt (b) {
+          ty_tup(mts_b) {
+            let len = ivec::len(mts_a);
+            if len != ivec::len(mts_b) { ret false; }
+            let i = 0u;
+            while i < len {
+                if !equal_mt(mts_a.(i), mts_b.(i)) { ret false; }
+                i += 1u;
+            }
+            ret true;
+          }
+          _ { ret false; }
+        }
+      }
+
       ty_fn(p_a, args_a, rty_a, cf_a, constrs_a) {
         alt b {
           ty_fn(p_b, args_b, rty_b, cf_b, constrs_b) {
@@ -2659,6 +2726,44 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
+          ty::ty_tup(expected_elems) {
+            alt struct(cx.tcx, actual) {
+              ty::ty_tup(actual_elems) {
+                let expected_len = ivec::len(expected_elems);
+                let actual_len = ivec::len(actual_elems);
+                if (expected_len != actual_len) {
+                    let err = terr_tuple_size(expected_len, actual_len);
+                    ret ures_err(err);
+                }
+                // TODO: implement an iterator that can iterate over
+                // two arrays simultaneously.
+
+                let result_elems = ~[];
+                let i = 0u;
+                while i < expected_len {
+                    let expected_elem = expected_elems.(i);
+                    let actual_elem = actual_elems.(i);
+                    let mut;
+                    alt unify_mut(expected_elem.mut, actual_elem.mut) {
+                      none. { ret ures_err(terr_tuple_mutability); }
+                      some(m) { mut = m; }
+                    }
+                    let result = unify_step(cx, expected_elem.ty,
+                                            actual_elem.ty);
+                    alt result {
+                      ures_ok(rty) {
+                        let mt = {ty: rty, mut: mut};
+                        result_elems += ~[mt];
+                      }
+                      _ { ret result; }
+                    }
+                    i += 1u;
+                }
+                ret ures_ok(mk_tup(cx.tcx, result_elems));
+              }
+              _ { ret ures_err(terr_mismatch); }
+            }
+          }
           ty::ty_fn(ep, expected_inputs, expected_output, expected_cf,
                     expected_constrs) {
             alt struct(cx.tcx, actual) {
@@ -2802,6 +2907,14 @@ fn type_err_to_str(err: &ty::type_err) -> str {
       }
       terr_box_mutability. { ret "boxed values differ in mutability"; }
       terr_vec_mutability. { ret "vectors differ in mutability"; }
+      terr_tuple_size(e_sz, a_sz) {
+        ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
+            " elements but found one with " + uint::to_str(a_sz, 10u)
+            + " elements";
+      }
+      terr_tuple_mutability. {
+        ret "tuple elements differ in mutability";
+      }
       terr_record_size(e_sz, a_sz) {
         ret "expected a record with " + uint::to_str(e_sz, 10u) +
                 " fields but found one with " + uint::to_str(a_sz, 10u) +
@@ -3044,6 +3157,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_vec(_) { tycat_vec }
           ty_ivec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
+          ty_tup(_) { tycat_struct }
           ty_tag(_, _) { tycat_struct }
           ty_bot.    { tycat_bot }
           _ { tycat_other }

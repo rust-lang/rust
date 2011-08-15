@@ -371,6 +371,12 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
         for f : field in fields { sub += shape_of(ccx, f.mt.ty); }
         add_substr(s, sub);
       }
+      ty::ty_tup(elts) {
+        s += ~[shape_struct];
+        let sub = ~[];
+        for elt in elts { sub += shape_of(ccx, elt.ty); }
+        add_substr(s, sub);
+      }
 
       ty::ty_fn(_,_,_,_,_) { s += ~[shape_fn]; }
       ty::ty_native_fn(_,_,_) { s += ~[shape_u32]; }

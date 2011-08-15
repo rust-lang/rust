@@ -133,6 +133,9 @@ fn visit_ty[E](t: &@ty, e: &E, v: &vt[E]) {
       ty_rec(flds) {
         for f: ty_field  in flds { v.visit_ty(f.node.mt.ty, e, v); }
       }
+      ty_tup(mts) {
+        for mt in mts { v.visit_ty(mt.ty, e, v); }
+      }
       ty_fn(_, args, out, _, constrs) {
         for a: ty_arg  in args { v.visit_ty(a.node.ty, e, v); }
         for c: @constr  in constrs {
@@ -243,6 +246,9 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_rec(flds, base) {
         for f: field  in flds { v.visit_expr(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
+      }
+      expr_tup(elts) {
+        for el in elts { v.visit_expr(el.expr, e, v); }
       }
       expr_call(callee, args) {
         v.visit_expr(callee, e, v);

@@ -46,6 +46,12 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: &ty::t) -> bool {
             }
             ret false;
         }
+        ty::ty_tup(elts) {
+            for elt in elts {
+                if type_is_gc_relevant(cx, elt.ty) { ret true; }
+            }
+            ret false;
+        }
 
         ty::ty_tag(did, tps) {
             let variants = ty::tag_variants(cx, did);

@@ -339,6 +339,10 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       ast::ty_chan(t) {
         typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
       }
+      ast::ty_tup(fields) {
+        let flds = ivec::map(bind ast_mt_to_mt(tcx, getter, _), fields);
+        typ = ty::mk_tup(tcx, flds);
+      }
       ast::ty_rec(fields) {
         let flds: [field] = ~[];
         for f: ast::ty_field  in fields {
@@ -2160,7 +2164,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         write::ty_only_fixup(fcx, id, t_1);
       }
       ast::expr_vec(args, mut, kind) {
-        let t: ty::t = next_ty_var(fcx);;
+        let t: ty::t = next_ty_var(fcx);
         for e: @ast::expr in args {
             bot |= check_expr_with(fcx, e, t);
         }
@@ -2171,6 +2175,17 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             typ = ty::mk_ivec(tcx, {ty: t, mut: mut});
           }
         }
+        write::ty_only_fixup(fcx, id, typ);
+      }
+      ast::expr_tup(elts) {
+        let elts_mt = ~[];
+        ivec::reserve(elts_mt, ivec::len(elts));
+        for e in elts {
+            check_expr(fcx, e.expr);
+            let ety = expr_ty(fcx.ccx.tcx, e.expr);
+            elts_mt += ~[{ty: ety, mut: e.mut}];
+        }
+        let typ = ty::mk_tup(fcx.ccx.tcx, elts_mt);
         write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_rec(fields, base) {

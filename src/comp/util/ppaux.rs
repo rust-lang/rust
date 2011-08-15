@@ -103,6 +103,11 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
         s += "{" + str::connect(strs, ",") + "}";
       }
+      ty_tup(elems) {
+        let strs = ~[];
+        for tm in elems { strs += ~[mt_to_str(cx, tm)]; }
+        s += "(" + str::connect(strs, ",") + ")";
+      }
       ty_tag(id, tps) {
         // The user should never see this if the cname is set properly!
 

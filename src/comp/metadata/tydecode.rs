@@ -236,6 +236,13 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_rec(st.tcx, fields);
       }
+      'T' {
+        assert (next(st) as char == '[');
+        let params = ~[];
+        while peek(st) as char != ']' { params += ~[parse_mt(st, sd)]; }
+        st.pos = st.pos + 1u;
+        ret ty::mk_tup(st.tcx, params);
+      }
       'F' {
         let func = parse_ty_fn(st, sd);
         ret ty::mk_fn(st.tcx, ast::proto_fn, func.args, func.ty, func.cf,

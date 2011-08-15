@@ -322,6 +322,11 @@ fn print_type(s: &ps, ty: &ast::ty) {
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         word(s.s, "}");
       }
+      ast::ty_tup(elts) {
+          popen(s);
+          commasep(s, inconsistent, elts, print_mt);
+          pclose(s);
+      }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
         print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
       }
@@ -713,6 +718,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         alt kind {
           ast::sk_rc. { word(s.s, "["); }
           ast::sk_unique. { word(s.s, "~["); }
+
         }
         if mut == ast::mut {
             word(s.s, "mutable");
@@ -745,6 +751,18 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
           _ { }
         }
         word(s.s, "}");
+      }
+      ast::expr_tup(exprs) {
+        fn printElt(s: &ps, elt: &ast::elt) {
+            ibox(s, indent_unit);
+            if elt.mut == ast::mut { word_nbsp(s, "mutable"); }
+            print_expr(s, elt.expr);
+            end(s);
+        }
+        fn get_span(elt: &ast::elt) -> codemap::span { ret elt.expr.span; }
+        popen(s);
+        commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
+        pclose(s);
       }
       ast::expr_call(func, args) {
         print_expr_parens_if_unary(s, func);

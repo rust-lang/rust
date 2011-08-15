@@ -253,6 +253,13 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       }
       ty::ty_param(_, _) { llty = T_typaram(cx.tn); }
       ty::ty_type. { llty = T_ptr(cx.tydesc_type); }
+      ty::ty_tup(elts) {
+        let tys = ~[];
+        for elt in elts {
+            tys += ~[type_of_inner(cx, sp, elt.ty)];
+        }
+        llty = T_struct(tys);
+      }
     }
     assert (llty as int != 0);
     cx.lltypes.insert(t, llty);
@@ -577,6 +584,11 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
         for f: ty::field  in flds { tys += ~[f.mt.ty]; }
         ret align_elements(cx, tys);
       }
+      ty::ty_tup(elts) {
+        let tys = ~[];
+        for mt in elts { tys += ~[mt.ty]; }
+        ret align_elements(cx, tys);
+      }
       ty::ty_tag(tid, tps) {
         let bcx = cx;
         // Compute max(variant sizes).
@@ -644,6 +656,16 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
         let llunitalign = rs.val;
         let llalign = umax(bcx, llalign_of(T_int()), llunitalign);
         ret rslt(bcx, llalign);
+      }
+      ty::ty_tup(elts) {
+        let a = C_int(1);
+        let bcx = cx;
+        for e in elts {
+            let align = align_of(bcx, e.ty);
+            bcx = align.bcx;
+            a = umax(bcx, a, align.val);
+        }
+        ret rslt(bcx, a);
       }
     }
 }
@@ -1811,11 +1833,21 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: &ty::t,
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_rec(fields) {
         let i: int = 0;
-        for fld: ty::field  in fields {
+        for fld: ty::field in fields {
             r = GEP_tup_like(r.bcx, t, av, ~[0, i]);
             let llfld_a = r.val;
             r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
                   fld.mt.ty);
+            i += 1;
+        }
+      }
+      ty::ty_tup(args) {
+        let i = 0;
+        for arg in args {
+            r = GEP_tup_like(r.bcx, t, av, ~[0, i]);
+            let llfld_a = r.val;
+            r = f(r.bcx, load_if_immediate(r.bcx, llfld_a, arg.ty),
+                  arg.ty);
             i += 1;
         }
       }
@@ -4737,6 +4769,26 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
     ret rslt(bcx, retval);
 }
 
+fn trans_tup(cx: &@block_ctxt, elts: &[ast::elt], id: ast::node_id)
+    -> result {
+    let bcx = cx;
+    let t = node_id_type(bcx.fcx.lcx.ccx, id);
+    let tup_res = alloc_ty(bcx, t);
+    let tup_val = tup_res.val;
+    bcx = tup_res.bcx;
+    add_clean_temp(cx, tup_val, t);
+    let i: int = 0;
+    for e in elts {
+        let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e.expr);
+        let src = trans_lval(bcx, e.expr);
+        bcx = src.res.bcx;
+        let dst_res = GEP_tup_like(bcx, t, tup_val, ~[0, i]);
+        bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty).bcx;
+        i += 1;
+    }
+    ret rslt(bcx, tup_val);
+}
+
 fn trans_vec(cx: &@block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
    result {
     let t = node_id_type(bcx_ccx(cx), id);
@@ -5085,6 +5137,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         ret trans_ivec(cx, args, e.id);
       }
       ast::expr_rec(args, base) { ret trans_rec(cx, args, base, e.id); }
+      ast::expr_tup(args) { ret trans_tup(cx, args, e.id); }
       ast::expr_mac(_) { ret bcx_ccx(cx).sess.bug("unexpanded macro"); }
       ast::expr_fail(expr) { ret trans_fail_expr(cx, some(e.span), expr); }
       ast::expr_log(lvl, a) { ret trans_log(lvl, cx, a); }
