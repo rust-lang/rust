@@ -842,7 +842,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         let es =
             parse_seq_to_end(token::RBRACKET, some(token::COMMA), parse_expr,
                              p);
-        ex = ast::expr_vec(es, mut, ast::sk_rc);
+        ex = ast::expr_vec(es, mut, ast::sk_unique);
     } else if (p.peek() == token::POUND_LT) {
         p.bump();
         let ty = parse_ty(p, false);
