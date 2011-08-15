@@ -273,8 +273,6 @@ tag decl_ { decl_local([@local]); decl_item(@item); }
 
 type arm = {pats: [@pat], block: blk};
 
-type elt = {mut: mutability, expr: @expr};
-
 type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned[field_];
@@ -292,7 +290,7 @@ tag expr_ {
     expr_vec([@expr], mutability, seq_kind);
     expr_rec([field], option::t[@expr]);
     expr_call(@expr, [@expr]);
-    expr_tup([elt]);
+    expr_tup([@expr]);
     expr_self_method(ident);
     expr_bind(@expr, [option::t[@expr]]);
     expr_spawn(spawn_dom, option::t[str], @expr, [@expr]);
@@ -448,7 +446,7 @@ tag ty_ {
     ty_rec([ty_field]);
     ty_fn(proto, [ty_arg], @ty, controlflow, [@constr]);
     ty_obj([ty_method]);
-    ty_tup([mt]);
+    ty_tup([@ty]);
     ty_path(path, node_id);
     ty_type;
     ty_constr(@ty, [@ty_constr]);

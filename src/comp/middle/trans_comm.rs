@@ -122,7 +122,7 @@ fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
     }
     // Make the tuple.
 
-    let args_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
+    let args_ty = ty::mk_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
     // Allocate and fill the tuple.
 
     let llargs = alloc_ty(bcx, args_ty);

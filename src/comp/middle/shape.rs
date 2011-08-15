@@ -174,7 +174,7 @@ fn largest_variants(ccx : &@crate_ctxt, tag_id : &ast::def_id) -> [uint] {
     ret result;
 }
 
-// Computes the static size of a tag, without using mk_imm_tup(), which is
+// Computes the static size of a tag, without using mk_tup(), which is
 // bad for performance.
 //
 // TODO: Migrate trans over to use this.
@@ -374,7 +374,7 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
       ty::ty_tup(elts) {
         s += ~[shape_struct];
         let sub = ~[];
-        for elt in elts { sub += shape_of(ccx, elt.ty); }
+        for elt in elts { sub += shape_of(ccx, elt); }
         add_substr(s, sub);
       }
 

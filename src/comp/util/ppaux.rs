@@ -105,7 +105,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       }
       ty_tup(elems) {
         let strs = ~[];
-        for tm in elems { strs += ~[mt_to_str(cx, tm)]; }
+        for elem in elems { strs += ~[ty_to_str(cx, elem)]; }
         s += "(" + str::connect(strs, ",") + ")";
       }
       ty_tag(id, tps) {

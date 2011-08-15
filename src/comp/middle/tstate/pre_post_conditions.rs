@@ -35,7 +35,6 @@ import std::map::new_int_hash;
 import util::common::new_def_hash;
 import util::common::log_expr;
 import util::common::log_fn;
-import util::common::elt_exprs;
 import util::common::field_exprs;
 import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
@@ -405,7 +404,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         find_pre_post_exprs(fcx, es, e.id);
       }
       expr_tup(elts) {
-        find_pre_post_exprs(fcx, elt_exprs(elts), e.id);
+        find_pre_post_exprs(fcx, elts, e.id);
       }
       expr_move(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_move); }
       expr_swap(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_swap); }

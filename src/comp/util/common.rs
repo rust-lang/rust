@@ -47,14 +47,6 @@ fn new_def_hash[@V]() -> std::map::hashmap[ast::def_id, V] {
     ret std::map::mk_hashmap[ast::def_id, V](hasher, eqer);
 }
 
-fn elt_expr(e: &ast::elt) -> @ast::expr { ret e.expr; }
-
-fn elt_exprs(elts: &[ast::elt]) -> [@ast::expr] {
-    let es = ~[];
-    for e: ast::elt  in elts { es += ~[e.expr]; }
-    ret es;
-}
-
 fn field_expr(f: &ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: &[ast::field]) -> [@ast::expr] {

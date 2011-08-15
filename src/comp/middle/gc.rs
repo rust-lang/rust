@@ -48,7 +48,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: &ty::t) -> bool {
         }
         ty::ty_tup(elts) {
             for elt in elts {
-                if type_is_gc_relevant(cx, elt.ty) { ret true; }
+                if type_is_gc_relevant(cx, elt) { ret true; }
             }
             ret false;
         }

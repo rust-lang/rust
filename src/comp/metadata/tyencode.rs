@@ -120,9 +120,9 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         for t: ty::t  in tys { enc_ty(w, cx, t); }
         w.write_char(']');
       }
-      ty::ty_tup(mts) {
+      ty::ty_tup(ts) {
         w.write_str("T[");
-        for mt in mts { enc_mt(w, cx, mt); }
+        for t in ts { enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }

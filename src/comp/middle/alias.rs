@@ -678,9 +678,9 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
             }
             ret false;
           }
-          ty::ty_tup(mts) {
-            for mt in mts {
-                if helper(tcx, needle, mt.ty, get_mut(mut, mt)) {
+          ty::ty_tup(ts) {
+            for t in ts {
+                if helper(tcx, needle, t, mut) {
                     ret true;
                 }
             }

@@ -152,7 +152,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                          ~[0, abi::obj_body_elt_typarams]);
         bcx = body_typarams.bcx;
         // TODO: can we just get typarams_ty out of body_ty instead?
-        let typarams_ty: ty::t = ty::mk_imm_tup(ccx.tcx, tps);
+        let typarams_ty: ty::t = ty::mk_tup(ccx.tcx, tps);
         let i: int = 0;
         for tp: ast::ty_param  in ty_params {
             let typaram = bcx.fcx.lltydescs.(i);
@@ -174,7 +174,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
               some(arg1) {
                 let arg = load_if_immediate(bcx, arg1, arg_tys.(i).ty);
                 // TODO: can we just get fields_ty out of body_ty instead?
-                let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx, obj_fields);
+                let fields_ty: ty::t = ty::mk_tup(ccx.tcx, obj_fields);
                 let field =
                     GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
                 bcx = field.bcx;
@@ -347,7 +347,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             // have additional field exprs in the AST.
             load_if_immediate(bcx, additional_field_vals.(i).val,
                               additional_field_tys.(i));
-            let fields_ty: ty::t = ty::mk_imm_tup(ccx.tcx,
+            let fields_ty: ty::t = ty::mk_tup(ccx.tcx,
                                                   additional_field_tys);
             let field =
                 GEP_tup_like(bcx, fields_ty, body_fields.val, ~[0, i]);
@@ -895,18 +895,18 @@ fn create_object_body_type(tcx: &ty::ctxt, fields_ty: &[ty::t],
                            maybe_inner_obj_ty: option::t[ty::t]) -> ty::t {
 
     let tydesc_ty: ty::t = ty::mk_type(tcx);
-    let typarams_ty_tup: ty::t = ty::mk_imm_tup(tcx, typarams_ty);
-    let fields_ty_tup: ty::t = ty::mk_imm_tup(tcx, fields_ty);
+    let typarams_ty_tup: ty::t = ty::mk_tup(tcx, typarams_ty);
+    let fields_ty_tup: ty::t = ty::mk_tup(tcx, fields_ty);
 
     let body_ty: ty::t;
     alt maybe_inner_obj_ty {
       some(inner_obj_ty) {
-        body_ty = ty::mk_imm_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
-                                        fields_ty_tup, inner_obj_ty]);
+        body_ty = ty::mk_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
+                                    fields_ty_tup, inner_obj_ty]);
       }
       none {
-        body_ty = ty::mk_imm_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
-                                        fields_ty_tup]);
+        body_ty = ty::mk_tup(tcx, ~[tydesc_ty, typarams_ty_tup,
+                                    fields_ty_tup]);
       }
     }
 

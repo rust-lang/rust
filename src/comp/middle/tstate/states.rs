@@ -23,7 +23,6 @@ import util::common::log_expr;
 import util::common::log_block;
 import util::common::log_block_err;
 import util::common::log_fn;
-import util::common::elt_exprs;
 import util::common::field_exprs;
 import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
@@ -392,7 +391,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       ivec::init_elt(init_assign,
                                                      ivec::len(elts)),
-                                      elt_exprs(elts), return);
+                                      elts, return);
       }
       expr_move(lhs, rhs) {
         ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id, oper_move);

@@ -239,7 +239,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'T' {
         assert (next(st) as char == '[');
         let params = ~[];
-        while peek(st) as char != ']' { params += ~[parse_mt(st, sd)]; }
+        while peek(st) as char != ']' { params += ~[parse_ty(st, sd)]; }
         st.pos = st.pos + 1u;
         ret ty::mk_tup(st.tcx, params);
       }

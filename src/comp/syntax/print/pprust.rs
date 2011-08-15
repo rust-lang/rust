@@ -324,7 +324,7 @@ fn print_type(s: &ps, ty: &ast::ty) {
       }
       ast::ty_tup(elts) {
           popen(s);
-          commasep(s, inconsistent, elts, print_mt);
+          commasep(s, inconsistent, elts, print_boxed_type);
           pclose(s);
       }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
@@ -753,15 +753,8 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         word(s.s, "}");
       }
       ast::expr_tup(exprs) {
-        fn printElt(s: &ps, elt: &ast::elt) {
-            ibox(s, indent_unit);
-            if elt.mut == ast::mut { word_nbsp(s, "mutable"); }
-            print_expr(s, elt.expr);
-            end(s);
-        }
-        fn get_span(elt: &ast::elt) -> codemap::span { ret elt.expr.span; }
         popen(s);
-        commasep_cmnt(s, inconsistent, exprs, printElt, get_span);
+        commasep_exprs(s, inconsistent, exprs);
         pclose(s);
       }
       ast::expr_call(func, args) {

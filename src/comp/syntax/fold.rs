@@ -339,11 +339,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
                      option::map(fld.fold_expr, maybe_expr))
           }
           expr_tup(elts) {
-            let elts_ = ~[];
-            for elt in elts {
-                elts_ += ~[{mut: elt.mut, expr: fld.fold_expr(elt.expr)}];
-            }
-            expr_tup(elts_)
+            expr_tup(ivec::map(fld.fold_expr, elts))
           }
           expr_call(f, args) {
             expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args))
