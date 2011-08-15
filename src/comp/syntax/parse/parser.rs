@@ -423,13 +423,18 @@ fn parse_type_constraints(p: &parser) -> [@ast::ty_constr] {
 
 fn parse_ty_postfix(orig_t: ast::ty_, p: &parser) -> @ast::ty {
     let lo = p.get_lo_pos();
-    if p.peek() == token::LBRACKET {
+    if p.peek() == token::LBRACKET || p.peek() == token::LT {
+        let end;
+        if p.peek() == token::LBRACKET {
+            end = token::RBRACKET;
+        } else {
+            end = token::GT;
+        }
+
         // This is explicit type parameter instantiation.
         p.bump();
 
-        let seq =
-            parse_seq_to_end(token::RBRACKET, some(token::COMMA),
-                             parse_ty, p);
+        let seq = parse_seq_to_end(end, some(token::COMMA), parse_ty, p);
 
         alt orig_t {
           ast::ty_path(pth, ann) {
@@ -1723,6 +1728,11 @@ fn parse_ty_params(p: &parser) -> [ast::ty_param] {
     if p.peek() == token::LBRACKET {
         ty_params =
             parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
+                      parse_ty_param, p).node;
+    }
+    if p.peek() == token::LT {
+        ty_params =
+            parse_seq(token::LT, token::GT, some(token::COMMA),
                       parse_ty_param, p).node;
     }
     ret ty_params;
