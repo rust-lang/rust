@@ -269,30 +269,25 @@ fn position_pred[T](f: fn(&T) -> bool , v: &[T]) -> option::t[uint] {
     ret none[uint];
 }
 
-fn unzip[@T, @U](v: &[{_0: T, _1: U}]) -> {_0: [T], _1: [U]} {
-    let sz = len(v);
-    if sz == 0u {
-        ret {_0: ~[], _1: ~[]};
-    } else {
-        let rest = slice(v, 1u, sz);
-        let tl = unzip(rest);
-        let a = ~[v.(0)._0];
-        let b = ~[v.(0)._1];
-        ret {_0: a + tl._0, _1: b + tl._1};
+fn unzip[@T, @U](v: &[(T, U)]) -> ([T], [U]) {
+    let as = ~[], bs = ~[];
+    for (a, b) in v {
+        as += ~[a];
+        bs += ~[b];
     }
+    ret (as, bs);
 }
 
-
 // FIXME make the lengths being equal a constraint
-fn zip[@T, @U](v: &[T], u: &[U]) -> [{_0: T, _1: U}] {
-    let sz = len(v);
+fn zip[@T, @U](v: &[T], u: &[U]) -> [(T, U)] {
+    let zipped = ~[];
+    let sz = len(v), i = 0u;
     assert (sz == len(u));
-    if sz == 0u {
-        ret ~[];
-    } else {
-        let rest = zip(slice(v, 1u, sz), slice(u, 1u, sz));
-        ret ~[{_0: v.(0), _1: u.(0)}] + rest;
+    while i < sz {
+        zipped += ~[(v.(i), u.(i))];
+        i += 1u;
     }
+    ret zipped;
 }
 
 // Swaps two elements in a vector

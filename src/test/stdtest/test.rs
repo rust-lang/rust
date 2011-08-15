@@ -89,8 +89,8 @@ fn sort_tests() {
     let pairs = ivec::zip(expected, filtered);
 
 
-    for p: {_0: str, _1: test::test_desc} in pairs {
-        assert (p._0 == p._1.name);
+    for (a, b) in pairs {
+        assert (a == b.name);
     }
 }
 

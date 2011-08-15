@@ -50,9 +50,9 @@ fn test_simple() {
     sort::quick_sort(lteq, names);
 
     let pairs = ivec::zip(expected, ivec::from_mut(names));
-    for p: {_0: int, _1: int} in pairs {
-        log #fmt("%d %d", p._0, p._1);
-        assert (p._0 == p._1);
+    for (a, b) in pairs {
+        log #fmt("%d %d", a, b);
+        assert (a == b);
     }
 }
 

@@ -314,15 +314,15 @@ fn test_zip_unzip() {
     let v2 = ~[4, 5, 6];
     let z1 = ivec::zip(v1, v2);
 
-    assert ({_0: 1, _1: 4} == z1.(0));
-    assert ({_0: 2, _1: 5} == z1.(1));
-    assert ({_0: 3, _1: 6} == z1.(2));
+    assert ((1, 4) == z1.(0));
+    assert ((2, 5) == z1.(1));
+    assert ((3, 6) == z1.(2));
 
-    let u1 = ivec::unzip(z1);
+    let (left, right) = ivec::unzip(z1);
 
-    assert ({_0: 1, _1: 4} == {_0: u1._0.(0), _1: u1._1.(0)});
-    assert ({_0: 2, _1: 5} == {_0: u1._0.(1), _1: u1._1.(1)});
-    assert ({_0: 3, _1: 6} == {_0: u1._0.(2), _1: u1._1.(2)});
+    assert ((1, 4) == (left.(0), right.(0)));
+    assert ((2, 5) == (left.(1), right.(1)));
+    assert ((3, 6) == (left.(2), right.(2)));
 }
 
 #[test]
