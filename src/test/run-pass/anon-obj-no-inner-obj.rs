@@ -3,7 +3,10 @@
 //xfail-stage3
 use std;
 
-// Should we support this?  See issue #812.
+// This is failing not because it's an anonymous object from nothing
+// -- that park seems to work fine -- but, rather, because methods
+// that are added to an object at the same time can't refer to each
+// other (issue #822).
 
 fn main() {
 
