@@ -336,6 +336,7 @@ tag expr_ {
     expr_chan(@expr);
     expr_anon_obj(anon_obj);
     expr_mac(mac);
+    expr_uniq(@expr);
 }
 
 type mac = spanned[mac_];

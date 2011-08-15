@@ -341,6 +341,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
         }
       }
       expr_mac(mac) { visit_mac(mac, e, v); }
+      expr_uniq(x) { v.visit_expr(x, e, v); }
     }
 }
 

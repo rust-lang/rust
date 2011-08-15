@@ -870,7 +870,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
                   span: p.get_span()};
             ex = ast::expr_lit(lit);
           }
-          _ { p.fatal("unimplemented: unique pointer creation"); }
+          _ { ex = ast::expr_uniq(parse_expr(p)); }
         }
     } else if (eat_word(p, "obj")) {
         // Anonymous object

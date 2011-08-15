@@ -620,6 +620,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
           none. { ret pure_exp(fcx.ccx, e.id, pres); }
         }
       }
+      expr_uniq(_) { ret pure_exp(fcx.ccx, e.id, pres); }
     }
 }
 

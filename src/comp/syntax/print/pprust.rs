@@ -1037,6 +1037,10 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         }
         bclose(s, expr.span);
       }
+      ast::expr_uniq(expr) {
+        word(s.s, "~");
+        print_expr(s, expr);
+      }
     }
     s.ann.post(ann_node);
     end(s);
