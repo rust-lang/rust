@@ -182,7 +182,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_conv_call(cx: &ext_ctxt, sp: span, conv_type: str, cnv: &conv,
                       arg: @ast::expr) -> @ast::expr {
-        let fname = "conv_" + conv_type + "_ivec";
+        let fname = "conv_" + conv_type;
         let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg];
