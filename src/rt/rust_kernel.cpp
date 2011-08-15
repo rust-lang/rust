@@ -160,7 +160,17 @@ rust_kernel::get_task_by_id(rust_task_id id) {
     rust_task *task = NULL;
     // get leaves task unchanged if not found.
     task_table.get(id, &task);
-    if(task) task->ref();
+    if(task) {
+        if(task->get_ref_count() == 0) {
+            // this means the destructor is running, since the destructor
+            // grabs the kernel lock to unregister the task. Pretend this
+            // doesn't actually exist.
+            return NULL;
+        }
+        else {
+            task->ref();
+        }
+    }
     return task;
 }
 

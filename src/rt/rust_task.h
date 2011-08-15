@@ -169,6 +169,10 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     rust_port_id register_port(rust_port *port);
     void release_port(rust_port_id id);
     rust_port *get_port_by_id(rust_port_id id);
+
+    // Use this function sparingly. Depending on the ref count is generally
+    // not at all safe.
+    intptr_t get_ref_count() const { return ref_count; }
 };
 
 //

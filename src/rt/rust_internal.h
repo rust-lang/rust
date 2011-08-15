@@ -115,7 +115,10 @@ static size_t const BUF_BYTES = 2048;
     private:                                                            \
     intptr_t ref_count;                                                 \
 public:                                                                 \
- void ref() { sync::increment(ref_count); }                             \
+ void ref() {                                                           \
+     intptr_t old = sync::increment(ref_count);                         \
+     assert(old > 0);                                                   \
+ }                                                                      \
  void deref() { if(0 == sync::decrement(ref_count)) { delete this; } }
 
 template <typename T> struct rc_base {
