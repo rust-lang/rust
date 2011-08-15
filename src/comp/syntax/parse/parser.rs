@@ -499,13 +499,23 @@ fn parse_ty(p: &parser) -> @ast::ty {
         t = ast::ty_machine(ast::ty_f64);
     } else if (p.peek() == token::LPAREN) {
         p.bump();
-        alt p.peek() {
-          token::RPAREN. { hi = p.get_hi_pos(); p.bump(); t = ast::ty_nil; }
-          _ {
-            t = parse_ty(p).node;
+        if p.peek() == token::RPAREN {
+            hi = p.get_hi_pos();
+            p.bump();
+            t = ast::ty_nil;
+        } else {
+            let ts = ~[parse_ty(p)];
+            while p.peek() == token::COMMA {
+                p.bump();
+                ts += ~[parse_ty(p)];
+            }
+            if ivec::len(ts) == 1u {
+                t = ts.(0).node;
+            } else {
+                t = ast::ty_tup(ts);
+            }
             hi = p.get_hi_pos();
             expect(p, token::RPAREN);
-          }
         }
     } else if (p.peek() == token::AT) {
         p.bump();
@@ -748,19 +758,24 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
     let ex: ast::expr_;
     if p.peek() == token::LPAREN {
         p.bump();
-        alt p.peek() {
-          token::RPAREN. {
+        if p.peek() == token::RPAREN {
             hi = p.get_hi_pos();
             p.bump();
             let lit = @spanned(lo, hi, ast::lit_nil);
             ret mk_expr(p, lo, hi, ast::expr_lit(lit));
-          }
-          _ {/* fall through */ }
         }
-        let e = parse_expr(p);
+        let es = ~[parse_expr(p)];
+        while p.peek() == token::COMMA {
+            p.bump();
+            es += ~[parse_expr(p)];
+        }
         hi = p.get_hi_pos();
         expect(p, token::RPAREN);
-        ret mk_expr(p, lo, hi, e.node);
+        if ivec::len(es) == 1u {
+            ret mk_expr(p, lo, hi, es.(0).node);
+        } else {
+            ret mk_expr(p, lo, hi, ast::expr_tup(es));
+        }
     } else if (p.peek() == token::LBRACE) {
         p.bump();
         if is_word(p, "mutable") ||
