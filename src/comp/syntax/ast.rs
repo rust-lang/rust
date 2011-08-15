@@ -317,6 +317,7 @@ tag expr_ {
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
      */
+    expr_copy(@expr);
     expr_move(@expr, @expr);
     expr_assign(@expr, @expr);
     expr_swap(@expr, @expr);

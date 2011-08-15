@@ -517,12 +517,13 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
-                        table: hashmap[ast::node_id, ValueRef], copy: bool)
+                        table: hashmap[ast::node_id, ValueRef],
+                        make_copy: bool)
     -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx;
     alt pat.node {
       ast::pat_bind(_) {
-        if copy {
+        if make_copy {
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
             let llty = trans::type_of(ccx, pat.span, ty);
             let alloc = trans::alloca(bcx, llty);
@@ -541,7 +542,8 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;
         for argval: ValueRef in args.vals {
-            bcx = bind_irrefutable_pat(bcx, sub.(i), argval, table, copy);
+            bcx = bind_irrefutable_pat(bcx, sub.(i), argval, table,
+                                       make_copy);
             i += 1;
         }
       }
@@ -553,7 +555,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
             let ix: uint =
                 ty::field_idx(ccx.sess, pat.span, f.ident, rec_fields);
             let r = trans::GEP_tup_like(bcx, rec_ty, val, ~[0, ix as int]);
-            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, copy);
+            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, table, make_copy);
         }
       }
       ast::pat_tup(elems) {
@@ -561,7 +563,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
         let i = 0u;
         for elem in elems {
             let r = trans::GEP_tup_like(bcx, tup_ty, val, ~[0, i as int]);
-            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, table, copy);
+            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, table, make_copy);
             i += 1u;
         }
       }

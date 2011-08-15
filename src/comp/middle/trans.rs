@@ -5052,6 +5052,10 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         sub.bcx.build.Br(next_cx.llbb);
         ret rslt(next_cx, sub.val);
       }
+      ast::expr_copy(a) {
+        // FIXME: this has more-subtle semantics than just "fall through".
+        ret trans_expr_out(cx, a, output);
+      }
       ast::expr_move(dst, src) {
         let lhs_res = trans_lval(cx, dst);
         assert (lhs_res.is_mem);

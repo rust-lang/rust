@@ -881,6 +881,10 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         ibox(s, 0u);
         print_block(s, blk);
       }
+      ast::expr_copy(e) {
+        word_space(s, "copy");
+        print_expr(s, e);
+      }
       ast::expr_move(lhs, rhs) {
         print_expr(s, lhs);
         space(s.s);

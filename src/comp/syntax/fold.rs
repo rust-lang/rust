@@ -397,6 +397,9 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
           expr_move(el, er) {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
           }
+          expr_copy(e) {
+            expr_copy(fld.fold_expr(e))
+          }
           expr_assign(el, er) {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
           }

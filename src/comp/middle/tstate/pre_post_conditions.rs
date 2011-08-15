@@ -406,6 +406,10 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_tup(elts) {
         find_pre_post_exprs(fcx, elts, e.id);
       }
+      expr_copy(a) {
+        find_pre_post_expr(fcx, a);
+        copy_pre_post(fcx.ccx, e.id, a);
+      }
       expr_move(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_move); }
       expr_swap(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_swap); }
       expr_assign(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_assign); }

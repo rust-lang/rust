@@ -393,6 +393,9 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
                                                      ivec::len(elts)),
                                       elts, return);
       }
+      expr_copy(a) {
+        ret find_pre_post_state_sub(fcx, pres, a, e.id, none);
+      }
       expr_move(lhs, rhs) {
         ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id, oper_move);
       }

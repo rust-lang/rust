@@ -1942,6 +1942,13 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         write::nil_ty(tcx, id);
       }
+      ast::expr_copy(a) {
+        bot = check_expr_with_unifier(fcx, a, unify, expected);
+        let tpot = ty::node_id_to_ty_param_substs_opt_and_ty(fcx.ccx.tcx,
+                                                             a.id);
+        write::ty_fixup(fcx, id, tpot);
+
+      }
       ast::expr_move(lhs, rhs) {
         require_impure(tcx.sess, fcx.purity, expr.span);
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);

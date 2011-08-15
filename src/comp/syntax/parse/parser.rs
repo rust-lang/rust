@@ -180,6 +180,7 @@ fn bad_expr_word_table() -> hashmap[str, ()] {
     words.insert("log_err", ());
     words.insert("tag", ());
     words.insert("obj", ());
+    words.insert("copy", ());
     ret words;
 }
 
@@ -999,6 +1000,10 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         hi = e.span.hi;
         expect(p, token::RPAREN);
         ex = ast::expr_chan(e);
+    } else if (eat_word(p, "copy")) {
+        let e = parse_expr(p);
+        ex = ast::expr_copy(e);
+        hi = e.span.hi;
     } else if (eat_word(p, "self")) {
         log "parsing a self-call...";
         expect(p, token::DOT);

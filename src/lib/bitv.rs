@@ -3,7 +3,7 @@ export t;
 export create;
 export union;
 export intersect;
-export copy;
+export assign;
 export clone;
 export get;
 export equal;
@@ -63,7 +63,10 @@ fn intersect(v0: &t, v1: &t) -> bool {
 
 fn right(w0: uint, w1: uint) -> uint { ret w1; }
 
-fn copy(v0: &t, v1: t) -> bool { let sub = right; ret process(sub, v0, v1); }
+fn assign(v0: &t, v1: t) -> bool {
+    let sub = right;
+    ret process(sub, v0, v1);
+}
 
 fn clone(v: t) -> t {
     let storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);

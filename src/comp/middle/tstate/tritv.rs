@@ -204,8 +204,8 @@ fn tritv_copy(target: &t, source: &t) -> bool {
     let changed =
         !bitv::equal(target.uncertain, source.uncertain) ||
             !bitv::equal(target.val, source.val);
-    bitv::copy(target.uncertain, source.uncertain);
-    bitv::copy(target.val, source.val);
+    bitv::assign(target.uncertain, source.uncertain);
+    bitv::assign(target.val, source.val);
     ret changed;
 }
 
