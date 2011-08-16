@@ -61,6 +61,7 @@ type scopes = list<scope>;
 
 tag import_state {
     todo(@ast::view_item, scopes); // only used for explicit imports
+    todo_from(@ast::view_item, ast::import_ident, scopes);
 
     resolving(span);
     resolved(option::t<def>,
@@ -91,6 +92,7 @@ fn new_ext_hash() -> ext_hash {
 
 tag mod_index_entry {
     mie_view_item(@ast::view_item);
+    mie_import_ident(node_id);
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
     mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
@@ -173,6 +175,12 @@ fn map_crate(e: &@env, c: &@ast::crate) {
           ast::view_item_import(_, ids, id) {
             e.imports.insert(id, todo(i, sc));
           }
+          ast::view_item_import_from(mod_path, idents, id) {
+            for ident in idents {
+                e.imports.insert(ident.node.id,
+                                 todo_from(i, ident, sc));
+            }
+          }
           _ { }
         }
     }
@@ -238,11 +246,27 @@ fn map_crate(e: &@env, c: &@ast::crate) {
     }
 }
 
+fn vi_from_to_vi(from_item: &@ast::view_item,
+                 ident: ast::import_ident) -> @ast::view_item {
+    alt from_item.node {
+      ast::view_item_import_from(mod_path, idents, _) {
+        @ast::respan(ident.span,
+                     ast::view_item_import(ident.node.name,
+                                           mod_path + ~[ident.node.name],
+                                           ident.node.id))
+      }
+    }
+}
+
 fn resolve_imports(e: &env) {
     for each it: @{key: ast::node_id, val: import_state} in e.imports.items()
              {
         alt it.val {
           todo(item, sc) { resolve_import(e, item, sc); }
+          todo_from(item, ident, sc) {
+            let vi = vi_from_to_vi(item, ident);
+            resolve_import(e, vi, sc);
+          }
           resolved(_, _, _) { }
         }
     }
@@ -941,6 +965,11 @@ fn lookup_import(e: &env, defid: def_id, ns: namespace) -> option::t<def> {
         resolve_import(e, item, sc);
         ret lookup_import(e, defid, ns);
       }
+      todo_from(item, ident, sc) {
+        let vi = vi_from_to_vi(item, ident);
+        resolve_import(e, vi, sc);
+        ret lookup_import(e, defid, ns);
+      }
       resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
       resolved(val, typ, md) {
         ret alt ns { ns_value. { val } ns_type. { typ } ns_module. { md } };
@@ -1044,6 +1073,7 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
    option::t<def> {
     alt mie {
       mie_view_item(view_item) { ret found_view_item(e, view_item, ns); }
+      mie_import_ident(id) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }
       mie_tag_variant(item, variant_idx) {
         alt item.node {
@@ -1070,7 +1100,6 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
           }
         }
       }
-      _ { }
     }
     ret none::<def>;
 }
@@ -1092,6 +1121,13 @@ fn index_mod(md: &ast::_mod) -> mod_index {
           ast::view_item_import(ident, _, _) | ast::view_item_use(ident, _, _)
           {
             add_to_index(index, ident, mie_view_item(it));
+          }
+
+          ast::view_item_import_from(_, idents, _) {
+            for ident in idents {
+                add_to_index(index, ident.node.name,
+                             mie_import_ident(ident.node.id));
+            }
           }
 
           //globbed imports have to be resolved lazily.
@@ -1127,6 +1163,12 @@ fn index_nmod(md: &ast::native_mod) -> mod_index {
           ast::view_item_use(ident, _, _) | ast::view_item_import(ident, _, _)
           {
             add_to_index(index, ident, mie_view_item(it));
+          }
+          ast::view_item_import_from(_, idents, _) {
+            for ident in idents {
+                add_to_index(index, ident.node.name,
+                             mie_import_ident(ident.node.id));
+            }
           }
           ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) { }
         }

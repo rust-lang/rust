@@ -2288,11 +2288,17 @@ fn parse_rest_import_name(p: &parser, first: ast::ident,
    ast::view_item_ {
     let identifiers: [ast::ident] = ~[first];
     let glob: bool = false;
+    let from_idents = option::none::<[ast::import_ident]>;
     while true {
         alt p.peek() {
           token::SEMI. { break; }
           token::MOD_SEP. {
-            if glob { p.fatal("cannot path into a glob"); }
+            if glob {
+                p.fatal("cannot path into a glob");
+            }
+            if option::is_some(from_idents) {
+                p.fatal("cannot path into import list");
+            }
             p.bump();
           }
           _ { p.fatal("expecting '::' or ';'"); }
@@ -2305,17 +2311,46 @@ fn parse_rest_import_name(p: &parser, first: ast::ident,
             glob = true;
             p.bump();
           }
+
+          token::LBRACE. {
+            fn parse_import_ident(p: &parser) -> ast::import_ident {
+                let lo = p.get_lo_pos();
+                let ident = parse_ident(p);
+                let hi = p.get_hi_pos();
+                ret spanned(lo, hi, {name: ident,
+                                     id: p.get_id()});
+            }
+            let from_idents_ = parse_seq(token::LBRACE,
+                                         token::RBRACE,
+                                         some(token::COMMA),
+                                         parse_import_ident,
+                                         p).node;
+            if vec::is_empty(from_idents_) {
+                p.fatal("at least one import is required");
+            }
+            from_idents = some(from_idents_);
+          }
+
           _ { p.fatal("expecting an identifier, or '*'"); }
         }
     }
     alt def_ident {
       some(i) {
-        if glob { p.fatal("globbed imports can't be renamed"); }
+        if glob {
+            p.fatal("globbed imports can't be renamed");
+        }
+        if option::is_some(from_idents) {
+            p.fatal("can't rename import list");
+        }
         ret ast::view_item_import(i, identifiers, p.get_id());
       }
       _ {
         if glob {
             ret ast::view_item_import_glob(identifiers, p.get_id());
+        } else if option::is_some(from_idents) {
+            ret ast::view_item_import_from(identifiers,
+                                           option::get(from_idents),
+                                           p.get_id());
         } else {
             let len = vec::len(identifiers);
             ret ast::view_item_import(identifiers.(len - 1u), identifiers,

@@ -564,10 +564,15 @@ type view_item = spanned<view_item_>;
 // 'import ::foo'
 type simple_path = [ident];
 
+type import_ident_ = {name: ident, id: node_id};
+
+type import_ident = spanned<import_ident_>;
+
 tag view_item_ {
     view_item_use(ident, [@meta_item], node_id);
     view_item_import(ident, simple_path, node_id);
     view_item_import_glob(simple_path, node_id);
+    view_item_import_from(simple_path, [import_ident], node_id);
     view_item_export([ident], node_id);
 }
 

@@ -1267,6 +1267,19 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
             word(s.s, elt);
         }
       }
+      ast::view_item_import_from(mod_path, idents, _) {
+        head(s, "import");
+        for elt: str in mod_path {
+            word(s.s, elt);
+            word(s.s, "::");
+        }
+        word(s.s, "{");
+        commasep(s, inconsistent, idents,
+                 fn(s: &ps, w: &ast::import_ident) {
+                     word(s.s, w.node.name)
+                 });
+        word(s.s, "}");
+      }
       ast::view_item_import_glob(ids, _) {
         head(s, "import");
         let first = true;
