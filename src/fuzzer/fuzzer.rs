@@ -69,8 +69,6 @@ fn safe_to_steal(e: ast::expr_) -> bool {
         }
       }
       ast::expr_cast(_, _) { false }
-      ast::expr_send(_, _) { false }
-      ast::expr_recv(_, _) { false }
       ast::expr_assert(_) { false }
       ast::expr_binary(_, _, _) { false }
       ast::expr_assign(_, _) { false }
