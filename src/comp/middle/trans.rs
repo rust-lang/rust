@@ -4212,7 +4212,9 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     outgoing_fty: &ty::t, args: &[option::t[@ast::expr]],
                     env_ty: &ty::t, bound_tys: &[ty::t],
-                    ty_param_count: uint) -> {val: ValueRef, ty: TypeRef} {
+                    ty_param_count: uint,
+                    target_fn: &option::t[ValueRef]) ->
+    {val: ValueRef, ty: TypeRef} {
 
     // Here we're not necessarily constructing a thunk in the sense of
     // "function with no arguments".  The result of compiling 'bind f(foo,
@@ -4270,16 +4272,22 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     // creating.  (In our running example, target is the function f.)  Pick
     // out the pointer to the target function from the environment. The
     // target function lives in the first binding spot.
-    let lltarget =
-        GEP_tup_like(bcx, closure_ty, llclosure,
-                     ~[0, abi::box_rc_field_body,
-                       abi::closure_elt_bindings, 0]);
-    bcx = lltarget.bcx;
+    let (lltarget, starting_idx) = alt target_fn {
+      some(lltarget) { (lltarget, 0) }
+      none. {
+        let lltarget =
+            GEP_tup_like(bcx, closure_ty, llclosure,
+                         ~[0, abi::box_rc_field_body,
+                           abi::closure_elt_bindings, 0]);
+        bcx = lltarget.bcx;
+        (lltarget.val, 1)
+      }
+    };
 
     // And then, pick out the target function's own environment.  That's what
     // we'll use as the environment the thunk gets.
     let lltargetclosure =
-        bcx.build.GEP(lltarget.val, ~[C_int(0), C_int(abi::fn_field_box)]);
+        bcx.build.GEP(lltarget, ~[C_int(0), C_int(abi::fn_field_box)]);
     lltargetclosure = bcx.build.Load(lltargetclosure);
 
     // Get f's return type, which will also be the return type of the entire
@@ -4315,7 +4323,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     }
 
     let a: uint = 3u; // retptr, task ptr, env come first
-    let b: int = 1;
+    let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
         type_of_explicit_args(cx.ccx, sp, outgoing_args);
@@ -4377,7 +4385,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     }
 
     let lltargetfn =
-        bcx.build.GEP(lltarget.val, ~[C_int(0), C_int(abi::fn_field_code)]);
+        bcx.build.GEP(lltarget, ~[C_int(0), C_int(abi::fn_field_code)]);
 
     // Cast the outgoing function to the appropriate type.
     // This is necessary because the type of the function that we have
@@ -4427,16 +4435,21 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     }
     let bcx = f_res.res.bcx;
 
-    // Cast the function we are binding to be the type that the closure
-    // will expect it to have. The type the closure knows about has the
-    // type parameters substituted with the real types.
-    let llclosurety = T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
-    let src_loc = bcx.build.PointerCast(f_res.res.val, llclosurety);
-    let bound_f = {res: {bcx: bcx, val: src_loc} with f_res};
 
-    // Arrange for the bound function to live in the first binding spot.
-    let bound_tys: [ty::t] = ~[outgoing_fty];
-    let bound_vals: [lval_result] = ~[bound_f];
+    // Arrange for the bound function to live in the first binding spot
+    // if the function is not statically known.
+    let (bound_tys, bound_vals, target_res) = if f_res.is_mem {
+        // Cast the function we are binding to be the type that the closure
+        // will expect it to have. The type the closure knows about has the
+        // type parameters substituted with the real types.
+        let llclosurety = T_ptr(type_of(bcx_ccx(cx), cx.sp, outgoing_fty));
+        let src_loc = bcx.build.PointerCast(f_res.res.val, llclosurety);
+        let bound_f = {res: {bcx: bcx, val: src_loc} with f_res};
+        (~[outgoing_fty], ~[bound_f], none)
+    } else {
+        (~[], ~[], some(f_res.res.val))
+    };
+
     // Translate the bound expressions.
     for e: @ast::expr in bound {
         let lv = trans_lval(bcx, e);
@@ -4455,7 +4468,8 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     let pair_ty = node_id_type(bcx_ccx(cx), id);
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real,
-                         args, closure.ptrty, bound_tys, ty_param_count);
+                         args, closure.ptrty, bound_tys, ty_param_count,
+                         target_res);
 
     // Construct the function pair
     let pair_v = create_real_fn_pair(bcx, llthunk.ty, llthunk.val,
