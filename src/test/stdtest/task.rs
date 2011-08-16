@@ -43,7 +43,7 @@ fn test_lib_spawn2() {
 fn test_join_chan() {
     fn winner() { }
 
-    let p = comm::mk_port[task::task_notification]();
+    let p = comm::mk_port::<task::task_notification>();
     task::spawn_notify(bind winner(), p.mk_chan());
     let s = p.recv();
     log_err "received task status message";
@@ -58,7 +58,7 @@ fn test_join_chan() {
 fn test_join_chan_fail() {
     fn failer() { task::unsupervise(); fail }
 
-    let p = comm::mk_port[task::task_notification]();
+    let p = comm::mk_port::<task::task_notification>();
     task::spawn_notify(bind failer(), p.mk_chan());
     let s = p.recv();
     log_err "received task status message";

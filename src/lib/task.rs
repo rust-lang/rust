@@ -32,7 +32,7 @@ native "rust" mod rustrt {
 
 type rust_task = {
     mutable notify_enabled : u8,
-    mutable notify_chan : _chan[task_notification]
+    mutable notify_chan : _chan<task_notification>
 };
 
 type task = int;
@@ -83,13 +83,13 @@ fn spawn(thunk : fn() -> ()) -> task {
     spawn_inner(thunk, none)
 }
 
-fn spawn_notify(thunk : fn() -> (), notify : _chan[task_notification])
+fn spawn_notify(thunk : fn() -> (), notify : _chan<task_notification>)
     -> task {
     spawn_inner(thunk, some(notify))
 }
 
 // FIXME: make this a fn~ once those are supported.
-fn spawn_inner(thunk : fn() -> (), notify : option[_chan[task_notification]])
+fn spawn_inner(thunk : fn() -> (), notify : option<_chan<task_notification>>)
     -> task_id {
     let id = rustrt::new_task();
 
