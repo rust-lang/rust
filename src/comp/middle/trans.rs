@@ -1420,7 +1420,7 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty)
           }
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_uniq(_) { fail "drop uniq unimplemented"; }
+          ty::ty_uniq(_) { trans_shared_free(cx, cx.build.Load(v0)) }
           ty::ty_obj(_) {
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::obj_field_box)]);
@@ -2311,6 +2311,7 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
 // doesn't need to be dropped.
+// FIXME: This can return only a block_ctxt, not a result.
 fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             src: &lval_result, t: &ty::t) -> result {
     let src_val = src.res.val;
@@ -2322,18 +2323,18 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     } else if (ty::type_is_nil(bcx_tcx(cx), t) ||
                    ty::type_is_bot(bcx_tcx(cx), t)) {
         ret rslt(cx, C_nil());
-    } else if (ty::type_is_boxed(bcx_tcx(cx), t)) {
+    } else if (ty::type_is_unique(bcx_tcx(cx), t) ||
+               ty::type_is_boxed(bcx_tcx(cx), t)) {
         if src.is_mem { src_val = cx.build.Load(src_val); }
         if action == DROP_EXISTING {
             cx = drop_ty(cx, cx.build.Load(dst), t).bcx;
         }
         cx.build.Store(src_val, dst);
-        if src.is_mem {
-            ret zero_alloca(cx, src.res.val, t);
-        } else { // It must be a temporary
-            revoke_clean(cx, src_val);
-            ret rslt(cx, C_nil());
-        }
+        if src.is_mem { ret zero_alloca(cx, src.res.val, t); }
+
+        // If we're here, it must be a temporary.
+        revoke_clean(cx, src_val);
+        ret rslt(cx, C_nil());
     } else if (ty::type_is_structural(bcx_tcx(cx), t) ||
                    ty::type_has_dynamic_size(bcx_tcx(cx), t)) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t).bcx; }
@@ -2356,7 +2357,8 @@ fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     if src.is_mem {
         ret copy_val(cx, action, dst, load_if_immediate(cx, src.res.val, t),
                      t);
-    } else { ret move_val(cx, action, dst, src, t); }
+    }
+    ret move_val(cx, action, dst, src, t);
 }
 
 fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
@@ -4092,6 +4094,7 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
             };
         ret lval_mem(sub.bcx, val);
       }
+      ast::expr_uniq(contents) { ret trans_uniq(cx, contents); }
       ast::expr_self_method(ident) {
         alt { cx.fcx.llself } {
           some(pair) {
@@ -5344,6 +5347,25 @@ fn trans_put(cx: &@block_ctxt, e: &option::t[@ast::expr]) -> result {
     }
     bcx.build.FastCall(llcallee, llargs);
     ret rslt(bcx, C_nil());
+}
+
+fn trans_uniq(cx: &@block_ctxt, contents: &@ast::expr) -> lval_result {
+    let bcx = cx;
+
+    let contents_ty = ty::expr_ty(bcx_tcx(bcx), contents);
+    let r = size_of(bcx, contents_ty);
+    bcx = r.bcx;
+    let llsz = r.val;
+
+    let llptrty = T_ptr(type_of_or_i8(bcx, contents_ty));
+
+    r = trans_shared_malloc(bcx, llptrty, llsz);
+    bcx = r.bcx;
+    let llptrptr = r.val;
+
+    let llptr = bcx.build.Load(llptrptr);
+    r = trans_expr_out(bcx, contents, save_in(llptr));
+    ret lval_val(r.bcx, llptrptr);
 }
 
 fn trans_break_cont(sp: &span, cx: &@block_ctxt, to_end: bool) -> result {

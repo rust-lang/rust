@@ -175,6 +175,7 @@ export type_is_structural;
 export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
+export type_is_unique;
 export type_owns_heap_mem;
 export type_autoderef;
 export type_param;
@@ -932,6 +933,10 @@ fn type_is_boxed(cx: &ctxt, ty: &t) -> bool {
       ty_box(_) { ret true; }
       _ { ret false; }
     }
+}
+
+fn type_is_unique(cx: &ctxt, ty: &t) -> bool {
+    alt struct(cx, ty) { ty_uniq(_) { ret true; } _ { ret false; } }
 }
 
 fn type_is_scalar(cx: &ctxt, ty: &t) -> bool {
