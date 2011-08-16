@@ -598,9 +598,9 @@ mod collect {
         if ty::type_has_dynamic_size(cx.tcx, tt) {
             alt ty_mode {
               mo_val. {
-                cx.tcx.sess.span_fatal(a.ty.span,
-                                       "Dynamically sized arguments \
-                                          must be passed by alias");
+                cx.tcx.sess.span_err(a.ty.span,
+                                     "Dynamically sized arguments \
+                                      must be passed by alias");
               }
               _ { }
             }
@@ -1776,7 +1776,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             let errmsg =
                 "binary operation " + binopstr +
                     " cannot be applied to type `" + t_str + "`";
-            fcx.ccx.tcx.sess.span_fatal(span, errmsg);
+            fcx.ccx.tcx.sess.span_err(span, errmsg);
         }
     }
 
@@ -1845,18 +1845,18 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
           ast::not. {
             if !type_is_integral(fcx, oper.span, oper_t) &&
                    structure_of(fcx, oper.span, oper_t) != ty::ty_bool {
-                tcx.sess.span_fatal(expr.span,
-                                    #fmt("mismatched types: expected bool \
-                                          or integer but found %s",
-                                         ty_to_str(tcx, oper_t)));
+                tcx.sess.span_err(expr.span,
+                                  #fmt("mismatched types: expected bool \
+                                        or integer but found %s",
+                                       ty_to_str(tcx, oper_t)));
             }
           }
           ast::neg. {
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
                  ty::type_is_fp(tcx, oper_t)) {
-                tcx.sess.span_fatal(expr.span, "applying unary minus to \
-                    non-numeric type " + ty_to_str(tcx, oper_t));
+                tcx.sess.span_err(expr.span, "applying unary minus to \
+                   non-numeric type " + ty_to_str(tcx, oper_t));
             }
           }
         }
@@ -1898,8 +1898,8 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
           none. {
             let nil = ty::mk_nil(tcx);
             if !are_compatible(fcx, fcx.ret_ty, nil) {
-                tcx.sess.span_fatal(expr.span,
-                                    "ret; in function returning non-nil");
+                tcx.sess.span_err(expr.span,
+                                  "ret; in function returning non-nil");
             }
           }
           some(e) {
@@ -1911,14 +1911,14 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
       ast::expr_put(expr_opt) {
         require_impure(tcx.sess, fcx.purity, expr.span);
         if (fcx.proto != ast::proto_iter) {
-            tcx.sess.span_fatal(expr.span, "put in non-iterator");
+            tcx.sess.span_err(expr.span, "put in non-iterator");
         }
         alt expr_opt {
           none. {
             let nil = ty::mk_nil(tcx);
             if !are_compatible(fcx, fcx.ret_ty, nil) {
-                tcx.sess.span_fatal(expr.span,
-                                    "put; in iterator yielding non-nil");
+                tcx.sess.span_err(expr.span,
+                                  "put; in iterator yielding non-nil");
             }
           }
           some(e) {
@@ -2172,10 +2172,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
 
         if !(type_is_scalar(fcx, expr.span, expr_ty(tcx, e)) &&
                  type_is_scalar(fcx, expr.span, t_1)) {
-            tcx.sess.span_fatal(expr.span,
-                                "non-scalar cast: " +
-                                ty_to_str(tcx, expr_ty(tcx, e))
-                                + " as " + ty_to_str(tcx, t_1));
+            tcx.sess.span_err(expr.span,
+                              "non-scalar cast: " +
+                              ty_to_str(tcx, expr_ty(tcx, e))
+                              + " as " + ty_to_str(tcx, t_1));
         }
         write::ty_only_fixup(fcx, id, t_1);
       }
@@ -2293,10 +2293,10 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         bot |= check_expr(fcx, idx);
         let idx_t = expr_ty(tcx, idx);
         if !type_is_integral(fcx, idx.span, idx_t) {
-            tcx.sess.span_fatal(idx.span,
-                                "mismatched types: expected \
-                                 integer but found "
-                                + ty_to_str(tcx, idx_t));
+            tcx.sess.span_err(idx.span,
+                              "mismatched types: expected \
+                               integer but found "
+                              + ty_to_str(tcx, idx_t));
         }
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
@@ -2600,8 +2600,8 @@ fn check_fn(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
         // This just checks that the declared type is bool, and trusts
         // that that's the actual return type.
         if !ty::type_is_bool(ccx.tcx, fcx.ret_ty) {
-            ccx.tcx.sess.span_fatal(body.span,
-                                    "Non-boolean return type in pred");
+            ccx.tcx.sess.span_err(body.span,
+                                  "Non-boolean return type in pred");
         }
       }
       _ { }
