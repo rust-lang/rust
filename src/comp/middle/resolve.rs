@@ -53,7 +53,7 @@ tag scope {
     scope_native_item(@ast::native_item);
     scope_loop(@ast::local); // there's only 1 decl per loop.
 
-    scope_block(ast::blk);
+    scope_block(ast::blk, @mutable uint, @mutable uint);
     scope_arm(ast::arm);
 }
 
@@ -254,6 +254,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
         @{visit_native_item: visit_native_item_with_scope,
           visit_item: visit_item_with_scope,
           visit_block: visit_block_with_scope,
+          visit_decl: visit_decl_with_scope,
           visit_arm: bind walk_arm(e, _, _, _),
           visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
@@ -353,7 +354,30 @@ fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &[ast::ty_param],
 }
 
 fn visit_block_with_scope(b: &ast::blk, sc: &scopes, v: &vt[scopes]) {
-    visit::visit_block(b, cons(scope_block(b), @sc), v);
+    let pos = @mutable 0u, loc = @mutable 0u;
+    let block_sc = cons(scope_block(b, pos, loc), @sc);
+    for stmt in b.node.stmts {
+        v.visit_stmt(stmt, block_sc, v);
+        *pos += 1u;
+        *loc = 0u;
+    }
+    visit::visit_expr_opt(b.node.expr, block_sc, v);
+}
+
+fn visit_decl_with_scope(d: &@decl, sc: &scopes, v: &vt[scopes]) {
+    let loc_pos = alt list::car(sc) {
+      scope_block(_, _, pos) { pos }
+      _ { @mutable 0u }
+    };
+    alt d.node {
+      decl_local(locs) {
+        for loc in locs {
+            v.visit_local(loc, sc, v);
+            *loc_pos += 1u;
+        }
+      }
+      decl_item(it) { v.visit_item(it, sc, v); }
+    }
 }
 
 fn visit_arm_with_scope(a: &ast::arm, sc: &scopes, v: &vt[scopes]) {
@@ -650,7 +674,9 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
                 }
             }
           }
-          scope_block(b) { ret lookup_in_block(name, b.node, ns); }
+          scope_block(b, pos, loc) {
+            ret lookup_in_block(name, b.node, *pos, *loc, ns);
+          }
           scope_arm(a) {
             if ns == ns_value {
                 ret option::map(ast::def_binding,
@@ -755,18 +781,26 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
     }
 }
 
-fn lookup_in_block(name: &ident, b: &ast::blk_, ns: namespace) ->
-   option::t[def] {
-    for st: @ast::stmt in b.stmts {
+fn lookup_in_block(name: &ident, b: &ast::blk_, pos: uint, loc_pos: uint,
+                   ns: namespace) -> option::t[def] {
+    let i = ivec::len(b.stmts);
+    while i > 0u {
+        i -= 1u;
+        let st = b.stmts.(i);
         alt st.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                for loc: @ast::local in locs {
-                    if ns == ns_value {
-                        alt lookup_in_pat(name, loc.node.pat) {
-                          some(did) { ret some(ast::def_local(did)); }
-                          _ {}
+                if i <= pos {
+                    let j = ivec::len(locs);
+                    while j > 0u {
+                        j -= 1u;
+                        let loc = locs.(j);
+                        if ns == ns_value && (i < pos || j < loc_pos) {
+                            alt lookup_in_pat(name, loc.node.pat) {
+                              some(did) { ret some(ast::def_local(did)); }
+                              _ {}
+                            }
                         }
                     }
                 }
@@ -1272,8 +1306,13 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt[()]) {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locs) {
-                for loc: @ast::local in locs {
-                    check_pat(values, loc.node.pat);
+                let local_values = checker(*e, "value");
+                for loc in locs {
+                    for each p in ast::pat_bindings(loc.node.pat) {
+                        let ident = alt p.node { pat_bind(n) { n } };
+                        add_name(local_values, p.span, ident);
+                        check_name(values, p.span, ident);
+                    }
                 }
               }
               ast::decl_item(it) {
@@ -1339,12 +1378,15 @@ fn checker(e: &env, kind: str) -> checker {
     ret @{mutable seen: seen, kind: kind, sess: e.sess};
 }
 
-fn add_name(ch: &checker, sp: &span, name: &ident) {
+fn check_name(ch: &checker, sp: &span, name: &ident) {
     for s: ident in ch.seen {
         if str::eq(s, name) {
             ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
         }
     }
+}
+fn add_name(ch: &checker, sp: &span, name: &ident) {
+    check_name(ch, sp, name);
     ch.seen += ~[name];
 }
 
