@@ -33,7 +33,7 @@ The 3 central data structures:
     structure:
 
       - Many -- though not all -- nodes within this data structure are
-        wrapped in the type spanned[T], meaning that the front-end has
+        wrapped in the type spanned<T>, meaning that the front-end has
         marked the input coordinates of that node. The member .node is
         the data itself, the member .span is the input location (file,
         line, column; both low and high).

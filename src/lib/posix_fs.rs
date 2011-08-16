@@ -17,14 +17,14 @@ fn list_dir(path: str) -> [str] {
     /*
     auto dir = os::libc::opendir(str::buf(path));
     assert (dir as uint != 0u);
-    let vec[str] result = [];
+    let vec<str> result = [];
     while (true) {
         auto ent = os::libc::readdir(dir);
         if (ent as int == 0) {
             os::libc::closedir(dir);
             ret result;
         }
-        vec::push[str](result, rustrt::rust_dirent_filename(ent));
+        vec::push::<str>(result, rustrt::rust_dirent_filename(ent));
     }
     os::libc::closedir(dir);
     ret result;

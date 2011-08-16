@@ -4,13 +4,13 @@ fn foo(c: [int]) {
     let b: [int] = ~[];
 
 
-    alt none[int] {
-      some[int](_) { for i: int in c { log a; let a = 17; b += ~[a]; } }
+    alt none::<int> {
+        some::<int>(_) { for i: int in c { log a; let a = 17; b += ~[a]; } }
       _ {}
     }
 }
 
-tag t[T] { none; some(T); }
+tag t<T> { none; some(T); }
 
 fn main() {
     let x = 10;

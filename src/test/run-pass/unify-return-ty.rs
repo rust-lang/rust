@@ -4,8 +4,8 @@
 use std;
 import std::unsafe;
 
-fn null[T]() -> *T { unsafe::reinterpret_cast(0) }
+fn null<T>() -> *T { unsafe::reinterpret_cast(0) }
 
 fn main() {
-    null[int]();
+    null::<int>();
 }

@@ -3,11 +3,11 @@ import str::sbuf;
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-fn getenv(n: str) -> option::t[str] {
+fn getenv(n: str) -> option::t<str> {
     let s = os::libc::getenv(str::buf(n));
     ret if s as int == 0 {
-            option::none[str]
-        } else { option::some[str](str::str_from_cstr(s)) };
+            option::none::<str>
+        } else { option::some::<str>(str::str_from_cstr(s)) };
 }
 
 #[cfg(target_os = "linux")]
@@ -19,7 +19,7 @@ fn setenv(n: str, v: str) {
 }
 
 #[cfg(target_os = "win32")]
-fn getenv(n: str) -> option::t[str] {
+fn getenv(n: str) -> option::t<str> {
     let nbuf = str::buf(n);
     let nsize = 256u;
     while true {

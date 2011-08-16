@@ -39,9 +39,9 @@ type res_info = { did: ast::def_id, t: ty::t };
 type ctxt = {
     mutable next_tag_id: u16,
     pad: u16,
-    tag_id_to_index: hashmap[ast::def_id,u16],
+    tag_id_to_index: hashmap<ast::def_id,u16>,
     mutable tag_order: [ast::def_id],
-    resources: interner::interner[res_info],
+    resources: interner::interner<res_info>,
     llshapetablesty: TypeRef,
     llshapetables: ValueRef
 };

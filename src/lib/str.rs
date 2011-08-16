@@ -65,7 +65,7 @@ native "rust" mod rustrt {
     fn str_from_buf(buf: sbuf, len: uint) -> str;
     fn str_push_byte(s: str, byte: uint) -> str;
     fn str_slice(s: str, begin: uint, end: uint) -> str;
-    fn refcount[T](s: str) -> uint;
+    fn refcount<T>(s: str) -> uint;
 }
 
 fn eq(a: &str, b: &str) -> bool {
@@ -132,7 +132,7 @@ const tag_six_b: uint = 252u;
 
 fn is_utf8(v: &[u8]) -> bool {
     let i = 0u;
-    let total = vec::len[u8](v);
+    let total = vec::len::<u8>(v);
     while i < total {
         let chsize = utf8_char_width(v.(i));
         if chsize == 0u { ret false; }
@@ -329,7 +329,7 @@ fn shift_char(s: &mutable str) -> char {
 fn unshift_char(s: &mutable str, ch: char) { s = from_char(ch) + s; }
 
 fn refcount(s: str) -> uint {
-    let r = rustrt::refcount[u8](s);
+    let r = rustrt::refcount::<u8>(s);
     if r == dbg::const_refcount { ret r; } else { ret r - 1u; }
 }
 

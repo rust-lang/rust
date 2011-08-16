@@ -2,10 +2,10 @@
 use std;
 
 fn check_sort(v1: &[int], v2: &[int]) {
-    let len = std::vec::len[int](v1);
+    let len = std::vec::len::<int>(v1);
     fn lteq(a: &int, b: &int) -> bool { ret a <= b; }
     let f = lteq;
-    let v3 = std::sort::merge_sort[int](f, v1);
+    let v3 = std::sort::merge_sort::<int>(f, v1);
     let i = 0u;
     while i < len { log v3.(i); assert (v3.(i) == v2.(i)); i += 1u; }
 }

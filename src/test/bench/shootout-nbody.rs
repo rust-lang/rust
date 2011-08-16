@@ -27,7 +27,7 @@ fn main() {
 }
 
 // Body::props is a record of floats, so
-// vec[Body::props] is a vector of records of floats
+// vec<Body::props> is a vector of records of floats
 
 mod NBodySystem {
 

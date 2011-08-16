@@ -45,7 +45,7 @@ fn find_attrs_by_name(attrs: &[ast::attribute], name: ast::ident) ->
    [ast::attribute] {
     let filter =
         bind fn (a: &ast::attribute, name: ast::ident) ->
-                option::t[ast::attribute] {
+                option::t<ast::attribute> {
                  if get_attr_name(a) == name {
                      option::some(a)
                  } else { option::none }
@@ -61,7 +61,7 @@ fn find_meta_items_by_name(metas: &[@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
     let filter =
         bind fn (m: &@ast::meta_item, name: ast::ident) ->
-                option::t[@ast::meta_item] {
+                option::t<@ast::meta_item> {
                  if get_meta_item_name(m) == name {
                      option::some(m)
                  } else { option::none }
@@ -79,7 +79,7 @@ fn get_meta_item_name(meta: &@ast::meta_item) -> ast::ident {
 
 // Gets the string value if the meta_item is a meta_name_value variant
 // containing a string, otherwise none
-fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t[str] {
+fn get_meta_item_value_str(meta: &@ast::meta_item) -> option::t<str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node {
@@ -167,7 +167,7 @@ fn remove_meta_items_by_name(items: &[@ast::meta_item], name: str) ->
 
     let filter =
         bind fn (item: &@ast::meta_item, name: str) ->
-                option::t[@ast::meta_item] {
+                option::t<@ast::meta_item> {
                  if get_meta_item_name(item) != name {
                      option::some(item)
                  } else { option::none }
@@ -178,7 +178,7 @@ fn remove_meta_items_by_name(items: &[@ast::meta_item], name: str) ->
 
 fn require_unique_names(sess: &session::session,
                         metas: &[@ast::meta_item]) {
-    let map = map::mk_hashmap[str, ()](str::hash, str::eq);
+    let map = map::mk_hashmap::<str, ()>(str::hash, str::eq);
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
@@ -189,7 +189,7 @@ fn require_unique_names(sess: &session::session,
     }
 }
 
-fn span[T](item: &T) -> ast::spanned[T] {
+fn span<T>(item: &T) -> ast::spanned<T> {
     ret {node: item, span: ast::mk_sp(0u, 0u)};
 }
 

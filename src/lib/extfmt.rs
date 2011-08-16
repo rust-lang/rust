@@ -60,7 +60,7 @@ mod ct {
 
     // A formatted conversion from an expression to a string
     type conv =
-        {param: option::t[int],
+        {param: option::t<int>,
          flags: [flag],
          width: count,
          precision: count,
@@ -105,7 +105,7 @@ mod ct {
         ret pieces;
     }
     fn peek_num(s: str, i: uint, lim: uint) ->
-       option::t[{num: uint, next: uint}] {
+       option::t<{num: uint, next: uint}> {
         if i >= lim { ret none; }
         let c = s.(i);
         if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
@@ -135,7 +135,7 @@ mod ct {
              next: ty.next};
     }
     fn parse_parameter(s: str, i: uint, lim: uint) ->
-       {param: option::t[int], next: uint} {
+       {param: option::t<int>, next: uint} {
         if i >= lim { ret {param: none, next: i}; }
         let num = peek_num(s, i, lim);
         ret alt num {
@@ -372,7 +372,7 @@ mod rt {
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
     fn str_init_elt(c: char, n_elts: uint) -> str {
-        let svec = vec::init_elt[u8](c as u8, n_elts);
+        let svec = vec::init_elt::<u8>(c as u8, n_elts);
 
         ret str::unsafe_from_bytes(svec);
     }

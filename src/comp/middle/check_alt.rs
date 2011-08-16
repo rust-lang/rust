@@ -5,12 +5,12 @@ fn check_crate(tcx: &ty::ctxt, crate: &@crate) {
     let v =
         @{visit_expr: bind check_expr(tcx, _, _, _),
           visit_local: bind check_local(tcx, _, _, _)
-          with *visit::default_visitor[()]()};
+          with *visit::default_visitor::<()>()};
     visit::visit_crate(*crate, (), visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
 
-fn check_expr(tcx: &ty::ctxt, ex: &@expr, s: &(), v: &visit::vt[()]) {
+fn check_expr(tcx: &ty::ctxt, ex: &@expr, s: &(), v: &visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node { expr_alt(_, arms) { check_arms(tcx, arms); } _ { } }
 }
@@ -99,7 +99,7 @@ fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
     }
 }
 
-fn check_local(tcx: &ty::ctxt, loc: &@local, s: &(), v: &visit::vt[()]) {
+fn check_local(tcx: &ty::ctxt, loc: &@local, s: &(), v: &visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,

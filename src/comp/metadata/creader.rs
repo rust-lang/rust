@@ -32,7 +32,7 @@ export list_file_metadata;
 fn read_crates(sess: session::session, crate: &ast::crate) {
     let e =
         @{sess: sess,
-          crate_cache: @std::map::new_str_hash[int](),
+          crate_cache: @std::map::new_str_hash::<int>(),
           library_search_paths: sess.get_opts().library_search_paths,
           mutable next_crate_num: 1};
     let v =
@@ -45,7 +45,7 @@ fn read_crates(sess: session::session, crate: &ast::crate) {
 
 type env =
     @{sess: session::session,
-      crate_cache: @hashmap[str, int],
+      crate_cache: @hashmap<str, int>,
       library_search_paths: [str],
       mutable next_crate_num: ast::crate_num};
 
@@ -118,7 +118,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 fn find_library_crate(sess: &session::session, ident: &ast::ident,
                       metas: &[@ast::meta_item],
                       library_search_paths: &[str]) ->
-   option::t[{ident: str, data: @[u8]}] {
+   option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
 
@@ -148,7 +148,7 @@ fn find_library_crate(sess: &session::session, ident: &ast::ident,
 fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
                           metas: &[@ast::meta_item],
                           library_search_paths: &[str]) ->
-   option::t[{ident: str, data: @[u8]}] {
+   option::t<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name;
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
@@ -183,10 +183,10 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
     ret none;
 }
 
-fn get_metadata_section(filename: str) -> option::t[@[u8]] {
+fn get_metadata_section(filename: str) -> option::t<@[u8]> {
     let b = str::buf(filename);
     let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(b);
-    if mb as int == 0 { ret option::none[@[u8]]; }
+    if mb as int == 0 { ret option::none::<@[u8]>; }
     let of = mk_object_file(mb);
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
@@ -196,11 +196,11 @@ fn get_metadata_section(filename: str) -> option::t[@[u8]] {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi);
             let cvbuf: *u8 = std::unsafe::reinterpret_cast(cbuf);
-            ret option::some[@[u8]](@vec::unsafe::from_buf(cvbuf, csz));
+            ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
-    ret option::none[@[u8]];
+    ret option::none::<@[u8]>;
 }
 
 fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
@@ -249,7 +249,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
     log "resolving deps of external crate";
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let cnum_map = new_int_hash[ast::crate_num]();
+    let cnum_map = new_int_hash::<ast::crate_num>();
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;

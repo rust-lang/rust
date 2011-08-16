@@ -10,7 +10,7 @@ fn main() {
     grow(v);
     grow(v);
     grow(v);
-    let len = std::vec::len[int](v);
+    let len = std::vec::len::<int>(v);
     log len;
     assert (len == 3 as uint);
 }

@@ -75,7 +75,7 @@ type a_f =
      new_span: fn(&span) -> span};
 
 
-//fn nf_dummy[T](&T node) -> T { fail; }
+//fn nf_dummy<T>(&T node) -> T { fail; }
 fn nf_crate_dummy(c: &crate) -> crate { fail; }
 fn nf_crate_directive_dummy(c: &@crate_directive) -> @crate_directive {
     fail;
@@ -488,16 +488,16 @@ fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
     ret {ty: fld.fold_ty(l.ty),
          pat: fld.fold_pat(l.pat),
          init: alt l.init {
-           option::none[initializer]. { l.init }
-           option::some[initializer](init) {
-             option::some[initializer]({op: init.op,
+           option::none::<initializer>. { l.init }
+           option::some::<initializer>(init) {
+             option::some::<initializer>({op: init.op,
                                         expr: fld.fold_expr(init.expr)})
            }
          },
          id: l.id};
 }
 
-/* temporarily eta-expand because of a compiler bug with using `fn[T]` as a
+/* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
 fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
     ret vec::map(f, es);

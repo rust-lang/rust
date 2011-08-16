@@ -75,10 +75,10 @@ type tydesc_info =
      tydesc: ValueRef,
      size: ValueRef,
      align: ValueRef,
-     mutable copy_glue: option::t[ValueRef],
-     mutable drop_glue: option::t[ValueRef],
-     mutable free_glue: option::t[ValueRef],
-     mutable cmp_glue: option::t[ValueRef],
+     mutable copy_glue: option::t<ValueRef>,
+     mutable drop_glue: option::t<ValueRef>,
+     mutable free_glue: option::t<ValueRef>,
+     mutable cmp_glue: option::t<ValueRef>,
      ty_params: [uint]};
 
 /*
@@ -110,32 +110,32 @@ type crate_ctxt = {
     llmod: ModuleRef,
     td: target_data,
     tn: type_names,
-    externs: hashmap[str, ValueRef],
-    intrinsics: hashmap[str, ValueRef],
+    externs: hashmap<str, ValueRef>,
+    intrinsics: hashmap<str, ValueRef>,
 
     // A mapping from the def_id of each item in this crate to the address
     // of the first instruction of the item's definition in the executable
     // we're generating.
-    item_ids: hashmap[ast::node_id, ValueRef],
+    item_ids: hashmap<ast::node_id, ValueRef>,
     ast_map: ast_map::map,
-    item_symbols: hashmap[ast::node_id, str],
-    mutable main_fn: option::t[ValueRef],
+    item_symbols: hashmap<ast::node_id, str>,
+    mutable main_fn: option::t<ValueRef>,
     link_meta: link::link_meta,
-    // TODO: hashmap[tup(tag_id,subtys), @tag_info]
-    tag_sizes: hashmap[ty::t, uint],
-    discrims: hashmap[ast::node_id, ValueRef],
-    discrim_symbols: hashmap[ast::node_id, str],
-    fn_pairs: hashmap[ast::node_id, ValueRef],
-    consts: hashmap[ast::node_id, ValueRef],
-    obj_methods: hashmap[ast::node_id, ()],
-    tydescs: hashmap[ty::t, @tydesc_info],
-    module_data: hashmap[str, ValueRef],
-    lltypes: hashmap[ty::t, TypeRef],
+    // TODO: hashmap<tup(tag_id,subtys), @tag_info>
+    tag_sizes: hashmap<ty::t, uint>,
+    discrims: hashmap<ast::node_id, ValueRef>,
+    discrim_symbols: hashmap<ast::node_id, str>,
+    fn_pairs: hashmap<ast::node_id, ValueRef>,
+    consts: hashmap<ast::node_id, ValueRef>,
+    obj_methods: hashmap<ast::node_id, ()>,
+    tydescs: hashmap<ty::t, @tydesc_info>,
+    module_data: hashmap<str, ValueRef>,
+    lltypes: hashmap<ty::t, TypeRef>,
     glues: @glue_fns,
     names: namegen,
     sha: std::sha1::sha1,
-    type_sha1s: hashmap[ty::t, str],
-    type_short_names: hashmap[ty::t, str],
+    type_sha1s: hashmap<ty::t, str>,
+    type_short_names: hashmap<ty::t, str>,
     tcx: ty::ctxt,
     stats: stats,
     upcalls: @upcall::upcalls,
@@ -216,41 +216,41 @@ type fn_ctxt = {
 
     // The 'self' object currently in use in this function, if there
     // is one.
-    mutable llself: option::t[val_self_pair],
+    mutable llself: option::t<val_self_pair>,
 
     // If this function is actually a iter, a block containing the
     // code called whenever the iter calls 'put'.
-    mutable lliterbody: option::t[ValueRef],
+    mutable lliterbody: option::t<ValueRef>,
 
     // If this function is actually a iter, the type of the function
     // that that we call when we call 'put'. Having to track this is
     // pretty irritating. We have to do it because we need the type if
     // we are going to put the iterbody into a closure (if it appears
     // in a for-each inside of an iter).
-    mutable iterbodyty: option::t[ty::t],
+    mutable iterbodyty: option::t<ty::t>,
 
     // The next four items: hash tables mapping from AST def_ids to
     // LLVM-stuff-in-the-frame.
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: hashmap[ast::node_id, ValueRef],
+    llargs: hashmap<ast::node_id, ValueRef>,
 
     // Maps fields in objects to pointers into the interior of
     // llself's body.
-    llobjfields: hashmap[ast::node_id, ValueRef],
+    llobjfields: hashmap<ast::node_id, ValueRef>,
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: hashmap[ast::node_id, ValueRef],
+    lllocals: hashmap<ast::node_id, ValueRef>,
 
     // The same as above, but for variables accessed via the frame
     // pointer we pass into an iter, for access to the static
     // environment of the iter-calling frame.
-    llupvars: hashmap[ast::node_id, ValueRef],
+    llupvars: hashmap<ast::node_id, ValueRef>,
 
     // For convenience, a vector of the incoming tydescs for each of
     // this functions type parameters, fetched via llvm::LLVMGetParam.
-    // For example, for a function foo[A, B, C](), lltydescs contains
+    // For example, for a function foo::<A, B, C>(), lltydescs contains
     // the ValueRefs for the tydescs for A, B, and C.
     mutable lltydescs: [ValueRef],
 
@@ -263,7 +263,7 @@ type fn_ctxt = {
     // when information about both "[T]" and "T" are available.  When
     // such a tydesc is created, we cache it in the derived_tydescs
     // table for the next time that such a tydesc is needed.
-    derived_tydescs: hashmap[ty::t, derived_tydesc_info],
+    derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -350,7 +350,7 @@ tag block_kind {
     // which block to jump to in the case of "continue" or "break", with the
     // "continue" block optional, because "while" and "do while" don't support
     // "continue" (TODO: is this intentional?)
-    LOOP_SCOPE_BLOCK(option::t[@block_ctxt], @block_ctxt);
+    LOOP_SCOPE_BLOCK(option::t<@block_ctxt>, @block_ctxt);
 
 
     // A non-scope block is a basic block created as a translation artifact
@@ -397,7 +397,7 @@ type block_ctxt = {
     fcx: @fn_ctxt
 };
 
-// FIXME: we should be able to use option::t[@block_parent] here but
+// FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.
 tag block_parent { parent_none; parent_some(@block_ctxt); }
 
@@ -510,7 +510,7 @@ fn T_size_t() -> TypeRef {
 
 fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     ret llvm::LLVMFunctionType(output, std::vec::to_ptr(inputs),
-                               std::vec::len[TypeRef](inputs), False);
+                               std::vec::len::<TypeRef>(inputs), False);
 }
 
 fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
@@ -570,9 +570,9 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        std::vec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
+        std::vec::init_elt::<TypeRef>(T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
-                                    std::vec::to_ptr[TypeRef](tydesc_elts));
+                                    std::vec::to_ptr::<TypeRef>(tydesc_elts));
     let t = llvm::LLVMGetElementType(tydesc_elts.(field));
     ret t;
 }
@@ -742,7 +742,7 @@ fn T_opaque_tag_ptr(tn: &type_names) -> TypeRef {
 }
 
 fn T_captured_tydescs(cx: &crate_ctxt, n: uint) -> TypeRef {
-    ret T_struct(std::vec::init_elt[TypeRef](T_ptr(cx.tydesc_type), n));
+    ret T_struct(std::vec::init_elt::<TypeRef>(T_ptr(cx.tydesc_type), n));
 }
 
 fn T_obj_ptr(cx: &crate_ctxt, n_captured_tydescs: uint) -> TypeRef {

@@ -199,14 +199,14 @@ type method =
      cf: controlflow,
      constrs: [@constr]};
 
-type constr_table = hashmap[ast::node_id, [constr]];
+type constr_table = hashmap<ast::node_id, [constr]>;
 
 type mt = {ty: t, mut: ast::mutability};
 
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type creader_cache = hashmap[{cnum: int, pos: uint, len: uint}, ty::t];
+type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, ty::t>;
 
 type ctxt =
 
@@ -219,11 +219,11 @@ type ctxt =
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
-      short_names_cache: hashmap[t, str],
-      has_pointer_cache: hashmap[t, bool],
-      kind_cache: hashmap[t, ast::kind],
-      owns_heap_mem_cache: hashmap[t, bool],
-      ast_ty_to_ty_cache: hashmap[@ast::ty, option::t[t]]};
+      short_names_cache: hashmap<t, str>,
+      has_pointer_cache: hashmap<t, bool>,
+      kind_cache: hashmap<t, ast::kind>,
+      owns_heap_mem_cache: hashmap<t, bool>,
+      ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>};
 
 type ty_ctxt = ctxt;
 
@@ -239,7 +239,7 @@ fn method_ty_to_fn_ty(cx: &ctxt, m: method) -> t {
 // Never construct these manually. These are interned.
 type raw_t =
     {struct: sty,
-     cname: option::t[str],
+     cname: option::t<str>,
      hash: uint,
      has_params: bool,
      has_vars: bool};
@@ -284,9 +284,9 @@ tag sty {
 
 // In the middle end, constraints have a def_id attached, referring
 // to the definition of the operator in the constraint.
-type constr_general[ARG] = spanned[constr_general_[ARG, def_id]];
-type type_constr = constr_general[path];
-type constr = constr_general[uint];
+type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
+type type_constr = constr_general<path>;
+type constr = constr_general<uint>;
 
 // Data structures used in type unification
 tag type_err {
@@ -308,7 +308,7 @@ tag type_err {
 
 type ty_param_kinds_and_ty = {kinds: [ast::kind], ty: t};
 
-type type_cache = hashmap[ast::def_id, ty_param_kinds_and_ty];
+type type_cache = hashmap<ast::def_id, ty_param_kinds_and_ty>;
 
 const idx_nil: uint = 0u;
 
@@ -352,12 +352,12 @@ const idx_bot: uint = 19u;
 
 const idx_first_others: uint = 20u;
 
-type type_store = interner::interner[@raw_t];
+type type_store = interner::interner<@raw_t>;
 
-type ty_param_substs_opt_and_ty = {substs: option::t[[ty::t]], ty: ty::t};
+type ty_param_substs_opt_and_ty = {substs: option::t<[ty::t]>, ty: ty::t};
 
 type node_type_table =
-    @smallintmap::smallintmap[ty::ty_param_substs_opt_and_ty];
+    @smallintmap::smallintmap<ty::ty_param_substs_opt_and_ty>;
 
 fn populate_type_store(cx: &ctxt) {
     intern(cx, ty_nil, none);
@@ -398,9 +398,9 @@ fn mk_rcache() -> creader_cache {
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
-        @smallintmap::mk[ty::ty_param_substs_opt_and_ty]();
-    let tcache = new_def_hash[ty::ty_param_kinds_and_ty]();
-    let ts = @interner::mk[@raw_t](hash_raw_ty, eq_raw_ty);
+        @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
+    let tcache = new_def_hash::<ty::ty_param_kinds_and_ty>();
+    let ts = @interner::mk::<@raw_t>(hash_raw_ty, eq_raw_ty);
     let cx =
         @{ts: ts,
           sess: s,
@@ -421,14 +421,14 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
 
 
 // Type constructors
-fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
+fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t<str>) -> @raw_t {
     let cname = none;
     let h = hash_type_info(st, cname);
     let has_params: bool = false;
     let has_vars: bool = false;
     fn derive_flags_t(cx: &ctxt, has_params: &mutable bool,
                       has_vars: &mutable bool, tt: &t) {
-        let rt = interner::get[@raw_t](*cx.ts, tt);
+        let rt = interner::get::<@raw_t>(*cx.ts, tt);
         has_params = has_params || rt.has_params;
         has_vars = has_vars || rt.has_vars;
     }
@@ -502,11 +502,11 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
           has_vars: has_vars};
 }
 
-fn intern(cx: &ctxt, st: &sty, cname: &option::t[str]) {
+fn intern(cx: &ctxt, st: &sty, cname: &option::t<str>) {
     interner::intern(*cx.ts, mk_raw_ty(cx, st, cname));
 }
 
-fn gen_ty_full(cx: &ctxt, st: &sty, cname: &option::t[str]) -> t {
+fn gen_ty_full(cx: &ctxt, st: &sty, cname: &option::t<str>) -> t {
     let raw_type = mk_raw_ty(cx, st, cname);
     ret interner::intern(*cx.ts, raw_type);
 }
@@ -621,7 +621,7 @@ fn struct(cx: &ctxt, typ: &t) -> sty {
 
 
 // Returns the canonical name of the given type.
-fn cname(cx: &ctxt, typ: &t) -> option::t[str] {
+fn cname(cx: &ctxt, typ: &t) -> option::t<str> {
     ret interner::get(*cx.ts, typ).cname;
 }
 
@@ -1148,7 +1148,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_istr. { ret false; }
       ty_tag(_, subtys) {
         let i = 0u;
-        while i < vec::len[t](subtys) {
+        while i < vec::len::<t>(subtys) {
             if type_has_dynamic_size(cx, subtys.(i)) { ret true; }
             i += 1u;
         }
@@ -1160,7 +1160,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_ptr(_) { ret false; }
       ty_rec(fields) {
         let i = 0u;
-        while i < vec::len[field](fields) {
+        while i < vec::len::<field>(fields) {
             if type_has_dynamic_size(cx, fields.(i).mt.ty) { ret true; }
             i += 1u;
         }
@@ -1363,7 +1363,7 @@ fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
     ret result;
 }
 
-fn type_param(cx: &ctxt, ty: &t) -> option::t[uint] {
+fn type_param(cx: &ctxt, ty: &t) -> option::t<uint> {
     alt struct(cx, ty) {
       ty_param(id,_) { ret some(id); }
       _ {/* fall through */ }
@@ -1536,7 +1536,7 @@ fn hash_type_structure(st: &sty) -> uint {
     }
 }
 
-fn hash_type_info(st: &sty, cname_opt: &option::t[str]) -> uint {
+fn hash_type_info(st: &sty, cname_opt: &option::t<str>) -> uint {
     let h = hash_type_structure(st);
     alt cname_opt {
       none. {/* no-op */ }
@@ -1554,8 +1554,8 @@ fn hash_ty(typ: &t) -> uint { ret typ; }
 // users should use `eq_ty()` instead.
 fn eq_int(x: &uint, y: &uint) -> bool { ret x == y; }
 
-fn arg_eq[T](eq: &fn(&T, &T) -> bool , a: @sp_constr_arg[T],
-             b: @sp_constr_arg[T]) -> bool {
+fn arg_eq<T>(eq: &fn(&T, &T) -> bool , a: @sp_constr_arg<T>,
+             b: @sp_constr_arg<T>) -> bool {
     alt a.node {
       ast::carg_base. {
         alt b.node { ast::carg_base. { ret true; } _ { ret false; } }
@@ -1569,10 +1569,10 @@ fn arg_eq[T](eq: &fn(&T, &T) -> bool , a: @sp_constr_arg[T],
     }
 }
 
-fn args_eq[T](eq: fn(&T, &T) -> bool , a: &[@sp_constr_arg[T]],
-              b: &[@sp_constr_arg[T]]) -> bool {
+fn args_eq<T>(eq: fn(&T, &T) -> bool , a: &[@sp_constr_arg<T>],
+              b: &[@sp_constr_arg<T>]) -> bool {
     let i: uint = 0u;
-    for arg: @sp_constr_arg[T] in a {
+    for arg: @sp_constr_arg<T> in a {
         if !arg_eq(eq, arg, b.(i)) { ret false; }
         i += 1u;
     }
@@ -1599,8 +1599,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
     fn equal_fn(args_a: &[arg], rty_a: &t, args_b: &[arg], rty_b: &t) ->
        bool {
         if !eq_ty(rty_a, rty_b) { ret false; }
-        let len = vec::len[arg](args_a);
-        if len != vec::len[arg](args_b) { ret false; }
+        let len = vec::len::<arg>(args_a);
+        if len != vec::len::<arg>(args_b) { ret false; }
         let i = 0u;
         while i < len {
             let arg_a = args_a.(i);
@@ -1636,8 +1636,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
         alt b {
           ty_tag(id_b, tys_b) {
             if !equal_def(id_a, id_b) { ret false; }
-            let len = vec::len[t](tys_a);
-            if len != vec::len[t](tys_b) { ret false; }
+            let len = vec::len::<t>(tys_a);
+            if len != vec::len::<t>(tys_b) { ret false; }
             let i = 0u;
             while i < len {
                 if !eq_ty(tys_a.(i), tys_b.(i)) { ret false; }
@@ -1663,8 +1663,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_rec(flds_a) {
         alt b {
           ty_rec(flds_b) {
-            let len = vec::len[field](flds_a);
-            if len != vec::len[field](flds_b) { ret false; }
+            let len = vec::len::<field>(flds_a);
+            if len != vec::len::<field>(flds_b) { ret false; }
             let i = 0u;
             while i < len {
                 let fld_a = flds_a.(i);
@@ -1716,8 +1716,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_obj(methods_a) {
         alt b {
           ty_obj(methods_b) {
-            let len = vec::len[method](methods_a);
-            if len != vec::len[method](methods_b) { ret false; }
+            let len = vec::len::<method>(methods_a);
+            if len != vec::len::<method>(methods_b) { ret false; }
             let i = 0u;
             while i < len {
                 let m_a = methods_a.(i);
@@ -1874,7 +1874,7 @@ fn count_ty_params(cx: &ctxt, ty: t) -> uint {
     let param_indices: @mutable [uint] = @mutable ~[];
     let f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
-    ret vec::len[uint](*param_indices);
+    ret vec::len::<uint>(*param_indices);
 }
 
 fn type_contains_vars(cx: &ctxt, typ: &t) -> bool {
@@ -1995,7 +1995,7 @@ fn sort_methods(meths: &[method]) -> [method] {
     fn method_lteq(a: &method, b: &method) -> bool {
         ret str::lteq(a.ident, b.ident);
     }
-    ret std::sort::merge_sort[method](bind method_lteq(_, _), meths);
+    ret std::sort::merge_sort::<method>(bind method_lteq(_, _), meths);
 }
 
 fn is_lval(expr: &@ast::expr) -> bool {
@@ -2008,7 +2008,7 @@ fn is_lval(expr: &@ast::expr) -> bool {
     }
 }
 
-fn occurs_check_fails(tcx: &ctxt, sp: &option::t[span], vid: int, rt: &t)
+fn occurs_check_fails(tcx: &ctxt, sp: &option::t<span>, vid: int, rt: &t)
     -> bool {
     if (!type_contains_vars(tcx, rt)) {
         // Fast path
@@ -2066,12 +2066,12 @@ mod unify {
 
     }
     type var_bindings =
-        {sets: ufind::ufind, types: smallintmap::smallintmap[t]};
+        {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
     type ctxt = {vb: @var_bindings, tcx: ty_ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
-        ret @{sets: ufind::make(), types: smallintmap::mk[t]()};
+        ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
     }
 
     // Unifies two sets.
@@ -2084,7 +2084,7 @@ mod unify {
             bind fn (cx: &@ctxt, t: t, set_a: uint, set_b: uint) {
                      ufind::union(cx.vb.sets, set_a, set_b);
                      let root_c: uint = ufind::find(cx.vb.sets, set_a);
-                     smallintmap::insert[t](cx.vb.types, root_c, t);
+                     smallintmap::insert::<t>(cx.vb.types, root_c, t);
                  }(_, _, set_a, set_b);
 
 
@@ -2115,7 +2115,7 @@ mod unify {
         ufind::grow(cx.vb.sets, (key as uint) + 1u);
         let root = ufind::find(cx.vb.sets, key as uint);
         let result_type = typ;
-        alt smallintmap::find[t](cx.vb.types, root) {
+        alt smallintmap::find::<t>(cx.vb.types, root) {
           some(old_type) {
             alt unify_step(cx, old_type, typ) {
               ures_ok(unified_type) { result_type = unified_type; }
@@ -2124,7 +2124,7 @@ mod unify {
           }
           none. {/* fall through */ }
         }
-        smallintmap::insert[t](cx.vb.types, root, result_type);
+        smallintmap::insert::<t>(cx.vb.types, root, result_type);
         ret ures_ok(typ);
     }
 
@@ -2198,7 +2198,7 @@ mod unify {
 
     // Unifies two mutability flags.
     fn unify_mut(expected: ast::mutability, actual: ast::mutability) ->
-       option::t[ast::mutability] {
+       option::t<ast::mutability> {
         if expected == actual { ret some(expected); }
         if expected == ast::maybe_mut { ret some(actual); }
         if actual == ast::maybe_mut { ret some(expected); }
@@ -2212,8 +2212,8 @@ mod unify {
                        expected_inputs: &[arg], expected_output: &t,
                        actual_inputs: &[arg], actual_output: &t) ->
        fn_common_res {
-        let expected_len = vec::len[arg](expected_inputs);
-        let actual_len = vec::len[arg](actual_inputs);
+        let expected_len = vec::len::<arg>(expected_inputs);
+        let actual_len = vec::len::<arg>(actual_inputs);
         if expected_len != actual_len {
             ret fn_common_res_err(ures_err(terr_arg_count));
         }
@@ -2309,8 +2309,8 @@ mod unify {
        result {
         let result_meths: [method] = ~[];
         let i: uint = 0u;
-        let expected_len: uint = vec::len[method](expected_meths);
-        let actual_len: uint = vec::len[method](actual_meths);
+        let expected_len: uint = vec::len::<method>(expected_meths);
+        let actual_len: uint = vec::len::<method>(actual_meths);
         if expected_len != actual_len { ret ures_err(terr_meth_count); }
         while i < expected_len {
             let e_meth = expected_meths.(i);
@@ -2350,7 +2350,7 @@ mod unify {
                 ret fix_err(vid);
             }
             let root_id = ufind::find(vb.sets, vid as uint);
-            alt smallintmap::find[t](vb.types, root_id) {
+            alt smallintmap::find::<t>(vb.types, root_id) {
               none. { ret fix_err(vid); }
               some(rt) { ret fix_ok(rt); }
             }
@@ -2451,7 +2451,7 @@ mod unify {
                 // TODO: factor this cruft out
                 let result_tps: [t] = ~[];
                 let i = 0u;
-                let expected_len = vec::len[t](expected_tps);
+                let expected_len = vec::len::<t>(expected_tps);
                 while i < expected_len {
                     let expected_tp = expected_tps.(i);
                     let actual_tp = actual_tps.(i);
@@ -2592,8 +2592,8 @@ mod unify {
           ty::ty_rec(expected_fields) {
             alt struct(cx.tcx, actual) {
               ty::ty_rec(actual_fields) {
-                let expected_len = vec::len[field](expected_fields);
-                let actual_len = vec::len[field](actual_fields);
+                let expected_len = vec::len::<field>(expected_fields);
+                let actual_len = vec::len::<field>(actual_fields);
                 if expected_len != actual_len {
                     let err = terr_record_size(expected_len, actual_len);
                     ret ures_err(err);
@@ -2733,17 +2733,17 @@ mod unify {
     }
     fn dump_var_bindings(tcx: ty_ctxt, vb: @var_bindings) {
         let i = 0u;
-        while i < vec::len[ufind::node](vb.sets.nodes) {
+        while i < vec::len::<ufind::node>(vb.sets.nodes) {
             let sets = "";
             let j = 0u;
-            while j < vec::len[option::t[uint]](vb.sets.nodes) {
+            while j < vec::len::<option::t<uint>>(vb.sets.nodes) {
                 if ufind::find(vb.sets, j) == i {
                     sets += #fmt(" %u", j);
                 }
                 j += 1u;
             }
             let typespec;
-            alt smallintmap::find[t](vb.types, i) {
+            alt smallintmap::find::<t>(vb.types, i) {
               none. { typespec = ""; }
               some(typ) { typespec = " =" + ty_to_str(tcx, typ); }
             }
@@ -2756,10 +2756,10 @@ mod unify {
     //    Takes an optional span - complain about occurs check violations
     //    iff the span is present (so that if we already know we're going
     //    to error anyway, we don't complain)
-    fn fixup_vars(tcx: ty_ctxt, sp: &option::t[span],
+    fn fixup_vars(tcx: ty_ctxt, sp: &option::t<span>,
                   vb: @var_bindings, typ: t) -> fixup_result {
-        fn subst_vars(tcx: ty_ctxt, sp: &option::t[span], vb: @var_bindings,
-                      unresolved: @mutable option::t[int], vid: int) -> t {
+        fn subst_vars(tcx: ty_ctxt, sp: &option::t<span>, vb: @var_bindings,
+                      unresolved: @mutable option::t<int>, vid: int) -> t {
             // Should really return a fixup_result instead of a t, but fold_ty
             // doesn't allow returning anything but a t.
             if vid as uint >= ufind::set_count(vb.sets) {
@@ -2767,7 +2767,7 @@ mod unify {
                 ret ty::mk_var(tcx, vid);
             }
             let root_id = ufind::find(vb.sets, vid as uint);
-            alt smallintmap::find[t](vb.types, root_id) {
+            alt smallintmap::find::<t>(vb.types, root_id) {
               none. { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
               some(rt) {
                 if occurs_check_fails(tcx, sp, vid, rt) {
@@ -2779,7 +2779,7 @@ mod unify {
               }
             }
         }
-        let unresolved = @mutable none[int];
+        let unresolved = @mutable none::<int>;
         let rty =
             fold_ty(tcx, fm_var(bind subst_vars(tcx, sp, vb, unresolved, _)),
                     typ);
@@ -2789,12 +2789,12 @@ mod unify {
           some(var_id) { ret fix_err(var_id); }
         }
     }
-    fn resolve_type_var(tcx: &ty_ctxt, sp: &option::t[span],
+    fn resolve_type_var(tcx: &ty_ctxt, sp: &option::t<span>,
                         vb: &@var_bindings, vid: int) ->
        fixup_result {
         if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
         let root_id = ufind::find(vb.sets, vid as uint);
-        alt smallintmap::find[t](vb.types, root_id) {
+        alt smallintmap::find::<t>(vb.types, root_id) {
           none. { ret fix_err(vid); }
           some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
@@ -2947,7 +2947,7 @@ fn tag_variant_with_id(cx: &ctxt, tag_id: &ast::def_id,
                        variant_id: &ast::def_id) -> variant_info {
     let variants = tag_variants(cx, tag_id);
     let i = 0u;
-    while i < vec::len[variant_info](variants) {
+    while i < vec::len::<variant_info>(variants) {
         let variant = variants.(i);
         if def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;
@@ -3090,8 +3090,8 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
     ret tbl.(tycat(cx, ty)).(opcat(op));
 }
 
-fn ast_constr_to_constr[T](tcx: ty::ctxt, c: &@ast::constr_general[T]) ->
-   @ty::constr_general[T] {
+fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
+   @ty::constr_general<T> {
     alt tcx.def_map.find(c.node.id) {
       some(ast::def_fn(pred_id, ast::pure_fn.)) {
         ret @respan(c.span,

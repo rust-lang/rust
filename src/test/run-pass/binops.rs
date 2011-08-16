@@ -61,15 +61,15 @@ fn test_box() {
 }
 
 fn test_port() {
-    let p1 = comm::mk_port[int]();
-    let p2 = comm::mk_port[int]();
+    let p1 = comm::mk_port::<int>();
+    let p2 = comm::mk_port::<int>();
 
     assert p1 == p1;
     assert p1 != p2;
 }
 
 fn test_chan() {
-    let p: comm::_port[int] = comm::mk_port();
+    let p: comm::_port<int> = comm::mk_port();
     let ch1 = p.mk_chan();
     let ch2 = p.mk_chan();
 
@@ -114,10 +114,10 @@ fn test_fn() {
 }
 
 native "rust" mod native_mod = "" {
-    fn str_byte_len(s: str) -> vec[u8];
+    fn str_byte_len(s: str) -> vec<u8>;
     // This isn't actually the signature of str_alloc, but since
     // we're not calling it that shouldn't matter
-    fn str_alloc(s: str) -> vec[u8];
+    fn str_alloc(s: str) -> vec<u8>;
 }
 
 // FIXME: comparison of native fns

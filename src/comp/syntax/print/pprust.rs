@@ -40,9 +40,9 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: option::t[codemap],
-      comments: option::t[[lexer::cmnt]],
-      literals: option::t[[lexer::lit]],
+      cm: option::t<codemap>,
+      comments: option::t<[lexer::cmnt]>,
+      literals: option::t<[lexer::lit]>,
       mutable cur_cmnt: uint,
       mutable cur_lit: uint,
       mutable boxes: [pp::breaks],
@@ -55,9 +55,9 @@ fn end(s: &ps) { vec::pop(s.boxes); pp::end(s.s); }
 fn rust_printer(writer: io::writer) -> ps {
     let boxes: [pp::breaks] = ~[];
     ret @{s: pp::mk_printer(writer, default_columns),
-          cm: none[codemap],
-          comments: none[[lexer::cmnt]],
-          literals: none[[lexer::lit]],
+          cm: none::<codemap>,
+          comments: none::<[lexer::cmnt]>,
+          literals: none::<[lexer::lit]>,
           mutable cur_cmnt: 0u,
           mutable cur_lit: 0u,
           mutable boxes: boxes,
@@ -100,7 +100,9 @@ fn stmt_to_str(s: &ast::stmt) -> str { be to_str(s, print_stmt); }
 
 fn item_to_str(i: &@ast::item) -> str { be to_str(i, print_item); }
 
-fn path_to_str(p: &ast::path) -> str { be to_str(p, print_path); }
+fn path_to_str(p: &ast::path) -> str {
+    be to_str(p, bind print_path(_, _, false));
+}
 
 fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
     let writer = io::string_writer();
@@ -215,7 +217,7 @@ fn synth_comment(s: &ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
+fn commasep<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
     box(s, 0u, b);
     let first = true;
     for elt: IN in elts {
@@ -226,10 +228,10 @@ fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
 }
 
 
-fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
+fn commasep_cmnt<IN>(s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
                      get_span: fn(&IN) -> codemap::span ) {
     box(s, 0u, b);
-    let len = vec::len[IN](elts);
+    let len = vec::len::<IN>(elts);
     let i = 0u;
     for elt: IN in elts {
         maybe_print_comment(s, get_span(elt).hi);
@@ -282,7 +284,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_str. { word(s.s, "str"); }
       ast::ty_istr. { word(s.s, "istr"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
-      ast::ty_vec(mt) { word(s.s, "vec["); print_mt(s, mt); word(s.s, "]"); }
+      ast::ty_vec(mt) { word(s.s, "vec<"); print_mt(s, mt); word(s.s, ">"); }
       ast::ty_ivec(mt) {
         word(s.s, "[");
         alt mt.mut {
@@ -296,14 +298,14 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
       ast::ty_task. { word(s.s, "task"); }
       ast::ty_port(t) {
-        word(s.s, "port[");
+        word(s.s, "port<");
         print_type(s, t);
-        word(s.s, "]");
+        word(s.s, ">");
       }
       ast::ty_chan(t) {
-        word(s.s, "chan[");
+        word(s.s, "chan<");
         print_type(s, t);
-        word(s.s, "]");
+        word(s.s, ">");
       }
       ast::ty_rec(fields) {
         word(s.s, "{");
@@ -325,7 +327,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
           pclose(s);
       }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
-        print_ty_fn(s, proto, none[str], inputs, output, cf, constrs);
+        print_ty_fn(s, proto, none::<str>, inputs, output, cf, constrs);
       }
       ast::ty_obj(methods) {
         head(s, "obj");
@@ -341,7 +343,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
         }
         bclose(s, ty.span);
       }
-      ast::ty_path(path, _) { print_path(s, path); }
+      ast::ty_path(path, _) { print_path(s, path, false); }
       ast::ty_type. { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
         print_type(s, t);
@@ -484,7 +486,7 @@ fn print_item(s: &ps, item: &@ast::item) {
                     pclose(s);
                 }
                 word(s.s, ";");
-                maybe_print_trailing_comment(s, v.span, none[uint]);
+                maybe_print_trailing_comment(s, v.span, none::<uint>);
             }
             bclose(s, item.span);
         }
@@ -573,7 +575,7 @@ fn print_stmt(s: &ps, st: &ast::stmt) {
       ast::stmt_expr(expr, _) { space_if_not_bol(s); print_expr(s, expr); }
     }
     if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
-    maybe_print_trailing_comment(s, st.span, none[uint]);
+    maybe_print_trailing_comment(s, st.span, none::<uint>);
 }
 
 fn print_block(s: &ps, blk: &ast::blk) {
@@ -617,7 +619,7 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
     // followed by a unary op statement. In those cases we have to add an
     // extra semi to make sure the unop is not parsed as a binop with the
     // if/alt/block expression.
-    fn maybe_protect_unop(s: &ps, last: &option::t[@ast::stmt],
+    fn maybe_protect_unop(s: &ps, last: &option::t<@ast::stmt>,
                           next: &expr_or_stmt) {
         let last_expr_is_block = alt last {
           option::some(@{node: ast::stmt_expr(e, _), _}) {
@@ -649,13 +651,13 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
 }
 
 fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
-            elseopt: &option::t[@ast::expr], chk: bool) {
+            elseopt: &option::t<@ast::expr>, chk: bool) {
     head(s, "if");
     if chk { word_nbsp(s, "check"); }
     print_expr(s, test);
     space(s.s);
     print_block(s, blk);
-    fn do_else(s: &ps, els: option::t[@ast::expr]) {
+    fn do_else(s: &ps, els: option::t<@ast::expr>) {
         alt els {
           some(_else) {
             alt _else.node {
@@ -690,7 +692,7 @@ fn print_mac(s: &ps, m: &ast::mac) {
     alt m.node {
       ast::mac_invoc(path, arg, body) {
         word(s.s, "#");
-        print_path(s, path);
+        print_path(s, path, false);
         alt (arg.node) {
           ast::expr_vec(_,_,_) {}
           _ { word(s.s, " "); }
@@ -771,7 +773,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_ident(s, ident);
       }
       ast::expr_bind(func, args) {
-        fn print_opt(s: &ps, expr: &option::t[@ast::expr]) {
+        fn print_opt(s: &ps, expr: &option::t<@ast::expr>) {
             alt expr {
               some(expr) { print_expr(s, expr); }
               _ { word(s.s, "_"); }
@@ -933,7 +935,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_expr(s, index);
         pclose(s);
       }
-      ast::expr_path(path) { print_path(s, path); }
+      ast::expr_path(path) { print_path(s, path, true); }
       ast::expr_fail(maybe_fail_val) {
         word(s.s, "fail");
         alt maybe_fail_val {
@@ -1088,7 +1090,7 @@ fn print_for_decl(s: &ps, loc: &@ast::local, coll: &@ast::expr) {
     print_expr(s, coll);
 }
 
-fn print_path(s: &ps, path: &ast::path) {
+fn print_path(s: &ps, path: &ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
     let first = true;
@@ -1097,9 +1099,10 @@ fn print_path(s: &ps, path: &ast::path) {
         word(s.s, id);
     }
     if vec::len(path.node.types) > 0u {
-        word(s.s, "[");
+        if colons_before_params { word(s.s, "::"); }
+        word(s.s, "<");
         commasep(s, inconsistent, path.node.types, print_type);
-        word(s.s, "]");
+        word(s.s, ">");
     }
 }
 
@@ -1112,7 +1115,7 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
       ast::pat_bind(id) { word(s.s, id); }
       ast::pat_lit(lit) { print_literal(s, lit); }
       ast::pat_tag(path, args) {
-        print_path(s, path);
+        print_path(s, path, true);
         if vec::len(args) > 0u {
             popen(s);
             commasep(s, inconsistent, args, print_pat);
@@ -1210,13 +1213,13 @@ fn print_kind(s: &ps, kind: ast::kind) {
 
 fn print_type_params(s: &ps, params: &[ast::ty_param]) {
     if vec::len(params) > 0u {
-        word(s.s, "[");
+        word(s.s, "<");
         fn printParam(s: &ps, param: &ast::ty_param) {
             print_kind(s, param.kind);
             word(s.s, param.ident);
         }
         commasep(s, inconsistent, params, printParam);
-        word(s.s, "]");
+        word(s.s, ">");
     }
 }
 
@@ -1322,7 +1325,7 @@ fn print_mt(s: &ps, mt: &ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
+fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t<str>,
                inputs: &[ast::ty_arg], output: &@ast::ty,
                cf: &ast::controlflow, constrs: &[@ast::constr]) {
     ibox(s, indent_unit);
@@ -1352,7 +1355,7 @@ fn print_ty_fn(s: &ps, proto: &ast::proto, id: &option::t[str],
 }
 
 fn maybe_print_trailing_comment(s: &ps, span: codemap::span,
-                                next_pos: option::t[uint]) {
+                                next_pos: option::t<uint>) {
     let cm;
     alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
     alt next_comment(s) {
@@ -1428,14 +1431,14 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
 
 fn lit_to_str(l: &@ast::lit) -> str { be to_str(l, print_literal); }
 
-fn next_lit(s: &ps) -> option::t[lexer::lit] {
+fn next_lit(s: &ps) -> option::t<lexer::lit> {
     alt s.literals {
       some(lits) {
         if s.cur_lit < vec::len(lits) {
             ret some(lits.(s.cur_lit));
-        } else { ret none[lexer::lit]; }
+        } else { ret none::<lexer::lit>; }
       }
-      _ { ret none[lexer::lit]; }
+      _ { ret none::<lexer::lit>; }
     }
 }
 
@@ -1512,7 +1515,7 @@ fn escape_str(st: str, to_escape: char) -> str {
     ret out;
 }
 
-fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
+fn to_str<T>(t: &T, f: fn(&ps, &T) ) -> str {
     let writer = io::string_writer();
     let s = rust_printer(writer.get_writer());
     f(s, t);
@@ -1520,32 +1523,32 @@ fn to_str[T](t: &T, f: fn(&ps, &T) ) -> str {
     ret writer.get_str();
 }
 
-fn next_comment(s: &ps) -> option::t[lexer::cmnt] {
+fn next_comment(s: &ps) -> option::t<lexer::cmnt> {
     alt s.comments {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {
             ret some(cmnts.(s.cur_cmnt));
-        } else { ret none[lexer::cmnt]; }
+        } else { ret none::<lexer::cmnt>; }
       }
-      _ { ret none[lexer::cmnt]; }
+      _ { ret none::<lexer::cmnt>; }
     }
 }
 
 // Removing the aliases from the type of f in the next two functions
 // triggers memory corruption, but I haven't isolated the bug yet. FIXME
-fn constr_args_to_str[T](f: &fn(&T) -> str ,
-                         args: &[@ast::sp_constr_arg[T]]) -> str {
+fn constr_args_to_str<T>(f: &fn(&T) -> str ,
+                         args: &[@ast::sp_constr_arg<T>]) -> str {
     let comma = false;
     let s = "(";
-    for a: @ast::sp_constr_arg[T] in args {
+    for a: @ast::sp_constr_arg<T> in args {
         if comma { s += ", "; } else { comma = true; }
-        s += constr_arg_to_str[T](f, a.node);
+        s += constr_arg_to_str::<T>(f, a.node);
     }
     s += ")";
     ret s;
 }
 
-fn constr_arg_to_str[T](f: &fn(&T) -> str , c: &ast::constr_arg_general_[T])
+fn constr_arg_to_str<T>(f: &fn(&T) -> str, c: &ast::constr_arg_general_<T>)
    -> str {
     alt c {
       ast::carg_base. { ret "*"; }
@@ -1608,7 +1611,7 @@ fn proto_to_str(p: &ast::proto) -> str {
 
 fn ty_constr_to_str(c: &@ast::ty_constr) -> str {
     ret path_to_str(c.node.path) +
-            constr_args_to_str[ast::path](path_to_str, c.node.args);
+            constr_args_to_str::<ast::path>(path_to_str, c.node.args);
 }
 
 

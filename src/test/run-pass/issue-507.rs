@@ -13,9 +13,9 @@ import std::comm;
 import std::comm::_chan;
 import std::comm::send;
 
-fn grandchild(c: _chan[int]) { send(c, 42); }
+fn grandchild(c: _chan<int>) { send(c, 42); }
 
-fn child(c: _chan[int]) {
+fn child(c: _chan<int>) {
     let _grandchild = task::_spawn(bind grandchild(c));
     join_id(_grandchild);
 }

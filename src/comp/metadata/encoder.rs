@@ -19,7 +19,7 @@ import front::attr;
 export encode_metadata;
 export encoded_ty;
 
-type abbrev_map = map::hashmap[ty::t, tyencode::ty_abbrev];
+type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
 
@@ -36,10 +36,10 @@ fn encode_def_id(ebml_w: &ebml::writer, id: &def_id) {
     ebml::end_tag(ebml_w);
 }
 
-type entry[T] = {val: T, pos: uint};
+type entry<T> = {val: T, pos: uint};
 
 fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
-                            path: &[str], index: &mutable [entry[str]]) {
+                            path: &[str], index: &mutable [entry<str>]) {
     for variant: variant in variants {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -50,7 +50,7 @@ fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
 }
 
 fn add_to_index(ebml_w: &ebml::writer, path: &[str],
-                index: &mutable [entry[str]], name: &str) {
+                index: &mutable [entry<str>], name: &str) {
     let full_path = path + ~[name];
     index +=
         ~[{val: str::connect(full_path, "::"),
@@ -59,7 +59,7 @@ fn add_to_index(ebml_w: &ebml::writer, path: &[str],
 
 fn encode_native_module_item_paths(ebml_w: &ebml::writer,
                                    nmod: &native_mod, path: &[str],
-                                   index: &mutable [entry[str]]) {
+                                   index: &mutable [entry<str>]) {
     for nitem: @native_item in nmod.items {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -70,7 +70,7 @@ fn encode_native_module_item_paths(ebml_w: &ebml::writer,
 }
 
 fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
-                            path: &[str], index: &mutable [entry[str]]) {
+                            path: &[str], index: &mutable [entry<str>]) {
     for it: @item in module.items {
         if !is_exported(it.ident, module) { cont; }
         alt it.node {
@@ -149,8 +149,8 @@ fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
 }
 
 fn encode_item_paths(ebml_w: &ebml::writer, crate: &@crate) ->
-   [entry[str]] {
-    let index: [entry[str]] = ~[];
+   [entry<str>] {
+    let index: [entry<str>] = ~[];
     let path: [str] = ~[];
     ebml::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
@@ -176,7 +176,7 @@ fn def_to_str(did: &def_id) -> str { ret #fmt("%d:%d", did.crate, did.node); }
 
 fn encode_type_param_kinds(ebml_w: &ebml::writer, tps: &[ty_param]) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_kinds);
-    ebml::write_vint(ebml_w.writer, vec::len[ty_param](tps));
+    ebml::write_vint(ebml_w.writer, vec::len::<ty_param>(tps));
     for tp: ty_param in tps {
         let c = alt tp.kind {
           kind_unique. { 'u' }
@@ -226,7 +226,7 @@ fn encode_tag_id(ebml_w: &ebml::writer, id: &def_id) {
 
 fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
                            id: node_id, variants: &[variant],
-                           index: &mutable [entry[int]],
+                           index: &mutable [entry<int>],
                            ty_params: &[ty_param]) {
     for variant: variant in variants {
         index += ~[{val: variant.node.id, pos: ebml_w.writer.tell()}];
@@ -236,7 +236,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
         encode_tag_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_monotype(ecx.ccx.tcx, variant.node.id));
-        if vec::len[variant_arg](variant.node.args) > 0u {
+        if vec::len::<variant_arg>(variant.node.args) > 0u {
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
@@ -246,7 +246,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebml::writer,
-                        item: @item, index: &mutable [entry[int]]) {
+                        item: @item, index: &mutable [entry<int>]) {
     alt item.node {
       item_const(_, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -368,8 +368,8 @@ fn encode_info_for_native_item(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
 }
 
 fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebml::writer) ->
-   [entry[int]] {
-    let index: [entry[int]] = ~[];
+   [entry<int>] {
+    let index: [entry<int>] = ~[];
     ebml::start_tag(ebml_w, tag_items_data);
     for each kvp: @{key: node_id, val: middle::ast_map::ast_node}  in
              ecx.ccx.ast_map.items() {
@@ -392,32 +392,32 @@ fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebml::writer) ->
 
 // Path and definition ID indexing
 
-fn create_index[T](index: &[entry[T]], hash_fn: fn(&T) -> uint ) ->
-   [@[entry[T]]] {
-    let buckets: [@mutable [entry[T]]] = ~[];
+fn create_index<T>(index: &[entry<T>], hash_fn: fn(&T) -> uint ) ->
+   [@[entry<T>]] {
+    let buckets: [@mutable [entry<T>]] = ~[];
     for each i: uint in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
-    for elt: entry[T] in index {
+    for elt: entry<T> in index {
         let h = hash_fn(elt.val);
         *buckets.(h % 256u) += ~[elt];
     }
 
     let buckets_frozen = ~[];
-    for bucket: @mutable [entry[T]] in buckets {
+    for bucket: @mutable [entry<T>] in buckets {
         buckets_frozen += ~[@*bucket];
     }
     ret buckets_frozen;
 }
 
-fn encode_index[T](ebml_w: &ebml::writer, buckets: &[@[entry[T]]],
+fn encode_index<T>(ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
                    write_fn: fn(&io::writer, &T) ) {
     let writer = io::new_writer_(ebml_w.writer);
     ebml::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = ~[];
     ebml::start_tag(ebml_w, tag_index_buckets);
-    for bucket: @[entry[T]] in buckets {
+    for bucket: @[entry<T>] in buckets {
         bucket_locs += ~[ebml_w.writer.tell()];
         ebml::start_tag(ebml_w, tag_index_buckets_bucket);
-        for elt: entry[T] in *bucket {
+        for elt: entry<T> in *bucket {
             ebml::start_tag(ebml_w, tag_index_buckets_bucket_elt);
             writer.write_be_uint(elt.pos, 4u);
             write_fn(writer, elt.val);

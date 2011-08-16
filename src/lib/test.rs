@@ -59,13 +59,13 @@ fn test_main_ivec(args: &[str], tests: &[test_desc]) {
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
 }
 
-fn test_main(args: &vec[str], tests: &[test_desc]) {
+fn test_main(args: &vec<str>, tests: &[test_desc]) {
     test_main_ivec(vec::from_vec(args), tests);
 }
 
-type test_opts = {filter: option::t[str], run_ignored: bool};
+type test_opts = {filter: option::t<str>, run_ignored: bool};
 
-type opt_res = either::t[test_opts, str];
+type opt_res = either::t<test_opts, str>;
 
 // Parses command line arguments into test options
 fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
@@ -268,7 +268,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
 
             let filter =
                 bind fn (test: &test_desc, filter_str: str) ->
-                        option::t[test_desc] {
+                        option::t<test_desc> {
                          if str::find(test.name, filter_str) >= 0 {
                              ret option::some(test);
                          } else { ret option::none; }
@@ -284,7 +284,7 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
             filtered
         } else {
             let filter =
-                fn (test: &test_desc) -> option::t[test_desc] {
+                fn (test: &test_desc) -> option::t<test_desc> {
                     if test.ignore {
                         ret option::some({name: test.name,
                                           fn: test.fn,

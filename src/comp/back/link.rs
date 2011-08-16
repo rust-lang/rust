@@ -285,14 +285,14 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option::t[str],
-         vers: option::t[str],
+        {name: option::t<str>,
+         vers: option::t<str>,
          cmh_items: [@ast::meta_item]};
 
     fn provided_link_metas(sess: &session::session, c: &ast::crate) ->
        provided_metas {
-        let name: option::t[str] = none;
-        let vers: option::t[str] = none;
+        let name: option::t<str> = none;
+        let vers: option::t<str> = none;
         let cmh_items: [@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);

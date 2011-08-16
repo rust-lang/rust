@@ -35,7 +35,7 @@ fn next_power_of_two(n: uint) -> uint {
     // FIXME change |* uint(4)| below to |* uint(8) / uint(2)| and watch the
     // world explode.
 
-    let halfbits: uint = sys::rustrt::size_of[uint]() * 4u;
+    let halfbits: uint = sys::rustrt::size_of::<uint>() * 4u;
     let tmp: uint = n - 1u;
     let shift: uint = 1u;
     while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }
@@ -43,8 +43,11 @@ fn next_power_of_two(n: uint) -> uint {
 }
 
 fn parse_buf(buf: &[u8], radix: uint) -> uint {
-    if vec::len[u8](buf) == 0u { log_err "parse_buf(): buf is empty"; fail; }
-    let i = vec::len[u8](buf) - 1u;
+    if vec::len::<u8>(buf) == 0u {
+        log_err "parse_buf(): buf is empty";
+        fail;
+    }
+    let i = vec::len::<u8>(buf) - 1u;
     let power = 1u;
     let n = 0u;
     while true {

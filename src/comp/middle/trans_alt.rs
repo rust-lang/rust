@@ -77,7 +77,7 @@ fn bind_for_pat(p: &@ast::pat, br: &match_branch, val: ValueRef) {
     }
 }
 
-type enter_pat = fn(&@ast::pat) -> option::t[[@ast::pat]] ;
+type enter_pat = fn(&@ast::pat) -> option::t<[@ast::pat]> ;
 
 fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
     let result = ~[];
@@ -98,7 +98,7 @@ fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
 }
 
 fn enter_default(m: &match, col: uint, val: ValueRef) -> match {
-    fn e(p: &@ast::pat) -> option::t[[@ast::pat]] {
+    fn e(p: &@ast::pat) -> option::t<[@ast::pat]> {
         ret if matches_always(p) { some(~[]) } else { none };
     }
     ret enter_match(m, col, val, e);
@@ -108,7 +108,7 @@ fn enter_opt(ccx: &@crate_ctxt, m: &match, opt: &opt, col: uint,
              tag_size: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(ccx: &@crate_ctxt, dummy: &@ast::pat, opt: &opt, size: uint,
-         p: &@ast::pat) -> option::t[[@ast::pat]] {
+         p: &@ast::pat) -> option::t<[@ast::pat]> {
         alt p.node {
           ast::pat_tag(ctor, subpats) {
             ret if opt_eq(variant_opt(ccx, p.id), opt) {
@@ -128,7 +128,7 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
    match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(dummy: &@ast::pat, fields: &[ast::ident], p: &@ast::pat) ->
-       option::t[[@ast::pat]] {
+       option::t<[@ast::pat]> {
         alt p.node {
           ast::pat_rec(fpats, _) {
             let pats = ~[];
@@ -150,7 +150,7 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
 fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(dummy: &@ast::pat, n_elts: uint, p: &@ast::pat)
-        -> option::t[[@ast::pat]] {
+        -> option::t<[@ast::pat]> {
         alt p.node {
           ast::pat_tup(elts) { ret some(elts); }
           _ { ret some(vec::init_elt(dummy, n_elts)); }
@@ -161,7 +161,7 @@ fn enter_tup(m: &match, col: uint, val: ValueRef, n_elts: uint) -> match {
 
 fn enter_box(m: &match, col: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    fn e(dummy: &@ast::pat, p: &@ast::pat) -> option::t[[@ast::pat]] {
+    fn e(dummy: &@ast::pat, p: &@ast::pat) -> option::t<[@ast::pat]> {
         alt p.node {
           ast::pat_box(sub) { ret some(~[sub]); }
           _ { ret some(~[dummy]); }
@@ -431,7 +431,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 // Returns false for unreachable blocks
 fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                      ids: &ast::pat_id_map) -> bool {
-    fn assoc(key: str, list: &bind_map) -> option::t[ValueRef] {
+    fn assoc(key: str, list: &bind_map) -> option::t<ValueRef> {
         for elt: {ident: ast::ident, val: ValueRef} in list {
             if str::eq(elt.ident, key) { ret some(elt.val); }
         }
@@ -486,7 +486,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
     // Cached fail-on-fallthrough block
     let fail_cx = @mutable none;
     fn mk_fail(cx: &@block_ctxt, sp: &span,
-               done: @mutable option::t[BasicBlockRef]) -> BasicBlockRef {
+               done: @mutable option::t<BasicBlockRef>) -> BasicBlockRef {
         alt *done { some(bb) { ret bb; } _ { } }
         let fail_cx = new_sub_block_ctxt(cx, "case_fallthrough");
         trans::trans_fail(fail_cx, some(sp), "non-exhaustive match failure");
@@ -517,7 +517,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
-                        table: hashmap[ast::node_id, ValueRef],
+                        table: hashmap<ast::node_id, ValueRef>,
                         make_copy: bool)
     -> @block_ctxt {
     let ccx = bcx.fcx.lcx.ccx;

@@ -6,7 +6,7 @@ import std::comm::mk_port;
 import std::comm::send;
 import std::task;
 
-fn a(c: _chan[int]) { send(c, 10); }
+fn a(c: _chan<int>) { send(c, 10); }
 
 fn main() {
     let p = mk_port();
@@ -18,7 +18,7 @@ fn main() {
     //    log "Finished.";
 }
 
-fn b(c: _chan[int]) {
+fn b(c: _chan<int>) {
     //    log "task b0";
     //    log "task b1";
     //    log "task b2";

@@ -57,9 +57,9 @@ fn slow_growth2_helper(s: str) { // ref up: s
         assert (str::refcount(s) == const_refcount);
         assert (str::refcount(mumble) == const_refcount);
         log v.(0);
-        log vec::len[str](v);
+        log vec::len::<str>(v);
         assert (str::eq(v.(0), mumble));
-        assert (vec::len[str](v) == 1u);
+        assert (vec::len::<str>(v) == 1u);
     } // ref down: mumble, s,
 
     log str::refcount(s);

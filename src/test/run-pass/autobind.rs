@@ -1,4 +1,4 @@
-fn f[T](x: &[T]) -> T { ret x.(0); }
+fn f<T>(x: &[T]) -> T { ret x.(0); }
 
 fn g(act: fn(&[int]) -> int ) -> int { ret act(~[1, 2, 3]); }
 

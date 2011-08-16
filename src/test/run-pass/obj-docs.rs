@@ -47,7 +47,7 @@ fn main() {
         }
     }
 
-    obj sender(c: _chan[int]) {
+    obj sender(c: _chan<int>) {
         fn take(z: int) {
             send(c, z);
         }
@@ -59,7 +59,7 @@ fn main() {
         t.take(3);
     }
 
-    let p = mk_port[int]();
+    let p = mk_port::<int>();
 
     let t1: taker = adder(@mutable 0);
     let t2: taker = sender(p.mk_chan());
