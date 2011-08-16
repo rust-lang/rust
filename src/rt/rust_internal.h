@@ -56,7 +56,6 @@ struct rust_task;
 class rust_log;
 class rust_port;
 class rust_chan;
-struct chan_handle;
 struct rust_token;
 class rust_kernel;
 class rust_crate_cache;
@@ -67,6 +66,12 @@ struct frame_glue_fns;
 
 typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
+
+// Corresponds to the rust chan (currently _chan) type.
+struct chan_handle {
+    rust_task_id task;
+    rust_port_id port;
+};
 
 #ifndef __i386__
 #error "Target CPU not supported."

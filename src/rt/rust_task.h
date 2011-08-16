@@ -34,9 +34,32 @@ struct gc_alloc {
     }
 };
 
+// portions of the task structure that are accessible from the standard
+// library. This struct must agree with the std::task::rust_task record.
+struct rust_task_user {
+    uint8_t notify_enabled;
+    chan_handle notify_chan;
+};
+
+// std::lib::task::task_result
+enum task_result {
+    tr_success = 0,
+    tr_failure = 1
+};
+
+// std::lib::task::task_notification
+//
+// since it's currently a unary tag, we only add the fields.
+struct task_notification {
+    rust_task_id id;
+    task_result result; // task_result
+};
+
 struct
 rust_task : public kernel_owned<rust_task>, rust_cond
 {
+    rust_task_user user;
+
     RUST_ATOMIC_REFCOUNT();
 
     // Fields known to the compiler.

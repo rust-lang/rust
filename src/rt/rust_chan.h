@@ -25,12 +25,6 @@ public:
     rust_chan *clone(rust_task *target);
 };
 
-// Corresponds to the rust chan (currently _chan) type.
-struct chan_handle {
-    rust_task_id task;
-    rust_port_id port;
-};
-
 //
 // Local Variables:
 // mode: C++

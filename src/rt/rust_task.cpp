@@ -80,6 +80,10 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
+    assert((void*)this == (void*)&user);
+
+    user.notify_enabled = 0;
+
     stk = new_stk(sched, this, 0);
     rust_sp = stk->limit;
 }
@@ -88,6 +92,19 @@ rust_task::~rust_task()
 {
     DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
+
+    if(user.notify_enabled) {
+        rust_chan *target =
+            get_chan_by_handle(&user.notify_chan);
+        if(target) {
+            task_notification msg;
+            msg.id = id;
+            msg.result = failed ? tr_failure : tr_success;
+
+            target->send(&msg);
+            target->deref();
+        }
+    }
 
     kernel->release_task_id(id);
 
@@ -400,8 +417,11 @@ rust_task::free(void *p, bool is_gc)
 
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    I(sched, !sched->lock.lock_held_by_current_thread());
-    scoped_lock with(sched->lock);
+    bool unlock = false;
+    if(!sched->lock.lock_held_by_current_thread()) {
+        unlock = true;
+        sched->lock.lock();
+    }
     DLOG(sched, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, src->name, dst->name, state->name);
@@ -409,6 +429,8 @@ rust_task::transition(rust_task_list *src, rust_task_list *dst) {
     src->remove(this);
     dst->append(this);
     state = dst;
+    if(unlock)
+        sched->lock.unlock();
 }
 
 void

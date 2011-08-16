@@ -1,4 +1,9 @@
 import cast = unsafe::reinterpret_cast;
+import comm;
+import comm::_chan;
+import option::some;
+import option::none;
+import option = option::t;
 
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
@@ -10,7 +15,6 @@ native "rust" mod rustrt {
     fn get_task_id() -> task_id;
 
     type rust_chan;
-    type rust_task;
 
     fn set_min_stack(stack_size: uint);
 
@@ -26,7 +30,13 @@ native "rust" mod rustrt {
     fn leak<@T>(thing : -T);
 }
 
-type task_id = int;
+type rust_task = {
+    mutable notify_enabled : u8,
+    mutable notify_chan : _chan[task_notification]
+};
+
+type task = int;
+type task_id = task;
 
 fn get_task_id() -> task_id {
     rustrt::get_task_id()
@@ -43,12 +53,13 @@ fn yield() { ret rustrt::task_yield(); }
 
 tag task_result { tr_success; tr_failure; }
 
-// FIXME: Re-enable this once the task type is removed from the compiler.
-/*
+tag task_notification {
+    exit(task, task_result);
+}
+
 fn join(t: task) -> task_result {
     join_id(cast(t))
 }
-*/
 
 fn join_id(t : task_id) -> task_result {
     alt rustrt::task_join(t) { 0 { tr_success } _ { tr_failure } }
@@ -64,8 +75,22 @@ fn set_min_stack(stack_size : uint) {
     rustrt::set_min_stack(stack_size);
 }
 
+fn _spawn(thunk : fn() -> ()) -> task {
+    spawn(thunk)
+}
+
+fn spawn(thunk : fn() -> ()) -> task {
+    spawn_inner(thunk, none)
+}
+
+fn spawn_notify(thunk : fn() -> (), notify : _chan[task_notification])
+    -> task {
+    spawn_inner(thunk, some(notify))
+}
+
 // FIXME: make this a fn~ once those are supported.
-fn _spawn(thunk : fn() -> ()) -> task_id {
+fn spawn_inner(thunk : fn() -> (), notify : option[_chan[task_notification]])
+    -> task_id {
     let id = rustrt::new_task();
 
     // the order of arguments are outptr, taskptr, envptr.
@@ -75,11 +100,20 @@ fn _spawn(thunk : fn() -> ()) -> task_id {
     let regs = rustrt::get_task_context(id);
 
     // set up the task pointer
-    let task_ptr : u32 = cast(rustrt::get_task_pointer(id));
-    (*regs).edx = task_ptr;
+    let task_ptr = rustrt::get_task_pointer(id);
+    (*regs).edx = cast(task_ptr);
 
     let raw_thunk : { code: u32, env: u32 } = cast(thunk);
     (*regs).eip = raw_thunk.code;
+
+    // set up notifications if they are enabled.
+    alt notify {
+      some(c) {
+        (*task_ptr).notify_enabled = 1u8;
+        (*task_ptr).notify_chan = c;
+      }
+      none {}
+    };
 
     // okay, now we align the stack and add the environment pointer and a fake
     // return address.
@@ -95,7 +129,7 @@ fn _spawn(thunk : fn() -> ()) -> task_id {
     // put the return pointer in ecx.
     (*regs).ecx = (*regs).esp + 8u32;
 
-    *tptr = task_ptr;
+    *tptr = cast(task_ptr);
     *env = raw_thunk.env;
     *ra = rustrt::get_task_trampoline();
 
