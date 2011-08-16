@@ -357,10 +357,6 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             let opt_map_se = bind option::map(fld.fold_expr, _);
             expr_bind(fld.fold_expr(f), vec::map(opt_map_se, args))
           }
-          expr_spawn(spawn_dom, name, f, args) {
-            expr_spawn(spawn_dom, name, fld.fold_expr(f),
-                       fld.map_exprs(fld.fold_expr, args))
-          }
           expr_binary(binop, lhs, rhs) {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
           }
@@ -409,12 +405,6 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
           expr_assign_op(op, el, er) {
             expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_send(el, er) {
-            expr_send(fld.fold_expr(el), fld.fold_expr(er))
-          }
-          expr_recv(el, er) {
-            expr_recv(fld.fold_expr(el), fld.fold_expr(er))
-          }
           expr_field(el, id) {
             expr_field(fld.fold_expr(el), fld.fold_ident(id))
           }
@@ -435,10 +425,6 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             expr_if_check(fld.fold_expr(cond), fld.fold_block(tr),
                           option::map(fld.fold_expr, fl))
           }
-          expr_port(t) {
-            expr_port(fld.fold_ty(t))
-          }
-          expr_chan(e) { expr_chan(fld.fold_expr(e)) }
           expr_anon_obj(ao) { expr_anon_obj(fold_anon_obj(ao)) }
           expr_mac(mac) { expr_mac(fold_mac(mac)) }
           expr_uniq(e) { expr_uniq(fld.fold_expr(e)) }

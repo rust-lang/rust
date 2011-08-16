@@ -130,8 +130,6 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
       ty::ty_vec(mt) { w.write_char('V'); enc_mt(w, cx, mt); }
       ty::ty_ivec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
-      ty::ty_port(t) { w.write_char('P'); enc_ty(w, cx, t); }
-      ty::ty_chan(t) { w.write_char('C'); enc_ty(w, cx, t); }
       ty::ty_rec(fields) {
         w.write_str("R[");
         for field: ty::field in fields {
@@ -188,7 +186,6 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str(uint::str(id));
       }
       ty::ty_type. { w.write_char('Y'); }
-      ty::ty_task. { w.write_char('a'); }
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);

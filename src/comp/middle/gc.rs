@@ -35,8 +35,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: &ty::t) -> bool {
         ty::ty_nil. | ty::ty_bot. | ty::ty_bool. | ty::ty_int. |
         ty::ty_float. | ty::ty_uint. | ty::ty_machine(_) | ty::ty_char. |
         ty::ty_istr. | ty::ty_type. | ty::ty_native(_) | ty::ty_ptr(_) |
-        ty::ty_port(_) | ty::ty_chan(_) | ty::ty_task. | ty::ty_type. |
-        ty::ty_native(_) {
+        ty::ty_type. | ty::ty_native(_) {
             ret false;
         }
 

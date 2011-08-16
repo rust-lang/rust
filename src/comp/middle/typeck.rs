@@ -333,13 +333,6 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       ast::ty_ptr(mt) {
         typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
-      ast::ty_task. { typ = ty::mk_task(tcx); }
-      ast::ty_port(t) {
-        typ = ty::mk_port(tcx, ast_ty_to_ty(tcx, getter, t));
-      }
-      ast::ty_chan(t) {
-        typ = ty::mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
-      }
       ast::ty_tup(fields) {
         let flds = vec::map(bind ast_ty_to_ty(tcx, getter, _), fields);
         typ = ty::mk_tup(tcx, flds);
@@ -1984,22 +1977,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         check_binop_type_compat(fcx, expr.span, expr_ty(tcx, lhs),
                                 op);
       }
-      ast::expr_send(lhs, rhs) {
-        require_impure(tcx.sess, fcx.purity, expr.span);
-        let rhs_t = next_ty_var(fcx);
-        let chan_t = ty::mk_chan(tcx, rhs_t);
-        bot = check_expr_with(fcx, lhs, chan_t) |
-              check_expr_with(fcx, rhs, rhs_t);
-        write::ty_only_fixup(fcx, id, chan_t);
-      }
-      ast::expr_recv(lhs, rhs) {
-        require_impure(tcx.sess, fcx.purity, expr.span);
-        let rhs_t = next_ty_var(fcx);
-        let port_t = ty::mk_port(tcx, rhs_t);
-        bot = check_expr_with(fcx, lhs, port_t) |
-              check_expr_with(fcx, rhs, rhs_t);
-        write::ty_only_fixup(fcx, id, rhs_t);
-      }
       ast::expr_if(cond, thn, elsopt) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
               check_then_else(fcx, thn, elsopt, id, expr.span);
@@ -2187,28 +2164,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         write::ty_only_fixup(fcx, id, t);
         require_impure(tcx.sess, fcx.purity, expr.span);
       }
-      ast::expr_spawn(_, _, f, args) {
-        bot = check_call(fcx, expr.span, f, args, kind_spawn);
-        let fty = expr_ty(tcx, f);
-        let ret_ty = alt structure_of(fcx, expr.span, fty) {
-          ty::ty_fn(_, _, rt, _, _) { rt }
-          ty::ty_native_fn(_, _, rt) { rt }
-          _ { fail "LHS of spawn expr didn't have a function type?!" }
-        };
-
-        demand::simple(fcx, f.span, ty::mk_nil(tcx), ret_ty);
-
-        // make sure they aren't spawning a function with type params
-        if ty::expr_has_ty_params(tcx, f) {
-            tcx.sess.span_fatal(
-                f.span,
-                "spawning functions with type params not allowed (for now)");
-        }
-
-        // FIXME: Other typechecks needed
-        let typ = ty::mk_task(tcx);
-        write::ty_only_fixup(fcx, id, typ);
-      }
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
         let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
@@ -2359,15 +2314,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
                                 ty_to_str(tcx, base_t));
           }
         }
-      }
-      ast::expr_port(typ) {
-        let pt = ty::mk_port(tcx, ast_ty_to_ty_crate_tyvar(fcx, typ));
-        write::ty_only_fixup(fcx, id, pt);
-      }
-      ast::expr_chan(x) {
-        let t = next_ty_var(fcx);
-        check_expr_with(fcx, x, ty::mk_port(tcx, t));
-        write::ty_only_fixup(fcx, id, ty::mk_chan(tcx, t));
       }
       ast::expr_anon_obj(ao) {
         let fields: [ast::anon_obj_field] = ~[];

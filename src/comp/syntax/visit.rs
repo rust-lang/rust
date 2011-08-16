@@ -262,10 +262,6 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
         v.visit_expr(callee, e, v);
         for eo: option::t[@expr] in args { visit_expr_opt(eo, e, v); }
       }
-      expr_spawn(_, _, callee, args) {
-        v.visit_expr(callee, e, v);
-        visit_exprs(args, e, v);
-      }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_unary(_, a) { v.visit_expr(a, e, v); }
       expr_lit(_) { }
@@ -306,8 +302,6 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
         v.visit_expr(b, e, v);
         v.visit_expr(a, e, v);
       }
-      expr_send(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
-      expr_recv(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_field(x, _) { v.visit_expr(x, e, v); }
       expr_index(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_path(p) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
@@ -320,8 +314,6 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_log(_, x) { v.visit_expr(x, e, v); }
       expr_check(_, x) { v.visit_expr(x, e, v); }
       expr_assert(x) { v.visit_expr(x, e, v); }
-      expr_port(t) { v.visit_ty(t, e, v); }
-      expr_chan(x) { v.visit_expr(x, e, v); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.fields {
           none. { }

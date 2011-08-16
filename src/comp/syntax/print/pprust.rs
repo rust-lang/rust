@@ -783,13 +783,6 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         commasep(s, inconsistent, args, print_opt);
         pclose(s);
       }
-      ast::expr_spawn(_, _, e, es) {
-        word_nbsp(s, "spawn");
-        print_expr(s, e);
-        popen(s);
-        commasep_exprs(s, inconsistent, es);
-        pclose(s);
-      }
       ast::expr_binary(op, lhs, rhs) {
         let prec = operator_prec(op);
         print_maybe_parens(s, lhs, prec);
@@ -928,18 +921,6 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         word_space(s, "=");
         print_expr(s, rhs);
       }
-      ast::expr_send(lhs, rhs) {
-        print_expr(s, lhs);
-        space(s.s);
-        word_space(s, "<|");
-        print_expr(s, rhs);
-      }
-      ast::expr_recv(lhs, rhs) {
-        print_expr(s, lhs);
-        space(s.s);
-        word_space(s, "|>");
-        print_expr(s, rhs);
-      }
       ast::expr_field(expr, id) {
         print_expr_parens_if_unary(s, expr);
         word(s.s, ".");
@@ -997,21 +978,6 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         pclose(s);
       }
       ast::expr_mac(m) { print_mac(s, m); }
-      ast::expr_port(t) {
-        word(s.s, "port");
-        alt t.node {
-          ast::ty_infer. { }
-          _ { word(s.s, "["); print_type(s, t); word(s.s, "]"); }
-        }
-        popen(s);
-        pclose(s);
-      }
-      ast::expr_chan(expr) {
-        word(s.s, "chan");
-        popen(s);
-        print_expr(s, expr);
-        pclose(s);
-      }
       ast::expr_anon_obj(anon_obj) {
         head(s, "obj");
 

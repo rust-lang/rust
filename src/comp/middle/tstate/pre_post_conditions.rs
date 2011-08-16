@@ -356,13 +356,6 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
           _ { }
         }
       }
-      expr_spawn(_, _, operator, operands) {
-        let /* copy */args = operands;
-        args += ~[operator];
-        find_pre_post_exprs(fcx, args, e.id);
-        forget_args_moved_in(fcx, e, callee_modes(fcx, operator.id),
-                             operands);
-      }
       expr_vec(args, _, _) { find_pre_post_exprs(fcx, args, e.id); }
       expr_path(p) {
         let rslt = expr_pp(fcx.ccx, e);
@@ -371,10 +364,6 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_self_method(v) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_log(_, arg) {
-        find_pre_post_expr(fcx, arg);
-        copy_pre_post(fcx.ccx, e.id, arg);
-      }
-      expr_chan(arg) {
         find_pre_post_expr(fcx, arg);
         copy_pre_post(fcx.ccx, e.id, arg);
       }
@@ -413,10 +402,6 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_move(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_move); }
       expr_swap(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_swap); }
       expr_assign(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_assign); }
-      expr_recv(lhs, rhs) {
-        // note inversion of lhs and rhs
-        handle_update(fcx, e, rhs, lhs, oper_assign);
-      }
       expr_assign_op(_, lhs, rhs) {
         /* Different from expr_assign in that the lhs *must*
            already be initialized */
@@ -460,7 +445,6 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
                               expr_postcond(fcx.ccx, l));
         } else { find_pre_post_exprs(fcx, ~[l, r], e.id); }
       }
-      expr_send(l, r) { find_pre_post_exprs(fcx, ~[l, r], e.id); }
       expr_unary(_, operand) {
         find_pre_post_expr(fcx, operand);
         copy_pre_post(fcx.ccx, e.id, operand);
@@ -585,7 +569,6 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_break. { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_cont. { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_port(_) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.inner_obj {

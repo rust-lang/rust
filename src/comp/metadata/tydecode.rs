@@ -219,9 +219,6 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, sd)); }
       'V' { ret ty::mk_vec(st.tcx, parse_mt(st, sd)); }
       'I' { ret ty::mk_ivec(st.tcx, parse_mt(st, sd)); }
-      'a' { ret ty::mk_task(st.tcx); }
-      'P' { ret ty::mk_port(st.tcx, parse_ty(st, sd)); }
-      'C' { ret ty::mk_chan(st.tcx, parse_ty(st, sd)); }
       'R' {
         assert (next(st) as char == '[');
         let fields: [ty::field] = ~[];

@@ -220,9 +220,6 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
         } else { llty = T_ivec(type_of_inner(cx, sp, mt.ty)); }
       }
       ty::ty_ptr(mt) { llty = T_ptr(type_of_inner(cx, sp, mt.ty)); }
-      ty::ty_port(t) { llty = T_ptr(T_port(type_of_inner(cx, sp, t))); }
-      ty::ty_chan(t) { llty = T_ptr(T_chan(type_of_inner(cx, sp, t))); }
-      ty::ty_task. { llty = T_taskptr(*cx); }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = ~[];
         for f: ty::field in fields {
@@ -1255,18 +1252,7 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
 
     let bcx;
 
-    if ty::type_is_task(bcx_tcx(cx), t) {
-        let task_ptr = cx.build.Load(v);
-        cx.build.Call(bcx_ccx(cx).upcalls.take_task,
-                      ~[cx.fcx.lltaskptr, task_ptr]);
-        bcx = cx;
-    } else if ty::type_is_chan(bcx_tcx(cx), t) {
-        let ptr = cx.build.Load(v);
-        ptr = cx.build.PointerCast(ptr, T_opaque_chan_ptr());
-        cx.build.Call(bcx_ccx(cx).upcalls.take_chan,
-                      ~[cx.fcx.lltaskptr, ptr]);
-        bcx = cx;
-    } else if ty::type_is_boxed(bcx_tcx(cx), t) {
+    if ty::type_is_boxed(bcx_tcx(cx), t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if (ty::type_is_structural(bcx_tcx(cx), t)) {
         bcx = duplicate_heap_parts_if_necessary(cx, v, t).bcx;
@@ -1342,21 +1328,6 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           ty::ty_uniq(_) {
             fail "free uniq unimplemented";
           }
-          ty::ty_port(_) {
-            let v = cx.build.Load(v0);
-            cx.build.Call(bcx_ccx(cx).upcalls.del_port,
-                          ~[cx.fcx.lltaskptr,
-                            cx.build.PointerCast(v, T_opaque_port_ptr())]);
-            rslt(cx, C_int(0))
-          }
-          ty::ty_chan(_) {
-            let v = cx.build.Load(v0);
-            cx.build.Call(bcx_ccx(cx).upcalls.del_chan,
-                          ~[cx.fcx.lltaskptr,
-                            cx.build.PointerCast(v, T_opaque_chan_ptr())]);
-            rslt(cx, C_int(0))
-          }
-          ty::ty_task. { rslt(cx, C_nil()) }
           ty::ty_obj(_) {
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::obj_field_box)]);
@@ -1450,20 +1421,6 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           }
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_uniq(_) { fail "drop uniq unimplemented"; }
-          ty::ty_port(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_chan(_) {
-            let ptr = cx.build.Load(v0);
-            ptr = cx.build.PointerCast(ptr, T_opaque_chan_ptr());
-            {bcx: cx,
-             val: cx.build.Call(bcx_ccx(cx).upcalls.drop_chan,
-                                ~[cx.fcx.lltaskptr, ptr])}
-          }
-          ty::ty_task. {
-            let task_ptr = cx.build.Load(v0);
-            {bcx: cx,
-             val: cx.build.Call(bcx_ccx(cx).upcalls.drop_task,
-                                ~[cx.fcx.lltaskptr, task_ptr])}
-          }
           ty::ty_obj(_) {
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::obj_field_box)]);

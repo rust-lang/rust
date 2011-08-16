@@ -323,11 +323,6 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
                                      operands,
                                      controlflow_expr(fcx.ccx, operator));
       }
-      expr_spawn(_, _, operator, operands) {
-        ret find_pre_post_state_call(fcx, pres, operator, e.id,
-                                     callee_arg_init_ops(fcx, operator.id),
-                                     operands, return);
-      }
       expr_bind(operator, maybe_args) {
         let args = ~[];
         let callee_ops = callee_arg_init_ops(fcx, operator.id);
@@ -348,9 +343,6 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       }
       expr_path(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_log(_, ex) {
-        ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
-      }
-      expr_chan(ex) {
         ret find_pre_post_state_sub(fcx, pres, ex, e.id, none);
       }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
@@ -407,19 +399,6 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         // Could be more precise and actually swap the role of
         // lhs and rhs in constraints
       }
-      expr_recv(lhs, rhs) {
-        // Opposite order as most other binary operations,
-        // so not using find_pre_post_state_two
-        let changed =
-            set_prestate_ann(fcx.ccx, e.id, pres) |
-                find_pre_post_state_expr(fcx, pres, lhs) |
-                find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs),
-                                         rhs);
-        let post = tritv_clone(expr_poststate(fcx.ccx, rhs));
-        forget_in_poststate_still_init(fcx, post, rhs.id);
-        gen_if_local(fcx, post, rhs);
-        ret changed | set_poststate_ann(fcx.ccx, e.id, post);
-      }
       expr_ret(maybe_ret_val) {
         let changed = set_prestate_ann(fcx.ccx, e.id, pres);
         /* normally, everything is true if execution continues after
@@ -466,9 +445,6 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         } else {
             ret find_pre_post_state_two(fcx, pres, l, r, e.id, oper_pure);
         }
-      }
-      expr_send(l, r) {
-        ret find_pre_post_state_two(fcx, pres, l, r, e.id, oper_pure);
       }
       expr_assign_op(op, lhs, rhs) {
         ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id,
@@ -615,7 +591,6 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
       }
       expr_break. { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_cont. { ret pure_exp(fcx.ccx, e.id, pres); }
-      expr_port(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_self_method(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_anon_obj(anon_obj) {
         alt anon_obj.inner_obj {

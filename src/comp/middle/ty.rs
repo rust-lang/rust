@@ -62,7 +62,6 @@ export method_ty_to_fn_ty;
 export mk_bool;
 export mk_bot;
 export mk_box;
-export mk_chan;
 export mk_char;
 export mk_constr;
 export mk_ctxt;
@@ -81,12 +80,10 @@ export mk_nil;
 export mk_obj;
 export mk_res;
 export mk_param;
-export mk_port;
 export mk_ptr;
 export mk_rec;
 export mk_str;
 export mk_tag;
-export mk_task;
 export mk_tup;
 export mk_type;
 export mk_uint;
@@ -123,7 +120,6 @@ export ty_native_fn;
 export ty_bool;
 export ty_bot;
 export ty_box;
-export ty_chan;
 export ty_char;
 export ty_constr;
 export ty_constr_arg;
@@ -141,12 +137,10 @@ export ty_nil;
 export ty_obj;
 export ty_res;
 export ty_param;
-export ty_port;
 export ty_ptr;
 export ty_rec;
 export ty_str;
 export ty_tag;
-export ty_task;
 export ty_tup;
 export ty_type;
 export ty_uint;
@@ -169,8 +163,6 @@ export type_is_bool;
 export type_is_bot;
 export type_is_box;
 export type_is_boxed;
-export type_is_chan;
-export type_is_task;
 export type_is_fp;
 export type_is_integral;
 export type_is_native;
@@ -273,9 +265,6 @@ tag sty {
     ty_vec(mt);
     ty_ivec(mt);
     ty_ptr(mt);
-    ty_port(t);
-    ty_chan(t);
-    ty_task;
     ty_rec([field]);
     ty_fn(ast::proto, [arg], t, controlflow, [@constr]);
     ty_native_fn(ast::native_abi, [arg], t);
@@ -356,13 +345,11 @@ const idx_str: uint = 16u;
 
 const idx_istr: uint = 17u;
 
-const idx_task: uint = 18u;
+const idx_type: uint = 18u;
 
-const idx_type: uint = 19u;
+const idx_bot: uint = 19u;
 
-const idx_bot: uint = 20u;
-
-const idx_first_others: uint = 21u;
+const idx_first_others: uint = 20u;
 
 type type_store = interner::interner[@raw_t];
 
@@ -390,7 +377,6 @@ fn populate_type_store(cx: &ctxt) {
     intern(cx, ty_char, none);
     intern(cx, ty_str, none);
     intern(cx, ty_istr, none);
-    intern(cx, ty_task, none);
     intern(cx, ty_type, none);
     intern(cx, ty_bot, none);
     assert (vec::len(cx.ts.vect) == idx_first_others);
@@ -469,7 +455,6 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
       ty_char. {/* no-op */ }
       ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
-      ty_task. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_param(_,_) { has_params = true; }
@@ -482,8 +467,6 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
       ty_vec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ivec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ptr(m) { derive_flags_mt(cx, has_params, has_vars, m); }
-      ty_port(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
-      ty_chan(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
       ty_rec(flds) {
         for f: field in flds {
             derive_flags_mt(cx, has_params, has_vars, f.mt);
@@ -591,12 +574,6 @@ fn mk_imm_vec(cx: &ctxt, typ: &t) -> t {
     ret gen_ty(cx, ty_vec({ty: typ, mut: ast::imm}));
 }
 
-fn mk_port(cx: &ctxt, ty: &t) -> t { ret gen_ty(cx, ty_port(ty)); }
-
-fn mk_chan(cx: &ctxt, ty: &t) -> t { ret gen_ty(cx, ty_chan(ty)); }
-
-fn mk_task(cx: &ctxt) -> t { ret gen_ty(cx, ty_task); }
-
 fn mk_rec(cx: &ctxt, fs: &[field]) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
 fn mk_constr(cx: &ctxt, t: &t, cs: &[@type_constr]) -> t {
@@ -664,14 +641,11 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
-      ty_task. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) { walk_ty(cx, walker, tm.ty); }
       ty_vec(tm) { walk_ty(cx, walker, tm.ty); }
       ty_ivec(tm) { walk_ty(cx, walker, tm.ty); }
       ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_port(subty) { walk_ty(cx, walker, subty); }
-      ty_chan(subty) { walk_ty(cx, walker, subty); }
       ty_tag(tid, subtys) {
         for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
@@ -737,7 +711,6 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_istr. {/* no-op */ }
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
-      ty_task. {/* no-op */ }
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -751,8 +724,6 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_ivec(tm) {
         ty = mk_ivec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
-      ty_port(subty) { ty = mk_port(cx, fold_ty(cx, fld, subty)); }
-      ty_chan(subty) { ty = mk_chan(cx, fold_ty(cx, fld, subty)); }
       ty_tag(tid, subtys) {
         let new_subtys: [t] = ~[];
         for subty: t in subtys { new_subtys += ~[fold_ty(cx, fld, subty)]; }
@@ -862,14 +833,6 @@ fn type_is_bool(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) { ty_bool. { ret true; } _ { ret false; } }
 }
 
-fn type_is_chan(cx: &ctxt, ty: &t) -> bool {
-    alt struct(cx, ty) { ty_chan(_) { ret true; } _ { ret false; } }
-}
-
-fn type_is_task(cx: &ctxt, ty: &t) -> bool {
-    alt struct(cx, ty) { ty_task. { ret true; } _ { ret false; } }
-}
-
 fn type_is_structural(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_rec(_) { ret true; }
@@ -967,9 +930,6 @@ fn type_is_boxed(cx: &ctxt, ty: &t) -> bool {
       ty_str. { ret true; }
       ty_vec(_) { ret true; }
       ty_box(_) { ret true; }
-      ty_port(_) { ret true; }
-      ty_chan(_) { ret true; }
-      ty_task. { ret true; }
       _ { ret false; }
     }
 }
@@ -1083,7 +1043,7 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
       }
 
       // Those things with refcounts-to-interior are just shared.
-      ty_str. | ty_task. {
+      ty_str. {
         result = kind_shared;
       }
 
@@ -1105,18 +1065,6 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
       // lower unique to shared. Therefore just set result to shared.
       ty_box(mt) | ty_vec(mt) {
         result = ast::kind_shared;
-      }
-
-      // FIXME: remove ports. Ports currently contribute 'shared'
-      ty_port(t) {
-        result = kind::lower_kind(ast::kind_shared,
-                                  type_kind(cx, t));
-      }
-
-      // FIXME: remove chans. Chans currently contribute only
-      // their inner.
-      ty_chan(t) {
-        result = type_kind(cx, t);
       }
 
       // Pointers and unique boxes / vecs raise pinned to shared,
@@ -1205,9 +1153,6 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_vec(_) { ret false; }
       ty_ivec(mt) { ret type_has_dynamic_size(cx, mt.ty); }
       ty_ptr(_) { ret false; }
-      ty_port(_) { ret false; }
-      ty_chan(_) { ret false; }
-      ty_task. { ret false; }
       ty_rec(fields) {
         let i = 0u;
         while i < vec::len[field](fields) {
@@ -1357,9 +1302,6 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
       ty_ptr(_) {
         result = false;
       }
-      ty_port(_) { result = false; }
-      ty_chan(_) { result = false; }
-      ty_task. { result = false; }
       ty_var(_) { fail "ty_var in type_owns_heap_mem"; }
       ty_param(_,_) { result = false; }
     }
@@ -1380,8 +1322,7 @@ fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
 
         // Boxed types
         ty_str. | ty_istr. | ty_box(_) | ty_vec(_) | ty_ivec(_) |
-        ty_fn(_,_,_,_,_) | ty_native_fn(_,_,_) | ty_obj(_) | ty_port(_) |
-        ty_chan(_) | ty_task. { result = false; }
+        ty_fn(_,_,_,_,_) | ty_native_fn(_,_,_) | ty_obj(_) { result = false; }
 
         // Structural types
         ty_tag(did, tps) {
@@ -1545,9 +1486,6 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
       ty_vec(mt) { ret hash_subty(20u, mt.ty); }
       ty_ivec(mt) { ret hash_subty(21u, mt.ty); }
-      ty_port(typ) { ret hash_subty(22u, typ); }
-      ty_chan(typ) { ret hash_subty(23u, typ); }
-      ty_task. { ret 24u; }
       ty_rec(fields) {
         let h = 26u;
         for f: field in fields { h += h << 5u + hash_ty(f.mt.ty); }
@@ -1717,13 +1655,6 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_ptr(mt_a) {
         alt b { ty_ptr(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
       }
-      ty_port(t_a) {
-        alt b { ty_port(t_b) { ret eq_ty(t_a, t_b); } _ { ret false; } }
-      }
-      ty_chan(t_a) {
-        alt b { ty_chan(t_b) { ret eq_ty(t_a, t_b); } _ { ret false; } }
-      }
-      ty_task. { alt b { ty_task. { ret true; } _ { ret false; } } }
       ty_rec(flds_a) {
         alt b {
           ty_rec(flds_b) {
@@ -2626,20 +2557,6 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_port(expected_sub) {
-            alt struct(cx.tcx, actual) {
-              ty::ty_port(actual_sub) {
-                let result = unify_step(cx, expected_sub, actual_sub);
-                alt result {
-                  ures_ok(result_sub) {
-                    ret ures_ok(mk_port(cx.tcx, result_sub));
-                  }
-                  _ { ret result; }
-                }
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
           ty::ty_res(ex_id, ex_inner, ex_tps) {
             alt struct(cx.tcx, actual) {
               ty::ty_res(act_id, act_inner, act_tps) {
@@ -2660,20 +2577,6 @@ mod unify {
                         i += 1u;
                     }
                     ret ures_ok(mk_res(cx.tcx, act_id, res_inner, res_tps));
-                  }
-                  _ { ret result; }
-                }
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
-          ty::ty_chan(expected_sub) {
-            alt struct(cx.tcx, actual) {
-              ty::ty_chan(actual_sub) {
-                let result = unify_step(cx, expected_sub, actual_sub);
-                alt result {
-                  ures_ok(result_sub) {
-                    ret ures_ok(mk_chan(cx.tcx, result_sub));
                   }
                   _ { ret result; }
                 }

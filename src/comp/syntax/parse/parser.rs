@@ -1351,21 +1351,6 @@ fn parse_alt_expr(p: &parser) -> @ast::expr {
     ret mk_expr(p, lo, hi, ast::expr_alt(discriminant, arms));
 }
 
-fn parse_spawn_expr(p: &parser) -> @ast::expr {
-    let lo = p.get_last_lo_pos();
-    // FIXME: Parse domain and name
-    // FIXME: why no full expr?
-
-    let fn_expr = parse_bottom_expr(p);
-    let es =
-        parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
-                  parse_expr, p);
-    let hi = es.span.hi;
-    ret mk_expr(p, lo, hi,
-                ast::expr_spawn(ast::dom_implicit, option::none, fn_expr,
-                                es.node));
-}
-
 fn parse_expr(p: &parser) -> @ast::expr {
     ret parse_expr_res(p, UNRESTRICTED);
 }
@@ -1614,7 +1599,6 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
               ast::expr_call(_, _) { true }
               ast::expr_self_method(_) { false }
               ast::expr_bind(_, _) { true }
-              ast::expr_spawn(_, _, _, _) { true }
               ast::expr_binary(_, _, _) { true }
               ast::expr_unary(_, _) { true }
               ast::expr_lit(_) { true }
@@ -1632,8 +1616,6 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
               ast::expr_assign(_, _) { true }
               ast::expr_swap(_, _) { true }
               ast::expr_assign_op(_, _, _) { true }
-              ast::expr_send(_, _) { true }
-              ast::expr_recv(_, _) { true }
               ast::expr_field(_, _) { true }
               ast::expr_index(_, _) { true }
               ast::expr_path(_) { true }
@@ -1647,8 +1629,6 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
               ast::expr_log(_, _) { true }
               ast::expr_check(_, _) { true }
               ast::expr_if_check(_, _, _) { false }
-              ast::expr_port(_) { true }
-              ast::expr_chan(_) { true }
               ast::expr_anon_obj(_) { false }
               ast::expr_assert(_) { true }
             }

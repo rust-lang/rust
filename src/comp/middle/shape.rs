@@ -357,13 +357,6 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
         add_size_hint(ccx, s, mt.ty);
         add_substr(s, shape_of(ccx, mt.ty));
       }
-      ty::ty_port(t) {
-        s += ~[shape_port];
-        add_substr(s, shape_of(ccx, t));
-      }
-      ty::ty_chan(t) { s += ~[shape_chan]; }
-      ty::ty_task. { s += ~[shape_task]; }
-
       ty::ty_rec(fields) {
         s += ~[shape_struct];
         let sub = ~[];

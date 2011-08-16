@@ -298,7 +298,6 @@ tag expr_ {
     expr_tup([@expr]);
     expr_self_method(ident);
     expr_bind(@expr, [option::t[@expr]]);
-    expr_spawn(spawn_dom, option::t[str], @expr, [@expr]);
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
@@ -321,8 +320,6 @@ tag expr_ {
     expr_assign(@expr, @expr);
     expr_swap(@expr, @expr);
     expr_assign_op(binop, @expr, @expr);
-    expr_send(@expr, @expr);
-    expr_recv(@expr, @expr);
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_path(path);
@@ -340,8 +337,6 @@ tag expr_ {
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
     expr_if_check(@expr, blk, option::t[@expr]);
-    expr_port(@ty);
-    expr_chan(@expr);
     expr_anon_obj(anon_obj);
     expr_mac(mac);
     expr_uniq(@expr);

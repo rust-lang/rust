@@ -94,10 +94,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_uniq(t) { s += "~" + ty_to_str(cx, t); }
       ty_vec(tm) { s += "vec[" + mt_to_str(cx, tm) + "]"; }
       ty_ivec(tm) { s += "[" + mt_to_str(cx, tm) + "]"; }
-      ty_port(t) { s += "port[" + ty_to_str(cx, t) + "]"; }
-      ty_chan(t) { s += "chan[" + ty_to_str(cx, t) + "]"; }
       ty_type. { s += "type"; }
-      ty_task. { s += "task"; }
       ty_rec(elems) {
         let strs: [str] = ~[];
         for fld: field in elems { strs += ~[field_to_str(cx, fld)]; }
