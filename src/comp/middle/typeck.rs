@@ -1573,35 +1573,37 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Grab the argument types
-        let arg_tys;
-        alt sty {
-          ty::ty_fn(_, arg_tys_0, _, _, _) |
-          ty::ty_native_fn(_, arg_tys_0, _) { arg_tys = arg_tys_0; }
+        let arg_tys = alt sty {
+          ty::ty_fn(_, arg_tys, _, _, _) |
+          ty::ty_native_fn(_, arg_tys, _) { arg_tys }
           _ {
             fcx.ccx.tcx.sess.span_fatal(f.span,
                                         "mismatched types: \
                                            expected function or native \
                                            function but found "
-                                            + ty_to_str(fcx.ccx.tcx, fty));
+                                            + ty_to_str(fcx.ccx.tcx, fty))
           }
-        }
+        };
 
         // Check that the correct number of arguments were supplied.
-        let expected_arg_count = vec::len::<ty::arg>(arg_tys);
-        let supplied_arg_count = vec::len::<option::t<@ast::expr>>(args);
+        let expected_arg_count = vec::len(arg_tys);
+        let supplied_arg_count = vec::len(args);
         if expected_arg_count != supplied_arg_count {
-            fcx.ccx.tcx.sess.span_fatal(sp,
-                                        #fmt("this function takes %u \
-                                            parameter%s but %u parameter%s \
-                                            supplied",
-                                             expected_arg_count,
-                                             if expected_arg_count == 1u {
-                                                 ""
-                                             } else { "s" },
-                                             supplied_arg_count,
-                                             if supplied_arg_count == 1u {
-                                                 " was"
-                                             } else { "s were" }));
+            fcx.ccx.tcx.sess.span_err(
+                sp,
+                #fmt("this function takes %u \
+                      parameter%s but %u parameter%s supplied",
+                     expected_arg_count,
+                     if expected_arg_count == 1u { "" } else { "s" },
+                     supplied_arg_count,
+                     if supplied_arg_count == 1u
+                     { " was" } else { "s were" }));
+            // HACK: extend the arguments list with dummy arguments to
+            // check against
+            let dummy = {mode: ty::mo_val, ty: ty::mk_nil(fcx.ccx.tcx)};
+            while vec::len(arg_tys) < supplied_arg_count {
+                arg_tys += ~[dummy];
+            }
         }
 
         // Check the arguments.
