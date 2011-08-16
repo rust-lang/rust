@@ -560,10 +560,14 @@ type variant = spanned<variant_>;
 
 type view_item = spanned<view_item_>;
 
+// FIXME: May want to just use path here, which would allow things like
+// 'import ::foo'
+type simple_path = [ident];
+
 tag view_item_ {
     view_item_use(ident, [@meta_item], node_id);
-    view_item_import(ident, [ident], node_id);
-    view_item_import_glob([ident], node_id);
+    view_item_import(ident, simple_path, node_id);
+    view_item_import_glob(simple_path, node_id);
     view_item_export([ident], node_id);
 }
 
