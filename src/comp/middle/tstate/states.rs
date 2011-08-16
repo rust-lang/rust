@@ -556,7 +556,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
         let a_post;
         if ivec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
-            for an_alt: arm  in alts {
+            for an_alt: arm in alts {
                 changed |=
                     find_pre_post_state_block(fcx, e_post, an_alt.body);
                 intersect(a_post, block_poststate(fcx.ccx, an_alt.body));
@@ -712,7 +712,7 @@ fn find_pre_post_state_block(fcx: &fn_ctxt, pres0: &prestate, b: &blk) ->
      initializes.  Then <pres> becomes the new poststate. */
 
     let changed = false;
-    for s: @stmt  in b.node.stmts {
+    for s: @stmt in b.node.stmts {
         changed |= find_pre_post_state_stmt(fcx, pres, s);
         pres = stmt_poststate(fcx.ccx, *s);
     }
@@ -755,7 +755,7 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
     // Instantiate any constraints on the arguments so we can use them
     let block_pre = block_prestate(fcx.ccx, f.body);
     let tsc;
-    for c: @constr  in f.decl.constraints {
+    for c: @constr in f.decl.constraints {
         tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }

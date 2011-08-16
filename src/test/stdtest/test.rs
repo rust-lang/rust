@@ -71,7 +71,7 @@ fn sort_tests() {
         {
             let testfn = fn () { };
             let tests = ~[];
-            for name: str  in names {
+            for name: str in names {
                 let test = {name: name, fn: testfn, ignore: false};
                 tests += ~[test];
             }
@@ -89,7 +89,7 @@ fn sort_tests() {
     let pairs = ivec::zip(expected, filtered);
 
 
-    for p: {_0: str, _1: test::test_desc}  in pairs {
+    for p: {_0: str, _1: test::test_desc} in pairs {
         assert (p._0 == p._1.name);
     }
 }

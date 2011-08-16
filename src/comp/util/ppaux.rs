@@ -48,7 +48,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
         let strs = ~[];
-        for a: arg  in inputs { strs += ~[fn_input_to_str(cx, a)]; }
+        for a: arg in inputs { strs += ~[fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
         if struct(cx, output) != ty_nil {
@@ -100,7 +100,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       ty_task. { s += "task"; }
       ty_rec(elems) {
         let strs: [str] = ~[];
-        for fld: field  in elems { strs += ~[field_to_str(cx, fld)]; }
+        for fld: field in elems { strs += ~[field_to_str(cx, fld)]; }
         s += "{" + str::connect(strs, ",") + "}";
       }
       ty_tup(elems) {
@@ -114,7 +114,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
         if ivec::len[t](tps) > 0u {
             let strs: [str] = ~[];
-            for typ: t  in tps { strs += ~[ty_to_str(cx, typ)]; }
+            for typ: t in tps { strs += ~[ty_to_str(cx, typ)]; }
             s += "[" + str::connect(strs, ",") + "]";
         }
       }
@@ -128,7 +128,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
       }
       ty_obj(meths) {
         let strs = ~[];
-        for m: method  in meths { strs += ~[method_to_str(cx, m)]; }
+        for m: method in meths { strs += ~[method_to_str(cx, m)]; }
         s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
       }
       ty_res(id, _, _) {
@@ -158,7 +158,7 @@ fn constr_to_str(c: &@constr) -> str {
 fn constrs_str(constrs: &[@constr]) -> str {
     let s = "";
     let colon = true;
-    for c: @constr  in constrs {
+    for c: @constr in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }

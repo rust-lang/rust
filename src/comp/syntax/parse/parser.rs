@@ -355,7 +355,7 @@ fn parse_ty_field(p: &parser) -> ast::ty_field {
 // otherwise, fail
 fn ident_index(p: &parser, args: &[ast::arg], i: &ast::ident) -> uint {
     let j = 0u;
-    for a: ast::arg  in args { if a.ident == i { ret j; } j += 1u; }
+    for a: ast::arg in args { if a.ident == i { ret j; } j += 1u; }
     p.fatal("Unbound variable " + i + " in constraint arg");
 }
 
@@ -1219,7 +1219,7 @@ const ternary_prec: int = 0;
 fn parse_more_binops(p: &parser, lhs: @ast::expr, min_prec: int) ->
    @ast::expr {
     let peeked = p.peek();
-    for cur: op_spec  in *p.get_prec_table() {
+    for cur: op_spec in *p.get_prec_table() {
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
             let rhs = parse_more_binops(p, parse_prefix_expr(p), cur.prec);
@@ -2123,7 +2123,7 @@ fn parse_item_tag(p: &parser, attrs: &[ast::attribute]) -> @ast::item {
                 let arg_tys =
                     parse_seq(token::LPAREN, token::RPAREN,
                               some(token::COMMA), bind parse_ty(_, false), p);
-                for ty: @ast::ty  in arg_tys.node {
+                for ty: @ast::ty in arg_tys.node {
                     args += ~[{ty: ty, id: p.get_id()}];
                 }
                 vhi = arg_tys.span.hi;

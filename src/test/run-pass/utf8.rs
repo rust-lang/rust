@@ -31,7 +31,7 @@ fn main() {
 
     fn check_str_eq(a: str, b: str) {
         let i: int = 0;
-        for ab: u8  in a {
+        for ab: u8 in a {
             log i;
             log ab;
             let bb: u8 = b.(i);

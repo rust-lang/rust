@@ -29,7 +29,7 @@ fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
                          prefix: str,
                          view_items: &mutable [@ast::view_item],
                          items: &mutable [@ast::item]) {
-    for sub_cdir: @ast::crate_directive  in cdirs {
+    for sub_cdir: @ast::crate_directive in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }

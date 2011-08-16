@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn main() { for each i: int  in first_ten() { log "main"; } }
+fn main() { for each i: int in first_ten() { log "main"; } }
 
 iter first_ten() -> int {
     let i: int = 90;

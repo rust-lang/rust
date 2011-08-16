@@ -49,7 +49,7 @@ import states::find_pre_post_state_fn;
 fn check_unused_vars(fcx: &fn_ctxt) {
 
     // FIXME: could be more efficient
-    for c: norm_constraint  in constraints(fcx) {
+    for c: norm_constraint in constraints(fcx) {
         alt c.c.node {
           ninit(id, v) {
             if !vec_contains(fcx.enclosing.used_vars, id) {

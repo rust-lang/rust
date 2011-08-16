@@ -8,6 +8,6 @@ iter range(a: int, b: int) -> int {
 
 fn main() {
     let sum: int = 0;
-    for each x: int  in range(0, 100) { sum += x; }
+    for each x: int in range(0, 100) { sum += x; }
     log sum;
 }

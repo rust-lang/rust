@@ -80,7 +80,7 @@ fn seq_postconds(fcx: &fn_ctxt, ps: &[postcond]) -> postcond {
     let sz = ivec::len(ps);
     if sz >= 1u {
         let prev = tritv_clone(ps.(0));
-        for p: postcond  in ivec::slice(ps, 1u, sz) { seq_tritv(prev, p); }
+        for p: postcond in ivec::slice(ps, 1u, sz) { seq_tritv(prev, p); }
         ret prev;
     } else { ret ann::empty_poststate(num_constraints(fcx.enclosing)); }
 }

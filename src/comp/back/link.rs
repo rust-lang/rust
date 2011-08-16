@@ -296,7 +296,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
         let cmh_items: [@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
-        for meta: @ast::meta_item  in linkage_metas {
+        for meta: @ast::meta_item in linkage_metas {
             if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
@@ -326,7 +326,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
 
         sha.reset();
-        for m_: @ast::meta_item  in cmh_items {
+        for m_: @ast::meta_item in cmh_items {
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
@@ -429,7 +429,7 @@ fn mangle(ss: &[str]) -> str {
 
     let n = "_ZN"; // Begin name-sequence.
 
-    for s: str  in ss { n += #fmt("%u%s", str::byte_len(s), s); }
+    for s: str in ss { n += #fmt("%u%s", str::byte_len(s), s); }
     n += "E"; // End name-sequence.
 
     ret n;

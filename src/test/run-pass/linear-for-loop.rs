@@ -3,12 +3,12 @@
 fn main() {
     let x = ~[1, 2, 3];
     let y = 0;
-    for i: int  in x { log i; y += i; }
+    for i: int in x { log i; y += i; }
     log y;
     assert (y == 6);
     let s = "hello there";
     let i: int = 0;
-    for c: u8  in s {
+    for c: u8 in s {
         if i == 0 { assert (c == 'h' as u8); }
         if i == 1 { assert (c == 'e' as u8); }
         if i == 2 { assert (c == 'l' as u8); }

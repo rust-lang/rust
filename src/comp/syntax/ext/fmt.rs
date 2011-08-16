@@ -86,7 +86,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
                      fields: &[{ident: ast::ident, ex: @ast::expr}]) ->
        @ast::expr {
         let astfields: [ast::field] = ~[];
-        for field: {ident: ast::ident, ex: @ast::expr}  in fields {
+        for field: {ident: ast::ident, ex: @ast::expr} in fields {
             let ident = field.ident;
             let val = field.ex;
             let astfield =
@@ -115,7 +115,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
         fn make_flags(cx: &ext_ctxt, sp: span, flags: &[flag]) ->
            @ast::expr {
             let flagexprs: [@ast::expr] = ~[];
-            for f: flag  in flags {
+            for f: flag in flags {
                 let fstr;
                 alt f {
                   flag_left_justify. { fstr = "flag_left_justify"; }
@@ -205,7 +205,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
           option::none. { }
           _ { cx.span_unimpl(sp, unsupported); }
         }
-        for f: flag  in cnv.flags {
+        for f: flag in cnv.flags {
             alt f {
               flag_left_justify. { }
               flag_sign_always. {
@@ -259,7 +259,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
           some(p) { log "param: " + std::int::to_str(p, 10u); }
           _ { log "param: none"; }
         }
-        for f: flag  in c.flags {
+        for f: flag in c.flags {
             alt f {
               flag_left_justify. { log "flag: left justify"; }
               flag_left_zero_pad. { log "flag: left zero pad"; }
@@ -308,7 +308,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     let n = 0u;
     let tmp_expr = make_new_str(cx, sp, "");
     let nargs = ivec::len[@ast::expr](args);
-    for pc: piece  in pieces {
+    for pc: piece in pieces {
         alt pc {
           piece_string(s) {
             let s_expr = make_new_str(cx, fmt_sp, s);

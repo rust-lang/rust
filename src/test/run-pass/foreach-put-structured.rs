@@ -9,7 +9,7 @@ iter pairs() -> {_0: int, _1: int} {
 fn main() {
     let i: int = 10;
     let j: int = 0;
-    for each p: {_0: int, _1: int}  in pairs() {
+    for each p: {_0: int, _1: int} in pairs() {
         log p._0;
         log p._1;
         assert (p._0 + 10 == i);

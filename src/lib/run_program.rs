@@ -14,7 +14,7 @@ native "rust" mod rustrt {
 
 fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
     let argptrs = ~[str::buf(prog)];
-    for arg: str  in args { argptrs += ~[str::buf(arg)]; }
+    for arg: str in args { argptrs += ~[str::buf(arg)]; }
     argptrs += ~[0 as sbuf];
     ret argptrs;
 }

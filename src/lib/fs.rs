@@ -48,7 +48,7 @@ fn list_dir(p: path) -> [str] {
     let pl = str::byte_len(p);
     if pl == 0u || p.(pl - 1u) as char != os_fs::path_sep { p += path_sep(); }
     let full_paths: [str] = ~[];
-    for filename: str  in os_fs::list_dir(p) {
+    for filename: str in os_fs::list_dir(p) {
         if !str::eq(filename, ".") {
             if !str::eq(filename, "..") { full_paths += ~[p + filename]; }
         }

@@ -142,7 +142,7 @@ fn maybe_highlight_lines(sp: &option::t[span], cm: &codemap,
             elided = true;
         }
         // Print the offending lines
-        for line: uint  in display_lines {
+        for line: uint in display_lines {
             io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, "\n") { s += "\n"; }
@@ -203,7 +203,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     let lines = ~[];
-    for each i: uint  in uint::range(lo.line - 1u, hi.line as uint) {
+    for each i: uint in uint::range(lo.line - 1u, hi.line as uint) {
         lines += ~[i];
     }
     ret @{name: lo.filename, lines: lines};
@@ -227,7 +227,7 @@ fn get_line(fm: filemap, line: int, file: &str) -> str {
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
-    for fm: filemap  in cm.files { if fm.name == filename { ret fm; } }
+    for fm: filemap in cm.files { if fm.name == filename { ret fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");

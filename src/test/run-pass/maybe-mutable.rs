@@ -4,7 +4,7 @@
 // -*- rust -*-
 fn len(v: [mutable? int]) -> uint {
     let i = 0u;
-    for x: int  in v { i += 1u; }
+    for x: int in v { i += 1u; }
     ret i;
 }
 

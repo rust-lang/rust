@@ -117,7 +117,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str("t[");
         w.write_str(cx.ds(def));
         w.write_char('|');
-        for t: ty::t  in tys { enc_ty(w, cx, t); }
+        for t: ty::t in tys { enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_tup(ts) {
@@ -134,7 +134,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_chan(t) { w.write_char('C'); enc_ty(w, cx, t); }
       ty::ty_rec(fields) {
         w.write_str("R[");
-        for field: ty::field  in fields {
+        for field: ty::field in fields {
             w.write_str(field.ident);
             w.write_char('=');
             enc_mt(w, cx, field.mt);
@@ -158,7 +158,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       }
       ty::ty_obj(methods) {
         w.write_str("O[");
-        for m: ty::method  in methods {
+        for m: ty::method in methods {
             enc_proto(w, m.proto);
             w.write_str(m.ident);
             enc_ty_fn(w, cx, m.inputs, m.output, m.cf, m.constrs);
@@ -170,7 +170,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_ty(w, cx, ty);
-        for t: ty::t  in tps { enc_ty(w, cx, t); }
+        for t: ty::t in tps { enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_var(id) { w.write_char('X'); w.write_str(int::str(id)); }
@@ -192,7 +192,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);
-        for tc: @ty::type_constr  in cs { enc_ty_constr(w, cx, tc); }
+        for tc: @ty::type_constr in cs { enc_ty_constr(w, cx, tc); }
         w.write_char(']');
       }
     }
@@ -208,7 +208,7 @@ fn enc_proto(w: &io::writer, proto: proto) {
 fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
              cf: &controlflow, constrs: &[@ty::constr]) {
     w.write_char('[');
-    for arg: ty::arg  in args {
+    for arg: ty::arg in args {
         alt arg.mode {
           ty::mo_alias(mut) {
             w.write_char('&');
@@ -223,7 +223,7 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
     }
     w.write_char(']');
     let colon = true;
-    for c: @ty::constr  in constrs {
+    for c: @ty::constr in constrs {
         if colon {
             w.write_char(':');
             colon = false;
@@ -241,7 +241,7 @@ fn enc_constr(w: &io::writer, cx: &@ctxt, c: &@ty::constr) {
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let semi = false;
-    for a: @constr_arg  in c.node.args {
+    for a: @constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
           carg_base. { w.write_char('*'); }
@@ -258,7 +258,7 @@ fn enc_ty_constr(w: &io::writer, cx: &@ctxt, c: &@ty::type_constr) {
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let semi = false;
-    for a: @ty::ty_constr_arg  in c.node.args {
+    for a: @ty::ty_constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
           carg_base. { w.write_char('*'); }

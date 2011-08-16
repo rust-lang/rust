@@ -100,7 +100,7 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
     fn rehash[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K],
                       oldbkts: &[mutable bucket[K, V]], noldbkts: uint,
                       newbkts: &[mutable bucket[K, V]], nnewbkts: uint) {
-        for b: bucket[K, V]  in oldbkts {
+        for b: bucket[K, V] in oldbkts {
             alt b {
               some(k_, v_) {
                 let k = k_;
@@ -177,12 +177,12 @@ fn mk_hashmap[@K, @V](hasher: &hashfn[K], eqer: &eqfn[K]) -> hashmap[K, V] {
             bkts = newbkts;
         }
         iter items() -> @{key: K, val: V} {
-            for b: bucket[K, V]  in bkts {
+            for b: bucket[K, V] in bkts {
                 alt b { some(k, v) { put @{key: k, val: v}; } _ { } }
             }
         }
         iter keys() -> K {
-            for b: bucket[K, V]  in bkts {
+            for b: bucket[K, V] in bkts {
                 alt b { some(k, _) { put k; } _ { } }
             }
         }

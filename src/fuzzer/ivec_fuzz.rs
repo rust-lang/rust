@@ -65,17 +65,17 @@ fn vec_edits[T](v: &[T], xs: &[T]) -> [[T]] {
 
     }
 
-    for each i: uint  in ix(0u, 1u, Lv) { edits += ~[vec_omit(v, i)]; }
-    for each i: uint  in ix(0u, 1u, Lv) { edits += ~[vec_dup(v, i)]; }
-    for each i: uint  in ix(0u, 2u, Lv) { edits += ~[vec_swadj(v, i)]; }
-    for each i: uint  in ix(1u, 2u, Lv) { edits += ~[vec_prefix(v, i)]; }
-    for each i: uint  in ix(2u, 1u, Lv) { edits += ~[vec_suffix(v, i)]; }
+    for each i: uint in ix(0u, 1u, Lv) { edits += ~[vec_omit(v, i)]; }
+    for each i: uint in ix(0u, 1u, Lv) { edits += ~[vec_dup(v, i)]; }
+    for each i: uint in ix(0u, 2u, Lv) { edits += ~[vec_swadj(v, i)]; }
+    for each i: uint in ix(1u, 2u, Lv) { edits += ~[vec_prefix(v, i)]; }
+    for each i: uint in ix(2u, 1u, Lv) { edits += ~[vec_suffix(v, i)]; }
 
-    for each j: uint  in ix(0u, 1u, len(xs)) {
-        for each i: uint  in ix(0u, 1u, Lv) {
+    for each j: uint in ix(0u, 1u, len(xs)) {
+        for each i: uint in ix(0u, 1u, Lv) {
             edits += ~[vec_poke(v, i, xs.(j))];
         }
-        for each i: uint  in ix(0u, 0u, Lv) {
+        for each i: uint in ix(0u, 0u, Lv) {
             edits += ~[vec_insert(v, i, xs.(j))];
         }
     }
@@ -99,7 +99,7 @@ fn vec_to_str(v: &[int]) -> str {
 fn show_edits(a: &[int], xs: &[int]) {
     log_err "=== Edits of " + vec_to_str(a) + " ===";
     let b = vec_edits(a, xs);
-    for each i: uint  in ix(0u, 1u, len(b)) { log_err vec_to_str(b.(i)); }
+    for each i: uint in ix(0u, 1u, len(b)) { log_err vec_to_str(b.(i)); }
 }
 
 fn demo_edits() {

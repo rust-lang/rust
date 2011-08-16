@@ -229,7 +229,7 @@ fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
 fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
     log #fmt("building test vector from %u tests", ivec::len(cx.testfns));
     let descs = ~[];
-    for test: test  in cx.testfns {
+    for test: test in cx.testfns {
         let test_ = test; // Satisfy alias analysis
         descs += ~[mk_test_desc_rec(cx, test_)];
     }

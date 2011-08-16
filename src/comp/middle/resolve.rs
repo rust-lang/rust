@@ -239,7 +239,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
 }
 
 fn resolve_imports(e: &env) {
-    for each it: @{key: ast::node_id, val: import_state}  in e.imports.items()
+    for each it: @{key: ast::node_id, val: import_state} in e.imports.items()
              {
         alt it.val {
           todo(item, sc) { resolve_import(e, item, sc); }
@@ -345,7 +345,7 @@ fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &[ast::ty_param],
     // here's where we need to set up the mapping
     // for f's constrs in the table.
 
-    for c: @ast::constr  in f.decl.constraints {
+    for c: @ast::constr in f.decl.constraints {
         resolve_constr(e, id, c, sc, v);
     }
     visit::visit_fn(f, tp, sp, name, id,
@@ -531,7 +531,7 @@ fn unresolved_err(e: &env, sc: &scopes, sp: &span, name: &ident, kind: &str) {
         fail;
     }
     let err_scope = find_fn_or_mod_scope(sc);
-    for rs: {ident: str, sc: scope}  in e.reported {
+    for rs: {ident: str, sc: scope} in e.reported {
         if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
     }
     e.reported += ~[{ident: name, sc: err_scope}];
@@ -704,7 +704,7 @@ fn lookup_in_scope(e: &env, sc: scopes, sp: &span, name: &ident,
 fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
    option::t[def] {
     let i = 0u;
-    for tp: ast::ty_param  in ty_params {
+    for tp: ast::ty_param in ty_params {
         if str::eq(tp.ident, name) { ret some(ast::def_ty_arg(i,tp.kind)); }
         i += 1u;
     }
@@ -727,7 +727,7 @@ fn lookup_in_fn(name: &ident, decl: &ast::fn_decl,
    option::t[def] {
     alt ns {
       ns_value. {
-        for a: ast::arg  in decl.inputs {
+        for a: ast::arg in decl.inputs {
             if str::eq(a.ident, name) {
                 ret some(ast::def_arg(local_def(a.id)));
             }
@@ -743,7 +743,7 @@ fn lookup_in_obj(name: &ident, ob: &ast::_obj, ty_params: &[ast::ty_param],
                  ns: namespace) -> option::t[def] {
     alt ns {
       ns_value. {
-        for f: ast::obj_field  in ob.fields {
+        for f: ast::obj_field in ob.fields {
             if str::eq(f.ident, name) {
                 ret some(ast::def_obj_field(local_def(f.id)));
             }
@@ -779,7 +779,7 @@ fn lookup_in_block(name: &ident, b: &ast::blk_, ns: namespace) ->
                             ret some(ast::def_ty(local_def(it.id)));
                         }
                     } else if (ns == ns_value) {
-                        for v: ast::variant  in variants {
+                        for v: ast::variant in variants {
                             if str::eq(v.node.name, name) {
                                 let i = v.node.id;
                                 ret some(ast::def_variant(local_def(it.id),
@@ -971,7 +971,7 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         } else if (ivec::len(matches) == 1u) {
             ret some(matches.(0).def);
         } else {
-            for match: glob_imp_def  in matches {
+            for match: glob_imp_def in matches {
                 let sp = match.item.span;
                 e.sess.span_note(sp, #fmt("'%s' is imported here", id));
             }
@@ -1053,7 +1053,7 @@ fn add_to_index(index: &hashmap[ident, list[mod_index_entry]], id: &ident,
 
 fn index_mod(md: &ast::_mod) -> mod_index {
     let index = new_str_hash[list[mod_index_entry]]();
-    for it: @ast::view_item  in md.view_items {
+    for it: @ast::view_item in md.view_items {
         alt it.node {
           ast::view_item_import(ident, _, _) | ast::view_item_use(ident, _, _)
           {
@@ -1065,7 +1065,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
           }
         }
     }
-    for it: @ast::item  in md.items {
+    for it: @ast::item in md.items {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _) |
@@ -1075,7 +1075,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
           ast::item_tag(variants, _) {
             add_to_index(index, it.ident, mie_item(it));
             let variant_idx: uint = 0u;
-            for v: ast::variant  in variants {
+            for v: ast::variant in variants {
                 add_to_index(index, v.node.name,
                              mie_tag_variant(it, variant_idx));
                 variant_idx += 1u;
@@ -1088,7 +1088,7 @@ fn index_mod(md: &ast::_mod) -> mod_index {
 
 fn index_nmod(md: &ast::native_mod) -> mod_index {
     let index = new_str_hash[list[mod_index_entry]]();
-    for it: @ast::view_item  in md.view_items {
+    for it: @ast::view_item in md.view_items {
         alt it.node {
           ast::view_item_use(ident, _, _) | ast::view_item_import(ident, _, _)
           {
@@ -1097,7 +1097,7 @@ fn index_nmod(md: &ast::native_mod) -> mod_index {
           ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) { }
         }
     }
-    for it: @ast::native_item  in md.items {
+    for it: @ast::native_item in md.items {
         add_to_index(index, it.ident, mie_native_item(it));
     }
     ret index;
@@ -1125,7 +1125,7 @@ fn ns_for_def(d: def) -> namespace {
 
 fn lookup_external(e: &env, cnum: int, ids: &[ident], ns: namespace) ->
    option::t[def] {
-    for d: def  in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
+    for d: def in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
         if ns == ns_for_def(d) { ret some(d); }
     }
@@ -1211,7 +1211,7 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt[()]) {
       ast::item_obj(ob, ty_params, _) {
         fn field_name(field: &ast::obj_field) -> ident { ret field.ident; }
         ensure_unique(*e, i.span, ob.fields, field_name, "object field");
-        for m: @ast::method  in ob.methods {
+        for m: @ast::method in ob.methods {
             check_fn(*e, m.span, m.node.meth);
         }
         ensure_unique(*e, i.span, typaram_names(ty_params),
@@ -1249,7 +1249,7 @@ fn check_arm(e: &@env, a: &ast::arm, x: &(), v: &vt[()]) {
             e.sess.span_err(a.pats.(i).span,
                             "inconsistent number of bindings");
         } else {
-            for name: ident  in ch.seen {
+            for name: ident in ch.seen {
                 if is_none(ivec::find(bind str::eq(name, _), seen0)) {
                     // Fight the alias checker
                     let name_ = name;
@@ -1267,7 +1267,7 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt[()]) {
     let values = checker(*e, "value");
     let types = checker(*e, "type");
     let mods = checker(*e, "module");
-    for st: @ast::stmt  in b.node.stmts {
+    for st: @ast::stmt in b.node.stmts {
         alt st.node {
           ast::stmt_decl(d, _) {
             alt d.node {
@@ -1280,7 +1280,7 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt[()]) {
                 alt it.node {
                   ast::item_tag(variants, _) {
                     add_name(types, it.span, it.ident);
-                    for v: ast::variant  in variants {
+                    for v: ast::variant in variants {
                         add_name(values, v.span, v.node.name);
                     }
                   }
@@ -1340,7 +1340,7 @@ fn checker(e: &env, kind: str) -> checker {
 }
 
 fn add_name(ch: &checker, sp: &span, name: &ident) {
-    for s: ident  in ch.seen {
+    for s: ident in ch.seen {
         if str::eq(s, name) {
             ch.sess.span_fatal(sp, "duplicate " + ch.kind + " name: " + name);
         }
@@ -1353,7 +1353,7 @@ fn ident_id(i: &ident) -> ident { ret i; }
 fn ensure_unique[T](e: &env, sp: &span, elts: &[T], id: fn(&T) -> ident ,
                     kind: &str) {
     let ch = checker(e, kind);
-    for elt: T  in elts { add_name(ch, sp, id(elt)); }
+    for elt: T in elts { add_name(ch, sp, id(elt)); }
 }
 
 // Local Variables:

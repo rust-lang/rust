@@ -17,7 +17,7 @@ fn main() {
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
 
 
-    for n: int  in inputs {
+    for n: int in inputs {
         log NBodySystem::energy(bodies);
 
         let i: int = 0;

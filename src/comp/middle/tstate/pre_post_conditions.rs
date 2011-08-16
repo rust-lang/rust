@@ -65,7 +65,7 @@ fn find_pre_post_obj(ccx: &crate_ctxt, o: _obj) {
              ccx: ccx};
         find_pre_post_fn(fcx, m.node.meth);
     }
-    for m: @method  in o.methods { do_a_method(ccx, m); }
+    for m: @method in o.methods { do_a_method(ccx, m); }
 }
 
 fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
@@ -120,7 +120,7 @@ fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
         log_expr(*args.(0));
     }
     fn do_one(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }
-    for e: @expr  in args { do_one(fcx, e); }
+    for e: @expr in args { do_one(fcx, e); }
 
     fn get_pp(ccx: crate_ctxt, e: &@expr) -> pre_and_post {
         ret expr_pp(ccx, e);
@@ -341,7 +341,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
 
         find_pre_post_exprs(fcx, args, e.id);
         /* see if the call has any constraints on its type */
-        for c: @ty::constr  in constraints_expr(fcx.ccx.tcx, operator) {
+        for c: @ty::constr in constraints_expr(fcx.ccx.tcx, operator) {
             let i =
                 bit_num(fcx, substitute_constr_args(fcx.ccx.tcx, args, c));
             require(i, expr_pp(fcx.ccx, e));
@@ -391,7 +391,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
         let upvars = freevars::get_freevars(fcx.ccx.tcx, e.id);
-        for id: node_id  in *upvars { handle_var(fcx, rslt, id, "upvar"); }
+        for id: node_id in *upvars { handle_var(fcx, rslt, id, "upvar"); }
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);
@@ -512,7 +512,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
             ret block_pp(fcx.ccx, an_alt.body);
         }
         let alt_pps = ~[];
-        for a: arm  in alts { alt_pps += ~[do_an_alt(fcx, a)]; }
+        for a: arm in alts { alt_pps += ~[do_an_alt(fcx, a)]; }
         fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, pp: &pre_and_post,
                       next: &pre_and_post) -> pre_and_post {
             union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
@@ -607,7 +607,7 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
       stmt_decl(adecl, id) {
         alt adecl.node {
           decl_local(alocals) {
-            for alocal: @local  in alocals {
+            for alocal: @local in alocals {
                 alt alocal.node.init {
                   some(an_init) {
                     /* LHS always becomes initialized,
@@ -694,13 +694,13 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
         log "is:";
         log_pp(stmt_pp(fcx.ccx, *s));
     }
-    for s: @stmt  in b.node.stmts { do_one_(fcx, s); }
+    for s: @stmt in b.node.stmts { do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }
     let do_inner = bind do_inner_(fcx, _);
     option::map[@expr, ()](do_inner, b.node.expr);
 
     let pps: [pre_and_post] = ~[];
-    for s: @stmt  in b.node.stmts { pps += ~[stmt_pp(fcx.ccx, *s)]; }
+    for s: @stmt in b.node.stmts { pps += ~[stmt_pp(fcx.ccx, *s)]; }
     alt b.node.expr {
       none. {/* no-op */ }
       some(e) { pps += ~[expr_pp(fcx.ccx, e)]; }
@@ -709,7 +709,7 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
     let block_precond = seq_preconds(fcx, pps);
 
     let postconds = ~[];
-    for pp: pre_and_post  in pps { postconds += ~[get_post(pp)]; }
+    for pp: pre_and_post in pps { postconds += ~[get_post(pp)]; }
 
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */

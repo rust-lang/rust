@@ -298,7 +298,7 @@ fn revoke_clean(cx: &@block_ctxt, val: ValueRef) {
     let sc_cx = find_scope_cx(cx);
     let found = -1;
     let i = 0;
-    for c: cleanup  in sc_cx.cleanups {
+    for c: cleanup in sc_cx.cleanups {
         alt c {
           clean_temp(v, _) {
             if v as uint == val as uint { found = i; break; }

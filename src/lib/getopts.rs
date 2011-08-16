@@ -146,7 +146,7 @@ fn getopts(args: &[str], opts: &[opt]) -> result {
                 }
             }
             let name_pos = 0u;
-            for nm: name  in names {
+            for nm: name in names {
                 name_pos += 1u;
                 let optid;
                 alt find_opt(opts, nm) {
@@ -218,7 +218,7 @@ fn opt_str(m: &match, nm: str) -> str {
 
 fn opt_strs(m: &match, nm: str) -> [str] {
     let acc: [str] = ~[];
-    for v: optval  in opt_vals(m, nm) {
+    for v: optval in opt_vals(m, nm) {
         alt v { val(s) { acc += ~[s]; } _ { } }
     }
     ret acc;

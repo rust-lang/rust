@@ -100,7 +100,7 @@ fn hash(s: &str) -> uint {
     // FIXME: replace with murmur.
 
     let u: uint = 5381u;
-    for c: u8  in s { u *= 33u; u += c as uint; }
+    for c: u8 in s { u *= 33u; u += c as uint; }
     ret u;
 }
 
@@ -156,7 +156,7 @@ fn is_ascii(s: str) -> bool {
 fn alloc(n_bytes: uint) -> str { ret rustrt::str_alloc(n_bytes); }
 
 /// Returns true if the string has length 0
-pred is_empty(s: str) -> bool { for c: u8  in s { ret false; } ret true; }
+pred is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
 
 /// Returns true if the string has length greater than 0
 pred is_not_empty(s: str) -> bool { !is_empty(s) }
@@ -240,7 +240,7 @@ fn from_char(ch: char) -> str {
 
 fn from_chars(chs: &[char]) -> str {
     let buf = "";
-    for ch: char  in chs { push_utf8_bytes(buf, ch); }
+    for ch: char in chs { push_utf8_bytes(buf, ch); }
     ret buf;
 }
 
@@ -337,7 +337,7 @@ fn refcount(s: str) -> uint {
 // Standard bits from the world of string libraries.
 fn index(s: str, c: u8) -> int {
     let i: int = 0;
-    for k: u8  in s { if k == c { ret i; } i += 1; }
+    for k: u8 in s { if k == c { ret i; } i += 1; }
     ret -1;
 }
 
@@ -353,7 +353,7 @@ fn find(haystack: str, needle: str) -> int {
     if needle_len == 0 { ret 0; }
     fn match_at(haystack: &str, needle: &str, i: int) -> bool {
         let j: int = i;
-        for c: u8  in needle { if haystack.(j) != c { ret false; } j += 1; }
+        for c: u8 in needle { if haystack.(j) != c { ret false; } j += 1; }
         ret true;
     }
     let i: int = 0;
@@ -436,7 +436,7 @@ fn split(s: str, sep: u8) -> [str] {
     let v: [str] = ~[];
     let accum: str = "";
     let ends_with_sep: bool = false;
-    for c: u8  in s {
+    for c: u8 in s {
         if c == sep {
             v += ~[accum];
             accum = "";
@@ -449,14 +449,14 @@ fn split(s: str, sep: u8) -> [str] {
 
 fn concat(v: &[str]) -> str {
     let s: str = "";
-    for ss: str  in v { s += ss; }
+    for ss: str in v { s += ss; }
     ret s;
 }
 
 fn connect(v: &[str], sep: str) -> str {
     let s: str = "";
     let first: bool = true;
-    for ss: str  in v {
+    for ss: str in v {
         if first { first = false; } else { s += sep; }
         s += ss;
     }
@@ -470,7 +470,7 @@ fn to_upper(s: str) -> str {
     let ascii_a = 'a' as u8;
     let ascii_z = 'z' as u8;
     let diff = 32u8;
-    for byte: u8  in s {
+    for byte: u8 in s {
         let next;
         if ascii_a <= byte && byte <= ascii_z {
             next = byte - diff;

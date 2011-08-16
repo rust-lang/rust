@@ -51,7 +51,7 @@ fn color_supported() -> bool {
     let supported_terms = ~["xterm-color", "xterm", "screen-bce"];
     ret alt generic_os::getenv("TERM") {
           option::some(env) {
-            for term: str  in supported_terms {
+            for term: str in supported_terms {
                 if str::eq(term, env) { ret true; }
             }
             false

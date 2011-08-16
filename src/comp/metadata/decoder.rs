@@ -46,7 +46,7 @@ fn lookup_hash(d: &ebml::doc, eq_fn: fn(&[u8]) -> bool , hash: uint) ->
 
     let result: [ebml::doc] = ~[];
     let belt = tag_index_buckets_bucket_elt;
-    for each elt: ebml::doc  in ebml::tagged_docs(bucket, belt) {
+    for each elt: ebml::doc in ebml::tagged_docs(bucket, belt) {
         let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
         if eq_fn(ivec::slice[u8](*elt.data, elt.start + 4u, elt.end)) {
             result += ~[ebml::doc_at(d.data, pos)];
@@ -138,7 +138,7 @@ fn tag_variant_ids(item: &ebml::doc, this_cnum: ast::crate_num) ->
    [ast::def_id] {
     let ids: [ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
-    for each p: ebml::doc  in ebml::tagged_docs(item, v) {
+    for each p: ebml::doc in ebml::tagged_docs(item, v) {
         let ext = parse_def_id(ebml::doc_data(p));
         ids += ~[{crate: this_cnum, node: ext.node}];
     }
@@ -156,7 +156,7 @@ fn resolve_path(path: &[ast::ident], data: @[u8]) -> [ast::def_id] {
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = ~[];
-    for doc: ebml::doc  in lookup_hash(paths, eqer, hash_path(s)) {
+    for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         result += ~[parse_def_id(ebml::doc_data(did_doc))];
     }
@@ -233,13 +233,13 @@ fn get_tag_variants(data: &@[u8], def: ast::def_id, tcx: &ty::ctxt,
     let item = find_item(def.node, items);
     let infos: [ty::variant_info] = ~[];
     let variant_ids = tag_variant_ids(item, external_crate_id);
-    for did: ast::def_id  in variant_ids {
+    for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(item, external_crate_id, tcx, extres);
         let arg_tys: [ty::t] = ~[];
         alt ty::struct(tcx, ctor_ty) {
           ty::ty_fn(_, args, _, _, _) {
-            for a: ty::arg  in args { arg_tys += ~[a.ty]; }
+            for a: ty::arg in args { arg_tys += ~[a.ty]; }
           }
           _ {
             // Nullary tag variant.
@@ -344,7 +344,7 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
 }
 
 fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
-    for mi: @ast::meta_item  in get_meta_items(meta_items) {
+    for mi: @ast::meta_item in get_meta_items(meta_items) {
         out.write_str(#fmt("%s\n", pprust::meta_item_to_str(*mi)));
     }
 }
@@ -352,7 +352,7 @@ fn list_meta_items(meta_items: &ebml::doc, out: io::writer) {
 fn list_crate_attributes(md: &ebml::doc, out: io::writer) {
     out.write_str("=Crate Attributes=\n");
 
-    for attr: ast::attribute  in get_attributes(md) {
+    for attr: ast::attribute in get_attributes(md) {
         out.write_str(#fmt("%s\n", pprust::attribute_to_str(attr)));
     }
 
@@ -382,7 +382,7 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
 fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("=External Dependencies=\n");
 
-    for dep: crate_dep  in get_crate_deps(data) {
+    for dep: crate_dep in get_crate_deps(data) {
         out.write_str(#fmt("%d %s\n", dep.cnum, dep.ident));
     }
 
@@ -398,7 +398,7 @@ fn list_crate_items(bytes: &@[u8], md: &ebml::doc, out: io::writer) {
     for each bucket: ebml::doc  in
              ebml::tagged_docs(bs, tag_index_buckets_bucket) {
         let et = tag_index_buckets_bucket_elt;
-        for each elt: ebml::doc  in ebml::tagged_docs(bucket, et) {
+        for each elt: ebml::doc in ebml::tagged_docs(bucket, et) {
             let data = read_path(elt);
             let def = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);

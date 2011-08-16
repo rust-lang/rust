@@ -93,7 +93,7 @@ fn new_smallintmap_adapter[@K,
 
         iter items() -> @{key: K, val: V} {
             let idx = 0u;
-            for item: option::t[V]  in map.v {
+            for item: option::t[V] in map.v {
                 alt item {
                   option::some(elt) {
                     let value = elt;
@@ -106,7 +106,7 @@ fn new_smallintmap_adapter[@K,
             }
         }
         iter keys() -> K {
-            for each p: @{key: K, val: V}  in self.items() { put p.key; }
+            for each p: @{key: K, val: V} in self.items() { put p.key; }
         }
     }
 

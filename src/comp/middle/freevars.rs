@@ -42,12 +42,12 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
                     walker: &fn(&visit::vt[()]) ,
                     initial_decls: [ast::node_id]) -> freevar_info {
     let decls = new_int_hash();
-    for decl: ast::node_id  in initial_decls { set_add(decls, decl); }
+    for decl: ast::node_id in initial_decls { set_add(decls, decl); }
     let refs = @mutable ~[];
 
     let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
                          i: &ast::fn_ident, nid: ast::node_id) {
-        for a: ast::arg  in f.decl.inputs { set_add(decls, a.id); }
+        for a: ast::arg in f.decl.inputs { set_add(decls, a.id); }
     };
     let walk_expr = lambda(expr: &@ast::expr) {
         alt expr.node {
@@ -87,7 +87,7 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
     // node ids of the definitions.
     let canonical_refs = ~[];
     let defs = new_int_hash();
-    for ref_id_: ast::node_id  in *refs {
+    for ref_id_: ast::node_id in *refs {
         let ref_id = ref_id_;
         let def_id = ast::def_id_of_def(def_map.get(ref_id)).node;
         if !decls.contains_key(def_id) && !defs.contains_key(def_id) {

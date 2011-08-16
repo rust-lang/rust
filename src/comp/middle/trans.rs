@@ -95,7 +95,7 @@ fn type_of(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
 fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &[ty::arg]) ->
    [TypeRef] {
     let atys: [TypeRef] = ~[];
-    for arg: ty::arg  in inputs {
+    for arg: ty::arg in inputs {
         let t: TypeRef = type_of_inner(cx, sp, arg.ty);
         t = alt arg.mode {
           ty::mo_alias(_) { T_ptr(t) }
@@ -231,7 +231,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_task. { llty = T_taskptr(*cx); }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = ~[];
-        for f: ty::field  in fields {
+        for f: ty::field in fields {
             tys += ~[type_of_inner(cx, sp, f.mt.ty)];
         }
         llty = T_struct(tys);
@@ -305,7 +305,7 @@ fn type_of_or_i8(bcx: &@block_ctxt, typ: ty::t) -> TypeRef {
 // gas doesn't!
 fn sanitize(s: &str) -> str {
     let result = "";
-    for c: u8  in s {
+    for c: u8 in s {
         if c == '@' as u8 {
             result += "boxed_";
         } else {
@@ -401,7 +401,7 @@ fn trans_native_call(b: &builder, glues: @glue_fns, lltaskptr: ValueRef,
     let n: int = std::ivec::len[ValueRef](args) as int;
     let llnative: ValueRef = get_simple_extern_fn(externs, llmod, name, n);
     let call_args: [ValueRef] = ~[];
-    for a: ValueRef  in args { call_args += ~[b.ZExtOrBitCast(a, T_int())]; }
+    for a: ValueRef in args { call_args += ~[b.ZExtOrBitCast(a, T_int())]; }
     ret b.Call(llnative, call_args);
 }
 
@@ -528,7 +528,7 @@ fn static_size_of_tag(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> uint {
 
         let max_size = 0u;
         let variants = ty::tag_variants(cx.tcx, tid);
-        for variant: ty::variant_info  in variants {
+        for variant: ty::variant_info in variants {
             let tup_ty =
                 simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
@@ -562,7 +562,7 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
         let off = C_int(0);
         let max_align = C_int(1);
         let bcx = cx;
-        for e: ty::t  in elts {
+        for e: ty::t in elts {
             let elt_align = align_of(bcx, e);
             bcx = elt_align.bcx;
             let elt_size = size_of(bcx, e);
@@ -581,7 +581,7 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
       }
       ty::ty_rec(flds) {
         let tys: [ty::t] = ~[];
-        for f: ty::field  in flds { tys += ~[f.mt.ty]; }
+        for f: ty::field in flds { tys += ~[f.mt.ty]; }
         ret align_elements(cx, tys);
       }
       ty::ty_tup(elts) {
@@ -596,12 +596,12 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
         let max_size: ValueRef = alloca(bcx, T_int());
         bcx.build.Store(C_int(0), max_size);
         let variants = ty::tag_variants(bcx_tcx(bcx), tid);
-        for variant: ty::variant_info  in variants {
+        for variant: ty::variant_info in variants {
             // Perform type substitution on the raw argument types.
 
             let raw_tys: [ty::t] = variant.args;
             let tys: [ty::t] = ~[];
-            for raw_ty: ty::t  in raw_tys {
+            for raw_ty: ty::t in raw_tys {
                 let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
                 tys += ~[t];
             }
@@ -640,7 +640,7 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
       ty::ty_rec(flds) {
         let a = C_int(1);
         let bcx = cx;
-        for f: ty::field  in flds {
+        for f: ty::field in flds {
             let align = align_of(bcx, f.mt.ty);
             bcx = align.bcx;
             a = umax(bcx, a, align.val);
@@ -674,7 +674,7 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
 // in C_int()
 fn GEPi(cx: &@block_ctxt, base: ValueRef, ixs: &[int]) -> ValueRef {
     let v: [ValueRef] = ~[];
-    for i: int  in ixs { v += ~[C_int(i)]; }
+    for i: int in ixs { v += ~[C_int(i)]; }
     ret cx.build.InBoundsGEP(base, v);
 }
 
@@ -765,7 +765,7 @@ fn GEP_tup_like(cx: &@block_ctxt, t: &ty::t, base: ValueRef, ixs: &[int]) ->
     let s = split_type(bcx_ccx(cx), t, ixs, 0u);
 
     let args = ~[];
-    for typ: ty::t  in s.prefix { args += ~[typ]; }
+    for typ: ty::t in s.prefix { args += ~[typ]; }
     let prefix_ty = ty::mk_tup(bcx_tcx(cx), args);
 
     let bcx = cx;
@@ -789,7 +789,7 @@ fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: &ast::def_id,
 
     let i = 0;
     let true_arg_tys: [ty::t] = ~[];
-    for aty: ty::t  in arg_tys {
+    for aty: ty::t in arg_tys {
         let arg_ty = ty::substitute_type_params(bcx_tcx(cx), ty_substs, aty);
         true_arg_tys += ~[arg_ty];
         if i == ix { elem_ty = arg_ty; }
@@ -909,7 +909,7 @@ fn linearize_ty_params(cx: &@block_ctxt, t: &ty::t) ->
         alt ty::struct(bcx_tcx(r.cx), t) {
           ty::ty_param(pid,_) {
             let seen: bool = false;
-            for d: uint  in r.defs { if d == pid { seen = true; } }
+            for d: uint in r.defs { if d == pid { seen = true; } }
             if !seen {
                 r.vals += ~[r.cx.fcx.lltydescs.(pid)];
                 r.defs += ~[pid];
@@ -983,7 +983,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
         let tdp = bcx.build.GEP(tydescs, ~[C_int(0), C_int(i)]);
         bcx.build.Store(root, tdp);
         i += 1;
-        for td: ValueRef  in tys.descs {
+        for td: ValueRef in tys.descs {
             let tdp = bcx.build.GEP(tydescs, ~[C_int(0), C_int(i)]);
             bcx.build.Store(td, tdp);
             i += 1;
@@ -1002,7 +1002,7 @@ fn get_derived_tydesc(cx: &@block_ctxt, t: &ty::t, escapes: bool,
             alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type),
                                 n_params + 1u));
         let i = 0;
-        for td: ValueRef  in tys.descs {
+        for td: ValueRef in tys.descs {
             let tdp = bcx.build.GEP(llparamtydescs, ~[C_int(0), C_int(i)]);
             bcx.build.Store(td, tdp);
             i += 1;
@@ -1173,7 +1173,7 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: &ty::t,
 
     // TODO: Implement some kind of freeze operation in the standard library.
     let lltydescs_frozen = ~[];
-    for lltydesc: ValueRef  in lltydescs { lltydescs_frozen += ~[lltydesc]; }
+    for lltydesc: ValueRef in lltydescs { lltydescs_frozen += ~[lltydesc]; }
     fcx.lltydescs = lltydescs_frozen;
 
     let bcx = new_top_block_ctxt(fcx);
@@ -1201,7 +1201,7 @@ fn make_generic_glue(cx: &@local_ctxt, sp: &span, t: &ty::t, llfn: ValueRef,
 }
 
 fn emit_tydescs(ccx: &@crate_ctxt) {
-    for each pair: @{key: ty::t, val: @tydesc_info}  in ccx.tydescs.items() {
+    for each pair: @{key: ty::t, val: @tydesc_info} in ccx.tydescs.items() {
         let glue_fn_ty = T_ptr(T_glue_fn(*ccx));
         let cmp_fn_ty = T_ptr(T_cmp_glue_fn(*ccx));
         let ti = pair.val;
@@ -1518,7 +1518,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
         cx.build.Load(cx.build.GEP(dtor_pair,
                                    ~[C_int(0), C_int(abi::fn_field_box)]));
     let args = ~[cx.fcx.llretptr, cx.fcx.lltaskptr, dtor_env];
-    for tp: ty::t  in tps {
+    for tp: ty::t in tps {
         let ti: option::t[@tydesc_info] = none;
         let td = get_tydesc(cx, tp, false, ti);
         args += ~[td.val];
@@ -1814,7 +1814,7 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: &ty::t,
         alt ty::struct(ccx.tcx, fn_ty) {
           ty::ty_fn(_, args, _, _, _) {
             let j = 0;
-            for a: ty::arg  in args {
+            for a: ty::arg in args {
                 let rslt = GEP_tag(cx, a_tup, tid, variant.id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
@@ -1883,7 +1883,7 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: &ty::t,
         let llswitch = bcx.build.Switch(lldiscrim_a, unr_cx.llbb, n_variants);
         let next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
         let i = 0u;
-        for variant: ty::variant_info  in variants {
+        for variant: ty::variant_info in variants {
             let variant_cx =
                 new_sub_block_ctxt(bcx,
                                    "tag-iter-variant-" +
@@ -2041,7 +2041,7 @@ fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
 
 fn lazily_emit_all_generic_info_tydesc_glues(cx: &@block_ctxt,
                                              gi: &generic_info) {
-    for ti: option::t[@tydesc_info]  in gi.static_tis {
+    for ti: option::t[@tydesc_info] in gi.static_tis {
         lazily_emit_all_tydesc_glue(cx, ti);
     }
 }
@@ -3386,7 +3386,7 @@ fn join_results(parent_cx: &@block_ctxt, t: TypeRef, ins: &[result]) ->
     let live: [result] = ~[];
     let vals: [ValueRef] = ~[];
     let bbs: [BasicBlockRef] = ~[];
-    for r: result  in ins {
+    for r: result in ins {
         if !is_terminated(r.bcx) {
             live += ~[r];
             vals += ~[r.val];
@@ -3407,14 +3407,14 @@ fn join_results(parent_cx: &@block_ctxt, t: TypeRef, ins: &[result]) ->
     // We have >1 incoming edges. Make a join block and br+phi them into it.
 
     let join_cx = new_sub_block_ctxt(parent_cx, "join");
-    for r: result  in live { r.bcx.build.Br(join_cx.llbb); }
+    for r: result in live { r.bcx.build.Br(join_cx.llbb); }
     let phi = join_cx.build.Phi(t, vals, bbs);
     ret rslt(join_cx, phi);
 }
 
 fn join_branches(parent_cx: &@block_ctxt, ins: &[result]) -> @block_ctxt {
     let out = new_sub_block_ctxt(parent_cx, "join");
-    for r: result  in ins {
+    for r: result in ins {
         if !is_terminated(r.bcx) { r.bcx.build.Br(out.llbb); }
     }
     ret out;
@@ -3571,7 +3571,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
         GEP_tup_like(bcx, closure_ty, closure,
                      ~[0, abi::closure_elt_bindings]);
     bcx = bindings.bcx;
-    for lv: lval_result  in bound_vals {
+    for lv: lval_result in bound_vals {
         let bound = GEP_tup_like(bcx, bindings_ty, bindings.val,
                                  ~[0, i as int]);
         bcx = bound.bcx;
@@ -3591,7 +3591,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
                      ~[0, abi::closure_elt_ty_params]);
     bcx = ty_params_slot.bcx;
     i = 0u;
-    for td: ValueRef  in lltydescs {
+    for td: ValueRef in lltydescs {
         let ty_param_slot = GEPi(bcx, ty_params_slot.val, ~[0, i as int]);
         bcx.build.Store(td, ty_param_slot);
         i += 1u;
@@ -3612,7 +3612,7 @@ fn build_closure(cx: &@block_ctxt, upvars: &@[ast::node_id], copying: bool)
             closure_tys += ~[option::get(cx.fcx.iterbodyty)];
         }
         // Package up the upvars
-        for nid: ast::node_id  in *upvars {
+        for nid: ast::node_id in *upvars {
             closure_vals += ~[trans_var(cx, cx.sp, nid)];
             let ty = ty::node_id_to_monotype(bcx_tcx(cx), nid);
             if !copying { ty = ty::mk_mut_ptr(bcx_tcx(cx), ty); }
@@ -3689,7 +3689,7 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt,
         i += 1u;
     }
     // Load the acutal upvars.
-    for upvar_id: ast::node_id  in *upvars {
+    for upvar_id: ast::node_id in *upvars {
         let upvarptr =
             GEP_tup_like(bcx, ty, llclosure, path + ~[i as int]);
         bcx = upvarptr.bcx;
@@ -3875,7 +3875,7 @@ fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_kinds_and_ty,
         let bcx = lv.res.bcx;
         let tydescs: [ValueRef] = ~[];
         let tis: [option::t[@tydesc_info]] = ~[];
-        for t: ty::t  in tys {
+        for t: ty::t in tys {
             // TODO: Doesn't always escape.
 
             let ti = none[@tydesc_info];
@@ -4368,7 +4368,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
         type_of_explicit_args(cx.ccx, sp, outgoing_args);
-    for arg: option::t[@ast::expr]  in args {
+    for arg: option::t[@ast::expr] in args {
         let out_arg = outgoing_args.(outgoing_arg_index);
         let llout_arg_ty = llout_arg_tys.(outgoing_arg_index);
         let is_val = out_arg.mode == ty::mo_val;
@@ -4452,7 +4452,7 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
                 args: &[option::t[@ast::expr]], id: ast::node_id) ->
    result {
     let bound: [@ast::expr] = ~[];
-    for argopt: option::t[@ast::expr]  in args {
+    for argopt: option::t[@ast::expr] in args {
         alt argopt { none. { } some(e) { bound += ~[e]; } }
     }
 
@@ -4487,7 +4487,7 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     let bound_tys: [ty::t] = ~[outgoing_fty];
     let bound_vals: [lval_result] = ~[bound_f];
     // Translate the bound expressions.
-    for e: @ast::expr  in bound {
+    for e: @ast::expr in bound {
         let lv = trans_lval(bcx, e);
         bcx = lv.res.bcx;
         bound_vals += ~[lv];
@@ -4660,7 +4660,7 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
     // to cast her view of the arguments to the caller's view.
     let arg_tys = type_of_explicit_args(bcx_ccx(cx), cx.sp, args);
     let i = 0u;
-    for e: @ast::expr  in es {
+    for e: @ast::expr in es {
         if bcx.build.is_terminated() {
             // This means an earlier arg was divergent.
             // So this arg can't be evaluated.
@@ -4816,7 +4816,7 @@ fn trans_vec(cx: &@block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
                        std::ivec::init_elt[ty::t](unit_ty,
                                                   std::ivec::len(args)));
     let i: int = 0;
-    for e: @ast::expr  in args {
+    for e: @ast::expr in args {
         let src = trans_lval(bcx, e);
         bcx = src.res.bcx;
         let dst_res = GEP_tup_like(bcx, pseudo_tup_ty, body, ~[0, i]);
@@ -4924,7 +4924,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
     // Store the individual elements.
 
     let i = 0u;
-    for e: @ast::expr  in args {
+    for e: @ast::expr in args {
         let lv = trans_lval(bcx, e);
         bcx = lv.res.bcx;
         let lleltptr;
@@ -4961,12 +4961,12 @@ fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
     }
     let ty_fields: [ty::field] = ~[];
     alt ty::struct(bcx_tcx(cx), t) { ty::ty_rec(flds) { ty_fields = flds; } }
-    for tf: ty::field  in ty_fields {
+    for tf: ty::field in ty_fields {
         let e_ty = tf.mt.ty;
         let dst_res = GEP_tup_like(bcx, t, rec_val, ~[0, i]);
         bcx = dst_res.bcx;
         let expr_provided = false;
-        for f: ast::field  in fields {
+        for f: ast::field in fields {
             if str::eq(f.node.ident, tf.ident) {
                 expr_provided = true;
                 let lv = trans_lval(bcx, f.node.expr);
@@ -5525,7 +5525,7 @@ fn trans_stmt(cx: &@block_ctxt, s: &ast::stmt) -> result {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for local: @ast::local  in locals {
+            for local: @ast::local in locals {
                 bcx = init_local(bcx, local).bcx;
             }
           }
@@ -5624,7 +5624,7 @@ fn trans_block_cleanups(cx: &@block_ctxt, cleanup_cx: &@block_ctxt) ->
 iter block_locals(b: &ast::blk) -> @ast::local {
     // FIXME: putting from inside an iter block doesn't work, so we can't
     // use the index here.
-    for s: @ast::stmt  in b.node.stmts {
+    for s: @ast::stmt in b.node.stmts {
         alt s.node {
           ast::stmt_decl(d, _) {
             alt d.node {
@@ -5725,7 +5725,7 @@ fn trans_block(cx: &@block_ctxt, b: &ast::blk, output: &out_method) ->
         bcx.fcx.lllocals.insert(local.node.id, r.val);
     }
     let r = rslt(bcx, C_nil());
-    for s: @ast::stmt  in b.node.stmts {
+    for s: @ast::stmt in b.node.stmts {
         r = trans_stmt(bcx, *s);
         bcx = r.bcx;
 
@@ -5868,7 +5868,7 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
       some(tt) { cx.llself = some[val_self_pair]({v: cx.llenv, t: tt}); }
       none. {
         let i = 0u;
-        for tp: ast::ty_param  in ty_params {
+        for tp: ast::ty_param in ty_params {
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
             assert (llarg as int != 0);
             cx.lltydescs += ~[llarg];
@@ -5891,7 +5891,7 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
 
     // Populate the llargs field of the function context with the ValueRefs
     // that we get from llvm::LLVMGetParam for each argument.
-    for arg: ast::arg  in args {
+    for arg: ast::arg in args {
         let llarg = llvm::LLVMGetParam(cx.llfn, arg_n);
         assert (llarg as int != 0);
         cx.llargs.insert(arg.id, llarg);
@@ -5903,7 +5903,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg],
                         arg_tys: &[ty::arg]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let arg_n: uint = 0u;
-    for aarg: ast::arg  in args {
+    for aarg: ast::arg in args {
         if aarg.mode == ast::val {
             let argval;
             alt bcx.fcx.llargs.find(aarg.id) {
@@ -5925,7 +5925,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg],
 fn add_cleanups_for_args(bcx: &@block_ctxt, args: &[ast::arg],
                          arg_tys: &[ty::arg]) {
     let arg_n: uint = 0u;
-    for aarg: ast::arg  in args {
+    for aarg: ast::arg in args {
         if aarg.mode == ast::val || aarg.mode == ast::move {
             let argval;
             alt bcx.fcx.llargs.find(aarg.id) {
@@ -5955,7 +5955,7 @@ fn arg_tys_of_fn(ccx: &@crate_ctxt, id: ast::node_id) -> [ty::arg] {
 fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
     let bcx = llstaticallocas_block_ctxt(fcx);
     let field_tys: [ty::t] = ~[];
-    for f: ast::obj_field  in bcx.fcx.lcx.obj_fields {
+    for f: ast::obj_field in bcx.fcx.lcx.obj_fields {
         field_tys += ~[node_id_type(bcx_ccx(bcx), f.id)];
     }
     // Synthesize a tuple type for the fields so that GEP_tup_like() can work
@@ -5986,7 +5986,7 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
         obj_fields = vi2p(bcx, obj_fields, T_ptr(llfields_ty));
     } else { obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8())); }
     let i: int = 0;
-    for p: ast::ty_param  in fcx.lcx.obj_typarams {
+    for p: ast::ty_param in fcx.lcx.obj_typarams {
         let lltyparam: ValueRef =
             bcx.build.GEP(obj_typarams, ~[C_int(0), C_int(i)]);
         lltyparam = bcx.build.Load(lltyparam);
@@ -5994,7 +5994,7 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
         i += 1;
     }
     i = 0;
-    for f: ast::obj_field  in fcx.lcx.obj_fields {
+    for f: ast::obj_field in fcx.lcx.obj_fields {
         let rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, ~[0, i]);
         bcx = llstaticallocas_block_ctxt(fcx);
         let llfield = rslt.val;
@@ -6166,7 +6166,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
 
     let fn_args: [ast::arg] = ~[];
     let i = 0u;
-    for varg: ast::variant_arg  in variant.node.args {
+    for varg: ast::variant_arg in variant.node.args {
         fn_args +=
             ~[{mode: ast::alias(false),
                ty: varg.ty,
@@ -6188,7 +6188,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
                               fn_args, ty_params);
     let ty_param_substs: [ty::t] = ~[];
     i = 0u;
-    for tp: ast::ty_param  in ty_params {
+    for tp: ast::ty_param in ty_params {
         ty_param_substs += ~[ty::mk_param(cx.ccx.tcx, i, tp.kind)];
         i += 1u;
     }
@@ -6210,7 +6210,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
             bcx.build.GEP(lltagptr, ~[C_int(0), C_int(1)])
         };
     i = 0u;
-    for va: ast::variant_arg  in variant.node.args {
+    for va: ast::variant_arg in variant.node.args {
         let rslt =
             GEP_tag(bcx, llblobptr, ast::local_def(tag_id),
                     ast::local_def(variant.node.id), ty_param_substs,
@@ -6313,7 +6313,7 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
         let sub_cx = extend_path(cx, item.ident);
         let degen = std::ivec::len(variants) == 1u;
         let i = 0;
-        for variant: ast::variant  in variants {
+        for variant: ast::variant in variants {
             trans_tag_variant(sub_cx, item.id, variant, i, degen, tps);
             i += 1;
         }
@@ -6330,7 +6330,7 @@ fn trans_item(cx: @local_ctxt, item: &ast::item) {
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
 fn trans_mod(cx: @local_ctxt, m: &ast::_mod) {
-    for item: @ast::item  in m.items { trans_item(cx, *item); }
+    for item: @ast::item in m.items { trans_item(cx, *item); }
 }
 
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
@@ -6525,7 +6525,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     if uses_retptr { call_args += ~[bcx.fcx.llretptr]; }
 
     let arg_n = 3u;
-    for each i: uint  in uint::range(0u, num_ty_param) {
+    for each i: uint in uint::range(0u, num_ty_param) {
         let llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
         fcx.lltydescs += ~[llarg];
         assert (llarg as int != 0);
@@ -6558,7 +6558,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
                                first_arg_n: uint, uses_retptr: bool, cc: uint)
        -> {val: ValueRef, rptr: ValueRef} {
         let call_arg_tys: [TypeRef] = ~[];
-        for arg: ValueRef  in call_args { call_arg_tys += ~[val_ty(arg)]; }
+        for arg: ValueRef in call_args { call_arg_tys += ~[val_ty(arg)]; }
 
         let llnativefnty;
         if uses_retptr {
@@ -6586,7 +6586,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 
     let drop_args: [{val: ValueRef, ty: ty::t}] = ~[];
     let i = arg_n;
-    for arg: ty::arg  in args {
+    for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
         assert (llarg as int != 0);
         if cast_to_i32 {
@@ -6638,7 +6638,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 
     if !rty_is_nil && !uses_retptr { bcx.build.Store(r, rptr); }
 
-    for d: {val: ValueRef, ty: ty::t}  in drop_args {
+    for d: {val: ValueRef, ty: ty::t} in drop_args {
         bcx = drop_ty(bcx, d.val, d.ty).bcx;
     }
     bcx.build.RetVoid();
@@ -6690,7 +6690,7 @@ fn collect_item_2(ccx: &@crate_ctxt, i: &@ast::item, pt: &[str],
       }
       ast::item_obj(ob, tps, ctor_id) {
         decl_fn_and_pair(ccx, i.span, new_pt, "obj_ctor", tps, ctor_id);
-        for m: @ast::method  in ob.methods {
+        for m: @ast::method in ob.methods {
             ccx.obj_methods.insert(m.node.id, ());
         }
       }
@@ -6724,7 +6724,7 @@ fn collect_tag_ctor(ccx: @crate_ctxt, i: &@ast::item, pt: &[str],
     visit::visit_item(i, new_pt, v);
     alt i.node {
       ast::item_tag(variants, tps) {
-        for variant: ast::variant  in variants {
+        for variant: ast::variant in variants {
             if std::ivec::len(variant.node.args) != 0u {
                 decl_fn_and_pair(ccx, i.span, new_pt + ~[variant.node.name],
                                  "tag", tps, variant.node.id);
@@ -6891,7 +6891,7 @@ fn create_module_map(ccx: &@crate_ctxt) -> ValueRef {
     llvm::LLVMSetLinkage(map,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     let elts: [ValueRef] = ~[];
-    for each item: @{key: str, val: ValueRef}  in ccx.module_data.items() {
+    for each item: @{key: str, val: ValueRef} in ccx.module_data.items() {
         let elt = C_struct(~[p2i(C_cstr(ccx, item.key)), p2i(item.val)]);
         elts += ~[elt];
     }
@@ -7040,7 +7040,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
         log_err #fmt("n_real_glues: %u", ccx.stats.n_real_glues);
 
 
-        for timing: {ident: str, time: int}  in *ccx.stats.fn_times {
+        for timing: {ident: str, time: int} in *ccx.stats.fn_times {
             log_err #fmt("time: %s took %d ms", timing.ident, timing.time);
         }
     }

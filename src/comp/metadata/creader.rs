@@ -96,7 +96,7 @@ fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
     log #fmt("matching %u metadata requirements against %u items",
              ivec::len(metas), ivec::len(linkage_metas));
 
-    for needed: @ast::meta_item  in metas {
+    for needed: @ast::meta_item in metas {
         if !attr::contains(linkage_metas, needed) {
             log #fmt("missing %s", pprust::meta_item_to_str(*needed));
             ret false;
@@ -156,9 +156,9 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
     // stomach from here, and writing a C++ wrapper is more work than just
     // manually filtering fs::list_dir here.
 
-    for library_search_path: str  in library_search_paths {
+    for library_search_path: str in library_search_paths {
         log #fmt("searching %s", library_search_path);
-        for path: str  in fs::list_dir(library_search_path) {
+        for path: str in fs::list_dir(library_search_path) {
             log #fmt("searching %s", path);
             let f: str = fs::basename(path);
             if !(str::starts_with(f, prefix) && str::ends_with(f, nn.suffix))
@@ -250,7 +250,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let cnum_map = new_int_hash[ast::crate_num]();
-    for dep: decoder::crate_dep  in decoder::get_crate_deps(cdata) {
+    for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
         log #fmt("resolving dep %s", cname);

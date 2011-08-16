@@ -118,7 +118,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
             ivec::foldl(extract_metas, ~[], cfg_metas)
         };
 
-    for cfg_mi: @ast::meta_item  in item_cfg_metas {
+    for cfg_mi: @ast::meta_item in item_cfg_metas {
         if attr::contains(cfg, cfg_mi) { ret true; }
     }
 

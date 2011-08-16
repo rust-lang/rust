@@ -43,7 +43,7 @@ fn sub(t: str, n: int) -> str {
 iter ninetynine() -> int { let n: int = 100; while n > 1 { n -= 1; put n; } }
 
 fn main() {
-    for each n: int  in ninetynine() {
+    for each n: int in ninetynine() {
         log sub(b1(), n);
         log sub(b2(), n - 1);
         log "";

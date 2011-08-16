@@ -49,7 +49,7 @@ fn test00() {
         }
     }
 
-    for t: task_id  in tasks { task::join_id(t); }
+    for t: task_id in tasks { task::join_id(t); }
 
     log "Completed: Final number is: ";
     assert (sum ==
@@ -137,7 +137,7 @@ fn test06() {
         i = i + 1; tasks += [task::_spawn(bind test06_start(i))]; }
 
 
-    for t: task_id  in tasks { task::join_id(t); }
+    for t: task_id in tasks { task::join_id(t); }
 }
 
 

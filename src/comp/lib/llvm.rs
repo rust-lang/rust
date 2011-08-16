@@ -1469,7 +1469,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
     fn tys_str(names: type_names, outer: &[TypeRef], tys: &[TypeRef]) -> str {
         let s: str = "";
         let first: bool = true;
-        for t: TypeRef  in tys {
+        for t: TypeRef in tys {
             if first { first = false; } else { s += ", "; }
             s += type_to_str_inner(names, outer, t);
         }
@@ -1531,7 +1531,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
       11 {
         let i: uint = 0u;
-        for tout: TypeRef  in outer0 {
+        for tout: TypeRef in outer0 {
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = ivec::len[TypeRef](outer0) - i;

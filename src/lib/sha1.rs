@@ -64,7 +64,7 @@ fn mk_sha1() -> sha1 {
         // FIXME: Should be typestate precondition
 
         assert (!st.computed);
-        for element: u8  in msg {
+        for element: u8 in msg {
             st.msg_block.(st.msg_block_idx) = element;
             st.msg_block_idx += 1u;
             st.len_low += 8u32;
@@ -165,7 +165,7 @@ fn mk_sha1() -> sha1 {
     fn mk_result(st: &sha1state) -> [u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
         let rs: [u8] = ~[];
-        for hpart: u32  in st.h {
+        for hpart: u32 in st.h {
             let a = hpart >> 24u32 & 0xFFu32 as u8;
             let b = hpart >> 16u32 & 0xFFu32 as u8;
             let c = hpart >> 8u32 & 0xFFu32 as u8;
@@ -243,7 +243,7 @@ fn mk_sha1() -> sha1 {
         fn result_str() -> str {
             let r = mk_result(st);
             let s = "";
-            for b: u8  in r { s += uint::to_str(b as uint, 16u); }
+            for b: u8 in r { s += uint::to_str(b as uint, 16u); }
             ret s;
         }
     }

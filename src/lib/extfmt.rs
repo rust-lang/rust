@@ -440,7 +440,7 @@ mod rt {
         ret padstr + s;
     }
     fn have_flag(flags: &[flag], f: flag) -> bool {
-        for candidate: flag  in flags { if candidate == f { ret true; } }
+        for candidate: flag in flags { if candidate == f { ret true; } }
         ret false;
     }
 }

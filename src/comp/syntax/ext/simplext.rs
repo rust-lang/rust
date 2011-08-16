@@ -95,7 +95,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
     -> {pre: [@expr], rep: option::t[@expr], post: [@expr]} {
     let idx: uint = 0u;
     let res = none;
-    for elt: @expr  in elts {
+    for elt: @expr in elts {
         alt elt.node {
           expr_mac(m) {
             alt m.node {
@@ -124,7 +124,7 @@ fn elts_to_ell(cx: &ext_ctxt, elts: &[@expr])
 fn option_flatten_map[T, U](f: &fn(&T) -> option::t[U] , v: &[T]) ->
    option::t[[U]] {
     let res = ~[];
-    for elem: T  in v {
+    for elem: T in v {
         alt f(elem) { none. { ret none; } some(fv) { res += ~[fv]; } }
     }
     ret some(res);
@@ -185,11 +185,11 @@ selectors. */
 fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t[bindings] {
     let res = new_str_hash[arb_depth[matchable]]();
     //need to do this first, to check vec lengths.
-    for sel: selector  in b.literal_ast_matchers {
+    for sel: selector in b.literal_ast_matchers {
         alt sel(match_expr(e)) { none. { ret none; } _ { } }
     }
     let never_mind: bool = false;
-    for each pair: @{key: ident, val: selector}  in b.real_binders.items() {
+    for each pair: @{key: ident, val: selector} in b.real_binders.items() {
         alt pair.val(match_expr(e)) {
           none. { never_mind = true; }
           some(mtc) { res.insert(pair.key, mtc); }
@@ -233,7 +233,7 @@ fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
 fn follow(m: &arb_depth[matchable], idx_path: @mutable [uint]) ->
    arb_depth[matchable] {
     let res: arb_depth[matchable] = m;
-    for idx: uint  in *idx_path {
+    for idx: uint in *idx_path {
         alt res {
           leaf(_) { ret res;/* end of the line */ }
           seq(new_ms, _) { res = new_ms.(idx); }
@@ -276,7 +276,7 @@ iter free_vars(b: &bindings, e: @expr) -> ident {
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     dummy_out(f);
-    for each id: ident  in idents.keys() { put id; }
+    for each id: ident in idents.keys() { put id; }
 }
 
 
@@ -293,7 +293,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
             let repeat: option::t[{rep_count: uint, name: ident}] = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
-            for each fv: ident  in free_vars(b, repeat_me) {
+            for each fv: ident in free_vars(b, repeat_me) {
                 let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
                   leaf(_) { }
@@ -686,7 +686,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
 
     let macro_name: option::t[str] = none;
     let clauses: [@clause] = ~[];
-    for arg: @expr  in args {
+    for arg: @expr in args {
         alt arg.node {
           expr_vec(elts, mut, seq_kind) {
             if ivec::len(elts) != 2u {

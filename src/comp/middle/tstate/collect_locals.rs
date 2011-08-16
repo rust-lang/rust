@@ -30,7 +30,7 @@ fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt[ctxt]) {
       // If it's a call, generate appropriate instances of the
       // call's constraints.
       expr_call(operator, operands) {
-        for c: @ty::constr  in constraints_expr(cx.tcx, operator) {
+        for c: @ty::constr in constraints_expr(cx.tcx, operator) {
             let ct: sp_constr =
                 respan(c.span,
                        aux::substitute_constr_args(cx.tcx, operands, c));
@@ -98,13 +98,13 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    for c: sp_constr  in { *cx.cs } {
+    for c: sp_constr in { *cx.cs } {
         next = add_constraint(cx.tcx, c, next, res_map);
     }
     /* if this function has any constraints, instantiate them to the
        argument names and add them */
     let sc;
-    for c: @constr  in f.decl.constraints {
+    for c: @constr in f.decl.constraints {
         sc = ast_constr_to_sp_constr(cx.tcx, f.decl.inputs, c);
         next = add_constraint(cx.tcx, sc, next, res_map);
     }

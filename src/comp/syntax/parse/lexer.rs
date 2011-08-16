@@ -166,7 +166,7 @@ fn consume_block_comment(rdr: &reader) {
 
 fn digits_to_string(s: str) -> int {
     let accum_int: int = 0;
-    for c: u8  in s {
+    for c: u8 in s {
         accum_int *= 10;
         accum_int += dec_digit_val(c as char);
     }

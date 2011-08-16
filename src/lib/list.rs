@@ -9,7 +9,7 @@ fn from_vec[@T](v: &[T]) -> list[T] {
     // a reverse vector iterator. Unfortunately generic iterators seem not to
     // work yet.
 
-    for item: T  in ivec::reversed(v) { l = cons[T](item, @l); }
+    for item: T in ivec::reversed(v) { l = cons[T](item, @l); }
     ret l;
 }
 

@@ -416,11 +416,11 @@ fn trans_recv(bcx: &@block_ctxt, dest: &dest, expr: &@ast::expr) ->
 
 fn trans_block(cx: &@block_ctxt, dest: &dest, blk: &ast::blk) -> @block_ctxt {
     let bcx = cx;
-    for each local: @ast::local  in trans::block_locals(blk) {
+    for each local: @ast::local in trans::block_locals(blk) {
         bcx = trans::alloc_local(bcx, local).bcx;
     }
 
-    for stmt: @ast::stmt  in blk.node.stmts {
+    for stmt: @ast::stmt in blk.node.stmts {
         bcx = trans_stmt(bcx, stmt);
 
 
@@ -456,7 +456,7 @@ fn trans_lit_str_common(ccx: &@crate_ctxt, s: &str, expand: bool) ->
     let len = str::byte_len(s);
 
     let array = ~[];
-    for ch: u8  in s { array += ~[tc::C_u8(ch as uint)]; }
+    for ch: u8 in s { array += ~[tc::C_u8(ch as uint)]; }
     array += ~[tc::C_u8(0u)];
 
     if expand {
@@ -567,7 +567,7 @@ fn trans_stmt(cx: &@block_ctxt, stmt: &@ast::stmt) -> @block_ctxt {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for local: @ast::local  in locals {
+            for local: @ast::local in locals {
                 bcx = trans_init_local(bcx, local);
             }
           }

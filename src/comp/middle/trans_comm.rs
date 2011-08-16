@@ -109,7 +109,7 @@ fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
 
     let arg_tys: [ty::t] = ~[];
     let arg_vals: [ValueRef] = ~[];
-    for e: @ast::expr  in args {
+    for e: @ast::expr in args {
         let e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
         let arg = trans_expr(bcx, e);
 
@@ -127,7 +127,7 @@ fn trans_spawn(cx: &@block_ctxt, dom: &ast::spawn_dom, name: &option::t[str],
 
     let llargs = alloc_ty(bcx, args_ty);
     let i = 0u;
-    for v: ValueRef  in arg_vals {
+    for v: ValueRef in arg_vals {
         let target = bcx.build.GEP(llargs.val, ~[C_int(0), C_int(i as int)]);
 
         bcx.build.Store(v, target);

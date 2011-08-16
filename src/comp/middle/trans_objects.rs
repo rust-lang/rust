@@ -44,7 +44,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     // The fields of our object will become the arguments to the function
     // we're creating.
     let fn_args: [ast::arg] = ~[];
-    for f: ast::obj_field  in ob.fields {
+    for f: ast::obj_field in ob.fields {
         fn_args +=
             ~[{mode: ast::alias(false), ty: f.ty, ident: f.ident, id: f.id}];
     }
@@ -104,11 +104,11 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
         let obj_fields: [ty::t] = ~[];
-        for a: ty::arg  in arg_tys { obj_fields += ~[a.ty]; }
+        for a: ty::arg in arg_tys { obj_fields += ~[a.ty]; }
 
         let tps: [ty::t] = ~[];
         let tydesc_ty = ty::mk_type(ccx.tcx);
-        for tp: ast::ty_param  in ty_params { tps += ~[tydesc_ty]; }
+        for tp: ast::ty_param in ty_params { tps += ~[tydesc_ty]; }
 
         // Synthesize an object body type and hand it off to
         // trans_malloc_boxed, which allocates a box, including space for a
@@ -154,7 +154,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         // TODO: can we just get typarams_ty out of body_ty instead?
         let typarams_ty: ty::t = ty::mk_tup(ccx.tcx, tps);
         let i: int = 0;
-        for tp: ast::ty_param  in ty_params {
+        for tp: ast::ty_param in ty_params {
             let typaram = bcx.fcx.lltydescs.(i);
             let capture =
                 GEP_tup_like(bcx, typarams_ty, body_typarams.val, ~[0, i]);
@@ -169,7 +169,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                          ~[0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
         i = 0;
-        for f: ast::obj_field  in ob.fields {
+        for f: ast::obj_field in ob.fields {
             alt bcx.fcx.llargs.find(f.id) {
               some(arg1) {
                 let arg = load_if_immediate(bcx, arg1, arg_tys.(i).ty);
@@ -217,7 +217,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
       none. { }
       some(fields) {
         additional_fields = fields;
-        for f: ast::anon_obj_field  in fields {
+        for f: ast::anon_obj_field in fields {
             additional_field_tys += ~[node_id_type(ccx, f.id)];
             additional_field_vals += ~[trans_expr(bcx, f.expr)];
         }
@@ -342,7 +342,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
                          ~[0, abi::obj_body_elt_fields]);
         bcx = body_fields.bcx;
         let i: int = 0;
-        for f: ast::anon_obj_field  in additional_fields {
+        for f: ast::anon_obj_field in additional_fields {
             // FIXME (part of issue #538): make this work eventually, when we
             // have additional field exprs in the AST.
             load_if_immediate(bcx, additional_field_vals.(i).val,
@@ -483,7 +483,7 @@ fn create_vtbl(cx: @local_ctxt, sp: &span, outer_obj_ty: ty::t,
         // Gather up methods on the inner object.
         alt ty::struct(cx.ccx.tcx, inner_obj_ty) {
           ty::ty_obj(inner_obj_methods) {
-            for m: ty::method  in inner_obj_methods {
+            for m: ty::method in inner_obj_methods {
                 meths += ~[fwding_mthd(@m)];
             }
           }
@@ -699,7 +699,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     let a: uint = 3u; // retptr, task ptr, env come first
     let passed_arg: ValueRef = llvm::LLVMGetParam(llbackwarding_fn, a);
-    for arg: ty::arg  in m.inputs {
+    for arg: ty::arg in m.inputs {
         if arg.mode == ty::mo_val {
             passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
         }
@@ -871,7 +871,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
 
     let a: uint = 3u; // retptr, task ptr, env come first
     let passed_arg: ValueRef = llvm::LLVMGetParam(llforwarding_fn, a);
-    for arg: ty::arg  in m.inputs {
+    for arg: ty::arg in m.inputs {
         if arg.mode == ty::mo_val {
             passed_arg = load_if_immediate(bcx, passed_arg, arg.ty);
         }

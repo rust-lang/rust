@@ -69,7 +69,7 @@ fn hash_node_id(node_id: &int) -> uint { ret 177573u ^ (node_id as uint); }
 
 fn hash_path(s: &str) -> uint {
     let h = 5381u;
-    for ch: u8  in str::bytes(s) { h = (h << 5u) + h ^ (ch as uint); }
+    for ch: u8 in str::bytes(s) { h = (h << 5u) + h ^ (ch as uint); }
     ret h;
 }
 

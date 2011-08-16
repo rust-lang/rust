@@ -74,7 +74,7 @@ fn test() {
     // Test that it works when accepting the message all at once
 
     let sh = sha1::mk_sha1();
-    for t: test  in tests {
+    for t: test in tests {
         sh.input_str(t.input);
         let out = sh.result();
         check_vec_eq(t.output, out);
@@ -83,7 +83,7 @@ fn test() {
 
 
     // Test that it works when accepting the message in pieces
-    for t: test  in tests {
+    for t: test in tests {
         let len = str::byte_len(t.input);
         let left = len;
         while left > 0u {

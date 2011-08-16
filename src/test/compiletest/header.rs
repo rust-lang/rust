@@ -28,7 +28,7 @@ fn load_props(testfile: &str) -> test_props {
     let compile_flags = option::none;
     let pp_exact = option::none;
     let no_valgrind = false;
-    for each ln: str  in iter_header(testfile) {
+    for each ln: str in iter_header(testfile) {
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += ~[ep]; }
           option::none. { }
@@ -56,7 +56,7 @@ fn load_props(testfile: &str) -> test_props {
 
 fn is_test_ignored(config: &config, testfile: &str) -> bool {
     let found = false;
-    for each ln: str  in iter_header(testfile) {
+    for each ln: str in iter_header(testfile) {
         // FIXME: Can't return or break from iterator
         found = found
             || parse_name_directive(ln, "xfail-" + config.stage_id);

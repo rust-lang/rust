@@ -291,7 +291,7 @@ obj fd_buf_writer(fd: int, res: option::t[@fd_res]) {
 fn file_buf_writer(path: str, flags: &[fileflag]) -> buf_writer {
     let fflags: int =
         os::libc_constants::O_WRONLY() | os::libc_constants::O_BINARY();
-    for f: fileflag  in flags {
+    for f: fileflag in flags {
         alt f {
           append. { fflags |= os::libc_constants::O_APPEND(); }
           create. { fflags |= os::libc_constants::O_CREAT(); }
@@ -402,7 +402,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
         // Fast path.
 
         if buf.pos == ivec::len(buf.buf) {
-            for b: u8  in v { buf.buf += ~[mutable b]; }
+            for b: u8 in v { buf.buf += ~[mutable b]; }
             buf.pos += ivec::len[u8](v);
             ret;
         }

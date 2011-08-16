@@ -41,7 +41,7 @@ fn process(op: &block(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
     assert (ivec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let changed = false;
-    for each i: uint  in uint::range(0u, len) {
+    for each i: uint in uint::range(0u, len) {
         let w0 = v0.storage.(i);
         let w1 = v1.storage.(i);
         let w = op(w0, w1);
@@ -71,7 +71,7 @@ fn assign(v0: &t, v1: t) -> bool {
 fn clone(v: t) -> t {
     let storage = ivec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
     let len = ivec::len(v.storage);
-    for each i: uint  in uint::range(0u, len) { storage.(i) = v.storage.(i); }
+    for each i: uint in uint::range(0u, len) { storage.(i) = v.storage.(i); }
     ret @{storage: storage, nbits: v.nbits};
 }
 
@@ -98,17 +98,17 @@ fn equal(v0: &t, v1: &t) -> bool {
 }
 
 fn clear(v: &t) {
-    for each i: uint  in uint::range(0u, ivec::len(v.storage)) {
+    for each i: uint in uint::range(0u, ivec::len(v.storage)) {
         v.storage.(i) = 0u;
     }
 }
 
 fn set_all(v: &t) {
-    for each i: uint  in uint::range(0u, v.nbits) { set(v, i, true); }
+    for each i: uint in uint::range(0u, v.nbits) { set(v, i, true); }
 }
 
 fn invert(v: &t) {
-    for each i: uint  in uint::range(0u, ivec::len(v.storage)) {
+    for each i: uint in uint::range(0u, ivec::len(v.storage)) {
         v.storage.(i) = !v.storage.(i);
     }
 }
@@ -135,14 +135,14 @@ fn set(v: &t, i: uint, x: bool) {
 
 /* true if all bits are 1 */
 fn is_true(v: &t) -> bool {
-    for i: uint  in to_ivec(v) { if i != 1u { ret false; } }
+    for i: uint in to_ivec(v) { if i != 1u { ret false; } }
     ret true;
 }
 
 
 /* true if all bits are non-1 */
 fn is_false(v: &t) -> bool {
-    for i: uint  in to_ivec(v) { if i == 1u { ret false; } }
+    for i: uint in to_ivec(v) { if i == 1u { ret false; } }
     ret true;
 }
 
@@ -155,7 +155,7 @@ fn to_ivec(v: &t) -> [uint] {
 
 fn to_str(v: &t) -> str {
     let rs = "";
-    for i: uint  in to_ivec(v) {
+    for i: uint in to_ivec(v) {
         if i == 1u { rs += "1"; } else { rs += "0"; }
     }
     ret rs;

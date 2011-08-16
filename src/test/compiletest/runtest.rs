@@ -192,7 +192,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns.(next_err_idx);
-    for line: str  in str::split(procres.stdout, '\n' as u8) {
+    for line: str in str::split(procres.stdout, '\n' as u8) {
         if str::find(line, next_err_pat) > 0 {
             log #fmt("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -211,7 +211,7 @@ fn check_error_patterns(props: &test_props, testfile: &str,
         fatal_procres(#fmt("error pattern '%s' not found!",
                            missing_patterns.(0)), procres);
     } else {
-        for pattern: str  in missing_patterns {
+        for pattern: str in missing_patterns {
             error(#fmt("error pattern '%s' not found!", pattern));
         }
         fatal_procres("multiple error patterns not found", procres);

@@ -294,7 +294,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         //
 
         let param_bindings: [ty::t] = ~[];
-        for ast_ty: @ast::ty  in args {
+        for ast_ty: @ast::ty in args {
             param_bindings += ~[ast_ty_to_ty(tcx, getter, ast_ty)];
         }
         if ivec::len(param_bindings) !=
@@ -346,7 +346,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       }
       ast::ty_rec(fields) {
         let flds: [field] = ~[];
-        for f: ast::ty_field  in fields {
+        for f: ast::ty_field in fields {
             let tm = ast_mt_to_mt(tcx, getter, f.node.mt);
             flds += ~[{ident: f.node.ident, mt: tm}];
         }
@@ -354,13 +354,13 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       }
       ast::ty_fn(proto, inputs, output, cf, constrs) {
         let i = ~[];
-        for ta: ast::ty_arg  in inputs {
+        for ta: ast::ty_arg in inputs {
             i += ~[ast_arg_to_arg(tcx, getter, ta)];
         }
         let out_ty = ast_ty_to_ty(tcx, getter, output);
 
         let out_constrs = ~[];
-        for constr: @ast::constr  in constrs {
+        for constr: @ast::constr in constrs {
             out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
         }
         typ = ty::mk_fn(tcx, proto, i, out_ty, cf, out_constrs);
@@ -384,15 +384,15 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       }
       ast::ty_obj(meths) {
         let tmeths: [ty::method] = ~[];
-        for m: ast::ty_method  in meths {
+        for m: ast::ty_method in meths {
             let ins = ~[];
-            for ta: ast::ty_arg  in m.node.inputs {
+            for ta: ast::ty_arg in m.node.inputs {
                 ins += ~[ast_arg_to_arg(tcx, getter, ta)];
             }
             let out = ast_ty_to_ty(tcx, getter, m.node.output);
 
             let out_constrs = ~[];
-            for constr: @ast::constr  in m.node.constrs {
+            for constr: @ast::constr in m.node.constrs {
                 out_constrs += ~[ty::ast_constr_to_constr(tcx, constr)];
             }
             let new_m: ty::method =
@@ -408,7 +408,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       }
       ast::ty_constr(t, cs) {
         let out_cs = ~[];
-        for constr: @ast::ty_constr  in cs {
+        for constr: @ast::ty_constr in cs {
             out_cs += ~[ty::ast_constr_to_constr(tcx, constr)];
         }
         typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, getter, t), out_cs);
@@ -554,11 +554,11 @@ mod collect {
                      def_id: &option::t[ast::def_id]) ->
        ty::ty_param_kinds_and_ty {
         let input_tys = ~[];
-        for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
+        for a: ast::arg in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
         let output_ty = convert(decl.output);
 
         let out_constrs = ~[];
-        for constr: @ast::constr  in decl.constraints {
+        for constr: @ast::constr in decl.constraints {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         let t_fn =
@@ -574,7 +574,7 @@ mod collect {
                             ty_params: &[ast::ty_param], def_id: &ast::def_id)
        -> ty::ty_param_kinds_and_ty {
         let input_tys = ~[];
-        for a: ast::arg  in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
+        for a: ast::arg in decl.inputs { input_tys += ~[ty_of_arg(a)]; }
         let output_ty = convert(decl.output);
 
         let t_fn = ty::mk_native_fn(cx.tcx, abi, input_tys, output_ty);
@@ -619,14 +619,14 @@ mod collect {
         let convert = bind ast_ty_to_ty(cx.tcx, get, _);
 
         let inputs = ~[];
-        for a: ast::arg  in m.node.meth.decl.inputs {
+        for a: ast::arg in m.node.meth.decl.inputs {
             inputs += ~[ty_of_arg(cx, a)];
         }
 
         let output = convert(m.node.meth.decl.output);
 
         let out_constrs = ~[];
-        for constr: @ast::constr  in m.node.meth.decl.constraints {
+        for constr: @ast::constr in m.node.meth.decl.constraints {
             out_constrs += ~[ty::ast_constr_to_constr(cx.tcx, constr)];
         }
         ret {proto: proto_to_ty_proto(m.node.meth.proto),
@@ -649,7 +649,7 @@ mod collect {
         let t_obj = ty_of_obj(cx, id, ob, ty_params);
 
         let t_inputs: [arg] = ~[];
-        for f: ast::obj_field  in ob.fields {
+        for f: ast::obj_field in ob.fields {
             let g = bind getter(cx, _);
             let t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
             t_inputs += ~[{mode: ty::mo_alias(false), ty: t_field}];
@@ -747,7 +747,7 @@ mod collect {
         // Create a set of parameter types shared among all the variants.
 
         let ty_param_tys: [ty::t] = mk_ty_params(cx, ty_params);
-        for variant: ast::variant  in variants {
+        for variant: ast::variant in variants {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
 
@@ -760,7 +760,7 @@ mod collect {
 
                 let f = bind getter(cx, _);
                 let args: [arg] = ~[];
-                for va: ast::variant_arg  in variant.node.args {
+                for va: ast::variant_arg in variant.node.args {
                     let arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
                     args += ~[{mode: ty::mo_alias(false), ty: arg_ty}];
                 }
@@ -777,7 +777,7 @@ mod collect {
     }
     fn get_obj_method_types(cx: &@ctxt, object: &ast::_obj) -> [ty::method] {
         let meths = ~[];
-        for m: @ast::method  in object.methods {
+        for m: @ast::method in object.methods {
             meths += ~[ty_of_method(cx, m)];
         }
         ret meths;
@@ -995,7 +995,7 @@ mod demand {
 
         let ty_param_substs: [mutable ty::t] = ~[mutable];
         let ty_param_subst_var_ids: [int] = ~[];
-        for ty_param_subst: ty::t  in ty_param_substs_0 {
+        for ty_param_subst: ty::t in ty_param_substs_0 {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
             let t_0 = next_ty_var(fcx);
@@ -1008,7 +1008,7 @@ mod demand {
                      ty_param_subst_var_ids: &[int]) ->
            ty_param_substs_and_ty {
             let result_ty_param_substs: [ty::t] = ~[];
-            for var_id: int  in ty_param_subst_var_ids {
+            for var_id: int in ty_param_subst_var_ids {
                 let tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
                 result_ty_param_substs += ~[tp_subst];
             }
@@ -1055,7 +1055,7 @@ fn variant_arg_types(ccx: &@crate_ctxt, sp: &span, vid: &ast::def_id,
 
 
         // N-ary variant.
-        for arg: ty::arg  in ins {
+        for arg: ty::arg in ins {
             let arg_ty =
                 ty::substitute_type_params(ccx.tcx, tag_ty_params, arg.ty);
             result += ~[arg_ty];
@@ -1111,7 +1111,7 @@ mod writeback {
           none[[ty::t]]. { new_substs_opt = none[[ty::t]]; }
           some[[ty::t]](substs) {
             let new_substs: [ty::t] = ~[];
-            for subst: ty::t  in substs {
+            for subst: ty::t in substs {
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
                   some(t) { new_substs += ~[t]; }
                   none. { wbcx.success = false; ret; }
@@ -1256,7 +1256,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
       }
       none. {/* no fields */ }
     }
-    for f: ast::obj_field  in obj_fields {
+    for f: ast::obj_field in obj_fields {
         let field_ty = ty::node_id_to_type(ccx.tcx, f.id);
         assign(f.id, f.ident, some(field_ty));
     }
@@ -1264,7 +1264,7 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     // Add formal parameters.
     let args = ty::ty_fn_args(ccx.tcx, ty::node_id_to_type(ccx.tcx, id));
     let i = 0u;
-    for arg: ty::arg  in args {
+    for arg: ty::arg in args {
         assign(f.decl.inputs.(i).id, f.decl.inputs.(i).ident, some(arg.ty));
         i += 1u;
     }
@@ -1391,7 +1391,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
                 // TODO: ivec::iter2
 
                 let i = 0u;
-                for subpat: @ast::pat  in subpats {
+                for subpat: @ast::pat in subpats {
                     check_pat(fcx, map, subpat, arg_types.(i));
                     i += 1u;
                 }
@@ -1442,7 +1442,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
         fn matches(name: &str, f: &ty::field) -> bool {
             ret str::eq(name, f.ident);
         }
-        for f: ast::field_pat  in fields {
+        for f: ast::field_pat in fields {
             alt ivec::find(bind matches(f.ident, _), ex_fields) {
               some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
               none. {
@@ -1619,7 +1619,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         let check_args = lambda(check_blocks: bool) -> bool {
             let i = 0u;
             let bot = false;
-            for a_opt: option::t[@ast::expr]  in args {
+            for a_opt: option::t[@ast::expr] in args {
                 alt a_opt {
                   some(a) {
                     let is_block =
@@ -1655,7 +1655,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
     fn check_call(fcx: &@fn_ctxt, sp: &span, f: &@ast::expr,
                   args: &[@ast::expr], call_kind: call_kind) -> bool {
         let args_opt_0: [option::t[@ast::expr]] = ~[];
-        for arg: @ast::expr  in args {
+        for arg: @ast::expr in args {
             args_opt_0 += ~[some[@ast::expr](arg)];
         }
 
@@ -1727,7 +1727,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
                                        in constraint");
                   }
                 }
-                for operand: @ast::expr  in operands {
+                for operand: @ast::expr in operands {
                     if !ast::is_constraint_arg(operand) {
                         let s =
                             "Constraint args must be \
@@ -2048,16 +2048,16 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
         let pattern_ty = ty::expr_ty(tcx, expr);
-        for arm: ast::arm  in arms {
+        for arm: ast::arm in arms {
             let id_map = ast::pat_id_map(arm.pats.(0));
-            for p: @ast::pat  in arm.pats {
+            for p: @ast::pat in arm.pats {
                 check_pat(fcx, id_map, p, pattern_ty);
             }
         }
         // Now typecheck the blocks.
         let result_ty = next_ty_var(fcx);
         let arm_non_bot = false;
-        for arm: ast::arm  in arms {
+        for arm: ast::arm in arms {
             if !check_block(fcx, arm.body) { arm_non_bot = true; }
             let bty = block_ty(tcx, arm.body);
             result_ty = demand::simple(fcx, arm.body.span, result_ty, bty);
@@ -2173,7 +2173,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
           some(sty) {
             alt sty {
               ty::ty_obj(methods) {
-                for method: ty::method  in methods {
+                for method: ty::method in methods {
                     if method.ident == ident {
                         t = ty::method_ty_to_fn_ty(tcx, method);
                     }
@@ -2251,7 +2251,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
       ast::expr_rec(fields, base) {
         alt base { none. {/* no-op */ } some(b_0) { check_expr(fcx, b_0); } }
         let fields_t: [spanned[field]] = ~[];
-        for f: ast::field  in fields {
+        for f: ast::field in fields {
             bot |= check_expr(fcx, f.node.expr);
             let expr_t = expr_ty(tcx, f.node.expr);
             let expr_mt = {ty: expr_t, mut: f.node.mut};
@@ -2279,9 +2279,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
               }
             }
             write::ty_only_fixup(fcx, id, bexpr_t);
-            for f: spanned[ty::field]  in fields_t {
+            for f: spanned[ty::field] in fields_t {
                 let found = false;
-                for bf: ty::field  in base_fields {
+                for bf: ty::field in base_fields {
                     if str::eq(f.node.ident, bf.ident) {
                         demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
@@ -2384,14 +2384,14 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
             let convert = bind ast_ty_to_ty_crate(ccx, _);
 
             let inputs = ~[];
-            for aa: ast::arg  in m.node.meth.decl.inputs {
+            for aa: ast::arg in m.node.meth.decl.inputs {
                 inputs += ~[ty_of_arg(ccx, aa)];
             }
 
             let output = convert(m.node.meth.decl.output);
 
             let out_constrs = ~[];
-            for constr: @ast::constr  in m.node.meth.decl.constraints {
+            for constr: @ast::constr in m.node.meth.decl.constraints {
                 out_constrs += ~[ty::ast_constr_to_constr(ccx.tcx, constr)];
             }
 
@@ -2406,7 +2406,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         let method_types: [ty::method] = ~[];
         {
             // Outer methods.
-            for m: @ast::method  in ao.methods {
+            for m: @ast::method in ao.methods {
                 method_types += ~[ty_of_method(fcx.ccx, m)];
             }
 
@@ -2495,7 +2495,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
 
         // Typecheck the methods.
-        for method: @ast::method  in ao.methods {
+        for method: @ast::method in ao.methods {
             check_method(fcx.ccx, method);
         }
 
@@ -2704,7 +2704,7 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
         ccx.obj_infos += ~[regular_obj(ob.fields, it.id)];
 
         // Typecheck the methods.
-        for method: @ast::method  in ob.methods { check_method(ccx, method); }
+        for method: @ast::method in ob.methods { check_method(ccx, method); }
 
         // Now remove the info from the stack.
         ivec::pop[obj_info](ccx.obj_infos);

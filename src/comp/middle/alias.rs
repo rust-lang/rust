@@ -54,7 +54,7 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
 fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
             name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt[scope]) {
     visit::visit_fn_decl(f.decl, sc, v);
-    for arg_: ast::arg  in f.decl.inputs {
+    for arg_: ast::arg in f.decl.inputs {
         cx.local_map.insert(arg_.id, arg(arg_.mode));
     }
     let scope = alt (f.proto) {
@@ -85,7 +85,7 @@ fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
 fn visit_item(cx: &@ctx, i: &@ast::item, sc: &scope, v: &vt[scope]) {
     alt i.node {
       ast::item_obj(o, _, _) {
-        for f: ast::obj_field  in o.fields {
+        for f: ast::obj_field in o.fields {
             cx.local_map.insert(f.id, objfield(f.mut));
         }
       }
@@ -173,7 +173,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
     let unsafe_ts: [ty::t] = ~[];
     let unsafe_t_offsets: [uint] = ~[];
     let i = 0u;
-    for arg_t: ty::arg  in arg_ts {
+    for arg_t: ty::arg in arg_ts {
         if arg_t.mode != ty::mo_val {
             let arg = args.(i);
             let root = expr_root(cx, arg, false);
@@ -232,11 +232,11 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
         }
     }
     let j = 0u;
-    for unsafe: ty::t  in unsafe_ts {
+    for unsafe: ty::t in unsafe_ts {
         let offset = unsafe_t_offsets.(j);
         j += 1u;
         let i = 0u;
-        for arg_t: ty::arg  in arg_ts {
+        for arg_t: ty::arg in arg_ts {
             let mut_alias = arg_t.mode == ty::mo_alias(true);
             if i != offset &&
                    ty_can_unsafely_include(cx, unsafe, arg_t.ty, mut_alias) {
@@ -250,10 +250,10 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
     }
     // Ensure we're not passing a root by mutable alias.
 
-    for root: {arg: uint, node: node_id}  in mut_roots {
+    for root: {arg: uint, node: node_id} in mut_roots {
         let mut_alias_to_root = false;
         let mut_alias_to_root_count = 0u;
-        for r: node_id  in roots {
+        for r: node_id in roots {
             if root.node == r {
                 mut_alias_to_root_count += 1u;
                 if mut_alias_to_root_count > 1u {
@@ -277,7 +277,7 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
     let args;
     let f = alt call.node { ast::expr_call(f, args_) { args = args_; f } };
     let i = 0u;
-    for arg_t: ty::arg  in fty_args(cx, ty::expr_ty(cx.tcx, f)) {
+    for arg_t: ty::arg in fty_args(cx, ty::expr_ty(cx.tcx, f)) {
         if arg_t.mode != ty::mo_val {
             let mut_a = arg_t.mode == ty::mo_alias(true);
             let ok = true;
@@ -316,7 +316,7 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
         alt path_def_id(cx, root.ex) { some(did) { ~[did.node] } _ { ~[] } };
     let forbidden_tp: [ty::t] =
         alt inner_mut(root.ds) { some(t) { ~[t] } _ { ~[] } };
-    for a: ast::arm  in arms {
+    for a: ast::arm in arms {
         let dnums = arm_defnums(a);
         let new_sc = sc;
         if ivec::len(dnums) > 0u {
@@ -390,7 +390,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
     if !def_is_local(def, true) { ret; }
     let my_defnum = ast::def_id_of_def(def).node;
     let var_t = ty::expr_ty(cx.tcx, ex);
-    for r: restrict  in *sc {
+    for r: restrict in *sc {
         // excludes variables introduced since the alias was made
         // FIXME This does not work anymore, now that we have macros.
         if my_defnum < r.block_defnum {
@@ -475,7 +475,7 @@ fn is_immutable_alias(cx: &ctx, sc: &scope, dnum: node_id) -> bool {
       some(arg(ast::alias(false))) { ret true; }
       _ { }
     }
-    for r: restrict  in *sc {
+    for r: restrict in *sc {
         if ivec::member(dnum, r.bindings) { ret true; }
     }
     ret false;
@@ -487,7 +487,7 @@ fn is_immutable_objfield(cx: &ctx, dnum: node_id) -> bool {
 
 fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
     let prob = r.ok;
-    for dep: uint  in r.depends_on {
+    for dep: uint in r.depends_on {
         if prob != valid { break; }
         prob = sc.(dep).ok;
     }
@@ -509,8 +509,8 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
 fn deps(sc: &scope, roots: &[node_id]) -> [uint] {
     let i = 0u;
     let result = ~[];
-    for r: restrict  in *sc {
-        for dn: node_id  in roots {
+    for r: restrict in *sc {
+        for dn: node_id in roots {
             if ivec::member(dn, r.bindings) { result += ~[i]; }
         }
         i += 1u;
@@ -568,7 +568,7 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
             let mut = false;
             alt ty::struct(cx.tcx, auto_unbox.t) {
               ty::ty_rec(fields) {
-                for fld: ty::field  in fields {
+                for fld: ty::field in fields {
                     if str::eq(ident, fld.ident) {
                         mut = fld.mt.mut != ast::imm;
                         break;
@@ -626,12 +626,12 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
 }
 
 fn mut_field(ds: &@[deref]) -> bool {
-    for d: deref  in *ds { if d.mut { ret true; } }
+    for d: deref in *ds { if d.mut { ret true; } }
     ret false;
 }
 
 fn inner_mut(ds: &@[deref]) -> option::t[ty::t] {
-    for d: deref  in *ds { if d.mut { ret some(d.outer_t); } }
+    for d: deref in *ds { if d.mut { ret some(d.outer_t); } }
     ret none;
 }
 
@@ -661,7 +661,7 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
         if needle == haystack { ret true; }
         alt ty::struct(tcx, haystack) {
           ty::ty_tag(_, ts) {
-            for t: ty::t  in ts {
+            for t: ty::t in ts {
                 if helper(tcx, needle, t, mut) { ret true; }
             }
             ret false;
@@ -671,7 +671,7 @@ fn ty_can_unsafely_include(cx: &ctx, needle: ty::t, haystack: ty::t,
           }
           ty::ty_uniq(t) { ret helper(tcx, needle, t, false); }
           ty::ty_rec(fields) {
-            for f: ty::field  in fields {
+            for f: ty::field in fields {
                 if helper(tcx, needle, f.mt.ty, get_mut(mut, f.mt)) {
                     ret true;
                 }

@@ -40,7 +40,7 @@ type entry[T] = {val: T, pos: uint};
 
 fn encode_tag_variant_paths(ebml_w: &ebml::writer, variants: &[variant],
                             path: &[str], index: &mutable [entry[str]]) {
-    for variant: variant  in variants {
+    for variant: variant in variants {
         add_to_index(ebml_w, path, index, variant.node.name);
         ebml::start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, variant.node.name);
@@ -60,7 +60,7 @@ fn add_to_index(ebml_w: &ebml::writer, path: &[str],
 fn encode_native_module_item_paths(ebml_w: &ebml::writer,
                                    nmod: &native_mod, path: &[str],
                                    index: &mutable [entry[str]]) {
-    for nitem: @native_item  in nmod.items {
+    for nitem: @native_item in nmod.items {
         add_to_index(ebml_w, path, index, nitem.ident);
         ebml::start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, nitem.ident);
@@ -71,7 +71,7 @@ fn encode_native_module_item_paths(ebml_w: &ebml::writer,
 
 fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
                             path: &[str], index: &mutable [entry[str]]) {
-    for it: @item  in module.items {
+    for it: @item in module.items {
         if !is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
@@ -228,7 +228,7 @@ fn encode_tag_variant_info(ecx: &@encode_ctxt, ebml_w: &ebml::writer,
                            id: node_id, variants: &[variant],
                            index: &mutable [entry[int]],
                            ty_params: &[ty_param]) {
-    for variant: variant  in variants {
+    for variant: variant in variants {
         index += ~[{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
@@ -298,7 +298,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: &ebml::writer,
         encode_family(ebml_w, 't' as u8);
         encode_type_param_kinds(ebml_w, tps);
         encode_type(ecx, ebml_w, node_id_to_monotype(ecx.ccx.tcx, item.id));
-        for v: variant  in variants {
+        for v: variant in variants {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
         ebml::end_tag(ebml_w);
@@ -395,14 +395,14 @@ fn encode_info_for_items(ecx: &@encode_ctxt, ebml_w: &ebml::writer) ->
 fn create_index[T](index: &[entry[T]], hash_fn: fn(&T) -> uint ) ->
    [@[entry[T]]] {
     let buckets: [@mutable [entry[T]]] = ~[];
-    for each i: uint  in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
-    for elt: entry[T]  in index {
+    for each i: uint in uint::range(0u, 256u) { buckets += ~[@mutable ~[]]; }
+    for elt: entry[T] in index {
         let h = hash_fn(elt.val);
         *buckets.(h % 256u) += ~[elt];
     }
 
     let buckets_frozen = ~[];
-    for bucket: @mutable [entry[T]]  in buckets {
+    for bucket: @mutable [entry[T]] in buckets {
         buckets_frozen += ~[@*bucket];
     }
     ret buckets_frozen;
@@ -414,10 +414,10 @@ fn encode_index[T](ebml_w: &ebml::writer, buckets: &[@[entry[T]]],
     ebml::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = ~[];
     ebml::start_tag(ebml_w, tag_index_buckets);
-    for bucket: @[entry[T]]  in buckets {
+    for bucket: @[entry[T]] in buckets {
         bucket_locs += ~[ebml_w.writer.tell()];
         ebml::start_tag(ebml_w, tag_index_buckets_bucket);
-        for elt: entry[T]  in *bucket {
+        for elt: entry[T] in *bucket {
             ebml::start_tag(ebml_w, tag_index_buckets_bucket_elt);
             writer.write_be_uint(elt.pos, 4u);
             write_fn(writer, elt.val);
@@ -427,7 +427,7 @@ fn encode_index[T](ebml_w: &ebml::writer, buckets: &[@[entry[T]]],
     }
     ebml::end_tag(ebml_w);
     ebml::start_tag(ebml_w, tag_index_table);
-    for pos: uint  in bucket_locs { writer.write_be_uint(pos, 4u); }
+    for pos: uint in bucket_locs { writer.write_be_uint(pos, 4u); }
     ebml::end_tag(ebml_w);
     ebml::end_tag(ebml_w);
 }
@@ -467,7 +467,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
         ebml::start_tag(ebml_w, tag_meta_item_name);
         ebml_w.writer.write(str::bytes(name));
         ebml::end_tag(ebml_w);
-        for inner_item: @meta_item  in items {
+        for inner_item: @meta_item in items {
             encode_meta_item(ebml_w, *inner_item);
         }
         ebml::end_tag(ebml_w);
@@ -477,7 +477,7 @@ fn encode_meta_item(ebml_w: &ebml::writer, mi: &meta_item) {
 
 fn encode_attributes(ebml_w: &ebml::writer, attrs: &[attribute]) {
     ebml::start_tag(ebml_w, tag_attributes);
-    for attr: attribute  in attrs {
+    for attr: attribute in attrs {
         ebml::start_tag(ebml_w, tag_attribute);
         encode_meta_item(ebml_w, attr.node.value);
         ebml::end_tag(ebml_w);
@@ -516,7 +516,7 @@ fn synthesize_crate_attrs(ecx: &@encode_ctxt, crate: &@crate) -> [attribute] {
 
     let attrs: [attribute] = ~[];
     let found_link_attr = false;
-    for attr: attribute  in crate.node.attrs {
+    for attr: attribute in crate.node.attrs {
         attrs +=
             if attr::get_attr_name(attr) != "link" {
                 ~[attr]
@@ -544,7 +544,7 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
 
         // Pull the cnums and names out of cstore
         let pairs: [mutable numname] = ~[mutable];
-        for each hashkv: hashkv  in cstore::iter_crate_data(cstore) {
+        for each hashkv: hashkv in cstore::iter_crate_data(cstore) {
             pairs += ~[mutable {crate: hashkv.key, ident: hashkv.val.name}];
         }
 
@@ -556,7 +556,7 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
 
         // Sanity-check the crate numbers
         let expected_cnum = 1;
-        for n: numname  in pairs {
+        for n: numname in pairs {
             assert (n.crate == expected_cnum);
             expected_cnum += 1;
         }
@@ -573,7 +573,7 @@ fn encode_crate_deps(ebml_w: &ebml::writer, cstore: &cstore::cstore) {
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebml::start_tag(ebml_w, tag_crate_deps);
-    for cname: str  in get_ordered_names(cstore) {
+    for cname: str in get_ordered_names(cstore) {
         ebml::start_tag(ebml_w, tag_crate_dep);
         ebml_w.writer.write(str::bytes(cname));
         ebml::end_tag(ebml_w);

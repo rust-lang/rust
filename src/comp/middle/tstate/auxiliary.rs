@@ -61,7 +61,7 @@ fn def_id_to_str(d: def_id) -> str {
 fn comma_str(args: &[@constr_arg_use]) -> str {
     let rslt = "";
     let comma = false;
-    for a: @constr_arg_use  in args {
+    for a: @constr_arg_use in args {
         if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
           carg_base. { rslt += "*"; }
@@ -87,7 +87,7 @@ fn constraint_to_str(tcx: &ty::ctxt, c: &sp_constr) -> str {
 fn tritv_to_str(fcx: fn_ctxt, v: &tritv::t) -> str {
     let s = "";
     let comma = false;
-    for p: norm_constraint  in constraints(fcx) {
+    for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
           dont_care. { }
           t {
@@ -106,7 +106,7 @@ fn log_tritv(fcx: &fn_ctxt, v: &tritv::t) { log tritv_to_str(fcx, v); }
 fn first_difference_string(fcx: &fn_ctxt, expected: &tritv::t,
                            actual: &tritv::t) -> str {
     let s: str = "";
-    for c: norm_constraint  in constraints(fcx) {
+    for c: norm_constraint in constraints(fcx) {
         if tritv_get(expected, c.bit_num) == ttrue &&
                tritv_get(actual, c.bit_num) != ttrue {
             ret constraint_to_str(fcx.ccx.tcx, c.c);
@@ -119,7 +119,7 @@ fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) { log_err tritv_to_str(fcx, v); }
 
 fn tos(v: &[uint]) -> str {
     let rslt = "";
-    for i: uint  in v {
+    for i: uint in v {
         if i == 0u {
             rslt += "0";
         } else if (i == 1u) { rslt += "1"; } else { rslt += "?"; }
@@ -561,7 +561,7 @@ fn norm_a_constraint(id: def_id, c: &constraint) -> [norm_constraint] {
       }
       cpred(p, descs) {
         let rslt: [norm_constraint] = ~[];
-        for pd: pred_args  in *descs {
+        for pd: pred_args in *descs {
             rslt +=
                 ~[{bit_num: pd.node.bit_num,
                    c: respan(pd.span, npred(p, id, pd.node.args))}];
@@ -590,7 +590,7 @@ fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
               occ: &[@constr_arg_use]) -> uint {
     log "match_args: looking at " +
             constr_args_to_str(fn (i: &inst) -> str { ret i.ident; }, occ);
-    for pd: pred_args  in *occs {
+    for pd: pred_args in *occs {
         log "match_args: candidate " + pred_args_to_str(pd);
         fn eq(p: &inst, q: &inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
@@ -642,7 +642,7 @@ fn exprs_to_constr_args(tcx: ty::ctxt, args: &[@expr]) ->
    [@constr_arg_use] {
     let f = bind expr_to_constr_arg(tcx, _);
     let rslt: [@constr_arg_use] = ~[];
-    for e: @expr  in args { rslt += ~[f(e)]; }
+    for e: @expr in args { rslt += ~[f(e)]; }
     rslt
 }
 
@@ -682,7 +682,7 @@ fn pred_args_to_str(p: &pred_args) -> str {
 fn substitute_constr_args(cx: &ty::ctxt, actuals: &[@expr], c: &@ty::constr)
    -> tsconstr {
     let rslt: [@constr_arg_use] = ~[];
-    for a: @constr_arg  in c.node.args {
+    for a: @constr_arg in c.node.args {
         rslt += ~[substitute_arg(cx, actuals, a)];
     }
     ret npred(c.node.path, c.node.id, rslt);
@@ -707,7 +707,7 @@ fn substitute_arg(cx: &ty::ctxt, actuals: &[@expr], a: @constr_arg) ->
 fn pred_args_matches(pattern: &[constr_arg_general_[inst]],
                      desc: &pred_args) -> bool {
     let i = 0u;
-    for c: @constr_arg_use  in desc.node.args {
+    for c: @constr_arg_use in desc.node.args {
         let n = pattern.(i);
         alt c.node {
           carg_ident(p) {
@@ -731,7 +731,7 @@ fn pred_args_matches(pattern: &[constr_arg_general_[inst]],
 
 fn find_instance_(pattern: &[constr_arg_general_[inst]],
                   descs: &[pred_args]) -> option::t[uint] {
-    for d: pred_args  in descs {
+    for d: pred_args in descs {
         if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
     }
     ret none;
@@ -749,7 +749,7 @@ fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
     alt c {
       cinit(_, _, _) {/* this is dealt with separately */ }
       cpred(p, descs) {
-        for d: pred_args  in *descs {
+        for d: pred_args in *descs {
             if args_mention(d.node.args, find_in_subst_bool, subst) {
                 let old_bit_num = d.node.bit_num;
                 let new = replace(subst, d);
@@ -765,7 +765,7 @@ fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
 }
 
 fn find_in_subst(id: node_id, s: &subst) -> option::t[inst] {
-    for p: {from: inst, to: inst}  in s {
+    for p: {from: inst, to: inst} in s {
         if id == p.from.node { ret some(p.to); }
     }
     ret none;
@@ -777,7 +777,7 @@ fn find_in_subst_bool(s: &subst, id: node_id) -> bool {
 
 fn insts_to_str(stuff: &[constr_arg_general_[inst]]) -> str {
     let rslt = "<";
-    for i: constr_arg_general_[inst]  in stuff {
+    for i: constr_arg_general_[inst] in stuff {
         rslt +=
             " " +
                 alt i {
@@ -792,7 +792,7 @@ fn insts_to_str(stuff: &[constr_arg_general_[inst]]) -> str {
 
 fn replace(subst: subst, d: pred_args) -> [constr_arg_general_[inst]] {
     let rslt: [constr_arg_general_[inst]] = ~[];
-    for c: @constr_arg_use  in d.node.args {
+    for c: @constr_arg_use in d.node.args {
         alt c.node {
           carg_ident(p) {
             alt find_in_subst(p.node, subst) {
@@ -906,7 +906,7 @@ fn copy_in_poststate_two(fcx: &fn_ctxt, src_post: &poststate,
         // replace any occurrences of the src def_id with the
         // dest def_id
         let insts = find_instances(fcx, subst, p.val);
-        for p: {from: uint, to: uint}  in insts {
+        for p: {from: uint, to: uint} in insts {
             if promises_(p.from, src_post) {
                 set_in_poststate_(p.to, target_post);
             }
@@ -922,7 +922,7 @@ fn forget_in_postcond(fcx: &fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     let d = local_node_id_to_local_def_id(fcx, dead_v);
     alt d {
       some(d_id) {
-        for c: norm_constraint  in constraints(fcx) {
+        for c: norm_constraint in constraints(fcx) {
             if constraint_mentions(fcx, c, d_id) {
                 clear_in_postcond(c.bit_num,
                                   node_id_to_ts_ann(fcx.ccx,
@@ -941,7 +941,7 @@ fn forget_in_postcond_still_init(fcx: &fn_ctxt, parent_exp: node_id,
     let d = local_node_id_to_local_def_id(fcx, dead_v);
     alt d {
       some(d_id) {
-        for c: norm_constraint  in constraints(fcx) {
+        for c: norm_constraint in constraints(fcx) {
             if non_init_constraint_mentions(fcx, c, d_id) {
                 clear_in_postcond(c.bit_num,
                                   node_id_to_ts_ann(fcx.ccx,
@@ -961,7 +961,7 @@ fn forget_in_poststate(fcx: &fn_ctxt, p: &poststate, dead_v: node_id) ->
     let changed = false;
     alt d {
       some(d_id) {
-        for c: norm_constraint  in constraints(fcx) {
+        for c: norm_constraint in constraints(fcx) {
             if constraint_mentions(fcx, c, d_id) {
                 changed |= clear_in_poststate_(c.bit_num, p);
             }
@@ -980,7 +980,7 @@ fn forget_in_poststate_still_init(fcx: &fn_ctxt, p: &poststate,
     let changed = false;
     alt d {
       some(d_id) {
-        for c: norm_constraint  in constraints(fcx) {
+        for c: norm_constraint in constraints(fcx) {
             if non_init_constraint_mentions(fcx, c, d_id) {
                 changed |= clear_in_poststate_(c.bit_num, p);
             }
@@ -992,7 +992,7 @@ fn forget_in_poststate_still_init(fcx: &fn_ctxt, p: &poststate,
 }
 
 fn any_eq(v: &[node_id], d: node_id) -> bool {
-    for i: node_id  in v { if i == d { ret true; } }
+    for i: node_id in v { if i == d { ret true; } }
     false
 }
 
@@ -1032,7 +1032,7 @@ fn args_mention[T](args: &[@constr_arg_use], q: fn(&[T], node_id) -> bool ,
     ret ivec::any(bind mentions(s,q,_), args);
     */
 
-    for a: @constr_arg_use  in args {
+    for a: @constr_arg_use in args {
         alt a.node { carg_ident(p1) { if q(s, p1.node) { ret true; } } _ { } }
     }
     ret false;
@@ -1042,7 +1042,7 @@ fn use_var(fcx: &fn_ctxt, v: &node_id) { *fcx.enclosing.used_vars += ~[v]; }
 
 // FIXME: This should be a function in std::ivec::.
 fn vec_contains(v: &@mutable [node_id], i: &node_id) -> bool {
-    for d: node_id  in *v { if d == i { ret true; } }
+    for d: node_id in *v { if d == i { ret true; } }
     ret false;
 }
 
@@ -1058,7 +1058,7 @@ fn do_nothing[T](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
 
 fn args_to_constr_args(sp: &span, args: &[arg]) -> [@constr_arg_use] {
     let actuals: [@constr_arg_use] = ~[];
-    for a: arg  in args {
+    for a: arg in args {
         actuals += ~[@respan(sp, carg_ident({ident: a.ident, node: a.id}))];
     }
     ret actuals;

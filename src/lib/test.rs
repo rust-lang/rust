@@ -50,7 +50,7 @@ type test_desc = {name: test_name, fn: test_fn, ignore: bool};
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(args: &vec[str], tests: &[test_desc]) {
     let ivec_args =
-        { let iargs = ~[]; for arg: str  in args { iargs += ~[arg] } iargs };
+        { let iargs = ~[]; for arg: str in args { iargs += ~[arg] } iargs };
     check (ivec::is_not_empty(ivec_args));
     let opts =
         alt parse_opts(ivec_args) {

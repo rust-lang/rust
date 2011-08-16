@@ -47,7 +47,7 @@ fn variant_opt(ccx: &@crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::tag_variants(ccx.tcx, vdef.tg);
     let i = 0u;
-    for v: ty::variant_info  in variants {
+    for v: ty::variant_info in variants {
         if vdef.var == v.id { ret var(i, vdef); }
         i += 1u;
     }
@@ -81,7 +81,7 @@ type enter_pat = fn(&@ast::pat) -> option::t[[@ast::pat]] ;
 
 fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
     let result = ~[];
-    for br: match_branch  in m {
+    for br: match_branch in m {
         alt e(br.pats.(col)) {
           some(sub) {
             let pats =
@@ -132,9 +132,9 @@ fn enter_rec(m: &match, col: uint, fields: &[ast::ident], val: ValueRef) ->
         alt p.node {
           ast::pat_rec(fpats, _) {
             let pats = ~[];
-            for fname: ast::ident  in fields {
+            for fname: ast::ident in fields {
                 let pat = dummy;
-                for fpat: ast::field_pat  in fpats {
+                for fpat: ast::field_pat in fpats {
                     if str::eq(fpat.ident, fname) { pat = fpat.pat; break; }
                 }
                 pats += ~[pat];
@@ -172,12 +172,12 @@ fn enter_box(m: &match, col: uint, val: ValueRef) -> match {
 
 fn get_options(ccx: &@crate_ctxt, m: &match, col: uint) -> [opt] {
     fn add_to_set(set: &mutable [opt], val: &opt) {
-        for l: opt  in set { if opt_eq(l, val) { ret; } }
+        for l: opt in set { if opt_eq(l, val) { ret; } }
         set += ~[val];
     }
 
     let found = ~[];
-    for br: match_branch  in m {
+    for br: match_branch in m {
         alt br.pats.(col).node {
           ast::pat_lit(l) { add_to_set(found, lit(l)); }
           ast::pat_tag(_, _) {
@@ -219,10 +219,10 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
 
 fn collect_record_fields(m: &match, col: uint) -> [ast::ident] {
     let fields = ~[];
-    for br: match_branch  in m {
+    for br: match_branch in m {
         alt br.pats.(col).node {
           ast::pat_rec(fs, _) {
-            for f: ast::field_pat  in fs {
+            for f: ast::field_pat in fs {
                 if !ivec::any(bind str::eq(f.ident, _), fields) {
                     fields += ~[f.ident];
                 }
@@ -235,7 +235,7 @@ fn collect_record_fields(m: &match, col: uint) -> [ast::ident] {
 }
 
 fn any_box_pat(m: &match, col: uint) -> bool {
-    for br: match_branch  in m {
+    for br: match_branch in m {
         alt br.pats.(col).node { ast::pat_box(_) { ret true; } _ { } }
     }
     ret false;
@@ -296,7 +296,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         ivec::slice(vals, col + 1u, ivec::len(vals));
     let ccx = bcx.fcx.lcx.ccx;
     let pat_id = 0;
-    for br: match_branch  in m {
+    for br: match_branch in m {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 { pat_id = br.pats.(col).id; }
@@ -385,7 +385,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
         } else { C_int(0) }; // Placeholder for when not using a switch
 
      // Compile subtrees for each option
-    for opt: opt  in opts {
+    for opt: opt in opts {
         let opt_cx = new_sub_block_ctxt(bcx, "match_case");
         alt kind {
           single. { bcx.build.Br(opt_cx.llbb); }
@@ -432,7 +432,7 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                      ids: &ast::pat_id_map) -> bool {
     fn assoc(key: str, list: &bind_map) -> option::t[ValueRef] {
-        for elt: {ident: ast::ident, val: ValueRef}  in list {
+        for elt: {ident: ast::ident, val: ValueRef} in list {
             if str::eq(elt.ident, key) { ret some(elt.val); }
         }
         ret none;
@@ -440,10 +440,10 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
 
     let our_block = bcx.llbb as uint;
     let success = true;
-    for each item: @{key: ast::ident, val: ast::node_id}  in ids.items() {
+    for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {
         let llbbs = ~[];
         let vals = ~[];
-        for ex: exit_node  in map {
+        for ex: exit_node in map {
             if ex.to as uint == our_block {
                 alt assoc(item.key, ex.bound) {
                   some(val) { llbbs += ~[ex.from]; vals += ~[val]; }
@@ -475,10 +475,10 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
         }
     }
 
-    for a: ast::arm  in arms {
+    for a: ast::arm in arms {
         let body = new_scope_block_ctxt(cx, "case_body");
         bodies += ~[body];
-        for p: @ast::pat  in a.pats {
+        for p: @ast::pat in a.pats {
             match += ~[@{pats: ~[p], body: body.llbb, mutable bound: ~[]}];
         }
     }
@@ -502,7 +502,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
     let i = 0u;
     let arm_results = ~[];
-    for a: ast::arm  in arms {
+    for a: ast::arm in arms {
         let body_cx = bodies.(i);
         if make_phi_bindings(body_cx, exit_map, ast::pat_id_map(a.pats.(0))) {
             let block_res = trans::trans_block(body_cx, a.body, output);

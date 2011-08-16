@@ -618,11 +618,11 @@ tag native_item_ {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let nonlocal = true;
-    for it: @ast::item  in m.items {
+    for it: @ast::item in m.items {
         if it.ident == i { nonlocal = false; }
         alt it.node {
           item_tag(variants, _) {
-            for v: variant  in variants {
+            for v: variant in variants {
                 if v.node.name == i { nonlocal = false; }
             }
           }
@@ -631,7 +631,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
         if !nonlocal { break; }
     }
     let count = 0u;
-    for vi: @ast::view_item  in m.view_items {
+    for vi: @ast::view_item in m.view_items {
         alt vi.node {
           ast::view_item_export(id, _) {
             if str::eq(i, id) {

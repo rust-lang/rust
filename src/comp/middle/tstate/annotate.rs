@@ -59,7 +59,7 @@ fn node_ids_in_fn(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
 }
 
 fn init_vecs(ccx: &crate_ctxt, node_ids: &[node_id], len: uint) {
-    for i: node_id  in node_ids {
+    for i: node_id in node_ids {
         log int::str(i) + " |-> " + uint::str(len);
         add_node(ccx, i, empty_ann(len));
     }

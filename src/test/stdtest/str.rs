@@ -29,7 +29,7 @@ fn test_split() {
         log i;
         let v = str::split(s, c as u8);
         log "split to: ";
-        for z: str  in v { log z; }
+        for z: str in v { log z; }
         log "comparing: " + v.(i) + " vs. " + k;
         assert (str::eq(v.(i), k));
     }

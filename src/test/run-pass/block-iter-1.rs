@@ -1,4 +1,4 @@
-fn iter_vec[T](v: &[T], f: &block(&T) ) { for x: T  in v { f(x); } }
+fn iter_vec[T](v: &[T], f: &block(&T) ) { for x: T in v { f(x); } }
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7];

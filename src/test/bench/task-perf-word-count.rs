@@ -76,7 +76,7 @@ mod map_reduce {
 
     fn start_mappers(ctrl: _chan[ctrl_proto], inputs: &[str]) -> [task_id] {
         let tasks = ~[];
-        for i: str  in inputs {
+        for i: str in inputs {
             tasks += ~[task::_spawn(bind map_task(ctrl, i))];
         }
         ret tasks;

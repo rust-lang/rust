@@ -68,7 +68,7 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
     fn decl(tn: type_names, llmod: ModuleRef, name: str, tys: [TypeRef],
           rv: TypeRef) -> ValueRef {
         let arg_tys: [TypeRef] = ~[];
-        for t: TypeRef  in tys { arg_tys += ~[t]; }
+        for t: TypeRef in tys { arg_tys += ~[t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }

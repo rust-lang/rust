@@ -455,7 +455,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
     }
     fn derive_flags_sig(cx: &ctxt, has_params: &mutable bool,
                         has_vars: &mutable bool, args: &[arg], tt: &t) {
-        for a: arg  in args { derive_flags_arg(cx, has_params, has_vars, a); }
+        for a: arg in args { derive_flags_arg(cx, has_params, has_vars, a); }
         derive_flags_t(cx, has_params, has_vars, tt);
     }
     alt st {
@@ -475,7 +475,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
       ty_param(_,_) { has_params = true; }
       ty_var(_) { has_vars = true; }
       ty_tag(_, tys) {
-        for tt: t  in tys { derive_flags_t(cx, has_params, has_vars, tt); }
+        for tt: t in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_uniq(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
@@ -485,7 +485,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
       ty_port(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
       ty_chan(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
       ty_rec(flds) {
-        for f: field  in flds {
+        for f: field in flds {
             derive_flags_mt(cx, has_params, has_vars, f.mt);
         }
       }
@@ -501,13 +501,13 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t[str]) -> @raw_t {
         derive_flags_sig(cx, has_params, has_vars, args, tt);
       }
       ty_obj(meths) {
-        for m: method  in meths {
+        for m: method in meths {
             derive_flags_sig(cx, has_params, has_vars, m.inputs, m.output);
         }
       }
       ty_res(_, tt, tps) {
         derive_flags_t(cx, has_params, has_vars, tt);
-        for tt: t  in tps { derive_flags_t(cx, has_params, has_vars, tt); }
+        for tt: t in tps { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_constr(tt, _) { derive_flags_t(cx, has_params, has_vars, tt); }
     }
@@ -673,31 +673,31 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_port(subty) { walk_ty(cx, walker, subty); }
       ty_chan(subty) { walk_ty(cx, walker, subty); }
       ty_tag(tid, subtys) {
-        for subty: t  in subtys { walk_ty(cx, walker, subty); }
+        for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
       ty_rec(fields) {
-        for fl: field  in fields { walk_ty(cx, walker, fl.mt.ty); }
+        for fl: field in fields { walk_ty(cx, walker, fl.mt.ty); }
       }
       ty_tup(ts) {
         for tt in ts { walk_ty(cx, walker, tt); }
       }
       ty_fn(proto, args, ret_ty, _, _) {
-        for a: arg  in args { walk_ty(cx, walker, a.ty); }
+        for a: arg in args { walk_ty(cx, walker, a.ty); }
         walk_ty(cx, walker, ret_ty);
       }
       ty_native_fn(abi, args, ret_ty) {
-        for a: arg  in args { walk_ty(cx, walker, a.ty); }
+        for a: arg in args { walk_ty(cx, walker, a.ty); }
         walk_ty(cx, walker, ret_ty);
       }
       ty_obj(methods) {
-        for m: method  in methods {
-            for a: arg  in m.inputs { walk_ty(cx, walker, a.ty); }
+        for m: method in methods {
+            for a: arg in m.inputs { walk_ty(cx, walker, a.ty); }
             walk_ty(cx, walker, m.output);
         }
       }
       ty_res(_, sub, tps) {
         walk_ty(cx, walker, sub);
-        for tp: t  in tps { walk_ty(cx, walker, tp); }
+        for tp: t in tps { walk_ty(cx, walker, tp); }
       }
       ty_constr(sub, _) {
         walk_ty(cx, walker, sub);
@@ -755,12 +755,12 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_chan(subty) { ty = mk_chan(cx, fold_ty(cx, fld, subty)); }
       ty_tag(tid, subtys) {
         let new_subtys: [t] = ~[];
-        for subty: t  in subtys { new_subtys += ~[fold_ty(cx, fld, subty)]; }
+        for subty: t in subtys { new_subtys += ~[fold_ty(cx, fld, subty)]; }
         ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
       }
       ty_rec(fields) {
         let new_fields: [field] = ~[];
-        for fl: field  in fields {
+        for fl: field in fields {
             let new_ty = fold_ty(cx, fld, fl.mt.ty);
             let new_mt = {ty: new_ty, mut: fl.mt.mut};
             new_fields += ~[{ident: fl.ident, mt: new_mt}];
@@ -776,7 +776,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_fn(proto, args, ret_ty, cf, constrs) {
         let new_args: [arg] = ~[];
-        for a: arg  in args {
+        for a: arg in args {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += ~[{mode: a.mode, ty: new_ty}];
         }
@@ -787,7 +787,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_native_fn(abi, args, ret_ty) {
         let new_args: [arg] = ~[];
-        for a: arg  in args {
+        for a: arg in args {
             let new_ty = fold_ty(cx, fld, a.ty);
             new_args += ~[{mode: a.mode, ty: new_ty}];
         }
@@ -798,9 +798,9 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_obj(methods) {
         let new_methods: [method] = ~[];
-        for m: method  in methods {
+        for m: method in methods {
             let new_args: [arg] = ~[];
-            for a: arg  in m.inputs {
+            for a: arg in m.inputs {
                 new_args += ~[{mode: a.mode, ty: fold_ty(cx, fld, a.ty)}];
             }
             new_methods +=
@@ -815,7 +815,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_res(did, subty, tps) {
         let new_tps = ~[];
-        for tp: t  in tps { new_tps += ~[fold_ty(cx, fld, tp)]; }
+        for tp: t in tps { new_tps += ~[fold_ty(cx, fld, tp)]; }
         ty =
             copy_cname(cx, mk_res(cx, did, fold_ty(cx, fld, subty), new_tps),
                        ty);
@@ -1014,7 +1014,7 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_rec(flds) {
-        for f: field  in flds {
+        for f: field in flds {
             if type_has_pointers(cx, f.mt.ty) {
                 result = true;
                 break;
@@ -1028,8 +1028,8 @@ fn type_has_pointers(cx: &ctxt, ty: &t) -> bool {
       }
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant: variant_info  in variants {
-            for aty: t  in variant.args {
+        for variant: variant_info in variants {
+            for aty: t in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 if type_has_pointers(cx, arg_ty) {
@@ -1129,7 +1129,7 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
 
       // Records lower to the lowest of their members.
       ty_rec(flds) {
-        for f: field  in flds {
+        for f: field in flds {
             result = kind::lower_kind(result, type_kind(cx, f.mt.ty));
             if result == ast::kind_pinned { break; }
         }
@@ -1138,8 +1138,8 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant: variant_info  in variants {
-            for aty: t  in variant.args {
+        for variant: variant_info in variants {
+            for aty: t in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 result = kind::lower_kind(result, type_kind(cx, arg_ty));
@@ -1226,7 +1226,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_native_fn(_, _, _) { ret false; }
       ty_obj(_) { ret false; }
       ty_res(_, sub, tps) {
-        for tp: t  in tps { if type_has_dynamic_size(cx, tp) { ret true; } }
+        for tp: t in tps { if type_has_dynamic_size(cx, tp) { ret true; } }
         ret type_has_dynamic_size(cx, sub);
       }
       ty_var(_) { fail "ty_var in type_has_dynamic_size()"; }
@@ -1331,8 +1331,8 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
       // structural types
       ty_tag(did, tps) {
         let variants = tag_variants(cx, did);
-        for variant: variant_info  in variants {
-            for aty: t  in variant.args {
+        for variant: variant_info in variants {
+            for aty: t in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 if type_owns_heap_mem(cx, arg_ty) { result = true; }
@@ -1340,7 +1340,7 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
         }
       }
       ty_rec(flds) {
-        for f: field  in flds {
+        for f: field in flds {
             if type_owns_heap_mem(cx, f.mt.ty) { result = true; }
         }
       }
@@ -1491,7 +1491,7 @@ fn hash_type_structure(st: &sty) -> uint {
     }
     fn hash_type_constr_args(id: uint, args: [@ty_constr_arg]) -> uint {
         let h = id;
-        for a: @ty_constr_arg  in args {
+        for a: @ty_constr_arg in args {
             alt a.node {
               carg_base. { h += h << 5u; }
               carg_lit(_) {
@@ -1510,7 +1510,7 @@ fn hash_type_structure(st: &sty) -> uint {
 
     fn hash_fn(id: uint, args: &[arg], rty: &t) -> uint {
         let h = id;
-        for a: arg  in args { h += h << 5u + hash_ty(a.ty); }
+        for a: arg in args { h += h << 5u + hash_ty(a.ty); }
         h += h << 5u + hash_ty(rty);
         ret h;
     }
@@ -1539,7 +1539,7 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_istr. { ret 17u; }
       ty_tag(did, tys) {
         let h = hash_def(18u, did);
-        for typ: t  in tys { h += h << 5u + hash_ty(typ); }
+        for typ: t in tys { h += h << 5u + hash_ty(typ); }
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
@@ -1550,7 +1550,7 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_task. { ret 24u; }
       ty_rec(fields) {
         let h = 26u;
-        for f: field  in fields { h += h << 5u + hash_ty(f.mt.ty); }
+        for f: field in fields { h += h << 5u + hash_ty(f.mt.ty); }
         ret h;
       }
       ty_tup(ts) {
@@ -1566,7 +1566,7 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_native_fn(_, args, rty) { ret hash_fn(28u, args, rty); }
       ty_obj(methods) {
         let h = 29u;
-        for m: method  in methods { h += h << 5u + str::hash(m.ident); }
+        for m: method in methods { h += h << 5u + str::hash(m.ident); }
         ret h;
       }
       ty_var(v) { ret hash_uint(30u, v as uint); }
@@ -1577,12 +1577,12 @@ fn hash_type_structure(st: &sty) -> uint {
       ty_ptr(mt) { ret hash_subty(35u, mt.ty); }
       ty_res(did, sub, tps) {
         let h = hash_subty(hash_def(18u, did), sub);
-        for tp: t  in tps { h += h << 5u + hash_ty(tp); }
+        for tp: t in tps { h += h << 5u + hash_ty(tp); }
         ret h;
       }
       ty_constr(t, cs) {
         let h = 36u;
-        for c: @type_constr  in cs { h += h << 5u + hash_type_constr(h, c); }
+        for c: @type_constr in cs { h += h << 5u + hash_type_constr(h, c); }
         ret h;
       }
       ty_uniq(t) {
@@ -1629,7 +1629,7 @@ fn arg_eq[T](eq: &fn(&T, &T) -> bool , a: @sp_constr_arg[T],
 fn args_eq[T](eq: fn(&T, &T) -> bool , a: &[@sp_constr_arg[T]],
               b: &[@sp_constr_arg[T]]) -> bool {
     let i: uint = 0u;
-    for arg: @sp_constr_arg[T]  in a {
+    for arg: @sp_constr_arg[T] in a {
         if !arg_eq(eq, arg, b.(i)) { ret false; }
         i += 1u;
     }
@@ -1645,7 +1645,7 @@ fn constr_eq(c: &@constr, d: &@constr) -> bool {
 fn constrs_eq(cs: &[@constr], ds: &[@constr]) -> bool {
     if ivec::len(cs) != ivec::len(ds) { ret false; }
     let i = 0u;
-    for c: @constr  in cs { if !constr_eq(c, ds.(i)) { ret false; } i += 1u; }
+    for c: @constr in cs { if !constr_eq(c, ds.(i)) { ret false; } i += 1u; }
     ret true;
 }
 
@@ -1805,7 +1805,7 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
                 ret false;
             }
             let i = 0u;
-            for tp_a: t  in tps_a {
+            for tp_a: t in tps_a {
                 if !eq_ty(tp_a, tps_b.(i)) { ret false; }
                 i += 1u;
             }
@@ -1927,7 +1927,7 @@ fn count_ty_params(cx: &ctxt, ty: t) -> uint {
         alt struct(cx, ty) {
           ty_param(param_idx,_) {
             let seen = false;
-            for other_param_idx: uint  in *param_indices {
+            for other_param_idx: uint in *param_indices {
                 if param_idx == other_param_idx { seen = true; }
             }
             if !seen { *param_indices += ~[param_idx]; }
@@ -2044,14 +2044,14 @@ fn stmt_node_id(s: &@ast::stmt) -> ast::node_id {
 fn field_idx(sess: &session::session, sp: &span, id: &ast::ident,
              fields: &[field]) -> uint {
     let i: uint = 0u;
-    for f: field  in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
+    for f: field in fields { if str::eq(f.ident, id) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown field '" + id + "' of record");
 }
 
 fn method_idx(sess: &session::session, sp: &span, id: &ast::ident,
               meths: &[method]) -> uint {
     let i: uint = 0u;
-    for m: method  in meths { if str::eq(m.ident, id) { ret i; } i += 1u; }
+    for m: method in meths { if str::eq(m.ident, id) { ret i; } i += 1u; }
     sess.span_fatal(sp, "unknown method '" + id + "' of obj");
 }
 
@@ -2219,7 +2219,7 @@ mod unify {
         }
         let i = 0u;
         let rslt;
-        for c: @type_constr  in expected {
+        for c: @type_constr in expected {
             rslt = unify_constr(base_t, c, actual.(i));
             alt rslt { ures_ok(_) { } ures_err(_) { ret rslt; } }
             i += 1u;
@@ -2236,7 +2236,7 @@ mod unify {
         if expected_arg_len != actual_arg_len { ret err_res; }
         let i = 0u;
         let actual;
-        for a: @ty_constr_arg  in expected.node.args {
+        for a: @ty_constr_arg in expected.node.args {
             actual = actual_constr.node.args.(i);
             alt a.node {
               carg_base. {
@@ -2651,7 +2651,7 @@ mod unify {
                   ures_ok(res_inner) {
                     let i = 0u;
                     let res_tps = ~[];
-                    for ex_tp: t  in ex_tps {
+                    for ex_tp: t in ex_tps {
                         let result = unify_step(cx, ex_tp, act_tps.(i));
                         alt result {
                           ures_ok(rty) { res_tps += ~[rty]; }
@@ -3012,11 +3012,11 @@ fn tag_variants(cx: &ctxt, id: &ast::def_id) -> [variant_info] {
         alt item.node {
           ast::item_tag(variants, _) {
             let result: [variant_info] = ~[];
-            for variant: ast::variant  in variants {
+            for variant: ast::variant in variants {
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
                 let arg_tys: [t] = ~[];
                 if std::ivec::len(variant.node.args) > 0u {
-                    for a: arg  in ty_fn_args(cx, ctor_ty) {
+                    for a: arg in ty_fn_args(cx, ctor_ty) {
                         arg_tys += ~[a.ty];
                     }
                 }

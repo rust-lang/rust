@@ -82,7 +82,7 @@ fn parse_cfgspecs(cfgspecs: &[str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let words = ~[];
-    for s: str  in cfgspecs { words += ~[attr::mk_word_item(s)]; }
+    for s: str in cfgspecs { words += ~[attr::mk_word_item(s)]; }
     ret words;
 }
 
@@ -334,7 +334,7 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
 
     let library_search_paths = ~[binary_dir + "/lib"];
     let lsp_vec = getopts::opt_strs(match, "L");
-    for lsp: str  in lsp_vec { library_search_paths += ~[lsp]; }
+    for lsp: str in lsp_vec { library_search_paths += ~[lsp]; }
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
@@ -591,7 +591,7 @@ fn main(args: vec[str]) {
     }
 
     let cstore = sess.get_cstore();
-    for cratepath: str  in cstore::get_used_crate_files(cstore) {
+    for cratepath: str in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
             gcc_args += ~[cratepath];
             cont;
@@ -603,10 +603,10 @@ fn main(args: vec[str]) {
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str  in ula { gcc_args += ~[arg]; }
+    for arg: str in ula { gcc_args += ~[arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str  in used_libs { gcc_args += ~["-l" + l]; }
+    for l: str in used_libs { gcc_args += ~["-l" + l]; }
 
     if sopts.library {
         gcc_args += ~[lib_cmd];

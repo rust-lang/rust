@@ -218,7 +218,7 @@ fn synth_comment(s: &ps, text: str) {
 fn commasep[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ) {
     box(s, 0u, b);
     let first = true;
-    for elt: IN  in elts {
+    for elt: IN in elts {
         if first { first = false; } else { word_space(s, ","); }
         op(s, elt);
     }
@@ -231,7 +231,7 @@ fn commasep_cmnt[IN](s: &ps, b: breaks, elts: &[IN], op: fn(&ps, &IN) ,
     box(s, 0u, b);
     let len = ivec::len[IN](elts);
     let i = 0u;
-    for elt: IN  in elts {
+    for elt: IN in elts {
         maybe_print_comment(s, get_span(elt).hi);
         op(s, elt);
         i += 1u;
@@ -252,19 +252,19 @@ fn commasep_exprs(s: &ps, b: breaks, exprs: &[@ast::expr]) {
 
 fn print_mod(s: &ps, _mod: &ast::_mod, attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
-    for vitem: @ast::view_item  in _mod.view_items {
+    for vitem: @ast::view_item in _mod.view_items {
         print_view_item(s, vitem);
     }
-    for item: @ast::item  in _mod.items { print_item(s, item); }
+    for item: @ast::item in _mod.items { print_item(s, item); }
 }
 
 fn print_native_mod(s: &ps, nmod: &ast::native_mod,
                     attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
-    for vitem: @ast::view_item  in nmod.view_items {
+    for vitem: @ast::view_item in nmod.view_items {
         print_view_item(s, vitem);
     }
-    for item: @ast::native_item  in nmod.items { print_native_item(s, item); }
+    for item: @ast::native_item in nmod.items { print_native_item(s, item); }
 }
 
 fn print_type(s: &ps, ty: &@ast::ty) {
@@ -330,7 +330,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_obj(methods) {
         head(s, "obj");
         bopen(s);
-        for m: ast::ty_method  in methods {
+        for m: ast::ty_method in methods {
             hardbreak_if_not_bol(s);
             cbox(s, indent_unit);
             maybe_print_comment(s, m.span.lo);
@@ -471,7 +471,7 @@ fn print_item(s: &ps, item: &@ast::item) {
             end(s);
         } else {
             bopen(s);
-            for v: ast::variant  in variants {
+            for v: ast::variant in variants {
                 space(s.s);
                 maybe_print_comment(s, v.span.lo);
                 word(s.s, v.node.name);
@@ -506,7 +506,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         pclose(s);
         space(s.s);
         bopen(s);
-        for meth: @ast::method  in _obj.methods {
+        for meth: @ast::method in _obj.methods {
             let typarams: [ast::ty_param] = ~[];
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
@@ -534,7 +534,7 @@ fn print_item(s: &ps, item: &@ast::item) {
 
 fn print_outer_attributes(s: &ps, attrs: &[ast::attribute]) {
     let count = 0;
-    for attr: ast::attribute  in attrs {
+    for attr: ast::attribute in attrs {
         alt attr.node.style {
           ast::attr_outer. { print_attribute(s, attr); count += 1; }
           _ {/* fallthrough */ }
@@ -545,7 +545,7 @@ fn print_outer_attributes(s: &ps, attrs: &[ast::attribute]) {
 
 fn print_inner_attributes(s: &ps, attrs: &[ast::attribute]) {
     let count = 0;
-    for attr: ast::attribute  in attrs {
+    for attr: ast::attribute in attrs {
         alt attr.node.style {
           ast::attr_inner. {
             print_attribute(s, attr);
@@ -594,7 +594,7 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
     }
 
     let last_stmt = option::none;
-    for st: @ast::stmt  in blk.node.stmts {
+    for st: @ast::stmt in blk.node.stmts {
         maybe_protect_unop(s, last_stmt, stmt_(st));
         print_stmt(s, *st);
         last_stmt = option::some(st);
@@ -856,12 +856,12 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_expr(s, expr);
         space(s.s);
         bopen(s);
-        for arm: ast::arm  in arms {
+        for arm: ast::arm in arms {
             space(s.s);
             cbox(s, alt_indent_unit);
             ibox(s, 0u);
             let first = true;
-            for p: @ast::pat  in arm.pats {
+            for p: @ast::pat in arm.pats {
                 if first {
                     first = false;
                 } else { space(s.s); word_space(s, "|"); }
@@ -1126,7 +1126,7 @@ fn print_path(s: &ps, path: &ast::path) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
     let first = true;
-    for id: str  in path.node.idents {
+    for id: str in path.node.idents {
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
@@ -1293,7 +1293,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
             word_space(s, "=");
         }
         let first = true;
-        for elt: str  in ids {
+        for elt: str in ids {
             if first { first = false; } else { word(s.s, "::"); }
             word(s.s, elt);
         }
@@ -1301,7 +1301,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
       ast::view_item_import_glob(ids, _) {
         head(s, "import");
         let first = true;
-        for elt: str  in ids {
+        for elt: str in ids {
             if first { first = false; } else { word(s.s, "::"); }
             word(s.s, elt);
         }
@@ -1320,7 +1320,7 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
 // FIXME: The fact that this builds up the table anew for every call is
 // not good. Eventually, table should be a const.
 fn operator_prec(op: ast::binop) -> int {
-    for spec: parse::parser::op_spec  in *parse::parser::prec_table() {
+    for spec: parse::parser::op_spec in *parse::parser::prec_table() {
         if spec.op == op { ret spec.prec; }
     }
     fail;
@@ -1497,7 +1497,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       }
       lexer::isolated. {
         pprust::hardbreak_if_not_bol(s);
-        for line: str  in cmnt.lines { word(s.s, line); hardbreak(s.s); }
+        for line: str in cmnt.lines { word(s.s, line); hardbreak(s.s); }
       }
       lexer::trailing. {
         word(s.s, " ");
@@ -1506,7 +1506,7 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
             hardbreak(s.s);
         } else {
             ibox(s, 0u);
-            for line: str  in cmnt.lines { word(s.s, line); hardbreak(s.s); }
+            for line: str in cmnt.lines { word(s.s, line); hardbreak(s.s); }
             end(s);
         }
       }
@@ -1571,7 +1571,7 @@ fn constr_args_to_str[T](f: &fn(&T) -> str ,
                          args: &[@ast::sp_constr_arg[T]]) -> str {
     let comma = false;
     let s = "(";
-    for a: @ast::sp_constr_arg[T]  in args {
+    for a: @ast::sp_constr_arg[T] in args {
         if comma { s += ", "; } else { comma = true; }
         s += constr_arg_to_str[T](f, a.node);
     }
@@ -1602,7 +1602,7 @@ fn ast_ty_fn_constr_to_str(c: &@ast::constr) -> str {
 fn ast_ty_fn_constrs_str(constrs: &[@ast::constr]) -> str {
     let s = "";
     let colon = true;
-    for c: @ast::constr  in constrs {
+    for c: @ast::constr in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += ast_ty_fn_constr_to_str(c);
     }
@@ -1624,7 +1624,7 @@ fn ast_fn_constrs_str(decl: &ast::fn_decl,
                       constrs: &[@ast::constr]) -> str {
     let s = "";
     let colon = true;
-    for c: @ast::constr  in constrs {
+    for c: @ast::constr in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += ast_fn_constr_to_str(decl, c);
     }
@@ -1649,7 +1649,7 @@ fn ty_constr_to_str(c: &@ast::ty_constr) -> str {
 fn ast_ty_constrs_str(constrs: &[@ast::ty_constr]) -> str {
     let s = "";
     let colon = true;
-    for c: @ast::ty_constr  in constrs {
+    for c: @ast::ty_constr in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += ty_constr_to_str(c);
     }

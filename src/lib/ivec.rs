@@ -74,13 +74,13 @@ fn init_elt_mut[@T](t: &T, n_elts: uint) -> [mutable T] {
 
 fn to_mut[@T](v: &[T]) -> [mutable T] {
     let vres = ~[mutable];
-    for t: T  in v { vres += ~[mutable t]; }
+    for t: T in v { vres += ~[mutable t]; }
     ret vres;
 }
 
 fn from_mut[@T](v: &[mutable T]) -> [T] {
     let vres = ~[];
-    for t: T  in v { vres += ~[t]; }
+    for t: T in v { vres += ~[t]; }
     ret vres;
 }
 
@@ -193,7 +193,7 @@ fn grow_set[@T](v: &mutable [mutable T], index: uint, initval: &T, val: &T) {
 fn map[@T, @U](f: &block(&T) -> U , v: &[mutable? T]) -> [U] {
     let result = ~[];
     reserve(result, len(v));
-    for elem: T  in v {
+    for elem: T in v {
         let elem2 = elem; // satisfies alias checker
         result += ~[f(elem2)];
     }
@@ -213,7 +213,7 @@ fn map2[@T, @U, @V](f: &block(&T, &U) -> V, v0: &[T], v1: &[U])
 fn filter_map[@T, @U](f: &block(&T) -> option::t[U],
                       v: &[mutable? T]) -> [U] {
     let result = ~[];
-    for elem: T  in v {
+    for elem: T in v {
         let elem2 = elem; // satisfies alias checker
         alt f(elem2) {
           none. {/* no-op */ }
@@ -232,28 +232,28 @@ fn foldl[@T, @U](p: &block(&U, &T) -> U , z: &U, v: &[mutable? T]) -> U {
 }
 
 fn any[T](f: &block(&T) -> bool , v: &[T]) -> bool {
-    for elem: T  in v { if f(elem) { ret true; } }
+    for elem: T in v { if f(elem) { ret true; } }
     ret false;
 }
 
 fn all[T](f: &block(&T) -> bool , v: &[T]) -> bool {
-    for elem: T  in v { if !f(elem) { ret false; } }
+    for elem: T in v { if !f(elem) { ret false; } }
     ret true;
 }
 
 fn member[T](x: &T, v: &[T]) -> bool {
-    for elt: T  in v { if x == elt { ret true; } }
+    for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
 
 fn count[T](x: &T, v: &[mutable? T]) -> uint {
     let cnt = 0u;
-    for elt: T  in v { if x == elt { cnt += 1u; } }
+    for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
 }
 
 fn find[@T](f: &block(&T) -> bool , v: &[T]) -> option::t[T] {
-    for elt: T  in v { if f(elt) { ret some(elt); } }
+    for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
 

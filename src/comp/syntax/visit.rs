@@ -60,7 +60,7 @@ fn visit_crate_directive[E](cd: &@crate_directive, e: &E, v: &vt[E]) {
     alt cd.node {
       cdir_src_mod(_, _, _) { }
       cdir_dir_mod(_, _, cdirs, _) {
-        for cdir: @crate_directive  in cdirs {
+        for cdir: @crate_directive in cdirs {
             visit_crate_directive(cdir, e, v);
         }
       }
@@ -71,8 +71,8 @@ fn visit_crate_directive[E](cd: &@crate_directive, e: &E, v: &vt[E]) {
 }
 
 fn visit_mod[E](m: &_mod, sp: &span, e: &E, v: &vt[E]) {
-    for vi: @view_item  in m.view_items { v.visit_view_item(vi, e, v); }
-    for i: @item  in m.items { v.visit_item(i, e, v); }
+    for vi: @view_item in m.view_items { v.visit_view_item(vi, e, v); }
+    for i: @item in m.items { v.visit_item(i, e, v); }
 }
 
 fn visit_view_item[E](vi: &@view_item, e: &E, v: &vt[E]) { }
@@ -89,21 +89,21 @@ fn visit_item[E](i: &@item, e: &E, v: &vt[E]) {
       item_fn(f, tp) { v.visit_fn(f, tp, i.span, some(i.ident), i.id, e, v); }
       item_mod(m) { v.visit_mod(m, i.span, e, v); }
       item_native_mod(nm) {
-        for vi: @view_item  in nm.view_items { v.visit_view_item(vi, e, v); }
-        for ni: @native_item  in nm.items { v.visit_native_item(ni, e, v); }
+        for vi: @view_item in nm.view_items { v.visit_view_item(vi, e, v); }
+        for ni: @native_item in nm.items { v.visit_native_item(ni, e, v); }
       }
       item_ty(t, _) { v.visit_ty(t, e, v); }
       item_res(f, dtor_id, tps, _) {
         v.visit_fn(f, tps, i.span, some(i.ident), dtor_id, e, v);
       }
       item_tag(variants, _) {
-        for vr: variant  in variants {
-            for va: variant_arg  in vr.node.args { v.visit_ty(va.ty, e, v); }
+        for vr: variant in variants {
+            for va: variant_arg in vr.node.args { v.visit_ty(va.ty, e, v); }
         }
       }
       item_obj(ob, _, _) {
-        for f: obj_field  in ob.fields { v.visit_ty(f.ty, e, v); }
-        for m: @method  in ob.methods {
+        for f: obj_field in ob.fields { v.visit_ty(f.ty, e, v); }
+        for m: @method in ob.methods {
             v.visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
                        m.node.id, e, v);
         }
@@ -131,29 +131,29 @@ fn visit_ty[E](t: &@ty, e: &E, v: &vt[E]) {
       ty_chan(t) { v.visit_ty(t, e, v); }
       ty_task. {/* no-op */ }
       ty_rec(flds) {
-        for f: ty_field  in flds { v.visit_ty(f.node.mt.ty, e, v); }
+        for f: ty_field in flds { v.visit_ty(f.node.mt.ty, e, v); }
       }
       ty_tup(ts) {
         for tt in ts { v.visit_ty(tt, e, v); }
       }
       ty_fn(_, args, out, _, constrs) {
-        for a: ty_arg  in args { v.visit_ty(a.node.ty, e, v); }
-        for c: @constr  in constrs {
+        for a: ty_arg in args { v.visit_ty(a.node.ty, e, v); }
+        for c: @constr in constrs {
             v.visit_constr(c.node.path, c.span, c.node.id, e, v);
         }
         v.visit_ty(out, e, v);
       }
       ty_obj(tmeths) {
-        for m: ty_method  in tmeths {
-            for a: ty_arg  in m.node.inputs { v.visit_ty(a.node.ty, e, v); }
+        for m: ty_method in tmeths {
+            for a: ty_arg in m.node.inputs { v.visit_ty(a.node.ty, e, v); }
             v.visit_ty(m.node.output, e, v);
         }
       }
-      ty_path(p, _) { for tp: @ty  in p.node.types { v.visit_ty(tp, e, v); } }
+      ty_path(p, _) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
       ty_type. {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
-        for tc: @spanned[constr_general_[path, node_id]]  in cs {
+        for tc: @spanned[constr_general_[path, node_id]] in cs {
             v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
         }
       }
@@ -169,11 +169,11 @@ fn visit_constr[E](operator: &path, sp: &span, id: node_id, e: &E,
 fn visit_pat[E](p: &@pat, e: &E, v: &vt[E]) {
     alt p.node {
       pat_tag(path, children) {
-        for tp: @ty  in path.node.types { v.visit_ty(tp, e, v); }
-        for child: @pat  in children { v.visit_pat(child, e, v); }
+        for tp: @ty in path.node.types { v.visit_ty(tp, e, v); }
+        for child: @pat in children { v.visit_pat(child, e, v); }
       }
       pat_rec(fields, _) {
-        for f: field_pat  in fields { v.visit_pat(f.pat, e, v); }
+        for f: field_pat in fields { v.visit_pat(f.pat, e, v); }
       }
       pat_tup(elts) {
         for elt in elts { v.visit_pat(elt, e, v); }
@@ -191,8 +191,8 @@ fn visit_native_item[E](ni: &@native_item, e: &E, v: &vt[E]) {
 }
 
 fn visit_fn_decl[E](fd: &fn_decl, e: &E, v: &vt[E]) {
-    for a: arg  in fd.inputs { v.visit_ty(a.ty, e, v); }
-    for c: @constr  in fd.constraints {
+    for a: arg in fd.inputs { v.visit_ty(a.ty, e, v); }
+    for c: @constr in fd.constraints {
         v.visit_constr(c.node.path, c.span, c.node.id, e, v);
     }
     v.visit_ty(fd.output, e, v);
@@ -205,7 +205,7 @@ fn visit_fn[E](f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident, id: node_id,
 }
 
 fn visit_block[E](b: &ast::blk, e: &E, v: &vt[E]) {
-    for s: @stmt  in b.node.stmts { v.visit_stmt(s, e, v); }
+    for s: @stmt in b.node.stmts { v.visit_stmt(s, e, v); }
     visit_expr_opt(b.node.expr, e, v);
 }
 
@@ -220,7 +220,7 @@ fn visit_stmt[E](s: &@stmt, e: &E, v: &vt[E]) {
 fn visit_decl[E](d: &@decl, e: &E, v: &vt[E]) {
     alt d.node {
       decl_local(locs) {
-        for loc: @ast::local  in locs { v.visit_local(loc, e, v); }
+        for loc: @ast::local in locs { v.visit_local(loc, e, v); }
       }
       decl_item(it) { v.visit_item(it, e, v); }
     }
@@ -231,7 +231,7 @@ fn visit_expr_opt[E](eo: option::t[@expr], e: &E, v: &vt[E]) {
 }
 
 fn visit_exprs[E](exprs: &[@expr], e: &E, v: &vt[E]) {
-    for ex: @expr  in exprs { v.visit_expr(ex, e, v); }
+    for ex: @expr in exprs { v.visit_expr(ex, e, v); }
 }
 
 fn visit_mac[E](m: mac, e: &E, v: &vt[E]) {
@@ -247,7 +247,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
     alt ex.node {
       expr_vec(es, _, _) { visit_exprs(es, e, v); }
       expr_rec(flds, base) {
-        for f: field  in flds { v.visit_expr(f.node.expr, e, v); }
+        for f: field in flds { v.visit_expr(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
       }
       expr_tup(elts) {
@@ -260,7 +260,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_self_method(_) { }
       expr_bind(callee, args) {
         v.visit_expr(callee, e, v);
-        for eo: option::t[@expr]  in args { visit_expr_opt(eo, e, v); }
+        for eo: option::t[@expr] in args { visit_expr_opt(eo, e, v); }
       }
       expr_spawn(_, _, callee, args) {
         v.visit_expr(callee, e, v);
@@ -294,7 +294,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_do_while(b, x) { v.visit_block(b, e, v); v.visit_expr(x, e, v); }
       expr_alt(x, arms) {
         v.visit_expr(x, e, v);
-        for a: arm  in arms { v.visit_arm(a, e, v); }
+        for a: arm in arms { v.visit_arm(a, e, v); }
       }
       expr_fn(f) { v.visit_fn(f, ~[], ex.span, none, ex.id, e, v); }
       expr_block(b) { v.visit_block(b, e, v); }
@@ -310,7 +310,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
       expr_recv(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_field(x, _) { v.visit_expr(x, e, v); }
       expr_index(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
-      expr_path(p) { for tp: @ty  in p.node.types { v.visit_ty(tp, e, v); } }
+      expr_path(p) { for tp: @ty in p.node.types { v.visit_ty(tp, e, v); } }
       expr_fail(eo) { visit_expr_opt(eo, e, v); }
       expr_break. { }
       expr_cont. { }
@@ -326,7 +326,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
         alt anon_obj.fields {
           none. { }
           some(fields) {
-            for f: anon_obj_field  in fields {
+            for f: anon_obj_field in fields {
                 v.visit_ty(f.ty, e, v);
                 v.visit_expr(f.expr, e, v);
             }
@@ -336,7 +336,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
           none. { }
           some(ex) { v.visit_expr(ex, e, v); }
         }
-        for m: @method  in anon_obj.methods {
+        for m: @method in anon_obj.methods {
             v.visit_fn(m.node.meth, ~[], m.span, some(m.node.ident),
                        m.node.id, e, v);
         }
@@ -347,7 +347,7 @@ fn visit_expr[E](ex: &@expr, e: &E, v: &vt[E]) {
 }
 
 fn visit_arm[E](a: &arm, e: &E, v: &vt[E]) {
-    for p: @pat  in a.pats { v.visit_pat(p, e, v); }
+    for p: @pat in a.pats { v.visit_pat(p, e, v); }
     v.visit_block(a.body, e, v);
 }
 

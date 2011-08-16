@@ -12,10 +12,10 @@ iter range(start: int, stop: int) -> int {
 fn main() {
     let a: [mutable int] = ~[mutable -1, -1, -1, -1, -1, -1, -1, -1];
     let p: int = 0;
-    for each i: int  in two() {
-        for each j: int  in range(0, 2) {
+    for each i: int in two() {
+        for each j: int in range(0, 2) {
             let tmp: int = 10 * i + j;
-            for each k: int  in range(0, 2) { a.(p) = 10 * tmp + k; p += 1; }
+            for each k: int in range(0, 2) { a.(p) = 10 * tmp + k; p += 1; }
         }
     }
     assert (a.(0) == 0);
