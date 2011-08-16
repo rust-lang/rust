@@ -4436,7 +4436,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
         type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
-    bcx.build.FastCall(lltargetfn, llargs);
+    llvm::LLVMSetTailCall(bcx.build.FastCall(lltargetfn, llargs), 1);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
