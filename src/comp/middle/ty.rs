@@ -704,6 +704,7 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       }
       ty_var(_) {/* no-op */ }
       ty_param(_,_) {/* no-op */ }
+      ty_uniq(sub) { walk_ty(cx, walker, sub); }
     }
     walker(ty);
 }
@@ -1232,6 +1233,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
       ty_param(_,_) { ret true; }
       ty_type. { ret false; }
       ty_native(_) { ret false; }
+      ty_uniq(_) { ret false; }
     }
 }
 
@@ -1583,6 +1585,11 @@ fn hash_type_structure(st: &sty) -> uint {
         for c: @type_constr  in cs { h += h << 5u + hash_type_constr(h, c); }
         ret h;
       }
+      ty_uniq(t) {
+        let h = 37u;
+        h += h << 5u + hash_ty(t);
+        ret h;
+      }
     }
 }
 
@@ -1820,6 +1827,12 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
           ty_native(b_id) {
             ret a_id.crate == b_id.crate && a_id.node == b_id.node;
           }
+          _ { ret false; }
+        }
+      }
+      ty_uniq(t_a) {
+        alt b {
+          ty_uniq(t_b) { ret t_a == t_b; }
           _ { ret false; }
         }
       }

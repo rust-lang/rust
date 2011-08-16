@@ -2504,7 +2504,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
       }
       ast::expr_uniq(x) {
         let t = next_ty_var(fcx);
-        check_expr_with(fcx, x, ty::mk_uniq(tcx, t));
+        check_expr_with(fcx, x, t);
         write::ty_only_fixup(fcx, id, ty::mk_uniq(tcx, t));
       }
       _ { tcx.sess.unimpl("expr type in typeck::check_expr"); }
