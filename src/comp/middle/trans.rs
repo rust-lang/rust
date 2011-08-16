@@ -4424,7 +4424,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
         }
         outgoing_arg_index += 1u;
     }
-    // FIXME: turn this call + ret into a tail call.
+
     let lltargetfn =
         bcx.build.GEP(lltarget.val, ~[C_int(0), C_int(abi::fn_field_code)]);
 
