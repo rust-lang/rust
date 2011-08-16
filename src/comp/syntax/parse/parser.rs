@@ -643,8 +643,8 @@ fn parse_fn_block_arg(p: &parser) -> ast::arg {
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
-fn parse_seq_to_gt[T](sep: option::t[token::token], f: fn(&parser) -> T,
-                      p: &parser) -> [T] {
+fn parse_seq_to_before_gt[T](sep: option::t[token::token],
+                             f: fn(&parser) -> T, p: &parser) -> [T] {
     let first = true;
     let v = ~[];
     while p.peek() != token::GT &&
@@ -657,9 +657,25 @@ fn parse_seq_to_gt[T](sep: option::t[token::token], f: fn(&parser) -> T,
         v += ~[f(p)];
     }
 
+    ret v;
+}
+
+fn parse_seq_to_gt[T](sep: option::t[token::token], f: fn(&parser) -> T,
+                      p: &parser) -> [T] {
+    let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
 
     ret v;
+}
+
+fn parse_seq_lt_gt[T](sep: option::t[token::token], f: fn(&parser) -> T,
+                      p: &parser) -> spanned[[T]] {
+    let lo = p.get_lo_pos();
+    expect(p, token::LT);
+    let result = parse_seq_to_before_gt[T](sep, f, p);
+    let hi = p.get_hi_pos();
+    expect_gt(p);
+    ret spanned(lo, hi, result);
 }
 
 fn parse_seq_to_end[T](ket: token::token, sep: option::t[token::token],
@@ -781,6 +797,17 @@ fn parse_path_and_ty_param_substs(p: &parser) -> ast::path {
         let seq =
             parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
                       bind parse_ty(_, false), p);
+        let hi = seq.span.hi;
+        path =
+            spanned(lo, hi,
+                    {global: path.node.global,
+                     idents: path.node.idents,
+                     types: seq.node});
+    } else if p.peek() == token::MOD_SEP {
+        p.bump();
+
+        let seq = parse_seq_lt_gt(some(token::COMMA), bind parse_ty(_, false),
+                                  p);
         let hi = seq.span.hi;
         path =
             spanned(lo, hi,

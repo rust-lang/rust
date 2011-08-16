@@ -100,7 +100,9 @@ fn stmt_to_str(s: &ast::stmt) -> str { be to_str(s, print_stmt); }
 
 fn item_to_str(i: &@ast::item) -> str { be to_str(i, print_item); }
 
-fn path_to_str(p: &ast::path) -> str { be to_str(p, print_path); }
+fn path_to_str(p: &ast::path) -> str {
+    be to_str(p, bind print_path(_, _, false));
+}
 
 fn fun_to_str(f: &ast::_fn, name: str, params: &[ast::ty_param]) -> str {
     let writer = io::string_writer();
@@ -341,7 +343,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
         }
         bclose(s, ty.span);
       }
-      ast::ty_path(path, _) { print_path(s, path); }
+      ast::ty_path(path, _) { print_path(s, path, false); }
       ast::ty_type. { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
         print_type(s, t);
@@ -690,7 +692,7 @@ fn print_mac(s: &ps, m: &ast::mac) {
     alt m.node {
       ast::mac_invoc(path, arg, body) {
         word(s.s, "#");
-        print_path(s, path);
+        print_path(s, path, false);
         alt (arg.node) {
           ast::expr_vec(_,_,_) {}
           _ { word(s.s, " "); }
@@ -933,7 +935,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         print_expr(s, index);
         pclose(s);
       }
-      ast::expr_path(path) { print_path(s, path); }
+      ast::expr_path(path) { print_path(s, path, true); }
       ast::expr_fail(maybe_fail_val) {
         word(s.s, "fail");
         alt maybe_fail_val {
@@ -1088,7 +1090,7 @@ fn print_for_decl(s: &ps, loc: &@ast::local, coll: &@ast::expr) {
     print_expr(s, coll);
 }
 
-fn print_path(s: &ps, path: &ast::path) {
+fn print_path(s: &ps, path: &ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
     let first = true;
@@ -1097,6 +1099,7 @@ fn print_path(s: &ps, path: &ast::path) {
         word(s.s, id);
     }
     if vec::len(path.node.types) > 0u {
+        if colons_before_params { word(s.s, "::"); }
         word(s.s, "<");
         commasep(s, inconsistent, path.node.types, print_type);
         word(s.s, ">");
@@ -1112,7 +1115,7 @@ fn print_pat(s: &ps, pat: &@ast::pat) {
       ast::pat_bind(id) { word(s.s, id); }
       ast::pat_lit(lit) { print_literal(s, lit); }
       ast::pat_tag(path, args) {
-        print_path(s, path);
+        print_path(s, path, true);
         if vec::len(args) > 0u {
             popen(s);
             commasep(s, inconsistent, args, print_pat);
