@@ -130,7 +130,6 @@ fn request_task(c: _chan[ctx]) {
     let req: request;
     while (true) {
         req = p.recv();
-        log_err req;
         alt req {
           quit. {
             log "got quit message";
