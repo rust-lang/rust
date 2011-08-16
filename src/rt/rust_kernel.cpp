@@ -136,6 +136,12 @@ int rust_kernel::start_task_threads()
 
 void
 rust_kernel::fail() {
+    // FIXME: On windows we're getting "Application has requested the
+    // Runtime to terminate it in an unusual way" when trying to shutdown
+    // cleanly.
+#if defined(__WIN32__)
+    exit(-1);
+#endif
     for(size_t i = 0; i < num_threads; ++i) {
         rust_scheduler *thread = threads[i];
         thread->kill_all_tasks();
