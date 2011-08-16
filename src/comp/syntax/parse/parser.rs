@@ -2353,8 +2353,9 @@ fn parse_import(p: &parser) -> ast::view_item_ {
 }
 
 fn parse_export(p: &parser) -> ast::view_item_ {
-    let id = parse_ident(p);
-    ret ast::view_item_export(id, p.get_id());
+    let ids = parse_seq_to_before_end(
+        token::SEMI, option::some(token::COMMA), parse_ident, p);
+    ret ast::view_item_export(ids, p.get_id());
 }
 
 fn parse_view_item(p: &parser) -> @ast::view_item {

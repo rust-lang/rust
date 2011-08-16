@@ -564,7 +564,7 @@ tag view_item_ {
     view_item_use(ident, [@meta_item], node_id);
     view_item_import(ident, [ident], node_id);
     view_item_import_glob([ident], node_id);
-    view_item_export(ident, node_id);
+    view_item_export([ident], node_id);
 }
 
 type obj_def_ids = {ty: node_id, ctor: node_id};
@@ -627,11 +627,11 @@ fn is_exported(i: ident, m: _mod) -> bool {
     let count = 0u;
     for vi: @ast::view_item in m.view_items {
         alt vi.node {
-          ast::view_item_export(id, _) {
-            if str::eq(i, id) {
-                // even if it's nonlocal (since it's explicit)
-
-                ret true;
+          ast::view_item_export(ids, _) {
+            for id in ids {
+                if str::eq(i, id) {
+                    ret true;
+                }
             }
             count += 1u;
           }
@@ -640,7 +640,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     }
     // If there are no declared exports then
     // everything not imported is exported
-
+    // even if it's nonlocal (since it's explicit)
     ret count == 0u && !nonlocal;
 }
 

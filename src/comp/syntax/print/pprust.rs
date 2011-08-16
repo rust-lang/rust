@@ -1276,7 +1276,11 @@ fn print_view_item(s: &ps, item: &@ast::view_item) {
         }
         word(s.s, "::*");
       }
-      ast::view_item_export(id, _) { head(s, "export"); word(s.s, id); }
+      ast::view_item_export(ids, _) {
+        head(s, "export");
+        commasep(s, inconsistent, ids,
+                 fn(s: &ps, w: &str) { word(s.s, w) });
+      }
     }
     word(s.s, ";");
     end(s); // end inner head-block
