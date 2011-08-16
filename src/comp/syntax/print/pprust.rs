@@ -1210,13 +1210,13 @@ fn print_kind(s: &ps, kind: ast::kind) {
 
 fn print_type_params(s: &ps, params: &[ast::ty_param]) {
     if vec::len(params) > 0u {
-        word(s.s, "[");
+        word(s.s, "<");
         fn printParam(s: &ps, param: &ast::ty_param) {
             print_kind(s, param.kind);
             word(s.s, param.ident);
         }
         commasep(s, inconsistent, params, printParam);
-        word(s.s, "]");
+        word(s.s, ">");
     }
 }
 

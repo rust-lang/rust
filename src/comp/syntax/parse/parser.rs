@@ -1755,6 +1755,9 @@ fn parse_ty_params(p: &parser) -> [ast::ty_param] {
         ty_params =
             parse_seq(token::LBRACKET, token::RBRACKET, some(token::COMMA),
                       parse_ty_param, p).node;
+    } else if p.peek() == token::LT {
+        p.bump();
+        ty_params = parse_seq_to_gt(some(token::COMMA), parse_ty_param, p);
     }
     if p.peek() == token::LT {
         ty_params =
