@@ -70,80 +70,6 @@ upcall_log_istr(rust_task *task, uint32_t level, rust_ivec *str) {
     task->sched->log(task, level, "rust: %s", buf);
 }
 
-extern "C" CDECL rust_port*
-new_port(rust_task *task, size_t unit_sz);
-extern "C" CDECL rust_port*
-upcall_new_port(rust_task *task, size_t unit_sz) {
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, comm, "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
-        (uintptr_t) task, task->name, unit_sz);
-    return new_port(task, unit_sz);
-}
-
-extern "C" CDECL void
-del_port(rust_task *task, rust_port *port);
-extern "C" CDECL void
-upcall_del_port(rust_task *task, rust_port *port) {
-    LOG_UPCALL_ENTRY(task);
-    return del_port(task, port);
-}
-
-/**
- * Creates a new channel pointing to a given port.
- */
-extern "C" CDECL rust_chan*
-new_chan(rust_task *task, rust_port *port);
-extern "C" CDECL rust_chan*
-upcall_new_chan(rust_task *task, rust_port *port) {
-    LOG_UPCALL_ENTRY(task);
-    return new_chan(task, port);
-}
-
-/**
- * Called whenever this channel needs to be flushed. This can happen due to a
- * flush statement, or automatically whenever a channel's ref count is
- * about to drop to zero.
- */
-extern "C" CDECL void
-upcall_flush_chan(rust_task *task, rust_chan *chan) {
-    LOG_UPCALL_ENTRY(task);
-}
-
-/**
- * Called whenever the channel's ref count drops to zero.
- *
- * Cannot Yield: If the task were to unwind, the dropped ref would still
- * appear to be live, causing modify-after-free errors.
- */
-extern "C" CDECL
-void del_chan(rust_task *task, rust_chan *chan);
-extern "C" CDECL
-void upcall_del_chan(rust_task *task, rust_chan *chan) {
-    LOG_UPCALL_ENTRY(task);
-    del_chan(task, chan);
-}
-
-/**
- * Clones a channel and stores it in the spawnee's domain. Each spawned task
- * has its own copy of the channel.
- */
-extern "C" CDECL rust_chan *
-upcall_clone_chan(rust_task *task, rust_task_id tid,
-                  rust_chan *chan) {
-    // FIXME: This should be removed.
-    LOG_UPCALL_ENTRY(task);
-    rust_task *target = task->kernel->get_task_by_id(tid);
-    rust_chan *c = chan->clone(target);
-    target->deref();
-    return c;
-}
-
-extern "C" CDECL rust_task *
-upcall_chan_target_task(rust_task *task, rust_chan *chan) {
-    LOG_UPCALL_ENTRY(task);
-    return chan->port->task;
-}
-
 extern "C" CDECL void
 upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
@@ -158,24 +84,6 @@ upcall_sleep(rust_task *task, size_t time_in_us) {
               task->yield_timer.elapsed_us());
     LOG(task, task, "sleep %d us", time_in_us);
     task->yield(time_in_us);
-}
-
-/**
- * Buffers a chunk of data in the specified channel.
- *
- * sptr: pointer to a chunk of data to buffer
- */
-extern "C" CDECL void
-upcall_send(rust_task *task, rust_chan *chan, void *sptr) {
-    LOG_UPCALL_ENTRY(task);
-    chan->send(sptr);
-    LOG(task, comm, "=== sent data ===>");
-}
-
-extern "C" CDECL void
-upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
-    LOG_UPCALL_ENTRY(task);
-    port_recv(task, dptr, port);
 }
 
 extern "C" CDECL void
@@ -312,15 +220,6 @@ extern "C" CDECL rust_str *
 upcall_new_str(rust_task *task, char const *s, size_t fill) {
     LOG_UPCALL_ENTRY(task);
     return make_str(task, s, fill);
-}
-
-extern "C" CDECL rust_str *
-upcall_dup_str(rust_task *task, rust_task_id tid, rust_str *str) {
-    LOG_UPCALL_ENTRY(task);
-    rust_task *target = task->kernel->get_task_by_id(tid);
-    rust_str *s = make_str(target, (char const *)str->data, str->fill);
-    target->deref();
-    return s;
 }
 
 extern "C" CDECL rust_vec *
@@ -475,80 +374,6 @@ upcall_get_type_desc(rust_task *task,
     type_desc *td = cache->get_type_desc(size, align, n_descs, descs);
     LOG(task, cache, "returning tydesc 0x%" PRIxPTR, td);
     return td;
-}
-
-extern "C" CDECL rust_task_id
-upcall_new_task(rust_task *spawner, rust_vec *name) {
-    // name is a rust string structure.
-    LOG_UPCALL_ENTRY(spawner);
-    rust_task_id tid =
-        spawner->kernel->create_task(spawner, (const char *)name->data);
-    // let the kernel bump the ref count.
-    spawner->kernel->get_task_by_id(tid);
-    // no deref because we're letting the caller take ownership.
-    return tid;
-}
-
-extern "C" CDECL void
-upcall_take_task(rust_task *task, rust_task_id tid) {
-    LOG_UPCALL_ENTRY(task);
-    // get_task_by_id increments the refcount.
-    task->kernel->get_task_by_id(tid);
-}
-
-extern "C" CDECL void
-drop_task(rust_task *task, rust_task_id tid);
-extern "C" CDECL void
-upcall_drop_task(rust_task *task, rust_task_id tid) {
-    LOG_UPCALL_ENTRY(task);
-    drop_task(task, tid);
-}
-
-extern "C" CDECL void
-upcall_take_chan(rust_task *task, rust_chan *target) {
-    LOG_UPCALL_ENTRY(task);
-    if(target) {
-        target->ref();
-    }
-}
-
-extern "C" CDECL void
-upcall_drop_chan(rust_task *task, rust_chan *target) {
-    LOG_UPCALL_ENTRY(task);
-    if(target) {
-        target->deref();
-    }
-}
-
-extern "C" CDECL rust_task *
-upcall_start_task(rust_task *spawner,
-                  rust_task_id tid,
-                  uintptr_t spawnee_fn,
-                  uintptr_t args,
-                  size_t args_sz) {
-    LOG_UPCALL_ENTRY(spawner);
-
-    rust_scheduler *sched = spawner->sched;
-    rust_task *task = spawner->kernel->get_task_by_id(tid);
-    DLOG(sched, task,
-         "upcall start_task(task %s @0x%" PRIxPTR
-         ", spawnee 0x%" PRIxPTR ")",
-         task->name, task,
-         spawnee_fn);
-
-    // we used to be generating this tuple in rustc, but it's easier to do it
-    // here.
-    //
-    // The args tuple is stack-allocated. We need to move it over to the new
-    // stack.
-    task->rust_sp -= args_sz;
-    uintptr_t child_arg = (uintptr_t)task->rust_sp;
-
-    memcpy((void*)task->rust_sp, (void*)args, args_sz);
-
-    task->start(spawnee_fn, child_arg);
-    task->deref();
-    return task;
 }
 
 /**
