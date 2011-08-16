@@ -278,7 +278,6 @@ options:
     --sysroot <path>   override the system root (default: rustc's directory)
     --no-typestate     don't run the typestate pass (unsafe!)
     --test             build test harness
-    --dps              translate via destination-passing style (experimental)
     --gc               garbage collect shared data (experimental/temporary)
 
 ");
@@ -384,7 +383,6 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
         };
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
-    let dps = opt_present(match, "dps");
     let do_gc = opt_present(match, "gc");
     let sopts: @session::options =
         @{library: library,
@@ -402,7 +400,6 @@ fn build_session_options(binary: str, match: getopts::match, binary_dir: str)
           sysroot: sysroot,
           cfg: cfg,
           test: test,
-          dps: dps,
           parse_only: parse_only,
           no_trans: no_trans,
           do_gc: do_gc};
@@ -437,7 +434,7 @@ fn opts() -> [getopts::opt] {
           optopt("sysroot"), optflag("stats"), optflag("time-passes"),
           optflag("time-llvm-passes"), optflag("no-typestate"),
           optflag("noverify"), optmulti("cfg"), optflag("test"),
-          optflag("lib"), optflag("static"), optflag("dps"), optflag("gc")];
+          optflag("lib"), optflag("static"), optflag("gc")];
 }
 
 fn main(args: vec[str]) {

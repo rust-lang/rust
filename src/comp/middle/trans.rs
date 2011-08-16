@@ -6021,23 +6021,17 @@ fn trans_closure(bcx_maybe: &option::t[@block_ctxt],
     let lltop = bcx.llbb;
     let block_ty = node_id_type(cx.ccx, f.body.node.id);
 
-    if cx.ccx.sess.get_opts().dps {
-        // Call into the new destination-passing-style translation engine.
-        let dest = trans_dps::dest_move(cx.ccx.tcx, fcx.llretptr, block_ty);
-        bcx = trans_dps::trans_block(bcx, dest, f.body);
-    } else {
-        // This call to trans_block is the place where we bridge between
-        // translation calls that don't have a return value (trans_crate,
-        // trans_mod, trans_item, trans_obj, et cetera) and those that do
-        // (trans_block, trans_expr, et cetera).
-        let rslt =
-            if !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
-               !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
-               f.proto != ast::proto_iter {
-                trans_block(bcx, f.body, save_in(fcx.llretptr))
-            } else { trans_block(bcx, f.body, return) };
-        bcx = rslt.bcx;
-    }
+    // This call to trans_block is the place where we bridge between
+    // translation calls that don't have a return value (trans_crate,
+    // trans_mod, trans_item, trans_obj, et cetera) and those that do
+    // (trans_block, trans_expr, et cetera).
+    let rslt =
+        if !ty::type_is_nil(cx.ccx.tcx, block_ty) &&
+           !ty::type_is_bot(cx.ccx.tcx, block_ty) &&
+           f.proto != ast::proto_iter {
+        trans_block(bcx, f.body, save_in(fcx.llretptr))
+    } else { trans_block(bcx, f.body, return) };
+    bcx = rslt.bcx;
 
     if !is_terminated(bcx) {
         // FIXME: until LLVM has a unit type, we are moving around

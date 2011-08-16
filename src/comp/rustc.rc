@@ -17,9 +17,7 @@ mod middle {
     mod trans_common;
     mod trans;
     mod trans_alt;
-    mod trans_dps;
     mod trans_objects;
-    mod trans_vec;
     mod ty;
     mod ast_map;
     mod resolve;
