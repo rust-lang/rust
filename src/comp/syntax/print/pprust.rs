@@ -282,7 +282,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_str. { word(s.s, "str"); }
       ast::ty_istr. { word(s.s, "istr"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
-      ast::ty_vec(mt) { word(s.s, "vec["); print_mt(s, mt); word(s.s, "]"); }
+      ast::ty_vec(mt) { word(s.s, "vec<"); print_mt(s, mt); word(s.s, ">"); }
       ast::ty_ivec(mt) {
         word(s.s, "[");
         alt mt.mut {
@@ -296,14 +296,14 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
       ast::ty_task. { word(s.s, "task"); }
       ast::ty_port(t) {
-        word(s.s, "port[");
+        word(s.s, "port<");
         print_type(s, t);
-        word(s.s, "]");
+        word(s.s, ">");
       }
       ast::ty_chan(t) {
-        word(s.s, "chan[");
+        word(s.s, "chan<");
         print_type(s, t);
-        word(s.s, "]");
+        word(s.s, ">");
       }
       ast::ty_rec(fields) {
         word(s.s, "{");
@@ -1097,9 +1097,9 @@ fn print_path(s: &ps, path: &ast::path) {
         word(s.s, id);
     }
     if vec::len(path.node.types) > 0u {
-        word(s.s, "[");
+        word(s.s, "<");
         commasep(s, inconsistent, path.node.types, print_type);
-        word(s.s, "]");
+        word(s.s, ">");
     }
 }
 
