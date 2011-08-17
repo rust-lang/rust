@@ -73,8 +73,17 @@ tag task_notification {
     exit(task, task_result);
 }
 
-fn join(t: task) -> task_result {
-    join_id(cast(t))
+fn join(task_port : (task_id, comm::port<task_notification>))
+    -> task_result {
+    let (id, port) = task_port;
+    while true {
+        alt comm::recv::<task_notification>(port) {
+          exit(_id, res) {
+            if _id == id { ret res }
+          }
+        }
+    }
+    fail
 }
 
 fn join_id(t : task_id) -> task_result {
@@ -102,6 +111,12 @@ fn spawn(thunk : -fn() -> ()) -> task {
 fn spawn_notify(thunk : -fn() -> (), notify : _chan<task_notification>)
     -> task {
     spawn_inner(thunk, some(notify))
+}
+
+fn spawn_joinable(thunk : -fn()) -> (task_id, comm::port<task_notification>) {
+    let p = comm::port::<task_notification>();
+    let id = spawn_notify(thunk, comm::chan::<task_notification>(p));
+    ret (id, p);
 }
 
 // FIXME: make this a fn~ once those are supported.

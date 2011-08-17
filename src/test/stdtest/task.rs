@@ -72,3 +72,11 @@ fn test_join_chan_fail() {
       _ { fail "invalid task status received" }
     }
 }
+
+#[test]
+fn test_join_convenient() {
+    fn winner() { }
+    let f = winner;
+    let handle = task::spawn_joinable(f);
+    assert(task::tr_success == task::join(handle));
+}
