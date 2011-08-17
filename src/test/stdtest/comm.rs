@@ -17,3 +17,11 @@ fn send_recv() {
     log_err v;
     assert(42 == v);
 }
+
+#[test]
+fn send_recv_fn() {
+    let p = comm::port::<int>();
+    let c = comm::chan::<int>(p);
+    comm::send(c, 42);
+    assert(comm::recv(p) == 42);
+}

@@ -16,14 +16,12 @@ debug_box
 debug_fn
 debug_obj
 debug_opaque
-del_chan
 del_port
 debug_ptrcast
 debug_tag
 debug_trap
 debug_tydesc
 do_gc
-drop_chan
 drop_port
 drop_task
 get_port_id
@@ -77,7 +75,6 @@ str_from_cstr
 str_from_ivec
 str_push_byte
 str_slice
-take_chan
 task_sleep
 task_yield
 task_join
