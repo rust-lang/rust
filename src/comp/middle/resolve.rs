@@ -1,6 +1,7 @@
 
 import syntax::ast;
 import syntax::ast::*;
+import syntax::codemap;
 import ast::ident;
 import ast::fn_ident;
 import ast::def;
@@ -92,7 +93,7 @@ fn new_ext_hash() -> ext_hash {
 
 tag mod_index_entry {
     mie_view_item(@ast::view_item);
-    mie_import_ident(node_id, syntax::codemap::span);
+    mie_import_ident(node_id, codemap::span);
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
     mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
@@ -246,26 +247,27 @@ fn map_crate(e: &@env, c: &@ast::crate) {
     }
 }
 
-fn vi_from_to_vi(from_item: &@ast::view_item,
-                 ident: ast::import_ident) -> @ast::view_item {
-    alt from_item.node {
-      ast::view_item_import_from(mod_path, idents, _) {
-        @ast::respan(ident.span,
-                     ast::view_item_import(ident.node.name,
-                                           mod_path + ~[ident.node.name],
-                                           ident.node.id))
-      }
-    }
-}
-
 fn resolve_imports(e: &env) {
     for each it: @{key: ast::node_id, val: import_state} in e.imports.items()
              {
         alt it.val {
-          todo(item, sc) { resolve_import(e, item, sc); }
+          todo(item, sc) {
+            alt item.node {
+              ast::view_item_import(name, ids, id) {
+                resolve_import(e, local_def(id),
+                               name, ids, item.span, sc);
+              }
+            }
+          }
           todo_from(item, ident, sc) {
-            let vi = vi_from_to_vi(item, ident);
-            resolve_import(e, vi, sc);
+              alt item.node {
+                ast::view_item_import_from(mod_path, idents, _) {
+                  resolve_import(e, local_def(ident.node.id),
+                                 ident.node.name,
+                                 mod_path + ~[ident.node.name],
+                                 ident.span, sc);
+                }
+              }
           }
           resolved(_, _, _) { }
         }
@@ -467,36 +469,27 @@ fn resolve_constr(e: @env, id: node_id, c: &@ast::constr, sc: &scopes,
 }
 
 // Import resolution
-fn resolve_import(e: &env, it: &@ast::view_item, sc_in: &scopes) {
-    let defid;
-    let ids;
-    let name;
-    alt it.node {
-      ast::view_item_import(_name, _ids, _id) {
-        defid = local_def(_id);
-        ids = _ids;
-        name = _name;
-      }
-    }
-    e.imports.insert(defid.node, resolving(it.span));
+fn resolve_import(e: &env, defid: ast::def_id, name: &ast::ident,
+                  ids: &[ast::ident], sp: &codemap::span, sc_in: &scopes) {
+    e.imports.insert(defid.node, resolving(sp));
     let n_idents = vec::len(ids);
     let end_id = ids.(n_idents - 1u);
     // Ignore the current scope if this import would shadow itself.
     let sc =
         if str::eq(name, ids.(0)) { std::list::cdr(sc_in) } else { sc_in };
     if n_idents == 1u {
-        register(e, defid, it.span, end_id, sc_in,
-                 lookup_in_scope(e, sc, it.span, end_id, ns_value),
-                 lookup_in_scope(e, sc, it.span, end_id, ns_type),
-                 lookup_in_scope(e, sc, it.span, end_id, ns_module));
+        register(e, defid, sp, end_id, sc_in,
+                 lookup_in_scope(e, sc, sp, end_id, ns_value),
+                 lookup_in_scope(e, sc, sp, end_id, ns_type),
+                 lookup_in_scope(e, sc, sp, end_id, ns_module));
         remove_if_unresolved(e.imports, defid.node);
     } else {
         let  // FIXME (issue #521)
             dcur =
-            alt lookup_in_scope(e, sc, it.span, ids.(0), ns_module) {
+            alt lookup_in_scope(e, sc, sp, ids.(0), ns_module) {
               some(dcur) { dcur }
               none. {
-                unresolved_err(e, sc, it.span, ids.(0), ns_name(ns_module));
+                unresolved_err(e, sc, sp, ids.(0), ns_name(ns_module));
                 remove_if_unresolved(e.imports, defid.node);
                 ret ()
               }
@@ -504,22 +497,22 @@ fn resolve_import(e: &env, it: &@ast::view_item, sc_in: &scopes) {
         let i = 1u;
         while true {
             if i == n_idents - 1u {
-                register(e, defid, it.span, end_id, sc_in,
-                         lookup_in_mod(e, dcur, it.span, end_id, ns_value,
+                register(e, defid, sp, end_id, sc_in,
+                         lookup_in_mod(e, dcur, sp, end_id, ns_value,
                                        outside),
-                         lookup_in_mod(e, dcur, it.span, end_id, ns_type,
+                         lookup_in_mod(e, dcur, sp, end_id, ns_type,
                                        outside),
-                         lookup_in_mod(e, dcur, it.span, end_id, ns_module,
+                         lookup_in_mod(e, dcur, sp, end_id, ns_module,
                                        outside));
                 remove_if_unresolved(e.imports, defid.node);
                 break;
             } else {
                 dcur =
-                    alt lookup_in_mod(e, dcur, it.span, ids.(i), ns_module,
+                    alt lookup_in_mod(e, dcur, sp, ids.(i), ns_module,
                                       outside) {
                       some(dcur) { dcur }
                       none. {
-                        unresolved_err(e, sc, it.span, ids.(i),
+                        unresolved_err(e, sc, sp, ids.(i),
                                        ns_name(ns_module));
                         remove_if_unresolved(e.imports, defid.node);
                         ret () // FIXME (issue #521)
@@ -955,12 +948,23 @@ fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
 fn lookup_import(e: &env, defid: def_id, ns: namespace) -> option::t<def> {
     alt e.imports.get(defid.node) {
       todo(item, sc) {
-        resolve_import(e, item, sc);
+        alt item.node {
+          ast::view_item_import(name, ids, id) {
+            resolve_import(e, local_def(id),
+                           name, ids, item.span, sc);
+          }
+        }
         ret lookup_import(e, defid, ns);
       }
       todo_from(item, ident, sc) {
-        let vi = vi_from_to_vi(item, ident);
-        resolve_import(e, vi, sc);
+        alt item.node {
+          ast::view_item_import_from(mod_path, idents, _) {
+            resolve_import(e, local_def(ident.node.id),
+                           ident.node.name,
+                           mod_path + ~[ident.node.name],
+                           ident.span, sc);
+          }
+        }
         ret lookup_import(e, defid, ns);
       }
       resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
