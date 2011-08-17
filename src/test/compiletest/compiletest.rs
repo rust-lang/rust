@@ -227,6 +227,8 @@ fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,
                  opt_rustcflags: str, verbose: bool,
                  procsrv_chan: procsrv::reqchan, testfile: -[u8]) {
 
+    test::configure_test_task();
+
     let config =
         {compile_lib_path: compile_lib_path,
          run_lib_path: run_lib_path,
