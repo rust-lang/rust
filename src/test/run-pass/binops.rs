@@ -115,10 +115,10 @@ fn test_fn() {
 }
 
 native "rust" mod native_mod = "" {
-    fn str_byte_len(s: str) -> vec<u8>;
+    fn str_byte_len(s: str) -> uint;
     // This isn't actually the signature of str_alloc, but since
     // we're not calling it that shouldn't matter
-    fn str_alloc(s: str) -> vec<u8>;
+    fn str_alloc(s: str) -> uint;
 }
 
 // FIXME: comparison of native fns
