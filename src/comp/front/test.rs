@@ -355,7 +355,7 @@ fn mk_test_main_call(cx: &test_ctxt) -> @ast::expr {
     // Call std::test::test_main
     let test_main_path: ast::path =
         nospan({global: false,
-                idents: ~["std", "test", "test_main_ivec"],
+                idents: ~["std", "test", "test_main"],
                 types: ~[]});
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
