@@ -332,17 +332,13 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
 }
 
 // We need to run our tests in another task in order to trap test failures.
-// But, at least currently, functions can't be used as spawn arguments so
-// we've got to treat our test functions as unsafe pointers.  This function
-// only works with functions that don't contain closures.
+// This function only works with functions that don't contain closures.
 fn default_test_to_task(f: &fn()) -> task_id {
-    fn run_task(fptr: *mutable fn() ) {
+    fn run_task(f: fn()) {
         configure_test_task();
-        // Run the test
-        (*fptr)()
+        f();
     }
-    let fptr = ptr::addr_of(f);
-    ret task::spawn(bind run_task(fptr));
+    ret task::spawn(bind run_task(f));
 }
 
 // Call from within a test task to make sure it's set up correctly
