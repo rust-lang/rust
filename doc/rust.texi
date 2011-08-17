@@ -1757,12 +1757,19 @@ path required to refer to a module item.
 dependencies are independently declared with @code{use}
 declarations. @xref{Ref.Comp.Crate}.
 
-An example of an import:
+An example of imports:
 @example
 import std::math::sin;
+import std::option::*;
+import std::str::@{char_at, hash@};
+
 fn main() @{
     // Equivalent to 'log std::math::sin(1.0);'
     log sin(1.0);
+    // Equivalent to 'log std::option::some(1.0);'
+    log some(1.0);
+    // Equivalent to 'log std::str::hash(std::str::char_at("foo"));'
+    log hash(char_at("foo"));
 @}
 @end example
 
@@ -1797,6 +1804,27 @@ mod foo @{
 fn main() @{
     foo::primary();  // Will compile.
     foo::helper(2,3) // ERROR: will not compile.
+@}
+@end example
+
+Multiple items may be exported from a single export declaration:
+
+@example
+mod foo @{
+    export primary, secondary;
+
+    fn primary() @{
+        helper(1, 2);
+        helper(3, 4);
+    @}
+
+    fn secondary() @{
+        @dots{}
+    @}
+
+    fn helper(x: int, y: int) @{
+        @dots{}
+    @}
 @}
 @end example
 
