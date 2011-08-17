@@ -1279,20 +1279,6 @@ fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> result {
 
 fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
-
-    // FIXME: switch gc/non-gc on layer of the type.
-    // FIXME: switch gc/non-gc on layer of the type.
-    // TODO: call upcall_kill
-
-
-    // Call through the obj's own fields-drop glue first.
-
-    // Then free the body.
-    // FIXME: switch gc/non-gc on layer of the type.
-    // Call through the closure's own fields-drop glue first.
-
-    // Then free the body.
-    // FIXME: switch gc/non-gc on layer of the type.
     let rs =
         alt ty::struct(bcx_tcx(cx), t) {
           ty::ty_str. {
@@ -1329,6 +1315,8 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             fail "free uniq unimplemented";
           }
           ty::ty_obj(_) {
+            // Call through the obj's own fields-drop glue first.
+            // Then free the body.
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::obj_field_box)]);
             let b = cx.build.Load(box_cell);
@@ -1351,6 +1339,8 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             }
           }
           ty::ty_fn(_, _, _, _, _) {
+            // Call through the closure's own fields-drop glue first.
+            // Then free the body.
             let box_cell =
                 cx.build.GEP(v0, ~[C_int(0), C_int(abi::fn_field_box)]);
             let v = cx.build.Load(box_cell);
