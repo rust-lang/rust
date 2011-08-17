@@ -92,7 +92,7 @@ fn new_ext_hash() -> ext_hash {
 
 tag mod_index_entry {
     mie_view_item(@ast::view_item);
-    mie_import_ident(node_id);
+    mie_import_ident(node_id, syntax::codemap::span);
     mie_item(@ast::item);
     mie_native_item(@ast::native_item);
     mie_tag_variant(/* tag item */@ast::item, /* variant index */uint);
@@ -949,9 +949,6 @@ fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
         let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
         ret some(ast::def_mod({crate: cnum, node: -1}));
       }
-      ast::view_item_import(_, _, id) {
-        ret lookup_import(e, local_def(id), ns);
-      }
       ast::view_item_import_glob(_, defid) {
         ret none::<def>; //will be handled in the fallback glob pass
 
@@ -1073,7 +1070,7 @@ fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
    option::t<def> {
     alt mie {
       mie_view_item(view_item) { ret found_view_item(e, view_item, ns); }
-      mie_import_ident(id) { ret lookup_import(e, local_def(id), ns); }
+      mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }
       mie_tag_variant(item, variant_idx) {
         alt item.node {
@@ -1118,15 +1115,19 @@ fn index_mod(md: &ast::_mod) -> mod_index {
     let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
-          ast::view_item_import(ident, _, _) | ast::view_item_use(ident, _, _)
+          ast::view_item_use(ident, _, _)
           {
             add_to_index(index, ident, mie_view_item(it));
+          }
+
+          ast::view_item_import(ident, _, id) {
+            add_to_index(index, ident, mie_import_ident(id, it.span));
           }
 
           ast::view_item_import_from(_, idents, _) {
             for ident in idents {
                 add_to_index(index, ident.node.name,
-                             mie_import_ident(ident.node.id));
+                             mie_import_ident(ident.node.id, ident.span));
             }
           }
 
@@ -1160,14 +1161,16 @@ fn index_nmod(md: &ast::native_mod) -> mod_index {
     let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
-          ast::view_item_use(ident, _, _) | ast::view_item_import(ident, _, _)
-          {
+          ast::view_item_use(ident, _, _) {
             add_to_index(index, ident, mie_view_item(it));
+          }
+          ast::view_item_import(ident, _, id) {
+            add_to_index(index, ident, mie_import_ident(id, it.span));
           }
           ast::view_item_import_from(_, idents, _) {
             for ident in idents {
                 add_to_index(index, ident.node.name,
-                             mie_import_ident(ident.node.id));
+                             mie_import_ident(ident.node.id, ident.span));
             }
           }
           ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) { }
@@ -1265,6 +1268,7 @@ fn check_mod_name(e: &env, name: &ident, entries: list<mod_index_entry>) {
 fn mie_span(mie: &mod_index_entry) -> span {
     ret alt mie {
           mie_view_item(item) { item.span }
+          mie_import_ident(_, span) { span }
           mie_item(item) { item.span }
           mie_tag_variant(item, _) { item.span }
           mie_native_item(item) { item.span }
