@@ -437,12 +437,11 @@ fn opts() -> [getopts::opt] {
           optflag("lib"), optflag("static"), optflag("gc")];
 }
 
-fn main(args: vec<str>) {
-    let args_ivec = vec::from_vec(args);
-    let binary = vec::shift(args_ivec);
+fn main(args: [str]) {
+    let binary = vec::shift(args);
     let binary_dir = fs::dirname(binary);
     let match =
-        alt getopts::getopts(args_ivec, opts()) {
+        alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
           getopts::failure(f) {
             log_err #fmt("error: %s", getopts::fail_str(f));
