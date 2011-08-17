@@ -45,7 +45,10 @@ type upcalls =
      ivec_resize_shared: ValueRef,
      ivec_spill_shared: ValueRef,
      cmp_type: ValueRef,
-     log_type: ValueRef};
+     log_type: ValueRef,
+     dynastack_mark: ValueRef,
+     dynastack_alloc: ValueRef,
+     dynastack_free: ValueRef};
 
 fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
@@ -111,7 +114,13 @@ fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
           log_type:
               dr("log_type", ~[taskptr_type, T_ptr(tydesc_type),
                  T_ptr(T_i8()), T_i32()],
-                 T_void())};
+                 T_void()),
+          dynastack_mark:
+              d("dynastack_mark", ~[], T_ptr(T_i8())),
+          dynastack_alloc:
+              d("dynastack_alloc", ~[T_size_t()], T_ptr(T_i8())),
+          dynastack_free:
+              d("dynastack_free", ~[T_ptr(T_i8())], T_void())};
 }
 //
 // Local Variables:
