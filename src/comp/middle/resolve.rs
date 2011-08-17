@@ -949,10 +949,6 @@ fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
         let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
         ret some(ast::def_mod({crate: cnum, node: -1}));
       }
-      ast::view_item_import_glob(_, defid) {
-        ret none::<def>; //will be handled in the fallback glob pass
-
-      }
     }
 }
 
