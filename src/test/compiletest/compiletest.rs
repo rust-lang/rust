@@ -121,7 +121,7 @@ fn test_opts(config: &config) -> test::test_opts {
 }
 
 type tests_and_conv_fn =
-    {tests: [test::test_desc], to_task: fn(&fn() ) -> task_id };
+    {tests: [test::test_desc], to_task: fn(&fn() ) -> test::joinable };
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt("making tests from %s", cx.config.src_base);
@@ -207,18 +207,26 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn() ) -> task_id
+fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn() )
+    -> test::joinable
 {
     testfn();
     let testfile = configport.recv();
-    ret task::_spawn(bind run_test_task(cx.config.compile_lib_path,
-                            cx.config.run_lib_path, cx.config.rustc_path,
-                            cx.config.src_base, cx.config.build_base,
-                            cx.config.stage_id, mode_str(cx.config.mode),
-                            cx.config.run_ignored, opt_str(cx.config.filter),
-                            opt_str(cx.config.runtool),
-                            opt_str(cx.config.rustcflags), cx.config.verbose,
-                            cx.procsrv.chan, testfile));
+    let testthunk = bind run_test_task(cx.config.compile_lib_path,
+                                       cx.config.run_lib_path,
+                                       cx.config.rustc_path,
+                                       cx.config.src_base,
+                                       cx.config.build_base,
+                                       cx.config.stage_id,
+                                       mode_str(cx.config.mode),
+                                       cx.config.run_ignored,
+                                       opt_str(cx.config.filter),
+                                       opt_str(cx.config.runtool),
+                                       opt_str(cx.config.rustcflags),
+                                       cx.config.verbose,
+                                       cx.procsrv.chan,
+                                       testfile);
+    ret task::spawn_joinable(testthunk);
 }
 
 fn run_test_task(compile_lib_path: str, run_lib_path: str, rustc_path: str,

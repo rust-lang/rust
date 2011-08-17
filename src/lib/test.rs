@@ -24,6 +24,7 @@ export parse_opts;
 export test_to_task;
 export default_test_to_task;
 export configure_test_task;
+export joinable;
 
 native "rust" mod rustrt {
     fn hack_allow_leaks();
@@ -90,11 +91,13 @@ fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
 tag test_result { tr_ok; tr_failed; tr_ignored; }
 
+type joinable = (task_id, comm::port<task::task_notification>);
+
 // To get isolation and concurrency tests have to be run in their own tasks.
 // In cases where test functions and closures it is not ok to just dump them
 // into a task and run them, so this transformation gives the caller a chance
 // to create the test task.
-type test_to_task = fn(&fn()) -> task_id ;
+type test_to_task = fn(&fn()) -> joinable;
 
 // A simple console test runner
 fn run_tests_console(opts: &test_opts, tests: &[test_desc]) -> bool {
@@ -312,8 +315,8 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
         let test_task = to_task(test.fn);
         ret {test: test,
              wait:
-             bind fn (test_task: task_id) -> test_result {
-                 alt task::join_id(test_task) {
+             bind fn (test_task: joinable)-> test_result {
+                 alt task::join(test_task) {
                    task::tr_success. { tr_ok }
                    task::tr_failure. { tr_failed }
                  }
@@ -326,12 +329,12 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
 
 // We need to run our tests in another task in order to trap test failures.
 // This function only works with functions that don't contain closures.
-fn default_test_to_task(f: &fn()) -> task_id {
+fn default_test_to_task(f: &fn()) -> joinable {
     fn run_task(f: fn()) {
         configure_test_task();
         f();
     }
-    ret task::spawn(bind run_task(f));
+    ret task::spawn_joinable(bind run_task(f));
 }
 
 // Call from within a test task to make sure it's set up correctly
