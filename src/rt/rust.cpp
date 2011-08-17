@@ -59,15 +59,15 @@ command_line_args : public kernel_owned<command_line_args>
         // array here to ensure it survives to program-shutdown.
         args->ref();
 
+        size_t ivec_interior_sz =
+            sizeof(size_t) * 2 + sizeof(rust_str *) * 4;
+        args_ivec = (rust_ivec *)
+            kernel->malloc(ivec_interior_sz,
+                           "command line arg interior");
+        args_ivec->fill = 0;
+        size_t ivec_exterior_sz = sizeof(rust_str *) * argc;
+        args_ivec->alloc = ivec_exterior_sz;
         if (main_is_ivec) {
-            size_t ivec_interior_sz =
-                sizeof(size_t) * 2 + sizeof(rust_str *) * 4;
-            args_ivec = (rust_ivec *)
-                kernel->malloc(ivec_interior_sz,
-                               "command line arg interior");
-            args_ivec->fill = 0;
-            size_t ivec_exterior_sz = sizeof(rust_str *) * argc;
-            args_ivec->alloc = ivec_exterior_sz;
             // NB: This is freed by some ivec machinery, probably the drop
             // glue in main, so we don't free it ourselves
             args_ivec->payload.ptr = (rust_ivec_heap *)
@@ -75,15 +75,11 @@ command_line_args : public kernel_owned<command_line_args>
                                "command line arg exterior");
             args_ivec->payload.ptr->fill = ivec_exterior_sz;
             memcpy(&args_ivec->payload.ptr->data, strs, ivec_exterior_sz);
-        } else {
-            args_ivec = NULL;
         }
     }
 
     ~command_line_args() {
-        if (args_ivec) {
-            kernel->free(args_ivec);
-        }
+        kernel->free(args_ivec);
         if (args) {
             // Drop the args we've had pinned here.
             rust_str **strs = (rust_str**) &args->data[0];
@@ -110,8 +106,8 @@ command_line_args : public kernel_owned<command_line_args>
 int check_claims = 0;
 
 extern "C" CDECL int
-rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
-                void* crate_map, int main_is_ivec) {
+rust_start(uintptr_t main_fn, int argc, char **argv,
+           void* crate_map, int main_takes_ivec) {
 
     rust_env *env = load_env();
 
@@ -126,7 +122,7 @@ rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
     rust_scheduler *sched = root_task->sched;
     command_line_args *args
         = new (kernel, "main command line args")
-        command_line_args(root_task, argc, argv, main_is_ivec);
+        command_line_args(root_task, argc, argv, main_takes_ivec);
 
     DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
@@ -134,13 +130,7 @@ rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    if (main_is_ivec) {
-        DLOG(sched, dom, "main takes ivec");
-        root_task->start(main_fn, (uintptr_t)args->args_ivec);
-    } else {
-        DLOG(sched, dom, "main takes vec");
-        root_task->start(main_fn, (uintptr_t)args->args);
-    }
+    root_task->start(main_fn, (uintptr_t)args->args_ivec);
     root_task->deref();
     root_task = NULL;
 
@@ -160,10 +150,11 @@ rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
     return ret;
 }
 
+// FIXME: Transitional. Please remove.
 extern "C" CDECL int
-rust_start(uintptr_t main_fn, int argc, char **argv,
-           void* crate_map) {
-    return rust_start_ivec(main_fn, argc, argv, crate_map, 0);
+rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
+                void* crate_map, int main_takes_ivec) {
+    return rust_start(main_fn, argc, argv, crate_map, main_takes_ivec);
 }
 
 

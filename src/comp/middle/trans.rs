@@ -6385,84 +6385,20 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
         ccx.sess.span_fatal(sp, "multiple 'main' functions");
     }
 
-    tag main_mode {
-        mm_nil;
-        mm_vec;
-        mm_ivec;
-    };
-
-    let main_mode = alt ty::struct(ccx.tcx, main_node_type) {
+    let main_takes_ivec = alt ty::struct(ccx.tcx, main_node_type) {
       ty::ty_fn(_, args, _ ,_ ,_) {
-        if std::vec::len(args) == 0u {
-            mm_nil
-        } else {
-            alt ty::struct(ccx.tcx, args.(0).ty) {
-              ty::ty_ivec(_) { mm_ivec }
-              ty::ty_vec(_) { mm_vec }
-            }
-        }
+        std::vec::len(args) != 0u
       }
     };
 
-    // Have to create two different main functions depending on whether
-    // main was declared to take vec or ivec
-    let llfn_vec = create_main_wrapper_vec(ccx, sp, main_llfn, main_mode);
-    let llfn_ivec = create_main_wrapper_ivec(ccx, sp, main_llfn, main_mode);
-    let takes_ivec = main_mode == mm_ivec;
-    // Create a global to tell main.ll which main we want to use
-    create_main_type_indicator(ccx, takes_ivec);
-    ccx.main_fn = takes_ivec ? some(llfn_ivec) : some(llfn_vec);
+    let llfn = create_main(ccx, sp, main_llfn, main_takes_ivec);
+    create_main_type_indicator(ccx, main_takes_ivec);
+    ccx.main_fn = some(llfn);
 
-    fn create_main_wrapper_vec(ccx: &@crate_ctxt,
-                               sp: &span,
-                               main_llfn: ValueRef,
-                               main_mode: main_mode) -> ValueRef {
-
-        let vecarg = {
-            mode: ty::mo_val,
-            ty: ty::mk_vec(ccx.tcx, {
-                ty: ty::mk_str(ccx.tcx),
-                mut: ast::imm
-            })
-        };
-        let llfty = type_of_fn(ccx, sp,
-                               ast::proto_fn,
-                               ~[vecarg],
-                               ty::mk_nil(ccx.tcx),
-                               0u);
-        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
-
-        let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
-        let bcx = new_top_block_ctxt(fcx);
-
-        if main_mode != mm_ivec {
-            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
-            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
-            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
-            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
-            let args = alt main_mode {
-              mm_nil. { ~[lloutputarg,
-                          lltaskarg,
-                          llenvarg] }
-              mm_vec. { ~[lloutputarg,
-                          lltaskarg,
-                          llenvarg,
-                          llargvarg] }
-            };
-            bcx.build.FastCall(main_llfn, args);
-        }
-        build_return(bcx);
-
-        let lltop = bcx.llbb;
-        finish_fn(fcx, lltop);
-
-        ret llfdecl;
-    }
-
-    fn create_main_wrapper_ivec(ccx: &@crate_ctxt,
-                                sp: &span,
-                                main_llfn: ValueRef,
-                                main_mode: main_mode) -> ValueRef {
+    fn create_main(ccx: &@crate_ctxt,
+                   sp: &span,
+                   main_llfn: ValueRef,
+                   takes_ivec: bool) -> ValueRef {
         let ivecarg = {
             mode: ty::mo_val,
             ty: ty::mk_ivec(ccx.tcx, {
@@ -6475,12 +6411,12 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
                                ~[ivecarg],
                                ty::mk_nil(ccx.tcx),
                                0u);
-        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main_ivec", llfty);
+        let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
         let bcx = new_top_block_ctxt(fcx);
 
-        if main_mode == mm_ivec {
+        if takes_ivec {
             let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
             let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
             let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
@@ -6489,6 +6425,14 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
                          lltaskarg,
                          llenvarg,
                          llargvarg];
+            bcx.build.FastCall(main_llfn, args);
+        } else {
+            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
+            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
+            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
+            let args = ~[lloutputarg,
+                         lltaskarg,
+                         llenvarg];
             bcx.build.FastCall(main_llfn, args);
         }
         build_return(bcx);
