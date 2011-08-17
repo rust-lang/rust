@@ -44,7 +44,7 @@ rust_obstack_chunk::free(void *ptr) {
     uint8_t *p = (uint8_t *)ptr;
     if (p < data || p >= data + size)
         return false;
-    assert(p < data + alen);
+    assert(p <= data + alen);
     alen = (size_t)(p - data);
     return true;
 }
@@ -71,7 +71,8 @@ rust_obstack::alloc(size_t len) {
     if (!chunk)
         return alloc_new(len);
     void *ptr = chunk->alloc(len);
-    return ptr ? ptr : alloc_new(len);
+    ptr = ptr ? ptr : alloc_new(len);
+    return ptr;
 }
 
 void

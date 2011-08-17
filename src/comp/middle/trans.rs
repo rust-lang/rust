@@ -466,15 +466,17 @@ fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
+    let builder = new_builder(cx.fcx.lldynamicallocas);
     alt bcx_fcx(cx).llobstacktoken {
         none. {
+            let dynastack_mark = bcx_ccx(cx).upcalls.dynastack_mark;
+            let lltaskptr = bcx_fcx(cx).lltaskptr;
             bcx_fcx(cx).llobstacktoken =
-                some(cx.build.Call(bcx_ccx(cx).upcalls.dynastack_mark,
-                     ~[bcx_fcx(cx).lltaskptr]));
+                some(builder.Call(dynastack_mark, ~[lltaskptr]));
         }
         some(_) { /* no-op */ }
     }
-    ret new_builder(cx.fcx.lldynamicallocas).ArrayAlloca(t, n);
+    ret builder.ArrayAlloca(t, n);
 }
 
 
@@ -1266,6 +1268,8 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
         bcx = duplicate_heap_parts_if_necessary(cx, v, t).bcx;
         bcx = iter_structural_ty(bcx, v, t, bind copy_ty(_, _, _)).bcx;
     } else { bcx = cx; }
+
+    trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
 }
 
@@ -1371,7 +1375,9 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           }
           _ { rslt(cx, C_nil()) }
         };
-    rs.bcx.build.RetVoid();
+
+    let bcx = trans_fn_cleanups(rs.bcx);
+    bcx.build.RetVoid();
 }
 
 fn maybe_free_ivec_heap_part(cx: &@block_ctxt, v0: ValueRef, unit_ty: ty::t)
@@ -1439,7 +1445,9 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
             } else { rslt(cx, C_nil()) }
           }
         };
-    rs.bcx.build.RetVoid();
+
+    let bcx = trans_fn_cleanups(rs.bcx);
+    bcx.build.RetVoid();
 }
 
 fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
@@ -3719,7 +3727,8 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
     if !r.bcx.build.is_terminated() {
         // if terminated is true, no need for the ret-fail
-        r.bcx.build.RetVoid();
+        let bcx = trans_fn_cleanups(r.bcx);
+        bcx.build.RetVoid();
     }
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
@@ -5439,6 +5448,7 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
           parent_none. { more_cleanups = false; }
         }
     }
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     ret rslt(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
 }
@@ -5596,6 +5606,18 @@ fn trans_block_cleanups(cx: &@block_ctxt, cleanup_cx: &@block_ctxt) ->
           clean(cfn) { bcx = cfn(bcx).bcx; }
           clean_temp(_, cfn) { bcx = cfn(bcx).bcx; }
         }
+    }
+    ret bcx;
+}
+
+fn trans_fn_cleanups(bcx: &@block_ctxt) -> @block_ctxt {
+    alt bcx_fcx(bcx).llobstacktoken {
+        some(lltoken_) {
+            let lltoken = lltoken_; // satisfy alias checker
+            bcx.build.Call(bcx_ccx(bcx).upcalls.dynastack_free,
+                           ~[bcx_fcx(bcx).lltaskptr, lltoken]);
+        }
+        none. { /* nothing to do */ }
     }
     ret bcx;
 }
@@ -6048,6 +6070,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
     if !is_terminated(bcx) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
+        bcx = trans_fn_cleanups(bcx);
         bcx.build.RetVoid();
     }
 
@@ -6204,6 +6227,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         i += 1u;
     }
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 }
