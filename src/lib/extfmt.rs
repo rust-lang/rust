@@ -270,23 +270,6 @@ mod rt {
     // instead just use a bool per flag
     type conv = {flags: [flag], width: count, precision: count, ty: ty};
 
-    // FIXME: Remove these transitional *_ivec interfaces
-    fn conv_int_ivec(cv: &conv, i: int) -> str {
-        conv_int(cv, i)
-    }
-    fn conv_uint_ivec(cv: &conv, u: uint) -> str {
-        conv_uint(cv, u)
-    }
-    fn conv_bool_ivec(cv: &conv, b: bool) -> str {
-        conv_bool(cv, b)
-    }
-    fn conv_char_ivec(cv: &conv, c: char) -> str {
-        conv_char(cv, c)
-    }
-    fn conv_str_ivec(cv: &conv, s: str) -> str {
-        conv_str(cv, s)
-    }
-
     fn conv_int(cv: &conv, i: int) -> str {
         let radix = 10u;
         let prec = get_int_precision(cv);
@@ -317,7 +300,7 @@ mod rt {
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
 
-        ret conv_str_ivec(cv, s);
+        ret conv_str(cv, s);
     }
     fn conv_char(cv: &conv, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
