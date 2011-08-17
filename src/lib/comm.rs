@@ -8,7 +8,6 @@ export _chan;
 export _port;
 
 export mk_port;
-export chan_from_unsafe_ptr;
 export send;
 export recv;
 export chan;
@@ -47,7 +46,6 @@ resource port_ptr(po: *rustrt::rust_port) {
 type port<~T> = @port_ptr;
 
 obj port_obj<~T>(raw_port : port<T>) {
-    // FIXME: rename this to chan once chan is not a keyword.
     fn mk_chan() -> _chan<T> {
         chan::<T>(raw_port)
     }

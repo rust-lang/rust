@@ -57,7 +57,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     ref_count(1),
     stk(NULL),
     runtime_sp(0),
-    rust_sp(0),
     gc_alloc_chain(0),
     sched(sched),
     cache(NULL),
@@ -86,7 +85,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     user.notify_enabled = 0;
 
     stk = new_stk(sched, this, 0);
-    rust_sp = stk->limit;
+    user.rust_sp = stk->limit;
 }
 
 rust_task::~rust_task()
@@ -99,7 +98,7 @@ rust_task::~rust_task()
             get_chan_by_handle(&user.notify_chan);
         if(target) {
             task_notification msg;
-            msg.id = id;
+            msg.id = user.id;
             msg.result = failed ? tr_failure : tr_success;
 
             target->send(&msg);
@@ -107,7 +106,7 @@ rust_task::~rust_task()
         }
     }
 
-    kernel->release_task_id(id);
+    kernel->release_task_id(user.id);
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
@@ -166,7 +165,7 @@ rust_task::start(uintptr_t spawnee_fn,
 
     I(sched, stk->data != NULL);
 
-    char *sp = (char *)rust_sp;
+    char *sp = (char *)user.rust_sp;
 
     sp -= sizeof(spawn_args);
 
@@ -178,7 +177,7 @@ rust_task::start(uintptr_t spawnee_fn,
     void **f = (void **)&a->f;
     *f = (void *)spawnee_fn;
 
-    ctx.call((void *)task_start_wrapper, a, sp);
+    user.ctx.call((void *)task_start_wrapper, a, sp);
 
     this->start();
 }
@@ -213,7 +212,7 @@ rust_task::yield(size_t time_in_us) {
     yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
-    ctx.next->swap(ctx);
+    user.ctx.next->swap(user.ctx);
 }
 
 void

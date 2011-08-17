@@ -4,6 +4,7 @@ import comm::_chan;
 import option::some;
 import option::none;
 import option = option::t;
+import ptr;
 
 native "rust" mod rustrt {
     fn task_sleep(time_in_us: uint);
@@ -19,9 +20,8 @@ native "rust" mod rustrt {
     fn set_min_stack(stack_size: uint);
 
     fn new_task() -> task_id;
-    fn drop_task(id : task_id);
+    fn drop_task(task : *rust_task);
     fn get_task_pointer(id : task_id) -> *rust_task;
-    fn get_task_context(id : task_id) -> *x86_registers;
     fn start_task(id : task_id);
     fn get_task_trampoline() -> u32;
 
@@ -31,9 +31,25 @@ native "rust" mod rustrt {
 }
 
 type rust_task = {
+    id : task,
     mutable notify_enabled : u8,
-    mutable notify_chan : _chan<task_notification>
+    mutable notify_chan : _chan<task_notification>,
+    ctx : task_context,
+    stack_ptr : *u8
 };
+
+type task_context = {
+    regs : x86_registers,
+    next : *u8
+};
+
+resource rust_task_ptr(task : *rust_task) {
+    rustrt::drop_task(task);
+}
+
+fn get_task_ptr(id : task) -> rust_task_ptr {
+    ret rust_task_ptr(rustrt::get_task_pointer(id));
+}
 
 type task = int;
 type task_id = task;
@@ -95,14 +111,16 @@ fn spawn_inner(thunk : -fn() -> (),
     let id = rustrt::new_task();
 
     // the order of arguments are outptr, taskptr, envptr.
-
-    // In LLVM fastcall puts the first two in ecx, edx, and the rest on the
+    // LLVM fastcall puts the first two in ecx, edx, and the rest on the
     // stack.
-    let regs = rustrt::get_task_context(id);
 
     // set up the task pointer
-    let task_ptr = rustrt::get_task_pointer(id);
-    (*regs).edx = cast(task_ptr);
+    let task_ptr = get_task_ptr(id);
+    let regs = ptr::addr_of((**task_ptr).ctx.regs);
+    (*regs).edx = cast(*task_ptr);
+    (*regs).esp = cast((**task_ptr).stack_ptr);
+
+    assert ptr::null() != (**task_ptr).stack_ptr;
 
     let raw_thunk : { code: u32, env: u32 } = cast(thunk);
     (*regs).eip = raw_thunk.code;
@@ -110,8 +128,8 @@ fn spawn_inner(thunk : -fn() -> (),
     // set up notifications if they are enabled.
     alt notify {
       some(c) {
-        (*task_ptr).notify_enabled = 1u8;
-        (*task_ptr).notify_chan = c;
+        (**task_ptr).notify_enabled = 1u8;
+        (**task_ptr).notify_chan = c;
       }
       none {}
     };
@@ -130,7 +148,7 @@ fn spawn_inner(thunk : -fn() -> (),
     // put the return pointer in ecx.
     (*regs).ecx = (*regs).esp + 8u32;
 
-    *tptr = cast(task_ptr);
+    *tptr = cast(*task_ptr);
     *env = raw_thunk.env;
     *ra = rustrt::get_task_trampoline();
 
@@ -138,11 +156,6 @@ fn spawn_inner(thunk : -fn() -> (),
     rustrt::start_task(id);
 
     rustrt::leak(thunk);
-
-    // Drop twice because get_task_context and get_task_pounter both bump the
-    // ref count and expect us to free it.
-    rustrt::drop_task(id);
-    rustrt::drop_task(id);
 
     ret id;
 }

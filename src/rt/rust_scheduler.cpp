@@ -47,10 +47,10 @@ void
 rust_scheduler::activate(rust_task *task) {
     context ctx;
 
-    task->ctx.next = &ctx;
+    task->user.ctx.next = &ctx;
     DLOG(this, task, "descheduling...");
     lock.unlock();
-    task->ctx.swap(ctx);
+    task->user.ctx.swap(ctx);
     lock.lock();
     DLOG(this, task, "task has returned");
 }
@@ -226,7 +226,7 @@ rust_scheduler::start_main_loop() {
              ", state: %s",
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->rust_sp,
+             scheduled_task->user.rust_sp,
              scheduled_task->state->name);
 
         interrupt_flag = 0;
@@ -244,7 +244,7 @@ rust_scheduler::start_main_loop() {
              scheduled_task->name,
              (uintptr_t)scheduled_task,
              scheduled_task->state->name,
-             scheduled_task->rust_sp,
+             scheduled_task->user.rust_sp,
              id);
 
         reap_dead_tasks(id);

@@ -154,10 +154,10 @@ rust_kernel::create_task(rust_task *spawner, const char *name) {
     rust_task *t = thread->create_task(spawner, name);
     {
         scoped_lock with(_kernel_lock);
-        t->id = max_id++;
-        task_table.put(t->id, t);
+        t->user.id = max_id++;
+        task_table.put(t->user.id, t);
     }
-    return t->id;
+    return t->user.id;
 }
 
 rust_task *

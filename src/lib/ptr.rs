@@ -10,3 +10,4 @@ fn offset<T>(ptr: *T, count: uint) -> *T {
     ret rusti::ptr_offset(ptr, count);
 }
 
+fn null<T>() -> *T { ret unsafe::reinterpret_cast(0u); }

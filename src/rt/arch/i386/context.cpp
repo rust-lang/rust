@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 extern "C" uint32_t CDECL swap_registers(registers_t *oregs,
                                          registers_t *regs)
@@ -11,6 +12,7 @@ extern "C" uint32_t CDECL swap_registers(registers_t *oregs,
 
 context::context()
 {
+    assert((void*)&regs == (void*)this);
 }
 
 void context::swap(context &out)

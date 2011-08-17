@@ -38,8 +38,11 @@ struct gc_alloc {
 // portions of the task structure that are accessible from the standard
 // library. This struct must agree with the std::task::rust_task record.
 struct rust_task_user {
+    rust_task_id id;
     uint8_t notify_enabled;
     chan_handle notify_chan;
+    context ctx;
+    uintptr_t rust_sp;         // Saved sp when not running.
 };
 
 // std::lib::task::task_result
@@ -66,7 +69,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known to the compiler.
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
-    uintptr_t rust_sp;         // Saved sp when not running.
     gc_alloc *gc_alloc_chain;  // Linked list of GC allocations.
     rust_scheduler *sched;
     rust_crate_cache *cache;
@@ -82,7 +84,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
 
-    rust_task_id id;
     rust_port_id next_port_id;
 
     // Keeps track of the last time this task yielded.
@@ -98,8 +99,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     // List of tasks waiting for this task to finish.
     array_list<rust_task *> tasks_waiting_to_join;
-
-    context ctx;
 
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
