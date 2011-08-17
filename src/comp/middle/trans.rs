@@ -6585,8 +6585,8 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, wrapper_fn);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
-    // Declare the function itself.
 
+    // Declare the function itself.
     let fn_type = node_id_type(ccx, id); // NB: has no type params
 
     let abi = ty::ty_fn_abi(ccx.tcx, fn_type);
