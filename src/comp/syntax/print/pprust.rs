@@ -720,11 +720,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
     alt expr.node {
       ast::expr_vec(exprs, mut, kind) {
         ibox(s, indent_unit);
-        alt kind {
-          ast::sk_rc. { word(s.s, "["); }
-          ast::sk_unique. { word(s.s, "~["); }
-
-        }
+        word(s.s, "[");
         if mut == ast::mut {
             word(s.s, "mutable");
             if vec::len(exprs) > 0u { nbsp(s); }
