@@ -676,16 +676,12 @@ The keywords are:
 @tab @code{tag}
 @tab @code{vec}
 @tab @code{str}
+@tab @code{with}
 @item @code{fn}
 @tab @code{iter}
 @tab @code{pred}
 @tab @code{obj}
 @tab @code{resource}
-@item @code{task}
-@tab @code{port}
-@tab @code{chan}
-@tab @code{spawn}
-@tab @code{with}
 @item @code{if}
 @tab @code{else}
 @tab @code{alt}
@@ -916,8 +912,6 @@ The special symbols are:
 @item @code{=}
 @tab @code{<-}
 @tab @code{<->}
-@tab @code{<|}
-@tab @code{|>}
 @tab @code{->}
 @item @code{+}
 @tab @code{++}
@@ -995,7 +989,7 @@ reference in later passes. @xref{Ref.Gram}.
 
 An example of a path with type parameters:
 @example
-m::map[int,str];
+m::map<int,str>;
 @end example
 
 @page
@@ -1422,6 +1416,9 @@ operating-system processes.
 * Ref.Task.Life::               Task lifecycle and state transitions.
 * Ref.Task.Dom::                Task domains.
 * Ref.Task.Sched::              Task scheduling model.
+* Ref.Task.Spawn::              Library interface for making new tasks.
+* Ref.Task.Send::               Library interface for sending messages.
+* Ref.Task.Recv::               Library interface for receiving messages.
 @end menu
 
 @node       Ref.Task.Comm
@@ -1477,8 +1474,8 @@ its memory budget, which causes a run-time signal. To help control this
 possibility, a semi-synchronous send operation is possible, which blocks until
 there is room in the existing queue before sending send.
 
-The message-send operator is @code{<|}. @xref{Ref.Expr.Send}. The
-message-receive operator is @code{|>}. @xref{Ref.Expr.Recv}.
+Messages are sent on channels and received on ports using standard library
+functions.
 
 @node       Ref.Task.Life
 @subsection Ref.Task.Life
@@ -1581,6 +1578,82 @@ An executing task can @code{yield} control at any time, which deschedules it
 immediately. Entering any other non-executing state (blocked, dead) similarly
 deschedules the task.
 
+
+
+@node       Ref.Task.Spawn
+@subsection Ref.Task.Spawn
+@c * Ref.Task.Spawn::               Calls for creating new tasks.
+@cindex Spawn expression
+
+A call to @code{std::task::spawn}, passing a 0-argument function as its single
+argument, causes the runtime to construct a new task executing the passed
+function. The passed function is referred to as the @dfn{entry function} for
+the spawned task, and any captured environment is carries is moved from the
+spawning task to the spawned task before the spawned task begins execution.
+
+The result of a @code{spawn} call is a @code{std::task::task_id} value.
+
+An example of a @code{spawn} call:
+@example
+import std::task::*;
+import std::comm::*;
+
+fn helper(c: chan<u8>) @{
+    // do some work.
+    let result = ...;
+    send(c, result);
+@}
+
+let p: port<u8>;
+
+spawn(bind helper(p.mk_chan()));
+// let task run, do other things.
+// ...
+let result = p.recv();
+
+@end example
+
+@node       Ref.Task.Send
+@subsection Ref.Task.Send
+@c * Ref.Task.Send::            Calls for sending a value into a channel.
+@cindex Send call
+@cindex Messages
+@cindex Communication
+
+Sending a value into a channel is done by a library call to
+@code{std::comm::send}, which takes a channel and a value to send, and moves
+the value into the channel's outgoing buffer.
+
+An example of a send:
+@example
+import std::comm::*;
+let c: chan<str> = @dots{};
+send(c, "hello, world");
+@end example
+
+@node       Ref.Task.Recv
+@subsection Ref.Task.Recv
+@c * Ref.Task.Recv::           Calls for receiving a value from a channel.
+@cindex Receive call
+@cindex Messages
+@cindex Communication
+
+Receiving a value is done by a call to the @code{recv} method, on an object of
+type @code{std::comm::port}. This call causes the receiving task to enter the
+@emph{blocked reading} state until a task is sending a value to the port, at
+which point the runtime pseudo-randomly selects a sending task and moves a
+value from the head of one of the task queues to the call's return value, and
+un-blocks the receiving task. @xref{Ref.Run.Comm}.
+
+An example of a @emph{receive}:
+@example
+import std::comm::*;
+let p: port<str> = @dots{};
+let s: str = p.recv();
+@end example
+
+
+
 @page
 @node    Ref.Item
 @section Ref.Item
@@ -1608,13 +1681,13 @@ declared is given by the grammar.  @xref{Ref.Gram}.
 
 Functions, iterators, objects and type definitions may be @emph{parametrized}
 by type. Type parameters are given as a comma-separated list of identifiers
-enclosed in square brackets (@code{[]}), after the name of the item and before
+enclosed in angle brackets (@code{<>}), after the name of the item and before
 its definition.  The type parameters of an item are part of the name, not the
 type of the item; in order to refer to the type-parametrized item, a
 referencing name must in general provide type arguments as a list of
-comma-separated types enclosed within square brackets (though the
-type-inference system can often infer such argument types from context). There
-are no general parametric types.
+comma-separated types enclosed within angle brackets. In practice, the
+type-inference system can usually infer such argument types from
+context. There are no general parametric types.
 
 @menu
 * Ref.Item.Mod::                Items defining modules.
@@ -1978,12 +2051,12 @@ a = cat;
 
 An example of a @emph{recursive} @code{tag} item and its use:
 @example
-tag list[T] @{
+tag list<T> @{
   nil;
-  cons(T, @@list[T]);
+  cons(T, @@list<T>);
 @}
 
-let a: list[int] = cons(7, cons(13, nil));
+let a: list<int> = cons(7, cons(13, nil));
 @end example
 
 
@@ -2249,7 +2322,7 @@ vector. This behaviour supports idiomatic in-place ``growth'' of a mutable
 slot holding a vector:
 
 @example
-let v: mutable vec[int] = [1, 2, 3];
+let v: mutable [int] = [1, 2, 3];
 v += [4, 5, 6];
 @end example
 
@@ -2341,10 +2414,9 @@ pinned values can pass over a port or channel.
 
 An example of a @code{port} type:
 @example
-type port[vec[str]] svp;
+type svp = port<[str]>;
 let p: svp = get_port();
-let v: vec[str];
-p |> v;
+let v: [str] = p.recv();
 @end example
 
 @node       Ref.Type.Chan
@@ -2380,10 +2452,10 @@ message is dropped.
 
 An example of a @code{chan} type:
 @example
-type chan[vec[str]] svc;
+type svc = chan<[str]>;
 let c: svc = get_chan();
-let v: vec[str] = ["hello", "world"];
-c <| v;
+let v: [str] = ["hello", "world"];
+std::comm::send(c, v);
 @end example
 
 @node       Ref.Type.Task
@@ -2443,9 +2515,9 @@ obj adder(x: @@mutable int) @{
     @}
 @}
 
-obj sender(c: chan[int]) @{
+obj sender(c: chan<int>) @{
     fn take(z: int) @{
-        c <| z;
+        std::comm::send(c, z);
     @}
 @}
 
@@ -2455,10 +2527,10 @@ fn give_ints(t: taker) @{
     t.take(3);
 @}
 
-let p: port[int] = port();
+let p: port<int> = std::comm::mk_port();
 
 let t1: taker = adder(@@mutable 0);
-let t2: taker = sender(chan(p));
+let t2: taker = sender(p.mk_chan());
 
 give_ints(t1);
 give_ints(t2);
@@ -2864,9 +2936,6 @@ effects of the expression's evaluation.
 
 @menu
 * Ref.Expr.Copy::               Expression for copying a value.
-* Ref.Expr.Spawn::              Expressions for creating new tasks.
-* Ref.Expr.Send::               Expressions for sending a value into a channel.
-* Ref.Expr.Recv::               Expression for receiving a value from a channel.
 * Ref.Expr.Call::               Expression for calling a function.
 * Ref.Expr.Bind::               Expression for binding arguments to functions.
 * Ref.Expr.Ret::                Expression for stopping and producing a value.
@@ -2915,79 +2984,6 @@ An example of three different copy expressions:
 x = y;
 x.y = z;
 x.y = z + 2;
-@end example
-
-@node       Ref.Expr.Spawn
-@subsection Ref.Expr.Spawn
-@c * Ref.Expr.Spawn::               Expressions creating new tasks.
-@cindex Spawn expression
-
-A @code{spawn} expression consists of keyword @code{spawn}, followed by
-an optional literal string naming the new task and then a normal
-@emph{call} expression (@pxref{Ref.Expr.Call}).  A @code{spawn}
-expression causes the runtime to construct a new task executing the
-called function with the given name.  The called function is referred
-to as the @dfn{entry function} for the spawned task, and its arguments
-are copied from the spawning task to the spawned task before the
-spawned task begins execution.  If no explicit name is present, the
-task is implicitly named with the string of the call expression.
-
-Functions taking alias-slot arguments, or returning non-nil values, cannot be
-spawned. Iterators cannot be spawned.
-
-The result of a @code{spawn} expression is a @code{task} value.
-
-An example of a @code{spawn} expression:
-@example
-fn helper(out: chan[u8]) @{
-    // do some work.
-    out <| result;
-@}
-
-let out: port[u8];
-let p: task = spawn helper(chan(out));
-let p2: task = spawn "my_helper" helper(chan(out));
-// let task run, do other things.
-let out |> result;
-
-@end example
-
-@node       Ref.Expr.Send
-@subsection Ref.Expr.Send
-@c * Ref.Expr.Send::            Expressions for sending a value into a channel.
-@cindex Send expression
-@cindex Communication
-
-Sending a value into a channel is done by the send operator @code{<|}, which
-takes a channel and a value to send, and moves the value into the channel's
-outgoing buffer.
-
-An example of a send:
-@example
-chan[str] c = @dots{};
-c <| "hello, world";
-@end example
-
-@node       Ref.Expr.Recv
-@subsection Ref.Expr.Recv
-@c * Ref.Expr.Recv::           Expression for receiving a value from a channel.
-@cindex Receive expression
-@cindex Communication
-
-The @dfn{receive expression} takes an @var{lval} to receive into and an
-expression denoting a port, and applies the @emph{receive operator}
-(@code{|>}) to the pair, moving a value out of the port and into the
-@var{lval}. The expression causes the receiving task to enter the @emph{blocked
-reading} state until a task is sending a value to the port, at which point the
-runtime pseudo-randomly selects a sending task and copies a value from the
-head of one of the task queues to the receiving location in memory, and
-un-blocks the receiving task. @xref{Ref.Run.Comm}.
-
-An example of a @emph{receive}:
-@example
-port[str] p = @dots{};
-let s: str;
-p |> p;
 @end example
 
 @node       Ref.Expr.Call
@@ -3182,9 +3178,9 @@ diagnostic buffer.
 
 An example of a @code{note} expression:
 @example
-fn read_file_lines(path: &str) -> vec[str] @{
+fn read_file_lines(path: &str) -> [str] @{
     note path;
-    let r: vec[str];
+    let r: [str];
     let f: file = open_read(path);
     for each (s: str in lines(f)) @{
         vec::append(r,s);
@@ -3285,7 +3281,7 @@ run the loop over the slice.
 
 Example of 4 for loops, all identical:
 @example
-let v: vec[foo] = [a, b, c];
+let v: [foo] = [a, b, c];
 
 for (foo e in v.(0, vec::len(v))) @{
     bar(e);
@@ -3318,7 +3314,7 @@ the iterator.  When the iterator returns or fails, the loop terminates.
 Example of a foreach loop:
 @example
 let txt: str;
-let lines: vec[str];
+let lines: [str];
 for each (s: str in str::split(txt, "\n")) @{
     vec::push(lines, s);
 @}
@@ -3350,8 +3346,8 @@ then any @code{else} block is executed.
 @cindex Switch expression, see @i{Alt expression}
 
 An @code{alt} expression is a multi-directional branch in program control.
-There are three kinds of @code{alt} expression: communication @code{alt}
-expressions, pattern @code{alt} expressions, and @code{alt type} expressions.
+There are two kinds of @code{alt} expression: pattern @code{alt} expressions
+and @code{alt type} expressions.
 
 The form of each kind of @code{alt} is similar: an initial @emph{head} that
 describes the criteria for branching, followed by a sequence of zero or more
@@ -3362,47 +3358,9 @@ to the block associated with the chosen case, and then proceeds to the
 expression following the @code{alt} when the case block completes.
 
 @menu
-* Ref.Expr.Alt.Comm::         Expression for branching on communication events.
 * Ref.Expr.Alt.Pat::          Expression for branching on pattern matches.
 * Ref.Expr.Alt.Type::         Expression for branching on types.
 @end menu
-
-@node          Ref.Expr.Alt.Comm
-@subsubsection Ref.Expr.Alt.Comm
-@c * Ref.Expr.Alt.Comm::           Expression for branching on communication events.
-@cindex Communication alt expression
-@cindex Control-flow
-@cindex Communication
-@cindex Multiplexing
-
-The simplest form of @code{alt} expression is the a @emph{communication}
-@code{alt}. The cases of a communication @code{alt}'s arms are send and
-receive expressions. @xref{Ref.Task.Comm}.
-
-To execute a communication @code{alt}, the runtime checks all of the ports and
-channels involved in the arms of the expression to see if any @code{case} can
-execute without blocking.  If no @code{case} can execute, the task blocks, and
-the runtime unblocks the task when a @code{case} @emph{can} execute. The
-runtime then makes a pseudo-random choice from among the set of @code{case}
-expressions that can execute, executes the expression of the @code{case} and
-branches to the block of that arm.
-
-An example of a communication @code{alt} expression:
-@example
-let c: chan[int] = foo();
-let p: port[str] = bar();
-let x: int = 0;
-let strs: vec[str];
-
-alt @{
-    case (str s; p |> s) @{
-        vec::append(strs, s);
-    @}
-    case (c <| x) @{
-        x++;
-    @}
-@}
-@end example
 
 @node          Ref.Expr.Alt.Pat
 @subsubsection Ref.Expr.Alt.Pat
@@ -3427,9 +3385,9 @@ block.
 An example of a pattern @code{alt} expression:
 
 @example
-type list[X] = tag(nil, cons(X, @@list[X]));
+type list<X> = tag(nil, cons(X, @@list<X>));
 
-let x: list[int] = cons(10, cons(11, nil));
+let x: list<int> = cons(10, cons(11, nil));
 
 alt (x) @{
     case (cons(a, cons(b, _))) @{
@@ -3467,10 +3425,10 @@ alt type (x) @{
     case (int i) @{
         ret i;
     @}
-    case (list[int] li) @{
+    case (list<int> li) @{
         ret int_list_sum(li);
     @}
-    case (list[X] lx) @{
+    case (list<X> lx) @{
         ret list_len(lx);
     @}
     case (_) @{
