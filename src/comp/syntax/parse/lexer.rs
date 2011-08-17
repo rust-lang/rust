@@ -421,7 +421,6 @@ fn next_token_inner(rdr: &reader) -> token::token {
         alt rdr.curr() {
           '=' { rdr.bump(); ret token::LE; }
           '<' { ret binop(rdr, token::LSL); }
-          '|' { rdr.bump(); ret token::SEND; }
           '-' {
             rdr.bump();
             alt rdr.curr() {
@@ -530,7 +529,6 @@ fn next_token_inner(rdr: &reader) -> token::token {
       '|' {
         alt rdr.next() {
           '|' { rdr.bump(); rdr.bump(); ret token::OROR; }
-          '>' { rdr.bump(); rdr.bump(); ret token::RECV; }
           _ { ret binop(rdr, token::OR); }
         }
       }

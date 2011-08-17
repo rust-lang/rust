@@ -52,8 +52,6 @@ tag token {
     MOD_SEP;
     QUES;
     RARROW;
-    SEND;
-    RECV;
     LARROW;
     DARROW;
     LPAREN;
@@ -130,8 +128,6 @@ fn to_str(r: lexer::reader, t: token) -> str {
       MOD_SEP. { ret "::"; }
       QUES. { ret "?"; }
       RARROW. { ret "->"; }
-      SEND. { ret "<|"; }
-      RECV. { ret "|>"; }
       LARROW. { ret "<-"; }
       DARROW. { ret "<->"; }
       LPAREN. { ret "("; }
