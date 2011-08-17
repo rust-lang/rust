@@ -15,6 +15,7 @@ class rust_obstack {
 
 public:
     rust_obstack(rust_task *in_task) : chunk(NULL), task(in_task) {}
+    ~rust_obstack();
 
     void *alloc(size_t len);
     void free(void *ptr);

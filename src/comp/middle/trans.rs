@@ -466,6 +466,14 @@ fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
+    alt bcx_fcx(cx).llobstacktoken {
+        none. {
+            bcx_fcx(cx).llobstacktoken =
+                some(cx.build.Call(bcx_ccx(cx).upcalls.dynastack_mark,
+                     ~[bcx_fcx(cx).lltaskptr]));
+        }
+        some(_) { /* no-op */ }
+    }
     ret new_builder(cx.fcx.lldynamicallocas).ArrayAlloca(t, n);
 }
 
@@ -5632,18 +5640,6 @@ fn llderivedtydescs_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
           fcx: fcx};
 }
 
-fn lldynamicallocas_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
-    let cleanups: [cleanup] = ~[];
-    ret @{llbb: fcx.lldynamicallocas,
-          build: new_builder(fcx.lldynamicallocas),
-          parent: parent_none,
-          kind: SCOPE_BLOCK,
-          mutable cleanups: cleanups,
-          sp: fcx.sp,
-          fcx: fcx};
-}
-
-
 
 fn alloc_ty(cx: &@block_ctxt, t: &ty::t) -> result {
     let bcx = cx;
@@ -5798,6 +5794,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
           mutable llderivedtydescs_first: llbbs.dt,
           mutable llderivedtydescs: llbbs.dt,
           mutable lldynamicallocas: llbbs.da,
+          mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none::<val_self_pair>,
           mutable lliterbody: none::<ValueRef>,
           mutable iterbodyty: none::<ty::t>,

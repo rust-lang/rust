@@ -58,6 +58,14 @@ rust_obstack::alloc_new(size_t len) {
     return chunk->alloc(len);
 }
 
+rust_obstack::~rust_obstack() {
+    while (chunk) {
+        rust_obstack_chunk *prev = chunk->prev;
+        task->free(chunk);
+        chunk = prev;
+    }
+}
+
 void *
 rust_obstack::alloc(size_t len) {
     if (!chunk)
