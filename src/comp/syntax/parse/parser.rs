@@ -568,11 +568,6 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
                 ast::ty_constr(@spanned(lo, hi, t),
                                parse_type_constraints(p));
         }
-    } else if (eat_word(p, "vec")) {
-        expect(p, token::LT);
-        t = ast::ty_vec(parse_mt(p));
-        hi = p.get_hi_pos();
-        expect_gt(p);
     } else if (p.peek() == token::LBRACKET) {
         expect(p, token::LBRACKET);
         t = ast::ty_ivec(parse_mt(p));
