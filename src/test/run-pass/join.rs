@@ -5,7 +5,8 @@ use std;
 import std::task::*;
 
 fn main() {
-    let other = _spawn(bind child());
+    let f = child;
+    let other = _spawn(f);
     log_err "1";
     yield();
     join_id(other);

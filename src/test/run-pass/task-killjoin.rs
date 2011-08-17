@@ -24,12 +24,14 @@ fn supervisor() {
     // Unsupervise this task so the process doesn't return a failure status as
     // a result of the main task being killed.
     task::unsupervise();
-    let t = task::_spawn(bind supervised());
+    let f = supervised;
+    let t = task::_spawn(supervised);
     task::join_id(t);
 }
 
 fn main() {
-    let dom2 = task::_spawn(bind supervisor());
+    let f = supervisor;
+    let dom2 = task::_spawn(f);
     task::join_id(dom2);
 }
 

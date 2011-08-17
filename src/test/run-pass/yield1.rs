@@ -4,7 +4,8 @@ import std::task;
 import std::task::*;
 
 fn main() {
-    let other = task::_spawn(bind child());
+    let c = child;
+    let other = task::spawn(c);
     log_err "1"; yield();
     join_id(other);
 }

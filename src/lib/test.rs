@@ -336,13 +336,16 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
 // we've got to treat our test functions as unsafe pointers.  This function
 // only works with functions that don't contain closures.
 fn default_test_to_task(f: &fn()) -> task_id {
+    /*
     fn run_task(fptr: *mutable fn() ) {
         configure_test_task();
         // Run the test
         (*fptr)()
     }
     let fptr = ptr::addr_of(f);
-    ret task::_spawn(bind run_task(fptr));
+    */
+    //ret task::_spawn(bind run_task(fptr));
+    task::spawn(f)
 }
 
 // Call from within a test task to make sure it's set up correctly

@@ -77,7 +77,7 @@ mod map_reduce {
     fn start_mappers(ctrl: _chan<ctrl_proto>, inputs: &[str]) -> [task_id] {
         let tasks = ~[];
         for i: str in inputs {
-            tasks += ~[task::_spawn(bind map_task(ctrl, i))];
+            tasks += ~[task::spawn(bind map_task(ctrl, i))];
         }
         ret tasks;
     }
@@ -179,7 +179,7 @@ mod map_reduce {
                     // log_err "creating new reducer for " + k;
                     let p = mk_port();
                     tasks +=
-                        ~[task::_spawn(bind reduce_task(k, p.mk_chan()))];
+                        ~[task::spawn(bind reduce_task(k, p.mk_chan()))];
                     c = p.recv();
                     reducers.insert(k, c);
                   }

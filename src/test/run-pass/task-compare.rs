@@ -14,8 +14,9 @@ fn main() {
     let t1;
     let t2;
 
-    t1 = task::_spawn(bind child());
-    t2 = task::_spawn(bind child());
+    let c1 = child, c2 = child;
+    t1 = task::_spawn(c1);
+    t2 = task::_spawn(c2);
 
     assert (t1 == t1);
     assert (t1 != t2);

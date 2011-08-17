@@ -85,8 +85,9 @@ fn test_ptr() {
 
 fn test_task() {
     fn f() { }
-    let t1 = task::_spawn(bind f());
-    let t2 = task::_spawn(bind f());
+    let f1 = f, f2 = f;
+    let t1 = task::spawn(f1);
+    let t2 = task::spawn(f2);
 
     assert t1 == t1;
     assert t1 != t2;

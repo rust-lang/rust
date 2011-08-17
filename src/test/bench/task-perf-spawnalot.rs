@@ -7,7 +7,8 @@ import std::str;
 fn f(n: uint) {
     let i = 0u;
     while i < n {
-        task::join_id(task::_spawn(bind g()));
+        let thunk = g;
+        task::join_id(task::spawn(thunk));
         i += 1u;
     }
 }
@@ -23,7 +24,7 @@ fn main(args: [str]) {
     };
     let i = 0u;
     while i < n {
-        task::_spawn(bind f(n));
+        task::spawn(bind f(n));
         i += 1u;
     }
 }

@@ -37,7 +37,7 @@ fn test00() {
     let tasks = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::_spawn(bind test00_start(ch, i, number_of_messages))];
+        tasks += [task::spawn(bind test00_start(ch, i, number_of_messages))];
     }
 
     let sum: int = 0;
@@ -96,7 +96,11 @@ fn test04_start() {
 fn test04() {
     log "Spawning lots of tasks.";
     let i: int = 4;
-    while i > 0 { i = i - 1; task::_spawn(bind test04_start()); }
+    while i > 0 {
+        i = i - 1;
+        let f = test04_start;
+        task::spawn(f);
+    }
     log "Finishing up.";
 }
 
@@ -111,7 +115,7 @@ fn test05_start(ch: _chan<int>) {
 fn test05() {
     let po = comm::mk_port();
     let ch = po.mk_chan();
-    task::_spawn(bind test05_start(ch));
+    task::spawn(bind test05_start(ch));
     let value: int;
     value = po.recv();
     value = po.recv();
@@ -134,7 +138,7 @@ fn test06() {
 
     let tasks = [];
     while i < number_of_tasks {
-        i = i + 1; tasks += [task::_spawn(bind test06_start(i))]; }
+        i = i + 1; tasks += [task::spawn(bind test06_start(i))]; }
 
 
     for t: task_id in tasks { task::join_id(t); }

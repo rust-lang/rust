@@ -11,6 +11,7 @@ fn child() { assert (1 == 2); }
 
 fn main() {
     let p = mk_port::<int>();
-    task::_spawn(bind child());
+    let f = child;
+    task::_spawn(f);
     let x = p.recv();
 }

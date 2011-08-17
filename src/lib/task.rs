@@ -75,21 +75,22 @@ fn set_min_stack(stack_size : uint) {
     rustrt::set_min_stack(stack_size);
 }
 
-fn _spawn(thunk : fn() -> ()) -> task {
+fn _spawn(thunk : -fn() -> ()) -> task {
     spawn(thunk)
 }
 
-fn spawn(thunk : fn() -> ()) -> task {
+fn spawn(thunk : -fn() -> ()) -> task {
     spawn_inner(thunk, none)
 }
 
-fn spawn_notify(thunk : fn() -> (), notify : _chan<task_notification>)
+fn spawn_notify(thunk : -fn() -> (), notify : _chan<task_notification>)
     -> task {
     spawn_inner(thunk, some(notify))
 }
 
 // FIXME: make this a fn~ once those are supported.
-fn spawn_inner(thunk : fn() -> (), notify : option<_chan<task_notification>>)
+fn spawn_inner(thunk : -fn() -> (),
+               notify : option<_chan<task_notification>>)
     -> task_id {
     let id = rustrt::new_task();
 

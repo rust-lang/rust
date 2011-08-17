@@ -4,7 +4,8 @@ import std::task;
 import std::task::*;
 
 fn main() {
-    let other = task::_spawn(bind child());
+    let f = child;
+    let other = task::spawn(f);
     log_err "1";
     yield();
     log_err "2";

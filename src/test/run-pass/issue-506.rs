@@ -13,4 +13,7 @@ fn yield_wrap() {
     rustrt::task_yield();
 }
 
-fn main() { task::_spawn(bind yield_wrap()); }
+fn main() {
+    let f = yield_wrap;
+    task::_spawn(f);
+}
