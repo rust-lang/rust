@@ -6977,7 +6977,6 @@ fn make_glues(llmod: ModuleRef, taskptr_type: TypeRef) -> @glue_fns {
 fn make_common_glue(sess: &session::session, output: &str) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it.
-
     let task_type = T_task();
     let taskptr_type = T_ptr(task_type);
 
