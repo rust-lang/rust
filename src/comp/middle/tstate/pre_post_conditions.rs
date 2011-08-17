@@ -303,10 +303,11 @@ fn handle_update(fcx: &fn_ctxt, parent: &@expr, lhs: &@expr, rhs: &@expr,
     }
 }
 
+/* FIXME: Can't deinitialize an upvar -- tests for that? */
 fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
     let df = node_id_to_def_upvar_strict(fcx, id);
     alt df {
-      def_local(d_id) {
+      def_local(d_id) | def_arg(d_id) {
         let i = bit_num(fcx, ninit(d_id.node, name));
         use_var(fcx, d_id.node);
         require_and_preserve(i, rslt);
@@ -318,12 +319,12 @@ fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
 fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr,
                         modes: &[ty::mode],
                         operands: &[@expr]) {
-    let i = 0;
+    let i = 0u;
     for mode: ty::mode in modes {
         if mode == ty::mo_move {
             forget_in_postcond(fcx, parent.id, operands.(i).id);
         }
-        i += 1;
+        i += 1u;
     }
 }
 
@@ -672,10 +673,12 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
     let nv = num_constraints(fcx.enclosing);
     fn do_one_(fcx: fn_ctxt, s: &@stmt) {
         find_pre_post_stmt(fcx, *s);
-        log "pre_post for stmt:";
-        log_stmt(*s);
-        log "is:";
-        log_pp(stmt_pp(fcx.ccx, *s));
+/*
+        log_err "pre_post for stmt:";
+        log_stmt_err(*s);
+        log_err "is:";
+        log_pp_err(stmt_pp(fcx.ccx, *s));
+*/
     }
     for s: @stmt in b.node.stmts { do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }

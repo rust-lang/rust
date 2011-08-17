@@ -165,6 +165,7 @@ fn find_pre_post_state_call(fcx: &fn_ctxt, pres: &prestate, a: &@expr,
                             id: node_id, ops: &[init_op], bs: &[@expr],
                             cf: controlflow) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, a);
+    // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
                                   #fmt("mismatched arg lengths: \
@@ -605,6 +606,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
 fn find_pre_post_state_stmt(fcx: &fn_ctxt, pres: &prestate, s: @stmt)
     -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
+
 /*
     log_err ("[" + fcx.name + "]");
     log_err "*At beginning: stmt = ";
@@ -727,8 +729,13 @@ fn find_pre_post_state_fn(fcx: &fn_ctxt, f: &_fn) -> bool {
     // This ensures that intersect works correctly.
     kill_all_prestate(fcx, f.body.node.id);
 
-    // Instantiate any constraints on the arguments so we can use them
+    // Arguments start out initialized
     let block_pre = block_prestate(fcx.ccx, f.body);
+    for a:arg in f.decl.inputs {
+        set_in_prestate_constr(fcx, ninit(a.id, a.ident), block_pre);
+    }
+
+    // Instantiate any constraints on the arguments so we can use them
     let tsc;
     for c: @constr in f.decl.constraints {
         tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f.decl.inputs, c);

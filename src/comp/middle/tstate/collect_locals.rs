@@ -109,6 +109,14 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
         next = add_constraint(cx.tcx, sc, next, res_map);
     }
 
+    /* Need to add constraints for args too, b/c they
+    can be deinitialized */
+    for a:arg in f.decl.inputs {
+        next = add_constraint(cx.tcx, respan(f_sp,
+                                             ninit(a.id, a.ident)),
+                              next, res_map);
+    }
+
     /* add the special i_diverge and i_return constraints
     (see the type definition for auxiliary::fn_info for an explanation) */
 
@@ -127,7 +135,8 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
         {constrs: res_map,
          num_constraints:
          // add 2 to account for the i_return and i_diverge constraints
-             vec::len(*cx.cs) + vec::len(f.decl.constraints) + 2u,
+             vec::len(*cx.cs) + vec::len(f.decl.constraints)
+                 + vec::len(f.decl.inputs) + 2u,
          cf: f.decl.cf,
          i_return: ninit(id, name),
          i_diverge: ninit(diverges_id, diverges_name),
