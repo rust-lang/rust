@@ -61,9 +61,7 @@ tag scope {
 type scopes = list<scope>;
 
 tag import_state {
-    todo(@ast::view_item, scopes); // only used for explicit imports
-    todo_from(@ast::view_item, ast::import_ident, scopes);
-
+    todo(ast::node_id, ast::ident, [ast::ident], codemap::span, scopes);
     resolving(span);
     resolved(option::t<def>,
               /* value */
@@ -173,13 +171,15 @@ fn map_crate(e: &@env, c: &@ast::crate) {
                        glob_imported_names: new_str_hash::<import_state>()});
     fn index_vi(e: @env, i: &@ast::view_item, sc: &scopes, v: &vt<scopes>) {
         alt i.node {
-          ast::view_item_import(_, ids, id) {
-            e.imports.insert(id, todo(i, sc));
+          ast::view_item_import(name, ids, id) {
+            e.imports.insert(id, todo(id, name, ids, i.span, sc));
           }
           ast::view_item_import_from(mod_path, idents, id) {
             for ident in idents {
                 e.imports.insert(ident.node.id,
-                                 todo_from(i, ident, sc));
+                                 todo(ident.node.id, ident.node.name,
+                                        mod_path + ~[ident.node.name],
+                                        ident.span, sc));
             }
           }
           _ { }
@@ -251,23 +251,9 @@ fn resolve_imports(e: &env) {
     for each it: @{key: ast::node_id, val: import_state} in e.imports.items()
              {
         alt it.val {
-          todo(item, sc) {
-            alt item.node {
-              ast::view_item_import(name, ids, id) {
-                resolve_import(e, local_def(id),
-                               name, ids, item.span, sc);
-              }
-            }
-          }
-          todo_from(item, ident, sc) {
-              alt item.node {
-                ast::view_item_import_from(mod_path, idents, _) {
-                  resolve_import(e, local_def(ident.node.id),
-                                 ident.node.name,
-                                 mod_path + ~[ident.node.name],
-                                 ident.span, sc);
-                }
-              }
+          todo(node_id, name, path, span, scopes) {
+            resolve_import(e, local_def(node_id),
+                           name, path, span, scopes);
           }
           resolved(_, _, _) { }
         }
@@ -947,24 +933,9 @@ fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
 
 fn lookup_import(e: &env, defid: def_id, ns: namespace) -> option::t<def> {
     alt e.imports.get(defid.node) {
-      todo(item, sc) {
-        alt item.node {
-          ast::view_item_import(name, ids, id) {
-            resolve_import(e, local_def(id),
-                           name, ids, item.span, sc);
-          }
-        }
-        ret lookup_import(e, defid, ns);
-      }
-      todo_from(item, ident, sc) {
-        alt item.node {
-          ast::view_item_import_from(mod_path, idents, _) {
-            resolve_import(e, local_def(ident.node.id),
-                           ident.node.name,
-                           mod_path + ~[ident.node.name],
-                           ident.span, sc);
-          }
-        }
+      todo(node_id, name, path, span, scopes) {
+        resolve_import(e, local_def(node_id),
+                       name, path, span, scopes);
         ret lookup_import(e, defid, ns);
       }
       resolving(sp) { e.sess.span_err(sp, "cyclic import"); ret none; }
@@ -1051,7 +1022,7 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
         info.glob_imported_names.insert(id, resolved(val, typ, md));
     }
     alt info.glob_imported_names.get(id) {
-      todo(_, _) { e.sess.bug("Shouldn't've put a todo in."); }
+      todo(_, _, _, _, _) { e.sess.bug("Shouldn't've put a todo in."); }
       resolving(sp) {
         ret none::<def>; //circularity is okay in import globs
 
