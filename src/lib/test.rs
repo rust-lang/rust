@@ -305,18 +305,12 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
 }
 
 type test_future =
-    {test: test_desc, fnref: @fn() , wait: fn() -> test_result };
+    {test: test_desc, wait: fn() -> test_result };
 
 fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
-    // FIXME: Because of the unsafe way we're passing the test function
-    // to the test task, we need to make sure we keep a reference to that
-    // function around for longer than the lifetime of the task. To that end
-    // we keep the function boxed in the test future.
-    let fnref = @test.fn;
     if !test.ignore {
-        let test_task = to_task(*fnref);
+        let test_task = to_task(test.fn);
         ret {test: test,
-             fnref: fnref,
              wait:
              bind fn (test_task: task_id) -> test_result {
                  alt task::join_id(test_task) {
@@ -326,7 +320,6 @@ fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
              }(test_task)};
     } else {
         ret {test: test,
-             fnref: fnref,
              wait: fn () -> test_result { tr_ignored }};
     }
 }
