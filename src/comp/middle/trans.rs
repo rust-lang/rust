@@ -1269,7 +1269,7 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
         bcx = iter_structural_ty(bcx, v, t, bind copy_ty(_, _, _)).bcx;
     } else { bcx = cx; }
 
-    trans_fn_cleanups(bcx);
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
 }
 
