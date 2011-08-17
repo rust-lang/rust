@@ -417,6 +417,28 @@ upcall_ivec_spill_shared(rust_task *task,
     v->alloc = new_alloc;
     v->payload.ptr = heap_part;
 }
+
+/**
+ * Returns a token that can be used to deallocate all of the allocated space
+ * space in the dynamic stack.
+ */
+extern "C" CDECL void *
+upcall_dynastack_mark(rust_task *task) {
+    return task->dynastack.alloc(0);
+}
+
+/** Allocates space in the dynamic stack and returns it. */
+extern "C" CDECL void *
+upcall_dynastack_alloc(rust_task *task, size_t sz) {
+    return task->dynastack.alloc(sz);
+}
+
+/** Frees space in the dynamic stack. */
+extern "C" CDECL void
+upcall_dynastack_free(rust_task *task, void *ptr) {
+    return task->dynastack.free(ptr);
+}
+
 //
 // Local Variables:
 // mode: C++

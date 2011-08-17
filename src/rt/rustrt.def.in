@@ -83,6 +83,9 @@ task_yield
 task_join
 unsupervise
 upcall_cmp_type
+upcall_dynastack_alloc
+upcall_dynastack_free
+upcall_dynastack_mark
 upcall_exit
 upcall_fail
 upcall_free

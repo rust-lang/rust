@@ -8,6 +8,7 @@
 #include "util/array_list.h"
 
 #include "context.h"
+#include "rust_obstack.h"
 
 struct stk_seg {
     unsigned int valgrind_id;
@@ -121,6 +122,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     lock_and_signal lock;
 
     hash_map<rust_port_id, rust_port *> port_table;
+
+    rust_obstack dynastack;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_scheduler *sched,

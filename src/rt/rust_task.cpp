@@ -75,7 +75,8 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     local_region(&sched->srv->local_region),
     _on_wakeup(NULL),
     failed(false),
-    propagate_failure(true)
+    propagate_failure(true),
+    dynastack(this)
 {
     LOGPTR(sched, "new task", (uintptr_t)this);
     DLOG(sched, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
