@@ -192,6 +192,8 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
         let p = bcx.build.PointerCast(box.box, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
+
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
 
     // Insert the mandatory first few basic blocks before lltop.
@@ -710,6 +712,7 @@ fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // And, finally, call the outer method.
     bcx.build.FastCall(llouter_mthd, llouter_mthd_args);
 
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 
@@ -882,6 +885,7 @@ fn process_fwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
     // And, finally, call the original (inner) method.
     bcx.build.FastCall(llorig_mthd, llorig_mthd_args);
 
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 

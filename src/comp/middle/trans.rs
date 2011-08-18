@@ -466,17 +466,20 @@ fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
+    let bcx = cx;
     let builder = new_builder(cx.fcx.lldynamicallocas);
-    alt bcx_fcx(cx).llobstacktoken {
-        none. {
-            let dynastack_mark = bcx_ccx(cx).upcalls.dynastack_mark;
-            let lltaskptr = bcx_fcx(cx).lltaskptr;
-            bcx_fcx(cx).llobstacktoken =
-                some(builder.Call(dynastack_mark, ~[lltaskptr]));
-        }
-        some(_) { /* no-op */ }
-    }
-    ret builder.ArrayAlloca(t, n);
+    let lltaskptr = bcx_fcx(bcx).lltaskptr;
+
+    let dynastack_alloc = bcx_ccx(bcx).upcalls.dynastack_alloc;
+    let llsz = builder.Mul(C_uint(llsize_of_real(bcx_ccx(bcx), t)), n);
+    let llresult = builder.Call(dynastack_alloc, ~[lltaskptr, llsz]);
+    ret builder.PointerCast(llresult, T_ptr(t));
+}
+
+fn mk_obstack_token(ccx: &@crate_ctxt, lldynamicallocas: BasicBlockRef,
+                    lltaskptr: ValueRef) -> ValueRef {
+    let builder = new_builder(lldynamicallocas);
+    ret builder.Call(ccx.upcalls.dynastack_mark, ~[lltaskptr]);
 }
 
 
@@ -4407,6 +4410,8 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
     llvm::LLVMSetTailCall(bcx.build.FastCall(lltargetfn, llargs), 1);
+
+    bcx = trans_fn_cleanups(bcx);   // TODO: Might break tail call.
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
@@ -5611,14 +5616,8 @@ fn trans_block_cleanups(cx: &@block_ctxt, cleanup_cx: &@block_ctxt) ->
 }
 
 fn trans_fn_cleanups(bcx: &@block_ctxt) -> @block_ctxt {
-    alt bcx_fcx(bcx).llobstacktoken {
-        some(lltoken_) {
-            let lltoken = lltoken_; // satisfy alias checker
-            bcx.build.Call(bcx_ccx(bcx).upcalls.dynastack_free,
-                           ~[bcx_fcx(bcx).lltaskptr, lltoken]);
-        }
-        none. { /* nothing to do */ }
-    }
+    bcx.build.Call(bcx_ccx(bcx).upcalls.dynastack_free,
+                   ~[bcx_fcx(bcx).lltaskptr, bcx_fcx(bcx).llobstacktoken]);
     ret bcx;
 }
 
@@ -5807,6 +5806,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
     let derived_tydescs =
         map::mk_hashmap::<ty::t, derived_tydesc_info>(ty::hash_ty, ty::eq_ty);
     let llbbs = mk_standard_basic_blocks(llfndecl);
+    let llobstacktoken = mk_obstack_token(cx.ccx, llbbs.da, lltaskptr);
     ret @{llfn: llfndecl,
           lltaskptr: lltaskptr,
           llenv: llenv,
@@ -5816,7 +5816,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
           mutable llderivedtydescs_first: llbbs.dt,
           mutable llderivedtydescs: llbbs.dt,
           mutable lldynamicallocas: llbbs.da,
-          mutable llobstacktoken: none::<ValueRef>,
+          mutable llobstacktoken: llobstacktoken,
           mutable llself: none::<val_self_pair>,
           mutable lliterbody: none::<ValueRef>,
           mutable iterbodyty: none::<ty::t>,
@@ -6137,6 +6137,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: &span, dtor: &ast::_fn,
     let flag = GEP_tup_like(bcx, tup_t, llretptr, ~[0, 0]);
     bcx = flag.bcx;
     bcx.build.Store(C_int(1), flag.val);
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 }
@@ -6433,6 +6434,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
             };
             bcx.build.FastCall(main_llfn, args);
         }
+        bcx = trans_fn_cleanups(bcx);
         bcx.build.RetVoid();
 
         let lltop = bcx.llbb;
@@ -6754,6 +6756,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     for d: {val: ValueRef, ty: ty::t} in drop_args {
         bcx = drop_ty(bcx, d.val, d.ty).bcx;
     }
+    bcx = trans_fn_cleanups(bcx);
     bcx.build.RetVoid();
     finish_fn(fcx, lltop);
 }
