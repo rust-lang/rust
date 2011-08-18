@@ -130,8 +130,15 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
 {
         memset(rctx, 0, sizeof(randctx));
 
+        char *rust_seed = sched->env->rust_seed;
+        if (rust_seed != NULL) {
+            ub4 seed = (ub4) atoi(rust_seed);
+            for (size_t i = 0; i < RANDSIZ; i ++) {
+                memcpy(&rctx->randrsl[i], &seed, sizeof(ub4));
+                seed = (seed + 0x7ed55d16) + (seed << 12);
+            }
+        } else {
 #ifdef __WIN32__
-        {
             HCRYPTPROV hProv;
             sched->win32_require
                 (_T("CryptAcquireContext"),
@@ -144,24 +151,16 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
             sched->win32_require
                 (_T("CryptReleaseContext"),
                  CryptReleaseContext(hProv, 0));
-        }
 #else
-        char *rust_seed = sched->env->rust_seed;
-        if (rust_seed != NULL) {
-            ub4 seed = (ub4) atoi(rust_seed);
-            for (size_t i = 0; i < RANDSIZ; i ++) {
-                memcpy(&rctx->randrsl[i], &seed, sizeof(ub4));
-                seed = (seed + 0x7ed55d16) + (seed << 12);
-            }
-        } else {
             int fd = open("/dev/urandom", O_RDONLY);
             I(sched, fd > 0);
             I(sched,
               read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
               == sizeof(rctx->randrsl));
             I(sched, close(fd) == 0);
-        }
 #endif
+        }
+
         randinit(rctx, 1);
 }
 
