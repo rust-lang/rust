@@ -64,6 +64,18 @@ const uint8_t CMP_LT = 1u;
 const uint8_t CMP_LE = 2u;
 
 
+// Utility functions
+
+// Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
+// of two.
+template<typename T>
+static inline T
+align_to(T size, size_t alignment) {
+    assert(alignment);
+    T x = (T)(((uintptr_t)size + alignment - 1) & ~(alignment - 1));
+    return x;
+}
+
 // Utility classes
 
 struct size_align {
@@ -173,17 +185,10 @@ public:
     }
 };
 
-}   // end namespace shape
-
-
-inline shape::ptr_pair
-align_to(const shape::ptr_pair &pair, size_t n) {
-    return shape::ptr_pair::make(align_to(pair.fst, n),
-                                 align_to(pair.snd, n));
+inline ptr_pair
+align_to(const ptr_pair &pair, size_t n) {
+    return ptr_pair::make(align_to(pair.fst, n), align_to(pair.snd, n));
 }
-
-
-namespace shape {
 
 // NB: This function does not align.
 template<typename T>
