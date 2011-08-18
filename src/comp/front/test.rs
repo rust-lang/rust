@@ -224,7 +224,7 @@ fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
 
     let ivec_mt: ast::mt = {ty: @test_desc_ty, mut: ast::imm};
 
-    ret @nospan(ast::ty_ivec(ivec_mt));
+    ret @nospan(ast::ty_vec(ivec_mt));
 }
 
 fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
@@ -286,7 +286,7 @@ fn mk_test_desc_rec(cx: &test_ctxt, test: test) -> @ast::expr {
 fn mk_main(cx: &test_ctxt) -> @ast::item {
 
     let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
-    let args_ty: ast::ty = nospan(ast::ty_ivec(args_mt));
+    let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =
         {mode: ast::val, ty: @args_ty, ident: "args", id: cx.next_node_id()};

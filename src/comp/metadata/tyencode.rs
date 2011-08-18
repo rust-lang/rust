@@ -128,7 +128,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
       ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }
       ty::ty_uniq(t) { w.write_char('~'); enc_ty(w, cx, t); }
       ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
-      ty::ty_ivec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
+      ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str("R[");
         for field: ty::field in fields {

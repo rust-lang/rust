@@ -214,7 +214,7 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
       ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
       ty::ty_uniq(t) { llty = T_ptr(type_of_inner(cx, sp, t)); }
-      ty::ty_ivec(mt) {
+      ty::ty_vec(mt) {
         if ty::type_has_dynamic_size(cx.tcx, mt.ty) {
             llty = T_opaque_ivec();
         } else { llty = T_ivec(type_of_inner(cx, sp, mt.ty)); }
@@ -629,7 +629,7 @@ fn dynamic_size_of(cx: &@block_ctxt, t: ty::t) -> result {
             } else { max_size_val };
         ret rslt(bcx, total_size);
       }
-      ty::ty_ivec(mt) {
+      ty::ty_vec(mt) {
         let rs = size_of(cx, mt.ty);
         let bcx = rs.bcx;
         let llunitsz = rs.val;
@@ -661,7 +661,7 @@ fn dynamic_align_of(cx: &@block_ctxt, t: &ty::t) -> result {
       ty::ty_tag(_, _) {
         ret rslt(cx, C_int(1)); // FIXME: stub
       }
-      ty::ty_ivec(tm) {
+      ty::ty_vec(tm) {
         let rs = align_of(cx, tm.ty);
         let bcx = rs.bcx;
         let llunitalign = rs.val;
@@ -1419,7 +1419,7 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     let rs =
         alt ty::struct(ccx.tcx, t) {
           ty::ty_str. { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_ivec(tm) {
+          ty::ty_vec(tm) {
             let v1;
             if ty::type_has_dynamic_size(ccx.tcx, tm.ty) {
                 v1 = cx.build.PointerCast(v0, T_ptr(T_opaque_ivec()));
@@ -1866,7 +1866,7 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: &ty::t,
             cx.build.GEP(av, ~[C_int(0), C_int(abi::obj_field_box)]);
         ret iter_boxpp(cx, box_cell_a, f);
       }
-      ty::ty_ivec(unit_tm) { ret iter_ivec(cx, av, unit_tm.ty, f); }
+      ty::ty_vec(unit_tm) { ret iter_ivec(cx, av, unit_tm.ty, f); }
       ty::ty_istr. {
         let unit_ty = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
         ret iter_ivec(cx, av, unit_ty, f);
@@ -1973,7 +1973,7 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: &ty::t, f: &val_and_ty_fn)
         let et = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
         ret iter_sequence_body(cx, v, et, f, true, false);
       }
-      ty::ty_ivec(elt) {
+      ty::ty_vec(elt) {
         ret iter_sequence_body(cx, v, elt.ty, f, false, true);
       }
       ty::ty_istr. {
@@ -2257,7 +2257,7 @@ fn memmove_ty(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: &ty::t) ->
 fn duplicate_heap_parts_if_necessary(cx: &@block_ctxt, vptr: ValueRef,
                                      typ: ty::t) -> result {
     alt ty::struct(bcx_tcx(cx), typ) {
-      ty::ty_ivec(tm) { ret ivec::duplicate_heap_part(cx, vptr, tm.ty); }
+      ty::ty_vec(tm) { ret ivec::duplicate_heap_part(cx, vptr, tm.ty); }
       ty::ty_istr. {
         ret ivec::duplicate_heap_part(cx, vptr,
                                       ty::mk_mach(bcx_tcx(cx), ast::ty_u8));
@@ -2798,7 +2798,7 @@ mod ivec {
         let llunitty = type_of_or_i8(cx, unit_ty);
         alt ty::struct(bcx_tcx(cx), t) {
           ty::ty_istr. { }
-          ty::ty_ivec(_) { }
+          ty::ty_vec(_) { }
           _ { bcx_tcx(cx).sess.bug("non-istr/ivec in trans_append"); }
         }
 
@@ -4769,7 +4769,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
     let typ = node_id_type(bcx_ccx(bcx), id);
     let unit_ty;
     alt ty::struct(bcx_tcx(bcx), typ) {
-      ty::ty_ivec(mt) { unit_ty = mt.ty; }
+      ty::ty_vec(mt) { unit_ty = mt.ty; }
       _ { bcx_ccx(bcx).sess.bug("non-ivec type in trans_ivec"); }
     }
     let llunitty = type_of_or_i8(bcx, unit_ty);

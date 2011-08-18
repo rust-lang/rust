@@ -127,7 +127,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: &ty::t) -> bool {
             ret false;
         }
 
-        ty::ty_ivec(tm) { ret type_is_gc_relevant(cx, tm.ty); }
+        ty::ty_vec(tm) { ret type_is_gc_relevant(cx, tm.ty); }
         ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
 
         ty::ty_str. | ty::ty_box(_) | ty::ty_uniq(_) |

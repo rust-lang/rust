@@ -570,7 +570,7 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
         }
     } else if (p.peek() == token::LBRACKET) {
         expect(p, token::LBRACKET);
-        t = ast::ty_ivec(parse_mt(p));
+        t = ast::ty_vec(parse_mt(p));
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "fn")) {

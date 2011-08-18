@@ -174,7 +174,7 @@ tag node_name {
     n_ty_istr;
     n_ty_box;
     n_ty_vec;
-    n_ty_ivec;
+    n_ty_vec;
     n_ty_ptr;
     n_ty_task;
     n_ty_port;
@@ -620,7 +620,7 @@ fn cv_ty(ctx: &ctx, ut: &@ast_node) -> @ty {
                   [ty_istr, n_ty_istr, []],
                   [ty_box, n_ty_box, [cv_mt]],
                   [ty_vec, n_ty_vec, [cv_mt]],
-                  [ty_ivec, n_ty_ivec, [cv_mt]],
+                  [ty_vec, n_ty_vec, [cv_mt]],
                   [ty_ptr, n_ty_ptr, [cv_mt]],
                   [ty_task, n_ty_task, []],
                   [ty_port, n_ty_port, [cv_ty]],

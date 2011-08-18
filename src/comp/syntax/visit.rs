@@ -124,7 +124,7 @@ fn visit_ty<E>(t: &@ty, e: &E, v: &vt<E>) {
       ty_str. {/* no-op */ }
       ty_istr. {/* no-op */ }
       ty_box(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_ivec(mt) { v.visit_ty(mt.ty, e, v); }
+      ty_vec(mt) { v.visit_ty(mt.ty, e, v); }
       ty_ptr(mt) { v.visit_ty(mt.ty, e, v); }
       ty_port(t) { v.visit_ty(t, e, v); }
       ty_chan(t) { v.visit_ty(t, e, v); }

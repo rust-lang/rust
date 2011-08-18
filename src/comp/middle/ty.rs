@@ -129,7 +129,7 @@ export ty_fn_proto;
 export ty_fn_ret;
 export ty_int;
 export ty_istr;
-export ty_ivec;
+export ty_vec;
 export ty_machine;
 export ty_native;
 export ty_nil;
@@ -261,7 +261,7 @@ tag sty {
     ty_tag(def_id, [t]);
     ty_box(mt);
     ty_uniq(t);
-    ty_ivec(mt);
+    ty_vec(mt);
     ty_ptr(mt);
     ty_rec([field]);
     ty_fn(ast::proto, [arg], t, controlflow, [@constr]);
@@ -462,7 +462,7 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_uniq(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
-      ty_ivec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
+      ty_vec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ptr(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_rec(flds) {
         for f: field in flds {
@@ -563,7 +563,7 @@ fn mk_mut_ptr(cx: &ctxt, ty: &t) -> t {
     ret mk_ptr(cx, {ty: ty, mut: ast::mut});
 }
 
-fn mk_ivec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_ivec(tm)); }
+fn mk_ivec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_vec(tm)); }
 
 fn mk_rec(cx: &ctxt, fs: &[field]) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
@@ -634,7 +634,7 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_ivec(tm) { walk_ty(cx, walker, tm.ty); }
+      ty_vec(tm) { walk_ty(cx, walker, tm.ty); }
       ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
       ty_tag(tid, subtys) {
         for subty: t in subtys { walk_ty(cx, walker, subty); }
@@ -708,7 +708,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
-      ty_ivec(tm) {
+      ty_vec(tm) {
         ty = mk_ivec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_tag(tid, subtys) {
@@ -828,7 +828,7 @@ fn type_is_structural(cx: &ctxt, ty: &t) -> bool {
       ty_fn(_, _, _, _, _) { ret true; }
       ty_obj(_) { ret true; }
       ty_res(_, _, _) { ret true; }
-      ty_ivec(_) { ret true; }
+      ty_vec(_) { ret true; }
       ty_istr. { ret true; }
       _ { ret false; }
     }
@@ -846,7 +846,7 @@ fn type_is_sequence(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_str. { ret true; }
       ty_istr. { ret true; }
-      ty_ivec(_) { ret true; }
+      ty_vec(_) { ret true; }
       _ { ret false; }
     }
 }
@@ -863,7 +863,7 @@ fn sequence_is_interior(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
 
       ty::ty_str. { ret false; }
-      ty::ty_ivec(_) { ret true; }
+      ty::ty_vec(_) { ret true; }
       ty::ty_istr. { ret true; }
       _ { cx.sess.bug("sequence_is_interior called on non-sequence type"); }
     }
@@ -873,7 +873,7 @@ fn sequence_element_type(cx: &ctxt, ty: &t) -> t {
     alt struct(cx, ty) {
       ty_str. { ret mk_mach(cx, ast::ty_u8); }
       ty_istr. { ret mk_mach(cx, ast::ty_u8); }
-      ty_ivec(mt) { ret mt.ty; }
+      ty_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
 }
@@ -1053,7 +1053,7 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
 
       // Pointers and unique boxes / vecs raise pinned to shared,
       // otherwise pass through their pointee kind.
-      ty_ptr(tm) | ty_ivec(tm) {
+      ty_ptr(tm) | ty_vec(tm) {
         let k = type_kind(cx, tm.ty);
         if k == ast::kind_pinned { k = ast::kind_shared }
         result = kind::lower_kind(result, k);
@@ -1134,7 +1134,7 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
         ret false;
       }
       ty_box(_) { ret false; }
-      ty_ivec(mt) { ret type_has_dynamic_size(cx, mt.ty); }
+      ty_vec(mt) { ret type_has_dynamic_size(cx, mt.ty); }
       ty_ptr(_) { ret false; }
       ty_rec(fields) {
         let i = 0u;
@@ -1226,7 +1226,7 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
 
     let result = false;
     alt struct(cx, ty) {
-      ty_ivec(_) { result = true; }
+      ty_vec(_) { result = true; }
       ty_istr. { result = true; }
 
 
@@ -1303,7 +1303,7 @@ fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
         }
 
         // Boxed types
-        ty_str. | ty_istr. | ty_box(_) | ty_ivec(_) |
+        ty_str. | ty_istr. | ty_box(_) | ty_vec(_) |
         ty_fn(_,_,_,_,_) | ty_native_fn(_,_,_) | ty_obj(_) { result = false; }
 
         // Structural types
@@ -1466,7 +1466,7 @@ fn hash_type_structure(st: &sty) -> uint {
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
-      ty_ivec(mt) { ret hash_subty(21u, mt.ty); }
+      ty_vec(mt) { ret hash_subty(21u, mt.ty); }
       ty_rec(fields) {
         let h = 26u;
         for f: field in fields { h += h << 5u + hash_ty(f.mt.ty); }
@@ -1627,8 +1627,8 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       ty_box(mt_a) {
         alt b { ty_box(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
       }
-      ty_ivec(mt_a) {
-        alt b { ty_ivec(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
+      ty_vec(mt_a) {
+        alt b { ty_vec(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
       }
       ty_ptr(mt_a) {
         alt b { ty_ptr(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
@@ -2475,9 +2475,9 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_ivec(expected_mt) {
+          ty::ty_vec(expected_mt) {
             alt struct(cx.tcx, actual) {
-              ty::ty_ivec(actual_mt) {
+              ty::ty_vec(actual_mt) {
                 let mut;
                 alt unify_mut(expected_mt.mut, actual_mt.mut) {
                   none. { ret ures_err(terr_vec_mutability); }
@@ -3008,7 +3008,7 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_ptr(_) { tycat_int }
           ty_str. { tycat_str }
           ty_istr. { tycat_str }
-          ty_ivec(_) { tycat_vec }
+          ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tup(_) { tycat_struct }
           ty_tag(_, _) { tycat_struct }

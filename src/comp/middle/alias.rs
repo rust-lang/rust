@@ -364,7 +364,7 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
     alt ty::struct(cx.tcx, seq_t) {
-      ty::ty_ivec(mt) {
+      ty::ty_vec(mt) {
         if mt.mut != ast::imm { unsafe = ~[seq_t]; }
       }
       ty::ty_str. | ty::ty_istr. {/* no-op */ }
@@ -584,7 +584,7 @@ fn expr_root(cx: &ctx, ex: @ast::expr, autoderef: bool) ->
           ast::expr_index(base, _) {
             let auto_unbox = maybe_auto_unbox(cx, ty::expr_ty(cx.tcx, base));
             alt ty::struct(cx.tcx, auto_unbox.t) {
-              ty::ty_ivec(mt) {
+              ty::ty_vec(mt) {
                 ds +=
                     ~[@{mut: mt.mut != ast::imm,
                         kind: index,

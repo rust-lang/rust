@@ -284,7 +284,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_str. { word(s.s, "str"); }
       ast::ty_istr. { word(s.s, "istr"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
-      ast::ty_ivec(mt) {
+      ast::ty_vec(mt) {
         word(s.s, "[");
         alt mt.mut {
           ast::mut. { word_space(s, "mutable"); }

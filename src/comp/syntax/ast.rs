@@ -439,7 +439,7 @@ tag ty_ {
     ty_str;
     ty_istr; // interior string
     ty_box(mt);
-    ty_ivec(mt); // interior vector
+    ty_vec(mt); // interior vector
     ty_ptr(mt);
     ty_task;
     ty_port(@ty);

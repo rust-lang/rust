@@ -343,7 +343,7 @@ fn shape_of(ccx : &@crate_ctxt, t : ty::t) -> [u8] {
         s += ~[shape_uniq];
         add_substr(s, shape_of(ccx, subt));
       }
-      ty::ty_ivec(mt) {
+      ty::ty_vec(mt) {
         s += ~[shape_ivec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_size_hint(ccx, s, mt.ty);
