@@ -150,6 +150,7 @@ fn pat_id_map(pat: &@pat) -> pat_id_map {
     ret map;
 }
 
+// FIXME: could return a constrained type
 iter pat_bindings(pat: &@pat) -> @pat {
     alt pat.node {
       pat_bind(_) { put pat; }
@@ -266,7 +267,7 @@ tag init_op { init_assign; init_move; }
 type initializer = {op: init_op, expr: @expr};
 
 type local_ = {ty: @ty,
-               pat: @pat,
+               pat: @pat, // FIXME: should really be a refinement on pat
                init: option::t<initializer>,
                id: node_id};
 
