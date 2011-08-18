@@ -106,9 +106,8 @@ static intptr_t const CONST_REFCOUNT = 0x7badface;
 
 static size_t const BUF_BYTES = 2048;
 
-// Every reference counted object should derive from this base class.
-// Or use this macro. The macro is preferred as the base class will be
-// disappearing.
+// Every reference counted object should use this macro and initialize
+// ref_count.
 
 #define RUST_REFCOUNTED(T) \
   RUST_REFCOUNTED_WITH_DTOR(T, delete (T*)this)
@@ -126,13 +125,6 @@ public:                                                                 \
      assert(old > 0);                                                   \
  }                                                                      \
  void deref() { if(0 == sync::decrement(ref_count)) { delete this; } }
-
-template <typename T> struct rc_base {
-    RUST_REFCOUNTED(T)
-
-    rc_base();
-    ~rc_base();
-};
 
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task, const char *tag);

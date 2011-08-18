@@ -6,6 +6,7 @@
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
                                int id) :
+    ref_count(1),
     interrupt_flag(0),
     _log(srv, this),
     log_lvl(log_note),

@@ -27,9 +27,10 @@ public:
 };
 
 struct rust_scheduler : public kernel_owned<rust_scheduler>,
-                        rc_base<rust_scheduler>,
                         rust_thread
 {
+    RUST_REFCOUNTED(rust_scheduler)
+
     // Fields known to the compiler:
     uintptr_t interrupt_flag;
 

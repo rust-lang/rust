@@ -4,19 +4,6 @@
 #include "rust_task.h"
 #include <limits.h>
 
-// Reference counted objects
-
-template <typename T>
-rc_base<T>::rc_base() :
-    ref_count(1)
-{
-}
-
-template <typename T>
-rc_base<T>::~rc_base()
-{
-}
-
 // Utility type: pointer-vector.
 
 template <typename T>
@@ -181,15 +168,18 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
 // Vectors (rust-user-code level).
 
 struct
-rust_evec : public rc_base<rust_evec>
+rust_evec
 {
+    RUST_REFCOUNTED(rust_evec)
+
     size_t alloc;
     size_t fill;
     size_t pad; // Pad to align data[0] to 16 bytes.
     uint8_t data[];
     rust_evec(size_t alloc, size_t fill,
              uint8_t const *d)
-        : alloc(alloc),
+        : ref_count(1),
+          alloc(alloc),
           fill(fill)
     {
         if (d)
