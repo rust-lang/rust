@@ -2858,7 +2858,8 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
     let i = 0u;
     while i < ty_param_count { *param_var_ids += ~[next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              _next_ty_var: fn() -> int , index: uint, _kind: ast::kind) -> t {
+              _next_ty_var: fn() -> int , index: uint, _kind: ast::kind)
+        -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids.(index));
         } else {
