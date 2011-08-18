@@ -6,7 +6,7 @@ import task::task_id;
 
 export _chan;
 export _port;
-
+export chan_handle;
 export mk_port;
 export send;
 export recv;
@@ -32,10 +32,9 @@ native "rust-intrinsic" mod rusti {
 
 type port_id = int;
 
-type chan<~T> = {
-    task : task_id,
-    port : port_id
-};
+type chan_handle<~T> = { task : task_id, port : port_id};
+
+tag chan<~T> { chan_t(chan_handle<T>); }
 type _chan<~T> = chan<T>;
 
 resource port_ptr(po: *rustrt::rust_port) {
@@ -43,11 +42,11 @@ resource port_ptr(po: *rustrt::rust_port) {
     rustrt::del_port(po);
 }
 
-type port<~T> = @port_ptr;
+tag port<~T> { port_t(@port_ptr); }
 
 obj port_obj<~T>(raw_port : port<T>) {
-    fn mk_chan() -> _chan<T> {
-        chan::<T>(raw_port)
+    fn mk_chan() -> chan<T> {
+        chan(raw_port)
     }
 
     fn recv() -> T {
@@ -60,21 +59,21 @@ fn mk_port<~T>() -> _port<T> {
     ret port_obj::<T>(port::<T>());
 }
 
-fn send<~T>(ch : chan<T>, data : -T) {
+fn send<~T>(ch : &chan<T>, data : -T) {
     rustrt::chan_id_send(ch.task, ch.port, data);
 }
 
 fn port<~T>() -> port<T> {
-    @port_ptr(rustrt::new_port(sys::size_of::<T>()))
+    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
 }
 
-fn recv<~T>(p : port<T>) -> T {
-    ret rusti::recv(**p)
+fn recv<~T>(p : &port<T>) -> T {
+    ret rusti::recv(***p)
 }
 
-fn chan<~T>(p : port<T>) -> chan<T> {
-    {
+fn chan<~T>(p : &port<T>) -> chan<T> {
+    chan_t({
         task: task::get_task_id(),
-        port: rustrt::get_port_id(**p)
-    }
+        port: rustrt::get_port_id(***p)
+    })
 }

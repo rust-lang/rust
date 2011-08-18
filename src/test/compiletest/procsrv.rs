@@ -14,10 +14,10 @@ import std::os;
 import std::run;
 import std::io;
 import std::str;
-import std::comm::_chan;
-import std::comm::mk_port;
-import std::comm::_port;
+import std::comm::chan;
+import std::comm::port;
 import std::comm::send;
+import std::comm::recv;
 
 export handle;
 export mk;
@@ -26,27 +26,27 @@ export run;
 export close;
 export reqchan;
 
-type reqchan = _chan<request>;
+type reqchan = chan<request>;
 
 type handle = {task: option::t<task_id>, chan: reqchan};
 
 tag request {
-    exec([u8], [u8], [[u8]], _chan<response>);
+    exec([u8], [u8], [[u8]], chan<response>);
     stop;
 }
 
 type response = {pid: int, infd: int, outfd: int, errfd: int};
 
 fn mk() -> handle {
-    let setupport = mk_port();
-    let task = task::_spawn(bind fn(setupchan: _chan<_chan<request>>) {
-        let reqport = mk_port();
-        let reqchan = reqport.mk_chan();
+    let setupport = port();
+    let task = task::spawn(bind fn(setupchan: chan<chan<request>>) {
+        let reqport = port();
+        let reqchan = chan(reqport);
         send(setupchan, reqchan);
         worker(reqport);
-    } (setupport.mk_chan()));
+    } (chan(setupport)));
     ret {task: option::some(task),
-         chan: setupport.recv()
+         chan: recv(setupport)
         };
 }
 
@@ -60,13 +60,13 @@ fn close(handle: &handle) {
 fn run(handle: &handle, lib_path: &str,
        prog: &str, args: &[str], input: &option::t<str>) ->
 {status: int, out: str, err: str} {
-    let p = mk_port::<response>();
-    let ch = p.mk_chan();
+    let p = port();
+    let ch = chan(p);
     send(handle.chan, exec(str::bytes(lib_path),
                            str::bytes(prog),
                            clone_ivecstr(args),
                            ch));
-    let resp = p.recv();
+    let resp = recv(p);
 
     writeclose(resp.infd, input);
     let output = readclose(resp.outfd);
@@ -99,18 +99,12 @@ fn readclose(fd: int) -> str {
     ret buf;
 }
 
-fn worker(p: _port<request>) {
+fn worker(p: port<request>) {
 
     // FIXME (787): If we declare this inside of the while loop and then
     // break out of it before it's ever initialized (i.e. we don't run
-    // any tests), then the cleanups will puke, so we're initializing it
-    // here with defaults.
-    let execparms = {
-        lib_path: "",
-        prog: "",
-        args: ~[],
-        respchan: p.mk_chan()
-    };
+    // any tests), then the cleanups will puke.
+    let execparms;
 
     while true {
         // FIXME: Sending strings across channels seems to still
@@ -124,7 +118,7 @@ fn worker(p: _port<request>) {
             // put the entire alt in another block to make sure the exec
             // message goes out of scope. Seems like the scoping rules for
             // the alt discriminant are wrong.
-            alt p.recv() {
+            alt recv(p) {
               exec(lib_path, prog, args, respchan) {
                 {
                     lib_path: str::unsafe_from_bytes(lib_path),

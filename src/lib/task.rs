@@ -1,6 +1,5 @@
 import cast = unsafe::reinterpret_cast;
 import comm;
-import comm::_chan;
 import option::some;
 import option::none;
 import option = option::t;
@@ -33,7 +32,7 @@ native "rust" mod rustrt {
 type rust_task = {
     id : task,
     mutable notify_enabled : u8,
-    mutable notify_chan : _chan<task_notification>,
+    mutable notify_chan : comm::chan_handle<task_notification>,
     ctx : task_context,
     stack_ptr : *u8
 };
@@ -76,14 +75,12 @@ tag task_notification {
 fn join(task_port : (task_id, comm::port<task_notification>))
     -> task_result {
     let (id, port) = task_port;
-    while true {
-        alt comm::recv::<task_notification>(port) {
-          exit(_id, res) {
-            if _id == id { ret res }
-          }
-        }
+    alt comm::recv::<task_notification>(port) {
+      exit(_id, res) {
+        if _id == id { ret res }
+        else { fail #fmt("join received id %d, expected %d", _id, id) }
+      }
     }
-    fail
 }
 
 fn join_id(t : task_id) -> task_result {
@@ -108,7 +105,7 @@ fn spawn(thunk : -fn() -> ()) -> task {
     spawn_inner(thunk, none)
 }
 
-fn spawn_notify(thunk : -fn() -> (), notify : _chan<task_notification>)
+fn spawn_notify(thunk : -fn() -> (), notify : comm::chan<task_notification>)
     -> task {
     spawn_inner(thunk, some(notify))
 }
@@ -121,7 +118,7 @@ fn spawn_joinable(thunk : -fn()) -> (task_id, comm::port<task_notification>) {
 
 // FIXME: make this a fn~ once those are supported.
 fn spawn_inner(thunk : -fn() -> (),
-               notify : option<_chan<task_notification>>)
+               notify : option<comm::chan<task_notification>>)
     -> task_id {
     let id = rustrt::new_task();
 
@@ -144,7 +141,7 @@ fn spawn_inner(thunk : -fn() -> (),
     alt notify {
       some(c) {
         (**task_ptr).notify_enabled = 1u8;
-        (**task_ptr).notify_chan = c;
+        (**task_ptr).notify_chan = *c;
       }
       none {}
     };
