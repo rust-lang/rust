@@ -181,13 +181,13 @@ isaac_init(sched_or_kernel *sched, randctx *rctx)
 // Vectors (rust-user-code level).
 
 struct
-rust_vec : public rc_base<rust_vec>
+rust_evec : public rc_base<rust_evec>
 {
     size_t alloc;
     size_t fill;
     size_t pad; // Pad to align data[0] to 16 bytes.
     uint8_t data[];
-    rust_vec(size_t alloc, size_t fill,
+    rust_evec(size_t alloc, size_t fill,
              uint8_t const *d)
         : alloc(alloc),
           fill(fill)
@@ -195,15 +195,15 @@ rust_vec : public rc_base<rust_vec>
         if (d)
             memcpy(&data[0], d, fill);
     }
-    ~rust_vec() {}
+    ~rust_evec() {}
 
     inline void *operator new(size_t size, void *mem) {
         return mem;
     }
 };
 
-// Rust types vec and str look identical from our perspective.
-typedef rust_vec rust_str;
+// Strings are just exterior vecs
+typedef rust_evec rust_str;
 
 // Interior vectors (rust-user-code level).
 

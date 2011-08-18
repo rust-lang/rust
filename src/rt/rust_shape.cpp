@@ -968,7 +968,7 @@ data<T,U>::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id) {
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_evec_data_range(ptr dp) {
-    rust_vec *vp = bump_dp<rust_vec *>(dp);
+    rust_evec *vp = bump_dp<rust_evec *>(dp);
     return std::make_pair(vp->data, vp->data + vp->fill);
 }
 

@@ -10,7 +10,7 @@ upcall_fail(rust_task *task, char const *expr, char const *file, size_t line);
 
 extern "C" void
 rust_intrinsic_vec_len(rust_task *task, size_t *retptr, type_desc *ty,
-                       rust_vec *v)
+                       rust_evec *v)
 {
     *retptr = v->fill / ty->size;
 }

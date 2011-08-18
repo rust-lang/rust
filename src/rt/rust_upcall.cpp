@@ -222,9 +222,9 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
     return make_str(task, s, fill);
 }
 
-static rust_vec *
+static rust_evec *
 vec_grow(rust_task *task,
-         rust_vec *v,
+         rust_evec *v,
          size_t n_bytes,
          uintptr_t *need_copy,
          type_desc *td)
@@ -237,7 +237,7 @@ vec_grow(rust_task *task,
         v, n_bytes, v->ref_count, v->alloc, v->fill, need_copy);
 
     *need_copy = 0;
-    size_t alloc = next_power_of_two(sizeof(rust_vec) + v->fill + n_bytes);
+    size_t alloc = next_power_of_two(sizeof(rust_evec) + v->fill + n_bytes);
 
     if (v->ref_count == 1) {
 
@@ -249,7 +249,7 @@ vec_grow(rust_task *task,
 
         // Second-fastest path: can at least realloc.
         LOG(task, mem, "realloc path");
-        v = (rust_vec*) task->realloc(v, alloc, td->is_stateful);
+        v = (rust_evec*) task->realloc(v, alloc, td->is_stateful);
         if (!v) {
             task->fail();
             return NULL;
@@ -260,9 +260,9 @@ vec_grow(rust_task *task,
         /**
          * Slowest path: make a new vec.
          *
-         * 1. Allocate a new rust_vec with desired additional space.
-         * 2. Down-ref the shared rust_vec, point to the new one instead.
-         * 3. Copy existing elements into the new rust_vec.
+         * 1. Allocate a new rust_evec with desired additional space.
+         * 2. Down-ref the shared rust_evec, point to the new one instead.
+         * 3. Copy existing elements into the new rust_evec.
          *
          * Step 3 is a bit tricky.  We don't know how to properly copy the
          * elements in the runtime (all we have are bits in a buffer; no
@@ -271,7 +271,7 @@ vec_grow(rust_task *task,
          * that we need the copies performed for us.
          */
         LOG(task, mem, "new vec path");
-        void *mem = task->malloc(alloc, "rust_vec (vec_grow)", td);
+        void *mem = task->malloc(alloc, "rust_evec (vec_grow)", td);
         if (!mem) {
             task->fail();
             return NULL;
@@ -280,10 +280,10 @@ vec_grow(rust_task *task,
         if (v->ref_count != CONST_REFCOUNT)
             v->deref();
 
-        v = new (mem) rust_vec(alloc, 0, NULL);
+        v = new (mem) rust_evec(alloc, 0, NULL);
         *need_copy = 1;
     }
-    I(sched, sizeof(rust_vec) + v->fill <= v->alloc);
+    I(sched, sizeof(rust_evec) + v->fill <= v->alloc);
     return v;
 }
 
@@ -309,14 +309,14 @@ copy_elements(rust_task *task, type_desc *elem_t,
 
 extern "C" CDECL void
 upcall_evec_append(rust_task *task, type_desc *t, type_desc *elem_t,
-                   rust_vec **dst_ptr, rust_vec *src, bool skip_null)
+                   rust_evec **dst_ptr, rust_evec *src, bool skip_null)
 {
     LOG_UPCALL_ENTRY(task);
-    rust_vec *dst = *dst_ptr;
+    rust_evec *dst = *dst_ptr;
     uintptr_t need_copy;
     size_t n_src_bytes = skip_null ? src->fill - 1 : src->fill;
     size_t n_dst_bytes = skip_null ? dst->fill - 1 : dst->fill;
-    rust_vec *new_vec = vec_grow(task, dst, n_src_bytes, &need_copy, t);
+    rust_evec *new_vec = vec_grow(task, dst, n_src_bytes, &need_copy, t);
 
     // If src and dst are the same (due to "v += v"), then dst getting
     // resized causes src to move as well.
@@ -341,7 +341,7 @@ upcall_evec_append(rust_task *task, type_desc *t, type_desc *elem_t,
 // FIXME: Transitional. Please remove.
 extern "C" CDECL void
 upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
-                  rust_vec **dst_ptr, rust_vec *src, bool skip_null) {
+                  rust_evec **dst_ptr, rust_evec *src, bool skip_null) {
     upcall_evec_append(task, t, elem_t, dst_ptr, src, skip_null);
 }
 

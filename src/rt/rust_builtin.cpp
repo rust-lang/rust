@@ -127,17 +127,17 @@ unsupervise(rust_task *task) {
 }
 
 /* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
-static rust_vec*
+static rust_evec*
 vec_alloc_with_data(rust_task *task,
                     size_t n_elts,
                     size_t fill,
                     size_t elt_size,
                     void *d)
 {
-    size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
-    void *mem = task->malloc(alloc, "rust_vec (with data)");
+    size_t alloc = next_power_of_two(sizeof(rust_evec) + (n_elts * elt_size));
+    void *mem = task->malloc(alloc, "rust_evec (with data)");
     if (!mem) return NULL;
-    return new (mem) rust_vec(alloc, fill * elt_size, (uint8_t*)d);
+    return new (mem) rust_evec(alloc, fill * elt_size, (uint8_t*)d);
 }
 
 extern "C" CDECL rust_str*
@@ -158,7 +158,7 @@ extern "C" CDECL rust_str*
 str_push_byte(rust_task* task, rust_str* v, size_t byte)
 {
     size_t fill = v->fill;
-    size_t alloc = next_power_of_two(sizeof(rust_vec) + fill + 1);
+    size_t alloc = next_power_of_two(sizeof(rust_evec) + fill + 1);
     if (v->ref_count > 1 || v->alloc < alloc) {
         v = vec_alloc_with_data(task, fill + 1, fill, 1, (void*)&v->data[0]);
         if (!v) {
