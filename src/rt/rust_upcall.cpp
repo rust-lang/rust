@@ -222,24 +222,6 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
     return make_str(task, s, fill);
 }
 
-extern "C" CDECL rust_vec *
-upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
-    LOG_UPCALL_ENTRY(task);
-
-    rust_scheduler *sched = task->sched;
-    DLOG(sched, mem, "upcall new_vec(%" PRIdPTR ")", fill);
-    size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = task->malloc(alloc, "rust_vec (upcall_new_vec)", td);
-    if (!mem) {
-        task->fail();
-        return NULL;
-    }
-    rust_vec *v = new (mem) rust_vec(alloc, 0, NULL);
-    LOG(task, mem,
-              "upcall new_vec(%" PRIdPTR ") = 0x%" PRIxPTR, fill, v);
-    return v;
-}
-
 static rust_vec *
 vec_grow(rust_task *task,
          rust_vec *v,

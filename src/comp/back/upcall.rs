@@ -37,7 +37,6 @@ type upcalls =
      shared_free: ValueRef,
      mark: ValueRef,
      new_str: ValueRef,
-     new_vec: ValueRef,
      vec_append: ValueRef,
      get_type_desc: ValueRef,
      ivec_resize: ValueRef,
@@ -84,9 +83,6 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           shared_free: dv("shared_free", ~[T_ptr(T_i8())]),
           mark: d("mark", ~[T_ptr(T_i8())], T_int()),
           new_str: d("new_str", ~[T_ptr(T_i8()), T_size_t()], T_ptr(T_str())),
-          new_vec:
-              d("new_vec", ~[T_size_t(), T_ptr(tydesc_type)],
-                T_opaque_vec_ptr()),
           vec_append:
               d("vec_append",
                 ~[T_ptr(tydesc_type), T_ptr(tydesc_type),

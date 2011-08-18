@@ -99,7 +99,6 @@ upcall_log_type
 upcall_malloc
 upcall_mark
 upcall_new_str
-upcall_new_vec
 upcall_shared_malloc
 upcall_shared_free
 upcall_sleep
