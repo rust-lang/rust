@@ -1,4 +1,4 @@
-// pp-exact:ivec-type.pp
+// pp-exact:vec-type.pp
 
 fn f1(x: [int]) { }
 

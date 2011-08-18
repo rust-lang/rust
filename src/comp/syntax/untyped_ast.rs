@@ -1,4 +1,4 @@
-import std::ivec;
+import std::vec;
 import std::vec::map;
 import std::option;
 import std::option::some;
@@ -410,7 +410,7 @@ fn cv_crate(ctx: &ctx, ut: &@ast_node) -> @crate {
 fn cv_crate_cfg(ctx: &ctx, ut: &@ast_node) -> crate_cfg {
     ret alt *ut {
       branch(n_crate_cfg., _, meta_items) {
-        ivec::map(bind cv_meta_item(ctx,_), meta_items)
+        vec::map(bind cv_meta_item(ctx,_), meta_items)
       }
       branch(_, sp, _) { ctx.ff(sp,"Invalid crate_cfg") }
     };

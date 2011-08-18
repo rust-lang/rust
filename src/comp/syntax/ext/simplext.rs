@@ -39,7 +39,7 @@ fn path_to_ident(pth: &path) -> option::t<ident> {
     ret none;
 }
 
-//an ivec of binders might be a little big.
+//a vec of binders might be a little big.
 type clause = {params: binders, body: @expr};
 
 /* logically, an arb_depth should contain only one kind of matchable */

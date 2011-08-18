@@ -1348,7 +1348,7 @@ fn type_param(cx: &ctxt, ty: &t) -> option::t<uint> {
     ret none;
 }
 
-// Returns an ivec of all the type variables
+// Returns a vec of all the type variables
 // occurring in t. It may contain duplicates.
 fn vars_in_type(cx:&ctxt, ty: &t) -> [int] {
     fn collect_var(cx:&ctxt, vars: &@mutable [int], ty: t) {
@@ -1362,7 +1362,7 @@ fn vars_in_type(cx:&ctxt, ty: &t) -> [int] {
     let rslt: @mutable [int] = @mutable (~[]);
     walk_ty(cx, bind collect_var(cx, rslt, _), ty);
     // Works because of a "convenient" bug that lets us
-    // return a mutable ivec as if it's immutable
+    // return a mutable vec as if it's immutable
     ret *rslt;
 }
 
