@@ -324,9 +324,6 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
       ast::ty_box(mt) {
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
-      ast::ty_vec(mt) {
-        typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
-      }
       ast::ty_ivec(mt) {
         typ = ty::mk_ivec(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
@@ -1989,7 +1986,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         let elt_ty;
         let ety = expr_ty(tcx, seq);
         alt structure_of(fcx, expr.span, ety) {
-          ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
           ty::ty_str. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
           ty::ty_ivec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
           ty::ty_istr. { elt_ty = ty::mk_mach(tcx, ast::ty_u8); }
@@ -2295,7 +2291,6 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
                               + ty_to_str(tcx, idx_t));
         }
         alt structure_of(fcx, expr.span, base_t) {
-          ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
           ty::ty_ivec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
           ty::ty_str. {
             let typ = ty::mk_mach(tcx, ast::ty_u8);
@@ -2658,14 +2653,6 @@ fn check_item(ccx: @crate_ctxt, it: &@ast::item) {
 
 fn arg_is_argv_ty(tcx: &ty::ctxt, a: &ty::arg) -> bool {
     alt ty::struct(tcx, a.ty) {
-      // FIXME: Remove after main takes only ivec
-      ty::ty_vec(mt) {
-        if mt.mut != ast::imm { ret false; }
-        alt ty::struct(tcx, mt.ty) {
-          ty::ty_str. { ret true; }
-          _ { ret false; }
-        }
-      }
       ty::ty_ivec(mt) {
         if mt.mut != ast::imm { ret false; }
         alt ty::struct(tcx, mt.ty) {

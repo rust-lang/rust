@@ -214,7 +214,6 @@ fn type_of_inner(cx: &@crate_ctxt, sp: &span, t: &ty::t) -> TypeRef {
       ty::ty_tag(did, _) { llty = type_of_tag(cx, sp, did, t); }
       ty::ty_box(mt) { llty = T_ptr(T_box(type_of_inner(cx, sp, mt.ty))); }
       ty::ty_uniq(t) { llty = T_ptr(type_of_inner(cx, sp, t)); }
-      ty::ty_vec(mt) { llty = T_ptr(T_vec(type_of_inner(cx, sp, mt.ty))); }
       ty::ty_ivec(mt) {
         if ty::type_has_dynamic_size(cx.tcx, mt.ty) {
             llty = T_opaque_ivec();
@@ -501,7 +500,6 @@ fn simplify_type(ccx: &@crate_ctxt, typ: &ty::t) -> ty::t {
         alt ty::struct(ccx.tcx, typ) {
           ty::ty_box(_) { ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)); }
           ty::ty_uniq(_) { ret ty::mk_uniq(ccx.tcx, ty::mk_nil(ccx.tcx)); }
-          ty::ty_vec(_) { ret ty::mk_imm_vec(ccx.tcx, ty::mk_nil(ccx.tcx)); }
           ty::ty_fn(_, _, _, _, _) {
             ret ty::mk_tup(ccx.tcx,
                            ~[ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
@@ -1318,15 +1316,6 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
                 rslt(cx, C_nil())
             }
           }
-          ty::ty_vec(_) {
-            let v = cx.build.Load(v0);
-            let rs = iter_sequence(cx, v, t, bind drop_ty(_, _, _));
-            if !bcx_ccx(cx).sess.get_opts().do_gc {
-                trans_non_gc_free(rs.bcx, v)
-            } else {
-                rslt(cx, C_nil())
-            }
-          }
           ty::ty_box(body_mt) {
             let v = cx.build.Load(v0);
             let body =
@@ -1430,7 +1419,6 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
     let rs =
         alt ty::struct(ccx.tcx, t) {
           ty::ty_str. { decr_refcnt_maybe_free(cx, v0, v0, t) }
-          ty::ty_vec(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_ivec(tm) {
             let v1;
             if ty::type_has_dynamic_size(ccx.tcx, tm.ty) {
@@ -1981,9 +1969,6 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: &ty::t, f: &val_and_ty_fn)
 
 
     alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_vec(elt) {
-        ret iter_sequence_body(cx, v, elt.ty, f, false, false);
-      }
       ty::ty_str. {
         let et = ty::mk_mach(bcx_tcx(cx), ast::ty_u8);
         ret iter_sequence_body(cx, v, et, f, true, false);
@@ -4775,65 +4760,6 @@ fn trans_tup(cx: &@block_ctxt, elts: &[@ast::expr], id: ast::node_id)
     }
     ret rslt(bcx, tup_val);
 }
-
-fn trans_vec(cx: &@block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
-   result {
-    let t = node_id_type(bcx_ccx(cx), id);
-    let unit_ty = t;
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_vec(mt) { unit_ty = mt.ty; }
-      _ { bcx_ccx(cx).sess.bug("non-vec type in trans_vec"); }
-    }
-    let bcx = cx;
-    let unit_sz = size_of(bcx, unit_ty);
-    bcx = unit_sz.bcx;
-    let data_sz =
-        bcx.build.Mul(C_uint(std::vec::len::<@ast::expr>(args)), unit_sz.val);
-    // FIXME: pass tydesc properly.
-
-    let vec_val =
-        bcx.build.Call(bcx_ccx(bcx).upcalls.new_vec,
-                       ~[bcx.fcx.lltaskptr, data_sz,
-                         C_null(T_ptr(bcx_ccx(bcx).tydesc_type))]);
-    let llty = type_of(bcx_ccx(bcx), bcx.sp, t);
-    vec_val = bcx.build.PointerCast(vec_val, llty);
-    add_clean_temp(bcx, vec_val, t);
-    let body = bcx.build.GEP(vec_val, ~[C_int(0), C_int(abi::vec_elt_data)]);
-    let pseudo_tup_ty =
-        ty::mk_tup(bcx_tcx(cx),
-                       std::vec::init_elt::<ty::t>(unit_ty,
-                                                  std::vec::len(args)));
-    let i: int = 0;
-    for e: @ast::expr in args {
-        let src = trans_lval(bcx, e);
-        bcx = src.res.bcx;
-        let dst_res = GEP_tup_like(bcx, pseudo_tup_ty, body, ~[0, i]);
-        bcx = dst_res.bcx;
-        // Cast the destination type to the source type. This is needed to
-        // make tags work, for a subtle combination of reasons:
-        //
-        // (1) "dst_res" above is derived from "body", which is in turn
-        //     derived from "vec_val".
-        // (2) "vec_val" has the LLVM type "llty".
-        // (3) "llty" is the result of calling type_of() on a vector type.
-        // (4) For tags, type_of() returns a different type depending on
-        //     on whether the tag is behind a box or not. Vector types are
-        //     considered boxes.
-        // (5) "src_res" is derived from "unit_ty", which is not behind a box.
-
-        let dst_val;
-        if !ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty) {
-            let llunit_ty = type_of(bcx_ccx(cx), bcx.sp, unit_ty);
-            dst_val = bcx.build.PointerCast(dst_res.val, T_ptr(llunit_ty));
-        } else { dst_val = dst_res.val; }
-        bcx = move_val_if_temp(bcx, INIT, dst_val, src, unit_ty).bcx;
-        i += 1;
-    }
-    let fill = bcx.build.GEP(vec_val, ~[C_int(0), C_int(abi::vec_elt_fill)]);
-    bcx.build.Store(data_sz, fill);
-    ret rslt(bcx, vec_val);
-}
-
 
 // TODO: Move me to ivec::
 fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->

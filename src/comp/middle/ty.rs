@@ -89,7 +89,6 @@ export mk_type;
 export mk_uint;
 export mk_uniq;
 export mk_var;
-export mk_vec;
 export mk_iter_body_fn;
 export mode;
 export mo_val;
@@ -147,7 +146,6 @@ export ty_uint;
 export ty_uniq;
 export ty_var;
 export ty_var_id;
-export ty_vec;
 export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
 export type_constr;
@@ -263,7 +261,6 @@ tag sty {
     ty_tag(def_id, [t]);
     ty_box(mt);
     ty_uniq(t);
-    ty_vec(mt);
     ty_ivec(mt);
     ty_ptr(mt);
     ty_rec([field]);
@@ -465,7 +462,6 @@ fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_uniq(tt) { derive_flags_t(cx, has_params, has_vars, tt); }
-      ty_vec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ivec(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_ptr(m) { derive_flags_mt(cx, has_params, has_vars, m); }
       ty_rec(flds) {
@@ -567,13 +563,7 @@ fn mk_mut_ptr(cx: &ctxt, ty: &t) -> t {
     ret mk_ptr(cx, {ty: ty, mut: ast::mut});
 }
 
-fn mk_vec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_vec(tm)); }
-
 fn mk_ivec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_ivec(tm)); }
-
-fn mk_imm_vec(cx: &ctxt, typ: &t) -> t {
-    ret gen_ty(cx, ty_vec({ty: typ, mut: ast::imm}));
-}
 
 fn mk_rec(cx: &ctxt, fs: &[field]) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
@@ -644,7 +634,6 @@ fn walk_ty(cx: &ctxt, walker: ty_walk, ty: t) {
       ty_type. {/* no-op */ }
       ty_native(_) {/* no-op */ }
       ty_box(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_vec(tm) { walk_ty(cx, walker, tm.ty); }
       ty_ivec(tm) { walk_ty(cx, walker, tm.ty); }
       ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
       ty_tag(tid, subtys) {
@@ -718,9 +707,6 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_uniq(subty) { ty = mk_uniq(cx, fold_ty(cx, fld, subty)); }
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
-      }
-      ty_vec(tm) {
-        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_ivec(tm) {
         ty = mk_ivec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
@@ -860,7 +846,6 @@ fn type_is_sequence(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_str. { ret true; }
       ty_istr. { ret true; }
-      ty_vec(_) { ret true; }
       ty_ivec(_) { ret true; }
       _ { ret false; }
     }
@@ -877,10 +862,6 @@ fn type_is_str(cx: &ctxt, ty: &t) -> bool {
 fn sequence_is_interior(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
 
-      // TODO: Or-patterns
-      ty::ty_vec(_) {
-        ret false;
-      }
       ty::ty_str. { ret false; }
       ty::ty_ivec(_) { ret true; }
       ty::ty_istr. { ret true; }
@@ -892,7 +873,6 @@ fn sequence_element_type(cx: &ctxt, ty: &t) -> t {
     alt struct(cx, ty) {
       ty_str. { ret mk_mach(cx, ast::ty_u8); }
       ty_istr. { ret mk_mach(cx, ast::ty_u8); }
-      ty_vec(mt) { ret mt.ty; }
       ty_ivec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
@@ -929,7 +909,6 @@ fn type_is_box(cx: &ctxt, ty: &t) -> bool {
 fn type_is_boxed(cx: &ctxt, ty: &t) -> bool {
     alt struct(cx, ty) {
       ty_str. { ret true; }
-      ty_vec(_) { ret true; }
       ty_box(_) { ret true; }
       _ { ret false; }
     }
@@ -1068,7 +1047,7 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
 
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
-      ty_box(mt) | ty_vec(mt) {
+      ty_box(mt) {
         result = ast::kind_shared;
       }
 
@@ -1155,7 +1134,6 @@ fn type_has_dynamic_size(cx: &ctxt, ty: &t) -> bool {
         ret false;
       }
       ty_box(_) { ret false; }
-      ty_vec(_) { ret false; }
       ty_ivec(mt) { ret type_has_dynamic_size(cx, mt.ty); }
       ty_ptr(_) { ret false; }
       ty_rec(fields) {
@@ -1272,7 +1250,6 @@ fn type_owns_heap_mem(cx: &ctxt, ty: &t) -> bool {
         result = false;
       }
       ty_box(_) { result = false; }
-      ty_vec(_) { result = false; }
       ty_fn(_, _, _, _, _) { result = false; }
       ty_native_fn(_, _, _) { result = false; }
       ty_obj(_) { result = false; }
@@ -1326,7 +1303,7 @@ fn type_is_pod(cx : &ctxt, ty : &t) -> bool {
         }
 
         // Boxed types
-        ty_str. | ty_istr. | ty_box(_) | ty_vec(_) | ty_ivec(_) |
+        ty_str. | ty_istr. | ty_box(_) | ty_ivec(_) |
         ty_fn(_,_,_,_,_) | ty_native_fn(_,_,_) | ty_obj(_) { result = false; }
 
         // Structural types
@@ -1489,7 +1466,6 @@ fn hash_type_structure(st: &sty) -> uint {
         ret h;
       }
       ty_box(mt) { ret hash_subty(19u, mt.ty); }
-      ty_vec(mt) { ret hash_subty(20u, mt.ty); }
       ty_ivec(mt) { ret hash_subty(21u, mt.ty); }
       ty_rec(fields) {
         let h = 26u;
@@ -1650,9 +1626,6 @@ fn equal_type_structures(a: &sty, b: &sty) -> bool {
       }
       ty_box(mt_a) {
         alt b { ty_box(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
-      }
-      ty_vec(mt_a) {
-        alt b { ty_vec(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
       }
       ty_ivec(mt_a) {
         alt b { ty_ivec(mt_b) { ret equal_mt(mt_a, mt_b); } _ { ret false; } }
@@ -2502,26 +2475,6 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_vec(expected_mt) {
-            alt struct(cx.tcx, actual) {
-              ty::ty_vec(actual_mt) {
-                let mut;
-                alt unify_mut(expected_mt.mut, actual_mt.mut) {
-                  none. { ret ures_err(terr_vec_mutability); }
-                  some(m) { mut = m; }
-                }
-                let result = unify_step(cx, expected_mt.ty, actual_mt.ty);
-                alt result {
-                  ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mut};
-                    ret ures_ok(mk_vec(cx.tcx, mt));
-                  }
-                  _ { ret result; }
-                }
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
           ty::ty_ivec(expected_mt) {
             alt struct(cx.tcx, actual) {
               ty::ty_ivec(actual_mt) {
@@ -3055,7 +3008,6 @@ fn is_binopable(cx: &ctxt, ty: t, op: ast::binop) -> bool {
           ty_ptr(_) { tycat_int }
           ty_str. { tycat_str }
           ty_istr. { tycat_str }
-          ty_vec(_) { tycat_vec }
           ty_ivec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tup(_) { tycat_struct }
