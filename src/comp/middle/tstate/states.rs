@@ -312,7 +312,7 @@ fn find_pre_post_state_expr(fcx: &fn_ctxt, pres: &prestate, e: @expr) ->
 
 
     alt e.node {
-      expr_vec(elts, _, _) {
+      expr_vec(elts, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::init_elt(init_assign,
                                                      vec::len(elts)),

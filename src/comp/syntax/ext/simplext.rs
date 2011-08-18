@@ -449,7 +449,7 @@ fn p_t_s_rec(cx: &ext_ctxt, m: &matchable, s: &selector, b: &binders) {
       match_expr(e) {
         alt e.node {
           expr_path(p_pth) { p_t_s_r_path(cx, p_pth, s, b); }
-          expr_vec(p_elts, _, _) {
+          expr_vec(p_elts, _) {
             alt elts_to_ell(cx, p_elts) {
               {pre: pre, rep: some(repeat_me), post: post} {
                 p_t_s_r_length(cx, vec::len(pre) + vec::len(post),
@@ -607,7 +607,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
         ret alt m {
               match_expr(e) {
                 alt e.node {
-                  expr_vec(arg_elts, _, _) {
+                  expr_vec(arg_elts, _) {
                     let elts = ~[];
                     let idx = offset;
                     while idx < vec::len(arg_elts) {
@@ -636,7 +636,7 @@ fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
         ret alt m {
               match_expr(e) {
                 alt e.node {
-                  expr_vec(arg_elts, _, _) {
+                  expr_vec(arg_elts, _) {
                     let actual_len = vec::len(arg_elts);
                     if (at_least && actual_len >= len) || actual_len == len {
                         some(leaf(match_exact))
@@ -660,7 +660,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
             ret alt m {
                   match_expr(e) {
                     alt e.node {
-                      expr_vec(arg_elts, _, _) {
+                      expr_vec(arg_elts, _) {
                         some(leaf(match_expr(arg_elts.(idx))))
                       }
                       _ { none }
@@ -678,7 +678,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
 fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
                      _body: option::t<str>) -> base::macro_def {
     let args: [@ast::expr] = alt arg.node {
-      ast::expr_vec(elts, _, _) { elts }
+      ast::expr_vec(elts, _) { elts }
       _ {
         cx.span_fatal(sp, "#macro requires arguments of the form `[...]`.")
       }
@@ -688,7 +688,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
     let clauses: [@clause] = ~[];
     for arg: @expr in args {
         alt arg.node {
-          expr_vec(elts, mut, seq_kind) {
+          expr_vec(elts, mut) {
             if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
                               "extension clause must consist of [" +

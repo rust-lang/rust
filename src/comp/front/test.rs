@@ -236,7 +236,7 @@ fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
     }
 
     ret @{id: cx.next_node_id(),
-          node: ast::expr_vec(descs, ast::imm, ast::sk_unique),
+          node: ast::expr_vec(descs, ast::imm),
           span: ast::dummy_sp()};
 }
 

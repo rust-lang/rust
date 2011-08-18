@@ -18,7 +18,7 @@ export expand_syntax_ext;
 fn expand_syntax_ext(cx: &ext_ctxt, sp: span, arg: @ast::expr,
                      _body: option::t<str>) -> @ast::expr {
     let args: [@ast::expr] = alt arg.node {
-      ast::expr_vec(elts, _, _) { elts }
+      ast::expr_vec(elts, _) { elts }
       _ { cx.span_fatal(sp, "#fmt requires arguments of the form `[...]`.") }
     };
     if vec::len::<@ast::expr>(args) == 0u {
@@ -73,7 +73,7 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn make_vec_expr(cx: &ext_ctxt, sp: span, exprs: &[@ast::expr]) ->
        @ast::expr {
-        let vecexpr = ast::expr_vec(exprs, ast::imm, ast::sk_unique);
+        let vecexpr = ast::expr_vec(exprs, ast::imm);
         ret @{id: cx.next_id(), node: vecexpr, span: sp};
     }
     fn make_call(cx: &ext_ctxt, sp: span, fn_path: &[ast::ident],

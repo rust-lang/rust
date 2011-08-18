@@ -2181,18 +2181,12 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         }
         write::ty_only_fixup(fcx, id, t_1);
       }
-      ast::expr_vec(args, mut, kind) {
+      ast::expr_vec(args, mut) {
         let t: ty::t = next_ty_var(fcx);
         for e: @ast::expr in args {
             bot |= check_expr_with(fcx, e, t);
         }
-        let typ;
-        alt kind {
-          ast::sk_rc. { typ = ty::mk_vec(tcx, {ty: t, mut: mut}); }
-          ast::sk_unique. {
-            typ = ty::mk_ivec(tcx, {ty: t, mut: mut});
-          }
-        }
+        let typ = ty::mk_ivec(tcx, {ty: t, mut: mut});
         write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_tup(elts) {

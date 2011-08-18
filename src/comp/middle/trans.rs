@@ -5123,8 +5123,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         ret trans_call(cx, f, none::<ValueRef>, args, e.id);
       }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
-      ast::expr_vec(args, _, ast::sk_rc.) { ret trans_vec(cx, args, e.id); }
-      ast::expr_vec(args, _, ast::sk_unique.) {
+      ast::expr_vec(args, _) {
         ret trans_ivec(cx, args, e.id);
       }
       ast::expr_rec(args, base) { ret trans_rec(cx, args, base, e.id); }

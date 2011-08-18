@@ -357,7 +357,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
           _ { }
         }
       }
-      expr_vec(args, _, _) { find_pre_post_exprs(fcx, args, e.id); }
+      expr_vec(args, _) { find_pre_post_exprs(fcx, args, e.id); }
       expr_path(p) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);

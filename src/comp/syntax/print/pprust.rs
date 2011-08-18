@@ -694,7 +694,7 @@ fn print_mac(s: &ps, m: &ast::mac) {
         word(s.s, "#");
         print_path(s, path, false);
         alt (arg.node) {
-          ast::expr_vec(_,_,_) {}
+          ast::expr_vec(_,_) {}
           _ { word(s.s, " "); }
         }
         print_expr(s, arg);
@@ -718,7 +718,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
     let ann_node = node_expr(s, expr);
     s.ann.pre(ann_node);
     alt expr.node {
-      ast::expr_vec(exprs, mut, kind) {
+      ast::expr_vec(exprs, mut) {
         ibox(s, indent_unit);
         word(s.s, "[");
         if mut == ast::mut {

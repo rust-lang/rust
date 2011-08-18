@@ -292,7 +292,7 @@ tag seq_kind { sk_unique; sk_rc; }
 type expr = {id: node_id, node: expr_, span: span};
 
 tag expr_ {
-    expr_vec([@expr], mutability, seq_kind);
+    expr_vec([@expr], mutability);
     expr_rec([field], option::t<@expr>);
     expr_call(@expr, [@expr]);
     expr_tup([@expr]);

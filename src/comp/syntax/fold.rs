@@ -339,8 +339,8 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
 
 
     ret alt e {
-          expr_vec(exprs, mut, seq_kind) {
-            expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut, seq_kind)
+          expr_vec(exprs, mut) {
+            expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut)
           }
           expr_rec(fields, maybe_expr) {
             expr_rec(vec::map(fold_field, fields),

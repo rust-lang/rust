@@ -13,7 +13,7 @@ export expand_syntax_ext;
 fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
                      _body: option::t<str>) -> @ast::expr {
     let args: [@ast::expr] = alt arg.node {
-      ast::expr_vec(elts, _, _) { elts }
+      ast::expr_vec(elts, _) { elts }
       _ { cx.span_fatal(sp, "#env requires arguments of the form `[...]`.") }
     };
     if vec::len::<@ast::expr>(args) != 1u {

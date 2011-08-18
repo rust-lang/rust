@@ -885,7 +885,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         let es =
             parse_seq_to_end(token::RBRACKET, some(token::COMMA), parse_expr,
                              p);
-        ex = ast::expr_vec(es, mut, ast::sk_unique);
+        ex = ast::expr_vec(es, mut);
     } else if (p.peek() == token::POUND_LT) {
         p.bump();
         let ty = parse_ty(p, false);
@@ -909,7 +909,7 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
             let es =
                 parse_seq_to_end(token::RBRACKET, some(token::COMMA),
                                  parse_expr, p);
-            ex = ast::expr_vec(es, mut, ast::sk_unique);
+            ex = ast::expr_vec(es, mut);
           }
           token::LIT_STR(s) {
             p.bump();
@@ -1079,7 +1079,7 @@ fn parse_syntax_ext_naked(p: &parser, lo: uint) -> @ast::expr {
     };
     let hi = es.span.hi;
     let e = mk_expr(p, es.span.lo, hi,
-                    ast::expr_vec(es.node, ast::imm, ast::sk_rc));
+                    ast::expr_vec(es.node, ast::imm));
     ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, e, none));
 }
 
@@ -1636,7 +1636,7 @@ fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
       }
       ast::stmt_expr(e, _) {
         ret alt e.node {
-              ast::expr_vec(_, _, _) { true }
+              ast::expr_vec(_, _) { true }
               ast::expr_rec(_, _) { true }
               ast::expr_tup(_) { true }
               ast::expr_call(_, _) { true }
