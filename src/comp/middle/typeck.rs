@@ -325,7 +325,7 @@ fn ast_ty_to_ty(tcx: &ty::ctxt, getter: &ty_getter, ast_ty: &@ast::ty) ->
         typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_vec(mt) {
-        typ = ty::mk_ivec(tcx, ast_mt_to_mt(tcx, getter, mt));
+        typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
       }
       ast::ty_ptr(mt) {
         typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, getter, mt));
@@ -2182,7 +2182,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
         for e: @ast::expr in args {
             bot |= check_expr_with(fcx, e, t);
         }
-        let typ = ty::mk_ivec(tcx, {ty: t, mut: mut});
+        let typ = ty::mk_vec(tcx, {ty: t, mut: mut});
         write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_tup(elts) {

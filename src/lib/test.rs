@@ -10,7 +10,6 @@ export test_name;
 export test_fn;
 export test_desc;
 export test_main;
-export test_main_ivec;
 export test_result;
 export test_opts;
 export tr_ok;

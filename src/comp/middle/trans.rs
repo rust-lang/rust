@@ -6329,7 +6329,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
                    takes_ivec: bool) -> ValueRef {
         let ivecarg_ty: ty::arg = {
             mode: ty::mo_val,
-            ty: ty::mk_ivec(ccx.tcx, {
+            ty: ty::mk_vec(ccx.tcx, {
                 ty: ty::mk_str(ccx.tcx),
                 mut: ast::imm
             })

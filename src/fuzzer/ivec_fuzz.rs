@@ -21,9 +21,9 @@ https://github.com/graydon/rust/issues/640
 */
 
 use std;
-import std::ivec;
-import std::ivec::slice;
-import std::ivec::len;
+import std::vec;
+import std::vec::slice;
+import std::vec::len;
 import std::int;
 
 //fn vec_reverse(&<T> v) -> [T] { ... }

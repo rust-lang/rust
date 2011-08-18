@@ -72,7 +72,7 @@ export mk_mut_ptr;
 export mk_imm_vec;
 export mk_int;
 export mk_istr;
-export mk_ivec;
+export mk_vec;
 export mk_mach;
 export mk_native;
 export mk_native_fn;
@@ -563,7 +563,7 @@ fn mk_mut_ptr(cx: &ctxt, ty: &t) -> t {
     ret mk_ptr(cx, {ty: ty, mut: ast::mut});
 }
 
-fn mk_ivec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_vec(tm)); }
+fn mk_vec(cx: &ctxt, tm: &mt) -> t { ret gen_ty(cx, ty_vec(tm)); }
 
 fn mk_rec(cx: &ctxt, fs: &[field]) -> t { ret gen_ty(cx, ty_rec(fs)); }
 
@@ -709,7 +709,7 @@ fn fold_ty(cx: &ctxt, fld: fold_mode, ty_0: t) -> t {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_vec(tm) {
-        ty = mk_ivec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
       ty_tag(tid, subtys) {
         let new_subtys: [t] = ~[];
@@ -2487,7 +2487,7 @@ mod unify {
                 alt result {
                   ures_ok(result_sub) {
                     let mt = {ty: result_sub, mut: mut};
-                    ret ures_ok(mk_ivec(cx.tcx, mt));
+                    ret ures_ok(mk_vec(cx.tcx, mt));
                   }
                   _ { ret result; }
                 }

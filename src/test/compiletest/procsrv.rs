@@ -64,7 +64,7 @@ fn run(handle: &handle, lib_path: &str,
     let ch = chan(p);
     send(handle.chan, exec(str::bytes(lib_path),
                            str::bytes(prog),
-                           clone_ivecstr(args),
+                           clone_vecstr(args),
                            ch));
     let resp = recv(p);
 
@@ -123,7 +123,7 @@ fn worker(p: port<request>) {
                 {
                     lib_path: str::unsafe_from_bytes(lib_path),
                     prog: str::unsafe_from_bytes(prog),
-                    args: clone_ivecu8str(args),
+                    args: clone_vecu8str(args),
                     respchan: respchan
                 }
               }
@@ -178,7 +178,7 @@ fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 
 fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
-fn clone_ivecstr(v: &[str]) -> [[u8]] {
+fn clone_vecstr(v: &[str]) -> [[u8]] {
     let r = ~[];
     for t: str in vec::slice(v, 0u, vec::len(v)) {
         r += ~[str::bytes(t)];
@@ -186,7 +186,7 @@ fn clone_ivecstr(v: &[str]) -> [[u8]] {
     ret r;
 }
 
-fn clone_ivecu8str(v: &[[u8]]) -> [str] {
+fn clone_vecu8str(v: &[[u8]]) -> [str] {
     let r = ~[];
     for t in vec::slice(v, 0u, vec::len(v)) {
         r += ~[str::unsafe_from_bytes(t)];

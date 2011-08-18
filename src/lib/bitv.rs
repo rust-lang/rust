@@ -16,8 +16,7 @@ export is_true;
 export is_false;
 export to_vec;
 export to_str;
-export eq_ivec;
-
+export eq_vec;
 
 // FIXME: With recursive object types, we could implement binary methods like
 //        union, intersection, and difference. At that point, we could write
@@ -161,7 +160,7 @@ fn to_str(v: &t) -> str {
     ret rs;
 }
 
-fn eq_ivec(v0: &t, v1: &[uint]) -> bool {
+fn eq_vec(v0: &t, v1: &[uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;
     let i = 0u;

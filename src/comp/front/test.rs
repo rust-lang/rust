@@ -173,7 +173,7 @@ fn nospan<T>(t: &T) -> ast::spanned<T> {
 }
 
 fn mk_tests(cx: &test_ctxt) -> @ast::item {
-    let ret_ty = mk_test_desc_ivec_ty(cx);
+    let ret_ty = mk_test_desc_vec_ty(cx);
 
     let decl: ast::fn_decl =
         {inputs: ~[],
@@ -213,7 +213,7 @@ fn empty_fn_ty() -> ast::ty {
 }
 
 // The ast::ty of [std::test::test_desc]
-fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
+fn mk_test_desc_vec_ty(cx: &test_ctxt) -> @ast::ty {
     let test_desc_ty_path: ast::path =
         nospan({global: false,
                 idents: ~["std", "test", "test_desc"],
@@ -222,9 +222,9 @@ fn mk_test_desc_ivec_ty(cx: &test_ctxt) -> @ast::ty {
     let test_desc_ty: ast::ty =
         nospan(ast::ty_path(test_desc_ty_path, cx.next_node_id()));
 
-    let ivec_mt: ast::mt = {ty: @test_desc_ty, mut: ast::imm};
+    let vec_mt: ast::mt = {ty: @test_desc_ty, mut: ast::imm};
 
-    ret @nospan(ast::ty_vec(ivec_mt));
+    ret @nospan(ast::ty_vec(vec_mt));
 }
 
 fn mk_test_desc_vec(cx: &test_ctxt) -> @ast::expr {
