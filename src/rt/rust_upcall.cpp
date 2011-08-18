@@ -308,8 +308,8 @@ copy_elements(rust_task *task, type_desc *elem_t,
 }
 
 extern "C" CDECL void
-upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
-                  rust_vec **dst_ptr, rust_vec *src, bool skip_null)
+upcall_evec_append(rust_task *task, type_desc *t, type_desc *elem_t,
+                   rust_vec **dst_ptr, rust_vec *src, bool skip_null)
 {
     LOG_UPCALL_ENTRY(task);
     rust_vec *dst = *dst_ptr;
@@ -338,6 +338,12 @@ upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
     *dst_ptr = new_vec;
 }
 
+// FIXME: Transitional. Please remove.
+extern "C" CDECL void
+upcall_vec_append(rust_task *task, type_desc *t, type_desc *elem_t,
+                  rust_vec **dst_ptr, rust_vec *src, bool skip_null) {
+    upcall_evec_append(task, t, elem_t, dst_ptr, src, skip_null);
+}
 
 extern "C" CDECL type_desc *
 upcall_get_type_desc(rust_task *task,

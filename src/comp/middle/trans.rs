@@ -2542,7 +2542,8 @@ fn trans_compare(cx: &@block_ctxt, op: ast::binop,
     }
 }
 
-fn trans_vec_append(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef)
+fn trans_evec_append(cx: &@block_ctxt, t: &ty::t,
+                     lhs: ValueRef, rhs: ValueRef)
    -> result {
     let elt_ty = ty::sequence_element_type(bcx_tcx(cx), t);
     let skip_null = C_bool(false);
@@ -2563,7 +2564,7 @@ fn trans_vec_append(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef)
     let dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
     let src = bcx.build.PointerCast(rhs, T_opaque_vec_ptr());
     ret rslt(bcx,
-             bcx.build.Call(bcx_ccx(cx).upcalls.vec_append,
+             bcx.build.Call(bcx_ccx(cx).upcalls.evec_append,
                             ~[cx.fcx.lltaskptr, llvec_tydesc.val,
                               llelt_tydesc.val, dst, src, skip_null]));
 }
@@ -3170,12 +3171,13 @@ mod ivec {
     }
 }
 
-fn trans_vec_add(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef) ->
+fn trans_evec_add(cx: &@block_ctxt, t: &ty::t,
+                  lhs: ValueRef, rhs: ValueRef) ->
    result {
     let r = alloc_ty(cx, t);
     let tmp = r.val;
     r = copy_val(r.bcx, INIT, tmp, lhs, t);
-    let bcx = trans_vec_append(r.bcx, t, tmp, rhs).bcx;
+    let bcx = trans_evec_append(r.bcx, t, tmp, rhs).bcx;
     tmp = load_if_immediate(bcx, tmp, t);
     add_clean_temp(cx, tmp, t);
     ret rslt(bcx, tmp);
@@ -3209,7 +3211,7 @@ fn trans_eager_binop(cx: &@block_ctxt, op: ast::binop, lhs: ValueRef,
             if ty::sequence_is_interior(bcx_tcx(cx), intype) {
                 ret ivec::trans_add(cx, intype, lhs, rhs);
             }
-            ret trans_vec_add(cx, intype, lhs, rhs);
+            ret trans_evec_add(cx, intype, lhs, rhs);
         }
         if is_float {
             ret rslt(cx, cx.build.FAdd(lhs, rhs));
@@ -5028,7 +5030,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
                     ret ivec::trans_append(rhs_res.bcx, t, lhs_res.res.val,
                                            rhs_res.val);
                 }
-                ret trans_vec_append(rhs_res.bcx, t, lhs_res.res.val,
+                ret trans_evec_append(rhs_res.bcx, t, lhs_res.res.val,
                                      rhs_res.val);
               }
               _ { }

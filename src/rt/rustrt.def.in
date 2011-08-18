@@ -102,5 +102,6 @@ upcall_new_str
 upcall_shared_malloc
 upcall_shared_free
 upcall_sleep
+upcall_evec_append
 upcall_vec_append
 upcall_yield
