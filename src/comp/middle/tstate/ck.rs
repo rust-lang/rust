@@ -52,8 +52,9 @@ fn check_unused_vars(fcx: &fn_ctxt) {
     for c: norm_constraint in constraints(fcx) {
         alt c.c.node {
           ninit(id, v) {
-            if !vec_contains(fcx.enclosing.used_vars, id) {
-                fcx.ccx.tcx.sess.span_warn(c.c.span, "Unused variable " + v);
+            if !vec_contains(fcx.enclosing.used_vars, id) &&
+               v.(0) != ('_' as u8) {
+                fcx.ccx.tcx.sess.span_warn(c.c.span, "unused variable " + v);
             }
           }
           _ {/* ignore pred constraints */ }
