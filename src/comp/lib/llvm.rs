@@ -1264,7 +1264,7 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         ret llvm::LLVMBuildTruncOrBitCast(B, Val, DestTy, str::buf(""));
     }
 
-    fn Cast(Op: Opcode, Val: ValueRef, DestTy: TypeRef, Name: sbuf) ->
+    fn Cast(Op: Opcode, Val: ValueRef, DestTy: TypeRef, _Name: sbuf) ->
        ValueRef {
         assert (!*terminated);
         ret llvm::LLVMBuildCast(B, Op, Val, DestTy, str::buf(""));

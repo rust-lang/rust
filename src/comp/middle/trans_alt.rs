@@ -460,7 +460,7 @@ fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
 }
 
 fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
-             id: ast::node_id, output: &trans::out_method) -> result {
+             output: &trans::out_method) -> result {
     let bodies = ~[];
     let match: match = ~[];
     let er = trans::trans_expr(cx, expr);

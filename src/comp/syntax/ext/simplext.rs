@@ -159,7 +159,7 @@ type binders =
      mutable literal_ast_matchers: [selector]};
 type bindings = hashmap<ident, arb_depth<matchable>>;
 
-fn acumm_bindings(cx: &ext_ctxt, b_dest: &bindings, b_src: &bindings) { }
+fn acumm_bindings(_cx: &ext_ctxt, _b_dest: &bindings, _b_src: &bindings) { }
 
 /* these three functions are the big moving parts */
 
@@ -204,7 +204,7 @@ fn use_selectors_to_bind(b: &binders, e: @expr) -> option::t<bindings> {
 
 fn transcribe(cx: &ext_ctxt, b: &bindings, body: @expr) -> @expr {
     let idx_path: @mutable [uint] = @mutable ~[];
-    fn new_id(old: node_id, cx: &ext_ctxt) -> node_id { ret cx.next_id(); }
+    fn new_id(_old: node_id, cx: &ext_ctxt) -> node_id { ret cx.next_id(); }
     fn new_span(cx: &ext_ctxt, sp: &span) -> span {
         /* this discards information in the case of macro-defining macros */
         ret {lo: sp.lo, hi: sp.hi, expanded_from: cx.backtrace()};
@@ -263,7 +263,7 @@ fn follow_for_trans(cx: &ext_ctxt, mmaybe: &option::t<arb_depth<matchable>>,
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 iter free_vars(b: &bindings, e: @expr) -> ident {
     let idents: hashmap<ident, ()> = new_str_hash::<()>();
-    fn mark_ident(i: &ident, fld: ast_fold, b: &bindings,
+    fn mark_ident(i: &ident, _fld: ast_fold, b: &bindings,
                   idents: &hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
         ret i;
@@ -344,7 +344,7 @@ fn transcribe_exprs(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 
 // substitute, in a position that's required to be an ident
 fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                    i: &ident, fld: ast_fold) -> ident {
+                    i: &ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
           some(m) { match_error(cx, m, "an identifier") }
@@ -354,7 +354,7 @@ fn transcribe_ident(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
 
 
 fn transcribe_path(cx: &ext_ctxt, b: &bindings, idx_path: @mutable [uint],
-                   p: &path_, fld: ast_fold) -> path_ {
+                   p: &path_, _fld: ast_fold) -> path_ {
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
     ret alt follow_for_trans(cx, b.find(p.idents.(0)), idx_path) {
@@ -631,7 +631,7 @@ fn p_t_s_r_ellipses(cx: &ext_ctxt, repeat_me: @expr, offset: uint,
 
 fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
                   b: &binders) {
-    fn len_select(cx: &ext_ctxt, m: &matchable, at_least: bool, len: uint)
+    fn len_select(_cx: &ext_ctxt, m: &matchable, at_least: bool, len: uint)
         -> match_result {
         ret alt m {
               match_expr(e) {
@@ -652,7 +652,7 @@ fn p_t_s_r_length(cx: &ext_ctxt, len: uint, at_least: bool, s: selector,
         ~[compose_sels(s, bind len_select(cx, _, at_least, len))];
 }
 
-fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
+fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], _repeat_after: bool,
                          s: &selector, b: &binders) {
     let idx: uint = 0u;
     while idx < vec::len(elts) {
@@ -676,7 +676,7 @@ fn p_t_s_r_actual_vector(cx: &ext_ctxt, elts: [@expr], repeat_after: bool,
 }
 
 fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                     body: option::t<str>) -> base::macro_def {
+                     _body: option::t<str>) -> base::macro_def {
     let args: [@ast::expr] = alt arg.node {
       ast::expr_vec(elts, _, _) { elts }
       _ {
@@ -753,7 +753,7 @@ fn add_new_extension(cx: &ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: &ext_ctxt, sp: span, arg: @expr,
-                         body: option::t<str>, clauses: [@clause]) -> @expr {
+                         _body: option::t<str>, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) {

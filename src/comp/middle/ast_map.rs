@@ -87,7 +87,7 @@ fn new_smallintmap_adapter<@K,
             ret smallintmap::find(map, key_idx(key));
         }
 
-        fn remove(key: &K) -> option::t<V> { fail }
+        fn remove(_key: &K) -> option::t<V> { fail }
 
         fn rehash() { fail }
 

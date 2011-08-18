@@ -224,7 +224,7 @@ fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
-fn get_tag_variants(data: &@[u8], def: ast::def_id, tcx: &ty::ctxt,
+fn get_tag_variants(_data: &@[u8], def: ast::def_id, tcx: &ty::ctxt,
                     extres: &external_resolver) -> [ty::variant_info] {
     let external_crate_id = def.crate;
     let data =

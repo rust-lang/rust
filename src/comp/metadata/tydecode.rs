@@ -39,7 +39,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
     ret parse_ident_(st, sd, bind is_last(last, _));
 }
 
-fn parse_ident_(st: @pstate, sd: str_def, is_last: fn(char) -> bool ) ->
+fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool ) ->
    ast::ident {
     let rslt = "";
     while !is_last(peek(st) as char) {
@@ -117,7 +117,7 @@ fn parse_path(st: @pstate, sd: str_def) -> ast::path {
 
 type arg_parser<T> = fn(@pstate, str_def) -> ast::constr_arg_general_<T> ;
 
-fn parse_constr_arg(st: @pstate, sd: str_def) -> ast::fn_constr_arg {
+fn parse_constr_arg(st: @pstate, _sd: str_def) -> ast::fn_constr_arg {
     alt peek(st) as char {
       '*' { st.pos += 1u; ret ast::carg_base; }
       c {

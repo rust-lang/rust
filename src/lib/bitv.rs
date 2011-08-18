@@ -61,7 +61,7 @@ fn intersect(v0: &t, v1: &t) -> bool {
     ret process(sub, v0, v1);
 }
 
-fn right(w0: uint, w1: uint) -> uint { ret w1; }
+fn right(_w0: uint, w1: uint) -> uint { ret w1; }
 
 fn assign(v0: &t, v1: t) -> bool {
     let sub = right;

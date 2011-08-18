@@ -282,7 +282,7 @@ fn check_bad_word(p: &parser) {
     }
 }
 
-fn parse_ty_fn(proto: ast::proto, p: &parser, lo: uint) -> ast::ty_ {
+fn parse_ty_fn(proto: ast::proto, p: &parser) -> ast::ty_ {
     fn parse_fn_input_ty(p: &parser) -> ast::ty_arg {
         let lo = p.get_lo_pos();
         // Ignore arg name, if present
@@ -338,7 +338,7 @@ fn parse_ty_obj(p: &parser, hi: &mutable uint) -> ast::ty_ {
         let flo = p.get_lo_pos();
         let proto: ast::proto = parse_proto(p);
         let ident = parse_value_ident(p);
-        let f = parse_ty_fn(proto, p, flo);
+        let f = parse_ty_fn(proto, p);
         expect(p, token::SEMI);
         alt f {
           ast::ty_fn(proto, inputs, output, cf, constrs) {
@@ -574,16 +574,13 @@ fn parse_ty(p: &parser, colons_before_params: bool) -> @ast::ty {
         hi = p.get_hi_pos();
         expect(p, token::RBRACKET);
     } else if (eat_word(p, "fn")) {
-        let flo = p.get_last_lo_pos();
-        t = parse_ty_fn(ast::proto_fn, p, flo);
+        t = parse_ty_fn(ast::proto_fn, p);
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if (eat_word(p, "block")) {
-        let flo = p.get_last_lo_pos();
-        t = parse_ty_fn(ast::proto_block, p, flo);
+        t = parse_ty_fn(ast::proto_block, p);
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if (eat_word(p, "iter")) {
-        let flo = p.get_last_lo_pos();
-        t = parse_ty_fn(ast::proto_iter, p, flo);
+        t = parse_ty_fn(ast::proto_iter, p);
         alt t { ast::ty_fn(_, _, out, _, _) { hi = out.span.hi; } }
     } else if (eat_word(p, "obj")) {
         t = parse_ty_obj(p, hi);
@@ -2427,7 +2424,7 @@ fn parse_native_view(p: &parser) -> [@ast::view_item] {
 fn parse_crate_from_source_file(input: &str, cfg: &ast::crate_cfg,
                                 sess: &parse_sess) -> @ast::crate {
     let p = new_parser_from_file(sess, cfg, input, 0u, 0u, SOURCE_FILE);
-    ret parse_crate_mod(p, cfg, sess);
+    ret parse_crate_mod(p, cfg);
 }
 
 fn parse_crate_from_source_str(name: &str, source: &str, cfg: &ast::crate_cfg,
@@ -2438,11 +2435,11 @@ fn parse_crate_from_source_str(name: &str, source: &str, cfg: &ast::crate_cfg,
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.cm, source, filemap, itr);
     let p = new_parser(sess, cfg, rdr, ftype);
-    ret parse_crate_mod(p, cfg, sess);
+    ret parse_crate_mod(p, cfg);
 }
 
 // Parses a source module as a crate
-fn parse_crate_mod(p: &parser, cfg: &ast::crate_cfg, sess: parse_sess) ->
+fn parse_crate_mod(p: &parser, _cfg: &ast::crate_cfg) ->
    @ast::crate {
     let lo = p.get_lo_pos();
     let crate_attrs = parse_inner_attrs_and_next(p);

@@ -421,7 +421,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
 
 
 // Type constructors
-fn mk_raw_ty(cx: &ctxt, st: &sty, in_cname: &option::t<str>) -> @raw_t {
+fn mk_raw_ty(cx: &ctxt, st: &sty, _in_cname: &option::t<str>) -> @raw_t {
     let cname = none;
     let h = hash_type_info(st, cname);
     let has_params: bool = false;
@@ -516,19 +516,19 @@ fn gen_ty_full(cx: &ctxt, st: &sty, cname: &option::t<str>) -> t {
 // use the mk_foo() functions below.
 fn gen_ty(cx: &ctxt, st: &sty) -> t { ret gen_ty_full(cx, st, none); }
 
-fn mk_nil(cx: &ctxt) -> t { ret idx_nil; }
+fn mk_nil(_cx: &ctxt) -> t { ret idx_nil; }
 
-fn mk_bot(cx: &ctxt) -> t { ret idx_bot; }
+fn mk_bot(_cx: &ctxt) -> t { ret idx_bot; }
 
-fn mk_bool(cx: &ctxt) -> t { ret idx_bool; }
+fn mk_bool(_cx: &ctxt) -> t { ret idx_bool; }
 
-fn mk_int(cx: &ctxt) -> t { ret idx_int; }
+fn mk_int(_cx: &ctxt) -> t { ret idx_int; }
 
-fn mk_float(cx: &ctxt) -> t { ret idx_float; }
+fn mk_float(_cx: &ctxt) -> t { ret idx_float; }
 
-fn mk_uint(cx: &ctxt) -> t { ret idx_uint; }
+fn mk_uint(_cx: &ctxt) -> t { ret idx_uint; }
 
-fn mk_mach(cx: &ctxt, tm: &ast::ty_mach) -> t {
+fn mk_mach(_cx: &ctxt, tm: &ast::ty_mach) -> t {
     alt tm {
       ast::ty_u8. { ret idx_u8; }
       ast::ty_u16. { ret idx_u16; }
@@ -543,11 +543,11 @@ fn mk_mach(cx: &ctxt, tm: &ast::ty_mach) -> t {
     }
 }
 
-fn mk_char(cx: &ctxt) -> t { ret idx_char; }
+fn mk_char(_cx: &ctxt) -> t { ret idx_char; }
 
-fn mk_str(cx: &ctxt) -> t { ret idx_str; }
+fn mk_str(_cx: &ctxt) -> t { ret idx_str; }
 
-fn mk_istr(cx: &ctxt) -> t { ret idx_istr; }
+fn mk_istr(_cx: &ctxt) -> t { ret idx_istr; }
 
 fn mk_tag(cx: &ctxt, did: &ast::def_id, tys: &[t]) -> t {
     ret gen_ty(cx, ty_tag(did, tys));
@@ -604,7 +604,7 @@ fn mk_param(cx: &ctxt, n: uint, k: ast::kind) -> t {
     ret gen_ty(cx, ty_param(n, k));
 }
 
-fn mk_type(cx: &ctxt) -> t { ret idx_type; }
+fn mk_type(_cx: &ctxt) -> t { ret idx_type; }
 
 fn mk_native(cx: &ctxt, did: &def_id) -> t { ret gen_ty(cx, ty_native(did)); }
 
@@ -2208,7 +2208,7 @@ mod unify {
         fn_common_res_err(result);
         fn_common_res_ok([arg], t);
     }
-    fn unify_fn_common(cx: &@ctxt, expected: &t, actual: &t,
+    fn unify_fn_common(cx: &@ctxt, _expected: &t, _actual: &t,
                        expected_inputs: &[arg], expected_output: &t,
                        actual_inputs: &[arg], actual_output: &t) ->
        fn_common_res {
@@ -2251,7 +2251,7 @@ mod unify {
                 expected: &t, actual: &t, expected_inputs: &[arg],
                 expected_output: &t, actual_inputs: &[arg], actual_output: &t,
                 expected_cf: &controlflow, actual_cf: &controlflow,
-                expected_constrs: &[@constr], actual_constrs: &[@constr])
+                _expected_constrs: &[@constr], actual_constrs: &[@constr])
        -> result {
         if e_proto != a_proto { ret ures_err(terr_mismatch); }
         alt expected_cf {
@@ -2858,7 +2858,7 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
     let i = 0u;
     while i < ty_param_count { *param_var_ids += ~[next_ty_var()]; i += 1u; }
     fn binder(sp: span, cx: ctxt, param_var_ids: @mutable [int],
-              next_ty_var: fn() -> int , index: uint, kind: ast::kind) -> t {
+              _next_ty_var: fn() -> int , index: uint, _kind: ast::kind) -> t {
         if index < vec::len(*param_var_ids) {
             ret mk_var(cx, param_var_ids.(index));
         } else {
@@ -2878,8 +2878,8 @@ fn bind_params_in_type(sp: &span, cx: &ctxt, next_ty_var: fn() -> int ,
 // substitions.
 fn substitute_type_params(cx: &ctxt, substs: &[ty::t], typ: t) -> t {
     if !type_contains_params(cx, typ) { ret typ; }
-    fn substituter(cx: ctxt, substs: @[ty::t], idx: uint,
-                   kind: ast::kind) -> t {
+    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint,
+                   _kind: ast::kind) -> t {
         // FIXME: bounds check can fail
         ret substs.(idx);
     }

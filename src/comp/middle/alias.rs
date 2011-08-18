@@ -51,8 +51,8 @@ fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn visit_fn(cx: &@ctx, f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
-            name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt<scope>) {
+fn visit_fn(cx: &@ctx, f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
+            _name: &fn_ident, id: ast::node_id, sc: &scope, v: &vt<scope>) {
     visit::visit_fn_decl(f.decl, sc, v);
     for arg_: ast::arg in f.decl.inputs {
         cx.local_map.insert(arg_.id, arg(arg_.mode));

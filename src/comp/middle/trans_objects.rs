@@ -55,7 +55,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                               ty::ret_ty_of_fn(ccx.tcx, ctor_id), fn_args,
                               ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
+    copy_args_to_allocas(fcx, fn_args);
 
     //  Create the first block context in the function and keep a handle on it
     //  to pass to finish_fn later.
@@ -601,7 +601,7 @@ fn finish_vtbl(cx: @local_ctxt, llmethods: [ValueRef], name: str)
 // returns the value returned from that call.
 fn process_bkwding_mthd(cx: @local_ctxt, sp: &span, m: @ty::method,
                        ty_params: &[ast::ty_param], outer_obj_ty: ty::t,
-                       additional_field_tys: &[ty::t]) -> ValueRef {
+                       _additional_field_tys: &[ty::t]) -> ValueRef {
 
     // Create a local context that's aware of the name of the method we're
     // creating.

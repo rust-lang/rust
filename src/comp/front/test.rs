@@ -51,7 +51,8 @@ fn modify_for_testing(crate: @ast::crate) -> @ast::crate {
     ret res;
 }
 
-fn fold_mod(cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold) -> ast::_mod {
+fn fold_mod(_cx: &test_ctxt, m: &ast::_mod, fld: fold::ast_fold)
+    -> ast::_mod {
 
     // Remove any defined main function from the AST so it doesn't clash with
     // the one we're going to add.  FIXME: This is sloppy. Instead we should

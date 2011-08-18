@@ -45,12 +45,12 @@ import util::common::log_block;
 import syntax::codemap::span;
 import util::ppaux::fn_ident_to_string;
 
-fn find_pre_post_mod(m: &_mod) -> _mod {
+fn find_pre_post_mod(_m: &_mod) -> _mod {
     log "implement find_pre_post_mod!";
     fail;
 }
 
-fn find_pre_post_native_mod(m: &native_mod) -> native_mod {
+fn find_pre_post_native_mod(_m: &native_mod) -> native_mod {
     log "implement find_pre_post_native_mod";
     fail;
 }

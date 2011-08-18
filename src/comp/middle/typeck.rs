@@ -234,7 +234,7 @@ fn structure_of(fcx: &@fn_ctxt, sp: &span, typ: ty::t) -> ty::sty {
 
 // Returns the one-level-deep structure of the given type or none if it
 // is not known yet.
-fn structure_of_maybe(fcx: &@fn_ctxt, sp: &span, typ: ty::t) ->
+fn structure_of_maybe(fcx: &@fn_ctxt, _sp: &span, typ: ty::t) ->
    option::t<ty::sty> {
     let r =
         ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
@@ -1040,7 +1040,7 @@ fn are_compatible(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) -> bool {
 
 
 // Returns the types of the arguments to a tag variant.
-fn variant_arg_types(ccx: &@crate_ctxt, sp: &span, vid: &ast::def_id,
+fn variant_arg_types(ccx: &@crate_ctxt, _sp: &span, vid: &ast::def_id,
                      tag_ty_params: &[ty::t]) -> [ty::t] {
     let result: [ty::t] = ~[];
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
@@ -1160,7 +1160,7 @@ mod writeback {
         }
         visit::visit_local(l, wbcx, v);
     }
-    fn visit_item(item: &@ast::item, wbcx: &wb_ctxt, v: &wb_vt) {
+    fn visit_item(_item: &@ast::item, _wbcx: &wb_ctxt, _v: &wb_vt) {
         // Ignore items
     }
 
@@ -1282,10 +1282,10 @@ fn gather_locals(ccx: &@crate_ctxt, f: &ast::_fn, id: &ast::node_id,
     };
 
     // Don't descend into fns and items
-    fn visit_fn<E>(f: &ast::_fn, tp: &[ast::ty_param], sp: &span,
-                   i: &ast::fn_ident, id: ast::node_id, e: &E,
-                   v: &visit::vt<E>) { }
-    fn visit_item<E>(i: &@ast::item, e: &E, v: &visit::vt<E>) { }
+    fn visit_fn<E>(_f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
+                   _i: &ast::fn_ident, _id: ast::node_id, _e: &E,
+                   _v: &visit::vt<E>) { }
+    fn visit_item<E>(_i: &@ast::item, _e: &E, _v: &visit::vt<E>) { }
 
     let visit =
         @{visit_local: visit_local,
@@ -1521,8 +1521,8 @@ type unifier = fn(fcx: &@fn_ctxt, sp: &span,
                   expected: &ty::t, actual: &ty::t) -> ty::t;
 
 fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
-    fn dummy_unify(fcx: &@fn_ctxt, sp: &span,
-                   expected: &ty::t, actual: &ty::t) -> ty::t {
+    fn dummy_unify(_fcx: &@fn_ctxt, _sp: &span,
+                   _expected: &ty::t, actual: &ty::t) -> ty::t {
         actual
     }
     ret check_expr_with_unifier(fcx, expr, dummy_unify, 0u);
@@ -1639,7 +1639,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(fcx: &@fn_ctxt, sp: &span, lhs: &@ast::expr,
+    fn check_assignment(fcx: &@fn_ctxt, _sp: &span, lhs: &@ast::expr,
                         rhs: &@ast::expr, id: &ast::node_id) -> bool {
         let t = next_ty_var(fcx);
         let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
@@ -1749,7 +1749,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr,
     // or if-check
     fn check_then_else(fcx: &@fn_ctxt, thn: &ast::blk,
                        elsopt: &option::t<@ast::expr>, id: ast::node_id,
-                       sp: &span) -> bool {
+                       _sp: &span) -> bool {
         let then_bot = check_block(fcx, thn);
         let els_bot = false;
         let if_t =
@@ -2561,7 +2561,7 @@ fn check_block(fcx: &@fn_ctxt, blk: &ast::blk) -> bool {
     ret bot;
 }
 
-fn check_const(ccx: &@crate_ctxt, sp: &span, e: &@ast::expr,
+fn check_const(ccx: &@crate_ctxt, _sp: &span, e: &@ast::expr,
                id: &ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.

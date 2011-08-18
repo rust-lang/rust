@@ -313,7 +313,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
     }
 
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(sha: sha1, crate: &ast::crate,
+    fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
                               metas: &provided_metas) -> str {
         fn len_and_str(s: &str) -> str {
             ret #fmt("%u_%s", str::byte_len(s), s);
@@ -349,7 +349,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
                        name, default));
     }
 
-    fn crate_meta_name(sess: &session::session, crate: &ast::crate,
+    fn crate_meta_name(sess: &session::session, _crate: &ast::crate,
                        output: &str, metas: &provided_metas) -> str {
         ret alt metas.name {
               some(v) { v }
@@ -368,7 +368,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
             };
     }
 
-    fn crate_meta_vers(sess: &session::session, crate: &ast::crate,
+    fn crate_meta_vers(sess: &session::session, _crate: &ast::crate,
                        metas: &provided_metas) -> str {
         ret alt metas.vers {
               some(v) { v }
@@ -435,7 +435,7 @@ fn mangle(ss: &[str]) -> str {
     ret n;
 }
 
-fn exported_name(path: &[str], hash: &str, vers: &str) -> str {
+fn exported_name(path: &[str], hash: &str, _vers: &str) -> str {
     // FIXME: versioning isn't working yet
 
     ret mangle(path + ~[hash]); //  + "@" + vers;
@@ -459,7 +459,7 @@ fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[str],
     ret mangle(path + ~[ccx.names.next(flav)]);
 }
 
-fn mangle_internal_name_by_path(ccx: &@crate_ctxt, path: &[str]) -> str {
+fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[str]) -> str {
     ret mangle(path);
 }
 

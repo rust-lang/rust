@@ -43,8 +43,8 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
     // is always a power of 2), so that all buckets are probed for a
     // fixed key.
 
-    fn hashl(n: uint, nbkts: uint) -> uint { ret (n >>> 16u) * 2u + 1u; }
-    fn hashr(n: uint, nbkts: uint) -> uint { ret 0x0000_ffff_u & n; }
+    fn hashl(n: uint, _nbkts: uint) -> uint { ret (n >>> 16u) * 2u + 1u; }
+    fn hashr(n: uint, _nbkts: uint) -> uint { ret 0x0000_ffff_u & n; }
     fn hash(h: uint, nbkts: uint, i: uint) -> uint {
         ret (hashl(h, nbkts) * i + hashr(h, nbkts)) % nbkts;
     }
@@ -98,7 +98,7 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
         ret option::none;
     }
     fn rehash<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
-                      oldbkts: &[mutable bucket<K, V>], noldbkts: uint,
+                      oldbkts: &[mutable bucket<K, V>], _noldbkts: uint,
                       newbkts: &[mutable bucket<K, V>], nnewbkts: uint) {
         for b: bucket<K, V> in oldbkts {
             alt b {

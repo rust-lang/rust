@@ -44,8 +44,8 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
     for decl: ast::node_id in initial_decls { set_add(decls, decl); }
     let refs = @mutable ~[];
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
-                         i: &ast::fn_ident, nid: ast::node_id) {
+    let walk_fn = lambda(f: &ast::_fn, _tps: &[ast::ty_param], _sp: &span,
+                         _i: &ast::fn_ident, _nid: ast::node_id) {
         for a: ast::arg in f.decl.inputs { set_add(decls, a.id); }
     };
     let walk_expr = lambda(expr: &@ast::expr) {

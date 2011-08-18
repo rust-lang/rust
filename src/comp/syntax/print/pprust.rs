@@ -34,7 +34,7 @@ tag ann_node {
 type pp_ann = {pre: fn(&ann_node) , post: fn(&ann_node) };
 
 fn no_ann() -> pp_ann {
-    fn ignore(node: &ann_node) { }
+    fn ignore(_node: &ann_node) { }
     ret {pre: ignore, post: ignore};
 }
 

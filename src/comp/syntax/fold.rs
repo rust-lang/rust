@@ -76,31 +76,31 @@ type a_f =
 
 
 //fn nf_dummy<T>(&T node) -> T { fail; }
-fn nf_crate_dummy(c: &crate) -> crate { fail; }
-fn nf_crate_directive_dummy(c: &@crate_directive) -> @crate_directive {
+fn nf_crate_dummy(_c: &crate) -> crate { fail; }
+fn nf_crate_directive_dummy(_c: &@crate_directive) -> @crate_directive {
     fail;
 }
-fn nf_view_item_dummy(v: &@view_item) -> @view_item { fail; }
-fn nf_native_item_dummy(n: &@native_item) -> @native_item { fail; }
-fn nf_item_dummy(i: &@item) -> @item { fail; }
-fn nf_item_underscore_dummy(i: &item_) -> item_ { fail; }
-fn nf_method_dummy(m: &@method) -> @method { fail; }
-fn nf_blk_dummy(b: &blk) -> blk { fail; }
-fn nf_stmt_dummy(s: &@stmt) -> @stmt { fail; }
-fn nf_arm_dummy(a: &arm) -> arm { fail; }
-fn nf_pat_dummy(p: &@pat) -> @pat { fail; }
-fn nf_decl_dummy(d: &@decl) -> @decl { fail; }
-fn nf_expr_dummy(e: &@expr) -> @expr { fail; }
-fn nf_ty_dummy(t: &@ty) -> @ty { fail; }
-fn nf_constr_dummy(c: &@constr) -> @constr { fail; }
-fn nf_fn_dummy(f: &_fn) -> _fn { fail; }
-fn nf_mod_dummy(m: &_mod) -> _mod { fail; }
-fn nf_native_mod_dummy(n: &native_mod) -> native_mod { fail; }
-fn nf_variant_dummy(v: &variant) -> variant { fail; }
-fn nf_ident_dummy(i: &ident) -> ident { fail; }
-fn nf_path_dummy(p: &path) -> path { fail; }
-fn nf_obj_field_dummy(o: &obj_field) -> obj_field { fail; }
-fn nf_local_dummy(o: &@local) -> @local { fail; }
+fn nf_view_item_dummy(_v: &@view_item) -> @view_item { fail; }
+fn nf_native_item_dummy(_n: &@native_item) -> @native_item { fail; }
+fn nf_item_dummy(_i: &@item) -> @item { fail; }
+fn nf_item_underscore_dummy(_i: &item_) -> item_ { fail; }
+fn nf_method_dummy(_m: &@method) -> @method { fail; }
+fn nf_blk_dummy(_b: &blk) -> blk { fail; }
+fn nf_stmt_dummy(_s: &@stmt) -> @stmt { fail; }
+fn nf_arm_dummy(_a: &arm) -> arm { fail; }
+fn nf_pat_dummy(_p: &@pat) -> @pat { fail; }
+fn nf_decl_dummy(_d: &@decl) -> @decl { fail; }
+fn nf_expr_dummy(_e: &@expr) -> @expr { fail; }
+fn nf_ty_dummy(_t: &@ty) -> @ty { fail; }
+fn nf_constr_dummy(_c: &@constr) -> @constr { fail; }
+fn nf_fn_dummy(_f: &_fn) -> _fn { fail; }
+fn nf_mod_dummy(_m: &_mod) -> _mod { fail; }
+fn nf_native_mod_dummy(_n: &native_mod) -> native_mod { fail; }
+fn nf_variant_dummy(_v: &variant) -> variant { fail; }
+fn nf_ident_dummy(_i: &ident) -> ident { fail; }
+fn nf_path_dummy(_p: &path) -> path { fail; }
+fn nf_obj_field_dummy(_o: &obj_field) -> obj_field { fail; }
+fn nf_local_dummy(_o: &@local) -> @local { fail; }
 
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
@@ -176,7 +176,7 @@ fn noop_fold_crate_directive(cd: &crate_directive_, fld: ast_fold) ->
         }
 }
 
-fn noop_fold_view_item(vi: &view_item_, fld: ast_fold) -> view_item_ {
+fn noop_fold_view_item(vi: &view_item_, _fld: ast_fold) -> view_item_ {
     ret vi;
 }
 
@@ -431,7 +431,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
         }
 }
 
-fn noop_fold_ty(t: &ty_, fld: ast_fold) -> ty_ {
+fn noop_fold_ty(t: &ty_, _fld: ast_fold) -> ty_ {
     //drop in ty::fold_ty here if necessary
     ret t;
 }
@@ -476,7 +476,7 @@ fn noop_fold_variant(v: &variant_, fld: ast_fold) -> variant_ {
     ret {name: v.name, args: vec::map(fold_variant_arg, v.args), id: v.id};
 }
 
-fn noop_fold_ident(i: &ident, fld: ast_fold) -> ident { ret i; }
+fn noop_fold_ident(i: &ident, _fld: ast_fold) -> ident { ret i; }
 
 fn noop_fold_path(p: &path_, fld: ast_fold) -> path_ {
     ret {global: p.global,

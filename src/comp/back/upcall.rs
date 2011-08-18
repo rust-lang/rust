@@ -50,23 +50,23 @@ type upcalls =
      dynastack_alloc: ValueRef,
      dynastack_free: ValueRef};
 
-fn declare_upcalls(tn: type_names, tydesc_type: TypeRef,
+fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
                    taskptr_type: TypeRef, llmod: ModuleRef) -> @upcalls {
-    fn decl(tn: type_names, llmod: ModuleRef, name: str, tys: [TypeRef],
+    fn decl(llmod: ModuleRef, name: str, tys: [TypeRef],
           rv: TypeRef) -> ValueRef {
         let arg_tys: [TypeRef] = ~[];
         for t: TypeRef in tys { arg_tys += ~[t]; }
         let fn_ty = T_fn(arg_tys, rv);
         ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
-    fn decl_with_taskptr(taskptr_type: TypeRef, tn: type_names,
+    fn decl_with_taskptr(taskptr_type: TypeRef,
                          llmod: ModuleRef, name: str, tys: [TypeRef],
                          rv: TypeRef) -> ValueRef {
-        ret decl(tn, llmod, name, ~[taskptr_type] + tys, rv);
+        ret decl(llmod, name, ~[taskptr_type] + tys, rv);
     }
-    let dv = bind decl_with_taskptr(taskptr_type, tn, llmod, _, _, T_void());
-    let d = bind decl_with_taskptr(taskptr_type, tn, llmod, _, _, _);
-    let dr = bind decl(tn, llmod, _, _, _);
+    let dv = bind decl_with_taskptr(taskptr_type, llmod, _, _, T_void());
+    let d = bind decl_with_taskptr(taskptr_type, llmod, _, _, _);
+    let dr = bind decl(llmod, _, _, _);
 
     let empty_vec: [TypeRef] = ~[];
     ret @{grow_task: dv("grow_task", ~[T_size_t()]),

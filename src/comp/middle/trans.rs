@@ -387,9 +387,8 @@ fn get_simple_extern_fn(externs: &hashmap<str, ValueRef>, llmod: ModuleRef,
     ret get_extern_fn(externs, llmod, name, lib::llvm::LLVMCCallConv, t);
 }
 
-fn trans_native_call(b: &builder, glues: @glue_fns, lltaskptr: ValueRef,
-                     externs: &hashmap<str, ValueRef>, tn: &type_names,
-                     llmod: ModuleRef, name: &str, pass_task: bool,
+fn trans_native_call(b: &builder, externs: &hashmap<str, ValueRef>,
+                     llmod: ModuleRef, name: &str,
                      args: &[ValueRef]) -> ValueRef {
     let n: int = std::vec::len::<ValueRef>(args) as int;
     let llnative: ValueRef = get_simple_extern_fn(externs, llmod, name, n);
@@ -1933,7 +1932,7 @@ fn iter_sequence_inner(cx: &@block_ctxt, src: ValueRef,
                        elt_ty: & // elt*
                            ty::t, f: &val_and_ty_fn) -> result {
     fn adaptor_fn(f: val_and_ty_fn, elt_ty: ty::t, cx: &@block_ctxt,
-                  dst: ValueRef, src: ValueRef) -> result {
+                  _dst: ValueRef, src: ValueRef) -> result {
         let llptrty;
         if !ty::type_has_dynamic_size(bcx_tcx(cx), elt_ty) {
             let llty = type_of(bcx_ccx(cx), cx.sp, elt_ty);
@@ -2537,7 +2536,7 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
 }
 
 fn trans_compare(cx: &@block_ctxt, op: ast::binop,
-                 lhs: ValueRef, lhs_t: ty::t, rhs: ValueRef,
+                 lhs: ValueRef, _lhs_t: ty::t, rhs: ValueRef,
                  rhs_t: ty::t) -> result {
     // Determine the operation we need.
     let llop;
@@ -3398,8 +3397,8 @@ fn join_branches(parent_cx: &@block_ctxt, ins: &[result]) -> @block_ctxt {
 tag out_method { return; save_in(ValueRef); }
 
 fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
-            els: &option::t<@ast::expr>, id: ast::node_id,
-            output: &out_method) -> result {
+            els: &option::t<@ast::expr>, output: &out_method)
+    -> result {
     let cond_res = trans_expr(cx, cond);
 
     if (ty::type_is_bot(bcx_tcx(cx), ty::expr_ty(bcx_tcx(cx), cond))) {
@@ -3866,8 +3865,7 @@ fn lval_generic_fn(cx: &@block_ctxt, tpt: &ty::ty_param_kinds_and_ty,
     ret lv;
 }
 
-fn lookup_discriminant(lcx: &@local_ctxt, tid: &ast::def_id,
-                       vid: &ast::def_id) -> ValueRef {
+fn lookup_discriminant(lcx: &@local_ctxt, vid: &ast::def_id) -> ValueRef {
     alt lcx.ccx.discrims.find(vid.node) {
       none. {
         // It's an external discriminant that we haven't seen yet.
@@ -3929,7 +3927,7 @@ fn trans_var(cx: &@block_ctxt, sp: &span, id: ast::node_id) ->
             let bcx = alloc_result.bcx;
             let lltagptr = bcx.build.PointerCast(lltagblob, T_ptr(lltagty));
             if std::vec::len(ty::tag_variants(ccx.tcx, tid)) != 1u {
-                let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, tid, vid);
+                let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
                 let lldiscrim = bcx.build.Load(lldiscrim_gv);
                 let lldiscrimptr =
                     bcx.build.GEP(lltagptr, ~[C_int(0), C_int(0)]);
@@ -3968,7 +3966,7 @@ fn trans_path(cx: &@block_ctxt, p: &ast::path, id: ast::node_id) ->
 }
 
 fn trans_field(cx: &@block_ctxt, sp: &span, v: ValueRef, t0: &ty::t,
-               field: &ast::ident, id: ast::node_id) -> lval_result {
+               field: &ast::ident) -> lval_result {
     let r = autoderef(cx, v, t0);
     let t = r.ty;
     alt ty::struct(bcx_tcx(cx), t) {
@@ -4085,7 +4083,7 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
       ast::expr_field(base, ident) {
         let r = trans_expr(cx, base);
         let t = ty::expr_ty(bcx_tcx(cx), base);
-        ret trans_field(r.bcx, e.span, r.val, t, ident, e.id);
+        ret trans_field(r.bcx, e.span, r.val, t, ident);
       }
       ast::expr_index(base, idx) {
         ret trans_index(cx, e.span, base, idx, e.id);
@@ -4123,7 +4121,7 @@ fn trans_lval_gen(cx: &@block_ctxt, e: &@ast::expr) -> lval_result {
           some(pair) {
             let r = pair.v;
             let t = pair.t;
-            ret trans_field(cx, e.span, r, t, ident, e.id);
+            ret trans_field(cx, e.span, r, t, ident);
           }
           _ {
             // Shouldn't happen.
@@ -4237,8 +4235,7 @@ fn trans_cast(cx: &@block_ctxt, e: &@ast::expr, id: ast::node_id) -> result {
 
 fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     outgoing_fty: &ty::t, args: &[option::t<@ast::expr>],
-                    env_ty: &ty::t, bound_tys: &[ty::t],
-                    ty_param_count: uint,
+                    env_ty: &ty::t, ty_param_count: uint,
                     target_fn: &option::t<ValueRef>) ->
     {val: ValueRef, ty: TypeRef} {
 
@@ -4494,7 +4491,7 @@ fn trans_bind_1(cx: &@block_ctxt, f: &@ast::expr, f_res: &lval_result,
     let pair_ty = node_id_type(bcx_ccx(cx), id);
     let llthunk =
         trans_bind_thunk(cx.fcx.lcx, cx.sp, pair_ty, outgoing_fty_real,
-                         args, closure.ptrty, bound_tys, ty_param_count,
+                         args, closure.ptrty, ty_param_count,
                          target_res);
 
     // Construct the function pair
@@ -4994,11 +4991,11 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       }
       ast::expr_binary(op, x, y) { ret trans_binary(cx, op, x, y); }
       ast::expr_if(cond, thn, els) {
-        ret with_out_method(bind trans_if(cx, cond, thn, els, e.id, _), cx,
+        ret with_out_method(bind trans_if(cx, cond, thn, els, _), cx,
                             e.id, output);
       }
       ast::expr_if_check(cond, thn, els) {
-        ret with_out_method(bind trans_if(cx, cond, thn, els, e.id, _), cx,
+        ret with_out_method(bind trans_if(cx, cond, thn, els, _), cx,
                             e.id, output);
       }
       ast::expr_ternary(_, _, _) {
@@ -5011,8 +5008,8 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
       ast::expr_while(cond, body) { ret trans_while(cx, cond, body); }
       ast::expr_do_while(body, cond) { ret trans_do_while(cx, body, cond); }
       ast::expr_alt(expr, arms) {
-        ret with_out_method(bind trans_alt::trans_alt(cx, expr, arms, e.id,
-                                                      _), cx, e.id, output);
+        ret with_out_method(bind trans_alt::trans_alt(cx, expr, arms, _),
+                            cx, e.id, output);
       }
       ast::expr_fn(f) {
         let ccx = bcx_ccx(cx);
@@ -5911,8 +5908,7 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
     }
 }
 
-fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg],
-                        arg_tys: &[ty::arg]) {
+fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
@@ -6050,7 +6046,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
       _ { }
     }
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
+    copy_args_to_allocas(fcx, f.decl.inputs);
 
     // Figure out if we need to build a closure and act accordingly
     let res = alt f.proto {
@@ -6203,7 +6199,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
+    copy_args_to_allocas(fcx, fn_args);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
 
@@ -6356,7 +6352,7 @@ fn decl_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str], flav: str,
 }
 
 fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
-                         flav: str, ty_params: &[ast::ty_param],
+                         _flav: str, ty_params: &[ast::ty_param],
                          node_id: ast::node_id, node_type: ty::t) {
     let llfty = type_of_fn_from_ty(ccx, sp, node_type,
                                    std::vec::len(ty_params));
@@ -6690,7 +6686,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 
     fn trans_simple_native_abi(bcx: &@block_ctxt, name: str,
                                call_args: &mutable [ValueRef], fn_type: ty::t,
-                               first_arg_n: uint, uses_retptr: bool, cc: uint)
+                               uses_retptr: bool, cc: uint)
        -> {val: ValueRef, rptr: ValueRef} {
         let call_arg_tys: [TypeRef] = ~[];
         for arg: ValueRef in call_args { call_arg_tys += ~[val_ty(arg)]; }
@@ -6738,7 +6734,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     alt abi {
       ast::native_abi_llvm. {
         let result =
-            trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n,
+            trans_simple_native_abi(bcx, name, call_args, fn_type,
                                     uses_retptr, lib::llvm::LLVMCCallConv);
         r = result.val;
         rptr = result.rptr;
@@ -6747,14 +6743,13 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
         let external_name = "rust_intrinsic_" + name;
         let result =
             trans_simple_native_abi(bcx, external_name, call_args, fn_type,
-                                    arg_n, uses_retptr,
-                                    lib::llvm::LLVMCCallConv);
+                                    uses_retptr, lib::llvm::LLVMCCallConv);
         r = result.val;
         rptr = result.rptr;
       }
       ast::native_abi_x86stdcall. {
         let result =
-            trans_simple_native_abi(bcx, name, call_args, fn_type, arg_n,
+            trans_simple_native_abi(bcx, name, call_args, fn_type,
                                     uses_retptr,
                                     lib::llvm::LLVMX86StdcallCallConv);
         r = result.val;
@@ -6762,8 +6757,8 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
       }
       _ {
         r =
-            trans_native_call(bcx.build, ccx.glues, lltaskptr, ccx.externs,
-                              ccx.tn, ccx.llmod, name, pass_task, call_args);
+            trans_native_call(bcx.build, ccx.externs,
+                              ccx.llmod, name, call_args);
         rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
       }
     }
@@ -6783,7 +6778,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 fn item_path(item: &@ast::item) -> [str] { ret ~[item.ident]; }
 
 fn collect_native_item(ccx: @crate_ctxt, i: &@ast::native_item, pt: &[str],
-                       v: &vt<[str]>) {
+                       _v: &vt<[str]>) {
     alt i.node {
       ast::native_item_fn(_, _, _) {
         if !ccx.obj_methods.contains_key(i.id) {

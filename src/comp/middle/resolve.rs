@@ -169,7 +169,7 @@ fn map_crate(e: &@env, c: &@ast::crate) {
                        index: index_mod(c.node.module),
                        mutable glob_imports: ~[],
                        glob_imported_names: new_str_hash::<import_state>()});
-    fn index_vi(e: @env, i: &@ast::view_item, sc: &scopes, v: &vt<scopes>) {
+    fn index_vi(e: @env, i: &@ast::view_item, sc: &scopes, _v: &vt<scopes>) {
         alt i.node {
           ast::view_item_import(name, ids, id) {
             e.imports.insert(id, todo(id, name, ids, i.span, sc));
@@ -215,7 +215,8 @@ fn map_crate(e: &@env, c: &@ast::crate) {
              with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, cons(scope_crate, @nil),
                        visit::mk_vt(v_link_glob));
-    fn link_glob(e: @env, vi: &@ast::view_item, sc: &scopes, v: &vt<scopes>) {
+    fn link_glob(e: @env, vi: &@ast::view_item, sc: &scopes,
+                 _v: &vt<scopes>) {
         fn find_mod(e: @env, sc: scopes) -> @indexed_mod {
             alt sc {
               cons(scope_item(i), tl) {
@@ -267,7 +268,7 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
           visit_item: visit_item_with_scope,
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
-          visit_arm: bind walk_arm(e, _, _, _),
+          visit_arm: walk_arm,
           visit_pat: bind walk_pat(e, _, _, _),
           visit_expr: bind walk_expr(e, _, _, _),
           visit_ty: bind walk_ty(e, _, _, _),
@@ -299,10 +300,10 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
         }
     }
     fn walk_constr(e: @env, p: &ast::path, sp: &span, id: node_id,
-                   sc: &scopes, v: &vt<scopes>) {
+                   sc: &scopes, _v: &vt<scopes>) {
         maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_value));
     }
-    fn walk_arm(e: @env, a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
+    fn walk_arm(a: &ast::arm, sc: &scopes, v: &vt<scopes>) {
         visit_arm_with_scope(a, sc, v);
     }
     fn walk_pat(e: &@env, pat: &@ast::pat, sc: &scopes, v: &vt<scopes>) {
@@ -359,7 +360,7 @@ fn visit_fn_with_scope(e: &@env, f: &ast::_fn, tp: &[ast::ty_param],
     // for f's constrs in the table.
 
     for c: @ast::constr in f.decl.constraints {
-        resolve_constr(e, id, c, sc, v);
+        resolve_constr(e, c, sc, v);
     }
     visit::visit_fn(f, tp, sp, name, id,
                     cons(scope_fn(f.decl, f.proto, tp), @sc), v);
@@ -436,8 +437,7 @@ fn follow_import(e: &env, sc: &scopes, path: &[ident], sp: &span) ->
     } else { ret none; }
 }
 
-fn resolve_constr(e: @env, id: node_id, c: &@ast::constr, sc: &scopes,
-                  v: &vt<scopes>) {
+fn resolve_constr(e: @env, c: &@ast::constr, sc: &scopes, _v: &vt<scopes>) {
     let new_def =
         lookup_path_strict(*e, sc, c.span, c.node.path.node, ns_value);
     if option::is_some(new_def) {
@@ -921,7 +921,7 @@ fn lookup_in_mod(e: &env, m: &def, sp: &span, name: &ident, ns: namespace,
     }
 }
 
-fn found_view_item(e: &env, vi: @ast::view_item, ns: namespace) ->
+fn found_view_item(e: &env, vi: @ast::view_item) ->
    option::t<def> {
     alt vi.node {
       ast::view_item_use(_, _, id) {
@@ -1040,7 +1040,9 @@ fn lookup_glob_in_mod(e: &env, info: @indexed_mod, sp: &span, id: &ident,
 fn lookup_in_mie(e: &env, mie: &mod_index_entry, ns: namespace) ->
    option::t<def> {
     alt mie {
-      mie_view_item(view_item) { ret found_view_item(e, view_item, ns); }
+      mie_view_item(view_item) {
+        if ns == ns_module { ret found_view_item(e, view_item); }
+      }
       mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }
       mie_tag_variant(item, variant_idx) {

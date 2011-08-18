@@ -231,15 +231,15 @@ fn tag_kind(ccx : &@crate_ctxt, did : &ast::def_id) -> tag_kind {
 
 
 // Returns the code corresponding to the pointer size on this architecture.
-fn s_int(tcx : &ty_ctxt) -> u8 {
+fn s_int(_tcx : &ty_ctxt) -> u8 {
     ret shape_i32;      // TODO: x86-64
 }
 
-fn s_uint(tcx : &ty_ctxt) -> u8 {
+fn s_uint(_tcx : &ty_ctxt) -> u8 {
     ret shape_u32;      // TODO: x86-64
 }
 
-fn s_float(tcx : &ty_ctxt) -> u8 {
+fn s_float(_tcx : &ty_ctxt) -> u8 {
     ret shape_f64;      // TODO: x86-64
 }
 

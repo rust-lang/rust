@@ -740,7 +740,7 @@ fn find_instance_(pattern: &[constr_arg_general_<inst>],
 type inst = {ident: ident, node: node_id};
 type subst = [{from: inst, to: inst}];
 
-fn find_instances(fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
+fn find_instances(_fcx: &fn_ctxt, subst: &subst, c: &constraint) ->
    [{from: uint, to: uint}] {
 
     let rslt = ~[];
@@ -996,7 +996,7 @@ fn any_eq(v: &[node_id], d: node_id) -> bool {
     false
 }
 
-fn constraint_mentions(fcx: &fn_ctxt, c: &norm_constraint, v: node_id) ->
+fn constraint_mentions(_fcx: &fn_ctxt, c: &norm_constraint, v: node_id) ->
    bool {
     ret alt c.c.node {
           ninit(id, _) { v == id }
@@ -1004,7 +1004,7 @@ fn constraint_mentions(fcx: &fn_ctxt, c: &norm_constraint, v: node_id) ->
         };
 }
 
-fn non_init_constraint_mentions(fcx: &fn_ctxt, c: &norm_constraint,
+fn non_init_constraint_mentions(_fcx: &fn_ctxt, c: &norm_constraint,
                                 v: &node_id) -> bool {
     ret alt c.c.node {
           ninit(_, _) { false }
@@ -1051,8 +1051,8 @@ fn op_to_oper_ty(io: init_op) -> oper_type {
 }
 
 // default function visitor
-fn do_nothing<T>(f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident,
-                 iid: node_id, cx: &T, v: &visit::vt<T>) {
+fn do_nothing<T>(_f: &_fn, _tp: &[ty_param], _sp: &span, _i: &fn_ident,
+                 _iid: node_id, _cx: &T, _v: &visit::vt<T>) {
 }
 
 

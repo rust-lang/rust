@@ -108,7 +108,7 @@ tag result { success(match); failure(fail_); }
 
 fn getopts(args: &[str], opts: &[opt]) -> result {
     let n_opts = vec::len::<opt>(opts);
-    fn f(x: uint) -> [optval] { ret ~[]; }
+    fn f(_x: uint) -> [optval] { ret ~[]; }
     let vals = vec::init_fn_mut::<[optval]>(f, n_opts);
     let free: [str] = ~[];
     let l = vec::len::<str>(args);

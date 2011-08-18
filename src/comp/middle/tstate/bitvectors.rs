@@ -165,8 +165,8 @@ fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b:&blk) {
         @{visit_block: relax_precond_block_inner,
           visit_expr: relax_precond_expr,
           visit_stmt: relax_precond_stmt,
-          visit_item: (fn (i: &@item, cx: &relax_ctxt,
-                           vt: &visit::vt<relax_ctxt>) {})
+          visit_item: (fn (_i: &@item, _cx: &relax_ctxt,
+                           _vt: &visit::vt<relax_ctxt>) {})
           with *visitor};
     let v1 = visit::mk_vt(visitor);
     v1.visit_block(b, cx, v1);

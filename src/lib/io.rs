@@ -209,7 +209,7 @@ obj byte_buf_reader(bbuf: byte_buf) {
         bbuf.pos += 1u;
         ret b as int;
     }
-    fn unread_byte(byte: int) { log_err "TODO: unread_byte"; fail; }
+    fn unread_byte(_byte: int) { log_err "TODO: unread_byte"; fail; }
     fn eof() -> bool { ret bbuf.pos == vec::len::<u8>(bbuf.buf); }
     fn seek(offset: int, whence: seek_style) {
         let pos = bbuf.pos;
@@ -278,7 +278,7 @@ obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
             count += nout as uint;
         }
     }
-    fn seek(offset: int, whence: seek_style) {
+    fn seek(_offset: int, _whence: seek_style) {
         log_err "need 64-bit native calls for seek, sorry";
         fail;
     }

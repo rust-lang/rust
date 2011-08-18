@@ -692,12 +692,12 @@ fn T_str() -> TypeRef { ret T_vec(T_i8()); }
 
 fn T_box(t: TypeRef) -> TypeRef { ret T_struct(~[T_int(), t]); }
 
-fn T_port(t: TypeRef) -> TypeRef {
+fn T_port(_t: TypeRef) -> TypeRef {
     ret T_struct(~[T_int()]); // Refcount
 
 }
 
-fn T_chan(t: TypeRef) -> TypeRef {
+fn T_chan(_t: TypeRef) -> TypeRef {
     ret T_struct(~[T_int()]); // Refcount
 
 }

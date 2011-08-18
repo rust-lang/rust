@@ -70,12 +70,12 @@ fn visit_crate_directive<E>(cd: &@crate_directive, e: &E, v: &vt<E>) {
     }
 }
 
-fn visit_mod<E>(m: &_mod, sp: &span, e: &E, v: &vt<E>) {
+fn visit_mod<E>(m: &_mod, _sp: &span, e: &E, v: &vt<E>) {
     for vi: @view_item in m.view_items { v.visit_view_item(vi, e, v); }
     for i: @item in m.items { v.visit_item(i, e, v); }
 }
 
-fn visit_view_item<E>(vi: &@view_item, e: &E, v: &vt<E>) { }
+fn visit_view_item<E>(_vi: &@view_item, _e: &E, _v: &vt<E>) { }
 
 fn visit_local<E>(loc: &@local, e: &E, v: &vt<E>) {
     v.visit_pat(loc.node.pat, e, v);
@@ -161,8 +161,8 @@ fn visit_ty<E>(t: &@ty, e: &E, v: &vt<E>) {
     }
 }
 
-fn visit_constr<E>(operator: &path, sp: &span, id: node_id, e: &E,
-                   v: &vt<E>) {
+fn visit_constr<E>(_operator: &path, _sp: &span, _id: node_id, _e: &E,
+                   _v: &vt<E>) {
     // default
 }
 
@@ -198,8 +198,8 @@ fn visit_fn_decl<E>(fd: &fn_decl, e: &E, v: &vt<E>) {
     v.visit_ty(fd.output, e, v);
 }
 
-fn visit_fn<E>(f: &_fn, tp: &[ty_param], sp: &span, i: &fn_ident, id: node_id,
-               e: &E, v: &vt<E>) {
+fn visit_fn<E>(f: &_fn, _tp: &[ty_param], _sp: &span, _i: &fn_ident,
+               _id: node_id, e: &E, v: &vt<E>) {
     visit_fn_decl(f.decl, e, v);
     v.visit_block(f.body, e, v);
 }
@@ -365,22 +365,22 @@ type simple_visitor =
       visit_fn: fn(&_fn, &[ty_param], &span, &fn_ident, node_id) };
 
 fn default_simple_visitor() -> simple_visitor {
-    ret @{visit_mod: fn (m: &_mod, sp: &span) { },
-          visit_view_item: fn (vi: &@view_item) { },
-          visit_native_item: fn (ni: &@native_item) { },
-          visit_item: fn (i: &@item) { },
-          visit_local: fn (l: &@local) { },
-          visit_block: fn (b: &ast::blk) { },
-          visit_stmt: fn (s: &@stmt) { },
-          visit_arm: fn (a: &arm) { },
-          visit_pat: fn (p: &@pat) { },
-          visit_decl: fn (d: &@decl) { },
-          visit_expr: fn (e: &@expr) { },
-          visit_ty: fn (t: &@ty) { },
-          visit_constr: fn (p: &path, sp: &span, id: node_id) { },
+    ret @{visit_mod: fn (_m: &_mod, _sp: &span) { },
+          visit_view_item: fn (_vi: &@view_item) { },
+          visit_native_item: fn (_ni: &@native_item) { },
+          visit_item: fn (_i: &@item) { },
+          visit_local: fn (_l: &@local) { },
+          visit_block: fn (_b: &ast::blk) { },
+          visit_stmt: fn (_s: &@stmt) { },
+          visit_arm: fn (_a: &arm) { },
+          visit_pat: fn (_p: &@pat) { },
+          visit_decl: fn (_d: &@decl) { },
+          visit_expr: fn (_e: &@expr) { },
+          visit_ty: fn (_t: &@ty) { },
+          visit_constr: fn (_p: &path, _sp: &span, _id: node_id) { },
           visit_fn:
-              fn (f: &_fn, tps: &[ty_param], sp: &span, ident: &fn_ident,
-                  id: node_id) {
+              fn (_f: &_fn, _tps: &[ty_param], _sp: &span, _ident: &fn_ident,
+                  _id: node_id) {
               }};
 }
 
