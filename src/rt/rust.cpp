@@ -7,10 +7,10 @@ command_line_args : public kernel_owned<command_line_args>
     rust_task *task;
     int argc;
     char **argv;
+    rust_str **strs;
 
-    // vec[str] passed to rust_task::start.
-    rust_vec *args;
-    rust_ivec *args_ivec;
+    // [str] passed to rust_task::start.
+    rust_ivec *args;
 
     command_line_args(rust_task *task,
                       int sys_argc,
@@ -18,8 +18,7 @@ command_line_args : public kernel_owned<command_line_args>
         : kernel(task->kernel),
           task(task),
           argc(sys_argc),
-          argv(sys_argv),
-          args(NULL)
+          argv(sys_argv)
     {
 #if defined(__WIN32__)
         LPCWSTR cmdline = GetCommandLineW();
@@ -40,10 +39,9 @@ command_line_args : public kernel_owned<command_line_args>
         LocalFree(wargv);
 #endif
         size_t vec_fill = sizeof(rust_str *) * argc;
-        size_t vec_alloc = next_power_of_two(sizeof(rust_vec) + vec_fill);
+        size_t vec_alloc = next_power_of_two(vec_fill);
         void *mem = kernel->malloc(vec_alloc, "command line");
-        args = new (mem) rust_vec(vec_alloc, 0, NULL);
-        rust_str **strs = (rust_str**) &args->data[0];
+        strs = (rust_str**) mem;
         for (int i = 0; i < argc; ++i) {
             size_t str_fill = strlen(argv[i]) + 1;
             size_t str_alloc = next_power_of_two(sizeof(rust_str) + str_fill);
@@ -52,38 +50,29 @@ command_line_args : public kernel_owned<command_line_args>
                                          (uint8_t const *)argv[i]);
             strs[i]->ref_count++;
         }
-        args->fill = vec_fill;
-        // If the caller has a declared args array, they may drop; but
-        // we don't know if they have such an array. So we pin the args
-        // array here to ensure it survives to program-shutdown.
-        args->ref();
 
         size_t ivec_interior_sz =
             sizeof(size_t) * 2 + sizeof(rust_str *) * 4;
-        args_ivec = (rust_ivec *)
+        args = (rust_ivec *)
             kernel->malloc(ivec_interior_sz,
                            "command line arg interior");
-        args_ivec->fill = 0;
+        args->fill = 0;
         size_t ivec_exterior_sz = sizeof(rust_str *) * argc;
-        args_ivec->alloc = ivec_exterior_sz;
-        // NB: This is freed by some ivec machinery, probably the drop
-        // glue in main, so we don't free it ourselves
-        args_ivec->payload.ptr = (rust_ivec_heap *)
+        args->alloc = ivec_exterior_sz;
+        // NB: _rust_main owns the ivec payload and will be responsible for
+        // freeing it
+        args->payload.ptr = (rust_ivec_heap *)
             kernel->malloc(ivec_exterior_sz + sizeof(size_t),
                            "command line arg exterior");
-        args_ivec->payload.ptr->fill = ivec_exterior_sz;
-        memcpy(&args_ivec->payload.ptr->data, strs, ivec_exterior_sz);
+        args->payload.ptr->fill = ivec_exterior_sz;
+        memcpy(&args->payload.ptr->data, strs, ivec_exterior_sz);
     }
 
     ~command_line_args() {
-        kernel->free(args_ivec);
-        if (args) {
-            // Drop the args we've had pinned here.
-            rust_str **strs = (rust_str**) &args->data[0];
-            for (int i = 0; i < argc; ++i)
-                kernel->free(strs[i]);
-            kernel->free(args);
-        }
+        kernel->free(args);
+        for (int i = 0; i < argc; ++i)
+            kernel->free(strs[i]);
+        kernel->free(strs);
 
 #ifdef __WIN32__
         for (int i = 0; i < argc; ++i) {
@@ -127,7 +116,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv,
         DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    root_task->start(main_fn, (uintptr_t)args->args_ivec);
+    root_task->start(main_fn, (uintptr_t)args->args);
     root_task->deref();
     root_task = NULL;
 
