@@ -14,8 +14,7 @@ command_line_args : public kernel_owned<command_line_args>
 
     command_line_args(rust_task *task,
                       int sys_argc,
-                      char **sys_argv,
-                      bool main_is_ivec)
+                      char **sys_argv)
         : kernel(task->kernel),
           task(task),
           argc(sys_argc),
@@ -67,15 +66,13 @@ command_line_args : public kernel_owned<command_line_args>
         args_ivec->fill = 0;
         size_t ivec_exterior_sz = sizeof(rust_str *) * argc;
         args_ivec->alloc = ivec_exterior_sz;
-        if (main_is_ivec) {
-            // NB: This is freed by some ivec machinery, probably the drop
-            // glue in main, so we don't free it ourselves
-            args_ivec->payload.ptr = (rust_ivec_heap *)
-                kernel->malloc(ivec_exterior_sz + sizeof(size_t),
-                               "command line arg exterior");
-            args_ivec->payload.ptr->fill = ivec_exterior_sz;
-            memcpy(&args_ivec->payload.ptr->data, strs, ivec_exterior_sz);
-        }
+        // NB: This is freed by some ivec machinery, probably the drop
+        // glue in main, so we don't free it ourselves
+        args_ivec->payload.ptr = (rust_ivec_heap *)
+            kernel->malloc(ivec_exterior_sz + sizeof(size_t),
+                           "command line arg exterior");
+        args_ivec->payload.ptr->fill = ivec_exterior_sz;
+        memcpy(&args_ivec->payload.ptr->data, strs, ivec_exterior_sz);
     }
 
     ~command_line_args() {
@@ -107,7 +104,7 @@ int check_claims = 0;
 
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, int argc, char **argv,
-           void* crate_map, int main_takes_ivec) {
+           void* crate_map) {
 
     rust_env *env = load_env();
 
@@ -122,7 +119,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv,
     rust_scheduler *sched = root_task->sched;
     command_line_args *args
         = new (kernel, "main command line args")
-        command_line_args(root_task, argc, argv, main_takes_ivec);
+        command_line_args(root_task, argc, argv);
 
     DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
@@ -154,7 +151,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv,
 extern "C" CDECL int
 rust_start_ivec(uintptr_t main_fn, int argc, char **argv,
                 void* crate_map, int main_takes_ivec) {
-    return rust_start(main_fn, argc, argv, crate_map, main_takes_ivec);
+    return rust_start(main_fn, argc, argv, crate_map);
 }
 
 

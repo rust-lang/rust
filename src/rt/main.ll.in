@@ -14,10 +14,7 @@
 
 @_rust_crate_map_toplevel = external global %0
 
-; FIXME: Remove after main takes only ivec
-@_rust_main_is_ivec = external global i32
-
-declare i32 @rust_start(i32, i32, i32, i32, i32)
+declare i32 @rust_start(i32, i32, i32, i32)
 
 declare external fastcc void @_rust_main(i1* nocapture, %task*, %2* nocapture, %ivec)
 
@@ -29,8 +26,6 @@ define void @_rust_main_wrap(i1* nocapture, %task *, %2* nocapture, %ivec *)
 }
 
 define i32 @"MAIN"(i32, i32) {
-  %is_ivec = load i32 *@_rust_main_is_ivec
-
-  %3 = tail call i32 @rust_start(i32 ptrtoint (void (i1*, %task*, %2*, %ivec*)* @_rust_main_wrap to i32), i32 %0, i32 %1, i32 ptrtoint (%0* @_rust_crate_map_toplevel to i32), i32 %is_ivec)
+  %3 = tail call i32 @rust_start(i32 ptrtoint (void (i1*, %task*, %2*, %ivec*)* @_rust_main_wrap to i32), i32 %0, i32 %1, i32 ptrtoint (%0* @_rust_crate_map_toplevel to i32))
   ret i32 %3
 }

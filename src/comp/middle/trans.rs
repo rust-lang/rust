@@ -6378,6 +6378,8 @@ fn decl_fn_and_pair_full(ccx: &@crate_ctxt, sp: &span, path: &[str],
     }
 }
 
+// Create a _rust_main(args: [str]) function which will be called from the
+// runtime rust_start function
 fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
                        main_llfn: ValueRef, main_node_type: ty::t) {
 
@@ -6392,14 +6394,13 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
     };
 
     let llfn = create_main(ccx, sp, main_llfn, main_takes_ivec);
-    create_main_type_indicator(ccx, main_takes_ivec);
     ccx.main_fn = some(llfn);
 
     fn create_main(ccx: &@crate_ctxt,
                    sp: &span,
                    main_llfn: ValueRef,
                    takes_ivec: bool) -> ValueRef {
-        let ivecarg = {
+        let ivecarg_ty: ty::arg = {
             mode: ty::mo_val,
             ty: ty::mk_ivec(ccx.tcx, {
                 ty: ty::mk_str(ccx.tcx),
@@ -6408,13 +6409,15 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
         };
         let llfty = type_of_fn(ccx, sp,
                                ast::proto_fn,
-                               ~[ivecarg],
+                               ~[ivecarg_ty],
                                ty::mk_nil(ccx.tcx),
                                0u);
         let llfdecl = decl_fastcall_fn(ccx.llmod, "_rust_main", llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), sp, llfdecl);
+
         let bcx = new_top_block_ctxt(fcx);
+        let lltop = bcx.llbb;
 
         if takes_ivec {
             let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
@@ -6430,6 +6433,15 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
             let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
             let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
             let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
+            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
+
+            // If the crate's main function doesn't take the args vector then
+            // we're responsible for freeing it
+            let llivecptr = alloca(bcx, val_ty(llargvarg));
+            bcx.build.Store(llargvarg, llivecptr);
+            bcx = maybe_free_ivec_heap_part(bcx, llivecptr,
+                                            ty::mk_str(ccx.tcx)).bcx;
+
             let args = ~[lloutputarg,
                          lltaskarg,
                          llenvarg];
@@ -6437,20 +6449,9 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
         }
         build_return(bcx);
 
-        let lltop = bcx.llbb;
         finish_fn(fcx, lltop);
 
         ret llfdecl;
-    }
-
-    // FIXME: Remove after main takes only ivec
-    // Sets a global value hinting to the runtime whether main takes
-    // a vec or an ivec
-    fn create_main_type_indicator(ccx: &@crate_ctxt, takes_ivec: bool) {
-        let i = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
-                                    str::buf("_rust_main_is_ivec"));
-        llvm::LLVMSetInitializer(i, C_int(takes_ivec as int));
-        llvm::LLVMSetGlobalConstant(i, True);
     }
 }
 
