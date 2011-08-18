@@ -627,7 +627,7 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
 
 fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 
-fn T_vec(t: TypeRef) -> TypeRef {
+fn T_evec(t: TypeRef) -> TypeRef {
     ret T_struct(~[T_int(), // Refcount
                    T_int(), // Alloc
                    T_int(), // Fill
@@ -637,7 +637,7 @@ fn T_vec(t: TypeRef) -> TypeRef {
                              T_array(t, 0u)]);
 }
 
-fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_vec(T_int())); }
+fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_evec(T_int())); }
 
 
 // Interior vector.
@@ -688,7 +688,7 @@ fn T_opaque_ivec_heap() -> TypeRef {
 
 }
 
-fn T_str() -> TypeRef { ret T_vec(T_i8()); }
+fn T_str() -> TypeRef { ret T_evec(T_i8()); }
 
 fn T_box(t: TypeRef) -> TypeRef { ret T_struct(~[T_int(), t]); }
 
