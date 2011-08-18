@@ -16,19 +16,16 @@
 
 using namespace llvm;
 
-namespace {
-  class RustGCStrategy : public GCStrategy {
-  public:
-    RustGCStrategy();
-  };
-}
+class RustGCStrategy : public GCStrategy {
+public:
+  RustGCStrategy() {
+    NeededSafePoints = 1 << GC::PostCall;
+    UsesMetadata = true;
+    InitRoots = false;  // LLVM crashes with this on due to bitcasts.
+  }
+};
 
 static GCRegistry::Add<RustGCStrategy>
-X("rust", "Rust GC");
-
-RustGCStrategy::RustGCStrategy() {
-  NeededSafePoints = 1 << GC::PostCall;
-  UsesMetadata = true;
-}
+RustGCStrategyRegistration("rust", "Rust GC");
 
 

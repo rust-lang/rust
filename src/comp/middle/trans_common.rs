@@ -70,6 +70,12 @@ type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
 type glue_fns = {no_op_type_glue: ValueRef};
 
+tag tydesc_kind {
+    tk_static;      // Static (monomorphic) type descriptor.
+    tk_param;       // Type parameter.
+    tk_derived;     // Derived from a typaram or another derived tydesc.
+}
+
 type tydesc_info =
     {ty: ty::t,
      tydesc: ValueRef,
@@ -142,7 +148,8 @@ type crate_ctxt = {
     rust_object_type: TypeRef,
     tydesc_type: TypeRef,
     task_type: TypeRef,
-    shape_cx: shape::ctxt
+    shape_cx: shape::ctxt,
+    gc_cx: gc::ctxt
 };
 
 type local_ctxt =

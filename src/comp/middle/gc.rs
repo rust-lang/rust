@@ -1,32 +1,96 @@
 // Routines useful for garbage collection.
 
+import lib::llvm::False;
+import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
 import middle::trans::get_tydesc;
 import middle::trans_common::*;
 import middle::ty;
 import std::option::none;
+import std::option::some;
 import std::ptr;
 import std::str;
 import std::unsafe;
+import std::vec;
 
 import lll = lib::llvm::llvm;
 
+type ctxt = @{ mutable next_tydesc_num: uint };
+
+fn mk_ctxt() -> ctxt {
+    ret @{ mutable next_tydesc_num: 0u };
+}
+
+fn add_global(ccx: &@crate_ctxt, llval: ValueRef, name: str) -> ValueRef {
+    let llglobal = lll::LLVMAddGlobal(ccx.llmod, val_ty(llval),
+                                      str::buf(name));
+    lll::LLVMSetInitializer(llglobal, llval);
+    lll::LLVMSetGlobalConstant(llglobal, True);
+    ret llglobal;
+}
+
 fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let bcx = cx;
-    if !type_is_gc_relevant(bcx_tcx(cx), ty) { ret bcx; }
+    if !type_is_gc_relevant(bcx_tcx(cx), ty) ||
+            ty::type_has_dynamic_size(bcx_tcx(cx), ty) {
+        ret bcx;
+    }
 
-    let md_kind_name = "rusttydesc";
-    let md_kind = lll::LLVMGetMDKindID(str::buf(md_kind_name),
-                                       str::byte_len(md_kind_name));
+    let gc_cx = bcx_ccx(cx).gc_cx;
 
     let ti = none;
-    let r = get_tydesc(bcx, ty, false, ti);
-    bcx = r.bcx;
-    let lltydesc = r.val;
+    let td_r = get_tydesc(bcx, ty, false, ti);
+    bcx = td_r.result.bcx;
+    let lltydesc = td_r.result.val;
 
-    let llmdnode =
-        lll::LLVMMDNode(unsafe::reinterpret_cast(ptr::addr_of(lltydesc)), 1u);
-    lll::LLVMSetMetadata(llval, md_kind, llmdnode);
+    let gcroot = bcx_ccx(bcx).intrinsics.get("llvm.gcroot");
+    let llvalptr = bcx.build.PointerCast(llval, T_ptr(T_ptr(T_i8())));
+
+    alt td_r.kind {
+        tk_derived. {
+            // It's a derived type descriptor. First, spill it.
+            let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
+            bcx.build.Store(lltydesc, lltydescptr);
+
+            let number = gc_cx.next_tydesc_num;
+            gc_cx.next_tydesc_num += 1u;
+
+            let lldestindex = add_global(bcx_ccx(bcx),
+                                         C_struct(~[C_int(0),
+                                                    C_uint(number)]),
+                                         "rust_gc_tydesc_dest_index");
+            let llsrcindex = add_global(bcx_ccx(bcx),
+                                        C_struct(~[C_int(1), C_uint(number)]),
+                                        "rust_gc_tydesc_src_index");
+
+            lldestindex = lll::LLVMConstPointerCast(lldestindex,
+                                                    T_ptr(T_i8()));
+            llsrcindex = lll::LLVMConstPointerCast(llsrcindex,
+                                                   T_ptr(T_i8()));
+
+            lltydescptr = bcx.build.PointerCast(lltydescptr,
+                                                T_ptr(T_ptr(T_i8())));
+
+            bcx.build.Call(gcroot, ~[ lltydescptr, lldestindex ]);
+            bcx.build.Call(gcroot, ~[ llvalptr, llsrcindex ]);
+        }
+        tk_param. {
+            bcx_tcx(cx).sess.bug("we should never be trying to root values " +
+                "of a type parameter");
+        }
+        tk_static. {
+            // Static type descriptor.
+
+            let llstaticgcmeta = add_global(bcx_ccx(bcx),
+                                            C_struct(~[C_int(2), lltydesc]),
+                                            "rust_gc_tydesc_static_gc_meta");
+            let llstaticgcmetaptr = lll::LLVMConstPointerCast(llstaticgcmeta,
+                                                              T_ptr(T_i8()));
+
+            bcx.build.Call(gcroot, ~[ llvalptr, llstaticgcmetaptr ]);
+        }
+    }
+
     ret bcx;
 }
 
@@ -57,9 +121,7 @@ fn type_is_gc_relevant(cx: &ty::ctxt, ty: &ty::t) -> bool {
             for variant in variants {
                 for aty in variant.args {
                     let arg_ty = ty::substitute_type_params(cx, tps, aty);
-                    if type_is_gc_relevant(cx, arg_ty) {
-                        ret true;
-                    }
+                    if type_is_gc_relevant(cx, arg_ty) { ret true; }
                 }
             }
             ret false;

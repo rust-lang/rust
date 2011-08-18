@@ -133,7 +133,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                          ~[0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none::<@tydesc_info>;
-        let body_td = get_tydesc(bcx, body_ty, true, ti);
+        let body_td = get_tydesc(bcx, body_ty, true, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = body_td.bcx;
@@ -327,7 +327,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
                          ~[0, abi::obj_body_elt_tydesc]);
         bcx = body_tydesc.bcx;
         let ti = none::<@tydesc_info>;
-        let body_td = get_tydesc(bcx, body_ty, true, ti);
+        let body_td = get_tydesc(bcx, body_ty, true, ti).result;
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = body_td.bcx;
