@@ -39,7 +39,6 @@ target triple = "@CFG_LLVM_TRIPLE@"
 %class.context = type { %struct.registers_t, %class.context* }
 %struct.registers_t = type { i32, i32, i32, i32, i32, i32, i32, i32, i16, i16, i16, i16, i16, i16, i32, i32 }
 %"class.rust_task::wakeup_callback" = type { i32 (...)** }
-%struct.rust_vec = type { %struct.rc_base.5, i32, i32, i32, [0 x i8] }
 %struct.rc_base.5 = type { i32 }
 %struct.rust_ivec = type { i32, i32, %union.rust_ivec_payload }
 %union.rust_ivec_payload = type { %struct.rust_ivec_heap* }
@@ -53,17 +52,6 @@ target triple = "@CFG_LLVM_TRIPLE@"
 
 @.str = private unnamed_addr constant [42 x i8] c"attempt to cast values of differing sizes\00", align 1
 @.str1 = private unnamed_addr constant [15 x i8] c"intrinsics.cpp\00", align 1
-
-define linkonce_odr void @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind {
-entry:
-  %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
-  %tmp1 = load i32* %fill, align 4, !tbaa !0
-  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
-  %tmp3 = load i32* %size, align 4, !tbaa !0
-  %div = udiv i32 %tmp1, %tmp3
-  store i32 %div, i32* %retptr, align 4, !tbaa !0
-  ret void
-}
 
 define linkonce_odr void @rust_intrinsic_ivec_len(%struct.rust_task* nocapture %task, i32* nocapture %retptr, %struct.type_desc* nocapture %ty, %struct.rust_ivec* nocapture %v) nounwind {
 entry:

@@ -9,13 +9,6 @@ extern "C" CDECL void
 upcall_fail(rust_task *task, char const *expr, char const *file, size_t line);
 
 extern "C" void
-rust_intrinsic_vec_len(rust_task *task, size_t *retptr, type_desc *ty,
-                       rust_evec *v)
-{
-    *retptr = v->fill / ty->size;
-}
-
-extern "C" void
 rust_intrinsic_ivec_len(rust_task *task, size_t *retptr, type_desc *ty,
                         rust_ivec *v)
 {
