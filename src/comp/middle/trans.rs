@@ -354,6 +354,7 @@ fn decl_internal_fastcall_fn(llmod: ModuleRef, name: &str, llty: TypeRef) ->
     let llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    llvm::LLVMSetGC(llfn, str::buf("rust"));
     ret llfn;
 }
 
