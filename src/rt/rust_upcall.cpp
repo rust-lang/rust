@@ -430,7 +430,7 @@ upcall_dynastack_mark(rust_task *task) {
 /** Allocates space in the dynamic stack and returns it. */
 extern "C" CDECL void *
 upcall_dynastack_alloc(rust_task *task, size_t sz) {
-    return task->dynastack.alloc(sz);
+    return sz ? task->dynastack.alloc(sz) : NULL;
 }
 
 /** Frees space in the dynamic stack. */

@@ -217,7 +217,6 @@ type fn_ctxt = {
     mutable llreturn: BasicBlockRef,
 
     // The token used to clear the dynamic allocas at the end of this frame.
-    // Will be |none| if there are no dynamic allocas.
     mutable llobstacktoken: option::t<ValueRef>,
 
     // The 'self' object currently in use in this function, if there

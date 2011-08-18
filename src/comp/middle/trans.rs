@@ -466,17 +466,28 @@ fn alloca(cx: &@block_ctxt, t: TypeRef) -> ValueRef {
 }
 
 fn array_alloca(cx: &@block_ctxt, t: TypeRef, n: ValueRef) -> ValueRef {
+    let bcx = cx;
     let builder = new_builder(cx.fcx.lldynamicallocas);
+    let lltaskptr = bcx_fcx(bcx).lltaskptr;
     alt bcx_fcx(cx).llobstacktoken {
         none. {
-            let dynastack_mark = bcx_ccx(cx).upcalls.dynastack_mark;
-            let lltaskptr = bcx_fcx(cx).lltaskptr;
             bcx_fcx(cx).llobstacktoken =
-                some(builder.Call(dynastack_mark, ~[lltaskptr]));
+                some(mk_obstack_token(bcx_ccx(cx), cx.fcx.lldynamicallocas,
+                                      lltaskptr));
         }
         some(_) { /* no-op */ }
     }
-    ret builder.ArrayAlloca(t, n);
+
+    let dynastack_alloc = bcx_ccx(bcx).upcalls.dynastack_alloc;
+    let llsz = builder.Mul(C_uint(llsize_of_real(bcx_ccx(bcx), t)), n);
+    let llresult = builder.Call(dynastack_alloc, ~[lltaskptr, llsz]);
+    ret builder.PointerCast(llresult, T_ptr(t));
+}
+
+fn mk_obstack_token(ccx: &@crate_ctxt, lldynamicallocas: BasicBlockRef,
+                    lltaskptr: ValueRef) -> ValueRef {
+    let builder = new_builder(lldynamicallocas);
+    ret builder.Call(ccx.upcalls.dynastack_mark, ~[lltaskptr]);
 }
 
 

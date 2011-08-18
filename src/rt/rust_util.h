@@ -125,6 +125,16 @@ next_power_of_two(size_t s)
     return tmp + 1;
 }
 
+// Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
+// of two.
+template<typename T>
+static inline T
+align_to(T size, size_t alignment) {
+    assert(alignment);
+    T x = (T)(((uintptr_t)size + alignment - 1) & ~(alignment - 1));
+    return x;
+}
+
 // Initialization helper for ISAAC RNG
 
 template <typename sched_or_kernel>
