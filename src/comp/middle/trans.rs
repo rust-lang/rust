@@ -6904,10 +6904,6 @@ fn vi2p(cx: &@block_ctxt, v: ValueRef, t: TypeRef) -> ValueRef {
 
 fn p2i(v: ValueRef) -> ValueRef { ret llvm::LLVMConstPtrToInt(v, T_int()); }
 
-fn i2p(v: ValueRef, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntToPtr(v, t);
-}
-
 fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     let T_memmove32_args: [TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
