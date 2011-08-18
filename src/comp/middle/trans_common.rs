@@ -214,6 +214,8 @@ type fn_ctxt = {
     // alloca'd by code in llallocas?
     mutable lldynamicallocas: BasicBlockRef,
 
+    mutable llreturn: BasicBlockRef,
+
     // The token used to clear the dynamic allocas at the end of this frame.
     // Will be |none| if there are no dynamic allocas.
     mutable llobstacktoken: option::t<ValueRef>,
@@ -451,6 +453,7 @@ fn bcx_tcx(bcx: &@block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
 fn bcx_ccx(bcx: &@block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
 fn bcx_lcx(bcx: &@block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
 fn bcx_fcx(bcx: &@block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
+fn fcx_ccx(fcx: &@fn_ctxt)    -> @crate_ctxt { ret fcx.lcx.ccx; }
 fn fcx_tcx(fcx: &@fn_ctxt)    -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
 fn lcx_ccx(lcx: &@local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
 fn ccx_tcx(ccx: &@crate_ctxt) -> ty::ctxt { ret ccx.tcx; }

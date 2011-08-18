@@ -1269,8 +1269,7 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
         bcx = iter_structural_ty(bcx, v, t, bind copy_ty(_, _, _)).bcx;
     } else { bcx = cx; }
 
-    bcx = trans_fn_cleanups(bcx);
-    bcx.build.RetVoid();
+    build_return(bcx);
 }
 
 fn incr_refcnt_of_boxed(cx: &@block_ctxt, box_ptr: ValueRef) -> result {
@@ -1376,8 +1375,7 @@ fn make_free_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           _ { rslt(cx, C_nil()) }
         };
 
-    let bcx = trans_fn_cleanups(rs.bcx);
-    bcx.build.RetVoid();
+    build_return(rs.bcx);
 }
 
 fn maybe_free_ivec_heap_part(cx: &@block_ctxt, v0: ValueRef, unit_ty: ty::t)
@@ -1446,8 +1444,7 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: &ty::t) {
           }
         };
 
-    let bcx = trans_fn_cleanups(rs.bcx);
-    bcx.build.RetVoid();
+    build_return(rs.bcx);
 }
 
 fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: &ast::def_id,
@@ -3727,8 +3724,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
     if !r.bcx.build.is_terminated() {
         // if terminated is true, no need for the ret-fail
-        let bcx = trans_fn_cleanups(r.bcx);
-        bcx.build.RetVoid();
+        build_return(r.bcx);
     }
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
@@ -4407,7 +4403,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
     llvm::LLVMSetTailCall(bcx.build.FastCall(lltargetfn, llargs), 1);
-    bcx.build.RetVoid();
+    build_return(bcx);
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
 }
@@ -5448,9 +5444,12 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
           parent_none. { more_cleanups = false; }
         }
     }
-    bcx = trans_fn_cleanups(bcx);
-    bcx.build.RetVoid();
+    build_return(bcx);
     ret rslt(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
+}
+
+fn build_return(bcx: &@block_ctxt) {
+    bcx.build.Br(bcx_fcx(bcx).llreturn);
 }
 
 fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
@@ -5610,16 +5609,15 @@ fn trans_block_cleanups(cx: &@block_ctxt, cleanup_cx: &@block_ctxt) ->
     ret bcx;
 }
 
-fn trans_fn_cleanups(bcx: &@block_ctxt) -> @block_ctxt {
-    alt bcx_fcx(bcx).llobstacktoken {
+fn trans_fn_cleanups(fcx: &@fn_ctxt, build: &lib::llvm::builder) {
+    alt fcx.llobstacktoken {
         some(lltoken_) {
             let lltoken = lltoken_; // satisfy alias checker
-            bcx.build.Call(bcx_ccx(bcx).upcalls.dynastack_free,
-                           ~[bcx_fcx(bcx).lltaskptr, lltoken]);
+            build.Call(fcx_ccx(fcx).upcalls.dynastack_free, ~[fcx.lltaskptr,
+                                                              lltoken]);
         }
         none. { /* nothing to do */ }
     }
-    ret bcx;
 }
 
 iter block_locals(b: &ast::blk) -> @ast::local {
@@ -5778,11 +5776,13 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
    {sa: BasicBlockRef,
     ca: BasicBlockRef,
     dt: BasicBlockRef,
-    da: BasicBlockRef} {
+    da: BasicBlockRef,
+    rt: BasicBlockRef} {
     ret {sa: llvm::LLVMAppendBasicBlock(llfn, str::buf("static_allocas")),
          ca: llvm::LLVMAppendBasicBlock(llfn, str::buf("copy_args")),
          dt: llvm::LLVMAppendBasicBlock(llfn, str::buf("derived_tydescs")),
-         da: llvm::LLVMAppendBasicBlock(llfn, str::buf("dynamic_allocas"))};
+         da: llvm::LLVMAppendBasicBlock(llfn, str::buf("dynamic_allocas")),
+         rt: llvm::LLVMAppendBasicBlock(llfn, str::buf("return"))};
 }
 
 
@@ -5816,6 +5816,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, sp: &span, llfndecl: ValueRef,
           mutable llderivedtydescs_first: llbbs.dt,
           mutable llderivedtydescs: llbbs.dt,
           mutable lldynamicallocas: llbbs.da,
+          mutable llreturn: llbbs.rt,
           mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none::<val_self_pair>,
           mutable lliterbody: none::<ValueRef>,
@@ -5998,12 +5999,16 @@ fn populate_fn_ctxt_from_llself(fcx: @fn_ctxt, llself: val_self_pair) {
 
 
 // Ties up the llstaticallocas -> llcopyargs -> llderivedtydescs ->
-// lldynamicallocas -> lltop edges.
+// lldynamicallocas -> lltop edges, and builds the return block.
 fn finish_fn(fcx: &@fn_ctxt, lltop: BasicBlockRef) {
     new_builder(fcx.llstaticallocas).Br(fcx.llcopyargs);
     new_builder(fcx.llcopyargs).Br(fcx.llderivedtydescs_first);
     new_builder(fcx.llderivedtydescs).Br(fcx.lldynamicallocas);
     new_builder(fcx.lldynamicallocas).Br(lltop);
+
+    let ret_builder = new_builder(fcx.llreturn);
+    trans_fn_cleanups(fcx, ret_builder);
+    ret_builder.RetVoid();
 }
 
 // trans_closure: Builds an LLVM function out of a source function.
@@ -6070,8 +6075,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
     if !is_terminated(bcx) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
-        bcx = trans_fn_cleanups(bcx);
-        bcx.build.RetVoid();
+        build_return(bcx);
     }
 
     // Insert the mandatory first few basic blocks before lltop.
@@ -6137,7 +6141,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: &span, dtor: &ast::_fn,
     let flag = GEP_tup_like(bcx, tup_t, llretptr, ~[0, 0]);
     bcx = flag.bcx;
     bcx.build.Store(C_int(1), flag.val);
-    bcx.build.RetVoid();
+    build_return(bcx);
     finish_fn(fcx, lltop);
 }
 
@@ -6227,8 +6231,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         i += 1u;
     }
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
-    bcx = trans_fn_cleanups(bcx);
-    bcx.build.RetVoid();
+    build_return(bcx);
     finish_fn(fcx, lltop);
 }
 
@@ -6433,7 +6436,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
             };
             bcx.build.FastCall(main_llfn, args);
         }
-        bcx.build.RetVoid();
+        build_return(bcx);
 
         let lltop = bcx.llbb;
         finish_fn(fcx, lltop);
@@ -6473,7 +6476,7 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span,
                          llargvarg];
             bcx.build.FastCall(main_llfn, args);
         }
-        bcx.build.RetVoid();
+        build_return(bcx);
 
         let lltop = bcx.llbb;
         finish_fn(fcx, lltop);
@@ -6754,7 +6757,7 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     for d: {val: ValueRef, ty: ty::t} in drop_args {
         bcx = drop_ty(bcx, d.val, d.ty).bcx;
     }
-    bcx.build.RetVoid();
+    build_return(bcx);
     finish_fn(fcx, lltop);
 }
 
