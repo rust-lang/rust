@@ -3737,8 +3737,7 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
       ast::expr_call(f, args) {
         let pair =
             create_real_fn_pair(cx, iter_body_llty, lliterbody, llenv.ptr);
-        r = trans_call(cx, f, some::<ValueRef>(cx.build.Load(pair)), args,
-                       seq.id);
+        r = trans_call(cx, f, some(pair), args, seq.id);
         ret rslt(r.bcx, C_nil());
       }
     }
@@ -4626,7 +4625,17 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
     llargs += lltydescs;
 
     // ... then possibly an lliterbody argument.
-    alt lliterbody { none. { } some(lli) { llargs += ~[lli]; } }
+    alt lliterbody {
+      none. { }
+      some(lli) {
+        let lli = if (ty::type_contains_params(bcx_tcx(cx), retty)) {
+            let body_ty = ty::mk_iter_body_fn(bcx_tcx(cx), retty);
+            let body_llty = type_of_inner(bcx_ccx(cx), cx.sp, body_ty);
+            bcx.build.PointerCast(lli, T_ptr(body_llty))
+        } else { lli };
+        llargs += ~[cx.build.Load(lli)];
+      }
+    }
 
     // ... then explicit args.
 
