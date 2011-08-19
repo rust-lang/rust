@@ -1,6 +1,5 @@
 // Rust garbage collection.
 
-// TODO: Windows
 #include <utility>
 #include <stdint.h>
 
