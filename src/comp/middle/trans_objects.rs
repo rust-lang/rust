@@ -50,17 +50,17 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
     }
     let fcx = new_fn_ctxt(cx, sp, llctor_decl);
 
+    //  Create the first block context in the function and keep a handle on it
+    //  to pass to finish_fn later.
+    let bcx = new_top_block_ctxt(fcx);
+    let lltop = bcx.llbb;
+
     // Both regular arguments and type parameters are handled here.
     create_llargs_for_fn_args(fcx, ast::proto_fn, none::<ty::t>,
                               ty::ret_ty_of_fn(ccx.tcx, ctor_id), fn_args,
                               ty_params);
     let arg_tys: [ty::arg] = arg_tys_of_fn(ccx, ctor_id);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
-
-    //  Create the first block context in the function and keep a handle on it
-    //  to pass to finish_fn later.
-    let bcx = new_top_block_ctxt(fcx);
-    let lltop = bcx.llbb;
+    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
     // Pick up the type of this object by looking at our own output type, that
     // is, the output type of the object constructor we're building.
