@@ -1033,10 +1033,8 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         ex = ast::expr_copy(e);
         hi = e.span.hi;
     } else if (eat_word(p, "self")) {
-        log "parsing a self-call...";
         expect(p, token::DOT);
         // The rest is a call expression.
-
         let f: @ast::expr = parse_self_method(p);
         let es =
             parse_seq(token::LPAREN, token::RPAREN, some(token::COMMA),
