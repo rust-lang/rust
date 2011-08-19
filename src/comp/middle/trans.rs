@@ -5438,8 +5438,9 @@ fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
     let bcx = cx;
     if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
         let llsz = size_of(bcx, t);
-        let llalign = align_of(llsz.bcx, t);
-        bcx = call_bzero(llalign.bcx, llptr, llsz.val, llalign.val).bcx;
+        // FIXME passing in the align here is correct, but causes issue #843
+        // let llalign = align_of(llsz.bcx, t);
+        bcx = call_bzero(llsz.bcx, llptr, llsz.val, C_int(0)).bcx;
     } else {
         let llty = type_of(bcx_ccx(bcx), cx.sp, t);
         bcx.build.Store(C_null(llty), llptr);
