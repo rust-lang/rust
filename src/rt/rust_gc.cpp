@@ -76,7 +76,7 @@ maybe_gc(rust_task *task) {
     }
 
     if (zeal)
-        gc(task);
+        gc::gc(task);
 }
 
 }
