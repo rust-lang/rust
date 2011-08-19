@@ -290,22 +290,6 @@ struct type_desc {
     const type_desc *descs[];
 };
 
-// An alarm can be put into a wait queue and the task will be notified
-// when the wait queue is flushed.
-
-struct
-rust_alarm
-{
-    rust_task *receiver;
-    size_t idx;
-
-    rust_alarm(rust_task *receiver);
-};
-
-
-typedef ptr_vec<rust_alarm> rust_wait_queue;
-
-
 #include "circular_buffer.h"
 #include "rust_task.h"
 #include "rust_chan.h"

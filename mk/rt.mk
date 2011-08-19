@@ -9,7 +9,6 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
               rt/rust_crate_cache.cpp \
-              rt/rust_comm.cpp \
               rt/rust_env.cpp \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
