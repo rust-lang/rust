@@ -92,12 +92,14 @@ fn type_of_explicit_args(cx: &@crate_ctxt, sp: &span, inputs: &[ty::arg]) ->
     let atys: [TypeRef] = [];
     for arg: ty::arg in inputs {
         let t: TypeRef = type_of_inner(cx, sp, arg.ty);
-        t =
-            alt arg.mode {
-              ty::mo_alias(_) { T_ptr(t) }
-              ty::mo_move. { T_ptr(t) }
-              _ { t }
-            };
+        t = alt arg.mode {
+          ty::mo_alias(_) { T_ptr(t) }
+          ty::mo_move. { T_ptr(t) }
+          _ {
+            if ty::type_is_structural(cx.tcx, arg.ty) { T_ptr(t) }
+            else { t }
+          }
+        };
         atys += [t];
     }
     ret atys;
@@ -4327,7 +4329,9 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     bcx = copy_ty(bcx, val, e_ty).bcx;
                 } else {
                     bcx = copy_ty(bcx, val, e_ty).bcx;
-                    val = bcx.build.Load(val);
+                    if !ty::type_is_structural(cx.ccx.tcx, e_ty) {
+                        val = bcx.build.Load(val);
+                    }
                 }
             }
             llargs += [val];
@@ -4494,15 +4498,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
 
     if !is_bot && ty::type_contains_params(ccx.tcx, arg.ty) {
         let lldestty = lldestty0;
-        if arg.mode == ty::mo_val && ty::type_is_structural(ccx.tcx, e_ty) {
-            lldestty = T_ptr(lldestty);
-        }
         val = bcx.build.PointerCast(val, lldestty);
-    }
-    if arg.mode == ty::mo_val && ty::type_is_structural(ccx.tcx, e_ty) {
-        // Until here we've been treating structures by pointer;
-        // we are now passing it as an arg, so need to load it.
-        val = bcx.build.Load(val);
     }
 
     // Collect arg for later if it happens to be one we've moving out.
@@ -5821,12 +5817,13 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
     }
 }
 
-fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg]) {
+fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg],
+                        arg_tys: &[ty::arg]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
         if aarg.mode == ast::val {
-            let argval;
+            let argval, arg_ty = arg_tys.(arg_n).ty;
             alt bcx.fcx.llargs.find(aarg.id) {
               some(x) { argval = x; }
               _ {
@@ -5835,13 +5832,20 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg]) {
                     "unbound arg ID in copy_args_to_allocas");
               }
             }
-            let a = do_spill(bcx, argval);
+            let a;
+            if ty::type_is_structural(fcx_tcx(fcx), arg_ty) {
+                a = alloca(bcx, llvm::LLVMGetElementType(val_ty(argval)));
+                bcx = memmove_ty(bcx, a, argval, arg_ty).bcx;
+            } else {
+                a = do_spill(bcx, argval);
+            }
 
             // Overwrite the llargs entry for this arg with its alloca.
             bcx.fcx.llargs.insert(aarg.id, a);
         }
         arg_n += 1u;
     }
+    fcx.llcopyargs = bcx.llbb;
 }
 
 fn add_cleanups_for_args(bcx: &@block_ctxt, args: &[ast::arg],
@@ -5961,7 +5965,7 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
       _ { }
     }
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    copy_args_to_allocas(fcx, f.decl.inputs);
+    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
     // Figure out if we need to build a closure and act accordingly
     let res =
@@ -6115,7 +6119,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
-    copy_args_to_allocas(fcx, fn_args);
+    copy_args_to_allocas(fcx, fn_args, arg_tys);
     let bcx = new_top_block_ctxt(fcx);
     let lltop = bcx.llbb;
 
@@ -6325,30 +6329,20 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         let bcx = new_top_block_ctxt(fcx);
         let lltop = bcx.llbb;
 
-        if takes_ivec {
-            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
-            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
-            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
-            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
-            let args = [lloutputarg, lltaskarg, llenvarg, llargvarg];
-            bcx.build.FastCall(main_llfn, args);
+        let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
+        let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
+        let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
+        let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
+        let args = if takes_ivec {
+            ~[lloutputarg, lltaskarg, llenvarg, llargvarg]
         } else {
-            let lloutputarg = llvm::LLVMGetParam(llfdecl, 0u);
-            let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
-            let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
-            let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
-
             // If the crate's main function doesn't take the args vector then
             // we're responsible for freeing it
-            let llivecptr = alloca(bcx, val_ty(llargvarg));
-            bcx.build.Store(llargvarg, llivecptr);
-            bcx =
-                maybe_free_ivec_heap_part(bcx, llivecptr,
-                                          ty::mk_str(ccx.tcx)).bcx;
-
-            let args = [lloutputarg, lltaskarg, llenvarg];
-            bcx.build.FastCall(main_llfn, args);
-        }
+            bcx = maybe_free_ivec_heap_part(bcx, llargvarg,
+                                            ty::mk_str(ccx.tcx)).bcx;
+            ~[lloutputarg, lltaskarg, llenvarg]
+        };
+        bcx.build.FastCall(main_llfn, args);
         build_return(bcx);
 
         finish_fn(fcx, lltop);
