@@ -1071,6 +1071,13 @@ fn type_kind(cx: &ctxt, ty: &t) -> ast::kind {
             if result == ast::kind_pinned { break; }
         }
       }
+      // Tuples lower to the lowest of their members.
+      ty_tup(tys) {
+        for ty: t in tys {
+            result = kind::lower_kind(result, type_kind(cx, ty));
+            if result == ast::kind_pinned { break; }
+        }
+      }
 
       // Tags lower to the lowest of their variants.
       ty_tag(did, tps) {
