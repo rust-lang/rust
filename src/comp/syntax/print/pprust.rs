@@ -703,11 +703,23 @@ fn print_possibly_embedded_block(s: &ps, blk: &ast::blk, embedded: embed_type,
     }
 }
 
+// ret and fail, without arguments cannot appear is the discriminant of if,
+// alt, do, & while unambiguously without being parenthesized
+fn print_maybe_parens_discrim(s: &ps, e: &@ast::expr) {
+    let disambig = alt e.node {
+      ast::expr_ret(option::none.) { true }
+      _ { false }
+    };
+    if disambig { popen(s) }
+    print_expr(s, e);
+    if disambig { pclose(s) }
+}
+
 fn print_if(s: &ps, test: &@ast::expr, blk: &ast::blk,
             elseopt: &option::t<@ast::expr>, chk: bool) {
     head(s, "if");
     if chk { word_nbsp(s, "check"); }
-    print_expr(s, test);
+    print_maybe_parens_discrim(s, test);
     space(s.s);
     print_block(s, blk);
     fn do_else(s: &ps, els: option::t<@ast::expr>) {
@@ -869,7 +881,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
       }
       ast::expr_while(test, blk) {
         head(s, "while");
-        print_expr(s, test);
+        print_maybe_parens_discrim(s, test);
         space(s.s);
         print_block(s, blk);
       }
@@ -897,7 +909,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         cbox(s, alt_indent_unit);
         ibox(s, 4u);
         word_nbsp(s, "alt");
-        print_expr(s, expr);
+        print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);
         for arm: ast::arm in arms {
