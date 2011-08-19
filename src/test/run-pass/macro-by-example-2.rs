@@ -1,5 +1,3 @@
-// xfail-pretty
-
 fn main() {
     #macro([#zip_or_unzip[[x, ...], [y, ...]], [[x, y], ...]],
            [#zip_or_unzip[[xx, yy], ...], [[xx, ...], [yy, ...]]]);

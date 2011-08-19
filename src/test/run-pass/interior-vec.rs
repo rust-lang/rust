@@ -1,5 +1,3 @@
-// xfail-pretty
-
 import rusti::ivec_len;
 
 native "rust-intrinsic" mod rusti {
