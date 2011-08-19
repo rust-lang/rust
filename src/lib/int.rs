@@ -52,7 +52,7 @@ fn str(i: int) -> str { ret to_str(i, 10u); }
 fn pow(base: int, exponent: uint) -> int {
     ret if exponent == 0u {
             1
-        } else if (base == 0) {
+        } else if base == 0 {
             0
         } else {
             let accum = base;

@@ -9,11 +9,6 @@ native "rust" mod rustrt {
     fn task_yield();
 }
 
-fn yield_wrap() {
-    rustrt::task_yield();
-}
+fn yield_wrap() { rustrt::task_yield(); }
 
-fn main() {
-    let f = yield_wrap;
-    task::_spawn(f);
-}
+fn main() { let f = yield_wrap; task::_spawn(f); }

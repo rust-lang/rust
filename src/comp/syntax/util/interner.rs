@@ -18,7 +18,7 @@ type interner<T> =
 
 fn mk<@T>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::mk_hashmap::<T, uint>(hasher, eqer);
-    ret {map: m, mutable vect: ~[], hasher: hasher, eqer: eqer};
+    ret {map: m, mutable vect: [], hasher: hasher, eqer: eqer};
 }
 
 fn intern<@T>(itr: &interner<T>, val: &T) -> uint {
@@ -27,13 +27,13 @@ fn intern<@T>(itr: &interner<T>, val: &T) -> uint {
       none. {
         let new_idx = vec::len::<T>(itr.vect);
         itr.map.insert(val, new_idx);
-        itr.vect += ~[val];
+        itr.vect += [val];
         ret new_idx;
       }
     }
 }
 
-fn get<T>(itr: &interner<T>, idx: uint) -> T { ret itr.vect.(idx); }
+fn get<T>(itr: &interner<T>, idx: uint) -> T { ret itr.vect[idx]; }
 
-fn len<T>(itr : &interner<T>) -> uint { ret vec::len(itr.vect); }
+fn len<T>(itr: &interner<T>) -> uint { ret vec::len(itr.vect); }
 

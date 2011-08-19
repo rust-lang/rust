@@ -1,5 +1,5 @@
 
 
-type lteq<T> = fn(&T) -> bool ;
+type lteq<T> = fn(&T) -> bool;
 
 fn main(args: [str]) { }

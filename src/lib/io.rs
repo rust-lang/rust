@@ -15,53 +15,49 @@ tag seek_style { seek_set; seek_end; seek_cur; }
 
 // The raw underlying reader class. All readers must implement this.
 type buf_reader =
-
     // FIXME: Seekable really should be orthogonal. We will need
     // inheritance.
     obj {
-        fn read(uint) -> [u8] ;
-        fn read_byte() -> int ;
-        fn unread_byte(int) ;
-        fn eof() -> bool ;
-        fn seek(int, seek_style) ;
-        fn tell() -> uint ;
+        fn read(uint) -> [u8];
+        fn read_byte() -> int;
+        fn unread_byte(int);
+        fn eof() -> bool;
+        fn seek(int, seek_style);
+        fn tell() -> uint;
     };
 
 
 // Convenience methods for reading.
 type reader =
-
     // FIXME: This should inherit from buf_reader.
-     // FIXME: eventually u64
+    // FIXME: eventually u64
 
     obj {
-        fn get_buf_reader() -> buf_reader ;
-        fn read_byte() -> int ;
-        fn unread_byte(int) ;
-        fn read_bytes(uint) -> [u8] ;
-        fn read_char() -> char ;
-        fn eof() -> bool ;
-        fn read_line() -> str ;
-        fn read_c_str() -> str ;
-        fn read_le_uint(uint) -> uint ;
-        fn read_le_int(uint) -> int ;
-        fn read_be_uint(uint) -> uint ;
-        fn read_whole_stream() -> [u8] ;
-        fn seek(int, seek_style) ;
-        fn tell() -> uint ;
+        fn get_buf_reader() -> buf_reader;
+        fn read_byte() -> int;
+        fn unread_byte(int);
+        fn read_bytes(uint) -> [u8];
+        fn read_char() -> char;
+        fn eof() -> bool;
+        fn read_line() -> str;
+        fn read_c_str() -> str;
+        fn read_le_uint(uint) -> uint;
+        fn read_le_int(uint) -> int;
+        fn read_be_uint(uint) -> uint;
+        fn read_whole_stream() -> [u8];
+        fn seek(int, seek_style);
+        fn tell() -> uint;
     };
 
 fn convert_whence(whence: seek_style) -> int {
     ret alt whence { seek_set. { 0 } seek_cur. { 1 } seek_end. { 2 } };
 }
 
-resource FILE_res(f: os::libc::FILE) {
-    os::libc::fclose(f);
-}
+resource FILE_res(f: os::libc::FILE) { os::libc::fclose(f); }
 
 obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn read(len: uint) -> [u8] {
-        let buf = ~[];
+        let buf = [];
         vec::reserve::<u8>(buf, len);
         let read = os::libc::fread(vec::to_ptr::<u8>(buf), 1u, len, f);
         vec::unsafe::set_len::<u8>(buf, read);
@@ -73,9 +69,7 @@ obj FILE_buf_reader(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn seek(offset: int, whence: seek_style) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0);
     }
-    fn tell() -> uint {
-        ret os::libc::ftell(f) as uint;
-    }
+    fn tell() -> uint { ret os::libc::ftell(f) as uint; }
 }
 
 
@@ -111,7 +105,7 @@ obj new_reader(rdr: buf_reader) {
     }
     fn eof() -> bool { ret rdr.eof(); }
     fn read_line() -> str {
-        let buf: [u8] = ~[];
+        let buf: [u8] = [];
         // No break yet in rustc
 
         let go_on = true;
@@ -119,16 +113,16 @@ obj new_reader(rdr: buf_reader) {
             let ch = rdr.read_byte();
             if ch == -1 || ch == 10 {
                 go_on = false;
-            } else { buf += ~[ch as u8]; }
+            } else { buf += [ch as u8]; }
         }
         ret str::unsafe_from_bytes(buf);
     }
     fn read_c_str() -> str {
-        let buf: [u8] = ~[];
+        let buf: [u8] = [];
         let go_on = true;
         while go_on {
             let ch = rdr.read_byte();
-            if ch < 1 { go_on = false; } else { buf += ~[ch as u8]; }
+            if ch < 1 { go_on = false; } else { buf += [ch as u8]; }
         }
         ret str::unsafe_from_bytes(buf);
     }
@@ -166,7 +160,7 @@ obj new_reader(rdr: buf_reader) {
         ret val;
     }
     fn read_whole_stream() -> [u8] {
-        let buf: [u8] = ~[];
+        let buf: [u8] = [];
         while !rdr.eof() { buf += rdr.read(2048u); }
         ret buf;
     }
@@ -205,7 +199,7 @@ obj byte_buf_reader(bbuf: byte_buf) {
     }
     fn read_byte() -> int {
         if bbuf.pos == vec::len::<u8>(bbuf.buf) { ret -1; }
-        let b = bbuf.buf.(bbuf.pos);
+        let b = bbuf.buf[bbuf.pos];
         bbuf.pos += 1u;
         ret b as int;
     }
@@ -232,15 +226,14 @@ fn string_reader(s: &str) -> reader {
 tag fileflag { append; create; truncate; none; }
 
 type buf_writer =
-
     // FIXME: Seekable really should be orthogonal. We will need
     // inheritance.
-     // FIXME: eventually u64
+    // FIXME: eventually u64
 
     obj {
-        fn write(&[u8]) ;
-        fn seek(int, seek_style) ;
-        fn tell() -> uint ;
+        fn write(&[u8]);
+        fn seek(int, seek_style);
+        fn tell() -> uint;
     };
 
 obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
@@ -253,14 +246,10 @@ obj FILE_writer(f: os::libc::FILE, res: option::t<@FILE_res>) {
     fn seek(offset: int, whence: seek_style) {
         assert (os::libc::fseek(f, offset, convert_whence(whence)) == 0);
     }
-    fn tell() -> uint {
-        ret os::libc::ftell(f) as uint;
-    }
+    fn tell() -> uint { ret os::libc::ftell(f) as uint; }
 }
 
-resource fd_res(fd: int) {
-    os::libc::close(fd);
-}
+resource fd_res(fd: int) { os::libc::close(fd); }
 
 obj fd_buf_writer(fd: int, res: option::t<@fd_res>) {
     fn write(v: &[u8]) {
@@ -312,32 +301,31 @@ fn file_buf_writer(path: str, flags: &[fileflag]) -> buf_writer {
 }
 
 type writer =
-
     // write_str will continue to do utf-8 output only. an alternative
     // function will be provided for general encoded string output
     obj {
-        fn get_buf_writer() -> buf_writer ;
-        fn write_str(str) ;
-        fn write_line(str) ;
-        fn write_char(char) ;
-        fn write_int(int) ;
-        fn write_uint(uint) ;
-        fn write_bytes(&[u8]) ;
-        fn write_le_uint(uint, uint) ;
-        fn write_le_int(int, uint) ;
-        fn write_be_uint(uint, uint) ;
+        fn get_buf_writer() -> buf_writer;
+        fn write_str(str);
+        fn write_line(str);
+        fn write_char(char);
+        fn write_int(int);
+        fn write_uint(uint);
+        fn write_bytes(&[u8]);
+        fn write_le_uint(uint, uint);
+        fn write_le_int(int, uint);
+        fn write_be_uint(uint, uint);
     };
 
 fn uint_to_le_bytes(n: uint, size: uint) -> [u8] {
-    let bytes: [u8] = ~[];
-    while size > 0u { bytes += ~[n & 255u as u8]; n >>= 8u; size -= 1u; }
+    let bytes: [u8] = [];
+    while size > 0u { bytes += [n & 255u as u8]; n >>= 8u; size -= 1u; }
     ret bytes;
 }
 
 fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
-    let bytes: [u8] = ~[];
+    let bytes: [u8] = [];
     let i = size - 1u as int;
-    while i >= 0 { bytes += ~[n >> (i * 8 as uint) & 255u as u8]; i -= 1; }
+    while i >= 0 { bytes += [n >> (i * 8 as uint) & 255u as u8]; i -= 1; }
     ret bytes;
 }
 
@@ -354,9 +342,7 @@ obj new_writer(out: buf_writer) {
         out.write(str::bytes(str::from_char(ch)));
     }
     fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
-    fn write_uint(n: uint) {
-        out.write(str::bytes(uint::to_str(n, 10u)));
-    }
+    fn write_uint(n: uint) { out.write(str::bytes(uint::to_str(n, 10u))); }
     fn write_bytes(bytes: &[u8]) { out.write(bytes); }
     fn write_le_uint(n: uint, size: uint) {
         out.write(uint_to_le_bytes(n, size));
@@ -391,8 +377,8 @@ fn stdout() -> writer { ret new_writer(fd_buf_writer(1, option::none)); }
 
 type str_writer =
     obj {
-        fn get_writer() -> writer ;
-        fn get_str() -> str ;
+        fn get_writer() -> writer;
+        fn get_str() -> str;
     };
 
 type mutable_byte_buf = @{mutable buf: [mutable u8], mutable pos: uint};
@@ -402,7 +388,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
         // Fast path.
 
         if buf.pos == vec::len(buf.buf) {
-            for b: u8 in v { buf.buf += ~[mutable b]; }
+            for b: u8 in v { buf.buf += [mutable b]; }
             buf.pos += vec::len::<u8>(v);
             ret;
         }
@@ -411,10 +397,10 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
         let vlen = vec::len::<u8>(v);
         let vpos = 0u;
         while vpos < vlen {
-            let b = v.(vpos);
+            let b = v[vpos];
             if buf.pos == vec::len(buf.buf) {
-                buf.buf += ~[mutable b];
-            } else { buf.buf.(buf.pos) = b; }
+                buf.buf += [mutable b];
+            } else { buf.buf[buf.pos] = b; }
             buf.pos += 1u;
             vpos += 1u;
         }
@@ -430,7 +416,7 @@ obj byte_buf_writer(buf: mutable_byte_buf) {
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
 
-    let b: [mutable u8] = ~[mutable 0u8];
+    let b: [mutable u8] = [mutable 0u8];
     vec::pop(b);
     let buf: mutable_byte_buf = @{mutable buf: b, mutable pos: 0u};
     obj str_writer_wrap(wr: writer, buf: mutable_byte_buf) {
@@ -451,7 +437,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
       seek_cur. { bpos += offset; }
       seek_end. { bpos = blen + offset; }
     }
-    if bpos < 0 { bpos = 0; } else if (bpos > blen) { bpos = blen; }
+    if bpos < 0 { bpos = 0; } else if bpos > blen { bpos = blen; }
     ret bpos as uint;
 }
 
@@ -460,6 +446,7 @@ fn read_whole_file_str(file: &str) -> str {
 }
 
 fn read_whole_file(file: &str) -> [u8] {
+
     // FIXME: There's a lot of copying here
     file_reader(file).read_whole_stream()
 }

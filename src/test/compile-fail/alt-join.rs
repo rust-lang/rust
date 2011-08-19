@@ -5,11 +5,8 @@
 fn my_fail() -> ! { fail; }
 
 fn main() {
-    alt (true) {
-      false { my_fail(); }
-      true {}
-    }
+    alt true { false { my_fail(); } true { } }
 
     log x;
-    let x:int;
+    let x: int;
 }

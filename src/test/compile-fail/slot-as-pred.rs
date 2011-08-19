@@ -1,7 +1,7 @@
 // -*- rust -*-
 // error-pattern: unresolved name: lt
 
-fn f(a: int, b: int) : lt(a,b) { }
+fn f(a: int, b: int) : lt(a, b) { }
 
 fn main() {
     let lt: int;

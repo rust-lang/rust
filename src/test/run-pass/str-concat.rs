@@ -7,5 +7,5 @@ fn main() {
     let b: str = "world";
     let s: str = a + b;
     log s;
-    assert (s.(9) == 'd' as u8);
+    assert (s[9] == 'd' as u8);
 }

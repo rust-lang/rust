@@ -41,7 +41,7 @@ type test_name = str;
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-type test_fn = fn() ;
+type test_fn = fn();
 
 // The definition of a single test. A test runner will run a list of
 // these.
@@ -69,7 +69,7 @@ fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
     // FIXME (#649): Shouldn't have to check here
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
-    let opts = ~[getopts::optflag("ignored")];
+    let opts = [getopts::optflag("ignored")];
     let match =
         alt getopts::getopts(args_, opts) {
           getopts::success(m) { m }
@@ -78,7 +78,7 @@ fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
     let filter =
         if vec::len(match.free) > 0u {
-            option::some(match.free.(0))
+            option::some(match.free[0])
         } else { option::none };
 
     let run_ignored = getopts::opt_present(match, "ignored");
@@ -106,25 +106,22 @@ fn run_tests_console(opts: &test_opts, tests: &[test_desc]) -> bool {
 fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
                       to_task: &test_to_task) -> bool {
 
-    type test_state = @{
-        out: io::writer,
-        use_color: bool,
-        mutable total: uint,
-        mutable passed: uint,
-        mutable failed: uint,
-        mutable ignored: uint,
-        mutable failures: [test_desc]
-    };
+    type test_state =
+        @{out: io::writer,
+          use_color: bool,
+          mutable total: uint,
+          mutable passed: uint,
+          mutable failed: uint,
+          mutable ignored: uint,
+          mutable failures: [test_desc]};
 
     fn callback(event: testevent, st: test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
-            st.out.write_line(#fmt("\nrunning %u tests", st.total));
+            st.out.write_line(#fmt["\nrunning %u tests", st.total]);
           }
-          te_wait(test) {
-            st.out.write_str(#fmt("test %s ... ", test.name));
-          }
+          te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
           te_result(test, result) {
             alt result {
               tr_ok. {
@@ -136,7 +133,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line("");
-                st.failures += ~[test];
+                st.failures += [test];
               }
               tr_ignored. {
                 st.ignored += 1u;
@@ -148,37 +145,35 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
         }
     }
 
-    let st = @{
-        out: io::stdout(),
-        use_color: use_color(),
-        mutable total: 0u,
-        mutable passed: 0u,
-        mutable failed: 0u,
-        mutable ignored: 0u,
-        mutable failures: ~[]
-    };
+    let st =
+        @{out: io::stdout(),
+          use_color: use_color(),
+          mutable total: 0u,
+          mutable passed: 0u,
+          mutable failed: 0u,
+          mutable ignored: 0u,
+          mutable failures: []};
 
-    run_tests(opts, tests, to_task,
-              bind callback(_, st));
+    run_tests(opts, tests, to_task, bind callback(_, st));
 
-    assert st.passed + st.failed + st.ignored == st.total;
+    assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
 
     if !success {
         st.out.write_line("\nfailures:");
         for test: test_desc in st.failures {
             let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#fmt("    %s", testname));
+            st.out.write_line(#fmt["    %s", testname]);
         }
     }
 
-    st.out.write_str(#fmt("\nresult: "));
+    st.out.write_str(#fmt["\nresult: "]);
     if success {
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
-    st.out.write_str(#fmt(". %u passed; %u failed; %u ignored\n\n",
-                       st.passed, st.failed, st.ignored));
+    st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
+                          st.failed, st.ignored]);
 
     ret success;
 
@@ -206,9 +201,7 @@ fn run_tests_console_(opts: &test_opts, tests: &[test_desc],
     }
 }
 
-fn use_color() -> bool {
-    ret get_concurrency() == 1u;
-}
+fn use_color() -> bool { ret get_concurrency() == 1u; }
 
 tag testevent {
     te_filtered([test_desc]);
@@ -216,8 +209,8 @@ tag testevent {
     te_result(test_desc, test_result);
 }
 
-fn run_tests(opts: &test_opts, tests: &[test_desc],
-             to_task: &test_to_task, callback: fn(testevent)) {
+fn run_tests(opts: &test_opts, tests: &[test_desc], to_task: &test_to_task,
+             callback: fn(testevent)) {
 
     let filtered_tests = filter_tests(opts, tests);
 
@@ -227,19 +220,19 @@ fn run_tests(opts: &test_opts, tests: &[test_desc],
     // provide a great user experience because you might sit waiting for the
     // result of a particular test for an unusually long amount of time.
     let concurrency = get_concurrency();
-    log #fmt("using %u test tasks", concurrency);
+    log #fmt["using %u test tasks", concurrency];
     let total = vec::len(filtered_tests);
     let run_idx = 0u;
     let wait_idx = 0u;
-    let futures = ~[];
+    let futures = [];
 
     while wait_idx < total {
         while vec::len(futures) < concurrency && run_idx < total {
-            futures += ~[run_test(filtered_tests.(run_idx), to_task)];
+            futures += [run_test(filtered_tests[run_idx], to_task)];
             run_idx += 1u;
         }
 
-        let future = futures.(0);
+        let future = futures[0];
         callback(te_wait(future.test));
         let result = future.wait();
         callback(te_result(future.test, result));
@@ -306,33 +299,26 @@ fn filter_tests(opts: &test_opts, tests: &[test_desc]) -> [test_desc] {
     ret filtered;
 }
 
-type test_future =
-    {test: test_desc, wait: fn() -> test_result };
+type test_future = {test: test_desc, wait: fn() -> test_result};
 
 fn run_test(test: &test_desc, to_task: &test_to_task) -> test_future {
     if !test.ignore {
         let test_task = to_task(test.fn);
         ret {test: test,
              wait:
-             bind fn (test_task: joinable)-> test_result {
-                 alt task::join(test_task) {
-                   task::tr_success. { tr_ok }
-                   task::tr_failure. { tr_failed }
-                 }
-             }(test_task)};
-    } else {
-        ret {test: test,
-             wait: fn () -> test_result { tr_ignored }};
-    }
+                 bind fn (test_task: joinable) -> test_result {
+                          alt task::join(test_task) {
+                            task::tr_success. { tr_ok }
+                            task::tr_failure. { tr_failed }
+                          }
+                      }(test_task)};
+    } else { ret {test: test, wait: fn () -> test_result { tr_ignored }}; }
 }
 
 // We need to run our tests in another task in order to trap test failures.
 // This function only works with functions that don't contain closures.
 fn default_test_to_task(f: &fn()) -> joinable {
-    fn run_task(f: fn()) {
-        configure_test_task();
-        f();
-    }
+    fn run_task(f: fn()) { configure_test_task(); f(); }
     ret task::spawn_joinable(bind run_task(f));
 }
 

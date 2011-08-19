@@ -49,6 +49,7 @@ tag def {
     def_arg(def_id);
     def_local(def_id);
     def_variant(def_id, /* tag */def_id);
+
     /* variant */
     def_ty(def_id);
     def_ty_arg(uint, kind);
@@ -56,6 +57,7 @@ tag def {
     def_use(def_id);
     def_native_ty(def_id);
     def_native_fn(def_id);
+
     /* A "fake" def for upvars. This never appears in the def_map, but
      * freevars::def_lookup will return it for a def that is an upvar.
      * It contains the actual def. */
@@ -77,7 +79,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_local(id) { ret id; }
       def_variant(_, id) { ret id; }
       def_ty(id) { ret id; }
-      def_ty_arg(_,_) { fail; }
+      def_ty_arg(_, _) { fail; }
       def_binding(id) { ret id; }
       def_use(id) { ret id; }
       def_native_ty(id) { ret id; }
@@ -100,10 +102,7 @@ type crate_ =
 
 tag crate_directive_ {
     cdir_src_mod(ident, option::t<filename>, [attribute]);
-    cdir_dir_mod(ident,
-                 option::t<filename>,
-                 [@crate_directive],
-                 [attribute]);
+    cdir_dir_mod(ident, option::t<filename>, [@crate_directive], [attribute]);
     cdir_view_item(@view_item);
     cdir_syntax(path);
     cdir_auth(path, _auth);
@@ -155,30 +154,22 @@ iter pat_bindings(pat: &@pat) -> @pat {
     alt pat.node {
       pat_bind(_) { put pat; }
       pat_tag(_, sub) {
-        for p in sub {
-            for each b in pat_bindings(p) { put b; }
-        }
+        for p in sub { for each b in pat_bindings(p) { put b; } }
       }
       pat_rec(fields, _) {
-        for f in fields {
-            for each b in pat_bindings(f.pat) { put b; }
-        }
+        for f in fields { for each b in pat_bindings(f.pat) { put b; } }
       }
       pat_tup(elts) {
-        for elt in elts {
-            for each b in pat_bindings(elt) { put b; }
-        }
+        for elt in elts { for each b in pat_bindings(elt) { put b; } }
       }
-      pat_box(sub) {
-        for each b in pat_bindings(sub) { put b; }
-      }
-      pat_wild. | pat_lit(_) {}
+      pat_box(sub) { for each b in pat_bindings(sub) { put b; } }
+      pat_wild. | pat_lit(_) { }
     }
 }
 
 fn pat_binding_ids(pat: &@pat) -> [node_id] {
-    let found = ~[];
-    for each b in pat_bindings(pat) { found += ~[b.id]; }
+    let found = [];
+    for each b in pat_bindings(pat) { found += [b.id]; }
     ret found;
 }
 
@@ -258,6 +249,7 @@ type stmt = spanned<stmt_>;
 tag stmt_ {
     stmt_decl(@decl, node_id);
     stmt_expr(@expr, node_id);
+
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
 }
@@ -266,10 +258,8 @@ tag init_op { init_assign; init_move; }
 
 type initializer = {op: init_op, expr: @expr};
 
-type local_ = {ty: @ty,
-               pat: @pat, // FIXME: should really be a refinement on pat
-               init: option::t<initializer>,
-               id: node_id};
+type local_ =  // FIXME: should really be a refinement on pat
+    {ty: @ty, pat: @pat, init: option::t<initializer>, id: node_id};
 
 type local = spanned<local_>;
 
@@ -312,6 +302,7 @@ tag expr_ {
     expr_alt(@expr, [arm]);
     expr_fn(_fn);
     expr_block(blk);
+
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
@@ -331,10 +322,13 @@ tag expr_ {
     expr_put(option::t<@expr>);
     expr_be(@expr);
     expr_log(int, @expr);
+
     /* just an assert, no significance to typestate */
     expr_assert(@expr);
+
     /* preds that typestate is aware of */
     expr_check(check_mode, @expr);
+
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
     expr_if_check(@expr, blk, option::t<@expr>);
@@ -428,10 +422,11 @@ tag ty_ {
     ty_bot; /* return type of ! functions and type of
              ret/fail/break/cont. there is no syntax
              for this type. */
+
      /* bot represents the value of functions that don't return a value
         locally to their context. in contrast, things like log that do
         return, but don't return a meaningful value, have result type nil. */
-    ty_bool;
+     ty_bool;
     ty_int;
     ty_uint;
     ty_float;
@@ -453,6 +448,7 @@ tag ty_ {
     ty_type;
     ty_constr(@ty, [@ty_constr]);
     ty_mac(mac);
+
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.
@@ -514,6 +510,7 @@ tag purity {
 tag controlflow {
     noreturn; // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
+
     return; // everything else
 }
 
@@ -531,9 +528,9 @@ type _obj = {fields: [obj_field], methods: [@method]};
 
 type anon_obj =
     // New fields and methods, if they exist.
+    // inner_obj: the original object being extended, if it exists.
     {fields: option::t<[anon_obj_field]>,
      methods: [@method],
-     // inner_obj: the original object being extended, if it exists.
      inner_obj: option::t<@expr>};
 
 type _mod = {view_items: [@view_item], items: [@item]};
@@ -601,10 +598,14 @@ tag item_ {
     item_ty(@ty, [ty_param]);
     item_tag([variant], [ty_param]);
     item_obj(_obj, [ty_param], /* constructor id */node_id);
-    item_res(_fn, /* dtor */
-             node_id, /* dtor id */
+    item_res(_fn,
+              /* dtor */
+             node_id,
+              /* dtor id */
              [ty_param],
-             node_id /* ctor id */);
+
+             /* ctor id */
+             node_id);
 }
 
 type native_item =
@@ -637,11 +638,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for vi: @ast::view_item in m.view_items {
         alt vi.node {
           ast::view_item_export(ids, _) {
-            for id in ids {
-                if str::eq(i, id) {
-                    ret true;
-                }
-            }
+            for id in ids { if str::eq(i, id) { ret true; } }
             count += 1u;
           }
           _ {/* fall through */ }
@@ -670,7 +667,7 @@ fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
 fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = {stmts: ~[], expr: option::some::<@expr>(e), id: e.id};
+    let blk_ = {stmts: [], expr: option::some::<@expr>(e), id: e.id};
     ret {node: blk_, span: e.span};
 }
 

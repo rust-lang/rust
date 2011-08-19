@@ -9,7 +9,6 @@ export sha1;
 export mk_sha1;
 
 type sha1 =
-
     // Provide message input as bytes
 
 
@@ -25,11 +24,11 @@ type sha1 =
     // Reset the sha1 state for reuse. This is called
     // automatically during construction
     obj {
-        fn input(&[u8]) ;
-        fn input_str(&str) ;
-        fn result() -> [u8] ;
-        fn result_str() -> str ;
-        fn reset() ;
+        fn input(&[u8]);
+        fn input_str(&str);
+        fn result() -> [u8];
+        fn result_str() -> str;
+        fn reset();
     };
 
 
@@ -65,7 +64,7 @@ fn mk_sha1() -> sha1 {
 
         assert (!st.computed);
         for element: u8 in msg {
-            st.msg_block.(st.msg_block_idx) = element;
+            st.msg_block[st.msg_block_idx] = element;
             st.msg_block_idx += 1u;
             st.len_low += 8u32;
             if st.len_low == 0u32 {
@@ -92,30 +91,29 @@ fn mk_sha1() -> sha1 {
         t = 0;
         while t < 16 {
             let tmp;
-            tmp = (st.msg_block.(t * 4) as u32) << 24u32;
-            tmp = tmp | (st.msg_block.(t * 4 + 1) as u32) << 16u32;
-            tmp = tmp | (st.msg_block.(t * 4 + 2) as u32) << 8u32;
-            tmp = tmp | (st.msg_block.(t * 4 + 3) as u32);
-            w.(t) = tmp;
+            tmp = (st.msg_block[t * 4] as u32) << 24u32;
+            tmp = tmp | (st.msg_block[t * 4 + 1] as u32) << 16u32;
+            tmp = tmp | (st.msg_block[t * 4 + 2] as u32) << 8u32;
+            tmp = tmp | (st.msg_block[t * 4 + 3] as u32);
+            w[t] = tmp;
             t += 1;
         }
         // Initialize the rest of vector w
 
         while t < 80 {
-            let val = w.(t - 3) ^ w.(t - 8) ^ w.(t - 14) ^ w.(t - 16);
-            w.(t) = circular_shift(1u32, val);
+            let val = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
+            w[t] = circular_shift(1u32, val);
             t += 1;
         }
-        let a = st.h.(0);
-        let b = st.h.(1);
-        let c = st.h.(2);
-        let d = st.h.(3);
-        let e = st.h.(4);
+        let a = st.h[0];
+        let b = st.h[1];
+        let c = st.h[2];
+        let d = st.h[3];
+        let e = st.h[4];
         let temp: u32;
         t = 0;
         while t < 20 {
-            temp =
-                circular_shift(5u32, a) + (b & c | !b & d) + e + w.(t) + k0;
+            temp = circular_shift(5u32, a) + (b & c | !b & d) + e + w[t] + k0;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -124,7 +122,7 @@ fn mk_sha1() -> sha1 {
             t += 1;
         }
         while t < 40 {
-            temp = circular_shift(5u32, a) + (b ^ c ^ d) + e + w.(t) + k1;
+            temp = circular_shift(5u32, a) + (b ^ c ^ d) + e + w[t] + k1;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -134,8 +132,8 @@ fn mk_sha1() -> sha1 {
         }
         while t < 60 {
             temp =
-                circular_shift(5u32, a) + (b & c | b & d | c & d) + e + w.(t)
-                    + k2;
+                circular_shift(5u32, a) + (b & c | b & d | c & d) + e + w[t] +
+                    k2;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -144,7 +142,7 @@ fn mk_sha1() -> sha1 {
             t += 1;
         }
         while t < 80 {
-            temp = circular_shift(5u32, a) + (b ^ c ^ d) + e + w.(t) + k3;
+            temp = circular_shift(5u32, a) + (b ^ c ^ d) + e + w[t] + k3;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -152,11 +150,11 @@ fn mk_sha1() -> sha1 {
             a = temp;
             t += 1;
         }
-        st.h.(0) = st.h.(0) + a;
-        st.h.(1) = st.h.(1) + b;
-        st.h.(2) = st.h.(2) + c;
-        st.h.(3) = st.h.(3) + d;
-        st.h.(4) = st.h.(4) + e;
+        st.h[0] = st.h[0] + a;
+        st.h[1] = st.h[1] + b;
+        st.h[2] = st.h[2] + c;
+        st.h[3] = st.h[3] + d;
+        st.h[4] = st.h[4] + e;
         st.msg_block_idx = 0u;
     }
     fn circular_shift(bits: u32, word: u32) -> u32 {
@@ -164,13 +162,13 @@ fn mk_sha1() -> sha1 {
     }
     fn mk_result(st: &sha1state) -> [u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
-        let rs: [u8] = ~[];
+        let rs: [u8] = [];
         for hpart: u32 in st.h {
             let a = hpart >> 24u32 & 0xFFu32 as u8;
             let b = hpart >> 16u32 & 0xFFu32 as u8;
             let c = hpart >> 8u32 & 0xFFu32 as u8;
             let d = hpart & 0xFFu32 as u8;
-            rs += ~[a, b, c, d];
+            rs += [a, b, c, d];
         }
         ret rs;
     }
@@ -195,31 +193,31 @@ fn mk_sha1() -> sha1 {
          */
 
         if st.msg_block_idx > 55u {
-            st.msg_block.(st.msg_block_idx) = 0x80u8;
+            st.msg_block[st.msg_block_idx] = 0x80u8;
             st.msg_block_idx += 1u;
             while st.msg_block_idx < msg_block_len {
-                st.msg_block.(st.msg_block_idx) = 0u8;
+                st.msg_block[st.msg_block_idx] = 0u8;
                 st.msg_block_idx += 1u;
             }
             process_msg_block(st);
         } else {
-            st.msg_block.(st.msg_block_idx) = 0x80u8;
+            st.msg_block[st.msg_block_idx] = 0x80u8;
             st.msg_block_idx += 1u;
         }
         while st.msg_block_idx < 56u {
-            st.msg_block.(st.msg_block_idx) = 0u8;
+            st.msg_block[st.msg_block_idx] = 0u8;
             st.msg_block_idx += 1u;
         }
         // Store the message length as the last 8 octets
 
-        st.msg_block.(56) = st.len_high >> 24u32 & 0xFFu32 as u8;
-        st.msg_block.(57) = st.len_high >> 16u32 & 0xFFu32 as u8;
-        st.msg_block.(58) = st.len_high >> 8u32 & 0xFFu32 as u8;
-        st.msg_block.(59) = st.len_high & 0xFFu32 as u8;
-        st.msg_block.(60) = st.len_low >> 24u32 & 0xFFu32 as u8;
-        st.msg_block.(61) = st.len_low >> 16u32 & 0xFFu32 as u8;
-        st.msg_block.(62) = st.len_low >> 8u32 & 0xFFu32 as u8;
-        st.msg_block.(63) = st.len_low & 0xFFu32 as u8;
+        st.msg_block[56] = st.len_high >> 24u32 & 0xFFu32 as u8;
+        st.msg_block[57] = st.len_high >> 16u32 & 0xFFu32 as u8;
+        st.msg_block[58] = st.len_high >> 8u32 & 0xFFu32 as u8;
+        st.msg_block[59] = st.len_high & 0xFFu32 as u8;
+        st.msg_block[60] = st.len_low >> 24u32 & 0xFFu32 as u8;
+        st.msg_block[61] = st.len_low >> 16u32 & 0xFFu32 as u8;
+        st.msg_block[62] = st.len_low >> 8u32 & 0xFFu32 as u8;
+        st.msg_block[63] = st.len_low & 0xFFu32 as u8;
         process_msg_block(st);
     }
     obj sha1(st: sha1state) {
@@ -230,11 +228,11 @@ fn mk_sha1() -> sha1 {
             st.len_low = 0u32;
             st.len_high = 0u32;
             st.msg_block_idx = 0u;
-            st.h.(0) = 0x67452301u32;
-            st.h.(1) = 0xEFCDAB89u32;
-            st.h.(2) = 0x98BADCFEu32;
-            st.h.(3) = 0x10325476u32;
-            st.h.(4) = 0xC3D2E1F0u32;
+            st.h[0] = 0x67452301u32;
+            st.h[1] = 0xEFCDAB89u32;
+            st.h[2] = 0x98BADCFEu32;
+            st.h[3] = 0x10325476u32;
+            st.h[4] = 0xC3D2E1F0u32;
             st.computed = false;
         }
         fn input(msg: &[u8]) { add_input(st, msg); }

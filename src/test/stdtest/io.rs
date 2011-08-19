@@ -13,7 +13,7 @@ fn test_simple() {
     log frood;
     {
         let out: io::writer =
-            io::file_writer(tmpfile, ~[io::create, io::truncate]);
+            io::file_writer(tmpfile, [io::create, io::truncate]);
         out.write_str(frood);
     }
     let inp: io::reader = io::file_reader(tmpfile);

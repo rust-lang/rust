@@ -3,14 +3,8 @@ type point = {x: int, y: int};
 
 type rect = (point, point);
 
-fn fst(r: &rect) -> point {
-    let (fst, _) = r;
-    ret fst;
-}
-fn snd(r: &rect) -> point {
-    let (_, snd) = r;
-    ret snd;
-}
+fn fst(r: &rect) -> point { let (fst, _) = r; ret fst; }
+fn snd(r: &rect) -> point { let (_, snd) = r; ret snd; }
 
 fn f(r: rect, x1: int, y1: int, x2: int, y2: int) {
     assert (fst(r).x == x1);

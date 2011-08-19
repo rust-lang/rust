@@ -1,2 +1,2 @@
 // error-pattern:expected str but found [int]
-fn main() { fail ~[0]; }
+fn main() { fail [0]; }

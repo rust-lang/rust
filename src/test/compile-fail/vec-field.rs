@@ -2,7 +2,7 @@
 // issue #367
 
 fn f() {
-    let v = ~[1];
+    let v = [1];
     log v.some_field_name; //type error
 }
 

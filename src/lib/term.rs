@@ -40,15 +40,15 @@ const color_bright_cyan: u8 = 14u8;
 
 const color_bright_white: u8 = 15u8;
 
-fn esc(writer: io::buf_writer) { writer.write(~[0x1bu8, '[' as u8]); }
+fn esc(writer: io::buf_writer) { writer.write([0x1bu8, '[' as u8]); }
 
 fn reset(writer: io::buf_writer) {
     esc(writer);
-    writer.write(~['0' as u8, 'm' as u8]);
+    writer.write(['0' as u8, 'm' as u8]);
 }
 
 fn color_supported() -> bool {
-    let supported_terms = ~["xterm-color", "xterm", "screen-bce"];
+    let supported_terms = ["xterm-color", "xterm", "screen-bce"];
     ret alt generic_os::getenv("TERM") {
           option::some(env) {
             for term: str in supported_terms {
@@ -63,8 +63,8 @@ fn color_supported() -> bool {
 fn set_color(writer: io::buf_writer, first_char: u8, color: u8) {
     assert (color < 16u8);
     esc(writer);
-    if color >= 8u8 { writer.write(~['1' as u8, ';' as u8]); color -= 8u8; }
-    writer.write(~[first_char, ('0' as u8) + color, 'm' as u8]);
+    if color >= 8u8 { writer.write(['1' as u8, ';' as u8]); color -= 8u8; }
+    writer.write([first_char, ('0' as u8) + color, 'm' as u8]);
 }
 
 fn fg(writer: io::buf_writer, color: u8) {

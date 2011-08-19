@@ -16,8 +16,8 @@ fn test_simple() {
     let n2: uint = vec::len::<u8>(v);
     assert (n1 == n2);
     while i < n1 {
-        let a: u8 = s1.(i);
-        let b: u8 = s2.(i);
+        let a: u8 = s1[i];
+        let b: u8 = s2[i];
         log a;
         log b;
         assert (a == b);

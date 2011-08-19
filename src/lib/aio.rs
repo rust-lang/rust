@@ -28,26 +28,17 @@ native "rust" mod rustrt {
 // currently in the sendable kind, so we'll unsafely cast between ints.
 type server = rustrt::server;
 type client = rustrt::socket;
-tag pending_connection {
-    remote(net::ip_addr,int);
-    incoming(server);
-}
+tag pending_connection { remote(net::ip_addr, int); incoming(server); }
 
-tag socket_event {
-    connected(client);
-    closed;
-    received([u8]);
-}
+tag socket_event { connected(client); closed; received([u8]); }
 
-tag server_event {
-    pending(_chan<_chan<socket_event>>);
-}
+tag server_event { pending(_chan<_chan<socket_event>>); }
 
 tag request {
     quit;
-    connect(pending_connection,_chan<socket_event>);
-    serve(net::ip_addr,int,_chan<server_event>,_chan<server>);
-    write(client,[u8],_chan<bool>);
+    connect(pending_connection, _chan<socket_event>);
+    serve(net::ip_addr, int, _chan<server_event>, _chan<server>);
+    write(client, [u8], _chan<bool>);
     close_server(server, _chan<bool>);
     close_client(client);
 }
@@ -74,12 +65,12 @@ fn new_client(client: client, evt: _chan<socket_event>) {
 
     send(evt, connected(client));
 
-    while (true) {
+    while true {
         log "waiting for bytes";
         let data: [u8] = reader.recv();
         log "got some bytes";
         log vec::len::<u8>(data);
-        if (vec::len::<u8>(data) == 0u) {
+        if vec::len::<u8>(data) == 0u {
             log "got empty buffer, bailing";
             break;
         }
@@ -104,19 +95,17 @@ fn accept_task(client: client, events: _chan<server_event>) {
 fn server_task(ip: net::ip_addr, portnum: int, events: _chan<server_event>,
                server: _chan<server>) {
     let accepter: _port<client> = mk_port();
-    send(server, rustrt::aio_serve(ip_to_sbuf(ip), portnum,
-                                   accepter.mk_chan()));
+    send(server,
+         rustrt::aio_serve(ip_to_sbuf(ip), portnum, accepter.mk_chan()));
 
     let client: client;
-    while (true) {
+    while true {
         log "preparing to accept a client";
         client = accepter.recv();
-        if (rustrt::aio_is_null_client(client)) {
-          log "client was actually null, returning";
-          ret;
-        } else {
-          task::_spawn(bind accept_task(client, events));
-        }
+        if rustrt::aio_is_null_client(client) {
+            log "client was actually null, returning";
+            ret;
+        } else { task::_spawn(bind accept_task(client, events)); }
     }
 }
 
@@ -128,7 +117,7 @@ fn request_task(c: _chan<ctx>) {
     log "uv run task spawned";
     // Spin for requests
     let req: request;
-    while (true) {
+    while true {
         req = p.recv();
         alt req {
           quit. {
@@ -137,20 +126,19 @@ fn request_task(c: _chan<ctx>) {
             rustrt::aio_stop();
             ret;
           }
-          connect(remote(ip,portnum),client) {
+          connect(remote(ip, portnum), client) {
             task::_spawn(bind connect_task(ip, portnum, client));
           }
-          serve(ip,portnum,events,server) {
+          serve(ip, portnum, events, server) {
             task::_spawn(bind server_task(ip, portnum, events, server));
           }
-          write(socket,v,status) {
-            rustrt::aio_writedata(socket,
-                                  vec::to_ptr::<u8>(v), vec::len::<u8>(v),
-                                  status);
+          write(socket, v, status) {
+            rustrt::aio_writedata(socket, vec::to_ptr::<u8>(v),
+                                  vec::len::<u8>(v), status);
           }
-          close_server(server,status) {
+          close_server(server, status) {
             log "closing server";
-            rustrt::aio_close_server(server,status);
+            rustrt::aio_close_server(server, status);
           }
           close_client(client) {
             log "closing client";

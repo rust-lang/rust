@@ -1,6 +1,6 @@
 mod spam {
-    fn ham() {}
-    fn eggs() {}
+    fn ham() { }
+    fn eggs() { }
 }
 
 native "rust" mod rustrt {
@@ -9,7 +9,4 @@ native "rust" mod rustrt {
     export eggs;
 }
 
-fn main() {
-    rustrt::ham();
-    rustrt::eggs();
-}
+fn main() { rustrt::ham(); rustrt::eggs(); }

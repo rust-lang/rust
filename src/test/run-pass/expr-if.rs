@@ -12,17 +12,17 @@ fn test_else() {
 }
 
 fn test_elseif1() {
-    let rs: bool = if true { true } else if (true) { false } else { false };
+    let rs: bool = if true { true } else if true { false } else { false };
     assert (rs);
 }
 
 fn test_elseif2() {
-    let rs: bool = if false { false } else if (true) { true } else { false };
+    let rs: bool = if false { false } else if true { true } else { false };
     assert (rs);
 }
 
 fn test_elseif3() {
-    let rs: bool = if false { false } else if (false) { false } else { true };
+    let rs: bool = if false { false } else if false { false } else { true };
     assert (rs);
 }
 

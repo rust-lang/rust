@@ -35,16 +35,16 @@ fn create(nbits: uint, init: bool) -> t {
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(op: &block(uint, uint) -> uint , v0: &t, v1: &t) -> bool {
+fn process(op: &block(uint, uint) -> uint, v0: &t, v1: &t) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let changed = false;
     for each i: uint in uint::range(0u, len) {
-        let w0 = v0.storage.(i);
-        let w1 = v1.storage.(i);
+        let w0 = v0.storage[i];
+        let w1 = v1.storage[i];
         let w = op(w0, w1);
-        if w0 != w { changed = true; v0.storage.(i) = w; }
+        if w0 != w { changed = true; v0.storage[i] = w; }
     }
     ret changed;
 }
@@ -70,7 +70,7 @@ fn assign(v0: &t, v1: t) -> bool {
 fn clone(v: t) -> t {
     let storage = vec::init_elt_mut::<uint>(0u, v.nbits / uint_bits() + 1u);
     let len = vec::len(v.storage);
-    for each i: uint in uint::range(0u, len) { storage.(i) = v.storage.(i); }
+    for each i: uint in uint::range(0u, len) { storage[i] = v.storage[i]; }
     ret @{storage: storage, nbits: v.nbits};
 }
 
@@ -79,7 +79,7 @@ fn get(v: &t, i: uint) -> bool {
     let bits = uint_bits();
     let w = i / bits;
     let b = i % bits;
-    let x = 1u & v.storage.(w) >> b;
+    let x = 1u & v.storage[w] >> b;
     ret x == 1u;
 }
 
@@ -90,7 +90,7 @@ fn equal(v0: &t, v1: &t) -> bool {
     let len = vec::len(v1.storage);
     let i = 0u;
     while i < len {
-        if v0.storage.(i) != v1.storage.(i) { ret false; }
+        if v0.storage[i] != v1.storage[i] { ret false; }
         i = i + 1u;
     }
     ret true;
@@ -98,7 +98,7 @@ fn equal(v0: &t, v1: &t) -> bool {
 
 fn clear(v: &t) {
     for each i: uint in uint::range(0u, vec::len(v.storage)) {
-        v.storage.(i) = 0u;
+        v.storage[i] = 0u;
     }
 }
 
@@ -108,7 +108,7 @@ fn set_all(v: &t) {
 
 fn invert(v: &t) {
     for each i: uint in uint::range(0u, vec::len(v.storage)) {
-        v.storage.(i) = !v.storage.(i);
+        v.storage[i] = !v.storage[i];
     }
 }
 
@@ -127,8 +127,7 @@ fn set(v: &t, i: uint, x: bool) {
     let w = i / bits;
     let b = i % bits;
     let flag = 1u << b;
-    v.storage.(w) =
-        if x { v.storage.(w) | flag } else { v.storage.(w) & !flag };
+    v.storage[w] = if x { v.storage[w] | flag } else { v.storage[w] & !flag };
 }
 
 
@@ -154,9 +153,7 @@ fn to_vec(v: &t) -> [uint] {
 
 fn to_str(v: &t) -> str {
     let rs = "";
-    for i: uint in to_vec(v) {
-        if i == 1u { rs += "1"; } else { rs += "0"; }
-    }
+    for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
 
@@ -166,7 +163,7 @@ fn eq_vec(v0: &t, v1: &[uint]) -> bool {
     let i = 0u;
     while i < len {
         let w0 = get(v0, i);
-        let w1 = v1.(i);
+        let w1 = v1[i];
         if !w0 && w1 != 0u || w0 && w1 == 0u { ret false; }
         i = i + 1u;
     }

@@ -19,17 +19,17 @@ export parse_ty_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type str_def = fn(str) -> ast::def_id ;
+type str_def = fn(str) -> ast::def_id;
 
 type pstate =
     {data: @[u8], crate: int, mutable pos: uint, len: uint, tcx: ty::ctxt};
 
 tag ty_or_bang { a_ty(ty::t); a_bang; }
 
-fn peek(st: @pstate) -> u8 { ret st.data.(st.pos); }
+fn peek(st: @pstate) -> u8 { ret st.data[st.pos]; }
 
 fn next(st: @pstate) -> u8 {
-    let ch = st.data.(st.pos);
+    let ch = st.data[st.pos];
     st.pos = st.pos + 1u;
     ret ch;
 }
@@ -39,7 +39,7 @@ fn parse_ident(st: @pstate, sd: str_def, last: char) -> ast::ident {
     ret parse_ident_(st, sd, bind is_last(last, _));
 }
 
-fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool ) ->
+fn parse_ident_(st: @pstate, _sd: str_def, is_last: fn(char) -> bool) ->
    ast::ident {
     let rslt = "";
     while !is_last(peek(st) as char) {
@@ -65,14 +65,14 @@ fn parse_ty_or_bang(st: @pstate, sd: str_def) -> ty_or_bang {
 }
 
 fn parse_constrs(st: @pstate, sd: str_def) -> [@ty::constr] {
-    let rslt: [@ty::constr] = ~[];
+    let rslt: [@ty::constr] = [];
     alt peek(st) as char {
       ':' {
         do  {
             next(st);
             let one: @ty::constr =
                 parse_constr::<uint>(st, sd, parse_constr_arg);
-            rslt += ~[one];
+            rslt += [one];
         } while peek(st) as char == ';'
       }
       _ { }
@@ -82,14 +82,14 @@ fn parse_constrs(st: @pstate, sd: str_def) -> [@ty::constr] {
 
 // FIXME less copy-and-paste
 fn parse_ty_constrs(st: @pstate, sd: str_def) -> [@ty::type_constr] {
-    let rslt: [@ty::type_constr] = ~[];
+    let rslt: [@ty::type_constr] = [];
     alt peek(st) as char {
       ':' {
         do  {
             next(st);
             let one: @ty::type_constr =
                 parse_constr::<path>(st, sd, parse_ty_constr_arg);
-            rslt += ~[one];
+            rslt += [one];
         } while peek(st) as char == ';'
       }
       _ { }
@@ -98,24 +98,24 @@ fn parse_ty_constrs(st: @pstate, sd: str_def) -> [@ty::type_constr] {
 }
 
 fn parse_path(st: @pstate, sd: str_def) -> ast::path {
-    let idents: [ast::ident] = ~[];
+    let idents: [ast::ident] = [];
     fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
-    idents += ~[parse_ident_(st, sd, is_last)];
+    idents += [parse_ident_(st, sd, is_last)];
     while true {
         alt peek(st) as char {
           ':' { next(st); next(st); }
           c {
             if c == '(' {
                 ret respan(ast::dummy_sp(),
-                           {global: false, idents: idents, types: ~[]});
-            } else { idents += ~[parse_ident_(st, sd, is_last)]; }
+                           {global: false, idents: idents, types: []});
+            } else { idents += [parse_ident_(st, sd, is_last)]; }
           }
         }
     }
     fail "parse_path: ill-formed path";
 }
 
-type arg_parser<T> = fn(@pstate, str_def) -> ast::constr_arg_general_<T> ;
+type arg_parser<T> = fn(@pstate, str_def) -> ast::constr_arg_general_<T>;
 
 fn parse_constr_arg(st: @pstate, _sd: str_def) -> ast::fn_constr_arg {
     alt peek(st) as char {
@@ -153,7 +153,7 @@ fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
 fn parse_constr<@T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
    @ty::constr_general<T> {
     let sp = ast::dummy_sp(); // FIXME: use a real span
-    let args: [@sp_constr_arg<T>] = ~[];
+    let args: [@sp_constr_arg<T>] = [];
     let pth: path = parse_path(st, sd);
     let ignore: char = next(st) as char;
     assert (ignore as char == '(');
@@ -162,7 +162,7 @@ fn parse_constr<@T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
     do  {
         an_arg = pser(st, sd);
         // FIXME use a real span
-        args += ~[@respan(sp, an_arg)];
+        args += [@respan(sp, an_arg)];
         ignore = next(st) as char;
     } while ignore == ';'
     assert (ignore == ')');
@@ -197,21 +197,23 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       't' {
         assert (next(st) as char == '[');
         let def = parse_def(st, sd);
-        let params: [ty::t] = ~[];
-        while peek(st) as char != ']' { params += ~[parse_ty(st, sd)]; }
+        let params: [ty::t] = [];
+        while peek(st) as char != ']' { params += [parse_ty(st, sd)]; }
         st.pos = st.pos + 1u;
         ret ty::mk_tag(st.tcx, def, params);
       }
       'p' {
-        let k = alt next(st) as char {
-          'u' { kind_unique }
-          's' { kind_shared }
-          'p' { kind_pinned }
-          c {
-            log_err "unexpected char in encoded type param: ";
-            log_err c; fail
-          }
-        };
+        let k =
+            alt next(st) as char {
+              'u' { kind_unique }
+              's' { kind_shared }
+              'p' { kind_pinned }
+              c {
+                log_err "unexpected char in encoded type param: ";
+                log_err c;
+                fail
+              }
+            };
         ret ty::mk_param(st.tcx, parse_int(st) as uint, k);
       }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, sd)); }
@@ -220,22 +222,22 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       'I' { ret ty::mk_vec(st.tcx, parse_mt(st, sd)); }
       'R' {
         assert (next(st) as char == '[');
-        let fields: [ty::field] = ~[];
+        let fields: [ty::field] = [];
         while peek(st) as char != ']' {
             let name = "";
             while peek(st) as char != '=' {
                 name += str::unsafe_from_byte(next(st));
             }
             st.pos = st.pos + 1u;
-            fields += ~[{ident: name, mt: parse_mt(st, sd)}];
+            fields += [{ident: name, mt: parse_mt(st, sd)}];
         }
         st.pos = st.pos + 1u;
         ret ty::mk_rec(st.tcx, fields);
       }
       'T' {
         assert (next(st) as char == '[');
-        let params = ~[];
-        while peek(st) as char != ']' { params += ~[parse_ty(st, sd)]; }
+        let params = [];
+        while peek(st) as char != ']' { params += [parse_ty(st, sd)]; }
         st.pos = st.pos + 1u;
         ret ty::mk_tup(st.tcx, params);
       }
@@ -268,7 +270,7 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
       }
       'O' {
         assert (next(st) as char == '[');
-        let methods: [ty::method] = ~[];
+        let methods: [ty::method] = [];
         while peek(st) as char != ']' {
             let proto;
             alt next(st) as char {
@@ -281,12 +283,12 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
             }
             let func = parse_ty_fn(st, sd);
             methods +=
-                ~[{proto: proto,
-                   ident: name,
-                   inputs: func.args,
-                   output: func.ty,
-                   cf: func.cf,
-                   constrs: func.cs}];
+                [{proto: proto,
+                  ident: name,
+                  inputs: func.args,
+                  output: func.ty,
+                  cf: func.cf,
+                  constrs: func.cs}];
         }
         st.pos += 1u;
         ret ty::mk_obj(st.tcx, methods);
@@ -295,8 +297,8 @@ fn parse_ty(st: @pstate, sd: str_def) -> ty::t {
         assert (next(st) as char == '[');
         let def = parse_def(st, sd);
         let inner = parse_ty(st, sd);
-        let params: [ty::t] = ~[];
-        while peek(st) as char != ']' { params += ~[parse_ty(st, sd)]; }
+        let params: [ty::t] = [];
+        while peek(st) as char != ']' { params += [parse_ty(st, sd)]; }
         st.pos = st.pos + 1u;
         ret ty::mk_res(st.tcx, def, inner, params);
       }
@@ -375,7 +377,7 @@ fn parse_hex(st: @pstate) -> uint {
 fn parse_ty_fn(st: @pstate, sd: str_def) ->
    {args: [ty::arg], ty: ty::t, cf: ast::controlflow, cs: [@ty::constr]} {
     assert (next(st) as char == '[');
-    let inputs: [ty::arg] = ~[];
+    let inputs: [ty::arg] = [];
     while peek(st) as char != ']' {
         let mode = ty::mo_val;
         if peek(st) as char == '&' {
@@ -389,7 +391,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
             mode = ty::mo_move;
             st.pos += 1u;
         }
-        inputs += ~[{mode: mode, ty: parse_ty(st, sd)}];
+        inputs += [{mode: mode, ty: parse_ty(st, sd)}];
     }
     st.pos += 1u; // eat the ']'
     let cs = parse_constrs(st, sd);
@@ -406,7 +408,7 @@ fn parse_ty_fn(st: @pstate, sd: str_def) ->
 fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let colon_idx = 0u;
     let len = vec::len::<u8>(buf);
-    while colon_idx < len && buf.(colon_idx) != ':' as u8 { colon_idx += 1u; }
+    while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
         log_err "didn't find ':' when parsing def id";
         fail;
@@ -414,10 +416,10 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let crate_part = vec::slice::<u8>(buf, 0u, colon_idx);
     let def_part = vec::slice::<u8>(buf, colon_idx + 1u, len);
 
-    let crate_part_vec = ~[];
-    let def_part_vec = ~[];
-    for b: u8 in crate_part { crate_part_vec += ~[b]; }
-    for b: u8 in def_part { def_part_vec += ~[b]; }
+    let crate_part_vec = [];
+    let def_part_vec = [];
+    for b: u8 in crate_part { crate_part_vec += [b]; }
+    for b: u8 in def_part { def_part_vec += [b]; }
 
     let crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
     let def_num = uint::parse_buf(def_part_vec, 10u) as int;

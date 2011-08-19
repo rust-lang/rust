@@ -12,17 +12,20 @@ export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
                      _body: option::t<str>) -> @ast::expr {
-    let args: [@ast::expr] = alt arg.node {
-      ast::expr_vec(elts, _) { elts }
-      _ { cx.span_fatal(sp, "#env requires arguments of the form `[...]`.") }
-    };
+    let args: [@ast::expr] =
+        alt arg.node {
+          ast::expr_vec(elts, _) { elts }
+          _ {
+            cx.span_fatal(sp, "#env requires arguments of the form `[...]`.")
+          }
+        };
     if vec::len::<@ast::expr>(args) != 1u {
         cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an
     // option::t<str> rather than just an maybe-empty string.
 
-    let var = expr_to_str(cx, args.(0), "#env requires a string");
+    let var = expr_to_str(cx, args[0], "#env requires a string");
     alt generic_os::getenv(var) {
       option::none. { ret make_new_str(cx, sp, ""); }
       option::some(s) { ret make_new_str(cx, sp, s); }

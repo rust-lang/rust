@@ -60,14 +60,14 @@ fn new_smallintmap_int_adapter<@V>() -> std::map::hashmap<int, V> {
 // interface.
 // FIXME: hashmap and smallintmap should support the same interface.
 fn new_smallintmap_adapter<@K,
-                           @V>(key_idx: fn(&K) -> uint ,
-                               idx_key: fn(&uint) -> K ) ->
+                           @V>(key_idx: fn(&K) -> uint,
+                               idx_key: fn(&uint) -> K) ->
    std::map::hashmap<K, V> {
 
     obj adapter<@K,
                 @V>(map: smallintmap::smallintmap<V>,
-                    key_idx: fn(&K) -> uint ,
-                    idx_key: fn(&uint) -> K ) {
+                    key_idx: fn(&K) -> uint,
+                    idx_key: fn(&uint) -> K) {
 
         fn size() -> uint { fail }
 
@@ -128,45 +128,44 @@ mod test {
     #[test]
     fn test_node_span_item() {
         let expected: codemap::span = mk_sp(20u, 30u);
-        let node = node_item(@{ident: "test",
-                               attrs: ~[],
-                               id: 0,
-                               node: item_mod({view_items: ~[],
-                                               items: ~[]}),
-                               span: expected});
-        assert node_span(node) == expected;
+        let node =
+            node_item(@{ident: "test",
+                        attrs: [],
+                        id: 0,
+                        node: item_mod({view_items: [], items: []}),
+                        span: expected});
+        assert (node_span(node) == expected);
     }
 
     #[test]
     fn test_node_span_obj_ctor() {
         let expected: codemap::span = mk_sp(20u, 30u);
-        let node = node_obj_ctor(@{ident: "test",
-                                   attrs: ~[],
-                                   id: 0,
-                                   node: item_mod({view_items: ~[],
-                                                   items: ~[]}),
-                                   span: expected});
-        assert node_span(node) == expected;
+        let node =
+            node_obj_ctor(@{ident: "test",
+                            attrs: [],
+                            id: 0,
+                            node: item_mod({view_items: [], items: []}),
+                            span: expected});
+        assert (node_span(node) == expected);
     }
 
     #[test]
     fn test_node_span_native_item() {
         let expected: codemap::span = mk_sp(20u, 30u);
-        let node = node_native_item(@{ident: "test",
-                                      attrs: ~[],
-                                      node: native_item_ty,
-                                      id: 0,
-                                      span: expected});
-        assert node_span(node) == expected;
+        let node =
+            node_native_item(@{ident: "test",
+                               attrs: [],
+                               node: native_item_ty,
+                               id: 0,
+                               span: expected});
+        assert (node_span(node) == expected);
     }
 
     #[test]
     fn test_node_span_expr() {
         let expected: codemap::span = mk_sp(20u, 30u);
-        let node = node_expr(@{id: 0,
-                               node: expr_break,
-                               span: expected});
-        assert node_span(node) == expected;
+        let node = node_expr(@{id: 0, node: expr_break, span: expected});
+        assert (node_span(node) == expected);
     }
 }
 

@@ -71,9 +71,9 @@ type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 type glue_fns = {no_op_type_glue: ValueRef};
 
 tag tydesc_kind {
-    tk_static;      // Static (monomorphic) type descriptor.
-    tk_param;       // Type parameter.
-    tk_derived;     // Derived from a typaram or another derived tydesc.
+    tk_static; // Static (monomorphic) type descriptor.
+    tk_param; // Type parameter.
+    tk_derived; // Derived from a typaram or another derived tydesc.
 }
 
 type tydesc_info =
@@ -111,46 +111,44 @@ type stats =
      fn_times: @mutable [{ident: str, time: int}]};
 
 // Crate context.  Every crate we compile has one of these.
-type crate_ctxt = {
-    sess: session::session,
-    llmod: ModuleRef,
-    td: target_data,
-    tn: type_names,
-    externs: hashmap<str, ValueRef>,
-    intrinsics: hashmap<str, ValueRef>,
-
+type crate_ctxt =
     // A mapping from the def_id of each item in this crate to the address
     // of the first instruction of the item's definition in the executable
     // we're generating.
-    item_ids: hashmap<ast::node_id, ValueRef>,
-    ast_map: ast_map::map,
-    item_symbols: hashmap<ast::node_id, str>,
-    mutable main_fn: option::t<ValueRef>,
-    link_meta: link::link_meta,
     // TODO: hashmap<tup(tag_id,subtys), @tag_info>
-    tag_sizes: hashmap<ty::t, uint>,
-    discrims: hashmap<ast::node_id, ValueRef>,
-    discrim_symbols: hashmap<ast::node_id, str>,
-    fn_pairs: hashmap<ast::node_id, ValueRef>,
-    consts: hashmap<ast::node_id, ValueRef>,
-    obj_methods: hashmap<ast::node_id, ()>,
-    tydescs: hashmap<ty::t, @tydesc_info>,
-    module_data: hashmap<str, ValueRef>,
-    lltypes: hashmap<ty::t, TypeRef>,
-    glues: @glue_fns,
-    names: namegen,
-    sha: std::sha1::sha1,
-    type_sha1s: hashmap<ty::t, str>,
-    type_short_names: hashmap<ty::t, str>,
-    tcx: ty::ctxt,
-    stats: stats,
-    upcalls: @upcall::upcalls,
-    rust_object_type: TypeRef,
-    tydesc_type: TypeRef,
-    task_type: TypeRef,
-    shape_cx: shape::ctxt,
-    gc_cx: gc::ctxt
-};
+    {sess: session::session,
+     llmod: ModuleRef,
+     td: target_data,
+     tn: type_names,
+     externs: hashmap<str, ValueRef>,
+     intrinsics: hashmap<str, ValueRef>,
+     item_ids: hashmap<ast::node_id, ValueRef>,
+     ast_map: ast_map::map,
+     item_symbols: hashmap<ast::node_id, str>,
+     mutable main_fn: option::t<ValueRef>,
+     link_meta: link::link_meta,
+     tag_sizes: hashmap<ty::t, uint>,
+     discrims: hashmap<ast::node_id, ValueRef>,
+     discrim_symbols: hashmap<ast::node_id, str>,
+     fn_pairs: hashmap<ast::node_id, ValueRef>,
+     consts: hashmap<ast::node_id, ValueRef>,
+     obj_methods: hashmap<ast::node_id, ()>,
+     tydescs: hashmap<ty::t, @tydesc_info>,
+     module_data: hashmap<str, ValueRef>,
+     lltypes: hashmap<ty::t, TypeRef>,
+     glues: @glue_fns,
+     names: namegen,
+     sha: std::sha1::sha1,
+     type_sha1s: hashmap<ty::t, str>,
+     type_short_names: hashmap<ty::t, str>,
+     tcx: ty::ctxt,
+     stats: stats,
+     upcalls: @upcall::upcalls,
+     rust_object_type: TypeRef,
+     tydesc_type: TypeRef,
+     task_type: TypeRef,
+     shape_cx: shape::ctxt,
+     gc_cx: gc::ctxt};
 
 type local_ctxt =
     {path: [str],
@@ -164,12 +162,11 @@ type val_self_pair = {v: ValueRef, t: ty::t};
 
 // Function context.  Every LLVM function we create will have one of
 // these.
-type fn_ctxt = {
+type fn_ctxt =
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
     // instructions for this function that will go in the .text
     // section of the executable we're generating.
-    llfn: ValueRef,
 
     // The three implicit arguments that arrive in the function we're
     // creating.  For instance, foo(int, int) is really foo(ret*,
@@ -179,16 +176,13 @@ type fn_ctxt = {
     // convenience.
 
     // Points to the current task.
-    lltaskptr: ValueRef,
 
     // Points to the current environment (bindings of variables to
     // values), if this is a regular function; points to the current
     // object, if this is a method.
-    llenv: ValueRef,
 
     // Points to where the return value of this function should end
     // up.
-    llretptr: ValueRef,
 
     // The next three elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -196,20 +190,16 @@ type fn_ctxt = {
 
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    mutable llstaticallocas: BasicBlockRef,
 
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-    mutable llcopyargs: BasicBlockRef,
 
     // The first block containing derived tydescs received from the
     // runtime.  See description of derived_tydescs, below.
-    mutable llderivedtydescs_first: BasicBlockRef,
 
     // The last block of the llderivedtydescs group.
-    mutable llderivedtydescs: BasicBlockRef,
 
     // A block for all of the dynamically sized allocas.  This must be
     // after llderivedtydescs, because these sometimes depend on
@@ -219,52 +209,41 @@ type fn_ctxt = {
     // for incoming function arguments?  Or is it merely the block
     // containing code that copies incoming args to space already
     // alloca'd by code in llallocas?
-    mutable lldynamicallocas: BasicBlockRef,
 
-    mutable llreturn: BasicBlockRef,
 
     // The token used to clear the dynamic allocas at the end of this frame.
-    mutable llobstacktoken: option::t<ValueRef>,
 
     // The 'self' object currently in use in this function, if there
     // is one.
-    mutable llself: option::t<val_self_pair>,
 
     // If this function is actually a iter, a block containing the
     // code called whenever the iter calls 'put'.
-    mutable lliterbody: option::t<ValueRef>,
 
     // If this function is actually a iter, the type of the function
     // that that we call when we call 'put'. Having to track this is
     // pretty irritating. We have to do it because we need the type if
     // we are going to put the iterbody into a closure (if it appears
     // in a for-each inside of an iter).
-    mutable iterbodyty: option::t<ty::t>,
 
     // The next four items: hash tables mapping from AST def_ids to
     // LLVM-stuff-in-the-frame.
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: hashmap<ast::node_id, ValueRef>,
 
     // Maps fields in objects to pointers into the interior of
     // llself's body.
-    llobjfields: hashmap<ast::node_id, ValueRef>,
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: hashmap<ast::node_id, ValueRef>,
 
     // The same as above, but for variables accessed via the frame
     // pointer we pass into an iter, for access to the static
     // environment of the iter-calling frame.
-    llupvars: hashmap<ast::node_id, ValueRef>,
 
     // For convenience, a vector of the incoming tydescs for each of
     // this functions type parameters, fetched via llvm::LLVMGetParam.
     // For example, for a function foo::<A, B, C>(), lltydescs contains
     // the ValueRefs for the tydescs for A, B, and C.
-    mutable lltydescs: [ValueRef],
 
     // Derived tydescs are tydescs created at runtime, for types that
     // involve type parameters inside type constructors.  For example,
@@ -275,31 +254,48 @@ type fn_ctxt = {
     // when information about both "[T]" and "T" are available.  When
     // such a tydesc is created, we cache it in the derived_tydescs
     // table for the next time that such a tydesc is needed.
-    derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
-    id: ast::node_id,
 
     // The source span where this function comes from, for error
     // reporting.
-    sp: span,
 
     // This function's enclosing local context.
-    lcx: @local_ctxt
-};
+    {llfn: ValueRef,
+     lltaskptr: ValueRef,
+     llenv: ValueRef,
+     llretptr: ValueRef,
+     mutable llstaticallocas: BasicBlockRef,
+     mutable llcopyargs: BasicBlockRef,
+     mutable llderivedtydescs_first: BasicBlockRef,
+     mutable llderivedtydescs: BasicBlockRef,
+     mutable lldynamicallocas: BasicBlockRef,
+     mutable llreturn: BasicBlockRef,
+     mutable llobstacktoken: option::t<ValueRef>,
+     mutable llself: option::t<val_self_pair>,
+     mutable lliterbody: option::t<ValueRef>,
+     mutable iterbodyty: option::t<ty::t>,
+     llargs: hashmap<ast::node_id, ValueRef>,
+     llobjfields: hashmap<ast::node_id, ValueRef>,
+     lllocals: hashmap<ast::node_id, ValueRef>,
+     llupvars: hashmap<ast::node_id, ValueRef>,
+     mutable lltydescs: [ValueRef],
+     derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
+     id: ast::node_id,
+     sp: span,
+     lcx: @local_ctxt};
 
 tag cleanup {
-    clean(fn(&@block_ctxt) -> result );
-    clean_temp(ValueRef, fn(&@block_ctxt) -> result );
+    clean(fn(&@block_ctxt) -> result);
+    clean_temp(ValueRef, fn(&@block_ctxt) -> result);
 }
 
 fn add_clean(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    find_scope_cx(cx).cleanups += ~[clean(bind drop_slot(_, val, ty))];
+    find_scope_cx(cx).cleanups += [clean(bind drop_slot(_, val, ty))];
 }
 fn add_clean_temp(cx: &@block_ctxt, val: ValueRef, ty: ty::t) {
-    find_scope_cx(cx).cleanups +=
-        ~[clean_temp(val, bind drop_ty(_, val, ty))];
+    find_scope_cx(cx).cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
 }
 
 // Note that this only works for temporaries. We should, at some point, move
@@ -326,22 +322,23 @@ fn revoke_clean(cx: &@block_ctxt, val: ValueRef) {
     sc_cx.cleanups =
         std::vec::slice(sc_cx.cleanups, 0u, found as uint) +
             std::vec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                             std::vec::len(sc_cx.cleanups));
+                            std::vec::len(sc_cx.cleanups));
 }
 
-fn get_res_dtor(ccx : &@crate_ctxt, sp : &span, did : &ast::def_id,
-                inner_t : ty::t) -> ValueRef {
+fn get_res_dtor(ccx: &@crate_ctxt, sp: &span, did: &ast::def_id,
+                inner_t: ty::t) -> ValueRef {
     if did.crate == ast::local_crate {
         alt ccx.fn_pairs.find(did.node) {
-            some(x) { ret x; }
-            _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
+          some(x) { ret x; }
+          _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
         }
     }
 
     let params = csearch::get_type_param_count(ccx.sess.get_cstore(), did);
-    let f_t = trans::type_of_fn(ccx, sp, ast::proto_fn,
-                                ~[{ mode: ty::mo_alias(false), ty: inner_t }],
-                                ty::mk_nil(ccx.tcx), params);
+    let f_t =
+        trans::type_of_fn(ccx, sp, ast::proto_fn,
+                          [{mode: ty::mo_alias(false), ty: inner_t}],
+                          ty::mk_nil(ccx.tcx), params);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.get_cstore(),
                                                     did),
@@ -378,36 +375,35 @@ tag block_kind {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-type block_ctxt = {
+type block_ctxt =
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
     // instructions into that block by way of this block context.
-    llbb: BasicBlockRef,
 
     // The llvm::builder object serving as an interface to LLVM's
     // LLVMBuild* functions.
-    build: builder,
 
     // The block pointing to this one in the function's digraph.
-    parent: block_parent,
 
     // The 'kind' of basic block this is.
-    kind: block_kind,
 
     // A list of functions that run at the end of translating this
     // block, cleaning up any variables that were introduced in the
     // block and need to go out of scope at the end of it.
-    mutable cleanups: [cleanup],
 
     // The source span where this block comes from, for error
     // reporting.
-    sp: span,
 
     // The function context for the function to which this block is
     // attached.
-    fcx: @fn_ctxt
-};
+    {llbb: BasicBlockRef,
+     build: builder,
+     parent: block_parent,
+     kind: block_kind,
+     mutable cleanups: [cleanup],
+     sp: span,
+     fcx: @fn_ctxt};
 
 // FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.
@@ -417,7 +413,7 @@ type result = {bcx: @block_ctxt, val: ValueRef};
 type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
 
 fn extend_path(cx: @local_ctxt, name: &str) -> @local_ctxt {
-    ret @{path: cx.path + ~[name] with *cx};
+    ret @{path: cx.path + [name] with *cx};
 }
 
 fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
@@ -438,7 +434,7 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     assert (n < elt_count);
     let elt_tys = std::vec::init_elt(T_nil(), elt_count);
     llvm::LLVMGetStructElementTypes(llstructty, std::vec::to_ptr(elt_tys));
-    ret llvm::LLVMGetElementType(elt_tys.(n));
+    ret llvm::LLVMGetElementType(elt_tys[n]);
 }
 
 fn find_scope_cx(cx: &@block_ctxt) -> @block_ctxt {
@@ -459,8 +455,8 @@ fn bcx_tcx(bcx: &@block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
 fn bcx_ccx(bcx: &@block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
 fn bcx_lcx(bcx: &@block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
 fn bcx_fcx(bcx: &@block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
-fn fcx_ccx(fcx: &@fn_ctxt)    -> @crate_ctxt { ret fcx.lcx.ccx; }
-fn fcx_tcx(fcx: &@fn_ctxt)    -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
+fn fcx_ccx(fcx: &@fn_ctxt) -> @crate_ctxt { ret fcx.lcx.ccx; }
+fn fcx_tcx(fcx: &@fn_ctxt) -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
 fn lcx_ccx(lcx: &@local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
 fn ccx_tcx(ccx: &@crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
 
@@ -527,7 +523,7 @@ fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
 }
 
 fn T_fn_pair(cx: &crate_ctxt, tfn: TypeRef) -> TypeRef {
-    ret T_struct(~[T_ptr(tfn), T_opaque_closure_ptr(cx)]);
+    ret T_struct([T_ptr(tfn), T_opaque_closure_ptr(cx)]);
 }
 
 fn T_ptr(t: TypeRef) -> TypeRef { ret llvm::LLVMPointerType(t, 0u); }
@@ -547,7 +543,7 @@ fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
                             False);
 }
 
-fn T_empty_struct() -> TypeRef { ret T_struct(~[]); }
+fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 
 // NB: This will return something different every time it's called. If
 // you need a generic object type that matches the type of your
@@ -556,25 +552,27 @@ fn T_empty_struct() -> TypeRef { ret T_struct(~[]); }
 fn T_rust_object() -> TypeRef {
     let t = T_named_struct("rust_object");
     let e = T_ptr(T_empty_struct());
-    set_struct_body(t, ~[e, e]);
+    set_struct_body(t, [e, e]);
     ret t;
 }
 
 fn T_task() -> TypeRef {
     let t = T_named_struct("task");
 
-    let  // Refcount
-         // Delegate pointer
-         // Stack segment pointer
-         // Runtime SP
-         // Rust SP
-         // GC chain
+     // Refcount
+     // Delegate pointer
+     // Stack segment pointer
+     // Runtime SP
+     // Rust SP
+     // GC chain
 
-         // Domain pointer
-         // Crate cache pointer
-         elems =
-        ~[T_int(), T_int(), T_int(), T_int(), T_int(), T_int(), T_int(),
-          T_int()];
+
+     // Domain pointer
+     // Crate cache pointer
+
+    let elems =
+        [T_int(), T_int(), T_int(), T_int(), T_int(), T_int(), T_int(),
+         T_int()];
     set_struct_body(t, elems);
     ret t;
 }
@@ -586,7 +584,7 @@ fn T_tydesc_field(cx: &crate_ctxt, field: int) -> TypeRef {
         std::vec::init_elt::<TypeRef>(T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
                                     std::vec::to_ptr::<TypeRef>(tydesc_elts));
-    let t = llvm::LLVMGetElementType(tydesc_elts.(field));
+    let t = llvm::LLVMGetElementType(tydesc_elts[field]);
     ret t;
 }
 
@@ -611,16 +609,16 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
-                     pvoid], T_void()));
+        T_ptr(T_fn([T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
+                    pvoid], T_void()));
     let cmp_glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_i1()), taskptr_type, T_ptr(tydesc), tydescpp,
-                     pvoid, pvoid, T_i8()], T_void()));
+        T_ptr(T_fn([T_ptr(T_i1()), taskptr_type, T_ptr(tydesc), tydescpp,
+                    pvoid, pvoid, T_i8()], T_void()));
 
     let elems =
-        ~[tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
-          glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
-          T_ptr(T_i8()), T_ptr(T_i8()), T_int()];
+        [tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
+         glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
+         T_ptr(T_i8()), T_ptr(T_i8()), T_int()];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }
@@ -628,13 +626,13 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
 fn T_array(t: TypeRef, n: uint) -> TypeRef { ret llvm::LLVMArrayType(t, n); }
 
 fn T_evec(t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int(), // Refcount
-                   T_int(), // Alloc
-                   T_int(), // Fill
+    ret T_struct([T_int(), // Refcount
+                  T_int(), // Alloc
+                  T_int(), // Fill
 
-                   T_int(), // Pad
-                            // Body elements
-                             T_array(t, 0u)]);
+                  T_int(), // Pad
+                           // Body elements
+                            T_array(t, 0u)]);
 }
 
 fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_evec(T_int())); }
@@ -644,24 +642,24 @@ fn T_opaque_vec_ptr() -> TypeRef { ret T_ptr(T_evec(T_int())); }
 //
 // TODO: Support user-defined vector sizes.
 fn T_ivec(t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int(), // Length ("fill"; if zero, heapified)
-                   T_int(), // Alloc
-                   T_array(t, abi::ivec_default_length)]); // Body elements
+    ret T_struct([T_int(), // Length ("fill"; if zero, heapified)
+                  T_int(), // Alloc
+                  T_array(t, abi::ivec_default_length)]); // Body elements
 
 }
 
 
 // Note that the size of this one is in bytes.
 fn T_opaque_ivec() -> TypeRef {
-    ret T_struct(~[T_int(), // Length ("fill"; if zero, heapified)
-                   T_int(), // Alloc
-                   T_array(T_i8(), 0u)]); // Body elements
+    ret T_struct([T_int(), // Length ("fill"; if zero, heapified)
+                  T_int(), // Alloc
+                  T_array(T_i8(), 0u)]); // Body elements
 
 }
 
 fn T_ivec_heap_part(t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int(), // Real length
-                   T_array(t, 0u)]); // Body elements
+    ret T_struct([T_int(), // Real length
+                  T_array(t, 0u)]); // Body elements
 
 }
 
@@ -669,36 +667,36 @@ fn T_ivec_heap_part(t: TypeRef) -> TypeRef {
 // Interior vector on the heap, also known as the "stub". Cast to this when
 // the allocated length (second element of T_ivec above) is zero.
 fn T_ivec_heap(t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int(), // Length (zero)
-                   T_int(), // Alloc
-                   T_ptr(T_ivec_heap_part(t))]); // Pointer
+    ret T_struct([T_int(), // Length (zero)
+                  T_int(), // Alloc
+                  T_ptr(T_ivec_heap_part(t))]); // Pointer
 
 }
 
 fn T_opaque_ivec_heap_part() -> TypeRef {
-    ret T_struct(~[T_int(), // Real length
-                   T_array(T_i8(), 0u)]); // Body elements
+    ret T_struct([T_int(), // Real length
+                  T_array(T_i8(), 0u)]); // Body elements
 
 }
 
 fn T_opaque_ivec_heap() -> TypeRef {
-    ret T_struct(~[T_int(), // Length (zero)
-                   T_int(), // Alloc
-                   T_ptr(T_opaque_ivec_heap_part())]); // Pointer
+    ret T_struct([T_int(), // Length (zero)
+                  T_int(), // Alloc
+                  T_ptr(T_opaque_ivec_heap_part())]); // Pointer
 
 }
 
 fn T_str() -> TypeRef { ret T_evec(T_i8()); }
 
-fn T_box(t: TypeRef) -> TypeRef { ret T_struct(~[T_int(), t]); }
+fn T_box(t: TypeRef) -> TypeRef { ret T_struct([T_int(), t]); }
 
 fn T_port(_t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int()]); // Refcount
+    ret T_struct([T_int()]); // Refcount
 
 }
 
 fn T_chan(_t: TypeRef) -> TypeRef {
-    ret T_struct(~[T_int()]); // Refcount
+    ret T_struct([T_int()]); // Refcount
 
 }
 
@@ -716,14 +714,13 @@ fn T_typaram(tn: &type_names) -> TypeRef {
 
 fn T_typaram_ptr(tn: &type_names) -> TypeRef { ret T_ptr(T_typaram(tn)); }
 
-fn T_closure_ptr(cx: &crate_ctxt, llbindings_ty: TypeRef,
-                 n_ty_params: uint) -> TypeRef {
+fn T_closure_ptr(cx: &crate_ctxt, llbindings_ty: TypeRef, n_ty_params: uint)
+   -> TypeRef {
     // NB: keep this in sync with code in trans_bind; we're making
     // an LLVM typeref structure that has the same "shape" as the ty::t
     // it constructs.
-    ret T_ptr(T_box(T_struct(~[T_ptr(cx.tydesc_type),
-                               llbindings_ty,
-                               T_captured_tydescs(cx, n_ty_params)])));
+    ret T_ptr(T_box(T_struct([T_ptr(cx.tydesc_type), llbindings_ty,
+                              T_captured_tydescs(cx, n_ty_params)])));
 }
 
 fn T_opaque_closure_ptr(cx: &crate_ctxt) -> TypeRef {
@@ -737,7 +734,7 @@ fn T_opaque_closure_ptr(cx: &crate_ctxt) -> TypeRef {
 fn T_tag(tn: &type_names, size: uint) -> TypeRef {
     let s = "tag_" + uint::to_str(size, 10u);
     if tn.name_has_type(s) { ret tn.get_type(s); }
-    let t = T_struct(~[T_int(), T_array(T_i8(), size)]);
+    let t = T_struct([T_int(), T_array(T_i8(), size)]);
     tn.associate(s, t);
     ret t;
 }
@@ -745,7 +742,7 @@ fn T_tag(tn: &type_names, size: uint) -> TypeRef {
 fn T_opaque_tag(tn: &type_names) -> TypeRef {
     let s = "opaque_tag";
     if tn.name_has_type(s) { ret tn.get_type(s); }
-    let t = T_struct(~[T_int(), T_i8()]);
+    let t = T_struct([T_int(), T_i8()]);
     tn.associate(s, t);
     ret t;
 }
@@ -763,8 +760,8 @@ fn T_obj_ptr(cx: &crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
     // type. The dynamically-sized fields follow the captured tydescs.
 
     fn T_obj(cx: &crate_ctxt, n_captured_tydescs: uint) -> TypeRef {
-        ret T_struct(~[T_ptr(cx.tydesc_type),
-                       T_captured_tydescs(cx, n_captured_tydescs)]);
+        ret T_struct([T_ptr(cx.tydesc_type),
+                      T_captured_tydescs(cx, n_captured_tydescs)]);
     }
     ret T_ptr(T_box(T_obj(cx, n_captured_tydescs)));
 }
@@ -832,14 +829,15 @@ fn C_cstr(cx: &@crate_ctxt, s: &str) -> ValueRef {
 
 // A rust boxed-and-length-annotated string.
 fn C_str(cx: &@crate_ctxt, s: &str) -> ValueRef {
-    let len = str::byte_len(s);
-    let  // 'alloc'
-         // 'fill'
-         // 'pad'
-        box =
-        C_struct(~[C_int(abi::const_refcount as int), C_int(len + 1u as int),
-                   C_int(len + 1u as int), C_int(0),
-                   llvm::LLVMConstString(str::buf(s), len, False)]);
+    let len =
+        str::byte_len(s); // 'alloc'
+                          // 'fill'
+                          // 'pad'
+
+    let box =
+        C_struct([C_int(abi::const_refcount as int), C_int(len + 1u as int),
+                  C_int(len + 1u as int), C_int(0),
+                  llvm::LLVMConstString(str::buf(s), len, False)]);
     let g =
         llvm::LLVMAddGlobal(cx.llmod, val_ty(box),
                             str::buf(cx.names.next("str")));
@@ -856,8 +854,8 @@ fn C_postr(s: &str) -> ValueRef {
 
 fn C_zero_byte_arr(size: uint) -> ValueRef {
     let i = 0u;
-    let elts: [ValueRef] = ~[];
-    while i < size { elts += ~[C_u8(0u)]; i += 1u; }
+    let elts: [ValueRef] = [];
+    while i < size { elts += [C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), std::vec::to_ptr(elts),
                              std::vec::len(elts));
 }
@@ -873,19 +871,19 @@ fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
 }
 
 fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
-    ret llvm::LLVMConstArray(ty, std::vec::to_ptr(elts),
-                             std::vec::len(elts));
+    ret llvm::LLVMConstArray(ty, std::vec::to_ptr(elts), std::vec::len(elts));
 }
 
-fn C_bytes(bytes : &[u8]) -> ValueRef {
+fn C_bytes(bytes: &[u8]) -> ValueRef {
     ret llvm::LLVMConstString(unsafe::reinterpret_cast(vec::to_ptr(bytes)),
                               vec::len(bytes), False);
 }
 
-fn C_shape(ccx : &@crate_ctxt, bytes : &[u8]) -> ValueRef {
+fn C_shape(ccx: &@crate_ctxt, bytes: &[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
-                                       str::buf(ccx.names.next("shape")));
+    let llglobal =
+        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape),
+                            str::buf(ccx.names.next("shape")));
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
     llvm::LLVMSetLinkage(llglobal,

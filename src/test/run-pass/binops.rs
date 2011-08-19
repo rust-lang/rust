@@ -64,8 +64,8 @@ fn test_port() {
     let p1 = comm::mk_port::<int>();
     let p2 = comm::mk_port::<int>();
 
-    assert p1 == p1;
-    assert p1 != p2;
+    assert (p1 == p1);
+    assert (p1 != p2);
 }
 
 fn test_chan() {
@@ -73,9 +73,9 @@ fn test_chan() {
     let ch1 = p.mk_chan();
     let ch2 = p.mk_chan();
 
-    assert ch1 == ch1;
+    assert (ch1 == ch1);
     // Chans are equal because they are just task:port addresses.
-    assert ch1 == ch2;
+    assert (ch1 == ch2);
 }
 
 fn test_ptr() {
@@ -89,8 +89,8 @@ fn test_task() {
     let t1 = task::spawn(f1);
     let t2 = task::spawn(f2);
 
-    assert t1 == t1;
-    assert t1 != t2;
+    assert (t1 == t1);
+    assert (t1 != t2);
 }
 
 fn test_fn() {
@@ -128,8 +128,8 @@ fn test_native_fn() {
 }
 
 fn test_obj() {
-    let o1 = obj () {  };
-    let o2 = obj () {  };
+    let o1 = obj () { };
+    let o2 = obj () { };
 
     assert (o1 == o1);
 

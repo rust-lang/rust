@@ -30,7 +30,7 @@ fn test_init() {
 fn test_grow() {
     let myport: comm::_port<record> = comm::mk_port();
     let mychan = myport.mk_chan();
-    for each i: uint  in uint::range(0u, 100u) {
+    for each i: uint in uint::range(0u, 100u) {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         comm::send(mychan, val);
     }
@@ -48,11 +48,11 @@ fn test_shrink1() {
 fn test_shrink2() {
     let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
-    for each i: uint  in uint::range(0u, 100u) {
+    for each i: uint in uint::range(0u, 100u) {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         send(mychan, val);
     }
-    for each i: uint  in uint::range(0u, 100u) { let x = myport.recv(); }
+    for each i: uint in uint::range(0u, 100u) { let x = myport.recv(); }
 }
 
 
@@ -60,7 +60,7 @@ fn test_shrink2() {
 fn test_rotate() {
     let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
-    for each i: uint  in uint::range(0u, 100u) {
+    for each i: uint in uint::range(0u, 100u) {
         let val = {val1: i as u32, val2: i as u32, val3: i as u32};
         send(mychan, val);
         let x = myport.recv();
@@ -76,13 +76,13 @@ fn test_rotate() {
 fn test_rotate_grow() {
     let myport = mk_port::<record>();
     let mychan = myport.mk_chan();
-    for each j: uint  in uint::range(0u, 10u) {
-        for each i: uint  in uint::range(0u, 10u) {
+    for each j: uint in uint::range(0u, 10u) {
+        for each i: uint in uint::range(0u, 10u) {
             let val: record =
                 {val1: i as u32, val2: i as u32, val3: i as u32};
             send(mychan, val);
         }
-        for each i: uint  in uint::range(0u, 10u) {
+        for each i: uint in uint::range(0u, 10u) {
             let x = myport.recv();
             assert (x.val1 == i as u32);
             assert (x.val2 == i as u32);

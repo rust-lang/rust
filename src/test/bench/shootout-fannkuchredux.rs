@@ -20,21 +20,21 @@ fn fannkuch(n: int) -> int {
     r = n;
     while r > 0 {
         i = 0;
-        while r != 1 { count.(r - 1) = r; r -= 1; }
-        while i < n { perm.(i) = perm1.(i); i += 1; }
+        while r != 1 { count[r - 1] = r; r -= 1; }
+        while i < n { perm[i] = perm1[i]; i += 1; }
         // Count flips and update max and checksum
 
         f = 0;
-        k = perm.(0);
+        k = perm[0];
         while k != 0 {
             i = 0;
             while 2 * i < k {
-                let t = perm.(i);
-                perm.(i) = perm.(k - i);
-                perm.(k - i) = t;
+                let t = perm[i];
+                perm[i] = perm[k - i];
+                perm[k - i] = t;
                 i += 1;
             }
-            k = perm.(0);
+            k = perm[0];
             f += 1;
         }
         if f > flips { flips = f; }
@@ -44,12 +44,12 @@ fn fannkuch(n: int) -> int {
         let go = true;
         while go {
             if r == n { log checksum; ret flips; }
-            let p0 = perm1.(0);
+            let p0 = perm1[0];
             i = 0;
-            while i < r { let j = i + 1; perm1.(i) = perm1.(j); i = j; }
-            perm1.(r) = p0;
-            count.(r) -= 1;
-            if count.(r) > 0 { go = false; } else { r += 1; }
+            while i < r { let j = i + 1; perm1[i] = perm1[j]; i = j; }
+            perm1[r] = p0;
+            count[r] -= 1;
+            if count[r] > 0 { go = false; } else { r += 1; }
         }
         nperm += 1;
     }
@@ -58,5 +58,5 @@ fn fannkuch(n: int) -> int {
 
 fn main(args: [str]) {
     let n = 7;
-    log #fmt("Pfannkuchen(%d) = %d", n, fannkuch(n));
+    log #fmt["Pfannkuchen(%d) = %d", n, fannkuch(n)];
 }

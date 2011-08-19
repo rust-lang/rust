@@ -43,8 +43,7 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-     do_gc: bool
-     };
+     do_gc: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 
@@ -90,10 +89,10 @@ obj session(targ_cfg: @config,
     }
     fn note(msg: str) { codemap::emit_note(none, msg, parse_sess.cm); }
     fn span_bug(sp: span, msg: str) -> ! {
-        self.span_fatal(sp, #fmt("internal compiler error %s", msg));
+        self.span_fatal(sp, #fmt["internal compiler error %s", msg]);
     }
     fn bug(msg: str) -> ! {
-        self.fatal(#fmt("internal compiler error %s", msg));
+        self.fatal(#fmt["internal compiler error %s", msg]);
     }
     fn span_unimpl(sp: span, msg: str) -> ! {
         self.span_bug(sp, "unimplemented " + msg);

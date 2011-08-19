@@ -4,8 +4,8 @@ fn test_int() {
 }
 
 fn test_vec() {
-    fn f() -> [int] { ~[10, 11] }
-    assert (f().(1) == 11);
+    fn f() -> [int] { [10, 11] }
+    assert (f()[1] == 11);
 }
 
 fn test_generic() {

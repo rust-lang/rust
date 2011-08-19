@@ -9,30 +9,30 @@ fn check_sort(v1: &[mutable int], v2: &[mutable int]) {
     let f2 = equal;
     std::sort::quick_sort3::<int>(f1, f2, v1);
     let i = 0u;
-    while i < len { log v2.(i); assert (v2.(i) == v1.(i)); i += 1u; }
+    while i < len { log v2[i]; assert (v2[i] == v1[i]); i += 1u; }
 }
 
 #[test]
 fn test() {
     {
-        let v1 = ~[mutable 3, 7, 4, 5, 2, 9, 5, 8];
-        let v2 = ~[mutable 2, 3, 4, 5, 5, 7, 8, 9];
+        let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
+        let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
         check_sort(v1, v2);
     }
     {
-        let v1 = ~[mutable 1, 1, 1];
-        let v2 = ~[mutable 1, 1, 1];
+        let v1 = [mutable 1, 1, 1];
+        let v2 = [mutable 1, 1, 1];
         check_sort(v1, v2);
     }
     {
-        let v1: [mutable int] = ~[mutable ];
-        let v2: [mutable int] = ~[mutable ];
+        let v1: [mutable int] = [mutable];
+        let v2: [mutable int] = [mutable];
         check_sort(v1, v2);
     }
-    { let v1 = ~[mutable 9]; let v2 = ~[mutable 9]; check_sort(v1, v2); }
+    { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
     {
-        let v1 = ~[mutable 9, 3, 3, 3, 9];
-        let v2 = ~[mutable 3, 3, 3, 9, 9];
+        let v1 = [mutable 9, 3, 3, 3, 9];
+        let v2 = [mutable 3, 3, 3, 9, 9];
         check_sort(v1, v2);
     }
 }

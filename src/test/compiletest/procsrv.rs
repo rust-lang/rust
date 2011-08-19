@@ -30,24 +30,20 @@ type reqchan = chan<request>;
 
 type handle = {task: option::t<task_id>, chan: reqchan};
 
-tag request {
-    exec([u8], [u8], [[u8]], chan<response>);
-    stop;
-}
+tag request { exec([u8], [u8], [[u8]], chan<response>); stop; }
 
 type response = {pid: int, infd: int, outfd: int, errfd: int};
 
 fn mk() -> handle {
     let setupport = port();
-    let task = task::spawn(bind fn(setupchan: chan<chan<request>>) {
-        let reqport = port();
-        let reqchan = chan(reqport);
-        send(setupchan, reqchan);
-        worker(reqport);
-    } (chan(setupport)));
-    ret {task: option::some(task),
-         chan: recv(setupport)
-        };
+    let task =
+        task::spawn(bind fn (setupchan: chan<chan<request>>) {
+                             let reqport = port();
+                             let reqchan = chan(reqport);
+                             send(setupchan, reqchan);
+                             worker(reqport);
+                         }(chan(setupport)));
+    ret {task: option::some(task), chan: recv(setupport)};
 }
 
 fn from_chan(ch: &reqchan) -> handle { {task: option::none, chan: ch} }
@@ -57,15 +53,13 @@ fn close(handle: &handle) {
     task::join_id(option::get(handle.task));
 }
 
-fn run(handle: &handle, lib_path: &str,
-       prog: &str, args: &[str], input: &option::t<str>) ->
-{status: int, out: str, err: str} {
+fn run(handle: &handle, lib_path: &str, prog: &str, args: &[str],
+       input: &option::t<str>) -> {status: int, out: str, err: str} {
     let p = port();
     let ch = chan(p);
-    send(handle.chan, exec(str::bytes(lib_path),
-                           str::bytes(prog),
-                           clone_vecstr(args),
-                           ch));
+    send(handle.chan,
+         exec(str::bytes(lib_path), str::bytes(prog), clone_vecstr(args),
+              ch));
     let resp = recv(p);
 
     writeclose(resp.infd, input);
@@ -77,8 +71,7 @@ fn run(handle: &handle, lib_path: &str,
 
 fn writeclose(fd: int, s: &option::t<str>) {
     if option::is_some(s) {
-        let writer = io::new_writer(
-            io::fd_buf_writer(fd, option::none));
+        let writer = io::new_writer(io::fd_buf_writer(fd, option::none));
         writer.write_str(option::get(s));
     }
 
@@ -88,8 +81,7 @@ fn writeclose(fd: int, s: &option::t<str>) {
 fn readclose(fd: int) -> str {
     // Copied from run::program_output
     let file = os::fd_FILE(fd);
-    let reader = io::new_reader(
-        io::FILE_buf_reader(file, option::none));
+    let reader = io::new_reader(io::FILE_buf_reader(file, option::none));
     let buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
@@ -112,35 +104,32 @@ fn worker(p: port<request>) {
         // the receiver's poniters outlive the sender's. Here we clone
         // everything and let the originals go out of scope before sending
         // a response.
-        execparms = {
-            // FIXME (785): The 'discriminant' of an alt expression has
-            // the same scope as the alt expression itself, so we have to
-            // put the entire alt in another block to make sure the exec
-            // message goes out of scope. Seems like the scoping rules for
-            // the alt discriminant are wrong.
-            alt recv(p) {
-              exec(lib_path, prog, args, respchan) {
-                {
-                    lib_path: str::unsafe_from_bytes(lib_path),
-                    prog: str::unsafe_from_bytes(prog),
-                    args: clone_vecu8str(args),
-                    respchan: respchan
+        execparms =
+            {
+
+                // FIXME (785): The 'discriminant' of an alt expression has
+                // the same scope as the alt expression itself, so we have to
+                // put the entire alt in another block to make sure the exec
+                // message goes out of scope. Seems like the scoping rules for
+                // the alt discriminant are wrong.
+                alt recv(p) {
+                  exec(lib_path, prog, args, respchan) {
+                    {lib_path: str::unsafe_from_bytes(lib_path),
+                     prog: str::unsafe_from_bytes(prog),
+                     args: clone_vecu8str(args),
+                     respchan: respchan}
+                  }
+                  stop. { ret }
                 }
-              }
-              stop. { ret }
-            }
-        };
+            };
 
         // This is copied from run::start_program
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let spawnproc =
-            bind run::spawn_process(execparms.prog,
-                                    execparms.args,
-                                    pipe_in.in,
-                                    pipe_out.out,
-                                    pipe_err.out);
+            bind run::spawn_process(execparms.prog, execparms.args,
+                                    pipe_in.in, pipe_out.out, pipe_err.out);
         let pid = with_lib_path(execparms.lib_path, spawnproc);
 
         os::libc::close(pipe_in.in);
@@ -161,7 +150,7 @@ fn worker(p: port<request>) {
     }
 }
 
-fn with_lib_path<T>(path: &str, f: fn() -> T ) -> T {
+fn with_lib_path<T>(path: &str, f: fn() -> T) -> T {
     let maybe_oldpath = getenv(util::lib_path_env_var());
     append_lib_path(path);
     let res = f();
@@ -179,17 +168,15 @@ fn append_lib_path(path: &str) { export_lib_path(util::make_new_path(path)); }
 fn export_lib_path(path: &str) { setenv(util::lib_path_env_var(), path); }
 
 fn clone_vecstr(v: &[str]) -> [[u8]] {
-    let r = ~[];
-    for t: str in vec::slice(v, 0u, vec::len(v)) {
-        r += ~[str::bytes(t)];
-    }
+    let r = [];
+    for t: str in vec::slice(v, 0u, vec::len(v)) { r += [str::bytes(t)]; }
     ret r;
 }
 
 fn clone_vecu8str(v: &[[u8]]) -> [str] {
-    let r = ~[];
+    let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
-        r += ~[str::unsafe_from_bytes(t)];
+        r += [str::unsafe_from_bytes(t)];
     }
     ret r;
 }

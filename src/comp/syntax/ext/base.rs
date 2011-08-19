@@ -7,10 +7,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> @ast::expr ;
+    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> @ast::expr;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def ;
+    fn(&ext_ctxt, span, @ast::expr, option::t<str>) -> macro_def;
 
 tag syntax_extension {
     normal(syntax_expander);
@@ -34,20 +34,22 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     ret syntax_expanders;
 }
 
-obj ext_ctxt(sess: @session, crate_file_name_hack: str,
+obj ext_ctxt(sess: @session,
+             crate_file_name_hack: str,
              mutable backtrace: codemap::opt_span) {
     fn crate_file_name() -> str { ret crate_file_name_hack; }
 
     fn session() -> @session { ret sess; }
 
-    fn print_backtrace() {
-    }
+    fn print_backtrace() { }
 
     fn backtrace() -> codemap::opt_span { ret backtrace; }
 
     fn bt_push(sp: span) {
-        backtrace = codemap::os_some(@{lo: sp.lo, hi: sp.hi,
-                                       expanded_from: backtrace});
+        backtrace =
+            codemap::os_some(@{lo: sp.lo,
+                               hi: sp.hi,
+                               expanded_from: backtrace});
     }
     fn bt_pop() {
         alt backtrace {
@@ -67,21 +69,16 @@ obj ext_ctxt(sess: @session, crate_file_name_hack: str,
         self.print_backtrace();
         sess.span_err(sp, msg);
     }
-    fn span_unimpl(sp:span, msg: str) -> ! {
+    fn span_unimpl(sp: span, msg: str) -> ! {
         self.print_backtrace();
         sess.span_unimpl(sp, msg);
     }
-    fn span_bug(sp:span, msg: str) -> ! {
+    fn span_bug(sp: span, msg: str) -> ! {
         self.print_backtrace();
         sess.span_bug(sp, msg);
     }
-    fn bug(msg: str) -> ! {
-        self.print_backtrace();
-        sess.bug(msg);
-    }
-    fn next_id() -> ast::node_id {
-        ret sess.next_node_id();
-    }
+    fn bug(msg: str) -> ! { self.print_backtrace(); sess.bug(msg); }
+    fn next_id() -> ast::node_id { ret sess.next_node_id(); }
 
 }
 
@@ -93,7 +90,7 @@ fn mk_ctxt(sess: &session) -> ext_ctxt {
     // the extensions the file name of the crate being compiled so they can
     // use it to guess whether paths should be prepended with "std::". This is
     // super-ugly and needs a better solution.
-    let crate_file_name_hack = sess.get_codemap().files.(0).name;
+    let crate_file_name_hack = sess.get_codemap().files[0].name;
 
     ret ext_ctxt(@sess, crate_file_name_hack, codemap::os_none);
 }
@@ -115,7 +112,7 @@ fn expr_to_ident(cx: &ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
       ast::expr_path(p) {
         if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
             cx.span_fatal(expr.span, error);
-        } else { ret p.node.idents.(0); }
+        } else { ret p.node.idents[0]; }
       }
       _ { cx.span_fatal(expr.span, error); }
     }

@@ -68,7 +68,7 @@ tag optval { val(str); given; }
 type match = {opts: [opt], vals: [mutable [optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
-    ret str::byte_len(arg) > 1u && arg.(0) == '-' as u8;
+    ret str::byte_len(arg) > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: name) -> str {
@@ -78,7 +78,7 @@ fn name_str(nm: name) -> str {
 fn find_opt(opts: &[opt], nm: name) -> option::t<uint> {
     let i = 0u;
     let l = vec::len::<opt>(opts);
-    while i < l { if opts.(i).name == nm { ret some::<uint>(i); } i += 1u; }
+    while i < l { if opts[i].name == nm { ret some::<uint>(i); } i += 1u; }
     ret none::<uint>;
 }
 
@@ -108,30 +108,30 @@ tag result { success(match); failure(fail_); }
 
 fn getopts(args: &[str], opts: &[opt]) -> result {
     let n_opts = vec::len::<opt>(opts);
-    fn f(_x: uint) -> [optval] { ret ~[]; }
+    fn f(_x: uint) -> [optval] { ret []; }
     let vals = vec::init_fn_mut::<[optval]>(f, n_opts);
-    let free: [str] = ~[];
+    let free: [str] = [];
     let l = vec::len::<str>(args);
     let i = 0u;
     while i < l {
-        let cur = args.(i);
+        let cur = args[i];
         let curlen = str::byte_len(cur);
         if !is_arg(cur) {
-            free += ~[cur];
-        } else if (str::eq(cur, "--")) {
+            free += [cur];
+        } else if str::eq(cur, "--") {
             let j = i + 1u;
-            while j < l { free += ~[args.(j)]; j += 1u; }
+            while j < l { free += [args[j]]; j += 1u; }
             break;
         } else {
             let names;
             let i_arg = option::none::<str>;
-            if cur.(1) == '-' as u8 {
+            if cur[1] == '-' as u8 {
                 let tail = str::slice(cur, 2u, curlen);
                 let eq = str::index(tail, '=' as u8);
                 if eq == -1 {
-                    names = ~[long(tail)];
+                    names = [long(tail)];
                 } else {
-                    names = ~[long(str::slice(tail, 0u, eq as uint))];
+                    names = [long(str::slice(tail, 0u, eq as uint))];
                     i_arg =
                         option::some::<str>(str::slice(tail,
                                                        (eq as uint) + 1u,
@@ -139,10 +139,10 @@ fn getopts(args: &[str], opts: &[opt]) -> result {
                 }
             } else {
                 let j = 1u;
-                names = ~[];
+                names = [];
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
-                    names += ~[short(range.ch)];
+                    names += [short(range.ch)];
                     j = range.next;
                 }
             }
@@ -154,27 +154,27 @@ fn getopts(args: &[str], opts: &[opt]) -> result {
                   some(id) { optid = id; }
                   none. { ret failure(unrecognized_option(name_str(nm))); }
                 }
-                alt opts.(optid).hasarg {
+                alt opts[optid].hasarg {
                   no. {
                     if !option::is_none::<str>(i_arg) {
                         ret failure(unexpected_argument(name_str(nm)));
                     }
-                    vals.(optid) += ~[given];
+                    vals[optid] += [given];
                   }
                   maybe. {
                     if !option::is_none::<str>(i_arg) {
-                        vals.(optid) += ~[val(option::get(i_arg))];
-                    } else if (name_pos < vec::len::<name>(names) ||
-                                   i + 1u == l || is_arg(args.(i + 1u))) {
-                        vals.(optid) += ~[given];
-                    } else { i += 1u; vals.(optid) += ~[val(args.(i))]; }
+                        vals[optid] += [val(option::get(i_arg))];
+                    } else if name_pos < vec::len::<name>(names) ||
+                                  i + 1u == l || is_arg(args[i + 1u]) {
+                        vals[optid] += [given];
+                    } else { i += 1u; vals[optid] += [val(args[i])]; }
                   }
                   yes. {
                     if !option::is_none::<str>(i_arg) {
-                        vals.(optid) += ~[val(option::get::<str>(i_arg))];
-                    } else if (i + 1u == l) {
+                        vals[optid] += [val(option::get::<str>(i_arg))];
+                    } else if i + 1u == l {
                         ret failure(argument_missing(name_str(nm)));
-                    } else { i += 1u; vals.(optid) += ~[val(args.(i))]; }
+                    } else { i += 1u; vals[optid] += [val(args[i])]; }
                   }
                 }
             }
@@ -183,16 +183,16 @@ fn getopts(args: &[str], opts: &[opt]) -> result {
     }
     i = 0u;
     while i < n_opts {
-        let n = vec::len::<optval>(vals.(i));
-        let occ = opts.(i).occur;
+        let n = vec::len::<optval>(vals[i]);
+        let occ = opts[i].occur;
         if occ == req {
             if n == 0u {
-                ret failure(option_missing(name_str(opts.(i).name)));
+                ret failure(option_missing(name_str(opts[i].name)));
             }
         }
         if occ != multi {
             if n > 1u {
-                ret failure(option_duplicated(name_str(opts.(i).name)));
+                ret failure(option_duplicated(name_str(opts[i].name)));
             }
         }
         i += 1u;
@@ -202,12 +202,12 @@ fn getopts(args: &[str], opts: &[opt]) -> result {
 
 fn opt_vals(m: &match, nm: str) -> [optval] {
     ret alt find_opt(m.opts, mkname(nm)) {
-          some(id) { m.vals.(id) }
+          some(id) { m.vals[id] }
           none. { log_err "No option '" + nm + "' defined."; fail }
         };
 }
 
-fn opt_val(m: &match, nm: str) -> optval { ret opt_vals(m, nm).(0); }
+fn opt_val(m: &match, nm: str) -> optval { ret opt_vals(m, nm)[0]; }
 
 fn opt_present(m: &match, nm: str) -> bool {
     ret vec::len::<optval>(opt_vals(m, nm)) > 0u;
@@ -218,9 +218,9 @@ fn opt_str(m: &match, nm: str) -> str {
 }
 
 fn opt_strs(m: &match, nm: str) -> [str] {
-    let acc: [str] = ~[];
+    let acc: [str] = [];
     for v: optval in opt_vals(m, nm) {
-        alt v { val(s) { acc += ~[s]; } _ { } }
+        alt v { val(s) { acc += [s]; } _ { } }
     }
     ret acc;
 }
@@ -228,7 +228,7 @@ fn opt_strs(m: &match, nm: str) -> [str] {
 fn opt_maybe_str(m: &match, nm: str) -> option::t<str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<str>; }
-    ret alt vals.(0) { val(s) { some::<str>(s) } _ { none::<str> } };
+    ret alt vals[0] { val(s) { some::<str>(s) } _ { none::<str> } };
 }
 
 
@@ -238,7 +238,7 @@ fn opt_maybe_str(m: &match, nm: str) -> option::t<str> {
 fn opt_default(m: &match, nm: str, def: str) -> option::t<str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<str>; }
-    ret alt vals.(0) { val(s) { some::<str>(s) } _ { some::<str>(def) } }
+    ret alt vals[0] { val(s) { some::<str>(s) } _ { some::<str>(def) } }
 }
 // Local Variables:
 // mode: rust;

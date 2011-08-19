@@ -26,9 +26,9 @@ mod map_reduce {
     export mapper;
     export map_reduce;
 
-    type putter = fn(str, str) ;
+    type putter = fn(str, str);
 
-    type mapper = fn(str, putter) ;
+    type mapper = fn(str, putter);
 
     tag ctrl_proto { find_reducer([u8], _chan<int>); mapper_done; }
 
@@ -92,5 +92,5 @@ mod map_reduce {
 }
 
 fn main() {
-    map_reduce::map_reduce(~["../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]);
 }

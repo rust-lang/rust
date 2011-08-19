@@ -16,16 +16,17 @@ type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 fn collect_local(loc: &@local, cx: &ctxt, v: &visit::vt<ctxt>) {
     for each p: @pat in pat_bindings(loc.node.pat) {
         let ident = alt p.node { pat_bind(id) { id } };
-        log "collect_local: pushing " + ident;
-        *cx.cs += ~[respan(loc.span, ninit(p.id, ident))];
+        log "collect_local: pushing " + ident;;
+        *cx.cs += [respan(loc.span, ninit(p.id, ident))];
     }
     visit::visit_local(loc, cx, v);
 }
 
 fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt<ctxt>) {
     alt e.node {
-      expr_check(_, ch) { *cx.cs += ~[expr_to_constr(cx.tcx, ch)]; }
-      expr_if_check(ex, _, _) { *cx.cs += ~[expr_to_constr(cx.tcx, ex)]; }
+      expr_check(_, ch) { *cx.cs += [expr_to_constr(cx.tcx, ch)]; }
+      expr_if_check(ex, _, _) { *cx.cs += [expr_to_constr(cx.tcx, ex)]; }
+
 
       // If it's a call, generate appropriate instances of the
       // call's constraints.
@@ -34,7 +35,7 @@ fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt<ctxt>) {
             let ct: sp_constr =
                 respan(c.span,
                        aux::substitute_constr_args(cx.tcx, operands, c));
-            *cx.cs += ~[ct];
+            *cx.cs += [ct];
         }
       }
       _ { }
@@ -45,7 +46,7 @@ fn collect_pred(e: &@expr, cx: &ctxt, v: &visit::vt<ctxt>) {
 
 fn find_locals(tcx: &ty::ctxt, f: &_fn, tps: &[ty_param], sp: &span,
                i: &fn_ident, id: node_id) -> ctxt {
-    let cx: ctxt = {cs: @mutable ~[], tcx: tcx};
+    let cx: ctxt = {cs: @mutable [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
 
     visitor =
@@ -70,13 +71,13 @@ fn add_constraint(tcx: &ty::ctxt, c: sp_constr, next: uint, tbl: constr_map)
                                  " as a variable and a pred");
               }
               cpred(_, pds) {
-                *pds += ~[respan(c.span, {args: args, bit_num: next})];
+                *pds += [respan(c.span, {args: args, bit_num: next})];
               }
             }
           }
           none. {
             let rslt: @mutable [pred_args] =
-                @mutable ~[respan(c.span, {args: args, bit_num: next})];
+                @mutable [respan(c.span, {args: args, bit_num: next})];
             tbl.insert(d_id, cpred(p, rslt));
           }
         }
@@ -111,18 +112,18 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
 
     /* Need to add constraints for args too, b/c they
     can be deinitialized */
-    for a:arg in f.decl.inputs {
-        next = add_constraint(cx.tcx, respan(f_sp,
-                                             ninit(a.id, a.ident)),
-                              next, res_map);
+    for a: arg in f.decl.inputs {
+        next =
+            add_constraint(cx.tcx, respan(f_sp, ninit(a.id, a.ident)), next,
+                           res_map);
     }
 
     /* add the special i_diverge and i_return constraints
     (see the type definition for auxiliary::fn_info for an explanation) */
 
     // use the name of the function for the "return" constraint
-    next = add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next,
-                          res_map);
+    next =
+        add_constraint(cx.tcx, respan(f_sp, ninit(id, name)), next, res_map);
     // and the name of the function, with a '!' appended to it, for the
     // "diverges" constraint
     let diverges_id = ccx.tcx.sess.next_node_id();
@@ -130,13 +131,14 @@ fn mk_fn_info(ccx: &crate_ctxt, f: &_fn, tp: &[ty_param], f_sp: &span,
     add_constraint(cx.tcx, respan(f_sp, ninit(diverges_id, diverges_name)),
                    next, res_map);
 
-    let v: @mutable [node_id] = @mutable ~[];
+    let v: @mutable [node_id] = @mutable [];
     let rslt =
         {constrs: res_map,
-         num_constraints:
+
          // add 2 to account for the i_return and i_diverge constraints
-             vec::len(*cx.cs) + vec::len(f.decl.constraints)
-                 + vec::len(f.decl.inputs) + 2u,
+         num_constraints:
+             vec::len(*cx.cs) + vec::len(f.decl.constraints) +
+                 vec::len(f.decl.inputs) + 2u,
          cf: f.decl.cf,
          i_return: ninit(id, name),
          i_diverge: ninit(diverges_id, diverges_name),

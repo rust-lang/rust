@@ -26,8 +26,7 @@ type ctx =
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
-                         prefix: str,
-                         view_items: &mutable [@ast::view_item],
+                         prefix: str, view_items: &mutable [@ast::view_item],
                          items: &mutable [@ast::item]) {
     for sub_cdir: @ast::crate_directive in cdirs {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
@@ -36,8 +35,8 @@ fn eval_crate_directives(cx: ctx, cdirs: &[@ast::crate_directive],
 
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: &[@ast::crate_directive],
                                 prefix: str) -> ast::_mod {
-    let view_items: [@ast::view_item] = ~[];
-    let items: [@ast::item] = ~[];
+    let view_items: [@ast::view_item] = [];
+    let items: [@ast::item] = [];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret {view_items: view_items, items: items};
 }
@@ -53,7 +52,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
             if std::fs::path_is_absolute(file_path) {
                 file_path
             } else { prefix + std::fs::path_sep() + file_path };
-        if cx.mode == mode_depend { cx.deps += ~[full_path]; ret; }
+        if cx.mode == mode_depend { cx.deps += [full_path]; ret; }
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg, full_path, cx.chpos,
                                  cx.byte_pos, SOURCE_FILE);
@@ -68,7 +67,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         // Thread defids, chpos and byte_pos through the parsers
         cx.chpos = p0.get_chpos();
         cx.byte_pos = p0.get_byte_pos();
-        items += ~[i];
+        items += [i];
       }
       ast::cdir_dir_mod(id, dir_opt, cdirs, attrs) {
         let path = id;
@@ -85,9 +84,9 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
               node: ast::item_mod(m0),
               span: cdir.span};
         cx.sess.next_id += 1;
-        items += ~[i];
+        items += [i];
       }
-      ast::cdir_view_item(vi) { view_items += ~[vi]; }
+      ast::cdir_view_item(vi) { view_items += [vi]; }
       ast::cdir_syntax(pth) { }
       ast::cdir_auth(pth, eff) { }
     }

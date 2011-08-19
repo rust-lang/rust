@@ -7,25 +7,17 @@ import str;
 import net;
 
 type ctx = aio::ctx;
-type client = { ctx: ctx, client: aio::client,
-               evt: _port<aio::socket_event> };
-type server = { ctx: ctx, server: aio::server,
-               evt: _port<aio::server_event> };
+type client = {ctx: ctx, client: aio::client, evt: _port<aio::socket_event>};
+type server = {ctx: ctx, server: aio::server, evt: _port<aio::server_event>};
 
-fn new() -> ctx {
-    ret aio::new();
-}
+fn new() -> ctx { ret aio::new(); }
 
-fn destroy(ctx: ctx) {
-    send(ctx, aio::quit);
-}
+fn destroy(ctx: ctx) { send(ctx, aio::quit); }
 
 fn make_socket(ctx: ctx, p: _port<aio::socket_event>) -> client {
     let evt: aio::socket_event = p.recv();
     alt evt {
-      aio::connected(client) {
-        ret { ctx: ctx, client: client, evt: p };
-      }
+      aio::connected(client) { ret {ctx: ctx, client: client, evt: p}; }
       _ { fail "Could not connect to client"; }
     }
 }
@@ -38,22 +30,17 @@ fn connect_to(ctx: ctx, ip: net::ip_addr, portnum: int) -> client {
 
 fn read(c: client) -> [u8] {
     alt c.evt.recv() {
-        aio::closed. {
-            ret ~[];
-        }
-        aio::received(buf) {
-            ret buf;
-        }
+      aio::closed. { ret []; }
+      aio::received(buf) { ret buf; }
     }
 }
 
 fn create_server(ctx: ctx, ip: net::ip_addr, portnum: int) -> server {
     let evt: _port<aio::server_event> = mk_port();
     let p: _port<aio::server> = mk_port();
-    send(ctx, aio::serve(ip, portnum,
-                         evt.mk_chan(), p.mk_chan()));
+    send(ctx, aio::serve(ip, portnum, evt.mk_chan(), p.mk_chan()));
     let srv: aio::server = p.recv();
-    ret { ctx: ctx, server: srv, evt: evt };
+    ret {ctx: ctx, server: srv, evt: evt};
 }
 
 fn accept_from(server: server) -> client {
@@ -85,15 +72,8 @@ fn close_server(server: server) {
 fn close_client(client: client) {
     send(client.ctx, aio::close_client(client.client));
     let evt: aio::socket_event;
-    do {
-        evt = client.evt.recv();
-        alt evt {
-          aio::closed. {
-            ret;
-          }
-          _ {}
-        }
-    } while (true);
+    do  { evt = client.evt.recv(); alt evt { aio::closed. { ret; } _ { } } }
+        while true
 }
 
 // Local Variables:

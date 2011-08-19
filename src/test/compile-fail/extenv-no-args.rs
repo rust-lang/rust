@@ -1,5 +1,3 @@
 // error-pattern:malformed #env call
 
-fn main() {
-    #env();
-}
+fn main() { #env[]; }

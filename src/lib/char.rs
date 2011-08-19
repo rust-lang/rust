@@ -26,31 +26,55 @@ pred is_whitespace(c: char) -> bool {
     const ch_next_line: char = '\u0085';
     const ch_no_break_space: char = '\u00a0';
 
-    if c == ch_space { true }
-    else if c == ch_ogham_space_mark { true }
-    else if c == ch_mongolian_vowel_sep { true }
-    else if c == ch_en_quad { true }
-    else if c == ch_em_quad { true }
-    else if c == ch_en_space { true }
-    else if c == ch_em_space { true }
-    else if c == ch_three_per_em_space { true }
-    else if c == ch_four_per_em_space { true }
-    else if c == ch_six_per_em_space { true }
-    else if c == ch_figure_space { true }
-    else if c == ch_punctuation_space { true }
-    else if c == ch_thin_space { true }
-    else if c == ch_hair_space { true }
-    else if c == ch_narrow_no_break_space { true }
-    else if c == ch_medium_mathematical_space { true }
-    else if c == ch_ideographic_space { true }
-    else if c == ch_line_tabulation { true }
-    else if c == ch_paragraph_separator { true }
-    else if c == ch_character_tabulation { true }
-    else if c == ch_line_feed { true }
-    else if c == ch_line_tabulation { true }
-    else if c == ch_form_feed { true }
-    else if c == ch_carriage_return { true }
-    else if c == ch_next_line { true }
-    else if c == ch_no_break_space { true }
-    else { false }
+    if c == ch_space {
+        true
+    } else if c == ch_ogham_space_mark {
+        true
+    } else if c == ch_mongolian_vowel_sep {
+        true
+    } else if c == ch_en_quad {
+        true
+    } else if c == ch_em_quad {
+        true
+    } else if c == ch_en_space {
+        true
+    } else if c == ch_em_space {
+        true
+    } else if c == ch_three_per_em_space {
+        true
+    } else if c == ch_four_per_em_space {
+        true
+    } else if c == ch_six_per_em_space {
+        true
+    } else if c == ch_figure_space {
+        true
+    } else if c == ch_punctuation_space {
+        true
+    } else if c == ch_thin_space {
+        true
+    } else if c == ch_hair_space {
+        true
+    } else if c == ch_narrow_no_break_space {
+        true
+    } else if c == ch_medium_mathematical_space {
+        true
+    } else if c == ch_ideographic_space {
+        true
+    } else if c == ch_line_tabulation {
+        true
+    } else if c == ch_paragraph_separator {
+        true
+    } else if c == ch_character_tabulation {
+        true
+    } else if c == ch_line_feed {
+        true
+    } else if c == ch_line_tabulation {
+        true
+    } else if c == ch_form_feed {
+        true
+    } else if c == ch_carriage_return {
+        true
+    } else if c == ch_next_line {
+        true
+    } else if c == ch_no_break_space { true } else { false }
 }

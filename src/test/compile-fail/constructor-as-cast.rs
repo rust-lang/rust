@@ -1,7 +1,7 @@
 // error-pattern: unresolved name: base
 type base =
     obj {
-        fn foo() ;
+        fn foo();
     };
 obj derived() {
     fn foo() { }

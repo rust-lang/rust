@@ -116,6 +116,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
       BINOP(op) { ret binop_to_str(op); }
       BINOPEQ(op) { ret binop_to_str(op) + "="; }
 
+
       /* Structural symbols */
       AT. {
         ret "@";
@@ -139,6 +140,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
       POUND. { ret "#"; }
       POUND_LBRACE. { ret "#{"; }
       POUND_LT. { ret "#<"; }
+
 
       /* Literals */
       LIT_INT(i) {
@@ -164,6 +166,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
         ret tmp;
       }
       LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
+
 
       /* Name components */
       IDENT(s, _) {

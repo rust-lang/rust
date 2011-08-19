@@ -31,12 +31,12 @@ fn main(args: [str]) {
 
 fn parse_config(args: &[str]) -> config {
     let opts =
-        ~[getopts::reqopt("compile-lib-path"),
-          getopts::reqopt("run-lib-path"), getopts::reqopt("rustc-path"),
-          getopts::reqopt("src-base"), getopts::reqopt("build-base"),
-          getopts::reqopt("stage-id"), getopts::reqopt("mode"),
-          getopts::optflag("ignored"), getopts::optopt("runtool"),
-          getopts::optopt("rustcflags"), getopts::optflag("verbose")];
+        [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
+         getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
+         getopts::reqopt("build-base"), getopts::reqopt("stage-id"),
+         getopts::reqopt("mode"), getopts::optflag("ignored"),
+         getopts::optopt("runtool"), getopts::optopt("rustcflags"),
+         getopts::optflag("verbose")];
 
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
@@ -56,7 +56,7 @@ fn parse_config(args: &[str]) -> config {
          run_ignored: getopts::opt_present(match, "ignored"),
          filter:
              if vec::len(match.free) > 0u {
-                 option::some(match.free.(0))
+                 option::some(match.free[0])
              } else { option::none },
          runtool: getopts::opt_maybe_str(match, "runtool"),
          rustcflags: getopts::opt_maybe_str(match, "rustcflags"),
@@ -65,20 +65,20 @@ fn parse_config(args: &[str]) -> config {
 
 fn log_config(config: &config) {
     let c = config;
-    logv(c, #fmt("configuration:"));
-    logv(c, #fmt("compile_lib_path: %s", config.compile_lib_path));
-    logv(c, #fmt("run_lib_path: %s", config.run_lib_path));
-    logv(c, #fmt("rustc_path: %s", config.rustc_path));
-    logv(c, #fmt("src_base: %s", config.src_base));
-    logv(c, #fmt("build_base: %s", config.build_base));
-    logv(c, #fmt("stage_id: %s", config.stage_id));
-    logv(c, #fmt("mode: %s", mode_str(config.mode)));
-    logv(c, #fmt("run_ignored: %b", config.run_ignored));
-    logv(c, #fmt("filter: %s", opt_str(config.filter)));
-    logv(c, #fmt("runtool: %s", opt_str(config.runtool)));
-    logv(c, #fmt("rustcflags: %s", opt_str(config.rustcflags)));
-    logv(c, #fmt("verbose: %b", config.verbose));
-    logv(c, #fmt("\n"));
+    logv(c, #fmt["configuration:"]);
+    logv(c, #fmt["compile_lib_path: %s", config.compile_lib_path]);
+    logv(c, #fmt["run_lib_path: %s", config.run_lib_path]);
+    logv(c, #fmt["rustc_path: %s", config.rustc_path]);
+    logv(c, #fmt["src_base: %s", config.src_base]);
+    logv(c, #fmt["build_base: %s", config.build_base]);
+    logv(c, #fmt["stage_id: %s", config.stage_id]);
+    logv(c, #fmt["mode: %s", mode_str(config.mode)]);
+    logv(c, #fmt["run_ignored: %b", config.run_ignored]);
+    logv(c, #fmt["filter: %s", opt_str(config.filter)]);
+    logv(c, #fmt["runtool: %s", opt_str(config.runtool)]);
+    logv(c, #fmt["rustcflags: %s", opt_str(config.rustcflags)]);
+    logv(c, #fmt["verbose: %b", config.verbose]);
+    logv(c, #fmt["\n"]);
 }
 
 fn opt_str(maybestr: option::t<str>) -> str {
@@ -121,16 +121,16 @@ fn test_opts(config: &config) -> test::test_opts {
 }
 
 type tests_and_conv_fn =
-    {tests: [test::test_desc], to_task: fn(&fn() ) -> test::joinable };
+    {tests: [test::test_desc], to_task: fn(&fn()) -> test::joinable};
 
 fn make_tests(cx: &cx) -> tests_and_conv_fn {
-    log #fmt("making tests from %s", cx.config.src_base);
+    log #fmt["making tests from %s", cx.config.src_base];
     let configport = mk_port::<[u8]>();
-    let tests = ~[];
+    let tests = [];
     for file: str in fs::list_dir(cx.config.src_base) {
-        log #fmt("inspecting file %s", file);
+        log #fmt["inspecting file %s", file];
         if is_test(cx.config, file) {
-            tests += ~[make_test(cx, file, configport)];
+            tests += [make_test(cx, file, configport)];
         }
     }
     ret {tests: tests, to_task: bind closure_to_task(cx, configport, _)};
@@ -138,11 +138,9 @@ fn make_tests(cx: &cx) -> tests_and_conv_fn {
 
 fn is_test(config: &config, testfile: &str) -> bool {
     // Pretty-printer does not work with .rc files yet
-    let valid_extensions = alt config.mode {
-      mode_pretty. { ~[".rs"] }
-      _ { ~[".rc", ".rs"] }
-    };
-    let invalid_prefixes = ~[".", "#", "~"];
+    let valid_extensions =
+        alt config.mode { mode_pretty. { [".rs"] } _ { [".rc", ".rs"] } };
+    let invalid_prefixes = [".", "#", "~"];
     let name = fs::basename(testfile);
 
     let valid = false;
@@ -166,7 +164,7 @@ fn make_test(cx: &cx, testfile: &str, configport: &_port<[u8]>) ->
 }
 
 fn make_test_name(config: &config, testfile: &str) -> str {
-    #fmt("[%s] %s", mode_str(config.mode), testfile)
+    #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
 /*
@@ -188,8 +186,8 @@ up. Then we'll spawn that data into another task and return the task.
 Really convoluted. Need to think up of a better definition for tests.
 */
 
-fn make_test_closure(testfile: &str, configchan: _chan<[u8]>) -> test::test_fn
-{
+fn make_test_closure(testfile: &str, configchan: _chan<[u8]>) ->
+   test::test_fn {
     bind send_config(testfile, configchan)
 }
 
@@ -207,25 +205,19 @@ break up the config record and pass everything individually to the spawned
 function.
 */
 
-fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn() )
-    -> test::joinable
-{
+fn closure_to_task(cx: cx, configport: _port<[u8]>, testfn: &fn()) ->
+   test::joinable {
     testfn();
     let testfile = configport.recv();
-    let testthunk = bind run_test_task(cx.config.compile_lib_path,
-                                       cx.config.run_lib_path,
-                                       cx.config.rustc_path,
-                                       cx.config.src_base,
-                                       cx.config.build_base,
-                                       cx.config.stage_id,
-                                       mode_str(cx.config.mode),
-                                       cx.config.run_ignored,
-                                       opt_str(cx.config.filter),
-                                       opt_str(cx.config.runtool),
-                                       opt_str(cx.config.rustcflags),
-                                       cx.config.verbose,
-                                       cx.procsrv.chan,
-                                       testfile);
+    let testthunk =
+        bind run_test_task(cx.config.compile_lib_path, cx.config.run_lib_path,
+                           cx.config.rustc_path, cx.config.src_base,
+                           cx.config.build_base, cx.config.stage_id,
+                           mode_str(cx.config.mode), cx.config.run_ignored,
+                           opt_str(cx.config.filter),
+                           opt_str(cx.config.runtool),
+                           opt_str(cx.config.rustcflags), cx.config.verbose,
+                           cx.procsrv.chan, testfile);
     ret task::spawn_joinable(testthunk);
 }
 

@@ -59,13 +59,14 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
     alt i.node {
       item_const(_, e) {
         // make a fake fcx
-        let v: @mutable [node_id] = @mutable ~[];
+        let v: @mutable [node_id] = @mutable [];
         let fake_fcx =
-            {enclosing:
+            {
+             // just bogus
+             enclosing:
                  {constrs: @new_def_hash::<constraint>(),
                   num_constraints: 0u,
                   cf: return,
-                  // just bogus
                   i_return: ninit(0, ""),
                   i_diverge: ninit(0, ""),
                   used_vars: v},
@@ -104,7 +105,7 @@ fn find_pre_post_item(ccx: &crate_ctxt, i: &item) {
 fn find_pre_post_exprs(fcx: &fn_ctxt, args: &[@expr], id: node_id) {
     if vec::len::<@expr>(args) > 0u {
         log "find_pre_post_exprs: oper =";
-        log_expr(*args.(0));
+        log_expr(*args[0]);
     }
     fn do_one(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }
     for e: @expr in args { do_one(fcx, e); }
@@ -132,8 +133,7 @@ fn find_pre_post_loop(fcx: &fn_ctxt, l: &@local, index: &@expr, body: &blk,
     }
 
     let loop_precond =
-        seq_preconds(fcx,
-                     ~[expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]);
+        seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]);
     let loop_postcond =
         intersect_states(expr_postcond(fcx.ccx, index),
                          block_postcond(fcx.ccx, body));
@@ -159,8 +159,8 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
 
         let precond_res =
             seq_preconds(fcx,
-                         ~[expr_pp(fcx.ccx, antec),
-                           block_pp(fcx.ccx, conseq)]);
+                         [expr_pp(fcx.ccx, antec),
+                          block_pp(fcx.ccx, conseq)]);
         set_pre_and_post(fcx.ccx, id, precond_res,
                          expr_poststate(fcx.ccx, antec));
       }
@@ -173,12 +173,11 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
         find_pre_post_expr(fcx, altern);
         let precond_false_case =
             seq_preconds(fcx,
-                         ~[expr_pp(fcx.ccx, antec),
-                           expr_pp(fcx.ccx, altern)]);
+                         [expr_pp(fcx.ccx, antec), expr_pp(fcx.ccx, altern)]);
         let postcond_false_case =
             seq_postconds(fcx,
-                          ~[expr_postcond(fcx.ccx, antec),
-                            expr_postcond(fcx.ccx, altern)]);
+                          [expr_postcond(fcx.ccx, antec),
+                           expr_postcond(fcx.ccx, altern)]);
 
         /* Be sure to set the bit for the check condition here,
          so that it's *not* set in the alternative. */
@@ -191,15 +190,15 @@ fn join_then_else(fcx: &fn_ctxt, antec: &@expr, conseq: &blk,
         }
         let precond_true_case =
             seq_preconds(fcx,
-                         ~[expr_pp(fcx.ccx, antec),
-                           block_pp(fcx.ccx, conseq)]);
+                         [expr_pp(fcx.ccx, antec),
+                          block_pp(fcx.ccx, conseq)]);
         let postcond_true_case =
             seq_postconds(fcx,
-                          ~[expr_postcond(fcx.ccx, antec),
-                            block_postcond(fcx.ccx, conseq)]);
+                          [expr_postcond(fcx.ccx, antec),
+                           block_postcond(fcx.ccx, conseq)]);
 
         let precond_res =
-            seq_postconds(fcx, ~[precond_true_case, precond_false_case]);
+            seq_postconds(fcx, [precond_true_case, precond_false_case]);
         let postcond_res =
             intersect_states(postcond_true_case, postcond_false_case);
         set_pre_and_post(fcx.ccx, id, precond_res, postcond_res);
@@ -220,10 +219,10 @@ fn gen_if_local(fcx: &fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
             gen(fcx, larger_id,
                 ninit(d_id.node, path_to_ident(fcx.ccx.tcx, pth)));
           }
-          _ { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
+          _ { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
         }
       }
-      _ { find_pre_post_exprs(fcx, ~[lhs, rhs], larger_id); }
+      _ { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
     }
 }
 
@@ -303,13 +302,12 @@ fn handle_var(fcx: &fn_ctxt, rslt: &pre_and_post, id: node_id, name: ident) {
     }
 }
 
-fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr,
-                        modes: &[ty::mode],
+fn forget_args_moved_in(fcx: &fn_ctxt, parent: &@expr, modes: &[ty::mode],
                         operands: &[@expr]) {
     let i = 0u;
     for mode: ty::mode in modes {
         if mode == ty::mo_move {
-            forget_in_postcond(fcx, parent.id, operands.(i).id);
+            forget_in_postcond(fcx, parent.id, operands[i].id);
         }
         i += 1u;
     }
@@ -324,8 +322,10 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
 
     alt e.node {
       expr_call(operator, operands) {
-        let /* copy */args = operands;
-        args += ~[operator];
+        /* copy */
+
+        let args = operands;
+        args += [operator];
 
         find_pre_post_exprs(fcx, args, e.id);
         /* see if the call has any constraints on its type */
@@ -377,12 +377,10 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
       expr_rec(fields, maybe_base) {
         let es = field_exprs(fields);
-        alt maybe_base { none. {/* no-op */ } some(b) { es += ~[b]; } }
+        alt maybe_base { none. {/* no-op */ } some(b) { es += [b]; } }
         find_pre_post_exprs(fcx, es, e.id);
       }
-      expr_tup(elts) {
-        find_pre_post_exprs(fcx, elts, e.id);
-      }
+      expr_tup(elts) { find_pre_post_exprs(fcx, elts, e.id); }
       expr_copy(a) {
         find_pre_post_expr(fcx, a);
         copy_pre_post(fcx.ccx, e.id, a);
@@ -394,7 +392,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         /* Different from expr_assign in that the lhs *must*
            already be initialized */
 
-        find_pre_post_exprs(fcx, ~[lhs, rhs], e.id);
+        find_pre_post_exprs(fcx, [lhs, rhs], e.id);
         forget_in_postcond_still_init(fcx, e.id, lhs.id);
       }
       expr_lit(_) { clear_pp(expr_pp(fcx.ccx, e)); }
@@ -426,12 +424,11 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
             find_pre_post_expr(fcx, l);
             find_pre_post_expr(fcx, r);
             let overall_pre =
-                seq_preconds(fcx,
-                             ~[expr_pp(fcx.ccx, l), expr_pp(fcx.ccx, r)]);
+                seq_preconds(fcx, [expr_pp(fcx.ccx, l), expr_pp(fcx.ccx, r)]);
             set_precondition(node_id_to_ts_ann(fcx.ccx, e.id), overall_pre);
             set_postcondition(node_id_to_ts_ann(fcx.ccx, e.id),
                               expr_postcond(fcx.ccx, l));
-        } else { find_pre_post_exprs(fcx, ~[l, r], e.id); }
+        } else { find_pre_post_exprs(fcx, [l, r], e.id); }
       }
       expr_unary(_, operand) {
         find_pre_post_expr(fcx, operand);
@@ -446,8 +443,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         find_pre_post_block(fcx, body);
         set_pre_and_post(fcx.ccx, e.id,
                          seq_preconds(fcx,
-                                      ~[expr_pp(fcx.ccx, test),
-                                        block_pp(fcx.ccx, body)]),
+                                      [expr_pp(fcx.ccx, test),
+                                       block_pp(fcx.ccx, body)]),
                          intersect_states(expr_postcond(fcx.ccx, test),
                                           block_postcond(fcx.ccx, body)));
       }
@@ -456,8 +453,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, test);
         let loop_postcond =
             seq_postconds(fcx,
-                          ~[block_postcond(fcx.ccx, body),
-                            expr_postcond(fcx.ccx, test)]);
+                          [block_postcond(fcx.ccx, body),
+                           expr_postcond(fcx.ccx, test)]);
         /* conservative approximation: if the body
            could break or cont, the test may never be executed */
 
@@ -466,8 +463,8 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
         }
         set_pre_and_post(fcx.ccx, e.id,
                          seq_preconds(fcx,
-                                      ~[block_pp(fcx.ccx, body),
-                                        expr_pp(fcx.ccx, test)]),
+                                      [block_pp(fcx.ccx, body),
+                                       expr_pp(fcx.ccx, test)]),
                          loop_postcond);
       }
       expr_for(d, index, body) {
@@ -476,18 +473,18 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       expr_for_each(d, index, body) {
         find_pre_post_loop(fcx, d, index, body, e.id);
       }
-      expr_index(val, sub) { find_pre_post_exprs(fcx, ~[val, sub], e.id); }
+      expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
       expr_alt(ex, alts) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: &fn_ctxt, an_alt: &arm) -> pre_and_post {
             find_pre_post_block(fcx, an_alt.body);
             ret block_pp(fcx.ccx, an_alt.body);
         }
-        let alt_pps = ~[];
-        for a: arm in alts { alt_pps += ~[do_an_alt(fcx, a)]; }
+        let alt_pps = [];
+        for a: arm in alts { alt_pps += [do_an_alt(fcx, a)]; }
         fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, pp: &pre_and_post,
                       next: &pre_and_post) -> pre_and_post {
-            union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
+            union(pp.precondition, seq_preconds(fcx, [antec, next]));
             intersect(pp.postcondition, next.postcondition);
             ret pp;
         }
@@ -536,22 +533,20 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
       }
 
 
+
       expr_bind(operator, maybe_args) {
-        let args = ~[];
+        let args = [];
         let cmodes = callee_modes(fcx, operator.id);
-        let modes = ~[];
+        let modes = [];
         let i = 0;
         for expr_opt: option::t<@expr> in maybe_args {
             alt expr_opt {
               none. {/* no-op */ }
-              some(expr) {
-                modes += ~[cmodes.(i)];
-                args += ~[expr];
-              }
+              some(expr) { modes += [cmodes[i]]; args += [expr]; }
             }
             i += 1;
         }
-        args += ~[operator]; /* ??? order of eval? */
+        args += [operator]; /* ??? order of eval? */
         forget_args_moved_in(fcx, e, modes, args);
         find_pre_post_exprs(fcx, args, e.id);
       }
@@ -567,7 +562,7 @@ fn find_pre_post_expr(fcx: &fn_ctxt, e: @expr) {
           none. { clear_pp(expr_pp(fcx.ccx, e)); }
         }
       }
-      expr_uniq(sub) { find_pre_post_exprs(fcx, ~[sub], e.id); }
+      expr_uniq(sub) { find_pre_post_exprs(fcx, [sub], e.id); }
     }
 }
 
@@ -603,23 +598,25 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                         /* FIXME: This won't be necessary when typestate
                         works well enough for pat_bindings to return a
                         refinement-typed thing. */
-                        let ident = alt pat.node {
-                          pat_bind(n) { n }
-                          _ {
-                            fcx.ccx.tcx.sess.span_bug(pat.span,
-                                                      "Impossible LHS");
-                          }
-                        };
+                        let ident =
+                            alt pat.node {
+                              pat_bind(n) { n }
+                              _ {
+                                fcx.ccx.tcx.sess.span_bug(pat.span,
+                                                          "Impossible LHS");
+                              }
+                            };
                         alt p {
                           some(p) {
                             copy_in_postcond(fcx, id,
                                              {ident: ident, node: pat.id},
                                              {ident:
-                                              path_to_ident(fcx.ccx.tcx, p),
+                                                  path_to_ident(fcx.ccx.tcx,
+                                                                p),
                                               node: an_init.expr.id},
                                              op_to_oper_ty(an_init.op));
                           }
-                          none. {}
+                          none. { }
                         }
                         gen(fcx, id, ninit(pat.id, ident));
                     }
@@ -645,10 +642,9 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                             fcx.ccx.tcx.sess.span_bug(pat.span,
                                                       "Impossible LHS");
                           }
-                        };
+                        }
                     }
-                    copy_pre_post_(fcx.ccx, id,
-                                   prev_pp.precondition,
+                    copy_pre_post_(fcx.ccx, id, prev_pp.precondition,
                                    prev_pp.postcondition);
                   }
                   none. {
@@ -694,33 +690,33 @@ fn find_pre_post_block(fcx: &fn_ctxt, b: blk) {
     let nv = num_constraints(fcx.enclosing);
     fn do_one_(fcx: fn_ctxt, s: &@stmt) {
         find_pre_post_stmt(fcx, *s);
-/*
-        log_err "pre_post for stmt:";
-        log_stmt_err(*s);
-        log_err "is:";
-        log_pp_err(stmt_pp(fcx.ccx, *s));
-*/
+        /*
+                log_err "pre_post for stmt:";
+                log_stmt_err(*s);
+                log_err "is:";
+                log_pp_err(stmt_pp(fcx.ccx, *s));
+        */
     }
     for s: @stmt in b.node.stmts { do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, e: &@expr) { find_pre_post_expr(fcx, e); }
     let do_inner = bind do_inner_(fcx, _);
     option::map::<@expr, ()>(do_inner, b.node.expr);
 
-    let pps: [pre_and_post] = ~[];
-    for s: @stmt in b.node.stmts { pps += ~[stmt_pp(fcx.ccx, *s)]; }
+    let pps: [pre_and_post] = [];
+    for s: @stmt in b.node.stmts { pps += [stmt_pp(fcx.ccx, *s)]; }
     alt b.node.expr {
       none. {/* no-op */ }
-      some(e) { pps += ~[expr_pp(fcx.ccx, e)]; }
+      some(e) { pps += [expr_pp(fcx.ccx, e)]; }
     }
 
     let block_precond = seq_preconds(fcx, pps);
 
-    let postconds = ~[];
-    for pp: pre_and_post in pps { postconds += ~[get_post(pp)]; }
+    let postconds = [];
+    for pp: pre_and_post in pps { postconds += [get_post(pp)]; }
 
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
-    postconds += ~[block_precond];
+    postconds += [block_precond];
 
     let block_postcond = empty_poststate(nv);
     /* conservative approximation */

@@ -1,21 +1,21 @@
 /**
  * Hashmap implementation.
  */
-type hashfn<K> = fn(&K) -> uint ;
+type hashfn<K> = fn(&K) -> uint;
 
-type eqfn<K> = fn(&K, &K) -> bool ;
+type eqfn<K> = fn(&K, &K) -> bool;
 
 type hashmap<K, V> =
     obj {
-        fn size() -> uint ;
-        fn insert(&K, &V) -> bool ;
-        fn contains_key(&K) -> bool ;
-        fn get(&K) -> V ;
-        fn find(&K) -> option::t<V> ;
-        fn remove(&K) -> option::t<V> ;
-        fn rehash() ;
-        iter items() -> @{key: K, val: V} ;
-        iter keys() -> K ;
+        fn size() -> uint;
+        fn insert(&K, &V) -> bool;
+        fn contains_key(&K) -> bool;
+        fn get(&K) -> V;
+        fn find(&K) -> option::t<V>;
+        fn remove(&K) -> option::t<V>;
+        fn rehash();
+        iter items() -> @{key: K, val: V};
+        iter keys() -> K;
     };
 type hashset<K> = hashmap<K, ()>;
 
@@ -26,7 +26,7 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
 
     let load_factor: util::rational = {num: 3, den: 4};
     tag bucket<@K, @V> { nil; deleted; some(K, V); }
-    fn make_buckets<@K, @V>(nbkts: uint) -> [mutable (bucket<K, V>)] {
+    fn make_buckets<@K, @V>(nbkts: uint) -> [mutable bucket<K, V>] {
         ret vec::init_elt_mut::<bucket<K, V>>(nil::<K, V>, nbkts);
     }
     // Derive two hash functions from the one given by taking the upper
@@ -53,37 +53,36 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
      * will fail.
      */
 
-    fn insert_common<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
-                             bkts: &[mutable bucket<K, V>], nbkts: uint,
-                             key: &K, val: &V) -> bool {
+    fn insert_common<@K,
+                     @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
+                         bkts: &[mutable bucket<K, V>], nbkts: uint, key: &K,
+                         val: &V) -> bool {
         let i: uint = 0u;
         let h: uint = hasher(key);
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
-            alt bkts.(j) {
+            alt bkts[j] {
               some(k, _) {
                 // Copy key to please alias analysis.
 
                 let k_ = k;
-                if eqer(key, k_) {
-                    bkts.(j) = some(k_, val);
-                    ret false;
-                }
+                if eqer(key, k_) { bkts[j] = some(k_, val); ret false; }
                 i += 1u;
               }
-              _ { bkts.(j) = some(key, val); ret true; }
+              _ { bkts[j] = some(key, val); ret true; }
             }
         }
         fail; // full table
     }
-    fn find_common<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
-                           bkts: &[mutable bucket<K, V>], nbkts: uint,
-                           key: &K) -> option::t<V> {
+    fn find_common<@K,
+                   @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
+                       bkts: &[mutable bucket<K, V>], nbkts: uint, key: &K) ->
+       option::t<V> {
         let i: uint = 0u;
         let h: uint = hasher(key);
         while i < nbkts {
             let j: uint = hash(h, nbkts, i);
-            alt bkts.(j) {
+            alt bkts[j] {
               some(k, v) {
                 // Copy to please alias analysis.
                 let k_ = k;
@@ -97,9 +96,10 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
         }
         ret option::none;
     }
-    fn rehash<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
-                      oldbkts: &[mutable bucket<K, V>], _noldbkts: uint,
-                      newbkts: &[mutable bucket<K, V>], nnewbkts: uint) {
+    fn rehash<@K,
+              @V>(hasher: &hashfn<K>, eqer: &eqfn<K>,
+                  oldbkts: &[mutable bucket<K, V>], _noldbkts: uint,
+                  newbkts: &[mutable bucket<K, V>], nnewbkts: uint) {
         for b: bucket<K, V> in oldbkts {
             alt b {
               some(k_, v_) {
@@ -111,12 +111,13 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
             }
         }
     }
-    obj hashmap<@K, @V>(hasher: hashfn<K>,
-                        eqer: eqfn<K>,
-                        mutable bkts: [mutable bucket<K, V>],
-                        mutable nbkts: uint,
-                        mutable nelts: uint,
-                        lf: util::rational) {
+    obj hashmap<@K,
+                @V>(hasher: hashfn<K>,
+                    eqer: eqfn<K>,
+                    mutable bkts: [mutable bucket<K, V>],
+                    mutable nbkts: uint,
+                    mutable nelts: uint,
+                    lf: util::rational) {
         fn size() -> uint { ret nelts; }
         fn insert(key: &K, val: &V) -> bool {
             let load: util::rational =
@@ -154,12 +155,12 @@ fn mk_hashmap<@K, @V>(hasher: &hashfn<K>, eqer: &eqfn<K>) -> hashmap<K, V> {
             let h: uint = hasher(key);
             while i < nbkts {
                 let j: uint = hash(h, nbkts, i);
-                alt bkts.(j) {
+                alt bkts[j] {
                   some(k, v) {
                     let k_ = k;
                     let vo = option::some(v);
                     if eqer(key, k_) {
-                        bkts.(j) = deleted;
+                        bkts[j] = deleted;
                         nelts -= 1u;
                         ret vo;
                     }

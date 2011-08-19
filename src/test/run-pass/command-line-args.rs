@@ -1,3 +1,3 @@
 
 
-fn main(args: [str]) { log args.(0); }
+fn main(args: [str]) { log args[0]; }

@@ -52,8 +52,8 @@ fn check_unused_vars(fcx: &fn_ctxt) {
     for c: norm_constraint in constraints(fcx) {
         alt c.c.node {
           ninit(id, v) {
-            if !vec_contains(fcx.enclosing.used_vars, id) &&
-               v.(0) != ('_' as u8) {
+            if !vec_contains(fcx.enclosing.used_vars, id) && v[0] != '_' as u8
+               {
                 fcx.ccx.tcx.sess.span_warn(c.c.span, "unused variable " + v);
             }
           }
@@ -143,17 +143,18 @@ fn check_states_against_conditions(fcx: &fn_ctxt, f: &_fn,
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f.body);
     if f.proto == ast::proto_fn &&
-        !promises(fcx, post, fcx.enclosing.i_return) &&
-        !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
-        f.decl.cf == return {
+           !promises(fcx, post, fcx.enclosing.i_return) &&
+           !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+           f.decl.cf == return {
         fcx.ccx.tcx.sess.span_err(f.body.span,
-                                   "In function " + fcx.name +
-                                       ", not all control paths \
+                                  "In function " + fcx.name +
+                                      ", not all control paths \
                                         return a value");
         fcx.ccx.tcx.sess.span_fatal(f.decl.output.span,
                                     "see declared return type of '" +
                                         ty_to_str(f.decl.output) + "'");
-    } else if (f.decl.cf == noreturn) {
+    } else if f.decl.cf == noreturn {
+
         // check that this really always fails
         // Note that it's ok for i_diverge and i_return to both be true.
         // In fact, i_diverge implies i_return. (But not vice versa!)

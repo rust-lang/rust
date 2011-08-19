@@ -13,7 +13,7 @@ fn from_vec<@T>(v: &[T]) -> list<T> {
     ret l;
 }
 
-fn foldl<@T, @U>(ls_: &list<T>, u: &U, f: &block(&T, &U) -> U ) -> U {
+fn foldl<@T, @U>(ls_: &list<T>, u: &U, f: &block(&T, &U) -> U) -> U {
     let accum: U = u;
     let ls = ls_;
     while true {
@@ -25,8 +25,8 @@ fn foldl<@T, @U>(ls_: &list<T>, u: &U, f: &block(&T, &U) -> U ) -> U {
     ret accum;
 }
 
-fn find<@T, @U>(ls_: &list<T>, f: &block(&T) -> option::t<U>)
-    -> option::t<U> {
+fn find<@T, @U>(ls_: &list<T>, f: &block(&T) -> option::t<U>) ->
+   option::t<U> {
     let ls = ls_;
     while true {
         alt ls {
@@ -56,26 +56,17 @@ fn length<@T>(ls: &list<T>) -> uint {
 }
 
 fn cdr<@T>(ls: &list<T>) -> list<T> {
-    alt ls {
-      cons(_, tl) { ret *tl; }
-      nil. { fail "list empty" }
-    }
+    alt ls { cons(_, tl) { ret *tl; } nil. { fail "list empty" } }
 }
 
 fn car<@T>(ls: &list<T>) -> T {
-    alt ls {
-      cons(hd, _) { ret hd; }
-      nil. { fail "list empty" }
-    }
+    alt ls { cons(hd, _) { ret hd; } nil. { fail "list empty" } }
 }
 
 fn append<@T>(l: &list<T>, m: &list<T>) -> list<T> {
     alt l {
       nil. { ret m; }
-      cons(x, xs) {
-        let rest = append(*xs, m);
-        ret cons(x, @rest);
-      }
+      cons(x, xs) { let rest = append(*xs, m); ret cons(x, @rest); }
     }
 }
 

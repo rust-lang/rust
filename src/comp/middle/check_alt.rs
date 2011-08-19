@@ -5,7 +5,7 @@ fn check_crate(tcx: &ty::ctxt, crate: &@crate) {
     let v =
         @{visit_expr: bind check_expr(tcx, _, _, _),
           visit_local: bind check_local(tcx, _, _, _)
-          with *visit::default_visitor::<()>()};
+             with *visit::default_visitor::<()>()};
     visit::visit_crate(*crate, (), visit::mk_vt(v));
     tcx.sess.abort_if_errors();
 }
@@ -22,7 +22,7 @@ fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
             let reachable = true;
             let j = 0;
             while j < i {
-                for prev_pat: @pat in arms.(j).pats {
+                for prev_pat: @pat in arms[j].pats {
                     if pattern_supersedes(tcx, prev_pat, arm_pat) {
                         reachable = false;
                     }
@@ -38,11 +38,10 @@ fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
 }
 
 fn pattern_supersedes(tcx: &ty::ctxt, a: &@pat, b: &@pat) -> bool {
-    fn patterns_supersede(tcx: &ty::ctxt, as: &[@pat], bs: &[@pat]) ->
-       bool {
+    fn patterns_supersede(tcx: &ty::ctxt, as: &[@pat], bs: &[@pat]) -> bool {
         let i = 0;
         for a: @pat in as {
-            if !pattern_supersedes(tcx, a, bs.(i)) { ret false; }
+            if !pattern_supersedes(tcx, a, bs[i]) { ret false; }
             i += 1;
         }
         ret true;
@@ -119,19 +118,13 @@ fn is_refutable(tcx: &ty::ctxt, pat: &@pat) -> bool {
         ret false;
       }
       pat_tup(elts) {
-        for elt in elts {
-            if is_refutable(tcx, elt) { ret true; }
-        }
+        for elt in elts { if is_refutable(tcx, elt) { ret true; } }
         ret false;
       }
       pat_tag(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if std::vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u {
-            ret true;
-        }
-        for p: @pat in args {
-            if is_refutable(tcx, p) { ret true; }
-        }
+        if std::vec::len(ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
+        for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         ret false;
       }
     }

@@ -67,7 +67,7 @@ fn visit_item(e: env, i: &@ast::item) {
         }
         let cstore = e.sess.get_cstore();
         if !cstore::add_used_library(cstore, m.native_name) { ret; }
-        for a: ast::attribute  in
+        for a: ast::attribute in
             attr::find_attrs_by_name(i.attrs, "link_args") {
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) { cstore::add_used_link_args(cstore, linkarg); }
@@ -93,12 +93,12 @@ fn metadata_matches(crate_data: &@[u8], metas: &[@ast::meta_item]) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
 
-    log #fmt("matching %u metadata requirements against %u items",
-             vec::len(metas), vec::len(linkage_metas));
+    log #fmt["matching %u metadata requirements against %u items",
+             vec::len(metas), vec::len(linkage_metas)];
 
     for needed: @ast::meta_item in metas {
         if !attr::contains(linkage_metas, needed) {
-            log #fmt("missing %s", pprust::meta_item_to_str(*needed));
+            log #fmt["missing %s", pprust::meta_item_to_str(*needed)];
             ret false;
         }
     }
@@ -116,26 +116,26 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 }
 
 fn find_library_crate(sess: &session::session, ident: &ast::ident,
-                      metas: &[@ast::meta_item],
-                      library_search_paths: &[str]) ->
-   option::t<{ident: str, data: @[u8]}> {
+                      metas: &[@ast::meta_item], library_search_paths: &[str])
+   -> option::t<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
 
     // FIXME: Probably want a warning here since the user
     // is using the wrong type of meta item
-    let crate_name = {
-        let name_items = attr::find_meta_items_by_name(metas, "name");
-        alt vec::last(name_items) {
-          some(i) {
-            alt attr::get_meta_item_value_str(i) {
-              some(n) { n }
-              _ { ident }
+    let crate_name =
+        {
+            let name_items = attr::find_meta_items_by_name(metas, "name");
+            alt vec::last(name_items) {
+              some(i) {
+                alt attr::get_meta_item_value_str(i) {
+                  some(n) { n }
+                  _ { ident }
+                }
+              }
+              none. { ident }
             }
-          }
-          none. { ident }
-        }
-    };
+        };
 
     let nn = default_native_lib_naming(sess, sess.get_opts().static);
     let x =
@@ -157,23 +157,23 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
     // manually filtering fs::list_dir here.
 
     for library_search_path: str in library_search_paths {
-        log #fmt("searching %s", library_search_path);
+        log #fmt["searching %s", library_search_path];
         for path: str in fs::list_dir(library_search_path) {
-            log #fmt("searching %s", path);
+            log #fmt["searching %s", path];
             let f: str = fs::basename(path);
             if !(str::starts_with(f, prefix) && str::ends_with(f, nn.suffix))
                {
-                log #fmt("skipping %s, doesn't look like %s*%s", path, prefix,
-                         nn.suffix);
+                log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
+                         nn.suffix];
                 cont;
             }
             alt get_metadata_section(path) {
               option::some(cvec) {
                 if !metadata_matches(cvec, metas) {
-                    log #fmt("skipping %s, metadata doesn't match", path);
+                    log #fmt["skipping %s, metadata doesn't match", path];
                     cont;
                 }
-                log #fmt("found %s with matching metadata", path);
+                log #fmt["found %s with matching metadata", path];
                 ret some({ident: path, data: cvec});
               }
               _ { }
@@ -204,15 +204,14 @@ fn get_metadata_section(filename: str) -> option::t<@[u8]> {
 }
 
 fn load_library_crate(sess: &session::session, span: span, ident: &ast::ident,
-                      metas: &[@ast::meta_item],
-                      library_search_paths: &[str]) ->
-   {ident: str, data: @[u8]} {
+                      metas: &[@ast::meta_item], library_search_paths: &[str])
+   -> {ident: str, data: @[u8]} {
 
 
     alt find_library_crate(sess, ident, metas, library_search_paths) {
       some(t) { ret t; }
       none. {
-        sess.span_fatal(span, #fmt("can't find crate for '%s'", ident));
+        sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
       }
     }
 }
@@ -253,7 +252,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
-        log #fmt("resolving dep %s", cname);
+        log #fmt["resolving dep %s", cname];
         if e.crate_cache.contains_key(cname) {
             log "already have it";
             // We've already seen this crate
@@ -264,7 +263,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
             let fake_span = ast::dummy_sp();
-            let local_cnum = resolve_crate(e, cname, ~[], fake_span);
+            let local_cnum = resolve_crate(e, cname, [], fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
         }
     }

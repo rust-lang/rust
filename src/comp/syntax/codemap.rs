@@ -23,36 +23,36 @@ type codemap = @{mutable files: [filemap]};
 
 type loc = {filename: filename, line: uint, col: uint};
 
-fn new_codemap() -> codemap { ret @{mutable files: ~[]}; }
+fn new_codemap() -> codemap { ret @{mutable files: []}; }
 
 fn new_filemap(filename: filename, start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
     ret @{name: filename,
           start_pos: {ch: start_pos_ch, byte: start_pos_byte},
-          mutable lines: ~[{ch: start_pos_ch, byte: start_pos_byte}]};
+          mutable lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
-    file.lines += ~[{ch: chpos, byte: byte_pos}];
+    file.lines += [{ch: chpos, byte: byte_pos}];
 }
 
-type lookup_fn = fn(file_pos) -> uint ;
+type lookup_fn = fn(file_pos) -> uint;
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
     let a = 0u;
     let b = vec::len(map.files);
     while b - a > 1u {
         let m = (a + b) / 2u;
-        if lookup(map.files.(m).start_pos) > pos { b = m; } else { a = m; }
+        if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
     }
-    let f = map.files.(a);
+    let f = map.files[a];
     a = 0u;
     b = vec::len(f.lines);
     while b - a > 1u {
         let m = (a + b) / 2u;
-        if lookup(f.lines.(m)) > pos { b = m; } else { a = m; }
+        if lookup(f.lines[m]) > pos { b = m; } else { a = m; }
     }
-    ret {filename: f.name, line: a + 1u, col: pos - lookup(f.lines.(a))};
+    ret {filename: f.name, line: a + 1u, col: pos - lookup(f.lines[a])};
 }
 
 fn lookup_char_pos(map: codemap, pos: uint) -> loc {
@@ -65,7 +65,8 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
-tag opt_span { //hack (as opposed to option::t), to make `span` compile
+tag opt_span {
+     //hack (as opposed to option::t), to make `span` compile
     os_none;
     os_some(@span);
 }
@@ -75,13 +76,14 @@ fn span_to_str(sp: &span, cm: &codemap) -> str {
     let cur = sp;
     let res = "";
     let prev_file = none;
-    while(true) {
+    while true {
         let lo = lookup_char_pos(cm, cur.lo);
         let hi = lookup_char_pos(cm, cur.hi);
-        res += #fmt("%s:%u:%u:%u:%u",
-                    if some(lo.filename) == prev_file { "-" }
-                    else                              { lo.filename },
-                    lo.line, lo.col, hi.line, hi.col);
+        res +=
+            #fmt["%s:%u:%u:%u:%u",
+                 if some(lo.filename) == prev_file {
+                     "-"
+                 } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
           os_none. { break; }
           os_some(new_sp) {
@@ -110,11 +112,9 @@ fn emit_diagnostic(sp: &option::t<span>, msg: &str, kind: &str, color: u8,
     if term::color_supported() {
         term::fg(io::stdout().get_buf_writer(), color);
     }
-    io::stdout().write_str(#fmt("%s:", kind));
-    if term::color_supported() {
-        term::reset(io::stdout().get_buf_writer());
-    }
-    io::stdout().write_str(#fmt(" %s\n", msg));
+    io::stdout().write_str(#fmt["%s:", kind]);
+    if term::color_supported() { term::reset(io::stdout().get_buf_writer()); }
+    io::stdout().write_str(#fmt[" %s\n", msg]);
 
     maybe_highlight_lines(sp, cm, maybe_lines);
 }
@@ -143,14 +143,14 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         }
         // Print the offending lines
         for line: uint in display_lines {
-            io::stdout().write_str(#fmt("%s:%u ", fm.name, line + 1u));
+            io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
             let s = get_line(fm, line as int, file);
             if !str::ends_with(s, "\n") { s += "\n"; }
             io::stdout().write_str(s);
         }
         if elided {
-            let last_line = display_lines.(vec::len(display_lines) - 1u);
-            let s = #fmt("%s:%u ", fm.name, last_line + 1u);
+            let last_line = display_lines[vec::len(display_lines) - 1u];
+            let s = #fmt["%s:%u ", fm.name, last_line + 1u];
             let indent = str::char_len(s);
             let out = "";
             while indent > 0u { out += " "; indent -= 1u; }
@@ -163,7 +163,7 @@ fn maybe_highlight_lines(sp: &option::t<span>, cm: &codemap,
         if vec::len(lines.lines) == 1u {
             let lo = lookup_char_pos(cm, option::get(sp).lo);
             let digits = 0u;
-            let num = lines.lines.(0) / 10u;
+            let num = lines.lines[0] / 10u;
 
             // how many digits must be indent past?
             while num > 0u { num /= 10u; digits += 1u; }
@@ -202,18 +202,18 @@ type file_lines = {name: str, lines: [uint]};
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    let lines = ~[];
+    let lines = [];
     for each i: uint in uint::range(lo.line - 1u, hi.line as uint) {
-        lines += ~[i];
+        lines += [i];
     }
     ret @{name: lo.filename, lines: lines};
 }
 
 fn get_line(fm: filemap, line: int, file: &str) -> str {
-    let begin: uint = fm.lines.(line).byte - fm.start_pos.byte;
+    let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end: uint;
     if line as uint < vec::len(fm.lines) - 1u {
-        end = fm.lines.(line + 1).byte - fm.start_pos.byte;
+        end = fm.lines[line + 1].byte - fm.start_pos.byte;
     } else {
         // If we're not done parsing the file, we're at the limit of what's
         // parsed. If we just slice the rest of the string, we'll print out
@@ -232,7 +232,6 @@ fn get_filemap(cm: codemap, filename: str) -> filemap {
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");
 }
-
 //
 // Local Variables:
 // mode: rust

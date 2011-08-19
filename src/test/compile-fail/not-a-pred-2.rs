@@ -7,4 +7,5 @@ fn main() {
                2); // should fail to typecheck, as (a == b)
                    // is not a manifest call
 
+
 }

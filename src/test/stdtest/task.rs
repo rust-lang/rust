@@ -37,7 +37,7 @@ fn test_lib_spawn() {
 
 #[test]
 fn test_lib_spawn2() {
-    fn foo(x : int) { assert(x == 42); }
+    fn foo(x: int) { assert (x == 42); }
     task::_spawn(bind foo(42));
 }
 
@@ -52,7 +52,7 @@ fn test_join_chan() {
     log_err "received task status message";
     log_err s;
     alt s {
-      task::exit(_, task::tr_success.) { /* yay! */ }
+      task::exit(_, task::tr_success.) {/* yay! */ }
       _ { fail "invalid task status received" }
     }
 }
@@ -68,7 +68,7 @@ fn test_join_chan_fail() {
     log_err "received task status message";
     log_err s;
     alt s {
-      task::exit(_, task::tr_failure.) { /* yay! */ }
+      task::exit(_, task::tr_failure.) {/* yay! */ }
       _ { fail "invalid task status received" }
     }
 }
@@ -78,5 +78,5 @@ fn test_join_convenient() {
     fn winner() { }
     let f = winner;
     let handle = task::spawn_joinable(f);
-    assert(task::tr_success == task::join(handle));
+    assert (task::tr_success == task::join(handle));
 }

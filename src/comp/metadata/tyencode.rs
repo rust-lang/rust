@@ -17,9 +17,10 @@ export ac_no_abbrevs;
 export ac_use_abbrevs;
 export enc_ty;
 
-type ctxt =  // Def -> str Callback:
+type ctxt =
+     // Def -> str Callback:
      // The type context.
-    {ds: fn(&def_id) -> str , tcx: ty::ctxt, abbrevs: abbrev_ctxt};
+     {ds: fn(&def_id) -> str, tcx: ty::ctxt, abbrevs: abbrev_ctxt};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
@@ -151,7 +152,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
           native_abi_llvm. { w.write_char('l'); }
           native_abi_x86stdcall. { w.write_char('s'); }
         }
-        enc_ty_fn(w, cx, args, out, return, ~[]);
+        enc_ty_fn(w, cx, args, out, return, []);
       }
       ty::ty_obj(methods) {
         w.write_str("O[");
@@ -176,7 +177,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
       }
-      ty::ty_param(id,k) {
+      ty::ty_param(id, k) {
         alt k {
           kind_unique. { w.write_str("pu"); }
           kind_shared. { w.write_str("ps"); }
@@ -210,9 +211,7 @@ fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
             w.write_char('&');
             if mut { w.write_char('m'); }
           }
-          ty::mo_move. {
-            w.write_char('-');
-          }
+          ty::mo_move. { w.write_char('-'); }
           ty::mo_val. { }
         }
         enc_ty(w, cx, arg.ty);

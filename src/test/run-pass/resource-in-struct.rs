@@ -3,17 +3,15 @@
 
 type closable = @mutable bool;
 
-resource close_res(i: closable) {
-    *i = false;
-}
+resource close_res(i: closable) { *i = false; }
 
 tag option<T> { none; some(T); }
 
-fn sink(res: option<close_res>) {}
+fn sink(res: option<close_res>) { }
 
 fn main() {
     let c = @mutable true;
     sink(none);
     sink(some(close_res(c)));
-    assert !*c;
+    assert (!*c);
 }

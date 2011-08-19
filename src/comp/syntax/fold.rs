@@ -20,57 +20,57 @@ type ast_fold = @mutable a_f;
 
 type ast_fold_precursor =
     //unlike the others, item_ is non-trivial
-    {fold_crate: fn(&crate_, ast_fold) -> crate_ ,
+    {fold_crate: fn(&crate_, ast_fold) -> crate_,
      fold_crate_directive:
-         fn(&crate_directive_, ast_fold) -> crate_directive_ ,
-     fold_view_item: fn(&view_item_, ast_fold) -> view_item_ ,
-     fold_native_item: fn(&@native_item, ast_fold) -> @native_item ,
-     fold_item: fn(&@item, ast_fold) -> @item ,
-     fold_item_underscore: fn(&item_, ast_fold) -> item_ ,
-     fold_method: fn(&method_, ast_fold) -> method_ ,
-     fold_block: fn(&blk_, ast_fold) -> blk_ ,
-     fold_stmt: fn(&stmt_, ast_fold) -> stmt_ ,
-     fold_arm: fn(&arm, ast_fold) -> arm ,
-     fold_pat: fn(&pat_, ast_fold) -> pat_ ,
-     fold_decl: fn(&decl_, ast_fold) -> decl_ ,
-     fold_expr: fn(&expr_, ast_fold) -> expr_ ,
-     fold_ty: fn(&ty_, ast_fold) -> ty_ ,
-     fold_constr: fn(&ast::constr_, ast_fold) -> constr_ ,
-     fold_fn: fn(&_fn, ast_fold) -> _fn ,
-     fold_mod: fn(&_mod, ast_fold) -> _mod ,
-     fold_native_mod: fn(&native_mod, ast_fold) -> native_mod ,
-     fold_variant: fn(&variant_, ast_fold) -> variant_ ,
-     fold_ident: fn(&ident, ast_fold) -> ident ,
-     fold_path: fn(&path_, ast_fold) -> path_ ,
-     fold_local: fn(&local_, ast_fold) -> local_ ,
-     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
+         fn(&crate_directive_, ast_fold) -> crate_directive_,
+     fold_view_item: fn(&view_item_, ast_fold) -> view_item_,
+     fold_native_item: fn(&@native_item, ast_fold) -> @native_item,
+     fold_item: fn(&@item, ast_fold) -> @item,
+     fold_item_underscore: fn(&item_, ast_fold) -> item_,
+     fold_method: fn(&method_, ast_fold) -> method_,
+     fold_block: fn(&blk_, ast_fold) -> blk_,
+     fold_stmt: fn(&stmt_, ast_fold) -> stmt_,
+     fold_arm: fn(&arm, ast_fold) -> arm,
+     fold_pat: fn(&pat_, ast_fold) -> pat_,
+     fold_decl: fn(&decl_, ast_fold) -> decl_,
+     fold_expr: fn(&expr_, ast_fold) -> expr_,
+     fold_ty: fn(&ty_, ast_fold) -> ty_,
+     fold_constr: fn(&ast::constr_, ast_fold) -> constr_,
+     fold_fn: fn(&_fn, ast_fold) -> _fn,
+     fold_mod: fn(&_mod, ast_fold) -> _mod,
+     fold_native_mod: fn(&native_mod, ast_fold) -> native_mod,
+     fold_variant: fn(&variant_, ast_fold) -> variant_,
+     fold_ident: fn(&ident, ast_fold) -> ident,
+     fold_path: fn(&path_, ast_fold) -> path_,
+     fold_local: fn(&local_, ast_fold) -> local_,
+     map_exprs: fn(fn(&@expr) -> @expr, [@expr]) -> [@expr],
      new_id: fn(node_id) -> node_id,
      new_span: fn(&span) -> span};
 
 type a_f =
-    {fold_crate: fn(&crate) -> crate ,
-     fold_crate_directive: fn(&@crate_directive) -> @crate_directive ,
-     fold_view_item: fn(&@view_item) -> @view_item ,
-     fold_native_item: fn(&@native_item) -> @native_item ,
-     fold_item: fn(&@item) -> @item ,
-     fold_item_underscore: fn(&item_) -> item_ ,
-     fold_method: fn(&@method) -> @method ,
-     fold_block: fn(&blk) -> blk ,
-     fold_stmt: fn(&@stmt) -> @stmt ,
-     fold_arm: fn(&arm) -> arm ,
-     fold_pat: fn(&@pat) -> @pat ,
-     fold_decl: fn(&@decl) -> @decl ,
-     fold_expr: fn(&@expr) -> @expr ,
-     fold_ty: fn(&@ty) -> @ty ,
-     fold_constr: fn(&@constr) -> @constr ,
-     fold_fn: fn(&_fn) -> _fn ,
-     fold_mod: fn(&_mod) -> _mod ,
-     fold_native_mod: fn(&native_mod) -> native_mod ,
-     fold_variant: fn(&variant) -> variant ,
-     fold_ident: fn(&ident) -> ident ,
-     fold_path: fn(&path) -> path ,
-     fold_local: fn(&@local) -> @local ,
-     map_exprs: fn(fn(&@expr) -> @expr , [@expr]) -> [@expr],
+    {fold_crate: fn(&crate) -> crate,
+     fold_crate_directive: fn(&@crate_directive) -> @crate_directive,
+     fold_view_item: fn(&@view_item) -> @view_item,
+     fold_native_item: fn(&@native_item) -> @native_item,
+     fold_item: fn(&@item) -> @item,
+     fold_item_underscore: fn(&item_) -> item_,
+     fold_method: fn(&@method) -> @method,
+     fold_block: fn(&blk) -> blk,
+     fold_stmt: fn(&@stmt) -> @stmt,
+     fold_arm: fn(&arm) -> arm,
+     fold_pat: fn(&@pat) -> @pat,
+     fold_decl: fn(&@decl) -> @decl,
+     fold_expr: fn(&@expr) -> @expr,
+     fold_ty: fn(&@ty) -> @ty,
+     fold_constr: fn(&@constr) -> @constr,
+     fold_fn: fn(&_fn) -> _fn,
+     fold_mod: fn(&_mod) -> _mod,
+     fold_native_mod: fn(&native_mod) -> native_mod,
+     fold_variant: fn(&variant) -> variant,
+     fold_ident: fn(&ident) -> ident,
+     fold_path: fn(&path) -> path,
+     fold_local: fn(&@local) -> @local,
+     map_exprs: fn(fn(&@expr) -> @expr, [@expr]) -> [@expr],
      new_id: fn(node_id) -> node_id,
      new_span: fn(&span) -> span};
 
@@ -120,7 +120,7 @@ fn fold_meta_item_(mi: &@meta_item, fld: ast_fold) -> @meta_item {
           span: mi.span};
 }
 //used in noop_fold_item and noop_fold_crate
-fn fold_attribute_(at: &attribute, fmi: fn(&@meta_item) -> @meta_item ) ->
+fn fold_attribute_(at: &attribute, fmi: fn(&@meta_item) -> @meta_item) ->
    attribute {
     ret {node: {style: at.node.style, value: *fmi(@at.node.value)},
          span: at.span};
@@ -135,14 +135,14 @@ fn fold_arg_(a: &arg, fld: ast_fold) -> arg {
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: &mac, fld: ast_fold) -> mac {
     ret {node:
-         alt m.node {
-           mac_invoc(pth, arg, body) {
-             mac_invoc(fld.fold_path(pth), fld.fold_expr(arg), body)
-           }
-           mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
-           mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
-           mac_ellipsis. { mac_ellipsis }
-         },
+             alt m.node {
+               mac_invoc(pth, arg, body) {
+                 mac_invoc(fld.fold_path(pth), fld.fold_expr(arg), body)
+               }
+               mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
+               mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
+               mac_ellipsis. { mac_ellipsis }
+             },
          span: m.span};
 }
 
@@ -200,7 +200,7 @@ fn noop_fold_native_item(ni: &@native_item, fld: ast_fold) -> @native_item {
                                   cf: fdec.cf,
                                   constraints:
                                       vec::map(fld.fold_constr,
-                                                fdec.constraints)}, typms)
+                                               fdec.constraints)}, typms)
                 }
               },
           id: ni.id,
@@ -238,8 +238,8 @@ fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
           }
           item_obj(o, typms, d) {
             item_obj({fields: vec::map(fold_obj_field, o.fields),
-                      methods: vec::map(fld.fold_method, o.methods)},
-                     typms, d)
+                      methods: vec::map(fld.fold_method, o.methods)}, typms,
+                     d)
           }
           item_res(dtor, did, typms, cid) {
             item_res(fld.fold_fn(dtor), did, typms, cid)
@@ -269,8 +269,7 @@ fn noop_fold_stmt(s: &stmt_, fld: ast_fold) -> stmt_ {
 }
 
 fn noop_fold_arm(a: &arm, fld: ast_fold) -> arm {
-    ret {pats: vec::map(fld.fold_pat, a.pats),
-         body: fld.fold_block(a.body)};
+    ret {pats: vec::map(fld.fold_pat, a.pats), body: fld.fold_block(a.body)};
 }
 
 fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
@@ -282,15 +281,13 @@ fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
             pat_tag(fld.fold_path(pth), vec::map(fld.fold_pat, pats))
           }
           pat_rec(fields, etc) {
-            let fs = ~[];
+            let fs = [];
             for f: ast::field_pat in fields {
-                fs += ~[{ident: f.ident, pat: fld.fold_pat(f.pat)}];
+                fs += [{ident: f.ident, pat: fld.fold_pat(f.pat)}];
             }
             pat_rec(fs, etc)
           }
-          pat_tup(elts) {
-            pat_tup(vec::map(fld.fold_pat, elts))
-          }
+          pat_tup(elts) { pat_tup(vec::map(fld.fold_pat, elts)) }
           pat_box(inner) { pat_box(fld.fold_pat(inner)) }
         };
 }
@@ -346,9 +343,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
             expr_rec(vec::map(fold_field, fields),
                      option::map(fld.fold_expr, maybe_expr))
           }
-          expr_tup(elts) {
-            expr_tup(vec::map(fld.fold_expr, elts))
-          }
+          expr_tup(elts) { expr_tup(vec::map(fld.fold_expr, elts)) }
           expr_call(f, args) {
             expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args))
           }
@@ -393,9 +388,7 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
           expr_move(el, er) {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_copy(e) {
-            expr_copy(fld.fold_expr(e))
-          }
+          expr_copy(e) { expr_copy(fld.fold_expr(e)) }
           expr_assign(el, er) {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
           }
@@ -487,19 +480,20 @@ fn noop_fold_path(p: &path_, fld: ast_fold) -> path_ {
 fn noop_fold_local(l: &local_, fld: ast_fold) -> local_ {
     ret {ty: fld.fold_ty(l.ty),
          pat: fld.fold_pat(l.pat),
-         init: alt l.init {
-           option::none::<initializer>. { l.init }
-           option::some::<initializer>(init) {
-             option::some::<initializer>({op: init.op,
-                                        expr: fld.fold_expr(init.expr)})
-           }
-         },
+         init:
+             alt l.init {
+               option::none::<initializer>. { l.init }
+               option::some::<initializer>(init) {
+                 option::some::<initializer>({op: init.op,
+                                              expr: fld.fold_expr(init.expr)})
+               }
+             },
          id: l.id};
 }
 
 /* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
-fn noop_map_exprs(f: fn(&@expr) -> @expr , es: [@expr]) -> [@expr] {
+fn noop_map_exprs(f: fn(&@expr) -> @expr, es: [@expr]) -> [@expr] {
     ret vec::map(f, es);
 }
 
@@ -634,14 +628,16 @@ fn make_fold(afp: &ast_fold_precursor) -> ast_fold {
     }
     fn f_pat(afp: &ast_fold_precursor, f: ast_fold, x: &@pat) -> @pat {
         ret @{id: afp.new_id(x.id),
-              node: afp.fold_pat(x.node, f), span: afp.new_span(x.span)};
+              node: afp.fold_pat(x.node, f),
+              span: afp.new_span(x.span)};
     }
     fn f_decl(afp: &ast_fold_precursor, f: ast_fold, x: &@decl) -> @decl {
         ret @{node: afp.fold_decl(x.node, f), span: afp.new_span(x.span)};
     }
     fn f_expr(afp: &ast_fold_precursor, f: ast_fold, x: &@expr) -> @expr {
         ret @{id: afp.new_id(x.id),
-              node: afp.fold_expr(x.node, f), span: afp.new_span(x.span)};
+              node: afp.fold_expr(x.node, f),
+              span: afp.new_span(x.span)};
     }
     fn f_ty(afp: &ast_fold_precursor, f: ast_fold, x: &@ty) -> @ty {
         ret @{node: afp.fold_ty(x.node, f), span: afp.new_span(x.span)};

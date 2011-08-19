@@ -1,11 +1,8 @@
 import spam::{ham, eggs};
 
 mod spam {
-    fn ham() {}
-    fn eggs() {}
+    fn ham() { }
+    fn eggs() { }
 }
 
-fn main() {
-    ham();
-    eggs();
-}
+fn main() { ham(); eggs(); }

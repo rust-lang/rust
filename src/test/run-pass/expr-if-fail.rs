@@ -6,7 +6,7 @@ fn test_else_fail() {
 }
 
 fn test_elseif_fail() {
-    let x = if false { 0 } else if (false) { fail } else { 10 };
+    let x = if false { 0 } else if false { fail } else { 10 };
     assert (x == 10);
 }
 

@@ -15,14 +15,14 @@ import syntax::ext::base::*;
 
 
 fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
-               e: &expr_, fld: ast_fold,
-               orig: &fn(&expr_, ast_fold) -> expr_ ) -> expr_ {
+               e: &expr_, fld: ast_fold, orig: &fn(&expr_, ast_fold) -> expr_)
+   -> expr_ {
     ret alt e {
           expr_mac(mac) {
             alt mac.node {
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.node.idents) > 0u);
-                let extname = pth.node.idents.(0);
+                let extname = pth.node.idents[0];
                 alt exts.find(extname) {
                   none. {
                     cx.span_fatal(pth.span,
@@ -41,7 +41,7 @@ fn expand_expr(exts: &hashmap<str, syntax_extension>, cx: &ext_ctxt,
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
                     exts.insert(named_extension.ident, named_extension.ext);
-                    ast::expr_rec(~[], none)
+                    ast::expr_rec([], none)
                   }
                 }
               }
@@ -65,7 +65,6 @@ fn expand_crate(sess: &session::session, c: &@crate) -> @crate {
     ret res;
 
 }
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;

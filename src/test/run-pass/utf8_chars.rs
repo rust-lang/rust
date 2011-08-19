@@ -4,7 +4,7 @@ import std::vec;
 
 fn main() {
     // Chars of 1, 2, 3, and 4 bytes
-    let chs: [char] = ~['e', 'é', '€', 0x10000 as char];
+    let chs: [char] = ['e', 'é', '€', 0x10000 as char];
     let s: str = str::from_chars(chs);
 
     assert (str::byte_len(s) == 10u);
@@ -15,9 +15,9 @@ fn main() {
     assert (str::char_at(s, 1u) == 'é');
 
     assert (str::is_utf8(str::bytes(s)));
-    assert (!str::is_utf8(~[0x80_u8]));
-    assert (!str::is_utf8(~[0xc0_u8]));
-    assert (!str::is_utf8(~[0xc0_u8, 0x10_u8]));
+    assert (!str::is_utf8([0x80_u8]));
+    assert (!str::is_utf8([0xc0_u8]));
+    assert (!str::is_utf8([0xc0_u8, 0x10_u8]));
 
     let stack = "a×c€";
     assert (str::pop_char(stack) == '€');

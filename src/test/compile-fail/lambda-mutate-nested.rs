@@ -3,10 +3,7 @@
 // mutate upvars from a lambda.
 fn main() {
     let i = 0;
-    let ctr = lambda() -> int {
-        block() { i = i + 1; }();
-        ret i;
-    };
+    let ctr = lambda () -> int { block () { i = i + 1; }(); ret i; };
     log_err ctr();
     log_err ctr();
     log_err ctr();

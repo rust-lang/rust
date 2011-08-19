@@ -10,26 +10,26 @@ import std::vec;
 const const_refcount: uint = 0x7bad_face_u;
 
 fn fast_growth() {
-    let v: [int] = ~[1, 2, 3, 4, 5];
-    v += ~[6, 7, 8, 9, 0];
-    log v.(9);
-    assert (v.(0) == 1);
-    assert (v.(7) == 8);
-    assert (v.(9) == 0);
+    let v: [int] = [1, 2, 3, 4, 5];
+    v += [6, 7, 8, 9, 0];
+    log v[9];
+    assert (v[0] == 1);
+    assert (v[7] == 8);
+    assert (v[9] == 0);
 }
 
 fn slow_growth() {
-    let v: [int] = ~[];
+    let v: [int] = [];
     let u: [int] = v;
-    v += ~[17];
-    log v.(0);
-    assert (v.(0) == 17);
+    v += [17];
+    log v[0];
+    assert (v[0] == 17);
 }
 
 fn slow_growth2_helper(s: str) { // ref up: s
 
     obj acc(mutable v: [str]) {
-        fn add(s: &str) { v += ~[s]; }
+        fn add(s: &str) { v += [s]; }
     }
     let ss: str = s; // ref up: s
 
@@ -46,7 +46,7 @@ fn slow_growth2_helper(s: str) { // ref up: s
          * mumble, the existing str in the originally- shared vec.
          */
 
-        let v: [str] = ~[mumble]; // ref up: mumble
+        let v: [str] = [mumble]; // ref up: mumble
 
         let a: acc = acc(v);
 
@@ -56,9 +56,9 @@ fn slow_growth2_helper(s: str) { // ref up: s
         log str::refcount(mumble);
         assert (str::refcount(s) == const_refcount);
         assert (str::refcount(mumble) == const_refcount);
-        log v.(0);
+        log v[0];
         log vec::len::<str>(v);
-        assert (str::eq(v.(0), mumble));
+        assert (str::eq(v[0], mumble));
         assert (vec::len::<str>(v) == 1u);
     } // ref down: mumble, s,
 

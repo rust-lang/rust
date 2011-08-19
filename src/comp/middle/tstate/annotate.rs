@@ -23,21 +23,21 @@ import aux::crate_ctxt;
 import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
-fn collect_ids_expr(e: &@expr, rs: @mutable [node_id]) { *rs += ~[e.id]; }
+fn collect_ids_expr(e: &@expr, rs: @mutable [node_id]) { *rs += [e.id]; }
 
-fn collect_ids_block(b: &blk, rs: @mutable [node_id]) { *rs += ~[b.node.id]; }
+fn collect_ids_block(b: &blk, rs: @mutable [node_id]) { *rs += [b.node.id]; }
 
 fn collect_ids_stmt(s: &@stmt, rs: @mutable [node_id]) {
     alt s.node {
       stmt_decl(_, id) {
         log "node_id " + int::str(id);
-        log_stmt(*s);
-        *rs += ~[id];
+        log_stmt(*s);;
+        *rs += [id];
       }
       stmt_expr(_, id) {
         log "node_id " + int::str(id);
-        log_stmt(*s);
-        *rs += ~[id];
+        log_stmt(*s);;
+        *rs += [id];
       }
       _ { }
     }
@@ -67,7 +67,7 @@ fn init_vecs(ccx: &crate_ctxt, node_ids: &[node_id], len: uint) {
 
 fn visit_fn(ccx: &crate_ctxt, num_constraints: uint, f: &_fn,
             tps: &[ty_param], sp: &span, i: &fn_ident, id: node_id) {
-    let node_ids: @mutable [node_id] = @mutable ~[];
+    let node_ids: @mutable [node_id] = @mutable [];
     node_ids_in_fn(f, tps, sp, i, id, node_ids);
     let node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);

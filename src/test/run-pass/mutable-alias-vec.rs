@@ -3,10 +3,10 @@
 // -*- rust -*-
 use std;
 
-fn grow(v: &mutable [int]) { v += ~[1]; }
+fn grow(v: &mutable [int]) { v += [1]; }
 
 fn main() {
-    let v: [int] = ~[];
+    let v: [int] = [];
     grow(v);
     grow(v);
     grow(v);

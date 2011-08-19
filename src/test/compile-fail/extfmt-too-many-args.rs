@@ -2,4 +2,4 @@
 
 use std;
 
-fn main() { let s = #fmt("%s", "test", "test"); }
+fn main() { let s = #fmt["%s", "test", "test"]; }

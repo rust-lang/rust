@@ -11,30 +11,30 @@ fn check_sort(v1: &[mutable int], v2: &[mutable int]) {
     let f = ltequal;
     std::sort::quick_sort::<int>(f, v1);
     let i = 0u;
-    while i < len { log v2.(i); assert (v2.(i) == v1.(i)); i += 1u; }
+    while i < len { log v2[i]; assert (v2[i] == v1[i]); i += 1u; }
 }
 
 #[test]
 fn test() {
     {
-        let v1 = ~[mutable 3, 7, 4, 5, 2, 9, 5, 8];
-        let v2 = ~[mutable 2, 3, 4, 5, 5, 7, 8, 9];
+        let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
+        let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
         check_sort(v1, v2);
     }
     {
-        let v1 = ~[mutable 1, 1, 1];
-        let v2 = ~[mutable 1, 1, 1];
+        let v1 = [mutable 1, 1, 1];
+        let v2 = [mutable 1, 1, 1];
         check_sort(v1, v2);
     }
     {
-        let v1: [mutable int] = ~[mutable ];
-        let v2: [mutable int] = ~[mutable ];
+        let v1: [mutable int] = [mutable];
+        let v2: [mutable int] = [mutable];
         check_sort(v1, v2);
     }
-    { let v1 = ~[mutable 9]; let v2 = ~[mutable 9]; check_sort(v1, v2); }
+    { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
     {
-        let v1 = ~[mutable 9, 3, 3, 3, 9];
-        let v2 = ~[mutable 3, 3, 3, 9, 9];
+        let v1 = [mutable 9, 3, 3, 3, 9];
+        let v2 = [mutable 3, 3, 3, 9, 9];
         check_sort(v1, v2);
     }
 }
@@ -42,18 +42,15 @@ fn test() {
 // Regression test for #705
 #[test]
 fn test_simple() {
-    let names = ~[mutable 2, 1, 3];
+    let names = [mutable 2, 1, 3];
 
-    let expected = ~[1, 2, 3];
+    let expected = [1, 2, 3];
 
     fn lteq(a: &int, b: &int) -> bool { int::le(a, b) }
     sort::quick_sort(lteq, names);
 
     let pairs = vec::zip(expected, vec::from_mut(names));
-    for (a, b) in pairs {
-        log #fmt("%d %d", a, b);
-        assert (a == b);
-    }
+    for (a, b) in pairs { log #fmt["%d %d", a, b]; assert (a == b); }
 }
 
 // Local Variables:

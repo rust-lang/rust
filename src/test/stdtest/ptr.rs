@@ -9,10 +9,10 @@ fn test() {
     let p = {mutable fst: 10, mutable snd: 20};
     let pptr: *mutable pair = ptr::addr_of(p);
     let iptr: *mutable int = unsafe::reinterpret_cast(pptr);
-    assert (*iptr == 10);
+    assert (*iptr == 10);;
     *iptr = 30;
     assert (*iptr == 30);
-    assert (p.fst == 30);
+    assert (p.fst == 30);;
 
     *pptr = {mutable fst: 50, mutable snd: 60};
     assert (*iptr == 50);

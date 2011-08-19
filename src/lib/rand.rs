@@ -11,17 +11,16 @@ native "rust" mod rustrt {
     fn rand_free(c: rctx);
 }
 
-type rng = obj { fn next() -> u32; };
+type rng =
+    obj {
+        fn next() -> u32;
+    };
 
-resource rand_res(c: rustrt::rctx) {
-    rustrt::rand_free(c);
-}
+resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
 
 fn mk_rng() -> rng {
     obj rt_rng(c: @rand_res) {
-        fn next() -> u32 {
-            ret rustrt::rand_next(**c);
-        }
+        fn next() -> u32 { ret rustrt::rand_next(**c); }
     }
     ret rt_rng(@rand_res(rustrt::rand_new()));
 }

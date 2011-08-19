@@ -38,59 +38,62 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
 fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
-                    walker: &fn(&visit::vt<()>) ,
+                    walker: &fn(&visit::vt<()>),
                     initial_decls: [ast::node_id]) -> freevar_info {
     let decls = new_int_hash();
     for decl: ast::node_id in initial_decls { set_add(decls, decl); }
-    let refs = @mutable ~[];
+    let refs = @mutable [];
 
-    let walk_fn = lambda(f: &ast::_fn, _tps: &[ast::ty_param], _sp: &span,
-                         _i: &ast::fn_ident, _nid: ast::node_id) {
-        for a: ast::arg in f.decl.inputs { set_add(decls, a.id); }
-    };
-    let walk_expr = lambda(expr: &@ast::expr) {
-        alt expr.node {
-          ast::expr_path(path) {
-            if !def_map.contains_key(expr.id) {
-                sess.span_fatal(expr.span,
-                                "internal error in collect_freevars");
+    let walk_fn =
+        lambda (f: &ast::_fn, _tps: &[ast::ty_param], _sp: &span,
+                _i: &ast::fn_ident, _nid: ast::node_id) {
+            for a: ast::arg in f.decl.inputs { set_add(decls, a.id); }
+        };
+    let walk_expr =
+        lambda (expr: &@ast::expr) {
+            alt expr.node {
+              ast::expr_path(path) {
+                if !def_map.contains_key(expr.id) {
+                    sess.span_fatal(expr.span,
+                                    "internal error in collect_freevars");
+                }
+                alt def_map.get(expr.id) {
+                  ast::def_arg(did) { *refs += [expr.id]; }
+                  ast::def_local(did) { *refs += [expr.id]; }
+                  ast::def_binding(did) { *refs += [expr.id]; }
+                  _ {/* no-op */ }
+                }
+              }
+              _ { }
             }
-            alt def_map.get(expr.id) {
-              ast::def_arg(did) { *refs += ~[expr.id]; }
-              ast::def_local(did) { *refs += ~[expr.id]; }
-              ast::def_binding(did) { *refs += ~[expr.id]; }
-              _ {/* no-op */ }
+        };
+    let walk_local =
+        lambda (local: &@ast::local) {
+            for each b: @ast::pat in ast::pat_bindings(local.node.pat) {
+                set_add(decls, b.id);
             }
-          }
-          _ { }
-        }
-    };
-    let walk_local = lambda(local: &@ast::local) {
-        for each b: @ast::pat in ast::pat_bindings(local.node.pat) {
-            set_add(decls, b.id);
-        }
-    };
-    let walk_pat = lambda(p: &@ast::pat) {
-        alt p.node { ast::pat_bind(_) { set_add(decls, p.id); } _ { } }
-    };
+        };
+    let walk_pat =
+        lambda (p: &@ast::pat) {
+            alt p.node { ast::pat_bind(_) { set_add(decls, p.id); } _ { } }
+        };
 
-    walker(visit::mk_simple_visitor
-           (@{visit_local: walk_local,
-              visit_pat: walk_pat,
-              visit_expr: walk_expr,
-              visit_fn: walk_fn
-              with *visit::default_simple_visitor()}));
-
+    walker(visit::mk_simple_visitor(@{visit_local: walk_local,
+                                      visit_pat: walk_pat,
+                                      visit_expr: walk_expr,
+                                      visit_fn: walk_fn
+                                         with
+                                         *visit::default_simple_visitor()}));
     // Calculate (refs - decls). This is the set of captured upvars.
     // We build a vec of the node ids of the uses and a set of the
     // node ids of the definitions.
-    let canonical_refs = ~[];
+    let canonical_refs = [];
     let defs = new_int_hash();
     for ref_id_: ast::node_id in *refs {
         let ref_id = ref_id_;
         let def_id = ast::def_id_of_def(def_map.get(ref_id)).node;
         if !decls.contains_key(def_id) && !defs.contains_key(def_id) {
-            canonical_refs += ~[ref_id];
+            canonical_refs += [ref_id];
             set_add(defs, def_id);
         }
     }
@@ -106,32 +109,34 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
                      crate: &@ast::crate) -> freevar_map {
     let freevars = new_int_hash();
 
-    let walk_fn = lambda(f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
-                         i: &ast::fn_ident, nid: ast::node_id) {
-        let start_walk = lambda(v: &visit::vt<()>) {
-            v.visit_fn(f, tps, sp, i, nid, (), v);
+    let walk_fn =
+        lambda (f: &ast::_fn, tps: &[ast::ty_param], sp: &span,
+                i: &ast::fn_ident, nid: ast::node_id) {
+            let start_walk =
+                lambda (v: &visit::vt<()>) {
+                    v.visit_fn(f, tps, sp, i, nid, (), v);
+                };
+            let vars = collect_freevars(def_map, sess, start_walk, []);
+            freevars.insert(nid, vars);
         };
-        let vars = collect_freevars(def_map, sess, start_walk, ~[]);
-        freevars.insert(nid, vars);
-    };
-    let walk_expr = lambda(expr: &@ast::expr) {
-        alt expr.node {
-          ast::expr_for_each(local, _, body) {
-            let start_walk = lambda(v: &visit::vt<()>) {
-                v.visit_block(body, (), v);
-            };
-            let bound = ast::pat_binding_ids(local.node.pat);
-            let vars =
-                collect_freevars(def_map, sess, start_walk, bound);
-            freevars.insert(body.node.id, vars);
-          }
-          _ { }
-        }
-    };
+    let walk_expr =
+        lambda (expr: &@ast::expr) {
+            alt expr.node {
+              ast::expr_for_each(local, _, body) {
+                let start_walk =
+                    lambda (v: &visit::vt<()>) {
+                        v.visit_block(body, (), v);
+                    };
+                let bound = ast::pat_binding_ids(local.node.pat);
+                let vars = collect_freevars(def_map, sess, start_walk, bound);
+                freevars.insert(body.node.id, vars);
+              }
+              _ { }
+            }
+        };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn: walk_fn,
-                                   visit_expr: walk_expr
+        visit::mk_simple_visitor(@{visit_fn: walk_fn, visit_expr: walk_expr
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 

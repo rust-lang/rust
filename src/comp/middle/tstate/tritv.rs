@@ -54,9 +54,10 @@ fn trit_minus(a: trit, b: trit) -> trit {
         alt b {
           ttrue. { dont_care }
           tfalse. { ttrue }
-           /* internally contradictory, but
-              I guess it'll get flagged? */
-           dont_care. {
+
+          /* internally contradictory, but
+             I guess it'll get flagged? */
+          dont_care. {
             ttrue
           }
         }
@@ -64,7 +65,8 @@ fn trit_minus(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { tfalse }
-           /* see above comment */
+
+          /* see above comment */
           _ {
             tfalse
           }
@@ -80,7 +82,8 @@ fn trit_or(a: trit, b: trit) -> trit {
       tfalse. {
         alt b {
           ttrue. { dont_care }
-           /* FIXME: ?????? */
+
+          /* FIXME: ?????? */
           _ {
             tfalse
           }
@@ -97,14 +100,17 @@ fn trit_or(a: trit, b: trit) -> trit {
 fn trit_and(a: trit, b: trit) -> trit {
     alt a {
       dont_care. { b }
-       // also seems wrong for case b = ttrue
+
+      // also seems wrong for case b = ttrue
       ttrue. {
         alt b {
           dont_care. { ttrue }
-           // ??? Seems wrong
+
+          // ??? Seems wrong
           ttrue. {
             ttrue
           }
+
 
           // false wins, since if something is uninit
           // on one path, we care
@@ -116,6 +122,7 @@ fn trit_and(a: trit, b: trit) -> trit {
           }
         }
       }
+
 
       // Rationale: if it's uninit on one path,
       // we can consider it as uninit on all paths
@@ -180,7 +187,7 @@ fn tritv_get(v: &t, i: uint) -> trit {
     let b1 = bitv::get(v.uncertain, i);
     let b2 = bitv::get(v.val, i);
     assert (!(b1 && b2));
-    if b1 { dont_care } else if (b2) { ttrue } else { tfalse }
+    if b1 { dont_care } else if b2 { ttrue } else { tfalse }
 }
 
 fn tritv_set(i: uint, v: &t, t: trit) -> bool {
@@ -241,14 +248,14 @@ fn tritv_doesntcare(v: &t) -> bool {
 
 fn to_vec(v: &t) -> [uint] {
     let i: uint = 0u;
-    let rslt: [uint] = ~[];
+    let rslt: [uint] = [];
     while i < v.nbits {
         rslt +=
-            ~[alt tritv_get(v, i) {
-                dont_care. { 2u }
-                ttrue. { 1u }
-                tfalse. { 0u }
-              }];
+            [alt tritv_get(v, i) {
+               dont_care. { 2u }
+               ttrue. { 1u }
+               tfalse. { 0u }
+             }];
         i += 1u;
     }
     ret rslt;

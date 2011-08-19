@@ -3,5 +3,6 @@
 tag opt<T> { none; }
 
 fn main() {
-    let x = none::<int>; alt x { none::<int>. { log "hello world"; } }
+    let x = none::<int>;
+    alt x { none::<int>. { log "hello world"; } }
 }

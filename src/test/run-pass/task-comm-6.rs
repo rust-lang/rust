@@ -15,10 +15,10 @@ fn test00() {
     let number_of_messages: int = 1000;
     let i: int = 0;
     while i < number_of_messages {
-        send(c0, i+0);
-        send(c1, i+0);
-        send(c2, i+0);
-        send(c3, i+0);
+        send(c0, i + 0);
+        send(c1, i + 0);
+        send(c2, i + 0);
+        send(c3, i + 0);
         i += 1;
     }
     i = 0;

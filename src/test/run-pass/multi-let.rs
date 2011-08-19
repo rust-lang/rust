@@ -1,4 +1,1 @@
-fn main() {
-    let x = 10, y = x;
-    assert (y == 10);
-}
+fn main() { let x = 10, y = x; assert (y == 10); }

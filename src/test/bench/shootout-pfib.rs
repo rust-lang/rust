@@ -30,7 +30,7 @@ fn fib(n: int) -> int {
     fn pfib(c: _chan<int>, n: int) {
         if n == 0 {
             send(c, 0);
-        } else if (n <= 2) {
+        } else if n <= 2 {
             send(c, 1);
         } else {
             let p = mk_port::<int>();
@@ -50,7 +50,7 @@ fn fib(n: int) -> int {
 type config = {stress: bool};
 
 fn parse_opts(argv: [str]) -> config {
-    let opts = ~[getopts::optflag("stress")];
+    let opts = [getopts::optflag("stress")];
 
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
@@ -67,7 +67,7 @@ fn stress_task(id: int) {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
-        log_err #fmt("%d: Completed %d iterations", id, i);
+        log_err #fmt["%d: Completed %d iterations", id, i];
     }
 }
 
@@ -91,7 +91,7 @@ fn main(argv: [str]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(str::bytes(argv.(1)), 10u) as int;
+            let max = uint::parse_buf(str::bytes(argv[1]), 10u) as int;
 
             let num_trials = 10;
 
@@ -106,8 +106,8 @@ fn main(argv: [str]) {
 
                     let elapsed = stop - start;
 
-                    out.write_line(#fmt("%d\t%d\t%s", n, fibn,
-                                        u64::str(elapsed)));
+                    out.write_line(#fmt["%d\t%d\t%s", n, fibn,
+                                        u64::str(elapsed)]);
                 }
             }
         }

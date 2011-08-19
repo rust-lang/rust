@@ -8,7 +8,7 @@ fn test1() {
     let s: str = "hello";
     s += "world";
     log s;
-    assert (s.(9) == 'd' as u8);
+    assert (s[9] == 'd' as u8);
 }
 
 fn test2() {

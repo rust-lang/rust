@@ -2,7 +2,7 @@
 
 // error-pattern: Unsatisfied precondition constraint (for example, lt(a, b)
 
-fn f(a: int, b: int) : lt(a,b) { }
+fn f(a: int, b: int) : lt(a, b) { }
 
 pred lt(a: int, b: int) -> bool { ret a < b; }
 

@@ -34,7 +34,7 @@ fn main() {
         for ab: u8 in a {
             log i;
             log ab;
-            let bb: u8 = b.(i);
+            let bb: u8 = b[i];
             log bb;
             assert (ab == bb);
             i += 1;

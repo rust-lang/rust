@@ -137,10 +137,9 @@ mod write {
                                                                    False);
 
             if threshold != 0u {
-                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(MPMB,
-                                                                   threshold);
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(
+                    MPMB, threshold);
             }
-
             llvm::LLVMPassManagerBuilderPopulateModulePassManager(MPMB,
                                                                   pm.llpm);
 
@@ -293,21 +292,21 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
        provided_metas {
         let name: option::t<str> = none;
         let vers: option::t<str> = none;
-        let cmh_items: [@ast::meta_item] = ~[];
+        let cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for meta: @ast::meta_item in linkage_metas {
             if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
-                  none. { cmh_items += ~[meta]; }
+                  none. { cmh_items += [meta]; }
                 }
-            } else if (attr::get_meta_item_name(meta) == "vers") {
+            } else if attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
-                  none. { cmh_items += ~[meta]; }
+                  none. { cmh_items += [meta]; }
                 }
-            } else { cmh_items += ~[meta]; }
+            } else { cmh_items += [meta]; }
         }
         ret {name: name, vers: vers, cmh_items: cmh_items};
     }
@@ -316,7 +315,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
     fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
                               metas: &provided_metas) -> str {
         fn len_and_str(s: &str) -> str {
-            ret #fmt("%u_%s", str::byte_len(s), s);
+            ret #fmt["%u_%s", str::byte_len(s), s];
         }
 
         fn len_and_str_lit(l: &ast::lit) -> str {
@@ -345,8 +344,8 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
 
     fn warn_missing(sess: &session::session, name: str, default: str) {
         if !sess.get_opts().library { ret; }
-        sess.warn(#fmt("missing crate link meta '%s', using '%s' as default",
-                       name, default));
+        sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
+                       name, default]);
     }
 
     fn crate_meta_name(sess: &session::session, _crate: &ast::crate,
@@ -356,8 +355,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
               none. {
                 let name =
                     {
-                        let os =
-                            str::split(fs::basename(output), '.' as u8);
+                        let os = str::split(fs::basename(output), '.' as u8);
                         assert (vec::len(os) >= 2u);
                         vec::pop(os);
                         str::connect(os, ".")
@@ -429,7 +427,7 @@ fn mangle(ss: &[str]) -> str {
 
     let n = "_ZN"; // Begin name-sequence.
 
-    for s: str in ss { n += #fmt("%u%s", str::byte_len(s), s); }
+    for s: str in ss { n += #fmt["%u%s", str::byte_len(s), s]; }
     n += "E"; // End name-sequence.
 
     ret n;
@@ -438,7 +436,7 @@ fn mangle(ss: &[str]) -> str {
 fn exported_name(path: &[str], hash: &str, _vers: &str) -> str {
     // FIXME: versioning isn't working yet
 
-    ret mangle(path + ~[hash]); //  + "@" + vers;
+    ret mangle(path + [hash]); //  + "@" + vers;
 
 }
 
@@ -451,12 +449,12 @@ fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: &ty::t, name: &str)
    -> str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle(~[name, s, hash]);
+    ret mangle([name, s, hash]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: &@crate_ctxt, path: &[str],
                                         flav: &str) -> str {
-    ret mangle(path + ~[ccx.names.next(flav)]);
+    ret mangle(path + [ccx.names.next(flav)]);
 }
 
 fn mangle_internal_name_by_path(_ccx: &@crate_ctxt, path: &[str]) -> str {

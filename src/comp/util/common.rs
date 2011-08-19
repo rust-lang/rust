@@ -50,8 +50,8 @@ fn new_def_hash<@V>() -> std::map::hashmap<ast::def_id, V> {
 fn field_expr(f: &ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: &[ast::field]) -> [@ast::expr] {
-    let es = ~[];
-    for f: ast::field in fields { es += ~[f.node.expr]; }
+    let es = [];
+    for f: ast::field in fields { es += [f.node.expr]; }
     ret es;
 }
 
@@ -160,8 +160,7 @@ fn is_main_name(path: &[str]) -> bool {
 // FIXME mode this to std::float when editing the stdlib no longer
 // requires a snapshot
 fn float_to_str(num: float, digits: uint) -> str {
-    let accum = if num < 0.0 { num = -num; "-" }
-                else { "" };
+    let accum = if num < 0.0 { num = -num; "-" } else { "" };
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);

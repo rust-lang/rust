@@ -2,7 +2,7 @@ use std;
 import std::comm;
 import std::task;
 
-fn start(c : comm::chan<int>, n: int) {
+fn start(c: comm::chan<int>, n: int) {
     let i: int = n;
 
     while i > 0 { comm::send(c, 0); i = i - 1; }

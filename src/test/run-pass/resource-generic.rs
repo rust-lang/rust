@@ -1,4 +1,4 @@
-resource finish<T>(arg: {val: T, fin: fn(&T) }) { arg.fin(arg.val); }
+resource finish<T>(arg: {val: T, fin: fn(&T)}) { arg.fin(arg.val); }
 
 fn main() {
     let box = @mutable 10;

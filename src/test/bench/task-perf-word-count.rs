@@ -42,14 +42,7 @@ fn reduce(word: str, get: map_reduce::getter) {
     let count = 0;
 
 
-    while true {
-        alt get() {
-          some(_) {
-            count += 1;
-          }
-          none. { break }
-        }
-    }
+    while true { alt get() { some(_) { count += 1; } none. { break } } }
 }
 
 mod map_reduce {
@@ -59,13 +52,13 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn(str, int) ;
+    type putter = fn(str, int);
 
-    type mapper = fn(str, putter) ;
+    type mapper = fn(str, putter);
 
-    type getter = fn() -> option<int> ;
+    type getter = fn() -> option<int>;
 
-    type reducer = fn(str, getter) ;
+    type reducer = fn(str, getter);
 
     tag ctrl_proto {
         find_reducer([u8], _chan<_chan<reduce_proto>>);
@@ -75,9 +68,9 @@ mod map_reduce {
     tag reduce_proto { emit_val(int); done; ref; release; }
 
     fn start_mappers(ctrl: _chan<ctrl_proto>, inputs: &[str]) -> [task_id] {
-        let tasks = ~[];
+        let tasks = [];
         for i: str in inputs {
-            tasks += ~[task::spawn(bind map_task(ctrl, i))];
+            tasks += [task::spawn(bind map_task(ctrl, i))];
         }
         ret tasks;
     }
@@ -108,7 +101,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        for each kv: @{key: str, val: _chan<reduce_proto>}  in
+        for each kv: @{key: str, val: _chan<reduce_proto>} in
                  intermediates.items() {
             send(kv.val, release);
         }
@@ -178,8 +171,7 @@ mod map_reduce {
                   none. {
                     // log_err "creating new reducer for " + k;
                     let p = mk_port();
-                    tasks +=
-                        ~[task::spawn(bind reduce_task(k, p.mk_chan()))];
+                    tasks += [task::spawn(bind reduce_task(k, p.mk_chan()))];
                     c = p.recv();
                     reducers.insert(k, c);
                   }
@@ -202,7 +194,7 @@ fn main(argv: [str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 
-        out.write_line(#fmt("Usage: %s <filename> ...", argv.(0)));
+        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
 
         // TODO: run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.

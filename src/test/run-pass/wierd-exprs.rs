@@ -1,11 +1,9 @@
 // Just a grab bug of stuff that you wouldn't want to actualy write
 
-fn strange() -> bool {
-    let _x = ret true;
-}
+fn strange() -> bool { let _x = ret true; }
 
 fn funny() {
-    fn f(_x: ()) {}
+    fn f(_x: ()) { }
     f(ret);
 }
 
@@ -15,21 +13,16 @@ fn odd() {
 }
 
 fn what() {
-    fn the(x: @mutable bool){
-        ret while !*x { *x = true };
-    }
+    fn the(x: @mutable bool) { ret while !*x { *x = true }; }
     let i = @mutable false;
     let dont = bind the(i);
     dont();
-    assert *i;
+    assert (*i);
 }
 
 fn zombiejesus() {
-    do { while (ret) { if (ret) {
-        alt (ret) { _ {
-          ret ? ret : ret
-        }}
-    }}} while ret;
+    do  { while (ret) { if (ret) { alt (ret) { _ { ret ? ret : ret } } } } }
+        while ret
 }
 
 fn notsure() {
@@ -48,27 +41,18 @@ fn hammertime() -> int {
 
 fn canttouchthis() -> uint {
     pred p() -> bool { true }
-    let _a = (assert true) == (check p());
-    let _c = (check p()) == ();
+    let _a = (assert (true)) == (check (p()));
+    let _c = (check (p())) == ();
     let _b = (log 0) == (ret 0u);
 }
 
 fn angrydome() {
-    while true {
-        if (break) { }
-    }
+    while true { if break { } }
     let i = 0;
-    do {
-        i += 1;
-        if i == 1 {
-            alt cont { _ { } }
-        }
-    } while false;
+    do  { i += 1; if i == 1 { alt cont { _ { } } } } while false
 }
 
-fn evil_lincoln() {
-    let evil <- log "lincoln";
-}
+fn evil_lincoln() { let evil <- log "lincoln"; }
 
 fn main() {
     strange();

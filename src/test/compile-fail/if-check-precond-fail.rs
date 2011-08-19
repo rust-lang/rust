@@ -2,7 +2,7 @@
 pred even(x: uint) -> bool {
     if x < 2u {
         ret false;
-    } else if (x == 2u) { ret true; } else { ret even(x - 2u); }
+    } else if x == 2u { ret true; } else { ret even(x - 2u); }
 }
 
 fn print_even(x: uint) : even(x) { log x; }

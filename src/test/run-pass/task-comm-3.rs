@@ -14,7 +14,7 @@ fn test00_start(ch: _chan<int>, message: int, count: int) {
     let i: int = 0;
     while i < count {
         log "Sending Message";
-        send(ch, message+0);
+        send(ch, message + 0);
         i = i + 1;
     }
     log "Ending test00_start";
@@ -34,8 +34,7 @@ fn test00() {
     // Create and spawn tasks...
     let tasks = [];
     while i < number_of_tasks {
-        tasks +=
-            [task::_spawn(bind test00_start(ch, i, number_of_messages))];
+        tasks += [task::_spawn(bind test00_start(ch, i, number_of_messages))];
         i = i + 1;
     }
 

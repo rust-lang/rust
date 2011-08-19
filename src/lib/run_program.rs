@@ -13,9 +13,9 @@ native "rust" mod rustrt {
 }
 
 fn arg_vec(prog: str, args: &[str]) -> [sbuf] {
-    let argptrs = ~[str::buf(prog)];
-    for arg: str in args { argptrs += ~[str::buf(arg)]; }
-    argptrs += ~[0 as sbuf];
+    let argptrs = [str::buf(prog)];
+    for arg: str in args { argptrs += [str::buf(arg)]; }
+    argptrs += [0 as sbuf];
     ret argptrs;
 }
 
@@ -24,8 +24,8 @@ fn spawn_process(prog: str, args: &[str], in_fd: int, out_fd: int,
     // Note: we have to hold on to this vector reference while we hold a
     // pointer to its buffer
     let argv = arg_vec(prog, args);
-    let pid = rustrt::rust_run_program(
-        vec::to_ptr(argv), in_fd, out_fd, err_fd);
+    let pid =
+        rustrt::rust_run_program(vec::to_ptr(argv), in_fd, out_fd, err_fd);
     ret pid;
 }
 
@@ -44,16 +44,15 @@ type program =
         fn destroy();
     };
 
-resource program_res(p: program) {
-    p.destroy();
-}
+resource program_res(p: program) { p.destroy(); }
 
 fn start_program(prog: str, args: &[str]) -> @program_res {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, pipe_input.in, pipe_output.out,
-                            pipe_err.out);
+    let pid =
+        spawn_process(prog, args, pipe_input.in, pipe_output.out,
+                      pipe_err.out);
 
     if pid == -1 { fail; }
     os::libc::close(pipe_input.in);
@@ -66,16 +65,13 @@ fn start_program(prog: str, args: &[str]) -> @program_res {
                     mutable finished: bool) {
         fn get_id() -> int { ret pid; }
         fn input() -> io::writer {
-            ret io::new_writer(
-                io::fd_buf_writer(in_fd, option::none));
+            ret io::new_writer(io::fd_buf_writer(in_fd, option::none));
         }
         fn output() -> io::reader {
-            ret io::new_reader(
-                io::FILE_buf_reader(out_file, option::none));
+            ret io::new_reader(io::FILE_buf_reader(out_file, option::none));
         }
         fn err() -> io::reader {
-            ret io::new_reader(
-                io::FILE_buf_reader(err_file, option::none));
+            ret io::new_reader(io::FILE_buf_reader(err_file, option::none));
         }
         fn close_input() {
             let invalid_fd = -1;
@@ -96,11 +92,9 @@ fn start_program(prog: str, args: &[str]) -> @program_res {
             os::libc::fclose(err_file);
         }
     }
-    ret @program_res(new_program(pid,
-                                 pipe_input.out,
+    ret @program_res(new_program(pid, pipe_input.out,
                                  os::fd_FILE(pipe_output.in),
-                                 os::fd_FILE(pipe_err.in),
-                                 false));
+                                 os::fd_FILE(pipe_err.in), false));
 }
 
 fn read_all(rd: &io::reader) -> str {
@@ -112,8 +106,8 @@ fn read_all(rd: &io::reader) -> str {
     ret buf;
 }
 
-fn program_output(prog: str, args: [str])
-    -> {status: int, out: str, err: str} {
+fn program_output(prog: str, args: [str]) ->
+   {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
     pr.close_input();
     ret {status: pr.finish(),

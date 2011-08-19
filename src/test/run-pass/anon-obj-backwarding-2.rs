@@ -9,15 +9,17 @@ fn main() {
 
     let my_a = a();
 
-    let my_b = obj () {
-        fn baz() -> int { ret self.foo(); }
-        with my_a
-    };
+    let my_b =
+        obj () {
+            fn baz() -> int { ret self.foo(); }
+            with
+            my_a
+        };
 
-    assert my_a.foo() == 2;
-    assert my_a.bar() == 2;
-    assert my_b.foo() == 2;
-    assert my_b.baz() == 2;
-    assert my_b.bar() == 2;
+    assert (my_a.foo() == 2);
+    assert (my_a.bar() == 2);
+    assert (my_b.foo() == 2);
+    assert (my_b.baz() == 2);
+    assert (my_b.bar() == 2);
 
 }

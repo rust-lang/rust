@@ -18,23 +18,23 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 type doc = {data: @[u8], start: uint, end: uint};
 
 fn vint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
-    let a = data.(start);
+    let a = data[start];
     if a & 0x80u8 != 0u8 { ret {val: a & 0x7fu8 as uint, next: start + 1u}; }
     if a & 0x40u8 != 0u8 {
-        ret {val: (a & 0x3fu8 as uint) << 8u | (data.(start + 1u) as uint),
+        ret {val: (a & 0x3fu8 as uint) << 8u | (data[start + 1u] as uint),
              next: start + 2u};
-    } else if (a & 0x20u8 != 0u8) {
+    } else if a & 0x20u8 != 0u8 {
         ret {val:
                  (a & 0x1fu8 as uint) << 16u |
-                     (data.(start + 1u) as uint) << 8u |
-                     (data.(start + 2u) as uint),
+                     (data[start + 1u] as uint) << 8u |
+                     (data[start + 2u] as uint),
              next: start + 3u};
-    } else if (a & 0x10u8 != 0u8) {
+    } else if a & 0x10u8 != 0u8 {
         ret {val:
                  (a & 0x0fu8 as uint) << 24u |
-                     (data.(start + 1u) as uint) << 16u |
-                     (data.(start + 2u) as uint) << 8u |
-                     (data.(start + 3u) as uint),
+                     (data[start + 1u] as uint) << 16u |
+                     (data[start + 2u] as uint) << 8u |
+                     (data[start + 3u] as uint),
              next: start + 4u};
     } else { log_err "vint too big"; fail; }
 }
@@ -105,7 +105,7 @@ fn be_uint_from_bytes(data: &@[u8], start: uint, size: uint) -> uint {
     let pos = start;
     while sz > 0u {
         sz -= 1u;
-        val += (data.(pos) as uint) << sz * 8u;
+        val += (data[pos] as uint) << sz * 8u;
         pos += 1u;
     }
     ret val;
@@ -122,17 +122,17 @@ type writer = {writer: io::buf_writer, mutable size_positions: [uint]};
 fn write_sized_vint(w: &io::buf_writer, n: uint, size: uint) {
     let buf: [u8];
     alt size {
-      1u { buf = ~[0x80u8 | (n as u8)]; }
-      2u { buf = ~[0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
+      1u { buf = [0x80u8 | (n as u8)]; }
+      2u { buf = [0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
       3u {
         buf =
-            ~[0x20u8 | (n >> 16u as u8), n >> 8u & 0xffu as u8,
-              n & 0xffu as u8];
+            [0x20u8 | (n >> 16u as u8), n >> 8u & 0xffu as u8,
+             n & 0xffu as u8];
       }
       4u {
         buf =
-            ~[0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
-              n >> 8u & 0xffu as u8, n & 0xffu as u8];
+            [0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
+             n >> 8u & 0xffu as u8, n & 0xffu as u8];
       }
       _ { log_err "vint to write too big"; fail; }
     }
@@ -149,7 +149,7 @@ fn write_vint(w: &io::buf_writer, n: uint) {
 }
 
 fn create_writer(w: &io::buf_writer) -> writer {
-    let size_positions: [uint] = ~[];
+    let size_positions: [uint] = [];
     ret {writer: w, mutable size_positions: size_positions};
 }
 
@@ -161,8 +161,8 @@ fn start_tag(w: &writer, tag_id: uint) {
     write_vint(w.writer, tag_id);
     // Write a placeholder four-byte size.
 
-    w.size_positions += ~[w.writer.tell()];
-    let zeroes: [u8] = ~[0u8, 0u8, 0u8, 0u8];
+    w.size_positions += [w.writer.tell()];
+    let zeroes: [u8] = [0u8, 0u8, 0u8, 0u8];
     w.writer.write(zeroes);
 }
 

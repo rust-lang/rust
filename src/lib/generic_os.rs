@@ -28,7 +28,7 @@ fn getenv(n: str) -> option::t<str> {
         let res = os::kernel32::GetEnvironmentVariableA(nbuf, vbuf, nsize);
         if res == 0u {
             ret option::none;
-        } else if (res < nsize) {
+        } else if res < nsize {
             ret option::some(str::str_from_cstr(vbuf));
         } else { nsize = res; }
     }

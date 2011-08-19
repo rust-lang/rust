@@ -12,7 +12,7 @@ fn main() {
     // during 'make check' under valgrind
     // 5000000
     // 50000000
-    let inputs: [int] = ~[50000, 500000];
+    let inputs: [int] = [50000, 500000];
 
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
 
@@ -34,7 +34,7 @@ mod NBodySystem {
     fn MakeNBodySystem() -> [Body::props] {
         // these each return a Body::props
         let bodies: [Body::props] =
-            ~[Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
+            [Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
              Body::neptune()];
 
         let px: float = 0.0;
@@ -43,15 +43,15 @@ mod NBodySystem {
 
         let i: int = 0;
         while i < 5 {
-            px += bodies.(i).vx * bodies.(i).mass;
-            py += bodies.(i).vy * bodies.(i).mass;
-            pz += bodies.(i).vz * bodies.(i).mass;
+            px += bodies[i].vx * bodies[i].mass;
+            py += bodies[i].vy * bodies[i].mass;
+            pz += bodies[i].vz * bodies[i].mass;
 
             i += 1;
         }
 
         // side-effecting
-        Body::offsetMomentum(bodies.(0), px, py, pz);
+        Body::offsetMomentum(bodies[0], px, py, pz);
 
         ret bodies;
     }
@@ -61,13 +61,13 @@ mod NBodySystem {
         let i: int = 0;
         while i < 5 {
             let j: int = i + 1;
-            while j < 5 { advance_one(bodies.(i), bodies.(j), dt); j += 1; }
+            while j < 5 { advance_one(bodies[i], bodies[j], dt); j += 1; }
 
             i += 1;
         }
 
         i = 0;
-        while i < 5 { move(bodies.(i), dt); i += 1; }
+        while i < 5 { move(bodies[i], dt); i += 1; }
     }
 
     fn advance_one(bi: &Body::props, bj: &Body::props, dt: float) {
@@ -105,19 +105,18 @@ mod NBodySystem {
         let i: int = 0;
         while i < 5 {
             e +=
-                0.5 * bodies.(i).mass *
-                    (bodies.(i).vx * bodies.(i).vx +
-                         bodies.(i).vy * bodies.(i).vy +
-                         bodies.(i).vz * bodies.(i).vz);
+                0.5 * bodies[i].mass *
+                    (bodies[i].vx * bodies[i].vx + bodies[i].vy * bodies[i].vy
+                         + bodies[i].vz * bodies[i].vz);
 
             let j: int = i + 1;
             while j < 5 {
-                dx = bodies.(i).x - bodies.(j).x;
-                dy = bodies.(i).y - bodies.(j).y;
-                dz = bodies.(i).z - bodies.(j).z;
+                dx = bodies[i].x - bodies[j].x;
+                dy = bodies[i].y - bodies[j].y;
+                dz = bodies[i].z - bodies[j].z;
 
                 distance = llvm::sqrt(dx * dx + dy * dy + dz * dz);
-                e -= bodies.(i).mass * bodies.(j).mass / distance;
+                e -= bodies[i].mass * bodies[j].mass / distance;
 
                 j += 1;
             }
@@ -133,7 +132,7 @@ mod Body {
 
     const PI: float = 3.141592653589793;
     const SOLAR_MASS: float = 39.478417604357432;
-     // was 4 * PI * PI originally
+    // was 4 * PI * PI originally
     const DAYS_PER_YEAR: float = 365.24;
 
     type props =

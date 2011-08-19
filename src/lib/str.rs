@@ -73,8 +73,8 @@ fn eq(a: &str, b: &str) -> bool {
     if byte_len(b) != i { ret false; }
     while i > 0u {
         i -= 1u;
-        let cha = a.(i);
-        let chb = b.(i);
+        let cha = a[i];
+        let chb = b[i];
         if cha != chb { ret false; }
     }
     ret true;
@@ -87,9 +87,9 @@ fn lteq(a: &str, b: &str) -> bool {
     if j < n { n = j; }
     let x: uint = 0u;
     while x < n {
-        let cha = a.(x);
-        let chb = b.(x);
-        if cha < chb { ret true; } else if (cha > chb) { ret false; }
+        let cha = a[x];
+        let chb = b[x];
+        if cha < chb { ret true; } else if cha > chb { ret false; }
         x += 1u;
     }
     ret i <= j;
@@ -134,12 +134,12 @@ fn is_utf8(v: &[u8]) -> bool {
     let i = 0u;
     let total = vec::len::<u8>(v);
     while i < total {
-        let chsize = utf8_char_width(v.(i));
+        let chsize = utf8_char_width(v[i]);
         if chsize == 0u { ret false; }
         if i + chsize > total { ret false; }
         i += 1u;
         while chsize > 1u {
-            if v.(i) & 192u8 != tag_cont_u8 { ret false; }
+            if v[i] & 192u8 != tag_cont_u8 { ret false; }
             i += 1u;
             chsize -= 1u;
         }
@@ -149,7 +149,7 @@ fn is_utf8(v: &[u8]) -> bool {
 
 fn is_ascii(s: str) -> bool {
     let i: uint = byte_len(s);
-    while i > 0u { i -= 1u; if s.(i) & 128u8 != 0u8 { ret false; } }
+    while i > 0u { i -= 1u; if s[i] & 128u8 != 0u8 { ret false; } }
     ret true;
 }
 
@@ -165,9 +165,7 @@ fn is_whitespace(s: str) -> bool {
     let i = 0u;
     let len = char_len(s);
     while i < len {
-        if !char::is_whitespace(char_at(s, i)) {
-            ret false;
-        }
+        if !char::is_whitespace(char_at(s, i)) { ret false; }
         i += 1u
     }
     ret true;
@@ -192,7 +190,7 @@ fn unsafe_from_bytes(v: &[mutable? u8]) -> str {
     ret rustrt::str_from_ivec(v);
 }
 
-fn unsafe_from_byte(u: u8) -> str { ret rustrt::str_from_ivec(~[u]); }
+fn unsafe_from_byte(u: u8) -> str { ret rustrt::str_from_ivec([u]); }
 
 fn str_from_cstr(cstr: sbuf) -> str { ret rustrt::str_from_cstr(cstr); }
 
@@ -204,19 +202,19 @@ fn push_utf8_bytes(s: &mutable str, ch: char) {
     let code = ch as uint;
     if code < max_one_b {
         s = rustrt::str_push_byte(s, code);
-    } else if (code < max_two_b) {
+    } else if code < max_two_b {
         s = rustrt::str_push_byte(s, code >> 6u & 31u | tag_two_b);
         s = rustrt::str_push_byte(s, code & 63u | tag_cont);
-    } else if (code < max_three_b) {
+    } else if code < max_three_b {
         s = rustrt::str_push_byte(s, code >> 12u & 15u | tag_three_b);
         s = rustrt::str_push_byte(s, code >> 6u & 63u | tag_cont);
         s = rustrt::str_push_byte(s, code & 63u | tag_cont);
-    } else if (code < max_four_b) {
+    } else if code < max_four_b {
         s = rustrt::str_push_byte(s, code >> 18u & 7u | tag_four_b);
         s = rustrt::str_push_byte(s, code >> 12u & 63u | tag_cont);
         s = rustrt::str_push_byte(s, code >> 6u & 63u | tag_cont);
         s = rustrt::str_push_byte(s, code & 63u | tag_cont);
-    } else if (code < max_five_b) {
+    } else if code < max_five_b {
         s = rustrt::str_push_byte(s, code >> 24u & 3u | tag_five_b);
         s = rustrt::str_push_byte(s, code >> 18u & 63u | tag_cont);
         s = rustrt::str_push_byte(s, code >> 12u & 63u | tag_cont);
@@ -259,7 +257,7 @@ fn utf8_char_width(b: u8) -> uint {
 }
 
 fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
-    let b0 = s.(i);
+    let b0 = s[i];
     let w = utf8_char_width(b0);
     assert (w != 0u);
     if w == 1u { ret {ch: b0 as char, next: i + 1u}; }
@@ -267,7 +265,7 @@ fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
     let end = i + w;
     i += 1u;
     while i < end {
-        let byte = s.(i);
+        let byte = s[i];
         assert (byte & 192u8 == tag_cont_u8);
         val <<= 6u;
         val += byte & 63u8 as uint;
@@ -288,7 +286,7 @@ fn char_len(s: str) -> uint {
     let len = 0u;
     let total = byte_len(s);
     while i < total {
-        let chsize = utf8_char_width(s.(i));
+        let chsize = utf8_char_width(s[i]);
         assert (chsize > 0u);
         len += 1u;
         i += chsize;
@@ -298,12 +296,12 @@ fn char_len(s: str) -> uint {
 }
 
 fn to_chars(s: str) -> [char] {
-    let buf: [char] = ~[];
+    let buf: [char] = [];
     let i = 0u;
     let len = byte_len(s);
     while i < len {
         let cur = char_range_at(s, i);
-        buf += ~[cur.ch];
+        buf += [cur.ch];
         i = cur.next;
     }
     ret buf;
@@ -313,7 +311,7 @@ fn push_char(s: &mutable str, ch: char) { s += from_char(ch); }
 
 fn pop_char(s: &mutable str) -> char {
     let end = byte_len(s);
-    while end > 0u && s.(end - 1u) & 192u8 == tag_cont_u8 { end -= 1u; }
+    while end > 0u && s[end - 1u] & 192u8 == tag_cont_u8 { end -= 1u; }
     assert (end > 0u);
     let ch = char_at(s, end - 1u);
     s = substr(s, 0u, end - 1u);
@@ -343,7 +341,7 @@ fn index(s: str, c: u8) -> int {
 
 fn rindex(s: str, c: u8) -> int {
     let n: int = str::byte_len(s) as int;
-    while n >= 0 { if s.(n) == c { ret n; } n -= 1; }
+    while n >= 0 { if s[n] == c { ret n; } n -= 1; }
     ret n;
 }
 
@@ -353,7 +351,7 @@ fn find(haystack: str, needle: str) -> int {
     if needle_len == 0 { ret 0; }
     fn match_at(haystack: &str, needle: &str, i: int) -> bool {
         let j: int = i;
-        for c: u8 in needle { if haystack.(j) != c { ret false; } j += 1; }
+        for c: u8 in needle { if haystack[j] != c { ret false; } j += 1; }
         ret true;
     }
     let i: int = 0;
@@ -377,7 +375,7 @@ fn ends_with(haystack: str, needle: str) -> bool {
     let needle_len: uint = byte_len(needle);
     ret if needle_len == 0u {
             true
-        } else if (needle_len > haystack_len) {
+        } else if needle_len > haystack_len {
             false
         } else {
             eq(substr(haystack, haystack_len - needle_len, needle_len),
@@ -397,10 +395,11 @@ fn slice(s: str, begin: uint, end: uint) -> str {
     ret rustrt::str_slice(s, begin, end);
 }
 
-fn safe_slice(s: str, begin: uint, end: uint): le(begin, end) -> str {
+fn safe_slice(s: str, begin: uint, end: uint) : le(begin, end) -> str {
     assert (end <=
                 str::byte_len(s)); // would need some magic to
                                    // make this a precondition
+
 
     ret rustrt::str_slice(s, begin, end);
 }
@@ -408,7 +407,7 @@ fn safe_slice(s: str, begin: uint, end: uint): le(begin, end) -> str {
 fn shift_byte(s: &mutable str) -> u8 {
     let len = byte_len(s);
     assert (len > 0u);
-    let b = s.(0);
+    let b = s[0];
     s = substr(s, 1u, len - 1u);
     ret b;
 }
@@ -416,7 +415,7 @@ fn shift_byte(s: &mutable str) -> u8 {
 fn pop_byte(s: &mutable str) -> u8 {
     let len = byte_len(s);
     assert (len > 0u);
-    let b = s.(len - 1u);
+    let b = s[len - 1u];
     s = substr(s, 0u, len - 1u);
     ret b;
 }
@@ -433,17 +432,17 @@ fn unshift_byte(s: &mutable str, b: u8) {
 }
 
 fn split(s: str, sep: u8) -> [str] {
-    let v: [str] = ~[];
+    let v: [str] = [];
     let accum: str = "";
     let ends_with_sep: bool = false;
     for c: u8 in s {
         if c == sep {
-            v += ~[accum];
+            v += [accum];
             accum = "";
             ends_with_sep = true;
         } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
     }
-    if str::byte_len(accum) != 0u || ends_with_sep { v += ~[accum]; }
+    if str::byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
     ret v;
 }
 
@@ -486,10 +485,10 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
     check (is_not_empty(from));
     if byte_len(s) == 0u {
         ret "";
-    } else if (starts_with(s, from)) {
+    } else if starts_with(s, from) {
         ret to + replace(slice(s, byte_len(from), byte_len(s)), from, to);
     } else {
-        ret unsafe_from_byte(s.(0)) +
+        ret unsafe_from_byte(s[0]) +
                 replace(slice(s, 1u, byte_len(s)), from, to);
     }
 }
@@ -503,9 +502,7 @@ fn trim_left(s: &str) -> str {
     fn count_whities(s: &[char]) -> uint {
         let i = 0u;
         while i < vec::len(s) {
-            if !char::is_whitespace(s.(i)) {
-                break;
-            }
+            if !char::is_whitespace(s[i]) { break; }
             i += 1u;
         }
         ret i;
@@ -519,9 +516,7 @@ fn trim_right(s: &str) -> str {
     fn count_whities(s: &[char]) -> uint {
         let i = vec::len(s);
         while 0u < i {
-            if !char::is_whitespace(s.(i - 1u)) {
-                break;
-            }
+            if !char::is_whitespace(s[i - 1u]) { break; }
             i -= 1u;
         }
         ret i;
@@ -531,9 +526,7 @@ fn trim_right(s: &str) -> str {
     ret from_chars(vec::slice(chars, 0u, whities));
 }
 
-fn trim(s: &str) -> str {
-    trim_left(trim_right(s))
-}
+fn trim(s: &str) -> str { trim_left(trim_right(s)) }
 
 // Local Variables:
 // mode: rust;

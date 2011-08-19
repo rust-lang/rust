@@ -30,8 +30,8 @@ fn test_split() {
         let v = str::split(s, c as u8);
         log "split to: ";
         for z: str in v { log z; }
-        log "comparing: " + v.(i) + " vs. " + k;
-        assert (str::eq(v.(i), k));
+        log "comparing: " + v[i] + " vs. " + k;
+        assert (str::eq(v[i], k));
     }
     t("abc.hello.there", '.', 0, "abc");
     t("abc.hello.there", '.', 1, "hello");
@@ -70,10 +70,10 @@ fn test_substr() {
 #[test]
 fn test_concat() {
     fn t(v: &[str], s: &str) { assert (str::eq(str::concat(v), s)); }
-    t(~["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
-    let v: [str] = ~[];
+    t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+    let v: [str] = [];
     t(v, "");
-    t(~["hi"], "hi");
+    t(["hi"], "hi");
 }
 
 #[test]
@@ -81,10 +81,10 @@ fn test_connect() {
     fn t(v: &[str], sep: &str, s: &str) {
         assert (str::eq(str::connect(v, sep), s));
     }
-    t(~["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
-    let v: [str] = ~[];
+    t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
+    let v: [str] = [];
     t(v, " ", "");
-    t(~["hi"], " ", "hi");
+    t(["hi"], " ", "hi");
 }
 
 #[test]
@@ -164,41 +164,41 @@ fn test_char_slice() {
 
 #[test]
 fn trim_left() {
-    assert str::trim_left("") == "";
-    assert str::trim_left("a") == "a";
-    assert str::trim_left("    ") == "";
-    assert str::trim_left("     blah") == "blah";
-    assert str::trim_left("   \u3000  wut") == "wut";
-    assert str::trim_left("hey ") == "hey ";
+    assert (str::trim_left("") == "");
+    assert (str::trim_left("a") == "a");
+    assert (str::trim_left("    ") == "");
+    assert (str::trim_left("     blah") == "blah");
+    assert (str::trim_left("   \u3000  wut") == "wut");
+    assert (str::trim_left("hey ") == "hey ");
 }
 
 #[test]
 fn trim_right() {
-    assert str::trim_right("") == "";
-    assert str::trim_right("a") == "a";
-    assert str::trim_right("    ") == "";
-    assert str::trim_right("blah     ") == "blah";
-    assert str::trim_right("wut   \u3000  ") == "wut";
-    assert str::trim_right(" hey") == " hey";
+    assert (str::trim_right("") == "");
+    assert (str::trim_right("a") == "a");
+    assert (str::trim_right("    ") == "");
+    assert (str::trim_right("blah     ") == "blah");
+    assert (str::trim_right("wut   \u3000  ") == "wut");
+    assert (str::trim_right(" hey") == " hey");
 }
 
 #[test]
 fn trim() {
-    assert str::trim("") == "";
-    assert str::trim("a") == "a";
-    assert str::trim("    ") == "";
-    assert str::trim("    blah     ") == "blah";
-    assert str::trim("\nwut   \u3000  ") == "wut";
-    assert str::trim(" hey dude ") == "hey dude";
+    assert (str::trim("") == "");
+    assert (str::trim("a") == "a");
+    assert (str::trim("    ") == "");
+    assert (str::trim("    blah     ") == "blah");
+    assert (str::trim("\nwut   \u3000  ") == "wut");
+    assert (str::trim(" hey dude ") == "hey dude");
 }
 
 #[test]
 fn is_whitespace() {
-    assert str::is_whitespace("");
-    assert str::is_whitespace(" ");
-    assert str::is_whitespace("\u2009"); // Thin space
-    assert str::is_whitespace("  \n\t   ");
-    assert !str::is_whitespace("   _   ");
+    assert (str::is_whitespace(""));
+    assert (str::is_whitespace(" "));
+    assert (str::is_whitespace("\u2009")); // Thin space
+    assert (str::is_whitespace("  \n\t   "));
+    assert (!str::is_whitespace("   _   "));
 }
 
 // Local Variables:

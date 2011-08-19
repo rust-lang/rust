@@ -3,4 +3,4 @@
 
 type x = [x];
 
-fn main() { let b: x = ~[]; }
+fn main() { let b: x = []; }

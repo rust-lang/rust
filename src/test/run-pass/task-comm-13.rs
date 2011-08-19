@@ -10,7 +10,7 @@ fn start(c: comm::_chan<int>, start: int, number_of_messages: int) {
 
 fn main() {
     log "Check that we don't deadlock.";
-    let p : comm::_port<int> = comm::mk_port();
+    let p: comm::_port<int> = comm::mk_port();
     let a = task::_spawn(bind start(p.mk_chan(), 0, 10));
     task::join_id(a);
     log "Joined task";

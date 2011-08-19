@@ -10,8 +10,8 @@ import std::comm::send;
 tag msg { closed; received([u8]); }
 
 fn producer(c: _chan<[u8]>) {
-    send(c, ~[1u8, 2u8, 3u8, 4u8]);
-    let empty: [u8] = ~[];
+    send(c, [1u8, 2u8, 3u8, 4u8]);
+    let empty: [u8] = [];
     send(c, empty);
 }
 
@@ -22,10 +22,7 @@ fn packager(cb: _chan<_chan<[u8]>>, msg: _chan<msg>) {
         log "waiting for bytes";
         let data = p.recv();
         log "got bytes";
-        if vec::len(data) == 0u {
-            log "got empty bytes, quitting";
-            break;
-        }
+        if vec::len(data) == 0u { log "got empty bytes, quitting"; break; }
         log "sending non-empty buffer of length";
         log vec::len(data);
         send(msg, received(data));
@@ -39,8 +36,8 @@ fn packager(cb: _chan<_chan<[u8]>>, msg: _chan<msg>) {
 fn main() {
     let p: _port<msg> = mk_port();
     let recv_reader: _port<_chan<[u8]>> = mk_port();
-    let pack = task::_spawn(bind packager(recv_reader.mk_chan(),
-                                          p.mk_chan()));
+    let pack =
+        task::_spawn(bind packager(recv_reader.mk_chan(), p.mk_chan()));
 
     let source_chan: _chan<[u8]> = recv_reader.recv();
     let prod = task::_spawn(bind producer(source_chan));

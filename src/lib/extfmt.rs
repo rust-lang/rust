@@ -69,16 +69,16 @@ mod ct {
 
     // A fragment of the output sequence
     tag piece { piece_string(str); piece_conv(conv); }
-    type error_fn = fn(str) -> !  ;
+    type error_fn = fn(str) -> ! ;
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
-        let pieces: [piece] = ~[];
+        let pieces: [piece] = [];
         let lim = str::byte_len(s);
         let buf = "";
         fn flush_buf(buf: str, pieces: &mutable [piece]) -> str {
             if str::byte_len(buf) > 0u {
                 let piece = piece_string(buf);
-                pieces += ~[piece];
+                pieces += [piece];
             }
             ret "";
         }
@@ -96,7 +96,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    pieces += ~[rs.piece];
+                    pieces += [rs.piece];
                     i = rs.next;
                 }
             } else { buf += curr; i += 1u; }
@@ -107,7 +107,7 @@ mod ct {
     fn peek_num(s: str, i: uint, lim: uint) ->
        option::t<{num: uint, next: uint}> {
         if i >= lim { ret none; }
-        let c = s.(i);
+        let c = s[i];
         if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
         let n = c - ('0' as u8) as uint;
         ret alt peek_num(s, i + 1u, lim) {
@@ -143,7 +143,7 @@ mod ct {
               some(t) {
                 let n = t.num;
                 let j = t.next;
-                if j < lim && s.(j) == '$' as u8 {
+                if j < lim && s[j] == '$' as u8 {
                     {param: some(n as int), next: j + 1u}
                 } else { {param: none, next: i} }
               }
@@ -151,7 +151,7 @@ mod ct {
     }
     fn parse_flags(s: str, i: uint, lim: uint) ->
        {flags: [flag], next: uint} {
-        let noflags: [flag] = ~[];
+        let noflags: [flag] = [];
         if i >= lim { ret {flags: noflags, next: i}; }
 
         // FIXME: This recursion generates illegal instructions if the return
@@ -161,27 +161,27 @@ mod ct {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
-            let curr: [flag] = ~[f];
+            let curr: [flag] = [f];
             ret @{flags: curr + rest, next: j};
         }
         let more = bind more_(_, s, i, lim);
-        let f = s.(i);
+        let f = s[i];
         ret if f == '-' as u8 {
                 *more(flag_left_justify)
-            } else if (f == '0' as u8) {
+            } else if f == '0' as u8 {
                 *more(flag_left_zero_pad)
-            } else if (f == ' ' as u8) {
+            } else if f == ' ' as u8 {
                 *more(flag_space_for_sign)
-            } else if (f == '+' as u8) {
+            } else if f == '+' as u8 {
                 *more(flag_sign_always)
-            } else if (f == '#' as u8) {
+            } else if f == '#' as u8 {
                 *more(flag_alternate)
             } else { {flags: noflags, next: i} };
     }
     fn parse_count(s: str, i: uint, lim: uint) -> {count: count, next: uint} {
         ret if i >= lim {
                 {count: count_implied, next: i}
-            } else if (s.(i) == '*' as u8) {
+            } else if s[i] == '*' as u8 {
                 let param = parse_parameter(s, i + 1u, lim);
                 let j = param.next;
                 alt param.param {
@@ -202,7 +202,7 @@ mod ct {
        {count: count, next: uint} {
         ret if i >= lim {
                 {count: count_implied, next: i}
-            } else if (s.(i) == '.' as u8) {
+            } else if s[i] == '.' as u8 {
                 let count = parse_count(s, i + 1u, lim);
 
 
@@ -223,21 +223,21 @@ mod ct {
         let t =
             if str::eq(tstr, "b") {
                 ty_bool
-            } else if (str::eq(tstr, "s")) {
+            } else if str::eq(tstr, "s") {
                 ty_str
-            } else if (str::eq(tstr, "c")) {
+            } else if str::eq(tstr, "c") {
                 ty_char
-            } else if (str::eq(tstr, "d") || str::eq(tstr, "i")) {
+            } else if str::eq(tstr, "d") || str::eq(tstr, "i") {
                 ty_int(signed)
-            } else if (str::eq(tstr, "u")) {
+            } else if str::eq(tstr, "u") {
                 ty_int(unsigned)
-            } else if (str::eq(tstr, "x")) {
+            } else if str::eq(tstr, "x") {
                 ty_hex(case_lower)
-            } else if (str::eq(tstr, "X")) {
+            } else if str::eq(tstr, "X") {
                 ty_hex(case_upper)
-            } else if (str::eq(tstr, "t")) {
+            } else if str::eq(tstr, "t") {
                 ty_bits
-            } else if (str::eq(tstr, "o")) {
+            } else if str::eq(tstr, "o") {
                 ty_octal
             } else { error("unknown type in conversion: " + tstr) };
         ret {ty: t, next: i + 1u};
@@ -277,7 +277,7 @@ mod rt {
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
                 s = "+" + s;
-            } else if (have_flag(cv.flags, flag_space_for_sign)) {
+            } else if have_flag(cv.flags, flag_space_for_sign) {
                 s = " " + s;
             }
         }
@@ -404,9 +404,9 @@ mod rt {
         // instead.
 
         if signed && zero_padding && str::byte_len(s) > 0u {
-            let head = s.(0);
+            let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
-                let headstr = str::unsafe_from_bytes(~[head]);
+                let headstr = str::unsafe_from_bytes([head]);
                 let bytelen = str::byte_len(s);
                 let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;

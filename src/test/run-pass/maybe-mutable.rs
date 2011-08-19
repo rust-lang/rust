@@ -9,8 +9,8 @@ fn len(v: [mutable? int]) -> uint {
 }
 
 fn main() {
-    let v0 = ~[1, 2, 3, 4, 5];
+    let v0 = [1, 2, 3, 4, 5];
     log len(v0);
-    let v1 = ~[mutable 1, 2, 3, 4, 5];
+    let v1 = [mutable 1, 2, 3, 4, 5];
     log len(v1);
 }

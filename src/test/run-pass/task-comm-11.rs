@@ -4,7 +4,7 @@ import std::comm;
 import std::task;
 
 fn start(c: comm::_chan<comm::_chan<int>>) {
-    let p : comm::_port<int> = comm::mk_port();
+    let p: comm::_port<int> = comm::mk_port();
     comm::send(c, p.mk_chan());
 }
 

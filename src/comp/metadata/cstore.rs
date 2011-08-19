@@ -56,9 +56,9 @@ fn mk_cstore() -> cstore {
     let crate_map = map::new_int_hash::<ast::crate_num>();
     ret private(@{metas: meta_cache,
                   use_crate_map: crate_map,
-                  mutable used_crate_files: ~[],
-                  mutable used_libraries: ~[],
-                  mutable used_link_args: ~[]});
+                  mutable used_crate_files: [],
+                  mutable used_libraries: [],
+                  mutable used_link_args: []});
 }
 
 fn get_crate_data(cstore: &cstore, cnum: ast::crate_num) -> crate_metadata {
@@ -76,7 +76,7 @@ fn have_crate_data(cstore: &cstore, cnum: ast::crate_num) -> bool {
 
 iter iter_crate_data(cstore: &cstore) ->
      @{key: ast::crate_num, val: crate_metadata} {
-    for each kv: @{key: ast::crate_num, val: crate_metadata}  in
+    for each kv: @{key: ast::crate_num, val: crate_metadata} in
              p(cstore).metas.items() {
         put kv;
     }
@@ -84,7 +84,7 @@ iter iter_crate_data(cstore: &cstore) ->
 
 fn add_used_crate_file(cstore: &cstore, lib: &str) {
     if !vec::member(lib, p(cstore).used_crate_files) {
-        p(cstore).used_crate_files += ~[lib];
+        p(cstore).used_crate_files += [lib];
     }
 }
 
@@ -97,7 +97,7 @@ fn add_used_library(cstore: &cstore, lib: &str) -> bool {
 
     if vec::member(lib, p(cstore).used_libraries) { ret false; }
 
-    p(cstore).used_libraries += ~[lib];
+    p(cstore).used_libraries += [lib];
     ret true;
 }
 

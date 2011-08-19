@@ -6,6 +6,4 @@ import std::unsafe;
 
 fn null<T>() -> *T { unsafe::reinterpret_cast(0) }
 
-fn main() {
-    null::<int>();
-}
+fn main() { null::<int>(); }

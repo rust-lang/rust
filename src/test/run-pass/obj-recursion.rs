@@ -2,7 +2,7 @@
 
 type adder =
     obj {
-        fn add() ;
+        fn add();
     };
 
 obj leaf_adder(x: int) {

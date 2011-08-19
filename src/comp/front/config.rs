@@ -115,7 +115,7 @@ fn in_cfg(cfg: &ast::crate_cfg, attrs: &[ast::attribute]) -> bool {
                 }
             }
             let cfg_metas = attr::attr_metas(item_cfg_attrs);
-            vec::foldl(extract_metas, ~[], cfg_metas)
+            vec::foldl(extract_metas, [], cfg_metas)
         };
 
     for cfg_mi: @ast::meta_item in item_cfg_metas {

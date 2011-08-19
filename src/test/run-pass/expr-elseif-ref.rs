@@ -2,6 +2,6 @@
 // values from the else if branch
 fn main() {
     let y: @uint = @10u;
-    let x = if false { y } else if (true) { y } else { y };
+    let x = if false { y } else if true { y } else { y };
     assert (*y == 10u);
 }

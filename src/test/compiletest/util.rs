@@ -9,7 +9,7 @@ fn make_new_path(path: &str) -> str {
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
     alt getenv(lib_path_env_var()) {
-      option::some(curr) { #fmt("%s:%s", path, curr) }
+      option::some(curr) { #fmt["%s:%s", path, curr] }
       option::none. { path }
     }
 }

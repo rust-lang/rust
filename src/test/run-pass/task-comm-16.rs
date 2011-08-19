@@ -23,29 +23,29 @@ fn test_rec() {
 fn test_vec() {
     let po = comm::mk_port();
     let ch = po.mk_chan();
-    let v0: [int] = ~[0, 1, 2];
+    let v0: [int] = [0, 1, 2];
     send(ch, v0);
     let v1: [int];
     v1 = po.recv();
-    assert (v1.(0) == 0);
-    assert (v1.(1) == 1);
-    assert (v1.(2) == 2);
+    assert (v1[0] == 0);
+    assert (v1[1] == 1);
+    assert (v1[2] == 2);
 }
 
 fn test_str() {
     // FIXME: re-enable this once strings are unique and sendable
-/*
-    let po = comm::mk_port();
-    let ch = po.mk_chan();
-    let s0: str = "test";
-    send(ch, s0);
-    let s1: str;
-    s1 = po.recv();
-    assert (s1.(0) as u8 == 't' as u8);
-    assert (s1.(1) as u8 == 'e' as u8);
-    assert (s1.(2) as u8 == 's' as u8);
-    assert (s1.(3) as u8 == 't' as u8);
-*/
+    /*
+        let po = comm::mk_port();
+        let ch = po.mk_chan();
+        let s0: str = "test";
+        send(ch, s0);
+        let s1: str;
+        s1 = po.recv();
+        assert (s1.(0) as u8 == 't' as u8);
+        assert (s1.(1) as u8 == 'e' as u8);
+        assert (s1.(2) as u8 == 's' as u8);
+        assert (s1.(3) as u8 == 't' as u8);
+    */
 }
 
 fn test_tag() {
@@ -80,10 +80,4 @@ fn test_chan() {
     assert (i == 10);
 }
 
-fn main() {
-    test_rec();
-    test_vec();
-    test_str();
-    test_tag();
-    test_chan();
-}
+fn main() { test_rec(); test_vec(); test_str(); test_tag(); test_chan(); }

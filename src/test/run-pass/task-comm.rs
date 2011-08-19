@@ -20,7 +20,11 @@ fn main() {
 fn test00_start(ch: _chan<int>, message: int, count: int) {
     log "Starting test00_start";
     let i: int = 0;
-    while i < count { log "Sending Message"; send(ch, message+0); i = i + 1; }
+    while i < count {
+        log "Sending Message";
+        send(ch, message + 0);
+        i = i + 1;
+    }
     log "Ending test00_start";
 }
 
@@ -39,22 +43,19 @@ fn test00() {
         i = i + 1;
         tasks += [task::spawn(bind test00_start(ch, i, number_of_messages))];
     }
-
     let sum: int = 0;
     for t: task_id in tasks {
         i = 0;
-        while i < number_of_messages {
-            sum += po.recv();
-            i = i + 1;
-        }
+        while i < number_of_messages { sum += po.recv(); i = i + 1; }
     }
 
     for t: task_id in tasks { task::join_id(t); }
 
     log "Completed: Final number is: ";
     assert (sum ==
-            number_of_messages *
-            (number_of_tasks * number_of_tasks + number_of_tasks) / 2);
+                number_of_messages *
+                    (number_of_tasks * number_of_tasks + number_of_tasks) /
+                    2);
 }
 
 fn test01() {
@@ -96,11 +97,7 @@ fn test04_start() {
 fn test04() {
     log "Spawning lots of tasks.";
     let i: int = 4;
-    while i > 0 {
-        i = i - 1;
-        let f = test04_start;
-        task::spawn(f);
-    }
+    while i > 0 { i = i - 1; let f = test04_start; task::spawn(f); }
     log "Finishing up.";
 }
 
@@ -138,7 +135,9 @@ fn test06() {
 
     let tasks = [];
     while i < number_of_tasks {
-        i = i + 1; tasks += [task::spawn(bind test06_start(i))]; }
+        i = i + 1;
+        tasks += [task::spawn(bind test06_start(i))];
+    }
 
 
     for t: task_id in tasks { task::join_id(t); }

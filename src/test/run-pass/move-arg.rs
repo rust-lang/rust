@@ -1,8 +1,3 @@
-fn test(foo: -int) {
-    assert (foo == 10);
-}
+fn test(foo: -int) { assert (foo == 10); }
 
-fn main() {
-    let x = 10;
-    test(x);
-}
+fn main() { let x = 10; test(x); }

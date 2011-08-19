@@ -3,10 +3,7 @@
 tag t<@T> { none; some(T); }
 
 fn get<@T>(opt: &t<T>) -> T {
-    alt opt {
-      some(x) { x }
-      none. { fail "option none" }
-    }
+    alt opt { some(x) { x } none. { fail "option none" } }
 }
 
 fn map<@T, @U>(f: &block(&T) -> U, opt: &t<T>) -> t<U> {

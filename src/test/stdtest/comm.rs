@@ -15,7 +15,7 @@ fn send_recv() {
     comm::send(c, 42);
     let v = p.recv();
     log_err v;
-    assert(42 == v);
+    assert (42 == v);
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn send_recv_fn() {
     let p = comm::port::<int>();
     let c = comm::chan::<int>(p);
     comm::send(c, 42);
-    assert(comm::recv(p) == 42);
+    assert (comm::recv(p) == 42);
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn send_recv_fn_infer() {
     let p = comm::port();
     let c = comm::chan(p);
     comm::send(c, 42);
-    assert(comm::recv(p) == 42);
+    assert (comm::recv(p) == 42);
 }
 
 #[test]

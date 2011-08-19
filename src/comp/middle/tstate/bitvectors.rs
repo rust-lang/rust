@@ -79,7 +79,7 @@ fn seq_tritv(p: &postcond, q: &postcond) {
 fn seq_postconds(fcx: &fn_ctxt, ps: &[postcond]) -> postcond {
     let sz = vec::len(ps);
     if sz >= 1u {
-        let prev = tritv_clone(ps.(0));
+        let prev = tritv_clone(ps[0]);
         for p: postcond in vec::slice(ps, 1u, sz) { seq_tritv(prev, p); }
         ret prev;
     } else { ret ann::empty_poststate(num_constraints(fcx.enclosing)); }
@@ -97,7 +97,7 @@ fn seq_preconds(fcx: &fn_ctxt, pps: &[pre_and_post]) -> precond {
                        first: &pre_and_post) -> precond {
         let sz: uint = vec::len(pps);
         if sz >= 1u {
-            let second = pps.(0);
+            let second = pps[0];
             assert (pps_len(second) == num_constraints(fcx.enclosing));
             let second_pre = clone(second.precondition);
             difference(second_pre, first.postcondition);
@@ -113,7 +113,7 @@ fn seq_preconds(fcx: &fn_ctxt, pps: &[pre_and_post]) -> precond {
 
 
     if sz >= 1u {
-        let first = pps.(0);
+        let first = pps[0];
         assert (pps_len(first) == num_vars);
         ret seq_preconds_go(fcx, vec::slice(pps, 1u, sz), first);
     } else { ret true_precond(num_vars); }
@@ -150,7 +150,7 @@ fn relax_precond_stmt(s: &@stmt, cx: &relax_ctxt,
     visit::visit_stmt(s, cx, vt);
 }
 
-type relax_ctxt = {fcx:fn_ctxt, i:node_id};
+type relax_ctxt = {fcx: fn_ctxt, i: node_id};
 
 fn relax_precond_block_inner(b: &blk, cx: &relax_ctxt,
                              vt: &visit::vt<relax_ctxt>) {
@@ -158,16 +158,16 @@ fn relax_precond_block_inner(b: &blk, cx: &relax_ctxt,
     visit::visit_block(b, cx, vt);
 }
 
-fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b:&blk) {
+fn relax_precond_block(fcx: &fn_ctxt, i: node_id, b: &blk) {
     let cx = {fcx: fcx, i: i};
     let visitor = visit::default_visitor::<relax_ctxt>();
     visitor =
         @{visit_block: relax_precond_block_inner,
           visit_expr: relax_precond_expr,
           visit_stmt: relax_precond_stmt,
-          visit_item: (fn (_i: &@item, _cx: &relax_ctxt,
-                           _vt: &visit::vt<relax_ctxt>) {})
-          with *visitor};
+          visit_item:
+              fn (_i: &@item, _cx: &relax_ctxt, _vt: &visit::vt<relax_ctxt>) {
+              } with *visitor};
     let v1 = visit::mk_vt(visitor);
     v1.visit_block(b, cx, v1);
 }
@@ -217,7 +217,7 @@ fn clear_in_poststate_expr(fcx: &fn_ctxt, e: &@expr, t: &poststate) {
     }
 }
 
-fn kill_poststate_(fcx : &fn_ctxt, c : &tsconstr, post : &poststate) -> bool {
+fn kill_poststate_(fcx: &fn_ctxt, c: &tsconstr, post: &poststate) -> bool {
     log "kill_poststate_";
     ret clear_in_poststate_(bit_num(fcx, c), post);
 }
@@ -241,8 +241,8 @@ fn clear_in_prestate_ident(fcx: &fn_ctxt, id: &node_id, ident: &ident,
     ret kill_prestate(fcx, parent, ninit(id, ident));
 }
 
-fn clear_in_poststate_ident_(fcx : &fn_ctxt, id : &node_id, ident : &ident,
-                             post : &poststate) -> bool {
+fn clear_in_poststate_ident_(fcx: &fn_ctxt, id: &node_id, ident: &ident,
+                             post: &poststate) -> bool {
     ret kill_poststate_(fcx, ninit(id, ident), post);
 }
 

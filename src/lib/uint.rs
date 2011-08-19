@@ -51,7 +51,7 @@ fn parse_buf(buf: &[u8], radix: uint) -> uint {
     let power = 1u;
     let n = 0u;
     while true {
-        n += (buf.(i) - ('0' as u8) as uint) * power;
+        n += (buf[i] - ('0' as u8) as uint) * power;
         power *= radix;
         if i == 0u { ret n; }
         i -= 1u;
@@ -59,9 +59,7 @@ fn parse_buf(buf: &[u8], radix: uint) -> uint {
     fail;
 }
 
-fn from_str(s : &str) -> uint {
-    parse_buf(str::bytes(s), 10u)
-}
+fn from_str(s: &str) -> uint { parse_buf(str::bytes(s), 10u) }
 
 fn to_str(num: uint, radix: uint) -> str {
     let n = num;
@@ -95,7 +93,7 @@ fn to_str(num: uint, radix: uint) -> str {
     }
     let s1: str = "";
     let len: uint = str::byte_len(s);
-    while len != 0u { len -= 1u; s1 += str::unsafe_from_byte(s.(len)); }
+    while len != 0u { len -= 1u; s1 += str::unsafe_from_byte(s[len]); }
     ret s1;
 }
 fn str(i: uint) -> str { ret to_str(i, 10u); }

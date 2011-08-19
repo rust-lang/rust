@@ -10,7 +10,7 @@ import option::some;
 type smallintmap<T> = @{mutable v: [mutable option::t<T>]};
 
 fn mk<@T>() -> smallintmap<T> {
-    let v: [mutable option::t<T>] = ~[mutable];
+    let v: [mutable option::t<T>] = [mutable];
     ret @{mutable v: v};
 }
 
@@ -19,7 +19,7 @@ fn insert<@T>(m: &smallintmap<T>, key: uint, val: &T) {
 }
 
 fn find<@T>(m: &smallintmap<T>, key: uint) -> option::t<T> {
-    if key < vec::len::<option::t<T>>(m.v) { ret m.v.(key); }
+    if key < vec::len::<option::t<T>>(m.v) { ret m.v[key]; }
     ret none::<T>;
 }
 

@@ -6,14 +6,14 @@
  */
 type t<T> =
     obj {
-        fn size() -> uint ;
-        fn add_front(&T) ;
-        fn add_back(&T) ;
-        fn pop_front() -> T ;
-        fn pop_back() -> T ;
-        fn peek_front() -> T ;
-        fn peek_back() -> T ;
-        fn get(int) -> T ;
+        fn size() -> uint;
+        fn add_front(&T);
+        fn add_back(&T);
+        fn pop_front() -> T;
+        fn pop_back() -> T;
+        fn peek_front() -> T;
+        fn peek_back() -> T;
+        fn get(int) -> T;
     };
 
 fn create<@T>() -> t<T> {
@@ -26,24 +26,25 @@ fn create<@T>() -> t<T> {
       */
 
 
+
     fn grow<@T>(nelts: uint, lo: uint, elts: &[mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
-        let rv = ~[mutable];
+        let rv = [mutable];
 
         let i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {
-                rv += ~[mutable elts.((lo + i) % nelts)];
-            } else { rv += ~[mutable option::none]; }
+                rv += [mutable elts[(lo + i) % nelts]];
+            } else { rv += [mutable option::none]; }
             i += 1u;
         }
 
         ret rv;
     }
     fn get<@T>(elts: &[mutable cell<T>], i: uint) -> T {
-        ret alt elts.(i) { option::some(t) { t } _ { fail } };
+        ret alt elts[i] { option::some(t) { t } _ { fail } };
     }
     obj deque<@T>(mutable nelts: uint,
                   mutable lo: uint,
@@ -60,7 +61,7 @@ fn create<@T>() -> t<T> {
                 lo = vec::len::<cell<T>>(elts) - 1u;
                 hi = nelts;
             }
-            elts.(lo) = option::some::<T>(t);
+            elts[lo] = option::some::<T>(t);
             nelts += 1u;
         }
         fn add_back(t: &T) {
@@ -69,7 +70,7 @@ fn create<@T>() -> t<T> {
                 lo = 0u;
                 hi = nelts;
             }
-            elts.(hi) = option::some::<T>(t);
+            elts[hi] = option::some::<T>(t);
             hi = (hi + 1u) % vec::len::<cell<T>>(elts);
             nelts += 1u;
         }
@@ -80,7 +81,7 @@ fn create<@T>() -> t<T> {
          */
         fn pop_front() -> T {
             let t: T = get::<T>(elts, lo);
-            elts.(lo) = option::none::<T>;
+            elts[lo] = option::none::<T>;
             lo = (lo + 1u) % vec::len::<cell<T>>(elts);
             nelts -= 1u;
             ret t;
@@ -90,7 +91,7 @@ fn create<@T>() -> t<T> {
                 hi = vec::len::<cell<T>>(elts) - 1u;
             } else { hi -= 1u; }
             let t: T = get::<T>(elts, hi);
-            elts.(hi) = option::none::<T>;
+            elts[hi] = option::none::<T>;
             nelts -= 1u;
             ret t;
         }

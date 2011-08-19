@@ -9,5 +9,5 @@ fn expand_syntax_ext(cx: &ext_ctxt, sp: codemap::span, arg: @ast::expr,
     std::io::stdout().write_line(print::pprust::expr_to_str(arg));
 
     //trivial expression
-    ret @{id: cx.next_id(), node: ast::expr_rec(~[], option::none), span: sp};
+    ret @{id: cx.next_id(), node: ast::expr_rec([], option::none), span: sp};
 }

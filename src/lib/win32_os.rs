@@ -30,7 +30,7 @@ mod libc_constants {
     fn O_TRUNC() -> int { ret 512; }
     fn O_TEXT() -> int { ret 16384; }
     fn O_BINARY() -> int { ret 32768; }
-    fn O_NOINHERIT() -> int { ret 0x0080; }
+    fn O_NOINHERIT() -> int { ret 128; }
     fn S_IRUSR() -> uint {
         ret 256u; // really _S_IREAD  in win32
 
@@ -59,12 +59,13 @@ fn pipe() -> {in: int, out: int} {
     // which means to pass it to a subprocess they need to be duplicated
     // first, as in rust_run_program.
     let fds = {mutable in: 0, mutable out: 0};
-    let res = os::libc::_pipe(ptr::addr_of(fds.in), 1024u,
-                            libc_constants::O_BINARY()
-                            | libc_constants::O_NOINHERIT());
-    assert res == 0;
-    assert fds.in != -1 && fds.in != 0;
-    assert fds.out != -1 && fds.in != 0;
+    let res =
+        os::libc::_pipe(ptr::addr_of(fds.in), 1024u,
+                        libc_constants::O_BINARY() |
+                            libc_constants::O_NOINHERIT());
+    assert (res == 0);
+    assert (fds.in != -1 && fds.in != 0);
+    assert (fds.out != -1 && fds.in != 0);
     ret {in: fds.in, out: fds.out};
 }
 

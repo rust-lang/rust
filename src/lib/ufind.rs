@@ -10,11 +10,11 @@ type node = option::t<uint>;
 
 type ufind = {mutable nodes: [mutable node]};
 
-fn make() -> ufind { ret {mutable nodes: ~[mutable]}; }
+fn make() -> ufind { ret {mutable nodes: [mutable]}; }
 
 fn make_set(ufnd: &ufind) -> uint {
     let idx = vec::len(ufnd.nodes);
-    ufnd.nodes += ~[mutable none::<uint>];
+    ufnd.nodes += [mutable none::<uint>];
     ret idx;
 }
 
@@ -26,7 +26,7 @@ fn grow(ufnd: &ufind, n: uint) {
 }
 
 fn find(ufnd: &ufind, n: uint) -> uint {
-    alt ufnd.nodes.(n) {
+    alt ufnd.nodes[n] {
       none. { ret n; }
       some(m) { let m_ = m; be find(ufnd, m_); }
     }
@@ -36,10 +36,8 @@ fn union(ufnd: &ufind, m: uint, n: uint) {
     let m_root = find(ufnd, m);
     let n_root = find(ufnd, n);
     if m_root < n_root {
-        ufnd.nodes.(n_root) = some::<uint>(m_root);
-    } else if (m_root > n_root) {
-        ufnd.nodes.(m_root) = some::<uint>(n_root);
-    }
+        ufnd.nodes[n_root] = some::<uint>(m_root);
+    } else if m_root > n_root { ufnd.nodes[m_root] = some::<uint>(n_root); }
 }
 
 fn set_count(ufnd: &ufind) -> uint { ret vec::len::<node>(ufnd.nodes); }

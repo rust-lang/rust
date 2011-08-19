@@ -81,20 +81,20 @@ const LLVMOptimizeForSizeAttribute: uint = 8192u;
 const LLVMStackProtectAttribute: uint = 16384u;
 const LLVMStackProtectReqAttribute: uint = 32768u;
 const LLVMAlignmentAttribute: uint = 2031616u;
- // 31 << 16
+// 31 << 16
 const LLVMNoCaptureAttribute: uint = 2097152u;
 const LLVMNoRedZoneAttribute: uint = 4194304u;
 const LLVMNoImplicitFloatAttribute: uint = 8388608u;
 const LLVMNakedAttribute: uint = 16777216u;
 const LLVMInlineHintAttribute: uint = 33554432u;
 const LLVMStackAttribute: uint = 469762048u;
- // 7 << 26
+// 7 << 26
 const LLVMUWTableAttribute: uint = 1073741824u;
- // 1 << 30
+// 1 << 30
 
 
- // Consts for the LLVM IntPredicate type, pre-cast to uint.
- // FIXME: as above.
+// Consts for the LLVM IntPredicate type, pre-cast to uint.
+// FIXME: as above.
 
 
 const LLVMIntEQ: uint = 32u;
@@ -276,9 +276,9 @@ native "cdecl" mod llvm = "rustllvm" {
 
     /* Operations on constants of any type */
     fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
-     /* all zeroes */
+    /* all zeroes */
     fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
-     /* only for int/vector */
+    /* only for int/vector */
     fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
     fn LLVMIsConstant(Val: ValueRef) -> Bool;
     fn LLVMIsNull(Val: ValueRef) -> Bool;
@@ -809,19 +809,19 @@ native "cdecl" mod llvm = "rustllvm" {
                                                    Value: Bool);
     fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef,
                                                    Value: Bool);
-    fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls(PMB:
-                                                        PassManagerBuilderRef,
-                                                        Value: Bool);
-    fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB:
-                                                     PassManagerBuilderRef,
-                                                     threshold: uint);
-    fn LLVMPassManagerBuilderPopulateModulePassManager(PMB:
-                                                       PassManagerBuilderRef,
-                                                       PM: PassManagerRef);
+    fn LLVMPassManagerBuilderSetDisableSimplifyLibCalls(
+        PMB: PassManagerBuilderRef,
+        Value: Bool);
+    fn LLVMPassManagerBuilderUseInlinerWithThreshold(
+        PMB: PassManagerBuilderRef,
+        threshold: uint);
+    fn LLVMPassManagerBuilderPopulateModulePassManager(
+        PMB: PassManagerBuilderRef,
+        PM: PassManagerRef);
 
-    fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB:
-                                                        PassManagerBuilderRef,
-                                                         PM: PassManagerRef);
+    fn LLVMPassManagerBuilderPopulateFunctionPassManager(
+        PMB: PassManagerBuilderRef,
+        PM: PassManagerRef);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
@@ -905,68 +905,68 @@ native "cdecl" mod llvm = "rustllvm" {
  * it's attached to.
  */
 
-resource BuilderRef_res(B: BuilderRef) {
-    llvm::LLVMDisposeBuilder(B);
-}
+resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
-obj builder(B: BuilderRef, terminated: @mutable bool,
+obj builder(B: BuilderRef,
+            terminated: @mutable bool,
+
             // Stored twice so that we don't have to constantly deref
             res: @BuilderRef_res) {
     /* Terminators */
     fn RetVoid() -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildRetVoid(B);
     }
 
     fn Ret(V: ValueRef) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildRet(B, V);
     }
 
     fn AggregateRet(RetVals: &[ValueRef]) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildAggregateRet(B, vec::to_ptr(RetVals),
                                         vec::len(RetVals));
     }
 
     fn Br(Dest: BasicBlockRef) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildBr(B, Dest);
     }
 
     fn CondBr(If: ValueRef, Then: BasicBlockRef, Else: BasicBlockRef) ->
        ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildCondBr(B, If, Then, Else);
     }
 
     fn Switch(V: ValueRef, Else: BasicBlockRef, NumCases: uint) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildSwitch(B, V, Else, NumCases);
     }
 
     fn IndirectBr(Addr: ValueRef, NumDests: uint) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildIndirectBr(B, Addr, NumDests);
     }
 
     fn Invoke(Fn: ValueRef, Args: &[ValueRef], Then: BasicBlockRef,
               Catch: BasicBlockRef) -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildInvoke(B, Fn, vec::to_ptr(Args), vec::len(Args),
                                   Then, Catch, str::buf(""));
     }
 
     fn Unreachable() -> ValueRef {
-        assert (!*terminated);
+        assert (!*terminated);;
         *terminated = true;
         ret llvm::LLVMBuildUnreachable(B);
     }
@@ -1402,14 +1402,12 @@ obj builder(B: BuilderRef, terminated: @mutable bool,
         let T: ValueRef =
             llvm::LLVMGetNamedFunction(M, str::buf("llvm.trap"));
         assert (T as int != 0);
-        let Args: [ValueRef] = ~[];
+        let Args: [ValueRef] = [];
         ret llvm::LLVMBuildCall(B, T, vec::to_ptr(Args), vec::len(Args),
                                 str::buf(""));
     }
 
-    fn is_terminated() -> bool {
-        ret *terminated;
-    }
+    fn is_terminated() -> bool { ret *terminated; }
 }
 
 fn new_builder(llbb: BasicBlockRef) -> builder {
@@ -1454,7 +1452,7 @@ fn mk_type_names() -> type_names {
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> str {
-    ret type_to_str_inner(names, ~[], ty);
+    ret type_to_str_inner(names, [], ty);
 }
 
 fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
@@ -1462,7 +1460,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
     if names.type_has_name(ty) { ret names.get_name(ty); }
 
-    let outer = outer0 + ~[ty];
+    let outer = outer0 + [ty];
 
     let kind: int = llvm::LLVMGetTypeKind(ty);
 
@@ -1480,6 +1478,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
     alt kind {
 
 
+
       // FIXME: more enum-as-int constants determined from Core::h;
       // horrible, horrible. Complete as needed.
 
@@ -1494,9 +1493,11 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       6 { ret "Label"; }
 
 
+
       7 {
         ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
+
 
 
       8 {
@@ -1512,6 +1513,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       }
 
 
+
       9 {
         let s: str = "{";
         let n_elts: uint = llvm::LLVMCountStructElementTypes(ty);
@@ -1523,10 +1525,12 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       }
 
 
+
       10 {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + "]";
       }
+
 
 
       11 {
@@ -1543,12 +1547,13 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
       }
 
 
+
       12 {
         ret "Opaque";
       }
       13 { ret "Vector"; }
       14 { ret "Metadata"; }
-      _ { log_err #fmt("unknown TypeKind %d", kind as int); fail; }
+      _ { log_err #fmt["unknown TypeKind %d", kind as int]; fail; }
     }
 }
 

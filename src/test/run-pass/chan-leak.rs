@@ -7,10 +7,7 @@ import std::comm::send;
 import std::comm;
 import std::comm::mk_port;
 
-tag request {
-  quit;
-  close(_chan<bool>);
-}
+tag request { quit; close(_chan<bool>); }
 
 type ctx = _chan<request>;
 

@@ -101,35 +101,30 @@ fn kind_to_str(k: kind) -> str {
     }
 }
 
-fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr)
-    -> {ty: ty::t, kind: ast::kind} {
+fn type_and_kind(tcx: &ty::ctxt, e: &@ast::expr) ->
+   {ty: ty::t, kind: ast::kind} {
     let t = ty::expr_ty(tcx, e);
     let k = ty::type_kind(tcx, t);
     {ty: t, kind: k}
 }
 
-fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr,
-                  k_need: ast::kind, descr: &str) {
+fn need_expr_kind(tcx: &ty::ctxt, e: &@ast::expr, k_need: ast::kind,
+                  descr: &str) {
     let tk = type_and_kind(tcx, e);
-    log #fmt("for %s: want %s type, got %s type %s",
-             descr,
-             kind_to_str(k_need),
-             kind_to_str(tk.kind),
-             util::ppaux::ty_to_str(tcx, tk.ty));
+    log #fmt["for %s: want %s type, got %s type %s", descr,
+             kind_to_str(k_need), kind_to_str(tk.kind),
+             util::ppaux::ty_to_str(tcx, tk.ty)];
 
-    if ! kind_lteq(k_need, tk.kind) {
+    if !kind_lteq(k_need, tk.kind) {
         let s =
-            #fmt("mismatched kinds for %s: needed %s type, got %s type %s",
-                 descr,
-                 kind_to_str(k_need),
-                 kind_to_str(tk.kind),
-                 util::ppaux::ty_to_str(tcx, tk.ty));
+            #fmt["mismatched kinds for %s: needed %s type, got %s type %s",
+                 descr, kind_to_str(k_need), kind_to_str(tk.kind),
+                 util::ppaux::ty_to_str(tcx, tk.ty)];
         tcx.sess.span_err(e.span, s);
     }
 }
 
-fn need_shared_lhs_rhs(tcx: &ty::ctxt,
-                       a: &@ast::expr, b: &@ast::expr,
+fn need_shared_lhs_rhs(tcx: &ty::ctxt, a: &@ast::expr, b: &@ast::expr,
                        op: &str) {
     need_expr_kind(tcx, a, ast::kind_shared, op + " lhs");
     need_expr_kind(tcx, b, ast::kind_shared, op + " rhs");
@@ -142,6 +137,7 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
       ast::expr_call(callee, _) {
         let tpt = ty::expr_ty_params_and_ty(tcx, callee);
+
         // If we have typarams, we're calling an item; we need to check
         // that all the types we're supplying as typarams conform to the
         // typaram kind constraints on that item.
@@ -149,17 +145,16 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
             let callee_def = ast::def_id_of_def(tcx.def_map.get(callee.id));
             let item_tk = ty::lookup_item_type(tcx, callee_def);
             let i = 0;
-            assert vec::len(item_tk.kinds) == vec::len(tpt.params);
+            assert (vec::len(item_tk.kinds) == vec::len(tpt.params));
             for k_need: ast::kind in item_tk.kinds {
-                let t = tpt.params.(i);
+                let t = tpt.params[i];
                 let k = ty::type_kind(tcx, t);
-                if ! kind_lteq(k_need, k) {
-                    let s = #fmt("mismatched kinds for typaram %d: \
+                if !kind_lteq(k_need, k) {
+                    let s =
+                        #fmt["mismatched kinds for typaram %d: \
                                   needed %s type, got %s type %s",
-                                 i,
-                                 kind_to_str(k_need),
-                                 kind_to_str(k),
-                                 util::ppaux::ty_to_str(tcx, t));
+                             i, kind_to_str(k_need), kind_to_str(k),
+                             util::ppaux::ty_to_str(tcx, t)];
                     tcx.sess.span_err(e.span, s);
                 }
                 i += 1;
@@ -171,9 +166,9 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
 }
 
 fn check_crate(tcx: &ty::ctxt, crate: &@ast::crate) {
-    let visit = visit::mk_simple_visitor
-        (@{visit_expr: bind check_expr(tcx, _)
-           with *visit::default_simple_visitor()});
+    let visit =
+        visit::mk_simple_visitor(@{visit_expr: bind check_expr(tcx, _)
+                                      with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visit);
     tcx.sess.abort_if_errors();
 }
