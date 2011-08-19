@@ -1377,18 +1377,28 @@ fn operator_prec(op: ast::binop) -> int {
 }
 
 fn need_parens(expr: &@ast::expr, outer_prec: int) -> bool {
-    let add_them;
     alt expr.node {
       ast::expr_binary(op, _, _) {
-        add_them = operator_prec(op) < outer_prec;
+        operator_prec(op) < outer_prec
       }
-      ast::expr_cast(_, _) { add_them = parse::parser::as_prec < outer_prec; }
+      ast::expr_cast(_, _) { parse::parser::as_prec < outer_prec }
       ast::expr_ternary(_, _, _) {
-        add_them = parse::parser::ternary_prec < outer_prec;
+        parse::parser::ternary_prec < outer_prec
       }
-      _ { add_them = false; }
+
+      // This may be too conservative in some cases
+      ast::expr_assign(_, _) { true }
+      ast::expr_move(_, _) { true }
+      ast::expr_swap(_, _) { true }
+      ast::expr_assign_op(_, _, _) { true }
+      ast::expr_ret(_) { true }
+      ast::expr_put(_) { true }
+      ast::expr_be(_) { true }
+      ast::expr_assert(_) { true }
+      ast::expr_check(_, _) { true }
+      ast::expr_log(_, _) { true }
+      _ { false }
     }
-    ret add_them;
 }
 
 fn print_maybe_parens(s: &ps, expr: &@ast::expr, outer_prec: int) {

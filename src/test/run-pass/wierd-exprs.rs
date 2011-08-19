@@ -1,4 +1,3 @@
-// xfail-pretty
 // Just a grab bug of stuff that you wouldn't want to actualy write
 
 fn strange() -> bool {
