@@ -90,64 +90,61 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         ret mstr + ty_to_str(cx, m.ty);
     }
     alt cname(cx, typ) { some(cs) { ret cs; } _ { } }
-    let s = "";
-    alt struct(cx, typ) {
-      ty_native(_) { s += "native"; }
-      ty_nil. { s += "()"; }
-      ty_bot. { s += "_|_"; }
-      ty_bool. { s += "bool"; }
-      ty_int. { s += "int"; }
-      ty_float. { s += "float"; }
-      ty_uint. { s += "uint"; }
-      ty_machine(tm) { s += ty_mach_to_str(tm); }
-      ty_char. { s += "char"; }
-      ty_str. { s += "str"; }
-      ty_istr. { s += "istr"; }
-      ty_box(tm) { s += "@" + mt_to_str(cx, tm); }
-      ty_uniq(t) { s += "~" + ty_to_str(cx, t); }
-      ty_vec(tm) { s += "[" + mt_to_str(cx, tm) + "]"; }
-      ty_type. { s += "type"; }
+    ret alt struct(cx, typ) {
+      ty_native(_) { "native" }
+      ty_nil. { "()" }
+      ty_bot. { "_|_" }
+      ty_bool. { "bool" }
+      ty_int. { "int" }
+      ty_float. { "float" }
+      ty_uint. { "uint" }
+      ty_machine(tm) { ty_mach_to_str(tm) }
+      ty_char. { "char" }
+      ty_str. { "str" }
+      ty_istr. { "istr" }
+      ty_box(tm) { "@" + mt_to_str(cx, tm) }
+      ty_uniq(t) { "~" + ty_to_str(cx, t) }
+      ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
+      ty_type. { "type" }
       ty_rec(elems) {
         let strs: [str] = ~[];
         for fld: field in elems { strs += ~[field_to_str(cx, fld)]; }
-        s += "{" + str::connect(strs, ",") + "}";
+        "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
         let strs = ~[];
         for elem in elems { strs += ~[ty_to_str(cx, elem)]; }
-        s += "(" + str::connect(strs, ",") + ")";
+        "(" + str::connect(strs, ",") + ")"
       }
       ty_tag(id, tps) {
-        s += get_id_ident(cx, id);
+        let s = get_id_ident(cx, id);
         if vec::len::<t>(tps) > 0u {
             let strs: [str] = ~[];
             for typ: t in tps { strs += ~[ty_to_str(cx, typ)]; }
             s += "[" + str::connect(strs, ",") + "]";
         }
+        s
       }
       ty_fn(proto, inputs, output, cf, constrs) {
-        s += fn_to_str(cx, proto, none, inputs, output, cf, constrs);
+        fn_to_str(cx, proto, none, inputs, output, cf, constrs)
       }
       ty_native_fn(_, inputs, output) {
-        s +=
-            fn_to_str(cx, ast::proto_fn, none, inputs, output, ast::return,
-                      ~[]);
+        fn_to_str(cx, ast::proto_fn, none, inputs, output, ast::return, ~[])
       }
       ty_obj(meths) {
         let strs = ~[];
         for m: method in meths { strs += ~[method_to_str(cx, m)]; }
-        s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
+        "obj {\n\t" + str::connect(strs, "\n\t") + "\n}"
       }
       ty_res(id, _, _) {
-        s += get_id_ident(cx, id);
+        get_id_ident(cx, id)
       }
-      ty_var(v) { s += "<T" + int::str(v) + ">"; }
+      ty_var(v) { "<T" + int::str(v) + ">" }
       ty_param(id,_) {
-        s += "'" + str::unsafe_from_bytes(~[('a' as u8) + (id as u8)]);
+        "'" + str::unsafe_from_bytes(~[('a' as u8) + (id as u8)])
       }
-      _ { s += ty_to_short_str(cx, typ); }
+      _ { ty_to_short_str(cx, typ) }
     }
-    ret s;
 }
 
 fn ty_to_short_str(cx: &ctxt, typ: t) -> str {
