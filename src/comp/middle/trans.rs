@@ -5626,7 +5626,9 @@ fn alloc_ty(cx: &@block_ctxt, t: &ty::t) -> result {
     // past caller conventions and may well make sense again,
     // so we leave it as-is.
 
-    bcx = gc::add_gc_root(bcx, val, t);
+    if (bcx_tcx(cx).sess.get_opts().do_gc) {
+        bcx = gc::add_gc_root(bcx, val, t);
+    }
 
     ret rslt(cx, val);
 }
