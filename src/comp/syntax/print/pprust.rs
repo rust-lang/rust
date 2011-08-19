@@ -991,10 +991,9 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
       }
       ast::expr_index(expr, index) {
         print_expr_parens_if_unary(s, expr);
-        word(s.s, ".");
-        popen(s);
+        word(s.s, "[");
         print_expr(s, index);
-        pclose(s);
+        word(s.s, "]");
       }
       ast::expr_path(path) { print_path(s, path, true); }
       ast::expr_fail(maybe_fail_val) {
