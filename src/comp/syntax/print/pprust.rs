@@ -1563,7 +1563,11 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       }
       lexer::blank_line. {
         // We need to do at least one, possibly two hardbreaks.
-        if is_begin(s) || is_end(s) { hardbreak(s.s) }
+        let is_semi = alt s.s.last_token() {
+          pp::STRING(s, _) { s == ";" }
+          _ { false }
+        };
+        if is_semi || is_begin(s) || is_end(s) { hardbreak(s.s) }
         hardbreak(s.s);
       }
     }
