@@ -473,7 +473,7 @@ fn print_item(s: &ps, item: &@ast::item) {
         } else {
             bopen(s);
             for v: ast::variant in variants {
-                space(s.s);
+                space_if_not_bol(s);
                 maybe_print_comment(s, v.span.lo);
                 word(s.s, v.node.name);
                 if vec::len(v.node.args) > 0u {
