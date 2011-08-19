@@ -1,3 +1,4 @@
+#include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_upcall.h"
 
@@ -129,6 +130,8 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
         "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")"
         " with gc-chain head = 0x%" PRIxPTR,
         nbytes, td, task->gc_alloc_chain);
+
+    gc::maybe_gc(task);
 
     // TODO: Maybe use dladdr here to find a more useful name for the
     // type_desc.
