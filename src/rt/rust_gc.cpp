@@ -41,7 +41,7 @@ public:
 #endif
         n_safe_points = *data++;
         index = (const std::pair<void *,const safe_point *> *)data;
-        data += n_safe_points;
+        data += n_safe_points * 2;
         safe_points = (const safe_point *)data;
     }
 };
