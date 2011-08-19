@@ -1537,7 +1537,12 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
       }
       lexer::isolated. {
         pprust::hardbreak_if_not_bol(s);
-        for line: str in cmnt.lines { word(s.s, line); hardbreak(s.s); }
+        for line: str in cmnt.lines {
+            // Don't print empty lines because they will end up as trailing
+            // whitespace
+            if str::is_not_empty(line) { word(s.s, line); }
+            hardbreak(s.s);
+        }
       }
       lexer::trailing. {
         word(s.s, " ");
@@ -1546,7 +1551,10 @@ fn print_comment(s: &ps, cmnt: lexer::cmnt) {
             hardbreak(s.s);
         } else {
             ibox(s, 0u);
-            for line: str in cmnt.lines { word(s.s, line); hardbreak(s.s); }
+            for line: str in cmnt.lines {
+                if str::is_not_empty(line) { word(s.s, line); }
+                hardbreak(s.s);
+            }
             end(s);
         }
       }
