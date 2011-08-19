@@ -16,12 +16,11 @@
 
 declare i32 @rust_start(i32, i32, i32, i32)
 
-declare external fastcc void @_rust_main(i1* nocapture, %task*, %2* nocapture, %ivec)
+declare external fastcc void @_rust_main(i1* nocapture, %task*, %2* nocapture, %ivec*)
 
 define void @_rust_main_wrap(i1* nocapture, %task *, %2* nocapture, %ivec *)
 {
-  %ivec = load %ivec *%3
-  tail call fastcc void @_rust_main(i1* %0, %task *%1, %2* nocapture %2, %ivec %ivec)
+  tail call fastcc void @_rust_main(i1* %0, %task *%1, %2* nocapture %2, %ivec* %3)
   ret void
 }
 
