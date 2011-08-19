@@ -1718,8 +1718,13 @@ fn proto_to_str(p: &ast::proto) -> str {
 }
 
 fn ty_constr_to_str(c: &@ast::ty_constr) -> str {
+    fn ty_constr_path_to_str(p: &ast::path) -> str {
+        "*." + path_to_str(p)
+    }
+
     ret path_to_str(c.node.path) +
-            constr_args_to_str::<ast::path>(path_to_str, c.node.args);
+            constr_args_to_str::<ast::path>(ty_constr_path_to_str,
+                                            c.node.args);
 }
 
 

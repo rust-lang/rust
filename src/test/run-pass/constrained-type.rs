@@ -1,4 +1,3 @@
-// xfail-pretty
 // -*- rust -*-
 
 tag list { cons(int, @list); nil; }
