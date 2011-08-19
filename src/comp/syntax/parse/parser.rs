@@ -1107,13 +1107,6 @@ fn parse_dot_or_call_expr_with(p: &parser, e: @ast::expr) -> @ast::expr {
                 p.bump();
                 e = mk_expr(p, lo, hi, ast::expr_field(e, p.get_str(i)));
               }
-              token::LPAREN. {
-                p.bump();
-                let ix = parse_expr(p);
-                hi = ix.span.hi;
-                expect(p, token::RPAREN);
-                e = mk_expr(p, lo, hi, ast::expr_index(e, ix));
-              }
               t { unexpected(p, t); }
             }
           }
