@@ -1,3 +1,6 @@
+// This test has some extra semis in it that the pretty-printer won't
+// reproduce so we don't want to automatically reformat it
+
 // no-reformat
 
 /*
