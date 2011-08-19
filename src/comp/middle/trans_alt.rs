@@ -528,7 +528,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
             let alloc = trans::alloca(bcx, llty);
             bcx = trans::memmove_ty(bcx, alloc, val, ty).bcx;
             let loaded = trans::load_if_immediate(bcx, alloc, ty);
-            bcx = trans::copy_ty(bcx, loaded, ty).bcx;
+            bcx = trans::take_ty(bcx, loaded, ty).bcx;
             table.insert(pat.id, alloc);
             trans_common::add_clean(bcx, alloc, ty);
         } else { table.insert(pat.id, val); }

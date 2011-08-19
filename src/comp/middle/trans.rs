@@ -1116,7 +1116,7 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: &ty::t, ty_params: &[uint])
           tydesc: gvar,
           size: llsize,
           align: llalign,
-          mutable copy_glue: none::<ValueRef>,
+          mutable take_glue: none::<ValueRef>,
           mutable drop_glue: none::<ValueRef>,
           mutable free_glue: none::<ValueRef>,
           mutable cmp_glue: none::<ValueRef>,
@@ -1202,8 +1202,8 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
         let glue_fn_ty = T_ptr(T_glue_fn(*ccx));
         let cmp_fn_ty = T_ptr(T_cmp_glue_fn(*ccx));
         let ti = pair.val;
-        let copy_glue =
-            alt { ti.copy_glue } {
+        let take_glue =
+            alt { ti.take_glue } {
               none. { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
@@ -1233,7 +1233,7 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
                            [C_null(T_ptr(T_ptr(ccx.tydesc_type))),
                             ti.size, // size
                             ti.align, // align
-                            copy_glue, // copy_glue
+                            take_glue, // take_glue
                             drop_glue, // drop_glue
                             free_glue, // free_glue
                             C_null(glue_fn_ty), // sever_glue
@@ -1253,7 +1253,7 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
     }
 }
 
-fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
+fn make_take_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
     // NB: v is an *alias* of type t here, not a direct value.
 
     let bcx;
@@ -1262,7 +1262,7 @@ fn make_copy_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
         bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
     } else if ty::type_is_structural(bcx_tcx(cx), t) {
         bcx = duplicate_heap_parts_if_necessary(cx, v, t).bcx;
-        bcx = iter_structural_ty(bcx, v, t, bind copy_ty(_, _, _)).bcx;
+        bcx = iter_structural_ty(bcx, v, t, bind take_ty(_, _, _)).bcx;
     } else { bcx = cx; }
 
     build_return(bcx);
@@ -1966,7 +1966,7 @@ fn iter_sequence(cx: @block_ctxt, v: ValueRef, t: &ty::t, f: &val_and_ty_fn)
 
 fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
                                static_ti: &option::t<@tydesc_info>) {
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, static_ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, static_ti);
@@ -1984,8 +1984,8 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
     alt static_ti {
       none. { }
       some(ti) {
-        if field == abi::tydesc_field_copy_glue {
-            alt { ti.copy_glue } {
+        if field == abi::tydesc_field_take_glue {
+            alt { ti.take_glue } {
               some(_) { }
               none. {
                 log #fmt["+++ lazily_emit_tydesc_glue TAKE %s",
@@ -1993,9 +1993,9 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 let lcx = cx.fcx.lcx;
                 let glue_fn =
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
-                                         "copy");
-                ti.copy_glue = some::<ValueRef>(glue_fn);
-                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, make_copy_glue,
+                                         "take");
+                ti.take_glue = some::<ValueRef>(glue_fn);
+                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, make_take_glue,
                                   ti.ty_params, "take");
                 log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
@@ -2059,8 +2059,8 @@ fn call_tydesc_glue_full(cx: &@block_ctxt, v: ValueRef, tydesc: ValueRef,
     alt static_ti {
       none. {/* no-op */ }
       some(sti) {
-        if field == abi::tydesc_field_copy_glue {
-            static_glue_fn = sti.copy_glue;
+        if field == abi::tydesc_field_take_glue {
+            static_glue_fn = sti.take_glue;
         } else if field == abi::tydesc_field_drop_glue {
             static_glue_fn = sti.drop_glue;
         } else if field == abi::tydesc_field_free_glue {
@@ -2147,10 +2147,10 @@ fn compare(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
     ret call_cmp_glue(cx, lhs, rhs, t, llop);
 }
 
-fn copy_ty(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
+fn take_ty(cx: &@block_ctxt, v: ValueRef, t: ty::t) -> result {
     if ty::type_has_pointers(bcx_tcx(cx), t) ||
            ty::type_owns_heap_mem(bcx_tcx(cx), t) {
-        ret call_tydesc_glue(cx, v, t, abi::tydesc_field_copy_glue);
+        ret call_tydesc_glue(cx, v, t, abi::tydesc_field_take_glue);
     }
     ret rslt(cx, C_nil());
 }
@@ -2257,7 +2257,7 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
         if action == DROP_EXISTING {
             bcx = drop_ty(cx, cx.build.Load(dst), t).bcx;
         } else { bcx = cx; }
-        bcx = copy_ty(bcx, src, t).bcx;
+        bcx = take_ty(bcx, src, t).bcx;
         ret rslt(bcx, bcx.build.Store(src, dst));
     } else if ty::type_is_structural(ccx.tcx, t) ||
                   ty::type_has_dynamic_size(ccx.tcx, t) {
@@ -2273,7 +2273,7 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
             do_copy_cx = drop_ty(do_copy_cx, dst, t).bcx;
         }
         do_copy_cx = memmove_ty(do_copy_cx, dst, src, t).bcx;
-        do_copy_cx = copy_ty(do_copy_cx, dst, t).bcx;
+        do_copy_cx = take_ty(do_copy_cx, dst, t).bcx;
         do_copy_cx.build.Br(next_cx.llbb);
 
         ret rslt(next_cx, C_nil());
@@ -2526,7 +2526,7 @@ fn trans_evec_append(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef,
     bcx = llvec_tydesc.bcx;
     ti = none::<@tydesc_info>;
     let llelt_tydesc = get_tydesc(bcx, elt_ty, false, ti).result;
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, ti);
     bcx = llelt_tydesc.bcx;
@@ -2784,7 +2784,7 @@ mod ivec {
         bcx = rs.bcx;
         rs = get_tydesc(bcx, unit_ty, false, no_tydesc_info).result;
         bcx = rs.bcx;
-        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_copy_glue, none);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, none);
         let rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
@@ -3076,7 +3076,7 @@ mod ivec {
     }
 
     // NB: This does *not* adjust reference counts. The caller must have done
-    // this via copy_ty() beforehand.
+    // this via take_ty() beforehand.
     fn duplicate_heap_part(cx: &@block_ctxt, orig_vptr: ValueRef,
                            unit_ty: ty::t) -> result {
         // Cast to an opaque interior vector if we can't trust the pointer
@@ -4474,7 +4474,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
             if lv.is_mem {
                 val = load_if_immediate(bcx, val, e_ty);
             }
-            bcx = copy_ty(bcx, val, e_ty).bcx;
+            bcx = take_ty(bcx, val, e_ty).bcx;
             add_clean_temp(bcx, val, e_ty);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
@@ -5833,7 +5833,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
                 // Args that are locally assigned to need to do a local
                 // take/drop
                 if fcx.lcx.ccx.mut_map.contains_key(aarg.id) {
-                    bcx = copy_ty(bcx, aval, arg_ty).bcx;
+                    bcx = take_ty(bcx, aval, arg_ty).bcx;
                     add_clean(scope, addr, arg_ty);
                 }
             }

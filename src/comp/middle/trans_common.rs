@@ -81,7 +81,7 @@ type tydesc_info =
      tydesc: ValueRef,
      size: ValueRef,
      align: ValueRef,
-     mutable copy_glue: option::t<ValueRef>,
+     mutable take_glue: option::t<ValueRef>,
      mutable drop_glue: option::t<ValueRef>,
      mutable free_glue: option::t<ValueRef>,
      mutable cmp_glue: option::t<ValueRef>,

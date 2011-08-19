@@ -285,12 +285,12 @@ copy_elements(rust_task *task, type_desc *elem_t,
     memmove(dst, src, n);
 
     // increment the refcount of each element of the vector
-    if (elem_t->copy_glue) {
-        glue_fn *copy_glue = elem_t->copy_glue;
+    if (elem_t->take_glue) {
+        glue_fn *take_glue = elem_t->take_glue;
         size_t elem_size = elem_t->size;
         const type_desc **tydescs = elem_t->first_param;
         for (char *p = dst; p < dst+n; p += elem_size) {
-            copy_glue(NULL, task, NULL, tydescs, p);
+            take_glue(NULL, task, NULL, tydescs, p);
         }
     }
 }
