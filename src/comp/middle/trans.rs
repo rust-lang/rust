@@ -3443,7 +3443,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
 
     // First, synthesize a tuple type containing the types of all the
     // bound expressions.
-    // bindings_ty = ~[bound_ty1, bound_ty2, ...]
+    // bindings_ty = [bound_ty1, bound_ty2, ...]
     let bindings_ty: ty::t = ty::mk_tup(bcx_tcx(bcx), bound_tys);
 
     // NB: keep this in sync with T_closure_ptr; we're making
@@ -4323,16 +4323,8 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
                     if is_val { T_ptr(llout_arg_ty) } else { llout_arg_ty };
                 val = bcx.build.PointerCast(val, ty);
             }
-            if is_val {
-                if type_is_immediate(cx.ccx, e_ty) {
-                    val = bcx.build.Load(val);
-                    bcx = copy_ty(bcx, val, e_ty).bcx;
-                } else {
-                    bcx = copy_ty(bcx, val, e_ty).bcx;
-                    if !ty::type_is_structural(cx.ccx.tcx, e_ty) {
-                        val = bcx.build.Load(val);
-                    }
-                }
+            if is_val && type_is_immediate(cx.ccx, e_ty) {
+                val = bcx.build.Load(val);
             }
             llargs += [val];
             b += 1;
@@ -4343,15 +4335,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
           none. {
             let arg: ValueRef = llvm::LLVMGetParam(llthunk, a);
             if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
-
-                // If the argument was passed by value and isn't a
-                // pointer type, we need to spill it to an alloca in
-                // order to do a pointer cast. Argh.
-                if is_val && !ty::type_is_boxed(cx.ccx.tcx, out_arg.ty) {
-                    let argp = do_spill(bcx, arg);
-                    argp = bcx.build.PointerCast(argp, T_ptr(llout_arg_ty));
-                    arg = bcx.build.Load(argp);
-                } else { arg = bcx.build.PointerCast(arg, llout_arg_ty); }
+                arg = bcx.build.PointerCast(arg, llout_arg_ty);
             }
             llargs += [arg];
             a += 1u;
@@ -4371,7 +4355,7 @@ fn trans_bind_thunk(cx: &@local_ctxt, sp: &span, incoming_fty: &ty::t,
         type_of_fn_from_ty(bcx_ccx(bcx), sp, outgoing_fty, ty_param_count);
     lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
     lltargetfn = bcx.build.Load(lltargetfn);
-    llvm::LLVMSetTailCall(bcx.build.FastCall(lltargetfn, llargs), 1);
+    bcx.build.FastCall(lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);
     ret {val: llthunk, ty: llthunk_ty};
@@ -4468,29 +4452,30 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         // to have type lldestty0 (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty0);
     } else if arg.mode == ty::mo_val {
-        if ty::type_owns_heap_mem(ccx.tcx, e_ty) {
+        // Eliding take/drop for appending of external vectors currently
+        // corrupts memory. I can't figure out why, and external vectors
+        // are on the way out anyway, so this simply turns off the
+        // optimization for that case.
+        let is_ext_vec_plus = alt e.node {
+          ast::expr_binary(_, _, _) {
+            ty::type_is_sequence(ccx.tcx, e_ty) &&
+                !ty::sequence_is_interior(ccx.tcx, e_ty)
+          }
+          _ { false }
+        };
+        if !lv.is_mem && !is_ext_vec_plus {
+            // Do nothing for temporaries, just give them to callee
+        } else if ty::type_is_structural(ccx.tcx, e_ty) {
             let dst = alloc_ty(bcx, e_ty);
+            bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty).bcx;
             val = dst.val;
-            bcx = move_val_if_temp(dst.bcx, INIT, val, lv, e_ty).bcx;
-        } else if lv.is_mem {
-            val = load_if_immediate(bcx, val, e_ty);
-            bcx = copy_ty(bcx, val, e_ty).bcx;
+            add_clean_temp(bcx, val, e_ty);
         } else {
-            // Eliding take/drop for appending of external vectors currently
-            // corrupts memory. I can't figure out why, and external vectors
-            // are on the way out anyway, so this simply turns off the
-            // optimization for that case.
-            let is_ext_vec_plus =
-                alt e.node {
-                  ast::expr_binary(_, _, _) {
-                    ty::type_is_sequence(ccx.tcx, e_ty) &&
-                        !ty::sequence_is_interior(ccx.tcx, e_ty)
-                  }
-                  _ { false }
-                };
-            if is_ext_vec_plus {
-                bcx = copy_ty(bcx, val, e_ty).bcx;
-            } else { revoke_clean(bcx, val); }
+            if lv.is_mem {
+                val = load_if_immediate(bcx, val, e_ty);
+            }
+            bcx = copy_ty(bcx, val, e_ty).bcx;
+            add_clean_temp(bcx, val, e_ty);
         }
     } else if type_is_immediate(ccx, e_ty) && !lv.is_mem {
         val = do_spill(bcx, val);
@@ -4620,13 +4605,14 @@ fn trans_args(cx: &@block_ctxt, llenv: ValueRef,
          to_revoke: to_revoke};
 }
 
-fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
+fn trans_call(in_cx: &@block_ctxt, f: &@ast::expr,
               lliterbody: &option::t<ValueRef>, args: &[@ast::expr],
               id: ast::node_id) -> result {
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-
+    let cx = new_scope_block_ctxt(in_cx, "call");
+    in_cx.build.Br(cx.llbb);
     let f_res = trans_lval_gen(cx, f);
     let fn_ty: ty::t;
     alt f_res.method_ty {
@@ -4691,7 +4677,7 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
                 // Retval doesn't correspond to anything really tangible
                 // in the frame, but it's a ref all the same, so we put a
                 // note here to drop it when we're done in this scope.
-                add_clean_temp(cx, retval, ret_ty);
+                add_clean_temp(in_cx, retval, ret_ty);
             }
           }
           some(_) {
@@ -4705,7 +4691,13 @@ fn trans_call(cx: &@block_ctxt, f: &@ast::expr,
         for {v: v, t: t}: {v: ValueRef, t: ty::t} in args_res.to_zero {
             zero_alloca(bcx, v, t)
         }
-        for v: ValueRef in args_res.to_revoke { revoke_clean(bcx, v) }
+        for v: ValueRef in args_res.to_revoke {
+            revoke_clean(bcx, v)
+        }
+        bcx = trans_block_cleanups(bcx, cx);
+        let next_cx = new_sub_block_ctxt(in_cx, "next");
+        bcx.build.Br(next_cx.llbb);
+        bcx = next_cx;
     }
     ret rslt(bcx, retval);
 }
@@ -5230,7 +5222,9 @@ fn trans_fail_value(cx: &@block_ctxt, sp_opt: &option::t<span>,
     ret rslt(cx, C_nil());
 }
 
-fn trans_put(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
+fn trans_put(in_cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
+    let cx = new_scope_block_ctxt(in_cx, "put");
+    in_cx.build.Br(cx.llbb);
     let llcallee = C_nil();
     let llenv = C_nil();
     alt { cx.fcx.lliterbody } {
@@ -5260,7 +5254,10 @@ fn trans_put(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
       }
     }
     bcx.build.FastCall(llcallee, llargs);
-    ret rslt(bcx, C_nil());
+    bcx = trans_block_cleanups(bcx, cx);
+    let next_cx = new_sub_block_ctxt(in_cx, "next");
+    bcx.build.Br(next_cx.llbb);
+    ret rslt(next_cx, C_nil());
 }
 
 fn trans_uniq(cx: &@block_ctxt, contents: &@ast::expr) -> lval_result {
@@ -5817,55 +5814,38 @@ fn create_llargs_for_fn_args(cx: &@fn_ctxt, proto: ast::proto,
     }
 }
 
-fn copy_args_to_allocas(fcx: @fn_ctxt, args: &[ast::arg],
-                        arg_tys: &[ty::arg]) {
+fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
+                        args: &[ast::arg], arg_tys: &[ty::arg]) {
     let bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
     let arg_n: uint = 0u;
     for aarg: ast::arg in args {
-        if aarg.mode == ast::val {
-            let argval, arg_ty = arg_tys.(arg_n).ty;
-            alt bcx.fcx.llargs.find(aarg.id) {
-              some(x) { argval = x; }
-              _ {
-                bcx_ccx(bcx).sess.span_fatal(
-                    aarg.ty.span,
-                    "unbound arg ID in copy_args_to_allocas");
-              }
-            }
-            let a;
-            if ty::type_is_structural(fcx_tcx(fcx), arg_ty) {
-                a = alloca(bcx, llvm::LLVMGetElementType(val_ty(argval)));
-                bcx = memmove_ty(bcx, a, argval, arg_ty).bcx;
-            } else {
-                a = do_spill(bcx, argval);
-            }
+        let arg_ty = arg_tys[arg_n].ty;
+        alt aarg.mode {
+          ast::val. {
+            // Structural types are passed by pointer, and we use the
+            // pointed-to memory for the local.
+            if !ty::type_is_structural(fcx_tcx(fcx), arg_ty) {
+                // Overwrite the llargs entry for this arg with its alloca.
+                let aval = bcx.fcx.llargs.get(aarg.id);
+                let addr = do_spill(bcx, aval);
+                bcx.fcx.llargs.insert(aarg.id, addr);
 
-            // Overwrite the llargs entry for this arg with its alloca.
-            bcx.fcx.llargs.insert(aarg.id, a);
+                // Args that are locally assigned to need to do a local
+                // take/drop
+                if fcx.lcx.ccx.mut_map.contains_key(aarg.id) {
+                    bcx = copy_ty(bcx, aval, arg_ty).bcx;
+                    add_clean(scope, addr, arg_ty);
+                }
+            }
+          }
+          ast::move. {
+            add_clean(scope, bcx.fcx.llargs.get(aarg.id), arg_ty);
+          }
+          _ {}
         }
         arg_n += 1u;
     }
     fcx.llcopyargs = bcx.llbb;
-}
-
-fn add_cleanups_for_args(bcx: &@block_ctxt, args: &[ast::arg],
-                         arg_tys: &[ty::arg]) {
-    let arg_n: uint = 0u;
-    for aarg: ast::arg in args {
-        if aarg.mode == ast::val || aarg.mode == ast::move {
-            let argval;
-            alt bcx.fcx.llargs.find(aarg.id) {
-              some(x) { argval = x; }
-              _ {
-                bcx_ccx(bcx).sess.span_fatal(
-                    aarg.ty.span,
-                    "unbound arg ID in add_cleanups_for_args");
-              }
-            }
-            add_clean(bcx, argval, arg_tys[arg_n].ty);
-        }
-        arg_n += 1u;
-    }
 }
 
 fn is_terminated(cx: &@block_ctxt) -> bool {
@@ -5964,8 +5944,15 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
       some(llself) { populate_fn_ctxt_from_llself(fcx, llself); }
       _ { }
     }
+
+    // Create the first basic block in the function and keep a handle on it to
+    //  pass to finish_fn later.
+    let bcx = new_top_block_ctxt(fcx);
+    let lltop = bcx.llbb;
+    let block_ty = node_id_type(cx.ccx, f.body.node.id);
+
     let arg_tys = arg_tys_of_fn(fcx.lcx.ccx, id);
-    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
+    copy_args_to_allocas(fcx, bcx, f.decl.inputs, arg_tys);
 
     // Figure out if we need to build a closure and act accordingly
     let res =
@@ -5989,12 +5976,6 @@ fn trans_closure(bcx_maybe: &option::t<@block_ctxt>,
           _ { none }
         };
 
-    // Create the first basic block in the function and keep a handle on it to
-    //  pass to finish_fn later.
-    let bcx = new_top_block_ctxt(fcx);
-    add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
-    let lltop = bcx.llbb;
-    let block_ty = node_id_type(cx.ccx, f.body.node.id);
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
@@ -6119,8 +6100,8 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(cx.ccx, variant.node.id);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
     let bcx = new_top_block_ctxt(fcx);
+    copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
     let lltop = bcx.llbb;
 
     // Cast the tag to a type we can GEP into.
@@ -6333,16 +6314,12 @@ fn create_main_wrapper(ccx: &@crate_ctxt, sp: &span, main_llfn: ValueRef,
         let lltaskarg = llvm::LLVMGetParam(llfdecl, 1u);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 2u);
         let llargvarg = llvm::LLVMGetParam(llfdecl, 3u);
-        let args = if takes_ivec {
-            ~[lloutputarg, lltaskarg, llenvarg, llargvarg]
-        } else {
-            // If the crate's main function doesn't take the args vector then
-            // we're responsible for freeing it
-            bcx = maybe_free_ivec_heap_part(bcx, llargvarg,
-                                            ty::mk_str(ccx.tcx)).bcx;
-            ~[lloutputarg, lltaskarg, llenvarg]
-        };
+        let args = [lloutputarg, lltaskarg, llenvarg];
+        if takes_ivec { args += [llargvarg]; }
         bcx.build.FastCall(main_llfn, args);
+        // We're responsible for freeing the arg vector
+        bcx = maybe_free_ivec_heap_part(bcx, llargvarg,
+                                        ty::mk_str(ccx.tcx)).bcx;
         build_return(bcx);
 
         finish_fn(fcx, lltop);
@@ -6555,7 +6532,6 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
     let args = ty::ty_fn_args(ccx.tcx, fn_type);
     // Build up the list of arguments.
 
-    let drop_args: [{val: ValueRef, ty: ty::t}] = [];
     let i = arg_n;
     for arg: ty::arg in args {
         let llarg = llvm::LLVMGetParam(fcx.llfn, i);
@@ -6564,7 +6540,6 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
             let llarg_i32 = convert_arg_to_i32(bcx, llarg, arg.ty, arg.mode);
             call_args += [llarg_i32];
         } else { call_args += [llarg]; }
-        if arg.mode == ty::mo_val { drop_args += [{val: llarg, ty: arg.ty}]; }
         i += 1u;
     }
     let r;
@@ -6594,9 +6569,8 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
         rptr = result.rptr;
       }
       _ {
-        r =
-            trans_native_call(bcx.build, ccx.externs, ccx.llmod, name,
-                              call_args);
+        r = trans_native_call(bcx.build, ccx.externs,
+                              ccx.llmod, name, call_args);
         rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
       }
     }
@@ -6606,9 +6580,6 @@ fn decl_native_fn_and_pair(ccx: &@crate_ctxt, sp: &span, path: &[str],
 
     if !rty_is_nil && !uses_retptr { bcx.build.Store(r, rptr); }
 
-    for d: {val: ValueRef, ty: ty::t} in drop_args {
-        bcx = drop_ty(bcx, d.val, d.ty).bcx;
-    }
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
@@ -6927,7 +6898,8 @@ fn write_abi_version(ccx: &@crate_ctxt) {
 }
 
 fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
-               output: &str, amap: &ast_map::map) -> ModuleRef {
+               output: &str, amap: &ast_map::map, mut_map: alias::mut_map)
+    -> ModuleRef {
     let llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                 llvm::LLVMGetGlobalContext());
@@ -6979,6 +6951,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           type_sha1s: sha1s,
           type_short_names: short_names,
           tcx: tcx,
+          mut_map: mut_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,

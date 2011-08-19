@@ -148,26 +148,24 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(sess, def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
-    time::<()>(time_passes, "typechecking",
-               bind typeck::check_crate(ty_cx, crate));
-    time::<()>(time_passes, "alt checking",
-               bind middle::check_alt::check_crate(ty_cx, crate));
+    time(time_passes, "typechecking",
+         bind typeck::check_crate(ty_cx, crate));
+    time(time_passes, "alt checking",
+         bind middle::check_alt::check_crate(ty_cx, crate));
     if sess.get_opts().run_typestate {
         time(time_passes, "typestate checking",
              bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
-    time(time_passes, "alias checking",
-         bind middle::alias::check_crate(ty_cx, crate));
-    time::<()>(time_passes, "kind checking",
-               bind kind::check_crate(ty_cx, crate));
+    let mut_map = time(time_passes, "alias checking",
+                       bind middle::alias::check_crate(ty_cx, crate));
+    time(time_passes, "kind checking",
+         bind kind::check_crate(ty_cx, crate));
     if sess.get_opts().no_trans { ret; }
-    let llmod =
-        time::<llvm::llvm::ModuleRef>(time_passes, "translation",
-                                      bind trans::trans_crate(sess, crate,
-                                                              ty_cx, output,
-                                                              ast_map));
-    time::<()>(time_passes, "LLVM passes",
-               bind link::write::run_passes(sess, llmod, output));
+    let llmod = time(time_passes, "translation",
+                     bind trans::trans_crate(sess, crate, ty_cx, output,
+                                             ast_map, mut_map));
+    time(time_passes, "LLVM passes",
+         bind link::write::run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,

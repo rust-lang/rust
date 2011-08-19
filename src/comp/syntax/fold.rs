@@ -334,7 +334,6 @@ fn noop_fold_expr(e: &expr_, fld: ast_fold) -> expr_ {
 
     let fold_mac = bind fold_mac_(_, fld);
 
-
     ret alt e {
           expr_vec(exprs, mut) {
             expr_vec(fld.map_exprs(fld.fold_expr, exprs), mut)

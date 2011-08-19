@@ -1081,7 +1081,8 @@ fn parse_dot_or_call_expr_with(p: &parser, e: @ast::expr) -> @ast::expr {
                     parse_seq(token::LPAREN, token::RPAREN,
                               some(token::COMMA), parse_expr, p);
                 hi = es.span.hi;
-                e = mk_expr(p, lo, hi, ast::expr_call(e, es.node));
+                let nd = ast::expr_call(e, es.node);
+                e = mk_expr(p, lo, hi, nd);
             }
           }
           token::LBRACKET. {

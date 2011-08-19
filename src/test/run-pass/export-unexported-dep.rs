@@ -6,7 +6,7 @@ mod foo {
     export g;
 
     // not exported
-    tag t { t1; }
+    tag t { t1; t2; }
 
     fn f() -> t { ret t1; }
 

@@ -36,20 +36,25 @@ type scope = @[restrict];
 
 tag local_info { arg(ast::mode); objfield(ast::mutability); }
 
-type ctx = {tcx: ty::ctxt, local_map: std::map::hashmap<node_id, local_info>};
+type mut_map = std::map::hashmap<node_id, ()>;
+type ctx = {tcx: ty::ctxt,
+            local_map: std::map::hashmap<node_id, local_info>,
+            mut_map: mut_map};
 
-fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) {
+fn check_crate(tcx: ty::ctxt, crate: &@ast::crate) -> mut_map {
     // Stores information about object fields and function
     // arguments that's otherwise not easily available.
-    let cx = @{tcx: tcx, local_map: std::map::new_int_hash()};
-    let v =
-        @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
-          visit_item: bind visit_item(cx, _, _, _),
-          visit_expr: bind visit_expr(cx, _, _, _),
-          visit_decl: bind visit_decl(cx, _, _, _)
-             with *visit::default_visitor::<scope>()};
+    let cx = @{tcx: tcx,
+               local_map: std::map::new_int_hash(),
+               mut_map: std::map::new_int_hash()};
+    let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
+              visit_item: bind visit_item(cx, _, _, _),
+              visit_expr: bind visit_expr(cx, _, _, _),
+              visit_decl: bind visit_decl(cx, _, _, _)
+              with *visit::default_visitor::<scope>()};
     visit::visit_crate(*crate, @[], visit::mk_vt(v));
     tcx.sess.abort_if_errors();
+    ret cx.mut_map;
 }
 
 fn visit_fn(cx: &@ctx, f: &ast::_fn, _tp: &[ast::ty_param], _sp: &span,
@@ -425,6 +430,7 @@ fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
     alt dest.node {
       ast::expr_path(p) {
         let dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
+        cx.mut_map.insert(dnum, ());
         if is_immutable_alias(*cx, sc, dnum) {
             cx.tcx.sess.span_err(dest.span, "assigning to immutable alias");
         } else if is_immutable_objfield(*cx, dnum) {
