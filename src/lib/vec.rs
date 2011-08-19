@@ -307,6 +307,14 @@ fn reversed<@T>(v: &[T]) -> [T] {
     ret rs;
 }
 
+// Iterate over a list with with the indexes
+iter iter2<@T>(v: &[T]) -> (uint, T) {
+    let i = 0u;
+    for x in v {
+        put (i, x);
+        i += 1u;
+    }
+}
 
 mod unsafe {
     type ivec_repr =
