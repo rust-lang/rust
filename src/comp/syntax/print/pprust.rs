@@ -1067,12 +1067,15 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
             word(s.s, " ");
             print_block(s, meth.node.meth.body);
         }
-        space(s.s);
 
         // With object
         alt anon_obj.inner_obj {
           none. { }
-          some(e) { word_space(s, "with"); print_expr(s, e); }
+          some(e) {
+            space(s.s);
+            word_space(s, "with");
+            print_expr(s, e);
+          }
         }
         bclose(s, expr.span);
       }
