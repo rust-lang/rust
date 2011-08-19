@@ -736,13 +736,8 @@ fn find_pre_post_fn(fcx: &fn_ctxt, f: &_fn) {
     use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_return));
     use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_diverge));
 
-    for a:arg in f.decl.inputs {
-        // FIXME: Hack to avoid warning spew
-        // Just pretend all arguments are used
-        use_var(fcx, a.id);
-    }
-
     find_pre_post_block(fcx, f.body);
+
 
     // Treat the tail expression as a return statement
     alt f.body.node.expr {
