@@ -177,6 +177,7 @@ void RustGCMetadataPrinter::finishAssembly(AsmPrinter &AP) {
   while (MI != ME) {
     Out.EmitSymbolValue(MI->first, WordSize, 0);
     MCSymbol *FrameMapLabel = AP.GetTempSymbol("rust_frame_map_label", i);
+    Out.EmitSymbolValue(FrameMapLabel, WordSize, 0);
     FrameMapLabels.push_back(FrameMapLabel);
     ++MI, ++i;
   }
