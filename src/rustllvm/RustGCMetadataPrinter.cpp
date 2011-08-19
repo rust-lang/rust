@@ -98,7 +98,7 @@ void RustGCMetadataPrinter::EmitGCMetadata(AsmPrinter &AP, MCStreamer &Out,
 
   std::pair<RustGCMetaType,const Constant *> Pair =
     GetGCMetadataForRoot(Root);
-  const GlobalValue *Tydesc;
+  const GlobalValue *Tydesc = 0;
 
   switch (Pair.first) {
   case RGCMT_DestIndex: // Dest index.
