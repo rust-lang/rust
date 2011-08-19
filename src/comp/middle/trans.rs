@@ -5369,7 +5369,19 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
         let t = ty::expr_ty(bcx_tcx(cx), x);
         let lv = trans_lval(cx, x);
         bcx = lv.res.bcx;
-        bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t).bcx;
+        let is_local = alt x.node {
+          ast::expr_path(p) {
+            alt bcx_tcx(bcx).def_map.get(x.id) {
+              ast::def_local(_) { true } _ { false }
+            }
+          }
+          _ { false }
+        };
+        if is_local {
+            bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t).bcx;
+        } else {
+            bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t).bcx;
+        }
       }
       _ {
         let t = llvm::LLVMGetElementType(val_ty(cx.fcx.llretptr));
