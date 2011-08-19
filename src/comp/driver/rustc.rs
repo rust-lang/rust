@@ -143,13 +143,13 @@ fn compile_input(sess: session::session, cfg: ast::crate_cfg, input: str,
              bind middle::ast_map::map_crate(*crate));
     time(time_passes, "external crate/lib resolution",
          bind creader::read_crates(sess, *crate));
-    let d =
+    let {def_map, ext_map} =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));
     let freevars =
         time(time_passes, "freevar finding",
-             bind freevars::annotate_freevars(sess, d, crate));
-    let ty_cx = ty::mk_ctxt(sess, d, ast_map, freevars);
+             bind freevars::annotate_freevars(sess, def_map, crate));
+    let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, ast_map, freevars);
     time::<()>(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, crate));
     time::<()>(time_passes, "alt checking",
@@ -222,9 +222,9 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
     alt ppm {
       ppm_typed. {
         let amap = middle::ast_map::map_crate(*crate);
-        let d = resolve::resolve_crate(sess, amap, crate);
-        let freevars = freevars::annotate_freevars(sess, d, crate);
-        let ty_cx = ty::mk_ctxt(sess, d, amap, freevars);
+        let {def_map, ext_map} = resolve::resolve_crate(sess, amap, crate);
+        let freevars = freevars::annotate_freevars(sess, def_map, crate);
+        let ty_cx = ty::mk_ctxt(sess, def_map, ext_map, amap, freevars);
         typeck::check_crate(ty_cx, crate);
         ann = {pre: ann_paren_for_expr, post: bind ann_typed_post(ty_cx, _)};
       }

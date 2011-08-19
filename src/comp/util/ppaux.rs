@@ -18,6 +18,8 @@ import pp::zerobreak;
 import pp::hardbreak;
 import ast::ty_mach_to_str;
 import syntax::ast;
+import middle::ast_map;
+import metadata::csearch;
 
 fn mode_str(m: &ty::mode) -> str {
     alt m {
@@ -33,6 +35,17 @@ fn mode_str_1(m: &ty::mode) -> str {
 
 fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {
     ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
+}
+
+fn get_id_ident(cx: &ctxt, id: ast::def_id) -> str {
+    if (id.crate != ast::local_crate) {
+        str::connect(cx.ext_map.get(id), "::")
+    } else {
+        alt cx.items.find(id.node) {
+          some(ast_map::node_item(it)) { it.ident }
+          _ { fail "get_id_ident: can't find item in ast_map" }
+        }
+    }
 }
 
 fn ty_to_str(cx: &ctxt, typ: &t) -> str {
@@ -105,9 +118,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         s += "(" + str::connect(strs, ",") + ")";
       }
       ty_tag(id, tps) {
-        // The user should never see this if the cname is set properly!
-
-        s += "<tag#" + int::str(id.crate) + ":" + int::str(id.node) + ">";
+        s += get_id_ident(cx, id);
         if vec::len::<t>(tps) > 0u {
             let strs: [str] = ~[];
             for typ: t in tps { strs += ~[ty_to_str(cx, typ)]; }
@@ -128,8 +139,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
         s += "obj {\n\t" + str::connect(strs, "\n\t") + "\n}";
       }
       ty_res(id, _, _) {
-        s +=
-            "<resource#" + int::str(id.node) + ":" + int::str(id.crate) + ">";
+        s += get_id_ident(cx, id);
       }
       ty_var(v) { s += "<T" + int::str(v) + ">"; }
       ty_param(id,_) {

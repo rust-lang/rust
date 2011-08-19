@@ -212,6 +212,9 @@ type ctxt =
     @{ts: @type_store,
       sess: session::session,
       def_map: resolve::def_map,
+      // We need the ext_map just for printing the types of tags defined in
+      // other crates. Once we get cnames back it should go.
+      ext_map: resolve::ext_map,
       node_types: node_type_table,
       items: ast_map::map,
       freevars: freevars::freevar_map,
@@ -392,7 +395,8 @@ fn mk_rcache() -> creader_cache {
 }
 
 
-fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
+fn mk_ctxt(s: session::session, dm: resolve::def_map,
+           em: hashmap<def_id, [ident]>, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
     let ntt: node_type_table =
         @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
@@ -402,6 +406,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
         @{ts: ts,
           sess: s,
           def_map: dm,
+          ext_map: em,
           node_types: ntt,
           items: amap,
           freevars: freevars,

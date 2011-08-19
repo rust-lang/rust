@@ -36,6 +36,7 @@ import syntax::print::pprust::*;
 
 export resolve_crate;
 export def_map;
+export ext_map;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
@@ -113,6 +114,7 @@ type indexed_mod =
    only need to look at them to determine exports, which they can't control.*/
 
 type def_map = hashmap<node_id, def>;
+type ext_map = hashmap<def_id, [ident]>;
 
 type env =
     {cstore: cstore::cstore,
@@ -133,7 +135,7 @@ tag dir { inside; outside; }
 tag namespace { ns_value; ns_type; ns_module; }
 
 fn resolve_crate(sess: session, amap: &ast_map::map, crate: @ast::crate) ->
-   def_map {
+    {def_map: def_map, ext_map: ext_map} {
     let e =
         @{cstore: sess.get_cstore(),
           def_map: new_int_hash::<def>(),
@@ -148,7 +150,7 @@ fn resolve_crate(sess: session, amap: &ast_map::map, crate: @ast::crate) ->
     resolve_imports(*e);
     check_for_collisions(e, *crate);
     resolve_names(e, crate);
-    ret e.def_map;
+    ret {def_map: e.def_map, ext_map: e.ext_map};
 }
 
 
