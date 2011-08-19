@@ -1109,6 +1109,13 @@ fn parse_dot_or_call_expr_with(p: &parser, e: @ast::expr) -> @ast::expr {
                 e = mk_expr(p, lo, hi, ast::expr_call(e, es.node));
             }
           }
+          token::LBRACKET. {
+            p.bump();
+            let ix = parse_expr(p);
+            hi = ix.span.hi;
+            expect(p, token::RBRACKET);
+            e = mk_expr(p, lo, hi, ast::expr_index(e, ix));
+          }
           token::DOT. {
             p.bump();
             alt p.peek() {
