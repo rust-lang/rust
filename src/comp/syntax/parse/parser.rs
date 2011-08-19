@@ -885,14 +885,6 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
     } else if p.peek() == token::TILDE {
         p.bump();
         alt p.peek() {
-          token::LBRACKET. { // unique array (temporary)
-            p.bump();
-            let mut = parse_mutability(p);
-            let es =
-                parse_seq_to_end(token::RBRACKET, some(token::COMMA),
-                                 parse_expr, p);
-            ex = ast::expr_vec(es, mut);
-          }
           token::LIT_STR(s) {
             p.bump();
             let lit =

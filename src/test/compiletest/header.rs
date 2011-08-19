@@ -24,13 +24,13 @@ type test_props = {
 
 // Load any test directives embedded in the file
 fn load_props(testfile: &str) -> test_props {
-    let error_patterns = ~[];
+    let error_patterns = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
     let no_valgrind = false;
     for each ln: str in iter_header(testfile) {
         alt parse_error_pattern(ln) {
-          option::some(ep) { error_patterns += ~[ep]; }
+          option::some(ep) { error_patterns += [ep]; }
           option::none. { }
         }
 
