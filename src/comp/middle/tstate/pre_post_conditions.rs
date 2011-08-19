@@ -4,20 +4,7 @@ import std::option;
 import std::option::none;
 import std::option::some;
 
-import tstate::ann::pre_and_post;
-import tstate::ann::get_post;
-import tstate::ann::postcond;
-import tstate::ann::true_precond;
-import tstate::ann::false_postcond;
-import tstate::ann::empty_poststate;
-import tstate::ann::require;
-import tstate::ann::require_and_preserve;
-import tstate::ann::union;
-import tstate::ann::intersect;
-import tstate::ann::pp_clone;
-import tstate::ann::empty_prestate;
-import tstate::ann::set_precondition;
-import tstate::ann::set_postcondition;
+import tstate::ann::*;
 import aux::*;
 import bitvectors::bit_num;
 import bitvectors::promises;
@@ -28,7 +15,7 @@ import bitvectors::declare_var;
 import bitvectors::gen_poststate;
 import bitvectors::relax_precond_block;
 import bitvectors::gen;
-import tritv::tritv_clone;
+import tritv::*;
 import syntax::ast::*;
 import syntax::visit;
 import std::map::new_int_hash;
@@ -591,6 +578,8 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
       stmt_decl(adecl, id) {
         alt adecl.node {
           decl_local(alocals) {
+            let e_pp;
+            let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
             for alocal: @local in alocals {
                 alt alocal.node.init {
                   some(an_init) {
@@ -611,7 +600,16 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                     }
 
                     for each pat: @pat in pat_bindings(alocal.node.pat) {
-                        let ident = alt pat.node { pat_bind(n) { n } };
+                        /* FIXME: This won't be necessary when typestate
+                        works well enough for pat_bindings to return a
+                        refinement-typed thing. */
+                        let ident = alt pat.node {
+                          pat_bind(n) { n }
+                          _ {
+                            fcx.ccx.tcx.sess.span_bug(pat.span,
+                                                      "Impossible LHS");
+                          }
+                        };
                         alt p {
                           some(p) {
                             copy_in_postcond(fcx, id,
@@ -629,6 +627,29 @@ fn find_pre_post_stmt(fcx: &fn_ctxt, s: &stmt) {
                     if an_init.op == init_move && is_path(an_init.expr) {
                         forget_in_postcond(fcx, id, an_init.expr.id);
                     }
+
+                    /* Clear out anything that the previous initializer
+                    guaranteed */
+                    e_pp = expr_pp(fcx.ccx, an_init.expr);
+                    tritv_copy(prev_pp.precondition,
+                               seq_preconds(fcx, [prev_pp, e_pp]));
+                    /* Include the LHSs too, since those aren't in the
+                     postconds of the RHSs themselves */
+                    for each pat: @pat in pat_bindings(alocal.node.pat) {
+                        alt pat.node {
+                          pat_bind(n) {
+                            set_in_postcond(bit_num(fcx, ninit(pat.id, n)),
+                                            prev_pp);
+                          }
+                          _ {
+                            fcx.ccx.tcx.sess.span_bug(pat.span,
+                                                      "Impossible LHS");
+                          }
+                        };
+                    }
+                    copy_pre_post_(fcx.ccx, id,
+                                   prev_pp.precondition,
+                                   prev_pp.postcondition);
                   }
                   none. {
                     for each p: @pat in pat_bindings(alocal.node.pat) {
