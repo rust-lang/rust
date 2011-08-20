@@ -244,116 +244,6 @@ struct type_param {
 };
 
 
-// Pointer wrappers for data traversals
-
-class ptr {
-private:
-    uint8_t *p;
-
-public:
-    template<typename T>
-    struct data { typedef T t; };
-
-    ptr(uint8_t *in_p)
-    : p(in_p) {}
-
-    ptr(uintptr_t in_p)
-    : p((uint8_t *)in_p) {}
-
-    inline ptr operator+(const size_t amount) const {
-        return make(p + amount);
-    }
-    inline ptr &operator+=(const size_t amount) { p += amount; return *this; }
-    inline bool operator<(const ptr other) { return p < other.p; }
-    inline ptr operator++() { ptr rv(*this); p++; return rv; }
-    inline uint8_t operator*() { return *p; }
-
-    template<typename T>
-    inline operator T *() { return (T *)p; }
-
-    inline operator uintptr_t() { return (uintptr_t)p; }
-
-    static inline ptr make(uint8_t *in_p) {
-        ptr self(in_p);
-        return self;
-    }
-};
-
-template<typename T>
-static inline T
-bump_dp(ptr &dp) {
-    T x = *((T *)dp);
-    dp += sizeof(T);
-    return x;
-}
-
-template<typename T>
-static inline T
-get_dp(ptr dp) {
-    return *((T *)dp);
-}
-
-
-// Pointer pairs for structural comparison
-
-template<typename T>
-class data_pair {
-public:
-    T fst, snd;
-
-    data_pair() {}
-    data_pair(T &in_fst, T &in_snd) : fst(in_fst), snd(in_snd) {}
-
-    inline void operator=(const T rhs) { fst = snd = rhs; }
-
-    static data_pair<T> make(T &fst, T &snd) {
-        data_pair<T> data(fst, snd);
-        return data;
-    }
-};
-
-class ptr_pair {
-public:
-    uint8_t *fst, *snd;
-
-    template<typename T>
-    struct data { typedef data_pair<T> t; };
-
-    ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
-
-    ptr_pair(data_pair<uint8_t *> &other) : fst(other.fst), snd(other.snd) {}
-
-    inline void operator=(uint8_t *rhs) { fst = snd = rhs; }
-
-    inline ptr_pair operator+(size_t n) const {
-        return make(fst + n, snd + n);
-    }
-
-    inline ptr_pair operator+=(size_t n) {
-        fst += n; snd += n;
-        return *this;
-    }
-
-    inline ptr_pair operator-(size_t n) const {
-        return make(fst - n, snd - n);
-    }
-
-    inline bool operator<(const ptr_pair &other) const {
-        return fst < other.fst && snd < other.snd;
-    }
-
-    static inline ptr_pair make(uint8_t *fst, uint8_t *snd) {
-        ptr_pair self(fst, snd);
-        return self;
-    }
-
-    static inline ptr_pair make(const data_pair<uint8_t *> &pair) {
-        ptr_pair self(pair.fst, pair.snd);
-        return self;
-    }
-};
-
-
 // Traversals
 
 #define WALK_NUMBER(c_type) \
@@ -662,6 +552,116 @@ public:
         cx.walk(false);
         assert(cx.sa.alignment > 0);
         return cx.sa;
+    }
+};
+
+
+// Pointer wrappers for data traversals
+
+class ptr {
+private:
+    uint8_t *p;
+
+public:
+    template<typename T>
+    struct data { typedef T t; };
+
+    ptr(uint8_t *in_p)
+    : p(in_p) {}
+
+    ptr(uintptr_t in_p)
+    : p((uint8_t *)in_p) {}
+
+    inline ptr operator+(const size_t amount) const {
+        return make(p + amount);
+    }
+    inline ptr &operator+=(const size_t amount) { p += amount; return *this; }
+    inline bool operator<(const ptr other) { return p < other.p; }
+    inline ptr operator++() { ptr rv(*this); p++; return rv; }
+    inline uint8_t operator*() { return *p; }
+
+    template<typename T>
+    inline operator T *() { return (T *)p; }
+
+    inline operator uintptr_t() { return (uintptr_t)p; }
+
+    static inline ptr make(uint8_t *in_p) {
+        ptr self(in_p);
+        return self;
+    }
+};
+
+template<typename T>
+static inline T
+bump_dp(ptr &dp) {
+    T x = *((T *)dp);
+    dp += sizeof(T);
+    return x;
+}
+
+template<typename T>
+static inline T
+get_dp(ptr dp) {
+    return *((T *)dp);
+}
+
+
+// Pointer pairs for structural comparison
+
+template<typename T>
+class data_pair {
+public:
+    T fst, snd;
+
+    data_pair() {}
+    data_pair(T &in_fst, T &in_snd) : fst(in_fst), snd(in_snd) {}
+
+    inline void operator=(const T rhs) { fst = snd = rhs; }
+
+    static data_pair<T> make(T &fst, T &snd) {
+        data_pair<T> data(fst, snd);
+        return data;
+    }
+};
+
+class ptr_pair {
+public:
+    uint8_t *fst, *snd;
+
+    template<typename T>
+    struct data { typedef data_pair<T> t; };
+
+    ptr_pair(uint8_t *in_fst, uint8_t *in_snd) : fst(in_fst), snd(in_snd) {}
+
+    ptr_pair(data_pair<uint8_t *> &other) : fst(other.fst), snd(other.snd) {}
+
+    inline void operator=(uint8_t *rhs) { fst = snd = rhs; }
+
+    inline ptr_pair operator+(size_t n) const {
+        return make(fst + n, snd + n);
+    }
+
+    inline ptr_pair operator+=(size_t n) {
+        fst += n; snd += n;
+        return *this;
+    }
+
+    inline ptr_pair operator-(size_t n) const {
+        return make(fst - n, snd - n);
+    }
+
+    inline bool operator<(const ptr_pair &other) const {
+        return fst < other.fst && snd < other.snd;
+    }
+
+    static inline ptr_pair make(uint8_t *fst, uint8_t *snd) {
+        ptr_pair self(fst, snd);
+        return self;
+    }
+
+    static inline ptr_pair make(const data_pair<uint8_t *> &pair) {
+        ptr_pair self(pair.fst, pair.snd);
+        return self;
     }
 };
 
