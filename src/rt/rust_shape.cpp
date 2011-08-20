@@ -35,8 +35,6 @@ const uint8_t CMP_LE = 2u;
 
 namespace shape {
 
-using namespace shape;
-
 // NB: This function does not align.
 template<typename T>
 inline data_pair<T>
