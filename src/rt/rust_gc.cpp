@@ -57,7 +57,7 @@ struct safe_point {
 
 struct safe_point_index_entry {
     void (*ra)();                   // The return address.
-    const safe_point *safe_point;   // The safe point.
+    const struct safe_point *safe_point;   // The safe point.
 
     struct cmp {
         bool operator()(const safe_point_index_entry &entry, void (*ra)())
