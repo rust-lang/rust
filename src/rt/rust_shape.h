@@ -665,6 +665,24 @@ public:
     }
 };
 
+// NB: This function does not align.
+template<typename T>
+inline data_pair<T>
+bump_dp(ptr_pair &ptr) {
+    data_pair<T> data(*reinterpret_cast<T *>(ptr.fst),
+                      *reinterpret_cast<T *>(ptr.snd));
+    ptr += sizeof(T);
+    return data;
+}
+
+template<typename T>
+inline data_pair<T>
+get_dp(ptr_pair &ptr) {
+    data_pair<T> data(*reinterpret_cast<T *>(ptr.fst),
+                      *reinterpret_cast<T *>(ptr.snd));
+    return data;
+}
+
 }   // end namespace shape
 
 
