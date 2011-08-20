@@ -90,6 +90,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
 rust_task::~rust_task()
 {
+    I(sched, !sched->lock.lock_held_by_current_thread());
     DLOG(sched, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
