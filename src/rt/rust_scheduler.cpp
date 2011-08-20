@@ -104,7 +104,7 @@ rust_scheduler::reap_dead_tasks(int id) {
         return;
     }
 
-    // First make up copy of the dead_task list with the lock held
+    // First make a copy of the dead_task list with the lock held
     size_t dead_tasks_len = dead_tasks.length();
     rust_task **dead_tasks_copy = (rust_task**)
         srv->malloc(sizeof(rust_task*) * dead_tasks_len);
@@ -145,7 +145,7 @@ rust_scheduler::reap_dead_tasks(int id) {
     }
 
     // Now unlock again because we have to actually free the dead tasks,
-    // and that may end up wanting to do lock the task and sched locks
+    // and that may end up wanting to lock the task and sched locks
     // again (via target->send)
     lock.unlock();
 
