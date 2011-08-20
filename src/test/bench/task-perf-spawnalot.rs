@@ -1,3 +1,7 @@
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+
 use std;
 import std::vec;
 import std::task;
@@ -6,7 +10,9 @@ import std::str;
 
 fn f(n: uint) {
     let i = 0u;
-    while i < n { let thunk = g; task::join_id(task::spawn(thunk)); i += 1u; }
+    while i < n {
+        let thunk = g;
+        task::join(task::spawn_joinable(thunk)); i += 1u; }
 }
 
 fn g() { }
