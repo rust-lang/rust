@@ -3,6 +3,7 @@
 import lib::llvm::False;
 import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
+import middle::trans;
 import middle::trans::get_tydesc;
 import middle::trans_common::*;
 import middle::ty;
@@ -37,6 +38,10 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     }
 
     let gc_cx = bcx_ccx(cx).gc_cx;
+
+    // FIXME (issue #839): For now, we are unconditionally zeroing out all
+    // GC-relevant types. Eventually we should use typestate for this.
+    bcx = trans::zero_alloca(bcx, llval, ty).bcx;
 
     let ti = none;
     let td_r = get_tydesc(bcx, ty, false, ti);
