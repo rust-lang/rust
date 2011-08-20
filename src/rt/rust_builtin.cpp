@@ -118,7 +118,7 @@ refcount(rust_task *task, type_desc *t, intptr_t *v) {
 
 extern "C" CDECL void
 do_gc(rust_task *task) {
-    task->gc();
+    // TODO
 }
 
 extern "C" CDECL void

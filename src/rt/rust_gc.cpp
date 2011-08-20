@@ -137,6 +137,7 @@ gc::mark(std::vector<root> &roots) {
         shape::log log(task, ri->tydesc->shape, params,
                        ri->tydesc->shape_tables, ri->data, std::cerr);
         log.walk(true);
+        DPRINT("\n");
 
         ++ri;
     }

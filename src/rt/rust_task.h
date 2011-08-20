@@ -22,19 +22,6 @@ struct frame_glue_fns {
     uintptr_t reloc_glue_off;
 };
 
-struct gc_alloc {
-    gc_alloc *prev;
-    gc_alloc *next;
-    uintptr_t ctrl_word;
-    uint8_t data[];
-    bool mark() {
-        if (ctrl_word & 1)
-            return false;
-        ctrl_word |= 1;
-        return true;
-    }
-};
-
 // portions of the task structure that are accessible from the standard
 // library. This struct must agree with the std::task::rust_task record.
 struct rust_task_user {
@@ -69,7 +56,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known to the compiler.
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
-    gc_alloc *gc_alloc_chain;  // Linked list of GC allocations.
+    void *gc_alloc_chain;      // Linked list of GC allocations.
     rust_scheduler *sched;
     rust_crate_cache *cache;
 
@@ -81,8 +68,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     const char *cond_name;
     rust_task *supervisor;     // Parent-link for failure propagation.
     int32_t list_index;
-    size_t gc_alloc_thresh;
-    size_t gc_alloc_accum;
 
     rust_port_id next_port_id;
 
@@ -141,8 +126,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     bool blocked_on(rust_cond *cond);
     bool dead();
 
-    void link_gc(gc_alloc *gcm);
-    void unlink_gc(gc_alloc *gcm);
     void *malloc(size_t sz, const char *tag, type_desc *td=0);
     void *realloc(void *data, size_t sz, bool gc_mem=false);
     void free(void *p, bool gc_mem=false);
@@ -168,9 +151,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     // Fail self, assuming caller-on-stack is this task.
     void fail();
-
-    // Run the gc glue on the task stack.
-    void gc();
 
     // Disconnect from our supervisor.
     void unsupervise();

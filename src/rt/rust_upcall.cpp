@@ -189,21 +189,6 @@ upcall_shared_free(rust_task *task, void* ptr) {
     task->kernel->free(ptr);
 }
 
-extern "C" CDECL uintptr_t
-upcall_mark(rust_task *task, void* ptr) {
-    LOG_UPCALL_ENTRY(task);
-
-    rust_scheduler *sched = task->sched;
-    if (ptr) {
-        gc_alloc *gcm = (gc_alloc*) (((char*)ptr) - sizeof(gc_alloc));
-        uintptr_t marked = (uintptr_t) gcm->mark();
-        DLOG(sched, gc, "upcall mark(0x%" PRIxPTR ") = %" PRIdPTR,
-                 (uintptr_t)gcm, marked);
-        return marked;
-    }
-    return 0;
-}
-
 rust_str *make_str(rust_task *task, char const *s, size_t fill) {
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
     void *mem = task->malloc(alloc, "rust_str (make_str)");

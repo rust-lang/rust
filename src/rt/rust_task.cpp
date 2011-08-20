@@ -259,14 +259,6 @@ rust_task::fail() {
 }
 
 void
-rust_task::gc()
-{
-    // FIXME: not presently implemented; was broken by rustc.
-    DLOG(sched, task,
-             "task %s @0x%" PRIxPTR " garbage collecting", name, this);
-}
-
-void
 rust_task::unsupervise()
 {
     DLOG(sched, task,
@@ -320,99 +312,22 @@ rust_task::dead()
     return state == &sched->dead_tasks;
 }
 
-void
-rust_task::link_gc(gc_alloc *gcm) {
-    I(sched, gcm->prev == NULL);
-    I(sched, gcm->next == NULL);
-    gcm->prev = NULL;
-    gcm->next = gc_alloc_chain;
-    gc_alloc_chain = gcm;
-    if (gcm->next)
-        gcm->next->prev = gcm;
-}
-
-void
-rust_task::unlink_gc(gc_alloc *gcm) {
-    if (gcm->prev)
-        gcm->prev->next = gcm->next;
-    if (gcm->next)
-        gcm->next->prev = gcm->prev;
-    if (gc_alloc_chain == gcm)
-        gc_alloc_chain = gcm->next;
-    gcm->prev = NULL;
-    gcm->next = NULL;
-}
-
 void *
 rust_task::malloc(size_t sz, const char *tag, type_desc *td)
 {
-    // FIXME: GC is disabled for now.
-    // GC-memory classification is all wrong.
-    td = NULL;
-
-    if (td) {
-        sz += sizeof(gc_alloc);
-    }
-
-    void *mem = local_region.malloc(sz, tag);
-    if (!mem)
-        return mem;
-    if (td) {
-        gc_alloc *gcm = (gc_alloc*) mem;
-        DLOG(sched, task, "task %s @0x%" PRIxPTR
-             " allocated %d GC bytes = 0x%" PRIxPTR,
-             name, (uintptr_t)this, sz, gcm);
-        memset((void*) gcm, 0, sizeof(gc_alloc));
-        link_gc(gcm);
-        gcm->ctrl_word = (uintptr_t)td;
-        gc_alloc_accum += sz;
-        mem = (void*) &(gcm->data);
-    }
-    return mem;;
+    return local_region.malloc(sz, tag);
 }
 
 void *
 rust_task::realloc(void *data, size_t sz, bool is_gc)
 {
-    // FIXME: GC is disabled for now.
-    // Effects, GC-memory classification is all wrong.
-    is_gc = false;
-    if (is_gc) {
-        gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
-        unlink_gc(gcm);
-        sz += sizeof(gc_alloc);
-        gcm = (gc_alloc*) local_region.realloc((void*)gcm, sz);
-        DLOG(sched, task, "task %s @0x%" PRIxPTR
-             " reallocated %d GC bytes = 0x%" PRIxPTR,
-             name, (uintptr_t)this, sz, gcm);
-        if (!gcm)
-            return gcm;
-        link_gc(gcm);
-        data = (void*) &(gcm->data);
-    } else {
-        data = local_region.realloc(data, sz);
-    }
-    return data;
+    return local_region.realloc(data, sz);
 }
 
 void
 rust_task::free(void *p, bool is_gc)
 {
-    // FIXME: GC is disabled for now.
-    // GC-memory classification is all wrong.
-    is_gc = false;
-    if (is_gc) {
-        gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
-        unlink_gc(gcm);
-        DLOG(sched, mem,
-             "task %s @0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
-             name, (uintptr_t)this, gcm);
-        DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", gcm);
-        local_region.free(gcm);
-    } else {
-        DLOG(sched, mem, "rust_task::free(0x%" PRIxPTR ")", p);
-        local_region.free(p);
-    }
+    local_region.free(p);
 }
 
 void
