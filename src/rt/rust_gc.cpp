@@ -1,12 +1,14 @@
 // Rust garbage collection.
 
 #include <algorithm>
+#include <iostream>
 #include <utility>
 #include <vector>
 #include <stdint.h>
 
 #include "rust_gc.h"
 #include "rust_internal.h"
+#include "rust_shape.h"
 
 #ifdef __WIN32__
 #include <windows.h>
@@ -24,13 +26,10 @@ struct frame {
     uint8_t *bp;    // The frame pointer.
     void (*ra)();   // The return address.
 
-    frame(void *in_bp) : bp((uint8_t *)in_bp) {}
-
-    inline void read_ra() {
-        ra = *(void (**)())(bp + sizeof(void *));
-    }
+    frame(void *in_bp, void (*in_ra)()) : bp((uint8_t *)in_bp), ra(in_ra) {}
 
     inline void next() {
+        ra = *(void (**)())(bp + sizeof(void *));
         bp = *(uint8_t **)bp;
     }
 };
@@ -106,11 +105,15 @@ public:
 
 class gc {
 private:
+    rust_task *task;
+
     void mark(std::vector<root> &roots);
     void sweep();
 
 public:
-    void run(rust_task *task);
+    gc(rust_task *in_task) : task(in_task) {}
+
+    void run();
     std::vector<frame> backtrace();
 };
 
@@ -127,6 +130,14 @@ gc::mark(std::vector<root> &roots) {
     std::vector<root>::iterator ri = roots.begin(), rend = roots.end();
     while (ri < rend) {
         DPRINT("root: %p\n", ri->data);
+
+        shape::arena arena;
+        shape::type_param *params = shape::type_param::make(ri->tydesc,
+                                                            arena);
+        shape::log log(task, ri->tydesc->shape, params,
+                       ri->tydesc->shape_tables, ri->data, std::cerr);
+        log.walk(true);
+
         ++ri;
     }
     // TODO
@@ -140,9 +151,13 @@ gc::sweep() {
 std::vector<frame>
 gc::backtrace() {
     std::vector<frame> frames;
-    frame f(__builtin_frame_address(0));
+
+    // Ideally we would use the current value of EIP here, but there's no
+    // portable way to get that and there are never any GC roots in our C++
+    // frames anyhow.
+    frame f(__builtin_frame_address(0), (void (*)())NULL);
+
     while (f.ra != END_OF_STACK_RA) {
-        f.read_ra();
         frames.push_back(f);
         f.next();
     }
@@ -150,7 +165,7 @@ gc::backtrace() {
 }
 
 void
-gc::run(rust_task *task) {
+gc::run() {
     safe_point_map map;
 
     // Find roots.
@@ -187,8 +202,8 @@ maybe_gc(rust_task *task) {
     }
 
     if (zeal) {
-        gc gc;
-        gc.run(task);
+        gc gc(task);
+        gc.run();
     }
 }
 
