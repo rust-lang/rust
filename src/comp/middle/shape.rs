@@ -84,15 +84,20 @@ fn eq_res_info(a: &res_info, b: &res_info) -> bool {
     ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
-fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef) -> ValueRef {
+fn mk_global(ccx: &@crate_ctxt, name: &str, llval: ValueRef,
+             internal: bool) -> ValueRef {
     let llglobal =
         lib::llvm::llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval),
                                        str::buf(name));
     lib::llvm::llvm::LLVMSetInitializer(llglobal, llval);
     lib::llvm::llvm::LLVMSetGlobalConstant(llglobal, True);
-    lib::llvm::llvm::LLVMSetLinkage(llglobal,
-                                    lib::llvm::LLVMInternalLinkage as
-                                        lib::llvm::llvm::Linkage);
+
+    if (internal) {
+        lib::llvm::llvm::LLVMSetLinkage(llglobal,
+                                        lib::llvm::LLVMInternalLinkage as
+                                            lib::llvm::llvm::Linkage);
+    }
+
     ret llglobal;
 }
 
@@ -510,7 +515,7 @@ fn gen_tag_shapes(ccx: &@crate_ctxt) -> ValueRef {
     header += data;
     header += lv_table;
 
-    ret mk_global(ccx, "tag_shapes", C_bytes(header));
+    ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
 }
 
 fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
@@ -523,7 +528,7 @@ fn gen_resource_shapes(ccx: &@crate_ctxt) -> ValueRef {
         i += 1u;
     }
 
-    ret mk_global(ccx, "resource_shapes", C_struct(dtors));
+    ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 
 fn gen_shape_tables(ccx: &@crate_ctxt) {

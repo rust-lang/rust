@@ -1,6 +1,8 @@
 #ifndef RUST_ABI_H
 #define RUST_ABI_H
 
+#include <cstdlib>
+
 #ifdef __WIN32__
 #include <windows.h>
 #else
@@ -33,6 +35,8 @@ public:
 
     T *&operator*() { fill(); return data; }
 };
+
+uint32_t get_abi_version();
 
 #endif
 

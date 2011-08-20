@@ -26,6 +26,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_shape.cpp \
               rt/rust_obstack.cpp \
               rt/rust_gc.cpp \
+              rt/rust_abi.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \

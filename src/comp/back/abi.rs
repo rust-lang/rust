@@ -112,6 +112,8 @@ const ivec_heap_elt_elems: uint = 1u;
 
 const worst_case_glue_call_args: int = 7;
 
+const abi_version: uint = 1u;
+
 fn memcpy_glue_name() -> str { ret "rust_memcpy_glue"; }
 
 fn bzero_glue_name() -> str { ret "rust_bzero_glue"; }

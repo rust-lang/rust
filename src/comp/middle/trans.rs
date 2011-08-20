@@ -6926,6 +6926,12 @@ fn write_metadata(cx: &@crate_ctxt, crate: &@ast::crate) {
     llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
 }
 
+// Writes the current ABI version into the crate.
+fn write_abi_version(ccx: &@crate_ctxt) {
+    shape::mk_global(ccx, "rust_abi_version", C_uint(abi::abi_version),
+                     false);
+}
+
 fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
                output: &str, amap: &ast_map::map) -> ModuleRef {
     let llmod =
@@ -7001,6 +7007,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
     create_crate_map(ccx);
     emit_tydescs(ccx);
     shape::gen_shape_tables(ccx);
+    write_abi_version(ccx);
 
     // Translate the metadata.
     write_metadata(cx.ccx, crate);
