@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdint.h>
 
+#include "rust_abi.h"
 #include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_shape.h"
@@ -21,6 +22,8 @@
 #define END_OF_STACK_RA     (void (*)())0xdeadbeef
 
 namespace gc {
+
+weak_symbol<const uintptr_t> safe_point_data("rust_gc_safe_points");
 
 struct frame {
     uint8_t *bp;    // The frame pointer.
@@ -77,7 +80,7 @@ class safe_point_map {
 
 public:
     safe_point_map() {
-        const uintptr_t *data = get_safe_point_data();
+        const uintptr_t *data = *safe_point_data;
         n_safe_points = *data++;
         index = (const safe_point_index_entry *)data;
         data += n_safe_points * 2;
@@ -85,22 +88,6 @@ public:
     }
 
     const safe_point *get_safe_point(void (*addr)());
-
-    static const uintptr_t *get_safe_point_data() {
-        static bool init = false;
-        static const uintptr_t *data;
-        if (!init) {
-#ifdef __WIN32__
-            data = (const uintptr_t *)GetProcAddress(GetModuleHandle(NULL),
-                                                     "rust_gc_safe_points");
-#else
-            data = (const uintptr_t *)dlsym(RTLD_DEFAULT,
-                                            "rust_gc_safe_points");
-#endif
-            init = true;
-        }
-        return data;
-    }
 };
 
 class gc {
@@ -192,7 +179,7 @@ gc::run() {
 
 void
 maybe_gc(rust_task *task) {
-    if (safe_point_map::get_safe_point_data() == NULL)
+    if (*safe_point_data == NULL)
         return;
 
     // FIXME: We ought to lock this.
