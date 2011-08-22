@@ -308,8 +308,13 @@ fn shape_of(ccx: &@crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_str. {
         s += [shape_evec, 1u8, 1u8, 0u8, shape_u8];
       }
-      ty::ty_istr. { s += [shape_ivec, 1u8, 1u8, 0u8, shape_u8]; }
-
+      ty::ty_istr. {
+        s += [shape_ivec];
+        add_bool(s, true); // type is POD
+        let unit_ty = ty::mk_mach(ccx.tcx, ast::ty_u8);
+        add_size_hint(ccx, s, unit_ty);
+        add_substr(s, shape_of(ccx, unit_ty));
+      }
 
       ty::ty_tag(did, tps) {
         alt tag_kind(ccx, did) {

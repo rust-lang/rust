@@ -16,8 +16,14 @@ fn test_heap_assign() {
     s = ~"AAAA";
 }
 
+fn test_heap_log() {
+    let s = ~"a big ol' string";
+    log s;
+}
+
 fn main() {
     test_stack_assign();
     test_heap_lit();
     test_heap_assign();
+    test_heap_log();
 }
