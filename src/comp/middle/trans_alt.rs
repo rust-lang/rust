@@ -55,8 +55,19 @@ fn variant_opt(ccx: &@crate_ctxt, pat_id: ast::node_id) -> opt {
 }
 
 type bind_map = [{ident: ast::ident, val: ValueRef}];
+fn assoc(key: str, list: &bind_map) -> option::t<ValueRef> {
+    for elt: {ident: ast::ident, val: ValueRef} in list {
+        if str::eq(elt.ident, key) { ret some(elt.val); }
+    }
+    ret none;
+}
+
 type match_branch =
-    @{pats: [@ast::pat], body: BasicBlockRef, mutable bound: bind_map};
+    @{pats: [@ast::pat],
+      bound: bind_map,
+      data: @{body: BasicBlockRef,
+              guard: option::t<@ast::expr>,
+              id_map: ast::pat_id_map}};
 type match = [match_branch];
 
 fn matches_always(p: &@ast::pat) -> bool {
@@ -69,14 +80,6 @@ fn matches_always(p: &@ast::pat) -> bool {
         };
 }
 
-
-fn bind_for_pat(p: &@ast::pat, br: &match_branch, val: ValueRef) {
-    alt p.node {
-      ast::pat_bind(name) { br.bound += [{ident: name, val: val}]; }
-      _ { }
-    }
-}
-
 type enter_pat = fn(&@ast::pat) -> option::t<[@ast::pat]>;
 
 fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
@@ -84,12 +87,17 @@ fn enter_match(m: &match, col: uint, val: ValueRef, e: &enter_pat) -> match {
     for br: match_branch in m {
         alt e(br.pats[col]) {
           some(sub) {
-            let pats =
-                vec::slice(br.pats, 0u, col) + sub +
+            let pats = vec::slice(br.pats, 0u, col) + sub +
                     vec::slice(br.pats, col + 1u, vec::len(br.pats));
-            let new_br = @{pats: pats with *br};
+            let new_br = @{pats: pats,
+                           bound: alt br.pats[col].node {
+                             ast::pat_bind(name) {
+                               br.bound + [{ident: name, val: val}]
+                             }
+                             _ { br.bound }
+                           }
+                           with *br};
             result += [new_br];
-            bind_for_pat(br.pats[col], new_br, val);
           }
           none. { }
         }
@@ -282,8 +290,30 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
                     f: &mk_fail, exits: &mutable [exit_node]) {
     if vec::len(m) == 0u { bcx.build.Br(f()); ret; }
     if vec::len(m[0].pats) == 0u {
-        exits += [{bound: m[0].bound, from: bcx.llbb, to: m[0].body}];
-        bcx.build.Br(m[0].body);
+        let data = m[0].data;
+        alt data.guard {
+          some(e) {
+            let guard_cx = new_scope_block_ctxt(bcx, "guard");
+            let next_cx = new_sub_block_ctxt(bcx, "next");
+            let else_cx = new_sub_block_ctxt(bcx, "else");
+            bcx.build.Br(guard_cx.llbb);
+            // Temporarily set bindings. They'll be rewritten to PHI nodes for
+            // the actual arm block.
+            for each @{key, val} in data.id_map.items() {
+                bcx.fcx.lllocals.insert
+                    (val, option::get(assoc(key, m[0].bound)));
+            }
+            let {bcx: guard_cx, val: guard_val} =
+                trans::trans_expr(guard_cx, e);
+            guard_cx.build.CondBr(guard_val, next_cx.llbb, else_cx.llbb);
+            compile_submatch(else_cx, vec::slice(m, 1u, vec::len(m)),
+                             vals, f, exits);
+            bcx = next_cx;
+          }
+          _ {}
+        }
+        exits += [{bound: m[0].bound, from: bcx.llbb, to: data.body}];
+        bcx.build.Br(data.body);
         ret;
     }
 
@@ -433,13 +463,6 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
 // Returns false for unreachable blocks
 fn make_phi_bindings(bcx: &@block_ctxt, map: &[exit_node],
                      ids: &ast::pat_id_map) -> bool {
-    fn assoc(key: str, list: &bind_map) -> option::t<ValueRef> {
-        for elt: {ident: ast::ident, val: ValueRef} in list {
-            if str::eq(elt.ident, key) { ret some(elt.val); }
-        }
-        ret none;
-    }
-
     let our_block = bcx.llbb as uint;
     let success = true;
     for each item: @{key: ast::ident, val: ast::node_id} in ids.items() {
@@ -477,9 +500,14 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
     for a: ast::arm in arms {
         let body = new_scope_block_ctxt(cx, "case_body");
+        let id_map = ast::pat_id_map(a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {
-            match += [@{pats: [p], body: body.llbb, mutable bound: []}];
+            match += [@{pats: [p],
+                        bound: [],
+                        data: @{body: body.llbb,
+                                guard: a.guard,
+                                id_map: id_map}}];
         }
     }
 

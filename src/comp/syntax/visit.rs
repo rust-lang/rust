@@ -332,6 +332,7 @@ fn visit_expr<E>(ex: &@expr, e: &E, v: &vt<E>) {
 
 fn visit_arm<E>(a: &arm, e: &E, v: &vt<E>) {
     for p: @pat in a.pats { v.visit_pat(p, e, v); }
+    visit_expr_opt(a.guard, e, v);
     v.visit_block(a.body, e, v);
 }
 

@@ -2038,6 +2038,12 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         let result_ty = next_ty_var(fcx);
         let arm_non_bot = false;
         for arm: ast::arm in arms {
+            alt arm.guard {
+              some(e) {
+                check_expr_with(fcx, e, ty::mk_bool(tcx));
+              }
+              none. {}
+            }
             if !check_block(fcx, arm.body) { arm_non_bot = true; }
             let bty = block_ty(tcx, arm.body);
             result_ty = demand::simple(fcx, arm.body.span, result_ty, bty);

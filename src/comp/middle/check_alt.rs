@@ -22,9 +22,11 @@ fn check_arms(tcx: &ty::ctxt, arms: &[arm]) {
             let reachable = true;
             let j = 0;
             while j < i {
-                for prev_pat: @pat in arms[j].pats {
-                    if pattern_supersedes(tcx, prev_pat, arm_pat) {
-                        reachable = false;
+                if std::option::is_none(arms[j].guard) {
+                    for prev_pat: @pat in arms[j].pats {
+                        if pattern_supersedes(tcx, prev_pat, arm_pat) {
+                            reachable = false;
+                        }
                     }
                 }
                 j += 1;

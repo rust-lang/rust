@@ -269,7 +269,9 @@ fn noop_fold_stmt(s: &stmt_, fld: ast_fold) -> stmt_ {
 }
 
 fn noop_fold_arm(a: &arm, fld: ast_fold) -> arm {
-    ret {pats: vec::map(fld.fold_pat, a.pats), body: fld.fold_block(a.body)};
+    ret {pats: vec::map(fld.fold_pat, a.pats),
+         guard: option::map(fld.fold_expr, a.guard),
+         body: fld.fold_block(a.body)};
 }
 
 fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {

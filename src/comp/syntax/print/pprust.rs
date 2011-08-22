@@ -905,6 +905,14 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
                 print_pat(s, p);
             }
             space(s.s);
+            alt arm.guard {
+              some(e) {
+                word_space(s, "when");
+                print_expr(s, e);
+                space(s.s);
+              }
+              none. {}
+            }
             print_possibly_embedded_block(s, arm.body, block_normal,
                                           alt_indent_unit);
         }
