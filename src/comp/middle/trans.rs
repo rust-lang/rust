@@ -4553,7 +4553,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
         };
         if !lv.is_mem && !is_ext_vec_plus {
             // Do nothing for temporaries, just give them to callee
-        } else if ty::type_is_structural(ccx.tcx, e_ty) {
+        } else if type_is_structural_or_param(ccx.tcx, e_ty) {
             let dst = alloc_ty(bcx, e_ty);
             bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty);
             val = dst.val;
@@ -5906,7 +5906,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, scope: @block_ctxt,
           ast::val. {
             // Structural types are passed by pointer, and we use the
             // pointed-to memory for the local.
-            if !ty::type_is_structural(fcx_tcx(fcx), arg_ty) {
+            if !type_is_structural_or_param(fcx_tcx(fcx), arg_ty) {
                 // Overwrite the llargs entry for this arg with its alloca.
                 let aval = bcx.fcx.llargs.get(aarg.id);
                 let addr = do_spill(bcx, aval);

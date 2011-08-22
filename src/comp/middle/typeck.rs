@@ -593,16 +593,6 @@ mod collect {
         let ty_mode = ast_mode_to_mode(a.mode);
         let f = bind getter(cx, _);
         let tt = ast_ty_to_ty(cx.tcx, f, a.ty);
-        if ty::type_has_dynamic_size(cx.tcx, tt) {
-            alt ty_mode {
-              mo_val. {
-                cx.tcx.sess.span_err(a.ty.span,
-                                     "Dynamically sized arguments \
-                                      must be passed by alias");
-              }
-              _ { }
-            }
-        }
         ret {mode: ty_mode, ty: tt};
     }
     fn ty_of_method(cx: @ctxt, m: &@ast::method) -> ty::method {
