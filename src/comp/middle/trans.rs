@@ -1272,7 +1272,10 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
     }
 }
 
-fn make_copy_glue(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: ty::t) {
+// NOTE this is currently just a complicated way to do memmove. I'm working on
+// a representation of ivecs that will need pointers into itself, which must
+// be adjusted when copying. Will flesh this out when the time comes.
+fn make_copy_glue(cx: &@block_ctxt, src: ValueRef, dst: ValueRef, t: ty::t) {
     let bcx = memmove_ty(cx, dst, src, t).bcx;
     build_return(bcx);
 }
@@ -2369,9 +2372,12 @@ fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
         let bcx = if action == DROP_EXISTING {
             drop_ty(cx, dst, t).bcx
         } else { cx };
-        bcx = memmove_ty(bcx, dst, src, t).bcx;
-        bcx = take_ty(bcx, dst, t).bcx;
-        ret bcx;
+        if ty::type_needs_copy_glue(ccx.tcx, t) {
+            ret call_copy_glue(bcx, dst, src, t, true);
+        } else {
+            bcx = memmove_ty(bcx, dst, src, t).bcx;
+            ret take_ty(bcx, dst, t).bcx;
+        }
     }
     ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
                      ty_to_str(ccx.tcx, t));
@@ -2386,16 +2392,16 @@ fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
 fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             src: &lval_result, t: ty::t) -> @block_ctxt {
     let src_val = src.res.val;
-    if ty::type_is_scalar(bcx_tcx(cx), t) ||
-           ty::type_is_native(bcx_tcx(cx), t) {
+    let tcx = bcx_tcx(cx);
+    if ty::type_is_scalar(tcx, t) ||
+           ty::type_is_native(tcx, t) {
         if src.is_mem { src_val = cx.build.Load(src_val); }
         cx.build.Store(src_val, dst);
         ret cx;
-    } else if ty::type_is_nil(bcx_tcx(cx), t) ||
-                  ty::type_is_bot(bcx_tcx(cx), t) {
+    } else if ty::type_is_nil(tcx, t) || ty::type_is_bot(tcx, t) {
         ret cx;
-    } else if ty::type_is_unique(bcx_tcx(cx), t) ||
-                  ty::type_is_boxed(bcx_tcx(cx), t) {
+    } else if ty::type_is_unique(tcx, t) ||
+                  ty::type_is_boxed(tcx, t) {
         if src.is_mem { src_val = cx.build.Load(src_val); }
         if action == DROP_EXISTING {
             cx = drop_ty(cx, cx.build.Load(dst), t).bcx;
@@ -2406,10 +2412,13 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
-    } else if ty::type_is_structural(bcx_tcx(cx), t) ||
-                  ty::type_has_dynamic_size(bcx_tcx(cx), t) {
+    } else if type_is_structural_or_param(tcx, t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t).bcx; }
-        cx = memmove_ty(cx, dst, src_val, t).bcx;
+        if ty::type_needs_copy_glue(tcx, t) {
+            cx = call_copy_glue(cx, dst, src_val, t, false);
+        } else {
+            cx = memmove_ty(cx, dst, src_val, t).bcx;
+        }
         if src.is_mem {
             ret zero_alloca(cx, src_val, t).bcx;
         } else { // Temporary value
@@ -2418,7 +2427,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         }
     }
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
-                             ty_to_str(bcx_tcx(cx), t));
+                             ty_to_str(tcx, t));
 }
 
 fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
@@ -5049,16 +5058,14 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
 
         let rhs_res = trans_lval(lhs_res.res.bcx, src);
         let t = ty::expr_ty(bcx_tcx(cx), src);
-        let tmp_res = alloc_ty(rhs_res.res.bcx, t);
+        let {bcx, val: tmp_alloc} = alloc_ty(rhs_res.res.bcx, t);
         // Swap through a temporary.
 
-        let move1_res =
-            memmove_ty(tmp_res.bcx, tmp_res.val, lhs_res.res.val, t);
-        let move2_res =
-            memmove_ty(move1_res.bcx, lhs_res.res.val, rhs_res.res.val, t);
-        let move3_res =
-            memmove_ty(move2_res.bcx, rhs_res.res.val, tmp_res.val, t);
-        ret rslt(move3_res.bcx, C_nil());
+        bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
+        bcx = move_val(bcx, INIT, lhs_res.res.val, rhs_res, t);
+        bcx = move_val(bcx, INIT, rhs_res.res.val,
+                       lval_mem(bcx, tmp_alloc), t);
+        ret rslt(bcx, C_nil());
       }
       ast::expr_assign_op(op, dst, src) {
         let t = ty::expr_ty(bcx_tcx(cx), src);

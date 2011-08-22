@@ -155,6 +155,7 @@ export type_kind;
 export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
+export type_needs_copy_glue;
 export type_has_pointers;
 export type_needs_drop;
 export type_is_bool;
@@ -1170,6 +1171,17 @@ fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
     ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
         ret alt sty {
           ty_param(_, _) { true }
+          _ { false }
+        };
+    });
+}
+
+fn type_needs_copy_glue(cx: &ctxt, ty: t) -> bool {
+    ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
+        ret alt sty {
+          ty_param(_, _) { true }
+          ty_vec(_) { true }
+          ty_istr. { true }
           _ { false }
         };
     });

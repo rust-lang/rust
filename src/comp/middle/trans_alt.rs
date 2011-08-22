@@ -526,11 +526,9 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
             let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
             let llty = trans::type_of(ccx, pat.span, ty);
             let alloc = trans::alloca(bcx, llty);
-            bcx = trans::memmove_ty(bcx, alloc, val, ty).bcx;
-            let loaded = trans::load_if_immediate(bcx, alloc, ty);
-            bcx = trans::take_ty(bcx, loaded, ty).bcx;
+            bcx = trans::copy_val(bcx, trans::INIT, alloc,
+                                  trans::load_if_immediate(bcx, val, ty), ty);
             table.insert(pat.id, alloc);
-            trans_common::add_clean(bcx, alloc, ty);
         } else { table.insert(pat.id, val); }
       }
       ast::pat_tag(_, sub) {
