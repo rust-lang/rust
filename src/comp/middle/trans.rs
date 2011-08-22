@@ -1186,7 +1186,7 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: &ty::t,
         helper(bcx, llval0, t);
       }
       copy_helper(helper) {
-        let llrawptr1 = llvm::LLVMGetParam(llfn, 4u);
+        let llrawptr1 = llvm::LLVMGetParam(llfn, 5u);
         let llval1 = bcx.build.BitCast(llrawptr1, llty);
         helper(bcx, llval0, llval1, t);
       }
@@ -2177,6 +2177,45 @@ fn call_cmp_glue(cx: &@block_ctxt, lhs: ValueRef, rhs: ValueRef, t: &ty::t,
     r.bcx.build.Call(llfn, llargs);
     ret rslt(r.bcx, r.bcx.build.Load(llcmpresultptr));
 }
+
+fn call_copy_glue(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: &ty::t,
+                  take: bool) -> @block_ctxt {
+    // You can't call this on immediate types. Those are simply copied with
+    // Load/Store.
+    assert !type_is_immediate(bcx_ccx(cx), t);
+    let srcptr = cx.build.BitCast(src, T_ptr(T_i8()));
+    let dstptr = cx.build.BitCast(dst, T_ptr(T_i8()));
+    let ti = none;
+    let {bcx, val: lltydesc} = get_tydesc(cx, t, false, ti).result;
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, ti);
+    let lltydescs = bcx.build.GEP
+        (lltydesc, [C_int(0), C_int(abi::tydesc_field_first_param)]);
+    lltydescs = bcx.build.Load(lltydescs);
+
+    let llfn = alt ti {
+      none. {
+        bcx.build.Load(bcx.build.GEP
+            (lltydesc, [C_int(0), C_int(abi::tydesc_field_copy_glue)]))
+      }
+      some(sti) { option::get(sti.copy_glue) }
+    };
+    bcx.build.Call(llfn, [C_null(T_ptr(T_nil())), bcx.fcx.lltaskptr,
+                          C_null(T_ptr(T_nil())), lltydescs, srcptr, dstptr]);
+    if take {
+        lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
+        llfn = alt ti {
+          none. {
+            bcx.build.Load(bcx.build.GEP
+                (lltydesc, [C_int(0), C_int(abi::tydesc_field_take_glue)]))
+          }
+          some(sti) { option::get(sti.take_glue) }
+        };
+        bcx.build.Call(llfn, [C_null(T_ptr(T_nil())), bcx.fcx.lltaskptr,
+                              C_null(T_ptr(T_nil())), lltydescs, dstptr]);
+    }
+    ret bcx;
+}
+
 
 // Compares two values. Performs the simple scalar comparison if the types are
 // scalar and calls to comparison glue otherwise.
