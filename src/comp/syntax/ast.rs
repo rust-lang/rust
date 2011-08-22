@@ -273,8 +273,6 @@ type field_ = {mut: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
-tag spawn_dom { dom_implicit; dom_thread; }
-
 tag check_mode { checked; unchecked; }
 
 // FIXME: temporary
