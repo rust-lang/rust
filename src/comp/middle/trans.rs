@@ -1426,6 +1426,10 @@ fn make_drop_glue(cx: &@block_ctxt, v0: ValueRef, t: ty::t) {
             let rslt = iter_structural_ty(cx, v1, t, drop_ty);
             maybe_free_ivec_heap_part(rslt.bcx, v1, tm.ty)
           }
+          ty::ty_istr. {
+            maybe_free_ivec_heap_part(cx, v0,
+                                      ty::mk_mach(ccx.tcx, ast::ty_u8))
+          }
           ty::ty_box(_) { decr_refcnt_maybe_free(cx, v0, v0, t) }
           ty::ty_uniq(_) { trans_shared_free(cx, cx.build.Load(v0)) }
           ty::ty_obj(_) {
