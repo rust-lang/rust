@@ -12,8 +12,11 @@ fn test_heap_lit() {
 }
 
 fn test_heap_assign() {
-    let s: istr;
-    s = ~"AAAA";
+    let s: istr = ~"a big ol' string";
+    let t: istr = ~"a big ol' string";
+    assert s == t;
+    let u: istr = ~"a bad ol' string";
+    assert s != u;
 }
 
 fn test_heap_log() {
@@ -21,9 +24,27 @@ fn test_heap_log() {
     log s;
 }
 
+fn test_stack_add() {
+    assert ~"a" + ~"b" == ~"ab";
+    let s: istr = ~"a";
+    assert s + s == ~"aa";
+    assert ~"" + ~"" == ~"";
+}
+
+fn test_stack_heap_add() {
+    assert ~"a" + ~"bracadabra" == ~"abracadabra";
+}
+
+fn test_heap_add() {
+    assert ~"this should" + ~" totally work" == ~"this should totally work";
+}
+
 fn main() {
     test_stack_assign();
     test_heap_lit();
     test_heap_assign();
     test_heap_log();
+    test_stack_add();
+    test_stack_heap_add();
+    test_heap_add();
 }

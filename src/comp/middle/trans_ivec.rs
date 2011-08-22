@@ -494,6 +494,16 @@ fn trans_add(cx: &@block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let lhs_len = lhs_len_and_data.len;
     let lhs_data = lhs_len_and_data.data;
     bcx = lhs_len_and_data.bcx;
+
+    lhs_len = alt ty::struct(bcx_tcx(bcx), vec_ty) {
+      ty::ty_istr. {
+        // Forget about the trailing null on the left side
+        bcx.build.Sub(lhs_len, C_uint(1u))
+      }
+      ty::ty_vec(_) { lhs_len }
+      _ { bcx_tcx(bcx).sess.bug("non-istr/ivec in trans_add") }
+    };
+
     let rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
     let rhs_len = rhs_len_and_data.len;
     let rhs_data = rhs_len_and_data.data;
