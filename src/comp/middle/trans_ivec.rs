@@ -1,3 +1,4 @@
+import std::vec;
 import std::option::none;
 import syntax::ast;
 import lib::llvm::llvm::{ValueRef, TypeRef};
@@ -13,9 +14,13 @@ import trans_common::*;
 export trans_ivec, get_len_and_data, duplicate_heap_part, trans_add,
 trans_append;
 
-fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
-    result {
-    let typ = node_id_type(bcx_ccx(bcx), id);
+fn alloc_with_heap(bcx: @block_ctxt, typ: &ty::t, vecsz: uint) ->
+    {bcx: @block_ctxt,
+     unit_ty: ty::t,
+     llunitsz: ValueRef,
+     llptr: ValueRef,
+     llfirsteltptr: ValueRef} {
+
     let unit_ty;
     alt ty::struct(bcx_tcx(bcx), typ) {
       ty::ty_vec(mt) { unit_ty = mt.ty; }
@@ -31,12 +36,11 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
 
     add_clean_temp(bcx, llvecptr, typ);
 
-    let lllen = bcx.build.Mul(C_uint(std::vec::len(args)), unit_sz);
+    let lllen = bcx.build.Mul(C_uint(vecsz), unit_sz);
     // Allocate the vector pieces and store length and allocated length.
 
     let llfirsteltptr;
-    if std::vec::len(args) > 0u &&
-        std::vec::len(args) <= abi::ivec_default_length {
+    if vecsz > 0u && vecsz <= abi::ivec_default_length {
         // Interior case.
 
         bcx.build.Store(lllen,
@@ -61,7 +65,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
         let llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
         bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr, stub_z));
         let llheapty = T_ivec_heap_part(llunitty);
-        if std::vec::len(args) == 0u {
+        if vecsz == 0u {
             // Null heap pointer indicates a zero-length vector.
 
             bcx.build.Store(llalen, bcx.build.InBoundsGEP(llstubptr, stub_a));
@@ -86,8 +90,27 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
                                        C_int(0)]);
         }
     }
-    // Store the individual elements.
+    ret {
+        bcx: bcx,
+        unit_ty: unit_ty,
+        llunitsz: unit_sz,
+        llptr: llvecptr,
+        llfirsteltptr: llfirsteltptr};
+}
 
+fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr],
+              id: ast::node_id) -> result {
+
+    let typ = node_id_type(bcx_ccx(bcx), id);
+    let alloc_res = alloc_with_heap(bcx, typ, vec::len(args));
+
+    let bcx = alloc_res.bcx;
+    let unit_ty = alloc_res.unit_ty;
+    let llunitsz = alloc_res.llunitsz;
+    let llvecptr = alloc_res.llptr;
+    let llfirsteltptr = alloc_res.llfirsteltptr;
+
+    // Store the individual elements.
     let i = 0u;
     for e: @ast::expr in args {
         let lv = trans_lval(bcx, e);
@@ -96,7 +119,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
         if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             lleltptr =
                 bcx.build.InBoundsGEP(llfirsteltptr,
-                                      [bcx.build.Mul(C_uint(i), unit_sz)]);
+                                      [bcx.build.Mul(C_uint(i), llunitsz)]);
         } else {
             lleltptr = bcx.build.InBoundsGEP(llfirsteltptr, [C_uint(i)]);
         }
