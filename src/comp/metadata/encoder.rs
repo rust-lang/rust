@@ -193,7 +193,7 @@ fn encode_variant_id(ebml_w: &ebml::writer, vid: &def_id) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebml::writer, typ: &ty::t) {
+fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebml::writer, typ: ty::t) {
     ebml::start_tag(ebml_w, tag_items_data_item_type);
     let f = def_to_str;
     let ty_str_ctxt =
@@ -618,7 +618,7 @@ fn encode_metadata(cx: &@crate_ctxt, crate: &@crate) -> str {
 }
 
 // Get the encoded string for a type
-fn encoded_ty(tcx: &ty::ctxt, t: &ty::t) -> str {
+fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> str {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
     let sw = io::string_writer();
     tyencode::enc_ty(sw.get_writer(), cx, t);

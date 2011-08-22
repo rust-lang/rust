@@ -392,7 +392,7 @@ fn truncated_sha1_result(sha: sha1) -> str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: &ty::t, link_meta: &link_meta) ->
+fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: &link_meta) ->
    str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
@@ -410,7 +410,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: &ty::t, link_meta: &link_meta) ->
     ret "_" + hash;
 }
 
-fn get_symbol_hash(ccx: &@crate_ctxt, t: &ty::t) -> str {
+fn get_symbol_hash(ccx: &@crate_ctxt, t: ty::t) -> str {
     let hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
@@ -440,12 +440,12 @@ fn exported_name(path: &[str], hash: &str, _vers: &str) -> str {
 
 }
 
-fn mangle_exported_name(ccx: &@crate_ctxt, path: &[str], t: &ty::t) -> str {
+fn mangle_exported_name(ccx: &@crate_ctxt, path: &[str], t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: &ty::t, name: &str)
+fn mangle_internal_name_by_type_only(ccx: &@crate_ctxt, t: ty::t, name: &str)
    -> str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);

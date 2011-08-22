@@ -36,7 +36,7 @@ fn cx_uses_abbrevs(cx: &@ctxt) -> bool {
     }
 }
 
-fn enc_ty(w: &io::writer, cx: &@ctxt, t: &ty::t) {
+fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
     alt cx.abbrevs {
       ac_no_abbrevs. {
         let result_str;
@@ -202,7 +202,7 @@ fn enc_proto(w: &io::writer, proto: proto) {
     }
 }
 
-fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: &ty::t,
+fn enc_ty_fn(w: &io::writer, cx: &@ctxt, args: &[ty::arg], out: ty::t,
              cf: &controlflow, constrs: &[@ty::constr]) {
     w.write_char('[');
     for arg: ty::arg in args {

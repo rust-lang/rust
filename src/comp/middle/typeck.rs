@@ -883,7 +883,7 @@ mod collect {
 
 // Type unification
 mod unify {
-    fn unify(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) ->
+    fn unify(fcx: &@fn_ctxt, expected: ty::t, actual: ty::t) ->
        ty::unify::result {
         ret ty::unify::unify(expected, actual, fcx.var_bindings, fcx.ccx.tcx);
     }
@@ -892,7 +892,7 @@ mod unify {
 
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
-fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
+fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: ty::t) -> ty::t {
     let t1 = t;
     while true {
         alt structure_of(fcx, sp, t1) {
@@ -926,8 +926,8 @@ fn do_autoderef(fcx: &@fn_ctxt, sp: &span, t: &ty::t) -> ty::t {
     fail;
 }
 
-fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: &ty::t,
-                      expected: &ty::t) -> ty::t {
+fn do_fn_block_coerce(fcx: &@fn_ctxt, sp: &span, actual: ty::t,
+                      expected: ty::t) -> ty::t {
 
     // fns can be silently coerced to blocks when being used as
     // function call or bind arguments, but not the reverse.
@@ -963,17 +963,17 @@ fn resolve_type_vars_if_possible(fcx: &@fn_ctxt, typ: ty::t) -> ty::t {
 type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 
 mod demand {
-    fn simple(fcx: &@fn_ctxt, sp: &span, expected: &ty::t, actual: &ty::t) ->
+    fn simple(fcx: &@fn_ctxt, sp: &span, expected: ty::t, actual: ty::t) ->
        ty::t {
         full(fcx, sp, expected, actual, [], false).ty
     }
-    fn block_coerce(fcx: &@fn_ctxt, sp: &span, expected: &ty::t,
-                    actual: &ty::t) -> ty::t {
+    fn block_coerce(fcx: &@fn_ctxt, sp: &span, expected: ty::t,
+                    actual: ty::t) -> ty::t {
         full(fcx, sp, expected, actual, [], true).ty
     }
 
-    fn with_substs(fcx: &@fn_ctxt, sp: &span, expected: &ty::t,
-                   actual: &ty::t, ty_param_substs_0: &[ty::t]) ->
+    fn with_substs(fcx: &@fn_ctxt, sp: &span, expected: ty::t,
+                   actual: ty::t, ty_param_substs_0: &[ty::t]) ->
        ty_param_substs_and_ty {
         full(fcx, sp, expected, actual, ty_param_substs_0, false)
     }
@@ -998,7 +998,7 @@ mod demand {
             simple(fcx, sp, ty_param_subst, t_0);
         }
 
-        fn mk_result(fcx: &@fn_ctxt, result_ty: &ty::t,
+        fn mk_result(fcx: &@fn_ctxt, result_ty: ty::t,
                      ty_param_subst_var_ids: &[int]) ->
            ty_param_substs_and_ty {
             let result_ty_param_substs: [ty::t] = [];
@@ -1029,7 +1029,7 @@ mod demand {
 
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(fcx: &@fn_ctxt, expected: &ty::t, actual: &ty::t) -> bool {
+fn are_compatible(fcx: &@fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
     alt unify::unify(fcx, expected, actual) {
       ures_ok(_) { ret true; }
       ures_err(_) { ret false; }
@@ -1519,22 +1519,22 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: &ast::purity,
     }
 }
 
-type unifier = fn(&@fn_ctxt, &span, &ty::t, &ty::t) -> ty::t;
+type unifier = fn(&@fn_ctxt, &span, ty::t, ty::t) -> ty::t;
 
 fn check_expr(fcx: &@fn_ctxt, expr: &@ast::expr) -> bool {
-    fn dummy_unify(_fcx: &@fn_ctxt, _sp: &span, _expected: &ty::t,
-                   actual: &ty::t) -> ty::t {
+    fn dummy_unify(_fcx: &@fn_ctxt, _sp: &span, _expected: ty::t,
+                   actual: ty::t) -> ty::t {
         actual
     }
     ret check_expr_with_unifier(fcx, expr, dummy_unify, 0u);
 }
-fn check_expr_with(fcx: &@fn_ctxt, expr: &@ast::expr, expected: &ty::t) ->
+fn check_expr_with(fcx: &@fn_ctxt, expr: &@ast::expr, expected: ty::t) ->
    bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
 }
 
 fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
-                           expected: &ty::t) -> bool {
+                           expected: ty::t) -> bool {
     //log_err "typechecking expr " + syntax::print::pprust::expr_to_str(expr);
 
     // A generic function to factor out common logic from call and bind
