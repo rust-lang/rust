@@ -2086,7 +2086,6 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                   copy_helper(make_copy_glue),
                                   ti.ty_params, "copy");
-                
               }
             }
         }
@@ -2319,8 +2318,34 @@ fn duplicate_heap_parts_if_necessary(cx: &@block_ctxt, vptr: ValueRef,
 
 tag copy_action { INIT; DROP_EXISTING; }
 
+// These are the types that are passed by pointer.
+fn type_is_structural_or_param(tcx: &ty::ctxt, t: ty::t) -> bool {
+    if ty::type_is_structural(tcx, t) { ret true; }
+    alt ty::struct(tcx, t) {
+      ty::ty_param(_, _) { ret true; }
+      _ { ret false; }
+    }
+}
+
 fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
-            src: ValueRef, t: &ty::t) -> result {
+            src: ValueRef, t: &ty::t) -> @block_ctxt {
+    if type_is_structural_or_param(bcx_ccx(cx).tcx, t) &&
+       action == DROP_EXISTING {
+        let do_copy_cx = new_sub_block_ctxt(cx, "do_copy");
+        let next_cx = new_sub_block_ctxt(cx, "next");
+        let self_assigning =
+            cx.build.ICmp(lib::llvm::LLVMIntNE,
+                          cx.build.PointerCast(dst, val_ty(src)), src);
+        cx.build.CondBr(self_assigning, do_copy_cx.llbb, next_cx.llbb);
+        do_copy_cx = copy_val_no_check(do_copy_cx, action, dst, src, t);
+        do_copy_cx.build.Br(next_cx.llbb);
+        ret next_cx;
+    }
+    ret copy_val_no_check(cx, action, dst, src, t);
+}
+
+fn copy_val_no_check(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
+                     src: ValueRef, t: &ty::t) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
     // FIXME this is just a clunky stopgap. we should do proper checking in an
     // earlier pass.
@@ -2329,36 +2354,26 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
     }
 
     if ty::type_is_scalar(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t) {
-        ret rslt(cx, cx.build.Store(src, dst));
+        cx.build.Store(src, dst);
+        ret cx;
     } else if ty::type_is_nil(ccx.tcx, t) || ty::type_is_bot(ccx.tcx, t) {
-        ret rslt(cx, C_nil());
+        ret cx;
     } else if ty::type_is_boxed(ccx.tcx, t) {
-        let bcx;
-        if action == DROP_EXISTING {
-            bcx = drop_ty(cx, cx.build.Load(dst), t).bcx;
-        } else { bcx = cx; }
+        let bcx = if action == DROP_EXISTING {
+            drop_ty(cx, cx.build.Load(dst), t).bcx
+        } else { cx };
         bcx = take_ty(bcx, src, t).bcx;
-        ret rslt(bcx, bcx.build.Store(src, dst));
-    } else if ty::type_is_structural(ccx.tcx, t) ||
-                  ty::type_has_dynamic_size(ccx.tcx, t) {
-        // Check for self-assignment.
-        let do_copy_cx = new_sub_block_ctxt(cx, "do_copy");
-        let next_cx = new_sub_block_ctxt(cx, "next");
-        let self_assigning =
-            cx.build.ICmp(lib::llvm::LLVMIntNE,
-                          cx.build.PointerCast(dst, val_ty(src)), src);
-        cx.build.CondBr(self_assigning, do_copy_cx.llbb, next_cx.llbb);
-
-        if action == DROP_EXISTING {
-            do_copy_cx = drop_ty(do_copy_cx, dst, t).bcx;
-        }
-        do_copy_cx = memmove_ty(do_copy_cx, dst, src, t).bcx;
-        do_copy_cx = take_ty(do_copy_cx, dst, t).bcx;
-        do_copy_cx.build.Br(next_cx.llbb);
-
-        ret rslt(next_cx, C_nil());
+        bcx.build.Store(src, dst);
+        ret bcx;
+    } else if type_is_structural_or_param(ccx.tcx, t) {
+        let bcx = if action == DROP_EXISTING {
+            drop_ty(cx, dst, t).bcx
+        } else { cx };
+        bcx = memmove_ty(bcx, dst, src, t).bcx;
+        bcx = take_ty(bcx, dst, t).bcx;
+        ret bcx;
     }
-    ccx.sess.bug("unexpected type in trans::copy_val: " +
+    ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
                      ty_to_str(ccx.tcx, t));
 }
 
@@ -2368,18 +2383,17 @@ fn copy_val(cx: &@block_ctxt, action: copy_action, dst: ValueRef,
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
 // doesn't need to be dropped.
-// FIXME: This can return only a block_ctxt, not a result.
 fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
-            src: &lval_result, t: &ty::t) -> result {
+            src: &lval_result, t: &ty::t) -> @block_ctxt {
     let src_val = src.res.val;
     if ty::type_is_scalar(bcx_tcx(cx), t) ||
            ty::type_is_native(bcx_tcx(cx), t) {
         if src.is_mem { src_val = cx.build.Load(src_val); }
         cx.build.Store(src_val, dst);
-        ret rslt(cx, C_nil());
+        ret cx;
     } else if ty::type_is_nil(bcx_tcx(cx), t) ||
                   ty::type_is_bot(bcx_tcx(cx), t) {
-        ret rslt(cx, C_nil());
+        ret cx;
     } else if ty::type_is_unique(bcx_tcx(cx), t) ||
                   ty::type_is_boxed(bcx_tcx(cx), t) {
         if src.is_mem { src_val = cx.build.Load(src_val); }
@@ -2387,20 +2401,20 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             cx = drop_ty(cx, cx.build.Load(dst), t).bcx;
         }
         cx.build.Store(src_val, dst);
-        if src.is_mem { ret zero_alloca(cx, src.res.val, t); }
+        if src.is_mem { ret zero_alloca(cx, src.res.val, t).bcx; }
 
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
-        ret rslt(cx, C_nil());
+        ret cx;
     } else if ty::type_is_structural(bcx_tcx(cx), t) ||
                   ty::type_has_dynamic_size(bcx_tcx(cx), t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t).bcx; }
         cx = memmove_ty(cx, dst, src_val, t).bcx;
         if src.is_mem {
-            ret zero_alloca(cx, src_val, t);
+            ret zero_alloca(cx, src_val, t).bcx;
         } else { // Temporary value
             revoke_clean(cx, src_val);
-            ret rslt(cx, C_nil());
+            ret cx;
         }
     }
     bcx_ccx(cx).sess.bug("unexpected type in trans::move_val: " +
@@ -2408,7 +2422,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 }
 
 fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
-                    src: &lval_result, t: &ty::t) -> result {
+                    src: &lval_result, t: &ty::t) -> @block_ctxt {
 
     // Lvals in memory are not temporaries. Copy them.
     if src.is_mem {
@@ -2560,8 +2574,8 @@ fn trans_unary(cx: &@block_ctxt, op: ast::unop, e: &@ast::expr,
             let llety = T_ptr(type_of(bcx_ccx(sub.bcx), e.span, e_ty));
             body = sub.bcx.build.PointerCast(body, llety);
         }
-        let res = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
-        ret rslt(res.bcx, sub.box);
+        let bcx = move_val_if_temp(sub.bcx, INIT, body, lv, e_ty);
+        ret rslt(bcx, sub.box);
       }
       ast::deref. {
         bcx_ccx(cx).sess.bug("deref expressions should have been \
@@ -2901,10 +2915,8 @@ mod ivec {
         let copy_src =
             load_if_immediate(copy_loop_body_cx, copy_src_ptr, unit_ty);
 
-        rs =
-            copy_val(copy_loop_body_cx, INIT, copy_dest_ptr, copy_src,
-                     unit_ty);
-        let post_copy_cx = rs.bcx;
+        let post_copy_cx = copy_val
+            (copy_loop_body_cx, INIT, copy_dest_ptr, copy_src, unit_ty);
         // Increment both pointers.
         if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
             // We have to increment by the dynamically-computed size.
@@ -3104,10 +3116,8 @@ mod ivec {
                                  rhs_copy_cx.llbb);
         let dest_ptr_lhs_copy = lhs_do_copy_cx.build.Load(dest_ptr_ptr);
         let lhs_val = load_if_immediate(lhs_do_copy_cx, lhs_ptr, unit_ty);
-        rs =
-            copy_val(lhs_do_copy_cx, INIT, dest_ptr_lhs_copy, lhs_val,
-                     unit_ty);
-        lhs_do_copy_cx = rs.bcx;
+        lhs_do_copy_cx = copy_val(lhs_do_copy_cx, INIT, dest_ptr_lhs_copy,
+                                  lhs_val, unit_ty);
 
         // Increment both pointers.
         if ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty) {
@@ -3133,10 +3143,8 @@ mod ivec {
                                  next_cx.llbb);
         let dest_ptr_rhs_copy = rhs_do_copy_cx.build.Load(dest_ptr_ptr);
         let rhs_val = load_if_immediate(rhs_do_copy_cx, rhs_ptr, unit_ty);
-        rs =
-            copy_val(rhs_do_copy_cx, INIT, dest_ptr_rhs_copy, rhs_val,
-                     unit_ty);
-        rhs_do_copy_cx = rs.bcx;
+        rhs_do_copy_cx = copy_val(rhs_do_copy_cx, INIT, dest_ptr_rhs_copy,
+                                  rhs_val, unit_ty);
 
         // Increment both pointers.
         if ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty) {
@@ -3227,8 +3235,8 @@ fn trans_evec_add(cx: &@block_ctxt, t: &ty::t, lhs: ValueRef, rhs: ValueRef)
    -> result {
     let r = alloc_ty(cx, t);
     let tmp = r.val;
-    r = copy_val(r.bcx, INIT, tmp, lhs, t);
-    let bcx = trans_evec_append(r.bcx, t, tmp, rhs).bcx;
+    let bcx = copy_val(r.bcx, INIT, tmp, lhs, t);
+    let bcx = trans_evec_append(bcx, t, tmp, rhs).bcx;
     tmp = load_if_immediate(bcx, tmp, t);
     add_clean_temp(cx, tmp, t);
     ret rslt(bcx, tmp);
@@ -3486,10 +3494,10 @@ fn trans_for(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
                                       outer_next_cx, "for loop scope");
         cx.build.Br(scope_cx.llbb);
         let local_res = alloc_local(scope_cx, local);
-        let loc_r = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
+        let bcx = copy_val(local_res.bcx, INIT, local_res.val, curr, t);
         add_clean(scope_cx, local_res.val, t);
         let bcx =
-            trans_alt::bind_irrefutable_pat(loc_r.bcx, local.node.pat,
+            trans_alt::bind_irrefutable_pat(bcx, local.node.pat,
                                             local_res.val, cx.fcx.lllocals,
                                             false);
         bcx = trans_block(bcx, body, return).bcx;
@@ -3587,8 +3595,7 @@ fn build_environment(bcx: @block_ctxt, lltydescs: [ValueRef],
             GEP_tup_like(bcx, bindings_ty, bindings.val, [0, i as int]);
         bcx = bound.bcx;
         if copying {
-            bcx =
-                move_val_if_temp(bcx, INIT, bound.val, lv, bound_tys[i]).bcx;
+            bcx = move_val_if_temp(bcx, INIT, bound.val, lv, bound_tys[i]);
         } else { bcx.build.Store(lv.res.val, bound.val); }
         i += 1u;
     }
@@ -4548,7 +4555,7 @@ fn trans_arg_expr(cx: &@block_ctxt, arg: &ty::arg, lldestty0: TypeRef,
             // Do nothing for temporaries, just give them to callee
         } else if ty::type_is_structural(ccx.tcx, e_ty) {
             let dst = alloc_ty(bcx, e_ty);
-            bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty).bcx;
+            bcx = copy_val(dst.bcx, INIT, dst.val, val, e_ty);
             val = dst.val;
             add_clean_temp(bcx, val, e_ty);
         } else {
@@ -4797,7 +4804,7 @@ fn trans_tup(cx: &@block_ctxt, elts: &[@ast::expr], id: ast::node_id) ->
         let src = trans_lval(bcx, e);
         bcx = src.res.bcx;
         let dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
-        bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty).bcx;
+        bcx = move_val_if_temp(dst_res.bcx, INIT, dst_res.val, src, e_ty);
         i += 1;
     }
     ret rslt(bcx, tup_val);
@@ -4891,7 +4898,7 @@ fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
         } else {
             lleltptr = bcx.build.InBoundsGEP(llfirsteltptr, [C_uint(i)]);
         }
-        bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty).bcx;
+        bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty);
         i += 1u;
     }
     ret rslt(bcx, llvecptr);
@@ -4926,9 +4933,8 @@ fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
             if str::eq(f.node.ident, tf.ident) {
                 expr_provided = true;
                 let lv = trans_lval(bcx, f.node.expr);
-                bcx =
-                    move_val_if_temp(lv.res.bcx, INIT, dst_res.val, lv,
-                                     e_ty).bcx;
+                bcx = move_val_if_temp(lv.res.bcx, INIT, dst_res.val,
+                                       lv, e_ty);
                 break;
             }
         }
@@ -4936,9 +4942,7 @@ fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
             let src_res = GEP_tup_like(bcx, t, base_val, [0, i]);
             src_res =
                 rslt(src_res.bcx, load_if_immediate(bcx, src_res.val, e_ty));
-            bcx =
-                copy_val(src_res.bcx, INIT, dst_res.val, src_res.val,
-                         e_ty).bcx;
+            bcx = copy_val(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty);
         }
         i += 1;
     }
@@ -5023,10 +5027,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let t = ty::expr_ty(bcx_tcx(cx), src);
         // FIXME: calculate copy init-ness in typestate.
 
-        let move_res =
-            move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val, rhs_res,
-                     t);
-        ret rslt(move_res.bcx, C_nil());
+        let bcx = move_val(rhs_res.res.bcx, DROP_EXISTING, lhs_res.res.val,
+                           rhs_res, t);
+        ret rslt(bcx, C_nil());
       }
       ast::expr_assign(dst, src) {
         let lhs_res = trans_lval(cx, dst);
@@ -5035,10 +5038,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         let rhs = trans_lval(lhs_res.res.bcx, src);
         let t = ty::expr_ty(bcx_tcx(cx), src);
         // FIXME: calculate copy init-ness in typestate.
-        let copy_res =
-            move_val_if_temp(rhs.res.bcx, DROP_EXISTING, lhs_res.res.val, rhs,
-                             t);
-        ret rslt(copy_res.bcx, C_nil());
+        let bcx = move_val_if_temp(rhs.res.bcx, DROP_EXISTING,
+                                   lhs_res.res.val, rhs, t);
+        ret rslt(bcx, C_nil());
       }
       ast::expr_swap(dst, src) {
         let lhs_res = trans_lval(cx, dst);
@@ -5083,10 +5085,9 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
             trans_eager_binop(rhs_res.bcx, op, lhs_val, t, rhs_res.val, t);
         // FIXME: calculate copy init-ness in typestate.
         // This is always a temporary, so can always be safely moved
-        let move_res =
-            move_val(v.bcx, DROP_EXISTING, lhs_res.res.val,
-                     lval_val(v.bcx, v.val), t);
-        ret rslt(move_res.bcx, C_nil());
+        let bcx = move_val(v.bcx, DROP_EXISTING, lhs_res.res.val,
+                           lval_val(v.bcx, v.val), t);
+        ret rslt(bcx, C_nil());
       }
       ast::expr_bind(f, args) { ret trans_bind(cx, f, args, e.id); }
       ast::expr_call(f, args) {
@@ -5425,9 +5426,9 @@ fn trans_ret(cx: &@block_ctxt, e: &option::t<@ast::expr>) -> result {
               _ { false }
             };
         if is_local {
-            bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t).bcx;
+            bcx = move_val(bcx, INIT, cx.fcx.llretptr, lv, t);
         } else {
-            bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t).bcx;
+            bcx = move_val_if_temp(bcx, INIT, cx.fcx.llretptr, lv, t);
         }
       }
       _ {
@@ -5476,11 +5477,11 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
             // the value.
             ty = node_id_type(bcx_ccx(bcx), init.expr.id);
             let sub = trans_lval(bcx, init.expr);
-            bcx = move_val_if_temp(sub.res.bcx, INIT, llptr, sub, ty).bcx;
+            bcx = move_val_if_temp(sub.res.bcx, INIT, llptr, sub, ty);
           }
           ast::init_move. {
             let sub = trans_lval(bcx, init.expr);
-            bcx = move_val(sub.res.bcx, INIT, llptr, sub, ty).bcx;
+            bcx = move_val(sub.res.bcx, INIT, llptr, sub, ty);
           }
         }
       }
@@ -5750,7 +5751,7 @@ fn trans_block(cx: &@block_ctxt, b: &ast::blk, output: &out_method) ->
                 // The output method is to save the value at target,
                 // and we didn't pass it to the recursive trans_expr
                 // call.
-                bcx = move_val_if_temp(bcx, INIT, target, lv, r_ty).bcx;
+                bcx = move_val_if_temp(bcx, INIT, target, lv, r_ty);
                 r = rslt(bcx, C_nil());
               }
               return. { }
@@ -6134,7 +6135,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: &span, dtor: &ast::_fn,
 
     let dst = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
     bcx = dst.bcx;
-    bcx = copy_val(bcx, INIT, dst.val, arg, arg_t).bcx;
+    bcx = copy_val(bcx, INIT, dst.val, arg, arg_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
     bcx.build.Store(C_int(1), flag.val);
@@ -6223,8 +6224,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
                ty::type_has_dynamic_size(cx.ccx.tcx, arg_ty) {
             llargval = llargptr;
         } else { llargval = bcx.build.Load(llargptr); }
-        rslt = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);
-        bcx = rslt.bcx;
+        bcx = copy_val(bcx, INIT, lldestptr, llargval, arg_ty);
         i += 1u;
     }
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));

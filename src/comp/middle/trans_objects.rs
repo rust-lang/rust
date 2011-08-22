@@ -156,7 +156,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
             let capture =
                 GEP_tup_like(bcx, typarams_ty, body_typarams.val, [0, i]);
             bcx = capture.bcx;
-            bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
+            bcx = copy_val(bcx, INIT, capture.val, typaram, tydesc_ty);
             i += 1;
         }
 
@@ -174,7 +174,7 @@ fn trans_obj(cx: @local_ctxt, sp: &span, ob: &ast::_obj,
                 let field =
                     GEP_tup_like(bcx, fields_ty, body_fields.val, [0, i]);
                 bcx = field.bcx;
-                bcx = copy_val(bcx, INIT, field.val, arg, arg_tys[i].ty).bcx;
+                bcx = copy_val(bcx, INIT, field.val, arg, arg_tys[i].ty);
                 i += 1;
               }
               none. {
@@ -345,7 +345,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
             bcx = field.bcx;
             bcx =
                 copy_val(bcx, INIT, field.val, additional_field_vals[i].val,
-                         additional_field_tys[i]).bcx;
+                         additional_field_tys[i]);
             i += 1;
         }
 
@@ -363,9 +363,8 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
                 GEP_tup_like(bcx, body_ty, body,
                              [0, abi::obj_body_elt_inner_obj]);
             bcx = body_inner_obj.bcx;
-            bcx =
-                copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
-                         inner_obj_ty).bcx;
+            bcx = copy_val(bcx, INIT, body_inner_obj.val, inner_obj_val.val,
+                           inner_obj_ty);
           }
         }
 
