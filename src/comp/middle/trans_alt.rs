@@ -529,6 +529,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
             bcx = trans::copy_val(bcx, trans::INIT, alloc,
                                   trans::load_if_immediate(bcx, val, ty), ty);
             table.insert(pat.id, alloc);
+            trans_common::add_clean(bcx, alloc, ty);
         } else { table.insert(pat.id, val); }
       }
       ast::pat_tag(_, sub) {
