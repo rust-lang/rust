@@ -1131,54 +1131,48 @@ fn type_is_native(cx: &ctxt, ty: t) -> bool {
     alt struct(cx, ty) { ty_native(_) { ret true; } _ { ret false; } }
 }
 
-fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
-    alt struct(cx, ty) {
-      ty_nil. { ret false; }
-      ty_bot. { ret false; }
-      ty_bool. { ret false; }
-      ty_int. { ret false; }
-      ty_float. { ret false; }
-      ty_uint. { ret false; }
-      ty_machine(_) { ret false; }
-      ty_char. { ret false; }
-      ty_str. { ret false; }
-      ty_istr. { ret false; }
-      ty_tag(_, subtys) {
-        let i = 0u;
-        while i < vec::len::<t>(subtys) {
-            if type_has_dynamic_size(cx, subtys[i]) { ret true; }
-            i += 1u;
+fn type_structurally_contains(cx: &ctxt, ty: t,
+                              test: fn(&sty) -> bool) -> bool {
+    let sty = struct(cx, ty);
+    if test(sty) { ret true; }
+    alt sty {
+      ty_tag(did, tps) {
+        for variant in tag_variants(cx, did) {
+            for aty in variant.args {
+                let sty = substitute_type_params(cx, tps, aty);
+                if type_structurally_contains(cx, sty, test) { ret true; }
+            }
         }
         ret false;
       }
-      ty_box(_) { ret false; }
-      ty_vec(mt) { ret type_has_dynamic_size(cx, mt.ty); }
-      ty_ptr(_) { ret false; }
+      ty_vec(mt) { ret type_structurally_contains(cx, mt.ty, test); }
       ty_rec(fields) {
-        let i = 0u;
-        while i < vec::len::<field>(fields) {
-            if type_has_dynamic_size(cx, fields[i].mt.ty) { ret true; }
-            i += 1u;
+        for field in fields {
+            if type_structurally_contains(cx, field.mt.ty, test) { ret true; }
         }
         ret false;
       }
       ty_tup(ts) {
-        for tt in ts { if type_has_dynamic_size(cx, tt) { ret true; } }
+        for tt in ts {
+            if type_structurally_contains(cx, tt, test) { ret true; }
+        }
         ret false;
       }
-      ty_fn(_, _, _, _, _) { ret false; }
-      ty_native_fn(_, _, _) { ret false; }
-      ty_obj(_) { ret false; }
       ty_res(_, sub, tps) {
-        for tp: t in tps { if type_has_dynamic_size(cx, tp) { ret true; } }
-        ret type_has_dynamic_size(cx, sub);
+        let sty = substitute_type_params(cx, tps, sub);
+        ret type_structurally_contains(cx, sty, test);
       }
-      ty_var(_) { fail "ty_var in type_has_dynamic_size()"; }
-      ty_param(_, _) { ret true; }
-      ty_type. { ret false; }
-      ty_native(_) { ret false; }
-      ty_uniq(_) { ret false; }
+      _ { ret false; }
     }
+}
+
+fn type_has_dynamic_size(cx: &ctxt, ty: t) -> bool {
+    ret type_structurally_contains(cx, ty, fn(sty: &sty) -> bool {
+        ret alt sty {
+          ty_param(_, _) { true }
+          _ { false }
+        };
+    });
 }
 
 fn type_is_integral(cx: &ctxt, ty: t) -> bool {
