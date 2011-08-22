@@ -1120,12 +1120,16 @@ fn declare_tydesc(cx: &@local_ctxt, sp: &span, t: &ty::t, ty_params: &[uint])
           mutable drop_glue: none::<ValueRef>,
           mutable free_glue: none::<ValueRef>,
           mutable cmp_glue: none::<ValueRef>,
+          mutable copy_glue: none::<ValueRef>,
           ty_params: ty_params};
     log "--- declare_tydesc " + ty_to_str(cx.ccx.tcx, t);
     ret info;
 }
 
-type make_generic_glue_helper_fn = fn(&@block_ctxt, ValueRef, &ty::t);
+tag glue_helper {
+    default_helper(fn(&@block_ctxt, ValueRef, &ty::t));
+    copy_helper(fn(&@block_ctxt, ValueRef, ValueRef, &ty::t));
+}
 
 fn declare_generic_glue(cx: &@local_ctxt, t: &ty::t, llfnty: TypeRef,
                         name: &str) -> ValueRef {
@@ -1141,7 +1145,7 @@ fn declare_generic_glue(cx: &@local_ctxt, t: &ty::t, llfnty: TypeRef,
 
 fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: &ty::t,
                            llfn: ValueRef,
-                           helper: &make_generic_glue_helper_fn,
+                           helper: &glue_helper,
                            ty_params: &[uint]) -> ValueRef {
     let fcx = new_fn_ctxt(cx, sp, llfn);
     llvm::LLVMSetLinkage(llfn,
@@ -1177,13 +1181,22 @@ fn make_generic_glue_inner(cx: &@local_ctxt, sp: &span, t: &ty::t,
     let lltop = bcx.llbb;
     let llrawptr0 = llvm::LLVMGetParam(llfn, 4u);
     let llval0 = bcx.build.BitCast(llrawptr0, llty);
-    helper(bcx, llval0, t);
+    alt helper {
+      default_helper(helper) {
+        helper(bcx, llval0, t);
+      }
+      copy_helper(helper) {
+        let llrawptr1 = llvm::LLVMGetParam(llfn, 4u);
+        let llval1 = bcx.build.BitCast(llrawptr1, llty);
+        helper(bcx, llval0, llval1, t);
+      }
+    }
     finish_fn(fcx, lltop);
     ret llfn;
 }
 
 fn make_generic_glue(cx: &@local_ctxt, sp: &span, t: &ty::t, llfn: ValueRef,
-                     helper: &make_generic_glue_helper_fn, ty_params: &[uint],
+                     helper: &glue_helper, ty_params: &[uint],
                      name: &str) -> ValueRef {
     if !cx.ccx.sess.get_opts().stats {
         ret make_generic_glue_inner(cx, sp, t, llfn, helper, ty_params);
@@ -1201,6 +1214,7 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
     for each pair: @{key: ty::t, val: @tydesc_info} in ccx.tydescs.items() {
         let glue_fn_ty = T_ptr(T_glue_fn(*ccx));
         let cmp_fn_ty = T_ptr(T_cmp_glue_fn(*ccx));
+        let copy_fn_ty = T_ptr(T_copy_glue_fn(*ccx));
         let ti = pair.val;
         let take_glue =
             alt { ti.take_glue } {
@@ -1222,6 +1236,11 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
               none. { ccx.stats.n_null_glues += 1u; C_null(cmp_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
+        let copy_glue =
+            alt { ti.copy_glue } {
+              none. { ccx.stats.n_null_glues += 1u; C_null(copy_fn_ty) }
+              some(v) { ccx.stats.n_real_glues += 1u; v }
+            };
 
         let shape = shape::shape_of(ccx, pair.key);
         let shape_tables =
@@ -1236,9 +1255,9 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
                             take_glue, // take_glue
                             drop_glue, // drop_glue
                             free_glue, // free_glue
+                            copy_glue, // copy_glue
                             C_null(glue_fn_ty), // sever_glue
                             C_null(glue_fn_ty), // mark_glue
-                            C_null(glue_fn_ty), // obj_drop_glue
                             C_null(glue_fn_ty), // is_stateful
                             cmp_glue, // cmp_glue
                             C_shape(ccx, shape), // shape
@@ -1251,6 +1270,11 @@ fn emit_tydescs(ccx: &@crate_ctxt) {
         llvm::LLVMSetLinkage(gvar,
                              lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     }
+}
+
+fn make_copy_glue(cx: &@block_ctxt, dst: ValueRef, src: ValueRef, t: &ty::t) {
+    let bcx = memmove_ty(cx, dst, src, t).bcx;
+    build_return(bcx);
 }
 
 fn make_take_glue(cx: &@block_ctxt, v: ValueRef, t: &ty::t) {
@@ -1970,6 +1994,7 @@ fn lazily_emit_all_tydesc_glue(cx: &@block_ctxt,
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, static_ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_copy_glue, static_ti);
 }
 
 fn lazily_emit_all_generic_info_tydesc_glues(cx: &@block_ctxt,
@@ -1995,7 +2020,8 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
                                          "take");
                 ti.take_glue = some::<ValueRef>(glue_fn);
-                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, make_take_glue,
+                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
+                                  default_helper(make_take_glue),
                                   ti.ty_params, "take");
                 log #fmt["--- lazily_emit_tydesc_glue TAKE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
@@ -2012,13 +2038,14 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
                                          "drop");
                 ti.drop_glue = some::<ValueRef>(glue_fn);
-                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, make_drop_glue,
+                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
+                                  default_helper(make_drop_glue),
                                   ti.ty_params, "drop");
                 log #fmt["--- lazily_emit_tydesc_glue DROP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
               }
             }
-        } else if field == abi::tydesc_field_free_glue {
+         } else if field == abi::tydesc_field_free_glue {
             alt { ti.free_glue } {
               some(_) { }
               none. {
@@ -2029,7 +2056,8 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                     declare_generic_glue(lcx, ti.ty, T_glue_fn(*lcx.ccx),
                                          "free");
                 ti.free_glue = some::<ValueRef>(glue_fn);
-                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn, make_free_glue,
+                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
+                                  default_helper(make_free_glue),
                                   ti.ty_params, "free");
                 log #fmt["--- lazily_emit_tydesc_glue FREE %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
@@ -2044,6 +2072,21 @@ fn lazily_emit_tydesc_glue(cx: &@block_ctxt, field: int,
                 ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
                 log #fmt["--- lazily_emit_tydesc_glue CMP %s",
                          ty_to_str(bcx_tcx(cx), ti.ty)];
+              }
+            }
+        } else if field == abi::tydesc_field_copy_glue {
+            alt { ti.copy_glue } {
+              some(_) {}
+              none. {
+                let lcx = cx.fcx.lcx;
+                let glue_fn =
+                    declare_generic_glue(lcx, ti.ty, T_copy_glue_fn(*lcx.ccx),
+                                         "copy");
+                ti.copy_glue = some(glue_fn);
+                make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
+                                  copy_helper(make_copy_glue),
+                                  ti.ty_params, "copy");
+                
               }
             }
         }
@@ -2065,8 +2108,6 @@ fn call_tydesc_glue_full(cx: &@block_ctxt, v: ValueRef, tydesc: ValueRef,
             static_glue_fn = sti.drop_glue;
         } else if field == abi::tydesc_field_free_glue {
             static_glue_fn = sti.free_glue;
-        } else if field == abi::tydesc_field_cmp_glue {
-            static_glue_fn = sti.cmp_glue;
         }
       }
     }
@@ -2787,6 +2828,7 @@ mod ivec {
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, none);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_copy_glue, none);
         let rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
         let rhs_len = rhs_len_and_data.len;
         let rhs_data = rhs_len_and_data.data;

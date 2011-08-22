@@ -257,6 +257,8 @@ struct rust_timer {
 
 typedef void CDECL (glue_fn)(void *, rust_task *, void *,
                              const type_desc **, void *);
+typedef void CDECL (copy_glue_fn)(void *, rust_task *, void *,
+                                  const type_desc **, void *, void *);
 typedef void CDECL (cmp_glue_fn)(void *, rust_task *, void *,
                                  const type_desc **,
                                  void *, void *, int8_t);
@@ -275,9 +277,9 @@ struct type_desc {
     glue_fn *take_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
+    copy_glue_fn *copy_glue;
     glue_fn *sever_glue;    // For GC.
     glue_fn *mark_glue;     // For GC.
-    glue_fn *obj_drop_glue; // For custom destructors.
     uintptr_t is_stateful;
     cmp_glue_fn *cmp_glue;
     const uint8_t *shape;
