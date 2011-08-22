@@ -136,7 +136,7 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
                         cx.config.compile_lib_path, option::some(src))
     }
 
-    fn make_pp_args(config: &config, testfile: &str) -> procargs {
+    fn make_pp_args(config: &config, _testfile: &str) -> procargs {
         let prog = config.rustc_path;
         let args = ["-", "--pretty", "normal"];
         ret {prog: prog, args: args};
@@ -167,7 +167,7 @@ actual:\n\
                         cx.config.compile_lib_path, option::some(src))
     }
 
-    fn make_typecheck_args(config: &config, testfile: &str) -> procargs {
+    fn make_typecheck_args(config: &config, _testfile: &str) -> procargs {
         let prog = config.rustc_path;
         let args = ["-", "--no-trans", "--lib"];
         ret {prog: prog, args: args};
