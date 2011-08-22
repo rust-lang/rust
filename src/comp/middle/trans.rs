@@ -2643,6 +2643,98 @@ fn trans_evec_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
 }
 
 mod ivec {
+    fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
+        result {
+        let typ = node_id_type(bcx_ccx(bcx), id);
+        let unit_ty;
+        alt ty::struct(bcx_tcx(bcx), typ) {
+          ty::ty_vec(mt) { unit_ty = mt.ty; }
+          _ { bcx_ccx(bcx).sess.bug("non-ivec type in trans_ivec"); }
+        }
+        let llunitty = type_of_or_i8(bcx, unit_ty);
+
+        let ares = ivec::alloc(bcx, unit_ty);
+        bcx = ares.bcx;
+        let llvecptr = ares.llptr;
+        let unit_sz = ares.llunitsz;
+        let llalen = ares.llalen;
+
+        add_clean_temp(bcx, llvecptr, typ);
+
+        let lllen = bcx.build.Mul(C_uint(std::vec::len(args)), unit_sz);
+        // Allocate the vector pieces and store length and allocated length.
+
+        let llfirsteltptr;
+        if std::vec::len(args) > 0u &&
+            std::vec::len(args) <= abi::ivec_default_length {
+            // Interior case.
+
+            bcx.build.Store(lllen,
+                            bcx.build.InBoundsGEP(llvecptr,
+                                                  [C_int(0),
+                                                   C_uint(abi::ivec_elt_len)]));
+            bcx.build.Store(llalen,
+                            bcx.build.InBoundsGEP(llvecptr,
+                                                  [C_int(0),
+                                                   C_uint(abi::ivec_elt_alen)]));
+            llfirsteltptr =
+                bcx.build.InBoundsGEP(llvecptr,
+                                      [C_int(0), C_uint(abi::ivec_elt_elems),
+                                       C_int(0)]);
+        } else {
+            // Heap case.
+
+            let stub_z = [C_int(0), C_uint(abi::ivec_heap_stub_elt_zero)];
+            let stub_a = [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)];
+            let stub_p = [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)];
+            let llstubty = T_ivec_heap(llunitty);
+            let llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
+            bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr, stub_z));
+            let llheapty = T_ivec_heap_part(llunitty);
+            if std::vec::len(args) == 0u {
+                // Null heap pointer indicates a zero-length vector.
+
+                bcx.build.Store(llalen, bcx.build.InBoundsGEP(llstubptr, stub_a));
+                bcx.build.Store(C_null(T_ptr(llheapty)),
+                                bcx.build.InBoundsGEP(llstubptr, stub_p));
+                llfirsteltptr = C_null(T_ptr(llunitty));
+            } else {
+                bcx.build.Store(lllen, bcx.build.InBoundsGEP(llstubptr, stub_a));
+
+                let llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
+                let rslt = trans_shared_malloc(bcx, T_ptr(llheapty), llheapsz);
+                bcx = rslt.bcx;
+                let llheapptr = rslt.val;
+                bcx.build.Store(llheapptr,
+                                bcx.build.InBoundsGEP(llstubptr, stub_p));
+                let heap_l = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
+                bcx.build.Store(lllen, bcx.build.InBoundsGEP(llheapptr, heap_l));
+                llfirsteltptr =
+                    bcx.build.InBoundsGEP(llheapptr,
+                                          [C_int(0),
+                                           C_uint(abi::ivec_heap_elt_elems),
+                                           C_int(0)]);
+            }
+        }
+        // Store the individual elements.
+
+        let i = 0u;
+        for e: @ast::expr in args {
+            let lv = trans_lval(bcx, e);
+            bcx = lv.res.bcx;
+            let lleltptr;
+            if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
+                lleltptr =
+                    bcx.build.InBoundsGEP(llfirsteltptr,
+                                          [bcx.build.Mul(C_uint(i), unit_sz)]);
+            } else {
+                lleltptr = bcx.build.InBoundsGEP(llfirsteltptr, [C_uint(i)]);
+            }
+            bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty);
+            i += 1u;
+        }
+        ret rslt(bcx, llvecptr);
+    }
 
     // Returns the length of an interior vector and a pointer to its first
     // element, in that order.
@@ -4821,100 +4913,6 @@ fn trans_tup(cx: &@block_ctxt, elts: &[@ast::expr], id: ast::node_id) ->
     ret rslt(bcx, tup_val);
 }
 
-// TODO: Move me to ivec::
-fn trans_ivec(bcx: @block_ctxt, args: &[@ast::expr], id: ast::node_id) ->
-   result {
-    let typ = node_id_type(bcx_ccx(bcx), id);
-    let unit_ty;
-    alt ty::struct(bcx_tcx(bcx), typ) {
-      ty::ty_vec(mt) { unit_ty = mt.ty; }
-      _ { bcx_ccx(bcx).sess.bug("non-ivec type in trans_ivec"); }
-    }
-    let llunitty = type_of_or_i8(bcx, unit_ty);
-
-    let ares = ivec::alloc(bcx, unit_ty);
-    bcx = ares.bcx;
-    let llvecptr = ares.llptr;
-    let unit_sz = ares.llunitsz;
-    let llalen = ares.llalen;
-
-    add_clean_temp(bcx, llvecptr, typ);
-
-    let lllen = bcx.build.Mul(C_uint(std::vec::len(args)), unit_sz);
-    // Allocate the vector pieces and store length and allocated length.
-
-    let llfirsteltptr;
-    if std::vec::len(args) > 0u &&
-           std::vec::len(args) <= abi::ivec_default_length {
-        // Interior case.
-
-        bcx.build.Store(lllen,
-                        bcx.build.InBoundsGEP(llvecptr,
-                                              [C_int(0),
-                                               C_uint(abi::ivec_elt_len)]));
-        bcx.build.Store(llalen,
-                        bcx.build.InBoundsGEP(llvecptr,
-                                              [C_int(0),
-                                               C_uint(abi::ivec_elt_alen)]));
-        llfirsteltptr =
-            bcx.build.InBoundsGEP(llvecptr,
-                                  [C_int(0), C_uint(abi::ivec_elt_elems),
-                                   C_int(0)]);
-    } else {
-        // Heap case.
-
-        let stub_z = [C_int(0), C_uint(abi::ivec_heap_stub_elt_zero)];
-        let stub_a = [C_int(0), C_uint(abi::ivec_heap_stub_elt_alen)];
-        let stub_p = [C_int(0), C_uint(abi::ivec_heap_stub_elt_ptr)];
-        let llstubty = T_ivec_heap(llunitty);
-        let llstubptr = bcx.build.PointerCast(llvecptr, T_ptr(llstubty));
-        bcx.build.Store(C_int(0), bcx.build.InBoundsGEP(llstubptr, stub_z));
-        let llheapty = T_ivec_heap_part(llunitty);
-        if std::vec::len(args) == 0u {
-            // Null heap pointer indicates a zero-length vector.
-
-            bcx.build.Store(llalen, bcx.build.InBoundsGEP(llstubptr, stub_a));
-            bcx.build.Store(C_null(T_ptr(llheapty)),
-                            bcx.build.InBoundsGEP(llstubptr, stub_p));
-            llfirsteltptr = C_null(T_ptr(llunitty));
-        } else {
-            bcx.build.Store(lllen, bcx.build.InBoundsGEP(llstubptr, stub_a));
-
-            let llheapsz = bcx.build.Add(llsize_of(llheapty), lllen);
-            let rslt = trans_shared_malloc(bcx, T_ptr(llheapty), llheapsz);
-            bcx = rslt.bcx;
-            let llheapptr = rslt.val;
-            bcx.build.Store(llheapptr,
-                            bcx.build.InBoundsGEP(llstubptr, stub_p));
-            let heap_l = [C_int(0), C_uint(abi::ivec_heap_elt_len)];
-            bcx.build.Store(lllen, bcx.build.InBoundsGEP(llheapptr, heap_l));
-            llfirsteltptr =
-                bcx.build.InBoundsGEP(llheapptr,
-                                      [C_int(0),
-                                       C_uint(abi::ivec_heap_elt_elems),
-                                       C_int(0)]);
-        }
-    }
-    // Store the individual elements.
-
-    let i = 0u;
-    for e: @ast::expr in args {
-        let lv = trans_lval(bcx, e);
-        bcx = lv.res.bcx;
-        let lleltptr;
-        if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
-            lleltptr =
-                bcx.build.InBoundsGEP(llfirsteltptr,
-                                      [bcx.build.Mul(C_uint(i), unit_sz)]);
-        } else {
-            lleltptr = bcx.build.InBoundsGEP(llfirsteltptr, [C_uint(i)]);
-        }
-        bcx = move_val_if_temp(bcx, INIT, lleltptr, lv, unit_ty);
-        i += 1u;
-    }
-    ret rslt(bcx, llvecptr);
-}
-
 fn trans_rec(cx: &@block_ctxt, fields: &[ast::field],
              base: &option::t<@ast::expr>, id: ast::node_id) -> result {
     let bcx = cx;
@@ -5103,7 +5101,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         ret trans_call(cx, f, none::<ValueRef>, args, e.id);
       }
       ast::expr_cast(val, _) { ret trans_cast(cx, val, e.id); }
-      ast::expr_vec(args, _) { ret trans_ivec(cx, args, e.id); }
+      ast::expr_vec(args, _) { ret ivec::trans_ivec(cx, args, e.id); }
       ast::expr_rec(args, base) { ret trans_rec(cx, args, base, e.id); }
       ast::expr_tup(args) { ret trans_tup(cx, args, e.id); }
       ast::expr_mac(_) { ret bcx_ccx(cx).sess.bug("unexpanded macro"); }
