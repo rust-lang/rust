@@ -18,6 +18,7 @@ mod middle {
     mod trans;
     mod trans_alt;
     mod trans_objects;
+    mod trans_ivec;
     mod ty;
     mod ast_map;
     mod resolve;
