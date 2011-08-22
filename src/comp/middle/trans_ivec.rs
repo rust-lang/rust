@@ -384,6 +384,12 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, orig_lhs: ValueRef,
     rs = reserve_space(bcx, llunitty, lhs, rhs_len);
     let lhs_data = rs.val;
     bcx = rs.bcx;
+
+    // If rhs is lhs then our rhs pointer may have changed
+    rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
+    rhs_data = rhs_len_and_data.data;
+    bcx = rhs_len_and_data.bcx;
+
     // Work out the end pointer.
 
     let lhs_unscaled_idx = bcx.build.UDiv(rhs_len, llsize_of(llunitty));
