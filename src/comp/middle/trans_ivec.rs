@@ -12,7 +12,7 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of,
 import trans_common::*;
 
 export trans_ivec, get_len_and_data, duplicate_heap_part, trans_add,
-trans_append;
+trans_append, alloc_with_heap;
 
 fn alloc_with_heap(bcx: @block_ctxt, typ: &ty::t, vecsz: uint) ->
     {bcx: @block_ctxt,

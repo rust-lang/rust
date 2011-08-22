@@ -2444,61 +2444,30 @@ fn move_val_if_temp(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 }
 
 fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
-    let llstackpart = alloca(cx, T_ivec(T_i8()));
-    let len = str::byte_len(s);
+    let vec_ty = ty::mk_vec(bcx_tcx(cx),
+                            {ty: ty::mk_mach(bcx_tcx(cx), ast::ty_u8),
+                             mut: ast::imm});
+    let strlen = str::byte_len(s);
+    let veclen = strlen + 1u; // +1 for \0
+    let alloc_res = trans_ivec::alloc_with_heap(cx, vec_ty, veclen);
 
-    let bcx;
-    if len < 3u { // 3 because of the \0
-        cx.build.Store(C_uint(len + 1u),
-                       cx.build.InBoundsGEP(llstackpart,
-                                            [C_int(0), C_int(0)]));
-        cx.build.Store(C_int(4),
-                       cx.build.InBoundsGEP(llstackpart,
-                                            [C_int(0), C_int(1)]));
-        let i = 0u;
-        while i < len {
-            cx.build.Store(C_u8(s[i] as uint),
-                           cx.build.InBoundsGEP(llstackpart,
-                                                [C_int(0), C_int(2),
-                                                 C_uint(i)]));
-            i += 1u;
-        }
-        cx.build.Store(C_u8(0u),
-                       cx.build.InBoundsGEP(llstackpart,
-                                            [C_int(0), C_int(2),
-                                             C_uint(len)]));
+    let bcx = alloc_res.bcx;
+    let llvecptr = alloc_res.llptr;
+    let llfirsteltptr = alloc_res.llfirsteltptr;
 
-        bcx = cx;
-    } else {
-        let r =
-            trans_shared_malloc(cx, T_ptr(T_ivec_heap_part(T_i8())),
-                                llsize_of(T_struct([T_int(),
-                                                    T_array(T_i8(),
-                                                            len + 1u)])));
-        bcx = r.bcx;
-        let llheappart = r.val;
-
-        bcx.build.Store(C_uint(len + 1u),
-                        bcx.build.InBoundsGEP(llheappart,
-                                              [C_int(0), C_int(0)]));
-        bcx.build.Store(llvm::LLVMConstString(str::buf(s), len, False),
-                        bcx.build.InBoundsGEP(llheappart,
-                                              [C_int(0), C_int(1)]));
-
-        let llspilledstackpart =
-            bcx.build.PointerCast(llstackpart, T_ptr(T_ivec_heap(T_i8())));
-        bcx.build.Store(C_int(0),
-                        bcx.build.InBoundsGEP(llspilledstackpart,
-                                              [C_int(0), C_int(0)]));
-        bcx.build.Store(C_uint(len + 1u),
-                        bcx.build.InBoundsGEP(llspilledstackpart,
-                                              [C_int(0), C_int(1)]));
-        bcx.build.Store(llheappart,
-                        bcx.build.InBoundsGEP(llspilledstackpart,
-                                              [C_int(0), C_int(2)]));
+    // FIXME: Do something smarter here to load the string
+    let i = 0u;
+    while i < strlen {
+        bcx.build.Store(C_u8(s[i] as uint),
+                        bcx.build.InBoundsGEP(llfirsteltptr,
+                                              [C_uint(i)]));
+        i += 1u;
     }
+    bcx.build.Store(C_u8(0u),
+                    bcx.build.InBoundsGEP(llfirsteltptr,
+                                          [C_uint(strlen)]));
 
-    ret rslt(bcx, llstackpart);
+    ret rslt(bcx, llvecptr);
 }
 
 fn trans_crate_lit(cx: &@crate_ctxt, lit: &ast::lit) -> ValueRef {
