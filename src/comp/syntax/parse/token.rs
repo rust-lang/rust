@@ -1,6 +1,6 @@
 
 import ast::ty_mach;
-import ast::ty_mach_to_str;
+import ast_util::ty_mach_to_str;
 import std::map::new_str_hash;
 import util::interner;
 import std::int;

@@ -6,6 +6,7 @@ import std::option::*;
 import std::int;
 import std::uint;
 import syntax::ast::*;
+import syntax::ast_util::*;
 import syntax::codemap::span;
 import syntax::visit;
 import util::common;

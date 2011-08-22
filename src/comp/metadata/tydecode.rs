@@ -8,7 +8,8 @@ import std::option::none;
 import std::option::some;
 import syntax::ast;
 import syntax::ast::*;
-import ast::respan;
+import syntax::ast_util;
+import syntax::ast_util::respan;
 import middle::ty;
 
 export parse_def_id;
@@ -106,7 +107,7 @@ fn parse_path(st: @pstate, sd: str_def) -> ast::path {
           ':' { next(st); next(st); }
           c {
             if c == '(' {
-                ret respan(ast::dummy_sp(),
+                ret respan(ast_util::dummy_sp(),
                            {global: false, idents: idents, types: []});
             } else { idents += [parse_ident_(st, sd, is_last)]; }
           }
@@ -152,7 +153,7 @@ fn parse_ty_constr_arg(st: @pstate, sd: str_def) ->
 
 fn parse_constr<@T>(st: @pstate, sd: str_def, pser: arg_parser<T>) ->
    @ty::constr_general<T> {
-    let sp = ast::dummy_sp(); // FIXME: use a real span
+    let sp = ast_util::dummy_sp(); // FIXME: use a real span
     let args: [@sp_constr_arg<T>] = [];
     let pth: path = parse_path(st, sd);
     let ignore: char = next(st) as char;

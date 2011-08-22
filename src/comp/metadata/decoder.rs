@@ -7,6 +7,7 @@ import std::str;
 import std::io;
 import std::map::hashmap;
 import syntax::ast;
+import syntax::ast_util;
 import front::attr;
 import middle::ty;
 import common::*;
@@ -335,7 +336,7 @@ fn get_attributes(md: &ebml::doc) -> [ast::attribute] {
             let meta_item = meta_items[0];
             attrs +=
                 [{node: {style: ast::attr_outer, value: *meta_item},
-                  span: ast::dummy_sp()}];
+                  span: ast_util::dummy_sp()}];
         }
       }
       option::none. { }

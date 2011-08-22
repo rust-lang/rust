@@ -16,7 +16,7 @@ import base::expr_to_ident;
 
 import fold::*;
 import ast::node_id;
-import ast::respan;
+import ast_util::respan;
 import ast::ident;
 import ast::path;
 import ast::ty;

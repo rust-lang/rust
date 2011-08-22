@@ -1,13 +1,14 @@
 
 import syntax::ast;
 import syntax::ast::*;
+import syntax::ast_util;
 import syntax::codemap;
 import ast::ident;
 import ast::fn_ident;
 import ast::def;
 import ast::def_id;
 import ast::node_id;
-import ast::local_def;
+import syntax::ast_util::local_def;
 
 import metadata::csearch;
 import metadata::cstore;
@@ -16,7 +17,7 @@ import util::common::*;
 import std::map::new_int_hash;
 import std::map::new_str_hash;
 import syntax::codemap::span;
-import syntax::ast::respan;
+import syntax::ast_util::respan;
 import middle::ty::constr_table;
 import syntax::visit;
 import visit::vt;
@@ -321,7 +322,8 @@ fn resolve_names(e: &@env, c: &@ast::crate) {
               }
               _ {
                 e.sess.span_err(p.span,
-                                "not a tag variant: " + ast::path_name(p));
+                                "not a tag variant: " +
+                                ast_util::path_name(p));
               }
             }
           }
@@ -739,7 +741,7 @@ fn lookup_in_ty_params(name: &ident, ty_params: &[ast::ty_param]) ->
 
 fn lookup_in_pat(name: &ident, pat: &@ast::pat) -> option::t<def_id> {
     let found = none;
-    for each bound in ast::pat_bindings(pat) {
+    for each bound in ast_util::pat_bindings(pat) {
         let p_name = alt bound.node { ast::pat_bind(n) { n } };
         if str::eq(p_name, name) { found = some(local_def(bound.id)); }
     }
@@ -891,7 +893,7 @@ fn lookup_in_mod_strict(e: &env, sc: &scopes, m: def, sp: &span, name: &ident,
 
 fn lookup_in_mod(e: &env, m: &def, sp: &span, name: &ident, ns: namespace,
                  dr: dir) -> option::t<def> {
-    let defid = ast::def_id_of_def(m);
+    let defid = ast_util::def_id_of_def(m);
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
 
@@ -946,7 +948,7 @@ fn lookup_in_local_native_mod(e: &env, node_id: node_id, sp: &span,
 fn lookup_in_local_mod(e: &env, node_id: node_id, sp: &span, id: &ident,
                        ns: namespace, dr: dir) -> option::t<def> {
     let info = e.mod_map.get(node_id);
-    if dr == outside && !ast::is_exported(id, option::get(info.m)) {
+    if dr == outside && !ast_util::is_exported(id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
 
         ret none::<def>; // name is not visible
@@ -1173,7 +1175,7 @@ fn ns_for_def(d: def) -> namespace {
 fn lookup_external(e: &env, cnum: int, ids: &[ident], ns: namespace) ->
    option::t<def> {
     for d: def in csearch::lookup_defs(e.sess.get_cstore(), cnum, ids) {
-        e.ext_map.insert(ast::def_id_of_def(d), ids);
+        e.ext_map.insert(ast_util::def_id_of_def(d), ids);
         if ns == ns_for_def(d) { ret some(d); }
     }
     ret none::<def>;
@@ -1273,7 +1275,7 @@ fn check_item(e: &@env, i: &@ast::item, x: &(), v: &vt<()>) {
 }
 
 fn check_pat(ch: checker, p: &@ast::pat) {
-    for each p in ast::pat_bindings(p) {
+    for each p in ast_util::pat_bindings(p) {
         let ident = alt p.node { pat_bind(n) { n } };
         add_name(ch, p.span, ident);
     }
@@ -1321,7 +1323,7 @@ fn check_block(e: &@env, b: &ast::blk, x: &(), v: &vt<()>) {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
                 for loc in locs {
-                    for each p in ast::pat_bindings(loc.node.pat) {
+                    for each p in ast_util::pat_bindings(loc.node.pat) {
                         let ident = alt p.node { pat_bind(n) { n } };
                         add_name(local_values, p.span, ident);
                         check_name(values, p.span, ident);

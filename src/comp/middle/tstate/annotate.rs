@@ -5,6 +5,7 @@ import std::option::none;
 import std::int;
 import std::uint;
 import syntax::ast::*;
+import syntax::ast_util::pat_binding_ids;
 import syntax::visit;
 import syntax::codemap::span;
 import std::map::new_str_hash;

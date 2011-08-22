@@ -9,6 +9,7 @@ import parse::lexer;
 import syntax::codemap::codemap;
 import syntax::visit;
 import ast;
+import ast_util;
 import option::some;
 import option::none;
 import pp::printer;
@@ -271,7 +272,7 @@ fn print_type(s: &ps, ty: &@ast::ty) {
       ast::ty_int. { word(s.s, "int"); }
       ast::ty_uint. { word(s.s, "uint"); }
       ast::ty_float. { word(s.s, "float"); }
-      ast::ty_machine(tm) { word(s.s, ast::ty_mach_to_str(tm)); }
+      ast::ty_machine(tm) { word(s.s, ast_util::ty_mach_to_str(tm)); }
       ast::ty_char. { word(s.s, "char"); }
       ast::ty_str. { word(s.s, "str"); }
       ast::ty_istr. { word(s.s, "istr"); }
@@ -831,11 +832,11 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
         let prec = operator_prec(op);
         print_maybe_parens(s, lhs, prec);
         space(s.s);
-        word_space(s, ast::binop_to_str(op));
+        word_space(s, ast_util::binop_to_str(op));
         print_maybe_parens(s, rhs, prec + 1);
       }
       ast::expr_unary(op, expr) {
-        word(s.s, ast::unop_to_str(op));
+        word(s.s, ast_util::unop_to_str(op));
         print_maybe_parens(s, expr, parse::parser::unop_prec);
       }
       ast::expr_lit(lit) { print_literal(s, lit); }
@@ -967,7 +968,7 @@ fn print_expr(s: &ps, expr: &@ast::expr) {
       ast::expr_assign_op(op, lhs, rhs) {
         print_expr(s, lhs);
         space(s.s);
-        word(s.s, ast::binop_to_str(op));
+        word(s.s, ast_util::binop_to_str(op));
         word_space(s, "=");
         print_expr(s, rhs);
       }
@@ -1486,12 +1487,12 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
       ast::lit_float(fstr) { word(s.s, fstr); }
       ast::lit_mach_int(mach, val) {
         word(s.s, int::str(val as int));
-        word(s.s, ast::ty_mach_to_str(mach));
+        word(s.s, ast_util::ty_mach_to_str(mach));
       }
       ast::lit_mach_float(mach, val) {
         // val is already a str
         word(s.s, val);
-        word(s.s, ast::ty_mach_to_str(mach));
+        word(s.s, ast_util::ty_mach_to_str(mach));
       }
       ast::lit_nil. { word(s.s, "()"); }
       ast::lit_bool(val) {

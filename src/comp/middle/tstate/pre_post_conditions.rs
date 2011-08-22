@@ -17,6 +17,7 @@ import bitvectors::relax_precond_block;
 import bitvectors::gen;
 import tritv::*;
 import syntax::ast::*;
+import syntax::ast_util::*;
 import syntax::visit;
 import std::map::new_int_hash;
 import util::common::new_def_hash;

@@ -5,6 +5,7 @@ import std::str;
 import std::map;
 import std::option;
 import syntax::ast;
+import syntax::ast_util;
 import util::common;
 import driver::session;
 
@@ -189,7 +190,7 @@ fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
 }
 
 fn span<T>(item: &T) -> ast::spanned<T> {
-    ret {node: item, span: ast::mk_sp(0u, 0u)};
+    ret {node: item, span: ast_util::dummy_sp()};
 }
 
 fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {

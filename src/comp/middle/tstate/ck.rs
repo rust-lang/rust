@@ -11,7 +11,7 @@ import ast::ident;
 import ast::fn_ident;
 import ast::node_id;
 import ast::def_id;
-import ast::local_def;
+import syntax::ast_util::local_def;
 import ast::ty_param;
 import ast::crate;
 import ast::return;

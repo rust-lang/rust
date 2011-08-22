@@ -2,6 +2,7 @@ import std::uint;
 import std::int;
 import std::vec;
 import syntax::ast::*;
+import syntax::ast_util::*;
 import util::ppaux::fn_ident_to_string;
 import std::option::*;
 import syntax::visit;
@@ -9,7 +10,7 @@ import aux::*;
 import std::map::new_int_hash;
 import util::common::new_def_hash;
 import syntax::codemap::span;
-import syntax::ast::respan;
+import syntax::ast_util::respan;
 
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 

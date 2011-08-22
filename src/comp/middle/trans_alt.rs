@@ -14,7 +14,8 @@ import trans::new_scope_block_ctxt;
 import trans::load_if_immediate;
 import ty::pat_ty;
 import syntax::ast;
-import syntax::ast::dummy_sp;
+import syntax::ast_util;
+import syntax::ast_util::dummy_sp;
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import util::common::lit_eq;
@@ -44,7 +45,7 @@ fn trans_opt(bcx: &@block_ctxt, o: &opt) -> result {
 }
 
 fn variant_opt(ccx: &@crate_ctxt, pat_id: ast::node_id) -> opt {
-    let vdef = ast::variant_def_ids(ccx.tcx.def_map.get(pat_id));
+    let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::tag_variants(ccx.tcx, vdef.tg);
     let i = 0u;
     for v: ty::variant_info in variants {
@@ -500,7 +501,7 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
 
     for a: ast::arm in arms {
         let body = new_scope_block_ctxt(cx, "case_body");
-        let id_map = ast::pat_id_map(a.pats[0]);
+        let id_map = ast_util::pat_id_map(a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {
             match += [@{pats: [p],
@@ -532,7 +533,8 @@ fn trans_alt(cx: &@block_ctxt, expr: &@ast::expr, arms: &[ast::arm],
     let arm_results = [];
     for a: ast::arm in arms {
         let body_cx = bodies[i];
-        if make_phi_bindings(body_cx, exit_map, ast::pat_id_map(a.pats[0])) {
+        if make_phi_bindings(body_cx, exit_map,
+                             ast_util::pat_id_map(a.pats[0])) {
             let block_res = trans::trans_block(body_cx, a.body, output);
             arm_results += [block_res];
         } else { // Unreachable
@@ -562,7 +564,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: &@ast::pat, val: ValueRef,
       }
       ast::pat_tag(_, sub) {
         if vec::len(sub) == 0u { ret bcx; }
-        let vdefs = ast::variant_def_ids(ccx.tcx.def_map.get(pat.id));
+        let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;
         for argval: ValueRef in args.vals {

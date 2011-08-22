@@ -1,4 +1,6 @@
 import syntax::ast::*;
+import syntax::ast_util::variant_def_ids;
+import syntax::ast_util::dummy_sp;
 import syntax::visit;
 
 fn check_crate(tcx: &ty::ctxt, crate: &@crate) {

@@ -10,6 +10,8 @@ import std::option::none;
 import std::ebml;
 import std::map;
 import syntax::ast::*;
+import syntax::ast_util;
+import syntax::ast_util::local_def;
 import common::*;
 import middle::trans_common::crate_ctxt;
 import middle::ty;
@@ -71,7 +73,7 @@ fn encode_native_module_item_paths(ebml_w: &ebml::writer, nmod: &native_mod,
 fn encode_module_item_paths(ebml_w: &ebml::writer, module: &_mod,
                             path: &[str], index: &mutable [entry<str>]) {
     for it: @item in module.items {
-        if !is_exported(it.ident, module) { cont; }
+        if !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
             add_to_index(ebml_w, path, index, it.ident);

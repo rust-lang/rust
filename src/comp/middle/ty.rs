@@ -13,6 +13,7 @@ import std::smallintmap;
 import driver::session;
 import syntax::ast;
 import syntax::ast::*;
+import syntax::ast_util;
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
@@ -416,7 +417,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map,
           has_pointer_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           kind_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
           owns_heap_mem_cache: map::mk_hashmap(ty::hash_ty, ty::eq_ty),
-          ast_ty_to_ty_cache: map::mk_hashmap(ast::hash_ty, ast::eq_ty)};
+          ast_ty_to_ty_cache: map::mk_hashmap(ast_util::hash_ty,
+                                              ast_util::eq_ty)};
     populate_type_store(cx);
     ret cx;
 }
@@ -2716,7 +2718,7 @@ fn tag_variants(cx: &ctxt, id: &ast::def_id) -> [variant_info] {
                 result +=
                     [{args: arg_tys,
                       ctor_ty: ctor_ty,
-                      id: ast::local_def(did)}];
+                      id: ast_util::local_def(did)}];
             }
             ret result;
           }
@@ -2873,8 +2875,10 @@ fn ast_constr_to_constr<T>(tcx: ty::ctxt, c: &@ast::constr_general<T>) ->
    @ty::constr_general<T> {
     alt tcx.def_map.find(c.node.id) {
       some(ast::def_fn(pred_id, ast::pure_fn.)) {
-        ret @respan(c.span,
-                    {path: c.node.path, args: c.node.args, id: pred_id});
+        ret @ast_util::respan(c.span,
+                              {path: c.node.path,
+                               args: c.node.args,
+                               id: pred_id});
       }
       _ {
         tcx.sess.span_fatal(c.span,

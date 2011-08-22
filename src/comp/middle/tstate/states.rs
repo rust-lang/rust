@@ -15,6 +15,7 @@ import tritv::ttrue;
 
 import bitvectors::*;
 import syntax::ast::*;
+import syntax::ast_util::*;
 import middle::ty::expr_ty;
 import middle::ty::type_is_nil;
 import middle::ty::type_is_bot;

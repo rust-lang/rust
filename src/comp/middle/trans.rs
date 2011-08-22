@@ -25,6 +25,7 @@ import std::fs;
 import std::time;
 import std::vec;
 import syntax::ast;
+import syntax::ast_util;
 import driver::session;
 import middle::ty;
 import middle::freevars::*;
@@ -3478,7 +3479,7 @@ fn trans_if(cx: &@block_ctxt, cond: &@ast::expr, thn: &ast::blk,
           some(elexpr) {
             alt elexpr.node {
               ast::expr_if(_, _, _) {
-                let elseif_blk = ast::block_from_expr(elexpr);
+                let elseif_blk = ast_util::block_from_expr(elexpr);
                 trans_block(else_cx, elseif_blk, output)
               }
               ast::expr_block(blk) { trans_block(else_cx, blk, output) }
@@ -3722,7 +3723,8 @@ fn load_environment(enclosing_cx: &@block_ctxt, fcx: &@fn_ctxt, envty: ty::t,
         bcx = upvarptr.bcx;
         let llupvarptr = upvarptr.val;
         if !copying { llupvarptr = bcx.build.Load(llupvarptr); }
-        let def_id = ast::def_id_of_def(bcx_tcx(bcx).def_map.get(upvar_id));
+        let def_id = ast_util::def_id_of_def(bcx_tcx(bcx).
+                                             def_map.get(upvar_id));
         fcx.llupvars.insert(def_id.node, llupvarptr);
         i += 1u;
     }
@@ -4980,7 +4982,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
                             output);
       }
       ast::expr_ternary(_, _, _) {
-        ret trans_expr_out(cx, ast::ternary_to_if(e), output);
+        ret trans_expr_out(cx, ast_util::ternary_to_if(e), output);
       }
       ast::expr_for(decl, seq, body) { ret trans_for(cx, decl, seq, body); }
       ast::expr_for_each(decl, seq, body) {
@@ -5463,7 +5465,7 @@ fn build_return(bcx: &@block_ctxt) { bcx.build.Br(bcx_fcx(bcx).llreturn); }
 fn trans_be(cx: &@block_ctxt, e: &@ast::expr) -> result {
     // FIXME: This should be a typestate precondition
 
-    assert (ast::is_call_expr(e));
+    assert (ast_util::is_call_expr(e));
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
 
@@ -6208,8 +6210,8 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
     i = 0u;
     for va: ast::variant_arg in variant.node.args {
         let rslt =
-            GEP_tag(bcx, llblobptr, ast::local_def(tag_id),
-                    ast::local_def(variant.node.id), ty_param_substs,
+            GEP_tag(bcx, llblobptr, ast_util::local_def(tag_id),
+                    ast_util::local_def(variant.node.id), ty_param_substs,
                     i as int);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;

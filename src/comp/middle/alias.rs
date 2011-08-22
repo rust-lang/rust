@@ -1,5 +1,6 @@
 
 import syntax::ast;
+import syntax::ast_util;
 import ast::ident;
 import ast::fn_ident;
 import ast::node_id;
@@ -195,7 +196,7 @@ fn check_call(cx: &ctx, f: &@ast::expr, args: &[@ast::expr], sc: &scope) ->
             if arg_t.mode == ty::mo_alias(true) {
                 alt path_def(cx, arg) {
                   some(def) {
-                    let dnum = ast::def_id_of_def(def).node;
+                    let dnum = ast_util::def_id_of_def(def).node;
                     if def_is_local(def, true) {
                         if is_immutable_alias(cx, sc, dnum) {
                             cx.tcx.sess.span_err(
@@ -302,7 +303,7 @@ fn check_tail_call(cx: &ctx, call: &@ast::expr) {
             alt args[i].node {
               ast::expr_path(_) {
                 let def = cx.tcx.def_map.get(args[i].id);
-                let dnum = ast::def_id_of_def(def).node;
+                let dnum = ast_util::def_id_of_def(def).node;
                 alt cx.local_map.find(dnum) {
                   some(arg(ast::alias(mut))) {
                     if mut_a && !mut {
@@ -352,7 +353,7 @@ fn check_alt(cx: &ctx, input: &@ast::expr, arms: &[ast::arm], sc: &scope,
 }
 
 fn arm_defnums(arm: &ast::arm) -> [node_id] {
-    ret ast::pat_binding_ids(arm.pats[0]);
+    ret ast_util::pat_binding_ids(arm.pats[0]);
 }
 
 fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
@@ -361,7 +362,7 @@ fn check_for_each(cx: &ctx, local: &@ast::local, call: &@ast::expr,
     alt call.node {
       ast::expr_call(f, args) {
         let data = check_call(cx, f, args, sc);
-        let bindings = ast::pat_binding_ids(local.node.pat);
+        let bindings = ast_util::pat_binding_ids(local.node.pat);
         let new_sc =
             @{root_vars: data.root_vars,
               block_defnum: bindings[vec::len(bindings) - 1u],
@@ -393,7 +394,7 @@ fn check_for(cx: &ctx, local: &@ast::local, seq: &@ast::expr, blk: &ast::blk,
                                     util::ppaux::ty_to_str(cx.tcx, seq_t));
       }
     }
-    let bindings = ast::pat_binding_ids(local.node.pat);
+    let bindings = ast_util::pat_binding_ids(local.node.pat);
     let new_sc =
         @{root_vars: root_def,
           block_defnum: bindings[vec::len(bindings) - 1u],
@@ -408,7 +409,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
              assign: bool, sc: &scope) {
     let def = cx.tcx.def_map.get(id);
     if !def_is_local(def, true) { ret; }
-    let my_defnum = ast::def_id_of_def(def).node;
+    let my_defnum = ast_util::def_id_of_def(def).node;
     let var_t = ty::expr_ty(cx.tcx, ex);
     for r: restrict in *sc {
 
@@ -429,7 +430,7 @@ fn check_var(cx: &ctx, ex: &@ast::expr, p: &ast::path, id: ast::node_id,
 fn check_lval(cx: &@ctx, dest: &@ast::expr, sc: &scope, v: &vt<scope>) {
     alt dest.node {
       ast::expr_path(p) {
-        let dnum = ast::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
+        let dnum = ast_util::def_id_of_def(cx.tcx.def_map.get(dest.id)).node;
         cx.mut_map.insert(dnum, ());
         if is_immutable_alias(*cx, sc, dnum) {
             cx.tcx.sess.span_err(dest.span, "assigning to immutable alias");
@@ -515,15 +516,17 @@ fn test_scope(cx: &ctx, sc: &scope, r: &restrict, p: &ast::path) {
         let msg =
             alt prob {
               overwritten(sp, wpt) {
-                {span: sp, msg: "overwriting " + ast::path_name(wpt)}
+                {span: sp, msg: "overwriting " + ast_util::path_name(wpt)}
               }
               val_taken(sp, vpt) {
-                {span: sp, msg: "taking the value of " + ast::path_name(vpt)}
+                {span: sp,
+                 msg: "taking the value of " + ast_util::path_name(vpt)}
               }
             };
         cx.tcx.sess.span_err(msg.span,
                              msg.msg + " will invalidate alias " +
-                                 ast::path_name(p) + ", which is still used");
+                             ast_util::path_name(p) +
+                             ", which is still used");
     }
 }
 
@@ -660,7 +663,7 @@ fn path_def(cx: &ctx, ex: &@ast::expr) -> option::t<ast::def> {
 fn path_def_id(cx: &ctx, ex: &@ast::expr) -> option::t<ast::def_id> {
     alt ex.node {
       ast::expr_path(_) {
-        ret some(ast::def_id_of_def(cx.tcx.def_map.get(ex.id)));
+        ret some(ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id)));
       }
       _ { ret none; }
     }

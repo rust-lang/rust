@@ -1,7 +1,8 @@
 import syntax::ast;
+import syntax::ast_util;
 import ast::mutability;
-import ast::local_def;
-import ast::respan;
+import syntax::ast_util::local_def;
+import syntax::ast_util::respan;
 import ast::spanned;
 import syntax::visit;
 import metadata::csearch;
@@ -708,14 +709,14 @@ mod collect {
             let convert = bind ast_ty_to_ty(cx.tcx, get, _);
             let f = bind ty_of_arg(cx, _);
             ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
-                                     ast::local_def(it.id));
+                                     ast_util::local_def(it.id));
           }
           ast::native_item_ty. {
             alt cx.tcx.tcache.find(local_def(it.id)) {
               some(tpt) { ret tpt; }
               none. { }
             }
-            let t = ty::mk_native(cx.tcx, ast::local_def(it.id));
+            let t = ty::mk_native(cx.tcx, ast_util::local_def(it.id));
             let tpt = {kinds: no_kinds, ty: t};
             cx.tcx.tcache.insert(local_def(it.id), tpt);
             ret tpt;
@@ -1329,7 +1330,7 @@ fn check_pat(fcx: &@fn_ctxt, map: &ast::pat_id_map, pat: &@ast::pat,
       ast::pat_tag(path, subpats) {
         // Typecheck the path.
         let v_def = lookup_def(fcx, path.span, pat.id);
-        let v_def_ids = ast::variant_def_ids(v_def);
+        let v_def_ids = ast_util::variant_def_ids(v_def);
         let tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
         let path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
 
@@ -1727,7 +1728,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                   }
                 }
                 for operand: @ast::expr in operands {
-                    if !ast::is_constraint_arg(operand) {
+                    if !ast_util::is_constraint_arg(operand) {
                         let s =
                             "Constraint args must be \
                                               slot variables or literals";
@@ -1776,7 +1777,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                                binop: ast::binop) {
         let resolved_t = resolve_type_vars_if_possible(fcx, ty);
         if !ty::is_binopable(fcx.ccx.tcx, resolved_t, binop) {
-            let binopstr = ast::binop_to_str(binop);
+            let binopstr = ast_util::binop_to_str(binop);
             let t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
             let errmsg =
                 "binary operation " + binopstr +
@@ -1798,7 +1799,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         bot = check_expr_with(fcx, lhs, lhs_t);
 
         let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
-        if !ast::lazy_binop(binop) { bot |= rhs_bot; }
+        if !ast_util::lazy_binop(binop) { bot |= rhs_bot; }
 
         check_binop_type_compat(fcx, expr.span, lhs_t, binop);
 
@@ -1928,7 +1929,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
       }
       ast::expr_be(e) {
         // FIXME: prove instead of assert
-        assert (ast::is_call_expr(e));
+        assert (ast_util::is_call_expr(e));
         check_expr_with(fcx, e, fcx.ret_ty);
         bot = true;
         write::nil_ty(tcx, id);
@@ -1947,7 +1948,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                 check_then_else(fcx, thn, elsopt, id, expr.span);
       }
       ast::expr_ternary(_, _, _) {
-        bot = check_expr(fcx, ast::ternary_to_if(expr));
+        bot = check_expr(fcx, ast_util::ternary_to_if(expr));
       }
       ast::expr_assert(e) {
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
@@ -2029,7 +2030,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
         // bindings.
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm in arms {
-            let id_map = ast::pat_id_map(arm.pats[0]);
+            let id_map = ast_util::pat_id_map(arm.pats[0]);
             for p: @ast::pat in arm.pats {
                 check_pat(fcx, id_map, p, pattern_ty);
             }
@@ -2392,7 +2393,7 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
             }
 
             fcx.ccx.obj_infos +=
-                [anon_obj(vec::map(ast::obj_field_from_anon_obj_field,
+                [anon_obj(vec::map(ast_util::obj_field_from_anon_obj_field,
                                    fields), inner_obj_sty)];
 
             // Whenever an outer method overrides an inner, we need to remove
@@ -2499,7 +2500,7 @@ fn check_decl_local(fcx: &@fn_ctxt, local: &@ast::local) -> bool {
           }
           _ {/* fall through */ }
         }
-        let id_map = ast::pat_id_map(local.node.pat);
+        let id_map = ast_util::pat_id_map(local.node.pat);
         check_pat(fcx, id_map, local.node.pat, t);
       }
     }

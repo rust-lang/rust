@@ -7,6 +7,7 @@ import std::option;
 import std::int;
 import std::option::*;
 import syntax::ast;
+import syntax::ast_util;
 import syntax::visit;
 import driver::session;
 import middle::resolve;
@@ -69,7 +70,7 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
         };
     let walk_local =
         lambda (local: &@ast::local) {
-            for each b: @ast::pat in ast::pat_bindings(local.node.pat) {
+            for each b: @ast::pat in ast_util::pat_bindings(local.node.pat) {
                 set_add(decls, b.id);
             }
         };
@@ -91,7 +92,7 @@ fn collect_freevars(def_map: &resolve::def_map, sess: &session::session,
     let defs = new_int_hash();
     for ref_id_: ast::node_id in *refs {
         let ref_id = ref_id_;
-        let def_id = ast::def_id_of_def(def_map.get(ref_id)).node;
+        let def_id = ast_util::def_id_of_def(def_map.get(ref_id)).node;
         if !decls.contains_key(def_id) && !defs.contains_key(def_id) {
             canonical_refs += [ref_id];
             set_add(defs, def_id);
@@ -127,7 +128,7 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
                     lambda (v: &visit::vt<()>) {
                         v.visit_block(body, (), v);
                     };
-                let bound = ast::pat_binding_ids(local.node.pat);
+                let bound = ast_util::pat_binding_ids(local.node.pat);
                 let vars = collect_freevars(def_map, sess, start_walk, bound);
                 freevars.insert(body.node.id, vars);
               }
@@ -166,7 +167,7 @@ fn def_lookup(tcx: &ty::ctxt, f: ast::node_id, id: ast::node_id) ->
     alt tcx.def_map.find(id) {
       none. { ret none; }
       some(d) {
-        let did = ast::def_id_of_def(d);
+        let did = ast_util::def_id_of_def(d);
         if f != -1 && is_freevar_of(tcx, did.node, f) {
             ret some(ast::def_upvar(did, @d));
         } else { ret some(d); }

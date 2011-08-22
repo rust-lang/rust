@@ -21,7 +21,7 @@ import middle::ty;
 import middle::ty::field;
 import middle::ty::mt;
 import syntax::ast;
-import syntax::ast::dummy_sp;
+import syntax::ast_util::dummy_sp;
 import syntax::codemap::span;
 import syntax::util::interner;
 import util::common;

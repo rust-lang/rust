@@ -16,7 +16,7 @@ import pp::word;
 import pp::eof;
 import pp::zerobreak;
 import pp::hardbreak;
-import ast::ty_mach_to_str;
+import syntax::ast_util::ty_mach_to_str;
 import syntax::ast;
 import middle::ast_map;
 import metadata::csearch;

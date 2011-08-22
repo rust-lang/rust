@@ -6,15 +6,6 @@ import codemap::span;
 import codemap::filename;
 
 type spanned<T> = {node: T, span: span};
-fn respan<T>(sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
-
-/* assuming that we're not in macro expansion */
-fn mk_sp(lo: uint, hi: uint) -> span {
-    ret {lo: lo, hi: hi, expanded_from: codemap::os_none};
-}
-
-// make this a const, once the compiler supports it
-fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 type ident = str;
 // Functions may or may not have names.
@@ -27,16 +18,11 @@ type path_ = {global: bool, idents: [ident], types: [@ty]};
 
 type path = spanned<path_>;
 
-fn path_name(p: &path) -> str { path_name_i(p.node.idents) }
-
-fn path_name_i(idents: &[ident]) -> str { str::connect(idents, "::") }
-
 type crate_num = int;
 type node_id = int;
 type def_id = {crate: crate_num, node: node_id};
 
 const local_crate: crate_num = 0;
-fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
 type ty_param = {ident: ident, kind: kind};
 
@@ -62,30 +48,6 @@ tag def {
      * freevars::def_lookup will return it for a def that is an upvar.
      * It contains the actual def. */
     def_upvar(def_id, @def);
-}
-
-fn variant_def_ids(d: &def) -> {tg: def_id, var: def_id} {
-    alt d { def_variant(tag_id, var_id) { ret {tg: tag_id, var: var_id}; } }
-}
-
-fn def_id_of_def(d: def) -> def_id {
-    alt d {
-      def_fn(id, _) { ret id; }
-      def_obj_field(id) { ret id; }
-      def_mod(id) { ret id; }
-      def_native_mod(id) { ret id; }
-      def_const(id) { ret id; }
-      def_arg(id) { ret id; }
-      def_local(id) { ret id; }
-      def_variant(_, id) { ret id; }
-      def_ty(id) { ret id; }
-      def_ty_arg(_, _) { fail; }
-      def_binding(id) { ret id; }
-      def_use(id) { ret id; }
-      def_native_ty(id) { ret id; }
-      def_native_fn(id) { ret id; }
-      def_upvar(id, _) { ret id; }
-    }
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -138,41 +100,6 @@ tag pat_ {
 
 type pat_id_map = std::map::hashmap<str, ast::node_id>;
 
-// This is used because same-named variables in alternative patterns need to
-// use the node_id of their namesake in the first pattern.
-fn pat_id_map(pat: &@pat) -> pat_id_map {
-    let map = std::map::new_str_hash::<node_id>();
-    for each bound in pat_bindings(pat) {
-        let name = alt bound.node { pat_bind(n) { n } };
-        map.insert(name, bound.id);
-    }
-    ret map;
-}
-
-// FIXME: could return a constrained type
-iter pat_bindings(pat: &@pat) -> @pat {
-    alt pat.node {
-      pat_bind(_) { put pat; }
-      pat_tag(_, sub) {
-        for p in sub { for each b in pat_bindings(p) { put b; } }
-      }
-      pat_rec(fields, _) {
-        for f in fields { for each b in pat_bindings(f.pat) { put b; } }
-      }
-      pat_tup(elts) {
-        for elt in elts { for each b in pat_bindings(elt) { put b; } }
-      }
-      pat_box(sub) { for each b in pat_bindings(sub) { put b; } }
-      pat_wild. | pat_lit(_) { }
-    }
-}
-
-fn pat_binding_ids(pat: &@pat) -> [node_id] {
-    let found = [];
-    for each b in pat_bindings(pat) { found += [b.id]; }
-    ret found;
-}
-
 tag mutability { mut; imm; maybe_mut; }
 
 tag kind { kind_pinned; kind_shared; kind_unique; }
@@ -203,44 +130,7 @@ tag binop {
     gt;
 }
 
-fn binop_to_str(op: binop) -> str {
-    alt op {
-      add. { ret "+"; }
-      sub. { ret "-"; }
-      mul. { ret "*"; }
-      div. { ret "/"; }
-      rem. { ret "%"; }
-      and. { ret "&&"; }
-      or. { ret "||"; }
-      bitxor. { ret "^"; }
-      bitand. { ret "&"; }
-      bitor. { ret "|"; }
-      lsl. { ret "<<"; }
-      lsr. { ret ">>"; }
-      asr. { ret ">>>"; }
-      eq. { ret "=="; }
-      lt. { ret "<"; }
-      le. { ret "<="; }
-      ne. { ret "!="; }
-      ge. { ret ">="; }
-      gt. { ret ">"; }
-    }
-}
-
-pred lazy_binop(b: binop) -> bool {
-    alt b { and. { true } or. { true } _ { false } }
-}
-
 tag unop { box(mutability); deref; not; neg; }
-
-fn unop_to_str(op: unop) -> str {
-    alt op {
-      box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
-      deref. { ret "*"; }
-      not. { ret "!"; }
-      neg. { ret "-"; }
-    }
-}
 
 tag mode { val; alias(bool); move; }
 
@@ -358,11 +248,6 @@ tag lit_ {
     lit_bool(bool);
 }
 
-fn is_path(e: &@expr) -> bool {
-    ret alt e.node { expr_path(_) { true } _ { false } };
-}
-
-
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 type mt = {ty: @ty, mut: mutability};
@@ -396,21 +281,6 @@ tag ty_mach {
     ty_u64;
     ty_f32;
     ty_f64;
-}
-
-fn ty_mach_to_str(tm: ty_mach) -> str {
-    alt tm {
-      ty_u8. { ret "u8"; }
-      ty_u16. { ret "u16"; }
-      ty_u32. { ret "u32"; }
-      ty_u64. { ret "u64"; }
-      ty_i8. { ret "i8"; }
-      ty_i16. { ret "i16"; }
-      ty_i32. { ret "i32"; }
-      ty_i64. { ret "i64"; }
-      ty_f32. { ret "f32"; }
-      ty_f64. { ret "f64"; }
-    }
 }
 
 type ty = spanned<ty_>;
@@ -616,79 +486,6 @@ type native_item =
 tag native_item_ {
     native_item_ty;
     native_item_fn(option::t<str>, fn_decl, [ty_param]);
-}
-
-fn is_exported(i: ident, m: _mod) -> bool {
-    let nonlocal = true;
-    for it: @ast::item in m.items {
-        if it.ident == i { nonlocal = false; }
-        alt it.node {
-          item_tag(variants, _) {
-            for v: variant in variants {
-                if v.node.name == i { nonlocal = false; }
-            }
-          }
-          _ { }
-        }
-        if !nonlocal { break; }
-    }
-    let count = 0u;
-    for vi: @ast::view_item in m.view_items {
-        alt vi.node {
-          ast::view_item_export(ids, _) {
-            for id in ids { if str::eq(i, id) { ret true; } }
-            count += 1u;
-          }
-          _ {/* fall through */ }
-        }
-    }
-    // If there are no declared exports then
-    // everything not imported is exported
-    // even if it's nonlocal (since it's explicit)
-    ret count == 0u && !nonlocal;
-}
-
-fn is_call_expr(e: @expr) -> bool {
-    alt e.node { expr_call(_, _) { ret true; } _ { ret false; } }
-}
-
-fn is_constraint_arg(e: @expr) -> bool {
-    alt e.node {
-      expr_lit(_) { ret true; }
-      expr_path(_) { ret true; }
-      _ { ret false; }
-    }
-}
-
-fn eq_ty(a: &@ty, b: &@ty) -> bool { ret std::box::ptr_eq(a, b); }
-
-fn hash_ty(t: &@ty) -> uint { ret t.span.lo << 16u + t.span.hi; }
-
-fn block_from_expr(e: @expr) -> blk {
-    let blk_ = {stmts: [], expr: option::some::<@expr>(e), id: e.id};
-    ret {node: blk_, span: e.span};
-}
-
-
-fn obj_field_from_anon_obj_field(f: &anon_obj_field) -> obj_field {
-    ret {mut: f.mut, ty: f.ty, ident: f.ident, id: f.id};
-}
-
-// This is a convenience function to transfor ternary expressions to if
-// expressions so that they can be treated the same
-fn ternary_to_if(e: &@expr) -> @ast::expr {
-    alt e.node {
-      expr_ternary(cond, then, els) {
-        let then_blk = block_from_expr(then);
-        let els_blk = block_from_expr(els);
-        let els_expr =
-            @{id: els.id, node: expr_block(els_blk), span: els.span};
-        ret @{id: e.id,
-              node: expr_if(cond, then_blk, option::some(els_expr)),
-              span: e.span};
-      }
-      _ { fail; }
-    }
 }
 
 //

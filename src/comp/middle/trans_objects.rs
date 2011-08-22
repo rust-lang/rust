@@ -15,6 +15,7 @@ import back::abi;
 import back::link::mangle_internal_name_by_path;
 import back::link::mangle_internal_name_by_path_and_seq;
 import syntax::ast;
+import syntax::ast_util;
 import syntax::codemap::span;
 
 import trans_common::*;
@@ -231,7 +232,7 @@ fn trans_anon_obj(bcx: @block_ctxt, sp: &span, anon_obj: &ast::anon_obj,
     // methods, not inner ones.
     let wrapper_obj: ast::_obj =
         {fields:
-             std::vec::map(ast::obj_field_from_anon_obj_field,
+             std::vec::map(ast_util::obj_field_from_anon_obj_field,
                            additional_fields),
          methods: anon_obj.methods};
 

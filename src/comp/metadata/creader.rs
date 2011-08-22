@@ -2,6 +2,7 @@
 
 import driver::session;
 import syntax::ast;
+import syntax::ast_util;
 import lib::llvm::False;
 import lib::llvm::llvm;
 import lib::llvm::mk_object_file;
@@ -262,7 +263,7 @@ fn resolve_crate_deps(e: env, cdata: &@[u8]) -> cstore::cnum_map {
             log "need to load it";
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
-            let fake_span = ast::dummy_sp();
+            let fake_span = ast_util::dummy_sp();
             let local_cnum = resolve_crate(e, cname, [], fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
         }

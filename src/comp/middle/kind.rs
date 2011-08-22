@@ -72,6 +72,7 @@
 
 
 import syntax::ast;
+import syntax::ast_util;
 import syntax::visit;
 
 import std::vec;
@@ -142,7 +143,8 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
         // that all the types we're supplying as typarams conform to the
         // typaram kind constraints on that item.
         if vec::len(tpt.params) != 0u {
-            let callee_def = ast::def_id_of_def(tcx.def_map.get(callee.id));
+            let callee_def = ast_util::def_id_of_def(
+                tcx.def_map.get(callee.id));
             let item_tk = ty::lookup_item_type(tcx, callee_def);
             let i = 0;
             assert (vec::len(item_tk.kinds) == vec::len(tpt.params));
