@@ -4758,6 +4758,11 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
     let llptr = bcx.fcx.lllocals.get(local.node.id);
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
+
+    if (must_zero(local)) {
+        bcx = zero_alloca(bcx, llptr, ty).bcx;
+    }
+
     alt local.node.init {
       some(init) {
         alt init.op {
@@ -4775,12 +4780,47 @@ fn init_local(bcx: @block_ctxt, local: &@ast::local) -> result {
           }
         }
       }
-      _ { bcx = zero_alloca(bcx, llptr, ty).bcx; }
+      _ { }
     }
     bcx =
         trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr,
                                         bcx.fcx.lllocals, false);
     ret rslt(bcx, llptr);
+
+    fn must_zero(local: &@ast::local) -> bool {
+        alt local.node.init {
+          some(init) {
+            might_not_init(init.expr)
+          }
+          none. { true }
+        }
+    }
+
+    fn might_not_init(expr: &@ast::expr) -> bool {
+        type env = @mutable bool;
+        let e = @mutable false;
+        let visitor = visit::mk_vt(@{
+            visit_expr: fn(ex: &@ast::expr, e: &env, v: &vt<env>) {
+                // FIXME: Probably also need to account for expressions that
+                // fail but since we don't unwind yet, it doesn't seem to be a
+                // problem
+                let might_not_init = alt ex.node {
+                  ast::expr_ret(_) { true }
+                  ast::expr_break. { true }
+                  ast::expr_cont. { true }
+                  _ { false }
+                };
+                if might_not_init {
+                    *e = true;
+                } else {
+                    visit::visit_expr(ex, e, v);
+                }
+            }
+            with *visit::default_visitor()
+        });
+        visitor.visit_expr(expr, e, visitor);
+        ret *e;
+    }
 }
 
 fn zero_alloca(cx: &@block_ctxt, llptr: ValueRef, t: ty::t) -> result {
