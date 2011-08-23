@@ -9,7 +9,7 @@ CFG_DSYMUTIL := true
 
 ifeq ($(CFG_OSTYPE), FreeBSD)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include -O2
+  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCCISH_CFLAGS += -m32
@@ -22,7 +22,7 @@ endif
 
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -O2
+  CFG_GCCISH_CFLAGS += -fPIC -march=i686
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
@@ -48,8 +48,8 @@ ifeq ($(CFG_OSTYPE), Darwin)
   # approaches welcome!
   #
   # NB: Currently GCC's optimizer breaks rustrt (task-comm-1 hangs) on Darwin.
-  CFG_GCC_CFLAGS += -m32 -O2
-  CFG_CLANG_CFLAGS += -m32 -O2
+  CFG_GCC_CFLAGS += -m32
+  CFG_CLANG_CFLAGS += -m32
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCCISH_CFLAGS += -arch i386
     CFG_GCCISH_LINK_FLAGS += -arch i386
@@ -61,6 +61,13 @@ endif
 
 ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
+endif
+
+ifdef CFG_DISABLE_OPTIMIZE_CXX
+  $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
+  CFG_GCCISH_CFLAGS += -O0
+else
+  CFG_GCCISH_CFLAGS += -O2
 endif
 
 CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip \
@@ -94,7 +101,7 @@ ifdef CFG_UNIXY
       CFG_VALGRIND += wine
     endif
 
-    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i586 -O2
+    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i586
     CFG_GCCISH_PRE_LIB_FLAGS :=
     CFG_GCCISH_POST_LIB_FLAGS :=
     CFG_GCCISH_DEF_FLAG :=
@@ -130,7 +137,7 @@ ifdef CFG_WINDOWSY
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
                              -e 's@\\(\S)@/\1@go;'       \
                              -e 's@^/([a-zA-Z])/@\1:/@o;')
-    CFG_GCCISH_CFLAGS += -march=i686 -O2
+    CFG_GCCISH_CFLAGS += -march=i686
     CFG_GCCISH_LINK_FLAGS += -shared -fPIC
   endif
 
