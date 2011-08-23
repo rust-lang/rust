@@ -39,6 +39,24 @@ fn test_heap_add() {
     assert ~"this should" + ~" totally work" == ~"this should totally work";
 }
 
+fn test_append() {
+    let s = ~"";
+    s += ~"a";
+    assert s == ~"a";
+
+    let s = ~"a";
+    s += ~"b";
+    log s;
+    assert s == ~"ab";
+
+    let s = ~"c";
+    s += ~"offee";
+    assert s == ~"coffee";
+
+    s += ~"&tea";
+    assert s == ~"coffee&tea";
+}
+
 fn main() {
     test_stack_assign();
     test_heap_lit();
@@ -47,4 +65,5 @@ fn main() {
     test_stack_add();
     test_stack_heap_add();
     test_heap_add();
+    test_append();
 }

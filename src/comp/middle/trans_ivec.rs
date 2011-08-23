@@ -354,11 +354,6 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, orig_lhs: ValueRef,
 
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), t);
     let llunitty = type_of_or_i8(cx, unit_ty);
-    alt ty::struct(bcx_tcx(cx), t) {
-      ty::ty_istr. { }
-      ty::ty_vec(_) { }
-      _ { bcx_tcx(cx).sess.bug("non-istr/ivec in trans_append"); }
-    }
 
     let rs = size_of(cx, unit_ty);
     let bcx = rs.bcx;
@@ -381,9 +376,30 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, orig_lhs: ValueRef,
     let rhs_len = rhs_len_and_data.len;
     let rhs_data = rhs_len_and_data.data;
     bcx = rhs_len_and_data.bcx;
-    rs = reserve_space(bcx, llunitty, lhs, rhs_len);
-    let lhs_data = rs.val;
+
+    let have_istrs = alt ty::struct(bcx_tcx(cx), t) {
+      ty::ty_istr. { true }
+      ty::ty_vec(_) { false }
+      _ { bcx_tcx(cx).sess.bug("non-istr/ivec in trans_append"); }
+    };
+
+    let extra_len = if have_istrs {
+        // Only need one of the nulls
+        bcx.build.Sub(rhs_len, C_uint(1u))
+    } else { rhs_len };
+
+    rs = reserve_space(bcx, llunitty, lhs, extra_len);
     bcx = rs.bcx;
+
+    let lhs_data = if have_istrs {
+        let lhs_data = rs.val;
+        let lhs_data_without_null_ptr = alloca(bcx, T_ptr(llunitty));
+        incr_ptr(bcx, lhs_data, C_int(-1),
+                 lhs_data_without_null_ptr);
+        bcx.build.Load(lhs_data_without_null_ptr)
+    } else {
+        rs.val
+    };
 
     // If rhs is lhs then our rhs pointer may have changed
     rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
