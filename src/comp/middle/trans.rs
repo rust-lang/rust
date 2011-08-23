@@ -3188,11 +3188,11 @@ fn trans_for_each(cx: &@block_ctxt, local: &@ast::local, seq: &@ast::expr,
 
 fn trans_while(cx: &@block_ctxt, cond: &@ast::expr, body: &ast::blk) ->
    result {
-    let cond_cx = new_scope_block_ctxt(cx, "while cond");
-    let next_cx = new_sub_block_ctxt(cx, "next");
+    let next_cx = new_sub_block_ctxt(cx, "while next");
+    let cond_cx = new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>,
+                                            next_cx, "while cond");
     let body_cx =
-        new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
-                                  "while loop body");
+        new_scope_block_ctxt(cond_cx, "while loop body");
     let body_res = trans_block(body_cx, body, return);
     let cond_res = trans_expr(cond_cx, cond);
     body_res.bcx.build.Br(cond_cx.llbb);
