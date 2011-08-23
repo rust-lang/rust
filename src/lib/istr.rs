@@ -4,6 +4,24 @@ concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
 char_len, char_at, bytes, is_ascii, shift_byte, pop_byte;
 
+export from_str, to_str;
+
+fn from_str(s: &str) -> istr {
+    let s2 = ~"";
+    for u in s {
+        push_byte(s2, u);
+    }
+    ret s2;
+}
+
+fn to_str(s: &istr) -> str {
+    let s2 = "";
+    for u in s {
+        str::push_byte(s2, u);
+    }
+    ret s2;
+}
+
 fn eq(a: &istr, b: &istr) -> bool { a == b }
 
 fn lteq(a: &istr, b: &istr) -> bool { a <= b }
