@@ -35,7 +35,7 @@ fn test_find_success() {
 #[test]
 fn test_find_fail() {
     let l = from_vec([0, 1, 2]);
-    fn match(i: &int) -> option::t<int> { ret option::none::<int>; }
+    fn match(_i: &int) -> option::t<int> { ret option::none::<int>; }
     let rs = list::find(l, match);
     assert (rs == option::none::<int>);
 }

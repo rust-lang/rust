@@ -6,14 +6,14 @@ import std::vec::len;
 fn test_either_left() {
     let val = left(10);
     fn f_left(x: &int) -> bool { x == 10 }
-    fn f_right(x: &uint) -> bool { false }
+    fn f_right(_x: &uint) -> bool { false }
     assert (either(f_left, f_right, val));
 }
 
 #[test]
 fn test_either_right() {
     let val = right(10u);
-    fn f_left(x: &int) -> bool { false }
+    fn f_left(_x: &int) -> bool { false }
     fn f_right(x: &uint) -> bool { x == 10u }
     assert (either(f_left, f_right, val));
 }

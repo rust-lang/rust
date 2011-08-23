@@ -359,6 +359,7 @@ fn reverse_and_reversed() {
     // Make sure they work with 0-length vectors too.
 
     let v4 = vec::reversed::<int>([]);
+    assert v4 == [];
     let v3: [mutable int] = [mutable];
     vec::reverse::<int>(v3);
 }

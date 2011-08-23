@@ -4,7 +4,7 @@ import std::comm;
 #[test]
 fn create_port_and_chan() {
     let p = comm::mk_port::<int>();
-    let c = p.mk_chan();
+    p.mk_chan();
 }
 
 #[test]
@@ -39,5 +39,5 @@ fn chan_chan() {
     let p = comm::port(), p2 = comm::port::<int>();
     let c = comm::chan(p);
     comm::send(c, comm::chan(p2));
-    let c2 = comm::recv(p);
+    comm::recv(p);
 }
