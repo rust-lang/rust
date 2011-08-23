@@ -886,10 +886,11 @@ fn parse_bottom_expr(p: &parser) -> @ast::expr {
         p.bump();
         alt p.peek() {
           token::LIT_STR(s) {
+            let sp = p.get_span();
             p.bump();
             let lit =
                 @{node: ast::lit_str(p.get_str(s), ast::sk_unique),
-                  span: p.get_span()};
+                  span: sp};
             ex = ast::expr_lit(lit);
           }
           _ { ex = ast::expr_uniq(parse_expr(p)); }

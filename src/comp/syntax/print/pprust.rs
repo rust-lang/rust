@@ -1468,7 +1468,17 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
     maybe_print_comment(s, lit.span.lo);
     alt next_lit(s) {
       some(lt) {
-        if lt.pos == lit.span.lo { word(s.s, lt.lit); s.cur_lit += 1u; ret; }
+        if lt.pos == lit.span.lo {
+            // FIXME: This is a hack until istrs replace strings, since
+            // istrs are prefixed with a token that is not part of the literal
+            alt lit.node {
+              ast::lit_str(_, ast::sk_unique.) { word(s.s, "~"); }
+              _ { }
+            }
+            word(s.s, lt.lit);
+            s.cur_lit += 1u;
+            ret;
+        }
       }
       _ { }
     }
