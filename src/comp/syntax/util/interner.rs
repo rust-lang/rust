@@ -33,7 +33,7 @@ fn intern<@T>(itr: &interner<T>, val: &T) -> uint {
     }
 }
 
-fn get<T>(itr: &interner<T>, idx: uint) -> T { ret itr.vect[idx]; }
+fn get<@T>(itr: &interner<T>, idx: uint) -> T { ret itr.vect[idx]; }
 
 fn len<T>(itr: &interner<T>) -> uint { ret vec::len(itr.vect); }
 

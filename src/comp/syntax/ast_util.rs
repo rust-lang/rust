@@ -3,7 +3,7 @@ import std::option;
 import codemap::span;
 import ast::*;
 
-fn respan<T>(sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
+fn respan<@T>(sp: &span, t: &T) -> spanned<T> { ret {node: t, span: sp}; }
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {

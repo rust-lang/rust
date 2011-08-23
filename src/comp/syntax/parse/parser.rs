@@ -222,7 +222,7 @@ fn expect_gt(p: &parser) {
     }
 }
 
-fn spanned<T>(lo: uint, hi: uint, node: &T) -> spanned<T> {
+fn spanned<@T>(lo: uint, hi: uint, node: &T) -> spanned<T> {
     ret {node: node, span: ast_util::mk_sp(lo, hi)};
 }
 

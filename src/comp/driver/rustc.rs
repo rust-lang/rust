@@ -108,7 +108,7 @@ fn parse_input_src(sess: session::session, cfg: &ast::crate_cfg, infile: str)
     ret {crate: crate, src: src};
 }
 
-fn time<T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
+fn time<@T>(do_it: bool, what: str, thunk: fn() -> T) -> T {
     if !do_it { ret thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();

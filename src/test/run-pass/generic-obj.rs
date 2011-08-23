@@ -1,6 +1,6 @@
 
 
-obj buf<T>(data: {_0: T, _1: T, _2: T}) {
+obj buf<@T>(data: {_0: T, _1: T, _2: T}) {
     fn get(i: int) -> T {
         if i == 0 {
             ret data._0;

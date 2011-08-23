@@ -189,7 +189,7 @@ fn require_unique_names(sess: &session::session, metas: &[@ast::meta_item]) {
     }
 }
 
-fn span<T>(item: &T) -> ast::spanned<T> {
+fn span<@T>(item: &T) -> ast::spanned<T> {
     ret {node: item, span: ast_util::dummy_sp()};
 }
 

@@ -1,6 +1,6 @@
 
 
-fn id<T>(x: &T) -> T { ret x; }
+fn id<@T>(x: &T) -> T { ret x; }
 
 
 /* FIXME (issue #141):  See test/run-pass/constrained-type.rs.  Uncomment

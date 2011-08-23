@@ -76,6 +76,7 @@ import syntax::ast_util;
 import syntax::visit;
 
 import std::vec;
+import std::option;
 
 import ast::kind;
 import ast::kind_unique;
@@ -135,7 +136,20 @@ fn check_expr(tcx: &ty::ctxt, e: &@ast::expr) {
     alt e.node {
       ast::expr_move(a, b) { need_shared_lhs_rhs(tcx, a, b, "<-"); }
       ast::expr_assign(a, b) { need_shared_lhs_rhs(tcx, a, b, "="); }
+      ast::expr_assign_op(_, a, b) { need_shared_lhs_rhs(tcx, a, b, "op="); }
       ast::expr_swap(a, b) { need_shared_lhs_rhs(tcx, a, b, "<->"); }
+      ast::expr_copy(a) {
+        need_expr_kind(tcx, a, ast::kind_shared, "'copy' operand");
+      }
+      ast::expr_ret(option::some(a)) {
+        need_expr_kind(tcx, a, ast::kind_shared, "'ret' operand");
+      }
+      ast::expr_be(a) {
+        need_expr_kind(tcx, a, ast::kind_shared, "'be' operand");
+      }
+      ast::expr_fail(option::some(a)) {
+        need_expr_kind(tcx, a, ast::kind_shared, "'fail' operand");
+      }
       ast::expr_call(callee, _) {
         let tpt = ty::expr_ty_params_and_ty(tcx, callee);
 
