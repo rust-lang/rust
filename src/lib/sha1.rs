@@ -1,5 +1,3 @@
-
-
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
  * implementation, which is written for clarity, not speed. At some
@@ -8,43 +6,29 @@
 export sha1;
 export mk_sha1;
 
-type sha1 =
+type sha1 = obj {
     // Provide message input as bytes
-
-
+    fn input(&[u8]);
     // Provide message input as string
-
-    // Read the digest as a vector of 20 bytes. After
-    // calling this no further input may provided
-    // until reset is called
-
-
+    fn input_str(&str);
+    // Read the digest as a vector of 20 bytes. After calling this no further
+    // input may provided until reset is called
+    fn result() -> [u8];
     // Same as above, just a hex-string version.
-
+    fn result_str() -> str;
     // Reset the sha1 state for reuse. This is called
     // automatically during construction
-    obj {
-        fn input(&[u8]);
-        fn input_str(&str);
-        fn result() -> [u8];
-        fn result_str() -> str;
-        fn reset();
-    };
+    fn reset();
+};
 
 
 // Some unexported constants
 const digest_buf_len: uint = 5u;
-
 const msg_block_len: uint = 64u;
-
 const work_buf_len: uint = 80u;
-
 const k0: u32 = 0x5A827999u32;
-
 const k1: u32 = 0x6ED9EBA1u32;
-
 const k2: u32 = 0x8F1BBCDCu32;
-
 const k3: u32 = 0xCA62C1D6u32;
 
 
@@ -61,7 +45,6 @@ fn mk_sha1() -> sha1 {
 
     fn add_input(st: &sha1state, msg: &[u8]) {
         // FIXME: Should be typestate precondition
-
         assert (!st.computed);
         for element: u8 in msg {
             st.msg_block[st.msg_block_idx] = element;
@@ -80,14 +63,12 @@ fn mk_sha1() -> sha1 {
     }
     fn process_msg_block(st: &sha1state) {
         // FIXME: Make precondition
-
         assert (vec::len(st.h) == digest_buf_len);
         assert (vec::len(st.work_buf) == work_buf_len);
         let t: int; // Loop counter
-
         let w = st.work_buf;
-        // Initialize the first 16 words of the vector w
 
+        // Initialize the first 16 words of the vector w
         t = 0;
         while t < 16 {
             let tmp;
@@ -98,8 +79,8 @@ fn mk_sha1() -> sha1 {
             w[t] = tmp;
             t += 1;
         }
-        // Initialize the rest of vector w
 
+        // Initialize the rest of vector w
         while t < 80 {
             let val = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
             w[t] = circular_shift(1u32, val);
@@ -172,6 +153,7 @@ fn mk_sha1() -> sha1 {
         }
         ret rs;
     }
+
     /*
      * According to the standard, the message must be padded to an even
      * 512 bits.  The first padding bit must be a '1'.  The last 64 bits
@@ -181,17 +163,15 @@ fn mk_sha1() -> sha1 {
      * call process_msg_block() appropriately.  When it returns, it
      * can be assumed that the message digest has been computed.
      */
-
     fn pad_msg(st: &sha1state) {
         // FIXME: Should be a precondition
-
         assert (vec::len(st.msg_block) == msg_block_len);
+
         /*
          * Check to see if the current message block is too small to hold
          * the initial padding bits and length.  If so, we will pad the
          * block, process it, and then continue padding into a second block.
          */
-
         if st.msg_block_idx > 55u {
             st.msg_block[st.msg_block_idx] = 0x80u8;
             st.msg_block_idx += 1u;
@@ -208,8 +188,8 @@ fn mk_sha1() -> sha1 {
             st.msg_block[st.msg_block_idx] = 0u8;
             st.msg_block_idx += 1u;
         }
-        // Store the message length as the last 8 octets
 
+        // Store the message length as the last 8 octets
         st.msg_block[56] = st.len_high >> 24u32 & 0xFFu32 as u8;
         st.msg_block[57] = st.len_high >> 16u32 & 0xFFu32 as u8;
         st.msg_block[58] = st.len_high >> 8u32 & 0xFFu32 as u8;
@@ -223,7 +203,6 @@ fn mk_sha1() -> sha1 {
     obj sha1(st: sha1state) {
         fn reset() {
             // FIXME: Should be typestate precondition
-
             assert (vec::len(st.h) == digest_buf_len);
             st.len_low = 0u32;
             st.len_high = 0u32;
@@ -257,6 +236,7 @@ fn mk_sha1() -> sha1 {
     sh.reset();
     ret sh;
 }
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
