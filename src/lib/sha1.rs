@@ -10,12 +10,12 @@ type sha1 = obj {
     // Provide message input as bytes
     fn input(&[u8]);
     // Provide message input as string
-    fn input_str(&str);
+    fn input_str(&istr);
     // Read the digest as a vector of 20 bytes. After calling this no further
     // input may provided until reset is called
     fn result() -> [u8];
     // Same as above, just a hex-string version.
-    fn result_str() -> str;
+    fn result_str() -> istr;
     // Reset the sha1 state for reuse. This is called
     // automatically during construction
     fn reset();
@@ -215,13 +215,13 @@ fn mk_sha1() -> sha1 {
             st.computed = false;
         }
         fn input(msg: &[u8]) { add_input(st, msg); }
-        fn input_str(msg: &str) { add_input(st, str::bytes(msg)); }
+        fn input_str(msg: &istr) { add_input(st, istr::bytes(msg)); }
         fn result() -> [u8] { ret mk_result(st); }
-        fn result_str() -> str {
+        fn result_str() -> istr {
             let r = mk_result(st);
-            let s = "";
+            let s = ~"";
             for b: u8 in r {
-                s += istr::to_estr(uint::to_str(b as uint, 16u));
+                s += uint::to_str(b as uint, 16u);
             }
             ret s;
         }

@@ -6,6 +6,7 @@ import middle::ty;
 import metadata::encoder;
 import middle::trans_common::crate_ctxt;
 import std::str;
+import std::istr;
 import std::fs;
 import std::vec;
 import std::option;
@@ -314,12 +315,14 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: &ast::crate,
                               metas: &provided_metas) -> str {
-        fn len_and_str(s: &str) -> str {
-            ret #fmt["%u_%s", str::byte_len(s), s];
+        fn len_and_str(s: &istr) -> istr {
+            ret istr::from_estr(#fmt["%u_%s",
+                                     istr::byte_len(s),
+                                     istr::to_estr(s)]);
         }
 
-        fn len_and_str_lit(l: &ast::lit) -> str {
-            ret len_and_str(pprust::lit_to_str(@l));
+        fn len_and_str_lit(l: &ast::lit) -> istr {
+            ret len_and_str(istr::from_estr(pprust::lit_to_str(@l)));
         }
 
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
@@ -329,10 +332,12 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
-                sha.input_str(len_and_str(key));
+                sha.input_str(len_and_str(istr::from_estr(key)));
                 sha.input_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) { sha.input_str(len_and_str(name)); }
+              ast::meta_word(name) {
+                sha.input_str(len_and_str(istr::from_estr(name)));
+              }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
                 fail "unimplemented meta_item variant";
@@ -387,7 +392,7 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
 }
 
 fn truncated_sha1_result(sha: sha1) -> str {
-    ret str::substr(sha.result_str(), 0u, 16u);
+    ret istr::to_estr(istr::substr(sha.result_str(), 0u, 16u));
 }
 
 
@@ -398,12 +403,12 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: &link_meta) ->
     // to be independent of one another in the crate.
 
     sha.reset();
-    sha.input_str(link_meta.name);
-    sha.input_str("-");
+    sha.input_str(istr::from_estr(link_meta.name));
+    sha.input_str(~"-");
     // FIXME: This wants to be link_meta.meta_hash
-    sha.input_str(link_meta.name);
-    sha.input_str("-");
-    sha.input_str(encoder::encoded_ty(tcx, t));
+    sha.input_str(istr::from_estr(link_meta.name));
+    sha.input_str(~"-");
+    sha.input_str(istr::from_estr(encoder::encoded_ty(tcx, t)));
     let hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
