@@ -1629,8 +1629,9 @@ fn node_id_to_ty_param_substs_opt_and_ty(cx: &ctxt, id: &ast::node_id) ->
     alt smallintmap::find(*cx.node_types, id as uint) {
       none. {
         cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
-                        "an untyped node (" + std::int::to_str(id, 10u) +
-                        ")");
+                    "an untyped node (" +
+                    istr::to_estr(std::int::to_str(id, 10u)) +
+                    ")");
       }
       some(tpot) { ret tpot; }
     }

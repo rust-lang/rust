@@ -1,5 +1,6 @@
 import std::vec;
 import std::str;
+import std::istr;
 import std::str::rustrt::sbuf;
 
 import llvm::ModuleRef;
@@ -976,7 +977,8 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
 
 
       7 {
-        ret "i" + std::int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
+        ret "i" + istr::to_estr(std::int::str(
+            llvm::LLVMGetIntTypeWidth(ty) as int));
       }
 
 
@@ -1020,7 +1022,7 @@ fn type_to_str_inner(names: type_names, outer0: &[TypeRef], ty: TypeRef) ->
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
-                ret "*\\" + std::int::str(n as int);
+                ret "*\\" + istr::to_estr(std::int::str(n as int));
             }
         }
         ret "*" +

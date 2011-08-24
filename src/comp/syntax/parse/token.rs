@@ -145,11 +145,11 @@ fn to_str(r: lexer::reader, t: token) -> str {
 
       /* Literals */
       LIT_INT(i) {
-        ret int::to_str(i, 10u);
+        ret istr::to_estr(int::to_str(i, 10u));
       }
       LIT_UINT(u) { ret istr::to_estr(uint::to_str(u, 10u)); }
       LIT_MACH_INT(tm, i) {
-        ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
+        ret istr::to_estr(int::to_str(i, 10u)) + "_" + ty_mach_to_str(tm);
       }
       LIT_MACH_FLOAT(tm, s) {
         ret interner::get::<str>(*r.get_interner(), s) + "_" +
@@ -173,7 +173,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
       IDENT(s, _) {
         ret interner::get::<str>(*r.get_interner(), s);
       }
-      IDX(i) { ret "_" + int::to_str(i, 10u); }
+      IDX(i) { ret istr::to_estr(~"_" + int::to_str(i, 10u)); }
       UNDERSCORE. { ret "_"; }
       BRACEQUOTE(_) { ret "<bracequote>"; }
       EOF. { ret "<eof>"; }

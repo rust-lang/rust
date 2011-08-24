@@ -37,6 +37,7 @@ import middle::ty::unify::fix_err;
 import std::int;
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::map;
 import std::map::hashmap;
@@ -586,7 +587,10 @@ mod collect {
           some(ast_map::node_native_item(native_item)) {
             tpt = ty_of_native_item(cx, native_item, ast::native_abi_cdecl);
           }
-          _ { cx.tcx.sess.fatal("internal error " + std::int::str(id.node)); }
+          _ {
+            cx.tcx.sess.fatal(
+                "internal error " + istr::to_estr(std::int::str(id.node)));
+          }
         }
         ret tpt;
     }
@@ -2152,8 +2156,9 @@ fn check_expr_with_unifier(fcx: &@fn_ctxt, expr: &@ast::expr, unify: &unifier,
                     this_obj_sty = some(structure_of(fcx, expr.span, tpt.ty));
                   }
                   none. {
-                    tcx.sess.bug("didn't find " + int::str(did.node) +
-                                     " in type cache");
+                    tcx.sess.bug("didn't find " +
+                                 istr::to_estr(int::str(did.node)) +
+                                 " in type cache");
                   }
                 }
               }

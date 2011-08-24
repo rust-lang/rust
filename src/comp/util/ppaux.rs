@@ -1,5 +1,6 @@
 import std::vec;
 import std::str;
+import std::istr;
 import std::int;
 import std::option;
 import std::option::none;
@@ -35,7 +36,10 @@ fn mode_str_1(m: &ty::mode) -> str {
 }
 
 fn fn_ident_to_string(id: ast::node_id, i: &ast::fn_ident) -> str {
-    ret alt i { none. { "anon" + int::str(id) } some(s) { s } };
+    ret alt i {
+      none. { istr::to_estr(~"anon" + int::str(id)) }
+      some(s) { s }
+    };
 }
 
 fn get_id_ident(cx: &ctxt, id: ast::def_id) -> str {
@@ -139,7 +143,7 @@ fn ty_to_str(cx: &ctxt, typ: &t) -> str {
             "obj {\n\t" + str::connect(strs, "\n\t") + "\n}"
           }
           ty_res(id, _, _) { get_id_ident(cx, id) }
-          ty_var(v) { "<T" + int::str(v) + ">" }
+          ty_var(v) { istr::to_estr(~"<T" + int::str(v) + ~">") }
           ty_param(id, _) {
             "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])
           }

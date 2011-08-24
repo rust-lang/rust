@@ -337,7 +337,8 @@ obj new_writer(out: buf_writer) {
 
         out.write(str::bytes(str::from_char(ch)));
     }
-    fn write_int(n: int) { out.write(str::bytes(int::to_str(n, 10u))); }
+    fn write_int(n: int) { out.write(str::bytes(
+        istr::to_estr(int::to_str(n, 10u)))); }
     fn write_uint(n: uint) { out.write(str::bytes(
         istr::to_estr(uint::to_str(n, 10u)))); }
     fn write_bytes(bytes: &[u8]) { out.write(bytes); }

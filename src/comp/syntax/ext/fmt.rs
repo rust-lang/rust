@@ -7,6 +7,7 @@
  */
 import std::vec;
 import std::str;
+import std::istr;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -258,7 +259,10 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
     }
     fn log_conv(c: conv) {
         alt c.param {
-          some(p) { log "param: " + std::int::to_str(p, 10u); }
+          some(p) {
+            log "param: "
+                + istr::to_estr(std::int::to_str(p, 10u));
+          }
           _ { log "param: none"; }
         }
         for f: flag in c.flags {
@@ -271,17 +275,21 @@ fn pieces_to_expr(cx: &ext_ctxt, sp: span, pieces: &[piece],
             }
         }
         alt c.width {
-          count_is(i) { log "width: count is " + std::int::to_str(i, 10u); }
+          count_is(i) { log "width: count is "
+              + istr::to_estr(std::int::to_str(i, 10u)); }
           count_is_param(i) {
-            log "width: count is param " + std::int::to_str(i, 10u);
+            log "width: count is param "
+                + istr::to_estr(std::int::to_str(i, 10u));
           }
           count_is_next_param. { log "width: count is next param"; }
           count_implied. { log "width: count is implied"; }
         }
         alt c.precision {
-          count_is(i) { log "prec: count is " + std::int::to_str(i, 10u); }
+          count_is(i) { log "prec: count is "
+              + istr::to_estr(std::int::to_str(i, 10u)); }
           count_is_param(i) {
-            log "prec: count is param " + std::int::to_str(i, 10u);
+            log "prec: count is param "
+                + istr::to_estr(std::int::to_str(i, 10u));
           }
           count_is_next_param. { log "prec: count is next param"; }
           count_implied. { log "prec: count is implied"; }

@@ -57,7 +57,7 @@ tag oper_type {
 
 /* logging funs */
 fn def_id_to_str(d: def_id) -> str {
-    ret int::str(d.crate) + "," + int::str(d.node);
+    ret istr::to_estr(int::str(d.crate) + ~"," + int::str(d.node));
 }
 
 fn comma_str(args: &[@constr_arg_use]) -> str {
@@ -329,7 +329,8 @@ fn get_ts_ann(ccx: &crate_ctxt, i: node_id) -> option::t<ts_ann> {
 fn node_id_to_ts_ann(ccx: &crate_ctxt, id: node_id) -> ts_ann {
     alt get_ts_ann(ccx, id) {
       none. {
-        log_err "node_id_to_ts_ann: no ts_ann for node_id " + int::str(id);
+        log_err "node_id_to_ts_ann: no ts_ann for node_id "
+            + istr::to_estr(int::str(id));
         fail;
       }
       some(t) { ret t; }
@@ -531,7 +532,8 @@ fn constraints_expr(cx: &ty::ctxt, e: @expr) -> [@ty::constr] {
 fn node_id_to_def_upvar_strict(cx: &fn_ctxt, id: node_id) -> def {
     alt freevars::def_lookup(cx.ccx.tcx, cx.id, id) {
       none. {
-        log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
+        log_err "node_id_to_def: node_id "
+            + istr::to_estr(int::str(id)) + " has no def";
         fail;
       }
       some(d) { ret d; }
@@ -540,7 +542,8 @@ fn node_id_to_def_upvar_strict(cx: &fn_ctxt, id: node_id) -> def {
 fn node_id_to_def_strict(cx: &ty::ctxt, id: node_id) -> def {
     alt cx.def_map.find(id) {
       none. {
-        log_err "node_id_to_def: node_id " + int::str(id) + " has no def";
+        log_err "node_id_to_def: node_id "
+            + istr::to_estr(int::str(id)) + " has no def";
         fail;
       }
       some(d) { ret d; }
@@ -601,7 +604,8 @@ fn match_args(fcx: &fn_ctxt, occs: &@mutable [pred_args],
 fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
     alt tcx.def_map.find(t) {
       none. {
-        tcx.sess.bug("node_id_for_constr: bad node_id " + int::str(t));
+        tcx.sess.bug("node_id_for_constr: bad node_id "
+                     + istr::to_estr(int::str(t)));
       }
       some(def_fn(i, _)) { ret i; }
       _ { tcx.sess.bug("node_id_for_constr: pred is not a function"); }

@@ -7,6 +7,7 @@
 use std;
 import std::int;
 import std::str;
+import std::istr;
 
 fn b1() -> str { ret "# of beer on the wall, # of beer."; }
 
@@ -29,7 +30,7 @@ fn sub(t: str, n: int) -> str {
     alt n {
       0 { ns = "no more bottles"; }
       1 { ns = "1 bottle"; }
-      _ { ns = int::to_str(n, 10u) + " bottles"; }
+      _ { ns = istr::to_estr(int::to_str(n, 10u) + ~" bottles"); }
     }
     while i < str::byte_len(t) {
         if t[i] == '#' as u8 { b += ns; } else { str::push_byte(b, t[i]); }

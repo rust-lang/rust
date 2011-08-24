@@ -5,6 +5,7 @@ import std::map;
 import std::map::*;
 import std::option;
 import std::int;
+import std::istr;
 import std::option::*;
 import syntax::ast;
 import syntax::ast_util;
@@ -146,7 +147,10 @@ fn annotate_freevars(sess: &session::session, def_map: &resolve::def_map,
 
 fn get_freevar_info(tcx: &ty::ctxt, fid: ast::node_id) -> freevar_info {
     alt tcx.freevars.find(fid) {
-      none. { fail "get_freevars: " + int::str(fid) + " has no freevars"; }
+      none. {
+        fail "get_freevars: " + istr::to_estr(int::str(fid))
+            + " has no freevars";
+      }
       some(d) { ret d; }
     }
 }

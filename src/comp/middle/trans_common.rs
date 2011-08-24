@@ -63,7 +63,9 @@ import trans::type_of_fn_full;
 import trans::drop_ty;
 
 obj namegen(mutable i: int) {
-    fn next(prefix: str) -> str { i += 1; ret prefix + int::str(i); }
+    fn next(prefix: str) -> str {
+        i += 1; ret prefix + istr::to_estr(int::str(i));
+    }
 }
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};

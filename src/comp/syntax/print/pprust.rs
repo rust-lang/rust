@@ -1498,11 +1498,11 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
              "'" + escape_str(str::unsafe_from_bytes([ch as u8]), '\'') +
                  "'");
       }
-      ast::lit_int(val) { word(s.s, int::str(val)); }
+      ast::lit_int(val) { word(s.s, istr::to_estr(int::str(val))); }
       ast::lit_uint(val) { word(s.s, istr::to_estr(uint::str(val)) + "u"); }
       ast::lit_float(fstr) { word(s.s, fstr); }
       ast::lit_mach_int(mach, val) {
-        word(s.s, int::str(val as int));
+        word(s.s, istr::to_estr(int::str(val as int)));
         word(s.s, ast_util::ty_mach_to_str(mach));
       }
       ast::lit_mach_float(mach, val) {

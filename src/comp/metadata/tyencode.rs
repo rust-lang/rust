@@ -172,7 +172,10 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
         for t: ty::t in tps { enc_ty(w, cx, t); }
         w.write_char(']');
       }
-      ty::ty_var(id) { w.write_char('X'); w.write_str(int::str(id)); }
+      ty::ty_var(id) {
+        w.write_char('X');
+        w.write_str(istr::to_estr(int::str(id)));
+      }
       ty::ty_native(def) {
         w.write_char('E');
         w.write_str(cx.ds(def));

@@ -27,6 +27,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import std::vec;
 import std::int;
 import std::io;
@@ -189,16 +190,18 @@ fn pretty_print_input(sess: session::session, cfg: ast::crate_cfg, input: str,
         alt node {
           pprust::node_item(s, item) {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(item.id, 10u));
+            pprust::synth_comment(
+                s, istr::to_estr(int::to_str(item.id, 10u)));
           }
           pprust::node_block(s, blk) {
             pp::space(s.s);
-            pprust::synth_comment(s,
-                                  "block " + int::to_str(blk.node.id, 10u));
+            pprust::synth_comment(
+                s, istr::to_estr(~"block " + int::to_str(blk.node.id, 10u)));
           }
           pprust::node_expr(s, expr) {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(expr.id, 10u));
+            pprust::synth_comment(
+                s, istr::to_estr(int::to_str(expr.id, 10u)));
             pprust::pclose(s);
           }
           _ { }

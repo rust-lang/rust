@@ -7,6 +7,7 @@
 use std;
 import std::int;
 import std::str;
+import std::istr;
 
 tag bottle { none; dual; single; multiple(int); }
 
@@ -29,8 +30,8 @@ fn show(b: bottle) {
                 "1 bottle of beer on the wall.";
       }
       multiple(n) {
-        let nb: str = int::to_str(n, 10u);
-        let mb: str = int::to_str(n - 1, 10u);
+        let nb: str = istr::to_estr(int::to_str(n, 10u));
+        let mb: str = istr::to_estr(int::to_str(n - 1, 10u));
         log nb + " bottles of beer on the wall, " + nb + " bottles of beer,";
         log "Take one down and pass it around, " + mb +
                 " bottles of beer on the wall.";
