@@ -4303,7 +4303,7 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
             with_out_method(bind trans_block(sub_cx, blk, _), cx, e.id,
                             output);
         cx.build.Br(sub_cx.llbb);
-        sub.bcx.build.Br(next_cx.llbb);
+        if !is_terminated(sub.bcx) { sub.bcx.build.Br(next_cx.llbb); }
         ret rslt(next_cx, sub.val);
       }
       ast::expr_copy(a) {
