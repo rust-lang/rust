@@ -40,7 +40,7 @@ fn hammertime() -> int {
 }
 
 fn canttouchthis() -> uint {
-    pred p() -> bool { true }
+    pure fn p() -> bool { true }
     let _a = (assert (true)) == (check (p()));
     let _c = (check (p())) == ();
     let _b = (log 0) == (ret 0u);

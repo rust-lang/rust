@@ -73,12 +73,12 @@ fn is_ascii(s: &istr) -> bool {
 }
 
 /// Returns true if the string has length 0
-pred is_empty(s: &istr) -> bool {
+pure fn is_empty(s: &istr) -> bool {
     for c: u8 in s { ret false; } ret true;
 }
 
 /// Returns true if the string has length greater than 0
-pred is_not_empty(s: &istr) -> bool {
+pure fn is_not_empty(s: &istr) -> bool {
     !is_empty(s)
 }
 

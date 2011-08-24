@@ -10,7 +10,7 @@ fn square(n: uint) -> uint { ret n * n; }
 
 fn square_alias(n: &uint) -> uint { ret n * n; }
 
-pred is_three(n: &uint) -> bool { ret n == 3u; }
+pure fn is_three(n: &uint) -> bool { ret n == 3u; }
 
 fn square_if_odd(n: &uint) -> option::t<uint> {
     ret if n % 2u == 1u { some(n * n) } else { none };

@@ -1,7 +1,7 @@
 // -*- rust -*-
 fn f(a: int, b: int) { }
 
-pred lt(a: int, b: int) -> bool { ret a < b; }
+pure fn lt(a: int, b: int) -> bool { ret a < b; }
 
 fn main() {
     let a: int = 10;

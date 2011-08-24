@@ -3,7 +3,7 @@
 
 fn g() { }
 
-pred f(q: int) -> bool { g(); ret true; }
+pure fn f(q: int) -> bool { g(); ret true; }
 
 fn main() {
     let x = 0;

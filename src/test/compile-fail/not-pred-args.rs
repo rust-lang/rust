@@ -2,7 +2,7 @@
 
 // error-pattern: Constraint args must be
 
-pred f(q: int) -> bool { ret true; }
+pure fn f(q: int) -> bool { ret true; }
 
 fn main() {
     // should fail to typecheck, as pred args must be slot variables

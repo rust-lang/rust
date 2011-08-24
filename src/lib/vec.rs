@@ -77,13 +77,13 @@ fn from_mut<@T>(v: &[mutable T]) -> [T] {
 }
 
 // Predicates
-pred is_empty<T>(v: &[mutable? T]) -> bool {
+pure fn is_empty<T>(v: &[mutable? T]) -> bool {
     // FIXME: This would be easier if we could just call len
     for t: T in v { ret false; }
     ret true;
 }
 
-pred is_not_empty<T>(v: &[mutable? T]) -> bool { ret !is_empty(v); }
+pure fn is_not_empty<T>(v: &[mutable? T]) -> bool { ret !is_empty(v); }
 
 // Accessors
 

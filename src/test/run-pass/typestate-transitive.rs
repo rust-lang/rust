@@ -1,4 +1,4 @@
-pred p(i: int) -> bool { true }
+pure fn p(i: int) -> bool { true }
 
 fn f(i: int) : p(i) -> int { i }
 

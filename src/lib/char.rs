@@ -1,4 +1,4 @@
-pred is_whitespace(c: char) -> bool {
+pure fn is_whitespace(c: char) -> bool {
     const ch_space: char = '\u0020';
     const ch_ogham_space_mark: char = '\u1680';
     const ch_mongolian_vowel_sep: char = '\u180e';

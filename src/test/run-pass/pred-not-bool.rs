@@ -1,3 +1,5 @@
+// FIXME should be in run-pass
+
 // -*- rust -*-
 
 // error-pattern: Non-boolean return type

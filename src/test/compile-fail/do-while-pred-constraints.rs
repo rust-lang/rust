@@ -2,7 +2,7 @@
 
 fn print_even(y: int) : even(y) { log y; }
 
-pred even(y: int) -> bool { true }
+pure fn even(y: int) -> bool { true }
 
 fn main() {
     let y: int = 42;

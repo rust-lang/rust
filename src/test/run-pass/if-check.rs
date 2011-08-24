@@ -1,4 +1,4 @@
-pred even(x: uint) -> bool {
+pure fn even(x: uint) -> bool {
     if x < 2u {
         ret false;
     } else if x == 2u { ret true; } else { ret even(x - 2u); }
