@@ -4,6 +4,7 @@
 use std;
 import std::map;
 import std::str;
+import std::istr;
 import std::uint;
 import std::util;
 import std::option;
@@ -92,14 +93,14 @@ fn test_growth() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm_uu.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
+        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
                 uint::to_str(i * i, 10u);
         i += 1u;
     }
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
         i += 1u;
@@ -110,7 +111,7 @@ fn test_growth() {
     hm_uu.rehash();
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm_uu.get(i), 10u);
         assert (hm_uu.get(i) == i * i);
         i += 1u;
@@ -122,32 +123,34 @@ fn test_growth() {
         map::mk_hashmap::<str, str>(hasher_str, eqer_str);
     i = 0u;
     while i < num_to_insert {
-        assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
-        log "inserting \"" + uint::to_str(i, 2u) + "\" -> \"" +
-                uint::to_str(i * i, 2u) + "\"";
+        assert (hm_ss.insert(istr::to_estr(uint::to_str(i, 2u)),
+                             istr::to_estr(uint::to_str(i * i, 2u))));
+        log ~"inserting \"" + uint::to_str(i, 2u) + ~"\" -> \"" +
+                uint::to_str(i * i, 2u) + ~"\"";
         i += 1u;
     }
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + "\"";
-        assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
-                        uint::to_str(i * i, 2u)));
+        log "get(\"" + istr::to_estr(uint::to_str(i, 2u)) + "\") = \"" +
+                hm_ss.get(istr::to_estr(uint::to_str(i, 2u))) + "\"";
+        assert (str::eq(hm_ss.get(istr::to_estr(uint::to_str(i, 2u))),
+                        istr::to_estr(uint::to_str(i * i, 2u))));
         i += 1u;
     }
-    assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
-                         uint::to_str(17u, 2u)));
-    assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
-                    uint::to_str(17u, 2u)));
+    assert (hm_ss.insert(istr::to_estr(uint::to_str(num_to_insert, 2u)),
+                         istr::to_estr(uint::to_str(17u, 2u))));
+    assert (str::eq(hm_ss.get(
+        istr::to_estr(uint::to_str(num_to_insert, 2u))),
+                    istr::to_estr(uint::to_str(17u, 2u))));
     log "-----";
     hm_ss.rehash();
     i = 0u;
     while i < num_to_insert {
-        log "get(\"" + uint::to_str(i, 2u) + "\") = \"" +
-                hm_ss.get(uint::to_str(i, 2u)) + "\"";
-        assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
-                        uint::to_str(i * i, 2u)));
+        log "get(\"" + istr::to_estr(uint::to_str(i, 2u)) + "\") = \"" +
+                hm_ss.get(istr::to_estr(uint::to_str(i, 2u))) + "\"";
+        assert (str::eq(hm_ss.get(istr::to_estr(uint::to_str(i, 2u))),
+                        istr::to_estr(uint::to_str(i * i, 2u))));
         i += 1u;
     }
     log "*** finished test_growth";
@@ -174,7 +177,7 @@ fn test_removal() {
     let i: uint = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
+        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
                 uint::to_str(i * i, 10u);
         i += 1u;
     }
@@ -196,7 +199,7 @@ fn test_removal() {
     log "-----";
     i = 1u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 2u;
@@ -207,7 +210,7 @@ fn test_removal() {
     log "-----";
     i = 1u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 2u;
@@ -216,7 +219,7 @@ fn test_removal() {
     i = 0u;
     while i < num_to_insert {
         assert (hm.insert(i, i * i));
-        log "inserting " + uint::to_str(i, 10u) + " -> " +
+        log ~"inserting " + uint::to_str(i, 10u) + ~" -> " +
                 uint::to_str(i * i, 10u);
         i += 2u;
     }
@@ -224,7 +227,7 @@ fn test_removal() {
     log "-----";
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 1u;
@@ -236,7 +239,7 @@ fn test_removal() {
     assert (hm.size() == num_to_insert);
     i = 0u;
     while i < num_to_insert {
-        log "get(" + uint::to_str(i, 10u) + ") = " +
+        log ~"get(" + uint::to_str(i, 10u) + ~") = " +
                 uint::to_str(hm.get(i), 10u);
         assert (hm.get(i) == i * i);
         i += 1u;

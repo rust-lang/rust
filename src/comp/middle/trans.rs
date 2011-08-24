@@ -14,6 +14,7 @@
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 import std::int;
 import std::str;
+import std::istr;
 import std::uint;
 import std::str::rustrt::sbuf;
 import std::map;
@@ -1048,10 +1049,10 @@ fn get_tydesc(cx: &@block_ctxt, orig_t: ty::t, escapes: bool,
         } else {
             bcx_tcx(cx).sess.span_bug(cx.sp,
                                       "Unbound typaram in get_tydesc: " +
-                                          "orig_t = " +
-                                          ty_to_str(bcx_tcx(cx), orig_t) +
-                                          " ty_param = " +
-                                          std::uint::str(id));
+                                      "orig_t = " +
+                                      ty_to_str(bcx_tcx(cx), orig_t) +
+                                      " ty_param = " +
+                                      istr::to_estr(std::uint::str(id)));
         }
       }
       none. {/* fall through */ }
@@ -1871,8 +1872,8 @@ fn iter_structural_ty_full(cx: &@block_ctxt, av: ValueRef, t: ty::t,
         for variant: ty::variant_info in variants {
             let variant_cx =
                 new_sub_block_ctxt(bcx,
-                                   "tag-iter-variant-" +
-                                       uint::to_str(i, 10u));
+                                   istr::to_estr(~"tag-iter-variant-" +
+                                                 uint::to_str(i, 10u)));
             llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
             variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, variant, tps, tid,
@@ -5517,7 +5518,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         fn_args +=
             [{mode: ast::alias(false),
               ty: varg.ty,
-              ident: "arg" + uint::to_str(i, 10u),
+              ident: istr::to_estr(~"arg" + uint::to_str(i, 10u)),
               id: varg.id}];
     }
     assert (cx.ccx.item_ids.contains_key(variant.node.id));

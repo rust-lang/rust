@@ -4,6 +4,7 @@ import std::option::some;
 import std::option::none;
 import std::int;
 import std::uint;
+import std::istr;
 import syntax::ast::*;
 import syntax::ast_util::pat_binding_ids;
 import syntax::visit;
@@ -61,7 +62,7 @@ fn node_ids_in_fn(f: &_fn, tps: &[ty_param], sp: &span, i: &fn_ident,
 
 fn init_vecs(ccx: &crate_ctxt, node_ids: &[node_id], len: uint) {
     for i: node_id in node_ids {
-        log int::str(i) + " |-> " + uint::str(len);
+        log int::str(i) + " |-> " + istr::to_estr(uint::str(len));
         add_node(ccx, i, empty_ann(len));
     }
 }

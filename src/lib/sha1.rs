@@ -220,7 +220,9 @@ fn mk_sha1() -> sha1 {
         fn result_str() -> str {
             let r = mk_result(st);
             let s = "";
-            for b: u8 in r { s += uint::to_str(b as uint, 16u); }
+            for b: u8 in r {
+                s += istr::to_estr(uint::to_str(b as uint, 16u));
+            }
             ret s;
         }
     }

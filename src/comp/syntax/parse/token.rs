@@ -6,6 +6,7 @@ import util::interner;
 import std::int;
 import std::uint;
 import std::str;
+import std::istr;
 
 type str_num = uint;
 
@@ -146,7 +147,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
       LIT_INT(i) {
         ret int::to_str(i, 10u);
       }
-      LIT_UINT(u) { ret uint::to_str(u, 10u); }
+      LIT_UINT(u) { ret istr::to_estr(uint::to_str(u, 10u)); }
       LIT_MACH_INT(tm, i) {
         ret int::to_str(i, 10u) + "_" + ty_mach_to_str(tm);
       }

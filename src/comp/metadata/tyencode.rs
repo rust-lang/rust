@@ -1,5 +1,6 @@
 // Type encoding
 
+import std::istr;
 import std::io;
 import std::map::hashmap;
 import std::option::some;
@@ -70,9 +71,9 @@ fn enc_ty(w: &io::writer, cx: &@ctxt, t: ty::t) {
                 // I.e. it's actually an abbreviation.
 
                 let s =
-                    "#" + uint::to_str(pos, 16u) + ":" +
-                        uint::to_str(len, 16u) + "#";
-                let a = {pos: pos, len: len, s: s};
+                    ~"#" + uint::to_str(pos, 16u) + ~":" +
+                    uint::to_str(len, 16u) + ~"#";
+                let a = {pos: pos, len: len, s: istr::to_estr(s)};
                 abbrevs.insert(t, a);
             }
             ret;
@@ -183,7 +184,7 @@ fn enc_sty(w: &io::writer, cx: &@ctxt, st: &ty::sty) {
           kind_shared. { w.write_str("ps"); }
           kind_pinned. { w.write_str("pp"); }
         }
-        w.write_str(uint::str(id));
+        w.write_str(istr::to_estr(uint::str(id)));
       }
       ty::ty_type. { w.write_char('Y'); }
       ty::ty_constr(ty, cs) {

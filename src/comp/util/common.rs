@@ -1,4 +1,5 @@
 import std::str;
+import std::istr;
 import std::map;
 import std::map::hashmap;
 import std::uint;
@@ -163,13 +164,13 @@ fn float_to_str(num: float, digits: uint) -> str {
     let accum = if num < 0.0 { num = -num; "-" } else { "" };
     let trunc = num as uint;
     let frac = num - (trunc as float);
-    accum += uint::str(trunc);
+    accum += istr::to_estr(uint::str(trunc));
     if frac == 0.0 || digits == 0u { ret accum; }
     accum += ".";
     while digits > 0u && frac > 0.0 {
         frac *= 10.0;
         let digit = frac as uint;
-        accum += uint::str(digit);
+        accum += istr::to_estr(uint::str(digit));
         frac -= digit as float;
         digits -= 1u;
     }

@@ -1,6 +1,7 @@
 import std::int;
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::box;
 import std::ufind;
@@ -2605,14 +2606,18 @@ fn type_err_to_str(err: &ty::type_err) -> str {
       terr_box_mutability. { ret "boxed values differ in mutability"; }
       terr_vec_mutability. { ret "vectors differ in mutability"; }
       terr_tuple_size(e_sz, a_sz) {
-        ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
-                " elements but found one with " + uint::to_str(a_sz, 10u) +
-                " elements";
+        ret istr::to_estr(~"expected a tuple with " +
+                          uint::to_str(e_sz, 10u) +
+                          ~" elements but found one with " +
+                          uint::to_str(a_sz, 10u) +
+                          ~" elements");
       }
       terr_record_size(e_sz, a_sz) {
-        ret "expected a record with " + uint::to_str(e_sz, 10u) +
-                " fields but found one with " + uint::to_str(a_sz, 10u) +
-                " fields";
+        ret istr::to_estr(~"expected a record with " +
+                          uint::to_str(e_sz, 10u) +
+                          ~" fields but found one with " +
+                          uint::to_str(a_sz, 10u) +
+                          ~" fields");
       }
       terr_record_mutability. { ret "record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
@@ -2630,10 +2635,10 @@ fn type_err_to_str(err: &ty::type_err) -> str {
                 mode_str_1(a_mode);
       }
       terr_constr_len(e_len, a_len) {
-        ret "Expected a type with " + uint::str(e_len) +
-                " constraints, \
-              but found one with " +
-                uint::str(a_len) + " constraints";
+        ret istr::to_estr(~"Expected a type with " +
+                          uint::str(e_len) +
+                          ~" constraints, but found one with " +
+                          uint::str(a_len) + ~" constraints");
       }
       terr_constr_mismatch(e_constr, a_constr) {
         ret "Expected a type with constraint " + ty_constr_to_str(e_constr) +

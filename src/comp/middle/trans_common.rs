@@ -6,6 +6,7 @@
 import std::int;
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::str::rustrt::sbuf;
 import std::map;
@@ -758,7 +759,7 @@ fn T_opaque_closure_ptr(cx: &crate_ctxt) -> TypeRef {
 }
 
 fn T_tag(tn: &type_names, size: uint) -> TypeRef {
-    let s = "tag_" + uint::to_str(size, 10u);
+    let s = "tag_" + istr::to_estr(uint::to_str(size, 10u));
     if tn.name_has_type(s) { ret tn.get_type(s); }
     let t = T_struct([T_int(), T_array(T_i8(), size)]);
     tn.associate(s, t);

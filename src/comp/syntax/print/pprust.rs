@@ -3,6 +3,7 @@ import std::vec;
 import std::int;
 import std::io;
 import std::str;
+import std::istr;
 import std::uint;
 import std::option;
 import parse::lexer;
@@ -1498,7 +1499,7 @@ fn print_literal(s: &ps, lit: &@ast::lit) {
                  "'");
       }
       ast::lit_int(val) { word(s.s, int::str(val)); }
-      ast::lit_uint(val) { word(s.s, uint::str(val) + "u"); }
+      ast::lit_uint(val) { word(s.s, istr::to_estr(uint::str(val)) + "u"); }
       ast::lit_float(fstr) { word(s.s, fstr); }
       ast::lit_mach_int(mach, val) {
         word(s.s, int::str(val as int));
@@ -1660,7 +1661,7 @@ fn constr_arg_to_str<T>(f: &fn(&T) -> str, c: &ast::constr_arg_general_<T>) ->
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
-fn uint_to_str(i: &uint) -> str { ret uint::str(i); }
+fn uint_to_str(i: &uint) -> str { ret istr::to_estr(uint::str(i)); }
 
 fn ast_ty_fn_constr_to_str(c: &@ast::constr) -> str {
     ret path_to_str(c.node.path) +

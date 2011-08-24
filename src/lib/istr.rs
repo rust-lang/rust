@@ -2,7 +2,8 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
 index, rindex, find, starts_with, ends_with, substr, slice, split,
 concat, connect, to_upper, replace, char_slice, trim_left, trim_right, trim,
 unshift_char, shift_char, pop_char, push_char, is_utf8, from_chars, to_chars,
-char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_bytes;
+char_len, char_at, bytes, is_ascii, shift_byte, pop_byte, unsafe_from_byte,
+unsafe_from_bytes;
 
 export from_estr, to_estr;
 

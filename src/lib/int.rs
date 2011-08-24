@@ -44,8 +44,8 @@ iter range(lo: int, hi: int) -> int {
 fn to_str(n: int, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
     ret if n < 0 {
-            "-" + uint::to_str(-n as uint, radix)
-        } else { uint::to_str(n as uint, radix) };
+            "-" + istr::to_estr(uint::to_str(-n as uint, radix))
+        } else { istr::to_estr(uint::to_str(n as uint, radix)) };
 }
 fn str(i: int) -> str { ret to_str(i, 10u); }
 

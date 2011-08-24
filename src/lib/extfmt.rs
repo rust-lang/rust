@@ -337,7 +337,7 @@ mod rt {
         ret if prec == 0u && num == 0u {
                 ""
             } else {
-                let s = uint::to_str(num, radix);
+                let s = istr::to_estr(uint::to_str(num, radix));
                 let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;

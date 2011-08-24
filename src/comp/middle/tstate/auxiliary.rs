@@ -1,6 +1,7 @@
 import std::vec;
 import std::int::str;
 import std::str;
+import std::istr;
 import std::option;
 import std::option::*;
 import std::int;
@@ -678,7 +679,7 @@ fn expr_to_constr(tcx: ty::ctxt, e: &@expr) -> sp_constr {
 }
 
 fn pred_args_to_str(p: &pred_args) -> str {
-    "<" + uint::str(p.node.bit_num) + ", " +
+    "<" + istr::to_estr(uint::str(p.node.bit_num)) + ", " +
         constr_args_to_str(fn (i: &inst) -> str { ret i.ident; }, p.node.args)
         + ">"
 }
