@@ -15,6 +15,7 @@ import std::vec;
 import std::uint;
 import std::time;
 import std::str;
+import std::istr;
 import std::int::range;
 import std::io;
 import std::getopts;
@@ -106,7 +107,7 @@ fn main(argv: [str]) {
                     let elapsed = stop - start;
 
                     out.write_line(#fmt["%d\t%d\t%s", n, fibn,
-                                        u64::str(elapsed)]);
+                                        istr::to_estr(u64::str(elapsed))]);
                 }
             }
         }

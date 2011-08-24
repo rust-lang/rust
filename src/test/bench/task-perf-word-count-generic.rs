@@ -14,6 +14,7 @@ import option = std::option::t;
 import std::option::some;
 import std::option::none;
 import std::str;
+import std::istr;
 import std::treemap;
 import std::vec;
 import std::io;
@@ -226,7 +227,8 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
+    log_err "MapReduce completed in " +
+        istr::to_estr(u64::str(elapsed)) + "ms";
 }
 
 fn read_word(r: io::reader) -> option<str> {

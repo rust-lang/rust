@@ -216,7 +216,7 @@ fn main(argv: [str]) {
     let elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log_err "MapReduce completed in " + u64::str(elapsed) + "ms";
+    log_err ~"MapReduce completed in " + u64::str(elapsed) + ~"ms";
 }
 
 fn read_word(r: io::reader) -> option<str> {
