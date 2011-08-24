@@ -111,6 +111,10 @@ type stats =
      mutable n_real_glues: uint,
      fn_times: @mutable [{ident: str, time: int}]};
 
+resource BuilderRef_res(B: llvm::BuilderRef) {
+    llvm::LLVMDisposeBuilder(B);
+}
+
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt =
     // A mapping from the def_id of each item in this crate to the address
@@ -149,6 +153,7 @@ type crate_ctxt =
      rust_object_type: TypeRef,
      tydesc_type: TypeRef,
      task_type: TypeRef,
+     builder: BuilderRef_res,
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt};
 
@@ -401,7 +406,6 @@ type block_ctxt =
     // attached.
     {llbb: BasicBlockRef,
      mutable terminated: bool,
-     build: bld::BuilderRef_res,
      parent: block_parent,
      kind: block_kind,
      mutable cleanups: [cleanup],

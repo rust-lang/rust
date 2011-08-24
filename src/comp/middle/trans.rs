@@ -4889,7 +4889,6 @@ fn new_block_ctxt(cx: &@fn_ctxt, parent: &block_parent, kind: block_kind,
     let llbb: BasicBlockRef = llvm::LLVMAppendBasicBlock(cx.llfn, s);
     ret @{llbb: llbb,
           mutable terminated: false,
-          build: bld::BuilderRef_res(bld::mk_builder(llbb)),
           parent: parent,
           kind: kind,
           mutable cleanups: [],
@@ -4925,7 +4924,6 @@ fn new_sub_block_ctxt(bcx: &@block_ctxt, n: &str) -> @block_ctxt {
 fn new_raw_block_ctxt(fcx: &@fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
     ret @{llbb: llbb,
           mutable terminated: false,
-          build: bld::BuilderRef_res(bld::mk_builder(llbb)),
           parent: parent_none,
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
@@ -4992,7 +4990,6 @@ iter block_locals(b: &ast::blk) -> @ast::local {
 fn llstaticallocas_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
     ret @{llbb: fcx.llstaticallocas,
           mutable terminated: false,
-          build: bld::BuilderRef_res(bld::mk_builder(fcx.llstaticallocas)),
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
@@ -5003,7 +5000,6 @@ fn llstaticallocas_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
 fn llderivedtydescs_block_ctxt(fcx: &@fn_ctxt) -> @block_ctxt {
     ret @{llbb: fcx.llderivedtydescs,
           mutable terminated: false,
-          build: bld::BuilderRef_res(bld::mk_builder(fcx.llderivedtydescs)),
           parent: parent_none,
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
@@ -6210,15 +6206,6 @@ fn decl_no_op_type_glue(llmod: ModuleRef, taskptr_type: TypeRef) -> ValueRef {
     ret decl_fastcall_fn(llmod, abi::no_op_type_glue_name(), ty);
 }
 
-fn make_no_op_type_glue(fun: ValueRef) {
-    let bb_name = str::buf("_rust_no_op_type_glue_bb");
-    let llbb = llvm::LLVMAppendBasicBlock(fun, bb_name);
-    let llbuild = llvm::LLVMCreateBuilder();
-    llvm::LLVMPositionBuilderAtEnd(llbuild, llbb);
-    llvm::LLVMBuildRetVoid(llbuild);
-    llvm::LLVMDisposeBuilder(llbuild);
-}
-
 fn vec_fill(bcx: &@block_ctxt, v: ValueRef) -> ValueRef {
     ret bld::Load(bcx, bld::GEP(bcx, v,
                                      [C_int(0), C_int(abi::vec_elt_fill)]));
@@ -6397,6 +6384,7 @@ fn trans_crate(sess: &session::session, crate: &@ast::crate, tcx: &ty::ctxt,
           rust_object_type: T_rust_object(),
           tydesc_type: tydesc_type,
           task_type: task_type,
+          builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt()};
     let cx = new_local_ctxt(ccx);
