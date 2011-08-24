@@ -46,11 +46,18 @@ const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_VAR = 21u;
 
+#ifdef _LP64
+const uint8_t SHAPE_PTR = SHAPE_U64;
+#else
+const uint8_t SHAPE_PTR = SHAPE_U32;
+#endif
+
 
 // Forward declarations
 
 struct rust_obj;
 struct size_align;
+class ptr;
 class type_param;
 
 
@@ -129,6 +136,21 @@ struct tag_info {
 };
 
 
+// Utility functions
+
+inline uint16_t
+get_u16(const uint8_t *addr) {
+    return *reinterpret_cast<const uint16_t *>(addr);
+}
+
+inline uint16_t
+get_u16_bump(const uint8_t *&addr) {
+    uint16_t result = get_u16(addr);
+    addr += sizeof(uint16_t);
+    return result;
+}
+
+
 // Contexts
 
 // The base context, an abstract class. We use the curiously recurring
@@ -166,8 +188,6 @@ public:
 protected:
     inline uint8_t peek() { return *sp; }
 
-    static inline uint16_t get_u16(const uint8_t *addr);
-    static inline uint16_t get_u16_bump(const uint8_t *&addr);
     inline size_align get_size_align(const uint8_t *&addr);
 
 private:
@@ -226,7 +246,8 @@ public:
     const type_param *params;   // subparameters
 
     // Creates type parameters from an object shape description.
-    static type_param *from_obj_shape(const uint8_t *sp, arena &arena);
+    static type_param *from_obj_shape(const uint8_t *sp, ptr dp,
+                                      arena &arena);
 
     template<typename T>
     inline void set(ctxt<T> *cx) {
@@ -282,20 +303,6 @@ ctxt<T>::walk_reset(bool align) {
     const uint8_t *old_sp = sp;
     walk(align);
     sp = old_sp;
-}
-
-template<typename T>
-uint16_t
-ctxt<T>::get_u16(const uint8_t *addr) {
-    return *reinterpret_cast<const uint16_t *>(addr);
-}
-
-template<typename T>
-uint16_t
-ctxt<T>::get_u16_bump(const uint8_t *&addr) {
-    uint16_t result = get_u16(addr);
-    addr += sizeof(uint16_t);
-    return result;
 }
 
 template<typename T>
@@ -892,17 +899,13 @@ data<T,U>::walk_obj_contents(bool align, ptr &dp) {
     uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
     type_desc *subtydesc =
         *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
-    ptr obj_closure_dp(*box_ptr + sizeof(void *));
+    ptr obj_closure_dp(box_ptr + sizeof(void *));
 
-    // FIXME: Should be type_param::from_obj_shape() below.
     arena arena;
-    type_param *params = type_param::from_tydesc(subtydesc, arena);
+    type_param *params = type_param::from_obj_shape(subtydesc->shape,
+                                                    obj_closure_dp, arena);
     T sub(*static_cast<T *>(this), subtydesc->shape, params,
           subtydesc->shape_tables, obj_closure_dp);
-
-    print print(sub);
-    print.walk(false);
-
     sub.walk(true);
 }
 

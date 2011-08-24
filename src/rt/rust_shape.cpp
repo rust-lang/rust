@@ -42,10 +42,21 @@ type_param::make(const type_desc **tydescs, unsigned n_tydescs,
     return ptrs;
 }
 
+// Constructs type parameters from an object shape. This is a bit messy,
+// because it requires that the object shape have a specific format.
 type_param *
-type_param::from_obj_shape(const uint8_t *sp, arena &arena) {
-    // TODO
-    abort();
+type_param::from_obj_shape(const uint8_t *sp, ptr dp, arena &arena) {
+    uint8_t shape = *sp++; assert(shape == SHAPE_STRUCT);
+    get_u16_bump(sp);   // Skip over the size.
+    shape = *sp++; assert(shape == SHAPE_PTR);
+    shape = *sp++; assert(shape == SHAPE_STRUCT);
+
+    unsigned n_tydescs = get_u16_bump(sp);
+
+    // Type descriptors start right after the reference count.
+    const type_desc **descs = (const type_desc **)(dp + sizeof(uintptr_t));
+
+    return make(descs, n_tydescs, arena);
 }
 
 
