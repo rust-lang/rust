@@ -512,7 +512,7 @@ of St. Andrews (St. Andrews, Fife, UK).
 Additional specific influences can be seen from the following languages:
 @itemize
 @item The structural algebraic types and compilation manager of SML.
-@item The syntax-extension systems of Camlp4 and the Common Lisp readtable.
+@c @item The syntax-extension systems of Camlp4 and the Common Lisp readtable.
 @item The deterministic destructor system of C++.
 @end itemize
 
@@ -599,12 +599,12 @@ U+0009 (tab, @code{'\t'}), U+000A (LF, @code{'\n'}), U+000D (CR, @code{'\r'}).
 A @dfn{single-line comment} is any sequence of Unicode characters beginning
 with U+002F U+002F (@code{"//"}) and extending to the next U+000A character,
 @emph{excluding} cases in which such a sequence occurs within a string literal
-token or a syntactic extension token.
+token.
 
 A @dfn{multi-line comments} is any sequence of Unicode characters beginning
 with U+002F U+002A (@code{"/*"}) and ending with U+002A U+002F (@code{"*/"}),
 @emph{excluding} cases in which such a sequence occurs within a string literal
-token or a syntactic extension token.  Multi-line comments may be nested.
+token.  Multi-line comments may be nested.
 
 @node       Ref.Lex.Ident
 @subsection Ref.Lex.Ident
@@ -876,11 +876,11 @@ escaped in order to denote @emph{itself}.
 @c * Ref.Lex.Syntax::              Syntactic extension tokens.
 
 Syntactic extensions are marked with the @emph{pound} sigil U+0023 (@code{#}),
-followed by a qualified name of a compile-time imported module item, an
-optional parenthesized list of @emph{parsed expressions}, and an optional
-brace-enclosed region of free-form text (with brace-matching and
-brace-escaping used to determine the limit of the
-region). @xref{Ref.Comp.Syntax}.
+followed by an identifier, one of @code{fmt}, @code{env},
+@code{concat_idents}, @code{ident_to_str}, @code{log_syntax}, @code{macro}, or
+the name of a user-defined macro. This is followed by a vector literal. (Its
+value will be interpreted syntactically; in particular, it need not be
+well-typed.)
 
 @emph{TODO: formalize those terms more}.
 
@@ -1040,7 +1040,6 @@ Compilation Manager, a @emph{unit} in the Owens and Flatt module system, or a
 @itemize
 @item Metadata about the crate, such as author, name, version, and copyright.
 @item The source-file and directory modules that make up the crate.
-@item The set of syntax extensions to enable for the crate.
 @item Any external crates or native modules that the crate imports to its top level.
 @item The organization of the crate's internal namespace.
 @item The set of names exported from the crate.
@@ -1087,11 +1086,13 @@ or Mach-O. The loadable object contains extensive DWARF metadata, describing:
 derived from the same @code{use} directives that guided compile-time imports.
 @end itemize
 
-The @code{syntax} directives of a crate are similar to the @code{use}
-directives, except they govern the syntax extension namespace (accessed
-through the syntax-extension sigil @code{#}, @pxref{Ref.Comp.Syntax})
-available only at compile time. A @code{syntax} directive also makes its
-extension available to all subsequent directives in the crate file.
+@c This might come along sometime in the future.
+
+@c The @code{syntax} directives of a crate are similar to the @code{use}
+@c directives, except they govern the syntax extension namespace (accessed
+@c through the syntax-extension sigil @code{#}, @pxref{Ref.Comp.Syntax})
+@c available only at compile time. A @code{syntax} directive also makes its
+@c extension available to all subsequent directives in the crate file.
 
 An example of a crate:
 
@@ -1104,9 +1105,6 @@ meta (author = "Jane Doe",
 
 // Import a module.
 use std (ver = "1.0");
-
-// Activate a syntax-extension.
-syntax re;
 
 // Define some modules.
 mod foo = "foo.rs";
@@ -1124,8 +1122,8 @@ mod bar @{
 
 In a crate, a @code{meta} directive associates free form key-value metadata
 with the crate. This metadata can, in turn, be used in providing partial
-matching parameters to syntax-extension loading and crate importing
-directives, denoted by @code{syntax} and @code{use} keywords respectively.
+matching parameters to crate importing directives, denoted by the @code{use}
+keyword.
 
 Alternatively, metadata can serve as a simple form of documentation.
 
@@ -1134,48 +1132,75 @@ Alternatively, metadata can serve as a simple form of documentation.
 @c * Ref.Comp.Syntax::        Syntax extension.
 @cindex Syntax extension
 
+@c , statement or item
 Rust provides a notation for @dfn{syntax extension}. The notation is a marked
-syntactic form that can appear as an expression, statement or item in the body
-of a Rust program, or as a directive in a Rust crate, and which causes the
-text enclosed within the marked form to be translated through a named
-extension function loaded into the compiler at compile-time.
+syntactic form that can appear as an expression in the body of a Rust
+program. Syntax extensions make use of bracketed lists, which are
+syntactically vector literals, but which have no run-time semantics. After
+parsing, the notation is translated into Rust expressions. The name of the
+extension determines the translation performed. The name may be one of the
+built-in extensions listed below, or a user-defined extension, defined using
+@code{macro}.
 
-The compile-time extension function must return a value of the corresponding
-Rust AST type, either an expression node, a statement node or an item
-node. @footnote{The syntax-extension system is analogous to the extensible
-reader system provided by Lisp @emph{readtables}, or the Camlp4 system of
-Objective Caml.}  @xref{Ref.Lex.Syntax}.
+@itemize
+@item @code{fmt} expands into code to produce a formatted string, similar to 
+      @code{printf} from C.
+@item @code{env} expands into a string literal containing the value of that
+      environment variable at compile-time.
+@item @code{concat_idents} expands into an identifier which is the 
+      concatenation of its arguments.
+@item @code{ident_to_str} expands into a string literal containing the name of
+      its argument (which must be a literal).
+@item @code{log_syntax} causes the compiler to pretty-print its arguments.
+@end itemize
 
-A syntax extension is enabled by a @code{syntax} directive, which must occur
-in a crate file. When the Rust compiler encounters a @code{syntax} directive
-in a crate file, it immediately loads the named syntax extension, and makes it
-available for all subsequent crate directives within the enclosing block scope
-of the crate file, and all Rust source files referenced as modules from the
-enclosing block scope of the crate file.
-
-For example, this extension might provide a syntax for regular
-expression literals:
+Finally, @code{macro} is used to define a new macro. A macro can abstract over
+second-class Rust concepts that are present in syntax. The arguments to
+@code{macro} are a bracketed list of pairs (two-element lists). The pairs
+consist of an invocation and the syntax to expand into. An example:
 
 @example
-// In a crate file:
-
-// Requests the 're' syntax extension from the compilation environment.
-syntax re;
-
-// Also declares an import dependency on the module 're'.
-use re;
-
-// Reference to a Rust source file as a module in the crate.
-mod foo = "foo.rs";
-
-@dots{}
-
-// In the source file "foo.rs", use the #re syntax extension and
-// the re module at run-time.
-let s: str = get_string();
-let pattern: regex = #re.pat@{ aa+b? @};
-let matched: bool = re.match(pattern, s);
+#macro[[#apply[fn, [args, ...]], fn(args, ...)]];
 @end example
+
+In this case, the invocation @code{#apply[sum, 5, 8, 6]} expands to
+@code{sum(5,8,6)}. If @code{...} follows an expression (which need not be as
+simple as a single identifier) in the input syntax, the matcher will expect an
+arbitrary number of occurences of the thing preceeding it, and bind syntax to
+the identifiers it contains. If it follows an expression in the output syntax,
+it will transcribe that expression repeatedly, according to the identifiers
+(bound to syntax) that it contains.
+
+The behavior of @code{...} is known as Macro By Example. It allows you to
+write a macro with arbitrary repetition by specifying only one case of that
+repetition, and following it by @code{...}, both where the repeated input is
+matched, and where the repeated output must be transcribed. A more
+sophisticated example:
+
+@example
+#macro[#zip_literals[[x, ...], [y, ...]], 
+       [[x, y], ...]];
+#macro[#unzip_literals[[x, y], ...],
+       [[x, ...], [y, ...]]];
+@end example
+
+In this case, @code{#zip_literals[[1,2,3], [1,2,3]]} expands to
+@code{[[1,1],[2,2],[3,3]]}, and @code{#unzip_literals[[1,1], [2,2], [3,3]]}
+expands to @code{[[1,2,3],[1,2,3]]}.
+
+Macro expansion takes place outside-in: that is,
+@code{#unzip_literals[#zip_literals[[1,2,3],[1,2,3]]]} will fail because
+@code{unzip_literals} expects a list, not a macro invocation, as an
+argument.
+
+@c 
+The macro system currently has some limitations. It's not possible to
+destructure anything other than vector literals (therefore, the arguments to
+complicated macros will tend to be an ocean of square brackets). Macro
+invocations and @code{...} can only appear in expression positions. Finally,
+macro expansion is currently unhygienic. That is, name collisions between
+macro-generated and user-written code can cause unintentional capture.
+
 
 @page
 @node    Ref.Mem
