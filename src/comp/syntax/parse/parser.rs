@@ -173,6 +173,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words.insert("fn", ());
     words.insert("block", ());
     words.insert("lambda", ());
+    words.insert("pred", ()); // FIXME: remove
     words.insert("pure", ());
     words.insert("iter", ());
     words.insert("block", ());
