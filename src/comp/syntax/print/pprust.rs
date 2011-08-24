@@ -1197,7 +1197,7 @@ fn print_fn(s: &ps, decl: ast::fn_decl, proto: ast::proto, name: str,
             typarams: &[ast::ty_param], constrs: [@ast::constr]) {
     alt decl.purity {
       ast::impure_fn. { head(s, proto_to_str(proto)); }
-      _ { head(s, "pred"); }
+      _ { head(s, "pure fn"); }
     }
     word(s.s, name);
     print_type_params(s, typarams);

@@ -284,7 +284,7 @@ fn item_family_to_str(fam: u8) -> str {
     alt fam as char {
       'c' { ret "const"; }
       'f' { ret "fn"; }
-      'p' { ret "pred"; }
+      'p' { ret "pure fn"; }
       'F' { ret "native fn"; }
       'y' { ret "type"; }
       'T' { ret "native type"; }

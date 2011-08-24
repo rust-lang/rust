@@ -371,7 +371,7 @@ type fn_decl =
      constraints: [@constr]};
 
 tag purity {
-    pure_fn; // declared with "pred"
+    pure_fn; // declared with "pure fn"
     impure_fn; // declared with "fn"
 }
 
