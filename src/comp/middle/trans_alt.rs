@@ -304,9 +304,10 @@ fn compile_submatch(bcx: @block_ctxt, m: &match, vals: [ValueRef],
                 bcx.fcx.lllocals.insert
                     (val, option::get(assoc(key, m[0].bound)));
             }
-            let {bcx: guard_cx, val: guard_val} =
+            let {bcx: guard_bcx, val: guard_val} =
                 trans::trans_expr(guard_cx, e);
-            guard_cx.build.CondBr(guard_val, next_cx.llbb, else_cx.llbb);
+            guard_bcx = trans::trans_block_cleanups(guard_bcx, guard_cx);
+            guard_bcx.build.CondBr(guard_val, next_cx.llbb, else_cx.llbb);
             compile_submatch(else_cx, vec::slice(m, 1u, vec::len(m)),
                              vals, f, exits);
             bcx = next_cx;
