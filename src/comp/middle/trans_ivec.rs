@@ -11,9 +11,6 @@ import trans::{call_memmove, trans_shared_malloc, llsize_of,
                new_sub_block_ctxt};
 import trans_common::*;
 
-export trans_ivec, get_len_and_data, duplicate_heap_part, trans_add,
-trans_append, alloc_with_heap;
-
 fn alloc_with_heap(bcx: @block_ctxt, typ: &ty::t, vecsz: uint) ->
     {bcx: @block_ctxt,
      unit_ty: ty::t,
@@ -342,15 +339,13 @@ fn reserve_space(cx: &@block_ctxt, llunitty: TypeRef, v: ValueRef,
                            stack_no_spill_cx.llbb, stack_spill_cx.llbb]);
     ret rslt(next_cx, data_ptr);
 }
-fn trans_append(cx: &@block_ctxt, t: ty::t, orig_lhs: ValueRef,
-                orig_rhs: ValueRef) -> result {
+fn trans_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
+                rhs: ValueRef) -> result {
     // Cast to opaque interior vector types if necessary.
-    let lhs;
-    let rhs;
     if ty::type_has_dynamic_size(bcx_tcx(cx), t) {
-        lhs = cx.build.PointerCast(orig_lhs, T_ptr(T_opaque_ivec()));
-        rhs = cx.build.PointerCast(orig_rhs, T_ptr(T_opaque_ivec()));
-    } else { lhs = orig_lhs; rhs = orig_rhs; }
+        lhs = cx.build.PointerCast(lhs, T_ptr(T_opaque_ivec()));
+        rhs = cx.build.PointerCast(rhs, T_ptr(T_opaque_ivec()));
+    }
 
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), t);
     let llunitty = type_of_or_i8(cx, unit_ty);
@@ -446,6 +441,24 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, orig_lhs: ValueRef,
 
     post_copy_cx.build.Br(copy_loop_header_cx.llbb);
     ret rslt(next_cx, C_nil());
+}
+
+fn trans_append_literal(bcx: &@block_ctxt, v: ValueRef, vec_ty: ty::t,
+                        vals: &[@ast::expr]) -> @block_ctxt {
+    let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
+    let ti = none;
+    let {bcx, val: td} = get_tydesc(bcx, elt_ty, false, ti).result;
+    trans::lazily_emit_all_tydesc_glue(bcx, ti);
+    let opaque_v = bcx.build.PointerCast(v, T_ptr(T_opaque_ivec()));
+    for val in vals {
+        let {bcx: e_bcx, val: elt} = trans::trans_expr(bcx, val);
+        bcx = e_bcx;
+        let spilled = trans::spill_if_immediate(bcx, elt, elt_ty);
+        bcx.build.Call(bcx_ccx(bcx).upcalls.ivec_push,
+                       [bcx.fcx.lltaskptr, opaque_v, td,
+                        bcx.build.PointerCast(spilled, T_ptr(T_i8()))]);
+    }
+    ret bcx;
 }
 
 type alloc_result =
@@ -756,3 +769,13 @@ fn duplicate_heap_part(cx: &@block_ctxt, orig_vptr: ValueRef,
 
     ret rslt(next_cx, C_nil());
 }
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

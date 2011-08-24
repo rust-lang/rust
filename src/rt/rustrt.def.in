@@ -89,6 +89,7 @@ upcall_get_type_desc
 upcall_grow_task
 upcall_ivec_resize_shared
 upcall_ivec_spill_shared
+upcall_ivec_push
 upcall_kill
 upcall_log_double
 upcall_log_float

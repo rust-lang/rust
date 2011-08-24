@@ -4351,16 +4351,32 @@ fn trans_expr_out(cx: &@block_ctxt, e: &@ast::expr, output: out_method) ->
         ret rslt(bcx, C_nil());
       }
       ast::expr_assign_op(op, dst, src) {
-        let t = ty::expr_ty(bcx_tcx(cx), src);
+        let tcx = bcx_tcx(cx);
+        let t = ty::expr_ty(tcx, src);
         let lhs_res = trans_lval(cx, dst);
         assert (lhs_res.is_mem);
-        // FIXME Fill in lhs_res.res.bcx.sp
 
+        // Special case for `+= [x]`
+        alt ty::struct(tcx, t) {
+          ty::ty_vec(_) {
+            alt src.node {
+              ast::expr_vec(args, _) {
+                let bcx = ivec::trans_append_literal
+                    (lhs_res.res.bcx, lhs_res.res.val, t, args);
+                ret rslt(bcx, C_nil());
+              }
+              _ {}
+            }
+          }
+          _ {}
+        }
+
+        // FIXME Fill in lhs_res.res.bcx.sp
         let rhs_res = trans_expr(lhs_res.res.bcx, src);
-        if ty::type_is_sequence(bcx_tcx(cx), t) {
+        if ty::type_is_sequence(tcx, t) {
             alt op {
               ast::add. {
-                if ty::sequence_is_interior(bcx_tcx(cx), t) {
+                if ty::sequence_is_interior(tcx, t) {
                     ret ivec::trans_append(rhs_res.bcx, t, lhs_res.res.val,
                                            rhs_res.val);
                 }

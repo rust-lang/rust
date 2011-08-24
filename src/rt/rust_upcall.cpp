@@ -394,6 +394,30 @@ upcall_ivec_spill_shared(rust_task *task,
     v->payload.ptr = heap_part;
 }
 
+extern "C" CDECL void
+upcall_ivec_push(rust_task* task, rust_ivec* v, type_desc* elt_ty, void* x) {
+    LOG_UPCALL_ENTRY(task);
+    bool is_interior = v->fill || !v->payload.ptr;
+    size_t sz = elt_ty->size;
+    size_t old_fill = is_interior ? v->fill : v->payload.ptr->fill;
+    size_t new_sz = sz + old_fill;
+    if (new_sz > v->alloc) {
+        if (is_interior) {
+            upcall_ivec_spill_shared(task, v, new_sz);
+            is_interior = false;
+        } else {
+            upcall_ivec_resize_shared(task, v, new_sz);
+        }
+    } else {
+        if (is_interior) v->fill = new_sz;
+        else v->payload.ptr->fill = new_sz;
+    }
+    uint8_t* dataptr = is_interior ? &v->payload.data[0]
+                                   : &v->payload.ptr->data[0];
+    copy_elements(task, elt_ty, dataptr + old_fill, x, sz);
+}
+
+
 /**
  * Returns a token that can be used to deallocate all of the allocated space
  * space in the dynamic stack.

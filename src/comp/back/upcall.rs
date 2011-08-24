@@ -43,6 +43,7 @@ type upcalls =
      ivec_spill: ValueRef,
      ivec_resize_shared: ValueRef,
      ivec_spill_shared: ValueRef,
+     ivec_push: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
      dynastack_mark: ValueRef,
@@ -101,6 +102,9 @@ fn declare_upcalls(_tn: type_names, tydesc_type: TypeRef,
           ivec_spill_shared:
               d("ivec_spill_shared", [T_ptr(T_opaque_ivec()), T_int()],
                 T_void()),
+          ivec_push:
+              d("ivec_push", [T_ptr(T_opaque_ivec()), T_ptr(tydesc_type),
+                              T_ptr(T_i8())], T_void()),
           cmp_type:
               dr("cmp_type",
                  [T_ptr(T_i1()), taskptr_type, T_ptr(tydesc_type),
