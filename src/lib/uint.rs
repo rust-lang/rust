@@ -32,9 +32,6 @@ iter range(lo: uint, hi: uint) -> uint {
 }
 
 fn next_power_of_two(n: uint) -> uint {
-    // FIXME change |* uint(4)| below to |* uint(8) / uint(2)| and watch the
-    // world explode.
-
     let halfbits: uint = sys::rustrt::size_of::<uint>() * 4u;
     let tmp: uint = n - 1u;
     let shift: uint = 1u;

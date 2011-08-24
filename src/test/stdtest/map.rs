@@ -6,18 +6,13 @@ import std::map;
 import std::str;
 import std::uint;
 import std::util;
+import std::option;
 
 #[test]
 fn test_simple() {
     log "*** starting test_simple";
     fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
-    fn hash_uint(u: &uint) -> uint {
-        // FIXME: can't use std::util::id since we'd be capturing a type
-        // param, and presently we can't close items over type params.
-
-        ret u;
-    }
-    let hasher_uint: map::hashfn<uint> = hash_uint;
+    let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hasher_str: map::hashfn<str> = str::hash;
     let eqer_str: map::eqfn<str> = str::eq;
@@ -89,14 +84,8 @@ fn test_growth() {
     log "*** starting test_growth";
     let num_to_insert: uint = 64u;
     fn eq_uint(x: &uint, y: &uint) -> bool { ret x == y; }
-    fn hash_uint(u: &uint) -> uint {
-        // FIXME: can't use std::util::id since we'd be capturing a type
-        // param, and presently we can't close items over type params.
-
-        ret u;
-    }
     log "uint -> uint";
-    let hasher_uint: map::hashfn<uint> = hash_uint;
+    let hasher_uint: map::hashfn<uint> = util::id;
     let eqer_uint: map::eqfn<uint> = eq_uint;
     let hm_uu: map::hashmap<uint, uint> =
         map::mk_hashmap::<uint, uint>(hasher_uint, eqer_uint);
@@ -194,23 +183,13 @@ fn test_removal() {
     log "removing evens";
     i = 0u;
     while i < num_to_insert {
-        /**
-         * FIXME (issue #150): we want to check the removed value as in the
-         * following:
-
-        let v: util.option<uint> = hm.remove(i);
+        let v = hm.remove(i);
         alt (v) {
-          case (util.some::<uint>(u)) {
+          option::some(u) {
             assert (u == (i * i));
           }
-          case (util.none::<uint>()) { fail; }
+          option::none. { fail; }
         }
-
-         * but we util.option is a tag type so util.some and util.none are
-         * off limits until we parse the dwarf for tag types.
-         */
-
-        hm.remove(i);
         i += 2u;
     }
     assert (hm.size() == num_to_insert / 2u);

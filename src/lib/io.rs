@@ -179,10 +179,6 @@ fn file_reader(path: str) -> reader {
 }
 
 
-// FIXME: Remove me once objects are exported.
-fn new_reader_(bufr: buf_reader) -> reader { ret new_reader(bufr); }
-
-
 // Byte buffer readers
 
 // TODO: mutable? u8, but this fails with rustboot.
@@ -354,10 +350,6 @@ obj new_writer(out: buf_writer) {
         out.write(uint_to_be_bytes(n, size));
     }
 }
-
-
-// FIXME: Remove me once objects are exported.
-fn new_writer_(out: buf_writer) -> writer { ret new_writer(out); }
 
 fn file_writer(path: str, flags: &[fileflag]) -> writer {
     ret new_writer(file_buf_writer(path, flags));

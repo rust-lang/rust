@@ -201,8 +201,7 @@ mod test_literals {
     #[mach_int = 100u32];
     #[float = 1.0];
     #[mach_float = 1.0f32];
-    // FIXME (#622): Can't parse a nil literal here
-    //#[nil = ()];
+    #[nil = ()];
     #[bool = true];
     mod m { }
 }

@@ -202,7 +202,7 @@ fn encode_type(ecx: &@encode_ctxt, ebml_w: &ebml::writer, typ: ty::t) {
         @{ds: f,
           tcx: ecx.ccx.tcx,
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
-    tyencode::enc_ty(io::new_writer_(ebml_w.writer), ty_str_ctxt, typ);
+    tyencode::enc_ty(io::new_writer(ebml_w.writer), ty_str_ctxt, typ);
     ebml::end_tag(ebml_w);
 }
 
@@ -413,7 +413,7 @@ fn create_index<T>(index: &[entry<T>], hash_fn: fn(&T) -> uint) ->
 
 fn encode_index<T>(ebml_w: &ebml::writer, buckets: &[@[entry<T>]],
                    write_fn: fn(&io::writer, &T)) {
-    let writer = io::new_writer_(ebml_w.writer);
+    let writer = io::new_writer(ebml_w.writer);
     ebml::start_tag(ebml_w, tag_index);
     let bucket_locs: [uint] = [];
     ebml::start_tag(ebml_w, tag_index_buckets);

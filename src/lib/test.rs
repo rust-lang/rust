@@ -66,8 +66,6 @@ type opt_res = either::t<test_opts, str>;
 // Parses command line arguments into test options
 fn parse_opts(args: &[str]) : vec::is_not_empty(args) -> opt_res {
 
-    // FIXME (#649): Shouldn't have to check here
-    check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
     let opts = [getopts::optflag("ignored")];
     let match =
