@@ -87,7 +87,6 @@ type tydesc_info =
      mutable drop_glue: option::t<ValueRef>,
      mutable free_glue: option::t<ValueRef>,
      mutable cmp_glue: option::t<ValueRef>,
-     mutable copy_glue: option::t<ValueRef>,
      ty_params: [uint]};
 
 /*
@@ -620,14 +619,6 @@ fn T_cmp_glue_fn(cx: &crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_copy_glue_fn(cx: &crate_ctxt) -> TypeRef {
-    let s = ~"copy_glue_fn";
-    if cx.tn.name_has_type(s) { ret cx.tn.get_type(s); }
-    let t = T_tydesc_field(cx, abi::tydesc_field_copy_glue);
-    cx.tn.associate(s, t);
-    ret t;
-}
-
 fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
     let tydesc = T_named_struct(~"tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
@@ -638,13 +629,10 @@ fn T_tydesc(taskptr_type: TypeRef) -> TypeRef {
     let cmp_glue_fn_ty =
         T_ptr(T_fn([T_ptr(T_i1()), taskptr_type, T_ptr(tydesc), tydescpp,
                     pvoid, pvoid, T_i8()], T_void()));
-    let copy_glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_nil()), taskptr_type, T_ptr(T_nil()), tydescpp,
-                    pvoid, pvoid], T_void()));
 
     let elems =
         [tydescpp, T_int(), T_int(), glue_fn_ty, glue_fn_ty, glue_fn_ty,
-         copy_glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
+         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
          T_ptr(T_i8()), T_ptr(T_i8()), T_int(), T_int()];
     set_struct_body(tydesc, elems);
     ret tydesc;
