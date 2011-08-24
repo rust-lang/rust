@@ -104,7 +104,7 @@ fn binop_to_str(op: binop) -> str {
     }
 }
 
-pred lazy_binop(b: binop) -> bool {
+pure fn lazy_binop(b: binop) -> bool {
     alt b { and. { true } or. { true } _ { false } }
 }
 

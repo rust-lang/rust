@@ -180,7 +180,7 @@ fn to_str(r: lexer::reader, t: token) -> str {
 }
 
 
-pred can_begin_expr(t: token) -> bool {
+pure fn can_begin_expr(t: token) -> bool {
     alt t {
       LPAREN. { true }
       LBRACE. { true }
