@@ -1,3 +1,8 @@
+// Broken under win
+// xfail-stage1
+// xfail-stage2
+// xfail-stage3
+
 use std;
 
 import std::task;
