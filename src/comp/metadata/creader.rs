@@ -15,6 +15,7 @@ import back::x86;
 import util::common;
 import std::vec;
 import std::str;
+import std::istr;
 import std::fs;
 import std::io;
 import std::option;
@@ -150,7 +151,8 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
                           metas: &[@ast::meta_item],
                           library_search_paths: &[str]) ->
    option::t<{ident: str, data: @[u8]}> {
-    let prefix: str = nn.prefix + crate_name;
+    let prefix: istr = istr::from_estr(nn.prefix + crate_name);
+    let suffix: istr = istr::from_estr(nn.suffix);
     // FIXME: we could probably use a 'glob' function in std::fs but it will
     // be much easier to write once the unsafe module knows more about FFI
     // tricks. Currently the glob(3) interface is a bit more than we can
@@ -159,13 +161,17 @@ fn find_library_crate_aux(nn: &{prefix: str, suffix: str}, crate_name: str,
 
     for library_search_path: str in library_search_paths {
         log #fmt["searching %s", library_search_path];
-        for path: str in fs::list_dir(library_search_path) {
-            log #fmt["searching %s", path];
-            let f: str = fs::basename(path);
-            if !(str::starts_with(f, prefix) && str::ends_with(f, nn.suffix))
+        let library_search_path = istr::from_estr(library_search_path);
+        for path: istr in fs::list_dir(library_search_path) {
+            log #fmt["searching %s", istr::to_estr(path)];
+            let f: istr = fs::basename(path);
+            let path = istr::to_estr(path);
+            if !(istr::starts_with(f, prefix) && istr::ends_with(f, suffix))
                {
-                log #fmt["skipping %s, doesn't look like %s*%s", path, prefix,
-                         nn.suffix];
+                log #fmt["skipping %s, doesn't look like %s*%s",
+                         path,
+                         istr::to_estr(prefix),
+                         istr::to_estr(suffix)];
                 cont;
             }
             alt get_metadata_section(path) {

@@ -10,6 +10,7 @@ import std::io;
 import std::io::stdout;
 import std::vec;
 import std::str;
+import std::istr;
 import std::uint;
 import std::option;
 
@@ -40,8 +41,11 @@ fn find_rust_files(files: &mutable [str], path: str) {
         if file_contains(path, "xfail-stage1") {
             //log_err "Skipping " + path + " because it is marked as xfail-stage1";
         } else { files += [path]; }
-    } else if fs::file_is_dir(path) && str::find(path, "compile-fail") == -1 {
-        for p in fs::list_dir(path) { find_rust_files(files, p); }
+    } else if fs::file_is_dir(istr::from_estr(path))
+        && str::find(path, "compile-fail") == -1 {
+        for p in fs::list_dir(istr::from_estr(path)) {
+            find_rust_files(files, istr::to_estr(p));
+        }
     }
 }
 

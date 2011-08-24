@@ -40,7 +40,9 @@ fn llvm_err(sess: session::session, msg: str) {
 }
 
 fn link_intrinsics(sess: session::session, llmod: ModuleRef) {
-    let path = fs::connect(sess.get_opts().sysroot, "lib/intrinsics.bc");
+    let path = istr::to_estr(
+        fs::connect(istr::from_estr(sess.get_opts().sysroot),
+                    ~"lib/intrinsics.bc"));
     let membuf =
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(str::buf(path));
     if membuf as uint == 0u {
@@ -360,10 +362,12 @@ fn build_link_meta(sess: &session::session, c: &ast::crate, output: &str,
               none. {
                 let name =
                     {
-                        let os = str::split(fs::basename(output), '.' as u8);
+                        let os = istr::split(
+                            fs::basename(istr::from_estr(output)),
+                            '.' as u8);
                         assert (vec::len(os) >= 2u);
                         vec::pop(os);
-                        str::connect(os, ".")
+                        istr::to_estr(istr::connect(os, ~"."))
                     };
                 warn_missing(sess, "name", name);
                 name

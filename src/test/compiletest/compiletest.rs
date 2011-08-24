@@ -3,6 +3,7 @@ import std::getopts;
 import std::test;
 import std::fs;
 import std::str;
+import std::istr;
 import std::vec;
 import std::task;
 
@@ -126,7 +127,8 @@ fn make_tests(cx: &cx) -> tests_and_conv_fn {
     log #fmt["making tests from %s", cx.config.src_base];
     let configport = port::<[u8]>();
     let tests = [];
-    for file: str in fs::list_dir(cx.config.src_base) {
+    for file: istr in fs::list_dir(istr::from_estr(cx.config.src_base)) {
+        let file = istr::to_estr(file);
         log #fmt["inspecting file %s", file];
         if is_test(cx.config, file) {
             tests += [make_test(cx, file, configport)];
@@ -137,19 +139,21 @@ fn make_tests(cx: &cx) -> tests_and_conv_fn {
 
 fn is_test(config: &config, testfile: &str) -> bool {
     // Pretty-printer does not work with .rc files yet
-    let valid_extensions =
-        alt config.mode { mode_pretty. { [".rs"] } _ { [".rc", ".rs"] } };
-    let invalid_prefixes = [".", "#", "~"];
-    let name = fs::basename(testfile);
+    let valid_extensions = alt config.mode {
+      mode_pretty. { [~".rs"] }
+      _ { [~".rc", ~".rs"] }
+    };
+    let invalid_prefixes = [~".", ~"#", ~"~"];
+    let name = fs::basename(istr::from_estr(testfile));
 
     let valid = false;
 
     for ext in valid_extensions {
-        if str::ends_with(name, ext) { valid = true }
+        if istr::ends_with(name, ext) { valid = true }
     }
 
     for pre in invalid_prefixes {
-        if str::starts_with(name, pre) { valid = false }
+        if istr::starts_with(name, pre) { valid = false }
     }
 
     ret valid;

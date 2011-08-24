@@ -1,5 +1,6 @@
 import std::option;
 import std::str;
+import std::istr;
 import std::io;
 import std::fs;
 
@@ -95,7 +96,8 @@ fn parse_pp_exact(line: &str, testfile: &str) -> option::t<str> {
       option::some(s) { option::some(s) }
       option::none. {
         if parse_name_directive(line, "pp-exact") {
-            option::some(fs::basename(testfile))
+            option::some(istr::to_estr(
+                fs::basename(istr::from_estr(testfile))))
         } else {
             option::none
         }

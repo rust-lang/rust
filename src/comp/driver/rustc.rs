@@ -312,7 +312,8 @@ fn get_arch(triple: str) -> session::arch {
 }
 
 fn get_default_sysroot(binary: str) -> str {
-    let dirname = fs::dirname(binary);
+    let dirname = istr::to_estr(
+        fs::dirname(istr::from_estr(binary)));
     if str::eq(dirname, binary) { ret "."; }
     ret dirname;
 }
@@ -443,7 +444,8 @@ fn opts() -> [getopts::opt] {
 
 fn main(args: [str]) {
     let binary = vec::shift(args);
-    let binary_dir = fs::dirname(binary);
+    let binary_dir = istr::to_estr(
+        fs::dirname(istr::from_estr(binary)));
     let match =
         alt getopts::getopts(args, opts()) {
           getopts::success(m) { m }
@@ -557,20 +559,20 @@ fn main(args: [str]) {
     } else { lib_cmd = "-shared"; }
 
     // Converts a library file name into a gcc -l argument
-    fn unlib(config: @session::config, filename: str) -> str {
+    fn unlib(config: @session::config, filename: &istr) -> istr {
         let rmlib =
-            bind fn (config: @session::config, filename: str) -> str {
-                     if config.os == session::os_macos ||
-                            config.os == session::os_linux &&
-                                str::find(filename, "lib") == 0 {
-                         ret str::slice(filename, 3u,
-                                        str::byte_len(filename));
-                     } else { ret filename; }
-                 }(config, _);
-        fn rmext(filename: str) -> str {
-            let parts = str::split(filename, '.' as u8);
+            bind fn (config: @session::config, filename: &istr) -> istr {
+            if config.os == session::os_macos ||
+                config.os == session::os_linux &&
+                istr::find(filename, ~"lib") == 0 {
+                ret istr::slice(filename, 3u,
+                                istr::byte_len(filename));
+            } else { ret filename; }
+        }(config, _);
+        fn rmext(filename: &istr) -> istr {
+            let parts = istr::split(filename, '.' as u8);
             vec::pop(parts);
-            ret str::connect(parts, ".");
+            ret istr::connect(parts, ~".");
         }
         ret alt config.os {
               session::os_macos. { rmext(rmlib(filename)) }
@@ -585,10 +587,11 @@ fn main(args: [str]) {
             gcc_args += [cratepath];
             cont;
         }
+        let cratepath = istr::from_estr(cratepath);
         let dir = fs::dirname(cratepath);
-        if dir != "" { gcc_args += ["-L" + dir]; }
+        if dir != ~"" { gcc_args += ["-L" + istr::to_estr(dir)]; }
         let libarg = unlib(sess.get_targ_cfg(), fs::basename(cratepath));
-        gcc_args += ["-l" + libarg];
+        gcc_args += ["-l" + istr::to_estr(libarg)];
     }
 
     let ula = cstore::get_used_link_args(cstore);

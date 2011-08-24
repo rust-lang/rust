@@ -1,5 +1,6 @@
 import std::io;
 import std::str;
+import std::istr;
 import std::option;
 import std::fs;
 import std::os;
@@ -105,8 +106,9 @@ fn run_pretty_test(cx: &cx, props: &test_props, testfile: &str) {
     let expected =
         alt props.pp_exact {
           option::some(file) {
-            let filepath = fs::connect(fs::dirname(testfile), file);
-            io::read_whole_file_str(filepath)
+            let filepath = fs::connect(fs::dirname(
+                istr::from_estr(testfile)), istr::from_estr(file));
+            io::read_whole_file_str(istr::to_estr(filepath))
           }
           option::none. { srcs[vec::len(srcs) - 2u] }
         };
@@ -338,11 +340,12 @@ fn output_base_name(config: &config, testfile: &str) -> str {
     let base = config.build_base;
     let filename =
         {
-            let parts = str::split(fs::basename(testfile), '.' as u8);
+            let parts = istr::split(fs::basename(istr::from_estr(testfile)),
+                                    '.' as u8);
             parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
-            str::connect(parts, ".")
+            istr::connect(parts, ~".")
         };
-    #fmt["%s%s.%s", base, filename, config.stage_id]
+    #fmt["%s%s.%s", base, istr::to_estr(filename), config.stage_id]
 }
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
