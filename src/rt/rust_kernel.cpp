@@ -140,7 +140,7 @@ rust_kernel::fail() {
     // Runtime to terminate it in an unusual way" when trying to shutdown
     // cleanly.
 #if defined(__WIN32__)
-    exit(-1);
+    exit(1);
 #endif
     for(size_t i = 0; i < num_threads; ++i) {
         rust_scheduler *thread = threads[i];
