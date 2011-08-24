@@ -708,6 +708,7 @@ template<typename T,typename U>
 class data : public ctxt< data<T,U> > {
 protected:
     void walk_box_contents(bool align);
+    void walk_obj_contents(bool align, ptr &dp);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_evec_data_range(ptr dp);
@@ -749,8 +750,9 @@ public:
 
     void walk_obj(bool align) {
         if (align) dp = align_to(dp, sizeof(void *));
+        U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_obj(align);
-        dp += sizeof(void *) * 2;
+        dp = next_dp;
     }
 
     void walk_res(bool align, const rust_fn *dtor, uint16_t n_ty_params,
@@ -882,6 +884,23 @@ data<T,U>::walk_tag(bool align, tag_info &tinfo) {
     dp = end_dp;
 }
 
+template<typename T,typename U>
+void
+data<T,U>::walk_obj_contents(bool align, ptr &dp) {
+    dp += sizeof(void *);   // Skip over the vtable.
+
+    uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
+    type_desc *subtydesc =
+        *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
+    ptr obj_closure_dp(box_ptr + sizeof(void *));
+
+    arena arena;
+    type_param *params = type_param::make(subtydesc, arena);
+    T sub(*static_cast<T *>(this), subtydesc->shape, params,
+          subtydesc->shape_tables, obj_closure_dp);
+    sub.walk(true);
+}
+
 
 // Polymorphic logging, for convenience
 
@@ -901,6 +920,14 @@ private:
                     in_params,
                     in_tables ? in_tables : other.tables,
                     other.dp),
+      out(other.out) {}
+
+    log(log &other,
+        const uint8_t *in_sp,
+        const type_param *in_params,
+        const rust_shape_tables *in_tables,
+        ptr in_dp)
+    : data<log,ptr>(other.task, in_sp, in_params, in_tables, in_dp),
       out(other.out) {}
 
     log(log &other, ptr in_dp)
@@ -928,7 +955,6 @@ private:
     }
 
     void walk_fn(bool align) { out << "fn"; }
-    void walk_obj(bool align) { out << "obj"; }
     void walk_port(bool align) { out << "port"; }
     void walk_chan(bool align) { out << "chan"; }
     void walk_task(bool align) { out << "task"; }
@@ -949,6 +975,7 @@ private:
 
     void walk_struct(bool align, const uint8_t *end_sp);
     void walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data);
+    void walk_obj(bool align);
     void walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end);

@@ -436,6 +436,12 @@ log::walk_vec(bool align, bool is_pod, const std::pair<ptr,ptr> &data) {
 }
 
 void
+log::walk_obj(bool align) {
+    out << "obj";
+    data<log,ptr>::walk_obj_contents(align, dp);
+}
+
+void
 log::walk_variant(bool align, tag_info &tinfo, uint32_t variant_id,
                   const std::pair<const uint8_t *,const uint8_t *>
                   variant_ptr_and_end) {
