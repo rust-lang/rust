@@ -2383,17 +2383,10 @@ fn trans_lit_istr(cx: &@block_ctxt, s: str) -> result {
     let llvecptr = alloc_res.llptr;
     let llfirsteltptr = alloc_res.llfirsteltptr;
 
-    // FIXME: Do something smarter here to load the string
-    let i = 0u;
-    while i < strlen {
-        bld::Store(bcx, C_u8(s[i] as uint),
-                        bld::InBoundsGEP(bcx, llfirsteltptr,
-                                              [C_uint(i)]));
-        i += 1u;
-    }
-    bld::Store(bcx, C_u8(0u),
-                    bld::InBoundsGEP(bcx, llfirsteltptr,
-                                          [C_uint(strlen)]));
+    let llcstr = C_cstr(bcx_ccx(cx), s);
+
+    // FIXME: We need to avoid this memmove
+    bcx = call_memmove(bcx, llfirsteltptr, llcstr, C_uint(veclen)).bcx;
 
     ret rslt(bcx, llvecptr);
 }
