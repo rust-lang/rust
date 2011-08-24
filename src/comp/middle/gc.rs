@@ -15,6 +15,7 @@ import std::unsafe;
 import std::vec;
 
 import lll = lib::llvm::llvm;
+import bld = trans_build;
 
 type ctxt = @{mutable next_tydesc_num: uint};
 
@@ -47,13 +48,13 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     let lltydesc = td_r.result.val;
 
     let gcroot = bcx_ccx(bcx).intrinsics.get("llvm.gcroot");
-    let llvalptr = bcx.build.PointerCast(llval, T_ptr(T_ptr(T_i8())));
+    let llvalptr = bld::PointerCast(bcx, llval, T_ptr(T_ptr(T_i8())));
 
     alt td_r.kind {
       tk_derived. {
         // It's a derived type descriptor. First, spill it.
         let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
-        bcx.build.Store(lltydesc, lltydescptr);
+        bld::Store(bcx, lltydesc, lltydescptr);
 
         let number = gc_cx.next_tydesc_num;
         gc_cx.next_tydesc_num += 1u;
@@ -69,10 +70,10 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         llsrcindex = lll::LLVMConstPointerCast(llsrcindex, T_ptr(T_i8()));
 
         lltydescptr =
-            bcx.build.PointerCast(lltydescptr, T_ptr(T_ptr(T_i8())));
+            bld::PointerCast(bcx, lltydescptr, T_ptr(T_ptr(T_i8())));
 
-        bcx.build.Call(gcroot, [lltydescptr, lldestindex]);
-        bcx.build.Call(gcroot, [llvalptr, llsrcindex]);
+        bld::Call(bcx, gcroot, [lltydescptr, lldestindex]);
+        bld::Call(bcx, gcroot, [llvalptr, llsrcindex]);
       }
       tk_param. {
         bcx_tcx(cx).sess.bug("we should never be trying to root values " +
@@ -87,7 +88,7 @@ fn add_gc_root(cx: &@block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
         let llstaticgcmetaptr =
             lll::LLVMConstPointerCast(llstaticgcmeta, T_ptr(T_i8()));
 
-        bcx.build.Call(gcroot, [llvalptr, llstaticgcmetaptr]);
+        bld::Call(bcx, gcroot, [llvalptr, llstaticgcmetaptr]);
       }
     }
 

@@ -15,6 +15,7 @@ use std (name = "std",
 
 mod middle {
     mod trans_common;
+    mod trans_build;
     mod trans;
     mod trans_alt;
     mod trans_objects;

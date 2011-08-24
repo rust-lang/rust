@@ -30,7 +30,6 @@ import std::map::new_int_hash;
 import std::map::new_str_hash;
 import syntax::codemap::span;
 import lib::llvm::llvm;
-import lib::llvm::builder;
 import lib::llvm::target_data;
 import lib::llvm::type_names;
 import lib::llvm::mk_target_data;
@@ -56,6 +55,7 @@ import util::ppaux::ty_to_str;
 import util::ppaux::ty_to_short_str;
 import syntax::print::pprust::expr_to_str;
 import syntax::print::pprust::path_to_str;
+import bld = trans_build;
 
 // FIXME: These should probably be pulled in here too.
 import trans::type_of_fn_full;
@@ -400,12 +400,17 @@ type block_ctxt =
     // The function context for the function to which this block is
     // attached.
     {llbb: BasicBlockRef,
-     build: builder,
+     mutable terminated: bool,
+     build: bld::BuilderRef_res,
      parent: block_parent,
      kind: block_kind,
      mutable cleanups: [cleanup],
      sp: span,
      fcx: @fn_ctxt};
+
+fn is_terminated(cx: &@block_ctxt) -> bool {
+    ret cx.terminated;
+}
 
 // FIXME: we should be able to use option::t<@block_parent> here but
 // the infinite-tag check in rustboot gets upset.
