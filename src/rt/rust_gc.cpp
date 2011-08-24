@@ -119,8 +119,8 @@ gc::mark(std::vector<root> &roots) {
         DPRINT("root: %p\n", ri->data);
 
         shape::arena arena;
-        shape::type_param *params = shape::type_param::make(ri->tydesc,
-                                                            arena);
+        shape::type_param *params = shape::type_param::from_tydesc(ri->tydesc,
+                                                                   arena);
         shape::log log(task, ri->tydesc->shape, params,
                        ri->tydesc->shape_tables, ri->data, std::cerr);
         log.walk(true);

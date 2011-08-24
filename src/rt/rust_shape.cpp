@@ -17,23 +17,37 @@ namespace shape {
 
 using namespace shape;
 
-// Forward declarations
-
-struct rust_obj;
-struct size_align;
-struct type_param;
-
-
 // Constants
 
 const uint8_t CMP_EQ = 0u;
 const uint8_t CMP_LT = 1u;
 const uint8_t CMP_LE = 2u;
 
-}   // end namespace shape
 
+// Type parameters
 
-namespace shape {
+type_param *
+type_param::make(const type_desc **tydescs, unsigned n_tydescs,
+                 arena &arena) {
+    if (!n_tydescs)
+        return NULL;
+
+    type_param *ptrs = arena.alloc<type_param>(n_tydescs);
+    for (uint32_t i = 0; i < n_tydescs; i++) {
+        const type_desc *subtydesc = tydescs[i];
+        ptrs[i].shape = subtydesc->shape;
+        ptrs[i].tables = subtydesc->shape_tables;
+        ptrs[i].params = from_tydesc(subtydesc, arena);
+    }
+    return ptrs;
+}
+
+type_param *
+type_param::from_obj_shape(const uint8_t *sp, arena &arena) {
+    // TODO
+    abort();
+}
+
 
 // A shape printer, useful for debugging
 
@@ -469,7 +483,7 @@ upcall_cmp_type(int8_t *result, rust_task *task, type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
     shape::arena arena;
-    shape::type_param *params = shape::type_param::make(tydesc, arena);
+    shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
     shape::cmp cmp(task, tydesc->shape, params, tydesc->shape_tables, data_0,
                    data_1);
     cmp.walk(true);
@@ -488,7 +502,7 @@ upcall_log_type(rust_task *task, type_desc *tydesc, uint8_t *data,
         return;     // TODO: Don't evaluate at all?
 
     shape::arena arena;
-    shape::type_param *params = shape::type_param::make(tydesc, arena);
+    shape::type_param *params = shape::type_param::from_tydesc(tydesc, arena);
 
     std::stringstream ss;
     shape::log log(task, tydesc->shape, params, tydesc->shape_tables, data,

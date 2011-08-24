@@ -51,7 +51,7 @@ const uint8_t SHAPE_VAR = 21u;
 
 struct rust_obj;
 struct size_align;
-struct type_param;
+class type_param;
 
 
 // Arenas; these functions must execute very quickly, so we use an arena
@@ -215,10 +215,18 @@ struct rust_obj {
 
 // Type parameters
 
-struct type_param {
+class type_param {
+private:
+    static type_param *make(const type_desc **tydescs, unsigned n_tydescs,
+                            arena &arena);
+
+public:
     const uint8_t *shape;
     const rust_shape_tables *tables;
-    const struct type_param *params;    // subparameters
+    const type_param *params;   // subparameters
+
+    // Creates type parameters from an object shape description.
+    static type_param *from_obj_shape(const uint8_t *sp, arena &arena);
 
     template<typename T>
     inline void set(ctxt<T> *cx) {
@@ -227,19 +235,10 @@ struct type_param {
         params = cx->params;
     }
 
-    static type_param *make(const type_desc *tydesc, arena &arena) {
-        uint32_t n_params = tydesc->n_params;
-        if (!n_params)
-            return NULL;
-
-        type_param *ptrs = arena.alloc<type_param>(n_params);
-        for (uint32_t i = 0; i < n_params; i++) {
-            const type_desc *subtydesc = tydesc->first_param[i];
-            ptrs[i].shape = subtydesc->shape;
-            ptrs[i].tables = subtydesc->shape_tables;
-            ptrs[i].params = make(subtydesc, arena);
-        }
-        return ptrs;
+    // Creates type parameters from a type descriptor.
+    static inline type_param *from_tydesc(const type_desc *tydesc,
+                                          arena &arena) {
+        return make(tydesc->first_param, tydesc->n_params, arena);
     }
 };
 
@@ -482,6 +481,7 @@ public:
         self.walk(false);
     }
 };
+
 
 //
 // Size-of (which also computes alignment). Be warned: this is an expensive
@@ -892,12 +892,17 @@ data<T,U>::walk_obj_contents(bool align, ptr &dp) {
     uint8_t *box_ptr = bump_dp<uint8_t *>(dp);
     type_desc *subtydesc =
         *reinterpret_cast<type_desc **>(box_ptr + sizeof(void *));
-    ptr obj_closure_dp(box_ptr + sizeof(void *));
+    ptr obj_closure_dp(*box_ptr + sizeof(void *));
 
+    // FIXME: Should be type_param::from_obj_shape() below.
     arena arena;
-    type_param *params = type_param::make(subtydesc, arena);
+    type_param *params = type_param::from_tydesc(subtydesc, arena);
     T sub(*static_cast<T *>(this), subtydesc->shape, params,
           subtydesc->shape_tables, obj_closure_dp);
+
+    print print(sub);
+    print.walk(false);
+
     sub.walk(true);
 }
 
