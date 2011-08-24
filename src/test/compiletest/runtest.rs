@@ -180,6 +180,10 @@ fn check_error_patterns(props: &test_props, testfile: &str,
         fatal("no error pattern specified in " + testfile);
     }
 
+    if procres.status == 0 {
+        fatal("process did not return an error status");
+    }
+
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
     for line: str in str::split(procres.stdout, '\n' as u8) {
