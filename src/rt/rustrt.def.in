@@ -59,7 +59,6 @@ rust_process_wait
 rust_ptr_eq
 rust_run_program
 rust_start
-rust_start_ivec
 rust_getcwd
 set_min_stack
 sched_threads
