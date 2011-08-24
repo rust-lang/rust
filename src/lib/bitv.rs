@@ -151,9 +151,11 @@ fn to_vec(v: &t) -> [uint] {
     ret vec::init_fn::<uint>(sub, v.nbits);
 }
 
-fn to_str(v: &t) -> str {
-    let rs = "";
-    for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
+fn to_str(v: &t) -> istr {
+    let rs = ~"";
+    for i: uint in to_vec(v) {
+        if i == 1u { rs += ~"1"; } else { rs += ~"0"; }
+    }
     ret rs;
 }
 
