@@ -367,7 +367,6 @@ fn trans_append(cx: &@block_ctxt, t: ty::t, lhs: ValueRef,
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, none);
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, none);
     lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, none);
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_copy_glue, none);
     let rhs_len_and_data = get_len_and_data(bcx, rhs, unit_ty);
     let rhs_len = rhs_len_and_data.len;
     let rhs_data = rhs_len_and_data.data;
